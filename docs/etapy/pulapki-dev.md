@@ -12,6 +12,8 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **`resizeTo` w Pixi v8 NIE obserwuje elementu** — mierzy się nim, ale przelicza rozmiar wyłącznie na `window.resize`. Pasek zmieniający szerokość mapy bez ruszania oknem zostawiał płótno w starym rozmiarze, a w odsłoniętym pasie świeciła kratka z CSS-a. Trzeba `ResizeObserver` (`watchHostSize`).
+- **Nakładki `MapRenderer` mierzą odstęp w pikselach EKRANU** (`8 * overlayScale()`), więc w pikselach świata topnieje on ze zbliżeniem: obrączka zaznaczenia liczona od `half` wchodziła przy zoomie 2 na pasek życia. Liczy się je od `node.outerRadius`.
 - **`clampZoom` z pixi-viewport czyta ALBO `minWidth`/`maxWidth`, ALBO `minScale`/`maxScale`** — pierwsza para wygrywa i drugiej wtyczka już nie patrzy. „Nie oddalaj się poniżej pokrycia mapy" trzeba więc policzyć samemu i podać jako **skalę**; podanie obu par po cichu wyłącza jedną z nich.
 - **Pusta mapa nie jest pusta** — `.map-area` ma **siatkę wrysowaną w CSS** (48 px), a płótno Pixi jest przezroczyste (`backgroundAlpha: 0`). Kratka wokół mapy i pod nią bierze się stąd, nie z `drawGrid`, więc „ma nie być kratki" znaczy zdjąć tło `.map-area`.
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`**; sanityzacja milczy o nieznanych polach, więc żądanie z pozycją dostaje `{ ok: true }`, a figura stoi.
@@ -26,6 +28,31 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 
 ---
+
+- **`resizeTo` w Pixi v8 nie jest tym, na co wygląda (12.09).** Wtyczka `ResizePlugin` przyjmuje
+  element i owszem, mierzy się jego `clientWidth`/`clientHeight` — ale nasłuchuje **wyłącznie**
+  `globalThis.addEventListener('resize')`. Elementu nie obserwuje, więc każda zmiana szerokości
+  bez ruszania oknem jest dla niej niewidzialna. U nas robią to dwa paski: lewy HUD zwija się do
+  2,6 rem, prawy panel ma uchwyt. Objaw jest mylący, bo **nie wygląda na problem z płótnem**:
+  odsłonięty pas pokazuje kratkę, a kratkę pod mapą rysuje CSS (`.map-area`), więc wygląda to jak
+  „mapa nie wypełnia ekranu", a nie jak „płótno ma stary rozmiar". Rozpoznanie zajmuje sekundę:
+  porównaj `host.clientWidth` z `canvas.width` po zwinięciu paska. Lek: `ResizeObserver` na
+  gospodarzu wołający `app.queueResize()` (`MapRenderer.watchHostSize`).
+
+  **Drugie dno, przy sprawdzaniu tego z automatyki:** pomiar wewnątrz **jednego** wywołania
+  `javascript_tool` kłamie. `queueResize` idzie przez `requestAnimationFrame`, a klatka nie
+  przychodzi, póki wstrzyknięta funkcja nie wróci — więc `await new Promise(r => setTimeout(r, 600))`
+  w tym samym wywołaniu pokazuje stary rozmiar płótna i wygląda jak niedziałająca poprawka. Zmień
+  szerokość w jednym wywołaniu, zmierz w **następnym**.
+
+- **Obrączka zaznaczenia mierzy odstęp w pikselach ekranu, a figurę w pikselach świata (12.09).**
+  `drawSelectionRing`, `drawGroupRings` i `facingKnob` liczą `… + 8 * overlayScale()`, gdzie
+  `overlayScale()` to `1 / zoom` — czyli odstęp jest stały **na ekranie**, a w świecie topnieje ze
+  zbliżeniem. Póki wszystko poza portretem leżało w kratce, nie miało to znaczenia; odkąd pasek
+  życia wyszedł poza portret (12.09), biały przerywany okrąg przy zoomie 2 siadał dokładnie na
+  nim. Liczy się je od `node.outerRadius`, a nie od `half`. **Ogólniejsza postać tej pułapki:**
+  jeśli dokładasz cokolwiek wokół żetonu na warstwie nakładki, twój odstęp jest ekranowy, a to,
+  od czego go odmierzasz — światowe; sprawdź przy dwóch zbliżeniach, nie przy jednym.
 
 - **`clampZoom` z pixi-viewport ma dwie pary opcji i bierze tylko jedną (11.09).** W środku stoi
   `if (minWidth || minHeight || maxWidth || maxHeight) { … } else if (minScale || maxScale) { … }`

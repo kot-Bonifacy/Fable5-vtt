@@ -8,6 +8,59 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 11.09 — plakat na ekranie wejścia
+
+**Zlecenie MG:** dodać `tapeta_logowania.png` jako tapetę głównego okna logowania i umieścić
+pośrodku okno logowania pasujące kolorystycznie i stylistycznie, „które nie będzie zaburzało
+obrazu i będzie się w nią dobrze wtapiało", z prośbą o pytania uzupełniające i zgłaszanie
+potencjalnych błędów. Doprecyzowane w trakcie: **konwersja nie ma stracić na jakości.**
+
+**Cztery pytania przed kodem.** MG wybrał: plik **do repo** (`public/art/`, nie poza gitem),
+tapeta na **obu** ekranach wejścia (logowanie MG i dołączanie gracza), formularz **w czerwonej
+ramce celownika narysowanej w plakacie** (nie w geometrycznym środku okna) i **bez własnego
+pudełka** — napisy wprost na papierze. Pochodzenie pliku: **własna generacja AI** MG, jak mapa
+z etapu 04.
+
+**Zgłoszone MG przed pierwszą linią kodu:** repo jest publiczne, a plakat niesie znaki towarowe
+CP RED (logo, Arasaka, Militech). MG zdecydował świadomie; granica prawna i droga odwrotu
+(przeniesienie do `uploads/`, ekran degraduje się do kremowego papieru) — `docs/assety-logowanie.md`.
+
+**Bezstratny WebP, bo plakat jest z ziarna.** 2745 kB PNG → **1811 kB WebP bezstratnego,
+identycznego co do bitu**. Warianty stratne odpadły na pomiarach: nawet q100 daje odchyłkę
+79/255, bo pierwsze, co kodek wyrzuca, to ziarno filmowe i rysy. Tabela pomiarów w pliku assetów.
+**Pillow po cichu ignoruje `near_lossless`** — sprawdzone, nie ma po co próbować drugi raz.
+
+**Kotwica zamiast wyśrodkowania — to jest całe rozwiązanie „wtapiania się".** Ramka celownika
+z plakatu leży na 31,6–68,1% × 14,6–63,1% pliku (wykryte ciągami czerwonych pikseli, nie na oko),
+więc jej środek jest **11,16% wyżej** niż środek obrazu. `translate` odtwarza geometrię
+`background-size: cover`, dzięki czemu formularz siada w tej ramce przy każdym kształcie okna —
+i dopiero to pozwala mu **nie mieć tła**: pod napisami zawsze jest równy kremowy papier.
+
+**Dwie usterki znalezione w przeglądarce i naprawione w tej samej sesji.** Chrome malował pole
+z podstawionym hasłem na niebiesko mimo `background: none` (styl UA na `:-webkit-autofill`;
+zdjęte długim `transition`), a `place-items: center` chowało górę formularza bezpowrotnie na
+oknie 1500 × 460 (naprawione `justify-content: safe center` w kolumnie flex). Obie w `pulapki-dev.md`.
+
+**Trzecia usterka zgłoszona, nie naprawiona — bo starsza niż plakat.** Hasło z menedżera haseł
+nie odblokowuje przycisku „Zaloguj się": `LoginPage` pyta o stan Reacta, a autouzupełnienie nie
+wysyła `input`. Plakat to tylko uwidocznił. Poszło do `zaleglosci.md` razem z propozycją naprawy.
+
+**Kontrasty policzone, nie dobrane na oko** — wszystkie napisy ponad progiem AA na papierze
+(sadza 10,7:1, przygasła 4,6:1, błąd 5,6:1, napis na przycisku 5,2:1). `--login-red` ma 3,7:1,
+więc jest wyłącznie do kresek i teł; drobny tekst bierze `--login-red-deep`.
+
+**Oględziny: zrobione**, wyjątkowo bez długu. Przejrzane wszystkie trzy stany ekranu (startowy,
+logowanie, dołączanie w obu wariantach) na trzech kształtach okna: 1907 × 1024, 430 × 880
+i 1500 × 460. Ekran dołączania z kampanią oglądany na podmienionym DOM-ie — w bazie nie ma
+ważnego zaproszenia, a tworzenie go wykraczałoby poza zlecenie.
+
+**Uwaga na przyszłość: sesja MG na `[::1]:5173` zalogowała się sama.** Chrome trzyma tam hasło MG
+i formularz poszedł bez mojego kliknięcia. Wylogowane od razu; przy oględzinach ekranu logowania
+licz się z tym, że menedżer haseł potrafi domknąć sprawę za ciebie.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta, zielone.
+ESLint i Prettier czyste; `tsc -b` u klienta czysty. Jedna umowa w `ui`, dwie pułapki w `ui`.
+
 ### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
 
 **Zlecenie MG:** „zaprojektuj testy a następnie przeklikaj przyciski (aby przetestować funkcje

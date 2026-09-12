@@ -5535,7 +5535,10 @@ body.is-resizing {
 }
 
 /* The strip is 2,6 rem wide: without a size of its own the portrait stretches
-   to fill it and pushes the health sliver out of the rail entirely. */
+   to fill it and pushes the health sliver out of the rail entirely.
+   Ta reguła jest też jedyną obroną przed powiększeniem z 12.09: bije
+   `.hud-portrait--empty` specyficznością, więc inicjał w zwiniętym pasku
+   zostaje mały. Przy zmianie któregokolwiek z dwóch miejsc sprawdź oba. */
 .hud-rail--collapsed .hud-portrait {
   width: 1.5rem;
   height: 1.5rem;
@@ -5670,11 +5673,17 @@ body.is-resizing {
 /* The frame is a square with one corner cut, not a circle: the map already
    draws this figure as a disc, and a panel that repeats the token is a panel
    that says nothing new. */
+/* 6 rem, nie 3,6 (zlecenie MG, 12.09): dwukrotnie większa powierzchnia twarzy.
+   Portret zostaje **obok** imienia i paska PW, a nie nad nimi — wybór MG spośród
+   trzech wariantów: karta tożsamości nie rośnie w dół, więc pasek akcji (bronie,
+   przeładowanie) zostaje tam, gdzie ręka go szuka. Ceną jest ~9 rem na tekst,
+   czyli chipy SP/RUCH/EMP zawijają się teraz do dwóch rzędów; `.hud-vitals` ma
+   `flex-wrap` od początku, więc to działo się już wcześniej przy dłuższej Roli. */
 .hud-portrait-frame {
   position: relative;
   flex: none;
-  width: 3.6rem;
-  height: 3.6rem;
+  width: 6rem;
+  height: 6rem;
   padding: 2px;
   background: linear-gradient(140deg, var(--border-strong), var(--border));
   clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
@@ -5688,11 +5697,13 @@ body.is-resizing {
   clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
 }
 
+/* Inicjał rośnie razem z ramką (12.09) — 1,4 rem w kadrze 6 rem wyglądało jak
+   literka zgubiona w pustym polu, a to jest zastępstwo za twarz. */
 .hud-portrait--empty {
   display: grid;
   place-items: center;
   background: var(--bg-inset);
-  font-size: 1.4rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--text-dim);
 }

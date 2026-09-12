@@ -15,6 +15,9 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
+- **Oprawa żetonu (obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. Obrączka PW leży **poza** kołem portretu, a `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura"; wszystko, co się o brzeg opiera, czyta tę funkcję.
+- **Rozmiar płótna mapy** — `MapRenderer.watchHostSize` (`ResizeObserver` → `app.queueResize`). `resizeTo` Pixi słucha **wyłącznie** `window.resize`, więc każdy nowy pasek zmieniający szerokość mapy bez ruszania oknem jedzie tędy i nie potrzebuje niczego własnego.
 - **Kamera mapy** — reguły w `map/camera.ts` (`coverZoom`, `startCamera`, `partyStart`, stałe zoomu), nie w rendererze. Gracz ma kamerę **zamkniętą w mapie** (`setCameraLocked`), MG wolną; kadr startowy to `frameAround`, osobno od `fitScene`.
 - **Miejsce startu graczy** — `Scene.spawnX/spawnY` → `SceneView.spawn` → `ScenePatch.spawn` (`null` kasuje) → `SCENE_COLUMNS` w `archive.ts`. Stawia je narzędzie mapy `spawn` (klawisz `G`, MG), chorągiewkę rysuje `setSpawn` **tylko MG**, a czyta ją kamera gracza bez figury.
 - **Tło powitalne gracza** — `map/welcome-map.ts` jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma `null`, więc żadne narzędzie, żadne zdarzenie i żaden zapis go nie widzą. Nowa droga „pokaż coś bez sceny" idzie tędy, a nie przez atrapę w store.
@@ -48,6 +51,51 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Pasek PW ma jedną drabinkę na całą aplikację: `tokenHpRung` (12.09).** Gracz widzi dwa paski tej
+samej postaci naraz — obrączkę wokół swojej figury i pasek w panelu postaci w lewym górnym rogu —
+a do 12.09 mówiły dwoma językami: mapa liczyła **trzy** stopnie z ułamka (zielone > 50 %,
+pomarańczowe > 25 %, dalej czerwone), panel **cztery**, ze stanu ran. Ta sama postać bywała więc
+na mapie zielona, a w panelu żółta. Teraz obie strony pytają `tokenHpRung` w `shared/figures.ts`.
+
+Progi wychodzą z `WOUNDED_HP_RATIO`, czyli z liczby, którą rdzeń już raz stamtąd wziął, i dają
+**dokładnie** to, co `woundStateFromHp` w `systems/cpred` — ale rdzeń tamtego nie woła i wołać nie
+może (mapa nie importuje modułów CP RED). Przecięcie jest zapisane w dwóch testach: `figures.test.ts`
+sprawdza obie funkcje punkt po punkcie dla dziewięciu maksimów, a `token-ring.test.ts` sprawdza, że
+`HP_RUNG_COLORS` w `TokenNode` niesie te same kolory, co nocna paleta `theme.css`.
+
+**Kolory obrączki są przepisane z nocnej palety, nie czytane z CSS-a** — i to nie jest skrót:
+płótno mapy zostaje nocne w obu motywach (etap 27e), więc w dzień pasek w panelu przyciemnia się
+razem z interfejsem, a obrączka ma zostać jasna. Zmiana `--ok`, `--hurt-light`, `--warn` albo
+`--err` w `theme.css` wymaga więc ruchu w `HP_RUNG_COLORS` — inaczej test to zgłosi.
+
+**Promienie oprawy żetonu liczy `map/token-ring.ts`, nie `TokenNode` (12.09).** Ten sam powód, co
+przy `camera.ts`: czysta arytmetyka osobno od pliku, który ciągnie Pixi, więc da się ją sprawdzić
+liczbami (`token-ring.test.ts`). Trzyma cztery funkcje — `hpRingWidth`, `hpRingCasing`,
+`hpRingRadius` i `furnitureRadius` — i jedną decyzję MG: **obrączka PW leży poza kołem portretu**
+(do 12.09 biegła wewnątrz obwódki właściciela i zasłaniała twarz). Świadoma cena, wybrana przez MG
+wprost: figura wystaje poza swoją kratkę o szerokość paska, więc dwie stojące ramię w ramię
+potrafią się obrączkami zetknąć; odrzucony wariant — zwężenie portretu — kosztowałby ~12 %
+średnicy twarzy na **każdej** figurze, także tej bez PW.
+
+`furnitureRadius(extent, hasHp)` jest jedyną odpowiedzią na pytanie „dokąd sięga figura" i czytają
+ją trzy rysunki, każdy z innego powodu: **aureola tury** musi zostać na zewnątrz paska (leży pod
+nim w kolejności rysowania, więc pasek by ją zamalował), **klin kierunku** musi się za paskiem
+zaczynać (leży nad nim, więc wycinałby w nim dziurę), a **podpis figury** musi zejść pod niego.
+Kto dokłada cokolwiek opartego o brzeg żetonu, pyta tę funkcję — nie `extent / 2` i nie
+`RING_WIDTH`. W samym `TokenNode` zostaje pole `furniture`, bo klin rysuje się też poza `update`
+(ze `showFacing`, w trakcie marszu).
+
+**Płótno mapy nadąża za gospodarzem przez `watchHostSize`, a nie przez `resizeTo` (12.09).**
+`resizeTo` w Pixi v8 mierzy się elementem, ale przelicza rozmiar **wyłącznie** na `window.resize`
+— elementu nie obserwuje. Mapa stoi w rzędzie z paskami, które zmieniają szerokość, nie ruszając
+oknem (lewy HUD zwija się do 2,6 rem, prawy panel ma uchwyt i pamięta szerokość), więc w
+`MapRenderer.init` siedzi `ResizeObserver` na gospodarzu, wołający `app.queueResize()` —
+`queueResize`, nie `resize`, bo przeliczenie ma iść na następną klatkę. Dalej wszystko jedzie
+starą drogą: `renderer.on('resize')` → `viewport.resize` → `applyCameraBounds`. **Nowy pasek
+zmieniający szerokość mapy nie potrzebuje niczego własnego** — ma tylko nie omijać gospodarza.
+Kamera przy tym zostaje na miejscu (decyzja MG, 12.09): dochodzi sam pas mapy, a jedyne, co się
+poprawia samo, to dolna granica zbliżenia u gracza.
 
 **Reguły kamery mieszkają w `map/camera.ts`, a nie w rendererze (11.09).** `MapRenderer` ma 6 tys.
 wierszy i ciągnie Pixi, więc arytmetyka kadru — `coverZoom`, `startCamera`, `partyStart` i stałe

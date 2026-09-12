@@ -1055,6 +1055,16 @@ export class MapRenderer {
   private spawnPlacing = false;
   /** Czy kamera jest zamknięta w granicach mapy (gracz) — patrz `setCameraLocked`. */
   private cameraLocked = false;
+  /**
+   * Pilnuje, żeby płótno miało rozmiar swojego gospodarza (zlecenie MG, 12.09).
+   *
+   * `resizeTo` Pixi słucha **wyłącznie** `window.resize` — nie obserwuje
+   * elementu, choć się nim mierzy. Mapa siedzi między dwoma paskami, które
+   * zmieniają szerokość bez ruszania oknem (lewy HUD się zwija, prawy panel ma
+   * uchwyt), więc po każdym takim ruchu płótno zostawało w starym rozmiarze,
+   * a w odsłoniętym pasie świeciła kratka z CSS-a `.map-area`.
+   */
+  private hostResize: ResizeObserver | null = null;
   /** Fog brush settings; `armed` decides whether a drag paints. */
   private fogBrush: FogBrushSettings = {
     armed: false,
@@ -1426,6 +1436,7 @@ export class MapRenderer {
       return;
     }
     host.appendChild(this.app.canvas);
+    this.watchHostSize(host);
     // Fire and forget: the route reads perfectly well as a line, so a missing
     // or slow glyph must not hold the map up. The first route drawn after it
     // lands gets the prints.
@@ -1648,6 +1659,36 @@ export class MapRenderer {
       // w bok przy niezmienionym zoomie odsłoniłoby czerń za krawędzią mapy.
       this.applyCameraBounds();
     });
+  }
+
+  /**
+   * Płótno nadąża za gospodarzem, nie tylko za oknem (zlecenie MG, 12.09).
+   *
+   * Pixi mierzy się elementem (`resizeTo: host`), ale przelicza rozmiar
+   * **wyłącznie** na `window.resize` — a mapa stoi w rzędzie z dwoma paskami,
+   * które zmieniają szerokość, nie ruszając oknem: lewy HUD zwija się do
+   * 2,6 rem, prawy panel ma uchwyt i pamięta szerokość między sesjami. Po
+   * każdym takim ruchu płótno zostawało w starym rozmiarze i w odsłoniętym
+   * pasie świeciła kratka rysowana przez CSS pod płótnem — czyli dokładnie ta
+   * „czysta siatka", której gracz ma nie oglądać.
+   *
+   * `queueResize`, a nie `resize`: przeliczenie idzie na następną klatkę.
+   * Renderowanie wprost z wywołania obserwatora to przepis na „ResizeObserver
+   * loop completed with undelivered notifications" i na pełne przeliczenie
+   * układu na każdy piksel przeciągania uchwytu.
+   *
+   * Kamera zostaje tam, gdzie była (decyzja MG, 12.09) — dochodzi sam pas
+   * mapy. Jedyne, co się samo poprawia, to dolna granica zbliżenia u gracza,
+   * bo `coverZoom` zależy od kształtu płótna; robi to `applyCameraBounds`
+   * w obsłudze `resize` wyżej.
+   */
+  private watchHostSize(host: HTMLElement): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    this.hostResize = new ResizeObserver(() => {
+      if (this.destroyed) return;
+      this.app.queueResize();
+    });
+    this.hostResize.observe(host);
   }
 
   setScene(scene: SceneView | null): void {
@@ -2691,8 +2732,10 @@ export class MapRenderer {
       const node = this.tokenNodes.get(id);
       if (!node || node.destroyed) continue;
       const half = (node.token.size * scene.grid.sizePx) / 2;
+      // Poza oprawą figury, jak obrączka zaznaczenia (12.09) — `half` przestało
+      // być brzegiem żetonu, odkąd pasek życia leży na zewnątrz portretu.
       this.groupGraphics
-        .circle(node.x + half, node.y + half, half + 8 * k)
+        .circle(node.x + half, node.y + half, Math.max(half, node.outerRadius) + 8 * k)
         .stroke({ color: GROUP_RING_COLOR, width: 3 * k, alpha: 0.9 });
     }
     const marquee = this.marquee;
@@ -2893,7 +2936,12 @@ export class MapRenderer {
     // Outside the portrait and outside the turn halo: at table zoom the token
     // is a dozen screen pixels across, and anything drawn *inside* it lands on
     // the artwork instead of round it.
-    const radius = half + 8 * k;
+    //
+    // Liczone od brzegu **oprawy** figury, nie od kratki (12.09): od kiedy
+    // obrączka PW leży poza portretem, `half` przestało być brzegiem żetonu.
+    // Odstęp 8 px jest ekranowy, więc w pikselach świata topnieje ze zbliżeniem
+    // — przy zoomie 2 pierścień zaznaczenia siadał dokładnie na pasku życia.
+    const radius = Math.max(half, node.outerRadius) + 8 * k;
     const arc = Math.PI / SELECT_RING_DASHES;
     for (let dash = 0; dash < SELECT_RING_DASHES; dash++) {
       const start = dash * arc * 2;
@@ -3427,7 +3475,9 @@ export class MapRenderer {
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
     const centre = { x: node.x + half, y: node.y + half };
-    const distance = half + 22 * k;
+    // Jak przy obrączce zaznaczenia (12.09): uchwyt ma zostać poza oprawą
+    // figury, a tą bywa od 12.09 pasek życia, nie krawędź kratki.
+    const distance = Math.max(half, node.outerRadius) + 22 * k;
     const angle = (((this.rotating?.facing ?? node.facing ?? 0) - 90) * Math.PI) / 180;
     return {
       x: centre.x + Math.cos(angle) * distance,
@@ -6393,6 +6443,11 @@ export class MapRenderer {
     // stop existing. Nothing is committed — the server keeps its own position.
     this.finishMarch(null, false);
     this.destroyed = true;
+    // Obserwator trzyma gospodarza, a ten trzyma płótno — rozłączany przed
+    // `app.destroy`, żeby ostatnia notatka o rozmiarze nie trafiła w martwy
+    // renderer (React w trybie ścisłym montuje mapę dwa razy pod rząd).
+    this.hostResize?.disconnect();
+    this.hostResize = null;
     const viewport = this.viewport;
     this.viewport = null;
     if (viewport) {

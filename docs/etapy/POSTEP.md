@@ -130,8 +130,9 @@ go i nie proponuj makr; pasek akcji z 16f zostaje generowany.
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 17 pozycji** (`zaleglosci.md`; osiemnasta, dopisana 11.09, to usterka do
-naprawy, nie klik do zrobienia). Czternaście czeka na żywy model. Dwie to **to
+**Dług oględzin — 17 pozycji** (`zaleglosci.md`; dwie kolejne, z 11.09 i 12.09, to usterki do
+naprawy, nie kliki do zrobienia — druga z nich, **„gracz nie widzi pod mgłą własnej figury"**,
+czeka na decyzję MG, bo zmienia to, co gracz widzi). Czternaście czeka na żywy model. Dwie to **to
 samo menu figury** („🎒 Przeszukaj…" i przełącznik statystyk), bo prawym klikiem z automatyki nie
 otworzysz menu kanwy Pixi — klika się je jednym podejściem ręką MG. Etapy 39, 40 i szlif karty nie
 dołożyły ani jednej pozycji: przeszły oględziny w tej samej sesji, w której powstały.
@@ -183,7 +184,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   30 |      11 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   33 |      13 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
@@ -205,6 +206,67 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
+
+**Zlecenie MG, trzy punkty:** (1) chowając albo przesuwając boczne paski, mapa ma się sama
+dopasowywać do ekranu, „aby nie było widać siatki"; (2) przetestować widoczność żetonów graczy
+na mapie startowej; (3) pasek PW wokół żetonu ma leżeć **na zewnątrz avatara** i mieć wyraźniejsze
+kolory. Doprecyzowane w trakcie: kolory mają **zgadzać się z paskiem PW w panelu postaci**,
+żaden okrąg ma nie wchodzić na portret, a portret w panelu ma być **duży**.
+
+**Punkt 1 był prawdziwą usterką i ma jedną przyczynę: `resizeTo` w Pixi v8 nie obserwuje
+elementu.** Mierzy się nim, ale nasłuchuje wyłącznie `window.resize` — a mapa stoi między dwoma
+paskami, które zmieniają szerokość bez ruszania oknem (lewy HUD zwija się do 2,6 rem, prawy panel
+ma uchwyt). Płótno zostawało w starym rozmiarze, a w odsłoniętym pasie świeciła **kratka rysowana
+przez CSS** (`.map-area`) — stąd „widać siatkę". Lek to `ResizeObserver` na gospodarzu
+(`watchHostSize` → `app.queueResize`); dalej wszystko jedzie starą drogą, łącznie z
+`applyCameraBounds`. Kamera zostaje na miejscu (wybór MG): dochodzi sam pas mapy.
+
+**Punkt 3 zmienił geometrię żetonu, i to w sposób, który dotyka czterech rysunków naraz.**
+Obrączka PW przeniosła się z wnętrza obwódki właściciela (czyli z brzegu twarzy) **poza kratkę**;
+świadoma cena wybrana przez MG spośród dwóch wariantów — figura wystaje o szerokość paska, więc
+sąsiedzi potrafią się obrączkami zetknąć; odrzucone zwężenie portretu kosztowałoby ~12 % średnicy
+twarzy na każdej figurze. Promienie wyszły do `map/token-ring.ts` (jak kamera do `camera.ts`),
+a `furnitureRadius` jest odtąd **jedyną** odpowiedzią na „dokąd sięga figura": czytają ją aureola
+tury (inaczej pasek by ją zamalował), klin kierunku (inaczej wyciąłby w pasku dziurę), podpis
+figury oraz — po pytaniu MG — **obrączka zaznaczenia, pierścień grupy i uchwyt obrotu**
+w `MapRenderer`. To ostatnie było prawdziwym znaleziskiem: ich odstęp liczy się w pikselach
+**ekranu** (`8 * overlayScale()`), więc w świecie topnieje ze zbliżeniem i przy zoomie 2 biały
+przerywany okrąg siadał dokładnie na pasku życia.
+
+**Kolory: jedna drabinka na całą aplikację.** Mapa miała trzy stopnie z ułamka, panel cztery ze
+stanu ran — ta sama postać bywała na mapie zielona, a w panelu żółta. Od teraz obie strony pytają
+`tokenHpRung` (`shared/figures.ts`, progi z `WOUNDED_HP_RATIO`), a `HP_RUNG_COLORS` niesie nocne
+`--ok` / `--hurt-light` / `--warn` / `--err`. Rdzeń **nie** woła `woundStateFromHp` — nie wolno mu
+— więc zgodność pilnują dwa testy: jeden porównuje obie funkcje punkt po punkcie, drugi porównuje
+paletę z `theme.css`. **Zgłoszone MG:** w motywie dziennym pasek w panelu przyciemnia się razem
+z interfejsem, a obrączka zostaje jasna, bo płótno mapy jest nocne w obu motywach (27e).
+
+**Punkt 2 — odpowiedź jest niewygodna i nie jest usterką kodu.** Aktywna „StrefaPrzemysłowa" ma
+`visibility = 'fog'` i (w chwili oględzin) **zero odsłoniętych kształtów**, więc gracz widział
+czarne pole. Serwer zwalnia własną figurę gracza z filtra mgły (`concealedFrom`: „gracz nigdy nie
+traci swojej postaci z mapy"), ale **klient tej obietnicy nie dotrzymuje**: `fogSprite` leży nad
+warstwą żetonów i jest nieprzezroczysty, więc gracz nie widzi nawet siebie. Serwer mówi jedno,
+renderer drugie. Na **mapie powitalnej** żetonów nie ma w ogóle i to jest z założenia —
+`pushTokens` wysyła pustą listę, gdy `effectiveScene` jest `null`. **Czytelność żetonu na mapie
+MG sprawdzona osobno i jest dobra** (rozstawione figury na sześciu rodzajach podłoża, przy zoomie
+gracza i przy całej mapie w oknie). W trakcie sesji MG sam odsłonił mgłę i obie figury pojawiły
+się u gracza natychmiast.
+
+**Portret w panelu urósł z 3,6 do 6 rem** — wariant wybrany przez MG z trzech: zostaje **obok**
+imienia i paska PW, więc pasek akcji nie schodzi w dół. Sprawdzone na żywo: imię, Rola, pasek PW
+i wszystkie trzy chipy dalej mieszczą się w jednym rzędzie.
+
+**Oględziny bez sesji MG.** Obie karty w przeglądarce trzymały graczy, a MG ma hasło, którego nie
+wpisuję — więc obrączkę oglądałem na **jednorazowej stronie-próbniku** (prawdziwe `TokenNode` na
+prawdziwej mapie sceny MG, siedem wariantów PW i para sąsiadów), skasowanej po sesji. Zmiana
+sceny w bazie została **zablokowana przez zabezpieczenia** i nie była potrzebna. Płótno i portret
+sprawdzone już w żywej aplikacji.
+
+**Testy:** **142** u klienta (+17: `token-ring.test.ts`), **1973** w `shared` (+4 o drabince),
+**1086** na serwerze — zielone. ESLint, Prettier i `tsc -b` czyste w trzech pakietach. Umowy: trzy
+w `mapa`; pułapki: dwie w `mapa`.
 
 ### Sesja 11.09 (druga) — mapa zamiast pustego stołu
 
@@ -316,56 +378,3 @@ Po pierwszym zleceniu było ich **118** u klienta (114 + 4 w `welcome-map.test.t
 niezmienionych `shared` i serwerze. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach.
 Umowy dopisane w `mapa` (trzy: tło powitalne, kamera, miejsce startu), pułapki: dwie w `mapa`
 (siatka z CSS, `clampZoom` z dwiema parami opcji) i jedna w `serwer` (zbieracz sierot).
-
-### Sesja 11.09 — plakat na ekranie wejścia
-
-**Zlecenie MG:** dodać `tapeta_logowania.png` jako tapetę głównego okna logowania i umieścić
-pośrodku okno logowania pasujące kolorystycznie i stylistycznie, „które nie będzie zaburzało
-obrazu i będzie się w nią dobrze wtapiało", z prośbą o pytania uzupełniające i zgłaszanie
-potencjalnych błędów. Doprecyzowane w trakcie: **konwersja nie ma stracić na jakości.**
-
-**Cztery pytania przed kodem.** MG wybrał: plik **do repo** (`public/art/`, nie poza gitem),
-tapeta na **obu** ekranach wejścia (logowanie MG i dołączanie gracza), formularz **w czerwonej
-ramce celownika narysowanej w plakacie** (nie w geometrycznym środku okna) i **bez własnego
-pudełka** — napisy wprost na papierze. Pochodzenie pliku: **własna generacja AI** MG, jak mapa
-z etapu 04.
-
-**Zgłoszone MG przed pierwszą linią kodu:** repo jest publiczne, a plakat niesie znaki towarowe
-CP RED (logo, Arasaka, Militech). MG zdecydował świadomie; granica prawna i droga odwrotu
-(przeniesienie do `uploads/`, ekran degraduje się do kremowego papieru) — `docs/assety-logowanie.md`.
-
-**Bezstratny WebP, bo plakat jest z ziarna.** 2745 kB PNG → **1811 kB WebP bezstratnego,
-identycznego co do bitu**. Warianty stratne odpadły na pomiarach: nawet q100 daje odchyłkę
-79/255, bo pierwsze, co kodek wyrzuca, to ziarno filmowe i rysy. Tabela pomiarów w pliku assetów.
-**Pillow po cichu ignoruje `near_lossless`** — sprawdzone, nie ma po co próbować drugi raz.
-
-**Kotwica zamiast wyśrodkowania — to jest całe rozwiązanie „wtapiania się".** Ramka celownika
-z plakatu leży na 31,6–68,1% × 14,6–63,1% pliku (wykryte ciągami czerwonych pikseli, nie na oko),
-więc jej środek jest **11,16% wyżej** niż środek obrazu. `translate` odtwarza geometrię
-`background-size: cover`, dzięki czemu formularz siada w tej ramce przy każdym kształcie okna —
-i dopiero to pozwala mu **nie mieć tła**: pod napisami zawsze jest równy kremowy papier.
-
-**Dwie usterki znalezione w przeglądarce i naprawione w tej samej sesji.** Chrome malował pole
-z podstawionym hasłem na niebiesko mimo `background: none` (styl UA na `:-webkit-autofill`;
-zdjęte długim `transition`), a `place-items: center` chowało górę formularza bezpowrotnie na
-oknie 1500 × 460 (naprawione `justify-content: safe center` w kolumnie flex). Obie w `pulapki-dev.md`.
-
-**Trzecia usterka zgłoszona, nie naprawiona — bo starsza niż plakat.** Hasło z menedżera haseł
-nie odblokowuje przycisku „Zaloguj się": `LoginPage` pyta o stan Reacta, a autouzupełnienie nie
-wysyła `input`. Plakat to tylko uwidocznił. Poszło do `zaleglosci.md` razem z propozycją naprawy.
-
-**Kontrasty policzone, nie dobrane na oko** — wszystkie napisy ponad progiem AA na papierze
-(sadza 10,7:1, przygasła 4,6:1, błąd 5,6:1, napis na przycisku 5,2:1). `--login-red` ma 3,7:1,
-więc jest wyłącznie do kresek i teł; drobny tekst bierze `--login-red-deep`.
-
-**Oględziny: zrobione**, wyjątkowo bez długu. Przejrzane wszystkie trzy stany ekranu (startowy,
-logowanie, dołączanie w obu wariantach) na trzech kształtach okna: 1907 × 1024, 430 × 880
-i 1500 × 460. Ekran dołączania z kampanią oglądany na podmienionym DOM-ie — w bazie nie ma
-ważnego zaproszenia, a tworzenie go wykraczałoby poza zlecenie.
-
-**Uwaga na przyszłość: sesja MG na `[::1]:5173` zalogowała się sama.** Chrome trzyma tam hasło MG
-i formularz poszedł bez mojego kliknięcia. Wylogowane od razu; przy oględzinach ekranu logowania
-licz się z tym, że menedżer haseł potrafi domknąć sprawę za ciebie.
-
-**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta, zielone.
-ESLint i Prettier czyste; `tsc -b` u klienta czysty. Jedna umowa w `ui`, dwie pułapki w `ui`.

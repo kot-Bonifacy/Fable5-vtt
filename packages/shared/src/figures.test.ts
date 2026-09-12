@@ -10,10 +10,12 @@ import {
   normalizeFacing,
   sanitizeFacing,
   tokenCondition,
+  tokenHpRung,
   type StatusDefinition,
   fallbackConditionStatusId,
   type TokenCondition,
 } from './index.js';
+import { woundStateFromHp } from './systems/cpred/rolls.js';
 
 describe('facing (stage 27j)', () => {
   it('reads scene coordinates the way the screen does — up is negative Y', () => {
@@ -149,5 +151,47 @@ describe('naklejka stanu, gdy nie niesie go żaden status', () => {
   it('milczy, gdy rejestr nie zna takiego stanu', () => {
     const empty = new Map<string, TokenCondition>();
     expect(fallbackConditionStatusId({ statuses: [] }, 'down', empty)).toBeNull();
+  });
+});
+
+/**
+ * Strażnik zgodności drabinki paska PW (zlecenie MG, 12.09.2026).
+ *
+ * MG chciał, żeby obrączka PW wokół figury na mapie i pasek PW w panelu
+ * postaci mówiły jednym językiem — a mówiły dwoma: mapa liczyła trzy stopnie
+ * z ułamka, panel cztery, ze stanu ran CP RED. Od 12.09 obie strony pytają
+ * `tokenHpRung`.
+ *
+ * Rdzeń **nie może** zawołać `woundStateFromHp` (mapa nie importuje niczego
+ * z `systems/cpred`), więc progi są w rdzeniu przepisane — i to jest miejsce,
+ * w którym się to przypilnowuje. Test importuje obie strony, bo test wolno:
+ * przecięcie rdzenia z systemem ma być zapisane, a nie zapamiętane.
+ */
+describe('tokenHpRung — jedna drabinka dla mapy i panelu', () => {
+  it('zgadza się co do punktu ze stanem ran CP RED', () => {
+    for (const max of [1, 2, 5, 9, 10, 25, 35, 40, 60]) {
+      for (let current = -5; current <= max; current += 1) {
+        expect(tokenHpRung({ current, max }), `${current}/${max}`).toBe(
+          woundStateFromHp(current, max),
+        );
+      }
+    }
+  });
+
+  it('pełne PW to osobny szczebel od zadrapania', () => {
+    expect(tokenHpRung({ current: 40, max: 40 })).toBe('healthy');
+    expect(tokenHpRung({ current: 39, max: 40 })).toBe('light');
+  });
+
+  it('próg poważnej rany to połowa zaokrąglona w górę', () => {
+    // Nieparzyste maksimum to jedyne miejsce, gdzie „połowa" i „ułamek 0,5"
+    // dają różne odpowiedzi — 5 z 9 to już poważna rana, choć to 56 %.
+    expect(tokenHpRung({ current: 5, max: 9 })).toBe('serious');
+    expect(tokenHpRung({ current: 6, max: 9 })).toBe('light');
+  });
+
+  it('zero i mniej to szczebel śmiertelny', () => {
+    expect(tokenHpRung({ current: 0, max: 40 })).toBe('mortal');
+    expect(tokenHpRung({ current: -12, max: 40 })).toBe('mortal');
   });
 });
