@@ -11,8 +11,8 @@
  * `roleability.ts` importuje — trzymanie katalogu tam zrobiłoby cykl. Tu nie ma
  * nic poza stałymi, więc importować go może każdy.
  *
- * Proza z podręcznika **zostaje** obok skutku, a nie zamiast niego. Trzy z
- * pięciu środków (Dynadetoks, Zryw, i połowa Stymu) rozgrywa się przy stole
+ * Proza z podręcznika **zostaje** obok skutku, a nie zamiast niego. Dwa z
+ * pięciu środków (część Dynadetoksu i Zryw) rozgrywają się przy stole
  * słowami, a karta na czacie ma wtedy powiedzieć dokładnie to, co mówi tabela —
  * to samo rozstrzygnięcie co przy zdaniach leczenia w `treatment.ts`.
  */
@@ -31,7 +31,8 @@ export type CpredPharmaceuticalId =
  *
  *  - `antibiotic` — dopisuje tydzień do naturalnego leczenia (`recovery.ts`),
  *  - `heal` — natychmiastowe PW równe BC + SW,
- *  - `ignoreSeriousWound` — godzina bez kar Poważnie Rannego (naklejka),
+ *  - `ignoreSeriousWound` — godzina bez kar Poważnie Rannego (pole karty
+ *    `woundSuspension`, od 12.09.2026),
  *  - `cleanse` — zdejmuje zatrucie i inne używki,
  *  - `narrative` — Zryw: doba bez snu, czyli fabuła.
  */

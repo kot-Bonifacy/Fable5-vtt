@@ -3,8 +3,9 @@
 **04.09.2026 (trzecia sesja) przekreślono trzy wpisy o cyborgizacjach** — PT montażu, wymóg
 cyborgizacji podstawowej i EMP bez nazw. Czwarty, **„Efekty mechaniczne cyborgizacji są tylko
 prozą"**, został świadomie **nietknięty**: wchodzi w `sheetSituationModifiers`, czyli w tę samą
-maszynerię, na którą czeka Stym i etap 39 — decyzja MG z tej sesji brzmi „nie budujemy jej dwa
-razy". Przy okazji zapisana odpowiedź MG na pytanie o **upadek i porażenie prądem** (wpis niżej,
+maszynerię, na którą czekał Stym i etap 39 — decyzja MG z tej sesji brzmi „nie budujemy jej dwa
+razy". (12.09: Stym i Edytor bólu rozliczone osobnym polem `woundSuspension`, nie przez
+`sheetSituationModifiers` — wpis o efektach cyborgizacji nadal czeka.) Przy okazji zapisana odpowiedź MG na pytanie o **upadek i porażenie prądem** (wpis niżej,
 03.09): mają to być **dwa osobne przyciski** z gotowymi liczbami z tabeli, nie jedno okno
 „obrażenia środowiskowe".
 

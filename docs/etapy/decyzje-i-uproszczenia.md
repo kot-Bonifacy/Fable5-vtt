@@ -271,10 +271,16 @@ to jest ten akapit do przeczytania na nowo.
   Alternatywą byłby szósty wybór na karcie („które trzy z pięciu?") po to, żeby przy pełnej randze
   i tak wyszło to samo. Panel pokazuje resztę wyszarzoną, więc widać, co kupi następny punkt.
 
-- **Stym zostaje przy MG do etapu 39.** Jedyny z pięciu środków, którego silnik nie rozlicza —
-  powód i gotowy przepis w `zaleglosci.md`. Nie jest to niedopatrzenie: zawieszenie kary
-  Poważnie Rannego to ta sama maszyneria, której potrzebuje etap 39, i budowanie jej dwa razy
-  skończyłoby się dwoma miejscami, w których „ta kara właściwie nie działa".
+- **Stym i Edytor bólu zawieszają KARĘ Poważnie Rannego, nie stan (12.09.2026; Edytor bólu
+  decyzją MG).** Do 12.09 Stym zostawał przy MG z dopiskiem „do etapu 39" — a etap 39 zamknięto
+  bez niego. Teraz silnik rozlicza oba źródła i trzy rzeczy są w tym świadome. (1) **Stan zostaje**:
+  PT Ustabilizowania, naklejka i próg na pasku się nie zmieniają, a −4 Śmiertelnie Rannego nie jest
+  zawieszane; Stym podany Śmiertelnie Rannemu i tak się zapisuje, bo zadziała, gdy cel w ciągu
+  godziny wróci do Poważnie Rannego. (2) **Druga dawka nadpisuje termin**, nie kumuluje się.
+  (3) **Edytor bólu działa zawsze, dopóki w chromie jest wiersz o tej nazwie** — podręcznik mówi
+  „gdy zachodzi taka potrzeba", a karta nie wie, co wyłączył impuls EMP (nazwy wyłączonych stoją
+  tylko na karcie czatu), więc minuta bez chipu zostaje przy MG. Wymogu gniazda czipów nikt osobno
+  nie sprawdza — pilnuje go montaż (s. 111).
 
 - **Dawka schodzi z ekwipunku także wtedy, gdy środek nic nie zdziałał.** Turbo uzdrawiacz podany
   Śmiertelnie Rannemu (podręcznik go wtedy wyklucza), Antybiotyk przed Ustabilizowaniem, Dynadetoks

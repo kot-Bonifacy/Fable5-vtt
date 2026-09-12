@@ -24,6 +24,12 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
   górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
 
+**Zamknięte 12.09 (siódma sesja): Stym** — razem z Edytorem bólu (decyzja MG) i z błędem spoza
+listy: stan ran statysty liczony z BC i SW zamiast z wydrukowanych PW. Oba obejrzane w przeglądarce
+na kampanii-śmieciu; diagnozy w `archiwum/zamkniete-zaleglosci.md`. **Żadna nowa pozycja nie została
+otwarta.** Dwie istniejące dostały dopisek z weryfikacji: „Dodaj za darmo" (w dużej części
+nieaktualne) i cyberdek netrunnera Korpo (w bazie nie ma zespołów).
+
 **10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
 (gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**
 12.09: `observedWoundState` w `shared` ma trzy stany zamiast dwóch, a `StabilizePicker` pisze
@@ -139,6 +145,11 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   zasady, druga nie. Do rozstrzygnięcia przy stole — albo guzik dostaje ścieżkę przez zdarzenie
   z `payment: 'none'` (i wtedy znika „darmowy" wyjątek od Człowieczeństwa), albo zostaje jak jest
   i mówi to wprost w tooltipie.
+  **Sprawdzone 12.09 — wpis jest w dużej części nieaktualny, i to od 09.08 (23b):**
+  `addCompendiumItemToCharacter` przy cyborgizacji woła `character:cyberware` z `payment: 'none'`
+  (`compendium-items.ts`), więc Utrata Człowieczeństwa **jest** rzucana, a odmowy z s. 111 omija
+  wyłącznie MG — na każdej drodze, także przez ripperdoca. Jedyna realna różnica to brak Testu
+  montażu. Do zamknięcia albo przepisania decyzją MG.
 
 - **Korporacyjny netrunner nie ma cyberdeku na karcie, tylko w prozie.** Pracownik zespołu
   Korpo (30c) dostaje pełną kartę postaci **właśnie dlatego**, że statysta nie mógłby zrobić
@@ -151,7 +162,9 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   więc może zbudować `CpredCyberdeck` z `slots: 7` i czterema `CpredNetInstallRow` z profilami
   Programów skopiowanymi z kompendium — tak samo, jak `purchasedSheetRow` kopiuje liczby broni.
   Otwarte świadomie 04.09: to dołożenie brakującego zakresu, nie naprawa usterki, i dotyka
-  modelu z 26a.
+  modelu z 26a. **Sprawdzone 12.09:** w `dev.db` nie ma ani jednej karty z zespołem, więc naprawa
+  dotknie wyłącznie nowych zatrudnień — niczego nie trzeba migrować. W kompendium są wszystkie
+  cztery Programy i „Cyberdek (zwykłej jakości)".
 
 - **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
   zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer
@@ -170,18 +183,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   każdym razem nowe figury z pełnymi PW. Wymaga pojęcia „sprawy", którego projekt nie ma —
   najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
   ciągłość jest zasadą, a nie kolorytem.
-
-- **Stym nie zawiesza kar Poważnie Rannego — robi to MG.** Cztery z pięciu farmaceutyków (03.09)
-  rozlicza silnik: Antybiotyk dopisuje tydzień do naturalnego leczenia, Turbo uzdrawiacz leczy
-  BC + SW od ręki, Dynadetoks zdejmuje „Zatruty", Zryw jest zdaniem na karcie. Piąty nie:
-  „przez godzinę cel ignoruje kary wynikające z bycia Poważnie Rannym" (s. 150) znaczy zawieszenie
-  −2 **w każdym Teście**, a tę karę liczy `planCpredRoll` z `woundState`, czyli siedem ścieżek
-  naraz (rzut, atak, Zwarcie, Konfrontacja, Sieć, ruch, obrona). Karta czatu mówi to wprost
-  („kary zawiesza MG na godzinę"), a przepis na naprawę jest jeden i **ten sam, którego potrzebuje
-  etap 39**: `sheetSituationModifiers` (`server/src/sheets.ts`) dostaje listę statusów figury
-  i sam wystawia nazwany wiersz „Stym +2" obok „Poważnie ranny −2" — siedmiu wywołań tej funkcji
-  nie trzeba wtedy uczyć niczego nowego, tylko podać im żeton. Świadomie odłożone do 39, żeby nie
-  budować tej maszynerii dwa razy.
 
 - **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może
   w ramach Akcji wykonać pojedynczy Atak Bronią Białą (strzykawką bezigłową). W przypadku

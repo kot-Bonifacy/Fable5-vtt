@@ -26,6 +26,13 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 12.09 (siódma) — Stym obejrzany na kampanii-śmieciu, Poligon nietknięty.**
+Aktywna kampania była na czas oględzin przełączona na **„Oględziny 12.09 — do usunięcia"** i wróciła
+na **„Poligon bojowy"** (na czacie Poligonu zostały dwa wiersze o przełączeniu). W kampanii-śmieciu
+doszła karta **„Oględziny Stym"** (Medyk rangi 3, Farmaceutyki 3, 10/35 PW, jedna dawka Stymu
+w plecaku, bez żetonu), trzy karty czatu (dawka, Test CHA, „Efekty wygasły") i **zegar przesunięty
+o godzinę**. Na „StrefiePrzemysłowej" niczego nie ruszano.
+
 **Stan po sesji 12.09 (szósta) — nowa kratka „StrefyPrzemysłowej" i kampania-śmieć.**
 „StrefaPrzemysłowa" (aktywna scena Poligonu) ma kratkę **36,2 px** (40 × 30; wcześniej 47 px) —
 zmiana świadoma, decyzja MG. Walka (RUNDA 1, Marcin i Tony) i budżet Marcina nietknięte (66,5 m /

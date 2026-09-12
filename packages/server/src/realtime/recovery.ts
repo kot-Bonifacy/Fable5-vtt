@@ -485,13 +485,9 @@ async function resolveDoseTarget(
 /**
  * Co dawka robi celowi.
  *
- * Dwa z pięciu środków rusza tu mechaniką (Antybiotyk, Turbo uzdrawiacz), jeden
- * zdejmuje naklejkę (Dynadetoks), a dwa zostają zdaniem na karcie. **Stym jest
- * świadomie wśród tych ostatnich**: „ignoruje kary wynikające z bycia Poważnie
- * Rannym" znaczy zawieszenie −2 w każdym Teście, a to jedyna kara w projekcie,
- * którą liczy siedem różnych ścieżek naraz (rzut, atak, Zwarcie, Konfrontacja,
- * Sieć). Zawieszanie jej z naklejki to ta sama maszyneria, której potrzebuje
- * etap 39 — patrz `zaleglosci.md`.
+ * Trzy z pięciu środków rusza tu mechaniką (Antybiotyk, Turbo uzdrawiacz i od
+ * 12.09.2026 Stym — `applyStym`), jeden zdejmuje naklejkę (Dynadetoks), a jeden
+ * (Zryw) zostaje zdaniem na karcie.
  */
 async function applyDose(
   deps: RealtimeDeps,

@@ -154,6 +154,12 @@ publikuje całą historię, nie ostatni stan** — przed każdym przejrzyj niewy
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
+**Kara za rany ma od 12.09 JEDNO miejsce: `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`**
+(umowa w `kosci`). Stan ran karty liczy się zawsze z jej maksimum PW (`cpredSheetWoundState`), nigdy
+z BC i SW — do tej sesji Testy statysty z wydrukowanymi PW łamały to od 38a. Stym i Edytor bólu
+zawieszają **karę**, nie stan: pole `woundSuspension` i wiersz „Stym +2" obok „Poważnie ranny −2".
+Nowe źródło zawieszenia dopisuje się w `cpredWoundSuspensionSource`, nigdzie indziej.
+
 **Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest błędem, nie wariantem.** Decyzja
 z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu nie ma.
 Pełny zapis w `decyzje-i-uproszczenia.md`; przeczytaj go, **zanim** cokolwiek tu zmienisz, bo to
@@ -190,7 +196,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2003** w `shared`, **1098** na serwerze, **183** u klienta —
+**Testy na koniec ostatniej sesji:** **2023** w `shared`, **1100** na serwerze, **183** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -219,24 +225,70 @@ a nie do tego pliku.
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    9 |       9 |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
-| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   15 |       2 |
+| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      65 |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      16 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      66 |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      17 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 (siódma) — Stym, który zawiesza −2, i statysta ranny według wydruku
+
+**Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą
+kandydatkę sprawdziłem w kodzie przed propozycją. Z czterech (A: Stym, B: cyberdek netrunnera Korpo,
+C: zamknięcie „Dodaj za darmo", D: oględziny na kampanii-śmieciu) MG wybrał **tylko A**, a po dwóch
+pytaniach dołożył **Edytor bólu** i **naprawę błędu 38a znalezionego w rozpoznaniu**. Na koniec:
+scalić do `main` i wypchnąć.
+
+**Trzy pozycje zaległości okazały się inne, niż mówią.** (1) „Dodaj za darmo omija cały montaż" —
+nieaktualne od 23b: guzik woła `character:cyberware` z `payment: 'none'`, więc Człowieczeństwo jest
+rzucane, a różni się wyłącznie brak Testu montażu (dopisane do wpisu, czeka na decyzję MG).
+(2) Stym „odłożony do 39" i alias figury w czacie „razem z 35" — oba etapy zamknięto bez nich.
+(3) **Przepis na Stym był niepełny:** karę za rany liczyły poza `sheetSituationModifiers` jeszcze
+targowanie, kubek i napis na karcie — poprawka według przepisu rozjechałaby kubek z wynikiem.
+Przy B sprawdzone w bazie: nie ma ani jednej karty z zespołem, więc deck dotyczyłby nowych zatrudnień.
+
+**Stym i Edytor bólu (`woundsuspension.ts`).** Pole karty `woundSuspension` z terminami efektu
+z etapu 39: nakłada dawka, wygaszają te same dwa przemiatania, zdejmuje ⌫ efektu. W rozbiciu rzutu
+„Poważnie ranny −2 · Stym +2"; −4 Śmiertelnie Rannego zostaje; Edytor bólu działa po nazwie wiersza
+chromu, a to, co wyłączył EMP, zostaje przy MG. **Kara za rany ma odtąd jedno miejsce:
+`cpredWoundPenaltyRows`** (umowa w `kosci`).
+
+**Błąd 38a, którego nie było na liście.** Stan ran z wydrukowanego maksimum PW liczył wyłącznie atak;
+Testy, PT Ustabilizowania celu, targowanie, kubek oraz napis i próg na karcie liczyły go z BC i SW.
+Statysta z PW 35 (BC 6, SW 0) przy 15 PW miał −2 w ataku i zero w Teście, a Medyk stabilizował go
+z PT 10 zamiast 13. Naprawione w tym samym przejściu.
+
+**Oględziny na kampanii „Oględziny 12.09 — do usunięcia"** (zgoda MG). Postać „Oględziny Stym"
+(Medyk, 10/35 PW) założona i obsłużona osobnym gniazdem z konsoli strony: karta dawki na zielono
+(„Kary Poważnie Rannego zawieszone na godzinę."), panel „Efekty czasowe" — „bez kary −2 · Stym ·
+zostaje 1 h · ⌫", przy stanie zdrowia „kary zawiesza Stym", rozbicie Testu z wierszem „Stym +2",
+a po skoku zegara o godzinę: panel pusty, znowu „−2 do wszystkich testów" i wiersz „Efekty wygasły
+— Oględziny Stym — Stym (bez kar Poważnie Rannego)". **Nieklikane w przeglądarce:** ⌫, karta
+Śmiertelnie Rannego i Edytor bólu — wszystkie trzy stoją na testach. Aktywna kampania wróciła na
+„Poligon bojowy"; w kampanii-śmieciu zostaje karta „Oględziny Stym" i zegar przesunięty o godzinę.
+
+**Po drodze padł backend `pnpm dev`** — `tsx watch` nie podniósł serwera po edycjach w wielu plikach
+i nie obudził się ani `touch`, ani zmianą treści. Próbna instancja na :3099 potwierdziła, że kod
+startuje; restart zrobił MG. Pułapki: w `testy` (padnięty backend) i w `ogledziny` (moduł
+`socket.ts` wczytany z konsoli ma własne, puste gniazdo).
+
+**Testy:** **2023** w `shared` (+20, `woundsuspension.test.ts`), **1100** na serwerze (+2,
+`recovery.test.ts`), **183** u klienta — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
+pakietach. Umowy: jedna w `kosci`, jedna w `czas`, poprawiona w `statysta`; pułapki: jedna w `testy`,
+jedna w `ogledziny`. Zamknięte zaległości: **jedna** (Stym) plus błąd spoza listy.
 
 ### Sesja 12.09 (szósta) — kratka ze skali mapy, naklejki bez kwadratu i praca, która wreszcie jest na GitHubie
 
@@ -294,52 +346,3 @@ kolumny „Uwagi" — oba poprawione.
 (+10, `scene-activation.test.ts` i `grid-style.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit`
 czyste w trzech pakietach. Umowy: dwie w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
 Zamknięte zaległości: **trzy**.
-
-### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
-
-**Zlecenie MG: przejrzeć zaległości i wybrać.** Z szesnastu pozycji przedstawiłem trzy pakiety
-(każdą pozycję **najpierw sprawdziwszy w kodzie** — lista bywa zapisem chwili). MG wybrał
-**Pakiet A**, rozstrzygnął wiszącą od tygodnia pozycję o przelewach („zostaw jak jest, ale
-posortuj") i zgodził się, żeby oględziny długu spróbować zrobić automatyką.
-
-**Trzy usterki Pakietu A — wszystkie naprawione, wszystkie z testem.** (1) **„bez ran" przy
-konającej cudzej figurze**: `observedWoundState` w `shared` ma **trzy** stany, bo gracz bez cudzych
-PW jest w trzecim — „nie wiadomo" nie jest „zdrowy"; naklejki ran są dowodem rany, ale ich brak nie
-dowodzi niczego (Lekko ranny naklejki nie ma). (2) **Rozjazd zakładki „Walka" i paska mapy**:
-`cpredActionRefusal` wyprowadzone z prywatnego `actionSlotRefusal` i wołane z **obu** wejść, plus
-`cpredTurnRefusalInput` — dwa odręczne odczyty budżetu tury to było źródło rozjazdu.
-(3) **Autofill nie odblokowywał logowania**: `useAutofillableField`.
-
-**W (2) i (3) zgłoszenie było trafne tylko w połowie — i to jest lekcja obu napraw.** Zakładka ma
-przycisk **„Akcja Ruchu"** (koszt `move`), którego pasek nie ma: wspólna odmowa bez gałęzi
-o koszcie gasiłaby go zdaniem o wykorzystanej **Akcji**, czyli byłaby regresem. A samo odblokowanie
-przycisku logowania byłoby **gorsze od błędu** — formularz wysłałby pusty stan Reacta przy pełnym
-polu, więc użytkownik zobaczyłby „nieprawidłowe hasło" nad własnym hasłem. Obie gałęzie znalazły
-się przed napisaniem kodu, nie po.
-
-**Oględziny obaliły przeszkodę, na której stało pięć pozycji długu.** „Prawym klikiem z automatyki
-nie otworzysz menu kanwy Pixi" (38a, 38b, 41) **jest nieprawdą**: seria `pointerdown`/`pointerup`
-z `button: 2` we **współrzędnych CSS** otwiera je za pierwszym podejściem, a checkbox statusu
-bierze `input.click()`. Tą drogą nadano i zdjęto Marcinowi „Powalonego" — i dzięki temu rozjazd
-z punktu (2) dało się obejrzeć **bez ruszania kolejki** (status blokuje też MG). MG odrzucił
-przesuwanie tury, więc „bez ran" u gracza zostało na liście.
-
-**Największy wynik sesji nie był w planie: dokładne oględziny z etapu 41 NIE DZIAŁAŁY.**
-`requireCallableRequest` (`realtime/checks.ts`) przepisuje żądanie Testu **pole po polu** i wycinał
-`sightingTokenId`. Klient go słał, serwer czytał, między nimi ginął po cichu — zdany Test Percepcji
-nie odsłaniał **niczego**, bez błędu i bez odmowy. **Żaden test nie dotykał tego pola** (ani 15
-w `shared`, ani 13 na gniazdach), a pozycja długu szacowała ryzyko na „średnie". Naprawione,
-pokryte dwoma testami na żywych gniazdach przechodzącymi **pełną** drogę prośba → zgoda → rzut;
-sprawdzone, że bez poprawki padają. Potem obejrzane na żywo: PT 9 → rzut 14 → karta „Oględziny"
-z liczbami („2k6 · 30/30").
-
-**Stan stołu oddany co do liczby.** „StrefaPrzemysłowa" jak zastana: RUNDA 1, Marcin aktywny,
-**PW 40/40 · Ruch 1/1 · Akcja 0/1 · Dystans 66,5 m/12 m · poza budżetem ×2**, Tony 33/50, zero
-statusów, zero otwartych okien. Ślad świadomy: dwie prośby o Test, dwa wezwania i dwa rzuty
-Tony'ego na czacie (jeden sprzed naprawy — bez karty oględzin, drugi po niej — z kartą), oraz
-karta `[::1]:5173` przelogowana z MG na Tony'ego (tak stoi w `poligon.md`).
-
-**Testy:** **1998** w `shared` (+10), **1098** na serwerze (+4), **173** u klienta — zielone.
-ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Umowy: jedna w `tura`, jedna
-w `statysta`; pułapki: jedna w `ui`, jedna w `serwer`, **cztery w `ogledziny`** (w tym korekta
-obalająca wpis o menu figury). Zamknięte zaległości: **cztery**; przepisane: **trzy**.

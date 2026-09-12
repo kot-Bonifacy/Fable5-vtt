@@ -759,6 +759,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Kara za rany w rozbiciu rzutu składa się w JEDNYM miejscu — `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`** (`rolls.ts`); woła ją `finishCheck` i atak, a rachunki ręczne (kubek Ustabilizowania i Leczenia, targowanie, napis na karcie) biorą `cpredSheetWoundCheckPenalty`. Zawieszenie (Stym, Edytor bólu) to **własny wiersz obok kary**, nie brak kary; `woundCheckPenalty(woundState(hp, stats))` na karcie to regres z 38a.
 - **Wezwanie do Testu powstaje w JEDNYM miejscu — `createCheckCall`** (`realtime/checks.ts`); wołają je `check:call` i zgoda na prośbę z 40, a ramę MG (próg, modyfikator, widoczność) czyta wspólne `parseCheckFrame`. Druga kopia rozjedzie się przy pierwszej zmianie wezwania.
 - **Prośba o Test nie zna progu ani widoczności** — `CheckRequestPayload` to `CheckCallPayload` bez tego, co należy do MG. Przy zgodzie Umiejętność idzie z **zapisanej prośby**; podmienić ją da się wyłącznie przez „Ustaw…”, czyli `check:call` z `requestMessageId`.
 - **Prawo do prośby czytaj z bazy, nie z karty czatu** — `askedById` służy do rysowania; `check:request` sprawdza `character.ownerId`, a `check:request-cancel` — `authorId` zapisanej wiadomości. Postaci, której już nie ma, odpowiada **odmowa ze śladem na karcie**, nie cisza.
@@ -774,6 +775,17 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
 
 ---
+
+**Kara za rany składa się w JEDNYM miejscu: `cpredWoundPenaltyRows` (12.09).**
+Do 12.09 wiersz „Poważnie ranny −2" dopisywały osobno `finishCheck` i `planCpredAttack`, a trzy
+miejsca liczyły karę ręcznie — `haggle.ts`, podgląd kubka Ustabilizowania i Leczenia w `rollStore.ts`
+i napis na karcie — **i każde z BC i SW**, choć umowa 38a mówi o maksimum karty. Statysta
+z wydrukowanymi PW dostawał więc −2 w ataku i zero w Teście. Od teraz stan i to, co karę zawiesza,
+podróżują razem (`CpredWoundCondition` z `cpredSheetWoundCondition`), wiersze składa
+`cpredWoundPenaltyRows`, a liczbę dla rachunku ręcznego — `cpredSheetWoundCheckPenalty`. **Nowe
+źródło zawieszenia dopisuje się w `cpredWoundSuspensionSource` (`woundsuspension.ts`) i nigdzie
+indziej.** Zawieszana jest wyłącznie kara Poważnie Rannego; stan (PT Ustabilizowania, naklejka,
+próg) zostaje, a −4 Śmiertelnie Rannego nie schodzi.
 
 **Wezwanie do Testu powstaje w JEDNYM miejscu: `createCheckCall` (06.09, etap 40).**
 Do etapu 40 całe wystawianie wezwania siedziało w ciele handlera `check:call` — walidacja postaci,
@@ -1288,7 +1300,7 @@ przez „Wyjście z opresji" Solo.
 - **Rany figury bez karty** jadą publicznie (`TokenView.injuries`, most `readSheetTokenInjuries`), reszta profilu zostaje prywatna; klient czyta je **tylko** z tego pola.
 - **Figura ostatystykowana MA KARTĘ** — `Token.combatProfile` nie istnieje od 38a, a w silniku zasad nie ma gałęzi „to statysta". Kółko z paskiem PW i bez karty ma własny, chudy tor: same PW, żadnego pancerza, żadnych ran.
 - **Wartość bojowa, zakaz uniku, wydrukowane PW i poziom broni to `statBlock`** — cztery liczby, których karta sama by nie utrzymała. **Nie jest to kategoria karty**: nazwanemu NPC-owi wolno je mieć tak samo.
-- **Maksimum PW karty to `cpredSheetHpMax(data)`**, stan ran to `cpredSheetWoundState(sheet)`; `hpMax(data.stats)` zostaje **wyłącznie** kreatorowi, który karty jeszcze nie ma.
+- **Maksimum PW karty to `cpredSheetHpMax(data)`**, stan ran to `cpredSheetWoundState(sheet)`, próg na karcie `cpredSheetSeriousWoundThreshold`; `hpMax(data.stats)` i `woundState(hp, stats)` zostają **wyłącznie** kreatorowi, który karty jeszcze nie ma. Do 12.09 łamały to Testy, PT Ustabilizowania, targowanie, kubek i karta (patrz `kosci`).
 - **Wartość bojowa wchodzi do liczb w jednym miejscu: `sheetForRoll`** — tam, gdzie do 38a wołało się `sheetFromCombatProfile`, i nigdzie indziej. Umiejętność wpisana na karcie wygrywa z poziomem broni.
 - **Sześć pól menu figury pisze `token:stat`**, nie `token:update`: karta i podpięcie powstają jednym zdarzeniem. `applyStatistQuick` nie rusza niczego poza tymi polami.
 - **Karta ginie z figurą tylko na pytanie** i tylko gdy nie ma właściciela ani innej figury pod sobą; kopia figury MG dostaje **własną** kartę, kopia figury gracza zostaje bez podpięcia.
@@ -1854,6 +1866,7 @@ walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bie
 
 ## czas — Czas świata, kalendarz, efekty czasowe
 
+- **Stym to pole karty `woundSuspension`, nie wiersz `statEffects`** — terminy z `cpredStatEffectDeadlines`, nakłada `applyWoundSuspension` (z `character:use-dose`), zdejmuje `character:stat-effect` po `effectId`, wygasza `expireSheetStatEffects` obydwoma przemiataniami; `character:update` odmawia **u wszystkich**. Druga dawka nadpisuje termin.
 - **Cecha „jak teraz" to `cpredEffectiveStats(sheet)`** (`stateffects.ts`), nigdy `data.stats[...]` — tamto jest liczbą **wydrukowaną**. Wyjątkiem są **pule** (maks. PW, SZ, sufit Człowieczeństwa) i tempo leczenia: te czytają bazową.
 - **Efekt na Cesze w rozbiciu rzutu to własny wiersz** (`cpredStatEffectRows`), jak kara z pancerza — a gdy podłoga przycina sumę, wiersze zwijają się w jeden zbiorczy. Nie składaj ich u wołającego.
 - **`statEffects` pisze wyłącznie `character:stat-effect`** — wypada z `character:update` (`FORBIDDEN`) **u wszystkich, także u MG**: nałożenie ma cenę (rzut 1k6 + dwa terminy), a łata nie ma czym zapłacić.
@@ -1871,6 +1884,17 @@ walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bie
 - **Zegar świata: gracz widzi dobę i porę dnia, MG godzinę** (`formatGameDayTime` / `formatGameClock`). To **nie filtr** — minuta jedzie do wszystkich; to szczerość etykiety, bo zegar rusza się tylko na kliknięcie MG. Karta czatu jest bez minut **dla wszystkich**.
 
 ---
+
+**Stym jest polem karty z terminami efektu, a nie efektem na Cesze (12.09).**
+`CpredCharacterData.woundSuspension` — jedno na kartę, `null` bez zastrzyku. Osobne pole, bo
+`CpredStatEffect` wymaga Cechy, a Stym żadnej nie przesuwa; wspólne z efektem jest **wszystko, co
+liczy czas**: terminy daje ta sama `cpredStatEffectDeadlines`, wygaszanie ta sama
+`cpredStatEffectExpired` (parametr poszerzony do samych terminów), a zdejmuje go to samo
+`expireSheetStatEffects`. Dzięki temu oba przemiatania — rundowe z `timed-effects.ts` i światowe
+z `gametime.ts` — działają bez jednej nowej linii, a wiersz „Efekty wygasły" wymienia Stym z nazwy.
+Guzik MG to ten sam `character:stat-effect` z `effectId`: handler szuka najpierw efektu, potem
+zawieszenia. Druga dawka **nadpisuje** zapis (termin liczy się od nowego zastrzyku). **Edytor bólu
+nie mieszka w tym polu** — działa z wiersza cyborgizacji po nazwie (`cpredWoundSuspensionSource`).
 
 **Cecha „jak teraz" czyta się jedną funkcją: `cpredEffectiveStats(sheet)` (05.09, etap 39).**
 Od tego etapu `data.stats[...]` **nie jest** liczbą, którą cokolwiek rozstrzyga — jest liczbą

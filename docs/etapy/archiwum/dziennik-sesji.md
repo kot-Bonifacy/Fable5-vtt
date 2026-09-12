@@ -8,6 +8,55 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
+
+**Zlecenie MG: przejrzeć zaległości i wybrać.** Z szesnastu pozycji przedstawiłem trzy pakiety
+(każdą pozycję **najpierw sprawdziwszy w kodzie** — lista bywa zapisem chwili). MG wybrał
+**Pakiet A**, rozstrzygnął wiszącą od tygodnia pozycję o przelewach („zostaw jak jest, ale
+posortuj") i zgodził się, żeby oględziny długu spróbować zrobić automatyką.
+
+**Trzy usterki Pakietu A — wszystkie naprawione, wszystkie z testem.** (1) **„bez ran" przy
+konającej cudzej figurze**: `observedWoundState` w `shared` ma **trzy** stany, bo gracz bez cudzych
+PW jest w trzecim — „nie wiadomo" nie jest „zdrowy"; naklejki ran są dowodem rany, ale ich brak nie
+dowodzi niczego (Lekko ranny naklejki nie ma). (2) **Rozjazd zakładki „Walka" i paska mapy**:
+`cpredActionRefusal` wyprowadzone z prywatnego `actionSlotRefusal` i wołane z **obu** wejść, plus
+`cpredTurnRefusalInput` — dwa odręczne odczyty budżetu tury to było źródło rozjazdu.
+(3) **Autofill nie odblokowywał logowania**: `useAutofillableField`.
+
+**W (2) i (3) zgłoszenie było trafne tylko w połowie — i to jest lekcja obu napraw.** Zakładka ma
+przycisk **„Akcja Ruchu"** (koszt `move`), którego pasek nie ma: wspólna odmowa bez gałęzi
+o koszcie gasiłaby go zdaniem o wykorzystanej **Akcji**, czyli byłaby regresem. A samo odblokowanie
+przycisku logowania byłoby **gorsze od błędu** — formularz wysłałby pusty stan Reacta przy pełnym
+polu, więc użytkownik zobaczyłby „nieprawidłowe hasło" nad własnym hasłem. Obie gałęzie znalazły
+się przed napisaniem kodu, nie po.
+
+**Oględziny obaliły przeszkodę, na której stało pięć pozycji długu.** „Prawym klikiem z automatyki
+nie otworzysz menu kanwy Pixi" (38a, 38b, 41) **jest nieprawdą**: seria `pointerdown`/`pointerup`
+z `button: 2` we **współrzędnych CSS** otwiera je za pierwszym podejściem, a checkbox statusu
+bierze `input.click()`. Tą drogą nadano i zdjęto Marcinowi „Powalonego" — i dzięki temu rozjazd
+z punktu (2) dało się obejrzeć **bez ruszania kolejki** (status blokuje też MG). MG odrzucił
+przesuwanie tury, więc „bez ran" u gracza zostało na liście.
+
+**Największy wynik sesji nie był w planie: dokładne oględziny z etapu 41 NIE DZIAŁAŁY.**
+`requireCallableRequest` (`realtime/checks.ts`) przepisuje żądanie Testu **pole po polu** i wycinał
+`sightingTokenId`. Klient go słał, serwer czytał, między nimi ginął po cichu — zdany Test Percepcji
+nie odsłaniał **niczego**, bez błędu i bez odmowy. **Żaden test nie dotykał tego pola** (ani 15
+w `shared`, ani 13 na gniazdach), a pozycja długu szacowała ryzyko na „średnie". Naprawione,
+pokryte dwoma testami na żywych gniazdach przechodzącymi **pełną** drogę prośba → zgoda → rzut;
+sprawdzone, że bez poprawki padają. Potem obejrzane na żywo: PT 9 → rzut 14 → karta „Oględziny"
+z liczbami („2k6 · 30/30").
+
+**Stan stołu oddany co do liczby.** „StrefaPrzemysłowa" jak zastana: RUNDA 1, Marcin aktywny,
+**PW 40/40 · Ruch 1/1 · Akcja 0/1 · Dystans 66,5 m/12 m · poza budżetem ×2**, Tony 33/50, zero
+statusów, zero otwartych okien. Ślad świadomy: dwie prośby o Test, dwa wezwania i dwa rzuty
+Tony'ego na czacie (jeden sprzed naprawy — bez karty oględzin, drugi po niej — z kartą), oraz
+karta `[::1]:5173` przelogowana z MG na Tony'ego (tak stoi w `poligon.md`).
+
+**Testy:** **1998** w `shared` (+10), **1098** na serwerze (+4), **173** u klienta — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Umowy: jedna w `tura`, jedna
+w `statysta`; pułapki: jedna w `ui`, jedna w `serwer`, **cztery w `ogledziny`** (w tym korekta
+obalająca wpis o menu figury). Zamknięte zaległości: **cztery**; przepisane: **trzy**.
+
 ### Sesja 12.09 (czwarta) — ślady zamiast kresek, mapa zamknięta na klucz i karta, którą widać
 
 **Zlecenie MG, trzy rzeczy plus jedna dorzucona w trakcie:** (1) czcionki na karcie postaci mają

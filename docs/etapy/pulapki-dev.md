@@ -889,6 +889,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Moduł `/src/socket.ts` wczytany z konsoli ma WŁASNE, puste gniazdo** — `activateCampaign` i reszta odpowiadają `NOT_CONNECTED`, choć pasek mówi „Połączony", także przy adresie z `?t=`. Działa **osobne** połączenie: `io()` z `/node_modules/.vite/deps/socket__io-client.js?v=…` (adres z `performance.getEntriesByType('resource')`) — ciasteczko MG idzie samo.
 - **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze; w `dev.db` są już cztery takie („dfgdgfdg", „dsaada", „Ulice Night City", „Oględziny 12.09 — do usunięcia"). **Nie zakładaj piątej** — do testów „świeżej kampanii" używaj „Oględzin 12.09". Przełączenie kampanii przenosi **wszystkie** połączone ekrany, także cudze.
 - **`Escape` z `computer` nie zamyka menu figury** — a klik w puste pole mapy przy zaznaczonej figurze byłby rozkazem marszu. Menu zamyka klik w tytuł aplikacji w górnym pasku.
 - **Lista statusów menu figury da się obejrzeć bez przewijania** — przestaw `style.top`/`style.left` na `.context-menu` (czysto wizualnie, bez stanu) i zrób zbliżenie.
@@ -950,6 +951,17 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
 - **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
 
+
+- **Moduł klienta wczytany z konsoli to INNA instancja — jego `socket` jest pusty (12.09, siódma
+  sesja).** `await import('/src/socket.ts')` — także z dokładnym adresem `?t=…` z listy zasobów —
+  daje świeży moduł, w którym nikt nie wołał `connect`, więc `activateCampaign`, `createCharacter`
+  i każde `emitSceneAck` wracają `{ ok: false, error: 'NOT_CONNECTED' }`, choć aplikacja obok jest
+  połączona. **Działa osobne gniazdo:** `const { io } = await import('/node_modules/.vite/deps/
+  socket__io-client.js?v=…')` (dokładny adres z `performance.getEntriesByType('resource')`),
+  `io({ transports: ['websocket'] })` — ciasteczko sesji MG idzie samo, bo to ta sama domena. Tą
+  drogą przygotowano 12.09 całą kartę do oględzin (`character:create`, łata, `character:use-dose`,
+  `character:roll`, `time:set`). Przełączenie kampanii zostało jednak w interfejsie: „Panel MG" →
+  „Aktywuj" przy wierszu kampanii.
 
 - **Menu kontekstowe figury JEDNAK otwiera się z automatyki (12.09) — i to jest korekta trzech
   wpisów długu.** Zaległości 38a, 38b i 41 mówiły zgodnie: „prawym klikiem z automatyki nie
@@ -1370,6 +1382,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **`pnpm dev` potrafi zgubić backend przy edycjach w wielu plikach naraz — i `tsx watch` go już nie podniesie.** Objaw: proxy Vite oddaje na `/api/*` `500` z **pustą** treścią (nie `401`), `netstat` nie widzi :3001, a proces `tsx … watch` żyje. Ani `touch`, ani zmiana treści pliku go nie budzą — restartuje ręka MG. Czy winny jest kod, sprawdza próbna instancja na innym porcie, z katalogami tymczasowymi (start robi migawkę bazy).
 - **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO** — `collectMessages` gaszony w pętli „losuj do skutku”; objaw wygląda na wyścig w serwerze, a siedzi w harnessie. Odczyt = żywa tablica, odpięcie = osobny krok.
 - **`vitest` nie sprawdza typów** — `rof: 2` (a to napis) przeszedł 38 testów i padł dopiero na `tsc --noEmit`. Ten krok jest osobny, nie formalnością po testach.
 - **`socket.once('chat:message')` łapie kartę POPRZEDNIEGO testu**, gdy tamten jej nie odebrał — tak migotał `gametime.test.ts` („Minęło dziesięć minut" zamiast „Minęła doba"). Test odkładający kartę ma ją odebrać, choćby jej nie sprawdzał.
@@ -1388,6 +1401,20 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Backend w `pnpm dev` padł w trakcie sesji i sam nie wstał (12.09, siódma sesja).** Przy
+  edycjach w kilkunastu plikach `shared` i `server` jeden z restartów `tsx watch` trafił na stan
+  pośredni (import funkcji, której druga edycja jeszcze nie dopisała, albo port trzymany przez
+  poprzednie dziecko) i od tej chwili proces-strażnik żył bez serwera: ani `touch src/main.ts`, ani
+  dopisana i cofnięta pusta linia go nie obudziły. Rozpoznanie w trzech krokach: `/api/auth/me`
+  przez :5173 daje `500` z pustą treścią (proxy bez celu), `netstat -ano | grep :3001` jest pusty,
+  a lista procesów (`Get-CimInstance Win32_Process` ze skryptu `.ps1` — w linii poleceń Bash rozwinie
+  `$_`) pokazuje żywe `tsx … watch src/main.ts`. **Czy winny jest kod, sprawdza próbna instancja:**
+  `PORT=3099 UPLOADS_DIR=<tmp> BACKUP_DIR=<tmp> BOT_DECISION_LOG= timeout 25 node
+  node_modules/tsx/dist/cli.mjs --env-file-if-exists=.env src/main.ts` — zmienne z wiersza poleceń
+  wygrywają z `--env-file`, a katalogi tymczasowe są konieczne, bo start **robi migawkę bazy**
+  i sprząta osierocone uploady. Na przyszłość: po dużej zmianie, przed oględzinami, najpierw `curl`
+  na :3001, dopiero potem logowanie.
 
 - **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO.**
   `collectMessages` w `tables.test.ts` zwracał listę **ze** `stop()`, a pętla „losuj, aż wypadnie

@@ -9,6 +9,32 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-12 (siódma sesja — Stym, Edytor bólu i stan ran statysty)
+
+**03.09 (farmaceutyki, 30b): Stym nie zawieszał kar Poważnie Rannego — robił to MG.** Wpis odkładał
+naprawę „do etapu 39", który zamknięto 05.09 bez niej, więc pozycja nie miała już na co czekać.
+**Przepis z wpisu był niepełny:** zakładał, że wystarczy nauczyć `sheetSituationModifiers` (siedem
+wywołań), a karę za rany liczyły poza nim jeszcze `haggle.ts`, podgląd kubka Ustabilizowania
+i Leczenia (`rollStore.ts`) i napis na karcie — poprawka według przepisu rozjechałaby kubek
+z wynikiem. Do tego naklejki liczą czas wyłącznie rundami, a godzinę świata zna tylko `CpredStatEffect`
+z etapu 39, który wymaga Cechy. **Naprawa:** pole karty `woundSuspension` (`shared/woundsuspension.ts`)
+z terminami z `cpredStatEffectDeadlines`; nakłada `applyStym` → `applyWoundSuspension`, wygasza to samo
+`expireSheetStatEffects` (oba zegary, z nazwą w wierszu „Efekty wygasły"), zdejmuje guzik ⌫ efektu
+(`character:stat-effect` po `effectId`), a `character:update` odmawia u wszystkich. Wiersze kary
+składa jedna funkcja `cpredWoundPenaltyRows` — „Poważnie ranny −2 · Stym +2"; −4 Śmiertelnie Rannego
+zostaje. **Decyzją MG doszedł Edytor bólu** — wpis kompendium mówi to samo zdanie, a w kodzie nie było
+go wcale; działa po nazwie wiersza chromu. Testy: 20 w `shared` (`woundsuspension.test.ts`) i dwa na
+żywych gniazdach (`recovery.test.ts`: dawka → Test → odmowa łaty → ⌫ → Śmiertelnie Ranny → skok
+zegara; PT Ustabilizowania z wydruku).
+
+**Znalezione przy tej samej robocie, nie było na liście: stan ran statysty liczony z Cech (etap 38a).**
+Umowa 38a mówi, że stan ran karty to `cpredSheetWoundState` (z wydrukowanego maksimum PW) — a tak
+liczył wyłącznie atak. Z BC i SW liczyły: wszystkie Testy (`planCpredRoll`), PT Ustabilizowania celu
+(`character-rolls.ts`), targowanie, podgląd kubka oraz napis i próg na karcie. Statysta z PW 35 przy
+BC 6 i SW 0 (Wartość bojowa zeruje SW) miał przy 15 PW −2 w ataku i zero w Teście, a Medyk stabilizował
+go z PT 10 zamiast 13. **Naprawa:** wszystkie te miejsca idą przez `cpredSheetWoundCondition`,
+`cpredSheetWoundCheckPenalty` i `cpredSheetSeriousWoundThreshold`.
+
 ## Zamknięte 2026-09-12 (szósta sesja — kratka z liczby kolumn, naklejki bez kwadratu)
 
 **11.09 (etap 04): edytor sceny pytał o piksele, a nie o liczbę kratek.** Rozmiar kratki ustawiał
