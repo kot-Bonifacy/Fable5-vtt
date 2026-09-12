@@ -889,7 +889,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
-- **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze. Stan „MG nie ogląda żadnej sceny" (tylko świeża kampania) jest przez to na poligonie nie do odtworzenia bez śmiecia.
+- **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze; w `dev.db` są już cztery takie („dfgdgfdg", „dsaada", „Ulice Night City", „Oględziny 12.09 — do usunięcia"). **Nie zakładaj piątej** — do testów „świeżej kampanii" używaj „Oględzin 12.09". Przełączenie kampanii przenosi **wszystkie** połączone ekrany, także cudze.
 - **`Escape` z `computer` nie zamyka menu figury** — a klik w puste pole mapy przy zaznaczonej figurze byłby rozkazem marszu. Menu zamyka klik w tytuł aplikacji w górnym pasku.
 - **Lista statusów menu figury da się obejrzeć bez przewijania** — przestaw `style.top`/`style.left` na `.context-menu` (czysto wizualnie, bez stanu) i zrób zbliżenie.
 - **MENU FIGURY OTWIERA SIĘ Z AUTOMATYKI — korekta z 12.09.** `PointerEvent` z `button: 2` (plus `contextmenu`) we **współrzędnych CSS** na `canvas` wystawia je za pierwszym razem; checkboksy statusów biorą `input.click()`. Trzy pozycje długu (38a, 38b, 41) czekały na rękę MG na podstawie nieprawdziwej przeszkody. **Gracz też ma menu** — własne, jednopozycyjne („🔍 Przyjrzyj się…").

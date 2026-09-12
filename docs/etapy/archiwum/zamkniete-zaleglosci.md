@@ -38,6 +38,19 @@ w dzień. Chipu w panelu postaci i paska grupy nie oglądano — wymagałyby nad
 zaznaczenia grupy w walce trwającej na „StrefiePrzemysłowej"; to ten sam komponent i ta sama
 reguła CSS.
 
+**11.09 (etap 04): MG, który połączył się przy braku aktywnej sceny, po własnej aktywacji widział
+dalej „Brak sceny".** Serwer przenosił gniazdo MG do pokoju sceny (`data.viewedSceneId === null`
+w `scene:activate`), a klient wołał `applyScene`, które milczy, gdy lokalna scena jest `null`.
+Przepis z wpisu — samo `setScene` w gałęzi MG — był niepełny: dałby mapę **bez figur**, bo figury
+nowej sceny przychodzą dopiero z `state:sync`. **Naprawa:** `sceneStore.followActivation(scene,
+isGm)` — MG bez sceny na ekranie idzie za aktywacją jak gracz, a `true` każe gniazdu wysłać
+`state:request`; cztery testy w `client/src/scene-activation.test.ts`. **Obejrzane na żywo za zgodą
+MG** na kampanii-śmieciu „Oględziny 12.09 — do usunięcia" (serwer nie ma trasy usuwania kampanii,
+a stan „MG nie ogląda niczego" powstaje wyłącznie w świeżej kampanii, bo tworzenie sceny z panelu od
+razu ustawia jej podgląd): scena „Test Brak sceny" z mapą Night City i pustym żetonem „Figura
+testowa" → przeładowanie karty → „Brak sceny — utwórz i aktywuj…" → „Aktywuj" → mapa **z figurą**
+od razu, bez przeładowania i bez „Pokaż".
+
 ## Zamknięte 2026-09-12 (piąta sesja — interfejs, który nie kłamie)
 
 **10.09 (etap 14b/16f): zakładka „Walka" oferowała przyciski, które pasek na mapie wyszarzał —

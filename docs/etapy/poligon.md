@@ -26,6 +26,14 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 12.09 (szósta) — nowa kratka „StrefyPrzemysłowej" i kampania-śmieć.**
+„StrefaPrzemysłowa" (aktywna scena Poligonu) ma kratkę **36,2 px** (40 × 30; wcześniej 47 px) —
+zmiana świadoma, decyzja MG. Walka (RUNDA 1, Marcin i Tony) i budżet Marcina nietknięte (66,5 m /
+12 m). Doszła kampania **„Oględziny 12.09 — do usunięcia"** (nie poligon) ze sceną „Test Brak sceny"
+(mapa Night City, pusty żeton „Figura testowa"); serwer nie umie jej usunąć, więc **używaj jej** do
+testów świeżej kampanii zamiast zakładać kolejną. Aktywna kampania wróciła na „Poligon bojowy".
+Konta w Chrome: `localhost:5173` — **MG** (zalogowany ręką MG), `[::1]:5173` — **Tony**.
+
 **Stan po sesji 04.09 (trzecia — montaż cyborgizacji i EMP) — Poligon wraca do stanu sprzed
 sesji.** Nośnikiem była **nowa karta „Pacjent 23a"** (utworzona i skasowana w tej samej sesji,
 razem z czterema wpisami `LedgerEntry` po zakupach wszczepów) oraz **dwa postawione żetony** —

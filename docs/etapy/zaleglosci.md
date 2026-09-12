@@ -17,24 +17,12 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   awaria: MG sam „miał obawy, że jest zepsuta", patrząc na własną scenę z widocznością `fog`.
   Nic z tym nie robimy; warto o tym pamiętać przy oględzinach i przy pierwszej sesji z drużyną.
 - **Usterka „MG widzi «Brak sceny» po własnej aktywacji" zostaje na tej liście** (wpis niżej) —
-  MG ją przyjął; **naprawiona 12.09**, czeka już tylko na obejrzenie.
+  MG ją przyjął; **naprawiona i obejrzana 12.09** — zamknięta, opis w archiwum.
 - **Pełny plik „StrefyPrzemysłowej" (2896 × 2176) — nie teraz (decyzja MG z 12.09).** Siatka jest
   poprawiona wpisem „40 kolumn" (36,2 px) na obecnym pliku 1448 × 1086. Wgranie większego pliku
   **przesunie całą scenę**: wgranie ustawia rozmiar sceny na wymiary pliku, a figury, ściany, mgła,
   rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
   górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
-
-**11.09/12.09 (etap 04): „Brak sceny" u MG po własnej aktywacji — NAPRAWIONE, ale NIEOBEJRZANE.**
-Diagnoza z 11.09 była trafna (`applyScene` milczy, gdy lokalna scena jest `null`), przepis —
-niepełny: samo `setScene` dałoby MG mapę **bez figur**. Naprawa 12.09: decyzja przeniesiona do
-`sceneStore.followActivation(scene, isGm)` — MG bez sceny na ekranie idzie za aktywacją jak gracz,
-a `true` każe gniazdu dociągnąć figury (`state:request`). Cztery testy
-w `client/src/scene-activation.test.ts`. **Czego nie obejrzano i dlaczego:** stan „MG nie ogląda
-niczego" powstaje tylko przy pierwszym wejściu do kampanii bez aktywnej sceny, bo tworzenie sceny
-z panelu od razu ustawia jej podgląd (`viewScene` po `createScene` w `ScenePanel.tsx`). Wierna droga
-to więc: nowa kampania → nowa scena → przeładowanie karty → „Aktywuj" — na poligonie nie do
-odtworzenia, a **serwer nie ma trasy usuwania kampanii**, więc taki test zostawiłby w bazie kampanię
-nie do zdjęcia z UI. Do obejrzenia przy zakładaniu prawdziwej kampanii (najpóźniej przy etapie 28).
 
 **10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
 (gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**

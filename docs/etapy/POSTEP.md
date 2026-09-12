@@ -137,9 +137,9 @@ po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 10 pozycji** (`zaleglosci.md`). Sesja 12.09 (szósta) zamknęła **dwie** (kratka
-ze skali mapy, naklejki statusów), a trzecią — „Brak sceny" u MG — naprawiła bez obejrzenia, bo ten
-stan powstaje wyłącznie w świeżej kampanii. Sesja piąta zamknęła **cztery**
+**Dług oględzin — 9 pozycji** (`zaleglosci.md`). Sesja 12.09 (szósta) zamknęła **trzy**: kratkę
+ze skali mapy, naklejki statusów i „Brak sceny" u MG — tę ostatnią obejrzaną na kampanii-śmieciu
+„Oględziny 12.09", bo ten stan powstaje wyłącznie w świeżej kampanii. Sesja piąta zamknęła **cztery**
 i obaliła przeszkodę, na której stała reszta: **menu figury OTWIERA SIĘ z automatyki** — seria
 `pointerdown`/`pointerup` z `button: 2` we **współrzędnych CSS** (pułapka w `ogledziny`). „🎒
 Przeszukaj…" odklikane tą drogą; przełącznik statystyk czeka już tylko na figurę **bez karty**,
@@ -264,10 +264,23 @@ scenę** (figury i ściany leżą w pikselach świata) — zapisane w decyzjach 
 sceny: pole kolumn pokazuje 30,81 przy starej kratce, po „40" daje 36,2 px i „W pionie wychodzi
 równo 30"; **zapisane na „StrefiePrzemysłowej"** (47 → 36,2 px, decyzja MG). Budżet walki Marcina
 nietknięty (66,5 m / 12 m), tryb turowy dalej włączony, zero okien `confirm`, zero kart na czacie.
-**Nieobejrzane:** „Brak sceny" (tylko świeża kampania, a serwer **nie ma trasy usuwania kampanii** —
-pozycja została w długu), chip statusu w panelu postaci i pasek grupy (wymagałyby zmiany stanu
-w trwającej walce). `app.ts` po Prettierze nie daje różnicy w gicie — jego „niesformatowanie" to
+**Nieobejrzane:** chip statusu w panelu postaci i pasek grupy (wymagałyby zmiany stanu w trwającej
+walce). `app.ts` po Prettierze nie daje różnicy w gicie — jego „niesformatowanie" to
 były same końce linii w katalogu roboczym.
+
+**„Brak sceny" obejrzany w drugiej części sesji — za zgodą MG na kampanię-śmiecia.** Serwer nie ma
+trasy usuwania kampanii, a stan „MG nie ogląda niczego" powstaje tylko w świeżej kampanii (tworzenie
+sceny z panelu od razu ustawia jej podgląd). Założona „Oględziny 12.09 — do usunięcia": scena „Test
+Brak sceny" z mapą Night City i pustym żetonem „Figura testowa" → przeładowanie → „Brak sceny" →
+„Aktywuj" → mapa **z figurą** od razu. „Poligon bojowy" przywrócony co do stanu: „StrefaPrzemysłowa"
+aktywna, RUNDA 1 Marcin/Tony. Dwie rzeczy po drodze: karty automatyki były zalogowane jako **Tony na
+obu hostach** (MG zalogował się sam na `localhost` — hasła nie wpisuję), a w bazie leżą jeszcze trzy
+starsze kampanie-śmieci — pułapka w `ogledziny`.
+
+**Siatka na ciemnej mapie — zgłoszone MG.** Wymóg MG: kratka nie musi trafiać idealnie, ale MG ma
+**sam zauważyć** rozjazd przed aktywacją sceny. Domyślna czarna kreska z kryciem 35% na mapie Night
+City, przyciemnionej mgłą MG, jest ledwo widoczna; rozjazd zdradza za to podpowiedź pola kolumn
+(„ostatni rząd rozjeżdża się o 8 px"). Co z tym zrobić — decyzja MG.
 
 **Przy okazji w tym pliku:** akapit o scenach testowych mówił o czterech i aktywnej „Strzelnicy"
 (jest pięć, aktywna „StrefaPrzemysłowa"), a tabela etapów nie miała wiersza nagłówka od cięcia
@@ -276,7 +289,7 @@ kolumny „Uwagi" — oba poprawione.
 **Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **177** u klienta
 (+4, `scene-activation.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
 pakietach. Umowy: jedna w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
-Zamknięte zaległości: **dwie**; przepisana: **jedna**.
+Zamknięte zaległości: **trzy**.
 
 ### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
 
