@@ -21,6 +21,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import type { CpredCharacterData } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -385,9 +386,9 @@ describe('Demony na żywych gniazdach', () => {
       }),
       'token:create',
     ).id;
-    await emitAck(gm, 'token:update', {
+    await emitAck(gm, 'token:stat', {
       tokenId: turretTokenId,
-      patch: { combatProfile: TURRET_PROFILE },
+      quick: TURRET_PROFILE,
     });
 
     const shaft = architecture();
@@ -581,8 +582,11 @@ describe('Demony na żywych gniazdach', () => {
     // Węzeł zmienił ręce.
     expect(nodeOf((await runOf(player))!)?.controlledDv).toBeUndefined();
     // Wieżyczka naprawdę strzeliła — magazynek jest jej i to on się opróżnia.
-    const turret = (await roundTrip(gm)).tokens.find((entry) => entry.id === turretTokenId);
-    expect((turret?.combatProfile as { ammoCurrent: number } | null)?.ammoCurrent).toBe(9);
+    const state = await roundTrip(gm);
+    const turret = state.tokens.find((entry) => entry.id === turretTokenId);
+    const card = state.characters.find((entry) => entry.id === turret?.characterId)?.data as
+      CpredCharacterData | undefined;
+    expect(card?.weapons[0]?.ammoCurrent).toBe(9);
 
     // …i rzuciła Wartością bojową Demona, a nie własnym profilem (REF 3,
     // Umiejętność 1). „Test Wartości bojowej + 1k10" to jedna liczba, więc

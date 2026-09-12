@@ -21,6 +21,7 @@ import type {
   TokenView,
   TokenUpsertBroadcast,
 } from '@vtt/shared';
+import { statistQuick } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -963,13 +964,18 @@ describe('ranged combat from the map', () => {
       ammoMax: 10,
     };
 
-    /** The statist's stored profile, read back off a fresh sync. */
+    /**
+     * Sześć pól figury, odczytane z jej **karty** (etap 38a) na świeżym syncu.
+     * Do 38a stała tu kolumna profilu bojowego żetonu.
+     */
     async function profileOf(tokenId: string): Promise<Record<string, unknown>> {
       const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
       await emitAck(gm, 'state:request');
-      const token = (await sync).tokens.find((entry) => entry.id === tokenId);
-      if (!token?.combatProfile) throw new Error('token carries no combat profile');
-      return token.combatProfile as Record<string, unknown>;
+      const state = await sync;
+      const token = state.tokens.find((entry) => entry.id === tokenId);
+      const card = state.characters.find((entry) => entry.id === token?.characterId);
+      if (!card) throw new Error('figure carries no character sheet');
+      return statistQuick(card.data as CpredCharacterData) as unknown as Record<string, unknown>;
     }
 
     it('stats a bare token from the GM side', async () => {
@@ -983,25 +989,25 @@ describe('ranged combat from the map', () => {
         }),
         'token:create',
       ).id;
-      const ack = await emitAck<TokenView>(gm, 'token:update', {
+      const ack = await emitAck<TokenView>(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: PROFILE },
+        quick: PROFILE,
       });
       expect(ack.ok).toBe(true);
       expect(await profileOf(statistTokenId)).toMatchObject({ ref: 7, armorSp: 11 });
     });
 
     it('repairs a profile the client sent out of range instead of refusing it', async () => {
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: { ...PROFILE, ref: 99, ammoCurrent: 900 } },
+        quick: { ...PROFILE, ref: 99, ammoCurrent: 900 },
       });
       const stored = await profileOf(statistTokenId);
       expect(stored.ref).toBe(10);
       expect(stored.ammoCurrent).toBe(10);
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: PROFILE },
+        quick: PROFILE,
       });
     });
 
@@ -1057,7 +1063,7 @@ describe('ranged combat from the map', () => {
       expect(seen).toBeDefined();
       // The gun and the armour are private the same way the HP bar is: a player
       // finds out what an NPC is wearing by shooting at it.
-      expect(seen?.combatProfile ?? null).toBeNull();
+      expect(seen?.characterId ?? null).toBeNull();
     });
 
     /**
@@ -1067,9 +1073,9 @@ describe('ranged combat from the map', () => {
      * otwierać „Edytuj…" zamiast kliknąć jeden guzik.
      */
     it('przeładowuje statystę tym samym zdarzeniem, co kartę', async () => {
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: { ...PROFILE, ammoCurrent: 2 } },
+        quick: { ...PROFILE, ammoCurrent: 2 },
       });
       const ack = await emitAck<{ ammo: number }>(gm, 'weapon:reload', {
         attackerTokenId: statistTokenId,
@@ -1088,18 +1094,18 @@ describe('ranged combat from the map', () => {
     });
 
     it('odmawia przeładowania broni, której nabojów nikt nie liczy', async () => {
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: { ...PROFILE, ammoCurrent: 0, ammoMax: 0 } },
+        quick: { ...PROFILE, ammoCurrent: 0, ammoMax: 0 },
       });
       const ack = await emitAck(gm, 'weapon:reload', {
         attackerTokenId: statistTokenId,
         weaponRowId: 'statist-weapon',
       });
       expect(ack).toEqual({ ok: false, error: 'WEAPON_HAS_NO_MAGAZINE' });
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: PROFILE },
+        quick: PROFILE,
       });
     });
 
@@ -1215,9 +1221,9 @@ describe('ranged combat from the map', () => {
     it('applies and ablates the profile’s armour without the GM typing it', async () => {
       // SP 4 against the rifle's 5k6: the lowest possible roll still gets
       // through, so „did the armour stop everything?" cannot make this flaky.
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: statistTokenId,
-        patch: { combatProfile: { ...PROFILE, armorSp: 4 } },
+        quick: { ...PROFILE, armorSp: 4 },
       });
 
       const damageMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
@@ -1270,9 +1276,9 @@ describe('ranged combat from the map', () => {
         await placeTargetAt(4);
         for (let attempt = 0; attempt < 40; attempt++) {
           // Magazine back to full: forty attempts would empty ten rounds.
-          await emitAck(gm, 'token:update', {
+          await emitAck(gm, 'token:stat', {
             tokenId: statistTokenId,
-            patch: { combatProfile: PROFILE },
+            quick: PROFILE,
           });
           const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
           const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {

@@ -450,24 +450,23 @@ describe('damage, armor and Death Saves', () => {
    */
   describe('rana krytyczna u figury z profilem bojowym', () => {
     it('losuje ranę i zapisuje ją w profilu', async () => {
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: npcTokenId,
-        patch: {
-          hp: { current: 25, max: 25 },
-          combatProfile: {
-            ref: 5,
-            dex: 5,
-            body: 5,
-            will: 5,
-            skillLevel: 4,
-            evasion: 2,
-            armorSp: 0,
-            weaponId: null,
-            weaponName: 'Pięści',
-            weaponDamage: '1k6',
-            ammoCurrent: 0,
-            ammoMax: 0,
-          },
+        quick: {
+          ref: 5,
+          dex: 5,
+          body: 5,
+          will: 5,
+          skillLevel: 4,
+          evasion: 2,
+          armorSp: 0,
+          weaponId: null,
+          weaponName: 'Pięści',
+          weaponDamage: '1k6',
+          ammoCurrent: 0,
+          ammoMax: 0,
+          hpCurrent: 25,
+          hpMax: 25,
         },
       });
       const messageId = await rollUntilCritical();
@@ -480,22 +479,23 @@ describe('damage, armor and Death Saves', () => {
 
       const sync = await roundTrip(gm);
       const token = sync.tokens.find((t) => t.id === npcTokenId);
-      const profile = token?.combatProfile as Record<string, unknown> | undefined;
-      const wounds = (profile?.criticalInjuries ?? []) as Record<string, unknown>[];
+      const card = sync.characters.find((entry) => entry.id === token?.characterId)?.data as
+        CpredCharacterData | undefined;
+      const wounds = (card?.criticalInjuries ?? []) as unknown as Record<string, unknown>[];
       expect(wounds.map((row) => row.name)).toContain(entry?.injury?.name);
     });
 
-    it('wraca do zdania „rozegraj ręcznie", gdy figura nie ma nawet profilu', async () => {
+    it('wraca do zdania „rozegraj ręcznie", gdy figura nie ma nawet karty', async () => {
       await emitAck(gm, 'token:update', {
         tokenId: npcTokenId,
-        patch: { hp: { current: 25, max: 25 }, combatProfile: null },
+        patch: { characterId: null, hp: { current: 25, max: 25 } },
       });
       const messageId = await rollUntilCritical();
       const logged = waitForDamage(gm);
       await emitAck(gm, 'damage:apply', { messageId, tokenId: npcTokenId });
       const entry = (await logged).message.damage;
       expect(entry?.injury).toBeUndefined();
-      expect(entry?.injuryNote).toContain('rozegraj ręcznie');
+      expect(entry?.injuryNote).toContain('ranę krytyczną rozstrzyga MG');
     });
   });
 

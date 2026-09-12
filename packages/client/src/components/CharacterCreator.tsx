@@ -10,7 +10,7 @@ import type {
   CpredLifepathTable,
   CpredSkillDefinition,
   CpredStatId,
-  PortraitUploadResult,
+  PortraitAssetView,
 } from '@vtt/shared';
 import {
   CPRED_CREATION_METHODS,
@@ -59,7 +59,9 @@ import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import { PortraitPicker } from './PortraitPicker.js';
+import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -1299,8 +1301,11 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
-      await patch({ portraitUrl: result.url });
+      // Patrz `CharacterSheet`: jedna trasa, wiersz w puli i kadr na mapie.
+      const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
+      usePortraitStore.getState().applyUpsert(asset);
+      await patch({ portraitUrl: asset.url });
+      usePortraitStore.getState().openCrop(asset.id);
     } catch (error) {
       setUploadError(uploadErrorText(error, 'portrait'));
     } finally {
@@ -1363,6 +1368,10 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
             Usuń portret
           </button>
         ) : null}
+        {/* Kreator jest jedynym miejscem, w którym gracz wybiera twarz (decyzja
+            MG z 12.09) — więc i jedynym, w którym warto ją od razu skadrować
+            pod mapę. Potem zostaje mu już tylko ten kadr. */}
+        <PortraitCropButton portraitUrl={draft.portraitUrl} disabled={busy} />
         {uploadError ? <p className="auth-error">{uploadError}</p> : null}
         <PortraitPicker
           selectedUrl={draft.portraitUrl}

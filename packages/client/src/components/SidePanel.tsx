@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, isCheckRequestOpen } from '@vtt/shared';
 import { PresenceList } from './PresenceList.js';
 import { ChatPanel } from './ChatPanel.js';
 import { ScenePanel } from './ScenePanel.js';
@@ -11,12 +11,14 @@ import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { RulesPanel } from './RulesPanel.js';
 import { KnowledgePanel } from './KnowledgePanel.js';
+import { TablePanel } from './TablePanel.js';
 import { NetPanel } from './NetPanel.js';
 import { JournalPanel } from './JournalPanel.js';
 import { HandoutPanel } from './HandoutPanel.js';
 import { ArchivePanel } from './ArchivePanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useChatStore } from '../stores/chatStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
 
 type Tab =
@@ -29,6 +31,7 @@ type Tab =
   | 'bots'
   | 'rules'
   | 'knowledge'
+  | 'tables'
   | 'net'
   | 'journal'
   | 'handouts'
@@ -60,16 +63,43 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },
+  { id: 'tables', label: 'Tabele' },
   { id: 'net', label: 'Sieć' },
   { id: 'ai', label: 'AI' },
   { id: 'archive', label: 'Kopie' },
 ];
+
+/**
+ * Ile próśb o Test czeka na MG (etap 40).
+ *
+ * Prośba jest **cicha** — nie ma dźwięku, nie odsłania się nikomu poza MG
+ * i szybko odjeżdża w górę feedu — więc bez tej liczby przy zakładce ginie
+ * między rzutami, a gracz czeka w ciszy. Liczone wprost z feedu, tak jak kubek
+ * szuka otwartego wezwania: dwa magazyny stanu o tym samym rozjechałyby się
+ * przy pierwszym „Odmów".
+ */
+function useWaitingRequestCount(isGm: boolean): number {
+  return useChatStore((state) =>
+    isGm
+      ? state.items.reduce(
+          (count, item) =>
+            item.type === 'message' &&
+            item.message.request !== undefined &&
+            isCheckRequestOpen(item.message.request)
+              ? count + 1
+              : count,
+          0,
+        )
+      : 0,
+  );
+}
 
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const width = useSidePanelWidth();
   const [tab, setTab] = useState<Tab>('chat');
   const journalFocus = useJournalStore((s) => s.focus);
+  const waitingRequests = useWaitingRequestCount(isGm);
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
 
@@ -87,6 +117,14 @@ export function SidePanel() {
       onClick={() => setTab(entry.id)}
     >
       {entry.label}
+      {entry.id === 'chat' && waitingRequests > 0 && (
+        <span
+          className="side-tab-badge"
+          title={`Prośby o Test czekające na twoją decyzję: ${waitingRequests}`}
+        >
+          {waitingRequests}
+        </span>
+      )}
     </button>
   );
 
@@ -119,6 +157,8 @@ export function SidePanel() {
         <RulesPanel />
       ) : activeTab === 'knowledge' ? (
         <KnowledgePanel />
+      ) : activeTab === 'tables' ? (
+        <TablePanel />
       ) : activeTab === 'net' ? (
         <NetPanel />
       ) : activeTab === 'journal' ? (

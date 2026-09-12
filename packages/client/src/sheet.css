@@ -121,7 +121,10 @@
   padding: 0.3rem 1.1rem;
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.76rem;
+  /* 0,88 rem, nie 0,76 (12.09): zakładki stoją w pasku wysokim na 30 px i są
+     jedyną nawigacją karty — mniejsze od nazw umiejętności pod spodem nie mają
+     prawa być. */
+  font-size: 0.88rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--cp-on-red-faint);
@@ -205,7 +208,9 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.74rem;
+  /* Czarna belka trzyma nazwę kategorii — na wydruku jest wyraźnie większa niż
+     wiersze pod nią, a tu do 12.09 była od nich mniejsza. */
+  font-size: 0.84rem;
   letter-spacing: 0.03em;
   padding: 0.14rem 0.4rem;
   display: flex;
@@ -220,9 +225,12 @@
   text-transform: none;
 }
 
+/* Nagłówki kolumn liczbowych („POZ. · CECHA · BAZA") zostają najmniejszym
+   krojem karty — to podpis kolumny, nie treść — ale 0,62 rem dawało 9,9 px,
+   czyli mniej niż minimum czytelności przy stole. */
 .cp-bar--th {
   justify-content: center;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -256,6 +264,10 @@
 }
 
 /* Pola formularza wewnątrz arkusza: bez ramek, bo ramką jest samo pole. */
+/* 0,95 rem, nie 0,85 (12.09): pole arkusza ma 1,35 rem wysokości w minimum
+   i zwykle stoi wyżej, więc krój z 0,85 rem zostawiał w nim pas pustego
+   papieru nad i pod wpisaną treścią. Etykieta obok (`.cp-label`, kapitaliki
+   0,82 rem) zostaje mniejsza — na wydruku też jest drobniejsza od treści. */
 .cp-field input,
 .cp-field select,
 .cp-field textarea {
@@ -263,7 +275,7 @@
   border: none;
   color: var(--cp-ink);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   min-width: 0;
   padding: 0.05rem 0.15rem;
 }
@@ -296,11 +308,53 @@
   margin: 0;
 }
 
+/* ===== Przełącznik liczbowy na karcie (06.09) =====
+
+   Część wspólna — układ wartości i kolumny strzałek — siedzi w `styles.css`,
+   bo ten sam przełącznik stoi w oknie rzutu, w menu statysty i w netrunie.
+   Tutaj zostaje **skóra wydruku**: pole na karcie nie ma ramki, bo ramką jest
+   samo pole (ta sama reguła, co dla `.cp-field input` wyżej). */
+.sheet-window .cp-step {
+  padding: 0;
+  gap: 0.08rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.sheet-window .cp-step:focus-visible {
+  outline: none;
+  background: var(--cp-focus);
+}
+
+.sheet-window .cp-step-value {
+  min-width: 1.05rem;
+}
+
+.sheet-window .cp-step-arrows {
+  width: 0.6rem;
+}
+
+.sheet-window .cp-step-arrow {
+  font-size: 0.4rem;
+}
+
+/* Bez strzałek: liczbę widać, ale kupuje się ją PD (poziom Umiejętności, ranga
+   Zdolności) albo pisze ją serwer — u gracza zostaje sam napis. */
+.sheet-window .cp-step--locked {
+  color: var(--cp-ink-dim);
+}
+
 /* ===== Strona pierwsza ===== */
 
 .sheet-page {
   display: grid;
-  grid-template-columns: 15rem 4.6rem minmax(0, 1fr);
+  /* Kolumna Cech ma 5,2 rem, a nie 4,6: przy 4,6 rem wiersz Szczęścia
+     („z 5 ↻") nie mieścił się w polu i mały czerwony kwadracik „z" wychodził
+     poza jego lewą krawędź (06.09). */
+  grid-template-columns: 15rem 5.2rem minmax(0, 1fr);
   gap: 0.4rem;
   align-items: start;
 }
@@ -329,14 +383,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .cp-stats {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .cp-stat {
-    flex: 1 1 4.2rem;
-  }
+  /* Cechy w wąskim oknie: reguły są **niżej**, przy samej kolumnie Cech —
+     od 12.09 baza `.cp-stat` niesie własne `flex`, a przy równej wadze
+     selektora wygrywa reguła późniejsza w pliku. */
 
   /* Pola z dołu strony drugiej też schodzą do jednej kolumny — w dwóch
      „Zakwaterowanie" zostaje samą etykietą bez miejsca na wybór. */
@@ -428,7 +477,8 @@
   background: var(--cp-ink-dim);
 }
 
-.cp-ability--former .cp-rank input {
+.cp-ability--former .cp-rank input,
+.cp-ability--former .cp-rank .cp-step {
   color: var(--cp-paper);
 }
 
@@ -436,19 +486,61 @@
   align-self: center;
 }
 
-/* Panel Zmysłu Walki pod wierszem Zdolności Specjalnej (etap 30a). Sam panel
-   maluje `styles.css` (`.awareness`) — tu tylko miejsce, które mu karta daje. */
-.cp-awareness {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
+/* --- pas „Zdolność Specjalna" (06.09.2026) --- */
+
+/* Pas idzie przez całą szerokość siatki strony, tak jak „Broń i pancerz".
+   Do 06.09 dziewięć paneli Ról stało w kolumnie tożsamości i ciągnęło ją dwa
+   razy niżej niż Cechy i Umiejętności — pół strony pierwszej było wtedy pustym
+   polem po prawej. */
+.cp-role-strip {
+  grid-column: 1 / -1;
+}
+
+/* Dwie karty w rzędzie na szerokim oknie: żadna Rola nie ma dziś więcej niż
+   jeden panel, ale Wieloklasowość z 29b pozwala nosić kilka naraz. */
+.cp-role-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--cp-gutter);
+  width: 100%;
+  background: var(--cp-red);
+  padding: var(--cp-gutter);
+}
+
+.cp-ability-card {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  padding: 0.45rem 0.6rem;
+  min-width: 0;
+}
+
+/* Rządek terapii z etapu 23a leżał do 06.09 wprost na tle okna, bez ramki
+   i bez tła — jedyny taki element w całym arkuszu. Teraz jest polem karty,
+   jak wszystko inne, co ma guziki. */
+.sheet-window .cyberware-therapy {
+  background: var(--cp-paper);
+  color: var(--cp-ink-dim);
+  padding: 0.3rem 0.5rem;
+  flex-wrap: wrap;
 }
 
 /* Panel awansu na stronie drugiej (etap 29a). Stoi pod licznikiem PD, bo to
    jego rozwinięcie: liczba i to, co można za nią kupić, czyta się razem. Sam
-   panel maluje `styles.css` (`.advance`), jak przy `.cp-awareness`. */
+   panel maluje `styles.css` (`.advance`) — tu tylko miejsce, które mu karta
+   daje. */
 .cp-advance {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
+}
+
+/* `.cp-field` jest wierszem flex, więc panel w środku nie rozciąga się sam:
+   bez tego rejestr awansów siedział w lewej połowie pola, a druga połowa
+   zostawała biała (06.09). */
+.cp-advance > .awareness,
+.cp-ability-card > .awareness {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .cp-ability-name {
@@ -472,6 +564,18 @@
   width: 1.9rem;
   color: var(--cp-on-red);
   font-weight: 700;
+}
+
+.cp-rank .cp-step {
+  color: var(--cp-on-red);
+  font-weight: 700;
+  padding: 0 0.15rem;
+}
+
+/* Plakietka rangi jest `flex: none`, więc rośnie do treści — bez zwężenia
+   liczby strzałki rozpychałyby ją kosztem nazwy Zdolności obok. */
+.cp-rank .cp-step-value {
+  min-width: 0.9rem;
 }
 
 .cp-rank input:focus {
@@ -506,10 +610,21 @@
 
 /* Pula portretów (23.08) leży wprost na czerwonym panelu tożsamości, więc
    bierze kolory karty, nie globalne — globalny `--text-dim` na `--cp-red`
-   znikał zupełnie. */
+   znikał zupełnie. Z tego samego powodu zdanie o zamkniętym wyborze portretu
+   (12.09) też bierze barwę stąd. */
 .cp-identity .portrait-pool-head,
-.cp-identity .portrait-pool-empty {
+.cp-identity .portrait-pool-empty,
+.cp-identity .cp-portrait-locked {
   color: var(--cp-on-red-dim);
+}
+
+/* Przycisk kadru na czerwonym panelu — jak wszystko inne na karcie, papier
+   z czerwoną krawędzią, a nie szara kostka z chromu. */
+.cp-identity .cp-portrait-actions .small-button {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border-color: var(--cp-red-deep);
+  border-radius: 0;
 }
 
 .cp-identity .portrait-pool-pick {
@@ -524,6 +639,38 @@
   border-radius: 0;
 }
 
+/* Pula na karcie to PASEK MINIATUR, nie galeria (06.09).
+   W panelu bota pula jest listą plików i podpisy mają sens; w kolumnie
+   tożsamości szerokiej na 15 rem dwa kafelki z nazwami zajmowały tyle, co pół
+   portretu, a nazwa („Portret Netrunner") i tak się nie mieściła. Miniatura
+   plus `title` mówią to samo w jednej trzeciej miejsca. */
+.cp-identity .portrait-pool {
+  gap: 0.25rem;
+}
+
+.cp-identity .portrait-pool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-identity .portrait-pool-pick {
+  padding: 0.15rem;
+}
+
+.cp-identity .portrait-pool-pick img {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0;
+}
+
+.cp-identity .portrait-pool-name {
+  display: none;
+}
+
+/* Człowieczeństwo i Punkty Wytrzymałości to dwie największe liczby strony po
+   Cechach — i tak też mają wyglądać (zlecenie MG, 12.09). Do 12.09 stały
+   w 1,15 rem w polu wysokim na 49 px, czyli zajmowały nieco ponad jedną
+   trzecią jego wysokości. */
 .cp-pool-value {
   display: flex;
   align-items: center;
@@ -531,22 +678,41 @@
   gap: 0.3rem;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.7rem;
   line-height: 1;
 }
 
+/* Szerokość w `em`, nie w `rem`: pole ma pomieścić trzy cyfry **tej** liczby,
+   więc rośnie razem z nią. W `rem` powiększenie kroju kończyło się kursorem
+   wypychającym trzecią cyfrę poza pole. */
 .cp-pool-value input {
-  width: 2.6rem;
+  width: 2.4em;
   font: inherit;
   text-align: center;
+}
+
+.cp-pool-value .cp-step-value {
+  min-width: 1.5rem;
+}
+
+/* Strzałki przy dużej cyfrze puli są odpowiednio większe — inaczej wyglądałyby
+   jak pyłek przy 1,7 rem. */
+.cp-pool-value .cp-step-arrows {
+  width: 0.9rem;
+}
+
+.cp-pool-value .cp-step-arrow {
+  font-size: 0.6rem;
 }
 
 .cp-pool-max {
   color: var(--cp-ink-dim);
 }
 
+/* „Poważnie Ranny" i „Przeżywalność" — progi, nie liczniki, więc mniejsze niż
+   PW, ale i tak w polu wysokim na 36 px stały do 12.09 w 1 rem. */
 .cp-pool--flat .cp-pool-value {
-  font-size: 1rem;
+  font-size: 1.35rem;
 }
 
 .cp-pools {
@@ -562,18 +728,31 @@
 
 /* --- kolumna cech --- */
 
+/* Kolumna Cech ciągnie się na całą wysokość strony (zlecenie MG, 12.09).
+
+   Do 12.09 dziesięć pudełek po 39 px kończyło się w połowie karty, a pod nimi
+   zostawało pół tysiąca pikseli czerwieni — przy liczbie 16 px, czyli mniejszej
+   niż etykieta pola obok. Na wydruku CP RED Cecha jest **największą liczbą na
+   stronie** i tak ma być tutaj: `align-self: stretch` łamie `align-items: start`
+   siatki tylko dla tej jednej kolumny, a `flex: 1` rozdziela zysk po równo. */
 .cp-stats {
   display: flex;
   flex-direction: column;
   gap: var(--cp-gutter);
+  align-self: stretch;
 }
 
 .cp-stat {
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: stretch;
+  justify-content: center;
   gap: 0;
   padding: 0.1rem 0.25rem 0.15rem;
   position: relative;
+  /* Pole Cechy jest ramką i nic nie ma prawa z niej wyjść — inaczej wystający
+     element ląduje na czerwonym rowku między polami i wygląda na błąd. */
+  overflow: hidden;
 }
 
 .cp-stat-abbr {
@@ -583,7 +762,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 0.74rem;
+  font-size: 0.86rem;
   letter-spacing: 0.04em;
   color: var(--cp-ink);
   padding: 0 0.1rem;
@@ -594,13 +773,37 @@
   color: var(--cp-red);
 }
 
-.cp-stat-value {
+/* `.sheet-window` w selektorze nie jest ozdobą: skóra przełącznika liczbowego
+   (`.sheet-window .cp-step`, 0-2-0) niesie `font: inherit`, więc goły
+   `.cp-stat-value` (0-1-0) przegrywał kaskadę i liczba zostawała przy 16 px
+   niezależnie od tego, co tu wpisano. Ta sama pułapka, co `.advance-buy`
+   z 29b — i tak samo niewidoczna w kodzie komponentu. */
+.sheet-window .cp-stat-value {
   width: 100%;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 1.3rem;
-  line-height: 1.1;
+  font-size: 2.6rem;
+  line-height: 1;
   text-align: center;
+}
+
+.cp-step.cp-stat-value {
+  justify-content: center;
+}
+
+.cp-stat-value .cp-step-value {
+  min-width: 1.4rem;
+}
+
+/* Strzałki rosną z liczbą, ale wolniej: przy 2,2 rem para strzałek liczona
+   proporcjonalnie byłaby drugą, konkurencyjną kolumną w polu szerokim na
+   5,2 rem. Mają być tym, czym są — uchwytem obok liczby. */
+.cp-stat-value .cp-step-arrows {
+  width: 0.85rem;
+}
+
+.cp-stat-value .cp-step-arrow {
+  font-size: 0.6rem;
 }
 
 /* Małe pole „z" pod cechą — bieżące Szczęście i EMP w grze. */
@@ -610,18 +813,137 @@
   justify-content: center;
   gap: 0.15rem;
   margin-top: -0.1rem;
+  min-width: 0;
 }
 
 .cp-stat-sub input {
-  width: 1.8rem;
-  font-size: 0.8rem;
+  width: 1.7rem;
+  min-width: 0;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
+.cp-stat-sub .cp-step {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.cp-stat-sub .cp-step-value {
+  min-width: 0.9rem;
+}
+
+.cp-stat-sub .cp-step-arrows {
+  width: 0.6rem;
+}
+
 .cp-stat-sub-value {
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   font-weight: 600;
   padding: 0 0.2rem;
+}
+
+/* Wąskie okno: Cechy schodzą w rząd z zawijaniem, więc pudełko przestaje być
+   wysoką kolumną i robi się kaflem ~4,2 rem. Liczba musi zejść razem z nim —
+   2,6 rem w kaflu tej szerokości nie zmieściłoby się obok strzałek, a pole ma
+   `overflow: hidden`, więc obcięłoby ją bez śladu. */
+@container (max-width: 700px) {
+  .cp-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-self: auto;
+  }
+
+  .cp-stats .cp-stat {
+    flex: 1 1 4.2rem;
+  }
+
+  .sheet-window .cp-stats .cp-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .sheet-window .cp-stats .cp-stat-abbr {
+    font-size: 0.74rem;
+  }
+}
+
+/* Etap 39: Cecha przesunięta efektem czasowym mówi to kolorem małego pola „z",
+   a nie nowym elementem — czerwień, gdy w dół, zieleń, gdy w górę. Empatia
+   obniżona Człowieczeństwem trafia w tę samą, dolną gałąź i wygląda tak jak
+   wyglądała od 23a. */
+.cp-stat-sub--down .cp-stat-sub-value {
+  color: var(--cp-red);
+}
+
+.cp-stat-sub--up .cp-stat-sub-value {
+  color: var(--ok-ink);
+}
+
+/* --- efekty czasowe na Cechach (etap 39) --- */
+
+.cp-stat-effects .stat-effect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-gutter);
+}
+
+.cp-stat-effects .stat-effect-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.15rem 0.35rem 0.2rem;
+}
+
+.cp-stat-effects .stat-effect-value {
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-stat-effects .stat-effect-value--down {
+  color: var(--cp-red);
+}
+
+.cp-stat-effects .stat-effect-value--up {
+  color: var(--ok-ink);
+}
+
+.cp-stat-effects .stat-effect-source {
+  font-size: 0.78rem;
+  color: var(--cp-ink);
+}
+
+/* Odliczanie idzie do prawej krawędzi i tam zostaje — przy sześciu efektach
+   kolumna czasów czyta się jednym spojrzeniem, a nie po kolei. */
+.cp-stat-effects .stat-effect-timer {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-stat-effects .stat-effect-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.3rem;
+}
+
+/* Kolumna tożsamości ma 15 rem i rozciągnąć się nie da (umowa z 30a), więc pola
+   formularza kurczą się zamiast wypychać panel. Szerokość dobrana **do
+   podpowiedzi**, nie do wpisywanej wartości: przy 4,5 rem `placeholder`
+   („−2 albo −1k6") ucinał się na „−1k", czyli gubił dokładnie tę połowę, która
+   tłumaczy, że wolno wpisać notację (oględziny 05.09). */
+.cp-stat-effects .stat-effect-amount {
+  width: 6rem;
+}
+
+.cp-stat-effects .stat-effect-source-input {
+  flex: 1 1 6rem;
+  min-width: 0;
 }
 
 .cp-mini-button {
@@ -704,9 +1026,22 @@
   min-height: 1.3rem;
 }
 
+/* Trzy kolumny liczb obok nazwy umiejętności. Nazwa zostaje przy 0,8 rem —
+   wypełnia swoje pole na szerokość i większy krój kończyłby ją wielokropkiem
+   („Odporność na tortury/narkotyki") — ale liczby mają całe 34 px na 26 px
+   i stały w nich mniejsze niż nazwa obok. */
 .cp-skill-cell input {
   width: 100%;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
+}
+
+.cp-skill-cell .cp-step {
+  font-size: 0.95rem;
+  justify-content: center;
+}
+
+.cp-skill-cell .cp-step-value {
+  min-width: 0.9rem;
 }
 
 .cp-skill-base {
@@ -715,7 +1050,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   color: var(--cp-ink);
   padding: 0;
   width: 100%;
@@ -782,7 +1117,7 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
@@ -790,13 +1125,17 @@
   border: none;
 }
 
+/* Wiersz tabeli broni bywa wysoki na 70 px, ale wysokość robią mu **guziki**,
+   nie pusty papier — więc treść rośnie tu ostrożnie (0,82 → 0,88 rem). Krój
+   dobrany pod nazwę broni: „Ciężki pistolet maszynowy" ma się mieścić w jednej
+   linii, a to on wyznacza sufit. */
 .cp-table td {
   background: var(--cp-paper);
   color: var(--cp-ink);
   border: none;
   padding: 0.1rem 0.3rem;
   vertical-align: middle;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
 }
 
 .cp-table input,
@@ -856,10 +1195,8 @@
 
 /* --- pas broni --- */
 
-.weapon-table .weapon-actions {
-  display: flex;
+.weapon-table .weapon-actions-row {
   gap: var(--cp-gutter);
-  flex-wrap: wrap;
 }
 
 /* Przyciski ataku zostają tym, czym były — zmienia się tylko skóra. */
@@ -1042,8 +1379,20 @@
   font-style: italic;
 }
 
+/* Stan magazynka i typ naboju to dwa wiersze jednej komórki, nie jeden.
+   Do 06.09 obie rzeczy stały w jednej linii pod `white-space: nowrap`, więc
+   „Zwykła" wychodziło poza komórkę i lądowało na kolumnie ŁA.
+   Rozdziela je `display: block` na liście naboi, a **nie** flex na komórce:
+   `display: flex` na `<td>` wyjmuje go z układu tabeli i przestaje rozciągać
+   na wysokość wiersza — pod treścią zostaje wtedy czerwony pas tła tabeli. */
 .cp-table .weapon-ammo-cell {
   white-space: nowrap;
+}
+
+.cp-table .weapon-ammo-type {
+  display: block;
+  width: 100%;
+  max-width: 100%;
 }
 
 .cp-table .weapon-ammo-input {
@@ -1051,9 +1400,18 @@
   text-align: right;
 }
 
-.cp-table .weapon-ammo-input--empty {
+.cp-table .weapon-ammo-input--empty,
+.cp-table .cp-step.weapon-ammo-input--empty {
   color: var(--cp-red);
   font-weight: 700;
+}
+
+.cp-table .cp-step.weapon-ammo-input {
+  width: auto;
+}
+
+.cp-table .weapon-ammo-input .cp-step-value {
+  min-width: 1.1rem;
 }
 
 .cp-table .weapon-ammo-max,
@@ -1068,15 +1426,28 @@
 
 /* --- pancerz: trzy wiersze wydruku --- */
 
+/* Lokacja i nazwa sztuki w jednym wierszu — układem inline, nie flexem na
+   `<td>` (patrz komórka amunicji wyżej: flex zabiera komórce wysokość wiersza). */
 .armor-slot-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  white-space: nowrap;
 }
 
-/* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem. */
-.cp-slot {
-  flex: none;
+/* Nazwa sztuki bierze resztę komórki — bez tego pole tekstowe kurczy się do
+   swojej domyślnej szerokości i zostawia pół kolumny pustej. */
+.armor-slot-cell input[type='text'] {
+  width: calc(100% - 4rem);
+}
+
+/* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem.
+   Klasa nazywa się `cp-armor-slot`, a nie `cp-slot`, i to jest naprawa
+   z 06.09: `.cp-slot` istniało w tym pliku **dwa razy** — drugi raz jako
+   pudełko gniazda na sylwetce cyborgizacji (`position: absolute`, czerwone
+   tło). Wygrywała definicja późniejsza, więc „Głowa", „Korpus" i „Tarcza"
+   znikały z tabeli pancerza: stawały się czerwonym prostokątem wyjętym
+   z układu wiersza. */
+.cp-armor-slot {
+  display: inline-block;
+  margin-right: 0.35rem;
   min-width: 3.4rem;
   font-variant-caps: all-small-caps;
   font-weight: 700;
@@ -1096,7 +1467,12 @@
   text-align: center;
 }
 
-.armor-sp.armor-ablated input:first-child {
+.armor-sp .cp-step-value {
+  min-width: 0.9rem;
+}
+
+.armor-sp.armor-ablated input:first-child,
+.armor-sp.armor-ablated .cp-step:first-child {
   color: var(--cp-red);
   font-weight: 700;
 }
@@ -1108,10 +1484,12 @@
 }
 
 .armor-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.armor-actions > * + * {
+  margin-left: 0.2rem;
 }
 
 .armor-weaker {
@@ -1123,7 +1501,6 @@
 
 .armor-table--rest .armor-slot-cell select {
   width: 5.5rem;
-  flex: none;
 }
 
 /* Sztuka zdjęta jest przygaszona tuszem, nie przezroczystością: `opacity`
@@ -1525,6 +1902,15 @@
   grid-column: auto;
 }
 
+/* …ale panel awansu (29a) rozciąga się z powrotem na obie kolumny.
+   Reguła wyżej zdejmuje `cp-span2` wierszowi „Pseudonimy", żeby stanął obok
+   licznika PD — i przy okazji zdejmowała je „Awansowi", który przez to stał
+   w lewej kolumnie, a prawa zostawała pustym czerwonym prostokątem wysokim na
+   pół zakładki (znalezione 06.09). */
+.cp-lifepath-head .cp-advance {
+  grid-column: 1 / -1;
+}
+
 .cp-lifepath-head input[type='number'] {
   width: 4rem;
   margin-left: auto;
@@ -1831,11 +2217,9 @@
   gap: 0.35rem;
 }
 
-.cp-deck--empty {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.4rem;
+.cp-deck--empty select {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Belka deku niesie cztery rzeczy naraz — nazwę, licznik, pojemność i kosz —
@@ -1874,6 +2258,11 @@
   color: inherit;
   font: inherit;
   text-align: center;
+}
+
+.cp-deck-capacity .cp-step-value {
+  min-width: 0.9rem;
+  border-bottom: 1px solid currentColor;
 }
 
 .cp-deck-table td {

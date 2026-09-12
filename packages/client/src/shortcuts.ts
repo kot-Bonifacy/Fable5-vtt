@@ -59,6 +59,12 @@ export const MAP_TOOL_KEYS: readonly {
   { key: 's', tool: 'zone', what: 'Strefy bronione — pułapka na podłodze', gmOnly: true },
   { key: 'l', tool: 'light', what: 'Źródła światła', gmOnly: true },
   { key: 'p', tool: 'netpoint', what: 'Punkty dostępu do Sieci', gmOnly: true },
+  {
+    key: 'g',
+    tool: 'spawn',
+    what: 'Miejsce startu graczy — stąd patrzą, wchodząc na scenę',
+    gmOnly: true,
+  },
 ];
 
 /** Wiersze narzędzi mapy budowane z tej samej tabeli, którą czyta `MapArea`. */
@@ -169,6 +175,18 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie wielu figur' },
       { keys: 'Esc', what: 'Odkłada narzędzie mapy' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie figury' },
+    ],
+  },
+  {
+    title: 'Karta postaci: rzut z wiersza',
+    note: 'Działa na wierszach Cech i Umiejętności na stronie pierwszej karty.',
+    items: [
+      { keys: 'klik', what: 'Otwiera okno rzutu — modyfikator, Szczęście, widoczność' },
+      { keys: 'Shift + klik', what: 'Ładuje kubek od razu, z ostatnimi ustawieniami' },
+      {
+        keys: 'Alt + klik',
+        what: 'Prosi MG o Test tą Umiejętnością albo Cechą — MG dostaje kartę z drabinką PT, a kubek zawoła dopiero po jego zgodzie (na własnej karcie, więc MG tego wiersza nie ma)',
+      },
     ],
   },
   {

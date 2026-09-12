@@ -18,20 +18,20 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_CHARISMA_AUDIENCE_LABELS,
   CPRED_CHARISMA_REFUSAL_DAYS,
+  CPRED_EVASION_SKILL_ID,
   CPRED_MINUTE_S,
   CPRED_RUMOUR_TIERS,
   CPRED_MELEE_REACH_M,
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
-  combatProfileRollableSkills,
   cpredAudienceBelieves,
   cpredRumourHeard,
   cpredCareOptions,
   cpredCarePermanent,
   cpredCheckOutcome,
   hitLocationLabel,
-  hpMax,
+  cpredSheetHpMax,
   isCpredAimPoint,
   mergeCharacterData,
   metresBetweenTokens,
@@ -40,18 +40,15 @@ import {
   planCpredRoll,
   resolveCpredDeathSave,
   rollFormula,
-  sanitizeCriticalInjuryRows,
   woundState,
   woundStateFromHp,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import {
-  readSheetCombatProfile,
   sheetExpiryRound,
-  sheetFromCombatProfile,
+  sheetForRoll,
   sheetSituationModifiers,
-  sheetTokenHp,
   SHEET_UNCONSCIOUS_STATUS_ID,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
@@ -75,6 +72,7 @@ import {
   toChatMessageView,
 } from './chat-io.js';
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
+import { revealSighting } from './sighting.js';
 import { sanitizeGesture } from './chat.js';
 
 /**
@@ -176,23 +174,35 @@ async function resolveRollSource(
   if (user.role !== ROLE_GM && token.ownerId !== user.id) {
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
-  const profile = readSheetCombatProfile(token.combatProfile);
-  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
-  // Ta sama odmowa co przy rzucie, którego statysta nie umie zrobić w ogóle:
-  // Umiejętność spoza profilu nie istnieje dla tej figury, a nie „istnieje na
+  if (!token.characterId) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+  });
+  if (!character || character.campaignId !== campaignId) {
+    throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  }
+  const data = parseCharacterData(character.data, deps.ctx.cpred);
+  // Ta sama odmowa co przy rzucie, którego figura nie umie zrobić w ogóle:
+  // Umiejętność spoza jej listy nie istnieje dla niej, a nie „istnieje na
   // poziomie broni". Kod odmowy jest ten sam, bo z miejsca gracza to jedno
-  // zdanie — „ta figura tak nie rzuca".
+  // zdanie — „ta figura tak nie rzuca". Dotyczy wyłącznie figur bez właściciela:
+  // karta gracza rzuca każdą Umiejętnością, jak zawsze.
   const skillId = typeof request.skillId === 'string' ? request.skillId : '';
-  if (skillRoll && !combatProfileRollableSkills(profile).includes(skillId)) {
+  // Unik wypada z tej listy zawsze: to nie jest Test, który się „robi" — to
+  // obrona, i idzie własnym zdarzeniem (`attack:evade`).
+  if (
+    skillRoll &&
+    character.ownerId === null &&
+    (skillId === CPRED_EVASION_SKILL_ID || data.skills[skillId] === undefined)
+  ) {
     throw new RealtimeError('STATIST_CANNOT_ROLL_THIS');
   }
-  // The same synthesis the shot itself was rolled from, so the weapon that
-  // fired and the weapon that wounds cannot disagree: its one row is the row
-  // the attack card points back at.
+  // Ta sama karta, z której poleciał sam strzał, więc broń, która wystrzeliła,
+  // i broń, która rani, nie mają jak się rozjechać.
   return {
     kind: 'statist',
     token,
-    data: sheetFromCombatProfile(profile, sheetTokenHp(token), skillRoll ? skillId : null),
+    data: sheetForRoll(data, skillRoll ? skillId : null),
   };
 }
 
@@ -533,7 +543,8 @@ async function treatableInjuries(
     if (!target) throw new RealtimeError('TOKEN_NOT_FOUND');
     return parseCharacterData(target.data, deps.ctx.cpred).criticalInjuries;
   }
-  return readSheetCombatProfile(token.combatProfile)?.criticalInjuries ?? [];
+  // Figura bez karty nie ma gdzie nosić rany (etap 38a) — nie ma czego leczyć.
+  return [];
 }
 
 /**
@@ -583,19 +594,8 @@ async function applyTreatment(
     await emitTokensOfCharacter(deps, campaignId, saved);
     return true;
   }
-  const profile = readSheetCombatProfile(token.combatProfile);
-  const carried = profile?.criticalInjuries ?? [];
-  if (!profile || !carried.some((row) => row.id === injuryId)) return false;
-  const next = {
-    ...profile,
-    criticalInjuries: sanitizeCriticalInjuryRows(rewrite(carried)),
-  };
-  await deps.ctx.prisma.token.update({
-    where: { id: token.id },
-    data: { combatProfile: JSON.stringify(next) },
-  });
-  await emitTokensById(deps, campaignId, [token.id]);
-  return true;
+  // Figura bez karty nie nosi ran, więc nie ma czego zapisać (etap 38a).
+  return false;
 }
 
 /**
@@ -635,7 +635,7 @@ async function applyStabilization(
   });
   if (!character) return { healed: false, opened: false, token, gained: 0 };
   const data = parseCharacterData(character.data, deps.ctx.cpred);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
 
   // „Aby rozpocząć proces naturalnego leczenia, musisz zostać ustabilizowany"
   // (s. 222) — i to jest **cały** skutek udanego rzutu na kimś, kto jeszcze
@@ -1125,6 +1125,18 @@ export async function performCharacterRoll(
         total: result.total,
       };
       await emitCheckCallUpdate(deps, campaignId, call.messageId, call.entry);
+    }
+    // Etap 41: zdany Test Percepcji odsłania to, co widać na wskazanej figurze.
+    //
+    // Osobna karta, a nie dopisek do karty rzutu, i to jest rozstrzygnięcie:
+    // rzut bywa jawny („widzę, że mu się udało"), a **treść** oględzin należy do
+    // postaci, która ją zdobyła. Doklejona do wyniku pojechałaby całemu stołowi
+    // tą samą drogą, co liczba na kości.
+    //
+    // Warunek `call` nie jest ozdobą — próg ustala MG (decyzja z 10.09.2026),
+    // więc rzut bez wezwania nie ma czego zdać i nie ma prawa niczego odsłonić.
+    if (call && result.outcome?.success && typeof request.sightingTokenId === 'string') {
+      await revealSighting(deps, campaignId, user, request.sightingTokenId, rollSourceName(source));
     }
     // Somebody coming off the floor is the one green number the map draws
     // (stage 27i). It waits for the card exactly as an attack's does — the

@@ -1,10 +1,16 @@
-import { useMemo } from 'react';
-import { CPRED_ATTACK_MODE_LABELS, formatMetres } from '@vtt/shared';
+import { useEffect, useMemo } from 'react';
+import {
+  CPRED_ATTACK_MODE_LABELS,
+  CPRED_SIGHTING_BARE_HEAD,
+  cpredHeadIsArmored,
+  formatMetres,
+} from '@vtt/shared';
 import { intentFromTargeting, planAttackPreview, type AttackIntent } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useSightingStore } from '../stores/sightingStore.js';
 
 /**
  * The bubble under the crosshair (stage 16f): distance, range band, DV, fire
@@ -36,6 +42,15 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
   const activeWeapon = useHudStore((s) => s.activeWeapon);
   const selectedId = useSelectionStore((s) => s.tokenId);
   const tokens = useTokenStore((s) => s.tokens);
+  // Etap 41: rzut oka na cel. Pytanie leci przy **wejściu** kursora na figurę,
+  // a nie przy każdym jego drgnięciu — skład sam pilnuje świeżości wpisu.
+  const glances = useSightingStore((s) => s.glances);
+  const look = useSightingStore((s) => s.look);
+  const hoveredId = hover?.tokenId ?? null;
+  useEffect(() => {
+    if (hoveredId) void look(hoveredId);
+  }, [hoveredId, look]);
+  const glance = hoveredId ? (glances[hoveredId]?.sighting ?? null) : null;
 
   /**
    * Who is doing the aiming. The crosshair armed from a sheet wins, because
@@ -109,6 +124,31 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
               </div>
             )}
           </dl>
+          {/* Etap 41. Dwie linijki i tylko dwie, bo to pasek przy kursorze
+              w trakcie walki: czy jest w co celować na głowie i co ten ktoś
+              trzyma. Reszta czeka w oknie oględzin. Głowa bez ochrony jest
+              **wyróżniona**, bo to jest ta jedna informacja, dla której cały
+              etap powstał: strzał w głowę mnoży dopiero to, co przejdzie przez
+              pancerz głowy (s. 170). */}
+          {glance && (
+            <dl className="aim-tooltip-facts aim-tooltip-facts--seen">
+              <div>
+                <dt>Głowa</dt>
+                <dd className={cpredHeadIsArmored(glance) ? '' : 'aim-tooltip-bare'}>
+                  {glance.armor.find((row) => row.location === 'head')?.name ??
+                    CPRED_SIGHTING_BARE_HEAD}
+                </dd>
+              </div>
+              <div>
+                <dt>W rękach</dt>
+                <dd>
+                  {glance.weapons.length > 0
+                    ? glance.weapons.map((row) => row.name).join(' + ')
+                    : 'Puste ręce'}
+                </dd>
+              </div>
+            </dl>
+          )}
           <p className="aim-tooltip-note">
             Klik ładuje kubek. Ściany sprawdza serwer w chwili rzutu.
           </p>

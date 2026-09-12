@@ -11,6 +11,43 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Przeniesiony pancerz przychodzi zdjęty (06.09, etap 38b).** Podręcznik nie mówi nic o czasie
+  zakładania pancerza i VTT też nie będzie — ale wiersz, który ląduje na karcie z `equipped: true`,
+  **natychmiast** zmienia OB odbiorcy, czyli liczbę, którą ktoś zaraz przeciwko niemu rzuci.
+  To jedyne pole, które `cpredMoveItems` zmienia po drodze. Odwrócenie tej decyzji to jedna linia
+  w `cpredMoveItems`, ale wtedy łup po walce po cichu ubiera całą drużynę.
+
+- **Zasięg przenoszenia mierzy się MG tak samo jak graczom (06.09, etap 38b).** Świadomy wyjątek
+  od zwyczaju „MG omija blokady", wzięty wprost z `Ustabilizowania` (14e) i z tego samego powodu:
+  MG podaje przedmiot **figurą stojącą na mapie**, więc odległość jest dla niego równie prawdziwa.
+  Drogą naokoło zostaje edycja obu kart ręką, którą MG i tak ma. Gdyby to zaczęło uwierać przy
+  stole (MG rozdający łup, gdy gracze już odeszli), zmiana jest jednym warunkiem w `inventory:give`
+  i `inventory:take` — ale zmieniaj **obie** czynności naraz albo żadnej.
+
+- **Wiersz czatu o przeniesieniu ma jednego adresata i to czasem za mało (06.09, etap 38b).**
+  `ChatMessage.recipientId` jest pojedyncze, więc gdy **MG** przenosi między dwiema kartami
+  **graczy**, historia zapisuje wiersz u tego, kto dostaje; drugi gracz widzi go na żywo, ale po
+  przeładowaniu nie odzyska. Wybrane świadomie: dwa wiersze na jedno zdarzenie kłamałyby o tym,
+  ile razy coś się stało, a obie karty i tak jadą do obu graczy przez `character:upsert`.
+  Naprawa wymagałaby tabeli odbiorców przy wiadomości — to zmiana schematu, nie łata.
+
+- **Efekty czasowe na Cechach nie ruszają PUL (05.09, decyzja MG).** Efekt z etapu 39 przesuwa
+  wszystko, co rozstrzyga się „teraz" — Testy, Unik, Inicjatywę, PT obrony, RUCH, Rzut na Śmierć,
+  obrażenia wręcz — ale **maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się z Cechy
+  bazowej**. Opis etapu mówił „BC rusza PW" i to jest świadome odstępstwo od tamtego zdania.
+  Powód jest w kodzie, nie w podręczniku: `normalizeCharacterData` przycina `hpCurrent`
+  i `luckCurrent` do maksimum przy **każdym** zapisie karty, więc maksimum obniżone na godzinę
+  zabrałoby postaci punkty **na stałe** — wygaśnięcie efektu podniosłoby sufit, ale nie oddałoby
+  tego, co przycięcie już zjadło. Próg Poważnie Rannego idzie za maksimum z tego samego powodu.
+  Gdyby to kiedyś przestać się bronić, pierwszym miejscem jest `normalizeCharacterData`, a nie
+  `cpredEffectiveStats`.
+
+- **Podłoga Cechy pod efektami to 1, ale Empatia zerowa zostaje zerowa (05.09).**
+  `CPRED_STAT_MIN` przycina każdą Cechę zbitą efektami, **z jednym wyjątkiem**: podłoga nigdy nie
+  stoi wyżej niż wartość bazowa, bo Empatia obniżona Człowieczeństwem schodzi do zera i schodzić
+  ma (s. 229). Zaciskanie do jedynki **podnosiłoby** ją cyberpsychopacie — a to byłby cichy
+  prezent, nie zabezpieczenie.
+
 - **Broń podwieszana strzela amunicją zwykłą, nie wybieraną (01.09).** Wiersz `↳` ma własny
   magazynek (`attachmentAmmo`), ale **nie ma własnego `ammoId`**: podwieszany granatnik rzuca
   granatem, którego obrażenia (6k6) i Eksplozję niesie sam typ broni, a podwieszana strzelba
@@ -468,3 +505,28 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   bo cytuje je dziennik sesji i umowy kodu. Konsekwencja dla paska walki: `hotbarSlotsFor`
   (16f) jest i zostaje **generowany** z tego, co figura potrafi; ręcznie układanych slotów
   nie będzie. Nie proponuj wracania do makr.
+
+## Etap 38a — statysta jako karta postaci (05.09.2026)
+
+**Umiejętność wpisana figurze ręcznie znaczy od 38a co innego niż do 38a.** Do 38a poziom wpisany
+na liście Umiejętności profilu bojowego był **całym** modyfikatorem rzutu (Cechy szły do zera),
+bo lista służyła głównie funkcjonariuszom Wsparcia i ich Wartości bojowej. Od 38a to zwykły wiersz
+Umiejętności karty: Cecha dolicza się na wierzchu, tak jak u gracza. Semantykę „jedna liczba
+zamiast Cechy i Umiejętności" przejęło osobne, wprost nazwane pole — **Wartość bojowa** — które
+MG włącza przełącznikiem w menu figury. Zmiana jest świadoma: „figura, której MG wpisał Percepcję
+4" czyta się teraz tak samo jak na każdej innej karcie, a wyjątek nazywa się po imieniu.
+
+**Kopia figury MG dostaje własną kartę, kopia figury gracza nie.** Klonowanie żetonu (etap 35)
+kopiowało profil bojowy, więc kopia była od razu osobną figurą. Gdyby po 38a przejmowała
+podpięcie, dwa żetony dzieliłyby jedne PW i strzał w jednego gangera kładłby drugiego. Karta
+gracza się nie kopiuje — dwie figury Vex to nadal jedna Vex.
+
+**Rany figury prowadzonej przez MG jadą publicznie także wtedy, gdy to nazwany NPC.** Do 38a pole
+`TokenView.injuries` wypełniało się wyłącznie przy figurze bez karty; teraz przy każdej karcie
+**bez właściciela**. To rozszerzenie, nie przypadek: „ma odciętą dłoń" jest tym, co przy stole
+widać, a Medyk gracza ma mieć co załatać — i dotyczy to Rudego tak samo jak gangera.
+
+**Figura bez karty przestała nosić rany krytyczne.** Kółko z paskiem PW i bez karty dostaje
+obrażenia i **zdanie** („ranę krytyczną rozstrzyga MG"), tak jak przed etapem 29.08. Rany, które
+tamten etap dał statystom, przeniosły się razem z nimi na karty — a figura, której nikt nie
+ostatystykował, nie ma ich gdzie zapisać i nigdy nie miała.

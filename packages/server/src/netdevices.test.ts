@@ -332,9 +332,9 @@ describe('węzły kontrolne na żywych gniazdach', () => {
       }),
       'token:create',
     ).id;
-    await emitAck(gm, 'token:update', {
+    await emitAck(gm, 'token:stat', {
       tokenId: turretTokenId,
-      patch: { combatProfile: TURRET_PROFILE },
+      quick: TURRET_PROFILE,
     });
     targetTokenId = data(
       await emitAck<TokenView>(gm, 'token:create', {
@@ -487,8 +487,11 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(stat?.value).toBe(8);
     expect(skill?.value).toBe(9);
     // Ale magazynek jest wieżyczki i to on się opróżnia.
-    const turret = (await roundTrip(gm)).tokens.find((entry) => entry.id === turretTokenId);
-    expect((turret?.combatProfile as { ammoCurrent: number } | null)?.ammoCurrent).toBe(9);
+    const state = await roundTrip(gm);
+    const turret = state.tokens.find((entry) => entry.id === turretTokenId);
+    const card = state.characters.find((entry) => entry.id === turret?.characterId)?.data as
+      CpredCharacterData | undefined;
+    expect(card?.weapons[0]?.ammoCurrent).toBe(9);
     // A karta ataku wyszła z figury wieżyczki, nie z karty netrunnera.
     expect(roll?.actor).toBe('Grzechot');
   });

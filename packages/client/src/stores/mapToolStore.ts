@@ -38,6 +38,7 @@ export const MAP_TOOLS = [
   'zone',
   'light',
   'netpoint',
+  'spawn',
 ] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
 

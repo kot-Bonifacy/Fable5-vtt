@@ -4,6 +4,7 @@ import {
   CPRED_CRITICAL_INJURY_BONUS_DAMAGE,
   applyWoundStatuses,
   drawCriticalInjury,
+  observedWoundState,
   effectiveArmor,
   effectiveArmorSp,
   resolveCpredDamage,
@@ -527,5 +528,34 @@ describe('Redukcja obrażeń', () => {
     });
     expect(outcome.damageReduced).toBe(0);
     expect(outcome.damageThrough).toBe(8);
+  });
+});
+
+describe('observedWoundState', () => {
+  it('reads HP when it has them — all four thresholds collapse to two answers', () => {
+    expect(observedWoundState({ hp: { current: 40, max: 40 } })).toBe('healthy');
+    expect(observedWoundState({ hp: { current: 39, max: 40 } })).toBe('wounded');
+    expect(observedWoundState({ hp: { current: 20, max: 40 } })).toBe('wounded');
+    expect(observedWoundState({ hp: { current: 0, max: 40 } })).toBe('wounded');
+  });
+
+  it('falls back to the public wound stickers when HP never arrived', () => {
+    expect(observedWoundState({ statuses: ['mortally-wounded'] })).toBe('wounded');
+    expect(observedWoundState({ statuses: ['seriously-wounded'] })).toBe('wounded');
+  });
+
+  it('says „nie wiadomo" rather than „bez ran" when nothing is known', () => {
+    // A player sees neither HP nor a sticker for a Lekko ranny figure — the
+    // silence proves nothing, and this is the whole reason for the third value.
+    expect(observedWoundState({})).toBe('unknown');
+    expect(observedWoundState({ hp: null, statuses: [] })).toBe('unknown');
+    expect(observedWoundState({ statuses: ['prone', 'intimidated'] })).toBe('unknown');
+  });
+
+  it('prefers HP over stickers — the numbers are the finer truth', () => {
+    // The GM sees both; a stale sticker must not outvote a healed figure.
+    expect(
+      observedWoundState({ hp: { current: 40, max: 40 }, statuses: ['seriously-wounded'] }),
+    ).toBe('healthy');
   });
 });

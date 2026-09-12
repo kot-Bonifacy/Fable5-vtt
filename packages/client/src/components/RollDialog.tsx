@@ -9,8 +9,12 @@ import {
   cpredInjuryModifiers,
   formatRollNotation,
   planCpredRoll,
+  ROLE_GM,
 } from '@vtt/shared';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { askForCheck } from '../stores/checkStore.js';
+import { NumberStepper, signed } from './NumberStepper.js';
 import {
   useRollStore,
   type PendingRoll,
@@ -36,6 +40,8 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   const lastModifier = useRollStore((s) => s.lastModifier);
   const lastVisibility = useRollStore((s) => s.lastVisibility);
   const lastLocation = useRollStore((s) => s.lastLocation);
+  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const isDamage = target.kind === 'damage';
   // Wezwanie MG (etap 32): modyfikator i widoczność są **jego** decyzją, więc
   // okno przestaje o nie pytać i pokazuje je jako fakt. Gracz zachowuje jedyny
@@ -60,6 +66,14 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   }, [closeDialog]);
 
   if (!character) return null;
+
+  // Etap 40: prośbę składa się **własną** kartą i tylko jako gracz — MG ma na
+  // to wezwanie z 32. Przy otwartym wezwaniu przycisku nie ma: zgoda już jest.
+  const mayAsk =
+    !isGm &&
+    !call &&
+    character.ownerId === userId &&
+    (target.kind === 'skill' || target.kind === 'stat');
 
   const request: CpredRollRequest = {
     kind: target.kind,
@@ -195,26 +209,21 @@ function RollDialogBody({ target }: { target: RollTarget }) {
 
         {!call && (
           <>
-            <label className="auth-label" htmlFor="roll-modifier">
+            <span className="auth-label">
               {isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
-            </label>
-            <input
-              id="roll-modifier"
-              type="number"
+            </span>
+            <NumberStepper
               min={-CPRED_SITUATIONAL_MODIFIER_LIMIT}
               max={CPRED_SITUATIONAL_MODIFIER_LIMIT}
               value={modifier}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setModifier(
-                    Math.max(
-                      -CPRED_SITUATIONAL_MODIFIER_LIMIT,
-                      Math.min(CPRED_SITUATIONAL_MODIFIER_LIMIT, Math.round(value)),
-                    ),
-                  );
-                }
-              }}
+              onChange={setModifier}
+              format={signed}
+              label={isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
+              {...(mayAsk
+                ? {
+                    title: 'Do własnego rzutu. Z prośbą do MG nie jedzie — modyfikator ustala on.',
+                  }
+                : {})}
             />
           </>
         )}
@@ -222,22 +231,14 @@ function RollDialogBody({ target }: { target: RollTarget }) {
         {/* Luck buys successes on Checks, never damage (RAW). */}
         {!isDamage && (
           <>
-            <label className="auth-label" htmlFor="roll-luck">
-              Punkty Szczęścia (pula: {luckMax})
-            </label>
-            <input
-              id="roll-luck"
-              type="number"
+            <span className="auth-label">Punkty Szczęścia (pula: {luckMax})</span>
+            <NumberStepper
               min={0}
               max={luckMax}
               value={luckSpent}
-              disabled={luckMax === 0}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setLuckSpent(Math.max(0, Math.min(luckMax, Math.round(value))));
-                }
-              }}
+              readOnly={luckMax === 0}
+              onChange={setLuckSpent}
+              label="Punkty Szczęścia"
               title="Deklarowane przed rzutem — każdy punkt to +1 do wyniku"
             />
 
@@ -278,13 +279,27 @@ function RollDialogBody({ target }: { target: RollTarget }) {
           <button className="primary-button" type="button" onClick={confirm} disabled={!planned.ok}>
             Weź kubek
           </button>
+          {/* Etap 40: odkrywalna droga do prośby o Test. Gracz, który otworzył
+              okno konkretnej Umiejętności, jest o jedno kliknięcie od pytania
+              „czy mogę tym rzucić" — a okno ma gdzie postawić pole „po co".
+              Przy wezwaniu MG przycisku nie ma: zgoda już padła. */}
+          {mayAsk && (
+            <button
+              type="button"
+              className="small-button"
+              title="Zapytaj MG, czy da się tym rzucić (Alt + klik w wiersz karty robi to samo)"
+              onClick={() => askForCheck(target, character.data, registry)}
+            >
+              Poproś MG
+            </button>
+          )}
           <button type="button" className="small-button" onClick={closeDialog}>
             Anuluj
           </button>
         </div>
         <p className="roll-dialog-hint">
           Potrząśnij kubkiem nad stołem i puść, żeby rzucić. Shift + klik w umiejętność pomija to
-          okno.
+          okno{mayAsk ? ', Alt + klik prosi MG o Test' : ''}.
         </p>
       </div>
     </div>

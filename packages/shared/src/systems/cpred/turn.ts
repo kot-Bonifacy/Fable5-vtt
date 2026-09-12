@@ -64,6 +64,8 @@ export const CPRED_ACTION_ATTACK = 'attack';
 export const CPRED_ACTION_RELOAD = 'reload';
 /** „Usunięcie usterki" — the Action a jammed poor-quality weapon costs (s. 244). */
 export const CPRED_ACTION_CLEAR_JAM = 'clear-jam';
+/** „Schowanie broni" — jedyny z trzech gestów rąk, który kosztuje Akcję (s. 168). */
+export const CPRED_ACTION_HOLSTER = 'holster';
 export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
@@ -253,7 +255,7 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint: 'Użycie przedmiotu niewymagające rzutu na Umiejętność.',
   },
   {
-    id: 'holster',
+    id: CPRED_ACTION_HOLSTER,
     name: 'Schowanie broni',
     cost: 'action',
     hint: 'Schowanie trzymanej broni do kabury lub kieszeni zabiera Akcję.',

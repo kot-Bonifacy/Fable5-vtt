@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { CampaignDetail, CpredDataPayload, InvitationSummary } from '@vtt/shared';
+import { GAME_TIME_DEFAULT, gameMonthKey } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import type { Invitation } from '../generated/prisma/client.js';
@@ -88,7 +89,16 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     // Single active campaign at a time (see stage notes) — new one takes over.
     const campaign = await ctx.prisma.$transaction(async (tx) => {
       await tx.campaign.updateMany({ data: { active: false } });
-      return tx.campaign.create({ data: { name: trimmed, active: true } });
+      return tx.campaign.create({
+        data: {
+          name: trimmed,
+          active: true,
+          // Zegar świata rusza od miesiąca, który uznajemy za rozliczony
+          // (etap 37): świeży stół nie zaczyna od zaległego czynszu, ale
+          // pierwsze przekroczenie granicy miesiąca ma już z czym porównać.
+          settledMonth: gameMonthKey(GAME_TIME_DEFAULT),
+        },
+      });
     });
     return reply
       .code(201)

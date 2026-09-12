@@ -56,6 +56,13 @@ export function toSceneView(scene: Scene): SceneView {
     dark: scene.dark,
     darkSightM: scene.darkSightM,
     explore: scene.explore,
+    // Blokada ruchu graczy (12.09) — jedzie też do graczy, bo to ich klient ma
+    // nie podnosić figury i ma umieć powiedzieć, dlaczego.
+    playerMoveLocked: scene.playerMoveLocked,
+    // Miejsce startu drużyny (11.09): para kolumn albo nic. Jedzie też do
+    // graczy — to ich kamera je czyta, gdy nie mają jeszcze figury na mapie.
+    spawn:
+      scene.spawnX !== null && scene.spawnY !== null ? { x: scene.spawnX, y: scene.spawnY } : null,
   };
 }
 
@@ -178,6 +185,11 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     }
     if (patch.width !== undefined) data.width = patch.width;
     if (patch.height !== undefined) data.height = patch.height;
+    if (patch.playerMoveLocked !== undefined) data.playerMoveLocked = patch.playerMoveLocked;
+    if (patch.spawn !== undefined) {
+      data.spawnX = patch.spawn === null ? null : patch.spawn.x;
+      data.spawnY = patch.spawn === null ? null : patch.spawn.y;
+    }
     if (patch.gridMode !== undefined) data.gridMode = patch.gridMode;
     if (patch.metersPerSquare !== undefined) data.metersPerSquare = patch.metersPerSquare;
     if (patch.grid !== undefined) {

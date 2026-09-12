@@ -130,7 +130,7 @@ describe('validateCharacterDataPatch', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.issues[0]?.field).toBe('stats.int');
-      expect(result.issues[0]?.message).toContain('od 1 do 10');
+      expect(result.issues[0]?.message).toContain('od 0 do 10');
       expect(result.issues[0]?.message).toContain('Inteligencja');
     }
   });
@@ -138,7 +138,21 @@ describe('validateCharacterDataPatch', () => {
   it('rejects non-integer and negative stat values', () => {
     const base = createDefaultCharacterData().stats;
     expect(validateCharacterDataPatch({ stats: { ...base, dex: 5.5 } }, registry).ok).toBe(false);
-    expect(validateCharacterDataPatch({ stats: { ...base, dex: 0 } }, registry).ok).toBe(false);
+    expect(validateCharacterDataPatch({ stats: { ...base, dex: -1 } }, registry).ok).toBe(false);
+  });
+
+  /**
+   * Zero przechodzi od etapu 38a i nie jest to poluzowanie zasady.
+   *
+   * Kartę nosi od 38a także figura, której podręcznik drukuje **Wartość
+   * bojową** zamiast Cech (funkcjonariusz Wsparcia s. 158, Demon s. 212,
+   * wieżyczka s. 214) — a tym zeruje się REF, ZW i SW po to, żeby rozbicie
+   * rzutu nie doliczyło Cechy drugi raz. Jedynki pilnuje kreator postaci,
+   * nie walidator karty.
+   */
+  it('przyjmuje Cechę zero — figurę z Wartością bojową zamiast Cech (38a)', () => {
+    const base = createDefaultCharacterData().stats;
+    expect(validateCharacterDataPatch({ stats: { ...base, ref: 0 } }, registry).ok).toBe(true);
   });
 
   it('rejects unknown roles, accepts null', () => {

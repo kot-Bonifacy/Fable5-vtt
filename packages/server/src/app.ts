@@ -10,6 +10,7 @@ import { createPrisma, type PrismaClient } from './db.js';
 import { AiGateway } from './ai/gateway.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { ensureGmUser } from './auth/seed.js';
+import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
@@ -137,6 +138,9 @@ export async function buildApp(
   // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
   if (options.sweepUploads !== false) {
     sweepUploadsInBackground(prisma, config.uploadsDir, app.log);
+    // Tym samym wejściem i z tego samego powodu: portrety wgrane przed 12.09
+    // trasą bez wiersza w bazie trafiają do puli, żeby dało się je kadrować.
+    backfillPortraitAssetsInBackground(prisma, config.uploadsDir, app.log);
   }
 
   return { app, io, prisma };

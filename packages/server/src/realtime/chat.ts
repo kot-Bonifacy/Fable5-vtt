@@ -18,6 +18,7 @@ import {
   rollFormula,
 } from '@vtt/shared';
 import { createMixedRng } from './dice-rng.js';
+import { findRandomTableByName, rollTableToChat } from './tables.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   broadcastChatMessage,
@@ -270,6 +271,8 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
         throw new RealtimeError(
           parsed.reason === 'MISSING_NOTATION' ? 'ROLL_MISSING_NOTATION' : 'ROLL_BAD_NOTATION',
         );
+      case 'invalid-rolltable':
+        throw new RealtimeError('TABLE_MISSING_NAME');
       case 'say': {
         const message = await persistAndEmitSay(deps, campaignId, user, sceneId, parsed.text);
         await triggerBotsForLine(deps, {
@@ -309,6 +312,23 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           bots,
         );
         return;
+      case 'rolltable': {
+        // Tabela jest narzędziem MG (etap 34, „Poza zakresem"), więc `/tab`
+        // u gracza ma się kończyć odmową, a nie listą nazw do zgadywania.
+        if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+        const table = await findRandomTableByName(deps.ctx.prisma, campaignId, parsed.tableName);
+        if (!table) throw new RealtimeError('TABLE_NOT_FOUND');
+        await rollTableToChat(
+          deps,
+          campaignId,
+          user,
+          sceneId,
+          table.id,
+          undefined,
+          sanitizeGesture(payload.gesture),
+        );
+        return;
+      }
       case 'roll':
         await persistAndEmitRoll(
           deps,

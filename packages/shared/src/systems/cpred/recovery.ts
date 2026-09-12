@@ -34,14 +34,14 @@
  * te dni, w których miałby cokolwiek do roboty.
  */
 
-import { hpMax } from './derived.js';
 import {
   CPRED_ANTIBIOTIC_DAYS,
   type CpredArmorRow,
   type CpredCharacterData,
   type CpredRecovery,
 } from './character.js';
-import { woundState, type CpredWoundState } from './rolls.js';
+import { cpredSheetWoundState, type CpredWoundState } from './rolls.js';
+import { cpredSheetHpMax } from './statblock.js';
 
 /**
  * Chrom, który podwaja tempo: „Ulepszone przeciwciała … po każdym pełnym dniu
@@ -78,7 +78,7 @@ function sameName(a: string, b: string): boolean {
 /** Sheet fields a rest day reads — mniej niż cała karta, żeby dało się testować. */
 export type CpredRestSheet = Pick<
   CpredCharacterData,
-  'stats' | 'hpCurrent' | 'armor' | 'cyberware' | 'recovery'
+  'stats' | 'statBlock' | 'hpCurrent' | 'armor' | 'cyberware' | 'recovery'
 >;
 
 /** Skąd bierze się dzisiejsze tempo — po jednym wierszu na powód. */
@@ -166,14 +166,14 @@ export function cpredRestDay(
   options: { strained?: boolean } = {},
 ): CpredRestResult {
   const hpBefore = data.hpCurrent;
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const rate = cpredHealRate(data);
   const base: Omit<CpredRestResult, 'patch' | 'refusal'> = {
     healed: 0,
     hpBefore,
     hpAfter: hpBefore,
-    woundBefore: woundState(hpBefore, data.stats),
-    woundAfter: woundState(hpBefore, data.stats),
+    woundBefore: cpredSheetWoundState({ ...data, hpCurrent: hpBefore }),
+    woundAfter: cpredSheetWoundState({ ...data, hpCurrent: hpBefore }),
     armorRepaired: [],
     rate,
     antibioticEnded: false,
@@ -213,7 +213,7 @@ export function cpredRestDay(
     ...base,
     healed: hpAfter - hpBefore,
     hpAfter,
-    woundAfter: woundState(hpAfter, data.stats),
+    woundAfter: cpredSheetWoundState({ ...data, hpCurrent: hpAfter }),
     armorRepaired,
     antibioticEnded: data.recovery.antibioticDays > 0 && recovery.antibioticDays === 0,
     patch: {

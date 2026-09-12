@@ -7,6 +7,8 @@ import {
   cpredWeaponIcon,
   cpredWeaponModeSlot,
   cpredWeaponOptions,
+  cpredActionRefusal,
+  cpredTurnRefusalInput,
   hotbarSlotsFor,
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
@@ -15,11 +17,14 @@ import { CPRED_JAM_REFUSAL } from './attacks.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import type { CpredWeaponRow } from './character.js';
-import { createDefaultCombatProfile } from './statist.js';
+import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_ACTION_HOLD,
+  CPRED_ACTION_MOVE,
   CPRED_ACTION_RUN,
   CPRED_ACTION_SCANNER,
+  CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
 } from './turn.js';
 
@@ -68,7 +73,6 @@ function weaponRow(overrides: Partial<CpredWeaponRow> = {}): CpredWeaponRow {
 function input(overrides: Partial<CpredHotbarInput> = {}): CpredHotbarInput {
   return {
     sheet: { weapons: [weaponRow()] },
-    profile: null,
     resolve: () => pistol,
     statuses: [],
     turn: null,
@@ -80,11 +84,10 @@ function input(overrides: Partial<CpredHotbarInput> = {}): CpredHotbarInput {
 const weaponSlots = (slots: ReturnType<typeof hotbarSlotsFor>): CpredHotbarWeaponSlot[] =>
   slots.filter((slot): slot is CpredHotbarWeaponSlot => slot.kind === 'weapon');
 
-describe('cpredWeaponOptions — sheet or statist profile, never both', () => {
+describe('cpredWeaponOptions — jedno ramię od etapu 38a: wiersze karty', () => {
   it('reads the sheet rows when there is a sheet', () => {
     const options = cpredWeaponOptions(
       { weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })] },
-      null,
       () => pistol,
     );
     expect(options.map((option) => option.name)).toEqual(['Ciężki pistolet', 'Maczeta']);
@@ -93,21 +96,49 @@ describe('cpredWeaponOptions — sheet or statist profile, never both', () => {
     expect(options[1]!.ammo).toBeNull();
   });
 
-  it('falls back to the single weapon of a combat profile (stage 16b)', () => {
-    const profile = {
-      ...createDefaultCombatProfile(),
-      weaponName: 'Obrzyn',
-      ammoCurrent: 1,
-      ammoMax: 2,
-    };
-    const options = cpredWeaponOptions(null, profile, () => pistol);
+  it('czyta broń figury ostatystykowanej szybkim edytorem jak każdą inną (38a)', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [
+          weaponRow({
+            id: STATIST_WEAPON_ROW_ID,
+            name: 'Obrzyn',
+            ammoCurrent: 1,
+            ammoMax: 2,
+          }),
+        ],
+      },
+      () => pistol,
+    );
     expect(options).toHaveLength(1);
     expect(options[0]!.name).toBe('Obrzyn');
     expect(options[0]!.ammo).toEqual({ current: 1, max: 2 });
   });
 
   it('gives an unstatted token nothing to shoot with', () => {
-    expect(cpredWeaponOptions(null, null, () => pistol)).toEqual([]);
+    expect(cpredWeaponOptions(null, () => pistol)).toEqual([]);
+  });
+
+  it('nie gasi niczego, dopóki nikt nie zadeklarował rąk (etap 41)', () => {
+    // Domysł „pierwsza broń z karty" służy oględzinom. Gdyby gasił sloty, każda
+    // figura w kampanii straciłaby drugą broń z paska bez czyjejkolwiek decyzji.
+    const options = cpredWeaponOptions(
+      { weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })] },
+      () => pistol,
+    );
+    expect(options.every((option) => option.notDrawn === undefined)).toBe(true);
+  });
+
+  it('gasi broń spoza rąk, gdy ręce są zadeklarowane (etap 41)', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })],
+        drawnWeaponRowIds: ['row-2'],
+      },
+      () => pistol,
+    );
+    expect(options[0]!.notDrawn).toBe(true);
+    expect(options[1]!.notDrawn).toBeUndefined();
   });
 });
 
@@ -192,8 +223,8 @@ describe('hotbarSlotsFor — reloading', () => {
   });
 
   it('offers a statist the same reload as a sheet (29.08)', () => {
-    const profile = { ...createDefaultCombatProfile(), ammoCurrent: 1, ammoMax: 6 };
-    const slots = hotbarSlotsFor(input({ sheet: null, profile }));
+    const sheet = { weapons: [weaponRow({ ammoCurrent: 1, ammoMax: 6 })] };
+    const slots = hotbarSlotsFor(input({ sheet }));
     const reload = slots.find((slot) => slot.kind === 'reload');
     expect(reload).toBeDefined();
     expect(reload?.disabled).toBeNull();
@@ -201,15 +232,15 @@ describe('hotbarSlotsFor — reloading', () => {
   });
 
   it('greys out a statist whose magazine is already full', () => {
-    const profile = { ...createDefaultCombatProfile(), ammoCurrent: 6, ammoMax: 6 };
-    const slots = hotbarSlotsFor(input({ sheet: null, profile }));
+    const sheet = { weapons: [weaponRow({ ammoCurrent: 6, ammoMax: 6 })] };
+    const slots = hotbarSlotsFor(input({ sheet }));
     const reload = slots.find((slot) => slot.kind === 'reload');
     expect(reload?.disabled).toMatch(/pełny/);
   });
 
   it('gives an unarmed statist nothing to reload — no magazine, no box', () => {
-    const profile = { ...createDefaultCombatProfile(), ammoCurrent: 0, ammoMax: 0 };
-    const slots = hotbarSlotsFor(input({ sheet: null, profile }));
+    const sheet = { weapons: [weaponRow({ ammoCurrent: 0, ammoMax: 0 })] };
+    const slots = hotbarSlotsFor(input({ sheet }));
     expect(slots.some((slot) => slot.kind === 'reload')).toBe(false);
   });
 });
@@ -357,7 +388,7 @@ describe('hotbarSlotsFor — keys', () => {
   });
 
   it('gives an unstatted token only the catalogue actions', () => {
-    const slots = hotbarSlotsFor(input({ sheet: null, profile: null }));
+    const slots = hotbarSlotsFor(input({ sheet: null }));
     expect(slots.every((slot) => slot.kind === 'action')).toBe(true);
   });
 });
@@ -726,5 +757,74 @@ describe('zacięta broń na pasku akcji (s. 244)', () => {
     );
     const box = slots.find((slot) => slot.kind === 'clear-jam');
     expect(box?.disabled).toBe('Akcja w tej turze już wykorzystana.');
+  });
+});
+
+describe('cpredActionRefusal — jedna odmowa dla obu drzwi (10.09)', () => {
+  const free = { statuses: [], turn: null, isGm: false };
+
+  it('holds Bieg back until the Move Action has been used — the same sentence the bar shows', () => {
+    const before = cpredActionRefusal(CPRED_ACTION_RUN, {
+      statuses: [],
+      turn: { actionSpent: false, moveSpent: false },
+      isGm: false,
+    });
+    const after = cpredActionRefusal(CPRED_ACTION_RUN, {
+      statuses: [],
+      turn: { actionSpent: false, moveSpent: true },
+      isGm: false,
+    });
+    expect(before).toMatch(/Bieg wymaga/);
+    expect(after).toBeNull();
+    // …and the bar, which goes through the same function, agrees to the letter.
+    const slots = hotbarSlotsFor(input({ turn: { actionSpent: false, moveSpent: false } }));
+    const run = slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_RUN);
+    expect(run?.disabled).toBe(before);
+  });
+
+  it('keeps „Wstanie" alive under a movement block — the cure survives the condition', () => {
+    expect(cpredActionRefusal(CPRED_ACTION_STAND_UP, { ...free, statuses: ['prone'] })).toBeNull();
+    expect(cpredActionRefusal(CPRED_ACTION_RUN, { ...free, statuses: ['prone'] })).not.toBeNull();
+  });
+
+  it('refuses the forms once the Action is spent — they pay for it like every other', () => {
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: false }, isGm: false };
+    expect(cpredActionRefusal(CPRED_ACTION_STABILIZE, spent)).toMatch(/już wykorzystana/);
+    expect(cpredActionRefusal(CPRED_ACTION_HOLD, spent)).toMatch(/już wykorzystana/);
+  });
+
+  it('leaves Akcja Ruchu to the movement block — it never touches the Action', () => {
+    // Ten przycisk ma tylko zakładka „Walka"; na pasku ruch robi się ciągnięciem
+    // figury. Bez gałęzi o koszcie wspólna odmowa gasiłaby go zdaniem o Akcji.
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: false }, isGm: false };
+    expect(cpredActionRefusal(CPRED_ACTION_MOVE, spent)).toBeNull();
+    expect(cpredActionRefusal(CPRED_ACTION_MOVE, { ...free, statuses: ['prone'] })).not.toBeNull();
+  });
+
+  it('never refuses the GM a budget, and still refuses them a status', () => {
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: true }, isGm: true };
+    expect(cpredActionRefusal(CPRED_ACTION_STABILIZE, spent)).toBeNull();
+    expect(
+      cpredActionRefusal(CPRED_ACTION_STABILIZE, { ...spent, statuses: ['unconscious'] }),
+    ).not.toBeNull();
+  });
+});
+
+describe('cpredTurnRefusalInput — jedno czytanie budżetu tury', () => {
+  it('reads the tracker’s resources the way both doors need them', () => {
+    expect(cpredTurnRefusalInput(null)).toBeNull();
+    expect(
+      cpredTurnRefusalInput({
+        resources: [
+          { id: 'action', label: 'Akcja', used: 1, max: 1 },
+          { id: 'move', label: 'Ruch', used: 0, max: 1, blocked: 'Uraz nogi.' },
+        ],
+      }),
+    ).toEqual({
+      actionSpent: true,
+      moveSpent: false,
+      blockedAction: null,
+      blockedMove: 'Uraz nogi.',
+    });
   });
 });

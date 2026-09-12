@@ -8,6 +8,8 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_FIRE_INTENSITIES,
   ROLE_GM,
+  cpredActionRefusal,
+  cpredTurnRefusalInput,
   formatMetres,
 } from '@vtt/shared';
 import { combatErrorText, setCombatTerrain, setTokenEffect, spendCombatAction } from '../socket.js';
@@ -213,8 +215,17 @@ export function CombatActions({
   }
 
   const budget = combatant.turn;
-  const actionSpent = budget?.resources.find((r) => r.id === 'action')?.used === 1;
   const distance = budget?.distance;
+  // Jedno źródło odmowy dla obu drzwi (10.09). Do 12.09 zakładka pytała tylko
+  // „czy Akcja wydana", a pasek na mapie szedł przez `cpredActionRefusal` —
+  // więc Bieg bywał tu klikalny, a tam wyszarzony, i odwrotnie: formularze
+  // zostawały żywe po zużytej Akcji. Serwer odmawiał w obu przypadkach, ale
+  // obietnica interfejsu się rozjeżdżała.
+  const refusalInput = {
+    statuses: combatant.tokenId ? (tokenMap[combatant.tokenId]?.statuses ?? []) : [],
+    turn: cpredTurnRefusalInput(budget),
+    isGm,
+  };
 
   return (
     <div className="combat-actions">
@@ -245,14 +256,19 @@ export function CombatActions({
       )}
       <div className="combat-action-grid">
         {BUTTONS.map((action) => {
+          // Formularze też płacą Akcję — do 12.09 były wyjęte z warunku
+          // „zużyta Akcja" jako otwierające okno, więc zostawały klikalne,
+          // a deklaracja wracała z serwera odmową. Pasek na mapie gasił je
+          // od 16f; teraz gasi je to samo zdanie.
+          const refusal = cpredActionRefusal(action.id, refusalInput);
           if (action.id === CPRED_ACTION_STABILIZE) {
             return (
               <button
                 key={action.id}
                 type="button"
                 className="small-button"
-                title={action.hint}
-                disabled={cupBusy}
+                title={refusal ?? action.hint}
+                disabled={cupBusy || refusal !== null}
                 onClick={() => setStabilizeOpen((open) => !open)}
               >
                 {action.name}…
@@ -265,7 +281,8 @@ export function CombatActions({
                 key={action.id}
                 type="button"
                 className="small-button"
-                title={action.hint}
+                title={refusal ?? action.hint}
+                disabled={refusal !== null}
                 onClick={() => setHoldOpen((open) => !open)}
               >
                 {action.name}…
@@ -277,10 +294,11 @@ export function CombatActions({
               key={action.id}
               type="button"
               className="small-button"
-              title={action.hint}
+              title={refusal ?? action.hint}
               // The GM is never blocked — their buttons stay live even when the
-              // budget is gone, and the tracker reports the overspend.
-              disabled={!isGm && action.cost === 'action' && actionSpent}
+              // budget is gone, and the tracker reports the overspend; that rule
+              // lives inside `cpredActionRefusal`, not here.
+              disabled={refusal !== null}
               onClick={() => void spend(action.id)}
             >
               {action.name}

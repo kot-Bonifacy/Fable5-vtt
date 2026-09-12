@@ -30,6 +30,64 @@ Notatki z etapu 04. Gdzie brać grafiki map, czego pilnować licencyjnie i jak g
 - Zawartość: aleja N–S (20 m) × przecznica E–W (12 m), zaokrąglone krawężniki, przejścia dla pieszych, sygnalizacja, wysepka rozdzielająca, cztery narożniki zabudowy (dach z lądowiskiem, kamienice z zaułkami 2 m, parking, plac budowy, stragany), auta przy krawężniku i w ruchu, neony z poświatą, kałuże. Wszystkie krawędzie ulic i budynków leżą na wielokrotnościach 100 px, więc siatka pasuje przy offsecie 0.
 - W rogach są cztery małe kropki kalibracyjne (cyan / limonka / bursztyn / magenta) — pozwalają na pierwszy rzut oka potwierdzić, że wczytało się pełne 4096 px.
 
+## Mapa powitalna gracza — `uploads/art/welcome-map.webp` (poza repo)
+
+Tło, które widzi gracz, gdy kampania **nie ma aktywnej sceny** (zlecenie MG, 11.09.2026). Do tej
+pory ten stan wyglądał jak czarne pole ze zdaniem „Brak aktywnej sceny — MG musi ją aktywować";
+od 11.09 stoi tam zwykła mapa — brama strefy przemysłowej, 40 × 30 kratek. MG tego tła **nie
+dostaje**: jego „Brak sceny — utwórz i aktywuj ją" to komunikat roboczy, a nie wyrwa w immersji.
+
+- **Plik leży poza repozytorium i tak ma zostać.** Źródło: darmowa mapa do użytku prywatnego
+  (nie jest to praca własna MG, inaczej niż `night-city-crossroads-2508.webp` i plakat
+  logowania), więc obowiązuje zasada z góry tego pliku: użytek przy stole to co innego niż
+  publikacja w publicznym repo. Katalog `uploads/` jest w `.gitignore`.
+- **Ścieżka jest umową**: `uploads/art/welcome-map.webp`, adres `/uploads/art/welcome-map.webp`.
+  Stała siedzi w `packages/client/src/map/welcome-map.ts`.
+- **Dlaczego `art/`, a nie `maps/`.** Zbieracz sierot (`uploads-gc.ts`) sprząta **cztery**
+  katalogi — `maps`, `portraits`, `tokens`, `handouts` — i kasuje z nich każdy plik, którego nie
+  wymienia żaden wiersz bazy, godzinę po wgraniu. Mapy powitalnej nie wymienia nic (to nie jest
+  scena), więc w `uploads/maps/` **zniknęłaby po godzinie** przy pierwszym starcie serwera.
+  Katalog `art/` nie jest zamiatany.
+- **Brak pliku nie jest awarią.** Klient sonduje obraz przed pokazaniem (`loadWelcomeScene`);
+  gdy pliku nie ma — a nie ma go na świeżym klonie repozytorium — wraca dawne zdanie o braku
+  sceny. **Przy wdrożeniu na VPS (etap 28) plik trzeba skopiować ręcznie**, razem z resztą
+  `uploads/`; bez tego kroku funkcja po prostu nie istnieje i nikt tego nie zauważy.
+- **Siatka liczy się z pliku, nie z kodu**: `szerokość / 40` i `wysokość / 30`. Podmiana mapy na
+  inną **40 × 30** nie wymaga więc ani jednej linii kodu; przy innej skali trzeba poprawić
+  `WELCOME_MAP_COLUMNS` / `WELCOME_MAP_ROWS`.
+- **Gracz startuje pośrodku dolnej krawędzi, przybliżony na osiem kratek wokół siebie**, i nie
+  wyjedzie kamerą poza obraz (`map/camera.ts`). Na tle powitalnym punktu startu nie da się
+  przestawić — nie ma wiersza w bazie, w którym MG mógłby go zapisać; na zwykłych scenach służy
+  do tego narzędzie „Miejsce startu graczy" (klawisz `G`).
+
+### Plik: `StrefaPrzemyslowa-40x30.png` → WebP q90
+
+Wersja z 11.09.2026 (druga tego dnia): **2896 × 2176 px**, kratka **72,4 px**. Poprzedni plik
+(`IndustrialAreaGate-40x30.png`, 1448 × 1086) był tą samą mapą w połowie rozdzielczości —
+za mało, odkąd gracz startuje przybliżony: przy ośmiu kratkach wokół siebie oglądałby go
+w powiększeniu 2×.
+
+**Uwaga o wysokości:** 2176 nie dzieli się równo przez 30 (72,53 zamiast 72,4), więc ostatni rząd
+kratek jest o **4 px** wyższy od pozostałych. Na oko niewidoczne; ale to znaczy, że plik nie jest
+dokładnym dwukrotnym powiększeniem poprzedniego i że siatkę liczy się z **szerokości**.
+
+Konwersja z PNG 7911 kB do **WebP q90, 581 kB** (13,6×). Pomiary względem oryginału
+(19 mln kanałów):
+
+| wariant      |    rozmiar |    max |  średnia | kanałów > 10 |        PSNR |
+| ------------ | ---------: | -----: | -------: | -----------: | ----------: |
+| WebP q95     |    1077 kB |     85 |     1,32 |       0,74 % |     40,9 dB |
+| **WebP q90** | **581 kB** | **93** | **1,63** |   **0,88 %** | **39,7 dB** |
+| WebP q85     |     397 kB |     83 |     1,87 |       1,14 % |     38,7 dB |
+
+Między q95 a q90 różnica siedzi w szumie (0,74 % vs 0,88 % kanałów odchylonych o więcej niż 10),
+a 496 kB przy każdym wejściu gracza to realna cena; gdyby mapa miała kiedyś służyć do gry,
+a nie do patrzenia, wróć do q95. Konwersja:
+
+```
+uv run --with pillow python -c "from PIL import Image; Image.open('mapa.png').convert('RGB').save('welcome-map.webp','WEBP',quality=90,method=6)"
+```
+
 ## Darmowe mapy z sieci (sprawdzone źródła)
 
 | Źródło                                                                                                          | Co jest                                                         | Licencja / uwagi                                           |

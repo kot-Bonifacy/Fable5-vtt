@@ -44,6 +44,14 @@ import { netErrorText } from '../netErrors.js';
 import { plural } from '../plural.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { NumberStepper } from './NumberStepper.js';
+
+/** Widełki wirusa (etap 21c): PT ustala MG, a pisanie trwa tyle Akcji Sieciowych. */
+const VIRUS_DV_MIN = 1;
+const VIRUS_DV_MAX = 30;
+const VIRUS_DV_DEFAULT = 12;
+const VIRUS_ACTIONS_MIN = 1;
+const VIRUS_ACTIONS_MAX = 20;
 
 /**
  * Ekran Sieci (etapy 26b i 26c) — pływające okno z windą (decyzja MG z 14.08).
@@ -612,21 +620,16 @@ function VirusForm({
   busy: boolean;
 }) {
   const [description, setDescription] = useState('');
-  const [dv, setDv] = useState('12');
-  const [actions, setActions] = useState('1');
+  const [dv, setDv] = useState(VIRUS_DV_DEFAULT);
+  const [actions, setActions] = useState(VIRUS_ACTIONS_MIN);
   return (
     <form
       className="net-virus-form"
       onSubmit={(event) => {
         event.preventDefault();
-        const parsedDv = Number.parseInt(dv, 10);
-        const parsedActions = Number.parseInt(actions, 10);
-        if (!description.trim() || !Number.isInteger(parsedDv)) return;
-        onSubmit({
-          description: description.trim(),
-          dv: parsedDv,
-          actions: Number.isInteger(parsedActions) ? parsedActions : 1,
-        });
+        // Zakresu pilnuje przełącznik, więc tu nie ma czego parsować ani ścinać.
+        if (!description.trim()) return;
+        onSubmit({ description: description.trim(), dv, actions });
       }}
     >
       <label className="bot-field">
@@ -642,22 +645,22 @@ function VirusForm({
       <div className="net-generator-row">
         <label className="bot-field">
           <span className="auth-label">PT (ustala MG)</span>
-          <input
-            type="number"
-            min={1}
-            max={30}
+          <NumberStepper
+            min={VIRUS_DV_MIN}
+            max={VIRUS_DV_MAX}
             value={dv}
-            onChange={(event) => setDv(event.target.value)}
+            onChange={setDv}
+            label="PT wirusa"
           />
         </label>
         <label className="bot-field">
           <span className="auth-label">Akcji Sieciowych</span>
-          <input
-            type="number"
-            min={1}
-            max={20}
+          <NumberStepper
+            min={VIRUS_ACTIONS_MIN}
+            max={VIRUS_ACTIONS_MAX}
             value={actions}
-            onChange={(event) => setActions(event.target.value)}
+            onChange={setActions}
+            label="Akcji Sieciowych na napisanie wirusa"
           />
         </label>
       </div>

@@ -5,13 +5,13 @@ import type {
   RollResult,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CPRED_HAGGLE_SKILL_ID,
   CPRED_OPERATOR_ABILITY,
   ROLE_GM,
   cpredHaggleDeal,
   cpredHaggleProblem,
   cpredRoleAbilityRank,
-  effectiveCpredStats,
   mergeCharacterData,
   parseCharacterData,
   rollFormula,
@@ -93,7 +93,7 @@ export const characterHaggleEvent = defineEvent<
 
     // CHA is the effective one (stage 23a) — a Fixer who sold Empathy to a
     // ripperdoc haggles with what is left, the same as on every other Check.
-    const cool = effectiveCpredStats(data.stats, data.humanityCurrent).cool;
+    const cool = cpredEffectiveStats(data).cool;
     const trading = data.skills[CPRED_HAGGLE_SKILL_ID] ?? 0;
     const wound = woundCheckPenalty(woundState(data.hpCurrent, data.stats));
     const bonus = cool + trading + rank! + wound;

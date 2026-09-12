@@ -4,7 +4,6 @@ import type {
   CombatActionLogEntry,
   CpredBackupPending,
   CpredBackupTier,
-  CpredCombatProfile,
   SessionUser,
 } from '@vtt/shared';
 import {
@@ -17,7 +16,7 @@ import {
   readCpredCombatState,
   resolveWeapon,
 } from '@vtt/shared';
-import { backupDue, backupTierById } from '../sheets.js';
+import { backupDue, backupTierById, sheetQuickStats, type SheetQuickStats } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignScene } from './scenes.js';
 import { createStatistToken, freeSpotsNear } from './tokens.js';
@@ -112,19 +111,28 @@ async function profileFor(
   deps: RealtimeDeps,
   campaignId: string,
   tier: CpredBackupTier,
-): Promise<CpredCombatProfile> {
+): Promise<SheetQuickStats> {
   const seed = cpredBackupProfile(tier);
   const weapon = await weaponFor(deps, campaignId, tier.weapon);
-  const skills = cpredBackupSkillLevels(tier, deps.ctx.cpred);
-  return {
+  return sheetQuickStats({
     ...seed,
+    // Wartość bojowa jedzie do bloku statystyk, nie w Umiejętność (etap 38a):
+    // „Umiejętność bazowa używana do ataku i obrony […] suma Cechy
+    // i Umiejętności funkcjonariusza" (s. 158) nie mieści się w Umiejętności
+    // karty, której sufit to dziesiątka.
+    combatValue: tier.combatValue,
+    hpCurrent: tier.hp,
+    hpMax: tier.hp,
     weaponId: weapon.weaponId,
     weaponName: tier.weapon,
     weaponDamage: weapon.weaponDamage,
     ammoMax: weapon.ammoMax,
     ammoCurrent: weapon.ammoMax,
-    ...(Object.keys(skills).length > 0 ? { skills } : {}),
-  };
+    // „Mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
+    // Umiejętności" (s. 159) — lista mówi **czy wolno**, a nie na ilu:
+    // prawdziwą liczbę podstawia Wartość bojowa z bloku statystyk.
+    skills: cpredBackupSkillLevels(tier, deps.ctx.cpred),
+  });
 }
 
 /**
@@ -159,7 +167,7 @@ export async function spawnBackup(
         name: tier.count > 1 ? `${tier.unit} ${index + 1}` : tier.unit,
         at: spots[index]!,
         hp: tier.hp,
-        profile: { ...profile },
+        quick: { ...profile },
       }),
     );
   }

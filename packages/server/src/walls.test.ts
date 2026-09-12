@@ -227,6 +227,9 @@ describe('walls and dynamic vision', () => {
       'scene:create',
     );
     sceneId = scene.id;
+    // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
+    // zestaw jest o ruchu figur, nie o blokadzie.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -753,6 +756,9 @@ describe('a window is a net curtain on a lit scene', () => {
       'scene:create',
     );
     sceneId = scene.id;
+    // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
+    // zestaw jest o ruchu figur, nie o blokadzie.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },

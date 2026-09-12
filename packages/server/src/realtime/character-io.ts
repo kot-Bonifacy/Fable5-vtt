@@ -16,8 +16,14 @@ import { emitToCampaignUser, gmRoom } from './state.js';
  * token layer can reuse it without importing them (and without an import
  * cycle: tokens → character-io, characters → tokens).
  *
- * Visibility rule: a character travels only to its owner and the GM. Every
- * emission is targeted and carries no room seq — the whisper pattern.
+ * Visibility rule: a character travels to its owner, to the GM — and, od etapu
+ * 38a, do właściciela **figury**, która jest z tą kartą związana. Ostatnie jest
+ * następstwem zniknięcia profilu bojowego: do 38a gracz, któremu MG oddał
+ * gangera, dostawał jego liczby w prywatnej części żetonu, a od 38a te liczby
+ * mieszkają na karcie. Bez tej trzeciej drogi taki gracz sterowałby figurą,
+ * której statystyk nie widzi — a podgląd rzutu liczyłby się z niczego.
+ *
+ * Every emission is targeted and carries no room seq — the whisper pattern.
  */
 
 export function toCharacterView(character: Character, registry: CpredRegistry): CharacterView {
@@ -39,7 +45,12 @@ export async function fetchCharactersFor(
   user: SessionUser,
 ): Promise<CharacterView[]> {
   const rows = await prisma.character.findMany({
-    where: { campaignId, ...(user.role === ROLE_GM ? {} : { ownerId: user.id }) },
+    where: {
+      campaignId,
+      ...(user.role === ROLE_GM
+        ? {}
+        : { OR: [{ ownerId: user.id }, { tokens: { some: { ownerId: user.id } } }] }),
+    },
     orderBy: { createdAt: 'asc' },
   });
   return rows.map((row) => toCharacterView(row, registry));
@@ -52,9 +63,28 @@ export async function emitCharacterUpsert(
 ): Promise<void> {
   const payload: CharacterUpsertBroadcast = { character: view };
   deps.io.to(gmRoom(campaignId)).emit('character:upsert', payload);
-  if (view.ownerId) {
-    await emitToCampaignUser(deps.io, campaignId, view.ownerId, 'character:upsert', payload);
+  for (const userId of await characterAudience(deps, view.id, view.ownerId)) {
+    await emitToCampaignUser(deps.io, campaignId, userId, 'character:upsert', payload);
   }
+}
+
+/**
+ * Kto poza MG dostaje tę kartę: jej właściciel i właściciele figur, które są
+ * z nią związane (etap 38a — patrz reguła widoczności na górze pliku).
+ */
+async function characterAudience(
+  deps: RealtimeDeps,
+  characterId: string,
+  ownerId: string | null,
+): Promise<string[]> {
+  const steering = await deps.ctx.prisma.token.findMany({
+    where: { characterId, ownerId: { not: null } },
+    select: { ownerId: true },
+    distinct: ['ownerId'],
+  });
+  const ids = new Set<string>(ownerId ? [ownerId] : []);
+  for (const row of steering) if (row.ownerId) ids.add(row.ownerId);
+  return [...ids];
 }
 
 export async function emitCharacterDelete(
@@ -65,6 +95,9 @@ export async function emitCharacterDelete(
 ): Promise<void> {
   const payload: CharacterDeleteBroadcast = { characterId };
   deps.io.to(gmRoom(campaignId)).emit('character:delete', payload);
+  // Skasowana karta jest już poza bazą, gdy to leci, więc figur nie ma jak
+  // dopytać — kasowanie idzie do właściciela i do MG, tak jak przed 38a.
+  // Gracz sterujący figurą i tak dostaje `token:delete` albo `token:upsert`.
   if (ownerId) {
     await emitToCampaignUser(deps.io, campaignId, ownerId, 'character:delete', payload);
   }

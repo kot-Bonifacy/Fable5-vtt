@@ -1,0 +1,38 @@
+{
+  "name": "Plotka w barze",
+  "formula": "1d10",
+  "description": "Co słychać przy barze, kiedy Ekipa czeka na kontakt. Przykładowa tabela (etap 34) — treść wymyślona, nie z podręcznika.",
+  "visibility": "gm",
+  "rows": [
+    {
+      "min": 1,
+      "max": 2,
+      "text": "Barman mówi półgłosem, że od trzech nocy nikt nie widział kuriera, który zawsze pił tu o pierwszej."
+    },
+    {
+      "min": 3,
+      "max": 4,
+      "text": "Ktoś przy stoliku obok kłóci się o pieniądze za robotę, której zleceniodawca nie odebrał telefonu."
+    },
+    {
+      "min": 5,
+      "max": 5,
+      "text": "Rockerka na scenie wplata w tekst nazwę korporacji i połowa sali milknie."
+    },
+    {
+      "min": 6,
+      "max": 7,
+      "text": "Dwoje techników w kombinezonach opowiada, że w sąsiednim kwartale od tygodnia gaśnie prąd o tej samej godzinie."
+    },
+    {
+      "min": 8,
+      "max": 8,
+      "text": "Przy wyjściu stoi ktoś, kto nie pije i nie rozmawia — i patrzy dokładnie w stronę Ekipy."
+    },
+    {
+      "min": 9,
+      "max": 10,
+      "text": "Plotka jest fałszywa i puścił ją ktoś, kto chce, żeby Ekipa poszła pod wskazany adres."
+    }
+  ]
+}

@@ -1,10 +1,24 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import {
+  DEFAULT_PORTRAIT_CROP,
   fallbackConditionStatusId,
+  portraitCropPlacement,
   tokenCondition,
+  tokenHpRung,
+  type PortraitCrop,
   type TokenCondition,
+  type TokenHpRung,
   type TokenView,
 } from '@vtt/shared';
+import {
+  RING_WIDTH,
+  furnitureRadius,
+  hpRingCasing,
+  hpRingRadius,
+  hpRingWidth,
+  ownerRingRadius,
+  portraitRadius,
+} from './token-ring.js';
 
 /** Everything a node needs to draw itself for the local viewer. */
 export interface TokenNodeCtx {
@@ -17,9 +31,17 @@ export interface TokenNodeCtx {
   conditions: ReadonlyMap<string, TokenCondition>;
   /** Token acting right now in the initiative tracker (stage 14). */
   activeTokenId: string | null;
+  /**
+   * Kadr portretu na mapie (12.09), po adresie pliku.
+   *
+   * Kadr jest cechą **obrazka**, nie figury, więc pyta się o niego adresem:
+   * ten sam portret na dwóch żetonach jest ujęty tak samo. Brak wpisu znaczy
+   * „na środek", czyli dokładnie to, co mapa rysowała przed tą zmianą — mapa
+   * nie ma osobnego trybu „bez kadru".
+   */
+  portraitCrops: ReadonlyMap<string, PortraitCrop>;
 }
 
-const RING_WIDTH = 3;
 const RING_OWN = 0x4ade80;
 const RING_OTHER_PLAYER = 0x38bdf8;
 const RING_NPC = 0xf87171;
@@ -36,11 +58,51 @@ const TURN_RING_WIDTH = 5;
 // a second thin ring inside it simply disappears. The overlay is the one layer
 // that already scales its strokes by the zoom.
 
-const HP_GREEN = 0x22c55e;
-const HP_ORANGE = 0xf59e0b;
-const HP_RED = 0xef4444;
+/**
+ * Kolory obrączki PW — **te same, co pasek PW w panelu postaci** (zlecenie MG,
+ * 12.09).
+ *
+ * Gracz ma na ekranie dwa paski tej samej postaci naraz: obrączkę wokół swojej
+ * figury i pasek w lewym górnym rogu, w panelu. Do 12.09 mówiły dwoma
+ * językami — mapa miała trzy stopnie liczone z ułamka, panel cztery, wzięte
+ * ze stanu ran — więc ta sama postać bywała na mapie zielona, a w panelu
+ * żółta. Teraz obie strony pytają `tokenHpRung` i biorą kolor z tej tabeli.
+ *
+ * Wartości są przepisane z **nocnej** palety `theme.css` (`--ok`,
+ * `--hurt-light`, `--warn`, `--err`), a nie czytane z niej w locie, i to jest
+ * świadome: płótno mapy zostaje nocne w obu motywach (decyzja etapu 27e — Pixi
+ * maluje na nim białe podpisy), więc w dzień pasek w panelu przyciemnia się
+ * razem z resztą interfejsu, a obrączka ma zostać jasna. Zgodności obu tabel
+ * pilnuje `token-ring.test.ts`; zmiana koloru w `theme.css` wymaga zmiany tutaj.
+ */
+const HP_RUNG_COLORS: Readonly<Record<TokenHpRung, number>> = {
+  healthy: 0x34c759,
+  light: 0xd4d94a,
+  serious: 0xd9a441,
+  mortal: 0xff3b30,
+};
 /** The unfilled part of the arc — dark enough to read as „missing". */
 const HP_TRACK = 0x0b1220;
+/** Koszulka pod obrączką: obrys, dzięki któremu pasek czyta się na każdym tle. */
+const HP_CASING = 0x05070d;
+
+/**
+ * Kadr portretu tej figury (12.09) — po adresie pliku, nie po figurze.
+ *
+ * Zwraca kadr domyślny, gdy portretu nie ma albo nikt go nie kadrował; żeton
+ * z obrazkiem spoza puli (biblioteka żetonów, grafika z `public/`) też trafia
+ * tutaj i dostaje dawne „na środek".
+ */
+function cropFor(url: string | null, ctx: TokenNodeCtx): PortraitCrop {
+  if (!url) return DEFAULT_PORTRAIT_CROP;
+  return ctx.portraitCrops.get(url) ?? DEFAULT_PORTRAIT_CROP;
+}
+
+/** Czy ta figura w ogóle nosi obrączkę PW — patrz `drawHpArc`. */
+function hasHpRing(token: TokenView): boolean {
+  const hp = token.hp;
+  return hp !== undefined && hp !== null && hp.max > 0;
+}
 
 /**
  * The ground under the figure (stage 27j).
@@ -68,6 +130,14 @@ const BASE_COLORS: Readonly<Record<TokenCondition, number>> = {
  * played again, and a dimmed portrait made it look destroyed. `down` therefore
  * keeps its dark red base and gets its icon, and the face stays a face.
  */
+/**
+ * Tło krążka pod portretem — to, co widać tam, gdzie kadr wyjechał poza obraz.
+ *
+ * Ten sam grafit, co spokojna podstawa figury (`BASE_COLORS.ok`): pusty pas ma
+ * czytać się jak część żetonu, a nie jak brakujący fragment mapy.
+ */
+const PORTRAIT_BACKDROP = 0x0f172a;
+
 const CONDITION_TINT: Readonly<Record<TokenCondition, number>> = {
   ok: 0xffffff,
   wounded: 0xffffff,
@@ -163,6 +233,13 @@ export class TokenNode extends Container {
   private readonly nameText: Text;
   private readonly statusLayer = new Container();
   private imageUrl: string | null = null;
+  /**
+   * Kadr, którym jest ujęty aktualnie wczytany portret (12.09).
+   *
+   * Zapamiętany, bo `fitImage` woła się także po doczytaniu tekstury — czyli
+   * poza `update`, gdzie kontekst jest pod ręką.
+   */
+  private imageCrop: PortraitCrop = DEFAULT_PORTRAIT_CROP;
   private extentPx = 0;
   private signature = '';
   /**
@@ -183,6 +260,12 @@ export class TokenNode extends Container {
   private serverFacing: number | null | undefined = undefined;
   /** Colour the nose is painted, kept so a local turn need not re-derive it. */
   private ringTint = RING_NPC;
+  /**
+   * Dokąd sięga oprawa figury (`furnitureRadius`), zapamiętane z ostatniego
+   * przerysowania — klin kierunku rysuje się też poza `update`, ze `showFacing`,
+   * i musi wiedzieć, czy ma obejść obrączkę PW, czy samą obwódkę.
+   */
+  private furniture = 0;
   private turnGlow = 0;
 
   constructor(token: TokenView) {
@@ -252,6 +335,9 @@ export class TokenNode extends Container {
       ctx.myUserId,
       ctx.isGm,
       ctx.activeTokenId === token.id,
+      // Bez tego przestawienie kadru przez MG nie przerysowałoby figury:
+      // podpis nie zmienia się, gdy zmienia się sam sposób ujęcia obrazka.
+      cropFor(token.imageUrl, ctx),
     ]);
     if (signature === this.signature) return;
     this.signature = signature;
@@ -260,7 +346,11 @@ export class TokenNode extends Container {
     this.extentPx = extent;
     this.ringTint = ringColor(token, ctx);
     const center = extent / 2;
-    const radius = center - RING_WIDTH / 2;
+    const radius = ownerRingRadius(extent);
+    // Obrączka PW leży od 12.09 **poza** portretem, więc to ona, a nie obwódka
+    // właściciela, wyznacza brzeg figury dla wszystkiego, co się o ten brzeg
+    // opiera: aureoli tury i klina kierunku.
+    this.furniture = furnitureRadius(extent, hasHpRing(token));
 
     // Only the GM ever receives hidden tokens — render them ghosted.
     this.alpha = token.hidden ? 0.5 : CONDITION_ALPHA[condition];
@@ -276,32 +366,33 @@ export class TokenNode extends Container {
     // readable (owner colour keeps its meaning during combat).
     this.turnRing.clear();
     if (ctx.activeTokenId === token.id) {
+      // Liczone od brzegu oprawy, nie od obwódki: gdy figura nosi obrączkę PW,
+      // aureola narysowana po staremu schowałaby się pod paskiem — `turnRing`
+      // leży w kolejności rysowania **pod** nim.
+      const halo = this.furniture;
       this.turnRing
         // A filled disc under the figure, not only a line round it. At a fifth
         // of scale a five-pixel halo is one screen pixel of amber and the
         // question „whose turn is it" goes back to being asked out loud.
-        .circle(center, center, radius + TURN_RING_WIDTH * 2)
+        .circle(center, center, halo + TURN_RING_WIDTH * 2)
         .fill({ color: TURN_RING_COLOR, alpha: 0.16 })
-        .circle(center, center, radius + TURN_RING_WIDTH)
+        .circle(center, center, halo + TURN_RING_WIDTH)
         .stroke({ color: TURN_RING_COLOR, width: TURN_RING_WIDTH, alpha: 0.55 })
-        .circle(center, center, radius + 1)
+        .circle(center, center, halo + 1)
         .stroke({ color: TURN_RING_COLOR, width: 2, alpha: 0.95 });
     } else {
       this.turnGlow = 0;
       this.turnRing.alpha = 1;
     }
 
-    this.imageMask
-      .clear()
-      .circle(center, center, radius - RING_WIDTH / 2)
-      .fill(0xffffff);
+    this.imageMask.clear().circle(center, center, portraitRadius(extent)).fill(0xffffff);
 
-    this.placeholder
-      .clear()
-      .circle(center, center, radius - RING_WIDTH / 2)
-      .fill(placeholderColor(token.name));
     const hasImage = token.imageUrl !== null;
-    this.placeholder.visible = !hasImage;
+    // Krążek pod portretem jest teraz rysowany **zawsze** (12.09): od kiedy kadr
+    // wolno wywieźć poza obraz, jego brzeg bywa pusty — a pustka pod maską to
+    // dziura, przez którą widać mapę pod figurą. Bez obrazka to dalej dawny
+    // kolorowy placeholder z inicjałem; pod obrazkiem — ciemne tło żetonu.
+    this.paintPlaceholder(hasImage ? PORTRAIT_BACKDROP : placeholderColor(token.name));
     this.initial.visible = !hasImage;
     this.initial.text = token.name.trim().charAt(0).toUpperCase() || '?';
     this.initial.style.fontSize = extent * 0.4;
@@ -310,6 +401,7 @@ export class TokenNode extends Container {
     this.placeholder.tint = CONDITION_TINT[condition];
     this.tiltPortrait(condition);
 
+    this.imageCrop = cropFor(token.imageUrl, ctx);
     this.updateImage(token.imageUrl, extent);
     this.drawHpArc(token, extent, condition);
     this.drawNose(extent, this.ringTint);
@@ -319,7 +411,12 @@ export class TokenNode extends Container {
     this.nameText.style.fontSize = Math.max(12, extent * 0.14);
     // Below the base, not below the circle: the ellipse sticks out under the
     // figure's feet, and a name printed over it reads as a caption on a shadow.
-    this.nameText.position.set(center, extent + Math.max(6, extent * 0.1));
+    // Od 12.09 podpis ustępuje też obrączce PW: ta wyszła poza kratkę i jej
+    // dolny łuk kończył się dokładnie na pierwszym wierszu nazwy.
+    this.nameText.position.set(
+      center,
+      Math.max(extent, center + this.furniture) + Math.max(6, extent * 0.1),
+    );
 
     this.updateStatuses(token, ctx, extent, condition);
   }
@@ -332,6 +429,37 @@ export class TokenNode extends Container {
    */
   get facing(): number | null {
     return this.shownFacing;
+  }
+
+  /**
+   * Dokąd sięga oprawa tej figury, licząc od jej środka (12.09).
+   *
+   * Czyta to `MapRenderer`, bo obrączka zaznaczenia i uchwyt obrotu rysują się
+   * na warstwie nakładki, a nie tutaj — i muszą wiedzieć, że od 12.09 brzegiem
+   * figury bywa obrączka PW, a nie obwódka właściciela. Bez tego biały przerywany
+   * okrąg siadałby graczowi **na pasku życia** przy każdym przybliżeniu: jego
+   * odstęp liczy się w pikselach ekranu, więc w pikselach świata topnieje
+   * wraz ze zbliżeniem.
+   */
+  get outerRadius(): number {
+    return this.furniture || this.extentPx / 2 - RING_WIDTH / 2;
+  }
+
+  /**
+   * Kolor obwódki właściciela: zielona — moja figura, błękitna — cudza gracza,
+   * czerwona — NPC.
+   *
+   * Czyta go `MapRenderer`, odkąd „tą figurą sterują moje kliknięcia" mówi
+   * **pogrubiona własna obwódka**, a nie osobny biały okrąg (zlecenie MG,
+   * 12.09): nakładka musi znać kolor, który ma pogrubić.
+   */
+  get ownerRingTint(): number {
+    return this.ringTint;
+  }
+
+  /** Promień osi obwódki właściciela w pikselach świata — dla tej samej nakładki. */
+  get ownerRingRadius(): number {
+    return ownerRingRadius(this.extentPx);
   }
 
   /**
@@ -399,20 +527,44 @@ export class TokenNode extends Container {
         this.fitImage(this.extentPx);
       })
       .catch(() => {
-        // Broken image: the placeholder disc simply stays visible.
+        if (this.destroyed || this.imageUrl !== url) return;
+        // Zepsuty plik: krążek wraca do koloru z nazwy i inicjału, bo tło
+        // portretu (grafit) samo w sobie niczego by o figurze nie mówiło.
+        this.paintPlaceholder(placeholderColor(this.token.name));
+        this.initial.visible = true;
       });
   }
 
-  /** Scales the image to cover the circle (center-crop for non-square art). */
+  /** Krążek pod portretem — tło obrazka albo placeholder, zależnie od koloru. */
+  private paintPlaceholder(color: number): void {
+    const centre = this.extentPx / 2;
+    this.placeholder.clear().circle(centre, centre, portraitRadius(this.extentPx)).fill(color);
+    this.placeholder.visible = true;
+  }
+
+  /**
+   * Wpisuje obraz w krążek według kadru MG (12.09).
+   *
+   * Kotwica **jest** punktem kadru, a sprite stoi nią na środku kratki — dzięki
+   * temu leżąca figura (`CONDITION_TILT_DEG`) dalej obraca się wokół środka
+   * krążka, a nie wokół środka pliku, i portret nie ucieka spod maski.
+   *
+   * Bez kadru wychodzi dokładnie to, co ta metoda liczyła wcześniej: skala
+   * `extent / min(w, h)` i kotwica 0,5, czyli ślepy środkowy kadr.
+   */
   private fitImage(extent: number): void {
     const tex = this.image.texture;
     if (tex === Texture.EMPTY || tex.width === 0 || tex.height === 0) return;
-    const scale = extent / Math.min(tex.width, tex.height);
-    this.image.setSize(tex.width * scale, tex.height * scale);
-    this.image.anchor.set(0.5);
+    const place = portraitCropPlacement(
+      this.imageCrop,
+      { width: tex.width, height: tex.height },
+      extent,
+    );
+    this.image.setSize(tex.width * place.scale, tex.height * place.scale);
+    this.image.anchor.set(place.anchorX, place.anchorY);
     this.image.position.set(extent / 2, extent / 2);
-    // With an image the disc is just a loading backdrop.
-    this.placeholder.visible = false;
+    // Krążek zostaje pod obrazem: kadr wyjechany poza grafikę odsłania jego
+    // brzeg, a tam ma być tło żetonu, nie mapa. Znika tylko inicjał.
     this.initial.visible = false;
   }
 
@@ -427,21 +579,37 @@ export class TokenNode extends Container {
    * Drawn from the top clockwise, which is how every dial a person has ever
    * read empties, and on a dark track so „half gone" is legible without doing
    * arithmetic on a length.
+   *
+   * **Od 12.09 obrączka leży poza portretem, nie na nim** (zlecenie MG). Do tej
+   * pory biegła wewnątrz obwódki właściciela — czyli po brzegu twarzy, którą
+   * zasłaniała tym bardziej, im szerszy był pasek. Na zewnątrz kosztuje to tyle,
+   * że figura wystaje poza swoją kratkę o szerokość paska; MG wybrał ten koszt
+   * świadomie, woląc go od zwężenia portretu. Promień liczy `hpRingRadius`,
+   * bo czyta go też `furnitureRadius` — aureola tury i klin kierunku muszą
+   * wiedzieć, gdzie ten pasek się kończy.
    */
   private drawHpArc(token: TokenView, extent: number, condition: TokenCondition): void {
     this.hpArc.clear();
     const hp = token.hp;
     // Absent hp = not visible to this viewer; null = token simply has none.
-    if (hp === undefined || hp === null || hp.max <= 0) return;
+    if (!hasHpRing(token) || hp === undefined || hp === null) return;
     const ratio = Math.max(0, Math.min(1, hp.current / hp.max));
-    const color = ratio > 0.5 ? HP_GREEN : ratio > 0.25 ? HP_ORANGE : HP_RED;
-    const width = Math.max(4, extent * 0.07);
+    // Kolor bierze się ze szczebla, nie z ułamka — tego samego, na którym stoi
+    // pasek PW w panelu postaci. Długość łuku dalej z ułamka: szczebel mówi
+    // „jak źle", łuk „ile jeszcze".
+    const color = HP_RUNG_COLORS[tokenHpRung(hp)];
+    const width = hpRingWidth(extent);
     const centre = extent / 2;
-    const radius = centre - RING_WIDTH - width / 2;
+    const radius = hpRingRadius(extent);
     const start = -Math.PI / 2;
     this.hpArc
+      // Ciemna koszulka pod całą obrączką (12.09). Pasek wyjechał poza figurę,
+      // czyli wprost na rysunek mapy — a ten bywa jasny. Bez obrysu zielone
+      // na piaskowym betonie przestaje być paskiem, a zaczyna być plamą.
       .circle(centre, centre, radius)
-      .stroke({ color: HP_TRACK, width, alpha: 0.75, cap: 'butt' });
+      .stroke({ color: HP_CASING, width: width + hpRingCasing(extent) * 2, alpha: 0.85 })
+      .circle(centre, centre, radius)
+      .stroke({ color: HP_TRACK, width, alpha: 0.9, cap: 'butt' });
     if (ratio > 0) {
       // `moveTo` before the arc, and it is not optional: Pixi keeps one path
       // cursor per `Graphics`, so an `arc` following anything else is joined to
@@ -450,14 +618,14 @@ export class TokenNode extends Container {
       this.hpArc
         .moveTo(centre + Math.cos(start) * radius, centre + Math.sin(start) * radius)
         .arc(centre, centre, radius, start, start + ratio * Math.PI * 2)
-        .stroke({ color, width, alpha: 0.95, cap: 'butt' });
+        .stroke({ color, width, alpha: 1, cap: 'butt' });
     }
     // A figure at zero has an empty ring, which is easy to mistake for „no data"
     // — so the ring itself goes red when the fight is over for this one.
     if (condition === 'down' || condition === 'dead') {
       this.hpArc
         .circle(centre, centre, radius)
-        .stroke({ color: HP_RED, width: 2, alpha: 0.7, cap: 'butt' });
+        .stroke({ color: HP_RUNG_COLORS.mortal, width: 2, alpha: 0.7, cap: 'butt' });
     }
   }
 
@@ -474,7 +642,10 @@ export class TokenNode extends Container {
     const facing = this.shownFacing;
     if (facing === null || extent <= 0) return;
     const centre = extent / 2;
-    const radius = centre - RING_WIDTH / 2;
+    // Klin zaczyna się za całą oprawą figury, a nie za samą obwódką: od 12.09
+    // między nimi leży obrączka PW, a klin narysowany po staremu wycinałby
+    // w niej dziurę (rysuje się nad nią).
+    const radius = this.furniture || centre - RING_WIDTH / 2;
     // Screen degrees: 0 is up, and up is −Y.
     const angle = ((facing - 90) * Math.PI) / 180;
     // Sized off the figure rather than off the screen, and generously: the

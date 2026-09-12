@@ -4,7 +4,7 @@ import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   CPRED_CHOKE_ROUNDS_TO_UNCONSCIOUS,
-  woundStateFromHp,
+  observedWoundState,
 } from '@vtt/shared';
 import { combatErrorText, holdCombatAction, sendGrappleAction } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -145,11 +145,15 @@ export function StabilizePicker({
       // Uczestnik bez figury (Czarny LOD z 26c) nie jest celem żadnej z tych
       // Akcji — Ustabilizowanie, Pochwycenie i reszta dotyczą ciał.
       combat.combatants.filter(hasFigureRow).map((row) => {
-        const hp = tokens[row.tokenId]?.hp ?? null;
+        const token = tokens[row.tokenId];
         return {
           tokenId: row.tokenId,
           name: row.name,
-          wounded: hp !== null && woundStateFromHp(hp.current, hp.max) !== 'healthy',
+          // Trzy stany, nie dwa: cudze PW nie opuszczają serwera, więc gracz
+          // patrzy na tę listę bez liczb i musi dostać „nie wiadomo" zamiast
+          // „bez ran" — inaczej lista, która istnieje po to, żeby wybrać
+          // konającego, ogłasza, że nikt nie jest ranny.
+          wounds: observedWoundState({ hp: token?.hp, statuses: token?.statuses }),
         };
       }),
     [combat.combatants, tokens],
@@ -175,7 +179,7 @@ export function StabilizePicker({
         {targets.map((target) => (
           <li key={target.tokenId} className="combat-picker-row">
             <span className="combat-picker-name">{target.name}</span>
-            {!target.wounded && <span className="combat-tag">bez ran</span>}
+            {target.wounds === 'healthy' && <span className="combat-tag">bez ran</span>}
             <button
               type="button"
               className="small-button"

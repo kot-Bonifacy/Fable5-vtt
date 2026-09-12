@@ -40,6 +40,24 @@ granatnikiem i dwie karty obrażeń przekreślone „Cofnięte — MG".
 zamiast celować (u MG wolno zaznaczyć każdą figurę), przez co uzbrojona broń schodzi z ręki,
 a następny klik w mapę jest **rozkazem marszu**. Kolejność jest w `pulapki-dev.md`.
 
+**Stan po sesji 09.09 (oględziny 29a — zdobywanie i wydawanie PD) — Poligon nietknięty.**
+Nośnikiem był znowu **„Frank"**: na czas oględzin dostał właściciela **`Tester`**, Rolę
+**Solo ze Zmysłem Walki 2**, 300 PD i cztery Umiejętności (Atletyka 2, Percepcja 4, Ogień ciągły 4,
+Broń krótka 3), w trakcie sesji był jeszcze przestawiony na **Medyka** — i **wrócił do stanu
+sprzed**: `NPC (MG)`, bez Roli, bez Umiejętności, 0 PD. Cztery karty graczy, którym „✦ Przyznaj
+wszystkim" dosypało pulę (Tony, avatar9, Test 27x, Marcin), mają **z powrotem 0 PD**, a **rejestr
+awansów jest znowu pusty** — przed sesją nie miał ani jednego wiersza w całej bazie.
+**Ślad zerowy: ani jedna karta czatu nie powstała** (oba okna rzutu zamknięte „Anuluj"), żaden
+żeton nie był stawiany ani kasowany, scena i kolejka walki nietknięte.
+
+**Stan po sesji 06.09 (trzeciej — etap 40, prośba o Test).** Nośnikiem był znowu **„Frank"**:
+na czas oględzin dostał właściciela **`Tester`** i **wrócił do `NPC (MG)`**. Karta jest
+nietknięta — prośby i wezwania niczego na niej nie zmieniają (skutki rozlicza MG ręką, decyzja
+z 32). W logu czatu został **ślad świadomy**: trzy karty „Prośba o Test" na Franku (zgoda z PT 15,
+odmowa ze zdaniem MG, wycofana przez gracza), dwie karty wezwania i jedna karta rzutu
+„Odczytywanie emocji (EMP) — Niezdane · 9". Otwartych wezwań **nie ma** (odwołane), kubek
+Testera pusty. Reszta sceny nietknięta.
+
 **Stan po sesji 04.09 (oględziny Zdolności Ról 30a–30d) — Poligon wraca do stanu sprzed sesji.**
 Nośnikiem był **„Frank"**, przestawiany kolejno na dziewięć Ról (Solo → Medyk → Technik → Stróż
 Prawa → Korpo → Rocker → Fixer → Nomada → Media) i **przywrócony z kopii zdjętej na starcie**:
@@ -123,6 +141,28 @@ w bazie (`Campaign.shopTier`), bo migracja dawała każdej kampanii `shopTier = 
 by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Kompendium"** pod chipami
 kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
 poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
+
+## Jak się ogląda (procedura, nie stan)
+
+Przeniesione z „Od czego zacząć" w `POSTEP.md` 10.09.2026 — to procedura, a nie stan sceny,
+więc nie starzeje się razem z resztą tego pliku.
+
+**Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
+i krótkie pytanie przy kasowaniu. Flaga niczego nie blokuje i **nie rozchodzi się sama** po
+podpiętych ekranach (patrz pułapki).
+
+**Oględziny Roli robi się jedną kartą przestawianą kolejno na dziewięć Ról** — tak poszły
+30a–30d 04.09 (decyzja MG), na „Franku", w kolejności Solo → Medyk → Technik → Stróż Prawa →
+Korpo → Rocker → Fixer → Nomada → Media. Żadna karta na scenach testowych nie ma tych Ról
+z siebie. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
+z sesji MG albo przestawia Rolę u MG i patrzy graczem. **Trzecia droga, tańsza i sprawdzona
+30.08, 02.09 oraz 04.09:** kartę przygotowuje się wprost w bazie (`node --input-type=module` +
+`node:sqlite` na `packages/server/dev.db`, przeładowanie karty przeglądarki przynosi nowy stan)
+— patrz pułapki. **Nośnikiem bez skutków ubocznych jest „Frank"** (pusta karta poligonu, bez
+Roli i bez ekwipunku); 02.09 dostał na czas sesji właściciela `Tester` i wrócił do `NPC (MG)`.
+Kopia wszystkich kart sprzed tamtej sesji: `data/private/backups/characters-2026-09-02.json`.
+**Kartę nośną dla innego etapu trzeba potem przywrócić**: „Test 27x" jest netrunnerem poligonu
+Sieci i po 29b wróciła do Interfejsu 7 (`poligon.md`).
 
 ## Stan po sesji 05.09 (druga — etap 35: ping, ramka, kopia)
 
@@ -444,3 +484,37 @@ przy okazji sprawdzony i działa); **„Frank"** miał na czas testu odmowy pods
 
 **Ślady zostawione świadomie:** karta strzału z granatnika podwieszanego „nabój: Amunicja dymna
 · obszar 10×10 m · odchylenie…" w logu czatu.
+
+## Oględziny 38b (06.09.2026) — scena wrócona do stanu sprzed sesji
+
+Do sprawdzenia przenoszenia przedmiotów poligon dostał na czas sesji: **„Frank" z właścicielem
+`Tester`** (trzy stimpaki, 120 ed) z figurą postawioną **1 m** od ciała, oraz **„Rudy
+Kwiatkowski" jako ciało** (0 PW, Zgrzyt 9 12/30, Kurtka Kevlarowa OB 7/11, Stimpak ×2, 500 ed).
+**Wszystko przywrócone po oględzinach** ze snapshotu startowego
+(`data/private/backups/snapshot-2026-09-06-1056/db.sqlite`): Frank znów jest `NPC (MG)` z pustą
+kartą i zerowym saldem, Rudy ma 40 PW, 500 ed i samą „Bardzo dużą broń białą", a figura
+`tok-frank-38b` została skasowana.
+
+**Co zostało po sesji i zostać musi:** dwa wiersze w `LedgerEntry` („do: Frank" / „od: Rudy
+Kwiatkowski", 500 ed) i kilka kart czatu rodzaju `inventory`. Audyt jest z założenia
+tylko-do-dopisywania, a historii czatu i tak się nie sprząta.
+
+**Przepis na powtórzenie tego układu** (gdy MG będzie chciał odklikać menu figury): karta bez
+właściciela z ekwipunkiem i `hpCurrent: 0`, figura gracza w promieniu 2 m — nic więcej nie trzeba,
+bo o wszystkim rozstrzyga `ownerId`, stan figury i odległość.
+
+## Oględziny 34 (06.09.2026) — dwie tabele testowe, które zostają
+
+Poligon ma od tej sesji **dwie tabele losowe** (zakładka MG „Tabele") i **zostają na stałe**, bo
+są najtańszym sposobem sprawdzenia podrzutu bez odtwarzania czegokolwiek:
+
+- **„Bronie uliczne"** (`1d10`, tylko MG) — 1–6 średni pistolet niskiej jakości, 7–10 rozpruwacze;
+- **„Łup z kieszeni"** (`1d10`, tylko MG) — 1–5 zmięte eddiesy, **6–10 „Broń przy ciele"
+  z podrzutem do „Broni ulicznych"**.
+
+Drugi wiersz „Łupu" jest całym testem zagnieżdżenia: jedno kliknięcie „Losuj" ma dać na czacie
+kartę z **dwoma** krokami. Do sprawdzenia widoczności wystarczy „Pokaż stołowi" przy dowolnej
+karcie — publiczna kopia ma być jedyną, którą `Tester` widzi po przeładowaniu.
+
+**Ślady zostawione świadomie:** kilka kart czatu rodzaju `gmrolltable` i jedna `rolltable`
+(pokazana stołowi). Czatu się nie sprząta.

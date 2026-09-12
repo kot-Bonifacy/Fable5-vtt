@@ -24,6 +24,7 @@ import {
   type SceneObjectRef,
   type SceneObjectShape,
   type ScenePoint,
+  type SceneView,
   type TokenView,
 } from '@vtt/shared';
 import {
@@ -34,6 +35,8 @@ import {
   type RenderGlow,
   type RulerLine,
 } from '../map/MapRenderer.js';
+import { partyStart } from '../map/camera.js';
+import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
@@ -45,6 +48,7 @@ import {
   myActiveCombatant,
   useCombatStore,
 } from '../stores/combatStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import {
   clearRuler,
   createCover,
@@ -66,6 +70,7 @@ import {
   undoSceneDelete,
   paintFog,
   sendPing,
+  updateScene,
   sendRuler,
   sendTokenMove,
   setTokenFacing,
@@ -112,6 +117,7 @@ import {
   drawingErrorText,
   lightErrorText,
   openingErrorText,
+  sceneErrorText,
   tokenErrorText,
   wallErrorText,
 } from '../mapErrors.js';
@@ -129,6 +135,7 @@ import {
   useMapToolStore,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
+import { SightingWindow } from './SightingWindow.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
@@ -146,6 +153,14 @@ export interface TokenMenuState {
  * may see it: the GM sees every character, a player only their own (the
  * server never sends anyone else's, so `characters` already reflects that).
  */
+/**
+ * Ile czasu po wejściu na scenę kadr wolno jeszcze przesunąć na figurę gracza,
+ * która przyjechała chwilę po samej scenie (`frameStart`). Dwie i pół sekundy
+ * to z zapasem jedna wymiana `state:request` → `state:sync` przez internet;
+ * po tym czasie widok należy do gracza i nikt mu go nie rusza.
+ */
+const CAMERA_REANCHOR_MS = 2500;
+
 function openSheetOfToken(tokenId: string): void {
   const token = useTokenStore.getState().tokens[tokenId];
   if (!token) return;
@@ -172,6 +187,8 @@ function moveErrorText(code: string | undefined): string {
       return 'Ruch odrzucony — sprawdź kartę odmowy na czacie.';
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
+    case 'MOVE_LOCKED':
+      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:
@@ -380,8 +397,12 @@ function walkRefusalFor(
   combat: CombatView | null,
   token: TokenView | undefined,
   isGm: boolean,
+  scene: SceneView | null,
 ): string | null {
   if (!tokenId || isGm) return null;
+  // Mapa zamknięta przez MG (12.09) wyprzedza wszystko inne: dopóki jej nie
+  // otworzy, ani Tura, ani stan figury nie mają nic do rzeczy.
+  if (scene?.playerMoveLocked) return 'MG nie otworzył jeszcze tej mapy do ruchu.';
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
   // „Not your turn" is asked in exactly one place (stage 16f): the action bar
@@ -430,6 +451,13 @@ export function MapArea() {
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
   /** Token under the crosshair and where the pointer is (stage 16f). */
   const [aimHover, setAimHover] = useState<AimHover | null>(null);
+  /**
+   * Mapa powitalna gracza w trzech stanach: `undefined` — sonda jeszcze
+   * w drodze, `null` — pliku nie ma, scena — jest co postawić. Trzy, a nie dwa,
+   * bo inaczej przez czas wczytywania obrazu mrugałby komunikat „Brak aktywnej
+   * sceny", czyli dokładnie to, co ta mapa ma z ekranu zdjąć.
+   */
+  const [welcome, setWelcome] = useState<SceneView | null | undefined>(undefined);
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useMapToolStore((s) => s.tokenPlacement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -576,10 +604,12 @@ export function MapArea() {
     };
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
     renderer.onWalkStateChange = setMarchingTokenId;
+    // Etap 41: menu figury otwiera się **także graczowi**, w wersji okrojonej do
+    // jednej pozycji — oględzin. Do 41 był to wyłącznie panel MG, więc gracz nie
+    // miał żadnego wejścia w cudzą figurę poza celownikiem; co w menu widzi kto,
+    // rozstrzyga `TokenContextMenu`, nie ten warunek.
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
-      if (useAuthStore.getState().user?.role === ROLE_GM) {
-        setMenu({ tokenId, x: clientX, y: clientY });
-      }
+      setMenu({ tokenId, x: clientX, y: clientY });
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
     // Two doors into one attack (stage 16f). A crosshair armed from a sheet or
@@ -611,11 +641,26 @@ export function MapArea() {
       });
     };
     renderer.onNotePlace = (x, y) => useSceneCardStore.getState().startNoteDraft({ x, y });
+    // Miejsce startu drużyny (11.09) jedzie zwykłą łatką sceny — to jedno pole
+    // sceny, a nie obiekt na niej, więc nie potrzebuje własnego zdarzenia.
+    renderer.onSpawnPlace = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      void updateScene(current.id, { spawn: { x, y } }).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(sceneErrorText(ack.error));
+      });
+    };
     renderer.onNoteActivate = (noteId) =>
       useSceneCardStore.getState().openCard({ kind: 'note', id: noteId });
     renderer.onDrawingCreate = (shape) => {
       const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
+      // Podgląd kreski żyje do odpowiedzi serwera — a gdy sceny nie ma, żadna
+      // odpowiedź nie przyjdzie i szkic zostałby na ekranie na zawsze. Skrótem
+      // `R` narzędzie da się uzbroić mimo wyłączonego guzika w pasku.
+      if (!current) {
+        renderer.clearDrawingPreview();
+        return;
+      }
       const tools = useMapToolStore.getState();
       const gmOnly = useAuthStore.getState().user?.role === ROLE_GM && tools.drawGmOnly;
       void createDrawing(current.id, shape, currentDrawingStyle(tools), gmOnly).then((ack) => {
@@ -792,18 +837,88 @@ export function MapArea() {
       // icon does (stage 27j) — the map never learns what „unconscious" means.
       conditions: conditionRegistry(tokenState.statuses),
       activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
+      // Kadr portretu (12.09) jest cechą obrazka, więc jedzie tu jako
+      // odwzorowanie adres → ujęcie, a nie polem figury: ten sam plik na dwóch
+      // żetonach ma być ujęty tak samo.
+      portraitCrops: usePortraitStore.getState().crops,
     });
+  }, []);
+
+  // Mapa powitalna gracza (11.09): gdy MG nie aktywował niczego, gracz dostaje
+  // zwykłą mapę zamiast czarnego pola z komunikatem. Sonda rusza dopiero, gdy
+  // naprawdę nie ma czego pokazać — MG nie pyta o nią nigdy, bo swoją pustkę ma
+  // widzieć. Wynik siedzi w `welcome` i **nie wchodzi do `sceneStore`**:
+  // wszystko poza rendererem ma dalej wiedzieć, że sceny nie ma.
+  useEffect(() => {
+    if (isGm || scene) return;
+    let cancelled = false;
+    void loadWelcomeScene().then((backdrop) => {
+      if (!cancelled) setWelcome(backdrop);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isGm, scene]);
+
+  /** Co widzi renderer: scena serwera, a pod jej nieobecność tło powitalne. */
+  const displayScene = scene ?? (isGm ? null : (welcome ?? null));
+
+  /**
+   * Kadr startowy gracza (11.09): przybliżenie na osiem kratek wokół **jego**
+   * figury, a gdy jej tu nie ma — wokół miejsca startu wyznaczonego przez MG
+   * albo środka dolnej krawędzi mapy.
+   *
+   * Ref, a nie stan, bo to jest pamięć „tę scenę już kadrowałem": efekt niżej
+   * rusza też przy każdej edycji sceny przez MG (zmiana kratki, nazwy, tła),
+   * a kamera odrzucona wtedy do punktu startu byłaby dla gracza wyrwaniem
+   * widoku z ręki w środku walki.
+   */
+  const framedRef = useRef<{ sceneId: string; onOwnToken: boolean; at: number } | null>(null);
+
+  const frameStart = useCallback((displayed: SceneView | null) => {
+    const renderer = rendererRef.current;
+    if (!renderer || !displayed) return;
+    const user = useAuthStore.getState().user;
+    // MG zostaje z `fitScene`: on ogląda całą mapę, bo ma nią zarządzać.
+    if (!user || user.role === ROLE_GM) return;
+    const mine = Object.values(useTokenStore.getState().tokens).find(
+      (token) => token.sceneId === displayed.id && token.ownerId === user.id,
+    );
+    const framed = framedRef.current;
+    if (framed?.sceneId === displayed.id) {
+      // Już kadrowana. Wolno poprawić kadr **raz**: po `scene:activate` figury
+      // przyjeżdżają osobnym `state:sync` chwilę po samej scenie, więc pierwszy
+      // kadr może trafić na „nie masz tu figury". Po paru sekundach widok
+      // należy już do gracza i nikt mu go nie przesuwa.
+      if (framed.onOwnToken || !mine) return;
+      if (Date.now() - framed.at > CAMERA_REANCHOR_MS) return;
+    }
+    renderer.frameAround(
+      mine ? tokenCentre(mine, displayed) : partyStart(displayed, displayed.spawn),
+    );
+    framedRef.current = { sceneId: displayed.id, onOwnToken: mine !== undefined, at: Date.now() };
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    rendererRef.current?.setScene(scene);
+    const renderer = rendererRef.current;
+    renderer?.setScene(displayScene);
+    // Kamera gracza nie wyjeżdża poza mapę (decyzja MG, 11.09); MG zostaje
+    // z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać.
+    renderer?.setCameraLocked(!isGm);
+    // Chorągiewkę miejsca startu widzi wyłącznie MG — gracz ma z niej tylko
+    // kadr, w którym się budzi.
+    renderer?.setSpawn(isGm ? (displayScene?.spawn ?? null) : null);
     // A scene change wipes the token layer, and the store subscription below
     // may have already delivered this scene's tokens (state:sync fills the
     // stores before React runs this effect) — re-push, or the map stays empty
     // until the next token event.
     pushTokens();
-  }, [ready, scene, pushTokens]);
+    frameStart(displayScene);
+    // Figury bywają o krok za sceną (patrz `frameStart`), więc kadr dostaje
+    // jeszcze jedną szansę, gdy przyjadą.
+    return useTokenStore.subscribe(() => frameStart(displayScene));
+  }, [ready, displayScene, isGm, pushTokens, frameStart]);
 
   // Where a shot arriving over the socket ends up (stage 27i). Bound to the
   // scene id as well as to the renderer, so a batch that overtakes a scene
@@ -877,10 +992,18 @@ export function MapArea() {
     const unsubTokens = useTokenStore.subscribe(pushTokens);
     const unsubScene = useSceneStore.subscribe(pushTokens);
     const unsubCombat = useCombatStore.subscribe(pushTokens);
+    // MG przestawia kadr w oknie puli — figury mają zmienić ujęcie od razu,
+    // a nie po przeładowaniu strony.
+    const unsubPortraits = usePortraitStore.subscribe(pushTokens);
+    // Pula jest publiczna dla każdego zalogowanego, więc gracz czyta kadry tą
+    // samą drogą co MG. Nieudane pobranie nie psuje mapy: bez wpisu figura
+    // dostaje kadr domyślny.
+    void usePortraitStore.getState().load();
     return () => {
       unsubTokens();
       unsubScene();
       unsubCombat();
+      unsubPortraits();
     };
   }, [ready, pushTokens]);
 
@@ -971,6 +1094,7 @@ export function MapArea() {
         useCombatStore.getState().combat,
         selected ? useTokenStore.getState().tokens[selected] : undefined,
         useAuthStore.getState().user?.role === ROLE_GM,
+        useSceneStore.getState().scene,
       ),
     );
   }, []);
@@ -981,10 +1105,15 @@ export function MapArea() {
     const unsubSelection = useSelectionStore.subscribe(pushWalkRefusal);
     const unsubCombat = useCombatStore.subscribe(pushWalkRefusal);
     const unsubTokens = useTokenStore.subscribe(pushWalkRefusal);
+    // Blokada ruchu jest cechą sceny (12.09), więc przekręcenie jej przez MG
+    // musi dojść tą samą drogą, co powalenie figury — inaczej gracz miałby
+    // kursor „nie wolno" jeszcze długo po otwarciu mapy.
+    const unsubScene = useSceneStore.subscribe(pushWalkRefusal);
     return () => {
       unsubSelection();
       unsubCombat();
       unsubTokens();
+      unsubScene();
     };
   }, [ready, pushWalkRefusal]);
 
@@ -1117,6 +1246,7 @@ export function MapArea() {
     if (!ready) return;
     rendererRef.current?.setRulerMode(tool === 'ruler');
     rendererRef.current?.setNotePlacing(tool === 'note' && isGm);
+    rendererRef.current?.setSpawnPlacing(tool === 'spawn' && isGm);
     rendererRef.current?.setFogBrush({
       armed: tool === 'fog' && isGm,
       mode: fogMode,
@@ -1733,13 +1863,16 @@ export function MapArea() {
   }, [isGm]);
 
   return (
-    <section className="map-area">
+    <section className={`map-area${!scene && displayScene ? ' map-area--welcome' : ''}`}>
       <div
         ref={hostRef}
         className={`map-canvas-host ${placement ? 'map-canvas-host--placing' : ''}`}
         onContextMenu={(e) => e.preventDefault()}
       />
-      {!scene && (
+      {/* Gracz pod mapą powitalną nie dostaje żadnego napisu (decyzja MG,
+          11.09) — to ma być świat, a nie komunikat. Zdanie wraca, gdy tła nie
+          ma czym zastąpić pustki: na świeżym klonie bez pliku w `uploads/`. */}
+      {!scene && (isGm || welcome === null) && (
         <div className="map-overlay">
           <p className="placeholder-text">
             {isGm
@@ -1782,6 +1915,7 @@ export function MapArea() {
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
+      <SightingWindow />
     </section>
   );
 }

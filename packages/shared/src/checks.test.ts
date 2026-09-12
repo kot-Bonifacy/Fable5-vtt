@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkCallTargetText,
+  checkRequestResolutionLabel,
   isCheckCallOpen,
+  isCheckRequestOpen,
   mayAnswerCheckCall,
+  mayCancelCheckRequest,
   type CheckCallEntry,
+  type CheckRequestEntry,
 } from './checks.js';
-import { chatCategoryOf, chatCompactLine, type ChatMessageView } from './chat.js';
+import { chatCategoryOf } from './chat.js';
 
 /** Wezwanie do Testu, tak jak wychodzi z `check:call` (etap 32). */
 function call(patch: Partial<CheckCallEntry> = {}): CheckCallEntry {
@@ -20,18 +24,6 @@ function call(patch: Partial<CheckCallEntry> = {}): CheckCallEntry {
     system: { kind: 'skill', skillId: 'perception' },
     calledByName: 'MG',
     ...patch,
-  };
-}
-
-function message(entry: CheckCallEntry): ChatMessageView {
-  return {
-    id: 7,
-    kind: 'check',
-    authorId: 'user-gm',
-    authorName: 'MG',
-    text: 'Coś brzęknęło',
-    check: entry,
-    createdAt: '2026-09-02T20:00:00.000Z',
   };
 }
 
@@ -86,34 +78,66 @@ describe('wezwanie w feedzie czatu', () => {
   it('należy do grupy „Rzuty" — chowa się razem z rzutem, który zapowiada', () => {
     expect(chatCategoryOf('check')).toBe('dice');
   });
+});
 
-  it('otwartego wezwania tryb zwarty nie ściska — ma przycisk', () => {
-    expect(chatCompactLine(message(call()))).toBeNull();
+/** Prośba o Test, tak jak wychodzi z `check:request` (etap 40). */
+function request(patch: Partial<CheckRequestEntry> = {}): CheckRequestEntry {
+  return {
+    characterId: 'char-1',
+    characterName: 'Forty',
+    askedById: 'user-vex',
+    askedByName: 'Vex',
+    rollLabel: 'Odczytywanie emocji (EMP)',
+    reason: 'Chcę zrozumieć, co znaczy ta mina.',
+    system: { kind: 'skill', skillId: 'human-perception' },
+    ...patch,
+  };
+}
+
+describe('stan prośby o Test (etap 40)', () => {
+  it('otwarta jest tylko prośba bez rozstrzygnięcia', () => {
+    expect(isCheckRequestOpen(request())).toBe(true);
+    for (const kind of ['approved', 'refused', 'withdrawn'] as const) {
+      expect(isCheckRequestOpen(request({ resolution: { kind, byName: 'MG' } }))).toBe(false);
+    }
   });
 
-  it('rozliczone ściska się z werdyktem i zabarwieniem', () => {
-    const entry = call({
-      resolved: { messageId: 8, byName: 'Vex', success: true, total: 18 },
-    });
-    expect(chatCompactLine(message(entry))).toEqual({
-      actor: 'Forty',
-      summary: 'Percepcja (INT) · PT 15 (Trudny) — Zdane (18)',
-      tone: 'success',
-    });
+  it('wycofuje wyłącznie ten, kto prosił — MG ma na to „Odmów"', () => {
+    const entry = request();
+    expect(mayCancelCheckRequest(entry, 'user-vex')).toBe(true);
+    expect(mayCancelCheckRequest(entry, 'user-gm')).toBe(false);
   });
 
-  it('nieudane ściska się na czerwono', () => {
-    const entry = call({
-      resolved: { messageId: 8, byName: 'Vex', success: false, total: 11 },
-    });
-    expect(chatCompactLine(message(entry))?.tone).toBe('failure');
+  it('rozstrzygniętej prośby nie da się wycofać', () => {
+    const entry = request({ resolution: { kind: 'refused', byName: 'MG' } });
+    expect(mayCancelCheckRequest(entry, 'user-vex')).toBe(false);
   });
 
-  it('odwołane zostaje jedną linią bez werdyktu', () => {
-    const entry = call({ cancelled: { byName: 'MG' } });
-    expect(chatCompactLine(message(entry))).toEqual({
-      actor: 'Forty',
-      summary: 'Percepcja (INT) — wezwanie odwołane',
-    });
+  it('plakietka niesie próg, na który MG przystał', () => {
+    expect(
+      checkRequestResolutionLabel(
+        request({
+          resolution: {
+            kind: 'approved',
+            byName: 'MG',
+            callMessageId: 9,
+            targetText: 'PT 15 (Trudny)',
+          },
+        }),
+      ),
+    ).toBe('Zgoda — PT 15 (Trudny)');
+    expect(
+      checkRequestResolutionLabel(request({ resolution: { kind: 'refused', byName: 'MG' } })),
+    ).toBe('Odmowa');
+    expect(checkRequestResolutionLabel(request())).toBe('');
+  });
+});
+
+describe('prośba w feedzie czatu', () => {
+  it('siedzi w grupie „Rzuty" razem z wezwaniem, które z niej powstanie', () => {
+    // Zgaszona grupa „Rzuty" ma gasić całą zapowiedź rzutu, a nie jej połowę:
+    // prośba bez wezwania albo wezwanie bez prośby to pół rozmowy.
+    expect(chatCategoryOf('request')).toBe(chatCategoryOf('check'));
+    expect(chatCategoryOf('request')).toBe('dice');
   });
 });

@@ -7,10 +7,10 @@ import {
   cpredTreatmentOptions,
   describeCareOptions,
   isCriticalInjuryEntry,
-  sanitizeCombatProfile,
 } from '@vtt/shared';
-import { assignCriticalInjury, updateToken } from '../socket.js';
+import { assignCriticalInjury, updateCharacter } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { TreatInjury } from './TreatInjury.js';
@@ -44,6 +44,9 @@ export function FigureInjuries({
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const token = useTokenStore((s) => s.tokens[tokenId]);
+  const character = useCharacterStore((s) =>
+    token?.characterId ? (s.characters[token.characterId] ?? null) : null,
+  );
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   /** Rana i tryb, w którym otwarto przy niej formularz — jak na karcie. */
@@ -63,18 +66,17 @@ export function FigureInjuries({
   }, [entriesById, order, injuries]);
 
   /**
-   * Zapis ręką MG idzie **całym profilem**, bo taki jest kształt `token:update`.
-   * Możliwy wyłącznie u MG i u właściciela figury — tylko oni dostają profil;
-   * gracz z listą ran (jadącą publicznie) leczy, ale nie kasuje, i to jest
-   * dokładnie ta różnica, którą widać na guzikach niżej.
+   * Zapis ręką MG idzie na kartę figury (etap 38a; do 38a szedł całym profilem
+   * bojowym w `token:update`). Możliwy wyłącznie u MG i u właściciela figury —
+   * tylko oni dostają kartę; gracz z listą ran (jadącą publicznie) leczy, ale
+   * nie kasuje, i to jest dokładnie ta różnica, którą widać na guzikach niżej.
    */
   function writeInjuries(next: CpredCriticalInjuryRow[]): void {
-    if (!token?.combatProfile) return;
-    const profile = sanitizeCombatProfile(token.combatProfile);
-    void updateToken(tokenId, { combatProfile: { ...profile, criticalInjuries: next } });
+    if (!character) return;
+    void updateCharacter(character.id, { data: { criticalInjuries: next } });
   }
 
-  const mayEdit = isGm && !!token?.combatProfile;
+  const mayEdit = isGm && !!character;
 
   if (injuries.length === 0 && !mayEdit) return null;
 

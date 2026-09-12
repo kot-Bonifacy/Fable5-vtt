@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
-  CpredCombatProfile,
+  CpredStatistQuick,
   TokenPatch,
   TokenView,
   WeaponEntry,
@@ -9,9 +10,11 @@ import type {
 import {
   ARMOR_SP_MAX,
   CPRED_INTIMIDATED_STATUS_ID,
+  CPRED_COMBAT_VALUE_MAX,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
   LIGHT_COLORS,
+  ROLE_GM,
   LIGHT_DEFAULT_COLOR,
   LIGHT_RADIUS_MAX_METRES,
   SKILL_LEVEL_MAX,
@@ -22,10 +25,10 @@ import {
   TOKEN_SIZE_MAX,
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
-  createDefaultCombatProfile,
+  createDefaultStatistQuick,
   isWeaponEntry,
   resolveWeapon,
-  sanitizeCombatProfile,
+  statistQuick,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import {
@@ -35,17 +38,23 @@ import {
   removeFromCombat,
   toggleTokenLight,
   setTokenFeared,
+  statToken,
   updateToken,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useAuthStore } from '../stores/authStore.js';
+import { useSightingStore } from '../stores/sightingStore.js';
+import { askAboutFigureCard } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useInventoryStore } from '../stores/inventoryStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
 import type { TokenMenuState } from './MapArea.js';
+import { NumberStepper } from './NumberStepper.js';
 
 const MENU_WIDTH = 240;
 
@@ -55,19 +64,23 @@ interface PlayerOption {
 }
 
 /**
- * The statist's fighting numbers (stage 16b).
+ * The figure's fighting numbers (stage 16b, przepisane w 38a).
  *
- * Twelve fields instead of a character sheet, and the shortness is the feature:
- * a ganger who exists to fire three shots and fall over should be statted
- * between two sentences of narration. Everything not asked for here is the
- * rulebook's ordinary human — see `systems/cpred/statist.ts`.
+ * Kilkanaście pól zamiast karty postaci, i krótkość jest tu funkcją: ganger,
+ * który istnieje po to, żeby oddać trzy strzały i paść, ma dać się
+ * ostatystykować między dwoma zdaniami narracji. Wszystko, o co ten formularz
+ * nie pyta, jest przeciętnym człowiekiem z podręcznika.
+ *
+ * Od etapu 38a te liczby **zapisują się na karcie postaci** figury (zdarzenie
+ * `token:stat`), a nie w kolumnie JSON żetonu — ale formularz jest ten sam,
+ * bo szybkość była całym powodem etapu 16b.
  */
 function StatistProfileFields({
   profile,
   onChange,
 }: {
-  profile: CpredCombatProfile;
-  onChange: (next: CpredCombatProfile) => void;
+  profile: CpredStatistQuick;
+  onChange: (next: CpredStatistQuick) => void;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -77,7 +90,7 @@ function StatistProfileFields({
     .map((id) => entries[id])
     .filter((entry): entry is WeaponEntry => !!entry && isWeaponEntry(entry));
 
-  function set<K extends keyof CpredCombatProfile>(key: K, value: CpredCombatProfile[K]) {
+  function set<K extends keyof CpredStatistQuick>(key: K, value: CpredStatistQuick[K]) {
     onChange({ ...profile, [key]: value });
   }
 
@@ -119,54 +132,88 @@ function StatistProfileFields({
     <>
       <div className="scene-editor-row">
         {statFields.map((field) => (
-          <label key={field.key} className="auth-label" title={`Cecha ${field.label}`}>
+          <span key={field.key} className="auth-label" title={`Cecha ${field.label}`}>
             {field.label}
-            <input
-              type="number"
-              className="scene-number-input"
+            <NumberStepper
               min={CPRED_STAT_MIN}
               max={CPRED_STAT_MAX}
               value={profile[field.key]}
-              onChange={(e) => set(field.key, Number(e.target.value))}
+              onChange={(value) => set(field.key, value)}
+              label={`Cecha ${field.label}`}
             />
-          </label>
+          </span>
         ))}
       </div>
       <div className="scene-editor-row">
-        <label className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
+        <span className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
           Umiejętność
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
-            max={10}
+            max={SKILL_LEVEL_MAX}
             value={profile.skillLevel}
-            onChange={(e) => set('skillLevel', Number(e.target.value))}
+            onChange={(value) => set('skillLevel', value)}
+            label="Poziom umiejętności broni"
           />
-        </label>
-        <label className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
+        </span>
+        <span className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
           Unik
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
-            max={10}
+            max={SKILL_LEVEL_MAX}
             value={profile.evasion}
-            onChange={(e) => set('evasion', Number(e.target.value))}
+            onChange={(value) => set('evasion', value)}
+            label="Poziom Uniku"
           />
-        </label>
-        <label className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
+        </span>
+        <span className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
           Pancerz OB
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={ARMOR_SP_MAX}
             value={profile.armorSp}
-            onChange={(e) => set('armorSp', Number(e.target.value))}
+            onChange={(value) => set('armorSp', value)}
+            label="OB pancerza statysty"
           />
-        </label>
+        </span>
       </div>
+      {/*
+        Wartość bojowa (s. 158) — jedna liczba zamiast Cech i Umiejętności.
+        Wystawiona od etapu 38a, bo do tej pory dostawał ją wyłącznie
+        funkcjonariusz Wsparcia z reguły, a MG stawiający C-SWAT ręką nie miał
+        czym: wpisana Umiejętność 14 dawała REF **plus** czternaście, czyli
+        Cechę policzoną dwa razy.
+      */}
+      <label className="auth-label">
+        <input
+          type="checkbox"
+          checked={profile.combatValue !== null}
+          onChange={(e) => set('combatValue', e.target.checked ? profile.skillLevel : null)}
+        />{' '}
+        Wartość bojowa zamiast Cech
+      </label>
+      {profile.combatValue !== null && (
+        <div className="scene-editor-row">
+          <NumberStepper
+            min={0}
+            max={CPRED_COMBAT_VALUE_MAX}
+            value={profile.combatValue}
+            onChange={(value) => set('combatValue', value)}
+            label="Wartość bojowa"
+          />
+          <span className="auth-hint">
+            Atak i obrona jedną liczbą, z Cechą już w środku (s. 158). Tak liczą się funkcjonariusze
+            Wsparcia, Demony i wieżyczki.
+          </span>
+        </div>
+      )}
+      <label className="auth-label">
+        <input
+          type="checkbox"
+          checked={profile.noBulletDodge}
+          onChange={(e) => set('noBulletDodge', e.target.checked)}
+        />{' '}
+        Nie unika pocisków (s. 158)
+      </label>
 
       <label className="auth-label" htmlFor="statist-weapon">
         Broń
@@ -184,23 +231,22 @@ function StatistProfileFields({
         ))}
       </select>
       <div className="scene-editor-row">
-        <label className="auth-label" title="Naboje w magazynku">
+        <span className="auth-label" title="Naboje w magazynku">
           Amunicja
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={profile.ammoMax}
-            value={profile.ammoCurrent}
-            onChange={(e) => set('ammoCurrent', Number(e.target.value))}
+            value={Math.min(profile.ammoCurrent, profile.ammoMax)}
+            onChange={(value) => set('ammoCurrent', value)}
+            label="Naboje w magazynku statysty"
           />
-        </label>
+        </span>
         <span className="auth-hint">z {profile.ammoMax}</span>
       </div>
       <StatistSkillFields profile={profile} onChange={onChange} />
       <p className="auth-hint">
-        Reszta cech statysty to 5 (przeciętny człowiek). PW bierze się z paska powyżej, nie z
-        profilu.
+        Reszta Cech to 5 (przeciętny człowiek). PW bierze się z paska powyżej. Zapis zakłada figurze
+        kartę postaci — stanie w panelu postaci obok reszty i da się ją tam dopisać.
       </p>
     </>
   );
@@ -223,8 +269,8 @@ function StatistSkillFields({
   profile,
   onChange,
 }: {
-  profile: CpredCombatProfile;
-  onChange: (next: CpredCombatProfile) => void;
+  profile: CpredStatistQuick;
+  onChange: (next: CpredStatistQuick) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const [picked, setPicked] = useState('');
@@ -245,21 +291,19 @@ function StatistSkillFields({
     <>
       <p className="auth-label">Testy poza bronią i Unikiem</p>
       <p className="auth-hint">
-        Wpisana liczba to <strong>cały</strong> modyfikator rzutu — Cecha i Umiejętność razem, tak
-        jak Wartość bojowa Wsparcia (s. 158). Figura nie doda już do niej żadnej Cechy.
+        Zwykły poziom Umiejętności — Cecha dolicza się na wierzchu, tak jak na karcie postaci.
+        Figura z <strong>Wartością bojową</strong> rzuca nią zamiast tego, bo tamta liczba ma Cechę
+        już w środku.
       </p>
       {rows.map((row) => (
         <div key={row.id} className="scene-editor-row">
           <span className="auth-hint">{row.name}</span>
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={SKILL_LEVEL_MAX}
             value={row.level}
-            aria-label={`Poziom: ${row.name}`}
-            onChange={(e) => {
-              const level = Number(e.target.value);
+            label={`Poziom: ${row.name}`}
+            onChange={(level) => {
               const next = { ...skills };
               if (level > 0) next[row.id] = level;
               else delete next[row.id];
@@ -338,13 +382,23 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [hasProfile, setHasProfile] = useState(token.combatProfile != null);
-  const [profile, setProfile] = useState<CpredCombatProfile>(() =>
-    token.combatProfile ? sanitizeCombatProfile(token.combatProfile) : createDefaultCombatProfile(),
-  );
   const characters = useCharacterStore((s) => s.characters);
   const characterOrder = useCharacterStore((s) => s.order);
-  const linked = characterId !== '';
+  /**
+   * Karta figury prowadzonej przez MG — ta, którą pisze szybki edytor.
+   *
+   * Karta z właścicielem tędy nie idzie: to postać gracza i statystyki zmienia
+   * się na niej, a nie sześcioma polami w menu żetonu.
+   */
+  const figureCard =
+    token.characterId && characters[token.characterId]?.ownerId === null
+      ? characters[token.characterId]
+      : null;
+  const [hasProfile, setHasProfile] = useState(figureCard !== null);
+  const [profile, setProfile] = useState<CpredStatistQuick>(() =>
+    figureCard ? statistQuick(figureCard.data) : createDefaultStatistQuick(),
+  );
+  const linked = characterId !== '' && characters[characterId]?.ownerId != null;
 
   useEffect(() => {
     apiGet<CampaignDetail[]>('/api/campaigns')
@@ -388,16 +442,37 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
             on: token.light?.on ?? true,
           }
         : null,
-      // A linked token takes its HP from the sheet — never write them here.
-      ...(linked ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
-      // A token with a real sheet has no use for a statist profile, and keeping
-      // both would give the attack path two sources for one weapon (stage 16b).
-      combatProfile: linked || !hasProfile ? null : { ...profile },
+      // Figura z kartą bierze PW z karty — nigdy się ich tu nie pisze.
+      ...(linked || hasProfile ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
+      // Odhaczenie „statystyk bojowych" odpina kartę i oddaje żetonowi własny
+      // pasek PW. Samej karty **nie kasuje** — o tym pyta dopiero kosz figury,
+      // bo skasowanie karty jest nieodwracalne, a odpięcie nie.
+      ...(!hasProfile && figureCard ? { characterId: null } : {}),
     };
     const ack = await updateToken(token.id, patch);
+    if (!ack.ok) {
+      setSaving(false);
+      setError('Nie udało się zapisać tokenu.');
+      return;
+    }
+    // Karta po żetonie, nie odwrotnie: `token:update` mogło właśnie zmienić
+    // podpięcie, a `token:stat` ma pisać do tego, co z tego wyszło.
+    if (hasProfile && !linked) {
+      const statAck = await statToken(token.id, {
+        ...profile,
+        // PW z paska nad formularzem — jeden komplet pól dla figury z kartą
+        // i bez, żeby MG nie wpisywał tej samej liczby w dwóch miejscach.
+        hpCurrent: hasHp ? hpCurrent : profile.hpCurrent,
+        hpMax: hasHp ? hpMax : profile.hpMax,
+      });
+      if (!statAck.ok) {
+        setSaving(false);
+        setError('Nie udało się zapisać statystyk figury.');
+        return;
+      }
+    }
     setSaving(false);
-    if (ack.ok) onClose();
-    else setError('Nie udało się zapisać tokenu.');
+    onClose();
   }
 
   return (
@@ -620,7 +695,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
                 checked={hasProfile}
                 onChange={(e) => setHasProfile(e.target.checked)}
               />{' '}
-              Profil bojowy (statysta bez karty postaci)
+              Statystyki bojowe (figura dostaje własną kartę)
             </label>
             {hasProfile && <StatistProfileFields profile={profile} onChange={setProfile} />}
           </>
@@ -713,6 +788,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
   const statuses = useTokenStore((s) => s.statuses);
   const combat = useCombatStore((s) => s.combat);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
@@ -738,6 +814,41 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
 
   const left = Math.min(menu.x, window.innerWidth - MENU_WIDTH - 8);
   const top = Math.min(menu.y, window.innerHeight - 320);
+
+  function inspect() {
+    if (!token) return;
+    useSightingStore.getState().open(token.id);
+    onClose();
+  }
+
+  /*
+   * Etap 41: menu gracza to **jedna pozycja**, i celowo tylko jedna.
+   *
+   * Cała reszta tego menu jest warsztatem MG — ukrywanie figur, naklejki,
+   * kolejka walki, edycja żetonu — a atak i Konfrontację gracz ma z celownika
+   * i z paska akcji, gdzie płaci się za nie budżetem tury. Dokładanie ich tutaj
+   * dałoby drugie wejście do tego samego, tyle że z pominięciem paska.
+   */
+  if (!isGm) {
+    return (
+      <>
+        <div
+          className="context-menu-backdrop"
+          onClick={onClose}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
+        />
+        <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
+          <p className="context-menu-title">{token.name}</p>
+          <button type="button" className="context-menu-item" onClick={inspect}>
+            🔍 Przyjrzyj się…
+          </button>
+        </div>
+      </>
+    );
+  }
 
   function toggleStatus(statusId: string) {
     if (!token) return;
@@ -765,6 +876,12 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     onClose();
   }
 
+  function openExchange() {
+    if (!token?.characterId) return;
+    useInventoryStore.getState().open(token.characterId, token.id);
+    onClose();
+  }
+
   async function duplicate() {
     if (!token) return;
     const ack = await duplicateToken(token.id);
@@ -775,7 +892,8 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   async function remove() {
     if (!token) return;
     if (!window.confirm(`Usunąć token „${token.name}”?`)) return;
-    await deleteToken(token.id);
+    // Drugie pytanie tylko wtedy, gdy jest o co pytać — patrz `figure-cards.ts`.
+    await deleteToken(token.id, askAboutFigureCard(token));
     onClose();
   }
 
@@ -816,6 +934,18 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             📄 Otwórz kartę postaci
           </button>
         )}
+        {/* Etap 38b: łup i przeszukanie. Okno otwiera się „od strony" tej figury
+            — jej ekwipunek staje po lewej, a MG wskazuje, komu to oddać. */}
+        {token.characterId && (
+          <button type="button" className="context-menu-item" onClick={openExchange}>
+            🎒 Przeszukaj…
+          </button>
+        )}
+        {/* Etap 41: to samo okno, które widzi gracz — MG zagląda w nie, żeby
+            sprawdzić, co druga strona jest w stanie o tej figurze zobaczyć. */}
+        <button type="button" className="context-menu-item" onClick={inspect}>
+          🔍 Przyjrzyj się…
+        </button>
         {/* Stage 16b: the map's own way into the attack. Before it, firing meant
             opening somebody's sheet — and an NPC without one could not fire. */}
         <button
@@ -907,7 +1037,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
                     checked={token.statuses.includes(status.id)}
                     onChange={() => toggleStatus(status.id)}
                   />
-                  <img src={status.icon} alt="" width={18} height={18} />
+                  <StatusIcon src={status.icon} />
                   {status.name}
                 </label>
               ))}

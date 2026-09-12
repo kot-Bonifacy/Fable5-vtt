@@ -56,6 +56,21 @@ model Campaign {
   /// name out loud when it is NOT one. Deliberately not a permission — the GM
   /// is not to be stopped from doing anything, only told where they are.
   sandbox   Boolean  @default(false)
+  /// Zegar świata (etap 37): minuty od epoki uniksowej, liczone w UTC.
+  ///
+  /// Liczba, nie `DateTime`, i UTC, nie czas lokalny — pora dnia w Night City
+  /// nie ma nic wspólnego ze strefą maszyny, a każde przejście przez czas
+  /// lokalny przesuwałoby granicę doby przy zmianie środowiska (dev na
+  /// Windows, prod na VPS). Domyślna wartość to 1 stycznia 2045, 08:00
+  /// (`GAME_TIME_DEFAULT` w `shared/src/gametime.ts` — obie liczby muszą być
+  /// tą samą liczbą).
+  gameTime  Int      @default(39447840)
+  /// Ostatni rozliczony miesiąc świata („2045-03"); null = nigdy.
+  ///
+  /// Osobna kolumna, a nie data ostatniego `economy:settle`, bo pytanie brzmi
+  /// „czy ten miesiąc jest już rozliczony", a nie „kiedy ostatnio klikano".
+  /// Zegar cofnięty o pół roku nie zapala monitu drugi raz.
+  settledMonth String?
 
   invitations  Invitation[]
   members      CampaignMember[]
@@ -72,6 +87,7 @@ model Campaign {
   drafts       CharacterDraft[]
   architectures NetArchitecture[]
   netRuns       NetRun[]
+  randomTables  RandomTable[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -177,6 +193,12 @@ model JournalEntry {
   /// Day the session took place (YYYY-MM-DD). A day, not a timestamp: the entry
   /// describes an evening at the table, and the GM may write it up next morning.
   sessionDate String
+  /// Data w świecie gry (YYYY-MM-DD) w chwili zapisu wpisu (etap 37).
+  ///
+  /// Obok `sessionDate`, nie zamiast: jedna mówi, kiedy drużyna grała, druga —
+  /// kiedy to się działo w Night City. Null na wpisach sprzed etapu 37 i na
+  /// każdym, który powstał w kampanii bez zegara.
+  worldDate String?
   /// JSON array of normalized tags; the bot's permission is a tag list too.
   tags String @default("[]")
   /// gm = never reaches any bot prompt; bots = readable with a matching tag.
@@ -447,18 +469,6 @@ model Token {
    */
   statusData String @default("{}")
   /**
-   * Fighting numbers of a token with no character sheet (stage 16b), as the
-   * game system serialized them — the same opaque JSON bargain `turnState`
-   * makes in 14b. Null = an extra nobody has statted, which is most tokens.
-   *
-   * On the token rather than in a stub Character row, because a statist is not
-   * a person: it has no owner, no portrait, nothing to open in a sheet window,
-   * and it dies when the token is deleted. Hit points stay in `hpCurrent` /
-   * `hpMax` where they already were — two homes for one number is how they
-   * drift apart.
-   */
-  combatProfile String?
-  /**
    * Which way the figure is turned, in degrees clockwise from up (stage 27j).
    * Null = never turned; the map then draws no wedge at all rather than
    * pretending everybody starts facing north.
@@ -533,6 +543,21 @@ model PortraitAsset {
   url        String
   width      Int
   height     Int
+  /**
+   * Kadr na mapie (12.09) — który punkt grafiki siada na środku krążka żetonu
+   * i jak mocno jest przybliżony. Znaczenie liczb: `shared/src/portrait-crop.ts`.
+   *
+   * Trzy kolumny, a nie JSON, bo to trzy liczby o stałym znaczeniu — i trzy
+   * wartości domyślne, dzięki którym każdy portret wgrany przed 12.09 dostaje
+   * dokładnie to ujęcie, które mapa rysowała do tej pory.
+   *
+   * Kadru **nie wypala się w plik**: uploady są niezmienne (kopia zapasowa
+   * trzyma je na twardych dowiązaniach), a poza mapą oryginał ma być widoczny
+   * w całości.
+   */
+  cropX      Float    @default(0.5)
+  cropY      Float    @default(0.5)
+  cropZoom   Float    @default(1)
   createdAt  DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -577,6 +602,21 @@ model Scene {
   visibility String @default("fog")
 
   /**
+   * Czy gracze mają ręce związane na tej mapie (zlecenie MG, 12.09.2026)?
+   *
+   * Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed
+   * rozpoczęciem gry, obejdzie ją własną figurą i pozna ją zanim MG cokolwiek
+   * powie — a przy widoczności dynamicznej zdejmie przy okazji mgłę. Blokada
+   * dotyczy **wyłącznie graczy**; MG nie jest nią nigdy związany, tak samo jak
+   * budżetem Tury (14b).
+   *
+   * Domyślnie **zamknięta**, bo nowa scena to zwykle mapa dopiero budowana —
+   * ale migracja odblokowuje wszystkie sceny, które już istniały: zmiana
+   * nawyków przy stole z dnia na dzień nie jest tym, o co MG prosił.
+   */
+  playerMoveLocked Boolean @default(true)
+
+  /**
    * Is it dark in here (stage 18b)? Only meaningful while `visibility` is
    * "dynamic": darkness limits what a *token* sees, and the other two modes ask
    * tokens nothing. Off keeps every existing scene exactly as it was.
@@ -599,6 +639,18 @@ model Scene {
    * table — a GM who wants that turns it off per scene.
    */
   explore Boolean @default(true)
+
+  /**
+   * Where the party starts looking on this map (11.09.2026) — the point the GM
+   * marks with the map tool, in scene pixels.
+   *
+   * Null means „not marked", not „none": a player with no figure here opens the
+   * map at the middle of its bottom edge, because that is where a party walks
+   * in from. Two nullable columns rather than one JSON pair, because a camera
+   * target is read on every entry and written once in a while.
+   */
+  spawnX Float?
+  spawnY Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1212,4 +1264,58 @@ model AdvancementEntry {
 
   @@index([characterId, id])
   @@index([campaignId])
+}
+
+/// Tabela losowa (etap 34) — „losuj, co się dzieje".
+///
+/// Rdzeń VTT, nie mechanika Cyberpunka RED: wiersze są danymi, więc tabela
+/// z podręcznika nie dokłada ani jednej gałęzi w kodzie. Sama treść wierszy
+/// bywa przepisana z podręcznika, więc — jak kompendium z etapu 13 — importuje
+/// się ją z `data/private/`, a w repozytorium leżą wyłącznie skrypty.
+model RandomTable {
+  id         String @id @default(cuid())
+  campaignId String
+  name       String
+  /// Notacja rzutu, przez ten sam `parseRollNotation`, którego używa `/r`
+  /// („1d10", „1d100"). Tabela nie ma własnego parsera notacji.
+  formula String @default("1d10")
+  /// Zdanie MG o tym, kiedy się tę tabelę losuje. Nie trafia na czat.
+  description String @default("")
+  /// gm | public — domyślna widoczność wyniku. Kolumna, a nie stała, bo
+  /// „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
+  visibility String @default("gm")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rows         RandomTableRow[] @relation("RandomTableRows")
+  referencedBy RandomTableRow[] @relation("RandomTableSub")
+
+  @@index([campaignId])
+}
+
+/// Jeden wiersz tabeli losowej: zakres i to, co on znaczy.
+///
+/// `min`/`max` zamiast wagi, bo podręcznikowe tabele są zakresowe („47–57
+/// Złomiarze") i przepisanie ich na wagi zgubiłoby oryginalne liczby, po
+/// których MG szuka wiersza w książce.
+model RandomTableRow {
+  id      String @id @default(cuid())
+  tableId String
+  min     Int
+  max     Int
+  /// Treść wiersza; pusta, gdy wiersz jest samym odesłaniem do innej tabeli.
+  text String @default("")
+  /// Podrzut: kolejna tabela tej samej kampanii. `SetNull`, a nie kaskada —
+  /// skasowanie „Broni przy ciele" ma zostawić wiersz „łupu" z jego tekstem,
+  /// a nie wyrwać dziurę w zakresach tabeli, której nikt nie ruszał.
+  subTableId String?
+  /// Kolejność w edytorze; losowanie i tak idzie po zakresach.
+  position Int @default(0)
+
+  table    RandomTable  @relation("RandomTableRows", fields: [tableId], references: [id], onDelete: Cascade)
+  subTable RandomTable? @relation("RandomTableSub", fields: [subTableId], references: [id], onDelete: SetNull)
+
+  @@index([tableId])
+  @@index([subTableId])
 }

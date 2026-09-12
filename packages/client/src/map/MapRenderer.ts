@@ -12,6 +12,13 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
+import {
+  MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  PLAYER_VIEW_SQUARES_AROUND,
+  coverZoom,
+  startCamera,
+} from './camera.js';
 import type {
   CoverView,
   SmokeView,
@@ -88,6 +95,7 @@ import {
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+import { FOG_PEEP_CORE_RATIO, RING_WIDTH, fogPeepRadius } from './token-ring.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 
@@ -315,6 +323,10 @@ const FOG_GM_ALPHA = 0.55;
  * edge picks up a soft two-pixel feather, which looks better than a hard one.
  */
 const FOG_TEXTURE_MAX_PX = 2048;
+/** Bok kanwy, na której wypala się gradient okienka własnej figury (12.09). */
+const FOG_PEEP_TEXTURE_PX = 256;
+/** Próg przerysowania okienek, w pikselach świata — patrz `fogPeepSignature`. */
+const FOG_PEEP_STEP_PX = 2;
 /**
  * How much cover a dimly lit patch keeps (stage 18b). Between „fully lit" (no
  * cover at all) and „dark" (opaque), and close enough to the fog's own 0.55 that
@@ -382,8 +394,9 @@ const UNLIT_BLUR_PX = 4;
 const GLOW_ALPHA = 0.28;
 /** How far a flickering lamp's glow dips, as a fraction of its own alpha. */
 const FLICKER_DEPTH = 0.22;
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 8;
+/** Zbliżenia i kadr startowy mieszkają w `camera.ts` — tu tylko z nich korzystamy. */
+const MIN_ZOOM = MAP_MIN_ZOOM;
+const MAX_ZOOM = MAP_MAX_ZOOM;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
@@ -407,13 +420,12 @@ const DRAG_CLICK_GRACE_MS = 250;
  * it the renderer is assumed to have stalled and the march simply resumes.
  */
 const MARCH_MAX_FRAME_MS = 100;
-/** Dashes in the selection ring — coarse enough to read as dashed at table zoom. */
-const SELECT_RING_DASHES = 12;
 /**
  * Barwa zaznaczenia grupowego i ramki, którą się je bierze (etap 35).
  *
- * Niebieska, bo cztery kolory na figurze są już zajęte: biel to „prowadzę tę
- * figurę", bursztyn to tura i uchwyt, zieleń i czerwień to metry ruchu. Ta sama
+ * Niebieska, bo pozostałe kolory na figurze są zajęte: obwódka właściciela to
+ * „czyja to figura" (a od 12.09 także „którą prowadzę" — pogrubiona), bursztyn
+ * to tura i uchwyt obrotu, szarość i czerwień to metry ruchu. Ta sama
  * barwa dla obwódki i dla ramki jest celowa — ramka mówi „to zaraz będzie
  * zaznaczone", więc mówi to kolorem zaznaczenia.
  */
@@ -434,14 +446,16 @@ const WALK_SPEED_M_PER_S = 3;
  */
 const WALK_FREE_RANGE_M = 80;
 /**
- * How long a walked route lingers behind the figure, in ms (stage 27j).
+ * How long a walked route lingers behind the figure, in ms (stage 27j, raised
+ * on the GM's instruction of 12.09).
  *
  * The trail is not decoration: at a table two people ask „wait, which way did
  * he come in?" the moment a figure stops, and by then the line the march drew
- * has already been cleared. Long enough to answer that, short enough that a
- * fight does not end up drawn over with green string.
+ * has already been cleared. A second and a half answered that only for whoever
+ * happened to be looking at the map; boot prints are quiet enough to lie there
+ * five seconds without turning a fight into a drawing.
  */
-const TRAIL_FADE_MS = 1600;
+const TRAIL_FADE_MS = 5000;
 
 /**
  * Metres of ground between footsteps (stage 27j).
@@ -477,6 +491,36 @@ const WALK_COLOR_BEYOND = 0x94a3b8;
 const WALK_COLOR_EXTRA = 0xfbbf24;
 /** „Walk that way" — a route that ends at the edge of what is known. */
 const WALK_COLOR_UNKNOWN = 0x38bdf8;
+/**
+ * Ground already walked (zlecenie MG, 12.09) — the trail behind a figure, not
+ * the plan in front of it.
+ *
+ * Grey, and a neutral grey rather than the slate of `WALK_COLOR_BEYOND`: both
+ * are quiet, but one says „this turn cannot reach here" and the other says
+ * „somebody has been here", and they meet on screen the moment a player plans
+ * a second walk while the first is still fading. Nothing else on the overlay
+ * is neutral grey, so the trail needs no legend.
+ */
+const TRAIL_COLOR = 0x9ca3af;
+/**
+ * Co gracz słyszy, gdy MG jeszcze nie otworzył mapy (12.09).
+ *
+ * To samo zdanie pada z trzech miejsc — kursor „nie wolno" nad mapą, klik
+ * w podłogę i chwyt za figurę — więc mieszka w jednej stałej; klient trzyma
+ * jego bliźniaka pod kodem `MOVE_LOCKED`, którym odmawia serwer.
+ */
+const MOVE_LOCKED_NOTE = 'MG nie otworzył jeszcze tej mapy do ruchu.';
+/**
+ * The same trail, past what the turn can pay for.
+ *
+ * The red is inherited from the line the drag used to draw (stage 14c): it
+ * marked the moment a move would be refused and snapped back. The prints keep
+ * that job and do it better — the line went red end to end, so it said „too
+ * far" without saying *where*, and the GM asked for exactly that: „żeby gracz
+ * wiedział, jak daleko dojdzie jego postać w danej turze". The boundary
+ * between grey and red is that answer, printed on the floor.
+ */
+const TRAIL_COLOR_OVER = 0xf87171;
 /**
  * A single **left** boot sole, pointing up the −Y axis (Lorc, CC BY 3.0).
  *
@@ -725,6 +769,17 @@ interface MarchState {
   clipped: boolean;
   /** Budget as it stood when the march started, for the landing arithmetic. */
   budget: { metresLeft: number; costFactor: number } | null;
+  /**
+   * Po ilu metrach gruntu ślad tej drogi robi się czerwony — albo `null`, gdy
+   * nie ma Tury (poza walką) i nic nie jest za daleko (12.09).
+   *
+   * Osobno od `budget`, bo tamten jest **wyłącznie** do rachunku lądowania i
+   * dlatego stoi na `null` przy budżecie niewymuszanym (MG). Kolor śladu pyta
+   * o co innego: „dokąd starcza Tura" jest prawdą także dla MG, któremu wolno
+   * ją przekroczyć — tyle że wtedy przekroczenie widać, zamiast być cicho
+   * zaksięgowanym.
+   */
+  overFrom: number | null;
 }
 
 /**
@@ -760,6 +815,45 @@ export interface MoveAllowance {
   extraMetres?: number;
   /** What the system calls that trade („Bieg"), for the label on the map. */
   extraLabel?: string;
+}
+
+/**
+ * Jedna pula odcisków butów: własna warstwa i sprity zrobione w niej do tej
+ * pory (`visible` mówi, ile jest w użyciu).
+ *
+ * Pule są trzy i **żadna nie pożycza sprite'ów sąsiadce**, bo trzy ślady bywają
+ * na ekranie naraz: trasa pod kursorem, ziemia pod idącą figurą i poświata,
+ * która przeżywa marsz o kilka sekund. Do 12.09 pula była jedna i wystarczała,
+ * bo poświata była linią — od chwili, gdy i ona jest odciskami, jedna pula
+ * znaczyłaby, że najechanie myszą kasuje ślad dopiero co przebytej drogi.
+ *
+ * Sprity, nie `Graphics`: każdy odcisk jest obróconym, odbitym i zabarwionym
+ * obrazkiem, a pula da się użyć klatka po klatce — czego przerysowywana ścieżka
+ * nie potrafi. Czysto malarska, więc `eventMode = 'none'` (pułapka z 27i:
+ * warstwa bez tego staje między kursorem a żetonami).
+ */
+class FootprintPool {
+  readonly layer = new Container();
+  private readonly prints: Sprite[] = [];
+
+  constructor() {
+    this.layer.eventMode = 'none';
+  }
+
+  /** Odcisk z puli — robiony przy pierwszym użyciu, potem tylko przecelowywany. */
+  at(index: number, texture: Texture): Sprite {
+    const existing = this.prints[index];
+    if (existing) return existing;
+    const print = new Sprite(texture);
+    print.anchor.set(0.5);
+    this.layer.addChild(print);
+    this.prints[index] = print;
+    return print;
+  }
+
+  hide(): void {
+    for (const print of this.prints) print.visible = false;
+  }
 }
 
 /**
@@ -845,6 +939,8 @@ export class MapRenderer {
   onNotePlace: ((x: number, y: number) => void) | null = null;
   /** Click on an existing GM note pin. */
   onNoteActivate: ((noteId: string) => void) | null = null;
+  /** Klik w mapę z uzbrojonym narzędziem miejsca startu (world px, 11.09). */
+  onSpawnPlace: ((x: number, y: number) => void) | null = null;
   /** A drawing gesture finished — send it to the server (stage 17b). */
   onDrawingCreate: ((shape: DrawingShape) => void) | null = null;
   /** Click with the text tool armed: the caller asks for the words (world px). */
@@ -963,6 +1059,12 @@ export class MapRenderer {
   /** One Graphics per run of same-mode shapes — blend mode lives on the node. */
   private readonly fogPasses: Graphics[] = [];
   private fogTexture: RenderTexture | null = null;
+  /** Okienka własnych figur, tak jak siedzą w ostatnio złożonej mgle (12.09). */
+  private fogPeepKey = '';
+  /** Gradient okienka — jedna kanwa na cały renderer, patrz `fogPeepTexture`. */
+  private fogPeepTex: Texture | null = null;
+  /** Po jednym sprite'cie na własną figurę; nadmiar chowa się, nie kasuje. */
+  private readonly fogPeepSprites: Sprite[] = [];
   /** Walls and door glyphs — GM only, above the fog like the note pins. */
   private readonly wallLayer = new Container();
   private readonly wallGraphics = new Graphics();
@@ -1029,6 +1131,24 @@ export class MapRenderer {
   /** tokenId → may the local user drag it (GM or owner). */
   private readonly movableTokens = new Map<string, boolean>();
   private drag: DragState | null = null;
+  /**
+   * Czy ten widz ma na tej mapie związane ręce (zlecenie MG, 12.09).
+   *
+   * Prawdę rozstrzyga serwer przy `token:move` (`MOVE_LOCKED`) — tutaj chodzi
+   * o to, żeby figura nie ruszyła się nawet na chwilę i nie wracała skokiem
+   * z odmowy. MG nie jest blokadą związany nigdy.
+   */
+  private get moveLocked(): boolean {
+    return !this.viewerIsGm && this.scene?.playerMoveLocked === true;
+  }
+  /**
+   * Kiedy ostatnio powiedziano temu graczowi, że mapa jest zamknięta.
+   *
+   * Zdanie pada raz na chwyt, nie raz na klatkę: `onDragMove` leci
+   * kilkadziesiąt razy na sekundę, a czat z sześćdziesięcioma kopiami tego
+   * samego zdania byłby gorszy niż brak wyjaśnienia.
+   */
+  private moveLockNotedAt = 0;
   private scene: SceneView | null = null;
   private sceneId: string | null = null;
   private backgroundUrl: string | null = null;
@@ -1041,6 +1161,20 @@ export class MapRenderer {
   private targeting = false;
   /** Note tool armed: the next click on empty map drops a pin. */
   private notePlacing = false;
+  /** Narzędzie miejsca startu: następny klik w mapę wyznacza punkt (11.09). */
+  private spawnPlacing = false;
+  /** Czy kamera jest zamknięta w granicach mapy (gracz) — patrz `setCameraLocked`. */
+  private cameraLocked = false;
+  /**
+   * Pilnuje, żeby płótno miało rozmiar swojego gospodarza (zlecenie MG, 12.09).
+   *
+   * `resizeTo` Pixi słucha **wyłącznie** `window.resize` — nie obserwuje
+   * elementu, choć się nim mierzy. Mapa siedzi między dwoma paskami, które
+   * zmieniają szerokość bez ruszania oknem (lewy HUD się zwija, prawy panel ma
+   * uchwyt), więc po każdym takim ruchu płótno zostawało w starym rozmiarze,
+   * a w odsłoniętym pasie świeciła kratka z CSS-a `.map-area`.
+   */
+  private hostResize: ResizeObserver | null = null;
   /** Fog brush settings; `armed` decides whether a drag paints. */
   private fogBrush: FogBrushSettings = {
     armed: false,
@@ -1076,6 +1210,9 @@ export class MapRenderer {
   private lastRingCentre: ScenePoint | null = null;
   private lastRings: RangeRing[] = [];
   private lastNotes: MapNoteView[] = [];
+  /** Znacznik miejsca startu drużyny — rysowany wyłącznie u MG (11.09). */
+  private spawnNode: Container | null = null;
+  private lastSpawn: ScenePoint | null = null;
   private lastWalls: WallView[] = [];
   private lastOpenings: WallView[] = [];
   private lastVisionPolygons: ScenePoint[][] = [];
@@ -1196,6 +1333,7 @@ export class MapRenderer {
     return (
       this.rulerMode ||
       this.notePlacing ||
+      this.spawnPlacing ||
       this.fogBrush.armed ||
       this.draw.armed ||
       this.toolSpentThisClick
@@ -1229,17 +1367,27 @@ export class MapRenderer {
   /** The route under the cursor and the march, drawn above everything. */
   private readonly walkGraphics = new Graphics();
   /**
-   * Footprints along that route (repair session 23.08).
-   *
-   * Their own container rather than more `Graphics`, because each print is a
-   * rotated, mirrored, tinted sprite — and because a pool of sprites can be
-   * reused frame after frame, which a redrawn path cannot. Purely painterly, so
-   * it must never be what a click lands on (the hit-test pitfall of 27i).
+   * Footprints along that route (repair session 23.08) — the plan under the
+   * cursor, drawn before a single metre is walked.
    */
-  private readonly footprintLayer = new Container();
+  private readonly routePrints = new FootprintPool();
   private footprintTexture: Texture | null = null;
-  /** Prints made once and re-aimed since; `visible` decides how many are in use. */
-  private readonly footprints: Sprite[] = [];
+  /**
+   * Odciski **za** figurą, która właśnie idzie albo jest ciągnięta (12.09).
+   *
+   * Marsz i ciągnięcie wykluczają się nawzajem — trasy pod kursorem nie ma,
+   * gdy figura jest w drodze (`drawWalkPreview` wychodzi na `this.march`), a
+   * `updateWalkHover` odpuszcza przy `this.drag` — więc dzielą jedną pulę.
+   */
+  private readonly trailPrints = new FootprintPool();
+  /**
+   * Ta sama droga, już przebyta: ślad dogasający po zatrzymaniu figury.
+   *
+   * Osobna pula, bo to jedyne dwa ślady, które **naprawdę** stoją na mapie
+   * naraz: marsz kończy się, poświata gaśnie pięć sekund, a gracz w tym czasie
+   * zdąży złapać drugą figurę myszą.
+   */
+  private readonly fadingPrints = new FootprintPool();
   /**
    * The floor the turn can still pay for (stage 27j).
    *
@@ -1256,7 +1404,20 @@ export class MapRenderer {
    * Kept as geometry rather than as a fading `Graphics.alpha` so a second march
    * can start while the first is still fading without the two sharing a dial.
    */
-  private trail: { points: ScenePoint[]; half: number; life: number } | null = null;
+  private trail: {
+    points: ScenePoint[];
+    half: number;
+    life: number;
+    /**
+     * Metrów gruntu, za którymi marsz przestał się mieścić w Turze — albo
+     * `null`, gdy mieścił się cały (poza walką zawsze).
+     *
+     * Trzymane razem z geometrią, bo poświata przeżywa marsz, a budżet Tury
+     * przez te pięć sekund zdąży się zmienić: odczytany na nowo pomalowałby
+     * przebytą drogę wedle tego, co figurze zostało **teraz**.
+     */
+    overFrom: number | null;
+  } | null = null;
   private readonly trailGraphics = new Graphics();
   /** Whose turn it is, kept from the last token push so the pulse can find it. */
   private activeTokenId: string | null = null;
@@ -1408,9 +1569,10 @@ export class MapRenderer {
       return;
     }
     host.appendChild(this.app.canvas);
-    // Fire and forget: the route reads perfectly well as a line, so a missing
-    // or slow glyph must not hold the map up. The first route drawn after it
-    // lands gets the prints.
+    this.watchHostSize(host);
+    // Fire and forget: both the route and the trail behind a figure fall back
+    // to a line, so a missing or slow glyph must not hold the map up. The first
+    // route drawn after it lands gets the prints.
     void Assets.load<Texture>(FOOTPRINT_GLYPH_URL)
       .then((texture) => {
         if (this.destroyed) return;
@@ -1418,7 +1580,7 @@ export class MapRenderer {
         this.drawWalkPreview();
       })
       .catch(() => {
-        // Brak pliku zostawia samą linię — trasa nadal mówi wszystko, co musi.
+        // Brak pliku zostawia same kreski — trasa i ślad nadal mówią, co muszą.
       });
 
     const viewport = new Viewport({
@@ -1505,14 +1667,15 @@ export class MapRenderer {
     this.pingLayer.eventMode = 'none';
     this.overlayLayer.addChild(this.pingLayer);
     // The shaded floor goes under the route and the trail: it is the ground,
-    // and the two green lines are things drawn on it.
+    // and everything the walk draws is a thing drawn on it.
     this.overlayLayer.addChild(this.reachGraphics);
     this.overlayLayer.addChild(this.trailGraphics);
     this.overlayLayer.addChild(this.walkGraphics);
-    // Prints over the line, not under it: the line is the thin thing holding
-    // the shape together, the prints are what the eye actually reads.
-    this.footprintLayer.eventMode = 'none';
-    this.overlayLayer.addChild(this.footprintLayer);
+    // Ślad przebytej drogi **pod** trasą planowaną: plan jest tym, na co gracz
+    // właśnie patrzy, a ślad tym, co zostało po poprzednim ruchu.
+    this.overlayLayer.addChild(this.fadingPrints.layer);
+    this.overlayLayer.addChild(this.trailPrints.layer);
+    this.overlayLayer.addChild(this.routePrints.layer);
     this.overlayLayer.addChild(this.blastGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
@@ -1584,6 +1747,10 @@ export class MapRenderer {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
       }
+      if (this.spawnPlacing) {
+        this.onSpawnPlace?.(Math.round(event.world.x), Math.round(event.world.y));
+        return;
+      }
       if (this.onMapClick?.(event.world.x, event.world.y)) return;
       // A weapon in hand used to swallow this click; since stage 16f it does
       // not — the ground under an armed figure still means „walk there", which
@@ -1622,7 +1789,40 @@ export class MapRenderer {
 
     this.app.renderer.on('resize', (width: number, height: number) => {
       viewport.resize(width, height);
+      // Dolna granica zbliżenia zależy od kształtu płótna: okno rozciągnięte
+      // w bok przy niezmienionym zoomie odsłoniłoby czerń za krawędzią mapy.
+      this.applyCameraBounds();
     });
+  }
+
+  /**
+   * Płótno nadąża za gospodarzem, nie tylko za oknem (zlecenie MG, 12.09).
+   *
+   * Pixi mierzy się elementem (`resizeTo: host`), ale przelicza rozmiar
+   * **wyłącznie** na `window.resize` — a mapa stoi w rzędzie z dwoma paskami,
+   * które zmieniają szerokość, nie ruszając oknem: lewy HUD zwija się do
+   * 2,6 rem, prawy panel ma uchwyt i pamięta szerokość między sesjami. Po
+   * każdym takim ruchu płótno zostawało w starym rozmiarze i w odsłoniętym
+   * pasie świeciła kratka rysowana przez CSS pod płótnem — czyli dokładnie ta
+   * „czysta siatka", której gracz ma nie oglądać.
+   *
+   * `queueResize`, a nie `resize`: przeliczenie idzie na następną klatkę.
+   * Renderowanie wprost z wywołania obserwatora to przepis na „ResizeObserver
+   * loop completed with undelivered notifications" i na pełne przeliczenie
+   * układu na każdy piksel przeciągania uchwytu.
+   *
+   * Kamera zostaje tam, gdzie była (decyzja MG, 12.09) — dochodzi sam pas
+   * mapy. Jedyne, co się samo poprawia, to dolna granica zbliżenia u gracza,
+   * bo `coverZoom` zależy od kształtu płótna; robi to `applyCameraBounds`
+   * w obsłudze `resize` wyżej.
+   */
+  private watchHostSize(host: HTMLElement): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    this.hostResize = new ResizeObserver(() => {
+      if (this.destroyed) return;
+      this.app.queueResize();
+    });
+    this.hostResize.observe(host);
   }
 
   setScene(scene: SceneView | null): void {
@@ -1639,6 +1839,7 @@ export class MapRenderer {
       this.setMoveAllowance(null);
       this.setRangeRings(null, []);
       this.setNotes([]);
+      this.setSpawn(null);
       this.setDrawings([]);
       this.setWalls([], []);
       this.setLights([]);
@@ -1654,13 +1855,7 @@ export class MapRenderer {
     this.sceneId = scene.id;
     viewport.worldWidth = scene.width;
     viewport.worldHeight = scene.height;
-    viewport.clamp({
-      left: -scene.width * PAN_MARGIN,
-      top: -scene.height * PAN_MARGIN,
-      right: scene.width * (1 + PAN_MARGIN),
-      bottom: scene.height * (1 + PAN_MARGIN),
-      underflow: 'center',
-    });
+    this.applyCameraBounds();
 
     this.updateBackground(scene);
     this.drawGrid(scene);
@@ -1680,6 +1875,7 @@ export class MapRenderer {
       this.lastScenePick = null;
       this.drawSceneSelectOutline();
       this.onSceneSelect?.(null);
+      this.setSpawn(null);
       this.setDrawings([]);
       this.setWalls([], []);
       this.setLights([]);
@@ -1718,6 +1914,12 @@ export class MapRenderer {
       }
       // Every token stays interactive (double-click opens its sheet); only
       // dragging is restricted to the GM and the token's owner.
+      //
+      // Blokada mapy (12.09) **nie** wchodzi w tę liczbę i to jest decyzja, nie
+      // przeoczenie: `movableTokens` rozstrzyga także **zaznaczenie** figury
+      // (`endDrag` wybiera ją, gdy chwyt nie stał się przeciągnięciem), a gracz
+      // z zamkniętą mapą ma nadal móc kliknąć własną postać i zobaczyć ją
+      // w pasku. Zamkniętą mapę zatrzymuje `moveLocked` — jedno pole niżej.
       const movable = ctx.isGm || token.ownerId === ctx.myUserId;
       this.movableTokens.set(token.id, movable);
       node.eventMode = 'static';
@@ -1752,6 +1954,8 @@ export class MapRenderer {
     this.drawSceneSelectOutline();
     this.drawAimReticle();
     this.updateReach();
+    // Figura ruszyła się, przybyła albo zniknęła — okienko w mgle idzie za nią.
+    this.refreshFogPeepholes();
   }
 
   /**
@@ -1777,6 +1981,13 @@ export class MapRenderer {
   setNotePlacing(active: boolean): void {
     if (this.notePlacing === active) return;
     this.notePlacing = active;
+    this.applyMapCursor();
+  }
+
+  /** Uzbraja narzędzie miejsca startu: klik w mapę wyznacza punkt (11.09). */
+  setSpawnPlacing(active: boolean): void {
+    if (this.spawnPlacing === active) return;
+    this.spawnPlacing = active;
     this.applyMapCursor();
   }
 
@@ -1849,9 +2060,11 @@ export class MapRenderer {
                     ? 'copy'
                     : this.notePlacing
                       ? 'copy'
-                      : this.rulerMode
-                        ? 'cell'
-                        : '';
+                      : this.spawnPlacing
+                        ? 'copy'
+                        : this.rulerMode
+                          ? 'cell'
+                          : '';
   }
 
   private cancelFogGesture(): void {
@@ -2482,10 +2695,16 @@ export class MapRenderer {
   }
 
   /**
-   * Paints the reach circle and, while a token is moving, the trail behind it
-   * with a running metre count. The trail turns red the moment the route costs
-   * more than the tracker says is left — the drop would snap back, and finding
-   * that out before letting go is the difference between a budget and a trap.
+   * Paints the reach circle and, while a token is dragged, the ground it has
+   * covered — as boot prints, with a running metre count beside the hand.
+   *
+   * The prints go red the moment the route costs more than the tracker says is
+   * left: the drop would snap back, and finding that out before letting go is
+   * the difference between a budget and a trap. Until 12.09 that was a line
+   * that went red **end to end**, so it said „too far" without saying where —
+   * the boundary between grey and red prints is the same warning with the
+   * answer the GM asked for in it („jak daleko dojdzie jego postać w danej
+   * turze"), and it costs no extra ink.
    */
   private drawMoveOverlay(): void {
     this.moveGraphics.clear();
@@ -2521,21 +2740,24 @@ export class MapRenderer {
       }
     }
 
-    if (!drag || metres === null) return;
-    const half = (drag.node.token.size * scene.grid.sizePx) / 2;
-    const trail = [...drag.path, { x: drag.lastX, y: drag.lastY }];
-    const first = trail[0]!;
-    this.moveGraphics.moveTo(first.x + half, first.y + half);
-    for (const point of trail.slice(1)) {
-      this.moveGraphics.lineTo(point.x + half, point.y + half);
+    if (!drag || metres === null) {
+      // Marsz trzyma tę samą pulę odcisków i jest z ciągnięciem rozłączny
+      // (klik w cokolwiek zatrzymuje idącą figurę) — ale ten rysunek odświeża
+      // się też **w trakcie** marszu, ilekroć tracker przyśle nowy budżet.
+      // Bez tego warunku ślad idącej figury migałby raz na taką przesyłkę.
+      if (!this.march) this.trailPrints.hide();
+      return;
     }
-    this.moveGraphics.stroke({
-      color: over ? 0xf87171 : 0x4ade80,
-      width: 3 * k,
-      alpha: 0.85,
-      cap: 'round',
-      join: 'round',
-    });
+    const half = (drag.node.token.size * scene.grid.sizePx) / 2;
+    this.drawWalkedTrail(
+      this.trailPrints,
+      this.moveGraphics,
+      [...drag.path, { x: drag.lastX, y: drag.lastY }],
+      scene,
+      half,
+      allowance && allowance.metresLeft >= 0 ? allowance.metresLeft / factor : null,
+      1,
+    );
 
     const label = new Text({
       text:
@@ -2661,8 +2883,10 @@ export class MapRenderer {
       const node = this.tokenNodes.get(id);
       if (!node || node.destroyed) continue;
       const half = (node.token.size * scene.grid.sizePx) / 2;
+      // Poza oprawą figury, jak obrączka zaznaczenia (12.09) — `half` przestało
+      // być brzegiem żetonu, odkąd pasek życia leży na zewnątrz portretu.
       this.groupGraphics
-        .circle(node.x + half, node.y + half, half + 8 * k)
+        .circle(node.x + half, node.y + half, Math.max(half, node.outerRadius) + 8 * k)
         .stroke({ color: GROUP_RING_COLOR, width: 3 * k, alpha: 0.9 });
     }
     const marquee = this.marquee;
@@ -2746,6 +2970,75 @@ export class MapRenderer {
     this.refreshOverlays();
   }
 
+  /**
+   * Zamyka kamerę w granicach mapy albo ją wypuszcza (decyzja MG, 11.09).
+   *
+   * Zamknięta jest u **gracza**: ani przeciągnięciem, ani oddaleniem nie wyjdzie
+   * poza obraz — ekran zawsze leży w całości wewnątrz mapy. MG zostaje
+   * z marginesem, bo ścianę albo osłonę na samej krawędzi rysuje się, mając
+   * dokąd wyjechać.
+   */
+  setCameraLocked(locked: boolean): void {
+    if (this.cameraLocked === locked) return;
+    this.cameraLocked = locked;
+    this.applyCameraBounds();
+  }
+
+  /**
+   * Przykłada granice przesuwania i oddalania do bieżącej sceny.
+   *
+   * Wołane przy każdej zmianie sceny **i przy zmianie rozmiaru okna**: dolna
+   * granica zbliżenia to `coverZoom`, a ta zależy od kształtu płótna — bez tego
+   * rozciągnięte okno odsłania czerń przy niezmienionym zoomie.
+   *
+   * Uwaga na `clampZoom`: wtyczka pixi-viewport czyta **albo** `minWidth`/
+   * `maxWidth`, **albo** `minScale`/`maxScale` (pierwsza para wygrywa i drugiej
+   * już nie patrzy), więc granica „nie oddalaj się poniżej pokrycia" musi być
+   * policzona tutaj i podana jako skala.
+   */
+  private applyCameraBounds(): void {
+    const viewport = this.viewport;
+    const scene = this.scene;
+    if (!viewport || !scene || this.destroyed) return;
+    const margin = this.cameraLocked ? 0 : PAN_MARGIN;
+    viewport.clamp({
+      left: -scene.width * margin,
+      top: -scene.height * margin,
+      right: scene.width * (1 + margin),
+      bottom: scene.height * (1 + margin),
+      underflow: 'center',
+    });
+    const floor = this.cameraLocked
+      ? coverZoom(scene, { width: viewport.screenWidth, height: viewport.screenHeight })
+      : MIN_ZOOM;
+    viewport.clampZoom({ minScale: Math.min(floor, MAX_ZOOM), maxScale: MAX_ZOOM });
+  }
+
+  /**
+   * Kadr startowy gracza: przybliżenie na osiem kratek wokół punktu.
+   *
+   * Osobne od `fitScene`, bo mówi co innego — `fitScene` odpowiada „gdzie jest
+   * ta mapa", a to „gdzie jesteś ty". Wołane raz na wejście na scenę; dalej
+   * widok należy do gracza.
+   */
+  frameAround(point: ScenePoint, squaresAround = PLAYER_VIEW_SQUARES_AROUND): void {
+    const viewport = this.viewport;
+    const scene = this.scene;
+    if (!viewport || !scene || this.destroyed) return;
+    // Płótno bez rozmiaru to układ strony, który jeszcze nie usiadł — kadr
+    // policzony z zera nie miałby z czego wyjść.
+    if (viewport.screenWidth <= 0 || viewport.screenHeight <= 0) return;
+    const shot = startCamera(
+      scene,
+      { width: viewport.screenWidth, height: viewport.screenHeight },
+      point,
+      squaresAround,
+    );
+    viewport.setZoom(shot.zoom, true);
+    viewport.moveCenter(shot.x, shot.y);
+    this.refreshOverlays();
+  }
+
   private readonly tickPing = (): void => {
     if (this.pings.length === 0) return;
     const now = performance.now();
@@ -2791,20 +3084,30 @@ export class MapRenderer {
     if (!scene || !node || node.destroyed) return;
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
-    // Outside the portrait and outside the turn halo: at table zoom the token
-    // is a dozen screen pixels across, and anything drawn *inside* it lands on
-    // the artwork instead of round it.
-    const radius = half + 8 * k;
-    const arc = Math.PI / SELECT_RING_DASHES;
-    for (let dash = 0; dash < SELECT_RING_DASHES; dash++) {
-      const start = dash * arc * 2;
-      this.selectGraphics.arc(node.x + half, node.y + half, radius, start, start + arc);
-      this.selectGraphics.stroke({ color: 0xffffff, width: 2.5 * k, alpha: 0.95 });
-    }
+    // Grubość rośnie ze zbliżeniem, ale nie w nieskończoność: przy stole żeton
+    // ma kilkanaście pikseli ekranu, więc kreska liczona w pikselach świata
+    // znika — a kreska liczona wyłącznie w pikselach ekranu pożarłaby przy
+    // oddaleniu cały portret. Sufit to ułamek samej figury, więc obwódka
+    // zostaje **obwódką** na każdym zoomie.
+    const extent = node.token.size * scene.grid.sizePx;
+    const width = Math.min(Math.max(RING_WIDTH * 1.8, 3.5 * k), extent * 0.14);
+    const centre = { x: node.x + half, y: node.y + half };
+    const radius = node.ownerRingRadius;
+    // Ciemna koszulka po obu stronach, jak pod obrączką PW: pogrubiona obwódka
+    // leży wprost na rysunku mapy, a ten bywa i czarny, i piaskowy.
+    this.selectGraphics
+      .circle(centre.x, centre.y, radius)
+      .stroke({ color: 0x05070d, width: width + 2 * k, alpha: 0.55 })
+      .circle(centre.x, centre.y, radius)
+      .stroke({ color: node.ownerRingTint, width, alpha: 1 });
 
-    // The rotation knob (stage 27j). On the ring rather than in a menu, because
-    // turning is a thing you do *while looking at the map* — and on the overlay
-    // rather than on the token, so it stays a thumb-sized target at every zoom.
+    // The rotation knob (stage 27j). On the overlay rather than on the token, so
+    // it stays a thumb-sized target at every zoom.
+    //
+    // Do 12.09 siedział na białym przerywanym okręgu; okręgu już nie ma
+    // (MG: „skoro obwódka i tak mówi, że to ta figura"), więc uchwyt trzyma się
+    // sam — kropka na patyku wychodzącym ze środka figury. Odległość liczy
+    // `facingKnob` od brzegu oprawy i to się nie zmieniło.
     const knob = this.facingKnob();
     if (!knob) return;
     const grabbed = this.rotating !== null;
@@ -3328,7 +3631,9 @@ export class MapRenderer {
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
     const centre = { x: node.x + half, y: node.y + half };
-    const distance = half + 22 * k;
+    // Jak przy obrączce zaznaczenia (12.09): uchwyt ma zostać poza oprawą
+    // figury, a tą bywa od 12.09 pasek życia, nie krawędź kratki.
+    const distance = Math.max(half, node.outerRadius) + 22 * k;
     const angle = (((this.rotating?.facing ?? node.facing ?? 0) - 90) * Math.PI) / 180;
     return {
       x: centre.x + Math.cos(angle) * distance,
@@ -3937,7 +4242,7 @@ export class MapRenderer {
    */
   private drawWalkPreview(): void {
     this.walkGraphics.clear();
-    this.hideFootprints();
+    this.routePrints.hide();
     const hover = this.walkHover;
     const scene = this.scene;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
@@ -3959,7 +4264,7 @@ export class MapRenderer {
       if (metres <= extraGround + 0.05) return { color: WALK_COLOR_EXTRA, alpha: 0.9 };
       return { color: WALK_COLOR_BEYOND, alpha: 0.45 };
     };
-    this.drawFootprints(hover.points, scene, half, bandAt);
+    this.drawFootprints(this.routePrints, hover.points, scene, half, bandAt);
 
     // The corners the player insisted on, so „I asked for this route" is visible
     // while it is being built rather than only inferable from its shape.
@@ -3992,12 +4297,15 @@ export class MapRenderer {
    * longer than the metre it stands on.
    */
   private drawFootprints(
+    pool: FootprintPool,
     points: readonly ScenePoint[],
     scene: SceneView,
     half: number,
     bandAt: (metres: number) => { color: number; alpha: number },
   ): void {
-    if (!this.footprintTexture) return;
+    pool.hide();
+    const texture = this.footprintTexture;
+    if (!texture) return;
     const perPixel = metresPerPixel(scene);
     if (perPixel <= 0) return;
     const metrePx = FOOTPRINT_STEP_M / perPixel;
@@ -4035,7 +4343,7 @@ export class MapRenderer {
         // falling in the middle of a long straight still lands in the right
         // place.
         const band = bandAt(next * perPixel);
-        const print = this.footprintAt(used);
+        const print = pool.at(used, texture);
         print.visible = true;
         print.tint = band.color;
         print.alpha = band.alpha;
@@ -4053,21 +4361,6 @@ export class MapRenderer {
       }
       travelled += length;
     }
-  }
-
-  /** One print from the pool, made on first use and re-aimed ever after. */
-  private footprintAt(index: number): Sprite {
-    const existing = this.footprints[index];
-    if (existing) return existing;
-    const print = new Sprite(this.footprintTexture ?? Texture.EMPTY);
-    print.anchor.set(0.5);
-    this.footprintLayer.addChild(print);
-    this.footprints[index] = print;
-    return print;
-  }
-
-  private hideFootprints(): void {
-    for (const print of this.footprints) print.visible = false;
   }
 
   /**
@@ -4228,7 +4521,7 @@ export class MapRenderer {
     node.pulseTurn(Math.round(phase * 20) / 20);
   };
 
-  /** Fades the line a finished march left behind (stage 27j). */
+  /** Fades the prints a finished march left behind (stage 27j). */
   private readonly tickTrail = (): void => {
     const trail = this.trail;
     if (!trail) return;
@@ -4236,6 +4529,7 @@ export class MapRenderer {
     if (trail.life <= 0) {
       this.trail = null;
       this.trailGraphics.clear();
+      this.fadingPrints.hide();
       return;
     }
     this.drawTrail();
@@ -4244,24 +4538,34 @@ export class MapRenderer {
   private drawTrail(): void {
     this.trailGraphics.clear();
     const trail = this.trail;
-    if (!trail || trail.points.length < 2) return;
-    const alpha = Math.min(1, trail.life / TRAIL_FADE_MS) * 0.55;
-    const k = this.overlayScale();
-    const [first, ...rest] = trail.points;
-    this.trailGraphics.moveTo(first!.x + trail.half, first!.y + trail.half);
-    for (const point of rest) this.trailGraphics.lineTo(point.x + trail.half, point.y + trail.half);
-    this.trailGraphics.stroke({
-      color: WALK_COLOR,
-      width: 3 * k,
+    const scene = this.scene;
+    if (!trail || !scene || trail.points.length < 2) {
+      this.fadingPrints.hide();
+      return;
+    }
+    // Ostatnia ćwiartka życia gasi ślad, reszta trzyma go w pełnej sile: ślad,
+    // który blaknie od pierwszej klatki, przez większość swojego istnienia jest
+    // już ledwie widoczny — a właśnie w tym czasie pada pytanie „którędy on tu
+    // wszedł?", dla którego ten ślad w ogóle leży.
+    const left = trail.life / TRAIL_FADE_MS;
+    const alpha = Math.min(1, left / 0.25) * 0.7;
+    this.drawWalkedTrail(
+      this.fadingPrints,
+      this.trailGraphics,
+      trail.points,
+      scene,
+      trail.half,
+      trail.overFrom,
       alpha,
-      cap: 'round',
-      join: 'round',
-    });
-    // A dot where the figure set off, so a trail that ends under a token still
-    // says which end of it is the beginning.
-    this.trailGraphics
-      .circle(first!.x + trail.half, first!.y + trail.half, 4 * k)
-      .fill({ color: WALK_COLOR, alpha });
+    );
+  }
+
+  /** Zdanie „mapa zamknięta", najwyżej raz na kilka sekund. */
+  private noteMoveLocked(): void {
+    const now = performance.now();
+    if (now - this.moveLockNotedAt < 3000) return;
+    this.moveLockNotedAt = now;
+    this.onWalkNote?.(MOVE_LOCKED_NOTE);
   }
 
   /**
@@ -4336,13 +4640,20 @@ export class MapRenderer {
       // Only an enforced budget can refuse a landing, so only an enforced one
       // has any say in where an interrupted march is allowed to stop.
       budget: budget?.enforced ? budget : null,
+      overFrom: this.trailOverFrom(budget),
     };
     // The corners were an instruction for *this* walk; the next click starts
     // from the automatic route again.
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
-    this.hideFootprints();
+    this.routePrints.hide();
+    // Jeden ślad na mapie naraz: poświata po poprzednim marszu tej samej figury
+    // dogasałaby obok świeżego, a dwie równoległe ścieżki czyta się jak dwie
+    // figury, nie jak jedną, która przystanęła.
+    this.trail = null;
+    this.trailGraphics.clear();
+    this.fadingPrints.hide();
     this.setWalkCursor('');
     this.onWalkStateChange?.(node.tokenId);
   }
@@ -4431,28 +4742,90 @@ export class MapRenderer {
     }
     this.drawSelectionRing();
     this.drawMarchTrail(march);
+    // Okienko w mgle idzie z figurą krok w krok — inaczej gracz szedłby przez
+    // czerń i wracał do widoku dopiero na mecie.
+    this.refreshFogPeepholes();
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
     if (done) {
       this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
     }
   };
 
-  /** The line behind a walking figure, so the table can see which way it went. */
+  /** The ground behind a walking figure, so the table can see which way it went. */
   private drawMarchTrail(march: MarchState): void {
     this.walkGraphics.clear();
-    this.hideFootprints();
+    this.routePrints.hide();
     const scene = this.scene;
     if (!scene) return;
     const half = (march.node.token.size * scene.grid.sizePx) / 2;
+    this.drawWalkedTrail(
+      this.trailPrints,
+      this.walkGraphics,
+      [march.start, ...march.walked, { x: march.x, y: march.y }],
+      scene,
+      half,
+      march.overFrom,
+      1,
+    );
+  }
+
+  /**
+   * Za iloma metrami gruntu ta droga przestaje się mieścić w Turze — albo
+   * `null`, gdy Tury nie ma (poza walką) i nic nie jest za daleko.
+   *
+   * Metry **gruntu**, nie budżetu: te dwie liczby rozjeżdża trudny teren
+   * (`costFactor`), a ślad leży na ziemi i mierzy się ziemią.
+   */
+  private trailOverFrom(budget: { metresLeft: number; costFactor: number } | null): number | null {
+    if (!budget) return null;
+    const factor = budget.costFactor > 0 ? budget.costFactor : 1;
+    return Math.max(0, budget.metresLeft) / factor;
+  }
+
+  /**
+   * Ślad po przebytej drodze (zlecenie MG, 12.09): szare odciski butów zamiast
+   * zielonej kreski, czerwone tam, gdzie Tura już nie płaci.
+   *
+   * Te same odciski, co na trasie planowanej — i to jest cały powód, dla
+   * którego MG o nie poprosił: figura zostawia za sobą to samo, co obiecywała
+   * przed sobą, więc „tędy poszedł" i „tędy pójdzie" czyta się jednym
+   * odruchem, a różni je wyłącznie kolor.
+   *
+   * `graphics` to **zapasowe wyjście**, nie druga warstwa rysunku: gdy glif
+   * buta nie doszedł (`FOOTPRINT_GLYPH_URL` leci „wystrzel i zapomnij"), ślad
+   * zostaje cienką szarą kreską — bo ślad, którego nie widać, jest gorszy od
+   * kreski, którą MG właśnie kazał zdjąć.
+   */
+  private drawWalkedTrail(
+    pool: FootprintPool,
+    graphics: Graphics,
+    points: readonly ScenePoint[],
+    scene: SceneView,
+    half: number,
+    overFrom: number | null,
+    alpha: number,
+  ): void {
+    if (points.length < 2) {
+      pool.hide();
+      return;
+    }
+    const band = (metres: number): { color: number; alpha: number } => ({
+      color: overFrom !== null && metres > overFrom + 0.05 ? TRAIL_COLOR_OVER : TRAIL_COLOR,
+      alpha,
+    });
+    if (this.footprintTexture) {
+      this.drawFootprints(pool, points, scene, half, band);
+      return;
+    }
+    pool.hide();
     const k = this.overlayScale();
-    const trail = [march.start, ...march.walked, { x: march.x, y: march.y }];
-    const first = trail[0]!;
-    this.walkGraphics.moveTo(first.x + half, first.y + half);
-    for (const point of trail.slice(1)) this.walkGraphics.lineTo(point.x + half, point.y + half);
-    this.walkGraphics.stroke({
-      color: WALK_COLOR,
-      width: 3 * k,
-      alpha: 0.7,
+    const [first, ...rest] = points;
+    graphics.moveTo(first!.x + half, first!.y + half);
+    for (const point of rest) graphics.lineTo(point.x + half, point.y + half);
+    graphics.stroke({
+      color: TRAIL_COLOR,
+      width: 2 * k,
+      alpha: alpha * 0.7,
       cap: 'round',
       join: 'round',
     });
@@ -4503,7 +4876,7 @@ export class MapRenderer {
     if (!march) return;
     this.march = null;
     this.walkGraphics.clear();
-    this.hideFootprints();
+    this.trailPrints.hide();
 
     const scene = this.scene;
     if (commit && scene && !march.node.destroyed) {
@@ -4511,13 +4884,14 @@ export class MapRenderer {
       march.node.position.set(point.x, point.y);
       const path = thinWalk([...walked, point], TOKEN_PATH_MAX_POINTS);
       this.onTokenMove?.(march.node.token.id, point.x, point.y, true, path);
-      // The line the figure walked outlives the walk by a second and a half
-      // (stage 27j): „which way did he come in?" is asked *after* somebody
-      // stops, and until now the answer was cleared on the same frame.
+      // Ślad przebytej drogi przeżywa marsz o pięć sekund (27j, wydłużone
+      // 12.09): „którędy on tu wszedł?" pada *po* tym, jak ktoś się zatrzyma,
+      // a do 27j odpowiedź znikała w tej samej klatce.
       this.trail = {
         points: [march.start, ...walked, point],
         half: (march.node.token.size * scene.grid.sizePx) / 2,
         life: TRAIL_FADE_MS,
+        overFrom: march.overFrom,
       };
       this.drawTrail();
     }
@@ -4583,6 +4957,9 @@ export class MapRenderer {
     // those are composited into the vision sheet for a player — but the GM has
     // no vision sheet, so this layer is where they get to see their own brush.
     if (!fog.enabled) {
+      // Scena dynamiczna nie rysuje mgły, więc nie ma w czym wycinać okienka —
+      // pole widzenia gracza i tak zaczyna się od jego własnej figury.
+      this.drawFogPeepholes(null);
       if (isGm) {
         this.drawOverridePreview(scene, fog.overrides, pending);
       } else {
@@ -4617,6 +4994,13 @@ export class MapRenderer {
         i++;
       }
     }
+    // Obietnica serwera, dotrzymana wreszcie po stronie rysunku (12.09):
+    // `concealedFrom` zwalnia własną figurę gracza z filtra mgły, więc ona
+    // *przyjeżdża* — ale leżała pod nieprzezroczystym prześcieradłem. Okienko
+    // jedzie ostatnim przebiegiem, czyli wygrywa także z zamalowaniem (`hide`):
+    // to samo pierwszeństwo, które ma na serwerze.
+    this.drawFogPeepholes(isGm ? null : scene);
+    this.fogPeepKey = this.fogPeepSignature();
     for (let i = pass; i < this.fogPasses.length; i++) this.fogPasses[i]!.clear();
 
     this.app.renderer.render({ container: this.fogScratch, target: this.fogTexture, clear: true });
@@ -4625,6 +5009,134 @@ export class MapRenderer {
     this.fogSprite.setSize(scene.width, scene.height);
     // The GM plans through the fog; players get the real thing.
     this.fogSprite.alpha = isGm ? FOG_GM_ALPHA : 1;
+  }
+
+  /**
+   * Wycina w mgle okienko wokół każdej figury, którą steruje ten widz (12.09).
+   *
+   * Rysuje się tym samym `erase`, co odsłonięcie pędzlem MG, więc nie jest to
+   * nowa warstwa ani nowy rodzaj mgły — jest to ten sam kompozyt, tylko ostatni
+   * w kolejce. Brzeg jest rozmyty (wybór MG): rdzeń wycina się do końca,
+   * a `FOG_PEEP_STEPS` pierścieni o malejącej sile rozprowadza resztę, żeby
+   * okienko czytało się jak zasięg wzroku, a nie jak dziura w prześcieradle.
+   *
+   * MG nie dostaje okienek nigdy: on widzi mgłę prześwitującą (`FOG_GM_ALPHA`)
+   * właśnie po to, żeby wiedzieć, co zakrył — a każda figura na mapie jest
+   * „jego", więc wycięcia zjadłyby mu cały podgląd.
+   */
+  private drawFogPeepholes(scene: SceneView | null): void {
+    let used = 0;
+    if (scene && !this.viewerIsGm && this.viewerId !== null) {
+      const grid = scene.grid.sizePx;
+      for (const node of this.tokenNodes.values()) {
+        if (node.token.ownerId !== this.viewerId) continue;
+        // Pozycja węzła, nie figury ze store: w trakcie marszu albo przeciągania
+        // żeton wie o sobie więcej niż serwer, a okienko ma iść *z nim*.
+        const extent = node.token.size * grid;
+        const radius = fogPeepRadius(node.outerRadius, grid);
+        const sprite = this.fogPeepSprite(used++);
+        sprite.visible = true;
+        sprite.setSize(radius * 2, radius * 2);
+        sprite.position.set(node.x + extent / 2, node.y + extent / 2);
+        // Na wierzch całego kompozytu: fogPass dokłada się do tego samego
+        // kontenera, więc bez tego świeży przebieg `hide` zamalowałby okienko.
+        this.fogScratch.addChild(sprite);
+      }
+    }
+    for (let i = used; i < this.fogPeepSprites.length; i++) {
+      this.fogPeepSprites[i]!.visible = false;
+    }
+  }
+
+  /** Leniwie rozbudowuje pulę sprite'ów okienka i podaje ten spod numeru. */
+  private fogPeepSprite(index: number): Sprite {
+    let sprite = this.fogPeepSprites[index];
+    if (!sprite) {
+      sprite = new Sprite(this.fogPeepTexture());
+      sprite.anchor.set(0.5);
+      sprite.blendMode = 'erase';
+      this.fogPeepSprites[index] = sprite;
+      this.fogScratch.addChild(sprite);
+    }
+    return sprite;
+  }
+
+  /**
+   * Gradient, którym wycina się okienko: pełna siła w środku, gładki zanik
+   * do zera na brzegu.
+   *
+   * Kanwa, a nie `Graphics`, i to jest cała lekcja z pierwszego podejścia:
+   * rozmycie złożone z pierścieni o malejącej alfie widać jako **koncentryczne
+   * okręgi** (MG odrzucił to od razu), bo każdy pierścień ma własny, ostry
+   * brzeg. Radialny gradient rasteryzuje się raz, bez ani jednej krawędzi —
+   * tą samą drogą (kanwa zamiast geometrii) idzie światło z 18b i pamięć mapy
+   * z 18c. Jedna tekstura wystarcza wszystkim figurom, bo sprite skaluje się
+   * do promienia, a profil zaniku jest ułamkiem promienia, nie metrami.
+   */
+  private fogPeepTexture(): Texture {
+    if (this.fogPeepTex) return this.fogPeepTex;
+    const size = FOG_PEEP_TEXTURE_PX;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.fogPeepTex = Texture.WHITE;
+      return this.fogPeepTex;
+    }
+    const half = size / 2;
+    const gradient = context.createRadialGradient(half, half, 0, half, half, half);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(FOG_PEEP_CORE_RATIO, 'rgba(0, 0, 0, 1)');
+    // Zanik po krzywej wygładzonej z obu stron (3u² − 2u³), a nie po prostej:
+    // liniowy gradient zostawia widoczne załamanie dokładnie tam, gdzie się
+    // zaczyna, czyli wraca okrąg — tyle że jeden.
+    const steps = 12;
+    for (let i = 1; i <= steps; i++) {
+      const u = i / steps;
+      const stop = FOG_PEEP_CORE_RATIO + (1 - FOG_PEEP_CORE_RATIO) * u;
+      const alpha = 1 - (3 * u * u - 2 * u * u * u);
+      gradient.addColorStop(stop, `rgba(0, 0, 0, ${alpha.toFixed(4)})`);
+    }
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+    this.fogPeepTex = Texture.from(canvas);
+    return this.fogPeepTex;
+  }
+
+  /**
+   * Podpis okienek — po czym poznaje się, że mgłę trzeba złożyć od nowa.
+   *
+   * Pozycja jest zaokrąglona do `FOG_PEEP_STEP_PX`, bo tekstura mgły i tak jest
+   * zgrubna: bez progu marsz przez pół mapy renderowałby ją co klatkę, a z nim
+   * robi to mniej więcej co drugą i nikt tego nie widzi. Promień oprawy siedzi
+   * w podpisie razem z pozycją, bo zmienia się z punktami wytrzymałości.
+   */
+  private fogPeepSignature(): string {
+    if (this.viewerIsGm || this.viewerId === null) return '';
+    const parts: string[] = [];
+    for (const node of this.tokenNodes.values()) {
+      if (node.token.ownerId !== this.viewerId) continue;
+      const x = Math.round(node.x / FOG_PEEP_STEP_PX);
+      const y = Math.round(node.y / FOG_PEEP_STEP_PX);
+      parts.push(`${node.tokenId}:${x}:${y}:${Math.round(node.outerRadius)}`);
+    }
+    return parts.join('|');
+  }
+
+  /**
+   * Składa mgłę od nowa, gdy okienka przestały pasować do figur (12.09).
+   *
+   * Woła się z trzech miejsc, bo figura rusza się na trzy sposoby: pchnięta
+   * przez store (`setTokens`), ciągnięta ręką (`onDragMove`) i idąca trasą
+   * (`stepMarch`). Dwa ostatnie omijają store z założenia, więc gdyby okienko
+   * czekało na niego, gracz szedłby przez czerń i wracał do widoku dopiero
+   * na mecie.
+   */
+  private refreshFogPeepholes(): void {
+    if (this.destroyed || this.fogIsGm || !this.lastFog?.enabled) return;
+    if (this.fogPeepSignature() === this.fogPeepKey) return;
+    this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
   }
 
   /**
@@ -5802,6 +6314,44 @@ export class MapRenderer {
     this.refreshSceneSelectOutline('note');
   }
 
+  /**
+   * Znacznik miejsca startu drużyny (11.09) — chorągiewka tam, gdzie MG
+   * postawił punkt, z kropką na samym punkcie.
+   *
+   * Rysuje go **wyłącznie MG**: gracz punkt zna (jego kamera z niego korzysta),
+   * ale chorągiewka na mapie byłaby rekwizytem, którego przy stole nie ma.
+   * Jak pinezka notatki jest skalowany do ekranu, nie do świata, i nie łapie
+   * kliknięć — przestawia się go tym samym narzędziem, którym się go stawia.
+   */
+  setSpawn(point: ScenePoint | null): void {
+    if (this.destroyed) return;
+    this.lastSpawn = point;
+    if (!point) {
+      this.spawnNode?.destroy({ children: true });
+      this.spawnNode = null;
+      return;
+    }
+    if (!this.spawnNode) {
+      const node = new Container();
+      const dot = new Graphics();
+      dot.circle(0, 0, 4).fill({ color: 0xfacc15, alpha: 0.95 });
+      dot.circle(0, 0, 4).stroke({ color: 0x0b1220, width: 1.5, alpha: 0.9 });
+      const glyph = new Text({
+        text: '🚩',
+        style: { fontFamily: 'system-ui, sans-serif', fontSize: 24 },
+      });
+      // Drzewce chorągiewki stoi w punkcie, a płótno powiewa w prawo i w górę.
+      glyph.anchor.set(0.15, 1);
+      node.addChild(dot);
+      node.addChild(glyph);
+      node.eventMode = 'none';
+      this.spawnNode = node;
+      this.noteLayer.addChild(node);
+    }
+    this.spawnNode.position.set(point.x, point.y);
+    this.spawnNode.scale.set(this.overlayScale());
+  }
+
   /** Re-renders the overlays at the current zoom (labels are screen-sized). */
   private refreshOverlays(): void {
     if (this.destroyed) return;
@@ -5815,6 +6365,7 @@ export class MapRenderer {
     this.drawTrail();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
+    this.setSpawn(this.lastSpawn);
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
     // pins: at a typical 0.18x map zoom a world-scaled handle is a few pixels.
     this.drawWallLayer();
@@ -5842,13 +6393,15 @@ export class MapRenderer {
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
-    this.hideFootprints();
+    this.routePrints.hide();
+    this.trailPrints.hide();
     this.selectGraphics.clear();
     this.aimGraphics.clear();
     this.reach = null;
     this.reachGraphics.clear();
     this.trail = null;
     this.trailGraphics.clear();
+    this.fadingPrints.hide();
     this.rotating = null;
     this.setWalkCursor('');
     this.setSelection(null, 'scene');
@@ -6088,6 +6641,14 @@ export class MapRenderer {
     const viewport = this.viewport;
     const snapScene = this.snapScene();
     if (!drag || !viewport || !snapScene) return;
+    // Mapa zamknięta przez MG (12.09): chwyt zostaje chwytem, nie staje się
+    // przeciągnięciem. Zatrzymane **tu**, a nie przy zakładaniu `this.drag`,
+    // bo to `endDrag` zamienia niedoszłe przeciągnięcie w zaznaczenie — gracz
+    // ma nadal móc kliknąć własną figurę i zobaczyć ją w pasku.
+    if (this.moveLocked) {
+      this.noteMoveLocked();
+      return;
+    }
 
     if (!drag.moved) {
       const dx = event.global.x - drag.startGlobalX;
@@ -6132,6 +6693,9 @@ export class MapRenderer {
 
     this.onTokenMove?.(token.id, pos.x, pos.y, false);
     this.moveGroupWith(drag.node, snapScene, false);
+    // Po grupie, nie przed: przeciąganie zaznaczenia rusza kilka własnych figur
+    // naraz, a okienka składa się raz, na końcu gestu.
+    this.refreshFogPeepholes();
   };
 
   /**
@@ -6255,6 +6819,11 @@ export class MapRenderer {
     // stop existing. Nothing is committed — the server keeps its own position.
     this.finishMarch(null, false);
     this.destroyed = true;
+    // Obserwator trzyma gospodarza, a ten trzyma płótno — rozłączany przed
+    // `app.destroy`, żeby ostatnia notatka o rozmiarze nie trafiła w martwy
+    // renderer (React w trybie ścisłym montuje mapę dwa razy pod rząd).
+    this.hostResize?.disconnect();
+    this.hostResize = null;
     const viewport = this.viewport;
     this.viewport = null;
     if (viewport) {
@@ -6267,6 +6836,8 @@ export class MapRenderer {
       viewport.destroy({ children: true });
       // The fog scratch container is off-stage, so `destroy({children:true})`
       // above never reaches it — and its render texture is real VRAM.
+      this.fogPeepTex?.destroy(true);
+      this.fogPeepTex = null;
       this.fogScratch.destroy({ children: true });
       this.fogTexture?.destroy(true);
       this.fogTexture = null;

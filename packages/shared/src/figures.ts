@@ -111,6 +111,31 @@ const CONDITION_ORDER: Readonly<Record<TokenCondition, number>> = {
  */
 export const WOUNDED_HP_RATIO = 0.5;
 
+/**
+ * Szczeble paska punktów wytrzymałości — te same, na których stoi pasek PW
+ * w panelu postaci (zlecenie MG, 12.09).
+ *
+ * Do 12.09 mapa miała własną drabinkę (zielone > 50 %, pomarańczowe > 25 %,
+ * dalej czerwone), a panel swoją — czterostopniową, wziętą ze stanu ran. Ten
+ * sam gracz widział więc na ekranie dwa paski tej samej postaci, w dwóch
+ * kolorach i o dwóch znaczeniach. Teraz obie strony pytają o to samo.
+ *
+ * Progi wychodzą z `WOUNDED_HP_RATIO`, czyli tam, skąd rdzeń już raz je wziął —
+ * i dają liczbowo **dokładnie** to, co `woundStateFromHp` w module CP RED
+ * (`Math.ceil(max * 0.5)` to `Math.ceil(max / 2)`). Zgodności pilnuje test
+ * w `figures.test.ts`; sam rdzeń dalej nie importuje niczego z `systems/cpred`,
+ * bo nie wolno mu — i nadal nie wie, *dlaczego* połowa.
+ */
+export type TokenHpRung = 'healthy' | 'light' | 'serious' | 'mortal';
+
+/** Który szczebel paska PW opisuje ten licznik. */
+export function tokenHpRung(hp: Pick<TokenHp, 'current' | 'max'>): TokenHpRung {
+  if (hp.current < 1) return 'mortal';
+  if (hp.current <= Math.ceil(hp.max * WOUNDED_HP_RATIO)) return 'serious';
+  if (hp.current < hp.max) return 'light';
+  return 'healthy';
+}
+
 /** A figure at zero hit points is down whatever else it is wearing. */
 function conditionFromHp(hp: TokenHp | null | undefined): TokenCondition {
   if (!hp || hp.max <= 0) return 'ok';

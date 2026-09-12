@@ -7,6 +7,1288 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+
+### Sesja 12.09 (czwarta) — ślady zamiast kresek, mapa zamknięta na klucz i karta, którą widać
+
+**Zlecenie MG, trzy rzeczy plus jedna dorzucona w trakcie:** (1) czcionki na karcie postaci mają
+wypełniać pola, w których stoją („liczba INT jest niewspółmiernie mała"); (2) sprawdzić, a jak nie
+ma — dorobić **blokadę ruchu graczy po mapie**, dopóki MG jej nie otworzy, żeby drużyna nie poznała
+mapy przed rozgrywką; (3) za idącą figurą mają zostawać **szare ślady butów** zamiast zielonej
+kreski; (4) w trakcie: zdjąć **biały przerywany okrąg** zaznaczenia.
+
+**Cztery pytania przed kodem, cztery decyzje MG.** Karta: pola Cech **wolno powiększyć** (kolumna
+ciągnie się na całą stronę, liczba 2,6 rem) i przegląd obejmuje **wszystkie cztery zakładki**.
+Blokada: **per scena**, nowe sceny zamknięte, istniejące otwarte migracją. Ślady: **obie kreski
+znikają**, a ślad ma się **barwić na czerwono w trybie turowym, żeby gracz wiedział, jak daleko
+dojdzie w tej Turze**. Okrąg: **zdjąć**, a sterowanie pokazać samą obwódką właściciela.
+
+**Blokady nie było w ogóle — to nowa funkcja, nie naprawa.** `Scene.playerMoveLocked` jedzie zwykłą
+łatą `scene:update` (nie własnym zdarzeniem jak `visibility`: niczego graczom nie zabiera), a odmowa
+`MOVE_LOCKED` stoi w `performTokenMove` **przed** `validateTokenMove` — tamto sądzi dopiero
+upuszczenie, a blokada musi ściąć też klatkę ciągnięcia. Cena, o której warto wiedzieć: domyślne
+„nowa scena zamknięta" wywróciło **57 testów w dziewięciu zestawach** serwera — każdy, kto każe
+graczowi ruszyć figurą, musi teraz otworzyć scenę zaraz po `scene:create`.
+
+**Ślad korzysta z tego samego glifu, co trasa planowana — i to jest cały pomysł.** Jedna droga
+(`drawWalkedTrail`) obsługuje marsz, ciągnięcie i poświatę; **trzy osobne pule** odcisków, bo
+poświata przeżywa marsz o pięć sekund i nie może dzielić sprite'ów z niczym, co rysuje się w tym
+samym czasie. Czerwień zaczyna się dokładnie tam, gdzie kończy się budżet Tury — sprawdzone na
+żywo: ciągnięcie na 19,3 m przy 12 m budżetu daje szary ślad do okręgu zasięgu i czerwony za nim.
+
+**Biały okrąg nie był zdublowany — i MG i tak kazał go zdjąć.** Kolorowa obwódka mówi **czyja** jest
+figura, biały okrąg mówił **którą prowadzę**; przedstawiłem różnicę, MG wybrał złożenie obu
+wiadomości w jedną kreskę. Podświetlenie musi jednak zostać **na nakładce** (`overlayScale`), bo
+wszystko w `TokenNode` liczy się w pikselach świata i przy stole znika — z sufitem grubości
+liczonym z kratki, żeby przy oddaleniu nie zjadło portretu.
+
+**Największa liczba na karcie stała w 16 px, bo przegrywała kaskadę.** Pudełko Cechy urosło od razu,
+liczba w środku ani drgnęła: `.sheet-window .cp-step { font: inherit }` (0-2-0) bije `.cp-stat-value`
+(0-1-0). Trzecia odsłona tej samej pułapki po `.cp-slot` (06.09) i `.advance-buy` (29b) — wpis
+w `pulapki-dev.md`. Poszły w górę też pule, progi, komórki Umiejętności, pola tekstowe, tabele,
+belki i zakładki; **nazwy Umiejętności zostały** przy 0,8 rem, bo większy krój kończy je wielokropkiem.
+
+**Oględziny na żywym stole, z jednym śladem i jedną wpadką.** Dwie sesje (`localhost` — MG,
+`[::1]` — Tony). Sprawdzone: kursor „nie wolno", zdanie na czacie, żeton nieruszony przy ciągnięciu
+i przy kliku, natychmiastowe otwarcie mapy z panelu MG, czerwień śladu w Turze, karta na czterech
+zakładkach i w wąskim oknie. **Wpadka:** „✕" przy kolejce woła **goły** `window.confirm`, więc
+zawiesił kartę pod CDP; zamknięcie karty odwołuje modal, ale **walka zostaje w bazie**, a moduł
+z `import('/src/socket.ts')` dostaje własną, niepodłączoną instancję, więc `endCombat()` z konsoli
+też nie przejdzie. **MG zdecydował: tryb turowy zostaje włączony** na „StrefiePrzemysłowej" (RUNDA 1,
+Marcin i Tony) i wyłączy go sam. Żeton Marcina wrócił na **1034/658** co do piksela, Tony nie drgnął
+(752/799), blokada mapy przywrócona na **otwartą**. Ślad świadomy: kilka kart „Akcja Ruchu — poza
+budżetem tury" i dwa zdania „MG nie otworzył jeszcze tej mapy do ruchu" na czacie.
+
+**Testy:** **1094** na serwerze (+2 o blokadzie), **1988** w `shared` (+1 o sanityzacji łaty),
+**173** u klienta (+7 nowy `walk-trail.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste
+w trzech pakietach; `packages/server/src/app.ts` i `portrait-backfill.test.ts` są niesformatowane
+**od dwóch sesji** (tutaj nieruszane). Umowy: dwie w `mapa`, jedna w `serwer`, jedna w `karta`;
+pułapki: jedna w `karta`, jedna dopisana w `ogledziny`.
+
+### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
+
+**Zlecenie MG, trzy rzeczy — jedna z listy zaległości, dwie zgłoszone w trakcie:** (1) naprawić
+„gracz nie widzi pod mgłą nawet własnej figury"; (2) kadrowanie nie pozwala wziąć **górnych
+pikseli** portretu, bo zasłania je pierścień; (3) — po obejrzeniu pierwszej wersji — okienko
+w mgle ma nie pokazywać koncentrycznych okręgów, a zielony okrąg ma **wysunąć się poza grafikę
+portretu o własną grubość**.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Wielkość okienka: **krąg około trzech kratek**
+(odrzucone „figura + pół kratki" i „figura + kratka"). Brzeg: **rozmyty**. Kadr: **wolno mu
+wyjechać poza obraz**, a pustkę zamalowuje tło żetonu — MG wybrał to zamiast wariantu „obwódka
+poza portret", po czym, zobaczywszy efekt, dołożył i ten drugi, już jako osobne zlecenie.
+
+**Usterka mgły była rozjazdem serwera z rendererem, nie brakiem funkcji.** `concealedFrom`
+zwalnia własną figurę gracza z filtra mgły od 17a i mówi to w komentarzu wprost; figura
+przyjeżdżała, tylko `fogSprite` leżał nad nią nieprzezroczysty. Naprawa to
+`MapRenderer.drawFogPeepholes`: okienko wycięte w kompozycie **ostatnim przebiegiem**, więc
+wygrywa też z zamalowaniem pędzlem (`hide`) — tak samo, jak rozstrzyga to serwer. Cudzych figur
+okienko zdradzić nie może, bo one w ogóle nie opuszczają serwera; nową informacją jest sam
+kawałek podłoża wokół własnej postaci.
+
+**Okienko musi iść z figurą także wtedy, gdy store o niej nie wie.** Przeciąganie i marsz ruszają
+węzłem lokalnie, więc `refreshFogPeepholes` wisi na trzech wejściach (`setTokens`, `onDragMove`,
+krok marszu) i porównuje podpis z pozycją zaokrągloną do dwóch pikseli świata — bez tego gracz
+szedłby przez czerń i odzyskiwał widok dopiero na mecie. Sprawdzone na żywo w trakcie ciągnięcia
+żetonu.
+
+**Pierwsza wersja rozmycia poszła do kosza i to jest lekcja na przyszłość.** Brzeg złożony
+z pięciu pierścieni o malejącej alfie **widać jako koncentryczne okręgi** — MG odrzucił go na
+pierwszym zrzucie. Zanik idzie teraz gradientem wypalonym na kanwie (`fogPeepTexture`), tą samą
+drogą, co światło z 18b i pamięć mapy z 18c. Wpis w `pulapki-dev.md`.
+
+**Kadr: granica liczyła się do kratki, a widoczne koło było od niej mniejsze.** Stąd zgłoszenie
+MG — czubka głowy nie dawało się wyjąć spod obwódki. `clampPortraitCrop` pilnuje dziś jednego:
+punkt kadru ma leżeć **na obrazie**. Pustkę na brzegu krążka zamalowuje `PORTRAIT_BACKDROP`,
+rysowany **zawsze** (dawniej krążek znikał po wczytaniu obrazka), a `--map-token-backdrop`
+w `theme.css` niesie tę samą liczbę dla okna kadrowania; pilnuje tego test. Sprawdzone w oknie:
+kadr wyjeżdża w **obu** osiach naraz, a podgląd „Tak na mapie" pokazuje dokładnie to samo.
+
+**Zielony okrąg zszedł z twarzy — druga zmiana geometrii żetonu tego dnia.** `portraitRadius` to
+teraz równo połowa kratki, obwódka właściciela leży w pasie `[extent/2, extent/2 + RING_WIDTH]`,
+a obrączka PW zaczyna się dopiero za nią. **Cena, o której MG wie z obu decyzji:** figura wystaje
+poza kratkę o całą oprawę — przy kratce 47 px to ok. 10 px promienia, więc sąsiedzi potrafią się
+oprawami zetknąć.
+
+**Oględziny na żywym stole, bez długu.** Sesja gracza (`localhost` — Tony) na aktywnej
+„StrefiePrzemysłowej", która ma `visibility = fog` i **zero odsłoniętych kształtów**, czyli
+dokładnie scenerię ze zgłoszenia. Sprawdzone: okienko na wejściu, okienko w ruchu, kadr w obu
+osiach, krążek tła, obwódka poza portretem. **Stan stołu nietknięty** — żeton wrócił na 752/799
+co do piksela, żaden kadr nie został zapisany (okno zamknięte „Anuluj"), motyw karty przywrócony
+na nocny.
+
+**Testy:** **166** u klienta (+12: okienko w mgle i tło portretu), **1987** w `shared`, **1092**
+na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `packages/server/src/app.ts`
+i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
+Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
+
+
+### Sesja 12.09 (druga) — portret ujęty pod mapę
+
+**Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak
+portret będzie widoczny na mapie**; poza mapą portret ma zostać widoczny **w całości**.
+Doprecyzowane w trakcie: **portret wybiera się raz, przy tworzeniu postaci** — w rozgrywce gracz
+go już nie zmienia, zmienia wyłącznie kadr na mapie.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Kadr mieszka **przy obrazku** (wiersz puli), a nie
+przy postaci — ustawia się go raz na życie pliku. Kadruje się **wyłącznie mapę**: karta i kreator
+pokazują cały obrazek (`object-fit: contain` od 27a), a małe okrągłe awatary zostają przy środkowym
+`cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem. I **jedna pula na wszystko**: wgranie
+wprost na kartę też zakłada wiersz.
+
+**Problem był realny i mierzalny.** Mapa liczyła `extent / min(w, h)` z kotwicą 0,5 — ślepy środek.
+Portret Tony'ego z żywej kampanii ma **443 × 887**, więc krążek brał środkowy pas: twarz mała,
+broda na krawędzi. Po skadrowaniu (zoom 1,12, `y` 0,30) twarz wypełnia krążek — widać to na
+zrzucie z sesji.
+
+**Cały rachunek wyszedł do `shared/portrait-crop.ts`** (jak `camera.ts` i `token-ring.ts`):
+`clampPortraitCrop` pilnuje, żeby krążek nie wyjechał poza obraz — a granice zależą od boków
+grafiki, więc **wymiary są argumentem**, nie założeniem. Kwadrat przy zoomie 1 nie ma czym
+przesuwać (to nie błąd, to geometria) i dopiero przybliżenie otwiera swobodę. Kadr domyślny daje
+**dokładnie** dawne zachowanie, więc po migracji żadna figura nie drgnęła.
+
+**Kadru nie wypala się w plik** — uploady są niezmienne, bo kopia zapasowa trzyma je na twardych
+dowiązaniach. Trzy kolumny `Float` przy `PortraitAsset` z wartościami domyślnymi; migracja
+`stage_portrait_map_crop`.
+
+**Pułapka, która wyglądałaby jak zepsute rozgłoszenie:** `TokenNode` porzuca przerysowanie, gdy
+`signature` się nie zmienił, a kadr jest cechą **grafiki**, nie żetonu — nazwa, obrazek i PW
+zostają te same. Bez `cropFor(...)` w podpisie zapis szedł do bazy, rozgłoszenie docierało, store
+się aktualizował, a na mapie nie działo się nic. Wpis w `pulapki-dev.md`.
+
+**`portrait:crop` to jedyne zdarzenie puli bez `role: ROLE_GM`** — bo MG dopisał, że gracz ma móc
+zmieniać kadr własnej figury. Warunek sprawdza serwer (`ownsPortrait`), nie przycisk. **Skutek
+uboczny do wiedzy MG:** gdyby dwie postacie nosiły ten sam plik portretu, kadr poprawiony przez
+jedną zmienia ujęcie obu.
+
+**Trasa `/api/uploads/portraits` zniknęła** (kładła plik bez wiersza). Portrety wgrane przed tą
+zmianą wciąga do puli `portrait-backfill.ts` przy starcie serwera — i to nie jest porządki:
+**bez tego funkcja nie działałaby dokładnie dla postaci, które naprawdę grają**. Na żywej bazie
+wciągnął dwa portrety (Marcin 626 × 627, Tony 443 × 887).
+
+**Oględziny na żywym stole, bez długu.** Dwie sesje graczy (`localhost` — Marcin, `[::1]` — Tony);
+MG ma hasło, którego nie wpisuję, więc ścieżka MG sprawdzona przez wspólny kod, a ścieżka gracza
+w całości: przycisk na karcie, okno, przeciąganie, kółko, suwak, zapis, „Wyśrodkuj". **Rozgłoszenie
+sprawdzone międzysesyjnie** — kadr zapisany u Tony'ego zmienił jego żeton w sesji Marcina
+natychmiast, bez przeładowania. Kadr Tony'ego **przywrócony do domyślnego** po oględzinach: nie
+o to prosił MG.
+
+**Testy:** **154** u klienta (+11: `portrait-crop.test.ts`), **1987** w `shared` (+14 o geometrii
+kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
+trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
+pułapki: jedna w `mapa`.
+
+
+### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
+
+**Zlecenie MG, trzy punkty:** (1) chowając albo przesuwając boczne paski, mapa ma się sama
+dopasowywać do ekranu, „aby nie było widać siatki"; (2) przetestować widoczność żetonów graczy
+na mapie startowej; (3) pasek PW wokół żetonu ma leżeć **na zewnątrz avatara** i mieć wyraźniejsze
+kolory. Doprecyzowane w trakcie: kolory mają **zgadzać się z paskiem PW w panelu postaci**,
+żaden okrąg ma nie wchodzić na portret, a portret w panelu ma być **duży**.
+
+**Punkt 1 był prawdziwą usterką i ma jedną przyczynę: `resizeTo` w Pixi v8 nie obserwuje
+elementu.** Mierzy się nim, ale nasłuchuje wyłącznie `window.resize` — a mapa stoi między dwoma
+paskami, które zmieniają szerokość bez ruszania oknem (lewy HUD zwija się do 2,6 rem, prawy panel
+ma uchwyt). Płótno zostawało w starym rozmiarze, a w odsłoniętym pasie świeciła **kratka rysowana
+przez CSS** (`.map-area`) — stąd „widać siatkę". Lek to `ResizeObserver` na gospodarzu
+(`watchHostSize` → `app.queueResize`); dalej wszystko jedzie starą drogą, łącznie z
+`applyCameraBounds`. Kamera zostaje na miejscu (wybór MG): dochodzi sam pas mapy.
+
+**Punkt 3 zmienił geometrię żetonu, i to w sposób, który dotyka czterech rysunków naraz.**
+Obrączka PW przeniosła się z wnętrza obwódki właściciela (czyli z brzegu twarzy) **poza kratkę**;
+świadoma cena wybrana przez MG spośród dwóch wariantów — figura wystaje o szerokość paska, więc
+sąsiedzi potrafią się obrączkami zetknąć; odrzucone zwężenie portretu kosztowałoby ~12 % średnicy
+twarzy na każdej figurze. Promienie wyszły do `map/token-ring.ts` (jak kamera do `camera.ts`),
+a `furnitureRadius` jest odtąd **jedyną** odpowiedzią na „dokąd sięga figura": czytają ją aureola
+tury (inaczej pasek by ją zamalował), klin kierunku (inaczej wyciąłby w pasku dziurę), podpis
+figury oraz — po pytaniu MG — **obrączka zaznaczenia, pierścień grupy i uchwyt obrotu**
+w `MapRenderer`. To ostatnie było prawdziwym znaleziskiem: ich odstęp liczy się w pikselach
+**ekranu** (`8 * overlayScale()`), więc w świecie topnieje ze zbliżeniem i przy zoomie 2 biały
+przerywany okrąg siadał dokładnie na pasku życia.
+
+**Kolory: jedna drabinka na całą aplikację.** Mapa miała trzy stopnie z ułamka, panel cztery ze
+stanu ran — ta sama postać bywała na mapie zielona, a w panelu żółta. Od teraz obie strony pytają
+`tokenHpRung` (`shared/figures.ts`, progi z `WOUNDED_HP_RATIO`), a `HP_RUNG_COLORS` niesie nocne
+`--ok` / `--hurt-light` / `--warn` / `--err`. Rdzeń **nie** woła `woundStateFromHp` — nie wolno mu
+— więc zgodność pilnują dwa testy: jeden porównuje obie funkcje punkt po punkcie, drugi porównuje
+paletę z `theme.css`. **Zgłoszone MG:** w motywie dziennym pasek w panelu przyciemnia się razem
+z interfejsem, a obrączka zostaje jasna, bo płótno mapy jest nocne w obu motywach (27e).
+
+**Punkt 2 — odpowiedź jest niewygodna i nie jest usterką kodu.** Aktywna „StrefaPrzemysłowa" ma
+`visibility = 'fog'` i (w chwili oględzin) **zero odsłoniętych kształtów**, więc gracz widział
+czarne pole. Serwer zwalnia własną figurę gracza z filtra mgły (`concealedFrom`: „gracz nigdy nie
+traci swojej postaci z mapy"), ale **klient tej obietnicy nie dotrzymuje**: `fogSprite` leży nad
+warstwą żetonów i jest nieprzezroczysty, więc gracz nie widzi nawet siebie. Serwer mówi jedno,
+renderer drugie. Na **mapie powitalnej** żetonów nie ma w ogóle i to jest z założenia —
+`pushTokens` wysyła pustą listę, gdy `effectiveScene` jest `null`. **Czytelność żetonu na mapie
+MG sprawdzona osobno i jest dobra** (rozstawione figury na sześciu rodzajach podłoża, przy zoomie
+gracza i przy całej mapie w oknie). W trakcie sesji MG sam odsłonił mgłę i obie figury pojawiły
+się u gracza natychmiast.
+
+**Portret w panelu urósł z 3,6 do 6 rem** — wariant wybrany przez MG z trzech: zostaje **obok**
+imienia i paska PW, więc pasek akcji nie schodzi w dół. Sprawdzone na żywo: imię, Rola, pasek PW
+i wszystkie trzy chipy dalej mieszczą się w jednym rzędzie.
+
+**Oględziny bez sesji MG.** Obie karty w przeglądarce trzymały graczy, a MG ma hasło, którego nie
+wpisuję — więc obrączkę oglądałem na **jednorazowej stronie-próbniku** (prawdziwe `TokenNode` na
+prawdziwej mapie sceny MG, siedem wariantów PW i para sąsiadów), skasowanej po sesji. Zmiana
+sceny w bazie została **zablokowana przez zabezpieczenia** i nie była potrzebna. Płótno i portret
+sprawdzone już w żywej aplikacji.
+
+**Testy:** **142** u klienta (+17: `token-ring.test.ts`), **1973** w `shared` (+4 o drabince),
+**1086** na serwerze — zielone. ESLint, Prettier i `tsc -b` czyste w trzech pakietach. Umowy: trzy
+w `mapa`; pułapki: dwie w `mapa`.
+
+### Sesja 11.09 (druga) — mapa zamiast pustego stołu
+
+**Zlecenie MG:** dodać podaną mapę (`IndustrialAreaGate-40x30.png`) jako **mapę startową dla
+wszystkich graczy**, „aby nigdy nie widzieli czystej siatki, co mogłoby niszczyć imersję",
+w skali **40 × 30** — z zastrzeżeniem, że **MG takiej mapy nie potrzebuje**, a rzecz ma służyć
+wyłącznie jako **rezerwowa**, gdyby MG zapomniał scenę ustawić. Z prośbą o pytania uzupełniające
+i zgłaszanie potencjalnych błędów.
+
+**Cztery pytania przed kodem.** MG wybrał: mapa jest **darmowa, do użytku prywatnego** (więc
+plik **poza repo**), tło pokazuje się **tylko przy braku aktywnej sceny** (nie przy scenie bez
+mapy), jest **tłem powitalnym gracza**, a nie sceną w bazie, i **nie niesie żadnego napisu** —
+sam obraz.
+
+**Całe rozwiązanie mieści się w tym, czego atrapa NIE dotyka.** `map/welcome-map.ts` buduje
+`SceneView`, który jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma
+`null`. Dzięki temu stawianie figur, rysowanie, linijka dla innych, ping, efekty i mgła odmawiają
+**same z siebie** (wszystkie pytają `effectiveScene`), tło nie potrzebuje wiersza w bazie,
+migracji ani jednej linii na serwerze, a MG nie może go skasować. Umowa w `mapa`.
+
+**Plik leży w `uploads/art/`, i to nie jest kaprys.** Zbieracz sierot zamiata `maps`, `portraits`,
+`tokens` i `handouts`, kasując wszystko, czego nie wymienia wiersz bazy — mapa powitalna nie ma
+w bazie **niczego**, więc w `uploads/maps/` zniknęłaby po godzinie przy starcie serwera. Pułapka
+w `serwer`. **Brak pliku nie jest awarią**: sonda `loadWelcomeScene` oddaje `null` i wraca dawne
+zdanie „Brak aktywnej sceny" (sprawdzone przez schowanie pliku). **Przy etapie 28 plik trzeba
+skopiować na VPS** — dopisane do listy zakresu tamtego etapu.
+
+**Format: WebP q90, 2473 kB → 274 kB.** Q95 kosztuje 206 kB więcej i różni się od q90 w szumie
+(kanałów odchylonych o >10: 0,96 % vs 0,77 %); maksimum 75/255 to **jeden punkt** mapy —
+żółto-czarna taśma przy szlabanie. Tabela pomiarów w `docs/assety-mapy.md`.
+
+**Siatka liczy się z pliku (`szerokość / 40`), nie z kodu** — inaczej niż przy plakacie
+logowania, gdzie wpisane na sztywno współrzędne skończyły się umową „zmiana pliku wymaga
+przemierzenia liczb od nowa". Podmiana mapy 40 × 30 nie wymaga tu ani jednej linii.
+
+**Oględziny znalazły rzecz, której w kodzie nie widać: kratkę rysuje CSS, nie Pixi.** `.map-area`
+ma w tle raster 48 px, a płótno Pixi jest przezroczyste — więc mapa siadła na środku, a wokół
+niej dalej stała równiutka siatka, czyli dokładnie to, czego ten ekran miał nie pokazywać.
+Naprawione klasą `.map-area--welcome` (pod tłem powitalnym zostaje sam ciemny stół); pułapka
+w `mapa`. **Druga rzecz z oględzin:** gracz ma na pasku ołówek, a bez sceny rysunek nie ma dokąd
+pójść — do 11.09 podgląd kreski zostawał wtedy na ekranie na zawsze. Guzik jest teraz wyłączony
+ze zdaniem „dopiero na aktywnej scenie", a `onDrawingCreate` czyści podgląd (skrótem `R` da się
+narzędzie uzbroić mimo wyłączonego guzika).
+
+**Oględziny: zrobione, bez długu.** Dwie sesje naraz (MG `localhost`, `Tester` na `[::1]`),
+scena wyłączona SQL-em i **przywrócona guzikiem „Aktywuj" w UI MG** — czyli przy okazji sprawdzone
+przejście tło → scena u gracza (natychmiastowe). Obejrzane: tło z siatką 40 × 30 na oknie
+3072 × 1559 i 1400 × 900, brak napisu u gracza, **dawne zdanie u MG bez zmian**, degradacja bez
+pliku, wyłączony ołówek. Poligon wrócił do stanu sprzed sesji (Strzelnica aktywna, 7 żetonów).
+
+**Zgłoszone MG: to nie zdejmuje z ekranu całej „czystej siatki".** Sceny poligonu — w tym aktywna
+„Strzelnica" — **nie mają tła**, więc gracz widzi tam gołą kratkę mimo tej zmiany; tło powitalne
+z wyboru MG łata wyłącznie stan „nie ma aktywnej sceny".
+
+#### Drugie zlecenie tej samej sesji — kamera gracza zamknięta w mapie
+
+**Zlecenie MG:** „gracze nie mogą widzieć poza obszar wgranej mapy; obszar gry/siatka ma
+obejmować tylko plik graficzny", mapa powitalna na **nowym pliku** (`StrefaPrzemyslowa-40x30.png`,
+2896 × 2176), a gracze mają **zaczynać w tym samym miejscu na dole mapy** i widzieć „niewiele
+więcej niż 8 kratek wokół siebie".
+
+**Cztery pytania, cztery decyzje MG:** kamera zamknięta **na wszystkich scenach, ale tylko
+u graczy** (MG zostaje z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać);
+przy maksymalnym oddaleniu **ani piksela czerni** (a nie „cała mapa z czarnymi pasami") —
+świadoma cena: na szerokim oknie całej mapy 40 × 30 nie widać naraz; przybliżenie na osiem kratek
+obowiązuje **też na scenach, na własnej figurze gracza**; a **miejsce startu wyznacza MG**, z
+domyślnym środkiem dolnej krawędzi, gdy tego nie zrobi.
+
+**Cztery rzeczy w kodzie.** (1) `map/camera.ts` — arytmetyka kadru osobno od renderera, żeby dała
+się testować bez Pixi. (2) `setCameraLocked` + `applyCameraBounds` w rendererze, przykładane
+**także przy zmianie rozmiaru okna**, bo dolna granica zbliżenia zależy od kształtu płótna.
+(3) `frameAround` — kadr startowy osobny od `fitScene`; kolejność kotwic: własna figura → punkt
+MG → środek dolnej krawędzi. (4) **Miejsce startu jako pole sceny**: migracja
+`scene_spawn_point`, `SceneView.spawn`, `ScenePatch.spawn`, kolumny w `archive.ts`, narzędzie
+mapy `spawn` (klawisz `G`) i chorągiewka rysowana **tylko MG**. Umowy w `mapa`.
+
+**Mapa powitalna dostała nowy plik**: 2896 × 2176 (kratka 72,4 px), WebP q90, 581 kB. Poprzedni
+był tą samą mapą w połowie rozdzielczości — za mało, odkąd gracz startuje przybliżony. Wysokość
+nie dzieli się równo przez 30 (ostatni rząd o 4 px wyższy); siatkę liczy się z szerokości.
+
+**Oględziny: pełne, na żywym stole, bez długu.** Sprawdzone: kadr startowy tła powitalnego
+(17 kratek w pionie zmierzone na siatce, dół mapy), zamknięcie kamery (oddalanie zatrzymuje się
+na pokryciu, przeciągnięcie w róg nie odsłania czerni), to samo na **scenie MG** ze świeżo wgraną
+mapą, narzędzie miejsca startu u MG (chorągiewka, odczyt „punkt startu: x, y px", kosz punktu),
+kamera gracza **bez figury** (ląduje na punkcie MG) i **z figurą** (Tony: kamera na jego żetonie,
+przycięta do krawędzi mapy — policzone i zgodne co do kratki), oraz to, że **MG dalej może
+wyjechać poza mapę**.
+
+**W trakcie sesji MG sam założył scenę „StrefaPrzemysłowa"** (mapa 1448 × 1086, kratka **47 px**,
+mgła). Oględziny robiłem na niej i **przywróciłem jej stan** co do pola: aktywna, `fog`, bez
+punktu startu. **Uwaga dla MG w raporcie:** kratka 47 px nie odpowiada skali 40 × 30 tego pliku
+(powinno być 36,2 px), więc siatka na tej scenie nie siedzi na rysunku.
+
+**Odpowiedzi MG na raport zapisane w `zaleglosci.md` (11.09, koniec dnia):** jedna nowa pozycja
+do zrobienia — **pola „kratek w poziomie/pionie" w edytorze sceny** zamiast zgadywania pikseli
+(MG chce; jego własna scena ma z tego powodu siatkę 47 px zamiast 36,2) — oraz cztery decyzje
+zamknięte, żeby nie wracały jako pytania: „ani piksela czerni" zostaje, mapa powitalna zostaje bez
+wyznaczanego punktu startu, czarne pole pod nieodsłoniętą mgłą to zachowanie (choć **MG sam wziął
+je za awarię**), a usterka „MG widzi «Brak sceny» po własnej aktywacji" czeka na liście.
+
+**Zaległość dopisana (nie moja usterka, starsza):** MG, który połączył się przy braku aktywnej
+sceny, po własnej aktywacji widzi dalej „Brak sceny" — gałąź MG w `socket.ts` woła `applyScene`,
+a ten milczy przy `scene === null`. Gracze bez zmian.
+
+**Testy:** **125** u klienta (118 + 7 w `camera.test.ts`), **1969** w `shared` (+2 o punkcie
+startu), **1086** na serwerze (+1 dymny o `scene:update` z punktem startu) — wszystkie zielone.
+
+Po pierwszym zleceniu było ich **118** u klienta (114 + 4 w `welcome-map.test.ts`), przy
+niezmienionych `shared` i serwerze. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach.
+Umowy dopisane w `mapa` (trzy: tło powitalne, kamera, miejsce startu), pułapki: dwie w `mapa`
+(siatka z CSS, `clampZoom` z dwiema parami opcji) i jedna w `serwer` (zbieracz sierot).
+
+### Sesja 11.09 — plakat na ekranie wejścia
+
+**Zlecenie MG:** dodać `tapeta_logowania.png` jako tapetę głównego okna logowania i umieścić
+pośrodku okno logowania pasujące kolorystycznie i stylistycznie, „które nie będzie zaburzało
+obrazu i będzie się w nią dobrze wtapiało", z prośbą o pytania uzupełniające i zgłaszanie
+potencjalnych błędów. Doprecyzowane w trakcie: **konwersja nie ma stracić na jakości.**
+
+**Cztery pytania przed kodem.** MG wybrał: plik **do repo** (`public/art/`, nie poza gitem),
+tapeta na **obu** ekranach wejścia (logowanie MG i dołączanie gracza), formularz **w czerwonej
+ramce celownika narysowanej w plakacie** (nie w geometrycznym środku okna) i **bez własnego
+pudełka** — napisy wprost na papierze. Pochodzenie pliku: **własna generacja AI** MG, jak mapa
+z etapu 04.
+
+**Zgłoszone MG przed pierwszą linią kodu:** repo jest publiczne, a plakat niesie znaki towarowe
+CP RED (logo, Arasaka, Militech). MG zdecydował świadomie; granica prawna i droga odwrotu
+(przeniesienie do `uploads/`, ekran degraduje się do kremowego papieru) — `docs/assety-logowanie.md`.
+
+**Bezstratny WebP, bo plakat jest z ziarna.** 2745 kB PNG → **1811 kB WebP bezstratnego,
+identycznego co do bitu**. Warianty stratne odpadły na pomiarach: nawet q100 daje odchyłkę
+79/255, bo pierwsze, co kodek wyrzuca, to ziarno filmowe i rysy. Tabela pomiarów w pliku assetów.
+**Pillow po cichu ignoruje `near_lossless`** — sprawdzone, nie ma po co próbować drugi raz.
+
+**Kotwica zamiast wyśrodkowania — to jest całe rozwiązanie „wtapiania się".** Ramka celownika
+z plakatu leży na 31,6–68,1% × 14,6–63,1% pliku (wykryte ciągami czerwonych pikseli, nie na oko),
+więc jej środek jest **11,16% wyżej** niż środek obrazu. `translate` odtwarza geometrię
+`background-size: cover`, dzięki czemu formularz siada w tej ramce przy każdym kształcie okna —
+i dopiero to pozwala mu **nie mieć tła**: pod napisami zawsze jest równy kremowy papier.
+
+**Dwie usterki znalezione w przeglądarce i naprawione w tej samej sesji.** Chrome malował pole
+z podstawionym hasłem na niebiesko mimo `background: none` (styl UA na `:-webkit-autofill`;
+zdjęte długim `transition`), a `place-items: center` chowało górę formularza bezpowrotnie na
+oknie 1500 × 460 (naprawione `justify-content: safe center` w kolumnie flex). Obie w `pulapki-dev.md`.
+
+**Trzecia usterka zgłoszona, nie naprawiona — bo starsza niż plakat.** Hasło z menedżera haseł
+nie odblokowuje przycisku „Zaloguj się": `LoginPage` pyta o stan Reacta, a autouzupełnienie nie
+wysyła `input`. Plakat to tylko uwidocznił. Poszło do `zaleglosci.md` razem z propozycją naprawy.
+
+**Kontrasty policzone, nie dobrane na oko** — wszystkie napisy ponad progiem AA na papierze
+(sadza 10,7:1, przygasła 4,6:1, błąd 5,6:1, napis na przycisku 5,2:1). `--login-red` ma 3,7:1,
+więc jest wyłącznie do kresek i teł; drobny tekst bierze `--login-red-deep`.
+
+**Oględziny: zrobione**, wyjątkowo bez długu. Przejrzane wszystkie trzy stany ekranu (startowy,
+logowanie, dołączanie w obu wariantach) na trzech kształtach okna: 1907 × 1024, 430 × 880
+i 1500 × 460. Ekran dołączania z kampanią oglądany na podmienionym DOM-ie — w bazie nie ma
+ważnego zaproszenia, a tworzenie go wykraczałoby poza zlecenie.
+
+**Uwaga na przyszłość: sesja MG na `[::1]:5173` zalogowała się sama.** Chrome trzyma tam hasło MG
+i formularz poszedł bez mojego kliknięcia. Wylogowane od razu; przy oględzinach ekranu logowania
+licz się z tym, że menedżer haseł potrafi domknąć sprawę za ciebie.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta, zielone.
+ESLint i Prettier czyste; `tsc -b` u klienta czysty. Jedna umowa w `ui`, dwie pułapki w `ui`.
+
+### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
+
+**Zlecenie MG:** „zaprojektuj testy a następnie przeklikaj przyciski (aby przetestować funkcje
+z nimi związane) w UI gracza takie jak: ustabilizowanie, pochwycenie, wstrzymanie akcji, wstanie
+i bieg", z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Cztery pytania
+padły przed pierwszym klikiem; MG wybrał: **plan + oględziny + łatanie luk**, nośnik **Tony**
+z dosypanymi Umiejętnościami (Bijatyka 4, Pierwsza pomoc 4), **oba wejścia** (pasek HUD mapy
+**i** zakładka „Walka") i **przywrócenie całego poligonu** po sesji. Po projekcie testów MG
+przerwał sesję na `/compact`; po raporcie z oględzin zdecydował: **błędy idą do zaległości,
+naprawa w osobnej sesji**. Kodu produkcyjnego ta sesja **nie tknęła**.
+
+**Przeklikane: 32 przypadki na żywej walce** („Strzelnica", kolejka z pięciu uczestników, MG na
+`localhost:5173`, Tony na `[::1]:5173`). Wszystkie pięć Akcji zachowuje się zgodnie z RAW:
+
+- **Wstanie** — slot zostaje aktywny mimo blokady ruchu (wtedy `Bieg` mówi „Powalony token musi
+  najpierw wstać"), naklejka znika **bez przeładowania**, Akcja schodzi, po Wstaniu figura
+  znowu chodzi (przeszła 4 m).
+- **Bieg** — wyszarzenie z powodem, po Akcji Ruchu odblokowanie, klik daje **Ruch 1 z 2**
+  i **10 m / 24 m**; Tony przeszedł w jednej turze **20 m**, czyli dalej, niż sięgał pierwszy pas.
+  Bursztynowy drugi pas widać na trasie **zanim** guzik stanie się klikalny — świadome
+  (`cpredRunMetres` nie pyta o `requiresSpentMove`), ale z pozycji gracza czyta się jak
+  „mapa obiecuje, przycisk odmawia".
+- **Wstrzymanie Akcji** — pusty formularz nie wysyła nic, rezerwacja **nie zdejmuje** Akcji,
+  „Odpal" MG oddaje turę z **niezregenerowanym** budżetem (Ruch 1/1 i 12 m/12 m zostają),
+  a deklaracja „przy 12" **odpaliła się sama** i przestawiła Tony'ego w kolejce z 20 na 12.
+- **Ustabilizowanie** — odmowa zasięgu nic nie kosztuje, kubek to TECH + Pierwsza pomoc,
+  **PT liczy serwer** (PT 15 przy PW 0, PT 10 przy 35/40 — klient tych PW w ogóle nie ma),
+  sukces daje 1 PW + Nieprzytomny na 60 s + zamianę naklejki, porażka zjada Akcję i nie zmienia
+  nic, porzucony kubek (Esc) nie kosztuje nic.
+- **Pochwycenie** — „PT 10 (ZW + Bijatyka celu)", po wygranej oba wiersze kolejki mówią kto kogo,
+  panel zmienia twarz na Duszenie / Rzut / Ludzka tarcza / Uwolnij, Trzymany traci Akcję Ruchu
+  („Pochwycony token nie może wykonać własnej Akcji Ruchu"), następny rzut niesie **„Trzymanie −2"**,
+  „Uwolnij" jest darmowe. Remis sprawdzony w kodzie, nie kostką: `attackerTotal > defenderTotal`.
+
+**Dwa błędy — oba w `zaleglosci.md` (10.09), oba otwarte:** (1) gracz widzi **„BEZ RAN" przy każdej
+cudzej figurze**, bo `StabilizePicker` czyta `hp`, które `tokenStore` graczowi kasuje — lista do
+wyboru konającego mówi, że nikt nie jest ranny; (2) **zakładka „Walka" i pasek mapy nie zgadzają
+się co do wyszarzeń** — `CombatActions.tsx` pyta wyłącznie o „Akcja zużyta", więc `Bieg` bywa tam
+klikalny wbrew regule, a formularze zostają żywe po zużytej Akcji. Zasady są bezpieczne (serwer
+odmawia w obu przypadkach), psuje się obietnica interfejsu — to pułapka „dwa wejścia" z 06.09.
+
+**Trzy rzeczy do wiadomości:** ujemne `hpCurrent` wpisane wprost do bazy jest po cichu zamieniane
+na PW domyślnej karty (poligon przygotowuje się przez **0**); odmowy Akcji lądują w kategorii
+czatu „Stół", którą łatwo mieć wyłączoną, i wtedy klik wygląda na przycisk bez działania;
+„Rudy Kwiatkowski" ma **dwa żetony na jednej karcie**, a zasięg liczy się od tego z kolejki.
+Wszystkie trzy jako pułapki w indeksach niżej.
+
+**Poligon przywrócony z kopii bajtowej sprzed sesji** (`dev.db` przy zatrzymanych serwerach):
+Umiejętności Tony'ego, PW i naklejki Rudego, pozycje żetonów, walka, inicjatywy i statusy wracają
+do stanu sprzed pierwszego kliknięcia.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
+zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.
+
+
+### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
+
+**Zlecenie MG:** „dodaj możliwość skanowania założonego/używanego wyposażenia przez inne tokeny
+— żeby móc sprawdzić np. czy wroga/sojusznicza postać ma hełm na głowie, albo jaki rodzaj broni —
+bo teraz tego nie wiadomo, co uniemożliwia określenie, w jaki element ciała wroga celować",
+z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. **Etapu 41 nie było
+w planie**; powstał plik `etap-41-ogledziny-wyposazenia.md`.
+
+**Diagnoza była prosta i potwierdziła zlecenie co do joty.** Punkt Celowania (16f + 31.08) gracz
+wybierał w ciemno: `TokenView` niesie nazwę, obrazek, naklejki, zwrot i rany, a karta NPC **nie
+jedzie do graczy w ogóle** (`characterAudience`). „Czy ten ganger ma hełm" nie miało **żadnej**
+drogi do stołu — a to jest liczba, na której stoi cała opłacalność strzału w głowę.
+
+**Osiem pytań przed kodem; MG wybrał wariant najszerszy w każdym z nich.** Dwie warstwy (rzut oka
+za darmo, liczby po Teście), PT ustala MG za każdym razem (tor prośby z etapu 40), w walce Akcja,
+widać pancerz + broń + chrom + rany, figura bez deklaracji pokazuje pierwszą broń z karty, a stan
+„broń w rękach" jest **egzekwowany w walce**.
+
+**Egzekwowanie wywróciło 39 testów serwera i to nie była usterka danych testowych.** Karta
+z testów ataku niesie pistolet, karabin i nóż; przy regule domyślnej „pierwsza broń jest w rękach"
+każdy strzał z karabinu odpadał `WEAPON_NOT_DRAWN`. Zgodnie z s. 168 tak ma być — ale zaczynało to
+obowiązywać **także figury, którym nikt nigdy nie powiedział, co trzymają**, czyli wszystkie.
+Zgłoszone MG z liczbą i przykładem; **decyzja: domysł pokazuje, deklaracja zabrania.** Brak pola
+= oględziny pokazują pierwszą broń, planer nie odmawia niczego; od pierwszego `weapon:draw` pole
+istnieje i odmowa jest pełna. Po zmianie **39 testów wróciło do zieleni bez tknięcia ani jednego**.
+
+**Ręce są dwie, nie jedna** (`CPRED_HANDS`) — poprawka względem pierwszego szkicu, w którym stan
+był pojedynczym id. Pistolet i nóż trzyma się naraz, karabin zajmuje obie ręce; arytmetykę robi
+serwer w `weapon:draw` z `resolved.hands`, bo katalog należy do serwera. `weapon:draw` obsługuje
+trzy gesty z cenami z podręcznika: dobycie za darmo, schowanie za Akcję, upuszczenie za darmo —
+i dopiero teraz trzy wpisy katalogu Akcji z 14b coś robią.
+
+**Rzut oka jedzie własnym zdarzeniem `sighting:look`, nie na `TokenView`.** Klasa broni bierze się
+z **typu** w kompendium („Karabin szturmowy", nie „Militech Ronin") i tylko dlatego wolno ją pokazać
+za darmo; kompendium czyta się z bazy, więc doklejenie tego do żetonu kazałoby każdej
+synchronizacji sceny czekać na katalog. Widoczność rozstrzyga **`concealedFrom`** — ta sama, którą
+mapa decyduje o rysowaniu żetonu — żeby oględziny nie miały drugiej definicji „widzę".
+
+**Warstwa szczegółowa to karta czatu rodzaju `sighting`, prywatna jak szept.** Rzut bywa jawny
+i stół widzi, że komuś wyszło; **treść** należy do postaci, która ją zdobyła. Karta zostaje, więc
+po przeładowaniu gracz nadal ma to, co wypatrzył — i to z niej okno czyta liczby. Nie jest to nowy
+rodzaj rzutu: `sightingTokenId` na zwykłym żądaniu Testu mówi jedynie, **co jego zdanie odsłania**.
+
+**Chrom rozstrzyga rodzina, nie flaga przy wpisie** — sześć z ośmiu widać z zewnątrz, Cybersynapsy
+i Cyborgizacje wewnętrzne nie. Wiersz **bez** rodziny (karty sprzed 23a) jest niewidoczny:
+przy wyborze „pokaż, czego nie wiesz" kontra „przemilcz" przemilczenie jest jedynym bezpiecznym
+domyślnym na drodze z karty MG do gracza.
+
+**Menu figury otworzyło się graczom — po raz pierwszy.** Do 41 `onTokenMenu` sprawdzało `ROLE_GM`,
+więc gracz nie miał żadnego wejścia w cudzą figurę poza celownikiem. Gracz dostaje **jedną**
+pozycję („🔍 Przyjrzyj się…"); reszta menu to warsztat MG, a atak i Konfrontację ma z paska,
+gdzie płaci się budżetem tury.
+
+**Pasek akcji wyszarza broń spoza rąk** (`option.notDrawn` → `CPRED_NOT_DRAWN_REFUSAL`) — bez tego
+gracz dowiadywałby się o pustej kaburze dopiero przy rzucie. Gasi **wyłącznie** przy
+zadeklarowanych rękach, tą samą regułą, co planer.
+
+**Oględziny w przeglądarce: NIE ZROBIONE, i to jest jedyny brak tego etapu.** Aplikacja wstaje,
+konsola po przeładowaniu z nowym kodem jest czysta — i na tym koniec, bo **oba wejścia są dla
+automatyki zamknięte**: menu figury chce prawego kliku w kanwę Pixi (przeszkoda znana od 38a),
+a dymek wymaga `onAimHover`, którego syntetyczny ruch kursora nie budzi (celownik się uzbraja,
+linia strzału rysuje, dymek nie wychodzi — nowa pułapka). Pięć pozycji do kliknięcia ręką MG
+stoi w `zaleglosci.md`, najlepiej razem z długiem 38a/38b: to jest **to samo menu**.
+
+**Testy:** **1967** w `shared` (+26), **1085** na serwerze (+13), 114 u klienta — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach; klient się buduje. Sześć umów kodu
+i jedna pułapka w indeksach niżej.
+
+### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
+
+**Zlecenie MG:** przetestować **zdobywanie doświadczenia i rozwijanie za nie postaci**, z prośbą
+o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Trzy pytania padły przed pierwszym
+klikiem; MG wybrał: **oględziny w przeglądarce** (testy automatyczne były już zielone),
+nośnikiem **„Frank" z przywróceniem stanu** (jak 02.09 i 06.09), a zakres to **29a — PD:
+przyznanie, wydanie, rejestr** plus **wpływ awansu na grę**. Wieloklasowość (29b) i styk
+z etapami 38–40 zostały świadomie poza sesją.
+
+**Frank pojechał przez cały cykl awansu i wszystko poza jedną rzeczą zgadza się z opisem etapu.**
+Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Solo ze Zmysłem Walki 2**,
+**300 PD** i cztery Umiejętności (Atletyka 2, Percepcja 4, **Ogień ciągły 4** — ×2 — i Broń
+krótka 3); po sesji wrócił do stanu sprzed (`NPC (MG)`, bez Roli, 0 PD, bez Umiejętności).
+Odklikane: trzy drabinki kosztów, **kryterium ×2 na tym samym szczeblu** (Percepcja 4 → 5 za
+**100 PD** obok Ognia ciągłego 4 → 5 za **200 PD**), wykupienie **nowej Umiejętności od zera**
+(Broń długa 20 PD, Broń ciężka ×2 40 PD), filtr „tylko na które mnie stać" (przy 60 PD zostają
+szczeble po 20 i 40), **„Brakuje N PD"** na wyszarzonych guzikach z ceną na czerwono, pusty stan
+„Nic w tej cenie — poczekaj na PD po sesji", **„✦ Przyznaj wszystkim"** (40, 10, 25 i −25 PD —
+zawsze **pięć postaci graczy**, żaden BN, odmiana „5 postaci" trzyma się po naprawie z 02.09),
+odmowa przy pustym polu, **korekta MG** i jej **scalanie w oknie minuty** (trzy wpisy zostawiły
+**jeden** wiersz `adjust`, przeliczony na „+250 → 300", bez śmieci „500 → 50 → 5") oraz rejestr
+mówiący co, za ile i ile zostało.
+
+**Tylne drzwi trzymają z obu stron.** U gracza pole „Punkty Doświadczenia" jest `readOnly`,
+u MG zwykłe; poziomy Umiejętności i ranga Zdolności mają u MG strzałki, u gracza samą liczbę.
+Serwer odmawia niezależnie od UI (`FORBIDDEN` na `improvementPoints`, `skills`,
+`roleAbilityRank` i `roleId` w `character:update`) — pokryte testem
+`characters.test.ts` → „the player may no longer type PD, a skill level or the ability rank".
+
+**Awans wchodzi do gry natychmiast, bez przeładowania — sprawdzone w trzech miejscach.**
+Kupiona Atletyka 2 → 3 zmieniła stronę pierwszą (POZ. 3, BAZA 8) i **okno rzutu** („Atletyka +3,
+1k10 + 8"); kupiony **Zmysł Walki 2 → 3** podniósł panel Solo na „Wolne punkty: 3 z 3"; kupiona
+**Medycyna 3 → 4** (Frank przestawiony ręką MG na Medyka) podniosła sakiewkę Specjalizacji na
+„Do rozdzielenia: 4 z 4", a przy okazji **otworzyła bramkę wieloklasowości** — select „zmień
+Rolę na" odblokował się w tej samej chwili, w której ranga sięgnęła 4. Tabor Nomady z 30d idzie
+tą samą drogą (`cpredRoleAbilityRank`), więc nie był klikany osobno.
+
+**Znaleziony i naprawiony jeden błąd: rejestr awansów nie nadążał za PD dopisanymi spoza karty.**
+Etap 29a dał rejestrowi jedno wywołanie — w `buy()`, po własnym zakupie — a PD dopisuje przede
+wszystkim **nie ta karta**: pulę po sesji i korektę wpisuje MG. Otwarty u gracza rejestr zostawał
+wtedy przy liście sprzed przyznania (licznik nad nim rósł: 60 → 85 PD, lista dalej ośmiowierszowa),
+a **zamknięcie i ponowne otwarcie nic nie dawało**, bo warunek pytał o `history === null`.
+Jedyną drogą do prawdy było przeładowanie strony — i to dokładnie w tej chwili, w której gracz
+patrzy na rejestr najczęściej. Naprawa nie jest nowym pomysłem, tylko **przepisaniem wzorca
+bliźniaczego rejestru eurodolców z 23b**: `useEffect` na `[characterId, open, savedAt]`, gdzie
+`savedAt` to **stempel serwera (`character.updatedAt`), nie saldo** — bo własna łata karty ląduje
+w składzie optymistycznie i lista czytana na saldzie wróciłaby bez wiersza, który dopiero
+powstaje. Ręczne wywołanie z `buy()` zeszło: jedna droga obsługuje wiersz własny i ten od MG.
+Sprawdzone w przeglądarce w obie strony.
+
+**Domknięte kryterium 29a, które przeżyło etap bez pokrycia: „Podniesiony Interfejs Netrunnera
+działa w `netrun.ts` od razu".** Interfejs jest jedyną Zdolnością z mechaniką starszą niż etap 30,
+więc ma dwie drogi do tej samej liczby — kartę i trwający run. Kod robi obie (serwer czyta kartę
+świeżo przy każdej akcji sieciowej, a `character:advance` pcha `netrun:sync`), ale nie miał ani
+testu, ani śladu oględzin. Doszedł test na żywych gniazdach w `netrun.test.ts`: netrunner kupuje
+rangę **w środku runu** i okno dostaje `interfaceRank: 4` **samym broadcastem**, bez ponownego
+wejścia i bez `state:request`. Strażnik sprawdzony na cofniętej naprawie — po wyjęciu `emitRuns`
+pada dokładnie ten jeden test.
+
+**Zgłoszone MG i zostawione bez zmian (decyzja MG):** licznik „N PD w zapasie" ma odwrócone
+wyróżnienie względem czterech innych paneli tej rodziny — przy **0 PD** jest przygaszony,
+przy zapasie świeci, choć w Świadomości Walki, Moto, Specjalizacjach i Zespole wyróżnia się
+właśnie **zero**. Klasa nazywa się `awareness-left--empty` i jest dziś przypięta do stanu
+„nie pusto"; wygląd zostaje, nazwa też.
+
+**Poligon przywrócony w całości:** Frank do stanu sprzed sesji, PD czterech kart graczy
+(Tony, avatar9, Test 27x, Marcin) z powrotem na **0**, a **rejestr awansów wyczyszczony do zera**
+— przed sesją nie miał ani jednego wiersza. **Ani jedna karta czatu nie powstała** (oba okna
+rzutu zamknięte „Anuluj"), żaden żeton nie był stawiany, scena nietknięta.
+
+**Testy:** 1941 w `shared`, **1072** na serwerze (+1), **114** u klienta (+4) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste. Jedna umowa kodu i jedna pułapka w indeksach niżej.
+
+### Sesja 06.09 (czwarta) — okno, które zostawało, i liczby ze strzałkami
+
+**Zlecenie MG (trzy rzeczy naraz):** okno prośby o Test **nie zamyka się po zgodzie MG** i robi
+się z tego bałagan, bo gracz nie wie, czy zgodę dostał; **sprawdzić tę funkcję większą liczbą
+testów**; i **zamienić pola liczbowe na karcie na przełączniki ±1**, węższe niż dziś, „chyba że
+wartości mogą przekroczyć 99 — co nie powinno mieć miejsca w tym systemie", **z wyjątkiem
+eurodolców**. Trzy pytania przed kodem doprecyzowały kształt: liczba zostaje **napisem** (bez
+wpisywania), guziki **stoją zawsze**, a trzy pola, które naprawdę potrafią przekroczyć 99,
+**zostają polami**. Czwarta odpowiedź przyszła osobno i zmieniła rysunek: strzałki **w pionie,
+tuż na prawo od liczby, obie razem wysokie na jedną liczbę** — nie `− 7 +` po bokach.
+
+**Usterka miała jedną linijkę i była w miejscu, którego wczorajsze oględziny nie dotknęły.**
+Przycisk „Poproś MG" w oknie rzutu wołał `askForCheck`, ale **okna rzutu nie zamykał**: okno
+prośby stawało nad nim, po wysłaniu znikało, a pod spodem wracał guzik **„Weź kubek"** — czyli
+przycisk znaczący „rzuć bez zgody" — i stał tam przez cały czas oczekiwania oraz po zgodzie MG.
+Stąd „nie wiem, czy dostałem zgodę, czy mam jeszcze coś z tym oknem zrobić". Druga droga do
+prośby — **Alt+klik w wiersz karty** — tej wady nie ma i **właśnie ją** sprawdzałem wczoraj
+w przeglądarce; MG kliknął przycisk. Naprawa: `askForCheck` gasi okno rzutu, zanim otworzy
+prośbę, i robi to **w jednym miejscu** dla obu wejść.
+
+**Testy urosły o 15 i celują w to, czego wczoraj nie było.** Serwer (+9): odmowa **nie tworzy
+wezwania** i dowozi zdanie MG; wycofuje **autor, nie MG**; zgoda bez progu i zgoda z progiem
+i przeciwnikiem naraz odpadają, **nie zamykając prośby**; zgoda przeciwstawna nazywa drugą
+stronę; modyfikator i widoczność jadą z żądania MG; `requestMessageId` wskazujący **wezwanie**,
+duszka albo prośbę zamkniętą odpada **i nie zostawia wezwania** (to sprawdza kolejność:
+prośba jest walidowana **przed** `createCheckCall`); powód dłuższy niż 300 znaków odpada.
+Klient (+6): prośba **gasi okno rzutu**, po jej zamknięciu **nie zostaje nic do kliknięcia**,
+rzut nieproszalny (obrażenia) okna nie gasi, nieznana Umiejętność nie otwiera prośby, oba okna
+się wykluczają, a strażnik źródłowy pilnuje, że okno rzutu prosi **wyłącznie** przez
+`askForCheck` — bo `openRequest` wołane wprost przywróciłoby usterkę tą samą drogą.
+
+**Dowód ciszy zamiast czekania na zegar.** „Wezwanie nie powstało" sprawdza się **znacznikiem**:
+po badanym żądaniu leci kolejna prośba i czeka się na **jej** kartę — Socket.IO trzyma kolejność
+w obrębie połączenia, więc gdy znacznik dociera, wszystko wcześniejsze już doszło. Pierwsza
+wersja czekała na kartę **po** wysłaniu i zawieszała się: rozgłoszenie potrafi wyprzedzić ack,
+a nasłuch założony po nim nie doczeka się niczego.
+
+**Przełącznik liczbowy (`NumberStepper`) zastąpił 14 pól na karcie.** Cechy, Szczęście bieżące,
+Punkty Wytrzymałości, poziom Umiejętności, ranga Zdolności (bieżącej i poprzednich), stan
+magazynka, OB bieżące i pełne, kara pancerza, gniazda cyberdeka, poziom Reputacji, modyfikator
+drugiej strony w Handlu i kategoria wpisu Taboru. **Zostały polami trzy**, i to na wyraźną
+decyzję MG: **Punkty Doświadczenia** (do 99 999 — kampania zbiera setki), **Człowieczeństwo**
+(EMP 10 × 10 = 100) i **ILOŚĆ** w wyposażeniu (do 999 — „naboje 200 szt."), plus **eurodolce**
+wyłączone z zlecenia od początku. Pole `readOnly` (poziom Umiejętności i ranga u gracza, bo
+kupuje się je PD) pokazuje **samą liczbę bez strzałek** — to czytelniejsze niż pole, w które
+klik nic nie robi.
+
+**Dwie rzeczy w przełączniku nie są ozdobą.** **Przytrzymanie powtarza** (400 ms zwłoki, potem
+70 ms) — bez wpisywania OB 18 to osiemnaście kliknięć. I powtarzanie **liczy od własnej liczby**,
+a nie od tej z propsów: karta jest duża, jej render potrafi nie nadążyć za tikiem, a wtedy dwa
+tiki z rzędu policzyłyby tę samą wartość i przytrzymanie stanęłoby w miejscu. Sam guzik jest
+przezroczysty i dziedziczy kolor (`color: inherit`), bo ten sam siedzi na papierze pola, na
+czerwonej plakietce rangi i w komórce tabeli.
+
+**Zlecenie wróciło jeszcze raz i rozszerzyło zakres: strzałki weszły do okien gry.** MG zgłosił,
+że w oknie, z którego prosi się o Test, pól ze strzałkami nie ma — chodziło o **okno rzutu**
+(samo okno prośby ma tylko pole na zdanie „po co"). Przy okazji potwierdził umowę: modyfikator
+i widoczność wpisane w oknie rzutu **nie jadą z prośbą** i tak ma zostać, bo to decyzje MG.
+Zamienione zostały: okno rzutu (modyfikator ze znakiem, Szczęście), okno wezwania MG (PT,
+przeciwnik, modyfikator), statysta z menu tokena (Cechy, poziom broni, Unik, OB, Wartość bojowa,
+amunicja, poziomy Umiejętności — 11 pól) i wirus w netrunie (PT, Akcji Sieciowych) — razem 18.
+
+**Sześciu pól świadomie NIE zamieniłem i to jest odkrycie tej rundy: w części z nich puste
+znaczy coś innego niż zero.** OB celu w oknie obrażeń („puste = OB z karty postaci", a 0 to
+„bez pancerza"), inicjatywa akcji przygotowanej („puste = czeka na zdarzenie"), piętra
+i odgałęzienia generatora sieci („puste = losuje serwer 3k6"), sztuki i gotówka w ekwipunku
+(„puste = wszystkie"). Przełącznik zawsze ma liczbę, więc odebrałby im ten stan. Do tego PW
+tokenu (limit 999) i PD do przyznania (−1000..+1000) zostają polami na mocy tej samej reguły
+dwóch cyfr. Skóra przełącznika rozdzieliła się na dwie: baza w `styles.css` rysuje **pole
+z ramką** (tak wygląda każde inne pole w oknach), a `.sheet-window .cp-step` spłaszcza je do
+napisu — dokładnie tak, jak `.cp-field input` spłaszcza pola na karcie od 27a.
+
+**Wpisany modyfikator gracza znika bez ostrzeżenia** — gracz może wystukać „+3", kliknąć „Poproś
+MG" i ta liczba przepada, bo prośba jej nie niesie. Zachowanie jest poprawne i MG je potwierdził,
+więc zostaje, ale przełącznik dostał u gracza `title`: „Do własnego rzutu. Z prośbą do MG nie
+jedzie — modyfikator ustala on."
+
+**Oględziny w przeglądarce** (sesja gracza `Tony` na `localhost`) potwierdziły naprawę: „Poproś
+MG" **gasi okno rzutu**, po „Wyślij prośbę" na ekranie nie zostaje nic, a prośba dochodzi na
+czat i daje się wycofać. Strzałki działają na wszystkich czterech zakładkach, magazynek zszedł
+z 30 na 25 i wrócił na 30, zatrzymując się na maksimum. Druga sesja gracza (`Tester` na `[::1]`)
+potwierdziła, że **cudzej prośby nie widać**. Strony MG **nie sprawdzałem w przeglądarce** —
+zalogowanie się na konto MG wymagałoby wpisania hasła, czego nie robię; zgodę, odmowę i „Ustaw…"
+pokrywa 31 testów serwerowych.
+
+**Oględziny drugiej rundy poszły z konta MG** (`localhost` przelogowany na MG): poziomy
+Umiejętności na karcie Franka mają strzałki i mieszczą się w wąskiej kolumnie POZ., okno rzutu
+liczy modyfikator ze znakiem („+1") i podgląd rzutu od razu pokazuje „1k10 + 6", okno wezwania
+stawia PT i modyfikator obok drabinki, a edytor tokenu wieżyczki ma strzałki przy Cechach,
+Umiejętności, Uniku, OB i amunicji — przy „Pasku HP" i „Zasięgu widzenia" zostały pola, bo tam
+liczby bywają trzycyfrowe.
+
+**Testy:** 1941 w `shared`, **1071** na serwerze (+9), **110** u klienta (+6) — zielone. ESLint,
+Prettier i `tsc --noEmit` czyste w trzech pakietach; konsola przeglądarki bez błędów. Dwie umowy
+kodu i dwie pułapki w indeksach niżej.
+
+### Sesja 06.09 (trzecia) — gracz, który pyta MG, czy może rzucić
+
+**Zlecenie MG:** kontynuacja projektu, **etap 40 (prośba gracza o Test)**, z prośbą o pytania
+uzupełniające i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — plus **osobne zlecenie:
+„popraw wygląd karty postaci, bo w wyniku zmian straciła spójność"**. Trzy pytania padły przed
+kodem, po obejrzeniu karty w przeglądarce; MG wybrał rekomendację w każdym z nich: pas Zdolności
+**wychodzi z kolumny tożsamości** na pełną szerokość, drabinka PT stoi na karcie czatu **jako
+siatka z nazwami szczebli**, a szlif obejmuje **wszystkie cztery zakładki**.
+
+**Etap nie zbudował nowej mechaniki Testu — dobudował brakującą połowę pętli z 32.** Cała treść
+tego zdania siedzi w jednej funkcji: `createCheckCall` **wyszła z ciała handlera `check:call`**
+i ma dziś dwóch wołających. Klik w szczebel drabinki na karcie prośby robi **zwykłe wezwanie
+z etapu 32** — z kartą, wołającym kubkiem, Szczęściem i werdyktem — bo woła tę samą funkcję, a nie
+własną kopię. Ramę MG (próg albo przeciwnik, modyfikator, widoczność) czyta wspólne
+`parseCheckFrame`.
+
+**Prośba nie zna progu ani widoczności i to jest jej cała definicja.** `CheckRequestPayload` to
+lustro `CheckCallPayload` pomniejszone o wszystko, co należy do MG: zostaje karta, czym rzucić
+i zdanie „po co". Przy zgodzie serwer bierze Umiejętność **z zapisanej prośby**, nie z żądania
+MG — jedyną drogą do jej podmiany jest „Ustaw…", które idzie przez `check:call` i zamyka prośbę
+polem `requestMessageId` **w tym samym żądaniu**, żeby zgoda i wezwanie nie mogły się rozejść na
+dwie połowy.
+
+**Kubek nie zapala się na prośbę** — `openCheckCallFor` pomija rodzaj `request` **wprost**, a nie
+przez to, że payload siedzi w innym polu; przy prośbie progu jeszcze nie ma, więc kubek dałby
+rzut przed zgodą. Pilnuje tego strażnik źródłowy `check-request-cup.test.ts`, wzorem
+`tables-cup.test.ts` z 34. **Wiersz `request` dopisał się do `visibleTo` tylko po stronie MG** —
+gracz widzi swoją przez klauzulę `authorId`, a wpis na jego białej liście pokazałby mu cudze
+prośby.
+
+**Licznik przy zakładce „Czat" nie jest ozdobą.** Prośba jest cicha (bez dźwięku, bez wiersza dla
+stołu) i odjeżdża w górę feedu przy pierwszym rzucie — bez liczby przy zakładce ginie, a gracz
+czeka w ciszy. Liczy się wprost z feedu, tak jak kubek szuka wezwania: dwa magazyny stanu o tym
+samym rozeszłyby się przy pierwszym „Odmów".
+
+**Karta postaci: pół strony pierwszej było pustym polem, i miało to jedną przyczynę.** Dziewięć
+paneli Ról z 30a–30d stało w **kolumnie tożsamości**, która ma 15 rem i rozciągnąć się nie może
+(umowa z 30a) — Efekt Charyzmy to proza plus trzy progi z guzikami, więc kolumna rosła dwa razy
+wyżej od Cech i Umiejętności. Panele przeniosły się do **pasa „Zdolność Specjalna"** pod trzema
+kolumnami, dokładnie tam, gdzie leży „Broń i pancerz" z 27b; wiersz Zdolności z rangą **został**
+w kolumnie, bo tak jest na wydruku. Przy okazji zniknęły reguły `.cp-awareness`, które łamały
+nazwy do własnego wiersza — w pasie miejsca jest dość.
+
+**Cztery usterki wyszły z oględzin i żadna nie była kosmetyczna.** `.cp-slot` była **zdefiniowana
+dwa razy** w `sheet.css` (etykieta lokacji pancerza z 27b i pudełko gniazda cyborgizacji z 27c),
+więc „Głowa", „Korpus" i „Tarcza" **znikały** z tabeli pancerza. `display: flex` na `<td>`
+wyjmowało trzy komórki z układu tabeli i zostawiało pod nimi czerwony pas tła. Typ naboju
+(„Zwykła") przelewał się z kolumny AMUNICJA na ŁA. A w zakładce „Ścieżka Życia" reguła zdejmująca
+`cp-span2` wierszowi „Pseudonimy" zdejmowała je **też** panelowi awansu, więc prawa kolumna była
+pustym czerwonym prostokątem na pół ekranu.
+
+**Jeden błąd był mechaniczny, nie wizualny:** kolumny CECHA i BAZA w tabeli Umiejętności liczyły
+się przez `effectiveCpredStats(stats, humanity)`, czyli **bez efektów czasowych z 39** — karta
+pokazywała REF 8 przy Liszu −3, a kość leciała z piątki, choć kolumna Cech obok liczyła już
+poprawnie. Umowa z 39 mówi wprost, że jedyną drogą do liczby, na którą pada kość, jest
+`cpredEffectiveStats(sheet)`; teraz jest nią i tutaj.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**)
+przeszły **całą ścieżkę etapu**: prośba → licznik u MG → klik w „Trudny 15" → wezwanie → wołający
+kubek → rzut → „Niezdane · 9 ≤ PT 15". Sprawdzone też: odmowa ze zdaniem MG, „Wycofaj" u gracza,
+„Ustaw…" z podmienioną Umiejętnością i **nietknięty swobodny rzut** (klik = okno z guzikiem
+„Poproś MG", Shift+klik = kubek). Frank wrócił do `NPC (MG)`, wezwania odwołane, kubek pusty.
+Znalazły **jedną usterkę własną**: okno prośby powstawało **pod** kartą postaci (`z-index` 50
+przeciw 300) — ten sam wiersz `:has()`, który od 27a ratuje okno rzutu.
+
+**Testy:** 1941 w `shared` (+13 z tego etapu), 1062 na serwerze (+11), 104 u klienta (+5) —
+zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb
+z poprzednich notatek: sumy w nich są zaniżone** — 1941/1062/104 to stan zmierzony na koniec tej
+sesji, a nie 1913/1040/97 + moje dopiski. Sześć umów kodu i pięć pułapek w indeksach niżej.
+
+### Sesja 06.09 (druga) — kość, która nie jest Testem
+
+**Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania
+uzupełniające przed kodem i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — ale bez
+nadmiarowych mechanik. Cztery pytania padły przed pierwszą linijką i trzy zmieniły kształt etapu:
+
+1. **Widoczność steruje się z dwóch stron** (kolumna `visibility` na tabeli **plus** jednorazowy
+   przełącznik przy losowaniu). Opis etapu przewidywał samo „domyślnie MG"; MG wybrał wersję
+   z kolumną, bo „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
+2. **Kości w treści wiersza (`[[2d6]]`) — NIE.** Wiersz jest czystym tekstem; to zdejmuje
+   z `tables.ts` drugi parser i zostawia rachunki MG, zgodnie z „wynik jako gotowy obiekt" poza
+   zakresem.
+3. **`data/public` dostaje minimum** — jedna wymyślona tabela na dowód formatu
+   (`plotka-w-barze.json`), bez wgrywania czegokolwiek do kampanii.
+4. Na pytanie o gotowe tabele padło **„sprawdź materiały, a jak nie znajdziesz, to własny JSON"**.
+   Znalazły się: rozdział 18 podręcznika ma **trzy tabele procentowe Spotkań Losowych**
+   (s. 417–421), więc powstał parser, a nie sam format.
+
+**Rozstrzygnięcie, na którym stoi cały etap, było już w opisie i okazało się trafne: tabela nie
+dotyka kubka.** `rollStore` trzyma siedem pól i każdy `load…Cup` rozsypuje przed sobą `EMPTY_CUP`,
+więc gdyby „Losuj" ładowało kubek, MG straciłby wzięty do ręki rzut Percepcji NPC-a, a graczowi
+zdmuchnęłoby czekające wezwanie z 32. Dlatego losowanie jest **rzutem serwera** — precedens stoi
+od etapu 03: `/r 1d10` wysłane Enterem leci przez `chat:send` bez gestu i nie zajmuje slotu.
+Reguła jest niewidoczna w kodzie (łamie ją dopiero **dopisanie** wywołania), więc pilnuje jej
+**strażnik źródłowy** `tables-cup.test.ts` — ten sam kształt, co strażnik przycisków ikonowych
+z 27f.
+
+**Druga rzecz jest jeszcze mniej widoczna i kosztowałaby cały etap: `1d10` jest formułą Testu.**
+`rollFormula` sam wnioskuje regułę Testu z formuły, więc bez `checkRule: false` dziesiątka
+w tabeli dziesięciowierszowej eksplodowałaby dorzutem i dawała jedenastkę — a wygląda to jak
+dziura w zakresach, nie jak błąd w rzucie. Drugą połową tej samej prawdy jest `plain: true`:
+na karcie czatu dziesiątka ma zostać **nieomalowana**, bo to „wiersz dziesiąty", nie krytyk
+(ta sama umowa, co rzuty kreatora z 27d). Oba ustawienia padają w **jednym** miejscu —
+`rollRandomTable`.
+
+**Widoczność rozstrzyga rodzaj wiersza czatu, nie pole w payloadzie.** `visibleTo` w `chat-io.ts`
+jest białą listą rodzajów **w zapytaniu do bazy**, więc jawny wynik to `rolltable`, a cichy
+`gmrolltable` — wzorem `roll`/`gmroll` z 06 i `action`/`gmaction` z 14b. Stąd też „Pokaż stołowi"
+**dokłada** publiczny wiersz zamiast odsłaniać stary: wiersz raz zapisany jako `gmrolltable`
+nigdy nie wejdzie graczowi do historii. Treść nowego wiersza czyta się **z zapisanej karty**,
+nie z żądania — ta sama umowa, co obrażenia po ataku z 16 i wezwanie z 32.
+
+**Podrzut jest grafem, więc pilnuje się go przy zapisie.** `randomTableNestingIssue` liczy cykl
+i najdłuższą ścieżkę na **całej** kampanii z podmienioną tabelą, bo dopisanie podrzutu w „broni"
+potrafi przekroczyć limit „łupu", którego w tej chwili nikt nie edytuje. Limit to trzy poziomy;
+czwarty zamieniłby jedno kliknięcie w cztery karty naraz. Losowanie ma **drugi** bezpiecznik
+w `rollRandomTable` (`visited` + licznik), bo baza może nieść graf sprzed tej reguły.
+
+**Zakresy sprawdza jedna funkcja po obu stronach.** `randomTableCoverageIssues` chodzi w formularzu
+(podpowiedź na żywo, po każdym znaku) i w handlerze (odmowa) — w oględzinach zapis z dziurą wrócił
+**tym samym zdaniem**, które stało nad formularzem: „Dziura w zakresach: nic nie odpowiada za 7."
+
+**Import dowiózł trzy prawdziwe tabele i jedną erratę.** `parse-encounters.py` czyta zrzut
+markdownowy rozdziału 18; pierwsza wersja regexa złapała „STR. 417" jako wiersz („dziura 101–417"),
+więc zakres wiersza jest odtąd albo **w nawiasie**, albo **na początku linii** i zawsze
+z krótką nazwą zakończoną dwukropkiem. Po zwężeniu dwie tabele pokryły 1–100 od ręki, a trzecia
+pokazała **błąd druku**: wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang" dzielą liczbę 72.
+Poprawka (70–71) siedzi w `KNOWN_FIXES` **w skrypcie**, nie w JSON-ie, bo JSON jest wynikiem
+i kolejny przebieg skasowałby ją bez śladu. `import-tables.ts` waliduje **wszystko przed
+pierwszym zapisem** (`--dry-run` robi samą walidację), nadpisuje po nazwie i wiąże podrzuty
+drugim przebiegiem, więc kolejność plików nie ma znaczenia.
+
+**Dwie rzeczy dołożone poza opisem etapu, obie tanie i obie o tym, jak to się czyta.** Kość
+pierwszego kroku **tumbla w 3D** (`socket.ts` bierze `message.rolltable?.steps[0]?.roll`) — to nie
+jest kubek, a bez tego losowanie było jedyną kością w tej aplikacji, której nie widać; podrzuty
+zostają liczbami na karcie, bo dwie animacje z jednego kliknięcia nic nie mówią. I **suma stoi
+obok kości tylko wtedy, gdy jest czym się różnić** — przy `1d100` „47 47" powtarza to samo dwa razy.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`) przeszły **wszystkie
+pięć kryteriów ukończenia**: dziura w zakresach odmówiona czytelnym zdaniem, karta „tylko MG"
+niewidoczna dla gracza **także po przeładowaniu** (jedna publiczna, pięć cichych — sprawdzone
+z konta gracza), kubek z „Percepcja (INT) +10" nietknięty przez cztery losowania z rzędu, podrzut
+losujący obie tabele w jednym kliknięciu i `/tab bronie` dający ten sam wynik co przycisk.
+Zakładka „Tabele" nie istnieje u gracza. Konsola czysta. Poligon ma odtąd dwie tabele testowe
+(opis w `poligon.md`).
+
+**Testy:** 1936 w `shared` (+23), 1051 na serwerze (+11), 99 u klienta (+2) — zielone. ESLint,
+Prettier i `tsc --noEmit` czyste w trzech pakietach. **Strażnik dostępności z 27f złapał jeden
+przycisk** („✕" przy wierszu edytora miał `aria-label` bez `title`) — naprawiony. Cztery umowy
+kodu i cztery pułapki w indeksach niżej.
+
+### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b
+(przedmioty między kartami)** i przy pytaniu o łup dorzucił prośbę: „rozważ jakąś formę brania
+łupu w stylu modułu **Item Piles** z Foundry". Trzy rozstrzygnięcia padły przed kodem, wszystkie
+na rekomendację: **gracz sam przeszukuje NPC-a** (z karty innego gracza przenosi tylko MG),
+**zasięg ramienia** i **jedno okno „Wymiana"** zamiast guzików przy wierszach.
+
+**Czwarte rozstrzygnięcie było korektą decyzji z 05.09 i wyszło z rozpoznania.** „Cel musi być
+widoczny, wzorem `Ustabilizowania` z 14e" opisywało 14e sprzed poprawki — ta czynność ma dziś
+**`CPRED_MELEE_REACH_M`**, więc dosłowne wykonanie tamtego zdania rozjechałoby dwie czynności,
+które są tą samą czynnością: dotknięciem kogoś obok. MG wybrał zasięg ramienia, **mierzony
+wszystkim, MG włącznie** — ten sam świadomy wyjątek od „MG omija blokady", co w 14e.
+
+**Etap zajął jedną sesję wyłącznie dzięki 38a.** Odkąd ganger ma prawdziwą kartę, „zdejmuję
+pistolet z ciała" i „oddaję ci stimpak" to **jedna** operacja na dwóch `CpredCharacterData`:
+`cpredMoveItems` w `shared/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy,
+a zwraca **obie** — rozdzielenie na „zabierz" i „dołóż" pozwoliłoby zapisać połowę. Wiersz jedzie
+w całości, więc magazynek 12/30, `ammoId`, przykręcony celownik z 31 i zużyte OB z 15 przeżywają
+przeprowadzkę **bez ani jednej linijki o nich** — kto dołoży broni nowe pole, dostanie je za darmo.
+
+**Przekazanie na kartę z właścicielem jest PROPOZYCJĄ, nie przelewem** (decyzja MG z 05.09):
+karta czatu rodzaju `inventory` staje bez `resolution` i **nic nie rusza**, dopóki odbiorca albo
+MG nie kliknie „Przyjmij" — wzorem wezwania do Testu z 32, z tą samą umową, że wiersze do
+przeniesienia czyta się **z zapisanej karty**, nie z żądania klienta. Kartę **bez** właściciela
+nie ma kto potwierdzić, więc tam idzie od ręki, a ack niesie `pending: false`. **Łup nie czeka
+nigdy** — nie ma kogo pytać, a trzy warunki (karta bez właściciela, figura leżąca albo martwa,
+zasięg) serwer sprawdził wcześniej.
+
+**Z Item Piles weszły dwie rzeczy i obie były tanie:** „Zabierz wszystko" i **gotówka z kieszeni**
+— ciało ma od 38a `eddies`, a `applyBalance` z 23b dowozi wpis audytu po obu stronach, więc
+350 ed z gangera wygląda w historii tak samo, jak przelew. **Skrzynia jako obiekt sceny została
+poza zakresem** (tak mówi opis etapu) i poszła do `POMYSLY.md` — okno „Wymiana" byłoby jej gotowym
+interfejsem.
+
+**Trzy rzeczy poza planem, wszystkie o tym, gdzie stoi prawda o stanie rzeczy:** pancerz przychodzi
+**zdjęty** (inaczej łup po cichu zmieniałby OB w chwili podniesienia); wiersze wyposażenia
+**sklejają się po `compendiumId`**, nigdy po nazwie; a **id wiersza jest unikalne w obrębie karty,
+nie kampanii** — kopia figury z 35 niesie ten sam `rowId`, więc kolizję rozstrzyga nowe id.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**,
+ciałem **Rudy Kwiatkowski**) przeszły cały etap **poza jedną pozycją menu figury** — prawym klikiem
+z automatyki nadal nie da się otworzyć menu kanwy Pixi. Znalazły **dwie usterki**: odległość
+w liście źródeł liczyła się od **pierwszej** figury karty na scenie, a serwer egzekwował od
+**najbliższej**; i komunikat „czeka na przyjęcie" padał także wtedy, gdy nic nie czekało. Obie
+naprawione. Poligon **przywrócony ze snapshotu startowego**.
+
+**Przy okazji zgłoszona MG jedna rzecz spoza zakresu:** lista odbiorców przelewu (`payees` z 23b)
+zawiera od 38a **wszystkich statystów**. Zapisana w `zaleglosci.md`, bez decyzji.
+
+**Testy:** 1913 w `shared` (+23), 1040 na serwerze (+16), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb z poprzedniej
+notatki: `shared` miał na czystym HEAD 1890, nie 1906** (sprawdzone `git stash`). Osiem umów kodu
+i pięć pułapek w indeksach niżej, trzy świadome odstępstwa w `decyzje-i-uproszczenia.md`.
+
+### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38
+(przedmioty między kartami)** i przy trzech pytaniach rozstrzygających padła odpowiedź, która
+zmieniła całą sesję: na „gdzie mieszka łup statysty" MG wybrał **statysta dostaje pełną kartę
+postaci** — czyli odwrotnie, niż proponował opis etapu i niż rozstrzygnął etap 16b. Po
+przedstawieniu ceny (33 pliki, ~200 odwołań, migracja bazy) MG **potwierdził wybór w pełnej
+wersji**: „każdy statysta z profilem bojowym to od razu Character". Etap 38 został więc
+**rozdzielony na 38a** (ten refaktor) **i 38b** (przekazywanie, łup, przeszukanie), a plik
+`etap-38a-statysta-jako-karta.md` powstał przed pierwszą linijką kodu.
+
+**Rozpoznanie przed kodem znalazło rzecz, która przesądziła o modelu: profil bojowy NIE jest
+chudszą kartą.** Niesie trzy liczby, których `CpredCharacterData` nie umiał wyrazić —
+**Wartość bojową** („suma Cechy i Umiejętności", s. 158; C-SWAT ma 16, a Umiejętność karty ma
+sufit 10), **zakaz uniku przed pociskami** i **wydrukowane PW** (35 przy BC 4, z Cech wychodzi
+20). Dlatego karta dostała **jedno** nowe pole: `statBlock` (`shared/src/systems/cpred/statblock.ts`)
+— „wydrukowany blok statystyk", a nie kategoria karty, bo MG odrzucił znacznik odróżniający
+statystę w rosterze. Czwartą liczbą w bloku jest **poziom broni** (`weaponSkill`) i to jest
+ustępstwo z powodu, który widać dopiero w migracji: id Umiejętności trzeba by rozwiązywać przez
+kompendium przy każdym zapisie, a kompendium mieszka w plikach `data/private/`, **nie w bazie**,
+więc SQL migracji nie ma go jak przeczytać.
+
+**Co zniknęło:** kolumna `Token.combatProfile`, gałąź `kind: 'statist'` w `AttackSource`,
+drugie ramię `cpredWeaponOptions`, osobny tor obrażeń i osobny tor ran dla statystów, osobne
+przeładowanie. **Co zostało:** szybkość z 16b — menu figury nadal ma sześć pól, tyle że pisze je
+**`token:stat`**, które zakłada kartę i podpina ją jednym zdarzeniem. Doszło pole **„Wartość
+bojowa zamiast Cech"**, bo do tej pory MG stawiający C-SWAT ręką nie miał czym: wpisana
+Umiejętność 14 dawała REF **plus** czternaście.
+
+**Migracja przepisała trzy figury poligonu w SQL-u** (`json_object` + `json_group_object`), bo
+`parseCharacterData` jest tolerancyjny i wystarczy zapisać to, co profil naprawdę niósł. PW,
+amunicja, rany i pancerz przeżyły; „Cel 23x" ma po migracji **33/35 PW** i dwa rzędy pancerza
+(głowa i korpus — jedna liczba profilu to dwa rzędy karty, bo trafienie dobiera rząd po miejscu).
+Poziomy Umiejętności ścinają się w migracji do dziesiątki — inaczej **jeden** wiersz spoza
+zakresu każe `validateSkills` odrzucić **całą** mapę.
+
+**Trzy błędy wyszły przy pierwszym uruchomieniu testów, wszystkie z tej samej rodziny „walidator
+karty odrzuca to, co nowy model zapisuje".** (1) `luck: 0` i wyzerowane REF/ZW/SW figury
+z Wartością bojową wywracały `validateStats`, a karta wracała jako przeciętny człowiek po pięć —
+stąd `CPRED_SHEET_STAT_MIN = 0` obok `CPRED_STAT_MIN = 1`, który zostaje kreatorowi. (2) Unik 14
+funkcjonariusza wywracał `validateSkills` tą samą drogą — teraz ścina się do dziesiątki, a rzut
+i tak bierze Wartość bojową. (3) `normalizeCharacterData` ścinał wydrukowane PW do liczby z Cech,
+stąd `cpredSheetHpMax(data)` i **`hpMax(data.stats)` na pełnej karcie jest odtąd błędem** — ta
+sama umowa co `cpredEffectiveStats` z etapu 39, w drugim obszarze.
+
+**Czwarty błąd był systemowy i mylący:** po skasowaniu kolumny **57 z 61 plików** testów serwera
+padło na timeoutach `state:sync`, jakby zerwał się protokół. Przyczyną był niewygenerowany klient
+Prismy. `npx prisma generate` po każdej zmianie schematu — zanim zaczniesz szukać gdzie indziej.
+
+**Dwie rzeczy dołożone, żeby refaktor niczego po cichu nie zabrał:** kopia figury MG dostaje
+**własną** kartę (inaczej dwa żetony dzieliłyby jedne PW), a karta jedzie odtąd także do
+**właściciela figury**, nie tylko do właściciela karty — bo gracz, któremu MG oddał gangera,
+dostawał jego liczby w prywatnej części żetonu, a teraz mieszkają one na karcie.
+
+**Oględziny częściowe.** Przez przeglądarkę przeszły: trzy zmigrowane figury w panelu postaci,
+karta „Cel 23x" z PW 33/35 i pasek figury budowany z karty. **Menu figury nie było oglądane** —
+prawym klikiem z automatyki nie da się otworzyć menu kontekstowego kanwy Pixi; trzy ścieżki
+(przełącznik statystyk, Wartość bojowa, pytanie o kartę przy koszu) mają testy dymne na żywych
+gniazdach i czekają na ręczne obejrzenie. Pozycja w `zaleglosci.md`.
+
+**Testy:** 1906 w `shared` (+1), 1024 na serwerze (+6), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Dziewięć umów kodu i cztery pułapki
+w indeksach niżej, cztery świadome odstępstwa w `decyzje-i-uproszczenia.md`.
+
+### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38, 39) MG wybrał
+**39 (efekty czasowe modyfikujące Cechy)** — odblokowany trzy godziny wcześniej przez zegar
+świata z etapu 37. Trzy rozstrzygnięcia padły **przed kodem**, wszystkie na moje pytanie i wszystkie
+na rekomendację:
+
+1. **Efekty nie ruszają PUL.** Maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się
+   z Cechy **bazowej** — to **świadome odstępstwo od zdania „BC rusza PW"** w opisie etapu,
+   i nie chodzi o podręcznik, tylko o `normalizeCharacterData`: przycina `hpCurrent` do maksimum
+   przy **każdym** zapisie karty, więc maksimum obniżone na godzinę zabrałoby punkty **na stałe**.
+   Zapisane w `decyzje-i-uproszczenia.md`.
+2. **Podłoga Cechy to 1** (`CPRED_STAT_MIN`) — z jednym wyjątkiem, który wyszedł przy pisaniu:
+   podłoga nigdy nie stoi **wyżej niż wartość bazowa**, bo Empatia zerowa z cyberpsychozy (s. 229)
+   ma zostać zerowa, a zaciskanie do jedynki by ją **podniosło**.
+3. **Czarny LOD nakłada efekty sam.** `statDrain` i `moveDrain` przestały być „stosuje MG" —
+   `NET_PROGRAM_HOOKS_MANUAL` jest odtąd **pustą listą**, a decyzja z 15.08, która je tam wpisała,
+   uzasadniała się wprost brakiem modelu, który ten etap właśnie zbudował. Gałąź `netHookIsManual`
+   **zostaje** dla następnego Programu, którego skutku silnik nie policzy.
+
+**Rdzeń to jedna funkcja i jedna umowa.** `cpredEffectiveStats(sheet)` w nowym module
+`shared/src/systems/cpred/stateffects.ts` jest **jedyną** drogą do liczby, na którą pada kość:
+bazowa Cecha, poprawka Człowieczeństwa z 23a, suma efektów, przycięcie. Od tej sesji
+`data.stats[...]` znaczy „liczba wydrukowana na karcie", a nie „liczba, którą się gra" — i tak
+zostało przepięte szesnaście miejsc: Testy, atak, Unik, Inicjatywa, RUCH, Rzut na Śmierć, Zwarcie,
+Koncentracja, Konfrontacja, obrażenia wręcz, wieżyczka z operatorem, dwa Testy chirurga i medyka,
+Unik obszaru, rozproszenie granatu i podgląd kubka u klienta. **Pule zostały przy bazowej** —
+i to jest jedyny podział, jaki ten kod zna.
+
+**Efekt jest wierszem karty, nie gałęzią w kodzie:** `{ stat, value, source, durationS,
+expiresAtRound?, expiresAtMinute? }`. Liczba **pada raz** przy nałożeniu i jest zapisana — efekt
+trzymający formułę zmieniałby kartę, ilekroć ktoś na nią spojrzy. W rozbiciu rzutu efekt stoi
+**własnym wierszem** („REF 8 · Lisz −3"), jak kara z pancerza, a gdy podłoga przycina sumę,
+`cpredStatEffectRows` zwija wiersze w jeden zbiorczy — inaczej karta pokazywałaby REF −2.
+
+**Dwa zegary, alternatywa.** Efekt niesie termin rundowy **i** światowy; schodzi ten, który
+dogonił pierwszy. Termin świata stawia się **zawsze**, i to jest poprawka na pułapkę, która
+w `CpredTimedEffect` z 16h siedzi do dziś: efekt z samym terminem rundowym, nałożony w rundzie 8
+walki, która się skończyła, wisiałby do ósmej rundy **następnej** walki. Przemiatań też jest dwa
+i chodzą po różnych listach — rundowe po żetonach sceny (bo naklejka należy do żetonu), światowe
+po kartach kampanii (bo efekt jest wierszem karty, a postać mogła przespać noc poza sceną).
+
+**`gametime.ts` dostał pierwszy i jedyny wyjątek od „zegar podpowiada, nie rządzi".** Po skoku
+woła `sweepStatEffects`. Broni się tym, że **nie ma tu czego wybierać**: „na godzinę" jest
+terminem zapisanym przy nałożeniu, tak jak „do rundy 9", które granica tury zdejmuje sama od 16h.
+Czynsz i odpoczynek MG **wybiera** i zostają za guzikiem. Umowa dopisana z tym testem: nowa rzecz
+wołana z zegara musi przejść to samo pytanie.
+
+**Trzy pułapki kosztowały czas.** (1) `socket.data.viewedSceneId` to scena **widza**, a okno karty
+jej nie zmienia — runda musi się czytać ze sceny **celu** (`effectClockForCharacter`), inaczej efekt
+nałożony w walce nie dostaje terminu rundowego. (2) Trzy zapisy karty z **jednego** odczytanego
+wiersza zostawiają tylko ostatni — Nerwosol nakładał jeden efekt zamiast trzech, dopóki `drainStats`
+nie zaczął czytać karty przed każdym zapisem. (3) `timed-effects.ts` i `stat-effects.ts` prawie
+zamknęły cykl importów; zapytanie o `Combat` siedzi teraz w obu osobno. Czwarta, tania:
+**`vitest` nie sprawdza typów** — fixture z `rof: 2` (a to napis) przeszedł 38 testów i padł
+dopiero na `tsc --noEmit`.
+
+**UI:** panel „Efekty czasowe" w kolumnie tożsamości karty (chipy z odliczaniem, „zdejmij" u MG,
+formularz MG przyjmujący „−2" albo „−1k6" jednym polem), małe pole „z" pod Cechą — to samo, którym
+Empatia mówi od 23a, teraz dla każdej przesuniętej Cechy — i chipy w pasku figury pod naklejkami.
+Gracz widzi chipy i odliczanie, formularza nie.
+
+**Oględziny zrobione w tej samej sesji** — na „Franku", z dwóch kont naraz (MG i `Tester` przez
+`[::1]:5173`). Sprawdzone: obie drogi liczby (wpisana i `−1k6`), sumowanie trzech efektów
+z podłogą (rozbicie zwija się wtedy w jeden wiersz „Lisz, Nerwosol, Skorpion −4" i suma się
+zgadza), rozbicie na karcie czatu, chipy w pasku, ⌫ u MG, brak formularza u gracza, wygasanie
+skokiem +1 h z kartą „Efekty wygasły", **przeliczanie odliczania przy ruchu zegara** („zostaje
+6 h" → „zostaje 5 h") i efekt dodatni na zielono. Znaleziona i naprawiona **jedna usterka
+układu** (ucięta podpowiedź pola „ile"). **Żadna nowa pozycja nie została otwarta.** Nieoglądana
+została **jedna ścieżka**: Nerwosol nakładany przez Czarny LOD — stoi na teście na żywych
+gniazdach, a zbudowanie pod nią architektury Sieci na poligonie było nieopłacalne.
+
+**Poligon wraca do stanu sprzed sesji:** żeton „Frank" skasowany (siedem żetonów na „Strzelnicy"),
+„Frank" znów `NPC (MG)` i bez efektów, zegar świata z powrotem na **1 stycznia 2045, 08:00**.
+Ślad zostawiony świadomie: **log czatu** — rzut Refleksu z chipem „Lisz −3", dwie karty „Minęła
+godzina" i karta „Efekty wygasły".
+
+**Osiem umów kodu i sześć pułapek** w indeksach niżej; pełne wersje w plikach.
+
+**Jedno miejsce w UI, którego oględziny nie znalazły, bo go nie ma: kasowania POJEDYNCZEJ figury.**
+Pasek operacji z etapu 35 wstaje **od dwóch** figur, `Delete` figur nie dotyka (umowa z 35), a ani
+prawy klik, ani dwuklik, ani narzędzie 📌 nie dają kosza — dwuklik otwiera kartę, 📌 to notatka MG.
+Żeton testowy trzeba było skasować z bazy. Nie jest to zaległość tego etapu — poszło jako wpis
+do `POMYSLY.md` (05.09), z propozycją: pokazywać ten sam pasek **od jednej** figury.
+
+**Testy na koniec:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta (bez zmian) —
+zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły dwa
+pliki: `shared/src/systems/cpred/stateffects.test.ts` i `server/src/stat-effects.test.ts`, plus
+zestaw Nerwosolu w `server/src/netcombat.test.ts`. Klient buduje się produkcyjnie. Przy okazji
+**zamknięty znany wyścig** z sesji etapu 37: `gametime.test.ts` łapał w `once('chat:message')`
+kartę poprzedniego testu i raz na kilkanaście przebiegów widział „Minęło dziesięć minut" zamiast
+„Minęła doba" — trzy przebiegi z rzędu zielone po naprawie.
+
+### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii
+i upływ czasu)** i kazał scalić gałąź etapu 35 do `main` przed startem. Cztery rozstrzygnięcia
+padły przed kodem i wszystkie są w pliku etapu: **zegar podpowiada, nie rządzi** (nic nie dzieje
+się samo), **start 1 stycznia 2045, 08:00**, **cztery skoki** zamiast sześciu i **data świata
+jako nowa kolumna dziennika** obok realnej.
+
+**Piąte rozstrzygnięcie wyszło z kolizji między wyborem MG a kryteriami etapu.** MG wybrał same
+skoki naprzód, ale kryterium ukończenia #5 mówi wprost o cofnięciu zegara — a przy czterech
+guzikach „naprzód" nie ma czym ani cofnąć, ani ustawić początku kampanii innego niż domyślny.
+Po dopytaniu **pole daty i godziny weszło do zakresu** i jest dziś jedynym wejściem niosącym
+liczbę minut; wszystkie pozostałe niosą **identyfikator skoku**, bo „+1 h" jest intencją, a nie
+arytmetyką (ta sama zasada, co przy rzutach kośćmi).
+
+**Dwa zdania z opisu etapu okazały się nieaktualne, oba na korzyść.** „Odzyskiwanie PW przez
+odpoczynek nie istnieje w kodzie" przestało być prawdą w 30b — `cpredRestDay` i `character:rest`
+stoją od tamtej sesji, więc etap ich **nie napisał drugi raz**, tylko podpiął pod skok o dobę.
+A `timeZone` opisowy nie powstał wcale: kalendarz jest gregoriański i bez stref, a pole „Night
+City" nie miałoby w kodzie ani jednego odbiorcy.
+
+**Decyzja, która przenika cały etap, to typ kolumny: `Int` z minutami UTC, nie `DateTime`.**
+Strefa czasowa maszyny nie ma nic wspólnego z porą dnia w Night City, a każde przejście przez
+czas lokalny przesunęłoby granicę doby (i klucz miesiąca, i „minęła doba") między dev-em na
+Windows a VPS-em z etapu 28. Pułapką, która by to zrobiła po cichu, jest
+`new Date('2045-03-15T08:00')` — przeglądarka czyta ten zapis jako czas **lokalny**, więc
+`gameTimeFromInput` składa datę ręcznie z `Date.UTC`. Testy pilnują tego wprost.
+
+**Monit rozliczenia liczy się z różnicy dwóch kluczy miesiąca, a nie z dni**, żeby pierwszy
+dzień miesiąca przekroczony jednym skokiem o kwartał i dwoma po dziesięć minut dał **dokładnie
+jeden** monit. Wypadła z tego kolumna `Campaign.settledMonth` i mały wniosek: `null` znaczy
+„nie pytaj" (świeży stół nie zaczyna od zaległego czynszu), więc tworzenie kampanii stempluje
+miesiąc startowy, a cztery kampanie sprzed etapu dostały go **osobną migracją danych** — bo
+dopisania `UPDATE` do już zastosowanej migracji Prisma nie wybacza (suma kontrolna).
+
+**Jeden błąd znaleziony przy oględzinach: „minęły 30 doby".** Polska liczba mnoga ma trzy formy,
+a kod miał dwie — i **cały etap przeszedł oględziny z jedną dobą**, zanim trzy skoki pod rząd to
+pokazały. Naprawione dwiema czystymi funkcjami w rdzeniu (`gameDaysLabel`, `gameDaysPassed`)
+z testem na pułapkę 12–14: „13 dób", nie „13 doby".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zegar w pasku u wszystkich
+(„08:00 · 1 stycznia 2045"), okno z czterema skokami, **„do rana" z 22:30 dające 06:00 następnego
+dnia** (a nie stałą liczbę godzin), karty czatu „Minęła doba" / „Minęła noc" / „Zegar ustawiony ·
+29 dób" ze zdaniem „skądś dokądś", **sumowanie dób z trzech skoków** (3), lista rannych
+z „Tony 20/35 PW" i guzikiem „Odpoczynek", **monit miesiąca** (bursztynowa kropka przy zegarze
+plus sekcja „Minął pierwszy dzień miesiąca") oraz **„Podgląd" niczego nie ruszający**
+(„0 ed od 0 postaci", monit nadal zapalony). Wpis dziennika dodany ręcznie dostał **dwie daty**
+(„2026-09-05 · 4 lutego 2045"), a stary wpis „Wycieczka do Afterlife" — samą realną, dokładnie
+jak zaprojektowano. Kliknięcie „Odpoczynek" dało odmowę z podręcznika („najpierw ktoś musi
+wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym PW nie ma
+`recovery.stabilized`.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem migawki z 13:23:**
+żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum 887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
+2045, `settledMonth` `2045-01`).
+
+**Po pierwszym commicie MG zakwestionował godzinę w pasku gracza — i miał rację.** Zegar rusza
+się wyłącznie na kliknięcie MG, a rundy walki nie dotykają go wcale: czterdzieści rund to dwie
+minuty świata, których nikt nigdy nie wklepie. Godzina pokazana graczowi jest więc **obietnicą
+dokładności, której nie da się dotrzymać** — po trzech godzinach przy stole „08:37" czyta się
+jak zepsuty zegar, a „15 marca, rano" jak działający. Gracz dostaje odtąd `formatGameDayTime`
+(doba plus pora dnia), MG godzinę co do minuty, a **karta czatu traci minuty dla wszystkich**,
+bo jest cezurą, nie stemplem czasu, i zostaje w dzienniku sesji na zawsze. Pora dnia została
+świadomie: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b. Odrzucone drugie
+rozwiązanie tego samego problemu — przesuwanie zegara rundami walki — łamie „nic nie rusza się
+samo" i zyskuje dwie minuty na strzelaninę, czyli nic. **To nie jest filtr:** minuta jedzie
+w `state:sync` do wszystkich, bo nie ma czego chronić, a trzymanie jej w ładunku znaczy, że
+zmiana zdania kosztuje jedną funkcję zamiast pola kampanii, migracji i przycinania per widz.
+
+**Oględziny tej zmiany — z dwóch sesji naraz — odsłoniły trzy błędy, w tym jeden sprzed dwóch
+etapów.** Do 05.09 wszystko było oglądane z konta MG i dlatego przechodziło.
+
+1. **`visibleTo` w `chat-io.ts` jest BIAŁĄ LISTĄ rodzajów, a `time` na niej nie było.** Karta
+   docierała do gracza rozgłoszeniem na żywo i znikała przy przeładowaniu, bo historia jej nie
+   zwracała. MG jej nie tracił **wyłącznie dlatego, że jest jej autorem** (`{ authorId }`) —
+   i to maskowało błąd przez pierwsze oględziny.
+2. **Ten sam błąd miał `recovery` z etapu 30b**, choć dokumentacja `RecoveryLogEntry` mówi
+   wprost „karta jest **publiczna**… dzieje się przy całym stole". Dzień odpoczynku rozliczony
+   przez gracza był dla MG niewidoczny po przeładowaniu i odwrotnie. Naprawione przy okazji;
+   `recovery.test.ts` dostał **konto gracza** i test, który bez poprawki pada (sprawdzone przez
+   chwilowe cofnięcie wpisu).
+3. **Cztery rozgłoszenia rysowały `seq`, a klient go nie konsumował** — `compendium:upsert`,
+   `compendium:delete` (13), `shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec
+   po prostu odziedziczył po sąsiadach. Każde takie zdarzenie robiło lukę w numeracji pokoju,
+   przez którą **następna wiadomość czatu była odrzucana**, a cały stół szedł w zbędny
+   `state:request`. To była druga, niezależna przyczyna zniknięcia karty zegara u gracza —
+   i dlatego naprawa samego `visibleTo` przez chwilę wyglądała na nietrafioną.
+
+**Wniosek na przyszłość jest w umowach kodu: nowy rodzaj wiersza czatu ma pięć miejsc, nie
+cztery**, a „publiczny" wiersz sprawdza się **z drugiego konta**, bo autor widzi swoje zawsze.
+
+**Poligon wrócił do stanu sprzed sesji po raz drugi** (skok „do rana" z oględzin i jego karta
+czatu): czat znowu 718 wierszy z maksimum 887, zegar na 1 stycznia 2045.
+
+**Testy na koniec:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta (+5) — zielone.
+ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
+i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
+w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
+i przeszedł przy powtórce — znany wyścig, patrz pułapki.
+
+### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie
+wielu figur, klonowanie)**, a refaktoryzację całości odłożył na osobną sesję. Cztery
+rozstrzygnięcia padły przed kodem i wszystkie są w pliku etapu: **`Delete` figur nadal nie
+dotyka** (grupowy kosz idzie guzikiem z pytaniem niosącym liczbę), **ruch grupowy poza walką
+tak, w walce nie**, **ramka na `Shift`+przeciągnięciu** zamiast foundry'owego przeniesienia
+panoramy na prawy przycisk, i **kopia jako świeża figura** (pełne PW, bez naklejek i ran).
+
+**Kolizja gestów była jedyną rzeczą, którą trzeba było rozstrzygnąć przed pisaniem.** `Alt`+klik
+w figurę **już coś znaczy** od 16f („to jest cel, nie moja następna figura"), ale wyłącznie przy
+uzbrojonej broni — więc `Alt`+klik w **puste pole** i `Alt`+przeciągnięcie **figury bez broni
+w ręku** były wolne i wzięły ping oraz kopię. `Shift` po pustym tle też był wolny, bo `Shift`
++klik dokłada załamanie trasy, a `viewport` nie emituje `clicked` po geście, który przekroczył
+próg przesunięcia. Trzy nowe gesty, zero odebranych.
+
+**Atrapa `gm:ping` z etapu 03 zniknęła po trzydziestu dwóch etapach.** Miała nazwę i
+`handler: () => undefined`, a jej dwa testy pilnowały wzorca bramki roli — przeniosłem to
+pokrycie na `token:duplicate` zamiast je skasować: gracz odbija się o `FORBIDDEN`, MG dochodzi
+do środka i dostaje `TOKEN_NOT_FOUND`, a różnica kodów jest dowodem, że bramka przepuściła
+jednego, a drugiego nie. Nowy ping **nie jest jej następcą** także w drugim sensie: pinguje
+każdy, bo „patrzcie na te drzwi" jest zdaniem gracza równie często, co prowadzącego.
+
+**Dwa błędy znalezione przy oględzinach, oba naprawione w trakcie:**
+
+1. **Po ramce mapa nie miała pierścienia sterowania.** Lewy panel opisywał kotwicę (bo czyta
+   store), a klik w podłogę nikogo nie wysyłał w drogę (bo renderer nic o niej nie wiedział).
+   Przy pojedynczym wyborze źródłem jest renderer, przy grupie — store, więc potrzebna była
+   droga wyrównania, która **nie odsyła zmiany z powrotem** (`syncSteering`): zwykły
+   `setSelection` zawołałby `onSelectionChange` → `select(anchor)` → a ten świadomie zeruje
+   grupę, czyli ramka kasowałaby sama siebie.
+2. **Przy trzymanym `Alt` mapa dalej malowała ślady butów**, choć klik miał zrobić ping.
+   Podgląd trasy stoi teraz pod `Alt` (`pingArmed`) — obiecywał marsz, którego ten gest nie
+   wykona.
+
+**Oględziny (Poligon, konto MG **i** gracza) — cały etap odklikany.** Ramka biorąca 5 i 3 figury
+z paskiem operacji, obwódki grupy czytelne obok białego pierścienia kotwicy z gałką obrotu,
+**ruch grupowy** (trójka przesunięta z zachowanym szykiem, utrwalony po przeładowaniu) i jego
+**bramka w walce** (po włączeniu trybu turowego przeciągnięcie ruszyło **tylko** chwyconą
+figurę — sprawdzone w bazie), `Ctrl+A` biorące 9 figur, szczebel `Esc`, **wykluczanie ze
+scenerią** (klik w strefę zdjął zaznaczenie trzech figur), operacje grupowe (Ukryj → Pokaż,
+naklejka nadana i zdjęta obu, kosz z pytaniem „Usunąć ze sceny 2 figury?"), **Alt+przeciągnięcie
+dające „Rudy Kwiatkowski 2"** i guzik „⧉ Duplikuj" w menu dający trzeciego. Z konta gracza
+(**Tony**, `[::1]:5173`): **ramka na całą mapę wzięła jedną figurę z siedmiu widocznych**, ping
+gracza dotarł do MG z podpisem „Tony", a **ping MG z `Alt+Shift` przesunął graczowi widok**.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem snapshotu z 11:23**
+(pierwsza kopia, którą serwer zrobił dziś przy starcie): **zero różnic** na 13 żetonach, 9 kart,
+6 scen, 23 wpisy księgi. Dwie kopie „Rudego Kwiatkowskiego" skasowane, tryb turowy wyłączony,
+a pozycje trzech przesuniętych żetonów przywrócone wprost w bazie. **Ślad zerowy także w
+czacie** — i to jest samo w sobie potwierdzenie kryterium: ping nie zostawia po sobie ani
+wiersza czatu, ani niczego w bazie.
+
+**Testy na koniec:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta (+13) — zielone.
+ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/ping.test.ts`, `client/src/group-selection.test.ts` i zestaw „ping i kopia
+figury (etap 35)" w `server/src/tokens.test.ts`.
+
+### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **33 (kopie zapasowe)**,
+a przy okazji **przycięcie `POSTEP.md`** i **scalenie gałęzi do `main`**. Przed kodem padły cztery
+rozstrzygnięcia z opisu etapu — trzy z liczbami zmierzonymi na żywej bazie, żeby decyzja nie
+stała na przeczuciu: **czat to 411 KB z 502 KB tekstu w bazie (82 %)**, `uploads/` 14 MB,
+`data/private/` 82 MB. MG wybrał: czat w zrzucie **przełącznikiem, domyślnie tak**; kopia **przy
+starcie serwera i co godzinę**, zostaje **24 + 14 dób**; `uploads/` **w każdej kopii**
+(„samowystarczalna"); miejsce kopii po etapie 28 — **odłożone do etapu 28**.
+
+**Pierwsza rzecz, którą trzeba było rozstrzygnąć, to nazwa.** `realtime/backup.ts`,
+`backup.test.ts` i `BackupPanel.tsx` **już istniały** i nie mają nic wspólnego z kopiami — to
+Zdolność Roli **Wsparcie** z 30c (ang. _Backup_). Stąd dwie nowe rodziny: `snapshot` na pracę
+z dyskiem i `archive` na pliki wymiany.
+
+**Decyzja MG o „samowystarczalnej kopii" kosztowałaby 336 MB na dobę — kosztuje 14 MB raz.**
+`linkTree` dowiązuje pliki twardo zamiast je kopiować, więc katalog kopii ma pełny komplet
+grafik pod własnymi nazwami, a na dysku to te same bloki (sprawdzone: `stat` pokazuje ten sam
+i-węzeł i licznik 2). Trzydzieści osiem kopii kosztuje **38 × 1,1 MB bazy + 14 MB grafik raz**.
+Jest to bezpieczne **wyłącznie dlatego, że plik uploadu jest niezmienny** — i dokładnie tak stoi
+w umowie kodu, razem z warunkiem, przy którym trzeba będzie wrócić do kopiowania.
+
+**Rotacja liczy się z nazw katalogów, nie z czasu pliku**, bo czas pliku zmienia zwykłe
+skopiowanie katalogu. Wypadła z tego furtka, która okazała się przydatna od razu: **nazwa spoza
+schematu nie jest kasowana nigdy**, więc kopię „na zawsze" robi się przemianowaniem — i tą samą
+drogą idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
+
+**Cztery świadome odstępstwa od opisu etapu**, wszystkie zapisane w pliku etapu: skrypty jako TS
+w `packages/server/scripts/` (muszą czytać `loadConfig` i `@vtt/shared`), eksport jako **trasa
+REST** zamiast zdarzenia gniazda (zrzut z czatem to 659 KB, a Socket.IO ma limit 1 MB; import
+został gniazdem, bo zmienia stan), eksport z **wierszy z wypisanymi kolumnami zamiast widoków**
+(`toTokenView` podmienia nazwę figury na `publicName` — kopia gubiąca prawdziwą nazwę żetonu nie
+jest kopią) i **kopie jako pole opcjonalne konfiguracji** (`ServerConfig.backups`), dzięki czemu
+54 istniejące zestawy testów dymnych nie wymagały ani jednej linijki zmiany.
+
+**Jeden błąd znaleziony i naprawiony: polski znak w nazwie pobieranego pliku.**
+`Content-Disposition` jedzie po HTTP jako latin-1, więc karta „Bezpański" albo „Zażółć gęślą
+jaźń" wywracała **całą trasę** (`ERR_INVALID_CHAR`, 500 zamiast pobrania). Objawem byłoby
+„eksport nie działa dla niektórych postaci". Nazwa jest odtąd składana do ASCII, a prawdziwa
+jedzie parametrem `filename*=UTF-8''…`. Złapał to test dymny, nie oględziny.
+
+**Jedno znalezisko, które okazało się poprawnym zachowaniem — i dostało test.** Round-trip karty
+**nie jest bajt w bajt**: eksport wypisuje surową kolumnę `data` (kopia ma być prawdą o bazie),
+a import przepuszcza ją przez `parseCharacterData`, więc karta „Tony" z Poligonu wróciła
+z ośmioma dopisanymi polami (`recovery`, `team`, `medicine`…), których jej wiersz nigdy nie
+miał. Nic nie ginie — dochodzą wartości domyślne, bo inaczej plik otwierałby panel pytający
+o pole, którego w karcie nie ma. Asymetria jest teraz opisana w kodzie i pilnowana testem
+„wypełnia braki starej karty domyślnymi wartościami, niczego nie gubiąc".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zakładka „Kopie" z trzema kopiami na
+liście, ręczna kopia guzikiem (czwarty wiersz pojawił się od razu), zrzut kampanii **659 KB
+z czatem i 60 KB bez** z manifestem wymieniającym 10 plików `uploads/` i pięć zdań „czego tu nie
+ma", eksport karty (4 KB, `data` jako prawdziwy obiekt, 8 wierszy księgi), **import karty**
+(druga „Tony", inne id, księga przepisana), **odmowa pliku z przyszłej wersji** („Plik zapisała
+nowsza wersja VTT…"), **import sceny** („Strzelnica" w podglądzie, ściany i ustawienia identyczne,
+**6 powiązań z kartami i 5 właścicieli utrzymanych**) oraz **przywracanie w obie strony**
+(9 kart → 10 → 9) z ponownym startem serwera. Poprawione po drodze jedno drobiazgowe: polecenie
+`restore` łamało się w środku słowa („na zwa-kopii") — `break-all` zamieniony na
+`overflow-wrap: anywhere`.
+
+**Poligon wrócił do stanu sprzed sesji:** wczytana karta „Tony" i wczytana scena „Strzelnica"
+skasowane razem z 8 wierszami `LedgerEntry`, 7 żetonami, 4 ścianami i wpisem eksploracji —
+w bazie znowu **9 kart, 6 scen, 13 żetonów, 23 wpisy księgi**. Ślad zostawiony świadomie:
+**cztery snapshoty** w `data/private/backups/` (to teraz pierwsze prawdziwe kopie tej kampanii)
+oraz **dwa katalogi `przed-przywroceniem-*`** z testu przywracania — kosz na nie został
+odrzucony, więc czekają na rękę MG.
+
+**Przy okazji, na zlecenie MG:** `POSTEP.md` przycięty: sekcja „Od czego zacząć" ze **170 do 73 linijek**, cały plik z **642 do 553** — siedemnaście
+akapitów z „Od czego zacząć" (streszczenia zamkniętych sesji i umowy spisane już w
+`umowy-kodu.md`) przeniesione **w całości i bez zmian** do `archiwum/dziennik-sesji.md`. Gałąź
+`feat/cpred-weapon-attachments` scalona do `main`.
+
 ### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
 
 **Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół

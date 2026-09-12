@@ -26,6 +26,7 @@ import {
   tokenFacingEvent,
   tokenFearedEvent,
   tokenMoveEvent,
+  tokenStatEvent,
   tokenUpdateEvent,
 } from './tokens.js';
 import {
@@ -82,7 +83,19 @@ import {
   characterRestEvent,
   characterUseDoseEvent,
 } from './recovery.js';
-import { checkCallEvent, checkCancelEvent } from './checks.js';
+import {
+  checkCallEvent,
+  checkCancelEvent,
+  checkRequestCancelEvent,
+  checkRequestEvent,
+  checkRequestResolveEvent,
+} from './checks.js';
+import {
+  inventoryGiveEvent,
+  inventoryRespondEvent,
+  inventorySourcesEvent,
+  inventoryTakeEvent,
+} from './inventory.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
   economyAdjustEvent,
@@ -92,14 +105,17 @@ import {
   economyTransferEvent,
 } from './economy.js';
 import { characterInjuryEvent, damageApplyEvent, damageUndoEvent } from './damage.js';
+import { characterStatEffectEvent } from './stat-effects.js';
 import {
   attackEvadeEvent,
   attackRollEvent,
   attackSmartEvent,
   weaponAttachmentEvent,
   weaponClearJamEvent,
+  weaponDrawEvent,
   weaponReloadEvent,
 } from './attacks.js';
+import { sightingLookEvent } from './sighting.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
 import { mapPingEvent } from './ping.js';
 import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
@@ -146,7 +162,16 @@ import {
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { sceneUndoEvent } from './scene-undo.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
+import { portraitCropEvent } from './portraits.js';
 import { shopTierEvent } from './shop.js';
+import {
+  tableDeleteEvent,
+  tableListEvent,
+  tableRollEvent,
+  tableShowEvent,
+  tableUpsertEvent,
+} from './tables.js';
+import { timeSetEvent } from './gametime.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
@@ -239,6 +264,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   sceneActivateEvent,
   sceneViewEvent,
   tokenCreateEvent,
+  tokenStatEvent,
   tokenUpdateEvent,
   tokenDeleteEvent,
   tokenDuplicateEvent,
@@ -274,7 +300,14 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   effectExpireEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
+  portraitCropEvent,
   shopTierEvent,
+  timeSetEvent,
+  tableListEvent,
+  tableUpsertEvent,
+  tableDeleteEvent,
+  tableRollEvent,
+  tableShowEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterBackupCallEvent,
@@ -299,6 +332,13 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterUseDoseEvent,
   checkCallEvent,
   checkCancelEvent,
+  checkRequestEvent,
+  checkRequestCancelEvent,
+  checkRequestResolveEvent,
+  inventorySourcesEvent,
+  inventoryGiveEvent,
+  inventoryTakeEvent,
+  inventoryRespondEvent,
   characterCyberwareEvent,
   economyBuyEvent,
   economyTransferEvent,
@@ -312,12 +352,15 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   damageApplyEvent,
   damageUndoEvent,
   characterInjuryEvent,
+  characterStatEffectEvent,
   attackRollEvent,
   attackEvadeEvent,
   attackSmartEvent,
   weaponAttachmentEvent,
   weaponClearJamEvent,
+  weaponDrawEvent,
   weaponReloadEvent,
+  sightingLookEvent,
   rulerUpdateEvent,
   mapPingEvent,
   rulerClearEvent,

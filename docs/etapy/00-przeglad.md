@@ -65,6 +65,7 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 37  | Kalendarz kampanii i upływ czasu                    | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
 | 38  | Przedmioty między kartami                           | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
 | 39  | Efekty czasowe modyfikujące Cechy                   | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
+| 40  | Prośba gracza o Test                                | H. Świat CP RED      | dopisany 06.09 (zlecenie MG)    |
 
 ## Kolejność i zależności
 

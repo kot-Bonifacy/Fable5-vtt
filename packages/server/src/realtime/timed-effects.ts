@@ -25,6 +25,7 @@ import {
 import { statusName } from '../statuses.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
+import { expireStatEffectsOfCharacter } from './stat-effects.js';
 
 /**
  * Effects that end by themselves (stage 16h).
@@ -126,7 +127,15 @@ export async function sweepTimedEffects(
       where: { id: token.characterId },
     });
     if (!character) continue;
-    const healed = expireSheetInjuries(character, deps.ctx.cpred, round);
+    // Etap 39: efekty na Cechach schodzą tym samym przemiataniem, ale **tylko**
+    // po rundach — minuta świata nie rusza się na granicy tury, więc drugiej
+    // wskazówki tu nie ma i „na godzinę" nie zejdzie w walce po sześciu
+    // sekundach. Osobno od ran, bo mieszkają w innym polu karty i muszą zejść
+    // nawet wtedy, gdy żadna rana nie wygasła.
+    await expireStatEffectsOfCharacter(deps, campaignId, character.id, { round, minutes: null });
+    const fresh = await deps.ctx.prisma.character.findUnique({ where: { id: character.id } });
+    if (!fresh) continue;
+    const healed = expireSheetInjuries(fresh, deps.ctx.cpred, round);
     if (!healed) continue;
     const saved = await deps.ctx.prisma.character.update({
       where: { id: character.id },

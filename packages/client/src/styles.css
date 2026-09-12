@@ -260,6 +260,14 @@ body {
     var(--map-backdrop);
 }
 
+/* Pod mapą powitalną gracza (11.09) siatka stołu gaśnie. Mapa 40 × 30 nie
+   wypełnia okna do brzegu, a kratkowany margines wokół niej to dokładnie ta
+   „czysta siatka", której ten ekran ma nie pokazywać — pod mapą zostaje więc
+   sam ciemny stół. Scenie MG kratka zostaje: tam jest robocza, nie nastrojowa. */
+.map-area--welcome {
+  background: var(--map-backdrop);
+}
+
 .map-canvas-host {
   position: absolute;
   inset: 0;
@@ -860,11 +868,6 @@ body {
   opacity: 1;
 }
 
-.chat-filter--reset {
-  color: var(--info);
-  opacity: 1;
-}
-
 /* Ukryte wiersze zwijają się w kreskę z licznikiem — klik rozwija je w miejscu,
    bez ruszania samego filtra. */
 .chat-hidden-run {
@@ -890,123 +893,6 @@ body {
   border-top-color: var(--border-strong);
 }
 
-.chat-feed--compact {
-  gap: 0.15rem;
-}
-
-.chat-compact-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  width: 100%;
-  border: 0;
-  border-left: 2px solid transparent;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 0.85rem;
-  line-height: 1.35;
-  text-align: left;
-  padding: 0.05rem 0.2rem;
-  cursor: pointer;
-  /* Wiersz jest przyciskiem, ale nadal ma się dać zaznaczyć i skopiować. */
-  user-select: text;
-}
-
-.chat-compact-row:hover {
-  background: var(--veil-faint);
-}
-
-.chat-compact-row .chat-message-time {
-  margin-left: 0;
-  flex: none;
-}
-
-.chat-compact-row .chat-message-author {
-  flex: none;
-  white-space: nowrap;
-}
-
-.chat-compact-row .chat-portrait {
-  width: 1rem;
-  height: 1rem;
-  align-self: baseline;
-}
-
-.chat-compact-text,
-.chat-compact-summary {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.chat-compact-text {
-  white-space: pre-wrap;
-}
-
-/* Kolor przy lewej krawędzi zastępuje kartę: po nim widać rodzaj wiersza,
-   zanim się go przeczyta. */
-.chat-compact-row--dice {
-  border-left-color: rgb(var(--accent-rgb) / 45%);
-}
-
-.chat-compact-row--combat {
-  border-left-color: rgb(var(--hurt-rgb) / 55%);
-}
-
-.chat-compact-row--table {
-  border-left-color: rgb(var(--neutral-rgb) / 45%);
-}
-
-.chat-compact-row--talk.chat-message--whisper {
-  border-left-color: var(--whisper);
-}
-
-.chat-compact-row--talk.chat-message--whisper .chat-compact-text {
-  color: var(--whisper);
-  font-style: italic;
-}
-
-.chat-compact-summary--success {
-  color: var(--ok-ink);
-}
-
-.chat-compact-summary--failure {
-  color: var(--err-ink);
-}
-
-.chat-compact-summary--warn {
-  color: var(--warn);
-}
-
-/* Karta rozwinięta mimo trybu zwartego. Miejsce po prawej jest zarezerwowane,
-   żeby strzałka „zwiń" nie usiadła na godzinie ani na przycisku „Cofnij". */
-.chat-expanded {
-  position: relative;
-  padding-right: 1.4rem;
-}
-
-.chat-collapse {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-panel);
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 0.7rem;
-  line-height: 1;
-  padding: 0.15rem 0.3rem;
-  cursor: pointer;
-}
-
-.chat-collapse:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
 /* Stan pusty listy (etap 27f): zdanie i — gdy jest sensowny — pierwszy krok.
    Wyśrodkowanie jest celowe: pustka pośrodku panelu czyta się jak komunikat,
    pustka dosunięta do lewej jak zapomniany wiersz listy. */
@@ -1029,28 +915,257 @@ body {
   font-size: 0.9rem;
 }
 
-/* --- Auth screens (login / join) --- */
+/* --- Ekrany wejścia: logowanie MG, dołączanie gracza, ekran startowy -------
 
+   Od 11.09.2026 stoją na plakacie `public/art/login-poster.webp` (Night City
+   z narysowaną pośrodku czerwoną ramką celownika). Trzy rzeczy trzymają
+   formularz **w** obrazie, a nie **na** obrazie:
+
+   1. KOTWICA. Ramką logowania jest ta narysowana ramka celownika, więc
+      formularz musi siadać w jej środku przy każdym kształcie okna. W pliku
+      (1672 × 941) ramka leży na 31,6–68,1% szerokości i 14,6–63,1% wysokości —
+      jej środek to 49,8% × 38,8%: poziomo praktycznie środek obrazu, pionowo
+      **11,16% wyżej**. `background-size: cover` skaluje plakat do wysokości
+      `max(wysokość okna, szerokość okna × 941/1672)`, więc dokładnie tę liczbę
+      przelicza `translate` niżej. `clamp` jest zabezpieczeniem na niskie okno:
+      gdyby podniesienie miało wypchnąć formularz za górną krawędź, zostaje on
+      po prostu na środku.
+   2. BRAK PUDEŁKA (decyzja MG z 11.09). Formularz nie ma własnego tła ani
+      obwódki — napisy leżą wprost na papierze plakatu. Wolno tak wyłącznie
+      dzięki kotwicy: to ona gwarantuje, co jest pod spodem. Wnętrze ramki to
+      równy kremowy papier przy każdym kadrze, więc sadza na nim zawsze się
+      czyta. **Odkręcając kotwicę, trzeba oddać formularzowi tło** — inaczej
+      napisy wylądują na sylwetce punka albo na neonach.
+   3. SZEROKOŚĆ LICZONA Z OBRAZU, nie z okna: 24% szerokości plakatu to dwie
+      trzecie wnętrza ramki, więc formularz nigdy z niej nie wychodzi, a na
+      dużym monitorze rośnie razem z nią.
+
+   Kolory: tokeny `--login-*` w `theme.css`, bez pary dziennej — plakat jest
+   fikcją, nie chromem aplikacji, tak samo jak mapa, Sieć i screamsheet.
+
+   `.auth-label`, `.auth-error` i `.auth-hint` to klasy **całej aplikacji**
+   (używa ich pół edytora botów i kart scen), więc ich reguły bazowe zostają
+   nietknięte, a plakatowy wygląd dokłada się wyłącznie pod `.auth-screen`.
+   --------------------------------------------------------------------------- */
+
+/* Kolumna z `safe center`, a nie `place-items: center`, bo formularz bywa
+   wyższy od okna (np. 1500 × 460 — okno rozciągnięte na pół ekranu). Zwykłe
+   wyśrodkowanie wypycha wtedy górę formularza poza widok i **nie da się jej
+   doscrollować**; `safe` w takim wypadku dosuwa treść do początku osi,
+   a `overflow-y` daje pasek przewijania. */
 .auth-screen {
   height: 100%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  padding: 1.5rem;
   background:
-    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    var(--bg);
+    url('/art/login-poster.webp') center / cover no-repeat,
+    var(--login-paper);
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+}
+
+/* Podniesienie do środka ramki celownika — patrz punkt 1 wyżej. Wyliczenie
+   siedzi w miejscu, a nie we własnej zmiennej, bo `theme.test.ts` wymaga, żeby
+   każdy `var(--…)` w tym pliku był zdefiniowany w motywie, a to jest geometria
+   kadru, nie kolor. */
+.auth-screen > .auth-card,
+.auth-screen > .placeholder-text {
+  translate: 0 calc(-1 * clamp(0px, max(100dvh, 100dvw * 941 / 1672) * 0.1116, 50dvh - 14rem));
 }
 
 .auth-card {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  width: min(380px, 92vw);
-  padding: 2rem;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  gap: 0.5rem;
+  width: min(84vw, clamp(16rem, max(100dvw, 100dvh * 1672 / 941) * 0.24, 26rem));
 }
+
+/* Ekran startowy i „Sprawdzanie zaproszenia…" — plakietka HUD-u, nie zdanie. */
+.auth-screen > .placeholder-text {
+  color: var(--login-ink-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Nadtytuł: plakat sam mówi „Cyberpunk RED" wielkim logiem w rogu, więc tutaj
+   ta sama nazwa idzie drobnym, rozstrzelonym pismem — jako plakietka systemu,
+   a nie drugie logo konkurujące z pierwszym. */
+.auth-eyebrow {
+  color: var(--login-red-deep);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+}
+
+.auth-screen .auth-title {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--login-ink);
+}
+
+/* Kreska z krzyżykiem na końcu — ten sam gest, którym plakat podkreśla napis
+   „NIGHT CITY" nad ramką. */
+.auth-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.55rem;
+  color: var(--login-red);
+}
+
+.auth-rule::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentcolor;
+}
+
+.auth-rule::after {
+  content: '+';
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.auth-screen .auth-subtitle {
+  color: var(--login-ink);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.auth-screen .auth-label {
+  margin-top: 0.4rem;
+  color: var(--login-ink-dim);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Ekran dołączania wiesza `.auth-label` nie tylko na podpisach pól, ale i na
+   całych zdaniach („Wracasz do gry? Wybierz swoje imię:"). Wersaliki
+   z rozstrzeleniem na 0,3 em są dobre dla jednego słowa nad polem, a zdanie
+   w nich krzyczy i źle się czyta — dlatego `<p>` dostaje z powrotem zwykłe
+   pismo, a HUD-owy podpis zostaje przy `<label>`. */
+.auth-screen p.auth-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.auth-screen .auth-error {
+  color: var(--login-red-deep);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.auth-screen .auth-hint {
+  margin-top: 0.55rem;
+  color: var(--login-ink-dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+}
+
+/* Pole bez ramki: sam nadruk i kreska pod spodem, jak w formularzu na papierze.
+   Ognisko widać po tym, że kreska robi się czerwona — to jedyne pole na ekranie,
+   więc zmiana barwy na całej jego szerokości czyta się lepiej niż systemowa
+   obwódka doklejona do plakatu. */
+.auth-screen input[type='text'],
+.auth-screen input[type='password'] {
+  padding: 0.3rem 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--login-ink-dim);
+  border-radius: 0;
+  color: var(--login-ink);
+  caret-color: var(--login-red);
+  font-family: var(--font-cp-cond);
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+}
+
+.auth-screen input:focus {
+  outline: none;
+  border-bottom-color: var(--login-red);
+}
+
+/* Hasło podstawione z menedżera haseł Chrome dostaje od przeglądarki własne
+   niebieskie tło i własny kolor liter, a zwykłe `background` tego nie zdejmuje
+   (to styl UA na pseudoklasie, nie kaskada). Zdejmuje je dopiero absurdalnie
+   długie przejście: barwa rusza w stronę niebieskiego, ale nigdy nie dojeżdża.
+   Drugie znane obejście, `box-shadow: inset 0 0 0 100px`, odpada — zalepiłoby
+   pole płaską plamą, a pod spodem ma być ziarno plakatu. */
+.auth-screen input:-webkit-autofill,
+.auth-screen input:-webkit-autofill:hover,
+.auth-screen input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--login-ink);
+  caret-color: var(--login-red);
+  transition: background-color 100000s ease-in-out 0s;
+}
+
+/* Ścięty prawy dolny róg — ten sam gest, co czarna belka z logiem w rogu
+   plakatu. `clip-path` obcina też `box-shadow`, więc cień idzie przez `filter`. */
+.auth-screen .primary-button {
+  margin-top: 0.85rem;
+  padding: 0.62rem 1.1rem;
+  background: var(--login-red);
+  border: none;
+  border-radius: 0;
+  color: var(--login-on-red);
+  font-family: var(--font-cp-cond);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+  filter: drop-shadow(var(--login-shadow));
+}
+
+.auth-screen .primary-button:hover:not(:disabled) {
+  background: var(--login-red-bright);
+}
+
+.auth-screen .primary-button:active:not(:disabled) {
+  background: var(--login-red-deep);
+}
+
+.auth-screen button:disabled {
+  opacity: 0.45;
+}
+
+/* Ekran dołączania: imiona graczy jako kafle wycięte z papieru. */
+.auth-screen .player-choices {
+  gap: 0.4rem;
+}
+
+.auth-screen .player-chip {
+  padding: 0.32rem 0.7rem;
+  background: var(--login-chip);
+  border: 1px solid var(--login-ink-dim);
+  border-radius: 0;
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.auth-screen .player-chip:hover:not(:disabled) {
+  background: var(--login-chip-hover);
+  border-color: var(--login-red);
+}
+
+/* --- Klasy pomocnicze, których używa cała aplikacja, nie tylko wejście --- */
 
 .auth-title {
   font-size: 1.15rem;
@@ -1200,6 +1315,40 @@ button:disabled {
   font-size: 0.7rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--warn);
+}
+
+/* ---------------------------------------------------------------------------
+   Zegar świata w górnym pasku (etap 37)
+
+   `flex: none` jak każdy element prawej grupy — miejsce oddaje wyłącznie tytuł
+   i nazwa kampanii. Kropka przy dacie to monit rozliczenia miesiąca; nosi
+   `--warn`, bo mówi „coś czeka", a nie „coś się zepsuło".
+   --------------------------------------------------------------------------- */
+
+.top-bar-clock {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.top-bar-clock--gm {
+  padding: 0.1rem 0.45rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.top-bar-clock--gm:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.top-bar-clock--due {
+  border-color: var(--warn);
   color: var(--warn);
 }
 
@@ -1495,6 +1644,96 @@ button:disabled {
   text-align: center;
 }
 
+/* ===== Przełącznik liczbowy (06.09) =====
+
+   Liczba jako napis plus dwie strzałki w pionie tuż przy niej, obie razem
+   wysokie na jeden wiersz. Decyzja MG: wartości, które w tym systemie mieszczą
+   się w dwóch cyfrach, zmienia się klikaniem, a nie wpisywaniem — dotyczy karty
+   postaci i **okien gry** (rzut, wezwanie, obrażenia, statysta, netrun).
+   Wpisywane zostają liczby, które naprawdę bywają większe: PD, ceny w ed,
+   zasięgi w metrach, wymiary scen i zakresy tabel.
+
+   Skóra jest tutaj **polem aplikacji** (ramka, tło, promień), bo tak wygląda
+   każde inne pole w oknach; karta postaci spłaszcza ją u siebie w `sheet.css`. */
+.cp-step {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.15rem;
+  vertical-align: middle;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.15;
+  cursor: default;
+}
+
+.cp-step:focus-visible {
+  outline: 1px solid var(--accent);
+}
+
+.cp-step-value {
+  min-width: 1.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kolumna strzałek rozciąga się na wysokość wiersza z liczbą (`stretch` wyżej),
+   więc obie razem są tak wysokie jak ona — i tylko tyle. */
+.cp-step-arrows {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 0.7rem;
+}
+
+/* `color: inherit` i sama przezroczystość zamiast własnego tła: ten sam guzik
+   siedzi na papierze karty, na czerwonej plakietce rangi i w polu okna. */
+.cp-step-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 50%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  opacity: 0.5;
+  font-size: 0.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-step-arrow:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* Strzałka przy krańcu zakresu ma zostać widoczna jako strzałka: para, w której
+   jedna połowa znika zupełnie, czyta się jak pojedynczy dziwny znaczek. */
+.cp-step-arrow:disabled {
+  opacity: 0.22;
+  cursor: default;
+}
+
+/* Bez strzałek — liczbę widać, ale zmienia ją co innego (poziom kupowany PD). */
+.cp-step--locked {
+  color: var(--text-dim);
+}
+
+/* W kolumnie okna (`.dialog`, `.bot-field`) pole rozciąga się na całą szerokość
+   — przełącznik nie ma po co: dwie cyfry i dwie strzałki mają stałą, małą
+   szerokość, a rozciągnięty zostawiał liczbę samą przy lewej krawędzi pustego
+   prostokąta. W wierszu (`.scene-editor-row`) `align-self` sterowałby pionem,
+   więc tam go świadomie nie ma. */
+.dialog > .cp-step,
+.bot-field > .cp-step {
+  align-self: flex-start;
+}
+
 input[type='color'] {
   width: 2.4rem;
   height: 1.8rem;
@@ -1613,8 +1852,9 @@ input[type='color'] {
   background: var(--veil);
 }
 
-.context-menu-status img {
-  border-radius: 3px;
+.context-menu-status .status-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .dialog-backdrop {
@@ -2712,8 +2952,18 @@ input[type='color'] {
 }
 
 /* The roll dialog is opened from a sheet window (z-index 300+) — it has to
-   sit above it, otherwise the sheet covers half of the dialog. */
-.dialog-backdrop:has(.roll-dialog) {
+   sit above it, otherwise the sheet covers half of the dialog.
+   To samo dotyczy obu okien Testu (etapy 32 i 40): prośbę otwiera Alt+klik
+   w wiersz karty, a wezwanie — „Ustaw…" na karcie czatu przy otwartej karcie
+   postaci. Bez tego wiersza okno powstaje, ale **niczego nie widać**: ekran
+   przygasa scrimem, a samo okno zostaje pod arkuszem (znalezione 06.09
+   w przeglądarce, w drugiej sesji). */
+.dialog-backdrop:has(.roll-dialog),
+.dialog-backdrop:has(.check-request-dialog),
+.dialog-backdrop:has(.check-call-dialog),
+/* Kadr portretu (12.09) wchodzi tą samą drogą: otwiera się z karty postaci
+   i z kreatora, czyli **spod** okna o z-index 300+. */
+.dialog-backdrop:has(.portrait-crop) {
   z-index: 400;
 }
 
@@ -4654,10 +4904,20 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* Komórka „Atak" trzyma kilka przycisków obok siebie, ale **komórką zostaje**:
+   `display: flex` na `<td>` wyjmuje go z układu tabeli i przestaje rozciągać
+   się na wysokość wiersza — a że tło tabeli arkusza jest czerwone, pod
+   przyciskami zostawał czerwony pas wyglądający na błąd (znalezione 06.09).
+   Układ robi więc wnętrze komórki, nie ona sama. */
 .weapon-actions {
+  vertical-align: top;
+}
+
+.weapon-actions-row {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 /* The attack card under a roll on the chat. */
@@ -4953,6 +5213,184 @@ body.is-resizing {
   color: var(--ok);
 }
 
+/* Data w świecie gry przy wpisie dziennika (etap 37) — cichsza od daty sesji:
+   to dopisek do kroniki, nie jej klucz porządkujący. */
+.journal-world-date {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Skok zegara świata (etap 37) — cezura przerwy, nie zdarzenie walki. */
+
+.chat-time {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-time--back {
+  border-left-color: var(--warn);
+}
+
+.chat-time-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-time-days {
+  color: var(--info);
+}
+
+.chat-time-span {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.chat-time-from {
+  color: var(--text-dim);
+}
+
+/* Tabele losowe (etap 34).
+
+   Karta ma fioletową krawędź — ani zielona przerwa (odpoczynek), ani niebieski
+   zegar, ani czerwona walka: losowanie fabularne jest osobną rubryką stołu.
+   Kości są tu celowo nieomalowane (`plain`): dziesiątka znaczy „wiersz
+   dziesiąty", a nie krytyk. */
+
+.chat-table {
+  border-left: 3px solid var(--fate);
+  padding-left: 0.5rem;
+}
+
+.chat-table--secret {
+  border-left-style: dashed;
+}
+
+.chat-table-steps {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chat-table-step {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.chat-table-sub {
+  flex: 0 0 100%;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.chat-table-dice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+}
+
+.chat-table-value {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: 700;
+  color: var(--fate);
+}
+
+.chat-table-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.chat-table-text--missing {
+  color: var(--warn);
+}
+
+.chat-table-shown {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Zakładka „Tabele" — wiersze edytora są siatką „od–do · treść · podrzut". */
+
+.table-rows-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.table-rows {
+  list-style: none;
+  margin: 0.2rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.table-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.table-row-num {
+  width: 3.4rem;
+  flex: none;
+}
+
+.table-row-dash {
+  align-self: center;
+  color: var(--text-dim);
+}
+
+.table-row-text {
+  flex: 1 1 6rem;
+  min-width: 0;
+  resize: vertical;
+}
+
+/* Wiersz podręcznikowej tabeli bywa akapitem na 1 400 znaków, a lista dwustu
+   takich pól nie zmieściłaby się na ekranie. Kompromis: jedna linia w spoczynku,
+   pełne okno pod kursorem — bez zmiany wysokości sąsiadów. */
+.table-row-text:focus {
+  min-height: 7rem;
+}
+
+.table-row-sub {
+  flex: 0 1 8rem;
+  min-width: 0;
+}
+
+.table-issues {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  color: var(--warn);
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.table-roll {
+  font-weight: 600;
+}
+
 .chat-action-body {
   display: flex;
   align-items: center;
@@ -5101,7 +5539,10 @@ body.is-resizing {
 }
 
 /* The strip is 2,6 rem wide: without a size of its own the portrait stretches
-   to fill it and pushes the health sliver out of the rail entirely. */
+   to fill it and pushes the health sliver out of the rail entirely.
+   Ta reguła jest też jedyną obroną przed powiększeniem z 12.09: bije
+   `.hud-portrait--empty` specyficznością, więc inicjał w zwiniętym pasku
+   zostaje mały. Przy zmianie któregokolwiek z dwóch miejsc sprawdź oba. */
 .hud-rail--collapsed .hud-portrait {
   width: 1.5rem;
   height: 1.5rem;
@@ -5236,11 +5677,17 @@ body.is-resizing {
 /* The frame is a square with one corner cut, not a circle: the map already
    draws this figure as a disc, and a panel that repeats the token is a panel
    that says nothing new. */
+/* 6 rem, nie 3,6 (zlecenie MG, 12.09): dwukrotnie większa powierzchnia twarzy.
+   Portret zostaje **obok** imienia i paska PW, a nie nad nimi — wybór MG spośród
+   trzech wariantów: karta tożsamości nie rośnie w dół, więc pasek akcji (bronie,
+   przeładowanie) zostaje tam, gdzie ręka go szuka. Ceną jest ~9 rem na tekst,
+   czyli chipy SP/RUCH/EMP zawijają się teraz do dwóch rzędów; `.hud-vitals` ma
+   `flex-wrap` od początku, więc to działo się już wcześniej przy dłuższej Roli. */
 .hud-portrait-frame {
   position: relative;
   flex: none;
-  width: 3.6rem;
-  height: 3.6rem;
+  width: 6rem;
+  height: 6rem;
   padding: 2px;
   background: linear-gradient(140deg, var(--border-strong), var(--border));
   clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
@@ -5254,11 +5701,13 @@ body.is-resizing {
   clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
 }
 
+/* Inicjał rośnie razem z ramką (12.09) — 1,4 rem w kadrze 6 rem wyglądało jak
+   literka zgubiona w pustym polu, a to jest zastępstwo za twarz. */
 .hud-portrait--empty {
   display: grid;
   place-items: center;
   background: var(--bg-inset);
-  font-size: 1.4rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--text-dim);
 }
@@ -5464,10 +5913,55 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
-.hud-status img {
+.hud-status .status-icon {
   width: 0.85rem;
   height: 0.85rem;
   display: block;
+}
+
+/* Naklejka statusu poza mapą (`StatusIcon`, 11.09) — maska jak `.hud-icon`,
+   ale liczona z JASNOŚCI, nie z alfy. Pliki z game-icons mają pod białą
+   sylwetką nieprzezroczysty czarny kwadrat (mapa go potrzebuje), więc maska
+   z alfy dałaby pełny kwadrat w kolorze chipu zamiast znaku. */
+.status-icon {
+  mask-mode: luminance;
+}
+
+/* Efekty czasowe na Cechach (etap 39) — ten sam kształt co naklejki wyżej,
+   bo pasek ma je czytać jednym spojrzeniem jako jedną listę „co z tą figurą".
+   Różni je wyłącznie kolor liczby: czerwień w dół, zieleń w górę. */
+.hud-stat-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hud-stat-effect {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.1rem 0.32rem;
+  font-size: 0.66rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--veil-soft);
+  color: var(--text-dim);
+}
+
+.hud-stat-effect-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-stat-effect--down .hud-stat-effect-value {
+  color: var(--err-ink);
+}
+
+.hud-stat-effect--up .hud-stat-effect-value {
+  color: var(--ok-ink);
 }
 
 .hud-status--warn {
@@ -6244,23 +6738,24 @@ body.is-resizing {
    i żadna jedna deklaracja `grid-template-areas` nie opisuje ich wszystkich.
    `.hud-form` to drugi dom tego samego panelu — pudełko „Zmysł Walki"
    w pasku akcji ma 254 px i ścinało nazwy tak samo („Reduk…", „Wyczu…").
-   Poza tymi dwoma (rejestr awansów w `.cp-advance`) wiersz zostaje
-   jednolinijkowy — tam miejsca jest dość. */
-.cp-awareness .awareness-row,
+   Poza tym (rejestr awansów w `.cp-advance`) wiersz zostaje jednolinijkowy —
+   tam miejsca jest dość.
+
+   Do 06.09 była tu jeszcze `.cp-awareness` — panele Ról stały wtedy w kolumnie
+   tożsamości szerokiej na 15 rem i musiały łamać nazwy do własnego wiersza.
+   Po przeprowadzce do pasa „Zdolność Specjalna" mają całą szerokość strony
+   i łamania nie potrzebują. */
 .hud-form .awareness-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.1rem 0.4rem;
 }
 
-.cp-awareness .awareness-name,
 .hud-form .awareness-name {
   flex: 1 0 100%;
   white-space: normal;
 }
 
-.cp-awareness .awareness-value,
-.cp-awareness .awareness-cost,
 .hud-form .awareness-value,
 .hud-form .awareness-cost {
   min-width: 0;
@@ -6270,15 +6765,9 @@ body.is-resizing {
 /* `flex: none` obok `margin-left: auto`: bez niego automatyczny margines
    zjada całą wolną przestrzeń wiersza, a guzik zostaje ścieśniony do własnego
    minimum i wychodzi poza panel — „Wezwij" Wsparcia czytało się jako „Wezw". */
-.cp-awareness .awareness-steps,
 .hud-form .awareness-steps {
   flex: none;
   margin-left: auto;
-}
-
-/* `grid-column` nie znaczy nic w rodzicu, który przestał być siatką. */
-.cp-awareness .team-loyalty {
-  flex: 1 0 100%;
 }
 
 /* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co
@@ -6515,6 +7004,28 @@ body.is-resizing {
 .aim-tooltip-facts dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Etap 41 — rzut oka na cel, pod liczbami strzału.
+ *
+ * Jedna kolumna, nie dwie: „Ochrona głowy" i „Karabin szturmowy" to napisy,
+ * a nie liczby, i w połowie szerokości dymka łamałyby się co drugi raz.
+ * Kreska nad nimi oddziela **to, co wiem o celu** od tego, co wiem o własnym
+ * strzale — dwa różne pytania, mimo że odpowiada na nie jeden dymek.
+ */
+.aim-tooltip-facts--seen {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Goła głowa świeci, bo to jedyna liczba, na której stoi opłacalność strzału
+   w głowę — po nią powstał cały etap (s. 170). */
+.aim-tooltip-bare {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 .aim-tooltip-note {
@@ -6852,6 +7363,12 @@ body.is-resizing {
   flex: none;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.cp-step.reputation-level {
+  width: auto;
+  min-width: 2.4rem;
+  justify-content: center;
 }
 
 .reputation-note {
@@ -7260,6 +7777,100 @@ body.is-resizing {
   margin-top: 1.1rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   Okno zegara świata (etap 37)
+
+   Dzieli chrom z oknem ustawień (belka, ciało, ✕, uchwyt rozciągania) i różni
+   się wyłącznie treścią. Godzina jest największą liczbą w oknie, bo po nią się
+   tu przychodzi; data i dzień tygodnia stoją obok w jednej linii.
+   --------------------------------------------------------------------------- */
+
+.clock-window {
+  width: min(360px, calc(100vw - 24px));
+}
+
+.clock-now {
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.clock-now-time {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.clock-now-date {
+  font-size: 0.95rem;
+}
+
+.clock-now-weekday {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Skoki i para guzików rozliczenia — jeden rządek, zawijany na wąskim oknie. */
+.clock-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.clock-exact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.clock-exact input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.clock-prompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.clock-prompt--due {
+  color: var(--warn);
+}
+
+.clock-rest {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clock-rest li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.clock-rest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clock-rest-hp {
+  flex: none;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------------------------------------------------------------------
@@ -8353,6 +8964,221 @@ body.is-resizing {
   border-radius: 0 0 8px 8px;
 }
 
+/* Przycisk kadru siedzi w rogu przeciwnym do kosza, tak samo skryty: pula ma
+   być siatką portretów, nie siatką przycisków. Widzi go wyłącznie MG, bo kadr
+   jest cechą obrazka z puli, a pulę prowadzi jedno konto (12.09). */
+.portrait-pool-crop {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  padding: 0 0.25rem;
+  opacity: 0;
+}
+
+.portrait-pool-item:hover .portrait-pool-crop,
+.portrait-pool-crop:focus-visible {
+  opacity: 1;
+}
+
+/* Kafelek z ustawionym kadrem — kropka, żeby MG widział, którego portretu już
+   dotknął, bez otwierania każdego po kolei. */
+.portrait-pool-item--framed .portrait-pool-pick::after {
+  content: '';
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/*
+ * Okno kadrowania portretu pod mapę (zlecenie MG, 12.09).
+ *
+ * Szersze niż zwykły `.dialog`, bo mieści kwadrat kratki i podgląd w prawdziwej
+ * wielkości obok siebie — a przy wąskim oknie jedno i drugie zwija się w kolumnę.
+ */
+.portrait-crop {
+  width: min(36rem, 94vw);
+  gap: 0.6rem;
+}
+
+.portrait-crop-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.portrait-crop-stage-row {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Zawsze ciemne, w obu motywach — płótno mapy też zostaje nocne (etap 27e),
+   więc portret ma być oglądany na tym tle, na którym stanie. */
+.portrait-crop-stage {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--map-backdrop);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.portrait-crop-stage:active {
+  cursor: grabbing;
+}
+
+.portrait-crop-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* `max-width: none`, bo reszta aplikacji skaluje obrazki do szerokości
+   rodzica — a tutaj rozmiar jest liczony z kadru i ma być dosłowny. */
+.portrait-crop-image {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+}
+
+.portrait-crop-backdrop,
+.portrait-crop-mask,
+.portrait-crop-ring,
+.portrait-crop-cell {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Tło krążka, czyli to, co stół zobaczy tam, gdzie kadr wyjechał poza obraz
+   (12.09). Leży **pod** portretem, więc póki obraz pokrywa krążek, nie widać
+   go wcale — i o to chodzi. */
+.portrait-crop-backdrop {
+  border-radius: 50%;
+  background: var(--map-token-backdrop);
+}
+
+/* Cień na wszystkim poza krążkiem — jeden `box-shadow` zamiast maski, bo to,
+   co odcięte, ma zostać widoczne, tylko przygaszone. */
+.portrait-crop-mask {
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px var(--map-crop-scrim);
+}
+
+/* Obwódka właściciela w kolorze „to moja figura" — ten sam zielony, co na
+   mapie (`RING_OWN` w `TokenNode.ts`). */
+.portrait-crop-ring {
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--map-ring-own);
+}
+
+.portrait-crop-cell {
+  border: 1px dashed var(--map-line-soft);
+}
+
+.portrait-crop-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 7rem;
+  padding-top: 1.2rem;
+}
+
+.portrait-crop-side-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.portrait-crop-side-note {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Krążek w prawdziwej wielkości kratki. Obramowanie **jest** obwódką
+   właściciela: przy `border-box` wnętrze wychodzi równo `portraitRadius · 2`. */
+.portrait-crop-true {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--map-ring-own);
+  /* Tło żetonu, nie tło mapy: podgląd „tak na mapie" ma pokazywać dokładnie
+     to, co narysuje `TokenNode` pod portretem wyjechanym poza obraz. */
+  background: var(--map-token-backdrop);
+}
+
+.portrait-crop-true img {
+  position: absolute;
+  max-width: none;
+}
+
+.portrait-crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.portrait-crop-zoom input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.portrait-crop-zoom-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.portrait-crop-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.portrait-crop-spacer {
+  flex: 1;
+}
+
+.portrait-crop-save {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Pod ramką portretu na karcie: kadr na mapie i — u gracza — zdanie o tym,
+   czemu samego portretu nie da się już zmienić (decyzja MG z 12.09). */
+.cp-portrait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cp-portrait-locked {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 8rem;
+}
+
 .creator-checkbox {
   display: flex;
   align-items: flex-start;
@@ -9221,6 +10047,86 @@ body.is-resizing {
 }
 
 /*
+ * Prośba gracza o Test (etap 40) — druga strona wezwania.
+ *
+ * Ta sama bursztynowa krawędź, co przy `.chat-check`, i to jest umyślne: obie
+ * karty są zapowiedzią rzutu, a stół ma je czytać jednym spojrzeniem jako
+ * jedną sprawę. Zamknięta prośba gaśnie tak, jak odwołane wezwanie.
+ */
+.chat-request {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-request--closed {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-request-note {
+  margin: 0.15rem 0 0.3rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* Drabinka na karcie czatu, a nie w oknie: zgoda ma być jednym kliknięciem.
+   Panel boczny bywa zwężony do 15 rem, więc szczeble układają się w siatkę
+   `auto-fit` — na szerokim panelu po dwa w rzędzie, na wąskim po jednym —
+   zamiast zawijać się w nierówną kaskadę. */
+.chat-request-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.2rem;
+  margin: 0.35rem 0 0.3rem;
+}
+
+.chat-request-ladder .small-button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+}
+
+.chat-request-refusal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.chat-request-refusal input {
+  width: 100%;
+}
+
+/* Plakietka przy zakładce „Czat": ile próśb o Test czeka na MG (etap 40).
+   Bursztyn, ten sam co karta prośby i wołający kubek — cała ta ścieżka mówi
+   jednym kolorem „ktoś czeka na twoją decyzję". */
+.side-tab-badge {
+  display: inline-block;
+  min-width: 1.05rem;
+  margin-left: 0.3rem;
+  padding: 0 0.25rem;
+  border-radius: 0.6rem;
+  background: var(--warn);
+  color: var(--bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+.check-request-dialog {
+  max-width: 24rem;
+}
+
+.check-request-what {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+/*
  * Kopie zapasowe i pliki wymiany (etap 33) — zakładka MG „Kopie".
  *
  * Cztery sekcje jedna pod drugą, każda z tym samym rytmem: tytuł, rządek
@@ -9398,4 +10304,285 @@ body.is-resizing {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.token-group-statuses .status-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Wymiana przedmiotów (etap 38b) ------------------------------------ */
+
+/* Jedno okno na przekazanie, łup i przeszukanie. Węższe od handoutu, bo treścią
+   jest lista krótkich wierszy, a nie kartka do czytania. */
+.inventory-window {
+  position: fixed;
+  z-index: 330;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(78vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.inventory-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.inventory-window-header:active {
+  cursor: grabbing;
+}
+
+.inventory-window-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.inventory-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem 0.9rem;
+  overflow-y: auto;
+}
+
+/* Skąd → dokąd w jednej linii: kierunek operacji ma być widoczny, zanim
+   ktokolwiek spojrzy na listę. */
+.inventory-ends {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.inventory-end {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-end select {
+  width: 100%;
+}
+
+.inventory-arrow {
+  padding-bottom: 0.35rem;
+  color: var(--text-dim);
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-row,
+.inventory-money {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.35rem;
+  background: var(--veil-faint);
+  border-radius: 4px;
+}
+
+.inventory-money {
+  border-top: 1px solid var(--border-soft);
+}
+
+.inventory-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-row-detail {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-row-qty {
+  flex: none;
+  width: 3.4rem;
+}
+
+.inventory-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.inventory-hint,
+.inventory-empty,
+.inventory-message {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-message {
+  color: var(--text);
+}
+
+/* --- Ręce przy wierszu broni (etap 41) --------------------------------- */
+
+.weapon-hands {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* Plakietka, nie guzik: „to trzymam" jest stanem, a obok stoją dwie czynności,
+   którymi się go zmienia. */
+.weapon-hands-badge {
+  padding: 0.05rem 0.3rem;
+  font-size: 0.66rem;
+  color: var(--ok);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* --- Okno oględzin (etap 41) ------------------------------------------- */
+
+/* Węższe od okna wymiany: tu stoi jedna kolumna napisów, a nie dwie listy
+   przedmiotów z kolumną guzików między nimi. */
+.sighting-window {
+  width: 19rem;
+}
+
+.sighting-badge {
+  margin: 0 0 0.4rem;
+  padding: 0.15rem 0.4rem;
+  align-self: flex-start;
+  font-size: 0.66rem;
+  color: var(--ok, var(--text));
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.sighting-section {
+  margin: 0.5rem 0 0.2rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sighting-section:first-of-type {
+  margin-top: 0;
+}
+
+.sighting-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sighting-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+}
+
+.sighting-where {
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.sighting-what {
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.sighting-numbers {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brak pancerza i puste ręce świecą tak samo, jak goła głowa w dymku: to nie
+   jest brak wiersza, tylko wiersz mówiący „nic tu nie ma" — a na tym stoi cała
+   decyzja, gdzie strzelić (s. 170). */
+.sighting-bare,
+.sighting-bare .sighting-what {
+  color: var(--warn);
+}
+
+.sighting-ask {
+  margin-top: 0.6rem;
+  align-self: flex-start;
+}
+
+/* Guzik „Wymiana…" nad tabelą wyposażenia karty.
+   Do lewej, na tej samej krawędzi, co „+ Wyposażenie" pod tabelą (06.09):
+   dosunięty do prawej wisiał sam nad narożnikiem i wyglądał jak element
+   okna, a nie jak działanie na tej liście. */
+.sheet-gear-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Karta oględzin na czacie — jedno zdanie i droga do pełnej listy. */
+.chat-sighting-line {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* --- Karta przekazania na czacie --------------------------------------- */
+
+.chat-inventory {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-inventory--refused {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-inventory-lines {
+  margin: 0.15rem 0 0.3rem;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+}
+
+.chat-inventory-badge--done {
+  background: rgb(var(--ok-rgb) / 18%);
+  color: var(--ok);
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CheckCallEntry, CpredRollRequest, RollGesture, RollToss } from '@vtt/shared';
 import {
   MAX_GESTURE_STRENGTH,
+  ROLE_GM,
   checkCallTargetText,
   formatRollNotation,
   parseChatInput,
@@ -138,6 +139,12 @@ function playRattle(energy: number): void {
 type CupMode =
   | { kind: 'fun' }
   | { kind: 'roll'; visibility: 'public' | 'gm'; notation: string }
+  /**
+   * `/tab <nazwa>` w polu czatu (etap 34). Stoi na **tym samym szczeblu, co
+   * `roll`** — na samym dole drabinki — więc nie odbiera pierwszeństwa ani
+   * załadowanemu rzutowi, ani wezwaniu; samo losowanie i tak wykonuje serwer.
+   */
+  | { kind: 'randtable'; tableName: string }
   | { kind: 'sheet'; pending: PendingRoll }
   | { kind: 'initiative'; pending: PendingInitiative }
   | { kind: 'attack'; pending: PendingAttack }
@@ -235,6 +242,7 @@ export function DiceCup() {
   const creation = useRollStore((s) => s.creation);
   const items = useChatStore((s) => s.items);
   const myUserId = useAuthStore((s) => s.user?.id ?? '');
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -268,8 +276,25 @@ export function DiceCup() {
         notation: formatRollNotation(parsed.formula),
       };
     }
+    // Tabela jest narzędziem MG, więc `/tab` u gracza zostawia kubek pusty —
+    // odmowę i tak wystawi serwer, ale kubek nie ma jej zapowiadać.
+    if (parsed.kind === 'rolltable' && isGm) {
+      return { kind: 'randtable', tableName: parsed.tableName };
+    }
     return { kind: 'fun' };
-  }, [draft, pending, initiative, attack, evasion, grapple, facedown, creation, items, myUserId]);
+  }, [
+    draft,
+    pending,
+    initiative,
+    attack,
+    evasion,
+    grapple,
+    facedown,
+    creation,
+    items,
+    myUserId,
+    isGm,
+  ]);
   modeRef.current = mode;
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
@@ -436,8 +461,8 @@ export function DiceCup() {
           // ends with the gesture (stage 25a).
           void rollCreationWithGesture({ entropy, strength, toss });
         });
-      } else if (current.kind === 'roll') {
-        lastFunNotation = current.notation;
+      } else if (current.kind === 'roll' || current.kind === 'randtable') {
+        if (current.kind === 'roll') lastFunNotation = current.notation;
         void digestSamples(samples).then((entropy) => {
           const gesture: RollGesture = { entropy, strength, toss };
           sendChatInput(useChatStore.getState().draft, gesture);
@@ -525,7 +550,9 @@ export function DiceCup() {
                   ? mode.visibility === 'gm'
                     ? ' dice-cup--gm'
                     : ' dice-cup--hot'
-                  : '';
+                  : mode.kind === 'randtable'
+                    ? ' dice-cup--gm'
+                    : '';
   const title =
     mode.kind === 'call'
       ? `Wezwanie od ${mode.entry.calledByName}: ${callLabel(mode.entry)} — kliknij, żeby wziąć kubek`
@@ -545,7 +572,9 @@ export function DiceCup() {
                     } · Esc odkłada rzut`
                   : mode.kind === 'roll'
                     ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
-                    : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+                    : mode.kind === 'randtable'
+                      ? `Potrząśnij i losuj z tabeli: ${mode.tableName}`
+                      : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
     <div
@@ -574,6 +603,7 @@ export function DiceCup() {
       </svg>
       {mode.kind === 'call' && <span className="dice-cup-label">{callLabel(mode.entry)}</span>}
       {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
+      {mode.kind === 'randtable' && <span className="dice-cup-label">🎲 {mode.tableName}</span>}
       {(mode.kind === 'attack' ||
         mode.kind === 'evasion' ||
         mode.kind === 'grapple' ||

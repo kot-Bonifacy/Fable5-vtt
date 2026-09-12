@@ -42,12 +42,14 @@ const SCENE: SceneView = {
   height: 3000,
   gridMode: 'grid',
   grid: { sizePx: 100, offsetX: 0, offsetY: 0, color: '#ffffff', alpha: 0.2, visible: true },
+  playerMoveLocked: false,
   // Kratka 100 px = 2 m, czyli skala Poligonu.
   metersPerSquare: 2,
   visibility: 'open',
   dark: false,
   darkSightM: 2,
   explore: false,
+  spawn: null,
 };
 
 function token(id: string, x: number): TokenView {

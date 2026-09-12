@@ -39,7 +39,7 @@ function blockAfter(source: string, header: string): string {
 function toolsIn(fragment: string): Set<string> {
   const names = new Set<string>();
   for (const match of fragment.matchAll(/this\.(\w+)\.armed/g)) names.add(match[1] ?? '');
-  for (const flag of ['rulerMode', 'notePlacing']) {
+  for (const flag of ['rulerMode', 'notePlacing', 'spawnPlacing']) {
     if (fragment.includes(`this.${flag}`)) names.add(flag);
   }
   return names;

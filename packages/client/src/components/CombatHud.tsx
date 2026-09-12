@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  CpredStatEffect,
   CpredAttackMode,
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
   CpredHotbarWeaponSlot,
 } from '@vtt/shared';
 import {
+  describeCpredStatEffect,
+  describeCpredStatEffectTimer,
+  describeCpredStatEffectValue,
   CPRED_ATTACK_MODE_LABELS,
   CPRED_BURST_AMMO_COST,
   CPRED_WOUND_LABELS,
@@ -30,12 +34,13 @@ import { activeWeaponOf, fireModeKey, useHudStore } from '../stores/hudStore.js'
 import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
 import { FigureSkills } from './FigureSkills.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
-import { HudIcon } from './HudIcon.js';
+import { HudIcon, StatusIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
 
 /**
@@ -71,16 +76,52 @@ function StatusChips({ statuses }: { statuses: readonly string[] }) {
       {statuses.map((id) => {
         const definition = byId.get(id);
         // The registry's `icon` is a *file* („/public/cpred/status-icons/…"),
-        // not a glyph — the map draws it as a sprite, so the panel draws it as
-        // an image. A status whose registry entry has not arrived yet still
-        // gets its id rather than vanishing.
+        // not a glyph — the map draws it as a sprite, the panel as a mask that
+        // takes the chip's colour (`StatusIcon`). A status whose registry entry
+        // has not arrived yet still gets its id rather than vanishing.
         return (
           <li key={id} className={`hud-status hud-status--${cpredStatusSeverity(id)}`}>
-            {definition && <img src={definition.icon} alt="" />}
+            {definition && <StatusIcon src={definition.icon} />}
             <span>{definition?.name ?? id}</span>
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+/**
+ * Efekty czasowe na Cechach jako chipy (etap 39).
+ *
+ * Stoją tuż pod naklejkami, bo odpowiadają na to samo pytanie („co jest z tą
+ * figurą teraz"), a nad budżetem tury, bo tłumaczą liczby, które ten budżet
+ * pokazuje: figura pod Skorpionem przejdzie krótszy dystans i ma prawo
+ * powiedzieć dlaczego, zanim gracz zdąży pomyśleć, że mapa się zepsuła.
+ *
+ * Zdejmowanie jest **wyłącznie na karcie**, nie tutaj: guzik ⌫ w pasku byłby
+ * czwartym miejscem, w którym MG kasuje coś jednym kliknięciem obok slotów
+ * broni, a pasek jest tym panelem, w którym pomyłkowe kliknięcie jest najtańsze.
+ */
+function StatEffectChips({ effects }: { effects: readonly CpredStatEffect[] }) {
+  const minutes = useGameTimeStore((s) => s.minutes);
+  if (effects.length === 0) return null;
+  return (
+    <ul className="hud-stat-effects">
+      {effects.map((effect) => (
+        <li
+          key={effect.id}
+          className={`hud-stat-effect${
+            effect.value < 0 ? ' hud-stat-effect--down' : ' hud-stat-effect--up'
+          }`}
+          title={`${describeCpredStatEffect(effect)} — ${describeCpredStatEffectTimer(effect, {
+            round: null,
+            minutes,
+          })}`}
+        >
+          <span className="hud-stat-effect-value">{describeCpredStatEffectValue(effect)}</span>
+          <span className="hud-stat-effect-source">{effect.source}</span>
+        </li>
+      ))}
     </ul>
   );
 }
@@ -587,6 +628,7 @@ export function CombatHud() {
           />
 
           <StatusChips statuses={token.statuses} />
+          <StatEffectChips effects={context.statEffects} />
 
           {/* Showing is not steering: the rail fills itself in with this
               figure, but the map still belongs to nobody until the user says

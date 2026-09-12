@@ -8,10 +8,15 @@ import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
 import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
+import { InventoryWindow } from './components/InventoryWindow.js';
 import { BotEditors } from './components/BotEditor.js';
 import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
+import { CheckCallDialog } from './components/CheckCallDialog.js';
+import { PortraitCropEditor } from './components/PortraitCropEditor.js';
+import { CheckRequestDialog } from './components/CheckRequestDialog.js';
+import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -92,11 +97,19 @@ function GameView() {
       <CharacterSheets />
       <CharacterCreator />
       <HandoutWindows />
+      <InventoryWindow />
       <BotEditors />
       <NetArchitectureEditor />
       <NetRunWindow />
       <RollDialog />
+      <CheckCallDialog />
+      {/* Kadr portretu pod mapę (12.09) — otwiera się z puli, z karty postaci,
+          z kreatora i z edytora bota, więc mieszka w korzeniu, jak każde inne
+          okno wołane z kilku miejsc naraz. */}
+      <PortraitCropEditor />
+      <CheckRequestDialog />
       <SettingsWindow />
+      <ClockWindow />
       <ShortcutsWindow />
       <DiceCup />
     </div>

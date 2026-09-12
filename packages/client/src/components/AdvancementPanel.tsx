@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ADVANCEMENT_KIND_LABELS,
   CPRED_MULTICLASS_MIN_RANK,
@@ -156,7 +156,34 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [history, setHistory] = useState<AdvancementEntryView[] | null>(null);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  /*
+   * Rejestr czyta się na **stempel serwera**, nie na saldo — ta sama umowa, co
+   * przy bliźniaczym rejestrze eurodolców z 23b, i z tego samego powodu: własna
+   * łata karty ląduje w składzie optymistycznie, więc licznik zna nową liczbę,
+   * zanim żądanie wyjdzie, a lista czytana na saldzie wróciłaby bez wiersza,
+   * który dopiero powstaje.
+   *
+   * Wyzwalaczem jest cokolwiek, co ruszy kartę, bo PD dopisuje nie tylko ta
+   * karta: pulę po sesji i korektę wpisuje MG (znalezione przy oględzinach
+   * 09.09 — otwarty rejestr zostawał wtedy przy liście sprzed przyznania,
+   * a licznik nad nim już rósł).
+   */
+  const savedAt = character?.updatedAt ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void fetchAdvancementHistory(characterId).then((ack) => {
+      if (!alive) return;
+      setHistory(ack.ok && ack.data ? ack.data.entries : []);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [characterId, open, savedAt]);
 
   if (!character) return null;
   const data = character.data;
@@ -182,14 +209,9 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
       setError(advanceErrorText(ack.error));
       return;
     }
-    // Rejestr otwarty w trakcie musi zobaczyć świeży wiersz, a nie ten sprzed
-    // zakupu — inaczej wygląda, jakby awans się nie zapisał.
-    if (history !== null) void loadHistory();
-  }
-
-  async function loadHistory(): Promise<void> {
-    const ack = await fetchAdvancementHistory(characterId);
-    setHistory(ack.ok && ack.data ? ack.data.entries : []);
+    // Rejestru nie odświeża się tutaj: zakup rusza kartę, a `savedAt` wyżej
+    // czyta go za każdym razem, gdy karta się ruszy — jedną drogą dla wiersza
+    // własnego i dla tego, który dopisał MG.
   }
 
   function row(step: CpredAdvanceStep) {
@@ -310,9 +332,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
 
       <details
         className="awareness-extras"
-        onToggle={(e) => {
-          if ((e.currentTarget as HTMLDetailsElement).open && history === null) void loadHistory();
-        }}
+        onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
       >
         <summary>Rejestr awansów</summary>
         {history === null ? (

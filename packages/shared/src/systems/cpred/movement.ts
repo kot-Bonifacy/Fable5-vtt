@@ -25,6 +25,7 @@ import {
   type CpredCriticalInjuryRow,
 } from './character.js';
 import { woundMovePenalty, woundStateFromHp, type CpredWoundState } from './rolls.js';
+import { cpredStatEffectsFor, type CpredStatEffect } from './stateffects.js';
 
 /** Metres one point of RUCH is worth per Move Action (RAW: RUCH × 2). */
 export const CPRED_METRES_PER_MOVE_POINT = 2;
@@ -48,6 +49,17 @@ export interface CpredMoveInput {
   injuries?: readonly CpredCriticalInjuryRow[];
   /** Wound state — Mortally Wounded costs 6 points of RUCH. */
   wound?: CpredWoundState;
+  /**
+   * Efekty czasowe z karty (etap 39) — Skorpion tnie RUCH „na następną godzinę
+   * o 1k6" (s. 207).
+   *
+   * Wchodzą tu **nazwanymi modyfikatorami**, a nie mniejszym `move`, z tego
+   * samego powodu, dla którego tak wchodzi kara z pancerza: pasek postaci pisze
+   * „Pancerz −2 · Skorpion −4", więc figura nigdy nie zwalnia bez podania
+   * przyczyny. Podłoga jest jedna (`CPRED_MIN_MOVE`) i ta sama, do której
+   * przycina `cpredEffectiveStats`.
+   */
+  statEffects?: readonly CpredStatEffect[];
   /**
    * Penalties that do not come off the sheet at all (stage 26f).
    *
@@ -97,6 +109,9 @@ export function cpredMoveBudget(input: CpredMoveInput): CpredMoveBudget {
   for (const injury of cpredActiveInjuries(input.injuries ?? [])) {
     if (injury.movePenalty) modifiers.push({ label: injury.name, value: injury.movePenalty });
   }
+  for (const effect of cpredStatEffectsFor(input.statEffects ?? [], 'move')) {
+    modifiers.push({ label: effect.source, value: effect.value });
+  }
   for (const modifier of input.extra ?? []) {
     if (modifier.value !== 0) modifiers.push(modifier);
   }
@@ -119,12 +134,14 @@ export function cpredMoveBudgetFromSheet(input: {
   hpMax: number;
   armor?: readonly CpredArmorRow[];
   injuries?: readonly CpredCriticalInjuryRow[];
+  statEffects?: readonly CpredStatEffect[];
   extra?: readonly CpredMoveModifier[];
 }): CpredMoveBudget {
   return cpredMoveBudget({
     move: input.move,
     armor: input.armor,
     injuries: input.injuries,
+    ...(input.statEffects ? { statEffects: input.statEffects } : {}),
     ...(input.extra ? { extra: input.extra } : {}),
     wound: woundStateFromHp(input.hpCurrent, input.hpMax),
   });

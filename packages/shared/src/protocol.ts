@@ -4,7 +4,7 @@ import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
 import type { CheckCallVisibility } from './checks.js';
 import type { CombatView } from './combat.js';
-import type { CharacterView } from './characters.js';
+import type { CharacterView, PortraitAssetView } from './characters.js';
 import type { CoverView } from './covers.js';
 import type { SmokeView } from './smoke.js';
 import type { DefenseZoneView } from './zones.js';
@@ -18,8 +18,10 @@ import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
+import type { GameTimeState, GameTimeStepId } from './gametime.js';
 import type { LightView } from './lights.js';
 import type { ScenePoint } from './measure.js';
+import type { PortraitCrop } from './portrait-crop.js';
 import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
@@ -166,6 +168,44 @@ export interface StateSyncPayload {
   netRuns: NetRunPayload[];
   /** Combat of the viewed scene, filtered for this viewer; null = no fight. */
   combat: CombatView | null;
+  /**
+   * Zegar świata kampanii (etap 37). Jedzie tu, a nie w `campaign` wyżej,
+   * z tego samego powodu co `shopTier`: przesunięcie czasu ma być jednym
+   * rozgłoszeniem, a nie pełną resynchronizacją, i nie ma prawa zwietrzeć
+   * w `socket.data`. Publiczny — data i pora dnia są wspólne dla stołu.
+   */
+  gameTime: GameTimeState;
+}
+
+/**
+ * MG przesuwa zegar świata (etap 37).
+ *
+ * Albo skok z katalogu (`step`), albo chwila wprost (`minutes`) — nigdy oba
+ * naraz. Serwer liczy skok sam, bo klient wysyłający gotową liczbę minut
+ * mógłby wysłać dowolną: „+1 h" jest **intencją**, a nie arytmetyką.
+ */
+export interface GameTimeSetPayload {
+  step?: GameTimeStepId;
+  minutes?: number;
+}
+
+export interface GameTimeBroadcast {
+  seq: number;
+  time: GameTimeState;
+}
+
+/**
+ * Odpowiedź na `time:set` — nowy stan plus to, czego stan nie powie.
+ *
+ * `days` jest w acku, a nie w stanie, bo jest własnością **skoku**, nie chwili:
+ * po przeładowaniu strony nie ma sensu pytać „ile dób minęło", bo minęły przy
+ * poprzednim kliknięciu. MG dostaje z tego propozycję odpoczynku, którą składa
+ * klient — serwerowy zegar nie ma prawa wiedzieć, czym są PW.
+ */
+export interface GameTimeAck {
+  time: GameTimeState;
+  /** Ile pełnych dób minęło tym skokiem; 0 przy krótkich i przy cofnięciu. */
+  days: number;
 }
 
 /** GM moves the campaign's shop tier (stage 25c). */
@@ -176,6 +216,25 @@ export interface ShopTierPayload {
 export interface ShopTierBroadcast {
   seq: number;
   tier: ShopTier;
+}
+
+/**
+ * MG przestawia kadr portretu z puli (12.09).
+ *
+ * Kadr jest cechą obrazka, więc zmiana dotyczy **każdej** figury, która ten plik
+ * nosi — stąd rozgłoszenie do całego pokoju kampanii, a nie odpowiedź dla
+ * jednego klienta. Gracz przy stole ma zobaczyć poprawione ujęcie w tej samej
+ * chwili, w której MG puścił suwak, a nie po przeładowaniu strony.
+ */
+export interface PortraitCropPayload {
+  assetId: string;
+  crop: PortraitCrop;
+}
+
+export interface PortraitCropBroadcast {
+  seq: number;
+  /** Cały wiersz puli, nie sam kadr: klient, który go jeszcze nie zna, uczy się go tu. */
+  asset: PortraitAssetView;
 }
 
 /** Weapon base rows plus every entry: imported ones and the GM's own. */
@@ -295,11 +354,219 @@ export interface CheckCallPayload<TRequest = unknown> {
   /** One or two sentences describing the event being tested. */
   prompt?: string;
   visibility: CheckCallVisibility;
+  /**
+   * Prośba gracza (etap 40), którą to wezwanie zamyka — droga „Ustaw…" na
+   * karcie prośby. Serwer zamyka ją **tym samym żądaniem**, żeby zgoda
+   * i wezwanie nie mogły się rozejść na dwie połowy.
+   */
+  requestMessageId?: number;
 }
 
 /** GM → server payload of `check:cancel` — the call is withdrawn unanswered. */
 export interface CheckCancelPayload {
   messageId: number;
+}
+
+/* ------------------------------------------------------------------ *
+ * Prośba gracza o Test (etap 40)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Gracz → serwer, `check:request`. Lustro `CheckCallPayload` **pomniejszone
+ * o wszystko, co należy do MG**: nie ma tu progu, modyfikatora ani widoczności,
+ * bo gracz, który mógłby je nazwać, ustalałby trudność wymyślonego przez MG
+ * wydarzenia. Zostaje karta, czym rzucić i zdanie „po co".
+ */
+export interface CheckRequestPayload<TRequest = unknown> {
+  characterId: string;
+  request: TRequest;
+  /** Zdanie „po co" — do `CHECK_CALL_PROMPT_MAX` znaków. */
+  reason?: string;
+}
+
+/** Gracz → serwer, `check:request-cancel` — wycofanie własnej prośby. */
+export interface CheckRequestCancelPayload {
+  messageId: number;
+}
+
+/**
+ * MG → serwer, `check:request-resolve` — zgoda albo odmowa.
+ *
+ * Payload niesie **wyłącznie to, co należy do MG**: próg (szczebel drabinki
+ * albo własna liczba, ewentualnie druga strona rzutu przeciwstawnego),
+ * modyfikator sytuacyjny i widoczność wyniku. Czym się rzuca, serwer bierze
+ * z **zapisanej prośby**, nie z tego żądania.
+ */
+export interface CheckRequestResolvePayload {
+  messageId: number;
+  approve: boolean;
+  /** Poziom Trudności; wyklucza się z `opponentBonus`. Tylko przy zgodzie. */
+  dv?: number;
+  /** Rzut przeciwstawny — stała druga strony. Tylko przy zgodzie. */
+  opponentBonus?: number;
+  /** Modyfikator sytuacyjny MG. Tylko przy zgodzie. */
+  modifier?: number;
+  /** Kto zobaczy wynik. Tylko przy zgodzie; brak znaczy „cały stół". */
+  visibility?: CheckCallVisibility;
+  /** Zdanie MG przy odmowie. */
+  note?: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * Przedmioty między kartami (etap 38b)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Client → server payload of `inventory:sources` — „co mogę teraz przeszukać".
+ *
+ * Odpowiedź buduje **serwer**, bo gracz nie zna `characterId` cudzej figury:
+ * `TokenView.characterId` jest częścią prywatną żetonu od etapu 05 i takie
+ * zostaje. Klient podaje adres na mapie, dostaje z powrotem to, co wolno mu
+ * zobaczyć — i nic ponad to.
+ */
+export interface InventorySourcesPayload {
+  /** Karta, dla której otwarto okno („moja strona" wymiany). */
+  characterId: string;
+  /** Figura wskazana wprost z menu żetonu; MG otwiera tak „Przeszukaj". */
+  tokenId?: string;
+}
+
+/** Jedna karta, z której ten użytkownik może w tej chwili brać. */
+export interface InventorySourceView {
+  characterId: string;
+  /** Figura, przy której stoi ta karta; brak znaczy „poza sceną". */
+  tokenId?: string;
+  name: string;
+  /** `null` znaczy NPC — kartę bez właściciela wolno przeszukać graczowi. */
+  ownerId: string | null;
+  /** Odległość od figury pytającego; brak, gdy warunku zasięgu nie było. */
+  metres?: number;
+  items: CpredItemViewWire[];
+  eddies: number;
+}
+
+/**
+ * Wiersz ekwipunku na drucie. Kształtem jest to `CpredItemView`, ale protokół
+ * rdzenia nie importuje typów systemu — tak samo jak `RollOpposedMeta.system`.
+ */
+export interface CpredItemViewWire {
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  name: string;
+  detail: string;
+  qty: number;
+  stackable: boolean;
+}
+
+export interface InventorySourcesResult {
+  /** Karty, z których wolno brać — bez własnej, tę klient już ma. */
+  sources: InventorySourceView[];
+  /** Komu wolno dać: nazwy wszystkich kart kampanii poza wskazaną. */
+  targets: { id: string; name: string }[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Oględziny figury (etap 41)
+ * ------------------------------------------------------------------ */
+
+/**
+ * „Przyjrzyj się tej figurze" — `sighting:look`.
+ *
+ * Zdarzenie na żądanie, a nie pole na `TokenView`, i to jest rozstrzygnięcie,
+ * nie oszczędność: rzut oka trzeba **złożyć z katalogu** (klasa broni bierze się
+ * z typu w kompendium), a katalog czyta się z bazy. Doklejenie go do żetonu
+ * kazałoby każdej synchronizacji sceny czekać na kompendium, żeby dowieźć coś,
+ * na co nikt w tej chwili nie patrzy.
+ *
+ * Odpowiedź buduje **serwer** i wyłącznie serwer — tą samą umową, co
+ * `inventory:sources`: klient podaje adres na mapie i dostaje to, co wolno mu
+ * zobaczyć. Karta cudzej figury nie jedzie do gracza ani tędy, ani żadną inną
+ * drogą (`characterAudience`).
+ */
+export interface SightingLookPayload {
+  /** Figura, której chce się przyjrzeć pytający. */
+  tokenId: string;
+}
+
+/**
+ * Co widać na figurze — nieprzezroczyste dla rdzenia VTT.
+ *
+ * Rdzeń deklaruje slot („coś, co system nazywa wyglądem"); treść zna wyłącznie
+ * warstwa systemu (CP RED: `CpredSighting`). Ta sama umowa, co przy
+ * `TokenView.injuries` i `TokenCombatProfile`.
+ */
+export type SightingView = Record<string, unknown>;
+
+export interface SightingLookResult {
+  tokenId: string;
+  /** Nazwa, którą **ten** widz ma prawo wymówić — jak na żetonie. */
+  name: string;
+  /**
+   * Rzut oka albo oględziny, zależnie od tego, czy pytający zdał już Test.
+   * `null`, gdy figura nie ma karty: kółko z paskiem PW nie ma co pokazać.
+   */
+  sighting: SightingView | null;
+}
+
+/** Jeden przenoszony wiersz — `CpredItemRef` na drucie. */
+export interface InventoryItemRefWire {
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  qty?: number;
+}
+
+/**
+ * Client → server payload of `inventory:give` — „masz, weź to".
+ *
+ * Kończy się **propozycją**, gdy karta odbiorcy ma właściciela innego niż
+ * wysyłający; kartą bez właściciela rozporządza MG od ręki, bo nie ma kto
+ * kliknąć „Przyjmij".
+ */
+export interface InventoryGivePayload {
+  fromCharacterId: string;
+  toCharacterId: string;
+  items: InventoryItemRefWire[];
+  /** Eurodolce w tej samej operacji; 0 albo brak znaczy „same rzeczy". */
+  eddies?: number;
+  note?: string;
+}
+
+/**
+ * Odpowiedź na `inventory:give`.
+ *
+ * `pending` mówi, czy cokolwiek czeka: karta bez właściciela nie ma kogo
+ * zapytać o zgodę, więc przeniesienie wykonało się już. Bez tego pola klient
+ * musiałby zgadywać z listy odbiorców, której gracz nie widzi w całości.
+ */
+export interface InventoryGiveResult {
+  messageId: number;
+  pending: boolean;
+}
+
+/**
+ * Client → server payload of `inventory:take` — „zdejmuję to z ciała".
+ *
+ * Źródłem jest **figura**, nie karta: gracz nie zna `characterId` przeszukiwanej
+ * postaci, a warunek („leży albo nie żyje, w zasięgu ręki") i tak jest pytaniem
+ * o żeton na scenie.
+ */
+export interface InventoryTakePayload {
+  fromTokenId: string;
+  toCharacterId: string;
+  items: InventoryItemRefWire[];
+  eddies?: number;
+}
+
+/**
+ * Client → server payload of `inventory:respond` — decyzja o propozycji.
+ *
+ * Jedno zdarzenie na trzy odpowiedzi, bo różni je wyłącznie to, kto klika:
+ * odbiorca przyjmuje albo odrzuca, wysyłający wycofuje. Kto jest kim,
+ * rozstrzyga serwer z zapisanej karty.
+ */
+export interface InventoryRespondPayload {
+  messageId: number;
+  accept: boolean;
 }
 
 /**
@@ -405,7 +672,24 @@ export interface EconomyHistoryPayload {
  */
 export interface EconomyHistoryResult {
   entries: LedgerEntryView[];
-  payees: { id: string; name: string }[];
+  payees: EconomyPayee[];
+}
+
+/**
+ * One name a transfer can be aimed at.
+ *
+ * `player` splits the roster in two rather than filtering it, and that is the
+ * decision (MG, 12.09): paying an NPC is legal and sometimes the point — you
+ * bribe a fixer, you pay a ripperdoc — so nothing is taken away. What changed
+ * is that since stage 38a every statist *is* a sheet, so a list that used to
+ * hold the table now also holds „Ganger", „Cel 23x" and the turret. Two groups
+ * put the people you usually pay at the top and the scenery under a heading.
+ */
+export interface EconomyPayee {
+  id: string;
+  name: string;
+  /** Does a player own this sheet? False for every GM-run figure and NPC. */
+  player: boolean;
 }
 
 /**
@@ -569,6 +853,32 @@ export interface AttackSmartPayload {
 export interface WeaponClearJamPayload {
   characterId: string;
   weaponRowId: string;
+}
+
+/**
+ * Co postać bierze do rąk, a co z nich odkłada (etap 41).
+ *
+ * Jedno zdarzenie na trzy gesty, bo przy stole są to trzy odpowiedzi na jedno
+ * pytanie „co trzymasz" — i różnią się wyłącznie ceną, którą podręcznik im
+ * przypisał (s. 168):
+ *
+ *  - `draw` — **za darmo**: „Sięgnięcie wolną ręką po łatwo dostępną broń nie
+ *    wymaga Akcji". Wolną: broń wchodzi do rąk tylko wtedy, gdy jest w nich
+ *    miejsce, a karabin zajmuje obie,
+ *  - `holster` — **Akcja**: „Schowanie trzymanej broni do kabury lub kieszeni
+ *    zabiera Akcję",
+ *  - `drop` — **za darmo**: „Upuszczenie trzymanej broni (ale nie tarczy) nie
+ *    wymaga Akcji". Broń zostaje na karcie; VTT nie kładzie przedmiotów na mapie.
+ *
+ * Pierwsze użycie któregokolwiek z nich **deklaruje ręce** tej figury: od tej
+ * chwili planer ataku odmawia broni, której w nich nie ma. Do tego czasu ręce
+ * są niezadeklarowane i nie zabraniają niczego (decyzja MG z 10.09.2026).
+ */
+export interface WeaponDrawPayload {
+  characterId: string;
+  weaponRowId: string;
+  /** Domyślnie `draw` — najczęstszy gest i jedyny, który nic nie kosztuje. */
+  mode?: 'draw' | 'holster' | 'drop';
 }
 
 /** Reloading a weapon row to a full magazine (an Action at the table). */

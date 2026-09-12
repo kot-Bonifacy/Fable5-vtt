@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  CharacterStatEffectPayload,
   ArchiveCharacterImportPayload,
   ArchiveImportResult,
   ArchiveSceneImportPayload,
@@ -56,6 +57,15 @@ import type {
   CharacterRollPayload,
   CheckCallPayload,
   CheckCancelPayload,
+  CheckRequestCancelPayload,
+  CheckRequestPayload,
+  CheckRequestResolvePayload,
+  InventoryGivePayload,
+  InventoryGiveResult,
+  InventoryRespondPayload,
+  InventorySourcesPayload,
+  InventorySourcesResult,
+  InventoryTakePayload,
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
@@ -121,6 +131,12 @@ import type {
   KnowledgeIndexStatus,
   KnowledgePreviewResult,
   KnowledgeSyncPayload,
+  RandomTableDeleteBroadcast,
+  RandomTableListPayload,
+  RandomTableRollPayload,
+  RandomTableUpsertBroadcast,
+  RandomTableUpsertPayload,
+  RandomTableView,
   KnowledgeUpsertBroadcast,
   NetArchitectureDeleteBroadcast,
   NetArchitectureListPayload,
@@ -186,12 +202,19 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenAssetDeleteResult,
+  TokenCombatProfile,
   TokenCreatePayload,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
   TokenPatch,
   TokenSyncBroadcast,
   RollParseError,
+  GameTimeAck,
+  GameTimeBroadcast,
+  GameTimeStepId,
+  PortraitAssetView,
+  PortraitCrop,
+  PortraitCropBroadcast,
   ShopTierBroadcast,
   TokenUpsertBroadcast,
   TokenView,
@@ -205,9 +228,13 @@ import type {
   WeaponAttachmentPayload,
   WeaponAttachmentResult,
   WeaponClearJamPayload,
+  WeaponDrawPayload,
+  SightingLookPayload,
+  SightingLookResult,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  CPRED_STAT_EFFECT_VALUE_MAX,
   CHAT_COMMANDS_HELP,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
@@ -243,9 +270,12 @@ import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
+import { usePortraitStore } from './stores/portraitStore.js';
+import { useGameTimeStore } from './stores/gameTimeStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
+import { useTableStore } from './stores/tableStore.js';
 import { useNetStore } from './stores/netStore.js';
 import { useNetRunStore } from './stores/netRunStore.js';
 import { useJournalStore } from './stores/journalStore.js';
@@ -499,6 +529,7 @@ export function connectSocket(userId: string): Socket {
     useNetRunStore.getState().replacePoints(payload.accessPoints ?? []);
     useNetRunStore.getState().replaceRuns(payload.netRuns ?? []);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
+    useGameTimeStore.getState().applySync(payload);
   });
 
   /**
@@ -599,6 +630,15 @@ export function connectSocket(userId: string): Socket {
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
   );
 
+  // Tabele losowe (34) — jak wyżej, wyłącznie do pokoju MG: tabela jest
+  // narzędziem MG, a jej wiersze zdradzają, co jeszcze może się wydarzyć.
+  socket.on('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
+    useTableStore.getState().upsert(broadcast.table),
+  );
+  socket.on('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
+    useTableStore.getState().remove(broadcast.id),
+  );
+
   // Biblioteka Architektur Sieciowych (26a) — ta sama zasada co wyżej: PT,
   // Czarne LOD-y i notatki MG lecą wyłącznie do pokoju MG.
   socket.on('net:architectures', (payload: NetArchitectureListPayload) =>
@@ -683,16 +723,52 @@ export function connectSocket(userId: string): Socket {
   );
 
   // The compendium is shared data: room broadcasts with a seq, like chat.
+  //
+  // Rozgłoszenie, które **rysuje** `seq` na serwerze, musi go u klienta
+  // **skonsumować** — inaczej następna wiadomość czatu wygląda jak luka i cały
+  // stół idzie w zbędny `state:request` (znalezione 05.09 przy etapie 37,
+  // dotyczyło czterech zdarzeń naraz: obu kompendium, sklepu i zegara).
   socket.on('compendium:upsert', (broadcast: CompendiumUpsertBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyUpsert(broadcast.entry);
   });
   socket.on('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyDelete(broadcast.id);
   });
   // The GM's shop dial (stage 25c): a room broadcast, because a catalogue that
   // opened up only after a reload is a catalogue the table argues about.
   socket.on('shop:tier', (broadcast: ShopTierBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
+  });
+  // Kadr portretu na mapie (12.09). Rozgłoszenie do całego stołu, bo kadr jest
+  // cechą obrazka: poprawione ujęcie ma trafić na każdą figurę, która ten plik
+  // nosi, u wszystkich naraz.
+  socket.on('portrait:crop', (broadcast: PortraitCropBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    usePortraitStore.getState().applyUpsert(broadcast.asset);
+  });
+  // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
+  // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
+  socket.on('time:set', (broadcast: GameTimeBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    useGameTimeStore.getState().applyTime(broadcast.time);
   });
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
@@ -703,7 +779,10 @@ export function connectSocket(userId: string): Socket {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
-    const roll = broadcast.message.roll;
+    // Losowanie z tabeli (34) tumbla **pierwszą** kością łańcucha: patrzy się
+    // na nią tak samo, jak na każdy inny rzut, a podrzuty zostają liczbami na
+    // karcie — dwie animacje z jednego kliknięcia nikomu nic nie mówią.
+    const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
     // Live rolls (never history/resync) replay the server's results in 3D;
     // their chat card is held back so the table reads the dice first.
     const hold = roll !== undefined && toAnimationNotation(roll) !== null;
@@ -755,16 +834,10 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    // Players follow the active scene; the GM keeps their own view (the
-    // server moves only player sockets between scene rooms).
-    if (useAuthStore.getState().user?.role === ROLE_GM) {
-      scenes().applyScene(broadcast.scene);
-    } else {
-      const changed = useSceneStore.getState().scene?.id !== broadcast.scene.id;
-      scenes().setScene(broadcast.scene);
-      // A scene switch means a new token set — refetch the filtered state.
-      if (changed) socket?.emit('state:request');
-    }
+    // Who follows the activation is decided by the store (`followActivation`);
+    // a scene switch means a new token set — refetch the filtered state.
+    const isGm = useAuthStore.getState().user?.role === ROLE_GM;
+    if (scenes().followActivation(broadcast.scene, isGm)) socket?.emit('state:request');
   });
   socket.on('scene:list', (broadcast: SceneListBroadcast) => scenes().setScenes(broadcast.scenes));
   socket.on('scene:view', (broadcast: SceneViewBroadcast) => {
@@ -1100,7 +1173,139 @@ export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
 export const cancelCheck = (messageId: number) =>
   emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
 
+/**
+ * „Poproś MG o Test" (etap 40) — gracz wskazuje z własnej karty Umiejętność
+ * albo Cechę i dopisuje zdanie „po co". Ani progu, ani widoczności tu nie ma:
+ * jedno i drugie należy do MG i dochodzi dopiero przy zgodzie.
+ */
+export const requestCheck = (payload: CheckRequestPayload<CpredRollRequest>) =>
+  emitSceneAck<{ messageId: number }>('check:request', payload);
+
+/** „Wycofaj" na własnej karcie prośby — dopóki MG nie odpowiedział. */
+export const cancelCheckRequest = (messageId: number) =>
+  emitSceneAck('check:request-cancel', { messageId } satisfies CheckRequestCancelPayload);
+
+/** Klik w szczebel drabinki albo „Odmów" na karcie prośby — MG only. */
+export const resolveCheckRequest = (payload: CheckRequestResolvePayload) =>
+  emitSceneAck<{ callMessageId?: number }>('check:request-resolve', payload);
+
+/* ------------------------------------------------------------------ *
+ * Przedmioty między kartami (etap 38b)
+ * ------------------------------------------------------------------ */
+
+/** Co da się teraz przeszukać i komu da się dać — pyta okno wymiany. */
+export const fetchInventorySources = (payload: InventorySourcesPayload) =>
+  emitSceneAck<InventorySourcesResult>('inventory:sources', payload);
+
+/** „Oddaj" — na kartę z właścicielem wchodzi jako propozycja do przyjęcia. */
+export const giveInventory = (payload: InventoryGivePayload) =>
+  emitSceneAck<InventoryGiveResult>('inventory:give', payload);
+
+/** „Zabierz" — łup z figury, która leży albo nie żyje. Bez pytania nikogo. */
+export const takeInventory = (payload: InventoryTakePayload) =>
+  emitSceneAck<{ messageId: number }>('inventory:take', payload);
+
+/** „Przyjmij" / „Odrzuć" / „Wycofaj" na karcie przekazania. */
+export const respondInventory = (messageId: number, accept: boolean) =>
+  emitSceneAck('inventory:respond', { messageId, accept } satisfies InventoryRespondPayload);
+
+/** Polskie komunikaty odmowy przy przenoszeniu przedmiotów (etap 38b). */
+export function inventoryErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej karty w tej kampanii.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie ma takiej figury na scenie.';
+    case 'NO_SHEET':
+      return 'Ta figura nie ma karty, więc nie ma czego przeszukać.';
+    case 'NOT_YOURS':
+      return 'Z karty innego gracza przenosi wyłącznie MG.';
+    case 'STILL_STANDING':
+      return 'Ta figura stoi na nogach — przeszukać da się dopiero leżącą albo martwą.';
+    case 'NOT_ON_SCENE':
+      return 'Twoja figura nie stoi na tej scenie.';
+    case 'OUT_OF_REACH':
+      return 'Za daleko — przedmiot podaje się na wyciągnięcie ręki.';
+    case 'ITEM_NOT_FOUND':
+      return 'Tej pozycji już nie ma na karcie źródłowej.';
+    case 'BAD_QTY':
+      return 'Zła ilość — nie da się przenieść więcej, niż jest.';
+    case 'TOO_MANY_ROWS':
+      return 'Karta odbiorcy nie ma już miejsca na kolejne pozycje.';
+    case 'NO_ITEMS':
+      return 'Nie wskazano, co przenieść.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Na karcie źródłowej nie ma tylu eurodolców.';
+    case 'OFFER_NOT_FOUND':
+      return 'Nie znalazłem tej propozycji na czacie.';
+    case 'OFFER_CLOSED':
+      return 'Ta propozycja jest już zamknięta.';
+    case 'OFFER_NOT_YOURS':
+      return 'To nie jest twoja decyzja.';
+    default:
+      return `Błąd przenoszenia: ${code}`;
+  }
+}
+
 /** Polskie komunikaty odmowy przy wystawianiu wezwania do Testu (etap 32). */
+/**
+ * Odmowy tabel losowych (etap 34). `INVALID_TABLE:` niesie gotowe zdanie
+ * z `validateRandomTable` — walidator i formularz mówią to samo tym samym
+ * zdaniem, więc klient go **nie tłumaczy**, tylko pokazuje.
+ */
+export function randomTableErrorText(code: string): string {
+  if (code.startsWith('INVALID_TABLE:')) {
+    const message = code.slice('INVALID_TABLE:'.length).trim();
+    return message.length > 0 ? message : 'Tabela ma błąd — sprawdź zakresy wierszy.';
+  }
+  switch (code) {
+    case 'TABLE_NOT_FOUND':
+      return 'Nie ma takiej tabeli w tej kampanii.';
+    case 'SUBTABLE_NOT_FOUND':
+      return 'Wskazana tabela podrzutu już nie istnieje — odśwież zakładkę.';
+    case 'TABLE_EMPTY':
+      return 'Ta tabela nie ma wierszy, z których dałoby się losować.';
+    case 'MESSAGE_NOT_FOUND':
+      return 'Nie znalazłem tego losowania na czacie.';
+    case 'ALREADY_SHOWN':
+      return 'Ten wynik jest już pokazany stołowi.';
+    case 'TABLE_MISSING_NAME':
+      return 'Podaj nazwę tabeli: /tab <nazwa>.';
+    case 'FORBIDDEN':
+      return 'Tabele losowe są narzędziem MG.';
+    default:
+      return `Błąd tabeli: ${code}`;
+  }
+}
+
+/** Polskie zdania odmów prośby o Test (etap 40). */
+export function checkRequestErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii.';
+    case 'CHARACTER_NOT_YOURS':
+      return 'O Test prosi się własną kartą — cudzej nie ruszasz.';
+    case 'REQUEST_NOT_FOUND':
+      return 'Nie znalazłem tej prośby na czacie.';
+    case 'REQUEST_CLOSED':
+      return 'Ta prośba jest już rozstrzygnięta albo wycofana.';
+    case 'REQUEST_NOT_YOURS':
+      return 'Wycofać prośbę może tylko ten, kto ją wysłał.';
+    case 'REQUEST_LIMIT':
+      return 'Masz już trzy prośby czekające na MG — poczekaj albo wycofaj jedną.';
+    case 'UNKNOWN_SKILL':
+      return 'Nieznana umiejętność — odśwież stronę.';
+    case 'UNKNOWN_STAT':
+      return 'Nieznana cecha — odśwież stronę.';
+    case 'FORBIDDEN':
+      return 'O prośbach rozstrzyga MG.';
+    case 'BAD_REQUEST':
+      return 'Niepełna prośba — wybierz Umiejętność albo Cechę.';
+    default:
+      return `Błąd prośby o Test: ${code}`;
+  }
+}
+
 export function checkCallErrorText(code: string): string {
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
@@ -1182,6 +1387,43 @@ export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
   });
 }
 
+/**
+ * MG nakłada albo zdejmuje efekt czasowy na Cesze (etap 39).
+ *
+ * Jedna funkcja na obie czynności, bo jedno jest zdarzenie: żądanie z `effectId`
+ * zdejmuje, żądanie z `stat` nakłada. Odmowa idzie notatką na czat, jak przy
+ * nadaniu rany wyżej — MG rzadko patrzy wtedy na kartę, a zawsze na feed.
+ */
+export function setStatEffect(payload: CharacterStatEffectPayload): void {
+  socket?.emit('character:stat-effect', payload, (ack: SocketAck) => {
+    if (ack.ok) return;
+    useChatStore.getState().addNote(statEffectAckErrorText(ack.error));
+  });
+}
+
+function statEffectAckErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'EFFECT_NOT_FOUND':
+      return 'Tego efektu nie ma już na karcie.';
+    case 'UNKNOWN_STAT':
+      return 'Nie znam takiej Cechy.';
+    case 'BAD_VALUE':
+      return `Zmiana Cechy musi być liczbą różną od zera, najwyżej o ${CPRED_STAT_EFFECT_VALUE_MAX}.`;
+    case 'BAD_DURATION':
+      return 'Czas trwania musi być dodatni i krótszy niż doba.';
+    case 'TOO_MANY_EFFECTS':
+      return 'Ta karta niesie już komplet efektów czasowych.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie znalazłem tej karty w kampanii.';
+    case 'FORBIDDEN':
+      return 'Efekty czasowe nakłada wyłącznie MG.';
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem.';
+    default:
+      return 'Nie udało się zmienić efektów czasowych.';
+  }
+}
+
 /** Polish hints for attack rejections (stage 16). */
 function attackAckErrorText(code: string): string {
   const known = CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
@@ -1205,6 +1447,10 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    // Etap 41. Ręce są dwie, a karabin zajmuje obie — zdanie mówi, co zrobić,
+    // bo obie drogi są jednym kliknięciem i różnią się wyłącznie ceną.
+    case 'HANDS_FULL':
+      return 'Nie masz wolnej ręki — schowaj (Akcja) albo upuść to, co trzymasz.';
     // Stage 31 — the four ways an attachment can be refused. The engine's own
     // messages are reused so the greyed-out button and the refusal say the same
     // sentence, which is the umowa the ammunition codes already follow.
@@ -1403,6 +1649,44 @@ export function clearWeaponJam(characterId: string, weaponRowId: string): void {
   const payload: WeaponClearJamPayload = { characterId, weaponRowId };
   socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Co postać bierze do rąk, a co z nich odkłada (etap 41).
+ *
+ * Trzy gesty jednym zdarzeniem, bo różnią się wyłącznie ceną, którą przypisał im
+ * podręcznik (s. 168): dobycie i upuszczenie są darmowe, schowanie kosztuje
+ * Akcję. Cenę księguje serwer — klient prosi, nie rozlicza.
+ */
+export function drawWeapon(
+  characterId: string,
+  weaponRowId: string,
+  mode: 'draw' | 'holster' | 'drop' = 'draw',
+): void {
+  const payload: WeaponDrawPayload = { characterId, weaponRowId, mode };
+  socket?.emit('weapon:draw', payload, (ack: SocketAck<{ hands: string[] }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Rzut oka na cudzą figurę (etap 41) — „co on ma na sobie".
+ *
+ * Zapytanie na żądanie, bo rzut oka składa się z katalogu po stronie serwera.
+ * Odmowa jest **cicha**: pytanie pada przy najechaniu kursorem, a figura, której
+ * nie widać, ma nie zostawiać po sobie zdania na czacie za każdym ruchem myszy.
+ */
+export async function lookAtToken(tokenId: string): Promise<SightingLookResult | null> {
+  return new Promise((resolve) => {
+    const payload: SightingLookPayload = { tokenId };
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('sighting:look', payload, (ack: SocketAck<SightingLookResult>) => {
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
   });
 }
 
@@ -1702,6 +1986,36 @@ export const saveKnowledgeEntry = (payload: KnowledgeUpsertPayload) =>
   emitSceneAck<KnowledgeEntryView>('knowledge:upsert', payload);
 
 export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:delete', { id });
+
+/** Tabele losowe (34). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
+export function fetchRandomTables(): Promise<RandomTableListPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('table:list', (ack: SocketAck<RandomTableListPayload>) => {
+      if (ack.ok && ack.data) useTableStore.getState().replaceAll(ack.data.tables);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const saveRandomTable = (payload: RandomTableUpsertPayload) =>
+  emitSceneAck<RandomTableView>('table:upsert', payload);
+
+export const deleteRandomTable = (id: string) => emitSceneAck('table:delete', { id });
+
+/**
+ * Losowanie z tabeli. **Nie dotyka `rollStore`** — i to jest cała treść tego
+ * etapu po stronie klienta: rzut wzięty do ręki w oknie postaci i czekające
+ * wezwanie do Testu mają przeżyć dowolną liczbę kliknięć „Losuj".
+ */
+export const rollRandomTableNow = (payload: RandomTableRollPayload) =>
+  emitSceneAck('table:roll', payload);
+
+/** „Pokaż stołowi" — dokłada publiczny wiersz z tym samym wynikiem. */
+export const showRandomTableRoll = (messageId: number) => emitSceneAck('table:show', { messageId });
 
 /** Pełny przebieg indeksowania bazy wiedzy — dogania to, co się rozjechało. */
 export const reindexKnowledge = () =>
@@ -2182,7 +2496,22 @@ export const createToken = (payload: TokenCreatePayload) =>
 export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
-export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+/**
+ * Sześć pól szybkiego edytora (etap 38a) — zakłada figurze kartę albo poprawia
+ * tę, którą już ma. Osobne zdarzenie, nie łata żetonu: karta i podpięcie muszą
+ * powstać razem, inaczej pierwszy zerwany krok zostawia figurę bez statystyk.
+ */
+export const statToken = (tokenId: string, quick: TokenCombatProfile) =>
+  emitSceneAck<TokenView>('token:stat', { tokenId, quick });
+
+/**
+ * Kasowanie figury; `deleteCharacter` zabiera przy okazji jej kartę.
+ *
+ * Pyta o to menu figury, a nie serwer — i wyłącznie wtedy, gdy karta nie ma
+ * właściciela i nie stoi na żadnej innej scenie (etap 38a).
+ */
+export const deleteToken = (tokenId: string, deleteCharacter = false) =>
+  emitSceneAck('token:delete', { tokenId, deleteCharacter });
 
 /**
  * Kopia figury obok oryginału (etap 35). Numer, profil bojowy statysty i pełne
@@ -2472,6 +2801,9 @@ export function combatErrorText(code: string): string {
     // refusal card; the tracker only needs to say that it was stopped.
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — szczegóły na karcie odmowy.';
+    // Zlecenie MG 12.09: mapa zamknięta, dopóki MG jej nie otworzy.
+    case 'MOVE_LOCKED':
+      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
     // Stage 14d: the refusal already carries its own sentence on the card.
     case 'STATUS_BLOCKED':
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';
@@ -3287,6 +3619,50 @@ export function saveCompendiumEntry(entry: unknown): Promise<SocketAck<Compendiu
       return;
     }
     socket.emit('compendium:upsert', { entry }, (ack: SocketAck<CompendiumEntry>) => resolve(ack));
+  });
+}
+
+/**
+ * MG przesuwa zegar świata (etap 37).
+ *
+ * Skok jedzie **identyfikatorem**, nie liczbą minut: „+1 h" jest intencją,
+ * a arytmetykę robi serwer — ta sama zasada, co przy rzutach kośćmi. Ustawienie
+ * daty wprost jest jedynym wejściem, które niesie liczbę, i jedynym, którym da
+ * się zegar cofnąć.
+ */
+export function setGameTime(
+  payload: { step: GameTimeStepId } | { minutes: number },
+): Promise<SocketAck<GameTimeAck>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('time:set', payload, (ack: SocketAck<GameTimeAck>) => {
+      if (ack.ok && ack.data) useGameTimeStore.getState().applyJump(ack.data.time, ack.data.days);
+      resolve(ack);
+    });
+  });
+}
+
+/**
+ * MG: przestawia kadr portretu na mapie (12.09); cały stół słyszy.
+ *
+ * Zapisuje się **cały** kadr, a nie różnicę — okno kadrowania i tak trzyma trzy
+ * liczby naraz, a serwer i tak je zaciska do granic tego obrazu.
+ */
+export function setPortraitCrop(
+  assetId: string,
+  crop: PortraitCrop,
+): Promise<SocketAck<PortraitAssetView>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('portrait:crop', { assetId, crop }, (ack: SocketAck<PortraitAssetView>) =>
+      resolve(ack),
+    );
   });
 }
 

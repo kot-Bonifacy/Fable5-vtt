@@ -270,6 +270,9 @@ const SCENE_COLUMNS = {
   dark: true,
   darkSightM: true,
   explore: true,
+  spawnX: true,
+  spawnY: true,
+  playerMoveLocked: true,
 } as const;
 
 export async function exportScene(
@@ -301,7 +304,6 @@ export async function exportScene(
           hpMax: true,
           statuses: true,
           statusData: true,
-          combatProfile: true,
           facing: true,
           visionRange: true,
           lightBrightM: true,
@@ -385,7 +387,6 @@ export async function exportScene(
       ...row,
       statuses: parseJsonColumn(row.statuses),
       statusData: parseJsonColumn(row.statusData),
-      combatProfile: parseJsonColumn(row.combatProfile),
     })),
     walls,
     covers,
@@ -511,6 +512,11 @@ export async function importScene(
       dark: bool(sceneColumns.dark, false),
       darkSightM: num(sceneColumns.darkSightM, 2),
       explore: bool(sceneColumns.explore, true),
+      spawnX: maybeNum(sceneColumns.spawnX),
+      spawnY: maybeNum(sceneColumns.spawnY),
+      // Domyślnie **zamknięta**, jak przy nowej scenie (12.09): mapa wjeżdżająca
+      // z pliku jest dla stołu tak samo nieznana, jak dopiero co narysowana.
+      playerMoveLocked: bool(sceneColumns.playerMoveLocked, true),
     },
     select: { id: true },
   });
@@ -539,10 +545,6 @@ export async function importScene(
           hpMax: maybeNum(row.hpMax),
           statuses: stringifyJsonColumn(row.statuses, '[]'),
           statusData: stringifyJsonColumn(row.statusData, '{}'),
-          combatProfile:
-            row.combatProfile === null || row.combatProfile === undefined
-              ? null
-              : stringifyJsonColumn(row.combatProfile, '{}'),
           facing: maybeNum(row.facing),
           visionRange: maybeNum(row.visionRange),
           lightBrightM: num(row.lightBrightM),
@@ -716,7 +718,16 @@ export async function exportCampaign(
 ): Promise<ArchiveFile<CampaignArchive> | null> {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { name: true, shopTier: true, sandbox: true, createdAt: true },
+    select: {
+      name: true,
+      shopTier: true,
+      sandbox: true,
+      createdAt: true,
+      // Zegar świata (etap 37) — kopia kampanii bez daty w Night City nie jest
+      // kopią tej kampanii, tylko jej wersją sprzed pierwszej nocy.
+      gameTime: true,
+      settledMonth: true,
+    },
   });
   if (!campaign) return null;
 

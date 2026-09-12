@@ -43,24 +43,23 @@ wezwaniem. Tabela wchodzi dokładnie w to miejsce:
 
 ## Zakres
 
-- [ ] Model `RandomTable` + `RandomTableRow` w Prismie (kampania, nazwa, formuła, opis, wiersze
+- [x] Model `RandomTable` + `RandomTableRow` w Prismie (kampania, nazwa, formuła, opis, wiersze
       z `min`/`max` i tekstem) — **rdzeń VTT, bez importu z `systems/cpred`**
-- [ ] `shared/src/tables.ts` — czyste funkcje: walidacja pokrycia zakresów, rozstrzygnięcie
+- [x] `shared/src/tables.ts` — czyste funkcje: walidacja pokrycia zakresów, rozstrzygnięcie
       wyrzuconej liczby na wiersz, zagnieżdżenie z limitem głębokości
-- [ ] `table:upsert`, `table:delete`, `table:list` (GM only) i panel „Tabele" z edytorem wierszy
-- [ ] `table:roll` — losowanie po stronie serwera, **bez dotykania `rollStore`**;
+- [x] `table:upsert`, `table:delete`, `table:list` (GM only) i panel „Tabele" z edytorem wierszy
+- [x] `table:roll` — losowanie po stronie serwera, **bez dotykania `rollStore`**;
       widoczność `gm` (domyślnie) albo `public`
-- [ ] Karta czatu rodzaju `table`: nazwa tabeli, wyrzucona liczba, tekst wiersza, a u MG
+- [x] Karta czatu rodzaju `table`: nazwa tabeli, wyrzucona liczba, tekst wiersza, a u MG
       przyciski „Losuj ponownie" i „Pokaż stołowi"
-- [ ] Wiersz może wskazywać **inną tabelę** (podrzut: „łup" → „broń przy ciele") — najwyżej trzy
+- [x] Wiersz może wskazywać **inną tabelę** (podrzut: „łup" → „broń przy ciele") — najwyżej trzy
       poziomy, cykl odmawiany przy zapisie
-- [ ] `/tab <nazwa>` w czacie jako druga droga, przechodząca przez ten sam `parseChatInput`
-- [ ] Import tabel z pliku JSON (`tools/import/`) — treści z podręcznika **wyłącznie**
+- [x] `/tab <nazwa>` w czacie jako druga droga, przechodząca przez ten sam `parseChatInput`
+- [x] Import tabel z pliku JSON (`tools/import/`) — treści z podręcznika **wyłącznie**
       z `data/private/`, przykładowe wymyślone w `data/public/`
-- [ ] Nowy rodzaj wiersza czatu dopisany w **dwóch czystych funkcjach** w `shared/src/chat.ts`
-      (`chatCategoryOf` → grupa „Stół", `chatCompactLine`) — inaczej filtry i tryb zwarty z 01.09
-      go nie zobaczą
-- [ ] Testy: rozstrzyganie zakresów i dziur, odmowa cyklu, zagnieżdżenie, widoczność `gm`
+- [x] Nowy rodzaj wiersza czatu dopisany w `chatCategoryOf` w `shared/src/chat.ts`
+      (→ grupa „Stół") — inaczej filtry z 01.09 go nie zobaczą
+- [x] Testy: rozstrzyganie zakresów i dziur, odmowa cyklu, zagnieżdżenie, widoczność `gm`
       niedochodząca do gracza, losowanie **nie czyści** załadowanego kubka
 
 ## Poza zakresem
@@ -74,14 +73,14 @@ wezwaniem. Tabela wchodzi dokładnie w to miejsce:
 
 ## Kryteria ukończenia
 
-- [ ] MG tworzy tabelę z formułą `1d10` i dziesięcioma wierszami, a próba zapisania jej z dziurą
+- [x] MG tworzy tabelę z formułą `1d10` i dziesięcioma wierszami, a próba zapisania jej z dziurą
       w zakresach kończy się czytelną odmową
-- [ ] „Losuj" daje kartę na czacie widoczną **tylko dla MG**, a „Pokaż stołowi" dokłada wiersz
+- [x] „Losuj" daje kartę na czacie widoczną **tylko dla MG**, a „Pokaż stołowi" dokłada wiersz
       dla wszystkich
-- [ ] Losowanie z tabeli **nie rusza kubka**: rzut wzięty do ręki w oknie postaci u MG i wezwanie
+- [x] Losowanie z tabeli **nie rusza kubka**: rzut wzięty do ręki w oknie postaci u MG i wezwanie
       czekające u gracza przeżywają dziesięć losowań pod rząd
-- [ ] Wiersz wskazujący inną tabelę losuje ją w tym samym kliknięciu i pokazuje oba wyniki
-- [ ] `/tab spotkania` w polu czatu daje ten sam wynik, co przycisk
+- [x] Wiersz wskazujący inną tabelę losuje ją w tym samym kliknięciu i pokazuje oba wyniki
+- [x] `/tab spotkania` w polu czatu daje ten sam wynik, co przycisk
 
 ## Wskazówki techniczne
 
@@ -93,3 +92,19 @@ wezwaniem. Tabela wchodzi dokładnie w to miejsce:
   wyłącznie na serwerze" nie ma wyjątku dla losowania fabularnego.
 - **Formuła przechodzi przez `parseRollNotation`**, ten sam, którego używa `/r`; tabela nie
   dostaje własnego parsera notacji.
+
+## Jak wyszło (06.09.2026)
+
+Wszystkie punkty zakresu zrobione, wszystkie kryteria sprawdzone w przeglądarce w dwóch sesjach
+naraz. Cztery odstępstwa i uzupełnienia względem opisu, wszystkie po pytaniu do MG albo z rozpoznania:
+
+- **Widoczność jest kolumną na tabeli plus przełącznikiem przy losowaniu** (decyzja MG). Opis
+  przewidywał samo „domyślnie MG"; „Co leci w radiu" jest jawne z natury, „Łup z kieszeni" nigdy.
+- **Dwa rodzaje wiersza czatu, nie jeden**: `rolltable` i `gmrolltable`. `visibleTo` filtruje po
+  `kind` w zapytaniu do bazy, więc flaga na jednym rodzaju nie miała jak zadziałać — to ta sama
+  para, co `roll`/`gmroll` z 06.
+- **Kość pierwszego kroku tumbla w 3D** (poza opisem). To nie jest kubek — animacja idzie z karty
+  czatu, jak przy każdym innym rzucie; bez tego losowanie było jedyną kością, której nie widać.
+- **Parser podręcznika zamiast samego formatu JSON**: w rozdziale 18 są trzy gotowe tabele
+  procentowe (s. 417–421), więc `parse-encounters.py` dowozi je do `data/private/`, a w repo
+  została jedna wymyślona tabela na dowód formatu.

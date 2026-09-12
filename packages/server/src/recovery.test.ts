@@ -53,6 +53,7 @@ const config: ServerConfig = {
 let built: BuiltApp;
 let baseUrl: string;
 let gmCookie: string;
+let playerCookie: string;
 const openSockets: ClientSocket[] = [];
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
@@ -134,12 +135,29 @@ beforeAll(async () => {
   });
   gmCookie = cookieOf(login.headers['set-cookie']);
 
-  await built.app.inject({
+  const campaignRes = await built.app.inject({
     method: 'POST',
     url: '/api/campaigns',
     headers: { cookie: gmCookie },
     payload: { name: 'Rekonwalescencja' },
   });
+
+  // Konto gracza doszło 05.09 razem z ostatnim testem tego pliku: cała reszta
+  // jedzie z gniazda MG, a MG jest autorem każdej karty odpoczynku — więc
+  // brak rodzaju `recovery` w `visibleTo` przechodził tu niezauważony przez
+  // dwa etapy. Do tego błędu potrzebne są **dwie** pary oczu przy stole.
+  const inviteRes = await built.app.inject({
+    method: 'POST',
+    url: `/api/campaigns/${(campaignRes.json() as { id: string }).id}/invitations`,
+    headers: { cookie: gmCookie },
+    payload: {},
+  });
+  const join = await built.app.inject({
+    method: 'POST',
+    url: `/api/join/${(inviteRes.json() as { token: string }).token}`,
+    payload: { name: 'Widz' },
+  });
+  playerCookie = cookieOf(join.headers['set-cookie']);
 }, 60_000);
 
 afterAll(async () => {
@@ -550,5 +568,22 @@ describe('naturalne leczenie i farmaceutyki', () => {
     });
     expect(ack).toMatchObject({ ok: false, error: 'NOT_A_MEDIC' });
     expect(medicTokenId).toBeTruthy();
+  });
+
+  it('karta odpoczynku JEST publiczna — gracz widzi ją po przeładowaniu', async () => {
+    // Regres znaleziony 05.09 przy etapie 37. `RecoveryLogEntry` od 30b mówi
+    // wprost „karta jest **publiczna**", ale `visibleTo` w `chat-io.ts` jest
+    // białą listą rodzajów i `recovery` na niej nie było — więc karta docierała
+    // do stołu wyłącznie rozgłoszeniem na żywo i znikała przy pierwszym
+    // przeładowaniu. Widział ją tylko autor, czyli tutaj zawsze MG; dlatego ten
+    // jeden test patrzy oczami gracza, który przy niczym z tego pliku nie był.
+    const watcher = createSocket(playerCookie);
+    const sync = await watcher.firstSync;
+    const cards = sync.messages.filter((m) => m.kind === 'recovery');
+    expect(cards.length).toBeGreaterThan(0);
+    // Kształt jest pełny, nie okrojony: karta świadomie nie niesie bezwzględnych
+    // PW (`hp` to różnica), więc nie ma tu czego redagować.
+    expect(cards.some((m) => m.recovery?.title === 'Dzień odpoczynku')).toBe(true);
+    expect(cards.some((m) => (m.recovery?.hp ?? 0) > 0)).toBe(true);
   });
 });

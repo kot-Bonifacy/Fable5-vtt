@@ -1,216 +1,193 @@
 /**
- * The combat profile of a statist (stage 16b) — a token with no character sheet.
+ * Figura ostatystykowana szybkim edytorem — karta z sześciu liczb (etap 38a).
  *
- * The problem it solves: every rule in this project is written against
- * `CpredCharacterData`, and until now the only way to give a token any of them
- * was to build it a full sheet — ten stats, sixty-six skills, armour rows, Luck,
- * Humanity. A ganger who exists to fire three shots and fall over does not need
- * any of that, and the GM should not have to type it before the fight starts.
+ * **Historia tego pliku jest jego najważniejszym komentarzem.** Etap 16b dał
+ * figurze bez karty własny „profil bojowy": kilkanaście liczb w kolumnie JSON
+ * żetonu, przebieranych za `CpredCharacterData` dopiero w chwili rzutu. Powód
+ * był dobry — ganger, który istnieje po to, żeby oddać trzy strzały i paść, nie
+ * potrzebuje sześćdziesięciu sześciu Umiejętności, a MG nie ma czasu ich
+ * wpisywać przed walką.
  *
- * So a statist carries a **profile**, not a sheet: the six numbers a firefight
- * actually reads, plus one weapon. Everything else is synthesised at the point
- * of use (`combatProfileSheet`), which is what keeps `planCpredAttack` and the
- * damage path single-track — there is no „statist branch" in the rules, only a
- * thinner source of the same data.
+ * Etap 38a tę umowę **cofnął**, bo zapłaciła za siebie dopiero przy
+ * przekazywaniu przedmiotów: ganger z pistoletem maszynowym w profilu i gracz
+ * z pistoletem maszynowym w ekwipunku trzymali dwa różne rodzaje przedmiotu,
+ * a „weź to z ciała" nie miało jak przenieść jednego w drugie. Od 38a każda
+ * ostatystykowana figura ma prawdziwy rekord `Character`, a w silniku zasad
+ * nie ma już ani jednej gałęzi „to statysta".
  *
- * Two things deliberately stay outside the profile:
+ * Co zostało, to **szybkość**, bo ona była całym powodem etapu 16b: menu żetonu
+ * nadal pokazuje sześć pól, a nie kartę postaci. Ten moduł jest właśnie tym —
+ * rzutem karty na te sześć pól (`statistQuick`) i drogą powrotną
+ * (`applyStatistQuick`, `createStatistSheet`). Liczby mieszkają na karcie;
+ * tutaj mieszka tylko sposób patrzenia na nie.
  *
- *  - **hit points** live on the token, where they already were. A statist's HP
- *    bar is a core VTT feature that predates CP RED by ten stages, and having
- *    two homes for one number is how they drift apart;
- *  - **Luck, Humanity, the Death Save counter** — the parts of the sheet that
- *    describe a person with a story. A statist that starts needing them has
- *    stopped being a statist and wants a real sheet, which is two clicks away
- *    in the token menu.
- *
- * Critical Injuries were on that list until 29.08 and came off it, because the
- * reason they were there stopped being true. They were excluded as „something
- * the GM types in", and a typed wound is indeed a sheet's business — but tear
- * gas, a flashbang and a defended zone *inflict* them by rule (16h, 26f), and
- * a statist with nowhere to keep one meant the rule stopped at a sentence on
- * the card. The profile therefore carries the wounds the rules put there, and
- * `combatProfileSheet` hands them to the very code that already enforces them:
- * no branch anywhere learns that this dodge was refused to a statist.
+ * Trzy rzeczy, których profil pilnował, a karta sama by ich nie utrzymała —
+ * Wartość bojowa, zakaz uniku przed pociskami i wydrukowane PW — siedzą
+ * w `statblock.ts`. Bez nich C-SWAT strzelałby jak krawężnik (błąd z 31.08)
+ * i tracił piętnaście PW przy pierwszym zapisie karty.
  */
 
 import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import { ARMOR_SP_MAX } from './locations.js';
-import { CPRED_STAT_MAX, CPRED_STAT_MIN, type CpredStats } from './stats.js';
 import {
+  CPRED_STAT_MAX,
+  CPRED_STAT_MIN,
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
-  sanitizeCriticalInjuryRows,
+  type CpredStats,
+} from './stats.js';
+import { cpredEffectiveStats } from './stateffects.js';
+import {
+  WEAPON_AMMO_MAX,
+  createDefaultCharacterData,
+  type CpredArmorRow,
   type CpredCharacterData,
-  type CpredCriticalInjuryRow,
 } from './character.js';
-import { CPRED_SCHEMA_VERSION } from './character.js';
 import { CPRED_EVASION_SKILL_ID } from './attacks.js';
-import { WEAPON_AMMO_MAX } from './character.js';
-import { createDefaultLifepath } from './lifepath.js';
+import {
+  CPRED_COMBAT_VALUE_MAX,
+  CPRED_STATBLOCK_HP_MAX,
+  cpredSheetHpMax,
+  sanitizeStatBlock,
+  type CpredStatBlock,
+} from './statblock.js';
 
-/** Longest weapon name a profile will store — the sheet's own limit. */
+/** Longest weapon name a quick sheet will store — the sheet's own limit. */
 export const STATIST_WEAPON_NAME_MAX = 64;
 
 /**
- * Stats a profile carries. Four of the ten, and the four are not arbitrary:
- * REF fires a gun, DEX swings and dodges, BODY decides bare-handed damage and
- * how much choking hurts, WILL answers suppressive fire. Everything else the
- * rules might reach for gets the statist default of 5 — the „average person"
- * rung the rulebook itself uses.
+ * Stats the quick editor shows. Four of the ten, and the four are not
+ * arbitrary: REF fires a gun, DEX swings and dodges, BODY decides bare-handed
+ * damage and how much choking hurts, WILL answers suppressive fire. The rest of
+ * the card keeps whatever it has — the editor simply does not ask about them.
  */
 export const STATIST_STAT_IDS = ['ref', 'dex', 'body', 'will'] as const;
 export type StatistStatId = (typeof STATIST_STAT_IDS)[number];
 
-/** The stat every unnamed stat of a statist takes. RAW's ordinary human. */
+/** The stat every unasked stat of a quick figure takes. RAW's ordinary human. */
 export const STATIST_DEFAULT_STAT = 5;
 
 /**
- * One statist's fighting numbers, stored as JSON on the token.
+ * Sufit poziomu Umiejętności broni w szybkim edytorze.
  *
- * Opaque to the core VTT exactly the way `Combatant.turnState` is (stage 14b):
- * the token layer stores the string and never reads a field of it, because a
- * token that knew what a weapon was would tie the map renderer to Cyberpunk.
+ * Nadal **nie** dziesiątka z karty (błąd znaleziony 31.08): pole przyjmuje też
+ * Wartość bojową, którą MG wpisuje funkcjonariuszowi albo Demonowi, a ta bywa
+ * powyżej dziesięciu. Rozstrzyga o tym `combatValue` w bloku statystyk — gdy
+ * jest ustawione, ta sama liczba jedzie do rzutu z Cechami wyzerowanymi.
  */
-export interface CpredCombatProfile {
+export const STATIST_SKILL_LEVEL_MAX = CPRED_COMBAT_VALUE_MAX;
+
+/** Most wounds one quick figure keeps — the two tables hold 22. */
+export const STATIST_INJURY_MAX = 12;
+
+/**
+ * Ile Umiejętności zmieści się figurze wpisanej szybkim edytorem. Piętnaście
+ * przynosi Wsparcie 10. poziomu (s. 159) i to jest najdłuższa lista, jaką
+ * drukuje podręcznik; dwadzieścia zostawia MG zapas. Figura, której brakuje
+ * miejsca, chce pełnej karty — a od 38a ma ją i tak, więc limit dotyczy
+ * wyłącznie tego, ile wierszy pokaże menu żetonu.
+ */
+export const STATIST_SKILL_MAX = 20;
+
+/**
+ * The single weapon row id a quick sheet uses. Stable, so the chat card of an
+ * attack can point back at it after a reload — and so `applyStatistQuick`
+ * knows which of the card's weapons the editor's one field means.
+ */
+export const STATIST_WEAPON_ROW_ID = 'statist-weapon';
+
+/**
+ * Dwa rzędy pancerza, które zakłada szybki edytor — stałe z tego samego powodu.
+ *
+ * Dwa, a nie jeden, bo podręcznik przy figurach bez karty drukuje jedną liczbę
+ * („OB — Odporność balistyczna pancerza **na głowie i ciele**", s. 158),
+ * a `armorCoversLocation` dobiera rząd po miejscu trafienia: jeden rząd
+ * „korpus" zostawiłby figurę z gołą głową.
+ */
+export const STATIST_ARMOR_ROW_IDS = {
+  head: 'statist-armor-head',
+  body: 'statist-armor-body',
+} as const;
+
+/**
+ * Sześć pól menu żetonu, jako jeden obiekt.
+ *
+ * **Nigdzie nie przechowywany** — to jest rzut karty, nie zapis. Do 38a ta sama
+ * struktura nazywała się `CpredCombatProfile` i siedziała w kolumnie żetonu;
+ * różnica jest cała.
+ */
+export interface CpredStatistQuick {
   ref: number;
   dex: number;
   body: number;
   will: number;
+  /** RUCH — istotny przy dystansie i Teście Przeżywalności (s. 158). */
+  move: number;
   /**
-   * Level of whichever skill the weapon fires with. One number rather than a
-   * skill table: a statist has one weapon, and the skill that weapon uses comes
-   * from the compendium entry, so naming it twice would let the two disagree.
+   * Poziom Umiejętności, którą strzela broń tej figury.
+   *
+   * Jedna liczba, a nie tabela: figura z szybkiego edytora ma jedną broń,
+   * a Umiejętność, którą ta broń strzela, bierze się z kompendium — nazwanie
+   * jej drugi raz pozwoliłoby obu wersjom się rozjechać. Na karcie ląduje
+   * w bloku statystyk (`statBlock.weaponSkill`), a nie pod id Umiejętności;
+   * dlaczego — patrz komentarz przy tamtym polu.
    */
   skillLevel: number;
-  /** Level of „Unik" — the defence half of the profile (stage 16b decision). */
+  /** Poziom „Uniku" — obronna połowa figury (rozstrzygnięcie z 16b). */
   evasion: number;
-  /**
-   * RUCH, when this figure has one worth naming (stage 30c). Absent on every
-   * profile stage 16b wrote, which keeps their JSON byte-identical — a statist
-   * without it walks at the ordinary human's 5.
-   *
-   * Here because Backup officers arrive with a printed one: „RUCH i BC: Cechy
-   * Ruch i BC Wsparcia, istotne przy rozpatrywaniu dystansu" (s. 158), and a
-   * C-SWAT trooper who covers the same ground as a passer-by would make the
-   * table's metres a lie.
-   */
-  move?: number;
-  /**
-   * „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158, stage 30c).
-   *
-   * A real flag rather than an `evasion` of zero, because in this project the
-   * two are not the same thing: `attack:evade` ducks bullets as happily as
-   * blades, so a zero would still buy a 1d10 against the shot. And it is
-   * ranged-only, exactly as printed — an officer parries a machete with his
-   * Wartość bojowa like anybody else. The twin of the Human Shield's own
-   * refusal in `attack:evade`, and blocked in the same place.
-   */
-  noBulletDodge?: boolean;
-  /** Worn armour's Stopping Power; 0 = unarmoured. Ablates like a sheet's. */
+  /** Wartość bojowa (s. 158); `null` = Cecha + Umiejętność jak u każdego. */
+  combatValue: number | null;
+  /** „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158). */
+  noBulletDodge: boolean;
+  /** OB noszonego pancerza; 0 = bez pancerza. Ściera się jak każdy. */
   armorSp: number;
-  /** Compendium weapon this statist fires; null = unarmed. */
+  /** Broń z kompendium; `null` = gołe pięści. */
   weaponId: string | null;
-  /** Display name of that weapon, copied like a sheet row copies its numbers. */
   weaponName: string;
-  /** Damage notation of the weapon, copied for the same reason. */
   weaponDamage: string;
   ammoCurrent: number;
   ammoMax: number;
+  hpCurrent: number;
+  hpMax: number;
   /**
-   * Critical Injuries the rules have inflicted on this statist (29.08).
+   * Umiejętności, którymi tej figurze **wolno** rzucić poza walką (30.08).
    *
-   * Absent on every profile that has never been hurt by a rule that names a
-   * wound — which is almost all of them — so an untouched ganger's JSON is
-   * byte-identical to what stage 16b wrote. The rows are the sheet's own shape
-   * (`CpredCriticalInjuryRow`), including the 16h timer, because the wound is
-   * literally the same wound: the same compendium row copied by the same
-   * function.
-   */
-  criticalInjuries?: CpredCriticalInjuryRow[];
-  /**
-   * Umiejętności, którymi ta figura wolno jej rzucić — id → poziom (30.08).
-   *
-   * Do tej pory statysta rzucał wyłącznie bronią i Unikiem, bo `skillLevel`
-   * jest **jedną** liczbą: gdyby wystarczyła za każdą Umiejętność, ganger
-   * z Umiejętnością 4 byłby równie dobrym księgowym co strzelcem. To pole jest
-   * odwrotną stroną tej samej decyzji — nie „statysta umie wszystko na jednym
-   * poziomie", tylko „statysta umie **to**, i tyle".
+   * Nie to samo, co `skillLevel`: tamto odpowiada „na ilu", a to „czy w ogóle".
+   * Rozdział jest celowy — atak pyta o poziom Umiejętności, którą strzela broń,
+   * i ma dostać liczbę także wtedy, gdy nikt tej Umiejętności nie wpisał; Test
+   * Percepcji ma nie istnieć, dopóki ktoś nie powie, że ta figura umie patrzeć.
    *
    * Wstawia je reguła (Wsparcie 10. poziomu przynosi swoich piętnaście —
    * „mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
-   * Umiejętności", s. 159) albo ręka MG w edytorze profilu. Nieobecne na
-   * każdym profilu, którego nikt nie tknął, dokładnie z tego powodu, dla
-   * którego nieobecne bywa `criticalInjuries`: JSON nietkniętego gangera ma
-   * wracać bajt w bajt tym, co zapisał etap 16b.
+   * Umiejętności", s. 159) albo ręka MG w menu żetonu. Poziom ścina się tu do
+   * sufitu **karty**, bo od 38a to jest zwykły wiersz Umiejętności; prawdziwą
+   * liczbę funkcjonariusza podstawia Wartość bojowa przy rzucie.
    */
-  skills?: Record<string, number>;
+  skills: Record<string, number>;
 }
 
-export function createDefaultCombatProfile(): CpredCombatProfile {
+export function createDefaultStatistQuick(): CpredStatistQuick {
   return {
     ref: STATIST_DEFAULT_STAT,
     dex: STATIST_DEFAULT_STAT,
     body: STATIST_DEFAULT_STAT,
     will: STATIST_DEFAULT_STAT,
+    move: STATIST_DEFAULT_STAT,
     skillLevel: 4,
     evasion: 2,
+    combatValue: null,
+    noBulletDodge: false,
     armorSp: 0,
     weaponId: null,
     weaponName: 'Pięści',
     weaponDamage: '1k6',
     ammoCurrent: 0,
     ammoMax: 0,
+    hpCurrent: 25,
+    hpMax: 25,
+    skills: {},
   };
-}
-
-/**
- * Najwyższy poziom Umiejętności w profilu figury bez karty — **nie** dziesiątka
- * z karty postaci (błąd znaleziony 31.08).
- *
- * Do 31.08 profil klampował się do `SKILL_LEVEL_MAX`, czyli do limitu, który
- * RAW nakłada na **Umiejętność postaci**. Statysta jednak trzyma tu coś innego:
- * Wartość bojową — „Umiejętność bazowa używana do ataku i obrony. Reprezentuje
- * sumę Cechy i Umiejętności funkcjonariusza" (s. 158). Cztery z sześciu
- * kategorii Wsparcia mają ją powyżej dziesięciu (14, 16, 15, 14) i wszystkie
- * cztery były po cichu ścinane do 10 przy **każdym odczycie** żetonu: C-SWAT
- * strzelał i bronił się jak krawężnik. To samo groziło Demonom (14).
- *
- * Sufitem jest więc suma obu limitów, bo dokładnie tym Wartość bojowa jest.
- */
-export const STATIST_SKILL_LEVEL_MAX = CPRED_STAT_MAX + SKILL_LEVEL_MAX;
-
-/** Most wounds one statist's profile will keep — the two tables hold 22. */
-export const STATIST_INJURY_MAX = 12;
-
-/**
- * Ile Umiejętności zmieści się w profilu. Piętnaście przynosi Wsparcie
- * 10. poziomu (s. 159) i to jest najdłuższa lista, jaką drukuje podręcznik;
- * dwadzieścia zostawia MG zapas, a jednocześnie mówi, że to nadal jest figura
- * bez karty. Statysta, któremu brakuje miejsca, chce prawdziwej karty.
- */
-export const STATIST_SKILL_MAX = 20;
-
-/**
- * Czyta listę Umiejętności profilu, naprawiając co się da.
- *
- * Nieznane id **wypada po cichu**, tak jak w `validateSkills` na karcie:
- * pliki danych potrafią się skurczyć, a figura, która przestaje istnieć, bo
- * z `skills.json` zniknął wiersz, jest gorsza niż figura bez tego rzutu.
- * Poziom 0 też wypada — to jest lista „co ta figura umie", a umieć coś na
- * zero znaczy nie umieć.
- */
-function sanitizeProfileSkills(raw: unknown): Record<string, number> {
-  if (typeof raw !== 'object' || raw === null) return {};
-  const skills: Record<string, number> = {};
-  for (const [id, level] of Object.entries(raw as Record<string, unknown>)) {
-    if (Object.keys(skills).length >= STATIST_SKILL_MAX) break;
-    if (typeof id !== 'string' || !isValidCompendiumId(id)) continue;
-    if (typeof level !== 'number' || !Number.isFinite(level)) continue;
-    const value = clampInt(level, SKILL_LEVEL_MIN, STATIST_SKILL_LEVEL_MAX, 0);
-    if (value > 0) skills[id] = value;
-  }
-  return skills;
 }
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -225,23 +202,30 @@ function clampText(value: unknown, max: number, fallback: string): string {
 }
 
 /**
- * Reads a stored profile, repairing whatever it finds. Never throws and never
- * returns null for a malformed field: a token whose JSON column was hand-edited
- * has to keep working, and „this ganger has REF 0" is a worse table experience
- * than „this ganger has the default REF".
+ * Naprawia, co przysłał klient, i nigdy nie odmawia.
+ *
+ * Ta sama umowa, którą miał `sanitizeCombatProfile`: „ten ganger ma REF 0" jest
+ * przy stole gorsze niż „ten ganger ma domyślny REF".
  */
-export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
-  const base = createDefaultCombatProfile();
+export function sanitizeStatistQuick(raw: unknown): CpredStatistQuick {
+  const base = createDefaultStatistQuick();
   if (typeof raw !== 'object' || raw === null) return base;
   const input = raw as Record<string, unknown>;
   const ammoMax = clampInt(input.ammoMax, 0, WEAPON_AMMO_MAX, base.ammoMax);
-  const injuries = sanitizeCriticalInjuryRows(input.criticalInjuries).slice(0, STATIST_INJURY_MAX);
-  const skills = sanitizeProfileSkills(input.skills);
+  const hpMaxValue = clampInt(input.hpMax, 1, CPRED_STATBLOCK_HP_MAX, base.hpMax);
+  const combatValue =
+    typeof input.combatValue === 'number' && Number.isFinite(input.combatValue)
+      ? clampInt(input.combatValue, 0, CPRED_COMBAT_VALUE_MAX, 0)
+      : null;
   return {
-    ref: clampInt(input.ref, CPRED_STAT_MIN, CPRED_STAT_MAX, base.ref),
-    dex: clampInt(input.dex, CPRED_STAT_MIN, CPRED_STAT_MAX, base.dex),
+    // Zero jest dozwolone, choć karcie nie wolno: Wartość bojowa wieżyczki
+    // i funkcjonariusza siedzi w jednej liczbie, a Cechy stoją wtedy na zerze,
+    // żeby rozbicie rzutu czytało się uczciwie (s. 158, s. 214).
+    ref: clampInt(input.ref, 0, CPRED_STAT_MAX, base.ref),
+    dex: clampInt(input.dex, 0, CPRED_STAT_MAX, base.dex),
     body: clampInt(input.body, CPRED_STAT_MIN, CPRED_STAT_MAX, base.body),
-    will: clampInt(input.will, CPRED_STAT_MIN, CPRED_STAT_MAX, base.will),
+    will: clampInt(input.will, 0, CPRED_STAT_MAX, base.will),
+    move: clampInt(input.move, CPRED_STAT_MIN, CPRED_STAT_MAX, base.move),
     // Oba sufity to `STATIST_SKILL_LEVEL_MAX`, nie limit karty: Wsparcie
     // atakuje **i broni się** tą samą Wartością bojową (s. 158), więc ścięty
     // Unik byłby dokładnie tym samym błędem co ścięty atak.
@@ -252,12 +236,8 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
       base.skillLevel,
     ),
     evasion: clampInt(input.evasion, SKILL_LEVEL_MIN, STATIST_SKILL_LEVEL_MAX, base.evasion),
-    // Both omitted when they carry nothing, for the reason `criticalInjuries`
-    // is: an untouched ganger's JSON has to round-trip to what 16b wrote.
-    ...(typeof input.move === 'number' && Number.isFinite(input.move)
-      ? { move: clampInt(input.move, CPRED_STAT_MIN, CPRED_STAT_MAX, STATIST_DEFAULT_STAT) }
-      : {}),
-    ...(input.noBulletDodge === true ? { noBulletDodge: true as const } : {}),
+    combatValue,
+    noBulletDodge: input.noBulletDodge === true,
     armorSp: clampInt(input.armorSp, 0, ARMOR_SP_MAX, base.armorSp),
     weaponId:
       typeof input.weaponId === 'string' && isValidCompendiumId(input.weaponId)
@@ -270,261 +250,310 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
     // the call sites is what lets the GM shrink a magazine on a loaded weapon
     // without leaving 30 rounds in a 12-round clip.
     ammoCurrent: Math.min(ammoMax, clampInt(input.ammoCurrent, 0, WEAPON_AMMO_MAX, ammoMax)),
-    // Repaired like everything else here, and omitted entirely when empty: an
-    // unhurt statist's profile must round-trip to the same JSON it arrived as.
-    ...(injuries.length > 0 ? { criticalInjuries: injuries } : {}),
-    // Ta sama umowa, ten sam powód (30.08): figura, której nikt nie nadał
-    // żadnej Umiejętności, ma zapisywać się tak, jak zapisywał ją etap 16b.
-    ...(Object.keys(skills).length > 0 ? { skills } : {}),
+    hpMax: hpMaxValue,
+    hpCurrent: Math.min(
+      hpMaxValue,
+      clampInt(input.hpCurrent, 0, CPRED_STATBLOCK_HP_MAX, hpMaxValue),
+    ),
+    skills: sanitizeQuickSkills(input.skills),
   };
 }
-
-/** Parses the token's JSON column; null when the token has no profile at all. */
-export function parseCombatProfile(raw: string | null | undefined): CpredCombatProfile | null {
-  if (typeof raw !== 'string' || raw.length === 0) return null;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    return sanitizeCombatProfile(parsed);
-  } catch {
-    return null;
-  }
-}
-
-/** The single weapon row id a synthesised sheet uses. Stable, so the chat card
- * of an attack can point back at it after a reload. */
-export const STATIST_WEAPON_ROW_ID = 'statist-weapon';
 
 /**
- * The profile seen as a character sheet.
+ * Czyta listę Umiejętności, naprawiając co się da.
  *
- * This is the whole trick of the module: instead of teaching the attack, damage
- * and grapple code what a statist is, the statist is handed to them wearing a
- * sheet. The result is a genuine `CpredCharacterData` — the planner validates
- * it, the breakdown names its stats, the wound state reads its HP — it simply
- * happens to have one weapon, no armour rows and no Luck to spend.
- *
- * `hp` comes from the caller because it lives on the token: passing it in keeps
- * the profile from holding a second copy of a number the map already owns.
+ * Nieznane id **wypada po cichu**, tak jak w `validateSkills` na karcie: pliki
+ * danych potrafią się skurczyć, a figura, która przestaje istnieć, bo
+ * z `skills.json` zniknął wiersz, jest gorsza niż figura bez tego rzutu.
+ * Poziom 0 też wypada — to jest lista „co ta figura umie", a umieć coś na zero
+ * znaczy nie umieć.
  */
-export function combatProfileSheet(
-  profile: CpredCombatProfile,
-  hp: { current: number; max: number },
-): CpredCharacterData {
+function sanitizeQuickSkills(raw: unknown): Record<string, number> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const skills: Record<string, number> = {};
+  for (const [id, level] of Object.entries(raw as Record<string, unknown>)) {
+    if (Object.keys(skills).length >= STATIST_SKILL_MAX) break;
+    if (id === CPRED_EVASION_SKILL_ID) continue;
+    if (!isValidCompendiumId(id)) continue;
+    const value = clampInt(level, SKILL_LEVEL_MIN, SKILL_LEVEL_MAX, 0);
+    if (value > 0) skills[id] = value;
+  }
+  return skills;
+}
+
+/**
+ * Blok statystyk, jakiego chce ta figura.
+ *
+ * PW trafiają do bloku **zawsze**, bo szybki edytor podaje je wprost: figura
+ * z PW 35 przy BC 4 ma mieć trzydzieści pięć, a nie dwadzieścia policzone
+ * z Cech. To jest ta sama decyzja, którą etap 16b podjął, trzymając PW na
+ * żetonie — tylko dom się zmienił.
+ */
+function quickStatBlock(quick: CpredStatistQuick): CpredStatBlock | null {
+  return sanitizeStatBlock({
+    combatValue: quick.combatValue,
+    weaponSkill: quick.skillLevel,
+    noBulletDodge: quick.noBulletDodge,
+    hpMax: quick.hpMax,
+  });
+}
+
+/**
+ * Karta figury zbudowana z sześciu liczb.
+ *
+ * Bierze `createDefaultCharacterData` i ścina do tego, czym figura z szybkiego
+ * edytora jest: bez Szczęścia (nie ma z czego wydawać — „pula MG" to zasada,
+ * której ten projekt nie ma), bez Roli, bez Ścieżki Życia i bez portfela.
+ * Wszystko to zostaje **polami karty**, więc MG, który zechce z gangera zrobić
+ * kogoś, po prostu je wypełnia — do 38a musiałby zacząć od nowa.
+ */
+export function createStatistSheet(quick: CpredStatistQuick): CpredCharacterData {
+  const base = createDefaultCharacterData();
   const stats: CpredStats = {
+    ...base.stats,
     int: STATIST_DEFAULT_STAT,
-    ref: profile.ref,
-    dex: profile.dex,
+    ref: quick.ref,
+    dex: quick.dex,
     tech: STATIST_DEFAULT_STAT,
     cool: STATIST_DEFAULT_STAT,
-    will: profile.will,
-    // No Luck at all: a statist that could spend points would need somewhere to
-    // spend them from, and „the GM's pool" is a rule this project does not have.
+    will: quick.will,
+    // Zero Szczęścia: figura, która mogłaby wydawać punkty, potrzebowałaby puli,
+    // z której je bierze, a „pula MG" to zasada, której tu nie ma.
     luck: 0,
-    move: profile.move ?? STATIST_DEFAULT_STAT,
-    body: profile.body,
+    move: quick.move,
+    body: quick.body,
     emp: STATIST_DEFAULT_STAT,
   };
+  return applyStatistQuick(
+    {
+      ...base,
+      stats,
+      luckCurrent: 0,
+      // Pełne Człowieczeństwo, nie zero: EMP w grze liczy się z niego (23a),
+      // a zbir bez karty nie jest cyberpsychopatą — po prostu nie ma chromu.
+      humanityCurrent: humanityMax(stats),
+      skills: {},
+    },
+    quick,
+  );
+}
+
+/**
+ * Pancerz „na głowie i ciele", jak drukuje go podręcznik przy figurach bez
+ * karty (s. 158). Zużycie przeżywa zmianę OB w edytorze: OB spadło
+ * z trafienia i MG, który podniesie katalogowe, nie ma tym cofać obrażeń.
+ */
+function quickArmorRows(data: CpredCharacterData, sp: number): CpredArmorRow[] {
+  const mine = new Set<string>(Object.values(STATIST_ARMOR_ROW_IDS));
+  const others = data.armor.filter((row) => !mine.has(row.id));
+  if (sp <= 0) return others;
+  const rows = (['head', 'body'] as const).map((location): CpredArmorRow => {
+    const id = STATIST_ARMOR_ROW_IDS[location];
+    const existing = data.armor.find((row) => row.id === id);
+    if (existing) return { ...existing, sp, spCurrent: Math.min(existing.spCurrent, sp) };
+    return { id, name: 'Pancerz', notes: '', location, sp, spCurrent: sp };
+  });
+  return [...rows, ...others];
+}
+
+/**
+ * Wpisuje sześć liczb w **istniejącą** kartę, nie ruszając niczego poza nimi.
+ *
+ * Ekwipunek, rany, efekty czasowe, notatki i wszystko, co MG dopisał ręcznie,
+ * przeżywa — bo od 38a ta sama figura bywa edytowana raz szybkim polem
+ * w menu żetonu, a raz pełną kartą, i żadna z tych dróg nie ma prawa zjeść
+ * drugiej.
+ */
+export function applyStatistQuick(
+  data: CpredCharacterData,
+  quick: CpredStatistQuick,
+): CpredCharacterData {
+  const others = data.weapons.filter((row) => row.id !== STATIST_WEAPON_ROW_ID);
   return {
-    schemaVersion: CPRED_SCHEMA_VERSION,
-    stats,
-    // The token's bar is the truth. `hpMax(stats)` would compute a different
-    // number from BODY and WILL, and the two would disagree on screen.
-    hpCurrent: Math.max(0, Math.min(hp.max, hp.current)),
-    luckCurrent: 0,
-    // Full Humanity, not zero: EMP used in play is derived from it (stage 23a),
-    // and a thug with no sheet is not a cyberpsycho — he simply has no chrome.
-    humanityCurrent: humanityMax(stats),
-    roleId: null,
-    roleAbilityRank: 1,
-    // No Role means no Special Ability (stage 30a): `cpredRoleAbilityRank`
-    // refuses a sheet with a null `roleId` before it ever reads this, and
-    // stage 29b's list of previous ones is empty for the same reason — a
-    // statist has no career behind him, only a gun.
-    formerRoles: [],
-    combatAwareness: {},
-    // Stage 30b: a statist has no Role, so neither Specialty purse is ever read.
-    medicine: {},
-    fabrication: {},
-    // Nor does anybody work for him (stage 30c): a team is something a Korpo's
-    // sheet carries, and a statist is the figure that has no sheet.
-    team: [],
-    // Stage 30d: no Family to lend him a car, and nobody haggles on his behalf.
-    fleet: [],
-    haggle: null,
-    // Unik zawsze z własnego pola, choćby MG wpisał go też na listę: to on
-    // stoi w edytorze profilu i to jego czyta obrona statysty.
-    skills: { ...(profile.skills ?? {}), [CPRED_EVASION_SKILL_ID]: profile.evasion },
-    // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
-    skillSpecialties: {},
+    ...data,
+    stats: {
+      ...data.stats,
+      ref: quick.ref,
+      dex: quick.dex,
+      body: quick.body,
+      will: quick.will,
+      move: quick.move,
+    },
+    statBlock: quickStatBlock(quick),
+    hpCurrent: Math.max(0, Math.min(quick.hpMax, quick.hpCurrent)),
+    skills: {
+      ...quick.skills,
+      // Unik zawsze z własnego pola: to on stoi w edytorze i to jego czyta
+      // obrona figury. Poziom broni siedzi obok, w bloku statystyk.
+      //
+      // Ścięty do sufitu **karty**, bo to zwykły wiersz Umiejętności, a jeden
+      // wiersz spoza zakresu każe `validateSkills` odrzucić całą mapę — figura
+      // straciłaby wtedy wszystkie Umiejętności naraz. Funkcjonariusz Wsparcia
+      // broni się i tak Wartością bojową, którą podstawia `cpredSheetRollSheet`.
+      [CPRED_EVASION_SKILL_ID]: Math.min(quick.evasion, SKILL_LEVEL_MAX),
+    },
     weapons: [
       {
         id: STATIST_WEAPON_ROW_ID,
-        name: profile.weaponName,
+        name: quick.weaponName,
         notes: '',
-        damage: profile.weaponDamage,
-        ammoCurrent: profile.ammoCurrent,
-        ammoMax: profile.ammoMax,
+        damage: quick.weaponDamage,
+        ammoCurrent: quick.ammoCurrent,
+        ammoMax: quick.ammoMax,
         ammoType: '',
         rof: '1',
-        ...(profile.weaponId ? { compendiumId: profile.weaponId } : {}),
+        ...(quick.weaponId ? { compendiumId: quick.weaponId } : {}),
       },
+      ...others,
     ],
-    armor: [],
-    gear: [],
-    cyberware: [],
-    // The wounds the rules put there, handed to the code that enforces them:
-    // „Odcięta noga" refuses this statist a dodge through `cpredInjuryDodgeBlock`
-    // and „Wstrząśnienie mózgu" costs it −2 through `cpredInjuryModifiers`,
-    // both without either function learning what a statist is.
-    criticalInjuries: profile.criticalInjuries ?? [],
-    deathSaves: 0,
-    // Naturalne leczenie statysty nie dotyczy: karta powstaje na jedną walkę
-    // i po niej znika, a dzień odpoczynku pyta o kartę, która przeżyje noc.
-    // Statyście, który zaczyna wracać do zdrowia, MG daje prawdziwą kartę —
-    // to samo rozstrzygnięcie co przy Szczęściu i Człowieczeństwie wyżej.
-    recovery: { stabilized: false, antibioticDays: 0 },
-    eddies: 0,
-    // A statist has no wallet and pays no rent: the sheet is synthesised for
-    // one fight and thrown away, and the monthly settlement skips a null.
-    lifestyle: null,
-    // Nobody has heard of him (stage 23c). „Większość Postaci w Cyberpunku RED
-    // zaczyna grę z Reputacją 0", and a nameless ganger is the case that
-    // sentence describes — he faces down at bare CHA 5.
-    reputationSources: [],
-    notes: '',
-    // Trzy linijki prozy z wydruku (27b). Statysta nie ma ich czym wypełnić —
-    // ta karta powstaje na jedną walkę i po niej znika.
-    addictions: '',
-    style: '',
-    ammoStock: '',
-    // Ani Ścieżki Życia (25b): statysta nie ma kultury pochodzenia, wrogów
-    // ani celu życiowego — ma imię na żetonie i jedną broń.
-    lifepath: createDefaultLifepath(),
-    // Ani strony drugiej (27c): nikt go nie zna po ksywie i nikt nie przyznaje
-    // mu Punktów Doświadczenia.
-    aliases: '',
-    improvementPoints: 0,
-    // Ani cyberdeku (26a): sieciuje Netrunner, a statysta ma być przeciwnikiem
-    // na jedną wymianę ognia — wrogi netrunner to osobna, prawdziwa karta.
-    cyberdeck: null,
+    armor: quickArmorRows(data, quick.armorSp),
   };
 }
 
 /**
- * The skill level this statist rolls the given skill at.
+ * Karta obejrzana przez sześć pól edytora.
  *
- * One number covers every combat skill on purpose (see `skillLevel`), with one
- * exception that has its own field: Evasion, because a statist that dodges as
- * well as it shoots is a statist that never gets hit. „Unik" is the only skill
- * the rules ask a defender for, so it is the only one worth separating.
+ * Droga powrotna do `applyStatistQuick`, i celowo **stratna**: karta wie
+ * o sobie znacznie więcej, niż mieści się w menu żetonu. Pola, których edytor
+ * nie pokazuje, wracają nietknięte właśnie dlatego, że `applyStatistQuick`
+ * bierze całą kartę, a nie sam ten obiekt.
  */
-export function combatProfileSkillLevel(profile: CpredCombatProfile, skillId: string): number {
-  if (skillId === CPRED_EVASION_SKILL_ID) return profile.evasion;
-  // Umiejętność wpisana wprost wygrywa z liczbą od broni (30.08). Kolejność
-  // jest tu jedyną możliwą: `skillLevel` nie wie, którą Umiejętnością strzela
-  // ta broń, więc gdyby wygrywał on, wpisany poziom nie znaczyłby nic.
-  return profile.skills?.[skillId] ?? profile.skillLevel;
+export function statistQuick(data: CpredCharacterData): CpredStatistQuick {
+  const weapon = data.weapons.find((row) => row.id === STATIST_WEAPON_ROW_ID) ?? data.weapons[0];
+  const armor =
+    data.armor.find((row) => row.id === STATIST_ARMOR_ROW_IDS.body) ??
+    data.armor.find((row) => row.location === 'body') ??
+    data.armor[0];
+  return sanitizeStatistQuick({
+    ref: data.stats.ref,
+    dex: data.stats.dex,
+    body: data.stats.body,
+    will: data.stats.will,
+    move: data.stats.move,
+    skillLevel: data.statBlock?.weaponSkill ?? 0,
+    // Wartość bojowa jest **i** atakiem, i obroną (s. 158), więc gdy ją
+    // wpisano, to ona stoi w polu Uniku — a nie dziesiątka, do której ścięło
+    // się to, co poszło na kartę.
+    evasion: data.statBlock?.combatValue ?? data.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+    combatValue: data.statBlock?.combatValue ?? null,
+    noBulletDodge: data.statBlock?.noBulletDodge ?? false,
+    armorSp: armor?.spCurrent ?? 0,
+    weaponId: weapon?.compendiumId ?? null,
+    weaponName: weapon?.name ?? 'Pięści',
+    weaponDamage: weapon?.damage ?? '1k6',
+    ammoCurrent: weapon?.ammoCurrent ?? 0,
+    ammoMax: weapon?.ammoMax ?? 0,
+    hpCurrent: data.hpCurrent,
+    // Karta bez wydrukowanych PW pokazuje w edytorze to, co i tak ma:
+    // maksimum policzone z BC i SW.
+    hpMax: cpredSheetHpMax(data),
+    skills: data.skills,
+  });
 }
 
 /**
- * Umiejętności, którymi ta figura **wolno** rzucić poza walką (30.08).
+ * Karta przygotowana do **jednego** rzutu (etap 38a, dawniej
+ * `combatProfileSheetForSkill`).
  *
- * Nie to samo, co `combatProfileSkillLevel`: tamta odpowiada „na ilu",
- * a ta „czy w ogóle". Rozdział jest celowy — atak pyta o poziom Umiejętności,
- * którą strzela broń, i ma dostać `skillLevel` także wtedy, gdy nikt tej
- * Umiejętności nie wpisał; Test Percepcji ma nie istnieć, dopóki ktoś nie
- * powie, że ta figura umie patrzeć.
+ * Robi jedną rzecz: podstawia Wartość bojową. „Wartość bojowa: Umiejętność
+ * bazowa używana do ataku i obrony. Reprezentuje sumę Cechy i Umiejętności
+ * funkcjonariusza" (s. 158) — więc Cechy idą do zera, bo inaczej agent
+ * federalny rzucający Dedukcją na 14 policzyłby swoją Cechę dwa razy,
+ * a rozbicie rzutu skłamałoby dwukrotnie.
+ *
+ * BC, RUCH i SZ zostają: pierwsze dwa podręcznik drukuje obok Wartości bojowej
+ * jako osobne liczby („istotne przy rozpatrywaniu dystansu […] np. w Teście
+ * Przeżywalności"), a Szczęścia taka figura i tak nie ma.
+ *
+ * Karta bez Wartości bojowej wraca **nietknięta** — to jest zwykła karta
+ * i liczy się zwyczajnie.
  */
-export function combatProfileRollableSkills(profile: CpredCombatProfile): string[] {
-  return Object.keys(profile.skills ?? {});
+export function cpredSheetRollSheet(
+  data: CpredCharacterData,
+  skillId: string | null,
+): CpredCharacterData {
+  const block = data.statBlock;
+  if (!block) return data;
+  if (block.combatValue != null) {
+    return {
+      ...data,
+      stats: { ...data.stats, int: 0, ref: 0, dex: 0, tech: 0, cool: 0, will: 0, emp: 0 },
+      skills: {
+        ...data.skills,
+        [CPRED_EVASION_SKILL_ID]: block.combatValue,
+        ...(skillId ? { [skillId]: block.combatValue } : {}),
+      },
+    };
+  }
+  // Poziom broni podstawia się **tylko** pod Umiejętność, której karta sama nie
+  // wymienia: ganger, któremu MG dopisał „Broń krótka 6" na pełnej karcie, ma
+  // strzelać szóstką, a nie czwórką z szybkiego edytora.
+  if (block.weaponSkill == null || !skillId || data.skills[skillId] !== undefined) return data;
+  return { ...data, skills: { ...data.skills, [skillId]: block.weaponSkill } };
 }
 
 /**
- * The same turret, with somebody else's hands on it (stage 26d).
+ * Ta sama wieżyczka, z cudzymi rękami na spuście (etap 26d).
  *
  * „Gdy system jest pod kontrolą Netrunnera, wszelkie ataki i Testy obrony
  * wykonuje, rzucając na Umiejętności tego Netrunnera, tak jakby ten strzelał
- * z trzymanych w rękach broni" (s. 213). Everything about the *weapon* stays
- * the turret's — its barrel, its magazine, its plating — and everything about
- * the *shooter* becomes the operator's.
+ * z trzymanych w rękach broni" (s. 213). Wszystko, co dotyczy **broni**,
+ * zostaje wieżyczki — lufa, magazynek, poszycie; wszystko, co dotyczy
+ * **strzelca**, staje się operatora.
  *
- * A substitution rather than a branch in the planner, and that is the whole
- * point: the attack that follows goes through `performAttackRoll` unchanged, so
- * range, cover, line of fire, ammunition and the damage card all behave exactly
- * as they do when a person pulls the trigger.
+ * Podstawienie, a nie gałąź w planerze, i o to właśnie chodzi: atak jedzie
+ * dalej przez `performAttackRoll` bez zmian, więc zasięg, osłona, linia
+ * strzału, amunicja i karta obrażeń zachowują się tak, jak gdy spust naciska
+ * człowiek.
  */
-export function combatProfileOperatedBy(
-  profile: CpredCombatProfile,
-  operator: Pick<CpredCharacterData, 'stats' | 'skills'>,
+export function cpredSheetOperatedBy(
+  data: CpredCharacterData,
+  operator: Pick<CpredCharacterData, 'stats' | 'skills' | 'humanityCurrent' | 'statEffects'>,
   skillId: string | null,
-): CpredCombatProfile {
-  const skillLevel = skillId ? (operator.skills[skillId] ?? 0) : profile.skillLevel;
+): CpredCharacterData {
+  // Etap 39: Cechy operatora **jak teraz** — wieżyczka strzela jego refleksem,
+  // więc godzina pod Nerwosolem obniża też celność zdalnego działka.
+  const stats = cpredEffectiveStats(operator);
+  const level = skillId ? (operator.skills[skillId] ?? 0) : 0;
   return {
-    ...profile,
-    ref: operator.stats.ref,
-    dex: operator.stats.dex,
-    body: operator.stats.body,
-    will: operator.stats.will,
-    skillLevel,
-    evasion: operator.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+    ...data,
+    // Wartość bojowa wieżyczki przestaje cokolwiek znaczyć, gdy celuje
+    // człowiek: to jego Cechy i jego Umiejętności, a `cpredSheetRollSheet`
+    // wyzerowałoby je z powrotem.
+    statBlock: data.statBlock ? { ...data.statBlock, combatValue: null } : null,
+    stats: { ...data.stats, ref: stats.ref, dex: stats.dex, body: stats.body, will: stats.will },
+    skills: {
+      ...data.skills,
+      ...(skillId ? { [skillId]: level } : {}),
+      [CPRED_EVASION_SKILL_ID]: operator.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+    },
   };
 }
 
 /**
- * The same turret with a machine's hand on it (stage 26e).
+ * Ta sama wieżyczka z maszynową ręką na spuście (etap 26e).
  *
  * „W czasie samodzielnego działania systemy obronne określają skuteczność
- * swoich działań, wykonując Test Wartości bojowej + 1k10" (s. 214), and a Demon
- * working a control node rolls the same single number (s. 212). Wartość bojowa
- * is Stat *and* Skill merged into one figure, so it goes into the Skill half and
- * the Stats go to zero: a machine has no reflexes to add, and the breakdown then
- * reads honestly („Refleks (REF) +0 · Broń długa 14") instead of pretending the
- * turret has a nervous system.
- *
- * Everything about the *weapon* stays the turret's, exactly as in 26d — the
- * barrel, the magazine, the plating. Evasion goes to zero too: „nie mogą unikać
- * ataków" (s. 214).
+ * swoich działań, wykonując Test Wartości bojowej + 1k10" (s. 214), a Demon
+ * przy węźle kontrolnym rzuca tą samą jedną liczbą (s. 212). Unik idzie do
+ * zera: „nie mogą unikać ataków" (s. 214) — i to jest różnica wobec
+ * funkcjonariusza Wsparcia, który Wartością bojową **broni się** także.
  */
-export function combatProfileWithCombatValue(
-  profile: CpredCombatProfile,
+export function cpredSheetWithCombatValue(
+  data: CpredCharacterData,
   combatValue: number,
-): CpredCombatProfile {
-  const value = Math.max(0, Math.round(combatValue));
-  return { ...profile, ref: 0, dex: 0, body: 0, will: 0, skillLevel: value, evasion: 0 };
-}
-
-/**
- * The sheet a statist rolls one particular skill with.
- *
- * `combatProfileSheet` gives every skill except Evasion a level of zero, which
- * is right for a sheet but wrong for a roll: the profile's single `skillLevel`
- * is what the weapon fires at. Handing the level in at roll time — rather than
- * filling the whole registry with it — keeps „this statist is trained in
- * everything" from becoming true anywhere else.
- */
-export function combatProfileSheetForSkill(
-  profile: CpredCombatProfile,
-  hp: { current: number; max: number },
-  skillId: string | null,
 ): CpredCharacterData {
-  const sheet = combatProfileSheet(profile, hp);
-  if (!skillId) return sheet;
-  const listed = profile.skills?.[skillId] !== undefined;
+  const value = Math.max(0, Math.round(combatValue));
   return {
-    ...sheet,
-    // Umiejętność **wpisana na listę** niesie pełny modyfikator, więc Cechy idą
-    // do zera — dokładnie ta sama decyzja, którą `combatProfileWithCombatValue`
-    // podejmuje dla wieżyczki, i z tego samego powodu. „Wartość bojowa […]
-    // reprezentuje sumę Cechy i Umiejętności funkcjonariusza" (s. 158): agent
-    // federalny rzucający Dedukcją na 14 + INT 5 liczyłby swoją Cechę dwa razy.
-    //
-    // Rzut bronią zostaje po staremu (REF + poziom), bo `skillLevel` jest
-    // poziomem Umiejętności, a nie sumą — chyba że MG sam wpisał tę broń na
-    // listę, i wtedy to jest jego deklaracja pełnego modyfikatora.
-    ...(listed
-      ? { stats: { ...sheet.stats, int: 0, ref: 0, dex: 0, tech: 0, cool: 0, will: 0, emp: 0 } }
-      : {}),
-    skills: { ...sheet.skills, [skillId]: combatProfileSkillLevel(profile, skillId) },
+    ...data,
+    statBlock: {
+      ...(data.statBlock ?? { weaponSkill: null, hpMax: null }),
+      combatValue: value,
+      noBulletDodge: true,
+    },
+    // Zerowane Cechy zjawiają się dopiero w `cpredSheetRollSheet`; tutaj
+    // zostaje sama deklaracja, żeby jedno miejsce rozstrzygało, jak Wartość
+    // bojowa wchodzi do rzutu.
+    skills: { ...data.skills, [CPRED_EVASION_SKILL_ID]: 0 },
   };
 }

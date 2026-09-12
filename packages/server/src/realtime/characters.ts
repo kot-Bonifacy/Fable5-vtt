@@ -208,6 +208,19 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // and a discount reachable without the opposed roll that buys it is a
       // discount nobody rolled for — the same door `eddies` closed in 23b.
       if (sheet.haggle !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 39: efekty czasowe na Cechach też. Nałożenie ma cenę — wylosować
+      // 1k6, zapisać wynik i policzyć oba terminy z rundy i zegara świata —
+      // a łata karty nie ma czym żadnej z nich zapłacić. Odmowa jest **dla
+      // wszystkich, także dla MG**, inaczej niż przy Reputacji: MG ma na to
+      // `character:stat-effect`, a lista wpisana ręką byłaby listą efektów bez
+      // terminu, czyli takich, które nie zejdą nigdy.
+      if (sheet.statEffects !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 41: co postać trzyma w rękach, zmienia wyłącznie `weapon:draw`.
+      // Schowanie broni kosztuje Akcję (s. 168), a łata karty nie ma czym jej
+      // zapłacić — ta sama umowa, co przy Zmyśle Walki. Odmowa jest **dla
+      // wszystkich, także dla MG**: MG przestawia ręce figury tym samym
+      // zdarzeniem, którym robi to gracz, więc niczego mu to nie odbiera.
+      if (sheet.drawnWeaponRowIds !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       // A patch that changes `roleId` — the GM's plain field since 29a — can
       // take an Ability off the sheet and leave its purse behind. Emptied here,

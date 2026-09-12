@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type MouseEvent,
   type ReactNode,
   type UIEvent,
 } from 'react';
@@ -20,8 +19,16 @@ import type {
   HandoutLogEntry,
   JournalLogEntry,
   RollResult,
+  TimeLogEntry,
 } from '@vtt/shared';
-import { ROLE_GM, chatCategoryOf, chatCompactLine, isCheckCallOpen } from '@vtt/shared';
+import {
+  ROLE_GM,
+  chatCategoryOf,
+  gameDaysLabel,
+  isCheckCallOpen,
+  isCheckRequestOpen,
+  isInventoryMoveOpen,
+} from '@vtt/shared';
 import {
   allowCombatAction,
   fetchHandouts,
@@ -35,6 +42,10 @@ import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
+import { CheckRequestRow } from './CheckRequest.js';
+import { InventoryMoveRow } from './InventoryMove.js';
+import { SightingRow } from './SightingRow.js';
+import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -319,6 +330,41 @@ function RecoveryRow({ message, entry }: { message: ChatMessageView; entry: Reco
         </ul>
       ) : null}
       {entry.note ? <p className="chat-economy-summary">{entry.note}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Skok zegara świata (etap 37).
+ *
+ * Karta bez przycisków i bez liczb: „minęła noc" jest cezurą, a wszystko, co
+ * z niej wynika — rozliczenie, odpoczynek — czeka w oknie zegara u MG. Chwila
+ * sprzed skoku stoi obok nowej, bo dziennik sesji czyta się później i wtedy
+ * „skądś dokądś" jest całą treścią wiersza.
+ */
+function TimeRow({ message, entry }: { message: ChatMessageView; entry: TimeLogEntry }) {
+  return (
+    <div className={`chat-message chat-time${entry.backwards ? ' chat-time--back' : ''}`}>
+      <div className="chat-message-meta">
+        <span className="chat-message-author">Zegar świata</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <p className="chat-time-title">
+        {entry.title}
+        {entry.days > 0 ? (
+          <span className="chat-time-days">{gameDaysLabel(entry.days)}</span>
+        ) : null}
+      </p>
+      <p className="chat-time-span">
+        <span className="chat-time-from">{entry.from}</span>
+        <span aria-hidden="true"> → </span>
+        <strong>{entry.to}</strong>
+      </p>
+      {entry.backwards ? (
+        <p className="chat-economy-summary">
+          Cofnięcie zegara niczego nie odwraca — pobrane pozostaje pobrane.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -634,95 +680,6 @@ function NoteRow({ item }: { item: Extract<ChatItem, { type: 'note' }> }) {
   );
 }
 
-/**
- * Zaznaczanie tekstu kończy się kliknięciem, więc bez tego sprawdzenia każde
- * skopiowanie linijki rozwijałoby wiersz pod palcami.
- */
-function clickWithoutSelection(event: MouseEvent, run: () => void): void {
-  const selection = window.getSelection();
-  if (selection && !selection.isCollapsed && selection.toString().length > 0) return;
-  event.preventDefault();
-  run();
-}
-
-/**
- * Wypowiedź w trybie zwartym (01.09.2026).
- *
- * Tekst zostaje **w całości** — rozmowy się nie streszcza, bo streszczenie
- * rozmowy jest jej utratą. Zwija się wyłącznie meta: imię i godzina wchodzą
- * w tę samą linię, więc „Wchodzę." zajmuje jeden wiersz zamiast dwóch.
- */
-function CompactTalkRow({
-  message,
-  myUserId,
-  onExpand,
-}: {
-  message: ChatMessageView;
-  myUserId: string;
-  onExpand: () => void;
-}) {
-  const isWhisper = message.kind === 'whisper';
-  const whisperLabel =
-    message.authorId === myUserId
-      ? `→ ${message.recipientName ?? '?'}`
-      : `szept od ${message.authorName}`;
-  const revealedChars = useTypewriterStore((state) => state.revealed[message.id]);
-  const typing = revealedChars !== undefined;
-  const text = typing ? message.text.slice(0, revealedChars) : message.text;
-
-  return (
-    <button
-      type="button"
-      className={`chat-message chat-compact-row chat-compact-row--talk${
-        isWhisper ? ' chat-message--whisper' : ''
-      }${message.botId ? ' chat-message--npc' : ''}`}
-      title="Kliknij, aby rozwinąć wiersz"
-      onClick={(event) => clickWithoutSelection(event, onExpand)}
-    >
-      <span className="chat-message-time">{formatTime(message.createdAt)}</span>
-      <Speaker message={message} />
-      <span className="chat-message-author">{message.authorName}</span>
-      {isWhisper && <span className="chat-whisper-label">{whisperLabel}</span>}
-      <span className="chat-compact-text">
-        {text}
-        {typing && <span className="chat-typewriter-cursor" aria-hidden />}
-      </span>
-    </button>
-  );
-}
-
-/**
- * Karta mechaniczna ściśnięta do jednej linii. Treść bierze się z
- * `chatCompactLine` — funkcji czystej, wspólnej i pokrytej testami — więc
- * zwarty wiersz nigdy nie powie czegoś, czego nie ma w pełnej karcie.
- */
-function CompactCardRow({
-  message,
-  line,
-  onExpand,
-}: {
-  message: ChatMessageView;
-  line: NonNullable<ReturnType<typeof chatCompactLine>>;
-  onExpand: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`chat-message chat-compact-row chat-compact-row--${chatCategoryOf(message.kind)}`}
-      title="Kliknij, aby rozwinąć pełną kartę"
-      onClick={(event) => clickWithoutSelection(event, onExpand)}
-    >
-      <span className="chat-message-time">{formatTime(message.createdAt)}</span>
-      <span className="chat-message-author">{line.actor}</span>
-      <span
-        className={`chat-compact-summary${line.tone ? ` chat-compact-summary--${line.tone}` : ''}`}
-      >
-        {line.summary}
-      </span>
-    </button>
-  );
-}
-
 /** Pełna karta wiadomości — ten sam wybór rodzaju, co przed filtrami. */
 function FullMessageRow({
   message,
@@ -764,8 +721,23 @@ function FullMessageRow({
   if (message.kind === 'check' && message.check) {
     return <CheckCallRow message={message} entry={message.check} />;
   }
+  if (message.kind === 'request' && message.request) {
+    return <CheckRequestRow message={message} entry={message.request} />;
+  }
+  if (message.kind === 'inventory' && message.inventory) {
+    return <InventoryMoveRow message={message} entry={message.inventory} />;
+  }
+  if (message.kind === 'sighting' && message.sighting) {
+    return <SightingRow entry={message.sighting} />;
+  }
   if (message.kind === 'recovery' && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;
+  }
+  if (message.kind === 'time' && message.time) {
+    return <TimeRow message={message} entry={message.time} />;
+  }
+  if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.rolltable) {
+    return <RollTableRow message={message} entry={message.rolltable} />;
   }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;
@@ -773,67 +745,30 @@ function FullMessageRow({
   return <MessageRow message={message} myUserId={myUserId} {...(trace ? { trace } : {})} />;
 }
 
-/**
- * Jeden wiersz feedu: zwarty albo pełny.
- *
- * Rozwinięcie jest **per wiersz i tymczasowe** (żyje w stanie panelu, nie
- * w `localStorage`): tryb zwarty jest nastawieniem na całą sesję, a rozwinięcie
- * — jednym zajrzeniem w kartę, po której wraca się do przeglądania.
- */
+/** Jeden wiersz feedu: notatka systemowa albo pełna karta wiadomości. */
 function FeedRow({
   item,
   isGm,
   myUserId,
   trace,
-  compact,
-  expanded,
-  onToggleExpand,
   canResolveProposal,
 }: {
   item: ChatItem;
   isGm: boolean;
   myUserId: string;
   trace?: BotTraceBroadcast;
-  compact: boolean;
-  expanded: boolean;
-  onToggleExpand: () => void;
   canResolveProposal: boolean;
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
-  const { message } = item;
-  const full = (
+  return (
     <FullMessageRow
-      message={message}
+      message={item.message}
       isGm={isGm}
       myUserId={myUserId}
       canResolveProposal={canResolveProposal}
       {...(trace ? { trace } : {})}
     />
   );
-  if (!compact) return full;
-  if (expanded) {
-    // Rozwinięta karta ma własne przyciski, więc nie da się jej zwinąć
-    // kliknięciem w tło — od tego jest strzałka w rogu.
-    return (
-      <div className="chat-expanded">
-        <button
-          type="button"
-          className="chat-collapse"
-          title="Zwiń wiersz z powrotem do jednej linii"
-          aria-label="Zwiń wiersz"
-          onClick={onToggleExpand}
-        >
-          ▴
-        </button>
-        {full}
-      </div>
-    );
-  }
-  const line = chatCompactLine(message);
-  if (!line) {
-    return <CompactTalkRow message={message} myUserId={myUserId} onExpand={onToggleExpand} />;
-  }
-  return <CompactCardRow message={message} line={line} onExpand={onToggleExpand} />;
 }
 
 const CATEGORY_BUTTONS: { id: ChatCategory; icon: string; label: string; title: string }[] = [
@@ -866,11 +801,18 @@ function hiddenLabel(count: number): string {
  */
 function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
-  const { proposal, check, kind } = item.message;
+  const { proposal, check, request, inventory, kind } = item.message;
   // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
   // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
   // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
   if (kind === 'check') return check !== undefined && isCheckCallOpen(check);
+  // Prośba o Test (etap 40) czeka na próg od MG — z tego samego powodu, co
+  // wezwanie wyżej, i tym bardziej, bo jest cicha: gracz nie ma jak się
+  // upomnieć, jeśli filtr zwinie jego pytanie.
+  if (kind === 'request') return request !== undefined && isCheckRequestOpen(request);
+  // Propozycja przekazania (38b) czeka na „Przyjmij" dokładnie tak, jak
+  // wezwanie czeka na kubek — a schowana pod separatorem zawisłaby na dobre.
+  if (kind === 'inventory') return inventory !== undefined && isInventoryMoveOpen(inventory);
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }
@@ -901,15 +843,9 @@ export function ChatPanel() {
   const myUserId = user?.id ?? '';
 
   const categories = useChatFilterStore((s) => s.categories);
-  const compact = useChatFilterStore((s) => s.compact);
   const toggleCategory = useChatFilterStore((s) => s.toggleCategory);
-  const soloCategory = useChatFilterStore((s) => s.soloCategory);
-  const showAll = useChatFilterStore((s) => s.showAll);
-  const toggleCompact = useChatFilterStore((s) => s.toggleCompact);
   /** Rozwinięte grupy ukrytych wierszy — klucz bierze się z pierwszego w grupie. */
   const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
-  /** Karty rozwinięte mimo trybu zwartego, po id wiadomości. */
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(() => new Set());
 
   // Draft lives in the store so the dice cup can read and execute commands.
   const draft = useChatStore((s) => s.draft);
@@ -941,12 +877,6 @@ export function ChatPanel() {
     return out;
   }, [items, categories, openRuns, myUserId, isGm]);
 
-  const hiddenCount = useMemo(
-    () =>
-      feed.reduce((sum, entry) => (entry.kind === 'hidden' ? sum + entry.items.length : sum), 0),
-    [feed],
-  );
-
   useLayoutEffect(() => {
     const feedEl = feedRef.current;
     if (!feedEl) return;
@@ -957,9 +887,9 @@ export function ChatPanel() {
       feedEl.scrollTop = feedEl.scrollHeight;
     }
     // Streamed bot text grows the feed too — follow it like a new message.
-    // Zmiana filtrów albo gęstości przestawia całą wysokość feedu, więc feed
-    // trzyma się dna dokładnie tak samo jak przy nowej wiadomości.
-  }, [feed, compact, expandedIds, loadingHistory, botActivity]);
+    // Zmiana filtrów przestawia całą wysokość feedu, więc feed trzyma się dna
+    // dokładnie tak samo jak przy nowej wiadomości.
+  }, [feed, loadingHistory, botActivity]);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const feedEl = event.currentTarget;
@@ -987,14 +917,6 @@ export function ChatPanel() {
     });
   }
 
-  function toggleExpanded(id: number) {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }
-
   function renderItem(item: ChatItem, key: string) {
     const trace = item.type === 'message' ? botTraces[item.message.id] : undefined;
     return (
@@ -1003,11 +925,6 @@ export function ChatPanel() {
         item={item}
         isGm={isGm}
         myUserId={myUserId}
-        compact={compact}
-        expanded={item.type === 'message' && expandedIds.has(item.message.id)}
-        onToggleExpand={() => {
-          if (item.type === 'message') toggleExpanded(item.message.id);
-        }}
         canResolveProposal={
           item.type === 'message' && (isGm || item.message.proposal?.controllerUserId === myUserId)
         }
@@ -1029,40 +946,15 @@ export function ChatPanel() {
               type="button"
               className={`chat-filter${categories[category.id] ? ' chat-filter--on' : ''}`}
               aria-pressed={categories[category.id]}
-              title={`${category.title}. Alt+klik — pokaż tylko tę grupę.`}
-              onClick={(event) =>
-                event.altKey ? soloCategory(category.id) : toggleCategory(category.id)
-              }
+              title={category.title}
+              onClick={() => toggleCategory(category.id)}
             >
               <span aria-hidden>{category.icon}</span> {category.label}
             </button>
           ))}
-          <button
-            type="button"
-            className={`chat-filter${compact ? ' chat-filter--on' : ''}`}
-            aria-pressed={compact}
-            title="Tryb zwarty: karty mechaniki kurczą się do jednej linii (wypowiedzi zostają w całości). Klik w wiersz rozwija go z powrotem."
-            onClick={toggleCompact}
-          >
-            <span aria-hidden>≡</span> Zwarty
-          </button>
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              className="chat-filter chat-filter--reset"
-              title="Włącz z powrotem wszystkie grupy"
-              onClick={showAll}
-            >
-              Pokaż wszystko
-            </button>
-          )}
         </div>
       </div>
-      <div
-        className={`chat-feed${compact ? ' chat-feed--compact' : ''}`}
-        ref={feedRef}
-        onScroll={onScroll}
-      >
+      <div className="chat-feed" ref={feedRef} onScroll={onScroll}>
         {!synced && <p className="placeholder-text">Synchronizacja…</p>}
         {synced && !campaign && (
           <p className="placeholder-text">Brak aktywnej kampanii — czat jest niedostępny.</p>

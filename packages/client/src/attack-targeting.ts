@@ -15,7 +15,7 @@ import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   STATIST_WEAPON_ROW_ID,
   WALL_REACH_M,
-  combatProfileSheetForSkill,
+  cpredSheetRollSheet,
   coverInLineOfFire,
   distanceToCover,
   formatMetres,
@@ -31,7 +31,6 @@ import {
   metresPerPixel,
   planCpredAttack,
   resolveWeapon,
-  sanitizeCombatProfile,
   snapToSquareCentre,
   tokenCentre,
 } from '@vtt/shared';
@@ -572,34 +571,36 @@ function sheetFighter(characterId: string): Fighter {
 }
 
 /**
- * A statist's profile dressed as a sheet (stage 16b) — the same synthesis the
- * server runs, so the preview and the authoritative roll agree on the DV.
+ * Karta figury prowadzonej przez żeton, przygotowana do rzutu (etap 38a).
  *
- * The skill is filled in from the weapon type here as well; without it the
- * preview would show the shot as untrained and the cup would advertise a
- * modifier the server does not use.
+ * To samo podstawienie, które robi serwer (`sheetForRoll`), żeby podgląd
+ * i rozstrzygający rzut zgadzały się co do PT. Umiejętność bierze się z typu
+ * broni: bez tego podgląd pokazywałby strzał jak niewyszkolony i kubek
+ * reklamowałby modyfikator, którego serwer nie użyje.
  */
 function statistFighter(token: TokenView, weaponRowId: string): Fighter {
-  if (!token.combatProfile) {
-    return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
+  const character = token.characterId
+    ? useCharacterStore.getState().characters[token.characterId]
+    : undefined;
+  if (!character) {
+    return 'Ta figura nie ma karty — załóż ją w „Edytuj…” w menu figury.';
   }
-  const profile = sanitizeCombatProfile(token.combatProfile);
-  const hp = token.hp ?? { current: 1, max: 1 };
   const compendium = useCompendiumStore.getState();
-  const entry = profile.weaponId ? compendium.entries[profile.weaponId] : undefined;
+  const row = character.data.weapons.find((weapon) => weapon.id === STATIST_WEAPON_ROW_ID);
+  const entry = row?.compendiumId ? compendium.entries[row.compendiumId] : undefined;
   const skillId =
     entry && isWeaponEntry(entry)
       ? (resolveWeapon(entry, {
           weaponTypeById: new Map(Object.entries(compendium.weaponTypeById)),
         }).skillId ?? null)
       : null;
-  const data = combatProfileSheetForSkill(profile, hp, skillId);
-  // The armed weapon row of a statist is always the synthesised one; anything
-  // else in `targeting` would be a stale id from a sheet.
+  // The armed weapon row of a figure statted from the token menu is always the
+  // one the quick editor writes; anything else in `targeting` would be a stale
+  // id from a sheet.
   if (weaponRowId !== STATIST_WEAPON_ROW_ID) {
-    return 'Ten token strzela wyłącznie bronią ze swojego profilu bojowego.';
+    return 'Ta figura strzela wyłącznie bronią wpisaną w menu figury.';
   }
-  return { data, name: token.name };
+  return { data: cpredSheetRollSheet(character.data, skillId), name: token.name };
 }
 
 /** „Zgrzyt 9 → Ganger · 24 m · PT 20" — what the cup says before the throw. */

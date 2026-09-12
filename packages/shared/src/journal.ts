@@ -76,6 +76,16 @@ export interface JournalPlayerEntry {
   /** Dzień, którego dotyczy sesja (ISO, sama data) — po nim sortuje się dziennik. */
   sessionDate: string;
   /**
+   * Data w świecie gry w chwili zapisu (etap 37, „2045-03-15"); null na wpisach
+   * sprzed etapu 37.
+   *
+   * **Obok** `sessionDate`, nie zamiast: jedna mówi, kiedy drużyna siedziała
+   * przy stole, druga — kiedy to się działo w Night City. Wpisuje ją serwer
+   * z zegara kampanii, nigdy klient: gdyby przychodziła w łacie, kronikę dałoby
+   * się przedatować, a to jedyna rzecz, której kronika nie może pozwolić.
+   */
+  worldDate: string | null;
+  /**
    * Handouty przypięte do wpisu. U gracza **wyłącznie te, które dostał** —
    * filtruje je zapytanie na serwerze, nie widok.
    */

@@ -123,3 +123,17 @@ export function tokenErrorText(code: string | undefined): string {
       return `Nie udało się zmienić figury: ${code ?? 'nieznany błąd'}.`;
   }
 }
+
+/** Odmowy łatki sceny puszczanej z mapy — dziś wyłącznie miejsce startu (11.09). */
+export function sceneErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'SCENE_NOT_FOUND':
+      return 'Tej sceny już nie ma — punkt startu nie został zapisany.';
+    case 'FORBIDDEN':
+      return 'Miejsce startu wyznacza MG.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — punkt startu nie został zapisany.';
+    default:
+      return `Nie udało się zapisać miejsca startu: ${code ?? 'nieznany błąd'}.`;
+  }
+}

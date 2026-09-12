@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react';
 import type {
+  CpredStatId,
   ArmorLocation,
   CompendiumEntry,
+  EconomyPayee,
   CpredArmorRow,
   CpredSkillDefinition,
   CpredAttachmentProfile,
@@ -21,10 +23,16 @@ import type {
   CpredWeaponRow,
   CriticalInjuryEntry,
   LedgerEntryView,
-  PortraitUploadResult,
+  PortraitAssetView,
   ResolvedWeapon,
 } from '@vtt/shared';
 import {
+  CPRED_HOUR_S,
+  CPRED_STAT_EFFECT_VALUE_MAX,
+  cpredEffectiveStats,
+  describeCpredStatEffect,
+  describeCpredStatEffectTimer,
+  describeCpredStatEffectValue,
   CPRED_LANGUAGE_SKILL_ID,
   cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -90,11 +98,10 @@ import {
   effectiveArmor,
   emptyLifepathEnemy,
   emptyLifepathPerson,
-  effectiveCpredStats,
   formatEddies,
   formatLedgerAmount,
   groupedSkills,
-  hpMax,
+  cpredSheetHpMax,
   humanityMaxWith,
   isAmmoEntry,
   attachmentOptionsFor,
@@ -112,6 +119,7 @@ import {
   monthlyCostOf,
   purchasedSheetRow,
   resolveWeapon,
+  cpredDrawnWeapons,
   searchCompendium,
   seriousWoundThreshold,
   skillBase,
@@ -161,16 +169,23 @@ import {
   restForADay,
   useDose,
   clearWeaponJam,
+  drawWeapon,
   reloadWeapon,
   sendCyberwareAction,
+  setStatEffect,
   setWeaponAttachment,
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
+import { askForCheck } from '../stores/checkStore.js';
+import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
+import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { useInventoryStore } from '../stores/inventoryStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
@@ -185,6 +200,7 @@ import {
 } from '../stores/rollStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { NumberStepper } from './NumberStepper.js';
 
 type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 
@@ -389,6 +405,17 @@ interface TabProps {
 }
 
 /**
+ * Jak wiersz karty zaczyna rzut: Umiejętność albo Cecha, `Shift` (kubek od
+ * ręki) i `Alt` (prośba o Test, etap 40). Alias, bo ten sam podpis wędruje
+ * przez trzy komponenty strony pierwszej.
+ */
+type StartRoll = (
+  target: Omit<RollTarget, 'characterId' | 'characterName'>,
+  shift: boolean,
+  alt?: boolean,
+) => void;
+
+/**
  * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a + 27b).
  *
  * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
@@ -411,17 +438,37 @@ function FrontPage({
   setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
+  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Prośba o Test (etap 40) ma sens wyłącznie na własnej karcie i wyłącznie
+  // u gracza: MG nie prosi sam siebie, ma wezwanie z etapu 32.
+  const mayAsk = !isGm && character.ownerId === userId;
 
   /**
-   * Click opens the roll dialog, Shift+click loads the cup straight away with
-   * the last used settings. Either way the throw itself happens at the cup.
+   * Klik otwiera okno rzutu, Shift+klik ładuje kubek od razu z ostatnimi
+   * ustawieniami, **Alt+klik prosi MG o Test** (etap 40). Tak czy inaczej sam
+   * rzut dzieje się przy kubku — a przy prośbie dopiero po zgodzie MG.
+   *
+   * Alt dopisał się do gotowej gramatyki modyfikatorów jedną gałęzią i niczego
+   * na karcie nie przesunął: wiersz Umiejętności to cztery komórki siatki,
+   * w których nie ma miejsca na piąty element.
    */
-  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
+  function startRoll(
+    target: Omit<RollTarget, 'characterId' | 'characterName'>,
+    shift: boolean,
+    alt = false,
+  ) {
     const full: RollTarget = {
       characterId: character.id,
       characterName: character.name,
       ...target,
     };
+    // Prośba obejmuje wyłącznie Umiejętność i Cechę; Alt na wierszu obrażeń
+    // ma otworzyć zwykłe okno rzutu, a nie cicho nic nie zrobić.
+    if (alt && mayAsk && (full.kind === 'skill' || full.kind === 'stat')) {
+      askForCheck(full, data, registry);
+      return;
+    }
     if (shift) quickLoadCup(full, data, registry);
     else useRollStore.getState().openDialog(full);
   }
@@ -435,9 +482,130 @@ function FrontPage({
         saveName={saveName}
         setIssues={setIssues}
       />
-      <StatColumn data={data} saveData={saveData} startRoll={startRoll} />
-      <SkillColumns data={data} saveData={saveData} startRoll={startRoll} />
+      <StatColumn data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
+      <SkillColumns data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
+      <RoleAbilityStrip character={character} data={data} saveData={saveData} />
       <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
+    </div>
+  );
+}
+
+/**
+ * Ogon podpowiedzi przy wierszu, z którego da się rzucić.
+ *
+ * Jedna funkcja zamiast dwóch napisów, bo dwa wiersze karty (Cecha i BAZA
+ * Umiejętności) muszą mówić o Alt+kliku dokładnie to samo — i tylko wtedy, gdy
+ * ten widz naprawdę może poprosić.
+ */
+function rollHintFor(mayAsk: boolean): string {
+  return mayAsk ? ' — Shift pomija okno, Alt prosi MG o Test' : ' — Shift pomija okno';
+}
+
+/**
+ * Pas „Zdolność Specjalna" pod trzema kolumnami strony pierwszej (06.09.2026).
+ *
+ * Dziewięć paneli Ról z etapów 30a–30d mieszkało do tej sesji **w kolumnie
+ * tożsamości**, obok portretu i notatek. Kolumna ma 15 rem i rozciągnąć się nie
+ * da (umowa z 30a), a Efekt Charyzmy czy Medycyna Medyka to proza plus trzy
+ * progi z przyciskami — więc kolumna rosła dwa razy wyżej od Cech i Umiejętności,
+ * a pół strony pierwszej było białą plamą. Wiersz „Zdolność Specjalna" z rangą
+ * **zostaje** w kolumnie, bo tak jest na wydruku; przenosi się wyłącznie to, co
+ * podręcznik drukuje osobno — rozwinięcie Zdolności.
+ *
+ * Pas idzie przez całą szerokość siatki, dokładnie tak, jak „Broń i pancerz"
+ * z etapu 27b, i znika bez śladu, gdy Rola nie ma czego w nim postawić (osiem
+ * z dziewięciu Ról ma samą rangę).
+ */
+/**
+ * Zdolności, które mają w karcie **własny panel**, a nie samą rangę.
+ *
+ * Lista istnieje po to, żeby pas umiał odpowiedzieć „nie mam czego pokazać"
+ * jednym warunkiem, zamiast dziewięciu — a dziesiąty panel dopisuje się w tym
+ * jednym miejscu i w gałęzi niżej.
+ */
+const ROLE_ABILITY_PANEL_IDS = [
+  CPRED_COMBAT_AWARENESS_ABILITY,
+  CPRED_MEDICINE_ABILITY,
+  CPRED_FABRICATION_ABILITY,
+  CPRED_BACKUP_ABILITY,
+  CPRED_TEAMWORK_ABILITY,
+  CPRED_CHARISMA_ABILITY,
+  CPRED_OPERATOR_ABILITY,
+  CPRED_MOTO_ABILITY,
+  CPRED_CREDIBILITY_ABILITY,
+] as const;
+
+function RoleAbilityStrip({ character, data }: TabProps & { character: CharacterSheetView }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
+  const panels = ROLE_ABILITY_PANEL_IDS.filter(
+    (ability) => cpredRoleAbilityRank(data, registry, ability) !== null,
+  );
+  if (panels.length === 0) return null;
+
+  return (
+    <div className="cp-strip cp-role-strip">
+      <h3 className="cp-section">Zdolność Specjalna{role ? ` — ${role.ability}` : ''}</h3>
+      <div className="cp-role-cards">
+        {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
+            reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
+            to jej rozwinięcie, a nie osobna część karty. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CombatAwarenessPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30b: dwie kolejne Zdolności, których punkty się rozdziela —
+            Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
+            panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <SpecialtyPanel characterId={character.id} ability="medicine" />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <SpecialtyPanel characterId={character.id} ability="fabrication" />
+          </div>
+        )}
+        {/* Etap 30c: dwie Zdolności, które stawiają na mapie cudzych ludzi —
+            Wsparcie Stróża Prawa i zespół Korpo. Stoją w tym samym miejscu, co
+            trzy panele wyżej, bo to nadal rozwinięcie wiersza Zdolności. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_BACKUP_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <BackupPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <TeamPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30d: cztery ostatnie Zdolności — Rockera, Fixera, Nomady
+            i Media. Żadna nie dotyka walki, więc żadna nie ma domu w pasku
+            akcji: stoją tylko tutaj, pod wierszem Zdolności, jak sześć
+            wcześniejszych. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CharismaPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_OPERATOR_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <OperatorPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <MotoPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CredibilityPanel characterId={character.id} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -455,7 +623,7 @@ function Arsenal({
   startRoll,
 }: TabProps & {
   character: CharacterSheetView;
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
 }) {
   return (
     <section className="cp-arsenal">
@@ -482,7 +650,7 @@ function IdentityColumn({
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [uploading, setUploading] = useState(false);
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
-  const maxHp = hpMax(data.stats);
+  const maxHp = cpredSheetHpMax(data);
   const wound = woundState(data.hpCurrent, data.stats);
   const woundPenalty = woundCheckPenalty(wound);
   const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
@@ -499,9 +667,14 @@ function IdentityColumn({
     }
     setUploading(true);
     try {
-      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
-      queueCharacterSave(character.id, { portraitUrl: result.url });
+      // Od 12.09 jedna trasa dla każdego portretu: plik ląduje w puli
+      // kampanii, dostaje wiersz i **kadr na mapie**, który MG od razu ustawia
+      // w oknie otwartym niżej.
+      const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
+      usePortraitStore.getState().applyUpsert(asset);
+      queueCharacterSave(character.id, { portraitUrl: asset.url });
       flushCharacterSave(character.id);
+      usePortraitStore.getState().openCrop(asset.id);
       setIssues((current) => {
         const next = { ...current };
         delete next.portrait;
@@ -514,10 +687,12 @@ function IdentityColumn({
     }
   }
 
-  function setPool(key: 'hpCurrent' | 'humanityCurrent', event: ChangeEvent<HTMLInputElement>) {
+  // Człowieczeństwo zostaje polem do wpisania: sięga 100, a strzałki mają sens
+  // do dwóch cyfr (decyzja MG z 06.09).
+  function setHumanity(event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
     if (value === undefined) return;
-    saveData({ [key]: value }, key);
+    saveData({ humanityCurrent: value }, 'humanityCurrent');
   }
 
   return (
@@ -529,8 +704,10 @@ function IdentityColumn({
           ) : (
             <span className="cp-portrait-empty">brak portretu</span>
           )}
-          {/* Wgranie własnego pliku zostało **przy MG** (23.08) — gracz
-              wybiera portret z puli kampanii pod ramką. */}
+          {/* Wgranie własnego pliku zostało **przy MG** (23.08). Od 12.09 przy
+              MG została też sama **zmiana** portretu: gracz wybiera twarz raz,
+              w kreatorze, i w trakcie rozgrywki już jej nie podmienia (decyzja
+              MG). Zostaje mu kadr na mapie — przycisk pod ramką. */}
           {isGm ? (
             <label className="cp-portrait-upload">
               {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
@@ -545,13 +722,23 @@ function IdentityColumn({
             </label>
           ) : null}
         </div>
-        <PortraitPicker
-          selectedUrl={character.portraitUrl}
-          onPick={(url) => {
-            queueCharacterSave(character.id, { portraitUrl: url });
-            flushCharacterSave(character.id);
-          }}
-        />
+        <div className="cp-portrait-actions">
+          <PortraitCropButton portraitUrl={character.portraitUrl} />
+          {!isGm && character.portraitUrl ? (
+            <span className="cp-portrait-locked">
+              Portret wybiera się raz, przy tworzeniu postaci. Zmienia go MG.
+            </span>
+          ) : null}
+        </div>
+        {isGm ? (
+          <PortraitPicker
+            selectedUrl={character.portraitUrl}
+            onPick={(url) => {
+              queueCharacterSave(character.id, { portraitUrl: url });
+              flushCharacterSave(character.id);
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="cp-panel">
@@ -598,22 +785,18 @@ function IdentityColumn({
           </span>
           {role && (
             <span className="cp-rank" title="Ranga zdolności roli">
-              <input
-                type="number"
+              <NumberStepper
                 min={ROLE_RANK_MIN}
                 max={ROLE_RANK_MAX}
                 value={data.roleAbilityRank}
                 readOnly={!isGm}
-                title={
-                  isGm
-                    ? undefined
-                    : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
-                }
-                onChange={(e) => {
-                  const value = parseNumberInput(e);
-                  if (value !== undefined) saveData({ roleAbilityRank: value }, 'roleAbilityRank');
-                }}
-                aria-label={`Ranga: ${role.ability}`}
+                {...(isGm
+                  ? {}
+                  : {
+                      title: 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.',
+                    })}
+                onChange={(value) => saveData({ roleAbilityRank: value }, 'roleAbilityRank')}
+                label={`Ranga: ${role.ability}`}
               />
             </span>
           )}
@@ -636,20 +819,17 @@ function IdentityColumn({
                 {former.ability}
               </span>
               <span className="cp-rank" title="Ranga zdolności poprzedniej roli">
-                <input
-                  type="number"
+                <NumberStepper
                   min={ROLE_RANK_MIN}
                   max={ROLE_RANK_MAX}
                   value={entry.rank}
                   readOnly={!isGm}
-                  title={
-                    isGm
-                      ? undefined
-                      : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
-                  }
-                  onChange={(e) => {
-                    const value = parseNumberInput(e);
-                    if (value === undefined) return;
+                  {...(isGm
+                    ? {}
+                    : {
+                        title: 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.',
+                      })}
+                  onChange={(value) =>
                     saveData(
                       {
                         formerRoles: data.formerRoles.map((row) =>
@@ -657,72 +837,14 @@ function IdentityColumn({
                         ),
                       },
                       'formerRoles',
-                    );
-                  }}
-                  aria-label={`Ranga: ${former.ability}`}
+                    )
+                  }
+                  label={`Ranga: ${former.ability}`}
                 />
               </span>
             </div>
           );
         })}
-        {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
-            reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
-            to jej rozwinięcie, a nie osobna część karty. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CombatAwarenessPanel characterId={character.id} />
-          </div>
-        )}
-        {/* Etap 30b: dwie kolejne Zdolności, których punkty się rozdziela —
-            Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
-            panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <SpecialtyPanel characterId={character.id} ability="medicine" />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <SpecialtyPanel characterId={character.id} ability="fabrication" />
-          </div>
-        )}
-        {/* Etap 30c: dwie Zdolności, które stawiają na mapie cudzych ludzi —
-            Wsparcie Stróża Prawa i zespół Korpo. Stoją w tym samym miejscu, co
-            trzy panele wyżej, bo to nadal rozwinięcie wiersza Zdolności. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_BACKUP_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <BackupPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <TeamPanel characterId={character.id} />
-          </div>
-        )}
-        {/* Etap 30d: cztery ostatnie Zdolności — Rockera, Fixera, Nomady
-            i Media. Żadna nie dotyka walki, więc żadna nie ma domu w pasku
-            akcji: stoją tylko tutaj, pod wierszem Zdolności, jak sześć
-            wcześniejszych. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CharismaPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_OPERATOR_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <OperatorPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <MotoPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CredibilityPanel characterId={character.id} />
-          </div>
-        )}
         <div className="cp-field cp-notes">
           <span className="cp-label">Notatki</span>
           <textarea
@@ -747,7 +869,7 @@ function IdentityColumn({
               min={HUMANITY_MIN}
               max={humanityCeiling}
               value={data.humanityCurrent}
-              onChange={(e) => setPool('humanityCurrent', e)}
+              onChange={setHumanity}
               aria-label="Człowieczeństwo"
             />
             <span className="cp-of">z</span>
@@ -760,13 +882,12 @@ function IdentityColumn({
         <div className="cp-field cp-field--notch cp-pool cp-span2" title="Punkty Wytrzymałości">
           <span className="cp-label">Punkty Wytrz.</span>
           <span className="cp-pool-value">
-            <input
-              type="number"
+            <NumberStepper
               min={0}
               max={maxHp}
               value={data.hpCurrent}
-              onChange={(e) => setPool('hpCurrent', e)}
-              aria-label="Punkty Wytrzymałości"
+              onChange={(value) => saveData({ hpCurrent: value }, 'hpCurrent')}
+              label="Punkty Wytrzymałości"
             />
             <span className="cp-of">z</span>
             <span className="cp-pool-max">{maxHp}</span>
@@ -784,7 +905,7 @@ function IdentityColumn({
           title="Test Przeżywalności: rzuć poniżej tej wartości na 1k10"
         >
           <span className="cp-label">Przeżywalność</span>
-          <span className="cp-pool-value">{deathSaveTarget(data.stats)}</span>
+          <span className="cp-pool-value">{deathSaveTarget(cpredEffectiveStats(data))}</span>
         </div>
         <p className="cp-note">−2 do wszystkich akcji kiedy Poważnie Ranny</p>
       </div>
@@ -796,7 +917,7 @@ function IdentityColumn({
           {wound === 'mortal' && (
             <button
               type="button"
-              title={`Rzuć 1k10 pod BC ${deathSaveTarget(data.stats)}. Każdy kolejny test jest o 1 trudniejszy.`}
+              title={`Rzuć 1k10 pod BC ${deathSaveTarget(cpredEffectiveStats(data))}. Każdy kolejny test jest o 1 trudniejszy.`}
               onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
               Test Przeżywalności
@@ -814,6 +935,8 @@ function IdentityColumn({
       )}
 
       <RecoveryPanel data={data} characterId={character.id} />
+
+      <StatEffects data={data} characterId={character.id} />
 
       <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
@@ -848,14 +971,20 @@ function StatColumn({
   data,
   saveData,
   startRoll,
+  mayAsk,
 }: TabProps & {
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
+  mayAsk: boolean;
 }) {
+  const rollHint = rollHintFor(mayAsk);
   const psychosis = cyberpsychosisFor(data.humanityCurrent);
+  // Etap 39: to samo małe pole „z", którym Empatia mówi od 23a, ile jej realnie
+  // działa — teraz dla każdej Cechy, którą przesunął efekt czasowy. Nowego
+  // miejsca na karcie nie ma i mieć nie powinna: gracz szuka tej liczby tam,
+  // gdzie stoi Cecha, a nie w drugim panelu obok.
+  const effective = cpredEffectiveStats(data);
 
-  function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
-    const value = parseNumberInput(event);
-    if (value === undefined) return;
+  function setStat(statId: (typeof CPRED_STAT_IDS)[number], value: number) {
     saveData({ stats: { ...data.stats, [statId]: value } }, `stats.${statId}`);
   }
 
@@ -866,33 +995,30 @@ function StatColumn({
           <button
             type="button"
             className="cp-stat-abbr"
-            onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
-            title={`Rzut: ${CPRED_STAT_LABELS[id].name} (Shift — bez okna)`}
+            onClick={(e: MouseEvent) =>
+              startRoll({ kind: 'stat', statId: id }, e.shiftKey, e.altKey)
+            }
+            title={`Rzut: ${CPRED_STAT_LABELS[id].name}${rollHint}`}
           >
             {CPRED_STAT_LABELS[id].abbr}
           </button>
-          <input
+          <NumberStepper
             className="cp-stat-value"
-            type="number"
             min={CPRED_STAT_MIN}
             max={CPRED_STAT_MAX}
             value={data.stats[id]}
-            onChange={(e) => setStat(id, e)}
-            aria-label={CPRED_STAT_LABELS[id].name}
+            onChange={(value) => setStat(id, value)}
+            label={CPRED_STAT_LABELS[id].name}
           />
           {id === 'luck' && (
             <span className="cp-stat-sub" title="Punkty Szczęścia, które jeszcze zostały">
               <span className="cp-of">z</span>
-              <input
-                type="number"
+              <NumberStepper
                 min={0}
                 max={data.stats.luck}
                 value={data.luckCurrent}
-                onChange={(e) => {
-                  const value = parseNumberInput(e);
-                  if (value !== undefined) saveData({ luckCurrent: value }, 'luckCurrent');
-                }}
-                aria-label="Szczęście: pula bieżąca"
+                onChange={(value) => saveData({ luckCurrent: value }, 'luckCurrent')}
+                label="Szczęście: pula bieżąca"
               />
               <button
                 type="button"
@@ -906,13 +1032,19 @@ function StatColumn({
               </button>
             </span>
           )}
-          {id === 'emp' && psychosis.emp !== data.stats.emp && (
+          {id !== 'luck' && effective[id] !== data.stats[id] && (
             <span
-              className="cp-stat-sub"
-              title="Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)"
+              className={`cp-stat-sub${
+                effective[id] < data.stats[id] ? ' cp-stat-sub--down' : ' cp-stat-sub--up'
+              }`}
+              title={
+                id === 'emp' && effective.emp === psychosis.emp
+                  ? 'Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)'
+                  : `${CPRED_STAT_LABELS[id].name} użyta w rzutach — przesunięta efektami czasowymi`
+              }
             >
               <span className="cp-of">z</span>
-              <span className="cp-stat-sub-value">{psychosis.emp}</span>
+              <span className="cp-stat-sub-value">{effective[id]}</span>
             </span>
           )}
         </div>
@@ -947,21 +1079,29 @@ function SkillColumns({
   data,
   saveData,
   startRoll,
+  mayAsk,
 }: TabProps & {
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
+  mayAsk: boolean;
 }) {
+  const rollHint = rollHintFor(mayAsk);
   const registry = useCharacterStore((s) => s.registry);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const groups = useMemo(() => groupedSkills(registry), [registry]);
   // BAZA has to show what the roll will actually use: EMP follows Humanity
   // once there is chrome in the body (stage 23a), and a sheet that printed the
   // base value would disagree with every card the server sends back.
-  const effective = effectiveCpredStats(data.stats, data.humanityCurrent);
+  //
+  // Od 06.09 przez `cpredEffectiveStats`, a nie `effectiveCpredStats`: to
+  // druga funkcja liczy **także** efekty czasowe z etapu 39, a umowa tamtego
+  // etapu mówi, że jedyną drogą do liczby, na którą pada kość, jest ona. Do tej
+  // sesji kolumny CECHA i BAZA pokazywały REF 8 przy Liszu −3, a kość leciała
+  // z piątki — kolumna Cech obok liczyła się już poprawnie, więc karta
+  // przeczyła sama sobie o dwie komórki dalej.
+  const effective = cpredEffectiveStats(data);
   const columns = useMemo(() => layoutSkillColumns(groups, SKILL_COLUMN_COUNT), [groups]);
 
-  function setLevel(skillId: string, event: ChangeEvent<HTMLInputElement>) {
-    const value = parseNumberInput(event);
-    if (value === undefined) return;
+  function setLevel(skillId: string, value: number) {
     saveData({ skills: { ...data.skills, [skillId]: value } }, 'skills');
   }
 
@@ -994,7 +1134,7 @@ function SkillColumns({
               {block.skills.map((skill) => {
                 const level = data.skills[skill.id] ?? 0;
                 const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
-                const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr}) — Shift pomija okno`;
+                const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr})${rollHint}`;
                 // The rulebook blurb only exists in the private data files.
                 const title = skill.description
                   ? `${skill.description}
@@ -1010,7 +1150,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-roll"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
                         }
                         title={title}
                       >
@@ -1038,19 +1178,18 @@ ${rollTitle}`
                           stronie drugiej). Wpisywalny zostaje u MG — sędzia
                           musi móc naprawić kartę — a cena bez zamkniętych
                           drzwi obok nie jest ceną. */}
-                      <input
-                        type="number"
+                      <NumberStepper
                         min={SKILL_LEVEL_MIN}
                         max={SKILL_LEVEL_MAX}
                         value={level}
                         readOnly={!isGm}
-                        title={
-                          isGm
-                            ? undefined
-                            : 'Poziom podnosi się za PD — panel „Awans” na stronie drugiej.'
-                        }
-                        onChange={(e) => setLevel(skill.id, e)}
-                        aria-label={`Poziom: ${skill.name}`}
+                        {...(isGm
+                          ? {}
+                          : {
+                              title: 'Poziom podnosi się za PD — panel „Awans” na stronie drugiej.',
+                            })}
+                        onChange={(value) => setLevel(skill.id, value)}
+                        label={`Poziom: ${skill.name}`}
                       />
                     </div>
                     <div className="cp-field cp-skill-cell">{effective[skill.stat]}</div>
@@ -1059,7 +1198,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-base"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
                         }
                         title={rollTitle}
                       >
@@ -1418,7 +1557,7 @@ function WeaponStrip({
   character: CharacterSheetView;
   data: CpredCharacterData;
   saveData: TabProps['saveData'];
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
@@ -1428,6 +1567,16 @@ function WeaponStrip({
    * `{ rowId: null }` — dopisuje nowy wiersz, `{ rowId }` — wiąże istniejący.
    */
   const [picking, setPicking] = useState<{ rowId: string | null } | null>(null);
+
+  /**
+   * Co ta postać ma w rękach (etap 41).
+   *
+   * Czytane przez `cpredDrawnWeapons`, a nie wprost z pola, bo tam mieszka
+   * reguła domyślna: karta, przy której nikt nigdy nie dobył ani nie schował
+   * broni, **pokazuje pierwszą z listy**. Guzik „Schowaj" przy niej nie jest
+   * więc martwy — jest pierwszą deklaracją rąk tej figury.
+   */
+  const inHands = cpredDrawnWeapons(data).map((row) => row.id);
 
   /** Catalogue stats of a row, or null for a hand-typed weapon. */
   function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
@@ -1600,6 +1749,45 @@ function WeaponStrip({
                       ⚠ Zacięta — usuń usterkę
                     </button>
                   )}
+                  {/* Etap 41: co jest w rękach, a co w kaburze.
+                      Guzik, a nie plakietka, bo to jest **czynność** z ceną
+                      z podręcznika (s. 168): dobycie za darmo, schowanie za
+                      Akcję. Od pierwszego kliknięcia ta figura ma zadeklarowane
+                      ręce i od tej chwili planer ataku odmawia broni, której
+                      w nich nie ma — dopóki nikt nie kliknie, karta pokazuje
+                      pierwszą broń i niczego nie zabrania. */}
+                  {inHands.includes(row.id) ? (
+                    <span className="weapon-hands">
+                      <span className="weapon-hands-badge" title="Ta broń jest w rękach">
+                        ✊ W rękach
+                      </span>
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Schowanie broni do kabury zabiera Akcję (s. 168)."
+                        onClick={() => drawWeapon(character.id, row.id, 'holster')}
+                      >
+                        Schowaj (Akcja)
+                      </button>
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Upuszczenie trzymanej broni nie wymaga Akcji (s. 168)."
+                        onClick={() => drawWeapon(character.id, row.id, 'drop')}
+                      >
+                        Upuść
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="small-button weapon-draw"
+                      title="Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168)."
+                      onClick={() => drawWeapon(character.id, row.id, 'draw')}
+                    >
+                      Dobądź
+                    </button>
+                  )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
                   <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
                 </td>
@@ -1614,19 +1802,13 @@ function WeaponStrip({
                 <td className="weapon-ammo-cell">
                   {tracksAmmo ? (
                     <>
-                      <input
-                        type="number"
+                      <NumberStepper
                         className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
                         min={0}
                         max={row.ammoMax}
-                        value={row.ammoCurrent}
-                        aria-label={`Stan magazynka: ${row.name}`}
-                        onChange={(e) => {
-                          const value = parseNumberInput(e);
-                          if (value !== undefined) {
-                            updateRow(row.id, { ammoCurrent: Math.min(value, row.ammoMax) });
-                          }
-                        }}
+                        value={Math.min(row.ammoCurrent, row.ammoMax)}
+                        label={`Stan magazynka: ${row.name}`}
+                        onChange={(value) => updateRow(row.id, { ammoCurrent: value })}
                       />
                       <span className="weapon-ammo-max">/{row.ammoMax}</span>
                       <button
@@ -1664,71 +1846,73 @@ function WeaponStrip({
                   />
                 </td>
                 <td className="weapon-actions">
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={empty || !resolved}
-                    title={
-                      !resolved
-                        ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
-                        : empty
-                          ? 'Pusty magazynek — przeładuj'
-                          : resolved.melee
-                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                            : 'Atak — wskaż cel na mapie'
-                    }
-                    onClick={() => aim(row, 'single', resolved)}
-                  >
-                    Atak
-                  </button>
-                  {resolved?.autofire && (
+                  <div className="weapon-actions-row">
                     <button
                       type="button"
                       className="small-button"
-                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                      title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
-                      onClick={() => aim(row, 'autofire', resolved)}
+                      disabled={empty || !resolved}
+                      title={
+                        !resolved
+                          ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
+                          : empty
+                            ? 'Pusty magazynek — przeładuj'
+                            : resolved.melee
+                              ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                              : 'Atak — wskaż cel na mapie'
+                      }
+                      onClick={() => aim(row, 'single', resolved)}
                     >
-                      Seria
+                      Atak
                     </button>
-                  )}
-                  {resolved?.suppressive && (
+                    {resolved?.autofire && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                        title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
+                        onClick={() => aim(row, 'autofire', resolved)}
+                      >
+                        Seria
+                      </button>
+                    )}
+                    {resolved?.suppressive && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                        title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
+                        onClick={() => aim(row, 'suppressive', resolved)}
+                      >
+                        Zapora
+                      </button>
+                    )}
+                    {resolved?.rangeDv && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                        aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                        onClick={() => showRangeRings(row, resolved)}
+                      >
+                        ◎
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="small-button"
-                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                      title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
-                      onClick={() => aim(row, 'suppressive', resolved)}
+                      disabled={!isValidDamageNotation(row.damage)}
+                      title={
+                        isValidDamageNotation(row.damage)
+                          ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
+                          : 'Uzupełnij obrażenia notacją kości, np. 3k6'
+                      }
+                      onClick={(event: MouseEvent) =>
+                        startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
+                      }
                     >
-                      Zapora
+                      OBR.
                     </button>
-                  )}
-                  {resolved?.rangeDv && (
-                    <button
-                      type="button"
-                      className="small-button"
-                      title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
-                      aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
-                      onClick={() => showRangeRings(row, resolved)}
-                    >
-                      ◎
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={!isValidDamageNotation(row.damage)}
-                    title={
-                      isValidDamageNotation(row.damage)
-                        ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
-                        : 'Uzupełnij obrażenia notacją kości, np. 3k6'
-                    }
-                    onClick={(event: MouseEvent) =>
-                      startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
-                    }
-                  >
-                    OBR.
-                  </button>
+                  </div>
                 </td>
                 <td>
                   <button
@@ -1795,22 +1979,26 @@ function WeaponStrip({
                     {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
                   </td>
                   <td className="weapon-actions">
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={
-                        (weapon.magazine ?? 0) > 0 &&
-                        (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
-                      }
-                      title={
-                        weapon.melee
-                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                          : 'Atak podwieszaną bronią — wskaż cel na mapie'
-                      }
-                      onClick={() => aim(row, 'single', resolved, { attachment, resolved: weapon })}
-                    >
-                      Atak
-                    </button>
+                    <div className="weapon-actions-row">
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={
+                          (weapon.magazine ?? 0) > 0 &&
+                          (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
+                        }
+                        title={
+                          weapon.melee
+                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                            : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                        }
+                        onClick={() =>
+                          aim(row, 'single', resolved, { attachment, resolved: weapon })
+                        }
+                      >
+                        Atak
+                      </button>
+                    </div>
                   </td>
                   <td />
                 </tr>
@@ -2033,7 +2221,7 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
           {printed.map(({ location, row }) => (
             <tr key={location}>
               <td className="armor-slot-cell">
-                <span className="cp-slot">{ARMOR_LOCATION_LABELS[location]}</span>
+                <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
                 {row ? (
                   <input
                     type="text"
@@ -2241,30 +2429,23 @@ function ArmorSp({
   const ablated = row.spCurrent < row.sp;
   return (
     <span className={`armor-sp${ablated ? ' armor-ablated' : ''}`}>
-      <input
-        type="number"
+      <NumberStepper
         min={0}
         max={row.sp}
-        value={row.spCurrent}
-        onChange={(e) => {
-          const value = parseNumberInput(e);
-          if (value !== undefined) update(row.id, { spCurrent: Math.min(value, row.sp) });
-        }}
-        aria-label="Bieżące OB (po ablacji)"
+        value={Math.min(row.spCurrent, row.sp)}
+        onChange={(value) => update(row.id, { spCurrent: value })}
+        label="Bieżące OB (po ablacji)"
         title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
       />
       <span className="cp-of">z</span>
-      <input
-        type="number"
+      <NumberStepper
         min={0}
         max={ARMOR_SP_MAX}
         value={row.sp}
-        onChange={(e) => {
-          const value = parseNumberInput(e);
-          if (value === undefined) return;
-          update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) });
-        }}
-        aria-label="OB pancerza (nieuszkodzonego)"
+        onChange={(value) =>
+          update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) })
+        }
+        label="OB pancerza (nieuszkodzonego)"
       />
       {ablated && (
         <button
@@ -2294,18 +2475,13 @@ function ArmorPenalty({
   update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
 }) {
   return (
-    <input
-      type="number"
+    <NumberStepper
       min={ARMOR_PENALTY_MIN}
       max={0}
       value={row.penalty ?? 0}
-      onChange={(e) => {
-        const value = parseNumberInput(e);
-        if (value === undefined) return;
-        const clamped = Math.min(0, Math.max(ARMOR_PENALTY_MIN, value));
-        update(row.id, { penalty: clamped === 0 ? undefined : clamped });
-      }}
-      aria-label="Kara pancerza do REF/ZW/RUCH"
+      onChange={(value) => update(row.id, { penalty: value === 0 ? undefined : value })}
+      format={(value) => (value === 0 ? '0' : `−${Math.abs(value)}`)}
+      label="Kara pancerza do REF/ZW/RUCH"
       title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
     />
   );
@@ -2323,7 +2499,7 @@ function ArmorPenalty({
  */
 function RecoveryPanel({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
   const [busy, setBusy] = useState(false);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const rate = cpredHealRate(data);
   if (data.hpCurrent >= max && !data.recovery.stabilized) return null;
 
@@ -2395,6 +2571,172 @@ function stripPatch(row: CpredCriticalInjuryRow): CpredCriticalInjuryRow {
  * Od etapu 27b stoją w kolumnie tożsamości strony pierwszej, bo tam drukuje je
  * karta — obok Uzależnień i pod Przeżywalnością.
  */
+/**
+ * Efekty czasowe na Cechach (etap 39) — chipy i formularz MG.
+ *
+ * Stoi **nad** Krytycznymi Urazami i pod stanem zdrowia, bo odpowiada na to
+ * samo pytanie co one („w jakim ona jest stanie"), a nie na „co potrafi".
+ * Panelu nie ma wcale, gdy lista jest pusta i patrzy gracz: pusty prostokąt
+ * z napisem „bez efektów" na każdej karcie stołu byłby szumem.
+ *
+ * Odliczanie liczy się z zegara świata trzymanego w `gameTimeStore` — ta sama
+ * liczba, którą pokazuje górny pasek. Gracz widzi w pasku dobę i porę dnia
+ * (rozstrzygnięcie z 05.09), ale minuta jedzie do klienta i tutaj mówi rzecz
+ * uczciwą: ile jeszcze **tego** efektu zostało.
+ */
+function StatEffects({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const minutes = useGameTimeStore((s) => s.minutes);
+  const [stat, setStat] = useState<CpredStatId>('ref');
+  const [amount, setAmount] = useState('');
+  const [source, setSource] = useState('');
+  const [durationS, setDurationS] = useState(String(CPRED_HOUR_S));
+
+  if (data.statEffects.length === 0 && !isGm) return null;
+
+  function apply() {
+    const parsed = parseStatEffectAmount(amount);
+    if (!parsed || source.trim().length === 0) return;
+    setStatEffect({
+      characterId,
+      stat,
+      source: source.trim(),
+      durationS: Number(durationS),
+      ...parsed,
+    });
+    setAmount('');
+    setSource('');
+  }
+
+  return (
+    <div className="cp-panel cp-stat-effects">
+      <div className="cp-bar">Efekty czasowe</div>
+      {data.statEffects.length === 0 ? (
+        <div className="cp-field cp-injuries-empty">bez efektów na Cechach</div>
+      ) : (
+        <ul className="stat-effect-list">
+          {data.statEffects.map((effect) => (
+            <li key={effect.id} className="cp-field stat-effect-row">
+              <span
+                className={`stat-effect-value${
+                  effect.value < 0 ? ' stat-effect-value--down' : ' stat-effect-value--up'
+                }`}
+              >
+                {describeCpredStatEffectValue(effect)}
+              </span>
+              <span className="stat-effect-source">{effect.source}</span>
+              <span
+                className="stat-effect-timer"
+                title={
+                  effect.rolled
+                    ? `Wylosowane raz przy nałożeniu (${effect.rolled}) i zapisane na karcie.`
+                    : 'Wpisane przez MG przy nałożeniu.'
+                }
+              >
+                {describeCpredStatEffectTimer(effect, { round: null, minutes })}
+              </span>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  title="Zdejmij ten efekt"
+                  aria-label={`Zdejmij efekt: ${describeCpredStatEffect(effect)}`}
+                  onClick={() => setStatEffect({ characterId, effectId: effect.id })}
+                >
+                  ⌫
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isGm && (
+        <div className="cp-field stat-effect-form">
+          <select
+            value={stat}
+            onChange={(e) => setStat(e.target.value as CpredStatId)}
+            aria-label="Cecha efektu"
+          >
+            {CPRED_STAT_IDS.map((id) => (
+              <option key={id} value={id}>
+                {CPRED_STAT_LABELS[id].abbr}
+              </option>
+            ))}
+          </select>
+          <input
+            className="stat-effect-amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="−2 albo −1k6"
+            title="Liczba przesuwa Cechę wprost; notacja („−1k6”) jest rzucana raz, na serwerze, i zapisywana jako liczba."
+            aria-label="O ile"
+          />
+          <input
+            className="stat-effect-source-input"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="źródło, np. Nerwosol"
+            maxLength={64}
+            aria-label="Źródło efektu"
+          />
+          <select
+            value={durationS}
+            onChange={(e) => setDurationS(e.target.value)}
+            aria-label="Czas trwania"
+          >
+            {STAT_EFFECT_DURATIONS.map((option) => (
+              <option key={option.seconds} value={option.seconds}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={apply}
+            disabled={parseStatEffectAmount(amount) === null || source.trim().length === 0}
+            title="Nałóż efekt — serwer policzy oba terminy (runda walki i zegar świata)"
+          >
+            Nałóż
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Długości, które MG wybiera jednym kliknięciem; godzina jest domyślna (RAW). */
+const STAT_EFFECT_DURATIONS: readonly { seconds: number; label: string }[] = [
+  { seconds: 60, label: 'na minutę' },
+  { seconds: 10 * 60, label: 'na 10 min' },
+  { seconds: CPRED_HOUR_S, label: 'na godzinę' },
+  { seconds: 6 * CPRED_HOUR_S, label: 'na 6 h' },
+  { seconds: 24 * CPRED_HOUR_S, label: 'na dobę' },
+];
+
+/**
+ * „−2" albo „−1k6" — jedno pole na obie drogi.
+ *
+ * Dwa pola („ile" i „czym rzucić") kłóciłyby się przy każdym wpisaniu obu,
+ * a MG i tak pisze jedno albo drugie. Znak czyta się z przodu napisu i dotyczy
+ * obu: „−1k6" ma **obniżyć** Cechę, a rzut jest o wielkości, nie o kierunku.
+ */
+function parseStatEffectAmount(
+  raw: string,
+): { value: number } | { formula: string; negative: boolean } | null {
+  const text = raw.trim().replace('−', '-');
+  if (text.length === 0) return null;
+  const negative = text.startsWith('-');
+  const body = text.replace(/^[+-]/, '').trim();
+  if (body.length === 0) return null;
+  if (/^\d+$/.test(body)) {
+    const value = Number(body);
+    if (value === 0 || value > CPRED_STAT_EFFECT_VALUE_MAX) return null;
+    return { value: negative ? -value : value };
+  }
+  if (!/^\d*[kd]\d+$/i.test(body)) return null;
+  return { formula: body, negative };
+}
+
 function CriticalInjuries({ data, saveData, characterId }: TabProps & { characterId: string }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const entriesById = useCompendiumStore((s) => s.entries);
@@ -2694,33 +3036,38 @@ function CyberdeckSection({ data, saveData }: TabProps) {
   const deck = data.cyberdeck;
   if (!deck) {
     return (
-      <div className="cp-panel cp-deck cp-deck--empty">
-        <span className="cp-label">Cyberdek</span>
-        <select
-          value=""
-          onChange={(event) => {
-            const entry = decks.find((row) => row.id === event.target.value);
-            if (!entry) return;
-            saveData(
-              {
-                cyberdeck: {
-                  compendiumId: entry.id,
-                  name: entry.name,
-                  slots: entry.deckSlots ?? 1,
-                  installed: [],
+      <div className="cp-panel cp-deck">
+        {/* Wiersz „bez deku" jest polem karty jak każde inne — do 06.09 lista
+            rozwijana leżała wprost na czerwonym panelu, bez białego pola pod
+            sobą, i był to jedyny taki wiersz w całym arkuszu. */}
+        <div className="cp-field cp-row cp-deck--empty">
+          <span className="cp-label">Cyberdek</span>
+          <select
+            value=""
+            onChange={(event) => {
+              const entry = decks.find((row) => row.id === event.target.value);
+              if (!entry) return;
+              saveData(
+                {
+                  cyberdeck: {
+                    compendiumId: entry.id,
+                    name: entry.name,
+                    slots: entry.deckSlots ?? 1,
+                    installed: [],
+                  },
                 },
-              },
-              'cyberdeck',
-            );
-          }}
-        >
-          <option value="">Bez deku — wybierz z kompendium…</option>
-          {decks.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name} ({entry.deckSlots} gniazd)
-            </option>
-          ))}
-        </select>
+                'cyberdeck',
+              );
+            }}
+          >
+            <option value="">Bez deku — wybierz z kompendium…</option>
+            {decks.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name} ({entry.deckSlots} gniazd)
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     );
   }
@@ -2768,15 +3115,12 @@ function CyberdeckSection({ data, saveData }: TabProps) {
           title="Kombinezon Bodyweight i cyberręka z dekiem dokładają gniazdo (s. 208)"
         >
           <span>Gniazd</span>
-          <input
-            type="number"
+          <NumberStepper
             min={1}
             max={CYBERDECK_SLOTS_MAX}
             value={deck.slots}
-            onChange={(event) => {
-              const value = Number.parseInt(event.target.value, 10);
-              if (Number.isInteger(value)) patchDeck({ slots: value });
-            }}
+            onChange={(value) => patchDeck({ slots: value })}
+            label="Gniazda cyberdeka"
           />
         </label>
         <button
@@ -2885,6 +3229,19 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
           nagłówek kolumny „Wyposażenie", a dwa te same słowa nad sobą to szum. */}
+      {/* Etap 38b: jedyne wejście gracza do przekazywania i do przeszukiwania
+          ciał. Guzik stoi nad ekwipunkiem, bo o przenoszeniu myśli się patrząc
+          na listę rzeczy, a nie szukając narzędzia gdzie indziej. */}
+      <div className="sheet-gear-actions">
+        <button
+          type="button"
+          className="cp-add"
+          title="Przekaż coś komuś albo przeszukaj leżącą figurę obok"
+          onClick={() => useInventoryStore.getState().open(character.id)}
+        >
+          Wymiana…
+        </button>
+      </div>
       <RowTable
         rows={data.gear}
         columns={[
@@ -3093,6 +3450,16 @@ function LifestyleFields({ data, saveData }: TabProps) {
 }
 
 /**
+ * Dwie grupy listy przelewów, w kolejności, w jakiej się ich szuka (MG, 12.09).
+ * Drużyna pierwsza, bo do niej przelewa się najczęściej; figury MG pod spodem,
+ * bo od 38a jest ich w kampanii tyle, ile statystów na mapie.
+ */
+const PAYEE_GROUPS = [
+  { label: 'Postacie graczy', player: true },
+  { label: 'NPC i figury MG', player: false },
+] as const;
+
+/**
  * The wallet (stage 23b).
  *
  * The balance stopped being a field and became a **read-out**: every eddie that
@@ -3116,7 +3483,7 @@ function WalletSection({
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [entries, setEntries] = useState<LedgerEntryView[]>([]);
-  const [payees, setPayees] = useState<{ id: string; name: string }[]>([]);
+  const [payees, setPayees] = useState<EconomyPayee[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [payeeId, setPayeeId] = useState('');
   const [amount, setAmount] = useState('');
@@ -3207,11 +3574,22 @@ function WalletSection({
               onChange={(e) => setPayeeId(e.target.value)}
             >
               <option value="">— przelew do… —</option>
-              {payees.map((payee) => (
-                <option key={payee.id} value={payee.id}>
-                  {payee.name}
-                </option>
-              ))}
+              {/* Dwie grupy zamiast jednej listy (MG, 12.09): od 38a statyści są
+                  kartami, więc obok drużyny stały „Cel 23x" i wieżyczka. Nikogo
+                  nie ubyło — przelew do NPC-a bywa całym sensem sceny. */}
+              {PAYEE_GROUPS.map(({ label, player }) => {
+                const rows = payees.filter((payee) => payee.player === player);
+                if (rows.length === 0) return null;
+                return (
+                  <optgroup key={label} label={label}>
+                    {rows.map((payee) => (
+                      <option key={payee.id} value={payee.id}>
+                        {payee.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
             <input
               type="number"
@@ -3346,7 +3724,7 @@ function CyberwareSection({
 
   return (
     <>
-      <h3>Cyborgizacje</h3>
+      <h3 className="cp-section">Cyborgizacje</h3>
       {data.cyberware.length === 0 ? (
         <p className="sheet-hint">
           Brak wszczepów. Cyborgizacje instaluje się z zakładki „Kompendium” — serwer rzuca wtedy na
@@ -3916,17 +4294,14 @@ function ReputationSection({
             >
               {isGm ? (
                 <>
-                  <input
+                  <NumberStepper
                     className="reputation-level"
-                    type="number"
                     min={REPUTATION_LEVEL_MIN}
                     max={REPUTATION_LEVEL_MAX}
                     value={row.level}
                     title="Poziom 1–10 wg tabeli na s. 193"
-                    onChange={(e) => {
-                      const value = parseNumberInput(e);
-                      if (value !== undefined) patchDeed(row.id, { level: value });
-                    }}
+                    onChange={(value) => patchDeed(row.id, { level: value })}
+                    label="Poziom Reputacji"
                   />
                   <input
                     className="reputation-note"

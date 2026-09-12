@@ -7,7 +7,7 @@ import type {
   BotType,
   BotView,
   KnowledgePreviewResult,
-  PortraitUploadResult,
+  PortraitAssetView,
 } from '@vtt/shared';
 import {
   BOT_AUTONOMY_HINTS,
@@ -65,6 +65,7 @@ import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
@@ -290,9 +291,14 @@ function RoleTab({ bot, saveData }: TabProps) {
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
-      queueBotSave(bot.id, { portraitUrl: result.url });
+      // Patrz `CharacterSheet`: jedna trasa, wiersz w puli i kadr na mapie.
+      // Bot trafia na mapę przez kartę postaci, z którą jest spięty, więc jego
+      // portret kadruje się tak samo jak każdy inny.
+      const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
+      usePortraitStore.getState().applyUpsert(asset);
+      queueBotSave(bot.id, { portraitUrl: asset.url });
       flushBotSave(bot.id);
+      usePortraitStore.getState().openCrop(asset.id);
     } catch (error) {
       setUploadError(uploadErrorText(error, 'portrait'));
     } finally {

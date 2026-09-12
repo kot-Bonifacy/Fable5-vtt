@@ -131,6 +131,9 @@
   --neutral-rgb: 127 127 127;
   /* Element uzbrojony, czekający na kliknięcie w mapę. */
   --armed: #facc15;
+  /* Losowanie z tabeli (etap 34) — cudzy los, nie czyjaś decyzja: turkus
+     odróżnia kartę i od zegara (niebieski), i od walki (czerwień). */
+  --fate: #4bc3c0;
 
   /* ===== Cienie ===== */
 
@@ -218,6 +221,7 @@
   --info: #2554a3;
   --neutral-rgb: 110 100 88;
   --armed: #8f6600;
+  --fate: #0f6b68;
   --whisper-rgb: 107 63 160;
   --hurt-light: #6f7412;
 
@@ -274,6 +278,20 @@
   --map-shadow-tooltip: 0 8px 20px rgb(0 0 0 / 50%);
   --map-shadow-slider: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
   --map-shadow-swatch: 0 1px 3px rgb(0 0 0 / 70%);
+
+  /* Kadrowanie portretu pod mapę (12.09): okno pokazuje krążek żetonu na tle
+     mapy, więc bierze barwy stąd, a nie z chromu — inaczej w dzień MG oglądałby
+     twarz na kremowym, a stół zobaczyłby ją na ciemnym.
+     `--map-ring-own` to obwódka „to moja figura" — **ta sama liczba**, co
+     `RING_OWN` w `TokenNode.ts`; pilnuje tego `portrait-crop.test.ts`. */
+  --map-ring-own: #4ade80;
+  /* Przygaszenie tego, co wypada poza krążek. Nie `--scrim`: tamten przygasza
+     aplikację pod oknem i zmienia się z motywem. */
+  --map-crop-scrim: rgb(3 6 12 / 72%);
+  /* Tło krążka pod portretem — widać je tam, gdzie kadr wyjechał poza obraz
+     (12.09). **Ta sama liczba**, co `PORTRAIT_BACKDROP` w `TokenNode.ts`;
+     pilnuje tego `portrait-crop.test.ts`. */
+  --map-token-backdrop: #0f172a;
 
   /* Narzędzia z własnym znaczeniem koloru: „tylko dla mnie", noc, dzień. */
   --map-warn: #fbbf24;
@@ -398,4 +416,48 @@
   /* Ukośne światło na kartce — dwa przystanki jednego gradientu. */
   --paper-shade-1: rgb(0 0 0 / 5%);
   --paper-sheen: rgb(255 255 255 / 6%);
+}
+
+/* ============================================================================
+   EKRAN WEJŚCIA (etap poza numeracją, 11.09.2026) — plakat, nie chrom
+   ----------------------------------------------------------------------------
+   Logowanie MG i dołączanie gracza stoją na plakacie `public/art/login-poster.webp`.
+   To ten sam wyjątek co mapa, Sieć i screamsheet: papier plakatu świeci tak samo
+   w dzień i w nocy, więc żaden z tych tokenów nie ma pary dziennej. Gdyby miał,
+   dzienna skórka rozjaśniłaby napisy leżące wprost na kremowym niebie i ekran
+   logowania zniknąłby w południe.
+
+   Barwy spróbkowane z samego pliku, nie dobrane na oko: papier to średnia
+   z wnętrza ramki celownika (222 196 161), czerwień — piksele dolnej linii tej
+   ramki (193 23 21). Stąd formularz wygląda na nadrukowany, a nie doklejony.
+
+   Kontrasty policzone względem papieru: sadza 10,7:1, przygasła sadza 4,6:1,
+   czerwień głęboka (komunikat błędu) 5,6:1, krem na czerwonym przycisku 5,2:1
+   — wszystkie ponad progiem AA. `--login-red` na papierze ma 3,7:1, więc wolno
+   nim rysować **kreski i tła**, ale nie pisać nim drobnego tekstu.
+   ========================================================================== */
+
+:root {
+  /* Papier plakatu. Widać go, zanim tapeta się wczyta, i gdyby jej zabrakło —
+     dlatego jest kremowy, a nie ciemny: sadza na nim zostaje czytelna. */
+  --login-paper: #dec4a1;
+  /* Napis na papierze — sadza plakatu, nie czerń interfejsu. */
+  --login-ink: #1a1613;
+  /* Podpis pola, podpowiedź, linia pod polem w spoczynku. */
+  --login-ink-dim: #5b5245;
+  /* Czerwień ramki celownika: kreski HUD-u, tło przycisku, pole w ognisku. */
+  --login-red: #c11715;
+  /* Najechanie na przycisk — czerwień rozgrzana. */
+  --login-red-bright: #dd4131;
+  /* Czerwień na tekst: `--login-red` ma na papierze 3,7:1 i za mało go widać. */
+  --login-red-deep: #8e0f0d;
+  /* Napis na czerwonym przycisku — krem plakatu, nie czysta biel. */
+  --login-on-red: #f6ead9;
+  /* Kafel z imieniem gracza na ekranie dołączania: papier przybrudzony sadzą. */
+  --login-chip: rgb(26 22 19 / 8%);
+  --login-chip-hover: rgb(26 22 19 / 16%);
+  /* Cień pod przyciskiem. Przycisk ma ścięty róg (`clip-path`), a `clip-path`
+     obcina też `box-shadow` — dlatego to wartość dla `drop-shadow()`, nie dla
+     `box-shadow`, i tak trzeba jej używać. */
+  --login-shadow: 0 4px 10px rgb(26 22 19 / 35%);
 }

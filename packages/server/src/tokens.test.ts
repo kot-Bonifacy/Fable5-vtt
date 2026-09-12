@@ -13,12 +13,15 @@ import type {
   SocketAck,
   StateSyncPayload,
   PortraitAssetView,
+  PortraitCropBroadcast,
   TokenAssetView,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
   TokenUpsertBroadcast,
   TokenView,
 } from '@vtt/shared';
+import type { CharacterView, CpredCharacterData } from '@vtt/shared';
+import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -267,11 +270,16 @@ describe('portrait pool', () => {
     expect(refused.statusCode).toBe(403);
   });
 
-  it('keeps the direct portrait upload for the GM alone', async () => {
+  /**
+   * Od 12.09 wgranie portretu ma jedno wejście: trasę puli. Osobna
+   * `/api/uploads/portraits`, która kładła plik bez wiersza w bazie, zniknęła —
+   * portret bez wiersza nie miał gdzie trzymać kadru na mapie.
+   */
+  it('keeps the portrait upload for the GM alone, and only through the pool', async () => {
     const { payload, headers } = multipartBody('wprost.png', PNG_1X1);
     const refused = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: playerCookie },
       payload,
     });
@@ -279,11 +287,107 @@ describe('portrait pool', () => {
 
     const allowed = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: gmCookie },
       payload,
     });
     expect(allowed.statusCode).toBe(201);
+
+    const gone = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(gone.statusCode).toBe(404);
+  });
+
+  /**
+   * Kadr na mapie (12.09) — jedyne, co da się w wierszu puli zmienić po
+   * wgraniu pliku, i jedyna rzecz z tego obszaru, która idzie gniazdem.
+   *
+   * Rozgłoszenie musi dojść **do gracza**, bo kadr jest cechą obrazka: MG
+   * poprawia ujęcie raz, a przestawia je każdej figurze, która ten plik nosi,
+   * u wszystkich naraz.
+   */
+  it('lets the GM reframe a portrait, tells the table, and clamps the numbers', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    try {
+      const heard = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:crop');
+      // Kadr wolno od 12.09 wywieźć poza obraz (zgłoszenie MG: inaczej górnych
+      // pikseli portretu nie dało się wciągnąć w krążek), więc 0,9 i 0,1
+      // przechodzą bez zmiany — ścina się dopiero to, co wypada poza grafikę.
+      const ack = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.9, y: 0.1, zoom: 2 },
+      });
+      if (!ack.ok || !ack.data) throw new Error('portrait:crop failed');
+      expect(ack.data.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
+      expect((await heard).asset.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
+
+      // Poza obraz nie wychodzi już sam punkt kadru: 1,4 wraca jako 1.
+      const beyond = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 1.4, y: -0.2, zoom: 2 },
+      });
+      if (!beyond.ok || !beyond.data) throw new Error('portrait:crop failed');
+      expect(beyond.data.crop).toEqual({ x: 1, y: 0, zoom: 2 });
+
+      // Zapisane, a nie tylko odesłane.
+      const list = await built.app.inject({
+        method: 'GET',
+        url: '/api/portrait-assets',
+        headers: { cookie: playerCookie },
+      });
+      const stored = (list.json() as PortraitAssetView[]).find((a) => a.id === assetId);
+      expect(stored?.crop).toEqual({ x: 1, y: 0, zoom: 2 });
+
+      // Gracz nie kadruje **cudzego** obrazka.
+      expect(
+        await emitAck(playerConn.socket, 'portrait:crop', {
+          assetId,
+          crop: DEFAULT_PORTRAIT_CROP,
+        }),
+      ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+
+      // …ale własny kadruje. Portret wybiera się raz, przy tworzeniu postaci,
+      // i w rozgrywce gracz go nie zmienia — kadr na mapie zmienić może
+      // (decyzja MG z 12.09), bo to jego figura stoi na stole.
+      const card = await emitAck<CharacterView>(gmConn.socket, 'character:create', {
+        name: 'Kadrujący',
+        ownerId: playerId,
+      });
+      if (!card.ok || !card.data) throw new Error('character:create failed');
+      expect(
+        (
+          await emitAck(playerConn.socket, 'character:update', {
+            characterId: card.data.id,
+            patch: { portraitUrl: ack.data.url },
+          })
+        ).ok,
+      ).toBe(true);
+      const own = await emitAck<PortraitAssetView>(playerConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.3, y: 0.7, zoom: 2 },
+      });
+      if (!own.ok || !own.data) throw new Error('player portrait:crop failed');
+      expect(own.data.crop).toEqual({ x: 0.3, y: 0.7, zoom: 2 });
+      // Kadrem nie jest cokolwiek: brak pola albo tekst to złe żądanie.
+      expect(
+        await emitAck(gmConn.socket, 'portrait:crop', { assetId, crop: { x: 0.5, y: 0.5 } }),
+      ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
+      expect(
+        await emitAck(gmConn.socket, 'portrait:crop', {
+          assetId: 'nie-ma',
+          crop: DEFAULT_PORTRAIT_CROP,
+        }),
+      ).toMatchObject({ ok: false, error: 'NOT_FOUND' });
+    } finally {
+      gmConn.socket.close();
+      playerConn.socket.close();
+    }
   });
 
   it('lets the GM take a portrait off the pool, and nobody else', async () => {
@@ -333,6 +437,9 @@ describe('tokens', () => {
     const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek' });
     if (!created.ok || !created.data) throw new Error('scene:create failed');
     sceneId = created.data.id;
+    // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
+    // zestaw jest o ruchu figur, nie o blokadzie.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     // Stage 17: a fresh scene starts under fog, which would hide these
     // tokens from the player. This suite is not about fog — light it up.
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
@@ -425,6 +532,60 @@ describe('tokens', () => {
     // Mid-stride positions are clamped, never snapped: the figure is between
     // two squares, which is the whole point of an intermediate frame.
     expect(frame).toMatchObject({ tokenId: ownTokenId, x: 342, y: 528, final: false });
+  });
+
+  /**
+   * Blokada ruchu graczy po mapie (zlecenie MG, 12.09.2026).
+   *
+   * Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed
+   * rozpoczęciem gry, obejdzie ją własną figurą i pozna zanim MG cokolwiek
+   * powie. Trzy rzeczy są tu sprawdzane naraz i każda już raz byłaby dziurą:
+   * odrzucona ma być **także klatka pośrednia** (inaczej gracz przeszedłby
+   * mapę bez ani jednego `final`), MG nie jest blokadą związany **nigdy**,
+   * a scena tworzona od zera wchodzi **zamknięta**.
+   */
+  it('nie pozwala graczowi ruszyć figurą na mapie zamkniętej przez MG', async () => {
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: true } });
+
+    expect(
+      await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 600, y: 600, final: true }),
+    ).toEqual({ ok: false, error: 'MOVE_LOCKED' });
+    // Klatka pośrednia też — bez tego mapę da się przejść samym ciągnięciem.
+    expect(
+      await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 342, y: 528, final: false }),
+    ).toEqual({ ok: false, error: 'MOVE_LOCKED' });
+
+    // MG chodzi po zamkniętej mapie jak po każdej innej.
+    const byGm = await emitAck<{ x: number; y: number }>(gm, 'token:move', {
+      tokenId: ownTokenId,
+      x: 600,
+      y: 600,
+      final: true,
+    });
+    expect(byGm.ok).toBe(true);
+
+    // Powrót na (300, 500) nie jest kosmetyką: kolejne testy w tym zestawie
+    // liczą kierunek marszu od tego pola.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    const opened = await emitAck<{ x: number; y: number }>(player, 'token:move', {
+      tokenId: ownTokenId,
+      x: 300,
+      y: 500,
+      final: true,
+    });
+    expect(opened.ok && opened.data).toEqual({ x: 300, y: 500 });
+  });
+
+  it('zakłada nową scenę zamkniętą, a gracz widzi ten stan w widoku sceny', async () => {
+    const fresh = await emitAck<SceneView>(gm, 'scene:create', { name: 'Świeża mapa' });
+    if (!fresh.ok || !fresh.data) throw new Error('scene:create failed');
+    expect(fresh.data.playerMoveLocked).toBe(true);
+
+    const opened = await emitAck<SceneView>(gm, 'scene:update', {
+      sceneId: fresh.data.id,
+      patch: { playerMoveLocked: false },
+    });
+    expect(opened.ok && opened.data?.playerMoveLocked).toBe(false);
   });
 
   it('rejects a player moving a foreign or hidden token', async () => {
@@ -731,6 +892,7 @@ describe('ping i kopia figury (etap 35)', () => {
     const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek 35' });
     if (!created.ok || !created.data) throw new Error('scene:create failed');
     sceneId = created.data.id;
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);
@@ -750,28 +912,30 @@ describe('ping i kopia figury (etap 35)', () => {
     });
     if (!ganger.ok || !ganger.data) throw new Error('token:create failed');
     gangerId = ganger.data.id;
-    // Statysta z profilem i naklejką: kopia ma wziąć pierwsze, a nie drugie.
+    // Figura ze statystykami i naklejką: kopia ma wziąć pierwsze, a nie drugie.
     expect(
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: gangerId,
-        patch: {
-          statuses: ['bleeding'],
-          combatProfile: {
-            ref: 6,
-            dex: 6,
-            body: 7,
-            will: 5,
-            skillLevel: 4,
-            evasion: 4,
-            armorSp: 11,
-            weaponId: null,
-            weaponName: '',
-            weaponDamage: '',
-            ammoCurrent: 0,
-            ammoMax: 0,
-          },
+        quick: {
+          ref: 6,
+          dex: 6,
+          body: 7,
+          will: 5,
+          skillLevel: 4,
+          evasion: 4,
+          armorSp: 11,
+          weaponId: null,
+          weaponName: '',
+          weaponDamage: '',
+          ammoCurrent: 0,
+          ammoMax: 0,
+          hpCurrent: 8,
+          hpMax: 25,
         },
       }),
+    ).toMatchObject({ ok: true });
+    expect(
+      await emitAck(gm, 'token:update', { tokenId: gangerId, patch: { statuses: ['bleeding'] } }),
     ).toMatchObject({ ok: true });
   });
 
@@ -821,12 +985,16 @@ describe('ping i kopia figury (etap 35)', () => {
     // Obok, nie pod spodem — i przyciągnięte do kratki jak każda inna pozycja.
     expect(copy.data.x).toBe(400);
     expect(copy.data.y).toBe(300);
-    expect(copy.data.characterId ?? null).toBeNull();
-
-    // Profil bojowy jedzie z oryginałem: bez niego kopia gangera nie strzela.
+    // Kopia figury MG dostaje **własną** kartę (etap 38a): bez niej nie
+    // strzela, a wspólna oznaczałaby jedne PW dla dwóch gangerów.
     const state = await roundTrip(gm);
     const stored = state.tokens.find((token) => token.id === copy.data?.id);
-    expect(stored?.combatProfile).toMatchObject({ evasion: 4, armorSp: 11 });
+    expect(stored?.characterId).toBeTruthy();
+    expect(stored?.characterId).not.toBe(gangerId);
+    const card = state.characters.find((entry) => entry.id === stored?.characterId)?.data as
+      CpredCharacterData | undefined;
+    expect(card?.skills.evasion).toBe(4);
+    expect(card?.armor[0]?.sp).toBe(11);
 
     const third = await emitAck<TokenView>(gm, 'token:duplicate', { tokenId: copy.data.id });
     if (!third.ok || !third.data) throw new Error('second token:duplicate failed');
@@ -849,5 +1017,158 @@ describe('ping i kopia figury (etap 35)', () => {
       ok: false,
       error: 'FORBIDDEN',
     });
+  });
+});
+
+/**
+ * Statysta jako karta postaci (etap 38a).
+ *
+ * Dwie rzeczy, których do 38a nie było: `token:stat` **zakłada figurze kartę**
+ * zamiast pisać w kolumnę żetonu, a kosz figury pyta, czy zabrać tę kartę ze
+ * sobą. Drugie jest pytaniem, a nie automatem, bo MG odrzucił znacznik
+ * odróżniający kartę gangera od karty Vex — więc serwer sprawdza dwie rzeczy
+ * zamiast czytać flagę: karta bez właściciela i bez innej figury pod sobą.
+ */
+describe('statysta jako karta postaci (etap 38a)', () => {
+  let gm: ClientSocket;
+  let sceneId: string;
+  let gangerId: string;
+  let cardId: string;
+
+  const QUICK = {
+    ref: 6,
+    dex: 5,
+    body: 7,
+    will: 4,
+    skillLevel: 5,
+    evasion: 3,
+    armorSp: 11,
+    weaponId: null,
+    weaponName: 'Obrzyn',
+    weaponDamage: '3k6',
+    ammoCurrent: 2,
+    ammoMax: 2,
+    hpCurrent: 30,
+    hpMax: 30,
+  };
+
+  async function stateOf(socket: ClientSocket): Promise<StateSyncPayload> {
+    const sync = waitFor<StateSyncPayload>(socket, 'state:sync');
+    await emitAck(socket, 'state:request');
+    return sync;
+  }
+
+  it('zakłada kartę figurze, która jej nie miała, i zabiera żetonowi własne PW', async () => {
+    const conn = createSocket(gmCookie);
+    gm = conn.socket;
+    await conn.firstSync;
+
+    const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek 38a' });
+    if (!created.ok || !created.data) throw new Error('scene:create failed');
+    sceneId = created.data.id;
+    expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);
+    expect((await emitAck(gm, 'scene:view', { sceneId })).ok).toBe(true);
+
+    const ganger = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Ganger 38a',
+      x: 200,
+      y: 200,
+      hp: { current: 12, max: 25 },
+    });
+    if (!ganger.ok || !ganger.data) throw new Error('token:create failed');
+    gangerId = ganger.data.id;
+
+    const statted = await emitAck<TokenView>(gm, 'token:stat', { tokenId: gangerId, quick: QUICK });
+    if (!statted.ok || !statted.data) throw new Error('token:stat failed');
+    cardId = statted.data.characterId!;
+    expect(cardId).toBeTruthy();
+    // PW jadą z karty, nie z żetonu — dwa domy dla jednej liczby to jest to,
+    // jak się rozjeżdżają.
+    expect(statted.data.hp).toEqual({ current: 30, max: 30 });
+
+    const state = await stateOf(gm);
+    const card = state.characters.find((entry) => entry.id === cardId);
+    expect(card?.name).toBe('Ganger 38a');
+    // Karta stoi w rosterze obok postaci graczy — MG odrzucił 05.09 osobną
+    // kategorię dla statystów.
+    expect(card?.ownerId).toBeNull();
+    const sheet = card?.data as CpredCharacterData;
+    expect(sheet.stats.ref).toBe(6);
+    expect(sheet.weapons[0]?.name).toBe('Obrzyn');
+    // Wydrukowane PW: 30, choć z BC 7 i SW 4 wychodziłoby 40.
+    expect(sheet.statBlock?.hpMax).toBe(30);
+  });
+
+  it('drugie wywołanie poprawia tę samą kartę, a nie zakłada nowej', async () => {
+    const again = await emitAck<TokenView>(gm, 'token:stat', {
+      tokenId: gangerId,
+      quick: { ...QUICK, armorSp: 4 },
+    });
+    if (!again.ok || !again.data) throw new Error('token:stat failed');
+    expect(again.data.characterId).toBe(cardId);
+    const state = await stateOf(gm);
+    const sheet = state.characters.find((entry) => entry.id === cardId)?.data as CpredCharacterData;
+    expect(sheet.armor.every((row) => row.sp === 4)).toBe(true);
+  });
+
+  it('nie kasuje karty, dopóki nikt o to nie poprosi', async () => {
+    const copy = await emitAck<TokenView>(gm, 'token:duplicate', { tokenId: gangerId });
+    if (!copy.ok || !copy.data) throw new Error('token:duplicate failed');
+    expect((await emitAck(gm, 'token:delete', { tokenId: copy.data.id })).ok).toBe(true);
+    const state = await stateOf(gm);
+    expect(state.characters.some((entry) => entry.id === copy.data!.characterId)).toBe(true);
+  });
+
+  it('kasuje kartę razem z figurą, gdy MG powie „tak"', async () => {
+    const copy = await emitAck<TokenView>(gm, 'token:duplicate', { tokenId: gangerId });
+    if (!copy.ok || !copy.data) throw new Error('token:duplicate failed');
+    const copyCardId = copy.data.characterId!;
+    expect(copyCardId).not.toBe(cardId);
+    expect(
+      (await emitAck(gm, 'token:delete', { tokenId: copy.data.id, deleteCharacter: true })).ok,
+    ).toBe(true);
+    const state = await stateOf(gm);
+    expect(state.characters.some((entry) => entry.id === copyCardId)).toBe(false);
+    // Oryginał i jego karta stoją nietknięte.
+    expect(state.characters.some((entry) => entry.id === cardId)).toBe(true);
+  });
+
+  it('nie zabiera karty gracza, choćby klient poprosił', async () => {
+    const card = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Vex 38a',
+      ownerId: playerId,
+    });
+    if (!card.ok || !card.data) throw new Error('character:create failed');
+    const token = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Vex 38a',
+      x: 400,
+      y: 400,
+      characterId: card.data.id,
+    });
+    if (!token.ok || !token.data) throw new Error('token:create failed');
+    expect(
+      (await emitAck(gm, 'token:delete', { tokenId: token.data.id, deleteCharacter: true })).ok,
+    ).toBe(true);
+    const state = await stateOf(gm);
+    expect(state.characters.some((entry) => entry.id === card.data!.id)).toBe(true);
+  });
+
+  it('nie zabiera karty, pod którą stoi jeszcze inna figura', async () => {
+    const second = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Ganger 38a bis',
+      x: 500,
+      y: 500,
+      characterId: cardId,
+    });
+    if (!second.ok || !second.data) throw new Error('token:create failed');
+    expect(
+      (await emitAck(gm, 'token:delete', { tokenId: second.data.id, deleteCharacter: true })).ok,
+    ).toBe(true);
+    const state = await stateOf(gm);
+    expect(state.characters.some((entry) => entry.id === cardId)).toBe(true);
+    expect(state.tokens.some((entry) => entry.id === gangerId)).toBe(true);
   });
 });

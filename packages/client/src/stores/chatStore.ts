@@ -100,6 +100,11 @@ let noteCounter = 0;
  *
  * Świadomie tylko właściciel karty: MG, który wystawił pięć wezwań, miałby
  * kubek migający bez przerwy, a jego „Rzuć za nią" stoi na karcie czatu.
+ *
+ * **Prośba o Test (etap 40) nie zapala kubka** i rodzaj `request` jest tu
+ * pomijany wprost, a nie przez to, że akurat nosi payload w innym polu:
+ * gracz, którego kubek zawołałby na własną prośbę, rzuciłby, zanim MG zdąży
+ * ustawić próg — a przy prośbie progu jeszcze **nie ma**.
  */
 export function openCheckCallFor(
   items: ChatItem[],
@@ -108,6 +113,7 @@ export function openCheckCallFor(
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]!;
     if (item.type !== 'message') continue;
+    if (item.message.kind !== 'check') continue;
     const entry = item.message.check;
     if (!entry || entry.ownerId !== userId) continue;
     if (!isCheckCallOpen(entry)) continue;

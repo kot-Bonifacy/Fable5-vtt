@@ -6,6 +6,89 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**11.09 — decyzje MG do rzeczy zgłoszonych po sesji kamery (żeby nie wracały jako pytania):**
+
+- **„Ani piksela czerni" zostaje.** Gracz przy maksymalnym oddaleniu nie obejmie całej mapy
+  40 × 30 na szerokim oknie i **tak ma być** — „może sobie poprzesuwać albo odpowiednio rozciągnąć
+  okno". Nie proponuj powrotu do wariantu „cała mapa z czarnymi pasami".
+- **Mapa powitalna zostaje bez wyznaczanego punktu startu** — zawsze środek dolnej krawędzi.
+  Tło nie ma wiersza w bazie, w którym MG mógłby punkt zapisać, i nikomu to nie przeszkadza.
+- **Czarne pole gracza pod nieodsłoniętą mgłą jest zachowaniem, nie usterką** — ale czyta się jak
+  awaria: MG sam „miał obawy, że jest zepsuta", patrząc na własną scenę z widocznością `fog`.
+  Nic z tym nie robimy; warto o tym pamiętać przy oględzinach i przy pierwszej sesji z drużyną.
+- **Usterka „MG widzi «Brak sceny» po własnej aktywacji" zostaje na tej liście** (wpis niżej) —
+  MG ją przyjął; **naprawiona 12.09**, czeka już tylko na obejrzenie.
+- **Pełny plik „StrefyPrzemysłowej" (2896 × 2176) — nie teraz (decyzja MG z 12.09).** Siatka jest
+  poprawiona wpisem „40 kolumn" (36,2 px) na obecnym pliku 1448 × 1086. Wgranie większego pliku
+  **przesunie całą scenę**: wgranie ustawia rozmiar sceny na wymiary pliku, a figury, ściany, mgła,
+  rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
+  górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
+
+**11.09/12.09 (etap 04): „Brak sceny" u MG po własnej aktywacji — NAPRAWIONE, ale NIEOBEJRZANE.**
+Diagnoza z 11.09 była trafna (`applyScene` milczy, gdy lokalna scena jest `null`), przepis —
+niepełny: samo `setScene` dałoby MG mapę **bez figur**. Naprawa 12.09: decyzja przeniesiona do
+`sceneStore.followActivation(scene, isGm)` — MG bez sceny na ekranie idzie za aktywacją jak gracz,
+a `true` każe gniazdu dociągnąć figury (`state:request`). Cztery testy
+w `client/src/scene-activation.test.ts`. **Czego nie obejrzano i dlaczego:** stan „MG nie ogląda
+niczego" powstaje tylko przy pierwszym wejściu do kampanii bez aktywnej sceny, bo tworzenie sceny
+z panelu od razu ustawia jej podgląd (`viewScene` po `createScene` w `ScenePanel.tsx`). Wierna droga
+to więc: nowa kampania → nowa scena → przeładowanie karty → „Aktywuj" — na poligonie nie do
+odtworzenia, a **serwer nie ma trasy usuwania kampanii**, więc taki test zostawiłby w bazie kampanię
+nie do zdjęcia z UI. Do obejrzenia przy zakładaniu prawdziwej kampanii (najpóźniej przy etapie 28).
+
+**10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
+(gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**
+12.09: `observedWoundState` w `shared` ma trzy stany zamiast dwóch, a `StabilizePicker` pisze
+„bez ran" wyłącznie przy `healthy`. Cztery testy w `damage.test.ts`. Czego **nie** udało się
+zrobić: obejrzeć tego z konta gracza — formularz Ustabilizowania otwiera się dopiero, gdy gracz
+**jest na swojej turze** (`CombatPanel.tsx`, `actor`), a przesunięcie kolejki na „StrefiePrzemysłowej"
+wydałoby budżet Marcina na nowo. **MG zdecydował 12.09: nie ruszać kolejki.** Do obejrzenia przy
+najbliższej walce, w której gracz ma turę — patrzy się na listę Ustabilizowania przy cudzej
+figurze: znacznika ma nie być wcale (a nie „bez ran").
+
+**12.09 (etap 41): zostały DWIE ścieżki, reszta odklikana, jeden błąd naprawiony.** Etap
+przeszedł oględziny 12.09 — menu figury otwiera się z automatyki (`PointerEvent` z `button: 2`
+we współrzędnych CSS), więc przeszkoda, na której ta pozycja stała, była nieprawdziwa. Odklikane:
+okno oględzin u MG i u gracza, pełna ścieżka prośby o dokładne oględziny (drabinka PT → zgoda →
+rzut → karta z liczbami), „Pokaż wszystko", guziki „Dobądź / Schowaj (Akcja) / Upuść". Po drodze
+znaleziony i naprawiony **błąd, przez który dokładne oględziny w ogóle nie działały** — patrz
+`archiwum/zamkniete-zaleglosci.md`. **Zostają dwie rzeczy:** (1) **dwie linijki w dymku pod
+celownikiem** — `onAimHover` nie budzi się od syntetycznego ruchu kursora (pułapka z 10.09 nadal
+obowiązuje, to jedyna droga przez rękę MG); (2) **wyszarzony slot paska po schowaniu broni** —
+„Schowaj" kosztuje Akcję, a jedyna figura pod ręką stoi w rozegranej turze, więc sprawdzenie
+tego zabrałoby jej Akcję.
+
+**05.09 (etap 38a — statysta jako karta postaci): UI szybkiego edytora nieoglądany
+w przeglądarce.** Przez przeglądarkę przeszła **część** etapu, i to ta, na której najbardziej
+zależało: trzy zmigrowane figury poligonu („Automatyczna wieżyczka", „Strzelec 23x", „Cel 23x")
+stoją w panelu postaci obok Vex i Rudego, otwierają się jak każda karta, a „Cel 23x" pokazuje
+**PW 33/35** — czyli wydrukowane maksimum przeżyło migrację i zapis (`statBlock.hpMax`). Pasek
+figury po zaznaczeniu żetonu buduje się z karty (broń, akcje, przeładowania, PW 35/35).
+
+**Nieoglądane zostały trzy rzeczy w menu figury.** Powód podany 05.09 („prawym klikiem
+z automatyki nie da się otworzyć menu") **jest nieaktualny od 12.09** — menu otwiera się serią
+`pointerdown`/`pointerup` z `button: 2` we współrzędnych CSS. Przeszkoda jest dziś inna i mniejsza:
+przełącznik „Statystyki bojowe" pokazuje się wyłącznie w edytorze figury **bez przypisanej karty**,
+a na scenach poligonu każda figura kartę ma — trzeba więc najpierw postawić figurę testową.
+Do obejrzenia zostają:
+przełącznik „Statystyki bojowe (figura dostaje własną kartę)" i to, że zapis **zakłada kartę**;
+nowe pole „Wartość bojowa zamiast Cech" wraz z „Nie unika pocisków"; oraz **pytanie o kartę przy
+koszu figury** (pojedynczym i grupowym z 35). Wszystkie trzy ścieżki mają testy dymne na żywych
+gniazdach (`tokens.test.ts` → „statysta jako karta postaci (etap 38a)"), więc chodzi wyłącznie
+o obejrzenie układu i słów na ekranie. **Do zrobienia ręką MG w pierwszej sesji przy stole.**
+
+**05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
+w tej samej sesji — pozycja „nie był oglądany" żyła kilkanaście minut. Przez przeglądarkę przeszły
+wszystkie trzy kawałki UI (panel na karcie, małe pole „z" pod Cechą, chipy w pasku figury), obie
+role (MG i `Tester` przez `[::1]:5173`), obie drogi liczby (wpisana i notacja `−1k6`), podłoga
+Cechy, zdejmowanie ⌫, wygasanie skokiem zegara i **przeliczanie odliczania przy ruchu zegara**.
+Znaleziona i naprawiona **jedna usterka układu**: pole „ile" miało 4,5 rem, przez co podpowiedź
+„−2 albo −1k6" ucinała się na „−1k" — czyli gubiła dokładnie tę połowę, która mówi, że wolno
+wpisać notację. **Żadna nowa pozycja nie została otwarta.** Ścieżka Czarnego LOD-u (Nerwosol
+nakładający się sam) **nie była klikana w przeglądarce** — stoi na teście na żywych gniazdach
+w `netcombat.test.ts`, a obejrzenie jej wymagałoby zbudowania na poligonie Sieci architektury
+z Programem `statDrain`; uznane za nieopłacalne wobec pokrycia testem.
+
 **05.09 (etap 33 — kopie zapasowe):** **żadna nowa pozycja nie została otwarta**, a etap
 zamknięto w komplecie z oględzinami. Naprawiony po drodze **jeden błąd** (polski znak w nazwie
 pobieranego pliku wywracał trasę eksportu błędem 500) i **jedna usterka układu** (polecenie

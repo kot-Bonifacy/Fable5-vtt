@@ -8,7 +8,6 @@ import {
   formatEddies,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { CheckCallDialog } from './CheckCallDialog.js';
 import { confirmDestructive } from '../confirm.js';
 import {
   advanceErrorText,
@@ -21,6 +20,7 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
+import { useCheckStore } from '../stores/checkStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -52,8 +52,6 @@ function ackErrorText(code: string): string {
 export function CharacterPanel() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  /** Postać, dla której MG układa właśnie wezwanie do Testu (etap 32). */
-  const [callFor, setCallFor] = useState<{ id: string; name: string } | null>(null);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const registry = useCharacterStore((s) => s.registry);
@@ -305,7 +303,11 @@ export function CharacterPanel() {
                     <button
                       type="button"
                       className="small-button"
-                      onClick={() => setCallFor({ id, name: character.name })}
+                      onClick={() =>
+                        useCheckStore
+                          .getState()
+                          .openCall({ characterId: id, characterName: character.name })
+                      }
                       title="Wezwij do Testu"
                       aria-label="Wezwij do Testu"
                     >
@@ -386,14 +388,6 @@ export function CharacterPanel() {
       </form>
 
       {error && <p className="auth-error">{error}</p>}
-
-      {callFor && (
-        <CheckCallDialog
-          characterId={callFor.id}
-          characterName={callFor.name}
-          onClose={() => setCallFor(null)}
-        />
-      )}
     </div>
   );
 }

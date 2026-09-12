@@ -7,9 +7,12 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
-import { checkCallTargetText, type CheckCallEntry } from './checks.js';
+import type { CheckCallEntry, CheckRequestEntry } from './checks.js';
+import type { InventoryMoveEntry } from './inventory.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
+import type { TimeLogEntry } from './gametime.js';
+import type { RandomTableRollEntry } from './tables.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -25,6 +28,10 @@ import type { JournalLogEntry } from './journal.js';
  * whisper pattern for the same reason `proposal` does — it is a request put to
  * one person, not a line for the table — and the roll that answers it is an
  * ordinary card, public or GM-only exactly as the call decided.
+ *
+ * `request` (etap 40) jest tym samym z drugiej strony: gracz pyta MG, czy da
+ * się rzucić. Jedzie tą samą drogą szeptu i z tego samego powodu — to rozmowa
+ * dwóch osób — a zgoda zamienia ją w zwyczajne `check`.
  */
 export type ChatKind =
   | 'say'
@@ -40,8 +47,50 @@ export type ChatKind =
   | 'journal'
   /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
   | 'check'
+  /** Prośba gracza o Test, czekająca na próg od MG (etap 40). */
+  | 'request'
   /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
-  | 'recovery';
+  | 'recovery'
+  /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
+  | 'time'
+  /** Przedmiot zmieniający kartę (etap 38b) — przekazanie albo łup. */
+  | 'inventory'
+  /** Co gracz wypatrzył na cudzej figurze po zdanym Teście (etap 41). */
+  | 'sighting'
+  /** Wynik losowania z tabeli, pokazany całemu stołowi (etap 34). */
+  | 'rolltable'
+  /**
+   * Ten sam wynik, ale wyłącznie dla MG — rodzaj domyślny, bo losowanie
+   * fabularne zwykle wyprzedza to, co gracze mają zobaczyć. Rozdzielenie na
+   * dwa rodzaje, a nie flaga na jednym, jest wymuszone przez `visibleTo`
+   * w `realtime/chat-io.ts`: widoczność historii czatu rozstrzyga się **po
+   * rodzaju**, w zapytaniu do bazy — dokładnie tak, jak `roll`/`gmroll` od
+   * etapu 06 i `action`/`gmaction` od 14b.
+   */
+  | 'gmrolltable';
+
+/**
+ * Co zdany Test Percepcji pokazał na cudzej figurze (etap 41).
+ *
+ * Karta **prywatna**, wzorem szeptu: dochodzi do tego, kto patrzył, i do MG.
+ * Rzut, który ją poprzedził, może być jawny i zwykle jest — stół widzi, że ktoś
+ * się przygląda i czy mu wyszło. Widzi natomiast **wynik rzutu, nie treść**:
+ * liczby zdobyte spojrzeniem należą do postaci, która je zdobyła, a stół
+ * dowiaduje się ich wtedy, gdy ona je powie.
+ *
+ * Karta zostaje na czacie i to jest jej druga rola: po przeładowaniu strony
+ * gracz nadal ma to, co wypatrzył, bez rzucania po raz drugi.
+ */
+export interface SightingLogEntry {
+  /** Kto patrzył — nazwa postaci, zdenormalizowana jak wszędzie na czacie. */
+  actor: string;
+  /** Na kogo — nazwa, którą widz ma prawo wymówić (alias, jeśli MG go nadał). */
+  target: string;
+  /** Figura, której to dotyczy: okno oględzin dopasowuje po niej kartę. */
+  targetTokenId: string;
+  /** Treść oględzin — nieprzezroczysta dla rdzenia (CP RED: `CpredSighting`). */
+  sighting: Record<string, unknown>;
+}
 
 /**
  * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
@@ -308,8 +357,18 @@ export interface ChatMessageView {
   journal?: JournalLogEntry;
   /** GM's call for a roll — kind `check` only (stage 32). */
   check?: CheckCallEntry;
+  /** Prośba gracza o Test — kind `request` only (etap 40). */
+  request?: CheckRequestEntry;
   /** Dzień odpoczynku albo podana dawka — kind `recovery` only. */
   recovery?: RecoveryLogEntry;
+  /** Skok zegara świata — kind `time` only (etap 37). */
+  time?: TimeLogEntry;
+  /** Przedmiot, który zmienił kartę — kind `inventory` only (etap 38b). */
+  inventory?: InventoryMoveEntry;
+  /** Co widać na obejrzanej figurze — kind `sighting` only (etap 41). */
+  sighting?: SightingLogEntry;
+  /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
+  rolltable?: RandomTableRollEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -329,9 +388,18 @@ export const GM_ROLL_ALIASES = ['gr', 'gmroll'];
 /** Aliases of „speak as this NPC" — GM only, no model involved. */
 export const AS_BOT_ALIASES = ['jako', 'as'];
 
+/**
+ * Aliasy losowania z tabeli (etap 34) — MG only.
+ *
+ * Cały argument jest nazwą tabeli, bez cudzysłowów i bez etykiety: „Spotkania
+ * dzienne w Night City" ma się dać wpisać tak, jak się nazywa. Rozstrzygnięcie
+ * nazwy na tabelę należy do serwera, jak przy każdym innym adresacie.
+ */
+export const RANDOM_TABLE_ALIASES = ['tab', 'tabela'];
+
 /** One-line help shown next to "unknown command" errors. */
 export const CHAT_COMMANDS_HELP =
-  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG), /jako <bot> <treść> (MG mówi jako NPC)';
+  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG), /jako <bot> <treść> (MG mówi jako NPC), /tab <nazwa> (losowanie z tabeli, MG)';
 
 export type ParsedChatInput =
   | { kind: 'empty' }
@@ -343,6 +411,9 @@ export type ParsedChatInput =
   /** GM speaks in a bot's name; `targetName` is the bot. */
   | { kind: 'as-bot'; targetName: string; text: string }
   | { kind: 'invalid-as-bot'; reason: 'MISSING_TARGET' | 'MISSING_TEXT' }
+  /** Losowanie z tabeli (etap 34); `tableName` rozstrzyga serwer. */
+  | { kind: 'rolltable'; tableName: string }
+  | { kind: 'invalid-rolltable'; reason: 'MISSING_TARGET' }
   | { kind: 'unknown-command'; command: string };
 
 /**
@@ -448,6 +519,11 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
     return { kind: 'as-bot', targetName: split.targetName, text: split.text };
   }
 
+  if (RANDOM_TABLE_ALIASES.includes(command)) {
+    if (args.length === 0) return { kind: 'invalid-rolltable', reason: 'MISSING_TARGET' };
+    return { kind: 'rolltable', tableName: args };
+  }
+
   return { kind: 'unknown-command', command };
 }
 
@@ -469,9 +545,13 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
       return 'talk';
     // `check` (etap 32) jest zapowiedzią rzutu i chowa się razem z rzutami:
     // grupa „Rzuty" gasi wtedy całą parę, a nie połowę z niej.
+    // `request` (etap 40) siedzi tu razem z `check` świadomie: zgaszona grupa
+    // „Rzuty" ma gasić **całą** zapowiedź rzutu, a nie jej połowę — inaczej
+    // z feedu znikałoby wezwanie, a zostawała prośba, która je wywołała.
     case 'roll':
     case 'gmroll':
     case 'check':
+    case 'request':
       return 'dice';
     case 'damage':
     case 'action':
@@ -484,210 +564,26 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
       return 'table';
     // Odpoczynek i zastrzyk to nie walka, choć zmieniają PW: patrzy się na nie
     // przy rozliczaniu przerwy między scenami, razem z papierami i pieniędzmi.
+    // Skok zegara jest cezurą tej samej przerwy — „minęła noc" czyta się
+    // dokładnie wtedy, co „Vex odzyskał 7 PW".
     case 'recovery':
+    case 'time':
+      return 'table';
+    // Przekazanie i łup (38b) czyta się razem z pieniędzmi: to ta sama
+    // rubryka „kto co ma", tyle że rzeczami zamiast eurodolcami.
+    case 'inventory':
+      return 'table';
+    // Oględziny (41) idą tą samą rubryką: „kto co ma", tyle że o kimś obcym.
+    // Nie do „Rzutów" — tam siedzi Test, który tę kartę wywołał, a zgaszona
+    // grupa rzutów ma gasić kości, nie zabierać zdobytej wiedzy.
+    case 'sighting':
+      return 'table';
+    // Losowanie z tabeli (34) NIE jest w grupie „Rzuty", choć pada w nim kość:
+    // grupa dzieli wiersze po tym, po co się na nie patrzy, a na tę kartę
+    // patrzy się po treść wiersza — „kogo spotykacie" — nie po liczbę.
+    // Zgaszone „Rzuty" mają schować testy, a nie wyniki losowania fabularnego.
+    case 'rolltable':
+    case 'gmrolltable':
       return 'table';
   }
-}
-
-/**
- * Wiersz czatu ściśnięty do jednej linii (tryb zwarty, 01.09.2026).
- *
- * `null` znaczy „ten wiersz zostaje w całości" — wypowiedzi się nie streszcza,
- * bo streszczenie rozmowy jest jej utratą. Ściska się wyłącznie mechanikę,
- * której karta ma sześć linii, a pamięta się z niej jedną liczbę.
- */
-export interface ChatCompactLine {
-  /** Kto — postać, cel ciosu albo tytuł karty. */
-  actor: string;
-  /** Jedno zdanie: co padło i z jakim skutkiem. */
-  summary: string;
-  /** Zabarwienie, gdy karta niesie werdykt — zwarty wiersz ma go nie gubić. */
-  tone?: 'success' | 'failure' | 'warn';
-}
-
-/** „Trafienie", „Pudło" albo „Ogień zaporowy" — werdykt ataku jednym słowem. */
-function attackVerdict(hit: boolean | undefined): { text: string; tone: 'success' | 'failure' } {
-  if (hit === undefined) return { text: 'Ogień zaporowy', tone: 'success' };
-  return hit ? { text: 'Trafienie', tone: 'success' } : { text: 'Pudło', tone: 'failure' };
-}
-
-function compactRoll(message: ChatMessageView): ChatCompactLine | null {
-  const roll = message.roll;
-  if (!roll) return null;
-  const head = roll.title ?? roll.notation;
-  const parts: string[] = [
-    roll.title || !message.text
-      ? `${head} · ${roll.total}`
-      : `${head} · ${roll.total} — ${message.text}`,
-  ];
-  let tone: ChatCompactLine['tone'];
-  if (roll.attack) {
-    const verdict = attackVerdict(roll.attack.hit);
-    parts.push(verdict.text, roll.attack.detail);
-    tone = verdict.tone;
-  } else if (roll.opposed) {
-    // Remis jest własnym wynikiem tylko tam, gdzie zasady go znają (Konfrontacja,
-    // etap 23c); wszędzie indziej `won` niesie całą odpowiedź.
-    const opposed = roll.opposed;
-    const verdict =
-      opposed.outcome === 'tie'
-        ? 'remis'
-        : (opposed.outcome ? opposed.outcome === 'win' : opposed.won)
-          ? 'wygrana'
-          : 'przegrana';
-    parts.push(verdict, opposed.detail);
-    tone = verdict === 'remis' ? 'warn' : verdict === 'wygrana' ? 'success' : 'failure';
-  }
-  if (roll.outcome) {
-    parts.push(
-      roll.outcome.detail ? `${roll.outcome.label} · ${roll.outcome.detail}` : roll.outcome.label,
-    );
-    tone ??= roll.outcome.success ? 'success' : 'failure';
-  }
-  if (roll.critical?.type === 'crit') parts.push('Krytyk!');
-  if (roll.critical?.type === 'fumble' && !roll.critical.ignored) parts.push('Fumble!');
-  if (roll.criticalDamage) parts.push('Rana krytyczna!');
-  return {
-    actor: roll.actor ?? message.authorName,
-    summary: parts.filter((part) => part.length > 0).join(' · '),
-    ...(tone ? { tone } : {}),
-  };
-}
-
-function compactDamage(entry: DamageLogEntry): ChatCompactLine {
-  const stopped = entry.damageThrough === 0 && entry.bonusDamage === 0;
-  const parts: string[] = [entry.locationLabel];
-  if (stopped) {
-    parts.push(`pancerz zatrzymał cios (${entry.damageRolled} obr.)`);
-  } else {
-    // PW bezwzględne dostaje tylko ten, komu serwer je przysłał — zwarty wiersz
-    // niczego nie odsłania, bo czyta dokładnie to samo pole co pełna karta.
-    parts.push(
-      entry.hp ? `−${entry.hpLost} PW (${entry.hp.after}/${entry.hp.max})` : `−${entry.hpLost} PW`,
-    );
-  }
-  if (entry.woundLabel) parts.push(entry.woundLabel);
-  const injury = entry.injury ?? entry.injuryAimed ?? entry.injuryExtra;
-  if (injury) parts.push(injury.name);
-  if (entry.undone) parts.push('cofnięte');
-  return {
-    actor: entry.targetName,
-    summary: parts.join(' · '),
-    tone: entry.undone ? 'warn' : stopped ? 'success' : 'failure',
-  };
-}
-
-function compactAction(entry: CombatActionLogEntry): ChatCompactLine {
-  const parts: string[] = [entry.actionName];
-  if (entry.note) parts.push(entry.note);
-  if (entry.overspent) parts.push('poza budżetem tury');
-  if (entry.refusal) parts.push(`odmowa: ${entry.refusal.message}`);
-  if (entry.passed) parts.push('przepuszczone przez MG');
-  return {
-    actor: entry.actorName,
-    summary: parts.join(' · '),
-    ...(entry.refusal && !entry.passed ? { tone: 'failure' as const } : {}),
-  };
-}
-
-function compactProposal(proposal: BotActionProposal): ChatCompactLine {
-  const parts: string[] = [
-    proposal.combat ? proposal.combat.summary : `Chce rzucić: ${proposal.optionLabel}`,
-  ];
-  if (proposal.resolution === 'approved') parts.push('zatwierdzone');
-  if (proposal.resolution === 'rejected') parts.push('odrzucone');
-  return {
-    actor: proposal.botName,
-    summary: parts.join(' · '),
-    ...(proposal.resolution === 'rejected' ? { tone: 'failure' as const } : {}),
-  };
-}
-
-function compactEconomy(entry: EconomyLogEntry): ChatCompactLine {
-  const first = entry.summary ?? entry.lines[0] ?? '';
-  const rest = entry.summary ? entry.lines.length : Math.max(entry.lines.length - 1, 0);
-  return {
-    actor: entry.title,
-    summary: rest > 0 ? `${first} · +${rest} poz.` : first,
-  };
-}
-
-/**
- * Wezwanie do Testu (etap 32). Otwarte wezwanie **nie daje się ścisnąć** — ma
- * przycisk „Rzuć", a zwarty wiersz przycisków nie ma; to ta sama zasada, którą
- * 01.09 dostała nierozstrzygnięta propozycja bota. Ściska się dopiero rozliczone
- * albo odwołane, czyli takie, z którego został sam zapis w dzienniku.
- */
-function compactCheckCall(entry: CheckCallEntry): ChatCompactLine | null {
-  if (entry.cancelled) {
-    return { actor: entry.characterName, summary: `${entry.rollLabel} — wezwanie odwołane` };
-  }
-  if (!entry.resolved) return null;
-  const target = checkCallTargetText(entry);
-  return {
-    actor: entry.characterName,
-    summary: `${entry.rollLabel} · ${target} — ${
-      entry.resolved.success ? 'Zdane' : 'Niezdane'
-    } (${entry.resolved.total})`,
-    tone: entry.resolved.success ? 'success' : 'failure',
-  };
-}
-
-/**
- * Ściska wiersz do jednej linii albo mówi „zostaw go w spokoju" (`null`).
- *
- * Funkcja **niczego nie ukrywa i niczego nie dopowiada**: czyta wyłącznie pola,
- * które i tak są w wiadomości, więc na cudzym ekranie ściska dokładnie to, co
- * serwer temu ekranowi przysłał (redakcja jest po stronie serwera, etap 15).
- */
-export function chatCompactLine(message: ChatMessageView): ChatCompactLine | null {
-  switch (message.kind) {
-    case 'say':
-    case 'whisper':
-      return null;
-    case 'roll':
-    case 'gmroll':
-      return compactRoll(message);
-    case 'damage':
-      return message.damage ? compactDamage(message.damage) : null;
-    case 'action':
-    case 'gmaction':
-      return message.action ? compactAction(message.action) : null;
-    case 'proposal':
-      return message.proposal ? compactProposal(message.proposal) : null;
-    case 'economy':
-      return message.economy ? compactEconomy(message.economy) : null;
-    case 'handout':
-      return message.handout
-        ? {
-            actor: message.handout.kind === 'screamsheet' ? 'Screamsheet' : 'Handout',
-            summary: message.recipientName
-              ? `${message.handout.title} — do ${message.recipientName}`
-              : message.handout.title,
-          }
-        : null;
-    case 'journal':
-      return message.journal
-        ? {
-            actor: 'Wpis w dzienniku',
-            summary: `${message.journal.title} · sesja z ${message.journal.sessionDate}`,
-          }
-        : null;
-    case 'check':
-      return message.check ? compactCheckCall(message.check) : null;
-    case 'recovery':
-      return message.recovery ? compactRecovery(message.recovery) : null;
-  }
-}
-
-/** „Vex · Dzień odpoczynku — +7 PW" albo „Vex · Antybiotyk — tydzień". */
-function compactRecovery(entry: RecoveryLogEntry): ChatCompactLine {
-  return {
-    actor: entry.actor,
-    summary:
-      entry.hp > 0
-        ? `${entry.title} — +${entry.hp} PW`
-        : `${entry.title} — ${entry.note ?? 'bez zmian'}`,
-    ...(entry.tone ? { tone: entry.tone } : {}),
-  };
 }

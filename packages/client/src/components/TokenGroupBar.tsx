@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StatusIcon } from './HudIcon.js';
 import type { SocketAck } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
@@ -7,6 +8,7 @@ import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { addToCombat, deleteToken, duplicateToken, updateToken } from '../socket.js';
+import { figureCardName } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { confirmDestructive } from '../confirm.js';
 import { plural } from '../plural.js';
@@ -87,7 +89,21 @@ export function TokenGroupBar() {
     // scenerii (27k), ale nie figur — a id żetonu noszą inicjatywa i runy Sieci.
     // To jest ta sama różnica, dla której `Delete` figur nie dotyka.
     if (!confirmDestructive(`Usunąć ze sceny ${label}?`)) return;
-    await apply((tokenId) => deleteToken(tokenId), 'Usuwanie figur');
+    // Jedno pytanie o karty na całą paczkę, a nie jedno na figurę: dwanaście
+    // okienek pod rząd to nie jest zgoda, tylko klikanie „OK".
+    const withCards = picked.filter((token) => figureCardName(token) !== null);
+    const alsoCards =
+      withCards.length > 0 &&
+      window.confirm(
+        withCards.length === 1
+          ? `Usunąć też kartę „${figureCardName(withCards[0]!)}”?`
+          : `Usunąć też ${withCards.length} kart tych figur? Zostaną w kampanii, jeśli odmówisz.`,
+      );
+    const doomed = new Set(withCards.map((token) => token.id));
+    await apply(
+      (tokenId) => deleteToken(tokenId, alsoCards && doomed.has(tokenId)),
+      'Usuwanie figur',
+    );
     useSelectionStore.getState().clearGroup();
   }
 
@@ -190,7 +206,7 @@ export function TokenGroupBar() {
                 }
                 onClick={() => toggleStatus(status.id)}
               >
-                <img src={status.icon} alt="" width={16} height={16} />
+                <StatusIcon src={status.icon} />
                 {status.name}
               </button>
             );

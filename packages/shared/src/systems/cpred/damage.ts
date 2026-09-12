@@ -71,6 +71,37 @@ export function woundStatusIds(hpCurrent: number, hpMaxValue: number): string[] 
   return id ? [id] : [];
 }
 
+/**
+ * What a viewer may truthfully say about a figure's wounds.
+ *
+ * Three values, not two, because a player looking at somebody else's figure is
+ * in a third state the boolean had no room for: HP never leave the server for
+ * a token they do not own (`toTokenView`), so „no HP" means *not known*, not
+ * *unharmed*. A list built to pick the dying out of a crowd must not answer
+ * „bez ran" for every one of them — the marker states knowledge, never its
+ * absence.
+ */
+export type CpredObservedWoundState = 'healthy' | 'wounded' | 'unknown';
+
+/**
+ * Wound state as far as this viewer can tell, from whatever they were given.
+ *
+ * HP win when present — they carry all four thresholds. Without them the only
+ * public evidence is the wound stickers the server keeps in sync with HP on
+ * every token bound to a sheet, and those cover just the bottom two states:
+ * a sticker proves a wound, but its absence proves nothing, because **Lekko
+ * ranny has no sticker**. That gap is exactly why the third value exists.
+ */
+export function observedWoundState(observation: {
+  hp?: { current: number; max: number } | null;
+  statuses?: readonly string[];
+}): CpredObservedWoundState {
+  const hp = observation.hp;
+  if (hp) return woundStateFromHp(hp.current, hp.max) === 'healthy' ? 'healthy' : 'wounded';
+  const statuses = observation.statuses ?? [];
+  return statuses.some((id) => CPRED_MANAGED_WOUND_STATUS_IDS.includes(id)) ? 'wounded' : 'unknown';
+}
+
 /** Applies the managed wound statuses onto an existing status list. */
 export function applyWoundStatuses(
   statuses: readonly string[],

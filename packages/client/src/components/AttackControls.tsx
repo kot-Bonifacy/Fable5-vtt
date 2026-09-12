@@ -43,16 +43,16 @@ export function AttackRow({
   /**
    * Figura bez karty też zadaje obrażenia (zaległość z 23.08).
    *
-   * Statysta strzela z własnego profilu od etapu 16b, ale atakującego szukało
-   * się wyłącznie wśród **kart postaci** — więc jego karta ataku pokazywała
-   * trafienie i nikogo nie raniła, a MG odejmował PW ręcznie skrótami ±5.
-   * To ta sama luka, którą 22.08 zamknięto po stronie obrony (`statistDefender`
-   * niżej); rzut idzie profilem, z którego policzone były same obrażenia, więc
-   * broń, która wystrzeliła, i broń, która rani, nie mają jak się rozjechać.
+   * Figura prowadzona przez żeton strzela od 16b, ale atakującego szukało się
+   * wyłącznie wśród **kart, które ten widz ma w ręku** — więc jej karta ataku
+   * pokazywała trafienie i nikogo nie raniła, a MG odejmował PW ręcznie
+   * skrótami ±5. To ta sama luka, którą 22.08 zamknięto po stronie obrony
+   * (`statistDefender` niżej). Od 38a rozstrzyga o tym adres: rzut jedzie
+   * `attackerTokenId`, a serwer bierze z niego kartę tej figury.
    */
   const attackerToken = system.attackerTokenId ? tokens[system.attackerTokenId] : undefined;
   const statistAttacker =
-    !attackerSheet && attackerToken && !attackerToken.characterId && attackerToken.combatProfile
+    !attackerSheet && attackerToken?.characterId
       ? isGm || (user?.id !== undefined && attackerToken.ownerId === user.id)
         ? attackerToken
         : undefined
@@ -77,13 +77,13 @@ export function AttackRow({
   /**
    * Figura bez karty też się uchyla (sesja naprawcza 22.08).
    *
-   * PT obrony statysty liczy się z jego profilu bojowego od etapu 16b, ale
-   * przycisk pojawiał się wyłącznie dla celu z **kartą** — Zbir z Poligonu nie
-   * miał więc jak uniknąć niczego. Rzut idzie tym samym profilem, którym
-   * policzone było PT, więc bierna i czynna obrona nie mogą się rozjechać.
+   * PT obrony figury liczy się z jej karty, ale przycisk pojawiał się wyłącznie
+   * dla celu, którego kartę ten widz **ma** — Zbir z Poligonu nie miał więc jak
+   * uniknąć niczego. Rzut idzie tą samą kartą, którą policzone było PT, więc
+   * bierna i czynna obrona nie mogą się rozjechać.
    */
   const statistDefender =
-    targetToken && !targetToken.characterId && targetToken.combatProfile
+    targetToken?.characterId && !defender
       ? isGm || (user?.id !== undefined && targetToken.ownerId === user.id)
         ? targetToken
         : undefined

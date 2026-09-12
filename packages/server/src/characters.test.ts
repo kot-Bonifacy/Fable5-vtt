@@ -12,11 +12,11 @@ import type {
   CharacterView,
   CpredCharacterData,
   InvitationSummary,
-  PortraitUploadResult,
+  PortraitAssetView,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
-import { CPRED_SCHEMA_VERSION } from '@vtt/shared';
+import { CPRED_SCHEMA_VERSION, DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -420,22 +420,29 @@ describe('portrait uploads', () => {
    * Od 23.08 pliki portretów dokłada **wyłącznie MG** — gracz wybiera z puli
    * kampanii (`/api/portrait-assets`, testy w `tokens.test.ts`). Wcześniej ta
    * trasa stała na `requireAuth` i każdy wgrywał, co chciał.
+   *
+   * Od 12.09 jest to **jedna trasa**: `/api/uploads/portraits`, która zapisywała
+   * plik bez wiersza w bazie, zniknęła. Portret bez wiersza nie miał gdzie
+   * trzymać kadru na mapie i nikomu drugi raz się nie przydawał.
    */
   it('accepts a GM upload and refuses players and anonymous alike', async () => {
     const { payload, headers } = multipartBody('portret.png', PNG_1X1);
     const res = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: gmCookie },
       payload,
     });
     expect(res.statusCode).toBe(201);
-    const result = res.json() as PortraitUploadResult;
+    const result = res.json() as PortraitAssetView;
     expect(result.url).toMatch(/^\/uploads\/portraits\/.+\.png$/);
+    // Świeży portret ma kadr domyślny, czyli dokładnie to ujęcie, które mapa
+    // rysowała przed 12.09 — wgranie niczego nie przestawia samo z siebie.
+    expect(result.crop).toEqual(DEFAULT_PORTRAIT_CROP);
 
     const player = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: vexCookie },
       payload,
     });
@@ -443,10 +450,22 @@ describe('portrait uploads', () => {
 
     const anonymous = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers,
       payload,
     });
     expect(anonymous.statusCode).toBe(401);
+  });
+
+  /** Trasa zdjęta 12.09 — gdyby wróciła, wróciłby portret bez kadru. */
+  it('no longer answers the crop-less direct route', async () => {
+    const { payload, headers } = multipartBody('portret.png', PNG_1X1);
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(res.statusCode).toBe(404);
   });
 });

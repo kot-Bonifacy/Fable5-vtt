@@ -19,6 +19,7 @@ function sheet(patch: Partial<CpredRestSheet> = {}): CpredRestSheet {
   const stats = { ...base.stats, body: 7, will: 6 };
   return {
     stats,
+    statBlock: null,
     hpCurrent: 10,
     armor: [],
     cyberware: [],

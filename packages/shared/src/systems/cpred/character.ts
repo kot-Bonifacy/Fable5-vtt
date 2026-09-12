@@ -70,14 +70,22 @@ import {
   type NetProgramClass,
   type NetProgramTarget,
 } from './netrunning.js';
+import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CPRED_SHEET_STAT_MIN,
   CPRED_STAT_MAX,
-  CPRED_STAT_MIN,
+  SKILL_LEVEL_MAX,
+  SKILL_LEVEL_MIN,
   type CpredStatId,
   type CpredStats,
 } from './stats.js';
+import {
+  CPRED_STAT_EFFECTS_MAX,
+  readCpredStatEffects,
+  type CpredStatEffect,
+} from './stateffects.js';
 
 /**
  * CP RED sheet data stored in the character's JSON column. `schemaVersion`
@@ -92,8 +100,7 @@ import {
 
 export const CPRED_SCHEMA_VERSION = 2;
 
-export const SKILL_LEVEL_MIN = 0;
-export const SKILL_LEVEL_MAX = 10;
+export { SKILL_LEVEL_MIN, SKILL_LEVEL_MAX } from './stats.js';
 export const ROLE_RANK_MIN = 1;
 export const ROLE_RANK_MAX = 10;
 export const EDDIES_MAX = 10_000_000;
@@ -488,6 +495,15 @@ export const WEAPON_AMMO_MAX = 500;
 /** Attachments one weapon row may carry — the rulebook's three slots. */
 export const WEAPON_ATTACHMENTS_MAX = 3;
 
+/**
+ * Ile rąk ma postać (etap 41) — dwie, i to jest cały model.
+ *
+ * Liczba, a nie lista nazwanych rąk („lewa", „prawa"), bo żadna reguła CP RED
+ * nie pyta, **która** ręka trzyma pistolet; pytają wyłącznie o to, czy jest
+ * wolna. Cyberręka nie dokłada trzeciej: jest ręką na miejsce ręki.
+ */
+export const CPRED_HANDS = 2;
+
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
   sp: number;
@@ -701,6 +717,59 @@ export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): 
   return worst;
 }
 
+/**
+ * Czy ktokolwiek powiedział, co ta figura trzyma w rękach (etap 41).
+ *
+ * Pytanie zadaje **planer ataku**, i tylko on: dopóki odpowiedź brzmi „nie",
+ * żadna broń z karty nie jest zakazana, bo zakaz opierałby się wtedy na domyśle
+ * VTT, a nie na czyjejkolwiek decyzji. Oględziny tego nie pytają — im wolno
+ * zgadywać, bo zgadują **na głos** i nikomu niczego nie zabraniają.
+ */
+export function cpredHandsAreDeclared(
+  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
+): boolean {
+  return data.drawnWeaponRowIds !== undefined;
+}
+
+/**
+ * Czy ta konkretna broń jest w rękach.
+ *
+ * Sensowne wyłącznie przy zadeklarowanych rękach — przy niezadeklarowanych
+ * odpowiada `true` na wszystko, i to jest właściwa odpowiedź na „czy mogę tym
+ * strzelić", a nie ukrywanie niewiedzy.
+ */
+export function cpredWeaponInHands(
+  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
+  rowId: string,
+): boolean {
+  const hands = data.drawnWeaponRowIds;
+  return hands === undefined || hands.includes(rowId);
+}
+
+/**
+ * Broń, którą ta karta trzyma — tak, jak pokazują ją oględziny.
+ *
+ * Tu mieszka reguła domyślna („karta, której nikt nie pytał, trzyma swoją
+ * pierwszą broń"), bo pytających o obraz jest wielu (dymek, okno oględzin,
+ * pasek akcji) i rozjechaliby się na niej co do jednego.
+ *
+ * Id wskazujące wiersz, którego już nie ma (broń oddana, sprzedana, zabrana
+ * z ciała), **wypada** z listy: broń, która zeszła z karty, nie jest w niczyich
+ * rękach.
+ */
+export function cpredDrawnWeapons(
+  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
+): CpredWeaponRow[] {
+  const hands = data.drawnWeaponRowIds;
+  if (hands === undefined) {
+    const first = data.weapons[0];
+    return first ? [first] : [];
+  }
+  return hands
+    .map((rowId) => data.weapons.find((row) => row.id === rowId))
+    .filter((row): row is CpredWeaponRow => row !== undefined);
+}
+
 /** Label the armour penalty carries wherever it is shown — one spelling. */
 export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
 
@@ -894,11 +963,46 @@ export interface CpredCharacterData {
    */
   skillSpecialties: Record<string, string>;
   weapons: CpredWeaponRow[];
+  /**
+   * Broń, którą ta postać ma **w rękach** (etap 41) — id wierszy z `weapons`.
+   *
+   * Trzy stany, nie dwa, i to jest cała subtelność tego pola:
+   *
+   *  - **brak pola** — nikt tej figury nigdy nie pytał. Oględziny pokazują wtedy
+   *    **pierwszą broń z karty** (decyzja MG z 10.09.2026), żeby funkcja działała
+   *    na kartach starszych niż ten etap, ale **planer ataku nie odmawia niczego**:
+   *    to jest domysł VTT, a nie deklaracja stołu, i domysł nie ma prawa zabraniać
+   *    (decyzja MG z 10.09.2026, po zmierzeniu skutków na 39 testach). Ta sama
+   *    ostrożność, którą `conditionalPenalty` stosuje do kar w etapie 29a:
+   *    czego VTT nie wie na pewno, tego nie egzekwuje,
+   *  - **`[]`** — **puste ręce**, i to świadomie: ktoś schował broń albo ją upuścił,
+   *  - **lista id** — te konkretne bronie. Dwie, bo ręce są dwie: pistolet i nóż
+   *    trzyma się naraz, a karabin zajmuje obie.
+   *
+   * Od pierwszego dobycia albo schowania pole **istnieje** i od tej chwili odmowa
+   * jest pełna. Czyta się je wyłącznie przez funkcje niżej, nigdy wprost.
+   *
+   * Pisane **tylko** przez `weapon:draw`, nigdy łatą karty: schowanie broni kosztuje
+   * Akcję (s. 168), a cena z furtką obok jest ozdobą — ta sama umowa, którą
+   * `combatAwareness` zawarło w 30a, a `eddies` w 23b.
+   */
+  drawnWeaponRowIds?: string[];
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
   cyberware: CpredCyberwareRow[];
   /** Critical Injuries suffered right now (stage 15). */
   criticalInjuries: CpredCriticalInjuryRow[];
+  /**
+   * Efekty czasowe siedzące na Cechach (etap 39) — Nerwosol, Lisz, Skorpion,
+   * ręka MG. `[]` na każdej karcie, której nikt niczym nie potraktował.
+   *
+   * Pisane **wyłącznie przez silnik**: `character:stat-effect` u MG i Czarny
+   * LOD po trafieniu. Wypadają z `character:update` u wszystkich — gracz, który
+   * może wpisać sobie listę, zdejmuje z siebie narkotyk bez rzutu, a MG, który
+   * może ją wpisać, omija losowanie 1k6 i zapis terminu. Ta sama furtka, którą
+   * `eddies` zamknęło w 23b.
+   */
+  statEffects: CpredStatEffect[];
   /**
    * Death Saves already taken since going Mortally Wounded. Each one makes the
    * next harder (+1); regaining a single HP resets the counter (RAW:
@@ -997,6 +1101,20 @@ export interface CpredCharacterData {
    * so one deck, not a list of them. A second deck in the backpack is an
    * ordinary `gear` row until it is the one being used.
    */
+  /**
+   * Wydrukowany blok statystyk (etap 38a) — Wartość bojowa, zakaz uniku przed
+   * pociskami i wydrukowane PW. `null` na karcie postaci, czyli prawie zawsze.
+   *
+   * Nosi go figura, której podręcznik podaje gotowe liczby zamiast Cech
+   * i Umiejętności: funkcjonariusz Wsparcia (s. 158), Demon (s. 212),
+   * wieżyczka (s. 214), ganger ostatystykowany szybkim edytorem w menu żetonu.
+   * **Nie jest kategorią karty** — MG odrzucił 05.09 znacznik statysty
+   * w rosterze, a nazwanemu NPC-owi wolno mieć Wartość bojową tak samo.
+   *
+   * Trzy pola zamiast trzech osobnych kolumn na karcie, bo to jeden fakt:
+   * „tej figury nie liczy się, tylko czyta". Szczegóły w `statblock.ts`.
+   */
+  statBlock: CpredStatBlock | null;
   cyberdeck: CpredCyberdeck | null;
 }
 
@@ -1075,6 +1193,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     gear: [],
     cyberware: [],
     criticalInjuries: [],
+    statEffects: [],
     deathSaves: 0,
     recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
@@ -1087,6 +1206,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     lifepath: createDefaultLifepath(),
     aliases: '',
     improvementPoints: 0,
+    statBlock: null,
     cyberdeck: null,
   };
 }
@@ -1115,11 +1235,11 @@ function validateStats(raw: unknown, issues: CpredValidationIssue[]): CpredStats
   const stats = {} as CpredStats;
   for (const id of CPRED_STAT_IDS) {
     const value = input[id];
-    if (!isInteger(value) || value < CPRED_STAT_MIN || value > CPRED_STAT_MAX) {
+    if (!isInteger(value) || value < CPRED_SHEET_STAT_MIN || value > CPRED_STAT_MAX) {
       issues.push(
         issue(
           `stats.${id}`,
-          `Cecha ${CPRED_STAT_LABELS[id].name} musi być liczbą całkowitą od ${CPRED_STAT_MIN} do ${CPRED_STAT_MAX}.`,
+          `Cecha ${CPRED_STAT_LABELS[id].name} musi być liczbą całkowitą od ${CPRED_SHEET_STAT_MIN} do ${CPRED_STAT_MAX}.`,
         ),
       );
       return undefined;
@@ -1827,6 +1947,23 @@ function collectCharacterDataPatch(
     });
     if (weapons) patch.weapons = weapons;
   }
+  // Etap 41. Trójstanowe pole, więc czyta się je trójstanowo: `null` przechodzi
+  // jako „puste ręce", napis jako id wiersza, a **cokolwiek innego** (w tym
+  // brak klucza) zostawia pole nietknięte, czyli przy regule domyślnej. Id nie
+  // jest tu sprawdzane wobec listy broni — wiersz może zniknąć później, a
+  // odpowiedź na „czy on to nadal ma" należy do `cpredDrawnWeapon`, nie do
+  // parsera, który widzi jedną kartę w jednej chwili.
+  // Etap 41. Pole trójstanowe, więc czyta się je trójstanowo: tablica przechodzi
+  // (pusta znaczy „puste ręce"), a brak klucza albo śmieć zostawia je nietknięte,
+  // czyli przy „nikt nie pytał". Id nie są tu sprawdzane wobec listy broni —
+  // wiersz może zniknąć później, a odpowiedź na „czy on to nadal trzyma" należy
+  // do `cpredDrawnWeapons`, nie do parsera, który widzi jedną kartę w jednej chwili.
+  if ('drawnWeaponRowIds' in input) {
+    const value = input.drawnWeaponRowIds;
+    if (Array.isArray(value) && value.every((row) => typeof row === 'string' && row.length > 0)) {
+      patch.drawnWeaponRowIds = value.slice(0, CPRED_HANDS) as string[];
+    }
+  }
   if ('armor' in input) {
     const armor = validateRows<CpredArmorRow>(input.armor, 'armor', issues, (base, row) => {
       const sp = row.sp ?? 0;
@@ -1876,6 +2013,21 @@ function collectCharacterDataPatch(
   if ('criticalInjuries' in input) {
     const injuries = validateCriticalInjuries(input.criticalInjuries, issues);
     if (injuries) patch.criticalInjuries = injuries;
+  }
+  // Etap 39. Lista przechodzi przez czytnik z `stateffects.ts`, ten sam, którym
+  // czyta się ją z bazy: wiersze pisze silnik, więc zepsuty odpada po cichu.
+  // Odmowa **kto** ma prawo je pisać nie stoi tutaj, tylko w `character:update`
+  // — walidator nie zna roli, a `applyCharacterPatch` służy też serwerowi.
+  if ('statEffects' in input) {
+    if (!Array.isArray(input.statEffects)) {
+      issues.push(issue('statEffects', 'Nieprawidłowy format listy efektów.'));
+    } else if (input.statEffects.length > CPRED_STAT_EFFECTS_MAX) {
+      issues.push(
+        issue('statEffects', `Za dużo efektów czasowych (limit ${CPRED_STAT_EFFECTS_MAX}).`),
+      );
+    } else {
+      patch.statEffects = readCpredStatEffects(input.statEffects);
+    }
   }
   if ('deathSaves' in input) {
     const value = input.deathSaves;
@@ -2041,6 +2193,10 @@ function collectCharacterDataPatch(
       patch.improvementPoints = value;
     }
   }
+  // Etap 38a — wydrukowany blok statystyk.
+  if ('statBlock' in input) {
+    patch.statBlock = sanitizeStatBlock(input.statBlock);
+  }
   // Stage 26a — the deck and its slots.
   if ('cyberdeck' in input) {
     const deck = validateCyberdeck(input.cyberdeck, issues);
@@ -2184,7 +2340,10 @@ export function validateCharacterDataPatch(
  * leave current HP, luck or humanity above their recomputed maximums.
  */
 export function normalizeCharacterData(data: CpredCharacterData): CpredCharacterData {
-  const hpCurrent = Math.min(data.hpCurrent, hpMax(data.stats));
+  // Etap 38a: sufitem jest maksimum **tej karty**, a nie liczba z BC i SW.
+  // Funkcjonariusz Wsparcia z wydrukowanymi PW 35 przy BC 4 tracił tu
+  // piętnaście punktów przy pierwszym zapisie.
+  const hpCurrent = Math.min(data.hpCurrent, statBlockHpMax(data.stats, data.statBlock));
   return {
     ...data,
     hpCurrent,

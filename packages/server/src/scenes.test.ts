@@ -304,6 +304,50 @@ describe('scene lifecycle', () => {
     player.socket.disconnect();
   });
 
+  /**
+   * Miejsce startu drużyny (11.09.2026). Gracz dostaje punkt **jawnie** — to
+   * jego kamera go czyta, więc pole jedzie razem ze sceną; tajna jest tylko
+   * chorągiewka, a ta nie jest danymi, tylko rysunkiem u MG. Test pilnuje
+   * trzech rzeczy: że punkt wraca ze sceny, że `null` go kasuje i że gracz nie
+   * może go przestawić.
+   */
+  it('zapamiętuje miejsce startu, kasuje je nullem i nie daje go graczowi ruszyć', async () => {
+    const gm = createSocket(gmCookie);
+    const player = createSocket(playerCookie);
+    await Promise.all([gm.firstSync, player.firstSync]);
+
+    const set = await emitAck<SceneView>(gm.socket, 'scene:update', {
+      sceneId: sceneAId,
+      patch: { spawn: { x: 640, y: 1200 } },
+    });
+    if (!set.ok || !set.data) throw new Error('scene:update (spawn) failed');
+    expect(set.data.spawn).toEqual({ x: 640, y: 1200 });
+
+    expect(
+      await emitAck(player.socket, 'scene:update', {
+        sceneId: sceneAId,
+        patch: { spawn: { x: 1, y: 1 } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+
+    // Gracz wchodzący na scenę dostaje punkt razem z nią — bez niego kamera
+    // nie ma czego posłuchać.
+    await emitAck(gm.socket, 'scene:activate', { sceneId: sceneAId });
+    const joining = createSocket(playerCookie);
+    expect((await joining.firstSync).scene?.spawn).toEqual({ x: 640, y: 1200 });
+    joining.socket.disconnect();
+
+    const cleared = await emitAck<SceneView>(gm.socket, 'scene:update', {
+      sceneId: sceneAId,
+      patch: { spawn: null },
+    });
+    if (!cleared.ok || !cleared.data) throw new Error('scene:update (spawn null) failed');
+    expect(cleared.data.spawn).toBeNull();
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
   it('activation switches every player to the scene with a sequenced broadcast', async () => {
     const gm = createSocket(gmCookie);
     const player = createSocket(playerCookie);

@@ -1,3 +1,5 @@
+import type { ScenePoint } from './measure.js';
+
 export const GRID_MODES = ['grid', 'gridless'] as const;
 export type GridMode = (typeof GRID_MODES)[number];
 
@@ -71,6 +73,30 @@ export interface SceneView {
    * of view.
    */
   explore: boolean;
+  /**
+   * Czy gracze mają na tej mapie związane ręce (zlecenie MG, 12.09.2026)?
+   *
+   * `true` znaczy „figurą tu nie ruszasz", i dotyczy **wyłącznie graczy** — MG
+   * nie jest tym związany nigdy, tak samo jak nie jest związany budżetem Tury.
+   * Powód jest z sesji: drużyna, która dostanie mapę przed rozpoczęciem gry,
+   * obejdzie ją własną figurą i pozna zanim MG cokolwiek powie.
+   *
+   * Pole jedzie **do graczy**, bo to ich klient ma nie podnosić figury i ma
+   * umieć powiedzieć, dlaczego. Tajemnicy w nim nie ma: prawdę i tak rozstrzyga
+   * serwer przy `token:move`, a wiedza „MG jeszcze nie otworzył mapy" nie jest
+   * niczym, czego gracz nie zobaczyłby przy pierwszej próbie.
+   */
+  playerMoveLocked: boolean;
+  /**
+   * Gdzie na tej mapie zaczyna patrzeć gracz, który nie ma tu jeszcze figury
+   * (11.09.2026) — „miejsce startu drużyny", stawiane przez MG narzędziem mapy.
+   *
+   * `null` znaczy „MG nie wyznaczył", a nie „brak": kamera bierze wtedy środek
+   * dolnej krawędzi mapy, bo drużyna zwykle wchodzi z dołu kadru. Pole jedzie
+   * do graczy, bo to **ich** kamera je czyta — nie jest niczym tajnym, a
+   * znacznik na mapie widzi i tak wyłącznie MG.
+   */
+  spawn: ScenePoint | null;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -102,6 +128,18 @@ export interface ScenePatch {
   gridMode?: GridMode;
   grid?: Partial<GridConfig>;
   metersPerSquare?: number;
+  /** Miejsce startu drużyny; `null` kasuje wyznaczony punkt (11.09.2026). */
+  spawn?: ScenePoint | null;
+  /**
+   * Blokada ruchu graczy po tej mapie (12.09.2026).
+   *
+   * Zwykłe pole łaty, a nie własne zdarzenie jak `visibility`, `dark` czy
+   * `explore` — i to jest cała różnica między nimi: tamte trzy **odbierają
+   * graczom figury** w chwili przełączenia, więc muszą przefiltrować listy
+   * tokenów. Ta niczego nie zabiera i nie pokazuje; zmienia tylko odpowiedź na
+   * pytanie „wolno mi tę figurę podnieść".
+   */
+  playerMoveLocked?: boolean;
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
   // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
@@ -276,6 +314,30 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
     );
   }
 
+  if (typeof input.playerMoveLocked === 'boolean') {
+    patch.playerMoveLocked = input.playerMoveLocked;
+  }
+
+  if ('spawn' in input) {
+    const spawn = input.spawn;
+    if (spawn === null) {
+      patch.spawn = null;
+    } else if (
+      typeof spawn === 'object' &&
+      spawn !== null &&
+      isFiniteNumber((spawn as ScenePoint).x) &&
+      isFiniteNumber((spawn as ScenePoint).y)
+    ) {
+      // Punkt spoza mapy byłby kamerą wycelowaną w czerń, a rozmiar sceny
+      // klient i tak zna — ale przycina go serwer, bo klient może kłamać.
+      const { x, y } = spawn as ScenePoint;
+      patch.spawn = {
+        x: Math.round(clamp(x, 0, SCENE_DIMENSION_MAX)),
+        y: Math.round(clamp(y, 0, SCENE_DIMENSION_MAX)),
+      };
+    }
+  }
+
   if (typeof input.grid === 'object' && input.grid !== null) {
     const grid = input.grid as Record<string, unknown>;
     const gridPatch: Partial<GridConfig> = {};
@@ -303,4 +365,28 @@ export function normalizeGridOffset(offset: number, sizePx: number): number {
   if (sizePx <= 0) return 0;
   const wrapped = offset % sizePx;
   return wrapped < 0 ? wrapped + sizePx : wrapped;
+}
+
+/**
+ * Kratka, przy której obraz o szerokości `imageWidthPx` ma dokładnie `columns`
+ * kolumn (zlecenie MG, 11.09.2026).
+ *
+ * Mapy z paczek niosą skalę w nazwie pliku („…-40x30"), więc liczba kratek jest
+ * tym, co MG ma pod ręką — a rozmiaru w pikselach trzeba było szukać suwakiem
+ * i na „StrefiePrzemysłowej" wyszło 47 px zamiast 36,2.
+ *
+ * **Liczy się z kolumn, a nie z obu osi naraz** (decyzja MG, 12.09). Kratka jest
+ * kwadratowa, a pliki z paczek nie dzielą się równo: 2896 × 2176 przy 40 × 30 to
+ * 72,4 px w poziomie i 72,53 px w pionie. Jedna oś musi wygrać, druga wychodzi
+ * z `gridCellsAlong` jako podpowiedź. Wynik jest przycięty do granic, które i tak
+ * nałożyłby serwer; `null`, gdy z danych nie da się kratki policzyć.
+ */
+export function gridSizeForColumns(imageWidthPx: number, columns: number): number | null {
+  if (!(imageWidthPx > 0) || !Number.isInteger(columns) || columns < 1) return null;
+  return clamp(imageWidthPx / columns, GRID_SIZE_MIN, GRID_SIZE_MAX);
+}
+
+/** Ile kratek o boku `sizePx` mieści się na długości `lengthPx` — z ułamkiem. */
+export function gridCellsAlong(lengthPx: number, sizePx: number): number {
+  return sizePx > 0 ? lengthPx / sizePx : 0;
 }

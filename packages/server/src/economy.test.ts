@@ -485,4 +485,13 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect(names).not.toContain('Kai');
     expect(names).not.toContain('Obcy');
   });
+
+  it('odbiorcy niosą, kto siedzi przy stole — lista dzieli się, a nie kurczy', async () => {
+    // Od 38a statyści są kartami, więc obok drużyny stanęły figury MG. Nikogo
+    // nie ubywa (przelew do NPC-a bywa całym sensem sceny), ale klient ma czym
+    // rozdzielić je na dwie grupy (decyzja MG, 12.09).
+    const { payees } = await ledgerOf(vex, kaiId);
+    expect(payees.find((p) => p.name === 'Rico')?.player).toBe(true);
+    expect(payees.find((p) => p.name === 'Manekin')?.player).toBe(false);
+  });
 });

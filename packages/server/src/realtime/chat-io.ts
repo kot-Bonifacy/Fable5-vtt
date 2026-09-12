@@ -1,6 +1,7 @@
 import type {
   BotActionProposal,
   CheckCallEntry,
+  CheckRequestEntry,
   RecoveryLogEntry,
   ChatHistoryPage,
   ChatMessageBroadcast,
@@ -9,7 +10,11 @@ import type {
   DamageLogEntry,
   EconomyLogEntry,
   HandoutLogEntry,
+  InventoryMoveEntry,
+  SightingLogEntry,
   JournalLogEntry,
+  RandomTableRollEntry,
+  TimeLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
@@ -117,8 +122,24 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.journal = JSON.parse(message.payload) as JournalLogEntry;
   } else if (message.kind === 'check' && message.payload) {
     view.check = JSON.parse(message.payload) as CheckCallEntry;
+  } else if (message.kind === 'request' && message.payload) {
+    view.request = JSON.parse(message.payload) as CheckRequestEntry;
   } else if (message.kind === 'recovery' && message.payload) {
     view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
+  } else if (message.kind === 'time' && message.payload) {
+    view.time = JSON.parse(message.payload) as TimeLogEntry;
+  } else if (message.kind === 'inventory' && message.payload) {
+    view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
+  } else if (message.kind === 'sighting' && message.payload) {
+    view.sighting = JSON.parse(message.payload) as SightingLogEntry;
+  } else if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.payload) {
+    const entry = JSON.parse(message.payload) as RandomTableRollEntry;
+    // Skórka stemplowana na wyjściu, tak samo jak przy `roll` wyżej i z tego
+    // samego powodu: kości należą do rzucającego, a nie do zapisanego wyniku.
+    if (isDiceSkinId(message.author.diceSkin)) {
+      for (const step of entry.steps ?? []) step.roll.skin = message.author.diceSkin;
+    }
+    view.rolltable = entry;
   }
   return view;
 }
@@ -227,6 +248,36 @@ export function visibleTo(user: SessionUser) {
               // `proposal`: wezwanie do Testu wystawia MG, więc każde jest jego
               // sprawą — także wystawione z drugiego konta MG.
               'check',
+              // `request` (etap 40) jest tu z tego samego powodu, tylko
+              // z drugiej strony: prośba o Test jest adresowana **do MG**, więc
+              // widzi ją każde konto MG, także to, które przy niej nie siedziało.
+              // Na liście gracza (niżej) `request` być NIE MOŻE — gracz widzi
+              // swoją przez klauzulę `authorId`, a wpis na białej liście
+              // pokazałby mu prośby wszystkich pozostałych.
+              'request',
+              // `time` (etap 37) i `recovery` (30b) są **publiczne** i są tu
+              // z tego samego powodu, co niżej u gracza. Bez tych dwóch wierszy
+              // MG widział wyłącznie **własne** karty (przez `authorId`):
+              // dzień odpoczynku rozliczony przez gracza znikał mu przy
+              // pierwszym przeładowaniu, choć to on prowadzi tę przerwę.
+              'time',
+              'recovery',
+              // `inventory` (38b) jest tu z powodu, dla którego jest `economy`:
+              // karta przekazania jest prywatna, ale MG rozlicza każde
+              // przeniesienie — także takie, które gracze zrobili między sobą,
+              // nie pytając. Bez tego wiersza MG widział wyłącznie własne.
+              'inventory',
+              // `sighting` (41) jest tu z powodu, dla którego jest `inventory`:
+              // karta oględzin jest prywatna (widzi ją ten, kto patrzył), ale MG
+              // ma wiedzieć, co gracze zdążyli o kimś wypatrzeć — inaczej
+              // prowadziłby scenę, nie wiedząc, co druga strona już wie.
+              'sighting',
+              // Tabele losowe (34): `rolltable` jest publiczny i jest tu z tego
+              // samego powodu, co `time` — bez wiersza MG widziałby wyłącznie
+              // własne karty. `gmrolltable` jest tu wzorem `proposal`: cicha
+              // karta należy do stołu MG, także wystawiona z drugiego konta MG.
+              'rolltable',
+              'gmrolltable',
             ],
           },
         },
@@ -239,9 +290,24 @@ export function visibleTo(user: SessionUser) {
   }
   // `gmaction` (a refused action) is deliberately absent: a player sees only
   // their own, through the `authorId` clause below.
+  //
+  // `time` (etap 37) i `recovery` (30b) są na tej liście, bo obie karty **są**
+  // sprawą całego stołu — „minęła noc" to cezura sceny, a to, że ktoś przespał
+  // dobę albo dostał zastrzyk, dzieje się przy wszystkich (tak mówi wprost
+  // dokumentacja `RecoveryLogEntry` od 30b). Bez tych wpisów obie docierały do
+  // stołu wyłącznie rozgłoszeniem na żywo i znikały przy pierwszym
+  // przeładowaniu; widział je tylko ich autor.
   return {
     OR: [
-      { kind: { in: ['say', 'roll', 'damage', 'action', 'journal'] } },
+      // `rolltable` (34) jest na tej liście, a `gmrolltable` NIE i to jest cała
+      // różnica między nimi: cicha karta losowania nie ma prawa wejść graczowi
+      // do historii nawet wtedy, gdy MG pokaże stołowi ten sam wynik osobnym
+      // wierszem.
+      {
+        kind: {
+          in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery', 'rolltable'],
+        },
+      },
       { authorId: user.id },
       { recipientId: user.id },
     ],

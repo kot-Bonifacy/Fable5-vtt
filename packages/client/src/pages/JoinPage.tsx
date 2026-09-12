@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { JoinInfo } from '@vtt/shared';
 import { ApiError, apiGet } from '../api.js';
+import { useAutofillableField } from '../autofill-field.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 type PageState = 'loading' | 'ready' | 'invalid';
@@ -13,7 +14,7 @@ export function JoinPage() {
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [info, setInfo] = useState<JoinInfo | null>(null);
-  const [name, setName] = useState('');
+  const name = useAutofillableField();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -52,8 +53,14 @@ export function JoinPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const trimmed = name.trim();
-    if (trimmed.length > 0) void join(trimmed);
+    // To samo co na ekranie logowania: imię podstawione przez przeglądarkę
+    // stoi w polu, a nie w stanie Reacta.
+    const trimmed = name.read().trim();
+    if (trimmed.length === 0) {
+      setError('Wpisz imię.');
+      return;
+    }
+    void join(trimmed);
   }
 
   if (pageState === 'loading') {
@@ -68,7 +75,9 @@ export function JoinPage() {
     return (
       <div className="auth-screen">
         <div className="auth-card">
-          <h1 className="auth-title">VTT — Cyberpunk RED</h1>
+          <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+          <h1 className="auth-title">Zaproszenie nieważne</h1>
+          <div className="auth-rule" aria-hidden="true" />
           <p className="auth-error">
             Link zaproszenia jest nieprawidłowy, wygasł lub został unieważniony.
           </p>
@@ -81,9 +90,11 @@ export function JoinPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1 className="auth-title">VTT — Cyberpunk RED</h1>
+        <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+        <h1 className="auth-title">Dołączasz do gry</h1>
+        <div className="auth-rule" aria-hidden="true" />
         <p className="auth-subtitle">
-          Dołączasz do kampanii: <strong>{info.campaignName}</strong>
+          Kampania: <strong>{info.campaignName}</strong>
         </p>
 
         {info.players.length > 0 && (
@@ -113,16 +124,13 @@ export function JoinPage() {
           id="player-name"
           type="text"
           maxLength={32}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          ref={name.ref}
+          value={name.value}
+          onChange={(e) => name.setValue(e.target.value)}
           autoFocus
         />
         {error && <p className="auth-error">{error}</p>}
-        <button
-          className="primary-button"
-          type="submit"
-          disabled={busy || name.trim().length === 0}
-        >
+        <button className="primary-button" type="submit" disabled={busy}>
           {busy ? 'Dołączanie…' : 'Dołącz do gry'}
         </button>
       </form>

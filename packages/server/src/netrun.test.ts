@@ -224,6 +224,7 @@ describe('run netrunnera na żywych gniazdach', () => {
   let player: ClientSocket;
   let sceneId: string;
   let architectureId: string;
+  let netrunnerId: string;
   let netrunnerTokenId: string;
   let soloTokenId: string;
   let pointId: number;
@@ -249,6 +250,7 @@ describe('run netrunnera na żywych gniazdach', () => {
       await emitAck<CharacterView>(gm, 'character:create', { name: 'Kolec', ownerId: playerId }),
       'character:create',
     );
+    netrunnerId = netrunner.id;
     // Interface 10 for the same reason the DVs are 1: the dice are real, and
     // the tests below are about the rules, not about luck.
     await emitAck(gm, 'character:update', {
@@ -272,6 +274,9 @@ describe('run netrunnera na żywych gniazdach', () => {
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Magazyn' }), 'scene');
     sceneId = scene.id;
+    // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
+    // zestaw jest o ruchu figur, nie o blokadzie.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId });
@@ -621,5 +626,53 @@ describe('run netrunnera na żywych gniazdach', () => {
     // A figure with no sheet has no Interface — the refusal is the point.
     expect(errorOf(ack)).toBe('NET_NO_INTERFACE');
     expect((await roundTrip(player)).netRuns).toHaveLength(0);
+  });
+
+  /**
+   * Etap 29a, kryterium ukończenia: „Podniesiony Interfejs Netrunnera działa
+   * w `netrun.ts` od razu, bez przeładowania".
+   *
+   * Interfejs jest jedyną Zdolnością Specjalną z mechaniką **starszą niż etap
+   * 30**, więc jako jedyna ma dwie drogi do tej samej liczby: kartę i trwający
+   * run. Serwer czyta kartę świeżo przy każdej akcji sieciowej, ale samo to nie
+   * wystarcza — okno runu stoi u gracza na payloadzie sprzed zakupu, dopóki
+   * `character:advance` nie pchnie `netrun:sync`. Bez tego netrunner, który
+   * kupił rangę w środku runu, widzi budżet o jeden zapis za stary, a to jest
+   * dokładnie ta chwila, w której się ją kupuje.
+   *
+   * Kryterium przetrwało etap bez testu i bez oględzin (znalezione 09.09).
+   */
+  it('kupiona ranga Interfejsu dochodzi do trwającego runu bez ponownego wejścia', async () => {
+    // Sufit drabinki to 10, a stół stawiał netrunnera właśnie na nim — niżej,
+    // żeby w ogóle było co kupić, i z zapasem na jeden szczebel (240 PD za 4).
+    await emitAck(gm, 'character:update', {
+      characterId: netrunnerId,
+      patch: { data: { roleAbilityRank: 3, improvementPoints: 240 } },
+    });
+    await emitAck(player, 'token:move', { tokenId: netrunnerTokenId, x: 0, y: 0, final: true });
+    const started = data(
+      await emitAck<NetRunPayload>(player, 'netrun:start', {
+        tokenId: netrunnerTokenId,
+        accessPointId: pointId,
+      }),
+      'netrun:start',
+    );
+    expect(started.interfaceRank).toBe(3);
+
+    const pushed = waitFor<{ runs: NetRunPayload[] }>(player, 'netrun:sync');
+    const bought = data(
+      await emitAck<CharacterView>(player, 'character:advance', {
+        characterId: netrunnerId,
+        kind: 'ability',
+        to: 4,
+      }),
+      'character:advance',
+    );
+    expect(bought.id).toBe(netrunnerId);
+
+    // Nie „po ponownym wejściu" i nie „po `state:request`" — sam broadcast.
+    const synced = await pushed;
+    const run = synced.runs.find((entry) => entry.runId === started.runId);
+    expect(run?.interfaceRank).toBe(4);
   });
 });
