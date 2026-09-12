@@ -8,6 +8,44 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (ósma) — pełny ekran z ustawień
+
+**Zlecenie MG: przełącznik pełnego ekranu w ustawieniach — zalogowany gracz ma mieć VTT na pełnym
+ekranie; dopytywać i ostrzegać o błędach.** Poza planem etapów, jak 41. Przed kodem MG dostał trzy
+ograniczenia przeglądarek i zdecydował: wybór **per przeglądarka** (`localStorage`, jak głośności —
+u graczy i u MG), po odświeżeniu strony **pierwszy gest gdziekolwiek**, wyjście **przytrzymaniem
+Esc** (Keyboard Lock). Przy stole: Chrome/Edge i Firefox na PC.
+
+**Co powstało (`fullscreen.ts`).** Pole „Pełny ekran" w ⚙ Ustawienia → Widok: zaznaczenie od razu
+wchodzi, odznaczenie wychodzi, a gdy życzenie jest, a pełnego ekranu nie ma — guzik „⛶ Wróć do
+pełnego ekranu". Wejście przy „Zaloguj się" / „Dołącz do gry" **przed** `await` (Firefox nie uzna
+gestu po odpowiedzi serwera). Po F5 automat czeka na pierwszy `pointerdown`/`keydown` (nie Esc)
+**raz na wczytanie strony**; wylogowanie wychodzi i odnawia automat. W Chrome i Edge Esc idzie pod
+Keyboard Lock, a powtórzenia przytrzymanego Esc są tłumione w przechwytywaniu na `window` — inaczej
+drabina z 27f zdjęłaby kilka rzeczy naraz. Wiersz w pomocy `?`; podpowiedź pola mówi prawdę o Esc
+w tej przeglądarce (z blokadą albo bez).
+
+**Ostrzeżenia dla MG, powiedziane przed kodem:** strona nie włączy pełnego ekranu bez gestu (po F5
+jeden klik); Keyboard Lock wymaga HTTPS albo localhost, więc na `http://217.154.210.181:8088` Esc
+wyjdzie z pełnego ekranu od razu — zadziała na `vtt.tatanga.eu` po etapie 28; `window.confirm`
+i okno wyboru pliku mogą w części przeglądarek zdjąć pełny ekran — niesprawdzone.
+
+**Błąd złapany w przeglądarce: `requestFullscreen` zużywa gest, także gdy odmawia.** Pierwszy odczyt
+pomiaru („`pointerdown` nie niesie gestu") był fałszywy i MG usłyszał go ode mnie, zanim go
+sprostowałem — gest zdążył zużyć sam automat. Prawdziwy błąd: po odmowie automat ponawiał przy
+każdym kliknięciu i odbierał gest guzikowi „Wróć…". Odmowa mimo gestu wyłącza teraz automat do
+przeładowania (pułapka w `ui`).
+
+**Nieobejrzane: sam pełny ekran.** Karta automatyki ma `visibilityState: hidden` i Chrome odmawia jej
+(„not granted") — pułapka w `ogledziny`, lista sześciu kroków do ręcznego sprawdzenia w
+`zaleglosci.md`. Obejrzane: pole i podpowiedź w wariancie „przytrzymaj Esc", zapis
+`vtt.view.fullscreen`, guzik powrotu, wywołania z automatu (klik i klawisz `x`) przy aktywnym geście.
+Karta gracza Tony (`[::1]`) wróciła do stanu sprzed sesji — klucz usunięty, strona przeładowana.
+
+**Testy:** **196** u klienta (+13, `fullscreen.test.ts`) — zielone; `shared` i serwer nietknięte.
+ESLint, Prettier i `tsc --noEmit` czyste w kliencie. Umowy: jedna w `ui`; pułapki: jedna w `ui`,
+jedna w `ogledziny`. Nowe zaległości: **jedna** (oględziny pełnego ekranu).
+
 ### Sesja 12.09 (siódma) — Stym, który zawiesza −2, i statysta ranny według wydruku
 
 **Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą

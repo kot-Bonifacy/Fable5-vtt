@@ -52,7 +52,7 @@ export interface DiceSkin {
   id: DiceSkinId;
   /** Polska nazwa w oknie ustawień. */
   label: string;
-  /** Jedno zdanie w oknie ustawień — po co ktoś miałby ją wybrać. */
+  /** Krótki opis wyglądu w oknie ustawień. */
   description: string;
   colorset: DiceColorset;
   /**
@@ -69,7 +69,7 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
   neon: {
     id: 'neon',
     label: 'Neon',
-    description: 'Czarna kość, cyjanowe oczka — Night City po zmroku.',
+    description: 'Czarna kość, cyjanowe oczka.',
     colorset: {
       name: 'vtt-neon',
       background: '#0e1116',
@@ -83,7 +83,7 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
   blood: {
     id: 'blood',
     label: 'Krew',
-    description: 'Czerwony metalik — kości, którymi stół gra od etapu 06.',
+    description: 'Czerwony metalik.',
     colorset: {
       name: 'vtt-blood',
       background: '#a11010',
@@ -97,7 +97,7 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
   chrome: {
     id: 'chrome',
     label: 'Chrom',
-    description: 'Polerowany metal z ciemnym nadrukiem — sprzęt korporacji.',
+    description: 'Polerowany metal z ciemnym nadrukiem.',
     colorset: {
       name: 'vtt-chrome',
       background: '#c9ced6',
@@ -111,7 +111,7 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
   acid: {
     id: 'acid',
     label: 'Kwas',
-    description: 'Jadowita zieleń pod szkłem — coś z czarnego rynku.',
+    description: 'Jadowita zieleń pod szkłem.',
     colorset: {
       name: 'vtt-acid',
       background: ['#123d1f', '#1c5c2c', '#0e2f18'],
@@ -125,7 +125,7 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
   card: {
     id: 'card',
     label: 'Karta',
-    description: 'Biały plastik z czarnym nadrukiem — czytelna w trybie dziennym.',
+    description: 'Biały plastik z czarnym nadrukiem.',
     colorset: {
       name: 'vtt-card',
       background: '#f4f1ea',
