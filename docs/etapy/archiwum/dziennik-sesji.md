@@ -8,6 +8,67 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
+
+**Zlecenie MG, trzy punkty:** (1) chowając albo przesuwając boczne paski, mapa ma się sama
+dopasowywać do ekranu, „aby nie było widać siatki"; (2) przetestować widoczność żetonów graczy
+na mapie startowej; (3) pasek PW wokół żetonu ma leżeć **na zewnątrz avatara** i mieć wyraźniejsze
+kolory. Doprecyzowane w trakcie: kolory mają **zgadzać się z paskiem PW w panelu postaci**,
+żaden okrąg ma nie wchodzić na portret, a portret w panelu ma być **duży**.
+
+**Punkt 1 był prawdziwą usterką i ma jedną przyczynę: `resizeTo` w Pixi v8 nie obserwuje
+elementu.** Mierzy się nim, ale nasłuchuje wyłącznie `window.resize` — a mapa stoi między dwoma
+paskami, które zmieniają szerokość bez ruszania oknem (lewy HUD zwija się do 2,6 rem, prawy panel
+ma uchwyt). Płótno zostawało w starym rozmiarze, a w odsłoniętym pasie świeciła **kratka rysowana
+przez CSS** (`.map-area`) — stąd „widać siatkę". Lek to `ResizeObserver` na gospodarzu
+(`watchHostSize` → `app.queueResize`); dalej wszystko jedzie starą drogą, łącznie z
+`applyCameraBounds`. Kamera zostaje na miejscu (wybór MG): dochodzi sam pas mapy.
+
+**Punkt 3 zmienił geometrię żetonu, i to w sposób, który dotyka czterech rysunków naraz.**
+Obrączka PW przeniosła się z wnętrza obwódki właściciela (czyli z brzegu twarzy) **poza kratkę**;
+świadoma cena wybrana przez MG spośród dwóch wariantów — figura wystaje o szerokość paska, więc
+sąsiedzi potrafią się obrączkami zetknąć; odrzucone zwężenie portretu kosztowałoby ~12 % średnicy
+twarzy na każdej figurze. Promienie wyszły do `map/token-ring.ts` (jak kamera do `camera.ts`),
+a `furnitureRadius` jest odtąd **jedyną** odpowiedzią na „dokąd sięga figura": czytają ją aureola
+tury (inaczej pasek by ją zamalował), klin kierunku (inaczej wyciąłby w pasku dziurę), podpis
+figury oraz — po pytaniu MG — **obrączka zaznaczenia, pierścień grupy i uchwyt obrotu**
+w `MapRenderer`. To ostatnie było prawdziwym znaleziskiem: ich odstęp liczy się w pikselach
+**ekranu** (`8 * overlayScale()`), więc w świecie topnieje ze zbliżeniem i przy zoomie 2 biały
+przerywany okrąg siadał dokładnie na pasku życia.
+
+**Kolory: jedna drabinka na całą aplikację.** Mapa miała trzy stopnie z ułamka, panel cztery ze
+stanu ran — ta sama postać bywała na mapie zielona, a w panelu żółta. Od teraz obie strony pytają
+`tokenHpRung` (`shared/figures.ts`, progi z `WOUNDED_HP_RATIO`), a `HP_RUNG_COLORS` niesie nocne
+`--ok` / `--hurt-light` / `--warn` / `--err`. Rdzeń **nie** woła `woundStateFromHp` — nie wolno mu
+— więc zgodność pilnują dwa testy: jeden porównuje obie funkcje punkt po punkcie, drugi porównuje
+paletę z `theme.css`. **Zgłoszone MG:** w motywie dziennym pasek w panelu przyciemnia się razem
+z interfejsem, a obrączka zostaje jasna, bo płótno mapy jest nocne w obu motywach (27e).
+
+**Punkt 2 — odpowiedź jest niewygodna i nie jest usterką kodu.** Aktywna „StrefaPrzemysłowa" ma
+`visibility = 'fog'` i (w chwili oględzin) **zero odsłoniętych kształtów**, więc gracz widział
+czarne pole. Serwer zwalnia własną figurę gracza z filtra mgły (`concealedFrom`: „gracz nigdy nie
+traci swojej postaci z mapy"), ale **klient tej obietnicy nie dotrzymuje**: `fogSprite` leży nad
+warstwą żetonów i jest nieprzezroczysty, więc gracz nie widzi nawet siebie. Serwer mówi jedno,
+renderer drugie. Na **mapie powitalnej** żetonów nie ma w ogóle i to jest z założenia —
+`pushTokens` wysyła pustą listę, gdy `effectiveScene` jest `null`. **Czytelność żetonu na mapie
+MG sprawdzona osobno i jest dobra** (rozstawione figury na sześciu rodzajach podłoża, przy zoomie
+gracza i przy całej mapie w oknie). W trakcie sesji MG sam odsłonił mgłę i obie figury pojawiły
+się u gracza natychmiast.
+
+**Portret w panelu urósł z 3,6 do 6 rem** — wariant wybrany przez MG z trzech: zostaje **obok**
+imienia i paska PW, więc pasek akcji nie schodzi w dół. Sprawdzone na żywo: imię, Rola, pasek PW
+i wszystkie trzy chipy dalej mieszczą się w jednym rzędzie.
+
+**Oględziny bez sesji MG.** Obie karty w przeglądarce trzymały graczy, a MG ma hasło, którego nie
+wpisuję — więc obrączkę oglądałem na **jednorazowej stronie-próbniku** (prawdziwe `TokenNode` na
+prawdziwej mapie sceny MG, siedem wariantów PW i para sąsiadów), skasowanej po sesji. Zmiana
+sceny w bazie została **zablokowana przez zabezpieczenia** i nie była potrzebna. Płótno i portret
+sprawdzone już w żywej aplikacji.
+
+**Testy:** **142** u klienta (+17: `token-ring.test.ts`), **1973** w `shared` (+4 o drabince),
+**1086** na serwerze — zielone. ESLint, Prettier i `tsc -b` czyste w trzech pakietach. Umowy: trzy
+w `mapa`; pułapki: dwie w `mapa`.
+
 ### Sesja 11.09 (druga) — mapa zamiast pustego stołu
 
 **Zlecenie MG:** dodać podaną mapę (`IndustrialAreaGate-40x30.png`) jako **mapę startową dla

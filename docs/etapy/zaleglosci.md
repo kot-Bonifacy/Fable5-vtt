@@ -6,21 +6,6 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
-**12.09 (etap 17a, znalezione przy oględzinach widoczności żetonów): gracz nie widzi pod mgłą
-nawet własnej figury — serwer obiecuje co innego niż rysuje renderer.** `concealedFrom`
-(`realtime/tokens.ts`) zwalnia z filtra mgły każdego, kto steruje figurą, i mówi to wprost
-w komentarzu: „a player must never lose their own character off the map… losing sight of your own
-token reads as a bug, not as suspense". Figura **przyjeżdża** do gracza — sprawdzone w `tokenStore`
-— ale `fogSprite` leży nad `tokenLayer` i przy `visibility = 'fog'` bez odsłoniętych kształtów jest
-czarny i nieprzezroczysty, więc zamalowuje ją razem z mapą. Objaw: gracz wchodzi na scenę
-i widzi **czarny ekran bez niczego**, choć jego kamera jest wykadrowana dokładnie na nim.
-To jest **coś innego** niż „czarne pole pod nieodsłoniętą mgłą", które MG zamknął 11.09 jako
-zachowanie: tam chodziło o mapę, tu o obietnicę serwera, której klient nie dotrzymuje.
-**Możliwa naprawa (do decyzji MG, bo to zmiana w tym, co gracz widzi):** wyciąć w masce mgły
-kółko wokół figur, które ten widz kontroluje — mgła zostaje wszędzie indziej, ale gracz widzi
-siebie i kawałek podłoża pod sobą. Kompozyt mgły już umie wycinać (`setFog` maluje kształty
-z `blendMode: 'erase'`), więc to jedna pętla po `movableTokens`, nie nowa warstwa.
-
 **11.09 (etap 04, zlecone przez MG): edytor sceny ma pytać o liczbę kratek, a nie o piksele.**
 Dziś rozmiar kratki ustawia się suwakiem w pikselach, więc trafienie w skalę mapy jest
 zgadywanką — i na świeżej scenie MG **nie trafił**: „StrefaPrzemysłowa" ma siatkę **47 px**, a plik

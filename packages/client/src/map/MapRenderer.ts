@@ -95,6 +95,7 @@ import {
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+import { FOG_PEEP_CORE_RATIO, fogPeepRadius } from './token-ring.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 
@@ -322,6 +323,10 @@ const FOG_GM_ALPHA = 0.55;
  * edge picks up a soft two-pixel feather, which looks better than a hard one.
  */
 const FOG_TEXTURE_MAX_PX = 2048;
+/** Bok kanwy, na której wypala się gradient okienka własnej figury (12.09). */
+const FOG_PEEP_TEXTURE_PX = 256;
+/** Próg przerysowania okienek, w pikselach świata — patrz `fogPeepSignature`. */
+const FOG_PEEP_STEP_PX = 2;
 /**
  * How much cover a dimly lit patch keeps (stage 18b). Between „fully lit" (no
  * cover at all) and „dark" (opaque), and close enough to the fog's own 0.55 that
@@ -973,6 +978,12 @@ export class MapRenderer {
   /** One Graphics per run of same-mode shapes — blend mode lives on the node. */
   private readonly fogPasses: Graphics[] = [];
   private fogTexture: RenderTexture | null = null;
+  /** Okienka własnych figur, tak jak siedzą w ostatnio złożonej mgle (12.09). */
+  private fogPeepKey = '';
+  /** Gradient okienka — jedna kanwa na cały renderer, patrz `fogPeepTexture`. */
+  private fogPeepTex: Texture | null = null;
+  /** Po jednym sprite'cie na własną figurę; nadmiar chowa się, nie kasuje. */
+  private readonly fogPeepSprites: Sprite[] = [];
   /** Walls and door glyphs — GM only, above the fog like the note pins. */
   private readonly wallLayer = new Container();
   private readonly wallGraphics = new Graphics();
@@ -1814,6 +1825,8 @@ export class MapRenderer {
     this.drawSceneSelectOutline();
     this.drawAimReticle();
     this.updateReach();
+    // Figura ruszyła się, przybyła albo zniknęła — okienko w mgle idzie za nią.
+    this.refreshFogPeepholes();
   }
 
   /**
@@ -4580,6 +4593,9 @@ export class MapRenderer {
     }
     this.drawSelectionRing();
     this.drawMarchTrail(march);
+    // Okienko w mgle idzie z figurą krok w krok — inaczej gracz szedłby przez
+    // czerń i wracał do widoku dopiero na mecie.
+    this.refreshFogPeepholes();
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
     if (done) {
       this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
@@ -4732,6 +4748,9 @@ export class MapRenderer {
     // those are composited into the vision sheet for a player — but the GM has
     // no vision sheet, so this layer is where they get to see their own brush.
     if (!fog.enabled) {
+      // Scena dynamiczna nie rysuje mgły, więc nie ma w czym wycinać okienka —
+      // pole widzenia gracza i tak zaczyna się od jego własnej figury.
+      this.drawFogPeepholes(null);
       if (isGm) {
         this.drawOverridePreview(scene, fog.overrides, pending);
       } else {
@@ -4766,6 +4785,13 @@ export class MapRenderer {
         i++;
       }
     }
+    // Obietnica serwera, dotrzymana wreszcie po stronie rysunku (12.09):
+    // `concealedFrom` zwalnia własną figurę gracza z filtra mgły, więc ona
+    // *przyjeżdża* — ale leżała pod nieprzezroczystym prześcieradłem. Okienko
+    // jedzie ostatnim przebiegiem, czyli wygrywa także z zamalowaniem (`hide`):
+    // to samo pierwszeństwo, które ma na serwerze.
+    this.drawFogPeepholes(isGm ? null : scene);
+    this.fogPeepKey = this.fogPeepSignature();
     for (let i = pass; i < this.fogPasses.length; i++) this.fogPasses[i]!.clear();
 
     this.app.renderer.render({ container: this.fogScratch, target: this.fogTexture, clear: true });
@@ -4774,6 +4800,134 @@ export class MapRenderer {
     this.fogSprite.setSize(scene.width, scene.height);
     // The GM plans through the fog; players get the real thing.
     this.fogSprite.alpha = isGm ? FOG_GM_ALPHA : 1;
+  }
+
+  /**
+   * Wycina w mgle okienko wokół każdej figury, którą steruje ten widz (12.09).
+   *
+   * Rysuje się tym samym `erase`, co odsłonięcie pędzlem MG, więc nie jest to
+   * nowa warstwa ani nowy rodzaj mgły — jest to ten sam kompozyt, tylko ostatni
+   * w kolejce. Brzeg jest rozmyty (wybór MG): rdzeń wycina się do końca,
+   * a `FOG_PEEP_STEPS` pierścieni o malejącej sile rozprowadza resztę, żeby
+   * okienko czytało się jak zasięg wzroku, a nie jak dziura w prześcieradle.
+   *
+   * MG nie dostaje okienek nigdy: on widzi mgłę prześwitującą (`FOG_GM_ALPHA`)
+   * właśnie po to, żeby wiedzieć, co zakrył — a każda figura na mapie jest
+   * „jego", więc wycięcia zjadłyby mu cały podgląd.
+   */
+  private drawFogPeepholes(scene: SceneView | null): void {
+    let used = 0;
+    if (scene && !this.viewerIsGm && this.viewerId !== null) {
+      const grid = scene.grid.sizePx;
+      for (const node of this.tokenNodes.values()) {
+        if (node.token.ownerId !== this.viewerId) continue;
+        // Pozycja węzła, nie figury ze store: w trakcie marszu albo przeciągania
+        // żeton wie o sobie więcej niż serwer, a okienko ma iść *z nim*.
+        const extent = node.token.size * grid;
+        const radius = fogPeepRadius(node.outerRadius, grid);
+        const sprite = this.fogPeepSprite(used++);
+        sprite.visible = true;
+        sprite.setSize(radius * 2, radius * 2);
+        sprite.position.set(node.x + extent / 2, node.y + extent / 2);
+        // Na wierzch całego kompozytu: fogPass dokłada się do tego samego
+        // kontenera, więc bez tego świeży przebieg `hide` zamalowałby okienko.
+        this.fogScratch.addChild(sprite);
+      }
+    }
+    for (let i = used; i < this.fogPeepSprites.length; i++) {
+      this.fogPeepSprites[i]!.visible = false;
+    }
+  }
+
+  /** Leniwie rozbudowuje pulę sprite'ów okienka i podaje ten spod numeru. */
+  private fogPeepSprite(index: number): Sprite {
+    let sprite = this.fogPeepSprites[index];
+    if (!sprite) {
+      sprite = new Sprite(this.fogPeepTexture());
+      sprite.anchor.set(0.5);
+      sprite.blendMode = 'erase';
+      this.fogPeepSprites[index] = sprite;
+      this.fogScratch.addChild(sprite);
+    }
+    return sprite;
+  }
+
+  /**
+   * Gradient, którym wycina się okienko: pełna siła w środku, gładki zanik
+   * do zera na brzegu.
+   *
+   * Kanwa, a nie `Graphics`, i to jest cała lekcja z pierwszego podejścia:
+   * rozmycie złożone z pierścieni o malejącej alfie widać jako **koncentryczne
+   * okręgi** (MG odrzucił to od razu), bo każdy pierścień ma własny, ostry
+   * brzeg. Radialny gradient rasteryzuje się raz, bez ani jednej krawędzi —
+   * tą samą drogą (kanwa zamiast geometrii) idzie światło z 18b i pamięć mapy
+   * z 18c. Jedna tekstura wystarcza wszystkim figurom, bo sprite skaluje się
+   * do promienia, a profil zaniku jest ułamkiem promienia, nie metrami.
+   */
+  private fogPeepTexture(): Texture {
+    if (this.fogPeepTex) return this.fogPeepTex;
+    const size = FOG_PEEP_TEXTURE_PX;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.fogPeepTex = Texture.WHITE;
+      return this.fogPeepTex;
+    }
+    const half = size / 2;
+    const gradient = context.createRadialGradient(half, half, 0, half, half, half);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(FOG_PEEP_CORE_RATIO, 'rgba(0, 0, 0, 1)');
+    // Zanik po krzywej wygładzonej z obu stron (3u² − 2u³), a nie po prostej:
+    // liniowy gradient zostawia widoczne załamanie dokładnie tam, gdzie się
+    // zaczyna, czyli wraca okrąg — tyle że jeden.
+    const steps = 12;
+    for (let i = 1; i <= steps; i++) {
+      const u = i / steps;
+      const stop = FOG_PEEP_CORE_RATIO + (1 - FOG_PEEP_CORE_RATIO) * u;
+      const alpha = 1 - (3 * u * u - 2 * u * u * u);
+      gradient.addColorStop(stop, `rgba(0, 0, 0, ${alpha.toFixed(4)})`);
+    }
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+    this.fogPeepTex = Texture.from(canvas);
+    return this.fogPeepTex;
+  }
+
+  /**
+   * Podpis okienek — po czym poznaje się, że mgłę trzeba złożyć od nowa.
+   *
+   * Pozycja jest zaokrąglona do `FOG_PEEP_STEP_PX`, bo tekstura mgły i tak jest
+   * zgrubna: bez progu marsz przez pół mapy renderowałby ją co klatkę, a z nim
+   * robi to mniej więcej co drugą i nikt tego nie widzi. Promień oprawy siedzi
+   * w podpisie razem z pozycją, bo zmienia się z punktami wytrzymałości.
+   */
+  private fogPeepSignature(): string {
+    if (this.viewerIsGm || this.viewerId === null) return '';
+    const parts: string[] = [];
+    for (const node of this.tokenNodes.values()) {
+      if (node.token.ownerId !== this.viewerId) continue;
+      const x = Math.round(node.x / FOG_PEEP_STEP_PX);
+      const y = Math.round(node.y / FOG_PEEP_STEP_PX);
+      parts.push(`${node.tokenId}:${x}:${y}:${Math.round(node.outerRadius)}`);
+    }
+    return parts.join('|');
+  }
+
+  /**
+   * Składa mgłę od nowa, gdy okienka przestały pasować do figur (12.09).
+   *
+   * Woła się z trzech miejsc, bo figura rusza się na trzy sposoby: pchnięta
+   * przez store (`setTokens`), ciągnięta ręką (`onDragMove`) i idąca trasą
+   * (`stepMarch`). Dwa ostatnie omijają store z założenia, więc gdyby okienko
+   * czekało na niego, gracz szedłby przez czerń i wracał do widoku dopiero
+   * na mecie.
+   */
+  private refreshFogPeepholes(): void {
+    if (this.destroyed || this.fogIsGm || !this.lastFog?.enabled) return;
+    if (this.fogPeepSignature() === this.fogPeepKey) return;
+    this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
   }
 
   /**
@@ -6320,6 +6474,9 @@ export class MapRenderer {
 
     this.onTokenMove?.(token.id, pos.x, pos.y, false);
     this.moveGroupWith(drag.node, snapScene, false);
+    // Po grupie, nie przed: przeciąganie zaznaczenia rusza kilka własnych figur
+    // naraz, a okienka składa się raz, na końcu gestu.
+    this.refreshFogPeepholes();
   };
 
   /**
@@ -6460,6 +6617,8 @@ export class MapRenderer {
       viewport.destroy({ children: true });
       // The fog scratch container is off-stage, so `destroy({children:true})`
       // above never reaches it — and its render texture is real VRAM.
+      this.fogPeepTex?.destroy(true);
+      this.fogPeepTex = null;
       this.fogScratch.destroy({ children: true });
       this.fogTexture?.destroy(true);
       this.fogTexture = null;

@@ -7,7 +7,6 @@ import {
   isDefaultPortraitCrop,
   portraitCropPlacement,
   sanitizePortraitCrop,
-  type PortraitCrop,
 } from './portrait-crop.js';
 
 /** Portret jak z puli: 2:3 w pionie, twarz w górnej trzeciej. */
@@ -31,13 +30,26 @@ describe('kadr domyślny to dawne zachowanie mapy', () => {
   });
 });
 
-describe('krążek nigdy nie wyjeżdża poza obraz', () => {
-  it('pion portretu 2:3 daje zapas, poziom nie', () => {
+/**
+ * Granice kadru po poprawce z 12.09.
+ *
+ * Pierwsza wersja pilnowała, żeby krążek nie wyjechał poza obraz — i MG zgłosił
+ * to jako usterkę przy pierwszym użyciu: granica liczyła się do **kratki**,
+ * a widoczne koło jest od kratki mniejsze o obwódkę właściciela, więc górnych
+ * pikseli portretu nie dawało się wciągnąć w krążek; czubek głowy zostawał pod
+ * pierścieniem. Decyzja MG: kadr wolno wywieźć poza obraz, a pustkę zamalowuje
+ * tło żetonu. Zostaje jedno: punkt kadru ma leżeć na obrazie.
+ */
+describe('punkt kadru zostaje na obrazie, brzegi mogą być puste', () => {
+  it('górna krawędź obrazu jest osiągalna', () => {
+    // To jest dokładnie zgłoszenie MG: czubek głowy na środku krążka.
+    expect(clampPortraitCrop({ x: 0.5, y: 0, zoom: 1 }, TALL).y).toBe(0);
+  });
+
+  it('pion portretu 2:3 nie jest już wciskany do jednej trzeciej', () => {
     const crop = clampPortraitCrop({ x: 0.1, y: 0.05, zoom: 1 }, TALL);
-    // W poziomie kratka zjada całą szerokość — zostaje sam środek.
-    expect(crop.x).toBeCloseTo(0.5, 10);
-    // W pionie połowa kratki to 800 / (2 · 1200) = 1/3 wysokości.
-    expect(crop.y).toBeCloseTo(1 / 3, 10);
+    expect(crop.x).toBeCloseTo(0.1, 10);
+    expect(crop.y).toBeCloseTo(0.05, 10);
   });
 
   it('twarz z górnej trzeciej jest osiągalna', () => {
@@ -45,46 +57,34 @@ describe('krążek nigdy nie wyjeżdża poza obraz', () => {
     expect(crop.y).toBeCloseTo(0.34, 10);
   });
 
-  it('obraz kwadratowy przy zoomie 1 nie ma czym przesuwać', () => {
+  it('obraz kwadratowy przy zoomie 1 też daje się przesunąć', () => {
+    // Dawniej wracał na sam środek — kwadrat pokrywał kratkę bez zapasu.
     const crop = clampPortraitCrop({ x: 0.2, y: 0.9, zoom: 1 }, SQUARE);
-    expect(crop.x).toBeCloseTo(0.5, 10);
-    expect(crop.y).toBeCloseTo(0.5, 10);
+    expect(crop.x).toBeCloseTo(0.2, 10);
+    expect(crop.y).toBeCloseTo(0.9, 10);
   });
 
-  it('przybliżenie otwiera swobodę w obu osiach', () => {
-    const crop = clampPortraitCrop({ x: 0.2, y: 0.9, zoom: 2 }, SQUARE);
-    expect(crop.x).toBeCloseTo(0.25, 10);
-    expect(crop.y).toBeCloseTo(0.75, 10);
-  });
-
-  it('obraz w poziomie zostawia zapas w poziomie', () => {
-    const crop = clampPortraitCrop({ x: 0.1, y: 0.1, zoom: 1 }, WIDE);
-    expect(crop.x).toBeCloseTo(900 / (2 * 1600), 10);
-    expect(crop.y).toBeCloseTo(0.5, 10);
-  });
-
-  it('każdy kadr po zaciśnięciu pokrywa kratkę w całości', () => {
-    const extent = 100;
-    const cases: PortraitCrop[] = [
-      { x: -5, y: -5, zoom: 1 },
-      { x: 9, y: 9, zoom: 3 },
-      { x: 0.5, y: 0.02, zoom: 1.7 },
-      { x: 0.98, y: 0.5, zoom: 2.5 },
-    ];
+  it('poza obraz nie wychodzi już sam punkt kadru', () => {
     for (const size of [TALL, SQUARE, WIDE]) {
-      for (const raw of cases) {
-        const place = portraitCropPlacement(raw, size, extent);
-        const shownW = size.width * place.scale;
-        const shownH = size.height * place.scale;
-        // Lewy górny róg obrazu względem lewego górnego rogu kratki.
-        const left = extent / 2 - place.anchorX * shownW;
-        const top = extent / 2 - place.anchorY * shownH;
-        expect(left).toBeLessThanOrEqual(1e-9);
-        expect(top).toBeLessThanOrEqual(1e-9);
-        expect(left + shownW).toBeGreaterThanOrEqual(extent - 1e-9);
-        expect(top + shownH).toBeGreaterThanOrEqual(extent - 1e-9);
-      }
+      const low = clampPortraitCrop({ x: -5, y: -0.2, zoom: 2 }, size);
+      expect(low.x).toBe(0);
+      expect(low.y).toBe(0);
+      const high = clampPortraitCrop({ x: 9, y: 1.4, zoom: 3 }, size);
+      expect(high.x).toBe(1);
+      expect(high.y).toBe(1);
     }
+  });
+
+  it('kadr przy krawędzi zostawia pustkę, i tyle, ile z arytmetyki wychodzi', () => {
+    // Kadr wywieziony na sam róg: obraz zaczyna się dokładnie na środku kratki,
+    // więc lewa i górna połowa krążka zostają puste — tam rysuje się tło żetonu
+    // (`PORTRAIT_BACKDROP` w `TokenNode`), a nie mapa spod figury.
+    const extent = 100;
+    const place = portraitCropPlacement({ x: 0, y: 0, zoom: 1 }, TALL, extent);
+    const left = extent / 2 - place.anchorX * TALL.width * place.scale;
+    const top = extent / 2 - place.anchorY * TALL.height * place.scale;
+    expect(left).toBeCloseTo(extent / 2, 10);
+    expect(top).toBeCloseTo(extent / 2, 10);
   });
 });
 
@@ -109,8 +109,13 @@ describe('kadr z drutu', () => {
   it('przyjmuje liczby i zaciska je', () => {
     expect(sanitizePortraitCrop({ x: 0.5, y: 0.1, zoom: 1 }, TALL)).toEqual({
       x: 0.5,
-      y: 1 / 3,
+      y: 0.1,
       zoom: 1,
+    });
+    expect(sanitizePortraitCrop({ x: 2, y: -1, zoom: 9 }, TALL)).toEqual({
+      x: 1,
+      y: 0,
+      zoom: PORTRAIT_CROP_ZOOM_MAX,
     });
   });
 

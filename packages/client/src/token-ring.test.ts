@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  FOG_PEEP_CORE_RATIO,
+  FOG_PEEP_GRID_RADIUS,
   RING_WIDTH,
+  fogPeepRadius,
   furnitureRadius,
   hpRingCasing,
   hpRingRadius,
@@ -27,19 +30,19 @@ import {
 const GRIDS = [47, 72, 100];
 
 describe('obrączka PW leży poza portretem', () => {
-  it('wewnętrzna krawędź paska zaczyna się za kołem figury', () => {
+  it('wewnętrzna krawędź paska zaczyna się za obwódką właściciela', () => {
     for (const extent of GRIDS) {
       const inner = hpRingRadius(extent) - hpRingWidth(extent) / 2;
-      // Koło portretu sięga `extent / 2` — obwódka właściciela kończy się
-      // dokładnie na krawędzi kratki. Wszystko powyżej jest już na zewnątrz.
-      expect(inner, `kratka ${extent}px`).toBeGreaterThan(extent / 2);
+      // Koło portretu sięga `extent / 2`, obwódka kończy się o własną grubość
+      // dalej (od 12.09 leży poza portretem). Pasek zaczyna się za nią.
+      expect(inner, `kratka ${extent}px`).toBeGreaterThan(extent / 2 + RING_WIDTH);
     }
   });
 
   it('pasek nie dotyka obwódki właściciela — zostaje prześwit', () => {
     for (const extent of GRIDS) {
       const inner = hpRingRadius(extent) - hpRingWidth(extent) / 2;
-      const ownerRingOuter = extent / 2;
+      const ownerRingOuter = extent / 2 + RING_WIDTH;
       expect(inner - ownerRingOuter, `kratka ${extent}px`).toBeGreaterThanOrEqual(1);
     }
   });
@@ -47,10 +50,11 @@ describe('obrączka PW leży poza portretem', () => {
   it('figura wystaje poza kratkę najwyżej o oprawę paska', () => {
     for (const extent of GRIDS) {
       const overflow = furnitureRadius(extent, true) - extent / 2;
-      // Świadoma cena decyzji MG — ale ograniczona: ćwierć kratki to już
-      // nachodzenie na sąsiadów w sposób, którego nie da się rozczytać.
+      // Świadoma cena dwóch decyzji MG z 12.09 (pasek PW, a potem obwódka, poza
+      // portretem) — ale ograniczona: trzecia część kratki to już nachodzenie
+      // na sąsiadów w sposób, którego nie da się rozczytać.
       expect(overflow, `kratka ${extent}px`).toBeGreaterThan(0);
-      expect(overflow / extent, `kratka ${extent}px`).toBeLessThan(0.25);
+      expect(overflow / extent, `kratka ${extent}px`).toBeLessThan(1 / 3);
     }
   });
 });
@@ -78,9 +82,12 @@ describe('żaden okrąg nie wchodzi na portret', () => {
     }
   });
 
-  it('obwódka mieści się w kratce, a portret w obwódce', () => {
+  it('portret zajmuje całą kratkę, a obwódka wystaje o swoją grubość', () => {
     for (const extent of GRIDS) {
-      expect(ownerRingRadius(extent) + RING_WIDTH / 2).toBeCloseTo(extent / 2, 6);
+      // To jest zlecenie MG z 12.09 wypisane liczbami: „znana liczba pikseli"
+      // obwódki wysuwa się poza grafikę portretu dokładnie o tę grubość.
+      expect(portraitRadius(extent)).toBeCloseTo(extent / 2, 6);
+      expect(ownerRingRadius(extent) + RING_WIDTH / 2).toBeCloseTo(extent / 2 + RING_WIDTH, 6);
       expect(portraitRadius(extent)).toBeLessThan(ownerRingRadius(extent));
     }
   });
@@ -118,9 +125,9 @@ describe('nakładki liczą się od brzegu oprawy, nie od kratki', () => {
 });
 
 describe('oprawa figury', () => {
-  it('bez PW kończy się na obwódce właściciela', () => {
+  it('bez PW kończy się na zewnętrznej krawędzi obwódki', () => {
     for (const extent of GRIDS) {
-      expect(furnitureRadius(extent, false)).toBeCloseTo(extent / 2 - RING_WIDTH / 2, 6);
+      expect(furnitureRadius(extent, false)).toBeCloseTo(extent / 2 + RING_WIDTH, 6);
     }
   });
 
@@ -188,5 +195,40 @@ describe('obrączka PW mówi kolorami panelu', () => {
     ['mortal', '--err'],
   ])('szczebel „%s" ma kolor %s z nocnej palety', (rung, variable) => {
     expect(rungColor(rung)).toBe(nightVar(variable));
+  });
+});
+
+/**
+ * Okienko własnej figury gracza w mgle wojny (zlecenie MG, 12.09.2026).
+ *
+ * Serwer od 17a obiecuje, że gracz nie traci swojej postaci z mapy, a renderer
+ * tej obietnicy nie dotrzymywał — mgła zamalowywała figurę razem z podłożem.
+ * Wielkość okienka wybrał MG: **krąg mniej więcej trzech kratek**. Test pilnuje
+ * dwóch rzeczy, których w typach nie widać: że okienko nie schodzi poniżej tej
+ * miary i że przy dużej figurze rośnie wraz z nią, zamiast dać się przez nią
+ * przerosnąć.
+ */
+describe('okienko w mgle wokół własnej figury', () => {
+  it.each(GRIDS)('na kratce %i px ma promień półtorej kratki', (grid) => {
+    const furniture = furnitureRadius(grid, true);
+    expect(fogPeepRadius(furniture, grid)).toBeCloseTo(grid * FOG_PEEP_GRID_RADIUS, 6);
+  });
+
+  it.each(GRIDS)('na kratce %i px figura 4 × 4 rozpycha okienko poza siebie', (grid) => {
+    const furniture = furnitureRadius(grid * 4, true);
+    const radius = fogPeepRadius(furniture, grid);
+    // Pełne wycięcie (rdzeń) obejmuje figurę z oprawą i ćwierć kratki zapasu —
+    // reszta promienia to zanik brzegu.
+    expect(radius * FOG_PEEP_CORE_RATIO).toBeCloseTo(furniture + grid / 4, 6);
+  });
+
+  it.each(GRIDS)('pełne wycięcie obejmuje całą figurę z oprawą (%i px)', (grid) => {
+    // Zanik zaczyna się dopiero za `FOG_PEEP_CORE_RATIO` promienia — a to musi
+    // wypaść **poza** figurą, inaczej gracz ogląda własny żeton przez mgłę.
+    for (const size of [1, 2, 4]) {
+      const furniture = furnitureRadius(grid * size, true);
+      const core = fogPeepRadius(furniture, grid) * FOG_PEEP_CORE_RATIO;
+      expect(core).toBeGreaterThanOrEqual(furniture);
+    }
   });
 });

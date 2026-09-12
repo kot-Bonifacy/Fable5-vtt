@@ -130,6 +130,14 @@ const BASE_COLORS: Readonly<Record<TokenCondition, number>> = {
  * played again, and a dimmed portrait made it look destroyed. `down` therefore
  * keeps its dark red base and gets its icon, and the face stays a face.
  */
+/**
+ * Tło krążka pod portretem — to, co widać tam, gdzie kadr wyjechał poza obraz.
+ *
+ * Ten sam grafit, co spokojna podstawa figury (`BASE_COLORS.ok`): pusty pas ma
+ * czytać się jak część żetonu, a nie jak brakujący fragment mapy.
+ */
+const PORTRAIT_BACKDROP = 0x0f172a;
+
 const CONDITION_TINT: Readonly<Record<TokenCondition, number>> = {
   ok: 0xffffff,
   wounded: 0xffffff,
@@ -379,12 +387,12 @@ export class TokenNode extends Container {
 
     this.imageMask.clear().circle(center, center, portraitRadius(extent)).fill(0xffffff);
 
-    this.placeholder
-      .clear()
-      .circle(center, center, portraitRadius(extent))
-      .fill(placeholderColor(token.name));
     const hasImage = token.imageUrl !== null;
-    this.placeholder.visible = !hasImage;
+    // Krążek pod portretem jest teraz rysowany **zawsze** (12.09): od kiedy kadr
+    // wolno wywieźć poza obraz, jego brzeg bywa pusty — a pustka pod maską to
+    // dziura, przez którą widać mapę pod figurą. Bez obrazka to dalej dawny
+    // kolorowy placeholder z inicjałem; pod obrazkiem — ciemne tło żetonu.
+    this.paintPlaceholder(hasImage ? PORTRAIT_BACKDROP : placeholderColor(token.name));
     this.initial.visible = !hasImage;
     this.initial.text = token.name.trim().charAt(0).toUpperCase() || '?';
     this.initial.style.fontSize = extent * 0.4;
@@ -502,8 +510,19 @@ export class TokenNode extends Container {
         this.fitImage(this.extentPx);
       })
       .catch(() => {
-        // Broken image: the placeholder disc simply stays visible.
+        if (this.destroyed || this.imageUrl !== url) return;
+        // Zepsuty plik: krążek wraca do koloru z nazwy i inicjału, bo tło
+        // portretu (grafit) samo w sobie niczego by o figurze nie mówiło.
+        this.paintPlaceholder(placeholderColor(this.token.name));
+        this.initial.visible = true;
       });
+  }
+
+  /** Krążek pod portretem — tło obrazka albo placeholder, zależnie od koloru. */
+  private paintPlaceholder(color: number): void {
+    const centre = this.extentPx / 2;
+    this.placeholder.clear().circle(centre, centre, portraitRadius(this.extentPx)).fill(color);
+    this.placeholder.visible = true;
   }
 
   /**
@@ -527,8 +546,8 @@ export class TokenNode extends Container {
     this.image.setSize(tex.width * place.scale, tex.height * place.scale);
     this.image.anchor.set(place.anchorX, place.anchorY);
     this.image.position.set(extent / 2, extent / 2);
-    // With an image the disc is just a loading backdrop.
-    this.placeholder.visible = false;
+    // Krążek zostaje pod obrazem: kadr wyjechany poza grafikę odsłania jego
+    // brzeg, a tam ma być tło żetonu, nie mapa. Znika tylko inicjał.
     this.initial.visible = false;
   }
 

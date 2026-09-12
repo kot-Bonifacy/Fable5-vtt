@@ -15,9 +15,10 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
-- **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu.
+- **Okienko w mgle wokół własnej figury** — `fogPeepRadius` w `map/token-ring.ts` (wielkość), `MapRenderer.drawFogPeepholes` (rysunek, ostatni przebieg kompozytu) i `refreshFogPeepholes` (trzy wejścia: `setTokens`, przeciąganie, krok marszu). Brzeg gaśnie gradientem z kanwy, nie pierścieniami.
+- **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu. Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
 - **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
-- **Oprawa żetonu (obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. Obrączka PW leży **poza** kołem portretu, a `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura"; wszystko, co się o brzeg opiera, czyta tę funkcję.
+- **Oprawa żetonu (obwódka właściciela, obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. **Portret zajmuje całą kratkę** (`portraitRadius = extent / 2`), a obwódka właściciela i obrączka PW leżą **poza** nim; `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura", więc wszystko, co się o brzeg opiera, czyta tę funkcję.
 - **Rozmiar płótna mapy** — `MapRenderer.watchHostSize` (`ResizeObserver` → `app.queueResize`). `resizeTo` Pixi słucha **wyłącznie** `window.resize`, więc każdy nowy pasek zmieniający szerokość mapy bez ruszania oknem jedzie tędy i nie potrzebuje niczego własnego.
 - **Kamera mapy** — reguły w `map/camera.ts` (`coverZoom`, `startCamera`, `partyStart`, stałe zoomu), nie w rendererze. Gracz ma kamerę **zamkniętą w mapie** (`setCameraLocked`), MG wolną; kadr startowy to `frameAround`, osobno od `fitScene`.
 - **Miejsce startu graczy** — `Scene.spawnX/spawnY` → `SceneView.spawn` → `ScenePatch.spawn` (`null` kasuje) → `SCENE_COLUMNS` w `archive.ts`. Stawia je narzędzie mapy `spawn` (klawisz `G`, MG), chorągiewkę rysuje `setSpawn` **tylko MG**, a czyta ją kamera gracza bez figury.
@@ -79,6 +80,16 @@ Podział ról jest sztywny i warto go nie mieszać:
 przez MG nie przerysuje żetonu, bo nazwa, obrazek i PW są te same. To jest jedyna pułapka tej
 umowy i ma własny test.
 
+**Kadr wolno wywieźć poza obraz (poprawka z 12.09, tego samego dnia co pierwsza wersja).**
+Pierwsze granice pilnowały, żeby krążek nie wyjechał poza grafikę — i MG zgłosił to przy
+pierwszym użyciu: liczyły się do **kratki**, a widoczne koło było od kratki mniejsze o obwódkę
+właściciela, więc górnych pikseli portretu nie dawało się wciągnąć w krążek. Dziś
+`clampPortraitCrop` pilnuje jednego: **punkt kadru ma leżeć na obrazie** (`x`, `y` w `[0, 1]`).
+Pustka na brzegu krążka jest wtedy zwykłym stanem, więc `TokenNode` rysuje pod portretem krążek
+tła **zawsze** — `PORTRAIT_BACKDROP`, ta sama liczba, co `--map-token-backdrop` w `theme.css`
+(pilnuje tego `portrait-crop.test.ts`). Okno kadrowania rysuje ten sam krążek pod podglądem
+i pod miniaturą „Tak na mapie".
+
 Kadruje się **wyłącznie mapa** (decyzja MG z 12.09): karta, kreator, czat i panel pokazują wgrany
 plik w całości — `.cp-portrait img` ma `object-fit: contain` od 27a z tego samego powodu, a małe
 okrągłe awatary zostają przy środkowym `cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem.
@@ -108,6 +119,14 @@ liczbami (`token-ring.test.ts`). Trzyma cztery funkcje — `hpRingWidth`, `hpRin
 wprost: figura wystaje poza swoją kratkę o szerokość paska, więc dwie stojące ramię w ramię
 potrafią się obrączkami zetknąć; odrzucony wariant — zwężenie portretu — kosztowałby ~12 %
 średnicy twarzy na **każdej** figurze, także tej bez PW.
+
+**Od drugiej poprawki z 12.09 obwódka właściciela też leży poza portretem.** MG napisał to
+wprost: zielony okrąg ma mieć znaną grubość i wysuwać się poza grafikę portretu dokładnie o tę
+grubość. Stąd `portraitRadius(extent) = extent / 2` (krążek portretu **jest** kratką),
+`ownerRingRadius = extent / 2 + RING_WIDTH / 2`, a obrączka PW zaczyna się dopiero za obwódką.
+Cena jest ta sama, co przy pasku PW, i MG zna ją z obu decyzji: figura wystaje poza kratkę
+o całą oprawę — przy kratce 47 px to ok. 10 px promienia, więc sąsiedzi potrafią się oprawami
+zetknąć.
 
 `furnitureRadius(extent, hasHp)` jest jedyną odpowiedzią na pytanie „dokąd sięga figura" i czytają
 ją trzy rysunki, każdy z innego powodu: **aureola tury** musi zostać na zewnątrz paska (leży pod

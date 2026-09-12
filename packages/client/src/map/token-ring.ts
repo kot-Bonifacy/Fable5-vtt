@@ -21,24 +21,27 @@ export const RING_WIDTH = 3;
 /**
  * Promień **osi** obwódki właściciela (zielona/niebieska/czerwona).
  *
- * Obwódka jest kreską o szerokości `RING_WIDTH`, więc zajmuje pas
- * `[extent/2 − RING_WIDTH, extent/2]` — dokładnie tyle, ile zostaje między
- * przyciętym portretem a krawędzią kratki.
+ * Od 12.09 (druga poprawka tego dnia, zlecenie MG) obwódka leży **poza**
+ * portretem: zajmuje pas `[extent/2, extent/2 + RING_WIDTH]`, czyli wysuwa się
+ * poza kratkę dokładnie o własną grubość — tę samą znaną liczbę, o której MG
+ * napisał wprost. Powód jest ten sam, dla którego wcześniej tego dnia wyjechał
+ * pasek PW: kreska rysowana po brzegu twarzy zjadała górne piksele portretu
+ * i kadru nie dało się do nich dowieźć.
  */
 export function ownerRingRadius(extent: number): number {
-  return extent / 2 - RING_WIDTH / 2;
+  return extent / 2 + RING_WIDTH / 2;
 }
 
 /**
  * Dokąd sięga sam portret — promień maski, którą przycina się grafikę figury.
  *
- * Kończy się **tam, gdzie zaczyna się obwódka**, nie pod nią: pytanie „czy
- * któryś z okręgów zasłania avatara" ma mieć jedną, sprawdzalną odpowiedź
- * (pyta o to `token-ring.test.ts`). Grafika jest przycinana do tego koła, więc
- * wszystko, co leży dalej, leży na mapie, a nie na twarzy.
+ * **Równo połowa kratki**, bo obwódka zeszła na zewnątrz: krążek portretu jest
+ * dokładnie tym kołem, które kadr obiecuje pokazać, i nic już na nim nie leży.
+ * Pytanie „czy któryś z okręgów zasłania avatara" ma jedną, sprawdzalną
+ * odpowiedź — pyta o to `token-ring.test.ts`.
  */
 export function portraitRadius(extent: number): number {
-  return ownerRingRadius(extent) - RING_WIDTH / 2;
+  return extent / 2;
 }
 
 /** Szerokość obrączki PW w pikselach świata. */
@@ -65,12 +68,12 @@ export function hpRingGap(extent: number): number {
 /**
  * Promień **osi** obrączki PW: tuż za obwódką właściciela, z prześwitem.
  *
- * Koło portretu ma promień `extent / 2` (obwódka kończy się dokładnie na
- * krawędzi kratki), więc wszystko powyżej tej liczby jest już na zewnątrz
- * avatara — i o to w tej zmianie chodziło.
+ * Obwódka kończy się na `extent / 2 + RING_WIDTH` (od 12.09 leży poza
+ * portretem), więc pasek zaczyna się dopiero za nią — inaczej zjadłby prześwit
+ * i obie kreski zlałyby się w jedną grubą obręcz.
  */
 export function hpRingRadius(extent: number): number {
-  return extent / 2 + hpRingGap(extent) + hpRingWidth(extent) / 2;
+  return extent / 2 + RING_WIDTH + hpRingGap(extent) + hpRingWidth(extent) / 2;
 }
 
 /**
@@ -83,6 +86,49 @@ export function hpRingRadius(extent: number): number {
  * więc wycinałby w nim dziurę), a podpis figury musi zejść *pod* niego.
  */
 export function furnitureRadius(extent: number, hasHp: boolean): number {
-  if (!hasHp) return extent / 2 - RING_WIDTH / 2;
+  if (!hasHp) return extent / 2 + RING_WIDTH;
   return hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent);
 }
+
+/**
+ * Promień okienka, które **własna** figura gracza wycina w mgle wojny
+ * (zlecenie MG, 12.09.2026).
+ *
+ * Serwer od 17a obiecuje jedno: „gracz nigdy nie traci swojej postaci z mapy"
+ * — `concealedFrom` zwalnia z filtra mgły każdego, kto steruje figurą. Renderer
+ * tej obietnicy nie dotrzymywał: `fogSprite` leży nad warstwą żetonów i przy
+ * scenie `fog` bez odsłoniętych kształtów jest czarny i nieprzezroczysty, więc
+ * zamalowywał figurę razem z mapą. Gracz wchodził na scenę i widział czerń,
+ * mimo że jego kamera była wykadrowana dokładnie na nim.
+ *
+ * MG wybrał wielkość okienka wprost: **krąg mniej więcej trzech kratek**, czyli
+ * promień półtorej. Nie sama figura — gracz ma widzieć, na co wchodzi — ale też
+ * nie pół pokoju: mgła zostaje wszędzie indziej i dalej należy do MG.
+ *
+ * Argumentem jest `furniture`, czyli to samo „dokąd sięga figura", które liczy
+ * `furnitureRadius` — okienko nigdy nie bywa ciaśniejsze niż sama figura
+ * z oprawą i pół kratki zapasu, co ma znaczenie dla żetonu 4 × 4.
+ */
+export const FOG_PEEP_GRID_RADIUS = 1.5;
+
+export function fogPeepRadius(furniture: number, gridSizePx: number): number {
+  // Dzielenie przez `FOG_PEEP_CORE_RATIO` jest tu sednem: zanik brzegu ma
+  // zaczynać się **za** figurą, więc to promień pełnego wycięcia (figura
+  // z oprawą i ćwierć kratki zapasu) wyznacza, dokąd sięga całe okienko.
+  // Bez tego żeton 2 × 2 i większy oglądałby własne brzegi przez mgłę.
+  const core = furniture + gridSizePx / 4;
+  return Math.max(gridSizePx * FOG_PEEP_GRID_RADIUS, core / FOG_PEEP_CORE_RATIO);
+}
+
+/**
+ * Dokąd sięga **pełne** wycięcie, zanim zacznie się zanik brzegu — ułamek
+ * promienia okienka.
+ *
+ * Pierwsza wersja rozmywała brzeg pierścieniami o malejącej sile i MG odrzucił
+ * to od razu: przy pięciu stopniach widać było **koncentryczne okręgi**, czyli
+ * dokładnie to, czego rozmycie miało nie robić. Zanik idzie więc tą samą drogą,
+ * co światło i pamięć mapy z 18b/18c — gradientem wypalonym na kanwie — a stąd
+ * zostaje sama liczba: do trzech czwartych promienia mgły nie ma wcale, dalej
+ * gaśnie gładko do zera na samym brzegu.
+ */
+export const FOG_PEEP_CORE_RATIO = 0.75;

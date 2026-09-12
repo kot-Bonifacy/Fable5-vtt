@@ -26,7 +26,12 @@
  *   krawędź, 1 = prawa/dolna). Domyślne 0,5/0,5 to dawne „na środek".
  * - `zoom` — mnożnik skali pokrywającej kratkę. 1 znaczy „obraz dotyka kratki
  *   krótszym bokiem" (dawne zachowanie), 2 — „w kratce mieści się połowa
- *   krótszego boku". Mniej niż 1 nie istnieje: krążek wyszedłby poza obraz.
+ *   krótszego boku". Mniej niż 1 nie istnieje: przy pomniejszeniu portret
+ *   przestałby sięgać brzegów krążka nawet ustawiony na środku.
+ *
+ * Punkt kadru wolno dowieźć **do samej krawędzi obrazu** (12.09, po zgłoszeniu
+ * MG): czubek głowy siada wtedy na środku krążka, a to, czego nad nim nie ma,
+ * zamalowuje tło żetonu.
  */
 export interface PortraitCrop {
   x: number;
@@ -61,37 +66,27 @@ export function isDefaultPortraitCrop(crop: PortraitCrop): boolean {
 }
 
 /**
- * Połowa kratki wyrażona w ułamku boku obrazu — ile kadru zostaje po każdej
- * stronie punktu środkowego.
+ * Wciska kadr w granice obrazu: środek krążka musi leżeć **na** grafice.
  *
- * Przy `zoom` 1 i obrazie kwadratowym wychodzi równo 0,5, czyli nie ma czym
- * przesuwać: kratka zjada cały obraz. Przy portrecie 2:3 wychodzi 0,5 w poziomie
- * i 0,333 w pionie — w pionie zostaje więc zapas, którym dojeżdża się do twarzy.
- */
-function halfExtents(size: PortraitImageSize, zoom: number): { x: number; y: number } {
-  const shorter = Math.min(size.width, size.height);
-  return {
-    x: shorter / (2 * zoom * size.width),
-    y: shorter / (2 * zoom * size.height),
-  };
-}
-
-/**
- * Wciska kadr w granice obrazu: krążek nigdy nie wyjeżdża poza grafikę.
+ * Do 12.09 granica była ciaśniejsza — krążek nie miał prawa wyjechać poza
+ * obraz ani rogiem — i to był błąd, który MG zgłosił od razu przy pierwszym
+ * użyciu: górnych pikseli portretu nie dawało się wciągnąć w krążek, bo
+ * ograniczenie zatrzymywało obraz, gdy jego krawędź dotykała krawędzi
+ * **kratki**, a widoczne koło jest od kratki mniejsze o obwódkę właściciela.
+ * Czubek głowy zostawał więc pod pierścieniem i nie było jak go stamtąd wyjąć.
  *
- * Bez tego przy krawędzi wychodziłaby dziura — Pixi nie ma czym zamalować
- * miejsca, w którym obrazu już nie ma, i przez maskę widać by było tło mapy.
- * Ograniczenie jest liczone **po** zaciśnięciu przybliżenia, bo to ono decyduje,
- * ile swobody zostaje.
+ * Od 12.09 (decyzja MG) kadr **może** wyjechać poza obraz: pusty pas zamalowuje
+ * tło żetonu, dokładnie to samo, na którym stoi figura bez portretu. Zostaje
+ * jedno ograniczenie — punkt kadru, czyli to, co ląduje na środku krążka, ma
+ * leżeć na obrazie. Inaczej dałoby się ustawić żeton, na którym portretu nie
+ * ma wcale, a kadr przestałby cokolwiek znaczyć.
  */
 export function clampPortraitCrop(crop: PortraitCrop, size: PortraitImageSize): PortraitCrop {
   if (!(size.width > 0) || !(size.height > 0)) return { ...DEFAULT_PORTRAIT_CROP };
-  const zoom = clamp(crop.zoom, PORTRAIT_CROP_ZOOM_MIN, PORTRAIT_CROP_ZOOM_MAX);
-  const half = halfExtents(size, zoom);
   return {
-    x: clamp(crop.x, half.x, 1 - half.x),
-    y: clamp(crop.y, half.y, 1 - half.y),
-    zoom,
+    x: clamp(crop.x, 0, 1),
+    y: clamp(crop.y, 0, 1),
+    zoom: clamp(crop.zoom, PORTRAIT_CROP_ZOOM_MIN, PORTRAIT_CROP_ZOOM_MAX),
   };
 }
 
@@ -144,9 +139,6 @@ export function portraitCropPlacement(
 }
 
 function clamp(value: number, min: number, max: number): number {
-  // Portret kwadratowy przy zoomie 1 daje min > max (0,5 > 0,5 z zapasem
-  // zmiennoprzecinkowym) — wtedy jedyną poprawną odpowiedzią jest środek.
-  if (min > max) return (min + max) / 2;
   return Math.min(max, Math.max(min, value));
 }
 

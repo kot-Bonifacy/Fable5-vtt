@@ -79,13 +79,13 @@ describe('okno kadrowania obiecuje to, co mapa narysuje', () => {
   });
 
   it('krążek podglądu ma dokładnie wnętrze obwódki właściciela', () => {
-    // Podgląd „tak na mapie" to kwadrat kratki z obramowaniem `RING_WIDTH`;
-    // przy `box-sizing: border-box` jego wnętrze musi wyjść równo średnicą
-    // portretu. Ta równość jest jedynym powodem, dla którego w komponencie
-    // stoi `gridPx`, a nie `radius * 2` — gdyby przestała zachodzić, podgląd
-    // pokazywałby inny kadr niż żeton.
+    // Podgląd „tak na mapie" to kratka **plus** obwódka po obu stronach (od
+    // 12.09 obwódka leży poza portretem); przy `box-sizing: border-box` jego
+    // wnętrze musi wyjść równo średnicą portretu, czyli bokiem kratki. Gdyby ta
+    // równość przestała zachodzić, podgląd pokazywałby inny kadr niż żeton.
     for (const gridPx of [47, 72, 100, 140]) {
-      expect(gridPx - 2 * RING_WIDTH).toBeCloseTo(portraitRadius(gridPx) * 2, 10);
+      const outer = gridPx + 2 * RING_WIDTH;
+      expect(outer - 2 * RING_WIDTH).toBeCloseTo(portraitRadius(gridPx) * 2, 10);
     }
   });
 
@@ -106,6 +106,36 @@ describe('obwódka w oknie ma kolor obwódki na mapie', () => {
     const pixi = /const RING_OWN = 0x([0-9a-fA-F]{6})/.exec(TOKEN_NODE)?.[1];
     expect(css).toBeDefined();
     expect(css?.toLowerCase()).toBe(pixi?.toLowerCase());
+  });
+});
+
+/**
+ * Pustka pod portretem, czyli druga połowa poprawki z 12.09.
+ *
+ * Kadr wolno od tej pory wywieźć poza obraz, więc brzeg krążka bywa pusty —
+ * a pod maską portretu pustka znaczy „widać mapę spod figury". Krążek tła musi
+ * więc zostać narysowany **zawsze**, a okno kadrowania musi pokazywać ten sam
+ * kolor, co mapa, inaczej MG kadruje na jednym tle, a stół widzi drugie.
+ */
+describe('pod portretem leży tło żetonu, nie dziura', () => {
+  it('krążek tła nie znika po wczytaniu obrazka', () => {
+    const start = TOKEN_NODE.indexOf('private fitImage(');
+    const body = TOKEN_NODE.slice(start, TOKEN_NODE.indexOf('private paintPlaceholder', start));
+    expect(body).not.toContain('this.placeholder.visible = false');
+  });
+
+  it('`--map-token-backdrop` w `theme.css` to ta sama liczba, co `PORTRAIT_BACKDROP`', () => {
+    const theme = readFileSync(join(SRC, 'theme.css'), 'utf8');
+    const css = /--map-token-backdrop:\s*#([0-9a-fA-F]{6})/.exec(theme)?.[1];
+    const pixi = /const PORTRAIT_BACKDROP = 0x([0-9a-fA-F]{6})/.exec(TOKEN_NODE)?.[1];
+    expect(css).toBeDefined();
+    expect(css?.toLowerCase()).toBe(pixi?.toLowerCase());
+  });
+
+  it('okno kadrowania rysuje ten krążek pod portretem', () => {
+    expect(EDITOR).toContain('portrait-crop-backdrop');
+    const styles = readFileSync(join(SRC, 'styles.css'), 'utf8');
+    expect(styles).toContain('--map-token-backdrop');
   });
 });
 

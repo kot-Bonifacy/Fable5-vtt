@@ -130,9 +130,9 @@ go i nie proponuj makr; pasek akcji z 16f zostaje generowany.
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 17 pozycji** (`zaleglosci.md`; dwie kolejne, z 11.09 i 12.09, to usterki do
-naprawy, nie kliki do zrobienia — druga z nich, **„gracz nie widzi pod mgłą własnej figury"**,
-czeka na decyzję MG, bo zmienia to, co gracz widzi). Czternaście czeka na żywy model. Dwie to **to
+**Dług oględzin — 16 pozycji** (`zaleglosci.md`; jedna z nich, z 11.09, to usterka do naprawy,
+a nie klik do zrobienia). **Mgłę własnej figury zamknięto 12.09** — MG zdecydował, gracz ma
+okienko; diagnoza i naprawa w `archiwum/zamkniete-zaleglosci.md`. Czternaście czeka na żywy model. Dwie to **to
 samo menu figury** („🎒 Przeszukaj…" i przełącznik statystyk), bo prawym klikiem z automatyki nie
 otworzysz menu kanwy Pixi — klika się je jednym podejściem ręką MG. Etapy 39, 40 i szlif karty nie
 dołożyły ani jednej pozycji: przeszły oględziny w tej samej sesji, w której powstały.
@@ -159,7 +159,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **1987** w `shared`, **1092** na serwerze, **154** u klienta —
+**Testy na koniec ostatniej sesji:** **1987** w `shared`, **1092** na serwerze, **166** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -184,7 +184,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   34 |      14 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   36 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    7 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
@@ -206,6 +206,63 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
+
+**Zlecenie MG, trzy rzeczy — jedna z listy zaległości, dwie zgłoszone w trakcie:** (1) naprawić
+„gracz nie widzi pod mgłą nawet własnej figury"; (2) kadrowanie nie pozwala wziąć **górnych
+pikseli** portretu, bo zasłania je pierścień; (3) — po obejrzeniu pierwszej wersji — okienko
+w mgle ma nie pokazywać koncentrycznych okręgów, a zielony okrąg ma **wysunąć się poza grafikę
+portretu o własną grubość**.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Wielkość okienka: **krąg około trzech kratek**
+(odrzucone „figura + pół kratki" i „figura + kratka"). Brzeg: **rozmyty**. Kadr: **wolno mu
+wyjechać poza obraz**, a pustkę zamalowuje tło żetonu — MG wybrał to zamiast wariantu „obwódka
+poza portret", po czym, zobaczywszy efekt, dołożył i ten drugi, już jako osobne zlecenie.
+
+**Usterka mgły była rozjazdem serwera z rendererem, nie brakiem funkcji.** `concealedFrom`
+zwalnia własną figurę gracza z filtra mgły od 17a i mówi to w komentarzu wprost; figura
+przyjeżdżała, tylko `fogSprite` leżał nad nią nieprzezroczysty. Naprawa to
+`MapRenderer.drawFogPeepholes`: okienko wycięte w kompozycie **ostatnim przebiegiem**, więc
+wygrywa też z zamalowaniem pędzlem (`hide`) — tak samo, jak rozstrzyga to serwer. Cudzych figur
+okienko zdradzić nie może, bo one w ogóle nie opuszczają serwera; nową informacją jest sam
+kawałek podłoża wokół własnej postaci.
+
+**Okienko musi iść z figurą także wtedy, gdy store o niej nie wie.** Przeciąganie i marsz ruszają
+węzłem lokalnie, więc `refreshFogPeepholes` wisi na trzech wejściach (`setTokens`, `onDragMove`,
+krok marszu) i porównuje podpis z pozycją zaokrągloną do dwóch pikseli świata — bez tego gracz
+szedłby przez czerń i odzyskiwał widok dopiero na mecie. Sprawdzone na żywo w trakcie ciągnięcia
+żetonu.
+
+**Pierwsza wersja rozmycia poszła do kosza i to jest lekcja na przyszłość.** Brzeg złożony
+z pięciu pierścieni o malejącej alfie **widać jako koncentryczne okręgi** — MG odrzucił go na
+pierwszym zrzucie. Zanik idzie teraz gradientem wypalonym na kanwie (`fogPeepTexture`), tą samą
+drogą, co światło z 18b i pamięć mapy z 18c. Wpis w `pulapki-dev.md`.
+
+**Kadr: granica liczyła się do kratki, a widoczne koło było od niej mniejsze.** Stąd zgłoszenie
+MG — czubka głowy nie dawało się wyjąć spod obwódki. `clampPortraitCrop` pilnuje dziś jednego:
+punkt kadru ma leżeć **na obrazie**. Pustkę na brzegu krążka zamalowuje `PORTRAIT_BACKDROP`,
+rysowany **zawsze** (dawniej krążek znikał po wczytaniu obrazka), a `--map-token-backdrop`
+w `theme.css` niesie tę samą liczbę dla okna kadrowania; pilnuje tego test. Sprawdzone w oknie:
+kadr wyjeżdża w **obu** osiach naraz, a podgląd „Tak na mapie" pokazuje dokładnie to samo.
+
+**Zielony okrąg zszedł z twarzy — druga zmiana geometrii żetonu tego dnia.** `portraitRadius` to
+teraz równo połowa kratki, obwódka właściciela leży w pasie `[extent/2, extent/2 + RING_WIDTH]`,
+a obrączka PW zaczyna się dopiero za nią. **Cena, o której MG wie z obu decyzji:** figura wystaje
+poza kratkę o całą oprawę — przy kratce 47 px to ok. 10 px promienia, więc sąsiedzi potrafią się
+oprawami zetknąć.
+
+**Oględziny na żywym stole, bez długu.** Sesja gracza (`localhost` — Tony) na aktywnej
+„StrefiePrzemysłowej", która ma `visibility = fog` i **zero odsłoniętych kształtów**, czyli
+dokładnie scenerię ze zgłoszenia. Sprawdzone: okienko na wejściu, okienko w ruchu, kadr w obu
+osiach, krążek tła, obwódka poza portretem. **Stan stołu nietknięty** — żeton wrócił na 752/799
+co do piksela, żaden kadr nie został zapisany (okno zamknięte „Anuluj"), motyw karty przywrócony
+na nocny.
+
+**Testy:** **166** u klienta (+12: okienko w mgle i tło portretu), **1987** w `shared`, **1092**
+na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `packages/server/src/app.ts`
+i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
+Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
 
 ### Sesja 12.09 (druga) — portret ujęty pod mapę
 
@@ -261,64 +318,3 @@ o to prosił MG.
 kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
 trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
 pułapki: jedna w `mapa`.
-
-### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
-
-**Zlecenie MG, trzy punkty:** (1) chowając albo przesuwając boczne paski, mapa ma się sama
-dopasowywać do ekranu, „aby nie było widać siatki"; (2) przetestować widoczność żetonów graczy
-na mapie startowej; (3) pasek PW wokół żetonu ma leżeć **na zewnątrz avatara** i mieć wyraźniejsze
-kolory. Doprecyzowane w trakcie: kolory mają **zgadzać się z paskiem PW w panelu postaci**,
-żaden okrąg ma nie wchodzić na portret, a portret w panelu ma być **duży**.
-
-**Punkt 1 był prawdziwą usterką i ma jedną przyczynę: `resizeTo` w Pixi v8 nie obserwuje
-elementu.** Mierzy się nim, ale nasłuchuje wyłącznie `window.resize` — a mapa stoi między dwoma
-paskami, które zmieniają szerokość bez ruszania oknem (lewy HUD zwija się do 2,6 rem, prawy panel
-ma uchwyt). Płótno zostawało w starym rozmiarze, a w odsłoniętym pasie świeciła **kratka rysowana
-przez CSS** (`.map-area`) — stąd „widać siatkę". Lek to `ResizeObserver` na gospodarzu
-(`watchHostSize` → `app.queueResize`); dalej wszystko jedzie starą drogą, łącznie z
-`applyCameraBounds`. Kamera zostaje na miejscu (wybór MG): dochodzi sam pas mapy.
-
-**Punkt 3 zmienił geometrię żetonu, i to w sposób, który dotyka czterech rysunków naraz.**
-Obrączka PW przeniosła się z wnętrza obwódki właściciela (czyli z brzegu twarzy) **poza kratkę**;
-świadoma cena wybrana przez MG spośród dwóch wariantów — figura wystaje o szerokość paska, więc
-sąsiedzi potrafią się obrączkami zetknąć; odrzucone zwężenie portretu kosztowałoby ~12 % średnicy
-twarzy na każdej figurze. Promienie wyszły do `map/token-ring.ts` (jak kamera do `camera.ts`),
-a `furnitureRadius` jest odtąd **jedyną** odpowiedzią na „dokąd sięga figura": czytają ją aureola
-tury (inaczej pasek by ją zamalował), klin kierunku (inaczej wyciąłby w pasku dziurę), podpis
-figury oraz — po pytaniu MG — **obrączka zaznaczenia, pierścień grupy i uchwyt obrotu**
-w `MapRenderer`. To ostatnie było prawdziwym znaleziskiem: ich odstęp liczy się w pikselach
-**ekranu** (`8 * overlayScale()`), więc w świecie topnieje ze zbliżeniem i przy zoomie 2 biały
-przerywany okrąg siadał dokładnie na pasku życia.
-
-**Kolory: jedna drabinka na całą aplikację.** Mapa miała trzy stopnie z ułamka, panel cztery ze
-stanu ran — ta sama postać bywała na mapie zielona, a w panelu żółta. Od teraz obie strony pytają
-`tokenHpRung` (`shared/figures.ts`, progi z `WOUNDED_HP_RATIO`), a `HP_RUNG_COLORS` niesie nocne
-`--ok` / `--hurt-light` / `--warn` / `--err`. Rdzeń **nie** woła `woundStateFromHp` — nie wolno mu
-— więc zgodność pilnują dwa testy: jeden porównuje obie funkcje punkt po punkcie, drugi porównuje
-paletę z `theme.css`. **Zgłoszone MG:** w motywie dziennym pasek w panelu przyciemnia się razem
-z interfejsem, a obrączka zostaje jasna, bo płótno mapy jest nocne w obu motywach (27e).
-
-**Punkt 2 — odpowiedź jest niewygodna i nie jest usterką kodu.** Aktywna „StrefaPrzemysłowa" ma
-`visibility = 'fog'` i (w chwili oględzin) **zero odsłoniętych kształtów**, więc gracz widział
-czarne pole. Serwer zwalnia własną figurę gracza z filtra mgły (`concealedFrom`: „gracz nigdy nie
-traci swojej postaci z mapy"), ale **klient tej obietnicy nie dotrzymuje**: `fogSprite` leży nad
-warstwą żetonów i jest nieprzezroczysty, więc gracz nie widzi nawet siebie. Serwer mówi jedno,
-renderer drugie. Na **mapie powitalnej** żetonów nie ma w ogóle i to jest z założenia —
-`pushTokens` wysyła pustą listę, gdy `effectiveScene` jest `null`. **Czytelność żetonu na mapie
-MG sprawdzona osobno i jest dobra** (rozstawione figury na sześciu rodzajach podłoża, przy zoomie
-gracza i przy całej mapie w oknie). W trakcie sesji MG sam odsłonił mgłę i obie figury pojawiły
-się u gracza natychmiast.
-
-**Portret w panelu urósł z 3,6 do 6 rem** — wariant wybrany przez MG z trzech: zostaje **obok**
-imienia i paska PW, więc pasek akcji nie schodzi w dół. Sprawdzone na żywo: imię, Rola, pasek PW
-i wszystkie trzy chipy dalej mieszczą się w jednym rzędzie.
-
-**Oględziny bez sesji MG.** Obie karty w przeglądarce trzymały graczy, a MG ma hasło, którego nie
-wpisuję — więc obrączkę oglądałem na **jednorazowej stronie-próbniku** (prawdziwe `TokenNode` na
-prawdziwej mapie sceny MG, siedem wariantów PW i para sąsiadów), skasowanej po sesji. Zmiana
-sceny w bazie została **zablokowana przez zabezpieczenia** i nie była potrzebna. Płótno i portret
-sprawdzone już w żywej aplikacji.
-
-**Testy:** **142** u klienta (+17: `token-ring.test.ts`), **1973** w `shared` (+4 o drabince),
-**1086** na serwerze — zielone. ESLint, Prettier i `tsc -b` czyste w trzech pakietach. Umowy: trzy
-w `mapa`; pułapki: dwie w `mapa`.

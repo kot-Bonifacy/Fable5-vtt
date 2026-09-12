@@ -9040,6 +9040,7 @@ body.is-resizing {
   pointer-events: none;
 }
 
+.portrait-crop-backdrop,
 .portrait-crop-mask,
 .portrait-crop-ring,
 .portrait-crop-cell {
@@ -9048,6 +9049,14 @@ body.is-resizing {
   top: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+/* Tło krążka, czyli to, co stół zobaczy tam, gdzie kadr wyjechał poza obraz
+   (12.09). Leży **pod** portretem, więc póki obraz pokrywa krążek, nie widać
+   go wcale — i o to chodzi. */
+.portrait-crop-backdrop {
+  border-radius: 50%;
+  background: var(--map-token-backdrop);
 }
 
 /* Cień na wszystkim poza krążkiem — jeden `box-shadow` zamiast maski, bo to,
@@ -9101,7 +9110,9 @@ body.is-resizing {
   border-radius: 50%;
   border-style: solid;
   border-color: var(--map-ring-own);
-  background: var(--map-backdrop);
+  /* Tło żetonu, nie tło mapy: podgląd „tak na mapie" ma pokazywać dokładnie
+     to, co narysuje `TokenNode` pod portretem wyjechanym poza obraz. */
+  background: var(--map-token-backdrop);
 }
 
 .portrait-crop-true img {

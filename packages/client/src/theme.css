@@ -288,6 +288,10 @@
   /* Przygaszenie tego, co wypada poza krążek. Nie `--scrim`: tamten przygasza
      aplikację pod oknem i zmienia się z motywem. */
   --map-crop-scrim: rgb(3 6 12 / 72%);
+  /* Tło krążka pod portretem — widać je tam, gdzie kadr wyjechał poza obraz
+     (12.09). **Ta sama liczba**, co `PORTRAIT_BACKDROP` w `TokenNode.ts`;
+     pilnuje tego `portrait-crop.test.ts`. */
+  --map-token-backdrop: #0f172a;
 
   /* Narzędzia z własnym znaczeniem koloru: „tylko dla mnie", noc, dzień. */
   --map-warn: #fbbf24;

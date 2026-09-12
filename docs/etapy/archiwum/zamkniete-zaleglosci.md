@@ -9,6 +9,40 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-12 (trzecia sesja — okienko w mgle)
+
+**12.09 (etap 17a, znalezione przy oględzinach widoczności żetonów): gracz nie widzi pod mgłą
+nawet własnej figury — serwer obiecuje co innego niż rysuje renderer.** `concealedFrom`
+(`realtime/tokens.ts`) zwalnia z filtra mgły każdego, kto steruje figurą, i mówi to wprost
+w komentarzu: „a player must never lose their own character off the map… losing sight of your own
+token reads as a bug, not as suspense". Figura **przyjeżdża** do gracza — sprawdzone w `tokenStore`
+— ale `fogSprite` leży nad `tokenLayer` i przy `visibility = 'fog'` bez odsłoniętych kształtów jest
+czarny i nieprzezroczysty, więc zamalowuje ją razem z mapą. Objaw: gracz wchodzi na scenę
+i widzi **czarny ekran bez niczego**, choć jego kamera jest wykadrowana dokładnie na nim.
+To jest **coś innego** niż „czarne pole pod nieodsłoniętą mgłą", które MG zamknął 11.09 jako
+zachowanie: tam chodziło o mapę, tu o obietnicę serwera, której klient nie dotrzymuje.
+**Możliwa naprawa (do decyzji MG, bo to zmiana w tym, co gracz widzi):** wyciąć w masce mgły
+kółko wokół figur, które ten widz kontroluje — mgła zostaje wszędzie indziej, ale gracz widzi
+siebie i kawałek podłoża pod sobą. Kompozyt mgły już umie wycinać (`setFog` maluje kształty
+z `blendMode: 'erase'`), więc to jedna pętla po `movableTokens`, nie nowa warstwa.
+
+**Zamknięte tego samego dnia, po decyzji MG: okienko jest.** `MapRenderer.drawFogPeepholes`
+wycina w kompozycie mgły krąg wokół każdej figury, którą steruje ten widz — ostatnim
+przebiegiem, więc wygrywa także z zamalowaniem pędzlem (`hide`), tak jak na serwerze. Wielkość
+wybrał MG: **około trzech kratek średnicy** (`fogPeepRadius` w `map/token-ring.ts`), a przy
+figurze większej niż 1 × 1 promień rośnie tak, żeby pełne wycięcie objęło całą figurę z oprawą.
+Okienko jedzie z figurą także **poza store** — `refreshFogPeepholes` wisi na `setTokens`,
+na przeciąganiu i na kroku marszu — więc gracz nie idzie przez czerń do mety.
+
+**Pierwsza wersja brzegu została odrzucona przez MG i to jest tu najciekawsze.** Rozmycie
+złożone z pięciu pierścieni o malejącej alfie widać na mapie jako **koncentryczne okręgi**;
+zanik idzie więc gradientem wypalonym na kanwie (`fogPeepTexture`), tą samą drogą, co światło
+z 18b i pamięć mapy z 18c. Wpis w `pulapki-dev.md`.
+
+**Czego okienko nie zdradza:** cudzych figur. `concealedFrom` nie wypuszcza ich z serwera, więc
+pod okienkiem może się pojawić wyłącznie rysunek mapy. Nowa informacja dla gracza to sam kawałek
+podłoża wokół jego postaci — i na to MG się zgodził wprost.
+
 ## Przeniesione 2026-09-04 (druga sesja — paczka „oczy i uszy")
 
 Pięć pozycji z `POMYSLY.md` i z ostatniego akapitu `zaleglosci.md`, wybranych przez MG jako

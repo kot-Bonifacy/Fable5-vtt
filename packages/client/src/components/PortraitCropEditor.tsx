@@ -25,6 +25,12 @@ import { useSceneStore } from '../stores/sceneStore.js';
  * krążek, zostaje widoczne, ale przygaszone — MG ma widzieć, co odcina, a nie
  * zgadywać.
  *
+ * **Kadr wolno wywieźć poza obraz** (poprawka z 12.09 po zgłoszeniu MG: górnych
+ * pikseli portretu nie dawało się wciągnąć w krążek, bo zatrzymywała je granica
+ * liczona do kratki, a widoczne koło jest od kratki mniejsze o obwódkę). Pod
+ * portretem leży więc krążek tła żetonu — dokładnie ten, który rysuje
+ * `TokenNode` — żeby okno pokazywało pustkę tak, jak pokaże ją mapa.
+ *
  * Kadruje się **wyłącznie mapę** (decyzja MG z 12.09): karta, kreator, czat
  * i panel pokazują wgrany plik w całości. Sam plik zostaje nietknięty — kadr to
  * trzy liczby przy wierszu puli, nie nowy upload.
@@ -93,13 +99,13 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   // Promienie liczy ta sama funkcja, co dla figury na mapie, i dla kratki tej
   // sceny — inaczej okno obiecywałoby kadr, którego mapa nie narysuje.
   //
-  // Obwódka właściciela rysuje się jako obramowanie kwadratu kratki: jej
-  // zewnętrzna krawędź leży dokładnie na brzegu kratki (`ownerRingRadius` to
-  // oś obrysu o szerokości `RING_WIDTH`), więc wnętrze obramowania **jest**
-  // krążkiem portretu. Jedna liczba mniej do rozjechania się z mapą.
+  // Od 12.09 obwódka właściciela leży **poza** portretem, więc krążek portretu
+  // to równo kratka, a obramowanie rysuje się dookoła niej: pierścień jest
+  // o dwie swoje grubości szerszy od kratki i niczego już nie przykrywa.
   const cellRatio = STAGE_CELL / gridPx;
   const circle = portraitRadius(gridPx) * cellRatio;
   const ringWidth = RING_WIDTH * cellRatio;
+  const ringBox = STAGE_CELL + ringWidth * 2;
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
@@ -177,8 +183,9 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
       <div className="dialog portrait-crop" onClick={(event) => event.stopPropagation()}>
         <h3 className="panel-section-title">Kadr na mapie — {asset.name}</h3>
         <p className="portrait-crop-hint">
-          Ciągnij portret, kółkiem myszy albo suwakiem przybliż. Poza mapą — na karcie, w kreatorze
-          i na czacie — portret zostaje widoczny w całości.
+          Ciągnij portret, kółkiem myszy albo suwakiem przybliż. Kadr wolno wywieźć poza obraz —
+          puste miejsce wypełnia wtedy tło żetonu. Poza mapą — na karcie, w kreatorze i na czacie —
+          portret zostaje widoczny w całości.
         </p>
 
         <div className="portrait-crop-stage-row">
@@ -195,6 +202,12 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
             onWheel={onWheel}
             onKeyDown={onKeyDown}
           >
+            {/* Tło krążka — widać je tam, gdzie kadr wyjechał poza obraz (12.09). */}
+            <span
+              className="portrait-crop-backdrop"
+              style={{ width: circle * 2, height: circle * 2 }}
+              aria-hidden
+            />
             <img
               className="portrait-crop-image"
               src={asset.url}
@@ -208,10 +221,10 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
               style={{ width: circle * 2, height: circle * 2 }}
               aria-hidden
             />
-            {/* Obwódka właściciela — na mapie to ona jest brzegiem portretu. */}
+            {/* Obwódka właściciela — od 12.09 biegnie dookoła portretu, nie po nim. */}
             <span
               className="portrait-crop-ring"
-              style={{ width: STAGE_CELL, height: STAGE_CELL, borderWidth: ringWidth }}
+              style={{ width: ringBox, height: ringBox, borderWidth: ringWidth }}
               aria-hidden
             />
             <span
@@ -287,12 +300,17 @@ function TruePreview({
   const shownW = asset.width * place.scale;
   const shownH = asset.height * place.scale;
   const radius = portraitRadius(gridPx);
-  // Kwadrat kratki z obramowaniem obwódki: wnętrze wychodzi wtedy równo
-  // `portraitRadius · 2`, bo `portraitRadius = gridPx / 2 − RING_WIDTH`.
+  // Kratka plus obwódka po obu stronach: przy `border-box` wnętrze wychodzi
+  // wtedy równo `portraitRadius · 2`, czyli tyle, ile sama kratka — bo od 12.09
+  // obwódka leży poza portretem, a nie na nim.
   return (
     <span
       className="portrait-crop-true"
-      style={{ width: gridPx, height: gridPx, borderWidth: RING_WIDTH }}
+      style={{
+        width: gridPx + RING_WIDTH * 2,
+        height: gridPx + RING_WIDTH * 2,
+        borderWidth: RING_WIDTH,
+      }}
     >
       <img
         src={asset.url}

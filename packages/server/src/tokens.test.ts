@@ -316,15 +316,24 @@ describe('portrait pool', () => {
     await Promise.all([gmConn.firstSync, playerConn.firstSync]);
     try {
       const heard = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:crop');
-      // Fikstura jest kwadratem 1 × 1, więc przy zoomie 2 swoboda kadru to
-      // ćwiartka w każdą stronę — 0,9 i 0,1 muszą wrócić jako 0,75 i 0,25.
+      // Kadr wolno od 12.09 wywieźć poza obraz (zgłoszenie MG: inaczej górnych
+      // pikseli portretu nie dało się wciągnąć w krążek), więc 0,9 i 0,1
+      // przechodzą bez zmiany — ścina się dopiero to, co wypada poza grafikę.
       const ack = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
         assetId,
         crop: { x: 0.9, y: 0.1, zoom: 2 },
       });
       if (!ack.ok || !ack.data) throw new Error('portrait:crop failed');
-      expect(ack.data.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
-      expect((await heard).asset.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
+      expect(ack.data.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
+      expect((await heard).asset.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
+
+      // Poza obraz nie wychodzi już sam punkt kadru: 1,4 wraca jako 1.
+      const beyond = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 1.4, y: -0.2, zoom: 2 },
+      });
+      if (!beyond.ok || !beyond.data) throw new Error('portrait:crop failed');
+      expect(beyond.data.crop).toEqual({ x: 1, y: 0, zoom: 2 });
 
       // Zapisane, a nie tylko odesłane.
       const list = await built.app.inject({
@@ -333,7 +342,7 @@ describe('portrait pool', () => {
         headers: { cookie: playerCookie },
       });
       const stored = (list.json() as PortraitAssetView[]).find((a) => a.id === assetId);
-      expect(stored?.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
+      expect(stored?.crop).toEqual({ x: 1, y: 0, zoom: 2 });
 
       // Gracz nie kadruje **cudzego** obrazka.
       expect(

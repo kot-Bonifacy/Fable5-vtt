@@ -12,6 +12,9 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Rozmycie złożone z pierścieni widać jako koncentryczne okręgi** — pięć wycięć o malejącej alfie miało dać miękki brzeg okienka w mgle, a dało prążki (MG odrzucił to na pierwszym zrzucie). Gradient wypala się na kanwie (`fogPeepTexture`), tak jak światło z 18b i pamięć mapy z 18c.
+- **Kompozyt mgły rysuje się tylko na `setFog`** — figura ruszona przeciąganiem albo marszem omija store, więc okienko zostawało w tyle; stąd `refreshFogPeepholes` wołane także z `onDragMove` i z kroku marszu, a nie tylko z `setTokens`.
+- **`fogPass` dokłada `Graphics` na koniec `fogScratch`** — cokolwiek ma zostać na wierzchu kompozytu (okienko własnej figury), musi się tam przenieść **przy każdym składaniu** (`addChild`), inaczej świeży przebieg `hide` zamaluje je przy następnym pociągnięciu pędzla MG.
 - **Podpis figury (`signature`) decyduje, czy `TokenNode` w ogóle się przerysuje** — a składa się z pól żetonu i kontekstu. Zmiana czegoś **spoza** tej listy (kadr portretu, 12.09) zapisuje się, rozgłasza i po prostu nie widać jej na mapie do przeładowania strony; wygląda to jak niedziałające rozgłoszenie, a jest pominiętą klatką.
 - **`resizeTo` w Pixi v8 NIE obserwuje elementu** — mierzy się nim, ale przelicza rozmiar wyłącznie na `window.resize`. Pasek zmieniający szerokość mapy bez ruszania oknem zostawiał płótno w starym rozmiarze, a w odsłoniętym pasie świeciła kratka z CSS-a. Trzeba `ResizeObserver` (`watchHostSize`).
 - **Nakładki `MapRenderer` mierzą odstęp w pikselach EKRANU** (`8 * overlayScale()`), więc w pikselach świata topnieje on ze zbliżeniem: obrączka zaznaczenia liczona od `half` wchodziła przy zoomie 2 na pasek życia. Liczy się je od `node.outerRadius`.
