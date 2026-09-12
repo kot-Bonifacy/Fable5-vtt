@@ -67,9 +67,8 @@ import {
 } from './locations.js';
 import {
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
-  CPRED_WOUND_LABELS,
-  woundCheckPenalty,
-  cpredSheetWoundState,
+  cpredSheetWoundCondition,
+  cpredWoundPenaltyRows,
   type CpredWoundState,
 } from './rolls.js';
 import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
@@ -859,7 +858,8 @@ export function planCpredAttack(
   if (dvResult === 'OUT_OF_RANGE') return { ok: false, error: 'OUT_OF_RANGE' };
 
   // Modifier breakdown, in the order the rules apply it.
-  const state = cpredSheetWoundState(data);
+  const wound = cpredSheetWoundCondition(data);
+  const state = wound.state;
   const statId = skill.stat;
   const breakdown: RollBreakdownEntry[] = [
     {
@@ -902,10 +902,9 @@ export function planCpredAttack(
       kind: 'situational',
     });
   }
-  const woundPenalty = woundCheckPenalty(state);
-  if (woundPenalty !== 0) {
-    breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
-  }
+  // Kara za rany razem z tym, co ją zawiesza (Stym, Edytor bólu) — ta sama
+  // funkcja co w planerze Testów, żeby atak i Test nie liczyły jej dwojako.
+  breakdown.push(...cpredWoundPenaltyRows(wound));
   // „Za 3 punkty dodajesz +1 do każdego wykonywanego Ataku" (s. 146). Read off
   // the sheet rather than passed in, so the client's preview and the server's
   // verdict reach the same number without a context object between them.

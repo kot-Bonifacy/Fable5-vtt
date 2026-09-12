@@ -215,6 +215,9 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // `character:stat-effect`, a lista wpisana ręką byłaby listą efektów bez
       // terminu, czyli takich, które nie zejdą nigdy.
       if (sheet.statEffects !== undefined) throw new RealtimeError('FORBIDDEN');
+      // 12.09.2026: Stym z tego samego powodu — zawieszenie kar wpisane łatą nie
+      // miałoby terminu, a zdejmuje je MG tym samym `character:stat-effect`.
+      if (sheet.woundSuspension !== undefined) throw new RealtimeError('FORBIDDEN');
       // Etap 41: co postać trzyma w rękach, zmienia wyłącznie `weapon:draw`.
       // Schowanie broni kosztuje Akcję (s. 168), a łata karty nie ma czym jej
       // zapłacić — ta sama umowa, co przy Zmyśle Walki. Odmowa jest **dla

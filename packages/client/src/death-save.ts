@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ROLE_GM, injuryDeathSavePenalty, woundState } from '@vtt/shared';
+import { ROLE_GM, cpredSheetWoundState, injuryDeathSavePenalty } from '@vtt/shared';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCombatStore } from './stores/combatStore.js';
@@ -50,7 +50,7 @@ export function useDeathSavePrompt(): DeathSavePrompt | null {
     const character = characters[characterId];
     if (!character) return null;
     if (user.role !== ROLE_GM && character.ownerId !== user.id) return null;
-    if (woundState(character.data.hpCurrent, character.data.stats) !== 'mortal') return null;
+    if (cpredSheetWoundState(character.data) !== 'mortal') return null;
     return {
       characterId,
       characterName: character.name,

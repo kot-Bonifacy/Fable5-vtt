@@ -20,8 +20,7 @@ import {
   cpredMedicineSkillLevel,
   isCpredMedicineSkillId,
   planCpredRoll,
-  woundCheckPenalty,
-  woundState,
+  cpredSheetWoundCheckPenalty,
 } from '@vtt/shared';
 
 /**
@@ -392,7 +391,7 @@ export function loadStabilizeCup(
   const modifierTotal =
     cpredEffectiveStats(data)[skill.stat] +
     (data.skills[skill.id] ?? 0) +
-    woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+    cpredSheetWoundCheckPenalty(data);
 
   store.loadCup({
     characterId: medic.characterId,
@@ -437,10 +436,7 @@ export function loadTreatInjuryCup(
     : (data.skills[option.skillId] ?? 0);
   // Both Medyk-only Skills are TECH-based (s. 149), so the fallback is theirs.
   const stat = registry.skills.find((skill) => skill.id === option.skillId)?.stat ?? 'tech';
-  const modifierTotal =
-    cpredEffectiveStats(data)[stat] +
-    level +
-    woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+  const modifierTotal = cpredEffectiveStats(data)[stat] + level + cpredSheetWoundCheckPenalty(data);
 
   store.loadCup({
     characterId: healer.characterId,

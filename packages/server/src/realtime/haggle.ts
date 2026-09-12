@@ -15,8 +15,8 @@ import {
   mergeCharacterData,
   parseCharacterData,
   rollFormula,
-  woundCheckPenalty,
-  woundState,
+  cpredSheetWoundCondition,
+  cpredWoundPenaltyRows,
 } from '@vtt/shared';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -95,7 +95,9 @@ export const characterHaggleEvent = defineEvent<
     // ripperdoc haggles with what is left, the same as on every other Check.
     const cool = cpredEffectiveStats(data).cool;
     const trading = data.skills[CPRED_HAGGLE_SKILL_ID] ?? 0;
-    const wound = woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+    // Kara za rany razem ze Stymem i Edytorem bólu — te same wiersze co w Teście.
+    const woundRows = cpredWoundPenaltyRows(cpredSheetWoundCondition(data));
+    const wound = woundRows.reduce((sum, row) => sum + row.value, 0);
     const bonus = cool + trading + rank! + wound;
 
     const gesture = sanitizeGesture(payload?.gesture);
@@ -140,7 +142,7 @@ export const characterHaggleEvent = defineEvent<
       { label: 'CHA', value: cool, kind: 'stat' },
       { label: trading > 0 ? 'Handel' : 'Handel (nietrenowany)', value: trading, kind: 'skill' },
       { label: `${CPRED_OPERATOR_ABILITY} ${rank}`, value: rank!, kind: 'skill' },
-      ...(wound !== 0 ? [{ label: 'Rany', value: wound, kind: 'wound' as const }] : []),
+      ...woundRows,
     ];
     const system: HaggleCardSystem = {
       dealId: deal.id,

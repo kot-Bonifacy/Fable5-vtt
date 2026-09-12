@@ -38,6 +38,9 @@ import {
   cpredRestDay,
   cpredSheetMedicine,
   cpredSheetHpMax,
+  cpredSheetWoundState,
+  cpredWoundSuspensionSource,
+  CPRED_HOUR_S,
   mergeCharacterData,
   metresBetweenTokens,
   metresForRules,
@@ -65,6 +68,7 @@ import {
 } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
+import { applyWoundSuspension, effectClockForCharacter } from './stat-effects.js';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -509,13 +513,7 @@ async function applyDose(
   if (drug.applies === 'narrative') {
     return { healed: 0, note: 'Bez skutku w mechanice — reszta należy do stołu.' };
   }
-  if (drug.applies === 'ignoreSeriousWound') {
-    return {
-      healed: 0,
-      note: 'Kary za Poważnie Rannego zawiesza MG na godzinę — VTT ich nie zdejmuje samo.',
-      tone: 'warn',
-    };
-  }
+  if (drug.applies === 'ignoreSeriousWound') return applyStym(deps, campaignId, drug, target);
   if (!target.character) {
     return {
       healed: 0,
@@ -562,4 +560,66 @@ async function applyDose(
   await emitTokensOfCharacter(deps, campaignId, saved);
   if (target.token) await emitTokensById(deps, campaignId, [target.token.id]);
   return { healed: hpAfter - data.hpCurrent };
+}
+
+/**
+ * Stym: godzina bez kar Poważnie Rannego (s. 150), zapisana na karcie celu
+ * (12.09.2026 — do tej daty karta czatu odsyłała z tym do MG).
+ *
+ * Zapis idzie **zawsze**, niezależnie od stanu celu: zawieszona jest kara, nie
+ * stan, więc Stym podany Śmiertelnie Rannemu zadziała, gdy Medyk w ciągu tej
+ * godziny wyciągnie go do Poważnie Rannego. Przypis mówi, co z tego wynika
+ * **teraz** — „bez skutku" przy −4 czytałoby się jak zmarnowana fiolka.
+ */
+async function applyStym(
+  deps: RealtimeDeps,
+  campaignId: string,
+  drug: CpredPharmaceutical,
+  target: DoseTarget,
+): Promise<{ healed: number; note?: string; tone?: 'success' | 'warn' }> {
+  if (!target.character) {
+    return {
+      healed: 0,
+      note: 'Figura bez karty postaci nie ma gdzie zapisać tego środka.',
+      tone: 'warn',
+    };
+  }
+  const clock = await effectClockForCharacter(
+    deps,
+    campaignId,
+    target.character.id,
+    target.scene?.id,
+  );
+  const saved = await applyWoundSuspension(
+    deps,
+    campaignId,
+    target.character,
+    { source: drug.name, durationS: CPRED_HOUR_S },
+    clock,
+  );
+  const data = parseCharacterData(saved.data, deps.ctx.cpred);
+  const source = cpredWoundSuspensionSource(data);
+  if (source !== null && source !== drug.name) {
+    return {
+      healed: 0,
+      note: `Kary Poważnie Rannego i tak zawiesza ${source} — Stym zapisany na godzinę.`,
+    };
+  }
+  const state = cpredSheetWoundState(data);
+  if (state === 'mortal') {
+    return {
+      healed: 0,
+      note:
+        'Śmiertelnie Ranny: kary −4 Stym nie zdejmuje. Zadziała, jeśli w ciągu godziny ' +
+        'cel wróci do Poważnie Rannego.',
+      tone: 'warn',
+    };
+  }
+  return {
+    healed: 0,
+    note:
+      state === 'serious'
+        ? 'Kary Poważnie Rannego zawieszone na godzinę.'
+        : 'Zapisany na godzinę — zadziała, jeśli cel zostanie Poważnie Ranny.',
+  };
 }

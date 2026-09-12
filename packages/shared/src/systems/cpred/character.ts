@@ -17,6 +17,7 @@ import {
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
 import { isPharmaceuticalId } from './pharma.js';
+import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
 import {
@@ -1004,6 +1005,17 @@ export interface CpredCharacterData {
    */
   statEffects: CpredStatEffect[];
   /**
+   * Stym na karcie (12.09.2026): godzina bez kar Poważnie Rannego, z tymi samymi
+   * dwoma terminami co `statEffects`. `null` na każdej karcie bez zastrzyku.
+   *
+   * Pisane **wyłącznie przez silnik** — `character:use-dose` nakłada,
+   * `character:stat-effect` u MG zdejmuje, przemiatania zegarów wygaszają —
+   * i z tego samego powodu co `statEffects` wypada z `character:update`
+   * u wszystkich: zawieszenie wpisane łatą nie miałoby terminu i nie zeszłoby
+   * nigdy. Edytor bólu **nie** mieszka tutaj — działa z wiersza cyborgizacji.
+   */
+  woundSuspension: CpredWoundSuspension | null;
+  /**
    * Death Saves already taken since going Mortally Wounded. Each one makes the
    * next harder (+1); regaining a single HP resets the counter (RAW:
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
@@ -1194,6 +1206,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     cyberware: [],
     criticalInjuries: [],
     statEffects: [],
+    woundSuspension: null,
     deathSaves: 0,
     recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
@@ -2027,6 +2040,17 @@ function collectCharacterDataPatch(
       );
     } else {
       patch.statEffects = readCpredStatEffects(input.statEffects);
+    }
+  }
+  // Stym (12.09.2026). Ten sam czytnik co przy odczycie z bazy; prawo do zapisu
+  // rozstrzyga `character:update` (odmowa dla wszystkich), nie walidator.
+  if ('woundSuspension' in input) {
+    if (input.woundSuspension === null) {
+      patch.woundSuspension = null;
+    } else {
+      const suspension = readCpredWoundSuspension(input.woundSuspension);
+      if (suspension) patch.woundSuspension = suspension;
+      else issues.push(issue('woundSuspension', 'Nieprawidłowy zapis zawieszenia kar.'));
     }
   }
   if ('deathSaves' in input) {

@@ -24,6 +24,7 @@ import type {
   CombatActionLogEntry,
   CpredEffectClock,
   CpredStatEffect,
+  CpredWoundSuspension,
 } from '@vtt/shared';
 import {
   CPRED_HOUR_S,
@@ -33,14 +34,17 @@ import {
   ROLE_GM,
   cpredStatEffectDeadlines,
   describeCpredStatEffect,
+  describeCpredWoundSuspension,
   isCpredStatId,
   parseRollNotation,
   rollFormula,
 } from '@vtt/shared';
 import {
   applyStatEffectToSheet,
+  clearWoundSuspensionOnSheet,
   expireSheetStatEffects,
   removeStatEffectFromSheet,
+  setWoundSuspensionOnSheet,
 } from '../sheets.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
@@ -150,6 +154,36 @@ export async function applyStatEffect(
 }
 
 /**
+ * Zapisuje na karcie zawieszenie kar Poważnie Rannego — Stym (12.09.2026).
+ *
+ * Tutaj, a nie w `recovery.ts`, z tego samego powodu co `applyStatEffect`:
+ * terminy liczy **jedna** funkcja (`cpredStatEffectDeadlines`), a wygaszają
+ * je te same dwa przemiatania. Zwraca zapisaną kartę, bo wołający układa
+ * przypis z tego, co z zastrzyku wynika teraz.
+ */
+export async function applyWoundSuspension(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  input: { source: string; durationS: number },
+  clock: CpredEffectClock,
+): Promise<Character> {
+  const suspension: CpredWoundSuspension = {
+    id: newEffectId(),
+    source: input.source,
+    durationS: input.durationS,
+    ...cpredStatEffectDeadlines(clock, input.durationS),
+  };
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: { data: setWoundSuspensionOnSheet(character, deps.ctx.cpred, suspension) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+  return saved;
+}
+
+/**
  * Zdejmuje z **każdej** karty kampanii to, czego czas minął.
  *
  * Po kampanii, nie po scenie: efekt „na godzinę" siedzi na karcie, a karta nie
@@ -162,9 +196,9 @@ export async function sweepStatEffects(
   deps: RealtimeDeps,
   campaignId: string,
   clock: CpredEffectClock,
-): Promise<{ character: Character; expired: CpredStatEffect[] }[]> {
+): Promise<SweptSheet[]> {
   const characters = await deps.ctx.prisma.character.findMany({ where: { campaignId } });
-  const swept: { character: Character; expired: CpredStatEffect[] }[] = [];
+  const swept: SweptSheet[] = [];
   for (const character of characters) {
     const result = await expireOne(deps, campaignId, character, clock);
     if (result) swept.push(result);
@@ -201,7 +235,7 @@ async function expireOne(
   campaignId: string,
   character: Character,
   clock: CpredEffectClock,
-): Promise<{ character: Character; expired: CpredStatEffect[] } | null> {
+): Promise<SweptSheet | null> {
   const result = expireSheetStatEffects(character, deps.ctx.cpred, clock);
   if (!result) return null;
   const saved = await deps.ctx.prisma.character.update({
@@ -210,7 +244,15 @@ async function expireOne(
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
-  return { character: saved, expired: result.expired };
+  return { character: saved, expired: result.expired, suspension: result.suspension };
+}
+
+/** Karta, z której przemiatanie coś zdjęło. */
+interface SweptSheet {
+  character: Character;
+  expired: CpredStatEffect[];
+  /** Stym, któremu minął termin (12.09.2026); `null`, gdy trwa albo go nie było. */
+  suspension: CpredWoundSuspension | null;
 }
 
 /**
@@ -225,7 +267,7 @@ async function logStatEffects(
   deps: RealtimeDeps,
   campaignId: string,
   title: string,
-  rows: readonly { character: Pick<Character, 'name'>; expired: readonly CpredStatEffect[] }[],
+  rows: readonly SweptSheet[],
 ): Promise<void> {
   const gm = await deps.ctx.prisma.user.findFirst({ where: { role: ROLE_GM } });
   if (!gm) return;
@@ -235,9 +277,11 @@ async function logStatEffects(
     actionId: 'stat-effect-expired',
     actionName: title,
     note: rows
-      .map(
-        (row) => `${row.character.name} — ${row.expired.map(describeCpredStatEffect).join(', ')}`,
-      )
+      .map((row) => {
+        const parts = row.expired.map(describeCpredStatEffect);
+        if (row.suspension) parts.push(describeCpredWoundSuspension(row.suspension));
+        return `${row.character.name} — ${parts.join(', ')}`;
+      })
       .join(' · '),
   };
   const stored = await deps.ctx.prisma.chatMessage.create({
@@ -266,7 +310,11 @@ async function logStatEffects(
  */
 export const characterStatEffectEvent = defineEvent<
   CharacterStatEffectPayload,
-  { effect?: CpredStatEffect; removed?: CpredStatEffect }
+  {
+    effect?: CpredStatEffect;
+    removed?: CpredStatEffect;
+    removedSuspension?: CpredWoundSuspension;
+  }
 >({
   name: 'character:stat-effect',
   role: ROLE_GM,
@@ -282,15 +330,21 @@ export const characterStatEffectEvent = defineEvent<
     }
 
     if (typeof payload.effectId === 'string') {
+      // Ten sam guzik zdejmuje Stym (12.09.2026): dla stołu to to samo „już ci
+      // przeszło", a id zawieszenia i id efektu pochodzą z tego samego losowania.
       const removed = removeStatEffectFromSheet(character, deps.ctx.cpred, payload.effectId);
-      if (!removed) throw new RealtimeError('EFFECT_NOT_FOUND');
+      const cleared = removed
+        ? null
+        : clearWoundSuspensionOnSheet(character, deps.ctx.cpred, payload.effectId);
+      const next = removed?.data ?? cleared?.data;
+      if (next === undefined) throw new RealtimeError('EFFECT_NOT_FOUND');
       const saved = await deps.ctx.prisma.character.update({
         where: { id: character.id },
-        data: { data: removed.data },
+        data: { data: next },
       });
       await emitCharacterUpsert(deps, campaign.id, toCharacterView(saved, deps.ctx.cpred));
       await emitTokensOfCharacter(deps, campaign.id, saved);
-      return { removed: removed.removed };
+      return removed ? { removed: removed.removed } : { removedSuspension: cleared?.removed };
     }
 
     if (!isCpredStatId(payload.stat)) throw new RealtimeError('UNKNOWN_STAT');

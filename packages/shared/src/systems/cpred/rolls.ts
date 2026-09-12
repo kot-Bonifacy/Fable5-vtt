@@ -29,6 +29,7 @@ import { effectiveCpredStats } from './cyberware.js';
 import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
 import { deathSaveTarget, hpMax } from './derived.js';
 import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
+import { cpredWoundSuspensionSource, type CpredWoundSuspensionSheet } from './woundsuspension.js';
 import {
   CPRED_HIT_LOCATION_LABELS,
   type CpredAimPoint,
@@ -121,6 +122,59 @@ export function woundCheckPenalty(state: CpredWoundState): number {
     default:
       return 0;
   }
+}
+
+/**
+ * Stan ran karty razem z tym, co zawiesza jego karę (12.09.2026).
+ *
+ * Dwie rzeczy, które każdy Test czyta naraz, więc podróżują razem: planer,
+ * który dostałby sam stan, doliczyłby −2 Poważnie Rannemu pod Stymem, a planer
+ * z samym „zawieszone" nie wiedziałby, czy w ogóle jest co zawieszać.
+ */
+export interface CpredWoundCondition {
+  state: CpredWoundState;
+  /** „Stym", „Edytor bólu" — albo `null`, gdy nic kary nie zawiesza. */
+  suspendedBy: string | null;
+}
+
+/** Cokolwiek niesie PW, blok statysty i to, co zawiesza kary — karta albo jej widok. */
+export type CpredWoundSheet = CpredStatBlockCarrier &
+  CpredWoundSuspensionSheet & { hpCurrent: number };
+
+export function cpredSheetWoundCondition(sheet: CpredWoundSheet): CpredWoundCondition {
+  return { state: cpredSheetWoundState(sheet), suspendedBy: cpredWoundSuspensionSource(sheet) };
+}
+
+/**
+ * Wiersze rozbicia rzutu za rany — jedyne miejsce, które je składa.
+ *
+ * Zawieszenie jest **własnym wierszem obok kary**, a nie brakiem kary: gracz,
+ * który czyta „Poważnie ranny −2 · Stym +2", wie, że za godzinę będzie rzucał
+ * o dwa gorzej — ta sama umowa, którą ma kara z pancerza i efekt na Cesze.
+ * Zawieszana jest wyłącznie kara Poważnie Rannego; −4 Śmiertelnie Rannego
+ * zostaje, choćby Stym był na karcie.
+ */
+export function cpredWoundPenaltyRows(condition: CpredWoundCondition): RollBreakdownEntry[] {
+  const penalty = woundCheckPenalty(condition.state);
+  if (penalty === 0) return [];
+  const rows: RollBreakdownEntry[] = [
+    { label: CPRED_WOUND_LABELS[condition.state], value: penalty, kind: 'wound' },
+  ];
+  if (condition.state === 'serious' && condition.suspendedBy !== null) {
+    rows.push({ label: condition.suspendedBy, value: -penalty, kind: 'situational' });
+  }
+  return rows;
+}
+
+/**
+ * Kara za rany tej karty jedną liczbą — dla miejsc, które planują rzut ręką
+ * (podgląd kubka Ustabilizowania, targowanie) albo tylko ją drukują.
+ */
+export function cpredSheetWoundCheckPenalty(sheet: CpredWoundSheet): number {
+  return cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet)).reduce(
+    (sum, row) => sum + row.value,
+    0,
+  );
 }
 
 /** MOVE penalty of the wound state (−6 when mortally wounded). */
@@ -589,7 +643,10 @@ export function planCpredRoll(
   if (!isInteger(luckSpent) || luckSpent < 0) return { ok: false, error: 'BAD_REQUEST' };
   if (luckSpent > data.luckCurrent) return { ok: false, error: 'NOT_ENOUGH_LUCK' };
 
-  const state = woundState(data.hpCurrent, data.stats);
+  // Stan ran **tej karty** (etap 38a) — do 12.09.2026 liczony tu z BC i SW, więc
+  // statysta z wydrukowanymi PW dostawał w Teście inną karę niż w ataku.
+  const wound = cpredSheetWoundCondition(data);
+  const state = wound.state;
 
   // Damage and Death Saves are not Checks: no stat, no skill, no wound penalty
   // and no exploding 10. They share only the validation above.
@@ -603,19 +660,19 @@ export function planCpredRoll(
     return planDeathSaveRoll(data, state);
   }
   if (request.kind === 'stabilize') {
-    return planStabilizeRoll(data, registry, request, modifier, luckSpent, state, context);
+    return planStabilizeRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
   if (request.kind === 'treatInjury') {
-    return planTreatInjuryRoll(data, registry, request, modifier, luckSpent, state, context);
+    return planTreatInjuryRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
   // Stage 30d. Three rolls a Role owns outright: two of them are Checks (rank
   // instead of a stat+skill pair, everything else the same), and the third is
   // not a Check at all — the audience either believes or does not.
   if (request.kind === 'charisma') {
-    return planCharismaRoll(data, registry, request, modifier, luckSpent, state, context);
+    return planCharismaRoll(data, registry, request, modifier, luckSpent, wound, context);
   }
   if (request.kind === 'rumour') {
-    return planRumourRoll(data, registry, modifier, luckSpent, state, context);
+    return planRumourRoll(data, registry, modifier, luckSpent, wound, context);
   }
   if (request.kind === 'reliability') {
     // „W Testach Rzetelności nie można wykorzystywać Szczęścia" (s. 152).
@@ -673,7 +730,7 @@ export function planCpredRoll(
     return { ok: false, error: 'BAD_REQUEST' };
   }
 
-  return finishCheck(title, breakdown, state, modifier, luckSpent, {}, context);
+  return finishCheck(title, breakdown, wound, modifier, luckSpent, {}, context);
 }
 
 /**
@@ -754,16 +811,13 @@ function skillBreakdown(
 function finishCheck(
   title: string,
   breakdown: RollBreakdownEntry[],
-  state: CpredWoundState,
+  wound: CpredWoundCondition,
   modifier: number,
   luckSpent: number,
   extra: Pick<CpredRollPlan, 'stabilize' | 'treatInjury' | 'charisma' | 'rumour'> = {},
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
-  const woundPenalty = woundCheckPenalty(state);
-  if (woundPenalty !== 0) {
-    breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
-  }
+  breakdown.push(...cpredWoundPenaltyRows(wound));
   // Next to the wound penalty, and for the same reason: the player has to see
   // where a −2 they did not ask for came from (stage 14d).
   for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
@@ -791,7 +845,7 @@ function finishCheck(
       formula: { terms },
       breakdown,
       modifierTotal,
-      woundState: state,
+      woundState: wound.state,
       luckSpent,
       checkRule: true,
       ...extra,
@@ -814,7 +868,7 @@ function planStabilizeRoll(
   request: CpredRollRequest,
   modifier: number,
   luckSpent: number,
-  state: CpredWoundState,
+  wound: CpredWoundCondition,
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const allowed = [CPRED_FIRST_AID_SKILL_ID, CPRED_PARAMEDIC_SKILL_ID];
@@ -841,7 +895,7 @@ function planStabilizeRoll(
   return finishCheck(
     `Ustabilizowanie → ${targetName}`,
     skillBreakdown(data, skill),
-    state,
+    wound,
     modifier,
     luckSpent,
     { stabilize: { dv, targetName, targetTokenId, skillName: skill.name } },
@@ -865,7 +919,7 @@ function planTreatInjuryRoll(
   request: CpredRollRequest,
   modifier: number,
   luckSpent: number,
-  state: CpredWoundState,
+  wound: CpredWoundCondition,
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const dv = request.treatDv;
@@ -913,7 +967,7 @@ function planTreatInjuryRoll(
   return finishCheck(
     `${CPRED_CARE_MODE_LABELS[mode]}: ${injuryName} → ${targetName}`,
     breakdown,
-    state,
+    wound,
     modifier,
     luckSpent,
     {
@@ -950,7 +1004,7 @@ function planCharismaRoll(
   request: CpredRollRequest,
   modifier: number,
   luckSpent: number,
-  state: CpredWoundState,
+  wound: CpredWoundCondition,
   context: CpredRollContext,
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const rank = cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY);
@@ -972,7 +1026,7 @@ function planCharismaRoll(
   return finishCheck(
     title,
     [{ label: `${CPRED_CHARISMA_ABILITY} ${rank}`, value: rank!, kind: 'skill' }],
-    state,
+    wound,
     modifier,
     luckSpent,
     { charisma: { dv, audience, purpose, effect } },
@@ -990,7 +1044,7 @@ function planRumourRoll(
   registry: CpredRegistry,
   modifier: number,
   luckSpent: number,
-  state: CpredWoundState,
+  wound: CpredWoundCondition,
   context: CpredRollContext,
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const rank = cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY);
@@ -998,7 +1052,7 @@ function planRumourRoll(
   return finishCheck(
     'Pogłoski',
     [{ label: `${CPRED_CREDIBILITY_ABILITY} ${rank}`, value: rank, kind: 'skill' }],
-    state,
+    wound,
     modifier,
     luckSpent,
     { rumour: { rank } },
@@ -1035,7 +1089,7 @@ function planReliabilityRoll(
       formula: { terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10 }] },
       breakdown: [],
       modifierTotal: 0,
-      woundState: woundState(data.hpCurrent, data.stats),
+      woundState: cpredSheetWoundState(data),
       luckSpent: 0,
       checkRule: false,
       reliability: { chance: cpredReliabilityChance(rank, proof), proof, base },

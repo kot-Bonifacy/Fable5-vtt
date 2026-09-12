@@ -40,7 +40,7 @@ import {
   planCpredRoll,
   resolveCpredDeathSave,
   rollFormula,
-  woundState,
+  cpredSheetWoundState,
   woundStateFromHp,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
@@ -418,7 +418,8 @@ async function resolveStabilizeRequest(
     });
     if (!target) throw new RealtimeError('TOKEN_NOT_FOUND');
     const targetData = parseCharacterData(target.data, deps.ctx.cpred);
-    state = woundState(targetData.hpCurrent, targetData.stats);
+    // Próg **karty celu** (etap 38a) — statysta z wydrukowanymi PW ma go z nich.
+    state = cpredSheetWoundState(targetData);
   } else if (token.hpCurrent !== null && token.hpMax !== null && token.hpMax > 0) {
     state = woundStateFromHp(token.hpCurrent, token.hpMax);
   } else {

@@ -33,6 +33,7 @@ import {
   describeCpredStatEffect,
   describeCpredStatEffectTimer,
   describeCpredStatEffectValue,
+  describeCpredWoundSuspension,
   CPRED_LANGUAGE_SKILL_ID,
   cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -121,12 +122,13 @@ import {
   resolveWeapon,
   cpredDrawnWeapons,
   searchCompendium,
-  seriousWoundThreshold,
+  cpredSheetSeriousWoundThreshold,
   skillBase,
   toAmmoProfile,
   validateCharacterDataPatch,
-  woundCheckPenalty,
-  woundState,
+  cpredSheetWoundCheckPenalty,
+  cpredSheetWoundState,
+  cpredWoundSuspensionSource,
   CPRED_COMBAT_AWARENESS_ABILITY,
   cpredFieldRepairMinutes,
   cpredRoleAbilityRank,
@@ -651,8 +653,9 @@ function IdentityColumn({
   const [uploading, setUploading] = useState(false);
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
   const maxHp = cpredSheetHpMax(data);
-  const wound = woundState(data.hpCurrent, data.stats);
-  const woundPenalty = woundCheckPenalty(wound);
+  const wound = cpredSheetWoundState(data);
+  const woundPenalty = cpredSheetWoundCheckPenalty(data);
+  const woundSuspendedBy = cpredWoundSuspensionSource(data);
   const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
   const psychosis = cyberpsychosisFor(data.humanityCurrent);
 
@@ -898,7 +901,7 @@ function IdentityColumn({
           title="Próg stanu Poważnie ranny (połowa PW)"
         >
           <span className="cp-label">Poważnie Ranny</span>
-          <span className="cp-pool-value">≤ {seriousWoundThreshold(data.stats)}</span>
+          <span className="cp-pool-value">≤ {cpredSheetSeriousWoundThreshold(data)}</span>
         </div>
         <div
           className="cp-field cp-pool cp-pool--flat"
@@ -914,6 +917,11 @@ function IdentityColumn({
         <p className={`cp-alert${wound === 'mortal' ? '' : ' cp-alert--muted'}`}>
           <strong>{CPRED_WOUND_LABELS[wound]}</strong>
           {woundPenalty !== 0 && <span>−{Math.abs(woundPenalty)} do wszystkich testów</span>}
+          {wound === 'serious' && woundSuspendedBy !== null && (
+            <span title="Kara −2 za Poważnie Rannego jest zawieszona — stan zostaje.">
+              kary zawiesza {woundSuspendedBy}
+            </span>
+          )}
           {wound === 'mortal' && (
             <button
               type="button"
@@ -2592,7 +2600,8 @@ function StatEffects({ data, characterId }: { data: CpredCharacterData; characte
   const [source, setSource] = useState('');
   const [durationS, setDurationS] = useState(String(CPRED_HOUR_S));
 
-  if (data.statEffects.length === 0 && !isGm) return null;
+  const suspension = data.woundSuspension;
+  if (data.statEffects.length === 0 && suspension === null && !isGm) return null;
 
   function apply() {
     const parsed = parseStatEffectAmount(amount);
@@ -2611,10 +2620,37 @@ function StatEffects({ data, characterId }: { data: CpredCharacterData; characte
   return (
     <div className="cp-panel cp-stat-effects">
       <div className="cp-bar">Efekty czasowe</div>
-      {data.statEffects.length === 0 ? (
+      {data.statEffects.length === 0 && suspension === null ? (
         <div className="cp-field cp-injuries-empty">bez efektów na Cechach</div>
       ) : (
         <ul className="stat-effect-list">
+          {/* Stym (12.09.2026) stoi tu, a nie przy stanie zdrowia: liczy czas tymi
+              samymi dwoma zegarami co efekty na Cechach i zdejmuje go ten sam guzik. */}
+          {suspension !== null && (
+            <li className="cp-field stat-effect-row">
+              <span
+                className="stat-effect-value stat-effect-value--up"
+                title="Kara −2 za Poważnie Rannego nie liczy się do Testów — stan i próg zostają."
+              >
+                bez kary −2
+              </span>
+              <span className="stat-effect-source">{suspension.source}</span>
+              <span className="stat-effect-timer">
+                {describeCpredStatEffectTimer(suspension, { round: null, minutes })}
+              </span>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  title="Zdejmij ten efekt"
+                  aria-label={`Zdejmij efekt: ${describeCpredWoundSuspension(suspension)}`}
+                  onClick={() => setStatEffect({ characterId, effectId: suspension.id })}
+                >
+                  ⌫
+                </button>
+              )}
+            </li>
+          )}
           {data.statEffects.map((effect) => (
             <li key={effect.id} className="cp-field stat-effect-row">
               <span

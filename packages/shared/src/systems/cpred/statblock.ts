@@ -128,3 +128,14 @@ export interface CpredStatBlockCarrier {
 export function cpredSheetHpMax(sheet: CpredStatBlockCarrier): number {
   return statBlockHpMax(sheet.stats, sheet.statBlock);
 }
+
+/**
+ * Próg Poważnie Rannego **tej karty** — połowa jej maksimum PW, w górę.
+ *
+ * Bliźniak `seriousWoundThreshold` z `derived.ts`, który bierze same Cechy
+ * i zostaje kreatorowi. Na karcie z wydrukowanymi PW tamten pokazywał próg
+ * inny niż ten, od którego rzut naprawdę dolicza −2 (poprawione 12.09.2026).
+ */
+export function cpredSheetSeriousWoundThreshold(sheet: CpredStatBlockCarrier): number {
+  return Math.ceil(cpredSheetHpMax(sheet) / 2);
+}

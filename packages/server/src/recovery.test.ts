@@ -14,7 +14,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
-import { CPRED_ANTIBIOTIC_DAYS, CPRED_PHARMA_BATCH_COST } from '@vtt/shared';
+import { CPRED_ANTIBIOTIC_DAYS, CPRED_HOUR_S, CPRED_PHARMA_BATCH_COST } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -537,6 +537,137 @@ describe('naturalne leczenie i farmaceutyki', () => {
     const after = (await sheetOf(medicId)).gear.find((e) => e.consumable === 'pharma.antybiotyk')!;
     expect(after.qty).toBe(before.qty - 1);
     expect((await sheetOf(medicId)).recovery.antibioticDays).toBe(CPRED_ANTIBIOTIC_DAYS);
+  });
+
+  it('Stym zawiesza kary Poważnie Rannego na godzinę, a zegar świata je przywraca', async () => {
+    // Medyk z trzema punktami nie sięga po Stym (czwarty w tabeli), więc dawki
+    // wkłada do plecaka MG, jak łup. Podanie liczy się tak samo jak wytworzonej.
+    const medic = await sheetOf(medicId);
+    const stymRow = { id: 'stym-row', name: 'Stym', notes: '', qty: 2, consumable: 'pharma.stym' };
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: medicId,
+          patch: { data: { gear: [...medic.gear, stymRow] } },
+        })
+      ).ok,
+    ).toBe(true);
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { hpCurrent: 10 } },
+    });
+
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const dose = data(
+      await emitAck<{ qtyLeft: number }>(gm, 'character:use-dose', {
+        characterId: medicId,
+        gearRowId: stymRow.id,
+        targetTokenId: patientTokenId,
+      }),
+      'character:use-dose',
+    );
+    expect(dose.qtyLeft).toBe(1);
+    const entry = (await card).message.recovery;
+    // Do 12.09.2026 karta mówiła pomarańczowym „zawiesza MG" i nic nie zapisywała.
+    expect(entry?.tone).toBe('success');
+    expect(entry?.note).toBe('Kary Poważnie Rannego zawieszone na godzinę.');
+    const suspension = (await sheetOf(patientId)).woundSuspension;
+    expect(suspension).toMatchObject({ source: 'Stym', durationS: CPRED_HOUR_S });
+    expect(suspension?.expiresAtMinute).toBeGreaterThan(0);
+
+    // Test pacjenta: kara i zawieszenie stoją obok siebie, suma bez −2.
+    const rolled = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'character:roll', {
+      characterId: patientId,
+      visibility: 'public',
+      request: { kind: 'stat', statId: 'cool' },
+    });
+    const breakdown = (await rolled).message.roll?.breakdown ?? [];
+    expect(breakdown).toContainEqual({ label: 'Poważnie ranny', value: -2, kind: 'wound' });
+    expect(breakdown).toContainEqual({ label: 'Stym', value: 2, kind: 'situational' });
+
+    // Łatą karty nie wpisze ani nie zdejmie go nikt, także MG: zapis bez
+    // terminu nie zszedłby nigdy, a zdejmuje się go guzikiem efektu.
+    expect(
+      await emitAck(gm, 'character:update', {
+        characterId: patientId,
+        patch: { data: { woundSuspension: null } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    const removed = data(
+      await emitAck<{ removedSuspension?: { source: string } }>(gm, 'character:stat-effect', {
+        characterId: patientId,
+        effectId: suspension!.id,
+      }),
+      'character:stat-effect',
+    );
+    expect(removed.removedSuspension?.source).toBe('Stym');
+    expect((await sheetOf(patientId)).woundSuspension).toBeNull();
+
+    // Śmiertelnie Rannemu Stym nie zdejmuje −4, ale zapis zostaje — zadziała,
+    // gdy Medyk wyciągnie go w ciągu godziny do Poważnie Rannego.
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { hpCurrent: 0 } },
+    });
+    const mortalCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'character:use-dose', {
+      characterId: medicId,
+      gearRowId: stymRow.id,
+      targetTokenId: patientTokenId,
+    });
+    const mortal = (await mortalCard).message.recovery;
+    expect(mortal?.tone).toBe('warn');
+    expect(mortal?.note).toContain('Śmiertelnie Ranny');
+    expect((await sheetOf(patientId)).woundSuspension?.source).toBe('Stym');
+
+    // Godzina świata zdejmuje zawieszenie tym samym przemiataniem co efekty na
+    // Cechach, a wiersz „Efekty wygasły" wymienia je z nazwy.
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { hpCurrent: 10 } },
+    });
+    const seen: ChatMessageBroadcast[] = [];
+    const collect = (message: ChatMessageBroadcast) => seen.push(message);
+    gm.on('chat:message', collect);
+    await emitAck(gm, 'time:set', { step: 'hour' });
+    gm.off('chat:message', collect);
+    expect((await sheetOf(patientId)).woundSuspension).toBeNull();
+    expect(
+      seen.some((message) => JSON.stringify(message).includes('Stym (bez kar Poważnie Rannego)')),
+    ).toBe(true);
+  });
+
+  it('PT Ustabilizowania statysty liczy się z wydrukowanych PW, nie z BC i SW', async () => {
+    // Pacjent ma BC 7 i SW 6: z Cech 45 PW i próg 23. Wydruk mówi 20 PW, więc
+    // przy 15 PW jest lekko ranny (PT 10) — do 12.09.2026 serwer liczył próg
+    // z Cech i dawał PT 13, choć atak na tę samą figurę widział lekką ranę.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: patientId,
+          patch: {
+            data: {
+              statBlock: { combatValue: null, weaponSkill: null, noBulletDodge: false, hpMax: 20 },
+              hpCurrent: 15,
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      visibility: 'public',
+      request: { kind: 'stabilize', stabilizeTokenId: patientTokenId, skillId: 'paramedic' },
+    });
+    expect((await card).message.roll?.outcome?.detail).toContain('vs PT 10');
+
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { statBlock: null, hpCurrent: 10 } },
+    });
   });
 
   it('odmawia zastrzyku spoza zasięgu ramienia', async () => {

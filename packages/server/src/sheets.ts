@@ -29,10 +29,12 @@ import type {
   TokenHp,
   TokenInjuryRow,
   TurnBudgetView,
+  CpredWoundSuspension,
 } from '@vtt/shared';
 import {
   CPRED_STAT_EFFECTS_MAX,
   cpredExpireStatEffects,
+  cpredStatEffectExpired,
   cpredEffectiveStats,
   cpredArmorStatPenalty,
   cpredSheetCombatAwareness,
@@ -868,13 +870,49 @@ export function expireSheetStatEffects(
   character: Pick<Character, 'data'>,
   registry: SheetRegistry,
   clock: CpredEffectClock,
-): { data: string; expired: CpredStatEffect[] } | null {
+): { data: string; expired: CpredStatEffect[]; suspension: CpredWoundSuspension | null } | null {
   const data = parseCharacterData(character.data, registry);
-  if (data.statEffects.length === 0) return null;
+  // Stym (12.09.2026) schodzi tym samym przemiataniem i tą samą funkcją terminu
+  // co efekty na Cechach — inaczej jeden z dwóch zegarów by go pomijał.
+  const suspension =
+    data.woundSuspension !== null && cpredStatEffectExpired(data.woundSuspension, clock)
+      ? data.woundSuspension
+      : null;
+  if (data.statEffects.length === 0 && suspension === null) return null;
   const { kept, expired } = cpredExpireStatEffects(data.statEffects, clock);
-  if (expired.length === 0) return null;
-  const merged = mergeCharacterData(data, { statEffects: kept });
-  return { data: JSON.stringify(merged), expired };
+  if (expired.length === 0 && suspension === null) return null;
+  const merged = mergeCharacterData(data, {
+    statEffects: kept,
+    ...(suspension !== null ? { woundSuspension: null } : {}),
+  });
+  return { data: JSON.stringify(merged), expired, suspension };
+}
+
+/**
+ * Zapisuje na karcie zawieszenie kar Poważnie Rannego (Stym, 12.09.2026).
+ *
+ * Nadpisuje poprzednie: druga dawka się nie kumuluje, tylko liczy termin od
+ * nowego zastrzyku. Terminy przychodzą policzone — jak przy efekcie na Cesze.
+ */
+export function setWoundSuspensionOnSheet(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  suspension: CpredWoundSuspension,
+): string {
+  const data = parseCharacterData(character.data, registry);
+  return JSON.stringify(mergeCharacterData(data, { woundSuspension: suspension }));
+}
+
+/** Zdejmuje zawieszenie po id — guzik „zdejmij" u MG; `null`, gdy go nie ma. */
+export function clearWoundSuspensionOnSheet(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  suspensionId: string,
+): { data: string; removed: CpredWoundSuspension } | null {
+  const data = parseCharacterData(character.data, registry);
+  const removed = data.woundSuspension;
+  if (removed === null || removed.id !== suspensionId) return null;
+  return { data: JSON.stringify(mergeCharacterData(data, { woundSuspension: null })), removed };
 }
 
 /** Efekty, które karta niesie teraz — lista dla okna zegara i paska figury. */

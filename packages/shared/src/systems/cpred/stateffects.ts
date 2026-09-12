@@ -227,7 +227,10 @@ export function cpredStatEffectRows(
  * choćby walka trwała, a „na trzy rundy" ma zejść w rundzie szóstej, choćby
  * MG nie ruszył zegara.
  */
-export function cpredStatEffectExpired(effect: CpredStatEffect, clock: CpredEffectClock): boolean {
+export function cpredStatEffectExpired(
+  effect: Pick<CpredStatEffect, 'expiresAtRound' | 'expiresAtMinute'>,
+  clock: CpredEffectClock,
+): boolean {
   if (
     effect.expiresAtRound !== undefined &&
     clock.round !== null &&
@@ -300,7 +303,7 @@ export function describeCpredStatEffect(effect: CpredStatEffect): string {
  * szczerość, którą `describeCpredTimer` wprowadził w 16h.
  */
 export function describeCpredStatEffectTimer(
-  effect: CpredStatEffect,
+  effect: Pick<CpredStatEffect, 'expiresAtRound' | 'expiresAtMinute' | 'durationS'>,
   clock: CpredEffectClock,
 ): string {
   if (effect.expiresAtMinute !== undefined && clock.minutes !== null) {
