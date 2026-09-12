@@ -8003,8 +8003,9 @@ body.is-resizing {
 
 .settings-skin {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.55rem;
+  min-height: 2.5rem;
   padding: 0.4rem 0.5rem;
   text-align: left;
   background: transparent;
@@ -8030,7 +8031,6 @@ body.is-resizing {
   flex: 0 0 auto;
   width: 1.05rem;
   height: 1.05rem;
-  margin-top: 0.1rem;
   border-radius: 50%;
   border: 1px solid var(--swatch-edge);
   box-shadow: inset 0 0 0 1px var(--swatch-gloss);
@@ -8043,6 +8043,12 @@ body.is-resizing {
 .settings-skin-name {
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.settings-skin-description {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-dim);
 }
 
 /* Rządek próbek dźwięku (27i). Przyciski są celowo małe i gęste: to nie jest

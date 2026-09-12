@@ -226,7 +226,7 @@ export function SettingsWindow() {
                 <span className="settings-skin-swatch" style={{ background: entry.swatch }} />
                 <span className="settings-skin-text">
                   <span className="settings-skin-name">{entry.label}</span>
-                  <span className="settings-hint">{entry.description}</span>
+                  <span className="settings-skin-description"> — {entry.description}</span>
                 </span>
               </button>
             ))}

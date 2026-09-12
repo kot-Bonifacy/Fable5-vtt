@@ -8,6 +8,17 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 13.09 — maszynopis wypowiedzi NPC-ów na stałe
+
+**Zlecenie MG:** usunąć możliwość wyłączenia maszynopisu wypowiedzi NPC-ów i zostawić dopisywanie
+słowo po słowie jako jedyną formę wyświetlania świeżych kwestii botów. Usunięto pole z ⚙ Ustawień,
+wzmiankę z podpowiedzi przycisku, flagę `enabled` i zapis preferencji w `localStorage`. Stare
+`vtt.typewriter.enabled=0` nie ma już wpływu na czat. Historia i resynchronizacja nadal pokazują
+pełny tekst od razu; maszynopis obejmuje tylko nowe wypowiedzi NPC-ów.
+
+**Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite uruchamia
+się i odpowiada HTTP 200. Nie oglądano animacji na żywym bocie. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 12.09 (ósma) — pełny ekran z ustawień
 
 **Zlecenie MG: przełącznik pełnego ekranu w ustawieniach — zalogowany gracz ma mieć VTT na pełnym

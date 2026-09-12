@@ -249,6 +249,16 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 — skórki kości w jednym wierszu
+
+**Zlecenie MG:** przenieść krótki opis za nazwę skórki, po myślniku, żeby każda pozycja zajmowała
+jeden wiersz. W oknie Ustawień kropka koloru, nazwa i opis są teraz w jednej linii. Wygląd kości
+i działanie rzutów pozostały bez zmian.
+
+**Weryfikacja:** na żywej stronie w Chrome wszystkie pięć pozycji mieści się w jednym wierszu
+przy standardowej szerokości okna 400 px; 196 testów klienta, build TypeScript/Vite, ESLint
+i Prettier — zielone. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — krótsze opisy skórek kości
 
 **Zlecenie MG:** usunąć fragmenty po myślnikach z opisów pięciu skórek kości w ustawieniach.
@@ -257,14 +267,3 @@ pozostały bez zmian.
 
 **Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite
 uruchamia się i odpowiada HTTP 200. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — maszynopis wypowiedzi NPC-ów na stałe
-
-**Zlecenie MG:** usunąć możliwość wyłączenia maszynopisu wypowiedzi NPC-ów i zostawić dopisywanie
-słowo po słowie jako jedyną formę wyświetlania świeżych kwestii botów. Usunięto pole z ⚙ Ustawień,
-wzmiankę z podpowiedzi przycisku, flagę `enabled` i zapis preferencji w `localStorage`. Stare
-`vtt.typewriter.enabled=0` nie ma już wpływu na czat. Historia i resynchronizacja nadal pokazują
-pełny tekst od razu; maszynopis obejmuje tylko nowe wypowiedzi NPC-ów.
-
-**Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite uruchamia
-się i odpowiada HTTP 200. Nie oglądano animacji na żywym bocie. Etap 28 pozostaje nierozpoczęty.
