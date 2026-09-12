@@ -190,7 +190,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2003** w `shared`, **1098** na serwerze, **177** u klienta —
+**Testy na koniec ostatniej sesji:** **2003** w `shared`, **1098** na serwerze, **183** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -215,7 +215,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   39 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   40 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    9 |       9 |
@@ -277,18 +277,22 @@ aktywna, RUNDA 1 Marcin/Tony. Dwie rzeczy po drodze: karty automatyki były zalo
 obu hostach** (MG zalogował się sam na `localhost` — hasła nie wpisuję), a w bazie leżą jeszcze trzy
 starsze kampanie-śmieci — pułapka w `ogledziny`.
 
-**Siatka na ciemnej mapie — zgłoszone MG.** Wymóg MG: kratka nie musi trafiać idealnie, ale MG ma
-**sam zauważyć** rozjazd przed aktywacją sceny. Domyślna czarna kreska z kryciem 35% na mapie Night
-City, przyciemnionej mgłą MG, jest ledwo widoczna; rozjazd zdradza za to podpowiedź pola kolumn
-(„ostatni rząd rozjeżdża się o 8 px"). Co z tym zrobić — decyzja MG.
+**Siatka na ciemnej mapie — zrobione w tej samej sesji, decyzją MG („kontrast w edytorze").** Wymóg
+MG: kratka nie musi trafiać idealnie, ale MG ma **sam zauważyć** rozjazd przed aktywacją sceny.
+Domyślna czarna kreska z kryciem 35% na mapie Night City, przyciemnionej mgłą MG, była ledwo
+widoczna. Od teraz **otwarty edytor sceny włącza kontrastową siatkę**: obwódka 3 px ekranu w kolorze
+przeciwnym i kreska z kryciem co najmniej 90% (`gridStrokes` w `map/grid-style.ts`, sześć testów) —
+tylko u MG, nigdy po sieci; przełącznik „Kontrastowa siatka podczas edycji" pokazuje wygląd zapisany.
+Obejrzane na „StrefiePrzemysłowej" (krycie 10%): z kontrastem kratki i ich rozjazd z pasami parkingu
+widać od razu, po odhaczeniu i po zamknięciu edytora siatka wraca do wyglądu zapisanego.
 
 **Przy okazji w tym pliku:** akapit o scenach testowych mówił o czterech i aktywnej „Strzelnicy"
 (jest pięć, aktywna „StrefaPrzemysłowa"), a tabela etapów nie miała wiersza nagłówka od cięcia
 kolumny „Uwagi" — oba poprawione.
 
-**Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **177** u klienta
-(+4, `scene-activation.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
-pakietach. Umowy: jedna w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
+**Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **183** u klienta
+(+10, `scene-activation.test.ts` i `grid-style.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit`
+czyste w trzech pakietach. Umowy: dwie w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
 Zamknięte zaległości: **trzy**.
 
 ### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41

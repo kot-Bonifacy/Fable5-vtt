@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Kontrastowa siatka przy edycji sceny** — `sceneStore.gridContrast` (włącza `SceneEditor`, gasi jego zamknięcie; nigdy po sieci) → `MapRenderer.setGridContrast`. Jak siatka wygląda, rozstrzyga wyłącznie `gridStrokes` w `map/grid-style.ts`; obwódka liczy się w pikselach ekranu, więc `refreshOverlays` przerysowuje siatkę przy zoomie, póki tryb trwa.
 - **Kratka ze skali mapy** — `gridSizeForColumns` / `gridCellsAlong` w `shared/scenes.ts`; liczy się z **kolumn** i z **szerokości obrazu tła**, wiersze tylko podpowiada. Czytają ją pole „Kratek w poziomie" (`GridColumnsField`) i mapa powitalna. Kratka bywa ułamkiem, więc żadne pole liczbowe siatki nie ma `step={1}`.
 - **Ślad przebytej drogi to odciski butów, nie kreska** — `MapRenderer.drawWalkedTrail` (jedna droga dla marszu, ciągnięcia i poświaty), kolory `TRAIL_COLOR` / `TRAIL_COLOR_OVER`, granicę czerwieni liczy `trailOverFrom` w metrach **gruntu**. Trzy pule `FootprintPool` i żadna nie pożycza sprite'ów sąsiadce: trasa, ziemia pod figurą, poświata. Zapasowa kreska zostaje tylko na wypadek niewczytanego glifu.
 - **„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela**, nie osobny okrąg — `drawSelectionRing` rysuje ją na nakładce, promieniem `node.ownerRingRadius` i kolorem `node.ownerRingTint`, z sufitem grubości liczonym z kratki. Uchwyt obrotu wisi dalej na `outerRadius + 22k` i nie potrzebuje okręgu pod sobą.
@@ -57,6 +58,14 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Siatka przy otwartym edytorze sceny jest kontrastowa — tylko u MG i tylko na czas edycji (12.09).**
+Wymóg MG: kratka nie musi trafiać w mapę idealnie, ale MG ma **sam zauważyć** rozjazd przed aktywacją
+sceny — a czarna siatka 35% na ciemnej mapie pod mgłą była ledwo widoczna. `gridStrokes(grid,
+contrast, worldPerScreenPx)` oddaje kreski w kolejności rysowania: bez kontrastu jedną (kolor i krycie
+sceny, `pixelLine`), z kontrastem obwódkę 3 px ekranu w kolorze przeciwnym (próg luminancji 0,179)
+i kreskę sceny z kryciem co najmniej 0,9. Przełącznik „Kontrastowa siatka podczas edycji" pokazuje MG
+wygląd zapisany — bez niego suwaka „Krycie" nie dałoby się ocenić. Gracze nigdy tego trybu nie widzą.
 
 **Kratka ze skali mapy liczy się z kolumn i z obrazu — nie z obu osi i nie z obszaru gry (12.09).**
 `gridSizeForColumns(imageWidthPx, columns)` oddaje kratkę przyciętą do `GRID_SIZE_MIN`–`GRID_SIZE_MAX`

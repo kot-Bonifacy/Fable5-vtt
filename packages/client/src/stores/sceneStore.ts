@@ -24,6 +24,13 @@ interface SceneStoreState {
   draft: ScenePatch | null;
   /** `scene` + `draft` — the thing the map renderer displays. */
   effectiveScene: SceneView | null;
+  /**
+   * Kontrastowa siatka przy otwartym edytorze sceny (MG, 12.09) — stan wyłącznie
+   * tej karty, nigdy po sieci. Włącza go `SceneEditor` przy otwarciu i gasi
+   * przy zamknięciu; wygląd rozstrzyga `map/grid-style.ts`.
+   */
+  gridContrast: boolean;
+  setGridContrast: (on: boolean) => void;
 
   applySync: (payload: StateSyncPayload) => void;
   /** Replaces the viewed scene (activation for players, scene:view for GM). */
@@ -56,6 +63,7 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   scenes: [],
   draft: null,
   effectiveScene: null,
+  gridContrast: false,
 
   applySync: (payload) =>
     set((state) => ({
@@ -98,6 +106,8 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   },
 
   setScenes: (scenes) => set({ scenes }),
+
+  setGridContrast: (gridContrast) => set({ gridContrast }),
 
   setDraft: (draft) => set((state) => withEffective({ scene: state.scene, draft })),
 

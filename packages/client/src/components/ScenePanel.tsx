@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared';
 import {
   GRID_SIZE_MAX,
@@ -159,6 +159,15 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const gridContrast = useSceneStore((s) => s.gridContrast);
+  const setGridContrast = useSceneStore((s) => s.setGridContrast);
+
+  // Kontrastowa siatka żyje tyle, co edytor (12.09): włącza się z nim i gaśnie
+  // przy zamknięciu, więc mapa nigdy nie zostaje w trybie roboczym po edycji.
+  useEffect(() => {
+    setGridContrast(true);
+    return () => setGridContrast(false);
+  }, [setGridContrast]);
 
   if (!scene) return null;
 
@@ -427,6 +436,23 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
               onSize={(sizePx) => patchDraft({ grid: { sizePx } })}
             />
           )}
+
+          {/* Tylko u MG i tylko przy otwartym edytorze (12.09): gracze widzą
+              siatkę w kolorze i kryciu ustawionych niżej. Odhaczenie pokazuje
+              wygląd zapisany — inaczej suwaka „Krycie" nie dałoby się ocenić. */}
+          <label className="auth-label">
+            <input
+              type="checkbox"
+              checked={gridContrast}
+              onChange={(e) => setGridContrast(e.target.checked)}
+            />{' '}
+            Kontrastowa siatka podczas edycji
+          </label>
+          <p className="auth-hint">
+            {gridContrast
+              ? 'Obwódka i pełne krycie, żeby rozjazd kratek z mapą był widoczny na każdym tle. Widzisz to tylko Ty i tylko przy otwartym edytorze.'
+              : 'Siatka wygląda teraz tak, jak zobaczą ją gracze.'}
+          </p>
 
           <label className="auth-label" htmlFor="grid-offset-x">
             Offset X: {Math.round(grid.offsetX)} px

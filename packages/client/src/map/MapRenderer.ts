@@ -96,6 +96,7 @@ import {
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 import { FOG_PEEP_CORE_RATIO, RING_WIDTH, fogPeepRadius } from './token-ring.js';
+import { gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 
@@ -993,6 +994,8 @@ export class MapRenderer {
   private viewport: Viewport | null = null;
   private readonly background = new Sprite();
   private readonly grid = new Graphics();
+  /** Kontrastowa siatka przy otwartym edytorze sceny (12.09) — patrz `map/grid-style.ts`. */
+  private gridContrast = false;
   /** Public drawings: map content, so they sit under the tokens (stage 17b). */
   private readonly drawLayer = new Container();
   /** GM-layer drawings — above the fog, next to the note pins. */
@@ -6355,6 +6358,8 @@ export class MapRenderer {
   /** Re-renders the overlays at the current zoom (labels are screen-sized). */
   private refreshOverlays(): void {
     if (this.destroyed) return;
+    // Obwódka kontrastowej siatki ma grubość w pikselach ekranu (12.09).
+    if (this.gridContrast && this.scene) this.drawGrid(this.scene);
     this.setRulers(this.lastRulers);
     this.drawMoveOverlay();
     this.drawSelectionRing();
@@ -6895,6 +6900,17 @@ export class MapRenderer {
       });
   }
 
+  /**
+   * Siatka w trybie roboczym MG (zlecenie MG, 12.09): obwódka w kolorze
+   * przeciwnym i pełne krycie, żeby rozjazd kratek z mapą było widać na każdym
+   * tle, zanim scena zostanie aktywowana. Włącza ją otwarty edytor sceny.
+   */
+  setGridContrast(on: boolean): void {
+    if (this.gridContrast === on || this.destroyed) return;
+    this.gridContrast = on;
+    if (this.scene) this.drawGrid(this.scene);
+  }
+
   private drawGrid(scene: SceneView): void {
     this.grid.clear();
     if (scene.gridMode === 'gridless' || !scene.grid.visible) return;
@@ -6903,18 +6919,23 @@ export class MapRenderer {
 
     const offsetX = normalizeGridOffset(scene.grid.offsetX, size);
     const offsetY = normalizeGridOffset(scene.grid.offsetY, size);
-    for (let x = offsetX; x <= scene.width; x += size) {
-      this.grid.moveTo(x, 0).lineTo(x, scene.height);
+    // Pixi v8 zużywa ścieżkę przy `stroke`, więc każda kreska (obwódka, linia)
+    // dostaje ją narysowaną od nowa.
+    for (const stroke of gridStrokes(scene.grid, this.gridContrast, this.overlayScale())) {
+      for (let x = offsetX; x <= scene.width; x += size) {
+        this.grid.moveTo(x, 0).lineTo(x, scene.height);
+      }
+      for (let y = offsetY; y <= scene.height; y += size) {
+        this.grid.moveTo(0, y).lineTo(scene.width, y);
+      }
+      // pixelLine keeps the grid crisp at 1 device pixel across zoom levels;
+      // the contrast casing is measured in screen pixels instead.
+      this.grid.stroke(
+        stroke.width === undefined
+          ? { color: stroke.color, alpha: stroke.alpha, pixelLine: true }
+          : { color: stroke.color, alpha: stroke.alpha, width: stroke.width },
+      );
     }
-    for (let y = offsetY; y <= scene.height; y += size) {
-      this.grid.moveTo(0, y).lineTo(scene.width, y);
-    }
-    // pixelLine keeps the grid crisp at 1 device pixel across zoom levels.
-    this.grid.stroke({
-      color: parseInt(scene.grid.color.slice(1), 16),
-      alpha: scene.grid.alpha,
-      pixelLine: true,
-    });
   }
 
   private fitScene(scene: SceneView): void {

@@ -899,6 +899,14 @@ export function MapArea() {
     framedRef.current = { sceneId: displayed.id, onOwnToken: mine !== undefined, at: Date.now() };
   }, []);
 
+  // Kontrastowa siatka przy otwartym edytorze sceny (12.09) — stan tej karty,
+  // włączany przez `SceneEditor`; renderer przerysowuje tylko siatkę.
+  const gridContrast = useSceneStore((s) => s.gridContrast);
+  useEffect(() => {
+    if (!ready) return;
+    rendererRef.current?.setGridContrast(gridContrast);
+  }, [ready, gridContrast]);
+
   useEffect(() => {
     if (!ready) return;
     const renderer = rendererRef.current;
