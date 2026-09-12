@@ -30,6 +30,11 @@ interface SceneStoreState {
   setScene: (scene: SceneView | null) => void;
   /** Applies a scene broadcast only when it concerns the viewed scene. */
   applyScene: (scene: SceneView) => void;
+  /**
+   * `scene:activate` na tym kliencie. Zwraca `true`, gdy scena na ekranie się
+   * zmieniła — wtedy trzeba dociągnąć jej figury (`state:request`).
+   */
+  followActivation: (scene: SceneView, isGm: boolean) => boolean;
   setScenes: (scenes: SceneSummary[]) => void;
   setDraft: (draft: ScenePatch | null) => void;
   /** Merges fields into the current draft (live editing). */
@@ -74,6 +79,22 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
     const state = get();
     if (state.scene?.id !== scene.id) return;
     set(withEffective({ scene, draft: state.draft }));
+  },
+
+  // Gracz idzie za aktywną sceną zawsze; MG zostaje przy swoim podglądzie —
+  // **chyba że nie oglądał niczego**. Wtedy serwer przenosi do pokoju sceny
+  // także jego gniazdo (`scene:activate` w `realtime/scenes.ts`), a klient MG
+  // wołał samo `applyScene`, które przy braku sceny milczy: MG patrzył na
+  // „Brak sceny" do przeładowania karty (usterka z 11.09, stara jak 17a).
+  followActivation: (scene, isGm) => {
+    const state = get();
+    if (isGm && state.scene !== null) {
+      state.applyScene(scene);
+      return false;
+    }
+    const changed = state.scene?.id !== scene.id;
+    state.setScene(scene);
+    return changed;
   },
 
   setScenes: (scenes) => set({ scenes }),

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StatusIcon } from './HudIcon.js';
 import type { SocketAck } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
@@ -205,7 +206,7 @@ export function TokenGroupBar() {
                 }
                 onClick={() => toggleStatus(status.id)}
               >
-                <img src={status.icon} alt="" width={16} height={16} />
+                <StatusIcon src={status.icon} />
                 {status.name}
               </button>
             );

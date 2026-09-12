@@ -5,10 +5,46 @@ import {
   GRID_SIZE_MIN,
   SCENE_DIMENSION_MAX,
   SCENE_DIMENSION_MIN,
+  gridCellsAlong,
+  gridSizeForColumns,
   normalizeGridOffset,
   sanitizeSceneName,
   sanitizeScenePatch,
 } from './scenes.js';
+
+describe('gridSizeForColumns', () => {
+  it('dzieli mapę z paczki na kolumny podane w nazwie pliku', () => {
+    // „StrefaPrzemysłowa" w wgranej wersji: 1448 × 1086, skala 40 × 30.
+    const size = gridSizeForColumns(1448, 40);
+    expect(size).toBeCloseTo(36.2, 9);
+    expect(gridCellsAlong(1086, size!)).toBeCloseTo(30, 9);
+  });
+
+  it('liczy z kolumn, gdy plik nie dzieli się równo na obie osie', () => {
+    // Pełna rozdzielczość tej samej mapy: w pionie zostają 4 px reszty, więc
+    // wiersze wychodzą ułamkiem — i to jest podpowiedź, nie błąd.
+    const size = gridSizeForColumns(2896, 40)!;
+    expect(size).toBeCloseTo(72.4, 9);
+    expect(gridCellsAlong(2176, size)).toBeCloseTo(30.055, 3);
+  });
+
+  it('przycina kratkę do granic, które nałożyłby serwer', () => {
+    expect(gridSizeForColumns(400, 100)).toBe(GRID_SIZE_MIN);
+    expect(gridSizeForColumns(4096, 1)).toBe(GRID_SIZE_MAX);
+  });
+
+  it('odmawia, gdy z danych nie da się kratki policzyć', () => {
+    expect(gridSizeForColumns(1448, 0)).toBeNull();
+    expect(gridSizeForColumns(1448, -4)).toBeNull();
+    expect(gridSizeForColumns(1448, 40.5)).toBeNull();
+    expect(gridSizeForColumns(0, 40)).toBeNull();
+    expect(gridSizeForColumns(Number.NaN, 40)).toBeNull();
+  });
+
+  it('nie dzieli przez zero przy liczeniu wierszy', () => {
+    expect(gridCellsAlong(1086, 0)).toBe(0);
+  });
+});
 
 describe('sanitizeSceneName', () => {
   it('trims and accepts a normal name', () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
   CpredStatistQuick,
@@ -1036,7 +1037,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
                     checked={token.statuses.includes(status.id)}
                     onChange={() => toggleStatus(status.id)}
                   />
-                  <img src={status.icon} alt="" width={18} height={18} />
+                  <StatusIcon src={status.icon} />
                   {status.name}
                 </label>
               ))}

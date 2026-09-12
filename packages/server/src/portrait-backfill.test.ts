@@ -115,7 +115,9 @@ describe('backfillPortraitAssets', () => {
     });
 
     expect(await backfillPortraitAssets(built.prisma, UPLOADS, built.app.log)).toBe(0);
-    expect(await built.prisma.portraitAsset.count({ where: { campaignId, url: fromPool } })).toBe(1);
+    expect(await built.prisma.portraitAsset.count({ where: { campaignId, url: fromPool } })).toBe(
+      1,
+    );
   });
 
   it('pomija adresy spoza `uploads/portraits` i pliki, których nie ma', async () => {

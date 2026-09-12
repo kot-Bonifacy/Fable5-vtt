@@ -834,16 +834,10 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    // Players follow the active scene; the GM keeps their own view (the
-    // server moves only player sockets between scene rooms).
-    if (useAuthStore.getState().user?.role === ROLE_GM) {
-      scenes().applyScene(broadcast.scene);
-    } else {
-      const changed = useSceneStore.getState().scene?.id !== broadcast.scene.id;
-      scenes().setScene(broadcast.scene);
-      // A scene switch means a new token set — refetch the filtered state.
-      if (changed) socket?.emit('state:request');
-    }
+    // Who follows the activation is decided by the store (`followActivation`);
+    // a scene switch means a new token set — refetch the filtered state.
+    const isGm = useAuthStore.getState().user?.role === ROLE_GM;
+    if (scenes().followActivation(broadcast.scene, isGm)) socket?.emit('state:request');
   });
   socket.on('scene:list', (broadcast: SceneListBroadcast) => scenes().setScenes(broadcast.scenes));
   socket.on('scene:view', (broadcast: SceneViewBroadcast) => {

@@ -9,6 +9,35 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-12 (szósta sesja — kratka z liczby kolumn, naklejki bez kwadratu)
+
+**11.09 (etap 04): edytor sceny pytał o piksele, a nie o liczbę kratek.** Rozmiar kratki ustawiał
+wyłącznie suwak w pikselach, więc trafienie w skalę mapy było zgadywanką — „StrefaPrzemysłowa" miała
+47 px zamiast 36,2 (1448 / 40). **Naprawa:** `gridSizeForColumns` i `gridCellsAlong`
+w `shared/scenes.ts` (pięć testów), pole „Kratek w poziomie (skala mapy)" pod suwakiem
+(`GridColumnsField` w `ScenePanel.tsx`), widoczne przy wgranym tle; mapa powitalna liczy tym samym
+helperem. **Wpis proponował dwa pola — zostało jedno, decyzją MG:** kratka jest kwadratowa, a pliki
+z paczek nie dzielą się równo (2896 × 2176 przy 40 × 30 to 72,4 i 72,53 px), więc dwa pola dawałyby
+dwie różne odpowiedzi. Wiersze są podpowiedzią („W pionie wychodzi równo 30" albo „… 23,11 — ostatni
+rząd rozjeżdża się o 5 px"). Dwie rzeczy, których zgłoszenie nie przewidziało: pole trzyma wpisywany
+tekst na czas pisania (inaczej „4" w drodze do „40" przeskakiwało na wynik kratki 362 px), a pole
+pikseli dostało `step="any"` (przy kroku 1 kratka 36,2 była `:invalid`). **Obejrzane i zapisane
+na żywo** na „StrefiePrzemysłowej": 47 → 36,2 px, 40 × 30 równo, budżet walki Marcina nietknięty
+(66,5 m / 12 m). Czy linie siadają co do piksela na pasach parkingowych — do oceny okiem MG.
+
+**11.09 (etap 27e/27h): naklejka statusu wnosiła do interfejsu czarny kwadrat — a przepis
+z zaległości by go nie zdjął.** Wpis kazał rysować statusy maską jak `HudIcon`, bo „maska bierze
+alfę, czarne tło jest nieistotne". Nieprawda: pliki statusów zaczynają się od
+`<path d="M0 0h512v512H0z"/>` bez `fill`, czyli **nieprzezroczystym** czarnym kwadratem, więc maska
+z alfy dałaby pełny kwadrat w kolorze chipu. Sprawdzone w pliku przed kodem. **Naprawa:**
+`StatusIcon` (`HudIcon.tsx`) z tą samą zmienną `--hud-icon` plus `.status-icon { mask-mode:
+luminance }` — czerń znika, biała sylwetka bierze `currentColor`. Przepięte trzy miejsca (chip
+w `CombatHud`, wybierak w `TokenContextMenu`, pasek grupy w `TokenGroupBar`); mapa bez zmian.
+**Obejrzane** w menu figury w obu motywach: 17 ikon, zero `<img>`, sylwetki jasne nocą i ciemne
+w dzień. Chipu w panelu postaci i paska grupy nie oglądano — wymagałyby nadania statusu albo
+zaznaczenia grupy w walce trwającej na „StrefiePrzemysłowej"; to ten sam komponent i ta sama
+reguła CSS.
+
 ## Zamknięte 2026-09-12 (piąta sesja — interfejs, który nie kłamie)
 
 **10.09 (etap 14b/16f): zakładka „Walka" oferowała przyciski, które pasek na mapie wyszarzał —

@@ -1,6 +1,13 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared';
-import { GRID_SIZE_MAX, GRID_SIZE_MIN, SCENE_DARK_SIGHT_MAX_M, formatMetres } from '@vtt/shared';
+import {
+  GRID_SIZE_MAX,
+  GRID_SIZE_MIN,
+  SCENE_DARK_SIGHT_MAX_M,
+  formatMetres,
+  gridCellsAlong,
+  gridSizeForColumns,
+} from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
@@ -74,6 +81,72 @@ function SceneRow({
       </div>
       {error && <p className="auth-error">{error}</p>}
     </li>
+  );
+}
+
+/** Liczba po polsku: przecinek i najwyżej `digits` miejsc, bez zer na końcu. */
+function formatDecimal(value: number, digits: number): string {
+  const factor = 10 ** digits;
+  return String(Math.round(value * factor) / factor).replace('.', ',');
+}
+
+/**
+ * Kratka z liczby kolumn (zlecenie MG, 11.09.2026) — obok suwaka, nie zamiast
+ * niego: mapa bez okrągłej skali dalej ustawia się pikselami. Liczy z wymiarów
+ * **obrazu**, bo to jego skalę opisuje nazwa pliku z paczki („…-40x30"),
+ * a wiersze tylko podpowiada — kratka jest kwadratowa i jedna oś musi wygrać
+ * (`gridSizeForColumns`).
+ *
+ * Wpisywany tekst żyje w polu wyłącznie na czas pisania. Poza tym pole pokazuje
+ * liczbę wynikającą z kratki, więc suwak przesunięty obok od razu je zmienia —
+ * ale gdyby liczyło się z kratki także pod palcem, „4" w drodze do „40" dałoby
+ * kratkę 362 px i pole przeskoczyłoby na wynik, zanim MG dopisze zero.
+ */
+function GridColumnsField({
+  imageWidth,
+  imageHeight,
+  sizePx,
+  onSize,
+}: {
+  imageWidth: number;
+  imageHeight: number;
+  sizePx: number;
+  onSize: (sizePx: number) => void;
+}) {
+  const [typed, setTyped] = useState<string | null>(null);
+  const columns = gridCellsAlong(imageWidth, sizePx);
+  const rows = gridCellsAlong(imageHeight, sizePx);
+  const wholeRows = Math.round(rows);
+  // Reszta w pikselach mówi więcej niż „30,05 wiersza": przy mapie z paczki to
+  // zaokrąglenie pliku (kilka pikseli), przy źle dobranej skali — pół kratki.
+  const leftoverPx = Math.abs(imageHeight - wholeRows * sizePx);
+
+  return (
+    <>
+      <label className="auth-label" htmlFor="grid-columns">
+        Kratek w poziomie (skala mapy)
+      </label>
+      <input
+        id="grid-columns"
+        type="number"
+        className="scene-number-input"
+        min={1}
+        step="any"
+        value={typed ?? Math.round(columns * 100) / 100}
+        onChange={(e) => {
+          setTyped(e.target.value);
+          const size = gridSizeForColumns(imageWidth, Number(e.target.value));
+          if (size !== null) onSize(size);
+        }}
+        onBlur={() => setTyped(null)}
+      />
+      <p className="auth-hint">
+        {leftoverPx < 0.5
+          ? `W pionie wychodzi równo ${wholeRows}. `
+          : `W pionie wychodzi ${formatDecimal(rows, 2)} — ostatni rząd rozjeżdża się o ${formatDecimal(leftoverPx, 1)} px. `}
+        Mapy z paczek mają skalę w nazwie pliku, np. „…-40x30” to 40 kratek w poziomie.
+      </p>
+    </>
   );
 }
 
@@ -321,7 +394,7 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
       {scene.gridMode === 'grid' && (
         <>
           <label className="auth-label" htmlFor="grid-size">
-            Rozmiar kratki: {Math.round(grid.sizePx)} px
+            Rozmiar kratki: {formatDecimal(grid.sizePx, 1)} px
           </label>
           <div className="scene-editor-row">
             <input
@@ -333,15 +406,27 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
               value={grid.sizePx}
               onChange={(e) => patchDraft({ grid: { sizePx: Number(e.target.value) } })}
             />
+            {/* `step="any"`, bo kratka z liczby kolumn bywa ułamkiem (36,2 px):
+                przy kroku 1 pole oznaczałoby taką wartość jako błędną. */}
             <input
               type="number"
               className="scene-number-input"
               min={GRID_SIZE_MIN}
               max={GRID_SIZE_MAX}
-              value={Math.round(grid.sizePx)}
+              step="any"
+              value={Math.round(grid.sizePx * 10) / 10}
               onChange={(e) => patchDraft({ grid: { sizePx: Number(e.target.value) } })}
             />
           </div>
+
+          {scene.background && (
+            <GridColumnsField
+              imageWidth={scene.background.width}
+              imageHeight={scene.background.height}
+              sizePx={grid.sizePx}
+              onSize={(sizePx) => patchDraft({ grid: { sizePx } })}
+            />
+          )}
 
           <label className="auth-label" htmlFor="grid-offset-x">
             Offset X: {Math.round(grid.offsetX)} px

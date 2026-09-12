@@ -1852,8 +1852,9 @@ input[type='color'] {
   background: var(--veil);
 }
 
-.context-menu-status img {
-  border-radius: 3px;
+.context-menu-status .status-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .dialog-backdrop {
@@ -5912,10 +5913,18 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
-.hud-status img {
+.hud-status .status-icon {
   width: 0.85rem;
   height: 0.85rem;
   display: block;
+}
+
+/* Naklejka statusu poza mapą (`StatusIcon`, 11.09) — maska jak `.hud-icon`,
+   ale liczona z JASNOŚCI, nie z alfy. Pliki z game-icons mają pod białą
+   sylwetką nieprzezroczysty czarny kwadrat (mapa go potrzebuje), więc maska
+   z alfy dałaby pełny kwadrat w kolorze chipu zamiast znaku. */
+.status-icon {
+  mask-mode: luminance;
 }
 
 /* Efekty czasowe na Cechach (etap 39) — ten sam kształt co naklejki wyżej,
@@ -10295,6 +10304,11 @@ body.is-resizing {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.token-group-statuses .status-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* --- Wymiana przedmiotów (etap 38b) ------------------------------------ */

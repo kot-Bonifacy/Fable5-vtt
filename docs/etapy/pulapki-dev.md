@@ -305,6 +305,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Maska CSS z pliku, który ma nieprzezroczyste tło, maluje pełny kwadrat** — `mask-image` liczy się domyślnie z alfy, a czarny podkład game-icons ma alfę pełną jak sylwetka. Działa `mask-mode: luminance`. Rozpoznanie: pierwszy `<path>` pliku.
 - **Autofill przeglądarki nie dociera do stanu Reacta** — pole pełne, `useState` puste, więc `disabled={value.length === 0}` zostawia martwy przycisk, a samo odblokowanie go wysłałoby **pustkę**. Czytaj wartość z węzła przy wysyłce (`useAutofillableField`), nie ze stanu.
 - **Przezroczyste pole hasła Chrome i tak zamaluje własnym niebieskim** — to styl UA na `:-webkit-autofill`, `background` go nie zdejmuje; zdejmuje `transition: background-color 100000s`.
 - **`place-items: center` na ekranie wyższym niż okno chowa górę treści bezpowrotnie** — pasek przewijania nie pomaga, bo przepełnienie jest po obu stronach. Ratuje `justify-content: safe center` w kolumnie flex.
@@ -315,6 +316,15 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Maska z alfy nie gasi nieprzezroczystego tła (12.09).** Zaległość z 11.09 kazała rysować
+  naklejki statusów tą samą maską co ikony HUD-u, uzasadniając to zdaniem „czarne tło jest wtedy
+  nieistotne, bo maska bierze alfę". Ikony HUD-u (`public/icons/hud/`) mają tło usunięte, pliki
+  statusów — nie: zaczynają się od `<path d="M0 0h512v512H0z"/>` bez `fill`, czyli czarnym
+  **nieprzezroczystym** kwadratem. Maska z alfy widzi w nim pełne krycie i maluje cały kwadrat
+  kolorem chipu — ten sam stempel, tylko w innym kolorze. Złapane w pliku przed napisaniem kodu.
+  Ratuje `mask-mode: luminance` (czerń → przezroczyste, biel → pełne); w Chrome działa także obok
+  `-webkit-mask-image` z `.hud-icon`.
 
 - **Autofill przeglądarki omija Reacta w obie strony (12.09).** Menedżer haseł pisze prosto do
   węzła DOM: żadnego `input`, żadnego `change`, nic, czego React mógłby usłyszeć. Kontrolowane pole
@@ -879,6 +889,9 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze. Stan „MG nie ogląda żadnej sceny" (tylko świeża kampania) jest przez to na poligonie nie do odtworzenia bez śmiecia.
+- **`Escape` z `computer` nie zamyka menu figury** — a klik w puste pole mapy przy zaznaczonej figurze byłby rozkazem marszu. Menu zamyka klik w tytuł aplikacji w górnym pasku.
+- **Lista statusów menu figury da się obejrzeć bez przewijania** — przestaw `style.top`/`style.left` na `.context-menu` (czysto wizualnie, bez stanu) i zrób zbliżenie.
 - **MENU FIGURY OTWIERA SIĘ Z AUTOMATYKI — korekta z 12.09.** `PointerEvent` z `button: 2` (plus `contextmenu`) we **współrzędnych CSS** na `canvas` wystawia je za pierwszym razem; checkboksy statusów biorą `input.click()`. Trzy pozycje długu (38a, 38b, 41) czekały na rękę MG na podstawie nieprawdziwej przeszkody. **Gracz też ma menu** — własne, jednopozycyjne („🔍 Przyjrzyj się…").
 - **`hover` + `left_click` z `computer` nie jest rozkazem marszu** — trasa liczy się na `pointermove`, więc figura stoi, a w rendererze zostaje **rozpoczęty marsz**, który gasi podgląd trasy: kolejne najechania nic już nie rysują i wygląda to jak zepsuty ruch. Rozpoznanie: następny klik odkłada w czacie „Marsz przerwany.”. Działa dopiero pełna seria z konsoli (`pointermove` → pauza ~400 ms → `pointermove` o 2 px → `pointerdown`/`pointerup`) we współrzędnych CSS.
 - **Odmowy Akcji lądują w kategorii czatu „Stół”, a filtr bywa wyłączony** — zamiast „Zbyt daleko — Pochwycenie wymaga zwarcia (2 m).” widać „⋯ 1 ukryty wiersz ⋯” i klik wygląda na przycisk, który nic nie robi. Filtry są prywatne i lokalne (`localStorage`), więc trzymają się karty, nie konta: **włącz wszystkie cztery przed oględzinami**.

@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Kratka ze skali mapy** — `gridSizeForColumns` / `gridCellsAlong` w `shared/scenes.ts`; liczy się z **kolumn** i z **szerokości obrazu tła**, wiersze tylko podpowiada. Czytają ją pole „Kratek w poziomie" (`GridColumnsField`) i mapa powitalna. Kratka bywa ułamkiem, więc żadne pole liczbowe siatki nie ma `step={1}`.
 - **Ślad przebytej drogi to odciski butów, nie kreska** — `MapRenderer.drawWalkedTrail` (jedna droga dla marszu, ciągnięcia i poświaty), kolory `TRAIL_COLOR` / `TRAIL_COLOR_OVER`, granicę czerwieni liczy `trailOverFrom` w metrach **gruntu**. Trzy pule `FootprintPool` i żadna nie pożycza sprite'ów sąsiadce: trasa, ziemia pod figurą, poświata. Zapasowa kreska zostaje tylko na wypadek niewczytanego glifu.
 - **„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela**, nie osobny okrąg — `drawSelectionRing` rysuje ją na nakładce, promieniem `node.ownerRingRadius` i kolorem `node.ownerRingTint`, z sufitem grubości liczonym z kratki. Uchwyt obrotu wisi dalej na `outerRadius + 22k` i nie potrzebuje okręgu pod sobą.
 - **Okienko w mgle wokół własnej figury** — `fogPeepRadius` w `map/token-ring.ts` (wielkość), `MapRenderer.drawFogPeepholes` (rysunek, ostatni przebieg kompozytu) i `refreshFogPeepholes` (trzy wejścia: `setTokens`, przeciąganie, krok marszu). Brzeg gaśnie gradientem z kanwy, nie pierścieniami.
@@ -56,6 +57,14 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Kratka ze skali mapy liczy się z kolumn i z obrazu — nie z obu osi i nie z obszaru gry (12.09).**
+`gridSizeForColumns(imageWidthPx, columns)` oddaje kratkę przyciętą do `GRID_SIZE_MIN`–`GRID_SIZE_MAX`
+albo `null`. Kolumny wygrywają decyzją MG: kratka jest kwadratowa, a pliki z paczek nie dzielą się
+równo (2896 × 2176 przy 40 × 30 to 72,4 i 72,53 px), więc wiersze są podpowiedzią z `gridCellsAlong`,
+a nie drugim wejściem. Szerokość bierze się z `scene.background.width`, bo skalę opisuje nazwa
+**pliku**, a `scene.width` bywa innym obszarem gry. Serwer przyjmuje ułamek (`sanitizeScenePatch`
+tylko przycina), więc 36,2 px jest zwykłą, zapisywalną wartością.
 
 **Ślad za idącą figurą to odciski butów, a zielone kreski nie wracają (zlecenie MG, 12.09).**
 MG zażądał dwóch rzeczy naraz: obie zielone kreski mają zniknąć — ta rysowana pod idącą figurą
@@ -656,6 +665,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Naklejka statusu poza mapą** — wyłącznie `StatusIcon` (`HudIcon.tsx`), nigdy `<img>`: maska z `mask-mode: luminance` (`.status-icon`) gasi czarny podkład pliku i barwi sylwetkę kolorem tekstu. Rozmiar daje kontekst w CSS, nie atrybuty. Mapa rysuje te same pliki jako sprite'y **z** podkładem i tak zostaje.
 - **Ekran wejścia (`.auth-screen`) stoi na plakacie** — formularz nie ma tła i kotwiczy się do ramki **narysowanej w obrazie**, nie do środka okna. Zmiana pliku tapety = przemierzenie ułamków (`docs/assety-logowanie.md`); zdjęcie kotwicy = oddanie formularzowi tła.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
 - **Nowe pływające okno** — hook `useWindowPlacement` (`window-placement.ts`) + `<WindowResizeGrip />`; uchwyt 13 px od krawędzi, bo róg jest wycięty.
@@ -666,6 +676,14 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Naklejka statusu w interfejsie to maska z jasności — nie `<img>` i nie maska z alfy (12.09).**
+Pliki z `data/public/cpred/status-icons/` mają pod białą sylwetką nieprzezroczysty czarny kwadrat:
+na mapie potrzebny (biel bez podkładu ginie na jasnym żetonie), w panelu obcy motywowi. `StatusIcon`
+podaje adres pliku w `--hud-icon`, jak `HudIcon`, a `.status-icon` przełącza maskę na `luminance`.
+Rozmiar ustawia kontekst (`.hud-status .status-icon`, `.context-menu-status .status-icon`,
+`.token-group-statuses .status-icon`) — nowe miejsce ze statusem poza mapą dopisuje tylko własny
+rozmiar.
 
 **Ekran wejścia stoi na plakacie i kotwiczy się do obrazu, nie do okna (11.09).**
 `.auth-screen` (logowanie MG, dołączanie gracza, ekran startowy) ma tłem

@@ -1,4 +1,4 @@
-import { DEFAULT_GRID, type SceneView } from '@vtt/shared';
+import { DEFAULT_GRID, gridSizeForColumns, type SceneView } from '@vtt/shared';
 
 /**
  * Mapa powitalna gracza (zlecenie MG, 11.09.2026).
@@ -55,7 +55,10 @@ export function buildWelcomeScene(width: number, height: number): SceneView {
     width,
     height,
     gridMode: 'grid',
-    grid: { ...DEFAULT_GRID, sizePx: width / WELCOME_MAP_COLUMNS },
+    grid: {
+      ...DEFAULT_GRID,
+      sizePx: gridSizeForColumns(width, WELCOME_MAP_COLUMNS) ?? DEFAULT_GRID.sizePx,
+    },
     metersPerSquare: 2,
     // Blokada ruchu (12.09) jest tu formalnością: na plakacie nie stoi ani
     // jedna figura, więc nie ma czym ruszać — ale otwarte znaczy „ta atrapa

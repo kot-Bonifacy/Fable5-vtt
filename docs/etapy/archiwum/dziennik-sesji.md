@@ -8,6 +8,62 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (czwarta) — ślady zamiast kresek, mapa zamknięta na klucz i karta, którą widać
+
+**Zlecenie MG, trzy rzeczy plus jedna dorzucona w trakcie:** (1) czcionki na karcie postaci mają
+wypełniać pola, w których stoją („liczba INT jest niewspółmiernie mała"); (2) sprawdzić, a jak nie
+ma — dorobić **blokadę ruchu graczy po mapie**, dopóki MG jej nie otworzy, żeby drużyna nie poznała
+mapy przed rozgrywką; (3) za idącą figurą mają zostawać **szare ślady butów** zamiast zielonej
+kreski; (4) w trakcie: zdjąć **biały przerywany okrąg** zaznaczenia.
+
+**Cztery pytania przed kodem, cztery decyzje MG.** Karta: pola Cech **wolno powiększyć** (kolumna
+ciągnie się na całą stronę, liczba 2,6 rem) i przegląd obejmuje **wszystkie cztery zakładki**.
+Blokada: **per scena**, nowe sceny zamknięte, istniejące otwarte migracją. Ślady: **obie kreski
+znikają**, a ślad ma się **barwić na czerwono w trybie turowym, żeby gracz wiedział, jak daleko
+dojdzie w tej Turze**. Okrąg: **zdjąć**, a sterowanie pokazać samą obwódką właściciela.
+
+**Blokady nie było w ogóle — to nowa funkcja, nie naprawa.** `Scene.playerMoveLocked` jedzie zwykłą
+łatą `scene:update` (nie własnym zdarzeniem jak `visibility`: niczego graczom nie zabiera), a odmowa
+`MOVE_LOCKED` stoi w `performTokenMove` **przed** `validateTokenMove` — tamto sądzi dopiero
+upuszczenie, a blokada musi ściąć też klatkę ciągnięcia. Cena, o której warto wiedzieć: domyślne
+„nowa scena zamknięta" wywróciło **57 testów w dziewięciu zestawach** serwera — każdy, kto każe
+graczowi ruszyć figurą, musi teraz otworzyć scenę zaraz po `scene:create`.
+
+**Ślad korzysta z tego samego glifu, co trasa planowana — i to jest cały pomysł.** Jedna droga
+(`drawWalkedTrail`) obsługuje marsz, ciągnięcie i poświatę; **trzy osobne pule** odcisków, bo
+poświata przeżywa marsz o pięć sekund i nie może dzielić sprite'ów z niczym, co rysuje się w tym
+samym czasie. Czerwień zaczyna się dokładnie tam, gdzie kończy się budżet Tury — sprawdzone na
+żywo: ciągnięcie na 19,3 m przy 12 m budżetu daje szary ślad do okręgu zasięgu i czerwony za nim.
+
+**Biały okrąg nie był zdublowany — i MG i tak kazał go zdjąć.** Kolorowa obwódka mówi **czyja** jest
+figura, biały okrąg mówił **którą prowadzę**; przedstawiłem różnicę, MG wybrał złożenie obu
+wiadomości w jedną kreskę. Podświetlenie musi jednak zostać **na nakładce** (`overlayScale`), bo
+wszystko w `TokenNode` liczy się w pikselach świata i przy stole znika — z sufitem grubości
+liczonym z kratki, żeby przy oddaleniu nie zjadło portretu.
+
+**Największa liczba na karcie stała w 16 px, bo przegrywała kaskadę.** Pudełko Cechy urosło od razu,
+liczba w środku ani drgnęła: `.sheet-window .cp-step { font: inherit }` (0-2-0) bije `.cp-stat-value`
+(0-1-0). Trzecia odsłona tej samej pułapki po `.cp-slot` (06.09) i `.advance-buy` (29b) — wpis
+w `pulapki-dev.md`. Poszły w górę też pule, progi, komórki Umiejętności, pola tekstowe, tabele,
+belki i zakładki; **nazwy Umiejętności zostały** przy 0,8 rem, bo większy krój kończy je wielokropkiem.
+
+**Oględziny na żywym stole, z jednym śladem i jedną wpadką.** Dwie sesje (`localhost` — MG,
+`[::1]` — Tony). Sprawdzone: kursor „nie wolno", zdanie na czacie, żeton nieruszony przy ciągnięciu
+i przy kliku, natychmiastowe otwarcie mapy z panelu MG, czerwień śladu w Turze, karta na czterech
+zakładkach i w wąskim oknie. **Wpadka:** „✕" przy kolejce woła **goły** `window.confirm`, więc
+zawiesił kartę pod CDP; zamknięcie karty odwołuje modal, ale **walka zostaje w bazie**, a moduł
+z `import('/src/socket.ts')` dostaje własną, niepodłączoną instancję, więc `endCombat()` z konsoli
+też nie przejdzie. **MG zdecydował: tryb turowy zostaje włączony** na „StrefiePrzemysłowej" (RUNDA 1,
+Marcin i Tony) i wyłączy go sam. Żeton Marcina wrócił na **1034/658** co do piksela, Tony nie drgnął
+(752/799), blokada mapy przywrócona na **otwartą**. Ślad świadomy: kilka kart „Akcja Ruchu — poza
+budżetem tury" i dwa zdania „MG nie otworzył jeszcze tej mapy do ruchu" na czacie.
+
+**Testy:** **1094** na serwerze (+2 o blokadzie), **1988** w `shared` (+1 o sanityzacji łaty),
+**173** u klienta (+7 nowy `walk-trail.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste
+w trzech pakietach; `packages/server/src/app.ts` i `portrait-backfill.test.ts` są niesformatowane
+**od dwóch sesji** (tutaj nieruszane). Umowy: dwie w `mapa`, jedna w `serwer`, jedna w `karta`;
+pułapki: jedna w `karta`, jedna dopisana w `ogledziny`.
+
 ### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
 
 **Zlecenie MG, trzy rzeczy — jedna z listy zaległości, dwie zgłoszone w trakcie:** (1) naprawić

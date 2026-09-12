@@ -18,6 +18,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | `archiwum/zamkniete-zaleglosci.md` | zamknięte zaległości z diagnozą i opisem naprawy                  | gdy wraca coś, co już raz naprawiono                   |
 | `archiwum/uwagi-etapow.md`         | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap, do 28)      | gdy chcesz szybkie „co było w etapie N"                |
 
+| etap   | nazwa                                         | status | data                |
 | ------ | --------------------------------------------- | ------ | ------------------- |
 | 01     | Szkielet projektu i środowisko                | ✅     | 2026-07-16          |
 | 02     | Baza danych, użytkownicy, role                | ✅     | 2026-07-16          |
@@ -136,13 +137,22 @@ po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 12 pozycji** (`zaleglosci.md`). Sesja 12.09 (piąta) zamknęła **cztery**
+**Dług oględzin — 10 pozycji** (`zaleglosci.md`). Sesja 12.09 (szósta) zamknęła **dwie** (kratka
+ze skali mapy, naklejki statusów), a trzecią — „Brak sceny" u MG — naprawiła bez obejrzenia, bo ten
+stan powstaje wyłącznie w świeżej kampanii. Sesja piąta zamknęła **cztery**
 i obaliła przeszkodę, na której stała reszta: **menu figury OTWIERA SIĘ z automatyki** — seria
 `pointerdown`/`pointerup` z `button: 2` we **współrzędnych CSS** (pułapka w `ogledziny`). „🎒
 Przeszukaj…" odklikane tą drogą; przełącznik statystyk czeka już tylko na figurę **bez karty**,
 bo na poligonie każda ją ma. Większość reszty czeka na **żywy model** (19a–20b, 24c). Nowa pozycja
 z tej sesji jest jedna: „bez ran" naprawione, ale nieobejrzane u gracza — formularz otwiera się
 dopiero na jego turze, a MG nie zgodził się ruszać kolejki.
+
+**Od 12.09 `main` na GitHubie jest aktualny.** Do tej sesji `origin/main` stał na etapie 07
+(18.07), a 206 commitów — cała praca od etapu 08 — istniało wyłącznie na tym dysku. Gałąź
+`feat/vtt-campaign-calendar` (etapy 37–41 i poprawki) scalona do `main` i wypchnięta. **Push
+publikuje całą historię, nie ostatni stan** — przed każdym przejrzyj niewypchnięte commity:
+`git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
+`.env` ani baz.
 
 **Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest błędem, nie wariantem.** Decyzja
 z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu nie ma.
@@ -162,7 +172,9 @@ z 12.09, do wyłączenia jego ręką.** Zostaw go, dopóki MG nie powie inaczej;
 gołego `window.confirm`, więc z automatyki **nie da się go wyłączyć** bez wcześniejszego
 przechwycenia (patrz `pulapki-dev.md`, sekcja `ogledziny`).
 
-**Sceny testowe — cztery, bez zmian.** Aktywna „Strzelnica" (komplet pod Sieć); **„Korytarza 16e"
+**Sceny testowe — pięć** (poprawione 12.09: ten akapit od 11.09 mówił o czterech i aktywnej
+„Strzelnicy"). **Aktywna jest „StrefaPrzemysłowa"** — kratka 36,2 px (40 × 30) od 12.09;
+„Strzelnica" to komplet pod Sieć; **„Korytarza 16e"
 nie kasuj** — to jedyna stała scena z widocznością Dynamiczną. Konta, współrzędne, stan po sesji
 i procedura oględzin Ról — `poligon.md`.
 
@@ -178,7 +190,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **1998** w `shared`, **1098** na serwerze, **173** u klienta —
+**Testy na koniec ostatniej sesji:** **2003** w `shared`, **1098** na serwerze, **177** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -203,10 +215,10 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   38 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   39 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       8 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    9 |       9 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
@@ -219,68 +231,52 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      62 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      65 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      16 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 12.09 (czwarta) — ślady zamiast kresek, mapa zamknięta na klucz i karta, którą widać
+### Sesja 12.09 (szósta) — kratka ze skali mapy, naklejki bez kwadratu i praca, która wreszcie jest na GitHubie
 
-**Zlecenie MG, trzy rzeczy plus jedna dorzucona w trakcie:** (1) czcionki na karcie postaci mają
-wypełniać pola, w których stoją („liczba INT jest niewspółmiernie mała"); (2) sprawdzić, a jak nie
-ma — dorobić **blokadę ruchu graczy po mapie**, dopóki MG jej nie otworzy, żeby drużyna nie poznała
-mapy przed rozgrywką; (3) za idącą figurą mają zostawać **szare ślady butów** zamiast zielonej
-kreski; (4) w trakcie: zdjąć **biały przerywany okrąg** zaznaczenia.
+**Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą
+kandydatkę sprawdziłem w kodzie przed propozycją. MG wybrał cztery drobne (kratka z liczby kolumn,
+„Brak sceny" u MG, naklejki statusów, Prettier na dwóch plikach), kazał liczyć kratkę **z kolumn**,
+**nie wgrywać teraz** pełnego pliku mapy i na koniec **scalić gałąź do `main` i wypchnąć**.
 
-**Cztery pytania przed kodem, cztery decyzje MG.** Karta: pola Cech **wolno powiększyć** (kolumna
-ciągnie się na całą stronę, liczba 2,6 rem) i przegląd obejmuje **wszystkie cztery zakładki**.
-Blokada: **per scena**, nowe sceny zamknięte, istniejące otwarte migracją. Ślady: **obie kreski
-znikają**, a ślad ma się **barwić na czerwono w trybie turowym, żeby gracz wiedział, jak daleko
-dojdzie w tej Turze**. Okrąg: **zdjąć**, a sterowanie pokazać samą obwódką właściciela.
+**Największe znalezisko nie było na liście: 206 commitów istniało tylko na tym dysku.** `origin/main`
+stał na etapie 07 (18.07), a `feat/vtt-campaign-calendar` nie miała upstreamu i niosła 30 commitów
+spoza `main` (etapy 37–41). Przed pushem przejrzana cała niewypchnięta historia, nie tylko ostatni
+stan: zero ścieżek z `data/private/`, `uploads/`, `.env` i baz; jedyny blob powyżej 5 MB to mapa
+„Night City crossroads" — praca własna MG (`docs/assety-mapy.md`).
 
-**Blokady nie było w ogóle — to nowa funkcja, nie naprawa.** `Scene.playerMoveLocked` jedzie zwykłą
-łatą `scene:update` (nie własnym zdarzeniem jak `visibility`: niczego graczom nie zabiera), a odmowa
-`MOVE_LOCKED` stoi w `performTokenMove` **przed** `validateTokenMove` — tamto sądzi dopiero
-upuszczenie, a blokada musi ściąć też klatkę ciągnięcia. Cena, o której warto wiedzieć: domyślne
-„nowa scena zamknięta" wywróciło **57 testów w dziewięciu zestawach** serwera — każdy, kto każe
-graczowi ruszyć figurą, musi teraz otworzyć scenę zaraz po `scene:create`.
+**Wszystkie trzy przepisy z zaległości były błędne albo niepełne — i każdy wyszedł przed kodem.**
+(1) Naklejki: „maska bierze alfę, czarne tło jest nieistotne" — pliki mają **nieprzezroczysty**
+kwadrat, więc maska z alfy dałaby pełny kolorowy kwadrat; działa `mask-mode: luminance`
+(`StatusIcon`). (2) „Brak sceny": samo `setScene` dałoby MG mapę **bez figur** — decyzja poszła do
+`sceneStore.followActivation`, które mówi też, kiedy dociągnąć figury. (3) Kratka: dwa pola z wpisu
+dawałyby dwie odpowiedzi, bo pełny plik 2896 × 2176 nie dzieli się równo na 40 × 30 — zostało jedno
+pole kolumn z podpowiedzią wierszy. Przy okazji wyszło, że wgranie pełnego pliku **przesunęłoby całą
+scenę** (figury i ściany leżą w pikselach świata) — zapisane w decyzjach MG w `zaleglosci.md`.
 
-**Ślad korzysta z tego samego glifu, co trasa planowana — i to jest cały pomysł.** Jedna droga
-(`drawWalkedTrail`) obsługuje marsz, ciągnięcie i poświatę; **trzy osobne pule** odcisków, bo
-poświata przeżywa marsz o pięć sekund i nie może dzielić sprite'ów z niczym, co rysuje się w tym
-samym czasie. Czerwień zaczyna się dokładnie tam, gdzie kończy się budżet Tury — sprawdzone na
-żywo: ciągnięcie na 19,3 m przy 12 m budżetu daje szary ślad do okręgu zasięgu i czerwony za nim.
+**Oględziny na żywym stole.** Menu figury w obu motywach: 17 sylwetek, żadnego kwadratu. Edytor
+sceny: pole kolumn pokazuje 30,81 przy starej kratce, po „40" daje 36,2 px i „W pionie wychodzi
+równo 30"; **zapisane na „StrefiePrzemysłowej"** (47 → 36,2 px, decyzja MG). Budżet walki Marcina
+nietknięty (66,5 m / 12 m), tryb turowy dalej włączony, zero okien `confirm`, zero kart na czacie.
+**Nieobejrzane:** „Brak sceny" (tylko świeża kampania, a serwer **nie ma trasy usuwania kampanii** —
+pozycja została w długu), chip statusu w panelu postaci i pasek grupy (wymagałyby zmiany stanu
+w trwającej walce). `app.ts` po Prettierze nie daje różnicy w gicie — jego „niesformatowanie" to
+były same końce linii w katalogu roboczym.
 
-**Biały okrąg nie był zdublowany — i MG i tak kazał go zdjąć.** Kolorowa obwódka mówi **czyja** jest
-figura, biały okrąg mówił **którą prowadzę**; przedstawiłem różnicę, MG wybrał złożenie obu
-wiadomości w jedną kreskę. Podświetlenie musi jednak zostać **na nakładce** (`overlayScale`), bo
-wszystko w `TokenNode` liczy się w pikselach świata i przy stole znika — z sufitem grubości
-liczonym z kratki, żeby przy oddaleniu nie zjadło portretu.
+**Przy okazji w tym pliku:** akapit o scenach testowych mówił o czterech i aktywnej „Strzelnicy"
+(jest pięć, aktywna „StrefaPrzemysłowa"), a tabela etapów nie miała wiersza nagłówka od cięcia
+kolumny „Uwagi" — oba poprawione.
 
-**Największa liczba na karcie stała w 16 px, bo przegrywała kaskadę.** Pudełko Cechy urosło od razu,
-liczba w środku ani drgnęła: `.sheet-window .cp-step { font: inherit }` (0-2-0) bije `.cp-stat-value`
-(0-1-0). Trzecia odsłona tej samej pułapki po `.cp-slot` (06.09) i `.advance-buy` (29b) — wpis
-w `pulapki-dev.md`. Poszły w górę też pule, progi, komórki Umiejętności, pola tekstowe, tabele,
-belki i zakładki; **nazwy Umiejętności zostały** przy 0,8 rem, bo większy krój kończy je wielokropkiem.
-
-**Oględziny na żywym stole, z jednym śladem i jedną wpadką.** Dwie sesje (`localhost` — MG,
-`[::1]` — Tony). Sprawdzone: kursor „nie wolno", zdanie na czacie, żeton nieruszony przy ciągnięciu
-i przy kliku, natychmiastowe otwarcie mapy z panelu MG, czerwień śladu w Turze, karta na czterech
-zakładkach i w wąskim oknie. **Wpadka:** „✕" przy kolejce woła **goły** `window.confirm`, więc
-zawiesił kartę pod CDP; zamknięcie karty odwołuje modal, ale **walka zostaje w bazie**, a moduł
-z `import('/src/socket.ts')` dostaje własną, niepodłączoną instancję, więc `endCombat()` z konsoli
-też nie przejdzie. **MG zdecydował: tryb turowy zostaje włączony** na „StrefiePrzemysłowej" (RUNDA 1,
-Marcin i Tony) i wyłączy go sam. Żeton Marcina wrócił na **1034/658** co do piksela, Tony nie drgnął
-(752/799), blokada mapy przywrócona na **otwartą**. Ślad świadomy: kilka kart „Akcja Ruchu — poza
-budżetem tury" i dwa zdania „MG nie otworzył jeszcze tej mapy do ruchu" na czacie.
-
-**Testy:** **1094** na serwerze (+2 o blokadzie), **1988** w `shared` (+1 o sanityzacji łaty),
-**173** u klienta (+7 nowy `walk-trail.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste
-w trzech pakietach; `packages/server/src/app.ts` i `portrait-backfill.test.ts` są niesformatowane
-**od dwóch sesji** (tutaj nieruszane). Umowy: dwie w `mapa`, jedna w `serwer`, jedna w `karta`;
-pułapki: jedna w `karta`, jedna dopisana w `ogledziny`.
+**Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **177** u klienta
+(+4, `scene-activation.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
+pakietach. Umowy: jedna w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
+Zamknięte zaległości: **dwie**; przepisana: **jedna**.
 
 ### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
 

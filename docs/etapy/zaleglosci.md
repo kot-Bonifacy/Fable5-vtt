@@ -6,19 +6,6 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
-**11.09 (etap 04, zlecone przez MG): edytor sceny ma pytać o liczbę kratek, a nie o piksele.**
-Dziś rozmiar kratki ustawia się suwakiem w pikselach, więc trafienie w skalę mapy jest
-zgadywanką — i na świeżej scenie MG **nie trafił**: „StrefaPrzemysłowa" ma siatkę **47 px**, a plik
-40 × 30 wymaga **36,2 px** (1448 / 40), przez co kratki nie siedzą na miejscach parkingowych ani
-na jezdni. Mapy z paczek są opisane skalą w nazwie (`…-40x30`), więc to jest informacja, którą MG
-ma pod ręką, tylko nie ma jej gdzie wpisać. **Naprawa:** w `ScenePanel.tsx`, obok suwaka, dwa pola
-„kratek w poziomie / w pionie"; z rozmiaru tła (`scene.background.width/height`) liczą `gridSizePx`
-i wpisują je do szkicu — suwak zostaje dla map bez okrągłej skali. Ta sama arytmetyka co
-w `map/welcome-map.ts` (`szerokość / kolumny`), więc warto ją wyjąć do jednego miejsca.
-**Przy okazji** (MG potwierdził 11.09): scena „StrefaPrzemysłowa" ma wgrany **starszy plik
-w połowie rozdzielczości** (1448 × 1086 zamiast 2896 × 2176 z `Downloads`) — po dołożeniu pola
-warto wgrać nowy i poprawić siatkę jednym wpisem.
-
 **11.09 — decyzje MG do rzeczy zgłoszonych po sesji kamery (żeby nie wracały jako pytania):**
 
 - **„Ani piksela czerni" zostaje.** Gracz przy maksymalnym oddaleniu nie obejmie całej mapy
@@ -30,31 +17,24 @@ warto wgrać nowy i poprawić siatkę jednym wpisem.
   awaria: MG sam „miał obawy, że jest zepsuta", patrząc na własną scenę z widocznością `fog`.
   Nic z tym nie robimy; warto o tym pamiętać przy oględzinach i przy pierwszej sesji z drużyną.
 - **Usterka „MG widzi «Brak sceny» po własnej aktywacji" zostaje na tej liście** (wpis niżej) —
-  MG ją przyjął, naprawa przy okazji.
+  MG ją przyjął; **naprawiona 12.09**, czeka już tylko na obejrzenie.
+- **Pełny plik „StrefyPrzemysłowej" (2896 × 2176) — nie teraz (decyzja MG z 12.09).** Siatka jest
+  poprawiona wpisem „40 kolumn" (36,2 px) na obecnym pliku 1448 × 1086. Wgranie większego pliku
+  **przesunie całą scenę**: wgranie ustawia rozmiar sceny na wymiary pliku, a figury, ściany, mgła,
+  rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
+  górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
 
-**11.09 (etap 04, znalezione przy oględzinach kamery): MG, który połączył się przy braku
-aktywnej sceny, po własnej aktywacji widzi dalej „Brak sceny".** Serwer przenosi wtedy gniazdo MG
-do pokoju sceny (`realtime/scenes.ts`, `data.viewedSceneId === null` w `scene:activate`), ale
-klient tego nie odnotowuje: gałąź MG w `socket.ts` robi `scenes().applyScene(...)`, a `applyScene`
-**milczy**, gdy `state.scene?.id !== scene.id` — czyli zawsze, gdy lokalna scena jest `null`.
-Mapa MG zostaje pusta do przeładowania karty albo kliknięcia „Pokaż". Gracze są bez zmian
-(ich gałąź woła `setScene`). Usterka jest stara jak 17a, a widać ją tylko w jednym stanie:
-pierwsze uruchomienie kampanii bez aktywnej sceny. **Naprawa:** w gałęzi MG wołać `setScene`,
-gdy lokalna scena jest `null` (`applyScene` zostawić dla podglądu innej sceny).
-
-**11.09 (etap 27e/27h, znalezione przy przeglądzie ikon): naklejka statusu wnosi do interfejsu
-czarny kwadrat, którego motyw dzienny nie umie zgasić.** Pliki w `data/public/cpred/status-icons/`
-mają — w odróżnieniu od `public/icons/hud/` — zachowany czarny prostokąt tła z game-icons, i tak
-ma być: na mapie rysuje je `TokenNode.updateStatuses` (`client/map/TokenNode.ts:550`) jako sprite'y
-nad cudzą grafiką, gdzie biała sylwetka bez podkładu zniknęłaby na jasnym żetonie. Ale te same
-pliki idą **jako zwykły `<img>`** w trzy miejsca interfejsu: chip w panelu postaci
-(`CombatHud.tsx:84`), wybierak statusów (`TokenContextMenu.tsx:1039`) i pasek grupy
-(`TokenGroupBar.tsx:208`). W motywie dziennym daje to czarny stempel 13,6 px na kremowej pigułce —
-jedyny element panelu, który nie bierze koloru z motywu, obok trzydziestu siedmiu ikon HUD-u
-rysowanych maską CSS (`HudIcon`, `.hud-icon`, `styles.css:5591`). **Naprawa:** w interfejsie
-rysować statusy tą samą maską co resztę (URL pliku w `--hud-icon`, `background: currentColor`) —
-czarne tło jest wtedy nieistotne, bo maska bierze alfę, a sylwetka dostaje kolor chipu. Mapa
-zostaje bez zmian: tam podkład jest potrzebny.
+**11.09/12.09 (etap 04): „Brak sceny" u MG po własnej aktywacji — NAPRAWIONE, ale NIEOBEJRZANE.**
+Diagnoza z 11.09 była trafna (`applyScene` milczy, gdy lokalna scena jest `null`), przepis —
+niepełny: samo `setScene` dałoby MG mapę **bez figur**. Naprawa 12.09: decyzja przeniesiona do
+`sceneStore.followActivation(scene, isGm)` — MG bez sceny na ekranie idzie za aktywacją jak gracz,
+a `true` każe gniazdu dociągnąć figury (`state:request`). Cztery testy
+w `client/src/scene-activation.test.ts`. **Czego nie obejrzano i dlaczego:** stan „MG nie ogląda
+niczego" powstaje tylko przy pierwszym wejściu do kampanii bez aktywnej sceny, bo tworzenie sceny
+z panelu od razu ustawia jej podgląd (`viewScene` po `createScene` w `ScenePanel.tsx`). Wierna droga
+to więc: nowa kampania → nowa scena → przeładowanie karty → „Aktywuj" — na poligonie nie do
+odtworzenia, a **serwer nie ma trasy usuwania kampanii**, więc taki test zostawiłby w bazie kampanię
+nie do zdjęcia z UI. Do obejrzenia przy zakładaniu prawdziwej kampanii (najpóźniej przy etapie 28).
 
 **10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
 (gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**

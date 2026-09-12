@@ -40,7 +40,7 @@ import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
 import { FigureSkills } from './FigureSkills.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
-import { HudIcon } from './HudIcon.js';
+import { HudIcon, StatusIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
 
 /**
@@ -76,12 +76,12 @@ function StatusChips({ statuses }: { statuses: readonly string[] }) {
       {statuses.map((id) => {
         const definition = byId.get(id);
         // The registry's `icon` is a *file* („/public/cpred/status-icons/…"),
-        // not a glyph — the map draws it as a sprite, so the panel draws it as
-        // an image. A status whose registry entry has not arrived yet still
-        // gets its id rather than vanishing.
+        // not a glyph — the map draws it as a sprite, the panel as a mask that
+        // takes the chip's colour (`StatusIcon`). A status whose registry entry
+        // has not arrived yet still gets its id rather than vanishing.
         return (
           <li key={id} className={`hud-status hud-status--${cpredStatusSeverity(id)}`}>
-            {definition && <img src={definition.icon} alt="" />}
+            {definition && <StatusIcon src={definition.icon} />}
             <span>{definition?.name ?? id}</span>
           </li>
         );

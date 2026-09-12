@@ -366,3 +366,27 @@ export function normalizeGridOffset(offset: number, sizePx: number): number {
   const wrapped = offset % sizePx;
   return wrapped < 0 ? wrapped + sizePx : wrapped;
 }
+
+/**
+ * Kratka, przy której obraz o szerokości `imageWidthPx` ma dokładnie `columns`
+ * kolumn (zlecenie MG, 11.09.2026).
+ *
+ * Mapy z paczek niosą skalę w nazwie pliku („…-40x30"), więc liczba kratek jest
+ * tym, co MG ma pod ręką — a rozmiaru w pikselach trzeba było szukać suwakiem
+ * i na „StrefiePrzemysłowej" wyszło 47 px zamiast 36,2.
+ *
+ * **Liczy się z kolumn, a nie z obu osi naraz** (decyzja MG, 12.09). Kratka jest
+ * kwadratowa, a pliki z paczek nie dzielą się równo: 2896 × 2176 przy 40 × 30 to
+ * 72,4 px w poziomie i 72,53 px w pionie. Jedna oś musi wygrać, druga wychodzi
+ * z `gridCellsAlong` jako podpowiedź. Wynik jest przycięty do granic, które i tak
+ * nałożyłby serwer; `null`, gdy z danych nie da się kratki policzyć.
+ */
+export function gridSizeForColumns(imageWidthPx: number, columns: number): number | null {
+  if (!(imageWidthPx > 0) || !Number.isInteger(columns) || columns < 1) return null;
+  return clamp(imageWidthPx / columns, GRID_SIZE_MIN, GRID_SIZE_MAX);
+}
+
+/** Ile kratek o boku `sizePx` mieści się na długości `lengthPx` — z ułamkiem. */
+export function gridCellsAlong(lengthPx: number, sizePx: number): number {
+  return sizePx > 0 ? lengthPx / sizePx : 0;
+}
