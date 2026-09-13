@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Nowy rodzaj ściany** — `WALL_KINDS` w `shared/walls.ts` i **dwa** przełączniki: `wallBlocksSight` i `wallBlocksMovement` (`switch`, kompilator pilnuje kompletu); do tego `isOpening`/`isBarrier`, `WALL_COLORS` i `OPENING_GLYPHS` (renderer), `KIND_LABELS`/`KIND_HINTS` (karta segmentu), `WALL_TITLES` (`SceneObjectCard`), przycisk w `MapTools` i zdania w `OPENING_REFUSALS`. Co gracz ma omijać, choć widzi przez to, liczą `walkOnlyWallsFor` / `standingBarriers` → `blocker:sync` — nie nowa gałąź w planerze.
 - **Kontrastowa siatka przy edycji sceny** — `sceneStore.gridContrast` (włącza `SceneEditor`, gasi jego zamknięcie; nigdy po sieci) → `MapRenderer.setGridContrast`. Jak siatka wygląda, rozstrzyga wyłącznie `gridStrokes` w `map/grid-style.ts`; obwódka liczy się w pikselach ekranu, więc `refreshOverlays` przerysowuje siatkę przy zoomie, póki tryb trwa.
 - **Kratka ze skali mapy** — `gridSizeForColumns` / `gridCellsAlong` w `shared/scenes.ts`; liczy się z **kolumn** i z **szerokości obrazu tła**, wiersze tylko podpowiada. Czytają ją pole „Kratek w poziomie" (`GridColumnsField`) i mapa powitalna. Kratka bywa ułamkiem, więc żadne pole liczbowe siatki nie ma `step={1}`.
 - **Ślad przebytej drogi to odciski butów, nie kreska** — `MapRenderer.drawWalkedTrail` (jedna droga dla marszu, ciągnięcia i poświaty), kolory `TRAIL_COLOR` / `TRAIL_COLOR_OVER`, granicę czerwieni liczy `trailOverFrom` w metrach **gruntu**. Trzy pule `FootprintPool` i żadna nie pożycza sprite'ów sąsiadce: trasa, ziemia pod figurą, poświata. Zapasowa kreska zostaje tylko na wypadek niewczytanego glifu.
@@ -58,6 +59,29 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Bariera i brama (13.09, etap 42a): trzecia odpowiedź — co zatrzymuje ciało.** Ściany odpowiadały
+dotąd na dwa pytania: co zatrzymuje wzrok (`wallBlocksSight`, `sightSegmentsFor`) i co zatrzymuje
+kulę (`fireSegmentsFor`, ta sama lista plus osłony). Bariera (siatka, krata, barierka) jest pierwszą
+rzeczą, dla której trzecie pytanie — **co zatrzymuje ciało** — ma własną odpowiedź: nie ma jej na
+żadnej z tamtych list, a stoi każdemu na drodze. Ta odpowiedź ma **jedno** miejsce:
+`wallBlocksMovement` → `movementSegments`, i czytają ją wszyscy — planer MG, odmowa upuszczenia
+(`refuseWalkThroughSolid`), podejście bota, atak wręcz i Pochwycenie (`isBodyBlocked`). Brama to
+otwór (`isOpening`) jak drzwi: klamka, rygiel, zasięg ramienia — tylko przezierna w obu stanach.
+
+**Gracz nie dostaje ścian, ale planer musi znać to, przez co patrzy.** Pole widzenia gracza było
+granicą podłogi, po której wolno chodzić, dopóki wszystko, co zatrzymuje ciało, zatrzymywało też
+wzrok. Bariera i zamknięte okno z bliska (18d) to łamią, więc serwer wysyła graczowi **gołe odcinki**
+(`blocker:sync`, pole `blockers` w `state:sync`) — tylko tego, co zatrzymuje ciało, a nie wzrok,
+i tylko tego, co gracz widzi. Przy Dynamicznej liczy to `visibleWalkBlockersFor` per źródło wzroku
+(punkty wzdłuż odcinka, `wallSamplePoints`, przeciw wielokątowi **tego** źródła); przy mgle ręcznej
+i scenie otwartej `standingBarriers` — bez okien, bo okno należy do planu budynku — a przy mgle
+tylko bariery z choć jednym odsłoniętym punktem. Wysyłają: `emitVisionToPlayers` (Dynamiczna),
+`emitBlockersToPlayers` z `afterWallChange` i `afterFogChange` (pozostałe tryby). Nowa rzecz, która
+zatrzymuje ciało, a nie wzrok, wchodzi przez `wallBlocksMovement` i sama trafi na tę listę.
+
+**`roomSegments` pomija barierę i bramę** — ogrodzenie nie robi z placu pokoju, a lampa dopasowana
+do siatki świeciłaby na pas przy płocie.
 
 **Siatka przy otwartym edytorze sceny jest kontrastowa — tylko u MG i tylko na czas edycji (12.09).**
 Wymóg MG: kratka nie musi trafiać w mapę idealnie, ale MG ma **sam zauważyć** rozjazd przed aktywacją
@@ -1049,6 +1073,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Zasięg ręki przez przeszkodę** — `isBodyBlocked` (`realtime/walls-io.ts`, lista `movementSegments`). Atak wręcz podaje planerowi `reachBlocked` (odmowa `MELEE_BLOCKED` **po** `NO_LINE_OF_FIRE`, **przed** zasięgiem; rzucona broń jej nie dostaje), Pochwycenie odmawia `GRAPPLE_BLOCKED`. Nowe „sięgam ręką" pyta tę samą funkcję.
 - **Odmowa broni spoza rąk ma dwa zdania** — `WEAPON_HOLSTERED` („dobądź ją") i `WEAPON_NOT_DRAWN` („schowaj tamto"); wybiera `cpredDrawFits`, to samo porównanie, którym `weapon:draw` odmawia `HANDS_FULL`. Zajęte ręce planer dostaje jako `handsHeld` od wołającego — nowe wejście do `planCpredAttack` musi je podać.
 - **Co postać trzyma w rękach, to `drawnWeaponRowIds`** — lista id wierszy; **brak pola** znaczy „nikt nie pytał" (oględziny pokazują pierwszą broń, planer **nie odmawia niczego**), `[]` znaczy puste ręce. Czyta się przez `cpredDrawnWeapons`, `cpredHandsAreDeclared` i `cpredWeaponInHands`, nigdy wprost.
 - **Ręce zmienia wyłącznie `weapon:draw`** (dobycie za darmo, schowanie za Akcję `CPRED_ACTION_HOLSTER`, upuszczenie za darmo); `character:update` z tym polem odpada `FORBIDDEN` **dla wszystkich, także MG** — jak `combatAwareness`.
@@ -1080,6 +1105,17 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**Ręka nie sięga tam, gdzie nie przejdą nogi (13.09, etap 42a).** Atak wręcz i Pochwycenie pytają
+o przeszkodę **listą ruchu**, nie listą strzału: `isBodyBlocked(prisma, sceneId, from, to)` bierze
+`movementSegments`, więc zatrzymuje je bariera, zamknięta brama, zamknięte drzwi **i zamknięte
+okno** — także z odległości ramienia, z której szyba nie jest już „firanką" dla wzroku i kuli. Do
+13.09 przez takie okno dało się uderzyć, a Pochwycenie w ogóle nie patrzyło na ściany (dało się
+pochwycić przez mur). W planerze `reachBlocked` stoi za `NO_LINE_OF_FIRE` — mur zachowuje własną
+odmowę — i przed `MELEE_OUT_OF_REACH`, bo przeszkoda jest ważniejszą prawdą niż odległość. Flaga
+jest serwerowa jak `lineOfFire`: podgląd u klienta jej nie zna i niczego nie odmawia. Rzucony nóż
+jej nie dostaje, bo `melee` jest już wtedy fałszem (s. 177). **Strzał przez barierę przechodzi bez
+zmian** — jej OB to etap 42b.
 
 **Ręce postaci: `drawnWeaponRowIds`, trzy stany i jedna decyzja MG (10.09, etap 41).**
 Pole jest **trójstanowe** i to jest cała jego treść: brak pola znaczy „nikt tej figury nigdy nie

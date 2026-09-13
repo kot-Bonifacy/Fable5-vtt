@@ -110,16 +110,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 39     | Efekty czasowe modyfikujące Cechy             | ✅     | 2026-09-05          |
 | 40     | Prośba gracza o Test                          | ✅     | 2026-09-06          |
 | 41     | Oględziny wyposażenia figury                  | ✅     | 2026-09-10          |
+| 42a    | Bariera i brama: ruch, wręcz, planer gracza   | ✅     | 2026-09-13          |
+| 42b    | Bariera: SP dla strzałów i wybuchów           | ⬜     |                     |
+| 42c    | Bariera zasłaniająca figury, kara za cel      | ⬜     |                     |
 
 
 ## Od czego zacząć
+
+**Etap 42 (bariery) doszedł 13.09 ze zlecenia MG i jest rozdzielony na trzy: 42a ✅, 42b ⬜,
+42c ⬜.** Bariera to rodzaj ściany, przez który widać, a nie da się przejść ani sięgnąć wręcz;
+brama to jej otwór. **42b** (SP bariery dla strzałów i wybuchów — zasada domowa, podręcznik nie zna
+częściowej osłony) i **42c** (bariera zasłaniająca figury, mgła za nią przy widocznej mapie, kara za
+niewidoczny cel) mają gotowe plany z decyzjami MG. **Przed 42c dopytaj MG o wygląd mgły za barierą**
+(plik etapu, decyzja 5). Nowa rzecz, która zatrzymuje ciało, a nie wzrok, wchodzi przez
+`wallBlocksMovement` — umowa w `mapa`.
 
 **Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
 etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
 bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
 
-**Wolny jest już tylko JEDEN etap: 28** (wdrożenie na VPS). Reszta jest zamknięta albo wycofana,
-a **żadna wiążąca kolejność nie jest już otwarta** — „37 przed 39" i „33 przed 28" spełnione.
+**Wolne są trzy etapy: 28** (wdrożenie na VPS), **42b i 42c** (oba wymagają tylko 42a). Reszta jest
+zamknięta albo wycofana — „37 przed 39" i „33 przed 28" spełnione.
 **Refaktoryzacja całości przed etapem 28 czeka na osobną sesję**: MG odłożył ją 05.09, wybierając
 etap z listy, i od tamtej pory doszło pięć etapów. To jest najtańszy moment, żeby ją zrobić — po
 niej zostaje wyłącznie wdrożenie. **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj
@@ -153,7 +164,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 10 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 11 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -209,8 +220,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2040** w `shared`, **1103** na serwerze, **197** u klienta —
-zielone (liczby zmierzone 13.09, galeria portretów; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2055** w `shared`, **1114** na serwerze, **197** u klienta —
+zielone (liczby zmierzone 13.09, etap 42a; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -234,13 +245,13 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   40 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   41 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    4 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   29 |       8 |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   30 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   24 |       2 |
@@ -251,11 +262,37 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
 | `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      71 |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      17 |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      19 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 13.09 — bariera i brama (etap 42a), plany 42b i 42c
+
+**Zlecenie MG:** ściany, które nie zasłaniają widoku, a blokują przejście (ogrodzenie z siatki). Po
+pytaniach rozrosło się do trzech etapów (decyzja MG): **42a** — bariera i brama blokują ruch, wręcz
+i Pochwycenie, a planer gracza zna bariery, które gracz widzi; **42b** — SP bariery dla strzałów
+i wybuchów (dwie warstwy, bez zużycia, sama liczba); **42c** — bariera zasłaniająca figury we
+wszystkich trybach, bez „firanki", kara ustawiana na barierze (domyślnie −4), a za nią mgła przy
+widocznej mapie (dopisek MG w trakcie sesji). Wszystkie decyzje stoją w plikach etapów.
+
+**Zrobione (42a):** rodzaje `barrier` i `gate`; `wallBlocksMovement` jako jedyna odpowiedź „co
+zatrzymuje ciało"; `blocker:sync` i pole `blockers` w `state:sync` (Dynamiczna — per źródło wzroku,
+mgła — odsłonięte, otwarta — wszystkie; zamknięte okno z bliska tą samą drogą); `isBodyBlocked`
+dla wręcz (`MELEE_BLOCKED`) i Pochwycenia (`GRAPPLE_BLOCKED`); `roomSegments` bez barier; pasek,
+karta segmentu, kolory, glif 🚧, zdania odmów bramy. **Poprawione przy okazji:** Pochwycenie nie
+sprawdzało ścian wcale; przez zamknięte okno z bliska dało się uderzyć wręcz (świadoma zmiana —
+wręcz pyta listy ruchu).
+
+**Znalezione, nienaprawione:** planer gracza nie zna zwykłych ścian poza widocznością Dynamiczną
+(zaległość); przy Dynamicznej atak gracza na figurę, której nie widzi, odmawia innym kodem niż
+„nie ma takiej figury" i zdradza ścianę (wpisane do zakresu 42c).
+
+**Weryfikacja:** 2055 testów w `shared` (15 nowych), 1114 na serwerze (11 nowych), 197 u klienta;
+`tsc --noEmit` w trzech pakietach, ESLint i Prettier na zmienionych plikach — zielone. **Bez oględzin
+w przeglądarce** — pozycja w `zaleglosci.md`. Dwie nowe pułapki w `testy`: żeton na połówce kratki
+staje o pół kratki dalej, a wysyłka do gracza potrafi dojść po ack MG. Etap 28 pozostaje nierozpoczęty.
 
 ### Sesja 13.09 — duża galeria wyboru portretu i rezerwacje szkiców
 
@@ -278,23 +315,4 @@ ESLint i Prettier zmienionego kodu. Nowy test na żywych gniazdach: dwa równocz
 jedna rezerwacja, kadrowanie szkicu tylko przez właściciela, zwalnianie i brak wycieku danych.
 W Chrome na istniejącej sesji MG: duża galeria, kolor/szarość, wybór obecnego portretu Tony'ego
 → kadrowanie → Anuluj. Portret i kadr bez zmiany, scena i kolejka nietknięte.
-Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — dwa zdania odmowy rąk i trzy drobne usterki
-
-**Zlecenie MG:** przegląd zaległości; wybrana paczka czterech drobnych usterek z oględzin 13.09.
-Decyzje MG: odmowa broni spoza rąk wybiera zdanie po tym, czy broń mieści się w wolnych rękach
-(nie „czy ręce są puste"); drugi szkic screamsheetu nadpisuje pola, ale pustym niczego nie kasuje;
-edytor 38a mówi prawdę o PW i blokuje pola martwe przy Wartości bojowej. `cpredDrawFits`
-i `cpredHandsHeld` (`character.ts`), nowy problem `WEAPON_HOLSTERED`, pole planera `handsHeld`
-(serwer i dymek), powód w `CpredWeaponOption.notDrawn`; `sendCyberwareAction` zwraca zdanie odmowy.
-Po drodze: `save()` okna żetonu zawieszało „Zapisywanie…" po złym zasięgu widzenia, a typ wejścia
-paska nie znał `drawnWeaponRowIds`. **Skorygowane względem wyboru MG:** Cechy nie są blokowane przy
-Wartości bojowej — REF liczy Inicjatywę wprost z karty.
-
-**Weryfikacja:** 2040 testów w `shared` (8 nowych), 1102 na serwerze (nowy test pełnych rąk, stary
-przestawiony na `WEAPON_HOLSTERED`), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint
-i Prettier na zmienionych plikach — zielone. **Bez oględzin w przeglądarce** (MG wybrał samą paczkę
-kodu) — nowa pozycja w `zaleglosci.md`. `packages/server/src/app.ts` stoi w `git status` jako
-zmieniony, ale ma ten sam hash co HEAD — rozjazd statu przy `core.autocrlf`, nic do commitowania.
 Etap 28 pozostaje nierozpoczęty.

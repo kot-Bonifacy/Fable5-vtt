@@ -150,6 +150,24 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **13.09: bariera i brama (etap 42a) nieobejrzane w przeglądarce.** Testy pokrywają serwer
+  (strażnik ruchu, `blocker:sync` w trzech trybach, wręcz, Pochwycenie, klamka bramy, lampa) i listy
+  w `shared`; reszta to UI. Do sprawdzenia u MG i na koncie `Tester`: (1) **pasek ścian** — pięć
+  rodzajów mieści się w rzędzie, ikony siatki i bramy są czytelne, oko „gracze mogą otwierać" stoi
+  przy bramie; (2) **warstwa MG** — bariera fioletowa, brama różowa z 🚧, otwarta przygaszona; karta
+  segmentu pokazuje „Bariera"/„Brama — zamknięta" i przełącza rodzaj; (3) **trasa gracza** przy
+  widoczności Dynamicznej i przy mgle omija siatkę, zanim padnie klik, a przy zamkniętym oknie
+  z bliska nie prowadzi przez szybę; (4) **klamka bramy** u gracza z odległości ramienia i zdania
+  odmów „podejdź do bramy" / „Brama zamknięta na kłódkę"; (5) **odmowa wręcz** pod celownikiem przez
+  siatkę — „Między wami stoi przeszkoda…".
+
+- **Planer gracza nie zna zwykłych ścian poza widocznością Dynamiczną** (znalezione 13.09 przy 42a,
+  istniało wcześniej). Przy mgle ręcznej i na scenie otwartej `pushWalkPassable` dostaje od serwera
+  tylko osłony i bariery, więc trasa rysuje się prosto przez mur, a odmowa „Nie tędy" przychodzi
+  dopiero po kliknięciu. Ściany nie jadą do gracza z założenia (18a), więc lek nie jest oczywisty:
+  albo odcinki ścian w **odsłoniętej** części mapy (jak bariery przy mgle — ale to plan budynku),
+  albo przyjęcie, że na takich scenach MG nie rysuje ścian. Decyzja MG.
+
 - **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
   „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)
   Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226

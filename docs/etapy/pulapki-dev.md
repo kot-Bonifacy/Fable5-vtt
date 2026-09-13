@@ -1435,6 +1435,8 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Żeton zadany na połówce kratki staje o pół kratki DALEJ** — `snapAxis` robi `Math.round`, a `Math.round(4.5)` to 5: (450, 1450) ląduje na (500, 1500), środek (550, 1550). Komentarze w `walls.test.ts` z 18a mówią „centre (500, 1500)" i mylą; geometrię testu licz od pozycji po przyciągnięciu.
+- **Wysyłka do gracza po ruchu MG potrafi dojść PO ack MG** — to dwa różne połączenia, więc kolejność między nimi nie istnieje. `waitFor(player, …)` ustawione po ruchu łapie spóźnioną wiadomość i test przesuwa się o jedną; czekaj na wiadomość spełniającą warunek (`blockersWhere`).
 - **`pnpm dev` potrafi zgubić backend przy edycjach w wielu plikach naraz — i `tsx watch` go już nie podniesie.** Objaw: proxy Vite oddaje na `/api/*` `500` z **pustą** treścią (nie `401`), `netstat` nie widzi :3001, a proces `tsx … watch` żyje. Ani `touch`, ani zmiana treści pliku go nie budzą — restartuje ręka MG. Czy winny jest kod, sprawdza próbna instancja na innym porcie, z katalogami tymczasowymi (start robi migawkę bazy).
 - **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO** — `collectMessages` gaszony w pętli „losuj do skutku”; objaw wygląda na wyścig w serwerze, a siedzi w harnessie. Odczyt = żywa tablica, odpięcie = osobny krok.
 - **`vitest` nie sprawdza typów** — `rof: 2` (a to napis) przeszedł 38 testów i padł dopiero na `tsc --noEmit`. Ten krok jest osobny, nie formalnością po testach.
@@ -1454,6 +1456,18 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Żeton na połówce kratki i spóźniona wysyłka — dwie pułapki jednego testu (13.09, etap 42a).**
+  Nowy zestaw barier w `walls.test.ts` padł trzy razy i ani razu przez kod. **Pierwsza:** okno
+  postawione „2 m od środka gracza" było w rzeczywistości 2,6 m od niego, bo figura zadana
+  w (450, 1450) staje na (500, 1500) — `snapAxis` robi `Math.round((value − origin) / cell)`,
+  a `Math.round(4.5) === 5`. Komentarze starszych testów w tym pliku („centre (500, 1500)") mówią
+  co innego, niż robi serwer; arytmetyka zasięgu (`2 / 0,02`) daje dokładnie 100 px i nie jest
+  winna. **Druga:** test czekał `waitFor(player, 'blocker:sync')` tuż po `token:move` MG, a ack
+  przychodzi połączeniem MG, wysyłka wizji — połączeniem gracza. Spóźniona wiadomość z ruchu
+  powrotnego poprzedniego testu trafiała do następnego („mgła" dostała listę Dynamicznej,
+  „scena otwarta" — listę mgły). Lek: `blockersWhere(accept)` — czekaj na wiadomość, która spełnia
+  warunek, zamiast na pierwszą z brzegu.
 
 - **Backend w `pnpm dev` padł w trakcie sesji i sam nie wstał (12.09, siódma sesja).** Przy
   edycjach w kilkunastu plikach `shared` i `server` jeden z restartów `tsx watch` trafił na stan

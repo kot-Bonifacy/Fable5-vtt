@@ -7,6 +7,25 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — dwa zdania odmowy rąk i trzy drobne usterki
+
+**Zlecenie MG:** przegląd zaległości; wybrana paczka czterech drobnych usterek z oględzin 13.09.
+Decyzje MG: odmowa broni spoza rąk wybiera zdanie po tym, czy broń mieści się w wolnych rękach
+(nie „czy ręce są puste"); drugi szkic screamsheetu nadpisuje pola, ale pustym niczego nie kasuje;
+edytor 38a mówi prawdę o PW i blokuje pola martwe przy Wartości bojowej. `cpredDrawFits`
+i `cpredHandsHeld` (`character.ts`), nowy problem `WEAPON_HOLSTERED`, pole planera `handsHeld`
+(serwer i dymek), powód w `CpredWeaponOption.notDrawn`; `sendCyberwareAction` zwraca zdanie odmowy.
+Po drodze: `save()` okna żetonu zawieszało „Zapisywanie…" po złym zasięgu widzenia, a typ wejścia
+paska nie znał `drawnWeaponRowIds`. **Skorygowane względem wyboru MG:** Cechy nie są blokowane przy
+Wartości bojowej — REF liczy Inicjatywę wprost z karty.
+
+**Weryfikacja:** 2040 testów w `shared` (8 nowych), 1102 na serwerze (nowy test pełnych rąk, stary
+przestawiony na `WEAPON_HOLSTERED`), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint
+i Prettier na zmienionych plikach — zielone. **Bez oględzin w przeglądarce** (MG wybrał samą paczkę
+kodu) — nowa pozycja w `zaleglosci.md`. `packages/server/src/app.ts` stoi w `git status` jako
+zmieniony, ale ma ten sam hash co HEAD — rozjazd statu przy `core.autocrlf`, nic do commitowania.
+Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — alias figury w kartach czatu i oględziny bez modelu
 
 **Zlecenie MG:** przegląd zaległości; wybrane: nazwa figury w kartach czatu, test „Minęła minuta"

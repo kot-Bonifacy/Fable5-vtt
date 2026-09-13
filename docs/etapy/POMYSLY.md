@@ -1,5 +1,13 @@
 # Pomysły poza zakresem etapów
 
+**13.09.2026 (etap 42a) dołożył jeden wpis — bot nie wie z góry, że przez barierę nie sięgnie.**
+Tura bota (20b) opisuje modelowi każdą figurę z `noShot` („ściana albo zamknięte drzwi na linii
+strzału"), ale nie mówi, że przez barierę, zamkniętą bramę albo zamknięte okno **nie sięgnie wręcz**.
+Bot z nożem wybiera więc cel za siatką, dostaje `MELEE_BLOCKED` z gotowym zdaniem do poprawki
+i próbuje drugi raz — działa, tylko kosztuje jedną wymianę z modelem. Lek: pole `noReach` przy
+figurze, liczone z `movementSegments` kontekstu wizji, który tura i tak ładuje, i jedno zdanie
+w prompcie.
+
 **04.09.2026 (trzecia sesja) przekreślono trzy wpisy o cyborgizacjach** — PT montażu, wymóg
 cyborgizacji podstawowej i EMP bez nazw. Czwarty, **„Efekty mechaniczne cyborgizacji są tylko
 prozą"**, został świadomie **nietknięty**: wchodzi w `sheetSituationModifiers`, czyli w tę samą
