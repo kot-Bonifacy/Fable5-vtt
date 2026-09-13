@@ -11,6 +11,19 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Bariera ma OB, choć podręcznik nie zna częściowej osłony (13.09, etap 42b, decyzja MG).**
+  „Nie ma czegoś takiego jak »częściowa« osłona" (s. 179), a osłona ma PW, nie OB (16c). Mimo to
+  bariera — siatka, krata, barierka — ma w VTT liczbę OB, którą strzał i wybuch tracą **przed**
+  pancerzem celu: 20 obrażeń przez siatkę OB 7 w kurtkę OB 11 to 20 − 7 = 13, a 13 − 11 = 2 PW.
+  Reszta zasady, żeby nikt jej nie „poprawiał" po kawałku: OB bariery **nie zużywa się**; pancerz
+  celu zużywa się tylko wtedy, gdy coś przebiło *jego*; ostrze bariery nie połowi (wręcz przez nią
+  i tak nie sięga); **seria odejmuje je raz** od całej sumy, jak pancerz; premia +5 rany krytycznej
+  idzie prosto w PW; obrażenia ignorujące pancerz ignorują też barierę; dwie bariery na linii
+  odejmują każda swoje; strzelający tuż przy siatce też strzela przez nią. „Zastosuj" przestawione
+  na figurę, której atak nie nazwał, mierzy linię od miejsca, w którym strzelec stoi teraz.
+  Całość jest jednym wejściem silnika (`resolveCpredDamage`, `barrierSp`) — powrót do RAW to OB 0
+  na każdej barierze, nie zmiana kodu.
+
 - **Przeniesiony pancerz przychodzi zdjęty (06.09, etap 38b).** Podręcznik nie mówi nic o czasie
   zakładania pancerza i VTT też nie będzie — ale wiersz, który ląduje na karcie z `equipped: true`,
   **natychmiast** zmienia OB odbiorcy, czyli liczbę, którą ktoś zaraz przeciwko niemu rzuci.

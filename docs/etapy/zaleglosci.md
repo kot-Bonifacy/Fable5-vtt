@@ -150,6 +150,15 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **13.09: OB bariery (etap 42b) nieobejrzane w przeglądarce.** Testy pokrywają silnik (dwie
+  warstwy), serwer (strzał, przestawione „Zastosuj", samochód, seria, granat, OB 0, otwarta brama)
+  i eksport; reszta to UI. Do sprawdzenia u MG: (1) **pasek ścian** — przy „Bariera" i „Brama" wąskie
+  pole „OB", liczba zostaje po przełączeniu rodzaju tam i z powrotem, a ściana narysowana zaraz po
+  siatce dostaje OB 0; (2) **karta segmentu** bariery i bramy — pole „OB bariery" zapisuje się przy
+  wyjściu z pola, zdanie pod nim się zmienia; przy ścianie, drzwiach i oknie pola nie ma;
+  (3) **karta obrażeń** — „rzut N − bariera OB n − OB m" i nagłówek „Bariera zatrzymała cios" przy
+  trafieniu słabszym od siatki; (4) napis **„BARIERA"** na mapie zamiast „PANCERZ".
+
 - **13.09: bariera i brama (etap 42a) nieobejrzane w przeglądarce.** Testy pokrywają serwer
   (strażnik ruchu, `blocker:sync` w trzech trybach, wręcz, Pochwycenie, klamka bramy, lampa) i listy
   w `shared`; reszta to UI. Do sprawdzenia u MG i na koncie `Tester`: (1) **pasek ścian** — pięć

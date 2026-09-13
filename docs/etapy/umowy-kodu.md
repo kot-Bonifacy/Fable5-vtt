@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Pancerz bariery** — `WallView.armor`: liczba tylko dla `barrier`/`gate` (retyp na cokolwiek innego zeruje ją w `wall:update`, a `toWallView` nie przepuszcza jej z żadnego innego wiersza). Sumuje ją **wyłącznie** `barrierArmorAlong` (odcinki stykające się w punkcie przecięcia liczą się raz); do gracza nie jedzie nigdy — zerują ją `visibleOpeningsFor` i ack `opening:toggle`. Rdzeń nie wie, że to OB.
 - **Nowy rodzaj ściany** — `WALL_KINDS` w `shared/walls.ts` i **dwa** przełączniki: `wallBlocksSight` i `wallBlocksMovement` (`switch`, kompilator pilnuje kompletu); do tego `isOpening`/`isBarrier`, `WALL_COLORS` i `OPENING_GLYPHS` (renderer), `KIND_LABELS`/`KIND_HINTS` (karta segmentu), `WALL_TITLES` (`SceneObjectCard`), przycisk w `MapTools` i zdania w `OPENING_REFUSALS`. Co gracz ma omijać, choć widzi przez to, liczą `walkOnlyWallsFor` / `standingBarriers` → `blocker:sync` — nie nowa gałąź w planerze.
 - **Kontrastowa siatka przy edycji sceny** — `sceneStore.gridContrast` (włącza `SceneEditor`, gasi jego zamknięcie; nigdy po sieci) → `MapRenderer.setGridContrast`. Jak siatka wygląda, rozstrzyga wyłącznie `gridStrokes` w `map/grid-style.ts`; obwódka liczy się w pikselach ekranu, więc `refreshOverlays` przerysowuje siatkę przy zoomie, póki tryb trwa.
 - **Kratka ze skali mapy** — `gridSizeForColumns` / `gridCellsAlong` w `shared/scenes.ts`; liczy się z **kolumn** i z **szerokości obrazu tła**, wiersze tylko podpowiada. Czytają ją pole „Kratek w poziomie" (`GridColumnsField`) i mapa powitalna. Kratka bywa ułamkiem, więc żadne pole liczbowe siatki nie ma `step={1}`.
@@ -59,6 +60,17 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Pancerz bariery to liczba rdzenia, której rdzeń nie rozumie (13.09, etap 42b).** `Wall.armor`
+stoi przy ścianie jak `locked`: rdzeń ją przechowuje, waliduje (`sanitizeWallArmor`,
+`WALL_ARMOR_MAX`) i **dodaje** to, co przetnie prosta (`barrierArmorAlong`) — a co ta suma robi
+z obrażeniami, wie dopiero CP RED. Liczy się tylko bariera i **zamknięta** brama: ściana i zamknięte
+drzwi odmawiają strzału w całości, okno nie ma OB (s. 180), otwarta brama jest dziurą. Dwie pułapki
+geometrii rozstrzygnięte w tej jednej funkcji: końce odcinka nie leżą „na drodze" (reguły
+`isSegmentClear`, stąd `segmentCrossingDistance` w `vision.ts`), a przecięcia bliżej niż 1 px to jedno
+przecięcie — płot przyciągnięty do siatki ma węzły na przecięciach kratek i strzał po przekątnej brałby
+przez nie OB dwa razy. Nowe miejsce, które potrzebuje „ile pancerza stoi na tej linii", woła tę
+funkcję (serwer: `barrierArmorBetween` w `walls-io.ts`), nigdy własnej pętli po ścianach.
 
 **Bariera i brama (13.09, etap 42a): trzecia odpowiedź — co zatrzymuje ciało.** Ściany odpowiadały
 dotąd na dwa pytania: co zatrzymuje wzrok (`wallBlocksSight`, `sightSegmentsFor`) i co zatrzymuje
@@ -1073,6 +1085,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **OB bariery na trafieniu** — trzy źródła i jedna kolejka zaufania w `barrierSpOfHit` (`realtime/damage.ts`): wiersz obszaru (`RollAreaTarget.barrierArmor`), karta strzału dla celu, który atak nazwał (`CpredAttackMeta.barrierSp` → `readAttackContext` → `RollDamageMeta.system`), a dla każdego innego celu pomiar na żywo od `barrierFrom`. Do silnika wchodzi jako `SheetDamageRequest.barrierSp` → `resolveCpredDamage`, **przed** pancerzem. Nowa droga obrażeń z mapy podaje je tą samą funkcją.
 - **Zasięg ręki przez przeszkodę** — `isBodyBlocked` (`realtime/walls-io.ts`, lista `movementSegments`). Atak wręcz podaje planerowi `reachBlocked` (odmowa `MELEE_BLOCKED` **po** `NO_LINE_OF_FIRE`, **przed** zasięgiem; rzucona broń jej nie dostaje), Pochwycenie odmawia `GRAPPLE_BLOCKED`. Nowe „sięgam ręką" pyta tę samą funkcję.
 - **Odmowa broni spoza rąk ma dwa zdania** — `WEAPON_HOLSTERED` („dobądź ją") i `WEAPON_NOT_DRAWN` („schowaj tamto"); wybiera `cpredDrawFits`, to samo porównanie, którym `weapon:draw` odmawia `HANDS_FULL`. Zajęte ręce planer dostaje jako `handsHeld` od wołającego — nowe wejście do `planCpredAttack` musi je podać.
 - **Co postać trzyma w rękach, to `drawnWeaponRowIds`** — lista id wierszy; **brak pola** znaczy „nikt nie pytał" (oględziny pokazują pierwszą broń, planer **nie odmawia niczego**), `[]` znaczy puste ręce. Czyta się przez `cpredDrawnWeapons`, `cpredHandsAreDeclared` i `cpredWeaponInHands`, nigdy wprost.
@@ -1105,6 +1118,21 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**OB bariery jedzie kartą, a przestawione „Zastosuj" mierzy od nowa (13.09, etap 42b).** Zasada
+domowa MG (`decyzje-i-uproszczenia.md`): siatka odejmuje swoje OB od obrażeń, zanim dotrą do
+pancerza celu. Liczba powstaje **na serwerze w chwili strzału** — `realtime/attacks.ts` mierzy linię
+do środka figury albo do bliższego brzegu samochodu i podaje ją planerowi w
+`CpredAttackContext.barrierSp`, a planer wpisuje ją do karty tylko strzałowi z jednym celem (cios
+przez barierę nie sięga, ogień zaporowy nie rani, a wybuch i stożek mierzą linię **per figura**
+w `areaTargets` → `RollAreaTarget.barrierArmor`). Dalej ta sama szyna co `halvesArmor`:
+`readAttackContext` → `RollDamageMeta.system.barrierSp`. **Decyzja MG, która tę szynę łamie
+celowo:** „Zastosuj" przestawione na figurę, której atak nie nazwał, nie bierze liczby z karty,
+tylko mierzy linię na żywo od `barrierFrom` — krateru wybuchu albo **żetonu** strzelca, czyli
+miejsca, w którym stoi teraz. Kolejność (wiersz obszaru → karta dla nazwanego celu → pomiar) jest
+w jednej funkcji, `barrierSpOfHit`, i tylko tam. Silnik odejmuje OB bariery przed pancerzem, nigdy
+go nie zużywa, nie połowi, a przy `ignoreArmor` pomija razem z pancerzem. Karta obrażeń mówi
+„− bariera OB n"; **karta ataku milczy** (decyzja MG).
 
 **Ręka nie sięga tam, gdzie nie przejdą nogi (13.09, etap 42a).** Atak wręcz i Pochwycenie pytają
 o przeszkodę **listą ruchu**, nie listą strzału: `isBodyBlocked(prisma, sceneId, from, to)` bierze

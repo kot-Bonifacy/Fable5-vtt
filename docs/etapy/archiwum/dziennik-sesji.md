@@ -7,6 +7,29 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — duża galeria wyboru portretu i rezerwacje szkiców
+
+**Zlecenie MG:** „Wybierz portret” otwiera osobne duże okno galerii, kliknięcie przechodzi
+bezpośrednio do kadrowania, a zajęte twarze są czarno-białe. Okno do 1200 px szerokości,
+88% wysokości ekranu, miniatury do 240 px wysokości. Przyjęto: gracz wybiera tylko w kreatorze,
+zajęty portret jest zablokowany dla innych graczy; MG może świadomie powtórzyć obraz.
+`usedPortraitUrls` obejmuje karty, boty, figury wszystkich scen i cudze szkice; galeria pobiera
+wyłącznie flagę zajętości, odświeżaną co 3 s. Wybór rezerwuje portret w transakcji, ukończenie
+ponawia walidację i atomowo przenosi przypisanie na kartę. Zamknięcie kreatora zachowuje szkic
+i rezerwację; zmiana/usunięcie portretu albo odrzucenie szkicu ją zwalnia.
+
+**Poprawione błędy:** gracz nie mógł kadrować portretu szkicu; zapis niezmienionego kadru był
+zablokowany; zakaz zmiany portretu gotowej karty działał tylko w UI. Galeria przechodzi do
+kadrowania dopiero po potwierdzonym zapisie. Kadry starych duplikatów i powtórzeń MG nadal są
+wspólne dla obrazka — bez migracji dotychczasowych przypisań.
+
+**Weryfikacja:** 2040 testów shared, 1103 serwera, 197 klienta; TypeScript w trzech pakietach,
+ESLint i Prettier zmienionego kodu. Nowy test na żywych gniazdach: dwa równoczesne wybory,
+jedna rezerwacja, kadrowanie szkicu tylko przez właściciela, zwalnianie i brak wycieku danych.
+W Chrome na istniejącej sesji MG: duża galeria, kolor/szarość, wybór obecnego portretu Tony'ego
+→ kadrowanie → Anuluj. Portret i kadr bez zmiany, scena i kolejka nietknięte.
+Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — dwa zdania odmowy rąk i trzy drobne usterki
 
 **Zlecenie MG:** przegląd zaległości; wybrana paczka czterech drobnych usterek z oględzin 13.09.
