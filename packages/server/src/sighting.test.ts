@@ -468,7 +468,9 @@ describe('ręce: co postać trzyma', () => {
       request: { weaponRowId: 'v-rifle', mode: 'single' },
     });
     expect(ack.ok).toBe(false);
-    if (!ack.ok) expect(ack.error).toBe('WEAPON_NOT_DRAWN');
+    // Puste ręce, a karabin mieści się w dwóch wolnych: odmowa każe go dobyć,
+    // a nie „schować tamto" — czyli broń, której nikt nie trzyma (13.09).
+    if (!ack.ok) expect(ack.error).toBe('WEAPON_HOLSTERED');
   });
 
   it('dobycie otwiera strzał z powrotem', async () => {
@@ -494,6 +496,20 @@ describe('ręce: co postać trzyma', () => {
     });
     expect(ack.ok).toBe(false);
     if (!ack.ok) expect(ack.error).toBe('HANDS_FULL');
+  });
+
+  it('strzał bronią spoza rąk przy pełnych rękach każe najpierw coś odłożyć', async () => {
+    // Karabin w obu rękach, pistolet w kaburze: dobyć go się nie da, więc odmowa
+    // nie może obiecywać dobycia — ta sama miara, którą `weapon:draw` odmówił
+    // noża linijkę wyżej (13.09).
+    const ack = await emitAck(vex, 'attack:roll', {
+      characterId: vexCharacterId,
+      attackerTokenId: vexTokenId,
+      targetTokenId: gangerTokenId,
+      request: { weaponRowId: 'v-pistol', mode: 'single' },
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('WEAPON_NOT_DRAWN');
   });
 
   it('ale pistolet i nóż mieszczą się naraz — ręce są dwie', async () => {

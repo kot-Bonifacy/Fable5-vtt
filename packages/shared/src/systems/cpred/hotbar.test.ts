@@ -13,7 +13,7 @@ import {
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
 } from './hotbar.js';
-import { CPRED_JAM_REFUSAL } from './attacks.js';
+import { CPRED_HOLSTERED_REFUSAL, CPRED_JAM_REFUSAL } from './attacks.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import type { CpredWeaponRow } from './character.js';
@@ -137,8 +137,49 @@ describe('cpredWeaponOptions — jedno ramię od etapu 38a: wiersze karty', () =
       },
       () => pistol,
     );
-    expect(options[0]!.notDrawn).toBe(true);
+    // Maczeta w jednej ręce, pistolet mieści się w drugiej — wystarczy go dobyć.
+    expect(options[0]!.notDrawn).toBe('holstered');
     expect(options[1]!.notDrawn).toBeUndefined();
+  });
+
+  it('każe najpierw odłożyć, gdy broń nie mieści się w wolnych rękach (13.09)', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [
+          weaponRow(),
+          weaponRow({ id: 'row-2', name: 'Karabin', compendiumId: 'weapon.rifle' }),
+        ],
+        drawnWeaponRowIds: ['row-2'],
+      },
+      (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
+    );
+    expect(options[0]!.notDrawn).toBe('handsFull');
+    expect(options[1]!.notDrawn).toBeUndefined();
+  });
+
+  it('dwuręczna broń przy jednej zajętej ręce też nie mieści się (13.09)', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [
+          weaponRow({ compendiumId: 'weapon.rifle' }),
+          weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 }),
+        ],
+        drawnWeaponRowIds: ['row-2'],
+      },
+      (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
+    );
+    expect(options[0]!.notDrawn).toBe('handsFull');
+  });
+});
+
+describe('broń spoza rąk na pasku akcji (etap 41, zdania z 13.09)', () => {
+  it('przy pustych rękach każe dobyć, a nie chować', () => {
+    const slots = hotbarSlotsFor(
+      input({ sheet: { weapons: [weaponRow()], drawnWeaponRowIds: [] } }),
+    );
+    const weapons = weaponSlots(slots);
+    expect(weapons.length).toBeGreaterThan(0);
+    for (const slot of weapons) expect(slot.disabled).toBe(CPRED_HOLSTERED_REFUSAL);
   });
 });
 

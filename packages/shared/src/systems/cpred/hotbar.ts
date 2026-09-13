@@ -16,7 +16,12 @@
 
 import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
-import { cpredHandsAreDeclared, cpredWeaponInHands } from './character.js';
+import {
+  cpredDrawFits,
+  cpredHandsAreDeclared,
+  cpredHandsHeld,
+  cpredWeaponInHands,
+} from './character.js';
 import {
   fittedAttachmentsFor,
   resolveAttachmentWeapon,
@@ -28,6 +33,7 @@ import {
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BURST_AMMO_COST,
+  CPRED_HOLSTERED_REFUSAL,
   CPRED_JAM_REFUSAL,
   CPRED_NOT_DRAWN_REFUSAL,
   type CpredAttackMode,
@@ -71,13 +77,15 @@ export interface CpredWeaponOption {
    */
   jammed?: boolean;
   /**
-   * Etap 41: ta broń nie jest w rękach, więc slot jest wyszarzony.
+   * Etap 41: ta broń nie jest w rękach, więc slot jest wyszarzony — i dlaczego
+   * (13.09): `holstered`, gdy mieści się w wolnych rękach i wystarczy ją dobyć,
+   * `handsFull`, gdy najpierw trzeba coś odłożyć. Od tego zależy zdanie odmowy.
    *
    * Nieobecne przy figurze, której rąk **nikt nie zadeklarował** — a takich jest
    * większość. Domysł „pierwsza broń z karty" służy oględzinom i nie ma prawa
    * gasić slotów na pasku (decyzja MG z 10.09.2026).
    */
-  notDrawn?: boolean;
+  notDrawn?: 'holstered' | 'handsFull';
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
@@ -122,9 +130,19 @@ export function cpredWeaponOptions(
     // wtedy, gdy ręce są zadeklarowane. Bagnet i granatnik dziedziczą odpowiedź
     // nosiciela, bo trzymanie karabinu jest trzymaniem obu.
     const handsDeclared = cpredHandsAreDeclared(sheet);
+    // Zajęte ręce liczy się raz na kartę — tym samym katalogiem, którym pasek
+    // rozwiązuje bronie, i tą samą miarą, którą serwer odmawia dobycia (13.09).
+    const handsHeld = handsDeclared
+      ? cpredHandsHeld(sheet, (held) => resolve(held.compendiumId)?.hands ?? 1)
+      : 0;
     return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
-      const notDrawn = handsDeclared && !cpredWeaponInHands(sheet, row.id);
+      const notDrawn: CpredWeaponOption['notDrawn'] =
+        !handsDeclared || cpredWeaponInHands(sheet, row.id)
+          ? undefined
+          : cpredDrawFits(handsHeld, resolved?.hands ?? 1)
+            ? 'holstered'
+            : 'handsFull';
       const primary: CpredWeaponOption = {
         rowId: row.id,
         attachmentId: null,
@@ -133,10 +151,10 @@ export function cpredWeaponOptions(
         ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
         ...(row.jammed === true ? { jammed: true } : {}),
-        ...(notDrawn ? { notDrawn: true } : {}),
+        ...(notDrawn ? { notDrawn } : {}),
       };
       const secondary = secondaryOptionsOf(row, resolved, lookup, attachments).map((option) =>
-        notDrawn ? { ...option, notDrawn: true } : option,
+        notDrawn ? { ...option, notDrawn } : option,
       );
       return [primary, ...secondary];
     });
@@ -459,7 +477,7 @@ export type CpredHotbarSlot =
 /** Everything the bar reads. All of it is state somebody else already owns. */
 export interface CpredHotbarInput {
   /** Karta zaznaczonej figury; null = figura, której nikt nie ostatystykował. */
-  sheet: Pick<CpredCharacterData, 'weapons'> | null;
+  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null;
   resolve: CpredWeaponResolver;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
   resolveAmmo?: CpredAmmoResolver;
@@ -527,7 +545,8 @@ function weaponRefusal(
   if (option.jammed === true) return CPRED_JAM_REFUSAL;
   // Etap 41. Nad pustym magazynkiem, bo przeładowanie broni leżącej w kaburze
   // byłoby Akcją wydaną nie na to, co blokuje strzał.
-  if (option.notDrawn === true) return CPRED_NOT_DRAWN_REFUSAL;
+  if (option.notDrawn === 'holstered') return CPRED_HOLSTERED_REFUSAL;
+  if (option.notDrawn === 'handsFull') return CPRED_NOT_DRAWN_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;
   const cost = mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;

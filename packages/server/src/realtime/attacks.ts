@@ -29,13 +29,14 @@ import type {
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  cpredDrawFits,
   cpredDrawnWeapons,
   cpredEffectiveStats,
+  cpredWeaponInHands,
   CPRED_ACTION_ATTACK,
   CPRED_ACTION_CLEAR_JAM,
   CPRED_ACTION_HOLSTER,
   CPRED_ACTION_RELOAD,
-  CPRED_HANDS,
   CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
   CPRED_STAT_LABELS,
@@ -1030,8 +1031,20 @@ export async function performAttackRoll(
         registry,
         payload?.request ?? ({} as CpredAttackRequest),
         // The row, its catalogue entry and the round in the magazine — the three
-        // things that decide what leaves the barrel (stage 16g).
-        weapon,
+        // things that decide what leaves the barrel (stage 16g). A gun that is not
+        // in hand also carries how full the hands are (13.09): that decides
+        // whether the refusal says „dobądź ją" or „schowaj tamto".
+        cpredWeaponInHands(data, weapon.row.id)
+          ? weapon
+          : {
+              ...weapon,
+              handsHeld: await handsInUse(
+                deps,
+                campaignId,
+                data,
+                cpredDrawnWeapons(data).map((held) => held.id),
+              ),
+            },
         target
           ? {
               name: tokenTableName(target, target.name),
@@ -1946,7 +1959,7 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
       // do serwera, więc pytamy go tutaj, a nie w silniku zasad.
       const needed = (await resolveWeaponRow(deps, campaignId, data, row.id)).resolved?.hands ?? 1;
       const held = await handsInUse(deps, campaignId, data, before);
-      if (held + needed > CPRED_HANDS) throw new RealtimeError('HANDS_FULL');
+      if (!cpredDrawFits(held, needed)) throw new RealtimeError('HANDS_FULL');
       hands = [...before, row.id];
     } else {
       if (!before.includes(row.id)) return { hands: before };

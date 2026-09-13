@@ -79,9 +79,12 @@ interface PlayerOption {
 function StatistProfileFields({
   profile,
   onChange,
+  hpFromBar,
 }: {
   profile: CpredStatistQuick;
   onChange: (next: CpredStatistQuick) => void;
+  /** Czy PW karty przyjdą z „Paska HP" nad formularzem — od tego zależy podpowiedź. */
+  hpFromBar: boolean;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -128,6 +131,11 @@ function StatistProfileFields({
     { key: 'body', label: 'BC' },
     { key: 'will', label: 'SW' },
   ];
+  // Wartość bojowa podstawia się pod Umiejętność broni i pod Unik w każdym
+  // rzucie (`cpredSheetRollSheet`), więc przy niej te pola nic nie znaczą —
+  // i mają to pokazać, zamiast przyjmować liczby, które nigdzie nie pójdą.
+  // Cech to nie dotyczy w całości: REF nadal liczy Inicjatywę (`sheets.ts`).
+  const combat = profile.combatValue !== null;
 
   return (
     <>
@@ -146,7 +154,14 @@ function StatistProfileFields({
         ))}
       </div>
       <div className="scene-editor-row">
-        <span className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
+        <span
+          className="auth-label"
+          title={
+            combat
+              ? 'Przy Wartości bojowej atak liczy się z niej, nie z tego poziomu'
+              : 'Poziom umiejętności, którą strzela ta broń'
+          }
+        >
           Umiejętność
           <NumberStepper
             min={0}
@@ -154,9 +169,17 @@ function StatistProfileFields({
             value={profile.skillLevel}
             onChange={(value) => set('skillLevel', value)}
             label="Poziom umiejętności broni"
+            readOnly={combat}
           />
         </span>
-        <span className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
+        <span
+          className="auth-label"
+          title={
+            combat
+              ? 'Przy Wartości bojowej obrona liczy się z niej, nie z Uniku'
+              : 'Poziom Uniku — z niego liczy się PT obrony statysty'
+          }
+        >
           Unik
           <NumberStepper
             min={0}
@@ -164,6 +187,7 @@ function StatistProfileFields({
             value={profile.evasion}
             onChange={(value) => set('evasion', value)}
             label="Poziom Uniku"
+            readOnly={combat}
           />
         </span>
         <span className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
@@ -203,7 +227,8 @@ function StatistProfileFields({
           />
           <span className="auth-hint">
             Atak i obrona jedną liczbą, z Cechą już w środku (s. 158). Tak liczą się funkcjonariusze
-            Wsparcia, Demony i wieżyczki.
+            Wsparcia, Demony i wieżyczki. Umiejętność, Unik i poziomy Testów niżej nic wtedy nie
+            znaczą; REF nadal liczy Inicjatywę.
           </span>
         </div>
       )}
@@ -246,8 +271,12 @@ function StatistProfileFields({
       </div>
       <StatistSkillFields profile={profile} onChange={onChange} />
       <p className="auth-hint">
-        Reszta Cech to 5 (przeciętny człowiek). PW bierze się z paska powyżej. Zapis zakłada figurze
-        kartę postaci — stanie w panelu postaci obok reszty i da się ją tam dopisać.
+        Reszta Cech to 5 (przeciętny człowiek).{' '}
+        {hpFromBar
+          ? 'PW bierze się z paska powyżej.'
+          : `Bez zaznaczonego „Paska HP" karta ma PW ${profile.hpCurrent}/${profile.hpMax} — zaznacz go, żeby wpisać inne.`}{' '}
+        Zapis zakłada figurze kartę postaci — stanie w panelu postaci obok reszty i da się ją tam
+        dopisać.
       </p>
     </>
   );
@@ -303,6 +332,7 @@ function StatistSkillFields({
             min={0}
             max={SKILL_LEVEL_MAX}
             value={row.level}
+            readOnly={profile.combatValue !== null}
             label={`Poziom: ${row.name}`}
             onChange={(level) => {
               const next = { ...skills };
@@ -416,13 +446,15 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       setError('Nazwa nie może być pusta.');
       return;
     }
-    setSaving(true);
-    setError(null);
     const parsedRange = visionRange.trim() === '' ? null : Number(visionRange);
     if (parsedRange !== null && (!Number.isFinite(parsedRange) || parsedRange <= 0)) {
       setError('Zasięg widzenia musi być liczbą metrów większą od zera (albo pusty).');
       return;
     }
+    // Dopiero po walidacji (13.09): odmowa zasięgu zostawiała guzik
+    // w „Zapisywanie…" na zawsze, a okno dawało się już tylko anulować.
+    setSaving(true);
+    setError(null);
     const patch: TokenPatch = {
       name: trimmed,
       // `null` zdejmuje alias, pusty tekst zostawia figurę bez etykiety.
@@ -697,7 +729,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
               />{' '}
               Statystyki bojowe (figura dostaje własną kartę)
             </label>
-            {hasProfile && <StatistProfileFields profile={profile} onChange={setProfile} />}
+            {hasProfile && (
+              <StatistProfileFields profile={profile} onChange={setProfile} hpFromBar={hasHp} />
+            )}
           </>
         )}
 

@@ -15,7 +15,9 @@ import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   STATIST_WEAPON_ROW_ID,
   WALL_REACH_M,
+  cpredHandsHeld,
   cpredSheetRollSheet,
+  cpredWeaponInHands,
   coverInLineOfFire,
   distanceToCover,
   formatMetres,
@@ -225,6 +227,18 @@ export function planAttackPreview(
     : undefined;
   const secondaryWeapon = firedWith ? resolveAttachmentWeapon(firedWith, { weaponTypeById }) : null;
 
+  // 13.09: zdanie odmowy broni spoza rąk zależy od tego, ile rąk zajmuje to, co
+  // strzelec już trzyma. Dymek liczy to z tego samego katalogu co serwer, żeby
+  // nie obiecać „dobądź ją" tam, gdzie serwer każe najpierw coś schować.
+  const handsHeld = cpredWeaponInHands(data, row.id)
+    ? undefined
+    : cpredHandsHeld(data, (held) => {
+        const heldEntry = held.compendiumId ? compendium.entries[held.compendiumId] : undefined;
+        return heldEntry && isWeaponEntry(heldEntry)
+          ? (resolveWeapon(heldEntry, { weaponTypeById }).hands ?? 1)
+          : 1;
+      });
+
   const planned = planCpredAttack(
     data,
     useCharacterStore.getState().registry,
@@ -232,6 +246,7 @@ export function planAttackPreview(
     {
       row,
       resolved,
+      ...(handsHeld !== undefined ? { handsHeld } : {}),
       typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null,
       ammo,
       attachments,

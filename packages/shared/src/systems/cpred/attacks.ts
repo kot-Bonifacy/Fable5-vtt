@@ -35,8 +35,11 @@ import { ammoFitsWeapon, type CpredAmmoCheck, type CpredAmmoProfile } from './am
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import {
   cpredArmorStatPenalty,
+  cpredDrawFits,
+  cpredDrawnWeapons,
   cpredWeaponInHands,
   CPRED_ARMOR_PENALTY_LABEL,
+  CPRED_HANDS,
   type CpredCharacterData,
   type CpredRegistry,
   type CpredWeaponRow,
@@ -116,14 +119,18 @@ export const CPRED_JAM_REFUSAL = 'Broń się zacięła — usuń usterkę (Akcja
 
 /**
  * To samo dla „tego nie masz w rękach" (etap 41), i z tego samego powodu: zdanie
- * pada w odmowie planera, na wyszarzonym slocie paska i przy wierszu broni.
+ * pada w odmowie planera i na wyszarzonym slocie paska.
  *
- * Mówi, **co zrobić**, a nie tylko czego się nie da, bo obie drogi są jednym
- * kliknięciem i różnią się ceną: schowanie kosztuje Akcję (s. 168), upuszczenie
- * nie kosztuje nic.
+ * Zdania są **dwa**, bo są dwie sytuacje (13.09). Broń, która mieści się
+ * w wolnych rękach, wystarczy dobyć — za darmo (s. 168). Dopiero przy zajętych
+ * rękach trzeba najpierw coś odłożyć, a obie drogi różnią się ceną: schowanie
+ * kosztuje Akcję, upuszczenie nic. Do 13.09 zdanie było jedno, więc postać
+ * z pustymi rękami słyszała „schowaj tamto (Akcja)" o broni, której nie trzyma.
+ * Która sytuacja zachodzi, rozstrzyga `cpredDrawFits`.
  */
 export const CPRED_NOT_DRAWN_REFUSAL =
   'Masz w rękach co innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń.';
+export const CPRED_HOLSTERED_REFUSAL = 'Broń jest w kaburze — dobądź ją (bez Akcji).';
 
 /** A burst and a suppressive volley each cost an Action and ten rounds. */
 export const CPRED_BURST_AMMO_COST = 10;
@@ -327,7 +334,8 @@ export type CpredAttackProblem =
   | 'AMMO_NEEDS_CYBERWARE'
   | 'UNKNOWN_ATTACHMENT'
   | 'WEAPON_JAMMED'
-  | 'WEAPON_NOT_DRAWN';
+  | 'WEAPON_NOT_DRAWN'
+  | 'WEAPON_HOLSTERED';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -612,6 +620,14 @@ export function planCpredAttack(
      * field existed, and the reason smoke and gas could not be fired from one.
      */
     secondaryAmmo?: CpredAmmoProfile | null;
+    /**
+     * Ile rąk zajmuje to, co strzelec już trzyma (13.09) — policzone przez
+     * wołającego z katalogu, jak `resolved`. Rozstrzyga wyłącznie o **zdaniu**
+     * odmowy broni spoza rąk: „dobądź ją" czy „najpierw schowaj tamto". Brak pola
+     * przy czymkolwiek w rękach znaczy „nie wiadomo" i daje to drugie — zdanie
+     * ostrożniejsze, bo nie obiecuje dobycia, którego serwer mógłby odmówić.
+     */
+    handsHeld?: number;
   },
   target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
@@ -706,11 +722,18 @@ export function planCpredAttack(
    * z karty"), jest domysłem VTT na użytek obrazu. Domysł nie zabrania: zakaz
    * z niego wyprowadzony byłby regułą, której nie ustalił nikt przy stole.
    *
-   * Od pierwszego dobycia albo schowania odmowa jest pełna i mówi, co zrobić —
-   * schować tamtą broń (Akcja, s. 168) albo ją upuścić (za darmo).
+   * Od pierwszego dobycia albo schowania odmowa jest pełna i mówi, co zrobić:
+   * dobyć tę broń, gdy mieści się w wolnych rękach (za darmo, s. 168), a inaczej
+   * najpierw schować tamtą (Akcja) albo ją upuścić (za darmo).
    */
   if (!cpredWeaponInHands(data, hostRow.id)) {
-    return { ok: false, error: 'WEAPON_NOT_DRAWN' };
+    const handsHeld = weapon.handsHeld ?? (cpredDrawnWeapons(data).length === 0 ? 0 : CPRED_HANDS);
+    return {
+      ok: false,
+      error: cpredDrawFits(handsHeld, weapon.resolved?.hands ?? 1)
+        ? 'WEAPON_HOLSTERED'
+        : 'WEAPON_NOT_DRAWN',
+    };
   }
 
   // A hand is busy holding somebody: two-handed weapons are out for both sides
@@ -1191,4 +1214,5 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   UNKNOWN_ATTACHMENT: 'Nie ma takiego dodatku na tej broni.',
   WEAPON_JAMMED: CPRED_JAM_REFUSAL,
   WEAPON_NOT_DRAWN: CPRED_NOT_DRAWN_REFUSAL,
+  WEAPON_HOLSTERED: CPRED_HOLSTERED_REFUSAL,
 };

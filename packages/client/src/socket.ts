@@ -3438,21 +3438,36 @@ function cyberwareErrorText(code: string | undefined): string {
  * Not a sheet edit: the cost of a piece of chrome is rolled on the server, so
  * the client sends the intention and reads the result off the card and the
  * refreshed sheet, exactly like a Check.
+ *
+ * Resolves to the refusal sentence — the one the chat gets as well — or to null
+ * once the server took the intention (13.09). A caller that writes „Instaluję…"
+ * next to the button waits for it: until it could, a refused install left the
+ * compendium card saying one thing and the chat another.
  */
 export function sendCyberwareAction(
   payload: Omit<CharacterCyberwarePayload, 'gesture'>,
   gesture?: RollGesture,
-): void {
-  if (!socket) {
-    useChatStore.getState().addNote(cyberwareErrorText('OFFLINE'));
-    return;
+): Promise<string | null> {
+  const current = socket;
+  if (!current) {
+    const text = cyberwareErrorText('OFFLINE');
+    useChatStore.getState().addNote(text);
+    return Promise.resolve(text);
   }
   // Anything buffered would otherwise land after the server's own write and
   // overwrite the freshly rolled Humanity with the pre-install value.
   flushCharacterSave(payload.characterId);
   const full: CharacterCyberwarePayload = { ...payload, ...(gesture ? { gesture } : {}) };
-  socket.emit('character:cyberware', full, (ack: SocketAck<{ messageId: number | null }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(cyberwareErrorText(ack.error));
+  return new Promise((resolve) => {
+    current.emit('character:cyberware', full, (ack: SocketAck<{ messageId: number | null }>) => {
+      if (ack.ok) {
+        resolve(null);
+        return;
+      }
+      const text = cyberwareErrorText(ack.error);
+      useChatStore.getState().addNote(text);
+      resolve(text);
+    });
   });
 }
 

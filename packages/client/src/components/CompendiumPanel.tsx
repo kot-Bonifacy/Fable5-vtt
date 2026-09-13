@@ -363,13 +363,20 @@ function EntryCard({
   async function install(payment: 'full' | 'installOnly') {
     if (!target) return;
     const surgeon = surgeonPayload();
-    sendCyberwareAction({
+    // Notka dopiero po odpowiedzi serwera (13.09). Stała tu przed nią, więc
+    // odmowa („Nie ma w co tego wszczepić…") zostawiała na karcie „Instaluję…",
+    // a czat mówił co innego. Przy odmowie karta mówi teraz to samo co czat.
+    const refusal = await sendCyberwareAction({
       characterId: target,
       action: 'install',
       entryId: entry.id,
       payment,
       surgeon,
     });
+    if (refusal) {
+      setNote(refusal);
+      return;
+    }
     const money =
       payment === 'installOnly'
         ? `Montaż „${entry.name}” — ${fitting} ed.`

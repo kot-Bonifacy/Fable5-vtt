@@ -771,6 +771,32 @@ export function cpredDrawnWeapons(
     .filter((row): row is CpredWeaponRow => row !== undefined);
 }
 
+/**
+ * Ile rąk zajmuje to, co karta trzyma (13.09).
+ *
+ * Ile rąk zajmuje **jedna** broń, wie katalog, a katalog należy do wołającego —
+ * stąd `handsOf`. Serwer liczy to samo asynchronicznie (`handsInUse`), bo jego
+ * katalog siedzi w bazie; porównanie z liczbą rąk jest jedno: `cpredDrawFits`.
+ */
+export function cpredHandsHeld(
+  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
+  handsOf: (row: CpredWeaponRow) => number,
+): number {
+  return cpredDrawnWeapons(data).reduce((used, row) => used + handsOf(row), 0);
+}
+
+/**
+ * Czy broń zajmująca `handsNeeded` rąk zmieści się obok tego, co figura trzyma.
+ *
+ * Jedno porównanie na dwa pytania (13.09): `weapon:draw` odmawia `HANDS_FULL`,
+ * gdy odpowiedź brzmi „nie", a odmowa strzału bronią spoza rąk mówi „dobądź ją",
+ * gdy brzmi „tak". Rozjechać się nie mogą — inaczej odmowa kazałaby dobyć broń,
+ * której serwer dobyć nie pozwoli.
+ */
+export function cpredDrawFits(handsHeld: number, handsNeeded: number): boolean {
+  return handsHeld + handsNeeded <= CPRED_HANDS;
+}
+
 /** Label the armour penalty carries wherever it is shown — one spelling. */
 export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
 

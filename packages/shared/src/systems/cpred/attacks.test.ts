@@ -4,8 +4,10 @@ import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_BURST_AMMO_COST,
   CPRED_EVERYDAY_DV,
+  CPRED_HOLSTERED_REFUSAL,
   CPRED_JAM_REFUSAL,
   CPRED_MELEE_REACH_M,
+  CPRED_NOT_DRAWN_REFUSAL,
   CPRED_PASSIVE_DIE,
   attackAmmoCost,
   attackDamageNotation,
@@ -109,6 +111,7 @@ function plan(
     typeId,
     context,
     ammo,
+    handsHeld,
   }: {
     data?: ReturnType<typeof sheet>;
     resolved?: ResolvedWeapon | null;
@@ -118,13 +121,20 @@ function plan(
     typeId?: string;
     context?: CpredAttackContext;
     ammo?: CpredAmmoProfile | null;
+    handsHeld?: number;
   } = {},
 ) {
   return planCpredAttack(
     data,
     registry,
     { weaponRowId: row.id, mode: 'single', ...request },
-    { row, resolved, ...(typeId ? { typeId } : {}), ...(ammo ? { ammo } : {}) },
+    {
+      row,
+      resolved,
+      ...(typeId ? { typeId } : {}),
+      ...(ammo ? { ammo } : {}),
+      ...(handsHeld !== undefined ? { handsHeld } : {}),
+    },
     {
       name: 'Ganger',
       tokenId: 'token-1',
@@ -1428,6 +1438,54 @@ describe('jakość broni i modyfikator pancerza w ataku (s. 185, 244)', () => {
   it('ma dla zacięcia zdanie, które gracz zobaczy', () => {
     expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_JAMMED).toBe(CPRED_JAM_REFUSAL);
     expect(CPRED_JAM_REFUSAL).toContain('Akcja');
+  });
+});
+
+describe('broń spoza rąk — dwa zdania odmowy (etap 41, poprawka 13.09)', () => {
+  const holstered = weaponRow({ id: 'w1' });
+  const held = weaponRow({ id: 'w2', name: 'Karabin' });
+  const hands = (drawnWeaponRowIds: string[]) =>
+    sheet({ weapons: [holstered, held], skills: { handgun: 6 }, drawnWeaponRowIds });
+
+  it('przy pustych rękach każe dobyć — bez Akcji i bez chowania czegokolwiek', () => {
+    expect(plan({}, { data: hands([]), row: holstered })).toEqual({
+      ok: false,
+      error: 'WEAPON_HOLSTERED',
+    });
+  });
+
+  it('jednoręczną broń przy jednej wolnej ręce też wystarczy dobyć', () => {
+    expect(plan({}, { data: hands(['w2']), row: holstered, handsHeld: 1 })).toEqual({
+      ok: false,
+      error: 'WEAPON_HOLSTERED',
+    });
+  });
+
+  it('przy zajętych rękach każe najpierw coś odłożyć', () => {
+    expect(plan({}, { data: hands(['w2']), row: holstered, handsHeld: 2 })).toEqual({
+      ok: false,
+      error: 'WEAPON_NOT_DRAWN',
+    });
+    // Dwuręczna broń nie mieści się obok czegokolwiek w drugiej ręce.
+    expect(
+      plan(
+        {},
+        { data: hands(['w2']), row: holstered, resolved: { ...rifle, hands: 2 }, handsHeld: 1 },
+      ),
+    ).toEqual({ ok: false, error: 'WEAPON_NOT_DRAWN' });
+  });
+
+  it('bez policzonych rąk nie obiecuje dobycia, gdy coś w nich jest', () => {
+    expect(plan({}, { data: hands(['w2']), row: holstered })).toEqual({
+      ok: false,
+      error: 'WEAPON_NOT_DRAWN',
+    });
+  });
+
+  it('ma dla obu sytuacji zdanie, które gracz zobaczy', () => {
+    expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_HOLSTERED).toBe(CPRED_HOLSTERED_REFUSAL);
+    expect(CPRED_HOLSTERED_REFUSAL).toContain('bez Akcji');
+    expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_NOT_DRAWN).toBe(CPRED_NOT_DRAWN_REFUSAL);
   });
 });
 

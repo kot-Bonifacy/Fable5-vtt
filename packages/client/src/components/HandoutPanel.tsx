@@ -358,7 +358,9 @@ function HandoutForm({
 
   const takeDraft = useCallback((draft: ScreamsheetDraft) => {
     if (draft.headline.length > 0) setTitle(draft.headline.slice(0, HANDOUT_TITLE_MAX_LENGTH));
-    setMeta((current) => ({ ...current, lead: draft.lead }));
+    // Pusty lead szkicu niczego nie kasuje (13.09) — tak jak nagłówek i treść
+    // obok. Drugi szkic pod rząd wymazywał lead, który MG zdążył już poprawić.
+    if (draft.lead.length > 0) setMeta((current) => ({ ...current, lead: draft.lead }));
     if (draft.body.length > 0) setBody(draft.body);
   }, []);
 

@@ -44,7 +44,15 @@ export async function addCompendiumItemToCharacter(
     // piece of chrome costs is rolled on the server, so the client sends the
     // intention and lets the card and the refreshed sheet come back. Free here
     // means free — the price rides on the „Zainstaluj" buttons of the card.
-    sendCyberwareAction({ characterId, action: 'install', entryId: entry.id, payment: 'none' });
+    // The note waits for the server (13.09): a refusal used to leave „Instaluję"
+    // here while the chat explained why nothing was installed.
+    const refusal = await sendCyberwareAction({
+      characterId,
+      action: 'install',
+      entryId: entry.id,
+      payment: 'none',
+    });
+    if (refusal) return refusal;
     const cost = entry.humanityLoss ?? entry.humanityLossFixed;
     return cost
       ? `Instaluję „${entry.name}” bez opłaty — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
