@@ -5,7 +5,13 @@ import type {
   ArchiveRefusalCode,
   CpredRegistry,
 } from '@vtt/shared';
-import { ARCHIVE_APP, ARCHIVE_VERSION, archiveRefusal, parseCharacterData } from '@vtt/shared';
+import {
+  ARCHIVE_APP,
+  ARCHIVE_VERSION,
+  archiveRefusal,
+  parseCharacterData,
+  sanitizeWallArmor,
+} from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 
 /**
@@ -320,6 +326,7 @@ export async function exportScene(
           open: true,
           playerToggle: true,
           locked: true,
+          armor: true,
           x1: true,
           y1: true,
           x2: true,
@@ -566,6 +573,9 @@ export async function importScene(
         open: bool(row.open),
         playerToggle: bool(row.playerToggle),
         locked: bool(row.locked),
+        // Plik sprzed etapu 42b nie ma tej kolumny — bariera wraca bez pancerza,
+        // tak jak stała. Liczba spoza zakresu nie wchodzi do bazy.
+        armor: sanitizeWallArmor(row.armor) ?? 0,
         x1: num(row.x1),
         y1: num(row.y1),
         x2: num(row.x2),

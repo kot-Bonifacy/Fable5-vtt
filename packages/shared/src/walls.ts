@@ -19,11 +19,13 @@
  * Stage 42a added the partition that is meant to be looked through — the
  * chain-link fence, the railing, the glass screen — and with it the one
  * question this module answers that is not about sight: what stops a **body**.
+ * Stage 42b gave that partition a number: how much of a round or a blast it
+ * takes on the way through (`armor`, `barrierArmorAlong`).
  */
 
 import { fireCoverSegments, type CoverView } from './covers.js';
 import type { ScenePoint } from './measure.js';
-import type { Segment } from './vision.js';
+import { segmentCrossingDistance, type Segment } from './vision.js';
 
 export const WALL_KINDS = ['wall', 'door', 'window', 'barrier', 'gate'] as const;
 /**
@@ -81,11 +83,27 @@ export interface WallView {
    * something the client is told in advance. The GM's own list carries the truth.
    */
   locked: boolean;
+  /**
+   * Barriers and gates only (stage 42b): how much a shot or a blast loses on its
+   * way through. Always 0 on every other kind.
+   *
+   * A bare number and deliberately opaque to the core — the core only adds up
+   * what a line crosses (`barrierArmorAlong`); CP RED reads it as Stopping Power
+   * and subtracts it before the target's own armour. Like `locked`, it is GM
+   * knowledge and is scrubbed to 0 on its way to a player.
+   */
+  armor: number;
   x1: number;
   y1: number;
   x2: number;
   y2: number;
 }
+
+/**
+ * The highest `armor` a barrier may carry (stage 42b). A guard against a
+ * runaway client rather than a rule — no game system is consulted here.
+ */
+export const WALL_ARMOR_MAX = 99;
 
 /**
  * Arm's reach, in metres (stage 18d) — how close a token has to stand to touch
@@ -127,6 +145,8 @@ export interface WallCreatePayload {
   kind: WallKind;
   /** Openings only; ignored on a plain wall. */
   playerToggle?: boolean;
+  /** Barriers and gates only (stage 42b); absent means 0, ignored elsewhere. */
+  armor?: number;
 }
 
 /** Client → server payload of `wall:update` — retype or reflag one segment. */
@@ -137,6 +157,8 @@ export interface WallUpdatePayload {
     playerToggle?: boolean;
     /** Openings only (stage 18d); bolting one also shuts it. */
     locked?: boolean;
+    /** Barriers and gates only (stage 42b); retyping to anything else zeroes it. */
+    armor?: number;
     /**
      * Nowe położenie odcinka (etap 27l) — uchwyty na końcach i przesunięcie
      * całej ściany. Cała czwórka albo nic: pół geometrii to ściana, która
@@ -349,6 +371,69 @@ export function walkOnlyWallsFor(
  */
 export function standingBarriers(walls: readonly WallView[]): WallView[] {
   return walls.filter((wall) => isBarrier(wall) && wallBlocksMovement(wall));
+}
+
+/**
+ * A client-sent `armor` for a barrier (stage 42b): a whole number from 0 to
+ * `WALL_ARMOR_MAX`, or null when it is anything else.
+ */
+export function sanitizeWallArmor(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isInteger(raw)) return null;
+  if (raw < 0 || raw > WALL_ARMOR_MAX) return null;
+  return raw;
+}
+
+/**
+ * Crossings closer together than this, in scene pixels, are one crossing.
+ *
+ * A fence is traced as a chain, so two of its segments share every joint — and a
+ * diagonal shot between square centres runs through grid intersections, which is
+ * exactly where a grid-snapped chain puts its joints. Counted per segment, one
+ * fence would take its armour twice off every such shot.
+ */
+const BARRIER_CROSSING_MERGE_PX = 1;
+
+/**
+ * How much armour stands on the straight line between two points (stage 42b) —
+ * the barriers and shut gates it passes, added up.
+ *
+ * Only what a round *passes through*: a wall or a shut door refuses the shot
+ * outright (`fireSegmentsFor`), a window has no armour to give („szyby … nie mają
+ * PW", s. 180), and an open gate is a hole. Two fences one behind the other take
+ * theirs each; two segments meeting at the point the line crosses count once, at
+ * the higher of the two numbers.
+ *
+ * No exemption for standing at the mesh (decision of the GM, 13.09.2026): a
+ * shooter pressed against a fence still fires through it. What lies exactly at
+ * either end of the line is not on it — the edge rules of `isSegmentClear`.
+ */
+export function barrierArmorAlong(
+  walls: readonly WallView[],
+  from: ScenePoint,
+  to: ScenePoint,
+): number {
+  const crossings: { distance: number; armor: number }[] = [];
+  for (const wall of standingBarriers(walls)) {
+    if (!(wall.armor > 0)) continue;
+    const distance = segmentCrossingDistance(from, to, wall);
+    if (distance !== null) crossings.push({ distance, armor: wall.armor });
+  }
+  crossings.sort((a, b) => a.distance - b.distance);
+  let total = 0;
+  let last: { distance: number; armor: number } | null = null;
+  for (const crossing of crossings) {
+    if (last && crossing.distance - last.distance <= BARRIER_CROSSING_MERGE_PX) {
+      // The same point of the line: keep the stronger segment, never both.
+      if (crossing.armor > last.armor) {
+        total += crossing.armor - last.armor;
+        last.armor = crossing.armor;
+      }
+      continue;
+    }
+    total += crossing.armor;
+    last = { ...crossing };
+  }
+  return total;
 }
 
 /** Most points `wallSamplePoints` returns for one segment. */

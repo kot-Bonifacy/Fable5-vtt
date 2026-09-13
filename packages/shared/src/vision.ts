@@ -272,6 +272,29 @@ export function isSegmentClear(
   return true;
 }
 
+/**
+ * Where the straight line from `from` to `to` crosses a segment, as a distance
+ * from `from` in scene pixels — or null when it does not (stage 42b).
+ *
+ * The same crossing `isSegmentClear` asks about, for the one caller that needs
+ * more than a yes: a barrier lets a round through at a price, so the line has to
+ * say which barriers it passed and where, not only whether one was there. The
+ * edge rules are shared on purpose — something at the very start of the line or
+ * exactly at its end is not in the way.
+ */
+export function segmentCrossingDistance(
+  from: ScenePoint,
+  to: ScenePoint,
+  segment: Segment,
+): number | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length < MIN_HIT_DISTANCE) return null;
+  const distance = rayHitDistance(from, dx / length, dy / length, segment);
+  return distance !== null && distance < length - MIN_HIT_DISTANCE ? distance : null;
+}
+
 /** Can *any* of the viewer's sources see this point? */
 export function isPointVisible(
   point: ScenePoint,

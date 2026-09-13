@@ -819,6 +819,9 @@ model Wall {
   /// Doors only (stage 18d): bolted. The GM still works it; a player's click does
   /// nothing and the flag never reaches their socket.
   locked Boolean @default(false)
+  /// Barriers and gates only (stage 42b): what a shot or a blast loses passing
+  /// through. Opaque to the core; CP RED reads it as SP. 0 on every other kind.
+  armor Int @default(0)
   /// Endpoints in scene (world) pixels.
   x1 Float
   y1 Float

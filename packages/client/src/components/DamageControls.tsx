@@ -196,13 +196,20 @@ export function DamageRow({
       <div className="chat-damage-body">
         <span className="chat-damage-headline">
           {stopped
-            ? `Pancerz zatrzymał cios (${entry.damageRolled} obr., OB ${entry.armorSp})`
+            ? entry.barrierSp !== undefined && entry.barrierSp >= entry.damageRolled
+              ? `Bariera zatrzymała cios (${entry.damageRolled} obr., bariera OB ${entry.barrierSp})`
+              : `Pancerz zatrzymał cios (${entry.damageRolled} obr., ${
+                  entry.barrierSp ? `bariera OB ${entry.barrierSp}, ` : ''
+                }OB ${entry.armorSp})`
             : `Przebicie: ${entry.damageThrough} obr.${
                 entry.doubled ? ` (×${entry.headMultiplier ?? 2} w głowę)` : ''
               }`}
         </span>
         <span className="chat-damage-detail">
           rzut {entry.damageRolled}
+          {/* Zasada domowa etapu 42b: siatka odejmuje swoje OB przed pancerzem
+              celu. Wypisana osobno, bo inaczej „20 − OB 11 = 2" się nie dodaje. */}
+          {entry.barrierSp ? ` − bariera OB ${entry.barrierSp}` : ''}
           {/*
             „OB 6 (połowa)" rather than a bare 6: a player who knows the target
             wears OB 11 has to be told why six was subtracted, or the arithmetic

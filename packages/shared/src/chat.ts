@@ -190,6 +190,12 @@ export interface DamageLogEntry {
   locationLabel: string;
   /** What the dice showed. */
   damageRolled: number;
+  /**
+   * SP of the barriers the hit came through, taken off before the armour (stage
+   * 42b, a house rule); absent when there were none. On the card for the reason
+   * `armorHalved` is — without it the arithmetic below does not add up.
+   */
+  barrierSp?: number;
   /** SP subtracted (0 when unarmored or when the damage ignores armor). */
   armorSp: number;
   /**

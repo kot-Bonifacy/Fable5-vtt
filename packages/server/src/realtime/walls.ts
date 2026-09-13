@@ -10,8 +10,10 @@ import type {
 import {
   ROLE_GM,
   WALL_MAX_PER_SCENE,
+  isBarrier,
   isOpening,
   isWallKind,
+  sanitizeWallArmor,
   sanitizeWallChain,
   sanitizeWallSegment,
 } from '@vtt/shared';
@@ -89,6 +91,14 @@ export const wallCreateEvent = defineEvent<WallCreatePayload, WallView[]>({
     // The player flag belongs to openings; on a plain wall it would be a promise
     // the UI never keeps.
     const playerToggle = isOpening({ kind }) && payload?.playerToggle === true;
+    // A barrier's armour (stage 42b). A malformed number is refused whatever the
+    // kind; a good one on anything but a barrier or a gate is simply not kept.
+    let armor = 0;
+    if (payload?.armor !== undefined) {
+      const sanitized = sanitizeWallArmor(payload.armor);
+      if (sanitized === null) throw new RealtimeError('BAD_REQUEST');
+      if (isBarrier({ kind })) armor = sanitized;
+    }
 
     const stored = await deps.ctx.prisma.wall.count({ where: { sceneId: scene.id } });
     if (stored + segments.length > WALL_MAX_PER_SCENE) {
@@ -100,7 +110,7 @@ export const wallCreateEvent = defineEvent<WallCreatePayload, WallView[]>({
     const created = await deps.ctx.prisma.$transaction(
       segments.map((segment) =>
         deps.ctx.prisma.wall.create({
-          data: { sceneId: scene.id, kind, playerToggle, ...segment },
+          data: { sceneId: scene.id, kind, playerToggle, armor, ...segment },
         }),
       ),
     );
@@ -157,6 +167,15 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
         data.open = false;
         data.locked = false;
       }
+      // Armour belongs to a see-through partition (stage 42b). Barrier ↔ gate
+      // keeps it; a fence retyped into masonry or glass loses it.
+      if (!isBarrier({ kind: patch.kind })) data.armor = 0;
+    }
+    if (patch.armor !== undefined) {
+      const armor = sanitizeWallArmor(patch.armor);
+      if (armor === null) throw new RealtimeError('BAD_REQUEST');
+      const kind = ((data.kind as string | undefined) ?? row.kind) as WallView['kind'];
+      data.armor = isBarrier({ kind }) ? armor : 0;
     }
     if (patch.playerToggle !== undefined) {
       if (typeof patch.playerToggle !== 'boolean') throw new RealtimeError('BAD_REQUEST');
@@ -298,6 +317,9 @@ export const openingToggleEvent = defineEvent<OpeningTogglePayload, WallView>({
     const open = typeof payload?.open === 'boolean' ? payload.open : !wall.open;
     const updated = await deps.ctx.prisma.wall.update({ where: { id: row.id }, data: { open } });
     await afterWallChange(deps, campaignId, row.scene);
-    return toWallView(updated);
+    const view = toWallView(updated);
+    // The ack is one more way to a player's socket, and a gate's armour is the
+    // GM's number (stage 42b) — scrubbed as `visibleOpeningsFor` scrubs it.
+    return isGm ? view : { ...view, armor: 0 };
   },
 });

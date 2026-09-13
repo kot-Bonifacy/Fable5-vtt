@@ -1637,6 +1637,13 @@ export interface SheetDamageRequest {
   armorSp?: number;
   ignoreArmor?: boolean;
   /**
+   * SP of the barriers the hit came through (stage 42b, a house rule), taken off
+   * before the target's armour and never worn down. Filled in by the caller from
+   * the stored attack or from the map — never from the client's request, and
+   * untouched by the GM's `armorSp` override, which is the target's own vest.
+   */
+  barrierSp?: number;
+  /**
    * Only half the armour stops this hit, rounded up (s. 176, 178).
    *
    * Read off the stored attack like `ammo` and `aimedAt`, and for the same
@@ -1692,9 +1699,13 @@ export type SheetDamageLog = Omit<
  */
 export function applyDamageToCover(
   hp: { current: number; max: number },
-  request: Pick<SheetDamageRequest, 'damage'>,
+  request: Pick<SheetDamageRequest, 'damage' | 'barrierSp'>,
 ): { hpCurrent: number; log: SheetDamageLog } {
-  const damage = Math.max(0, Math.round(request.damage));
+  const rolled = Math.max(0, Math.round(request.damage));
+  // A car behind a fence is behind a fence too (stage 42b): the mesh takes its
+  // share first, and the bodywork gets what is left.
+  const barrierSp = Math.max(0, Math.round(request.barrierSp ?? 0));
+  const damage = Math.max(0, rolled - barrierSp);
   const before = Math.max(0, Math.min(hp.current, hp.max));
   const after = Math.max(0, before - damage);
   return {
@@ -1702,7 +1713,8 @@ export function applyDamageToCover(
     log: {
       location: 'body',
       locationLabel: 'osłona',
-      damageRolled: damage,
+      damageRolled: rolled,
+      ...(barrierSp > 0 ? { barrierSp } : {}),
       armorSp: 0,
       damageThrough: damage,
       doubled: false,
@@ -1777,6 +1789,7 @@ export function applyDamageToSheet(
     ignoreArmor: request.ignoreArmor,
     ablation: ammoAblation(ammo),
     ...(request.halvesArmor ? { halvesArmor: true } : {}),
+    ...(request.barrierSp ? { barrierSp: request.barrierSp } : {}),
     // „Pomnóż obrażenia głowy … x 3 (a nie x 2)" (s. 188) — read off the wound
     // the *target* already carries, which is why it cannot be a constant and
     // cannot travel with the attack either.
@@ -1799,6 +1812,7 @@ export function applyDamageToSheet(
     location,
     locationLabel: hitLocationLabel(location),
     damageRolled: outcome.damageRolled,
+    ...(outcome.barrierSp > 0 ? { barrierSp: outcome.barrierSp } : {}),
     armorSp: outcome.armorSp,
     ...(outcome.armorHalved ? { armorHalved: true } : {}),
     ...(outcome.damageReduced > 0 ? { damageReduced: outcome.damageReduced } : {}),
@@ -1948,12 +1962,14 @@ export function applyDamageToTokenHp(
     ignoreArmor: request.ignoreArmor,
     ablation: ammoAblation(ammo),
     ...(request.halvesArmor ? { halvesArmor: true } : {}),
+    ...(request.barrierSp ? { barrierSp: request.barrierSp } : {}),
     ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
   const log: SheetDamageLog = {
     location,
     locationLabel: hitLocationLabel(location),
     damageRolled: outcome.damageRolled,
+    ...(outcome.barrierSp > 0 ? { barrierSp: outcome.barrierSp } : {}),
     armorSp: outcome.armorSp,
     ...(outcome.armorHalved ? { armorHalved: true } : {}),
     damageThrough: outcome.damageThrough,

@@ -11,6 +11,7 @@ import {
   FOG_BRUSH_MIN_RADIUS,
   LIGHT_COLORS,
   ROLE_GM,
+  WALL_ARMOR_MAX,
   sceneObjectNominative,
 } from '@vtt/shared';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -121,6 +122,8 @@ export function MapTools() {
   const setWallPlayerToggle = useMapToolStore((s) => s.setWallPlayerToggle);
   const windowPlayerToggle = useMapToolStore((s) => s.windowPlayerToggle);
   const setWindowPlayerToggle = useMapToolStore((s) => s.setWindowPlayerToggle);
+  const wallArmor = useMapToolStore((s) => s.wallArmor);
+  const setWallArmor = useMapToolStore((s) => s.setWallArmor);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
   const coverTypeId = useMapToolStore((s) => s.coverTypeId);
@@ -634,7 +637,7 @@ export function MapTools() {
           <button
             type="button"
             className={`map-tool${wallKind === 'barrier' ? ' map-tool--active' : ''}`}
-            title="Bariera — nie zasłania widoku ani światła, ale blokuje przejście i atak wręcz (siatka, krata, barierka)"
+            title="Bariera — nie zasłania widoku ani światła, ale blokuje przejście i atak wręcz (siatka, krata, barierka); strzał i wybuch tracą jej OB"
             aria-pressed={wallKind === 'barrier'}
             onClick={() => setWallKind('barrier')}
           >
@@ -643,7 +646,7 @@ export function MapTools() {
           <button
             type="button"
             className={`map-tool${wallKind === 'gate' ? ' map-tool--active' : ''}`}
-            title="Brama — przezierna jak bariera; zamknięta blokuje przejście i wręcz, kliknięcie na mapie ją otwiera"
+            title="Brama — przezierna jak bariera; zamknięta blokuje przejście i wręcz i zabiera strzałom OB, kliknięcie na mapie ją otwiera"
             aria-pressed={wallKind === 'gate'}
             onClick={() => setWallKind('gate')}
           >
@@ -670,6 +673,28 @@ export function MapTools() {
             >
               {wallPlayerToggle ? <IconEye /> : <IconEyeOff />}
             </button>
+          )}
+
+          {/* OB bariery i bramy (etap 42b) — ile obrażeń traci strzał i wybuch
+              w drodze przez nią. Liczba zostaje na pasku do przeładowania strony
+              (decyzja MG z 13.09.2026): płot rysuje się odcinkami z tej samej siatki. */}
+          {(wallKind === 'barrier' || wallKind === 'gate') && (
+            <label
+              className="map-tool-slider"
+              title="OB — tyle obrażeń traci strzał i wybuch, który przez to przechodzi, zanim dotrze do pancerza celu (0 = bez zmian). Nie zużywa się."
+            >
+              <span className="map-tool-hint">OB</span>
+              <input
+                type="number"
+                className="map-tool-number"
+                min={0}
+                max={WALL_ARMOR_MAX}
+                step={1}
+                value={wallArmor}
+                onChange={(event) => setWallArmor(event.target.valueAsNumber)}
+                aria-label="OB nowej bariery"
+              />
+            </label>
           )}
 
           {/* Windows keep their own answer to the same question, and default

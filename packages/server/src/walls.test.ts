@@ -908,14 +908,25 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
   });
 
   it('lets the player open the gate from arm’s length, like a door', async () => {
+    // Stage 42b: the gate's armour is the GM's number and never rides the ack.
+    const armored = data(
+      await emitAck<WallView>(gm, 'wall:update', { wallId: gateId, patch: { armor: 9 } }),
+      'wall:update armor',
+    );
+    expect(armored.armor).toBe(9);
     expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: gateId }))).toBe(
       'OPENING_OUT_OF_REACH',
     );
     await moveOwn(gm, 850, 1450);
-    const opened = await emitAck<WallView>(player, 'opening:toggle', { wallId: gateId });
-    expect(data(opened, 'opening:toggle').open).toBe(true);
+    const opened = data(
+      await emitAck<WallView>(player, 'opening:toggle', { wallId: gateId }),
+      'opening:toggle',
+    );
+    expect(opened.open).toBe(true);
+    expect(opened.armor).toBe(0);
 
     await emitAck(gm, 'opening:toggle', { wallId: gateId, open: false });
+    await emitAck(gm, 'wall:update', { wallId: gateId, patch: { armor: 0 } });
     await moveOwn(gm, 450, 1450);
   });
 

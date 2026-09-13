@@ -3,6 +3,8 @@
  *
  * The rulebook's procedure, in the order it happens at the table:
  *  1. the attacker rolls damage,
+ *  1a. a house rule of stage 42b: the SP of the barriers the hit came through
+ *     (a chain-link fence, a railing) is subtracted first — it never wears down,
  *  2. the SP of the armor protecting the hit location is subtracted — halved
  *     and rounded up when a blade or a martial art landed the hit (s. 176),
  *  3. an Aimed Shot to the head doubles whatever got through the armor (×3 if
@@ -13,8 +15,9 @@
  *     damage straight to Hit Points (armor stops none of it, and it ablates
  *     nothing) plus a 2d6 roll on the injury table for that location.
  *
- * The same function runs on the server (authoritative) and in the client's
- * preview, so „ile mi zostanie PW" can never disagree with what happens.
+ * One function for every hit the server lands — a sheet, a statist token, a
+ * throw, a defended zone — so the order above cannot drift between them. The
+ * client does not call it: the UI has no damage preview.
  */
 
 import type { DiceRng } from '../../dice.js';
@@ -122,8 +125,23 @@ export interface CpredDamageInput {
   hpMax: number;
   /** True when two or more damage dice came up 6. */
   criticalInjury?: boolean;
-  /** Damage armor cannot stop (thrown targets, injury effects, poison…). */
+  /**
+   * Damage armor cannot stop (thrown targets, injury effects, poison…). A
+   * barrier stops none of it either — it is armour standing in the way.
+   */
   ignoreArmor?: boolean;
+  /**
+   * SP of the barriers between the attack and the target (stage 42b) — the first
+   * of two layers, taken off before the target's own armour.
+   *
+   * A house rule, not the rulebook („Nie ma czegoś takiego jak »częściowa«
+   * osłona", s. 179 — see `decyzje-i-uproszczenia.md`): 20 damage through a fence
+   * of SP 7 into a jacket of SP 11 is 20 − 7 = 13, then 13 − 11 = 2. The barrier
+   * never ablates, is never halved by a blade (a blade cannot reach through it),
+   * and does not touch the Critical Injury bonus, which goes straight to HP as it
+   * does past any armour.
+   */
+  barrierSp?: number;
   /**
    * The hit only meets half the armour, rounding up (s. 176, 178).
    *
@@ -179,6 +197,8 @@ export interface CpredDamageInput {
 export interface CpredDamageOutcome {
   location: CpredHitLocation;
   damageRolled: number;
+  /** SP of the barriers subtracted first (stage 42b); 0 when none stood in the way. */
+  barrierSp: number;
   /** SP that was subtracted (0 when the damage ignores armor, halved by a blade). */
   armorSp: number;
   /** True when only half the armour counted — the melee rule of s. 176. */
@@ -231,8 +251,13 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   // half that still protects rounds up. The rulebook's example is exactly this.
   const armorHalved = !ignoreArmor && input.halvesArmor === true && spBefore > 0;
   const armorSp = ignoreArmor ? 0 : armorHalved ? Math.ceil(spBefore / 2) : spBefore;
+  // The fence first, the jacket second (stage 42b). Whatever the mesh ate never
+  // reaches the jacket, so the jacket wears down only when something is left to
+  // get past *it*.
+  const barrierSp = ignoreArmor ? 0 : Math.max(0, Math.round(input.barrierSp ?? 0));
+  const afterBarrier = Math.max(0, damageRolled - barrierSp);
 
-  const afterArmor = Math.max(0, damageRolled - armorSp);
+  const afterArmor = Math.max(0, afterBarrier - armorSp);
   const doubled = input.location === 'head' && afterArmor > 0;
   // ×2 unless the target's own skull says otherwise (s. 188). Clamped rather
   // than trusted: the number arrives from a compendium row a GM may retype.
@@ -275,6 +300,7 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   return {
     location: input.location,
     damageRolled,
+    barrierSp,
     armorSp,
     armorHalved,
     damageThrough,

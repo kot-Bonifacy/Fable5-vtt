@@ -46,6 +46,7 @@ function wall(id: number, x1: number, y1: number, x2: number, y2: number): WallV
     open: false,
     playerToggle: false,
     locked: false,
+    armor: 0,
     x1,
     y1,
     x2,

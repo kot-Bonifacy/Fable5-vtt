@@ -8,6 +8,7 @@ import type {
 import {
   cpredEffectiveStats,
   CPRED_EVADE_AREA_MIN_REF,
+  barrierArmorAlong,
   blastAreaAt,
   coneAreaTowards,
   coverInLineOfFire,
@@ -16,6 +17,7 @@ import {
   isInCone,
   metresBetween,
   metresForRules,
+  nearestPointOfCover,
   parseCharacterData,
   rollBlastScatter,
   scatteredCentre,
@@ -156,6 +158,10 @@ export async function areaTargets(
 
     const metres = metresForRules(metresBetween(area.from, point, view));
     const obstacle = obstacleBetween(context, area.from, point, area.coverReachPx);
+    // A fence between the crater and a figure takes its share (stage 42b), on the
+    // same line the wall and the car were asked about — a blast from the centre,
+    // a cone from the muzzle, with no exemption for a shooter at the mesh.
+    const barrierArmor = obstacle ? 0 : barrierArmorAlong(context.walls, area.from, point);
     const target: RollAreaTarget = {
       tokenId: token.id,
       name: tokenTableName(token, token.name),
@@ -163,6 +169,7 @@ export async function areaTargets(
       ownerId: await controllerOf(deps, token),
       ...(obstacle ? { spared: obstacle.kind, sparedBy: obstacle.name } : {}),
       ...(obstacle ? {} : { canEvade: await canJumpClear(deps, registry, token) }),
+      ...(barrierArmor > 0 ? { barrierArmor } : {}),
     };
     found.push({ token, view: target });
   }
@@ -173,11 +180,19 @@ export async function areaTargets(
   for (const cover of context.covers) {
     if (cover.hpCurrent <= 0) continue;
     if (!area.touchesCover(cover)) continue;
+    // Measured to the bodywork nearest the blast, not to the middle of the car:
+    // a fence that stands between the crater and the bonnet shields the bonnet.
+    const barrierArmor = barrierArmorAlong(
+      context.walls,
+      area.from,
+      nearestPointOfCover(area.from, cover),
+    );
     found.push({
       view: {
         coverId: cover.id,
         name: cover.name,
         metres: metresForRules(metresBetween(area.from, coverCentre(cover), view)),
+        ...(barrierArmor > 0 ? { barrierArmor } : {}),
       },
     });
   }

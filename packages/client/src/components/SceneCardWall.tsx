@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { WALL_KINDS, isOpening, metresBetween, type WallKind, type WallView } from '@vtt/shared';
+import {
+  WALL_ARMOR_MAX,
+  WALL_KINDS,
+  isBarrier,
+  isOpening,
+  metresBetween,
+  type WallKind,
+  type WallView,
+} from '@vtt/shared';
 import { toggleOpening, updateWall } from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { wallErrorText } from '../mapErrors.js';
@@ -30,8 +38,9 @@ const KIND_HINTS: Record<WallKind, string> = {
   wall: 'Zasłania zawsze — nie da się jej otworzyć',
   door: 'Zamknięte zasłaniają; otwarte są dziurą w ścianie',
   window: 'Zamknięte zasłaniają z daleka i przyciemniają światło; otwarte nie robią nic',
-  barrier: 'Nie zasłania widoku ani światła; nie da się przez nią przejść ani sięgnąć wręcz',
-  gate: 'Nie zasłania w żadnym stanie; zamknięta blokuje przejście i wręcz, otwarta nic',
+  barrier:
+    'Nie zasłania widoku ani światła; nie da się przez nią przejść ani sięgnąć wręcz, a strzał traci jej OB',
+  gate: 'Nie zasłania w żadnym stanie; zamknięta blokuje przejście i wręcz i zabiera strzałom OB, otwarta nic',
 };
 
 export function SceneCardWall({ wall }: { wall: WallView }) {
@@ -83,6 +92,44 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
         {KIND_HINTS[wall.kind]}
         {metres !== null ? ` · długość ${metres.toFixed(1).replace('.', ',')} m` : ''}
       </p>
+
+      {/* OB bariery (etap 42b, zasada domowa MG). Zatwierdzane przy wyjściu
+          z pola, jak wytrzymałość osłony — nie przy każdej cyfrze. */}
+      {isBarrier(wall) && (
+        <>
+          <label className="bot-field">
+            <span className="auth-label">OB bariery</span>
+            <input
+              type="number"
+              min={0}
+              max={WALL_ARMOR_MAX}
+              step={1}
+              defaultValue={wall.armor}
+              key={`armor-${wall.id}-${wall.armor}`}
+              disabled={busy}
+              title="Tyle obrażeń traci strzał i wybuch przez tę przegrodę, zanim dotrze do pancerza celu"
+              onBlur={(event) => {
+                const armor = Number(event.target.value);
+                if (
+                  Number.isInteger(armor) &&
+                  armor >= 0 &&
+                  armor <= WALL_ARMOR_MAX &&
+                  armor !== wall.armor
+                ) {
+                  void patch({ armor });
+                }
+              }}
+            />
+          </label>
+          <p className="placeholder-text">
+            {wall.armor > 0
+              ? `Strzał i wybuch przez nią tracą ${wall.armor} obr., zanim dotrą do pancerza celu; OB bariery się nie zużywa.${
+                  wall.kind === 'gate' ? ' Otwarta brama nie zabiera nic.' : ''
+                }`
+              : 'OB 0 — strzały i wybuchy przechodzą bez zmian.'}
+          </p>
+        </>
+      )}
 
       {opening && (
         <>

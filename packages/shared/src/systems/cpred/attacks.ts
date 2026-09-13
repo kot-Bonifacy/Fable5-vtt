@@ -401,6 +401,17 @@ export interface CpredAttackMeta {
    */
   halvesArmor?: boolean;
   /**
+   * SP of the barriers this shot passed through on its way to the target (stage
+   * 42b) — taken off the damage before the target's armour.
+   *
+   * Measured by the server at the moment of the shot and carried by the card, for
+   * the reason `halvesArmor` is: „Zastosuj" comes long after, and by then the
+   * target may have walked round the fence. Absent for a swing (it cannot reach
+   * through a barrier at all) and for an area, whose every target has its own
+   * line and its own number (`RollAreaTarget.barrierArmor`).
+   */
+  barrierSp?: number;
+  /**
    * A natural 1 on this Test costs nothing (stage 30a) — the Solo has 4 points
    * in „Wyjście z opresji" (s. 146). Read straight off the sheet by the
    * planner, and read again by whoever rolls: the flag has to be decided before
@@ -506,6 +517,13 @@ export interface CpredAttackContext {
    * `lineOfFire`, and read only for a swing: a fence stops an arm, not a bullet.
    */
   reachBlocked?: boolean;
+  /**
+   * SP of the barriers on the line to the target (stage 42b). Filled in by the
+   * server alone, like `lineOfFire` — the walls never reach a client. The planner
+   * refuses nothing because of it; it only puts the number on the card of a shot
+   * that has one target.
+   */
+  barrierSp?: number;
   /**
    * A cover standing between the shooter and the target (stage 16c).
    *
@@ -1004,6 +1022,17 @@ export function planCpredAttack(
   }
 
   const band = melee || mode === 'suppressive' ? null : rangeBandFor(target.metres);
+  // A fence's toll belongs to a shot with one line (stage 42b). A swing never gets
+  // through the mesh, suppressive fire deals no damage, and a blast or a cone
+  // measures a line per figure it reaches.
+  const barrierSp =
+    !melee &&
+    !explosive &&
+    !spread &&
+    mode !== 'suppressive' &&
+    (target.tokenId !== undefined || target.coverId !== undefined)
+      ? Math.max(0, Math.round(context.barrierSp ?? 0))
+      : 0;
   // „Militech »Ronin« · granatnik podwieszany → Bandyta": the host still names
   // the object being held, because that is the row on the sheet and the thing
   // somebody has to reload.
@@ -1044,6 +1073,7 @@ export function planCpredAttack(
           : {}),
         ...(thrown ? { thrown: true as const } : {}),
         ...(halvesArmor ? { halvesArmor: true as const } : {}),
+        ...(barrierSp > 0 ? { barrierSp } : {}),
         ...(awareness.ignoresFumble ? { ignoresFumble: true as const } : {}),
         ...(awareness.weakSpot > 0 ? { weakSpot: awareness.weakSpot } : {}),
         ...(explosive ? { blastSideM: CPRED_BLAST_SIDE_M } : {}),

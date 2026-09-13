@@ -131,6 +131,7 @@ import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
   currentDrawingStyle,
   currentPlayerToggle,
+  currentWallArmor,
   ensureCoverCatalogueLoaded,
   useMapToolStore,
 } from '../stores/mapToolStore.js';
@@ -676,11 +677,15 @@ export function MapArea() {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
       const tools = useMapToolStore.getState();
-      void createWalls(current.id, points, tools.wallKind, currentPlayerToggle(tools)).then(
-        (ack) => {
-          if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
-        },
-      );
+      void createWalls(
+        current.id,
+        points,
+        tools.wallKind,
+        currentPlayerToggle(tools),
+        currentWallArmor(tools),
+      ).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
+      });
     };
     renderer.onOpeningToggle = (wallId) => {
       const state = useWallStore.getState();

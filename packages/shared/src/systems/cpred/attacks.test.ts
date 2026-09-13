@@ -1241,8 +1241,67 @@ describe('dodatki do broni', () => {
     expect(
       shoot([BAYONET], { ...swing, context: { reachBlocked: true, lineOfFire: false } }),
     ).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
-    // Siatka nie zatrzymuje pocisku; jej OB to etap 42b.
+    // Siatka nie zatrzymuje pocisku — zabiera mu tylko OB (etap 42b, niżej).
     expect(shoot([], { context: { reachBlocked: true } }).ok).toBe(true);
+  });
+
+  describe('OB bariery na karcie strzału (etap 42b)', () => {
+    function planAt(
+      target: { name: string; metres: number; tokenId?: string; coverId?: number; point?: true },
+      context: CpredAttackContext,
+      overrides: {
+        attachments?: CpredAttachmentProfile[];
+        request?: Partial<CpredAttackRequest>;
+      } = {},
+    ) {
+      return planCpredAttack(
+        gunner(),
+        registry,
+        { weaponRowId: 'w1', mode: 'single', ...overrides.request },
+        {
+          row: weaponRow(overrides.attachments ? { attachmentIds: [BAYONET.id] } : {}),
+          resolved: pistol,
+          typeId: 'weapon-type.medium-pistol',
+          attachments: overrides.attachments ?? [],
+          ...(overrides.request?.attachmentId ? { secondary: bayonetBlade } : {}),
+        },
+        target,
+        context,
+      );
+    }
+
+    it('niesie OB zmierzone przez serwer, gdy strzał ma jeden cel', () => {
+      const atFigure = planAt({ name: 'Cel', tokenId: 't1', metres: 10 }, { barrierSp: 7 });
+      if (!atFigure.ok) throw new Error(atFigure.error);
+      expect(atFigure.plan.attack.barrierSp).toBe(7);
+
+      const atCar = planAt({ name: 'Auto', coverId: 3, metres: 10 }, { barrierSp: 5 });
+      if (!atCar.ok) throw new Error(atCar.error);
+      expect(atCar.plan.attack.barrierSp).toBe(5);
+    });
+
+    it('nie niesie niczego bez bariery ani przy OB 0', () => {
+      const none = planAt({ name: 'Cel', tokenId: 't1', metres: 10 }, {});
+      const zero = planAt({ name: 'Cel', tokenId: 't1', metres: 10 }, { barrierSp: 0 });
+      if (!none.ok || !zero.ok) throw new Error('plan refused');
+      expect(none.plan.attack.barrierSp).toBeUndefined();
+      expect(zero.plan.attack.barrierSp).toBeUndefined();
+    });
+
+    it('nie wpisuje OB ciosowi ani strzałowi w punkt na ziemi', () => {
+      const swing = planAt(
+        { name: 'Cel', tokenId: 't1', metres: 1 },
+        { barrierSp: 7 },
+        { attachments: [BAYONET], request: { attachmentId: BAYONET.id } },
+      );
+      if (!swing.ok) throw new Error(swing.error);
+      expect(swing.plan.attack.melee).toBe(true);
+      expect(swing.plan.attack.barrierSp).toBeUndefined();
+
+      const ground = planAt({ name: 'Punkt', metres: 10, point: true }, { barrierSp: 7 });
+      if (!ground.ok) throw new Error(ground.error);
+      expect(ground.plan.attack.barrierSp).toBeUndefined();
+    });
   });
 
   /**

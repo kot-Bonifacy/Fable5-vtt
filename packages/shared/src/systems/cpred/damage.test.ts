@@ -100,6 +100,102 @@ describe('resolveCpredDamage — połowa pancerza (s. 176, 178)', () => {
   });
 });
 
+/**
+ * Etap 42b — zasada domowa MG z 13.09.2026: bariera (siatka, krata) ma OB, które
+ * odejmuje się od obrażeń **przed** pancerzem celu i nigdy się nie zużywa.
+ */
+describe('resolveCpredDamage — OB bariery (etap 42b)', () => {
+  const base = { hpCurrent: 30, hpMax: 40, location: 'body' as const };
+
+  it('liczy przykład MG: 20 przez siatkę OB 7 w kurtkę OB 11 to 2 PW', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 20, barrierSp: 7, armorSp: 11 });
+    expect(outcome.barrierSp).toBe(7);
+    expect(outcome.armorSp).toBe(11);
+    expect(outcome.damageThrough).toBe(2);
+    expect(outcome.hpAfter).toBe(28);
+  });
+
+  it('zużywa kurtkę, gdy coś ją przebiło — bariera nie ma czego zużyć', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 20, barrierSp: 7, armorSp: 11 });
+    expect(outcome.spBefore).toBe(11);
+    expect(outcome.spAfter).toBe(10);
+    expect(outcome.ablated).toBe(true);
+  });
+
+  it('nie zużywa kurtki, gdy siatka zjadła tyle, że kurtka zatrzymała resztę', () => {
+    // Bez bariery 15 przebiłoby OB 11 i starło kurtkę; przez siatkę OB 7 zostaje 8.
+    const outcome = resolveCpredDamage({ ...base, damage: 15, barrierSp: 7, armorSp: 11 });
+    expect(outcome.damageThrough).toBe(0);
+    expect(outcome.ablated).toBe(false);
+    expect(outcome.spAfter).toBe(11);
+  });
+
+  it('zatrzymuje cały cios sama, gdy jej OB nie mniejsze od rzutu', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 5, barrierSp: 7, armorSp: 0 });
+    expect(outcome.damageThrough).toBe(0);
+    expect(outcome.hpLost).toBe(0);
+  });
+
+  it('nie rusza premii rany krytycznej — ta idzie prosto w PW', () => {
+    const outcome = resolveCpredDamage({
+      ...base,
+      damage: 12,
+      barrierSp: 7,
+      armorSp: 11,
+      criticalInjury: true,
+    });
+    expect(outcome.damageThrough).toBe(0);
+    expect(outcome.bonusDamage).toBe(CPRED_CRITICAL_INJURY_BONUS_DAMAGE);
+    expect(outcome.hpAfter).toBe(30 - CPRED_CRITICAL_INJURY_BONUS_DAMAGE);
+  });
+
+  it('mnoży w głowę to, co przeszło przez obie warstwy', () => {
+    // 20 − 7 = 13, − hełm 7 = 6, ×2 = 12.
+    const outcome = resolveCpredDamage({
+      ...base,
+      location: 'head',
+      damage: 20,
+      barrierSp: 7,
+      armorSp: 7,
+    });
+    expect(outcome.doubled).toBe(true);
+    expect(outcome.damageThrough).toBe(12);
+  });
+
+  it('nie dzieli OB bariery, gdy dzieli się pancerz celu', () => {
+    // Połowa dotyczy pancerza, który ostrze spotyka; 20 − 7 = 13, − ceil(11/2) = 7.
+    const outcome = resolveCpredDamage({
+      ...base,
+      damage: 20,
+      barrierSp: 7,
+      armorSp: 11,
+      halvesArmor: true,
+    });
+    expect(outcome.barrierSp).toBe(7);
+    expect(outcome.damageThrough).toBe(7);
+  });
+
+  it('znika razem z pancerzem przy obrażeniach, których pancerz nie zatrzymuje', () => {
+    const outcome = resolveCpredDamage({
+      ...base,
+      damage: 8,
+      barrierSp: 7,
+      armorSp: 11,
+      ignoreArmor: true,
+    });
+    expect(outcome.barrierSp).toBe(0);
+    expect(outcome.damageThrough).toBe(8);
+  });
+
+  it('bez bariery i przy OB 0 liczy dokładnie jak dotąd', () => {
+    const plain = resolveCpredDamage({ ...base, damage: 20, armorSp: 11 });
+    const zero = resolveCpredDamage({ ...base, damage: 20, armorSp: 11, barrierSp: 0 });
+    expect(plain.barrierSp).toBe(0);
+    expect(zero).toEqual(plain);
+    expect(plain.damageThrough).toBe(9);
+  });
+});
+
 describe('resolveCpredDamage — mnożnik trafień w głowę (s. 188)', () => {
   const head = { hpCurrent: 30, hpMax: 40, location: 'head' as const };
 

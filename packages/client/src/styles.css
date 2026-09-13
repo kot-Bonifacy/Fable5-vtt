@@ -4643,6 +4643,12 @@ body.is-resizing {
   filter: var(--map-shadow-slider);
 }
 
+/* OB bariery (etap 42b): dwie cyfry, nie suwak — pole ma być wąskie. */
+.map-tool-slider input.map-tool-number {
+  width: 3.5rem;
+  filter: none;
+}
+
 .map-tool-slider span {
   min-width: 2.2rem;
   text-align: right;

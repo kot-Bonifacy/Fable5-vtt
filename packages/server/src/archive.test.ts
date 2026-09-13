@@ -390,6 +390,18 @@ describe('scena', () => {
         kind: 'wall',
       }),
     );
+    // Etap 42b: siatka ma OB — liczba musi przejechać w obie strony.
+    dataOf(
+      await emitAck(gmSocket, 'wall:create', {
+        sceneId: scene.id,
+        points: [
+          { x: 0, y: 300 },
+          { x: 200, y: 300 },
+        ],
+        kind: 'barrier',
+        armor: 7,
+      }),
+    );
     dataOf(
       await emitAck(gmSocket, 'token:create', {
         sceneId: scene.id,
@@ -400,7 +412,10 @@ describe('scena', () => {
     );
 
     const file = await download<SceneArchive>(`/api/archive/scene/${scene.id}`, gmCookie);
-    expect(file.manifest.counts).toMatchObject({ walls: 1, tokens: 1 });
+    expect(file.manifest.counts).toMatchObject({ walls: 2, tokens: 1 });
+    expect(file.payload.walls).toContainEqual(
+      expect.objectContaining({ kind: 'barrier', armor: 7 }),
+    );
 
     const result = dataOf(
       await emitAck<ArchiveImportResult>(gmSocket, 'archive:scene', {
@@ -412,7 +427,10 @@ describe('scena', () => {
     expect(result.note).toContain('podglądzie');
 
     const back = await download<SceneArchive>(`/api/archive/scene/${result.id}`, gmCookie);
-    expect(back.manifest.counts).toMatchObject({ walls: 1, tokens: 1 });
+    expect(back.manifest.counts).toMatchObject({ walls: 2, tokens: 1 });
+    expect(back.payload.walls).toContainEqual(
+      expect.objectContaining({ kind: 'barrier', armor: 7 }),
+    );
     expect(back.payload.tokens[0]).toMatchObject({ name: 'Wartownik', x: 100, y: 100 });
     // Import nigdy nie przestawia stołu — scena wjeżdża nieaktywna.
     const row = await built.prisma.scene.findUniqueOrThrow({ where: { id: result.id } });

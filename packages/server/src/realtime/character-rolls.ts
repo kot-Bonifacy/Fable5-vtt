@@ -366,7 +366,18 @@ async function resolveRollRequest(
     aimedAt?: unknown;
     halvesArmor?: unknown;
     weakSpot?: unknown;
+    barrierSp?: unknown;
+    attackerTokenId?: unknown;
   };
+  // Where the line through a barrier starts, should „Zastosuj" be pointed at
+  // somebody this attack never named (stage 42b): the crater of a blast, which
+  // stays put, or the shooter of a shot or a cone, wherever they stand by then.
+  const barrierFrom =
+    attack.area && attack.area.shape !== 'cone'
+      ? { sceneId: attack.area.sceneId, x: attack.area.centre.x, y: attack.area.centre.y }
+      : typeof system.attackerTokenId === 'string'
+        ? { tokenId: system.attackerTokenId }
+        : null;
   return {
     ...request,
     ...(typeof system.weaponRowId === 'string' ? { weaponRowId: system.weaponRowId } : {}),
@@ -388,6 +399,12 @@ async function resolveRollRequest(
     ...(Number.isInteger(system.weakSpot) && (system.weakSpot as number) > 0
       ? { weakSpot: system.weakSpot as number }
       : {}),
+    // The fence the shot went through (stage 42b), measured when it was fired —
+    // the same rail as `halvesArmor`, and for the same reason.
+    ...(Number.isInteger(system.barrierSp) && (system.barrierSp as number) > 0
+      ? { barrierSp: system.barrierSp as number }
+      : {}),
+    ...(barrierFrom ? { barrierFrom } : {}),
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
@@ -931,12 +948,20 @@ export async function performCharacterRoll(
         // much armour to wear off and whether the target catches fire; the aim
         // point (s. 170) rides along for the same reason. Opaque to the dice
         // engine (`RollDamageMeta.system`) — CP RED puts it in, CP RED reads it out.
-        ...(plan.damage.ammo || plan.damage.aimedAt || plan.damage.halvesArmor
+        ...(plan.damage.ammo ||
+        plan.damage.aimedAt ||
+        plan.damage.halvesArmor ||
+        plan.damage.barrierSp ||
+        plan.damage.barrierFrom
           ? {
               system: {
                 ...(plan.damage.ammo ? { ammo: plan.damage.ammo } : {}),
                 ...(plan.damage.aimedAt ? { aimedAt: plan.damage.aimedAt } : {}),
                 ...(plan.damage.halvesArmor ? { halvesArmor: true } : {}),
+                // Stage 42b: the barrier on the line to the named target, and where
+                // that line starts for anybody else „Zastosuj" is pointed at.
+                ...(plan.damage.barrierSp ? { barrierSp: plan.damage.barrierSp } : {}),
+                ...(plan.damage.barrierFrom ? { barrierFrom: plan.damage.barrierFrom } : {}),
               },
             }
           : {}),

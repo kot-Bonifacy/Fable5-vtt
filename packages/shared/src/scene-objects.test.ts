@@ -34,6 +34,7 @@ const wall: WallView = {
   open: false,
   playerToggle: false,
   locked: false,
+  armor: 0,
   x1: 200,
   y1: 200,
   x2: 400,

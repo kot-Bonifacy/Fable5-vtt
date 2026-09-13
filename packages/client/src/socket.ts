@@ -1811,7 +1811,16 @@ export const createWalls = (
   points: ScenePoint[],
   kind: WallKind,
   playerToggle: boolean,
-) => emitSceneAck<WallView[]>('wall:create', { sceneId, points, kind, playerToggle });
+  /** Barriers and gates only (stage 42b); the server keeps it nowhere else. */
+  armor?: number,
+) =>
+  emitSceneAck<WallView[]>('wall:create', {
+    sceneId,
+    points,
+    kind,
+    playerToggle,
+    ...(armor !== undefined ? { armor } : {}),
+  });
 
 export const updateWall = (wallId: number, patch: WallUpdatePayload['patch']) =>
   emitSceneAck<WallView>('wall:update', { wallId, patch });

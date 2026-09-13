@@ -158,6 +158,22 @@ export function distanceToCover(
 }
 
 /**
+ * The point of the rectangle nearest to `point` — `point` itself when it is
+ * inside. Where a line from somebody to a car first meets the bodywork: what a
+ * shot at the car aims for, and where a fence between them is measured to
+ * (stage 42b).
+ */
+export function nearestPointOfCover(
+  point: ScenePoint,
+  cover: Pick<CoverView, 'x' | 'y' | 'width' | 'height'>,
+): ScenePoint {
+  return {
+    x: Math.min(Math.max(point.x, cover.x), cover.x + cover.width),
+    y: Math.min(Math.max(point.y, cover.y), cover.y + cover.height),
+  };
+}
+
+/**
  * The covers that stop a bullet fired from `origin` (stage 16c).
  *
  * The exemption is the whole point of the function: a cover you are **standing

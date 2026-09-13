@@ -389,6 +389,17 @@ export interface CpredRollRequest {
    */
   weakSpot?: number;
   /**
+   * Server-filled: SP of the barriers the shot passed on its way to the target it
+   * named (stage 42b), read off the stored attack like `halvesArmor`.
+   */
+  barrierSp?: number;
+  /**
+   * Server-filled: where that line started (stage 42b), read off the stored
+   * attack — so „Zastosuj" pointed at somebody the attack never named can measure
+   * the barriers on the line to *them* instead.
+   */
+  barrierFrom?: CpredBarrierOrigin;
+  /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
    * client's choice; the server only checks it may be reached and seen.
@@ -471,6 +482,17 @@ export type CpredRollProblem =
   /** „To żart, prawda? Jeszcze nie masz dużych grup fanów" (s. 144). */
   | 'NO_CROWD';
 
+/**
+ * Where the line through a barrier starts (stage 42b), for measuring it again.
+ *
+ * A shot and a cone start at the shooter, and the shooter is named by **token**:
+ * decision of the GM (13.09.2026) — when „Zastosuj" is moved onto somebody the
+ * attack never named, the line is drawn from where the shooter stands *now*. A
+ * blast starts at the crater, which does not move, so it is a point on the scene
+ * the attack went off on.
+ */
+export type CpredBarrierOrigin = { tokenId: string } | { sceneId: string; x: number; y: number };
+
 /** Damage metadata the chat card needs to offer „Zastosuj na celu". */
 export interface CpredDamagePlan {
   location: CpredHitLocation;
@@ -496,6 +518,10 @@ export interface CpredDamagePlan {
   aimedAt?: CpredAimPoint;
   /** Half the armour stops this one (s. 176) — a blade or a martial art. */
   halvesArmor?: boolean;
+  /** SP of the barriers on the line to the named target (stage 42b). */
+  barrierSp?: number;
+  /** Where that line starts, for a target the attack never named (stage 42b). */
+  barrierFrom?: CpredBarrierOrigin;
 }
 
 /** What „Leczenie" needs to judge itself and explain the verdict (stage 30b). */
@@ -1161,6 +1187,10 @@ function planDamageRoll(
         ...(request.ammo ? { ammo: request.ammo } : {}),
         ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
         ...(request.halvesArmor ? { halvesArmor: true as const } : {}),
+        ...(request.barrierSp !== undefined && request.barrierSp > 0
+          ? { barrierSp: request.barrierSp }
+          : {}),
+        ...(request.barrierFrom ? { barrierFrom: request.barrierFrom } : {}),
       },
     },
   };

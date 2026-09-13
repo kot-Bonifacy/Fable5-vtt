@@ -50,6 +50,7 @@ import {
   attachmentMountProblem,
   attachmentProfilesOf,
   attachmentSlotsFree,
+  barrierArmorAlong,
   fittedAttachmentsFor,
   resolveAttachmentWeapon,
   weaponMagazineWith,
@@ -70,6 +71,7 @@ import {
   metresBetween,
   metresBetweenTokens,
   metresForRules,
+  nearestPointOfCover,
   parseCharacterData,
   passiveEvasionDv,
   planCpredAttack,
@@ -663,10 +665,7 @@ async function blockingCoverFor(
  * half of the bodywork and let the car block a shot at itself.
  */
 function coverAimPoint(origin: ScenePoint, cover: CoverView): ScenePoint {
-  return {
-    x: Math.min(Math.max(origin.x, cover.x), cover.x + cover.width),
-    y: Math.min(Math.max(origin.y, cover.y), cover.y + cover.height),
-  };
+  return nearestPointOfCover(origin, cover);
 }
 
 /** Loads a cover row and proves it belongs to this campaign. */
@@ -1033,6 +1032,15 @@ export async function performAttackRoll(
       const reachBlocked =
         weapon.resolved?.melee === true &&
         (await isBodyBlocked(deps.ctx.prisma, scene.id, origin, aimPoint));
+      // What the mesh takes off the round (stage 42b), on the very line the round
+      // flies — to the middle of a figure, to the near edge of a car. Measured for
+      // every shot with a target and left unread by the planner wherever it means
+      // nothing: a swing, a blast, a cone, suppressive fire.
+      const walls = fire.loaded?.walls ?? [];
+      const barrierSp =
+        (target || coverTarget) && walls.length > 0
+          ? barrierArmorAlong(walls, origin, aimPoint)
+          : 0;
 
       const planned = planCpredAttack(
         data,
@@ -1085,6 +1093,7 @@ export async function performAttackRoll(
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
           lineOfFire,
           ...(reachBlocked ? { reachBlocked: true } : {}),
+          ...(barrierSp > 0 ? { barrierSp } : {}),
           // „PT określasz, używając wiersza Granatnika w tabeli PT zasięgów"
           // (s. 177) — the line lives in the catalogue, so the planner is handed
           // it rather than allowed to go looking.

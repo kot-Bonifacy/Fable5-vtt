@@ -12,6 +12,8 @@ import {
   LIGHT_DEFAULT_COLOR,
   LIGHT_DEFAULT_DIM_M,
   EMPTY_COVER_CATALOGUE,
+  WALL_ARMOR_MAX,
+  isBarrier,
   buildCoverCatalogue,
   type CpredCoverCatalogue,
   type DrawingStyle,
@@ -192,6 +194,12 @@ interface MapToolStoreState extends DrawSettings {
   wallPlayerToggle: boolean;
   /** Windows: the same question, kept apart because the answer differs. */
   windowPlayerToggle: boolean;
+  /**
+   * Barriers and gates (stage 42b): the armour the next drawn one gets. Starts at
+   * 0 and remembers the last number until the page is reloaded (decision of the
+   * GM, 13.09.2026) — a fence is traced in runs, and each run is the same mesh.
+   */
+  wallArmor: number;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
   /** Preset the next dragged rectangle becomes („car", „concrete-bollard"…). */
@@ -236,6 +244,8 @@ interface MapToolStoreState extends DrawSettings {
   setWallKind: (wallKind: WallKind) => void;
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWindowPlayerToggle: (windowPlayerToggle: boolean) => void;
+  /** Clamped to a whole number from 0 to `WALL_ARMOR_MAX`. */
+  setWallArmor: (wallArmor: number) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
   setCoverTypeId: (coverTypeId: string) => void;
   setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
@@ -282,6 +292,7 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // that every window in Night City is a way in. The GM opens the one that
     // matters with a single click.
     windowPlayerToggle: false,
+    wallArmor: 0,
     wallSnapGrid: true,
     coverTypeId: '',
     coverCatalogue: EMPTY_COVER_CATALOGUE,
@@ -320,6 +331,12 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallKind: (wallKind) => set({ wallKind }),
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWindowPlayerToggle: (windowPlayerToggle) => set({ windowPlayerToggle }),
+    setWallArmor: (wallArmor) =>
+      set({
+        wallArmor: Number.isFinite(wallArmor)
+          ? Math.min(WALL_ARMOR_MAX, Math.max(0, Math.round(wallArmor)))
+          : 0,
+      }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
     setCoverTypeId: (coverTypeId) => set({ coverTypeId }),
     setCoverCatalogue: (coverCatalogue) =>
@@ -349,6 +366,15 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
  */
 export function currentPlayerToggle(state: MapToolStoreState): boolean {
   return state.wallKind === 'window' ? state.windowPlayerToggle : state.wallPlayerToggle;
+}
+
+/**
+ * The armour the chain about to be drawn gets (stage 42b) — the toolbar's number
+ * for a barrier or a gate, and nothing for any other kind, so a fence's number
+ * never rides along on a wall drawn right after it.
+ */
+export function currentWallArmor(state: MapToolStoreState): number | undefined {
+  return isBarrier({ kind: state.wallKind }) ? state.wallArmor : undefined;
 }
 
 /** The style the toolbar currently describes — what a new shape is drawn with. */

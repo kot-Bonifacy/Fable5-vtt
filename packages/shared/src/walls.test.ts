@@ -55,6 +55,7 @@ function makeWall(
     open: false,
     playerToggle: false,
     locked: false,
+    armor: 0,
     x1,
     y1,
     x2,

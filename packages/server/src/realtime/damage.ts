@@ -3,11 +3,13 @@ import type {
   CharacterInjuryPayload,
   CpredAimPoint,
   CpredAmmoProfile,
+  CpredBarrierOrigin,
   DamageApplyPayload,
   DamageLogEntry,
   DamageUndoPayload,
   MapFxEffect,
   RollResult,
+  ScenePoint,
   TokenHp,
 } from '@vtt/shared';
 import {
@@ -16,6 +18,8 @@ import {
   damageTotal,
   isCpredAimPoint,
   isCriticalInjuryEntry,
+  nearestPointOfCover,
+  tokenCentre,
   tokenTableName,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
@@ -45,7 +49,14 @@ import {
   restoreStatusValues,
   type AppliedStatusEffect,
 } from './turn-effects.js';
-import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
+import {
+  emitTokensById,
+  emitTokensOfCharacter,
+  requireCampaignToken,
+  toTokenView,
+} from './tokens.js';
+import { toSceneView } from './scenes.js';
+import { barrierArmorBetween } from './walls-io.js';
 import { buildCompendiumSync } from './compendium.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import { INCLUDE_CHAT_NAMES, broadcastRedactedChatMessage, toChatMessageView } from './chat-io.js';
@@ -140,9 +151,10 @@ async function applyDamageToCoverRow(
   });
   if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('COVER_NOT_FOUND');
 
+  const barrierSp = await barrierSpOfHit(deps, roll, row.scene, { coverId: row.id, cover: row });
   const applied = applyDamageToCover(
     { current: row.hpCurrent, max: row.hpMax },
-    { damage: damageTotal(roll) },
+    { damage: damageTotal(roll), ...(barrierSp > 0 ? { barrierSp } : {}) },
   );
   await deps.ctx.prisma.cover.update({
     where: { id: row.id },
@@ -214,6 +226,12 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     // „to była maczeta" — a fact about the swing, read where the swing was
     // stored (s. 176). Same reasoning as the two above.
     const halvesArmor = readRollHalvesArmor(roll);
+    // The fence between the shot and this figure (stage 42b) — off the card when
+    // the attack named them, measured on the map when it did not.
+    const barrierSp = await barrierSpOfHit(deps, roll, scene, {
+      tokenId: token.id,
+      at: tokenCentre(toTokenView(token, true), toSceneView(scene)),
+    });
 
     const request: SheetDamageRequest = {
       // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
@@ -229,6 +247,7 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       // break another's (the head keeps working because it is `location`).
       ...(aimedAt && roll.damage?.targetTokenId === token.id ? { aimedAt } : {}),
       ...(halvesArmor ? { halvesArmor: true } : {}),
+      ...(barrierSp > 0 ? { barrierSp } : {}),
     };
 
     const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
@@ -321,10 +340,13 @@ function damageMapFx(
 ): MapFxEffect[] {
   const at = fxCentre(token, scene);
   const effects: MapFxEffect[] = [{ kind: 'spark', at, sound: 'impact' }];
+  // A fence that ate the whole round gets the credit rather than a vest that
+  // never felt it (stage 42b).
+  const barrierAteIt = log.barrierSp !== undefined && log.barrierSp >= log.damageRolled;
   effects.push(
     log.hpLost > 0
       ? { kind: 'float', at, text: `−${log.hpLost}`, tone: 'damage' }
-      : { kind: 'float', at, text: 'PANCERZ', tone: 'note' },
+      : { kind: 'float', at, text: barrierAteIt ? 'BARIERA' : 'PANCERZ', tone: 'note' },
   );
   if (log.injury) effects.push({ kind: 'float', at, text: 'KRYTYK', tone: 'crit' });
   return effects;
@@ -415,6 +437,90 @@ function readRollAmmo(roll: RollResult): CpredAmmoProfile | null {
   const candidate = ammo as Partial<CpredAmmoProfile>;
   if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
   return { ...(candidate as CpredAmmoProfile), patterns: candidate.patterns ?? [] };
+}
+
+/**
+ * SP of the barriers a hit came through on its way to this target (stage 42b).
+ *
+ * Three answers, in the order they are trusted:
+ *
+ *  - an **area** measured a line to every figure and car it reached when it went
+ *    off, and wrote the number into that target's row;
+ *  - a **shot** measured the line to the target it named, and wrote it on the card
+ *    — it is used only while „Zastosuj" still points there, exactly as the aimed
+ *    leg is;
+ *  - **anybody else** (the GM moved the damage onto a figure the attack never
+ *    named): measured again now, from where the line starts — the crater of a
+ *    blast, or wherever the shooter stands by now (decision of the GM, 13.09.2026).
+ *    A shooter gone from this scene leaves no line to measure, and no barrier.
+ *
+ * Every number is read off the stored messages or the map; the client names only
+ * the target, as it always has.
+ */
+async function barrierSpOfHit(
+  deps: RealtimeDeps,
+  roll: RollResult,
+  scene: Scene,
+  target:
+    | { tokenId: string; at: ScenePoint }
+    | { coverId: number; cover: { x: number; y: number; width: number; height: number } },
+): Promise<number> {
+  const damage = roll.damage;
+  if (!damage) return 0;
+  const named = (row: { tokenId?: string; coverId?: number }) =>
+    'tokenId' in target ? row.tokenId === target.tokenId : row.coverId === target.coverId;
+
+  if (damage.areaTargets) {
+    const entry = damage.areaTargets.find(named);
+    if (entry) return wholeSp(entry.barrierArmor);
+  } else if (named({ tokenId: damage.targetTokenId, coverId: damage.targetCoverId })) {
+    return wholeSp((damage.system as { barrierSp?: unknown } | undefined)?.barrierSp);
+  }
+
+  const from = await barrierOriginPoint(deps, readRollBarrierFrom(roll), scene);
+  if (!from) return 0;
+  const to = 'tokenId' in target ? target.at : nearestPointOfCover(from, target.cover);
+  return barrierArmorBetween(deps.ctx.prisma, scene.id, from, to);
+}
+
+/** A stored SP, trusted only as a whole non-negative number. */
+function wholeSp(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 0;
+}
+
+/** Where a hit's line started (stage 42b), off the stored roll. */
+function readRollBarrierFrom(roll: RollResult): CpredBarrierOrigin | null {
+  const system = roll.damage?.system;
+  if (!system || typeof system !== 'object') return null;
+  const from = (system as { barrierFrom?: unknown }).barrierFrom;
+  if (!from || typeof from !== 'object') return null;
+  const candidate = from as Record<string, unknown>;
+  if (typeof candidate.tokenId === 'string') return { tokenId: candidate.tokenId };
+  if (
+    typeof candidate.sceneId === 'string' &&
+    typeof candidate.x === 'number' &&
+    Number.isFinite(candidate.x) &&
+    typeof candidate.y === 'number' &&
+    Number.isFinite(candidate.y)
+  ) {
+    return { sceneId: candidate.sceneId, x: candidate.x, y: candidate.y };
+  }
+  return null;
+}
+
+/** That origin as a point on this scene, or null when it is not on it. */
+async function barrierOriginPoint(
+  deps: RealtimeDeps,
+  origin: CpredBarrierOrigin | null,
+  scene: Scene,
+): Promise<ScenePoint | null> {
+  if (!origin) return null;
+  if ('tokenId' in origin) {
+    const shooter = await deps.ctx.prisma.token.findUnique({ where: { id: origin.tokenId } });
+    if (!shooter || shooter.sceneId !== scene.id) return null;
+    return tokenCentre(toTokenView(shooter, true), toSceneView(scene));
+  }
+  return origin.sceneId === scene.id ? { x: origin.x, y: origin.y } : null;
 }
 
 /** Whether the hit only meets half the armour (s. 176), off the stored roll. */

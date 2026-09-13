@@ -1,5 +1,11 @@
 import type { ScenePoint, WallView } from '@vtt/shared';
-import { isSegmentClear, isWallKind, movementSegments } from '@vtt/shared';
+import {
+  barrierArmorAlong,
+  isBarrier,
+  isSegmentClear,
+  isWallKind,
+  movementSegments,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Wall as WallRow } from '../generated/prisma/client.js';
 
@@ -14,15 +20,19 @@ import type { Wall as WallRow } from '../generated/prisma/client.js';
 
 /** Rebuilds a stored row into the shared view. */
 export function toWallView(row: WallRow): WallView {
+  // A hand-edited row must not reach the raycast as an unknown kind; the safe
+  // fallback is the one that blocks.
+  const kind = isWallKind(row.kind) ? row.kind : 'wall';
   return {
     id: row.id,
     sceneId: row.sceneId,
-    // A hand-edited row must not reach the raycast as an unknown kind; the
-    // safe fallback is the one that blocks.
-    kind: isWallKind(row.kind) ? row.kind : 'wall',
+    kind,
     open: row.open,
     playerToggle: row.playerToggle,
     locked: row.locked,
+    // Only a barrier or a gate carries armour (stage 42b); a number left on a
+    // retyped row by hand must not turn a window into plating.
+    armor: isBarrier({ kind }) ? Math.max(0, row.armor) : 0,
     x1: row.x1,
     y1: row.y1,
     x2: row.x2,
@@ -60,4 +70,24 @@ export async function isBodyBlocked(
   const walls = await fetchSceneWalls(prisma, sceneId);
   if (walls.length === 0) return false;
   return !isSegmentClear(from, to, movementSegments(walls));
+}
+
+/**
+ * Armour of the barriers between two points of one scene, as they stand now
+ * (stage 42b).
+ *
+ * The live half of the rule: the shot itself measures its line once, while the
+ * figures are where the dice found them, and carries the number on its card.
+ * This is for „Zastosuj" pointed at somebody that attack never named — decision
+ * of the GM (13.09.2026): the line is measured again, to where they stand.
+ */
+export async function barrierArmorBetween(
+  prisma: PrismaClient,
+  sceneId: string,
+  from: ScenePoint,
+  to: ScenePoint,
+): Promise<number> {
+  const walls = await fetchSceneWalls(prisma, sceneId);
+  if (walls.length === 0) return 0;
+  return barrierArmorAlong(walls, from, to);
 }

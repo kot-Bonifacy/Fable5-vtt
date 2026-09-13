@@ -228,6 +228,12 @@ export interface RollAreaTarget {
   /** True when this target may still try to jump clear of the area. */
   canEvade?: boolean;
   /**
+   * Armour of the barriers between the origin of the area and this target
+   * (stage 42b), measured when it went off; absent when there were none. Opaque
+   * here like `WallView.armor` — the system module decides what it takes off.
+   */
+  barrierArmor?: number;
+  /**
    * Who controls this figure. Present only so the delivery layer can decide who
    * may read the row: an area card names everybody it reached, and „who is
    * standing in that dark room" is exactly the kind of thing that must not reach

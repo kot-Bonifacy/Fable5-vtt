@@ -619,8 +619,11 @@ export function visibleOpeningsFor(
   // by pulling the handle rather than by looking, so it never leaves the server.
   // Scrubbed here — the single function that answers „what is a player told
   // about doors and windows" — rather than at each emit site, where the next one
-  // added would forget.
-  return visible.map((door) => (door.locked ? { ...door, locked: false } : door));
+  // added would forget. A gate's armour goes the same way (stage 42b): what the
+  // mesh takes off a round is the GM's number, not something seen through it.
+  return visible.map((door) =>
+    door.locked || door.armor !== 0 ? { ...door, locked: false, armor: 0 } : door,
+  );
 }
 
 /**
