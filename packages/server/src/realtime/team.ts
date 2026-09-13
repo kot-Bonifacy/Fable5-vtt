@@ -20,6 +20,7 @@ import {
   cpredLoyaltyTreacherous,
   cpredRoleAbilityRank,
   cpredStartingLoyalty,
+  cpredTeamCyberdeck,
   cpredTeamProblem,
   cpredTeamProfession,
   cpredTeamSlots,
@@ -111,6 +112,11 @@ async function teamMemberData(
   );
   const resolved = entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
   const magazine = resolved?.magazine ?? CPRED_TEAM_WEAPON.magazine;
+  // The Netrunner's deck is data, not a sentence: `netrun:*` refuses a sheet
+  // without one, and until 13.09.2026 that was every Netrunner HR ever sent.
+  const deck = profession.cyberdeck
+    ? cpredTeamCyberdeck(profession.cyberdeck, compendium.entries)
+    : null;
 
   // „Interfejs (Zdolność Specjalna Netrunnera)" is a Role, and the Role is
   // found by the **ability's name** — the ids come from `roles.json`, which the
@@ -166,11 +172,16 @@ async function teamMemberData(
         location: 'body',
       },
     ],
+    cyberdeck: deck?.deck ?? null,
     notes:
       `${profession.name} — ${profession.duty}\n` +
       `Przykrywka: ${profession.cover}\n\n` +
       `Cyborgizacje (wliczone w Cechy — Empatii nie obniżamy): ${profession.cyberware}\n\n` +
       `Osprzęt: ${profession.gear}\n\n` +
+      (deck && deck.missing.length > 0
+        ? 'Programy z pakietu, których HR nie włożył do deku (brak w kompendium albo ' +
+          `brak miejsca): ${deck.missing.join(', ')}\n\n`
+        : '') +
       'Nie może podnosić poziomu swoich Umiejętności (s. 154).',
   });
 }

@@ -911,7 +911,11 @@ function EntryCard({
             <button
               type="button"
               className="small-button"
-              title="Bez opłaty — łup, ekwipunek startowy, nagroda za zlecenie."
+              title={
+                entry.category === 'cyberware'
+                  ? 'Bez opłaty — łup, nagroda za zlecenie. Wszczep wchodzi bez Testu montażu, ale z rzutem na Utratę Człowieczeństwa.'
+                  : 'Bez opłaty — łup, ekwipunek startowy, nagroda za zlecenie.'
+              }
               onClick={() => void addToSheet()}
             >
               Dodaj za darmo

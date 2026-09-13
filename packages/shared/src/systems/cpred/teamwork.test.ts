@@ -9,6 +9,7 @@ import {
   cpredLoyaltyObeys,
   cpredLoyaltyTreacherous,
   cpredStartingLoyalty,
+  cpredTeamCyberdeck,
   cpredTeamProblem,
   cpredTeamProfession,
   cpredTeamSlots,
@@ -17,6 +18,14 @@ import {
   describeTeamMember,
   readCpredTeam,
 } from './roleability.js';
+import {
+  buildCpredRegistry,
+  createDefaultCharacterData,
+  cyberdeckSlotsUsed,
+  mergeCharacterData,
+  parseCharacterData,
+} from './character.js';
+import type { CompendiumEntry, ProgramEntry } from './compendium.js';
 
 /**
  * Praca Zespołowa Korpo (etap 30c, s. 153–157).
@@ -174,5 +183,139 @@ describe('lista zespołu na karcie Korpo', () => {
 
   it('opisuje wiersz zawodem i Lojalnością', () => {
     expect(describeTeamMember(member)).toBe('Firmowy ochroniarz · Lojalność 5');
+  });
+});
+
+/**
+ * Cyberdek Korporacyjnego netrunnera (13.09.2026). Do tej daty był zdaniem
+ * w notatkach, a `netrun:*` odmawia karcie bez deku — czyli netrunner z HR-u,
+ * jedyny powód, dla którego pracownik jest pełną kartą, nie mógł sieciować.
+ */
+describe('cyberdek z pakietu Korporacyjnego netrunnera', () => {
+  const netrunner = cpredTeamProfession('netrunner')!;
+  const registry = buildCpredRegistry({ skills: [] }, { roles: [] });
+
+  function attacker(id: string, name: string, fields: Partial<ProgramEntry> = {}): ProgramEntry {
+    return {
+      id,
+      category: 'program',
+      name,
+      cost: 100,
+      programClass: 'attacker',
+      target: 'antiProgram',
+      atk: 3,
+      def: 0,
+      rez: 0,
+      ...fields,
+    };
+  }
+
+  const deckEntry: CompendiumEntry = {
+    id: 'gear.cyberdek-zwyklej-jakosci',
+    category: 'gear',
+    name: 'Cyberdek (zwykłej jakości)',
+    cost: 500,
+    deckSlots: 7,
+  };
+  const sword = attacker('program.miecz', 'Miecz');
+  const killer = attacker('program.zabojca', 'Zabójca', { blackIce: true, per: 6, speed: 4 });
+  const worm: ProgramEntry = {
+    id: 'program.robak',
+    category: 'program',
+    name: 'Robak',
+    cost: 50,
+    programClass: 'booster',
+    atk: 0,
+    def: 0,
+    rez: 7,
+  };
+  const armor: ProgramEntry = {
+    id: 'program.pancerz',
+    category: 'program',
+    name: 'Pancerz',
+    cost: 50,
+    programClass: 'defender',
+    atk: 0,
+    def: 0,
+    rez: 7,
+  };
+
+  it('pakiet niesie dek jako dane, a nie jako zdanie w osprzęcie', () => {
+    expect(netrunner.cyberdeck).toEqual({
+      name: 'Cyberdek (zwykłej jakości)',
+      slots: 7,
+      programs: ['Miecz', 'Zabójca', 'Robak', 'Pancerz'],
+    });
+    expect(netrunner.gear).not.toContain('Cyberdek');
+    const others = CPRED_TEAM_PROFESSIONS.filter((profession) => profession.id !== 'netrunner');
+    expect(others.every((profession) => profession.cyberdeck === null)).toBe(true);
+  });
+
+  it('wkłada cztery Programy z kompendium, z liczbami przepisanymi z wpisu', () => {
+    const { deck, missing } = cpredTeamCyberdeck(netrunner.cyberdeck!, [
+      deckEntry,
+      sword,
+      killer,
+      worm,
+      armor,
+    ]);
+    expect(missing).toEqual([]);
+    expect(deck).toMatchObject({
+      compendiumId: 'gear.cyberdek-zwyklej-jakosci',
+      name: 'Cyberdek (zwykłej jakości)',
+      slots: 7,
+    });
+    expect(deck.installed.map((row) => [row.name, row.slotCost])).toEqual([
+      ['Miecz', 1],
+      ['Zabójca', 2],
+      ['Robak', 1],
+      ['Pancerz', 1],
+    ]);
+    // Czarny LOD zajmuje dwa gniazda i niesie PER/PRĘ — liczby z wpisu, nie zgadnięte.
+    expect(deck.installed[1]).toMatchObject({
+      kind: 'program',
+      compendiumId: 'program.zabojca',
+      program: { blackIce: true, per: 6, speed: 4, target: 'antiProgram' },
+    });
+    expect(cyberdeckSlotsUsed(deck)).toBe(5);
+  });
+
+  it('Programu bez wpisu nie zmyśla — oddaje jego nazwę do notatek', () => {
+    const { deck, missing } = cpredTeamCyberdeck(netrunner.cyberdeck!, [sword, killer, worm]);
+    expect(missing).toEqual(['Pancerz']);
+    expect(deck.installed.map((row) => row.name)).toEqual(['Miecz', 'Zabójca', 'Robak']);
+    // Deku nie ma w kompendium, a mimo to jest: wydrukowane 7 gniazd, bez odnośnika.
+    expect(deck).toEqual({
+      name: 'Cyberdek (zwykłej jakości)',
+      slots: 7,
+      installed: deck.installed,
+    });
+  });
+
+  it('szuka po nazwie bez względu na wielkość liter i spacje', () => {
+    const shouted = attacker('program.miecz-mg', '  MIECZ ');
+    const { deck, missing } = cpredTeamCyberdeck(netrunner.cyberdeck!, [shouted]);
+    expect(deck.installed.map((row) => row.compendiumId)).toEqual(['program.miecz-mg']);
+    expect(missing).toEqual(['Zabójca', 'Robak', 'Pancerz']);
+  });
+
+  it('nie przepełnia deku, gdy MG powiększył Program w kompendium', () => {
+    const huge = attacker('program.miecz', 'Miecz', { slots: 7 });
+    const { deck, missing } = cpredTeamCyberdeck(netrunner.cyberdeck!, [huge, killer, worm, armor]);
+    expect(deck.installed.map((row) => row.name)).toEqual(['Miecz']);
+    expect(missing).toEqual(['Zabójca', 'Robak', 'Pancerz']);
+    expect(cyberdeckSlotsUsed(deck)).toBeLessThanOrEqual(deck.slots);
+  });
+
+  it('złożony dek przechodzi odczyt karty bez strat', () => {
+    const { deck } = cpredTeamCyberdeck(netrunner.cyberdeck!, [
+      deckEntry,
+      sword,
+      killer,
+      worm,
+      armor,
+    ]);
+    const sheet = mergeCharacterData(createDefaultCharacterData(), { cyberdeck: deck });
+    expect(parseCharacterData(JSON.stringify(sheet), registry).cyberdeck).toEqual(deck);
   });
 });

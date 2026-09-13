@@ -24,6 +24,11 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
   górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
 
+**Zamknięte 13.09: cyberdek netrunnera Korpo i „Dodaj za darmo".** Pracownik z HR-u dostaje
+prawdziwy deck z Programami z kompendium, a Programy bez wpisu lądują w notatkach karty. „Dodaj za
+darmo" przy cyborgizacji zostaje, jak jest (decyzja MG), a tooltip mówi, że wszczep wchodzi bez Testu
+montażu, ale z rzutem na Utratę Człowieczeństwa. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 12.09 (siódma sesja): Stym** — razem z Edytorem bólu (decyzja MG) i z błędem spoza
 listy: stan ran statysty liczony z BC i SW zamiast z wydrukowanych PW. Oba obejrzane w przeglądarce
 na kampanii-śmieciu; diagnozy w `archiwum/zamkniete-zaleglosci.md`. **Żadna nowa pozycja nie została
@@ -154,35 +159,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   Kerenzikov, Cyberoko"** — zdanie dopisuje `sweepTimedEffects`, czyli zamiatanie, które chodzi
   wyłącznie w trybie turowym; żeby je zobaczyć, trzeba przepuścić sześć rund walki. Sama
   zawartość zapisu jest pokryta testem (`sheets.test.ts`), niepokryte jest **zdanie**.
-
-- **„Dodaj za darmo" omija cały montaż.** Guzik MG przy wpisie kompendium woła
-  `addCompendiumItemToCharacter`, czyli zwykłą łatę karty — nie `character:cyberware`. Wszczep
-  wchodzi więc **bez rzutu na Utratę Człowieczeństwa, bez Testu montażu i bez odmów z s. 111**.
-  Zachowanie jest sprzed 04.09 i po części celowe (to furtka MG na łup i nagrodę za zlecenie), ale
-  od tej sesji różnica między dwiema drogami jest większa niż „płacisz albo nie": jedna liczy
-  zasady, druga nie. Do rozstrzygnięcia przy stole — albo guzik dostaje ścieżkę przez zdarzenie
-  z `payment: 'none'` (i wtedy znika „darmowy" wyjątek od Człowieczeństwa), albo zostaje jak jest
-  i mówi to wprost w tooltipie.
-  **Sprawdzone 12.09 — wpis jest w dużej części nieaktualny, i to od 09.08 (23b):**
-  `addCompendiumItemToCharacter` przy cyborgizacji woła `character:cyberware` z `payment: 'none'`
-  (`compendium-items.ts`), więc Utrata Człowieczeństwa **jest** rzucana, a odmowy z s. 111 omija
-  wyłącznie MG — na każdej drodze, także przez ripperdoca. Jedyna realna różnica to brak Testu
-  montażu. Do zamknięcia albo przepisania decyzją MG.
-
-- **Korporacyjny netrunner nie ma cyberdeku na karcie, tylko w prozie.** Pracownik zespołu
-  Korpo (30c) dostaje pełną kartę postaci **właśnie dlatego**, że statysta nie mógłby zrobić
-  jedynej rzeczy, do której netrunner istnieje — komentarz przy jego pakiecie w `roleability.ts`
-  mówi to wprost („the reason a team member had to be a real sheet: a cyberdeck needs one").
-  Karta wychodzi z HR z Rolą **Netrunner rangi 2** (`ability: { name: 'Interfejs', rank: 2 }`),
-  ale `cyberdeck` zostaje `null`, a deck jest zdaniem w `gear`: „Cyberdek (7 gniazd: Miecz,
-  Zabójca, Robak, Pancerz)". Netrunner z zespołu nie podłączy się więc do Sieci, dopóki MG nie
-  złoży mu decku ręką na karcie. Przepis: `hireTeamMember` (`realtime/team.ts`) ma registry,
-  więc może zbudować `CpredCyberdeck` z `slots: 7` i czterema `CpredNetInstallRow` z profilami
-  Programów skopiowanymi z kompendium — tak samo, jak `purchasedSheetRow` kopiuje liczby broni.
-  Otwarte świadomie 04.09: to dołożenie brakującego zakresu, nie naprawa usterki, i dotyka
-  modelu z 26a. **Sprawdzone 12.09:** w `dev.db` nie ma ani jednej karty z zespołem, więc naprawa
-  dotknie wyłącznie nowych zatrudnień — niczego nie trzeba migrować. W kompendium są wszystkie
-  cztery Programy i „Cyberdek (zwykłej jakości)".
 
 - **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
   zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer

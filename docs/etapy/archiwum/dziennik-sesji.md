@@ -7,6 +7,16 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — skórki kości w jednym wierszu
+
+**Zlecenie MG:** przenieść krótki opis za nazwę skórki, po myślniku, żeby każda pozycja zajmowała
+jeden wiersz. W oknie Ustawień kropka koloru, nazwa i opis są teraz w jednej linii. Wygląd kości
+i działanie rzutów pozostały bez zmian.
+
+**Weryfikacja:** na żywej stronie w Chrome wszystkie pięć pozycji mieści się w jednym wierszu
+przy standardowej szerokości okna 400 px; 196 testów klienta, build TypeScript/Vite, ESLint
+i Prettier — zielone. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — krótsze opisy skórek kości
 
 **Zlecenie MG:** usunąć fragmenty po myślnikach z opisów pięciu skórek kości w ustawieniach.

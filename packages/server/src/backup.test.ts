@@ -679,6 +679,38 @@ describe('Zespół Korpo', () => {
   });
 
   it('HR przysyła pracownika z pełnym pakietem, nie ze statblokiem', async () => {
+    // Dek i trzy z czterech Programów pakietu jako wpisy MG. Liczby są wymyślone
+    // — publiczna próbka kompendium nie ma ani deku, ani Programów. Pancerza brak
+    // celowo: Program bez wpisu ma zostać zdaniem w notatkach, a nie zgadnięty.
+    const catalogue = [
+      { category: 'gear', name: 'Cyberdek (zwykłej jakości)', cost: 500, deckSlots: 7 },
+      {
+        category: 'program',
+        name: 'Miecz',
+        programClass: 'attacker',
+        target: 'antiProgram',
+        atk: 3,
+        def: 0,
+        rez: 0,
+      },
+      {
+        category: 'program',
+        name: 'Zabójca',
+        programClass: 'attacker',
+        target: 'antiProgram',
+        blackIce: true,
+        atk: 4,
+        def: 0,
+        rez: 12,
+        per: 6,
+        speed: 4,
+      },
+      { category: 'program', name: 'Robak', programClass: 'booster', atk: 0, def: 0, rez: 7 },
+    ];
+    for (const entry of catalogue) {
+      expect((await emitAck(gm, 'compendium:upsert', { entry })).ok).toBe(true);
+    }
+
     const ok = await emitAck<CharacterView>(gm, 'character:team-hire', {
       characterId: execId,
       professionId: 'netrunner',
@@ -717,6 +749,18 @@ describe('Zespół Korpo', () => {
     // Szczęścia BN nie wydaje: sakiewka pusta, choć sama Cecha musi być ≥ 1.
     expect(member.stats.luck).toBe(1);
     expect(member.luckCurrent).toBe(0);
+    // Dek przestał być zdaniem w osprzęcie (13.09): bez niego `netrun:*`
+    // odmawiał netrunnerowi, dla którego ten pakiet w ogóle istnieje.
+    expect(member.cyberdeck).toMatchObject({ name: 'Cyberdek (zwykłej jakości)', slots: 7 });
+    expect(member.cyberdeck?.compendiumId).toBeDefined();
+    expect(member.cyberdeck?.installed.map((row) => [row.name, row.slotCost])).toEqual([
+      ['Miecz', 1],
+      ['Zabójca', 2],
+      ['Robak', 1],
+    ]);
+    expect(member.cyberdeck?.installed[1]?.program).toMatchObject({ blackIce: true, per: 6 });
+    expect(member.notes).toMatch(/deku.*: Pancerz/);
+    expect(member.notes).not.toContain('Cyberdek');
   });
 
   it('trzyma się liczby etatów, jaką płaci ranga', async () => {

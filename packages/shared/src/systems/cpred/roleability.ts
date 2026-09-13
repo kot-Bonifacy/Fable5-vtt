@@ -19,10 +19,18 @@
  * without a context object travelling between them.
  */
 
-import type { CpredCharacterData, CpredRegistry } from './character.js';
+import type {
+  CpredCharacterData,
+  CpredCyberdeck,
+  CpredNetInstallRow,
+  CpredRegistry,
+} from './character.js';
 // Type-only: the price bands of the catalogue are what the Technik's PT/time
 // table is indexed by, and a value import would drag the whole compendium in.
-import type { CostCategory } from './compendium.js';
+import type { CompendiumEntry, CostCategory, ProgramEntry } from './compendium.js';
+// A value import, and a safe one: `netrunning.ts` takes nothing from this module.
+// The team's deck copies Programs with the very function the sheet uses.
+import { netProgramProfileOf, netProgramSlots } from './netrunning.js';
 
 /**
  * The Solo's Special Ability, matched by name for the reason described above.
@@ -1649,11 +1657,32 @@ export interface CpredTeamProfession {
    * which is a Role, not a skill. Null for the other four.
    */
   ability: { name: string; rank: number } | null;
+  /**
+   * „Cyberdek (7 gniazd: …)" out of the Netrunner's „Osprzęt:" — the one piece
+   * of gear a sheet cannot do without, because `netrun:*` refuses a character
+   * with no deck. Null for the other four.
+   */
+  cyberdeck: CpredTeamCyberdeck | null;
   /** „Cyborgizacje:" — prose, and see `cpredTeamMemberPatch` for why. */
   cyberware: string;
-  /** „Osprzęt:" minus the armour and the pistol, which become real rows. */
+  /** „Osprzęt:" minus the armour, the pistol and the deck, which become real rows. */
   gear: string;
   page: number;
+}
+
+/**
+ * A package's deck as printed: a slot count and Programs by **name**.
+ *
+ * The Programs' numbers stay in the compendium — a copy here would stop
+ * agreeing with the catalogue the first time the GM edited a row — and reach
+ * the sheet only at hiring, copied the way every other row is.
+ */
+export interface CpredTeamCyberdeck {
+  /** Catalogue name of the deck, found by name like the pistol. */
+  name: string;
+  /** „7 gniazd" — the printed number, not the catalogue row's. */
+  slots: number;
+  programs: readonly string[];
 }
 
 /** Shared by all five packages: „Osprzęt: Lekka kurtka kuloodporna (OB 11)". */
@@ -1703,6 +1732,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     skillSpecialties: { 'local-expert': 'Twój dom' },
     language: 'Slang uliczny',
     ability: null,
+    cyberdeck: null,
     cyberware:
       'Ulepszone przeciwciała, Pancerz podskórny (OB 11), Zestaw cyberaudio, Agent wewnętrzny, ' +
       'Odbiornik lokalizatora',
@@ -1748,6 +1778,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     skillSpecialties: { 'local-expert': 'Twój dom' },
     language: 'Slang uliczny',
     ability: null,
+    cyberdeck: null,
     cyberware:
       'Cyberoczy ze sparowanym widzeniem w ciemności/podczerwieni/UV i zmianą koloru; cyberręka ' +
       'z dłonią-hakiem, wysuwaną bronią dystansową (b. ciężki pistolet) i pokryciem Realskinn',
@@ -1793,6 +1824,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     skillSpecialties: { 'local-expert': 'Twój dom' },
     language: 'Slang uliczny',
     ability: null,
+    cyberdeck: null,
     cyberware:
       'Radar/Sonar, Zestaw cyberaudio, Agent wewnętrzny, odbiornik lokalizatora, wykrywacz radaru',
     gear: 'Samochód kompaktowy z ulepszonymi fotelami; zwykła amunicja do B.C. pistoletu ×50',
@@ -1839,11 +1871,17 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     // entry in all five packages that is a Role rather than a skill, and the
     // reason a team member had to be a real sheet: a cyberdeck needs one.
     ability: { name: 'Interfejs', rank: 2 },
+    // „Cyberdek (7 gniazd: Miecz, Zabójca, Robak, Pancerz)" — the catalogue's
+    // seven-slot deck is the ordinary-quality one. Out of `gear` since
+    // 13.09.2026: a deck written as prose is a deck `netrun:*` refuses.
+    cyberdeck: {
+      name: 'Cyberdek (zwykłej jakości)',
+      slots: 7,
+      programs: ['Miecz', 'Zabójca', 'Robak', 'Pancerz'],
+    },
     cyberware:
       'Sprzęg neuralny, Gniazdo czipów, Edytor bólu, Gniazda interfejsu, Cyberoczy z wirtualem',
-    gear:
-      'Agent; Cyberdek (7 gniazd: Miecz, Zabójca, Robak, Pancerz); zwykła amunicja do ' +
-      'B.C. pistoletu ×50',
+    gear: 'Agent; zwykła amunicja do B.C. pistoletu ×50',
     page: 156,
   },
   {
@@ -1882,6 +1920,7 @@ export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
     skillSpecialties: { 'local-expert': 'Twój dom' },
     language: 'Slang uliczny',
     ability: null,
+    cyberdeck: null,
     cyberware:
       'Dłoń z narzędziami, Zestaw cyberaudio, Agent wewnętrzny, wykrywacz podsłuchu, ' +
       'rejestrator dźwięku',
@@ -1901,6 +1940,66 @@ export function cpredTeamStats(
 ): CpredTeamStatRow | null {
   const index = Math.round(roll) - 1;
   return profession.rows[index] ?? null;
+}
+
+/** What `cpredTeamCyberdeck` built, and the Programs it had nothing to put in. */
+export interface CpredTeamCyberdeckBuild {
+  deck: CpredCyberdeck;
+  /** No Program of that name in the compendium, or no room left — prose on the sheet. */
+  missing: string[];
+}
+
+/**
+ * The employee's deck as sheet data (13.09.2026).
+ *
+ * Found **by name**, like the pistol, because the group may re-slug the
+ * catalogue; copied with `netProgramProfileOf`, like the sheet does, so the deck
+ * HR hands out is the deck a player would have built by hand. What the catalogue
+ * does not know is not invented — it comes back in `missing` for the caller to
+ * write down. Same for a Program the GM enlarged past the free slots: an
+ * overfull deck fails `validateCyberdeck` and would vanish on the next read.
+ */
+export function cpredTeamCyberdeck(
+  spec: CpredTeamCyberdeck,
+  entries: readonly CompendiumEntry[],
+): CpredTeamCyberdeckBuild {
+  const key = (name: string) => name.trim().toLowerCase();
+  const deckEntry = entries.find(
+    (entry) => entry.category === 'gear' && key(entry.name) === key(spec.name),
+  );
+  const installed: CpredNetInstallRow[] = [];
+  const missing: string[] = [];
+  let used = 0;
+  spec.programs.forEach((name, index) => {
+    const entry = entries.find(
+      (candidate): candidate is ProgramEntry =>
+        candidate.category === 'program' && key(candidate.name) === key(name),
+    );
+    const slotCost = entry ? netProgramSlots(entry) : 0;
+    if (!entry || used + slotCost > spec.slots) {
+      missing.push(name);
+      return;
+    }
+    used += slotCost;
+    installed.push({
+      id: `team-program-${index + 1}`,
+      compendiumId: entry.id,
+      name: entry.name,
+      notes: '',
+      kind: 'program',
+      slotCost,
+      program: netProgramProfileOf(entry),
+    });
+  });
+  return {
+    deck: {
+      ...(deckEntry ? { compendiumId: deckEntry.id } : {}),
+      name: deckEntry?.name ?? spec.name,
+      slots: spec.slots,
+      installed,
+    },
+    missing,
+  };
 }
 
 // ─────────────────────────── Lojalność (s. 154) ───────────────────────────

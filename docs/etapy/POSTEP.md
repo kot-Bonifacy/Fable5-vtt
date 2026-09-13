@@ -201,8 +201,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2023** w `shared`, **1100** na serwerze, **196** u klienta —
-zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2029** w `shared`, **1100** na serwerze, **197** u klienta —
+zielone (liczby zmierzone 13.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -235,7 +235,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   23 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
@@ -249,6 +249,24 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 — cyberdek netrunnera Korpo i „Dodaj za darmo"
+
+**Zlecenie MG:** przegląd zaległości; do zrobienia wybrany cyberdek pracownika Korpo i decyzja
+o „Dodaj za darmo". Pakiet Korporacyjnego netrunnera ma pole `cyberdeck`, a `cpredTeamCyberdeck`
+(`roleability.ts`) składa deck z kompendium po nazwie; `team.ts` wkłada go na kartę pracownika,
+a Programy bez wpisu (albo bez miejsca) dopisuje do notatek. Zdanie o decku zeszło z „Osprzętu".
+„Dodaj za darmo" przy cyborgizacji zostaje (decyzja MG: zachowanie zamierzone), a tooltip mówi, że
+wszczep wchodzi bez Testu montażu, ale z rzutem na Utratę Człowieczeństwa. Obie pozycje zamknięte
+w `zaleglosci.md`, nowa umowa w sekcji `postac`.
+
+**Weryfikacja:** 2029 testów w `shared` (6 nowych), 1100 na serwerze (asercje decku w teście
+zatrudnienia), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint i Prettier — zielone.
+W Chrome na kampanii „Oględziny 12.09": HR przysłał „Oględziny Deck" z deckiem 5/7 (Miecz, Zabójca,
+Robak, Pancerz z liczbami z kompendium), tooltip obejrzany przy cyborgizacji i przy sprzęcie.
+**Znalezione, nieruszane:** wpis o maszynopisie w `zaleglosci.md` każe sprawdzać przełącznik „⌨",
+usunięty w `3d78ee5`, a wpis o nazwie figury w czacie czeka na etap 35, zamknięty 05.09. Etap 28
+pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — odświeżenie okna skrótów klawiszowych
 
 **Zlecenie MG:** zaktualizować treść i wygląd pomocy. Okno ma wyszukiwarkę klawiszy,
@@ -260,13 +278,3 @@ przechodzą do mapy. Zachowana pamięć pozycji i rozmiaru.
 **Weryfikacja:** 197 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone.
 W Chrome obejrzano okno 640 i 400 px, wyszukiwanie, brak wyników oraz czyszczenie filtra.
 Vite zgłasza ostrzeżenie o dużych paczkach JS. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — skórki kości w jednym wierszu
-
-**Zlecenie MG:** przenieść krótki opis za nazwę skórki, po myślniku, żeby każda pozycja zajmowała
-jeden wiersz. W oknie Ustawień kropka koloru, nazwa i opis są teraz w jednej linii. Wygląd kości
-i działanie rzutów pozostały bez zmian.
-
-**Weryfikacja:** na żywej stronie w Chrome wszystkie pięć pozycji mieści się w jednym wierszu
-przy standardowej szerokości okna 400 px; 196 testów klienta, build TypeScript/Vite, ESLint
-i Prettier — zielone. Etap 28 pozostaje nierozpoczęty.

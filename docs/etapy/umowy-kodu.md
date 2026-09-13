@@ -1579,6 +1579,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Sprzęt pakietu BN-a, bez którego karta nie działa, jest polem pakietu, nie zdaniem w `gear`** — jak `cyberdeck` netrunnera Korpo; składa go czysta funkcja z kompendium po **nazwie**, a czego katalog nie zna, wraca w `missing` do notatek.
 - **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).
 - **Odmowa montażu** — jedna czysta funkcja `cyberwareInstallRefusal` (brak podstawy / brak gniazda / limit 7) i jedna tabela zdań `CYBERWARE_INSTALL_REFUSAL_MESSAGES`; liczy **na rodzinie, nie na pudełku sylwetki**, wpisu bez rodziny nie odmawia, a Borgizacji nie liczy do rodzin z podstawą. MG przechodzi, karta czatu zapisuje.
 - **Sakiewka Zdolności bez Zdolności** — `cpredDropOrphanedRolePurses` zdejmuje `medicine`/`fabrication`/`fleet`, gdy scalona karta straciła Zdolność; woła się **przed** walidacjami w `character:update`. Nowa sakiewka zależna od rangi dopisuje się tam, nie w walidatorze.
@@ -1603,6 +1604,18 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Sprzęt pakietu, bez którego karta nie spełnia swojej funkcji, jest polem pakietu (13.09).**
+Pakiety zespołu Korpo trzymają osprzęt jako prozę (`CpredTeamProfession.gear`), a na wiersze karty
+zamieniają tylko to, co bez wiersza nie działa: pancerz, pistolet i od 13.09 **cyberdek netrunnera**
+(`cyberdeck: CpredTeamCyberdeck | null` — nazwa, wydrukowana liczba gniazd, Programy po nazwie).
+Czysta funkcja `cpredTeamCyberdeck` w `roleability.ts` szuka w kompendium **po nazwie** (jak
+pistolet, bo grupa może zmienić slugi), kopiuje Programy tym samym `netProgramProfileOf`, którym
+karta wkłada je ręcznie, i **niczego nie zgaduje**: nazwa bez wpisu albo Program, który się już nie
+mieści, wraca w `missing`, a `team.ts` pisze ją w notatkach karty. Przepełniony deck oblałby
+`validateCyberdeck` i zniknąłby po cichu przy następnym odczycie — dlatego funkcja pilnuje gniazd
+sama. Kolejny taki przedmiot (np. pojazd Szofera, jeśli kiedyś stanie się danymi) dopisuje się jako
+kolejne pole pakietu i kolejna funkcja obok, a to, co zostaje wierszem, **schodzi z `gear`**.
 
 **Kto operuje przy montażu, jest jednym polem protokołu — nie kartą NPC (04.09).**
 `CharacterCyberwarePayload.surgeon` ma trzy warianty i tyle ich będzie: `none` (montaż bez Testu,

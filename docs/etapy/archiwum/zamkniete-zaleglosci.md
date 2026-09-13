@@ -9,6 +9,33 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-13 (cyberdek netrunnera Korpo i „Dodaj za darmo")
+
+**04.09 (etap 30c): Korporacyjny netrunner miał cyberdek wyłącznie w prozie.** Pracownik z HR-u
+wychodził z Rolą Netrunner rangi 2, ale z `cyberdeck: null` i zdaniem „Cyberdek (7 gniazd: Miecz,
+Zabójca, Robak, Pancerz)" w notatkach — a `requireNetrunner` (`realtime/netrun.ts`) odmawia karcie
+bez deku (`NET_NO_DECK`). Czyli jedyny zawód, dla którego pracownik w ogóle jest pełną kartą, nie
+mógł sieciować, dopóki MG nie złożył mu decku ręką. Sprawdzone przy okazji: wszczepy pakietu
+zapisane prozą (Gniazda interfejsu) **niczego nie blokują** — Sieć pyta wyłącznie o rangę Interfejsu
+i o deck. **Naprawa:** pakiet ma pole `cyberdeck` (`CpredTeamCyberdeck`: nazwa, wydrukowane 7 gniazd,
+Programy po nazwie), a czysta funkcja `cpredTeamCyberdeck` (`roleability.ts`) składa z kompendium
+`CpredCyberdeck`, kopiując Programy tym samym `netProgramProfileOf`, którym karta wkłada je ręcznie.
+Deck znaleziony po nazwie dostaje `compendiumId`, bez wpisu i tak powstaje z 7 gniazdami. Programu
+bez wpisu — albo takiego, który MG powiększył ponad wolne gniazda — funkcja **nie zgaduje**: nazwa
+wraca w `missing`, a `team.ts` pisze ją w notatkach karty („Programy z pakietu, których HR nie włożył
+do deku…"). Zdanie o decku zeszło z `gear`. Karty zatrudnione wcześniej zostają bez decku (12.09
+w `dev.db` nie było ani jednej). Testy: sześć w `teamwork.test.ts` (z odczytem karty przez
+`parseCharacterData`) i asercje decku w `backup.test.ts` → „Zespół Korpo".
+
+**04.09 (etap 23b): „Dodaj za darmo" omija cały montaż.** Wpis był w dużej części nieaktualny od
+09.08 (sprawdzone 12.09 i ponownie 13.09): guzik przy cyborgizacji woła `character:cyberware`
+z `payment: 'none'` i bez chirurga (`compendium-items.ts`), więc Utrata Człowieczeństwa **jest**
+rzucana, odmowy z s. 111 omija wyłącznie MG (na każdej drodze), a jedyna różnica wobec zwykłego
+montażu to brak Testu montażu. **Decyzja MG z 13.09: zachowanie zamierzone** — furtka na łup
+i nagrodę za zlecenie. **Naprawa:** tooltip guzika przy cyborgizacji mówi to wprost: „Wszczep wchodzi
+bez Testu montażu, ale z rzutem na Utratę Człowieczeństwa" (`CompendiumPanel.tsx`); przy innych
+kategoriach tooltip bez zmian.
+
 ## Zamknięte 2026-09-12 (siódma sesja — Stym, Edytor bólu i stan ran statysty)
 
 **03.09 (farmaceutyki, 30b): Stym nie zawieszał kar Poważnie Rannego — robił to MG.** Wpis odkładał

@@ -26,6 +26,14 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 13.09 — cyberdek netrunnera Korpo obejrzany na kampanii-śmieciu, Poligon
+nietknięty.** Aktywna kampania była na czas oględzin przełączona na **„Oględziny 12.09 — do
+usunięcia"** i wróciła na **„Poligon bojowy"**. W kampanii-śmieciu doszły dwie karty: **„Oględziny
+Korpo"** (Korpo, Praca Zespołowa 3, zespół w komplecie) i **„Oględziny Deck"** (Korporacyjny
+netrunner z HR-u, deck 5/7: Miecz, Zabójca, Robak, Pancerz), oraz karta rzutu „HR przysyła" na
+czacie. Kartę Korpo założyło gniazdo z konsoli (`character:create` + `character:update`), zatrudnienie
+szło już przez UI. Na „StrefiePrzemysłowej" niczego nie ruszano.
+
 **Stan po sesji 12.09 (siódma) — Stym obejrzany na kampanii-śmieciu, Poligon nietknięty.**
 Aktywna kampania była na czas oględzin przełączona na **„Oględziny 12.09 — do usunięcia"** i wróciła
 na **„Poligon bojowy"** (na czacie Poligonu zostały dwa wiersze o przełączeniu). W kampanii-śmieciu
