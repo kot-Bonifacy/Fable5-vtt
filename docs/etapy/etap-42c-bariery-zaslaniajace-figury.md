@@ -27,9 +27,13 @@ widzi.
    NPC sterowany przez MG. Bot celu za zasłoną nie widzi i go nie wybiera.
 5. **Za zasłaniającą barierą leży mgła wojny, ale mapa ma być widoczna** (dopisek MG z 13.09,
    w trakcie sesji 42a). Obszar, którego figury gracza nie widzą przez zasłaniającą barierę, jest
-   przygaszony, mapa pod nim pozostaje czytelna, a figur w nim nie ma. **Do ustalenia z MG na
-   starcie 42c:** wygląd (jak „pamięć mapy" z 18c czy osobny odcień) i czy przygaszenie obowiązuje
-   też w trybie mgły ręcznej i na scenie otwartej — decyzja 1 mówi „wszystkie tryby".
+   przygaszony, mapa pod nim pozostaje czytelna, a figur w nim nie ma.
+
+**Założenia wdrożenia (13.09, pytania zadane w sesji, bez osobnej odpowiedzi MG):**
+przygaszenie jak „pamięć mapy” (`DIM_COVER_ALPHA`), we wszystkich trzech trybach. Ręczne
+„Odsłoń” odsłania mapę, ale nie omija zasłony figur. Zwykła mgła i ciemność nadal obowiązują.
+Kara to liczba całkowita od −99 do 0; 0 pozwala zasłaniać bez kary. Ustawienia nowych odcinków
+zostają na pasku do przeładowania strony, jak OB z 42b.
 
 ## Jedno źródło prawdy dla mgły i ukrywania
 
@@ -40,22 +44,22 @@ figury w przygaszonym miejscu ani pustego, jasnego placu, na którym ktoś stoi.
 
 ## Zakres
 
-- [ ] Kolumny `Wall.hidesFigures` i `Wall.concealPenalty`, migracja, eksport/import
-- [ ] Wielokąt widoku figur (zasłaniające bariery jako przeszkody) liczony na serwerze w trzech
+- [x] Kolumny `Wall.hidesFigures` i `Wall.concealPenalty`, migracja, eksport/import
+- [x] Wielokąt widoku figur (zasłaniające bariery jako przeszkody) liczony na serwerze w trzech
       trybach; `concealmentFor` / `concealedFrom` pytają o środek figury w tym wielokącie
-- [ ] Mgła za barierą: klient dostaje ten wielokąt (drugi zestaw w `vision:sync`, także poza
+- [x] Mgła za barierą: klient dostaje ten wielokąt (drugi zestaw w `vision:sync`, także poza
       trybem Dynamicznym) i przygasza mapę poza nim, nie zakrywając jej
-- [ ] `emitTokenUpsert`: na scenie z zasłaniającą barierą ruch figury idzie listą per gracz także
+- [x] `emitTokenUpsert`: na scenie z zasłaniającą barierą ruch figury idzie listą per gracz także
       w trybie mgły i otwartym
-- [ ] Efekty mapy: końce strzału, liczby obrażeń i iskry słuchają zasłony; wybuch, chmura
+- [x] Efekty mapy: końce strzału, liczby obrażeń i iskry słuchają zasłony; wybuch, chmura
       i strefa — tylko mapy
-- [ ] Bot (`tokenSightFor`), oględziny (41), marsz MG (`tokensSeenFrom`) — ta sama zasłona
-- [ ] Atak gracza na cel, którego nie widzi: `TOKEN_NOT_FOUND` we **wszystkich** trybach —
+- [x] Bot (`tokenSightFor`), oględziny (41), marsz MG (`tokensSeenFrom`) — ta sama zasłona
+- [x] Atak gracza na cel, którego nie widzi: `TOKEN_NOT_FOUND` we **wszystkich** trybach —
       naprawa luki znalezionej 13.09: przy Dynamicznej serwer sprawdzał tylko `hidden` i mgłę,
       a odmowa „coś stoi na drodze" zdradzała ścianę
-- [ ] Kara: nazwany wiersz w rozbiciu, najgorsza z przeciętych barier (nie sumuje się)
-- [ ] Pasek i karta segmentu: „Zasłania figury" + kara
-- [ ] Testy serwera w trzech trybach, bot, efekty mapy, kara
+- [x] Kara: nazwany wiersz w rozbiciu, najgorsza z przeciętych barier (nie sumuje się)
+- [x] Pasek i karta segmentu: „Zasłania figury" + kara
+- [x] Testy serwera w trzech trybach, bot, efekty mapy, kara
 
 ## Kryteria ukończenia
 
@@ -66,3 +70,17 @@ figury w przygaszonym miejscu ani pustego, jasnego placu, na którym ktoś stoi.
 4. Strzał zza bariery nie zdradza strzelca w efektach mapy.
 5. Za zasłaniającą barierą gracz widzi przygaszoną mapę i żadnej figury; gdy jego figura przejdzie
    na drugą stronę (albo MG otworzy bramę), przygaszenie znika, a figury się pojawiają.
+
+## Wynik sesji 13.09.2026
+
+Zaimplementowane: migracja `20260913210000_stage42c_figure_barriers`, maska `figurePolygons`
+w synchronizacji i podczas przeciągania, filtrowanie figur i efektów, kara w rozbiciu,
+bot, oględziny, marsz MG oraz kontrolki paska i karty segmentu. Usunięcie ostatniego źródła
+wzroku również odświeża zasłonę. Poza Dynamiczną nie wysyłamy wielokątów zwykłych ścian.
+
+Weryfikacja: testy gniazd w trzech trybach (33), geometria i kara w shared, regresja dodatku
+ignorującego dym, eksport/import; pełne testy i sprawdzenie typów. W Chrome obejrzano pasek
+aplikacji (przełącznik i domyślne −4) oraz rzeczywisty renderer na izolowanej scenie: mapa za
+zamkniętą bramą jest czytelna i przygaszona, otwarcie usuwa przygaszenie, także w Dynamicznej.
+Nie wykonywano całej ścieżki edycji karty segmentu na żywej kampanii; testy danych korzystały
+z osobnych baz. Poligon i jego walka pozostały nietknięte.

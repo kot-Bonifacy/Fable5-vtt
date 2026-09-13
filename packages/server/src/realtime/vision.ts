@@ -15,6 +15,7 @@ import {
   ROLE_GM,
   WALL_REACH_M,
   blockingSegments,
+  figureBarriers,
   buildLightMask,
   computeVisionPolygon,
   coverInLineOfFire,
@@ -430,6 +431,7 @@ export async function visionPolygonsFor(
 
 /** What one viewer's own tokens see, and what light they see it by. */
 export interface ViewerSight {
+  figurePolygons?: ScenePoint[][] | null;
   polygons: ScenePoint[][];
   lighting: ViewerLighting | null;
   /** The sight sources themselves — the door test and the glow list need them. */
@@ -474,7 +476,25 @@ export async function viewerSightFor(
         windows: context.windows,
       }
     : null;
-  return { polygons, lighting, sources };
+  const figurePolygons = figurePolygonsOf(scene, context, sources);
+  return { polygons, lighting, sources, figurePolygons };
+}
+
+/** Same polygons feed payload filtering and the translucent map cover. */
+function figurePolygonsOf(
+  scene: Scene,
+  context: SceneVisionContext,
+  sources: SightSource[],
+): ScenePoint[][] | null {
+  const barriers = figureBarriers(context.walls);
+  if (barriers.length === 0 || (!usesDynamicVision(scene) && sources.length === 0)) return null;
+  return sources.map((source) =>
+    computeVisionPolygon(
+      source.origin,
+      [...(usesDynamicVision(scene) ? source.segments : context.boundsSegments), ...barriers],
+      usesDynamicVision(scene) ? source.radiusPx : null,
+    ),
+  );
 }
 
 /**
@@ -513,7 +533,12 @@ export function tokenSightFor(
         windows: context.windows,
       }
     : null;
-  return { polygons, lighting, sources: [source] };
+  return {
+    polygons,
+    lighting,
+    sources: [source],
+    figurePolygons: figurePolygonsOf(scene, context, [source]),
+  };
 }
 
 /**
@@ -536,7 +561,9 @@ export function isPointObservable(
   polygons: readonly (readonly ScenePoint[])[],
   lighting: ViewerLighting | null,
   overrides: readonly FogShapeView[],
+  figurePolygons?: readonly (readonly ScenePoint[])[] | null,
 ): boolean {
+  if (figurePolygons && !isPointVisible(point, figurePolygons)) return false;
   if (overrides.length > 0) {
     const override = fogOverrideAt(point, overrides);
     if (override === 'hide') return false;
@@ -621,9 +648,13 @@ export function visibleOpeningsFor(
   // about doors and windows" — rather than at each emit site, where the next one
   // added would forget. A gate's armour goes the same way (stage 42b): what the
   // mesh takes off a round is the GM's number, not something seen through it.
-  return visible.map((door) =>
-    door.locked || door.armor !== 0 ? { ...door, locked: false, armor: 0 } : door,
-  );
+  return visible.map((door) => ({
+    ...door,
+    locked: false,
+    armor: 0,
+    hidesFigures: false,
+    concealPenalty: 0,
+  }));
 }
 
 /**
@@ -803,6 +834,7 @@ export function visibleGlowsFor(
 
 /** What one player's socket needs after any change to what they can see. */
 export interface ViewerVision {
+  figurePolygons?: ScenePoint[][] | null;
   polygons: ScenePoint[][];
   /** Doors and windows this viewer may work — see `visibleOpeningsFor`. */
   openings: WallView[];
@@ -811,6 +843,24 @@ export interface ViewerVision {
   /** Light levels inside the polygons; null on a scene that is not dark. */
   light: LightMask | null;
   glows: LightGlow[];
+}
+
+/** A carried lamp's glow marks its bearer; a static lamp belongs to the map. */
+function viewerGlows(
+  scene: Scene,
+  context: SceneVisionContext,
+  userId: string,
+  sight: ViewerSight,
+  live?: { tokenId: string; x: number; y: number },
+): LightGlow[] {
+  const sources = lightSourcesOf(scene, context, userId, live);
+  const visible = sources.filter(
+    (source) =>
+      context.staticSources.includes(source) ||
+      !sight.figurePolygons ||
+      isPointVisible(source.origin, sight.figurePolygons),
+  );
+  return visibleGlowsFor(visible, sight.sources);
 }
 
 /**
@@ -846,17 +896,18 @@ export async function computeViewerVision(
   user: SessionUser,
   context?: SceneVisionContext,
 ): Promise<ViewerVision | null> {
-  if (!usesDynamicVision(scene) || user.role === ROLE_GM) return null;
+  if (user.role === ROLE_GM) return null;
   const ctx = context ?? (await loadVisionContext(prisma, scene));
+  if (!usesDynamicVision(scene) && figureBarriers(ctx.walls).length === 0) return null;
   const sight = await viewerSightFor(prisma, scene, user.id, ctx);
+  const dynamic = usesDynamicVision(scene);
   return {
-    polygons: sight.polygons,
-    openings: visibleOpeningsFor(ctx, sight.sources, sight.lighting),
-    blockers: visibleWalkBlockersFor(ctx, sight),
+    figurePolygons: sight.figurePolygons,
+    polygons: dynamic ? sight.polygons : [],
+    openings: dynamic ? visibleOpeningsFor(ctx, sight.sources, sight.lighting) : [],
+    blockers: dynamic ? visibleWalkBlockersFor(ctx, sight) : [],
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
-    glows: sight.lighting
-      ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources)
-      : [],
+    glows: sight.lighting ? viewerGlows(scene, ctx, user.id, sight) : [],
   };
 }
 
@@ -884,7 +935,7 @@ export async function emitDragVision(
   live: { tokenId: string; x: number; y: number },
   force: boolean,
 ): Promise<void> {
-  if (!scene.active || !usesDynamicVision(scene)) return;
+  if (!scene.active) return;
   const key = `${userId}:${scene.id}`;
   const now = Date.now();
   if (!force && now - (lastDragPush.get(key) ?? 0) < DRAG_VISION_INTERVAL_MS) return;
@@ -895,11 +946,10 @@ export async function emitDragVision(
   const light = sight.lighting ? lightMaskFor(context, sight.polygons, sight.lighting) : null;
   await emitToCampaignUser(deps.io, campaignId, userId, 'vision:sync', {
     sceneId: scene.id,
-    polygons: sight.polygons,
+    polygons: usesDynamicVision(scene) ? sight.polygons : [],
+    figurePolygons: sight.figurePolygons,
     light,
-    glows: sight.lighting
-      ? visibleGlowsFor(lightSourcesOf(scene, context, userId, live), sight.sources)
-      : [],
+    glows: sight.lighting ? viewerGlows(scene, context, userId, sight, live) : [],
   });
   // Walking is how a map gets discovered, so the memory grows mid-drag too —
   // and only when it actually grew does anybody hear about it.
@@ -922,7 +972,7 @@ export async function emitVisionToPlayers(
   scene: Scene,
   options?: { onlyUserIds?: ReadonlySet<string> },
 ): Promise<void> {
-  if (!scene.active || !usesDynamicVision(scene)) return;
+  if (!scene.active) return;
   const context = await loadVisionContext(deps.ctx.prisma, scene);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   let discovered = false;
@@ -931,18 +981,30 @@ export async function emitVisionToPlayers(
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
     if (options?.onlyUserIds && !options.onlyUserIds.has(data.user.id)) continue;
     const vision = await computeViewerVision(deps.ctx.prisma, scene, data.user, context);
-    if (!vision) continue;
+    if (!vision) {
+      member.emit('vision:sync', {
+        sceneId: scene.id,
+        polygons: [],
+        figurePolygons: null,
+        light: null,
+        glows: [],
+      });
+      continue;
+    }
     member.emit('vision:sync', {
       sceneId: scene.id,
       polygons: vision.polygons,
+      figurePolygons: vision.figurePolygons,
       light: vision.light,
       glows: vision.glows,
     });
-    member.emit('opening:sync', { sceneId: scene.id, openings: vision.openings });
-    member.emit('blocker:sync', {
-      sceneId: scene.id,
-      segments: vision.blockers,
-    } satisfies BlockerSyncBroadcast);
+    if (usesDynamicVision(scene))
+      member.emit('opening:sync', { sceneId: scene.id, openings: vision.openings });
+    if (usesDynamicVision(scene))
+      member.emit('blocker:sync', {
+        sceneId: scene.id,
+        segments: vision.blockers,
+      } satisfies BlockerSyncBroadcast);
     // Every player's sight goes into the same memory: what the scout sees, the
     // group knows. Accumulated over the loop and pushed once at the end.
     if (

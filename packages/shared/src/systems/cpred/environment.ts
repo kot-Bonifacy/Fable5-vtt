@@ -31,6 +31,13 @@ export const CPRED_SMOKE_PENALTY = -4;
  */
 export const CPRED_OBSCUREMENT_KIND = 'obscurement';
 
+/** A physical screen is not smoke: optics never cancel this house-rule penalty. */
+export function cpredBarrierModifiers(penalty: number): RollBreakdownEntry[] {
+  return penalty < 0 && Number.isFinite(penalty)
+    ? [{ label: 'Cel zasłonięty barierą', kind: 'situational', value: Math.round(penalty) }]
+    : [];
+}
+
 /**
  * Named modifiers the clouds a figure stands in add to every Check they make.
  *

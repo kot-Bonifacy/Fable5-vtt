@@ -822,6 +822,8 @@ model Wall {
   /// Barriers and gates only (stage 42b): what a shot or a blast loses passing
   /// through. Opaque to the core; CP RED reads it as SP. 0 on every other kind.
   armor Int @default(0)
+  hidesFigures Boolean @default(false)
+  concealPenalty Int @default(-4)
   /// Endpoints in scene (world) pixels.
   x1 Float
   y1 Float

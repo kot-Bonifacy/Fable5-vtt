@@ -1,6 +1,6 @@
 import type { Scene } from '../generated/prisma/client.js';
 import type { MapFxBroadcast, MapFxEffect, ScenePoint, SessionUser } from '@vtt/shared';
-import { ROLE_GM, isPointRevealed, trimMapFxBatch } from '@vtt/shared';
+import { ROLE_GM, isPointRevealed, isPointVisible, trimMapFxBatch } from '@vtt/shared';
 import { concealmentFor, type Concealment } from './tokens.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
@@ -42,7 +42,13 @@ export function fxCentre(
  * hides a token; on a dynamic-vision scene the walls and the light decide, and
  * the GM's brush outranks both (stage 18c).
  */
-export function pointObservable(point: ScenePoint, concealment: Concealment): boolean {
+export function pointObservable(
+  point: ScenePoint,
+  concealment: Concealment,
+  figure = true,
+): boolean {
+  if (figure && concealment.figurePolygons && !isPointVisible(point, concealment.figurePolygons))
+    return false;
   if (concealment.kind === 'none') return true;
   if (concealment.kind === 'fog') {
     if (!concealment.fog.enabled) return true;
@@ -100,9 +106,13 @@ export async function emitMapFx(
     }
     const concealment = await concealmentFor(deps.ctx.prisma, scene, user, context);
     const trimmed =
-      concealment.kind === 'none'
+      concealment.kind === 'none' && !concealment.figurePolygons
         ? full.effects
-        : trimMapFxBatch(full.effects, (point) => pointObservable(point, concealment));
+        : trimMapFxBatch(
+            full.effects,
+            (point) => pointObservable(point, concealment),
+            (point) => pointObservable(point, concealment, false),
+          );
     // „Nothing survived" is silence, not an empty envelope: a client that got
     // `effects: []` would have to decide what it means, and there is nothing
     // to decide.

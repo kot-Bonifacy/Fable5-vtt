@@ -123,6 +123,8 @@ export function MapTools() {
   const windowPlayerToggle = useMapToolStore((s) => s.windowPlayerToggle);
   const setWindowPlayerToggle = useMapToolStore((s) => s.setWindowPlayerToggle);
   const wallArmor = useMapToolStore((s) => s.wallArmor);
+  const wallHidesFigures = useMapToolStore((s) => s.wallHidesFigures);
+  const wallConcealPenalty = useMapToolStore((s) => s.wallConcealPenalty);
   const setWallArmor = useMapToolStore((s) => s.setWallArmor);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
@@ -367,7 +369,7 @@ export function MapTools() {
             title={
               visibility === 'dynamic'
                 ? 'Ściany (W) — klikaj narożniki, Enter kończy; gracze nigdy nie dostają ścian'
-                : 'Ściany (W) — działają dopiero w trybie „Dynamiczna” (zakładka „Sceny”); można je rysować już teraz'
+                : 'Ściany (W) — zasłaniają mapę w trybie Dynamiczna; bariery mogą zasłaniać figury w każdym trybie'
             }
             aria-pressed={tool === 'wall'}
             onClick={() => toggleTool('wall')}
@@ -637,7 +639,7 @@ export function MapTools() {
           <button
             type="button"
             className={`map-tool${wallKind === 'barrier' ? ' map-tool--active' : ''}`}
-            title="Bariera — nie zasłania widoku ani światła, ale blokuje przejście i atak wręcz (siatka, krata, barierka); strzał i wybuch tracą jej OB"
+            title="Bariera — mapa za nią pozostaje widoczna; może zasłaniać figury. Blokuje przejście i wręcz, strzał i wybuch tracą jej OB"
             aria-pressed={wallKind === 'barrier'}
             onClick={() => setWallKind('barrier')}
           >
@@ -697,6 +699,37 @@ export function MapTools() {
             </label>
           )}
 
+          {(wallKind === 'barrier' || wallKind === 'gate') && (
+            <>
+              <label className="map-tool-slider">
+                <input
+                  type="checkbox"
+                  checked={wallHidesFigures}
+                  onChange={(event) =>
+                    useMapToolStore.getState().setWallHidesFigures(event.target.checked)
+                  }
+                />
+                <span className="map-tool-hint">Zasłania figury</span>
+              </label>
+              {wallHidesFigures && (
+                <label className="map-tool-slider">
+                  <span className="map-tool-hint">Kara</span>
+                  <input
+                    type="number"
+                    className="map-tool-number"
+                    min={-99}
+                    max={0}
+                    step={1}
+                    aria-label="Kara za cel zasłonięty nową barierą"
+                    value={wallConcealPenalty}
+                    onChange={(event) =>
+                      useMapToolStore.getState().setWallConcealPenalty(event.target.valueAsNumber)
+                    }
+                  />
+                </label>
+              )}
+            </>
+          )}
           {/* Windows keep their own answer to the same question, and default
                   to „no": a whole elevation of them would otherwise be a wall of
                   handles inviting the party to climb in anywhere. */}
@@ -743,7 +776,8 @@ export function MapTools() {
           </button>
           {visibility !== 'dynamic' && (
             <span className="map-tool-hint">
-              Tryb widoczności sceny to nie „Dynamiczna” — ściany nic jeszcze nie zasłaniają
+              Poza trybem Dynamiczna ściany nie zasłaniają mapy; zasłanianie figur przez bariery
+              nadal działa
             </span>
           )}
         </div>

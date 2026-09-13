@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatRollNotation } from '../../dice.js';
+import { cpredBarrierModifiers } from './environment.js';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_BURST_AMMO_COST,
@@ -1194,6 +1195,13 @@ describe('dodatki do broni', () => {
     expect(sighted.some((e) => e.label === 'Dym')).toBe(false);
     // „modyfikatory ujemne za strzelanie do celu ukrytego" — nie każda kara.
     expect(sighted.some((e) => e.label === 'Trzymanie')).toBe(true);
+  });
+
+  it('celownik noktowizyjny nie usuwa kary fizycznej bariery', () => {
+    const modifiers = cpredBarrierModifiers(-6);
+    expect(breakdownOf(shoot([NIGHT_SIGHT], { context: { modifiers } }))).toContainEqual(
+      modifiers[0],
+    );
   });
 
   it('strzela bronią doczepioną: jej obrażenia, jej zasięg, jej pancerz', () => {

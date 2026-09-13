@@ -11,6 +11,7 @@ import {
   archiveRefusal,
   parseCharacterData,
   sanitizeWallArmor,
+  sanitizeConcealPenalty,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 
@@ -327,6 +328,8 @@ export async function exportScene(
           playerToggle: true,
           locked: true,
           armor: true,
+          hidesFigures: true,
+          concealPenalty: true,
           x1: true,
           y1: true,
           x2: true,
@@ -576,6 +579,8 @@ export async function importScene(
         // Plik sprzed etapu 42b nie ma tej kolumny — bariera wraca bez pancerza,
         // tak jak stała. Liczba spoza zakresu nie wchodzi do bazy.
         armor: sanitizeWallArmor(row.armor) ?? 0,
+        hidesFigures: row.hidesFigures === true,
+        concealPenalty: sanitizeConcealPenalty(row.concealPenalty) ?? -4,
         x1: num(row.x1),
         y1: num(row.y1),
         x2: num(row.x2),

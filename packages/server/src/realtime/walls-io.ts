@@ -33,6 +33,8 @@ export function toWallView(row: WallRow): WallView {
     // Only a barrier or a gate carries armour (stage 42b); a number left on a
     // retyped row by hand must not turn a window into plating.
     armor: isBarrier({ kind }) ? Math.max(0, row.armor) : 0,
+    hidesFigures: isBarrier({ kind }) && row.hidesFigures,
+    concealPenalty: isBarrier({ kind }) ? row.concealPenalty : -4,
     x1: row.x1,
     y1: row.y1,
     x2: row.x2,

@@ -51,6 +51,8 @@ import {
   attachmentProfilesOf,
   attachmentSlotsFree,
   barrierArmorAlong,
+  barrierConcealPenaltyAlong,
+  cpredBarrierModifiers,
   fittedAttachmentsFor,
   resolveAttachmentWeapon,
   weaponMagazineWith,
@@ -64,7 +66,6 @@ import {
   distanceToCover,
   loadedAmmoFor,
   formatMetres,
-  isTokenInFog,
   metresPerPixel,
   isWeaponEntry,
   mergeCharacterData,
@@ -113,13 +114,13 @@ import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
   emitTokensById,
+  fetchSceneTokensFor,
   emitTokensOfCharacter,
   requireCampaignToken,
   toTokenView,
   turnTokenToward,
 } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
-import { fetchFogState } from './fog-io.js';
 import {
   coverBetween,
   hasClearShot,
@@ -909,15 +910,8 @@ export async function performAttackRoll(
       // unless the player controls the token, in which case they can see it.
       if (target && user.role !== ROLE_GM) {
         if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-        const fog = await fetchFogState(deps.ctx.prisma, scene);
-        const controlledByPlayer =
-          target.ownerId === user.id ||
-          (target.characterId !== null && target.characterId === character?.id);
-        if (
-          fog.enabled &&
-          !controlledByPlayer &&
-          isTokenInFog(toTokenView(target, false), toSceneView(scene), fog)
-        ) {
+        const visible = await fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, scene, user);
+        if (!visible.some((row) => row.id === target.id)) {
           throw new RealtimeError('TOKEN_NOT_FOUND');
         }
       }
@@ -1085,6 +1079,9 @@ export async function performAttackRoll(
             // *who* is being shot at — a shooter who backed down from this one
             // is steady as a rock aiming at anybody else.
             ...facedownPenaltyRows(attacker, target?.id),
+            ...cpredBarrierModifiers(
+              target ? barrierConcealPenaltyAlong(walls, origin, aimPoint) : 0,
+            ),
             // Standing in smoke is −4 to everything the shooter does (s. 347,
             // stage 16h) — a named row in the breakdown like every other
             // situational modifier, never a silent correction of the total.

@@ -49,6 +49,8 @@ export interface VisionSource {
  * building their character has not entered.
  */
 export interface VisionSyncBroadcast {
+  /** Figure visibility; null disables the translucent barrier cover. */
+  figurePolygons?: ScenePoint[][] | null;
   sceneId: string;
   /** One polygon per vision source; an empty list means „sees nothing". */
   polygons: ScenePoint[][];

@@ -6,6 +6,12 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Etap 42c — pozostałe oględziny UI (13.09).** Pasek i przygaszenie rzeczywistego renderera
+obejrzano w Chrome, działanie serwera sprawdzono na gniazdach we wszystkich trzech trybach.
+Do ręki MG pozostaje pełna edycja karty istniejącego segmentu: „Zasłania figury”, zmiana kary,
+zamknięcie/otwarcie bramy i obejście końca bariery przez figurę gracza. Sprawdzić na dwóch
+oknach MG/gracz, również pod ręczną mgłą. To dług oględzin, nie znany błąd kodu.
+
 **11.09 — decyzje MG do rzeczy zgłoszonych po sesji kamery (żeby nie wracały jako pytania):**
 
 - **„Ani piksela czerni" zostaje.** Gracz przy maksymalnym oddaleniu nie obejmie całej mapy

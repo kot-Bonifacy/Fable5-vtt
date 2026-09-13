@@ -112,25 +112,26 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 41     | Oględziny wyposażenia figury                  | ✅     | 2026-09-10          |
 | 42a    | Bariera i brama: ruch, wręcz, planer gracza   | ✅     | 2026-09-13          |
 | 42b    | Bariera: SP dla strzałów i wybuchów           | ✅     | 2026-09-13          |
-| 42c    | Bariera zasłaniająca figury, kara za cel      | ⬜     |                     |
+| 42c    | Bariera zasłaniająca figury, kara za cel      | ✅     | 2026-09-13          |
 
 
 ## Od czego zacząć
 
-**Etap 42 (bariery) doszedł 13.09 ze zlecenia MG i jest rozdzielony na trzy: 42a ✅, 42b ✅,
-42c ⬜.** Bariera to rodzaj ściany, przez który widać, a nie da się przejść ani sięgnąć wręcz;
+**Etap 42 (bariery) ukończony: 42a ✅, 42b ✅, 42c ✅.**
+Bariera to rodzaj ściany, przez który widać mapę, a nie da się przejść ani sięgnąć wręcz;
 brama to jej otwór. **Od 42b bariera ma OB** — zasada domowa MG, nie błąd mechaniki
 (`decyzje-i-uproszczenia.md`): strzał i wybuch tracą je przed pancerzem celu, a skąd bierze się
 liczba na trafieniu, rozstrzyga jedna funkcja `barrierSpOfHit` (umowa w `atak`). **42c** (bariera
-zasłaniająca figury, mgła za nią przy widocznej mapie, kara za niewidoczny cel) ma gotowy plan
-z decyzjami MG. **Przed 42c dopytaj MG o wygląd mgły za barierą** (plik etapu, decyzja 5). Nowa
+zasłaniająca figury, mgła za nią przy widocznej mapie, kara za niewidoczny cel) działa we wszystkich
+trybach. Przyjęty wygląd: jak pamięć mapy; ręczne „Odsłoń” nie omija bariery (założenia opisane
+w pliku etapu). Widok figur idzie przez `figurePolygons`, kara przez `cpredBarrierModifiers`. Nowa
 rzecz, która zatrzymuje ciało, a nie wzrok, wchodzi przez `wallBlocksMovement` — umowa w `mapa`.
 
 **Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
 etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
 bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
 
-**Wolne są dwa etapy: 28** (wdrożenie na VPS) i **42c** (wymaga tylko 42a). Reszta jest
+**Pozostaje etap 28** (wdrożenie na VPS). Reszta jest
 zamknięta albo wycofana — „37 przed 39" i „33 przed 28" spełnione.
 **Refaktoryzacja całości przed etapem 28 czeka na osobną sesję**: MG odłożył ją 05.09, wybierając
 etap z listy, i od tamtej pory doszło pięć etapów. To jest najtańszy moment, żeby ją zrobić — po
@@ -165,7 +166,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 12 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — pełna edycja karty bariery 42c). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -221,8 +222,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2079** w `shared`, **1122** na serwerze, **197** u klienta —
-zielone (liczby zmierzone 13.09, etap 42b; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2090** w `shared`, **1155** na serwerze, **197** u klienta —
+zielone (liczby z 13.09, etap 42c; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -246,13 +247,13 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   42 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   43 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    4 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   31 |       8 |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   24 |       2 |
@@ -268,6 +269,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 13.09 — bariery zasłaniające figury (etap 42c)
+
+**Zlecenie MG:** etap 42c. Zadano pytania o wygląd przygaszenia i ręczne „Odsłoń”; bez osobnej
+odpowiedzi przyjęto i zakomunikowano: wygląd jak pamięć mapy we wszystkich trybach, a „Odsłoń”
+nie omija zasłony figur. Kara domyślnie −4, zakres −99…0; ustawienia paska do przeładowania.
+
+**Zrobione:** `Wall.hidesFigures` / `concealPenalty`, migracja i eksport/import; drugi widok
+`figurePolygons` dla list figur, przeciągania, bota, oględzin i przygaszenia mapy; marsz MG
+czyta te same bariery. Kara najgorszej przeciętej bariery w rozbiciu, niezdejmowana przez optykę;
+kontrolki na pasku i karcie segmentu. Efekty figur filtrują zasłonę, wybuch/chmura/strefa mapę.
+
+**Naprawione przy okazji:** atak na cel niewidoczny w Dynamicznej zwraca `TOKEN_NOT_FOUND`;
+usunięcie źródła wzroku przelicza widok również w pozostałych trybach. Poza Dynamiczną pola
+zwykłych ścian nie trafiają do `vision:sync`; poświata noszonej lampy nie zdradza figury.
+
+**Weryfikacja:** 2090 testów shared, 1155 serwera (33 nowe), 197 klienta; typy, ESLint i format.
+Migracja zastosowana na dev.db po kopii w katalogu tymczasowym. Aplikacja uruchomiona i połączona.
+W Chrome obejrzano kontrolki paska oraz renderer na izolowanej scenie (otwarta/Dynamiczna,
+zamknięcie i otwarcie bramy); pełna edycja karty segmentu na kampanii pozostaje do ręki MG.
+Poligon i walka nietknięte. Istniejące wcześniej zmiany `app.ts` i `.claude/` poza commitem.
 
 ### Sesja 13.09 — OB bariery dla strzałów i wybuchów (etap 42b)
 
@@ -294,29 +316,3 @@ w drzewie jako zmieniony od początku sesji, ale różni się wyłącznie końca
 pakietach, ESLint i Prettier na zmienionych plikach — zielone. `pnpm dev` startuje, migracja
 zastosowana na `dev.db` (kopia sprzed niej tylko w katalogu tymczasowym sesji). **Bez oględzin
 w przeglądarce** — pozycja w `zaleglosci.md`. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — bariera i brama (etap 42a), plany 42b i 42c
-
-**Zlecenie MG:** ściany, które nie zasłaniają widoku, a blokują przejście (ogrodzenie z siatki). Po
-pytaniach rozrosło się do trzech etapów (decyzja MG): **42a** — bariera i brama blokują ruch, wręcz
-i Pochwycenie, a planer gracza zna bariery, które gracz widzi; **42b** — SP bariery dla strzałów
-i wybuchów (dwie warstwy, bez zużycia, sama liczba); **42c** — bariera zasłaniająca figury we
-wszystkich trybach, bez „firanki", kara ustawiana na barierze (domyślnie −4), a za nią mgła przy
-widocznej mapie (dopisek MG w trakcie sesji). Wszystkie decyzje stoją w plikach etapów.
-
-**Zrobione (42a):** rodzaje `barrier` i `gate`; `wallBlocksMovement` jako jedyna odpowiedź „co
-zatrzymuje ciało"; `blocker:sync` i pole `blockers` w `state:sync` (Dynamiczna — per źródło wzroku,
-mgła — odsłonięte, otwarta — wszystkie; zamknięte okno z bliska tą samą drogą); `isBodyBlocked`
-dla wręcz (`MELEE_BLOCKED`) i Pochwycenia (`GRAPPLE_BLOCKED`); `roomSegments` bez barier; pasek,
-karta segmentu, kolory, glif 🚧, zdania odmów bramy. **Poprawione przy okazji:** Pochwycenie nie
-sprawdzało ścian wcale; przez zamknięte okno z bliska dało się uderzyć wręcz (świadoma zmiana —
-wręcz pyta listy ruchu).
-
-**Znalezione, nienaprawione:** planer gracza nie zna zwykłych ścian poza widocznością Dynamiczną
-(zaległość); przy Dynamicznej atak gracza na figurę, której nie widzi, odmawia innym kodem niż
-„nie ma takiej figury" i zdradza ścianę (wpisane do zakresu 42c).
-
-**Weryfikacja:** 2055 testów w `shared` (15 nowych), 1114 na serwerze (11 nowych), 197 u klienta;
-`tsc --noEmit` w trzech pakietach, ESLint i Prettier na zmienionych plikach — zielone. **Bez oględzin
-w przeglądarce** — pozycja w `zaleglosci.md`. Dwie nowe pułapki w `testy`: żeton na połówce kratki
-staje o pół kratki dalej, a wysyłka do gracza potrafi dojść po ack MG. Etap 28 pozostaje nierozpoczęty.

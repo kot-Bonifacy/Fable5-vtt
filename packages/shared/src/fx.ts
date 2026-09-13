@@ -171,6 +171,7 @@ export interface MapFxBroadcast {
 export function trimMapFxForViewer(
   effect: MapFxEffect,
   sees: (point: ScenePoint) => boolean,
+  seesMap: (point: ScenePoint) => boolean = sees,
 ): MapFxEffect | null {
   switch (effect.kind) {
     case 'shot': {
@@ -184,6 +185,7 @@ export function trimMapFxForViewer(
       return sees(effect.from) ? effect : null;
     case 'blast':
     case 'cloud':
+      return seesMap(effect.at) ? effect : null;
     case 'float':
     case 'spark':
       return sees(effect.at) ? effect : null;
@@ -202,7 +204,7 @@ export function trimMapFxForViewer(
         { x: x + width, y: y + height },
         { x: x + width / 2, y: y + height / 2 },
       ];
-      return corners.some(sees) ? effect : null;
+      return corners.some(seesMap) ? effect : null;
     }
   }
 }
@@ -211,10 +213,11 @@ export function trimMapFxForViewer(
 export function trimMapFxBatch(
   effects: readonly MapFxEffect[],
   sees: (point: ScenePoint) => boolean,
+  seesMap: (point: ScenePoint) => boolean = sees,
 ): MapFxEffect[] {
   const kept: MapFxEffect[] = [];
   for (const effect of effects) {
-    const trimmed = trimMapFxForViewer(effect, sees);
+    const trimmed = trimMapFxForViewer(effect, sees, seesMap);
     if (trimmed) kept.push(trimmed);
   }
   return kept;

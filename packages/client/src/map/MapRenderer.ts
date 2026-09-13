@@ -1089,6 +1089,12 @@ export class MapRenderer {
    */
   private readonly visionLayer = new Container();
   private readonly visionSprite = new Sprite();
+  private readonly figureSprite = new Sprite();
+  private readonly figureScratch = new Container();
+  private readonly figureCover = new Graphics();
+  private readonly figureCutout = new Graphics();
+  private figureTexture: RenderTexture | null = null;
+  private lastFigurePolygons: ScenePoint[][] | null = null;
   private readonly visionScratch = new Container();
   private readonly visionCover = new Graphics();
   private readonly visionCutout = new Graphics();
@@ -1651,7 +1657,8 @@ export class MapRenderer {
     viewport.addChild(this.fogLayer);
     // The player's field of view sits with the fog: both are the same kind of
     // cover, and a scene never runs the two at once (one visibility mode).
-    this.visionLayer.addChild(this.visionSprite);
+    this.figureScratch.addChild(this.figureCover, this.figureCutout);
+    this.visionLayer.addChild(this.figureSprite, this.visionSprite);
     viewport.addChild(this.visionLayer);
     // The GM's own layer: drawings the players never receive, drawn over the
     // fog so the GM can plan through it — the same treatment as note pins.
@@ -1859,6 +1866,7 @@ export class MapRenderer {
       this.setLights([]);
       this.setGlows([]);
       this.setVision([], false, null);
+      this.setFigureVision(null);
       this.fogSprite.visible = false;
       this.fx.setScene(null);
       this.clearTokens();
@@ -1895,6 +1903,7 @@ export class MapRenderer {
       this.setLights([]);
       this.setGlows([]);
       this.setVision([], false, null);
+      this.setFigureVision(null);
       this.cancelDrawGesture();
       this.cancelWallChain();
       this.fitScene(scene);
@@ -5752,6 +5761,55 @@ export class MapRenderer {
     this.redrawVision();
   }
 
+  /** Map remains readable; the server uses these exact polygons for figures. */
+  setFigureVision(polygons: ScenePoint[][] | null): void {
+    if (this.destroyed) return;
+    this.lastFigurePolygons = polygons;
+    this.redrawFigureVision();
+  }
+
+  private redrawFigureVision(): void {
+    const scene = this.scene;
+    const polygons = this.lastFigurePolygons;
+    this.figureSprite.visible = !!scene && polygons !== null;
+    if (!scene || !polygons) return;
+    const factor = Math.max(1, Math.max(scene.width, scene.height) / FOG_TEXTURE_MAX_PX);
+    const width = Math.max(1, Math.ceil(scene.width / factor));
+    const height = Math.max(1, Math.ceil(scene.height / factor));
+    if (
+      !this.figureTexture ||
+      this.figureTexture.width !== width ||
+      this.figureTexture.height !== height
+    ) {
+      this.figureTexture?.destroy(true);
+      this.figureTexture = RenderTexture.create({ width, height, antialias: true });
+      this.figureSprite.texture = this.figureTexture;
+    }
+    this.figureScratch.scale.set(1 / factor);
+    this.figureCover.clear();
+    if (this.visionActive) {
+      for (const polygon of this.lastVisionPolygons) {
+        if (polygon.length >= 3) this.figureCover.poly(polygon).fill(0x000000);
+      }
+      for (const shape of this.visionOverrides) {
+        if (shape.mode === 'reveal') drawFogShape(this.figureCover, shape);
+      }
+    } else this.figureCover.rect(0, 0, scene.width, scene.height).fill(0x000000);
+    this.figureCutout.clear();
+    this.figureCutout.blendMode = 'erase';
+    for (const polygon of polygons) {
+      if (polygon.length >= 3) this.figureCutout.poly(polygon).fill(0x000000);
+    }
+    this.app.renderer.render({
+      container: this.figureScratch,
+      target: this.figureTexture,
+      clear: true,
+    });
+    this.figureSprite.alpha = DIM_COVER_ALPHA;
+    this.figureSprite.position.set(0, 0);
+    this.figureSprite.setSize(scene.width, scene.height);
+  }
+
   /**
    * The party's memory of this map (stage 18c). Null is „this scene forgets",
    * which is not the same as an empty mask — a scene that remembers, walked by
@@ -5776,6 +5834,7 @@ export class MapRenderer {
 
   /** Composites the cover a player sees: walls, light, memory, GM overrides. */
   private redrawVision(): void {
+    this.redrawFigureVision();
     const scene = this.scene;
     const polygons = this.lastVisionPolygons;
 
@@ -6858,6 +6917,8 @@ export class MapRenderer {
       this.fogTexture?.destroy(true);
       this.fogTexture = null;
       this.visionScratch.destroy({ children: true });
+      this.figureScratch.destroy({ children: true });
+      this.figureTexture?.destroy(true);
       this.visionTexture?.destroy(true);
       this.visionTexture = null;
       // The unlit sheet's texture wraps a canvas of its own, and it lives inside

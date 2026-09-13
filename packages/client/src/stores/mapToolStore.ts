@@ -200,6 +200,10 @@ interface MapToolStoreState extends DrawSettings {
    * GM, 13.09.2026) — a fence is traced in runs, and each run is the same mesh.
    */
   wallArmor: number;
+  wallHidesFigures: boolean;
+  wallConcealPenalty: number;
+  setWallHidesFigures: (value: boolean) => void;
+  setWallConcealPenalty: (value: number) => void;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
   /** Preset the next dragged rectangle becomes („car", „concrete-bollard"…). */
@@ -293,6 +297,15 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // matters with a single click.
     windowPlayerToggle: false,
     wallArmor: 0,
+    wallHidesFigures: false,
+    wallConcealPenalty: -4,
+    setWallHidesFigures: (wallHidesFigures) => set({ wallHidesFigures }),
+    setWallConcealPenalty: (value) =>
+      set({
+        wallConcealPenalty: Number.isFinite(value)
+          ? Math.min(0, Math.max(-99, Math.round(value)))
+          : -4,
+      }),
     wallSnapGrid: true,
     coverTypeId: '',
     coverCatalogue: EMPTY_COVER_CATALOGUE,

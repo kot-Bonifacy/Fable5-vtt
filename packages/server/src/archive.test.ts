@@ -400,6 +400,8 @@ describe('scena', () => {
         ],
         kind: 'barrier',
         armor: 7,
+        hidesFigures: true,
+        concealPenalty: -6,
       }),
     );
     dataOf(
@@ -414,7 +416,12 @@ describe('scena', () => {
     const file = await download<SceneArchive>(`/api/archive/scene/${scene.id}`, gmCookie);
     expect(file.manifest.counts).toMatchObject({ walls: 2, tokens: 1 });
     expect(file.payload.walls).toContainEqual(
-      expect.objectContaining({ kind: 'barrier', armor: 7 }),
+      expect.objectContaining({
+        kind: 'barrier',
+        armor: 7,
+        hidesFigures: true,
+        concealPenalty: -6,
+      }),
     );
 
     const result = dataOf(
@@ -429,7 +436,12 @@ describe('scena', () => {
     const back = await download<SceneArchive>(`/api/archive/scene/${result.id}`, gmCookie);
     expect(back.manifest.counts).toMatchObject({ walls: 2, tokens: 1 });
     expect(back.payload.walls).toContainEqual(
-      expect.objectContaining({ kind: 'barrier', armor: 7 }),
+      expect.objectContaining({
+        kind: 'barrier',
+        armor: 7,
+        hidesFigures: true,
+        concealPenalty: -6,
+      }),
     );
     expect(back.payload.tokens[0]).toMatchObject({ name: 'Wartownik', x: 100, y: 100 });
     // Import nigdy nie przestawia stołu — scena wjeżdża nieaktywna.

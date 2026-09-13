@@ -14,6 +14,7 @@ import {
   isOpening,
   isWallKind,
   sanitizeWallArmor,
+  sanitizeConcealPenalty,
   sanitizeWallChain,
   sanitizeWallSegment,
 } from '@vtt/shared';
@@ -65,10 +66,8 @@ export async function afterWallChange(
 ): Promise<void> {
   await emitWallsToGm(deps, campaignId, scene.id);
   if (!usesDynamicVision(scene)) {
-    // No field of view to push — but a fence drawn on a fogged or open map is
-    // still something every player's route planner has to walk round (42a).
+    // Non-dynamic route blockers are independent of the figure mask (42c).
     await emitBlockersToPlayers(deps, campaignId, scene);
-    return;
   }
   await emitVisionToPlayers(deps, campaignId, scene);
   await emitSceneTokensToPlayers(deps, campaignId, scene);
@@ -94,6 +93,11 @@ export const wallCreateEvent = defineEvent<WallCreatePayload, WallView[]>({
     // A barrier's armour (stage 42b). A malformed number is refused whatever the
     // kind; a good one on anything but a barrier or a gate is simply not kept.
     let armor = 0;
+    if (payload.hidesFigures !== undefined && typeof payload.hidesFigures !== 'boolean')
+      throw new RealtimeError('BAD_REQUEST');
+    const hidesFigures = isBarrier({ kind }) && payload.hidesFigures === true;
+    const concealPenalty = sanitizeConcealPenalty(payload.concealPenalty ?? -4);
+    if (concealPenalty === null) throw new RealtimeError('BAD_REQUEST');
     if (payload?.armor !== undefined) {
       const sanitized = sanitizeWallArmor(payload.armor);
       if (sanitized === null) throw new RealtimeError('BAD_REQUEST');
@@ -110,7 +114,15 @@ export const wallCreateEvent = defineEvent<WallCreatePayload, WallView[]>({
     const created = await deps.ctx.prisma.$transaction(
       segments.map((segment) =>
         deps.ctx.prisma.wall.create({
-          data: { sceneId: scene.id, kind, playerToggle, armor, ...segment },
+          data: {
+            sceneId: scene.id,
+            kind,
+            playerToggle,
+            armor,
+            hidesFigures,
+            concealPenalty,
+            ...segment,
+          },
         }),
       ),
     );
@@ -171,6 +183,17 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
       // keeps it; a fence retyped into masonry or glass loses it.
       if (!isBarrier({ kind: patch.kind })) data.armor = 0;
     }
+    const barrierKind = isBarrier({ kind: (patch.kind ?? row.kind) as WallView['kind'] });
+    if (patch.hidesFigures !== undefined && typeof patch.hidesFigures !== 'boolean')
+      throw new RealtimeError('BAD_REQUEST');
+    if (patch.hidesFigures !== undefined || !barrierKind)
+      data.hidesFigures = barrierKind && patch.hidesFigures === true;
+    if (patch.concealPenalty !== undefined) {
+      const penalty = sanitizeConcealPenalty(patch.concealPenalty);
+      if (penalty === null) throw new RealtimeError('BAD_REQUEST');
+      data.concealPenalty = barrierKind ? penalty : -4;
+    }
+    if (!barrierKind) data.concealPenalty = -4;
     if (patch.armor !== undefined) {
       const armor = sanitizeWallArmor(patch.armor);
       if (armor === null) throw new RealtimeError('BAD_REQUEST');
@@ -320,6 +343,6 @@ export const openingToggleEvent = defineEvent<OpeningTogglePayload, WallView>({
     const view = toWallView(updated);
     // The ack is one more way to a player's socket, and a gate's armour is the
     // GM's number (stage 42b) — scrubbed as `visibleOpeningsFor` scrubs it.
-    return isGm ? view : { ...view, armor: 0 };
+    return isGm ? view : { ...view, armor: 0, hidesFigures: false, concealPenalty: 0 };
   },
 });

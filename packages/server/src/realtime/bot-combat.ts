@@ -286,7 +286,16 @@ async function buildTacticalStep(
     if (other.id === actor.id) continue;
     const centre = tokenCentre(toTokenView(other, true), sceneView);
     // Widoczność figury bota, nie konta MG. Bez tego NPC strzelałby przez mur.
-    if (!isPointObservable(centre, sight.polygons, sight.lighting, ctx.vision.overrides)) continue;
+    if (
+      !isPointObservable(
+        centre,
+        sight.polygons,
+        sight.lighting,
+        ctx.vision.overrides,
+        sight.figurePolygons,
+      )
+    )
+      continue;
 
     // Etykieta wchodzi do enuma, więc musi być jednoznaczna: dwa „Zbir" na
     // jednej scenie dostają numer, bo inaczej model nie miałby ich jak

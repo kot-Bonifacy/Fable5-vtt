@@ -5,6 +5,7 @@ import {
   CPRED_RANGE_BANDS,
   ROLE_GM,
   blockingSegments,
+  figureBarriers,
   computeVisionPolygon,
   conditionRegistry,
   coverMovementSegments,
@@ -433,11 +434,15 @@ function tokensSeenFrom(
     marcher.visionRange === null || marcher.visionRange === undefined
       ? null
       : metresToPixels(marcher.visionRange, scene);
-  const polygon = computeVisionPolygon(origin, segments, radiusPx);
+  const figurePolygon = computeVisionPolygon(
+    origin,
+    [...segments, ...figureBarriers(useWallStore.getState().walls)],
+    radiusPx,
+  );
   const seen = new Set<string>();
   for (const token of tokens) {
     if (token.id === marcher.id) continue;
-    if (isPointInPolygon(tokenCentre(token, scene), polygon)) seen.add(token.id);
+    if (isPointInPolygon(tokenCentre(token, scene), figurePolygon)) seen.add(token.id);
   }
   return seen;
 }
@@ -683,6 +688,8 @@ export function MapArea() {
         tools.wallKind,
         currentPlayerToggle(tools),
         currentWallArmor(tools),
+        tools.wallHidesFigures,
+        tools.wallConcealPenalty,
       ).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
       });
@@ -1448,6 +1455,7 @@ export function MapArea() {
     // Only a player is covered: the GM sees the whole map and the walls on it.
     const active = !isGmNow && current?.visibility === 'dynamic';
     rendererRef.current?.setVision(state.polygons, active === true, useLightStore.getState().mask);
+    rendererRef.current?.setFigureVision(isGmNow ? null : state.figurePolygons);
     // The memory of the map and the GM's overrides go into the same sheet, and
     // only a player has that sheet: for the GM the first is nothing to draw and
     // the second is drawn by the fog layer instead.

@@ -39,8 +39,8 @@ const KIND_HINTS: Record<WallKind, string> = {
   door: 'Zamknięte zasłaniają; otwarte są dziurą w ścianie',
   window: 'Zamknięte zasłaniają z daleka i przyciemniają światło; otwarte nie robią nic',
   barrier:
-    'Nie zasłania widoku ani światła; nie da się przez nią przejść ani sięgnąć wręcz, a strzał traci jej OB',
-  gate: 'Nie zasłania w żadnym stanie; zamknięta blokuje przejście i wręcz i zabiera strzałom OB, otwarta nic',
+    'Mapa za nią pozostaje widoczna; może zasłaniać figury. Blokuje przejście i wręcz, a strzał traci jej OB',
+  gate: 'Zamknięta działa jak bariera i może zasłaniać figury; otwarta przepuszcza widok, ruch i strzały',
 };
 
 export function SceneCardWall({ wall }: { wall: WallView }) {
@@ -97,6 +97,39 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
           z pola, jak wytrzymałość osłony — nie przy każdej cyfrze. */}
       {isBarrier(wall) && (
         <>
+          <label className="bot-checkbox">
+            <input
+              type="checkbox"
+              checked={wall.hidesFigures === true}
+              disabled={busy}
+              onChange={(event) => void patch({ hidesFigures: event.target.checked })}
+            />
+            Zasłania figury
+          </label>
+          {wall.hidesFigures && (
+            <label className="bot-field">
+              <span className="auth-label">Kara za zasłonięty cel</span>
+              <input
+                type="number"
+                min={-99}
+                max={0}
+                step={1}
+                defaultValue={wall.concealPenalty ?? -4}
+                key={`conceal-${wall.id}-${wall.concealPenalty}`}
+                disabled={busy}
+                onBlur={(event) => {
+                  const value = event.target.valueAsNumber;
+                  if (
+                    Number.isInteger(value) &&
+                    value >= -99 &&
+                    value <= 0 &&
+                    value !== wall.concealPenalty
+                  )
+                    void patch({ concealPenalty: value });
+                }}
+              />
+            </label>
+          )}
           <label className="bot-field">
             <span className="auth-label">OB bariery</span>
             <input

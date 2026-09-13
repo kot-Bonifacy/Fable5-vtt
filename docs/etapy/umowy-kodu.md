@@ -15,6 +15,22 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Zasłona figur (42c)** — `figureBarriers` → `figurePolygonsOf` → `ViewerSight.figurePolygons` / `vision:sync`. Tę samą maskę czyta `concealedFrom` i przygaszenie renderera; `null` wyłącza zasłonę, `[]` znaczy brak widoku. Poza Dynamiczną nie wysyłaj `sight.polygons` (niosą zwykłe ściany). Efekty fizycznych figur filtrują zasłonę, wybuch/chmura/strefa pytają wyłącznie o mapę.
+
+**Bariera zasłaniająca figury (13.09, etap 42c).** `Wall.hidesFigures` i `concealPenalty`
+dotyczą wyłącznie bariery oraz zamkniętej bramy. `figureBarriers` wybiera przeszkody bez wyjątku
+bliskiej szyby. `figurePolygonsOf` liczy drugi zestaw wielokątów: w Dynamicznej z przeszkodami
+widoku mapy, w pozostałych trybach tylko z barierami i brzegiem sceny, bez limitu zasięgu.
+Gracz bez źródła wzroku poza Dynamiczną dostaje `null`, a w Dynamicznej pustą listę.
+Przygaszenie korzysta z `DIM_COVER_ALPHA`; mgła i ciemność nadal mogą całkiem zakryć mapę.
+
+Każda droga emitująca figurę musi pytać tę maskę: pełny stan, aktualizacja, przeciąganie,
+usunięcie źródła wzroku. `fetchSceneTokensFor` przyjmuje `liveOverride`, aby maska i lista figur
+w połowie przeciągania opisywały tę samą pozycję. `tokenSightFor` daje maskę botowi;
+oględziny dziedziczą `concealedFrom`, marsz MG używa `figureBarriers` w lokalnym raycaście.
+`trimMapFxForViewer` ma osobne pytania o figurę i mapę; poświata noszonej lampy nie może oznaczać
+pozycji schowanego właściciela. Pola bariery są zerowane w otworach wysyłanych graczowi.
+
 - **Pancerz bariery** — `WallView.armor`: liczba tylko dla `barrier`/`gate` (retyp na cokolwiek innego zeruje ją w `wall:update`, a `toWallView` nie przepuszcza jej z żadnego innego wiersza). Sumuje ją **wyłącznie** `barrierArmorAlong` (odcinki stykające się w punkcie przecięcia liczą się raz); do gracza nie jedzie nigdy — zerują ją `visibleOpeningsFor` i ack `opening:toggle`. Rdzeń nie wie, że to OB.
 - **Nowy rodzaj ściany** — `WALL_KINDS` w `shared/walls.ts` i **dwa** przełączniki: `wallBlocksSight` i `wallBlocksMovement` (`switch`, kompilator pilnuje kompletu); do tego `isOpening`/`isBarrier`, `WALL_COLORS` i `OPENING_GLYPHS` (renderer), `KIND_LABELS`/`KIND_HINTS` (karta segmentu), `WALL_TITLES` (`SceneObjectCard`), przycisk w `MapTools` i zdania w `OPENING_REFUSALS`. Co gracz ma omijać, choć widzi przez to, liczą `walkOnlyWallsFor` / `standingBarriers` → `blocker:sync` — nie nowa gałąź w planerze.
 - **Kontrastowa siatka przy edycji sceny** — `sceneStore.gridContrast` (włącza `SceneEditor`, gasi jego zamknięcie; nigdy po sieci) → `MapRenderer.setGridContrast`. Jak siatka wygląda, rozstrzyga wyłącznie `gridStrokes` w `map/grid-style.ts`; obwódka liczy się w pikselach ekranu, więc `refreshOverlays` przerysowuje siatkę przy zoomie, póki tryb trwa.
@@ -1084,6 +1100,8 @@ nie zapisuje — grupa staje od razu.
 
 
 ## atak — Broń, atak, obrażenia, rany
+
+- **Kara bariery (42c)** — `barrierConcealPenaltyAlong` wybiera najgorszą przeciętą zasłonę, `cpredBarrierModifiers` daje nazwany wiersz `situational`, którego optyka nie usuwa. Dostępność celu sprawdza `fetchSceneTokensFor` przed linią strzału: niewidoczny i nieistniejący cel dają `TOKEN_NOT_FOUND` w każdym trybie.
 
 - **OB bariery na trafieniu** — trzy źródła i jedna kolejka zaufania w `barrierSpOfHit` (`realtime/damage.ts`): wiersz obszaru (`RollAreaTarget.barrierArmor`), karta strzału dla celu, który atak nazwał (`CpredAttackMeta.barrierSp` → `readAttackContext` → `RollDamageMeta.system`), a dla każdego innego celu pomiar na żywo od `barrierFrom`. Do silnika wchodzi jako `SheetDamageRequest.barrierSp` → `resolveCpredDamage`, **przed** pancerzem. Nowa droga obrażeń z mapy podaje je tą samą funkcją.
 - **Zasięg ręki przez przeszkodę** — `isBodyBlocked` (`realtime/walls-io.ts`, lista `movementSegments`). Atak wręcz podaje planerowi `reachBlocked` (odmowa `MELEE_BLOCKED` **po** `NO_LINE_OF_FIRE`, **przed** zasięgiem; rzucona broń jej nie dostaje), Pochwycenie odmawia `GRAPPLE_BLOCKED`. Nowe „sięgam ręką" pyta tę samą funkcję.

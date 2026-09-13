@@ -36,7 +36,8 @@ export const WALL_KINDS = ['wall', 'door', 'window', 'barrier', 'gate'] as const
  * passes it (`LIGHT_WINDOW_COST`); either one standing open is a hole in the
  * wall — no shadow, no toll on the light.
  *
- * `barrier` and `gate` (stage 42a) never touch sight or light at all. A barrier
+ * `barrier` and `gate` never block map sight or light. Since stage 42c they can
+ * separately hide figures (`hidesFigures`). A barrier
  * stops a body — a figure walking, a fist, a grab — and a gate is its opening:
  * the door's mechanism (handle, bolt, arm's reach) in a see-through frame.
  */
@@ -93,6 +94,10 @@ export interface WallView {
    * knowledge and is scrubbed to 0 on its way to a player.
    */
   armor: number;
+  /** Barriers only: hide figures while leaving the map visible. */
+  hidesFigures?: boolean;
+  /** Non-positive attack modifier; absent on older rows means -4. */
+  concealPenalty?: number;
   x1: number;
   y1: number;
   x2: number;
@@ -104,6 +109,30 @@ export interface WallView {
  * runaway client rather than a rule — no game system is consulted here.
  */
 export const WALL_ARMOR_MAX = 99;
+
+export function sanitizeConcealPenalty(raw: unknown): number | null {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= -99 && raw <= 0 ? raw : null;
+}
+
+/** No arm's-reach exception: an open gate alone removes its concealment. */
+export function figureBarriers(walls: readonly WallView[]): WallView[] {
+  return standingBarriers(walls).filter((wall) => wall.hidesFigures === true);
+}
+
+/** Worst crossed partition, never the sum of successive screens. */
+export function barrierConcealPenaltyAlong(
+  walls: readonly WallView[],
+  from: ScenePoint,
+  to: ScenePoint,
+): number {
+  return figureBarriers(walls).reduce(
+    (penalty, wall) =>
+      segmentCrossingDistance(from, to, wall) === null
+        ? penalty
+        : Math.min(penalty, wall.concealPenalty ?? -4),
+    0,
+  );
+}
 
 /**
  * Arm's reach, in metres (stage 18d) — how close a token has to stand to touch
@@ -139,6 +168,8 @@ export const WALL_ENDPOINT_SNAP_PX = 12;
 
 /** Client → server payload of `wall:create` — one drawn chain. */
 export interface WallCreatePayload {
+  hidesFigures?: boolean;
+  concealPenalty?: number;
   sceneId: string;
   /** Consecutive points; N points become N−1 segments. */
   points: ScenePoint[];
@@ -153,6 +184,8 @@ export interface WallCreatePayload {
 export interface WallUpdatePayload {
   wallId: number;
   patch: {
+    hidesFigures?: boolean;
+    concealPenalty?: number;
     kind?: WallKind;
     playerToggle?: boolean;
     /** Openings only (stage 18d); bolting one also shuts it. */

@@ -224,6 +224,7 @@ export async function buildStateSync(
       ? {
           sceneId: scene?.id ?? '',
           polygons: vision.polygons,
+          figurePolygons: vision.figurePolygons,
           light: vision.light,
           glows: vision.glows,
         }

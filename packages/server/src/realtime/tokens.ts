@@ -30,6 +30,8 @@ import {
   facingFromDelta,
   facingFromPath,
   isTokenInFog,
+  isPointVisible,
+  figureBarriers,
   nextTokenCopyName,
   sanitizeFacing,
   tokenCentre,
@@ -200,17 +202,16 @@ function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
 /**
  * What hides tokens from one player on this scene (stages 17a, 18a, 18b).
  *
- * A scene answers „what may this player see?" one way at a time, which is why
- * the visibility mode is a single setting rather than two switches — this type
- * is the shape of that decision, and there is deliberately no case where both
- * the fog and the walls have a say.
+ * A scene chooses one map-visibility mode. Figure barriers (42c) add a second
+ * polygon mask in every mode, independently of that map: revealing the ground
+ * does not reveal people behind a screen.
  *
  * The `vision` variant carries the lighting alongside the polygons rather than
  * as a fourth kind: darkness is not a different way of hiding, it is a second
  * condition on the same one. „In view but unlit" has to be as hidden as „behind
  * a wall", and one variant holding both keeps that impossible to forget.
  */
-export type Concealment =
+export type Concealment = { figurePolygons?: ScenePoint[][] | null } & (
   | { kind: 'none' }
   | { kind: 'fog'; fog: FogState }
   | {
@@ -219,7 +220,8 @@ export type Concealment =
       lighting: ViewerLighting | null;
       /** The GM's brush over this scene (stage 18c); it outranks both above. */
       overrides: FogShapeView[];
-    };
+    }
+);
 
 /**
  * Builds the concealment one viewer is subject to. The GM is subject to none of
@@ -230,20 +232,24 @@ export async function concealmentFor(
   scene: Scene,
   user: SessionUser,
   context?: SceneVisionContext,
+  liveOverride?: { tokenId: string; x: number; y: number },
 ): Promise<Concealment> {
   if (user.role === ROLE_GM) return { kind: 'none' };
-  if (scene.visibility === 'fog') return { kind: 'fog', fog: await fetchFogState(prisma, scene) };
+  const ctx = context ?? (await loadVisionContext(prisma, scene));
+  const sight = await viewerSightFor(prisma, scene, user.id, ctx, liveOverride);
+  const figurePolygons = sight.figurePolygons;
+  if (scene.visibility === 'fog')
+    return { kind: 'fog', fog: await fetchFogState(prisma, scene), figurePolygons };
   if (usesDynamicVision(scene)) {
-    const ctx = context ?? (await loadVisionContext(prisma, scene));
-    const sight = await viewerSightFor(prisma, scene, user.id, ctx);
     return {
+      figurePolygons,
       kind: 'vision',
       polygons: sight.polygons,
       lighting: sight.lighting,
       overrides: ctx.overrides,
     };
   }
-  return { kind: 'none' };
+  return { kind: 'none', figurePolygons };
 }
 
 /**
@@ -262,8 +268,13 @@ export function concealedFrom(
   linked: LinkedSheet | undefined | null,
   userId: string,
 ): boolean {
-  if (concealment.kind === 'none') return false;
   if (controllerIds(token as Token, linked).has(userId)) return false;
+  if (
+    concealment.figurePolygons &&
+    !isPointVisible(tokenCentre(token, toGridScene(scene)), concealment.figurePolygons)
+  )
+    return true;
+  if (concealment.kind === 'none') return false;
   if (concealment.kind === 'fog') {
     if (!concealment.fog.enabled) return false;
     return isTokenInFog(token, toGridScene(scene), concealment.fog);
@@ -290,6 +301,7 @@ export async function fetchSceneTokensFor(
   scene: Scene,
   user: SessionUser,
   context?: SceneVisionContext,
+  liveOverride?: { tokenId: string; x: number; y: number },
 ): Promise<TokenView[]> {
   const isGm = user.role === ROLE_GM;
   const rows = await prisma.token.findMany({
@@ -297,9 +309,13 @@ export async function fetchSceneTokensFor(
     orderBy: { createdAt: 'asc' },
   });
   const sheets = await loadLinkedSheets(prisma, registry, rows);
-  const concealment = await concealmentFor(prisma, scene, user, context);
+  const concealment = await concealmentFor(prisma, scene, user, context, liveOverride);
   const views: TokenView[] = [];
-  for (const row of rows) {
+  for (const stored of rows) {
+    const row =
+      liveOverride?.tokenId === stored.id
+        ? { ...stored, x: liveOverride.x, y: liveOverride.y }
+        : stored;
     const linked = row.characterId ? sheets.get(row.characterId) : undefined;
     if (concealedFrom(row, scene, concealment, linked, user.id)) continue;
     views.push(toTokenView(row, seesPrivate(row, linked, user), linked));
@@ -323,9 +339,7 @@ export async function emitSceneTokensToPlayers(
   if (!scene.active) return;
   // The walls are the same for every viewer — only the origins differ — so the
   // segment list is built once and handed to each per-player raycast.
-  const context = usesDynamicVision(scene)
-    ? await loadVisionContext(deps.ctx.prisma, scene)
-    : undefined;
+  const context = await loadVisionContext(deps.ctx.prisma, scene);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
@@ -548,7 +562,12 @@ export async function emitTokenUpsert(
   // answer per socket. The GM and the controllers get the token directly and
   // everybody else gets their own filtered list — which is the one code path
   // that already knows how to answer that question per viewer.
-  if (usesDynamicVision(scene)) {
+  if (
+    usesDynamicVision(scene) ||
+    (await deps.ctx.prisma.wall.count({
+      where: { sceneId: scene.id, hidesFigures: true, kind: { in: ['barrier', 'gate'] } },
+    })) > 0
+  ) {
     deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
     // Any of these can change what somebody *sees*, not just what they see of
     // this token: a new owner, a different sight range, a token appearing at
@@ -1102,10 +1121,8 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     }
     // Removing a token can take a player's eyes off the map with it, and with
     // them everything those eyes were keeping visible.
-    if (usesDynamicVision(scene)) {
-      await emitVisionToPlayers(deps, campaignId, scene);
-      await emitSceneTokensToPlayers(deps, campaignId, scene);
-    }
+    await emitVisionToPlayers(deps, campaignId, scene);
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
     // The DB cascades the token out of any running fight — push the shorter
     // roster to everyone (killed enemies simply leave the tracker).
     await emitCombatOfScene(deps, campaignId, scene);
@@ -1310,11 +1327,24 @@ async function emitDynamicMove(
 
   const context = await loadVisionContext(deps.ctx.prisma, scene);
   const moved = { ...token, x: position.x, y: position.y };
-  const centre = tokenCentre(moved, toGridScene(scene));
+  const hasFigureBarriers = figureBarriers(context.walls).length > 0;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
+    if (!final && hasFigureBarriers) {
+      member.emit('token:sync', {
+        sceneId: scene.id,
+        tokens: await fetchSceneTokensFor(
+          deps.ctx.prisma,
+          deps.ctx.cpred,
+          scene,
+          data.user,
+          context,
+          { tokenId: token.id, ...position },
+        ),
+      } satisfies TokenSyncBroadcast);
+    }
     if (controllers.has(data.user.id)) {
       member.emit('token:move', move);
       continue;
@@ -1322,12 +1352,12 @@ async function emitDynamicMove(
     // The watcher's own sight, cast from where *their* tokens are — including
     // the light they are carrying, which is why the token being dragged is
     // handed in: its torch has to have moved with it.
-    const sight = await viewerSightFor(deps.ctx.prisma, scene, data.user.id, context, {
+    const concealment = await concealmentFor(deps.ctx.prisma, scene, data.user, context, {
       tokenId: token.id,
       x: position.x,
       y: position.y,
     });
-    if (isPointObservable(centre, sight.polygons, sight.lighting, context.overrides)) {
+    if (!concealedFrom(moved, scene, concealment, linked, data.user.id)) {
       member.emit('token:move', move);
     }
   }
@@ -1477,7 +1507,14 @@ export async function performTokenMove(
         fog.enabled &&
         (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, ...position }, grid, fog));
 
-      if (scene.active && !token.hidden && usesDynamicVision(scene)) {
+      if (
+        scene.active &&
+        !token.hidden &&
+        (usesDynamicVision(scene) ||
+          (await deps.ctx.prisma.wall.count({
+            where: { sceneId: scene.id, hidesFigures: true, kind: { in: ['barrier', 'gate'] } },
+          })) > 0)
+      ) {
         await emitDynamicMove(deps, campaignId, scene, token, move, position, isFinal);
         return;
       }

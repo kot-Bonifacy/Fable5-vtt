@@ -7,6 +7,32 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — bariera i brama (etap 42a), plany 42b i 42c
+
+**Zlecenie MG:** ściany, które nie zasłaniają widoku, a blokują przejście (ogrodzenie z siatki). Po
+pytaniach rozrosło się do trzech etapów (decyzja MG): **42a** — bariera i brama blokują ruch, wręcz
+i Pochwycenie, a planer gracza zna bariery, które gracz widzi; **42b** — SP bariery dla strzałów
+i wybuchów (dwie warstwy, bez zużycia, sama liczba); **42c** — bariera zasłaniająca figury we
+wszystkich trybach, bez „firanki", kara ustawiana na barierze (domyślnie −4), a za nią mgła przy
+widocznej mapie (dopisek MG w trakcie sesji). Wszystkie decyzje stoją w plikach etapów.
+
+**Zrobione (42a):** rodzaje `barrier` i `gate`; `wallBlocksMovement` jako jedyna odpowiedź „co
+zatrzymuje ciało"; `blocker:sync` i pole `blockers` w `state:sync` (Dynamiczna — per źródło wzroku,
+mgła — odsłonięte, otwarta — wszystkie; zamknięte okno z bliska tą samą drogą); `isBodyBlocked`
+dla wręcz (`MELEE_BLOCKED`) i Pochwycenia (`GRAPPLE_BLOCKED`); `roomSegments` bez barier; pasek,
+karta segmentu, kolory, glif 🚧, zdania odmów bramy. **Poprawione przy okazji:** Pochwycenie nie
+sprawdzało ścian wcale; przez zamknięte okno z bliska dało się uderzyć wręcz (świadoma zmiana —
+wręcz pyta listy ruchu).
+
+**Znalezione, nienaprawione:** planer gracza nie zna zwykłych ścian poza widocznością Dynamiczną
+(zaległość); przy Dynamicznej atak gracza na figurę, której nie widzi, odmawia innym kodem niż
+„nie ma takiej figury" i zdradza ścianę (wpisane do zakresu 42c).
+
+**Weryfikacja:** 2055 testów w `shared` (15 nowych), 1114 na serwerze (11 nowych), 197 u klienta;
+`tsc --noEmit` w trzech pakietach, ESLint i Prettier na zmienionych plikach — zielone. **Bez oględzin
+w przeglądarce** — pozycja w `zaleglosci.md`. Dwie nowe pułapki w `testy`: żeton na połówce kratki
+staje o pół kratki dalej, a wysyłka do gracza potrafi dojść po ack MG. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — duża galeria wyboru portretu i rezerwacje szkiców
 
 **Zlecenie MG:** „Wybierz portret” otwiera osobne duże okno galerii, kliknięcie przechodzi

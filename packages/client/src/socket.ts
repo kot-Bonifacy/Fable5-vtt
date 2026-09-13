@@ -973,7 +973,7 @@ export function connectSocket(userId: string): Socket {
     // One event, two stores: the server computes the field of view and the light
     // inside it in a single pass, and splitting the payload here would only mean
     // two chances for the map to draw a mask that belongs to another position.
-    useWallStore.getState().setVision(broadcast.polygons);
+    useWallStore.getState().setVision(broadcast.polygons, broadcast.figurePolygons);
     useLightStore.getState().setVisionLight(broadcast.light ?? null, broadcast.glows ?? []);
   });
   // Lamp rows are GM-only and targeted at the GM room — no seq, like walls.
@@ -1813,6 +1813,8 @@ export const createWalls = (
   playerToggle: boolean,
   /** Barriers and gates only (stage 42b); the server keeps it nowhere else. */
   armor?: number,
+  hidesFigures?: boolean,
+  concealPenalty?: number,
 ) =>
   emitSceneAck<WallView[]>('wall:create', {
     sceneId,
@@ -1820,6 +1822,8 @@ export const createWalls = (
     kind,
     playerToggle,
     ...(armor !== undefined ? { armor } : {}),
+    hidesFigures,
+    concealPenalty,
   });
 
 export const updateWall = (wallId: number, patch: WallUpdatePayload['patch']) =>

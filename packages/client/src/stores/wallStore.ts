@@ -28,6 +28,7 @@ interface WallStoreState {
   walls: WallView[];
   /** Player's field of view, one polygon per vision source. */
   polygons: ScenePoint[][];
+  figurePolygons: ScenePoint[][] | null;
   /** Whether a `vision:sync` has ever arrived for the current scene. */
   hasVision: boolean;
   /** Openings this viewer may operate (GM: taken from `walls` instead). */
@@ -41,7 +42,7 @@ interface WallStoreState {
 
   applySync: (payload: StateSyncPayload) => void;
   setWalls: (sceneId: string, walls: WallView[]) => void;
-  setVision: (polygons: ScenePoint[][]) => void;
+  setVision: (polygons: ScenePoint[][], figurePolygons?: ScenePoint[][] | null) => void;
   setOpenings: (openings: WallView[]) => void;
   setBlockers: (blockers: Segment[]) => void;
 }
@@ -49,6 +50,7 @@ interface WallStoreState {
 export const useWallStore = create<WallStoreState>((set) => ({
   walls: [],
   polygons: [],
+  figurePolygons: null,
   hasVision: false,
   openings: [],
   blockers: [],
@@ -57,13 +59,15 @@ export const useWallStore = create<WallStoreState>((set) => ({
     set({
       walls: payload.walls,
       polygons: payload.vision?.polygons ?? [],
+      figurePolygons: payload.vision?.figurePolygons ?? null,
       hasVision: payload.vision !== null,
       openings: payload.openings,
       blockers: payload.blockers ?? [],
     }),
 
   setWalls: (_sceneId, walls) => set({ walls }),
-  setVision: (polygons) => set({ polygons, hasVision: true }),
+  setVision: (polygons, figurePolygons = null) =>
+    set({ polygons, figurePolygons, hasVision: true }),
   setOpenings: (openings) => set({ openings }),
   setBlockers: (blockers) => set({ blockers }),
 }));
