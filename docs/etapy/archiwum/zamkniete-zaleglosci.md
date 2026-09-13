@@ -9,6 +9,46 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-13 (druga sesja — alias w kartach czatu, „Minęła minuta", „bez ran")
+
+**03.09 (etap 35): nazwa figury nadal jechała do graczy w kartach czatu.** Wpis brzmiał: „Alias
+`Token.publicName` (03.09) zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie
+ścieżki filtruje serwer (`toTokenView`, `filterCombatForPlayer`), obie obejrzane w przeglądarce.
+**Czat zostaje nieszczelny:** ponad trzydzieści miejsc w `realtime/` wpisuje `token.name` w **treść**
+wiadomości („Snajper Arasaki → Rudy Kwiatkowski"), a wiadomość jest zapisana w bazie i rozsyłana
+wszystkim tak samo". Miejsc było w rzeczywistości około sześćdziesięciu w 21 plikach, bo część kart
+brała nazwę z karty postaci (`character.name`), a nie z żetonu. **Decyzje MG z 13.09:** alias
+u wszystkich, także u MG (bez drugiej kopii wiadomości); pusty alias pisze „Nieznajomy"; rzut z samej
+karty, bez żetonu, pisze nazwę karty. **Naprawa:** `tokenTableName(token, realName)` w
+`shared/tokens.ts` (plus `TOKEN_UNLABELLED_TABLE_NAME`) i `combatantTableName` w `realtime/combat.ts`;
+podpięte w atakach, obrażeniach, zwarciu, Konfrontacji, amunicji bez obrażeń, strefach, Sieci
+(netrun, LOD, demony, urządzenia), dzienniku Akcji, turze i zamiataniu efektów. Podpowiedź w edytorze
+figury mówi teraz, co karta napisze. **Dwa błędy znalezione po drodze:** okno przeszukania (38b)
+pisało graczowi prawdziwą nazwę figury — łamało umowę `mapa` („nowa ścieżka do gracza filtruje nazwę
+u siebie") — i od 13.09 filtruje per widz; `damageBrain` i `IceEffectInput` w `netice.ts` brały żeton
+jako `Pick<Token, 'id' | 'name' | 'ownerId'>`, więc alias w ogóle by do nich nie doszedł (`tsc`).
+Karty zapisane wcześniej zostają z prawdziwą nazwą. Testy: trzy w `shared/tokens.test.ts`, karta gazu
+i „Minęła minuta" oczami gracza w `ammo-effects.test.ts`. **Obejrzane 13.09 w przeglądarce** na kampanii-śmieciu:
+figura z aliasem „Ochroniarz" rzuciła inicjatywę, a u gracza `Tester` karta rzutu i kolejka pisały
+„Ochroniarz", tekst całej strony nie zawierał prawdziwej nazwy; edytor figury pokazuje nową
+podpowiedź „Karty na czacie piszą „Ochroniarz" u wszystkich, także u MG…".
+
+**04.09 (trzecia sesja): zdanie „Minęła minuta … wraca: Kerenzikov, Cyberoko" bez testu.** Druga
+połowa pozycji o odmowach montażu: „zdanie dopisuje `sweepTimedEffects`, czyli zamiatanie, które
+chodzi wyłącznie w trybie turowym; żeby je zobaczyć, trzeba przepuścić sześć rund walki. Sama
+zawartość zapisu jest pokryta testem (`sheets.test.ts`), niepokryte jest **zdanie**". **Naprawa:**
+test w `ammo-effects.test.ts` → „po minucie walki „Minęła minuta" mówi, co wraca po Impulsie" —
+walka z jedną figurą, Impuls EMP do skutku, osiem rund, a karta odebrana **gniazdem gracza** ma
+zawierać `wraca: <te same dwie cyborgizacje, które wypisała karta ataku>`. Pierwsza połowa pozycji
+(odmowy montażu u gracza) zostaje otwarta.
+
+**10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale nieobejrzane u gracza.** Wpis kończył się:
+„Do obejrzenia przy najbliższej walce, w której gracz ma turę — patrzy się na listę Ustabilizowania
+przy cudzej figurze: znacznika ma nie być wcale (a nie „bez ran")". **Obejrzane 13.09:** kolejka na
+„StrefiePrzemysłowej" stała już na turze Tony'ego, więc nie trzeba było jej ruszać. Z konta Tony'ego
+(`[::1]:5173`) otwarty formularz Ustabilizowania: przy „Marcin" guzik „Ustabilizuj" i **żadnego
+znacznika**. Formularz zamknięty bez zatwierdzenia, budżet tury nietknięty.
+
 ## Zamknięte 2026-09-13 (cyberdek netrunnera Korpo i „Dodaj za darmo")
 
 **04.09 (etap 30c): Korporacyjny netrunner miał cyberdek wyłącznie w prozie.** Pracownik z HR-u

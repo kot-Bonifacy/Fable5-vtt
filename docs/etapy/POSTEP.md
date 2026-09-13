@@ -131,6 +131,13 @@ prośba → zgoda → rzut. Naprawione i pokryte testami. **Morał szerszy niż 
 funkcja jest **białą listą** — nowe pole w `CpredRollRequest` trzeba do niej dopisać, inaczej ginie
 po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
 
+**Od 13.09 karty czatu piszą alias figury (`Token.publicName`) — u wszystkich, MG też** (decyzja
+MG; pusty alias to „Nieznajomy", rzut z samej karty pisze nazwę karty). Nazwa figury wchodzi do
+karty czatu **wyłącznie** przez `tokenTableName` — umowa w `czat`. Karty sprzed 13.09 zostają
+z prawdziwą nazwą. **Cztery drobne usterki z oględzin 13.09 czekają w `zaleglosci.md`** (tekst „nie
+w rękach", notka po „Zainstaluj", lead screamsheetu, słowa edytora 38a) — MG nie wybrał żadnej do
+poprawki w tamtej sesji.
+
 **Pięć ostatnich sesji zamknęło dziewięć etapów:** 40 (prośba gracza o Test), szlif karty postaci,
 38b (przedmioty między kartami) i 34 (tabele losowe) — 06.09; 38a (statysta jako karta),
 39 (efekty na Cechy), 37 (kalendarz), 35 (ping, ramka, kopie figur) i 33 (kopie zapasowe) — 05.09.
@@ -142,15 +149,12 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 10 pozycji** (`zaleglosci.md`; dziesiąta z 12.09 — pełny ekran). Sesja 12.09 (szósta) zamknęła **trzy**: kratkę
-ze skali mapy, naklejki statusów i „Brak sceny" u MG — tę ostatnią obejrzaną na kampanii-śmieciu
-„Oględziny 12.09", bo ten stan powstaje wyłącznie w świeżej kampanii. Sesja piąta zamknęła **cztery**
-i obaliła przeszkodę, na której stała reszta: **menu figury OTWIERA SIĘ z automatyki** — seria
-`pointerdown`/`pointerup` z `button: 2` we **współrzędnych CSS** (pułapka w `ogledziny`). „🎒
-Przeszukaj…" odklikane tą drogą; przełącznik statystyk czeka już tylko na figurę **bez karty**,
-bo na poligonie każda ją ma. Większość reszty czeka na **żywy model** (19a–20b, 24c). Nowa pozycja
-z tej sesji jest jedna: „bez ran" naprawione, ale nieobejrzane u gracza — formularz otwiera się
-dopiero na jego turze, a MG nie zgodził się ruszać kolejki.
+**Dług oględzin — 9 pozycji** (`zaleglosci.md`). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
+(tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
+Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
+(pełny ekran, maszynopis). Kampania-śmieć „Oględziny 12.09" ma od 13.09 członka `Tester` —
+**stałe zaproszenie `tester-dev` prowadzi na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
 
 **Od 12.09 `main` na GitHubie jest aktualny.** Do tej sesji `origin/main` stał na etapie 07
 (18.07), a 206 commitów — cała praca od etapu 08 — istniało wyłącznie na tym dysku. Gałąź
@@ -201,8 +205,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2029** w `shared`, **1100** na serwerze, **197** u klienta —
-zielone (liczby zmierzone 13.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2032** w `shared`, **1101** na serwerze, **197** u klienta —
+zielone (liczby zmierzone 13.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -227,7 +231,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   40 |      18 |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    4 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
@@ -242,12 +246,31 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      67 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      71 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      17 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 13.09 — alias figury w kartach czatu i oględziny bez modelu
+
+**Zlecenie MG:** przegląd zaległości; wybrane: nazwa figury w kartach czatu, test „Minęła minuta"
+i oględziny bez modelu, plus push siedmiu commitów. Decyzje MG: alias u wszystkich (MG też), pusty
+alias „Nieznajomy", rzut z samej karty pisze nazwę karty; poziom sklepu nie dotyczy montażu
+wszczepów (`decyzje-i-uproszczenia.md`). `tokenTableName` (`shared/tokens.ts`) i
+`combatantTableName` podpięte w ~60 miejscach 21 plików `realtime/`; podpowiedź edytora figury mówi,
+co napisze czat. Po drodze dwa błędy: okno przeszukania pisało graczowi prawdziwą nazwę, a
+`netice.ts` gubił alias przez `Pick<Token>` bez `publicName`.
+
+**Weryfikacja:** 2032 testy w `shared` (3 nowe), 1101 na serwerze (karta gazu i „Minęła minuta"
+oczami gracza, nowy test „wraca: …" po EMP), 197 u klienta; `tsc`, ESLint, Prettier — zielone.
+W Chrome: „bez ran" u Tony'ego w jego turze (kolejka nieruszona); na kampanii-śmieciu z kontem
+`Tester` — alias na karcie inicjatywy i w kolejce, edytor 38a z zapisem zakładającym kartę i koszem
+pojedynczym, wyszarzony slot po „Schowaj", odmowa `MISSING_FOUNDATION`. Znalezione i **nie**
+poprawione: cztery drobne usterki w `zaleglosci.md`. `pnpm dev` zgubił backend (strażnik
+`tsx watch` bez serwera) — ubity i uruchomiony osobno; serie akcji rozszerzenia wymagały stałej
+zgody na domeny. Etap 28 pozostaje nierozpoczęty.
 
 ### Sesja 13.09 — cyberdek netrunnera Korpo i „Dodaj za darmo"
 
@@ -266,15 +289,3 @@ Robak, Pancerz z liczbami z kompendium), tooltip obejrzany przy cyborgizacji i p
 **Poprawione na prośbę MG:** z wpisu o maszynopisie w `zaleglosci.md` zniknął punkt o przełączniku
 „⌨" (usuniętym w `3d78ee5`), a z wpisu o nazwie figury w czacie — odesłanie do zamkniętego etapu 35.
 Oba problemy zostają na liście. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — odświeżenie okna skrótów klawiszowych
-
-**Zlecenie MG:** zaktualizować treść i wygląd pomocy. Okno ma wyszukiwarkę klawiszy,
-czynności i grup, krótsze opisy, oznaczenia MG i układ dostosowany do szerokości.
-Poprawiono warunki skrótów walki, opis cyfr paska, brak Backspace i opis Esc;
-Alt+klik z prośbą o Test widzi wyłącznie gracz. Klawisze z elementów pomocy nie
-przechodzą do mapy. Zachowana pamięć pozycji i rozmiaru.
-
-**Weryfikacja:** 197 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone.
-W Chrome obejrzano okno 640 i 400 px, wyszukiwanie, brak wyników oraz czyszczenie filtra.
-Vite zgłasza ostrzeżenie o dużych paczkach JS. Etap 28 pozostaje nierozpoczęty.

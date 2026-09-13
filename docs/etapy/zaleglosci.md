@@ -24,6 +24,16 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
   górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
 
+**Zamknięte 13.09 (druga sesja): nazwa figury w kartach czatu, zdanie „Minęła minuta" i „bez ran"
+u gracza.** Karty czatu piszą alias figury u wszystkich, MG też (decyzja MG), a przy pustym aliasie
+„Nieznajomy"; przy okazji okno przeszukania przestało pisać graczowi prawdziwą nazwę, a Czarny LOD
+gubił alias przez zawężony typ żetonu. Zdanie „Minęła minuta … wraca: …" ma test na żywych gniazdach.
+„Bez ran" obejrzane z konta Tony'ego w jego turze na „StrefiePrzemysłowej" — kolejka nieruszona.
+Tej samej sesji na kampanii-śmieciu obejrzane: alias na czacie oczami gracza, szybki edytor 38a
+z koszem pojedynczym, wyszarzony slot z 41 i odmowa `MISSING_FOUNDATION` u gracza — pozycje 38a,
+41 i odmów montażu zostają otwarte z zawężonym zakresem. Cztery nowe drobne usterki w „Pozycjach".
+Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 13.09: cyberdek netrunnera Korpo i „Dodaj za darmo".** Pracownik z HR-u dostaje
 prawdziwy deck z Programami z kompendium, a Programy bez wpisu lądują w notatkach karty. „Dodaj za
 darmo" przy cyborgizacji zostaje, jak jest (decyzja MG), a tooltip mówi, że wszczep wchodzi bez Testu
@@ -53,46 +63,25 @@ zależeć od przeglądarki);
 Na `http://217.154.210.181:8088` Keyboard Lock nie działa (brak HTTPS) i Esc wychodzi od razu —
 to nie regres; zadziała na `vtt.tatanga.eu` po etapie 28.
 
-**10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
-(gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**
-12.09: `observedWoundState` w `shared` ma trzy stany zamiast dwóch, a `StabilizePicker` pisze
-„bez ran" wyłącznie przy `healthy`. Cztery testy w `damage.test.ts`. Czego **nie** udało się
-zrobić: obejrzeć tego z konta gracza — formularz Ustabilizowania otwiera się dopiero, gdy gracz
-**jest na swojej turze** (`CombatPanel.tsx`, `actor`), a przesunięcie kolejki na „StrefiePrzemysłowej"
-wydałoby budżet Marcina na nowo. **MG zdecydował 12.09: nie ruszać kolejki.** Do obejrzenia przy
-najbliższej walce, w której gracz ma turę — patrzy się na listę Ustabilizowania przy cudzej
-figurze: znacznika ma nie być wcale (a nie „bez ran").
+**12.09 (etap 41): została JEDNA ścieżka — dymek pod celownikiem.** Etap przeszedł oględziny 12.09
+(okno oględzin u MG i u gracza, dokładne oględziny z prośby, „Pokaż wszystko", „Dobądź / Schowaj
+(Akcja) / Upuść"; po drodze naprawiony błąd, przez który dokładne oględziny nie działały — patrz
+archiwum). **13.09 obejrzany wyszarzony slot paska** na kampanii-śmieciu, z konta `Tester`: po
+„Schowaj (Akcja)" oba wiersze broni („Pistolet oględzinowy" i jego „Przeładuj") dostają
+`hud-slot--refused` (przezroczystość 0,4), a karta zamienia plakietkę „✊ W rękach" na „Dobądź".
+Przy okazji wyszła usterka tekstu odmowy — osobna pozycja niżej. **Zostaje:** dwie linijki w dymku
+pod celownikiem — `onAimHover` nie budzi się od syntetycznego ruchu kursora (pułapka z 10.09), więc
+to jedyna droga przez rękę MG.
 
-**12.09 (etap 41): zostały DWIE ścieżki, reszta odklikana, jeden błąd naprawiony.** Etap
-przeszedł oględziny 12.09 — menu figury otwiera się z automatyki (`PointerEvent` z `button: 2`
-we współrzędnych CSS), więc przeszkoda, na której ta pozycja stała, była nieprawdziwa. Odklikane:
-okno oględzin u MG i u gracza, pełna ścieżka prośby o dokładne oględziny (drabinka PT → zgoda →
-rzut → karta z liczbami), „Pokaż wszystko", guziki „Dobądź / Schowaj (Akcja) / Upuść". Po drodze
-znaleziony i naprawiony **błąd, przez który dokładne oględziny w ogóle nie działały** — patrz
-`archiwum/zamkniete-zaleglosci.md`. **Zostają dwie rzeczy:** (1) **dwie linijki w dymku pod
-celownikiem** — `onAimHover` nie budzi się od syntetycznego ruchu kursora (pułapka z 10.09 nadal
-obowiązuje, to jedyna droga przez rękę MG); (2) **wyszarzony slot paska po schowaniu broni** —
-„Schowaj" kosztuje Akcję, a jedyna figura pod ręką stoi w rozegranej turze, więc sprawdzenie
-tego zabrałoby jej Akcję.
-
-**05.09 (etap 38a — statysta jako karta postaci): UI szybkiego edytora nieoglądany
-w przeglądarce.** Przez przeglądarkę przeszła **część** etapu, i to ta, na której najbardziej
-zależało: trzy zmigrowane figury poligonu („Automatyczna wieżyczka", „Strzelec 23x", „Cel 23x")
-stoją w panelu postaci obok Vex i Rudego, otwierają się jak każda karta, a „Cel 23x" pokazuje
-**PW 33/35** — czyli wydrukowane maksimum przeżyło migrację i zapis (`statBlock.hpMax`). Pasek
-figury po zaznaczeniu żetonu buduje się z karty (broń, akcje, przeładowania, PW 35/35).
-
-**Nieoglądane zostały trzy rzeczy w menu figury.** Powód podany 05.09 („prawym klikiem
-z automatyki nie da się otworzyć menu") **jest nieaktualny od 12.09** — menu otwiera się serią
-`pointerdown`/`pointerup` z `button: 2` we współrzędnych CSS. Przeszkoda jest dziś inna i mniejsza:
-przełącznik „Statystyki bojowe" pokazuje się wyłącznie w edytorze figury **bez przypisanej karty**,
-a na scenach poligonu każda figura kartę ma — trzeba więc najpierw postawić figurę testową.
-Do obejrzenia zostają:
-przełącznik „Statystyki bojowe (figura dostaje własną kartę)" i to, że zapis **zakłada kartę**;
-nowe pole „Wartość bojowa zamiast Cech" wraz z „Nie unika pocisków"; oraz **pytanie o kartę przy
-koszu figury** (pojedynczym i grupowym z 35). Wszystkie trzy ścieżki mają testy dymne na żywych
-gniazdach (`tokens.test.ts` → „statysta jako karta postaci (etap 38a)"), więc chodzi wyłącznie
-o obejrzenie układu i słów na ekranie. **Do zrobienia ręką MG w pierwszej sesji przy stole.**
+**05.09 (etap 38a — statysta jako karta postaci): został JEDEN kosz — grupowy.** Zmigrowane figury
+poligonu przeszły przez przeglądarkę 05.09. **13.09 obejrzany szybki edytor** na kampanii-śmieciu
+(„Figura testowa" bez karty): przełącznik „Statystyki bojowe (figura dostaje własną kartę)", pola
+profilu, „Wartość bojowa zamiast Cech" z podpowiedzią i „Nie unika pocisków (s. 158)" — wszystko
+mieści się w oknie, a zapis **założył kartę** (`statBlock`: Wartość bojowa 4, `noBulletDodge`,
+`hpMax` 10). **Kosz pojedynczy** pyta dwa razy: „Usunąć token „Figura testowa"?" i „Usunąć też
+kartę „Figura testowa"? Zostanie w kampanii, jeśli odmówisz." — obie odpowiedzi „tak" usunęły żeton
+i kartę. Dwie drobne uwagi do słów edytora — osobna pozycja niżej. **Zostaje:** pytanie o kartę
+przy **koszu grupowym** z 35 — na scenie nie zostały dwie figury z kartami.
 
 **05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
 w tej samej sesji — pozycja „nie był oglądany" żyła kilkanaście minut. Przez przeglądarkę przeszły
@@ -150,25 +139,43 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **Odmowy montażu nieoglądane na koncie gracza; monit „Minęła minuta" z nazwami — też.**
+- **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
+  „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)
   Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
   (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich
   zwolniony** — a ripperdoc, którym MG operuje, jest jedyną drogą przez UI, więc przy oględzinach
   04.09 nie było jak zobaczyć czerwonego zdania w czacie. To ta sama sytuacja co przy odmowach
-  ruchu: trzeba konta gracza. Druga rzecz w tej samej kategorii: **„Minęła minuta … wraca:
-  Kerenzikov, Cyberoko"** — zdanie dopisuje `sweepTimedEffects`, czyli zamiatanie, które chodzi
-  wyłącznie w trybie turowym; żeby je zobaczyć, trzeba przepuścić sześć rund walki. Sama
-  zawartość zapisu jest pokryta testem (`sheets.test.ts`), niepokryte jest **zdanie**.
+  ruchu: trzeba konta gracza. **13.09 obejrzana `MISSING_FOUNDATION` z konta `Tester`:** Kompendium
+  → „Celownik optyczny" → „Zainstaluj — 1000 ed" na karcie bez cyberoka daje w czacie notatkę „Nie
+  ma w co tego wszczepić…" (szarą i lokalną, nie czerwony wiersz), a karta zostaje z 5000 ed i bez
+  wszczepu. **Zostają:** `NO_SLOTS` i `POOL_FULL` (zdania z tej samej tablicy, co obejrzane) oraz
+  `SELF_INSTALL`, do którego gracz potrzebuje Medyka z Chirurgią. `NO_SURGERY_SKILL` jest z UI
+  nieosiągalne z założenia: lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią.
 
-- **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
-  zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer
-  (`toTokenView`, `filterCombatForPlayer`), obie obejrzane w przeglądarce. **Czat zostaje
-  nieszczelny:** ponad trzydzieści miejsc w `realtime/` wpisuje `token.name` w **treść**
-  wiadomości („Snajper Arasaki → Rudy Kwiatkowski"), a wiadomość jest zapisana w bazie
-  i rozsyłana wszystkim tak samo — filtr per-odbiorca wymagałby albo przebudowy kart na dane
-  plus szablon, albo drugiej kopii wiadomości. Praktycznie boli mniej, niż wygląda: kartę
-  pisze figura, która **właśnie coś zrobiła**, więc stół i tak już wie, kto to. Okno edycji
-  tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę").
+- **13.09 (etap 24c): drugi szkic screamsheetu kasuje lead poprawiony przez MG.** Znalezione przy
+  przeglądzie kodu, nie przy stole. `takeDraft` (`HandoutPanel.tsx`) wpisuje tytuł i treść szkicu
+  tylko wtedy, gdy nie są puste, a **lead nadpisuje zawsze** — więc szkic bez leadu wymaże to, co MG
+  już poprawił. Poprawka to jeden warunek (`draft.lead.length > 0`), ale zachowanie „drugi generator
+  nadpisuje pola" jest osobnym otwartym pytaniem z wpisu o 24c niżej — MG nie wybrał jej 13.09.
+
+- **13.09 (etap 41): odmowa „nie w rękach" przy pustych rękach mówi o „tamtym".**
+  `CPRED_NOT_DRAWN_REFUSAL` (`shared/systems/cpred/attacks.ts`) ma jedno zdanie: „Masz w rękach co
+  innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń." Postać, która schowała
+  **jedyną** broń, ma puste ręce, a podpowiedź slotu i odmowa planera każą jej wydać Akcję na
+  chowanie czegoś, czego nie trzyma. Obejrzane 13.09 na koncie `Tester`. Naprawa: dwa zdania
+  zależnie od `cpredDrawnWeapons` — przy pustych rękach coś w rodzaju „Broń jest w kaburze — dobądź
+  ją (bez Akcji)". MG nie wybrał poprawki w tej sesji.
+
+- **13.09 (etap 23a/23b): notka „Instaluję …" na karcie wpisu zostaje po odmowie.** `install()`
+  w `CompendiumPanel.tsx` wstawia „Instaluję „Celownik optyczny" — 1000 ed. Rzut na Utratę
+  Człowieczeństwa idzie na czat." **przed** odpowiedzią serwera, więc po odmowie
+  `MISSING_FOUNDATION` karta mówi co innego niż czat. Naprawa: notka dopiero po `ack.ok`
+  (`sendCyberwareAction` musiałby zwracać wynik) albo gaszona przy odmowie.
+
+- **13.09 (etap 38a): dwie uwagi do słów szybkiego edytora.** (1) Podpowiedź „PW bierze się
+  z paska powyżej" stoi także wtedy, gdy „Pasek HP" jest odznaczony — nie sprawdzone, jakie
+  maksimum dostaje wtedy zakładana karta. (2) Pole „Umiejętność" zostaje obok zaznaczonej „Wartości
+  bojowej zamiast Cech", choć od tej chwili atak i obrona liczą się z Wartości. Kosmetyka słów.
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej

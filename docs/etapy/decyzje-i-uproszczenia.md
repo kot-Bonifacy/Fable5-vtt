@@ -310,6 +310,14 @@ to jest ten akapit do przeczytania na nowo.
 
 ## Interfejs
 
+- **Poziom sklepu nie dotyczy montażu wszczepów (13.09, decyzja MG).** Tarcza kampanii („Uliczne —
+  do 50 ed") blokuje graczowi w Kompendium wyłącznie „Kup"; „Zainstaluj — … ed" przy cyborgizacji
+  zostaje dostępne także dla wpisu z wyższego poziomu (oględziny: „Celownik optyczny", Zawodowe,
+  500 ed, przy sklepie Ulicznym). Powód: wszczep przychodzi przy stole także z łupu, od znajomego
+  ripperdoca albo w nagrodę za zlecenie, więc tarcza tempa zakupów nie ma czego tu pilnować. Gdyby
+  to zaczęło uwierać, warunek `locked && !isGm` z guzika „Kup" (`CompendiumPanel.tsx`) trzeba dopisać
+  **i** po stronie serwera w `character:cyberware` — sam klient byłby tylko zasłoną.
+
 - **Etap 23b — lista odbiorców przelewu odświeża się przy otwarciu „Kasy".** Postać utworzona,
   gdy panel jest już rozwinięty, pojawi się na liście dopiero po zwinięciu i ponownym rozwinięciu.
   Świadome: listę przynosi `economy:history` razem z audytem (klient gracza nie zna cudzych kart),

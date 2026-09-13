@@ -903,6 +903,11 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Stałe zaproszenie `tester-dev` prowadzi na „Poligon bojowy", nie do aktywnej kampanii** — kampanię-śmieć wpuszcza nowe zaproszenie (`POST /api/campaigns/:id/invitations` z karty MG) i imię istniejącego konta; to samo imię = to samo konto, nowe nie powstaje.
+- **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
+- **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
+- **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
 - **Karta automatyki jest schowana — pełnego ekranu w niej nie obejrzysz** — `requestFullscreen` przy aktywnym geście odpowiada „not granted", bo `document.visibilityState === 'hidden'` (okno automatyki leży za innym). Sprawdź to **przed** szukaniem błędu; pełny ekran i Keyboard Lock ogląda MG ręcznie.
 - **Moduł `/src/socket.ts` wczytany z konsoli ma WŁASNE, puste gniazdo** — `activateCampaign` i reszta odpowiadają `NOT_CONNECTED`, choć pasek mówi „Połączony", także przy adresie z `?t=`. Działa **osobne** połączenie: `io()` z `/node_modules/.vite/deps/socket__io-client.js?v=…` (adres z `performance.getEntriesByType('resource')`) — ciasteczko MG idzie samo.
 - **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze; w `dev.db` są już cztery takie („dfgdgfdg", „dsaada", „Ulice Night City", „Oględziny 12.09 — do usunięcia"). **Nie zakładaj piątej** — do testów „świeżej kampanii" używaj „Oględzin 12.09". Przełączenie kampanii przenosi **wszystkie** połączone ekrany, także cudze.
@@ -966,6 +971,30 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
 - **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
 
+
+- **Stałe zaproszenie `tester-dev` jest przypięte do Poligonu (13.09).** `poligon.md` mówił, że
+  „wskazuje aktywną kampanię" — ekran dołączenia pisze jednak „Kampania: Poligon bojowy", więc
+  kampania-śmieć „Oględziny 12.09" (zero członków) nie ma jak wpuścić gracza tą drogą. Działa nowe
+  zaproszenie wystawione z karty MG (`fetch('/api/campaigns/<id>/invitations', { method: 'POST' })`)
+  i wpisanie na ekranie dołączenia imienia **istniejącego** konta: `POST /api/join/:token` szuka
+  użytkownika po imieniu i dopisuje tylko członkostwo (`join.ts`, „Same name = same player").
+
+- **`innerText` zwraca tekst po `text-transform` (13.09).** Zakładki karty postaci są w CSS
+  wielkimi literami, więc `innerText` daje „KARTA", „EKWIPUNEK" — i skrypt szukający
+  `innerText.trim() === 'Karta'` albo `/^Schowaj \(Akcja\)$/` nie znajduje niczego, choć przycisk
+  stoi na ekranie. Pół godziny wyglądało to na brak funkcji. Szukaj po `textContent`.
+
+- **Slot paska szarzeje na wierszu, a „Dobądź" pojawia się dopiero po pierwszym „Schowaj" (13.09).**
+  Karta, przy której nikt nie zadeklarował rąk, pokazuje pierwszą broń jako trzymaną
+  (`cpredDrawnWeapons`) — przy niej stoi „Schowaj (Akcja)", a „Dobądź" nie ma wcale. Po schowaniu
+  `hotbar.ts` daje opcji `notDrawn`, a `CombatHud.tsx` dokłada `hud-slot--refused` (opacity 0,4)
+  do **`.hud-slot-row`** — sam `button.hud-slot` zostaje bez `disabled`, z `cursor: not-allowed`.
+
+- **Serie akcji rozszerzenia potrzebują stałej zgody na domenę (13.09).** Bez niej pojedyncze
+  `computer`, `javascript_tool` i `navigate` na `localhost:5173` i `[::1]:5173` działały, a te same
+  akcje w `browser_batch` dostawały „Permission denied", zrzuty wracały „[Image omitted]", a `find`
+  odmawiał zawsze. Po nadaniu zgody przez MG serie ruszyły, ale `navigate` na `[::1]` w serii nadal
+  odmawia („Navigation to this domain is not allowed") — nawiguj tam pojedynczo.
 
 - **Karta automatyki jest schowana — Chrome odmawia jej pełnego ekranu (12.09, ósma sesja).**
   Klik `computer` we współrzędnych zrzutu niesie prawdziwy gest (`userActivation.isActive === true`

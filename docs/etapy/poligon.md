@@ -26,6 +26,16 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 13.09 (druga) — oględziny na kampanii-śmieciu, Poligon nietknięty.** Aktywna
+kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
+W kampanii-śmieciu: **nowe zaproszenie** (ważne do 20.09) i **`Tester` jest jej członkiem**;
+„Figura testowa" (żeton i założona na nią karta) **usunięta** koszem; karta „Oględziny Stym" ma
+właściciela `Tester`, 5000 ed, „Pistolet oględzinowy" (schowany — ręce zadeklarowane) i żeton na
+scenie „Test Brak sceny"; na czacie karta inicjatywy „Ochroniarz". **Stałe zaproszenie `tester-dev`
+jest przypięte do „Poligonu bojowego"**, nie do aktywnej kampanii (ekran dołączenia pisze
+„Kampania: Poligon bojowy"). Na Poligonie niczego nie ruszano — kolejka „StrefyPrzemysłowej" stoi
+na turze Tony'ego, a formularz Ustabilizowania był tylko otwarty, bez zatwierdzenia.
+
 **Stan po sesji 13.09 — cyberdek netrunnera Korpo obejrzany na kampanii-śmieciu, Poligon
 nietknięty.** Aktywna kampania była na czas oględzin przełączona na **„Oględziny 12.09 — do
 usunięcia"** i wróciła na **„Poligon bojowy"**. W kampanii-śmieciu doszły dwie karty: **„Oględziny
@@ -330,7 +340,8 @@ w bazie dev siedzi na stałe gracz **`Tester`** — członek **wszystkich** kamp
 postaci** (to jego zadanie: pokazuje pusty stan listy postaci z 27f).
 
 - **Wejście na konto:** `http://localhost:5173/join/tester-dev` → na ekranie dołączenia kliknij
-  **„Tester"** (zaproszenie o stałym adresie, ważne do sierpnia 2027, wskazuje aktywną kampanię).
+  **„Tester"** (zaproszenie o stałym adresie, ważne do sierpnia 2027, przypięte do „Poligonu bojowego" — nie do aktywnej kampanii,
+  sprawdzone 13.09).
   Gracze **nie mają haseł** — `routes/auth.ts` loguje wyłącznie MG — więc link zaproszenia jest
   całą procedurą i dlatego może stać jawnie w repo: prowadzi do lokalnej bazy dev, a `dev.db`
   jest w `.gitignore`.

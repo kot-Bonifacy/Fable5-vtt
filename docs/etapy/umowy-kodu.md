@@ -31,7 +31,7 @@ indeksu i pełny wpis pod spodem.
 - **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy, jak `payees` z 23b.
 - **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
 - **Leżąca figura** — `CONDITION_TILT_DEG` w `TokenNode.ts`, 35° dla `down` i `dead`; obraca się **wyłącznie** portret (`image`, `initial`), a kąt dobiera się w przeglądarce przy zoomie stołu, nie w edytorze.
-- **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana **tylko** w `toTokenView` i `filterCombatForPlayer`. Nowa ścieżka do gracza filtruje nazwę u siebie. Czat świadomie poza umową.
+- **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana per widz w `toTokenView` i `filterCombatForPlayer`, a karty czatu od 13.09 piszą alias **u wszystkich** przez `tokenTableName` (umowa w `czat`). Nowa ścieżka do gracza filtruje nazwę u siebie.
 - **Nowe narzędzie mapy** — dwa gettery `MapRenderer`: `toolSpentThisClick` i `mapToolArmed`. Pominięcie = klik płacony dwa razy (błąd #8 z 08.08); pilnuje `map-click.test.ts`.
 - **Skrót klawiszowy** — `MAP_TOOL_KEYS` w `packages/client/src/shortcuts.ts` czyta i `MapArea`, i okno pomocy; pilnuje `shortcuts.test.ts`. Numery kroków liczy `shortcutGroupsFor`, nie treść wiersza.
 - **Kierunek patrzenia** — `Token.facing` to stan serwera i publiczna część żetonu (`token:facing`); czytelność, nie mechanika — żadna reguła CP RED tego nie czyta.
@@ -289,8 +289,11 @@ gracz nie ma się nawet dowiedzieć, że druga nazwa istnieje; `filterCombatForP
 (`shared/combat.ts`) wymienia `name` w wierszu trackera, zdejmuje pole `publicName` i przy
 okazji poprawia `grapple.otherName`, żeby Pochwycenie nie nazwało nikogo po prawdziwemu. Nowa
 ścieżka, którą figura dociera do gracza, **filtruje nazwę u siebie** — nie w kliencie, i nie
-przez trzecie miejsce, które trzeba pamiętać. Czat jest świadomie poza tą umową: nazwa jest
-tam wpisana w **treść** zapisanej wiadomości, opis w `zaleglosci.md`.
+przez trzecie miejsce, które trzeba pamiętać. **Czat wszedł do umowy 13.09, ale na innych
+zasadach:** nazwa jest wpisana w **treść** zapisanej wiadomości, więc karta nie podmienia jej per
+widz, tylko pisze alias **wszystkim, MG też** — patrz umowa o `tokenTableName` w sekcji `czat`.
+Okno przeszukania (38b) filtruje per widz, jak `toTokenView` — do 13.09 pisało graczowi prawdziwą
+nazwę.
 
 **Nowe narzędzie mapy dopisuje się do dwóch getterów, nie do czterech list.** `MapRenderer`
 pyta o narzędzia w ręku wyłącznie przez `toolSpentThisClick` (gest rozliczony na `pointerdown`
@@ -508,12 +511,29 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
+- **Nazwa figury w karcie czatu idzie przez `tokenTableName(token, realName)`** (`shared/tokens.ts`, 13.09) — alias u wszystkich, MG też; `''` → „Nieznajomy". Rzut z samej karty (bez żetonu) pisze nazwę karty. Uczestnik kolejki: `combatantTableName`, nie `combatantName`.
 - **Widoczność wyniku to RODZAJ wiersza czatu**: `rolltable` publiczny, `gmrolltable` cichy — wzorem `roll`/`gmroll`. „Pokaż stołowi” **dokłada** publiczny wiersz (treść z zapisanej karty, nie z żądania), bo `visibleTo` jest białą listą rodzajów w zapytaniu do bazy.
 - **Nowy rodzaj wiersza czatu** — `chatCategoryOf` w `shared/src/chat.ts` + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół".
 - **Nowy rodzaj wiersza czatu** — `chatCategoryOf` w `shared/src/chat.ts` (grupa filtra); wiersz czekający na decyzję jest wyjęty spod filtra przez `isPending` w `ChatPanel`.
 - **Nowy rodzaj wiersza czatu ma PIĘĆ miejsc, nie cztery** — do dwóch czystych funkcji, `toChatMessageView` i `FullMessageRow` dochodzi **`visibleTo` w `chat-io.ts`**: to biała lista rodzajów, a wiersz spoza niej znika z historii i widzi go tylko autor. Rodzaj publiczny dopisuje się do **obu** gałęzi (gracza i MG).
 
 ---
+
+**Nazwa figury w karcie czatu idzie przez `tokenTableName`, nigdy wprost z `token.name` (13.09).**
+Alias `Token.publicName` (03.09) zasłaniał nazwę na mapie i w kolejce, a ponad pięćdziesiąt miejsc
+w `realtime/` wpisywało `token.name` w treść kart: atak, obrażenia, zwarcie, Konfrontacja, strefy,
+Sieć, dziennik Akcji, „Minęła minuta". Karta jest zapisana raz i każda historia zwraca ją taką
+samą, więc podmiana per widz nie wchodzi w grę — **decyzja MG: alias u wszystkich, także u MG**
+(edytor figury i tak pokazuje obie nazwy). `tokenTableName(token, realName)` dostaje to, co karta
+napisałaby bez aliasu — nazwę karty gracza albo żetonu figury MG — i rozstrzyga wyłącznie alias;
+pusty daje „Nieznajomy" (`TOKEN_UNLABELLED_TABLE_NAME`). Uczestnika kolejki nazywa
+`combatantTableName`; `combatantName` zostaje dla widoku trackera, który podmienia
+`filterCombatForPlayer`. **Rzut z samej karty** (bez żetonu: cyborgizacje, ekonomia, wezwania,
+Wsparcie, rzut z karty statysty) pisze nazwę karty — alias należy do żetonu (decyzja MG). Zawężony
+typ `Pick<Token, …>` bez `publicName` nie przepuści aliasu — `tsc` to łapie, tak było w `netice.ts`.
+Karty zapisane przed 13.09 zostają z prawdziwą nazwą. Ślad bota (`bot-combat.ts`) i dziennik decyzji
+zostają przy prawdziwej — to nie są karty czatu. Pilnuje tego `ammo-effects.test.ts` (karta gazu
+i „Minęła minuta" oczami gracza).
 
 **Widoczność wyniku losowania to RODZAJ wiersza czatu, nie pole w payloadzie.** `visibleTo`
 w `realtime/chat-io.ts` filtruje **po `kind`, w zapytaniu do bazy**, więc jawny wynik zapisuje się
