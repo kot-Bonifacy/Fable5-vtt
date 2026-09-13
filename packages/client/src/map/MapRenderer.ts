@@ -95,6 +95,7 @@ import {
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+import { marchStopPoint, type MarchLanding } from './march-landing.js';
 import { FOG_PEEP_CORE_RATIO, RING_WIDTH, fogPeepRadius } from './token-ring.js';
 import { gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
@@ -3960,10 +3961,12 @@ export class MapRenderer {
    * Stops a march where the figure stands (stage 16e) — the hand of the player,
    * or one of the three automatic reasons the caller watches for. The ground
    * already covered is what gets sent and therefore what gets charged.
+   *
+   * `landing` is `ahead` only for a sighting: see `marchStopPoint`.
    */
-  interruptWalk(note: string | null): void {
+  interruptWalk(note: string | null, landing: MarchLanding = 'nearest'): void {
     if (!this.march) return;
-    this.finishMarch(note);
+    this.finishMarch(note, true, landing);
   }
 
   /** The turn's remaining movement, but only when it belongs to the steered token. */
@@ -4867,16 +4870,42 @@ export class MapRenderer {
   private marchLanding(
     march: MarchState,
     scene: SceneView,
+    landing: MarchLanding,
   ): { point: ScenePoint; walked: ScenePoint[] } {
     const snapScene = this.snapScene();
     const snapped = snapScene
       ? snapTokenPosition(march.x, march.y, march.node.token.size, snapScene)
       : { x: march.x, y: march.y };
+    // A sighting tries the square being stepped into first (13.09.2026); a
+    // gridless scene has no square to round to, so it stops where it stands.
+    const aim = marchStopPoint(
+      { x: march.x, y: march.y },
+      march.route[march.walked.length],
+      scene.grid.sizePx,
+      landing,
+    );
+    const probed = snapScene
+      ? snapTokenPosition(aim.x, aim.y, march.node.token.size, snapScene)
+      : snapped;
+    // The snap can leave the leg by half a square — past the end of a wall the
+    // route was hugging, which the server refuses. Same guard as `clipToBudget`:
+    // the step from the last whole waypoint has to clear the planner's edge test.
+    const lastWaypoint = march.walked[march.walked.length - 1] ?? march.start;
+    const half = (march.node.token.size * scene.grid.sizePx) / 2;
+    const ahead =
+      !this.walkCanStep ||
+      this.walkCanStep(
+        { x: lastWaypoint.x + half, y: lastWaypoint.y + half },
+        { x: probed.x + half, y: probed.y + half },
+      )
+        ? probed
+        : snapped;
     const budget = march.budget;
-    if (!budget) return { point: snapped, walked: march.walked };
+    if (!budget) return { point: ahead, walked: march.walked };
     const limit = budget.metresLeft / budget.costFactor + 0.05;
     const fits = (walked: readonly ScenePoint[], end: ScenePoint): boolean =>
       polylineMetres([march.start, ...walked, end], scene) <= limit;
+    if (fits(march.walked, ahead)) return { point: ahead, walked: march.walked };
     if (fits(march.walked, snapped)) return { point: snapped, walked: march.walked };
     for (let i = march.walked.length - 1; i >= 0; i--) {
       const walked = march.walked.slice(0, i);
@@ -4894,7 +4923,7 @@ export class MapRenderer {
    * for a token that no longer exists would charge a turn for a walk nobody can
    * see, and the position the server holds is already the right one.
    */
-  private finishMarch(note: string | null, commit = true): void {
+  private finishMarch(note: string | null, commit = true, landing: MarchLanding = 'nearest'): void {
     const march = this.march;
     if (!march) return;
     this.march = null;
@@ -4903,7 +4932,7 @@ export class MapRenderer {
 
     const scene = this.scene;
     if (commit && scene && !march.node.destroyed) {
-      const { point, walked } = this.marchLanding(march, scene);
+      const { point, walked } = this.marchLanding(march, scene, landing);
       march.node.position.set(point.x, point.y);
       const path = thinWalk([...walked, point], TOKEN_PATH_MAX_POINTS);
       this.onTokenMove?.(march.node.token.id, point.x, point.y, true, path);

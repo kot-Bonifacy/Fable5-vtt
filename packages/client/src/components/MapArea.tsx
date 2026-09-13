@@ -1183,8 +1183,11 @@ export function MapArea() {
       for (const id of Object.keys(state.tokens)) {
         // A player is only ever sent tokens they can see, so a new key *is*
         // somebody stepping into view — the „enemy sighted" of every CRPG.
+        // „ahead": a figure that spots somebody mid-step lands on the square it
+        // was stepping into, or the snap would round it back out of sight
+        // (13.09.2026, found on the 42c inspection).
         if (!known.has(id)) {
-          renderer.interruptWalk('Ktoś pojawił się w polu widzenia — marsz przerwany.');
+          renderer.interruptWalk('Ktoś pojawił się w polu widzenia — marsz przerwany.', 'ahead');
           return;
         }
       }
@@ -1229,6 +1232,7 @@ export function MapArea() {
             const spotted = state.tokens[id];
             renderer.interruptWalk(
               `${spotted ? `„${spotted.name}"` : 'Ktoś'} w polu widzenia — marsz przerwany.`,
+              'ahead',
             );
             return;
           }
