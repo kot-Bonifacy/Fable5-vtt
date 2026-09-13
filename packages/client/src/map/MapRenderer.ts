@@ -261,10 +261,21 @@ export interface LightMarker {
  * wall, so this palette is read by exactly one person at the table — it only
  * has to make „what blocks sight right now?" legible at a glance.
  */
+/** The handle drawn on an opening; a plain wall or barrier never gets one. */
+const OPENING_GLYPHS: Partial<Record<WallKind, string>> = {
+  door: '🚪',
+  window: '🪟',
+  gate: '🚧',
+};
+
 const WALL_COLORS: Record<WallKind, number> = {
   wall: 0xf87171,
   door: 0xfbbf24,
   window: 0x38bdf8,
+  // Stage 42a: the two kinds that never stop the eye get their own hue family —
+  // violet for a barrier, pink for its gate — so a fence is not read as a wall.
+  barrier: 0xa78bfa,
+  gate: 0xf472b6,
 };
 
 /**
@@ -5706,7 +5717,7 @@ export class MapRenderer {
       // themselves speak.
       node.alpha = opening.open ? 0.45 : 1;
       const glyph = node.getChildByLabel('glyph');
-      if (glyph instanceof Text) glyph.text = opening.kind === 'window' ? '🪟' : '🚪';
+      if (glyph instanceof Text) glyph.text = OPENING_GLYPHS[opening.kind] ?? '🚪';
       const bolt = node.getChildByLabel('bolt');
       if (bolt) bolt.visible = opening.locked;
     }

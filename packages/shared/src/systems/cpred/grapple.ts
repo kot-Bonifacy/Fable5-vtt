@@ -231,6 +231,7 @@ export function nextCpredChokeStreak(
 /** Refusals the grapple paths produce, in the language the table speaks. */
 export const CPRED_GRAPPLE_PROBLEM_MESSAGES = {
   GRAPPLE_OUT_OF_REACH: 'Zbyt daleko — Pochwycenie wymaga zwarcia (2 m).',
+  GRAPPLE_BLOCKED: 'Między wami stoi przeszkoda — przez nią nikogo nie pochwycisz.',
   NOT_GRAPPLING: 'Nikogo nie Trzymasz.',
   NOT_GRAPPLED: 'Ten uczestnik nie jest w Trzymaniu.',
   ALREADY_GRAPPLED: 'Ten cel jest już Trzymany.',

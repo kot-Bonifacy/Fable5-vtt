@@ -1,5 +1,5 @@
-import type { WallView } from '@vtt/shared';
-import { isWallKind } from '@vtt/shared';
+import type { ScenePoint, WallView } from '@vtt/shared';
+import { isSegmentClear, isWallKind, movementSegments } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Wall as WallRow } from '../generated/prisma/client.js';
 
@@ -42,4 +42,22 @@ export function toWallView(row: WallRow): WallView {
 export async function fetchSceneWalls(prisma: PrismaClient, sceneId: string): Promise<WallView[]> {
   const rows = await prisma.wall.findMany({ where: { sceneId }, orderBy: { id: 'asc' } });
   return rows.map(toWallView);
+}
+
+/**
+ * Does something that stops a body stand between two points (stage 42a)?
+ *
+ * The geometric half of „can I reach them?". A melee swing and a grab ask it with
+ * the very list a walking figure is held to (`movementSegments`), so a fence, a
+ * shut gate and a closed window stop an arm exactly where they stop legs.
+ */
+export async function isBodyBlocked(
+  prisma: PrismaClient,
+  sceneId: string,
+  from: ScenePoint,
+  to: ScenePoint,
+): Promise<boolean> {
+  const walls = await fetchSceneWalls(prisma, sceneId);
+  if (walls.length === 0) return false;
+  return !isSegmentClear(from, to, movementSegments(walls));
 }

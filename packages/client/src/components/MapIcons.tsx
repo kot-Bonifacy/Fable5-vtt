@@ -361,6 +361,30 @@ export function IconWindow(props: IconProps) {
   );
 }
 
+/**
+ * A chain-link panel between two posts — the barrier kind (stage 42a). The mesh
+ * is fainter than the posts, because being seen through is the point of it.
+ */
+export function IconBarrier(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 4.5v15M20 4.5v15M4 7h16" />
+      <path d="M4 11l4 4 4-4 4 4 4-4M4 15l4-4 4 4 4-4 4 4" opacity="0.55" />
+    </Svg>
+  );
+}
+
+/** A braced leaf hung between two posts — the gate, the barrier's opening (42a). */
+export function IconGate(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 4v16M20 4v16" />
+      <path d="M7 7h10v10H7z" />
+      <path d="M7 7l10 10M17 7L7 17" opacity="0.55" />
+    </Svg>
+  );
+}
+
 /** A padlock — the bolt a GM throws on a door (stage 18d). */
 export function IconLock(props: IconProps) {
   return (

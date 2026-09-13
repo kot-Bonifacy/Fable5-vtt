@@ -24,6 +24,7 @@ import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, sceneRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
 import { emitVisionToPlayers } from './vision.js';
+import { emitBlockersToPlayers } from './blockers.js';
 
 /**
  * Fog of war (stage 17) — core VTT, no game system involved.
@@ -75,6 +76,10 @@ async function afterFogChange(
 ): Promise<void> {
   await emitMask();
   await emitSceneTokensToPlayers(deps, campaignId, scene);
+  // A reveal can uncover a fence, and a change of mode changes which fences a
+  // player is told about at all (stage 42a). A dynamic scene already heard it
+  // with its vision, and this returns there without a query.
+  await emitBlockersToPlayers(deps, campaignId, scene);
 }
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {

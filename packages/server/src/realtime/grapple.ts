@@ -29,6 +29,7 @@ import {
   parseCharacterData,
   planCpredRoll,
   rollFormula,
+  tokenCentre,
   tokenTableName,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
@@ -64,6 +65,7 @@ import {
 import { myCombatant, requireFigure, requireTurnSpend } from './combat-actions.js';
 import { addTokenStatus, beginGrapple, endGrapple } from './grapple-state.js';
 import { requireRollableCharacter } from './character-rolls.js';
+import { isBodyBlocked } from './walls-io.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
   emitTokensById,
@@ -242,6 +244,20 @@ export const grappleAttemptEvent = defineEvent<
     // „Do wykonania manewru Pochwycenia potrzebna jest jedna wolna ręka" — and
     // an arm's length. The reach is the melee one, measured by the server.
     if (metres > CPRED_MELEE_REACH_M) throw new RealtimeError('GRAPPLE_OUT_OF_REACH');
+    // Whatever stops a body stops a grab (stage 42a) — a fence, a shut door, a
+    // closed window. Until then nothing here looked at the walls at all, so a
+    // figure could be taken into a Hold through masonry.
+    const reachView = toSceneView(scene);
+    if (
+      await isBodyBlocked(
+        deps.ctx.prisma,
+        scene.id,
+        tokenCentre(toTokenView(attacker, true), reachView),
+        tokenCentre(toTokenView(target, true), reachView),
+      )
+    ) {
+      throw new RealtimeError('GRAPPLE_BLOCKED');
+    }
 
     const intent: GrappleCardSystem['intent'] =
       payload?.intent === 'item' ? 'item' : payload?.intent === 'escape' ? 'escape' : 'hold';

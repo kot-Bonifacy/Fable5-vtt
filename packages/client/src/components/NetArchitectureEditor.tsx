@@ -530,7 +530,7 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
         .filter((wall) => isOpening(wall))
         .map((wall) => ({
           id: wall.id,
-          label: `${wall.kind === 'door' ? 'Drzwi' : 'Okno'} #${wall.id}${wall.locked ? ' (na klucz)' : ''}`,
+          label: `${wall.kind === 'door' ? 'Drzwi' : wall.kind === 'gate' ? 'Brama' : 'Okno'} #${wall.id}${wall.locked ? ' (na klucz)' : ''}`,
         })),
     [walls],
   );

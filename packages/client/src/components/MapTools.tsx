@@ -73,6 +73,8 @@ import {
   IconDoor,
   IconWall,
   IconWindow,
+  IconBarrier,
+  IconGate,
   IconSnap,
   IconSocket,
   IconText,
@@ -629,15 +631,39 @@ export function MapTools() {
           >
             <IconWindow />
           </button>
+          <button
+            type="button"
+            className={`map-tool${wallKind === 'barrier' ? ' map-tool--active' : ''}`}
+            title="Bariera — nie zasłania widoku ani światła, ale blokuje przejście i atak wręcz (siatka, krata, barierka)"
+            aria-pressed={wallKind === 'barrier'}
+            onClick={() => setWallKind('barrier')}
+          >
+            <IconBarrier />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${wallKind === 'gate' ? ' map-tool--active' : ''}`}
+            title="Brama — przezierna jak bariera; zamknięta blokuje przejście i wręcz, kliknięcie na mapie ją otwiera"
+            aria-pressed={wallKind === 'gate'}
+            onClick={() => setWallKind('gate')}
+          >
+            <IconGate />
+          </button>
 
-          {wallKind === 'door' && (
+          {/* Brama dzieli przełącznik z drzwiami: jedne i drugie stawia się
+              pojedynczo, w przejściu, i zwykle są dla graczy (42a). */}
+          {(wallKind === 'door' || wallKind === 'gate') && (
             <button
               type="button"
               className={`map-tool${wallPlayerToggle ? ' map-tool--active' : ' map-tool--warn'}`}
               title={
-                wallPlayerToggle
-                  ? 'Gracze mogą otwierać te drzwi (widzą je, gdy są w polu widzenia)'
-                  : 'Drzwi tylko dla MG — gracze ich nie zobaczą ani nie otworzą'
+                wallKind === 'gate'
+                  ? wallPlayerToggle
+                    ? 'Gracze mogą otwierać tę bramę (widzą ją, gdy jest w polu widzenia)'
+                    : 'Brama tylko dla MG — gracze jej nie otworzą ani nie zobaczą jako uchwytu'
+                  : wallPlayerToggle
+                    ? 'Gracze mogą otwierać te drzwi (widzą je, gdy są w polu widzenia)'
+                    : 'Drzwi tylko dla MG — gracze ich nie zobaczą ani nie otworzą'
               }
               aria-pressed={wallPlayerToggle}
               onClick={() => setWallPlayerToggle(!wallPlayerToggle)}

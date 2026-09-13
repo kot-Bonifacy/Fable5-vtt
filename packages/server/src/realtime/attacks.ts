@@ -126,6 +126,7 @@ import {
   type SceneVisionContext,
 } from './vision.js';
 import { toCoverView } from './covers-io.js';
+import { isBodyBlocked } from './walls-io.js';
 import { toSceneView } from './scenes.js';
 import {
   INCLUDE_CHAT_NAMES,
@@ -1026,6 +1027,13 @@ export async function performAttackRoll(
         }
       }
 
+      // A fence stops an arm and not a round (stage 42a), so a swing asks its own
+      // question of whatever stops a body. Asked of every melee weapon; the
+      // planner ignores the answer for one that is being thrown.
+      const reachBlocked =
+        weapon.resolved?.melee === true &&
+        (await isBodyBlocked(deps.ctx.prisma, scene.id, origin, aimPoint));
+
       const planned = planCpredAttack(
         data,
         registry,
@@ -1076,6 +1084,7 @@ export async function performAttackRoll(
           ],
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
           lineOfFire,
+          ...(reachBlocked ? { reachBlocked: true } : {}),
           // „PT określasz, używając wiersza Granatnika w tabeli PT zasięgów"
           // (s. 177) — the line lives in the catalogue, so the planner is handed
           // it rather than allowed to go looking.

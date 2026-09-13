@@ -19,6 +19,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenView,
+  WallView,
   TokenUpsertBroadcast,
 } from '@vtt/shared';
 import { statistQuick } from '@vtt/shared';
@@ -542,6 +543,36 @@ describe('ranged combat from the map', () => {
     expect(card.system.melee).toBe(true);
     expect(card.system.dvSource).toBe('everyday'); // the Ganger has no sheet
     expect(card.detail).toContain('zwarcie');
+  });
+
+  it('refuses a swing through a barrier, and lets a round through it (stage 42a)', async () => {
+    // Vex's middle is at x = 50, the Ganger's (2 m out) at x = 150.
+    const fence = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'barrier',
+        points: [
+          { x: 2 * PX_PER_M, y: -2 * PX_PER_M },
+          { x: 2 * PX_PER_M, y: 4 * PX_PER_M },
+        ],
+      }),
+      'wall:create barrier',
+    )[0]!;
+    await placeTargetAt(2);
+    const swing = await emitAck(player, 'attack:roll', {
+      characterId,
+      targetTokenId,
+      attackerTokenId: shooterTokenId,
+      request: { weaponRowId: 'w-blade', mode: 'single' },
+    });
+    expect(swing).toEqual({ ok: false, error: 'MELEE_BLOCKED' });
+
+    // The mesh stops nothing that flies — how much it takes off is stage 42b.
+    await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-pistol' });
+    await placeTargetAt(6);
+    const card = await attack({ weaponRowId: 'w-pistol', mode: 'single' });
+    expect(card.system.melee).toBe(false);
+    await emitAck(gm, 'wall:delete', { wallId: fence.id });
   });
 
   it('never lets a player target a hidden token', async () => {

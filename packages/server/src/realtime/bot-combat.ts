@@ -495,6 +495,7 @@ const REFUSAL_TEXTS: Record<string, string> = {
   STATUS_BLOCKED: 'Twój stan (np. Powalony) nie pozwala na tę akcję.',
   OUT_OF_RANGE: 'Cel jest poza zasięgiem tej broni.',
   MELEE_OUT_OF_REACH: 'Bronią białą trzeba stać tuż obok celu.',
+  MELEE_BLOCKED: 'Między tobą a celem stoi przeszkoda — wręcz nie sięgniesz, obejdź ją.',
   RANGED_WEAPON_IN_MELEE: 'Tą bronią nie da się strzelać z tak bliska.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji na ten strzał.',
   NO_LINE_OF_FIRE: 'Coś stoi na linii strzału.',

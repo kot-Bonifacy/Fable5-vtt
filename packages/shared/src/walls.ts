@@ -15,13 +15,17 @@
  * Stage 18d made both of those objects behave like things in a space rather than
  * switches on a board: a door has to be within arm's reach to be worked and can
  * be bolted, and a window shows what is behind it only from up close.
+ *
+ * Stage 42a added the partition that is meant to be looked through — the
+ * chain-link fence, the railing, the glass screen — and with it the one
+ * question this module answers that is not about sight: what stops a **body**.
  */
 
 import { fireCoverSegments, type CoverView } from './covers.js';
 import type { ScenePoint } from './measure.js';
 import type { Segment } from './vision.js';
 
-export const WALL_KINDS = ['wall', 'door', 'window'] as const;
+export const WALL_KINDS = ['wall', 'door', 'window', 'barrier', 'gate'] as const;
 /**
  * `wall` blocks sight always. `door` and `window` are **openings**: they can be
  * opened, bolted and worked by hand, and what they do to sight depends on that
@@ -29,18 +33,33 @@ export const WALL_KINDS = ['wall', 'door', 'window'] as const;
  * standing away from it (the net curtain, stage 18d) and dims the light that
  * passes it (`LIGHT_WINDOW_COST`); either one standing open is a hole in the
  * wall — no shadow, no toll on the light.
+ *
+ * `barrier` and `gate` (stage 42a) never touch sight or light at all. A barrier
+ * stops a body — a figure walking, a fist, a grab — and a gate is its opening:
+ * the door's mechanism (handle, bolt, arm's reach) in a see-through frame.
  */
 export type WallKind = (typeof WALL_KINDS)[number];
 
 /**
  * Can this be opened, bolted and reached for?
  *
- * Doors and windows are one mechanism with two skins. They differ only in what
- * they do while **closed** — a door is opaque, a window is a curtained pane —
- * and once open they are the same hole in a wall.
+ * Doors, windows and gates are one mechanism with three skins. They differ only
+ * in what they do while **closed** — a door is opaque, a window is a curtained
+ * pane, a gate is a barrier — and once open they are the same hole.
  */
 export function isOpening(wall: Pick<WallView, 'kind'>): boolean {
-  return wall.kind === 'door' || wall.kind === 'window';
+  return wall.kind === 'door' || wall.kind === 'window' || wall.kind === 'gate';
+}
+
+/**
+ * Is this a see-through partition — a barrier or its gate (stage 42a)?
+ *
+ * Asked wherever a fence has to be told apart from masonry although both stop a
+ * body: sizing a lamp to its room (`roomSegments`) and telling a player which
+ * obstacles are in plain sight (`standingBarriers`).
+ */
+export function isBarrier(wall: Pick<WallView, 'kind'>): boolean {
+  return wall.kind === 'barrier' || wall.kind === 'gate';
 }
 
 /** One stored wall as it goes over the wire — GM only, save for open doors. */
@@ -175,12 +194,26 @@ export interface OpeningSyncBroadcast {
   openings: WallView[];
 }
 
+/**
+ * Server → client `blocker:sync` (stage 42a) — what one player's route planner
+ * has to walk round although the player can see past it: barriers, shut gates,
+ * and the closed windows they stand close enough to look through. Only the ones
+ * in sight, and only as bare segments — the planner needs geometry, and a wall
+ * row would hand the client a kind, an id and a bolt it has no business knowing.
+ *
+ * Targeted per socket without a seq, like `opening:sync`: every list differs.
+ */
+export interface BlockerSyncBroadcast {
+  sceneId: string;
+  segments: Segment[];
+}
+
 function finiteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
 export function isWallKind(value: unknown): value is WallKind {
-  return value === 'wall' || value === 'door' || value === 'window';
+  return (WALL_KINDS as readonly unknown[]).includes(value);
 }
 
 /**
@@ -189,12 +222,40 @@ export function isWallKind(value: unknown): value is WallKind {
  * A closed window answers `false` here and is nonetheless a blocker for most
  * observers — see `sightSegmentsFor`. This function is the part of the answer
  * that does not depend on who is asking, and it is what the *light* uses: a pane
- * dims a beam (`LIGHT_WINDOW_COST`), it never stops it.
+ * dims a beam (`LIGHT_WINDOW_COST`), it never stops it. A barrier and a gate
+ * answer `false` in every state — being looked through is what they are for.
  */
 export function wallBlocksSight(wall: Pick<WallView, 'kind' | 'open'>): boolean {
-  if (wall.kind === 'window') return false;
-  if (wall.kind === 'door') return !wall.open;
-  return true;
+  switch (wall.kind) {
+    case 'wall':
+      return true;
+    case 'door':
+      return !wall.open;
+    case 'window':
+    case 'barrier':
+    case 'gate':
+      return false;
+  }
+}
+
+/**
+ * Does this wall stop a **body** (stages 16e, 42a)?
+ *
+ * The one answer the route planner, the server's refusal of a drop, a bot's
+ * approach, a melee swing and a grab all share. Anything closed stops a person —
+ * a door, a window (you do not walk through glass), a gate — and anything open is
+ * a way through; a wall and a barrier have no open state to offer.
+ */
+export function wallBlocksMovement(wall: Pick<WallView, 'kind' | 'open'>): boolean {
+  switch (wall.kind) {
+    case 'wall':
+    case 'barrier':
+      return true;
+    case 'door':
+    case 'window':
+    case 'gate':
+      return !wall.open;
+  }
 }
 
 /**
@@ -235,17 +296,82 @@ export function blockingSegments(walls: readonly WallView[]): Segment[] {
  * stopped by it always, until somebody opens the sash. Once it is open the same
  * window is a hole you can climb through, which is exactly what 18e made it.
  *
- * Used only to plan routes for now. When movement collisions arrive on the
- * server (POMYSLY, 30.07) they read this same list, which is the point of
- * writing it here rather than inside the client's pathfinder.
+ * The client's pathfinder, the server's refusal of a drop (`refuseWalkThroughSolid`),
+ * a bot's approach and — since stage 42a — a melee swing and a grab all read this
+ * same list, which is the point of writing it here. A barrier is the case that
+ * made it a list of its own for good: it is in nobody's sight list and in
+ * everybody's way.
  */
 export function movementSegments(walls: readonly WallView[]): Segment[] {
-  const segments = blockingSegments(walls);
+  const segments: Segment[] = [];
   for (const wall of walls) {
-    if (wall.kind !== 'window' || wall.open) continue;
+    if (!wallBlocksMovement(wall)) continue;
     segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
   }
   return segments;
+}
+
+/**
+ * What stops **this observer's body but not their eye** (stage 42a) — the walls
+ * a player's route planner has to be told about.
+ *
+ * The planner of 16e walks wherever the player can see, and for a long time that
+ * was enough: whatever stopped a body also stopped sight, so the edge of the
+ * field of view was the edge of the walkable floor. Two things break it. A
+ * barrier is built to be looked through, and a closed window stops being a
+ * curtain for anyone standing at it (18d). In both cases the floor beyond is in
+ * view, the planner drew a route across it, and the server refused the drop.
+ *
+ * Per observer for the window's sake, with the `curtainReachPx` the sight list
+ * uses, so the two lists can never disagree about a pane.
+ */
+export function walkOnlyWallsFor(
+  walls: readonly WallView[],
+  origin: ScenePoint,
+  options: { curtainReachPx: number | null },
+): WallView[] {
+  const reach = options.curtainReachPx;
+  return walls.filter((wall) => {
+    if (!wallBlocksMovement(wall) || wallBlocksSight(wall)) return false;
+    if (wall.kind !== 'window') return true;
+    // A closed pane is see-through from up close — and to everybody in the dark.
+    return reach === null || distanceToWall(origin, wall) <= reach;
+  });
+}
+
+/**
+ * The barriers and shut gates of a scene (stage 42a) — what stops a body and is
+ * see-through for **everybody**, wherever they stand.
+ *
+ * What a scene without dynamic vision hands a player's planner: with no raycast
+ * there is no observer to measure a window's curtain from, and a window, unlike
+ * a fence, is part of the floor plan the party has not been shown.
+ */
+export function standingBarriers(walls: readonly WallView[]): WallView[] {
+  return walls.filter((wall) => isBarrier(wall) && wallBlocksMovement(wall));
+}
+
+/** Most points `wallSamplePoints` returns for one segment. */
+export const WALL_SAMPLE_MAX = 64;
+
+/**
+ * Points along a wall to ask „can this be seen?" of (stage 42a).
+ *
+ * A fence is long and a field of view is a polygon, so neither its ends — shared
+ * with the masonry they meet, on the very edge of the polygon — nor its middle
+ * alone will do: a player looking at the near half of a forty-metre fence sees
+ * that fence. Interior points only, evenly spread, at most `WALL_SAMPLE_MAX`.
+ */
+export function wallSamplePoints(wall: Segment, spacingPx: number): ScenePoint[] {
+  const length = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+  const spacing = Number.isFinite(spacingPx) && spacingPx > 0 ? spacingPx : Math.max(1, length);
+  const count = Math.min(WALL_SAMPLE_MAX, Math.max(1, Math.ceil(length / spacing)));
+  const points: ScenePoint[] = [];
+  for (let i = 0; i < count; i++) {
+    const t = (i + 0.5) / count;
+    points.push({ x: wall.x1 + (wall.x2 - wall.x1) * t, y: wall.y1 + (wall.y2 - wall.y1) * t });
+  }
+  return points;
 }
 
 /**
@@ -360,9 +486,15 @@ export function isWallWithinReach(
  * open: a bedroom with its door ajar measures as the whole floor. The light
  * still spills through that doorway when it is drawn — the raycast at render
  * time uses the real doors — it just no longer decides how strong the bulb is.
+ *
+ * A barrier and a gate are left out (stage 42a): a fence does not make a yard
+ * into a room, and a lamp on a fenced lot sized to the mesh would light a strip
+ * of it and leave the rest dark.
  */
 export function roomSegments(walls: readonly WallView[]): Segment[] {
-  return walls.map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 }));
+  return walls
+    .filter((wall) => !isBarrier(wall))
+    .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 }));
 }
 
 /**

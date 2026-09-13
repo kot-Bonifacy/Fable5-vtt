@@ -17,6 +17,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenView,
+  WallView,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
@@ -389,6 +390,25 @@ describe('grappling', () => {
     const ack = await grab(statistTokenId);
     expect(ack.ok).toBe(false);
     if (!ack.ok) expect(ack.error).toBe('GRAPPLE_OUT_OF_REACH');
+  });
+
+  it('refuses a grab through a barrier — a fence stops an arm as it stops legs (42a)', async () => {
+    // Vex's middle is at x = 50, the Bandzior's at x = 150; the fence runs between.
+    const fence = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'barrier',
+        points: [
+          { x: 2 * PX_PER_M, y: -2 * PX_PER_M },
+          { x: 2 * PX_PER_M, y: 4 * PX_PER_M },
+        ],
+      }),
+      'wall:create barrier',
+    )[0]!;
+    const ack = await grab(thugTokenId);
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('GRAPPLE_BLOCKED');
+    await emitAck(gm, 'wall:delete', { wallId: fence.id });
   });
 
   it('writes a won Pochwycenie onto both rows and stickers the token', async () => {

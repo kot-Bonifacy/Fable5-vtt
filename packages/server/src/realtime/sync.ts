@@ -29,6 +29,7 @@ import { fetchZonesFor } from './zones-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { fetchAccessPointsFor, fetchRunsFor } from './netrun-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
+import { walkBlockersFor } from './blockers.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCombatFor } from './combat.js';
@@ -71,6 +72,7 @@ export async function buildStateSync(
       lights: [],
       vision: null,
       openings: [],
+      blockers: [],
       exploration: null,
       characters: [],
       bots: [],
@@ -192,6 +194,14 @@ export async function buildStateSync(
     // stronie klienta, więc przeżywa przeładowanie strony.
     campaignGameTime(deps.ctx.prisma, campaign.id),
   ]);
+  // What the player's route planner walks round (stage 42a). A dynamic scene has
+  // it measured from the very sight `vision` came from; anywhere else it is one
+  // list for the whole table.
+  const blockers = vision
+    ? vision.blockers
+    : viewedScene
+      ? await walkBlockersFor(deps.ctx.prisma, viewedScene, user)
+      : [];
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
     seq: deps.seqs.current(campaignRoom(campaign.id)),
@@ -219,6 +229,7 @@ export async function buildStateSync(
         }
       : null,
     openings: vision?.openings ?? [],
+    blockers,
     exploration,
     characters,
     bots,

@@ -344,7 +344,8 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
 /**
  * Is the opening about to be drawn the players' to work? Reads the flag that
  * belongs to the selected kind, so switching door ↔ window never silently
- * carries one kind's answer over to the other.
+ * carries one kind's answer over to the other. A gate (stage 42a) shares the
+ * door's flag: both are drawn one at a time, in a way through.
  */
 export function currentPlayerToggle(state: MapToolStoreState): boolean {
   return state.wallKind === 'window' ? state.windowPlayerToggle : state.wallPlayerToggle;

@@ -1,4 +1,5 @@
 import type {
+  BlockerSyncBroadcast,
   CoverView,
   FogShapeView,
   LightGlow,
@@ -32,7 +33,9 @@ import {
   sightSegmentsFor,
   tokenCentre,
   tollingWindows,
+  walkOnlyWallsFor,
   wallMidpoint,
+  wallSamplePoints,
   type Segment,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -621,6 +624,43 @@ export function visibleOpeningsFor(
 }
 
 /**
+ * What this viewer's route planner must walk round although they can see past it
+ * (stage 42a) — barriers, shut gates, and the closed windows a source stands close
+ * enough to look through.
+ *
+ * Only what is in sight, for the reason the doors are (18a): a fence deep in an
+ * unexplored block is still a floor plan. „In sight" is asked of points along the
+ * segment, per source and against that source's own polygon, so a pane seen
+ * through by the token at the glass is not credited to the token across the
+ * street — the same bookkeeping the curtain itself does.
+ */
+export function visibleWalkBlockersFor(context: SceneVisionContext, sight: ViewerSight): Segment[] {
+  if (context.walls.length === 0) return [];
+  // Half a metre between samples: a glimpse of a fence through a doorway counts,
+  // and a forty-metre one still costs no more than a few dozen tests.
+  const spacing = context.reachPx / (WALL_REACH_M * 2);
+  const seen = new Set<number>();
+  const found: Segment[] = [];
+  sight.sources.forEach((source, index) => {
+    const polygon = sight.polygons[index];
+    if (!polygon) return;
+    const candidates = walkOnlyWallsFor(context.walls, source.origin, {
+      curtainReachPx: context.curtainReachPx,
+    });
+    for (const wall of candidates) {
+      if (seen.has(wall.id)) continue;
+      const inSight = wallSamplePoints(wall, spacing).some((point) =>
+        isPointObservable(point, [polygon], sight.lighting, context.overrides),
+      );
+      if (!inSight) continue;
+      seen.add(wall.id);
+      found.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+    }
+  });
+  return found;
+}
+
+/**
  * Can a shot fired from `from` reach `to` (stage 16b)?
  *
  * The map's answer to „is there a wall in the way", and the reason the check
@@ -763,6 +803,8 @@ export interface ViewerVision {
   polygons: ScenePoint[][];
   /** Doors and windows this viewer may work — see `visibleOpeningsFor`. */
   openings: WallView[];
+  /** What their route planner walks round (stage 42a) — `visibleWalkBlockersFor`. */
+  blockers: Segment[];
   /** Light levels inside the polygons; null on a scene that is not dark. */
   light: LightMask | null;
   glows: LightGlow[];
@@ -807,6 +849,7 @@ export async function computeViewerVision(
   return {
     polygons: sight.polygons,
     openings: visibleOpeningsFor(ctx, sight.sources, sight.lighting),
+    blockers: visibleWalkBlockersFor(ctx, sight),
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
     glows: sight.lighting
       ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources)
@@ -893,6 +936,10 @@ export async function emitVisionToPlayers(
       glows: vision.glows,
     });
     member.emit('opening:sync', { sceneId: scene.id, openings: vision.openings });
+    member.emit('blocker:sync', {
+      sceneId: scene.id,
+      segments: vision.blockers,
+    } satisfies BlockerSyncBroadcast);
     // Every player's sight goes into the same memory: what the scout sees, the
     // group knows. Accumulated over the loop and pushed once at the end.
     if (

@@ -22,12 +22,16 @@ const KIND_LABELS: Record<WallKind, string> = {
   wall: 'Ściana',
   door: 'Drzwi',
   window: 'Okno',
+  barrier: 'Bariera',
+  gate: 'Brama',
 };
 
 const KIND_HINTS: Record<WallKind, string> = {
   wall: 'Zasłania zawsze — nie da się jej otworzyć',
   door: 'Zamknięte zasłaniają; otwarte są dziurą w ścianie',
   window: 'Zamknięte zasłaniają z daleka i przyciemniają światło; otwarte nie robią nic',
+  barrier: 'Nie zasłania widoku ani światła; nie da się przez nią przejść ani sięgnąć wręcz',
+  gate: 'Nie zasłania w żadnym stanie; zamknięta blokuje przejście i wręcz, otwarta nic',
 };
 
 export function SceneCardWall({ wall }: { wall: WallView }) {
@@ -102,9 +106,13 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
               type="button"
               className="small-button"
               title={
-                wall.open
-                  ? 'Zamknij — znów zasłania'
-                  : 'Otwórz — przestaje zasłaniać i przepuszcza światło'
+                wall.kind === 'gate'
+                  ? wall.open
+                    ? 'Zamknij — znów blokuje przejście'
+                    : 'Otwórz — przestaje blokować przejście'
+                  : wall.open
+                    ? 'Zamknij — znów zasłania'
+                    : 'Otwórz — przestaje zasłaniać i przepuszcza światło'
               }
               disabled={busy || wall.locked}
               onClick={() => void toggle()}

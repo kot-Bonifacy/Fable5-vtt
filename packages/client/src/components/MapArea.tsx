@@ -1064,18 +1064,20 @@ export function MapArea() {
       return;
     }
     const wallState = useWallStore.getState();
+    // A barrier is looked through and not walked through (stage 42a). The field
+    // of view says nothing about it, so the server hands a player the ones in
+    // sight as bare segments, and they stop a step exactly as a car does.
+    const stepEdges = [...coverEdges, ...wallState.blockers];
+    const canStep =
+      stepEdges.length > 0
+        ? (from: ScenePoint, to: ScenePoint) => isSegmentClear(from, to, stepEdges)
+        : undefined;
     if (!wallState.hasVision) {
-      renderer.setWalkPassable(
-        () => true,
-        coverEdges.length > 0 ? (from, to) => isSegmentClear(from, to, coverEdges) : undefined,
-      );
+      renderer.setWalkPassable(() => true, canStep);
       return;
     }
     const polygons = wallState.polygons;
-    renderer.setWalkPassable(
-      (point) => isPointVisible(point, polygons),
-      coverEdges.length > 0 ? (from, to) => isSegmentClear(from, to, coverEdges) : undefined,
-    );
+    renderer.setWalkPassable((point) => isPointVisible(point, polygons), canStep);
   }, []);
 
   useEffect(() => {

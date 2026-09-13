@@ -219,6 +219,7 @@ import type {
   TokenUpsertBroadcast,
   TokenView,
   OpeningSyncBroadcast,
+  BlockerSyncBroadcast,
   ExplorationSyncBroadcast,
   VisionSyncBroadcast,
   WallKind,
@@ -1017,6 +1018,11 @@ export function connectSocket(userId: string): Socket {
   });
   socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setOpenings(broadcast.openings);
+  });
+  // What the route planner walks round although the player sees past it (stage
+  // 42a) — per socket like the openings, and never the walls themselves.
+  socket.on('blocker:sync', (broadcast: BlockerSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setBlockers(broadcast.segments);
   });
   // The party's memory of the map (stage 18c). One broadcast for everybody —
   // exploration is shared, so unlike `vision:sync` it is not composed per

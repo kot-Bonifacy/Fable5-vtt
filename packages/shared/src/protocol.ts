@@ -26,7 +26,7 @@ import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
-import type { VisionSyncBroadcast } from './vision.js';
+import type { Segment, VisionSyncBroadcast } from './vision.js';
 import type { WallView } from './walls.js';
 
 /**
@@ -133,6 +133,12 @@ export interface StateSyncPayload {
    * the GM, who works the wall layer directly.
    */
   openings: WallView[];
+  /**
+   * What this player's route planner has to walk round although they can see
+   * past it (stage 42a): barriers and shut gates in sight, and on a dynamic scene
+   * the closed windows they stand at. Empty for the GM, who has the walls.
+   */
+  blockers: Segment[];
   /**
    * Where the party has already been on the viewed scene (stage 18c); null when
    * the scene does not remember. Shared by the whole group and safe to hand

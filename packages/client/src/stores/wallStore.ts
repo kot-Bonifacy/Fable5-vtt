@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { isOpening, type ScenePoint, type StateSyncPayload, type WallView } from '@vtt/shared';
+import {
+  isOpening,
+  type ScenePoint,
+  type Segment,
+  type StateSyncPayload,
+  type WallView,
+} from '@vtt/shared';
 
 /**
  * Walls, openings and the field of view of the viewed scene (stage 18a).
@@ -26,11 +32,18 @@ interface WallStoreState {
   hasVision: boolean;
   /** Openings this viewer may operate (GM: taken from `walls` instead). */
   openings: WallView[];
+  /**
+   * What a player's route planner walks round although they can see past it
+   * (stage 42a) — barriers, shut gates, a closed window they stand at. Bare
+   * segments, never walls; empty for the GM, whose planner reads `walls`.
+   */
+  blockers: Segment[];
 
   applySync: (payload: StateSyncPayload) => void;
   setWalls: (sceneId: string, walls: WallView[]) => void;
   setVision: (polygons: ScenePoint[][]) => void;
   setOpenings: (openings: WallView[]) => void;
+  setBlockers: (blockers: Segment[]) => void;
 }
 
 export const useWallStore = create<WallStoreState>((set) => ({
@@ -38,6 +51,7 @@ export const useWallStore = create<WallStoreState>((set) => ({
   polygons: [],
   hasVision: false,
   openings: [],
+  blockers: [],
 
   applySync: (payload) =>
     set({
@@ -45,11 +59,13 @@ export const useWallStore = create<WallStoreState>((set) => ({
       polygons: payload.vision?.polygons ?? [],
       hasVision: payload.vision !== null,
       openings: payload.openings,
+      blockers: payload.blockers ?? [],
     }),
 
   setWalls: (_sceneId, walls) => set({ walls }),
   setVision: (polygons) => set({ polygons, hasVision: true }),
   setOpenings: (openings) => set({ openings }),
+  setBlockers: (blockers) => set({ blockers }),
 }));
 
 // The chain being traced lives in the renderer, not here: it changes at pointer

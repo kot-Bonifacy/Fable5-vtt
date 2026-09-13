@@ -216,11 +216,22 @@ const WALL_TITLES: Record<WallView['kind'], string> = {
   wall: 'Ściana',
   door: 'Drzwi',
   window: 'Okno',
+  barrier: 'Bariera',
+  gate: 'Brama',
 };
 
 function wallTitle(wall: WallView): string {
-  if (wall.kind === 'wall') return WALL_TITLES.wall;
-  return `${WALL_TITLES[wall.kind]} — ${wall.open ? 'otwarte' : 'zamknięte'}`;
+  if (wall.kind === 'wall' || wall.kind === 'barrier') return WALL_TITLES[wall.kind];
+  // „Brama" is the one feminine opening; „drzwi" and „okno" share the -e.
+  const state =
+    wall.kind === 'gate'
+      ? wall.open
+        ? 'otwarta'
+        : 'zamknięta'
+      : wall.open
+        ? 'otwarte'
+        : 'zamknięte';
+  return `${WALL_TITLES[wall.kind]} — ${state}`;
 }
 
 const DRAWING_TITLES: Record<DrawingView['shape']['kind'], string> = {

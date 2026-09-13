@@ -12,6 +12,8 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenView,
+  BlockerSyncBroadcast,
+  LightView,
   VisionSyncBroadcast,
   WallView,
 } from '@vtt/shared';
@@ -735,6 +737,250 @@ describe('walls and dynamic vision', () => {
  *         ┊           │
  *   2000  └───────────┘
  */
+/**
+ * Stage 42a: a barrier stops a body, not an eye.
+ *
+ * The yard: a fence along x = 1000 with a gate in it at y 1400…1600, the player
+ * west of the gate right under a free-standing window, a guard in the yard, and a
+ * sealed room far to the south-east with another fence locked inside it.
+ *
+ * Positions are what the server snaps them to: a token asked for at (450, 1450)
+ * lands on (500, 1500) — `Math.round(4.5)` is 5 — so its middle is (550, 1550).
+ *
+ *            1000
+ *   1000      ║            ║ = barrier, ┆ = gate, ─ = window (y = 1480, x 300…700)
+ *   1480  ──  ┆
+ *   1550  ·   ┆   · guard
+ *   1600      ║
+ *   2000      ║                         ┌────┐ (3000…3800)
+ *                                       │ ║  │ ← a fence nobody can see
+ *                                       └────┘
+ */
+describe('a barrier stops a body, not an eye (stage 42a)', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let sceneId: string;
+  let ownTokenId: string;
+  let guardTokenId: string;
+  let gateId: number;
+
+  const NORTH = { x1: 1000, y1: 1000, x2: 1000, y2: 1400 };
+  const GATE = { x1: 1000, y1: 1400, x2: 1000, y2: 1600 };
+  const SOUTH = { x1: 1000, y1: 1600, x2: 1000, y2: 2000 };
+  // 70 px (1,4 m) above the player's middle at (550, 1550) — inside arm's reach
+  // with room to spare, so the curtain never hinges on a boundary.
+  const PANE = { x1: 300, y1: 1480, x2: 700, y2: 1480 };
+  const LOCKED_IN = { x1: 3400, y1: 3100, x2: 3400, y2: 3700 };
+
+  type Seg = { x1: number; y1: number; x2: number; y2: number };
+  const pointsOf = (segment: Seg) => [
+    { x: segment.x1, y: segment.y1 },
+    { x: segment.x2, y: segment.y2 },
+  ];
+  const has = (segments: Seg[], wanted: Seg) =>
+    segments.some(
+      (s) => s.x1 === wanted.x1 && s.y1 === wanted.y1 && s.x2 === wanted.x2 && s.y2 === wanted.y2,
+    );
+
+  /**
+   * The next `blocker:sync` whose list passes `accept`.
+   *
+   * A move or a door ends with its ack, but the vision push that follows it can
+   * land a moment later — a plain `once` placed after a GM's move back to the
+   * start caught that stale push instead of the one the test was about.
+   */
+  function blockersWhere(accept: (segments: Seg[]) => boolean, ms = 3000): Promise<Seg[]> {
+    return new Promise((resolve, reject) => {
+      const onSync = (payload: BlockerSyncBroadcast) => {
+        if (payload.sceneId !== sceneId || !accept(payload.segments)) return;
+        clearTimeout(timer);
+        player.off('blocker:sync', onSync);
+        resolve(payload.segments);
+      };
+      const timer = setTimeout(() => {
+        player.off('blocker:sync', onSync);
+        reject(new Error('blocker:sync with the expected list never came'));
+      }, ms);
+      player.on('blocker:sync', onSync);
+    });
+  }
+
+  async function moveOwn(socket: ClientSocket, x: number, y: number) {
+    return emitAck(socket, 'token:move', { tokenId: ownTokenId, x, y, final: true });
+  }
+
+  beforeAll(async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    sceneId = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Plac' }),
+      'scene:create',
+    ).id;
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', {
+      sceneId,
+      patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
+    });
+    await emitAck(gm, 'scene:activate', { sceneId });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'dynamic' });
+
+    await emitAck(gm, 'wall:create', { sceneId, kind: 'barrier', points: pointsOf(NORTH) });
+    gateId = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'gate',
+        playerToggle: true,
+        points: pointsOf(GATE),
+      }),
+      'wall:create gate',
+    )[0]!.id;
+    await emitAck(gm, 'wall:create', { sceneId, kind: 'barrier', points: pointsOf(SOUTH) });
+    await emitAck(gm, 'wall:create', { sceneId, kind: 'window', points: pointsOf(PANE) });
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'wall',
+      points: [
+        { x: 3000, y: 3000 },
+        { x: 3800, y: 3000 },
+        { x: 3800, y: 3800 },
+        { x: 3000, y: 3800 },
+        { x: 3000, y: 3000 },
+      ],
+    });
+    await emitAck(gm, 'wall:create', { sceneId, kind: 'barrier', points: pointsOf(LOCKED_IN) });
+
+    guardTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', { sceneId, name: 'Strażnik', x: 1450, y: 1450 }),
+      'token:create',
+    ).id;
+    ownTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Rogue',
+        x: 450,
+        y: 1450,
+        ownerId: playerId,
+      }),
+      'token:create',
+    ).id;
+    await roundTrip(player);
+  }, 30_000);
+
+  it('shows the player the yard behind the fence, and whoever stands in it', async () => {
+    const sync = await roundTrip(player);
+    expect(sync.tokens.map((token) => token.id)).toContain(guardTokenId);
+    expect(sync.walls).toEqual([]);
+  });
+
+  it('hands the route planner what is in sight — never a fence in a sealed room', async () => {
+    const { blockers } = await roundTrip(player);
+    expect(blockers).toContainEqual(NORTH);
+    expect(blockers).toContainEqual(GATE);
+    expect(blockers).toContainEqual(SOUTH);
+    // The pane is 2 m away: the curtain is off, the floor beyond it is in view.
+    expect(blockers).toContainEqual(PANE);
+    expect(blockers).not.toContainEqual(LOCKED_IN);
+    expect(blockers).toHaveLength(4);
+  });
+
+  it('refuses a figure dragged through the barrier itself', async () => {
+    // Middles (550, 1550) → (1550, 950) cross x = 1000 at y = 1280: the northern
+    // fence, well clear of the gate below it.
+    expect(errorOf(await moveOwn(player, 1450, 850))).toBe('MOVE_REFUSED');
+  });
+
+  it('refuses the shut gate, and lets the figure through once it stands open', async () => {
+    expect(errorOf(await moveOwn(player, 1450, 1450))).toBe('MOVE_REFUSED');
+
+    // An open gate is nothing to walk round, so it leaves the planner's list.
+    const opened = blockersWhere((segments) => !has(segments, GATE));
+    await emitAck(gm, 'opening:toggle', { wallId: gateId, open: true });
+    expect(await opened).toContainEqual(NORTH);
+
+    expect(errorOf(await moveOwn(player, 1450, 1450))).toBeUndefined();
+
+    await moveOwn(gm, 450, 1450);
+    await emitAck(gm, 'opening:toggle', { wallId: gateId, open: false });
+  });
+
+  it('lets the player open the gate from arm’s length, like a door', async () => {
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: gateId }))).toBe(
+      'OPENING_OUT_OF_REACH',
+    );
+    await moveOwn(gm, 850, 1450);
+    const opened = await emitAck<WallView>(player, 'opening:toggle', { wallId: gateId });
+    expect(data(opened, 'opening:toggle').open).toBe(true);
+
+    await emitAck(gm, 'opening:toggle', { wallId: gateId, open: false });
+    await moveOwn(gm, 450, 1450);
+  });
+
+  it('takes the pane off the list once the figure steps back from it', async () => {
+    // Two squares south, middle at (550, 1750): 5,4 m from the glass, which is a
+    // wall again from there.
+    const stepped = blockersWhere((segments) => !has(segments, PANE));
+    await moveOwn(gm, 450, 1650);
+    expect(await stepped).toContainEqual(NORTH);
+
+    const back = blockersWhere((segments) => has(segments, PANE));
+    await moveOwn(gm, 450, 1450);
+    await back;
+  });
+
+  it('on a fogged map hands over only the fences the GM has revealed a piece of', async () => {
+    // Nothing is revealed on a freshly fogged map, so nothing is handed over.
+    const covered = blockersWhere((segments) => segments.length === 0);
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'fog' });
+    await covered;
+
+    const uncovered = blockersWhere((segments) => segments.length > 0);
+    await emitAck(gm, 'fog:paint', {
+      sceneId,
+      shape: { kind: 'rect', mode: 'reveal', x: 900, y: 1300, width: 200, height: 200 },
+    });
+    // Only the tip of the northern fence and the top of the gate are uncovered —
+    // a glimpse of a fence is that fence. No window: that is the floor plan.
+    const revealed = await uncovered;
+    expect(revealed).toContainEqual(NORTH);
+    expect(revealed).toContainEqual(GATE);
+    expect(revealed).not.toContainEqual(SOUTH);
+    expect(revealed).not.toContainEqual(PANE);
+  });
+
+  it('on an open map hands over every fence, wherever it stands', async () => {
+    const everything = blockersWhere((segments) => has(segments, LOCKED_IN));
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
+    const segments = await everything;
+    expect(segments).not.toContainEqual(PANE);
+    expect(segments).toHaveLength(4);
+  });
+
+  it('sizes a lamp to the whole lot, not to the fence around it', async () => {
+    // A fenced square 8 m across, lamp in the middle. Counted as walls, the fence
+    // would make it a 5,7 m room; left out, the lamp reaches for the open map.
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'barrier',
+      points: [
+        { x: 2000, y: 200 },
+        { x: 2400, y: 200 },
+        { x: 2400, y: 600 },
+        { x: 2000, y: 600 },
+        { x: 2000, y: 200 },
+      ],
+    });
+    const lamp = data(
+      await emitAck<LightView>(gm, 'light:create', { sceneId, x: 2200, y: 400, fitRoom: true }),
+      'light:create fitRoom',
+    );
+    expect(lamp.dimM).toBe(50);
+  });
+});
+
 describe('a window is a net curtain on a lit scene', () => {
   let gm: ClientSocket;
   let player: ClientSocket;

@@ -21,6 +21,7 @@ import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { requireCampaignScene } from './scenes.js';
 import { gmRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
+import { emitBlockersToPlayers } from './blockers.js';
 import { fetchSceneWalls, toWallView } from './walls-io.js';
 import {
   emitVisionToPlayers,
@@ -61,7 +62,12 @@ export async function afterWallChange(
   scene: Scene,
 ): Promise<void> {
   await emitWallsToGm(deps, campaignId, scene.id);
-  if (!usesDynamicVision(scene)) return;
+  if (!usesDynamicVision(scene)) {
+    // No field of view to push — but a fence drawn on a fogged or open map is
+    // still something every player's route planner has to walk round (42a).
+    await emitBlockersToPlayers(deps, campaignId, scene);
+    return;
+  }
   await emitVisionToPlayers(deps, campaignId, scene);
   await emitSceneTokensToPlayers(deps, campaignId, scene);
 }

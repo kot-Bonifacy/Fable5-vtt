@@ -78,31 +78,46 @@ export function lightErrorText(code: string | undefined): string {
  * says why it refused, and the map already knows what the player reached for.
  */
 export function openingErrorText(code: string | undefined, kind: WallKind | undefined): string {
-  const isWindow = kind === 'window';
+  const words = OPENING_REFUSALS[kind === 'window' || kind === 'gate' ? kind : 'door'];
+  // Stage 18d. „Za daleko" names the thing, which is safe — the player was
+  // shown it. „Zamknięte na klucz" is only ever said to someone whose token
+  // stands at the handle, so the message is the character's discovery.
   switch (code) {
     case 'FORBIDDEN':
-      return isWindow
-        ? 'Tego okna nie ruszysz — MG go nie udostępnił.'
-        : 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
     case 'WALL_NOT_FOUND':
-      return isWindow ? 'Nie widzisz tego okna.' : 'Nie widzisz tych drzwi.';
-    // Stage 18d. „Za daleko" names the thing, which is safe — the player was
-    // shown it. „Zamknięte na klucz" is only ever said to someone whose token
-    // stands at the handle, so the message is the character's discovery.
     case 'OPENING_OUT_OF_REACH':
-      return isWindow
-        ? 'Za daleko — podejdź do okna (na jedną kratkę).'
-        : 'Za daleko — podejdź do drzwi (na jedną kratkę).';
     case 'OPENING_LOCKED':
-      return isWindow
-        ? 'Okno zamknięte na skobel — nie ustąpi.'
-        : 'Zamknięte na klucz — same drzwi nie ustąpią.';
+      return words[code];
     default:
-      return isWindow
-        ? `Nie udało się poruszyć oknem: ${code ?? 'nieznany błąd'}.`
-        : `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
+      return `${words.failed}: ${code ?? 'nieznany błąd'}.`;
   }
 }
+
+/** The same four refusals, worded for the thing that was reached for. */
+const OPENING_REFUSALS = {
+  door: {
+    FORBIDDEN: 'Tych drzwi nie otworzysz — MG ich nie udostępnił.',
+    WALL_NOT_FOUND: 'Nie widzisz tych drzwi.',
+    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do drzwi (na jedną kratkę).',
+    OPENING_LOCKED: 'Zamknięte na klucz — same drzwi nie ustąpią.',
+    failed: 'Nie udało się poruszyć drzwiami',
+  },
+  window: {
+    FORBIDDEN: 'Tego okna nie ruszysz — MG go nie udostępnił.',
+    WALL_NOT_FOUND: 'Nie widzisz tego okna.',
+    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do okna (na jedną kratkę).',
+    OPENING_LOCKED: 'Okno zamknięte na skobel — nie ustąpi.',
+    failed: 'Nie udało się poruszyć oknem',
+  },
+  // Stage 42a.
+  gate: {
+    FORBIDDEN: 'Tej bramy nie otworzysz — MG jej nie udostępnił.',
+    WALL_NOT_FOUND: 'Nie widzisz tej bramy.',
+    OPENING_OUT_OF_REACH: 'Za daleko — podejdź do bramy (na jedną kratkę).',
+    OPENING_LOCKED: 'Brama zamknięta na kłódkę — nie ustąpi.',
+    failed: 'Nie udało się poruszyć bramą',
+  },
+} as const;
 
 /**
  * Odmowy operacji na figurach (etap 35): kopia, ukrycie, naklejka, kosz.

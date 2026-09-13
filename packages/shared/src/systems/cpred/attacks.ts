@@ -323,6 +323,7 @@ export type CpredAttackProblem =
   | 'NO_SUPPRESSIVE'
   | 'OUT_OF_RANGE'
   | 'MELEE_OUT_OF_REACH'
+  | 'MELEE_BLOCKED'
   | 'RANGED_WEAPON_IN_MELEE'
   | 'NOT_ENOUGH_AMMO'
   | 'GRAPPLE_TWO_HANDED'
@@ -499,6 +500,12 @@ export interface CpredAttackContext {
    * Only an explicit `false` refuses the attack.
    */
   lineOfFire?: boolean;
+  /**
+   * Something that stops a body stands between the two figures (stage 42a) — a
+   * barrier, a shut gate, a closed window. Filled in by the server alone, like
+   * `lineOfFire`, and read only for a swing: a fence stops an arm, not a bullet.
+   */
+  reachBlocked?: boolean;
   /**
    * A cover standing between the shooter and the target (stage 16c).
    *
@@ -770,6 +777,13 @@ export function planCpredAttack(
   // be the wrong answer to the wrong question.
   if (context.lineOfFire === false && mode !== 'suppressive') {
     return { ok: false, error: 'NO_LINE_OF_FIRE' };
+  }
+  // A fence is not a wall (stage 42a): the eye and the round go through it, an
+  // arm does not. After the line of fire, so masonry keeps its own refusal, and
+  // before the reach, for the reason the wall comes first. `melee` is already
+  // false for a thrown blade — letting go of it makes it ranged (s. 177).
+  if (melee && context.reachBlocked === true) {
+    return { ok: false, error: 'MELEE_BLOCKED' };
   }
 
   // A cover in the way (stage 16c). Refused rather than penalised, because RAW
@@ -1202,6 +1216,7 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   NO_SUPPRESSIVE: 'Tą bronią nie poprowadzisz ognia zaporowego.',
   OUT_OF_RANGE: 'Cel jest poza zasięgiem tej broni.',
   MELEE_OUT_OF_REACH: `Do ataku wręcz cel musi być nie dalej niż ${CPRED_MELEE_REACH_M} m.`,
+  MELEE_BLOCKED: 'Między wami stoi przeszkoda — wręcz przez nią nie sięgniesz.',
   RANGED_WEAPON_IN_MELEE: 'Tej broni nie użyjesz w zwarciu.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',

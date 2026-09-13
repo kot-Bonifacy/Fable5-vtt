@@ -810,7 +810,7 @@ model MapDrawing {
 model Wall {
   id      Int    @id @default(autoincrement())
   sceneId String
-  /// "wall" (blocks sight) | "door" (blocks while closed) | "window" (never blocks)
+  /// "wall" | "door" | "window" | "barrier" | "gate" — what each stops: `WALL_KINDS` in shared/walls.ts
   kind    String @default("wall")
   /// Doors only: an open door stops blocking sight.
   open    Boolean @default(false)

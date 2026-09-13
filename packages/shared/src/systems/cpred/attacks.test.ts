@@ -1226,6 +1226,25 @@ describe('dodatki do broni', () => {
     ).toEqual({ ok: false, error: 'MELEE_OUT_OF_REACH' });
   });
 
+  it('przez barierę nie sięgniesz wręcz, a kula przechodzi przez nią dalej (42a)', () => {
+    const swing = {
+      metres: 1,
+      request: { attachmentId: BAYONET.id },
+      secondary: bayonetBlade,
+      row: weaponRow({ attachmentIds: [BAYONET.id] }),
+    };
+    expect(shoot([BAYONET], { ...swing, context: { reachBlocked: true } })).toEqual({
+      ok: false,
+      error: 'MELEE_BLOCKED',
+    });
+    // Mur ma pierwszeństwo — przez ścianę nie ma ani ciosu, ani strzału.
+    expect(
+      shoot([BAYONET], { ...swing, context: { reachBlocked: true, lineOfFire: false } }),
+    ).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
+    // Siatka nie zatrzymuje pocisku; jej OB to etap 42b.
+    expect(shoot([], { context: { reachBlocked: true } }).ok).toBe(true);
+  });
+
   /**
    * Granatnik podwieszany i jego własny nabój (zaległość z 01.09).
    *
