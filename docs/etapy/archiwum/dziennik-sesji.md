@@ -7,6 +7,24 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — cyberdek netrunnera Korpo i „Dodaj za darmo"
+
+**Zlecenie MG:** przegląd zaległości; do zrobienia wybrany cyberdek pracownika Korpo i decyzja
+o „Dodaj za darmo". Pakiet Korporacyjnego netrunnera ma pole `cyberdeck`, a `cpredTeamCyberdeck`
+(`roleability.ts`) składa deck z kompendium po nazwie; `team.ts` wkłada go na kartę pracownika,
+a Programy bez wpisu (albo bez miejsca) dopisuje do notatek. Zdanie o decku zeszło z „Osprzętu".
+„Dodaj za darmo" przy cyborgizacji zostaje (decyzja MG: zachowanie zamierzone), a tooltip mówi, że
+wszczep wchodzi bez Testu montażu, ale z rzutem na Utratę Człowieczeństwa. Obie pozycje zamknięte
+w `zaleglosci.md`, nowa umowa w sekcji `postac`.
+
+**Weryfikacja:** 2029 testów w `shared` (6 nowych), 1100 na serwerze (asercje decku w teście
+zatrudnienia), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint i Prettier — zielone.
+W Chrome na kampanii „Oględziny 12.09": HR przysłał „Oględziny Deck" z deckiem 5/7 (Miecz, Zabójca,
+Robak, Pancerz z liczbami z kompendium), tooltip obejrzany przy cyborgizacji i przy sprzęcie.
+**Poprawione na prośbę MG:** z wpisu o maszynopisie w `zaleglosci.md` zniknął punkt o przełączniku
+„⌨" (usuniętym w `3d78ee5`), a z wpisu o nazwie figury w czacie — odesłanie do zamkniętego etapu 35.
+Oba problemy zostają na liście. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — odświeżenie okna skrótów klawiszowych
 
 **Zlecenie MG:** zaktualizować treść i wygląd pomocy. Okno ma wyszukiwarkę klawiszy,

@@ -134,9 +134,13 @@ po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
 **Od 13.09 karty czatu piszą alias figury (`Token.publicName`) — u wszystkich, MG też** (decyzja
 MG; pusty alias to „Nieznajomy", rzut z samej karty pisze nazwę karty). Nazwa figury wchodzi do
 karty czatu **wyłącznie** przez `tokenTableName` — umowa w `czat`. Karty sprzed 13.09 zostają
-z prawdziwą nazwą. **Cztery drobne usterki z oględzin 13.09 czekają w `zaleglosci.md`** (tekst „nie
-w rękach", notka po „Zainstaluj", lead screamsheetu, słowa edytora 38a) — MG nie wybrał żadnej do
-poprawki w tamtej sesji.
+z prawdziwą nazwą. **Cztery drobne usterki z oględzin 13.09 poprawiono tego samego dnia** (trzecia
+sesja) — kodem i testami, **bez oględzin w przeglądarce** (pozycja w `zaleglosci.md`).
+
+**Od 13.09 odmowa broni spoza rąk ma dwa zdania** — „dobądź ją (bez Akcji)" albo „schowaj tamto" —
+i wybiera je `cpredDrawFits`, to samo porównanie, którym `weapon:draw` odmawia `HANDS_FULL`. Zajęte
+ręce planer dostaje jako `handsHeld` od wołającego: nowe wejście do `planCpredAttack` bez tej liczby
+powie graczowi z wolną ręką „schowaj tamto" (umowa w `atak`).
 
 **Pięć ostatnich sesji zamknęło dziewięć etapów:** 40 (prośba gracza o Test), szlif karty postaci,
 38b (przedmioty między kartami) i 34 (tabele losowe) — 06.09; 38a (statysta jako karta),
@@ -149,7 +153,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 9 pozycji** (`zaleglosci.md`). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 10 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -205,8 +209,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2032** w `shared`, **1101** na serwerze, **197** u klienta —
-zielone (liczby zmierzone 13.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2040** w `shared`, **1102** na serwerze, **197** u klienta —
+zielone (liczby zmierzone 13.09, trzecia sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -236,10 +240,10 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   29 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   23 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   24 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
@@ -252,6 +256,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 13.09 — dwa zdania odmowy rąk i trzy drobne usterki
+
+**Zlecenie MG:** przegląd zaległości; wybrana paczka czterech drobnych usterek z oględzin 13.09.
+Decyzje MG: odmowa broni spoza rąk wybiera zdanie po tym, czy broń mieści się w wolnych rękach
+(nie „czy ręce są puste"); drugi szkic screamsheetu nadpisuje pola, ale pustym niczego nie kasuje;
+edytor 38a mówi prawdę o PW i blokuje pola martwe przy Wartości bojowej. `cpredDrawFits`
+i `cpredHandsHeld` (`character.ts`), nowy problem `WEAPON_HOLSTERED`, pole planera `handsHeld`
+(serwer i dymek), powód w `CpredWeaponOption.notDrawn`; `sendCyberwareAction` zwraca zdanie odmowy.
+Po drodze: `save()` okna żetonu zawieszało „Zapisywanie…" po złym zasięgu widzenia, a typ wejścia
+paska nie znał `drawnWeaponRowIds`. **Skorygowane względem wyboru MG:** Cechy nie są blokowane przy
+Wartości bojowej — REF liczy Inicjatywę wprost z karty.
+
+**Weryfikacja:** 2040 testów w `shared` (8 nowych), 1102 na serwerze (nowy test pełnych rąk, stary
+przestawiony na `WEAPON_HOLSTERED`), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint
+i Prettier na zmienionych plikach — zielone. **Bez oględzin w przeglądarce** (MG wybrał samą paczkę
+kodu) — nowa pozycja w `zaleglosci.md`. `packages/server/src/app.ts` stoi w `git status` jako
+zmieniony, ale ma ten sam hash co HEAD — rozjazd statu przy `core.autocrlf`, nic do commitowania.
+Etap 28 pozostaje nierozpoczęty.
 
 ### Sesja 13.09 — alias figury w kartach czatu i oględziny bez modelu
 
@@ -271,21 +294,3 @@ pojedynczym, wyszarzony slot po „Schowaj", odmowa `MISSING_FOUNDATION`. Znalez
 poprawione: cztery drobne usterki w `zaleglosci.md`. `pnpm dev` zgubił backend (strażnik
 `tsx watch` bez serwera) — ubity i uruchomiony osobno; serie akcji rozszerzenia wymagały stałej
 zgody na domeny. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — cyberdek netrunnera Korpo i „Dodaj za darmo"
-
-**Zlecenie MG:** przegląd zaległości; do zrobienia wybrany cyberdek pracownika Korpo i decyzja
-o „Dodaj za darmo". Pakiet Korporacyjnego netrunnera ma pole `cyberdeck`, a `cpredTeamCyberdeck`
-(`roleability.ts`) składa deck z kompendium po nazwie; `team.ts` wkłada go na kartę pracownika,
-a Programy bez wpisu (albo bez miejsca) dopisuje do notatek. Zdanie o decku zeszło z „Osprzętu".
-„Dodaj za darmo" przy cyborgizacji zostaje (decyzja MG: zachowanie zamierzone), a tooltip mówi, że
-wszczep wchodzi bez Testu montażu, ale z rzutem na Utratę Człowieczeństwa. Obie pozycje zamknięte
-w `zaleglosci.md`, nowa umowa w sekcji `postac`.
-
-**Weryfikacja:** 2029 testów w `shared` (6 nowych), 1100 na serwerze (asercje decku w teście
-zatrudnienia), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint i Prettier — zielone.
-W Chrome na kampanii „Oględziny 12.09": HR przysłał „Oględziny Deck" z deckiem 5/7 (Miecz, Zabójca,
-Robak, Pancerz z liczbami z kompendium), tooltip obejrzany przy cyborgizacji i przy sprzęcie.
-**Poprawione na prośbę MG:** z wpisu o maszynopisie w `zaleglosci.md` zniknął punkt o przełączniku
-„⌨" (usuniętym w `3d78ee5`), a z wpisu o nazwie figury w czacie — odesłanie do zamkniętego etapu 35.
-Oba problemy zostają na liście. Etap 28 pozostaje nierozpoczęty.

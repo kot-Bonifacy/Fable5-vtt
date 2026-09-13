@@ -9,6 +9,50 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-13 (trzecia sesja — cztery drobne usterki z oględzin i zawieszony zapis żetonu)
+
+**13.09 (etap 41): odmowa „nie w rękach" przy pustych rękach mówiła o „tamtym".** Wpis brzmiał:
+„`CPRED_NOT_DRAWN_REFUSAL` ma jedno zdanie: „Masz w rękach co innego — schowaj tamto (Akcja) albo
+upuść, a potem dobądź tę broń." Postać, która schowała **jedyną** broń, ma puste ręce, a podpowiedź
+slotu i odmowa planera każą jej wydać Akcję na chowanie czegoś, czego nie trzyma". **Diagnoza
+szersza niż wpis:** zdanie było złe także przy **jednej** wolnej ręce (pistolet w dłoni, drugi
+w kaburze) — `weapon:draw` pozwala wtedy dobyć za darmo, bo `HANDS_FULL` pada dopiero przy braku
+miejsca. **Decyzja MG z 13.09:** o zdaniu rozstrzyga to, czy broń mieści się w wolnych rękach, a nie
+to, czy ręce są puste. **Naprawa:** `cpredDrawFits(handsHeld, handsNeeded)` i `cpredHandsHeld`
+w `character.ts` — jedno porównanie, którym `weapon:draw` odmawia `HANDS_FULL`, a planer wybiera
+między nowym problemem `WEAPON_HOLSTERED` („Broń jest w kaburze — dobądź ją (bez Akcji).") i starym
+`WEAPON_NOT_DRAWN`. Zajęte ręce planer dostaje od wołającego (`handsHeld`: serwer przez `handsInUse`,
+dymek u klienta z katalogu); bez tej liczby przy czymkolwiek w rękach daje zdanie ostrożniejsze. Pasek
+niesie powód w `CpredWeaponOption.notDrawn` (`holstered` / `handsFull`). Po drodze: typ
+`CpredHotbarInput.sheet` nie znał `drawnWeaponRowIds`, choć pasek czyta je od etapu 41 — działało
+wyłącznie dzięki typowaniu strukturalnemu. Testy: pięć w `attacks.test.ts`, trzy w `hotbar.test.ts`,
+gniazda w `sighting.test.ts` (puste ręce → `WEAPON_HOLSTERED`, karabin w rękach → `WEAPON_NOT_DRAWN`).
+
+**13.09 (etap 23a/23b): notka „Instaluję …" zostawała na karcie wpisu po odmowie.** `install()`
+w `CompendiumPanel.tsx` pisała notkę przed odpowiedzią serwera, więc po `MISSING_FOUNDATION` karta
+mówiła co innego niż czat. Ten sam błąd miała droga „Dodaj za darmo" (`compendium-items.ts`), której
+wpis nie wymieniał. **Naprawa:** `sendCyberwareAction` zwraca obietnicę zdania odmowy albo `null`;
+obie drogi czekają na nią, a przy odmowie notka jest tym samym zdaniem, które idzie na czat.
+
+**13.09 (etap 24c): drugi szkic screamsheetu kasował lead poprawiony przez MG.** `takeDraft`
+(`HandoutPanel.tsx`) wpisywał nagłówek i treść tylko niepuste, a lead zawsze. **Decyzja MG z 13.09:**
+szkic nadpisuje pola, ale pustym niczego nie kasuje. **Naprawa:** warunek `draft.lead.length > 0`.
+
+**13.09 (etap 38a): dwie uwagi do słów szybkiego edytora.** (1) „PW bierze się z paska powyżej" stało
+także przy odznaczonym „Pasku HP" — **ustalone**: karta dostaje wtedy PW z profilu (25/25 dla nowej
+figury, dotychczasowe dla istniejącej karty). Podpowiedź pisze teraz te liczby i mówi, że zaznaczenie
+paska pozwala wpisać inne. (2) Przy „Wartości bojowej" `cpredSheetRollSheet` podstawia ją pod
+Umiejętność broni, Unik i Umiejętność Testu, a REF, ZW i SW zeruje. **Umiejętność, Unik i poziomy
+Testów** dostają `readOnly` (bez strzałek, przygaszone) i zdanie w podpowiedzi. **Cech nie
+zablokowano**, choć wariant wybrany przez MG to zakładał: REF liczy Inicjatywę wprost z karty
+(`sheets.ts`), a ZW i SW nie zostały sprawdzone pod kątem odczytów spoza rzutu.
+
+**Spoza listy: okno edycji żetonu zawieszało „Zapisywanie…".** `save()` w `TokenContextMenu.tsx`
+ustawiało `saving` przed walidacją zasięgu widzenia, a odmowa wychodziła bez zdjęcia flagi — guzik
+„Zapisz" zostawał wyszarzony do zamknięcia okna. **Naprawa:** flaga dopiero po walidacji.
+
+**Nic z powyższego nie było oglądane w przeglądarce** — pozycja w `zaleglosci.md`.
+
 ## Zamknięte 2026-09-13 (druga sesja — alias w kartach czatu, „Minęła minuta", „bez ran")
 
 **03.09 (etap 35): nazwa figury nadal jechała do graczy w kartach czatu.** Wpis brzmiał: „Alias

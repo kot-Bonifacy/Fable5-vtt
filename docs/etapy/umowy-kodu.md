@@ -1039,6 +1039,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Odmowa broni spoza rąk ma dwa zdania** — `WEAPON_HOLSTERED` („dobądź ją") i `WEAPON_NOT_DRAWN` („schowaj tamto"); wybiera `cpredDrawFits`, to samo porównanie, którym `weapon:draw` odmawia `HANDS_FULL`. Zajęte ręce planer dostaje jako `handsHeld` od wołającego — nowe wejście do `planCpredAttack` musi je podać.
 - **Co postać trzyma w rękach, to `drawnWeaponRowIds`** — lista id wierszy; **brak pola** znaczy „nikt nie pytał" (oględziny pokazują pierwszą broń, planer **nie odmawia niczego**), `[]` znaczy puste ręce. Czyta się przez `cpredDrawnWeapons`, `cpredHandsAreDeclared` i `cpredWeaponInHands`, nigdy wprost.
 - **Ręce zmienia wyłącznie `weapon:draw`** (dobycie za darmo, schowanie za Akcję `CPRED_ACTION_HOLSTER`, upuszczenie za darmo); `character:update` z tym polem odpada `FORBIDDEN` **dla wszystkich, także MG** — jak `combatAwareness`.
 - **Guzik „Obrażenia" na karcie ataku** rysuje się z `attack.damageNotation !== undefined`, nigdy z „trafił albo obszar" — o tym, czy jest co rzucać, rozstrzyga serwer (`ammoDealsDamage`). Amunicja bez obrażeń z 16h dostawała guzik z pustą kością.
@@ -1081,17 +1082,25 @@ Decyzja zapadła po zmierzeniu skutków wariantu twardego: egzekwowanie domysłu
 z pistoletem, karabinem i nożem mogłaby strzelać wyłącznie z pierwszego wiersza, dopóki ktoś
 ręcznie nie przełoży broni. Od pierwszego `weapon:draw` pole istnieje i odmowa jest pełna.
 
-**Ręce są dwie (`CPRED_HANDS`), a ile zajmuje broń, wie katalog.** Arytmetykę robi **serwer**
-w `weapon:draw` (`resolved.hands`), nie silnik zasad: kompendium należy do serwera, a planer
-dostaje fakty — ta sama umowa, co przy `ResolvedWeapon`. Pistolet i nóż mieszczą się naraz,
-karabin zajmuje obie ręce i wtedy `weapon:draw` odmawia `HANDS_FULL`. Odmowa mówi **co zrobić**,
-bo obie drogi są jednym kliknięciem i różnią się ceną: schowanie kosztuje Akcję (s. 168),
-upuszczenie nie kosztuje nic.
+**Ręce są dwie (`CPRED_HANDS`), a ile zajmuje broń, wie katalog.** Katalog czyta **wołający**
+(`resolved.hands`), nie silnik zasad: kompendium należy do serwera, a planer dostaje fakty — ta sama
+umowa, co przy `ResolvedWeapon`. Porównanie z liczbą rąk jest od 13.09 jedno, `cpredDrawFits`
+(`character.ts`): pistolet i nóż mieszczą się naraz, karabin zajmuje obie ręce i wtedy
+`weapon:draw` odmawia `HANDS_FULL`. Odmowa mówi **co zrobić**, bo obie drogi są jednym kliknięciem
+i różnią się ceną: schowanie kosztuje Akcję (s. 168), upuszczenie nie kosztuje nic.
 
-**`WEAPON_NOT_DRAWN` sprawdza się na wierszu NOSICIELA**, dokładnie jak `WEAPON_JAMMED` obok:
-bagnet i granatnik podwieszany są częścią broni, którą figura trzyma, więc trzymanie karabinu jest
-trzymaniem obu. Zdanie odmowy (`CPRED_NOT_DRAWN_REFUSAL`) jest jedno na trzy usta — planer, slot
-paska (`option.notDrawn`) i wiersz karty — tą samą umową, co zacięcie.
+**`WEAPON_NOT_DRAWN` i `WEAPON_HOLSTERED` sprawdzają się na wierszu NOSICIELA**, dokładnie jak
+`WEAPON_JAMMED` obok: bagnet i granatnik podwieszany są częścią broni, którą figura trzyma, więc
+trzymanie karabinu jest trzymaniem obu. **Zdania są dwa (13.09, decyzja MG)** i wybiera je to samo
+`cpredDrawFits`, którym `weapon:draw` odmawia dobycia: broń mieszcząca się w wolnych rękach dostaje
+`CPRED_HOLSTERED_REFUSAL` („dobądź ją (bez Akcji)"), reszta `CPRED_NOT_DRAWN_REFUSAL` („schowaj
+tamto"). Do 13.09 zdanie było jedno i postać z pustymi rękami słyszała „schowaj tamto (Akcja)".
+Zajęte ręce planer dostaje jako `handsHeld` od wołającego — serwer liczy je `handsInUse`, dymek
+u klienta `cpredHandsHeld` z tego samego katalogu. Bez tej liczby, przy czymkolwiek w rękach, planer
+daje zdanie ostrożniejsze, więc **nowe wejście do `planCpredAttack` musi ją podać**, inaczej gracz
+z wolną ręką usłyszy „schowaj tamto". Zdanie pada w dwóch ustach — planer i slot paska
+(`option.notDrawn`: `holstered` / `handsFull`); wiersz karty ma własne guziki „Dobądź" i „Schowaj
+(Akcja)".
 
 **O tym, czy karta ataku ma guzik „Obrażenia", rozstrzyga serwer — klient tylko go rysuje (04.09).**
 Serwer liczy `damages = (trafienie || obszar) && ammoDealsDamage(ammo)` i **nie wysyła
@@ -1599,6 +1608,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Notka o skutku `character:cyberware` czeka na odpowiedź serwera** — `sendCyberwareAction` zwraca obietnicę zdania odmowy albo `null`; guzik piszący „Instaluję…" przed nią kłamie przy każdej odmowie montażu.
 - **Sprzęt pakietu BN-a, bez którego karta nie działa, jest polem pakietu, nie zdaniem w `gear`** — jak `cyberdeck` netrunnera Korpo; składa go czysta funkcja z kompendium po **nazwie**, a czego katalog nie zna, wraca w `missing` do notatek.
 - **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).
 - **Odmowa montażu** — jedna czysta funkcja `cyberwareInstallRefusal` (brak podstawy / brak gniazda / limit 7) i jedna tabela zdań `CYBERWARE_INSTALL_REFUSAL_MESSAGES`; liczy **na rodzinie, nie na pudełku sylwetki**, wpisu bez rodziny nie odmawia, a Borgizacji nie liczy do rodzin z podstawą. MG przechodzi, karta czatu zapisuje.
@@ -1624,6 +1634,15 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Zdanie o skutku montażu pisze się dopiero po odpowiedzi serwera (13.09).** `sendCyberwareAction`
+(`socket.ts`) zwraca `Promise<string | null>`: zdanie odmowy — to samo, które ląduje notatką na
+czacie — albo `null`, gdy serwer przyjął intencję. Obie drogi instalacji w kompendium („Zainstaluj"
+w `CompendiumPanel.tsx` i „Dodaj za darmo" w `compendium-items.ts`) czekają na nią i przy odmowie
+wpisują pod guzikiem tamto zdanie. Do 13.09 notka „Instaluję…" stała przed odpowiedzią, więc
+`MISSING_FOUNDATION` zostawiało kartę wpisu i czat w sprzeczności. Wołający, którzy żadnej notki
+nie piszą (usunięcie wszczepu i terapia na karcie), mogą obietnicę pominąć. Ta sama zasada, co
+`InventoryGiveResult.pending` w `ekwipunek`: o skutku mówi się dopiero wtedy, gdy serwer go potwierdzi.
 
 **Sprzęt pakietu, bez którego karta nie spełnia swojej funkcji, jest polem pakietu (13.09).**
 Pakiety zespołu Korpo trzymają osprzęt jako prozę (`CpredTeamProfession.gear`), a na wiersze karty

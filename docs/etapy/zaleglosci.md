@@ -24,6 +24,17 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
   górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
 
+**Zamknięte 13.09 (trzecia sesja): cztery drobne usterki z oględzin 13.09 i jeden błąd spoza listy.**
+Odmowa strzału bronią spoza rąk ma dwa zdania — „Broń jest w kaburze — dobądź ją (bez Akcji)", gdy
+broń mieści się w wolnych rękach (także obok jednoręcznej broni w drugiej ręce), i dotychczasowe, gdy
+trzeba coś odłożyć (decyzja MG). Notka „Instaluję…" w kompendium czeka na odpowiedź serwera, a przy
+odmowie mówi to samo co czat — dotyczy też „Dodaj za darmo". Drugi szkic screamsheetu nadpisuje pola,
+ale pustym leadem niczego nie kasuje (decyzja MG). Szybki edytor 38a mówi prawdę o PW bez „Paska HP"
+i przy Wartości bojowej blokuje Umiejętność, Unik i poziomy Testów — **Cechy zostają**, bo REF liczy
+Inicjatywę. Spoza listy: okno edycji żetonu zawieszało „Zapisywanie…" po odmowie zasięgu widzenia.
+**Nic z tego nie było oglądane w przeglądarce** — nowa pozycja niżej. Diagnozy w
+`archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 13.09 (druga sesja): nazwa figury w kartach czatu, zdanie „Minęła minuta" i „bez ran"
 u gracza.** Karty czatu piszą alias figury u wszystkich, MG też (decyzja MG), a przy pustym aliasie
 „Nieznajomy"; przy okazji okno przeszukania przestało pisać graczowi prawdziwą nazwę, a Czarny LOD
@@ -69,7 +80,7 @@ to nie regres; zadziała na `vtt.tatanga.eu` po etapie 28.
 archiwum). **13.09 obejrzany wyszarzony slot paska** na kampanii-śmieciu, z konta `Tester`: po
 „Schowaj (Akcja)" oba wiersze broni („Pistolet oględzinowy" i jego „Przeładuj") dostają
 `hud-slot--refused` (przezroczystość 0,4), a karta zamienia plakietkę „✊ W rękach" na „Dobądź".
-Przy okazji wyszła usterka tekstu odmowy — osobna pozycja niżej. **Zostaje:** dwie linijki w dymku
+Przy okazji wyszła usterka tekstu odmowy — poprawiona 13.09 (trzecia sesja). **Zostaje:** dwie linijki w dymku
 pod celownikiem — `onAimHover` nie budzi się od syntetycznego ruchu kursora (pułapka z 10.09), więc
 to jedyna droga przez rękę MG.
 
@@ -80,7 +91,7 @@ profilu, „Wartość bojowa zamiast Cech" z podpowiedzią i „Nie unika pocisk
 mieści się w oknie, a zapis **założył kartę** (`statBlock`: Wartość bojowa 4, `noBulletDodge`,
 `hpMax` 10). **Kosz pojedynczy** pyta dwa razy: „Usunąć token „Figura testowa"?" i „Usunąć też
 kartę „Figura testowa"? Zostanie w kampanii, jeśli odmówisz." — obie odpowiedzi „tak" usunęły żeton
-i kartę. Dwie drobne uwagi do słów edytora — osobna pozycja niżej. **Zostaje:** pytanie o kartę
+i kartę. Dwie drobne uwagi do słów edytora — poprawione 13.09 (trzecia sesja). **Zostaje:** pytanie o kartę
 przy **koszu grupowym** z 35 — na scenie nie zostały dwie figury z kartami.
 
 **05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
@@ -152,30 +163,16 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   `SELF_INSTALL`, do którego gracz potrzebuje Medyka z Chirurgią. `NO_SURGERY_SKILL` jest z UI
   nieosiągalne z założenia: lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią.
 
-- **13.09 (etap 24c): drugi szkic screamsheetu kasuje lead poprawiony przez MG.** Znalezione przy
-  przeglądzie kodu, nie przy stole. `takeDraft` (`HandoutPanel.tsx`) wpisuje tytuł i treść szkicu
-  tylko wtedy, gdy nie są puste, a **lead nadpisuje zawsze** — więc szkic bez leadu wymaże to, co MG
-  już poprawił. Poprawka to jeden warunek (`draft.lead.length > 0`), ale zachowanie „drugi generator
-  nadpisuje pola" jest osobnym otwartym pytaniem z wpisu o 24c niżej — MG nie wybrał jej 13.09.
-
-- **13.09 (etap 41): odmowa „nie w rękach" przy pustych rękach mówi o „tamtym".**
-  `CPRED_NOT_DRAWN_REFUSAL` (`shared/systems/cpred/attacks.ts`) ma jedno zdanie: „Masz w rękach co
-  innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń." Postać, która schowała
-  **jedyną** broń, ma puste ręce, a podpowiedź slotu i odmowa planera każą jej wydać Akcję na
-  chowanie czegoś, czego nie trzyma. Obejrzane 13.09 na koncie `Tester`. Naprawa: dwa zdania
-  zależnie od `cpredDrawnWeapons` — przy pustych rękach coś w rodzaju „Broń jest w kaburze — dobądź
-  ją (bez Akcji)". MG nie wybrał poprawki w tej sesji.
-
-- **13.09 (etap 23a/23b): notka „Instaluję …" na karcie wpisu zostaje po odmowie.** `install()`
-  w `CompendiumPanel.tsx` wstawia „Instaluję „Celownik optyczny" — 1000 ed. Rzut na Utratę
-  Człowieczeństwa idzie na czat." **przed** odpowiedzią serwera, więc po odmowie
-  `MISSING_FOUNDATION` karta mówi co innego niż czat. Naprawa: notka dopiero po `ack.ok`
-  (`sendCyberwareAction` musiałby zwracać wynik) albo gaszona przy odmowie.
-
-- **13.09 (etap 38a): dwie uwagi do słów szybkiego edytora.** (1) Podpowiedź „PW bierze się
-  z paska powyżej" stoi także wtedy, gdy „Pasek HP" jest odznaczony — nie sprawdzone, jakie
-  maksimum dostaje wtedy zakładana karta. (2) Pole „Umiejętność" zostaje obok zaznaczonej „Wartości
-  bojowej zamiast Cech", choć od tej chwili atak i obrona liczą się z Wartości. Kosmetyka słów.
+- **13.09 (trzecia sesja): cztery poprawki nieobejrzane w przeglądarce.** Testy pokrywają tylko
+  silnik (odmowa rąk: planer, pasek, gniazda serwera); reszta to UI. Do sprawdzenia na koncie
+  `Tester` i u MG: (1) **odmowa rąk** — po „Schowaj (Akcja)" jedynej broni podpowiedź wyszarzonego
+  slotu i odmowa pod celownikiem mówią „Broń jest w kaburze — dobądź ją (bez Akcji)", a z karabinem
+  w rękach pistolet dostaje stare „schowaj tamto"; (2) **„Zainstaluj"** w kompendium na karcie bez
+  cyberoka — pod guzikiem ta sama odmowa co na czacie, nie „Instaluję…" (to samo przy „Dodaj za
+  darmo" u MG); (3) **szybki edytor 38a** — bez „Paska HP" podpowiedź pisze liczby PW karty, przy
+  „Wartości bojowej" Umiejętność, Unik i poziomy Testów tracą strzałki; (4) **okno edycji żetonu** —
+  zły „Zasięg widzenia" (np. `0`) pokazuje błąd, a „Zapisz" zostaje aktywne. Screamsheet czeka na
+  model — patrz 24c (4).
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
@@ -196,8 +193,9 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
   `archiwum/zamkniete-zaleglosci.md`. Zostają: (2) **„Przerwij" w trakcie generacji** — przycisk
   pojawia się na czas pisania (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał
-  jednak w 7 s i nie było czego przerywać. (4) **Drugi generator pod rząd** — czy szkic nadpisuje
-  pola, w których MG już coś poprawił (nadpisuje: takie jest zachowanie `takeDraft`).
+  jednak w 7 s i nie było czego przerywać. (4) **Drugi generator pod rząd** — szkic nadpisuje
+  nagłówek, lead i treść, ale pustym polem niczego nie kasuje (decyzja MG z 13.09; do tego dnia pusty
+  lead wymazywał poprawiony przez MG).
 
 - **Etap 24c — polszczyzna 9B, nie kod.** W artykule z oględzin padło „tłumek zmyślonych
   bogaczy" i „krzyki prosić o pomoc" — model gubi odmianę w dłuższych zdaniach. Przy
