@@ -21,9 +21,14 @@
  * question this module answers that is not about sight: what stops a **body**.
  * Stage 42b gave that partition a number: how much of a round or a blast it
  * takes on the way through (`armor`, `barrierArmorAlong`).
+ *
+ * The one crack in „walls never reach a player" is the route planner's list
+ * (`blocker:sync`): bare segments without a kind, and only of floor the player is
+ * shown — on a map without dynamic vision, walls included (`revealedStretches`).
  */
 
 import { fireCoverSegments, type CoverView } from './covers.js';
+import { fogShapeBounds, isPointRevealed, type FogState } from './fog.js';
 import type { ScenePoint } from './measure.js';
 import { segmentCrossingDistance, type Segment } from './vision.js';
 
@@ -251,10 +256,13 @@ export interface OpeningSyncBroadcast {
 
 /**
  * Server → client `blocker:sync` (stage 42a) — what one player's route planner
- * has to walk round although the player can see past it: barriers, shut gates,
- * and the closed windows they stand close enough to look through. Only the ones
- * in sight, and only as bare segments — the planner needs geometry, and a wall
- * row would hand the client a kind, an id and a bolt it has no business knowing.
+ * has to walk round. On a dynamic scene: what the player can see past and not
+ * walk through — barriers, shut gates, and the closed windows they stand close
+ * enough to look through, only the ones in sight. On an open or fogged map
+ * (13.09.2026): everything that stops a body, cut to the revealed floor
+ * (`revealedStretches`). Always bare segments — the planner needs geometry, and a
+ * wall row would hand the client a kind, an id and a bolt it has no business
+ * knowing.
  *
  * Targeted per socket without a seq, like `opening:sync`: every list differs.
  */
@@ -398,9 +406,10 @@ export function walkOnlyWallsFor(
  * The barriers and shut gates of a scene (stage 42a) — what stops a body and is
  * see-through for **everybody**, wherever they stand.
  *
- * What a scene without dynamic vision hands a player's planner: with no raycast
- * there is no observer to measure a window's curtain from, and a window, unlike
- * a fence, is part of the floor plan the party has not been shown.
+ * What armour (42b) and figure concealment (42c) are counted from. Until
+ * 13.09.2026 it was also what a scene without dynamic vision handed a player's
+ * planner; that list now carries every wall on revealed floor
+ * (`revealedStretches`).
  */
 export function standingBarriers(walls: readonly WallView[]): WallView[] {
   return walls.filter((wall) => isBarrier(wall) && wallBlocksMovement(wall));
@@ -490,6 +499,90 @@ export function wallSamplePoints(wall: Segment, spacingPx: number): ScenePoint[]
     points.push({ x: wall.x1 + (wall.x2 - wall.x1) * t, y: wall.y1 + (wall.y2 - wall.y1) * t });
   }
   return points;
+}
+
+/** Most pieces `revealedStretches` cuts one segment into. */
+export const WALL_STRETCH_MAX = 256;
+
+/**
+ * The stretches of these segments that stand on revealed floor of a fogged map
+ * (13.09.2026, GM decision) — what a player's route planner is told about on a
+ * scene painted by hand.
+ *
+ * A wall running on under the fog is the floor plan of a building the party has
+ * not been shown (18a), so it never goes whole. The stretch standing on revealed
+ * floor is already on the map image the player is looking at — and without it
+ * the planner drew a route straight through masonry the server then refused.
+ *
+ * Each segment is cut into equal pieces of at most `stepPx` (and no more than
+ * `WALL_STRETCH_MAX`), each piece is asked „is your middle revealed?", and every
+ * run of revealed pieces comes back as one segment. A stretch can therefore
+ * overhang the edge of a reveal by less than one piece — never by a room. A run
+ * reaching an end of the segment keeps that end exactly, so a wall in full view
+ * comes back as it went in.
+ *
+ * Shapes are boxed once per call and filtered per segment, because a long session
+ * paints hundreds of strokes and a floor plan has hundreds of walls; the filter
+ * keeps the paint order, and with it „the last shape wins".
+ */
+export function revealedStretches(
+  segments: readonly Segment[],
+  fog: Pick<FogState, 'enabled' | 'shapes'>,
+  stepPx: number,
+): Segment[] {
+  if (!fog.enabled) {
+    return segments.map((segment) => ({
+      x1: segment.x1,
+      y1: segment.y1,
+      x2: segment.x2,
+      y2: segment.y2,
+    }));
+  }
+  const boxed = fog.shapes.map((shape) => ({ shape, box: fogShapeBounds(shape) }));
+  const stretches: Segment[] = [];
+  for (const segment of segments) {
+    const minX = Math.min(segment.x1, segment.x2);
+    const maxX = Math.max(segment.x1, segment.x2);
+    const minY = Math.min(segment.y1, segment.y2);
+    const maxY = Math.max(segment.y1, segment.y2);
+    const shapes = boxed
+      .filter(
+        ({ box }) => box.maxX >= minX && box.minX <= maxX && box.maxY >= minY && box.minY <= maxY,
+      )
+      .map(({ shape }) => shape);
+    // The map starts covered: with no reveal anywhere near, none of it is in view.
+    if (!shapes.some((shape) => shape.mode === 'reveal')) continue;
+    const local = { enabled: true, shapes };
+    const length = Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
+    const step = Number.isFinite(stepPx) && stepPx > 0 ? stepPx : Math.max(1, length);
+    const count = Math.min(WALL_STRETCH_MAX, Math.max(1, Math.ceil(length / step)));
+    let runFrom: number | null = null;
+    for (let i = 0; i <= count; i++) {
+      const revealed =
+        i < count && isPointRevealed(stretchPoint(segment, (i + 0.5) / count), local);
+      if (revealed) {
+        runFrom ??= i;
+      } else if (runFrom !== null) {
+        stretches.push(stretchOf(segment, runFrom, i, count));
+        runFrom = null;
+      }
+    }
+  }
+  return stretches;
+}
+
+function stretchPoint(segment: Segment, t: number): ScenePoint {
+  return {
+    x: segment.x1 + (segment.x2 - segment.x1) * t,
+    y: segment.y1 + (segment.y2 - segment.y1) * t,
+  };
+}
+
+/** Pieces `from` (inclusive) to `to` (exclusive) of `count`, the segment's own ends kept exact. */
+function stretchOf(segment: Segment, from: number, to: number, count: number): Segment {
+  const start = from === 0 ? { x: segment.x1, y: segment.y1 } : stretchPoint(segment, from / count);
+  const end = to === count ? { x: segment.x2, y: segment.y2 } : stretchPoint(segment, to / count);
+  return { x1: start.x, y1: start.y, x2: end.x, y2: end.y };
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { BlockerSyncBroadcast, Segment, SessionUser } from '@vtt/shared';
-import { ROLE_GM, isPointRevealed, standingBarriers, wallSamplePoints } from '@vtt/shared';
+import { ROLE_GM, movementSegments, revealedStretches } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import type { RealtimeDeps } from './registry.js';
@@ -24,30 +24,27 @@ import {
  * the server then refuses.
  *
  * The fix is the smallest crack in „walls never reach a player" that works: bare
- * segments, only of what stops a body and not the eye, only of what the player
- * can see. On a dynamic scene the list is per player and rides with the vision
- * (`visibleWalkBlockersFor`); on a fogged or open map it is one list for every
- * player and is built here.
+ * segments, only of what the player is shown. On a dynamic scene the list is per
+ * player, holds only what stops a body and not the eye — the field of view
+ * already ends at everything else — and rides with the vision
+ * (`visibleWalkBlockersFor`). A fogged or open map has no field of view to end at
+ * a wall, so since 13.09.2026 (GM decision) its list carries the walls too; it is
+ * one list for every player and is built here.
  */
 
 /**
- * The list for a scene without dynamic vision: every barrier and shut gate — on
- * a fogged map only the ones the GM has revealed at least a piece of.
+ * The list for a scene without dynamic vision: everything that stops a body —
+ * walls, barriers, and every door, window and gate standing shut. An open map
+ * hides nothing, so all of it goes; a fogged map sends only the stretches the GM
+ * has revealed (`revealedStretches`), because a wall running on under the fog is
+ * a floor plan.
  */
 async function standingBlockersFor(prisma: PrismaClient, scene: Scene): Promise<Segment[]> {
-  const barriers = standingBarriers(await fetchSceneWalls(prisma, scene.id));
-  if (barriers.length === 0) return [];
-  const fog = scene.visibility === 'fog' ? await fetchFogState(prisma, scene) : null;
-  // Half a square between samples: fog is painted with a brush, and a stroke
-  // narrower than that is not a reveal anybody meant.
-  const spacing = scene.gridSizePx / 2;
-  return barriers
-    .filter(
-      (wall) =>
-        fog === null ||
-        wallSamplePoints(wall, spacing).some((point) => isPointRevealed(point, fog)),
-    )
-    .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 }));
+  const segments = movementSegments(await fetchSceneWalls(prisma, scene.id));
+  if (segments.length === 0 || scene.visibility !== 'fog') return segments;
+  // Half a square per piece: fog is painted with a brush, and a stroke narrower
+  // than that is not a reveal anybody meant.
+  return revealedStretches(segments, await fetchFogState(prisma, scene), scene.gridSizePx / 2);
 }
 
 /** The planner's obstacles for one viewer — empty for the GM, who has the walls. */

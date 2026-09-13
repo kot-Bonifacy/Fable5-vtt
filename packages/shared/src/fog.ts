@@ -248,6 +248,43 @@ export function fogShapeContains(shape: FogShape, point: ScenePoint): boolean {
 }
 
 /**
+ * The axis-aligned box a shape can cover, brush radius included — the cheap
+ * „could this shape matter here at all?" asked before `fogShapeContains`. A
+ * stroke with no points covers nothing and gets a box nothing overlaps.
+ */
+export function fogShapeBounds(shape: FogShape): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  if (shape.kind === 'rect') {
+    return {
+      minX: shape.x,
+      minY: shape.y,
+      maxX: shape.x + shape.width,
+      maxY: shape.y + shape.height,
+    };
+  }
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const point of shape.points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  return {
+    minX: minX - shape.radius,
+    minY: minY - shape.radius,
+    maxX: maxX + shape.radius,
+    maxY: maxY + shape.radius,
+  };
+}
+
+/**
  * Is this point uncovered? The scene starts covered, so the answer is the mode
  * of the last shape containing the point — and `false` when no shape does.
  * Walking the list backwards means the common case (a point under the newest

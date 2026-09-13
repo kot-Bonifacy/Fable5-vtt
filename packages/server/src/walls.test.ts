@@ -942,7 +942,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     await back;
   });
 
-  it('on a fogged map hands over only the fences the GM has revealed a piece of', async () => {
+  it('on a fogged map hands over only the revealed stretches of what stops a body', async () => {
     // Nothing is revealed on a freshly fogged map, so nothing is handed over.
     const covered = blockersWhere((segments) => segments.length === 0);
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'fog' });
@@ -953,21 +953,45 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
       sceneId,
       shape: { kind: 'rect', mode: 'reveal', x: 900, y: 1300, width: 200, height: 200 },
     });
-    // Only the tip of the northern fence and the top of the gate are uncovered —
-    // a glimpse of a fence is that fence. No window: that is the floor plan.
+    // The tip of the northern fence and the top of the gate, cut at the edge of
+    // the reveal (half a square per piece): how far the fence runs on under the
+    // fog is not handed over. No window — it stands on covered floor.
     const revealed = await uncovered;
-    expect(revealed).toContainEqual(NORTH);
-    expect(revealed).toContainEqual(GATE);
-    expect(revealed).not.toContainEqual(SOUTH);
-    expect(revealed).not.toContainEqual(PANE);
+    expect(revealed).toContainEqual({ x1: 1000, y1: 1300, x2: 1000, y2: 1400 });
+    expect(revealed).toContainEqual({ x1: 1000, y1: 1400, x2: 1000, y2: 1500 });
+    expect(revealed).toHaveLength(2);
+
+    // A plain wall goes the same way (13.09.2026): the corner of the sealed room,
+    // and not a step of the room behind the fog.
+    const corner = blockersWhere((segments) => segments.length > 2);
+    await emitAck(gm, 'fog:paint', {
+      sceneId,
+      shape: { kind: 'rect', mode: 'reveal', x: 2900, y: 2900, width: 400, height: 200 },
+    });
+    const withCorner = await corner;
+    expect(withCorner).toContainEqual({ x1: 3000, y1: 3000, x2: 3300, y2: 3000 });
+    // The chain closes back up the western side, so that stretch runs north.
+    expect(withCorner).toContainEqual({ x1: 3000, y1: 3100, x2: 3000, y2: 3000 });
+    expect(withCorner).not.toContainEqual(LOCKED_IN);
+    expect(withCorner).toHaveLength(4);
   });
 
-  it('on an open map hands over every fence, wherever it stands', async () => {
+  it('on an open map hands over everything that stops a body, walls included', async () => {
     const everything = blockersWhere((segments) => has(segments, LOCKED_IN));
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const segments = await everything;
-    expect(segments).not.toContainEqual(PANE);
-    expect(segments).toHaveLength(4);
+    for (const wanted of [NORTH, GATE, SOUTH, PANE]) expect(segments).toContainEqual(wanted);
+    expect(segments).toContainEqual({ x1: 3000, y1: 3000, x2: 3800, y2: 3000 });
+    // Five partitions and the four walls of the sealed room.
+    expect(segments).toHaveLength(9);
+
+    // An open gate is a way through here too, and the list follows it.
+    const opened = blockersWhere((list) => !has(list, GATE));
+    await emitAck(gm, 'opening:toggle', { wallId: gateId, open: true });
+    expect(await opened).toHaveLength(8);
+    const shut = blockersWhere((list) => has(list, GATE));
+    await emitAck(gm, 'opening:toggle', { wallId: gateId, open: false });
+    await shut;
   });
 
   it('sizes a lamp to the whole lot, not to the fence around it', async () => {

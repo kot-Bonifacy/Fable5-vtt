@@ -1047,8 +1047,9 @@ export function MapArea() {
    * remembered but unlit room walks to the edge of sight and waits for the next
    * one.
    *
-   * A scene with no visibility model at all has neither: everything is walkable,
-   * because there is nothing on it to walk round.
+   * A scene without dynamic vision has no field of view to confine a route to:
+   * every point is walkable, and what stands in the way — walls on revealed floor
+   * included, since 13.09.2026 — arrives as bare segments (`blocker:sync`).
    */
   const pushWalkPassable = useCallback(() => {
     const renderer = rendererRef.current;
@@ -1078,7 +1079,9 @@ export function MapArea() {
     const wallState = useWallStore.getState();
     // A barrier is looked through and not walked through (stage 42a). The field
     // of view says nothing about it, so the server hands a player the ones in
-    // sight as bare segments, and they stop a step exactly as a car does.
+    // sight as bare segments, and they stop a step exactly as a car does. A map
+    // without dynamic vision has no field of view at all, so there the same list
+    // carries the walls on revealed floor too (13.09.2026).
     const stepEdges = [...coverEdges, ...wallState.blockers];
     const canStep =
       stepEdges.length > 0
