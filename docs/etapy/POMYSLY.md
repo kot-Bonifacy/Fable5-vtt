@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**13.09.2026 (czwarta sesja) dołożyła jeden wpis — trasa gracza pod mgłą schodzi w nieodsłonięte.**
+Od tej sesji planer gracza zna ściany poza Dynamiczną, pod ręczną mgłą przycięte do odsłoniętej
+podłogi (decyzja MG). Poza Dynamiczną planer nadal uznaje za chodzące **każde** pole, także czarne,
+więc trasa do celu za odsłoniętym kawałkiem bariery obchodzi ten kawałek przez mgłę i przechodzi
+przez nieodsłoniętą resztę — rysuje się normalnie, a odmowę daje dopiero serwer (obejrzane na scenie
+z `poligon.md`). Lek: pod mgłą ograniczyć krok do odsłoniętych pól, tak jak Dynamiczna ogranicza go
+do pola widzenia („nie dalej, niż widzisz") — `isPointRevealed` na mgle, którą klient już ma — albo
+przyjąć, że MG odsłania bariery w całości. Do decyzji MG.
+
 **13.09.2026 (etap 42a) dołożył jeden wpis — bot nie wie z góry, że przez barierę nie sięgnie.**
 Tura bota (20b) opisuje modelowi każdą figurę z `noShot` („ściana albo zamknięte drzwi na linii
 strzału"), ale nie mówi, że przez barierę, zamkniętą bramę albo zamknięte okno **nie sięgnie wręcz**.

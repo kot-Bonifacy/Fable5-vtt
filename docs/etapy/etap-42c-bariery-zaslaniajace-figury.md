@@ -84,3 +84,13 @@ aplikacji (przełącznik i domyślne −4) oraz rzeczywisty renderer na izolowan
 zamkniętą bramą jest czytelna i przygaszona, otwarcie usuwa przygaszenie, także w Dynamicznej.
 Nie wykonywano całej ścieżki edycji karty segmentu na żywej kampanii; testy danych korzystały
 z osobnych baz. Poligon i jego walka pozostały nietknięte.
+
+## Poprawki po oględzinach 13.09.2026 (czwarta sesja)
+
+Oględziny w Chrome na dwóch oknach wykazały dwa regresy tego etapu, oba z jednego założenia:
+przyjście `vision:sync` traktowano jak znak widoczności Dynamicznej, a od 42c widok przychodzi
+w każdym trybie. (1) Klient przycinał planer gracza do pustych wielokątów, więc na mgle i scenie
+otwartej gracz tracił trasę kliknięciem — teraz rozstrzyga `confinesWalkToSight`. (2) `sync.ts`
+brał przeszkody planera z `vision`, więc F5 obok bariery zasłaniającej zostawiał pustą listę — teraz
+decyduje tryb sceny. Do tego układ pola „Zasłania figury" na pasku. Opis
+w `archiwum/zamkniete-zaleglosci.md`, pozostałe oględziny w `zaleglosci.md`.

@@ -6,11 +6,12 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
-**Etap 42c — pozostałe oględziny UI (13.09).** Pasek i przygaszenie rzeczywistego renderera
-obejrzano w Chrome, działanie serwera sprawdzono na gniazdach we wszystkich trzech trybach.
-Do ręki MG pozostaje pełna edycja karty istniejącego segmentu: „Zasłania figury”, zmiana kary,
-zamknięcie/otwarcie bramy i obejście końca bariery przez figurę gracza. Sprawdzić na dwóch
-oknach MG/gracz, również pod ręczną mgłą. To dług oględzin, nie znany błąd kodu.
+**Zamknięte 13.09 (czwarta sesja): planer gracza bez zwykłych ścian poza Dynamiczną.** Ściany jadą do
+planera, pod mgłą przycięte do odsłoniętej podłogi (decyzja MG). Oględziny 42a–42c w tej samej sesji
+wykazały **dwa regresy z 42c** — gracz na mgle albo scenie otwartej tracił trasę kliknięciem, a F5
+obok bariery zasłaniającej gubił przeszkody planera — i usterkę układu pola „Zasłania figury";
+wszystko naprawione i obejrzane. Trzy pozycje barier zawężone niżej (pozycja 42c przeniesiona z tego
+nagłówka do „Pozycji"). Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
 
 **11.09 — decyzje MG do rzeczy zgłoszonych po sesji kamery (żeby nie wracały jako pytania):**
 
@@ -156,32 +157,31 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **13.09: OB bariery (etap 42b) nieobejrzane w przeglądarce.** Testy pokrywają silnik (dwie
-  warstwy), serwer (strzał, przestawione „Zastosuj", samochód, seria, granat, OB 0, otwarta brama)
-  i eksport; reszta to UI. Do sprawdzenia u MG: (1) **pasek ścian** — przy „Bariera" i „Brama" wąskie
-  pole „OB", liczba zostaje po przełączeniu rodzaju tam i z powrotem, a ściana narysowana zaraz po
-  siatce dostaje OB 0; (2) **karta segmentu** bariery i bramy — pole „OB bariery" zapisuje się przy
-  wyjściu z pola, zdanie pod nim się zmienia; przy ścianie, drzwiach i oknie pola nie ma;
-  (3) **karta obrażeń** — „rzut N − bariera OB n − OB m" i nagłówek „Bariera zatrzymała cios" przy
-  trafieniu słabszym od siatki; (4) napis **„BARIERA"** na mapie zamiast „PANCERZ".
+- **13.09: zasłona figur (etap 42c) — zostało obejście końca bariery i Dynamiczna.** Obejrzane 13.09
+  (czwarta sesja) pod ręczną mgłą, MG i `Tester` naraz: „Zasłania figury" i kara −4 na pasku, zmiana
+  kary z karty segmentu (−4 → −6, serwer odesłał), „Otwórz"/„Zamknij" bramy z karty — figura „Za
+  bramą" znika z listy gracza przy zamkniętej bramie (w danych, nie w CSS) i wraca przy otwartej,
+  a pas za siatką jest przygaszony. **Zostają:** (1) **obejście końca bariery** figurą gracza (marsz
+  na drugą stronę i pojawienie się figur); (2) to samo przy widoczności **Dynamicznej**; (3) odznaczenie
+  „Zasłania figury" z karty segmentu. Scena gotowa — `poligon.md`. To dług oględzin, nie znany błąd.
 
-- **13.09: bariera i brama (etap 42a) nieobejrzane w przeglądarce.** Testy pokrywają serwer
-  (strażnik ruchu, `blocker:sync` w trzech trybach, wręcz, Pochwycenie, klamka bramy, lampa) i listy
-  w `shared`; reszta to UI. Do sprawdzenia u MG i na koncie `Tester`: (1) **pasek ścian** — pięć
-  rodzajów mieści się w rzędzie, ikony siatki i bramy są czytelne, oko „gracze mogą otwierać" stoi
-  przy bramie; (2) **warstwa MG** — bariera fioletowa, brama różowa z 🚧, otwarta przygaszona; karta
-  segmentu pokazuje „Bariera"/„Brama — zamknięta" i przełącza rodzaj; (3) **trasa gracza** przy
-  widoczności Dynamicznej i przy mgle omija siatkę, zanim padnie klik, a przy zamkniętym oknie
-  z bliska nie prowadzi przez szybę; (4) **klamka bramy** u gracza z odległości ramienia i zdania
-  odmów „podejdź do bramy" / „Brama zamknięta na kłódkę"; (5) **odmowa wręcz** pod celownikiem przez
-  siatkę — „Między wami stoi przeszkoda…".
+- **13.09: OB bariery (etap 42b) — zostały karta obrażeń i napis na mapie.** Obejrzane 13.09 (czwarta
+  sesja): pole „OB" na pasku przy „Bariera" i „Brama", liczba zostaje po przełączeniu rodzaju tam
+  i z powrotem, ściana narysowana zaraz po siatce ma OB 0 (sprawdzone w bazie); karta segmentu
+  zapisuje „OB bariery" przy wyjściu z pola (5 → 7, serwer odesłał 7) i zmienia zdanie pod nim.
+  **Zostają:** (1) **karta obrażeń** — „rzut N − bariera OB n − OB m" i nagłówek „Bariera zatrzymała
+  cios" przy trafieniu słabszym od siatki; (2) napis **„BARIERA"** na mapie zamiast „PANCERZ";
+  (3) brak pola OB na **karcie** ściany, drzwi i okna (na pasku sprawdzony). Cel na scenie z
+  `poligon.md` nie ma PW — do karty obrażeń trzeba mu dać profil bojowy.
 
-- **Planer gracza nie zna zwykłych ścian poza widocznością Dynamiczną** (znalezione 13.09 przy 42a,
-  istniało wcześniej). Przy mgle ręcznej i na scenie otwartej `pushWalkPassable` dostaje od serwera
-  tylko osłony i bariery, więc trasa rysuje się prosto przez mur, a odmowa „Nie tędy" przychodzi
-  dopiero po kliknięciu. Ściany nie jadą do gracza z założenia (18a), więc lek nie jest oczywisty:
-  albo odcinki ścian w **odsłoniętej** części mapy (jak bariery przy mgle — ale to plan budynku),
-  albo przyjęcie, że na takich scenach MG nie rysuje ścian. Decyzja MG.
+- **13.09: bariera i brama (etap 42a) — zostały Dynamiczna, klamka i wręcz.** Obejrzane 13.09 (czwarta
+  sesja): pięć rodzajów mieści się w rzędzie paska, oko „gracze mogą otwierać" stoi przy bramie; na
+  warstwie MG bariera fioletowa, brama z 🚧; karta segmentu pisze „Bariera", „Brama — zamknięta"
+  i „Brama — otwarta"; trasa gracza pod ręczną mgłą omija siatkę, zanim padnie klik. **Zostają:**
+  (1) trasa gracza przy widoczności **Dynamicznej** i przy zamkniętym oknie z bliska; (2) **klamka
+  bramy** u gracza z odległości ramienia i zdania „podejdź do bramy" / „Brama zamknięta na kłódkę"
+  (klamki są tylko w Dynamicznej); (3) **odmowa wręcz** pod celownikiem przez siatkę — dymek budzi
+  tylko ręka MG; (4) zmiana rodzaju z karty segmentu i wygląd otwartej bramy na warstwie MG.
 
 - **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
   „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)

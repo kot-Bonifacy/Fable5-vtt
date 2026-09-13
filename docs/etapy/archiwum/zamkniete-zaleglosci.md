@@ -9,6 +9,39 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-13 (czwarta sesja — planer gracza i ściany poza Dynamiczną, dwa regresy 42c)
+
+**13.09 (etap 42a): planer gracza nie znał zwykłych ścian poza widocznością Dynamiczną.** Wpis
+brzmiał: „Przy mgle ręcznej i na scenie otwartej `pushWalkPassable` dostaje od serwera tylko osłony
+i bariery, więc trasa rysuje się prosto przez mur, a odmowa „Nie tędy" przychodzi dopiero po
+kliknięciu. […] albo odcinki ścian w **odsłoniętej** części mapy (jak bariery przy mgle — ale to plan
+budynku), albo przyjęcie, że na takich scenach MG nie rysuje ścian. Decyzja MG." **Decyzja MG
+z 13.09:** ściany jadą do planera, przycięte do mgły. **Naprawa:** `standingBlockersFor`
+(`realtime/blockers.ts`) wysyła poza Dynamiczną `movementSegments` — na scenie otwartej w całości,
+pod mgłą pocięte nową `revealedStretches` (`shared/walls.ts`) na kawałki stojące na odsłoniętej
+podłodze, z dokładnością do pół kratki. Bariery z 42a przeszły na ten sam sposób (wcześniej szła cała
+bariera, gdy odsłonięto choć jej kawałek). Testy: 9 w `walls-revealed.test.ts`, dwa przepisane
+w `walls.test.ts`. **Obejrzane w Chrome** na kampanii „Oględziny 12.09", MG i `Tester` naraz: pod
+ręczną mgłą gracz dostał ścianę, górną barierę i bramę w całości, a dolną barierę przyciętą do
+odsłoniętych 100 px; trasa kursorem omija znany kawałek siatki. **Skutek decyzji:** za przyciętym
+kawałkiem trasa potrafi zejść w mgłę i przejść przez nieodsłoniętą resztę bariery — odmawia dopiero
+serwer.
+
+**Spoza listy — dwa regresy z 42c, znalezione na oględzinach tej sesji.** (1) Od 42c `vision:sync`
+przychodzi w każdym trybie (niesie maskę figur), a `pushWalkPassable` przy `hasVision` przycinał
+planer do pustych wielokątów: na scenie z mgłą albo otwartej gracz tracił trasę kliknięciem po
+pierwszym takim wysłaniu (usunięty żeton, przełączone drzwi, lampa, zmiana trybu), a obok bariery
+zasłaniającej od razu po F5. Potwierdzone próbą A/B w przeglądarce — zdjęcie samej flagi przywracało
+odciski butów. Naprawa: `confinesWalkToSight` (`client/src/map/walk-sight.ts`, 3 testy). (2) `sync.ts`
+brał `blockers` z `vision`, gdy tylko istniał, więc F5 obok bariery zasłaniającej zostawiał planer
+bez przeszkód. Naprawa: o źródle listy decyduje tryb sceny; test w `walls.test.ts` pada bez poprawki
+(„expected [] to have a length of 9"). Obie obejrzane po poprawce. Pułapka w `pulapki-dev.md`,
+sekcja `mapa`.
+
+**Przy okazji:** pole „Zasłania figury" na pasku ścian stało 90 px od swojego napisu, który łamał się
+w dwie linie — klasa suwaka `map-tool-slider` dawała polu `width: 7rem`, a napisowi wyrównanie do
+prawej. Własna klasa `map-tool-check`; obejrzane po poprawce.
+
 ## Zamknięte 2026-09-13 (trzecia sesja — cztery drobne usterki z oględzin i zawieszony zapis żetonu)
 
 **13.09 (etap 41): odmowa „nie w rękach" przy pustych rękach mówiła o „tamtym".** Wpis brzmiał:

@@ -7,6 +7,32 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — OB bariery dla strzałów i wybuchów (etap 42b)
+
+**Zlecenie MG:** etap 42b z gotowego planu. Dopytane w trakcie (decyzje 6–9 w pliku etapu):
+„Zastosuj" przestawione na inną figurę niż cel ataku przelicza linię **na żywo** od miejsca, w którym
+strzelec stoi teraz (przy wybuchu — od krateru); pasek pamięta ostatnie OB do przeładowania strony,
+start 0; **karta ataku o barierze milczy**, mówi dopiero karta obrażeń; seria odejmuje OB raz.
+
+**Zrobione:** `Wall.armor` (migracja `20260913190000_stage42b_wall_armor`, eksport i import);
+`barrierArmorAlong` w rdzeniu (zamknięta brama tak, otwarta nie; węzeł łańcucha na linii liczony
+raz); `resolveCpredDamage` z pierwszą warstwą `barrierSp` (bez zużycia i połowienia, znika przy
+`ignoreArmor`); OB na karcie strzału (`CpredAttackMeta.barrierSp`), per figura i per osłona
+w obszarze (`RollAreaTarget.barrierArmor`) i `barrierFrom` dla przestawionego „Zastosuj" — kolejność
+zaufania w jednej funkcji `barrierSpOfHit`; samochód za siatką traci mniej PW; pole OB na pasku ścian
+i na karcie segmentu; karta obrażeń „− bariera OB n", nagłówek i napis na mapie „BARIERA". OB bramy
+nie jedzie do gracza (`opening:sync`, ack klamki).
+
+**Znalezione przy okazji:** nagłówek `damage.ts` obiecywał podgląd obrażeń u klienta, którego nie ma
+— stąd jeden punkt planu nie do zrobienia; komentarz poprawiony. `packages/server/src/app.ts` stoi
+w drzewie jako zmieniony od początku sesji, ale różni się wyłącznie końcami linii — poza commitem.
+
+**Weryfikacja:** 2079 testów w `shared` (24 nowe), 1122 na serwerze (8 nowych w
+`barrier-armor.test.ts` i asercje w `walls` i `archive`), 197 u klienta; `tsc --noEmit` w trzech
+pakietach, ESLint i Prettier na zmienionych plikach — zielone. `pnpm dev` startuje, migracja
+zastosowana na `dev.db` (kopia sprzed niej tylko w katalogu tymczasowym sesji). **Bez oględzin
+w przeglądarce** — pozycja w `zaleglosci.md`. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — bariera i brama (etap 42a), plany 42b i 42c
 
 **Zlecenie MG:** ściany, które nie zasłaniają widoku, a blokują przejście (ogrodzenie z siatki). Po

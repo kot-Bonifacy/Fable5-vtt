@@ -127,6 +127,14 @@ trybach. Przyjęty wygląd: jak pamięć mapy; ręczne „Odsłoń” nie omija 
 w pliku etapu). Widok figur idzie przez `figurePolygons`, kara przez `cpredBarrierModifiers`. Nowa
 rzecz, która zatrzymuje ciało, a nie wzrok, wchodzi przez `wallBlocksMovement` — umowa w `mapa`.
 
+**13.09 (czwarta sesja): planer gracza zna ściany na każdej scenie**, nie tylko w Dynamicznej — poza
+nią `blocker:sync` niesie wszystko, co zatrzymuje ciało, pod mgłą przycięte do odsłoniętej podłogi
+(`revealedStretches`, decyzja MG; umowa w `mapa`). **Ta sama sesja naprawiła dwa regresy z 42c:**
+gracz na mgle albo scenie otwartej tracił trasę kliknięciem po pierwszym `vision:sync` (usunięty
+żeton, drzwi, lampa), a F5 obok bariery zasłaniającej gubił przeszkody planera. **Morał:** od 42c
+`vision:sync` przychodzi w każdym trybie — o Dynamicznej rozstrzyga `scene.visibility`, nigdy samo
+przyjście widoku (pułapka w `mapa`).
+
 **Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
 etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
 bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
@@ -166,14 +174,15 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — pełna edycja karty bariery 42c). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — pełna edycja karty bariery 42c; trzy barierowe zawężone do resztek 13.09 w czwartej sesji). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
 (pełny ekran, maszynopis). Kampania-śmieć „Oględziny 12.09" ma od 13.09 członka `Tester` —
 **stałe zaproszenie `tester-dev` prowadzi na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
 
-**Od 12.09 `main` na GitHubie jest aktualny.** Do tej sesji `origin/main` stał na etapie 07
+**`main` na GitHubie zrównano z dyskiem 12.09; od 13.09 czeka na push dziewięć commitów** (galeria
+portretów, etapy 42a–42c, czwarta sesja 13.09). Do 12.09 `origin/main` stał na etapie 07
 (18.07), a 206 commitów — cała praca od etapu 08 — istniało wyłącznie na tym dysku. Gałąź
 `feat/vtt-campaign-calendar` (etapy 37–41 i poprawki) scalona do `main` i wypchnięta. **Push
 publikuje całą historię, nie ostatni stan** — przed każdym przejrzyj niewypchnięte commity:
@@ -222,8 +231,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2090** w `shared`, **1155** na serwerze, **197** u klienta —
-zielone (liczby z 13.09, etap 42c; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2099** w `shared`, **1156** na serwerze, **200** u klienta —
+zielone (liczby z 13.09, czwarta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -247,7 +256,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   43 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   44 |      19 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    4 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
@@ -270,6 +279,30 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c
+
+**Zlecenie MG:** przegląd zaległości i propozycja paczki; MG wybrał A (planer gracza bez zwykłych
+ścian poza Dynamiczną) i B (oględziny 42a–42c). Decyzja MG: ściany jadą do planera przycięte do
+odsłoniętej mgły, bariery z 42a tak samo. `app.ts` (różnił się samymi końcami linii) przywrócony
+z repo.
+
+**Zrobione:** `revealedStretches` i `fogShapeBounds` w `shared`; `standingBlockersFor` wysyła poza
+Dynamiczną `movementSegments` — na scenie otwartej w całości, pod mgłą przycięte. Pomiar: ~30 ms przy
+400 ścianach i 300 pociągnięciach, ~300 ms przy limicie 2000 ścian i 1000 pociągnięć (raz na zmianę).
+
+**Znalezione na oględzinach i naprawione:** dwa regresy z 42c — `pushWalkPassable` przy `hasVision`
+zamykał graczowi trasę w pustym wielokącie na mgle i scenie otwartej → `confinesWalkToSight`;
+`sync.ts` brał `blockers` z `vision` → decyduje tryb sceny. Pole „Zasłania figury" rozjechane na
+pasku (klasa suwaka) → `map-tool-check`. Pułapka w `mapa`; w `POMYSLY.md` wpis o trasie, która pod
+mgłą schodzi w nieodsłonięte.
+
+**Weryfikacja:** 2099 testów `shared` (9 nowych), 1156 serwera (1 nowy, 2 przepisane; test regresji
+pada bez poprawki), 200 klienta (3 nowe); `tsc --noEmit` w trzech pakietach, ESLint, Prettier.
+W Chrome na „Oględzinach 12.09", MG i `Tester` naraz: pasek i karta segmentu 42a–42c, zapis OB
+i kary z karty, lista przeszkód gracza pod mgłą, trasa przed i po poprawce (próba A/B), zasłona przy
+zamkniętej i otwartej bramie. Scena zostaje pod resztę oględzin (`poligon.md`); aktywna kampania
+wróciła na Poligon. Commity `c83c7c3`, `354a1a2` i dokumentacja — niewypchnięte.
+
 ### Sesja 13.09 — bariery zasłaniające figury (etap 42c)
 
 **Zlecenie MG:** etap 42c. Zadano pytania o wygląd przygaszenia i ręczne „Odsłoń”; bez osobnej
@@ -290,29 +323,3 @@ Migracja zastosowana na dev.db po kopii w katalogu tymczasowym. Aplikacja urucho
 W Chrome obejrzano kontrolki paska oraz renderer na izolowanej scenie (otwarta/Dynamiczna,
 zamknięcie i otwarcie bramy); pełna edycja karty segmentu na kampanii pozostaje do ręki MG.
 Poligon i walka nietknięte. Istniejące wcześniej zmiany `app.ts` i `.claude/` poza commitem.
-
-### Sesja 13.09 — OB bariery dla strzałów i wybuchów (etap 42b)
-
-**Zlecenie MG:** etap 42b z gotowego planu. Dopytane w trakcie (decyzje 6–9 w pliku etapu):
-„Zastosuj" przestawione na inną figurę niż cel ataku przelicza linię **na żywo** od miejsca, w którym
-strzelec stoi teraz (przy wybuchu — od krateru); pasek pamięta ostatnie OB do przeładowania strony,
-start 0; **karta ataku o barierze milczy**, mówi dopiero karta obrażeń; seria odejmuje OB raz.
-
-**Zrobione:** `Wall.armor` (migracja `20260913190000_stage42b_wall_armor`, eksport i import);
-`barrierArmorAlong` w rdzeniu (zamknięta brama tak, otwarta nie; węzeł łańcucha na linii liczony
-raz); `resolveCpredDamage` z pierwszą warstwą `barrierSp` (bez zużycia i połowienia, znika przy
-`ignoreArmor`); OB na karcie strzału (`CpredAttackMeta.barrierSp`), per figura i per osłona
-w obszarze (`RollAreaTarget.barrierArmor`) i `barrierFrom` dla przestawionego „Zastosuj" — kolejność
-zaufania w jednej funkcji `barrierSpOfHit`; samochód za siatką traci mniej PW; pole OB na pasku ścian
-i na karcie segmentu; karta obrażeń „− bariera OB n", nagłówek i napis na mapie „BARIERA". OB bramy
-nie jedzie do gracza (`opening:sync`, ack klamki).
-
-**Znalezione przy okazji:** nagłówek `damage.ts` obiecywał podgląd obrażeń u klienta, którego nie ma
-— stąd jeden punkt planu nie do zrobienia; komentarz poprawiony. `packages/server/src/app.ts` stoi
-w drzewie jako zmieniony od początku sesji, ale różni się wyłącznie końcami linii — poza commitem.
-
-**Weryfikacja:** 2079 testów w `shared` (24 nowe), 1122 na serwerze (8 nowych w
-`barrier-armor.test.ts` i asercje w `walls` i `archive`), 197 u klienta; `tsc --noEmit` w trzech
-pakietach, ESLint i Prettier na zmienionych plikach — zielone. `pnpm dev` startuje, migracja
-zastosowana na `dev.db` (kopia sprzed niej tylko w katalogu tymczasowym sesji). **Bez oględzin
-w przeglądarce** — pozycja w `zaleglosci.md`. Etap 28 pozostaje nierozpoczęty.

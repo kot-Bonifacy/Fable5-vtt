@@ -26,6 +26,16 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 13.09 (czwarta) — scena pod bariery na kampanii-śmieciu, Poligon nietknięty.**
+Aktywna kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
+Na scenie **„Test Brak sceny"** (mgła ręczna, siatka 100 px) **zostaje świadomie** komplet pod resztę
+oględzin 42a–42c (id ścian 70–73): bariera x = 1700 od y = 900 do 1300 (OB 7, zasłania, kara −6),
+brama 1300–1400 (OB 5, zasłania, kara −4, gracze mogą otwierać, zamknięta), bariera 1400–1700
+(OB 5, zasłania, kara −4) i ściana y = 900 od x = 1000 do 1700. Figura MG **„Za bramą"** stoi na
+(1800, 1300), bez karty i bez PW; „Oględziny Stym" (`Tester`) na (1400, 1200). Odsłonięty prostokąt
+mgły 900–1900 × 700–1500; **ruch graczy na tej scenie odblokowany** (była zamknięta). **Karta
+`[::1]:5173` jest zalogowana jako `Tester`** (wcześniej MG).
+
 **Stan po sesji 13.09 (druga) — oględziny na kampanii-śmieciu, Poligon nietknięty.** Aktywna
 kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
 W kampanii-śmieciu: **nowe zaproszenie** (ważne do 20.09) i **`Tester` jest jej członkiem**;

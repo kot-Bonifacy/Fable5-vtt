@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **`hasVision` nie znaczy „scena Dynamiczna”** — od 42c `vision:sync` przychodzi w każdym trybie (puste `polygons`, maska figur); kto z samego przyjścia widoku wnioskował Dynamiczną, zamykał graczowi trasę w pustym wielokącie, a pełna synchronizacja gubiła `blockers`. Pytaj o `scene.visibility` (`confinesWalkToSight`).
 - **Rozmycie złożone z pierścieni widać jako koncentryczne okręgi** — pięć wycięć o malejącej alfie miało dać miękki brzeg okienka w mgle, a dało prążki (MG odrzucił to na pierwszym zrzucie). Gradient wypala się na kanwie (`fogPeepTexture`), tak jak światło z 18b i pamięć mapy z 18c.
 - **Kompozyt mgły rysuje się tylko na `setFog`** — figura ruszona przeciąganiem albo marszem omija store, więc okienko zostawało w tyle; stąd `refreshFogPeepholes` wołane także z `onDragMove` i z kroku marszu, a nie tylko z `setTokens`.
 - **`fogPass` dokłada `Graphics` na koniec `fogScratch`** — cokolwiek ma zostać na wierzchu kompozytu (okienko własnej figury), musi się tam przenieść **przy każdym składaniu** (`addChild`), inaczej świeży przebieg `hide` zamaluje je przy następnym pociągnięciu pędzla MG.
@@ -32,6 +33,18 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 
 ---
+
+- **Widok w każdym trybie, a dwa miejsca czytały jego przyjście jako „Dynamiczna” (13.09,
+  oględziny 42a–42c).** 42c zaczęło wysyłać `vision:sync` poza Dynamiczną, bo niesie
+  `figurePolygons`. `wallStore.hasVision` robi się wtedy `true`, a `pushWalkPassable` przy
+  `hasVision` przycinał planer do `polygons` — pustych poza Dynamiczną — więc
+  `isPointVisible(point, [])` odrzucał każdy punkt. Gracz tracił trasę kliknięciem po pierwszym
+  takim wysłaniu (usunięty żeton, przełączone drzwi, lampa, zmiana trybu), a obok bariery
+  zasłaniającej już od F5. Bliźniak w `sync.ts`: `blockers = vision ? vision.blockers : …` dawał po
+  F5 pustą listę przeszkód. Testy serwera tego nie widziały, bo serwer wysyłał dokładnie to, co
+  miał; decyzja zapadała u klienta. **Objaw przy stole:** „klik w mapę nic nie robi, po F5 działa”.
+  **Rozpoznanie w konsoli gracza:** magazyn ścian ma `hasVision: true` i `polygons: []` na scenie
+  `fog` albo `open`. Od 13.09 rozstrzyga `confinesWalkToSight` (klient) i tryb sceny w `sync.ts`.
 
 - **`resizeTo` w Pixi v8 nie jest tym, na co wygląda (12.09).** Wtyczka `ResizePlugin` przyjmuje
   element i owszem, mierzy się jego `clientWidth`/`clientHeight` — ale nasłuchuje **wyłącznie**
