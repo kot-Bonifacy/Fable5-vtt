@@ -56,6 +56,7 @@ import {
   shopTierOf,
 } from '@vtt/shared';
 import type { Character, CharacterDraft } from '../generated/prisma/client.js';
+import { usedPortraitUrls } from '../portraits.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
@@ -166,7 +167,24 @@ export const creationPatchEvent = defineEvent<
     const current = toDraftView(existing, deps).draft;
     const next = mergeCreationDraft(current, patch, data, deps.ctx.cpred);
     if (next === null) throw new RealtimeError('INVALID_DATA');
-    return toDraftView(await saveDraft(deps, campaignId, user.id, next), deps);
+    // Rezerwacja i sprawdzenie w jednej transakcji: równoczesny wybór nie
+    // może przydzielić tej samej twarzy dwóm szkicom.
+    const saved = await deps.ctx.prisma.$transaction(async (tx) => {
+      if ('portraitUrl' in patch && next.portraitUrl && user.role !== ROLE_GM) {
+        const asset = await tx.portraitAsset.findFirst({
+          where: { campaignId, url: next.portraitUrl },
+        });
+        if (!asset) throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');
+        if ((await usedPortraitUrls(tx, campaignId, user.id)).has(next.portraitUrl)) {
+          throw new RealtimeError('PORTRAIT_TAKEN');
+        }
+      }
+      return tx.characterDraft.update({
+        where: { id: existing.id },
+        data: { data: JSON.stringify(next) },
+      });
+    });
+    return toDraftView(saved, deps);
   },
 });
 
@@ -398,16 +416,29 @@ export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterV
       }
     }
 
-    const character = await deps.ctx.prisma.character.create({
-      data: {
-        campaignId,
-        name,
-        ownerId,
-        portraitUrl: draft.portraitUrl,
-        data: JSON.stringify(creationToCharacterData(draft, data)),
-      },
+    const character = await deps.ctx.prisma.$transaction(async (tx) => {
+      if (draft.portraitUrl && user.role !== ROLE_GM) {
+        if (
+          !(await tx.portraitAsset.findFirst({ where: { campaignId, url: draft.portraitUrl } }))
+        ) {
+          throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');
+        }
+        if ((await usedPortraitUrls(tx, campaignId, user.id)).has(draft.portraitUrl)) {
+          throw new RealtimeError('PORTRAIT_TAKEN');
+        }
+      }
+      const created = await tx.character.create({
+        data: {
+          campaignId,
+          name,
+          ownerId,
+          portraitUrl: draft.portraitUrl,
+          data: JSON.stringify(creationToCharacterData(draft, data)),
+        },
+      });
+      await tx.characterDraft.delete({ where: { id: existing.id } });
+      return created;
     });
-    await deps.ctx.prisma.characterDraft.delete({ where: { id: existing.id } });
 
     await payStartingKit(deps, campaignId, character, draft, data, lookup, user.id);
 

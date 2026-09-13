@@ -146,6 +146,7 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     if ('portraitUrl' in patch) {
       const portraitUrl = sanitizeTokenImageUrl(patch.portraitUrl ?? null);
       if (portraitUrl === undefined) throw new RealtimeError('BAD_REQUEST');
+      if (!isGm && portraitUrl !== character.portraitUrl) throw new RealtimeError('FORBIDDEN');
       data.portraitUrl = portraitUrl;
     }
     if ('ownerId' in patch) {

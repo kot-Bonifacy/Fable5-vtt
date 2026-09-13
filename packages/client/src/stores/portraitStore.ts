@@ -80,7 +80,7 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   applyUpsert: (asset) =>
     set((state) => {
       const assets = state.assets.some((a) => a.id === asset.id)
-        ? state.assets.map((a) => (a.id === asset.id ? asset : a))
+        ? state.assets.map((a) => (a.id === asset.id ? { ...a, ...asset } : a))
         : [asset, ...state.assets];
       return { assets, crops: indexCrops(assets) };
     }),

@@ -73,7 +73,6 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   );
 
   const size = useMemo(() => ({ width: asset.width, height: asset.height }), [asset]);
-  const dirty = crop.x !== asset.crop.x || crop.y !== asset.crop.y || crop.zoom !== asset.crop.zoom;
 
   const change = useCallback(
     (next: PortraitCrop) => setCrop(clampPortraitCrop(next, size)),
@@ -275,7 +274,7 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
           <button
             type="button"
             className="small-button portrait-crop-save"
-            disabled={saving || !dirty}
+            disabled={saving}
             onClick={() => void save()}
           >
             {saving ? 'Zapisywanie…' : 'Zapisz kadr'}

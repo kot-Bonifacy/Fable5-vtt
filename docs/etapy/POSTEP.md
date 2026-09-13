@@ -209,8 +209,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2040** w `shared`, **1102** na serwerze, **197** u klienta —
-zielone (liczby zmierzone 13.09, trzecia sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2040** w `shared`, **1103** na serwerze, **197** u klienta —
+zielone (liczby zmierzone 13.09, galeria portretów; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -257,6 +257,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 — duża galeria wyboru portretu i rezerwacje szkiców
+
+**Zlecenie MG:** „Wybierz portret” otwiera osobne duże okno galerii, kliknięcie przechodzi
+bezpośrednio do kadrowania, a zajęte twarze są czarno-białe. Okno do 1200 px szerokości,
+88% wysokości ekranu, miniatury do 240 px wysokości. Przyjęto: gracz wybiera tylko w kreatorze,
+zajęty portret jest zablokowany dla innych graczy; MG może świadomie powtórzyć obraz.
+`usedPortraitUrls` obejmuje karty, boty, figury wszystkich scen i cudze szkice; galeria pobiera
+wyłącznie flagę zajętości, odświeżaną co 3 s. Wybór rezerwuje portret w transakcji, ukończenie
+ponawia walidację i atomowo przenosi przypisanie na kartę. Zamknięcie kreatora zachowuje szkic
+i rezerwację; zmiana/usunięcie portretu albo odrzucenie szkicu ją zwalnia.
+
+**Poprawione błędy:** gracz nie mógł kadrować portretu szkicu; zapis niezmienionego kadru był
+zablokowany; zakaz zmiany portretu gotowej karty działał tylko w UI. Galeria przechodzi do
+kadrowania dopiero po potwierdzonym zapisie. Kadry starych duplikatów i powtórzeń MG nadal są
+wspólne dla obrazka — bez migracji dotychczasowych przypisań.
+
+**Weryfikacja:** 2040 testów shared, 1103 serwera, 197 klienta; TypeScript w trzech pakietach,
+ESLint i Prettier zmienionego kodu. Nowy test na żywych gniazdach: dwa równoczesne wybory,
+jedna rezerwacja, kadrowanie szkicu tylko przez właściciela, zwalnianie i brak wycieku danych.
+W Chrome na istniejącej sesji MG: duża galeria, kolor/szarość, wybór obecnego portretu Tony'ego
+→ kadrowanie → Anuluj. Portret i kadr bez zmiany, scena i kolejka nietknięte.
+Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — dwa zdania odmowy rąk i trzy drobne usterki
 
 **Zlecenie MG:** przegląd zaległości; wybrana paczka czterech drobnych usterek z oględzin 13.09.
@@ -275,22 +298,3 @@ i Prettier na zmienionych plikach — zielone. **Bez oględzin w przeglądarce**
 kodu) — nowa pozycja w `zaleglosci.md`. `packages/server/src/app.ts` stoi w `git status` jako
 zmieniony, ale ma ten sam hash co HEAD — rozjazd statu przy `core.autocrlf`, nic do commitowania.
 Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — alias figury w kartach czatu i oględziny bez modelu
-
-**Zlecenie MG:** przegląd zaległości; wybrane: nazwa figury w kartach czatu, test „Minęła minuta"
-i oględziny bez modelu, plus push siedmiu commitów. Decyzje MG: alias u wszystkich (MG też), pusty
-alias „Nieznajomy", rzut z samej karty pisze nazwę karty; poziom sklepu nie dotyczy montażu
-wszczepów (`decyzje-i-uproszczenia.md`). `tokenTableName` (`shared/tokens.ts`) i
-`combatantTableName` podpięte w ~60 miejscach 21 plików `realtime/`; podpowiedź edytora figury mówi,
-co napisze czat. Po drodze dwa błędy: okno przeszukania pisało graczowi prawdziwą nazwę, a
-`netice.ts` gubił alias przez `Pick<Token>` bez `publicName`.
-
-**Weryfikacja:** 2032 testy w `shared` (3 nowe), 1101 na serwerze (karta gazu i „Minęła minuta"
-oczami gracza, nowy test „wraca: …" po EMP), 197 u klienta; `tsc`, ESLint, Prettier — zielone.
-W Chrome: „bez ran" u Tony'ego w jego turze (kolejka nieruszona); na kampanii-śmieciu z kontem
-`Tester` — alias na karcie inicjatywy i w kolejce, edytor 38a z zapisem zakładającym kartę i koszem
-pojedynczym, wyszarzony slot po „Schowaj", odmowa `MISSING_FOUNDATION`. Znalezione i **nie**
-poprawione: cztery drobne usterki w `zaleglosci.md`. `pnpm dev` zgubił backend (strażnik
-`tsx watch` bez serwera) — ubity i uruchomiony osobno; serie akcji rozszerzenia wymagały stałej
-zgody na domeny. Etap 28 pozostaje nierozpoczęty.

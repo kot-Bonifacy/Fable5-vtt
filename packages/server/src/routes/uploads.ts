@@ -12,7 +12,7 @@ import {
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
-import { toPortraitAssetView } from '../portraits.js';
+import { toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
 import { getActiveCampaign } from './helpers.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
@@ -237,7 +237,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
   });
 
   // Listę widzi **każdy zalogowany** — to z niej gracz wybiera portret.
-  app.get('/api/portrait-assets', { preHandler: requireAuth }, async (_request, reply) => {
+  app.get('/api/portrait-assets', { preHandler: requireAuth }, async (request, reply) => {
     const campaign = await getActiveCampaign(ctx.prisma);
     if (!campaign) {
       return reply.send([]);
@@ -246,7 +246,11 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       where: { campaignId: campaign.id },
       orderBy: { createdAt: 'desc' },
     });
-    const views: PortraitAssetView[] = assets.map(toPortraitAssetView);
+    const used = await usedPortraitUrls(ctx.prisma, campaign.id, request.user!.id);
+    const views: PortraitAssetView[] = assets.map((asset) => ({
+      ...toPortraitAssetView(asset),
+      assigned: used.has(asset.url),
+    }));
     return reply.send(views);
   });
 

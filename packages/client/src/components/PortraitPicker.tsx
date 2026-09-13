@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { PortraitAssetView } from '@vtt/shared';
 import {
   DEFAULT_PORTRAIT_CROP,
@@ -35,7 +36,7 @@ export function PortraitPicker({
 }: {
   /** Adres portretu wybranego w tej chwili — podświetla kafelek w puli. */
   selectedUrl: string | null | undefined;
-  onPick: (url: string) => void;
+  onPick: (url: string) => void | boolean | Promise<void | boolean>;
   disabled?: boolean;
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -48,10 +49,55 @@ export function PortraitPicker({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement;
+    dialogRef.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, [open]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!open) return;
+    void load(true);
+    // Zajętość obejmuje także szkice i ukryte figury, których klient nie zna.
+    const timer = window.setInterval(() => void load(true), 3000);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !picking) setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, load, picking]);
+
+  async function pick(asset: PortraitAssetView) {
+    setPicking(true);
+    setError(null);
+    try {
+      if ((await onPick(asset.url)) === false) {
+        setError('Nie udało się wybrać portretu. Mógł zostać zajęty — wybierz ponownie.');
+        await load(true);
+        return;
+      }
+      setOpen(false);
+      openCrop(asset.id);
+    } catch {
+      setError('Nie udało się wybrać portretu. Spróbuj ponownie.');
+    } finally {
+      setPicking(false);
+    }
+  }
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -70,6 +116,7 @@ export function PortraitPicker({
       // Kadrowanie otwiera się samo po wgraniu (zlecenie MG z 12.09): moment,
       // w którym MG ogląda nowy portret, jest jedynym, w którym na pewno wie,
       // co na nim jest — a bez kadru mapa weźmie ślepy środek.
+      setOpen(false);
       openCrop(asset.id);
     } catch (caught) {
       setError(uploadErrorText(caught, 'portrait'));
@@ -89,104 +136,184 @@ export function PortraitPicker({
   }
 
   return (
-    <div className="portrait-pool">
-      <p className="portrait-pool-head">
-        Pula portretów
-        {isGm ? (
-          <label className="small-button portrait-pool-upload">
-            {uploading ? 'Wgrywanie…' : '+ Dodaj'}
-            <input
-              type="file"
-              accept={UPLOAD_ACCEPT_ATTRIBUTE}
-              title={uploadRequirementText('portrait')}
-              onChange={(event) => void upload(event)}
-              disabled={uploading || disabled}
-              hidden
-            />
-          </label>
-        ) : null}
-      </p>
-
-      {assets.length === 0 ? (
-        <p className="portrait-pool-empty">
-          {!loaded
-            ? 'Wczytywanie…'
-            : isGm
-              ? 'Pula jest pusta — dodaj pierwszy portret przyciskiem „+ Dodaj".'
-              : 'Pula jest pusta. Portrety dokłada MG.'}
-        </p>
-      ) : (
-        <div className="portrait-pool-grid">
-          {assets.map((asset) => (
+    <>
+      <button
+        type="button"
+        className="small-button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+      >
+        Wybierz portret
+      </button>
+      {open
+        ? createPortal(
             <div
-              key={asset.id}
-              className={[
-                'portrait-pool-item',
-                selectedUrl === asset.url ? 'portrait-pool-item--picked' : '',
-                isFramed(asset) ? 'portrait-pool-item--framed' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              className="dialog-backdrop"
+              onClick={() => {
+                if (!picking) setOpen(false);
+              }}
             >
-              <button
-                type="button"
-                className="portrait-pool-pick"
-                title={asset.name}
-                aria-label={`Wybierz portret „${asset.name}”`}
-                disabled={disabled}
-                onClick={() => onPick(asset.url)}
+              <div
+                className="dialog portrait-gallery"
+                ref={dialogRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Wybierz portret"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Tab') return;
+                  const controls = Array.from(
+                    event.currentTarget.querySelectorAll<HTMLElement>(
+                      'button:not(:disabled), input:not(:disabled):not([hidden]), [tabindex="0"]',
+                    ),
+                  );
+                  const first = controls[0];
+                  const last = controls.at(-1);
+                  if (
+                    event.shiftKey &&
+                    (document.activeElement === first ||
+                      document.activeElement === event.currentTarget)
+                  ) {
+                    event.preventDefault();
+                    last?.focus();
+                  } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first?.focus();
+                  }
+                }}
               >
-                <img src={asset.url} alt="" loading="lazy" />
-                <span className="portrait-pool-name">{asset.name}</span>
-              </button>
-              {isGm ? (
+                <h3 className="panel-section-title">Wybierz portret</h3>
+                <p className="portrait-pool-empty">
+                  Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.
+                </p>
+                <div className="portrait-pool">
+                  <p className="portrait-pool-head">
+                    Pula portretów
+                    {isGm ? (
+                      <label className="small-button portrait-pool-upload">
+                        {uploading ? 'Wgrywanie…' : '+ Dodaj'}
+                        <input
+                          type="file"
+                          accept={UPLOAD_ACCEPT_ATTRIBUTE}
+                          title={uploadRequirementText('portrait')}
+                          onChange={(event) => void upload(event)}
+                          disabled={uploading || disabled}
+                          hidden
+                        />
+                      </label>
+                    ) : null}
+                  </p>
+
+                  {assets.length === 0 ? (
+                    <p className="portrait-pool-empty">
+                      {!loaded
+                        ? 'Wczytywanie…'
+                        : isGm
+                          ? 'Pula jest pusta — dodaj pierwszy portret przyciskiem „+ Dodaj".'
+                          : 'Pula jest pusta. Portrety dokłada MG.'}
+                    </p>
+                  ) : (
+                    <div className="portrait-pool-grid">
+                      {assets.map((asset) => (
+                        <div
+                          key={asset.id}
+                          className={[
+                            'portrait-pool-item',
+                            selectedUrl === asset.url ? 'portrait-pool-item--picked' : '',
+                            isFramed(asset) ? 'portrait-pool-item--framed' : '',
+                            asset.assigned || selectedUrl === asset.url
+                              ? 'portrait-pool-item--assigned'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                        >
+                          <button
+                            type="button"
+                            className="portrait-pool-pick"
+                            title={asset.name}
+                            aria-label={`Wybierz portret „${asset.name}”`}
+                            disabled={
+                              disabled ||
+                              picking ||
+                              (!isGm && !!asset.assigned && selectedUrl !== asset.url)
+                            }
+                            onClick={() => void pick(asset)}
+                          >
+                            <img src={asset.url} alt="" loading="lazy" />
+                            <span className="portrait-pool-name">{asset.name}</span>
+                            {selectedUrl === asset.url ? (
+                              <span className="portrait-pool-name">Wybrany</span>
+                            ) : asset.assigned ? (
+                              <span className="portrait-pool-name">Zajęty</span>
+                            ) : null}
+                          </button>
+                          {isGm ? (
+                            <button
+                              type="button"
+                              className="small-button portrait-pool-crop"
+                              title="Kadr tego portretu na mapie"
+                              aria-label={`Ustaw kadr portretu „${asset.name}” na mapie`}
+                              onClick={() => {
+                                setOpen(false);
+                                openCrop(asset.id);
+                              }}
+                            >
+                              ⛶
+                            </button>
+                          ) : null}
+                          {isGm ? (
+                            confirmingId === asset.id ? (
+                              <span className="portrait-pool-confirm">
+                                <button
+                                  type="button"
+                                  className="small-button character-delete"
+                                  onClick={() => void remove(asset.id)}
+                                >
+                                  Tak, usuń
+                                </button>
+                                <button
+                                  type="button"
+                                  className="small-button"
+                                  onClick={() => setConfirmingId(null)}
+                                >
+                                  Anuluj
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="small-button character-delete portrait-pool-remove"
+                                title="Zdejmij portret z puli"
+                                aria-label={`Zdejmij portret „${asset.name}” z puli`}
+                                onClick={() => setConfirmingId(asset.id)}
+                              >
+                                ✕
+                              </button>
+                            )
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {error ? <p className="auth-error">{error}</p> : null}
+                </div>
                 <button
                   type="button"
-                  className="small-button portrait-pool-crop"
-                  title="Kadr tego portretu na mapie"
-                  aria-label={`Ustaw kadr portretu „${asset.name}” na mapie`}
-                  onClick={() => openCrop(asset.id)}
+                  className="small-button"
+                  disabled={picking}
+                  onClick={() => setOpen(false)}
                 >
-                  ⛶
+                  Zamknij
                 </button>
-              ) : null}
-              {isGm ? (
-                confirmingId === asset.id ? (
-                  <span className="portrait-pool-confirm">
-                    <button
-                      type="button"
-                      className="small-button character-delete"
-                      onClick={() => void remove(asset.id)}
-                    >
-                      Tak, usuń
-                    </button>
-                    <button
-                      type="button"
-                      className="small-button"
-                      onClick={() => setConfirmingId(null)}
-                    >
-                      Anuluj
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="small-button character-delete portrait-pool-remove"
-                    title="Zdejmij portret z puli"
-                    aria-label={`Zdejmij portret „${asset.name}” z puli`}
-                    onClick={() => setConfirmingId(asset.id)}
-                  >
-                    ✕
-                  </button>
-                )
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error ? <p className="auth-error">{error}</p> : null}
-    </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

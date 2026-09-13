@@ -1376,7 +1376,7 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
         <PortraitPicker
           selectedUrl={draft.portraitUrl}
           disabled={busy}
-          onPick={(url) => void patch({ portraitUrl: url })}
+          onPick={(url) => patch({ portraitUrl: url })}
         />
       </div>
 

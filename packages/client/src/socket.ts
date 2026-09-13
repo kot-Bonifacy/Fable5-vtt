@@ -2885,6 +2885,10 @@ export function creationErrorText(code: string | undefined): string {
       return 'Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel.';
     case 'DRAFT_NOT_FOUND':
       return 'Szkic postaci przepadł. Otwórz kreator jeszcze raz.';
+    case 'PORTRAIT_TAKEN':
+      return 'Ten portret jest już zajęty. Wybierz inny z galerii.';
+    case 'PORTRAIT_NOT_AVAILABLE':
+      return 'Ten portret nie jest już dostępny w galerii MG.';
     case 'METHOD_DOES_NOT_ROLL':
       return 'Ta metoda nie losuje Cech — Kompletny Pakiet je kupuje.';
     case 'ROLE_NOT_CHOSEN':

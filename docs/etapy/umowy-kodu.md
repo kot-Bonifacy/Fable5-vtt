@@ -589,7 +589,7 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 - **Blokada ruchu graczy po mapie** — `Scene.playerMoveLocked` (nowa scena **zamknięta**, migracja otworzyła stare), zwykłe pole `ScenePatch` (nie własne zdarzenie, bo niczego graczom nie zabiera), odmowa `MOVE_LOCKED` w `performTokenMove` **przed** `validateTokenMove` — żeby ścinała też klatkę pośrednią. MG nie jest nią związany nigdy.
 - **Przełączenie kampanii** — zdarzenie `campaign:activate` (przenosi wszystkie gniazda i odsyła `campaign:switch`), nigdy sam zapis w bazie.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
-- **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG jedną trasą `POST /api/uploads/portrait-assets`, listę puli widzi każdy zalogowany.
+- **Portret w nowym miejscu** — `PortraitPicker`: przycisk → duża galeria → kadr po potwierdzonym zapisie; pliki wgrywa wyłącznie MG. `usedPortraitUrls` liczy zajętość po stronie serwera, szkic gracza rezerwuje twarz transakcyjnie.
 - **Kadr portretu** — `portrait:crop` (gniazdo, rozgłasza cały wiersz puli). Nie stoi na `role: ROLE_GM`: gracz kadruje ten jeden portret, który nosi jego własna karta, i sprawdza to serwer.
 - **Kosz w bibliotece, która stoi na scenie** — zdarzenie gniazda (`token:asset-delete`), nie trasa REST: zdjęta grafika schodzi też z żetonów (`emitTokensById` → `token:upsert`), a ack mówi `clearedTokens`. REST wgrywa plik, gniazdo zmienia stan stołu.
 - **Komunikat zależny od zewnętrznej usługi** niesie kod odmowy (`journalStore.fail(msg, code)`), a powrót usługi go zdejmuje (`ai:status` → `clearAiError`) — inaczej wisi do następnej akcji MG; pilnuje `journal-error.test.ts`.
@@ -654,7 +654,17 @@ potrzebuje też renderer, a dwie kopie tej samej puli rozjechałyby się przy pi
 „REST wgrywa plik, gniazdo zmienia stan stołu" niżej. Jest jednak **jedynym** zdarzeniem puli bez
 `role: ROLE_GM`: portret wybiera się raz, przy tworzeniu postaci (decyzja MG z 12.09), i w trakcie
 rozgrywki gracz go nie zmienia — ale kadr własnej figury zmienić może. Warunek sprawdza serwer
-(`ownsPortrait`: karta tego gracza nosi ten adres), nie przycisk.
+(`ownsPortrait`: karta tego gracza nosi ten adres albo jego szkic rezerwuje wolny portret), nie przycisk.
+
+**Od 13.09 wybór portretu otwiera osobną dużą galerię, potem kadrowanie.** `onPick` zwraca wynik
+zapisu — odmowa pozostawia galerię otwartą. `GET /api/portrait-assets` dodaje `assigned`, bez nazw
+i identyfikatorów właścicieli; `usedPortraitUrls` obejmuje karty, boty, figury wszystkich scen
+(także ukryte) i cudze szkice. Otwarta galeria odświeża listę co 3 s. Własny wybór jest oznaczony
+osobno, zajęte portrety są czarno-białe; MG może celowo powtórzyć portret.
+`creation:patch` sprawdza pulę i zajętość razem z zapisem w transakcji, `creation:finish` ponawia
+sprawdzenie i atomowo przenosi przypisanie ze szkicu do karty. Zmiana/usunięcie portretu albo
+odrzucenie szkicu zwalnia rezerwację; samo zamknięcie kreatora jej nie zwalnia. `character:update`
+odrzuca zmianę portretu gracza także na serwerze — wcześniej zakaz był wyłącznie w UI.
 
 **Kasowanie z biblioteki, które rusza scenę, jest zdarzeniem gniazda** (kosz grafik żetonów,
 27.08). Biblioteka grafik i pula portretów wyglądają jak bliźniaki — wgrywanie i listę mają

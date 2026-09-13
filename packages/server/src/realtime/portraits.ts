@@ -1,7 +1,7 @@
 import type { PortraitAssetView, PortraitCropBroadcast, PortraitCropPayload } from '@vtt/shared';
 import { ROLE_GM, sanitizePortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import { toPortraitAssetView } from '../portraits.js';
+import { draftPortraitUrl, toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
 import { RealtimeError, defineEvent } from './registry.js';
 import { campaignRoom } from './state.js';
 
@@ -67,15 +67,14 @@ export const portraitCropEvent = defineEvent<PortraitCropPayload, PortraitAssetV
 });
 
 /**
- * Czy ten gracz nosi ten portret na własnej karcie.
+ * Czy ten gracz nosi ten portret na własnej karcie lub zarezerwował go w szkicu.
  *
  * Pytanie idzie o **adres pliku**, a nie o wiersz puli, bo kadr jest cechą
  * obrazka: karta trzyma sam adres i nic o bibliotece nie wie.
  *
  * Skutek uboczny, świadomy: gdyby dwie postacie miały ten sam plik portretu,
- * kadr poprawiony przez jedną zmienia ujęcie obu. Przy stole, gdzie każda
- * postać ma własną twarz, to się nie zdarza — a alternatywa (kadr przy karcie)
- * kazałaby kadrować ten sam obrazek od nowa przy każdym wyborze z puli.
+ * kadr poprawiony przez jedną zmienia ujęcie obu. Kreator blokuje taki wybór
+ * graczom; stare przypisania i świadome powtórzenia MG pozostają wspólne.
  */
 async function ownsPortrait(
   prisma: PrismaClient,
@@ -87,5 +86,13 @@ async function ownsPortrait(
     where: { campaignId, ownerId: userId, portraitUrl: url },
     select: { id: true },
   });
-  return mine !== null;
+  if (mine) return true;
+  const draft = await prisma.characterDraft.findUnique({
+    where: { campaignId_userId: { campaignId, userId } },
+  });
+  return (
+    !!draft &&
+    draftPortraitUrl(draft.data) === url &&
+    !(await usedPortraitUrls(prisma, campaignId, userId)).has(url)
+  );
 }

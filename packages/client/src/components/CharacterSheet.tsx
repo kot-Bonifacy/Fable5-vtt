@@ -177,6 +177,7 @@ import {
   setStatEffect,
   setWeaponAttachment,
   transferEddies,
+  updateCharacter,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
@@ -736,10 +737,7 @@ function IdentityColumn({
         {isGm ? (
           <PortraitPicker
             selectedUrl={character.portraitUrl}
-            onPick={(url) => {
-              queueCharacterSave(character.id, { portraitUrl: url });
-              flushCharacterSave(character.id);
-            }}
+            onPick={async (url) => (await updateCharacter(character.id, { portraitUrl: url })).ok}
           />
         ) : null}
       </div>

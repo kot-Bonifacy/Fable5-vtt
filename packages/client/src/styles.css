@@ -2963,7 +2963,8 @@ input[type='color'] {
 .dialog-backdrop:has(.check-call-dialog),
 /* Kadr portretu (12.09) wchodzi tą samą drogą: otwiera się z karty postaci
    i z kreatora, czyli **spod** okna o z-index 300+. */
-.dialog-backdrop:has(.portrait-crop) {
+.dialog-backdrop:has(.portrait-crop),
+.dialog-backdrop:has(.portrait-gallery) {
   z-index: 400;
 }
 
@@ -8981,6 +8982,41 @@ body.is-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.portrait-gallery {
+  width: min(1200px, 94vw);
+  height: 88vh;
+  max-width: 94vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.portrait-gallery .portrait-pool {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.portrait-gallery .portrait-pool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr));
+  gap: 0.8rem;
+}
+
+.portrait-gallery .portrait-pool-pick {
+  min-width: 0;
+}
+
+.portrait-gallery .portrait-pool-pick img {
+  width: 100%;
+  height: 240px;
+  object-fit: contain;
+}
+
+.portrait-pool-item--assigned .portrait-pool-pick img {
+  filter: grayscale(1);
 }
 
 .portrait-pool-head {

@@ -419,6 +419,8 @@ export interface PortraitAssetView {
   url: string;
   width: number;
   height: number;
+  /** Zajęty przez kartę, figurę, bota lub cudzy szkic; bez danych właściciela. */
+  assigned?: boolean;
   /**
    * Jak ta grafika jest ujęta w krążku żetonu (12.09).
    *

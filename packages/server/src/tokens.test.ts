@@ -361,8 +361,14 @@ describe('portrait pool', () => {
       });
       if (!card.ok || !card.data) throw new Error('character:create failed');
       expect(
+        await emitAck(playerConn.socket, 'character:update', {
+          characterId: card.data.id,
+          patch: { portraitUrl: ack.data.url },
+        }),
+      ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+      expect(
         (
-          await emitAck(playerConn.socket, 'character:update', {
+          await emitAck(gmConn.socket, 'character:update', {
             characterId: card.data.id,
             patch: { portraitUrl: ack.data.url },
           })

@@ -7,6 +7,25 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — alias figury w kartach czatu i oględziny bez modelu
+
+**Zlecenie MG:** przegląd zaległości; wybrane: nazwa figury w kartach czatu, test „Minęła minuta"
+i oględziny bez modelu, plus push siedmiu commitów. Decyzje MG: alias u wszystkich (MG też), pusty
+alias „Nieznajomy", rzut z samej karty pisze nazwę karty; poziom sklepu nie dotyczy montażu
+wszczepów (`decyzje-i-uproszczenia.md`). `tokenTableName` (`shared/tokens.ts`) i
+`combatantTableName` podpięte w ~60 miejscach 21 plików `realtime/`; podpowiedź edytora figury mówi,
+co napisze czat. Po drodze dwa błędy: okno przeszukania pisało graczowi prawdziwą nazwę, a
+`netice.ts` gubił alias przez `Pick<Token>` bez `publicName`.
+
+**Weryfikacja:** 2032 testy w `shared` (3 nowe), 1101 na serwerze (karta gazu i „Minęła minuta"
+oczami gracza, nowy test „wraca: …" po EMP), 197 u klienta; `tsc`, ESLint, Prettier — zielone.
+W Chrome: „bez ran" u Tony'ego w jego turze (kolejka nieruszona); na kampanii-śmieciu z kontem
+`Tester` — alias na karcie inicjatywy i w kolejce, edytor 38a z zapisem zakładającym kartę i koszem
+pojedynczym, wyszarzony slot po „Schowaj", odmowa `MISSING_FOUNDATION`. Znalezione i **nie**
+poprawione: cztery drobne usterki w `zaleglosci.md`. `pnpm dev` zgubił backend (strażnik
+`tsx watch` bez serwera) — ubity i uruchomiony osobno; serie akcji rozszerzenia wymagały stałej
+zgody na domeny. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — cyberdek netrunnera Korpo i „Dodaj za darmo"
 
 **Zlecenie MG:** przegląd zaległości; do zrobienia wybrany cyberdek pracownika Korpo i decyzja

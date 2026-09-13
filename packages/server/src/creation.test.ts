@@ -14,6 +14,7 @@ import type {
   CpredDataPayload,
   CreationDraftView,
   InvitationSummary,
+  PortraitAssetView,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
@@ -156,6 +157,15 @@ beforeAll(async () => {
     payload: { name: 'Sesja zerowa' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
+  await built.prisma.portraitAsset.createMany({
+    data: ['test', 'na-scenie'].map((name) => ({
+      campaignId,
+      name,
+      url: `/uploads/portraits/${name}.png`,
+      width: 100,
+      height: 100,
+    })),
+  });
 
   const inviteRes = await built.app.inject({
     method: 'POST',
@@ -182,6 +192,83 @@ afterAll(async () => {
   } catch {
     // best effort — Windows may still hold the file
   }
+});
+
+describe('wybór portretu w galerii', () => {
+  it('reserves atomically, permits draft cropping, releases choices and hides owners', async () => {
+    const campaign = await built.prisma.campaign.findFirstOrThrow();
+    const invite = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaign.id}/invitations`,
+      headers: { cookie: gmCookie },
+      payload: {},
+    });
+    const token = (invite.json() as InvitationSummary).token;
+    const cookies: string[] = [];
+    const sockets: ClientSocket[] = [];
+    for (const name of ['Portret A', 'Portret B']) {
+      const joined = await built.app.inject({
+        method: 'POST',
+        url: `/api/join/${token}`,
+        payload: { name },
+      });
+      const cookie = cookieOf(joined.headers['set-cookie']);
+      cookies.push(cookie);
+      const connection = createSocket(cookie);
+      await connection.firstSync;
+      sockets.push(connection.socket);
+      data(await emitAck<Draft>(connection.socket, 'creation:start'), 'start');
+    }
+    const asset = await built.prisma.portraitAsset.create({
+      data: {
+        campaignId: campaign.id,
+        name: 'Własny rysunek',
+        url: '/uploads/portraits/selection-test.png',
+        width: 100,
+        height: 100,
+      },
+    });
+    const choice = { patch: { portraitUrl: asset.url } };
+    const results = await Promise.all(
+      sockets.map((socket) => emitAck<Draft>(socket, 'creation:patch', choice)),
+    );
+    expect(results.filter((ack) => ack.ok)).toHaveLength(1);
+    expect(results.filter((ack) => !ack.ok)).toEqual([{ ok: false, error: 'PORTRAIT_TAKEN' }]);
+    const winner = results.findIndex((ack) => ack.ok);
+    const loser = 1 - winner;
+    const list = await built.app.inject({
+      method: 'GET',
+      url: '/api/portrait-assets',
+      headers: { cookie: cookies[loser]! },
+    });
+    const shown = (list.json() as PortraitAssetView[]).find((row) => row.id === asset.id)!;
+    expect(shown.assigned).toBe(true);
+    expect(Object.keys(shown).sort()).toEqual([
+      'assigned',
+      'crop',
+      'height',
+      'id',
+      'name',
+      'url',
+      'width',
+    ]);
+    const crop = { assetId: asset.id, crop: { x: 0.3, y: 0.4, zoom: 2 } };
+    expect((await emitAck(sockets[winner]!, 'portrait:crop', crop)).ok).toBe(true);
+    expect(await emitAck(sockets[loser]!, 'portrait:crop', crop)).toEqual({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
+    await patch(sockets[winner]!, { portraitUrl: null });
+    expect((await emitAck(sockets[loser]!, 'creation:patch', choice)).ok).toBe(true);
+    await emitAck(sockets[loser]!, 'creation:discard');
+    expect((await emitAck(sockets[winner]!, 'creation:patch', choice)).ok).toBe(true);
+    expect(
+      await emitAck(sockets[winner]!, 'creation:patch', {
+        patch: { portraitUrl: '/uploads/portraits/not-in-pool.png' },
+      }),
+    ).toEqual({ ok: false, error: 'PORTRAIT_NOT_AVAILABLE' });
+    await emitAck(sockets[winner]!, 'creation:discard');
+  });
 });
 
 describe('GET /api/cpred/data', () => {
