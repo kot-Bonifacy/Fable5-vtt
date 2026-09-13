@@ -25,6 +25,7 @@ import {
   parseCharacterData,
   rollFormula,
   describeCpredStatEffectValue,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { applyForcedFailureToSheet } from '../sheets.js';
@@ -93,7 +94,7 @@ interface IceEffectInput {
   state: FullRunState;
   runId: string;
   characterId: string;
-  token: Pick<Token, 'id' | 'name' | 'ownerId'>;
+  token: Pick<Token, 'id' | 'name' | 'publicName' | 'ownerId'>;
   /** Combat round, when a fight is running — the glue and the debt need it. */
   round: number | null;
   rng: (sides: number) => number;
@@ -325,7 +326,7 @@ export async function damageBrain(
     campaignId: string;
     user: SessionUser;
     characterId: string;
-    token: Pick<Token, 'id' | 'name' | 'ownerId'>;
+    token: Pick<Token, 'id' | 'name' | 'publicName' | 'ownerId'>;
     damage: number;
     note: string;
   },
@@ -350,7 +351,7 @@ export async function damageBrain(
   const entry: DamageLogEntry = {
     ...applied.log,
     targetTokenId: input.token.id,
-    targetName: input.token.name,
+    targetName: tokenTableName(input.token, input.token.name),
     characterId: saved.id,
     targetOwnerId: saved.ownerId ?? input.token.ownerId,
     injuryNote: input.note,
@@ -360,7 +361,7 @@ export async function damageBrain(
       campaignId: input.campaignId,
       authorId: input.user.id,
       kind: 'damage',
-      text: `${input.token.name} — Sieć`,
+      text: `${tokenTableName(input.token, input.token.name)} — Sieć`,
       payload: JSON.stringify(entry),
     },
     include: INCLUDE_CHAT_NAMES,
@@ -481,7 +482,7 @@ export async function emergencyJackOut(
   });
   if (!row) return { tokenIds: [] };
   const state = readFullRun(row.data);
-  const actorName = row.token.character?.name ?? row.token.name;
+  const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
   const tokenIds: string[] = [];
 
   const bill = state ? netJackOutBill(state, input.except) : [];

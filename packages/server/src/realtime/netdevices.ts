@@ -24,6 +24,7 @@ import {
   netNodeIsFree,
   parseCharacterData,
   readNetRuntime,
+  tokenTableName,
 } from '@vtt/shared';
 import { SHEET_STATIST_WEAPON_ROW_ID } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -157,7 +158,7 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       throw new RealtimeError('NET_DEVICE_NO_WALL');
     }
 
-    const actorName = row.token.character?.name ?? row.token.name;
+    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     let next: FullRunState = await spendNetAction(deps, {
       campaignId,
       scene,

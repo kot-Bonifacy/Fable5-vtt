@@ -6,7 +6,7 @@ import type {
   TokenHp,
   TurnPointer,
 } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, tokenTableName } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import {
   applyPeriodicDamageToSheet,
@@ -333,7 +333,7 @@ function logEntryFor(
   return {
     ...log,
     targetTokenId: combatant.tokenId,
-    targetName: combatant.token.name,
+    targetName: tokenTableName(combatant.token, combatant.token.name),
     characterId,
     targetOwnerId: combatant.token.character?.ownerId ?? combatant.token.ownerId,
     injuryNote: `${entry.label} — obrażenia okresowe, bez pancerza`,
@@ -385,7 +385,7 @@ async function logTurnEffects(
   if (parts.length === 0) return;
   const entry: CombatActionLogEntry = {
     combatantId: combatant.id,
-    actorName: combatant.token.name,
+    actorName: tokenTableName(combatant.token, combatant.token.name),
     actionId: 'turn-end',
     actionName: 'Koniec tury',
     note: `${parts.join(' · ')}${walked > 0 ? ` · przeszedł ${formatWalked(walked)}` : ''}`,
@@ -417,7 +417,7 @@ async function logTurnStart(
   if (parts.length === 0) return;
   const entry: CombatActionLogEntry = {
     combatantId: combatant.id,
-    actorName: combatant.token.name,
+    actorName: tokenTableName(combatant.token, combatant.token.name),
     actionId: 'turn-start',
     actionName: 'Początek tury',
     note: parts.join(' · '),

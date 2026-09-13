@@ -31,6 +31,7 @@ import {
   readNetRuntime,
   rollFormula,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -283,7 +284,7 @@ export const netDemonDetectEvent = defineEvent<NetDemonActPayload, NetRunAbility
       deps,
       campaignId,
       user,
-      row.token.character?.name ?? row.token.name,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
       'Demon',
       `${demon.name} — wykrycie intruza`,
     );
@@ -323,7 +324,7 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
 
     const runtime = readNetRuntime(row.architecture.runtime);
     const devices = deviceTokenIds(architecture);
-    const runnerName = row.token.character?.name ?? row.token.name;
+    const runnerName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const runnerOwnerId = row.token.character?.ownerId ?? row.token.ownerId;
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
 
@@ -412,12 +413,12 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
           device,
           hands: { combatValue: netDemonCombatValue(demon.profile) },
           targetTokenId: target.id,
-          summary: `${device.name} → ${target.name}`,
+          summary: `${device.name} → ${tokenTableName(target, target.name)}`,
         });
         lines.push(
           shot.blocked
             ? `${shot.blocked.text}.`
-            : `${device.name} strzela do: ${target.name} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`,
+            : `${device.name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`,
         );
         next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floorId, round) };
         spent.add(floorId);

@@ -41,6 +41,7 @@ import {
   resolveCpredDeathSave,
   rollFormula,
   cpredSheetWoundState,
+  tokenTableName,
   woundStateFromHp,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
@@ -120,9 +121,16 @@ type RollSource =
   | { kind: 'character'; character: Character; data: CpredCharacterData }
   | { kind: 'statist'; token: Token; data: CpredCharacterData };
 
-/** Name the card names as the actor — the sheet's, or the token's. */
+/**
+ * Name the card names as the actor — the sheet's, or the token's.
+ *
+ * Only the token arm can carry an alias: a roll made from a sheet points at no
+ * figure, so it keeps the sheet's name (decyzja MG z 13.09).
+ */
 function rollSourceName(source: RollSource): string {
-  return source.kind === 'character' ? source.character.name : source.token.name;
+  return source.kind === 'character'
+    ? source.character.name
+    : tokenTableName(source.token, source.token.name);
 }
 
 /**
@@ -430,7 +438,7 @@ async function resolveStabilizeRequest(
   return {
     ...request,
     stabilizeDv: CPRED_STABILIZE_DV[state],
-    stabilizeTargetName: token.name,
+    stabilizeTargetName: tokenTableName(token, token.name),
   };
 }
 
@@ -528,7 +536,7 @@ async function resolveTreatInjuryRequest(
     treatDv: option.dv,
     treatPermanent: cpredCarePermanent(injury, mode),
     treatInjuryName: injury.name,
-    treatTargetName: token.name,
+    treatTargetName: tokenTableName(token, token.name),
   };
 }
 

@@ -688,6 +688,53 @@ describe('ammunition that deals no damage', () => {
       // Druga połowa — zegar i lista wyłączonych — nie jedzie do klienta wcale,
       // więc pilnuje jej test czystych funkcji w `sheets.test.ts`.
     }, 30_000);
+
+    // Zaległość z 04.09: zapis listy przy statusie miał test, a zdanie, które
+    // stół czyta po minucie walki, nie miał żadnego.
+    it('po minucie walki „Minęła minuta" mówi, co wraca po Impulsie', async () => {
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [chromeTokenId] }),
+        'combat:start',
+      );
+      for (const row of combat.combatants) {
+        await emitAck(gm, 'combat:set-initiative', { combatantId: row.id, initiative: 10 });
+      }
+      // Round 1 begins — without it the Impulse has no round to count down from.
+      await emitAck(gm, 'combat:next', {});
+      try {
+        await load('ammo.sample-emp');
+        let effect: string | undefined;
+        for (let attempt = 0; attempt < 25 && !effect; attempt += 1) {
+          await emitAck(gm, 'token:effect', {
+            tokenId: chromeTokenId,
+            statusId: 'emp',
+            active: false,
+          });
+          const { card } = await lob();
+          const row = (card.forcedChecks ?? []).find((check) => check.name === 'Chromowany');
+          if (row && !row.success) effect = row.effect;
+        }
+        if (!effect) throw new Error('nikt nigdy nie oblał Testu — RNG albo pocisk są zepsute');
+        const marker = 'wyłączone: ';
+        const disabled = effect.slice(effect.indexOf(marker) + marker.length);
+
+        // One participant, so every „next" is a round; eight clear the six.
+        const feed = collect(player);
+        for (let step = 0; step < 8; step += 1) await emitAck(gm, 'combat:next', {});
+        await settle();
+        const notes = feed
+          .stop()
+          .map((entry) => entry.message.action)
+          .filter((action) => action?.actionId === 'effect-expired')
+          .map((action) => action?.note ?? '');
+
+        expect((await tokenOf(chromeTokenId)).statuses).not.toContain('emp');
+        const line = notes.find((note) => note.includes('Chromowany'));
+        expect(line).toContain(`wraca: ${disabled}`);
+      } finally {
+        await emitAck(gm, 'combat:end', { sceneId });
+      }
+    }, 30_000);
   });
 
   describe('effects that last a minute', () => {
@@ -777,16 +824,53 @@ describe('ammunition that deals no damage', () => {
       // Round 1 begins.
       await emitAck(gm, 'combat:next', {});
 
-      const { tokenId } = await gasUntilAsleep();
-      expect((await tokenOf(tokenId)).statuses).toContain('unconscious');
-
-      // Two participants, so two „next" per round; fourteen of them clear six.
+      // Alias na obu celach (13.09): karty tej walki idą do całego stołu, więc
+      // piszą to, co gracz widzi na mapie — „Ochroniarz" i figurę bez etykiety.
+      const aliases = new Map([
+        [mookTokenId, 'Ochroniarz'],
+        [neighbourTokenId, ''],
+      ]);
+      for (const [aliasTokenId, publicName] of aliases) {
+        await emitAck(gm, 'token:update', { tokenId: aliasTokenId, patch: { publicName } });
+      }
+      const feed = collect(player);
       try {
+        await wakeEverybody();
+        await load('ammo.sample-sleeper');
+        const checked = ((await lob()).card.forcedChecks ?? []).map((row) => row.name);
+        expect(checked).toEqual(expect.arrayContaining(['Ochroniarz', 'Nieznajomy']));
+        expect(checked).not.toContain('Ganger');
+        expect(checked).not.toContain('Kumpel');
+
+        const { tokenId } = await gasUntilAsleep();
+        expect((await tokenOf(tokenId)).statuses).toContain('unconscious');
+        const sleepers: string[] = [];
+        for (const id of aliases.keys()) {
+          if ((await tokenOf(id)).statuses.includes('unconscious')) sleepers.push(id);
+        }
+
+        // Two participants, so two „next" per round; fourteen of them clear six.
         for (let step = 0; step < 14; step += 1) await emitAck(gm, 'combat:next', {});
         expect((await tokenOf(tokenId)).statuses).not.toContain('unconscious');
+
+        // „Minęła minuta" oczami gracza — do 13.09 żaden test nie czytał tego zdania.
+        await settle();
+        const expired = feed
+          .stop()
+          .map((entry) => entry.message.action)
+          .filter((action) => action?.actionId === 'effect-expired')
+          .map((action) => action?.note ?? '')
+          .join(' · ');
+        expect(expired).not.toMatch(/Ganger|Kumpel/);
+        if (sleepers.includes(mookTokenId)) expect(expired).toContain('Ochroniarz — ');
+        if (sleepers.includes(neighbourTokenId)) expect(expired).toContain('Nieznajomy — ');
       } finally {
+        feed.stop();
         // A fight left running would refuse every reload in the tests below.
         await emitAck(gm, 'combat:end', { sceneId });
+        for (const aliasTokenId of aliases.keys()) {
+          await emitAck(gm, 'token:update', { tokenId: aliasTokenId, patch: { publicName: null } });
+        }
       }
     }, 30_000);
 

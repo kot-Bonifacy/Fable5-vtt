@@ -16,6 +16,7 @@ import {
   damageTotal,
   isCpredAimPoint,
   isCriticalInjuryEntry,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
@@ -262,7 +263,7 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       ...(fearCleared.length > 0 ? { fearCleared } : {}),
       sourceMessageId,
       targetTokenId: token.id,
-      targetName: token.name,
+      targetName: tokenTableName(token, token.name),
       characterId: character?.id ?? null,
       targetOwnerId: character?.ownerId ?? token.ownerId,
     };

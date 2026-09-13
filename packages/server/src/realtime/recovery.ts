@@ -46,6 +46,7 @@ import {
   metresForRules,
   parseCharacterData,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -382,7 +383,10 @@ export const characterUseDoseEvent = defineEvent<
           { kind: 'action', actionId: CPRED_ACTION_DOSE },
           user,
           CPRED_ACTION_DOSE,
-          { silent: true, note: `${drug.name} → ${target.token.name}` },
+          {
+            silent: true,
+            note: `${drug.name} → ${tokenTableName(target.token, target.token.name)}`,
+          },
         );
       }
     }
@@ -479,7 +483,7 @@ async function resolveDoseTarget(
   const character = token.characterId
     ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
     : null;
-  return { name: character?.name ?? token.name, character, token, scene };
+  return { name: tokenTableName(token, character?.name ?? token.name), character, token, scene };
 }
 
 /**

@@ -77,6 +77,7 @@ import {
   resolveWeapon,
   rollFormula,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
@@ -392,9 +393,11 @@ interface AttackSource {
  * Figura prowadzona przez MG mówi nazwą **żetonu**, nie karty: to ona stoi na
  * mapie i to ją zmienia klonowanie („Ganger" → „Ganger 2"). Karta gracza mówi
  * swoją — tam nazwa karty jest imieniem postaci, a żeton bywa byle jaki.
+ * Alias żetonu (`publicName`) wygrywa z obiema, bo karta czatu idzie do stołu.
  */
 function sourceName(source: AttackSource): string {
-  return source.character.ownerId === null ? source.token.name : source.character.name;
+  const realName = source.character.ownerId === null ? source.token.name : source.character.name;
+  return tokenTableName(source.token, realName);
 }
 
 /**
@@ -697,7 +700,7 @@ async function humanShieldOf(
   const state = await grappleStateForToken(deps.ctx.prisma, sceneId, targetTokenId);
   const shield = state.shieldOf;
   if (!shield || !shield.token || !shield.tokenId) return null;
-  return { tokenId: shield.tokenId, name: shield.token.name };
+  return { tokenId: shield.tokenId, name: tokenTableName(shield.token, shield.token.name) };
 }
 
 /**
@@ -731,7 +734,7 @@ async function resolveSuppression(
     // Ties go to the defender here too: the target has to *fail* to be pinned.
     const resisted = total > dv;
     checks.push({
-      name: token.name,
+      name: tokenTableName(token, token.name),
       detail: `${formatMetres(metres)} · SW+Koncentracja ${die}+${modifier} = ${total} vs ${dv}${
         resisted ? '' : ' — do osłony'
       }`,
@@ -1031,7 +1034,7 @@ export async function performAttackRoll(
         weapon,
         target
           ? {
-              name: target.name,
+              name: tokenTableName(target, target.name),
               tokenId: target.id,
               metres,
               ...(weapon.resolved?.melee
@@ -1547,7 +1550,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     if (typeof payload.characterId === 'string') {
       const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
       if (target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
-      defenderName = character.name;
+      defenderName = tokenTableName(target, character.name);
       data = parseCharacterData(character.data, registry);
     } else {
       // Figura prowadzona przez żeton uchyla się swoją kartą — tą samą, z której
@@ -1564,7 +1567,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       if (figure.data.statBlock?.noBulletDodge === true && !meta.melee) {
         throw new RealtimeError('BACKUP_CANNOT_DODGE');
       }
-      defenderName = target.name;
+      defenderName = tokenTableName(target, target.name);
       data = sheetForRoll(figure.data, null);
     }
 
@@ -1786,12 +1789,13 @@ async function evadeArea(
   // Ties go to the attacker here, unusually: the rule asks the dodger to roll
   // *more* than the attack, so an equal roll is not enough to get out of the way.
   const cleared = evasion.total > roll.total;
+  const dodgerName = tokenTableName(target, character.name);
 
   const targets = area.targets.map((candidate, position) =>
     position === index
       ? {
           ...candidate,
-          ...(cleared ? { spared: 'evaded' as const, sparedBy: character.name } : {}),
+          ...(cleared ? { spared: 'evaded' as const, sparedBy: dodgerName } : {}),
           canEvade: false,
         }
       : candidate,
@@ -1801,7 +1805,7 @@ async function evadeArea(
     attack: {
       ...roll.attack!,
       area: { ...area, targets },
-      detail: `${roll.attack!.detail} · Odskok ${character.name}: ${evasion.total} vs ${
+      detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total} vs ${
         roll.total
       } → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,
     },

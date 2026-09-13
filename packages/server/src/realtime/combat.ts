@@ -26,6 +26,7 @@ import {
   resolveInitiativeOrder,
   rollFormula,
   sortCombatants,
+  tokenTableName,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Combat, Combatant, Scene, Token } from '../generated/prisma/client.js';
@@ -92,6 +93,15 @@ export function hasFigure(row: CombatantRow): row is FiguredCombatantRow {
 /** „Kraken" — the name of a participant with no token to read it off. */
 export function combatantName(row: CombatantRow): string {
   return row.token?.name ?? row.label ?? 'Uczestnik';
+}
+
+/**
+ * The same participant as a chat card names it — the figure's alias when the GM
+ * gave it one (13.09). The tracker keeps `combatantName`: there
+ * `filterCombatForPlayer` swaps the name per viewer, and a stored card cannot.
+ */
+export function combatantTableName(row: CombatantRow): string {
+  return row.token ? tokenTableName(row.token, row.token.name) : combatantName(row);
 }
 
 export type CombatRow = Combat & { combatants: CombatantRow[] };
@@ -900,7 +910,7 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
       breakdown.push({ label: inputs.label, value: inputs.modifier, kind: 'stat' });
     }
     result.title = 'Inicjatywa';
-    result.actor = combatantName(combatant);
+    result.actor = combatantTableName(combatant);
     if (breakdown.length > 0) result.breakdown = breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;

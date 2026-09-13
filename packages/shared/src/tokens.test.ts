@@ -1,14 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
   TOKEN_NAME_MAX_LENGTH,
+  TOKEN_UNLABELLED_TABLE_NAME,
   clampTokenPosition,
   nextTokenCopyName,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenPatch,
   snapTokenPosition,
+  tokenTableName,
   type TokenSnapScene,
 } from './tokens.js';
+
+describe('tokenTableName', () => {
+  it('keeps the caller’s name when the figure has no alias', () => {
+    expect(tokenTableName({ publicName: null }, 'Snajper Arasaki')).toBe('Snajper Arasaki');
+    // A public TokenView carries no `publicName` at all — its name is already swapped.
+    expect(tokenTableName({}, 'Ochroniarz')).toBe('Ochroniarz');
+  });
+
+  it('writes the alias instead of the real name', () => {
+    expect(tokenTableName({ publicName: 'Ochroniarz' }, 'Snajper Arasaki')).toBe('Ochroniarz');
+  });
+
+  it('names an unlabelled figure „Nieznajomy”, never an empty string', () => {
+    expect(tokenTableName({ publicName: '' }, 'Snajper Arasaki')).toBe(TOKEN_UNLABELLED_TABLE_NAME);
+    expect(TOKEN_UNLABELLED_TABLE_NAME).toBe('Nieznajomy');
+  });
+});
 
 const gridScene: TokenSnapScene = {
   width: 1000,

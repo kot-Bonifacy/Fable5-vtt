@@ -49,6 +49,7 @@ import {
   rollFormula,
   netSamePosition,
   netFloorAt,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -494,7 +495,7 @@ export const netProgramEvent = defineEvent<NetRunProgramPayload, NetRunAbilityRe
       deps,
       campaignId,
       user,
-      row.token.character?.name ?? row.token.name,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
       stopping ? 'Zatrzymanie Programu' : 'Uruchomienie Programu',
       name,
     );
@@ -570,7 +571,7 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
       state,
     });
 
-    const actorName = row.token.character?.name ?? row.token.name;
+    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const exchange = rollExchange(plan, {
       ...(payload?.gesture ? { gesture: payload.gesture } : {}),
       attackerIsHuman: true,
@@ -676,7 +677,7 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
       state,
     });
 
-    const actorName = row.token.character?.name ?? row.token.name;
+    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const plan = netSlidePlan({ interfaceRank: rank, marks: next.slideMarks.length, ice });
     const exchange = rollExchange(plan, {
       ...(payload?.gesture ? { gesture: payload.gesture } : {}),
@@ -756,7 +757,7 @@ export const netIceDetectEvent = defineEvent<NetIceActPayload, NetRunAbilityResu
     if (ice.detected) refuse('NET_ICE_ALREADY_DETECTED');
 
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
-    const actorName = row.token.character?.name ?? row.token.name;
+    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const plan = netDetectionPlan({
       interfaceRank: rank,
       speedBonuses: netSpeedBonuses(state),
@@ -863,7 +864,7 @@ export const netIceTurnEvent = defineEvent<NetIceActPayload, NetRunAbilityResult
     if (round !== null && ice.lastAttackRound === round) refuse('NET_ICE_ALREADY_ACTED');
 
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
-    const actorName = row.token.character?.name ?? row.token.name;
+    const actorName = tokenTableName(row.token, row.token.character?.name ?? row.token.name);
     const victim =
       ice.profile.target === 'antiProgram' ? netRandomRezzed(state, createMixedRng()) : null;
     const plan = netIceAttackPlan({
@@ -1003,7 +1004,7 @@ export const netGlueClearEvent = defineEvent<NetRunGluePayload, void>({
       deps,
       campaignId,
       user,
-      row.token.character?.name ?? row.token.name,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
       'Superklej',
       'zdjęty przez MG',
     );

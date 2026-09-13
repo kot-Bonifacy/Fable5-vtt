@@ -46,6 +46,7 @@ import {
   readNetRuntime,
   rollFormula,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -355,7 +356,14 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
       },
     });
 
-    await logNetLine(deps, campaignId, user, character.name, 'Podłączenie do Sieci', point.name);
+    await logNetLine(
+      deps,
+      campaignId,
+      user,
+      tokenTableName(token, character.name),
+      'Podłączenie do Sieci',
+      point.name,
+    );
     await emitRuns(deps, campaignId);
     const mine = await myRun(deps, campaignId, token.id, user);
     if (!mine) throw new RealtimeError('NET_NOT_JACKED');
@@ -396,7 +404,7 @@ export const netRunLeaveEvent = defineEvent<NetRunIdPayload, void>({
       deps,
       campaignId,
       user,
-      row.token.character?.name ?? row.token.name,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
       'Odłączenie od Sieci',
       'bezpieczne — obrona Architektury wraca do stanu wyjściowego',
     );
@@ -464,7 +472,7 @@ export const netRunCopyEvent = defineEvent<NetRunCopyPayload, NetRunPayload>({
       deps,
       campaignId,
       user,
-      row.token.character?.name ?? row.token.name,
+      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
       'Kopia Pliku',
       floor.label || undefined,
     );
@@ -545,7 +553,14 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       if (pending) {
         await emitRuns(deps, campaignId);
         const line = `Wirus — pisanie ${pending.actionsSpent}/${pending.actionsNeeded} Akcji Sieciowych`;
-        const message = await logNetLine(deps, campaignId, user, character.name, 'Wirus', line);
+        const message = await logNetLine(
+          deps,
+          campaignId,
+          user,
+          tokenTableName(token, character.name),
+          'Wirus',
+          line,
+        );
         return { messageId: message.id, total: 0, success: false, summary: line };
       }
     }
@@ -566,6 +581,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
     const roll = performInterfaceRoll(
       deps,
       character,
+      tokenTableName(token, character.name),
       rank,
       ability.name,
       dv,
@@ -582,7 +598,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       state,
       total: roll.total,
       success,
-      author: character.name,
+      author: tokenTableName(token, character.name),
       dv,
       ...(rival ? { rival } : {}),
     });
@@ -611,7 +627,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       deps,
       campaignId,
       user,
-      character.name,
+      tokenTableName(token, character.name),
       ability.name,
       success ? 'udane' : 'nieudane',
     );
@@ -656,7 +672,15 @@ export const netScanEvent = defineEvent<
       { silent: true },
     );
 
-    const roll = performInterfaceRoll(deps, character, rank, 'Skaner', null, payload?.gesture);
+    const roll = performInterfaceRoll(
+      deps,
+      character,
+      tokenTableName(token, character.name),
+      rank,
+      'Skaner',
+      null,
+      payload?.gesture,
+    );
     const view = toSceneView(scene);
     const centre = tokenCentre({ x: token.x, y: token.y, size: token.size }, view);
     const hidden = await deps.ctx.prisma.netAccessPoint.findMany({
@@ -695,7 +719,7 @@ export const netScanEvent = defineEvent<
       deps,
       campaignId,
       user,
-      character.name,
+      tokenTableName(token, character.name),
       'Skaner',
       found.length === 0 ? 'nic nie znalazł' : `znalazł ${found.length}`,
     );
@@ -906,6 +930,7 @@ async function advanceVirus(
 function performInterfaceRoll(
   deps: RealtimeDeps,
   character: Character,
+  actorName: string,
   rank: number,
   title: string,
   dv: number | null,
@@ -940,7 +965,7 @@ function performInterfaceRoll(
   const gesture = sanitizeGesture(rawGesture);
   const result = rollFormula(formula, createMixedRng(gesture?.entropy), { checkRule: true });
   result.title = dv === null ? `${title} (Interfejs)` : `${title} (Interfejs) · PT ${dv}`;
-  result.actor = character.name;
+  result.actor = actorName;
   result.breakdown = breakdown;
   if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
   if (gesture?.toss) result.toss = gesture.toss;

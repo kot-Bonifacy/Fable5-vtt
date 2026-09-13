@@ -29,6 +29,7 @@ import {
   isWeaponEntry,
   resolveWeapon,
   statistQuick,
+  TOKEN_UNLABELLED_TABLE_NAME,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import {
@@ -516,8 +517,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
                 : `Gracze zobaczą „${publicName.trim()}” zamiast „${name.trim() || 'Token'}” — na mapie i w Kolejce Inicjatywy. Prawdziwa nazwa nie opuszcza serwera.`}
             </p>
             <p className="auth-hint">
-              Karty na czacie nadal piszą prawdziwą nazwę — figura, która strzeliła, przedstawia się
-              sama.
+              {`Karty na czacie piszą „${publicName.trim() || TOKEN_UNLABELLED_TABLE_NAME}” u wszystkich, także u MG. Karty wystawione wcześniej zostają, jak były.`}
             </p>
           </>
         )}

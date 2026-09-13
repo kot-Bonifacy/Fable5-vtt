@@ -36,6 +36,7 @@ import {
   metresForRules,
   parseCharacterData,
   tokenCondition,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
@@ -471,7 +472,9 @@ export const inventorySourcesEvent = defineEvent<InventorySourcesPayload, Invent
       sources.push({
         characterId: card.id,
         tokenId: placed.token.id,
-        name: placed.token.name,
+        // Okno przeszukania to droga figury do gracza, więc filtruje nazwę u siebie
+        // (umowa `mapa` o `publicName`) — do 13.09 pisało graczowi prawdziwą.
+        name: isGm ? placed.token.name : tokenTableName(placed.token, placed.token.name),
         ownerId: card.ownerId,
         ...(metres === null ? {} : { metres }),
         items: cpredInventoryView(data),
@@ -584,7 +587,7 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
     const entry: InventoryMoveEntry = {
       kind: 'take',
       fromCharacterId: from.id,
-      fromName: token.name,
+      fromName: tokenTableName(token, token.name),
       toCharacterId: to.id,
       toName: to.name,
       toOwnerId: to.ownerId,

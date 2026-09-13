@@ -29,6 +29,7 @@ import {
   parseCharacterData,
   planCpredRoll,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
@@ -310,8 +311,9 @@ export const grappleAttemptEvent = defineEvent<
     const result: RollResult = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
       checkRule: true,
     });
-    result.title = `${GRAPPLE_TITLES[intent]} → ${target.name}`;
-    result.actor = character.name;
+    const targetName = tokenTableName(target, target.name);
+    result.title = `${GRAPPLE_TITLES[intent]} → ${targetName}`;
+    result.actor = tokenTableName(attacker, character.name);
     result.breakdown = planned.plan.breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
@@ -332,7 +334,7 @@ export const grappleAttemptEvent = defineEvent<
       await applyGrappleVerdict(deps, campaignId, combat, system, intent, attackerRow, targetRow);
     }
 
-    result.opposed = buildOpposedMeta(system, verdict.won, target.name, targetSheet !== null);
+    result.opposed = buildOpposedMeta(system, verdict.won, targetName, targetSheet !== null);
     const stored = await deps.ctx.prisma.chatMessage.create({
       data: {
         campaignId,
@@ -498,7 +500,7 @@ export const grappleResistEvent = defineEvent<
         ...roll.opposed,
         won: verdict.won,
         answered: true,
-        detail: `${roll.opposed.detail} · Obrona ${character.name}: ${defence.total} → ${
+        detail: `${roll.opposed.detail} · Obrona ${tokenTableName(defenderToken, character.name)}: ${defence.total} → ${
           verdict.won ? 'mimo wszystko udane' : 'wywinął się'
         }`,
       },
@@ -550,7 +552,12 @@ export const grappleActionEvent = defineEvent<CombatGrappleActionPayload, Combat
     if (kind === 'release') {
       await endGrapple(deps, campaignId, defender);
       await logSpentAction(deps, campaignId, user, {
-        ...actionEntry(combatant, actionId, sheetActionName(actionId), defender.token.name),
+        ...actionEntry(
+          combatant,
+          actionId,
+          sheetActionName(actionId),
+          tokenTableName(defender.token, defender.token.name),
+        ),
       });
       return emitReloaded(deps, campaignId, scene, combat.id);
     }
@@ -680,10 +687,11 @@ async function logGrappleDamage(
           applied.unconscious ? ' — Nieprzytomny' : ''
         }`
       : 'Rzut — cel Powalony';
+  const targetName = tokenTableName(defender.token, defender.token.name);
   const entry: DamageLogEntry = {
     ...applied.log,
     targetTokenId: defender.tokenId,
-    targetName: defender.token.name,
+    targetName,
     characterId: applied.characterId,
     targetOwnerId: defender.token.character?.ownerId ?? defender.token.ownerId,
     injuryNote: note,
@@ -699,7 +707,7 @@ async function logGrappleDamage(
       campaignId,
       authorId: user.id,
       kind: 'damage',
-      text: `${defender.token.name} — ${note}`,
+      text: `${targetName} — ${note}`,
       payload: JSON.stringify(entry),
     },
     include: INCLUDE_CHAT_NAMES,

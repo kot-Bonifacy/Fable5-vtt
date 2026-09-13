@@ -20,6 +20,7 @@ import {
   parseCharacterData,
   parseRollNotation,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import {
@@ -120,7 +121,7 @@ export async function resolveAmmoChecks(
 
     if (outcome.resisted) {
       rows.push({
-        name: target.token.name,
+        name: tokenTableName(target.token, target.token.name),
         detail: `${detail} — oparł się`,
         success: true,
         ownerId: await controllerOf(deps, target.token),
@@ -138,7 +139,7 @@ export async function resolveAmmoChecks(
       authorId,
     });
     rows.push({
-      name: target.token.name,
+      name: tokenTableName(target.token, target.token.name),
       detail,
       success: false,
       ownerId: await controllerOf(deps, target.token),
@@ -210,6 +211,7 @@ async function applyAmmoFailure(
   },
 ): Promise<string> {
   const { token, ammo, check, timed, compendium, rng, authorId } = input;
+  const tableName = tokenTableName(token, token.name);
   const failure: SheetForcedFailure = {
     damage: rollFailureDamage(check.failure.damage, rng),
     ...(check.failure.injuries ? { injuryIds: check.failure.injuries } : {}),
@@ -264,7 +266,7 @@ async function applyAmmoFailure(
     log = {
       ...applied.log,
       targetTokenId: token.id,
-      targetName: token.name,
+      targetName: tableName,
       characterId,
       targetOwnerId: ownerId,
     };
@@ -291,7 +293,7 @@ async function applyAmmoFailure(
     log = {
       ...applied.log,
       targetTokenId: token.id,
-      targetName: token.name,
+      targetName: tableName,
       characterId: null,
       targetOwnerId: ownerId,
     };
@@ -348,7 +350,7 @@ async function applyAmmoFailure(
         }
       : {}),
   };
-  await logAmmoFailure(deps, campaignId, authorId, entry, `${token.name} — ${ammo.name}`);
+  await logAmmoFailure(deps, campaignId, authorId, entry, `${tableName} — ${ammo.name}`);
   return disabledNote ? `${summary} · ${disabledNote}` : summary;
 }
 

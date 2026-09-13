@@ -31,6 +31,7 @@ import {
   sanitizeZoneRect,
   segmentCrossesRect,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
 import { SHEET_SLOWED_STATUS_ID, writeSheetStatusData } from '../sheets.js';
@@ -540,7 +541,7 @@ async function trySpotZone(
     deps,
     campaignId,
     user,
-    token.name,
+    tokenTableName(token, token.name),
     'Percepcja — coś jest nie tak z tym miejscem',
     outcome.resisted
       ? `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv} — zauważa: ${row.name}`

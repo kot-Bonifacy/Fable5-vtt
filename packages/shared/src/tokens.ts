@@ -394,6 +394,28 @@ export function sanitizeTokenPublicName(name: unknown): string | null | undefine
   return trimmed;
 }
 
+/** What a chat card calls a figure the GM left without a label (`publicName === ''`). */
+export const TOKEN_UNLABELLED_TABLE_NAME = 'Nieznajomy';
+
+/**
+ * The name a chat card writes for a figure (13.09.2026).
+ *
+ * The map and the Initiative Queue swap the name per viewer (`toTokenView`,
+ * `filterCombatForPlayer`). A chat card cannot: the name is baked into a stored
+ * message that every history request returns as it is. So the card writes the
+ * alias for **everybody**, the GM included — the token editor still shows both
+ * names, and a secret written into the log is not a secret.
+ *
+ * `realName` is whatever the card would have said without an alias — the sheet's
+ * name for a player's character, the token's for a figure the GM runs — so each
+ * caller keeps its own rule and only the alias is decided here.
+ */
+export function tokenTableName(token: { publicName?: string | null }, realName: string): string {
+  const alias = token.publicName;
+  if (alias === null || alias === undefined) return realName;
+  return alias.length > 0 ? alias : TOKEN_UNLABELLED_TABLE_NAME;
+}
+
 // Only same-origin asset paths — no external URLs, no path traversal.
 const TOKEN_IMAGE_URL_RE = /^\/(uploads|public)\/[A-Za-z0-9_\-./]+$/;
 

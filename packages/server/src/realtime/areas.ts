@@ -21,6 +21,7 @@ import {
   scatteredCentre,
   snapToSquareCentre,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
@@ -157,7 +158,7 @@ export async function areaTargets(
     const obstacle = obstacleBetween(context, area.from, point, area.coverReachPx);
     const target: RollAreaTarget = {
       tokenId: token.id,
-      name: token.name,
+      name: tokenTableName(token, token.name),
       metres,
       ownerId: await controllerOf(deps, token),
       ...(obstacle ? { spared: obstacle.kind, sparedBy: obstacle.name } : {}),

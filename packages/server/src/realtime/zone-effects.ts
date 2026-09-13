@@ -14,6 +14,7 @@ import {
   parseCharacterData,
   parseRollNotation,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
 import {
@@ -126,8 +127,9 @@ export async function fireZone(
   const compendium = needsCompendium ? (await buildCompendiumSync(deps, campaignId)).entries : [];
 
   for (const token of input.targets) {
+    const tableName = tokenTableName(token, token.name);
     if (exempt.includes(token.id)) {
-      lines.push(`${token.name} — przepustka, system go przepuszcza.`);
+      lines.push(`${tableName} — przepustka, system go przepuszcza.`);
       continue;
     }
 
@@ -151,16 +153,16 @@ export async function fireZone(
       // roll is a way of *avoiding something you can see*, not a reflex.
       const aware = !effects.awareOnly || (await tokenIsAwareOf(deps, token, spotters));
       if (!aware) {
-        lines.push(`${token.name} — nie widzi zagrożenia, więc nie ma czego uniknąć.`);
+        lines.push(`${tableName} — nie widzi zagrożenia, więc nie ma czego uniknąć.`);
       } else {
         const base = await checkBaseOf(deps, deps.ctx.cpred, token, effects.check);
         const outcome = cpredAmmoCheckOutcome(rng(10), base.total, effects.check.dv);
         const detail = `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${effects.check.dv}`;
         if (outcome.resisted) {
-          lines.push(`${token.name} — ${detail} — oparł się.`);
+          lines.push(`${tableName} — ${detail} — oparł się.`);
           continue;
         }
-        lines.push(`${token.name} — ${detail} — nie oparł się.`);
+        lines.push(`${tableName} — ${detail} — nie oparł się.`);
       }
     }
 
@@ -177,7 +179,7 @@ export async function fireZone(
       round,
       cause: input.cause,
     });
-    if (summary.length > 0) lines.push(`${token.name}: ${summary}`);
+    if (summary.length > 0) lines.push(`${tableName}: ${summary}`);
     tokenIds.push(token.id);
   }
 
@@ -229,11 +231,11 @@ async function fireEmplacement(
     device: { id: `zone-${zone.id}`, name: zone.name, deviceKind: 'turret', tokenId: zone.tokenId },
     hands: { combatValue: profile.combatValue },
     targetTokenId: target.id,
-    summary: `${zone.name} → ${target.name}`,
+    summary: `${zone.name} → ${tokenTableName(target, target.name)}`,
   });
   return shot.blocked
     ? `${shot.blocked.text}.`
-    : `${zone.name} strzela do: ${target.name} (Wartość bojowa ${profile.combatValue}).`;
+    : `${zone.name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${profile.combatValue}).`;
 }
 
 /**
@@ -311,7 +313,7 @@ async function applyZoneEffect(
         log = {
           ...applied.log,
           targetTokenId: token.id,
-          targetName: token.name,
+          targetName: tokenTableName(token, token.name),
           characterId,
           targetOwnerId: ownerId,
         };
@@ -338,7 +340,7 @@ async function applyZoneEffect(
       log = {
         ...applied.log,
         targetTokenId: token.id,
-        targetName: token.name,
+        targetName: tokenTableName(token, token.name),
         characterId: null,
         targetOwnerId: ownerId,
       };
@@ -368,7 +370,7 @@ async function applyZoneEffect(
     log = {
       ...landed.log,
       targetTokenId: token.id,
-      targetName: token.name,
+      targetName: tokenTableName(token, token.name),
       characterId,
       targetOwnerId: ownerId,
     };

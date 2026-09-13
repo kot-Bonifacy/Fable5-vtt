@@ -17,6 +17,7 @@ import {
   parseCharacterData,
   planCpredRoll,
   rollFormula,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
@@ -244,17 +245,19 @@ export const facedownAttemptEvent = defineEvent<
     const result: RollResult = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
       checkRule: true,
     });
-    result.title = `Konfrontacja → ${target.name}`;
-    result.actor = character.name;
+    const challengerName = tokenTableName(challenger, character.name);
+    const defenderName = tokenTableName(target, target.name);
+    result.title = `Konfrontacja → ${defenderName}`;
+    result.actor = challengerName;
     result.breakdown = planned.plan.breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
 
     const system: FacedownCardSystem = {
       challengerTokenId: challenger.id,
-      challengerName: character.name,
+      challengerName,
       defenderTokenId: target.id,
-      defenderName: target.name,
+      defenderName,
       defenderTotal: stand.total,
       defenderRolled: false,
     };
@@ -490,6 +493,7 @@ export const facedownConcedeEvent = defineEvent<
     if (choice === 'stand') {
       await fearToken(deps, campaignId, loser, concede.winnerTokenId);
     }
+    const loserName = tokenTableName(loser, loser.name);
 
     const updated: RollResult = {
       ...card.roll,
@@ -498,10 +502,10 @@ export const facedownConcedeEvent = defineEvent<
         concede: { ...concede, chosen: choice },
         detail:
           choice === 'stand'
-            ? `${card.opposed.detail} · ${loser.name} nie ustąpił — −${Math.abs(
+            ? `${card.opposed.detail} · ${loserName} nie ustąpił — −${Math.abs(
                 CPRED_FACEDOWN_PENALTY,
               )} do Akcji przeciw ${concede.winnerName}`
-            : `${card.opposed.detail} · ${loser.name} wycofał się`,
+            : `${card.opposed.detail} · ${loserName} wycofał się`,
       },
     };
     await saveFacedownCard(deps, campaignId, card.id, updated);
@@ -663,7 +667,7 @@ export const reputationRecogniseEvent = defineEvent<
       { checkRule: false },
     );
     const known = cpredRecognises(result.total, reputation.level);
-    result.title = `Czy znam: ${target.name}?`;
+    result.title = `Czy znam: ${tokenTableName(target, target.name)}?`;
     result.actor = character.name;
     result.outcome = {
       success: known,

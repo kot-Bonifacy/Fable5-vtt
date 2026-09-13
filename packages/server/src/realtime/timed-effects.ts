@@ -4,7 +4,7 @@ import type {
   DamageLogEntry,
   EffectExpirePayload,
 } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, tokenTableName } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import {
   describeSheetTimer,
@@ -106,7 +106,7 @@ export async function sweepTimedEffects(
         statusData = writeSheetStatusTimer(statusData, statusId, null);
         expired.push({
           tokenId: token.id,
-          tokenName: token.name,
+          tokenName: tokenTableName(token, token.name),
           label: statusName(deps.ctx.statuses, statusId),
           source: timer.source,
           ...(restored.length > 0 ? { restored } : {}),
@@ -146,7 +146,7 @@ export async function sweepTimedEffects(
     for (const injury of healed.expired) {
       expired.push({
         tokenId: token.id,
-        tokenName: token.name,
+        tokenName: tokenTableName(token, token.name),
         label: injury.name,
         source: injury.timed?.source ?? '',
       });

@@ -8,6 +8,7 @@ import {
   movementSegments,
   polylineMetres,
   tokenCentre,
+  tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { sheetActionName, sheetMovementBlock, turnDistanceRefusal } from '../sheets.js';
@@ -302,7 +303,7 @@ async function refuseBlockedByStatus(
   if (!message) return false;
   const entry: CombatActionLogEntry = {
     combatantId: combatant.id,
-    actorName: token.name,
+    actorName: tokenTableName(token, token.name),
     actionId: 'move',
     actionName: sheetActionName('move'),
     refusal: { code: 'MOVE_BLOCKED', message },
