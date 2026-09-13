@@ -4655,6 +4655,20 @@ body.is-resizing {
   font-variant-numeric: tabular-nums;
 }
 
+/* Pole wyboru na pasku („Zasłania figury", etap 42c): szerokość suwaka i liczba
+   wyrównana do prawej rozsuwały ptaszek i napis na dwa końce 160 px, a napis
+   łamał się w dwie linie. Tu mają stać obok siebie. */
+.map-tool-slider.map-tool-check input {
+  width: auto;
+  filter: none;
+}
+
+.map-tool-slider.map-tool-check span {
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
 /* --- stage 17b: drawing tools --- */
 
 /* Colour swatches. A closed palette instead of a colour picker: six colours

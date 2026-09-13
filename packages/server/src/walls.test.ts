@@ -994,6 +994,18 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     await shut;
   });
 
+  it('keeps the list in a full sync once a fence hides figures (42c)', async () => {
+    // A concealing fence sends a field of view on any map — the figure mask —
+    // and the full sync used to take the planner's list from it: empty outside
+    // dynamic vision, so a reload left the player walking through walls.
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
+    await emitAck(gm, 'wall:update', { wallId: gateId, patch: { hidesFigures: true } });
+    const { vision, blockers } = await roundTrip(player);
+    expect(vision).not.toBeNull();
+    expect(blockers).toHaveLength(9);
+    await emitAck(gm, 'wall:update', { wallId: gateId, patch: { hidesFigures: false } });
+  });
+
   it('sizes a lamp to the whole lot, not to the fence around it', async () => {
     // A fenced square 8 m across, lamp in the middle. Counted as walls, the fence
     // would make it a 5,7 m room; left out, the lamp reaches for the open map.

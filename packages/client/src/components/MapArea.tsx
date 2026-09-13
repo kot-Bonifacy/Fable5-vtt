@@ -37,6 +37,7 @@ import {
   type RulerLine,
 } from '../map/MapRenderer.js';
 import { partyStart } from '../map/camera.js';
+import { confinesWalkToSight } from '../map/walk-sight.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -1087,7 +1088,7 @@ export function MapArea() {
       stepEdges.length > 0
         ? (from: ScenePoint, to: ScenePoint) => isSegmentClear(from, to, stepEdges)
         : undefined;
-    if (!wallState.hasVision) {
+    if (!confinesWalkToSight(current.visibility, wallState.hasVision)) {
       renderer.setWalkPassable(() => true, canStep);
       return;
     }

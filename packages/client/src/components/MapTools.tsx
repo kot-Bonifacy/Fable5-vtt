@@ -701,7 +701,7 @@ export function MapTools() {
 
           {(wallKind === 'barrier' || wallKind === 'gate') && (
             <>
-              <label className="map-tool-slider">
+              <label className="map-tool-slider map-tool-check">
                 <input
                   type="checkbox"
                   checked={wallHidesFigures}

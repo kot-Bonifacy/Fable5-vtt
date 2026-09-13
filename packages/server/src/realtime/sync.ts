@@ -28,7 +28,7 @@ import { fetchSceneSmoke } from './smoke-io.js';
 import { fetchZonesFor } from './zones-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { fetchAccessPointsFor, fetchRunsFor } from './netrun-io.js';
-import { computeViewerVision, type ViewerVision } from './vision.js';
+import { computeViewerVision, usesDynamicVision, type ViewerVision } from './vision.js';
 import { walkBlockersFor } from './blockers.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
@@ -196,12 +196,14 @@ export async function buildStateSync(
   ]);
   // What the player's route planner walks round (stage 42a). A dynamic scene has
   // it measured from the very sight `vision` came from; anywhere else it is one
-  // list for the whole table.
-  const blockers = vision
-    ? vision.blockers
-    : viewedScene
-      ? await walkBlockersFor(deps.ctx.prisma, viewedScene, user)
-      : [];
+  // list for the whole table. The mode decides, not whether `vision` came: since
+  // 42c a fogged or open map with a concealing fence carries one too — the figure
+  // mask, with no blockers in it — and a reload left the planner with nothing.
+  const blockers = !viewedScene
+    ? []
+    : usesDynamicVision(viewedScene)
+      ? (vision?.blockers ?? [])
+      : await walkBlockersFor(deps.ctx.prisma, viewedScene, user);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
     seq: deps.seqs.current(campaignRoom(campaign.id)),
