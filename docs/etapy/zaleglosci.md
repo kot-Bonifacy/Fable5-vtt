@@ -168,8 +168,7 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   i rozsyłana wszystkim tak samo — filtr per-odbiorca wymagałby albo przebudowy kart na dane
   plus szablon, albo drugiej kopii wiadomości. Praktycznie boli mniej, niż wygląda: kartę
   pisze figura, która **właśnie coś zrobiła**, więc stół i tak już wie, kto to. Okno edycji
-  tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę"). Do zrobienia
-  razem z **etapem 35**, do którego alias pierwotnie należał.
+  tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę").
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
@@ -205,9 +204,7 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   się jedną stałą `CHARS_PER_SECOND` w `packages/client/src/typewriter.ts` (obok
   `MAX_DURATION_MS` = 12 s, twardy limit na linię). (2) **Granica słowa** — tekst ma przyrastać
   całymi wyrazami, nie literami. (3) **Dwa boty pod rząd** — druga wypowiedź czeka, aż pierwsza
-  się dopisze. (4) **Przełącznik „⌨" w górnym pasku** — wyłączony pokazuje wypowiedzi od razu,
-  także tę, która właśnie się pisze; ustawienie przeżywa przeładowanie strony. (5) **Historia
-  i resync** — linie wczytane z historii nigdy się nie animują.
+  się dopisze. (4) **Historia i resync** — linie wczytane z historii nigdy się nie animują.
 
 - **Etap 20b — CAŁY etap nieodklikany w przeglądarce i niezmierzony na żywym modelu.** Kod jest
   pokryty 20 testami serwera na żywych gniazdach i 29 w `shared`, ale atrapa gatewaya odpowiada

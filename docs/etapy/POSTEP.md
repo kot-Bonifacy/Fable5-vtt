@@ -263,9 +263,9 @@ w `zaleglosci.md`, nowa umowa w sekcji `postac`.
 zatrudnienia), 197 u klienta; `tsc --noEmit` w trzech pakietach, ESLint i Prettier — zielone.
 W Chrome na kampanii „Oględziny 12.09": HR przysłał „Oględziny Deck" z deckiem 5/7 (Miecz, Zabójca,
 Robak, Pancerz z liczbami z kompendium), tooltip obejrzany przy cyborgizacji i przy sprzęcie.
-**Znalezione, nieruszane:** wpis o maszynopisie w `zaleglosci.md` każe sprawdzać przełącznik „⌨",
-usunięty w `3d78ee5`, a wpis o nazwie figury w czacie czeka na etap 35, zamknięty 05.09. Etap 28
-pozostaje nierozpoczęty.
+**Poprawione na prośbę MG:** z wpisu o maszynopisie w `zaleglosci.md` zniknął punkt o przełączniku
+„⌨" (usuniętym w `3d78ee5`), a z wpisu o nazwie figury w czacie — odesłanie do zamkniętego etapu 35.
+Oba problemy zostają na liście. Etap 28 pozostaje nierozpoczęty.
 
 ### Sesja 13.09 — odświeżenie okna skrótów klawiszowych
 
