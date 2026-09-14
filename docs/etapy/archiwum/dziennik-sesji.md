@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 13.09 — bariery zasłaniające figury (etap 42c)
+
+**Zlecenie MG:** etap 42c. Zadano pytania o wygląd przygaszenia i ręczne „Odsłoń”; bez osobnej
+odpowiedzi przyjęto i zakomunikowano: wygląd jak pamięć mapy we wszystkich trybach, a „Odsłoń”
+nie omija zasłony figur. Kara domyślnie −4, zakres −99…0; ustawienia paska do przeładowania.
+
+**Zrobione:** `Wall.hidesFigures` / `concealPenalty`, migracja i eksport/import; drugi widok
+`figurePolygons` dla list figur, przeciągania, bota, oględzin i przygaszenia mapy; marsz MG
+czyta te same bariery. Kara najgorszej przeciętej bariery w rozbiciu, niezdejmowana przez optykę;
+kontrolki na pasku i karcie segmentu. Efekty figur filtrują zasłonę, wybuch/chmura/strefa mapę.
+
+**Naprawione przy okazji:** atak na cel niewidoczny w Dynamicznej zwraca `TOKEN_NOT_FOUND`;
+usunięcie źródła wzroku przelicza widok również w pozostałych trybach. Poza Dynamiczną pola
+zwykłych ścian nie trafiają do `vision:sync`; poświata noszonej lampy nie zdradza figury.
+
+**Weryfikacja:** 2090 testów shared, 1155 serwera (33 nowe), 197 klienta; typy, ESLint i format.
+Migracja zastosowana na dev.db po kopii w katalogu tymczasowym. Aplikacja uruchomiona i połączona.
+W Chrome obejrzano kontrolki paska oraz renderer na izolowanej scenie (otwarta/Dynamiczna,
+zamknięcie i otwarcie bramy); pełna edycja karty segmentu na kampanii pozostaje do ręki MG.
+Poligon i walka nietknięte. Istniejące wcześniej zmiany `app.ts` i `.claude/` poza commitem.
+
 Pełne notatki z zakończonych etapów, przeniesione tu 2026-07-30, żeby `POSTEP.md`
 (czytany na starcie każdej sesji) został lekki. **Tego pliku nie czyta się rutynowo** —
 sięgaj po niego tylko wtedy, gdy potrzebujesz szczegółu konkretnego etapu: uzasadnienia

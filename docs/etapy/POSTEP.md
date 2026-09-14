@@ -279,6 +279,28 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 14.09 — biblioteka portretów MG (w toku)
+
+**Zlecenie MG:** osobne zarządzanie pulą poza kartą, zbiorcze dodawanie bez kadrowania,
+limity rozmiaru/jakości i trwały zapis na serwerze. Przygotowany interfejs: przycisk
+„Portrety — biblioteka MG” w panelu postaci, wielokrotny wybór plików, kolejka
+z podsumowaniem i błędami osobno dla każdego pliku. Karta zachowuje wybór i kadrowanie.
+
+**Do ustalenia z MG przed dokończeniem:** konwersja czy odrzucanie dużych plików
+(propozycja: wejście 10 MB / 20 mln pikseli, minimum 256 × 256, zapis WebP do 2048 px),
+lokalizacja okna, pula kampanii czy wspólna dla serwera, zachowanie kasowania używanych
+portretów. Pytania zadane, odpowiedzi jeszcze nie otrzymano. Serwer nadal egzekwuje
+obecne 8 MB / 2048 px i zapisuje pliki trwale w puli kampanii.
+
+**Znalezione problemy do rozwiązania:** kasowanie wpisu puli gubi kadr po odświeżeniu;
+backfill przy restarcie może przywrócić usunięty wpis używany przez kartę. Dokończyć
+obsługę kasowania zgodnie z odpowiedzią MG oraz zabezpieczyć kolejkę na zmianę kampanii.
+
+**Weryfikacja przygotowanej części:** 209 testów klienta, TypeScript, ESLint i Prettier
+przechodzą; serwer /health działa, klient odpowiada HTTP 200. Nowego UI nie oglądano
+w przeglądarce. Istniejące zmiany dokumentacji i .claude/ należą do wcześniejszej pracy.
+
+
 ### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c
 
 **Zlecenie MG:** przegląd zaległości i propozycja paczki; MG wybrał A (planer gracza bez zwykłych
@@ -302,24 +324,3 @@ W Chrome na „Oględzinach 12.09", MG i `Tester` naraz: pasek i karta segmentu 
 i kary z karty, lista przeszkód gracza pod mgłą, trasa przed i po poprawce (próba A/B), zasłona przy
 zamkniętej i otwartej bramie. Scena zostaje pod resztę oględzin (`poligon.md`); aktywna kampania
 wróciła na Poligon. Commity `c83c7c3`, `354a1a2` i dokumentacja — niewypchnięte.
-
-### Sesja 13.09 — bariery zasłaniające figury (etap 42c)
-
-**Zlecenie MG:** etap 42c. Zadano pytania o wygląd przygaszenia i ręczne „Odsłoń”; bez osobnej
-odpowiedzi przyjęto i zakomunikowano: wygląd jak pamięć mapy we wszystkich trybach, a „Odsłoń”
-nie omija zasłony figur. Kara domyślnie −4, zakres −99…0; ustawienia paska do przeładowania.
-
-**Zrobione:** `Wall.hidesFigures` / `concealPenalty`, migracja i eksport/import; drugi widok
-`figurePolygons` dla list figur, przeciągania, bota, oględzin i przygaszenia mapy; marsz MG
-czyta te same bariery. Kara najgorszej przeciętej bariery w rozbiciu, niezdejmowana przez optykę;
-kontrolki na pasku i karcie segmentu. Efekty figur filtrują zasłonę, wybuch/chmura/strefa mapę.
-
-**Naprawione przy okazji:** atak na cel niewidoczny w Dynamicznej zwraca `TOKEN_NOT_FOUND`;
-usunięcie źródła wzroku przelicza widok również w pozostałych trybach. Poza Dynamiczną pola
-zwykłych ścian nie trafiają do `vision:sync`; poświata noszonej lampy nie zdradza figury.
-
-**Weryfikacja:** 2090 testów shared, 1155 serwera (33 nowe), 197 klienta; typy, ESLint i format.
-Migracja zastosowana na dev.db po kopii w katalogu tymczasowym. Aplikacja uruchomiona i połączona.
-W Chrome obejrzano kontrolki paska oraz renderer na izolowanej scenie (otwarta/Dynamiczna,
-zamknięcie i otwarcie bramy); pełna edycja karty segmentu na kampanii pozostaje do ręki MG.
-Poligon i walka nietknięte. Istniejące wcześniej zmiany `app.ts` i `.claude/` poza commitem.

@@ -33,11 +33,14 @@ export function PortraitPicker({
   selectedUrl,
   onPick,
   disabled = false,
+  manage = false,
 }: {
   /** Adres portretu wybranego w tej chwili — podświetla kafelek w puli. */
-  selectedUrl: string | null | undefined;
-  onPick: (url: string) => void | boolean | Promise<void | boolean>;
+  selectedUrl?: string | null;
+  onPick?: (url: string) => void | boolean | Promise<void | boolean>;
   disabled?: boolean;
+  /** Osobne wejście MG do biblioteki, bez wyboru portretu ani kadrowania. */
+  manage?: boolean;
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const assets = usePortraitStore((s) => s.assets);
@@ -47,11 +50,14 @@ export function PortraitPicker({
   const applyDelete = usePortraitStore((s) => s.applyDelete);
   const openCrop = usePortraitStore((s) => s.openCrop);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [failures, setFailures] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -72,16 +78,17 @@ export function PortraitPicker({
     // Zajętość obejmuje także szkice i ukryte figury, których klient nie zna.
     const timer = window.setInterval(() => void load(true), 3000);
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !picking) setOpen(false);
+      if (event.key === 'Escape' && !picking && !uploading) setOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, load, picking]);
+  }, [open, load, picking, uploading]);
 
   async function pick(asset: PortraitAssetView) {
+    if (!onPick || manage) return;
     setPicking(true);
     setError(null);
     try {
@@ -100,27 +107,33 @@ export function PortraitPicker({
   }
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (!file) return;
-    const rejection = fileRejectionText(file, 'portrait');
-    if (rejection) {
-      setError(rejection);
-      return;
-    }
+    if (!files.length || uploading) return;
     setUploading(true);
     setError(null);
+    setFailures([]);
+    let added = 0;
+    const rejected: string[] = [];
     try {
-      const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
-      applyUpsert(asset);
-      // Kadrowanie otwiera się samo po wgraniu (zlecenie MG z 12.09): moment,
-      // w którym MG ogląda nowy portret, jest jedynym, w którym na pewno wie,
-      // co na nim jest — a bez kadru mapa weźmie ślepy środek.
-      setOpen(false);
-      openCrop(asset.id);
-    } catch (caught) {
-      setError(uploadErrorText(caught, 'portrait'));
+      for (const [index, file] of files.entries()) {
+        setProgress(`Wgrywanie ${index + 1} z ${files.length}: ${file.name}`);
+        const rejection = fileRejectionText(file, 'portrait');
+        if (rejection) {
+          rejected.push(`${file.name}: ${rejection}`);
+          continue;
+        }
+        try {
+          const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
+          applyUpsert(asset);
+          added += 1;
+        } catch (caught) {
+          rejected.push(`${file.name}: ${uploadErrorText(caught, 'portrait')}`);
+        }
+      }
     } finally {
+      setProgress(`Dodano: ${added} z ${files.length}. Nie dodano: ${rejected.length}.`);
+      setFailures(rejected);
       setUploading(false);
     }
   }
@@ -143,14 +156,14 @@ export function PortraitPicker({
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
-        Wybierz portret
+        {manage ? 'Portrety — biblioteka MG' : 'Wybierz portret'}
       </button>
       {open
         ? createPortal(
             <div
               className="dialog-backdrop"
               onClick={() => {
-                if (!picking) setOpen(false);
+                if (!picking && !uploading) setOpen(false);
               }}
             >
               <div
@@ -159,7 +172,7 @@ export function PortraitPicker({
                 tabIndex={-1}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Wybierz portret"
+                aria-label={manage ? 'Biblioteka portretów MG' : 'Wybierz portret'}
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => {
                   if (event.key !== 'Tab') return;
@@ -183,25 +196,43 @@ export function PortraitPicker({
                   }
                 }}
               >
-                <h3 className="panel-section-title">Wybierz portret</h3>
+                <h3 className="panel-section-title">
+                  {manage ? 'Biblioteka portretów MG' : 'Wybierz portret'}
+                </h3>
                 <p className="portrait-pool-empty">
-                  Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.
+                  {manage
+                    ? 'Dodawaj wiele plików naraz. Portrety są zapisywane na serwerze. Kadr ustawisz przy wyborze w karcie postaci.'
+                    : 'Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.'}
                 </p>
+                {manage ? (
+                  <p className="portrait-pool-empty">
+                    {uploadRequirementText('portrait')}. Każdy plik jest sprawdzany osobno.
+                  </p>
+                ) : null}
                 <div className="portrait-pool">
                   <p className="portrait-pool-head">
                     Pula portretów
-                    {isGm ? (
-                      <label className="small-button portrait-pool-upload">
-                        {uploading ? 'Wgrywanie…' : '+ Dodaj'}
+                    {isGm && manage ? (
+                      <>
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={uploading || disabled}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          {uploading ? 'Wgrywanie…' : '+ Dodaj pliki'}
+                        </button>
                         <input
+                          ref={fileInputRef}
                           type="file"
+                          multiple
                           accept={UPLOAD_ACCEPT_ATTRIBUTE}
                           title={uploadRequirementText('portrait')}
                           onChange={(event) => void upload(event)}
                           disabled={uploading || disabled}
                           hidden
                         />
-                      </label>
+                      </>
                     ) : null}
                   </p>
 
@@ -210,7 +241,7 @@ export function PortraitPicker({
                       {!loaded
                         ? 'Wczytywanie…'
                         : isGm
-                          ? 'Pula jest pusta — dodaj pierwszy portret przyciskiem „+ Dodaj".'
+                          ? 'Pula jest pusta — dodaj portrety w bibliotece MG.'
                           : 'Pula jest pusta. Portrety dokłada MG.'}
                     </p>
                   ) : (
@@ -236,6 +267,7 @@ export function PortraitPicker({
                             aria-label={`Wybierz portret „${asset.name}”`}
                             disabled={
                               disabled ||
+                              manage ||
                               picking ||
                               (!isGm && !!asset.assigned && selectedUrl !== asset.url)
                             }
@@ -249,7 +281,7 @@ export function PortraitPicker({
                               <span className="portrait-pool-name">Zajęty</span>
                             ) : null}
                           </button>
-                          {isGm ? (
+                          {isGm && !manage ? (
                             <button
                               type="button"
                               className="small-button portrait-pool-crop"
@@ -263,7 +295,7 @@ export function PortraitPicker({
                               ⛶
                             </button>
                           ) : null}
-                          {isGm ? (
+                          {isGm && manage ? (
                             confirmingId === asset.id ? (
                               <span className="portrait-pool-confirm">
                                 <button
@@ -299,11 +331,19 @@ export function PortraitPicker({
                   )}
 
                   {error ? <p className="auth-error">{error}</p> : null}
+                  {progress ? <p role="status">{progress}</p> : null}
+                  {failures.length ? (
+                    <ul className="auth-error">
+                      {failures.map((failure, index) => (
+                        <li key={index}>{failure}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
                 <button
                   type="button"
                   className="small-button"
-                  disabled={picking}
+                  disabled={picking || uploading}
                   onClick={() => setOpen(false)}
                 >
                   Zamknij

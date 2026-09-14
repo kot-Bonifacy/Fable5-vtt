@@ -25,6 +25,7 @@ import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
+import { PortraitPicker } from './PortraitPicker.js';
 
 interface PlayerOption {
   id: string;
@@ -187,6 +188,7 @@ export function CharacterPanel() {
 
   return (
     <div className="character-panel">
+      {isGm ? <PortraitPicker manage /> : null}
       {isGm && order.length > 0 && (
         <div className="character-panel-actions">
           <button
