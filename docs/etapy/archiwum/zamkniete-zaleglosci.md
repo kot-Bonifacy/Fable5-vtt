@@ -9,6 +9,39 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-13 (piąta sesja — oględziny barier 42a–42c, przerwany marsz)
+
+**13.09 (piąta sesja, spoza listy): przerwany marsz cofał figurę za róg.** Pozycja otwarta
+i zamknięta tej samej sesji. Objaw na oględzinach 42c w Dynamicznej (scena „Test Brak sceny"):
+figura `Tester` szła za koniec bariery, na czacie stawało „Ktoś pojawił się w polu widzenia — marsz
+przerwany.", a figura stała na (1600, 1700) i nikogo nie widziała; drugi marsz przerwał się w tym
+samym miejscu. **Diagnoza:** gracz dostaje wyłącznie widoczne żetony, więc nowy klucz
+w `useTokenStore` przerywa marsz (`MapArea`, 16e). Serwer liczy widok z pośrednich klatek
+`token:move`, a środek figury w połowie wygładzonego odcinka mijał koniec bariery o kilka pikseli —
+„Za bramą" przychodziło, marsz stawał, a `marchLanding` bez budżetu tury wysyłał `snapTokenPosition`
+bieżącej pozycji: `Math.round` cofał na pole sprzed kroku. Serwer zabierał żeton, a następny marsz
+startował z tego samego pola. **To nie szczelina w barierze** — `rayHitDistance` liczy końce odcinków
+włącznie. **Naprawa:** `interruptWalk(note, 'ahead')` dla obu przerwań „w polu widzenia";
+`marchStopPoint` (`map/march-landing.ts`) bierze punkt pół kratki dalej wzdłuż odcinka trasy,
+a `marchLanding` przyjmuje go tylko wtedy, gdy krok od ostatniego całego punktu trasy przechodzi
+`walkCanStep`. **Pierwsza wersja naprawy była błędna:** przesuwała osie osobno w stronę następnego
+narożnika i przy odcinku mijającym koniec bariery lądowała po drugiej stronie tego końca
+((1700, 1600)), czego serwer odmawiał w `refuseWalkThroughSolid`. Złapane podsłuchem
+`WebSocket.prototype.send` (trasa [(1600, 1700), (1700, 1600)]). Testy: 9 w `march-landing.test.ts`,
+w tym przypadek z podsłuchu. **Obejrzane w Chrome:** ten sam marsz ląduje na (1700, 1700), serwer go
+przyjmuje, „Za bramą" zostaje widoczne, a dokończenie marszu do (1800, 1200) przechodzi bez
+przerwania.
+
+**13.09 (etap 42c): zasłona figur — obejście końca bariery i Dynamiczna.** Wpis brzmiał: „Zostają:
+(1) obejście końca bariery figurą gracza (marsz na drugą stronę i pojawienie się figur); (2) to samo
+przy widoczności Dynamicznej; (3) odznaczenie „Zasłania figury" z karty segmentu." **Obejrzane 13.09
+(piąta sesja)** na „Test Brak sceny", MG i `Tester` naraz: (1) pod ręczną mgłą figura gracza obeszła
+dolny koniec bariery — „Za bramą" pojawiło się, gdy linia wzroku minęła koniec, i zniknęło po
+powrocie; (2) w Dynamicznej trasa kursorem omija siatkę dołem, a marsz za koniec bariery pokazuje
+„Za bramą" (po naprawie przerwanego marszu wyżej); (3) odznaczenie „Zasłania figury" na karcie bramy
+pokazuje graczowi „Za bramą" przy zamkniętej bramie (`hidesFigures = 0` w bazie, kara −4
+zapamiętana), a ponowne zaznaczenie chowa je z powrotem.
+
 ## Zamknięte 2026-09-13 (czwarta sesja — planer gracza i ściany poza Dynamiczną, dwa regresy 42c)
 
 **13.09 (etap 42a): planer gracza nie znał zwykłych ścian poza widocznością Dynamiczną.** Wpis

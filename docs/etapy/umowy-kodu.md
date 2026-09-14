@@ -15,6 +15,20 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Lądowanie przerwanego marszu (13.09)** — `MapRenderer.marchLanding`. Przerwanie „ktoś w polu widzenia” (oba wywołania w `MapArea`) woła `interruptWalk(note, 'ahead')` i ląduje na polu, w które figura wchodziła (`marchStopPoint` w `map/march-landing.ts`), o ile krok do niego przechodzi `walkCanStep`; ręka, obrażenia i zmiana tury zostają przy `'nearest'`.
+
+**Przerwany marsz nie cofa figury za róg (13.09, piąta sesja, oględziny 42c).** Do tej pory każde
+przerwanie lądowało na `snapTokenPosition` bieżącej pozycji (`Math.round`). Figura, która w połowie
+kroku wychyliła się za koniec bariery albo róg ściany i kogoś zobaczyła, wracała na pole, z którego
+nikogo nie widać: serwer zabierał przybysza, a każdy następny marsz z tego pola przerywał się w tym
+samym miejscu. Teraz przerwanie z powodu widzenia bierze punkt pół kratki dalej **wzdłuż odcinka
+trasy** i dopiero go zaokrąga. Nie oś po osi: trasy są wygładzone, a osobne przesunięcie osi przy
+odcinku mijającym koniec ściany dawało pole po drugiej stronie tego końca i odmowę serwera (złapane
+podsłuchem `token:move`). Krok od ostatniego całego punktu trasy do lądowania musi przejść
+`walkCanStep` — ta sama straż co w `clipToBudget` — inaczej zostaje zwykłe zaokrąglenie; budżet
+tury nadal może cofnąć lądowanie. Nowy powód przerwania, który dotyczy **widzenia**, podaje
+`'ahead'`; każdy inny zostaje przy domyślnym `'nearest'`.
+
 - **Planer trasy gracza (13.09)** — gdzie wolno postawić krok, rozstrzyga `confinesWalkToSight(visibility, hasVision)` (`map/walk-sight.ts`); przeszkody niesie `blocker:sync`: w Dynamicznej `visibleWalkBlockersFor`, poza nią `movementSegments` przycięte do odsłoniętej mgły przez `revealedStretches`. `hasVision` znaczy „przyszedł widok”, nie „scena jest Dynamiczna”.
 
 **Planer gracza zna ściany na każdej scenie (13.09, zaległość z 42a, decyzja MG).** Poza

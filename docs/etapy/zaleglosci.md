@@ -6,6 +6,16 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 13.09 (piąta sesja): zasłona figur 42c w komplecie i przerwany marsz cofający figurę
+za róg.** Oględziny 42c domknięte na „Test Brak sceny": obejście końca bariery pod mgłą
+i w Dynamicznej, odznaczenie „Zasłania figury" z karty. Po drodze wyszedł błąd spoza listy —
+przerwanie „ktoś w polu widzenia" zaokrąglało figurę wstecz za róg, więc gracz utykał na końcu
+bariery; naprawione (lądowanie na polu, w które figura wchodziła) i obejrzane. Z 42a i 42b
+odhaczone: klamka bramy u gracza (z daleka, na kłódkę, otwarcie i zamknięcie), trasa
+w Dynamicznej, zmiana rodzaju z karty segmentu i wygląd otwartej bramy na warstwie MG, brak pola OB
+na karcie ściany, drzwi i okna. Decyzja MG do `POMYSLY.md`: planer gracza pod mgłą ma chodzić tylko
+po odsłoniętym (kod na inną sesję). Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 13.09 (czwarta sesja): planer gracza bez zwykłych ścian poza Dynamiczną.** Ściany jadą do
 planera, pod mgłą przycięte do odsłoniętej podłogi (decyzja MG). Oględziny 42a–42c w tej samej sesji
 wykazały **dwa regresy z 42c** — gracz na mgle albo scenie otwartej tracił trasę kliknięciem, a F5
@@ -157,31 +167,37 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **13.09: zasłona figur (etap 42c) — zostało obejście końca bariery i Dynamiczna.** Obejrzane 13.09
-  (czwarta sesja) pod ręczną mgłą, MG i `Tester` naraz: „Zasłania figury" i kara −4 na pasku, zmiana
-  kary z karty segmentu (−4 → −6, serwer odesłał), „Otwórz"/„Zamknij" bramy z karty — figura „Za
-  bramą" znika z listy gracza przy zamkniętej bramie (w danych, nie w CSS) i wraca przy otwartej,
-  a pas za siatką jest przygaszony. **Zostają:** (1) **obejście końca bariery** figurą gracza (marsz
-  na drugą stronę i pojawienie się figur); (2) to samo przy widoczności **Dynamicznej**; (3) odznaczenie
-  „Zasłania figury" z karty segmentu. Scena gotowa — `poligon.md`. To dług oględzin, nie znany błąd.
+- **14.09: biblioteka portretów MG — nieobejrzane samo wgrywanie.** Sesja portretów obejrzała
+  w Chrome tylko wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą; ścieżki są
+  pokryte testami serwera, ale w przeglądarce nikt ich nie przeszedł. Do sprawdzenia: (1) wybór
+  **kilku plików naraz** i kolejka z podsumowaniem; (2) **błąd osobno dla pliku** — za mały
+  (poniżej 256 × 256 px), za duży (ponad 10 MB albo 20 mln pikseli), zły format — a reszta kolejki
+  przechodzi; (3) plik z obrotem w **EXIF** stoi prosto; (4) **kosz** wycofuje portret z wyboru, a
+  karta i figura, które go używają, zachowują obraz i kadr, także po restarcie serwera;
+  (5) **zmiana kampanii** w trakcie kolejki przerywa dodawanie. Dopisane 14.09 przy przeglądzie
+  zaległości — sesja portretów nie otworzyła tej pozycji.
 
 - **13.09: OB bariery (etap 42b) — zostały karta obrażeń i napis na mapie.** Obejrzane 13.09 (czwarta
-  sesja): pole „OB" na pasku przy „Bariera" i „Brama", liczba zostaje po przełączeniu rodzaju tam
+  sesja): pole „OB” na pasku przy „Bariera” i „Brama”, liczba zostaje po przełączeniu rodzaju tam
   i z powrotem, ściana narysowana zaraz po siatce ma OB 0 (sprawdzone w bazie); karta segmentu
-  zapisuje „OB bariery" przy wyjściu z pola (5 → 7, serwer odesłał 7) i zmienia zdanie pod nim.
-  **Zostają:** (1) **karta obrażeń** — „rzut N − bariera OB n − OB m" i nagłówek „Bariera zatrzymała
-  cios" przy trafieniu słabszym od siatki; (2) napis **„BARIERA"** na mapie zamiast „PANCERZ";
-  (3) brak pola OB na **karcie** ściany, drzwi i okna (na pasku sprawdzony). Cel na scenie z
-  `poligon.md` nie ma PW — do karty obrażeń trzeba mu dać profil bojowy.
+  zapisuje „OB bariery” przy wyjściu z pola (5 → 7, serwer odesłał 7) i zmienia zdanie pod nim.
+  **13.09 (piąta sesja):** karta segmentu ściany przestawiona kolejno na Drzwi, Okno, Barierę
+  i z powrotem na Ścianę — pole „OB bariery” jest wyłącznie przy Barierze i Bramie, a ściana wróciła
+  w bazie bez zmian. **Zostają:** (1) **karta obrażeń** — „rzut N − bariera OB n − OB m” i nagłówek
+  „Bariera zatrzymała cios” przy trafieniu słabszym od siatki; (2) napis **„BARIERA”** na mapie
+  zamiast „PANCERZ”. Przepis na ustawienie sceny — `poligon.md`.
 
-- **13.09: bariera i brama (etap 42a) — zostały Dynamiczna, klamka i wręcz.** Obejrzane 13.09 (czwarta
-  sesja): pięć rodzajów mieści się w rzędzie paska, oko „gracze mogą otwierać" stoi przy bramie; na
-  warstwie MG bariera fioletowa, brama z 🚧; karta segmentu pisze „Bariera", „Brama — zamknięta"
-  i „Brama — otwarta"; trasa gracza pod ręczną mgłą omija siatkę, zanim padnie klik. **Zostają:**
-  (1) trasa gracza przy widoczności **Dynamicznej** i przy zamkniętym oknie z bliska; (2) **klamka
-  bramy** u gracza z odległości ramienia i zdania „podejdź do bramy" / „Brama zamknięta na kłódkę"
-  (klamki są tylko w Dynamicznej); (3) **odmowa wręcz** pod celownikiem przez siatkę — dymek budzi
-  tylko ręka MG; (4) zmiana rodzaju z karty segmentu i wygląd otwartej bramy na warstwie MG.
+- **13.09: bariera i brama (etap 42a) — zostały zamknięte okno z bliska i wręcz.** Obejrzane 13.09
+  (czwarta sesja): pięć rodzajów mieści się w rzędzie paska, oko „gracze mogą otwierać” stoi przy
+  bramie; na warstwie MG bariera fioletowa, brama z 🚧; karta segmentu pisze „Bariera”, „Brama —
+  zamknięta” i „Brama — otwarta”; trasa gracza pod ręczną mgłą omija siatkę, zanim padnie klik.
+  **13.09 (piąta sesja):** trasa gracza w **Dynamicznej** omija siatkę dołem; **klamka bramy**
+  u `Tester` — z trzech kratek „Za daleko — podejdź do bramy (na jedną kratkę).”, z bliska na ryglu
+  „Brama zamknięta na kłódkę — nie ustąpi.”, bez rygla otwiera (`open = 1`, „Za bramą” widoczne)
+  i zamyka; **zmiana rodzaju z karty** na wszystkie pięć i **wygląd otwartej bramy** na warstwie MG
+  (znak przygaszony, wyraźnie inny niż przy zamkniętej). **Zostają:** (1) trasa gracza przy
+  **zamkniętym oknie z bliska** w Dynamicznej; (2) **odmowa wręcz** pod celownikiem przez siatkę —
+  dymek budzi tylko ręka MG.
 
 - **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
   „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)

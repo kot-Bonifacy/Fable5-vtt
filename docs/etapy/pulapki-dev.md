@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **„Ktoś pojawił się w polu widzenia”, a nikogo nie widać** — przerwany marsz zaokrąglał figurę wstecz za róg; wyglądało to jak szczelina w barierze, której nie ma. Nowy powód przerwania dotyczący widzenia podaje `interruptWalk(note, 'ahead')`.
 - **`hasVision` nie znaczy „scena Dynamiczna”** — od 42c `vision:sync` przychodzi w każdym trybie (puste `polygons`, maska figur); kto z samego przyjścia widoku wnioskował Dynamiczną, zamykał graczowi trasę w pustym wielokącie, a pełna synchronizacja gubiła `blockers`. Pytaj o `scene.visibility` (`confinesWalkToSight`).
 - **Rozmycie złożone z pierścieni widać jako koncentryczne okręgi** — pięć wycięć o malejącej alfie miało dać miękki brzeg okienka w mgle, a dało prążki (MG odrzucił to na pierwszym zrzucie). Gradient wypala się na kanwie (`fogPeepTexture`), tak jak światło z 18b i pamięć mapy z 18c.
 - **Kompozyt mgły rysuje się tylko na `setFog`** — figura ruszona przeciąganiem albo marszem omija store, więc okienko zostawało w tyle; stąd `refreshFogPeepholes` wołane także z `onDragMove` i z kroku marszu, a nie tylko z `setTokens`.
@@ -33,6 +34,14 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 
 ---
+
+- **„Ktoś pojawił się w polu widzenia — marsz przerwany", a nikogo nie widać (13.09, oględziny
+  42c).** Do tej sesji przerwany marsz lądował na zaokrągleniu bieżącej pozycji: figura wychylona
+  w połowie kroku za koniec bariery albo róg wracała na pole, z którego przybysza nie widać, i każdy
+  następny marsz przerywał się w tym samym miejscu. Wyglądało to jak szczelina w barierze — szczeliny
+  nie ma (`rayHitDistance` liczy końce odcinków włącznie). Naprawione (`marchStopPoint`, umowa
+  w `mapa`); jeśli objaw wróci, sprawdź najpierw, czy nowy powód przerwania dostał `'ahead'`,
+  i złap wysłane lądowanie podsłuchem ramek (pułapka w `ogledziny`).
 
 - **Widok w każdym trybie, a dwa miejsca czytały jego przyjście jako „Dynamiczna” (13.09,
   oględziny 42a–42c).** 42c zaczęło wysyłać `vision:sync` poza Dynamiczną, bo niesie
@@ -916,6 +925,10 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Dwuklik z automatu w karcie w tle wysyłaj synchronicznie** — `setTimeout` między kliknięciami dławi się do ~1 s, drugie przychodzi po `DOUBLE_CLICK_MS` (350 ms) i obiekt sceny tylko się zaznacza zamiast otworzyć kartę; cztery `dispatchEvent` pod rząd w jednym zadaniu działają.
+- **Co klient wysłał serwerowi, pokaże podsłuch `WebSocket.prototype.send`** — łata na prototypie łapie też już otwarte gniazdo Socket.IO; ramka `token:move` z `final: true` niesie lądowanie i trasę, pośrednie — przebieg marszu. Tak złapano błędną pierwszą wersję naprawy przerwanego marszu (13.09).
+- **`zoom` na `[::1]` w serii odmawia** („Permission denied for this action on this domain”), choć `javascript_tool` i `screenshot` w tej samej serii przechodzą — zbliżenia z karty gracza rób pojedynczym wywołaniem.
+- **Marsz w karcie w tle idzie kilka razy wolniej** — `tickMarch` połyka przestoje klatek (`MARCH_MAX_FRAME_MS`), a schowana karta ma ~1 klatkę na sekundę. Pozycję sprawdzaj w bazie (`Token.x`/`y`), nie zrzutem po stałym czekaniu.
 - **Stałe zaproszenie `tester-dev` prowadzi na „Poligon bojowy", nie do aktywnej kampanii** — kampanię-śmieć wpuszcza nowe zaproszenie (`POST /api/campaigns/:id/invitations` z karty MG) i imię istniejącego konta; to samo imię = to samo konto, nowe nie powstaje.
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.

@@ -7,7 +7,11 @@ więc trasa do celu za odsłoniętym kawałkiem bariery obchodzi ten kawałek pr
 przez nieodsłoniętą resztę — rysuje się normalnie, a odmowę daje dopiero serwer (obejrzane na scenie
 z `poligon.md`). Lek: pod mgłą ograniczyć krok do odsłoniętych pól, tak jak Dynamiczna ogranicza go
 do pola widzenia („nie dalej, niż widzisz") — `isPointRevealed` na mgle, którą klient już ma — albo
-przyjąć, że MG odsłania bariery w całości. Do decyzji MG.
+przyjąć, że MG odsłania bariery w całości. **Decyzja MG z 13.09 (piąta sesja): tylko po odsłoniętym**
+— pod ręczną mgłą trasa i cel gracza wyłącznie na odsłoniętej podłodze, jak w Dynamicznej; MG
+nieobjęty. Kod odłożony na inną sesję. Przy wdrażaniu pamiętaj: `realtime/movement.ts` mgły nie
+sprawdza wcale (odmawia, bo zna całą barierę), więc klient będzie surowszy niż serwer — klik w czerń
+bez żadnej ściany też przestanie wyznaczać trasę, a MG musi odsłonić, zanim gracz tam wejdzie.
 
 **13.09.2026 (etap 42a) dołożył jeden wpis — bot nie wie z góry, że przez barierę nie sięgnie.**
 Tura bota (20b) opisuje modelowi każdą figurę z `noShot` („ściana albo zamknięte drzwi na linii

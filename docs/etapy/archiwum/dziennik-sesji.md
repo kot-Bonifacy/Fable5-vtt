@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+Pełne notatki z zakończonych etapów, przeniesione tu 2026-07-30, żeby `POSTEP.md`
+(czytany na starcie każdej sesji) został lekki. **Tego pliku nie czyta się rutynowo** —
+sięgaj po niego tylko wtedy, gdy potrzebujesz szczegółu konkretnego etapu: uzasadnienia
+decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
+
+Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
+
+### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c
+
+**Zlecenie MG:** przegląd zaległości i propozycja paczki; MG wybrał A (planer gracza bez zwykłych
+ścian poza Dynamiczną) i B (oględziny 42a–42c). Decyzja MG: ściany jadą do planera przycięte do
+odsłoniętej mgły, bariery z 42a tak samo. `app.ts` (różnił się samymi końcami linii) przywrócony
+z repo.
+
+**Zrobione:** `revealedStretches` i `fogShapeBounds` w `shared`; `standingBlockersFor` wysyła poza
+Dynamiczną `movementSegments` — na scenie otwartej w całości, pod mgłą przycięte. Pomiar: ~30 ms przy
+400 ścianach i 300 pociągnięciach, ~300 ms przy limicie 2000 ścian i 1000 pociągnięć (raz na zmianę).
+
+**Znalezione na oględzinach i naprawione:** dwa regresy z 42c — `pushWalkPassable` przy `hasVision`
+zamykał graczowi trasę w pustym wielokącie na mgle i scenie otwartej → `confinesWalkToSight`;
+`sync.ts` brał `blockers` z `vision` → decyduje tryb sceny. Pole „Zasłania figury" rozjechane na
+pasku (klasa suwaka) → `map-tool-check`. Pułapka w `mapa`; w `POMYSLY.md` wpis o trasie, która pod
+mgłą schodzi w nieodsłonięte.
+
+**Weryfikacja:** 2099 testów `shared` (9 nowych), 1156 serwera (1 nowy, 2 przepisane; test regresji
+pada bez poprawki), 200 klienta (3 nowe); `tsc --noEmit` w trzech pakietach, ESLint, Prettier.
+W Chrome na „Oględzinach 12.09", MG i `Tester` naraz: pasek i karta segmentu 42a–42c, zapis OB
+i kary z karty, lista przeszkód gracza pod mgłą, trasa przed i po poprawce (próba A/B), zasłona przy
+zamkniętej i otwartej bramie. Scena zostaje pod resztę oględzin (`poligon.md`); aktywna kampania
+wróciła na Poligon. Commity `c83c7c3`, `354a1a2` i dokumentacja — niewypchnięte.
+
 ### Sesja 13.09 — bariery zasłaniające figury (etap 42c)
 
 **Zlecenie MG:** etap 42c. Zadano pytania o wygląd przygaszenia i ręczne „Odsłoń”; bez osobnej
@@ -20,13 +51,6 @@ Migracja zastosowana na dev.db po kopii w katalogu tymczasowym. Aplikacja urucho
 W Chrome obejrzano kontrolki paska oraz renderer na izolowanej scenie (otwarta/Dynamiczna,
 zamknięcie i otwarcie bramy); pełna edycja karty segmentu na kampanii pozostaje do ręki MG.
 Poligon i walka nietknięte. Istniejące wcześniej zmiany `app.ts` i `.claude/` poza commitem.
-
-Pełne notatki z zakończonych etapów, przeniesione tu 2026-07-30, żeby `POSTEP.md`
-(czytany na starcie każdej sesji) został lekki. **Tego pliku nie czyta się rutynowo** —
-sięgaj po niego tylko wtedy, gdy potrzebujesz szczegółu konkretnego etapu: uzasadnienia
-decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
-
-Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 ### Sesja 13.09 — OB bariery dla strzałów i wybuchów (etap 42b)
 

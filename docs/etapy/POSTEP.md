@@ -135,6 +135,10 @@ gracz na mgle albo scenie otwartej tracił trasę kliknięciem po pierwszym `vis
 `vision:sync` przychodzi w każdym trybie — o Dynamicznej rozstrzyga `scene.visibility`, nigdy samo
 przyjście widoku (pułapka w `mapa`).
 
+**13.09 (piąta sesja): oględziny 42c domknięte, a przerwany marsz nie cofa już figury za róg** —
+przerwanie „ktoś w polu widzenia" ląduje na polu, w które figura wchodziła (`marchStopPoint`, umowa
+w `mapa`). Jeśli marsz przy końcu bariery przerywa się dwa razy w tym samym miejscu, to ten objaw.
+
 **Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
 etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
 bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
@@ -174,7 +178,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — pełna edycja karty bariery 42c; trzy barierowe zawężone do resztek 13.09 w czwartej sesji). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -304,26 +308,27 @@ oraz cały shared. Aplikacja działa, migracja zastosowana.
 Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
 
 
-### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c
+### Sesja 13.09 (piąta) — oględziny 42c domknięte, przerwany marsz cofał figurę za róg
 
-**Zlecenie MG:** przegląd zaległości i propozycja paczki; MG wybrał A (planer gracza bez zwykłych
-ścian poza Dynamiczną) i B (oględziny 42a–42c). Decyzja MG: ściany jadą do planera przycięte do
-odsłoniętej mgły, bariery z 42a tak samo. `app.ts` (różnił się samymi końcami linii) przywrócony
-z repo.
+_Notatka odtworzona 14.09 z niezacommitowanej dokumentacji tej sesji (`zaleglosci.md`, archiwum
+zaległości, umowy, pułapki, `POMYSLY.md`) — sesja portretów z 14.09 zacommitowała `POSTEP.md` bez
+niej. Liczby testów całych pakietów się nie zachowały._
 
-**Zrobione:** `revealedStretches` i `fogShapeBounds` w `shared`; `standingBlockersFor` wysyła poza
-Dynamiczną `movementSegments` — na scenie otwartej w całości, pod mgłą przycięte. Pomiar: ~30 ms przy
-400 ścianach i 300 pociągnięciach, ~300 ms przy limicie 2000 ścian i 1000 pociągnięć (raz na zmianę).
+**Zlecenie MG:** dokończenie oględzin 42a–42c na „Test Brak sceny", MG i `Tester` naraz.
 
-**Znalezione na oględzinach i naprawione:** dwa regresy z 42c — `pushWalkPassable` przy `hasVision`
-zamykał graczowi trasę w pustym wielokącie na mgle i scenie otwartej → `confinesWalkToSight`;
-`sync.ts` brał `blockers` z `vision` → decyduje tryb sceny. Pole „Zasłania figury" rozjechane na
-pasku (klasa suwaka) → `map-tool-check`. Pułapka w `mapa`; w `POMYSLY.md` wpis o trasie, która pod
-mgłą schodzi w nieodsłonięte.
+**Obejrzane:** 42c w komplecie — obejście końca bariery pod ręczną mgłą i w Dynamicznej,
+odznaczenie i ponowne zaznaczenie „Zasłania figury" z karty bramy. Z 42a: trasa w Dynamicznej,
+klamka bramy u gracza (z daleka, na kłódkę, otwarcie i zamknięcie), zmiana rodzaju z karty segmentu,
+wygląd otwartej bramy na warstwie MG. Z 42b: brak pola OB na karcie ściany, drzwi i okna.
 
-**Weryfikacja:** 2099 testów `shared` (9 nowych), 1156 serwera (1 nowy, 2 przepisane; test regresji
-pada bez poprawki), 200 klienta (3 nowe); `tsc --noEmit` w trzech pakietach, ESLint, Prettier.
-W Chrome na „Oględzinach 12.09", MG i `Tester` naraz: pasek i karta segmentu 42a–42c, zapis OB
-i kary z karty, lista przeszkód gracza pod mgłą, trasa przed i po poprawce (próba A/B), zasłona przy
-zamkniętej i otwartej bramie. Scena zostaje pod resztę oględzin (`poligon.md`); aktywna kampania
-wróciła na Poligon. Commity `c83c7c3`, `354a1a2` i dokumentacja — niewypchnięte.
+**Znalezione i naprawione (spoza listy):** przerwanie „ktoś w polu widzenia" zaokrąglało figurę
+wstecz za róg, więc gracz utykał na końcu bariery. `interruptWalk(note, 'ahead')` i `marchStopPoint`
+— lądowanie na polu, w które figura wchodziła, pod strażą `walkCanStep`. Pierwsza wersja naprawy
+lądowała po drugiej stronie końca bariery; złapana podsłuchem `token:move`. Umowa i pułapka
+w `mapa`, cztery pułapki w `ogledziny`.
+
+**Decyzja MG:** planer gracza pod ręczną mgłą chodzi tylko po odsłoniętym, MG nieobjęty — kod
+odłożony (`POMYSLY.md`).
+
+**Weryfikacja:** 9 testów w `march-landing.test.ts` (w tym przypadek z podsłuchu); poprawiony marsz
+obejrzany w Chrome. Commit `86cbdf1`; dokumentacja leżała niezacommitowana do 14.09.
