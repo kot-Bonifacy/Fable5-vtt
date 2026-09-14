@@ -260,9 +260,31 @@ function isRunOpen(
     const toCentre = { x: to.x + half, y: to.y + half };
     if (!laneClear(canStep, lanes, fromCentre, toCentre)) return false;
   }
+  return everyRunCell(grid, size, from, to, (col, row) => {
+    if (row < 0 || row >= grid.rows || col < 0 || col >= grid.cols) return false;
+    return isPassable(cellCentre(grid, col, row));
+  });
+}
+
+/**
+ * Visits every cell a `size × size` footprint overlaps on a straight run — the
+ * token sampled every half cell — and stops at the first one `visit` refuses.
+ *
+ * One sampling for two callers: the smoothing pass (`isRunOpen`) and the
+ * server's floor check (`firstClosedFloorStep`). A route the planner
+ * straightened and the verdict on it have to ask about the very same cells, or
+ * a drawn route comes back refused.
+ */
+function everyRunCell(
+  grid: Pick<WalkGrid, 'cell' | 'originX' | 'originY'>,
+  size: number,
+  from: ScenePoint,
+  to: ScenePoint,
+  visit: (col: number, row: number) => boolean,
+): boolean {
+  const extent = size * grid.cell;
   const distance = Math.hypot(to.x - from.x, to.y - from.y);
   const steps = Math.max(1, Math.ceil((distance / grid.cell) * 2));
-  const half = grid.cell / 2;
   for (let step = 0; step <= steps; step++) {
     const t = step / steps;
     const x = from.x + (to.x - from.x) * t;
@@ -274,21 +296,22 @@ function isRunOpen(
     const rowFrom = Math.floor((y - grid.originY) / grid.cell);
     const rowTo = Math.floor((y + extent - 1 - grid.originY) / grid.cell);
     for (let row = rowFrom; row <= rowTo; row++) {
-      if (row < 0 || row >= grid.rows) return false;
       for (let col = colFrom; col <= colTo; col++) {
-        if (col < 0 || col >= grid.cols) return false;
-        if (
-          !isPassable({
-            x: grid.originX + col * grid.cell + half,
-            y: grid.originY + row * grid.cell + half,
-          })
-        ) {
-          return false;
-        }
+        if (!visit(col, row)) return false;
       }
     }
   }
   return true;
+}
+
+/** Centre of one cell of the lattice, in scene pixels. */
+function cellCentre(
+  grid: Pick<WalkGrid, 'cell' | 'originX' | 'originY'>,
+  col: number,
+  row: number,
+): ScenePoint {
+  const half = grid.cell / 2;
+  return { x: grid.originX + col * grid.cell + half, y: grid.originY + row * grid.cell + half };
 }
 
 /** Centre of a `size × size` footprint anchored at a cell, in scene pixels. */
@@ -745,6 +768,40 @@ export function firstBlockedStep(
       const b = { x: to.x + lane.x, y: to.y + lane.y };
       if (!isSegmentClear(a, b, segments)) return { from, to };
     }
+  }
+  return null;
+}
+
+/**
+ * The first leg of a walked route that sets foot on a cell `isPassable` refuses,
+ * or null when every cell the figure crosses may be stood on.
+ *
+ * The server's half of „tylko po odsłoniętym" (GM decision of 13.09.2026): under
+ * painted fog a player walks on revealed floor alone, and a drag goes nowhere
+ * near the planner. Each leg is sampled exactly as the smoothing pass samples a
+ * straightened run (`everyRunCell`), so a route the client drew cannot come back
+ * refused — and the client asks this same question of a landing it snapped off
+ * its route. Positions are top-left, as stored; `size` is the footprint in cells.
+ *
+ * Unlike the planner it does not refuse cells past the edge of the lattice: a
+ * figure clamped against a scene narrower than a whole number of cells stands on
+ * a partial one, and whether that is revealed is `isPassable`'s business.
+ */
+export function firstClosedFloorStep(
+  path: readonly ScenePoint[],
+  grid: Pick<WalkGrid, 'cell' | 'originX' | 'originY'>,
+  isPassable: WalkPassable,
+  size = 1,
+): { from: ScenePoint; to: ScenePoint } | null {
+  if (!(grid.cell > 0)) return null;
+  const footprint = Math.max(1, Math.round(size));
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1]!;
+    const to = path[i]!;
+    const open = everyRunCell(grid, footprint, from, to, (col, row) =>
+      isPassable(cellCentre(grid, col, row)),
+    );
+    if (!open) return { from, to };
   }
   return null;
 }

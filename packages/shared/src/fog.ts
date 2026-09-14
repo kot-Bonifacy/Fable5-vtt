@@ -299,6 +299,53 @@ export function isPointRevealed(point: ScenePoint, fog: Pick<FogState, 'enabled'
   return false;
 }
 
+/** Where a figure stands, in scene pixels: its top-left corner and edge. */
+export interface FloorStanding {
+  x: number;
+  y: number;
+  extent: number;
+}
+
+/**
+ * „May a player set foot on the cell with this centre?" under painted fog.
+ *
+ * The GM's decision of 13.09.2026: on revealed floor only — the fogged twin of
+ * „nie dalej, niż widzisz" under dynamic vision. The cells the figure already
+ * stands on are exempt, so a figure the GM put down in the black can still step
+ * out onto what is revealed, and no deeper in.
+ *
+ * `standing` is asked on every call rather than captured, because the client
+ * builds this once per fog change while the figure keeps walking. The fog's
+ * answer is remembered per centre instead: the route planner asks about the
+ * same few hundred cells on every pointer move, a brush stroke is a polyline
+ * test, and a new fog builds a new closure anyway.
+ */
+export function fogFloorPassable(
+  fog: Pick<FogState, 'enabled' | 'shapes'>,
+  standing: () => FloorStanding | null = () => null,
+): (centre: ScenePoint) => boolean {
+  const known = new Map<string, boolean>();
+  return (centre) => {
+    const here = standing();
+    if (
+      here &&
+      centre.x > here.x &&
+      centre.x < here.x + here.extent &&
+      centre.y > here.y &&
+      centre.y < here.y + here.extent
+    ) {
+      return true;
+    }
+    const key = `${centre.x}:${centre.y}`;
+    let revealed = known.get(key);
+    if (revealed === undefined) {
+      revealed = isPointRevealed(centre, fog);
+      known.set(key, revealed);
+    }
+    return revealed;
+  };
+}
+
 /**
  * The GM's verdict on one point, or null where they have not painted (stage
  * 18c): `reveal` — show it whatever the walls say, `hide` — keep it black

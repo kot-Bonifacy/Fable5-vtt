@@ -66,6 +66,7 @@ import {
   decodeFlagRuns,
   decodeLevelRuns,
   facingFromDelta,
+  firstClosedFloorStep,
   formatMetres,
   formatSquares,
   isOpening,
@@ -1383,6 +1384,12 @@ export class MapRenderer {
   private walkPassable: WalkPassable | null = null;
   /** Edge test for callers whose obstacles are lines (the GM's walls). */
   private walkCanStep: WalkStep | undefined = undefined;
+  /**
+   * The floor the server itself holds a player to on the drop (painted fog,
+   * 13.09.2026), or undefined where it holds them to none. Unlike
+   * `walkPassable` it also guards the landings snapped off a planned route.
+   */
+  private walkEnforcedFloor: WalkPassable | undefined = undefined;
   /** Why this token may not walk at all („Powalony"), or null when it may. */
   private walkRefusal: string | null = null;
   /** The route under the cursor and the march, drawn above everything. */
@@ -3922,11 +3929,22 @@ export class MapRenderer {
    * Null switches route planning off entirely, which is what a scene with no
    * visibility model wants: with no walls and no polygons there is nothing to
    * walk *round*, and a straight line is the whole of the answer.
+   *
+   * `enforcedFloor` is the part of that ground the server holds a player to on
+   * the drop — revealed floor under painted fog (13.09.2026). A landing snapped
+   * off a planned route has to stay on it. A field of view is left out on
+   * purpose: the server does not judge one, and a sight that has moved on
+   * behind a marching figure would pull every interrupted march back a square.
    */
-  setWalkPassable(isPassable: WalkPassable | null, canStep?: WalkStep): void {
+  setWalkPassable(
+    isPassable: WalkPassable | null,
+    canStep?: WalkStep,
+    enforcedFloor?: WalkPassable,
+  ): void {
     if (this.destroyed) return;
     this.walkPassable = isPassable;
     this.walkCanStep = canStep;
+    this.walkEnforcedFloor = enforcedFloor;
     this.walkHover = null;
     // New rules, so the shaded floor has to be flooded again even though the
     // figure has not moved and its turn has not changed: those are all the
@@ -4160,6 +4178,19 @@ export class MapRenderer {
         !this.walkCanStep(
           { x: from.x + half, y: from.y + half },
           { x: landing.x + half, y: landing.y + half },
+        )
+      ) {
+        continue;
+      }
+      // …and onto floor the server lets the figure stand on (13.09.2026): the
+      // snap can put a corner of the body on a cell the leg never crossed.
+      if (
+        this.walkEnforcedFloor &&
+        firstClosedFloorStep(
+          [from, landing],
+          this.walkFloorGrid(scene),
+          this.walkEnforcedFloor,
+          size,
         )
       ) {
         continue;
@@ -4857,6 +4888,16 @@ export class MapRenderer {
     });
   }
 
+  /** The lattice `firstClosedFloorStep` samples a landing on — the planner's own. */
+  private walkFloorGrid(scene: SceneView): { cell: number; originX: number; originY: number } {
+    const cell = scene.grid.sizePx;
+    return {
+      cell,
+      originX: normalizeGridOffset(scene.grid.offsetX, cell),
+      originY: normalizeGridOffset(scene.grid.offsetY, cell),
+    };
+  }
+
   /**
    * Where a stopped figure actually stands, and the route it is billed for.
    *
@@ -4892,14 +4933,23 @@ export class MapRenderer {
     // the step from the last whole waypoint has to clear the planner's edge test.
     const lastWaypoint = march.walked[march.walked.length - 1] ?? march.start;
     const half = (march.node.token.size * scene.grid.sizePx) / 2;
-    const ahead =
+    const clearsEdges =
       !this.walkCanStep ||
       this.walkCanStep(
         { x: lastWaypoint.x + half, y: lastWaypoint.y + half },
         { x: probed.x + half, y: probed.y + half },
-      )
-        ? probed
-        : snapped;
+      );
+    // Under painted fog the square ahead also has to be floor the server lets
+    // the figure onto: a march at the edge of the revealed floor stops on it.
+    const clearsFloor =
+      !this.walkEnforcedFloor ||
+      !firstClosedFloorStep(
+        [lastWaypoint, probed],
+        this.walkFloorGrid(scene),
+        this.walkEnforcedFloor,
+        march.node.token.size,
+      );
+    const ahead = clearsEdges && clearsFloor ? probed : snapped;
     const budget = march.budget;
     if (!budget) return { point: ahead, walked: march.walked };
     const limit = budget.metresLeft / budget.costFactor + 0.05;

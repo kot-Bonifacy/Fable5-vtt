@@ -4,8 +4,11 @@ import {
   ROLE_GM,
   coverMovementSegments,
   firstBlockedStep,
+  firstClosedFloorStep,
+  fogFloorPassable,
   formatMetres,
   movementSegments,
+  normalizeGridOffset,
   polylineMetres,
   tokenCentre,
   tokenTableName,
@@ -24,6 +27,7 @@ import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } fro
 import { toLightScene } from './lights-io.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
+import { fetchFogState } from './fog-io.js';
 
 /**
  * The one place a move is judged (stage 14c).
@@ -38,8 +42,10 @@ import { fetchSceneCovers } from './covers-io.js';
  *     działa jak dotąd" is a decision of this stage, not an oversight.
  *  2. **May this token move at all?** Being Prone, Grappled or unconscious is a
  *     flat no, before any arithmetic — a corpse does not run out of metres.
- *  3. **Is the way clear?** Walls, closed windows and standing covers stop a
- *     body (sesja naprawcza 21.08). This one is asked **outside** a fight too:
+ *  3. **Is the way clear?** Under painted fog a player's route has to stay on
+ *     revealed floor first (13.09.2026). Then walls, closed windows and
+ *     standing covers stop a body (sesja naprawcza 21.08). Both are asked
+ *     **outside** a fight too:
  *     a wall is a wall whether or not anybody is counting rounds, and until it
  *     was asked here the client's route planner was the only thing enforcing
  *     it — which a drag goes nowhere near.
@@ -57,6 +63,11 @@ export const MOVE_REFUSED = 'MOVE_REFUSED';
 export const MOVE_BLOCKED_BY_TERRAIN = 'MOVE_BLOCKED_BY_TERRAIN';
 export const MOVE_BLOCKED_BY_TERRAIN_MESSAGE =
   'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
+
+/** A route that set foot on floor the GM has not revealed yet (13.09.2026). */
+export const MOVE_INTO_FOG = 'MOVE_INTO_FOG';
+export const MOVE_INTO_FOG_MESSAGE =
+  'Tam jeszcze nic nie widać — idź po odsłoniętym terenie albo poproś MG o jego odsłonięcie.';
 
 /**
  * Rebuilds the route from what the client reported.
@@ -141,6 +152,7 @@ export async function validateTokenMove(
 ): Promise<MoveVerdict> {
   const { scene, token } = intent;
   const walked = movementPath(intent.from, intent.to, intent.path);
+  await refuseWalkIntoFog(deps, campaignId, user, intent, walked);
   await refuseWalkThroughSolid(deps, campaignId, user, intent, walked);
 
   const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
@@ -229,6 +241,52 @@ async function settleMovementSpend(
     ...(outcome.forced ? { overspent: true } : {}),
     ...(outcome.bypassed ? { passed: true } : {}),
   });
+}
+
+/**
+ * „Tylko po odsłoniętym" — under painted fog a player walks on revealed floor
+ * alone (GM decision of 13.09.2026).
+ *
+ * Asked before the walls, and the order is the point. The wall check refuses
+ * only where something stands, so on its own a route clicked into the black
+ * came back refused exactly where a hidden wall ran — a floor plan drawn one
+ * refusal at a time. Refusing every step into the black alike, wall or no wall,
+ * leaves the wall check nothing but revealed floor to judge, and the walls on
+ * revealed floor are already in the player's planner (`blocker:sync`).
+ *
+ * The cells the figure stands on when the move starts are exempt, so a figure
+ * the GM put down in the black may still step out onto what is revealed. The GM
+ * is exempt, as everywhere in this module. Dynamic vision is not asked about:
+ * its field of view confines the client's planner only, and holding a drop to
+ * it here is a decision nobody has taken.
+ */
+async function refuseWalkIntoFog(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  intent: MoveIntent,
+  walked: readonly ScenePoint[],
+): Promise<void> {
+  const { scene, token } = intent;
+  if (user.role === ROLE_GM || scene.visibility !== 'fog') return;
+  const cell = scene.gridSizePx;
+  const standing = { x: intent.from.x, y: intent.from.y, extent: token.size * cell };
+  const onFloor = fogFloorPassable(await fetchFogState(deps.ctx.prisma, scene), () => standing);
+  const grid = {
+    cell,
+    originX: normalizeGridOffset(scene.gridOffsetX, cell),
+    originY: normalizeGridOffset(scene.gridOffsetY, cell),
+  };
+  if (!firstClosedFloorStep(walked, grid, onFloor, token.size)) return;
+
+  const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
+  if (found) {
+    await logMovementRefusal(deps, campaignId, user, {
+      ...actionEntry(found.combatant, CPRED_ACTION_MOVE, sheetActionName(CPRED_ACTION_MOVE), ''),
+      refusal: { code: MOVE_INTO_FOG, message: MOVE_INTO_FOG_MESSAGE },
+    });
+  }
+  throw new RealtimeError(MOVE_REFUSED);
 }
 
 /**

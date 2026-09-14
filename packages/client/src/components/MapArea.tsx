@@ -12,6 +12,7 @@ import {
   cpredMovementBlock,
   drawingBounds,
   isPointInPolygon,
+  fogFloorPassable,
   isPointVisible,
   isSegmentClear,
   metresPerPixel,
@@ -37,7 +38,7 @@ import {
   type RulerLine,
 } from '../map/MapRenderer.js';
 import { partyStart } from '../map/camera.js';
-import { confinesWalkToSight } from '../map/walk-sight.js';
+import { walkFloorFor } from '../map/walk-sight.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -1048,9 +1049,16 @@ export function MapArea() {
    * remembered but unlit room walks to the edge of sight and waits for the next
    * one.
    *
-   * A scene without dynamic vision has no field of view to confine a route to:
-   * every point is walkable, and what stands in the way — walls on revealed floor
-   * included, since 13.09.2026 — arrives as bare segments (`blocker:sync`).
+   * A fogged map confines a route to its revealed floor instead (GM decision of
+   * 13.09.2026), plus the cells the selected figure stands on, so one put down
+   * in the black can still step out. The server refuses a step into the black on
+   * the drop as well, which is why the same predicate also guards the landings
+   * the renderer snaps off a route (`enforcedFloor`).
+   *
+   * An open map, and a dynamic one before its first field of view, confine
+   * nothing: every point is walkable, and what stands in the way — walls on
+   * revealed floor included, since 13.09.2026 — arrives as bare segments
+   * (`blocker:sync`).
    */
   const pushWalkPassable = useCallback(() => {
     const renderer = rendererRef.current;
@@ -1088,12 +1096,28 @@ export function MapArea() {
       stepEdges.length > 0
         ? (from: ScenePoint, to: ScenePoint) => isSegmentClear(from, to, stepEdges)
         : undefined;
-    if (!confinesWalkToSight(current.visibility, wallState.hasVision)) {
-      renderer.setWalkPassable(() => true, canStep);
+    const floor = walkFloorFor(current.visibility, wallState.hasVision);
+    if (floor === 'sight') {
+      const polygons = wallState.polygons;
+      renderer.setWalkPassable((point) => isPointVisible(point, polygons), canStep);
       return;
     }
-    const polygons = wallState.polygons;
-    renderer.setWalkPassable((point) => isPointVisible(point, polygons), canStep);
+    // A mask that has not arrived yet, or still describes the previous map,
+    // confines nothing: the server judges the drop either way.
+    const fog = useFogStore.getState().fog;
+    if (floor === 'revealed' && fog?.sceneId === current.id) {
+      const cell = current.grid.sizePx;
+      // Read on every call: the closure outlives any one selection or step.
+      const standing = () => {
+        const id = useSelectionStore.getState().tokenId;
+        const token = id ? useTokenStore.getState().tokens[id] : undefined;
+        return token ? { x: token.x, y: token.y, extent: token.size * cell } : null;
+      };
+      const onFloor = fogFloorPassable(fog, standing);
+      renderer.setWalkPassable(onFloor, canStep, onFloor);
+      return;
+    }
+    renderer.setWalkPassable(() => true, canStep);
   }, []);
 
   useEffect(() => {
@@ -1102,10 +1126,17 @@ export function MapArea() {
     const unsubWalls = useWallStore.subscribe(pushWalkPassable);
     const unsubScene = useSceneStore.subscribe(pushWalkPassable);
     const unsubCovers = useCoverStore.subscribe(pushWalkPassable);
+    // A reveal widens the floor a player may plan on (13.09.2026). Only the
+    // stored mask counts: the GM's brush preview changes the store on every
+    // pointer move and would flood the reach shading for nothing.
+    const unsubFog = useFogStore.subscribe((state, previous) => {
+      if (state.fog !== previous.fog) pushWalkPassable();
+    });
     return () => {
       unsubWalls();
       unsubScene();
       unsubCovers();
+      unsubFog();
     };
   }, [ready, pushWalkPassable]);
 
