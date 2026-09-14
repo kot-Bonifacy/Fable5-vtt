@@ -139,6 +139,13 @@ przyjście widoku (pułapka w `mapa`).
 przerwanie „ktoś w polu widzenia" ląduje na polu, w które figura wchodziła (`marchStopPoint`, umowa
 w `mapa`). Jeśli marsz przy końcu bariery przerywa się dwa razy w tym samym miejscu, to ten objaw.
 
+**Od 14.09 pod ręczną mgłą gracz chodzi tylko po odsłoniętym — planer i serwer** (decyzja MG).
+Pola, na których figura stoi, są zwolnione, więc figura postawiona w czerni wychodzi na odsłonięte.
+Serwer pyta o mgłę **przed** ścianami (`refuseWalkIntoFog`), żeby odmowa nie rysowała ściany schowanej
+w czerni. **Skutek przy stole:** gracz nie wejdzie tam, czego MG nie odsłonił — klik w czerń nie daje
+trasy nawet bez ściany. Jeśli „gracz nie może dojść", sprawdź mgłę zaraz po zamku sceny
+(`playerMoveLocked`). Umowa w `mapa`; Dynamiczna bez zmian (wpis w `POMYSLY.md`).
+
 **Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
 etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
 bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
@@ -178,15 +185,15 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 13 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 14 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09, czternasta — straże lądowania i pełny marsz pod mgłą z drugiej sesji 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
 (pełny ekran, maszynopis). Kampania-śmieć „Oględziny 12.09" ma od 13.09 członka `Tester` —
 **stałe zaproszenie `tester-dev` prowadzi na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
 
-**`main` na GitHubie zrównano z dyskiem 12.09; od 13.09 czeka na push dziewięć commitów** (galeria
-portretów, etapy 42a–42c, czwarta sesja 13.09). Do 12.09 `origin/main` stał na etapie 07
+**`main` na GitHubie zrównano z dyskiem ponownie 14.09 (druga sesja)** — wypchnięte piętnaście
+commitów (galeria i biblioteka portretów, etapy 42a–42c, sesje 13.09 i 14.09). Do 12.09 `origin/main` stał na etapie 07
 (18.07), a 206 commitów — cała praca od etapu 08 — istniało wyłącznie na tym dysku. Gałąź
 `feat/vtt-campaign-calendar` (etapy 37–41 i poprawki) scalona do `main` i wypchnięta. **Push
 publikuje całą historię, nie ostatni stan** — przed każdym przejrzyj niewypchnięte commity:
@@ -235,8 +242,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2099** w `shared`, **1156** na serwerze, **200** u klienta —
-zielone (liczby z 13.09, czwarta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2111** w `shared`, **1172** na serwerze, **210** u klienta —
+zielone (liczby z 14.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -260,12 +267,12 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   44 |      19 |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    4 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   46 |      20 |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    5 |       3 |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    9 |      16 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       5 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
@@ -274,14 +281,39 @@ a nie do tego pliku.
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      71 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      75 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      19 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 14.09 (druga) — pod ręczną mgłą gracz chodzi tylko po odsłoniętym
+
+**Zlecenie MG:** przegląd zaległości z propozycjami; MG wybrał naprawę dokumentacji i A — planer
+gracza pod mgłą tylko po odsłoniętym (decyzja z 13.09). Dopytane: odmawia także serwer, figura
+postawiona w czerni może wyjść na odsłonięte (pola startowe zwolnione), push na koniec po przejrzeniu.
+
+**Znalezione przy przeglądzie i naprawione (dokumentacja, `d0f0aab`):** notatka piątej sesji 13.09
+zginęła — sesja portretów zacommitowała `POSTEP.md` bez niej, a dokumentacja piątej sesji leżała
+niezacommitowana; notatka 42c stała w dzienniku dwa razy. Notatka odtworzona z plików, duplikat
+usunięty, nieobejrzane zbiorcze wgrywanie portretów dopisane do zaległości.
+
+**Zrobione:** `fogFloorPassable` i `firstClosedFloorStep` w `shared` — próbka `everyRunCell` wyjęta
+z wygładzania planera, więc planer i serwer pytają o te same kratki. `refuseWalkIntoFog` przed
+ścianami: każdy krok w czerń dostaje tę samą odmowę (`MOVE_INTO_FOG`), więc odmowa nie zdradza ściany
+w czerni. `walkFloorFor` zamiast `confinesWalkToSight`; `setWalkPassable(…, enforcedFloor)` pilnuje
+lądowań w `clipToBudget` i `marchLanding`, tylko pod mgłą. Umowy w `mapa` i `tura`, pułapka w `tura`,
+wpis w `POMYSLY.md`: serwer nie trzyma gracza pola widzenia w Dynamicznej.
+
+**Weryfikacja:** 2111 testów `shared` (12 nowych), 1172 serwera (8 nowych w `fog-walk.test.ts`),
+210 klienta (1 nowy, 3 przepisane); `tsc --noEmit` w trzech pakietach, ESLint, Prettier. W Chrome
+z konta `Tester` na „Test Brak sceny": odmowa ruchu w czerń, trasa figury stojącej w czerni,
+brak trasy nad czernią, odsłonięcie bez przeładowania; trasa za barierę sprawdzona w Node tym samym
+kodem. Pełnego marszu nie obejrzano (schowana karta, zaległość). `pnpm dev` przestał działać
+w trakcie sesji z nieustalonej przyczyny — uruchomiony ponownie.
 
 ### Sesja 14.09 — biblioteka portretów MG
 
@@ -308,27 +340,3 @@ oraz cały shared. Aplikacja działa, migracja zastosowana.
 Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
 
 
-### Sesja 13.09 (piąta) — oględziny 42c domknięte, przerwany marsz cofał figurę za róg
-
-_Notatka odtworzona 14.09 z niezacommitowanej dokumentacji tej sesji (`zaleglosci.md`, archiwum
-zaległości, umowy, pułapki, `POMYSLY.md`) — sesja portretów z 14.09 zacommitowała `POSTEP.md` bez
-niej. Liczby testów całych pakietów się nie zachowały._
-
-**Zlecenie MG:** dokończenie oględzin 42a–42c na „Test Brak sceny", MG i `Tester` naraz.
-
-**Obejrzane:** 42c w komplecie — obejście końca bariery pod ręczną mgłą i w Dynamicznej,
-odznaczenie i ponowne zaznaczenie „Zasłania figury" z karty bramy. Z 42a: trasa w Dynamicznej,
-klamka bramy u gracza (z daleka, na kłódkę, otwarcie i zamknięcie), zmiana rodzaju z karty segmentu,
-wygląd otwartej bramy na warstwie MG. Z 42b: brak pola OB na karcie ściany, drzwi i okna.
-
-**Znalezione i naprawione (spoza listy):** przerwanie „ktoś w polu widzenia" zaokrąglało figurę
-wstecz za róg, więc gracz utykał na końcu bariery. `interruptWalk(note, 'ahead')` i `marchStopPoint`
-— lądowanie na polu, w które figura wchodziła, pod strażą `walkCanStep`. Pierwsza wersja naprawy
-lądowała po drugiej stronie końca bariery; złapana podsłuchem `token:move`. Umowa i pułapka
-w `mapa`, cztery pułapki w `ogledziny`.
-
-**Decyzja MG:** planer gracza pod ręczną mgłą chodzi tylko po odsłoniętym, MG nieobjęty — kod
-odłożony (`POMYSLY.md`).
-
-**Weryfikacja:** 9 testów w `march-landing.test.ts` (w tym przypadek z podsłuchu); poprawiony marsz
-obejrzany w Chrome. Commit `86cbdf1`; dokumentacja leżała niezacommitowana do 14.09.

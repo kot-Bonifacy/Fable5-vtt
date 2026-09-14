@@ -444,6 +444,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Karta odmowy ruchu nie powstaje przed rundą 1** — `findCombatantForToken` zwraca `null`, dopóki MG ustawia walkę; test, który po samym `combat:start` czeka na kartę, dostaje timeout, choć `MOVE_REFUSED` przychodzi. Najpierw `combat:next` (14.09, `fog-walk.test.ts`).
 - **`refuseWalkThroughSolid` zwalnia MG** (`realtime/movement.ts:254`) — żeton MG przechodzi przez ścianę i to nie jest regres; kolizje ruchu ogląda się z konta gracza, jak odmowy statusowe.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).
 - **`clipWalkToBudget` tnie na punkcie zwrotnym, nie na metrze** — na wygładzonej prostej zostawia sam start; u klienta tnie `clipToBudget` w `MapRenderer` (metr → przyciągnięcie → ponowne sprawdzenie).

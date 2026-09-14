@@ -1,6 +1,18 @@
 # Pomysły poza zakresem etapów
 
+**14.09.2026 dołożył jeden wpis — serwer nie trzyma gracza pola widzenia w Dynamicznej.** Pod ręczną
+mgłą serwer od 14.09 odmawia każdego kroku w czerń jednakowo, zanim zapyta o ściany, więc odmowa
+nie zdradza ściany schowanej w czerni. W Dynamicznej trasę do pola widzenia ogranicza wyłącznie
+planer klienta: **ręczne przeciągnięcie** figury w nieoglądane przez ścianę dostaje „Coś stoi na
+drodze", a przeciągnięcie tam, gdzie ściany nie ma, przechodzi — czyli odmowa rysuje ścianę, której
+gracz nie widzi. Lek: `refuseWalkIntoFog` ma już miejsce w kolejce; w Dynamicznej pytałby o widok
+gracza (`viewerSightFor`, liczony i tak przy rozgłaszaniu ruchu). Koszt: widok liczony na każde
+upuszczenie oraz decyzja, czy figura może wyjść poza własne pole widzenia (pamięć mapy z 18c).
+Do decyzji MG — nikt jej nie podjął.
+
 **13.09.2026 (czwarta sesja) dołożyła jeden wpis — trasa gracza pod mgłą schodzi w nieodsłonięte.**
+**Zrobione 14.09** — klient i serwer (decyzja MG z 14.09: serwer też odmawia, pole startowe
+zwolnione); umowa w `mapa`. Treść wpisu zostaje jako zapis decyzji.
 Od tej sesji planer gracza zna ściany poza Dynamiczną, pod ręczną mgłą przycięte do odsłoniętej
 podłogi (decyzja MG). Poza Dynamiczną planer nadal uznaje za chodzące **każde** pole, także czarne,
 więc trasa do celu za odsłoniętym kawałkiem bariery obchodzi ten kawałek przez mgłę i przechodzi

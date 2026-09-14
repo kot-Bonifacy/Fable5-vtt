@@ -15,6 +15,23 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09)** — jedno pytanie dla planera i serwera: `fogFloorPassable` (`shared/fog.ts`: odsłonięte albo pola, na których figura stoi) sprawdzane przez `firstClosedFloorStep` (`shared/pathfinding.ts`, próbka `everyRunCell` — ta sama co wygładzanie). Serwer: `refuseWalkIntoFog` **przed** `refuseWalkThroughSolid`. Klient: `walkFloorFor` → `'revealed'` i `setWalkPassable(passable, canStep, enforcedFloor)`; `enforcedFloor` pilnuje lądowań w `clipToBudget` i `marchLanding` i podaje się go **tylko** tam, gdzie serwer sam egzekwuje podłogę.
+
+**Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09, decyzja MG z 13.09, serwer — decyzja
+z 14.09).** Poza Dynamiczną planer uznawał każde pole za chodzące, więc trasa do celu za odsłoniętym
+kawałkiem bariery schodziła w czerń. Teraz na scenie `fog` gracz planuje i chodzi wyłącznie po
+odsłoniętej podłodze, a pola, na których zaznaczona figura stoi, są zwolnione — figura postawiona
+przez MG w czerni wychodzi na odsłonięte i nie wchodzi głębiej. **Kolejność na serwerze jest
+treścią umowy:** sprawdzenie ścian odmawia tylko tam, gdzie coś stoi, więc samo zdradzało ścianę
+w czerni jedną odmową na klik; mgła pytana pierwsza odmawia każdego kroku w czerń tak samo
+(`MOVE_INTO_FOG` na karcie MG od rundy 1). Serwer i klient pytają **tę samą próbkę co pół
+kratki**, więc trasa narysowana przez planer nie wraca odmowy. `enforcedFloor` nie jest ustawiany
+w Dynamicznej: serwer nie sprawdza tam pola widzenia, a widok, który przesunął się za maszerującą
+figurą, cofałby każde przerwane lądowanie. Klient bierze pola stojącej figury z `useTokenStore`
+w chwili pytania (domknięcie żyje dłużej niż zaznaczenie), a pamięć odpowiedzi mgły — z domknięcia,
+które powstaje na nowo przy każdej zmianie `fog`. Subskrypcja `useFogStore` porównuje `fog`, nie
+cały stan: podgląd pędzla MG zmienia magazyn na każdy ruch kursora.
+
 - **Lądowanie przerwanego marszu (13.09)** — `MapRenderer.marchLanding`. Przerwanie „ktoś w polu widzenia” (oba wywołania w `MapArea`) woła `interruptWalk(note, 'ahead')` i ląduje na polu, w które figura wchodziła (`marchStopPoint` w `map/march-landing.ts`), o ile krok do niego przechodzi `walkCanStep`; ręka, obrażenia i zmiana tury zostają przy `'nearest'`.
 
 **Przerwany marsz nie cofa figury za róg (13.09, piąta sesja, oględziny 42c).** Do tej pory każde
@@ -1059,7 +1076,7 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 ## tura — Tura, akcje, ruch w walce
 
 - **Powód odmowy Akcji ma JEDNO źródło** — `cpredActionRefusal(actionId, { statuses, turn, isGm })` w `hotbar.ts`; wołają je **oba** wejścia (pasek mapy i zakładka „Walka"). Akcja o koszcie `move` odmawia z budżetu ruchu, nie Akcji. Budżet tury czyta `cpredTurnRefusalInput(turn)`, nie ręczne `resources.find`.
-- **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
+- **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek. Pod ręczną mgłą **przed nim** stoi `refuseWalkIntoFog` (14.09) — nowa odmowa, która mogłaby zdradzić coś schowanego w czerni, idzie za mgłą, nie przed nią (umowa w `mapa`).
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
 - **Akcja tylko dla części figur** — `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` (nie lista dla każdego); slot z własnym zdarzeniem obsługuje się w `activateSlot` **bez** `spendCombatAction`.
 - **Drugi pas zasięgu tury** — `TurnDistanceView.extra` (`{ label, max }`) wystawia system (`cpredRunMetres`), mapa maluje bursztyn i nie zna słowa „Bieg".

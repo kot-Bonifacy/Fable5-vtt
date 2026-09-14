@@ -26,6 +26,15 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 14.09 — oględziny „tylko po odsłoniętym" na kampanii-śmieciu, Poligon nietknięty.**
+Aktywna kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
+Scena **„Test Brak sceny"** wróciła z Dynamicznej (tak zostawiła ją piąta sesja 13.09) na **ręczną
+mgłę** i ma **drugi odsłonięty prostokąt** (`FogShape` 22: x 1900–2400, y 1400–1700) obok pierwszego
+(21: 900–1900 × 700–1500). Figura `Tester` „Oględziny Stym" stoi na (1800, 1500) — **środkiem
+w czerni** tuż pod pierwszym prostokątem, więc to gotowy przypadek „figura w czerni wychodzi na
+odsłonięte"; „Za bramą" na (1800, 1300). Ściany 70–73 bez zmian. Figurę trzeba zaznaczyć, zanim
+planer cokolwiek narysuje.
+
 **Stan po sesji 13.09 (czwarta) — scena pod bariery na kampanii-śmieciu, Poligon nietknięty.**
 Aktywna kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
 Na scenie **„Test Brak sceny"** (mgła ręczna, siatka 100 px) **zostaje świadomie** komplet pod resztę

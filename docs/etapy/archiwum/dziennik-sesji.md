@@ -7,6 +7,31 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 (piąta) — oględziny 42c domknięte, przerwany marsz cofał figurę za róg
+
+_Notatka odtworzona 14.09 z niezacommitowanej dokumentacji tej sesji (`zaleglosci.md`, archiwum
+zaległości, umowy, pułapki, `POMYSLY.md`) — sesja portretów z 14.09 zacommitowała `POSTEP.md` bez
+niej. Liczby testów całych pakietów się nie zachowały._
+
+**Zlecenie MG:** dokończenie oględzin 42a–42c na „Test Brak sceny", MG i `Tester` naraz.
+
+**Obejrzane:** 42c w komplecie — obejście końca bariery pod ręczną mgłą i w Dynamicznej,
+odznaczenie i ponowne zaznaczenie „Zasłania figury" z karty bramy. Z 42a: trasa w Dynamicznej,
+klamka bramy u gracza (z daleka, na kłódkę, otwarcie i zamknięcie), zmiana rodzaju z karty segmentu,
+wygląd otwartej bramy na warstwie MG. Z 42b: brak pola OB na karcie ściany, drzwi i okna.
+
+**Znalezione i naprawione (spoza listy):** przerwanie „ktoś w polu widzenia" zaokrąglało figurę
+wstecz za róg, więc gracz utykał na końcu bariery. `interruptWalk(note, 'ahead')` i `marchStopPoint`
+— lądowanie na polu, w które figura wchodziła, pod strażą `walkCanStep`. Pierwsza wersja naprawy
+lądowała po drugiej stronie końca bariery; złapana podsłuchem `token:move`. Umowa i pułapka
+w `mapa`, cztery pułapki w `ogledziny`.
+
+**Decyzja MG:** planer gracza pod ręczną mgłą chodzi tylko po odsłoniętym, MG nieobjęty — kod
+odłożony (`POMYSLY.md`).
+
+**Weryfikacja:** 9 testów w `march-landing.test.ts` (w tym przypadek z podsłuchu); poprawiony marsz
+obejrzany w Chrome. Commit `86cbdf1`; dokumentacja leżała niezacommitowana do 14.09.
+
 ### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c
 
 **Zlecenie MG:** przegląd zaległości i propozycja paczki; MG wybrał A (planer gracza bez zwykłych

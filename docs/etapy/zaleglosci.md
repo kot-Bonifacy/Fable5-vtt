@@ -167,6 +167,18 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **14.09: pod ręczną mgłą gracz chodzi tylko po odsłoniętym — nieobejrzane straże lądowania
+  i pełny marsz.** Obejrzane 14.09 na „Test Brak sceny" z konta `Tester`: serwer dev odmawia ruchu
+  w czerń (`MOVE_REFUSED`), figura stojąca środkiem w czerni dostaje trasę na odsłonięte, nad czernią
+  trasy nie ma, a odsłonięcie MG dochodzi do planera bez przeładowania. Trasę do celu za barierą
+  planer prowadzi dookoła po odsłoniętym — odtworzona w Node tym samym kodem przechodzi oba
+  sprawdzenia serwera, a stara prosta przez barierę pod mgłą odpada. **Zostają:** (1) **przycięcie
+  budżetem w walce** pod mgłą — ostatni krok, na który starcza metrów, nie może stanąć w czerni
+  (`clipToBudget` z `enforcedFloor`); (2) **przerwanie „ktoś w polu widzenia"** przy krawędzi
+  odsłoniętego (`marchLanding`); (3) **marsz do końca** długą trasą i zgoda serwera na lądowanie —
+  w schowanej karcie automatyki marsz idzie ok. 1 klatkę na sekundę, więc przerwano go Esc po kilku
+  pikselach. Najlepiej ręką MG w widocznym oknie. Stan sceny — `poligon.md`.
+
 - **14.09: biblioteka portretów MG — nieobejrzane samo wgrywanie.** Sesja portretów obejrzała
   w Chrome tylko wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą; ścieżki są
   pokryte testami serwera, ale w przeglądarce nikt ich nie przeszedł. Do sprawdzenia: (1) wybór
