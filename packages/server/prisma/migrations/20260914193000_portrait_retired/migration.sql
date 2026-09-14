@@ -1,0 +1,1 @@
+ALTER TABLE "PortraitAsset" ADD COLUMN "retired" BOOLEAN NOT NULL DEFAULT false;

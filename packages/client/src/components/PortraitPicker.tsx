@@ -44,6 +44,7 @@ export function PortraitPicker({
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const assets = usePortraitStore((s) => s.assets);
+  const availableAssets = assets.filter((asset) => !asset.retired);
   const loaded = usePortraitStore((s) => s.loaded);
   const load = usePortraitStore((s) => s.load);
   const applyUpsert = usePortraitStore((s) => s.applyUpsert);
@@ -58,6 +59,7 @@ export function PortraitPicker({
   const [picking, setPicking] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const Tile = manage ? 'div' : 'button';
 
   useEffect(() => {
     if (!open) return;
@@ -114,9 +116,18 @@ export function PortraitPicker({
     setError(null);
     setFailures([]);
     let added = 0;
+    const campaignId = useAuthStore.getState().activeCampaign?.id;
     const rejected: string[] = [];
     try {
       for (const [index, file] of files.entries()) {
+        if (!campaignId || campaignId !== useAuthStore.getState().activeCampaign?.id) {
+          rejected.push(
+            ...files
+              .slice(index)
+              .map((pending) => `${pending.name}: Kampania zmieniła się — dodawanie przerwane.`),
+          );
+          break;
+        }
         setProgress(`Wgrywanie ${index + 1} z ${files.length}: ${file.name}`);
         const rejection = fileRejectionText(file, 'portrait');
         if (rejection) {
@@ -124,8 +135,11 @@ export function PortraitPicker({
           continue;
         }
         try {
-          const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
-          applyUpsert(asset);
+          const asset = await apiUpload<PortraitAssetView>(
+            `/api/uploads/portrait-assets?campaignId=${encodeURIComponent(campaignId)}`,
+            file,
+          );
+          if (campaignId === useAuthStore.getState().activeCampaign?.id) applyUpsert(asset);
           added += 1;
         } catch (caught) {
           rejected.push(`${file.name}: ${uploadErrorText(caught, 'portrait')}`);
@@ -201,7 +215,7 @@ export function PortraitPicker({
                 </h3>
                 <p className="portrait-pool-empty">
                   {manage
-                    ? 'Dodawaj wiele plików naraz. Portrety są zapisywane na serwerze. Kadr ustawisz przy wyborze w karcie postaci.'
+                    ? 'Dodawaj wiele plików naraz. Portrety są zapisywane na serwerze w puli tej kampanii. Kadr ustawisz przy wyborze w karcie postaci. Usunięcie z puli zachowuje zdjęcie i kadr na istniejących kartach i figurach.'
                     : 'Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.'}
                 </p>
                 {manage ? (
@@ -236,7 +250,7 @@ export function PortraitPicker({
                     ) : null}
                   </p>
 
-                  {assets.length === 0 ? (
+                  {availableAssets.length === 0 ? (
                     <p className="portrait-pool-empty">
                       {!loaded
                         ? 'Wczytywanie…'
@@ -246,7 +260,7 @@ export function PortraitPicker({
                     </p>
                   ) : (
                     <div className="portrait-pool-grid">
-                      {assets.map((asset) => (
+                      {availableAssets.map((asset) => (
                         <div
                           key={asset.id}
                           className={[
@@ -260,14 +274,13 @@ export function PortraitPicker({
                             .filter(Boolean)
                             .join(' ')}
                         >
-                          <button
+                          <Tile
                             type="button"
                             className="portrait-pool-pick"
                             title={asset.name}
-                            aria-label={`Wybierz portret „${asset.name}”`}
+                            aria-label={manage ? asset.name : `Wybierz portret „${asset.name}”`}
                             disabled={
                               disabled ||
-                              manage ||
                               picking ||
                               (!isGm && !!asset.assigned && selectedUrl !== asset.url)
                             }
@@ -280,7 +293,7 @@ export function PortraitPicker({
                             ) : asset.assigned ? (
                               <span className="portrait-pool-name">Zajęty</span>
                             ) : null}
-                          </button>
+                          </Tile>
                           {isGm && !manage ? (
                             <button
                               type="button"

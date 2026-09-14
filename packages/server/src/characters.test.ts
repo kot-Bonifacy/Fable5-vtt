@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -426,7 +427,12 @@ describe('portrait uploads', () => {
    * trzymać kadru na mapie i nikomu drugi raz się nie przydawał.
    */
   it('accepts a GM upload and refuses players and anonymous alike', async () => {
-    const { payload, headers } = multipartBody('portret.png', PNG_1X1);
+    const { payload, headers } = multipartBody(
+      'portret.png',
+      await sharp({ create: { width: 256, height: 256, channels: 3, background: 'red' } })
+        .png()
+        .toBuffer(),
+    );
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/uploads/portrait-assets',
@@ -435,7 +441,7 @@ describe('portrait uploads', () => {
     });
     expect(res.statusCode).toBe(201);
     const result = res.json() as PortraitAssetView;
-    expect(result.url).toMatch(/^\/uploads\/portraits\/.+\.png$/);
+    expect(result.url).toMatch(/^\/uploads\/portraits\/.+\.webp$/);
     // Świeży portret ma kadr domyślny, czyli dokładnie to ujęcie, które mapa
     // rysowała przed 12.09 — wgranie niczego nie przestawia samo z siebie.
     expect(result.crop).toEqual(DEFAULT_PORTRAIT_CROP);

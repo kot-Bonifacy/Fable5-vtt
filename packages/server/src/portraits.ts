@@ -47,6 +47,7 @@ export function draftPortraitUrl(data: string): string | null {
 
 /** Tyle z wiersza `PortraitAsset` potrzeba, żeby zbudować widok puli. */
 export interface PortraitAssetRow {
+  retired?: boolean;
   id: string;
   name: string;
   url: string;
@@ -71,6 +72,7 @@ export interface PortraitAssetRow {
  */
 export function toPortraitAssetView(asset: PortraitAssetRow): PortraitAssetView {
   return {
+    retired: asset.retired ?? false,
     id: asset.id,
     name: asset.name,
     url: asset.url,

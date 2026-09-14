@@ -11,13 +11,17 @@
 
 import { SCENE_DIMENSION_MAX } from './scenes.js';
 
+export const PORTRAIT_MAX_INPUT_PIXELS = 20_000_000;
+export const PORTRAIT_MIN_INPUT_SIDE = 256;
+export const PORTRAIT_WEBP_QUALITY = 85;
+
 /** Rodzaje wgrywanych obrazów — po jednym na trasę `/api/uploads/*`. */
 export type UploadKind = 'map' | 'token' | 'portrait' | 'handout';
 
 export interface UploadLimits {
   /** Największy przyjmowany plik. */
   maxBytes: number;
-  /** Największy przyjmowany bok obrazu w pikselach. */
+  /** Największy bok obrazu: dla portretu po konwersji, dla pozostałych na wejściu. */
   maxSidePx: number;
   /** Czym ta grafika jest w zdaniu odmowy („Mapa jest za duża…"). */
   label: string;
@@ -32,7 +36,7 @@ export const UPLOAD_LIMITS: Readonly<Record<UploadKind, UploadLimits>> = {
   // którego scena i tak by nie przyjęła, nie ma po co lądować na dysku.
   map: { maxBytes: 40 * 1024 * 1024, maxSidePx: SCENE_DIMENSION_MAX, label: 'Mapa' },
   token: { maxBytes: 8 * 1024 * 1024, maxSidePx: 2048, label: 'Obraz tokenu' },
-  portrait: { maxBytes: 8 * 1024 * 1024, maxSidePx: 2048, label: 'Portret' },
+  portrait: { maxBytes: 10 * 1024 * 1024, maxSidePx: 2048, label: 'Portret' },
   handout: { maxBytes: 12 * 1024 * 1024, maxSidePx: 4096, label: 'Grafika' },
 };
 
@@ -68,12 +72,23 @@ export function formatUploadSize(bytes: number): string {
  */
 export function uploadRequirementText(kind: UploadKind): string {
   const limits = UPLOAD_LIMITS[kind];
+  if (kind === 'portrait') {
+    return `${UPLOAD_FORMATS_TEXT}, do ${formatUploadSize(limits.maxBytes)}, minimum ${PORTRAIT_MIN_INPUT_SIDE} × ${PORTRAIT_MIN_INPUT_SIDE} px, maks. ${PORTRAIT_MAX_INPUT_PIXELS / 1_000_000} mln pikseli; automatyczny zapis WebP do ${limits.maxSidePx} px dłuższego boku bez kadrowania`;
+  }
   return `${UPLOAD_FORMATS_TEXT}, maks. ${limits.maxSidePx} px na bok, do ${formatUploadSize(limits.maxBytes)}`;
 }
 
 /** Kody odmowy, którymi odpowiadają trasy `/api/uploads/*`. */
 export type UploadRejectionCode =
-  'NO_FILE' | 'FILE_TOO_LARGE' | 'UNSUPPORTED_IMAGE' | 'IMAGE_TOO_LARGE' | 'NO_CAMPAIGN';
+  | 'NO_FILE'
+  | 'FILE_TOO_LARGE'
+  | 'UNSUPPORTED_IMAGE'
+  | 'IMAGE_TOO_LARGE'
+  | 'NO_CAMPAIGN'
+  | 'IMAGE_TOO_SMALL'
+  | 'INVALID_IMAGE'
+  | 'ANIMATED_IMAGE'
+  | 'CAMPAIGN_CHANGED';
 
 /**
  * Zdanie odmowy dla kodu z serwera — zawsze z pełnym wymaganiem na końcu.
@@ -89,9 +104,19 @@ export function uploadRejectionText(code: string | null | undefined, kind: Uploa
     case 'UNSUPPORTED_IMAGE':
       return `Nieobsługiwany format. Wymagany ${requirement}.`;
     case 'IMAGE_TOO_LARGE':
+      if (kind === 'portrait')
+        return `Portret przekracza limit liczby pikseli. Wymagany ${requirement}.`;
       return `${limits.label} ma za dużą rozdzielczość (maks. ${limits.maxSidePx} px na bok). Wymagany ${requirement}.`;
+    case 'IMAGE_TOO_SMALL':
+      return `Portret ma za małą rozdzielczość. Wymagany ${requirement}.`;
+    case 'INVALID_IMAGE':
+      return `Nie można odczytać obrazu — plik może być uszkodzony. Wymagany ${requirement}.`;
+    case 'ANIMATED_IMAGE':
+      return `Portret musi być nieruchomym obrazem. Wymagany ${requirement}.`;
     case 'NO_CAMPAIGN':
       return 'Brak aktywnej kampanii.';
+    case 'CAMPAIGN_CHANGED':
+      return 'Aktywna kampania zmieniła się. Otwórz bibliotekę właściwej kampanii i ponów dodawanie.';
     default:
       return `Nie udało się wgrać pliku. Wymagany ${requirement}.`;
   }

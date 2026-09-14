@@ -279,26 +279,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 14.09 — biblioteka portretów MG (w toku)
+### Sesja 14.09 — biblioteka portretów MG
 
 **Zlecenie MG:** osobne zarządzanie pulą poza kartą, zbiorcze dodawanie bez kadrowania,
 limity rozmiaru/jakości i trwały zapis na serwerze. Przygotowany interfejs: przycisk
 „Portrety — biblioteka MG” w panelu postaci, wielokrotny wybór plików, kolejka
 z podsumowaniem i błędami osobno dla każdego pliku. Karta zachowuje wybór i kadrowanie.
 
-**Do ustalenia z MG przed dokończeniem:** konwersja czy odrzucanie dużych plików
-(propozycja: wejście 10 MB / 20 mln pikseli, minimum 256 × 256, zapis WebP do 2048 px),
-lokalizacja okna, pula kampanii czy wspólna dla serwera, zachowanie kasowania używanych
-portretów. Pytania zadane, odpowiedzi jeszcze nie otrzymano. Serwer nadal egzekwuje
-obecne 8 MB / 2048 px i zapisuje pliki trwale w puli kampanii.
+**Ustalenia MG i realizacja:** osobne okno z panelu postaci, osobna pula kampanii;
+JPG/PNG/WebP do 10 MB / 20 mln pikseli, minimum 256 × 256 px. Serwer dekoduje obraz
+przez sharp, uwzględnia EXIF i zapisuje WebP (jakość 85) do 2048 px dłuższego boku,
+bez kadrowania i bez powiększania. Nie zmienia wcześniej wgranych plików.
 
-**Znalezione problemy do rozwiązania:** kasowanie wpisu puli gubi kadr po odświeżeniu;
-backfill przy restarcie może przywrócić usunięty wpis używany przez kartę. Dokończyć
-obsługę kasowania zgodnie z odpowiedzią MG oraz zabezpieczyć kolejkę na zmianę kampanii.
+**Naprawione:** kosz ustawia `PortraitAsset.retired`, zachowując plik i kadr istniejących
+kart oraz figur. Wycofany portret nie wraca po restarcie przez backfill i nie jest
+dostępny do nowego wyboru. Kolejka przerywa dodawanie przy zmianie kampanii; serwer
+sprawdza oczekiwane `campaignId`. Migracja zastosowana na dev.db. Umowa w `serwer`.
 
-**Weryfikacja przygotowanej części:** 209 testów klienta, TypeScript, ESLint i Prettier
-przechodzą; serwer /health działa, klient odpowiada HTTP 200. Nowego UI nie oglądano
-w przeglądarce. Istniejące zmiany dokumentacji i .claude/ należą do wcześniejszej pracy.
+**Weryfikacja:** testy konwersji, uploadu, wycofania i zachowania kadru, backfillu,
+kreatora oraz sprzątania plików; TypeScript trzech pakietów, ESLint i Prettier.
+W Chrome obejrzano wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą;
+bez zmiany kart i figur Poligonu. Pełne testy repo zielone: 1164 serwera, 209 klienta
+oraz cały shared. Aplikacja działa, migracja zastosowana.
+Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
 
 
 ### Sesja 13.09 (czwarta) — planer i ściany poza Dynamiczną, oględziny barier, dwa regresy 42c

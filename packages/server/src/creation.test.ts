@@ -249,6 +249,7 @@ describe('wybór portretu w galerii', () => {
       'height',
       'id',
       'name',
+      'retired',
       'url',
       'width',
     ]);
@@ -267,6 +268,13 @@ describe('wybór portretu w galerii', () => {
         patch: { portraitUrl: '/uploads/portraits/not-in-pool.png' },
       }),
     ).toEqual({ ok: false, error: 'PORTRAIT_NOT_AVAILABLE' });
+    await built.prisma.portraitAsset.update({ where: { id: asset.id }, data: { retired: true } });
+    expect((await emitAck(sockets[winner]!, 'creation:patch', choice)).ok).toBe(true);
+    await patch(sockets[winner]!, { portraitUrl: null });
+    expect(await emitAck(sockets[winner]!, 'creation:patch', choice)).toEqual({
+      ok: false,
+      error: 'PORTRAIT_NOT_AVAILABLE',
+    });
     await emitAck(sockets[winner]!, 'creation:discard');
   });
 });

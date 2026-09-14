@@ -33,6 +33,7 @@ interface PortraitStoreState {
   applyDelete: (assetId: string) => void;
   openCrop: (assetId: string) => void;
   closeCrop: () => void;
+  reset: () => void;
 }
 
 function indexCrops(assets: PortraitAssetView[]): ReadonlyMap<string, PortraitCrop> {
@@ -52,6 +53,7 @@ function indexCrops(assets: PortraitAssetView[]): ReadonlyMap<string, PortraitCr
 
 /** Żeby dwa miejsca, które zamontowały się w tej samej klatce, nie pytały dwa razy. */
 let inFlight: Promise<void> | null = null;
+let requestVersion = 0;
 
 export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   assets: [],
@@ -61,17 +63,20 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
 
   load: (force = false) => {
     if (!force && (get().loaded || inFlight)) return inFlight ?? Promise.resolve();
-    const request = apiGet<PortraitAssetView[]>('/api/portrait-assets')
+    const version = ++requestVersion;
+    const request = apiGet<PortraitAssetView[]>('/api/portrait-assets?includeRetired=true')
       .then((assets) => {
+        if (version !== requestVersion) return;
         set({ assets, crops: indexCrops(assets), loaded: true });
       })
       .catch(() => {
+        if (version !== requestVersion) return;
         // Pula bywa niedostępna (brak kampanii, chwilowy błąd) — mapa rysuje
         // wtedy kadr domyślny, czyli to, co rysowała zawsze.
         set({ loaded: true });
       })
       .finally(() => {
-        inFlight = null;
+        if (version === requestVersion) inFlight = null;
       });
     inFlight = request;
     return request;
@@ -87,7 +92,7 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
 
   applyDelete: (assetId) =>
     set((state) => {
-      const assets = state.assets.filter((a) => a.id !== assetId);
+      const assets = state.assets.map((a) => (a.id === assetId ? { ...a, retired: true } : a));
       // Kadr zostaje w indeksie umyślnie: zdjęcie portretu z puli znaczy „nie
       // proponuj tego dalej", a nie „odbierz komuś obrazek" — figura, która ten
       // plik nosi, ma dalej być ujęta tak, jak ją MG ustawił.
@@ -96,4 +101,9 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
 
   openCrop: (assetId) => set({ cropping: assetId }),
   closeCrop: () => set({ cropping: null }),
+  reset: () => {
+    requestVersion += 1;
+    inFlight = null;
+    set({ assets: [], crops: new Map(), loaded: false, cropping: null });
+  },
 }));

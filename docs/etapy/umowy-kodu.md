@@ -651,6 +651,22 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Biblioteka portretów MG (14.09)** — `PortraitPicker manage` w panelu postaci dodaje wiele plików bez kadrowania. `preparePortraitImage` w serwerze egzekwuje wspólne limity i zapisuje WebP; `PortraitAsset.retired` usuwa z wyboru bez utraty kadru, `includeRetired=true` służy rendererowi i edytorowi kadru.
+
+**Portrety po ustaleniach MG z 14.09:** pula pozostaje osobna dla każdej kampanii. Upload
+przyjmuje JPG/PNG/WebP do 10 MB, minimum 256 px na każdym boku i do 20 mln pikseli;
+`sharp` dekoduje cały obraz, uwzględnia EXIF, zmniejsza proporcjonalnie do 2048 px
+dłuższego boku bez powiększania i zapisuje WebP z jakością 85. Nie kadruje ani nie
+przepisuje wcześniej wgranych plików. Kadrowanie pozostaje przy wyborze na karcie.
+
+**Ten zapis zastępuje starsze reguły 8 MB / 2048 px na wejściu i kasowania wiersza puli.**
+Kosz ustawia `retired=true`, zachowując plik i kadr także po restarcie; backfill widzi
+wycofany wiersz i nie przywraca go do wyboru. Zwykły GET pomija wycofane wpisy,
+`portraitStore` pobiera je do kadrowania przez `includeRetired=true`, a galeria filtruje
+je z wyboru. Własna rezerwacja szkicu pozostaje ważna; nowy wybór gracza sprawdza
+`retired=false` na serwerze. Kolejka wysyła oczekiwane `campaignId`, a serwer odmawia
+po zmianie kampanii; klient czyści pulę i unieważnia starsze odczyty przy przełączeniu.
+
 - **Blokada ruchu graczy po mapie** — `Scene.playerMoveLocked` (nowa scena **zamknięta**, migracja otworzyła stare), zwykłe pole `ScenePatch` (nie własne zdarzenie, bo niczego graczom nie zabiera), odmowa `MOVE_LOCKED` w `performTokenMove` **przed** `validateTokenMove` — żeby ścinała też klatkę pośrednią. MG nie jest nią związany nigdy.
 - **Przełączenie kampanii** — zdarzenie `campaign:activate` (przenosi wszystkie gniazda i odsyła `campaign:switch`), nigdy sam zapis w bazie.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.

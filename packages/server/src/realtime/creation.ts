@@ -172,7 +172,11 @@ export const creationPatchEvent = defineEvent<
     const saved = await deps.ctx.prisma.$transaction(async (tx) => {
       if ('portraitUrl' in patch && next.portraitUrl && user.role !== ROLE_GM) {
         const asset = await tx.portraitAsset.findFirst({
-          where: { campaignId, url: next.portraitUrl },
+          where: {
+            campaignId,
+            url: next.portraitUrl,
+            ...(next.portraitUrl === current.portraitUrl ? {} : { retired: false }),
+          },
         });
         if (!asset) throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');
         if ((await usedPortraitUrls(tx, campaignId, user.id)).has(next.portraitUrl)) {

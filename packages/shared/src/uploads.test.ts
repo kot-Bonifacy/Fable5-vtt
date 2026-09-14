@@ -19,8 +19,9 @@ describe('wymagania wgrywanego obrazu', () => {
     for (const code of ['NO_FILE', 'FILE_TOO_LARGE', 'UNSUPPORTED_IMAGE', 'IMAGE_TOO_LARGE']) {
       const text = uploadRejectionText(code, 'portrait');
       expect(text).toContain('PNG, JPG lub WebP');
-      expect(text).toContain('2048 px na bok');
-      expect(text).toContain('8 MB');
+      expect(text).toContain('2048 px dłuższego boku');
+      expect(text).toContain('10 MB');
+      expect(text).toContain('20 mln pikseli');
     }
   });
 
@@ -51,7 +52,8 @@ describe('sprawdzenie pliku przed wysłaniem', () => {
 
   it('odrzuca plik ponad limit rodzaju, nie ponad limit największego', () => {
     const tenMb = 10 * 1024 * 1024;
-    expect(localUploadRejection({ type: 'image/png', size: tenMb }, 'portrait')).toContain(
+    expect(localUploadRejection({ type: 'image/png', size: tenMb }, 'portrait')).toBeNull();
+    expect(localUploadRejection({ type: 'image/png', size: tenMb + 1 }, 'portrait')).toContain(
       'za duży',
     );
     expect(localUploadRejection({ type: 'image/png', size: tenMb }, 'handout')).toBeNull();

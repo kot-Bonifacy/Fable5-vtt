@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -24,6 +25,7 @@ import type { CharacterView, CpredCharacterData } from '@vtt/shared';
 import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { backfillPortraitAssets } from './portrait-backfill.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -239,7 +241,12 @@ describe('portrait pool', () => {
   let assetId = '';
 
   it('takes a GM upload and shows it to players; a player cannot upload', async () => {
-    const { payload, headers } = multipartBody('Rache Bartmoss.png', PNG_1X1);
+    const { payload, headers } = multipartBody(
+      'Rache Bartmoss.png',
+      await sharp({ create: { width: 256, height: 256, channels: 3, background: 'red' } })
+        .png()
+        .toBuffer(),
+    );
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/uploads/portrait-assets',
@@ -250,7 +257,7 @@ describe('portrait pool', () => {
     const asset = res.json() as PortraitAssetView;
     assetId = asset.id;
     expect(asset.name).toBe('Rache Bartmoss');
-    expect(asset.url).toMatch(/^\/uploads\/portraits\/.+\.png$/);
+    expect(asset.url).toMatch(/^\/uploads\/portraits\/.+\.webp$/);
 
     const seenByPlayer = await built.app.inject({
       method: 'GET',
@@ -260,7 +267,12 @@ describe('portrait pool', () => {
     expect(seenByPlayer.statusCode).toBe(200);
     expect((seenByPlayer.json() as PortraitAssetView[]).map((a) => a.id)).toContain(assetId);
 
-    const asPlayer = multipartBody('gracz.png', PNG_1X1);
+    const asPlayer = multipartBody(
+      'gracz.png',
+      await sharp({ create: { width: 256, height: 256, channels: 3, background: 'red' } })
+        .png()
+        .toBuffer(),
+    );
     const refused = await built.app.inject({
       method: 'POST',
       url: '/api/uploads/portrait-assets',
@@ -276,7 +288,12 @@ describe('portrait pool', () => {
    * portret bez wiersza nie miał gdzie trzymać kadru na mapie.
    */
   it('keeps the portrait upload for the GM alone, and only through the pool', async () => {
-    const { payload, headers } = multipartBody('wprost.png', PNG_1X1);
+    const { payload, headers } = multipartBody(
+      'wprost.png',
+      await sharp({ create: { width: 256, height: 256, channels: 3, background: 'red' } })
+        .png()
+        .toBuffer(),
+    );
     const refused = await built.app.inject({
       method: 'POST',
       url: '/api/uploads/portrait-assets',
@@ -397,6 +414,7 @@ describe('portrait pool', () => {
   });
 
   it('lets the GM take a portrait off the pool, and nobody else', async () => {
+    const before = await built.prisma.portraitAsset.findUniqueOrThrow({ where: { id: assetId } });
     const refused = await built.app.inject({
       method: 'DELETE',
       url: `/api/portrait-assets/${assetId}`,
@@ -417,6 +435,44 @@ describe('portrait pool', () => {
       headers: { cookie: gmCookie },
     });
     expect((list.json() as PortraitAssetView[]).map((a) => a.id)).not.toContain(assetId);
+    const withCrops = await built.app.inject({
+      method: 'GET',
+      url: '/api/portrait-assets?includeRetired=true',
+      headers: { cookie: gmCookie },
+    });
+    expect((withCrops.json() as PortraitAssetView[]).find((a) => a.id === assetId)).toMatchObject({
+      retired: true,
+      url: before.url,
+      crop: { x: before.cropX, y: before.cropY, zoom: before.cropZoom },
+    });
+    await backfillPortraitAssets(built.prisma, config.uploadsDir, built.app.log);
+    expect(await built.prisma.portraitAsset.findUnique({ where: { id: assetId } })).toMatchObject({
+      retired: true,
+      cropZoom: before.cropZoom,
+    });
+    expect(await built.prisma.portraitAsset.count({ where: { url: before.url } })).toBe(1);
+  });
+
+  it('rejects invalid dimensions and a changed campaign before saving a portrait', async () => {
+    const body = multipartBody('small.png', PNG_1X1);
+    const count = await built.prisma.portraitAsset.count();
+    const small = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portrait-assets',
+      headers: { ...body.headers, cookie: gmCookie },
+      payload: body.payload,
+    });
+    expect(small.statusCode).toBe(400);
+    expect(small.json()).toEqual({ error: 'IMAGE_TOO_SMALL' });
+    const moved = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portrait-assets?campaignId=another-campaign',
+      headers: { ...body.headers, cookie: gmCookie },
+      payload: body.payload,
+    });
+    expect(moved.statusCode).toBe(409);
+    expect(moved.json()).toEqual({ error: 'CAMPAIGN_CHANGED' });
+    expect(await built.prisma.portraitAsset.count()).toBe(count);
   });
 });
 

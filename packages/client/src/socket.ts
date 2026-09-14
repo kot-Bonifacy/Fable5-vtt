@@ -542,6 +542,9 @@ export function connectSocket(userId: string): Socket {
    * które pokazują na figury z poprzedniej kampanii.
    */
   socket.on('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
+    useAuthStore.setState({ activeCampaign: broadcast.campaign });
+    usePortraitStore.getState().reset();
+    if (broadcast.campaign) void usePortraitStore.getState().load(true);
     void useAuthStore.getState().initialize();
     useSelectionStore.getState().resetFocus();
     useHudStore.getState().setActiveWeapon(null);

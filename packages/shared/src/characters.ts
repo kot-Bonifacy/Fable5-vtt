@@ -414,6 +414,8 @@ export interface CpredDataPayload {
  * inaczej niż biblioteka żetonów, którą ogląda sam MG.
  */
 export interface PortraitAssetView {
+  /** Wycofany z wyboru; kadr istniejących przypisań pozostaje dostępny. */
+  retired?: boolean;
   id: string;
   name: string;
   url: string;

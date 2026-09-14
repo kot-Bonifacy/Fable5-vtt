@@ -14,6 +14,7 @@ import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
 import { getActiveCampaign } from './helpers.js';
+import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
 // builds its refusal sentences from the same pair — a limit tightened here and
@@ -190,6 +191,10 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     if (!campaign) {
       return reply.code(409).send({ error: 'NO_CAMPAIGN' });
     }
+    const expectedCampaign = (request.query as { campaignId?: string }).campaignId;
+    if (expectedCampaign && expectedCampaign !== campaign.id) {
+      return reply.code(409).send({ error: 'CAMPAIGN_CHANGED' });
+    }
     const file = await request.file({ limits: { fileSize: MAX_PORTRAIT_UPLOAD_BYTES } });
     if (!file) {
       return reply.code(400).send({ error: 'NO_FILE' });
@@ -204,23 +209,18 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
 
     let width: number;
     let height: number;
-    let type: string | undefined;
     try {
-      ({ width, height, type } = imageSize(buffer));
-    } catch {
-      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
-    }
-    const extension = type ? IMAGE_EXTENSIONS[type] : undefined;
-    if (!extension) {
-      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
-    }
-    if (width > PORTRAIT_IMAGE_MAX_SIDE || height > PORTRAIT_IMAGE_MAX_SIDE) {
-      return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
+      ({ buffer, width, height } = await preparePortraitImage(buffer));
+    } catch (error) {
+      if (!(error instanceof PortraitImageError)) throw error;
+      return reply
+        .code(error.message === 'FILE_TOO_LARGE' ? 413 : 400)
+        .send({ error: error.message });
     }
 
     const portraitsDir = join(ctx.config.uploadsDir, 'portraits');
     await mkdir(portraitsDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
+    const filename = `${randomBytes(12).toString('base64url')}.webp`;
     await writeFile(join(portraitsDir, filename), buffer);
 
     const original = basename(file.filename ?? 'portret');
@@ -243,7 +243,12 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.send([]);
     }
     const assets = await ctx.prisma.portraitAsset.findMany({
-      where: { campaignId: campaign.id },
+      where: {
+        campaignId: campaign.id,
+        ...((request.query as { includeRetired?: string }).includeRetired === 'true'
+          ? {}
+          : { retired: false }),
+      },
       orderBy: { createdAt: 'desc' },
     });
     const used = await usedPortraitUrls(ctx.prisma, campaign.id, request.user!.id);
@@ -257,18 +262,17 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
   /**
    * Zdjęcie portretu z puli — MG.
    *
-   * Kasuje sam wpis biblioteki; plik z dysku zabiera `uploads-gc.ts`, o ile
-   * nie trzyma go już żadna karta. Portret wybrany wcześniej na czyjejś karcie
-   * zostaje na niej — usunięcie z puli znaczy „nie proponuj tego dalej", nie
-   * „odbierz komuś obrazek".
+   * Wycofuje wpis z wyboru. Wiersz i plik pozostają, aby zachować kadr
+   * istniejących przypisań i nie odtwarzać wpisu przez backfill przy restarcie.
    */
   app.delete('/api/portrait-assets/:id', { preHandler: requireGm }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const asset = await ctx.prisma.portraitAsset.findUnique({ where: { id } });
-    if (!asset) {
+    const campaign = await getActiveCampaign(ctx.prisma);
+    if (!asset || asset.campaignId !== campaign?.id) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
-    await ctx.prisma.portraitAsset.delete({ where: { id } });
+    await ctx.prisma.portraitAsset.update({ where: { id }, data: { retired: true } });
     return reply.code(204).send();
   });
 

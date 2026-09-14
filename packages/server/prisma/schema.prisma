@@ -536,6 +536,8 @@ model TokenAsset {
  * Bliźniak `TokenAsset` — ta sama zasada, inny katalog `uploads/`.
  */
 model PortraitAsset {
+  /** Usunięty z wyboru; plik i kadr zachowane dla istniejących przypisań. */
+  retired    Boolean  @default(false)
   id         String   @id @default(cuid())
   campaignId String
   /** Nazwa w bibliotece; domyślnie nazwa wgranego pliku bez rozszerzenia. */
