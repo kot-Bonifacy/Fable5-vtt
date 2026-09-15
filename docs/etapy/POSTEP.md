@@ -290,6 +290,25 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 15.09 — audyt kreatora i projekt naprawy
+
+**Zlecenie MG:** zweryfikować kreator względem podręcznika i wygody obsługi;
+wynik to `naprawa_karty_postaci.md` w katalogu głównym, z planem trzech etapów.
+Bez zmian kodu aplikacji. MG wskazał priorytet Kompletnego Pakietu. Pytania o ekran,
+minima i wyposażenie pozostają bez odpowiedzi; plan zachowuje decyzje 25a–25c.
+
+**Ustalenia:** minimum zawodowych umiejętności Krawędziarza jest zbyt niskie;
+gracz sam wybiera większą pulę Cech; kolejka pełnych zestawów pól może cofać
+szybkie zmiany; brak ostrzeżenia o niewydanych punktach. Drobna typografia i kropka
+przy podstawowej nie prowadzą użytkownika. Pozostałe ograniczenia i ryzyka,
+w tym niepełna atomowość zakończenia, opisano z poziomem pewności w projekcie.
+
+**Weryfikacja:** 78 testów shared i 36 serwera zielone; pięć tymczasowych prób
+odtworzyło luki (plik prób usunięty). Dane creation.json zgodne z ponownym wynikiem
+parsera w pamięci. Brak dostępnej przeglądarki — nie było odbioru wizualnego.
+Uruchomiono dev: frontend i health serwera HTTP 200. Serwer wymagał startu poza
+piaskownicą po błędzie uv_os_get_passwd. Treści prywatnych nie dodawano do repo.
+
 ### Sesja 14.09 (druga) — pod ręczną mgłą gracz chodzi tylko po odsłoniętym
 
 **Zlecenie MG:** przegląd zaległości z propozycjami; MG wybrał naprawę dokumentacji i A — planer
@@ -314,29 +333,3 @@ z konta `Tester` na „Test Brak sceny": odmowa ruchu w czerń, trasa figury sto
 brak trasy nad czernią, odsłonięcie bez przeładowania; trasa za barierę sprawdzona w Node tym samym
 kodem. Pełnego marszu nie obejrzano (schowana karta, zaległość). `pnpm dev` przestał działać
 w trakcie sesji z nieustalonej przyczyny — uruchomiony ponownie.
-
-### Sesja 14.09 — biblioteka portretów MG
-
-**Zlecenie MG:** osobne zarządzanie pulą poza kartą, zbiorcze dodawanie bez kadrowania,
-limity rozmiaru/jakości i trwały zapis na serwerze. Przygotowany interfejs: przycisk
-„Portrety — biblioteka MG” w panelu postaci, wielokrotny wybór plików, kolejka
-z podsumowaniem i błędami osobno dla każdego pliku. Karta zachowuje wybór i kadrowanie.
-
-**Ustalenia MG i realizacja:** osobne okno z panelu postaci, osobna pula kampanii;
-JPG/PNG/WebP do 10 MB / 20 mln pikseli, minimum 256 × 256 px. Serwer dekoduje obraz
-przez sharp, uwzględnia EXIF i zapisuje WebP (jakość 85) do 2048 px dłuższego boku,
-bez kadrowania i bez powiększania. Nie zmienia wcześniej wgranych plików.
-
-**Naprawione:** kosz ustawia `PortraitAsset.retired`, zachowując plik i kadr istniejących
-kart oraz figur. Wycofany portret nie wraca po restarcie przez backfill i nie jest
-dostępny do nowego wyboru. Kolejka przerywa dodawanie przy zmianie kampanii; serwer
-sprawdza oczekiwane `campaignId`. Migracja zastosowana na dev.db. Umowa w `serwer`.
-
-**Weryfikacja:** testy konwersji, uploadu, wycofania i zachowania kadru, backfillu,
-kreatora oraz sprzątania plików; TypeScript trzech pakietów, ESLint i Prettier.
-W Chrome obejrzano wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą;
-bez zmiany kart i figur Poligonu. Pełne testy repo zielone: 1164 serwera, 209 klienta
-oraz cały shared. Aplikacja działa, migracja zastosowana.
-Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
-
-

@@ -7,6 +7,31 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.09 — biblioteka portretów MG
+
+**Zlecenie MG:** osobne zarządzanie pulą poza kartą, zbiorcze dodawanie bez kadrowania,
+limity rozmiaru/jakości i trwały zapis na serwerze. Przygotowany interfejs: przycisk
+„Portrety — biblioteka MG” w panelu postaci, wielokrotny wybór plików, kolejka
+z podsumowaniem i błędami osobno dla każdego pliku. Karta zachowuje wybór i kadrowanie.
+
+**Ustalenia MG i realizacja:** osobne okno z panelu postaci, osobna pula kampanii;
+JPG/PNG/WebP do 10 MB / 20 mln pikseli, minimum 256 × 256 px. Serwer dekoduje obraz
+przez sharp, uwzględnia EXIF i zapisuje WebP (jakość 85) do 2048 px dłuższego boku,
+bez kadrowania i bez powiększania. Nie zmienia wcześniej wgranych plików.
+
+**Naprawione:** kosz ustawia `PortraitAsset.retired`, zachowując plik i kadr istniejących
+kart oraz figur. Wycofany portret nie wraca po restarcie przez backfill i nie jest
+dostępny do nowego wyboru. Kolejka przerywa dodawanie przy zmianie kampanii; serwer
+sprawdza oczekiwane `campaignId`. Migracja zastosowana na dev.db. Umowa w `serwer`.
+
+**Weryfikacja:** testy konwersji, uploadu, wycofania i zachowania kadru, backfillu,
+kreatora oraz sprzątania plików; TypeScript trzech pakietów, ESLint i Prettier.
+W Chrome obejrzano wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą;
+bez zmiany kart i figur Poligonu. Pełne testy repo zielone: 1164 serwera, 209 klienta
+oraz cały shared. Aplikacja działa, migracja zastosowana.
+Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
+
+
 ### Sesja 13.09 (piąta) — oględziny 42c domknięte, przerwany marsz cofał figurę za róg
 
 _Notatka odtworzona 14.09 z niezacommitowanej dokumentacji tej sesji (`zaleglosci.md`, archiwum
