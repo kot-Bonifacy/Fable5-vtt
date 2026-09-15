@@ -145,8 +145,12 @@ Zakres ogólny:
 
 **Odbiór:** gracz dostrzega obowiązkowe minimum Perswazji i Skradania się bez
 wchodzenia do podsumowania; wymagania nie zależą wyłącznie od koloru lub najechania.
-Sprawdzić wszystkie kroki, oba motywy, klawiaturę, okna 1366×768 i 1920×1080
-oraz powiększenie 100%, 125% i 150%, a przede wszystkim konfigurację ekranu MG.
+Główny odbiór: ekran **4K, powiększenie przeglądarki 100%** — MG potwierdził,
+że w tej konfiguracji czcionka jest za mała. Skalę Windows należy ustalić przed
+odbiorem; rozdzielczość monitora nie oznacza takiego samego rozmiaru okna w pikselach CSS.
+Sprawdzić wszystkie kroki, oba motywy i klawiaturę. Dodatkowo sprawdzić okna
+1366×768 i 1920×1080 oraz powiększenie 125% i 150%. Czytelność przy 4K/100%
+ma wynikać z poprawionego interfejsu, bez konieczności zwiększania zoomu przez MG.
 Powiększenie nie może odcinać nawigacji ani zasłaniać pól. Rzeczywisty odbiór
 w przeglądarce jest obowiązkowy, sam przegląd CSS nie wystarczy.
 
@@ -184,7 +188,8 @@ tego planu; mogą nie zmieścić się w jednej sesji razem z odbiorem.
 
 Podczas audytu zadano MG pytania o zakres metod, konfigurację ekranu, inne
 przeszkody, zachowanie uproszczeń wyposażenia i automatyczny przydział minimów.
-MG potwierdził priorytet Kompletnego Pakietu. Pozostałe pytania czekają na odpowiedzi.
+MG potwierdził priorytet Kompletnego Pakietu oraz ekran 4K i zoom przeglądarki 100%.
+Pozostałe pytania czekają na odpowiedzi.
 
 1. **Metody — ustalone:** przede wszystkim Kompletny Pakiet; Krawędziarz
    uzupełniająco, zgodnie z zakresem istniejącego kreatora i decyzją 25a.
@@ -192,8 +197,8 @@ MG potwierdził priorytet Kompletnego Pakietu. Pozostałe pytania czekają na od
    decyzją zakresową.
 3. **Minima:** automatyczny przydział jest propozycją. Alternatywa to ręczne
    rozdawanie z czytelnymi oznaczeniami i ostrzeżeniami przy polach.
-4. **Ekran:** rozdzielczość, skala Windows i zoom przeglądarki MG pozostają
-   nieznane; proponowane parametry odbioru trzeba o nie uzupełnić.
+4. **Ekran — częściowo ustalone:** 4K, zoom przeglądarki 100%; to główna
+   konfiguracja odbioru. Skala Windows pozostaje nieznana.
 5. **Niewydane punkty:** proponowana blokada zakończenia dla gracza i świadomy
    wyjątek MG dla NPC wymaga potwierdzenia; w każdym wariancie pokazywać resztę.
 6. **Specjalizacje:** pełna obsługa kilku języków i dziedzin dotyka również karty,

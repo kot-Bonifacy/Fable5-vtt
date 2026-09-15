@@ -294,8 +294,9 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 **Zlecenie MG:** zweryfikować kreator względem podręcznika i wygody obsługi;
 wynik to `naprawa_karty_postaci.md` w katalogu głównym, z planem trzech etapów.
-Bez zmian kodu aplikacji. MG wskazał priorytet Kompletnego Pakietu. Pytania o ekran,
-minima i wyposażenie pozostają bez odpowiedzi; plan zachowuje decyzje 25a–25c.
+Bez zmian kodu aplikacji. MG wskazał priorytet Kompletnego Pakietu oraz ekran 4K
+przy zoomie przeglądarki 100%. Skala Windows, minima i wyposażenie pozostają
+do ustalenia; plan zachowuje decyzje 25a–25c.
 
 **Ustalenia:** minimum zawodowych umiejętności Krawędziarza jest zbyt niskie;
 gracz sam wybiera większą pulę Cech; kolejka pełnych zestawów pól może cofać
