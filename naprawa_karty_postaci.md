@@ -16,8 +16,8 @@ jest egzekwowana nieprawidłowo, a drobna typografia utrudnia podejmowanie decyz
 
 Proponowane są **trzy kolejne etapy, po jednej sesji każdy**: zasady i zapis,
 prowadzenie użytkownika i czytelność, następnie wyposażenie oraz odbiór całego procesu.
-Jeżeli zostanie wybrana pełna obsługa wyposażenia i wielu specjalizacji, zakres
-trzeciego etapu trzeba ponownie oszacować przed implementacją.
+Uproszczenia wyposażenia pozostają zgodnie z potwierdzoną decyzją MG.
+Pełna obsługa wielu specjalizacji wymaga osobnego oszacowania przed implementacją.
 
 ## Zakres i źródła weryfikacji
 
@@ -132,7 +132,7 @@ Zakres ogólny:
 - W umiejętnościach pokazywać **„Podstawowa · min. 2”**, bieżący poziom,
   brakującą liczbę punktów i koszt ×2. Cecha powiązana z umiejętnością ma mieć
   zrozumiałą nazwę; wymagania podręcznika odróżnić od rekomendacji dla Roli.
-- Proponowany start: przydzielić wymagane minima automatycznie i od razu
+- **Decyzja MG:** przydzielić wymagane minima automatycznie i od razu
   potrącić ich koszt z puli. Dla starszych szkiców przed zmianą pokazać bilans;
   nie kasować samodzielnie wybranych poziomów.
 - Dodać widoczny licznik „pozostało”, podgląd sumy Cecha + poziom umiejętności,
@@ -145,6 +145,9 @@ Zakres ogólny:
 
 **Odbiór:** gracz dostrzega obowiązkowe minimum Perswazji i Skradania się bez
 wchodzenia do podsumowania; wymagania nie zależą wyłącznie od koloru lub najechania.
+Nowy Kompletny Pakiet ma automatycznie przydzielone minima podstawowych
+umiejętności, ich koszt odjęty od puli i widoczne etykiety „Podstawowa · min. 2”.
+Ponowne otwarcie szkicu nie nalicza tego kosztu drugi raz.
 Główny odbiór: ekran **4K, powiększenie przeglądarki 100%** — MG potwierdził,
 że w tej konfiguracji czcionka jest za mała. Skalę Windows należy ustalić przed
 odbiorem; rozdzielczość monitora nie oznacza takiego samego rozmiaru okna w pikselach CSS.
@@ -179,24 +182,23 @@ jej dane i saldo zgadzają się z podsumowaniem. Żaden świadomie pominięty el
 podręcznika nie zostaje ukryty pod komunikatem „gotowa”. MG odbiera czytelność
 i rozumie, jakie czynności zostały po jego stronie.
 
-**Wariant rozszerzony:** pełne pakiety Ról, zakupy mody i cyborgizacje w kreatorze
-wymagają świadomego zastąpienia decyzji 25c, importu danych prywatnych, poprawnego
-rozliczenia oddzielnych budżetów i skutków instalacji. Nie są domyślnym zakresem
-tego planu; mogą nie zmieścić się w jednej sesji razem z odbiorem.
+**Potwierdzony zakres:** zachować uproszczenia 25c. Automatyczne pełne pakiety
+Ról, zakupy mody i instalowanie cyborgizacji w kreatorze nie wchodzą do tej naprawy.
 
 ## Pytania i założenia do ustalenia przed realizacją
 
 Podczas audytu zadano MG pytania o zakres metod, konfigurację ekranu, inne
 przeszkody, zachowanie uproszczeń wyposażenia i automatyczny przydział minimów.
-MG potwierdził priorytet Kompletnego Pakietu oraz ekran 4K i zoom przeglądarki 100%.
-Pozostałe pytania czekają na odpowiedzi.
+MG potwierdził priorytet Kompletnego Pakietu, ekran 4K i zoom przeglądarki 100%,
+zachowanie uproszczeń wyposażenia oraz automatyczny przydział minimów.
+Otwarte kwestie wskazano poniżej.
 
 1. **Metody — ustalone:** przede wszystkim Kompletny Pakiet; Krawędziarz
    uzupełniająco, zgodnie z zakresem istniejącego kreatora i decyzją 25a.
-2. **Wyposażenie:** domyślnie zachować decyzje 25c; wariant pełny jest osobną
-   decyzją zakresową.
-3. **Minima:** automatyczny przydział jest propozycją. Alternatywa to ręczne
-   rozdawanie z czytelnymi oznaczeniami i ostrzeżeniami przy polach.
+2. **Wyposażenie — ustalone:** zachować uproszczenia 25c, poprawić zasady
+   i wygodę w obecnym zakresie.
+3. **Minima — ustalone:** przydzielać automatycznie, odejmować koszt od puli
+   i pokazywać etykiety wymagań przy umiejętnościach.
 4. **Ekran — częściowo ustalone:** 4K, zoom przeglądarki 100%; to główna
    konfiguracja odbioru. Skala Windows pozostaje nieznana.
 5. **Niewydane punkty:** proponowana blokada zakończenia dla gracza i świadomy
