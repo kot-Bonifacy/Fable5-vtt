@@ -417,6 +417,36 @@ export function creationSkillCost(
   return level * multiplier;
 }
 
+/** One source for method-specific minimums, the free grant and the ceiling. */
+export function creationSkillLimits(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  skillId: string,
+): { min: number; max: number; free: boolean } {
+  if (data.freeLanguage?.skillId === skillId) {
+    return { min: data.freeLanguage.level, max: data.freeLanguage.level, free: true };
+  }
+  return {
+    min:
+      data.basicSkills.includes(skillId) || draft.method === 'edgerunner'
+        ? data.limits.skillMin
+        : 1,
+    max: data.limits.skillMax,
+    free: false,
+  };
+}
+
+/** The free language is a grant, including in drafts saved before this repair. */
+export function creationSkillLevel(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  skillId: string,
+): number {
+  return data.freeLanguage?.skillId === skillId
+    ? data.freeLanguage.level
+    : (draft.skills[skillId] ?? 0);
+}
+
 export function creationSkillPointsSpent(
   draft: CpredCreationDraft,
   data: CpredCreationData,
@@ -570,8 +600,13 @@ export function creationIssues(
   if (draft.method === 'complete') {
     const pool = creationStatPool(data, draft);
     const spent = creationStatPointsSpent(draft);
-    if (spent > pool) {
-      issues.push(issue('stats', `Punkty Cech: wydane ${spent} z ${pool}.`));
+    if (spent !== pool) {
+      issues.push(
+        issue(
+          'stats',
+          `Punkty Cech: wydane ${spent} z ${pool}. Pozostało: ${pool - spent}. Rozdziel całą pulę.`,
+        ),
+      );
     }
   }
 
@@ -583,16 +618,15 @@ export function creationIssues(
       issues.push(issue(`skills.${skillId}`, `Nieznana umiejętność: ${skillId}.`));
       continue;
     }
-    if (!allowed.has(skillId)) {
+    if (!allowed.has(skillId) && data.freeLanguage?.skillId !== skillId) {
       issues.push(issue(`skills.${skillId}`, `Umiejętność ${name} nie należy do listy tej Roli.`));
     }
-    const ceiling =
-      data.freeLanguage?.skillId === skillId ? data.freeLanguage.level : data.limits.skillMax;
-    if (!isInteger(level) || level < 1 || level > ceiling) {
+    const limits = creationSkillLimits(draft, data, skillId);
+    if (!isInteger(level) || (!limits.free && level < limits.min) || level > limits.max) {
       issues.push(
         issue(
           `skills.${skillId}`,
-          `Umiejętność ${name} musi mieścić się w przedziale 1–${ceiling}.`,
+          `Umiejętność ${name} musi mieścić się w przedziale ${limits.min}–${limits.max}.`,
         ),
       );
     }
@@ -624,7 +658,7 @@ export function creationIssues(
   }
 
   for (const skillId of data.basicSkills) {
-    const level = draft.skills[skillId] ?? 0;
+    const level = creationSkillLevel(draft, data, skillId);
     if (level < data.limits.skillMin) {
       const name = names.get(skillId) ?? skillId;
       issues.push(
@@ -637,11 +671,30 @@ export function creationIssues(
   }
 
   const spent = creationSkillPointsSpent(draft, data, registry);
-  if (spent > data.skillPoints) {
-    issues.push(issue('skills', `Punkty umiejętności: wydane ${spent} z ${data.skillPoints}.`));
+  if (spent !== data.skillPoints) {
+    issues.push(
+      issue(
+        'skills',
+        `Punkty umiejętności: wydane ${spent} z ${data.skillPoints}. Pozostało: ${data.skillPoints - spent}. Rozdziel całą pulę.`,
+      ),
+    );
+  }
+  if (data.freeLanguage && !draft.lifepath.language.trim()) {
+    issues.push(issue('lifepath.language', 'Wpisz nazwę darmowego języka kultury pochodzenia.'));
   }
 
   if (lookup) {
+    for (const entryId of Object.keys(draft.purchases)) {
+      const entry = lookup(entryId);
+      if (!entry || entryPrice(entry) === null) {
+        issues.push(
+          issue(
+            'purchases',
+            'Przedmiot z koszyka nie jest już dostępny lub nie ma ceny. Usuń go z koszyka.',
+          ),
+        );
+      }
+    }
     const budget = creationBudget(data, draft);
     const spentEddies = creationSpentEddies(creationPurchases(draft, lookup));
     if (spentEddies > budget) {

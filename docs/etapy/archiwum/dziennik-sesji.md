@@ -7,6 +7,31 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.09 (druga) — pod ręczną mgłą gracz chodzi tylko po odsłoniętym
+
+**Zlecenie MG:** przegląd zaległości z propozycjami; MG wybrał naprawę dokumentacji i A — planer
+gracza pod mgłą tylko po odsłoniętym (decyzja z 13.09). Dopytane: odmawia także serwer, figura
+postawiona w czerni może wyjść na odsłonięte (pola startowe zwolnione), push na koniec po przejrzeniu.
+
+**Znalezione przy przeglądzie i naprawione (dokumentacja, `d0f0aab`):** notatka piątej sesji 13.09
+zginęła — sesja portretów zacommitowała `POSTEP.md` bez niej, a dokumentacja piątej sesji leżała
+niezacommitowana; notatka 42c stała w dzienniku dwa razy. Notatka odtworzona z plików, duplikat
+usunięty, nieobejrzane zbiorcze wgrywanie portretów dopisane do zaległości.
+
+**Zrobione:** `fogFloorPassable` i `firstClosedFloorStep` w `shared` — próbka `everyRunCell` wyjęta
+z wygładzania planera, więc planer i serwer pytają o te same kratki. `refuseWalkIntoFog` przed
+ścianami: każdy krok w czerń dostaje tę samą odmowę (`MOVE_INTO_FOG`), więc odmowa nie zdradza ściany
+w czerni. `walkFloorFor` zamiast `confinesWalkToSight`; `setWalkPassable(…, enforcedFloor)` pilnuje
+lądowań w `clipToBudget` i `marchLanding`, tylko pod mgłą. Umowy w `mapa` i `tura`, pułapka w `tura`,
+wpis w `POMYSLY.md`: serwer nie trzyma gracza pola widzenia w Dynamicznej.
+
+**Weryfikacja:** 2111 testów `shared` (12 nowych), 1172 serwera (8 nowych w `fog-walk.test.ts`),
+210 klienta (1 nowy, 3 przepisane); `tsc --noEmit` w trzech pakietach, ESLint, Prettier. W Chrome
+z konta `Tester` na „Test Brak sceny": odmowa ruchu w czerń, trasa figury stojącej w czerni,
+brak trasy nad czernią, odsłonięcie bez przeładowania; trasa za barierę sprawdzona w Node tym samym
+kodem. Pełnego marszu nie obejrzano (schowana karta, zaległość). `pnpm dev` przestał działać
+w trakcie sesji z nieustalonej przyczyny — uruchomiony ponownie.
+
 ### Sesja 14.09 — biblioteka portretów MG
 
 **Zlecenie MG:** osobne zarządzanie pulą poza kartą, zbiorcze dodawanie bez kadrowania,

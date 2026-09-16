@@ -1760,6 +1760,24 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Szkic kreatora od 15.09:** aktualizację zależną od innych pól buduj funkcją w kolejce `creationStore.patch`; `draftId` + `revision` chronią inne okna, `requestId` rozpoznaje ponowienie. Ranga pochodzi z kolumny zatwierdzanej przez MG, a zakończenie i naprawa żetonu używają tego samego `draftId`.
+
+**Niezawodność kreatora (15–16.09).** `defineCreationEvent` szereguje wszystkie jego
+operacje w kampanii (jeden proces serwera). Nowy zapis szkicu zwiększa `revision`;
+`lastPatchId` pozwala oddać wynik powtórzonej łaty bez ponownego zastosowania.
+Nie buduj zestawu Cech, umiejętności ani Ścieżki Życia ze starych propsów: przekaż
+funkcję czytającą bieżący szkic dopiero wewnątrz kolejki. Odmowa zachowuje łatę i późniejsze
+intencje; jawne ponowienie używa tych samych identyfikatorów. Konflikt drugiego okna
+wymaga świadomego wczytania stanu serwera. Zakupu lub rzutu po timeout nie powtarza się
+automatycznie — najpierw odczyt szkicu.
+
+`CharacterDraft.statRankId` to wybór MG; JSON nie jest autorytetem puli. Stare szkice
+graczy czekają na zatwierdzenie, ich rozdzielone punkty zostają. `creation:finish`
+obejmuje kartę, `applyBalance` z klientem transakcyjnym, wyposażenie, rejestr i usunięcie
+szkicu jedną transakcją. `Character.creationDraftId` (unikalne) i `creationUserId`
+identyfikują wynik ponowienia; status żetonu jest oddzielny. Wstawienie żetonu zapisuje
+`creationTokenDone` w tej samej transakcji co figurę, przed rozgłoszeniem.
+
 - **Notka o skutku `character:cyberware` czeka na odpowiedź serwera** — `sendCyberwareAction` zwraca obietnicę zdania odmowy albo `null`; guzik piszący „Instaluję…" przed nią kłamie przy każdej odmowie montażu.
 - **Sprzęt pakietu BN-a, bez którego karta nie działa, jest polem pakietu, nie zdaniem w `gear`** — jak `cyberdeck` netrunnera Korpo; składa go czysta funkcja z kompendium po **nazwie**, a czego katalog nie zna, wraca w `missing` do notatek.
 - **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).

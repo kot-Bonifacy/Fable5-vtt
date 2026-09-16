@@ -96,7 +96,8 @@ function finished(over: Partial<CpredCreationDraft> = {}): CpredCreationDraft {
     method: 'edgerunner',
     roleId: 'solo',
     stats,
-    skills: { athletics: 3, handgun: 4 },
+    skills: { athletics: 4, handgun: 4, autofire: 6 },
+    lifepath: { ...createDefaultCreationDraft(data()).lifepath, language: 'Testowy' },
     name: 'Zgrzyt',
     ...over,
   });
@@ -236,7 +237,7 @@ describe('specjalizacje umiejętności', () => {
       data(reg),
       reg,
     );
-    expect(issues).toEqual([]);
+    expect(issues.filter((issue) => issue.field.startsWith('skillSpecialties'))).toEqual([]);
   });
 
   // Zapis działał, odczyt nie: `parseCreationDraft` przepisuje pola po nazwie,
@@ -594,5 +595,53 @@ describe('parseCreationDraft and the basket', () => {
   it('defaults the token switch to on — session zero ends with a figure on the map', () => {
     expect(parseCreationDraft({}, data(), registry()).placeToken).toBe(true);
     expect(parseCreationDraft({ placeToken: false }, data(), registry()).placeToken).toBe(false);
+  });
+});
+
+describe('naprawa 1 — wymagania metod i rozliczenie punktów', () => {
+  it('rejects a chosen edgerunner skill at one but permits an optional complete skill at one', () => {
+    const reg = registry();
+    const skills = { athletics: 2, handgun: 1 };
+    expect(
+      creationIssues(finished({ skills }), data(reg), reg).some(
+        (x) => x.field === 'skills.handgun',
+      ),
+    ).toBe(true);
+    expect(
+      creationIssues(finished({ method: 'complete', skills }), data(reg), reg).some(
+        (x) => x.field === 'skills.handgun',
+      ),
+    ).toBe(false);
+  });
+  it('keeps unspent points in the draft and blocks both pools until fully allocated', () => {
+    const reg = registry();
+    const original = finished({ method: 'complete', skills: { athletics: 2 } });
+    const restored = parseCreationDraft(original, data(reg), reg);
+    expect(restored.skills).toEqual(original.skills);
+    const issues = creationIssues(restored, data(reg), reg);
+    expect(issues.some((x) => x.field === 'stats' && x.message.includes('Pozostało: 2'))).toBe(
+      true,
+    );
+    expect(issues.some((x) => x.field === 'skills' && x.message.includes('Pozostało: 18'))).toBe(
+      true,
+    );
+  });
+  it('requires a name for the free language without demanding the rest of the biography', () => {
+    const reg = registry();
+    const ready = finished();
+    expect(creationIssues(ready, data(reg), reg)).toEqual([]);
+    ready.lifepath.language = '   ';
+    expect(creationIssues(ready, data(reg), reg).map((x) => x.field)).toEqual([
+      'lifepath.language',
+    ]);
+    expect(creationToCharacterData(ready, data(reg)).skills.language).toBe(4);
+  });
+  it('refuses a vanished basket item instead of silently finishing without it', () => {
+    const reg = registry();
+    expect(
+      creationIssues(finished({ purchases: { missing: 1 } }), data(reg), reg, () => undefined).some(
+        (x) => x.field === 'purchases',
+      ),
+    ).toBe(true);
   });
 });

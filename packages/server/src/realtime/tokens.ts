@@ -386,23 +386,29 @@ export async function createCharacterToken(
   campaignId: string,
   scene: Scene,
   character: Character,
+  completeCreation = false,
 ): Promise<Token> {
   const spot = await freeSpot(deps.ctx.prisma, scene);
-  const token = await deps.ctx.prisma.token.create({
-    data: {
-      sceneId: scene.id,
-      name: character.name,
-      imageUrl: character.portraitUrl,
-      x: spot.x,
-      y: spot.y,
-      size: 1,
-      ownerId: character.ownerId,
-      characterId: character.id,
-      // A linked token has no HP of its own — the sheet is the source of
-      // truth (stage 08), and two numbers would eventually disagree.
-      hpCurrent: null,
-      hpMax: null,
-    },
+  const token = await deps.ctx.prisma.$transaction(async (tx) => {
+    const created = await tx.token.create({
+      data: {
+        sceneId: scene.id,
+        name: character.name,
+        imageUrl: character.portraitUrl,
+        x: spot.x,
+        y: spot.y,
+        size: 1,
+        ownerId: character.ownerId,
+        characterId: character.id,
+        // A linked token has no HP of its own — the sheet is the source of
+        // truth (stage 08), and two numbers would eventually disagree.
+        hpCurrent: null,
+        hpMax: null,
+      },
+    });
+    if (completeCreation)
+      await tx.character.update({ where: { id: character.id }, data: { creationTokenDone: true } });
+    return created;
   });
   await emitTokenUpsert(deps, campaignId, scene, token, toLinkedSheet(character, deps.ctx.cpred));
   return token;

@@ -1,3 +1,4 @@
+import { useCreationStore } from './stores/creationStore.js';
 import { io, type Socket } from 'socket.io-client';
 import type {
   CharacterStatEffectPayload,
@@ -30,7 +31,10 @@ import type {
   DefenseZoneView,
   CpredCreationDraft,
   CreationDraftView,
+  CreationPatchPayload,
   CreationFinishPayload,
+  CreationFinishResult,
+  CreationRankDraft,
   SmokeSyncBroadcast,
   CoverUpdatePayload,
   CoverView,
@@ -494,6 +498,16 @@ export function connectSocket(userId: string): Socket {
   const chat = () => useChatStore.getState();
 
   socket.on('connect', () => setConnected());
+  socket.on('creation:rank', (rank: { draftId: string; statRankId: string; revision: number }) => {
+    const store = useCreationStore.getState();
+    if (store.draftId === rank.draftId && store.draft) {
+      useCreationStore.setState({
+        draft: { ...store.draft, statRankId: rank.statRankId },
+        rankApproved: true,
+        revision: rank.revision,
+      });
+    }
+  });
   socket.on('disconnect', () => {
     setDisconnected();
     chat().setDesynced();
@@ -2855,13 +2869,33 @@ export function combatErrorText(code: string): string {
 
 // ─────────────────────────── kreator postaci (25a) ───────────────────────────
 
+/** Creator writes must not wait forever or buffer a stale intent while offline. */
+function emitCreationAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
+  return new Promise((resolve) => {
+    if (!socket?.connected) {
+      resolve({ ok: false, error: 'NOT_CONNECTED' });
+      return;
+    }
+    socket.timeout(10000).emit(event, payload, (error: Error | null, ack: SocketAck<T>) => {
+      resolve(error ? { ok: false, error: 'CREATION_TIMEOUT' } : ack);
+    });
+  });
+}
+
+export const listCreationRanks = () =>
+  emitCreationAck<CreationRankDraft[]>('creation:ranks', undefined);
+export const setCreationRank = (draftId: string, statRankId: string) =>
+  emitCreationAck('creation:set-rank', { draftId, statRankId });
+
 type CreationDraft = CreationDraftView<CpredCreationDraft>;
 
 /** Opens the wizard; returns the stored draft, or a fresh one. */
-export const startCreation = () => emitSceneAck<CreationDraft>('creation:start', undefined);
+export const startCreation = () => emitCreationAck<CreationDraft>('creation:start', undefined);
 
-export const patchCreation = (patch: Record<string, unknown>) =>
-  emitSceneAck<CreationDraft>('creation:patch', { patch });
+export const patchCreation = (
+  patch: Record<string, unknown>,
+  guard: Omit<CreationPatchPayload, 'patch'> = {},
+) => emitCreationAck<CreationDraft>('creation:patch', { patch, ...guard });
 
 /**
  * One 1d10 per stat, rolled by the server against the Role's template.
@@ -2871,7 +2905,7 @@ export const patchCreation = (patch: Record<string, unknown>) =>
  * without one.
  */
 export const rollCreationStats = (gesture?: RollGesture) =>
-  emitSceneAck<CreationDraft>('creation:roll', { gesture });
+  emitCreationAck<CreationDraft>('creation:roll', { gesture });
 
 /**
  * Rolls one or many Lifepath tables in a single throw (stage 25b). `index`
@@ -2879,11 +2913,11 @@ export const rollCreationStats = (gesture?: RollGesture) =>
  * the tables that fill a field of their own.
  */
 export const rollCreationLifepath = (tableIds: string[], index?: number) =>
-  emitSceneAck<CreationDraft>('creation:lifepath-roll', { tableIds, index });
+  emitCreationAck<CreationDraft>('creation:lifepath-roll', { tableIds, index });
 
 /** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
 export const rollCreationLifepathCount = (group: string) =>
-  emitSceneAck<CreationDraft>('creation:lifepath-count', { group });
+  emitCreationAck<CreationDraft>('creation:lifepath-count', { group });
 
 /**
  * One item into or out of the wizard's basket (stage 25c). A delta rather than
@@ -2891,18 +2925,31 @@ export const rollCreationLifepathCount = (group: string) =>
  * total, and the server is the one holding the prices anyway.
  */
 export const buyCreationItem = (entryId: string, delta: 1 | -1) =>
-  emitSceneAck<CreationDraft>('creation:buy', { entryId, delta });
+  emitCreationAck<CreationDraft>('creation:buy', { entryId, delta });
 
 export const finishCreation = (payload: CreationFinishPayload = {}) =>
-  emitSceneAck<CharacterView>('creation:finish', payload);
+  emitCreationAck<CreationFinishResult>('creation:finish', payload);
 
-export const discardCreation = () => emitSceneAck('creation:discard', undefined);
+export const discardCreation = (draftId?: string) =>
+  emitCreationAck('creation:discard', { draftId });
 
 export function creationErrorText(code: string | undefined): string {
   // The creator always shops at level 1, so this one reads as „nie na start".
   const locked = shopTierErrorText(code);
   if (locked) return `${locked} Zakupy startowe idą wyłącznie po poziomie 1.`;
   switch (code) {
+    case 'CREATION_SAVE_PENDING':
+      return 'Najpierw ponów zapis oczekujących zmian.';
+    case 'DRAFT_CHANGED':
+      return 'Szkic zmienił się w innym oknie lub na serwerze. Wczytaj zapis serwera przed kolejną edycją; oczekujące zmiany nie zostały nadpisane.';
+    case 'CREATION_RANK_PENDING':
+      return 'MG musi ustalić Rangę Postaci dla tego szkicu.';
+    case 'FORBIDDEN':
+      return 'Rangę Postaci ustala wyłącznie MG.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia. Zmiana nie została wysłana. Połącz się ponownie i ponów zapis.';
+    case 'CREATION_TIMEOUT':
+      return 'Brak potwierdzenia zapisu. Serwer mógł go wykonać. Ponów zapis pól lub zakończenie; przed ponownym zakupem lub rzutem odśwież szkic.';
     case 'CREATION_DATA_MISSING':
       return 'Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel.';
     case 'DRAFT_NOT_FOUND':

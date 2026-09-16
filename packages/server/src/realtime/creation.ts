@@ -1,6 +1,5 @@
 import type {
   ChatMessageView,
-  CharacterView,
   CompendiumEntry,
   CpredCharacterData,
   CpredCreationDraft,
@@ -11,6 +10,8 @@ import type {
   CreationBuyPayload,
   CreationDraftView,
   CreationFinishPayload,
+  CreationFinishResult,
+  CreationRankDraft,
   CreationLifepathCountPayload,
   CreationLifepathRollPayload,
   CreationPatchPayload,
@@ -55,9 +56,9 @@ import {
   sanitizeCharacterName,
   shopTierOf,
 } from '@vtt/shared';
-import type { Character, CharacterDraft } from '../generated/prisma/client.js';
+import type { Character, CharacterDraft, Prisma } from '../generated/prisma/client.js';
 import { usedPortraitUrls } from '../portraits.js';
-import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { RealtimeError, defineEvent, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -90,6 +91,35 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
+// Includes every creator operation and every socket of a campaign, including
+// the GM changing another user's rank. The app runs as one server process.
+const creationQueues = new WeakMap<object, Map<string, Promise<unknown>>>();
+function defineCreationEvent<P = unknown, R = void>(
+  event: RealtimeEvent<P, R>,
+): RealtimeEvent<P, R> {
+  return defineEvent({
+    ...event,
+    handler: (args) => {
+      const campaignId = requireCampaignId(args.socket.data);
+      let queues = creationQueues.get(args.deps.ctx.prisma);
+      if (!queues) {
+        queues = new Map();
+        creationQueues.set(args.deps.ctx.prisma, queues);
+      }
+      const next = (queues.get(campaignId) ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(() => event.handler(args));
+      queues.set(campaignId, next);
+      void next
+        .finally(() => {
+          if (queues.get(campaignId) === next) queues.delete(campaignId);
+        })
+        .catch(() => undefined);
+      return next;
+    },
+  });
+}
+
 function toDraftView(
   row: CharacterDraft,
   deps: RealtimeDeps,
@@ -101,8 +131,14 @@ function toDraftView(
   } catch {
     stored = null;
   }
+  const draft = parseCreationDraft(stored, data, deps.ctx.cpred);
+  const rankApproved = data.statRanks.some((rank) => rank.id === row.statRankId);
+  draft.statRankId = rankApproved ? row.statRankId! : createDefaultCreationDraft(data).statRankId;
   return {
-    draft: parseCreationDraft(stored, data, deps.ctx.cpred),
+    id: row.id,
+    revision: row.revision,
+    rankApproved,
+    draft,
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -126,7 +162,7 @@ async function saveDraft(
   const data = JSON.stringify(draft);
   return deps.ctx.prisma.characterDraft.upsert({
     where: { campaignId_userId: { campaignId, userId } },
-    update: { data },
+    update: { data, revision: { increment: 1 } },
     create: { campaignId, userId, data },
   });
 }
@@ -136,7 +172,10 @@ async function saveDraft(
  * fresh one. Idempotent on purpose — „Nowa postać" pressed twice must not
  * throw away half an hour of session zero.
  */
-export const creationStartEvent = defineEvent<undefined, CreationDraftView<CpredCreationDraft>>({
+export const creationStartEvent = defineCreationEvent<
+  undefined,
+  CreationDraftView<CpredCreationDraft>
+>({
   name: 'creation:start',
   handler: async ({ deps, socket, user }) => {
     const campaignId = requireCampaignId(socket.data);
@@ -150,7 +189,7 @@ export const creationStartEvent = defineEvent<undefined, CreationDraftView<Cpred
   },
 });
 
-export const creationPatchEvent = defineEvent<
+export const creationPatchEvent = defineCreationEvent<
   CreationPatchPayload,
   CreationDraftView<CpredCreationDraft>
 >({
@@ -159,12 +198,30 @@ export const creationPatchEvent = defineEvent<
     const campaignId = requireCampaignId(socket.data);
     const patch = payload?.patch;
     if (typeof patch !== 'object' || patch === null) throw new RealtimeError('BAD_REQUEST');
+    if (
+      (payload.draftId !== undefined &&
+        (typeof payload.draftId !== 'string' || !payload.draftId)) ||
+      (payload.requestId !== undefined &&
+        (typeof payload.requestId !== 'string' ||
+          !payload.requestId ||
+          payload.requestId.length > 128)) ||
+      (payload.revision !== undefined &&
+        (!Number.isSafeInteger(payload.revision) || payload.revision < 0))
+    )
+      throw new RealtimeError('BAD_REQUEST');
 
     const data = creationDataOf(deps.ctx.cpred);
     const existing = await loadDraft(deps, campaignId, user.id);
     if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
 
+    if (payload.draftId && payload.draftId !== existing.id)
+      throw new RealtimeError('DRAFT_NOT_FOUND');
+    if (payload.requestId && payload.requestId === existing.lastPatchId)
+      return toDraftView(existing, deps);
+    if (payload.revision !== undefined && payload.revision !== existing.revision)
+      throw new RealtimeError('DRAFT_CHANGED');
     const current = toDraftView(existing, deps).draft;
+    if ('statRankId' in patch && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     const next = mergeCreationDraft(current, patch, data, deps.ctx.cpred);
     if (next === null) throw new RealtimeError('INVALID_DATA');
     // Rezerwacja i sprawdzenie w jednej transakcji: równoczesny wybór nie
@@ -185,7 +242,12 @@ export const creationPatchEvent = defineEvent<
       }
       return tx.characterDraft.update({
         where: { id: existing.id },
-        data: { data: JSON.stringify(next) },
+        data: {
+          data: JSON.stringify(next),
+          revision: { increment: 1 },
+          lastPatchId: payload.requestId ?? null,
+          ...('statRankId' in patch ? { statRankId: next.statRankId } : {}),
+        },
       });
     });
     return toDraftView(saved, deps);
@@ -198,7 +260,7 @@ export const creationPatchEvent = defineEvent<
  * every stat and the total is the spread's point value, which is the number a
  * table actually compares (62 is what Kompletny Pakiet gets to spend).
  */
-export const creationRollEvent = defineEvent<
+export const creationRollEvent = defineCreationEvent<
   CreationRollPayload,
   CreationDraftView<CpredCreationDraft>
 >({
@@ -317,7 +379,7 @@ async function publishRoll(
  * can still hand a new character a rifle afterwards — „Dodaj za darmo" on the
  * catalogue card has never asked anybody's permission.
  */
-export const creationBuyEvent = defineEvent<
+export const creationBuyEvent = defineCreationEvent<
   CreationBuyPayload,
   CreationDraftView<CpredCreationDraft>
 >({
@@ -382,6 +444,87 @@ async function purchaseLookup(
   return (entryId) => byId.get(entryId);
 }
 
+export const creationRanksEvent = defineCreationEvent<undefined, CreationRankDraft[]>({
+  name: 'creation:ranks',
+  role: ROLE_GM,
+  handler: async ({ deps, socket }) => {
+    const rows = await deps.ctx.prisma.characterDraft.findMany({
+      where: { campaignId: requireCampaignId(socket.data) },
+      include: { user: true },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userName: row.user.name,
+      characterName: toDraftView(row, deps).draft.name,
+      statRankId: row.statRankId,
+    }));
+  },
+});
+
+export const creationSetRankEvent = defineCreationEvent<
+  { draftId: string; statRankId: string },
+  void
+>({
+  name: 'creation:set-rank',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (
+      !payload ||
+      typeof payload.draftId !== 'string' ||
+      !payload.draftId ||
+      !creationDataOf(deps.ctx.cpred).statRanks.some((rank) => rank.id === payload.statRankId)
+    )
+      throw new RealtimeError('INVALID_DATA');
+    const row = await deps.ctx.prisma.characterDraft.findFirst({
+      where: { id: payload.draftId, campaignId },
+    });
+    if (!row) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const saved = await deps.ctx.prisma.characterDraft.update({
+      where: { id: row.id },
+      data: { statRankId: payload.statRankId, revision: { increment: 1 } },
+    });
+    // Only rank metadata, never another player's biography or choices.
+    for (const peer of await deps.io.fetchSockets()) {
+      if (peer.data.user?.id === row.userId && peer.data.campaign?.id === campaignId) {
+        peer.emit('creation:rank', {
+          draftId: row.id,
+          statRankId: payload.statRankId,
+          revision: saved.revision,
+        });
+      }
+    }
+  },
+});
+
+async function finishResult(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  placeToken: boolean,
+): Promise<CreationFinishResult> {
+  let tokenStatus: CreationFinishResult['tokenStatus'] = 'not-requested';
+  if (character.creationTokenDone) {
+    if (await deps.ctx.prisma.token.findFirst({ where: { characterId: character.id } }))
+      tokenStatus = 'placed';
+  } else if (placeToken) {
+    try {
+      const scene = await getActiveScene(deps.ctx.prisma, campaignId);
+      if (!scene) tokenStatus = 'no-scene';
+      else {
+        await createCharacterToken(deps, campaignId, scene, character, true);
+        tokenStatus = 'placed';
+      }
+    } catch (error) {
+      deps.log.error({ err: error, characterId: character.id }, 'creation token placement failed');
+      tokenStatus = 'failed';
+    }
+  }
+  const view = toCharacterView(character, deps.ctx.cpred);
+  await emitCharacterUpsert(deps, campaignId, view);
+  return { ...view, tokenStatus };
+}
+
 /**
  * Turns the draft into a real sheet. The validation runs here again, on the
  * server's copy of the tables — the wizard's greyed-out button is a courtesy,
@@ -392,75 +535,83 @@ async function purchaseLookup(
  * `applyBalance` as every later purchase (so session zero leaves an audit
  * trail, not a mystery balance), and the finished character walks onto the map.
  */
-export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterView>({
-  name: 'creation:finish',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const data = creationDataOf(deps.ctx.cpred);
-    const existing = await loadDraft(deps, campaignId, user.id);
-    if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
-
-    const draft = toDraftView(existing, deps).draft;
-    const lookup = await purchaseLookup(deps, campaignId, Object.keys(draft.purchases));
-    if (creationIssues(draft, data, deps.ctx.cpred, lookup).length > 0) {
-      throw new RealtimeError('CREATION_INCOMPLETE');
-    }
-    const name = sanitizeCharacterName(draft.name);
-    if (name === null) throw new RealtimeError('INVALID_NAME');
-
-    // Same ownership rule as `character:create`: players own what they build.
-    let ownerId: string | null = user.id;
-    if (user.role === ROLE_GM) {
-      ownerId = payload?.ownerId ?? null;
-      if (ownerId !== null) {
-        const membership = await deps.ctx.prisma.campaignMember.findUnique({
-          where: { campaignId_userId: { campaignId, userId: ownerId } },
+export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, CreationFinishResult>(
+  {
+    name: 'creation:finish',
+    handler: async ({ deps, socket, user, payload }) => {
+      const campaignId = requireCampaignId(socket.data);
+      const data = creationDataOf(deps.ctx.cpred);
+      if (payload?.draftId) {
+        const completed = await deps.ctx.prisma.character.findUnique({
+          where: { creationDraftId: payload.draftId },
         });
-        if (!membership) throw new RealtimeError('OWNER_NOT_FOUND');
+        if (completed) {
+          if (completed.campaignId !== campaignId || completed.creationUserId !== user.id)
+            throw new RealtimeError('DRAFT_NOT_FOUND');
+          return finishResult(deps, campaignId, completed, !completed.creationTokenDone);
+        }
       }
-    }
+      const existing = await loadDraft(deps, campaignId, user.id);
+      if (!existing || (payload?.draftId && payload.draftId !== existing.id))
+        throw new RealtimeError('DRAFT_NOT_FOUND');
+      const draft = toDraftView(existing, deps).draft;
+      if (
+        draft.method === 'complete' &&
+        !toDraftView(existing, deps).rankApproved &&
+        user.role !== ROLE_GM
+      )
+        throw new RealtimeError('CREATION_RANK_PENDING');
+      const lookup = await purchaseLookup(deps, campaignId, Object.keys(draft.purchases));
+      if (creationIssues(draft, data, deps.ctx.cpred, lookup).length > 0) {
+        throw new RealtimeError('CREATION_INCOMPLETE');
+      }
+      const name = sanitizeCharacterName(draft.name);
+      if (name === null) throw new RealtimeError('INVALID_NAME');
 
-    const character = await deps.ctx.prisma.$transaction(async (tx) => {
-      if (draft.portraitUrl && user.role !== ROLE_GM) {
-        if (
-          !(await tx.portraitAsset.findFirst({ where: { campaignId, url: draft.portraitUrl } }))
-        ) {
-          throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');
-        }
-        if ((await usedPortraitUrls(tx, campaignId, user.id)).has(draft.portraitUrl)) {
-          throw new RealtimeError('PORTRAIT_TAKEN');
+      // Same ownership rule as `character:create`: players own what they build.
+      let ownerId: string | null = user.id;
+      if (user.role === ROLE_GM) {
+        ownerId = payload?.ownerId ?? null;
+        if (ownerId !== null) {
+          const membership = await deps.ctx.prisma.campaignMember.findUnique({
+            where: { campaignId_userId: { campaignId, userId: ownerId } },
+          });
+          if (!membership) throw new RealtimeError('OWNER_NOT_FOUND');
         }
       }
-      const created = await tx.character.create({
-        data: {
-          campaignId,
-          name,
-          ownerId,
-          portraitUrl: draft.portraitUrl,
-          data: JSON.stringify(creationToCharacterData(draft, data)),
-        },
+
+      const character = await deps.ctx.prisma.$transaction(async (tx) => {
+        if (draft.portraitUrl && user.role !== ROLE_GM) {
+          if (
+            !(await tx.portraitAsset.findFirst({ where: { campaignId, url: draft.portraitUrl } }))
+          ) {
+            throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');
+          }
+          if ((await usedPortraitUrls(tx, campaignId, user.id)).has(draft.portraitUrl)) {
+            throw new RealtimeError('PORTRAIT_TAKEN');
+          }
+        }
+        const created = await tx.character.create({
+          data: {
+            campaignId,
+            creationDraftId: existing.id,
+            creationUserId: user.id,
+            creationTokenDone: !draft.placeToken,
+            name,
+            ownerId,
+            portraitUrl: draft.portraitUrl,
+            data: JSON.stringify(creationToCharacterData(draft, data)),
+          },
+        });
+        await payStartingKit(deps, campaignId, created, draft, data, lookup, user.id, tx);
+        await tx.characterDraft.delete({ where: { id: existing.id } });
+        return tx.character.findUniqueOrThrow({ where: { id: created.id } });
       });
-      await tx.characterDraft.delete({ where: { id: existing.id } });
-      return created;
-    });
 
-    await payStartingKit(deps, campaignId, character, draft, data, lookup, user.id);
-
-    // Re-read: the sheet has been rewritten once per basket line above.
-    const saved =
-      (await deps.ctx.prisma.character.findUnique({ where: { id: character.id } })) ?? character;
-    if (draft.placeToken) {
-      const scene = await getActiveScene(deps.ctx.prisma, campaignId);
-      // No active scene is not an error — the character is finished either way,
-      // and „nie udało się utworzyć postaci" would be a lie about a token.
-      if (scene) await createCharacterToken(deps, campaignId, scene, saved);
-    }
-
-    const view = toCharacterView(saved, deps.ctx.cpred);
-    await emitCharacterUpsert(deps, campaignId, view);
-    return view;
+      return finishResult(deps, campaignId, character, draft.placeToken);
+    },
   },
-});
+);
 
 /**
  * Pays out the starting money and spends it, one ledger row at a time.
@@ -477,6 +628,7 @@ async function payStartingKit(
   data: ReturnType<typeof creationDataOf>,
   lookup: (entryId: string) => CompendiumEntry | undefined,
   actorId: string,
+  tx: Prisma.TransactionClient,
 ): Promise<void> {
   let sheet = creationToCharacterData(draft, data);
   sheet = await applyBalance(
@@ -490,12 +642,12 @@ async function payStartingKit(
       label: CPRED_CREATION_METHOD_LABELS[draft.method],
     },
     actorId,
-    { emit: false },
+    { emit: false, tx },
   );
 
   for (const line of creationPurchases(draft, lookup)) {
     const entry = lookup(line.entryId);
-    if (!entry) continue;
+    if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
     const resolved =
       entry.category === 'weapon'
         ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
@@ -503,8 +655,11 @@ async function payStartingKit(
     let withGoods = sheet;
     for (let copy = 0; copy < line.qty; copy += 1) {
       const purchased = purchasedSheetRow(entry, resolved, nextRowId());
-      if (!purchased) continue;
-      withGoods = mergeCharacterData(withGoods, addPurchasedRow(withGoods, purchased));
+      if (!purchased) throw new RealtimeError('NOT_PURCHASABLE');
+      const merged = mergeCharacterData(withGoods, addPurchasedRow(withGoods, purchased));
+      if (merged[purchased.list].length !== withGoods[purchased.list].length + 1)
+        throw new RealtimeError('TOO_MANY_ROWS');
+      withGoods = merged;
     }
     sheet = await applyBalance(
       deps,
@@ -517,7 +672,7 @@ async function payStartingKit(
         label: line.qty > 1 ? `${line.name} ×${line.qty}` : line.name,
       },
       actorId,
-      { emit: false },
+      { emit: false, tx },
     );
   }
 }
@@ -544,7 +699,7 @@ function addPurchasedRow(
  * tables were asked for, so the card and the draft cannot disagree about which
  * die answered which question.
  */
-export const creationLifepathRollEvent = defineEvent<
+export const creationLifepathRollEvent = defineCreationEvent<
   CreationLifepathRollPayload,
   CreationDraftView<CpredCreationDraft>
 >({
@@ -627,7 +782,7 @@ export const creationLifepathRollEvent = defineEvent<
  * „Rzuć 1k10 i od wyniku odejmij 7" — how many friends, enemies or tragic loves
  * the character has (s. 50–52). One throw, three uses, so one handler.
  */
-export const creationLifepathCountEvent = defineEvent<
+export const creationLifepathCountEvent = defineCreationEvent<
   CreationLifepathCountPayload,
   CreationDraftView<CpredCreationDraft>
 >({
@@ -673,10 +828,14 @@ export const creationLifepathCountEvent = defineEvent<
 });
 
 /** Throws the draft away. The wizard asks twice before it gets here. */
-export const creationDiscardEvent = defineEvent<undefined, void>({
+export const creationDiscardEvent = defineCreationEvent<{ draftId?: string } | undefined, void>({
   name: 'creation:discard',
-  handler: async ({ deps, socket, user }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    await deps.ctx.prisma.characterDraft.deleteMany({ where: { campaignId, userId: user.id } });
+    if (payload?.draftId !== undefined && (typeof payload.draftId !== 'string' || !payload.draftId))
+      throw new RealtimeError('BAD_REQUEST');
+    await deps.ctx.prisma.characterDraft.deleteMany({
+      where: { campaignId, userId: user.id, ...(payload?.draftId ? { id: payload.draftId } : {}) },
+    });
   },
 });

@@ -13,12 +13,23 @@ import type {
   CpredCreationDraft,
   CpredDataPayload,
   CreationDraftView,
+  CreationFinishResult,
+  CreationRankDraft,
   InvitationSummary,
   PortraitAssetView,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
-import { CPRED_STAT_IDS, buildCpredRegistry, withCreationData } from '@vtt/shared';
+import {
+  CPRED_STAT_IDS,
+  buildCpredRegistry,
+  withCreationData,
+  creationAvailableSkills,
+  creationSkillCost,
+  creationSkillPointsSpent,
+  creationStatPool,
+  cpredSkillNeedsSpecialty,
+} from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -308,6 +319,65 @@ describe('kreator postaci', () => {
   let gm: ClientSocket;
   let roleSkills: string[] = [];
 
+  // Existing scenario fixtures must now allocate every point, just like users.
+  async function allocateRemaining(socket: ClientSocket): Promise<Draft> {
+    const response = await built.app.inject({
+      method: 'GET',
+      url: '/api/cpred/data',
+      headers: { cookie: gmCookie },
+    });
+    const payload = response.json() as CpredDataPayload;
+    const registry = withCreationData(
+      buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles }),
+      payload.creation,
+    );
+    const rules = registry.creation!;
+    const current = data(await emitAck<Draft>(socket, 'creation:start'), 'start');
+    const draft = current.draft;
+    const skills = Object.fromEntries(rules.basicSkills.map((id) => [id, rules.limits.skillMin]));
+    let remaining =
+      rules.skillPoints - creationSkillPointsSpent({ ...draft, skills }, rules, registry);
+    for (const id of creationAvailableSkills(draft, rules, registry)) {
+      if (id === rules.freeLanguage?.skillId) continue;
+      const cost = creationSkillCost(id, 1, rules, registry);
+      while ((skills[id] ?? 0) < rules.limits.skillMax && remaining >= cost) {
+        skills[id] = (skills[id] ?? 0) + 1;
+        remaining -= cost;
+      }
+    }
+    expect(remaining).toBe(0);
+    const stats = { ...draft.stats };
+    if (draft.method === 'complete') {
+      let remainingStats =
+        creationStatPool(rules, draft) -
+        CPRED_STAT_IDS.reduce((sum, id) => sum + (stats[id] ?? 0), 0);
+      for (const id of CPRED_STAT_IDS) {
+        const add = Math.min(rules.limits.statMax - (stats[id] ?? 0), remainingStats);
+        stats[id] = (stats[id] ?? 0) + add;
+        remainingStats -= add;
+      }
+      expect(remainingStats).toBe(0);
+      expect(
+        (
+          await emitAck(gm, 'creation:set-rank', {
+            draftId: current.id,
+            statRankId: draft.statRankId,
+          })
+        ).ok,
+      ).toBe(true);
+    }
+    return patch(socket, {
+      skills,
+      ...(draft.method === 'complete' ? { stats } : {}),
+      skillSpecialties: Object.fromEntries(
+        Object.keys(skills)
+          .filter(cpredSkillNeedsSpecialty)
+          .map((id) => [id, 'Testowa dziedzina']),
+      ),
+      lifepath: { ...draft.lifepath, language: draft.lifepath.language || 'Testowy' },
+    });
+  }
+
   it('opens a fresh draft and hands the same one back on a second click', async () => {
     const vexConn = createSocket(vexCookie);
     const gmConn = createSocket(gmCookie);
@@ -431,6 +501,7 @@ describe('kreator postaci', () => {
     data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
     await patch(vex, { skills: Object.fromEntries(roleSkills.map((id) => [id, 4])) });
 
+    await allocateRemaining(vex);
     const character = data(await emitAck<CharacterView>(vex, 'creation:finish'), 'creation:finish');
     expect(character.name).toBe('Zgrzyt');
     expect(character.ownerId).toBe(vexId);
@@ -438,7 +509,7 @@ describe('kreator postaci', () => {
     expect(sheet.roleId).toBe('solo');
     expect(sheet.roleAbilityRank).toBe(4);
     expect(sheet.hpCurrent).toBeGreaterThan(0);
-    expect(sheet.skills.athletics).toBe(4);
+    expect(sheet.skills.athletics).toBe(6);
 
     // The wizard opens on a clean sheet afterwards, not on the finished one.
     const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
@@ -577,6 +648,7 @@ describe('kreator postaci', () => {
       });
       data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
 
+      await allocateRemaining(vex);
       const character = data(
         await emitAck<CharacterView>(vex, 'creation:finish'),
         'creation:finish',
@@ -676,6 +748,7 @@ describe('kreator postaci', () => {
       const skills = Object.fromEntries(roleSkills.map((id) => [id, 2]));
       await patch(vex, { skills, portraitUrl: '/uploads/portraits/test.png', placeToken: false });
 
+      await allocateRemaining(vex);
       const character = data(
         await emitAck<CharacterView>(vex, 'creation:finish'),
         'creation:finish',
@@ -729,6 +802,7 @@ describe('kreator postaci', () => {
         gm,
         'token:upsert',
       );
+      await allocateRemaining(vex);
       const character = data(
         await emitAck<CharacterView>(vex, 'creation:finish'),
         'creation:finish',
@@ -819,9 +893,228 @@ describe('kreator postaci', () => {
     const basics = registry.creation!.basicSkills;
     await patch(gm, { skills: Object.fromEntries(basics.map((id) => [id, 2])) });
 
+    await allocateRemaining(gm);
     const character = data(await emitAck<CharacterView>(gm, 'creation:finish'), 'creation:finish');
     expect(character.name).toBe('Doktor');
     expect(character.ownerId).toBeNull();
     expect((character.data as CpredCharacterData).stats.body).toBe(6);
+  });
+
+  describe('naprawa 1 — autorytet MG i odporność operacji', () => {
+    it('requires a GM-selected rank per draft, ignores legacy self-selected ranks and preserves allocation', async () => {
+      await emitAck(vex, 'creation:discard');
+      const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+      const stored = await built.prisma.characterDraft.findUniqueOrThrow({
+        where: { id: fresh.id },
+      });
+      await built.prisma.characterDraft.update({
+        where: { id: fresh.id },
+        data: { data: JSON.stringify({ ...JSON.parse(stored.data), statRankId: 'minor-hero' }) },
+      });
+      expect(data(await emitAck<Draft>(vex, 'creation:start'), 'start').draft.statRankId).toBe(
+        'starting',
+      );
+      expect(
+        refusal(
+          await emitAck(vex, 'creation:patch', {
+            patch: { method: 'complete', statRankId: 'minor-hero' },
+          }),
+        ),
+      ).toBe('FORBIDDEN');
+      expect(refusal(await emitAck(vex, 'creation:ranks'))).toBe('FORBIDDEN');
+      expect(
+        refusal(
+          await emitAck(vex, 'creation:set-rank', { draftId: fresh.id, statRankId: 'minor-hero' }),
+        ),
+      ).toBe('FORBIDDEN');
+      await patch(vex, { method: 'complete', roleId: 'solo', stats: { body: 7 } });
+      expect(refusal(await emitAck(vex, 'creation:finish', { draftId: fresh.id }))).toBe(
+        'CREATION_RANK_PENDING',
+      );
+      const notified = waitFor<{ draftId: string; statRankId: string }>(vex, 'creation:rank');
+      expect(
+        (await emitAck(gm, 'creation:set-rank', { draftId: fresh.id, statRankId: 'minor-hero' }))
+          .ok,
+      ).toBe(true);
+      expect((await notified).draftId).toBe(fresh.id);
+      const resumed = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+      expect(resumed.rankApproved).toBe(true);
+      expect(resumed.draft.stats.body).toBe(7);
+      await patch(vex, { method: 'edgerunner' });
+      const back = await patch(vex, { method: 'complete' });
+      expect(back.draft.statRankId).toBe('minor-hero');
+      const rows = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
+      expect(rows.find((row) => row.id === fresh.id)?.statRankId).toBe('minor-hero');
+      const own = data(await emitAck<Draft>(gm, 'creation:start'), 'start');
+      expect(own.draft.statRankId).toBe('starting');
+    });
+
+    it('serializes concurrent patches, rejects stale snapshots and deduplicates a repeated request', async () => {
+      await emitAck(gm, 'creation:discard');
+      const current = data(await emitAck<Draft>(gm, 'creation:start'), 'start');
+      const first = {
+        draftId: current.id,
+        revision: current.revision,
+        requestId: 'first',
+        patch: { name: 'Pierwsza' },
+      };
+      const second = {
+        draftId: current.id,
+        revision: current.revision,
+        requestId: 'second',
+        patch: { name: 'Nieaktualna' },
+      };
+      const replies = await Promise.all([
+        emitAck<Draft>(gm, 'creation:patch', first),
+        emitAck<Draft>(gm, 'creation:patch', second),
+      ]);
+      expect(data(replies[0]!, 'first').draft.name).toBe('Pierwsza');
+      expect(refusal(replies[1]!)).toBe('DRAFT_CHANGED');
+      const retry = data(await emitAck<Draft>(gm, 'creation:patch', first), 'retry');
+      expect(retry.revision).toBe(current.revision + 1);
+      expect(retry.draft.name).toBe('Pierwsza');
+      await emitAck(gm, 'creation:discard');
+      await emitAck(gm, 'creation:start');
+      expect(refusal(await emitAck(gm, 'creation:patch', first))).toBe('DRAFT_NOT_FOUND');
+    });
+
+    it('blocks unspent points for the GM as well as the player', async () => {
+      await patch(gm, { method: 'complete', roleId: 'solo', name: 'Punkty' });
+      expect(refusal(await emitAck(gm, 'creation:finish'))).toBe('CREATION_INCOMPLETE');
+    });
+
+    it('rolls back character, money and goods on a purchase ledger failure, then finishes exactly once', async () => {
+      await emitAck(gm, 'creation:discard');
+      await emitAck(gm, 'creation:start');
+      await patch(gm, {
+        method: 'complete',
+        roleId: 'solo',
+        name: 'Awaria zakupu',
+        placeToken: false,
+        stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
+      });
+      const ready = await allocateRemaining(gm);
+      expect((await emitAck(gm, 'creation:buy', { entryId: 'weapon.zgrzyt-9', delta: 1 })).ok).toBe(
+        true,
+      );
+      const before = await built.prisma.character.count();
+      const ledgerBefore = await built.prisma.ledgerEntry.count();
+      await built.prisma.$executeRawUnsafe(
+        `CREATE TRIGGER fail_creation_purchase BEFORE INSERT ON LedgerEntry WHEN NEW.kind = 'purchase' BEGIN SELECT RAISE(ABORT, 'test purchase failure'); END`,
+      );
+      try {
+        expect(refusal(await emitAck(gm, 'creation:finish', { draftId: ready.id }))).toBe(
+          'INTERNAL',
+        );
+        expect(await built.prisma.character.count()).toBe(before);
+        expect(await built.prisma.ledgerEntry.count()).toBe(ledgerBefore);
+        expect(
+          data(await emitAck<Draft>(gm, 'creation:start'), 'start').draft.purchases[
+            'weapon.zgrzyt-9'
+          ],
+        ).toBe(1);
+      } finally {
+        await built.prisma.$executeRawUnsafe('DROP TRIGGER fail_creation_purchase');
+      }
+      const [one, two] = await Promise.all([
+        emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+        emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+      ]);
+      const character = data(one, 'finish');
+      expect(data(two, 'retry').id).toBe(character.id);
+      expect(await built.prisma.character.count()).toBe(before + 1);
+      expect((character.data as CpredCharacterData).weapons).toHaveLength(1);
+      expect((character.data as CpredCharacterData).eddies).toBe(2500);
+      expect(await built.prisma.ledgerEntry.count({ where: { characterId: character.id } })).toBe(
+        2,
+      );
+      expect(await built.prisma.characterDraft.findUnique({ where: { id: ready.id } })).toBeNull();
+      // A lost acknowledgement retried after another sketch was opened does not consume that sketch.
+      const next = data(await emitAck<Draft>(gm, 'creation:start'), 'new draft');
+      expect(
+        data(
+          await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+          'retry',
+        ).id,
+      ).toBe(character.id);
+      expect(data(await emitAck<Draft>(gm, 'creation:start'), 'start').id).toBe(next.id);
+      expect(refusal(await emitAck(vex, 'creation:finish', { draftId: ready.id }))).toBe(
+        'DRAFT_NOT_FOUND',
+      );
+    });
+
+    it('reports token failure separately and repairs it without duplicating the character or token', async () => {
+      await emitAck(gm, 'creation:discard');
+      await emitAck(gm, 'creation:start');
+      await patch(gm, {
+        method: 'complete',
+        roleId: 'solo',
+        name: 'Awaria żetonu',
+        placeToken: true,
+        stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
+      });
+      const ready = await allocateRemaining(gm);
+      await built.prisma.$executeRawUnsafe(
+        `CREATE TRIGGER fail_creation_token BEFORE INSERT ON Token BEGIN SELECT RAISE(ABORT, 'test token failure'); END`,
+      );
+      let result: CreationFinishResult;
+      try {
+        result = data(
+          await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+          'finish',
+        );
+        expect(result.tokenStatus).toBe('failed');
+        expect((result.data as CpredCharacterData).eddies).toBe(2550);
+      } finally {
+        await built.prisma.$executeRawUnsafe('DROP TRIGGER fail_creation_token');
+      }
+      const repaired = data(
+        await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+        'retry',
+      );
+      expect(repaired.id).toBe(result!.id);
+      expect(repaired.tokenStatus).toBe('placed');
+      await emitAck(gm, 'creation:finish', { draftId: ready.id });
+      expect(await built.prisma.token.count({ where: { characterId: repaired.id } })).toBe(1);
+    });
+    it('does not discard a newer draft when an old discard request is repeated', async () => {
+      const old = data(await emitAck<Draft>(gm, 'creation:start'), 'start');
+      await emitAck(gm, 'creation:discard', { draftId: old.id });
+      const newer = data(await emitAck<Draft>(gm, 'creation:start'), 'start');
+      await emitAck(gm, 'creation:discard', { draftId: old.id });
+      expect(data(await emitAck<Draft>(gm, 'creation:start'), 'start').id).toBe(newer.id);
+    });
+
+    it('finishes without an active scene and repairs placement after a scene becomes available', async () => {
+      await emitAck(gm, 'creation:discard');
+      await emitAck(gm, 'creation:start');
+      await patch(gm, {
+        method: 'complete',
+        roleId: 'solo',
+        name: 'Czeka na scenę',
+        placeToken: true,
+        stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
+      });
+      const ready = await allocateRemaining(gm);
+      const active = await built.prisma.scene.findFirstOrThrow({ where: { active: true } });
+      await built.prisma.scene.update({ where: { id: active.id }, data: { active: false } });
+      let result: CreationFinishResult;
+      try {
+        result = data(
+          await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+          'finish',
+        );
+        expect(result.tokenStatus).toBe('no-scene');
+      } finally {
+        await built.prisma.scene.update({ where: { id: active.id }, data: { active: true } });
+      }
+      const repaired = data(
+        await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: ready.id }),
+        'retry',
+      );
+      expect(repaired.id).toBe(result!.id);
+      expect(repaired.tokenStatus).toBe('placed');
+      expect(await built.prisma.token.count({ where: { characterId: repaired.id } })).toBe(1);
+    });
   });
 });

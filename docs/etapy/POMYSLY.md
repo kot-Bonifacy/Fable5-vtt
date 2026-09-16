@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**15.09.2026 — wiele języków i dziedzin umiejętności: osobny projekt (decyzja MG).**
+Osobne wpisy i poziomy języków/specjalizacji mają objąć kreator, kartę, wybór dziedziny
+w rzutach, rozwój za PD oraz kompatybilność istniejących kart i szkiców. Naprawa kreatora
+z `naprawa_karty_postaci.md` porządkuje tylko obecny pojedynczy model, w tym nazwany
+darmowy język kultury. Nie dodawać samych pól tekstowych udających pełną obsługę.
+
 **14.09.2026 dołożył jeden wpis — serwer nie trzyma gracza pola widzenia w Dynamicznej.** Pod ręczną
 mgłą serwer od 14.09 odmawia każdego kroku w czerń jednakowo, zanim zapyta o ściany, więc odmowa
 nie zdradza ściany schowanej w czerni. W Dynamicznej trasę do pola widzenia ogranicza wyłącznie

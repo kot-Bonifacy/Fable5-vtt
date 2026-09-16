@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import type { CpredCreationDraft, RollGesture } from '@vtt/shared';
+import type {
+  CpredCreationDraft,
+  CreationDraftView,
+  CreationPatchPayload,
+  RollGesture,
+} from '@vtt/shared';
 import {
   buyCreationItem,
   creationErrorText,
@@ -22,6 +27,13 @@ import { useRollStore } from './rollStore.js';
  */
 interface CreationStoreState {
   open: boolean;
+  draftId: string | null;
+  revision: number;
+  pendingGuard: Omit<CreationPatchPayload, 'patch'> | null;
+  reload: () => Promise<void>;
+  rankApproved: boolean;
+  pendingPatch: Record<string, unknown> | null;
+  retry: () => Promise<boolean>;
   /** Null while the first `creation:start` is in flight. */
   draft: CpredCreationDraft | null;
   /** Polish message from the last refused call, shown in the window. */
@@ -36,7 +48,9 @@ interface CreationStoreState {
   setBusy: (busy: boolean) => void;
   discard: () => Promise<void>;
   /** Sends a patch and stores whatever the server made of it. */
-  patch: (patch: Record<string, unknown>) => Promise<boolean>;
+  patch: (
+    patch: Record<string, unknown> | ((draft: CpredCreationDraft) => Record<string, unknown>),
+  ) => Promise<boolean>;
 }
 
 /**
@@ -45,6 +59,9 @@ interface CreationStoreState {
  * skill's „+" down is exactly how you fire two.
  */
 let queue: Promise<unknown> = Promise.resolve();
+type DraftPatch =
+  Record<string, unknown> | ((draft: CpredCreationDraft) => Record<string, unknown>);
+const deferredPatches: DraftPatch[] = [];
 
 function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const next = queue.then(task, task);
@@ -52,8 +69,47 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
-export const useCreationStore = create<CreationStoreState>((set) => ({
+export const useCreationStore = create<CreationStoreState>((set, get) => ({
   open: false,
+  draftId: null,
+  revision: 0,
+  pendingGuard: null,
+  reload: async () => {
+    deferredPatches.length = 0;
+    set({ pendingPatch: null, pendingGuard: null });
+    await get().openCreator();
+  },
+  rankApproved: false,
+  pendingPatch: null,
+  retry: async () => {
+    const pending = get().pendingPatch;
+    const guard = get().pendingGuard;
+    if (!pending) return true;
+    set({ pendingPatch: null });
+    set({ busy: true });
+    const ack = await enqueue(() => patchCreation(pending, guard ?? {}));
+    if (!ack.ok || !ack.data) {
+      set({
+        busy: false,
+        pendingPatch: pending,
+        error: creationErrorText(ack.ok ? undefined : ack.error),
+      });
+      return false;
+    }
+    set({
+      draft: ack.data.draft,
+      revision: ack.data.revision,
+      rankApproved: ack.data.rankApproved,
+      pendingGuard: null,
+      error: null,
+      busy: false,
+    });
+    while (deferredPatches.length) {
+      const next = deferredPatches.shift()!;
+      if (!(await get().patch(next))) return false;
+    }
+    return true;
+  },
   draft: null,
   error: null,
   busy: false,
@@ -65,7 +121,14 @@ export const useCreationStore = create<CreationStoreState>((set) => ({
       set({ busy: false, error: creationErrorText(ack.ok ? undefined : ack.error) });
       return;
     }
-    set({ draft: ack.data.draft, busy: false, error: null });
+    set({
+      draft: ack.data.draft,
+      draftId: ack.data.id,
+      revision: ack.data.revision,
+      rankApproved: ack.data.rankApproved,
+      busy: false,
+      error: null,
+    });
   },
 
   // Closing the window puts the cup back on the shelf: a spread waiting to be
@@ -81,19 +144,57 @@ export const useCreationStore = create<CreationStoreState>((set) => ({
 
   discard: async () => {
     clearCreationCup();
-    await enqueue(() => discardCreation());
-    set({ open: false, draft: null, error: null, busy: false });
+    set({ busy: true });
+    const draftId = get().draftId;
+    const ack = await enqueue(() => discardCreation(draftId ?? undefined));
+    if (!ack.ok) {
+      set({ busy: false, error: creationErrorText(ack.error) });
+      return;
+    }
+    deferredPatches.length = 0;
+    set({ open: false, draft: null, draftId: null, pendingPatch: null, error: null, busy: false });
   },
 
   patch: async (patch) => {
-    set({ busy: true, error: null });
-    const ack = await enqueue(() => patchCreation(patch));
-    if (!ack.ok || !ack.data) {
-      set({ busy: false, error: creationErrorText(ack.ok ? undefined : ack.error) });
-      return false;
-    }
-    set({ draft: ack.data.draft, busy: false });
-    return true;
+    set({ busy: true });
+    return enqueue(async () => {
+      if (get().pendingPatch) {
+        deferredPatches.push(patch);
+        set({ busy: false });
+        return false;
+      }
+      const draft = get().draft;
+      if (!draft) {
+        set({ busy: false });
+        return false;
+      }
+      set({ busy: true });
+      const resolved = typeof patch === 'function' ? patch(draft) : patch;
+      const guard = {
+        draftId: get().draftId ?? undefined,
+        revision: get().revision,
+        requestId: crypto.randomUUID(),
+      };
+      const ack = await patchCreation(resolved, guard);
+      if (!ack.ok || !ack.data) {
+        set({
+          busy: false,
+          pendingPatch: resolved,
+          pendingGuard: guard,
+          error: creationErrorText(ack.ok ? undefined : ack.error),
+        });
+        return false;
+      }
+      set({
+        draft: ack.data.draft,
+        draftId: ack.data.id,
+        revision: ack.data.revision,
+        rankApproved: ack.data.rankApproved,
+        busy: false,
+        error: null,
+      });
+      return true;
+    });
   },
 }));
 
@@ -119,17 +220,7 @@ export function clearCreationCup(): void {
  * business: the cup's job ends the moment the hand lets go.
  */
 export async function rollCreationWithGesture(gesture?: RollGesture): Promise<void> {
-  const store = useCreationStore.getState();
-  store.setBusy(true);
-  store.setError(null);
-  const ack = await enqueue(() => rollCreationStats(gesture));
-  if (!ack.ok || !ack.data) {
-    store.setBusy(false);
-    store.setError(creationErrorText(ack.ok ? undefined : ack.error));
-    return;
-  }
-  store.setDraft(ack.data.draft);
-  store.setBusy(false);
+  await runCreationCall(() => rollCreationStats(gesture));
 }
 
 /**
@@ -158,17 +249,37 @@ export async function buyCreationEntry(entryId: string, delta: 1 | -1): Promise<
 }
 
 async function runCreationCall(
-  call: () => Promise<{ ok: boolean; error?: string; data?: { draft: CpredCreationDraft } }>,
+  call: () => Promise<{
+    ok: boolean;
+    error?: string;
+    data?: CreationDraftView<CpredCreationDraft>;
+  }>,
 ): Promise<void> {
   const store = useCreationStore.getState();
-  store.setBusy(true);
-  store.setError(null);
-  const ack = await enqueue(call);
-  if (!ack.ok || !ack.data) {
-    store.setBusy(false);
-    store.setError(creationErrorText(ack.ok ? undefined : ack.error));
+  if (store.pendingPatch) {
+    store.setError('Najpierw ponów zapis oczekujących zmian.');
     return;
   }
-  store.setDraft(ack.data.draft);
-  store.setBusy(false);
+  store.setBusy(true);
+  store.setError(null);
+  await enqueue(async () => {
+    if (useCreationStore.getState().pendingPatch) {
+      store.setBusy(false);
+      return;
+    }
+    store.setBusy(true);
+    const ack = await call();
+    if (!ack.ok || !ack.data) {
+      store.setBusy(false);
+      store.setError(creationErrorText(ack.ok ? undefined : ack.error));
+      return;
+    }
+    useCreationStore.setState({
+      draft: ack.data.draft,
+      draftId: ack.data.id,
+      revision: ack.data.revision,
+      rankApproved: ack.data.rankApproved,
+    });
+    store.setBusy(false);
+  });
 }

@@ -4,6 +4,8 @@ import type {
   CompendiumCategory,
   CompendiumEntry,
   CpredCreationDraft,
+  CreationRankDraft,
+  CreationFinishResult,
   CpredLifepath,
   CpredLifepathBotKind,
   CpredLifepathGroup,
@@ -35,6 +37,7 @@ import {
   creationPurchases,
   creationRole,
   creationSkillCost,
+  creationSkillLimits,
   creationSkillPointsSpent,
   creationStatPointsSpent,
   creationStatPool,
@@ -57,7 +60,14 @@ import {
 import { apiGet, apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
-import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
+import {
+  botErrorText,
+  createBot,
+  creationErrorText,
+  finishCreation,
+  listCreationRanks,
+  setCreationRank,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { PortraitPicker } from './PortraitPicker.js';
@@ -115,6 +125,11 @@ function CreatorWindow() {
 
   const placement = useWindowPlacement('creator', () => ({ x: 120, y: 60 }));
   const [ownerId, setOwnerId] = useState('');
+  const [finished, setFinished] = useState<CreationFinishResult | null>(null);
+  const draftId = useCreationStore((s) => s.draftId);
+  const rankApproved = useCreationStore((s) => s.rankApproved);
+  const pendingPatch = useCreationStore((s) => s.pendingPatch);
+  const retry = useCreationStore((s) => s.retry);
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -134,10 +149,16 @@ function CreatorWindow() {
   const data = useMemo(() => creationDataOf(registry), [registry]);
 
   async function finish() {
+    if (!(await retry())) return;
     setBusy(true);
     setError(null);
     const ack = await enqueueCreationCall(() =>
-      finishCreation(isGm ? { ownerId: ownerId === '' ? null : ownerId } : {}),
+      useCreationStore.getState().pendingPatch
+        ? Promise.resolve({ ok: false as const, error: 'CREATION_SAVE_PENDING' })
+        : finishCreation({
+            draftId: draftId ?? undefined,
+            ...(isGm ? { ownerId: ownerId === '' ? null : ownerId } : {}),
+          }),
     );
     setBusy(false);
     if (!ack.ok || !ack.data) {
@@ -147,6 +168,10 @@ function CreatorWindow() {
     // The finished sheet opens straight away — the wizard's whole promise is
     // „skończone znaczy grywalne".
     openSheet(ack.data.id);
+    if (ack.data.tokenStatus === 'failed' || ack.data.tokenStatus === 'no-scene') {
+      setFinished(ack.data);
+      return;
+    }
     closeCreator();
     setDraft(null);
   }
@@ -157,6 +182,8 @@ function CreatorWindow() {
   const issues = draft
     ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId])
     : [];
+  if (draft?.method === 'complete' && !isGm && !rankApproved)
+    issues.push({ field: 'statRankId', message: 'MG musi ustalić Rangę Postaci dla tego szkicu.' });
   const stepIndex = draft ? CPRED_CREATION_STEPS.indexOf(draft.step) : 0;
 
   return (
@@ -187,7 +214,47 @@ function CreatorWindow() {
         </button>
       </div>
 
-      {data.roles.length === 0 ? (
+      {finished && (
+        <div role="status" className="creator-error">
+          Postać, pieniądze i zakupy zostały zapisane.{' '}
+          {finished.tokenStatus === 'no-scene'
+            ? 'Brak aktywnej sceny dla żetonu.'
+            : 'Nie udało się potwierdzić postawienia żetonu.'}
+          <button type="button" disabled={busy} onClick={() => void finish()}>
+            Ponów postawienie żetonu
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeCreator();
+              setDraft(null);
+            }}
+          >
+            Zamknij
+          </button>
+        </div>
+      )}
+      {pendingPatch && (
+        <div role="alert" className="creator-error">
+          Zapis wymaga ponowienia. Kolejne zmiany czekają.
+          <button type="button" disabled={busy} onClick={() => void retry()}>
+            Ponów zapis
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm('Odrzucić niezapisane zmiany i wczytać szkic z serwera?'))
+                void useCreationStore.getState().reload();
+            }}
+          >
+            Wczytaj zapis serwera
+          </button>
+        </div>
+      )}
+      {isGm && <CreationRanks />}
+
+      {finished ? null : data.roles.length === 0 ? (
         <p className="creator-empty">
           Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel Ról. Uruchom
           <code> tools/import/parse-creation.py</code>.
@@ -353,6 +420,7 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
 // ─────────────────────────────── krok 2: Cechy ───────────────────────────────
 
 function StatsStep({ draft }: { draft: CpredCreationDraft }) {
+  const rankApproved = useCreationStore((s) => s.rankApproved);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
   const registry = useCharacterStore((s) => s.registry);
@@ -423,8 +491,9 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
         ) : (
           <>
             <label className="creator-rank">
-              Ranga Postaci
+              Ranga Postaci (ustala MG)
               <select
+                disabled={!isGm}
                 value={draft.statRankId}
                 onChange={(e) => void patch({ statRankId: e.target.value })}
               >
@@ -435,8 +504,16 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
                 ))}
               </select>
             </label>
+            {!isGm && (
+              <span className="creator-hint">
+                {rankApproved
+                  ? 'Pula zatwierdzona przez MG dla tego szkicu.'
+                  : 'Czeka na decyzję MG. Licznik pokazuje pulę domyślną.'}
+              </span>
+            )}
             <span className={`creator-pool ${spent > pool ? 'creator-pool--over' : ''}`}>
               Punkty Cech: {spent} z {pool}
+              {' · '}pozostało {pool - spent}
             </span>
           </>
         )}
@@ -498,7 +575,7 @@ function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationD
               const next = Number(e.target.value);
               if (!Number.isInteger(next)) return;
               if (next < data.limits.statMin || next > data.limits.statMax) return;
-              void patch({ stats: { ...draft.stats, [statId]: next } });
+              void patch((current) => ({ stats: { ...current.stats, [statId]: next } }));
             }}
           />
         ) : (
@@ -533,12 +610,21 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
       <div className="creator-stats-head">
         <span className={`creator-pool ${spent > data.skillPoints ? 'creator-pool--over' : ''}`}>
           Punkty umiejętności: {spent} z {data.skillPoints}
+          {' · '}pozostało {data.skillPoints - spent}
         </span>
         <span className="creator-hint">
-          Podstawowe co najmniej {data.limits.skillMin}, każda najwyżej {data.limits.skillMax}.
-          Umiejętności oznaczone ×2 kosztują dwa punkty za poziom.
+          {draft.method === 'edgerunner' ? 'Każda wybrana' : 'Podstawowe'} co najmniej{' '}
+          {data.limits.skillMin}, każda najwyżej {data.limits.skillMax}. Umiejętności oznaczone ×2
+          kosztują dwa punkty za poziom.
         </span>
       </div>
+
+      {data.freeLanguage && (
+        <p className="creator-hint">
+          Darmowy język kultury: {draft.lifepath.language || 'wpisz nazwę w Ścieżce Życia'} · poziom{' '}
+          {data.freeLanguage.level}, koszt 0 pkt.
+        </p>
+      )}
 
       {groups.map((group) => (
         <section key={group.id} className="creator-skill-group">
@@ -569,23 +655,29 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const data = creationDataOf(registry);
-  const level = draft.skills[skill.id] ?? 0;
+  const limits = creationSkillLimits(draft, data, skill.id);
+  const level = limits.free ? limits.min : (draft.skills[skill.id] ?? 0);
   const isBasic = data.basicSkills.includes(skill.id);
   const isFree = data.freeLanguage?.skillId === skill.id;
-  const ceiling = isFree ? data.freeLanguage!.level : data.limits.skillMax;
+  const ceiling = limits.max;
 
   // „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
   // znaczą nic bez dziedziny (s. 81), a Język ma swoją przy kulturze pochodzenia.
   const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !isFree;
   const specialty = draft.skillSpecialties[skill.id] ?? '';
 
-  function setLevel(next: number) {
-    if (next < 0 || next > ceiling) return;
-    void patch({ skills: { ...draft.skills, [skill.id]: next } });
+  function changeLevel(delta: number) {
+    if (isFree) return;
+    void patch((current) => {
+      const next = Math.max(0, Math.min(ceiling, (current.skills[skill.id] ?? 0) + delta));
+      return { skills: { ...current.skills, [skill.id]: next } };
+    });
   }
 
   function setSpecialty(next: string) {
-    void patch({ skillSpecialties: { ...draft.skillSpecialties, [skill.id]: next } });
+    void patch((current) => ({
+      skillSpecialties: { ...current.skillSpecialties, [skill.id]: next },
+    }));
   }
 
   return (
@@ -603,7 +695,7 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
         <input
           type="text"
           className={`creator-skill-specialty${
-            level > 0 && !specialty.trim() ? ' creator-skill-specialty--missing' : ''
+            level > 0 && !isBasic && !specialty.trim() ? ' creator-skill-specialty--missing' : ''
           }`}
           value={specialty}
           maxLength={SKILL_SPECIALTY_MAX_LENGTH}
@@ -611,7 +703,7 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
           onChange={(e) => setSpecialty(e.target.value)}
           aria-label={`Specjalizacja: ${skill.name}`}
           title={
-            level > 0 && !specialty.trim()
+            level > 0 && !isBasic && !specialty.trim()
               ? 'Bez tego nie da się skończyć postaci — podręcznik każe wybrać dziedzinę.'
               : `Dziedzina, w której postać rozwija umiejętność ${skill.name}`
           }
@@ -624,7 +716,8 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
           className="small-button"
           title={`Obniż poziom: ${skill.name}`}
           aria-label={`Obniż poziom: ${skill.name}`}
-          onClick={() => setLevel(level - 1)}
+          disabled={isFree}
+          onClick={() => changeLevel(-1)}
         >
           −
         </button>
@@ -634,7 +727,8 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
           className="small-button"
           title={`Podnieś poziom: ${skill.name}`}
           aria-label={`Podnieś poziom: ${skill.name}`}
-          onClick={() => setLevel(level + 1)}
+          disabled={isFree}
+          onClick={() => changeLevel(1)}
         >
           +
         </button>
@@ -731,7 +825,8 @@ function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
 /** Writes a whole Lifepath back to the server; every edit goes through here. */
 function useLifepathPatch() {
   const patch = useCreationStore((s) => s.patch);
-  return (lifepath: CpredLifepath) => void patch({ lifepath });
+  return (update: (lifepath: CpredLifepath) => CpredLifepath) =>
+    void patch((current) => ({ lifepath: update(current.lifepath) }));
 }
 
 /**
@@ -810,20 +905,22 @@ function LifepathFieldRow({
   const entry = table.entries.find((row) => row.text === value);
 
   function set(next: string) {
-    const lifepath = { ...draft.lifepath };
-    if (isLifepathFieldTable(table.id)) {
-      lifepath[LIFEPATH_FIELD_TABLES[table.id]] = next;
-      // A new Culture means a new shortlist of languages; the old pick is a lie.
-      if (table.id === 'culture') lifepath.language = '';
-    } else {
-      const answers = [...lifepath.roleAnswers];
-      const at = answers.findIndex((answer) => answer.id === table.id);
-      const row = { id: table.id, question: table.question ?? table.label, answer: next };
-      if (at === -1) answers.push(row);
-      else answers[at] = row;
-      lifepath.roleAnswers = answers;
-    }
-    write(lifepath);
+    write((current) => {
+      const lifepath = { ...current };
+      if (isLifepathFieldTable(table.id)) {
+        lifepath[LIFEPATH_FIELD_TABLES[table.id]] = next;
+        // A new Culture means a new shortlist of languages; the old pick is a lie.
+        if (table.id === 'culture') lifepath.language = '';
+      } else {
+        const answers = [...lifepath.roleAnswers];
+        const at = answers.findIndex((answer) => answer.id === table.id);
+        const row = { id: table.id, question: table.question ?? table.label, answer: next };
+        if (at === -1) answers.push(row);
+        else answers[at] = row;
+        lifepath.roleAnswers = answers;
+      }
+      return lifepath;
+    });
   }
 
   return (
@@ -906,7 +1003,10 @@ function LifepathLanguageRow({
         <select
           className="creator-lifepath-select"
           value={draft.lifepath.language}
-          onChange={(e) => write({ ...draft.lifepath, language: e.target.value })}
+          onChange={(e) => {
+            const language = e.target.value;
+            write((current) => ({ ...current, language }));
+          }}
         >
           <option value="">— nie wybrano —</option>
           {options.map((option) => (
@@ -922,7 +1022,7 @@ function LifepathLanguageRow({
           placeholder={
             draft.lifepath.culture ? 'Wpisz język' : 'Najpierw ustal kulturę pochodzenia'
           }
-          onCommit={(next) => write({ ...draft.lifepath, language: next })}
+          onCommit={(next) => write((current) => ({ ...current, language: next }))}
         />
       )}
       <span className="creator-lifepath-note">poziom 4, za darmo</span>
@@ -1011,36 +1111,44 @@ function LifepathPeople({
   const rows = draft.lifepath[group];
 
   function add() {
-    const lifepath = { ...draft.lifepath };
-    const at = rows.length + 1;
-    if (group === 'enemies') {
-      lifepath.enemies = [...lifepath.enemies, emptyLifepathEnemy(`enemy${at}`)];
-    } else {
-      const prefix = group === 'friends' ? 'friend' : 'love';
-      lifepath[group] = [...lifepath[group], emptyLifepathPerson(`${prefix}${at}`)];
-    }
-    write(lifepath);
+    write((current) => {
+      const lifepath = { ...current };
+      const at = current[group].length + 1;
+      if (group === 'enemies') {
+        lifepath.enemies = [...lifepath.enemies, emptyLifepathEnemy(`enemy${at}`)];
+      } else {
+        const prefix = group === 'friends' ? 'friend' : 'love';
+        lifepath[group] = [...lifepath[group], emptyLifepathPerson(`${prefix}${at}`)];
+      }
+      return lifepath;
+    });
   }
 
   function remove(index: number) {
-    const lifepath = { ...draft.lifepath };
-    if (group === 'enemies') lifepath.enemies = lifepath.enemies.filter((_, i) => i !== index);
-    else lifepath[group] = lifepath[group].filter((_, i) => i !== index);
-    write(lifepath);
+    const id = rows[index]?.id;
+    write((current) => {
+      const lifepath = { ...current };
+      if (group === 'enemies') lifepath.enemies = lifepath.enemies.filter((row) => row.id !== id);
+      else lifepath[group] = lifepath[group].filter((row) => row.id !== id);
+      return lifepath;
+    });
   }
 
   function edit(index: number, field: string, value: string) {
-    const lifepath = { ...draft.lifepath };
-    if (group === 'enemies') {
-      lifepath.enemies = lifepath.enemies.map((row, i) =>
-        i === index ? { ...row, [field]: value } : row,
-      );
-    } else {
-      lifepath[group] = lifepath[group].map((row, i) =>
-        i === index ? { ...row, [field]: value } : row,
-      );
-    }
-    write(lifepath);
+    const id = rows[index]?.id;
+    write((current) => {
+      const lifepath = { ...current };
+      if (group === 'enemies') {
+        lifepath.enemies = lifepath.enemies.map((row) =>
+          row.id === id ? { ...row, [field]: value } : row,
+        );
+      } else {
+        lifepath[group] = lifepath[group].map((row) =>
+          row.id === id ? { ...row, [field]: value } : row,
+        );
+      }
+      return lifepath;
+    });
   }
 
   return (
@@ -1163,6 +1271,9 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
 
   const lookup = useMemo(() => (entryId: string) => entriesById[entryId], [entriesById]);
   const lines = useMemo(() => creationPurchases(draft, lookup), [draft, lookup]);
+  const unavailable = Object.entries(draft.purchases).filter(
+    ([id]) => !lines.some((line) => line.entryId === id),
+  );
   const spent = creationSpentEddies(lines);
   const budget = creationBudget(data, draft);
   const left = budget - spent;
@@ -1195,6 +1306,26 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
         ) : null}
       </div>
 
+      {unavailable.length > 0 && (
+        <ul className="creator-basket">
+          {unavailable.map(([id, qty]) => (
+            <li key={id}>
+              <span>
+                {entriesById[id]?.name ?? 'Niedostępna pozycja koszyka'} ×{qty} — brak wpisu lub
+                ceny. Usuń przed zakończeniem.
+              </span>
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                onClick={() => void buyCreationEntry(id, -1)}
+              >
+                Odłóż jedną sztukę
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {lines.length > 0 ? (
         <ul className="creator-basket">
           {lines.map((line) => (
@@ -1217,11 +1348,11 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
             </li>
           ))}
         </ul>
-      ) : (
+      ) : unavailable.length === 0 ? (
         <p className="creator-hint">
           Koszyk jest pusty. Wszystko można też dokupić później — eurodolce zostają na karcie.
         </p>
-      )}
+      ) : null}
 
       <div className="creator-shop-head">
         {CREATOR_SHELVES.map((entry) => (
@@ -1524,5 +1655,53 @@ function LifepathSummary({ draft }: { draft: CpredCreationDraft }) {
         : [...said, ...people].join(' · ')}
       {lifepath.roleAnswers.length > 0 && ` · Rola: ${lifepath.roleAnswers.length} odpowiedzi`}
     </p>
+  );
+}
+
+/** GM sees only the metadata needed to choose a rank for each draft. */
+function CreationRanks() {
+  const registry = useCharacterStore((s) => s.registry);
+  const [rows, setRows] = useState<CreationRankDraft[]>([]);
+  const [error, setError] = useState('');
+  async function refresh() {
+    const ack = await listCreationRanks();
+    if (ack.ok) {
+      setRows(ack.data ?? []);
+      setError('');
+    } else setError(creationErrorText(ack.error));
+  }
+  useEffect(() => {
+    void refresh();
+  }, []);
+  return (
+    <details className="creator-step">
+      <summary>MG: rangi szkiców postaci</summary>
+      <button type="button" onClick={() => void refresh()}>
+        Odśwież listę
+      </button>
+      {error && <p role="alert">{error}</p>}
+      {rows.map((row) => (
+        <label key={row.id} className="creator-rank">
+          {row.userName} · {row.characterName || 'Bez imienia'}
+          <select
+            value={row.statRankId ?? ''}
+            onChange={async (event) => {
+              const ack = await setCreationRank(row.id, event.target.value);
+              if (!ack.ok) setError(creationErrorText(ack.error));
+              else await refresh();
+            }}
+          >
+            <option value="" disabled>
+              Wybierz rangę
+            </option>
+            {creationDataOf(registry).statRanks.map((rank) => (
+              <option key={rank.id} value={rank.id}>
+                {rank.name} — {rank.points} pkt
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </details>
   );
 }

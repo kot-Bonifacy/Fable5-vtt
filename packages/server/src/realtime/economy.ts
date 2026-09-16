@@ -32,6 +32,7 @@ import {
   shopTierOf,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
@@ -93,18 +94,19 @@ export async function applyBalance(
   data: CpredCharacterData,
   change: BalanceChange,
   actorId: string,
-  options: { merge?: boolean; emit?: boolean } = {},
+  options: { merge?: boolean; emit?: boolean; tx?: Prisma.TransactionClient } = {},
 ): Promise<CpredCharacterData> {
+  const db = options.tx ?? deps.ctx.prisma;
   const balance = clampEddies(data.eddies + change.amount);
   const updated = mergeCharacterData(data, { eddies: balance });
-  const saved = await deps.ctx.prisma.character.update({
+  const saved = await db.character.update({
     where: { id: character.id },
     data: { data: JSON.stringify(updated) },
   });
 
   const previous = options.merge ? await lastMergeableAdjust(deps, character.id, actorId) : null;
   if (previous) {
-    await deps.ctx.prisma.ledgerEntry.update({
+    await db.ledgerEntry.update({
       where: { id: previous.id },
       data: {
         amount: balance - (previous.balance - previous.amount),
@@ -113,7 +115,7 @@ export async function applyBalance(
       },
     });
   } else {
-    await deps.ctx.prisma.ledgerEntry.create({
+    await db.ledgerEntry.create({
       data: {
         campaignId,
         characterId: character.id,

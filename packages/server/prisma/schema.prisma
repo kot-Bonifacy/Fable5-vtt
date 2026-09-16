@@ -302,6 +302,9 @@ model Invitation {
 
 model Character {
   id         String   @id @default(cuid())
+  creationDraftId String? @unique
+  creationUserId String?
+  creationTokenDone Boolean @default(false)
   name       String
   campaignId String
   /** Owning player; null = GM-controlled (NPC). */
@@ -337,6 +340,9 @@ model Character {
 /// nothing but churn.
 model CharacterDraft {
   id         String   @id @default(cuid())
+  statRankId String?
+  revision Int @default(0)
+  lastPatchId String?
   campaignId String
   userId     String
   data       String   @default("{}")

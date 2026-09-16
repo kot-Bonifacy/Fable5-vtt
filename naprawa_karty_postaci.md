@@ -94,6 +94,32 @@ Taką informację trzeba pokazać przy wyborze metody i zakończeniu. Sam napis
 
 ## Etap 1 — poprawne zasady i niezawodny szkic
 
+**Status 16.09.2026: 🟨 wdrożone, sesja zakończona na prośbę MG przed formalnym odbiorem końcowym.**
+
+- [x] Minimum Krawędziarza i wspólne limity; blokada niewydanych punktów dla wszystkich.
+- [x] Ranga szkicu wybierana indywidualnie przez MG, egzekwowana na serwerze i po wznowieniu.
+- [x] Darmowy język: poziom i koszt w UI, obowiązkowa nazwa; specjalizacje podstawowe bez fałszywej blokady.
+- [x] Aktualizacje na najnowszym stanie, kontrola rewizji, ponowienia, błędy połączenia i kasowania.
+- [x] Atomowe zapisanie karty, zakupów, salda i rejestru; ponowne zakończenie bez duplikatów.
+- [x] Oddzielna informacja o żetonie i ponowienie po awarii albo braku sceny.
+- [x] Regresje: 52 testy shared, 43 serwera, 7 klienta; pełny wcześniejszy przebieg wszystkich pakietów zielony.
+- [x] Chrome na osobnej bazie: MG/gracz, ranga, dwa zapisy, ×2, zachowanie po F5.
+- [ ] Końcowy przegląd zmian i potwierdzenie uruchomienia zwykłego dev po wyłączeniu instancji testowej.
+- [ ] Formalne zamknięcie etapu 1; dopiero potem etap 2.
+
+**Od czego zacząć:** migracja `20260915100000_creation_integrity` już zastosowana;
+backup `packages/server/dev.db.bak-creation-1789500935285`. Ostatni start zwykłego backendu
+odmówił przez zajęty port 3001 podczas zamykania testów; na koniec port był wolny.
+Uruchomić backend/frontend i sprawdzić `/health`. Pełne testy nie wymagają ponowienia
+bez nowej zmiany lub wykrytej wątpliwości. Obejrzeć końcowy diff kolejki i obsługi ponowień.
+
+**Ustalenia z realizacji:** brak wydania całej puli blokuje także MG; rangi są indywidualne,
+nie kampanijne. Stare szkice graczy wymagają zatwierdzenia rangi przez MG; nie kasujemy
+rozdzielonych Cech ani umiejętności. Istniejące karty nie zmieniają mechanicznych danych.
+Wiele języków i specjalizacji to osobny projekt (`POMYSLY.md`). Automatyczny przydział
+minimów pozostaje w etapie 2 zgodnie z poniższym zakresem.
+
+
 **Cel:** gracz tworzy legalną postać, a jego zmiany nie giną.
 
 Zakres ogólny:
@@ -152,7 +178,7 @@ Główny odbiór: ekran **4K, powiększenie przeglądarki 100%** — MG potwierd
 że w tej konfiguracji czcionka jest za mała. Skalę Windows należy ustalić przed
 odbiorem; rozdzielczość monitora nie oznacza takiego samego rozmiaru okna w pikselach CSS.
 Sprawdzić wszystkie kroki, oba motywy i klawiaturę. Dodatkowo sprawdzić okna
-1366×768 i 1920×1080 oraz powiększenie 125% i 150%. Czytelność przy 4K/100%
+3440x1440 i 2560x1440 oraz powiększenie 125% i 150%. Czytelność przy 4K/100%
 ma wynikać z poprawionego interfejsu, bez konieczności zwiększania zoomu przez MG.
 Powiększenie nie może odcinać nawigacji ani zasłaniać pól. Rzeczywisty odbiór
 w przeglądarce jest obowiązkowy, sam przegląd CSS nie wystarczy.
@@ -201,11 +227,11 @@ Otwarte kwestie wskazano poniżej.
    i pokazywać etykiety wymagań przy umiejętnościach.
 4. **Ekran — częściowo ustalone:** 4K, zoom przeglądarki 100%; to główna
    konfiguracja odbioru. Skala Windows pozostaje nieznana.
-5. **Niewydane punkty:** proponowana blokada zakończenia dla gracza i świadomy
-   wyjątek MG dla NPC wymaga potwierdzenia; w każdym wariancie pokazywać resztę.
-6. **Specjalizacje:** pełna obsługa kilku języków i dziedzin dotyka również karty,
-   rzutów i rozwoju postaci. Najpierw ustalić, czy wchodzi do tych sesji, czy
-   powstaje osobny projekt; nie udawać pełnej zgodności przez samo nowe pole tekstowe.
+5. **Niewydane punkty — ustalone 15.09:** blokada zakończenia dla wszystkich, także MG;
+   punkty pozostają w szkicu, a interfejs pokazuje resztę.
+6. **Specjalizacje — ustalone 15.09:** wiele języków i dziedzin to osobny projekt, obejmujący
+   kartę, rzuty, rozwój i migrację danych. Teraz naprawiamy obecny pojedynczy model.
+7. **Ranga Cech — ustalone 15.09:** MG ustala rangę indywidualnie dla każdego szkicu.
 
 ## Mapa kodu dla późniejszej realizacji
 

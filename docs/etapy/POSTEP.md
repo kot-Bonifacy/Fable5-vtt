@@ -117,6 +117,10 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Najbliższa sesja: domknąć etap 1 `naprawa_karty_postaci.md` (15–16.09).** Kod i testy
+są zapisane; został końcowy przegląd, zwykły start dev i formalne zamknięcie etapu.
+Decyzje MG oraz szczegóły migracji są w najnowszej notatce poniżej.
+
 **Etap 42 (bariery) ukończony: 42a ✅, 42b ✅, 42c ✅.**
 Bariera to rodzaj ściany, przez który widać mapę, a nie da się przejść ani sięgnąć wręcz;
 brama to jej otwór. **Od 42b bariera ma OB** — zasada domowa MG, nie błąd mechaniki
@@ -276,7 +280,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   24 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   25 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
@@ -289,6 +293,47 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15–16.09 — naprawa kreatora, etap 1 (przerwana na prośbę MG)
+
+**Stan: wdrożenie i testy zrobione, etap formalnie w toku.** MG zakończył sesję przed
+końcowym przeglądem i ponownym uruchomieniem zwykłego dev. Kontynuacja:
+`naprawa_karty_postaci.md`, sekcja stanu etapu 1. Nie zaczynać jeszcze etapu 2.
+
+**Decyzje MG:** niewydane punkty blokują zakończenie wszystkim (również MG);
+ranga Cech ustalana indywidualnie dla szkicu przez MG; wiele języków i dziedzin
+osobnym projektem. Minima przydzielane automatycznie i szlif typografii zostają w etapie 2.
+
+**Wdrożone:** minimum wybranej umiejętności Krawędziarza w shared; pełne rozliczenie
+pul; wymaganie nazwy darmowego języka i zgodny podgląd jego poziomu; spójny komunikat
+specjalizacji podstawowej. Lista rang szkiców dostępna tylko MG, gracz czeka na jego
+decyzję (także stary szkic). Kolejka funkcji aktualizujących najnowszy szkic, rewizje
+i identyfikatory ponowień; zachowanie odmów i późniejszych zmian do ponowienia,
+limit oczekiwania, bezpieczna odmowa usunięcia. Transakcja obejmuje kartę, zakupy,
+pieniądze, rejestr i usunięcie szkicu. Powtórzenie zakończenia po `draftId` oddaje tę
+samą kartę; żeton ma osobny status i możliwość naprawy. Brak pozycji/ceny w katalogu
+blokuje zakończenie, a UI pozwala usunąć niedostępną pozycję z koszyka.
+
+**Weryfikacja:** pełne `pnpm -r test`: 2115 shared, 1177 serwera, 215 klienta — zielone.
+Następnie doszły 2 testy serwera i 2 klienta: końcowe zestawy kreatora **43 serwera,
+52 shared, 7 klienta** zielone (łączne liczby obecnie 2115 / 1179 / 217).
+ESLint, Prettier i `tsc --noEmit` trzech pakietów przechodziły; po ostatnich zmianach
+ponowiono lint i typy klienta/serwera. Scenariusze: awaria rejestru zakupów i rollback,
+awaria żetonu, brak sceny, ponowienia, równoległe zapisy, spóźnione kasowanie,
+kontrola rangi, zachowanie kolejki i wskaźnika zapisu.
+
+**Chrome na osobnej bazie testowej:** wybór rangi gracza przez MG, zablokowany selektor
+u gracza, dwie Cechy i dwie umiejętności, koszt ×2 oraz zachowanie danych po F5.
+To nie jest pełny odbiór typografii 4K ani przejście obu metod z etapu 3.
+Tymczasowy serwer i karty zamknięte; roboczy skrypt usunięty. Baza
+`packages/server/.creation-ui.db` jest ignorowana przez Git i nie zawiera kampanii MG.
+
+**Migracja `20260915100000_creation_integrity` zastosowana do dev.db.** Przed nią
+spójna kopia SQLite: `packages/server/dev.db.bak-creation-1789500935285` (gitignore).
+Zwykły backend ostatnio odmówił startu przez `EADDRINUSE :3001`, bo zamykał się jeszcze
+serwer testowy; kontrola na koniec sesji potwierdziła wolny port i brak procesu testowego.
+Przy powrocie uruchomić dev i sprawdzić `/health`. Dane kampanii nie były edytowane
+podczas oględzin; prywatnych danych nie dodawać do stage'a.
 
 ### Sesja 15.09 — audyt kreatora i projekt naprawy
 
@@ -310,28 +355,3 @@ odtworzyło luki (plik prób usunięty). Dane creation.json zgodne z ponownym wy
 parsera w pamięci. Brak dostępnej przeglądarki — nie było odbioru wizualnego.
 Uruchomiono dev: frontend i health serwera HTTP 200. Serwer wymagał startu poza
 piaskownicą po błędzie uv_os_get_passwd. Treści prywatnych nie dodawano do repo.
-
-### Sesja 14.09 (druga) — pod ręczną mgłą gracz chodzi tylko po odsłoniętym
-
-**Zlecenie MG:** przegląd zaległości z propozycjami; MG wybrał naprawę dokumentacji i A — planer
-gracza pod mgłą tylko po odsłoniętym (decyzja z 13.09). Dopytane: odmawia także serwer, figura
-postawiona w czerni może wyjść na odsłonięte (pola startowe zwolnione), push na koniec po przejrzeniu.
-
-**Znalezione przy przeglądzie i naprawione (dokumentacja, `d0f0aab`):** notatka piątej sesji 13.09
-zginęła — sesja portretów zacommitowała `POSTEP.md` bez niej, a dokumentacja piątej sesji leżała
-niezacommitowana; notatka 42c stała w dzienniku dwa razy. Notatka odtworzona z plików, duplikat
-usunięty, nieobejrzane zbiorcze wgrywanie portretów dopisane do zaległości.
-
-**Zrobione:** `fogFloorPassable` i `firstClosedFloorStep` w `shared` — próbka `everyRunCell` wyjęta
-z wygładzania planera, więc planer i serwer pytają o te same kratki. `refuseWalkIntoFog` przed
-ścianami: każdy krok w czerń dostaje tę samą odmowę (`MOVE_INTO_FOG`), więc odmowa nie zdradza ściany
-w czerni. `walkFloorFor` zamiast `confinesWalkToSight`; `setWalkPassable(…, enforcedFloor)` pilnuje
-lądowań w `clipToBudget` i `marchLanding`, tylko pod mgłą. Umowy w `mapa` i `tura`, pułapka w `tura`,
-wpis w `POMYSLY.md`: serwer nie trzyma gracza pola widzenia w Dynamicznej.
-
-**Weryfikacja:** 2111 testów `shared` (12 nowych), 1172 serwera (8 nowych w `fog-walk.test.ts`),
-210 klienta (1 nowy, 3 przepisane); `tsc --noEmit` w trzech pakietach, ESLint, Prettier. W Chrome
-z konta `Tester` na „Test Brak sceny": odmowa ruchu w czerń, trasa figury stojącej w czerni,
-brak trasy nad czernią, odsłonięcie bez przeładowania; trasa za barierę sprawdzona w Node tym samym
-kodem. Pełnego marszu nie obejrzano (schowana karta, zaległość). `pnpm dev` przestał działać
-w trakcie sesji z nieustalonej przyczyny — uruchomiony ponownie.

@@ -323,6 +323,9 @@ export interface CharacterDeleteBroadcast {
  * their shape belongs to the game-system module, not to the VTT core.
  */
 export interface CreationDraftView<TDraft = unknown> {
+  id: string;
+  rankApproved: boolean;
+  revision: number;
   draft: TDraft;
   updatedAt: string;
 }
@@ -330,6 +333,9 @@ export interface CreationDraftView<TDraft = unknown> {
 /** Client → server `creation:patch`; top-level keys replace the stored ones. */
 export interface CreationPatchPayload {
   patch: Record<string, unknown>;
+  draftId?: string;
+  revision?: number;
+  requestId?: string;
 }
 
 /**
@@ -361,8 +367,20 @@ export interface CreationBuyPayload {
 
 /** Client → server `creation:finish` — turns the draft into a real character. */
 export interface CreationFinishPayload {
+  draftId?: string;
   /** GM only; players always own what they create. */
   ownerId?: string | null;
+}
+
+export interface CreationFinishResult extends CharacterView {
+  tokenStatus: 'not-requested' | 'placed' | 'no-scene' | 'failed';
+}
+
+export interface CreationRankDraft {
+  id: string;
+  userName: string;
+  characterName: string;
+  statRankId: string | null;
 }
 
 /**
