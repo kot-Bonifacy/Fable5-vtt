@@ -149,4 +149,23 @@ describe('motyw (etap 27e)', () => {
     ]);
     expect([...night].filter((t) => !day.has(t) && !nightOnly.has(t))).toEqual([]);
   });
+
+  /**
+   * Pęknięcia tuszu (naprawa 2c) odsłaniają kartkę, więc pliki
+   * `ink-cracks-*.webp` niosą kolor `--cp-paper` w sobie — CSS nie przemaluje
+   * obrazu tła. Zmiana papieru w motywie bez przebudowania plików dałaby rysy
+   * w starym kolorze, widoczne jak smugi na nowym papierze.
+   */
+  it('pęknięcia tuszu mają kolor papieru karty', () => {
+    const [night, day] = [...read('theme.css').matchAll(/--cp-paper:\s*(#[0-9a-f]{6});/gi)].map(
+      (m) => m[1]?.toLowerCase(),
+    );
+    const tool = readFileSync(join(SRC, '../../../tools/art/sheet-paper.py'), 'utf8');
+    const constant = (name: string) =>
+      new RegExp(`^${name} = "(#[0-9a-f]{6})"`, 'm').exec(tool)?.[1]?.toLowerCase();
+    expect({ night, day }).toEqual({
+      night: constant('PAPER_NIGHT'),
+      day: constant('PAPER_DAY'),
+    });
+  });
 });

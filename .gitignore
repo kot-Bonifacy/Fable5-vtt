@@ -50,3 +50,6 @@ tools/icon-review/przeglad-ikon.html
 
 # Instrukcja dla innego modelu, trzymana lokalnie (decyzja MG 12.09.2026).
 AGENTS.md
+
+# Źródła tekstur karty (etap naprawy 2c) — pobierane przez tools/art/sheet-paper.py.
+tools/art/.cache/

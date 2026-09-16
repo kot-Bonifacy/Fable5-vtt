@@ -224,7 +224,7 @@ function CreatorWindow() {
   return (
     <section
       ref={placement.ref}
-      className="sheet-window creator-window"
+      className="sheet-window sheet-window--paper creator-window"
       style={{ ...placement.style, zIndex: 320 }}
       aria-label="Kreator postaci"
       // Naprawa 2b: keys pressed inside the window are the window's — Tab

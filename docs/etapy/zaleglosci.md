@@ -167,6 +167,14 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — cztery rzeczy nieobejrzane.**
+  Obejrzane w Chrome: karta (4 zakładki), kreator (7 kroków, okno strat), oba motywy, okna 1708×882
+  i 1102×576. Zostało: (1) **portret na papierze** — postać testowa go nie ma, a wytarcia mają go
+  omijać (`z-index: 4`); (2) **Safari/iPad** — maska `mask-mode: luminance` i `:is()` w selektorach;
+  (3) **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
+  (warstwa z maską nad całą stroną); (4) **prawdziwe powiększenie przeglądarki** 125/150% ręką MG
+  (automat udawał je rozmiarem okna).
+
 - **14.09: pod ręczną mgłą gracz chodzi tylko po odsłoniętym — nieobejrzane straże lądowania
   i pełny marsz.** Obejrzane 14.09 na „Test Brak sceny" z konta `Tester`: serwer dev odmawia ruchu
   w czerń (`MOVE_REFUSED`), figura stojąca środkiem w czerni dostaje trasę na odsłonięte, nad czernią

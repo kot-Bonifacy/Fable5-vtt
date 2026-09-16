@@ -8555,6 +8555,24 @@ body.is-resizing {
   font-size: 1rem;
 }
 
+/* Globalny styl pól nie obejmuje list — w kreatorze stały gołe kontrolki
+   przeglądarki (białe tło, Arial) i na papierze od 2c raziły najbardziej. */
+.creator-window select {
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+}
+
+/* Wąskie okno albo duże powiększenie (naprawa 2c): siedem kroków nie mieści
+   się w jednym rzędzie od ~1120 px CSS i „Podsumowanie" wypadało poza pasek.
+   Drugi rząd jest lepszy niż ucięta nawigacja. */
+.creator-steps {
+  flex-wrap: wrap;
+}
+
 .creator-steps .sheet-tab {
   display: flex;
   align-items: center;
@@ -8767,9 +8785,18 @@ body.is-resizing {
   color: var(--ok-ink);
 }
 
+/* Tabela na szerokość treści, nie okna (naprawa 2c): przy 1180 px pole
+   wartości stało ~700 px od nazwy Cechy i oko gubiło wiersz. Rowek pod
+   wierszem prowadzi wzrok od opisu do pola. */
 .creator-stats {
-  width: 100%;
+  width: min(100%, 44rem);
   border-collapse: collapse;
+}
+
+/* Na wierszu, nie na komórkach: `th` jest tu flexem, a flex wypada z modelu
+   tabeli (pułapka w `karta`) i jego krawędź nie trafiała w krawędź `td`. */
+.creator-stats tr + tr {
+  border-top: 1px solid var(--border-soft);
 }
 
 .creator-stats th {

@@ -198,7 +198,9 @@
 
   --accent: #cc2316;
   --accent-rgb: 204 35 22;
-  --accent-ink: #fff1ef;
+  /* Głęboka czerwień, nie blady róż: przycisk główny jest obrysem na jasnym
+     tle, a #fff1ef z 27e dawał napis niemal biały na kremie (naprawa 2c). */
+  --accent-ink: #a01a10;
 
   --ok: #17662a;
   --ok-rgb: 23 102 42;
@@ -379,20 +381,77 @@
   --cp-gutter: 3px;
   --font-cp: 'Jost', 'Segoe UI', system-ui, sans-serif;
   --font-cp-cond: 'Oswald', 'Jost', 'Segoe UI', sans-serif;
+
+  /* Chrom w oknie na papierze (naprawa 2c): pola formularzy, przyciski,
+     obwódki i opisy wewnątrz karty i kreatora. W nocy ciepła czerń kartonu
+     zamiast chłodnego grafitu aplikacji. */
+  --cp-inset: #24211d;
+  --cp-inset-2: #1f1c19;
+  --cp-line: #3b3630;
+  --cp-line-soft: rgb(59 54 48 / 45%);
+  --cp-line-strong: #564e45;
+
+  /* Papier (naprawa 2c, decyzje MG z 16.09): stara, zużyta kartka — same
+     wytarcia (wyblakłe miejsca i jasne rysy) i pęknięcia tuszu. Nic, co
+     ciemniejsze od papieru: drobinki, a potem i miękkie plamy MG odrzucił jako
+     „zabrudzenia". Wytarcia leżą NAD drukiem jako maska luminancji
+     z `public/art/sheet/`: maska mówi „gdzie", ten blok — „jakim kolorem i jak
+     mocno". Źródła i licencje: `docs/assety-karta-postaci.md`. */
+  --cp-wear: #d8cbb6;
+  --cp-wear-alpha: 0.3;
+  --cp-wear-mask: url('/art/sheet/paper-wear.jpg');
+  --cp-wear-size: 1100px auto;
+  /* Pęknięcia tuszu na czerwieni i czerni (propozycja MG z 16.09) — obraz tła
+     pod napisami. Rysy odsłaniają kartkę, więc plik niesie jej kolor: w nocy
+     `--cp-paper` nocy, w dzień dnia. Zmiana `--cp-paper` wymaga przebudowania
+     obu plików (`tools/art/sheet-paper.py`). */
+  --cp-cracks: url('/art/sheet/ink-cracks-night.webp');
+  --cp-cracks-size: 1300px auto;
 }
 
 :root[data-theme='day'] {
-  /* Dzień: wydrukowana kartka, kolory dokładnie z arkusza. */
+  /* Dzień: wydruk na pożółkłej kartce. Czerwień i czerń dokładnie z arkusza,
+     papier od 2c w kremie głównego interfejsu (decyzja MG: „pożółkły, jak
+     główny UI", potem „jaśniej"), a nie biel wydruku. */
   --cp-red: #cc2316;
   --cp-red-deep: #a81c11;
-  --cp-paper: #ffffff;
+  --cp-paper: #f6eddb;
   --cp-ink: #100e0d;
-  --cp-ink-dim: #6a625c;
+  --cp-ink-dim: #62584f;
   --cp-bar: #000000;
   --cp-bar-ink: #ffffff;
-  --cp-back: #ede8df;
-  --cp-focus: #fdf3cf;
-  --cp-hover: #f6f1e6;
+  --cp-back: #e6d9c0;
+  --cp-focus: #fdf0c4;
+  --cp-hover: #efe3cc;
+
+  --cp-inset: #efe3cb;
+  --cp-inset-2: #e7d9bd;
+  --cp-line: #cbb792;
+  --cp-line-soft: rgb(160 132 92 / 45%);
+  --cp-line-strong: #a38b64;
+
+  --cp-wear: #fffcf4;
+  --cp-wear-alpha: 0.95;
+  --cp-cracks: url('/art/sheet/ink-cracks-day.webp');
+}
+
+/* Karta i kreator mówią w środku językiem aplikacji (przyciski, pola, opisy
+   czytają `--bg-*`, `--border`, `--text`), więc okno na papierze przestawia
+   te tokeny na papier i tusz. Kolory znaczące (`--accent`, `--warn`, `--ok`)
+   zostają, bo mają już parę na jasne i ciemne tło. */
+.sheet-window--paper {
+  --bg: var(--cp-back);
+  --bg-panel: var(--cp-paper);
+  --bg-topbar: var(--cp-back);
+  --bg-float: var(--cp-paper);
+  --bg-inset: var(--cp-inset);
+  --bg-inset-2: var(--cp-inset-2);
+  --border: var(--cp-line);
+  --border-soft: var(--cp-line-soft);
+  --border-strong: var(--cp-line-strong);
+  --text: var(--cp-ink);
+  --text-dim: var(--cp-ink-dim);
+  --muted: var(--cp-ink-dim);
 }
 
 /* ============================================================================

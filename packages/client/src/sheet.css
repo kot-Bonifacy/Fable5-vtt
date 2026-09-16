@@ -160,6 +160,67 @@
   color: var(--cp-on-red);
 }
 
+/* ===== Papier (naprawa 2c) =====
+
+   Karta i kreator są wydrukiem na starej, zużytej kartce. Dwie rzeczy, dwa
+   sposoby:
+
+   1. Wytarcia (wyblakłe miejsca i jasne rysy) leżą NAD treścią, jako
+      `::after` nośnika, bo czerwone panele i czarne belki zasłaniają tło
+      w całości — tekstura pod spodem byłaby widoczna wyłącznie
+      w trzypikselowych rowkach. Kolor i siła w `theme.css` (`--cp-wear*`),
+      kształt w masce luminancji z `public/art/sheet/`. Pełny kolor z maską
+      zamiast `mix-blend-mode`: dla szarej tekstury wynik jest ten sam co
+      „ekran", a nie kosztuje kompozycji przy przewijaniu. Nic ciemniejszego
+      od papieru — drobinki i plamy MG odrzucił jako zabrudzenia (16.09).
+
+   2. Pęknięcia tuszu są obrazem TŁA czerwieni (`--cp-cracks`, koniec pliku),
+      więc leżą pod napisami. Nad treścią wymazywały litery w polach.
+
+   Nośnikiem wytarć jest strona w `.sheet-body` (jedyne dziecko), nie samo
+   `.sheet-body`: absolutna warstwa w przewijanym kontenerze ma wymiar okna
+   przewijania i odjechałaby razem z pierwszym ekranem. `inset` wystaje
+   o wewnętrzny odstęp `.sheet-body` (0.7rem), żeby ramka kartki też była
+   papierem. Przyklejony licznik kreatora ma warstwę własną i leży wyżej —
+   inaczej wytarcia strony przesuwałyby się po nim jak po szybie. */
+.sheet-window--paper .sheet-body > * {
+  position: relative;
+  flex: 1 0 auto;
+}
+
+.sheet-window--paper :is(.creator-footer, .creator-dialog) {
+  position: relative;
+}
+
+.sheet-window--paper .creator-sticky {
+  z-index: 4;
+}
+
+.sheet-window--paper
+  :is(.sheet-body > *, .creator-sticky, .creator-footer, .creator-dialog)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--cp-wear);
+  opacity: var(--cp-wear-alpha);
+  mask-image: var(--cp-wear-mask);
+  mask-mode: luminance;
+  mask-repeat: repeat;
+  mask-size: var(--cp-wear-size);
+}
+
+.sheet-window--paper .sheet-body > *::after {
+  inset: -0.7rem;
+}
+
+/* Portret to zdjęcie gracza, nie druk — wytarcia kartki go nie przykrywają. */
+.sheet-window--paper :is(.cp-portrait img, .creator-summary-name img) {
+  position: relative;
+  z-index: 4;
+}
+
 /* ===== Prymitywy arkusza ===== */
 
 .cp-panel {
@@ -2320,4 +2381,36 @@
 .cp-skill-specialty:focus {
   outline: none;
   border-bottom-color: var(--cp-red);
+}
+
+/* ===== Pęknięcia tuszu (naprawa 2c) =====
+
+   Na czerwonych ramkach (propozycja MG z 16.09) i na belce tytułowej okna.
+   Nie na czarnych belkach, zakładkach ani czerwonych komunikatach: jasna rysa
+   pod białym drobnym napisem zjadała mu kontrast (numery kroków kreatora).
+
+   Na końcu pliku, bo reguły wyżej ustawiają tło skrótem `background`, który
+   zeruje obraz — a `.sheet-window .cp-section` waży tyle samo co ten selektor.
+   Kafel zaczyna się w lewym górnym rogu każdego nośnika, więc panele z jednego
+   miejsca kafla powtarzałyby ten sam wzór rys; przesunięcia co kilka
+   elementów rozrzucają je po całym kaflu. */
+.sheet-window--paper :is(.sheet-header, .cp-panel, .cp-section, .cp-table) {
+  background-image: var(--cp-cracks);
+  background-size: var(--cp-cracks-size);
+}
+
+.sheet-window--paper :is(.cp-panel, .cp-table):nth-child(5n + 2) {
+  background-position: 37% 61%;
+}
+
+.sheet-window--paper :is(.cp-panel, .cp-table):nth-child(5n + 3) {
+  background-position: 71% 23%;
+}
+
+.sheet-window--paper :is(.cp-panel, .cp-table):nth-child(5n + 4) {
+  background-position: 13% 87%;
+}
+
+.sheet-window--paper :is(.cp-panel, .cp-table):nth-child(5n) {
+  background-position: 89% 44%;
 }

@@ -24,12 +24,16 @@ Spróbkowane z wydruku (`PIL`, najczęstsze barwy strony pierwszej):
 | Rola            | Dzień     | Noc       |
 | --------------- | --------- | --------- |
 | czerwień paneli | `#CC2316` | `#E0301F` |
-| papier (pola)   | `#FFFFFF` | `#171514` |
+| papier (pola)   | `#F6EDDB` | `#171514` |
 | tusz            | `#100E0D` | `#F1ECE4` |
 | belka kategorii | `#000000` | `#050505` |
 
 Nocna czerwień jest rozjaśniona świadomie: `#CC2316` na czerni gaśnie i belki przestają być
 czytelne. Reszta to ten sam arkusz w negatywie.
+
+**Od naprawy 2c (16.09.2026) dzienny papier nie jest biały, tylko pożółkły** — w kremie głównego
+interfejsu (decyzja MG: „pożółkły, jak główny UI”, potem „jaśniej”). Wydruk z PDF-u ma biel;
+to świadome odejście od wzorca na rzecz starej kartki opisanej niżej.
 
 ## Kroje pisma
 
@@ -117,3 +121,59 @@ kark, ramiona i uda. **Strony są postaci, nie widza** — widok jest od przodu,
 postaci leży po lewej stronie rysunku, i po lewej stronie stoją wszystkie „prawe" pudełka.
 Pudełka są zwykłym HTML-em pozycjonowanym w procentach **tego samego `viewBox`**, co SVG,
 więc odnośniki trafiają dokładnie w ich krawędź bez mierzenia czegokolwiek w JS.
+
+## Stara kartka: wytarcia i pęknięcia (naprawa 2c)
+
+Od 16.09.2026 karta postaci i kreator (klasa `sheet-window--paper`) wyglądają jak wydruk na starej,
+zużytej kartce. Kierunek wybrał MG: „papier i druk”, subtelnie, para dzień/noc jak dotąd,
+papier jak na tapecie logowania, ale jaśniejszy. **Bez niczego ciemniejszego od papieru.**
+Drobinki, potem kilkumilimetrowe kropki, a na końcu miękkie plamy MG odrzucił jako „zabrudzenia”.
+Zostały wytarcia (wyblakłe miejsca i jasne rysy) oraz pęknięcia na czerwonych ramkach, dopisane
+na propozycję MG.
+
+### Pliki i źródła
+
+| Plik (`packages/client/public/art/sheet/`) | Rozmiar | Źródło | Licencja |
+| --- | ---: | --- | --- |
+| `paper-wear.jpg` — maska luminancji wytarć | 165 kB* | [„Old paper6.jpg”](https://commons.wikimedia.org/wiki/File:Old_paper6.jpg), Wikimedia Commons, The Digital Yard Sale | **domena publiczna** (PD-author) |
+| `ink-cracks-day.webp`, `ink-cracks-night.webp` — przezroczyste rysy w kolorze papieru | ~200 kB każdy | [ambientCG „Asphalt 011”](https://ambientcg.com/view?id=Asphalt011), mapa wysokości 2K | **CC0 1.0** |
+
+\* rozmiar zależy od siły wytarć (`BLEACH_GAIN`, `SCRATCH_GAIN`); przy obecnych ustawieniach
+ok. 0,1–0,3 MB.
+
+Wszystkie trzy pliki buduje `tools/art/sheet-paper.py`. Przy pierwszym uruchomieniu pobiera
+źródła do `tools/art/.cache/` (katalog w `.gitignore`). Odtworzenie:
+
+```
+uv run --with pillow --with numpy python tools/art/sheet-paper.py
+```
+
+### Obróbka
+
+- **Wytarcia.** Ze skanu brany jest środek arkusza (1760 × 1760 px), bo przy brzegach są winieta
+  i poszarpana krawędź, które w kaflu dałyby pionowy pas. Dalej: logarytm luminancji, zdjęcie
+  spadku światła skanera (σ = 400 px) i **składowa okresowa Moisana**. Ta ostatnia robi kafel
+  bez szwu, bo odejmuje tylko gładkie pole dopasowujące brzegi. Ciemne punkty są podnoszone do
+  jasności otoczenia, zanim cokolwiek się policzy. Zostają szerokie wyblakłe miejsca (σ = 32 px)
+  i jasne rysy dłuższe niż kropka. Maska niesie **wyłącznie rozjaśnienie**.
+- **Pęknięcia.** Doliny mapy wysokości asfaltu, głębsze od progu, przerzedzone miękkim polem
+  szumu. Rysy wychodzą płatami, a nie równą siatką. Plik niesie **kolor papieru**
+  (`PAPER_DAY`/`PAPER_NIGHT` w skrypcie), bo rysa w tuszu odsłania kartkę, a CSS nie przemaluje
+  obrazu tła. Zgodność z `--cp-paper` pilnuje `theme.test.ts`.
+- Próbowane i odrzucone: ambientCG `Paper001/002/006` (makulatura z drobinkami), zestaw
+  OpenGameArt „Paper-Textures (seamless)” (za gładki), „Old paper7” (zagięcie na środku).
+
+### Jak to leży w CSS (`sheet.css`, tokeny w `theme.css`)
+
+- **Wytarcia leżą NAD treścią**: `::after` strony w `.sheet-body` (i przyklejonego licznika,
+  stopki, okna potwierdzenia kreatora). To pełny kolor `--cp-wear` z maską luminancji, bez
+  `mix-blend-mode`, bo dla szarej maski wynik jest ten sam co „ekran”. Nad treścią, bo czerwone
+  panele i czarne belki zasłaniają tło w całości.
+- **Pęknięcia są obrazem tła** czerwieni (`--cp-cracks`), czyli leżą pod napisami. Wersja nad
+  treścią wymazywała litery w polach. Nie ma ich na czarnych belkach, zakładkach ani czerwonych
+  komunikatach, bo jasna rysa pod drobnym białym napisem zjadała kontrast.
+- **Świadomy koszt, przyjęty przez MG 16.09:** wytarcia nad tekstem rozjaśniają też napisy.
+  W dzień przygaszony tekst na papierze (`--cp-ink-dim`) ma 6,0:1, ale w 5% najbardziej wytartej
+  powierzchni ~3,8:1, a w najsilniejszych punktach ~3,0:1. Zaproponowany wariant „wytarcia pod
+  tekstem” (jako tło belek) MG odrzucił. W nocy kontrast nie schodzi poniżej 4,1:1.
+

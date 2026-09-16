@@ -943,6 +943,8 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Powiększenia przeglądarki nie udasz `zoom` na `<html>`** — CSS `zoom` mnoży `vh`, więc okno z `max-height: 88vh` wychodzi poza ekran, czego prawdziwe powiększenie nie robi. Zmień rozmiar okna (`resize_window`) tak, żeby `innerWidth` = szerokość ekranu w CSS ÷ powiększenie (4K przy skali 150% i zoomie 150% ≈ 1708 × 882).
+- **Szybko przepisywany plik CSS Vite potrafi serwować w wersji pośredniej — także po F5** — `getComputedStyle` pokazuje regułę sprzed ostatniego zapisu, choć log mówi „hmr update”. Zapisz plik jeszcze raz bez zmian i przeładuj kartę.
 - **Nowego gracza testowego dołączysz bez czytania tokenu** — rozszerzenie zaciemnia token zaproszenia (`[BLOCKED: Sensitive key]`); wystaw i zużyj go w jednym `javascript_tool` (`POST …/invitations` → `/api/auth/logout` → `POST /api/join/<token>`), niczego nie wypisując. Danych testowych nie zmieniaj przez `node:sqlite` — automat odmawia zapisu do bazy; idź przez aplikację.
 - **Instancja na bazie testowej z jednorazowym `GM_PASSWORD`** — serwer przy starcie przepisuje hasło MG z env do bazy, którą otwiera. Na `.creation-ui.db` to wygoda; z tym samym env na `dev.db` zmieniłbyś prawdziwe hasło MG.
 - **Opóźnienie VPS odtworzysz łatką na `WebSocket.prototype.send` z `setTimeout`** — lokalnie odpowiedź przychodzi przed następnym klawiszem, więc błędy pól związanych ze stanem serwera są na `localhost` niewidoczne.

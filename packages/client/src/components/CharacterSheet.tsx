@@ -323,7 +323,7 @@ function CharacterSheetWindow({
   return (
     <section
       ref={placement.ref}
-      className="sheet-window"
+      className="sheet-window sheet-window--paper"
       style={{ ...placement.style, zIndex: 300 + stackIndex }}
       onPointerDown={() => focusSheet(characterId)}
       aria-label={`Karta postaci: ${character.name}`}

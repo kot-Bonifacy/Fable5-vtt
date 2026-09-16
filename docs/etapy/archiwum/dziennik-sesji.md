@@ -7,6 +7,35 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.09 (trzecia) — naprawa kreatora, podział etapu 2 i część 2a
+
+**Zlecenie MG:** wykonać etap 2 `naprawa_karty_postaci.md`, a jeśli jest za duży na jedno okno
+kontekstu — podzielić go na 2–3 mniejsze; dopytywać i zgłaszać możliwe błędy. **Stan: etap 2
+podzielony na 2a/2b/2c, 2a ✅.** Zakres części i checklista 2a są w pliku naprawy.
+
+**Decyzje MG (16.09):** minima podstawowych automatycznie w **obu** metodach, z przeskokiem
+poziomu 1 u Krawędziarza; przy zmianie Roli/metody potwierdzenie z listą strat, bez cofania (2b);
+panel rang w zakładce „Postaci” z licznikiem na zakładce (2b); gracz nie wpisuje Cech Kompletnego
+Pakietu przed zatwierdzeniem rangi.
+
+**Zgłoszone MG możliwe błędy spoza audytu:** przełączenie na Krawędziarza przed wyborem Roli
+kasuje wszystkie umiejętności bez ostrzeżenia (lista dostępnych jest wtedy pusta) — do komunikatu
+strat w 2b; „+” z 0 dawał u Krawędziarza niedozwolony poziom 1 — naprawione w 2a; gracz rozdzielał
+Cechy z domyślnej puli przed decyzją MG — naprawione w 2a.
+
+**Wdrożone (2a):** `skillMinimaAuto`, `creationMissingSkillMinima`, `creationWithSkillMinima`,
+`creationSkillRow`, `creationIssueStep` w `shared`; odmowa `CREATION_RANK_PENDING` dla Cech w
+`creation:patch`; nowy krok Umiejętności (licznik przyklejony, wyszukiwarka, filtry, karta języka,
+bilans starego szkicu), stan kroków na zakładkach, podsumowanie z „Przejdź”, skala pisma kreatora.
+Umowy — `postac` (4 nowe), pułapki — `ui` (1) i `ogledziny` (2).
+
+**Weryfikacja:** `pnpm -r test` — 2129 shared, 1182 serwera, 221 klienta; `tsc --noEmit` trzech
+pakietów, `pnpm lint`, Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
+(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi): scenariusze wypisane w checkliście
+2a. Nowy gracz testowy „Test 2a” dołączył do kampanii tej bazy; szkic „Test kreatora” ma już
+przydzielone minima, Broń długą 2 i Naukę 1. **Nie było** oględzin 4K ani klawiatury (2c).
+Serwer testowy i Vite zatrzymane (drzewa procesów), porty wolne; `dev.db` nietknięta.
+
 ### Sesja 16.09 (druga) — naprawa kreatora, domknięcie etapu 1
 
 **Zlecenie MG:** dokończyć etap 1 `naprawa_karty_postaci.md` po poprzednim modelu, dopytywać

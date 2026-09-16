@@ -1,6 +1,6 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 podzielony na 2a (✅), 2b (✅) i 2c;
+Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
 etap 3 do realizacji**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
@@ -185,6 +185,9 @@ częściach, po jednej sesji każda:
   Kompletny Pakiet, bez zakładania szkicu MG. Łączenie zapisów pola tekstowego.
 - **2c — typografia, kontrast i odbiór.** Układ wszystkich kroków przy nowej skali, kontrast obu
   motywów, powiększenie; pełny odbiór w przeglądarce według akapitu „Odbiór” niżej.
+  **Zmienione przez MG 16.09 (piąta sesja):** odbiór rozdzielczości 4K/3440/2560 odpada („obecna
+  skala mi odpowiada, gracze mogą zmienić skalę widoku”); w zamian skórki karty i kreatora na
+  naturalnej teksturze papieru z sieci.
 
 ### Część 2a — status: ✅ ukończona 16.09.2026 (trzecia sesja)
 
@@ -263,6 +266,42 @@ częściach, po jednej sesji każda:
   i panelu rang ani czytnika ekranu — zakres 2c. Na bazie testowej szkic „Test 2a” założono od nowa
   (Solo, Kompletny Pakiet, ranga „Postać początkująca”, ksywa „Zgrzyt z Kabuki”, INT 5), a MG ma
   kartę „Test klawiatury 2b”.
+
+### Część 2c — status: ✅ ukończona 16.09.2026 (piąta sesja)
+
+- [x] Skórka „stara kartka” dla karty postaci i kreatora (`sheet-window--paper`): pożółkły papier
+      w kremie głównego UI (dzień), czarny karton (noc), wytarcia nad drukiem, pęknięcia na czerwonych
+      ramkach i belce tytułowej. Tekstury z sieci: „Old paper6” (Wikimedia, domena publiczna)
+      i ambientCG „Asphalt 011” (CC0), obrobione `tools/art/sheet-paper.py`, razem ~0,56 MB.
+- [x] Wnętrze kreatora na palecie karty: chrom (`--bg-*`, `--border`, `--text`) przestawiony w oknie
+      na papier i tusz; listy wyboru kreatora ostylowane (były gołymi kontrolkami przeglądarki).
+- [x] Układ: tabela Cech na szerokość treści z rowkami między wierszami (pole wartości stało ~700 px
+      od nazwy); zakładki kroków zawijają się w wąskim oknie (od ~1120 px CSS „Podsumowanie” wypadało
+      poza pasek).
+- [x] Błąd motywu dziennego spoza kreatora: `--accent-ink` (#fff1ef) dawał niemal biały napis
+      `.small-button--primary` na jasnym tle — „Rzuć całą Ścieżkę”, „Utwórz postać” i 3 inne przyciski.
+- [x] Kontrast policzony dla obu motywów z uwzględnieniem wytarć (`docs/assety-karta-postaci.md`).
+- [x] Test: `theme.test.ts` pilnuje, że pliki pęknięć mają kolor `--cp-paper`; 224 testy klienta.
+- [x] Chrome na `.creation-ui.db`: karta (4 zakładki) i kreator (7 kroków, okno strat) w obu motywach;
+      okno 1708×882 CSS (4K, skala 150%, powiększenie 150%) i 1102×576 — nawigacja i stopka widoczne.
+
+**Ustalenia z realizacji 2c:**
+
+- **Decyzje MG o wyglądzie (16.09):** kierunek „papier i druk”, subtelnie, para dzień/noc jak dotąd;
+  papier jak na tapecie logowania, ale jaśniejszy; **żadnych ciemnych drobinek ani plam** („kojarzą
+  się z zabrudzeniami”) — tylko wytarcia i pęknięcia; pęknięcia na czerwonych ramkach (propozycja MG);
+  mocniejsze wytarcia.
+- **Świadomy koszt kontrastu (decyzja MG):** wytarcia leżą nad tekstem, więc w dzień przygaszony
+  napis na papierze spada w 5% najbardziej wytartej powierzchni do ~3,8:1 (punktowo ~3,0:1). Wariant
+  „wytarcia jako tło belek, pod tekstem” MG odrzucił.
+- **Pęknięcia nie leżą nad treścią:** pierwsza wersja wymazywała litery w polach; są obrazem tła
+  czerwieni. Z czarnych belek i zakładek zdjęte, bo jasna rysa pod drobnym białym napisem zjadała
+  kontrast numerów kroków.
+- **Powiększenie sprawdzone rozmiarem okna, nie `zoom` CSS** — `zoom` na dokumencie mnoży `vh`
+  i okno kreatora wychodziło poza ekran, czego prawdziwe powiększenie nie robi (pułapka w `ogledziny`).
+- **Nie sprawdzono:** portretu na papierze (postać testowa go nie ma — wytarcia mają go omijać,
+  `z-index: 4`), Safari/iPada (`mask-mode: luminance`), czytnika ekranu, prawdziwego powiększenia
+  przeglądarki ani płynności przewijania na słabszym sprzęcie graczy — pozycja w `zaleglosci.md`.
 
 Zakres ogólny:
 
@@ -375,6 +414,13 @@ Otwarte kwestie wskazano poniżej.
     postaci** nie sterują mapą; pozostałe okna osobno.
 17. **Cechy przy zmianie Roli w Kompletnym Pakiecie — ustalone 16.09 (czwarta sesja):** nadal
     kasowane; okno strat o tym mówi.
+18. **Rozdzielczość — zmienione 16.09 (piąta sesja):** odbiór 4K/3440/2560 odpada, obecna skala
+    odpowiada MG; gracze zmieniają skalę widoku sami, więc powiększenie nie może ucinać nawigacji.
+19. **Skórki — ustalone 16.09 (piąta sesja):** karta i kreator na naturalnej teksturze z sieci
+    (CC0/domena publiczna), papier i druk, subtelnie, para dzień/noc; pożółkły, jaśniejszy papier;
+    bez ciemnych drobinek i plam; wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach.
+20. **Kontrast pod wytarciami — ustalone 16.09 (piąta sesja):** zostaje obecna budowa (wytarcia nad
+    tekstem) mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych miejscach.
 
 ## Mapa kodu dla późniejszej realizacji
 

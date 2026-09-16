@@ -117,18 +117,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 podzielony 16.09 na
-2a ✅ / 2b ✅ / 2c — następna jest 2c**: układ wszystkich kroków przy nowej skali pisma, kontrast
-obu motywów (także nowego okna strat i panelu rang) i obowiązkowy odbiór **4K, skala Windows 150%,
-zoom 100%** (okno ok. 2560 px CSS) plus 3440×1440, 2560×1440 i zoom 125/150%. Etap 3 czeka na 2c.
-**Od 2b** zmiana Roli albo metody, która coś zabiera, pyta oknem kreatora z listą strat
-(`creationChangeEffect`), MG ustala rangi szkiców w zakładce „Postacie” (znaczek z liczbą
-oczekujących, lista na żywo, bez otwierania kreatora), a klawisze z przycisków kreatora i karty
-postaci nie sterują już mapą (`data-owns-keys`). **Od 2a** szkic trzyma minima podstawowych jako zwykłe poziomy
-(`skillMinimaAuto`), a gracz nie wpisze Cech Kompletnego Pakietu przed rangą od MG. Szkice sprzed
-2a (w `dev.db` m.in. Tony'ego) dostają w kroku Umiejętności bilans i przycisk „Przydziel minima”
-— nic nie zmienia się samo. Minimum slangu ulicznego nadal kosztuje 2 pkt we wspólnym wierszu
-„Język” (decyzja z 16.09).
+**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 ✅ (2a/2b/2c) — następny
+jest etap 3** (gotowość do gry i odbiór obu metod). **Od 2c karta postaci i kreator są „starą kartką”**
+(`sheet-window--paper`): pożółkły papier w dzień, czarny karton w nocy, jasne wytarcia nad drukiem
+i pęknięcia na czerwonych ramkach — tekstury z sieci (domena publiczna/CC0) budowane
+`tools/art/sheet-paper.py`. **MG odrzucił wszystko, co ciemniejsze od papieru** (drobinki i plamy
+„jak brud”) i przyjął, że wytarcia nad tekstem obniżają kontrast przygaszonych napisów w najbardziej
+wytartych miejscach. Odbioru 4K/3440/2560 **nie ma** (decyzja MG z 16.09: skala odpowiada, gracze
+zmieniają ją sami) — zostało tylko „powiększenie nie ucina nawigacji”. Umowa w `karta`, źródła
+i kontrast w `docs/assety-karta-postaci.md`. **Od 2b** zmiana Roli albo metody, która coś zabiera,
+pyta oknem kreatora z listą strat (`creationChangeEffect`), MG ustala rangi szkiców w zakładce
+„Postacie”, a klawisze z przycisków kreatora i karty postaci nie sterują mapą (`data-owns-keys`).
+**Od 2a** szkic trzyma minima podstawowych jako zwykłe poziomy (`skillMinimaAuto`), a gracz nie
+wpisze Cech Kompletnego Pakietu przed rangą od MG. Szkice sprzed 2a (w `dev.db` m.in. Tony'ego)
+dostają w kroku Umiejętności bilans i przycisk „Przydziel minima”. Minimum slangu ulicznego nadal
+kosztuje 2 pkt we wspólnym wierszu „Język” (decyzja z 16.09).
 
 **Etap 42 (bariery) ukończony: 42a ✅, 42b ✅, 42c ✅.**
 Bariera to rodzaj ściany, przez który widać mapę, a nie da się przejść ani sięgnąć wręcz;
@@ -198,7 +201,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 14 pozycji** (`zaleglosci.md`; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09, czternasta — straże lądowania i pełny marsz pod mgłą z drugiej sesji 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 15 pozycji** (`zaleglosci.md`; piętnasta to skórka „stara kartka” z 2c — portret, Safari/iPad, przewijanie, prawdziwy zoom; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09, czternasta — straże lądowania i pełny marsz pod mgłą z drugiej sesji 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -255,8 +258,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2133** w `shared`, **1183** na serwerze, **223** u klienta —
-zielone (liczby z 16.09, czwarta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2133** w `shared`, **1183** na serwerze, **224** u klienta —
+zielone (liczby z 16.09, piąta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -288,7 +291,7 @@ a nie do tego pliku.
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       5 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    7 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   34 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
@@ -296,12 +299,47 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      78 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      80 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      20 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 16.09 (piąta) — naprawa kreatora, część 2c
+
+**Zlecenie MG:** wykonać etap 2c `naprawa_karty_postaci.md`, ale **bez dopasowania rozdzielczości**
+(obecna skala odpowiada, gracze zmieniają ją sami); w zamian poszukać ładniejszych skórek karty
+postaci opartych na naturalnych teksturach z sieci (albo je przerobić); dopytywać i zgłaszać możliwe
+błędy. **Stan: 2c ✅, etap 2 naprawy ✅.** Checklista i ustalenia są w pliku naprawy.
+
+**Decyzje MG (16.09):** skórki dla karty **i** kreatora; „papier i druk”, subtelnie, para dzień/noc;
+papier pożółkły jak tapeta logowania, potem jaśniejszy; tekstury najpierw z sieci (MG oferował
+wygenerowanie — nie było potrzeby), mogą ważyć do kilku MB; **żadnych ciemnych drobinek ani plam**
+(„zabrudzenia”), zamiast nich wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach (pomysł MG);
+wytarcia zostają nad tekstem mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych
+miejscach.
+
+**Zgłoszone MG możliwe błędy:** (1) `--accent-ink` w dzień (#fff1ef) dawał niemal biały napis na
+każdym `.small-button--primary` — pięć przycisków w aplikacji, m.in. „Rzuć całą Ścieżkę” i „Utwórz
+postać”; poprawione na głęboką czerwień. (2) Listy wyboru kreatora były gołymi kontrolkami
+przeglądarki — ostylowane. (3) Od ~1120 px CSS zakładka „Podsumowanie” wypadała poza pasek kroków —
+zakładki się zawijają. (4) Pole wartości Cechy stało ~700 px od nazwy — tabela na szerokość treści.
+(5) Pęknięcia nad treścią wymazywały litery — przeniesione do tła czerwieni. (6) Kontrast pod
+wytarciami — MG zostawił.
+
+**Wdrożone:** `packages/client/public/art/sheet/` (`paper-wear.jpg`, `ink-cracks-day/night.webp`,
+~0,56 MB) i `tools/art/sheet-paper.py` (pobiera „Old paper6” z Wikimedia i ambientCG „Asphalt 011”,
+kafel Moisana, maska i rysy); klasa `sheet-window--paper` na karcie i kreatorze, tokeny `--cp-inset*`,
+`--cp-line*`, `--cp-wear*`, `--cp-cracks*` i jaśniejszy dzienny `--cp-paper`; strażnik koloru pęknięć
+w `theme.test.ts`; `tools/art/.cache/` w `.gitignore`. Umowa — `karta` (1); pułapki — `ogledziny` (2).
+
+**Weryfikacja:** vitest — 2133 shared, 1183 serwera, 224 klienta (w pierwszym przebiegu `pnpm -r test`
+mignął `gametime.test.ts` „nowa data dociera do gracza rozgłoszeniem” — trzy powtórzenia pliku
+i drugi pełny przebieg serwera zielone; serwera ta sesja nie dotykała); `tsc --noEmit` klienta,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`, serwer z jednorazowym `GM_PASSWORD`): scenariusze w checkliście 2c. **Nie było:** portretu,
+Safari/iPada, prawdziwego zoomu, pomiaru przewijania (`zaleglosci.md`).
 
 ### Sesja 16.09 (czwarta) — naprawa kreatora, część 2b
 
@@ -332,32 +370,3 @@ trzech pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.
 oględzin): scenariusze w checkliście 2b. **Nie było** odbioru 4K ani motywu dziennego nowych
 elementów (2c). Serwer testowy i Vite zatrzymane drzewami procesów; zwykły dev na `dev.db`:
 `/health` 200, frontend 200, zatrzymany, porty wolne.
-
-### Sesja 16.09 (trzecia) — naprawa kreatora, podział etapu 2 i część 2a
-
-**Zlecenie MG:** wykonać etap 2 `naprawa_karty_postaci.md`, a jeśli jest za duży na jedno okno
-kontekstu — podzielić go na 2–3 mniejsze; dopytywać i zgłaszać możliwe błędy. **Stan: etap 2
-podzielony na 2a/2b/2c, 2a ✅.** Zakres części i checklista 2a są w pliku naprawy.
-
-**Decyzje MG (16.09):** minima podstawowych automatycznie w **obu** metodach, z przeskokiem
-poziomu 1 u Krawędziarza; przy zmianie Roli/metody potwierdzenie z listą strat, bez cofania (2b);
-panel rang w zakładce „Postaci” z licznikiem na zakładce (2b); gracz nie wpisuje Cech Kompletnego
-Pakietu przed zatwierdzeniem rangi.
-
-**Zgłoszone MG możliwe błędy spoza audytu:** przełączenie na Krawędziarza przed wyborem Roli
-kasuje wszystkie umiejętności bez ostrzeżenia (lista dostępnych jest wtedy pusta) — do komunikatu
-strat w 2b; „+” z 0 dawał u Krawędziarza niedozwolony poziom 1 — naprawione w 2a; gracz rozdzielał
-Cechy z domyślnej puli przed decyzją MG — naprawione w 2a.
-
-**Wdrożone (2a):** `skillMinimaAuto`, `creationMissingSkillMinima`, `creationWithSkillMinima`,
-`creationSkillRow`, `creationIssueStep` w `shared`; odmowa `CREATION_RANK_PENDING` dla Cech w
-`creation:patch`; nowy krok Umiejętności (licznik przyklejony, wyszukiwarka, filtry, karta języka,
-bilans starego szkicu), stan kroków na zakładkach, podsumowanie z „Przejdź”, skala pisma kreatora.
-Umowy — `postac` (4 nowe), pułapki — `ui` (1) i `ogledziny` (2).
-
-**Weryfikacja:** `pnpm -r test` — 2129 shared, 1182 serwera, 221 klienta; `tsc --noEmit` trzech
-pakietów, `pnpm lint`, Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
-(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi): scenariusze wypisane w checkliście
-2a. Nowy gracz testowy „Test 2a” dołączył do kampanii tej bazy; szkic „Test kreatora” ma już
-przydzielone minima, Broń długą 2 i Naukę 1. **Nie było** oględzin 4K ani klawiatury (2c).
-Serwer testowy i Vite zatrzymane (drzewa procesów), porty wolne; `dev.db` nietknięta.

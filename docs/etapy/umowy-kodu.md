@@ -1639,6 +1639,7 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Okno „na papierze” to klasa `sheet-window--paper`** (karta postaci i kreator; edytor botów i okna Sieci celowo nie) — przestawia chrom na papier (`theme.css`), kładzie wytarcia jako `::after` jedynego dziecka `.sheet-body`, a pęknięcia jako tło czerwieni na końcu `sheet.css`. Nowy przyklejony albo stały element nad przewijaną treścią dostaje własne `::after` i `z-index` wyżej; nic ciemniejszego od papieru (decyzja MG).
 - **Wielkość liczby na karcie ustawia się z prefiksem `.sheet-window`** — skóra przełącznika (`.sheet-window .cp-step`, 0-2-0) niesie `font: inherit`, więc goła klasa pola (0-1-0) przegrywa kaskadę i liczba zostaje przy 16 px. Cechy: `.cp-stats { align-self: stretch }` + `.cp-stat { flex: 1 }` ciągną kolumnę na całą stronę, a wąskie okno ma **własny** blok `@container` **pod** regułami bazowymi.
 - **Lista czytana z serwera odświeża się na STEMPEL karty, nie na liczbę, która ją opisuje** — rejestry (awansów z 29a, eurodolców z 23b) czyta `useEffect` na `[characterId, open, savedAt]`, gdzie `savedAt` to `character.updatedAt`. Saldo wyprzedza żądanie (optymistyczna łata), a warunek `history === null` gubi wiersze dopisane przez MG. Strażnik: `advancement-history.test.ts`.
 - **Liczbę na karcie i w oknach gry zmienia się strzałkami, nie wpisywaniem** — `NumberStepper` (wartość jako napis, strzałki w pionie przy niej, przytrzymanie powtarza); skóra z kontekstu: pole z ramką w oknie, płaski napis na karcie. Wpisywane zostają liczby >99 (PD, ILOŚĆ, PW tokenu, eurodolce, edytory) **oraz pola, w których puste znaczy coś innego niż zero** (OB celu, inicjatywa, generator sieci, sztuk w ekwipunku).
@@ -1647,6 +1648,27 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 
 ---
+
+**Okno na papierze: `sheet-window--paper` (16.09, naprawa kreatora 2c).** Karta postaci i kreator
+wyglądają jak wydruk na starej kartce. Trzy rzeczy obowiązują dalej:
+
+- **Kolory przez tokeny.** Klasa przestawia w oknie chrom aplikacji (`--bg-*`, `--border*`,
+  `--text*`) na `--cp-paper`, `--cp-back`, `--cp-inset*`, `--cp-line*` i tusz (blok
+  `.sheet-window--paper` w `theme.css`). Przyciski, pola i opisy w środku stają na papierze bez
+  osobnych reguł. `.sheet-window` bez tej klasy (edytor botów, okna Sieci) zostaje przy chromie.
+- **Wytarcia leżą nad treścią.** Nośnikiem jest jedyne dziecko `.sheet-body` (`position:
+  relative`, `flex: 1 0 auto`, `::after` z `inset: -0.7rem`), a nie samo `.sheet-body`: warstwa
+  absolutna w przewijanym kontenerze ma wymiar okna przewijania. Element, który stoi w miejscu
+  nad przewijaną treścią (`.creator-sticky`), ma własne `::after` i `z-index: 4`, inaczej
+  wytarcia przesuwałyby się po nim jak po szybie. Zdjęcia (portret) mają `z-index: 4`.
+- **Pęknięcia to obraz tła** czerwonych nośników (`--cp-cracks`), dopisany na KOŃCU `sheet.css`,
+  bo `background` wyżej zeruje obraz. Nie na czarnych belkach ani przy drobnym białym napisie.
+  Pliki niosą kolor papieru: zmiana `--cp-paper` = zmiana `PAPER_DAY`/`PAPER_NIGHT`
+  w `tools/art/sheet-paper.py` i przebudowa (pilnuje `theme.test.ts`).
+
+MG odrzucił wszystko, co ciemniejsze od papieru (drobinki, kropki, miękkie plamy — „zabrudzenia”).
+Nowa tekstura w tym oknie może tylko rozjaśniać albo pękać. Źródła, obróbka i przyjęty koszt
+kontrastu: `docs/assety-karta-postaci.md`.
 
 **Liczby na karcie mają wypełniać swoje pola, a ustawia się je z prefiksem `.sheet-window`
 (zlecenie MG, 12.09).** Zgłoszenie brzmiało: „liczba określająca wartość INT, mimo że ma w polu
