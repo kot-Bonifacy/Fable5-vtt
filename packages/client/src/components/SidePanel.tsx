@@ -19,6 +19,7 @@ import { ArchivePanel } from './ArchivePanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
 
 type Tab =
@@ -100,6 +101,9 @@ export function SidePanel() {
   const [tab, setTab] = useState<Tab>('chat');
   const journalFocus = useJournalStore((s) => s.focus);
   const waitingRequests = useWaitingRequestCount(isGm);
+  // Naprawa 2b: players' drafts waiting for the GM's rank. The list is empty
+  // for a player, so the badge never shows there.
+  const waitingRanks = useCreationRankStore((s) => (isGm ? waitingRankCount(s.rows) : 0));
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
 
@@ -123,6 +127,14 @@ export function SidePanel() {
           title={`Prośby o Test czekające na twoją decyzję: ${waitingRequests}`}
         >
           {waitingRequests}
+        </span>
+      )}
+      {entry.id === 'characters' && waitingRanks > 0 && (
+        <span
+          className="side-tab-badge"
+          title={`Szkice postaci czekające na Rangę Postaci: ${waitingRanks}`}
+        >
+          {waitingRanks}
         </span>
       )}
     </button>

@@ -1217,4 +1217,67 @@ describe('kreator postaci', () => {
       expect((await patch(gm, { stats: { body: 4 } })).draft.stats.body).toBe(4);
     });
   });
+
+  describe('naprawa 2b — lista rang MG na żywo', () => {
+    it('pushes only the players Kompletny Pakiet drafts to the GM, waiting ones first', async () => {
+      let last: CreationRankDraft[] | null = null;
+      let leaked = false;
+      const onGm = (rows: CreationRankDraft[]) => {
+        last = rows;
+      };
+      const onPlayer = () => {
+        leaked = true;
+      };
+      // The push rides the GM's connection and the ack the player's, so their
+      // order is not guaranteed: wait for the list to say what is expected.
+      const until = async (check: (rows: CreationRankDraft[]) => boolean) => {
+        for (let attempt = 0; attempt < 80; attempt += 1) {
+          if (last && check(last)) return;
+          await new Promise((done) => setTimeout(done, 25));
+        }
+        throw new Error(`creation:ranks-sync never matched: ${JSON.stringify(last)}`);
+      };
+      gm.on('creation:ranks-sync', onGm);
+      vex.on('creation:ranks-sync', onPlayer);
+      try {
+        await emitAck(vex, 'creation:discard');
+        const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+        // A Krawędziarz rolls his stats — no rank to wait for.
+        const listed = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
+        expect(listed.some((row) => row.id === fresh.id)).toBe(false);
+
+        await patch(vex, { method: 'complete' });
+        await until((rows) =>
+          rows.some((row) => row.id === fresh.id && !row.rankApproved && row.statRankId === null),
+        );
+        await patch(vex, { name: 'Zgrzyt' });
+        await until((rows) =>
+          rows.some((row) => row.id === fresh.id && row.characterName === 'Zgrzyt'),
+        );
+        expect(
+          (await emitAck(gm, 'creation:set-rank', { draftId: fresh.id, statRankId: 'minor-hero' }))
+            .ok,
+        ).toBe(true);
+        await until((rows) =>
+          rows.some(
+            (row) => row.id === fresh.id && row.rankApproved && row.statRankId === 'minor-hero',
+          ),
+        );
+
+        // The GM's own draft never waits for anybody.
+        await emitAck(gm, 'creation:discard');
+        await emitAck(gm, 'creation:start');
+        await patch(gm, { method: 'complete' });
+        const withGm = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
+        expect(withGm.map((row) => row.userName)).toEqual(['Vex']);
+
+        await emitAck(vex, 'creation:discard');
+        await until((rows) => !rows.some((row) => row.id === fresh.id));
+        expect(leaked).toBe(false);
+      } finally {
+        gm.off('creation:ranks-sync', onGm);
+        vex.off('creation:ranks-sync', onPlayer);
+      }
+    });
+  });
 });

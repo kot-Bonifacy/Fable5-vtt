@@ -248,6 +248,11 @@ export interface CpredRoleDefinition {
   name: string;
   /** Polish name of the role's special ability (e.g. "Zmysł Walki"). */
   ability: string;
+  /**
+   * One sentence on who plays this Role, written for the VTT rather than
+   * quoted (naprawa kreatora 2b) — the creator's Role cards show it.
+   */
+  summary?: string;
 }
 
 /** Parsed system data files, with id sets for O(1) validation. */
@@ -310,14 +315,21 @@ export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): Cpred
         ? { ...entry, group: undefined }
         : entry,
     );
-  const roles = (Array.isArray(rolesInput) ? rolesInput : []).filter(
-    (entry): entry is CpredRoleDefinition =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      typeof (entry as CpredRoleDefinition).id === 'string' &&
-      typeof (entry as CpredRoleDefinition).name === 'string' &&
-      typeof (entry as CpredRoleDefinition).ability === 'string',
-  );
+  const roles = (Array.isArray(rolesInput) ? rolesInput : [])
+    .filter(
+      (entry): entry is CpredRoleDefinition =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        typeof (entry as CpredRoleDefinition).id === 'string' &&
+        typeof (entry as CpredRoleDefinition).name === 'string' &&
+        typeof (entry as CpredRoleDefinition).ability === 'string',
+    )
+    // A summary that is not text would print „[object Object]" on a Role card.
+    .map((entry) =>
+      entry.summary !== undefined && typeof entry.summary !== 'string'
+        ? { ...entry, summary: undefined }
+        : entry,
+    );
   return {
     skills,
     skillIds: new Set(skills.map((s) => s.id)),

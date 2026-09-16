@@ -35,6 +35,24 @@ export const CPRED_STAT_LABELS: Record<CpredStatId, CpredStatLabel> = {
   emp: { abbr: 'EMP', name: 'Empatia' },
 };
 
+/**
+ * What each stat is for, in one sentence (naprawa kreatora 2b). Written for
+ * this project rather than quoted — the creator shows it to somebody choosing
+ * numbers, and the public repository may not carry the rulebook's own text.
+ */
+export const CPRED_STAT_HINTS: Record<CpredStatId, string> = {
+  int: 'Bystrość i wiedza: spostrzegawczość, tropienie, nauki, wiedza o świecie.',
+  ref: 'Celność z broni dystansowej, jazda i pilotaż, a także inicjatywa w walce.',
+  dex: 'Walka wręcz, uniki, atletyka i skradanie się.',
+  tech: 'Naprawa i budowa sprzętu, broni i pojazdów, a także pierwsza pomoc.',
+  cool: 'Opanowanie i styl: przekonywanie, handel, aktorstwo, zimna krew w Konfrontacji.',
+  will: 'Wytrwałość i odporność psychiczna; razem z Budową Ciała wyznacza Punkty Wytrzymałości.',
+  luck: 'Pula punktów dodawanych do rzutów; odnawia się na początku każdej sesji.',
+  move: 'Szybkość: ile metrów postać pokonuje w turze.',
+  body: 'Siła i wytrzymałość: Punkty Wytrzymałości, Przeżywalność, obrażenia bez broni.',
+  emp: 'Wyczucie ludzi i relacje; wyznacza Człowieczeństwo (Empatia × 10).',
+};
+
 export const CPRED_STAT_MIN = 1;
 
 /**

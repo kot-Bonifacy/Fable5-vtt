@@ -288,6 +288,7 @@ import { useHandoutStore } from './stores/handoutStore.js';
 import { useScreamsheetStore } from './stores/screamsheetStore.js';
 import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
+import { useCreationRankStore } from './stores/creationRankStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
@@ -507,6 +508,10 @@ export function connectSocket(userId: string): Socket {
       });
     }
   });
+  // Naprawa 2b: the GM's rank list lives off the server's pushes.
+  socket.on('creation:ranks-sync', (rows: CreationRankDraft[]) =>
+    useCreationRankStore.getState().replace(rows),
+  );
   socket.on('disconnect', () => {
     setDisconnected();
     chat().setDesynced();
@@ -544,6 +549,15 @@ export function connectSocket(userId: string): Socket {
     useNetRunStore.getState().replaceRuns(payload.netRuns ?? []);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
     useGameTimeStore.getState().applySync(payload);
+    // The sync lands once the socket sits in the GM room. The answer is made
+    // in the server's creation queue and rides the same connection as the
+    // pushes, so they arrive in the order they were made. A campaign switch
+    // syncs again.
+    if (viewer().isGm) {
+      void listCreationRanks().then((ack) =>
+        useCreationRankStore.getState().replace(ack.ok ? (ack.data ?? []) : []),
+      );
+    } else useCreationRankStore.getState().replace([]);
   });
 
   /**

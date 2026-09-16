@@ -25,6 +25,7 @@ import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
+import { CreationRankPanel } from './CreationRankPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 
 interface PlayerOption {
@@ -188,6 +189,8 @@ export function CharacterPanel() {
 
   return (
     <div className="character-panel">
+      {/* Naprawa 2b: a player waiting for a pool comes first. */}
+      {isGm ? <CreationRankPanel /> : null}
       {isGm ? <PortraitPicker manage /> : null}
       {isGm && order.length > 0 && (
         <div className="character-panel-actions">

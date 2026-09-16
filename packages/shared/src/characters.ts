@@ -376,11 +376,20 @@ export interface CreationFinishResult extends CharacterView {
   tokenStatus: 'not-requested' | 'placed' | 'no-scene' | 'failed';
 }
 
+/**
+ * One player's Kompletny Pakiet draft on the GM's rank list (naprawa 2b). The
+ * list reaches only the GM — as the `creation:ranks` answer and, after every
+ * change to it, pushed as `creation:ranks-sync` — and carries metadata alone,
+ * never the player's choices or biography.
+ */
 export interface CreationRankDraft {
   id: string;
   userName: string;
   characterName: string;
+  /** The GM's pick; `null` until one is made (or when it no longer exists). */
   statRankId: string | null;
+  /** False while the player waits — what the tab badge counts. */
+  rankApproved: boolean;
 }
 
 /**

@@ -1,15 +1,15 @@
 {
-  "$comment": "10 ról CP RED — polskie nazwy wg wydania Black Monk. Nazwy Ról i ich Zdolności Specjalnych zweryfikowane z podręcznikiem głównym (rozdział „Dusza i nowa maszyna”, zdania „Zdolnością Specjalną X jest Y”) — patrz roleAbilities w data/private/cpred/compendium/import-report-manual.json.",
+  "$comment": "10 ról CP RED — polskie nazwy wg wydania Black Monk. Nazwy Ról i ich Zdolności Specjalnych zweryfikowane z podręcznikiem głównym (rozdział „Dusza i nowa maszyna”, zdania „Zdolnością Specjalną X jest Y”) — patrz roleAbilities w data/private/cpred/compendium/import-report-manual.json. Pole „summary” to jedno zdanie napisane dla VTT (kreator postaci, naprawa 2b), nie cytat z podręcznika.",
   "roles": [
-    { "id": "rockerboy", "name": "Rocker", "ability": "Efekt Charyzmy" },
-    { "id": "solo", "name": "Solo", "ability": "Zmysł Walki" },
-    { "id": "netrunner", "name": "Netrunner", "ability": "Interfejs" },
-    { "id": "tech", "name": "Technik", "ability": "Twórca" },
-    { "id": "medtech", "name": "Medyk", "ability": "Medycyna" },
-    { "id": "media", "name": "Media", "ability": "Wiarygodność" },
-    { "id": "exec", "name": "Korpo", "ability": "Praca Zespołowa" },
-    { "id": "lawman", "name": "Stróż Prawa", "ability": "Wsparcie" },
-    { "id": "fixer", "name": "Fixer", "ability": "Znajomości" },
-    { "id": "nomad", "name": "Nomada", "ability": "Moto" }
+    { "id": "rockerboy", "name": "Rocker", "ability": "Efekt Charyzmy", "summary": "Muzyk, poeta albo agitator — porywa tłumy i zamienia fanów w sojuszników." },
+    { "id": "solo", "name": "Solo", "ability": "Zmysł Walki", "summary": "Zawodowy wojownik: ochroniarz, najemnik albo zabójca na zlecenie." },
+    { "id": "netrunner", "name": "Netrunner", "ability": "Interfejs", "summary": "Haker, który przez cyberdek wchodzi do Sieci i łamie zabezpieczenia systemów." },
+    { "id": "tech", "name": "Technik", "ability": "Twórca", "summary": "Mechanik i wynalazca — naprawia, ulepsza i buduje sprzęt z tego, co znajdzie." },
+    { "id": "medtech", "name": "Medyk", "ability": "Medycyna", "summary": "Uliczny lekarz: ratuje życie, operuje i przyrządza leki." },
+    { "id": "media", "name": "Media", "ability": "Wiarygodność", "summary": "Dziennikarz, który tropi prawdę i wyciąga ją na światło dzienne." },
+    { "id": "exec", "name": "Korpo", "ability": "Praca Zespołowa", "summary": "Człowiek korporacji z własnym zespołem ludzi i zasobami firmy za plecami." },
+    { "id": "lawman", "name": "Stróż Prawa", "ability": "Wsparcie", "summary": "Stróż prawa — od ulicznego gliniarza po korporacyjną ochronę; wzywa wsparcie." },
+    { "id": "fixer", "name": "Fixer", "ability": "Znajomości", "summary": "Pośrednik i handlarz: zna właściwych ludzi, załatwia towar i ubija interesy." },
+    { "id": "nomad", "name": "Nomada", "ability": "Moto", "summary": "Członek rodziny z drogi — kierowca, przemytnik i mistrz pojazdów." }
   ]
 }

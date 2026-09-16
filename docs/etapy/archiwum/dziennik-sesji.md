@@ -7,6 +7,34 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.09 (druga) — naprawa kreatora, domknięcie etapu 1
+
+**Zlecenie MG:** dokończyć etap 1 `naprawa_karty_postaci.md` po poprzednim modelu, dopytywać
+o niejasności i zgłaszać potencjalne błędy. **Stan: etap 1 ✅.** Nie zaczynano etapu 2.
+
+**Przegląd `ed47f9c` znalazł pięć rzeczy; MG zdecydował o każdej.** (1) `language` to naraz
+podstawowy slang uliczny i darmowy język kultury, więc darmowe 4 poziomy spełniały minimum slangu
+za 0 pkt — +2 pkt względem s. 90. **Decyzja: pobierać 2 pkt** (`creationFreeLanguageCharge`
+w `creationSkillPointsSpent`, podpowiedź i koszt w wierszu „Język”; wpis w
+`decyzje-i-uproszczenia.md`). (2) `creation:set-rank` podbijał `revision`, przez co zapis gracza
+w drodze kończył się `DRAFT_CHANGED` nie do ponowienia — podbicie usunięte. (3) Pola Cech i dziedziny
+związane wprost ze stanem serwera gubiły znaki przy opóźnieniu, a imię nie szło za wczytanym
+zapisem — wspólny `useDraftFieldText`. (4)
+`retry()` zdejmował oczekującą łatę poza kolejką — ponowienie i wstrzymane intencje idą teraz
+w jednej turze kolejki. (5) Panel rang MG (pusty szkic MG, brak powiadomienia, ręczne
+odświeżanie) — **dopisany do zakresu etapu 2**. MG podał też skalę Windows: **150%**.
+
+**Weryfikacja:** pełne `pnpm -r test` — 2118 shared (3 nowe), 1180 serwera (1 nowy), 219 klienta
+(2 nowe; test kolejności sprawdzony na starym magazynie — pada). `tsc --noEmit` trzech pakietów,
+ESLint, Prettier czyste. Chrome na `.creation-ui.db` z osobnymi `UPLOADS_DIR` i `BACKUP_DIR`
+oraz opóźnieniem 250 ms na gnieździe: szybkie pisanie w dziedzinie i dwa ↑ w Cesze zapisane
+w całości (po F5 też), licznik i wiersz „Język” pokazują 2 pkt. Zwykły dev na `dev.db`: `/health`
+200, frontend 200. Pliki `uploads/` kampanii sprawdzone — 72 odnośniki, żadnego brakującego.
+
+**Pułapki:** zatrzymane `pnpm dev` w tle zostawia `tsx`/`vite` na portach (to był `EADDRINUSE`
+z 15–16.09) — `testy`; opóźnienie VPS łatką na `WebSocket.prototype.send` — `ogledziny`.
+Dev zostawiony wyłączony, porty wolne.
+
 ### Sesja 15–16.09 — naprawa kreatora, etap 1 (przerwana na prośbę MG)
 
 **Stan: wdrożenie i testy zrobione, etap formalnie w toku.** MG zakończył sesję przed

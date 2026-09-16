@@ -6,6 +6,7 @@ import {
   createDefaultCreationDraft,
   creationAvailableSkills,
   creationBudget,
+  creationChangeEffect,
   creationIssues,
   creationPreview,
   creationPurchases,
@@ -839,5 +840,80 @@ describe('naprawa 2a — gdzie naprawić brak', () => {
     expect(steps).toEqual(new Set(['role', 'stats', 'skills', 'lifepath', 'gear', 'details']));
     expect(creationIssueStep('statRankId')).toBe('stats');
     expect(creationIssueStep('skillSpecialties.science')).toBe('skills');
+  });
+});
+
+describe('naprawa 2b — co zabiera zmiana Roli albo metody', () => {
+  const answer = { id: 'soloType', question: 'Jakim Solo jesteś?', answer: 'Ochroniarz' };
+
+  it('names the rolled spread, the skills off the new list and the Role answers', () => {
+    const reg = registry();
+    const rolls = Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6]));
+    const solo = finished({
+      statRolls: rolls,
+      purchases: { 'weapon.pistolet': 1 },
+      lifepath: { ...finished().lifepath, roleAnswers: [answer] },
+    });
+    const effect = creationChangeEffect(solo, { roleId: 'netrunner' }, data(reg), reg, lookup);
+    expect(effect.lost).toEqual([
+      'Wylosowane Cechy (10): INT 6 · REF 6 · ZW 6 · TECH 6 · CHA 6 · SW 6 · SZ 6 · RUCH 6 · BC 6 · EMP 6.',
+      'Umiejętności (2): Broń krótka 4 · Ogień ciągły 6.',
+      'Odpowiedzi Ścieżki Życia Roli (1): Ochroniarz.',
+    ]);
+    // A Role change keeps the basket — only the method decides the money.
+    expect(effect.notes).toEqual(['Punkty umiejętności: pozostało 0 → 16.']);
+  });
+
+  it('empties a Krawędziarz without a Role and prices the basket it drops', () => {
+    const reg = registry();
+    const complete = mergeCreationDraft(
+      draft({ method: 'complete' }),
+      { skills: { handgun: 3, cryptography: 1 } },
+      data(reg),
+      reg,
+    )!;
+    const withBasket = { ...complete, purchases: { 'weapon.pistolet': 1, 'gear.latarka': 2 } };
+    const effect = creationChangeEffect(
+      withBasket,
+      { method: 'edgerunner' },
+      data(reg),
+      reg,
+      lookup,
+    );
+    expect(effect.lost).toEqual([
+      'Umiejętności (3): Broń krótka 3 · Kryptografia 1 · Atletyka 2.',
+      'Koszyk (3 szt. za 90 ed): Pistolet · Latarka ×2.',
+    ]);
+    // `formatEddies` groups thousands with a narrow no-break space.
+    expect(effect.notes.at(-1)).toMatch(/^Pieniądze startowe: 2\s550 → 500 ed\.$/u);
+  });
+
+  it('warns about level one under a method that does not allow it, without calling it a loss', () => {
+    const reg = registry();
+    const complete = mergeCreationDraft(
+      draft({ method: 'complete', roleId: 'solo' }),
+      { skills: { handgun: 1 } },
+      data(reg),
+      reg,
+    )!;
+    const effect = creationChangeEffect(complete, { method: 'edgerunner' }, data(reg), reg);
+    expect(effect.lost).toEqual([]);
+    expect(effect.notes[0]).toBe(
+      'Ta metoda nie zna poziomu 1 — do podniesienia albo zdjęcia (1): Broń krótka 1.',
+    );
+  });
+
+  it('has nothing to say about a first Role, and nothing about a refused change', () => {
+    const reg = registry();
+    const first = creationChangeEffect(draft(), { roleId: 'solo' }, data(reg), reg);
+    expect(first.lost).toEqual([]);
+    expect(first.notes).toEqual([
+      'Kreator przydzieli minima podstawowych (1): Atletyka 2.',
+      'Punkty umiejętności: pozostało 20 → 18.',
+    ]);
+    expect(creationChangeEffect(draft(), { roleId: 'nikt' }, data(reg), reg)).toEqual({
+      lost: [],
+      notes: [],
+    });
   });
 });

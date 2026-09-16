@@ -327,6 +327,8 @@ function CharacterSheetWindow({
       style={{ ...placement.style, zIndex: 300 + stackIndex }}
       onPointerDown={() => focusSheet(characterId)}
       aria-label={`Karta postaci: ${character.name}`}
+      // Keys pressed on the sheet's own buttons stay here (naprawa 2b).
+      data-owns-keys
     >
       <div className="sheet-header" {...placement.dragProps}>
         {character.portraitUrl ? (

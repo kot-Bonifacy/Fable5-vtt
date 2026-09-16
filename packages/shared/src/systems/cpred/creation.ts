@@ -1030,6 +1030,131 @@ export function mergeCreationDraft(
   return next.skillMinimaAuto ? creationWithSkillMinima(next, data, registry) : next;
 }
 
+/** What changing the Role or the method would do to a draft (naprawa 2b). */
+export interface CpredCreationChangeEffect {
+  /** One line per kind of thing that goes; empty means nothing is lost. */
+  lost: string[];
+  /** Consequences that take nothing away: new minimums, levels to fix, money. */
+  notes: string[];
+}
+
+/** An answer shortened for a list line; the whole text is on the sheet. */
+function shortAnswer(text: string): string {
+  const clean = text.trim().replace(/\s+/g, ' ');
+  return clean.length > 48 ? `${clean.slice(0, 47)}…` : clean;
+}
+
+/**
+ * Lists what a Role or method change takes off the draft, read off the same
+ * `mergeCreationDraft` the server applies — so the wizard's warning cannot
+ * promise less than the write does. The wizard asks only when `lost` is not
+ * empty; `notes` ride along in the same window.
+ */
+export function creationChangeEffect(
+  current: CpredCreationDraft,
+  patch: { method?: CpredCreationMethod; roleId?: string | null },
+  data: CpredCreationData,
+  registry: CpredRegistry,
+  lookup?: (entryId: string) => CompendiumEntry | undefined,
+): CpredCreationChangeEffect {
+  const lost: string[] = [];
+  const notes: string[] = [];
+  const next = mergeCreationDraft(current, patch, data, registry);
+  if (next === null) return { lost, notes };
+  const names = new Map(registry.skills.map((skill) => [skill.id, skill.name]));
+  const nameOf = (skillId: string) => names.get(skillId) ?? skillId;
+
+  const goneStats = CPRED_STAT_IDS.filter(
+    (id) => current.stats[id] !== undefined && next.stats[id] === undefined,
+  );
+  if (goneStats.length > 0) {
+    const rolled = goneStats.some((id) => current.statRolls[id] !== undefined);
+    lost.push(
+      `${rolled ? 'Wylosowane Cechy' : 'Rozdzielone Cechy'} (${goneStats.length}): ${goneStats
+        .map((id) => `${CPRED_STAT_LABELS[id].abbr} ${current.stats[id]}`)
+        .join(' · ')}.`,
+    );
+  }
+
+  const lowered = Object.entries(current.skills).filter(
+    ([skillId, level]) => level > 0 && (next.skills[skillId] ?? 0) < level,
+  );
+  if (lowered.length > 0) {
+    lost.push(
+      `Umiejętności (${lowered.length}): ${lowered
+        .map(([skillId, level]) => {
+          const after = next.skills[skillId] ?? 0;
+          return `${nameOf(skillId)} ${level}${after > 0 ? ` → ${after}` : ''}`;
+        })
+        .join(' · ')}.`,
+    );
+  }
+
+  const basket = Object.entries(current.purchases).filter(
+    ([entryId]) => next.purchases[entryId] === undefined,
+  );
+  if (basket.length > 0) {
+    const pieces = basket.reduce((sum, [, qty]) => sum + qty, 0);
+    const lines = lookup
+      ? creationPurchases({ ...current, purchases: Object.fromEntries(basket) }, lookup)
+      : [];
+    const listed = lines
+      .map((line) => `${line.name}${line.qty > 1 ? ` ×${line.qty}` : ''}`)
+      .join(' · ');
+    lost.push(
+      lines.length > 0
+        ? `Koszyk (${pieces} szt. za ${formatEddies(creationSpentEddies(lines))} ed): ${listed}.`
+        : `Koszyk: ${pieces} szt.`,
+    );
+  }
+
+  const answers = current.lifepath.roleAnswers.filter(
+    (answer) =>
+      answer.answer.trim() && !next.lifepath.roleAnswers.some((kept) => kept.id === answer.id),
+  );
+  if (answers.length > 0) {
+    lost.push(
+      `Odpowiedzi Ścieżki Życia Roli (${answers.length}): ${answers
+        .map((answer) => shortAnswer(answer.answer))
+        .join(' · ')}.`,
+    );
+  }
+
+  const granted = Object.entries(next.skills).filter(
+    ([skillId, level]) => level > (current.skills[skillId] ?? 0),
+  );
+  if (granted.length > 0) {
+    notes.push(
+      `Kreator przydzieli minima podstawowych (${granted.length}): ${granted
+        .map(([skillId, level]) => `${nameOf(skillId)} ${level}`)
+        .join(' · ')}.`,
+    );
+  }
+  const belowMin = Object.entries(next.skills).filter(
+    ([skillId, level]) => level > 0 && level < creationSkillLimits(next, data, skillId).min,
+  );
+  if (belowMin.length > 0) {
+    notes.push(
+      `Ta metoda nie zna poziomu 1 — do podniesienia albo zdjęcia (${belowMin.length}): ${belowMin
+        .map(([skillId, level]) => `${nameOf(skillId)} ${level}`)
+        .join(' · ')}.`,
+    );
+  }
+  const leftBefore = data.skillPoints - creationSkillPointsSpent(current, data, registry);
+  const leftAfter = data.skillPoints - creationSkillPointsSpent(next, data, registry);
+  if (leftBefore !== leftAfter) {
+    notes.push(`Punkty umiejętności: pozostało ${leftBefore} → ${leftAfter}.`);
+  }
+  if (next.method !== current.method) {
+    notes.push(
+      `Pieniądze startowe: ${formatEddies(creationBudget(data, current))} → ${formatEddies(
+        creationBudget(data, next),
+      )} ed.`,
+    );
+  }
+  return { lost, notes };
+}
+
 /**
  * Nazwane dziedziny umiejętności, wspólne dla zapisu i odczytu szkicu.
  *

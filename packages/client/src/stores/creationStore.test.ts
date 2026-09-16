@@ -203,3 +203,55 @@ describe('naprawa 2a — kroki i przejście do pola', () => {
     expect(useCreationStore.getState().focusField).toBeNull();
   });
 });
+
+describe('naprawa 2b — łączenie zapisów jednego pola', () => {
+  it('sends only the newest of the field writes waiting behind one in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const apply = socket.patchCreation.getMockImplementation()!;
+    socket.patchCreation.mockImplementationOnce(async (...args: Parameters<typeof apply>) => {
+      await gate;
+      return apply(...args);
+    });
+    const patch = useCreationStore.getState().patch;
+    const first = patch({ name: 'Z' }, { field: 'name' });
+    await vi.waitFor(() => expect(socket.patchCreation).toHaveBeenCalledTimes(1));
+    const later = [
+      patch({ name: 'Zg' }, { field: 'name' }),
+      // Another intent keeps its own turn, behind the field's first waiting write.
+      patch({ placeToken: false }),
+      patch({ name: 'Zgr' }, { field: 'name' }),
+      patch({ name: 'Zgrzyt' }, { field: 'name' }),
+    ];
+    release();
+    expect(await Promise.all([first, ...later])).toEqual([true, true, true, true, true]);
+    expect(socket.patchCreation.mock.calls.map((call) => call[0])).toEqual([
+      { name: 'Z' },
+      { name: 'Zgrzyt' },
+      { placeToken: false },
+    ]);
+    expect(saved.draft).toMatchObject({ name: 'Zgrzyt', placeToken: false });
+  });
+
+  it('keeps one deferred write per field behind a refused one, in its first place', async () => {
+    socket.patchCreation.mockResolvedValueOnce({ ok: false, error: 'NOT_CONNECTED' });
+    const patch = useCreationStore.getState().patch;
+    expect(await patch({ step: 'details' })).toBe(false);
+    await Promise.all([
+      patch({ name: 'A' }, { field: 'name' }),
+      patch({ placeToken: false }),
+      patch({ name: 'AB' }, { field: 'name' }),
+    ]);
+    await patch({ name: 'ABC' }, { field: 'name' });
+    expect(await useCreationStore.getState().retry()).toBe(true);
+    expect(socket.patchCreation.mock.calls.map((call) => call[0])).toEqual([
+      { step: 'details' },
+      { step: 'details' },
+      { name: 'ABC' },
+      { placeToken: false },
+    ]);
+    expect(saved.draft).toMatchObject({ step: 'details', name: 'ABC', placeToken: false });
+  });
+});

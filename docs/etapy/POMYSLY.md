@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**16.09.2026 (naprawa kreatora 2b) — `data-owns-keys` dla pozostałych pływających okien.**
+Nasłuch klawiatury mapy zabierał klawisze z przycisków okien: `Tab` nie przesuwał fokusu, tylko
+przełączał figury, a `Delete`/`Backspace` kasowały zaznaczony obiekt sceny. Kreator i karta postaci
+mają już atrybut (decyzja MG: tylko te dwa w 2b). Bez niego zostały `BotEditor`,
+`NetArchitectureEditor` i `NetRunWindow` — jedna linijka na okno plus sprawdzenie, czy któreś nie
+liczy na skróty mapy przy fokusie na swoim przycisku (umowa i pułapka w `ui`).
+
 **15.09.2026 — wiele języków i dziedzin umiejętności: osobny projekt (decyzja MG).**
 Osobne wpisy i poziomy języków/specjalizacji mają objąć kreator, kartę, wybór dziedziny
 w rzutach, rozwój za PD oraz kompatybilność istniejących kart i szkiców. Naprawa kreatora

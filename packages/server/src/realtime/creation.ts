@@ -67,6 +67,7 @@ import { campaignEntry } from './compendium.js';
 import { applyBalance, nextRowId } from './economy.js';
 import { getActiveScene } from './scenes.js';
 import { requireUnlockedTier } from './shop.js';
+import { gmRoom } from './state.js';
 import { createCharacterToken } from './tokens.js';
 
 /**
@@ -185,6 +186,7 @@ export const creationStartEvent = defineCreationEvent<
     const existing = await loadDraft(deps, campaignId, user.id);
     if (existing) return toDraftView(existing, deps);
     const row = await saveDraft(deps, campaignId, user.id, createDefaultCreationDraft(data));
+    if (user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(row, deps);
   },
 });
@@ -261,6 +263,11 @@ export const creationPatchEvent = defineCreationEvent<
         },
       });
     });
+    if (
+      user.role !== ROLE_GM &&
+      (next.method !== current.method || next.name.trim() !== current.name.trim())
+    )
+      await broadcastCreationRanks(deps, campaignId);
     return toDraftView(saved, deps);
   },
 });
@@ -455,21 +462,52 @@ async function purchaseLookup(
   return (entryId) => byId.get(entryId);
 }
 
+/**
+ * The GM's rank list (naprawa 2b): players' Kompletny Pakiet drafts only — a
+ * Krawędziarz rolls his stats and the GM's own drafts need nobody's approval —
+ * waiting ones first. Metadata alone, never another player's choices.
+ */
+async function creationRankRows(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<CreationRankDraft[]> {
+  const rows = await deps.ctx.prisma.characterDraft.findMany({
+    where: { campaignId, user: { role: { not: ROLE_GM } } },
+    include: { user: true },
+  });
+  return rows
+    .map((row) => ({ row, view: toDraftView(row, deps) }))
+    .filter(({ view }) => view.draft.method === 'complete')
+    .map(({ row, view }) => ({
+      id: row.id,
+      userName: row.user.name,
+      characterName: view.draft.name.trim(),
+      statRankId: view.rankApproved ? row.statRankId : null,
+      rankApproved: view.rankApproved,
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.rankApproved) - Number(b.rankApproved) ||
+        a.userName.localeCompare(b.userName, 'pl'),
+    );
+}
+
+/**
+ * Pushes the rank list to the GM after anything that may have changed it: a
+ * draft started, switched method, renamed, ranked, finished or thrown away.
+ * The badge on the „Postacie" tab lives off this, so a player waiting for a
+ * pool is seen without anybody pressing „Odśwież".
+ */
+async function broadcastCreationRanks(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  deps.io
+    .to(gmRoom(campaignId))
+    .emit('creation:ranks-sync', await creationRankRows(deps, campaignId));
+}
+
 export const creationRanksEvent = defineCreationEvent<undefined, CreationRankDraft[]>({
   name: 'creation:ranks',
   role: ROLE_GM,
-  handler: async ({ deps, socket }) => {
-    const rows = await deps.ctx.prisma.characterDraft.findMany({
-      where: { campaignId: requireCampaignId(socket.data) },
-      include: { user: true },
-    });
-    return rows.map((row) => ({
-      id: row.id,
-      userName: row.user.name,
-      characterName: toDraftView(row, deps).draft.name,
-      statRankId: row.statRankId,
-    }));
-  },
+  handler: async ({ deps, socket }) => creationRankRows(deps, requireCampaignId(socket.data)),
 });
 
 export const creationSetRankEvent = defineCreationEvent<
@@ -505,6 +543,7 @@ export const creationSetRankEvent = defineCreationEvent<
         peer.emit('creation:rank', { draftId: row.id, statRankId: payload.statRankId });
       }
     }
+    await broadcastCreationRanks(deps, campaignId);
   },
 });
 
@@ -618,6 +657,7 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         await tx.characterDraft.delete({ where: { id: existing.id } });
         return tx.character.findUniqueOrThrow({ where: { id: created.id } });
       });
+      if (user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
 
       return finishResult(deps, campaignId, character, draft.placeToken);
     },
@@ -845,8 +885,9 @@ export const creationDiscardEvent = defineCreationEvent<{ draftId?: string } | u
     const campaignId = requireCampaignId(socket.data);
     if (payload?.draftId !== undefined && (typeof payload.draftId !== 'string' || !payload.draftId))
       throw new RealtimeError('BAD_REQUEST');
-    await deps.ctx.prisma.characterDraft.deleteMany({
+    const removed = await deps.ctx.prisma.characterDraft.deleteMany({
       where: { campaignId, userId: user.id, ...(payload?.draftId ? { id: payload.draftId } : {}) },
     });
+    if (removed.count > 0 && user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
   },
 });

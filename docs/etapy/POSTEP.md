@@ -118,11 +118,13 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 ## Od czego zacząć
 
 **Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 podzielony 16.09 na
-2a ✅ / 2b / 2c — następna jest 2b** (potwierdzenie z listą strat przy zmianie Roli/metody,
-objaśnienia Ról i Cech, klawiatura, panel rang MG w zakładce „Postaci” z licznikiem, łączenie
-zapisów pola tekstowego). Potem 2c: układ przy nowej skali pisma i obowiązkowy odbiór **4K, skala
-Windows 150%, zoom 100%** (okno ok. 2560 px CSS) plus 3440×1440, 2560×1440 i zoom 125/150%.
-Etap 3 czeka na 2c. **Od 2a** szkic trzyma minima podstawowych jako zwykłe poziomy
+2a ✅ / 2b ✅ / 2c — następna jest 2c**: układ wszystkich kroków przy nowej skali pisma, kontrast
+obu motywów (także nowego okna strat i panelu rang) i obowiązkowy odbiór **4K, skala Windows 150%,
+zoom 100%** (okno ok. 2560 px CSS) plus 3440×1440, 2560×1440 i zoom 125/150%. Etap 3 czeka na 2c.
+**Od 2b** zmiana Roli albo metody, która coś zabiera, pyta oknem kreatora z listą strat
+(`creationChangeEffect`), MG ustala rangi szkiców w zakładce „Postacie” (znaczek z liczbą
+oczekujących, lista na żywo, bez otwierania kreatora), a klawisze z przycisków kreatora i karty
+postaci nie sterują już mapą (`data-owns-keys`). **Od 2a** szkic trzyma minima podstawowych jako zwykłe poziomy
 (`skillMinimaAuto`), a gracz nie wpisze Cech Kompletnego Pakietu przed rangą od MG. Szkice sprzed
 2a (w `dev.db` m.in. Tony'ego) dostają w kroku Umiejętności bilans i przycisk „Przydziel minima”
 — nic nie zmienia się samo. Minimum slangu ulicznego nadal kosztuje 2 pkt we wspólnym wierszu
@@ -253,8 +255,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2129** w `shared`, **1182** na serwerze, **221** u klienta —
-zielone (liczby z 16.09, trzecia sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2133** w `shared`, **1183** na serwerze, **223** u klienta —
+zielone (liczby z 16.09, czwarta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -281,13 +283,13 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   46 |      20 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    5 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    9 |      16 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      11 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   11 |      12 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       5 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   31 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   34 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
@@ -300,6 +302,36 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 16.09 (czwarta) — naprawa kreatora, część 2b
+
+**Zlecenie MG:** wykonać etap 2b `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
+kontekstu — podzielić), dopytywać i zgłaszać możliwe błędy. **Stan: 2b ✅**, bez dalszego podziału.
+Checklista i ustalenia są w pliku naprawy.
+
+**Decyzje MG (16.09):** objaśnienia Ról i Cech własnymi zdaniami w repo, opisy umiejętności
+z prywatnych danych rozwijane „?”; jedno okno potwierdzenia w kreatorze także dla „Wyrzuć szkic”
+i „Wczytaj zapis serwera”; naprawa klawiatury w kreatorze **i karcie postaci**; zmiana Roli
+w Kompletnym Pakiecie nadal kasuje Cechy.
+
+**Zgłoszone MG możliwe błędy:** (1) nasłuch klawiatury mapy zabierał klawisze z przycisków okien —
+`Tab` w kreatorze i karcie nie przesuwał fokusu, tylko przełączał figury, a `Delete`/`Backspace`
+kasowały zaznaczony obiekt sceny; naprawione w kreatorze i karcie, potwierdzone w przeglądarce,
+reszta okien w `POMYSLY.md`. (2) Zmiana Roli w Kompletnym Pakiecie kasuje rozdzielone Cechy, choć
+ta metoda nie czyta ich z szablonu Roli — MG zostawił, okno strat to wymienia.
+
+**Wdrożone:** `creationChangeEffect`, `CPRED_STAT_HINTS` i pole `summary` Ról w `shared`;
+`creationRankRows` i `broadcastCreationRanks` (`creation:ranks-sync` do `gmRoom`) na serwerze;
+`CreatorDialog`, `CreationRankPanel` z `creationRankStore` i znaczkiem na zakładce,
+`patch(…, { field })` z `useDraftFieldText(…).write`, `spinbutton` poziomu umiejętności
+i `data-owns-keys` w `MapArea` u klienta. Umowy — `postac` (3), `ui` (1); pułapka — `ui` (1).
+
+**Weryfikacja:** vitest w trzech pakietach — 2133 shared, 1183 serwera, 223 klienta; `tsc --noEmit`
+trzech pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
+(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi, sesje MG i gracza z poprzednich
+oględzin): scenariusze w checkliście 2b. **Nie było** odbioru 4K ani motywu dziennego nowych
+elementów (2c). Serwer testowy i Vite zatrzymane drzewami procesów; zwykły dev na `dev.db`:
+`/health` 200, frontend 200, zatrzymany, porty wolne.
 
 ### Sesja 16.09 (trzecia) — naprawa kreatora, podział etapu 2 i część 2a
 
@@ -329,31 +361,3 @@ pakietów, `pnpm lint`, Prettier zmienionych plików — czyste. Chrome na `.cre
 2a. Nowy gracz testowy „Test 2a” dołączył do kampanii tej bazy; szkic „Test kreatora” ma już
 przydzielone minima, Broń długą 2 i Naukę 1. **Nie było** oględzin 4K ani klawiatury (2c).
 Serwer testowy i Vite zatrzymane (drzewa procesów), porty wolne; `dev.db` nietknięta.
-
-### Sesja 16.09 (druga) — naprawa kreatora, domknięcie etapu 1
-
-**Zlecenie MG:** dokończyć etap 1 `naprawa_karty_postaci.md` po poprzednim modelu, dopytywać
-o niejasności i zgłaszać potencjalne błędy. **Stan: etap 1 ✅.** Nie zaczynano etapu 2.
-
-**Przegląd `ed47f9c` znalazł pięć rzeczy; MG zdecydował o każdej.** (1) `language` to naraz
-podstawowy slang uliczny i darmowy język kultury, więc darmowe 4 poziomy spełniały minimum slangu
-za 0 pkt — +2 pkt względem s. 90. **Decyzja: pobierać 2 pkt** (`creationFreeLanguageCharge`
-w `creationSkillPointsSpent`, podpowiedź i koszt w wierszu „Język”; wpis w
-`decyzje-i-uproszczenia.md`). (2) `creation:set-rank` podbijał `revision`, przez co zapis gracza
-w drodze kończył się `DRAFT_CHANGED` nie do ponowienia — podbicie usunięte. (3) Pola Cech i dziedziny
-związane wprost ze stanem serwera gubiły znaki przy opóźnieniu, a imię nie szło za wczytanym
-zapisem — wspólny `useDraftFieldText`. (4)
-`retry()` zdejmował oczekującą łatę poza kolejką — ponowienie i wstrzymane intencje idą teraz
-w jednej turze kolejki. (5) Panel rang MG (pusty szkic MG, brak powiadomienia, ręczne
-odświeżanie) — **dopisany do zakresu etapu 2**. MG podał też skalę Windows: **150%**.
-
-**Weryfikacja:** pełne `pnpm -r test` — 2118 shared (3 nowe), 1180 serwera (1 nowy), 219 klienta
-(2 nowe; test kolejności sprawdzony na starym magazynie — pada). `tsc --noEmit` trzech pakietów,
-ESLint, Prettier czyste. Chrome na `.creation-ui.db` z osobnymi `UPLOADS_DIR` i `BACKUP_DIR`
-oraz opóźnieniem 250 ms na gnieździe: szybkie pisanie w dziedzinie i dwa ↑ w Cesze zapisane
-w całości (po F5 też), licznik i wiersz „Język” pokazują 2 pkt. Zwykły dev na `dev.db`: `/health`
-200, frontend 200. Pliki `uploads/` kampanii sprawdzone — 72 odnośniki, żadnego brakującego.
-
-**Pułapki:** zatrzymane `pnpm dev` w tle zostawia `tsx`/`vite` na portach (to był `EADDRINUSE`
-z 15–16.09) — `testy`; opóźnienie VPS łatką na `WebSocket.prototype.send` — `ogledziny`.
-Dev zostawiony wyłączony, porty wolne.

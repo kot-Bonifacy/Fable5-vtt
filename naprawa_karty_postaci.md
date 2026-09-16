@@ -1,7 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 podzielony na 2a (✅), 2b i 2c; etap 3
-do realizacji**.
+Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 podzielony na 2a (✅), 2b (✅) i 2c;
+etap 3 do realizacji**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
@@ -214,6 +214,56 @@ częściach, po jednej sesji każda:
 - Nie sprawdzono jeszcze: 4K/150%, 3440×1440, 2560×1440, powiększeń 125/150% i obsługi klawiaturą
   poza „Przejdź” — to zakres 2c. Układ tabeli Cech (wartości daleko po prawej) też zostaje na 2c.
 
+### Część 2b — status: ✅ ukończona 16.09.2026 (czwarta sesja)
+
+- [x] `creationChangeEffect` w `shared` liczy straty zmiany Roli albo metody z tego samego
+      `mergeCreationDraft`, który stosuje serwer: Cechy (wylosowane albo rozdzielone), zdjęte
+      i obniżone umiejętności, koszyk z nazwami i ceną, odpowiedzi Ścieżki Życia Roli. W notatkach:
+      przydzielane minima, poziom 1 niedozwolony w Krawędziarzu, zmiana puli i pieniędzy.
+- [x] Okno potwierdzenia w kreatorze (`CreatorDialog`) tylko wtedy, gdy coś przepada: fokus na
+      „Anuluj”, `Tab` zostaje w oknie, `Esc` zamyka, fokus wraca do kontrolki. To samo okno dla
+      „Wyrzuć szkic” (lista tego, co przepada, i nazwa kampanii spoza poligonu) i „Wczytaj zapis
+      serwera”; `window.confirm` w kreatorze już nie ma.
+- [x] Objaśnienia: jedno zdanie na Rolę (`roles.json`, pole `summary`, napisane dla VTT), podpowiedź
+      pod każdą Cechą (`CPRED_STAT_HINTS`, `aria-describedby`), „?” przy umiejętności rozwija opis
+      z prywatnego `skills.json` (bez danych prywatnych przycisku nie ma).
+- [x] Klawiatura: poziom umiejętności to `spinbutton` (↑/↓, jeden przystanek `Tab` na wiersz,
+      przyciski −/+ poza kolejnością), `Esc` czyści wyszukiwarkę, `Esc` w polu Ścieżki Życia cofa
+      tekst bez zapisu, `aria-pressed` na kartach Ról, widoczny `:focus-visible` w kreatorze.
+      Kreator i karta postaci mają `data-owns-keys` — klawisze z ich przycisków nie sterują mapą.
+- [x] Panel rang w zakładce „Postacie” (`CreationRankPanel`): wyłącznie szkice graczy w Kompletnym
+      Pakiecie, oczekujące pierwsze, ranga zatwierdzana przyciskiem; serwer rozsyła listę
+      `creation:ranks-sync` do pokoju MG; znaczek z liczbą oczekujących na zakładce. Panel zniknął
+      z kreatora, więc MG nie zakłada już pustego szkicu.
+- [x] Łączenie zapisów pola: `creationStore.patch(łata, { field })` podmienia zapis, który jeszcze
+      nie wyszedł; `useDraftFieldText(…).write` nie odtwarza stanów pośrednich po wyjściu z pola.
+- [x] Testy: 4 nowe w `shared`, 1 nowy na serwerze, 2 nowe u klienta; pełny przebieg zielony
+      (2133 / 1183 / 223), `tsc`, ESLint, Prettier czyste.
+- [x] Chrome na `.creation-ui.db` (MG na `localhost`, gracz na `[::1]`, okno 2078×1171 CSS, DPR 1,25):
+      opisy Ról i Cech, „?” i `spinbutton` prawdziwymi klawiszami, zmiana Roli bez strat (bez okna),
+      zmiana metody z oknem („Nauka 1”, pula 59 → 60, 2550 → 500 ed), `Tab` w oknie, `Esc` z powrotem
+      fokusu, „Wyrzuć szkic”, znaczek „1” u MG na żywo, zatwierdzenie rangi samą klawiaturą
+      i odblokowanie Cech gracza, okno z „Rozdzielone Cechy (1): INT 5”, opóźnienie 250 ms:
+      15 znaków ksywy = 2 ramki i żadnego stanu pośredniego, F5, `Tab` w karcie postaci.
+
+**Ustalenia z realizacji 2b:**
+
+- **Błąd spoza audytu, naprawiony:** nasłuch klawiatury mapy (`MapArea`) omijał tylko pola tekstowe,
+  więc fokus na przycisku kreatora albo karty oddawał mu `Tab` (fokus stał, przełączała się figura),
+  `Delete`/`Backspace` (kasowanie zaznaczonego obiektu sceny) i litery narzędzi. Potwierdzone
+  w przeglądarce: po zdjęciu `data-owns-keys` z karty fokus po `Tab` zostaje na „Karta”.
+  Skutek przyjęty przez MG: cyfry paska akcji nie działają, póki fokus stoi na przycisku karty.
+  Pozostałe okna (edytor botów, edytor architektury i okno runu Sieci) — `POMYSLY.md`.
+- **Zmiana Roli w Kompletnym Pakiecie nadal kasuje Cechy** (decyzja MG z 16.09), choć ta metoda ich
+  nie czyta z szablonu Roli. Okno strat to wymienia.
+- Zmiana, która niczego nie zabiera (pierwsza Rola, zmiana metody na pustym szkicu), idzie bez okna.
+- Rangę MG zatwierdza przyciskiem: strzałki na zamkniętej liście w Chrome zmieniają wartość, więc
+  zapis na `change` zatwierdzałby po drodze każdą pulę.
+- Nie sprawdzono: 4K/150%, 3440×1440, 2560×1440, powiększeń 125/150%, motywu dziennego okna strat
+  i panelu rang ani czytnika ekranu — zakres 2c. Na bazie testowej szkic „Test 2a” założono od nowa
+  (Solo, Kompletny Pakiet, ranga „Postać początkująca”, ksywa „Zgrzyt z Kabuki”, INT 5), a MG ma
+  kartę „Test klawiatury 2b”.
+
 Zakres ogólny:
 
 - Ustalić typografię: proponowana baza treści i pól 16 px, pomocnicze teksty
@@ -317,6 +367,14 @@ Otwarte kwestie wskazano poniżej.
     o Test, lista na żywo, tylko Kompletny Pakiet.
 13. **Cechy przed rangą — ustalone 16.09:** gracz nie wpisuje Cech Kompletnego Pakietu, dopóki
     MG nie zatwierdzi rangi; serwer odmawia, a wcześniej wpisane Cechy zostają.
+14. **Objaśnienia — ustalone 16.09 (czwarta sesja):** Role i Cechy opisane własnymi zdaniami w repo;
+    opisy umiejętności z prywatnych danych, rozwijane „?” przy wierszu.
+15. **Potwierdzenia — ustalone 16.09 (czwarta sesja):** jedno okno w kreatorze także dla „Wyrzuć
+    szkic” i „Wczytaj zapis serwera”.
+16. **Klawiatura — ustalone 16.09 (czwarta sesja):** klawisze z przycisków kreatora **i karty
+    postaci** nie sterują mapą; pozostałe okna osobno.
+17. **Cechy przy zmianie Roli w Kompletnym Pakiecie — ustalone 16.09 (czwarta sesja):** nadal
+    kasowane; okno strat o tym mówi.
 
 ## Mapa kodu dla późniejszej realizacji
 

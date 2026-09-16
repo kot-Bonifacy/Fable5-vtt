@@ -816,6 +816,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Okno, w którym klawisze należą do niego, nosi `data-owns-keys`** — nasłuch mapy w `MapArea` pomija zdarzenia z jego wnętrza (Tab, Delete, litery narzędzi, cyfry paska, Esc). Od 2b mają go kreator i karta postaci; znacznik mówi „gdzie jest fokus”, nie „czy okno jest otwarte”.
 - **Pełny ekran — wyłącznie przez `fullscreen.ts`**, nigdy gołe `requestFullscreen`: nowe wejście do gry woła `enterPreferredFullscreen()` **przed** pierwszym `await` w obsłudze gestu, a automat po F5 i tłumik przytrzymanego Esc żyją w `useFullscreen` w korzeniu `App`. Kolejność pilnuje `fullscreen.test.ts`.
 - **Naklejka statusu poza mapą** — wyłącznie `StatusIcon` (`HudIcon.tsx`), nigdy `<img>`: maska z `mask-mode: luminance` (`.status-icon`) gasi czarny podkład pliku i barwi sylwetkę kolorem tekstu. Rozmiar daje kontekst w CSS, nie atrybuty. Mapa rysuje te same pliki jako sprite'y **z** podkładem i tak zostaje.
 - **Ekran wejścia (`.auth-screen`) stoi na plakacie** — formularz nie ma tła i kotwiczy się do ramki **narysowanej w obrazie**, nie do środka okna. Zmiana pliku tapety = przemierzenie ułamków (`docs/assety-logowanie.md`); zdjęcie kotwicy = oddanie formularzowi tła.
@@ -828,6 +829,19 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Klawisze z wnętrza okna nie sterują mapą, jeśli okno ma `data-owns-keys` (16.09, naprawa 2b).**
+Nasłuch klawiatury mapy (`MapArea`, `window`) omijał tylko pola tekstowe, więc fokus na
+**przycisku** okna oddawał mapie wszystko: `Tab` robił `preventDefault` i przełączał figury zamiast
+przejść do następnego pola, `Delete`/`Backspace` kasowały zaznaczony obiekt sceny, litery zmieniały
+narzędzie. Kreator i karta postaci mają odtąd `data-owns-keys` na `<section>`, a strażnik
+w `MapArea` sprawdza `closest('[data-owns-keys]')`. Znacznik dotyczy **miejsca fokusu**: klik
+w mapę albo w niefokusowalne tło okna oddaje klawisze mapie, więc MG nadal przełącza narzędzia
+z otwartą kartą obiektu sceny (pułapka z 24.08 w `ui`). Skutek uboczny przyjęty przez MG: cyfry paska
+akcji nie działają, póki fokus stoi na przycisku karty. Nowe okno z przyciskami, po których chodzi
+się klawiaturą, dostaje ten sam atrybut; bez niego `Tab` po jego przyciskach nie działa. Okno
+potwierdzenia w kreatorze (`CreatorDialog`) trzyma `Tab` w sobie, zaczyna od „Anuluj” i zamyka się
+`Esc` z `stopPropagation`, żeby nie odłożyć przy okazji kubka.
 
 **Pełny ekran ma jedno miejsce: `fullscreen.ts` (12.09, zlecenie MG poza etapami).**
 Życzenie leży w `settingsStore.fullscreen` (`vtt.view.fullscreen`, prywatne dla przeglądarki), ale
@@ -1760,11 +1774,14 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Co zabiera zmiana Roli albo metody, mówi `creationChangeEffect` (naprawa 2b)** — liczy stratę z tego samego `mergeCreationDraft`, który stosuje serwer; kreator pyta oknem tylko przy niepustym `lost`. Nowe pole kasowane w `mergeCreationDraft` dokłada tam swój wiersz, inaczej zniknie bez pytania.
+- **Lista rang MG jedzie `creation:ranks-sync` do `gmRoom`** — `broadcastCreationRanks` po każdej operacji, która zmienia metodę, ksywę, rangę albo istnienie szkicu gracza; tylko szkice graczy w Kompletnym Pakiecie i tylko metadane. Nowe zdarzenie o takim skutku woła ją samo.
+- **Pole kreatora pisane co klawisz idzie przez `useDraftFieldText(…, pole).write`** — kolejka łączy zapisy tego samego pola (`patch(…, { field })`), a pole nie słucha serwera, dopóki jego zapisy są w drodze albo czeka odrzucona łata.
 - **Minima podstawowych w szkicu (naprawa 2a)** — pole `skillMinimaAuto` (w `mergeCreationDraft` **i** `parseCreationDraft`); `mergeCreationDraft` kończy się `creationWithSkillMinima` **po** filtrze listy Roli. Szkic bez pola jest stary i zmienia go tylko łata `{ skillMinimaAuto: true }` po bilansie `creationMissingSkillMinima`.
 - **Wiersz umiejętności kreatora liczy `creationSkillRow`** — poziom, minimum, wymóg czy lista Roli, koszt, brakujące punkty, Cecha + poziom i następny poziom „+”/„−” (przeskok przez 1). Komponent niczego z tego nie liczy sam, a przycisk czyta wiersz z najnowszego szkicu w kolejce.
 - **Brak z `creationIssues` ma krok i pole** — krok daje `creationIssueStep(field)`, pole atrybut `data-creation-field`; nowe pole walidacji dokłada gałąź i atrybut. Zakładki, stopka i podsumowanie liczą tę samą zwiniętą listę (`summaryLines`).
 - **Cechy Kompletnego Pakietu czekają na rangę** — `creation:patch` z `stats` odmawia graczowi `CREATION_RANK_PENDING`, dopóki MG nie zatwierdzi rangi; MG nie dotyczy, zapisane wcześniej Cechy zostają.
-- **Pole kreatora zapisywane co klawisz** trzyma tekst przez `useDraftFieldText` (`CharacterCreator.tsx`), nigdy `value` prosto ze szkicu serwera — inaczej React cofa znak do czasu odpowiedzi i przy opóźnieniu giną litery.
+- **Pole kreatora zapisywane co klawisz** trzyma tekst przez `useDraftFieldText` (`CharacterCreator.tsx`), nigdy `value` prosto ze szkicu serwera — inaczej React cofa znak do czasu odpowiedzi i przy opóźnieniu giną litery. Od 2b pisze też przez jego `write` z nazwą pola.
 - **Punkty umiejętności kreatora liczy `creationSkillPointsSpent`** — razem z opłatą za minimum slangu we wspólnym wierszu języka (`creationFreeLanguageCharge`); licznik, walidacja i testy nie dodają jej osobno.
 - **Szkic kreatora od 15.09:** aktualizację zależną od innych pól buduj funkcją w kolejce `creationStore.patch`; `draftId` + `revision` chronią inne okna, `requestId` rozpoznaje ponowienie. Ranga pochodzi z kolumny zatwierdzanej przez MG (jej zmiana **nie** podbija `revision`), a zakończenie i naprawa żetonu używają tego samego `draftId`.
 - **Notka o skutku `character:cyberware` czeka na odpowiedź serwera** — `sendCyberwareAction` zwraca obietnicę zdania odmowy albo `null`; guzik piszący „Instaluję…" przed nią kłamie przy każdej odmowie montażu.
@@ -1793,6 +1810,31 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Kreator po części 2b naprawy (16.09).** Zmiana Roli albo metody, która coś zabiera, pyta oknem
+w samym kreatorze (`CreatorDialog`), a treść pytania liczy `creationChangeEffect` w `shared`:
+przepuszcza szkic przez `mergeCreationDraft` i porównuje przed i po — Cechy (wylosowane albo
+rozdzielone), obniżone i zdjęte umiejętności, koszyk z cenami, odpowiedzi Ścieżki Życia Roli; obok
+w `notes` nowe minima, poziomy 1 niedozwolone w Krawędziarzu, zmiana puli i pieniędzy. Dzięki temu
+okno nie obieca mniej, niż zrobi zapis — **pole, które `mergeCreationDraft` zacznie kiedyś kasować,
+dopisuje wiersz w `creationChangeEffect`**. Bez strat zmiana idzie od razu. To samo okno pyta
+o „Wyrzuć szkic” i „Wczytaj zapis serwera”; `window.confirm` w kreatorze już nie ma.
+Zmiana Roli w Kompletnym Pakiecie **nadal kasuje Cechy** — decyzja MG z 16.09, okno o tym mówi.
+
+Rangi szkiców MG ustala w zakładce „Postacie” (`CreationRankPanel`), bez otwierania kreatora.
+Serwer rozsyła całą listę `creation:ranks-sync` do `gmRoom` (`broadcastCreationRanks`) po starcie
+szkicu gracza, zmianie metody lub ksywy, `creation:set-rank`, zakończeniu i wyrzuceniu; klient MG
+pyta `creation:ranks` przy każdym `state:sync`. Lista ma wyłącznie szkice **graczy** w Kompletnym
+Pakiecie, oczekujące pierwsze, i pole `rankApproved`, które liczy znaczek na zakładce. Rangę
+zatwierdza przycisk, nie `change` listy — strzałki na zamkniętym `select` zatwierdzałyby po drodze
+każdą pulę.
+
+Pole kreatora pisane co klawisz (imię, Cechy Kompletnego Pakietu, dziedzina) wysyła przez
+`useDraftFieldText(tekst, szkic, 'nazwa.pola').write`. Kolejka `creationStore.patch(łata, { field })`
+podmienia zapis tego pola, który jeszcze nie wyszedł (także odłożony za odrzuconą łatą — na jego
+dawnym miejscu), więc szybkie pisanie przy opóźnieniu wysyła dwie ramki zamiast dwudziestu.
+Hook liczy swoje zapisy w drodze i nie idzie za serwerem, dopóki nie wrócił ostatni albo czeka
+`pendingPatch` — inaczej po wyjściu z pola odtwarzał pośrednie stany.
 
 **Kreator po części 2a naprawy (16.09).** Minima podstawowych umiejętności są zwykłymi poziomami
 w `skills`, a nie wyliczeniem w locie: dzięki temu koszt jest na rachunku raz i ponowne otwarcie

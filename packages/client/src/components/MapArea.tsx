@@ -1744,6 +1744,12 @@ export function MapArea() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // A window marked `data-owns-keys` (creator and sheet, naprawa 2b) keeps
+      // what is pressed on its buttons: Tab walks the window instead of cycling
+      // figures, Delete does not remove the selected lamp. The mark is about
+      // where the focus is, not whether a window is open — a click on the map
+      // gives every key back.
+      if (target?.closest('[data-owns-keys]')) return;
       const tools = useMapToolStore.getState();
       // A one-letter shortcut must not fire while a map dialog is waiting for
       // words. Focus alone is not a reliable guard: a click anywhere outside

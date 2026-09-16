@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react';
 import type {
   CampaignDetail,
   CompendiumCategory,
   CompendiumEntry,
   CpredCreationDraft,
+  CpredCreationMethod,
   CpredCreationSkillRow,
   CpredCreationStep,
   CpredValidationIssue,
-  CreationRankDraft,
   CreationFinishResult,
   CpredLifepath,
   CpredLifepathBotKind,
@@ -22,6 +30,7 @@ import {
   CPRED_CREATION_METHOD_LABELS,
   CPRED_CREATION_STEPS,
   CPRED_CREATION_STEP_LABELS,
+  CPRED_STAT_HINTS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CREATION_SHOP_TIER,
@@ -34,6 +43,7 @@ import {
   cpredSkillNeedsSpecialty,
   creationAvailableSkills,
   creationBudget,
+  creationChangeEffect,
   creationDataOf,
   creationIssueStep,
   creationIssues,
@@ -64,14 +74,7 @@ import {
 import { apiGet, apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
-import {
-  botErrorText,
-  createBot,
-  creationErrorText,
-  finishCreation,
-  listCreationRanks,
-  setCreationRank,
-} from '../socket.js';
+import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { PortraitPicker } from './PortraitPicker.js';
@@ -140,6 +143,8 @@ function CreatorWindow() {
   const clearFocusField = useCreationStore((s) => s.clearFocusField);
   const goToField = useCreationStore((s) => s.goToField);
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
+  const [question, setQuestion] = useState<CreatorQuestion | null>(null);
+  const campaign = useAuthStore((s) => s.activeCampaign);
   const step = draft?.step;
 
   useEffect(() => {
@@ -222,6 +227,9 @@ function CreatorWindow() {
       className="sheet-window creator-window"
       style={{ ...placement.style, zIndex: 320 }}
       aria-label="Kreator postaci"
+      // Naprawa 2b: keys pressed inside the window are the window's — Tab
+      // walks its fields instead of cycling figures on the map.
+      data-owns-keys
     >
       <div className="sheet-header" {...placement.dragProps}>
         <span className="sheet-title">
@@ -273,16 +281,21 @@ function CreatorWindow() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => {
-              if (window.confirm('Odrzucić niezapisane zmiany i wczytać szkic z serwera?'))
-                void useCreationStore.getState().reload();
-            }}
+            onClick={() =>
+              setQuestion({
+                title: 'Wczytać szkic z serwera?',
+                lost: [
+                  'Zmiany, których serwer nie potwierdził: ta, która czeka na ponowienie, i wszystkie wprowadzone po niej.',
+                ],
+                confirmLabel: 'Odrzuć zmiany i wczytaj',
+                onConfirm: () => void useCreationStore.getState().reload(),
+              })
+            }
           >
             Wczytaj zapis serwera
           </button>
         </div>
       )}
-      {isGm && <CreationRanks />}
 
       {finished ? null : data.roles.length === 0 ? (
         <p className="creator-empty">
@@ -336,7 +349,7 @@ function CreatorWindow() {
           </nav>
 
           <div className="sheet-body creator-body">
-            {draft.step === 'role' && <RoleStep draft={draft} />}
+            {draft.step === 'role' && <RoleStep draft={draft} ask={setQuestion} />}
             {draft.step === 'stats' && <StatsStep draft={draft} />}
             {draft.step === 'skills' && <SkillsStep draft={draft} />}
             {draft.step === 'lifepath' && <LifepathStep draft={draft} />}
@@ -401,11 +414,18 @@ function CreatorWindow() {
             <button
               type="button"
               className="small-button small-button--danger"
-              onClick={() => {
-                if (window.confirm('Wyrzucić szkic postaci? Tego nie da się cofnąć.')) {
-                  void discard();
-                }
-              }}
+              onClick={() =>
+                setQuestion({
+                  title: 'Wyrzucić szkic postaci?',
+                  lost: draftSummaryLines(draft, registry.roles),
+                  note:
+                    campaign && !campaign.sandbox
+                      ? `Kampania „${campaign.name}” nie jest oznaczona jako poligon.`
+                      : undefined,
+                  confirmLabel: 'Wyrzuć szkic',
+                  onConfirm: () => void discard(),
+                })
+              }
               title="Kasuje szkic razem z tym, co już wybrano"
             >
               🗑 Wyrzuć szkic
@@ -415,6 +435,7 @@ function CreatorWindow() {
           {error && <p className="auth-error creator-error">{error}</p>}
         </>
       )}
+      {question && <CreatorDialog question={question} onClose={() => setQuestion(null)} />}
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
@@ -427,6 +448,151 @@ function issuesCountText(count: number): string {
   const word =
     count === 1 ? 'brak' : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? 'braki' : 'braków';
   return `${count} ${word} do uzupełnienia`;
+}
+
+/** An in-window question before something nothing undoes (naprawa 2b). */
+interface CreatorQuestion {
+  title: string;
+  /** What goes, one line per kind; the list is the point of asking. */
+  lost: string[];
+  /** Consequences that take nothing away. */
+  notes?: string[];
+  /** One more sentence under the lists (a campaign that is not a sandbox). */
+  note?: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+}
+
+/**
+ * The creator's own confirmation, drawn over its body instead of a browser
+ * `window.confirm` (naprawa 2b, the GM's decision): it lists what the change
+ * throws away, starts on „Anuluj", keeps Tab inside itself, closes on Esc and
+ * gives the keyboard back to the control that opened it.
+ */
+function CreatorDialog({ question, onClose }: { question: CreatorQuestion; onClose: () => void }) {
+  const titleId = useId();
+  const bodyId = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancel.current?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      // Stops here: Esc also puts a loaded dice cup down, which is not what
+      // closing this question means.
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || !box.current) return;
+    const focusable = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return (
+    <div
+      className="creator-dialog-scrim"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={box}
+        className="creator-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={bodyId}
+        onKeyDown={onKeyDown}
+      >
+        <h3 id={titleId}>{question.title}</h3>
+        <div id={bodyId} className="creator-dialog-body">
+          {question.lost.length > 0 && (
+            <>
+              <p className="creator-dialog-lead">Przepadnie:</p>
+              <ul className="creator-dialog-list creator-dialog-list--lost">
+                {question.lost.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {question.notes && question.notes.length > 0 && (
+            <>
+              <p className="creator-dialog-lead">Poza tym:</p>
+              <ul className="creator-dialog-list">
+                {question.notes.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {question.note && <p className="creator-hint">{question.note}</p>}
+          <p className="creator-dialog-lead">Tego nie da się cofnąć.</p>
+        </div>
+        <div className="creator-dialog-actions">
+          <button ref={cancel} type="button" className="small-button" onClick={onClose}>
+            Anuluj
+          </button>
+          <button
+            type="button"
+            className="small-button small-button--danger"
+            onClick={() => {
+              onClose();
+              question.onConfirm();
+            }}
+          >
+            {question.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What „Wyrzuć szkic" throws away, in the words of the steps. */
+function draftSummaryLines(
+  draft: CpredCreationDraft,
+  roles: readonly { id: string; name: string }[],
+): string[] {
+  const lines: string[] = [];
+  const role = roles.find((entry) => entry.id === draft.roleId)?.name;
+  const name = draft.name.trim();
+  lines.push(
+    `${name ? `„${name}”` : 'Szkic bez ksywy'} · ${CPRED_CREATION_METHOD_LABELS[draft.method]}${
+      role ? ` · ${role}` : ''
+    }.`,
+  );
+  const stats = CPRED_STAT_IDS.filter((id) => draft.stats[id] !== undefined).length;
+  if (stats > 0) lines.push(`Cechy: ${stats} z ${CPRED_STAT_IDS.length}.`);
+  const skills = Object.values(draft.skills).filter((level) => level > 0).length;
+  if (skills > 0) lines.push(`Umiejętności: ${skills}.`);
+  const pieces = Object.values(draft.purchases).reduce((sum, qty) => sum + qty, 0);
+  if (pieces > 0) lines.push(`Koszyk: ${pieces} szt.`);
+  const { lifepath } = draft;
+  const people = lifepath.friends.length + lifepath.enemies.length + lifepath.tragicLoves.length;
+  if (lifepath.culture || lifepath.roleAnswers.length > 0 || people > 0) {
+    lines.push('Ścieżka Życia wypełniona do tej pory.');
+  }
+  if (draft.portraitUrl) lines.push('Wybrany portret (sam obraz zostaje w galerii).');
+  return lines;
 }
 
 function countIssuesByStep(issues: CpredValidationIssue[]): Map<CpredCreationStep, number> {
@@ -465,10 +631,48 @@ function focusCreationField(root: HTMLElement, field: string): void {
 
 // ─────────────────────────────── krok 1: Rola ───────────────────────────────
 
-function RoleStep({ draft }: { draft: CpredCreationDraft }) {
+function RoleStep({
+  draft,
+  ask,
+}: {
+  draft: CpredCreationDraft;
+  ask: (question: CreatorQuestion) => void;
+}) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
+  const entriesById = useCompendiumStore((s) => s.entries);
   const data = creationDataOf(registry);
+
+  /**
+   * Naprawa 2b: a change that takes something off the draft asks first, with
+   * the list read off the same merge the server applies. A change that loses
+   * nothing (the first Role, a method switch on an empty draft) goes straight.
+   */
+  function change(next: { method: CpredCreationMethod } | { roleId: string }) {
+    const current = useCreationStore.getState().draft ?? draft;
+    const effect = creationChangeEffect(
+      current,
+      next,
+      data,
+      registry,
+      (entryId: string) => entriesById[entryId],
+    );
+    if (effect.lost.length === 0) {
+      void patch(next);
+      return;
+    }
+    const title =
+      'method' in next
+        ? `Zmienić metodę na „${CPRED_CREATION_METHOD_LABELS[next.method]}”?`
+        : `Zmienić Rolę na: ${registry.roles.find((role) => role.id === next.roleId)?.name ?? next.roleId}?`;
+    ask({
+      title,
+      lost: effect.lost,
+      notes: effect.notes,
+      confirmLabel: 'method' in next ? 'Zmień metodę' : 'Zmień Rolę',
+      onConfirm: () => void patch(next),
+    });
+  }
 
   return (
     <div className="creator-step">
@@ -480,7 +684,7 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
               type="radio"
               name="creation-method"
               checked={draft.method === method}
-              onChange={() => void patch({ method })}
+              onChange={() => change({ method })}
             />
             <span>
               <strong>{CPRED_CREATION_METHOD_LABELS[method]}</strong>
@@ -492,9 +696,10 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
             </span>
           </label>
         ))}
-        {/* Changing the method throws the stats away, so say it before the click. */}
+        {/* Naprawa 2b: the window lists the losses before the change is made. */}
         <p className="creator-hint">
-          Zmiana metody albo Roli kasuje ustalone Cechy — szablon Roli jest inny dla każdej.
+          Zmiana metody albo Roli może skasować Cechy, umiejętności, koszyk i odpowiedzi Ścieżki
+          Życia Roli — kreator najpierw pokaże, co dokładnie przepadnie.
         </p>
       </fieldset>
 
@@ -510,13 +715,21 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
               key={role.id}
               type="button"
               className={`creator-role ${chosen ? 'creator-role--chosen' : ''}`}
-              onClick={() => void patch({ roleId: role.id })}
+              aria-pressed={chosen}
+              onClick={() => {
+                if (!chosen) change({ roleId: role.id });
+              }}
             >
               <strong>{definition?.name ?? role.id}</strong>
+              {definition?.summary && (
+                <span className="creator-role-summary">{definition.summary}</span>
+              )}
               <span className="creator-role-ability">
-                {definition?.ability ?? '—'} · {data.roleAbilityStart}
+                Zdolność Specjalna: {definition?.ability ?? '—'} {data.roleAbilityStart}
               </span>
-              <span className="creator-role-skills">{role.skills.length} umiejętności</span>
+              <span className="creator-role-skills">
+                {role.skills.length} umiejętności na liście Roli
+              </span>
             </button>
           );
         })}
@@ -676,20 +889,42 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
  * keeps what was typed; otherwise it follows each draft the server hands back
  * (reload, another window, a retried write).
  */
-function useDraftFieldText(serverText: string, draft: CpredCreationDraft) {
+function useDraftFieldText(serverText: string, draft: CpredCreationDraft, field: string) {
   const [text, setText] = useState(serverText);
   const editing = useRef(false);
+  // Naprawa 2b: writes of this field still on their way. Until the last one is
+  // back, a draft the server returns is an older text than the one typed, and
+  // following it made the field replay each intermediate state after leaving.
+  const outstanding = useRef(0);
+  const [settled, setSettled] = useState(0);
+  // A refused write keeps the typed text on screen until it is retried or the
+  // server's copy is reloaded — the change is waiting, not gone.
+  const pendingPatch = useCreationStore((s) => s.pendingPatch);
   useEffect(() => {
-    if (!editing.current) setText(serverText);
-  }, [serverText, draft]);
+    if (!editing.current && outstanding.current === 0 && !pendingPatch) setText(serverText);
+  }, [serverText, draft, pendingPatch, settled]);
   return {
     text,
     setText,
+    /** Sends the field's write; a newer one replaces it while it still waits. */
+    write: (
+      patch: Record<string, unknown> | ((current: CpredCreationDraft) => Record<string, unknown>),
+    ) => {
+      outstanding.current += 1;
+      void useCreationStore
+        .getState()
+        .patch(patch, { field })
+        .finally(() => {
+          outstanding.current -= 1;
+          setSettled((count) => count + 1);
+        });
+    },
     onFocus: () => {
       editing.current = true;
     },
     onBlur: () => {
       editing.current = false;
+      setSettled((count) => count + 1);
     },
   };
 }
@@ -718,18 +953,25 @@ function StatRow({
   locked: boolean;
 }) {
   const registry = useCharacterStore((s) => s.registry);
-  const patch = useCreationStore((s) => s.patch);
   const data = creationDataOf(registry);
   const label = CPRED_STAT_LABELS[statId];
   const value = draft.stats[statId];
   const roll = draft.statRolls[statId];
-  const field = useDraftFieldText(value === undefined ? '' : String(value), draft);
+  const field = useDraftFieldText(
+    value === undefined ? '' : String(value),
+    draft,
+    `stats.${statId}`,
+  );
+  const hintId = useId();
 
   return (
     <tr>
       <th scope="row">
         <span className="creator-stat-abbr">{label.abbr}</span>
         <span className="creator-stat-name">{label.name}</span>
+        <span id={hintId} className="creator-stat-hint">
+          {CPRED_STAT_HINTS[statId]}
+        </span>
       </th>
       <td className="creator-stat-value">
         {draft.method === 'complete' ? (
@@ -737,6 +979,7 @@ function StatRow({
             type="number"
             data-creation-field={`stats.${statId}`}
             aria-label={`${label.name} (${label.abbr})`}
+            aria-describedby={hintId}
             disabled={locked}
             min={data.limits.statMin}
             max={data.limits.statMax}
@@ -748,7 +991,7 @@ function StatRow({
               const next = statInputValue(e.target.value, data.limits);
               // An empty or half-typed field is not an intent yet; nothing leaves.
               if (next === null) return;
-              void patch((current) => ({ stats: { ...current.stats, [statId]: next } }));
+              field.write((current) => ({ stats: { ...current.stats, [statId]: next } }));
             }}
             onBlur={() => {
               field.onBlur();
@@ -891,6 +1134,13 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
             placeholder="Szukaj umiejętności…"
             aria-label="Szukaj umiejętności"
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              // Esc empties the search first; an empty field lets it through.
+              if (event.key === 'Escape' && query) {
+                event.stopPropagation();
+                setQuery('');
+              }
+            }}
           />
           <div className="creator-filters" role="group" aria-label="Pokaż umiejętności">
             {filters.map((entry) => (
@@ -1033,11 +1283,17 @@ function SkillRow({
   const patch = useCreationStore((s) => s.patch);
   const data = creationDataOf(registry);
   const stat = CPRED_STAT_LABELS[skill.stat];
+  const [explained, setExplained] = useState(false);
+  const descriptionId = useId();
 
   // „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
   // znaczą nic bez dziedziny (s. 81), a Język ma swoją przy kulturze pochodzenia.
   const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !row.free;
-  const specialtyField = useDraftFieldText(draft.skillSpecialties[skill.id] ?? '', draft);
+  const specialtyField = useDraftFieldText(
+    draft.skillSpecialties[skill.id] ?? '',
+    draft,
+    `skillSpecialties.${skill.id}`,
+  );
   const specialty = specialtyField.text;
   const missingSpecialty = needsSpecialty && !row.basic && row.level > 0 && !specialty.trim();
   const missing = row.missingPoints > 0 || missingSpecialty;
@@ -1054,9 +1310,19 @@ function SkillRow({
 
   function setSpecialty(next: string) {
     specialtyField.setText(next);
-    void patch((current) => ({
+    specialtyField.write((current) => ({
       skillSpecialties: { ...current.skillSpecialties, [skill.id]: next },
     }));
+  }
+
+  // Naprawa 2b: the level is one keyboard stop — arrows step it the way the
+  // buttons do, and the buttons stay out of the Tab order (66 rows × 2).
+  function onLevelKey(event: KeyboardEvent<HTMLElement>) {
+    const up = event.key === 'ArrowUp' || event.key === 'ArrowRight' || event.key === '+';
+    const down = event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === '-';
+    if (!up && !down) return;
+    event.preventDefault();
+    if (up ? row.up !== null : row.down !== null) changeLevel(up ? 'up' : 'down');
   }
 
   const upTitle =
@@ -1078,11 +1344,27 @@ function SkillRow({
       data-creation-field={`skills.${skill.id}`}
     >
       <div className="creator-skill-main">
-        <span className="creator-skill-name">{skill.name}</span>
+        <span className="creator-skill-name">
+          {skill.name}
+          {skill.description && (
+            <button
+              type="button"
+              className="creator-skill-explain"
+              aria-expanded={explained}
+              aria-controls={descriptionId}
+              title={explained ? `Schowaj opis: ${skill.name}` : `Co obejmuje ${skill.name}?`}
+              aria-label={explained ? `Schowaj opis: ${skill.name}` : `Opis: ${skill.name}`}
+              onClick={() => setExplained((open) => !open)}
+            >
+              ?
+            </button>
+          )}
+        </span>
         <span className="creator-skill-controls">
           <button
             type="button"
             className="small-button"
+            tabIndex={-1}
             title={downTitle}
             aria-label={downTitle}
             disabled={row.down === null}
@@ -1091,14 +1373,22 @@ function SkillRow({
             −
           </button>
           <strong
-            className={row.level === 0 ? 'creator-skill-level--zero' : ''}
-            aria-label={`${skill.name}: poziom ${row.level}`}
+            className={`creator-skill-level${row.level === 0 ? ' creator-skill-level--zero' : ''}`}
+            role="spinbutton"
+            tabIndex={0}
+            aria-label={`${skill.name}: poziom`}
+            aria-valuenow={row.level}
+            aria-valuemin={row.basic ? row.min : 0}
+            aria-valuemax={row.max}
+            title={`${skill.name}: poziom ${row.level}. Strzałki ↑ ↓ zmieniają poziom.`}
+            onKeyDown={onLevelKey}
           >
             {row.level}
           </strong>
           <button
             type="button"
             className="small-button"
+            tabIndex={-1}
             title={upTitle}
             aria-label={upTitle}
             disabled={row.up === null}
@@ -1138,6 +1428,11 @@ function SkillRow({
             : `${stat.name} ${row.statValue} + ${row.level} = ${row.checkBase}`}
         </span>
       </div>
+      {explained && skill.description && (
+        <p id={descriptionId} className="creator-skill-description">
+          {skill.description}
+        </p>
+      )}
       {row.missingPoints > 0 && (
         <p className="creator-skill-problem">
           Brakuje {row.missingPoints} pkt do minimum {row.min}.
@@ -1286,6 +1581,9 @@ function LifepathTextInput({
   onDone?: () => void;
 }) {
   const [local, setLocal] = useState(value);
+  // Esc (naprawa 2b) leaves without writing: blur reads this, not the state
+  // the same key press is still setting.
+  const cancelled = useRef(false);
   // A roll elsewhere brings a fresh draft back; nothing is in flight for this
   // field at that moment, so following it is safe and keeps re-rolls visible.
   useEffect(() => setLocal(value), [value]);
@@ -1300,9 +1598,16 @@ function LifepathTextInput({
       onChange={(event) => setLocal(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          cancelled.current = true;
+          setLocal(value);
+          event.currentTarget.blur();
+        }
       }}
       onBlur={() => {
-        if (local !== value) onCommit(local);
+        if (!cancelled.current && local !== value) onCommit(local);
+        cancelled.current = false;
         onDone?.();
       }}
     />
@@ -1856,7 +2161,7 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
   const busy = useCreationStore((s) => s.busy);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   // Local while typed; follows the server after a reload (see useDraftFieldText).
-  const nameField = useDraftFieldText(draft.name, draft);
+  const nameField = useDraftFieldText(draft.name, draft, 'name');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -1907,7 +2212,7 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
           onBlur={nameField.onBlur}
           onChange={(event) => {
             nameField.setText(event.target.value);
-            void patch({ name: event.target.value });
+            nameField.write({ name: event.target.value });
           }}
         />
       </label>
@@ -2172,53 +2477,5 @@ function LifepathSummary({ draft }: { draft: CpredCreationDraft }) {
         : [...said, ...people].join(' · ')}
       {lifepath.roleAnswers.length > 0 && ` · Rola: ${lifepath.roleAnswers.length} odpowiedzi`}
     </p>
-  );
-}
-
-/** GM sees only the metadata needed to choose a rank for each draft. */
-function CreationRanks() {
-  const registry = useCharacterStore((s) => s.registry);
-  const [rows, setRows] = useState<CreationRankDraft[]>([]);
-  const [error, setError] = useState('');
-  async function refresh() {
-    const ack = await listCreationRanks();
-    if (ack.ok) {
-      setRows(ack.data ?? []);
-      setError('');
-    } else setError(creationErrorText(ack.error));
-  }
-  useEffect(() => {
-    void refresh();
-  }, []);
-  return (
-    <details className="creator-step">
-      <summary>MG: rangi szkiców postaci</summary>
-      <button type="button" onClick={() => void refresh()}>
-        Odśwież listę
-      </button>
-      {error && <p role="alert">{error}</p>}
-      {rows.map((row) => (
-        <label key={row.id} className="creator-rank">
-          {row.userName} · {row.characterName || 'Bez imienia'}
-          <select
-            value={row.statRankId ?? ''}
-            onChange={async (event) => {
-              const ack = await setCreationRank(row.id, event.target.value);
-              if (!ack.ok) setError(creationErrorText(ack.error));
-              else await refresh();
-            }}
-          >
-            <option value="" disabled>
-              Wybierz rangę
-            </option>
-            {creationDataOf(registry).statRanks.map((rank) => (
-              <option key={rank.id} value={rank.id}>
-                {rank.name} — {rank.points} pkt
-              </option>
-            ))}
-          </select>
-        </label>
-      ))}
-    </details>
   );
 }

@@ -60,10 +60,13 @@ interface CreationStoreState {
   /** Opens the step that fixes an issue and points the window at its field. */
   goToField: (field: string) => void;
   clearFocusField: () => void;
-  /** Sends a patch and stores whatever the server made of it. */
-  patch: (
-    patch: Record<string, unknown> | ((draft: CpredCreationDraft) => Record<string, unknown>),
-  ) => Promise<boolean>;
+  /**
+   * Sends a patch and stores whatever the server made of it. A `field` names
+   * one text or number input (naprawa 2b): a newer write of the same field
+   * replaces one still waiting in the queue instead of queuing behind it, so
+   * fast typing on a slow link sends two writes, not twenty.
+   */
+  patch: (patch: DraftPatch, options?: { field?: string }) => Promise<boolean>;
 }
 
 /**
@@ -74,7 +77,32 @@ interface CreationStoreState {
 let queue: Promise<unknown> = Promise.resolve();
 type DraftPatch =
   Record<string, unknown> | ((draft: CpredCreationDraft) => Record<string, unknown>);
-const deferredPatches: DraftPatch[] = [];
+
+/** A queued intent; `field` lets a newer write of the same input replace it. */
+interface QueuedPatch {
+  patch: DraftPatch;
+  field?: string;
+}
+const deferredPatches: QueuedPatch[] = [];
+
+/**
+ * Field writes that sit in the queue and have not left yet. Only these may be
+ * replaced — a write already sent is the server's, and the newer text simply
+ * follows it.
+ */
+const waitingFieldWrites = new Map<string, { entry: QueuedPatch; result: Promise<boolean> }>();
+
+/**
+ * Holds an intent behind a refused write. A newer write of the same field
+ * takes the older one's place, which keeps its turn among the other intents.
+ */
+function deferPatch(entry: QueuedPatch): void {
+  const older = entry.field
+    ? deferredPatches.find((queued) => queued.field === entry.field)
+    : undefined;
+  if (older) older.patch = entry.patch;
+  else deferredPatches.push(entry);
+}
 
 function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const next = queue.then(task, task);
@@ -156,7 +184,7 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
         if (!settlePatch(ack, pending, guard ?? {})) return false;
       }
       while (deferredPatches.length) {
-        if (!(await sendPatch(deferredPatches.shift()!))) return false;
+        if (!(await sendPatch(deferredPatches.shift()!.patch))) return false;
       }
       set({ busy: false });
       return true;
@@ -224,16 +252,26 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
     set({ open: false, draft: null, draftId: null, pendingPatch: null, error: null, busy: false });
   },
 
-  patch: async (patch) => {
+  patch: async (patch, options) => {
+    const field = options?.field;
+    const waiting = field ? waitingFieldWrites.get(field) : undefined;
+    if (waiting) {
+      waiting.entry.patch = patch;
+      return waiting.result;
+    }
     set({ busy: true });
-    return enqueue(async () => {
+    const entry: QueuedPatch = { patch, field };
+    const result = enqueue(async () => {
+      if (field && waitingFieldWrites.get(field)?.entry === entry) waitingFieldWrites.delete(field);
       if (get().pendingPatch) {
-        deferredPatches.push(patch);
+        deferPatch(entry);
         set({ busy: false });
         return false;
       }
-      return sendPatch(patch);
+      return sendPatch(entry.patch);
     });
+    if (field) waitingFieldWrites.set(field, { entry, result });
+    return result;
   },
 }));
 

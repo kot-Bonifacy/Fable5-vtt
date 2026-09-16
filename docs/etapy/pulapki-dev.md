@@ -327,6 +327,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury** — nasłuch mapy na `window` łapie klawisze z przycisków okna (pola tekstowe omija). Rozpoznanie: fokus na przycisku, nie w polu; lekarstwo: `data-owns-keys` na oknie.
 - **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie** — efekt Reacta działa już po wstawieniu elementów, klatka jest zbędna; objaw w automacie to `activeElement` = `BODY` i niespełnione „Przejdź”.
 - **`requestFullscreen` zużywa gest — także wtedy, gdy przeglądarka odmawia** — nasłuch po nim widzi `userActivation.isActive === false` i wygląda to, jakby zdarzenie w ogóle nie niosło gestu. Rozpoznanie: loguj `isActive` i ślad stosu **w samym** `requestFullscreen`, nie w nasłuchu dopiętym później.
 - **Maska CSS z pliku, który ma nieprzezroczyste tło, maluje pełny kwadrat** — `mask-image` liczy się domyślnie z alfy, a czarny podkład game-icons ma alfę pełną jak sylwetka. Działa `mask-mode: luminance`. Rozpoznanie: pierwszy `<path>` pliku.
@@ -340,6 +341,15 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury (16.09, naprawa 2b).**
+  Nasłuch klawiatury mapy (`MapArea`) wisi na `window` i omija tylko `input`, `textarea`, `select`
+  i `contenteditable`. Fokus na **przycisku** kreatora albo karty oddawał mu więc `Tab`
+  (`preventDefault` i następna figura), `Delete`/`Backspace` (kasowanie zaznaczonego obiektu sceny)
+  i litery narzędzi. Objaw w przeglądarce: obwódka fokusu stoi w miejscu, a na mapie zmienia się
+  zaznaczenie. Rozpoznanie: `document.activeElement` to `BUTTON`, nie pole. Lekarstwo:
+  `data-owns-keys` na oknie (umowa w `ui`). Pozostałe okna (`BotEditor`, edytor architektury
+  i okno runu Sieci) jeszcze go nie mają.
 
 - **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie (16.09).**
   Pierwsza wersja „Przejdź” z podsumowania kreatora czekała na klatkę, zanim skupiła pole. W karcie
