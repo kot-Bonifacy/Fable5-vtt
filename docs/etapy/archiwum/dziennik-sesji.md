@@ -7,6 +7,47 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 15–16.09 — naprawa kreatora, etap 1 (przerwana na prośbę MG)
+
+**Stan: wdrożenie i testy zrobione, etap formalnie w toku.** MG zakończył sesję przed
+końcowym przeglądem i ponownym uruchomieniem zwykłego dev. Kontynuacja:
+`naprawa_karty_postaci.md`, sekcja stanu etapu 1. Nie zaczynać jeszcze etapu 2.
+
+**Decyzje MG:** niewydane punkty blokują zakończenie wszystkim (również MG);
+ranga Cech ustalana indywidualnie dla szkicu przez MG; wiele języków i dziedzin
+osobnym projektem. Minima przydzielane automatycznie i szlif typografii zostają w etapie 2.
+
+**Wdrożone:** minimum wybranej umiejętności Krawędziarza w shared; pełne rozliczenie
+pul; wymaganie nazwy darmowego języka i zgodny podgląd jego poziomu; spójny komunikat
+specjalizacji podstawowej. Lista rang szkiców dostępna tylko MG, gracz czeka na jego
+decyzję (także stary szkic). Kolejka funkcji aktualizujących najnowszy szkic, rewizje
+i identyfikatory ponowień; zachowanie odmów i późniejszych zmian do ponowienia,
+limit oczekiwania, bezpieczna odmowa usunięcia. Transakcja obejmuje kartę, zakupy,
+pieniądze, rejestr i usunięcie szkicu. Powtórzenie zakończenia po `draftId` oddaje tę
+samą kartę; żeton ma osobny status i możliwość naprawy. Brak pozycji/ceny w katalogu
+blokuje zakończenie, a UI pozwala usunąć niedostępną pozycję z koszyka.
+
+**Weryfikacja:** pełne `pnpm -r test`: 2115 shared, 1177 serwera, 215 klienta — zielone.
+Następnie doszły 2 testy serwera i 2 klienta: końcowe zestawy kreatora **43 serwera,
+52 shared, 7 klienta** zielone (łączne liczby obecnie 2115 / 1179 / 217).
+ESLint, Prettier i `tsc --noEmit` trzech pakietów przechodziły; po ostatnich zmianach
+ponowiono lint i typy klienta/serwera. Scenariusze: awaria rejestru zakupów i rollback,
+awaria żetonu, brak sceny, ponowienia, równoległe zapisy, spóźnione kasowanie,
+kontrola rangi, zachowanie kolejki i wskaźnika zapisu.
+
+**Chrome na osobnej bazie testowej:** wybór rangi gracza przez MG, zablokowany selektor
+u gracza, dwie Cechy i dwie umiejętności, koszt ×2 oraz zachowanie danych po F5.
+To nie jest pełny odbiór typografii 4K ani przejście obu metod z etapu 3.
+Tymczasowy serwer i karty zamknięte; roboczy skrypt usunięty. Baza
+`packages/server/.creation-ui.db` jest ignorowana przez Git i nie zawiera kampanii MG.
+
+**Migracja `20260915100000_creation_integrity` zastosowana do dev.db.** Przed nią
+spójna kopia SQLite: `packages/server/dev.db.bak-creation-1789500935285` (gitignore).
+Zwykły backend ostatnio odmówił startu przez `EADDRINUSE :3001`, bo zamykał się jeszcze
+serwer testowy; kontrola na koniec sesji potwierdziła wolny port i brak procesu testowego.
+Przy powrocie uruchomić dev i sprawdzić `/health`. Dane kampanii nie były edytowane
+podczas oględzin; prywatnych danych nie dodawać do stage'a.
+
 ### Sesja 15.09 — audyt kreatora i projekt naprawy
 
 **Zlecenie MG:** zweryfikować kreator względem podręcznika i wygody obsługi;

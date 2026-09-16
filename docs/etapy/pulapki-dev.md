@@ -327,6 +327,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie** — efekt Reacta działa już po wstawieniu elementów, klatka jest zbędna; objaw w automacie to `activeElement` = `BODY` i niespełnione „Przejdź”.
 - **`requestFullscreen` zużywa gest — także wtedy, gdy przeglądarka odmawia** — nasłuch po nim widzi `userActivation.isActive === false` i wygląda to, jakby zdarzenie w ogóle nie niosło gestu. Rozpoznanie: loguj `isActive` i ślad stosu **w samym** `requestFullscreen`, nie w nasłuchu dopiętym później.
 - **Maska CSS z pliku, który ma nieprzezroczyste tło, maluje pełny kwadrat** — `mask-image` liczy się domyślnie z alfy, a czarny podkład game-icons ma alfę pełną jak sylwetka. Działa `mask-mode: luminance`. Rozpoznanie: pierwszy `<path>` pliku.
 - **Autofill przeglądarki nie dociera do stanu Reacta** — pole pełne, `useState` puste, więc `disabled={value.length === 0}` zostawia martwy przycisk, a samo odblokowanie go wysłałoby **pustkę**. Czytaj wartość z węzła przy wysyłce (`useAutofillableField`), nie ze stanu.
@@ -339,6 +340,12 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie (16.09).**
+  Pierwsza wersja „Przejdź” z podsumowania kreatora czekała na klatkę, zanim skupiła pole. W karcie
+  automatyki (`document.visibilityState === 'hidden'`) klatka nie przychodzi wcale, więc krok się
+  zmieniał, a kursor zostawał na `BODY` — wyglądało to jak zgubiony atrybut `data-creation-field`.
+  `useEffect` i tak biegnie po wstawieniu DOM; fokus i `scrollIntoView` wołaj wprost w efekcie.
 
 - **`requestFullscreen` zużywa gest, także gdy odmawia (12.09, pełny ekran).** Pomiar w oględzinach
   pokazał `isActive: false` na `pointerdown` i podsunął wniosek „Chrome ustawia gest dopiero po
@@ -926,6 +933,8 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Nowego gracza testowego dołączysz bez czytania tokenu** — rozszerzenie zaciemnia token zaproszenia (`[BLOCKED: Sensitive key]`); wystaw i zużyj go w jednym `javascript_tool` (`POST …/invitations` → `/api/auth/logout` → `POST /api/join/<token>`), niczego nie wypisując. Danych testowych nie zmieniaj przez `node:sqlite` — automat odmawia zapisu do bazy; idź przez aplikację.
+- **Instancja na bazie testowej z jednorazowym `GM_PASSWORD`** — serwer przy starcie przepisuje hasło MG z env do bazy, którą otwiera. Na `.creation-ui.db` to wygoda; z tym samym env na `dev.db` zmieniłbyś prawdziwe hasło MG.
 - **Opóźnienie VPS odtworzysz łatką na `WebSocket.prototype.send` z `setTimeout`** — lokalnie odpowiedź przychodzi przed następnym klawiszem, więc błędy pól związanych ze stanem serwera są na `localhost` niewidoczne.
 - **Dwuklik z automatu w karcie w tle wysyłaj synchronicznie** — `setTimeout` między kliknięciami dławi się do ~1 s, drugie przychodzi po `DOUBLE_CLICK_MS` (350 ms) i obiekt sceny tylko się zaznacza zamiast otworzyć kartę; cztery `dispatchEvent` pod rząd w jednym zadaniu działają.
 - **Co klient wysłał serwerowi, pokaże podsłuch `WebSocket.prototype.send`** — łata na prototypie łapie też już otwarte gniazdo Socket.IO; ramka `token:move` z `final: true` niesie lądowanie i trasę, pośrednie — przebieg marszu. Tak złapano błędną pierwszą wersję naprawy przerwanego marszu (13.09).
@@ -1071,6 +1080,17 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
+- **Nowy gracz i hasło MG na bazie testowej (16.09, naprawa 2a).** Oględziny kreatora wymagały
+  świeżego szkicu i szkicu bez zatwierdzonej rangi. Zapis wprost do `.creation-ui.db` przez
+  `node:sqlite` automat odrzucił jako niszczenie danych, a token zaproszenia rozszerzenie ukrywa
+  w wyniku. Zadziałało jedno wywołanie w karcie `[::1]`: `POST /api/campaigns/<id>/invitations`,
+  `POST /api/auth/logout`, `POST /api/join/<token>` z nowym imieniem i `location.href = '/'` —
+  token nie opuszcza strony. Instancję testową uruchamia się z `DATABASE_URL=file:./.creation-ui.db`,
+  osobnymi `UPLOADS_DIR`/`BACKUP_DIR` w katalogu tymczasowym i jednorazowym `GM_PASSWORD`, bo
+  `auth/seed.ts` przy starcie przepisuje hasło MG do otwartej bazy („GM password updated from
+  GM_PASSWORD” w logu). Zmienne z wiersza poleceń wygrywają z `.env` (`--env-file-if-exists` ich nie
+  nadpisuje) — i dlatego ten sam wiersz bez `DATABASE_URL` zmieniłby hasło MG w `dev.db`.
 
 - **Na `localhost` nie widać błędów, które wymagają opóźnienia (16.09, naprawa kreatora).**
   Pole kreatora związane wprost ze szkicem z serwera gubiło znaki dopiero przy RTT rzędu setek

@@ -4,6 +4,9 @@ import type {
   CompendiumCategory,
   CompendiumEntry,
   CpredCreationDraft,
+  CpredCreationSkillRow,
+  CpredCreationStep,
+  CpredValidationIssue,
   CreationRankDraft,
   CreationFinishResult,
   CpredLifepath,
@@ -32,14 +35,14 @@ import {
   creationAvailableSkills,
   creationBudget,
   creationDataOf,
-  creationFreeLanguageCharge,
+  creationIssueStep,
   creationIssues,
+  creationMissingSkillMinima,
   creationPreview,
   creationPurchases,
   creationRole,
-  creationSkillCost,
-  creationSkillLimits,
   creationSkillPointsSpent,
+  creationSkillRow,
   creationStatPointsSpent,
   creationStatPool,
   creationSpentEddies,
@@ -131,7 +134,28 @@ function CreatorWindow() {
   const rankApproved = useCreationStore((s) => s.rankApproved);
   const pendingPatch = useCreationStore((s) => s.pendingPatch);
   const retry = useCreationStore((s) => s.retry);
+  const visited = useCreationStore((s) => s.visited);
+  const markVisited = useCreationStore((s) => s.markVisited);
+  const focusField = useCreationStore((s) => s.focusField);
+  const clearFocusField = useCreationStore((s) => s.clearFocusField);
+  const goToField = useCreationStore((s) => s.goToField);
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
+  const step = draft?.step;
+
+  useEffect(() => {
+    if (step) markVisited(step);
+  }, [step, draftId, markVisited]);
+
+  // „Przejdź" in the summary: once the step it asked for is on screen, bring
+  // the field into view and give it the keyboard.
+  useEffect(() => {
+    // The step is committed by the time an effect runs; no frame is awaited,
+    // because a hidden tab gets none.
+    if (!focusField || !step || creationIssueStep(focusField) !== step) return;
+    const root = placement.ref.current;
+    if (root) focusCreationField(root, focusField);
+    clearFocusField();
+  }, [focusField, step, clearFocusField, placement.ref]);
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -186,6 +210,11 @@ function CreatorWindow() {
   if (draft?.method === 'complete' && !isGm && !rankApproved)
     issues.push({ field: 'statRankId', message: 'MG musi ustalić Rangę Postaci dla tego szkicu.' });
   const stepIndex = draft ? CPRED_CREATION_STEPS.indexOf(draft.step) : 0;
+  const visitedIndex = visited.draftId === draftId ? visited.index : stepIndex;
+  // Counted as the summary lists them: ten unset stats are one line there, so
+  // they are one on the tab and in the footer too.
+  const issueLines = summaryLines(issues);
+  const openByStep = countIssuesByStep(issueLines);
 
   return (
     <section
@@ -264,18 +293,46 @@ function CreatorWindow() {
         <p className="creator-empty">Wczytuję szkic…</p>
       ) : (
         <>
-          <nav className="sheet-tabs creator-steps">
-            {CPRED_CREATION_STEPS.map((step, index) => (
-              <button
-                key={step}
-                type="button"
-                className={`sheet-tab ${draft.step === step ? 'sheet-tab--active' : ''}`}
-                onClick={() => void patch({ step })}
-              >
-                <span className="creator-step-number">{index + 1}</span>
-                {CPRED_CREATION_STEP_LABELS[step]}
-              </button>
-            ))}
+          <nav className="sheet-tabs creator-steps" aria-label="Kroki kreatora">
+            {CPRED_CREATION_STEPS.map((tab, index) => {
+              const current = draft.step === tab;
+              const open = openByStep.get(tab) ?? 0;
+              // A step counts once the player has been there and moved on;
+              // the one on screen explains itself field by field.
+              const judged = index <= visitedIndex && !current && tab !== 'summary';
+              const state = !judged ? 'none' : open > 0 ? 'open' : 'done';
+              const label = CPRED_CREATION_STEP_LABELS[tab];
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`sheet-tab ${current ? 'sheet-tab--active' : ''}`}
+                  aria-current={current ? 'step' : undefined}
+                  title={
+                    state === 'open'
+                      ? `${label}: ${open} do uzupełnienia`
+                      : state === 'done'
+                        ? `${label}: gotowe`
+                        : label
+                  }
+                  onClick={() => void patch({ step: tab })}
+                >
+                  <span className="creator-step-number">{index + 1}</span>
+                  {label}
+                  {state === 'open' && (
+                    <span className="creator-step-badge creator-step-badge--open">
+                      {open}
+                      <span className="visually-hidden"> do uzupełnienia</span>
+                    </span>
+                  )}
+                  {state === 'done' && (
+                    <span className="creator-step-badge creator-step-badge--done" aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
           <div className="sheet-body creator-body">
@@ -292,6 +349,8 @@ function CreatorWindow() {
                 players={players}
                 ownerId={ownerId}
                 onOwnerChange={setOwnerId}
+                issues={issueLines}
+                onGoTo={goToField}
               />
             )}
           </div>
@@ -305,11 +364,22 @@ function CreatorWindow() {
             >
               ← Wstecz
             </button>
-            <span className="creator-issues-count">
-              {issues.length === 0
-                ? 'Postać gotowa'
-                : `${issues.length} ${issues.length === 1 ? 'brak' : 'braków'} do uzupełnienia`}
-            </span>
+            {issues.length === 0 ? (
+              <span className="creator-issues-count">Postać gotowa</span>
+            ) : draft.step === 'summary' ? (
+              <span className="creator-issues-count">
+                {issuesCountText(issueLines.length)} — lista wyżej
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="creator-issues-count creator-issues-link"
+                onClick={() => void patch({ step: 'summary' })}
+                title="Pokaż wszystkie braki w podsumowaniu"
+              >
+                {issuesCountText(issueLines.length)} — pokaż
+              </button>
+            )}
             {draft.step === 'summary' ? (
               <button
                 type="button"
@@ -343,20 +413,54 @@ function CreatorWindow() {
           </footer>
 
           {error && <p className="auth-error creator-error">{error}</p>}
-          {/* The list is the wizard's honest answer to „czemu nie mogę kliknąć
-              »Utwórz«" — the same list the server refuses with. */}
-          {draft.step === 'summary' && issues.length > 0 && (
-            <ul className="creator-issues">
-              {issues.map((issue) => (
-                <li key={`${issue.field}:${issue.message}`}>{issue.message}</li>
-              ))}
-            </ul>
-          )}
         </>
       )}
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
+}
+
+/** „1 brak", „3 braki", „5 braków" — the Polish plural of the footer count. */
+function issuesCountText(count: number): string {
+  const tens = count % 100;
+  const ones = count % 10;
+  const word =
+    count === 1 ? 'brak' : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? 'braki' : 'braków';
+  return `${count} ${word} do uzupełnienia`;
+}
+
+function countIssuesByStep(issues: CpredValidationIssue[]): Map<CpredCreationStep, number> {
+  const counts = new Map<CpredCreationStep, number>();
+  for (const issue of issues) {
+    const step = creationIssueStep(issue.field);
+    counts.set(step, (counts.get(step) ?? 0) + 1);
+  }
+  return counts;
+}
+
+const FOCUSABLE =
+  'input:not([disabled]), select:not([disabled]), button:not([disabled]), textarea:not([disabled])';
+
+/**
+ * Finds the element a validation field names (`data-creation-field`) — or the
+ * nearest one the step renders for it: `stats.body` falls back to `stats` when
+ * a Krawędziarz has no input to type in — scrolls to it and focuses it.
+ */
+function focusCreationField(root: HTMLElement, field: string): void {
+  let target: HTMLElement | null = null;
+  let name = field;
+  while (name && !target) {
+    target = root.querySelector<HTMLElement>(`[data-creation-field="${CSS.escape(name)}"]`);
+    name = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '';
+  }
+  if (!target) return;
+  const found = target;
+  found.scrollIntoView({ block: 'center' });
+  const focusable = found.matches(FOCUSABLE) ? found : found.querySelector<HTMLElement>(FOCUSABLE);
+  focusable?.focus({ preventScroll: true });
+  // A short outline says „tutaj" even when the field itself takes no focus.
+  found.classList.add('creator-field--flash');
+  window.setTimeout(() => found.classList.remove('creator-field--flash'), 1600);
 }
 
 // ─────────────────────────────── krok 1: Rola ───────────────────────────────
@@ -394,7 +498,10 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
         </p>
       </fieldset>
 
-      <div className="creator-roles">
+      {draft.roleId === null && (
+        <p className="creator-notice">Wybierz Rolę — od niej zależą Cechy i lista umiejętności.</p>
+      )}
+      <div className="creator-roles" data-creation-field="roleId">
         {data.roles.map((role) => {
           const definition = registry.roles.find((entry) => entry.id === role.id);
           const chosen = draft.roleId === role.id;
@@ -435,6 +542,10 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
   const preview = creationPreview(creationStats(draft, data));
   const pool = creationStatPool(data, draft);
   const spent = creationStatPointsSpent(draft);
+  const unset = CPRED_STAT_IDS.filter((id) => draft.stats[id] === undefined).length;
+  // Naprawa 2a: the pool is the GM's call, so a player types nothing until it
+  // is made — the server refuses the write the same way.
+  const locked = draft.method === 'complete' && !isGm && !rankApproved;
 
   const rollable = role !== null && draft.method === 'edgerunner' && role.statTemplates.length > 0;
 
@@ -453,7 +564,7 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
 
   return (
     <div className="creator-step">
-      <div className="creator-stats-head">
+      <div className="creator-stats-head" data-creation-field="stats">
         {draft.method === 'edgerunner' ? (
           <>
             {/* The spread goes through the cup, like every other roll at this
@@ -488,12 +599,16 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
                 ? 'Kubek czeka w rogu ekranu — złap go, potrząśnij i puść. Esc odkłada.'
                 : 'Rzuca serwer i zostawia kartę na czacie. Można rzucać ponownie — liczy się ostatni rzut.'}
             </span>
+            {unset > 0 && !inCup && (
+              <span className="creator-pool creator-pool--open">Cechy jeszcze nie wylosowane</span>
+            )}
           </>
         ) : (
           <>
             <label className="creator-rank">
               Ranga Postaci (ustala MG)
               <select
+                data-creation-field="statRankId"
                 disabled={!isGm}
                 value={draft.statRankId}
                 onChange={(e) => void patch({ statRankId: e.target.value })}
@@ -505,25 +620,28 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
                 ))}
               </select>
             </label>
-            {!isGm && (
-              <span className="creator-hint">
-                {rankApproved
-                  ? 'Pula zatwierdzona przez MG dla tego szkicu.'
-                  : 'Czeka na decyzję MG. Licznik pokazuje pulę domyślną.'}
+            {!isGm && rankApproved && (
+              <span className="creator-hint">Pula zatwierdzona przez MG dla tego szkicu.</span>
+            )}
+            {!locked && (
+              <span className={`creator-pool ${poolStateClass(spent, pool)}`} role="status">
+                Punkty Cech: wydane {spent} z {pool} · pozostało {pool - spent}
               </span>
             )}
-            <span className={`creator-pool ${spent > pool ? 'creator-pool--over' : ''}`}>
-              Punkty Cech: {spent} z {pool}
-              {' · '}pozostało {pool - spent}
-            </span>
           </>
         )}
       </div>
+      {locked && (
+        <p className="creator-notice" role="status">
+          MG ustala Rangę Postaci, a z nią pulę punktów Cech. Do tego czasu pola Cech są zablokowane
+          — w międzyczasie możesz przejść do Umiejętności i Ścieżki Życia.
+        </p>
+      )}
 
       <table className="creator-stats">
         <tbody>
           {CPRED_STAT_IDS.map((id) => (
-            <StatRow key={id} statId={id} draft={draft} />
+            <StatRow key={id} statId={id} draft={draft} locked={locked} />
           ))}
         </tbody>
       </table>
@@ -584,7 +702,21 @@ function statInputValue(text: string, limits: { statMin: number; statMax: number
     : null;
 }
 
-function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationDraft }) {
+/** Colour of a pool line: over the pool, spent exactly, or points still to give out. */
+function poolStateClass(spent: number, pool: number): string {
+  if (spent > pool) return 'creator-pool--over';
+  return spent === pool ? 'creator-pool--done' : 'creator-pool--open';
+}
+
+function StatRow({
+  statId,
+  draft,
+  locked,
+}: {
+  statId: CpredStatId;
+  draft: CpredCreationDraft;
+  locked: boolean;
+}) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const data = creationDataOf(registry);
@@ -603,6 +735,9 @@ function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationD
         {draft.method === 'complete' ? (
           <input
             type="number"
+            data-creation-field={`stats.${statId}`}
+            aria-label={`${label.name} (${label.abbr})`}
+            disabled={locked}
             min={data.limits.statMin}
             max={data.limits.statMax}
             value={field.text}
@@ -634,56 +769,242 @@ function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationD
 
 // ──────────────────────────── krok 3: Umiejętności ────────────────────────────
 
+type SkillFilter = 'all' | 'missing' | 'taken' | 'role';
+
+/** „Wiedza lokalna" finds „wiedza", „wiedza lok" and „wiedza lokalna" alike. */
+function searchText(text: string): string {
+  return text
+    .toLocaleLowerCase('pl')
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+}
+
+/** A skill whose field the rulebook makes you name, bought without one. */
+function specialtyMissing(draft: CpredCreationDraft, row: CpredCreationSkillRow): boolean {
+  return (
+    cpredSkillNeedsSpecialty(row.skillId) &&
+    !row.free &&
+    !row.basic &&
+    row.level > 0 &&
+    !(draft.skillSpecialties[row.skillId] ?? '').trim()
+  );
+}
+
+/**
+ * The skills step (naprawa 2a). Every requirement sits on the row it is about:
+ * „Podstawowa · min. 2", the points still owed, the ×2 price and the Check
+ * base (stat + level). The counter stays on screen while the list scrolls, and
+ * the search and the „Braki" filter get the player to a row without reading
+ * sixty-six of them.
+ */
 function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
+  const patch = useCreationStore((s) => s.patch);
+  const busy = useCreationStore((s) => s.busy);
+  const goToField = useCreationStore((s) => s.goToField);
   const data = creationDataOf(registry);
-  const available = useMemo(
-    () => new Set(creationAvailableSkills(draft, data, registry)),
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<SkillFilter>('all');
+
+  const rows = useMemo(
+    () =>
+      new Map(
+        creationAvailableSkills(draft, data, registry).map((id) => [
+          id,
+          creationSkillRow(draft, data, registry, id),
+        ]),
+      ),
     [draft, data, registry],
   );
-  const groups = useMemo(
-    () =>
-      groupedSkills(registry)
-        .map((group) => ({ ...group, skills: group.skills.filter((s) => available.has(s.id)) }))
-        .filter((group) => group.skills.length > 0),
-    [registry, available],
-  );
   const spent = creationSkillPointsSpent(draft, data, registry);
-  const freeLanguageCharge = creationFreeLanguageCharge(data, registry);
+  const left = data.skillPoints - spent;
+  const legacyMinima = draft.skillMinimaAuto
+    ? []
+    : creationMissingSkillMinima(draft, data, registry);
+  const legacyCost = legacyMinima.reduce((sum, row) => sum + row.cost, 0);
+  const names = new Map(registry.skills.map((skill) => [skill.id, skill.name]));
+  const freeRow = data.freeLanguage ? rows.get(data.freeLanguage.skillId) : undefined;
+  const roleChosen = draft.roleId !== null;
+  const needle = searchText(query.trim());
+
+  const listed = [...rows.values()].filter((row) => !row.free);
+  const counts: Record<SkillFilter, number> = {
+    all: listed.length,
+    missing: listed.filter((row) => row.missingPoints > 0 || specialtyMissing(draft, row)).length,
+    taken: listed.filter((row) => row.level > 0).length,
+    role: listed.filter((row) => row.roleListed).length,
+  };
+  const filters: { id: SkillFilter; label: string }[] = [
+    { id: 'all', label: 'Wszystkie' },
+    { id: 'missing', label: 'Braki' },
+    { id: 'taken', label: 'Wybrane' },
+    ...(draft.method === 'complete' && roleChosen
+      ? [{ id: 'role' as const, label: 'Lista Roli' }]
+      : []),
+  ];
+
+  function shown(skill: CpredSkillDefinition): boolean {
+    const row = rows.get(skill.id);
+    if (!row || row.free) return false;
+    if (needle && !searchText(skill.name).includes(needle)) return false;
+    if (filter === 'missing') return row.missingPoints > 0 || specialtyMissing(draft, row);
+    if (filter === 'taken') return row.level > 0;
+    if (filter === 'role') return row.roleListed;
+    return true;
+  }
+  const groups = groupedSkills(registry)
+    .map((group) => ({ ...group, skills: group.skills.filter(shown) }))
+    .filter((group) => group.skills.length > 0);
+
+  if (draft.method === 'edgerunner' && !roleChosen) {
+    return (
+      <div className="creator-step">
+        <div className="creator-notice">
+          <p>Krawędziarz wydaje punkty wyłącznie na umiejętności z listy swojej Roli.</p>
+          <button type="button" className="small-button" onClick={() => goToField('roleId')}>
+            Wybierz Rolę
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="creator-step">
-      <div className="creator-stats-head">
-        <span className={`creator-pool ${spent > data.skillPoints ? 'creator-pool--over' : ''}`}>
-          Punkty umiejętności: {spent} z {data.skillPoints}
-          {' · '}pozostało {data.skillPoints - spent}
-        </span>
-        <span className="creator-hint">
-          {draft.method === 'edgerunner' ? 'Każda wybrana' : 'Podstawowe'} co najmniej{' '}
-          {data.limits.skillMin}, każda najwyżej {data.limits.skillMax}. Umiejętności oznaczone ×2
-          kosztują dwa punkty za poziom.
-        </span>
+      <div className="creator-sticky" data-creation-field="skills">
+        <div className="creator-sticky-row">
+          <span className={`creator-pool ${poolStateClass(spent, data.skillPoints)}`} role="status">
+            Punkty umiejętności: wydane {spent} z {data.skillPoints} · pozostało {left}
+          </span>
+          {counts.missing > 0 && (
+            <span className="creator-pool creator-pool--over">
+              Wiersze z brakami: {counts.missing}
+            </span>
+          )}
+        </div>
+        <div className="creator-sticky-row">
+          <input
+            type="search"
+            className="creator-search"
+            value={query}
+            placeholder="Szukaj umiejętności…"
+            aria-label="Szukaj umiejętności"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div className="creator-filters" role="group" aria-label="Pokaż umiejętności">
+            {filters.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={`creator-filter ${filter === entry.id ? 'creator-filter--on' : ''}`}
+                aria-pressed={filter === entry.id}
+                onClick={() => setFilter(entry.id)}
+              >
+                {entry.label} <span className="creator-filter-count">{counts[entry.id]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {data.freeLanguage && (
-        <p className="creator-hint">
-          Darmowy język kultury: {draft.lifepath.language || 'wpisz nazwę w Ścieżce Życia'} · poziom{' '}
-          {data.freeLanguage.level}, koszt 0 pkt.
-          {freeLanguageCharge > 0 &&
-            ` Minimum slangu ulicznego (umiejętność podstawowa) kosztuje ${freeLanguageCharge} pkt — na karcie oba języki dzielą jeden wiersz „Język ${data.freeLanguage.level}”.`}
-        </p>
+      <p className="creator-hint">
+        {draft.method === 'edgerunner'
+          ? `Punkty idą tylko na listę Roli. Podstawowe mają od razu poziom ${data.limits.skillMin}, każda inna wybrana umiejętność — co najmniej ${data.limits.skillMin}; najwyżej ${data.limits.skillMax}.`
+          : `Podstawowe mają co najmniej poziom ${data.limits.skillMin} — kreator przydziela je od razu i wlicza koszt do puli. Pozostałe: od 1 do ${data.limits.skillMax}. „Lista Roli” to umiejętności, które Rola zwykle zna — podpowiedź, nie wymóg.`}{' '}
+        Oznaczenie ×2: każdy poziom kosztuje 2 pkt.
+      </p>
+
+      {legacyMinima.length > 0 && (
+        <div className="creator-notice creator-notice--warn" role="status">
+          <p>
+            <strong>Ten szkic powstał przed automatycznym przydziałem minimów.</strong> Poniżej
+            poziomu {data.limits.skillMin}:{' '}
+            {legacyMinima
+              .map((row) => `${names.get(row.skillId) ?? row.skillId} ${row.level} → ${row.min}`)
+              .join(', ')}
+            . Przydział kosztuje {legacyCost} pkt: pozostanie {left - legacyCost} zamiast {left}.
+            Poziomów wybranych wcześniej nic nie obniży.
+          </p>
+          <button
+            type="button"
+            className="small-button small-button--primary"
+            disabled={busy}
+            onClick={() => void patch({ skillMinimaAuto: true })}
+          >
+            Przydziel minima (−{legacyCost} pkt)
+          </button>
+        </div>
       )}
 
+      {freeRow && data.freeLanguage && (
+        <FreeLanguageCard
+          draft={draft}
+          row={freeRow}
+          onPickName={() => goToField('lifepath.language')}
+        />
+      )}
+
+      {groups.length === 0 && (
+        <p className="creator-empty">Żadna umiejętność nie pasuje do wyszukiwania i filtra.</p>
+      )}
       {groups.map((group) => (
         <section key={group.id} className="creator-skill-group">
           <h4>{group.label}</h4>
           <ul>
             {group.skills.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} draft={draft} />
+              <SkillRow key={skill.id} skill={skill} draft={draft} row={rows.get(skill.id)!} />
             ))}
           </ul>
         </section>
       ))}
+    </div>
+  );
+}
+
+/**
+ * The free Culture of Origin language, apart from the list: it has no buttons,
+ * costs nothing as a language and still carries the street slang's minimum.
+ */
+function FreeLanguageCard({
+  draft,
+  row,
+  onPickName,
+}: {
+  draft: CpredCreationDraft;
+  row: CpredCreationSkillRow;
+  onPickName: () => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const skill = registry.skills.find((entry) => entry.id === row.skillId);
+  const name = draft.lifepath.language.trim();
+  const stat = skill ? CPRED_STAT_LABELS[skill.stat] : null;
+  return (
+    <div className="creator-free-language">
+      <p>
+        <strong>Język kultury pochodzenia: {name || 'jeszcze nie wybrany'}</strong> · poziom{' '}
+        {row.level} za darmo
+        {stat && (
+          <span className="creator-skill-stat">
+            {' '}
+            ·{' '}
+            {row.statValue === null
+              ? `${stat.name}: jeszcze nieustalona`
+              : `${stat.name} ${row.statValue} + ${row.level} = ${row.checkBase}`}
+          </span>
+        )}
+      </p>
+      {row.cost > 0 && (
+        <p className="creator-hint">
+          Minimum slangu ulicznego (umiejętność podstawowa) kosztuje {row.cost} pkt i jest wliczone
+          w pulę — na karcie oba języki dzielą jeden wiersz „Język {row.level}”.
+        </p>
+      )}
+      {!name && (
+        <button type="button" className="small-button" onClick={onPickName}>
+          Wybierz język w Ścieżce Życia
+        </button>
+      )}
     </div>
   );
 }
@@ -699,27 +1020,35 @@ const CREATOR_SPECIALTY_HINTS: Record<string, string> = {
   'martial-arts': 'np. karate',
 };
 
-function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredCreationDraft }) {
+function SkillRow({
+  skill,
+  draft,
+  row,
+}: {
+  skill: CpredSkillDefinition;
+  draft: CpredCreationDraft;
+  row: CpredCreationSkillRow;
+}) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const data = creationDataOf(registry);
-  const limits = creationSkillLimits(draft, data, skill.id);
-  const level = limits.free ? limits.min : (draft.skills[skill.id] ?? 0);
-  const isBasic = data.basicSkills.includes(skill.id);
-  const isFree = data.freeLanguage?.skillId === skill.id;
-  const ceiling = limits.max;
+  const stat = CPRED_STAT_LABELS[skill.stat];
 
   // „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
   // znaczą nic bez dziedziny (s. 81), a Język ma swoją przy kulturze pochodzenia.
-  const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !isFree;
+  const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !row.free;
   const specialtyField = useDraftFieldText(draft.skillSpecialties[skill.id] ?? '', draft);
   const specialty = specialtyField.text;
+  const missingSpecialty = needsSpecialty && !row.basic && row.level > 0 && !specialty.trim();
+  const missing = row.missingPoints > 0 || missingSpecialty;
 
-  function changeLevel(delta: number) {
-    if (isFree) return;
+  // The next level is read off the newest draft inside the queue, so two quick
+  // clicks step twice instead of sending the same level twice.
+  function changeLevel(direction: 'up' | 'down') {
     void patch((current) => {
-      const next = Math.max(0, Math.min(ceiling, (current.skills[skill.id] ?? 0) + delta));
-      return { skills: { ...current.skills, [skill.id]: next } };
+      const fresh = creationSkillRow(current, data, registry, skill.id);
+      const next = direction === 'up' ? fresh.up : fresh.down;
+      return next === null ? {} : { skills: { ...current.skills, [skill.id]: next } };
     });
   }
 
@@ -730,67 +1059,114 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
     }));
   }
 
+  const upTitle =
+    row.up === null
+      ? `${skill.name}: najwyżej poziom ${row.max}`
+      : `Podnieś ${skill.name} do ${row.up} (+${(row.up - row.level) * row.multiplier} pkt)`;
+  const downTitle =
+    row.down === null
+      ? row.basic && row.level > 0
+        ? `${skill.name} jest podstawowa — nie schodzi poniżej ${row.min}`
+        : `${skill.name}: poziom 0`
+      : `Obniż ${skill.name} do ${row.down} (−${(row.level - row.down) * row.multiplier} pkt)`;
+
   return (
-    <li className={`creator-skill ${isBasic ? 'creator-skill--basic' : ''}`}>
-      <span className="creator-skill-name">
-        {skill.name}
-        {skill.multiplier === 2 && <span className="creator-skill-x2">×2</span>}
-        {isBasic && (
-          <span className="creator-skill-basic-mark" title="Umiejętność podstawowa">
-            •
+    <li
+      className={`creator-skill${row.level > 0 ? ' creator-skill--taken' : ''}${
+        missing ? ' creator-skill--missing' : ''
+      }`}
+      data-creation-field={`skills.${skill.id}`}
+    >
+      <div className="creator-skill-main">
+        <span className="creator-skill-name">{skill.name}</span>
+        <span className="creator-skill-controls">
+          <button
+            type="button"
+            className="small-button"
+            title={downTitle}
+            aria-label={downTitle}
+            disabled={row.down === null}
+            onClick={() => changeLevel('down')}
+          >
+            −
+          </button>
+          <strong
+            className={row.level === 0 ? 'creator-skill-level--zero' : ''}
+            aria-label={`${skill.name}: poziom ${row.level}`}
+          >
+            {row.level}
+          </strong>
+          <button
+            type="button"
+            className="small-button"
+            title={upTitle}
+            aria-label={upTitle}
+            disabled={row.up === null}
+            onClick={() => changeLevel('up')}
+          >
+            +
+          </button>
+        </span>
+        <span className="creator-skill-cost">{row.cost} pkt</span>
+      </div>
+      <div className="creator-skill-meta">
+        {row.basic && (
+          <span className="creator-tag creator-tag--required">Podstawowa · min. {row.min}</span>
+        )}
+        {row.multiplier > 1 && (
+          <span
+            className="creator-tag creator-tag--x2"
+            title={`Każdy poziom kosztuje ${row.multiplier} pkt`}
+          >
+            ×{row.multiplier}
           </span>
         )}
-      </span>
-      {needsSpecialty && (
-        <input
-          type="text"
-          className={`creator-skill-specialty${
-            level > 0 && !isBasic && !specialty.trim() ? ' creator-skill-specialty--missing' : ''
-          }`}
-          value={specialty}
-          maxLength={SKILL_SPECIALTY_MAX_LENGTH}
-          placeholder={CREATOR_SPECIALTY_HINTS[skill.id] ?? 'w czym?'}
-          onFocus={specialtyField.onFocus}
-          onBlur={specialtyField.onBlur}
-          onChange={(e) => setSpecialty(e.target.value)}
-          aria-label={`Specjalizacja: ${skill.name}`}
-          title={
-            level > 0 && !isBasic && !specialty.trim()
-              ? 'Bez tego nie da się skończyć postaci — podręcznik każe wybrać dziedzinę.'
-              : `Dziedzina, w której postać rozwija umiejętność ${skill.name}`
-          }
-        />
+        {draft.method === 'complete' && row.roleListed && (
+          <span
+            className="creator-tag creator-tag--hint"
+            title="Umiejętność z listy wybranej Roli — podpowiedź, nie wymóg"
+          >
+            lista Roli
+          </span>
+        )}
+        <span
+          className="creator-skill-stat"
+          title={`Test: ${stat.name} + poziom umiejętności + 1k10`}
+        >
+          {row.statValue === null
+            ? `${stat.name}: jeszcze nieustalona`
+            : `${stat.name} ${row.statValue} + ${row.level} = ${row.checkBase}`}
+        </span>
+      </div>
+      {row.missingPoints > 0 && (
+        <p className="creator-skill-problem">
+          Brakuje {row.missingPoints} pkt do minimum {row.min}.
+        </p>
       )}
-      <span className="creator-skill-stat">{CPRED_STAT_LABELS[skill.stat].abbr}</span>
-      <span className="creator-skill-controls">
-        <button
-          type="button"
-          className="small-button"
-          title={`Obniż poziom: ${skill.name}`}
-          aria-label={`Obniż poziom: ${skill.name}`}
-          disabled={isFree}
-          onClick={() => changeLevel(-1)}
-        >
-          −
-        </button>
-        <strong className={level === 0 ? 'creator-skill-level--zero' : ''}>{level}</strong>
-        <button
-          type="button"
-          className="small-button"
-          title={`Podnieś poziom: ${skill.name}`}
-          aria-label={`Podnieś poziom: ${skill.name}`}
-          disabled={isFree}
-          onClick={() => changeLevel(1)}
-        >
-          +
-        </button>
-      </span>
-      <span className="creator-skill-cost">
-        {isFree
-          ? creationFreeLanguageCharge(data, registry)
-          : creationSkillCost(skill.id, level, data, registry)}{' '}
-        pkt
-      </span>
+      {needsSpecialty && (row.level > 0 || specialty) && (
+        <label className="creator-skill-specialty-row">
+          <span>{row.basic ? 'Dziedzina (opcjonalnie)' : 'Dziedzina'}</span>
+          <input
+            type="text"
+            className={`creator-skill-specialty${
+              missingSpecialty ? ' creator-skill-specialty--missing' : ''
+            }`}
+            data-creation-field={`skillSpecialties.${skill.id}`}
+            value={specialty}
+            maxLength={SKILL_SPECIALTY_MAX_LENGTH}
+            placeholder={CREATOR_SPECIALTY_HINTS[skill.id] ?? 'w czym?'}
+            onFocus={specialtyField.onFocus}
+            onBlur={specialtyField.onBlur}
+            onChange={(e) => setSpecialty(e.target.value)}
+            aria-invalid={missingSpecialty || undefined}
+          />
+        </label>
+      )}
+      {missingSpecialty && (
+        <p className="creator-skill-problem">
+          Wpisz dziedzinę — podręcznik każe ją wybrać, bez niej postaci nie da się utworzyć.
+        </p>
+      )}
     </li>
   );
 }
@@ -1051,8 +1427,14 @@ function LifepathLanguageRow({
   const entry = table.entries.find((row) => row.text === draft.lifepath.culture);
   const options = entry?.options ?? [];
 
+  const missing = !draft.lifepath.language.trim();
   return (
-    <div className="creator-lifepath-row creator-lifepath-row--sub">
+    <div
+      className={`creator-lifepath-row creator-lifepath-row--sub${
+        missing ? ' creator-lifepath-row--missing' : ''
+      }`}
+      data-creation-field="lifepath.language"
+    >
       <span className="creator-lifepath-label">Język ojczysty</span>
       {options.length > 0 ? (
         <select
@@ -1080,7 +1462,9 @@ function LifepathLanguageRow({
           onCommit={(next) => write((current) => ({ ...current, language: next }))}
         />
       )}
-      <span className="creator-lifepath-note">poziom 4, za darmo</span>
+      <span className="creator-lifepath-note">
+        {missing ? 'wymagany · ' : ''}poziom 4, za darmo
+      </span>
     </div>
   );
 }
@@ -1342,7 +1726,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
 
   return (
     <div className="creator-step creator-gear">
-      <div className="creator-budget">
+      <div className="creator-budget" data-creation-field="purchases">
         <strong>{formatEddies(left)} ed</strong>
         <span className="creator-hint">
           zostaje z {formatEddies(budget)} ed startowych · wydane {formatEddies(spent)} ed
@@ -1503,7 +1887,10 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
   return (
     <div className="creator-step creator-details">
       <label className="creator-name">
-        Ksywa na Ulicy
+        <span>
+          Ksywa na Ulicy
+          {!nameField.text.trim() && <span className="creator-required"> · wymagana</span>}
+        </span>
         {/* Sent on every keystroke, like the sheet saves. Saving on blur alone
             cost „Utwórz postać" a click in 25a: the button is disabled until
             the name reaches the server, so the press that blurred the field
@@ -1512,6 +1899,7 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
             server trims when it writes the character. */}
         <input
           type="text"
+          data-creation-field="name"
           maxLength={64}
           value={nameField.text}
           placeholder="Zgrzyt"
@@ -1595,12 +1983,16 @@ function SummaryStep({
   players,
   ownerId,
   onOwnerChange,
+  issues,
+  onGoTo,
 }: {
   draft: CpredCreationDraft;
   isGm: boolean;
   players: { id: string; name: string }[];
   ownerId: string;
   onOwnerChange: (value: string) => void;
+  issues: CpredValidationIssue[];
+  onGoTo: (field: string) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const entriesById = useCompendiumStore((s) => s.entries);
@@ -1616,6 +2008,7 @@ function SummaryStep({
 
   return (
     <div className="creator-step creator-summary">
+      <SummaryIssues issues={issues} onGoTo={onGoTo} />
       {/* The name lives in „Opis" — one field, one place. Here it is what the
           card will say, next to the face that goes with it. */}
       <p className="creator-summary-name">
@@ -1688,6 +2081,72 @@ function SummaryStep({
       <LifepathSummary draft={draft} />
     </div>
   );
+}
+
+/**
+ * What still stands between the draft and „Utwórz postać", grouped by the step
+ * that fixes it — the same list the server refuses with, each line one click
+ * away from its field. Ten unset stats read as one line, not ten.
+ */
+function SummaryIssues({
+  issues,
+  onGoTo,
+}: {
+  issues: CpredValidationIssue[];
+  onGoTo: (field: string) => void;
+}) {
+  if (issues.length === 0) {
+    return (
+      <p className="creator-notice creator-notice--done" role="status">
+        Wszystkie wymagania kreatora spełnione — możesz utworzyć postać.
+      </p>
+    );
+  }
+  return (
+    <section className="creator-issues" aria-label="Braki do uzupełnienia">
+      <h4>Zanim utworzysz postać</h4>
+      {CPRED_CREATION_STEPS.map((step) => {
+        const lines = issues.filter((issue) => creationIssueStep(issue.field) === step);
+        if (lines.length === 0) return null;
+        return (
+          <div key={step} className="creator-issues-group">
+            <h5>{CPRED_CREATION_STEP_LABELS[step]}</h5>
+            <ul>
+              {lines.map((line) => (
+                <li key={`${line.field}:${line.message}`}>
+                  <span>{line.message}</span>
+                  <button
+                    type="button"
+                    className="small-button"
+                    onClick={() => onGoTo(line.field)}
+                    aria-label={`Przejdź do pola: ${line.message}`}
+                  >
+                    Przejdź
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** Folds „Cecha X nie została ustalona" ×N into one line naming the stats. */
+function summaryLines(issues: CpredValidationIssue[]): CpredValidationIssue[] {
+  const unset = issues.filter(
+    (issue) => issue.field.startsWith('stats.') && issue.message.includes('nie została ustalona'),
+  );
+  if (unset.length < 2) return issues;
+  const names = unset
+    .map((issue) => CPRED_STAT_LABELS[issue.field.slice('stats.'.length) as CpredStatId]?.abbr)
+    .filter(Boolean)
+    .join(', ');
+  return [
+    { field: unset[0]!.field, message: `Nieustalone Cechy (${unset.length}): ${names}.` },
+    ...issues.filter((issue) => !unset.includes(issue)),
+  ];
 }
 
 /** What the Lifepath step collected, in one paragraph. */

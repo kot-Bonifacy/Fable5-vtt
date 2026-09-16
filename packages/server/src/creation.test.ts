@@ -927,7 +927,20 @@ describe('kreator postaci', () => {
           await emitAck(vex, 'creation:set-rank', { draftId: fresh.id, statRankId: 'minor-hero' }),
         ),
       ).toBe('FORBIDDEN');
-      await patch(vex, { method: 'complete', roleId: 'solo', stats: { body: 7 } });
+      await patch(vex, { method: 'complete', roleId: 'solo' });
+      // Naprawa 2a: no new stats before the GM's rank; stats saved earlier stay.
+      expect(refusal(await emitAck(vex, 'creation:patch', { patch: { stats: { body: 7 } } }))).toBe(
+        'CREATION_RANK_PENDING',
+      );
+      const legacy = await built.prisma.characterDraft.findUniqueOrThrow({
+        where: { id: fresh.id },
+      });
+      await built.prisma.characterDraft.update({
+        where: { id: fresh.id },
+        data: {
+          data: JSON.stringify({ ...JSON.parse(legacy.data), stats: { body: 7 } }),
+        },
+      });
       expect(refusal(await emitAck(vex, 'creation:finish', { draftId: fresh.id }))).toBe(
         'CREATION_RANK_PENDING',
       );
@@ -940,6 +953,9 @@ describe('kreator postaci', () => {
       const resumed = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
       expect(resumed.rankApproved).toBe(true);
       expect(resumed.draft.stats.body).toBe(7);
+      expect(
+        (await patch(vex, { stats: { ...resumed.draft.stats, will: 5 } })).draft.stats,
+      ).toEqual({ body: 7, will: 5 });
       await patch(vex, { method: 'edgerunner' });
       const back = await patch(vex, { method: 'complete' });
       expect(back.draft.statRankId).toBe('minor-hero');
@@ -1137,6 +1153,68 @@ describe('kreator postaci', () => {
       expect(repaired.id).toBe(result!.id);
       expect(repaired.tokenStatus).toBe('placed');
       expect(await built.prisma.token.count({ where: { characterId: repaired.id } })).toBe(1);
+    });
+  });
+
+  describe('naprawa 2a — minima i Cechy przed rangą', () => {
+    it('grants the basic minimums once, keeps them through a reopen and leaves an older draft alone', async () => {
+      await emitAck(vex, 'creation:discard');
+      await emitAck(vex, 'creation:start');
+      const complete = await patch(vex, { method: 'complete' });
+      const response = await built.app.inject({
+        method: 'GET',
+        url: '/api/cpred/data',
+        headers: { cookie: gmCookie },
+      });
+      const payload = response.json() as CpredDataPayload;
+      const registry = withCreationData(
+        buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles }),
+        payload.creation,
+      );
+      const rules = registry.creation!;
+      expect(rules.basicSkills.length).toBeGreaterThan(0);
+      for (const id of rules.basicSkills)
+        expect(complete.draft.skills[id]).toBe(rules.limits.skillMin);
+      const spent = creationSkillPointsSpent(complete.draft, rules, registry);
+
+      const reopened = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+      expect(creationSkillPointsSpent(reopened.draft, rules, registry)).toBe(spent);
+      const lowered = await patch(vex, { skills: { [rules.basicSkills[0]!]: 0 } });
+      expect(lowered.draft.skills[rules.basicSkills[0]!]).toBe(rules.limits.skillMin);
+
+      // A draft saved before the repair: its skills are what the player left.
+      const stored = await built.prisma.characterDraft.findUniqueOrThrow({
+        where: { id: reopened.id },
+      });
+      const old = JSON.parse(stored.data) as Record<string, unknown>;
+      delete old.skillMinimaAuto;
+      await built.prisma.characterDraft.update({
+        where: { id: reopened.id },
+        data: { data: JSON.stringify({ ...old, skills: {} }) },
+      });
+      const legacy = await patch(vex, { roleId: 'solo' });
+      expect(legacy.draft.skillMinimaAuto).toBe(false);
+      expect(legacy.draft.skills).toEqual({});
+      const accepted = await patch(vex, { skillMinimaAuto: true });
+      expect(creationSkillPointsSpent(accepted.draft, rules, registry)).toBe(spent);
+    });
+
+    it('holds player stats until the GM sets the rank, but never the GM own draft', async () => {
+      await emitAck(vex, 'creation:discard');
+      const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+      await patch(vex, { method: 'complete', roleId: 'solo' });
+      expect(refusal(await emitAck(vex, 'creation:patch', { patch: { stats: { body: 6 } } }))).toBe(
+        'CREATION_RANK_PENDING',
+      );
+      expect(
+        (await emitAck(gm, 'creation:set-rank', { draftId: fresh.id, statRankId: 'starting' })).ok,
+      ).toBe(true);
+      expect((await patch(vex, { stats: { body: 6 } })).draft.stats.body).toBe(6);
+
+      await emitAck(gm, 'creation:discard');
+      await emitAck(gm, 'creation:start');
+      await patch(gm, { method: 'complete', roleId: 'solo' });
+      expect((await patch(gm, { stats: { body: 4 } })).draft.stats.body).toBe(4);
     });
   });
 });

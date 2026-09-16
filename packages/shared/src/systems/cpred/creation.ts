@@ -226,6 +226,15 @@ export interface CpredCreationDraft {
   portraitUrl: string | null;
   /** Whether finishing also puts a token on the scene. */
   placeToken: boolean;
+  /**
+   * The basic skills' minimums are granted by the wizard and kept there
+   * (naprawa 2a, the GM's decision): every draft that holds `true` has each
+   * basic skill its method can buy raised to `limits.skillMin`, with the cost
+   * on the bill like any other level. Drafts saved before that repair read
+   * back `false` and are left alone until the player accepts the balance —
+   * nobody's pool changes on its own when a window opens.
+   */
+  skillMinimaAuto: boolean;
 }
 
 export const CREATION_NAME_MAX_LENGTH = 64;
@@ -251,6 +260,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     // Session zero ends with a figure on the map, so the box starts ticked; a
     // GM building five gangers in an evening unticks it once.
     placeToken: true,
+    skillMinimaAuto: true,
   };
 }
 
@@ -474,6 +484,161 @@ export function creationSkillPointsSpent(
     (sum, [skillId, level]) => sum + creationSkillCost(skillId, level, data, registry),
     creationFreeLanguageCharge(data, registry),
   );
+}
+
+/** A basic skill still short of its minimum, and what raising it costs. */
+export interface CpredCreationMinimum {
+  skillId: string;
+  level: number;
+  min: number;
+  cost: number;
+}
+
+/**
+ * Basic skills the draft's method can buy that sit below the minimum. The free
+ * language is not among them: its row is granted at 4 and its slang minimum is
+ * already on the bill through `creationFreeLanguageCharge`.
+ */
+export function creationMissingSkillMinima(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  registry: CpredRegistry,
+): CpredCreationMinimum[] {
+  const allowed = new Set(creationAvailableSkills(draft, data, registry));
+  const missing: CpredCreationMinimum[] = [];
+  for (const skillId of data.basicSkills) {
+    if (skillId === data.freeLanguage?.skillId || !allowed.has(skillId)) continue;
+    const level = draft.skills[skillId] ?? 0;
+    const min = data.limits.skillMin;
+    if (level >= min) continue;
+    const cost =
+      creationSkillCost(skillId, min, data, registry) -
+      creationSkillCost(skillId, level, data, registry);
+    missing.push({ skillId, level, min, cost });
+  }
+  return missing;
+}
+
+/** Raises every missing minimum; never lowers a level somebody chose. */
+export function creationWithSkillMinima(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  registry: CpredRegistry,
+): CpredCreationDraft {
+  const missing = creationMissingSkillMinima(draft, data, registry);
+  if (missing.length === 0) return draft;
+  const skills = { ...draft.skills };
+  for (const row of missing) skills[row.skillId] = row.min;
+  return { ...draft, skills };
+}
+
+/** Everything one skill row of the wizard shows, computed in one place. */
+export interface CpredCreationSkillRow {
+  skillId: string;
+  /** Level on the draft; the free language shows its grant. */
+  level: number;
+  /** Lowest legal level once the skill is taken. */
+  min: number;
+  max: number;
+  /** The free Culture of Origin language — no buttons, its own card. */
+  free: boolean;
+  /** A book requirement: every character carries it at `min` or better. */
+  basic: boolean;
+  /**
+   * On the chosen Role's list. For Krawędziarz that *is* the list; for
+   * Kompletny Pakiet it is only a hint of what the Role usually knows.
+   */
+  roleListed: boolean;
+  multiplier: number;
+  /** Points this row puts on the bill. */
+  cost: number;
+  /** Points still owed before the row is legal. */
+  missingPoints: number;
+  /** The linked stat, `null` until it is set or rolled. */
+  statValue: number | null;
+  /** Stat + level, the base every Check of this skill adds 1d10 to. */
+  checkBase: number | null;
+  /** Level after „+" / „−", or `null` when the button has nothing to do. */
+  up: number | null;
+  down: number | null;
+}
+
+export function creationSkillRow(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  registry: CpredRegistry,
+  skillId: string,
+): CpredCreationSkillRow {
+  const skill = registry.skills.find((entry) => entry.id === skillId);
+  const limits = creationSkillLimits(draft, data, skillId);
+  const basic = data.basicSkills.includes(skillId);
+  const multiplier = skill?.multiplier ?? 1;
+  const level = limits.free ? limits.min : (draft.skills[skillId] ?? 0);
+  const role = creationRole(data, draft.roleId);
+  const statValue = skill ? (draft.stats[skill.stat] ?? null) : null;
+
+  let missingPoints = 0;
+  if (!limits.free && (basic || level > 0) && level < limits.min) {
+    missingPoints = (limits.min - level) * multiplier;
+  }
+
+  // Level 1 of a skill whose minimum is 2 is never a legal stop, so the
+  // buttons step over it: „+" from nothing buys the minimum at once and „−"
+  // from the minimum gives the skill up. A basic skill cannot be given up.
+  let up: number | null = null;
+  let down: number | null = null;
+  if (!limits.free) {
+    if (level < limits.max) up = level < limits.min ? limits.min : level + 1;
+    if (level > 0) {
+      if (basic) down = level > limits.min ? level - 1 : null;
+      else down = level - 1 < limits.min ? 0 : level - 1;
+    }
+  }
+
+  return {
+    skillId,
+    level,
+    min: limits.min,
+    max: limits.max,
+    free: limits.free,
+    basic,
+    roleListed: role?.skills.includes(skillId) ?? false,
+    multiplier,
+    cost: limits.free
+      ? creationFreeLanguageCharge(data, registry)
+      : creationSkillCost(skillId, level, data, registry),
+    missingPoints,
+    statValue,
+    checkBase: statValue === null ? null : statValue + level,
+    up,
+    down,
+  };
+}
+
+/**
+ * The wizard step where an issue from `creationIssues` is fixed — the summary
+ * sends the player there, and the step tabs count what is still open.
+ */
+export function creationIssueStep(field: string): CpredCreationStep {
+  const head = field.split('.')[0];
+  switch (head) {
+    case 'roleId':
+      return 'role';
+    case 'statRankId':
+    case 'stats':
+      return 'stats';
+    case 'skills':
+    case 'skillSpecialties':
+      return 'skills';
+    case 'lifepath':
+      return 'lifepath';
+    case 'purchases':
+      return 'gear';
+    case 'name':
+      return 'details';
+    default:
+      return 'summary';
+  }
 }
 
 /**
@@ -847,6 +1012,12 @@ export function mergeCreationDraft(
     if (typeof patch.placeToken !== 'boolean') return null;
     next.placeToken = patch.placeToken;
   }
+  if ('skillMinimaAuto' in patch) {
+    // An older draft accepts the balance once; switching it back off would
+    // only let a basic skill slip below the floor the finish refuses anyway.
+    if (patch.skillMinimaAuto !== true) return null;
+    next.skillMinimaAuto = true;
+  }
 
   // A Role or method change may have orphaned skills; drop them rather than
   // leave the wizard showing a bill for rows it no longer displays.
@@ -854,7 +1025,9 @@ export function mergeCreationDraft(
   next.skills = Object.fromEntries(
     Object.entries(next.skills).filter(([skillId]) => allowed.has(skillId)),
   );
-  return next;
+  // After the filter: a Krawędziarz gets his minimums the moment a Role gives
+  // him a list, and no patch can take a basic skill under the floor.
+  return next.skillMinimaAuto ? creationWithSkillMinima(next, data, registry) : next;
 }
 
 /**
@@ -920,6 +1093,8 @@ export function parseCreationDraft(
     purchases: readPurchases(input.purchases),
     portraitUrl: sanitizeTokenImageUrl(input.portraitUrl ?? null) ?? null,
     placeToken: input.placeToken !== false,
+    // Absent means a draft from before naprawa 2a: its levels stay as saved.
+    skillMinimaAuto: input.skillMinimaAuto === true,
   };
   const allowed = new Set(creationAvailableSkills(draft, data, registry));
   draft.skills = Object.fromEntries(

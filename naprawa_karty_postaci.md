@@ -1,6 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony, etapy 2 i 3 do realizacji**.
+Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 podzielony na 2a (✅), 2b i 2c; etap 3
+do realizacji**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
@@ -165,6 +166,54 @@ w ramach rozdzielenia wspólnej walidacji.
 
 **Zależność:** etap 1. **Cel:** wymagania są widoczne tam, gdzie się je spełnia.
 
+**Podział z 16.09 (trzecia sesja, za zgodą MG):** zakres poniżej nie mieści się w jednym oknie
+kontekstu razem z obowiązkowym odbiorem w pięciu konfiguracjach ekranu, więc idzie w trzech
+częściach, po jednej sesji każda:
+
+- **2a — minima i prowadzenie w umiejętnościach.** Automatyczne minima podstawowych w obu
+  metodach (stary szkic: bilans i przycisk, bez cichej zmiany); u Krawędziarza „+” z 0 skacze
+  na 2, a „−” z 2 schodzi na 0. Wiersz umiejętności: „Podstawowa · min. 2”, brakujące punkty,
+  koszt ×2, pełna nazwa Cechy i suma Cecha + poziom, znacznik listy Roli jako podpowiedzi.
+  Przyklejony licznik, wyszukiwanie, filtr braków, osobny wiersz darmowego języka. Walidacja
+  przy polach, stan kroków na zakładkach (tylko kroki już odwiedzone), podsumowanie pogrupowane
+  po krokach z „Przejdź do pola”. Gracz nie wpisuje Cech Kompletnego Pakietu przed zatwierdzeniem
+  rangi (serwer też odmawia; stare szkice zachowują Cechy). Skala pisma kreatora podniesiona
+  do celu (treść 16 px, pomocnicze 14 px) — bez pełnego odbioru ekranów.
+- **2b — skutki zmian i panel MG.** Potwierdzenie w oknie kreatora z konkretną listą strat przy
+  zmianie Roli albo metody (bez cofania). Krótkie objaśnienia Ról, Cech i umiejętności,
+  obsługa klawiatury. Panel rang w zakładce „Postaci” z licznikiem na zakładce, na żywo, tylko
+  Kompletny Pakiet, bez zakładania szkicu MG. Łączenie zapisów pola tekstowego.
+- **2c — typografia, kontrast i odbiór.** Układ wszystkich kroków przy nowej skali, kontrast obu
+  motywów, powiększenie; pełny odbiór w przeglądarce według akapitu „Odbiór” niżej.
+
+### Część 2a — status: ✅ ukończona 16.09.2026 (trzecia sesja)
+
+- [x] `skillMinimaAuto` w szkicu; minima podstawowych w obu metodach, raz na rachunku, także po F5.
+- [x] Stary szkic: bilans „X → 2”, koszt i pula po przydziale, przycisk „Przydziel minima”; nic nie spada.
+- [x] `creationSkillRow`: „Podstawowa · min. 2”, ×2, „lista Roli” jako podpowiedź, brakujące punkty,
+      Cecha + poziom; przyciski przeskakują poziom 1 (Krawędziarz), podstawowa nie schodzi pod 2.
+- [x] Przyklejony licznik, wyszukiwarka bez polskich znaków, filtry Wszystkie/Braki/Wybrane/Lista Roli,
+      osobna karta darmowego języka z przejściem do Ścieżki Życia.
+- [x] Zakładki: ✓ albo liczba braków na krokach już odwiedzonych; stopka „N braków — pokaż”.
+- [x] Podsumowanie pogrupowane po krokach, nieustalone Cechy w jednym wierszu, „Przejdź” skupia pole.
+- [x] Cechy Kompletnego Pakietu zablokowane graczowi do zatwierdzenia rangi (serwer `CREATION_RANK_PENDING`),
+      odblokowanie na żywo po decyzji MG.
+- [x] Skala pisma kreatora: treść 1rem, pomocnicze ≥ 0.875rem; okno do 1180 px; ciemne pola liczbowe Cech.
+- [x] Testy: 11 nowych w shared, 2 nowe i 1 przerobiony na serwerze, 2 nowe u klienta; pełny przebieg zielony.
+- [x] Chrome na `.creation-ui.db` (okno 1456–2078 px CSS, DPR 1,25): stary szkic i bilans, nowy gracz
+      z 60 z 86 po podstawowych (jak s. 90), F5, blokada i odblokowanie Cech, Krawędziarz 0 → 2 → 0,
+      Nauka bez dziedziny → filtr „Braki” → „Przejdź”, motyw dzienny kroku Umiejętności.
+
+**Ustalenia z realizacji 2a:**
+
+- Stan kroków jest pamięcią okna (`visited` w magazynie), nie polem szkicu: po F5 ocenia kroki do
+  bieżącego. Skok prosto do podsumowania oznacza wszystkie wcześniejsze kroki jako przejrzane —
+  „Wyposażenie ✓” pojawi się także bez wejścia do sklepu (pusty koszyk nie jest brakiem).
+- Pole „Dziedzina” pokazuje się dopiero przy poziomie > 0 (albo gdy już ma treść); przy Wiedzy lokalnej
+  (podstawowej) jest opisane jako opcjonalne, zgodnie z decyzją z etapu 1.
+- Nie sprawdzono jeszcze: 4K/150%, 3440×1440, 2560×1440, powiększeń 125/150% i obsługi klawiaturą
+  poza „Przejdź” — to zakres 2c. Układ tabeli Cech (wartości daleko po prawej) też zostaje na 2c.
+
 Zakres ogólny:
 
 - Ustalić typografię: proponowana baza treści i pól 16 px, pomocnicze teksty
@@ -259,6 +308,15 @@ Otwarte kwestie wskazano poniżej.
 8. **Slang uliczny — ustalone 16.09:** w obecnym jednym wierszu „Język” kreator pobiera
    2 pkt za minimum slangu; osobny wpis slangu dopiero w projekcie wielu języków.
 9. **Panel rang MG — ustalone 16.09:** wygoda obsługi po stronie MG wchodzi do etapu 2.
+10. **Minima w obu metodach — ustalone 16.09 (trzecia sesja):** Krawędziarz też dostaje
+    automatyczne minima podstawowych po wyborze Roli; poziom 1 wybranej umiejętności jest
+    pomijany przyciskami („+” z 0 na 2, „−” z 2 na 0).
+11. **Utrata danych przy zmianie Roli/metody — ustalone 16.09:** potwierdzenie z listą strat
+    w oknie kreatora, bez cofania.
+12. **Panel rang — ustalone 16.09:** zakładka „Postaci”, licznik na zakładce jak przy prośbach
+    o Test, lista na żywo, tylko Kompletny Pakiet.
+13. **Cechy przed rangą — ustalone 16.09:** gracz nie wpisuje Cech Kompletnego Pakietu, dopóki
+    MG nie zatwierdzi rangi; serwer odmawia, a wcześniej wpisane Cechy zostają.
 
 ## Mapa kodu dla późniejszej realizacji
 

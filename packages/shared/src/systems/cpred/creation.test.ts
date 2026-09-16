@@ -10,6 +10,9 @@ import {
   creationPreview,
   creationPurchases,
   creationFreeLanguageCharge,
+  creationIssueStep,
+  creationMissingSkillMinima,
+  creationSkillRow,
   creationSkillCost,
   creationSkillPointsSpent,
   creationSpentEddies,
@@ -690,5 +693,151 @@ describe('naprawa 1 — slang uliczny we wspólnym wierszu języka', () => {
   it('charges nothing when the free language is not a basic skill', () => {
     const reg = registry();
     expect(creationFreeLanguageCharge(data(reg), reg)).toBe(0);
+  });
+});
+
+describe('naprawa 2a — automatyczne minima podstawowych', () => {
+  // Atletyka jest podstawowa w obu Rolach próbki; Język to darmowy wiersz.
+  const withSlang = { ...RAW_CREATION, basicSkills: ['athletics', 'language'] };
+
+  it('grants a new Kompletny Pakiet its basic minimums and bills them', () => {
+    const reg = registry(withSlang);
+    const next = mergeCreationDraft(draft(), { method: 'complete' }, data(reg), reg)!;
+    expect(next.skills).toEqual({ athletics: 2 });
+    // Język stays off the list: its slang minimum is already the shared row's charge.
+    expect(creationSkillPointsSpent(next, data(reg), reg)).toBe(2 + 2);
+  });
+
+  it('grants a Krawędziarz nothing until a Role gives him a list, then the minimums', () => {
+    const reg = registry();
+    const noRole = mergeCreationDraft(draft(), { step: 'skills' }, data(reg), reg)!;
+    expect(noRole.skills).toEqual({});
+    const solo = mergeCreationDraft(noRole, { roleId: 'solo' }, data(reg), reg)!;
+    expect(solo.skills).toEqual({ athletics: 2 });
+  });
+
+  it('does not bill the minimums a second time when the draft is read back', () => {
+    const reg = registry();
+    const next = mergeCreationDraft(draft(), { method: 'complete' }, data(reg), reg)!;
+    const stored = JSON.parse(JSON.stringify(next)) as unknown;
+    const reopened = parseCreationDraft(stored, data(reg), reg);
+    expect(reopened.skillMinimaAuto).toBe(true);
+    expect(reopened.skills).toEqual({ athletics: 2 });
+    const again = mergeCreationDraft(reopened, { step: 'summary' }, data(reg), reg)!;
+    expect(creationSkillPointsSpent(again, data(reg), reg)).toBe(
+      creationSkillPointsSpent(next, data(reg), reg),
+    );
+  });
+
+  it('keeps a basic skill at its floor against a patch that lowers it, and never lowers a choice', () => {
+    const reg = registry();
+    const base = mergeCreationDraft(draft({ method: 'complete' }), {}, data(reg), reg)!;
+    const lowered = mergeCreationDraft(base, { skills: { handgun: 3 } }, data(reg), reg)!;
+    expect(lowered.skills).toEqual({ handgun: 3, athletics: 2 });
+    const raised = mergeCreationDraft(lowered, { skills: { athletics: 5 } }, data(reg), reg)!;
+    expect(raised.skills.athletics).toBe(5);
+  });
+
+  it('leaves an older draft untouched and lists what the balance would cost', () => {
+    const reg = registry();
+    const stored = { ...draft({ method: 'complete', skills: { athletics: 1, handgun: 4 } }) };
+    delete (stored as Partial<CpredCreationDraft>).skillMinimaAuto;
+    const old = parseCreationDraft(stored, data(reg), reg);
+    expect(old.skillMinimaAuto).toBe(false);
+    const moved = mergeCreationDraft(old, { roleId: 'solo' }, data(reg), reg)!;
+    expect(moved.skills).toEqual({ athletics: 1, handgun: 4 });
+    expect(creationMissingSkillMinima(moved, data(reg), reg)).toEqual([
+      { skillId: 'athletics', level: 1, min: 2, cost: 1 },
+    ]);
+    const accepted = mergeCreationDraft(moved, { skillMinimaAuto: true }, data(reg), reg)!;
+    expect(accepted.skills).toEqual({ athletics: 2, handgun: 4 });
+    expect(mergeCreationDraft(accepted, { skillMinimaAuto: false }, data(reg), reg)).toBeNull();
+  });
+});
+
+describe('naprawa 2a — wiersz umiejętności', () => {
+  it('steps a Krawędziarz over level one in both directions', () => {
+    const reg = registry();
+    const solo = finished({ skills: { athletics: 2, handgun: 2, autofire: 3 } });
+    const handgun = creationSkillRow(
+      finished({ skills: { athletics: 2 } }),
+      data(reg),
+      reg,
+      'handgun',
+    );
+    expect([handgun.level, handgun.up, handgun.down]).toEqual([0, 2, null]);
+    const taken = creationSkillRow(solo, data(reg), reg, 'handgun');
+    expect([taken.up, taken.down]).toEqual([3, 0]);
+    const above = creationSkillRow(solo, data(reg), reg, 'autofire');
+    expect(above.down).toBe(2);
+  });
+
+  it('lets Kompletny Pakiet take an optional skill at one, and a basic one never below two', () => {
+    const reg = registry();
+    const complete = finished({ method: 'complete', skills: { athletics: 2, cryptography: 1 } });
+    const crypto = creationSkillRow(complete, data(reg), reg, 'cryptography');
+    expect([crypto.min, crypto.up, crypto.down, crypto.missingPoints]).toEqual([1, 2, 0, 0]);
+    const athletics = creationSkillRow(complete, data(reg), reg, 'athletics');
+    expect([athletics.basic, athletics.min, athletics.down, athletics.up]).toEqual([
+      true,
+      2,
+      null,
+      3,
+    ]);
+    const empty = creationSkillRow(
+      finished({ method: 'complete', skills: {} }),
+      data(reg),
+      reg,
+      'cryptography',
+    );
+    expect(empty.up).toBe(1);
+  });
+
+  it('owes points for a basic skill below its minimum and for a chosen skill at one', () => {
+    const reg = registry();
+    const legacy = finished({ skills: { athletics: 0, autofire: 1 } });
+    expect(creationSkillRow(legacy, data(reg), reg, 'athletics').missingPoints).toBe(2);
+    // ×2 skill: one level short is two points short.
+    expect(creationSkillRow(legacy, data(reg), reg, 'autofire').missingPoints).toBe(2);
+    expect(creationSkillRow(legacy, data(reg), reg, 'handgun').missingPoints).toBe(0);
+  });
+
+  it('adds the linked stat to the level, and says nothing before the stat exists', () => {
+    const reg = registry();
+    const row = creationSkillRow(finished(), data(reg), reg, 'handgun');
+    expect([row.statValue, row.checkBase, row.cost]).toEqual([6, 10, 4]);
+    const blank = creationSkillRow(finished({ stats: {} }), data(reg), reg, 'handgun');
+    expect([blank.statValue, blank.checkBase]).toEqual([null, null]);
+  });
+
+  it('marks the Role list as a hint and gives the free language no buttons', () => {
+    const reg = registry({ ...RAW_CREATION, basicSkills: ['athletics', 'language'] });
+    const complete = finished({ method: 'complete', roleId: 'netrunner' });
+    expect(creationSkillRow(complete, data(reg), reg, 'cryptography').roleListed).toBe(true);
+    expect(creationSkillRow(complete, data(reg), reg, 'handgun').roleListed).toBe(false);
+    const language = creationSkillRow(complete, data(reg), reg, 'language');
+    expect([language.free, language.level, language.cost, language.up, language.down]).toEqual([
+      true,
+      4,
+      2,
+      null,
+      null,
+    ]);
+  });
+});
+
+describe('naprawa 2a — gdzie naprawić brak', () => {
+  it('sends every issue the validation can raise to the step that fixes it', () => {
+    const reg = registry();
+    const everything = creationIssues(
+      draft({ method: 'complete', skills: { science: 2, handgun: 9 }, purchases: { gone: 1 } }),
+      data(reg),
+      reg,
+      () => undefined,
+    );
+    const steps = new Set(everything.map((x) => creationIssueStep(x.field)));
+    expect(steps).toEqual(new Set(['role', 'stats', 'skills', 'lifepath', 'gear', 'details']));
+    expect(creationIssueStep('statRankId')).toBe('stats');
+    expect(creationIssueStep('skillSpecialties.science')).toBe('skills');
   });
 });

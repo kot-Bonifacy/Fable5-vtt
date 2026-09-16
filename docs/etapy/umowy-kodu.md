@@ -1760,6 +1760,10 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Minima podstawowych w szkicu (naprawa 2a)** — pole `skillMinimaAuto` (w `mergeCreationDraft` **i** `parseCreationDraft`); `mergeCreationDraft` kończy się `creationWithSkillMinima` **po** filtrze listy Roli. Szkic bez pola jest stary i zmienia go tylko łata `{ skillMinimaAuto: true }` po bilansie `creationMissingSkillMinima`.
+- **Wiersz umiejętności kreatora liczy `creationSkillRow`** — poziom, minimum, wymóg czy lista Roli, koszt, brakujące punkty, Cecha + poziom i następny poziom „+”/„−” (przeskok przez 1). Komponent niczego z tego nie liczy sam, a przycisk czyta wiersz z najnowszego szkicu w kolejce.
+- **Brak z `creationIssues` ma krok i pole** — krok daje `creationIssueStep(field)`, pole atrybut `data-creation-field`; nowe pole walidacji dokłada gałąź i atrybut. Zakładki, stopka i podsumowanie liczą tę samą zwiniętą listę (`summaryLines`).
+- **Cechy Kompletnego Pakietu czekają na rangę** — `creation:patch` z `stats` odmawia graczowi `CREATION_RANK_PENDING`, dopóki MG nie zatwierdzi rangi; MG nie dotyczy, zapisane wcześniej Cechy zostają.
 - **Pole kreatora zapisywane co klawisz** trzyma tekst przez `useDraftFieldText` (`CharacterCreator.tsx`), nigdy `value` prosto ze szkicu serwera — inaczej React cofa znak do czasu odpowiedzi i przy opóźnieniu giną litery.
 - **Punkty umiejętności kreatora liczy `creationSkillPointsSpent`** — razem z opłatą za minimum slangu we wspólnym wierszu języka (`creationFreeLanguageCharge`); licznik, walidacja i testy nie dodają jej osobno.
 - **Szkic kreatora od 15.09:** aktualizację zależną od innych pól buduj funkcją w kolejce `creationStore.patch`; `draftId` + `revision` chronią inne okna, `requestId` rozpoznaje ponowienie. Ranga pochodzi z kolumny zatwierdzanej przez MG (jej zmiana **nie** podbija `revision`), a zakończenie i naprawa żetonu używają tego samego `draftId`.
@@ -1789,6 +1793,26 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Kreator po części 2a naprawy (16.09).** Minima podstawowych umiejętności są zwykłymi poziomami
+w `skills`, a nie wyliczeniem w locie: dzięki temu koszt jest na rachunku raz i ponowne otwarcie
+szkicu niczego nie dolicza. Pilnuje ich flaga `skillMinimaAuto` — nowy szkic ma `true`,
+a `mergeCreationDraft` po każdej łacie podnosi do minimum każdą podstawową, którą metoda pozwala
+kupić (Krawędziarz dostaje je dopiero z listą Roli). Szkic sprzed 2a czyta się z `false`
+i zostaje nietknięty, dopóki gracz nie przyjmie bilansu (`creationMissingSkillMinima` → łata
+`{ skillMinimaAuto: true }`); wyłączyć flagi się nie da. Darmowy język nie wchodzi na listę:
+jego minimum slangu jest już opłatą `creationFreeLanguageCharge`.
+
+Wszystko, co pokazuje wiersz umiejętności, pochodzi z `creationSkillRow` — także następny poziom
+dla „+” i „−”. Poziom 1 umiejętności z minimum 2 nie jest legalnym przystankiem, więc przyciski go
+przeskakują, a podstawowej nie da się zejść poniżej minimum. Przycisk buduje łatę funkcją w kolejce,
+która liczy wiersz od nowa na najnowszym szkicu (dwa szybkie kliknięcia = dwa kroki).
+
+Każdy brak z `creationIssues` ma krok (`creationIssueStep`) i element z `data-creation-field`
+o tej samej nazwie. „Przejdź” w podsumowaniu woła `goToField`, a okno po wyrenderowaniu kroku
+skupia pole przez `focusCreationField`, skracając nazwę po kropkach, gdy dokładnego elementu nie ma
+(`stats.body` u Krawędziarza → `stats`). Zakładki kroków oceniają tylko kroki odwiedzone
+(`visited` w magazynie, bez zapisu w szkicu).
 
 **Kreator po domknięciu etapu 1 naprawy (16.09).** Pola Cech, dziedziny umiejętności i imienia
 wysyłają łatę co zmianę, ale wyświetlają własny tekst z `useDraftFieldText`: podczas edycji

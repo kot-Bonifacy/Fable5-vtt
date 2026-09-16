@@ -175,3 +175,31 @@ describe('creator draft queue', () => {
     expect(useCreationStore.getState().busy).toBe(false);
   });
 });
+
+describe('naprawa 2a — kroki i przejście do pola', () => {
+  it('remembers the furthest step per draft and forgets it for another draft', () => {
+    const store = useCreationStore.getState();
+    store.markVisited('skills');
+    store.markVisited('role');
+    expect(useCreationStore.getState().visited).toEqual({ draftId: 'draft', index: 2 });
+    useCreationStore.setState({ draftId: 'other' });
+    useCreationStore.getState().markVisited('stats');
+    expect(useCreationStore.getState().visited).toEqual({ draftId: 'other', index: 1 });
+  });
+
+  it('opens the step that fixes a field and keeps the field for the window to focus', async () => {
+    useCreationStore.getState().goToField('skills.persuasion');
+    expect(useCreationStore.getState().focusField).toBe('skills.persuasion');
+    await vi.waitFor(() => expect(saved.draft.step).toBe('skills'));
+    expect(socket.patchCreation).toHaveBeenLastCalledWith(
+      { step: 'skills' },
+      expect.objectContaining({ draftId: 'draft' }),
+    );
+    // Already there: no second write, only the focus request.
+    socket.patchCreation.mockClear();
+    useCreationStore.getState().goToField('skillSpecialties.science');
+    expect(socket.patchCreation).not.toHaveBeenCalled();
+    useCreationStore.getState().clearFocusField();
+    expect(useCreationStore.getState().focusField).toBeNull();
+  });
+});

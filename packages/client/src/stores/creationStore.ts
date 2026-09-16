@@ -5,6 +5,7 @@ import type {
   CreationPatchPayload,
   RollGesture,
 } from '@vtt/shared';
+import { CPRED_CREATION_STEPS, creationIssueStep } from '@vtt/shared';
 import {
   buyCreationItem,
   creationErrorText,
@@ -40,6 +41,14 @@ interface CreationStoreState {
   error: string | null;
   /** A call is in flight — the window shows it and the dice button waits. */
   busy: boolean;
+  /**
+   * The furthest step this window has shown for the current draft (naprawa
+   * 2a). Tabs count what is missing only on steps the player has already been
+   * to, so a fresh draft does not open under a pile of red badges.
+   */
+  visited: { draftId: string | null; index: number };
+  /** A field the summary asked to jump to, waiting for its step to render. */
+  focusField: string | null;
 
   openCreator: () => Promise<void>;
   closeCreator: () => void;
@@ -47,6 +56,10 @@ interface CreationStoreState {
   setError: (error: string | null) => void;
   setBusy: (busy: boolean) => void;
   discard: () => Promise<void>;
+  markVisited: (step: CpredCreationDraft['step']) => void;
+  /** Opens the step that fixes an issue and points the window at its field. */
+  goToField: (field: string) => void;
+  clearFocusField: () => void;
   /** Sends a patch and stores whatever the server made of it. */
   patch: (
     patch: Record<string, unknown> | ((draft: CpredCreationDraft) => Record<string, unknown>),
@@ -152,6 +165,23 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
   draft: null,
   error: null,
   busy: false,
+  visited: { draftId: null, index: 0 },
+  focusField: null,
+
+  markVisited: (step) => {
+    const index = CPRED_CREATION_STEPS.indexOf(step);
+    const { draftId, visited } = get();
+    if (visited.draftId !== draftId) set({ visited: { draftId, index } });
+    else if (index > visited.index) set({ visited: { draftId, index } });
+  },
+
+  goToField: (field) => {
+    set({ focusField: field });
+    const step = creationIssueStep(field);
+    if (get().draft?.step !== step) void get().patch({ step });
+  },
+
+  clearFocusField: () => set({ focusField: null }),
 
   openCreator: async () => {
     set({ open: true, busy: true, error: null });

@@ -220,10 +220,21 @@ export const creationPatchEvent = defineCreationEvent<
       return toDraftView(existing, deps);
     if (payload.revision !== undefined && payload.revision !== existing.revision)
       throw new RealtimeError('DRAFT_CHANGED');
-    const current = toDraftView(existing, deps).draft;
+    const view = toDraftView(existing, deps);
+    const current = view.draft;
     if ('statRankId' in patch && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     const next = mergeCreationDraft(current, patch, data, deps.ctx.cpred);
     if (next === null) throw new RealtimeError('INVALID_DATA');
+    // The pool is the GM's call (naprawa 2a): a player who bought stats out of
+    // the default 62 would have to redo them when the GM picks 50. Stats a
+    // draft already holds stay put; only new writes wait for the rank.
+    if (
+      'stats' in patch &&
+      next.method === 'complete' &&
+      user.role !== ROLE_GM &&
+      !view.rankApproved
+    )
+      throw new RealtimeError('CREATION_RANK_PENDING');
     // Rezerwacja i sprawdzenie w jednej transakcji: równoczesny wybór nie
     // może przydzielić tej samej twarzy dwóm szkicom.
     const saved = await deps.ctx.prisma.$transaction(async (tx) => {

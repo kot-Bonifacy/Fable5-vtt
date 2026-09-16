@@ -117,12 +117,16 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅ 16.09, następny etap 2** —
-czytelny kreator, który prowadzi przez decyzje (typografia, automatyczne minima, walidacja przy
-polach, panel rang po stronie MG). Odbiór w przeglądarce jest obowiązkowy: **4K, skala Windows
-150%, zoom 100%**, czyli okno ok. 2560 px CSS. Od 16.09 minimum slangu ulicznego kosztuje 2 pkt
-we wspólnym wierszu „Język” (decyzja MG) — szkic z rozdzieloną pulą pokaże „pozostało −2”;
-w `dev.db` dotyczy to szkicu Tony'ego. Etap 3 czeka na etap 2.
+**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 podzielony 16.09 na
+2a ✅ / 2b / 2c — następna jest 2b** (potwierdzenie z listą strat przy zmianie Roli/metody,
+objaśnienia Ról i Cech, klawiatura, panel rang MG w zakładce „Postaci” z licznikiem, łączenie
+zapisów pola tekstowego). Potem 2c: układ przy nowej skali pisma i obowiązkowy odbiór **4K, skala
+Windows 150%, zoom 100%** (okno ok. 2560 px CSS) plus 3440×1440, 2560×1440 i zoom 125/150%.
+Etap 3 czeka na 2c. **Od 2a** szkic trzyma minima podstawowych jako zwykłe poziomy
+(`skillMinimaAuto`), a gracz nie wpisze Cech Kompletnego Pakietu przed rangą od MG. Szkice sprzed
+2a (w `dev.db` m.in. Tony'ego) dostają w kroku Umiejętności bilans i przycisk „Przydziel minima”
+— nic nie zmienia się samo. Minimum slangu ulicznego nadal kosztuje 2 pkt we wspólnym wierszu
+„Język” (decyzja z 16.09).
 
 **Etap 42 (bariery) ukończony: 42a ✅, 42b ✅, 42c ✅.**
 Bariera to rodzaj ściany, przez który widać mapę, a nie da się przejść ani sięgnąć wręcz;
@@ -249,8 +253,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2118** w `shared`, **1180** na serwerze, **219** u klienta —
-zielone (liczby z 16.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2129** w `shared`, **1182** na serwerze, **221** u klienta —
+zielone (liczby z 16.09, trzecia sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -277,25 +281,54 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   46 |      20 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    5 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    9 |      16 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      11 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       5 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   27 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   31 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      76 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      78 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      20 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 16.09 (trzecia) — naprawa kreatora, podział etapu 2 i część 2a
+
+**Zlecenie MG:** wykonać etap 2 `naprawa_karty_postaci.md`, a jeśli jest za duży na jedno okno
+kontekstu — podzielić go na 2–3 mniejsze; dopytywać i zgłaszać możliwe błędy. **Stan: etap 2
+podzielony na 2a/2b/2c, 2a ✅.** Zakres części i checklista 2a są w pliku naprawy.
+
+**Decyzje MG (16.09):** minima podstawowych automatycznie w **obu** metodach, z przeskokiem
+poziomu 1 u Krawędziarza; przy zmianie Roli/metody potwierdzenie z listą strat, bez cofania (2b);
+panel rang w zakładce „Postaci” z licznikiem na zakładce (2b); gracz nie wpisuje Cech Kompletnego
+Pakietu przed zatwierdzeniem rangi.
+
+**Zgłoszone MG możliwe błędy spoza audytu:** przełączenie na Krawędziarza przed wyborem Roli
+kasuje wszystkie umiejętności bez ostrzeżenia (lista dostępnych jest wtedy pusta) — do komunikatu
+strat w 2b; „+” z 0 dawał u Krawędziarza niedozwolony poziom 1 — naprawione w 2a; gracz rozdzielał
+Cechy z domyślnej puli przed decyzją MG — naprawione w 2a.
+
+**Wdrożone (2a):** `skillMinimaAuto`, `creationMissingSkillMinima`, `creationWithSkillMinima`,
+`creationSkillRow`, `creationIssueStep` w `shared`; odmowa `CREATION_RANK_PENDING` dla Cech w
+`creation:patch`; nowy krok Umiejętności (licznik przyklejony, wyszukiwarka, filtry, karta języka,
+bilans starego szkicu), stan kroków na zakładkach, podsumowanie z „Przejdź”, skala pisma kreatora.
+Umowy — `postac` (4 nowe), pułapki — `ui` (1) i `ogledziny` (2).
+
+**Weryfikacja:** `pnpm -r test` — 2129 shared, 1182 serwera, 221 klienta; `tsc --noEmit` trzech
+pakietów, `pnpm lint`, Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
+(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi): scenariusze wypisane w checkliście
+2a. Nowy gracz testowy „Test 2a” dołączył do kampanii tej bazy; szkic „Test kreatora” ma już
+przydzielone minima, Broń długą 2 i Naukę 1. **Nie było** oględzin 4K ani klawiatury (2c).
+Serwer testowy i Vite zatrzymane (drzewa procesów), porty wolne; `dev.db` nietknięta.
 
 ### Sesja 16.09 (druga) — naprawa kreatora, domknięcie etapu 1
 
@@ -324,44 +357,3 @@ w całości (po F5 też), licznik i wiersz „Język” pokazują 2 pkt. Zwykły
 **Pułapki:** zatrzymane `pnpm dev` w tle zostawia `tsx`/`vite` na portach (to był `EADDRINUSE`
 z 15–16.09) — `testy`; opóźnienie VPS łatką na `WebSocket.prototype.send` — `ogledziny`.
 Dev zostawiony wyłączony, porty wolne.
-
-### Sesja 15–16.09 — naprawa kreatora, etap 1 (przerwana na prośbę MG)
-
-**Stan: wdrożenie i testy zrobione, etap formalnie w toku.** MG zakończył sesję przed
-końcowym przeglądem i ponownym uruchomieniem zwykłego dev. Kontynuacja:
-`naprawa_karty_postaci.md`, sekcja stanu etapu 1. Nie zaczynać jeszcze etapu 2.
-
-**Decyzje MG:** niewydane punkty blokują zakończenie wszystkim (również MG);
-ranga Cech ustalana indywidualnie dla szkicu przez MG; wiele języków i dziedzin
-osobnym projektem. Minima przydzielane automatycznie i szlif typografii zostają w etapie 2.
-
-**Wdrożone:** minimum wybranej umiejętności Krawędziarza w shared; pełne rozliczenie
-pul; wymaganie nazwy darmowego języka i zgodny podgląd jego poziomu; spójny komunikat
-specjalizacji podstawowej. Lista rang szkiców dostępna tylko MG, gracz czeka na jego
-decyzję (także stary szkic). Kolejka funkcji aktualizujących najnowszy szkic, rewizje
-i identyfikatory ponowień; zachowanie odmów i późniejszych zmian do ponowienia,
-limit oczekiwania, bezpieczna odmowa usunięcia. Transakcja obejmuje kartę, zakupy,
-pieniądze, rejestr i usunięcie szkicu. Powtórzenie zakończenia po `draftId` oddaje tę
-samą kartę; żeton ma osobny status i możliwość naprawy. Brak pozycji/ceny w katalogu
-blokuje zakończenie, a UI pozwala usunąć niedostępną pozycję z koszyka.
-
-**Weryfikacja:** pełne `pnpm -r test`: 2115 shared, 1177 serwera, 215 klienta — zielone.
-Następnie doszły 2 testy serwera i 2 klienta: końcowe zestawy kreatora **43 serwera,
-52 shared, 7 klienta** zielone (łączne liczby obecnie 2115 / 1179 / 217).
-ESLint, Prettier i `tsc --noEmit` trzech pakietów przechodziły; po ostatnich zmianach
-ponowiono lint i typy klienta/serwera. Scenariusze: awaria rejestru zakupów i rollback,
-awaria żetonu, brak sceny, ponowienia, równoległe zapisy, spóźnione kasowanie,
-kontrola rangi, zachowanie kolejki i wskaźnika zapisu.
-
-**Chrome na osobnej bazie testowej:** wybór rangi gracza przez MG, zablokowany selektor
-u gracza, dwie Cechy i dwie umiejętności, koszt ×2 oraz zachowanie danych po F5.
-To nie jest pełny odbiór typografii 4K ani przejście obu metod z etapu 3.
-Tymczasowy serwer i karty zamknięte; roboczy skrypt usunięty. Baza
-`packages/server/.creation-ui.db` jest ignorowana przez Git i nie zawiera kampanii MG.
-
-**Migracja `20260915100000_creation_integrity` zastosowana do dev.db.** Przed nią
-spójna kopia SQLite: `packages/server/dev.db.bak-creation-1789500935285` (gitignore).
-Zwykły backend ostatnio odmówił startu przez `EADDRINUSE :3001`, bo zamykał się jeszcze
-serwer testowy; kontrola na koniec sesji potwierdziła wolny port i brak procesu testowego.
-Przy powrocie uruchomić dev i sprawdzić `/health`. Dane kampanii nie były edytowane
-podczas oględzin; prywatnych danych nie dodawać do stage'a.
