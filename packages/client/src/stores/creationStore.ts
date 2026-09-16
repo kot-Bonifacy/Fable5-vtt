@@ -69,46 +69,85 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
+type DraftAck = Awaited<ReturnType<typeof patchCreation>>;
+
+/**
+ * Stores one acknowledged patch, or keeps the refused one for an explicit retry.
+ * Runs only inside the queue, so nothing can slip in between.
+ */
+function settlePatch(
+  ack: DraftAck,
+  resolved: Record<string, unknown>,
+  guard: Omit<CreationPatchPayload, 'patch'>,
+): boolean {
+  if (!ack.ok || !ack.data) {
+    useCreationStore.setState({
+      busy: false,
+      pendingPatch: resolved,
+      pendingGuard: guard,
+      error: creationErrorText(ack.ok ? undefined : ack.error),
+    });
+    return false;
+  }
+  useCreationStore.setState({
+    draft: ack.data.draft,
+    draftId: ack.data.id,
+    revision: ack.data.revision,
+    rankApproved: ack.data.rankApproved,
+    pendingPatch: null,
+    pendingGuard: null,
+    busy: false,
+    error: null,
+  });
+  return true;
+}
+
+/** Builds a patch against the newest stored draft and sends it. Queue only. */
+async function sendPatch(patch: DraftPatch): Promise<boolean> {
+  const { draft, draftId, revision } = useCreationStore.getState();
+  if (!draft) {
+    useCreationStore.setState({ busy: false });
+    return false;
+  }
+  useCreationStore.setState({ busy: true });
+  const resolved = typeof patch === 'function' ? patch(draft) : patch;
+  const guard = { draftId: draftId ?? undefined, revision, requestId: crypto.randomUUID() };
+  return settlePatch(await patchCreation(resolved, guard), resolved, guard);
+}
+
 export const useCreationStore = create<CreationStoreState>((set, get) => ({
   open: false,
   draftId: null,
   revision: 0,
   pendingGuard: null,
   reload: async () => {
-    deferredPatches.length = 0;
-    set({ pendingPatch: null, pendingGuard: null });
+    // Inside the queue: a write already waiting there must not leave with the
+    // state this reload is about to throw away.
+    await enqueue(async () => {
+      deferredPatches.length = 0;
+      set({ pendingPatch: null, pendingGuard: null });
+    });
     await get().openCreator();
   },
   rankApproved: false,
   pendingPatch: null,
+  // The refused write and every intent deferred behind it go out in one queue
+  // turn and in their original order; a click made meanwhile waits behind them.
   retry: async () => {
-    const pending = get().pendingPatch;
-    const guard = get().pendingGuard;
-    if (!pending) return true;
-    set({ pendingPatch: null });
     set({ busy: true });
-    const ack = await enqueue(() => patchCreation(pending, guard ?? {}));
-    if (!ack.ok || !ack.data) {
-      set({
-        busy: false,
-        pendingPatch: pending,
-        error: creationErrorText(ack.ok ? undefined : ack.error),
-      });
-      return false;
-    }
-    set({
-      draft: ack.data.draft,
-      revision: ack.data.revision,
-      rankApproved: ack.data.rankApproved,
-      pendingGuard: null,
-      error: null,
-      busy: false,
+    return enqueue(async () => {
+      const pending = get().pendingPatch;
+      const guard = get().pendingGuard;
+      if (pending) {
+        const ack = await patchCreation(pending, guard ?? {});
+        if (!settlePatch(ack, pending, guard ?? {})) return false;
+      }
+      while (deferredPatches.length) {
+        if (!(await sendPatch(deferredPatches.shift()!))) return false;
+      }
+      set({ busy: false });
+      return true;
     });
-    while (deferredPatches.length) {
-      const next = deferredPatches.shift()!;
-      if (!(await get().patch(next))) return false;
-    }
-    return true;
   },
   draft: null,
   error: null,
@@ -163,37 +202,7 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
         set({ busy: false });
         return false;
       }
-      const draft = get().draft;
-      if (!draft) {
-        set({ busy: false });
-        return false;
-      }
-      set({ busy: true });
-      const resolved = typeof patch === 'function' ? patch(draft) : patch;
-      const guard = {
-        draftId: get().draftId ?? undefined,
-        revision: get().revision,
-        requestId: crypto.randomUUID(),
-      };
-      const ack = await patchCreation(resolved, guard);
-      if (!ack.ok || !ack.data) {
-        set({
-          busy: false,
-          pendingPatch: resolved,
-          pendingGuard: guard,
-          error: creationErrorText(ack.ok ? undefined : ack.error),
-        });
-        return false;
-      }
-      set({
-        draft: ack.data.draft,
-        draftId: ack.data.id,
-        revision: ack.data.revision,
-        rankApproved: ack.data.rankApproved,
-        busy: false,
-        error: null,
-      });
-      return true;
+      return sendPatch(patch);
     });
   },
 }));

@@ -90,6 +90,32 @@ describe('creator draft queue', () => {
     expect(useCreationStore.getState().pendingPatch).toBeNull();
   });
 
+  it('replays deferred intents before a change made while the retry is on its way', async () => {
+    socket.patchCreation.mockResolvedValueOnce({ ok: false, error: 'NOT_CONNECTED' });
+    const patch = useCreationStore.getState().patch;
+    await Promise.all([patch({ name: 'A' }), patch({ name: 'B' })]);
+    await Promise.all([useCreationStore.getState().retry(), patch({ name: 'C' })]);
+    expect(socket.patchCreation.mock.calls.map((call) => call[0].name)).toEqual([
+      'A',
+      'A',
+      'B',
+      'C',
+    ]);
+    expect(saved.draft.name).toBe('C');
+    expect(useCreationStore.getState()).toMatchObject({ pendingPatch: null, busy: false });
+  });
+
+  it('keeps later intents deferred when the retried write is refused again', async () => {
+    socket.patchCreation.mockResolvedValueOnce({ ok: false, error: 'NOT_CONNECTED' });
+    socket.patchCreation.mockResolvedValueOnce({ ok: false, error: 'NOT_CONNECTED' });
+    const patch = useCreationStore.getState().patch;
+    await Promise.all([patch({ name: 'A' }), patch({ name: 'B' })]);
+    expect(await useCreationStore.getState().retry()).toBe(false);
+    expect(useCreationStore.getState()).toMatchObject({ pendingPatch: { name: 'A' }, busy: false });
+    expect(await useCreationStore.getState().retry()).toBe(true);
+    expect(saved.draft.name).toBe('B');
+  });
+
   it('preserves the draft and window on a refused discard', async () => {
     await useCreationStore.getState().patch({ name: 'Zachowana' });
     socket.discardCreation.mockResolvedValueOnce({ ok: false, error: 'INTERNAL' });

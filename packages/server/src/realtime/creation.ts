@@ -480,18 +480,18 @@ export const creationSetRankEvent = defineCreationEvent<
       where: { id: payload.draftId, campaignId },
     });
     if (!row) throw new RealtimeError('DRAFT_NOT_FOUND');
-    const saved = await deps.ctx.prisma.characterDraft.update({
+    // No `revision` bump: the rank lives in its own column, which no player
+    // patch can overwrite. A bump would refuse the player's write that was
+    // already on its way (or sent after a missed `creation:rank`) as
+    // DRAFT_CHANGED, and „Ponów zapis" could never get it through.
+    await deps.ctx.prisma.characterDraft.update({
       where: { id: row.id },
-      data: { statRankId: payload.statRankId, revision: { increment: 1 } },
+      data: { statRankId: payload.statRankId },
     });
     // Only rank metadata, never another player's biography or choices.
     for (const peer of await deps.io.fetchSockets()) {
       if (peer.data.user?.id === row.userId && peer.data.campaign?.id === campaignId) {
-        peer.emit('creation:rank', {
-          draftId: row.id,
-          statRankId: payload.statRankId,
-          revision: saved.revision,
-        });
+        peer.emit('creation:rank', { draftId: row.id, statRankId: payload.statRankId });
       }
     }
   },

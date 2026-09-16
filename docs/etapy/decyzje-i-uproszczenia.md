@@ -321,6 +321,17 @@ to jest ten akapit do przeczytania na nowo.
   Skutek: kreator pokazuje pytanie o partnera bezwarunkowo, tak jak robi to książka („Jeśli
   masz partnera, kim jest?"). Wpis w `POMYSLY.md`.
 
+## Kreator postaci — naprawa (16.09)
+
+- **Slang uliczny i język kultury dzielą jeden wiersz „Język”, ale slang jest płatny (16.09,
+  decyzja MG).** Podręcznik daje każdej postaci dwa wpisy: podstawowy „Język (slang uliczny)”
+  co najmniej na 2 za 2 pkt i darmowy język kultury pochodzenia na 4 (s. 45, przykład z s. 90:
+  po trzynastu podstawowych zostaje 60 z 86). Model karty ma jedną umiejętność `language`, więc
+  kreator zapisuje „Język 4” z nazwą języka kultury, a 2 pkt za minimum slangu dolicza
+  `creationFreeLanguageCharge` (zero, gdy darmowy język nie jest podstawowy w danych). Do 16.09
+  ten wiersz oszczędzał każdej postaci 2 pkt. Osobny slang na karcie to projekt wielu języków
+  (`POMYSLY.md`, 15.09) — wtedy opłata przejdzie na prawdziwy wiersz, a ta funkcja zniknie.
+
 ## Interfejs
 
 - **Poziom sklepu nie dotyczy montażu wszczepów (13.09, decyzja MG).** Tarcza kampanii („Uliczne —

@@ -447,6 +447,24 @@ export function creationSkillLevel(
     : (draft.skills[skillId] ?? 0);
 }
 
+/**
+ * Points still owed on the free language's row. The sheet keeps a single
+ * „Język" entry, so the basic Język (slang uliczny) shares it with the free
+ * Culture of Origin language. The grant is free (s. 45); the slang's basic
+ * minimum is not — s. 90 pays 2 for it and leaves Jay 60 of 86 after the
+ * thirteen basics. Without this charge the shared row saved every character
+ * two points. Zero when the free language is not a basic skill in the data.
+ */
+export function creationFreeLanguageCharge(
+  data: CpredCreationData,
+  registry: CpredRegistry,
+): number {
+  const skillId = data.freeLanguage?.skillId;
+  if (!skillId || !data.basicSkills.includes(skillId)) return 0;
+  const multiplier = registry.skills.find((skill) => skill.id === skillId)?.multiplier ?? 1;
+  return data.limits.skillMin * multiplier;
+}
+
 export function creationSkillPointsSpent(
   draft: CpredCreationDraft,
   data: CpredCreationData,
@@ -454,7 +472,7 @@ export function creationSkillPointsSpent(
 ): number {
   return Object.entries(draft.skills).reduce(
     (sum, [skillId, level]) => sum + creationSkillCost(skillId, level, data, registry),
-    0,
+    creationFreeLanguageCharge(data, registry),
   );
 }
 

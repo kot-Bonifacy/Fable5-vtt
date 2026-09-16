@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type {
   CampaignDetail,
   CompendiumCategory,
@@ -32,6 +32,7 @@ import {
   creationAvailableSkills,
   creationBudget,
   creationDataOf,
+  creationFreeLanguageCharge,
   creationIssues,
   creationPreview,
   creationPurchases,
@@ -549,6 +550,40 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
   );
 }
 
+/**
+ * The text of a field saved on every keystroke. The server's copy trails the
+ * keyboard by a round trip, and an input bound to it gets its old text put back
+ * by React after each key — on a slow link fast typing dropped characters and
+ * a spinner's second click re-sent the first value. While focused the field
+ * keeps what was typed; otherwise it follows each draft the server hands back
+ * (reload, another window, a retried write).
+ */
+function useDraftFieldText(serverText: string, draft: CpredCreationDraft) {
+  const [text, setText] = useState(serverText);
+  const editing = useRef(false);
+  useEffect(() => {
+    if (!editing.current) setText(serverText);
+  }, [serverText, draft]);
+  return {
+    text,
+    setText,
+    onFocus: () => {
+      editing.current = true;
+    },
+    onBlur: () => {
+      editing.current = false;
+    },
+  };
+}
+
+function statInputValue(text: string, limits: { statMin: number; statMax: number }) {
+  if (text.trim() === '') return null;
+  const value = Number(text);
+  return Number.isInteger(value) && value >= limits.statMin && value <= limits.statMax
+    ? value
+    : null;
+}
+
 function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
@@ -556,6 +591,7 @@ function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationD
   const label = CPRED_STAT_LABELS[statId];
   const value = draft.stats[statId];
   const roll = draft.statRolls[statId];
+  const field = useDraftFieldText(value === undefined ? '' : String(value), draft);
 
   return (
     <tr>
@@ -569,13 +605,22 @@ function StatRow({ statId, draft }: { statId: CpredStatId; draft: CpredCreationD
             type="number"
             min={data.limits.statMin}
             max={data.limits.statMax}
-            value={value ?? ''}
+            value={field.text}
             placeholder="—"
+            onFocus={field.onFocus}
             onChange={(e) => {
-              const next = Number(e.target.value);
-              if (!Number.isInteger(next)) return;
-              if (next < data.limits.statMin || next > data.limits.statMax) return;
+              field.setText(e.target.value);
+              const next = statInputValue(e.target.value, data.limits);
+              // An empty or half-typed field is not an intent yet; nothing leaves.
+              if (next === null) return;
               void patch((current) => ({ stats: { ...current.stats, [statId]: next } }));
+            }}
+            onBlur={() => {
+              field.onBlur();
+              // Leftovers that were never sent give way to what is stored.
+              if (statInputValue(field.text, data.limits) === null) {
+                field.setText(value === undefined ? '' : String(value));
+              }
             }}
           />
         ) : (
@@ -604,6 +649,7 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
     [registry, available],
   );
   const spent = creationSkillPointsSpent(draft, data, registry);
+  const freeLanguageCharge = creationFreeLanguageCharge(data, registry);
 
   return (
     <div className="creator-step">
@@ -623,6 +669,8 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
         <p className="creator-hint">
           Darmowy język kultury: {draft.lifepath.language || 'wpisz nazwę w Ścieżce Życia'} · poziom{' '}
           {data.freeLanguage.level}, koszt 0 pkt.
+          {freeLanguageCharge > 0 &&
+            ` Minimum slangu ulicznego (umiejętność podstawowa) kosztuje ${freeLanguageCharge} pkt — na karcie oba języki dzielą jeden wiersz „Język ${data.freeLanguage.level}”.`}
         </p>
       )}
 
@@ -664,7 +712,8 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
   // „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
   // znaczą nic bez dziedziny (s. 81), a Język ma swoją przy kulturze pochodzenia.
   const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !isFree;
-  const specialty = draft.skillSpecialties[skill.id] ?? '';
+  const specialtyField = useDraftFieldText(draft.skillSpecialties[skill.id] ?? '', draft);
+  const specialty = specialtyField.text;
 
   function changeLevel(delta: number) {
     if (isFree) return;
@@ -675,6 +724,7 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
   }
 
   function setSpecialty(next: string) {
+    specialtyField.setText(next);
     void patch((current) => ({
       skillSpecialties: { ...current.skillSpecialties, [skill.id]: next },
     }));
@@ -700,6 +750,8 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
           value={specialty}
           maxLength={SKILL_SPECIALTY_MAX_LENGTH}
           placeholder={CREATOR_SPECIALTY_HINTS[skill.id] ?? 'w czym?'}
+          onFocus={specialtyField.onFocus}
+          onBlur={specialtyField.onBlur}
           onChange={(e) => setSpecialty(e.target.value)}
           aria-label={`Specjalizacja: ${skill.name}`}
           title={
@@ -734,7 +786,10 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
         </button>
       </span>
       <span className="creator-skill-cost">
-        {creationSkillCost(skill.id, level, data, registry)} pkt
+        {isFree
+          ? creationFreeLanguageCharge(data, registry)
+          : creationSkillCost(skill.id, level, data, registry)}{' '}
+        pkt
       </span>
     </li>
   );
@@ -1416,7 +1471,8 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  const [name, setName] = useState(draft.name);
+  // Local while typed; follows the server after a reload (see useDraftFieldText).
+  const nameField = useDraftFieldText(draft.name, draft);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -1457,10 +1513,12 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
         <input
           type="text"
           maxLength={64}
-          value={name}
+          value={nameField.text}
           placeholder="Zgrzyt"
+          onFocus={nameField.onFocus}
+          onBlur={nameField.onBlur}
           onChange={(event) => {
-            setName(event.target.value);
+            nameField.setText(event.target.value);
             void patch({ name: event.target.value });
           }}
         />

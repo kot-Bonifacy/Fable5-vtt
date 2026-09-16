@@ -7,6 +7,27 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 15.09 — audyt kreatora i projekt naprawy
+
+**Zlecenie MG:** zweryfikować kreator względem podręcznika i wygody obsługi;
+wynik to `naprawa_karty_postaci.md` w katalogu głównym, z planem trzech etapów.
+Bez zmian kodu aplikacji. MG wskazał priorytet Kompletnego Pakietu oraz ekran 4K
+przy zoomie przeglądarki 100%. Potwierdził zachowanie uproszczeń wyposażenia
+oraz automatyczny przydział minimów umiejętności z odjęciem kosztu od puli.
+Skala Windows pozostaje do ustalenia; plan zachowuje decyzje 25a–25c.
+
+**Ustalenia:** minimum zawodowych umiejętności Krawędziarza jest zbyt niskie;
+gracz sam wybiera większą pulę Cech; kolejka pełnych zestawów pól może cofać
+szybkie zmiany; brak ostrzeżenia o niewydanych punktach. Drobna typografia i kropka
+przy podstawowej nie prowadzą użytkownika. Pozostałe ograniczenia i ryzyka,
+w tym niepełna atomowość zakończenia, opisano z poziomem pewności w projekcie.
+
+**Weryfikacja:** 78 testów shared i 36 serwera zielone; pięć tymczasowych prób
+odtworzyło luki (plik prób usunięty). Dane creation.json zgodne z ponownym wynikiem
+parsera w pamięci. Brak dostępnej przeglądarki — nie było odbioru wizualnego.
+Uruchomiono dev: frontend i health serwera HTTP 200. Serwer wymagał startu poza
+piaskownicą po błędzie uv_os_get_passwd. Treści prywatnych nie dodawano do repo.
+
 ### Sesja 14.09 (druga) — pod ręczną mgłą gracz chodzi tylko po odsłoniętym
 
 **Zlecenie MG:** przegląd zaległości z propozycjami; MG wybrał naprawę dokumentacji i A — planer

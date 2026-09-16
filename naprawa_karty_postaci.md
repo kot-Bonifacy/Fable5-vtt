@@ -1,6 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan: **projekt do późniejszej realizacji, bez zmian kodu aplikacji**.
+Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony, etapy 2 i 3 do realizacji**.
+Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
 To główna ścieżka projektowania i odbioru. Krawędziarz pozostaje zakresem
@@ -94,7 +95,7 @@ Taką informację trzeba pokazać przy wyborze metody i zakończeniu. Sam napis
 
 ## Etap 1 — poprawne zasady i niezawodny szkic
 
-**Status 16.09.2026: 🟨 wdrożone, sesja zakończona na prośbę MG przed formalnym odbiorem końcowym.**
+**Status: ✅ ukończony 16.09.2026** (wdrożenie 15–16.09, domknięcie w drugiej sesji 16.09).
 
 - [x] Minimum Krawędziarza i wspólne limity; blokada niewydanych punktów dla wszystkich.
 - [x] Ranga szkicu wybierana indywidualnie przez MG, egzekwowana na serwerze i po wznowieniu.
@@ -102,22 +103,36 @@ Taką informację trzeba pokazać przy wyborze metody i zakończeniu. Sam napis
 - [x] Aktualizacje na najnowszym stanie, kontrola rewizji, ponowienia, błędy połączenia i kasowania.
 - [x] Atomowe zapisanie karty, zakupów, salda i rejestru; ponowne zakończenie bez duplikatów.
 - [x] Oddzielna informacja o żetonie i ponowienie po awarii albo braku sceny.
-- [x] Regresje: 52 testy shared, 43 serwera, 7 klienta; pełny wcześniejszy przebieg wszystkich pakietów zielony.
+- [x] Regresje: 55 testów shared, 44 serwera, 9 klienta dla kreatora; pełny przebieg wszystkich pakietów zielony.
 - [x] Chrome na osobnej bazie: MG/gracz, ranga, dwa zapisy, ×2, zachowanie po F5.
-- [ ] Końcowy przegląd zmian i potwierdzenie uruchomienia zwykłego dev po wyłączeniu instancji testowej.
-- [ ] Formalne zamknięcie etapu 1; dopiero potem etap 2.
-
-**Od czego zacząć:** migracja `20260915100000_creation_integrity` już zastosowana;
-backup `packages/server/dev.db.bak-creation-1789500935285`. Ostatni start zwykłego backendu
-odmówił przez zajęty port 3001 podczas zamykania testów; na koniec port był wolny.
-Uruchomić backend/frontend i sprawdzić `/health`. Pełne testy nie wymagają ponowienia
-bez nowej zmiany lub wykrytej wątpliwości. Obejrzeć końcowy diff kolejki i obsługi ponowień.
+- [x] Końcowy przegląd zmian i potwierdzenie uruchomienia zwykłego dev po wyłączeniu instancji testowej.
+- [x] Formalne zamknięcie etapu 1.
 
 **Ustalenia z realizacji:** brak wydania całej puli blokuje także MG; rangi są indywidualne,
 nie kampanijne. Stare szkice graczy wymagają zatwierdzenia rangi przez MG; nie kasujemy
 rozdzielonych Cech ani umiejętności. Istniejące karty nie zmieniają mechanicznych danych.
 Wiele języków i specjalizacji to osobny projekt (`POMYSLY.md`). Automatyczny przydział
 minimów pozostaje w etapie 2 zgodnie z poniższym zakresem.
+
+**Ustalenia z domknięcia (16.09, przegląd końcowy):**
+
+- **Slang uliczny kosztuje 2 pkt — decyzja MG.** `language` jest jednocześnie podstawowym
+  „Językiem (slang uliczny)” i darmowym językiem kultury, więc darmowe 4 poziomy spełniały
+  minimum slangu za 0 pkt: każda postać miała 2 punkty więcej niż w przykładzie z s. 90
+  (po trzynastu podstawowych zostaje 60 z 86). `creationFreeLanguageCharge` dolicza koszt
+  minimum do wydanych punktów. Karta nadal ma jeden wiersz „Język 4” — osobny slang przyjdzie
+  z projektem wielu języków. Szkic z rozdzieloną pulą pokaże „pozostało −2”.
+- **Zmiana rangi przez MG nie podbija już `revision`.** Zapis gracza w drodze (albo wysłany po
+  chwilowym rozłączeniu) dostawał `DRAFT_CHANGED`, którego „Ponów zapis” nie mógł przejść,
+  a „Wczytaj zapis serwera” kasował zmianę. Ranga ma osobną kolumnę, łata gracza jej nie nadpisze.
+- **Pola Cech, dziedziny i imienia trzymają tekst lokalnie podczas edycji** (`useDraftFieldText`).
+  Pole związane wprost ze stanem serwera traciło znaki przy opóźnieniu, dwa szybkie ↑ w Cesze
+  wysyłały dwa razy tę samą wartość, a imię po „Wczytaj zapis serwera” zostawało stare.
+  Sprawdzone w Chrome z opóźnieniem 250 ms na gnieździe.
+- **Ponowienie i wstrzymane zmiany idą w jednej turze kolejki**, w pierwotnej kolejności;
+  wcześniej zmiana kliknięta w trakcie ponowienia mogła wyprzedzić starsze intencje.
+- Przy zatrzymywaniu dev w tle na Windows zostają procesy potomne na portach 3001/5173
+  (stąd `EADDRINUSE` z poprzedniej sesji) — pułapka w `testy`.
 
 
 **Cel:** gracz tworzy legalną postać, a jego zmiany nie giną.
@@ -168,15 +183,24 @@ Zakres ogólny:
   między krokami; niewypełnione przyszłe kroki nie powinny straszyć lawiną błędów.
 - Uzupełnić krótkie objaśnienia Ról, Cech i umiejętności, komunikaty utraty
   danych po zmianie wyboru, obsługę klawiatury i zgodność komunikatów specjalizacji.
+- **Rangi szkiców po stronie MG (dopisane 16.09, decyzja MG):** dziś panel „MG: rangi szkiców
+  postaci” istnieje tylko wewnątrz kreatora, więc MG musi go otworzyć, co zakłada mu pusty
+  własny szkic. MG nie dostaje sygnału, że gracz czeka na rangę, lista odświeża się ręcznie
+  i pokazuje też szkice Krawędziarza, dla których ranga nic nie znaczy. Potrzebne: wejście
+  bez tworzenia szkicu, powiadomienie lub znacznik oczekiwania, żywa lista, tylko szkice
+  Kompletnego Pakietu.
+- Przy wielu zapisach w kolejce (bardzo szybkie pisanie przy dużym opóźnieniu) pole po wyjściu
+  z niego przez chwilę odtwarza pośrednie stany serwera, zanim dojdzie do ostatniego. Dane
+  się nie gubią; do rozważenia łączenie zapisów pola tekstowego.
 
 **Odbiór:** gracz dostrzega obowiązkowe minimum Perswazji i Skradania się bez
 wchodzenia do podsumowania; wymagania nie zależą wyłącznie od koloru lub najechania.
 Nowy Kompletny Pakiet ma automatycznie przydzielone minima podstawowych
 umiejętności, ich koszt odjęty od puli i widoczne etykiety „Podstawowa · min. 2”.
 Ponowne otwarcie szkicu nie nalicza tego kosztu drugi raz.
-Główny odbiór: ekran **4K, powiększenie przeglądarki 100%** — MG potwierdził,
-że w tej konfiguracji czcionka jest za mała. Skalę Windows należy ustalić przed
-odbiorem; rozdzielczość monitora nie oznacza takiego samego rozmiaru okna w pikselach CSS.
+Główny odbiór: ekran **4K, skala Windows 150%, powiększenie przeglądarki 100%** — MG
+potwierdził, że w tej konfiguracji czcionka jest za mała. To okno ok. **2560 px CSS**
+szerokości (mniej o ramkę i paski przeglądarki), więc 1 px CSS = 1,5 piksela ekranu.
 Sprawdzić wszystkie kroki, oba motywy i klawiaturę. Dodatkowo sprawdzić okna
 3440x1440 i 2560x1440 oraz powiększenie 125% i 150%. Czytelność przy 4K/100%
 ma wynikać z poprawionego interfejsu, bez konieczności zwiększania zoomu przez MG.
@@ -225,13 +249,16 @@ Otwarte kwestie wskazano poniżej.
    i wygodę w obecnym zakresie.
 3. **Minima — ustalone:** przydzielać automatycznie, odejmować koszt od puli
    i pokazywać etykiety wymagań przy umiejętnościach.
-4. **Ekran — częściowo ustalone:** 4K, zoom przeglądarki 100%; to główna
-   konfiguracja odbioru. Skala Windows pozostaje nieznana.
+4. **Ekran — ustalone 16.09:** 4K, skala Windows 150%, zoom przeglądarki 100%;
+   to główna konfiguracja odbioru (okno ok. 2560 px CSS).
 5. **Niewydane punkty — ustalone 15.09:** blokada zakończenia dla wszystkich, także MG;
    punkty pozostają w szkicu, a interfejs pokazuje resztę.
 6. **Specjalizacje — ustalone 15.09:** wiele języków i dziedzin to osobny projekt, obejmujący
    kartę, rzuty, rozwój i migrację danych. Teraz naprawiamy obecny pojedynczy model.
 7. **Ranga Cech — ustalone 15.09:** MG ustala rangę indywidualnie dla każdego szkicu.
+8. **Slang uliczny — ustalone 16.09:** w obecnym jednym wierszu „Język” kreator pobiera
+   2 pkt za minimum slangu; osobny wpis slangu dopiero w projekcie wielu języków.
+9. **Panel rang MG — ustalone 16.09:** wygoda obsługi po stronie MG wchodzi do etapu 2.
 
 ## Mapa kodu dla późniejszej realizacji
 

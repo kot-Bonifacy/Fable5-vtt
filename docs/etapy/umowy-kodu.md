@@ -1760,24 +1760,9 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
-- **Szkic kreatora od 15.09:** aktualizację zależną od innych pól buduj funkcją w kolejce `creationStore.patch`; `draftId` + `revision` chronią inne okna, `requestId` rozpoznaje ponowienie. Ranga pochodzi z kolumny zatwierdzanej przez MG, a zakończenie i naprawa żetonu używają tego samego `draftId`.
-
-**Niezawodność kreatora (15–16.09).** `defineCreationEvent` szereguje wszystkie jego
-operacje w kampanii (jeden proces serwera). Nowy zapis szkicu zwiększa `revision`;
-`lastPatchId` pozwala oddać wynik powtórzonej łaty bez ponownego zastosowania.
-Nie buduj zestawu Cech, umiejętności ani Ścieżki Życia ze starych propsów: przekaż
-funkcję czytającą bieżący szkic dopiero wewnątrz kolejki. Odmowa zachowuje łatę i późniejsze
-intencje; jawne ponowienie używa tych samych identyfikatorów. Konflikt drugiego okna
-wymaga świadomego wczytania stanu serwera. Zakupu lub rzutu po timeout nie powtarza się
-automatycznie — najpierw odczyt szkicu.
-
-`CharacterDraft.statRankId` to wybór MG; JSON nie jest autorytetem puli. Stare szkice
-graczy czekają na zatwierdzenie, ich rozdzielone punkty zostają. `creation:finish`
-obejmuje kartę, `applyBalance` z klientem transakcyjnym, wyposażenie, rejestr i usunięcie
-szkicu jedną transakcją. `Character.creationDraftId` (unikalne) i `creationUserId`
-identyfikują wynik ponowienia; status żetonu jest oddzielny. Wstawienie żetonu zapisuje
-`creationTokenDone` w tej samej transakcji co figurę, przed rozgłoszeniem.
-
+- **Pole kreatora zapisywane co klawisz** trzyma tekst przez `useDraftFieldText` (`CharacterCreator.tsx`), nigdy `value` prosto ze szkicu serwera — inaczej React cofa znak do czasu odpowiedzi i przy opóźnieniu giną litery.
+- **Punkty umiejętności kreatora liczy `creationSkillPointsSpent`** — razem z opłatą za minimum slangu we wspólnym wierszu języka (`creationFreeLanguageCharge`); licznik, walidacja i testy nie dodają jej osobno.
+- **Szkic kreatora od 15.09:** aktualizację zależną od innych pól buduj funkcją w kolejce `creationStore.patch`; `draftId` + `revision` chronią inne okna, `requestId` rozpoznaje ponowienie. Ranga pochodzi z kolumny zatwierdzanej przez MG (jej zmiana **nie** podbija `revision`), a zakończenie i naprawa żetonu używają tego samego `draftId`.
 - **Notka o skutku `character:cyberware` czeka na odpowiedź serwera** — `sendCyberwareAction` zwraca obietnicę zdania odmowy albo `null`; guzik piszący „Instaluję…" przed nią kłamie przy każdej odmowie montażu.
 - **Sprzęt pakietu BN-a, bez którego karta nie działa, jest polem pakietu, nie zdaniem w `gear`** — jak `cyberdeck` netrunnera Korpo; składa go czysta funkcja z kompendium po **nazwie**, a czego katalog nie zna, wraca w `missing` do notatek.
 - **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).
@@ -1804,6 +1789,32 @@ identyfikują wynik ponowienia; status żetonu jest oddzielny. Wstawienie żeton
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Kreator po domknięciu etapu 1 naprawy (16.09).** Pola Cech, dziedziny umiejętności i imienia
+wysyłają łatę co zmianę, ale wyświetlają własny tekst z `useDraftFieldText`: podczas edycji
+pole nie słucha serwera, poza nią idzie za każdym szkicem, który przyszedł (wczytanie zapisu,
+drugie okno, ponowienie). Nowe pole tekstowe albo liczbowe w kreatorze idzie tą samą drogą.
+`creation:set-rank` nie zmienia `revision` — ranga ma własną kolumnę, a podbicie odrzucało zapis
+gracza w drodze jako `DRAFT_CHANGED` bez wyjścia poza utratą zmiany. `retry()` wysyła odrzuconą
+łatę i wszystkie wstrzymane intencje w **jednej** turze kolejki (`sendPatch` działa tylko w niej).
+Minimum slangu ulicznego (podstawowa) dzieli wiersz z darmowym językiem kultury i kosztuje 2 pkt
+w `creationSkillPointsSpent` (decyzja w `decyzje-i-uproszczenia.md`).
+
+**Niezawodność kreatora (15–16.09).** `defineCreationEvent` szereguje wszystkie jego
+operacje w kampanii (jeden proces serwera). Nowy zapis szkicu zwiększa `revision`;
+`lastPatchId` pozwala oddać wynik powtórzonej łaty bez ponownego zastosowania.
+Nie buduj zestawu Cech, umiejętności ani Ścieżki Życia ze starych propsów: przekaż
+funkcję czytającą bieżący szkic dopiero wewnątrz kolejki. Odmowa zachowuje łatę i późniejsze
+intencje; jawne ponowienie używa tych samych identyfikatorów. Konflikt drugiego okna
+wymaga świadomego wczytania stanu serwera. Zakupu lub rzutu po timeout nie powtarza się
+automatycznie — najpierw odczyt szkicu.
+
+`CharacterDraft.statRankId` to wybór MG; JSON nie jest autorytetem puli. Stare szkice
+graczy czekają na zatwierdzenie, ich rozdzielone punkty zostają. `creation:finish`
+obejmuje kartę, `applyBalance` z klientem transakcyjnym, wyposażenie, rejestr i usunięcie
+szkicu jedną transakcją. `Character.creationDraftId` (unikalne) i `creationUserId`
+identyfikują wynik ponowienia; status żetonu jest oddzielny. Wstawienie żetonu zapisuje
+`creationTokenDone` w tej samej transakcji co figurę, przed rozgłoszeniem.
 
 **Zdanie o skutku montażu pisze się dopiero po odpowiedzi serwera (13.09).** `sendCyberwareAction`
 (`socket.ts`) zwraca `Promise<string | null>`: zdanie odmowy — to samo, które ląduje notatką na

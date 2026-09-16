@@ -1,4 +1,3 @@
-import { useCreationStore } from './stores/creationStore.js';
 import { io, type Socket } from 'socket.io-client';
 import type {
   CharacterStatEffectPayload,
@@ -274,6 +273,7 @@ import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
+import { useCreationStore } from './stores/creationStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { usePortraitStore } from './stores/portraitStore.js';
 import { useGameTimeStore } from './stores/gameTimeStore.js';
@@ -498,13 +498,12 @@ export function connectSocket(userId: string): Socket {
   const chat = () => useChatStore.getState();
 
   socket.on('connect', () => setConnected());
-  socket.on('creation:rank', (rank: { draftId: string; statRankId: string; revision: number }) => {
+  socket.on('creation:rank', (rank: { draftId: string; statRankId: string }) => {
     const store = useCreationStore.getState();
     if (store.draftId === rank.draftId && store.draft) {
       useCreationStore.setState({
         draft: { ...store.draft, statRankId: rank.statRankId },
         rankApproved: true,
-        revision: rank.revision,
       });
     }
   });

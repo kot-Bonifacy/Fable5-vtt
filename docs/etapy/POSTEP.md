@@ -117,9 +117,12 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Najbliższa sesja: domknąć etap 1 `naprawa_karty_postaci.md` (15–16.09).** Kod i testy
-są zapisane; został końcowy przegląd, zwykły start dev i formalne zamknięcie etapu.
-Decyzje MG oraz szczegóły migracji są w najnowszej notatce poniżej.
+**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅ 16.09, następny etap 2** —
+czytelny kreator, który prowadzi przez decyzje (typografia, automatyczne minima, walidacja przy
+polach, panel rang po stronie MG). Odbiór w przeglądarce jest obowiązkowy: **4K, skala Windows
+150%, zoom 100%**, czyli okno ok. 2560 px CSS. Od 16.09 minimum slangu ulicznego kosztuje 2 pkt
+we wspólnym wierszu „Język” (decyzja MG) — szkic z rozdzieloną pulą pokaże „pozostało −2”;
+w `dev.db` dotyczy to szkicu Tony'ego. Etap 3 czeka na etap 2.
 
 **Etap 42 (bariery) ukończony: 42a ✅, 42b ✅, 42c ✅.**
 Bariera to rodzaj ściany, przez który widać mapę, a nie da się przejść ani sięgnąć wręcz;
@@ -246,8 +249,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2111** w `shared`, **1172** na serwerze, **210** u klienta —
-zielone (liczby z 14.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2118** w `shared`, **1180** na serwerze, **219** u klienta —
+zielone (liczby z 16.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -280,19 +283,47 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   25 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   27 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      75 |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      19 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      76 |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      20 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 16.09 (druga) — naprawa kreatora, domknięcie etapu 1
+
+**Zlecenie MG:** dokończyć etap 1 `naprawa_karty_postaci.md` po poprzednim modelu, dopytywać
+o niejasności i zgłaszać potencjalne błędy. **Stan: etap 1 ✅.** Nie zaczynano etapu 2.
+
+**Przegląd `ed47f9c` znalazł pięć rzeczy; MG zdecydował o każdej.** (1) `language` to naraz
+podstawowy slang uliczny i darmowy język kultury, więc darmowe 4 poziomy spełniały minimum slangu
+za 0 pkt — +2 pkt względem s. 90. **Decyzja: pobierać 2 pkt** (`creationFreeLanguageCharge`
+w `creationSkillPointsSpent`, podpowiedź i koszt w wierszu „Język”; wpis w
+`decyzje-i-uproszczenia.md`). (2) `creation:set-rank` podbijał `revision`, przez co zapis gracza
+w drodze kończył się `DRAFT_CHANGED` nie do ponowienia — podbicie usunięte. (3) Pola Cech i dziedziny
+związane wprost ze stanem serwera gubiły znaki przy opóźnieniu, a imię nie szło za wczytanym
+zapisem — wspólny `useDraftFieldText`. (4)
+`retry()` zdejmował oczekującą łatę poza kolejką — ponowienie i wstrzymane intencje idą teraz
+w jednej turze kolejki. (5) Panel rang MG (pusty szkic MG, brak powiadomienia, ręczne
+odświeżanie) — **dopisany do zakresu etapu 2**. MG podał też skalę Windows: **150%**.
+
+**Weryfikacja:** pełne `pnpm -r test` — 2118 shared (3 nowe), 1180 serwera (1 nowy), 219 klienta
+(2 nowe; test kolejności sprawdzony na starym magazynie — pada). `tsc --noEmit` trzech pakietów,
+ESLint, Prettier czyste. Chrome na `.creation-ui.db` z osobnymi `UPLOADS_DIR` i `BACKUP_DIR`
+oraz opóźnieniem 250 ms na gnieździe: szybkie pisanie w dziedzinie i dwa ↑ w Cesze zapisane
+w całości (po F5 też), licznik i wiersz „Język” pokazują 2 pkt. Zwykły dev na `dev.db`: `/health`
+200, frontend 200. Pliki `uploads/` kampanii sprawdzone — 72 odnośniki, żadnego brakującego.
+
+**Pułapki:** zatrzymane `pnpm dev` w tle zostawia `tsx`/`vite` na portach (to był `EADDRINUSE`
+z 15–16.09) — `testy`; opóźnienie VPS łatką na `WebSocket.prototype.send` — `ogledziny`.
+Dev zostawiony wyłączony, porty wolne.
 
 ### Sesja 15–16.09 — naprawa kreatora, etap 1 (przerwana na prośbę MG)
 
@@ -334,24 +365,3 @@ Zwykły backend ostatnio odmówił startu przez `EADDRINUSE :3001`, bo zamykał 
 serwer testowy; kontrola na koniec sesji potwierdziła wolny port i brak procesu testowego.
 Przy powrocie uruchomić dev i sprawdzić `/health`. Dane kampanii nie były edytowane
 podczas oględzin; prywatnych danych nie dodawać do stage'a.
-
-### Sesja 15.09 — audyt kreatora i projekt naprawy
-
-**Zlecenie MG:** zweryfikować kreator względem podręcznika i wygody obsługi;
-wynik to `naprawa_karty_postaci.md` w katalogu głównym, z planem trzech etapów.
-Bez zmian kodu aplikacji. MG wskazał priorytet Kompletnego Pakietu oraz ekran 4K
-przy zoomie przeglądarki 100%. Potwierdził zachowanie uproszczeń wyposażenia
-oraz automatyczny przydział minimów umiejętności z odjęciem kosztu od puli.
-Skala Windows pozostaje do ustalenia; plan zachowuje decyzje 25a–25c.
-
-**Ustalenia:** minimum zawodowych umiejętności Krawędziarza jest zbyt niskie;
-gracz sam wybiera większą pulę Cech; kolejka pełnych zestawów pól może cofać
-szybkie zmiany; brak ostrzeżenia o niewydanych punktach. Drobna typografia i kropka
-przy podstawowej nie prowadzą użytkownika. Pozostałe ograniczenia i ryzyka,
-w tym niepełna atomowość zakończenia, opisano z poziomem pewności w projekcie.
-
-**Weryfikacja:** 78 testów shared i 36 serwera zielone; pięć tymczasowych prób
-odtworzyło luki (plik prób usunięty). Dane creation.json zgodne z ponownym wynikiem
-parsera w pamięci. Brak dostępnej przeglądarki — nie było odbioru wizualnego.
-Uruchomiono dev: frontend i health serwera HTTP 200. Serwer wymagał startu poza
-piaskownicą po błędzie uv_os_get_passwd. Treści prywatnych nie dodawano do repo.

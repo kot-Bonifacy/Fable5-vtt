@@ -9,6 +9,7 @@ import {
   creationIssues,
   creationPreview,
   creationPurchases,
+  creationFreeLanguageCharge,
   creationSkillCost,
   creationSkillPointsSpent,
   creationSpentEddies,
@@ -643,5 +644,51 @@ describe('naprawa 1 — wymagania metod i rozliczenie punktów', () => {
         (x) => x.field === 'purchases',
       ),
     ).toBe(true);
+  });
+});
+
+describe('naprawa 1 — slang uliczny we wspólnym wierszu języka', () => {
+  // Przykład z s. 90: trzynaście podstawowych kosztuje 26 i zostawia 60 z 86,
+  // choć język kultury pochodzenia dochodzi za darmo na poziomie 4.
+  const withSlang = { ...RAW_CREATION, basicSkills: ['athletics', 'language'] };
+
+  it('charges the basic slang minimum once, even though the shared row is free', () => {
+    const reg = registry(withSlang);
+    expect(creationFreeLanguageCharge(data(reg), reg)).toBe(2);
+    expect(creationSkillCost('language', 4, data(reg), reg)).toBe(0);
+    const spent = creationSkillPointsSpent(
+      finished({ skills: { athletics: 2, handgun: 3 } }),
+      data(reg),
+      reg,
+    );
+    expect(spent).toBe(2 + 2 + 3);
+    // A draft saved with the grant written into its skills pays no more.
+    expect(
+      creationSkillPointsSpent(
+        finished({ skills: { athletics: 2, handgun: 3, language: 4 } }),
+        data(reg),
+        reg,
+      ),
+    ).toBe(spent);
+  });
+
+  it('leaves the pool two points smaller before the character can finish', () => {
+    const reg = registry(withSlang);
+    const full = finished({ skills: { athletics: 4, handgun: 4, autofire: 6 } });
+    expect(creationIssues(full, data(reg), reg).map((x) => x.message)).toEqual([
+      expect.stringContaining('Pozostało: -2'),
+    ]);
+    expect(
+      creationIssues(
+        finished({ skills: { athletics: 4, handgun: 2, autofire: 6 } }),
+        data(reg),
+        reg,
+      ),
+    ).toEqual([]);
+  });
+
+  it('charges nothing when the free language is not a basic skill', () => {
+    const reg = registry();
+    expect(creationFreeLanguageCharge(data(reg), reg)).toBe(0);
   });
 });

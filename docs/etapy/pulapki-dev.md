@@ -926,6 +926,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Opóźnienie VPS odtworzysz łatką na `WebSocket.prototype.send` z `setTimeout`** — lokalnie odpowiedź przychodzi przed następnym klawiszem, więc błędy pól związanych ze stanem serwera są na `localhost` niewidoczne.
 - **Dwuklik z automatu w karcie w tle wysyłaj synchronicznie** — `setTimeout` między kliknięciami dławi się do ~1 s, drugie przychodzi po `DOUBLE_CLICK_MS` (350 ms) i obiekt sceny tylko się zaznacza zamiast otworzyć kartę; cztery `dispatchEvent` pod rząd w jednym zadaniu działają.
 - **Co klient wysłał serwerowi, pokaże podsłuch `WebSocket.prototype.send`** — łata na prototypie łapie też już otwarte gniazdo Socket.IO; ramka `token:move` z `final: true` niesie lądowanie i trasę, pośrednie — przebieg marszu. Tak złapano błędną pierwszą wersję naprawy przerwanego marszu (13.09).
 - **`zoom` na `[::1]` w serii odmawia** („Permission denied for this action on this domain”), choć `javascript_tool` i `screenshot` w tej samej serii przechodzą — zbliżenia z karty gracza rób pojedynczym wywołaniem.
@@ -1070,6 +1071,13 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
+- **Na `localhost` nie widać błędów, które wymagają opóźnienia (16.09, naprawa kreatora).**
+  Pole kreatora związane wprost ze szkicem z serwera gubiło znaki dopiero przy RTT rzędu setek
+  milisekund. Łatka w konsoli karty: `const send = WebSocket.prototype.send;
+  WebSocket.prototype.send = function (d) { setTimeout(() => send.call(this, d), 250); }` — działa
+  też na otwartym już gnieździe Socket.IO i zachowuje kolejność ramek. F5 ją zdejmuje. Testy
+  pisania rób prawdziwymi klawiszami (`computer` → `type`), nie ustawianiem `value`.
 
 - **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu (06.09).** `computer` z
   `modifiers: "alt"` klika, ale strona dostaje zwykły klik — Alt+klik na wierszu karty nie
@@ -1462,6 +1470,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Zatrzymanie `pnpm dev` puszczonego w tle nie gasi jego dzieci na Windows** — `tsx` i `vite` dalej trzymają :3001 i :5173, a następny start pada na `EADDRINUSE`. Zabij drzewo po PID (`taskkill //PID <pid> //T //F`), zanim uznasz port za zajęty przez coś obcego.
 - **Żeton zadany na połówce kratki staje o pół kratki DALEJ** — `snapAxis` robi `Math.round`, a `Math.round(4.5)` to 5: (450, 1450) ląduje na (500, 1500), środek (550, 1550). Komentarze w `walls.test.ts` z 18a mówią „centre (500, 1500)" i mylą; geometrię testu licz od pozycji po przyciągnięciu.
 - **Wysyłka do gracza po ruchu MG potrafi dojść PO ack MG** — to dwa różne połączenia, więc kolejność między nimi nie istnieje. `waitFor(player, …)` ustawione po ruchu łapie spóźnioną wiadomość i test przesuwa się o jedną; czekaj na wiadomość spełniającą warunek (`blockersWhere`).
 - **`pnpm dev` potrafi zgubić backend przy edycjach w wielu plikach naraz — i `tsx watch` go już nie podniesie.** Objaw: proxy Vite oddaje na `/api/*` `500` z **pustą** treścią (nie `401`), `netstat` nie widzi :3001, a proces `tsx … watch` żyje. Ani `touch`, ani zmiana treści pliku go nie budzą — restartuje ręka MG. Czy winny jest kod, sprawdza próbna instancja na innym porcie, z katalogami tymczasowymi (start robi migawkę bazy).
@@ -1483,6 +1492,14 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Zatrzymane zadanie `pnpm dev` zostawia serwery przy życiu (16.09, naprawa kreatora).**
+  Zatrzymanie zadania w tle kończy tylko `pnpm`, a `concurrently`, `tsx` i `vite` żyją dalej jako
+  sieroty — tak powstał `EADDRINUSE :3001` na koniec sesji 15–16.09. Rozpoznanie: `netstat -ano`
+  pokazuje LISTENING na :3001/:5173, a `Get-CimInstance Win32_Process -Filter "Name='node.exe'"`
+  zwraca procesy z `VTT` (ścieżka repozytorium) w linii poleceń. Sprawdź, że to twoje dzieci, i zamknij drzewo
+  `taskkill //PID <pid> //T //F` (w Git Bash podwójne ukośniki). Dotyczy też próbnej instancji
+  serwera i samego `vite`.
 
 - **Żeton na połówce kratki i spóźniona wysyłka — dwie pułapki jednego testu (13.09, etap 42a).**
   Nowy zestaw barier w `walls.test.ts` padł trzy razy i ani razu przez kod. **Pierwsza:** okno

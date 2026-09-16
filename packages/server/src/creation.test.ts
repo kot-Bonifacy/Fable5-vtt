@@ -1085,6 +1085,28 @@ describe('kreator postaci', () => {
       expect(data(await emitAck<Draft>(gm, 'creation:start'), 'start').id).toBe(newer.id);
     });
 
+    it('lets a player write built before the GM set the rank through, with that rank in the reply', async () => {
+      await emitAck(vex, 'creation:discard');
+      const before = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
+      expect(
+        (await emitAck(gm, 'creation:set-rank', { draftId: before.id, statRankId: 'minor-hero' }))
+          .ok,
+      ).toBe(true);
+      // The player never saw `creation:rank` (in flight, or briefly offline).
+      const reply = data(
+        await emitAck<Draft>(vex, 'creation:patch', {
+          draftId: before.id,
+          revision: before.revision,
+          requestId: 'after-rank',
+          patch: { name: 'Po randze' },
+        }),
+        'patch',
+      );
+      expect(reply.draft.name).toBe('Po randze');
+      expect(reply.rankApproved).toBe(true);
+      expect(reply.draft.statRankId).toBe('minor-hero');
+    });
+
     it('finishes without an active scene and repairs placement after a scene becomes available', async () => {
       await emitAck(gm, 'creation:discard');
       await emitAck(gm, 'creation:start');
