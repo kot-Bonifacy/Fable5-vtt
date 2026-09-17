@@ -25,6 +25,7 @@ import {
   buildCpredRegistry,
   withCreationData,
   creationAvailableSkills,
+  creationOutcome,
   creationSkillCost,
   creationSkillPointsSpent,
   creationStatPool,
@@ -510,6 +511,9 @@ describe('kreator postaci', () => {
     expect(sheet.roleAbilityRank).toBe(4);
     expect(sheet.hpCurrent).toBeGreaterThan(0);
     expect(sheet.skills.athletics).toBe(6);
+    // Naprawa 3a: a player's character moves into a container on kibble (s. 105)
+    // instead of being skipped by the monthly settlement.
+    expect(sheet.lifestyle).toEqual({ level: 'kibble', housing: 'container' });
 
     // The wizard opens on a clean sheet afterwards, not on the finished one.
     const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
@@ -898,6 +902,8 @@ describe('kreator postaci', () => {
     expect(character.name).toBe('Doktor');
     expect(character.ownerId).toBeNull();
     expect((character.data as CpredCharacterData).stats.body).toBe(6);
+    // An NPC pays no rent — the settlement skips a sheet without a lifestyle.
+    expect((character.data as CpredCharacterData).lifestyle).toBeNull();
   });
 
   describe('naprawa 1 — autorytet MG i odporność operacji', () => {
@@ -1278,6 +1284,74 @@ describe('kreator postaci', () => {
         gm.off('creation:ranks-sync', onGm);
         vex.off('creation:ranks-sync', onPlayer);
       }
+    });
+  });
+
+  describe('naprawa 3a — podsumowanie zgodne z kartą', () => {
+    it('writes exactly the sheet the summary computed: goods, change and lifestyle', async () => {
+      await emitAck(vex, 'creation:discard');
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      const started = await patch(vex, {
+        method: 'complete',
+        roleId: 'exec',
+        name: 'Garnitur',
+        placeToken: false,
+      });
+      expect(
+        (
+          await emitAck(gm, 'creation:set-rank', {
+            draftId: started.id,
+            statRankId: started.draft.statRankId,
+          })
+        ).ok,
+      ).toBe(true);
+      await patch(vex, { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])) });
+      for (const entryId of ['weapon.zgrzyt-9', 'weapon.zgrzyt-9', 'gear.latarka-taktyczna']) {
+        data(await emitAck<Draft>(vex, 'creation:buy', { entryId, delta: 1 }), 'creation:buy');
+      }
+      const ready = await allocateRemaining(vex);
+
+      // What the client has: the registry of /api/cpred/data and the catalogue
+      // of state:sync — nothing the server keeps to itself.
+      const res = await built.app.inject({
+        method: 'GET',
+        url: '/api/cpred/data',
+        headers: { cookie: vexCookie },
+      });
+      const payload = res.json() as CpredDataPayload;
+      const registry = withCreationData(
+        buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles }),
+        payload.creation,
+      );
+      const { compendium } = await createSocket(vexCookie).firstSync;
+      const entries = new Map(compendium.entries.map((entry) => [entry.id, entry]));
+      const outcome = creationOutcome(
+        ready.draft,
+        registry.creation!,
+        registry,
+        (entryId) => entries.get(entryId),
+        { weaponTypeById: new Map(compendium.weaponTypes.map((type) => [type.id, type])) },
+        true,
+      );
+
+      const finished = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: ready.id }),
+        'creation:finish',
+      );
+      const sheet = finished.data as CpredCharacterData;
+      // Row ids are the only thing the server makes up on its own.
+      const withoutRowIds = (value: CpredCharacterData) => ({
+        ...value,
+        weapons: value.weapons.map(({ id: _id, ...row }) => row),
+        armor: value.armor.map(({ id: _id, ...row }) => row),
+        gear: value.gear.map(({ id: _id, ...row }) => row),
+      });
+      expect(withoutRowIds(sheet)).toEqual(withoutRowIds(outcome.sheet));
+      expect(outcome.spent).toBe(2 * 50 + 20);
+      expect(sheet.eddies).toBe(outcome.budget - outcome.spent);
+      expect(sheet.weapons).toHaveLength(2);
+      // A Korpo starts in the company conapt on a good prepack (s. 105).
+      expect(sheet.lifestyle).toEqual({ level: 'goodPrepack', housing: 'corpoConapt' });
     });
   });
 });

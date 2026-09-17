@@ -36,6 +36,7 @@ import {
   creationBudget,
   creationDataOf,
   creationIssues,
+  creationLifestyle,
   creationPurchases,
   creationRole,
   creationSpentEddies,
@@ -630,6 +631,12 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         }
       }
 
+      // Rent is for a character somebody plays; the GM's NPC stays off the bill.
+      const sheet = creationToCharacterData(
+        draft,
+        data,
+        creationLifestyle(deps.ctx.cpred, draft.roleId, ownerId !== null),
+      );
       const character = await deps.ctx.prisma.$transaction(async (tx) => {
         if (draft.portraitUrl && user.role !== ROLE_GM) {
           if (
@@ -650,10 +657,10 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
             name,
             ownerId,
             portraitUrl: draft.portraitUrl,
-            data: JSON.stringify(creationToCharacterData(draft, data)),
+            data: JSON.stringify(sheet),
           },
         });
-        await payStartingKit(deps, campaignId, created, draft, data, lookup, user.id, tx);
+        await payStartingKit(deps, campaignId, created, sheet, draft, data, lookup, user.id, tx);
         await tx.characterDraft.delete({ where: { id: existing.id } });
         return tx.character.findUniqueOrThrow({ where: { id: created.id } });
       });
@@ -675,18 +682,18 @@ async function payStartingKit(
   deps: RealtimeDeps,
   campaignId: string,
   character: Character,
+  startingSheet: CpredCharacterData,
   draft: CpredCreationDraft,
   data: ReturnType<typeof creationDataOf>,
   lookup: (entryId: string) => CompendiumEntry | undefined,
   actorId: string,
   tx: Prisma.TransactionClient,
 ): Promise<void> {
-  let sheet = creationToCharacterData(draft, data);
-  sheet = await applyBalance(
+  let sheet = await applyBalance(
     deps,
     campaignId,
     character,
-    sheet,
+    startingSheet,
     {
       kind: 'starting',
       amount: creationBudget(data, draft),

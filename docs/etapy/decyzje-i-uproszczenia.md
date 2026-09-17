@@ -332,6 +332,17 @@ to jest ten akapit do przeczytania na nowo.
   ten wiersz oszczędzał każdej postaci 2 pkt. Osobny slang na karcie to projekt wielu języków
   (`POMYSLY.md`, 15.09) — wtedy opłata przejdzie na prawdziwy wiersz, a ta funkcja zniknie.
 
+- **Poziom życia na start bez pola „pierwszy miesiąc gratis” (17.09, decyzja MG, naprawa 3a).**
+  Kreator zapisuje postaci z właścicielem „Na karmie · Kontener”, a Korpo „Dobry prepak ·
+  Korporacyjny konap” (s. 105); NPC MG zostaje bez rachunków. Podręcznikowego darmowego (u Korpo
+  opłaconego) pierwszego miesiąca VTT nie liczy — rozliczenie miesiąca uruchamia MG i to on pomija
+  świeżą postać. Opcje Zakwaterowania Nomady z Moto (s. 165) ustawia się na karcie.
+- **Wszczepy świeżej postaci mają losowaną Utratę Człowieczeństwa (17.09, naprawa 3a).** Podręcznik
+  przy tworzeniu postaci każe liczyć stałą wartość sprzed nawiasu, ale kreator nie instaluje
+  cyborgizacji (25c), a Kompendium zawsze rzuca kośćmi — także przy „Dodaj za darmo” z pakietu
+  Krawędziarza. Kreator mówi o tym na liście „czego kreator nie wydaje”; stała UC dla postaci przed
+  zatwierdzeniem gotowości przez MG czeka w `POMYSLY.md`.
+
 ## Interfejs
 
 - **Poziom sklepu nie dotyczy montażu wszczepów (13.09, decyzja MG).** Tarcza kampanii („Uliczne —

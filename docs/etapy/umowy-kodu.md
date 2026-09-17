@@ -1796,6 +1796,9 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Podsumowanie kreatora czyta `creationOutcome` (naprawa 3a)** — kartę, którą zapisze `creation:finish`: wiersze zakupów, resztę, Poziom życia (`creationLifestyle`). Nowa rzecz, którą zakończenie dopisuje na kartę, wchodzi do `creationToCharacterData` albo `creationOutcome`, a test serwera „writes exactly the sheet the summary computed” pilnuje zgodności.
+- **To, czego kreator świadomie nie wydaje, mówi jedna lista `creationLeftOutside`** — krok Wyposażenie, podsumowanie i ekran końcowy renderują ją tym samym `CreatorLeftOutside`. Nowe uproszczenie wyposażenia dopisuje tam wiersz, nie zdanie w komponencie.
+- **Nowy wszczep kosztuje samą cenę (17.09)** — `installBill` dolicza `CYBERWARE_INSTALL_COST` wyłącznie przy `installOnly` (znaleziony wszczep, s. 375); operacja jest w cenie (s. 111).
 - **Co zabiera zmiana Roli albo metody, mówi `creationChangeEffect` (naprawa 2b)** — liczy stratę z tego samego `mergeCreationDraft`, który stosuje serwer; kreator pyta oknem tylko przy niepustym `lost`. Nowe pole kasowane w `mergeCreationDraft` dokłada tam swój wiersz, inaczej zniknie bez pytania.
 - **Lista rang MG jedzie `creation:ranks-sync` do `gmRoom`** — `broadcastCreationRanks` po każdej operacji, która zmienia metodę, ksywę, rangę albo istnienie szkicu gracza; tylko szkice graczy w Kompletnym Pakiecie i tylko metadane. Nowe zdarzenie o takim skutku woła ją samo.
 - **Pole kreatora pisane co klawisz idzie przez `useDraftFieldText(…, pole).write`** — kolejka łączy zapisy tego samego pola (`patch(…, { field })`), a pole nie słucha serwera, dopóki jego zapisy są w drodze albo czeka odrzucona łata.
@@ -1832,6 +1835,25 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Kreator po części 3a naprawy (17.09).** Podsumowanie nie opisuje szkicu, tylko pokazuje kartę,
+którą zapisze serwer: `creationOutcome(draft, data, registry, lookup, { weaponTypeById }, owned)`
+składa ją z `creationToCharacterData` (z Poziomem życia z `creationLifestyle`), wierszy
+`purchasedSheetRow` dla każdej sztuki koszyka i reszty eurodolców, przepuszczając wynik przez
+`mergeCharacterData`. Serwer liczy to samo krokami (wiersz rejestru na linię koszyka), ale z tych
+samych klocków — test w `creation.test.ts` porównuje obie karty bez identyfikatorów wierszy. Kto
+dokłada coś do zakończenia (np. znacznik gotowości z 3b), dopisuje to w `creationToCharacterData`,
+inaczej podsumowanie znów zacznie obiecywać inną kartę. `owned` rozstrzyga rachunki: gracz zawsze
+jest właścicielem, MG zależnie od listy „Właściciel”, a NPC zostaje z `lifestyle: null`.
+Uproszczenia wyposażenia z 25c (pakiet Krawędziarza, Moda, cyborgizacje, amunicja) mówi
+`creationLeftOutside` — jedna lista dla sklepu (zwinięta), podsumowania i ekranu końcowego.
+Po udanym `creation:finish` okno zostaje na ekranie końcowym (`CreatorFinishedScreen`) z wynikiem
+żetonu i ponowieniem tym samym `draftId`; szkic w magazynie czyści dopiero „Zamknij kreator”.
+
+**Opłata za montaż wszczepu (17.09).** `installBill` w `realtime/cyberware.ts`: `full` = cena wpisu,
+`installOnly` = `CYBERWARE_INSTALL_COST`, `none` = zero (MG). Do 17.09 `full` pobierał cenę i opłatę
+za montaż naraz, choć „koszt operacji chirurgicznej […] jest wliczony w cenę” (s. 111), a pozycja
+cennika „Montaż znalezionej cyborgizacji” (s. 375) dotyczy wyłącznie wszczepu, który postać już ma.
 
 **Kreator po części 2b naprawy (16.09).** Zmiana Roli albo metody, która coś zabiera, pyta oknem
 w samym kreatorze (`CreatorDialog`), a treść pytania liczy `creationChangeEffect` w `shared`:

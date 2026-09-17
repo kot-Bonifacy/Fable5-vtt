@@ -7,6 +7,36 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.09 (czwarta) — naprawa kreatora, część 2b
+
+**Zlecenie MG:** wykonać etap 2b `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
+kontekstu — podzielić), dopytywać i zgłaszać możliwe błędy. **Stan: 2b ✅**, bez dalszego podziału.
+Checklista i ustalenia są w pliku naprawy.
+
+**Decyzje MG (16.09):** objaśnienia Ról i Cech własnymi zdaniami w repo, opisy umiejętności
+z prywatnych danych rozwijane „?”; jedno okno potwierdzenia w kreatorze także dla „Wyrzuć szkic”
+i „Wczytaj zapis serwera”; naprawa klawiatury w kreatorze **i karcie postaci**; zmiana Roli
+w Kompletnym Pakiecie nadal kasuje Cechy.
+
+**Zgłoszone MG możliwe błędy:** (1) nasłuch klawiatury mapy zabierał klawisze z przycisków okien —
+`Tab` w kreatorze i karcie nie przesuwał fokusu, tylko przełączał figury, a `Delete`/`Backspace`
+kasowały zaznaczony obiekt sceny; naprawione w kreatorze i karcie, potwierdzone w przeglądarce,
+reszta okien w `POMYSLY.md`. (2) Zmiana Roli w Kompletnym Pakiecie kasuje rozdzielone Cechy, choć
+ta metoda nie czyta ich z szablonu Roli — MG zostawił, okno strat to wymienia.
+
+**Wdrożone:** `creationChangeEffect`, `CPRED_STAT_HINTS` i pole `summary` Ról w `shared`;
+`creationRankRows` i `broadcastCreationRanks` (`creation:ranks-sync` do `gmRoom`) na serwerze;
+`CreatorDialog`, `CreationRankPanel` z `creationRankStore` i znaczkiem na zakładce,
+`patch(…, { field })` z `useDraftFieldText(…).write`, `spinbutton` poziomu umiejętności
+i `data-owns-keys` w `MapArea` u klienta. Umowy — `postac` (3), `ui` (1); pułapka — `ui` (1).
+
+**Weryfikacja:** vitest w trzech pakietach — 2133 shared, 1183 serwera, 223 klienta; `tsc --noEmit`
+trzech pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
+(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi, sesje MG i gracza z poprzednich
+oględzin): scenariusze w checkliście 2b. **Nie było** odbioru 4K ani motywu dziennego nowych
+elementów (2c). Serwer testowy i Vite zatrzymane drzewami procesów; zwykły dev na `dev.db`:
+`/health` 200, frontend 200, zatrzymany, porty wolne.
+
 ### Sesja 16.09 (trzecia) — naprawa kreatora, podział etapu 2 i część 2a
 
 **Zlecenie MG:** wykonać etap 2 `naprawa_karty_postaci.md`, a jeśli jest za duży na jedno okno

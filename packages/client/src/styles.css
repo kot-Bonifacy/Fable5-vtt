@@ -9829,6 +9829,131 @@ body.is-resizing {
   border-radius: 8px;
 }
 
+/* ── Podsumowanie i ekran końcowy (naprawa 3a) ───────────────────────────── */
+
+/* Krótkie pary „etykieta — wartość": właściciel, żeton, pieniądze. Wartości
+   są zdaniami, więc kolumny są szerokie i zawijają się, zamiast ściskać tekst. */
+.creator-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.creator-facts dt {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.creator-facts dd {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.creator-summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.creator-summary-section h4 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+/* Dziesięć Cech w jednym rzędzie, jak nagłówek karty; w wąskim oknie po pięć. */
+.creator-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.creator-summary-stats div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.creator-summary-stats dt {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+}
+
+.creator-summary-stats dd {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.creator-summary-skills {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 16rem auto;
+  column-gap: 1.5rem;
+  font-size: 1rem;
+}
+
+.creator-summary-skills li {
+  break-inside: avoid;
+  padding: 0.1rem 0;
+}
+
+.creator-summary-gear,
+.creator-outside-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 1rem;
+}
+
+.creator-summary-kind {
+  display: inline-block;
+  min-width: 5rem;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.creator-outside-list li {
+  line-height: 1.5;
+}
+
+/* W sklepie zwinięte: tytuły w jednym wierszu mówią, czego tu nie ma. */
+.creator-outside summary {
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+}
+
+.creator-outside[open] summary {
+  margin-bottom: 0.4rem;
+}
+
+.creator-finished-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
 .creator-footer {
   display: flex;
   flex-wrap: wrap;

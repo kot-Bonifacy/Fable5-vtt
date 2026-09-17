@@ -12,7 +12,10 @@ import {
   creationPurchases,
   creationFreeLanguageCharge,
   creationIssueStep,
+  creationLeftOutside,
+  creationLifestyle,
   creationMissingSkillMinima,
+  creationOutcome,
   creationSkillRow,
   creationSkillCost,
   creationSkillPointsSpent,
@@ -915,5 +918,68 @@ describe('naprawa 2b — co zabiera zmiana Roli albo metody', () => {
       lost: [],
       notes: [],
     });
+  });
+});
+
+describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
+  const corpo = buildCpredRegistry(
+    { skills: SKILLS },
+    { roles: [...ROLES, { id: 'exec', name: 'Korpo', ability: 'Praca Zespołowa' }] },
+  );
+
+  it('moves a played character into a container, a Korpo into the company conapt', () => {
+    expect(creationLifestyle(registry(), 'solo', true)).toEqual({
+      level: 'kibble',
+      housing: 'container',
+    });
+    expect(creationLifestyle(corpo, 'exec', true)).toEqual({
+      level: 'goodPrepack',
+      housing: 'corpoConapt',
+    });
+    // The GM's NPC pays no rent — the monthly settlement skips it.
+    expect(creationLifestyle(registry(), 'solo', false)).toBeNull();
+  });
+
+  it('carries the lifestyle onto the sheet only when asked to', () => {
+    expect(creationToCharacterData(finished(), data()).lifestyle).toBeNull();
+    expect(
+      creationToCharacterData(finished(), data(), { level: 'kibble', housing: 'container' })
+        .lifestyle,
+    ).toEqual({ level: 'kibble', housing: 'container' });
+  });
+
+  it('puts every basket copy on its list and leaves the change in the wallet', () => {
+    const outcome = creationOutcome(
+      finished({ purchases: { 'weapon.pistolet': 2, 'armor.kurtka': 1, 'gear.latarka': 1 } }),
+      data(),
+      registry(),
+      lookup,
+      { weaponTypeById: new Map() },
+      true,
+    );
+    expect(outcome.budget).toBe(500);
+    expect(outcome.spent).toBe(2 * 50 + 100 + 20);
+    expect(outcome.sheet.eddies).toBe(280);
+    expect(outcome.sheet.weapons.map((row) => row.name)).toEqual(['Pistolet', 'Pistolet']);
+    expect(outcome.sheet.armor).toMatchObject([{ name: 'Kurtka', sp: 7, location: 'body' }]);
+    expect(outcome.sheet.gear).toMatchObject([{ name: 'Latarka', qty: 1 }]);
+    expect(new Set(outcome.sheet.weapons.map((row) => row.id)).size).toBe(2);
+    // The free language rides along exactly as the finished sheet gets it.
+    expect(outcome.sheet.skills.language).toBe(4);
+    expect(outcome.sheet.lifestyle).toEqual({ level: 'kibble', housing: 'container' });
+  });
+
+  it('names what the book gives and the wizard does not, per method', () => {
+    const edgerunner = creationLeftOutside({ method: 'edgerunner' }, data());
+    expect(edgerunner.map((line) => line.id)).toEqual(['package', 'cyberware', 'ammo']);
+    const complete = creationLeftOutside({ method: 'complete' }, data());
+    expect(complete.map((line) => line.id)).toEqual(['fashion', 'cyberware', 'ammo']);
+    expect(complete[0]!.text).toContain('800 ed');
+    // A table that zeroed the fashion money gets no line about it.
+    const noFashion = creationLeftOutside(
+      { method: 'complete' },
+      { budgets: { edgerunner: 500, complete: 2550, fashion: 0 } },
+    );
+    expect(noFashion.map((line) => line.id)).toEqual(['cyberware', 'ammo']);
   });
 });

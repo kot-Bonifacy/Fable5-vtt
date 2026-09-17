@@ -13,9 +13,13 @@ import {
   SKILL_SPECIALTY_MAX_LENGTH,
   cpredSkillNeedsSpecialty,
   createDefaultCharacterData,
+  mergeCharacterData,
+  type CpredArmorRow,
   type CpredCharacterData,
+  type CpredGearRow,
   type CpredRegistry,
   type CpredValidationIssue,
+  type CpredWeaponRow,
 } from './character.js';
 import { humanityMaxWith } from './cyberware.js';
 import { hpMax } from './derived.js';
@@ -25,8 +29,10 @@ import {
   validateLifepath,
   type CpredLifepath,
 } from './lifepath.js';
-import type { CompendiumEntry } from './compendium.js';
-import { entryPrice, formatEddies } from './economy.js';
+import { resolveWeapon, type CompendiumEntry, type CompendiumRegistry } from './compendium.js';
+import { entryPrice, formatEddies, type CpredLifestyle } from './economy.js';
+import { CPRED_TEAMWORK_ABILITY } from './roleability.js';
+import { purchasedSheetRow } from './shopping.js';
 import { sanitizeTokenImageUrl } from '../../tokens.js';
 
 /**
@@ -1336,6 +1342,8 @@ export function applyRolledSpread(
 export function creationToCharacterData(
   draft: CpredCreationDraft,
   data: CpredCreationData,
+  /** From `creationLifestyle` — null leaves the sheet off the monthly bill. */
+  lifestyle: CpredLifestyle | null = null,
 ): CpredCharacterData {
   const stats = creationStats(draft, data);
   const skills: Record<string, number> = {};
@@ -1366,7 +1374,145 @@ export function creationToCharacterData(
     // just answered three times over, so it is filled in rather than left for
     // the player to copy by hand. It stays an ordinary editable line.
     style: lifepathStyleLine(draft.lifepath),
+    lifestyle,
   };
+}
+
+/**
+ * Where a fresh character lives (s. 105): a rented container on kibble — and
+ * a Korpo in the company conapt on a good prepack. Only a character somebody
+ * plays gets the bill; an NPC the GM builds stays off the monthly settlement
+ * like every other NPC sheet (stage 23b). The book's free first month needs no
+ * field: the settlement is the GM's button.
+ *
+ * The Korpo is known by the name of its Ability, like every Role test in the
+ * engine — the Role ids come from a data file the table may rename.
+ */
+export function creationLifestyle(
+  registry: Pick<CpredRegistry, 'roles'>,
+  roleId: string | null,
+  owned: boolean,
+): CpredLifestyle | null {
+  if (!owned) return null;
+  const role = registry.roles.find((entry) => entry.id === roleId);
+  return role?.ability === CPRED_TEAMWORK_ABILITY
+    ? { level: 'goodPrepack', housing: 'corpoConapt' }
+    : { level: 'kibble', housing: 'container' };
+}
+
+/** What „Utwórz postać" writes, as the summary shows it (naprawa 3a). */
+export interface CpredCreationOutcome {
+  /** The sheet after the starting money came in and every basket line went out. */
+  sheet: CpredCharacterData;
+  purchases: CpredCreationPurchase[];
+  budget: number;
+  spent: number;
+}
+
+/**
+ * The finished sheet, computed before anything is written — so the summary
+ * reads the same rows, balance and lifestyle the server is about to store.
+ *
+ * `creation:finish` builds its sheet in steps (a ledger row per basket line),
+ * but out of the same three pieces: `creationToCharacterData`, the catalogue
+ * row of `purchasedSheetRow` and the eddies left after the basket. The server
+ * test holds the two results equal, row ids aside.
+ */
+export function creationOutcome(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+  registry: Pick<CpredRegistry, 'roles'>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  compendium: Pick<CompendiumRegistry, 'weaponTypeById'>,
+  owned: boolean,
+): CpredCreationOutcome {
+  const purchases = creationPurchases(draft, lookup);
+  const budget = creationBudget(data, draft);
+  const spent = creationSpentEddies(purchases);
+  const base = creationToCharacterData(
+    draft,
+    data,
+    creationLifestyle(registry, draft.roleId, owned),
+  );
+  const weapons: CpredWeaponRow[] = [...base.weapons];
+  const armor: CpredArmorRow[] = [...base.armor];
+  const gear: CpredGearRow[] = [...base.gear];
+  let rows = 0;
+  for (const line of purchases) {
+    const entry = lookup(line.entryId);
+    if (!entry) continue;
+    const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
+    for (let copy = 0; copy < line.qty; copy += 1) {
+      rows += 1;
+      const purchased = purchasedSheetRow(entry, resolved, `creation-${rows}`);
+      if (!purchased) continue;
+      if (purchased.list === 'weapons') weapons.push(purchased.row);
+      else if (purchased.list === 'armor') armor.push(purchased.row);
+      else gear.push(purchased.row);
+    }
+  }
+  return {
+    sheet: mergeCharacterData(base, { weapons, armor, gear, eddies: budget - spent }),
+    purchases,
+    budget,
+    spent,
+  };
+}
+
+/** One thing the book hands a new character that the wizard does not. */
+export interface CpredCreationOutside {
+  id: 'package' | 'fashion' | 'cyberware' | 'ammo';
+  title: string;
+  text: string;
+}
+
+/**
+ * The deliberate gaps of stage 25c, said where the player decides (the gear
+ * step), before „Utwórz postać" and after it — so „gotowe" never stands for
+ * the rulebook's whole starting kit (naprawa 3a).
+ */
+export function creationLeftOutside(
+  draft: Pick<CpredCreationDraft, 'method'>,
+  data: Pick<CpredCreationData, 'budgets'>,
+): CpredCreationOutside[] {
+  const lines: CpredCreationOutside[] = [];
+  if (draft.method === 'edgerunner') {
+    lines.push({
+      id: 'package',
+      title: 'Pakiet Roli',
+      text:
+        'Krawędziarz dostaje w podręczniku gotowy zestaw broni, pancerza, sprzętu i cyborgizacji ' +
+        'swojej Roli. Kreator go nie wydaje — dokłada go MG przyciskiem „Dodaj za darmo” w Kompendium.',
+    });
+  }
+  if (draft.method === 'complete' && data.budgets.fashion > 0) {
+    lines.push({
+      id: 'fashion',
+      title: 'Moda',
+      text:
+        `Podręcznik daje jeszcze ${formatEddies(data.budgets.fashion)} ed wyłącznie na ubrania ` +
+        'i cybermodę, a niewydane przepadają. VTT nie ma katalogu Mody, więc tych pieniędzy nie ma ' +
+        'na karcie — wygląd opisuje pole „Styl”.',
+    });
+  }
+  lines.push({
+    id: 'cyberware',
+    title: 'Cyborgizacje',
+    text:
+      (draft.method === 'complete'
+        ? 'W podręczniku kupuje się je z tej samej puli, co wyposażenie. '
+        : 'Te z pakietu Roli dokłada MG, a własne kupuje się za eurodolce z karty. ') +
+      'W VTT instaluje się je dopiero na gotowej postaci, w Kompendium — Utrata Człowieczeństwa ' +
+      'jest wtedy losowana, choć przy tworzeniu postaci podręcznik liczy stałą wartość.',
+  });
+  lines.push({
+    id: 'ammo',
+    title: 'Amunicja',
+    text:
+      'Kupiona broń ma pełny magazynek, a przeładowanie w VTT nie zużywa zapasów — naboi nie ' +
+      'kupuje się ani tutaj, ani później.',
+  });
+  return lines;
 }
 
 /** „Biznesowe · Krótkie i kręcone · Kolczyki w nosie" — the sheet's Styl line. */

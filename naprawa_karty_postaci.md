@@ -1,7 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan na 16.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
-etap 3 do realizacji**.
+Data: 15.09.2026. Stan na 17.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
+etap 3 w toku (3a ✅, 3b i 3c do realizacji)**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
@@ -349,6 +349,67 @@ w przeglądarce jest obowiązkowy, sam przegląd CSS nie wystarczy.
 
 **Zależność:** etapy 1–2. **Cel:** użytkownik wie, co postać ma i co zostało do zrobienia.
 
+**Podział z 17.09 (za zgodą MG):** trzy wątki wdrożenia i pełny odbiór obu metod w przeglądarce
+nie mieszczą się w jednym oknie kontekstu, więc etap idzie w trzech częściach, po jednej sesji:
+
+- **3a — podsumowanie zgodne z kartą i uczciwe wyposażenie.** Podsumowanie liczone z tej samej karty,
+  którą zapisze serwer (Cechy, pochodne, darmowy język, Zdolność, wiersze zakupów, saldo, właściciel,
+  żeton, Poziom życia); jedna lista „czego kreator nie wydaje” (pakiet Krawędziarza, Moda,
+  cyborgizacje, amunicja) w sklepie, podsumowaniu i po zakończeniu; ekran końcowy z wynikiem żetonu.
+- **3b — co zostało po kreatorze.** Podgląd właściwości przedmiotu w sklepie przed zakupem; lista
+  czynności wynikających z Roli (Zmysł Walki, Medycyna, Twórca, zespół Korpo, Tabor Nomady — także
+  jego opcje Zakwaterowania z Moto, cyberdek Netrunnera) z przejściem do paneli karty; **znacznik
+  gotowości do gry nadawany przez MG** (decyzja MG z 17.09): świeża postać „czeka na MG”, MG widzi
+  w zakładce „Postacie” listę z tym, co zostało, i zatwierdza; znaczek z liczbą jak przy rangach;
+  nowe pole w bazie.
+- **3c — odbiór obu metod.** Pełne przejście według akapitu „Odbiór” niżej: MG i gracz, obie metody,
+  Role z dodatkowymi decyzjami, zapis i wznowienie, zmiana Roli/metody, brak portretu, brak aktywnej
+  sceny, opóźnienie i zerwanie połączenia; poprawki tego, co wyjdzie.
+
+### Część 3a — status: ✅ ukończona 17.09.2026
+
+- [x] `creationOutcome` w `shared`: karta, jaką zapisze „Utwórz postać” — `creationToCharacterData`,
+      wiersze `purchasedSheetRow` dla każdej sztuki koszyka, reszta eurodolców i Poziom życia.
+      Test serwera porównuje ją z kartą po `creation:finish` (bez identyfikatorów wierszy).
+- [x] Poziom życia na start (s. 105, decyzja MG): `creationLifestyle` — „Na karmie · Kontener”,
+      Korpo (po nazwie Zdolności) „Dobry prepak · Korporacyjny konap”; NPC MG bez rachunków.
+      Serwer zapisuje go przy zakończeniu, gdy postać ma właściciela.
+- [x] `creationLeftOutside`: pakiet Roli (Krawędziarz), Moda (Kompletny Pakiet), cyborgizacje
+      (losowana UC po kreatorze), amunicja — zwinięte w kroku Wyposażenie, rozwinięte w podsumowaniu
+      i na ekranie końcowym.
+- [x] Podsumowanie: właściciel (gracz „Ty”, MG lista), żeton z nazwą aktywnej sceny albo „brak
+      aktywnej sceny”, Zdolność z rangą, dziesięć Cech, pięć wartości pochodnych („—” do ustalenia
+      wszystkich Cech), umiejętności jak na karcie z oznaczonym darmowym językiem, wiersze broni
+      (OBR, LA, magazynek), pancerza (OB, miejsce) i sprzętu, saldo i Poziom życia.
+- [x] Stopka „Postać gotowa” → „Wymagania kreatora spełnione”.
+- [x] Ekran końcowy zamiast cichego zamknięcia: wynik żetonu, saldo, Poziom życia, ponowienie
+      postawienia (bez drugiej karty), lista „czego kreator nie wydał”, „Pokaż kartę” i „Zamknij kreator”.
+- [x] Poprawka spoza kreatora (osobny commit): pełny montaż wszczepu pobierał cenę **i** opłatę
+      za montaż; podręcznik wlicza operację w cenę (s. 111), a opłata z s. 375 dotyczy tylko
+      znalezionego wszczepu.
+- [x] Testy: 4 nowe w `shared`, 1 nowy i 2 rozszerzone na serwerze (kreator), 2 poprawione (wszczepy);
+      pełny przebieg 2137 / 1184 / 224, `tsc`, ESLint, Prettier czyste.
+- [x] Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, 2082×1172 CSS): gracz w Kompletnym
+      Pakiecie kupuje 2 × broń, pancerz i apteczkę → podsumowanie (2350 ed, kontener) → „Utwórz
+      postać” bez aktywnej sceny → ekran końcowy z ponowieniem; karta obok zgodna (PW 45, Poważnie
+      Ranny ≤ 23, Człowieczeństwo 50, Język (Polski) 4), dane serwera zgodne (2350 ed, 2 bronie,
+      Kevlar, apteczka, kontener); MG włącza scenę → „Ponów” stawia żeton, bez drugiej karty.
+      MG: Krawędziarz Korpo — „Pakiet Roli” na liście, NPC „bez rachunków”, po zmianie właściciela
+      „Dobry prepak · Korporacyjny konap — 600 ed / mies.”; motyw dzienny podsumowania.
+
+**Ustalenia z realizacji 3a:**
+
+- **Poziom życia wybiera Rola po nazwie Zdolności** („Praca Zespołowa” = Korpo), jak każda Rola
+  w silniku. Nomada dostaje kontener; jego opcje z Moto (s. 165) idą na listę czynności w 3b.
+- **Pierwszy miesiąc bez opłat nie ma pola** — rozliczenie miesiąca uruchamia MG, więc podsumowanie
+  tylko o tym przypomina. Postać utworzona tuż przed pierwszym dniem miesiąca zapłaci przy
+  najbliższym rozliczeniu, jeśli MG go nie pominie.
+- **Po zamknięciu ekranu końcowego gracz nie ponowi już żetonu** — szkic znika, a ⊕ przy postaci
+  jest tylko u MG. Ekran o tym mówi.
+- **Wiersze tej samej broni kupionej dwa razy stoją osobno** — bo tak stoją na karcie.
+- **Nie sprawdzono:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
+  połączenia przy zakończeniu (zakres 3c).
+
 Zakres ogólny przy zachowaniu dotychczasowych uproszczeń:
 
 - Przebudować informację o wyposażeniu: zakupy, pakiet od MG, moda i późniejsze
@@ -421,6 +482,14 @@ Otwarte kwestie wskazano poniżej.
     bez ciemnych drobinek i plam; wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach.
 20. **Kontrast pod wytarciami — ustalone 16.09 (piąta sesja):** zostaje obecna budowa (wytarcia nad
     tekstem) mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych miejscach.
+21. **Podział etapu 3 — ustalone 17.09:** 3a (podsumowanie i wyposażenie), 3b (czynności Roli, sklep,
+    gotowość), 3c (odbiór).
+22. **Gotowość do gry — ustalone 17.09:** znacznik nadawany przez MG na karcie, lista w zakładce
+    „Postacie” ze znaczkiem liczby; nowe pole w bazie (3b).
+23. **Poziom życia na start — ustalone 17.09:** według podręcznika (kontener „Na karmie”, Korpo
+    konap „Dobry prepak”), tylko dla postaci z właścicielem; pierwszy darmowy miesiąc przy MG.
+24. **Opłata za montaż wszczepu — ustalone 17.09:** poprawiona od razu (sama cena przy nowym
+    wszczepie); stała Utrata Człowieczeństwa przy tworzeniu postaci do `POMYSLY.md`.
 
 ## Mapa kodu dla późniejszej realizacji
 

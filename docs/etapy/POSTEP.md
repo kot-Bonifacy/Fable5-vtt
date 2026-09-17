@@ -117,8 +117,13 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 ✅ (2a/2b/2c) — następny
-jest etap 3** (gotowość do gry i odbiór obu metod). **Od 2c karta postaci i kreator są „starą kartką”**
+**Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 ✅ (2a/2b/2c), etap 3
+podzielony 17.09 — 3a ✅, następna jest 3b** (czynności Roli z przejściem do paneli karty, podgląd
+przedmiotu w sklepie, **znacznik gotowości do gry nadawany przez MG** — nowe pole w bazie), potem 3c
+(odbiór obu metod). **Od 3a** podsumowanie kreatora pokazuje kartę z `creationOutcome` — tę samą,
+którą zapisze serwer (test to pilnuje), postać gracza dostaje Poziom życia z s. 105, a po „Utwórz
+postać” okno zostaje na ekranie końcowym. **Nowy wszczep kosztuje od 17.09 samą cenę** — do tej pory
+pełny montaż doliczał opłatę za montaż. **Od 2c karta postaci i kreator są „starą kartką”**
 (`sheet-window--paper`): pożółkły papier w dzień, czarny karton w nocy, jasne wytarcia nad drukiem
 i pęknięcia na czerwonych ramkach — tekstury z sieci (domena publiczna/CC0) budowane
 `tools/art/sheet-paper.py`. **MG odrzucił wszystko, co ciemniejsze od papieru** (drobinki i plamy
@@ -258,8 +263,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2133** w `shared`, **1183** na serwerze, **224** u klienta —
-zielone (liczby z 16.09, piąta sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2137** w `shared`, **1184** na serwerze, **224** u klienta —
+zielone (liczby z 17.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -292,7 +297,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    7 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   34 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   37 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
@@ -300,11 +305,47 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
 | `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      80 |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      20 |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      22 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.09 — naprawa kreatora, podział etapu 3 i część 3a
+
+**Zlecenie MG:** wykonać etap 3 `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
+kontekstu — podzielić i zrobić pierwszą część), dopytywać i zgłaszać możliwe błędy. **Stan: etap 3
+podzielony na 3a/3b/3c, 3a ✅.** Checklista, ustalenia i zakres 3b/3c są w pliku naprawy.
+
+**Decyzje MG (17.09):** podział 3a (podsumowanie zgodne z kartą, uczciwe wyposażenie, ekran
+końcowy) / 3b (czynności Roli, podgląd w sklepie, gotowość) / 3c (odbiór); **gotowość do gry to
+znacznik nadawany przez MG** (nowe pole w bazie, lista w „Postaciach” ze znaczkiem — 3b); Poziom
+życia na start według podręcznika dla postaci z właścicielem; opłata za montaż wszczepu poprawiona
+od razu, stała Utrata Człowieczeństwa przy tworzeniu do `POMYSLY.md`.
+
+**Zgłoszone MG możliwe błędy:** (1) postać z kreatora nie miała Poziomu życia, więc rozliczenie
+miesiąca ją pomijało — naprawione; (2) **pełny montaż wszczepu pobierał cenę i opłatę za montaż**
+(etap 23b), choć operacja jest w cenie (s. 111), a opłata z s. 375 dotyczy znalezionego wszczepu —
+naprawione osobnym commitem; (3) przy tworzeniu podręcznik liczy stałą UC, VTT losuje — zostaje,
+kreator o tym mówi; (4) podsumowanie obiecywało żeton bez sprawdzenia sceny, stopka „Postać gotowa”
+przy braku pakietu/Mody/wszczepów, udane zakończenie zamykało kreator bez słowa — naprawione;
+(5) sklep kreatora nie ma amunicji, bo przeładowanie w VTT nie zużywa zapasów — teraz powiedziane.
+Znalezione przy oględzinach: wartości pochodne liczyły się z minimalnych Cech, zanim gracz je ustalił
+(„PW 20”) — pokazują „—”.
+
+**Wdrożone:** `creationLifestyle`, `creationOutcome`, `creationLeftOutside` i parametr `lifestyle`
+w `creationToCharacterData` (`shared`); Poziom życia przy `creation:finish` i `installBill` bez
+podwójnej opłaty (serwer); nowe `SummaryStep` z `SummarySkills`/`SummaryGear`, `CreatorLeftOutside`
+(zwinięte w sklepie), `CreatorFinishedScreen`, stopka „Wymagania kreatora spełnione” (klient).
+Umowy — `postac` (3); pułapki — `testy` (2); decyzje (2) i pomysły (2).
+
+**Weryfikacja:** vitest — 2137 shared, 1184 serwera, 224 klienta; `tsc --noEmit` trzech pakietów,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`, serwer z jednorazowym `GM_PASSWORD` i katalogami w scratchpadzie): scenariusze w checkliście
+3a. Na bazie testowej powstała karta „Zgrzyt z Kabuki” (gracz Test 2a, żeton na nowej aktywnej scenie
+„Oględziny 3a”); szkic MG „Garnitur 3a” wyrzucony. Serwer i Vite zatrzymane drzewami procesów,
+porty wolne. **Nie było:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
+połączenia (3c).
 
 ### Sesja 16.09 (piąta) — naprawa kreatora, część 2c
 
@@ -341,32 +382,3 @@ ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (M
 `[::1]`, serwer z jednorazowym `GM_PASSWORD`): scenariusze w checkliście 2c. **Nie było:** portretu,
 Safari/iPada, prawdziwego zoomu, pomiaru przewijania (`zaleglosci.md`).
 
-### Sesja 16.09 (czwarta) — naprawa kreatora, część 2b
-
-**Zlecenie MG:** wykonać etap 2b `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
-kontekstu — podzielić), dopytywać i zgłaszać możliwe błędy. **Stan: 2b ✅**, bez dalszego podziału.
-Checklista i ustalenia są w pliku naprawy.
-
-**Decyzje MG (16.09):** objaśnienia Ról i Cech własnymi zdaniami w repo, opisy umiejętności
-z prywatnych danych rozwijane „?”; jedno okno potwierdzenia w kreatorze także dla „Wyrzuć szkic”
-i „Wczytaj zapis serwera”; naprawa klawiatury w kreatorze **i karcie postaci**; zmiana Roli
-w Kompletnym Pakiecie nadal kasuje Cechy.
-
-**Zgłoszone MG możliwe błędy:** (1) nasłuch klawiatury mapy zabierał klawisze z przycisków okien —
-`Tab` w kreatorze i karcie nie przesuwał fokusu, tylko przełączał figury, a `Delete`/`Backspace`
-kasowały zaznaczony obiekt sceny; naprawione w kreatorze i karcie, potwierdzone w przeglądarce,
-reszta okien w `POMYSLY.md`. (2) Zmiana Roli w Kompletnym Pakiecie kasuje rozdzielone Cechy, choć
-ta metoda nie czyta ich z szablonu Roli — MG zostawił, okno strat to wymienia.
-
-**Wdrożone:** `creationChangeEffect`, `CPRED_STAT_HINTS` i pole `summary` Ról w `shared`;
-`creationRankRows` i `broadcastCreationRanks` (`creation:ranks-sync` do `gmRoom`) na serwerze;
-`CreatorDialog`, `CreationRankPanel` z `creationRankStore` i znaczkiem na zakładce,
-`patch(…, { field })` z `useDraftFieldText(…).write`, `spinbutton` poziomu umiejętności
-i `data-owns-keys` w `MapArea` u klienta. Umowy — `postac` (3), `ui` (1); pułapka — `ui` (1).
-
-**Weryfikacja:** vitest w trzech pakietach — 2133 shared, 1183 serwera, 223 klienta; `tsc --noEmit`
-trzech pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db`
-(serwer z jednorazowym `GM_PASSWORD` i katalogami tymczasowymi, sesje MG i gracza z poprzednich
-oględzin): scenariusze w checkliście 2b. **Nie było** odbioru 4K ani motywu dziennego nowych
-elementów (2c). Serwer testowy i Vite zatrzymane drzewami procesów; zwykły dev na `dev.db`:
-`/health` 200, frontend 200, zatrzymany, porty wolne.

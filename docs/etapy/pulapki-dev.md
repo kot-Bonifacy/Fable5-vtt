@@ -1502,6 +1502,8 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Python na Windows zapisuje pliki z CRLF** — `open(p, 'w')` zamienia `\n` na `\r\n` w całym pliku; `git diff` tego nie pokaże (normalizuje), Prettier i ESLint owszem. Pisz z `newline=''` albo po fakcie `sed -i 's/\r$//'`.
+- **`vitest -t` w `creation.test.ts` serwera wycina test, który otwiera gniazda** — gniazda `vex`/`gm` powstają w pierwszym `it`, więc filtrowany test pada na `Cannot read properties of undefined (reading 'emit')`. Puszczaj cały plik.
 - **Zatrzymanie `pnpm dev` puszczonego w tle nie gasi jego dzieci na Windows** — `tsx` i `vite` dalej trzymają :3001 i :5173, a następny start pada na `EADDRINUSE`. Zabij drzewo po PID (`taskkill //PID <pid> //T //F`), zanim uznasz port za zajęty przez coś obcego.
 - **Żeton zadany na połówce kratki staje o pół kratki DALEJ** — `snapAxis` robi `Math.round`, a `Math.round(4.5)` to 5: (450, 1450) ląduje na (500, 1500), środek (550, 1550). Komentarze w `walls.test.ts` z 18a mówią „centre (500, 1500)" i mylą; geometrię testu licz od pozycji po przyciągnięciu.
 - **Wysyłka do gracza po ruchu MG potrafi dojść PO ack MG** — to dwa różne połączenia, więc kolejność między nimi nie istnieje. `waitFor(player, …)` ustawione po ruchu łapie spóźnioną wiadomość i test przesuwa się o jedną; czekaj na wiadomość spełniającą warunek (`blockersWhere`).
@@ -1524,6 +1526,19 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Python na Windows zapisuje pliki z CRLF (17.09, naprawa kreatora 3a).** Skrypt podmieniający
+  fragmenty kodu przez `open(p, 'w', encoding='utf-8')` przepisał trzy pliki TypeScript na `\r\n`.
+  `git diff --stat` pokazał tylko prawdziwe zmiany (Git normalizuje końce wierszy przy porównaniu),
+  a ostrzeżenie „CRLF will be replaced by LF” było jedynym śladem — Prettier z `endOfLine: lf`
+  zgłosiłby cały plik. Zapisuj z `newline=''` (i czytaj tak samo), a po wypadku `sed -i 's/\r$//'`.
+  Przy okazji: długi heredoc z polskimi cudzysłowami urwał się w Bash w połowie — dłuższy kod
+  zapisz najpierw plikiem w scratchpadzie i wklej skryptem.
+
+- **`vitest -t` nie działa na `creation.test.ts` serwera (17.09).** Gniazda `vex` i `gm` opisu
+  „kreator postaci” zakłada pierwszy test („opens a fresh draft…”), nie `beforeAll`. Filtr `-t`
+  pomija go, więc każdy wybrany test pada na `Cannot read properties of undefined (reading 'emit')`
+  w `emitAck` — wygląda to jak zepsuty test, a to kolejność. Uruchamiaj cały plik (~5 s).
 
 - **Zatrzymane zadanie `pnpm dev` zostawia serwery przy życiu (16.09, naprawa kreatora).**
   Zatrzymanie zadania w tle kończy tylko `pnpm`, a `concurrently`, `tsx` i `vite` żyją dalej jako

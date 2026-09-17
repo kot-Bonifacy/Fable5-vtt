@@ -1,5 +1,16 @@
 # Pomysły poza zakresem etapów
 
+**17.09.2026 (naprawa kreatora 3a) — stała Utrata Człowieczeństwa dla świeżej postaci.**
+„Przy tworzeniu Postaci używa się stałej wartości podanej przed nawiasem” (s. 111), a VTT instaluje
+wszczepy tylko w Kompendium, zawsze z rzutem. Naturalne miejsce: dopóki MG nie zatwierdzi gotowości
+postaci do gry (znacznik z 3b), `character:cyberware` bierze `humanityLossFixed` i pomija Test
+montażu. MG 17.09 wybrał samą poprawkę opłaty za montaż; to zostaje pomysłem.
+
+**17.09.2026 (naprawa kreatora 3a) — treść pakietu Roli Krawędziarza do odczytu.** Parser
+`parse-creation.py` nie czyta pakietów wyposażenia Ról, więc kreator mówi tylko „dokłada MG”. Lista
+pakietu z prywatnego rozdziału (dane w `data/private/`) pokazana MG na liście czynności oszczędziłaby
+kartkowania; dokładanie nadal ręczne (automatyczne pakiety są poza naprawą).
+
 **16.09.2026 (naprawa kreatora 2b) — `data-owns-keys` dla pozostałych pływających okien.**
 Nasłuch klawiatury mapy zabierał klawisze z przycisków okien: `Tab` nie przesuwał fokusu, tylko
 przełączał figury, a `Delete`/`Backspace` kasowały zaznaczony obiekt sceny. Kreator i karta postaci

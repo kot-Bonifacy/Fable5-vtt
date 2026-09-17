@@ -11,6 +11,8 @@ import type {
   CampaignDetail,
   CompendiumCategory,
   CompendiumEntry,
+  CpredCharacterData,
+  CpredCreationData,
   CpredCreationDraft,
   CpredCreationMethod,
   CpredCreationSkillRow,
@@ -26,6 +28,7 @@ import type {
   PortraitAssetView,
 } from '@vtt/shared';
 import {
+  ARMOR_LOCATION_LABELS,
   CPRED_CREATION_METHODS,
   CPRED_CREATION_METHOD_LABELS,
   CPRED_CREATION_STEPS,
@@ -40,6 +43,7 @@ import {
   ROLE_GM,
   SHOP_TIER_LABELS,
   SKILL_SPECIALTY_MAX_LENGTH,
+  cpredSkillLabel,
   cpredSkillNeedsSpecialty,
   creationAvailableSkills,
   creationBudget,
@@ -47,7 +51,9 @@ import {
   creationDataOf,
   creationIssueStep,
   creationIssues,
+  creationLeftOutside,
   creationMissingSkillMinima,
+  creationOutcome,
   creationPreview,
   creationPurchases,
   creationRole,
@@ -62,6 +68,7 @@ import {
   entryPrice,
   entryWithinTier,
   formatEddies,
+  formatLifestyle,
   groupedSkills,
   isLifepathFieldTable,
   lifepathBotDraft,
@@ -93,6 +100,7 @@ import {
   useCreationStore,
 } from '../stores/creationStore.js';
 import { useRollStore } from '../stores/rollStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
@@ -132,7 +140,7 @@ function CreatorWindow() {
 
   const placement = useWindowPlacement('creator', () => ({ x: 120, y: 60 }));
   const [ownerId, setOwnerId] = useState('');
-  const [finished, setFinished] = useState<CreationFinishResult | null>(null);
+  const [finished, setFinished] = useState<CreatorFinished | null>(null);
   const draftId = useCreationStore((s) => s.draftId);
   const rankApproved = useCreationStore((s) => s.rankApproved);
   const pendingPatch = useCreationStore((s) => s.pendingPatch);
@@ -195,15 +203,12 @@ function CreatorWindow() {
       setError(creationErrorText(ack.ok ? undefined : ack.error));
       return;
     }
-    // The finished sheet opens straight away — the wizard's whole promise is
-    // „skończone znaczy grywalne".
-    openSheet(ack.data.id);
-    if (ack.data.tokenStatus === 'failed' || ack.data.tokenStatus === 'no-scene') {
-      setFinished(ack.data);
-      return;
-    }
-    closeCreator();
-    setDraft(null);
+    // The finished sheet opens straight away, and the wizard stays on a last
+    // screen (naprawa 3a): where the token went, and what the book gives that
+    // the wizard did not — a silent close read as „wszystko gotowe".
+    if (!finished) openSheet(ack.data.id);
+    const finishedDraft = finished?.draft ?? draft;
+    if (finishedDraft) setFinished({ result: ack.data, draft: finishedDraft });
   }
 
   // The catalogue goes in so the wizard can price the basket: without it the
@@ -252,26 +257,6 @@ function CreatorWindow() {
         </button>
       </div>
 
-      {finished && (
-        <div role="status" className="creator-error">
-          Postać, pieniądze i zakupy zostały zapisane.{' '}
-          {finished.tokenStatus === 'no-scene'
-            ? 'Brak aktywnej sceny dla żetonu.'
-            : 'Nie udało się potwierdzić postawienia żetonu.'}
-          <button type="button" disabled={busy} onClick={() => void finish()}>
-            Ponów postawienie żetonu
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              closeCreator();
-              setDraft(null);
-            }}
-          >
-            Zamknij
-          </button>
-        </div>
-      )}
       {pendingPatch && (
         <div role="alert" className="creator-error">
           Zapis wymaga ponowienia. Kolejne zmiany czekają.
@@ -297,7 +282,18 @@ function CreatorWindow() {
         </div>
       )}
 
-      {finished ? null : data.roles.length === 0 ? (
+      {finished ? (
+        <CreatorFinishedScreen
+          finished={finished}
+          busy={busy}
+          onRetryToken={() => void finish()}
+          onOpenSheet={() => openSheet(finished.result.id)}
+          onClose={() => {
+            closeCreator();
+            setDraft(null);
+          }}
+        />
+      ) : data.roles.length === 0 ? (
         <p className="creator-empty">
           Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel Ról. Uruchom
           <code> tools/import/parse-creation.py</code>.
@@ -378,7 +374,9 @@ function CreatorWindow() {
               ← Wstecz
             </button>
             {issues.length === 0 ? (
-              <span className="creator-issues-count">Postać gotowa</span>
+              // Not „Postać gotowa": the wizard's rules are met, the book's
+              // starting kit is not (Moda, pakiet, cyborgizacje — naprawa 3a).
+              <span className="creator-issues-count">Wymagania kreatora spełnione</span>
             ) : draft.step === 'summary' ? (
               <span className="creator-issues-count">
                 {issuesCountText(issueLines.length)} — lista wyżej
@@ -2034,21 +2032,11 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
       <div className="creator-budget" data-creation-field="purchases">
         <strong>{formatEddies(left)} ed</strong>
         <span className="creator-hint">
-          zostaje z {formatEddies(budget)} ed startowych · wydane {formatEddies(spent)} ed
+          zostaje z {formatEddies(budget)} ed startowych · wydane {formatEddies(spent)} ed · reszta
+          zostaje na karcie
         </span>
-        {draft.method === 'complete' && data.budgets.fashion > 0 ? (
-          <span className="creator-hint">
-            Podręcznik daje jeszcze {formatEddies(data.budgets.fashion)} ed wyłącznie na Modę — VTT
-            nie prowadzi katalogu ubrań, więc te pieniądze zostają na papierze.
-          </span>
-        ) : null}
-        {draft.method === 'edgerunner' ? (
-          <span className="creator-hint">
-            Krawędziarz dostaje w podręczniku dodatkowo odgórny pakiet Roli (broń, pancerz,
-            ekwipunek) — na razie dokłada go MG przyciskiem „Dodaj za darmo" w Kompendium.
-          </span>
-        ) : null}
       </div>
+      <CreatorLeftOutside draft={draft} data={data} collapsed />
 
       {unavailable.length > 0 && (
         <ul className="creator-basket">
@@ -2301,15 +2289,39 @@ function SummaryStep({
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const entriesById = useCompendiumStore((s) => s.entries);
+  const weaponTypes = useCompendiumStore((s) => s.weaponTypeById);
+  const userName = useAuthStore((s) => s.user?.name ?? '');
+  const scenes = useSceneStore((s) => s.scenes);
+  const viewedScene = useSceneStore((s) => s.scene);
   const data = creationDataOf(registry);
   const role = registry.roles.find((entry) => entry.id === draft.roleId);
-  const preview = creationPreview(creationStats(draft, data));
-  const taken = Object.entries(draft.skills).filter(([, level]) => level > 0);
-  const lines = useMemo(
-    () => creationPurchases(draft, (entryId: string) => entriesById[entryId]),
-    [draft, entriesById],
+  const owned = !isGm || ownerId !== '';
+  // Naprawa 3a: the summary reads the sheet `creation:finish` is about to write
+  // — rows, change and lifestyle — not a second description of the draft.
+  const outcome = useMemo(
+    () =>
+      creationOutcome(
+        draft,
+        data,
+        registry,
+        (entryId: string) => entriesById[entryId],
+        { weaponTypeById: new Map(Object.entries(weaponTypes)) },
+        owned,
+      ),
+    [draft, data, registry, entriesById, weaponTypes, owned],
   );
-  const left = creationBudget(data, draft) - creationSpentEddies(lines);
+  const { sheet } = outcome;
+  const preview = creationPreview(sheet.stats);
+  // Unset stats read as the minimum in `creationStats`; a „PW 20" computed from
+  // them would look like a result, so the derived values wait for all ten.
+  const statsSet = CPRED_STAT_IDS.every((id) => draft.stats[id] !== undefined);
+  const derived = (value: number) => (statsSet ? value : '—');
+  // A player only ever sees the scene the table is on; the GM has the list.
+  const activeScene = isGm
+    ? (scenes.find((scene) => scene.active) ?? null)
+    : viewedScene
+      ? { name: viewedScene.name }
+      : null;
 
   return (
     <div className="creator-step creator-summary">
@@ -2320,70 +2332,331 @@ function SummaryStep({
         {draft.portraitUrl ? <img src={draft.portraitUrl} alt="" /> : null}
         <strong>{draft.name.trim() || 'Bez imienia'}</strong>
         <span className="creator-hint">
-          {draft.placeToken ? 'Żeton stanie na aktywnej scenie.' : 'Bez żetonu na scenie.'}
+          {role?.name ?? 'Rola niewybrana'} · {CPRED_CREATION_METHOD_LABELS[draft.method]}
+          {draft.portraitUrl ? '' : ' · bez portretu'}
         </span>
       </p>
 
-      {isGm && (
-        <label className="creator-name">
-          Właściciel
-          <select value={ownerId} onChange={(e) => onOwnerChange(e.target.value)}>
-            <option value="">NPC (MG)</option>
-            {players.map((player) => (
-              <option key={player.id} value={player.id}>
-                {player.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <dl className="creator-derived">
+      <dl className="creator-facts">
         <div>
-          <dt>Rola</dt>
-          <dd>{role?.name ?? '—'}</dd>
-        </div>
-        <div>
-          <dt>Zdolność Specjalna</dt>
+          <dt>Właściciel</dt>
           <dd>
-            {role?.ability ?? '—'} {role ? data.roleAbilityStart : ''}
+            {isGm ? (
+              <select
+                aria-label="Właściciel postaci"
+                value={ownerId}
+                onChange={(e) => onOwnerChange(e.target.value)}
+              >
+                <option value="">NPC (MG)</option>
+                {players.map((player) => (
+                  <option key={player.id} value={player.id}>
+                    {player.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              `Ty (${userName})`
+            )}
           </dd>
         </div>
         <div>
-          <dt>Punkty Wytrzymałości</dt>
-          <dd>{preview.hpMax}</dd>
+          <dt>Żeton</dt>
+          <dd>
+            {!draft.placeToken
+              ? 'Bez żetonu na mapie.'
+              : activeScene
+                ? `Stanie na aktywnej scenie „${activeScene.name}”.`
+                : 'Brak aktywnej sceny — po utworzeniu będzie można ponowić postawienie.'}
+          </dd>
         </div>
         <div>
-          <dt>Człowieczeństwo</dt>
-          <dd>{preview.humanity}</dd>
+          <dt>Zdolność Specjalna</dt>
+          <dd>{role ? `${role.ability} ${sheet.roleAbilityRank}` : '—'}</dd>
         </div>
       </dl>
 
-      <p className="creator-hint">
-        Cechy:{' '}
-        {CPRED_STAT_IDS.map((id) => `${CPRED_STAT_LABELS[id].abbr} ${draft.stats[id] ?? '—'}`).join(
-          ' · ',
+      <section className="creator-summary-section" aria-label="Cechy i wartości pochodne">
+        <h4>Cechy</h4>
+        <dl className="creator-summary-stats">
+          {CPRED_STAT_IDS.map((id) => (
+            <div key={id} title={CPRED_STAT_LABELS[id].name}>
+              <dt>{CPRED_STAT_LABELS[id].abbr}</dt>
+              <dd>{draft.stats[id] ?? '—'}</dd>
+            </div>
+          ))}
+        </dl>
+        {statsSet ? null : (
+          <p className="creator-hint">
+            Wartości pochodne policzą się po ustaleniu wszystkich Cech.
+          </p>
         )}
-      </p>
-      <p className="creator-hint">
-        Umiejętności ({taken.length}):{' '}
-        {taken
-          .map(([id, level]) => `${registry.skills.find((s) => s.id === id)?.name ?? id} ${level}`)
-          .join(' · ') || 'żadnej'}
-      </p>
-      {data.freeLanguage && (
-        <p className="creator-hint">
-          Język kultury pochodzenia wchodzi za darmo na poziomie {data.freeLanguage.level}
-          {draft.lifepath.language ? ` — ${draft.lifepath.language}` : ' — jeszcze nie wybrany'}.
-        </p>
+        <dl className="creator-derived">
+          <div>
+            <dt>Punkty Wytrzymałości</dt>
+            <dd>{derived(preview.hpMax)}</dd>
+          </div>
+          <div>
+            <dt>Poważnie Ranny</dt>
+            <dd>{derived(preview.seriousWound)}</dd>
+          </div>
+          <div>
+            <dt>Przeżywalność</dt>
+            <dd>{derived(preview.deathSave)}</dd>
+          </div>
+          <div>
+            <dt>Człowieczeństwo</dt>
+            <dd>{derived(preview.humanity)}</dd>
+          </div>
+          <div>
+            <dt>Szczęście</dt>
+            <dd>{derived(sheet.luckCurrent)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <SummarySkills sheet={sheet} data={data} />
+
+      <SummaryGear sheet={sheet} budget={outcome.budget} spent={outcome.spent} npc={!owned} />
+
+      <section className="creator-summary-section" aria-label="Czego kreator nie wydaje">
+        <h4>Czego kreator nie wydaje</h4>
+        <CreatorLeftOutside draft={draft} data={data} />
+      </section>
+
+      <section className="creator-summary-section" aria-label="Ścieżka Życia">
+        <h4>Ścieżka Życia</h4>
+        <LifepathSummary draft={draft} />
+      </section>
+    </div>
+  );
+}
+
+/** The skills exactly as the sheet will list them — free language included. */
+function SummarySkills({ sheet, data }: { sheet: CpredCharacterData; data: CpredCreationData }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const taken = registry.skills.filter((skill) => (sheet.skills[skill.id] ?? 0) > 0);
+  return (
+    <section className="creator-summary-section" aria-label="Umiejętności">
+      <h4>Umiejętności ({taken.length})</h4>
+      {taken.length === 0 ? (
+        <p className="creator-hint">Żadnej.</p>
+      ) : (
+        <ul className="creator-summary-skills">
+          {taken.map((skill) => (
+            <li key={skill.id}>
+              {cpredSkillLabel(skill, sheet)} <b>{sheet.skills[skill.id]}</b>
+              {data.freeLanguage?.skillId === skill.id ? (
+                <span className="creator-hint"> · darmowy język kultury</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       )}
-      <p className="creator-hint">
-        Wyposażenie ({lines.length}):{' '}
-        {lines.map((line) => `${line.name}${line.qty > 1 ? ` ×${line.qty}` : ''}`).join(' · ') ||
-          'nic kupionego'}
-        {' · '}w kieszeni zostaje {formatEddies(Math.max(0, left))} ed
-      </p>
-      <LifepathSummary draft={draft} />
+    </section>
+  );
+}
+
+/**
+ * The goods as rows of the sheet, then the money: what came in, what went out,
+ * what stays on the card — and the rent that starts running (s. 105).
+ */
+function SummaryGear({
+  sheet,
+  budget,
+  spent,
+  npc,
+}: {
+  sheet: CpredCharacterData;
+  budget: number;
+  spent: number;
+  npc: boolean;
+}) {
+  const empty = sheet.weapons.length + sheet.armor.length + sheet.gear.length === 0;
+  return (
+    <section className="creator-summary-section" aria-label="Wyposażenie i pieniądze">
+      <h4>Wyposażenie i pieniądze</h4>
+      {empty ? (
+        <p className="creator-hint">Nic kupionego — eurodolce zostają na karcie.</p>
+      ) : (
+        <ul className="creator-summary-gear">
+          {sheet.weapons.map((row) => (
+            <li key={row.id}>
+              <span className="creator-summary-kind">Broń</span> {row.name}
+              <span className="creator-hint">
+                {` · OBR ${row.damage || '—'}`}
+                {row.rof ? ` · LA ${row.rof}` : ''}
+                {row.ammoMax > 0 ? ` · magazynek ${row.ammoMax}` : ''}
+              </span>
+            </li>
+          ))}
+          {sheet.armor.map((row) => (
+            <li key={row.id}>
+              <span className="creator-summary-kind">Pancerz</span> {row.name}
+              <span className="creator-hint">
+                {` · OB ${row.sp} · ${ARMOR_LOCATION_LABELS[row.location]}`}
+              </span>
+            </li>
+          ))}
+          {sheet.gear.map((row) => (
+            <li key={row.id}>
+              <span className="creator-summary-kind">Sprzęt</span> {row.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      <dl className="creator-facts">
+        <div>
+          <dt>Na start</dt>
+          <dd>{formatEddies(budget)} ed</dd>
+        </div>
+        <div>
+          <dt>Wydane</dt>
+          <dd>{formatEddies(spent)} ed</dd>
+        </div>
+        <div>
+          <dt>Na karcie</dt>
+          <dd>{formatEddies(sheet.eddies)} ed</dd>
+        </div>
+        <div>
+          <dt>Poziom życia</dt>
+          <dd>
+            {sheet.lifestyle ? formatLifestyle(sheet.lifestyle) : npc ? 'NPC — bez rachunków' : '—'}
+          </dd>
+        </div>
+      </dl>
+      {sheet.lifestyle ? (
+        <p className="creator-hint">
+          Pierwszy miesiąc bez opłat (s. 105) — rozliczenie miesiąca uruchamia MG. Inne mieszkanie
+          albo Poziom życia MG ustawia na karcie.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * „Czego kreator nie wydaje" (naprawa 3a) — the deliberate gaps of 25c from
+ * one shared list, so the gear step, the summary and the last screen cannot
+ * say three different things. Folded in the gear step, where the shop is the
+ * point; open everywhere else.
+ */
+function CreatorLeftOutside({
+  draft,
+  data,
+  collapsed = false,
+}: {
+  draft: Pick<CpredCreationDraft, 'method'>;
+  data: CpredCreationData;
+  collapsed?: boolean;
+}) {
+  const lines = creationLeftOutside(draft, data);
+  const list = (
+    <ul className="creator-outside-list">
+      {lines.map((line) => (
+        <li key={line.id}>
+          <strong>{line.title}.</strong> {line.text}
+        </li>
+      ))}
+    </ul>
+  );
+  if (!collapsed) return list;
+  return (
+    <details className="creator-outside">
+      <summary>Poza sklepem kreatora: {lines.map((line) => line.title).join(', ')}</summary>
+      {list}
+    </details>
+  );
+}
+
+/** What the last screen needs once the draft is gone from the server. */
+interface CreatorFinished {
+  result: CreationFinishResult;
+  draft: CpredCreationDraft;
+}
+
+/**
+ * The wizard's last screen (naprawa 3a). The sheet is already open beside it;
+ * this says where the token went — with the retry when it did not — and what
+ * the character still lacks compared to the book, before the window closes.
+ */
+function CreatorFinishedScreen({
+  finished,
+  busy,
+  onRetryToken,
+  onOpenSheet,
+  onClose,
+}: {
+  finished: CreatorFinished;
+  busy: boolean;
+  onRetryToken: () => void;
+  onOpenSheet: () => void;
+  onClose: () => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const data = creationDataOf(registry);
+  const { result, draft } = finished;
+  const sheet = result.data as CpredCharacterData;
+  const retry = result.tokenStatus === 'no-scene' || result.tokenStatus === 'failed';
+
+  return (
+    <div className="sheet-body creator-body">
+      <div className="creator-step creator-finished">
+        <p className="creator-notice creator-notice--done" role="status">
+          Postać „{result.name}” utworzona — karta, eurodolce i zakupy są zapisane, a karta jest
+          otwarta obok.
+        </p>
+
+        <dl className="creator-facts">
+          <div>
+            <dt>Żeton</dt>
+            <dd>
+              {result.tokenStatus === 'placed'
+                ? 'Stoi na aktywnej scenie.'
+                : result.tokenStatus === 'not-requested'
+                  ? 'Nie stawiano — tak wybrano w kroku „Opis”.'
+                  : result.tokenStatus === 'no-scene'
+                    ? 'Nie stoi: nie ma aktywnej sceny.'
+                    : 'Nie udało się potwierdzić postawienia.'}
+            </dd>
+          </div>
+          <div>
+            <dt>Na karcie</dt>
+            <dd>{formatEddies(sheet.eddies)} ed</dd>
+          </div>
+          <div>
+            <dt>Poziom życia</dt>
+            <dd>{sheet.lifestyle ? formatLifestyle(sheet.lifestyle) : 'NPC — bez rachunków'}</dd>
+          </div>
+        </dl>
+        {retry ? (
+          <div className="creator-notice creator-notice--warn" role="alert">
+            <p>
+              {result.tokenStatus === 'no-scene'
+                ? 'Gdy MG włączy scenę, ponów postawienie — karta nie powstanie drugi raz.'
+                : 'Ponowienie nie utworzy drugiej karty.'}{' '}
+              Po zamknięciu kreatora żeton postawi już tylko MG (⊕ przy postaci w zakładce
+              „Postacie”).
+            </p>
+            <button type="button" className="small-button" disabled={busy} onClick={onRetryToken}>
+              Ponów postawienie żetonu
+            </button>
+          </div>
+        ) : null}
+
+        <section className="creator-summary-section" aria-label="Czego kreator nie wydał">
+          <h4>Czego kreator nie wydał</h4>
+          <CreatorLeftOutside draft={draft} data={data} />
+        </section>
+
+        <div className="creator-finished-actions">
+          <button type="button" className="small-button" onClick={onOpenSheet}>
+            Pokaż kartę
+          </button>
+          <button type="button" className="small-button small-button--primary" onClick={onClose}>
+            Zamknij kreator
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2471,9 +2744,8 @@ function LifepathSummary({ draft }: { draft: CpredCreationDraft }) {
 
   return (
     <p className="creator-hint">
-      Ścieżka Życia:{' '}
       {said.length === 0 && people.length === 0
-        ? 'pusta — można ją wypełnić teraz albo później na karcie'
+        ? 'Pusta — można ją wypełnić teraz albo później na karcie.'
         : [...said, ...people].join(' · ')}
       {lifepath.roleAnswers.length > 0 && ` · Rola: ${lifepath.roleAnswers.length} odpowiedzi`}
     </p>
