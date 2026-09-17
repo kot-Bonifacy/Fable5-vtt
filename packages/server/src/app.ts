@@ -4,6 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { Server as SocketIOServer } from 'socket.io';
+import { withShopTiers } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import type { AppContext } from './context.js';
 import { createPrisma, type PrismaClient } from './db.js';
@@ -21,6 +22,7 @@ import { sweepUploadsInBackground } from './uploads-gc.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
+import { loadShopRules } from './shop-rules.js';
 import { loadCpredRegistry } from './cpred.js';
 import { loadCoverCatalogue } from './covers.js';
 
@@ -91,12 +93,17 @@ export async function buildApp(
     fetchImpl: options.aiFetch,
   });
 
+  const shopRules = await loadShopRules(config.dataPublicDir, config.dataPrivateDir, app.log);
   const ctx: AppContext = {
     config,
     prisma,
     statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
     cpred: await loadCpredRegistry(config.dataPublicDir, config.dataPrivateDir, app.log),
-    compendium: await loadCompendium(config.dataPublicDir, config.dataPrivateDir, app.log),
+    compendium: withShopTiers(
+      await loadCompendium(config.dataPublicDir, config.dataPrivateDir, app.log),
+      shopRules.tiers,
+    ),
+    shopRules,
     covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
   };

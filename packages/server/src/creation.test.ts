@@ -704,7 +704,7 @@ describe('kreator postaci', () => {
         entryId: 'gear.kufer-szmuglerski',
         delta: 1,
       });
-      expect(refusal(ack)).toBe('SHOP_TIER_LOCKED:4:1');
+      expect(refusal(ack)).toBe('CREATION_SHOP_LOCKED:4:0');
     });
 
     it('refuses the same item to the GM — the starting kit is the point', async () => {
@@ -713,7 +713,7 @@ describe('kreator postaci', () => {
         entryId: 'weapon.szpon',
         delta: 1,
       });
-      expect(refusal(ack)).toBe('SHOP_TIER_LOCKED:2:1');
+      expect(refusal(ack)).toBe('CREATION_SHOP_LOCKED:2:0');
     });
 
     it('refuses a basket the budget cannot carry', async () => {
@@ -1352,6 +1352,117 @@ describe('kreator postaci', () => {
       expect(sheet.weapons).toHaveLength(2);
       // A Korpo starts in the company conapt on a good prepack (s. 105).
       expect(sheet.lifestyle).toEqual({ level: 'goodPrepack', housing: 'corpoConapt' });
+    });
+  });
+
+  describe('naprawa 3b — narzędzia Ról i wyjątki MG', () => {
+    // data/public/cpred/shop-tiers.json: the field medkit is a Medyk's tool on
+    // level 2, the sample rifle type is a Solo's (500 ed — level 2 by price).
+    it('sells a Role its own tools and takes them off when the Role changes', async () => {
+      await emitAck(vex, 'creation:discard');
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      await patch(vex, { method: 'edgerunner', roleId: 'medtech', name: 'Łatacz' });
+      const medic = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'gear.apteczka-polowa', delta: 1 }),
+        'creation:buy',
+      );
+      expect(medic.draft.purchases).toEqual({ 'gear.apteczka-polowa': 1 });
+
+      const solo = await patch(vex, { roleId: 'solo' });
+      expect(solo.draft.purchases).toEqual({});
+      expect(
+        refusal(await emitAck(vex, 'creation:buy', { entryId: 'gear.apteczka-polowa', delta: 1 })),
+      ).toBe('CREATION_SHOP_LOCKED:2:0');
+      const rifle = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'weapon.grzechotnik', delta: 1 }),
+        'creation:buy',
+      );
+      expect(rifle.draft.purchases).toEqual({ 'weapon.grzechotnik': 1 });
+    });
+
+    it('lets the GM move one entry for the campaign, live and on the shelf', async () => {
+      const heard = waitFor<{ entryId: string; tier: number | null }>(vex, 'shop:entry-tier');
+      const ack = data(
+        await emitAck<{ entryId: string; tier: number | null }>(gm, 'shop:entry-tier', {
+          entryId: 'weapon.grzechotnik',
+          tier: 3,
+        }),
+        'shop:entry-tier',
+      );
+      expect(ack).toEqual({ entryId: 'weapon.grzechotnik', tier: 3 });
+      expect(await heard).toMatchObject({ entryId: 'weapon.grzechotnik', tier: 3 });
+
+      // The rifle already in the basket no longer passes the finish…
+      const ready = await allocateRemaining(vex);
+      expect(ready.draft.purchases).toEqual({ 'weapon.grzechotnik': 1 });
+      expect(refusal(await emitAck(vex, 'creation:finish', { draftId: ready.id }))).toBe(
+        'CREATION_INCOMPLETE',
+      );
+      // …and a second one is refused with the tool flag set.
+      expect(
+        refusal(await emitAck(vex, 'creation:buy', { entryId: 'weapon.grzechotnik', delta: 1 })),
+      ).toBe('CREATION_SHOP_LOCKED:3:1');
+
+      const late = await createSocket(vexCookie).firstSync;
+      expect(late.shopTierOverrides).toEqual({ 'weapon.grzechotnik': 3 });
+      expect(late.compendium.roleTools.medtech?.entries).toContain('gear.apteczka-polowa');
+    });
+
+    it('holds a player to the GM’s choice in the Kompendium shop too', async () => {
+      const buyer = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Kupiec 3b', ownerId: vexId }),
+        'character:create',
+      );
+      data(
+        await emitAck(gm, 'economy:adjust', { characterId: buyer.id, balance: 1000 }),
+        'economy:adjust',
+      );
+      // The campaign dial stands at 3 since „poziom sklepu"; a flashlight is level 1.
+      data(
+        await emitAck(gm, 'shop:entry-tier', { entryId: 'gear.latarka-taktyczna', tier: 4 }),
+        'shop:entry-tier',
+      );
+      expect(
+        refusal(
+          await emitAck(vex, 'economy:buy', {
+            characterId: buyer.id,
+            entryId: 'gear.latarka-taktyczna',
+          }),
+        ),
+      ).toBe('SHOP_TIER_LOCKED:4:3');
+
+      // Back to automatic: the same purchase goes through.
+      expect(
+        data(
+          await emitAck(gm, 'shop:entry-tier', { entryId: 'gear.latarka-taktyczna', tier: null }),
+          'shop:entry-tier',
+        ),
+      ).toEqual({ entryId: 'gear.latarka-taktyczna', tier: null });
+      data(
+        await emitAck(vex, 'economy:buy', {
+          characterId: buyer.id,
+          entryId: 'gear.latarka-taktyczna',
+        }),
+        'economy:buy',
+      );
+      const late = await createSocket(vexCookie).firstSync;
+      expect(late.shopTierOverrides).toEqual({ 'weapon.grzechotnik': 3 });
+    });
+
+    it('refuses junk, unknown entries and anybody but the GM', async () => {
+      expect(
+        refusal(await emitAck(gm, 'shop:entry-tier', { entryId: 'weapon.szpon', tier: 5 })),
+      ).toBe('BAD_REQUEST');
+      expect(
+        refusal(await emitAck(gm, 'shop:entry-tier', { entryId: 'weapon.nie-ma', tier: 2 })),
+      ).toBe('ENTRY_NOT_FOUND');
+      expect(
+        refusal(await emitAck(vex, 'shop:entry-tier', { entryId: 'weapon.szpon', tier: 2 })),
+      ).toBe('FORBIDDEN');
+      data(
+        await emitAck(gm, 'shop:entry-tier', { entryId: 'weapon.grzechotnik', tier: null }),
+        'shop:entry-tier',
+      );
     });
   });
 });

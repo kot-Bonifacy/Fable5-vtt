@@ -118,9 +118,14 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 ## Od czego zacząć
 
 **Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 ✅ (2a/2b/2c), etap 3
-podzielony 17.09 — 3a ✅, następna jest 3b** (czynności Roli z przejściem do paneli karty, podgląd
-przedmiotu w sklepie, **znacznik gotowości do gry nadawany przez MG** — nowe pole w bazie), potem 3c
-(odbiór obu metod). **Od 3a** podsumowanie kreatora pokazuje kartę z `creationOutcome` — tę samą,
+podzielony 17.09 na cztery części — 3a ✅, 3b ✅, następna jest 3c** (czynności Roli z przejściem do
+paneli karty, **znacznik gotowości do gry nadawany przez MG** — nowe pole w bazie), potem 3d (odbiór
+obu metod). **Od 3b poziom dostępności mówi, jak legalna jest rzecz, a nie ile kosztuje**
+(`shopTierVerdict`: typ broni, OB, rodzina wszczepu, klasa Programu; cena tylko podnosi; nazwy
+1 Uliczne / 2 Zawodowe / 3 **Wojskowe** / 4 Czarny rynek). Czego rodzaj nie rozstrzyga, stoi po id
+w `data/private/cpred/shop-tiers.json` — **plik jest poza gitem, więc na VPS jedzie razem
+z kompendium**. MG nadpisuje pojedynczy wpis w Kompendium (`Campaign.shopTierOverrides`), a sklep
+kreatora to poziom 1 plus narzędzia własnej Roli do poziomu 2. **Od 3a** podsumowanie kreatora pokazuje kartę z `creationOutcome` — tę samą,
 którą zapisze serwer (test to pilnuje), postać gracza dostaje Poziom życia z s. 105, a po „Utwórz
 postać” okno zostaje na ekranie końcowym. **Nowy wszczep kosztuje od 17.09 samą cenę** — do tej pory
 pełny montaż doliczał opłatę za montaż. **Od 2c karta postaci i kreator są „starą kartką”**
@@ -263,8 +268,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2137** w `shared`, **1184** na serwerze, **224** u klienta —
-zielone (liczby z 17.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2155** w `shared`, **1189** na serwerze, **224** u klienta —
+zielone (liczby z 17.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -297,19 +302,59 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    7 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   37 |       2 |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   38 |       2 |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   14 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      80 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      81 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      22 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.09 (druga) — naprawa kreatora, część 3b: dostępność wyposażenia
+
+**Zlecenie MG:** wykonać etap 3b `naprawa_karty_postaci.md` i przy okazji **zrobić lepszy podział
+kategorii dostępności wyposażenia** („obecny jest chyba oparty tylko na koszcie, co jest
+nieadekwatne”); dopytywać i zgłaszać możliwe błędy. **Stan: etap 3 przedzielony na 3a/3b/3c/3d,
+3b ✅** (sklep: dostępność i podgląd przedmiotu). Czynności Roli i znacznik gotowości przeszły do 3c,
+odbiór do 3d. Checklista i ustalenia — w pliku naprawy.
+
+**Decyzje MG (17.09, druga sesja):** poziom dostępności liczy się z **rodzaju** rzeczy (typ broni,
+OB, rodzina wszczepu, klasa Programu), a cena tylko podnosi; cztery poziomy według legalności
+(Uliczne / Zawodowe / **Wojskowe** / Czarny rynek); pozycje, których rodzaj nie rozstrzyga,
+przypisane po nazwie w **prywatnym** `data/private/cpred/shop-tiers.json`; MG nadpisuje pojedynczy
+wpis w Kompendium (nowa kolumna kampanii); w kreatorze poziom 1 dla wszystkich **plus narzędzia
+własnej Roli do poziomu 2** (listy zatwierdzone, Solo i Stróż Prawa mają w nich broń); podgląd
+przedmiotu jako rozwijany wiersz z osobnym przyciskiem kupna.
+
+**Zgłoszone MG możliwe błędy:** (1) stary podział stawiał wyrzutnię rakiet, Sandevistana i amunicję
+z biotoksyną obok kamery wideo, a Czarny LOD za 50 ed na poziomie „Uliczne” — przebudowane;
+(2) **Netrunner nie kupiłby w kreatorze cyberdeku, Medyk torby medyka, a Technik przybornika**
+(wszystko powyżej 50 ed) — stąd narzędzia Roli; (3) checklista 25c twierdziła, że MG nadpisze poziom
+w edytorze, a edytor nigdy nie miał tego pola — jest, i działa też dla wpisów z importu;
+(4) **Programów nie da się kupić nigdzie w VTT**, a cyberdek i Programy wybiera się na karcie za
+darmo — zostaje jak jest, opisane w decyzjach i `POMYSLY.md`; (5) kara pancerza w podglądzie miała
+dywiz zamiast minusa — poprawione przy oględzinach.
+
+**Wdrożone:** `shopTierVerdict`/`creationShopVerdict`, `CpredShopRules`, `withShopTiers`,
+`readShopTierOverrides` i `creationBasketForRole` (`shared`); `loadShopRules`, `ctx.shopRules`,
+`shop:entry-tier` z `Campaign.shopTierOverrides` (migracja `20260917180000`), odmowy w `economy:buy`
+i `creation:buy`, kolumna w eksporcie kampanii (serwer); wyjątek MG i uzasadnienie poziomu na karcie
+wpisu, rozwijany podgląd przedmiotu w sklepie kreatora i znacznik „narzędzie Roli” (klient); dane
+`data/{public,private}/cpred/shop-tiers.json`. Umowy — `ekwipunek` (2), `postac` (1); pułapki —
+`ogledziny` (1); decyzje (3) i pomysły (2).
+
+**Weryfikacja:** vitest — 2155 shared, 1189 serwera, 224 klienta; `tsc --noEmit` trzech pakietów,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`): scenariusze w checkliście 3b; **hasło MG wpisał MG ręką** — automat go nie wpisuje.
+**Nie było:** motywu dziennego nowego podglądu, wąskiego okna i powiększenia, półek Netrunnera,
+Technika i Nomady (`zaleglosci.md`). Na bazie testowej został szkic gracza „Test 2a” (Solo,
+Krawędziarz, pusty koszyk) i nowe zaproszenie do kampanii testowej.
 
 ### Sesja 17.09 — naprawa kreatora, podział etapu 3 i część 3a
 
@@ -346,39 +391,3 @@ ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (M
 „Oględziny 3a”); szkic MG „Garnitur 3a” wyrzucony. Serwer i Vite zatrzymane drzewami procesów,
 porty wolne. **Nie było:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
 połączenia (3c).
-
-### Sesja 16.09 (piąta) — naprawa kreatora, część 2c
-
-**Zlecenie MG:** wykonać etap 2c `naprawa_karty_postaci.md`, ale **bez dopasowania rozdzielczości**
-(obecna skala odpowiada, gracze zmieniają ją sami); w zamian poszukać ładniejszych skórek karty
-postaci opartych na naturalnych teksturach z sieci (albo je przerobić); dopytywać i zgłaszać możliwe
-błędy. **Stan: 2c ✅, etap 2 naprawy ✅.** Checklista i ustalenia są w pliku naprawy.
-
-**Decyzje MG (16.09):** skórki dla karty **i** kreatora; „papier i druk”, subtelnie, para dzień/noc;
-papier pożółkły jak tapeta logowania, potem jaśniejszy; tekstury najpierw z sieci (MG oferował
-wygenerowanie — nie było potrzeby), mogą ważyć do kilku MB; **żadnych ciemnych drobinek ani plam**
-(„zabrudzenia”), zamiast nich wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach (pomysł MG);
-wytarcia zostają nad tekstem mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych
-miejscach.
-
-**Zgłoszone MG możliwe błędy:** (1) `--accent-ink` w dzień (#fff1ef) dawał niemal biały napis na
-każdym `.small-button--primary` — pięć przycisków w aplikacji, m.in. „Rzuć całą Ścieżkę” i „Utwórz
-postać”; poprawione na głęboką czerwień. (2) Listy wyboru kreatora były gołymi kontrolkami
-przeglądarki — ostylowane. (3) Od ~1120 px CSS zakładka „Podsumowanie” wypadała poza pasek kroków —
-zakładki się zawijają. (4) Pole wartości Cechy stało ~700 px od nazwy — tabela na szerokość treści.
-(5) Pęknięcia nad treścią wymazywały litery — przeniesione do tła czerwieni. (6) Kontrast pod
-wytarciami — MG zostawił.
-
-**Wdrożone:** `packages/client/public/art/sheet/` (`paper-wear.jpg`, `ink-cracks-day/night.webp`,
-~0,56 MB) i `tools/art/sheet-paper.py` (pobiera „Old paper6” z Wikimedia i ambientCG „Asphalt 011”,
-kafel Moisana, maska i rysy); klasa `sheet-window--paper` na karcie i kreatorze, tokeny `--cp-inset*`,
-`--cp-line*`, `--cp-wear*`, `--cp-cracks*` i jaśniejszy dzienny `--cp-paper`; strażnik koloru pęknięć
-w `theme.test.ts`; `tools/art/.cache/` w `.gitignore`. Umowa — `karta` (1); pułapki — `ogledziny` (2).
-
-**Weryfikacja:** vitest — 2133 shared, 1183 serwera, 224 klienta (w pierwszym przebiegu `pnpm -r test`
-mignął `gametime.test.ts` „nowa data dociera do gracza rozgłoszeniem” — trzy powtórzenia pliku
-i drugi pełny przebieg serwera zielone; serwera ta sesja nie dotykała); `tsc --noEmit` klienta,
-ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
-`[::1]`, serwer z jednorazowym `GM_PASSWORD`): scenariusze w checkliście 2c. **Nie było:** portretu,
-Safari/iPada, prawdziwego zoomu, pomiaru przewijania (`zaleglosci.md`).
-

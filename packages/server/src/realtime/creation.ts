@@ -26,7 +26,6 @@ import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CREATION_PURCHASE_QTY_MAX,
-  CREATION_SHOP_TIER,
   LIFEPATH_GROUP_LABELS,
   LIFEPATH_ROLL_TABLES_MAX,
   ROLE_GM,
@@ -55,7 +54,8 @@ import {
   resolveWeapon,
   rollFormula,
   sanitizeCharacterName,
-  shopTierOf,
+  creationShopVerdict,
+  type CreationShopRules,
 } from '@vtt/shared';
 import type { Character, CharacterDraft, Prisma } from '../generated/prisma/client.js';
 import { usedPortraitUrls } from '../portraits.js';
@@ -67,7 +67,7 @@ import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { campaignEntry } from './compendium.js';
 import { applyBalance, nextRowId } from './economy.js';
 import { getActiveScene } from './scenes.js';
-import { requireUnlockedTier } from './shop.js';
+import { campaignShopTierOverrides } from './shop.js';
 import { gmRoom } from './state.js';
 import { createCharacterToken } from './tokens.js';
 
@@ -226,7 +226,16 @@ export const creationPatchEvent = defineCreationEvent<
     const view = toDraftView(existing, deps);
     const current = view.draft;
     if ('statRankId' in patch && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
-    const next = mergeCreationDraft(current, patch, data, deps.ctx.cpred);
+    // A Role change takes the previous Role's tools off the basket (naprawa 3b),
+    // which needs the catalogue rows and the campaign's shelf rules.
+    const shop =
+      'roleId' in patch
+        ? {
+            lookup: await purchaseLookup(deps, campaignId, Object.keys(current.purchases)),
+            rules: await creationShopRules(deps, campaignId),
+          }
+        : undefined;
+    const next = mergeCreationDraft(current, patch, data, deps.ctx.cpred, shop);
     if (next === null) throw new RealtimeError('INVALID_DATA');
     // The pool is the GM's call (naprawa 2a): a player who bought stats out of
     // the default 62 would have to redo them when the GM picks 50. Stats a
@@ -390,13 +399,14 @@ async function publishRoll(
  * The starting shop (stage 25c) — one item into or out of the basket.
  *
  * Everything that decides anything happens here: the price comes off the
- * catalogue, the budget off the method, and the tier is fixed at street level
- * for **everybody, the GM included**. That last one is deliberate and the only
- * blocked path in the project a GM does not walk through: a starting kit
- * limited to what any kiosk sells is the whole point of the restriction (the
- * GM's wish, 14.08), and an exemption would turn it into a suggestion. The GM
- * can still hand a new character a rifle afterwards — „Dodaj za darmo" on the
- * catalogue card has never asked anybody's permission.
+ * catalogue, the budget off the method, and the shelf is street level plus the
+ * Role's own tools up to Zawodowe (naprawa 3b) for **everybody, the GM
+ * included**. That last one is deliberate and the only blocked path in the
+ * project a GM does not walk through: a starting kit limited to what any kiosk
+ * sells is the whole point of the restriction (the GM's wish, 14.08), and an
+ * exemption would turn it into a suggestion. The GM can still hand a new
+ * character a rifle afterwards — „Dodaj za darmo" on the catalogue card has
+ * never asked anybody's permission — or move one entry for the campaign.
  */
 export const creationBuyEvent = defineCreationEvent<
   CreationBuyPayload,
@@ -429,7 +439,14 @@ export const creationBuyEvent = defineCreationEvent<
       // loaded into a weapon and an injury is drawn by the damage flow — none
       // of the three would become buyable if the GM opened the shop wider.
       if (!purchasedSheetRow(entry, null, 'probe')) throw new RealtimeError('NOT_PURCHASABLE');
-      requireUnlockedTier(shopTierOf(entry), CREATION_SHOP_TIER);
+      const shelf = creationShopVerdict(
+        entry,
+        current.roleId,
+        await creationShopRules(deps, campaignId),
+      );
+      if (!shelf.allowed) {
+        throw new RealtimeError(`CREATION_SHOP_LOCKED:${shelf.tier}:${shelf.roleTool ? 1 : 0}`);
+      }
       if (held >= CREATION_PURCHASE_QTY_MAX) throw new RealtimeError('TOO_MANY_ROWS');
       purchases[entryId] = held + 1;
 
@@ -461,6 +478,21 @@ async function purchaseLookup(
     if (entry) byId.set(entryId, entry);
   }
   return (entryId) => byId.get(entryId);
+}
+
+/**
+ * The creator's shelf for this campaign (naprawa 3b): street level for everyone,
+ * a Role's own tools up to Zawodowe, and the GM's per-entry choices on top — the
+ * same rules the wizard filters its list with.
+ */
+async function creationShopRules(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<CreationShopRules> {
+  return {
+    roleTools: deps.ctx.shopRules.roleTools,
+    overrides: await campaignShopTierOverrides(deps.ctx.prisma, campaignId),
+  };
 }
 
 /**
@@ -613,7 +645,8 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
       )
         throw new RealtimeError('CREATION_RANK_PENDING');
       const lookup = await purchaseLookup(deps, campaignId, Object.keys(draft.purchases));
-      if (creationIssues(draft, data, deps.ctx.cpred, lookup).length > 0) {
+      const shopRules = await creationShopRules(deps, campaignId);
+      if (creationIssues(draft, data, deps.ctx.cpred, lookup, shopRules).length > 0) {
         throw new RealtimeError('CREATION_INCOMPLETE');
       }
       const name = sanitizeCharacterName(draft.name);

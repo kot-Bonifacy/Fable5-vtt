@@ -1,5 +1,18 @@
 # Pomysły poza zakresem etapów
 
+**17.09.2026 (naprawa kreatora 3b) — Programy jako towar i cyberdek z zakupu.** `purchasedSheetRow`
+zna tylko broń, pancerz i sprzęt, więc Programu nie kupi ani gracz w Kompendium, ani kreator;
+cyberdek i Programy (łącznie z Czarnym LOD-em) wybiera się na karcie postaci za darmo, a kupiony
+„Cyberdek” zostaje zwykłym wierszem sprzętu. Do rozważenia: zakup Programu, który ląduje w gniazdach
+deku, i podpięcie kupionego deku do pola `cyberdeck` przy zakończeniu kreatora (wtedy narzędzia
+Netrunnera objęłyby też Programy).
+
+**17.09.2026 (naprawa kreatora 3b) — Zasięg Fixera a poziom sklepu.** Poziom liczy się teraz
+z rodzaju rzeczy, więc RAW-owy Zasięg („zawsze znajdziesz przedmioty kategorii cenowej X lub
+niższej”, s. 160) i katalog mówią o dwóch różnych osiach. Decyzja z 30.08 (wygrywa poziom kampanii)
+zostaje, ale gdyby Fixer miał coś realnie otwierać, naturalne jest wpuszczenie jego poziomu
+Znajomości jako wyjątku per postać — osobny projekt.
+
 **17.09.2026 (naprawa kreatora 3a) — stała Utrata Człowieczeństwa dla świeżej postaci.**
 „Przy tworzeniu Postaci używa się stałej wartości podanej przed nawiasem” (s. 111), a VTT instaluje
 wszczepy tylko w Kompendium, zawsze z rzutem. Naturalne miejsce: dopóki MG nie zatwierdzi gotowości

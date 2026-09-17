@@ -14,6 +14,7 @@ import type {
   WeaponTypeDefinition,
 } from './systems/cpred/compendium.js';
 import type { LedgerEntryView } from './systems/cpred/economy.js';
+import type { CpredShopRoleTools } from './systems/cpred/shop.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
@@ -161,6 +162,12 @@ export interface StateSyncPayload {
    */
   shopTier: ShopTier;
   /**
+   * The GM's per-entry availability choices (naprawa 3b), public for the same
+   * reason as `shopTier`: a player sees why a row is locked. Changes arrive as
+   * `shop:entry-tier` broadcasts.
+   */
+  shopTierOverrides: Record<string, ShopTier>;
+  /**
    * Net access points on the viewed scene (stage 26b), already cut for this
    * viewer: a hidden socket is **absent** from a player's list rather than
    * flagged in it, because finding one is what the Scanner is for.
@@ -225,6 +232,21 @@ export interface ShopTierBroadcast {
 }
 
 /**
+ * GM sets one entry's availability for this campaign (naprawa 3b); `null` goes
+ * back to what the data and the rules say.
+ */
+export interface ShopEntryTierPayload {
+  entryId: string;
+  tier: number | null;
+}
+
+export interface ShopEntryTierBroadcast {
+  seq: number;
+  entryId: string;
+  tier: ShopTier | null;
+}
+
+/**
  * MG przestawia kadr portretu z puli (12.09).
  *
  * Kadr jest cechą obrazka, więc zmiana dotyczy **każdej** figury, która ten plik
@@ -247,6 +269,8 @@ export interface PortraitCropBroadcast {
 export interface CompendiumSyncPayload {
   weaponTypes: WeaponTypeDefinition[];
   entries: CompendiumEntry[];
+  /** What each Role may buy above street level in the creator (naprawa 3b). */
+  roleTools: Record<string, CpredShopRoleTools>;
 }
 
 /** GM writes one of the campaign's own compendium entries. */

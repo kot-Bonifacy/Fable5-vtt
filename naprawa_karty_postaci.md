@@ -1,7 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
 Data: 15.09.2026. Stan na 17.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
-etap 3 w toku (3a ✅, 3b i 3c do realizacji)**.
+etap 3 w toku (3a ✅, 3b ✅, 3c i 3d do realizacji)**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
@@ -349,20 +349,25 @@ w przeglądarce jest obowiązkowy, sam przegląd CSS nie wystarczy.
 
 **Zależność:** etapy 1–2. **Cel:** użytkownik wie, co postać ma i co zostało do zrobienia.
 
-**Podział z 17.09 (za zgodą MG):** trzy wątki wdrożenia i pełny odbiór obu metod w przeglądarce
-nie mieszczą się w jednym oknie kontekstu, więc etap idzie w trzech częściach, po jednej sesji:
+**Podział z 17.09 (za zgodą MG), rozszerzony tego samego dnia:** wątki wdrożenia i pełny odbiór
+obu metod w przeglądarce nie mieszczą się w jednym oknie kontekstu, więc etap idzie w czterech
+częściach, po jednej sesji. **Zlecenie MG z drugiej sesji 17.09** — „wykonać lepszy podział
+kategorii dostępności wyposażenia (obecny jest oparty tylko na koszcie, co jest nieadekwatne)" —
+dołożyło czwarty wątek, więc sklep został w 3b, a czynności Roli i gotowość przeszły do 3c:
 
 - **3a — podsumowanie zgodne z kartą i uczciwe wyposażenie.** Podsumowanie liczone z tej samej karty,
   którą zapisze serwer (Cechy, pochodne, darmowy język, Zdolność, wiersze zakupów, saldo, właściciel,
   żeton, Poziom życia); jedna lista „czego kreator nie wydaje” (pakiet Krawędziarza, Moda,
   cyborgizacje, amunicja) w sklepie, podsumowaniu i po zakończeniu; ekran końcowy z wynikiem żetonu.
-- **3b — co zostało po kreatorze.** Podgląd właściwości przedmiotu w sklepie przed zakupem; lista
-  czynności wynikających z Roli (Zmysł Walki, Medycyna, Twórca, zespół Korpo, Tabor Nomady — także
-  jego opcje Zakwaterowania z Moto, cyberdek Netrunnera) z przejściem do paneli karty; **znacznik
-  gotowości do gry nadawany przez MG** (decyzja MG z 17.09): świeża postać „czeka na MG”, MG widzi
-  w zakładce „Postacie” listę z tym, co zostało, i zatwierdza; znaczek z liczbą jak przy rangach;
-  nowe pole w bazie.
-- **3c — odbiór obu metod.** Pełne przejście według akapitu „Odbiór” niżej: MG i gracz, obie metody,
+- **3b — sklep: dostępność i podgląd przedmiotu.** Nowy podział poziomów dostępności (rodzaj
+  rzeczy, nie sama cena), wyjątki MG na wpisie, narzędzia Roli w kreatorze i rozwijany podgląd
+  właściwości przedmiotu przed zakupem.
+- **3c — co zostało po kreatorze.** Lista czynności wynikających z Roli (Zmysł Walki, Medycyna,
+  Twórca, zespół Korpo, Tabor Nomady — także jego opcje Zakwaterowania z Moto, cyberdek Netrunnera)
+  z przejściem do paneli karty; **znacznik gotowości do gry nadawany przez MG** (decyzja MG
+  z 17.09): świeża postać „czeka na MG”, MG widzi w zakładce „Postacie” listę z tym, co zostało,
+  i zatwierdza; znaczek z liczbą jak przy rangach; nowe pole w bazie.
+- **3d — odbiór obu metod.** Pełne przejście według akapitu „Odbiór” niżej: MG i gracz, obie metody,
   Role z dodatkowymi decyzjami, zapis i wznowienie, zmiana Roli/metody, brak portretu, brak aktywnej
   sceny, opóźnienie i zerwanie połączenia; poprawki tego, co wyjdzie.
 
@@ -400,7 +405,7 @@ nie mieszczą się w jednym oknie kontekstu, więc etap idzie w trzech częścia
 **Ustalenia z realizacji 3a:**
 
 - **Poziom życia wybiera Rola po nazwie Zdolności** („Praca Zespołowa” = Korpo), jak każda Rola
-  w silniku. Nomada dostaje kontener; jego opcje z Moto (s. 165) idą na listę czynności w 3b.
+  w silniku. Nomada dostaje kontener; jego opcje z Moto (s. 165) idą na listę czynności w 3c.
 - **Pierwszy miesiąc bez opłat nie ma pola** — rozliczenie miesiąca uruchamia MG, więc podsumowanie
   tylko o tym przypomina. Postać utworzona tuż przed pierwszym dniem miesiąca zapłaci przy
   najbliższym rozliczeniu, jeśli MG go nie pominie.
@@ -408,7 +413,65 @@ nie mieszczą się w jednym oknie kontekstu, więc etap idzie w trzech częścia
   jest tylko u MG. Ekran o tym mówi.
 - **Wiersze tej samej broni kupionej dwa razy stoją osobno** — bo tak stoją na karcie.
 - **Nie sprawdzono:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
-  połączenia przy zakończeniu (zakres 3c).
+  połączenia przy zakończeniu (zakres 3d).
+
+### Część 3b — status: ✅ ukończona 17.09.2026 (druga sesja)
+
+- [x] **Poziom dostępności mówi, jak legalna jest rzecz, a nie ile kosztuje** (`shopTierVerdict`
+      w `shared/systems/cpred/shop.ts`): typ broni, OB pancerza, rodzina wszczepu, klasa Programu,
+      sprzęt cyberdeku; doskonała jakość broni +1; cena tylko **podnosi** (1000 ed → min. 2,
+      5000 ed → 4). Rodzaj bez reguły (własny wpis MG) spada na starą drabinę cenową.
+- [x] Nazwy poziomów: 1 Uliczne, 2 Zawodowe, **3 Wojskowe** (było „Korporacyjne”), 4 Czarny rynek;
+      opisy pod przełącznikiem mówią, co tam stoi, a nie do ilu eurodolców.
+- [x] Przypisania, których z danych nie da się wyczytać (sprzęt ogólny, amunicja, dodatki, bojowy
+      chrom, broń egzotyczna — 108 pozycji) w `data/private/cpred/shop-tiers.json`; publiczna
+      próbka z wymyślonymi identyfikatorami w `data/public/cpred/shop-tiers.json` pilnowana
+      strażnikiem licencji.
+- [x] **Wyjątek MG na wpisie** (`Campaign.shopTierOverrides`, migracja `20260917180000`):
+      lista „Poziom w tej kampanii” na karcie wpisu w Kompendium — także dla wpisów z importu,
+      których MG nie edytuje. Zdarzenie `shop:entry-tier` rozsyła zmianę na żywo, stan wiezie
+      `state:sync`, a eksport kampanii zabiera kolumnę.
+- [x] Karta wpisu mówi **skąd** poziom: „2 — Zawodowe (typ broni: Ciężki pistolet)”,
+      „4 — Czarny rynek (Czarny LOD)”, „3 — Wojskowe (ustawione przez MG w tej kampanii)”.
+- [x] **Narzędzia Roli w kreatorze** (decyzja MG): poziom 1 dla wszystkich plus narzędzia własnej
+      Roli do poziomu 2 — Netrunner deki i ulepszenia, Medyk torbę i skanery, Technik przybornik,
+      Solo i Stróż Prawa broń krótką i strzelby, Nomada wyrzutnię haków. Wiersz nosi znacznik
+      „narzędzie Roli”; serwer odmawia `CREATION_SHOP_LOCKED`.
+- [x] Zmiana Roli zdejmuje z koszyka narzędzia poprzedniej Roli (`creationBasketForRole`), a okno
+      strat je wymienia; pozycja, której półka już nie niesie, jest brakiem w podsumowaniu
+      („Usuń z koszyka”) i blokuje „Utwórz postać”.
+- [x] **Podgląd przedmiotu w sklepie kreatora**: klik w nazwę rozwija liczby (OBR, LA, magazynek,
+      chwyt, ukrycie, jakość, typ, Umiejętność; OB, miejsca, kara; gniazda deku), zdanie
+      o dostępności i opis z kompendium. Kupno ma osobny przycisk „+ Dołóż” — do 17.09 cały wiersz
+      był przyciskiem kupna, więc obejrzenie przedmiotu kosztowało zakup.
+- [x] Testy: 29 w `shop.test.ts` (16 nowych), 2 nowe w `creation.test.ts` w `shared`, 4 nowe na
+      serwerze (narzędzia Roli, wyjątek MG na żywo, odmowa w Kompendium, odmowy), 1 nowy strażnik
+      licencji; pełny przebieg 2155 / 1189 / 224, `tsc`, ESLint i Prettier czyste.
+- [x] Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, 2084×1172 CSS): Medyk kupuje
+      torbę medyka ze znacznikiem, rozwinięty podgląd średniego pistoletu i średniej kurtki;
+      zmiana Roli na Solo z oknem „Koszyk (1 szt. za 100 ed): Torba medyka”; półka Solo z bronią
+      krótką; MG przestawia „Ciężki pistolet” na 3 → u gracza znika z półki, w koszyku dostaje
+      zdanie odmowy, a podsumowanie każe go usunąć; powrót na „Automatycznie” przywraca wpis;
+      gracz w Kompendium widzi „Kruk — Czarny rynek (Czarny LOD)” i nie ma listy MG.
+
+**Ustalenia z realizacji 3b:**
+
+- **Poziom zmienił się w 150 z 336 wpisów katalogu.** Najwięcej po stronie broni (wyrzutnie rakiet
+  i miotacz ognia z 2 na 4, karabiny i granatniki na 3, duża broń biała i tanie pistolety na 1)
+  oraz Sieci (Czarny LOD z 1–3 na 4, agresorzy na 3). Raport z pełną listą powstawał skryptem
+  jednorazowym w scratchpadzie — nie ma go w repo, bo wypisuje nazwy z podręcznika.
+- **Doskonała jakość broni podnosi poziom o 1**, więc doskonały karabin szturmowy ląduje na
+  Czarnym rynku, a doskonały średni pistolet na Zawodowych. To decyzja MG z tabeli; gdyby uwierało,
+  wystarczy zdjąć gałąź `quality === 'excellent'` w `kindTier`.
+- **Poziom wpisu nie dotyczy montażu wszczepów** (decyzja z 13.09 zostaje) — dla cyborgizacji jest
+  wyłącznie informacją na karcie wpisu i tarczą dla „Kup”.
+- **Programów nie da się kupić nigdzie w VTT** (`purchasedSheetRow` ich nie zna), a cyberdek i
+  Programy wybiera się na karcie postaci za darmo — kupiony w kreatorze „Cyberdek” jest osobnym
+  wierszem sprzętu i nie wchodzi do pola `cyberdeck`. Dlatego narzędzia Netrunnera to deki
+  i ulepszenia sprzętowe, a nie Programy. Oba braki zapisane w `POMYSLY.md`.
+- **Nie sprawdzono w przeglądarce:** motywu dziennego rozwiniętego podglądu i karty wpisu, wąskiego
+  okna i powiększenia, półek Netrunnera, Technika i Nomady, zakupu z Kompendium przy wyjątku MG
+  u gracza z pieniędzmi (pokryte testem serwera) — pozycja w `zaleglosci.md`.
 
 Zakres ogólny przy zachowaniu dotychczasowych uproszczeń:
 
@@ -482,13 +545,24 @@ Otwarte kwestie wskazano poniżej.
     bez ciemnych drobinek i plam; wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach.
 20. **Kontrast pod wytarciami — ustalone 16.09 (piąta sesja):** zostaje obecna budowa (wytarcia nad
     tekstem) mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych miejscach.
-21. **Podział etapu 3 — ustalone 17.09:** 3a (podsumowanie i wyposażenie), 3b (czynności Roli, sklep,
-    gotowość), 3c (odbiór).
+21. **Podział etapu 3 — ustalone 17.09, zmienione tego samego dnia:** 3a (podsumowanie
+    i wyposażenie), 3b (dostępność i sklep), 3c (czynności Roli i gotowość), 3d (odbiór).
 22. **Gotowość do gry — ustalone 17.09:** znacznik nadawany przez MG na karcie, lista w zakładce
-    „Postacie” ze znaczkiem liczby; nowe pole w bazie (3b).
+    „Postacie” ze znaczkiem liczby; nowe pole w bazie (3c).
 23. **Poziom życia na start — ustalone 17.09:** według podręcznika (kontener „Na karmie”, Korpo
     konap „Dobry prepak”), tylko dla postaci z właścicielem; pierwszy darmowy miesiąc przy MG.
-24. **Opłata za montaż wszczepu — ustalone 17.09:** poprawiona od razu (sama cena przy nowym
+24. **Dostępność — ustalone 17.09 (druga sesja):** poziom liczy się z **rodzaju** rzeczy
+    (typ broni, OB, rodzina wszczepu, klasa Programu), cena tylko podnosi; cztery poziomy według
+    legalności (Uliczne / Zawodowe / Wojskowe / Czarny rynek); pozycje, których rodzaj nie
+    rozstrzyga, przypisane po nazwie w prywatnym pliku; MG nadpisuje pojedynczy wpis w Kompendium.
+25. **Narzędzia Roli w kreatorze — ustalone 17.09 (druga sesja):** poziom 1 dla wszystkich plus
+    narzędzia własnej Roli do poziomu 2, z listami zatwierdzonymi przez MG (Solo i Stróż Prawa
+    także broń i pancerz).
+26. **Podgląd w sklepie — ustalone 17.09 (druga sesja):** rozwijany wiersz z osobnym przyciskiem
+    kupna.
+27. **Plik przypisań — ustalone 17.09 (druga sesja):** `data/private/cpred/shop-tiers.json`
+    (poza gitem, do skopiowania na VPS razem z kompendium); publiczna próbka w repo jest wymyślona.
+28. **Opłata za montaż wszczepu — ustalone 17.09:** poprawiona od razu (sama cena przy nowym
     wszczepie); stała Utrata Człowieczeństwa przy tworzeniu postaci do `POMYSLY.md`.
 
 ## Mapa kodu dla późniejszej realizacji

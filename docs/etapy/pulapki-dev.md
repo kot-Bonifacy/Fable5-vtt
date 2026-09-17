@@ -946,6 +946,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **Powiększenia przeglądarki nie udasz `zoom` na `<html>`** — CSS `zoom` mnoży `vh`, więc okno z `max-height: 88vh` wychodzi poza ekran, czego prawdziwe powiększenie nie robi. Zmień rozmiar okna (`resize_window`) tak, żeby `innerWidth` = szerokość ekranu w CSS ÷ powiększenie (4K przy skali 150% i zoomie 150% ≈ 1708 × 882).
 - **Szybko przepisywany plik CSS Vite potrafi serwować w wersji pośredniej — także po F5** — `getComputedStyle` pokazuje regułę sprzed ostatniego zapisu, choć log mówi „hmr update”. Zapisz plik jeszcze raz bez zmian i przeładuj kartę.
 - **Nowego gracza testowego dołączysz bez czytania tokenu** — rozszerzenie zaciemnia token zaproszenia (`[BLOCKED: Sensitive key]`); wystaw i zużyj go w jednym `javascript_tool` (`POST …/invitations` → `/api/auth/logout` → `POST /api/join/<token>`), niczego nie wypisując. Danych testowych nie zmieniaj przez `node:sqlite` — automat odmawia zapisu do bazy; idź przez aplikację.
+- **Instancja oględzin zajmuje porty 3001/5173, więc `npm run dev` MG pada na `EADDRINUSE`, a logowanie zwykłym hasłem daje 401** — pod `localhost:5173` odpowiada wtedy baza testowa z **innym** hasłem MG. Zanim uznasz to za błąd logowania, sprawdź, czyja instancja słucha (`netstat`), i potwierdź hasło `curl`-em na `/api/auth/login`.
 - **Instancja na bazie testowej z jednorazowym `GM_PASSWORD`** — serwer przy starcie przepisuje hasło MG z env do bazy, którą otwiera. Na `.creation-ui.db` to wygoda; z tym samym env na `dev.db` zmieniłbyś prawdziwe hasło MG.
 - **Opóźnienie VPS odtworzysz łatką na `WebSocket.prototype.send` z `setTimeout`** — lokalnie odpowiedź przychodzi przed następnym klawiszem, więc błędy pól związanych ze stanem serwera są na `localhost` niewidoczne.
 - **Dwuklik z automatu w karcie w tle wysyłaj synchronicznie** — `setTimeout` między kliknięciami dławi się do ~1 s, drugie przychodzi po `DOUBLE_CLICK_MS` (350 ms) i obiekt sceny tylko się zaznacza zamiast otworzyć kartę; cztery `dispatchEvent` pod rząd w jednym zadaniu działają.
@@ -1092,6 +1093,14 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
+- **Dwie instancje na tych samych portach wyglądają jak zepsute logowanie (17.09, naprawa 3b).**
+  Oględziny wymagają zalogowanego MG, a hasła w przeglądarce nie wpisuje automat — MG loguje się
+  ręką. Gdy równolegle stoi jego zwykły `npm run dev`, wychodzą dwa objawy naraz: jego serwer pada
+  na `EADDRINUSE` (porty trzyma instancja testowa), a jego hasło daje `401`, bo `localhost:5173`
+  proxuje do bazy testowej z jednorazowym `GM_PASSWORD`. Rozstrzyga to jeden `curl`
+  (`POST /api/auth/login` z hasłem instancji → 200) i `netstat -ano` na portach. Krótkie,
+  łatwe do przepisania hasło (`test3b`) oszczędza rundy „wpisuję poprawne, a nie wchodzi”.
 
 - **Nowy gracz i hasło MG na bazie testowej (16.09, naprawa 2a).** Oględziny kreatora wymagały
   świeżego szkicu i szkicu bez zatwierdzonej rangi. Zapis wprost do `.creation-ui.db` przez

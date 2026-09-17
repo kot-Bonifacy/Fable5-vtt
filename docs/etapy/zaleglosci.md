@@ -6,6 +6,13 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Dług oględzin — naprawa 3b (17.09, druga sesja).** Obejrzane w Chrome: półki Medyka i Solo,
+rozwinięty podgląd broni i pancerza, okno strat przy zmianie Roli, wyjątek MG na żywo (znikający
+wpis, zdanie w koszyku, brak w podsumowaniu, powrót na „Automatycznie”) i karta wpisu u gracza.
+**Nie obejrzane:** motyw dzienny rozwiniętego podglądu i karty wpisu w Kompendium, wąskie okno
+i powiększenie nowego wiersza sklepu, półki Netrunnera, Technika i Nomady, zakup z Kompendium przy
+wyjątku MG u gracza z pieniędzmi (pokryty testem serwera) oraz obsługa rozwijania klawiaturą.
+
 **Zamknięte 13.09 (piąta sesja): zasłona figur 42c w komplecie i przerwany marsz cofający figurę
 za róg.** Oględziny 42c domknięte na „Test Brak sceny": obejście końca bariery pod mgłą
 i w Dynamicznej, odznaczenie „Zasłania figury" z karty. Po drodze wyszedł błąd spoza listy —

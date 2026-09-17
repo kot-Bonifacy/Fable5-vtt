@@ -63,6 +63,28 @@ describe('licence guard', () => {
     }
   });
 
+  it('ships only invented availability assignments in data/public (naprawa 3b)', () => {
+    // The ids of the real catalogue are its inventory; the committed file names
+    // the invented sample entries and says so, and data/private wins over it.
+    const file = join(REPO_ROOT, 'data', 'public', 'cpred', 'shop-tiers.json');
+    if (!existsSync(file)) return;
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      source?: string;
+      tiers?: Record<string, number>;
+      roleTools?: Record<string, { entries?: string[] }>;
+    };
+    expect(parsed.source ?? '').toMatch(/przykładowe|wymyślone/i);
+    const sample = JSON.parse(
+      readFileSync(join(REPO_ROOT, 'data', 'public', 'cpred', 'compendium', 'sample.json'), 'utf8'),
+    ) as { entries: { id: string }[] };
+    const invented = new Set(sample.entries.map((entry) => entry.id));
+    const named = [
+      ...Object.keys(parsed.tiers ?? {}),
+      ...Object.values(parsed.roleTools ?? {}).flatMap((tools) => tools.entries ?? []),
+    ];
+    for (const id of named) expect(invented).toContain(id);
+  });
+
   it('ships only invented cover material values in data/public (stage 16c)', () => {
     // The material × thickness table is rulebook content (s. 180), so the
     // committed file carries the right *shape* with made-up numbers and the

@@ -36,16 +36,23 @@ import {
   resolveWeapon,
   shopTierOf,
   shopTierRefusalText,
+  shopTierVerdict,
 } from '@vtt/shared';
 import {
   deleteCompendiumEntry,
   economyErrorText,
   sendCyberwareAction,
+  setShopEntryTier,
   setShopTier,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { countByCategory, useCompendiumStore, visibleEntries } from '../stores/compendiumStore.js';
+import {
+  countByCategory,
+  shopTierContextOf,
+  useCompendiumStore,
+  visibleEntries,
+} from '../stores/compendiumStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   addCompendiumItemToCharacter,
@@ -78,6 +85,11 @@ export function CompendiumPanel() {
   const order = useCompendiumStore((s) => s.order);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const shopTier = useCompendiumStore((s) => s.shopTier);
+  const shopTierOverrides = useCompendiumStore((s) => s.shopTierOverrides);
+  const tierContext = useMemo(
+    () => shopTierContextOf(shopTierOverrides, weaponTypeById),
+    [shopTierOverrides, weaponTypeById],
+  );
   const entries = useMemo(
     () => visibleEntries(entriesById, order, query, category),
     [entriesById, order, query, category],
@@ -145,7 +157,7 @@ export function CompendiumPanel() {
             </li>
           ) : null}
           {entries.map((entry) => {
-            const tier = shopTierOf(entry);
+            const tier = shopTierOf(entry, tierContext);
             // Injuries are not merchandise, so the tier chip would be noise.
             const priced = entry.category !== 'criticalInjury';
             const locked = priced && tier > shopTier;
@@ -322,7 +334,13 @@ function EntryCard({
   const discount = struck && struck.discount > 0 ? struck.discount : 0;
   const payable = price === null ? null : cpredHaggledPrice(price, discount);
   const shopTier = useCompendiumStore((s) => s.shopTier);
-  const tier = shopTierOf(entry);
+  const shopTierOverrides = useCompendiumStore((s) => s.shopTierOverrides);
+  const tierContext = useMemo(
+    () => shopTierContextOf(shopTierOverrides, weaponTypeById),
+    [shopTierOverrides, weaponTypeById],
+  );
+  const availability = shopTierVerdict(entry, tierContext);
+  const tier = availability.tier;
   const locked = tier > shopTier;
   const fitting =
     entry.category === 'cyberware' && entry.install ? CYBERWARE_INSTALL_COST[entry.install] : 0;
@@ -753,18 +771,19 @@ function EntryCard({
         {entry.category === 'criticalInjury' ? null : (
           <>
             <Stat label="Cena" value={formatCost(entry)} />
+            {/* Skąd poziom — widoczne, nie w dymku (naprawa 3b): „dlaczego ten
+                karabin jest zablokowany" pada przy stole, a nie przy myszce. */}
             <Stat
               label="Dostępność"
-              value={`${tier} — ${SHOP_TIER_LABELS[tier]}`}
-              hint={
-                entry.tier
-                  ? 'Poziom wpisany ręcznie przez MG — nie wynika z ceny.'
-                  : 'Poziom wyliczony z ceny. MG odblokowuje kolejne w miarę kampanii.'
-              }
+              value={`${tier} — ${SHOP_TIER_LABELS[tier]} (${availability.reason})`}
+              hint="Poziom mówi, jak legalna jest rzecz: typ broni, OB, rodzina wszczepu, klasa programu; cena go tylko podnosi. MG odblokowuje kolejne w miarę kampanii."
             />
           </>
         )}
       </dl>
+      {isGm && entry.category !== 'criticalInjury' ? (
+        <ShopEntryTierChoice entry={entry} tierContext={tierContext} />
+      ) : null}
 
       {entry.category === 'weapon' && resolved?.rangeDv ? (
         <div className="compendium-range-wrap">
@@ -932,6 +951,46 @@ function EntryCard({
       ) : null}
       {note ? <p className="compendium-note">{note}</p> : null}
     </div>
+  );
+}
+
+/**
+ * The GM moves one entry for this campaign (naprawa 3b) — the only way to change
+ * where an imported row sits, since the files are never written from the UI.
+ * „Automatycznie" names the rung the data would give, so going back is not a
+ * leap in the dark.
+ */
+function ShopEntryTierChoice({
+  entry,
+  tierContext,
+}: {
+  entry: CompendiumEntry;
+  tierContext: ReturnType<typeof shopTierContextOf>;
+}) {
+  const [note, setNote] = useState<string | null>(null);
+  const chosen = tierContext.overrides?.[entry.id];
+  const automatic = shopTierVerdict(entry, { ...tierContext, overrides: {} });
+
+  async function choose(value: string) {
+    const ack = await setShopEntryTier(entry.id, value === '' ? null : Number(value));
+    setNote(ack.ok ? null : economyErrorText(ack.error));
+  }
+
+  return (
+    <label className="compendium-tier-choice">
+      <span>Poziom w tej kampanii</span>
+      <select value={chosen ?? ''} onChange={(event) => void choose(event.target.value)}>
+        <option value="">
+          Automatycznie — {automatic.tier} {SHOP_TIER_LABELS[automatic.tier]}
+        </option>
+        {SHOP_TIERS.map((tier) => (
+          <option key={tier} value={tier}>
+            {tier} — {SHOP_TIER_LABELS[tier]}
+          </option>
+        ))}
+      </select>
+      {note ? <span className="compendium-note">{note}</span> : null}
+    </label>
   );
 }
 

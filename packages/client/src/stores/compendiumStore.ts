@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import type {
   CompendiumCategory,
   CompendiumEntry,
+  CpredShopRoleTools,
   ShopTier,
+  ShopTierContext,
   StateSyncPayload,
   WeaponTypeDefinition,
 } from '@vtt/shared';
@@ -28,6 +30,14 @@ interface CompendiumStoreState {
    * meant to see what is worth working towards.
    */
   shopTier: ShopTier;
+  /**
+   * The GM's per-entry availability choices for this campaign (naprawa 3b) —
+   * pass them to `shopTierOf` everywhere a tier is shown, or the list and the
+   * server will disagree about what is locked.
+   */
+  shopTierOverrides: Record<string, ShopTier>;
+  /** What each Role may buy above street level in the creator (naprawa 3b). */
+  roleTools: Record<string, CpredShopRoleTools>;
 
   /** Browse state of the side panel. */
   category: CompendiumCategory;
@@ -39,6 +49,7 @@ interface CompendiumStoreState {
 
   applySync: (payload: StateSyncPayload) => void;
   applyShopTier: (tier: ShopTier) => void;
+  applyShopEntryTier: (entryId: string, tier: ShopTier | null) => void;
   applyUpsert: (entry: CompendiumEntry) => void;
   applyDelete: (id: string) => void;
   setCategory: (category: CompendiumCategory) => void;
@@ -63,6 +74,8 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
   weaponTypes: [],
   weaponTypeById: {},
   shopTier: SHOP_TIER_MIN,
+  shopTierOverrides: {},
+  roleTools: {},
   category: 'weapon',
   query: '',
   selectedId: null,
@@ -77,6 +90,8 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
         weaponTypes,
         weaponTypeById: Object.fromEntries(weaponTypes.map((type) => [type.id, type])),
         shopTier: payload.shopTier ?? SHOP_TIER_MIN,
+        shopTierOverrides: payload.shopTierOverrides ?? {},
+        roleTools: payload.compendium.roleTools ?? {},
         // A selected entry that vanished falls back to the list.
         selectedId:
           state.selectedId && state.selectedId in indexed.entries ? state.selectedId : null,
@@ -84,6 +99,14 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
     }),
 
   applyShopTier: (shopTier) => set({ shopTier }),
+
+  applyShopEntryTier: (entryId, tier) =>
+    set((state) => {
+      const shopTierOverrides = { ...state.shopTierOverrides };
+      if (tier === null) delete shopTierOverrides[entryId];
+      else shopTierOverrides[entryId] = tier;
+      return { shopTierOverrides };
+    }),
 
   applyUpsert: (entry) =>
     set((state) => ({
@@ -116,6 +139,18 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
  * should be cached"). Components read the raw `entries`/`order` slices — those
  * keep their identity between renders — and call these inside `useMemo`.
  */
+
+/**
+ * What `shopTierVerdict` needs from this store: the GM's choices and weapon type
+ * names for the reason line. Build it inside `useMemo` — a fresh object per
+ * render is fine there and a selector returning one would loop React.
+ */
+export function shopTierContextOf(
+  overrides: Record<string, ShopTier>,
+  weaponTypeById: Record<string, WeaponTypeDefinition>,
+): ShopTierContext {
+  return { overrides, weaponTypeName: (id) => weaponTypeById[id]?.name };
+}
 
 /** Entries of the active category matching the search box, in server order. */
 export function visibleEntries(

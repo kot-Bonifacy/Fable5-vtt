@@ -19,6 +19,7 @@ import type {
   CpredCreationStep,
   CpredValidationIssue,
   CreationFinishResult,
+  CreationShopRules,
   CpredLifepath,
   CpredLifepathBotKind,
   CpredLifepathGroup,
@@ -36,6 +37,7 @@ import {
   CPRED_STAT_HINTS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CREATION_ROLE_TOOL_TIER,
   CREATION_SHOP_TIER,
   LIFEPATH_FIELD_TABLES,
   LIFEPATH_GROUP_LABELS,
@@ -43,6 +45,7 @@ import {
   ROLE_GM,
   SHOP_TIER_LABELS,
   SKILL_SPECIALTY_MAX_LENGTH,
+  WEAPON_QUALITY_LABELS,
   cpredSkillLabel,
   cpredSkillNeedsSpecialty,
   creationAvailableSkills,
@@ -58,6 +61,8 @@ import {
   creationPurchases,
   creationRole,
   creationSkillPointsSpent,
+  creationShopRefusalText,
+  creationShopVerdict,
   creationSkillRow,
   creationStatPointsSpent,
   creationStatPool,
@@ -66,7 +71,6 @@ import {
   emptyLifepathEnemy,
   emptyLifepathPerson,
   entryPrice,
-  entryWithinTier,
   formatEddies,
   formatLifestyle,
   groupedSkills,
@@ -76,7 +80,9 @@ import {
   lifepathMissing,
   lifepathRoleTables,
   lifepathRollLabel,
+  resolveWeapon,
   searchCompendium,
+  shopTierVerdict,
 } from '@vtt/shared';
 import { apiGet, apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
@@ -88,7 +94,7 @@ import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
-import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { shopTierContextOf, useCompendiumStore } from '../stores/compendiumStore.js';
 import {
   buyCreationEntry,
   clearCreationCup,
@@ -214,8 +220,9 @@ function CreatorWindow() {
   // The catalogue goes in so the wizard can price the basket: without it the
   // list of what is missing would quietly skip „wydane 3000 z 2550 ed".
   const entriesById = useCompendiumStore((s) => s.entries);
+  const shopRules = useCreationShopRules();
   const issues = draft
-    ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId])
+    ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId], shopRules)
     : [];
   if (draft?.method === 'complete' && !isGm && !rankApproved)
     issues.push({ field: 'statRankId', message: 'MG musi ustalić Rangę Postaci dla tego szkicu.' });
@@ -639,6 +646,7 @@ function RoleStep({
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const entriesById = useCompendiumStore((s) => s.entries);
+  const shopRules = useCreationShopRules();
   const data = creationDataOf(registry);
 
   /**
@@ -654,6 +662,7 @@ function RoleStep({
       data,
       registry,
       (entryId: string) => entriesById[entryId],
+      shopRules,
     );
     if (effect.lost.length === 0) {
       void patch(next);
@@ -1993,23 +2002,32 @@ const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
 ];
 
 /**
- * Starting purchases (stage 25c).
+ * Starting purchases (stage 25c, shelf reworked in naprawa 3b).
  *
  * The shop is the catalogue of stage 13 and the money is the rulebook's
  * (500 ed for a Krawędziarz, 2550 for a Kompletny Pakiet) — but the shelf is
- * held to availability level 1, which is the GM's wish for session zero: a
- * fresh character buys what any kiosk sells, not what a Fixer keeps in the back.
- * Everything above that level is simply not on this list; the whole catalogue
- * with its greyed-out rows is one tab away in „Kompendium".
+ * street level plus the Role's own tools up to Zawodowe, which is the GM's
+ * wish for session zero: a fresh character buys what any kiosk sells, and a
+ * Medyk a medbag, not what a Fixer keeps in the back. Everything else is simply
+ * not on this list; the whole catalogue with its greyed-out rows is one tab
+ * away in „Kompendium".
+ *
+ * A row opens into what the item *is* before it goes into the basket (naprawa
+ * 3b): the name used to be the buy button, so reading a pistol cost 50 ed.
  */
 function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
   const busy = useCreationStore((s) => s.busy);
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
+  const shopRules = useCreationShopRules();
   const [shelf, setShelf] = useState<CompendiumCategory>('weapon');
   const [query, setQuery] = useState('');
+  const [openId, setOpenId] = useState<string | null>(null);
   const data = creationDataOf(registry);
+  const roleName = creationRole(data, draft.roleId)
+    ? registry.roles.find((role) => role.id === draft.roleId)?.name
+    : undefined;
 
   const lookup = useMemo(() => (entryId: string) => entriesById[entryId], [entriesById]);
   const lines = useMemo(() => creationPurchases(draft, lookup), [draft, lookup]);
@@ -2022,10 +2040,11 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
 
   const shelfEntries = useMemo(() => {
     const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
-    return searchCompendium(all, query, shelf).filter(
-      (entry) => entryWithinTier(entry, CREATION_SHOP_TIER) && entryPrice(entry) !== null,
-    );
-  }, [entriesById, order, query, shelf]);
+    return searchCompendium(all, query, shelf)
+      .filter((entry) => entryPrice(entry) !== null)
+      .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
+      .filter((row) => row.verdict.allowed);
+  }, [entriesById, order, query, shelf, draft.roleId, shopRules]);
 
   return (
     <div className="creator-step creator-gear">
@@ -2036,6 +2055,14 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
           zostaje na karcie
         </span>
       </div>
+      <p className="creator-hint">
+        Na półce: poziom {CREATION_SHOP_TIER} ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]}) dla
+        wszystkich
+        {roleName
+          ? ` i narzędzia Roli ${roleName} do poziomu ${CREATION_ROLE_TOOL_TIER} (${SHOP_TIER_LABELS[CREATION_ROLE_TOOL_TIER]}).`
+          : '. Narzędzia Roli pojawią się po jej wyborze.'}{' '}
+        Kliknij nazwę, żeby zobaczyć, co kupujesz.
+      </p>
       <CreatorLeftOutside draft={draft} data={data} collapsed />
 
       {unavailable.length > 0 && (
@@ -2060,25 +2087,37 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
       )}
       {lines.length > 0 ? (
         <ul className="creator-basket">
-          {lines.map((line) => (
-            <li key={line.entryId}>
-              <span className="creator-basket-name">
-                {line.name}
-                {line.qty > 1 ? <span className="creator-basket-qty">×{line.qty}</span> : null}
-              </span>
-              <span className="creator-basket-price">{formatEddies(line.total)} ed</span>
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                title="Odłóż jedną sztukę"
-                aria-label="Odłóż jedną sztukę"
-                onClick={() => void buyCreationEntry(line.entryId, -1)}
-              >
-                −
-              </button>
-            </li>
-          ))}
+          {lines.map((line) => {
+            const entry = entriesById[line.entryId];
+            // A row the shelf no longer carries (the GM moved it, or it was
+            // bought under the old price ladder) says so where it can be fixed.
+            const onShelf = entry ? creationShopVerdict(entry, draft.roleId, shopRules) : null;
+            return (
+              <li key={line.entryId}>
+                <span className="creator-basket-name">
+                  {line.name}
+                  {line.qty > 1 ? <span className="creator-basket-qty">×{line.qty}</span> : null}
+                  {onShelf && !onShelf.allowed ? (
+                    <span className="creator-basket-locked">
+                      {' '}
+                      — {creationShopRefusalText(onShelf.tier, onShelf.roleTool)}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="creator-basket-price">{formatEddies(line.total)} ed</span>
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={busy}
+                  title="Odłóż jedną sztukę"
+                  aria-label={`Odłóż jedną sztukę: ${line.name}`}
+                  onClick={() => void buyCreationEntry(line.entryId, -1)}
+                >
+                  −
+                </button>
+              </li>
+            );
+          })}
         </ul>
       ) : unavailable.length === 0 ? (
         <p className="creator-hint">
@@ -2109,31 +2148,149 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
       <ul className="creator-shop">
         {shelfEntries.length === 0 ? (
           <li className="placeholder-text">
-            Nic na poziomie 1 ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]}) w tej kategorii.
+            Nic na poziomie 1 ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]})
+            {roleName ? ' ani wśród narzędzi Roli' : ''} w tej kategorii.
           </li>
         ) : null}
-        {shelfEntries.map((entry) => {
+        {shelfEntries.map(({ entry, verdict }) => {
           const price = entryPrice(entry) ?? 0;
           const held = draft.purchases[entry.id] ?? 0;
+          const open = openId === entry.id;
+          const detailsId = `creator-shop-details-${entry.id}`;
           return (
-            <li key={entry.id}>
-              <button
-                type="button"
-                className="creator-shop-row"
-                disabled={busy || price > left}
-                title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
-                onClick={() => void buyCreationEntry(entry.id, 1)}
-              >
-                <span className="creator-shop-name">
+            <li key={entry.id} className="creator-shop-item">
+              <div className="creator-shop-row">
+                <button
+                  type="button"
+                  className="creator-shop-name"
+                  aria-expanded={open}
+                  aria-controls={detailsId}
+                  onClick={() => setOpenId(open ? null : entry.id)}
+                >
+                  <span className="creator-shop-caret" aria-hidden="true">
+                    {open ? '▾' : '▸'}
+                  </span>
                   {entry.name}
                   {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
-                </span>
+                  {verdict.roleTool ? (
+                    <span className="creator-tag creator-tag--hint">narzędzie Roli</span>
+                  ) : null}
+                </button>
                 <span className="creator-shop-price">{formatEddies(price)} ed</span>
-              </button>
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={busy || price > left}
+                  title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
+                  aria-label={`Dołóż do koszyka: ${entry.name}`}
+                  onClick={() => void buyCreationEntry(entry.id, 1)}
+                >
+                  + Dołóż
+                </button>
+              </div>
+              {open ? (
+                <CreatorShopDetails id={detailsId} entry={entry} roleTool={verdict.roleTool} />
+              ) : null}
             </li>
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * The creator's shelf rules for this campaign: Role tools from the data files
+ * and the GM's per-entry choices, both from the compendium store.
+ */
+function useCreationShopRules(): CreationShopRules {
+  const roleTools = useCompendiumStore((s) => s.roleTools);
+  const overrides = useCompendiumStore((s) => s.shopTierOverrides);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  return useMemo(
+    () => ({ roleTools, ...shopTierContextOf(overrides, weaponTypeById) }),
+    [roleTools, overrides, weaponTypeById],
+  );
+}
+
+/**
+ * What a shelf row is, opened under it (naprawa 3b): the numbers the sheet will
+ * carry, where it sits on the availability ladder and why, and the catalogue's
+ * own description. Only the three categories the creator sells.
+ */
+function CreatorShopDetails({
+  id,
+  entry,
+  roleTool,
+}: {
+  id: string;
+  entry: CompendiumEntry;
+  roleTool: boolean;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const shopRules = useCreationShopRules();
+  const availability = shopTierVerdict(entry, shopRules);
+  const facts: { label: string; value: string }[] = [];
+
+  if (entry.category === 'weapon') {
+    const weapon = resolveWeapon(entry, {
+      weaponTypeById: new Map(Object.entries(weaponTypeById)),
+    });
+    const skill = weapon.skillId
+      ? registry.skills.find((row) => row.id === weapon.skillId)?.name
+      : undefined;
+    facts.push({ label: 'Obrażenia', value: weapon.damage });
+    facts.push({ label: 'LA', value: String(weapon.rof) });
+    if (weapon.magazine !== null) {
+      facts.push({ label: 'Magazynek', value: String(weapon.magazine) });
+    }
+    facts.push({ label: 'Chwyt', value: weapon.hands === 2 ? 'oburęczna' : 'jednoręczna' });
+    facts.push({ label: 'Da się ukryć', value: weapon.concealable ? 'tak' : 'nie' });
+    facts.push({ label: 'Jakość', value: WEAPON_QUALITY_LABELS[entry.quality] });
+    if (weapon.typeName) facts.push({ label: 'Typ', value: weapon.typeName });
+    if (skill) facts.push({ label: 'Umiejętność', value: skill });
+  } else if (entry.category === 'armor') {
+    facts.push({ label: 'OB', value: String(entry.sp) });
+    facts.push({
+      label: 'Chroni',
+      value: entry.locations.map((location) => ARMOR_LOCATION_LABELS[location]).join(', '),
+    });
+    facts.push({
+      label: 'Kara',
+      value: entry.penalty ? `−${Math.abs(entry.penalty)} do REF, ZW i RUCH` : 'brak',
+    });
+  } else if (entry.category === 'gear') {
+    if (entry.deckSlots) facts.push({ label: 'Gniazda deku', value: String(entry.deckSlots) });
+    if (entry.deckSlotCost) {
+      facts.push({ label: 'Zajmuje gniazd deku', value: String(entry.deckSlotCost) });
+    }
+  }
+
+  return (
+    <div id={id} className="creator-shop-details">
+      {facts.length > 0 ? (
+        <dl className="creator-shop-facts">
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      <p className="creator-hint">
+        Dostępność: {availability.tier} — {SHOP_TIER_LABELS[availability.tier]} (
+        {availability.reason}){roleTool ? ' · w kreatorze jako narzędzie Roli' : ''}
+      </p>
+      {entry.category === 'weapon' && entry.features?.length ? (
+        <p className="creator-shop-text">{entry.features.join(' · ')}</p>
+      ) : null}
+      {entry.description ? (
+        <p className="creator-shop-text">{entry.description}</p>
+      ) : (
+        <p className="creator-hint">Kompendium nie ma opisu tego przedmiotu.</p>
+      )}
     </div>
   );
 }

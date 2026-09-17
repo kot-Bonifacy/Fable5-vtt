@@ -37,7 +37,7 @@ import { fetchCharactersFor } from './character-io.js';
 import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
 import { buildCompendiumSync } from './compendium.js';
-import { campaignShopTier } from './shop.js';
+import { campaignShopTier, campaignShopTierOverrides } from './shop.js';
 import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 
@@ -79,6 +79,7 @@ export async function buildStateSync(
       ai: aiStatusFor(deps, user.role === ROLE_GM),
       compendium: await buildCompendiumSync(deps, null),
       shopTier: SHOP_TIER_MIN,
+      shopTierOverrides: {},
       accessPoints: [],
       netRuns: [],
       combat: null,
@@ -109,6 +110,7 @@ export async function buildStateSync(
     combat,
     exploration,
     shopTier,
+    shopTierOverrides,
     accessPoints,
     netRuns,
     gameTime,
@@ -181,6 +183,8 @@ export async function buildStateSync(
     // How far down the catalogue this campaign may shop (stage 25c) — public,
     // because a player is meant to see what is still out of reach.
     campaignShopTier(deps.ctx.prisma, campaign.id),
+    // The GM's per-entry choices (naprawa 3b) — public for the same reason.
+    campaignShopTierOverrides(deps.ctx.prisma, campaign.id),
     // Net sockets of the viewed scene (stage 26b), already cut per viewer: a
     // hidden one is absent from a player's list, not flagged in it.
     viewedSceneId
@@ -239,6 +243,7 @@ export async function buildStateSync(
     ai: aiStatusFor(deps, user.role === ROLE_GM),
     compendium,
     shopTier,
+    shopTierOverrides,
     accessPoints,
     netRuns,
     combat,

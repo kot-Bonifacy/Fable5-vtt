@@ -218,6 +218,7 @@ import type {
   PortraitAssetView,
   PortraitCrop,
   PortraitCropBroadcast,
+  ShopEntryTierBroadcast,
   ShopTierBroadcast,
   TokenUpsertBroadcast,
   TokenView,
@@ -258,6 +259,7 @@ import {
   MAX_ROLL_TERMS,
   ROLE_GM,
   clampShopTier,
+  creationShopRefusalText,
   screamsheetErrorText,
   shopTierRefusalText,
   TOKEN_MOVE_RATE_HZ,
@@ -781,6 +783,14 @@ export function connectSocket(userId: string): Socket {
       return;
     }
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
+  });
+  // One entry moved by the GM for this campaign (naprawa 3b) — same reasoning.
+  socket.on('shop:entry-tier', (broadcast: ShopEntryTierBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    useCompendiumStore.getState().applyShopEntryTier(broadcast.entryId, broadcast.tier);
   });
   // Kadr portretu na mapie (12.09). Rozgłoszenie do całego stołu, bo kadr jest
   // cechą obrazka: poprawione ujęcie ma trafić na każdą figurę, która ten plik
@@ -2947,9 +2957,16 @@ export const discardCreation = (draftId?: string) =>
   emitCreationAck('creation:discard', { draftId });
 
 export function creationErrorText(code: string | undefined): string {
-  // The creator always shops at level 1, so this one reads as „nie na start".
-  const locked = shopTierErrorText(code);
-  if (locked) return `${locked} Zakupy startowe idą wyłącznie po poziomie 1.`;
+  // „CREATION_SHOP_LOCKED:2:1" — the item's level and whether it is a tool of
+  // the draft's Role (naprawa 3b); the creator has its own shelf, not the
+  // campaign's, so the sentence says that shelf's rule.
+  if (code?.startsWith('CREATION_SHOP_LOCKED')) {
+    const [, entryTier, roleTool] = code.split(':');
+    return `Poza sklepem kreatora. ${creationShopRefusalText(
+      clampShopTier(Number(entryTier)),
+      roleTool === '1',
+    )}`;
+  }
   switch (code) {
     case 'CREATION_SAVE_PENDING':
       return 'Najpierw ponów zapis oczekujących zmian.';
@@ -3775,6 +3792,24 @@ export function setShopTier(tier: number): Promise<SocketAck<{ tier: number }>> 
       return;
     }
     socket.emit('shop:tier', { tier }, (ack: SocketAck<{ tier: number }>) => resolve(ack));
+  });
+}
+
+/** GM: one entry's availability in this campaign; `null` = back to automatic. */
+export function setShopEntryTier(
+  entryId: string,
+  tier: number | null,
+): Promise<SocketAck<{ entryId: string; tier: number | null }>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit(
+      'shop:entry-tier',
+      { entryId, tier },
+      (ack: SocketAck<{ entryId: string; tier: number | null }>) => resolve(ack),
+    );
   });
 }
 

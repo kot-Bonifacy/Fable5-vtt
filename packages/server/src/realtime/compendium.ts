@@ -68,8 +68,9 @@ export async function buildCompendiumSync(
   campaignId: string | null,
 ): Promise<CompendiumSyncPayload> {
   const { compendium } = deps.ctx;
+  const roleTools = deps.ctx.shopRules.roleTools;
   if (!campaignId) {
-    return { weaponTypes: compendium.weaponTypes, entries: compendium.entries };
+    return { weaponTypes: compendium.weaponTypes, entries: compendium.entries, roleTools };
   }
   const custom = await fetchCustomEntries(deps.ctx.prisma, campaignId);
   const byId = new Map(compendium.entries.map((entry) => [entry.id, entry]));
@@ -78,6 +79,7 @@ export async function buildCompendiumSync(
   return {
     weaponTypes: compendium.weaponTypes,
     entries: [...byId.values()].sort((a, b) => collator.compare(a.name, b.name)),
+    roleTools,
   };
 }
 

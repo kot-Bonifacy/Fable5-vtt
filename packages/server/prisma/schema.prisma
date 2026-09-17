@@ -47,6 +47,11 @@ model Campaign {
   /// Not a rule of Cyberpunk RED — a GM's dial: a starting party shops at 1,
   /// and the catalogue opens up as the campaign goes on.
   shopTier  Int      @default(1)
+  /// The GM's per-entry availability choices (naprawa 3b), JSON `{ entryId: 1–4 }`.
+  /// Wins over the private assignment file and the rules by kind — for imported
+  /// entries too, which the GM cannot otherwise edit. Read with
+  /// `readShopTierOverrides`, which drops anything that is not an id → tier.
+  shopTierOverrides String @default("{}")
   /// Is this a sandbox — a table nobody is really playing at (postulat MG 22.08)?
   ///
   /// Nothing in the system told a test campaign apart from the one a group

@@ -343,6 +343,27 @@ to jest ten akapit do przeczytania na nowo.
   Krawędziarza. Kreator mówi o tym na liście „czego kreator nie wydaje”; stała UC dla postaci przed
   zatwierdzeniem gotowości przez MG czeka w `POMYSLY.md`.
 
+- **Dostępność liczy się z rodzaju rzeczy, nie z ceny (17.09, decyzja MG, naprawa 3b).** Do 17.09
+  poziom był progiem ceny z 25c (≤ 50 / ≤ 500 / ≤ 1000 / wyżej), co stawiało wyrzutnię rakiet,
+  Sandevistana i amunicję z biotoksyną na jednej półce z kamerą wideo, a Czarny LOD za 50 ed na
+  Ulicy. Teraz poziom mówi, **jak legalna** jest rzecz: 1 Uliczne (cywilne, samoobrona), 2 Zawodowe
+  (narzędzia fachu, broń krótka, kurtki kuloodporne, zwykły chrom), 3 Wojskowe (karabiny,
+  granatniki, ciężkie pancerze, bojowy chrom i amunicja, agresorzy), 4 Czarny rynek (wyrzutnie,
+  trucizny, Czarny LOD, Borgizacje, luksus). Cena wyłącznie podnosi (1000 ed → min. 2, 5000 ed → 4),
+  a doskonała jakość broni daje +1. To **nadal mechanizm kampanii, nie zasada podręcznika** —
+  podręcznik wiąże dostępność z kategorią cenową (Zasięg Fixera, s. 160), i ta tabela zostaje
+  w panelu Fixera bez zmian (decyzja z 30.08 o pierwszeństwie poziomu sklepu obowiązuje).
+- **W kreatorze Rola otwiera własną półkę (17.09, decyzja MG, naprawa 3b).** Zakupy startowe stoją
+  na poziomie 1 „dla wszystkich, MG włącznie” (25c), ale narzędzia własnej Roli wolno kupić do
+  poziomu 2 — bez tego Netrunner nie kupiłby cyberdeku, Medyk torby medyka, a Technik przybornika,
+  bo wszystkie są droższe niż 50 ed. Listy narzędzi zatwierdził MG; Solo i Stróż Prawa mają na nich
+  także broń krótką, strzelby i lekkie kurtki kuloodporne.
+- **Programów i cyberdeku nie kupuje się w VTT (17.09, naprawa 3b).** `purchasedSheetRow` zna trzy
+  listy karty (broń, pancerz, sprzęt), a cyberdek i Programy wybiera się na karcie postaci wprost
+  z kompendium, za darmo — także Czarny LOD. Kupiony w sklepie „Cyberdek” jest zwykłym wierszem
+  sprzętu i nie wchodzi do pola `cyberdeck`. Dlatego narzędzia Netrunnera w kreatorze to deki
+  i ulepszenia sprzętowe; pomysły na domknięcie obu spraw są w `POMYSLY.md`.
+
 ## Interfejs
 
 - **Poziom sklepu nie dotyczy montażu wszczepów (13.09, decyzja MG).** Tarcza kampanii („Uliczne —

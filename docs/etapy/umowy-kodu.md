@@ -1832,9 +1832,21 @@ i przytrzymanie stanęłoby w miejscu.
 - **Drugi audyt przy karcie** (rejestr awansów) to osobna tabela, nie nowy `kind` w `LedgerEntry`; `applyImprovementPoints` przesuwa licznik i zmienia kartę **jednym zapisem** (pole `sheet`).
 - **Zdolność Roli czyta się przez `CpredRoleSheet`** (`roleId` + `roleAbilityRank` + `formerRoles`), nigdy przez `roleId` wprost: `cpredRoleAbilityRank` pyta o **każdą** Rolę z listy, a bieżąca — pierwsza w `cpredRoleRanks` — jest tą, przez którą widzi cię Ulica.
 - **Zmiana Roli** to `character:role-change` + `planCpredRoleChange`: bramka na Zdolności **bieżącej** Roli ≥ 4, nowa Rola 60 PD od poziomu 1, powrót darmowy, ale **bramki nie omija**. Rejestr ma własny rodzaj `role`; `formerRoles` wypada z `character:update` u gracza, a `cpredRolesProblem` sądzi **scaloną** kartę.
+- **Półkę sklepu kreatora rozstrzyga `creationShopVerdict` (naprawa 3b)** — poziom 1 dla wszystkich plus narzędzia własnej Roli do `CREATION_ROLE_TOOL_TIER`; listy narzędzi są danymi (`roleTools` w `shop-tiers.json`), nie kodem. Ta sama funkcja filtruje półkę, odmawia `creation:buy` (`CREATION_SHOP_LOCKED:poziom:czyNarzędzie`), sądzi koszyk w `creationIssues` i czyści go przy zmianie Roli (`creationBasketForRole`).
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Dostępność wyposażenia po części 3b naprawy (17.09).** Poziom mówi, **jak legalna** jest rzecz,
+a nie ile kosztuje: `kindTier` czyta typ broni (`WEAPON_TYPE_TIERS`, doskonała jakość +1), OB
+pancerza, rodzinę wszczepu, klasę Programu i sprzęt cyberdeku, a cena wyłącznie **podnosi** wynik
+(1000 ed → min. 2, 5000 ed → 4). Kto dokłada nową kategorię wpisu, dokłada jej gałąź w `kindTier` —
+bez niej wpis spada na starą drabinę cenową, co jest świadomym zapasem dla własnych wpisów MG.
+Wyjątek MG siedzi w `Campaign.shopTierOverrides` (JSON `{ id: 1–4 }`, czytany `readShopTierOverrides`),
+jedzie `state:sync` i rozgłoszeniem `shop:entry-tier`, a eksport kampanii zabiera kolumnę. W kreatorze
+poziom 1 ma każdy, a narzędzia własnej Roli do poziomu 2 — `creationShopVerdict`; serwer liczy to
+z `creationShopRules` (`deps.ctx.shopRules.roleTools` + wyjątki kampanii) i tą samą funkcją odmawia,
+waliduje koszyk i czyści go przy zmianie Roli.
 
 **Kreator po części 3a naprawy (17.09).** Podsumowanie nie opisuje szkicu, tylko pokazuje kartę,
 którą zapisze serwer: `creationOutcome(draft, data, registry, lookup, { weaponTypeById }, owned)`
@@ -2131,6 +2143,8 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Poziom dostępności liczy `shopTierVerdict` (naprawa 3b)** — kolejno: wyjątek MG na kampanii, `tier` wpisu, reguła rodzaju (typ broni, OB, rodzina wszczepu, klasa Programu, sprzęt deku) podniesiona ceną, na końcu stara drabina cenowa. Każde miejsce pokazujące poziom woła ją z `ShopTierContext` (wyjątki MG + nazwy typów broni), inaczej lista i serwer rozjadą się o to, co zablokowane.
+- **Rzecz, której poziomu nie wyczyta rodzaj, przypisuje się po id w `shop-tiers.json`** — nie gałęzią w kodzie: sprzęt, amunicja, dodatki, bojowy chrom i broń egzotyczna. Publiczna próbka w `data/public/cpred`, prawdziwa lista w `data/private/cpred` (wygrywa po id i po Roli); strażnik licencji pilnuje, żeby w repo stały wyłącznie wymyślone identyfikatory.
 - **Co widać na cudzej figurze, składa `cpredSighting`** (`systems/cpred/sighting.ts`, moduł czysty) — dwie warstwy w **jednym kształcie**: rzut oka bez liczb, oględziny z liczbami. Nazwę typu broni podaje wołający, moduł nie chodzi do katalogu.
 - **Rzut oka jedzie `sighting:look`, nie na `TokenView`** — składa się go z kompendium, a synchronizacja sceny nie ma po co na to czekać. Warstwę szczegółową dowozi **karta czatu** rodzaju `sighting` po zdanym Teście; żądanie nie ma pola, którym dałoby się o nią poprosić.
 - **Widoczność figury rozstrzyga `concealedFrom`**, ta sama, którą mapa decyduje o rysowaniu żetonu — oględziny nie mają własnej definicji „widzę". Odmowa to `TOKEN_NOT_FOUND`, nie `FORBIDDEN`.

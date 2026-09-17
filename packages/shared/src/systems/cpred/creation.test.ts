@@ -983,3 +983,52 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
     expect(noFashion.map((line) => line.id)).toEqual(['cyberware', 'ammo']);
   });
 });
+
+describe('naprawa 3b — narzędzia Roli w koszyku', () => {
+  const tools: CompendiumEntry[] = [
+    ...CATALOGUE,
+    { id: 'gear.deck', category: 'gear', name: 'Dek', cost: 100, tier: 2 } as CompendiumEntry,
+    { id: 'gear.vial', category: 'gear', name: 'Fiolka', cost: 100, tier: 4 } as CompendiumEntry,
+  ];
+  const find = (entryId: string) => tools.find((entry) => entry.id === entryId);
+  const rules = { roleTools: { netrunner: { weaponTypes: [], entries: ['gear.deck'] } } };
+
+  it('takes the old Role’s tools off the basket and says so', () => {
+    const reg = registry();
+    const runner = finished({
+      roleId: 'netrunner',
+      skills: { athletics: 2 },
+      purchases: { 'gear.deck': 1, 'gear.latarka': 2, 'gear.zniknal': 1 },
+    });
+    const next = mergeCreationDraft(runner, { roleId: 'solo' }, data(reg), reg, {
+      lookup: find,
+      rules,
+    });
+    // The street flashlight stays; a row the catalogue lost stays for the issue list.
+    expect(next?.purchases).toEqual({ 'gear.latarka': 2, 'gear.zniknal': 1 });
+    const effect = creationChangeEffect(runner, { roleId: 'solo' }, data(reg), reg, find, rules);
+    expect(effect.lost).toContain('Koszyk (1 szt. za 100 ed): Dek.');
+    // Without the rules nobody can tell a deck from a flashlight — nothing goes.
+    expect(mergeCreationDraft(runner, { roleId: 'solo' }, data(reg), reg)?.purchases).toEqual(
+      runner.purchases,
+    );
+  });
+
+  it('flags a basket row the creator’s shelf no longer carries', () => {
+    const reg = registry();
+    const solo = finished({ purchases: { 'gear.deck': 1, 'gear.vial': 1 } });
+    const messages = creationIssues(solo, data(reg), reg, find, rules)
+      .filter((issue) => issue.field === 'purchases')
+      .map((issue) => issue.message);
+    expect(messages).toEqual([
+      'Dek: Poziom 2 (Zawodowe) — w kreatorze tylko Uliczne i narzędzia własnej Roli. Usuń z koszyka.',
+      'Fiolka: Poziom 4 (Czarny rynek) — w kreatorze tylko Uliczne i narzędzia własnej Roli. Usuń z koszyka.',
+    ]);
+    const runner = finished({ roleId: 'netrunner', purchases: { 'gear.deck': 1 } });
+    expect(
+      creationIssues(runner, data(reg), reg, find, rules).filter(
+        (issue) => issue.field === 'purchases',
+      ),
+    ).toEqual([]);
+  });
+});

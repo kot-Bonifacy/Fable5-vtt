@@ -3961,6 +3961,17 @@ input[type='color'] {
   color: var(--text-dim);
 }
 
+/* Naprawa 3b: MG przesuwa jeden wpis na inny poziom w tej kampanii. */
+.compendium-tier-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
 .compendium-editor {
   max-width: 34rem;
   max-height: 85vh;
@@ -9380,35 +9391,97 @@ body.is-resizing {
   overflow-y: auto;
 }
 
-.creator-shop-row {
-  width: 100%;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.4rem 0.55rem;
+/* Naprawa 3b: wiersz sklepu to nazwa rozwijająca podgląd i osobny „+ Dołóż" —
+   do 17.09 cały wiersz był przyciskiem kupna, więc obejrzenie kosztowało zakup. */
+.creator-shop-item {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.creator-shop-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.2rem;
+}
+
+.creator-shop-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.45rem;
+  padding: 0.15rem 0.35rem;
+  border: none;
+  background: none;
+  color: var(--text);
   text-align: left;
+  font: inherit;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
 }
 
-.creator-shop-row:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.creator-shop-name {
-  min-width: 0;
+.creator-shop-caret {
+  flex: none;
+  width: 0.9rem;
+  color: var(--text-dim);
 }
 
 .creator-shop-price {
   flex: none;
   font-size: 0.9375rem;
   color: var(--text-dim);
+}
+
+.creator-shop-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem 0.6rem 1.6rem;
+  border-top: 1px dashed var(--border);
+}
+
+.creator-shop-details p {
+  margin: 0;
+}
+
+.creator-shop-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.creator-shop-facts div {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.creator-shop-facts dt {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+}
+
+.creator-shop-facts dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.creator-shop-text {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.creator-basket-locked {
+  color: var(--warn-bright);
+  font-size: 0.9375rem;
 }
 
 .creator-portrait {

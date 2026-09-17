@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "$comment": "Przydziały dostępności, których nie da się wyczytać z rodzaju wpisu, i narzędzia Ról w kreatorze (naprawa 3b). Identyfikatory wskazują wymyślone wpisy z compendium/sample.json. Prawdziwy plik grupy leży w data/private/cpred/shop-tiers.json i wygrywa po id oraz po Roli.",
+  "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
+  "tiers": {
+    "gear.apteczka-polowa": 2,
+    "ammo.sample-emp": 3,
+    "ammo.sample-sleeper": 2
+  },
+  "roleTools": {
+    "solo": {
+      "weaponTypes": ["weapon-type.sample-rifle"],
+      "entries": ["armor.helm-kurierski"]
+    },
+    "medtech": {
+      "entries": ["gear.apteczka-polowa"]
+    },
+    "netrunner": {
+      "entries": ["gear.dek-przykladowy", "gear.zwora-przykladowa"]
+    }
+  }
+}

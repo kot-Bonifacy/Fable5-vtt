@@ -20,6 +20,11 @@ początkującej drużynie cały katalog.
 To **nie jest** zasada z podręcznika, tylko mechanizm kampanii — i dlatego siedzi na kampanii,
 a nie w tabelach CP RED. **Zatwierdzone przez MG 14.08** w kształcie z propozycji:
 
+> **Zmienione 17.09.2026 (naprawa kreatora 3b):** poziom liczy się z **rodzaju** rzeczy (typ broni,
+> OB pancerza, rodzina wszczepu, klasa Programu), a cena tylko go podnosi; trzeci poziom nazywa się
+> „Wojskowe”, a MG nadpisuje pojedynczy wpis listą na jego karcie w Kompendium (nie w edytorze —
+> ten obsługuje wyłącznie własne wpisy MG). Tabela niżej opisuje stan z 14.08.
+
 **Cztery poziomy, wyliczane z pasma ceny, z ręcznym nadpisaniem na wpisie.**
 Pasmo ceny jest w podręczniku dokładnie tym, czym w praktyce jest dostępność („Tanie" to
 rzeczy z każdego kiosku, „Luksusowe" to rzeczy, po które trzeba iść do Fixera), więc poziom

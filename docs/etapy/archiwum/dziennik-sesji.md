@@ -7,6 +7,41 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.09 (piąta) — naprawa kreatora, część 2c
+
+**Zlecenie MG:** wykonać etap 2c `naprawa_karty_postaci.md`, ale **bez dopasowania rozdzielczości**
+(obecna skala odpowiada, gracze zmieniają ją sami); w zamian poszukać ładniejszych skórek karty
+postaci opartych na naturalnych teksturach z sieci (albo je przerobić); dopytywać i zgłaszać możliwe
+błędy. **Stan: 2c ✅, etap 2 naprawy ✅.** Checklista i ustalenia są w pliku naprawy.
+
+**Decyzje MG (16.09):** skórki dla karty **i** kreatora; „papier i druk”, subtelnie, para dzień/noc;
+papier pożółkły jak tapeta logowania, potem jaśniejszy; tekstury najpierw z sieci (MG oferował
+wygenerowanie — nie było potrzeby), mogą ważyć do kilku MB; **żadnych ciemnych drobinek ani plam**
+(„zabrudzenia”), zamiast nich wytarcia (mocniejsze) i pęknięcia na czerwonych ramkach (pomysł MG);
+wytarcia zostają nad tekstem mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych
+miejscach.
+
+**Zgłoszone MG możliwe błędy:** (1) `--accent-ink` w dzień (#fff1ef) dawał niemal biały napis na
+każdym `.small-button--primary` — pięć przycisków w aplikacji, m.in. „Rzuć całą Ścieżkę” i „Utwórz
+postać”; poprawione na głęboką czerwień. (2) Listy wyboru kreatora były gołymi kontrolkami
+przeglądarki — ostylowane. (3) Od ~1120 px CSS zakładka „Podsumowanie” wypadała poza pasek kroków —
+zakładki się zawijają. (4) Pole wartości Cechy stało ~700 px od nazwy — tabela na szerokość treści.
+(5) Pęknięcia nad treścią wymazywały litery — przeniesione do tła czerwieni. (6) Kontrast pod
+wytarciami — MG zostawił.
+
+**Wdrożone:** `packages/client/public/art/sheet/` (`paper-wear.jpg`, `ink-cracks-day/night.webp`,
+~0,56 MB) i `tools/art/sheet-paper.py` (pobiera „Old paper6” z Wikimedia i ambientCG „Asphalt 011”,
+kafel Moisana, maska i rysy); klasa `sheet-window--paper` na karcie i kreatorze, tokeny `--cp-inset*`,
+`--cp-line*`, `--cp-wear*`, `--cp-cracks*` i jaśniejszy dzienny `--cp-paper`; strażnik koloru pęknięć
+w `theme.test.ts`; `tools/art/.cache/` w `.gitignore`. Umowa — `karta` (1); pułapki — `ogledziny` (2).
+
+**Weryfikacja:** vitest — 2133 shared, 1183 serwera, 224 klienta (w pierwszym przebiegu `pnpm -r test`
+mignął `gametime.test.ts` „nowa data dociera do gracza rozgłoszeniem” — trzy powtórzenia pliku
+i drugi pełny przebieg serwera zielone; serwera ta sesja nie dotykała); `tsc --noEmit` klienta,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`, serwer z jednorazowym `GM_PASSWORD`): scenariusze w checkliście 2c. **Nie było:** portretu,
+Safari/iPada, prawdziwego zoomu, pomiaru przewijania (`zaleglosci.md`).
+
 ### Sesja 16.09 (czwarta) — naprawa kreatora, część 2b
 
 **Zlecenie MG:** wykonać etap 2b `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno

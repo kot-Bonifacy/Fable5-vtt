@@ -33,6 +33,7 @@ import { resolveWeapon, type CompendiumEntry, type CompendiumRegistry } from './
 import { entryPrice, formatEddies, type CpredLifestyle } from './economy.js';
 import { CPRED_TEAMWORK_ABILITY } from './roleability.js';
 import { purchasedSheetRow } from './shopping.js';
+import { creationShopRefusalText, creationShopVerdict, type CreationShopRules } from './shop.js';
 import { sanitizeTokenImageUrl } from '../../tokens.js';
 
 /**
@@ -761,6 +762,12 @@ export function creationIssues(
    * without a catalogue must not be told the basket is empty when it is not.
    */
   lookup?: (entryId: string) => CompendiumEntry | undefined,
+  /**
+   * Availability rules (naprawa 3b). With them a basket row the creator's shelf
+   * no longer carries — the GM moved it up, or it was bought under the old
+   * price ladder — is an issue; without them only a missing entry is.
+   */
+  shopRules?: CreationShopRules,
 ): CpredValidationIssue[] {
   const issues: CpredValidationIssue[] = [];
   const role = creationRole(data, draft.roleId);
@@ -882,6 +889,17 @@ export function creationIssues(
             'Przedmiot z koszyka nie jest już dostępny lub nie ma ceny. Usuń go z koszyka.',
           ),
         );
+        continue;
+      }
+      if (!shopRules) continue;
+      const shelf = creationShopVerdict(entry, draft.roleId, shopRules);
+      if (!shelf.allowed) {
+        issues.push(
+          issue(
+            'purchases',
+            `${entry.name}: ${creationShopRefusalText(shelf.tier, shelf.roleTool)} Usuń z koszyka.`,
+          ),
+        );
       }
     }
     const budget = creationBudget(data, draft);
@@ -928,6 +946,12 @@ export function mergeCreationDraft(
   patch: Record<string, unknown>,
   data: CpredCreationData,
   registry: CpredRegistry,
+  /**
+   * The basket's catalogue and shelf rules (naprawa 3b). A Role change takes
+   * off the previous Role's tools — only when these are given, because a caller
+   * without a catalogue cannot tell a medbag from a flashlight.
+   */
+  shop?: CreationShopContext,
 ): CpredCreationDraft | null {
   const next: CpredCreationDraft = {
     ...current,
@@ -969,6 +993,8 @@ export function mergeCreationDraft(
       // the Role's own Lifepath answers go with the Role. The general half —
       // culture, family, enemies — is the character's and stays.
       next.lifepath = clearRoleAnswers(next.lifepath);
+      // A Medyk's medbag is not a Solo's to buy at session zero (naprawa 3b).
+      if (shop) next.purchases = creationBasketForRole(next.purchases, roleId, shop);
     }
     next.roleId = roleId;
   }
@@ -1036,6 +1062,30 @@ export function mergeCreationDraft(
   return next.skillMinimaAuto ? creationWithSkillMinima(next, data, registry) : next;
 }
 
+/** Catalogue and shelf rules for the starting basket (naprawa 3b). */
+export interface CreationShopContext {
+  lookup: (entryId: string) => CompendiumEntry | undefined;
+  rules: CreationShopRules;
+}
+
+/**
+ * The basket a draft of this Role may keep: rows off another Role's tool list
+ * go. A row the catalogue does not know stays — `creationIssues` already asks
+ * the player to take it out, and silently dropping it would hide the reason.
+ */
+export function creationBasketForRole(
+  purchases: Readonly<Record<string, number>>,
+  roleId: string | null,
+  shop: CreationShopContext,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(purchases).filter(([entryId]) => {
+      const entry = shop.lookup(entryId);
+      return !entry || creationShopVerdict(entry, roleId, shop.rules).allowed;
+    }),
+  );
+}
+
 /** What changing the Role or the method would do to a draft (naprawa 2b). */
 export interface CpredCreationChangeEffect {
   /** One line per kind of thing that goes; empty means nothing is lost. */
@@ -1062,10 +1112,17 @@ export function creationChangeEffect(
   data: CpredCreationData,
   registry: CpredRegistry,
   lookup?: (entryId: string) => CompendiumEntry | undefined,
+  shopRules?: CreationShopRules,
 ): CpredCreationChangeEffect {
   const lost: string[] = [];
   const notes: string[] = [];
-  const next = mergeCreationDraft(current, patch, data, registry);
+  const next = mergeCreationDraft(
+    current,
+    patch,
+    data,
+    registry,
+    lookup && shopRules ? { lookup, rules: shopRules } : undefined,
+  );
   if (next === null) return { lost, notes };
   const names = new Map(registry.skills.map((skill) => [skill.id, skill.name]));
   const nameOf = (skillId: string) => names.get(skillId) ?? skillId;
