@@ -33,6 +33,7 @@ export function toCharacterView(character: Character, registry: CpredRegistry): 
     ownerId: character.ownerId,
     portraitUrl: character.portraitUrl,
     data: parseCharacterData(character.data, registry),
+    playReady: character.playReady,
     updatedAt: character.updatedAt.toISOString(),
   };
 }

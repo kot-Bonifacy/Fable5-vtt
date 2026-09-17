@@ -1,5 +1,19 @@
 # Pomysły poza zakresem etapów
 
+**17.09.2026 (zlecenie MG, trzecia sesja) — rzuty kreatora przez kubek, po jednej pozycji.**
+MG: „rzucanie kośćmi to jeden z przyjemniejszych elementów gry […] gracze powinni rzucać małą
+ilością kości na raz. Nie podobają mi się te rzuty 10 lub więcej kośćmi naraz i zamiast wciśnięcia
+przycisku, po którym wykonuje się rzut, gracz powinien używać kubka do kości.” **Decyzja MG (17.09):
+osobny rzut na każdą pozycję**, czyli 10 osobnych 1k10 na Cechy (kubek na każdą) i kubek na każdą
+tabelę Ścieżki Życia; znika każdy przycisk, który sam rozstrzyga rzut. Bez skrótu „rzuć resztę
+hurtem”. Stan dzisiaj: `creation:roll` zwraca komplet dziesięciu Cech w jednej karcie czatu
+(„Rozkład Cech — Nomada … 58”) — kubek jest, ale wysypuje 10 kości naraz; `creation:lifepath-roll`
+i „🎲 Rzuć całą Ścieżkę” **nie mają kubka w ogóle** i rozstrzygają kilkanaście tabel jednym
+kliknięciem. Zasady się nie sprzeciwiają: podręcznik każe rzucać 1k10 na Cechę i osobno na każdą
+tabelę — sklejenie było naszym skrótem. Ruszać trzeba serwer (rzut na żądaną pozycję zamiast
+kompletu), kubek (`dice`), kreator i karty czatu. Poza zakresem naprawy 3c; zapisane w trakcie jej
+oględzin.
+
 **17.09.2026 (naprawa kreatora 3b) — Programy jako towar i cyberdek z zakupu.** `purchasedSheetRow`
 zna tylko broń, pancerz i sprzęt, więc Programu nie kupi ani gracz w Kompendium, ani kreator;
 cyberdek i Programy (łącznie z Czarnym LOD-em) wybiera się na karcie postaci za darmo, a kupiony

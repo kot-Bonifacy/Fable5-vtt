@@ -26,6 +26,15 @@ export interface CharacterView<TData = unknown> {
   portraitUrl: string | null;
   /** System-specific sheet payload (validated by the system module). */
   data: TData;
+  /**
+   * Naprawa 3c: czy MG uznał tę postać za gotową do gry.
+   *
+   * `false` niesie wyłącznie karta świeżo z kreatora, którą prowadzi gracz —
+   * wszystko inne (import, ręczna karta, statysta, karta sprzed 3c) jest gotowe
+   * od razu. Znacznik niczego nie blokuje: liczy znaczek na zakładce
+   * „Postacie" i stawia na karcie napis „czeka na MG".
+   */
+  playReady: boolean;
   updatedAt: string;
 }
 
@@ -304,6 +313,17 @@ export interface CharacterUseDosePayload {
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;
+}
+
+/**
+ * Klient → serwer: MG przyjmuje postać do gry albo cofa gotowość (naprawa 3c).
+ *
+ * Osobne zdarzenie, nie pole łaty karty — to decyzja MG, a nie wartość
+ * zapisywana autozapisem arkusza (ta sama umowa, co `eddies` z 23b).
+ */
+export interface CharacterPlayReadyPayload {
+  characterId: string;
+  ready: boolean;
 }
 
 /** Server → client `character:upsert` — always targeted, never sequenced. */

@@ -1639,6 +1639,7 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Panel karty, do którego da się skoczyć z zewnątrz, nosi `data-sheet-panel`** — `characterStore.focusPanel(id, zakładka, panel)` otwiera kartę, przełącza zakładkę i podświetla go; okno kasuje żądanie po obsłużeniu, inaczej wracałoby przy każdym otwarciu karty. Pas „Po kreatorze zostało” (`.cp-readiness`) stoi pierwszy w siatce strony pierwszej i znika, gdy nie ma czego powiedzieć.
 - **Okno „na papierze” to klasa `sheet-window--paper`** (karta postaci i kreator; edytor botów i okna Sieci celowo nie) — przestawia chrom na papier (`theme.css`), kładzie wytarcia jako `::after` jedynego dziecka `.sheet-body`, a pęknięcia jako tło czerwieni na końcu `sheet.css`. Nowy przyklejony albo stały element nad przewijaną treścią dostaje własne `::after` i `z-index` wyżej; nic ciemniejszego od papieru (decyzja MG).
 - **Wielkość liczby na karcie ustawia się z prefiksem `.sheet-window`** — skóra przełącznika (`.sheet-window .cp-step`, 0-2-0) niesie `font: inherit`, więc goła klasa pola (0-1-0) przegrywa kaskadę i liczba zostaje przy 16 px. Cechy: `.cp-stats { align-self: stretch }` + `.cp-stat { flex: 1 }` ciągną kolumnę na całą stronę, a wąskie okno ma **własny** blok `@container` **pod** regułami bazowymi.
 - **Lista czytana z serwera odświeża się na STEMPEL karty, nie na liczbę, która ją opisuje** — rejestry (awansów z 29a, eurodolców z 23b) czyta `useEffect` na `[characterId, open, savedAt]`, gdzie `savedAt` to `character.updatedAt`. Saldo wyprzedza żądanie (optymistyczna łata), a warunek `history === null` gubi wiersze dopisane przez MG. Strażnik: `advancement-history.test.ts`.
@@ -1796,6 +1797,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Co zostaje po kreatorze, mówi `cpredRoleChores` (naprawa 3c)** — liczone **z karty**, nie z zapisanego stanu: nowa decyzja Roli dokłada gałąź tam i `data-sheet-panel` w karcie, a nie checkbox w bazie. Gotowość do gry to osobna kolumna `Character.playReady` i osobne zdarzenie `character:play-ready` (tylko MG), które **niczego nie blokuje**.
 - **Podsumowanie kreatora czyta `creationOutcome` (naprawa 3a)** — kartę, którą zapisze `creation:finish`: wiersze zakupów, resztę, Poziom życia (`creationLifestyle`). Nowa rzecz, którą zakończenie dopisuje na kartę, wchodzi do `creationToCharacterData` albo `creationOutcome`, a test serwera „writes exactly the sheet the summary computed” pilnuje zgodności.
 - **To, czego kreator świadomie nie wydaje, mówi jedna lista `creationLeftOutside`** — krok Wyposażenie, podsumowanie i ekran końcowy renderują ją tym samym `CreatorLeftOutside`. Nowe uproszczenie wyposażenia dopisuje tam wiersz, nie zdanie w komponencie.
 - **Nowy wszczep kosztuje samą cenę (17.09)** — `installBill` dolicza `CYBERWARE_INSTALL_COST` wyłącznie przy `installOnly` (znaleziony wszczep, s. 375); operacja jest w cenie (s. 111).
@@ -1836,6 +1838,35 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Co zostaje po kreatorze i gotowość do gry (naprawa 3c, 17.09).** Kreator stawia rangę Zdolności
+Specjalnej na 4 i tam kończy — punktów Zmysłu Walki nie rozdziela, zespołu Korpo nie obsadza, Taboru
+Nomady nie wybiera, a Netrunner wychodzi bez wskazanego deku. Mówi o tym jedna czysta funkcja
+`cpredRoleChores(data, registry)` w `shared/systems/cpred/readiness.ts`, a **liczy ją z samej karty**:
+rozdzielone punkty zdejmują wiersz same, więc nie ma stanu, który mógłby się z kartą rozjechać, i nie
+ma czego odhaczać (decyzja MG). Wiersz niesie zakładkę karty (`tab`) i nazwę panelu (`panel`); po
+drugiej stronie panel nosi `data-sheet-panel` o tej samej nazwie, a `characterStore.focusPanel`
+otwiera kartę, przełącza zakładkę i podświetla go (`cp-panel--flash`). **Nowa decyzja wynikająca
+z Roli dokłada gałąź w `cpredRoleChores` i atrybut w karcie** — nie własną listę i nie pole w bazie;
+strażnik `role-chores.test.ts` u klienta pilnuje, że każda nazwa panelu z listy naprawdę w karcie
+stoi. Jeden komponent `RoleChoresList` renderuje ją w czterech miejscach: zapowiedź w podsumowaniu
+kreatora, ekran końcowy, pas „Po kreatorze zostało” na stronie pierwszej karty i lista MG
+w zakładce „Postacie”.
+
+Gotowość do gry jest **kolumną, nie polem arkusza**: `Character.playReady` (domyślnie `true`,
+migracja `20260917210000`) i zdarzenie `character:play-ready` tylko dla MG — ta sama umowa, co
+`eddies` z 23b: decyzja MG nie jedzie autozapisem karty. `false` niesie wyłącznie karta z
+`creation:finish`, która ma właściciela (`playReady: ownerId === null`); karta ręczna, z importu,
+z pliku kampanii i statysta są gotowe od razu, żeby MG nie dostał listy całej kampanii. Znacznik
+**niczego nie blokuje** (decyzja MG z 17.09) — nie dotyka inicjatywy, żetonu ani rzutów. Gotowość
+cofa się z samej karty, bo lista MG pokazuje tylko czekających. Znaczek na zakładce „Postacie” to
+jedna plakietka o dwóch powodach: szkice bez rangi z 2b plus postaci czekające na gotowość, liczone
+u klienta wprost z magazynu postaci (MG widzi wszystkie karty kampanii, więc drugi tor
+synchronizacji tylko by się rozjeżdżał).
+
+Zdanie z liczbą składa **jedna** funkcja `leftPhrase`, razem z czasownikiem: „Został 1 wpis”,
+„Zostały 4 wpisy”, „Zostało 9 punktów”. Pierwsza wersja sklejała stałe „Zostało” z odmienianym
+rzeczownikiem i napisała „Zostało 4 wpisy” (wyszło przy oględzinach 17.09).
 
 **Dostępność wyposażenia po części 3b naprawy (17.09).** Poziom mówi, **jak legalna** jest rzecz,
 a nie ile kosztuje: `kindTier` czyta typ broni (`WEAPON_TYPE_TIERS`, doskonała jakość +1), OB

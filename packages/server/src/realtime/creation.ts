@@ -687,6 +687,10 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
             creationDraftId: existing.id,
             creationUserId: user.id,
             creationTokenDone: !draft.placeToken,
+            // Naprawa 3c: postać, którą ktoś będzie grał, czeka na MG. Karta
+            // bez właściciela to NPC MG — przed samym sobą nie ma czego
+            // zatwierdzać, a lista gotowości zapełniłaby się statystami.
+            playReady: ownerId === null,
             name,
             ownerId,
             portraitUrl: draft.portraitUrl,

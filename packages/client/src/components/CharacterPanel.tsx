@@ -26,6 +26,7 @@ import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
 import { CreationRankPanel } from './CreationRankPanel.js';
+import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 
 interface PlayerOption {
@@ -59,6 +60,7 @@ export function CharacterPanel() {
   const registry = useCharacterStore((s) => s.registry);
   const openSheet = useCharacterStore((s) => s.openSheet);
   const openCreator = useCreationStore((s) => s.openCreator);
+  const waiting = useWaitingCharacters(isGm);
 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [newName, setNewName] = useState('');
@@ -191,6 +193,8 @@ export function CharacterPanel() {
     <div className="character-panel">
       {/* Naprawa 2b: a player waiting for a pool comes first. */}
       {isGm ? <CreationRankPanel /> : null}
+      {/* Naprawa 3c: karty prosto z kreatora, z tym, co po Roli zostało. */}
+      {isGm ? <CharacterReadyPanel rows={waiting} /> : null}
       {isGm ? <PortraitPicker manage /> : null}
       {isGm && order.length > 0 && (
         <div className="character-panel-actions">

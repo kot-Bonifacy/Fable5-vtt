@@ -5,6 +5,7 @@ import type {
   CharacterDeleteBroadcast,
   CharacterFieldRepairPayload,
   CharacterIdPayload,
+  CharacterPlayReadyPayload,
   CharacterUpdatePayload,
   CharacterView,
 } from '@vtt/shared';
@@ -352,6 +353,43 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
       campaignId,
       linkedTokens.map((token) => token.id),
     );
+  },
+});
+
+/**
+ * Znacznik gotowości do gry (naprawa 3c, decyzja MG z 17.09).
+ *
+ * Postać wychodząca z kreatora z właścicielem czeka na MG: on widzi w zakładce
+ * „Postacie", co po Roli jeszcze zostało (`cpredRoleChores` liczy to z karty),
+ * i przyjmuje ją do gry przyciskiem. Znacznik **niczego nie blokuje** — jest
+ * odpowiedzią na „czy ja mam jeszcze coś z tą postacią zrobić", a nie bramką
+ * przy stole.
+ *
+ * Zdarzenie jest osobne, a nie polem `character:update`, z tego samego powodu,
+ * co `eddies` z 23b: to decyzja MG, a nie wartość, którą zapisuje autozapis
+ * karty. Cofnięcie idzie tą samą drogą — MG bywa szybszy niż gracz.
+ */
+export const characterPlayReadyEvent = defineEvent<CharacterPlayReadyPayload, CharacterView>({
+  name: 'character:play-ready',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireCampaignCharacter(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.characterId,
+    );
+    if (typeof payload?.ready !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+    if (character.playReady === payload.ready) {
+      return toCharacterView(character, deps.ctx.cpred);
+    }
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { playReady: payload.ready },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaignId, view);
+    return view;
   },
 });
 

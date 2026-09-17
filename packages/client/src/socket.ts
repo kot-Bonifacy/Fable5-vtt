@@ -3036,6 +3036,16 @@ export const updateCharacter = (characterId: string, patch: CharacterPatch) =>
   emitSceneAck<CharacterView>('character:update', { characterId, patch });
 
 /**
+ * MG przyjmuje postać do gry albo cofa gotowość (naprawa 3c).
+ *
+ * Osobne zdarzenie, nie łata karty: to decyzja MG, a nie pole, które zapisuje
+ * autozapis arkusza. Odpowiedź niesie pełny widok karty, więc znaczek na
+ * zakładce gaśnie z tego samego rozgłoszenia, które widzą inne okna.
+ */
+export const setCharacterPlayReady = (characterId: string, ready: boolean) =>
+  emitSceneAck<CharacterView>('character:play-ready', { characterId, ready });
+
+/**
  * Saving a Solo's Zmysł Walki allocation (stage 30a).
  *
  * Its own event rather than a sheet patch, and never debounced: „w trakcie

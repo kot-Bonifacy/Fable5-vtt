@@ -99,6 +99,7 @@ function loadShooter(ammoId: string | undefined): void {
         name: 'Rico',
         ownerId: null,
         portraitUrl: null,
+        playReady: true,
         data: shooterSheet(ammoId),
         updatedAt: new Date().toISOString(),
       },
@@ -119,6 +120,7 @@ function loadRifleWithUnderbarrel(): void {
         name: 'Rico',
         ownerId: null,
         portraitUrl: null,
+        playReady: true,
         data: {
           ...base,
           stats: { ...base.stats, ref: 8, dex: 6 },

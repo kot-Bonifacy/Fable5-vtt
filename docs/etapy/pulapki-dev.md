@@ -943,6 +943,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Motyw dzienny z automatu to `data-theme='day'`, nie `'light'`** — obca wartość przestawia sam chrom aplikacji (panel boczny robi się jasny), a papier karty zostaje na nocnym kartonie; wygląda to jak niedokończona skórka karty. Sprawdź `getComputedStyle(document.documentElement).getPropertyValue('--cp-paper')`, zanim uznasz to za błąd stylów.
 - **Powiększenia przeglądarki nie udasz `zoom` na `<html>`** — CSS `zoom` mnoży `vh`, więc okno z `max-height: 88vh` wychodzi poza ekran, czego prawdziwe powiększenie nie robi. Zmień rozmiar okna (`resize_window`) tak, żeby `innerWidth` = szerokość ekranu w CSS ÷ powiększenie (4K przy skali 150% i zoomie 150% ≈ 1708 × 882).
 - **Szybko przepisywany plik CSS Vite potrafi serwować w wersji pośredniej — także po F5** — `getComputedStyle` pokazuje regułę sprzed ostatniego zapisu, choć log mówi „hmr update”. Zapisz plik jeszcze raz bez zmian i przeładuj kartę.
 - **Nowego gracza testowego dołączysz bez czytania tokenu** — rozszerzenie zaciemnia token zaproszenia (`[BLOCKED: Sensitive key]`); wystaw i zużyj go w jednym `javascript_tool` (`POST …/invitations` → `/api/auth/logout` → `POST /api/join/<token>`), niczego nie wypisując. Danych testowych nie zmieniaj przez `node:sqlite` — automat odmawia zapisu do bazy; idź przez aplikację.
@@ -957,6 +958,14 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
 - **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
+- **Motyw dzienny z automatu przestawia się `data-theme='day'` (17.09, naprawa 3c).** Przełącznik
+  ☀/☾ pisze do `<html>` wartości `day`/`night`, a nie `light`/`dark` z konwencji CSS. Wpisana
+  ręcznie `light` przestawia chrom aplikacji (panel boczny jaśnieje), ale tokeny karty
+  (`--cp-paper`, `--cp-ink`) zostają na nocnych — okno karty postaci i kreatora stoi wtedy
+  na czarnym kartonie obok jasnego interfejsu i wygląda jak zepsuta skórka. Rozstrzyga jedno
+  wywołanie: `getComputedStyle(document.documentElement).getPropertyValue('--cp-paper')` daje
+  `#171514` w nocy i `#f6eddb` w dzień.
 
 - **Karta automatyki jest schowana — pełnego ekranu w niej nie obejrzysz** — `requestFullscreen` przy aktywnym geście odpowiada „not granted", bo `document.visibilityState === 'hidden'` (okno automatyki leży za innym). Sprawdź to **przed** szukaniem błędu; pełny ekran i Keyboard Lock ogląda MG ręcznie.
 - **Moduł `/src/socket.ts` wczytany z konsoli ma WŁASNE, puste gniazdo** — `activateCampaign` i reszta odpowiadają `NOT_CONNECTED`, choć pasek mówi „Połączony", także przy adresie z `?t=`. Działa **osobne** połączenie: `io()` z `/node_modules/.vite/deps/socket__io-client.js?v=…` (adres z `performance.getEntriesByType('resource')`) — ciasteczko MG idzie samo.

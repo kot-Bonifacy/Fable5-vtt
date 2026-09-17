@@ -57,6 +57,7 @@ import {
   creationLeftOutside,
   creationMissingSkillMinima,
   creationOutcome,
+  cpredRoleChores,
   creationPreview,
   creationPurchases,
   creationRole,
@@ -109,6 +110,7 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { RoleChoresList } from './RoleChores.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
 
@@ -2580,6 +2582,8 @@ function SummaryStep({
         <CreatorLeftOutside draft={draft} data={data} />
       </section>
 
+      <CreatorRoleChores sheet={sheet} upcoming />
+
       <section className="creator-summary-section" aria-label="Ścieżka Życia">
         <h4>Ścieżka Życia</h4>
         <LifepathSummary draft={draft} />
@@ -2725,6 +2729,46 @@ function CreatorLeftOutside({
   );
 }
 
+/**
+ * Czynności, które zostaną po kreatorze (naprawa 3c).
+ *
+ * Kreator ustawia rangę Zdolności Specjalnej na 4 i tam kończy: punktów Zmysłu
+ * Walki nie rozdziela, zespołu Korpo nie obsadza, Taboru Nomady nie wybiera,
+ * a Netrunner wychodzi bez wskazanego deku. Do 3c nie mówił o tym nic — MG
+ * zgłosił w audycie (A10), że „Rola na randze 4" wygląda na skończoną
+ * konfigurację.
+ *
+ * Sekcja stoi dwa razy: w podsumowaniu jako zapowiedź (`upcoming` — postaci
+ * jeszcze nie ma, więc nie ma dokąd prowadzić) i na ekranie końcowym z
+ * „Przejdź” do właściwego panelu karty. Liczy ją ta sama `cpredRoleChores`,
+ * którą czyta karta i lista MG, z tej samej karty, którą zapisze serwer.
+ */
+function CreatorRoleChores({
+  sheet,
+  characterId,
+  upcoming = false,
+}: {
+  sheet: CpredCharacterData;
+  characterId?: string;
+  upcoming?: boolean;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const chores = useMemo(() => cpredRoleChores(sheet, registry), [sheet, registry]);
+  if (chores.length === 0) return null;
+
+  return (
+    <section className="creator-summary-section" aria-label="Co zostanie po kreatorze">
+      <h4>{upcoming ? 'Co zostanie do zrobienia' : 'Co zostało do zrobienia'}</h4>
+      <p className="creator-hint">
+        {upcoming
+          ? 'Kreator ustawia Zdolność Specjalną na poziom 4, ale jej wyborów za ciebie nie dokonuje. Te decyzje podejmiesz na karcie po utworzeniu postaci.'
+          : 'Te decyzje podejmuje się na karcie — nic nie przepada i nic nie blokuje gry.'}
+      </p>
+      <RoleChoresList chores={chores} characterId={characterId} />
+    </section>
+  );
+}
+
 /** What the last screen needs once the draft is gone from the server. */
 interface CreatorFinished {
   result: CreationFinishResult;
@@ -2804,6 +2848,8 @@ function CreatorFinishedScreen({
           <h4>Czego kreator nie wydał</h4>
           <CreatorLeftOutside draft={draft} data={data} />
         </section>
+
+        <CreatorRoleChores sheet={sheet} characterId={result.id} />
 
         <div className="creator-finished-actions">
           <button type="button" className="small-button" onClick={onOpenSheet}>

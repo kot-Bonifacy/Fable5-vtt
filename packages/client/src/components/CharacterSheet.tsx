@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type MouseEvent,
+} from 'react';
 import type {
   CpredStatId,
   ArmorLocation,
@@ -132,6 +140,7 @@ import {
   CPRED_COMBAT_AWARENESS_ABILITY,
   cpredFieldRepairMinutes,
   cpredRoleAbilityRank,
+  cpredRoleChores,
   cpredSheetFabrication,
   cpredCareOptions,
   cpredTreatmentOptions,
@@ -174,6 +183,7 @@ import {
   drawWeapon,
   reloadWeapon,
   sendCyberwareAction,
+  setCharacterPlayReady,
   setStatEffect,
   setWeaponAttachment,
   transferEddies,
@@ -184,6 +194,7 @@ import { usePortraitStore } from '../stores/portraitStore.js';
 import { askForCheck } from '../stores/checkStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { AdvancementPanel } from './AdvancementPanel.js';
+import { RoleChoresList } from './RoleChores.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -262,6 +273,33 @@ function CharacterSheetWindow({
   const focusSheet = useCharacterStore((s) => s.focusSheet);
 
   const [tab, setTab] = useState<SheetTab>('stats');
+  // Naprawa 3c: „Przejdź" przy czynności po kreatorze — z kreatora, z listy MG
+  // albo z paska na samej karcie. Zakładka przełącza się w tej turze, panel
+  // podświetla się w następnej, kiedy jest już wyrenderowany.
+  const panelFocus = useCharacterStore((s) => s.panelFocus);
+  const clearPanelFocus = useCharacterStore((s) => s.clearPanelFocus);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const wanted = panelFocus?.characterId === characterId ? panelFocus : null;
+  useEffect(() => {
+    if (wanted) setTab(wanted.tab);
+  }, [wanted]);
+  useEffect(() => {
+    if (!wanted || tab !== wanted.tab) return;
+    const root = bodyRef.current;
+    if (!root) return;
+    // Żądanie jest jednorazowe: zostawione w magazynie przeskakiwałoby na tę
+    // zakładkę przy każdym ponownym otwarciu karty.
+    clearPanelFocus();
+    const target = root.querySelector<HTMLElement>(
+      `[data-sheet-panel="${CSS.escape(wanted.panel)}"]`,
+    );
+    if (!target) return;
+    target.scrollIntoView({ block: 'center' });
+    // Krótki obrys mówi „tutaj" także tam, gdzie panel ogniska nie przyjmuje.
+    target.classList.add('cp-panel--flash');
+    window.setTimeout(() => target.classList.remove('cp-panel--flash'), 1600);
+  }, [wanted, tab, clearPanelFocus]);
+
   const placement = useWindowPlacement(`sheet:${characterId}`, () => ({
     x: 90 + (stackIndex % 6) * 28,
     y: 70 + (stackIndex % 6) * 24,
@@ -373,7 +411,7 @@ function CharacterSheetWindow({
         ))}
       </nav>
 
-      <div className="sheet-body">
+      <div className="sheet-body" ref={bodyRef}>
         {tab === 'stats' && (
           <FrontPage
             character={character}
@@ -480,6 +518,7 @@ function FrontPage({
 
   return (
     <div className="sheet-page">
+      <ReadinessStrip character={character} data={data} />
       <IdentityColumn
         character={character}
         data={data}
@@ -492,6 +531,69 @@ function FrontPage({
       <RoleAbilityStrip character={character} data={data} saveData={saveData} />
       <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
     </div>
+  );
+}
+
+/**
+ * Pas „Po kreatorze zostało" na górze strony pierwszej (naprawa 3c).
+ *
+ * Dwie rzeczy, które do 3c nie miały na karcie żadnego miejsca: czynności
+ * wynikające z Roli (kreator stawia rangę Zdolności na 4 i na tym kończy —
+ * punkty Zmysłu Walki, zespół, Tabor i cyberdek zostają) oraz to, czy MG już
+ * przyjął tę postać do gry.
+ *
+ * Pas znika sam, gdy nie ma czego powiedzieć — a to jest stan każdej karty
+ * poza świeżą i poza sześcioma Rolami, które niczego nie rozdzielają. Napis
+ * o gotowości pokazuje się wyłącznie postaci, która na MG czeka: gotowa karta
+ * nie nosi plakietki „wszystko w porządku".
+ */
+function ReadinessStrip({
+  character,
+  data,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const [busy, setBusy] = useState(false);
+  const chores = useMemo(() => cpredRoleChores(data, registry), [data, registry]);
+  const waiting = !character.playReady;
+  if (chores.length === 0 && !waiting) return null;
+
+  async function setReady(ready: boolean) {
+    setBusy(true);
+    await setCharacterPlayReady(character.id, ready);
+    setBusy(false);
+  }
+
+  return (
+    <section className="cp-strip cp-readiness" aria-label="Po kreatorze zostało">
+      <h3 className="cp-section">Po kreatorze zostało</h3>
+      {waiting && (
+        <p className="cp-readiness-state">
+          <strong>Czeka na MG.</strong>{' '}
+          {isGm
+            ? 'Przejrzyj, czego brakuje, i przyjmij postać do gry.'
+            : 'MG zobaczy tę postać w swojej liście i potwierdzi gotowość. Nic ci to nie blokuje — możesz grać i uzupełniać kartę dalej.'}
+        </p>
+      )}
+      {chores.length > 0 ? (
+        <RoleChoresList chores={chores} characterId={character.id} />
+      ) : (
+        <p className="cp-readiness-state">Rola nie zostawia nic do uzupełnienia.</p>
+      )}
+      {isGm && (
+        <button
+          type="button"
+          className={`small-button${waiting ? ' small-button--primary' : ''}`}
+          disabled={busy}
+          onClick={() => void setReady(waiting)}
+        >
+          {waiting ? 'Przyjmij do gry' : 'Cofnij gotowość'}
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -556,7 +658,7 @@ function RoleAbilityStrip({ character, data }: TabProps & { character: Character
             reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
             to jej rozwinięcie, a nie osobna część karty. */}
         {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
-          <div className="cp-ability-card">
+          <div className="cp-ability-card" data-sheet-panel="combat-awareness">
             <CombatAwarenessPanel characterId={character.id} />
           </div>
         )}
@@ -564,12 +666,12 @@ function RoleAbilityStrip({ character, data }: TabProps & { character: Character
             Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
             panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
         {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
-          <div className="cp-ability-card">
+          <div className="cp-ability-card" data-sheet-panel="medicine">
             <SpecialtyPanel characterId={character.id} ability="medicine" />
           </div>
         )}
         {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
-          <div className="cp-ability-card">
+          <div className="cp-ability-card" data-sheet-panel="fabrication">
             <SpecialtyPanel characterId={character.id} ability="fabrication" />
           </div>
         )}
@@ -582,7 +684,7 @@ function RoleAbilityStrip({ character, data }: TabProps & { character: Character
           </div>
         )}
         {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
-          <div className="cp-ability-card">
+          <div className="cp-ability-card" data-sheet-panel="team">
             <TeamPanel characterId={character.id} />
           </div>
         )}
@@ -601,7 +703,7 @@ function RoleAbilityStrip({ character, data }: TabProps & { character: Character
           </div>
         )}
         {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
-          <div className="cp-ability-card">
+          <div className="cp-ability-card" data-sheet-panel="fleet">
             <MotoPanel characterId={character.id} />
           </div>
         )}
@@ -3072,7 +3174,7 @@ function CyberdeckSection({ data, saveData }: TabProps) {
   const deck = data.cyberdeck;
   if (!deck) {
     return (
-      <div className="cp-panel cp-deck">
+      <div className="cp-panel cp-deck" data-sheet-panel="cyberdeck">
         {/* Wiersz „bez deku" jest polem karty jak każde inne — do 06.09 lista
             rozwijana leżała wprost na czerwonym panelu, bez białego pola pod
             sobą, i był to jedyny taki wiersz w całym arkuszu. */}
@@ -3140,7 +3242,7 @@ function CyberdeckSection({ data, saveData }: TabProps) {
   }
 
   return (
-    <div className="cp-panel cp-deck">
+    <div className="cp-panel cp-deck" data-sheet-panel="cyberdeck">
       <div className="cp-bar cp-bar--plain">
         <span>{deck.name}</span>
         <span className={`cp-deck-slots ${free === 0 ? 'cp-deck-slots--full' : ''}`}>
@@ -3401,7 +3503,7 @@ function LifestyleFields({ data, saveData }: TabProps) {
 
   return (
     <>
-      <div className="cp-panel cp-lifestyle">
+      <div className="cp-panel cp-lifestyle" data-sheet-panel="lifestyle">
         <div className="cp-field cp-field--notch cp-row cp-span2">
           <span className="cp-label">Styl</span>
           <input

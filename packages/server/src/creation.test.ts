@@ -8,6 +8,7 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
   ChatMessageBroadcast,
+  CharacterUpsertBroadcast,
   CharacterView,
   CpredCharacterData,
   CpredCreationDraft,
@@ -1463,6 +1464,103 @@ describe('kreator postaci', () => {
         await emitAck(gm, 'shop:entry-tier', { entryId: 'weapon.grzechotnik', tier: null }),
         'shop:entry-tier',
       );
+    });
+  });
+
+  describe('naprawa 3c — gotowość do gry', () => {
+    /** Szkic Kompletnego Pakietu gotowy do „Utwórz postać", z zatwierdzoną rangą. */
+    async function readyDraft(roleId: string, name: string): Promise<Draft> {
+      await emitAck(vex, 'creation:discard');
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      const started = await patch(vex, {
+        method: 'complete',
+        roleId,
+        name,
+        placeToken: false,
+      });
+      // `creation:set-rank` nie odsyła danych — liczy się samo przyjęcie.
+      expect(
+        (
+          await emitAck(gm, 'creation:set-rank', {
+            draftId: started.id,
+            statRankId: started.draft.statRankId,
+          })
+        ).ok,
+      ).toBe(true);
+      await patch(vex, { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])) });
+      return allocateRemaining(vex);
+    }
+
+    it('postać gracza z kreatora czeka na MG, a NPC MG nie', async () => {
+      const ready = await readyDraft('solo', 'Czekacz');
+      const made = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: ready.id }),
+        'creation:finish',
+      );
+      expect(made.playReady).toBe(false);
+
+      // Karta bez właściciela to NPC — przed samym sobą MG nie zatwierdza.
+      await emitAck(gm, 'creation:discard');
+      data(await emitAck<Draft>(gm, 'creation:start'), 'creation:start');
+      const npcDraft = await patch(gm, {
+        method: 'complete',
+        roleId: 'solo',
+        name: 'Statysta 3c',
+        placeToken: false,
+      });
+      await patch(gm, { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])) });
+      const npcReady = await allocateRemaining(gm);
+      const npc = data(
+        await emitAck<CreationFinishResult>(gm, 'creation:finish', { draftId: npcReady.id }),
+        'creation:finish',
+      );
+      expect(npcDraft.draft.method).toBe('complete');
+      expect(npc.playReady).toBe(true);
+    });
+
+    it('zwykła karta „+ Nowa postać" jest gotowa od razu', async () => {
+      const made = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Ręczna 3c', ownerId: vexId }),
+        'character:create',
+      );
+      expect(made.playReady).toBe(true);
+    });
+
+    it('MG przyjmuje do gry i cofa; gracz nie dotyka znacznika', async () => {
+      const ready = await readyDraft('solo', 'Przyjęty');
+      const made = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: ready.id }),
+        'creation:finish',
+      );
+      // Gracz nie nadaje sobie gotowości sam.
+      expect(
+        refusal(await emitAck(vex, 'character:play-ready', { characterId: made.id, ready: true })),
+      ).toBe('FORBIDDEN');
+
+      const heard = waitFor<CharacterUpsertBroadcast>(vex, 'character:upsert');
+      const approved = data(
+        await emitAck<CharacterView>(gm, 'character:play-ready', {
+          characterId: made.id,
+          ready: true,
+        }),
+        'character:play-ready',
+      );
+      expect(approved.playReady).toBe(true);
+      expect((await heard).character.playReady).toBe(true);
+
+      // Cofnięcie idzie tą samą drogą — MG bywa szybszy niż gracz.
+      expect(
+        data(
+          await emitAck<CharacterView>(gm, 'character:play-ready', {
+            characterId: made.id,
+            ready: false,
+          }),
+          'character:play-ready',
+        ).playReady,
+      ).toBe(false);
+      expect(
+        refusal(await emitAck(gm, 'character:play-ready', { characterId: made.id, ready: 'tak' })),
+      ).toBe('BAD_REQUEST');
     });
   });
 });

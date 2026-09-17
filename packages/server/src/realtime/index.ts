@@ -65,6 +65,7 @@ import {
   characterFieldRepairEvent,
   characterCreateEvent,
   characterDeleteEvent,
+  characterPlayReadyEvent,
   characterUpdateEvent,
 } from './characters.js';
 import {
@@ -321,6 +322,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterCombatAwarenessEvent,
   characterFieldRepairEvent,
   characterDeleteEvent,
+  characterPlayReadyEvent,
   creationStartEvent,
   creationRanksEvent,
   creationSetRankEvent,

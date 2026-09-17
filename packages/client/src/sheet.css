@@ -547,6 +547,50 @@
   align-self: center;
 }
 
+/* --- pas „Po kreatorze zostało" (naprawa 3c) --- */
+
+/* Stoi na samej górze strony pierwszej, nad tożsamością, bo mówi o karcie jako
+   całości — i znika bez śladu, gdy nie ma czego powiedzieć (każda karta poza
+   świeżą). Ramka w kolorze ostrzeżenia, a nie czerwieni arkusza: to nie jest
+   część wydruku, tylko notatka MG na marginesie. */
+.cp-readiness {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border-left: 4px solid var(--warn);
+}
+
+.cp-readiness .cp-section {
+  margin: 0;
+}
+
+.cp-readiness-state {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.cp-readiness .role-chore-page,
+.cp-readiness .cp-readiness-state {
+  color: var(--cp-ink-dim);
+}
+
+.cp-readiness > .small-button {
+  align-self: flex-start;
+}
+
+/* Podświetlenie panelu, do którego przyszło „Przejdź" — ten sam gest, co
+   `creator-field--flash` w kreatorze: krótki obrys mówi „tutaj" także wtedy,
+   gdy sam panel ogniska nie przyjmuje. */
+.cp-panel--flash {
+  outline: 2px solid var(--warn);
+  outline-offset: 2px;
+}
+
 /* --- pas „Zdolność Specjalna" (06.09.2026) --- */
 
 /* Pas idzie przez całą szerokość siatki strony, tak jak „Broń i pancerz".

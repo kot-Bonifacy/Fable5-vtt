@@ -7,6 +7,42 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 17.09 — naprawa kreatora, podział etapu 3 i część 3a
+
+**Zlecenie MG:** wykonać etap 3 `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
+kontekstu — podzielić i zrobić pierwszą część), dopytywać i zgłaszać możliwe błędy. **Stan: etap 3
+podzielony na 3a/3b/3c, 3a ✅.** Checklista, ustalenia i zakres 3b/3c są w pliku naprawy.
+
+**Decyzje MG (17.09):** podział 3a (podsumowanie zgodne z kartą, uczciwe wyposażenie, ekran
+końcowy) / 3b (czynności Roli, podgląd w sklepie, gotowość) / 3c (odbiór); **gotowość do gry to
+znacznik nadawany przez MG** (nowe pole w bazie, lista w „Postaciach” ze znaczkiem — 3b); Poziom
+życia na start według podręcznika dla postaci z właścicielem; opłata za montaż wszczepu poprawiona
+od razu, stała Utrata Człowieczeństwa przy tworzeniu do `POMYSLY.md`.
+
+**Zgłoszone MG możliwe błędy:** (1) postać z kreatora nie miała Poziomu życia, więc rozliczenie
+miesiąca ją pomijało — naprawione; (2) **pełny montaż wszczepu pobierał cenę i opłatę za montaż**
+(etap 23b), choć operacja jest w cenie (s. 111), a opłata z s. 375 dotyczy znalezionego wszczepu —
+naprawione osobnym commitem; (3) przy tworzeniu podręcznik liczy stałą UC, VTT losuje — zostaje,
+kreator o tym mówi; (4) podsumowanie obiecywało żeton bez sprawdzenia sceny, stopka „Postać gotowa”
+przy braku pakietu/Mody/wszczepów, udane zakończenie zamykało kreator bez słowa — naprawione;
+(5) sklep kreatora nie ma amunicji, bo przeładowanie w VTT nie zużywa zapasów — teraz powiedziane.
+Znalezione przy oględzinach: wartości pochodne liczyły się z minimalnych Cech, zanim gracz je ustalił
+(„PW 20”) — pokazują „—”.
+
+**Wdrożone:** `creationLifestyle`, `creationOutcome`, `creationLeftOutside` i parametr `lifestyle`
+w `creationToCharacterData` (`shared`); Poziom życia przy `creation:finish` i `installBill` bez
+podwójnej opłaty (serwer); nowe `SummaryStep` z `SummarySkills`/`SummaryGear`, `CreatorLeftOutside`
+(zwinięte w sklepie), `CreatorFinishedScreen`, stopka „Wymagania kreatora spełnione” (klient).
+Umowy — `postac` (3); pułapki — `testy` (2); decyzje (2) i pomysły (2).
+
+**Weryfikacja:** vitest — 2137 shared, 1184 serwera, 224 klienta; `tsc --noEmit` trzech pakietów,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`, serwer z jednorazowym `GM_PASSWORD` i katalogami w scratchpadzie): scenariusze w checkliście
+3a. Na bazie testowej powstała karta „Zgrzyt z Kabuki” (gracz Test 2a, żeton na nowej aktywnej scenie
+„Oględziny 3a”); szkic MG „Garnitur 3a” wyrzucony. Serwer i Vite zatrzymane drzewami procesów,
+porty wolne. **Nie było:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
+połączenia (3c).
+
 ### Sesja 16.09 (piąta) — naprawa kreatora, część 2c
 
 **Zlecenie MG:** wykonać etap 2c `naprawa_karty_postaci.md`, ale **bez dopasowania rozdzielczości**

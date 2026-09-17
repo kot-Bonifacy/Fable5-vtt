@@ -310,6 +310,17 @@ model Character {
   creationDraftId String? @unique
   creationUserId String?
   creationTokenDone Boolean @default(false)
+  /**
+   * Naprawa 3c: czy MG uznał tę postać za gotową do gry.
+   *
+   * Domyślnie `true`, bo karta powstaje na sto sposobów (ręcznie, z importu,
+   * z pliku kampanii, jako statysta) i żaden z nich nie prosi MG o zgodę.
+   * Czekają wyłącznie karty wychodzące z kreatora **z właścicielem** —
+   * `creation:finish` zapisuje im `false`. Znacznik niczego nie blokuje
+   * (decyzja MG z 17.09): mówi MG, że gracz skończył i że zostały jeszcze
+   * czynności Roli (`cpredRoleChores`), ale nie zamyka nikomu stołu.
+   */
+  playReady  Boolean  @default(true)
   name       String
   campaignId String
   /** Owning player; null = GM-controlled (NPC). */

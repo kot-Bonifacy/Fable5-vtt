@@ -20,6 +20,7 @@ import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
+import { useWaitingCharacters } from './CharacterReadyPanel.js';
 import { useJournalStore } from '../stores/journalStore.js';
 
 type Tab =
@@ -95,6 +96,18 @@ function useWaitingRequestCount(isGm: boolean): number {
   );
 }
 
+/**
+ * Jedna plakietka na zakładce „Postacie", dwa powody (naprawa 3c): szkice bez
+ * Rangi Postaci z 2b i karty czekające na przyjęcie do gry. Dwa znaczki obok
+ * siebie czytałyby się jak liczba i jej poprawka.
+ */
+function badgeTitle(ranks: number, ready: number): string {
+  const parts: string[] = [];
+  if (ranks > 0) parts.push(`szkice czekające na Rangę Postaci: ${ranks}`);
+  if (ready > 0) parts.push(`nowe postaci czekające na gotowość do gry: ${ready}`);
+  return `W zakładce „Postacie" — ${parts.join('; ')}`;
+}
+
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const width = useSidePanelWidth();
@@ -104,6 +117,11 @@ export function SidePanel() {
   // Naprawa 2b: players' drafts waiting for the GM's rank. The list is empty
   // for a player, so the badge never shows there.
   const waitingRanks = useCreationRankStore((s) => (isGm ? waitingRankCount(s.rows) : 0));
+  // Naprawa 3c: karty prosto z kreatora, które czekają na „Przyjmij do gry".
+  // Liczone z magazynu postaci, a nie z osobnej listy — MG widzi wszystkie
+  // karty kampanii, więc drugi tor synchronizacji tylko by się rozjeżdżał.
+  const waitingReady = useWaitingCharacters(isGm).length;
+  const waitingCharacters = waitingRanks + waitingReady;
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
 
@@ -129,12 +147,9 @@ export function SidePanel() {
           {waitingRequests}
         </span>
       )}
-      {entry.id === 'characters' && waitingRanks > 0 && (
-        <span
-          className="side-tab-badge"
-          title={`Szkice postaci czekające na Rangę Postaci: ${waitingRanks}`}
-        >
-          {waitingRanks}
+      {entry.id === 'characters' && waitingCharacters > 0 && (
+        <span className="side-tab-badge" title={badgeTitle(waitingRanks, waitingReady)}>
+          {waitingCharacters}
         </span>
       )}
     </button>

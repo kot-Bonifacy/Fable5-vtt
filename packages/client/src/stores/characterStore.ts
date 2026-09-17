@@ -5,6 +5,7 @@ import type {
   CpredCharacterData,
   CpredDataPayload,
   CpredRegistry,
+  CpredRoleChoreTab,
   StateSyncPayload,
 } from '@vtt/shared';
 import {
@@ -50,6 +51,16 @@ interface CharacterStoreState {
   serverViews: Record<string, CharacterSheetView>;
   /** CP RED data files, fetched once from `/api/cpred/data`. */
   registry: CpredRegistry;
+  /**
+   * Panel karty, który ma się pokazać (naprawa 3c).
+   *
+   * „Przejdź" przy czynności z `cpredRoleChores` — w kreatorze, na liście MG
+   * albo na samej karcie — otwiera kartę, przełącza zakładkę i podświetla
+   * panel. `seq` rośnie przy każdym żądaniu, bo drugie kliknięcie w ten sam
+   * wiersz musi zadziałać tak samo jak pierwsze: bez niego `useEffect` nie
+   * widziałby żadnej zmiany.
+   */
+  panelFocus: { characterId: string; tab: CpredRoleChoreTab; panel: string; seq: number } | null;
 
   applySync: (payload: StateSyncPayload) => void;
   applyUpsert: (character: CharacterView) => void;
@@ -66,6 +77,10 @@ interface CharacterStoreState {
   openSheet: (characterId: string) => void;
   closeSheet: (characterId: string) => void;
   focusSheet: (characterId: string) => void;
+  /** Otwiera kartę na właściwej zakładce i podświetla panel (naprawa 3c). */
+  focusPanel: (characterId: string, tab: CpredRoleChoreTab, panel: string) => void;
+  /** Żądanie obsłużone — bez tego wracałoby przy każdym otwarciu karty. */
+  clearPanelFocus: () => void;
   setRegistry: (registry: CpredRegistry) => void;
 }
 
@@ -77,6 +92,7 @@ export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
   characters: {},
   order: [],
   openSheets: [],
+  panelFocus: null,
   pendingSaves: {},
   saveStates: {},
   saveErrors: {},
@@ -208,6 +224,18 @@ export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
       openSheets: [...state.openSheets.filter((id) => id !== characterId), characterId],
     }));
   },
+
+  focusPanel: (characterId, tab, panel) => {
+    if (!(characterId in get().characters)) return;
+    // `openSheet` otwiera kartę i kładzie ją na wierzchu — kreator i lista MG
+    // wołają „Przejdź" także wtedy, gdy okna karty w ogóle nie ma.
+    get().openSheet(characterId);
+    set((state) => ({
+      panelFocus: { characterId, tab, panel, seq: (state.panelFocus?.seq ?? 0) + 1 },
+    }));
+  },
+
+  clearPanelFocus: () => set({ panelFocus: null }),
 
   setRegistry: (registry) => set({ registry }),
 }));

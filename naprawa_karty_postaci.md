@@ -1,7 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
 Data: 15.09.2026. Stan na 17.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
-etap 3 w toku (3a ✅, 3b ✅, 3c i 3d do realizacji)**.
+etap 3 w toku (3a ✅, 3b ✅, 3c ✅, 3d do realizacji)**.
 Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
@@ -473,6 +473,54 @@ dołożyło czwarty wątek, więc sklep został w 3b, a czynności Roli i gotowo
   okna i powiększenia, półek Netrunnera, Technika i Nomady, zakupu z Kompendium przy wyjątku MG
   u gracza z pieniędzmi (pokryte testem serwera) — pozycja w `zaleglosci.md`.
 
+### Część 3c — status: ✅ ukończona 17.09.2026 (trzecia sesja)
+
+- [x] `cpredRoleChores` w `shared/systems/cpred/readiness.ts`: siedem czynności, które kreator
+      zostawia — Zmysł Walki (Solo), Medycyna (Medyk), Twórca (Technik), zespół (Korpo), Tabor
+      i Zakwaterowanie (Nomada), cyberdek (Netrunner). **Liczone z samej karty**, więc rozdzielone
+      punkty zdejmują wiersz same; zero stanu do odhaczania.
+- [x] Każdy wiersz niesie zakładkę karty i nazwę panelu; „Przejdź” otwiera kartę, przełącza
+      zakładkę i podświetla panel (`data-sheet-panel`, `characterStore.focusPanel`).
+- [x] Ta sama lista w czterech miejscach z jednego komponentu `RoleChoresList`: zapowiedź
+      w podsumowaniu kreatora, ekran końcowy, pas „Po kreatorze zostało” na stronie pierwszej karty
+      i lista MG w zakładce „Postacie”.
+- [x] **Znacznik gotowości do gry** (`Character.playReady`, migracja `20260917210000`): postać
+      z kreatora **z właścicielem** czeka na MG, NPC MG i wszystko sprzed 3c jest gotowe od razu.
+      `character:play-ready` (tylko MG) nadaje i cofa; znacznik **niczego nie blokuje**.
+- [x] Znaczek z liczbą na zakładce „Postacie” sumuje szkice bez rangi (2b) i postaci czekające na
+      gotowość — jedna plakietka, dwa powody w `title`.
+- [x] Testy: 9 nowych w `shared`, 3 nowe na serwerze (kreator: kto czeka, kto nie, kto zatwierdza),
+      5 nowych u klienta (strażnik: każdy panel z listy istnieje w karcie, żądanie „Przejdź”);
+      pełny przebieg 2164 / 1192 / 229, `tsc`, ESLint i Prettier czyste.
+- [x] Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, 2084×1172 CSS, DPR 1,25): gracz
+      buduje Nomadę „Wiatr z Taboru” → zapowiedź w podsumowaniu → ekran końcowy z dwiema
+      czynnościami → „Przejdź” do Taboru (zakładka „Karta”) i do Zakwaterowania (zakładka
+      „Ekwipunek”); pas na karcie gracza z „Czeka na MG”; u MG znaczek „1”, panel z listą,
+      „Przyjmij do gry” gasi znaczek i napis **u gracza na żywo**; „Cofnij gotowość” wraca; zmiana
+      Zakwaterowania na pojazd **zdejmuje wiersz sama**; Solo, Medyk i Netrunner (przełączana Rola)
+      dają swoje wiersze; motyw dzienny paska i panelu; okno karty zwężone do 620 px CSS — wiersz
+      zawija się, „Przejdź” zostaje w oknie, bez przewijania w poziomie.
+
+**Ustalenia z realizacji 3c:**
+
+- **Znacznik jest odpowiedzią na „czy ja mam jeszcze coś z tą postacią zrobić”, a nie bramką**
+  (decyzja MG): nie dotyka inicjatywy, żetonu ani rzutów. Domyślna wartość kolumny to `true`, bo
+  karta powstaje na sto sposobów (ręcznie, z importu, z pliku kampanii, jako statysta) i żaden nie
+  prosi MG o zgodę — czekają wyłącznie karty z kreatora z właścicielem.
+- **Gotowość cofa się z karty, nie z listy.** Lista MG pokazuje tylko czekających, więc bez tego
+  guzika nie dałoby się wrócić do postaci przyjętej za szybko; w zamian lista nie rośnie bez końca.
+- **Lista czynności nie jest listą błędów.** Zakwaterowanie Nomady stoi na niej także wtedy, gdy
+  Tabor jest pełny — to wybór (kontener za 1000 ed albo pojazd bez czynszu, s. 165), nie brak.
+- **Czasownik odmienia się razem z liczebnikiem** — pierwsza wersja składała stałe „Zostało”
+  z odmienianym rzeczownikiem i napisała „Zostało 4 wpisy” (wyszło przy oględzinach). Całą frazę
+  daje teraz jedna funkcja `leftPhrase`, pilnuje jej test.
+- **Netrunner może dziś kupić dek w kreatorze (narzędzie Roli z 3b), ale trafia on do Wyposażenia
+  jako zwykły wiersz** — pole `cyberdeck` zostaje puste, więc wiersz czynności mówi wprost: wskaż
+  go w sekcji „Cyberdek”. Podpięcie zakupu do pola jest w `POMYSLY.md` od 3b.
+- **Nie sprawdzono:** półek Stróża Prawa i Fixera (Zdolności bez przydziału — lista ich nie
+  dotyczy), powiększenia przeglądarki, czytnika ekranu. Na bazie testowej został gracz „Test 2a”
+  z postaciami „Zgrzyt z Kabuki” i „Wiatr z Taboru” (obie przyjęte do gry).
+
 Zakres ogólny przy zachowaniu dotychczasowych uproszczeń:
 
 - Przebudować informację o wyposażeniu: zakupy, pakiet od MG, moda i późniejsze
@@ -547,8 +595,10 @@ Otwarte kwestie wskazano poniżej.
     tekstem) mimo spadku kontrastu przygaszonych napisów w najbardziej wytartych miejscach.
 21. **Podział etapu 3 — ustalone 17.09, zmienione tego samego dnia:** 3a (podsumowanie
     i wyposażenie), 3b (dostępność i sklep), 3c (czynności Roli i gotowość), 3d (odbiór).
-22. **Gotowość do gry — ustalone 17.09:** znacznik nadawany przez MG na karcie, lista w zakładce
-    „Postacie” ze znaczkiem liczby; nowe pole w bazie (3c).
+22. **Gotowość do gry — ustalone 17.09, wykonane w 3c:** znacznik nadawany przez MG na karcie,
+    lista w zakładce „Postacie” ze znaczkiem liczby, nowe pole w bazie (`Character.playReady`).
+    **Niczego nie blokuje**; dotyczy wyłącznie postaci z kreatora mających właściciela, a lista
+    czynności liczy się z karty, bez odhaczania.
 23. **Poziom życia na start — ustalone 17.09:** według podręcznika (kontener „Na karmie”, Korpo
     konap „Dobry prepak”), tylko dla postaci z właścicielem; pierwszy darmowy miesiąc przy MG.
 24. **Dostępność — ustalone 17.09 (druga sesja):** poziom liczy się z **rodzaju** rzeczy

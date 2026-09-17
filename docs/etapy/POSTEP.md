@@ -118,9 +118,18 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 ## Od czego zacząć
 
 **Naprawa kreatora postaci (`naprawa_karty_postaci.md`): etap 1 ✅, etap 2 ✅ (2a/2b/2c), etap 3
-podzielony 17.09 na cztery części — 3a ✅, 3b ✅, następna jest 3c** (czynności Roli z przejściem do
-paneli karty, **znacznik gotowości do gry nadawany przez MG** — nowe pole w bazie), potem 3d (odbiór
-obu metod). **Od 3b poziom dostępności mówi, jak legalna jest rzecz, a nie ile kosztuje**
+podzielony 17.09 na cztery części — 3a ✅, 3b ✅, 3c ✅, została 3d** (pełny odbiór obu metod w
+przeglądarce: MG i gracz, Role z dodatkowymi decyzjami, wznowienie, zmiana Roli/metody, brak
+portretu, brak aktywnej sceny, opóźnienie i zerwanie połączenia). **Od 3c kreator mówi, czego po
+sobie nie kończy**: `cpredRoleChores` (`shared/…/readiness.ts`) liczy **z karty** siedem czynności
+Ról (Zmysł Walki, Medycyna, Twórca, zespół, Tabor i Zakwaterowanie Nomady, cyberdek), a „Przejdź”
+prowadzi do panelu przez `data-sheet-panel` + `characterStore.focusPanel`. Nowa decyzja Roli dokłada
+gałąź tam, nie własną listę. **Gotowość do gry to kolumna `Character.playReady`** (migracja
+`20260917210000`, zdarzenie `character:play-ready` tylko dla MG): czeka wyłącznie karta z kreatora
+**mająca właściciela**, znacznik **niczego nie blokuje**, a znaczek na zakładce „Postacie” sumuje
+szkice bez rangi i postaci czekające na przyjęcie. **MG zlecił 17.09 rozbicie rzutów kreatora na
+pojedyncze kości przez kubek** (10 × 1k10 na Cechy, kubek na każdą tabelę Ścieżki Życia) — poza 3c,
+opis i stan na dziś w `POMYSLY.md`, na górze pliku. **Od 3b poziom dostępności mówi, jak legalna jest rzecz, a nie ile kosztuje**
 (`shopTierVerdict`: typ broni, OB, rodzina wszczepu, klasa Programu; cena tylko podnosi; nazwy
 1 Uliczne / 2 Zawodowe / 3 **Wojskowe** / 4 Czarny rynek). Czego rodzaj nie rozstrzyga, stoi po id
 w `data/private/cpred/shop-tiers.json` — **plik jest poza gitem, więc na VPS jedzie razem
@@ -211,7 +220,7 @@ przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie autom
 Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
 z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
 
-**Dług oględzin — 15 pozycji** (`zaleglosci.md`; piętnasta to skórka „stara kartka” z 2c — portret, Safari/iPad, przewijanie, prawdziwy zoom; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09, czternasta — straże lądowania i pełny marsz pod mgłą z drugiej sesji 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
+**Dług oględzin — 16 pozycji** (`zaleglosci.md`; szesnasta to „Po kreatorze zostało” z 3c — prawdziwy zoom, czytnik ekranu, wiersz zespołu Korpo; piętnasta to skórka „stara kartka” z 2c — portret, Safari/iPad, przewijanie, prawdziwy zoom; dziesiąta to poprawki z trzeciej sesji 13.09, jedenasta — bariery 42a, dwunasta — OB bariery 42b, trzynasta — zbiorcze wgrywanie portretów z 14.09, czternasta — straże lądowania i pełny marsz pod mgłą z drugiej sesji 14.09; pozycję 42c zamknęła piąta sesja 13.09, a 42a i 42b zawęziła do resztek). Sesja 13.09 (druga) zamknęła „bez ran" u gracza
 i zawęziła trzy inne do resztek: z 38a został **kosz grupowy**, z 41 — **dymek pod celownikiem**
 (tylko ręka MG), z odmów montażu — `NO_SLOTS`/`POOL_FULL` i `SELF_INSTALL` (gracz potrzebuje
 Medyka z Chirurgią). Większość reszty czeka na **żywy model** (19a–20b, 24c) albo na rękę MG
@@ -268,8 +277,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2155** w `shared`, **1189** na serwerze, **224** u klienta —
-zielone (liczby z 17.09, druga sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **2164** w `shared`, **1192** na serwerze, **229** u klienta —
+zielone (liczby z 17.09, trzecia sesja; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -302,19 +311,59 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    7 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   38 |       2 |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   39 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   14 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      81 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      82 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      22 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.09 (trzecia) — naprawa kreatora, część 3c: co zostało po kreatorze
+
+**Zlecenie MG:** wykonać etap 3c `naprawa_karty_postaci.md`, dopytywać i zgłaszać możliwe błędy.
+**Stan: 3c ✅** (czynności Roli z przejściem do paneli karty + znacznik gotowości nadawany przez MG).
+Została **3d — odbiór obu metod**. Checklista i ustalenia w pliku naprawy.
+
+**Decyzje MG (17.09, trzecia sesja):** znacznik gotowości **niczego nie blokuje** (ma tylko mówić MG,
+że gracz skończył); dotyczy **wyłącznie postaci z kreatora mających właściciela** — NPC MG i karty
+sprzed 3c są gotowe od razu; lista czynności **liczy się z karty**, bez odhaczania. Miejsca listy
+wybrałem sam: podsumowanie, ekran końcowy, karta i lista MG.
+
+**Osobne zlecenie MG w trakcie sesji (zapisane, nie wykonane):** „rzucanie kośćmi to jeden
+z przyjemniejszych elementów gry […] gracze powinni rzucać małą ilością kości na raz […] zamiast
+wciśnięcia przycisku, po którym wykonuje się rzut, gracz powinien używać kubka”. Decyzja MG: **osobny
+rzut na każdą pozycję** (10 × 1k10 na Cechy, kubek na każdą tabelę Ścieżki Życia), bez skrótu
+hurtowego; MG wybrał „zapisz i dokończ 3c”. Wpis w `POMYSLY.md` z rozpoznaniem stanu na dziś.
+
+**Zgłoszone MG możliwe błędy:** (1) wiersz Netrunnera mówił „kreator deków nie sprzedaje”, a od 3b
+sprzedaje — tyle że dek trafia do Wyposażenia jako zwykły wiersz i pole `cyberdeck` zostaje puste;
+tekst poprawiony, żeby prowadził do sekcji „Cyberdek”. (2) Znalezione przy oględzinach: **„Zostało
+4 wpisy”** — czasownik nie odmieniał się z liczebnikiem; całą frazę składa teraz `leftPhrase` i pilnuje
+test. (3) Motyw dzienny przestawiony z automatu na `data-theme='light'` zostawia kartę na nocnym
+papierze — aplikacja używa `day`/`night`; to pomyłka automatyki, nie błąd stylów (pułapka
+w `ogledziny`).
+
+**Wdrożone:** `cpredRoleChores` i `readiness.ts` (`shared`); kolumna `Character.playReady` z migracją
+`20260917210000`, `character:play-ready` i `playReady` w `CharacterView` (serwer); `RoleChoresList`,
+`CharacterReadyPanel`, pas `.cp-readiness` na stronie pierwszej karty, `characterStore.focusPanel`
+z `data-sheet-panel`, sekcja „Co zostanie/zostało do zrobienia” w kreatorze, znaczek zakładki
+sumujący rangi i gotowość (klient). Umowy — `postac` (1), `karta` (1); pułapki — `ogledziny` (1);
+pomysły (1).
+
+**Weryfikacja:** vitest — **2164** shared, **1192** serwera, **229** klienta; `tsc --noEmit` trzech
+pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`,
+gracz `[::1]`, 2084×1172 CSS, DPR 1,25): scenariusze w checkliście 3c, w tym „Przyjmij do gry” gaszące
+napis u gracza na żywo i wiersz Zakwaterowania znikający sam po zmianie na pojazd. **Nie było:**
+powiększenia przeglądarki, czytnika ekranu, półek Stróża Prawa i Fixera (ich Zdolności nic nie
+zostawiają). Na bazie testowej gracz „Test 2a” ma „Zgrzyt z Kabuki” i „Wiatr z Taboru” — obie przyjęte
+do gry. Serwer i Vite zatrzymane drzewami procesów, porty wolne.
 
 ### Sesja 17.09 (druga) — naprawa kreatora, część 3b: dostępność wyposażenia
 
@@ -355,39 +404,3 @@ ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (M
 **Nie było:** motywu dziennego nowego podglądu, wąskiego okna i powiększenia, półek Netrunnera,
 Technika i Nomady (`zaleglosci.md`). Na bazie testowej został szkic gracza „Test 2a” (Solo,
 Krawędziarz, pusty koszyk) i nowe zaproszenie do kampanii testowej.
-
-### Sesja 17.09 — naprawa kreatora, podział etapu 3 i część 3a
-
-**Zlecenie MG:** wykonać etap 3 `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno
-kontekstu — podzielić i zrobić pierwszą część), dopytywać i zgłaszać możliwe błędy. **Stan: etap 3
-podzielony na 3a/3b/3c, 3a ✅.** Checklista, ustalenia i zakres 3b/3c są w pliku naprawy.
-
-**Decyzje MG (17.09):** podział 3a (podsumowanie zgodne z kartą, uczciwe wyposażenie, ekran
-końcowy) / 3b (czynności Roli, podgląd w sklepie, gotowość) / 3c (odbiór); **gotowość do gry to
-znacznik nadawany przez MG** (nowe pole w bazie, lista w „Postaciach” ze znaczkiem — 3b); Poziom
-życia na start według podręcznika dla postaci z właścicielem; opłata za montaż wszczepu poprawiona
-od razu, stała Utrata Człowieczeństwa przy tworzeniu do `POMYSLY.md`.
-
-**Zgłoszone MG możliwe błędy:** (1) postać z kreatora nie miała Poziomu życia, więc rozliczenie
-miesiąca ją pomijało — naprawione; (2) **pełny montaż wszczepu pobierał cenę i opłatę za montaż**
-(etap 23b), choć operacja jest w cenie (s. 111), a opłata z s. 375 dotyczy znalezionego wszczepu —
-naprawione osobnym commitem; (3) przy tworzeniu podręcznik liczy stałą UC, VTT losuje — zostaje,
-kreator o tym mówi; (4) podsumowanie obiecywało żeton bez sprawdzenia sceny, stopka „Postać gotowa”
-przy braku pakietu/Mody/wszczepów, udane zakończenie zamykało kreator bez słowa — naprawione;
-(5) sklep kreatora nie ma amunicji, bo przeładowanie w VTT nie zużywa zapasów — teraz powiedziane.
-Znalezione przy oględzinach: wartości pochodne liczyły się z minimalnych Cech, zanim gracz je ustalił
-(„PW 20”) — pokazują „—”.
-
-**Wdrożone:** `creationLifestyle`, `creationOutcome`, `creationLeftOutside` i parametr `lifestyle`
-w `creationToCharacterData` (`shared`); Poziom życia przy `creation:finish` i `installBill` bez
-podwójnej opłaty (serwer); nowe `SummaryStep` z `SummarySkills`/`SummaryGear`, `CreatorLeftOutside`
-(zwinięte w sklepie), `CreatorFinishedScreen`, stopka „Wymagania kreatora spełnione” (klient).
-Umowy — `postac` (3); pułapki — `testy` (2); decyzje (2) i pomysły (2).
-
-**Weryfikacja:** vitest — 2137 shared, 1184 serwera, 224 klienta; `tsc --noEmit` trzech pakietów,
-ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
-`[::1]`, serwer z jednorazowym `GM_PASSWORD` i katalogami w scratchpadzie): scenariusze w checkliście
-3a. Na bazie testowej powstała karta „Zgrzyt z Kabuki” (gracz Test 2a, żeton na nowej aktywnej scenie
-„Oględziny 3a”); szkic MG „Garnitur 3a” wyrzucony. Serwer i Vite zatrzymane drzewami procesów,
-porty wolne. **Nie było:** wąskiego okna i powiększenia nowego podsumowania, opóźnienia i zerwania
-połączenia (3c).
