@@ -380,7 +380,7 @@ function EntryCard({
     const money =
       payment === 'installOnly'
         ? `Montaż „${entry.name}” — ${fitting} ed.`
-        : `Instaluję „${entry.name}” — ${(price ?? 0) + fitting} ed.`;
+        : `Instaluję „${entry.name}” — ${price ?? 0} ed.`;
     setNote(
       surgeon.kind === 'none'
         ? `${money} Rzut na Utratę Człowieczeństwa idzie na czat.`
@@ -709,7 +709,7 @@ function EntryCard({
                   CYBERWARE_INSTALL_DV[entry.install] === null
                     ? 'Bez operacji — wystarczy gniazdo.'
                     : `PT montażu ${CYBERWARE_INSTALL_DV[entry.install]}, ` +
-                      `koszt operacji ${CYBERWARE_INSTALL_COST[entry.install]} ed (s. 226).`
+                      `operacja wliczona w cenę; znaleziony wszczep — ${CYBERWARE_INSTALL_COST[entry.install]} ed (s. 375).`
                 }
               />
             ) : null}
@@ -875,12 +875,12 @@ function EntryCard({
                 title={
                   price === null
                     ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                    : `Wszczep ${price} ed${fitting > 0 ? ` + montaż ${fitting} ed` : ''}`
+                    : `Wszczep ${price} ed — koszt operacji jest wliczony w cenę (s. 111).`
                 }
                 disabled={price === null}
                 onClick={() => void install('full')}
               >
-                Zainstaluj{price === null ? '' : ` — ${price + fitting} ed`}
+                Zainstaluj{price === null ? '' : ` — ${price} ed`}
               </button>
               {/* „Montaż znalezionej cyborgizacji" (s. 375): chrome pulled off
                   a corpse costs the ripperdoc's time and nothing else. */}

@@ -69,8 +69,9 @@ export const CYBERWARE_INSTALL_DV: Record<CyberwareInstall, number | null> = {
 };
 
 /**
- * „Cena montażu w szpitalu" (s. 226). Unused until stage 23b — the price is
- * shown, never charged — but it belongs next to the DV it comes from.
+ * „Montaż znalezionej cyborgizacji" (s. 226, cennik s. 375). Charged **only**
+ * for chrome the character already holds: a new piece's price includes the
+ * operation („Koszt operacji […] jest wliczony w cenę", s. 111).
  */
 export const CYBERWARE_INSTALL_COST: Record<CyberwareInstall, number> = {
   gallery: 100,

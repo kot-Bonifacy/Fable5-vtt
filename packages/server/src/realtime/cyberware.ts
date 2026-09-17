@@ -175,10 +175,12 @@ export const characterCyberwareEvent = defineEvent<
 /**
  * The bill for fitting a piece of chrome (stage 23b).
  *
- * Two rows of the price list, not one: the hardware, and „Montaż znalezionej
- * cyborgizacji" — 100 / 500 / 1000 ed by where it is done (s. 375). They come
- * apart because the rulebook takes them apart: chrome pulled off a corpse costs
- * the ripperdoc's time and nothing else.
+ * New chrome costs its price and nothing more: „Koszt operacji chirurgicznej
+ * koniecznej do zainstalowania implantu jest wliczony w cenę" (s. 111). The
+ * price list's own row, „Montaż znalezionej cyborgizacji" — 100 / 500 / 1000 ed
+ * by where it is done (s. 375) — is for chrome pulled off a corpse, which costs
+ * the ripperdoc's time and nothing else. Until 17.09.2026 a full install charged
+ * both, so every new piece cost its fitting twice.
  */
 function installBill(
   entry: CyberwareEntry,
@@ -197,12 +199,7 @@ function installBill(
   }
   const price = entryPrice(entry);
   if (price === null) throw new RealtimeError('NO_PRICE');
-  return {
-    cost: price + fitting,
-    label:
-      `${entry.name} — ${formatEddies(price)} ed` +
-      (fitting > 0 ? ` + montaż ${formatEddies(fitting)} ed (${fittingLabel})` : ''),
-  };
+  return { cost: price, label: `${entry.name} — ${formatEddies(price)} ed (montaż w cenie)` };
 }
 
 /**

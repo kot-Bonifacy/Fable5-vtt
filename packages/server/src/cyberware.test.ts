@@ -224,7 +224,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
   it('nie instaluje chromu, na który postaci nie stać (etap 23b)', async () => {
     const broke = await emitAck<CharacterView>(gm, 'character:create', { name: 'Bez grosza' });
     if (!broke.ok || !broke.data) throw new Error('character:create failed');
-    // Ramownica: 1000 ed wszczepu + 1000 ed za szpital — na koncie zero.
+    // Ramownica: 1000 ed wszczepu (operacja w cenie) — na koncie zero.
     const ack = await emitAck(gm, 'character:cyberware', {
       characterId: broke.data.id,
       action: 'install',
@@ -268,9 +268,11 @@ describe('cyborgizacje i człowieczeństwo', () => {
     });
     // Sufit spadł o 2, a pula o tyle, ile padło na kościach.
     expect(data.humanityCurrent).toBe(Math.min(60 - rolled, 58));
-    // Etap 23b: 100 ed za oko + 500 ed za montaż w klinice (s. 375).
-    expect(data.eddies).toBe(20_000 - 600);
-    expect(roll?.outcome?.detail).toContain('600 ed');
+    // 100 ed za oko i nic za klinikę: „Koszt operacji […] jest wliczony
+    // w cenę" (s. 111). Opłata z s. 375 dotyczy wyłącznie znalezionego wszczepu
+    // — do 17.09 pełny montaż pobierał obie i oko kosztowało 600 ed.
+    expect(data.eddies).toBe(20_000 - 100);
+    expect(roll?.outcome?.detail).toContain('100 ed');
   });
 
   it('nie pozwala instalować cudzego chromu', async () => {
@@ -584,7 +586,7 @@ describe('montaż: gniazda i Test operacji', () => {
       expect(roll?.outcome?.label).toBe('Wszczep zniszczony');
       expect(after.cyberware.length).toBe(before.cyberware.length);
       expect(after.humanityCurrent).toBe(before.humanityCurrent);
-      expect(after.eddies).toBe(before.eddies - 1000);
+      expect(after.eddies).toBe(before.eddies - 500);
     }
   });
 
