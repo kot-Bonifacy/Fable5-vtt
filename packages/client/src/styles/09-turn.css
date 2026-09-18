@@ -1,0 +1,521 @@
+/* styles/09-turn.css — część 9/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: inicjatywa i tury (14), obrażenia, pancerz i rany krytyczne (15).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ---------------------------------------------------------------- stage 14
+   Initiative tracker: a fixed strip in the top bar (who acts now, at a
+   glance) and the „Walka" tab with the full queue and its controls.
+
+   The strip used to float over the map and could be dragged around; it moved
+   into the top bar on the owner's request (01.08), where it covers nothing and
+   the queue can use the whole width of the window.
+   ------------------------------------------------------------------------ */
+
+.combat-bar {
+  /* Nothing here is meant to be read as a document: a stray double-click must
+     never leave „RUNDA 1" or a name highlighted. */
+  user-select: none;
+  flex: 1;
+  /* Nie „0": pas oddaje miejsce tylko tym, co samo umie się zwinąć — kolejka
+     ma własne przewijanie, więc do `min-content` się nie liczy — a przyciski
+     trzyma w swoich granicach, zamiast malować je po sąsiadach. */
+  min-width: min-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 100%;
+}
+
+/* No fight running: the strip is only a placeholder holding the middle open
+   (and, for the GM, the one button that starts a queue). */
+.combat-bar--idle {
+  gap: 0;
+}
+
+.combat-bar-round {
+  flex: none;
+  padding: 0 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+.combat-bar-step {
+  flex: none;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.combat-bar-step:hover {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* „Graj turę" (etap 20b): pokazuje się tylko przy figurze prowadzonej przez
+   bota, więc może pozwolić sobie na pełne słowo obok strzałek. */
+.combat-bar-bot {
+  flex: none;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.combat-bar-bot:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.combat-bar-bot:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.combat-bar-queue {
+  /* Shrinks before it scrolls: with a handful of participants the queue sits
+     centred in the bar, and only a crowd makes it take the whole width. */
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+  overflow-x: auto;
+  /* A visible scrollbar would eat a third of a 44 px bar — the wheel scrolls
+     the row, and the running turn scrolls itself into view. */
+  scrollbar-width: none;
+}
+
+.combat-bar-queue::-webkit-scrollbar {
+  display: none;
+}
+
+/* Faded edges are the only honest sign that the row continues past the bar.
+   Applied only while it actually overflows, so a short queue keeps its first
+   and last chip at full strength. */
+/* Wyjątek od reguły „żadnego koloru poza `theme.css`": `#000` w masce nie jest
+   kolorem, tylko kanałem krycia — znaczy „tutaj pokaż wszystko". Token
+   z motywu podstawiłby tu barwę i maska zaczęłaby wygaszać środek paska. */
+.combat-bar-queue--scrollable {
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+}
+
+.combat-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.55rem 0.15rem 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--veil-faint);
+  white-space: nowrap;
+}
+
+.combat-chip--active {
+  border-color: var(--warn);
+  background: rgb(var(--warn-rgb) / 16%);
+  box-shadow: 0 0 0 1px rgb(var(--warn-rgb) / 35%);
+}
+
+/* GM-only: a participant the players cannot see in their tracker. */
+.combat-chip--hidden {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+/* The portrait carries the badge, so it needs a corner to hang it in. */
+.combat-chip-figure {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.combat-chip-portrait {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+/* „Action held" / „grappling" — a corner mark on the portrait rather than a
+   word in the row, which would push the names of everybody after it. */
+.combat-chip-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 1px;
+  border-radius: 999px;
+  background: var(--bg-topbar);
+}
+
+.combat-chip-portrait--empty,
+.combat-row-portrait--empty {
+  display: grid;
+  place-items: center;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Everybody on the strip is named — on the screens this table is played on
+   there is room for it, and a row of anonymous portraits reads like a puzzle.
+   The full name is still in the tooltip when it has to be cut. */
+.combat-chip-name {
+  font-size: 0.85rem;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-chip--active .combat-chip-name {
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.combat-chip-initiative {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.combat-bar-end-turn {
+  flex: none;
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: rgb(var(--warn-rgb) / 18%);
+  color: var(--warn);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Turn mode on and off — the GM's pair, both in the same spot. */
+.combat-bar-start {
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-bar-start:hover:not(:disabled) {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.combat-bar-start:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.combat-bar-stop {
+  flex: none;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.combat-bar-stop:hover {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+.combat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.combat-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.combat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.combat-header-round {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+}
+
+.combat-header-buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.combat-tie {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed var(--warn);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: var(--warn);
+}
+
+.combat-list,
+.combat-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+}
+
+.combat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--veil-faint);
+}
+
+.combat-row--active {
+  border-color: var(--warn);
+  background: rgb(var(--warn-rgb) / 12%);
+}
+
+.combat-row[draggable='true'] {
+  cursor: grab;
+}
+
+.combat-row-index {
+  flex: none;
+  width: 1.1rem;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.combat-row-portrait {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.combat-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.combat-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-row-meta {
+  font-size: 0.66rem;
+  color: var(--text-dim);
+}
+
+.combat-row-initiative {
+  flex: none;
+  min-width: 2rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--warn);
+  cursor: pointer;
+}
+
+.combat-row-initiative-input {
+  flex: none;
+  width: 3.2rem;
+  text-align: center;
+}
+
+.combat-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.combat-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-tag {
+  flex: none;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---- Obrażenia, pancerz i rany krytyczne (etap 15) ---- */
+
+.chat-roll-badge--wound {
+  background: rgb(var(--hurt-rgb) / 18%);
+  color: var(--hurt);
+}
+
+.chat-roll-badge--success {
+  background: rgb(var(--ok-rgb) / 15%);
+  color: var(--ok);
+}
+
+.chat-roll-badge--failure {
+  background: rgb(var(--err-rgb) / 15%);
+  color: var(--err);
+}
+
+.chat-roll-badge--note {
+  background: rgb(var(--neutral-rgb) / 15%);
+  color: var(--text-dim);
+}
+
+/* „Zastosuj na celu” pod kartą rzutu na obrażenia — widoczne tylko dla MG. */
+.damage-apply {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+.damage-apply select {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.damage-armor-input {
+  width: 3.5rem;
+}
+
+.chat-damage {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.chat-damage--undone {
+  opacity: 0.55;
+}
+
+.chat-damage--undone .chat-damage-headline {
+  text-decoration: line-through;
+}
+
+.chat-damage-location {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.chat-damage-undo {
+  margin-left: auto;
+}
+
+.chat-damage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chat-damage-headline {
+  font-weight: 600;
+}
+
+.chat-damage-detail {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.chat-damage-injury-effect {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Pancerz i rany krytyczne rysują się wyłącznie w skórze arkusza (etap 27b) —
+   ich reguły stoją w `sheet.css`, przy pozostałych blokach karty. */
+
+.death-save-button {
+  margin-left: 0.5rem;
+}
+
+.combat-bar-death-save {
+  flex: none;
+  background: rgb(var(--err-rgb) / 15%);
+  color: var(--err);
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-bar-death-save:hover {
+  background: rgb(var(--err-rgb) / 25%);
+}

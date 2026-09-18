@@ -1,0 +1,337 @@
+/* styles/19-figures-exchange.css — część 19/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: pasek operacji na figurach (35), wymiana przedmiotów (38b), ręce i oględziny (41).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ===== Pasek operacji na zaznaczonych figurach (etap 35) ===== */
+
+/*
+ * U dołu na środku, a nie u góry: górna krawędź mapy jest zajęta na całej
+ * szerokości — pasek narzędzi ma 38 rem od lewej i sięga **poza** środek
+ * (pułapka z 23.08), a podpowiedzi „kliknij na mapie…" stoją dokładnie na
+ * osi. Dół jest wolny: kubek kości siedzi w lewym dolnym rogu okna, nie mapy.
+ */
+.token-group-bar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: min(44rem, calc(100% - 1.5rem));
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
+  /* `--map-ink`, nie `--text`: `--map-panel` jest ciemny w obu motywach. */
+  color: var(--map-ink);
+  user-select: none;
+}
+
+.token-group-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+/* Naklejki idą własnym wierszem pod guzikami: przy szesnastu statusach
+   dołożenie ich do tego samego rządka rozpychało pasek na całą mapę. */
+.token-group-statuses {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.token-group-statuses .small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.token-group-statuses .status-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Wymiana przedmiotów (etap 38b) ------------------------------------ */
+
+/* Jedno okno na przekazanie, łup i przeszukanie. Węższe od handoutu, bo treścią
+   jest lista krótkich wierszy, a nie kartka do czytania. */
+.inventory-window {
+  position: fixed;
+  z-index: 330;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(78vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.inventory-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.inventory-window-header:active {
+  cursor: grabbing;
+}
+
+.inventory-window-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.inventory-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem 0.9rem;
+  overflow-y: auto;
+}
+
+/* Skąd → dokąd w jednej linii: kierunek operacji ma być widoczny, zanim
+   ktokolwiek spojrzy na listę. */
+.inventory-ends {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.inventory-end {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-end select {
+  width: 100%;
+}
+
+.inventory-arrow {
+  padding-bottom: 0.35rem;
+  color: var(--text-dim);
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-row,
+.inventory-money {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.35rem;
+  background: var(--veil-faint);
+  border-radius: 4px;
+}
+
+.inventory-money {
+  border-top: 1px solid var(--border-soft);
+}
+
+.inventory-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-row-detail {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-row-qty {
+  flex: none;
+  width: 3.4rem;
+}
+
+.inventory-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.inventory-hint,
+.inventory-empty,
+.inventory-message {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-message {
+  color: var(--text);
+}
+
+/* --- Ręce przy wierszu broni (etap 41) --------------------------------- */
+
+.weapon-hands {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* Plakietka, nie guzik: „to trzymam" jest stanem, a obok stoją dwie czynności,
+   którymi się go zmienia. */
+.weapon-hands-badge {
+  padding: 0.05rem 0.3rem;
+  font-size: 0.66rem;
+  color: var(--ok);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* --- Okno oględzin (etap 41) ------------------------------------------- */
+
+/* Węższe od okna wymiany: tu stoi jedna kolumna napisów, a nie dwie listy
+   przedmiotów z kolumną guzików między nimi. */
+.sighting-window {
+  width: 19rem;
+}
+
+.sighting-badge {
+  margin: 0 0 0.4rem;
+  padding: 0.15rem 0.4rem;
+  align-self: flex-start;
+  font-size: 0.66rem;
+  color: var(--ok, var(--text));
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.sighting-section {
+  margin: 0.5rem 0 0.2rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sighting-section:first-of-type {
+  margin-top: 0;
+}
+
+.sighting-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sighting-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+}
+
+.sighting-where {
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.sighting-what {
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.sighting-numbers {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brak pancerza i puste ręce świecą tak samo, jak goła głowa w dymku: to nie
+   jest brak wiersza, tylko wiersz mówiący „nic tu nie ma" — a na tym stoi cała
+   decyzja, gdzie strzelić (s. 170). */
+.sighting-bare,
+.sighting-bare .sighting-what {
+  color: var(--warn);
+}
+
+.sighting-ask {
+  margin-top: 0.6rem;
+  align-self: flex-start;
+}
+
+/* Guzik „Wymiana…" nad tabelą wyposażenia karty.
+   Do lewej, na tej samej krawędzi, co „+ Wyposażenie" pod tabelą (06.09):
+   dosunięty do prawej wisiał sam nad narożnikiem i wyglądał jak element
+   okna, a nie jak działanie na tej liście. */
+.sheet-gear-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Karta oględzin na czacie — jedno zdanie i droga do pełnej listy. */
+.chat-sighting-line {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* --- Karta przekazania na czacie --------------------------------------- */
+
+.chat-inventory {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-inventory--refused {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-inventory-lines {
+  margin: 0.15rem 0 0.3rem;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+}
+
+.chat-inventory-badge--done {
+  background: rgb(var(--ok-rgb) / 18%);
+  color: var(--ok);
+}

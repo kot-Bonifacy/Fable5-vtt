@@ -2,7 +2,7 @@
 
 Plik: `packages/client/public/art/login-poster.webp` (1672 × 941, 1,77 MB).
 Tło ekranu logowania MG, ekranu dołączania gracza i ekranu startowego.
-Style: `.auth-screen` w `packages/client/src/styles.css`, kolory `--login-*` w `theme.css`.
+Style: `.auth-screen` w `packages/client/src/styles/03-entry.css`, kolory `--login-*` w `theme.css`.
 
 ## Pochodzenie i granica prawna
 

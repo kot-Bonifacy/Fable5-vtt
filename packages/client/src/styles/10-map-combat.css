@@ -1,0 +1,505 @@
+/* styles/10-map-combat.css — część 10/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: pasek narzędzi mapy, linijka, zasięgi (16), rysowanie (17b), wiersze broni, karta ataku.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* --- stage 16: ranged combat, ruler, range rings --- */
+
+/* Map toolbar: the ruler and the range-ring toggle, above the canvas. */
+.map-tools {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  gap: 0.3rem;
+  z-index: 20;
+  /* Dragging a fog rectangle across the map is a drag over the document too,
+     and the emoji buttons are text nodes — without this the browser paints
+     them with its blue selection highlight, which reads as a broken toggle. */
+  user-select: none;
+}
+
+/* No box around the glyph: the icon itself carries the state through colour,
+   and the map stays visible underneath. The hit area is still a full square —
+   only the chrome is gone, not the target. Contrast over a bright map comes
+   from the icon's own shadow rather than from a panel behind it. */
+.map-tool {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--map-ink);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+/* The shadow lives on the glyph, not on the button: a thin line icon needs a
+   hard edge to survive a bright map, while a colour emoji already carries its
+   own outline and turns to mush under the same treatment. */
+.map-tool svg {
+  filter: var(--map-shadow-glyph);
+}
+
+/* Hover brightens whatever colour the button already carries — setting a
+   colour here instead would wash out the active state exactly when the
+   pointer is on it, which is when it matters most. */
+.map-tool:hover:not(:disabled) {
+  background: var(--map-hover);
+  transform: translateY(-1px);
+  filter: brightness(1.35);
+}
+
+.map-tool:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.map-tool--active {
+  color: var(--accent);
+}
+
+/* Two buttons keep their colour emoji, which simply draw better than a line
+   icon at this size — but an emoji cannot take `currentColor`, so those show
+   „armed" with a glow instead. Sized well above the old 1rem: the complaint
+   about the previous toolbar was never the glyphs, only how small they were. */
+.map-tool-emoji {
+  font-size: var(--emoji-glyph-size);
+  line-height: 1;
+  /* Just enough to lift it off a pale map — anything more reads as blur. */
+  filter: var(--map-shadow-emoji);
+}
+
+/* An emoji cannot take `currentColor`, so an armed emoji button shows its
+   state with a glow plus a lifted background. Kept deliberately tight: a wide
+   halo around a colour glyph stops reading as „selected" and starts reading
+   as „out of focus". */
+.map-tool--active .map-tool-emoji,
+.note-icon--active {
+  filter: drop-shadow(0 0 3px var(--accent));
+}
+
+/* „Widzę więcej niż gracze" — the private-measurement eye and anything else
+   that hides information from the table reads amber, not accent-blue. */
+.map-tool--warn {
+  color: var(--map-warn);
+}
+
+/* The per-scene fog switch keeps its day/night colour at all times: it is a
+   state indicator first and a button second. */
+.map-tool--night {
+  color: var(--map-night);
+}
+
+.map-tool--day {
+  color: var(--map-day);
+}
+
+.map-tool:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Settings of the armed tool (stage 17) — a second row under the toolbar, so
+   the tool buttons never shift position when options appear. */
+.map-tools {
+  flex-wrap: wrap;
+  max-width: min(38rem, calc(100% - 1.5rem));
+}
+
+.map-tools-sep {
+  width: 1px;
+  height: 1.2rem;
+  align-self: center;
+  margin: 0 0.25rem;
+  background: var(--map-line);
+}
+
+.map-tool-options {
+  flex-basis: 100%;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+/* Podpowiedź warstwy (etap 27k): ostatni, pełnej szerokości wiersz paska
+   narzędzi. `flex-basis: 100%` wypycha ją do własnej linii, więc nigdy nie
+   kładzie się na ikonach — czego pływające pudełko nad mapą nie potrafiło. */
+.map-tool-tip {
+  flex-basis: 100%;
+  max-width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: var(--map-panel);
+  border-radius: 4px;
+  color: var(--map-ink);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  user-select: none;
+}
+
+/* Coś jest pod ręką i `Delete` to skasuje — bursztyn, nie akcent: ten sam
+   kolor niósłby tu „ktoś do kogoś mierzy". */
+.map-tool-tip--selected {
+  border-left-color: var(--warn);
+  color: var(--warn-bright);
+}
+
+.map-tool-slider {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--map-ink-bright);
+  font-size: 0.75rem;
+  text-shadow: var(--map-shadow-text);
+}
+
+.map-tool-slider input {
+  width: 7rem;
+  filter: var(--map-shadow-slider);
+}
+
+/* OB bariery (etap 42b): dwie cyfry, nie suwak — pole ma być wąskie. */
+.map-tool-slider input.map-tool-number {
+  width: 3.5rem;
+  filter: none;
+}
+
+.map-tool-slider span {
+  min-width: 2.2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pole wyboru na pasku („Zasłania figury", etap 42c): szerokość suwaka i liczba
+   wyrównana do prawej rozsuwały ptaszek i napis na dwa końce 160 px, a napis
+   łamał się w dwie linie. Tu mają stać obok siebie. */
+.map-tool-slider.map-tool-check input {
+  width: auto;
+  filter: none;
+}
+
+.map-tool-slider.map-tool-check span {
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* --- stage 17b: drawing tools --- */
+
+/* Colour swatches. A closed palette instead of a colour picker: six colours
+   cover every annotation and keep the options row one line tall. The active
+   swatch is marked with a ring rather than a border, so the colour itself
+   stays exactly the size of the others. */
+.map-color-row {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.map-color {
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid var(--map-swatch-edge);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--map-shadow-swatch);
+  transition: transform 120ms ease;
+}
+
+.map-color:hover {
+  transform: translateY(-1px) scale(1.1);
+}
+
+.map-color--active {
+  outline: 2px solid var(--map-swatch-active);
+  outline-offset: 2px;
+}
+
+.map-color:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Inline hint inside a tool's options row (the eraser has no settings). */
+.map-tool-hint {
+  align-self: center;
+  color: var(--map-ink-bright);
+  font-size: 0.75rem;
+  text-shadow: var(--map-shadow-text);
+}
+
+/* The text tool's prompt reuses the note editor's panel, but it is three rows
+   tall instead of six — so it gets a tighter gap and a narrower box, or the
+   panel reads as mostly empty. */
+.drawing-text-editor {
+  width: min(18rem, calc(100% - 1.5rem));
+  gap: 0.4rem;
+  padding: 0.6rem;
+}
+
+.drawing-text-input {
+  padding: 0.4rem 0.55rem;
+  background: var(--map-field);
+  color: var(--map-ink-bright);
+  border: 1px solid var(--map-line);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.drawing-text-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Size ladder for a caption: three letters, no words. Each chip draws an „A"
+   at the ratio the map will use, so the ladder is its own label — the name and
+   the pixel figure live in the tooltip. Small enough to share the row with the
+   dialog's buttons, which is the whole point of dropping the words. */
+.drawing-text-sizes {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.text-size-chip {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.7rem;
+  padding: 0;
+  background: var(--map-chip);
+  color: var(--map-ink);
+  border: 1px solid var(--map-line-soft);
+  border-radius: 6px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.text-size-chip:hover {
+  background: var(--map-chip-hover);
+  color: var(--map-ink-bright);
+}
+
+.text-size-chip--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 12%);
+}
+
+.text-size-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Pinezka MG: wybór ikony i pole treści. Od 27l mieszkają w karcie obiektu
+   sceny, czyli na chromie aplikacji, a nie na ciemnym panelu nad mapą — stąd
+   `--bg` pod polem tekstowym zamiast ciemnego tła panelu mapy, które
+   w motywie dziennym dawało czarne na czarnym (ta sama pułapka, co przy
+   podpowiedziach nad mapą w 27k). */
+/* Two clean rows of five rather than a flex row that wraps 9 + 1. */
+.note-editor-icons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.3rem;
+  /* Same reason as `.map-tools`: these are emoji, i.e. selectable text. */
+  user-select: none;
+}
+
+/* Same pattern as the map toolbar: no box around the glyph, a generous hit
+   area, and the chosen one marked by a glow — a border would compete with
+   the emoji's own colour instead of pointing at it. */
+.note-icon {
+  height: 2.1rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  /* Same glyph size as the map toolbar — the picker and the pin it drops
+     should read as one control, not two different scales. */
+  font-size: var(--emoji-glyph-size);
+  line-height: 1;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.note-icon:hover {
+  background: var(--map-hover);
+  transform: translateY(-1px);
+}
+
+.note-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Has to sit after the `.note-icon` base rule: same specificity, so the
+   transparent background above would otherwise win on source order and the
+   chosen icon would be marked by its glow alone. */
+.note-icon--active {
+  background: var(--map-selected);
+}
+
+.note-editor-text {
+  resize: vertical;
+  min-height: 5rem;
+  padding: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+/* „X celuje…" — same banner as token placement, in the attack colour. It has
+   to sit above the floating sheets: the click that armed it came from one. */
+.map-placement-hint--attack {
+  border-color: var(--err);
+  z-index: 400;
+}
+
+/* Celowanie (s. 170) przy kursorze — wyskakuje samo, gdy kubek dostanie
+   pojedynczy strzał w figurę. Pozycjonowane współrzędnymi klienta jak menu
+   kontekstowe żetonu, więc `fixed`, a nie `absolute` względem mapy. */
+.aim-menu {
+  position: fixed;
+  z-index: 500;
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  background: var(--map-panel);
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  color: var(--map-ink);
+}
+
+/* Sam rysunek, bez podpisu: to pasek przy kursorze w środku walki. Nazwę
+   i skutek niesie `title` oraz nazwa dostępna. Sylwetka jest maską, więc
+   `is-on` barwi ją razem z obramowaniem. */
+.aim-menu-point {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.aim-menu-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.aim-menu-point:hover {
+  border-color: var(--accent);
+}
+
+.aim-menu-point.is-on {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+/* An attack loaded into the cup reads as dangerous, not as a plain check. */
+.dice-cup--attack {
+  --cup-glow: var(--err-rgb);
+  color: var(--err);
+  border-color: var(--err);
+  animation: dice-cup-pulse 1.2s ease-in-out infinite;
+}
+
+/* Weapon rows carry more controls than the generic row table. */
+.weapon-ammo-cell {
+  white-space: nowrap;
+}
+
+.weapon-ammo-input {
+  width: 2.8rem;
+  text-align: right;
+}
+
+.weapon-ammo-input--empty {
+  color: var(--err);
+  border-color: var(--err);
+}
+
+.weapon-ammo-max {
+  color: var(--text-dim);
+  margin: 0 0.25rem 0 0.1rem;
+}
+
+.weapon-ammo-none {
+  color: var(--text-dim);
+}
+
+/* Komórka „Atak" trzyma kilka przycisków obok siebie, ale **komórką zostaje**:
+   `display: flex` na `<td>` wyjmuje go z układu tabeli i przestaje rozciągać
+   się na wysokość wiersza — a że tło tabeli arkusza jest czerwone, pod
+   przyciskami zostawał czerwony pas wyglądający na błąd (znalezione 06.09).
+   Układ robi więc wnętrze komórki, nie ona sama. */
+.weapon-actions {
+  vertical-align: top;
+}
+
+.weapon-actions-row {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* The attack card under a roll on the chat. */
+.chat-attack {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.chat-attack-detail {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.chat-roll-badge--suppressive {
+  background: rgb(var(--accent-rgb) / 15%);
+  color: var(--accent);
+}
+
+.chat-attack-checks {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.chat-attack-check--held {
+  color: var(--ok);
+}
+
+.chat-attack-check--pinned {
+  color: var(--err);
+}
+
+.chat-attack-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}

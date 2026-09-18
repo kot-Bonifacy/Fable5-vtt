@@ -1,0 +1,744 @@
+/* styles/17-net.css — część 17/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: Sieć: biblioteka Architektur, okno runu, walka w Sieci (26a–26f).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ---------------------------------------------------------------------------
+   Sieć — biblioteka Architektur Sieciowych (etap 26a)
+
+   Panel MG jest listą, a szyb edytuje się w pływającym oknie: architektura jest
+   wysoka i szeroka, a boczna kolumna ma 320 px. Kolor neonu (--net-glow) niesie
+   sam sens — piętro z Czarnym LOD-em ma się rzucać w oczy bez czytania etykiety.
+   --------------------------------------------------------------------------- */
+
+.net-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.net-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.net-entry {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.35rem 0.45rem;
+}
+
+.net-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.net-entry-title {
+  font-weight: 600;
+}
+
+.net-entry-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.net-entry-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.net-difficulty {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.net-difficulty--high,
+.net-difficulty--advanced {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.net-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.net-generator-row,
+.net-generator-foot {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --- okno edytora --- */
+
+.net-window {
+  width: min(880px, 100vw - 32px);
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+.net-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.net-window-meta {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.net-roll-summary {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.net-shaft {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.net-branch {
+  flex: 1 1 380px;
+  min-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.45rem;
+  background: var(--bg);
+}
+
+.net-branch-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.net-branch-head h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.net-branch-parent,
+.net-branch-depth {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.net-floors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Piętra idą w dół jak kabina windy, więc numer stoi w słupku po lewej —
+   to on jest osią, po której MG czyta architekturę. */
+.net-floor {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  border-left: 3px solid var(--border);
+  padding-left: 0.4rem;
+}
+
+.net-floor--ice,
+.net-floor--demon {
+  border-left-color: var(--accent);
+}
+
+.net-floor--password {
+  border-left-color: var(--warn);
+}
+
+.net-floor--file,
+.net-floor--controlNode {
+  border-left-color: var(--ok);
+}
+
+.net-floor-index {
+  width: 1.4rem;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.25rem;
+}
+
+.net-floor-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.net-floor-line {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.net-floor-kind {
+  flex: 0 0 8.5rem;
+}
+
+.net-floor-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.net-floor-dv {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.net-floor-dv input {
+  width: 3.4rem;
+}
+
+.net-floor-notes {
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.net-floor-programs {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.net-program-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+  font-size: 0.78rem;
+}
+
+.net-program-chip button {
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.net-advice {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--warn);
+  font-size: 0.8rem;
+}
+
+/* ── Run netrunnera: winda i punkty dostępu (etap 26b) ─────────────────────── */
+
+/*
+ * Okno „Sieć" jest terminalem, nie panelem: mapa zostaje pod nim widoczna
+ * (decyzja MG z 14.08), więc winda musi być wąska i czytelna z ukosa. Klasy są
+ * osobne od `.net-*` edytora architektur z 26a — te dwa okna wyglądają inaczej
+ * na celowo: jedno jest narzędziem MG poza sesją, drugie stoi przy stole.
+ */
+/* Podniesiona specyficzność: `sheet.css` wczytuje się po tym pliku i ustawia
+   `.sheet-window` na 1180 px — okno Sieci ma być wąskie jak terminal. */
+.sheet-window.net-run-window {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  border-color: var(--net-line);
+}
+
+.net-run-title {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.net-run-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  overflow-y: auto;
+}
+
+/* Własny pasek zamiast `.cp-bar`: ten skleja dzieci w jeden ciąg i pisze je
+   Wielkimi Literami (poprawka z 26a) — „Punkt Dostępu" na pasku statusu runa
+   wyglądałoby jak nazwa własna. */
+.net-run-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--net-line-dim);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.net-run-shaft {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.net-run-column {
+  min-width: 15rem;
+  flex: 1;
+}
+
+/* Odgałęzienie jest wcięte i podpięte pionową kreską — szyb ma wyglądać jak
+   szyb, a nie jak dwie niezależne listy obok siebie. */
+.net-run-column--branch {
+  margin-left: 0.4rem;
+  padding-left: 0.7rem;
+  border-left: 1px dashed var(--net-line);
+}
+
+.net-run-column-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.net-run-floors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.net-run-floor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--net-line-dim);
+  border-radius: 4px;
+  background: var(--net-floor-bg);
+}
+
+/* Piętro, na którym stoi netrunner — jedyny element okna świecący na zielono. */
+.net-run-floor--here {
+  border-color: var(--net-here);
+  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
+}
+
+.net-run-floor-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  /* Chipy („złamane", „rozpoznany") schodzą do drugiej linii zamiast zjadać
+     nazwę piętra — „L…" zamiast „Listy przewozowe" to nie jest oszczędność. */
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.28rem 0.4rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.net-run-floor-body:disabled {
+  cursor: default;
+}
+
+.net-run-floor-depth {
+  flex: 0 0 1.4rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.net-run-floor-glyph {
+  flex: 0 0 1.2rem;
+  text-align: center;
+}
+
+/* Nieodkryte piętro nie ma nazwy w payloadzie — i ma wyglądać na pustą kartę,
+   a nie na coś, co ktoś ukrył CSS-em. */
+.net-run-floor-glyph--unknown {
+  color: var(--net-ink-dim);
+}
+
+.net-run-floor-label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.net-run-floor-dv {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-run-floor-flag {
+  font-size: 0.72rem;
+  border: 1px solid var(--net-line);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+  color: var(--net-ink);
+}
+
+.net-run-floor-flag--ice {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.net-run-floor-notes {
+  width: 100%;
+  margin: 0;
+  padding: 0 0.45rem 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-abilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.net-run-notice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--net-ink);
+}
+
+/* Haki mechaniczne Programu w edytorze MG (etap 26c) — dziewięć pozycji,
+   więc kolumny zamiast jednej długiej listy. */
+.compendium-hooks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.15rem 0.6rem;
+}
+
+/* Walka w Sieci (etap 26c): dwie sekcje pod szybem — Czarny LOD i cyberdek.
+   Obie znikają, gdy nie ma z czym walczyć, więc okno netrunnera bez deku
+   wygląda dokładnie tak, jak w 26b. */
+.net-ice-list-wrap,
+.net-deck {
+  border-top: 1px solid var(--net-line-dim);
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.net-ice-list,
+.net-deck-slots {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.net-ice {
+  border: 1px solid var(--net-ice-line);
+  border-radius: 5px;
+  background: var(--net-ice-bg);
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.net-ice--down {
+  opacity: 0.5;
+  border-color: var(--net-ice-down);
+  background: transparent;
+}
+
+.net-ice-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.net-ice-glyph {
+  font-size: 1rem;
+  color: var(--net-ice-ink);
+}
+
+.net-ice-name {
+  font-weight: 600;
+}
+
+.net-ice-rez {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Pasek REZ: jedyna liczba, o którą toczy się ta walka — dlatego widzi go
+   także gracz, choć ATK, OBR, PER i PRĘ zostają u MG. */
+.net-ice-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--net-ice-track);
+  overflow: hidden;
+}
+
+.net-ice-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--net-ice-bar-from), var(--net-ice-bar-to));
+}
+
+.net-ice-effect,
+.net-ice-stats,
+.net-deck-effect,
+.net-deck-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-ice-stats {
+  font-variant-numeric: tabular-nums;
+}
+
+.net-ice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.net-ice-gm {
+  border-color: var(--net-gm-line);
+}
+
+.net-deck-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--net-line-dim);
+  border-radius: 5px;
+}
+
+.net-deck-slot--rezzed {
+  border-color: var(--net-rezzed);
+  background: var(--net-rezzed-bg);
+}
+
+.net-deck-name {
+  font-weight: 600;
+}
+
+.net-deck-class {
+  font-size: 0.75rem;
+  color: var(--net-ink);
+}
+
+.net-deck-slot > .small-button {
+  margin-left: auto;
+}
+
+.net-run-debt {
+  color: var(--warn);
+}
+
+.net-run-notice--glue {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  color: var(--net-glue);
+}
+
+.net-virus-form,
+.net-virus-list {
+  border-top: 1px solid var(--net-line-dim);
+  padding-top: 0.5rem;
+}
+
+.net-virus-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.net-virus-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* ── strefy bronione (etap 26f) ── */
+
+/* Lista przepustek bywa długa (scena z dziesięcioma figurami), więc dostaje
+   własne przewijanie zamiast rozpychać kartę na całą wysokość ekranu. */
+.zone-exempt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+/* ── węzły kontrolne i urządzenia (etap 26d) ── */
+
+/* Lista rzeczy przy przejętym węźle w oknie Sieci. Wcięcie i lewa krecha
+   mówią, że to nie kolejne piętro, tylko to, co z tego piętra wystaje. */
+.net-node-devices {
+  margin: 0.35rem 0 0.1rem 1.4rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--net-line-branch);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.net-node-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--net-ink);
+}
+
+.net-node-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.net-node-device {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--net-line-dim);
+  border-radius: 5px;
+}
+
+.net-node-device--off {
+  opacity: 0.62;
+}
+
+.net-node-name {
+  font-weight: 600;
+}
+
+.net-node-kind {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.net-node-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.net-node-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+/* Edytor Architektury: urządzenia wiszące u węzła kontrolnego. */
+.net-floor-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.3rem 0 0.1rem 0.6rem;
+  border-left: 2px solid var(--net-line-branch);
+}
+
+.net-floor-device {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Dziedzina umiejętności, którą podręcznik każe wybrać (Nauka, Wiedza lokalna,
+   Gra na instrumencie, Sztuki walki — s. 81). Ramka w kolorze ostrzeżenia, gdy
+   poziom już jest, a dziedziny nie ma; zdanie pod polem mówi to samo słowami. */
+.creator-window input.creator-skill-specialty {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 20rem;
+  font-size: 0.9375rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.creator-window input.creator-skill-specialty--missing {
+  border-color: var(--warn);
+}

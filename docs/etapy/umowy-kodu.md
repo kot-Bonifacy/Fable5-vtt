@@ -813,6 +813,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **`styles.css` jest spisem `@import` — 19 plików `styles/NN-obszar.css` w kolejności kaskady** (od 18.09). Nową regułę dopisuj do pliku swojego obszaru, nowy obszar to nowy plik wpięty do spisu tam, gdzie stałby w dawnym pliku; `theme.test.ts` bierze listę plików ze spisu. Nie łącz plików z powrotem i nie zmieniaj kolejności — `.small-button--primary` musi stać po `.small-button`.
 - **Skóra chromu „stara kartka” mieszka w `chrome.css` + tokenach `--paper-*`, `--notch*`, `--font-ui*`** — nowa duża powierzchnia (panel, okno, dialog) dopisuje się do list w `chrome.css` (kafel, ścięty róg, belka), nie dostaje własnego `background-image`; belka czarna w dzień musi stać na **obu** listach: w `chrome.css` i w bloku „Belka” w `theme.css`. Źródła kafli i granice: `docs/assety-chrom.md`.
 - **Okno, w którym klawisze należą do niego, nosi `data-owns-keys`** — nasłuch mapy w `MapArea` pomija zdarzenia z jego wnętrza (Tab, Delete, litery narzędzi, cyfry paska, Esc). Od 2b mają go kreator i karta postaci; znacznik mówi „gdzie jest fokus”, nie „czy okno jest otwarte”.
 - **Pełny ekran — wyłącznie przez `fullscreen.ts`**, nigdy gołe `requestFullscreen`: nowe wejście do gry woła `enterPreferredFullscreen()` **przed** pierwszym `await` w obsłudze gestu, a automat po F5 i tłumik przytrzymanego Esc żyją w `useFullscreen` w korzeniu `App`. Kolejność pilnuje `fullscreen.test.ts`.
@@ -820,13 +821,28 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Ekran wejścia (`.auth-screen`) stoi na plakacie** — formularz nie ma tła i kotwiczy się do ramki **narysowanej w obrazie**, nie do środka okna. Zmiana pliku tapety = przemierzenie ułamków (`docs/assety-logowanie.md`); zdjęcie kotwicy = oddanie formularzowi tła.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
 - **Nowe pływające okno** — hook `useWindowPlacement` (`window-placement.ts`) + `<WindowResizeGrip />`; uchwyt 13 px od krawędzi, bo róg jest wycięty.
-- **Kolor** — wyłącznie w `packages/client/src/theme.css`; pilnuje `theme.test.ts` (literał w `styles.css`/`sheet.css`, token bez odbiorcy, token chromu bez pary dziennej).
+- **Kolor** — wyłącznie w `packages/client/src/theme.css`; pilnuje `theme.test.ts` (literał w `styles/*.css`/`sheet.css`, token bez odbiorcy, token chromu bez pary dziennej).
 - **Ikonowy przycisk** — `title` + `aria-label`, gdy treścią jest znak; ikony SVG są `aria-hidden`, więc tam wystarczy `title`. Pilnuje `a11y.test.ts`.
 - **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a `.combat-bar` ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**`styles.css` pocięty na 19 plików w `styles/` (18.09).** Jeden plik miał 11 530 linii (242 KB)
+i każde przeczytanie go w całości kosztowało ~60 k tokenów kontekstu. Podział poszedł **po granicach
+sekcji i bez zmiany kolejności** — zbudowany przez Vite arkusz jest bajt w bajt ten sam, bo
+`postcss-import` wkleja `@import` w kolejności spisu. Pliki: `01-base` (kroje, mapa, panel),
+`02-chat-dice`, `03-entry`, `04-panels`, `05-tokens`, `06-sheet-window`, `07-ai-compendium`,
+`08-readiness`, `09-turn`, `10-map-combat`, `11-actions`, `12-hud`, `13-handouts`, `14-windows`,
+`15-screamsheet`, `16-creator`, `17-net`, `18-check-calls`, `19-figures-exchange`; nagłówek każdego
+mówi, co zawiera. Trzy rzeczy do pilnowania:
+
+- **Szukaj selektora `grep`-em po `styles/`**, a czytaj tylko trafiony plik — to cały sens podziału.
+- **Kolejność to kaskada.** Reguła, która musi wygrać z inną, stoi w pliku o wyższym numerze albo
+  niżej w tym samym; nie przenoś reguł między plikami „dla porządku”, bo `.small-button--on`
+  i `.dialog-backdrop:has(…)` zależą od miejsca (pułapki w `ui` i `karta`).
+- **`chrome.css` i `sheet.css` zostają osobno** i ładują się po spisie — nie wpinaj ich do niego.
 
 **Skóra chromu „stara kartka” — `chrome.css`, tokeny papieru i belki w `theme.css` (18.09).**
 Chrom był płaskim kolorem z jednopikselową ramką („excelowy” — MG). Od 18.09 duże powierzchnie

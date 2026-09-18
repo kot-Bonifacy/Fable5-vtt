@@ -134,7 +134,7 @@ describe('pod portretem leży tło żetonu, nie dziura', () => {
 
   it('okno kadrowania rysuje ten krążek pod portretem', () => {
     expect(EDITOR).toContain('portrait-crop-backdrop');
-    const styles = readFileSync(join(SRC, 'styles.css'), 'utf8');
+    const styles = readFileSync(join(SRC, 'styles', '16-creator.css'), 'utf8');
     expect(styles).toContain('--map-token-backdrop');
   });
 });

@@ -1,0 +1,321 @@
+/* styles/01-base.css — część 1/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: kroje (@font-face), ekran główny, mapa, panel boczny.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* Kroje gazetowe screamsheetów (etap 24c). Pliki leżą w `public/fonts/`,
+   licencja SIL OFL 1.1 — pochodzenie i uzasadnienie w `docs/assety-screamsheet.md`.
+   Serwujemy je z własnego hosta, bo VTT ma działać bez internetu przy stole.
+   Podzestawy latin + latin-ext: bez tego drugiego brukowiec zgubiłby „ą" i „ł". */
+
+/* Jost (etap 27a) — zamiennik Futury PT z oficjalnej karty postaci. Jeden plik
+   na podzestaw: to krój zmienny (oś wagi 100–900), więc `font-weight: 100 900`
+   zastępuje cztery osobne pliki. Pochodzenie: `docs/assety-karta-postaci.md`. */
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/jost-var-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/jost-var-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/anton-400-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/anton-400-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Oswald jest krojem zmiennym (oś wagi 200–700) i oba podzestawy to jeden plik
+   na podzestaw — stąd zakres zamiast czterech osobnych deklaracji. Wagę 400
+   bierze karta postaci (etap 27a) na nazwy umiejętności, 500 i 700 screamsheet. */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url('/fonts/oswald-var-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url('/fonts/oswald-var-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400i-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400i-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/pt-serif-700-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/pt-serif-700-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1rem;
+  /* Tall enough for a portrait one can actually recognise: the tracker lives
+     here now, and „kto teraz gra" should be readable from across the desk
+     (owner's call, 01.08 — the target screens are 4K). Settled at 56 px after
+     64 came back as too much. */
+  height: 56px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+}
+
+/* The whole row is scaled to the taller bar (01.08): at the distance a GM sits
+   from a 4K screen, the old 0.85rem labels read as small print. */
+/*
+ * Pasek ma trzy grupy i przy ~900 px przestawały się w nim mieścić. Nadmiar nie
+ * ucinał się, tylko *nachodził*: tytuł i prawa grupa miały `flex: none`, więc
+ * przy ujemnej przestrzeni całą różnicę brał na siebie środek — a `.combat-bar`
+ * ma `flex-basis: 0`, czyli kurczy się do zera i wypuszcza swoje przyciski
+ * („Włącz tryb turowy") na boki, na sąsiadów. Stąd trzy poprawki naraz:
+ * kolejka nie schodzi poniżej swojej treści (`min-width: min-content` niżej),
+ * nazwa kampanii i tytuł oddają miejsce wielokropkiem, a poniżej 1000 px tytuł
+ * znika — jest dekoracją, a „Wyloguj" i kolejka inicjatywy nie są.
+ */
+.top-bar-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+@media (max-width: 1000px) {
+  .top-bar-title {
+    display: none;
+  }
+}
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot--connected {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
+.status-dot--disconnected {
+  background: var(--err);
+  box-shadow: 0 0 6px var(--err);
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Zawsze noc, tak jak samo płótno (etap 27e): kratka zastępcza i tło pod
+   sceną są tym, na czym Pixi rysuje białe podpisy żetonów i mglę. W trybie
+   dziennym te podpisy zrobiły się białe na kremowym — czyli nieczytelne. */
+.map-area {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--map-grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, var(--map-grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--map-backdrop);
+}
+
+/* Pod mapą powitalną gracza (11.09) siatka stołu gaśnie. Mapa 40 × 30 nie
+   wypełnia okna do brzegu, a kratkowany margines wokół niej to dokładnie ta
+   „czysta siatka", której ten ekran ma nie pokazywać — pod mapą zostaje więc
+   sam ciemny stół. Scenie MG kratka zostaje: tam jest robocza, nie nastrojowa. */
+.map-area--welcome {
+  background: var(--map-backdrop);
+}
+
+.map-canvas-host {
+  position: absolute;
+  inset: 0;
+}
+
+.map-canvas-host canvas {
+  display: block;
+  touch-action: none;
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.map-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: map-spin 0.8s linear infinite;
+}
+
+@keyframes map-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.side-panel {
+  /* Width is user-controlled (SidePanelResizer) and restored from storage. */
+  width: 320px;
+  flex: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+}

@@ -53,7 +53,7 @@ all-small-caps`; Jost nie ma prawdziwych kapitalików, więc syntetyzuje je prze
 ### Gdzie leżą
 
 `packages/client/public/fonts/` — `jost-var-latin.woff2`, `jost-var-latin-ext.woff2`
-i `LICENSE-jost.txt`. Deklaracje `@font-face` stoją na początku `packages/client/src/styles.css`,
+i `LICENSE-jost.txt`. Deklaracje `@font-face` stoją na początku `packages/client/src/styles/01-base.css`,
 razem z krojami gazetowymi z etapu 24c.
 
 Dwie rzeczy warte zapamiętania:

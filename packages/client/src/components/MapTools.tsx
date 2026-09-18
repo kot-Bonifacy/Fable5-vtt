@@ -92,7 +92,7 @@ import {
  * The buttons carry no chrome: an icon that lights up in the accent colour
  * reads faster than the same icon inside a box that also changes colour, and
  * it keeps the map underneath visible. Contrast over a bright map comes from
- * the icons' own drop shadow (see `.map-tool` in styles.css), and the hit area
+ * the icons' own drop shadow (see `.map-tool` in styles/10-map-combat.css), and the hit area
  * stays a comfortable square regardless of how small the glyph draws.
  */
 export function MapTools() {

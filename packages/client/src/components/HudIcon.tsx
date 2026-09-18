@@ -23,7 +23,7 @@ interface HudIconProps {
 }
 
 export function HudIcon({ name, className }: HudIconProps) {
-  // Zmienna CSS zamiast `mask-image` wprost: `styles.css` trzyma wtedy całą
+  // Zmienna CSS zamiast `mask-image` wprost: `styles/12-hud.css` trzyma wtedy całą
   // mechanikę maski (rozmiar, powtarzanie, tło), a komponent podaje sam adres.
   const style = { '--hud-icon': `url("/icons/hud/${name}.svg")` } as CSSProperties;
   return (

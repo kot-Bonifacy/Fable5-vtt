@@ -1,0 +1,267 @@
+/* styles/18-check-calls.css — część 18/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: wezwanie MG do Testu (32), prośba gracza (40), kopie zapasowe (33).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* --- etap 32: wezwanie MG do Testu --- */
+
+/* Kubek, który czeka na wezwanie. Bursztyn zamiast zieleni rzutu z karty:
+   ten rzut nie jest pomysłem gracza, tylko czyjąś prośbą, i musi się różnić
+   jednym spojrzeniem. Oddech mocniejszy (ta sama klatka, co przy kreatorze),
+   bo kubek stoi w rogu, a wydarzenie dzieje się na środku stołu. */
+.dice-cup--call {
+  --cup-glow: var(--warn-rgb);
+  color: var(--warn);
+  border-color: var(--warn);
+  animation: dice-cup-call 1.2s ease-in-out infinite;
+}
+
+.chat-check {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-check--cancelled {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-check-modifier {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Ramka wezwania w oknie rzutu — powtarza to, co stoi na karcie czatu, bo
+   gracz decyduje o Szczęściu tutaj, a nie tam. */
+.roll-call-frame {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.roll-call-prompt {
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+/* Drabinka PT: siedem szczebli, więc zawija się zamiast rozpychać okno. */
+.check-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.check-call-dialog {
+  max-width: 26rem;
+}
+
+/*
+ * Prośba gracza o Test (etap 40) — druga strona wezwania.
+ *
+ * Ta sama bursztynowa krawędź, co przy `.chat-check`, i to jest umyślne: obie
+ * karty są zapowiedzią rzutu, a stół ma je czytać jednym spojrzeniem jako
+ * jedną sprawę. Zamknięta prośba gaśnie tak, jak odwołane wezwanie.
+ */
+.chat-request {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-request--closed {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-request-note {
+  margin: 0.15rem 0 0.3rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* Drabinka na karcie czatu, a nie w oknie: zgoda ma być jednym kliknięciem.
+   Panel boczny bywa zwężony do 15 rem, więc szczeble układają się w siatkę
+   `auto-fit` — na szerokim panelu po dwa w rzędzie, na wąskim po jednym —
+   zamiast zawijać się w nierówną kaskadę. */
+.chat-request-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.2rem;
+  margin: 0.35rem 0 0.3rem;
+}
+
+.chat-request-ladder .small-button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+}
+
+.chat-request-refusal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.chat-request-refusal input {
+  width: 100%;
+}
+
+/* Plakietka przy zakładce „Czat": ile próśb o Test czeka na MG (etap 40).
+   Bursztyn, ten sam co karta prośby i wołający kubek — cała ta ścieżka mówi
+   jednym kolorem „ktoś czeka na twoją decyzję". */
+.side-tab-badge {
+  display: inline-block;
+  min-width: 1.05rem;
+  margin-left: 0.3rem;
+  padding: 0 0.25rem;
+  border-radius: 0.6rem;
+  background: var(--warn);
+  color: var(--bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+.check-request-dialog {
+  max-width: 24rem;
+}
+
+.check-request-what {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+/*
+ * Kopie zapasowe i pliki wymiany (etap 33) — zakładka MG „Kopie".
+ *
+ * Cztery sekcje jedna pod drugą, każda z tym samym rytmem: tytuł, rządek
+ * kontrolek, zdanie wyjaśniające. Rządki zawijają się jak `.ai-status-main`,
+ * bo panel boczny bywa zwężony do 15 rem, a lista rozwijana z nazwą postaci
+ * ściśnięta do zera nie mówi nic.
+ */
+.archive-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.6rem;
+  overflow-y: auto;
+}
+
+.archive-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.archive-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.archive-select {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.archive-file {
+  flex: 1 1 100%;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Ścieżka katalogu kopii: długa, więc łamie się w środku zamiast rozpychać panel. */
+.archive-path {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Kopii bywa trzydzieści osiem — lista dostaje własne przewijanie, żeby
+     „Zrzut kampanii" nie uciekał pod ekran. */
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.archive-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-panel);
+}
+
+.archive-row-name {
+  flex: 1 0 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.74rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.archive-row-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.archive-flag {
+  font-size: 0.72rem;
+  color: var(--warn);
+}
+
+.archive-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.archive-hint {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.archive-hint code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.72rem;
+  /* `anywhere`, nie `break-all`: polecenie ma się łamać na spacjach, dopóki się
+     da. `break-all` tnie w środku słowa nawet wtedy, gdy obok jest spacja —
+     w panelu wychodziło z tego „na zwa-kopii". */
+  overflow-wrap: anywhere;
+}
+
+.archive-ok {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ok-ink);
+}

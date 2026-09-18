@@ -1,0 +1,533 @@
+/* styles/11-actions.css — część 11/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: budżet tury i Akcje (14b), skok zegara, tabele losowe, automaty tury (14e).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ---- Ekonomia akcji: budżet tury i akcje (etap 14b) ---- */
+
+.combat-budget {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--border);
+}
+
+.combat-budget-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.combat-budget-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.combat-budget-pips {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.combat-budget-pip {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+}
+
+.combat-budget-pip--spent {
+  background: var(--warn);
+}
+
+/* Past the budget: only the GM's own NPCs ever get here. */
+.combat-budget-pip--over {
+  border-color: var(--err);
+  background: var(--err);
+}
+
+/* Metres left this turn (stage 14c) — a fraction, not pips: movement is
+   continuous, and „7,5 / 12 m" is what the player has to read at a glance. */
+.combat-budget-distance {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.combat-budget-distance--over {
+  color: var(--err);
+}
+
+.combat-budget-flag {
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgb(var(--warn-rgb) / 18%);
+  color: var(--warn);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.combat-budget-flag--over {
+  background: rgb(var(--err-rgb) / 18%);
+  color: var(--err);
+}
+
+/* Budget in the left rail (stage 27h): the same numbers, sized for the panel a
+   player looks at before every move. Stacked instead of strung along a strip,
+   because here there is a column to use and no queue to sit beside. */
+.combat-budget--rail {
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border-left: none;
+  background: var(--veil-faint);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.combat-budget--rail .combat-budget-pip {
+  width: 0.62rem;
+  height: 0.62rem;
+}
+
+.combat-budget--rail .combat-budget-distance {
+  flex: 1 0 100%;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+}
+
+/* Metres spent, as a shape. The fraction stays next to it — one is for the
+   glance, the other for the sentence said out loud at the table. */
+.combat-budget-track {
+  flex: 1;
+  height: 0.32rem;
+  min-width: 3rem;
+  border-radius: 2px;
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+
+.combat-budget-track-fill {
+  display: block;
+  height: 100%;
+  background: var(--info);
+  transition: width 200ms ease-out;
+}
+
+.combat-budget-distance--over .combat-budget-track-fill {
+  background: var(--err);
+}
+
+.combat-budget-metres {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-chip-held {
+  font-size: 0.7rem;
+  color: var(--warn);
+}
+
+.combat-row-held {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.66rem;
+  color: var(--warn);
+}
+
+.combat-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Zwarcie (stage 14d) — its own block, because which buttons it shows depends
+   on a relation rather than on the budget above it. */
+.combat-grapple {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+.combat-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.combat-hint--held {
+  color: var(--warn);
+}
+
+.combat-hold-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+}
+
+.combat-hold-form label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.combat-hold-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-action {
+  border-left: 3px solid var(--border);
+  padding-left: 0.5rem;
+}
+
+.chat-action--refused {
+  border-left-color: var(--err);
+}
+
+.chat-action--overspent {
+  border-left-color: var(--warn);
+}
+
+.chat-economy {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.chat-economy-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.chat-economy-lines li {
+  padding: 0.05rem 0;
+}
+
+.chat-economy-summary {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Dzień odpoczynku i podana dawka — zielona krawędź jak przy karcie ekonomii,
+   bo to też jest rozliczenie przerwy między scenami, a nie zdarzenie walki. */
+.chat-recovery {
+  border-left: 3px solid var(--ok);
+  padding-left: 0.5rem;
+}
+
+.chat-recovery--warn {
+  border-left-color: var(--warn);
+}
+
+.chat-recovery-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-recovery-hp {
+  color: var(--ok);
+}
+
+/* Data w świecie gry przy wpisie dziennika (etap 37) — cichsza od daty sesji:
+   to dopisek do kroniki, nie jej klucz porządkujący. */
+.journal-world-date {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Skok zegara świata (etap 37) — cezura przerwy, nie zdarzenie walki. */
+
+.chat-time {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-time--back {
+  border-left-color: var(--warn);
+}
+
+.chat-time-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-time-days {
+  color: var(--info);
+}
+
+.chat-time-span {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.chat-time-from {
+  color: var(--text-dim);
+}
+
+/* Tabele losowe (etap 34).
+
+   Karta ma fioletową krawędź — ani zielona przerwa (odpoczynek), ani niebieski
+   zegar, ani czerwona walka: losowanie fabularne jest osobną rubryką stołu.
+   Kości są tu celowo nieomalowane (`plain`): dziesiątka znaczy „wiersz
+   dziesiąty", a nie krytyk. */
+
+.chat-table {
+  border-left: 3px solid var(--fate);
+  padding-left: 0.5rem;
+}
+
+.chat-table--secret {
+  border-left-style: dashed;
+}
+
+.chat-table-steps {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chat-table-step {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.chat-table-sub {
+  flex: 0 0 100%;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.chat-table-dice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+}
+
+.chat-table-value {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: 700;
+  color: var(--fate);
+}
+
+.chat-table-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.chat-table-text--missing {
+  color: var(--warn);
+}
+
+.chat-table-shown {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Zakładka „Tabele" — wiersze edytora są siatką „od–do · treść · podrzut". */
+
+.table-rows-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.table-rows {
+  list-style: none;
+  margin: 0.2rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.table-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.table-row-num {
+  width: 3.4rem;
+  flex: none;
+}
+
+.table-row-dash {
+  align-self: center;
+  color: var(--text-dim);
+}
+
+.table-row-text {
+  flex: 1 1 6rem;
+  min-width: 0;
+  resize: vertical;
+}
+
+/* Wiersz podręcznikowej tabeli bywa akapitem na 1 400 znaków, a lista dwustu
+   takich pól nie zmieściłaby się na ekranie. Kompromis: jedna linia w spoczynku,
+   pełne okno pod kursorem — bez zmiany wysokości sąsiadów. */
+.table-row-text:focus {
+  min-height: 7rem;
+}
+
+.table-row-sub {
+  flex: 0 1 8rem;
+  min-width: 0;
+}
+
+.table-issues {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  color: var(--warn);
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.table-roll {
+  font-weight: 600;
+}
+
+.chat-action-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.chat-action-name {
+  font-weight: 600;
+}
+
+.chat-action-note {
+  color: var(--text-dim);
+}
+
+.chat-action-badge {
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgb(var(--warn-rgb) / 18%);
+  color: var(--warn);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chat-action-refusal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--err);
+}
+
+/* --- stage 14e: turn automation (periodic damage, injuries, reminders) --- */
+
+/* „Przygwożdżony — rusz się do osłony": a nudge on the bar, in front of the
+   person whose turn it is. Warning colours, not error ones — nothing here
+   refuses anything. */
+.combat-bar-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  /* Shares the bar with the queue now, so it yields space instead of taking
+     it: the full sentence is in the tooltip either way. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  background: rgb(var(--remind-rgb) / 12%);
+  color: var(--warn);
+  font-size: 0.8rem;
+}
+
+/* A debt the next turn already carries („Uraz kręgosłupa: bez Akcji"). Reads
+   like the Hold line above it, one notch dimmer: it is not happening yet. */
+.combat-row-held--owes {
+  color: var(--err);
+}
+
+/* The GM's switchboard for fire, poison and drowning. */
+.combat-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+.combat-effect-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.combat-effect-name {
+  flex: 1 1 8rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.combat-effect-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.combat-effect-target select {
+  flex: 1;
+}

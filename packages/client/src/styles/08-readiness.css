@@ -1,0 +1,255 @@
+/* styles/08-readiness.css — część 8/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: rangi szkiców, gotowość do gry, czynności po kreatorze, uchwyt panelu bocznego.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ===== Rangi szkiców w zakładce „Postacie" (naprawa 2b) ===== */
+
+.creation-ranks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: 6px;
+  background: var(--bg-inset);
+}
+
+.creation-ranks-title {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.creation-ranks-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.creation-ranks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.creation-rank-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+}
+
+.creation-rank-row--waiting {
+  border-color: var(--warn);
+}
+
+.creation-rank-who {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.creation-rank-state {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+
+.creation-rank-row--waiting .creation-rank-state {
+  color: var(--warn-bright);
+  font-weight: 600;
+}
+
+.creation-rank-error {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* ===== Gotowość do gry i czynności po kreatorze (naprawa 3c) ===== */
+
+/* Ta sama skrzynka co rangi wyżej — dwie listy MG w jednej zakładce mają
+   wyglądać jak dwie pozycje tej samej kolejki, nie jak dwa wynalazki. */
+.creation-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: 6px;
+  background: var(--bg-inset);
+}
+
+.creation-ready-row {
+  align-items: baseline;
+}
+
+.creation-ready-chores {
+  flex: 1 1 100%;
+}
+
+/* Lista czynności po kreatorze — wspólna dla kreatora, karty i listy MG.
+   Wiersz zawija się na wąskim panelu bocznym, a „Przejdź" zostaje przy
+   prawej krawędzi. */
+.role-chores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role-chore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.role-chore-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.role-chore-page {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.role-chore-go {
+  flex: 0 0 auto;
+}
+
+.character-panel-note {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.compendium-warning {
+  font-size: 0.72rem;
+  color: var(--warn-bright);
+}
+
+.compendium-assign {
+  display: flex;
+  /* Stage 23b put three buttons here (kup / montaż / za darmo) and without a
+     wrap the character picker collapsed to a one-pixel sliver. */
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.compendium-assign select {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+}
+
+/* Poziom ripperdoca (04.09.2026) — jedna liczba obok listy chirurgów, więc
+   nie ma prawa rozpychać wiersza jak dwa selecty obok. */
+.compendium-surgeon-skill {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  text-align: center;
+}
+
+.compendium-note {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Naprawa 3b: MG przesuwa jeden wpis na inny poziom w tej kampanii. */
+.compendium-tier-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.compendium-editor {
+  max-width: 34rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Three number fields in a row overflow a narrow dialog; let them wrap. */
+.compendium-editor .bot-row-inline {
+  flex-wrap: wrap;
+}
+
+/* Haki tury na wierszu rany (14e) — jedna kolumna, bo etykiety są zdaniami. */
+.compendium-editor .injury-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.15rem 0;
+}
+
+.compendium-editor .bot-field--inline {
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+
+.compendium-editor input,
+.compendium-editor select,
+.compendium-editor textarea {
+  max-width: 100%;
+}
+
+.compendium-original {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.compendium-original summary {
+  cursor: pointer;
+}
+
+/* --- Side panel resizer -------------------------------------------------- */
+
+.side-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  z-index: 6;
+  background: transparent;
+}
+
+.side-resizer:hover,
+.side-resizer:focus-visible,
+body.is-resizing .side-resizer {
+  background: var(--accent);
+  opacity: 0.55;
+  outline: none;
+}
+
+/* While dragging, keep the pointer from selecting text or hitting the map. */
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* A wider panel should spread the stats out rather than stretch two columns. */
+.compendium-range th,
+.compendium-range td {
+  white-space: nowrap;
+}

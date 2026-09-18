@@ -412,7 +412,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
   przygasa scrimem, `Escape` działa, a w DOM-ie okno stoi z prawidłowymi rozmiarami — tylko widać
   je zero. Pierwsza reakcja („kliknięcie nie doszło") prowadzi w kompletnie inne miejsce.
   **Rozpoznanie:** `document.elementFromPoint(x, y)` na środku okna zwraca element karty postaci.
-  **Naprawa:** dopisz klasę okna do listy `.dialog-backdrop:has(…)` w `styles.css` — jest tam od
+  **Naprawa:** dopisz klasę okna do listy `.dialog-backdrop:has(…)` w `styles/06-sheet-window.css` — jest tam od
   27a, dla `.roll-dialog`, i z tego samego powodu.
 
 - **Prosty cudzysłów w atrybucie JSX zamyka atrybut.** `title="notacja („−1k6") jest…"` to dwa

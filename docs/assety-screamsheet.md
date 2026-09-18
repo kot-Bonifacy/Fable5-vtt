@@ -16,7 +16,7 @@ tekstu licencji, co robimy):
 
 `packages/client/public/fonts/` — pliki `.woff2` plus `LICENSE-anton.txt`,
 `LICENSE-oswald.txt` i `LICENSE-ptserif.txt`. Vite serwuje je pod `/fonts/`, a deklaracje
-`@font-face` stoją na początku `packages/client/src/styles.css`.
+`@font-face` stoją na początku `packages/client/src/styles/01-base.css`.
 
 Dwie decyzje warte zapamiętania:
 
@@ -40,7 +40,7 @@ kroju bierze się z `https://raw.githubusercontent.com/google/fonts/main/ofl/<kr
 
 ## Papier i „szpalty"
 
-Bez assetów: tło gazety to gradient CSS (`.screamsheet` w `styles.css`), a podział na szpalty
+Bez assetów: tło gazety to gradient CSS (`.screamsheet` w `styles/15-screamsheet.css`), a podział na szpalty
 robi `column-width: 15rem`, więc w wąskim oknie handoutu tekst sam schodzi do jednej kolumny.
 Wgrana grafika handoutu staje się zdjęciem prasowym — `filter: grayscale(.75) contrast(1.15)`
 robi z niej odbitkę gazetową, bez ruszania oryginalnego pliku.

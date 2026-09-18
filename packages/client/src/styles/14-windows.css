@@ -1,0 +1,683 @@
+/* styles/14-windows.css — część 14/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: karta obiektu sceny (27l), ustawienia (27d), zegar (37), skróty (27f), markdown, linia czatu.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* --- karta obiektu sceny (etap 27l) ---------------------------------------
+
+   Jedno okno na siedem rodzajów tego, co stoi na mapie. Do 27l karty miały
+   trzy różne domy — gniazdo i strefa wisiały przypięte w rogu mapy, notatka
+   miała własny panel pod paskiem — a cztery rodzaje nie miały karty w ogóle.
+   Geometria jest tą samą, którą mają pozostałe pływające okna (`handout-window`
+   z 24a), bo „to samo okno" z kryteriów etapu znaczy także „tak samo się je
+   przesuwa i skaluje". */
+
+.scene-card {
+  position: fixed;
+  z-index: 325;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(72vh, 780px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  /* Cień „panelu nad mapą", ten sam, który nosił edytor notatki do 27l: karta
+     leży na mapie, a nie na tle aplikacji. */
+  box-shadow: var(--map-shadow-panel);
+  overflow: hidden;
+}
+
+/* Ramka mówi, na co się patrzy, zanim przeczyta się tytuł — to samo
+   rozróżnienie, które karty gniazda i strefy miały osobno do 26f. */
+.scene-card[data-kind='netpoint'] {
+  border-color: var(--net-line);
+}
+
+.scene-card[data-kind='zone'] {
+  border-color: var(--net-zone-line);
+}
+
+.scene-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.scene-card-header:active {
+  cursor: grabbing;
+}
+
+/* Ikona jest tą samą, którą nosi narzędzie na pasku: karta ma się czytać jako
+   „to, co przed chwilą kliknąłem tamtym narzędziem". */
+.scene-card-icon {
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  color: var(--map-ink-bright);
+}
+
+.scene-card-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-card-body {
+  padding: 0.6rem 0.7rem;
+  overflow-y: auto;
+}
+
+.scene-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Druga sekcja karty gniazda („kto się podłącza") — jedyna, którą widzi gracz,
+   więc jest oddzielona kreską od edytora MG nad nią. */
+.scene-card-jack {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Rząd przycisków-wyborów: rodzaj ściany, rozmiar pisma, warstwa rysunku. */
+.scene-card-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.scene-card-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Próbka koloru: barwa przychodzi z danych (`style`), więc arkusz odpowiada
+   wyłącznie za kształt i za to, którą widać jako wybraną. */
+.scene-card-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 2px solid var(--swatch-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.scene-card-swatch--on {
+  border-color: var(--map-swatch-active);
+  box-shadow: var(--map-shadow-swatch);
+}
+
+.scene-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem 0.6rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Zdanie obok kosza mówi to samo, co pasek narzędzi nad mapą — kasowanie ma
+   jedną gramatykę (27k) i karta jej nie zmienia, tylko o niej przypomina. */
+.scene-card-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* --- okno ustawień (etap 27d) --------------------------------------------- */
+
+.settings-window {
+  position: fixed;
+  z-index: 340;
+  width: min(400px, calc(100vw - 24px));
+  max-height: min(80vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.settings-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.settings-window-header:active {
+  cursor: grabbing;
+}
+
+.settings-window-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.settings-window-body {
+  padding: 0.7rem 0.9rem 1rem;
+  overflow-y: auto;
+}
+
+.settings-group + .settings-group {
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   Okno zegara świata (etap 37)
+
+   Dzieli chrom z oknem ustawień (belka, ciało, ✕, uchwyt rozciągania) i różni
+   się wyłącznie treścią. Godzina jest największą liczbą w oknie, bo po nią się
+   tu przychodzi; data i dzień tygodnia stoją obok w jednej linii.
+   --------------------------------------------------------------------------- */
+
+.clock-window {
+  width: min(360px, calc(100vw - 24px));
+}
+
+.clock-now {
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.clock-now-time {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.clock-now-date {
+  font-size: 0.95rem;
+}
+
+.clock-now-weekday {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Skoki i para guzików rozliczenia — jeden rządek, zawijany na wąskim oknie. */
+.clock-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.clock-exact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.clock-exact input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.clock-prompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.clock-prompt--due {
+  color: var(--warn);
+}
+
+.clock-rest {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clock-rest li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.clock-rest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clock-rest-hp {
+  flex: none;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Okno skrótów `?` (etap 27f)
+
+   Dzieli chrom z oknem ustawień (belka, ciało, ✕) i różni się tylko treścią:
+   dwie kolumny, w lewej klawisz, w prawej zdanie. Szerokość klawisza jest
+   stała, żeby zdania zaczynały się w jednej linii pionowej — lista czyta się
+   wtedy jak spis, a nie jak akapit z pogrubieniami.
+   --------------------------------------------------------------------------- */
+.shortcuts-window {
+  width: min(640px, calc(100vw - 24px));
+  height: min(80vh, 760px);
+  container-type: inline-size;
+}
+
+.shortcuts-toolbar {
+  padding: 0.85rem 1rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.shortcuts-intro {
+  margin: 0 0 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.shortcuts-intro span {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.shortcuts-search {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+}
+
+.shortcuts-search input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  background: var(--bg-inset-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: inherit;
+}
+
+.shortcuts-search-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.shortcuts-body {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.shortcuts-group {
+  margin-bottom: 1.4rem;
+}
+
+.shortcuts-group:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-group .settings-group-title {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: grid;
+  grid-template-columns: minmax(0, 11.5rem) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: baseline;
+  padding: 0.55rem 0.45rem;
+  border-radius: 4px;
+}
+
+.shortcuts-row:nth-child(odd) {
+  background: var(--bg-inset-2);
+}
+
+.shortcuts-row dt {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0;
+  min-width: 0;
+}
+
+.shortcuts-key-part {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.shortcuts-row dd {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.shortcuts-row kbd {
+  display: inline-block;
+  min-width: 1.4rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.shortcuts-role {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.shortcuts-empty {
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+@container (max-width: 420px) {
+  .shortcuts-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+}
+
+.shortcuts-plus {
+  padding: 0 0.15rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.settings-group-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0;
+  font-size: 0.85rem;
+}
+
+/* Przełącznik ma opis pod nazwą, więc pole wyrównuje się do pierwszej linii. */
+.settings-row--switch {
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.settings-row--switch input {
+  margin-top: 0.15rem;
+}
+
+.settings-label {
+  flex: 0 0 8.4rem;
+}
+
+.settings-row input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.settings-value {
+  flex: 0 0 2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.settings-hint,
+.settings-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.settings-note {
+  margin: 0 0 0.5rem;
+}
+
+.settings-skins {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings-skin {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.settings-skin:hover {
+  border-color: var(--text-dim);
+}
+
+.settings-skin--on {
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 8%);
+}
+
+/* Kropka podglądu: kolor oczek skórki na tle ścianki — dwie informacje
+   w jednym elemencie, bez renderowania kości w miniaturze. */
+.settings-skin-swatch {
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  border: 1px solid var(--swatch-edge);
+  box-shadow: inset 0 0 0 1px var(--swatch-gloss);
+}
+
+.settings-skin-text {
+  min-width: 0;
+}
+
+.settings-skin-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.settings-skin-description {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+/* Rządek próbek dźwięku (27i). Przyciski są celowo małe i gęste: to nie jest
+   wybór ustawienia, tylko „posłuchaj, czy ta próbka pasuje" — jedna z rzeczy,
+   których nie dało się rozstrzygnąć przy dobieraniu paczek CC0. */
+.settings-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.settings-sample,
+.settings-action {
+  padding: 0.22rem 0.5rem;
+  font: inherit;
+  font-size: 0.76rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.settings-sample:hover,
+.settings-action:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+/* Guzik pod przełącznikiem stoi pod jego nazwą, nie pod polem wyboru. */
+.settings-action {
+  margin: 0 0 0.35rem 1.45rem;
+}
+
+/* --- markdown ------------------------------------------------------------ */
+
+.markdown {
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.markdown > * + * {
+  margin-top: 0.55rem;
+}
+
+.markdown .md-h {
+  line-height: 1.25;
+}
+
+.markdown .md-h1 {
+  font-size: 1.15rem;
+}
+
+.markdown .md-h2 {
+  font-size: 1rem;
+}
+
+.markdown .md-h3 {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.markdown .md-list {
+  padding-left: 1.2rem;
+}
+
+.markdown .md-quote {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.6rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.markdown .md-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.markdown .md-pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  overflow-x: auto;
+  font-size: 0.78rem;
+}
+
+.markdown .md-code {
+  background: var(--bg);
+  border-radius: 3px;
+  padding: 0 0.2rem;
+  font-size: 0.8rem;
+}
+
+.markdown a {
+  color: var(--accent);
+}
+
+/* --- linia na czacie ----------------------------------------------------- */
+
+.chat-handout {
+  border-left: 3px solid var(--whisper);
+  padding-left: 0.5rem;
+}
+
+.chat-handout-body {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-handout-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.chat-handout-gone {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}

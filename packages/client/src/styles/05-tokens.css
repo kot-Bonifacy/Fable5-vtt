@@ -1,0 +1,353 @@
+/* styles/05-tokens.css — część 5/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: figury (etap 05) i zakładka „Postacie”.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* ===== Tokeny (etap 05) ===== */
+
+.map-canvas-host--placing canvas {
+  cursor: crosshair !important;
+}
+
+.map-placement-hint {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.9rem;
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  /* `--map-ink`, nie `--text`: panel nad mapą jest ciemny w obu motywach
+     (`--map-panel` nie ma pary dziennej i mieć nie ma), więc tekst w kolorze
+     pisma aplikacji znikał w dzień — czarne na czarnym. Znalezione 23.08 przy
+     oględzinach 27k; dotyczyło wszystkich podpowiedzi nad mapą, nie tylko
+     nowej. */
+  color: var(--map-ink);
+  font-size: 0.85rem;
+  pointer-events: none;
+  user-select: none;
+  z-index: 20;
+}
+
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+}
+
+.context-menu-title {
+  margin: 0.15rem 0.5rem 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: var(--veil);
+}
+
+.context-menu-item--danger {
+  color: var(--err-ink);
+}
+
+.context-menu-section {
+  margin: 0.4rem 0.5rem 0.2rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* Pustka pod „Boi się:" — scena z jedną figurą nie ma kogo się bać (23c). */
+.context-menu-empty {
+  margin: 0 0.5rem 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.context-menu-statuses {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.context-menu-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.context-menu-status:hover {
+  background: var(--veil);
+}
+
+.context-menu-status .status-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--scrim);
+}
+
+.dialog {
+  width: min(22rem, 92vw);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog select {
+  padding: 0.4rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.token-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.token-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  gap: 0.4rem;
+}
+
+.token-asset-item {
+  position: relative;
+  display: flex;
+}
+
+.token-asset {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.token-asset:hover {
+  border-color: var(--accent);
+}
+
+.token-asset--armed {
+  border-color: var(--armed);
+  box-shadow: 0 0 0 1px var(--armed);
+}
+
+.token-asset img {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.token-asset-name {
+  font-size: 0.68rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kosz biblioteki (27.08) — te same trzy reguły, co przy puli portretów:
+   ✕ wychodzi spod kursora, potwierdzenie siada na dole kafelka. */
+.token-asset-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  padding: 0 0.25rem;
+  opacity: 0;
+}
+
+.token-asset-item:hover .token-asset-remove,
+.token-asset-remove:focus-visible {
+  opacity: 1;
+}
+
+.token-asset-confirm {
+  position: absolute;
+  inset: auto 0 0 0;
+  /* Kafelek żetonu jest o połowę węższy od portretowego (4,2 rem), więc dwa
+     przyciski obok siebie rozpychały siatkę — stąd kolumna i mniejsze pismo. */
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: stretch;
+  padding: 0.15rem;
+  background: var(--bg);
+  border-radius: 0 0 8px 8px;
+}
+
+.token-asset-confirm .small-button {
+  padding: 0.05rem 0.2rem;
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+/* ===== Characters: side panel tab (stage 07) ===== */
+
+.character-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.character-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.character-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.character-open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.character-open:hover {
+  border-color: var(--accent);
+}
+
+.character-thumb {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.character-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  border: 1px dashed var(--border);
+  color: var(--text-dim);
+}
+
+.character-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.character-row-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-row-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.character-row-actions select {
+  max-width: 6.5rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem;
+  font-size: 0.75rem;
+}
+
+.character-delete {
+  color: var(--err);
+}
+
+.character-create select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem;
+}

@@ -682,7 +682,7 @@ Otwarte kwestie wskazano poniżej.
 
 - `packages/client/src/components/CharacterCreator.tsx` — kroki, pola i komunikaty.
 - `packages/client/src/stores/creationStore.ts` — kolejka, szkic i obsługa błędów.
-- `packages/client/src/styles.css` — sekcja `.creator-*`.
+- `packages/client/src/styles/16-creator.css` — sekcja `.creator-*`.
 - `packages/shared/src/systems/cpred/creation.ts` — zasady i konwersja na kartę.
 - `packages/server/src/realtime/creation.ts` — zapis, losowania, zakupy i zakończenie.
 - `packages/shared/src/systems/cpred/character.ts` — model karty i specjalizacji.

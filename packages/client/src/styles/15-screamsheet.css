@@ -1,0 +1,167 @@
+/* styles/15-screamsheet.css — część 15/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: screamsheet i jego formularz (24c).
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* --- screamsheet (etap 24c) ----------------------------------------------
+   Wycinek z brukowca leży w UI jak kartka na stole: własny papier i własne
+   kroje (Anton na nagłówek, Oswald na winietę, PT Serif na tekst). Tokeny
+   `--paper`, `--ink`, `--ink-dim` i `--newsprint-*` żyją w `theme.css` **poza**
+   parą noc/dzień — gazeta ma wyglądać jak papier niezależnie od tego, co dzieje
+   się z resztą interfejsu. */
+.screamsheet {
+  background:
+    linear-gradient(115deg, var(--paper-shade-1) 0%, var(--paper-sheen) 45%, transparent 70%),
+    var(--paper);
+  color: var(--ink);
+  font-family: 'PT Serif', Georgia, serif;
+  padding: 0.9rem 1rem 0.8rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 40px var(--paper-stain);
+}
+
+.screamsheet-masthead {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--newsprint-red);
+  border-bottom: 3px double var(--ink);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.screamsheet-headline {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-weight: 400;
+  /* Skaluje się z szerokością okna: ten sam nagłówek czyta się w wąskim oknie
+     handoutu i w szerokim podglądzie formularza. */
+  font-size: clamp(1.5rem, 5.5cqw + 0.6rem, 2.6rem);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.screamsheet-lead {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  border-bottom: 1px solid var(--newsprint-rule);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.screamsheet-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 0.6rem;
+  filter: grayscale(0.75) contrast(1.15);
+  border: 1px solid var(--newsprint-rule);
+}
+
+/* Szpalty zwijają się do jednej same, gdy okno jest wąskie — `column-width`
+   zamiast `column-count` robi to bez zapytania medialnego. */
+.screamsheet-body {
+  column-width: 15rem;
+  column-gap: 1.4rem;
+  column-rule: 1px solid var(--newsprint-rule);
+  text-align: justify;
+  hyphens: auto;
+}
+
+.screamsheet-body .markdown {
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+/* Pierwszy akapit zaczyna się przy krawędzi, następne z wcięciem — tak jak
+   w druku, gdzie odstępy między akapitami są luksusem. */
+.screamsheet-body .markdown > p + p {
+  margin-top: 0;
+  text-indent: 1.1em;
+}
+
+.screamsheet-body .markdown .md-h {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.screamsheet-body .markdown .md-h3 {
+  color: var(--ink-dim);
+}
+
+.screamsheet-body .markdown .md-quote {
+  border-left-color: var(--newsprint-red);
+  color: var(--ink-dim);
+}
+
+.screamsheet-body .markdown .md-rule {
+  border-top-color: var(--newsprint-rule);
+}
+
+.screamsheet-body .markdown .md-pre,
+.screamsheet-body .markdown .md-code {
+  background: var(--paper-shade);
+  border-color: var(--newsprint-rule);
+  color: var(--ink);
+}
+
+.screamsheet-body .markdown a {
+  color: var(--newsprint-red);
+}
+
+.screamsheet-footer {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-top: 3px double var(--ink);
+  margin-top: 0.7rem;
+  padding-top: 0.35rem;
+}
+
+/* Gazeta wypełnia okno po sam brzeg — margines wokół papieru wyglądałby jak
+   ramka, a nie jak wycinek. `container-type` karmi `cqw` w nagłówku. */
+.handout-window-body--screamsheet {
+  padding: 0;
+  container-type: inline-size;
+}
+
+.handout-preview:has(.screamsheet) {
+  padding: 0;
+  border-style: solid;
+  container-type: inline-size;
+}
+
+/* --- formularz screamsheetu ---------------------------------------------- */
+
+.screamsheet-generator {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+}
+
+.screamsheet-topic {
+  flex: 1;
+  min-width: 0;
+}
+
+.screamsheet-furniture {
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.screamsheet-furniture .bot-field {
+  flex: 1;
+  min-width: 0;
+}

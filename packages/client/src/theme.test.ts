@@ -15,6 +15,15 @@ import { describe, expect, it } from 'vitest';
 const SRC = import.meta.dirname;
 const read = (name: string) => readFileSync(join(SRC, name), 'utf8');
 
+/**
+ * `styles.css` jest od 18.09 samym spisem `@import` — 19 plików w `styles/`,
+ * po jednym na obszar. Lista bierze się z tego spisu, nie z katalogu: plik,
+ * którego nikt nie importuje, nie trafia do aplikacji, więc i tu nie ma czego
+ * pilnować; a błąd ma wskazać konkretny plik, nie „styles.css”.
+ */
+const STYLE_PARTS = [...read('styles.css').matchAll(/@import '\.\/([^']+)';/g)].map((m) => m[1]!);
+const CSS_FILES = [...STYLE_PARTS, 'chrome.css', 'sheet.css'];
+
 /** `#rgb`, `#rrggbb`, `rgb(12 34 56)`, `rgba(1, 2, 3, .4)` — ale nie `rgb(var(--x))`. */
 const COLOUR_LITERAL = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]/g;
 
@@ -44,7 +53,7 @@ function tokensUsedIn(css: string): Set<string> {
 }
 
 describe('motyw (etap 27e)', () => {
-  for (const file of ['styles.css', 'chrome.css', 'sheet.css']) {
+  for (const file of CSS_FILES) {
     it(`${file} nie zapisuje koloru wprost`, () => {
       const found = [...stripComments(read(file)).matchAll(COLOUR_LITERAL)]
         .map((m) => m[0])
@@ -55,7 +64,7 @@ describe('motyw (etap 27e)', () => {
 
   it('każdy użyty token jest zdefiniowany w theme.css', () => {
     const defined = new Set(tokensDefinedIn(read('theme.css')));
-    const used = tokensUsedIn(['styles.css', 'chrome.css', 'sheet.css'].map(read).join('\u000a'));
+    const used = tokensUsedIn(CSS_FILES.map(read).join('\u000a'));
     /**
      * Tokeny ustawiane w miejscu przez samą regułę albo przez komponent — nie
      * należą do motywu, bo ich wartość zależy od stanu elementu, a nie od pory
@@ -69,9 +78,7 @@ describe('motyw (etap 27e)', () => {
   it('theme.css nie wozi tokenu bez odbiorcy', () => {
     const theme = read('theme.css');
     const defined = new Set(tokensDefinedIn(theme));
-    const used = tokensUsedIn(
-      [read('styles.css'), read('chrome.css'), read('sheet.css'), theme].join('\u000a'),
-    );
+    const used = tokensUsedIn([...CSS_FILES.map(read), theme].join('\u000a'));
     expect([...defined].filter((t) => !used.has(t))).toEqual([]);
   });
 
@@ -106,7 +113,7 @@ describe('motyw (etap 27e)', () => {
         .map((part) => lastCompound(part.trim()))
         .some((compound) => /^(button|\.[a-z0-9-]*(button|tool))(?![a-z0-9-])/i.test(compound));
     const offenders: string[] = [];
-    for (const file of ['styles.css', 'chrome.css', 'sheet.css']) {
+    for (const file of CSS_FILES) {
       for (const rule of stripComments(read(file)).matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
         const selector = (rule[1] ?? '').replace(/\s+/g, ' ').trim();
         const body = rule[2] ?? '';

@@ -1,0 +1,604 @@
+/* styles/02-chat-dice.css — część 2/19 dawnego `styles.css` (podział 18.09.2026).
+   Zawartość: obecność, czat, wiersze NPC, kości 3D, kubek, karty rzutów, filtry czatu.
+   Kolejność plików to kolejność kaskady — wczytuje je `styles.css` przez `@import`;
+   nowe reguły dopisuj do pliku swojego obszaru, nie na koniec ostatniego. */
+
+/* --- Presence --- */
+
+.presence {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.presence-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.presence-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.presence-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Chat --- */
+
+.chat-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.chat-feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.chat-message {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.chat-message-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.chat-message-author {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.chat-message-time {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-message-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.chat-message--whisper {
+  border-left: 2px solid var(--whisper);
+  padding-left: 0.5rem;
+}
+
+.chat-message--whisper .chat-message-text {
+  color: var(--whisper);
+  font-style: italic;
+}
+
+.chat-whisper-label {
+  font-size: 0.72rem;
+  color: var(--whisper);
+}
+
+.chat-note {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* A note that asks a question (stage 16c: „cel za osłoną"). The buttons drop
+   onto their own line so a long sentence never squeezes them out of reach. */
+.chat-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  font-style: normal;
+}
+
+/* --- NPC lines (bots and the GM's /jako — deliberately identical) --- */
+
+.chat-portrait {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  align-self: center;
+}
+
+.chat-portrait--empty {
+  display: grid;
+  place-items: center;
+  background: var(--bg-inset);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.chat-message--npc .chat-message-author {
+  color: var(--npc);
+}
+
+.chat-message--pending .chat-message-text--pending {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.chat-typing-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-stop {
+  padding: 0 0.3rem;
+  line-height: 1.2;
+}
+
+/* Wypowiedź NPC-a dopisuje się słowo po słowie, więc do czasu jej dokończenia
+   kończy się migającym kursorem. */
+.chat-typewriter-cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 0.1ch;
+  vertical-align: text-bottom;
+  background: var(--npc);
+  animation: typewriter-caret 1s steps(2, start) infinite;
+}
+
+@keyframes typewriter-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.bot-warning {
+  margin: 0.2rem 0 0.4rem;
+  color: var(--npc);
+  font-size: 0.82rem;
+}
+
+.bot-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+}
+
+.chat-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+/* GM-only diagnostics of a generated line. */
+.chat-bot-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.chat-bot-trace-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.chat-bot-trace-warning {
+  color: var(--warn);
+}
+
+/* --- 3D dice overlay --- */
+
+.dice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.dice-overlay--active {
+  opacity: 1;
+}
+
+.dice-overlay canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.dice-overlay-fun-badge {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: var(--map-badge);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dice-overlay--fun .dice-overlay-fun-badge {
+  opacity: 1;
+}
+
+/* --- Dice cup --- */
+
+.dice-cup {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  color: var(--text-dim);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.dice-cup:hover {
+  color: var(--text);
+}
+
+.dice-cup--hot {
+  --cup-glow: var(--accent-rgb);
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+}
+
+.dice-cup--gm {
+  --cup-glow: var(--whisper-rgb);
+  color: var(--whisper);
+  border-color: var(--whisper);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+}
+
+/* Rozkład Cech z kreatora (etap 25a). Własny kolor i mocniejszy oddech niż
+   przy zwykłym rzucie z karty: kubek stoi w rogu, a kreator zajmuje środek
+   ekranu, więc musi zawołać przez pół stołu. */
+.dice-cup--creation {
+  --cup-glow: var(--dice-creation-rgb);
+  color: var(--dice-creation);
+  border-color: var(--dice-creation);
+  animation: dice-cup-call 1.2s ease-in-out infinite;
+}
+
+@keyframes dice-cup-call {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(var(--cup-glow) / 45%);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgb(var(--cup-glow) / 85%);
+    transform: scale(1.08);
+  }
+}
+
+.dice-cup--shaking {
+  cursor: grabbing;
+  z-index: 80;
+  animation: dice-cup-rattle 0.12s linear infinite;
+}
+
+.dice-cup-label {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding-right: 0.25rem;
+}
+
+@keyframes dice-cup-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgb(var(--cup-glow) / 35%);
+  }
+  50% {
+    box-shadow: 0 0 14px rgb(var(--cup-glow) / 75%);
+  }
+}
+
+/* Amplitude follows the actual hand motion: --rattle is 0–9 (deg), set from
+   JS every frame and decaying to 0 when the cursor stops moving. */
+@keyframes dice-cup-rattle {
+  0% {
+    rotate: calc(var(--rattle, 0) * -1deg);
+  }
+  50% {
+    rotate: calc(var(--rattle, 0) * 1deg);
+  }
+  100% {
+    rotate: calc(var(--rattle, 0) * -1deg);
+  }
+}
+
+/* --- Roll result cards --- */
+
+.chat-roll-body {
+  margin-top: 0.2rem;
+  padding: 0.45rem 0.55rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+
+.chat-roll--gm .chat-roll-body {
+  border-left-color: var(--whisper);
+}
+
+.chat-roll-gm-label {
+  font-size: 0.72rem;
+  color: var(--whisper);
+  font-style: italic;
+}
+
+/* Baseline alignment was right while the total was the same size as the text
+   beside it. Now that it is two lines tall, a shared baseline would hang it
+   off the first line and leave the second one under its belly — centring keeps
+   the number level with however many lines the notation wraps to. */
+.chat-roll-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-roll-notation {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.chat-roll-flavor {
+  font-family: inherit;
+  font-style: italic;
+}
+
+/* The result of the roll — the one number the whole card exists for. Sized to
+   about two lines of the notation next to it, because every roll card carries
+   at least two lines anyway, and at text size the figure read as a footnote of
+   its own dice. `line-height: 1` is what makes „two lines tall" true rather
+   than approximate; tabular figures stop 11 from sitting narrower than 10. */
+.chat-roll-total {
+  margin-left: auto;
+  flex: none;
+  font-size: 2.1rem;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.chat-roll-dice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.chat-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.25rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chat-die--max {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.chat-die--min {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+.chat-die--extra {
+  border-style: dashed;
+}
+
+.chat-die--crit {
+  border-color: var(--ok);
+  color: var(--ok);
+  box-shadow: 0 0 5px rgb(var(--ok-rgb) / 45%);
+}
+
+.chat-die--fumble {
+  border-color: var(--err);
+  color: var(--err);
+  box-shadow: 0 0 5px rgb(var(--err-rgb) / 45%);
+}
+
+.chat-roll-sign,
+.chat-roll-mod {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.chat-roll-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.chat-roll-badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.chat-roll-badge--crit {
+  background: rgb(var(--ok-rgb) / 15%);
+  color: var(--ok);
+}
+
+.chat-roll-badge--fumble {
+  background: rgb(var(--err-rgb) / 15%);
+  color: var(--err);
+}
+
+/* Jedynka, która nic nie kosztowała (etap 30a): kafel zostaje na miejscu
+   Fumble'a, ale przestaje krzyczeć — to nie jest zła wiadomość. */
+.chat-roll-badge--shrugged {
+  background: rgb(var(--err-rgb) / 8%);
+  color: var(--text-dim);
+}
+
+.chat-roll-badge--injury {
+  background: rgb(var(--accent-rgb) / 18%);
+  color: var(--accent);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Filtry czatu i tryb zwarty (01.09.2026) --- */
+
+.chat-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+}
+
+.chat-panel-head .panel-section-title {
+  margin-right: auto;
+}
+
+.chat-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* Wyłączona grupa zostaje czytelna, tylko wygaszona: pasek ma mówić, czego na
+   ekranie NIE ma — schowany przełącznik byłby filtrem, o którym się zapomina. */
+.chat-filter {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.65;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.chat-filter:hover {
+  border-color: var(--border-strong);
+  opacity: 0.85;
+}
+
+.chat-filter--on {
+  border-color: rgb(var(--accent-rgb) / 55%);
+  background: rgb(var(--accent-rgb) / 12%);
+  color: var(--text);
+  opacity: 1;
+}
+
+/* Ukryte wiersze zwijają się w kreskę z licznikiem — klik rozwija je w miejscu,
+   bez ruszania samego filtra. */
+.chat-hidden-run {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chat-hidden-toggle {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.chat-hidden-toggle:hover {
+  color: var(--text);
+  border-top-color: var(--border-strong);
+}
+
+/* Stan pusty listy (etap 27f): zdanie i — gdy jest sensowny — pierwszy krok.
+   Wyśrodkowanie jest celowe: pustka pośrodku panelu czyta się jak komunikat,
+   pustka dosunięta do lewej jak zapomniany wiersz listy. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.1rem 0.8rem;
+  text-align: center;
+}
+
+.empty-state .placeholder-text {
+  margin: 0;
+  max-width: 34ch;
+}
+
+.placeholder-text {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}

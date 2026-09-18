@@ -7,6 +7,43 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 18.09 — naprawa kreatora, część 3d: odbiór obu metod
+
+**Zlecenie MG:** dokończyć `naprawa_karty_postaci.md` (została 3d), dopytywać i zgłaszać możliwe
+błędy. **Stan: 3d ✅ — naprawa kreatora zamknięta w całości** (etapy 1, 2a–2c, 3a–3d). Checklista
+przebiegów i ustalenia w pliku naprawy.
+
+**Decyzje MG (18.09):** MG loguje się ręką na instancji testowej (`test3d`); usterki z odbioru
+naprawiane od razu i zgłaszane w podsumowaniu; z zaległości 2c/3c dołączone **portret na papierze**
+i **czytnik ekranu**, a **powiększenie przeglądarki 125/150 % wykreślone** („ze zmian w tym elemencie
+rezygnuję”). Narrator na pasku „Po kreatorze zostało” i liście MG: „czyta sensownie”.
+
+**Odbiór (Chrome, `.creation-ui.db`, MG `localhost`, gracz `[::1]`, 1456×840 CSS):** gracz Kompletny
+Pakiet Medyk (ranga MG na żywo, Cechy klawiszami, 86/86, Ścieżka, sklep 2 350 ed, F5 w Wyposażeniu,
+opóźnienie 250 ms, portret, **zerwanie łącza przy „Utwórz postać”** → „Brak potwierdzenia zapisu…”
+→ ponowienie bez drugiej karty, „Przyjmij do gry”); MG Krawędziarz Korpo **bez aktywnej sceny**
+(osobna kampania „Bez sceny 3d”, żeton później z ⊕, wiersz zespołu); gracz Krawędziarz Technik
+(kubek, przybornik, **okna strat** przy zmianie Roli i metody — anulowane, nic nie przepadło); MG
+Kompletny Pakiet Nomada. Karty zgodne z podsumowaniem we wszystkich czterech.
+
+**Zgłoszone MG możliwe błędy i poprawki:** (1) po F5 zakładka „Postacie” udawała, że szkicu nie ma
+— nowe `creation:peek` (nagłówek własnego szkicu, pytane po `state:sync`, **niczego nie zakłada**)
+i etykieta „Wznów szkic: …” z `creationResumeLabel`; (2) „Przejdź”/„Pokaż kartę” z ekranu końcowego
+otwierały kartę **pod** kreatorem — kreator schodzi na z-index 290 i wraca przy kliknięciu;
+(3) „Został 1 miejsce” u Korpo — `leftPhrase` bierze formę jedynki razem z czasownikiem. Ekran
+logowania w obu kartach po mojej zmianie w `shared` to HMR Vite, nie wylogowanie (pułapka).
+
+**Wdrożone:** `CreationDraftPeek` (`shared`); `creationPeekEvent` (serwer); `peekCreation`, `peek`
+w `creationStore`, etykieta w `CharacterPanel`, `behind` i `onGo` w kreatorze/`RoleChores` (klient);
+`leftPhrase` (`readiness.ts`). Umowy — `postac` (1); pułapki — `ogledziny` (3); zaległości: 3c
+zamknięta, 2c i 3b zawężone.
+
+**Weryfikacja:** vitest — **2164** shared (1 nowy), **1193** serwera (1 nowy), **232** klienta
+(3 nowe); `tsc --noEmit` trzech pakietów, ESLint i Prettier zmienionych plików — czyste. Na bazie
+testowej: gracz „Test 3d” z „Igłą z Watson” (przyjęta) i „Śrubką” (czeka na MG), NPC „Kurz
+z Badlands” i „Cień z Glen”, kampania „Bez sceny 3d” z „Krawatem z Arasaki”; portret testowy w puli.
+Serwer i Vite zatrzymane, porty wolne.
+
 ### Sesja 17.09 (trzecia) — naprawa kreatora, część 3c: co zostało po kreatorze
 
 **Zlecenie MG:** wykonać etap 3c `naprawa_karty_postaci.md`, dopytywać i zgłaszać możliwe błędy.
