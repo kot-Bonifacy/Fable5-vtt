@@ -7,6 +7,46 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 17.09 (druga) — naprawa kreatora, część 3b: dostępność wyposażenia
+
+**Zlecenie MG:** wykonać etap 3b `naprawa_karty_postaci.md` i przy okazji **zrobić lepszy podział
+kategorii dostępności wyposażenia** („obecny jest chyba oparty tylko na koszcie, co jest
+nieadekwatne”); dopytywać i zgłaszać możliwe błędy. **Stan: etap 3 przedzielony na 3a/3b/3c/3d,
+3b ✅** (sklep: dostępność i podgląd przedmiotu). Czynności Roli i znacznik gotowości przeszły do 3c,
+odbiór do 3d. Checklista i ustalenia — w pliku naprawy.
+
+**Decyzje MG (17.09, druga sesja):** poziom dostępności liczy się z **rodzaju** rzeczy (typ broni,
+OB, rodzina wszczepu, klasa Programu), a cena tylko podnosi; cztery poziomy według legalności
+(Uliczne / Zawodowe / **Wojskowe** / Czarny rynek); pozycje, których rodzaj nie rozstrzyga,
+przypisane po nazwie w **prywatnym** `data/private/cpred/shop-tiers.json`; MG nadpisuje pojedynczy
+wpis w Kompendium (nowa kolumna kampanii); w kreatorze poziom 1 dla wszystkich **plus narzędzia
+własnej Roli do poziomu 2** (listy zatwierdzone, Solo i Stróż Prawa mają w nich broń); podgląd
+przedmiotu jako rozwijany wiersz z osobnym przyciskiem kupna.
+
+**Zgłoszone MG możliwe błędy:** (1) stary podział stawiał wyrzutnię rakiet, Sandevistana i amunicję
+z biotoksyną obok kamery wideo, a Czarny LOD za 50 ed na poziomie „Uliczne” — przebudowane;
+(2) **Netrunner nie kupiłby w kreatorze cyberdeku, Medyk torby medyka, a Technik przybornika**
+(wszystko powyżej 50 ed) — stąd narzędzia Roli; (3) checklista 25c twierdziła, że MG nadpisze poziom
+w edytorze, a edytor nigdy nie miał tego pola — jest, i działa też dla wpisów z importu;
+(4) **Programów nie da się kupić nigdzie w VTT**, a cyberdek i Programy wybiera się na karcie za
+darmo — zostaje jak jest, opisane w decyzjach i `POMYSLY.md`; (5) kara pancerza w podglądzie miała
+dywiz zamiast minusa — poprawione przy oględzinach.
+
+**Wdrożone:** `shopTierVerdict`/`creationShopVerdict`, `CpredShopRules`, `withShopTiers`,
+`readShopTierOverrides` i `creationBasketForRole` (`shared`); `loadShopRules`, `ctx.shopRules`,
+`shop:entry-tier` z `Campaign.shopTierOverrides` (migracja `20260917180000`), odmowy w `economy:buy`
+i `creation:buy`, kolumna w eksporcie kampanii (serwer); wyjątek MG i uzasadnienie poziomu na karcie
+wpisu, rozwijany podgląd przedmiotu w sklepie kreatora i znacznik „narzędzie Roli” (klient); dane
+`data/{public,private}/cpred/shop-tiers.json`. Umowy — `ekwipunek` (2), `postac` (1); pułapki —
+`ogledziny` (1); decyzje (3) i pomysły (2).
+
+**Weryfikacja:** vitest — 2155 shared, 1189 serwera, 224 klienta; `tsc --noEmit` trzech pakietów,
+ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`, gracz
+`[::1]`): scenariusze w checkliście 3b; **hasło MG wpisał MG ręką** — automat go nie wpisuje.
+**Nie było:** motywu dziennego nowego podglądu, wąskiego okna i powiększenia, półek Netrunnera,
+Technika i Nomady (`zaleglosci.md`). Na bazie testowej został szkic gracza „Test 2a” (Solo,
+Krawędziarz, pusty koszyk) i nowe zaproszenie do kampanii testowej.
+
 ### Sesja 17.09 — naprawa kreatora, podział etapu 3 i część 3a
 
 **Zlecenie MG:** wykonać etap 3 `naprawa_karty_postaci.md` (a gdyby był za duży na jedno okno

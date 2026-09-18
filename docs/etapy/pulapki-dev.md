@@ -943,6 +943,9 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Ekran logowania w obu kartach po zmianie w `shared` to HMR, nie wylogowanie** — `tsx watch` restartuje serwer, a Vite unieważnia `App.tsx` („Could not Fast Refresh”), więc magazyn sesji startuje od zera; `/api/auth/me` nadal odpowiada użytkownikiem, F5 wystarczy. Kod aplikacji zmieniaj przed oględzinami albo licz się z przeładowaniem kart.
+- **Skrypt z `setTimeout` w karcie w tle dławi się do 1 tyknięcia na sekundę** — `javascript_tool` kończy się „Runtime.evaluate timed out after 45000ms”, choć skrypt **dokończy się sam** (25 pauz po 60 ms = 25 s). W karcie, która nie jest na wierzchu, klikaj bez pauz albo w małych partiach i czytaj wynik osobnym wywołaniem.
+- **„Brak aktywnej sceny” wymaga kampanii bez scen** — aktywnej sceny nie da się usunąć (`SCENE_ACTIVE`) ani wyłączyć, a nowa scena startuje jako podgląd; `POST /api/campaigns` zakłada kampanię i od razu ją aktywuje (przełącza wszystkich), a wraca się przez „Panel MG” → „Aktywuj”. Na `dev.db` używaj „Oględzin 12.09”, nie zakładaj nowej.
 - **Motyw dzienny z automatu to `data-theme='day'`, nie `'light'`** — obca wartość przestawia sam chrom aplikacji (panel boczny robi się jasny), a papier karty zostaje na nocnym kartonie; wygląda to jak niedokończona skórka karty. Sprawdź `getComputedStyle(document.documentElement).getPropertyValue('--cp-paper')`, zanim uznasz to za błąd stylów.
 - **Powiększenia przeglądarki nie udasz `zoom` na `<html>`** — CSS `zoom` mnoży `vh`, więc okno z `max-height: 88vh` wychodzi poza ekran, czego prawdziwe powiększenie nie robi. Zmień rozmiar okna (`resize_window`) tak, żeby `innerWidth` = szerokość ekranu w CSS ÷ powiększenie (4K przy skali 150% i zoomie 150% ≈ 1708 × 882).
 - **Szybko przepisywany plik CSS Vite potrafi serwować w wersji pośredniej — także po F5** — `getComputedStyle` pokazuje regułę sprzed ostatniego zapisu, choć log mówi „hmr update”. Zapisz plik jeszcze raz bez zmian i przeładuj kartę.
@@ -958,6 +961,31 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
 - **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
+- **Ekran logowania po zmianie w `shared` w trakcie oględzin (18.09, odbiór 3d).** Poprawka
+  odmiany w `readiness.ts` zrestartowała serwer testowy (`tsx watch` obserwuje `../shared`), a Vite
+  nie zdołał odświeżyć modułów na gorąco („invalidate DiceCup.tsx: Could not Fast Refresh") i wykonał
+  `App.tsx` od nowa — magazyny zustand powstały ponownie z `status: 'anonymous'`, więc karta MG
+  stanęła na „Logowanie Mistrza Gry”, a karta gracza raz została, raz nie. Sesja była cała:
+  `fetch('/api/auth/me')` odpowiadał MG, a po F5 obie karty wróciły do gry bez hasła. Rozstrzyga
+  `/api/auth/me` w konsoli, zanim poprosisz MG o ponowne logowanie. To samo robi `prettier --write`
+  na plikach klienta.
+
+- **Karta w tle dławi `setTimeout` do ~1 Hz — także w skrypcie z `javascript_tool` (18.09, odbiór
+  3d).** Pętla „kliknij `+`, odczekaj 60 ms” × 25 w karcie MG, gdy na wierzchu była karta gracza,
+  trwała ponad 45 s i CDP zgłosił przekroczenie czasu („The renderer may be frozen”), choć strona nie
+  była zamrożona: skrypt dokończył się sam, a licznik doszedł do 86/86. Bliźniak pułapki o `rAF`
+  i `setInterval` z 16f, tyle że tu objaw wygląda jak zawieszony renderer. W karcie w tle klikaj
+  bez pauz (React i tak przetwarza `button.click()` synchronicznie, a kolejka kreatora scala
+  intencje), a wynik odczytuj osobnym, krótkim wywołaniem.
+
+- **Aktywnej sceny nie wyłączysz — scenariusz „brak aktywnej sceny” to osobna kampania (18.09,
+  odbiór 3d).** `scene:delete` odmawia `SCENE_ACTIVE`, „Dezaktywuj” nie istnieje, a nowa scena
+  wchodzi jako podgląd, więc jedyna droga do stołu bez sceny to kampania, która żadnej nie ma.
+  `POST /api/campaigns` z nazwą zakłada ją **i od razu aktywuje** (przenosi wszystkie połączone
+  ekrany, gracz spoza niej zostaje bez kampanii); powrót przez „Panel MG” → „Aktywuj” przy starej.
+  Na `.creation-ui.db` została „Bez sceny 3d” (scena „Scena 3d”, NPC „Krawat z Arasaki”); na
+  `dev.db` **nie zakładaj** nowej — jest „Oględziny 12.09”.
 
 - **Motyw dzienny z automatu przestawia się `data-theme='day'` (17.09, naprawa 3c).** Przełącznik
   ☀/☾ pisze do `<html>` wartości `day`/`night`, a nie `light`/`dark` z konwencji CSS. Wpisana

@@ -1797,6 +1797,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Szkic widoczny poza kreatorem idzie z `creation:peek` (naprawa 3d)** — nagłówek własnego szkicu (ksywa, Rola, metoda, krok), pytany po każdym `state:sync`; `creationStore.peek` ustępuje `draft`, gdy okno go wczyta, a zakończenie i „Wyrzuć szkic” czyszczą oba. Etykietę składa `creationResumeLabel` (`CharacterPanel.tsx`). Kreator po „Przejdź”/„Pokaż kartę” z ekranu końcowego **schodzi pod karty** (`behind` → z-index 290) zamiast się zamykać.
 - **Co zostaje po kreatorze, mówi `cpredRoleChores` (naprawa 3c)** — liczone **z karty**, nie z zapisanego stanu: nowa decyzja Roli dokłada gałąź tam i `data-sheet-panel` w karcie, a nie checkbox w bazie. Gotowość do gry to osobna kolumna `Character.playReady` i osobne zdarzenie `character:play-ready` (tylko MG), które **niczego nie blokuje**.
 - **Podsumowanie kreatora czyta `creationOutcome` (naprawa 3a)** — kartę, którą zapisze `creation:finish`: wiersze zakupów, resztę, Poziom życia (`creationLifestyle`). Nowa rzecz, którą zakończenie dopisuje na kartę, wchodzi do `creationToCharacterData` albo `creationOutcome`, a test serwera „writes exactly the sheet the summary computed” pilnuje zgodności.
 - **To, czego kreator świadomie nie wydaje, mówi jedna lista `creationLeftOutside`** — krok Wyposażenie, podsumowanie i ekran końcowy renderują ją tym samym `CreatorLeftOutside`. Nowe uproszczenie wyposażenia dopisuje tam wiersz, nie zdanie w komponencie.
@@ -1836,6 +1837,26 @@ i przytrzymanie stanęłoby w miejscu.
 - **Zmiana Roli** to `character:role-change` + `planCpredRoleChange`: bramka na Zdolności **bieżącej** Roli ≥ 4, nowa Rola 60 PD od poziomu 1, powrót darmowy, ale **bramki nie omija**. Rejestr ma własny rodzaj `role`; `formerRoles` wypada z `character:update` u gracza, a `cpredRolesProblem` sądzi **scaloną** kartę.
 - **Półkę sklepu kreatora rozstrzyga `creationShopVerdict` (naprawa 3b)** — poziom 1 dla wszystkich plus narzędzia własnej Roli do `CREATION_ROLE_TOOL_TIER`; listy narzędzi są danymi (`roleTools` w `shop-tiers.json`), nie kodem. Ta sama funkcja filtruje półkę, odmawia `creation:buy` (`CREATION_SHOP_LOCKED:poziom:czyNarzędzie`), sądzi koszyk w `creationIssues` i czyści go przy zmianie Roli (`creationBasketForRole`).
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
+
+
+---
+
+**Szkic widoczny poza kreatorem i kreator ustępujący karcie (naprawa 3d, 18.09).** Po F5 zakładka
+„Postacie” pokazywała gołe „Kreator postaci…”, bo klient dowiadywał się o szkicu dopiero z odpowiedzi
+`creation:start` — czyli po otwarciu okna. Nowe zdarzenie `creation:peek` oddaje sam **nagłówek**
+własnego szkicu (`CreationDraftPeek`: ksywa, nazwa Roli, metoda, krok, `updatedAt`) i **niczego nie
+zakłada** — w odróżnieniu od `creation:start`, które tworzy szkic, gdy go nie ma (test na serwerze).
+Klient pyta o niego po każdym `state:sync` tą samą kolejką co MG o listę rang, więc odpowiedź nie
+wyprzedzi pushy. `creationStore.peek` jest źródłem etykiety tylko wtedy, gdy `draft` jest pusty;
+udane `creation:finish` czyści `peek` **i** `draft` od razu (ekran końcowy czyta `finished.draft`),
+a `discard` czyści oba. Etykietę „Medyk „Igła” · Wyposażenie” składa wyłącznie `creationResumeLabel`
+(eksport z `CharacterPanel.tsx`, test w `creation-resume.test.ts`) — nowe pole nagłówka dopisuje się
+tam, nie w JSX. Osobna decyzja z tej samej sesji: „Przejdź” i „Pokaż kartę” na ekranie końcowym
+otwierały kartę **pod** kreatorem (karty stoją na `300 + stackIndex`, kreator na 320), więc przy
+oknie 1456 px CSS obiecany panel był zasłonięty. Kreator dostał stan `behind` (z-index 290) zamiast
+zamykania — na ekranie końcowym zostaje ponowienie żetonu — i wraca na wierzch przy pierwszym
+`pointerdown` w siebie; `RoleChoresList` woła `onGo` **po** `focusPanel`, więc lista MG i pasek karty
+(bez `onGo`) niczego nie zmieniają.
 
 ---
 

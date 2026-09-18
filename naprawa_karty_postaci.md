@@ -1,8 +1,7 @@
 # Naprawa kreatora postaci — audyt i projekt
 
-Data: 15.09.2026. Stan na 17.09: **etap 1 ukończony; etap 2 ukończony (2a ✅, 2b ✅, 2c ✅);
-etap 3 w toku (3a ✅, 3b ✅, 3c ✅, 3d do realizacji)**.
-Audyt poniżej opisuje stan sprzed naprawy.
+Data: 15.09.2026. Stan na 18.09: **naprawa ukończona — etap 1 ✅, etap 2 ✅ (2a, 2b, 2c),
+etap 3 ✅ (3a, 3b, 3c, 3d)**. Audyt poniżej opisuje stan sprzed naprawy.
 
 **Priorytet MG: Kompletny Pakiet** (określony w rozmowie jako „Pełny Pakiet”).
 To główna ścieżka projektowania i odbioru. Krawędziarz pozostaje zakresem
@@ -521,6 +520,62 @@ dołożyło czwarty wątek, więc sklep został w 3b, a czynności Roli i gotowo
   dotyczy), powiększenia przeglądarki, czytnika ekranu. Na bazie testowej został gracz „Test 2a”
   z postaciami „Zgrzyt z Kabuki” i „Wiatr z Taboru” (obie przyjęte do gry).
 
+### Część 3d — status: ✅ ukończona 18.09.2026
+
+Odbiór w Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, okno 1456×840 CSS — węższe niż
+w poprzednich sesjach, więc okna karty i kreatora nachodziły na siebie), instancja z jednorazowym
+`GM_PASSWORD`, MG logował się ręką.
+
+- [x] **Gracz, Kompletny Pakiet, Medyk** („Igła z Watson”): MG zatwierdza rangę 75 pkt w zakładce
+      „Postacie” → pula odblokowuje się u gracza na żywo; Cechy prawdziwymi klawiszami (PW 50,
+      Poważnie Ranny 25, Człowieczeństwo 80); 86/86 z Nauką (dziedzina); Ścieżka rzucona, język
+      z listy kultury; sklep: pistolet, Kevlar, torba medyka (narzędzie Roli) — 2 350 ed; **F5 w kroku
+      Wyposażenie** wraca na ten sam krok z koszykiem i ✓ na krokach; Opis z opóźnieniem 250 ms na
+      gnieździe; portret z puli MG (MG wgrał go w trakcie) i kadr; **zerwanie łącza przy „Utwórz
+      postać”** (ramki gniazda porzucane): po ~20 s „Brak potwierdzenia zapisu. Serwer mógł go wykonać.
+      Ponów…”, przycisk wraca; po przywróceniu łącza ponowienie tworzy **jedną** kartę; ekran końcowy,
+      żeton na scenie, karta zgodna z podsumowaniem; MG „Przyjmij do gry” gasi wiersz.
+- [x] **MG, Krawędziarz, Korpo** („Krawat z Arasaki”) **bez aktywnej sceny** (osobna kampania
+      „Bez sceny 3d” na bazie testowej, bo aktywnej sceny nie da się usunąć — `SCENE_ACTIVE`):
+      podsumowanie mówi „Brak aktywnej sceny — po utworzeniu będzie można ponowić postawienie”, ekran
+      końcowy „Nie stoi: nie ma aktywnej sceny” z przyciskiem ponowienia; po utworzeniu sceny ⊕
+      z listy „Postacie” stawia żeton. **Wiersz zespołu Korpo** na liście czynności (zaległość 3c).
+- [x] **Gracz, Krawędziarz, Technik** („Śrubka”): Cechy **kubkiem** (gracz nie ma „Rzuć od razu” —
+      zamierzone, MG ma skrót); przybornik technika ze znacznikiem narzędzia Roli; **okno strat przy
+      zmianie Roli** na Nomadę (10 Cech, 2 umiejętności, koszyk 1 szt. za 500 ed, 6 odpowiedzi
+      Ścieżki Roli, „pozostało 54 → 60”) i **przy zmianie metody** (Cechy, koszyk, 500 → 2 550 ed) —
+      oba anulowane, nic nie przepadło; wiersz Twórcy po utworzeniu.
+- [x] **MG, Kompletny Pakiet, Nomada** („Kurz z Badlands”): ranga w kreatorze (62 pkt), 86/86,
+      Ścieżka, NPC „bez rachunków”; wiersz Taboru (bez Zakwaterowania — NPC nie ma Poziomu życia).
+- [x] **Portret na papierze** (zaległość 2c): wytarcia omijają portret w obu motywach.
+- [x] **Czytnik ekranu** (zaległość 3c): Narrator ręką MG na pasku „Po kreatorze zostało” i liście MG
+      — „czyta sensownie”.
+- [x] **Poprawki z odbioru:** (1) po F5 zakładka „Postacie” mówiła „Kreator postaci…”, jakby szkicu
+      nie było — nowe zdarzenie `creation:peek` (nagłówek własnego szkicu, pytane po każdym
+      `state:sync`) i etykieta „Wznów szkic: Medyk „Igła” · Wyposażenie” (`creationResumeLabel`);
+      (2) „Przejdź” i „Pokaż kartę” z ekranu końcowego otwierały kartę **pod** kreatorem (z-index
+      300+ vs 320) — kreator schodzi na 290 i wraca na wierzch przy pierwszym kliknięciu w siebie;
+      (3) „Został 1 miejsce” u Korpo — `leftPhrase` bierze formę jedynki z czasownikiem (rodzaj
+      rzeczownika), test pilnuje „Zostało 1 miejsce”.
+- [x] Testy: 1 nowy w `shared` (odmiana), 1 nowy na serwerze (`creation:peek` nie zakłada szkicu),
+      3 nowe u klienta (etykieta wznowienia); pełny przebieg **2164 / 1193 / 232**, `tsc` trzech
+      pakietów, ESLint i Prettier czyste.
+
+**Ustalenia z realizacji 3d:**
+
+- **Nie wyszło nic, co zmienia zasady.** Cztery przebiegi dały karty zgodne z podsumowaniem
+  (Cechy, pochodne, umiejętności, zakupy, saldo, Poziom życia); zerwanie łącza i ponowienie nie
+  zdublowały karty. Trzy poprawki to prowadzenie użytkownika i odmiana.
+- **„Brak aktywnej sceny” wymaga kampanii bez scen** — serwer odmawia usunięcia aktywnej sceny,
+  a innego wyłączenia nie ma; na bazie testowej została kampania „Bez sceny 3d” (jedna scena, jedna
+  postać NPC). Na `dev.db` do tego scenariusza służy „Oględziny 12.09”.
+- **Powiększenie przeglądarki 125/150 % ręką MG — MG zrezygnował 18.09** („ze zmian w tym elemencie
+  rezygnuję”); pozycje z 2c i 3c zdjęte z zaległości bez odbioru.
+- **Zmiana w `shared` podczas oględzin restartuje `tsx watch` i unieważnia `App.tsx` w HMR** — obie
+  karty pokazały ekran logowania przy ważnej sesji; F5 wystarczy (pułapka w `ogledziny`).
+- **Nie sprawdzono:** Safari/iPad i płynności przewijania (zaległość 2c, bez zmian), półek
+  Netrunnera i Nomady w sklepie kreatora (zaległość 3b), motywu dziennego okien strat.
+
 Zakres ogólny przy zachowaniu dotychczasowych uproszczeń:
 
 - Przebudować informację o wyposażeniu: zakupy, pakiet od MG, moda i późniejsze
@@ -614,6 +669,14 @@ Otwarte kwestie wskazano poniżej.
     (poza gitem, do skopiowania na VPS razem z kompendium); publiczna próbka w repo jest wymyślona.
 28. **Opłata za montaż wszczepu — ustalone 17.09:** poprawiona od razu (sama cena przy nowym
     wszczepie); stała Utrata Człowieczeństwa przy tworzeniu postaci do `POMYSLY.md`.
+29. **Odbiór 3d — ustalone 18.09:** MG loguje się ręką na instancji testowej; usterki z odbioru
+    naprawiane od razu i zgłaszane w podsumowaniu; z zaległości 2c/3c dołączone portret i czytnik
+    ekranu, **powiększenie przeglądarki wykreślone** decyzją MG.
+30. **Czytnik ekranu — ustalone 18.09:** Narrator na pasku karty i liście MG „czyta sensownie”
+    (odbiór ręką MG); bez zmian w `aria-label`.
+31. **Szkic widoczny poza kreatorem — ustalone 18.09 (decyzja wykonawcy w ramach 3d):** zakładka
+    „Postacie” pokazuje „Wznów szkic: …” z nagłówka `creation:peek`; kreator po „Przejdź” z ekranu
+    końcowego schodzi pod kartę zamiast się zamykać, bo na ekranie zostaje ponowienie żetonu.
 
 ## Mapa kodu dla późniejszej realizacji
 

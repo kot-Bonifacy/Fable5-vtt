@@ -9,6 +9,26 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-18 (naprawa kreatora 3d — odbiór obu metod)
+
+- **17.09: „Po kreatorze zostało” i gotowość do gry (naprawa 3c) — trzy rzeczy nieobejrzane.**
+  Obejrzane w Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, 2084×1172 CSS): pełne
+  przejście gracza Nomadą, zapowiedź w podsumowaniu, ekran końcowy, „Przejdź” na obie zakładki,
+  pas na karcie, panel i znaczek u MG, „Przyjmij do gry” i „Cofnij gotowość” na żywo, znikający sam
+  wiersz Zakwaterowania, wiersze Solo, Medyka i Netrunnera, oba motywy, okno karty zwężone do
+  620 px CSS. **Zostają:** (1) **prawdziwe powiększenie przeglądarki** 125/150% ręką MG — automat
+  udaje je rozmiarem okna (pułapka w `ogledziny`); (2) **czytnik ekranu** na pasku karty i liście MG
+  (nagłówki, `aria-label`, kolejność czytania wiersza z guzikiem „Przejdź”); (3) **wiersz zespołu
+  Korpo** — jedyna czynność, której nie wywołano w przeglądarce (wymaga Korpo na randze ≥ 3;
+  pokryta testem w `shared`).
+
+  **Zamknięcie (18.09, odbiór 3d):** (1) prawdziwe powiększenie — **MG zrezygnował** („ze zmian
+  w tym elemencie rezygnuję”), bez odbioru; (2) czytnik ekranu — Narrator ręką MG na pasku
+  „Po kreatorze zostało” karty „Cień z Glen” i liście MG ze „Śrubką”: „czyta sensownie”, bez zmian
+  w kodzie; (3) wiersz zespołu Korpo — wywołany Krawędziarzem Korpo („Krawat z Arasaki”, ranga 4):
+  na liście stał, ale z błędem odmiany „Został 1 miejsce” — `leftPhrase` bierze odtąd formę jedynki
+  razem z czasownikiem, test pilnuje „Zostało 1 miejsce”.
+
 ## Zamknięte 2026-09-13 (piąta sesja — oględziny barier 42a–42c, przerwany marsz)
 
 **13.09 (piąta sesja, spoza listy): przerwany marsz cofał figurę za róg.** Pozycja otwarta

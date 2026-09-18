@@ -10,8 +10,9 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 rozwinięty podgląd broni i pancerza, okno strat przy zmianie Roli, wyjątek MG na żywo (znikający
 wpis, zdanie w koszyku, brak w podsumowaniu, powrót na „Automatycznie”) i karta wpisu u gracza.
 **Nie obejrzane:** motyw dzienny rozwiniętego podglądu i karty wpisu w Kompendium, wąskie okno
-i powiększenie nowego wiersza sklepu, półki Netrunnera, Technika i Nomady, zakup z Kompendium przy
-wyjątku MG u gracza z pieniędzmi (pokryty testem serwera) oraz obsługa rozwijania klawiaturą.
+i powiększenie nowego wiersza sklepu, półki Netrunnera i Nomady (półkę Technika obejrzał odbiór 3d
+18.09 — przybornik ze znacznikiem narzędzia Roli), zakup z Kompendium przy wyjątku MG u gracza
+z pieniędzmi (pokryty testem serwera) oraz obsługa rozwijania klawiaturą.
 
 **Zamknięte 13.09 (piąta sesja): zasłona figur 42c w komplecie i przerwany marsz cofający figurę
 za róg.** Oględziny 42c domknięte na „Test Brak sceny": obejście końca bariery pod mgłą
@@ -174,24 +175,13 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **17.09: „Po kreatorze zostało” i gotowość do gry (naprawa 3c) — trzy rzeczy nieobejrzane.**
-  Obejrzane w Chrome na `.creation-ui.db` (MG `localhost`, gracz `[::1]`, 2084×1172 CSS): pełne
-  przejście gracza Nomadą, zapowiedź w podsumowaniu, ekran końcowy, „Przejdź” na obie zakładki,
-  pas na karcie, panel i znaczek u MG, „Przyjmij do gry” i „Cofnij gotowość” na żywo, znikający sam
-  wiersz Zakwaterowania, wiersze Solo, Medyka i Netrunnera, oba motywy, okno karty zwężone do
-  620 px CSS. **Zostają:** (1) **prawdziwe powiększenie przeglądarki** 125/150% ręką MG — automat
-  udaje je rozmiarem okna (pułapka w `ogledziny`); (2) **czytnik ekranu** na pasku karty i liście MG
-  (nagłówki, `aria-label`, kolejność czytania wiersza z guzikiem „Przejdź”); (3) **wiersz zespołu
-  Korpo** — jedyna czynność, której nie wywołano w przeglądarce (wymaga Korpo na randze ≥ 3;
-  pokryta testem w `shared`).
-
-- **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — cztery rzeczy nieobejrzane.**
+- **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — dwie rzeczy nieobejrzane.**
   Obejrzane w Chrome: karta (4 zakładki), kreator (7 kroków, okno strat), oba motywy, okna 1708×882
-  i 1102×576. Zostało: (1) **portret na papierze** — postać testowa go nie ma, a wytarcia mają go
-  omijać (`z-index: 4`); (2) **Safari/iPad** — maska `mask-mode: luminance` i `:is()` w selektorach;
-  (3) **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
-  (warstwa z maską nad całą stroną); (4) **prawdziwe powiększenie przeglądarki** 125/150% ręką MG
-  (automat udawał je rozmiarem okna).
+  i 1102×576; **18.09 (odbiór 3d):** portret na papierze w obu motywach — wytarcia go omijają.
+  Zostało: (1) **Safari/iPad** — maska `mask-mode: luminance` i `:is()` w selektorach;
+  (2) **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
+  (warstwa z maską nad całą stroną). Prawdziwe powiększenie przeglądarki 125/150% ręką MG —
+  **zdjęte 18.09 decyzją MG** („ze zmian w tym elemencie rezygnuję”).
 
 - **14.09: pod ręczną mgłą gracz chodzi tylko po odsłoniętym — nieobejrzane straże lądowania
   i pełny marsz.** Obejrzane 14.09 na „Test Brak sceny" z konta `Tester`: serwer dev odmawia ruchu
