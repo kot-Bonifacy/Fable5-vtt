@@ -78,6 +78,7 @@ import {
   creationRollEvent,
   creationStartEvent,
   creationRanksEvent,
+  creationPeekEvent,
   creationSetRankEvent,
 } from './creation.js';
 import { characterRollEvent } from './character-rolls.js';
@@ -325,6 +326,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterPlayReadyEvent,
   creationStartEvent,
   creationRanksEvent,
+  creationPeekEvent,
   creationSetRankEvent,
   creationPatchEvent,
   creationRollEvent,

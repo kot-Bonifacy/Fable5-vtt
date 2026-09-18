@@ -17,9 +17,12 @@ import { useCharacterStore } from '../stores/characterStore.js';
 export function RoleChoresList({
   chores,
   characterId,
+  onGo,
 }: {
   chores: readonly CpredRoleChore[];
   characterId?: string;
+  /** Called after „Przejdź" — the wizard uses it to step out of the card's way. */
+  onGo?: () => void;
 }) {
   const focusPanel = useCharacterStore((s) => s.focusPanel);
   if (chores.length === 0) return null;
@@ -36,7 +39,10 @@ export function RoleChoresList({
             <button
               type="button"
               className="small-button role-chore-go"
-              onClick={() => focusPanel(characterId, chore.tab, chore.panel)}
+              onClick={() => {
+                focusPanel(characterId, chore.tab, chore.panel);
+                onGo?.();
+              }}
             >
               Przejdź
             </button>

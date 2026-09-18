@@ -88,6 +88,9 @@ describe('czynności po kreatorze', () => {
     const chore = cpredRoleChores(freshSheet('korpo'), registry)[0];
     expect(chore?.id).toBe('team');
     expect(chore?.left).toBe(1);
+    // Rodzaj nijaki: „Zostało 1 miejsce”, nie „Został” jak przy punkcie
+    // (wyszło przy oględzinach 3d, 18.09).
+    expect(chore?.text.startsWith('Zostało 1 miejsce w zespole')).toBe(true);
     expect(ids({ ...freshSheet('korpo'), roleAbilityRank: 2 })).toEqual([]);
   });
 

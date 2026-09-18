@@ -149,6 +149,12 @@ function CreatorWindow() {
   const placement = useWindowPlacement('creator', () => ({ x: 120, y: 60 }));
   const [ownerId, setOwnerId] = useState('');
   const [finished, setFinished] = useState<CreatorFinished | null>(null);
+  // Naprawa 3d: „Przejdź" and „Pokaż kartę" on the last screen open the card
+  // **under** this window (sheets sit at z-index 300+, the wizard at 320), so
+  // at laptop widths the panel they promised was hidden. The wizard steps
+  // behind the sheets instead of closing — the retry for the token lives here
+  // — and comes back to the front at the first click into it.
+  const [behind, setBehind] = useState(false);
   const draftId = useCreationStore((s) => s.draftId);
   const rankApproved = useCreationStore((s) => s.rankApproved);
   const pendingPatch = useCreationStore((s) => s.pendingPatch);
@@ -217,6 +223,12 @@ function CreatorWindow() {
     if (!finished) openSheet(ack.data.id);
     const finishedDraft = finished?.draft ?? draft;
     if (finishedDraft) setFinished({ result: ack.data, draft: finishedDraft });
+    // The draft is gone from the server — „Wznów szkic…" must not outlive it
+    // on the „Postacie" tab. The last screen reads `finished.draft`, so the
+    // store's copy can go now rather than when the window closes.
+    useCreationStore.getState().setPeek(null);
+    setDraft(null);
+    setBehind(false);
   }
 
   // The catalogue goes in so the wizard can price the basket: without it the
@@ -239,7 +251,8 @@ function CreatorWindow() {
     <section
       ref={placement.ref}
       className="sheet-window sheet-window--paper creator-window"
-      style={{ ...placement.style, zIndex: 320 }}
+      style={{ ...placement.style, zIndex: behind ? 290 : 320 }}
+      onPointerDownCapture={() => setBehind(false)}
       aria-label="Kreator postaci"
       // Naprawa 2b: keys pressed inside the window are the window's — Tab
       // walks its fields instead of cycling figures on the map.
@@ -296,7 +309,11 @@ function CreatorWindow() {
           finished={finished}
           busy={busy}
           onRetryToken={() => void finish()}
-          onOpenSheet={() => openSheet(finished.result.id)}
+          onOpenSheet={() => {
+            openSheet(finished.result.id);
+            setBehind(true);
+          }}
+          onGo={() => setBehind(true)}
           onClose={() => {
             closeCreator();
             setDraft(null);
@@ -2747,10 +2764,12 @@ function CreatorRoleChores({
   sheet,
   characterId,
   upcoming = false,
+  onGo,
 }: {
   sheet: CpredCharacterData;
   characterId?: string;
   upcoming?: boolean;
+  onGo?: () => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const chores = useMemo(() => cpredRoleChores(sheet, registry), [sheet, registry]);
@@ -2764,7 +2783,7 @@ function CreatorRoleChores({
           ? 'Kreator ustawia Zdolność Specjalną na poziom 4, ale jej wyborów za ciebie nie dokonuje. Te decyzje podejmiesz na karcie po utworzeniu postaci.'
           : 'Te decyzje podejmuje się na karcie — nic nie przepada i nic nie blokuje gry.'}
       </p>
-      <RoleChoresList chores={chores} characterId={characterId} />
+      <RoleChoresList chores={chores} characterId={characterId} onGo={onGo} />
     </section>
   );
 }
@@ -2785,12 +2804,15 @@ function CreatorFinishedScreen({
   busy,
   onRetryToken,
   onOpenSheet,
+  onGo,
   onClose,
 }: {
   finished: CreatorFinished;
   busy: boolean;
   onRetryToken: () => void;
   onOpenSheet: () => void;
+  /** After „Przejdź" to a panel of the card — the wizard steps aside. */
+  onGo: () => void;
   onClose: () => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
@@ -2849,7 +2871,7 @@ function CreatorFinishedScreen({
           <CreatorLeftOutside draft={draft} data={data} />
         </section>
 
-        <CreatorRoleChores sheet={sheet} characterId={result.id} />
+        <CreatorRoleChores sheet={sheet} characterId={result.id} onGo={onGo} />
 
         <div className="creator-finished-actions">
           <button type="button" className="small-button" onClick={onOpenSheet}>

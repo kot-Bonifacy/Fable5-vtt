@@ -413,6 +413,25 @@ export interface CreationRankDraft {
 }
 
 /**
+ * Server → client answer to `creation:peek` (naprawa 3d): is there a draft of
+ * mine in this campaign, and what does it look like from the outside. After F5
+ * the „Postacie" tab showed a plain „Kreator postaci…" — nothing said a
+ * half-built Medyk was waiting on the server. The header alone (name, Role,
+ * method, step) is enough for „Wznów szkic: Medyk „Igła” · Wyposażenie"; the
+ * choices themselves come only with `creation:start`, as before.
+ */
+export interface CreationDraftPeek {
+  id: string;
+  /** The nickname typed so far — may be empty. */
+  name: string;
+  /** Role name in the table's language, or `null` before a Role is picked. */
+  roleName: string | null;
+  method: string;
+  step: string;
+  updatedAt: string;
+}
+
+/**
  * Client → server `creation:lifepath-roll` (stage 25b) — one throw covering one
  * or many Lifepath tables.
  *

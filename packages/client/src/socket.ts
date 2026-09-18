@@ -33,6 +33,7 @@ import type {
   CreationPatchPayload,
   CreationFinishPayload,
   CreationFinishResult,
+  CreationDraftPeek,
   CreationRankDraft,
   SmokeSyncBroadcast,
   CoverUpdatePayload,
@@ -555,6 +556,12 @@ export function connectSocket(userId: string): Socket {
     // in the server's creation queue and rides the same connection as the
     // pushes, so they arrive in the order they were made. A campaign switch
     // syncs again.
+    // Naprawa 3d: my own draft's header rides the same queue, for everyone —
+    // after F5 the „Postacie" tab says „Wznów szkic…" instead of pretending
+    // there is nothing to resume.
+    void peekCreation().then((ack) =>
+      useCreationStore.getState().setPeek(ack.ok ? (ack.data ?? null) : null),
+    );
     if (viewer().isGm) {
       void listCreationRanks().then((ack) =>
         useCreationRankStore.getState().replace(ack.ok ? (ack.data ?? []) : []),
@@ -2907,6 +2914,9 @@ function emitCreationAck<T = undefined>(event: string, payload: unknown): Promis
 
 export const listCreationRanks = () =>
   emitCreationAck<CreationRankDraft[]>('creation:ranks', undefined);
+/** The header of my own draft, or null — what „Wznów szkic…" is built from. */
+export const peekCreation = () =>
+  emitCreationAck<CreationDraftPeek | null>('creation:peek', undefined);
 export const setCreationRank = (draftId: string, statRankId: string) =>
   emitCreationAck('creation:set-rank', { draftId, statRankId });
 

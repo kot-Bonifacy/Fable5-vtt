@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
 import {
+  CPRED_CREATION_STEP_LABELS,
   ADVANCEMENT_AWARD_MAX,
   ADVANCEMENT_LABEL_MAX,
   ROLE_GM,
@@ -52,6 +53,17 @@ function ackErrorText(code: string): string {
  * (with owner assignment); a player sees only their own. Clicking a row opens
  * the floating sheet window.
  */
+/**
+ * „Medyk „Igła” · Wyposażenie" — what a resumable draft looks like from the
+ * „Postacie" tab. Whatever is known goes in; an unnamed draft without a Role
+ * still says which step it stopped on.
+ */
+export function creationResumeLabel(name: string, roleName: string | null, step: string): string {
+  const who = [roleName, name.trim() ? `„${name.trim()}”` : ''].filter(Boolean).join(' ');
+  const stepLabel = (CPRED_CREATION_STEP_LABELS as Record<string, string>)[step] ?? step;
+  return `${who || 'bez Roli'} · ${stepLabel}`;
+}
+
 export function CharacterPanel() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
@@ -60,6 +72,8 @@ export function CharacterPanel() {
   const registry = useCharacterStore((s) => s.registry);
   const openSheet = useCharacterStore((s) => s.openSheet);
   const openCreator = useCreationStore((s) => s.openCreator);
+  const creationDraft = useCreationStore((s) => s.draft);
+  const creationPeek = useCreationStore((s) => s.peek);
   const waiting = useWaitingCharacters(isGm);
 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
@@ -360,14 +374,35 @@ export function CharacterPanel() {
       {/* Stage 25a. Two doors on purpose: the wizard for a character somebody
           will play, and the one-line form below for the mannequin a GM needs
           on the map in five seconds. */}
-      <button
-        type="button"
-        className="small-button character-creator-open"
-        onClick={() => void openCreator()}
-        title="Kreator: Rola, Cechy i Umiejętności wg zasad podręcznika"
-      >
-        🧬 Kreator postaci…
-      </button>
+      {(() => {
+        // Naprawa 3d: a draft on the server shows up here by name, so a player
+        // back from F5 (or from another day) resumes instead of wondering
+        // whether the wizard forgot. The open window's draft wins over the
+        // header learnt at `state:sync`; finishing and discarding clear both.
+        const resume = creationDraft
+          ? creationResumeLabel(
+              creationDraft.name,
+              roleName(creationDraft.roleId) || null,
+              creationDraft.step,
+            )
+          : creationPeek
+            ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
+            : null;
+        return (
+          <button
+            type="button"
+            className="small-button character-creator-open"
+            onClick={() => void openCreator()}
+            title={
+              resume
+                ? 'Wznów szkic postaci — kreator otworzy się tam, gdzie skończono'
+                : 'Kreator: Rola, Cechy i Umiejętności wg zasad podręcznika'
+            }
+          >
+            {resume ? `🧬 Wznów szkic: ${resume}` : '🧬 Kreator postaci…'}
+          </button>
+        );
+      })()}
 
       <form className="scene-editor-row character-create" onSubmit={(e) => void submitCreate(e)}>
         <input

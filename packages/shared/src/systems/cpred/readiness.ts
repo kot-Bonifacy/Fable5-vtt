@@ -59,19 +59,22 @@ export interface CpredRoleChore {
  *
  * Czasownik odmienia się razem z liczebnikiem, więc obie części muszą wyjść
  * z jednego miejsca — pierwsza wersja składała stałe „Zostało" z odmienianym
- * rzeczownikiem i pisała „Zostało 4 wpisy" (wyszło przy oględzinach).
+ * rzeczownikiem i pisała „Zostało 4 wpisy" (wyszło przy oględzinach). Forma
+ * dla jedynki niesie **własny** czasownik, bo ten zależy od rodzaju
+ * rzeczownika: „Został 1 punkt", ale „Zostało 1 miejsce" (wyszło przy
+ * oględzinach 3d, 18.09 — Korpo dostawał „Został 1 miejsce").
  */
 function leftPhrase(count: number, one: string, few: string, many: string): string {
   const last = count % 10;
   const teen = count % 100;
-  if (count === 1) return `Został ${one}`;
+  if (count === 1) return one;
   if (last >= 2 && last <= 4 && (teen < 12 || teen > 14)) return `Zostały ${count} ${few}`;
   return `Zostało ${count} ${many}`;
 }
 
 /** Ta sama odmiana dla najczęstszego rzeczownika tej listy. */
 function pointsLeft(count: number): string {
-  return leftPhrase(count, '1 punkt', 'punkty', 'punktów');
+  return leftPhrase(count, 'Został 1 punkt', 'punkty', 'punktów');
 }
 
 /**
@@ -144,7 +147,7 @@ export function cpredRoleChores(
       chores.push({
         id: 'team',
         title: 'Zespół',
-        text: `${leftPhrase(left, '1 miejsce', 'miejsca', 'miejsc')} w zespole do obsadzenia. Wybierz profesję — członek zespołu to pełna karta postaci, nie zdanie w opisie.`,
+        text: `${leftPhrase(left, 'Zostało 1 miejsce', 'miejsca', 'miejsc')} w zespole do obsadzenia. Wybierz profesję — członek zespołu to pełna karta postaci, nie zdanie w opisie.`,
         tab: 'stats',
         panel: 'team',
         page: 154,
@@ -160,7 +163,7 @@ export function cpredRoleChores(
       chores.push({
         id: 'fleet',
         title: 'Tabor Rodziny',
-        text: `${leftPhrase(left, '1 wpis', 'wpisy', 'wpisów')} do wybrania: każdy poziom Moto to albo standardowy pojazd z tabeli, albo ulepszenie pojazdu, który już masz.`,
+        text: `${leftPhrase(left, 'Został 1 wpis', 'wpisy', 'wpisów')} do wybrania: każdy poziom Moto to albo standardowy pojazd z tabeli, albo ulepszenie pojazdu, który już masz.`,
         tab: 'stats',
         panel: 'fleet',
         page: 162,

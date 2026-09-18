@@ -8,6 +8,7 @@ import type {
   CpredLifepathTable,
   CpredStatId,
   CreationBuyPayload,
+  CreationDraftPeek,
   CreationDraftView,
   CreationFinishPayload,
   CreationFinishResult,
@@ -536,6 +537,33 @@ async function broadcastCreationRanks(deps: RealtimeDeps, campaignId: string): P
     .to(gmRoom(campaignId))
     .emit('creation:ranks-sync', await creationRankRows(deps, campaignId));
 }
+
+/**
+ * The header of my own draft, if there is one (naprawa 3d). The „Postacie" tab
+ * asks after every `state:sync`, so a player who pressed F5 mid-wizard sees
+ * „Wznów szkic…" instead of a button that reads as „start from scratch".
+ * Nothing is created here — that stays with `creation:start`.
+ */
+export const creationPeekEvent = defineCreationEvent<undefined, CreationDraftPeek | null>({
+  name: 'creation:peek',
+  handler: async ({ deps, socket, user }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const row = await loadDraft(deps, campaignId, user.id);
+    if (!row) return null;
+    const view = toDraftView(row, deps);
+    const roleId = view.draft.roleId;
+    return {
+      id: row.id,
+      name: view.draft.name.trim(),
+      roleName: roleId
+        ? (deps.ctx.cpred.roles.find((entry) => entry.id === roleId)?.name ?? roleId)
+        : null,
+      method: view.draft.method,
+      step: view.draft.step,
+      updatedAt: view.updatedAt,
+    };
+  },
+});
 
 export const creationRanksEvent = defineCreationEvent<undefined, CreationRankDraft[]>({
   name: 'creation:ranks',

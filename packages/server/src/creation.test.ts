@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
+  CreationDraftPeek,
   CampaignSummary,
   ChatMessageBroadcast,
   CharacterUpsertBroadcast,
@@ -399,6 +400,26 @@ describe('kreator postaci', () => {
   it('refuses a Role that is not in the data files', async () => {
     const ack = await emitAck<Draft>(vex, 'creation:patch', { patch: { roleId: 'wampir' } });
     expect(refusal(ack)).toBe('INVALID_DATA');
+  });
+
+  it('creation:peek oddaje nagłówek własnego szkicu i niczego nie zakłada (naprawa 3d)', async () => {
+    const peek = data(await emitAck<CreationDraftPeek | null>(vex, 'creation:peek'), 'peek');
+    expect(peek).toMatchObject({ name: 'Zgrzyt', roleName: null, step: 'role' });
+    // Nagłówek, nie szkic — wyborów gracza tu nie ma.
+    expect(peek && 'skills' in peek).toBe(false);
+    expect(peek && 'stats' in peek).toBe(false);
+
+    // Zaglądanie nie tworzy szkicu (w odróżnieniu od `creation:start`).
+    const gmDraft = await built.prisma.characterDraft.findFirst({
+      where: { user: { role: 'GM' } },
+    });
+    const gmPeek = await emitAck<CreationDraftPeek | null>(gm, 'creation:peek');
+    expect(gmPeek.ok).toBe(true);
+    if (gmDraft) expect(gmPeek.ok && gmPeek.data?.id).toBe(gmDraft.id);
+    else expect(gmPeek.ok && gmPeek.data).toBeNull();
+    expect(await built.prisma.characterDraft.count({ where: { user: { role: 'GM' } } })).toBe(
+      gmDraft ? 1 : 0,
+    );
   });
 
   it('refuses stats written by hand when the method is the one that rolls them', async () => {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  CreationDraftPeek,
   CpredCreationDraft,
   CreationDraftView,
   CreationPatchPayload,
@@ -49,6 +50,14 @@ interface CreationStoreState {
   visited: { draftId: string | null; index: number };
   /** A field the summary asked to jump to, waiting for its step to render. */
   focusField: string | null;
+  /**
+   * The header of my draft on the server, learnt at `state:sync` (naprawa 3d)
+   * — what the „Postacie" tab shows as „Wznów szkic…" while the window is not
+   * open. Once `draft` is loaded it takes over; finishing or discarding clears
+   * both.
+   */
+  peek: CreationDraftPeek | null;
+  setPeek: (peek: CreationDraftPeek | null) => void;
 
   openCreator: () => Promise<void>;
   closeCreator: () => void;
@@ -195,6 +204,8 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
   busy: false,
   visited: { draftId: null, index: 0 },
   focusField: null,
+  peek: null,
+  setPeek: (peek) => set({ peek }),
 
   markVisited: (step) => {
     const index = CPRED_CREATION_STEPS.indexOf(step);
@@ -249,7 +260,15 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
       return;
     }
     deferredPatches.length = 0;
-    set({ open: false, draft: null, draftId: null, pendingPatch: null, error: null, busy: false });
+    set({
+      open: false,
+      draft: null,
+      draftId: null,
+      pendingPatch: null,
+      error: null,
+      busy: false,
+      peek: null,
+    });
   },
 
   patch: async (patch, options) => {
