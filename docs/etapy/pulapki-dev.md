@@ -105,7 +105,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
   niej — i wszędzie tam, gdzie scena nie sięga krawędzi okna — dalej stała równiutka kratka,
   czyli dokładnie to, czego ten ekran miał nie pokazywać. **Objaw jest mylący**: w `drawGrid`
   wszystko się zgadza, bo tamta siatka rysuje się tylko po prostokącie sceny. Kto chce
-  „bez kratki", zdejmuje tło `.map-area` (klasa `.map-area--welcome`), a nie szuka błędu
+  „bez kratki", zdejmuje tło `.map-area` (klasa `.map-area--plain`, do 18.09 `--welcome`; u gracza stoi na każdej scenie), a nie szuka błędu
   w rendererze. Przy okazji: przy zoomie 1 kratka CSS (48 px) i kratka sceny (36,2 px) mają różny
   rozmiar, i to jest najszybszy sposób, żeby rozpoznać, na którą się patrzy.
 

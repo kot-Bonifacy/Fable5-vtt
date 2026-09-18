@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GRID_CONTRAST_CASING_PX,
   GRID_CONTRAST_MIN_ALPHA,
+  gridLinePositions,
   gridStrokes,
   isLightColor,
   parseGridColor,
@@ -53,5 +54,30 @@ describe('wygląd siatki', () => {
     expect(parseGridColor('#00ff00')).toBe(0x00ff00);
     expect(isLightColor(0x777777)).toBe(true);
     expect(isLightColor(0x666666)).toBe(false);
+  });
+});
+
+/**
+ * Linie na brzegu mapy odpadają (zlecenie MG, 18.09.2026): u gracza z kamerą
+ * dociśniętą do krawędzi kreska leżąca na brzegu obrazu wyglądała jak ramka
+ * wystająca poza mapę.
+ */
+describe('gridLinePositions', () => {
+  it('pomija linię na lewym brzegu przy zerowym przesunięciu', () => {
+    expect(gridLinePositions(0, 100, 400)).toEqual([100, 200, 300]);
+  });
+
+  it('pomija linię na prawym brzegu, także gdy kratka nie sumuje się co do piksela', () => {
+    const lines = gridLinePositions(0, 36.2, 1448);
+    expect(lines).toHaveLength(39);
+    expect(lines[38]).toBeCloseTo(36.2 * 39, 6);
+  });
+
+  it('zostawia linie przesunięte od brzegu', () => {
+    expect(gridLinePositions(50, 100, 400)).toEqual([50, 150, 250, 350]);
+  });
+
+  it('nie rysuje nic dla kratki bez rozmiaru', () => {
+    expect(gridLinePositions(0, 0, 400)).toEqual([]);
   });
 });

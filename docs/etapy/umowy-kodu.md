@@ -15,7 +15,10 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Siatka nie wystaje poza mapę u gracza (18.09)** — linie siatki liczy `gridLinePositions` w `map/grid-style.ts` i **pomija te na brzegu mapy** (tolerancja `GRID_EDGE_TOLERANCE_PX`); `drawGrid` tylko je rysuje. Kratka stołu w tle `.map-area` gaśnie u gracza klasą `map-area--plain` (dawne `map-area--welcome`, teraz dla każdej sceny gracza); MG ją zachowuje.
 - **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09)** — jedno pytanie dla planera i serwera: `fogFloorPassable` (`shared/fog.ts`: odsłonięte albo pola, na których figura stoi) sprawdzane przez `firstClosedFloorStep` (`shared/pathfinding.ts`, próbka `everyRunCell` — ta sama co wygładzanie). Serwer: `refuseWalkIntoFog` **przed** `refuseWalkThroughSolid`. Klient: `walkFloorFor` → `'revealed'` i `setWalkPassable(passable, canStep, enforcedFloor)`; `enforcedFloor` pilnuje lądowań w `clipToBudget` i `marchLanding` i podaje się go **tylko** tam, gdzie serwer sam egzekwuje podłogę.
+
+**Siatka nie wystaje poza mapę u gracza (zlecenie MG, 18.09).** Na zrzucie widać było dwie rzeczy: kratkowany margines stołu za krawędzią mapy i linię siatki leżącą dokładnie na brzegu obrazu (przy `offset = 0` i gdy kratka dzieli mapę równo, np. 40 × 36,2 = 1448) — ta linia nie oddziela pól, tylko robi za ramkę. `gridLinePositions(offset, size, extent)` oddaje pozycje linii wzdłuż osi bez tych bliżej brzegu niż `GRID_EDGE_TOLERANCE_PX` (1 px świata, co zbiera też ułamki z sumowania kratki). Kamera gracza i tak nie wyjeżdża poza mapę (`coverZoom`, 11.09), ale tło `.map-area` u gracza dostaje `map-area--plain` (sam ciemny stół) na każdej scenie, nie tylko pod mapą powitalną — gdyby kadr kiedyś wyszedł poza mapę, kratki stołu nie zobaczy. MG zachowuje kratkę stołu (robocza) i linie liczone tą samą funkcją.
 
 **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09, decyzja MG z 13.09, serwer — decyzja
 z 14.09).** Poza Dynamiczną planer uznawał każde pole za chodzące, więc trasa do celu za odsłoniętym

@@ -22,6 +22,31 @@ export interface GridStroke {
 /** Grubość obwódki kontrastowej, w pikselach EKRANU. */
 export const GRID_CONTRAST_CASING_PX = 3;
 
+/**
+ * Linie siatki wzdłuż jednej osi — bez tych, które leżą na brzegu mapy.
+ *
+ * Kreska na samej krawędzi obrazu (przy `offset = 0` albo gdy kratka dzieli
+ * mapę równo) nie oddziela żadnych pól: wygląda jak ramka wokół mapy i u gracza
+ * z kamerą dociśniętą do brzegu jest jedynym, co „wystaje" poza mapę
+ * (zlecenie MG, 18.09.2026). Tolerancja jednego piksela świata zbiera też
+ * ułamki z sumowania kratki 36,2 px czterdzieści razy.
+ *
+ * @param offset przesunięcie pierwszej linii, już znormalizowane do `[0, size)`.
+ */
+export function gridLinePositions(offset: number, size: number, extent: number): number[] {
+  const lines: number[] = [];
+  if (size <= 0) return lines;
+  for (let i = 0; ; i += 1) {
+    const at = offset + i * size;
+    if (at > extent - GRID_EDGE_TOLERANCE_PX) break;
+    if (at > GRID_EDGE_TOLERANCE_PX) lines.push(at);
+  }
+  return lines;
+}
+
+/** Bliżej brzegu mapy niż tyle pikseli świata linia siatki jest ramką, nie kratką. */
+export const GRID_EDGE_TOLERANCE_PX = 1;
+
 /** Najniższe krycie kreski w trybie kontrastowym — suwak „Krycie" jej nie zgasi. */
 export const GRID_CONTRAST_MIN_ALPHA = 0.9;
 

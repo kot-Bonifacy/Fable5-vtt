@@ -7,6 +7,39 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 18.09 (druga) — skóra chromu „stara kartka”
+
+**Zlecenie MG:** poprawić style graficzne UI poza kartą postaci — dzień i noc „zbyt excelowe”,
+brak tekstur i artystycznego charakteru; tekstury z sieci, a w braku — te z karty i tapety
+logowania; dopytywać i zgłaszać możliwe błędy. **Decyzje MG w trakcie:** noc = czarny karton jak
+karta; kroje Jost + Oswald w całym chromie; siła jak na karcie (subtelnie); poza skórą Sieć, pasek
+mapy, screamsheet i logowanie; **„stary papier, nie krem”**; **„plam nie chcę — pęknięcia,
+załamania, przetarcia, żadnego brudu”**. Po pierwszym obejrzeniu: **„dzienne UI odrobinę zbyt żółte, wolę barwę z karty”** — dzień
+przestawiony na `--cp-back`/`--cp-paper`/`--cp-inset`/`--cp-line` karty.
+
+**Wdrożone:** `packages/client/src/chrome.css` (nowy, po `styles.css`, przed `sheet.css`): kafel
+papieru `soft-light` na panelu, HUD-zie, oknach, dialogach, menu, kartach Panelu MG; czarne belki
+z czerwoną kreską (w dzień też — blok „Belka” w `theme.css` przestawia tokeny); ścięte rogi okien
+z ramką gradientową i cieniem przez `drop-shadow`; przycisk główny ze ściętym rogiem i pęknięciami
+karty; Jost na treść, Oswald na belki/zakładki/etykiety; paski przewijania w kolorze papieru.
+`theme.css`: ciepłe powierzchnie nocy (wartości kartonu karty) i dnia (trzy stopnie papieru),
+akcent = czerwień karty, `--paper-tile`, `--paper-size`, `--shadow-window`, `--notch*`, `--font-ui*`.
+Kafle `public/art/chrome/paper-{day,night}.webp` (342/314 kB) z `tools/art/chrome-paper.py`:
+Old paper6 (PD) na wytarcia i rysy, ambientCG Paper004 (CC0) na włókno, Paper005 (CC0) na
+załamania — wszystko poza włóknem **tylko rozjaśnia**. Przejrzane i odrzucone: Paper003,
+Cardboard001/002/004, dwa skany z Wikimedia. `theme.test.ts` obejmuje `chrome.css`.
+
+**Zgłoszone MG:** (1) pierwsza wersja belki dziedziczyła po oknie policzony ciemny `color` — tytuł
+okna i imię w kolejce inicjatywy znikały w dzień; naprawione (`color: var(--text)` na belce, umowa
+w `ui`); (2) pola i przyciski na plakacie logowania dziedziczą teraz Jost zamiast Segoe UI — jedyna
+zmiana poza zakresem; (3) `filter: drop-shadow` na oknach z przewijaną treścią — do sprawdzenia
+płynność na iPadzie.
+
+**Weryfikacja:** vitest klienta **233** (motyw 8/8), Prettier i ESLint zmienionych plików, ruff na
+skrypcie — czyste. Chrome (MG `localhost`, Poligon, 1568×781): dzień i noc, okno ustawień, Panel
+MG. **Nieobejrzane:** handout, okno wymiany/oględzin, karta obiektu sceny, dialogi, menu
+kontekstowe, kompendium, Safari/iPad — zaległość. Serwer i Vite zostają uruchomione dla MG.
+
 ### Sesja 18.09 — naprawa kreatora, część 3d: odbiór obu metod
 
 **Zlecenie MG:** dokończyć `naprawa_karty_postaci.md` (została 3d), dopytywać i zgłaszać możliwe

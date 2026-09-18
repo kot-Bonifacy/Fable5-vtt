@@ -1930,8 +1930,11 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isGm]);
 
+  // Gracz nigdy nie widzi kratki stołu spod mapy (decyzja MG, 18.09): kamera
+  // i tak nie wyjeżdża poza mapę, ale gdyby kiedyś wyjechała — pod spodem ma
+  // być sam ciemny stół, tak jak pod mapą powitalną.
   return (
-    <section className={`map-area${!scene && displayScene ? ' map-area--welcome' : ''}`}>
+    <section className={`map-area${!isGm ? ' map-area--plain' : ''}`}>
       <div
         ref={hostRef}
         className={`map-canvas-host ${placement ? 'map-canvas-host--placing' : ''}`}

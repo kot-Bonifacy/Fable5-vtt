@@ -98,7 +98,7 @@ import {
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 import { marchStopPoint, type MarchLanding } from './march-landing.js';
 import { FOG_PEEP_CORE_RATIO, RING_WIDTH, fogPeepRadius } from './token-ring.js';
-import { gridStrokes } from './grid-style.js';
+import { gridLinePositions, gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 
@@ -7072,13 +7072,12 @@ export class MapRenderer {
     const offsetY = normalizeGridOffset(scene.grid.offsetY, size);
     // Pixi v8 zużywa ścieżkę przy `stroke`, więc każda kreska (obwódka, linia)
     // dostaje ją narysowaną od nowa.
+    // Linie na brzegu mapy odpadają: to ramka, nie kratka (patrz `gridLinePositions`).
+    const columns = gridLinePositions(offsetX, size, scene.width);
+    const rows = gridLinePositions(offsetY, size, scene.height);
     for (const stroke of gridStrokes(scene.grid, this.gridContrast, this.overlayScale())) {
-      for (let x = offsetX; x <= scene.width; x += size) {
-        this.grid.moveTo(x, 0).lineTo(x, scene.height);
-      }
-      for (let y = offsetY; y <= scene.height; y += size) {
-        this.grid.moveTo(0, y).lineTo(scene.width, y);
-      }
+      for (const x of columns) this.grid.moveTo(x, 0).lineTo(x, scene.height);
+      for (const y of rows) this.grid.moveTo(0, y).lineTo(scene.width, y);
       // pixelLine keeps the grid crisp at 1 device pixel across zoom levels;
       // the contrast casing is measured in screen pixels instead.
       this.grid.stroke(
