@@ -1,0 +1,248 @@
+/* ============================================================================
+   Skóra chromu „stara kartka" (18.09.2026, zlecenie MG)
+   ----------------------------------------------------------------------------
+   Do tej sesji chrom aplikacji był płaskim kolorem z jednopikselową ramką
+   i systemowym krojem — „excelowy" (słowa MG). Karta postaci i kreator dostały
+   w naprawie 2c wytarty papier, a ekran wejścia stoi na plakacie; ten plik
+   ciągnie resztę interfejsu w tę samą stronę:
+
+     • ziarno papieru na dużych powierzchniach (panel boczny, HUD, okna,
+       karty) — szary kafel `--paper-tile` zmieszany z kolorem tokenu przez
+       `background-blend-mode`, więc kolor nadal pochodzi z `theme.css`;
+     • czarna belka z czerwoną kreską na górnym pasku i belkach okien —
+       belka kategorii arkusza i ramka plakatu, w dzień też (tokeny belki
+       w `theme.css`);
+     • ścięty lewy górny i prawy dolny róg okna oraz przycisku głównego — róg
+       arkusza; ramka rysowana gradientem w narożniku, bo `clip-path` obcina
+       `border`, a cień idzie przez `filter: drop-shadow()`, bo obcina też
+       `box-shadow`;
+     • kroje karty: Jost na treść, Oswald na belki, zakładki i etykiety.
+
+   Zasady: ten plik NIE pisze koloru wprost (pilnuje `theme.test.ts`) i nie
+   dotyka tego, co MG wyłączył 18.09 — karty postaci i kreatora
+   (`.sheet-window--paper`, `sheet.css` ładuje się po nim), okna Sieci
+   (`.net-window`, `.net-run-window`), paska narzędzi nad mapą (`--map-*`),
+   screamsheetu i ekranu wejścia (`.auth-screen`).
+
+   Kolejność ładowania: po `styles.css`, przed `sheet.css` — reguły niżej
+   wygrywają z `styles.css` samą kolejnością przy tej samej specyficzności.
+   ========================================================================== */
+
+/* ===== Kroje ===== */
+
+body {
+  font-family: var(--font-ui);
+}
+
+/* Belki, tytuły okien, zakładki i etykiety sekcji — Oswald w wersalikach,
+   jak belka kategorii arkusza. Treść zostaje w Joście. */
+.top-bar-title,
+.settings-window-title,
+.handout-window-title,
+.inventory-window-title,
+.scene-card-header,
+.panel-section-title,
+.side-tab,
+.side-tabs-label,
+.hud-head-title,
+.context-menu-title,
+.context-menu-section,
+.gm-panel-header h1,
+.panel-card-header h2,
+.combat-header,
+.top-bar-sandbox {
+  font-family: var(--font-ui-head);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.top-bar-title {
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+}
+
+.settings-window-title,
+.handout-window-title,
+.inventory-window-title {
+  font-size: 0.92rem;
+}
+
+.side-tab {
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+}
+
+.side-tabs--gm .side-tab {
+  font-size: 0.72rem;
+}
+
+.panel-section-title {
+  font-size: 0.8rem;
+}
+
+.gm-panel-header h1 {
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+}
+
+.panel-card-header h2 {
+  font-size: 1rem;
+}
+
+/* ===== Papier ===== */
+
+/* Tło aplikacji widać na stronie Panelu MG i w szczelinach między panelami. */
+body {
+  background-image: var(--paper-tile);
+  background-size: var(--paper-size);
+  background-blend-mode: soft-light;
+}
+
+/* Duże powierzchnie chromu. Kafel leży POD treścią jako warstwa tła, więc nie
+   ma tu kosztu kompozycji przy przewijaniu — przewija się treść, nie tło. */
+.side-panel,
+.hud-rail,
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.context-menu,
+.panel-card,
+.scene-card {
+  background-image: var(--paper-tile);
+  background-size: var(--paper-size);
+  background-blend-mode: soft-light;
+}
+
+/* Belki: czarne z czerwoną kreską pod spodem — w obu motywach. `color`
+   stoi tu wprost, bo w dzień belka przestawia tokeny (`theme.css`, blok
+   „Belka"), a odziedziczony po oknie `color` jest już policzony — ciemny. */
+.top-bar,
+.settings-window-header,
+.handout-window-header,
+.inventory-window-header,
+.scene-card-header {
+  color: var(--text);
+  border-bottom: 1px solid var(--accent);
+}
+
+.top-bar {
+  border-bottom-width: 2px;
+}
+
+/* ===== Ścięte rogi ===== */
+
+/* Okno: lewy górny i prawy dolny róg ścięty jak w arkuszu. Ramka wraca
+   gradientem w dwóch narożnikach (0,707 = 1/√2: odległość skosu od rogu),
+   reszta ramki to zwykły `border`, którego `clip-path` nie rusza poza
+   narożnikami. Cień przez `filter`, bo `box-shadow` zostaje obcięty. */
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.context-menu,
+.scene-card {
+  border-radius: 0;
+  clip-path: polygon(
+    var(--notch) 0,
+    100% 0,
+    100% calc(100% - var(--notch)),
+    calc(100% - var(--notch)) 100%,
+    0 100%,
+    0 var(--notch)
+  );
+  box-shadow: none;
+  filter: drop-shadow(var(--shadow-window));
+  background-image:
+    linear-gradient(
+      135deg,
+      transparent calc(var(--notch) * 0.707),
+      var(--border) calc(var(--notch) * 0.707),
+      var(--border) calc(var(--notch) * 0.707 + 1px),
+      transparent calc(var(--notch) * 0.707 + 1px)
+    ),
+    linear-gradient(
+      315deg,
+      transparent calc(var(--notch) * 0.707),
+      var(--border) calc(var(--notch) * 0.707),
+      var(--border) calc(var(--notch) * 0.707 + 1px),
+      transparent calc(var(--notch) * 0.707 + 1px)
+    ),
+    var(--paper-tile);
+  background-size:
+    var(--notch) var(--notch),
+    var(--notch) var(--notch),
+    var(--paper-size);
+  background-position:
+    0 0,
+    100% 100%,
+    0 0;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-blend-mode: normal, normal, soft-light;
+}
+
+/* Uchwyt rozciągania siedzi 13 px od rogu (umowa w `ui`), czyli za skosem. */
+
+/* ===== Przyciski i pola ===== */
+
+button {
+  border-radius: 2px;
+  font-family: var(--font-ui);
+}
+
+input[type='text'],
+input[type='password'],
+select,
+textarea {
+  border-radius: 2px;
+  font-family: var(--font-ui);
+}
+
+/* Przycisk główny: ścięty róg i pęknięcia tuszu jak na czerwonej ramce
+   arkusza. Obwódka ogniska idzie do środka, bo `clip-path` obciąłby ją
+   na zewnątrz. */
+.primary-button {
+  border-radius: 0;
+  clip-path: polygon(
+    var(--notch-sm) 0,
+    100% 0,
+    100% calc(100% - var(--notch-sm)),
+    calc(100% - var(--notch-sm)) 100%,
+    0 100%,
+    0 var(--notch-sm)
+  );
+  background-image: var(--cp-cracks);
+  background-size: var(--cp-cracks-size);
+}
+
+.primary-button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -4px;
+}
+
+/* ===== Drobiazgi ===== */
+
+.chat-roll-body,
+.hud-card,
+.panel-card {
+  border-radius: 2px;
+}
+
+/* Czerwony baner „Tura tej figury" i belka HUD-u — pęknięcia tuszu. */
+.hud-turn-banner {
+  background-image: var(--cp-cracks);
+  background-size: var(--cp-cracks-size);
+}
+
+/* Paski przewijania w kolorze papieru zamiast systemowej szarości. */
+.side-panel,
+.hud-rail,
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.gm-panel {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}

@@ -83,7 +83,7 @@ pozycji schowanego właściciela. Pola bariery są zerowane w otworach wysyłany
 - **„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela**, nie osobny okrąg — `drawSelectionRing` rysuje ją na nakładce, promieniem `node.ownerRingRadius` i kolorem `node.ownerRingTint`, z sufitem grubości liczonym z kratki. Uchwyt obrotu wisi dalej na `outerRadius + 22k` i nie potrzebuje okręgu pod sobą.
 - **Okienko w mgle wokół własnej figury** — `fogPeepRadius` w `map/token-ring.ts` (wielkość), `MapRenderer.drawFogPeepholes` (rysunek, ostatni przebieg kompozytu) i `refreshFogPeepholes` (trzy wejścia: `setTokens`, przeciąganie, krok marszu). Brzeg gaśnie gradientem z kanwy, nie pierścieniami.
 - **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu.
- Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
+  Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
 - **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
 - **Oprawa żetonu (obwódka właściciela, obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. **Portret zajmuje całą kratkę** (`portraitRadius = extent / 2`), a obwódka właściciela i obrączka PW leżą **poza** nim; `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura", więc wszystko, co się o brzeg opiera, czyta tę funkcję.
 - **Rozmiar płótna mapy** — `MapRenderer.watchHostSize` (`ResizeObserver` → `app.queueResize`). `resizeTo` Pixi słucha **wyłącznie** `window.resize`, więc każdy nowy pasek zmieniający szerokość mapy bez ruszania oknem jedzie tędy i nie potrzebuje niczego własnego.
@@ -186,7 +186,7 @@ MG kazał zdjąć.
 **Czerwień jest odpowiedzią na pytanie, a nie ozdobą.** Zlecenie brzmiało: „ślady mają być
 zabarwiane na czerwono w trybie turowym, aby gracz wiedział, jak daleko dojdzie jego postać
 w danej turze". Do 12.09 kreska ciągnięcia szła na czerwono **od końca do końca**, czyli mówiła
-„za daleko" bez powiedzenia *gdzie*. Granica szarości i czerwieni jest tą odpowiedzią, a liczy ją
+„za daleko" bez powiedzenia _gdzie_. Granica szarości i czerwieni jest tą odpowiedzią, a liczy ją
 `trailOverFrom` w metrach **gruntu** (`metresLeft / costFactor`) — bo ślad leży na ziemi, a nie
 w budżecie. Marsz nosi tę granicę w `MarchState.overFrom`, osobno od `budget`: tamten stoi na
 `null` przy budżecie niewymuszanym (MG), a kolor śladu ma mówić prawdę także jemu.
@@ -604,7 +604,6 @@ obiektów sceny, które wracają `Ctrl+Z`; figury nie wracają — ich id noszą
 Sieci. Dlatego `Delete` figur nadal nie dotyka (odstępstwo od Foundry zostaje w mocy), a jedyna
 droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
-
 ## czat — Rodzaje wierszy, widoczność, filtr
 
 - **Nazwa figury w karcie czatu idzie przez `tokenTableName(token, realName)`** (`shared/tokens.ts`, 13.09) — alias u wszystkich, MG też; `''` → „Nieznajomy". Rzut z samej karty (bez żetonu) pisze nazwę karty. Uczestnik kolejki: `combatantTableName`, nie `combatantName`.
@@ -678,7 +677,6 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 - **Nastawienie jest lokalne.** `chatFilterStore` trzyma wybór w `localStorage` (klucz
   `vtt.chat.categories`) i **nigdy** nie jedzie zdarzeniem Socket.IO — to samo rozstrzygnięcie,
   co przy głośnościach z 27d.
-
 
 ## serwer — Baza, protokół gniazda, pliki
 
@@ -813,9 +811,9 @@ i cały stół idzie w zbędny `state:request`. Wzorzec jest jeden i widać go w
 `shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec po prostu odziedziczył po
 sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii, nie od `apply…`.
 
-
 ## ui — Okna, motyw, style, dostępność
 
+- **Skóra chromu „stara kartka” mieszka w `chrome.css` + tokenach `--paper-*`, `--notch*`, `--font-ui*`** — nowa duża powierzchnia (panel, okno, dialog) dopisuje się do list w `chrome.css` (kafel, ścięty róg, belka), nie dostaje własnego `background-image`; belka czarna w dzień musi stać na **obu** listach: w `chrome.css` i w bloku „Belka” w `theme.css`. Źródła kafli i granice: `docs/assety-chrom.md`.
 - **Okno, w którym klawisze należą do niego, nosi `data-owns-keys`** — nasłuch mapy w `MapArea` pomija zdarzenia z jego wnętrza (Tab, Delete, litery narzędzi, cyfry paska, Esc). Od 2b mają go kreator i karta postaci; znacznik mówi „gdzie jest fokus”, nie „czy okno jest otwarte”.
 - **Pełny ekran — wyłącznie przez `fullscreen.ts`**, nigdy gołe `requestFullscreen`: nowe wejście do gry woła `enterPreferredFullscreen()` **przed** pierwszym `await` w obsłudze gestu, a automat po F5 i tłumik przytrzymanego Esc żyją w `useFullscreen` w korzeniu `App`. Kolejność pilnuje `fullscreen.test.ts`.
 - **Naklejka statusu poza mapą** — wyłącznie `StatusIcon` (`HudIcon.tsx`), nigdy `<img>`: maska z `mask-mode: luminance` (`.status-icon`) gasi czarny podkład pliku i barwi sylwetkę kolorem tekstu. Rozmiar daje kontekst w CSS, nie atrybuty. Mapa rysuje te same pliki jako sprite'y **z** podkładem i tak zostaje.
@@ -827,6 +825,30 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a `.combat-bar` ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
+
+---
+
+**Skóra chromu „stara kartka” — `chrome.css`, tokeny papieru i belki w `theme.css` (18.09).**
+Chrom był płaskim kolorem z jednopikselową ramką („excelowy” — MG). Od 18.09 duże powierzchnie
+(panel boczny, HUD, okna, dialogi, menu kontekstowe, `.panel-card`, karta obiektu sceny) mają
+kafel ziarna `--paper-tile` jako warstwę tła z `background-blend-mode: soft-light`; okna mają
+ścięty lewy górny i prawy dolny róg (`--notch`), ramkę w narożnikach z gradientu i cień przez
+`filter: drop-shadow(var(--shadow-window))`, bo `clip-path` obcina `border` i `box-shadow`.
+Belki (górny pasek, belki okien, nagłówek karty obiektu sceny) są czarne z czerwoną kreską
+**w obu motywach**: w dzień blok „Belka” w `theme.css` przestawia im tokeny na nocne, a `chrome.css`
+deklaruje `color: var(--text)` wprost — bez tego belka dziedziczy po oknie policzony ciemny
+kolor i tytuł znika (tak wyszło przy pierwszym podejściu). Trzy rzeczy do pilnowania:
+
+- **Nowe okno albo panel** dopisuje się do list selektorów w `chrome.css` (kafel, róg, pasek
+  przewijania), a jego belkę do **obu** list belek — `chrome.css` i `theme.css`. Własne
+  `background: var(--bg-panel)` w `styles.css` zostaje; `chrome.css` ładuje się po nim.
+- **Uchwyt rozciągania 13 px od rogu** (umowa wyżej) nadal wystarcza: skos ma 10 px.
+- **Poza skórą** zostają karta i kreator (`sheet.css` ładuje się po `chrome.css` i wygrywa),
+  okno Sieci, pasek narzędzi mapy, screamsheet i ekran wejścia — nie dopisuj ich do list.
+  Ogniska na przycisku głównym: `outline-offset: -4px`, bo `clip-path` obciąłby obwódkę.
+
+`theme.test.ts` pilnuje `chrome.css` tak samo jak `styles.css` (bez literałów koloru, każdy token
+z motywu, każdy token motywu z odbiorcą).
 
 ---
 
@@ -925,7 +947,6 @@ mówi „ta figura ma kartę, ale nie twoją" i renderuje się **niezależnie** 
 Akcje z katalogu (Ustabilizowanie, Bieg) nie potrzebują karty, więc pasek gracza nigdy nie jest
 pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wisiała pod
 `slots.length === 0` i **nie pokazywała się nigdy** — wyszło dopiero w przeglądarce.
-
 
 ## kosci — Kości, Testy i wezwania
 
@@ -1086,7 +1107,6 @@ od 40; okno rzutu jest jej trzecim uczestnikiem. Strażnik źródłowy w `check-
 pilnuje, że `RollDialog` prosi **wyłącznie** przez `askForCheck` — `openRequest` wołane wprost
 przywróciłoby usterkę tą samą drogą, którą przyszła.
 
-
 ## tura — Tura, akcje, ruch w walce
 
 - **Powód odmowy Akcji ma JEDNO źródło** — `cpredActionRefusal(actionId, { statuses, turn, isGm })` w `hotbar.ts`; wołają je **oba** wejścia (pasek mapy i zakładka „Walka"). Akcja o koszcie `move` odmawia z budżetu ruchu, nie Akcji. Budżet tury czyta `cpredTurnRefusalInput(turn)`, nie ręczne `resources.find`.
@@ -1171,7 +1191,6 @@ i nie czyta z niego pola; tłumaczy go `reinforcementsOf` w `sheets.ts` na `Rein
 (etykieta, liczba figur, runda, opcjonalne pytanie do MG). Kolumna **umiera razem z walką**, i to
 jest jej sens: „za 4 Rundy" mierzy w jednostce, która poza walką nie istnieje. Poza walką nic się
 nie zapisuje — grupa staje od razu.
-
 
 ## atak — Broń, atak, obrażenia, rany
 
@@ -1499,7 +1518,6 @@ podwieszany dodatek (składa się go z **typu** broni, więc jakości nie ma), n
 bojowy nie ma wpisu katalogu), i nigdy Krytyczna Porażka **pominięta** (`critical.ignored`)
 przez „Wyjście z opresji" Solo.
 
-
 ## statysta — Figura ostatystykowana i jej karta
 
 - **Rzut figury bez karty** — `RollSource` w `character-rolls.ts` (bliźniak `AttackSource`); statysta wchodzi przez `sheetFromCombatProfile`, o gałąź pyta **tylko to, co pisze**, a adres strzelca niesie `CpredAttackMeta.attackerTokenId` wypełniane na serwerze. Przez `character:roll` statysta rzuca wyłącznie na obrażenia.
@@ -1636,7 +1654,6 @@ z Wartością bojową ma **wyzerowane** REF, ZW i SW, żeby rozbicie rzutu nie d
 raz („Broń długa 14", bez Cechy). Walidator karty odrzucał wtedy całą mapę Cech i figura wracała
 jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym uruchomieniu testów 38a.
 
-
 ## karta — Karta postaci: układ, panele, pola
 
 - **Panel karty, do którego da się skoczyć z zewnątrz, nosi `data-sheet-panel`** — `characterStore.focusPanel(id, zakładka, panel)` otwiera kartę, przełącza zakładkę i podświetla go; okno kasuje żądanie po obsłużeniu, inaczej wracałoby przy każdym otwarciu karty. Pas „Po kreatorze zostało” (`.cp-readiness`) stoi pierwszy w siatce strony pierwszej i znika, gdy nie ma czego powiedzieć.
@@ -1658,7 +1675,7 @@ wyglądają jak wydruk na starej kartce. Trzy rzeczy obowiązują dalej:
   `.sheet-window--paper` w `theme.css`). Przyciski, pola i opisy w środku stają na papierze bez
   osobnych reguł. `.sheet-window` bez tej klasy (edytor botów, okna Sieci) zostaje przy chromie.
 - **Wytarcia leżą nad treścią.** Nośnikiem jest jedyne dziecko `.sheet-body` (`position:
-  relative`, `flex: 1 0 auto`, `::after` z `inset: -0.7rem`), a nie samo `.sheet-body`: warstwa
+relative`, `flex: 1 0 auto`, `::after` z `inset: -0.7rem`), a nie samo `.sheet-body`: warstwa
   absolutna w przewijanym kontenerze ma wymiar okna przewijania. Element, który stoi w miejscu
   nad przewijaną treścią (`.creator-sticky`), ma własne `::after` i `z-index: 4`, inaczej
   wytarcia przesuwałyby się po nim jak po szybie. Zdjęcia (portret) mają `z-index: 4`.
@@ -1681,7 +1698,7 @@ Trzy rzeczy z tej naprawy obowiązują dalej:
 
 - **Kolumna Cech ciągnie się na całą wysokość strony.** `.cp-stats { align-self: stretch }` łamie
   `align-items: start` siatki `.sheet-page` **tylko dla tej jednej kolumny**, a `.cp-stat
-  { flex: 1 1 auto }` rozdziela zysk po równo. Pudełko ma dziś ~94 px, liczba 2,6 rem.
+{ flex: 1 1 auto }` rozdziela zysk po równo. Pudełko ma dziś ~94 px, liczba 2,6 rem.
 - **Wąskie okno ma własny blok `@container (max-width: 700px)` — i musi stać POD regułami
   bazowymi.** Cechy schodzą tam w rząd z zawijaniem (kafel ~4,2 rem) i liczba schodzi do 1,5 rem,
   bo 2,6 rem nie zmieściłoby się obok strzałek, a pole ma `overflow: hidden`, więc obcięłoby ją
@@ -1794,7 +1811,6 @@ się od wartości zapamiętanej w domknięciu, a nie od `value` z propsów. Kart
 render potrafi nie nadążyć za tikiem, a wtedy dwa tiki z rzędu policzyłyby tę samą liczbę
 i przytrzymanie stanęłoby w miejscu.
 
-
 ## postac — Kreator, PD, Role, cyborgizacje
 
 - **Szkic widoczny poza kreatorem idzie z `creation:peek` (naprawa 3d)** — nagłówek własnego szkicu (ksywa, Rola, metoda, krok), pytany po każdym `state:sync`; `creationStore.peek` ustępuje `draft`, gdy okno go wczyta, a zakończenie i „Wyrzuć szkic” czyszczą oba. Etykietę składa `creationResumeLabel` (`CharacterPanel.tsx`). Kreator po „Przejdź”/„Pokaż kartę” z ekranu końcowego **schodzi pod karty** (`behind` → z-index 290) zamiast się zamykać.
@@ -1837,7 +1853,6 @@ i przytrzymanie stanęłoby w miejscu.
 - **Zmiana Roli** to `character:role-change` + `planCpredRoleChange`: bramka na Zdolności **bieżącej** Roli ≥ 4, nowa Rola 60 PD od poziomu 1, powrót darmowy, ale **bramki nie omija**. Rejestr ma własny rodzaj `role`; `formerRoles` wypada z `character:update` u gracza, a `cpredRolesProblem` sądzi **scaloną** kartę.
 - **Półkę sklepu kreatora rozstrzyga `creationShopVerdict` (naprawa 3b)** — poziom 1 dla wszystkich plus narzędzia własnej Roli do `CREATION_ROLE_TOOL_TIER`; listy narzędzi są danymi (`roleTools` w `shop-tiers.json`), nie kodem. Ta sama funkcja filtruje półkę, odmawia `creation:buy` (`CREATION_SHOP_LOCKED:poziom:czyNarzędzie`), sądzi koszyk w `creationIssues` i czyści go przy zmianie Roli (`creationBasketForRole`).
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
-
 
 ---
 
@@ -2192,7 +2207,6 @@ niczym innym, a zdanie odmowy mówiło o Specjalizacji, której nikt nie dotyka�
 sam obiekt. Nowa sakiewka zależna od rangi dopisuje się **w tej funkcji**, nie w walidatorze —
 inaczej odziedziczy dokładnie ten sam potrzask.
 
-
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
 - **Poziom dostępności liczy `shopTierVerdict` (naprawa 3b)** — kolejno: wyjątek MG na kampanii, `tier` wpisu, reguła rodzaju (typ broni, OB, rodzina wszczepu, klasa Programu, sprzęt deku) podniesiona ceną, na końcu stara drabina cenowa. Każde miejsce pokazujące poziom woła ją z `ShopTierContext` (wyjątki MG + nazwy typów broni), inaczej lista i serwer rozjadą się o to, co zablokowane.
@@ -2285,7 +2299,6 @@ fiolki". Nowy rodzaj środka dopisuje się **wyłącznie** do `CPRED_PHARMACEUTI
 z podręcznika, `applies`, ewentualne „raz dziennie") i do jednej gałęzi `applyDose`
 w `realtime/recovery.ts`. `pharma.ts` **nie importuje niczego** — to warunek, nie przypadek:
 walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bierze z karty typy.
-
 
 ## czas — Czas świata, kalendarz, efekty czasowe
 
@@ -2444,7 +2457,6 @@ grubsza niż dryf czyta się jak działający zegar. Kartę czatu — cezurę (�
 się tak samo i **dla wszystkich**, bo zostaje w dzienniku sesji na zawsze. Pora dnia zostaje,
 bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b.
 
-
 ## siec — Sieć (netrunning)
 
 - **Hak Programu, którego silnik nie rozlicza, idzie do `NET_PROGRAM_HOOKS_MANUAL`** — lista jest od 39 **pusta**, ale ani jej, ani gałęzi `netHookIsManual` nie kasuj.
@@ -2456,7 +2468,6 @@ Lista jest od etapu 39 **pusta** — `statDrain` i `moveDrain` przeszły na auto
 zostać, dopóki nie dojdzie Program, którego skutku VTT nie umie policzyć. Nie kasuj jej i nie
 kasuj gałęzi `netHookIsManual` w `netice.ts`: to jest to jedno miejsce, dzięki któremu dołożenie
 takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli efektów.
-
 
 ## boty — Boty, AI Gateway, RAG
 
@@ -2473,7 +2484,6 @@ Klient obsługuje `knowledge:upsert`/`journal:upsert` od 19b, więc wystarczy je
 MG. Dwie rzeczy, które łatwo zrobić źle: status licz **raz** dla całej paczki (`emitUpsert`
 liczyłby go per wpis, czyli N zapytań pod rząd), a wpisy czytaj z bazy **po** `markIndexed` —
 doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: null`.
-
 
 ## dane — Kompendium, parsery, dane podręcznika
 
@@ -2501,7 +2511,6 @@ więc w kampanii nic nie wybuchało i żaden nabój nie pasował do żadnej bron
 kodu z etapów 16d i 16g i mimo testów, które przechodziły na **publicznej** próbce
 (`data/public/.../sample.json` ma `explosive`). Dokładając pole do `CpredWeaponTypeInput`
 w `shared/src/systems/cpred/compendium.ts`, dołóż je **w tej samej zmianie** do `schema_fields`.
-
 
 ## kopie — Kopie zapasowe, eksport i import
 

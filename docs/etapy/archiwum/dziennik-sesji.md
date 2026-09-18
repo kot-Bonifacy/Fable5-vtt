@@ -7,6 +7,46 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 17.09 (trzecia) — naprawa kreatora, część 3c: co zostało po kreatorze
+
+**Zlecenie MG:** wykonać etap 3c `naprawa_karty_postaci.md`, dopytywać i zgłaszać możliwe błędy.
+**Stan: 3c ✅** (czynności Roli z przejściem do paneli karty + znacznik gotowości nadawany przez MG).
+Została **3d — odbiór obu metod**. Checklista i ustalenia w pliku naprawy.
+
+**Decyzje MG (17.09, trzecia sesja):** znacznik gotowości **niczego nie blokuje** (ma tylko mówić MG,
+że gracz skończył); dotyczy **wyłącznie postaci z kreatora mających właściciela** — NPC MG i karty
+sprzed 3c są gotowe od razu; lista czynności **liczy się z karty**, bez odhaczania. Miejsca listy
+wybrałem sam: podsumowanie, ekran końcowy, karta i lista MG.
+
+**Osobne zlecenie MG w trakcie sesji (zapisane, nie wykonane):** „rzucanie kośćmi to jeden
+z przyjemniejszych elementów gry […] gracze powinni rzucać małą ilością kości na raz […] zamiast
+wciśnięcia przycisku, po którym wykonuje się rzut, gracz powinien używać kubka”. Decyzja MG: **osobny
+rzut na każdą pozycję** (10 × 1k10 na Cechy, kubek na każdą tabelę Ścieżki Życia), bez skrótu
+hurtowego; MG wybrał „zapisz i dokończ 3c”. Wpis w `POMYSLY.md` z rozpoznaniem stanu na dziś.
+
+**Zgłoszone MG możliwe błędy:** (1) wiersz Netrunnera mówił „kreator deków nie sprzedaje”, a od 3b
+sprzedaje — tyle że dek trafia do Wyposażenia jako zwykły wiersz i pole `cyberdeck` zostaje puste;
+tekst poprawiony, żeby prowadził do sekcji „Cyberdek”. (2) Znalezione przy oględzinach: **„Zostało
+4 wpisy”** — czasownik nie odmieniał się z liczebnikiem; całą frazę składa teraz `leftPhrase` i pilnuje
+test. (3) Motyw dzienny przestawiony z automatu na `data-theme='light'` zostawia kartę na nocnym
+papierze — aplikacja używa `day`/`night`; to pomyłka automatyki, nie błąd stylów (pułapka
+w `ogledziny`).
+
+**Wdrożone:** `cpredRoleChores` i `readiness.ts` (`shared`); kolumna `Character.playReady` z migracją
+`20260917210000`, `character:play-ready` i `playReady` w `CharacterView` (serwer); `RoleChoresList`,
+`CharacterReadyPanel`, pas `.cp-readiness` na stronie pierwszej karty, `characterStore.focusPanel`
+z `data-sheet-panel`, sekcja „Co zostanie/zostało do zrobienia” w kreatorze, znaczek zakładki
+sumujący rangi i gotowość (klient). Umowy — `postac` (1), `karta` (1); pułapki — `ogledziny` (1);
+pomysły (1).
+
+**Weryfikacja:** vitest — **2164** shared, **1192** serwera, **229** klienta; `tsc --noEmit` trzech
+pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`,
+gracz `[::1]`, 2084×1172 CSS, DPR 1,25): scenariusze w checkliście 3c, w tym „Przyjmij do gry” gaszące
+napis u gracza na żywo i wiersz Zakwaterowania znikający sam po zmianie na pojazd. **Nie było:**
+powiększenia przeglądarki, czytnika ekranu, półek Stróża Prawa i Fixera (ich Zdolności nic nie
+zostawiają). Na bazie testowej gracz „Test 2a” ma „Zgrzyt z Kabuki” i „Wiatr z Taboru” — obie przyjęte
+do gry. Serwer i Vite zatrzymane drzewami procesów, porty wolne.
+
 ### Sesja 17.09 (druga) — naprawa kreatora, część 3b: dostępność wyposażenia
 
 **Zlecenie MG:** wykonać etap 3b `naprawa_karty_postaci.md` i przy okazji **zrobić lepszy podział
@@ -316,7 +356,6 @@ bez zmiany kart i figur Poligonu. Pełne testy repo zielone: 1164 serwera, 209 k
 oraz cały shared. Aplikacja działa, migracja zastosowana.
 Istniejące wcześniej zmiany dokumentacji i .claude/ pozostają poza commitem.
 
-
 ### Sesja 13.09 (piąta) — oględziny 42c domknięte, przerwany marsz cofał figurę za róg
 
 _Notatka odtworzona 14.09 z niezacommitowanej dokumentacji tej sesji (`zaleglosci.md`, archiwum
@@ -548,7 +587,6 @@ pozostały bez zmian.
 
 **Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite
 uruchamia się i odpowiada HTTP 200. Etap 28 pozostaje nierozpoczęty.
-
 
 ### Sesja 13.09 — maszynopis wypowiedzi NPC-ów na stałe
 
@@ -864,7 +902,6 @@ na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `p
 i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
 Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
 
-
 ### Sesja 12.09 (druga) — portret ujęty pod mapę
 
 **Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak
@@ -919,7 +956,6 @@ o to prosił MG.
 kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
 trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
 pułapki: jedna w `mapa`.
-
 
 ### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
 
@@ -1199,7 +1235,6 @@ do stanu sprzed pierwszego kliknięcia.
 
 **Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
 zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.
-
 
 ### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
 

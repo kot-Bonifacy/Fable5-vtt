@@ -5,18 +5,18 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 **Ten plik czytasz w całości na starcie każdej sesji, więc ma zostać krótki.** Szczegóły mieszkają
 w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
-| plik                               | co w nim                                                          | kiedy czytać                                           |
-| ---------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| plik                               | co w nim                                                           | kiedy czytać                                           |
+| ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
 | `umowy-kodu.md`                    | gdzie dopisuje się nową rzecz — sekcja na obszar, każda z indeksem | **zanim** dołożysz coś w danym obszarze                |
 | `pulapki-dev.md`                   | pułapki, które kosztowały czas — sekcje o tych samych nazwach      | **zanim** zaczniesz szukać błędu w danym obszarze      |
-| `zaleglosci.md`                    | otwarte zaległości (dług oględzin, drobne braki)                  | gdy odhaczasz zaległości albo ruszasz etap z tej listy |
-| `poligon.md`                       | stan sceny testowej „Poligon bojowy" i procedura oględzin         | przed oględzinami w przeglądarce                       |
-| `decyzje-i-uproszczenia.md`        | świadome odstępstwa od podręcznika — **to nie są zaległości**     | gdy coś wygląda na błąd w mechanice CP RED             |
-| `POMYSLY.md`                       | pomysły spoza zakresu etapów                                      | gdy masz pomysł do zapisania albo szukasz drobiazgu    |
-| `archiwum/od-czego-zaczac.md`      | pełne akapity o etapach 33–40, wyprowadzone stąd 10.09            | gdy wracasz do świeżo zamkniętego etapu                |
-| `archiwum/dziennik-sesji.md`       | pełne notatki starszych sesji                                     | gdy potrzebujesz szczegółu konkretnej sesji            |
-| `archiwum/zamkniete-zaleglosci.md` | zamknięte zaległości z diagnozą i opisem naprawy                  | gdy wraca coś, co już raz naprawiono                   |
-| `archiwum/uwagi-etapow.md`         | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap, do 28)      | gdy chcesz szybkie „co było w etapie N"                |
+| `zaleglosci.md`                    | otwarte zaległości (dług oględzin, drobne braki)                   | gdy odhaczasz zaległości albo ruszasz etap z tej listy |
+| `poligon.md`                       | stan sceny testowej „Poligon bojowy" i procedura oględzin          | przed oględzinami w przeglądarce                       |
+| `decyzje-i-uproszczenia.md`        | świadome odstępstwa od podręcznika — **to nie są zaległości**      | gdy coś wygląda na błąd w mechanice CP RED             |
+| `POMYSLY.md`                       | pomysły spoza zakresu etapów                                       | gdy masz pomysł do zapisania albo szukasz drobiazgu    |
+| `archiwum/od-czego-zaczac.md`      | pełne akapity o etapach 33–40, wyprowadzone stąd 10.09             | gdy wracasz do świeżo zamkniętego etapu                |
+| `archiwum/dziennik-sesji.md`       | pełne notatki starszych sesji                                      | gdy potrzebujesz szczegółu konkretnej sesji            |
+| `archiwum/zamkniete-zaleglosci.md` | zamknięte zaległości z diagnozą i opisem naprawy                   | gdy wraca coś, co już raz naprawiono                   |
+| `archiwum/uwagi-etapow.md`         | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap, do 28)       | gdy chcesz szybkie „co było w etapie N"                |
 
 | etap   | nazwa                                         | status | data                |
 | ------ | --------------------------------------------- | ------ | ------------------- |
@@ -114,8 +114,15 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 42b    | Bariera: SP dla strzałów i wybuchów           | ✅     | 2026-09-13          |
 | 42c    | Bariera zasłaniająca figury, kara za cel      | ✅     | 2026-09-13          |
 
-
 ## Od czego zacząć
+
+**Od 18.09 cały chrom jest „starą kartką” — `chrome.css` + tokeny papieru w `theme.css`** (zlecenie
+MG: „styl zbyt excelowy”). Dzień to pożółkły, wytarty papier (nie krem), noc — czarny karton karty
+postaci; belki czarne z czerwoną kreską w obu motywach, okna ze ściętymi rogami, kroje Jost/Oswald.
+Kafle z sieci (PD/CC0) buduje `tools/art/chrome-paper.py`; **„żadnego brudu”** — same wytarcia,
+rysy, załamania. Poza skórą: karta i kreator, Sieć, pasek mapy, screamsheet, logowanie.
+Obejrzane w Chrome przez automatykę (dzień/noc, ustawienia, Panel MG); **oględziny ręką MG
+i Safari/iPad czekają** (`zaleglosci.md`). Umowa i źródła: `ui`, `docs/assety-chrom.md`.
 
 **Naprawa kreatora postaci (`naprawa_karty_postaci.md`) ukończona 18.09 — etapy 1, 2a–2c, 3a–3d.**
 Odbiór 3d przeszedł obie metody jako MG i gracz (Medyk, Korpo, Technik, Nomada; F5, zmiana
@@ -307,28 +314,60 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   46 |      20 |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    5 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    9 |      16 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   11 |      12 |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       5 |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   32 |       8 |
-| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    7 |      11 |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   40 |       2 |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   14 |       2 |
-| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   16 |       2 |
-| `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |       9 |
-| `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      85 |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      22 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 9    | 16      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 12   | 12      |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 14   | 1       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
+| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 40   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       | 14   | 2       |
+| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
+| `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
+| `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 1       |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 85      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 18.09 (druga) — skóra chromu „stara kartka”
+
+**Zlecenie MG:** poprawić style graficzne UI poza kartą postaci — dzień i noc „zbyt excelowe”,
+brak tekstur i artystycznego charakteru; tekstury z sieci, a w braku — te z karty i tapety
+logowania; dopytywać i zgłaszać możliwe błędy. **Decyzje MG w trakcie:** noc = czarny karton jak
+karta; kroje Jost + Oswald w całym chromie; siła jak na karcie (subtelnie); poza skórą Sieć, pasek
+mapy, screamsheet i logowanie; **„stary papier, nie krem”**; **„plam nie chcę — pęknięcia,
+załamania, przetarcia, żadnego brudu”**.
+
+**Wdrożone:** `packages/client/src/chrome.css` (nowy, po `styles.css`, przed `sheet.css`): kafel
+papieru `soft-light` na panelu, HUD-zie, oknach, dialogach, menu, kartach Panelu MG; czarne belki
+z czerwoną kreską (w dzień też — blok „Belka” w `theme.css` przestawia tokeny); ścięte rogi okien
+z ramką gradientową i cieniem przez `drop-shadow`; przycisk główny ze ściętym rogiem i pęknięciami
+karty; Jost na treść, Oswald na belki/zakładki/etykiety; paski przewijania w kolorze papieru.
+`theme.css`: ciepłe powierzchnie nocy (wartości kartonu karty) i dnia (trzy stopnie papieru),
+akcent = czerwień karty, `--paper-tile`, `--paper-size`, `--shadow-window`, `--notch*`, `--font-ui*`.
+Kafle `public/art/chrome/paper-{day,night}.webp` (342/314 kB) z `tools/art/chrome-paper.py`:
+Old paper6 (PD) na wytarcia i rysy, ambientCG Paper004 (CC0) na włókno, Paper005 (CC0) na
+załamania — wszystko poza włóknem **tylko rozjaśnia**. Przejrzane i odrzucone: Paper003,
+Cardboard001/002/004, dwa skany z Wikimedia. `theme.test.ts` obejmuje `chrome.css`.
+
+**Zgłoszone MG:** (1) pierwsza wersja belki dziedziczyła po oknie policzony ciemny `color` — tytuł
+okna i imię w kolejce inicjatywy znikały w dzień; naprawione (`color: var(--text)` na belce, umowa
+w `ui`); (2) pola i przyciski na plakacie logowania dziedziczą teraz Jost zamiast Segoe UI — jedyna
+zmiana poza zakresem; (3) `filter: drop-shadow` na oknach z przewijaną treścią — do sprawdzenia
+płynność na iPadzie.
+
+**Weryfikacja:** vitest klienta **233** (motyw 8/8), Prettier i ESLint zmienionych plików, ruff na
+skrypcie — czyste. Chrome (MG `localhost`, Poligon, 1568×781): dzień i noc, okno ustawień, Panel
+MG. **Nieobejrzane:** handout, okno wymiany/oględzin, karta obiektu sceny, dialogi, menu
+kontekstowe, kompendium, Safari/iPad — zaległość. Serwer i Vite zostają uruchomione dla MG.
 
 ### Sesja 18.09 — naprawa kreatora, część 3d: odbiór obu metod
 
@@ -366,43 +405,3 @@ zamknięta, 2c i 3b zawężone.
 testowej: gracz „Test 3d” z „Igłą z Watson” (przyjęta) i „Śrubką” (czeka na MG), NPC „Kurz
 z Badlands” i „Cień z Glen”, kampania „Bez sceny 3d” z „Krawatem z Arasaki”; portret testowy w puli.
 Serwer i Vite zatrzymane, porty wolne.
-
-### Sesja 17.09 (trzecia) — naprawa kreatora, część 3c: co zostało po kreatorze
-
-**Zlecenie MG:** wykonać etap 3c `naprawa_karty_postaci.md`, dopytywać i zgłaszać możliwe błędy.
-**Stan: 3c ✅** (czynności Roli z przejściem do paneli karty + znacznik gotowości nadawany przez MG).
-Została **3d — odbiór obu metod**. Checklista i ustalenia w pliku naprawy.
-
-**Decyzje MG (17.09, trzecia sesja):** znacznik gotowości **niczego nie blokuje** (ma tylko mówić MG,
-że gracz skończył); dotyczy **wyłącznie postaci z kreatora mających właściciela** — NPC MG i karty
-sprzed 3c są gotowe od razu; lista czynności **liczy się z karty**, bez odhaczania. Miejsca listy
-wybrałem sam: podsumowanie, ekran końcowy, karta i lista MG.
-
-**Osobne zlecenie MG w trakcie sesji (zapisane, nie wykonane):** „rzucanie kośćmi to jeden
-z przyjemniejszych elementów gry […] gracze powinni rzucać małą ilością kości na raz […] zamiast
-wciśnięcia przycisku, po którym wykonuje się rzut, gracz powinien używać kubka”. Decyzja MG: **osobny
-rzut na każdą pozycję** (10 × 1k10 na Cechy, kubek na każdą tabelę Ścieżki Życia), bez skrótu
-hurtowego; MG wybrał „zapisz i dokończ 3c”. Wpis w `POMYSLY.md` z rozpoznaniem stanu na dziś.
-
-**Zgłoszone MG możliwe błędy:** (1) wiersz Netrunnera mówił „kreator deków nie sprzedaje”, a od 3b
-sprzedaje — tyle że dek trafia do Wyposażenia jako zwykły wiersz i pole `cyberdeck` zostaje puste;
-tekst poprawiony, żeby prowadził do sekcji „Cyberdek”. (2) Znalezione przy oględzinach: **„Zostało
-4 wpisy”** — czasownik nie odmieniał się z liczebnikiem; całą frazę składa teraz `leftPhrase` i pilnuje
-test. (3) Motyw dzienny przestawiony z automatu na `data-theme='light'` zostawia kartę na nocnym
-papierze — aplikacja używa `day`/`night`; to pomyłka automatyki, nie błąd stylów (pułapka
-w `ogledziny`).
-
-**Wdrożone:** `cpredRoleChores` i `readiness.ts` (`shared`); kolumna `Character.playReady` z migracją
-`20260917210000`, `character:play-ready` i `playReady` w `CharacterView` (serwer); `RoleChoresList`,
-`CharacterReadyPanel`, pas `.cp-readiness` na stronie pierwszej karty, `characterStore.focusPanel`
-z `data-sheet-panel`, sekcja „Co zostanie/zostało do zrobienia” w kreatorze, znaczek zakładki
-sumujący rangi i gotowość (klient). Umowy — `postac` (1), `karta` (1); pułapki — `ogledziny` (1);
-pomysły (1).
-
-**Weryfikacja:** vitest — **2164** shared, **1192** serwera, **229** klienta; `tsc --noEmit` trzech
-pakietów, ESLint i Prettier zmienionych plików — czyste. Chrome na `.creation-ui.db` (MG `localhost`,
-gracz `[::1]`, 2084×1172 CSS, DPR 1,25): scenariusze w checkliście 3c, w tym „Przyjmij do gry” gaszące
-napis u gracza na żywo i wiersz Zakwaterowania znikający sam po zmianie na pojazd. **Nie było:**
-powiększenia przeglądarki, czytnika ekranu, półek Stróża Prawa i Fixera (ich Zdolności nic nie
-zostawiają). Na bazie testowej gracz „Test 2a” ma „Zgrzyt z Kabuki” i „Wiatr z Taboru” — obie przyjęte
-do gry. Serwer i Vite zatrzymane drzewami procesów, porty wolne.

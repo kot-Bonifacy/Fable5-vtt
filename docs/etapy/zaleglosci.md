@@ -175,6 +175,13 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **18.09: skóra chromu „stara kartka” — obejrzana tylko automatyką.** W Chrome (MG, Poligon,
+  1568×781): dzień i noc, okno ustawień, Panel MG, górny pasek z kolejką inicjatywy. **Zostało ręką
+  MG:** handout, okno wymiany i oględzin, karta obiektu sceny (belka czarna w dzień), dialogi
+  (`.dialog`), menu kontekstowe figury, kompendium i pozostałe zakładki panelu, ekran gracza;
+  **Safari/iPad** — `background-blend-mode` na kaflu i `filter: drop-shadow` na oknach z przewijaną
+  treścią (płynność); siła kafla (`DAY`/`NIGHT` w `tools/art/chrome-paper.py`) do oceny MG.
+
 - **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — dwie rzeczy nieobejrzane.**
   Obejrzane w Chrome: karta (4 zakładki), kreator (7 kroków, okno strat), oba motywy, okna 1708×882
   i 1102×576; **18.09 (odbiór 3d):** portret na papierze w obu motywach — wytarcia go omijają.

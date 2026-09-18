@@ -45,21 +45,25 @@
 
   /* ===== Powierzchnie ===== */
 
+  /* Skóra „stara kartka" dla całego chromu (18.09.2026, zlecenie MG): noc to
+     czarny karton karty postaci (`--cp-*` niżej), dzień — pożółkły, wytarty
+     papier. Kolory są ciepłe, nie grafitowe; ziarno papieru daje `--paper-tile`
+     (koniec bloku) zmieszane z kolorem w `chrome.css`. */
+
   /* Tło aplikacji — to, co widać pod mapą i między panelami. */
-  --bg: #14151a;
+  --bg: #0e0d0c;
   /* Panel boczny, pasek HUD-u, karta na czacie. */
-  --bg-panel: #1e2028;
-  /* Najciemniejszy chrom: górny pasek i belki okien. */
-  --bg-topbar: #0e0f13;
+  --bg-panel: #171514;
+  /* Najciemniejszy chrom: górny pasek i belki okien — czarna belka arkusza. */
+  --bg-topbar: #070606;
   /* Korpus pływającego okna (kompendium, ustawienia, handout, kreator). W nocy
-     to ten sam kolor co panel — okno odcina się cieniem. W dzień jest bielsze od
-     tła, bo na kremowym papierze sam cień nie wystarcza, żeby powiedzieć
-     „to leży wyżej". */
-  --bg-float: #1e2028;
+     ledwie jaśniejszy od panelu — okno odcina się cieniem. W dzień jest
+     jaśniejszą kartką na ciemniejszym papierze tła. */
+  --bg-float: #1b1917;
   /* Pole formularza, tor paska postępu, pusty portret. */
-  --bg-inset: #2a2d36;
+  --bg-inset: #24211d;
   /* Drugi stopień wgłębienia: kafel slotu, klawisz `kbd`. */
-  --bg-inset-2: #23262f;
+  --bg-inset-2: #1f1c19;
 
   /* ===== Welony ===== */
 
@@ -74,26 +78,27 @@
 
   /* ===== Krawędzie ===== */
 
-  --border: #33363f;
+  --border: #3b3630;
   /* Linia w tabeli — ma dzielić wiersze, nie rysować kratkę. */
-  --border-soft: rgb(51 54 63 / 45%);
+  --border-soft: rgb(59 54 48 / 45%);
   /* Krawędź podniesiona najechaniem. */
-  --border-strong: #4b4f5c;
+  --border-strong: #564e45;
 
   /* ===== Tekst ===== */
 
-  --text: #d8dae0;
-  --text-dim: #7d818c;
+  --text: #f1ece4;
+  --text-dim: #9a9187;
   /* Alias historyczny: kilka reguł z etapów 14b–14e pisze `var(--muted)`. */
-  --muted: #7d818c;
+  --muted: #9a9187;
   /* Napis leżący na plamie `--accent` (przycisk główny, belka karty). */
   --text-on-accent: #ffffff;
 
   /* ===== Kolory znaczące ===== */
 
-  /* Czerwień CP RED — kolor marki i przycisku głównego. */
-  --accent: #e01414;
-  --accent-rgb: 224 20 20;
+  /* Czerwień CP RED — kolor marki i przycisku głównego. Od 18.09 ta sama,
+     co czerwień belek karty w nocy (`--cp-red`). */
+  --accent: #e0301f;
+  --accent-rgb: 224 48 31;
   /* Bledsza czerwień na napis wewnątrz przycisku głównego. */
   --accent-ink: #ffd7d4;
 
@@ -141,6 +146,20 @@
   --shadow-lg: 0 12px 40px rgb(0 0 0 / 55%);
   /* Karta postaci leży wyżej niż reszta okien i rzuca dłuższy cień. */
   --shadow-sheet: 0 18px 50px rgb(0 0 0 / 60%);
+  /* Cień okna ze ściętym rogiem (18.09): `clip-path` obcina `box-shadow`, więc
+     okna chromu rzucają cień przez `filter: drop-shadow()` — to jest wartość
+     dla niego, nie dla `box-shadow`. */
+  --shadow-window: 0 14px 28px rgb(0 0 0 / 60%);
+
+  /* ===== Papier (18.09.2026) ===== */
+
+  /* Szary kafel ziarna: 128 = „zostaw kolor", jaśniej = wytarcie, rysa albo
+     grzbiet załamania. `chrome.css` miesza go z kolorem powierzchni przez
+     `background-blend-mode: soft-light`, więc jeden plik służy każdemu
+     odcieniowi. Nic w nim nie jest plamą ani brudem (decyzja MG z 18.09:
+     „pęknięcia, załamania, przetarcia — żadnego brudu"). Źródła i licencje
+     w `docs/assety-chrom.md`, budowa w `tools/art/chrome-paper.py`. */
+  --paper-tile: url('/art/chrome/paper-night.webp');
 
   /* ===== Kubek z kośćmi (etap 06) ===== */
 
@@ -175,25 +194,29 @@
 :root[data-theme='day'] {
   color-scheme: light;
 
-  --bg: #efeae1;
-  --bg-panel: #fbf8f2;
-  --bg-topbar: #e9e2d6;
-  --bg-float: #ffffff;
-  --bg-inset: #ece6da;
-  --bg-inset-2: #e3dccf;
+  /* Stary papier, nie krem (MG, 18.09): tło ciemniejsze i żółtsze od kartki,
+     panel jaśniejszy, okno najjaśniejsze — jak kartka położona na kartce.
+     Górny pasek i belki okien zostają CZARNE także w dzień (belka arkusza,
+     ramka plakatu) — ich napisy dostają nocne tokeny w bloku „Belka" niżej. */
+  --bg: #e2d3b2;
+  --bg-panel: #efe4c9;
+  --bg-topbar: #0c0a09;
+  --bg-float: #f5ecd8;
+  --bg-inset: #e7dbbd;
+  --bg-inset-2: #dfd1b0;
 
-  --veil-faint: rgb(60 45 25 / 3%);
-  --veil-soft: rgb(60 45 25 / 5%);
-  --veil: rgb(60 45 25 / 9%);
-  --scrim: rgb(38 30 20 / 45%);
+  --veil-faint: rgb(70 50 20 / 3%);
+  --veil-soft: rgb(70 50 20 / 5%);
+  --veil: rgb(70 50 20 / 9%);
+  --scrim: rgb(30 22 12 / 45%);
 
-  --border: #c9c1b4;
-  --border-soft: rgb(150 138 120 / 45%);
-  --border-strong: #a2988a;
+  --border: #c6b28c;
+  --border-soft: rgb(160 132 92 / 45%);
+  --border-strong: #a08a62;
 
-  --text: #14120f;
-  --text-dim: #5f574f;
-  --muted: #5f574f;
+  --text: #100e0d;
+  --text-dim: #5a5045;
+  --muted: #5a5045;
   --text-on-accent: #ffffff;
 
   --accent: #cc2316;
@@ -227,9 +250,68 @@
   --whisper-rgb: 107 63 160;
   --hurt-light: #6f7412;
 
-  --shadow-md: 0 8px 24px rgb(60 45 25 / 18%);
-  --shadow-lg: 0 12px 40px rgb(60 45 25 / 22%);
-  --shadow-sheet: 0 18px 50px rgb(60 45 25 / 28%);
+  --shadow-md: 0 8px 24px rgb(60 40 15 / 22%);
+  --shadow-lg: 0 12px 40px rgb(60 40 15 / 26%);
+  --shadow-sheet: 0 18px 50px rgb(60 40 15 / 28%);
+  --shadow-window: 0 14px 28px rgb(60 40 15 / 32%);
+
+  --paper-tile: url('/art/chrome/paper-day.webp');
+}
+
+/* ============================================================================
+   BELKA — czarna także w dzień (18.09.2026)
+   ----------------------------------------------------------------------------
+   Górny pasek, belki okien i nagłówek karty obiektu sceny są w dzień czarną
+   belką arkusza z kremowym napisem. Wszystko, co w nich leży (zegar, chip
+   poligonu, kolejka inicjatywy, przyciski), pisze zwykłymi tokenami chromu,
+   więc belka przestawia je na nocne wartości — ten sam chwyt, którym
+   `.sheet-window--paper` przestawia tokeny na papier. Lista selektorów musi
+   zgadzać się z listą belek w `chrome.css`.
+   ========================================================================== */
+
+:root[data-theme='day']
+  :is(
+    .top-bar,
+    .settings-window-header,
+    .handout-window-header,
+    .inventory-window-header,
+    .scene-card-header
+  ) {
+  --bg: #141211;
+  --bg-panel: #1f1c19;
+  --bg-float: #1f1c19;
+  --bg-inset: #24211d;
+  --bg-inset-2: #1f1c19;
+  --veil-faint: rgb(255 255 255 / 2.5%);
+  --veil-soft: rgb(255 255 255 / 4%);
+  --veil: rgb(255 255 255 / 8%);
+  --border: #3b3630;
+  --border-soft: rgb(59 54 48 / 45%);
+  --border-strong: #564e45;
+  --text: #f1ece4;
+  --text-dim: #b3aa9d;
+  --muted: #b3aa9d;
+  --accent: #e0301f;
+  --accent-rgb: 224 48 31;
+  --accent-ink: #ffd7d4;
+  --ok: #34c759;
+  --ok-rgb: 52 199 89;
+  --ok-ink: #9fe09f;
+  --err: #ff3b30;
+  --err-rgb: 255 59 48;
+  --err-ink: #f87171;
+  --warn: #d9a441;
+  --warn-rgb: 217 164 65;
+  --warn-bright: #f0b429;
+  --hurt: #f59e0b;
+  --hurt-rgb: 245 158 11;
+  --hurt-light: #d4d94a;
+  --whisper: #b48be0;
+  --npc: #e5a54b;
+  --info: #8ab4f8;
+  --armed: #facc15;
+  --fate: #4bc3c0;
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 50%);
 }
 
 /* ============================================================================
@@ -381,6 +463,16 @@
   --cp-gutter: 3px;
   --font-cp: 'Jost', 'Segoe UI', system-ui, sans-serif;
   --font-cp-cond: 'Oswald', 'Jost', 'Segoe UI', sans-serif;
+
+  /* Chrom mówi od 18.09 krojami karty: Jost na treść, Oswald na belki,
+     zakładki i etykiety (`chrome.css`). Ścięty róg okna i przycisku głównego
+     ma ten sam wymiar, co pole arkusza. Kafel ziarna papieru jest rysowany
+     mniejszy niż jego 1400 px, żeby włókno było drobniejsze od litery. */
+  --font-ui: var(--font-cp);
+  --font-ui-head: var(--font-cp-cond);
+  --notch: 10px;
+  --notch-sm: 7px;
+  --paper-size: 1000px auto;
 
   /* Chrom w oknie na papierze (naprawa 2c): pola formularzy, przyciski,
      obwódki i opisy wewnątrz karty i kreatora. W nocy ciepła czerń kartonu

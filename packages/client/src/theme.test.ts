@@ -44,7 +44,7 @@ function tokensUsedIn(css: string): Set<string> {
 }
 
 describe('motyw (etap 27e)', () => {
-  for (const file of ['styles.css', 'sheet.css']) {
+  for (const file of ['styles.css', 'chrome.css', 'sheet.css']) {
     it(`${file} nie zapisuje koloru wprost`, () => {
       const found = [...stripComments(read(file)).matchAll(COLOUR_LITERAL)]
         .map((m) => m[0])
@@ -55,7 +55,7 @@ describe('motyw (etap 27e)', () => {
 
   it('każdy użyty token jest zdefiniowany w theme.css', () => {
     const defined = new Set(tokensDefinedIn(read('theme.css')));
-    const used = tokensUsedIn(['styles.css', 'sheet.css'].map(read).join('\u000a'));
+    const used = tokensUsedIn(['styles.css', 'chrome.css', 'sheet.css'].map(read).join('\u000a'));
     /**
      * Tokeny ustawiane w miejscu przez samą regułę albo przez komponent — nie
      * należą do motywu, bo ich wartość zależy od stanu elementu, a nie od pory
@@ -69,7 +69,9 @@ describe('motyw (etap 27e)', () => {
   it('theme.css nie wozi tokenu bez odbiorcy', () => {
     const theme = read('theme.css');
     const defined = new Set(tokensDefinedIn(theme));
-    const used = tokensUsedIn([read('styles.css'), read('sheet.css'), theme].join('\u000a'));
+    const used = tokensUsedIn(
+      [read('styles.css'), read('chrome.css'), read('sheet.css'), theme].join('\u000a'),
+    );
     expect([...defined].filter((t) => !used.has(t))).toEqual([]);
   });
 
@@ -104,7 +106,7 @@ describe('motyw (etap 27e)', () => {
         .map((part) => lastCompound(part.trim()))
         .some((compound) => /^(button|\.[a-z0-9-]*(button|tool))(?![a-z0-9-])/i.test(compound));
     const offenders: string[] = [];
-    for (const file of ['styles.css', 'sheet.css']) {
+    for (const file of ['styles.css', 'chrome.css', 'sheet.css']) {
       for (const rule of stripComments(read(file)).matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
         const selector = (rule[1] ?? '').replace(/\s+/g, ' ').trim();
         const body = rule[2] ?? '';
