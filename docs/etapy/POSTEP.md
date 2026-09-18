@@ -344,7 +344,8 @@ brak tekstur i artystycznego charakteru; tekstury z sieci, a w braku — te z ka
 logowania; dopytywać i zgłaszać możliwe błędy. **Decyzje MG w trakcie:** noc = czarny karton jak
 karta; kroje Jost + Oswald w całym chromie; siła jak na karcie (subtelnie); poza skórą Sieć, pasek
 mapy, screamsheet i logowanie; **„stary papier, nie krem”**; **„plam nie chcę — pęknięcia,
-załamania, przetarcia, żadnego brudu”**.
+załamania, przetarcia, żadnego brudu”**. Po pierwszym obejrzeniu: **„dzienne UI odrobinę zbyt żółte, wolę barwę z karty”** — dzień
+przestawiony na `--cp-back`/`--cp-paper`/`--cp-inset`/`--cp-line` karty.
 
 **Wdrożone:** `packages/client/src/chrome.css` (nowy, po `styles.css`, przed `sheet.css`): kafel
 papieru `soft-light` na panelu, HUD-zie, oknach, dialogach, menu, kartach Panelu MG; czarne belki

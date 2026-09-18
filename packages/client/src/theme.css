@@ -194,25 +194,26 @@
 :root[data-theme='day'] {
   color-scheme: light;
 
-  /* Stary papier, nie krem (MG, 18.09): tło ciemniejsze i żółtsze od kartki,
-     panel jaśniejszy, okno najjaśniejsze — jak kartka położona na kartce.
+  /* Stary papier, nie krem (MG, 18.09): dokładnie barwy karty postaci — tło to
+     `--cp-back`, panel to `--cp-paper`, pola i ramki to `--cp-inset`/`--cp-line`
+     (MG, 18.09: „odrobinę zbyt żółte, wolę barwę z karty"); okno najjaśniejsze.
      Górny pasek i belki okien zostają CZARNE także w dzień (belka arkusza,
      ramka plakatu) — ich napisy dostają nocne tokeny w bloku „Belka" niżej. */
-  --bg: #e2d3b2;
-  --bg-panel: #efe4c9;
+  --bg: #e6d9c0;
+  --bg-panel: #f6eddb;
   --bg-topbar: #0c0a09;
-  --bg-float: #f5ecd8;
-  --bg-inset: #e7dbbd;
-  --bg-inset-2: #dfd1b0;
+  --bg-float: #faf3e5;
+  --bg-inset: #efe3cb;
+  --bg-inset-2: #e7d9bd;
 
   --veil-faint: rgb(70 50 20 / 3%);
   --veil-soft: rgb(70 50 20 / 5%);
   --veil: rgb(70 50 20 / 9%);
   --scrim: rgb(30 22 12 / 45%);
 
-  --border: #c6b28c;
+  --border: #cbb792;
   --border-soft: rgb(160 132 92 / 45%);
-  --border-strong: #a08a62;
+  --border-strong: #a38b64;
 
   --text: #100e0d;
   --text-dim: #5a5045;

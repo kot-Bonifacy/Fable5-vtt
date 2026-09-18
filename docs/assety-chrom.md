@@ -77,8 +77,10 @@ Siły warstw stoją w słownikach `DAY` i `NIGHT` na górze skryptu.
 
 ## Kontrasty (dzień)
 
-Policzone (WCAG) dla najczęstszych par: tusz `#100e0d` na panelu `#efe4c9` 15,2:1, przygaszony
-`#5a5045` na panelu 6,2:1, na tle `#e2d3b2` 5,3:1, na oknie `#f5ecd8` 6,7:1; krem `#f1ece4` na
-belce `#0c0a09` 16,8:1, przygaszony krem `#b3aa9d` na belce 8,6:1. Noc: `#f1ece4` na `#171514`
-15,5:1, przygaszony `#9a9187` 5,9:1. Kafel rozjaśnia w najbardziej wytartym miejscu o ok. 50
-punktów z 255 (p99 = 178), co dla tekstu przygaszonego na panelu daje nadal ponad 5:1.
+Dzienne powierzchnie to od drugiej poprawki 18.09 barwy karty postaci (MG: „odrobinę zbyt żółte,
+wolę barwę z karty"): tło `#e6d9c0` = `--cp-back`, panel `#f6eddb` = `--cp-paper`, okno `#faf3e5`,
+pola `#efe3cb`/`#e7d9bd`, ramki `#cbb792`. Policzone (WCAG): tusz `#100e0d` na panelu 16,3:1,
+przygaszony `#5a5045` na panelu 6,6:1, na tle 5,6:1; krem `#f1ece4` na belce `#0c0a09` 16,8:1,
+przygaszony krem `#b3aa9d` na belce 8,6:1. Noc: `#f1ece4` na `#171514` 15,5:1, przygaszony
+`#9a9187` 5,9:1. Kafel rozjaśnia w najbardziej wytartym miejscu o ok. 50 punktów z 255 (p99 = 178),
+co dla tekstu przygaszonego na panelu daje nadal ponad 5:1.
