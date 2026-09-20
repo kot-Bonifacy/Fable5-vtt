@@ -462,6 +462,7 @@
   --notch: 10px;
   --notch-sm: 7px;
   --paper-size: var(--cp-wear-size);
+  --paper-position: -340px -420px;
 
   /* Chrom w oknie na papierze (naprawa 2c): pola formularzy, przyciski,
      obwódki i opisy wewnątrz karty i kreatora. W nocy ciepła czerń kartonu

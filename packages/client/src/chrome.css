@@ -72,6 +72,7 @@ body {
 body {
   background-image: var(--paper-tile);
   background-size: var(--paper-size);
+  background-position: var(--paper-position);
   background-blend-mode: normal;
 }
 
@@ -90,7 +91,33 @@ body {
 .chat-roll-body {
   background-image: var(--paper-tile);
   background-size: var(--paper-size);
+  background-position: var(--paper-position);
   background-blend-mode: normal;
+}
+
+/* Podkład całej strony karty, ciemniejszy niż jej pola formularza.
+   Na jasnym --cp-paper białe przetarcia niemal znikały. */
+.side-panel,
+.hud-rail,
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.context-menu,
+.panel-card,
+.scene-card {
+  background-color: var(--cp-back);
+}
+
+/* Każdy wąski panel pokazuje rysy, nie tylko pusty początek dużego kafla.
+   Przesunięcia nie zmieniają skali ani intensywności maski karty. */
+.hud-rail {
+  --paper-position: -80px -620px;
+}
+
+.panel-card:nth-child(even),
+.dialog {
+  --paper-position: -560px -720px;
 }
 
 /* Czerwone nagłówki z pęknięciami tuszu — jak nagłówek karty. */
@@ -156,7 +183,7 @@ body {
   background-position:
     0 0,
     100% 100%,
-    0 0;
+    var(--paper-position);
   background-repeat: no-repeat, no-repeat, repeat;
   background-blend-mode: normal;
 }

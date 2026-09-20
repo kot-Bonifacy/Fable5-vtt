@@ -144,6 +144,13 @@ sprawdzony. Serwer i Vite działają. Oględziny Chrome na istniejącej sesji gr
 oba motywy, HUD, panel boczny, czat i przewijane ustawienia; przywrócono jasny motyw.
 Build ostrzega o paczkach JS >500 kB. Safari/iPad nadal czekają na oględziny.
 
+**Korekta po screenie MG (20.09):** pierwsza wersja miała zbyt jasny podkład
+`--cp-paper`, a wąskie panele pokazywały niemal pusty początek maski. Duże
+powierzchnie dostały podkład strony karty `--cp-back` oraz przesunięcie tekstury
+`--paper-position` (różne dla HUD-u i części okien). Rysy i przetarcia są teraz
+widoczne w panelach i ustawieniach. Skala i siła maski bez zmian. Ponowna
+weryfikacja: 26 testów motywu, Prettier, oględziny jasnego i ciemnego UI w Chrome.
+
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
 
 **Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.

@@ -41,3 +41,12 @@ na czerwonym nagłówku. Czarne belki sekcji i zakładki mają biały tekst.
 Tokeny `--bg-*`, `--border*`, `--text*` są aliasami odpowiednich `--cp-*`;
 kolory znaczące nadal mają własne warianty dzień/noc. Kolory samej karty i jej
 tekstury źródłowe pozostają źródłem wzorca. `theme.test.ts` pilnuje zasad motywu.
+
+## Widoczność przetarć w wąskich panelach
+
+Duże powierzchnie mają podkład strony karty `--cp-back`; na jaśniejszym
+`--cp-paper` białe rysy były zbyt słabo widoczne (korekta po screenie MG, 20.09).
+`--paper-position` przesuwa kafel do fragmentu z rysami: domyślnie −340/−420 px,
+HUD −80/−620 px, dialogi i parzyste karty panelu −560/−720 px. Skala 1100 px
+oraz krycie pozostają wspólne z kartą. W oknach ze ściętymi rogami przesunięcie
+dotyczy wyłącznie trzeciej warstwy tła, czyli papieru, nie gradientów narożników.
