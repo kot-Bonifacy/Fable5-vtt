@@ -1,0 +1,1 @@
+ALTER TABLE "Campaign" ADD COLUMN "music" TEXT NOT NULL DEFAULT '{}';

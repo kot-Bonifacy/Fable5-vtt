@@ -17,6 +17,7 @@ import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
+import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime } from './realtime/index.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
@@ -117,6 +118,7 @@ export async function buildApp(
     cors: { origin: config.clientOrigin, credentials: true },
   });
   setupRealtime(io, app, ctx);
+  registerMusicRoutes(app, ctx, io);
   ai.start();
 
   // Kopie zapasowe (etap 33): jedna przy starcie, potem co godzinę. Brak

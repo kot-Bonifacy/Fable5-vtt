@@ -1,5 +1,41 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.09 — oba style UI z karty postaci
+
+**Zlecenie MG:** zastąpić jasny i ciemny stary papier stylem karty wraz z teksturami;
+doprecyzowanie: „w całości oba style”, także czerwone nagłówki i czarne belki sekcji.
+
+**Wdrożone:** kolory powierzchni, tekstu i ramek UI są aliasami palety `--cp-*`.
+`chrome-paper.py` przetwarza istniejącą maskę karty na przezroczyste WebP, czytając
+kolor i krycie z `theme.css`; CSS używa tej samej skali co karta. Papier leży pod
+napisami i zdjęciami, działa także po przewinięciu. Nagłówki mają czerwień i istniejące
+pęknięcia tuszu karty; sekcje i zakładki czarne belki, okna czerwone obramowania.
+Poprawiono kontrast tytułu aplikacji na czerwieni. Dokumentacja w `assety-chrom.md`
+i umowie `ui`. Praca poza etapem 28; danych gry nie zmieniano.
+
+**Weryfikacja:** 255 testów klienta, TypeScript i build Vite przechodzą; format CSS
+sprawdzony. Serwer i Vite działają. Oględziny Chrome na istniejącej sesji gracza:
+oba motywy, HUD, panel boczny, czat i przewijane ustawienia; przywrócono jasny motyw.
+Build ostrzega o paczkach JS >500 kB. Safari/iPad nadal czekają na oględziny.
+
+**Korekta po screenie MG (20.09):** pierwsza wersja miała zbyt jasny podkład
+`--cp-paper`, a wąskie panele pokazywały niemal pusty początek maski. Duże
+powierzchnie dostały podkład strony karty `--cp-back` oraz przesunięcie tekstury
+`--paper-position` (różne dla HUD-u i części okien). Rysy i przetarcia są teraz
+widoczne w panelach i ustawieniach. Skala i siła maski bez zmian. Ponowna
+weryfikacja: 26 testów motywu, Prettier, oględziny jasnego i ciemnego UI w Chrome.
+
+**Dostrojenie MG:** główny ekran odrobinę jaśniejszy — `--paper-main: #ebdfc9`
+w dzień dla tła strony i obu paneli bocznych; okna, karta i tekstury bez zmian.
+Testy motywu (26) i format CSS przechodzą.
+
+**Naprawa linku MG:** „Panel MG” zachował czerwień akcentu po zmianie belki
+na czerwoną, więc zlewał się z tłem. `.top-bar-link` ma teraz jasny kolor
+`--cp-on-red`, razem z tytułem aplikacji. Na życzenie MG biel ograniczona
+do czerwonej górnej belki; „Wróć do gry” w Panelu MG pozostaje czerwone.
+26 testów motywu i format CSS przechodzą.
+
+
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
 
 **Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.

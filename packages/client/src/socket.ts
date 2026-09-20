@@ -1,4 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
+import type { MusicCommand, MusicState } from '@vtt/shared';
+import { useMusicStore } from './stores/musicStore.js';
 import type {
   CharacterStatEffectPayload,
   ArchiveCharacterImportPayload,
@@ -521,6 +523,7 @@ export function connectSocket(userId: string): Socket {
   });
   socket.on('connect_error', () => setDisconnected());
   socket.on('server:hello', (hello: ServerHello) => setServerHello(hello));
+  socket.on('music:state', (state: MusicState) => useMusicStore.getState().apply(state));
 
   const scenes = () => useSceneStore.getState();
   const tokens = () => useTokenStore.getState();
@@ -531,6 +534,9 @@ export function connectSocket(userId: string): Socket {
 
   socket.on('state:sync', (payload: StateSyncPayload) => {
     chat().applySync(payload);
+    if (useMusicStore.getState().state?.campaignId !== payload.campaign?.id)
+      useMusicStore.setState({ state: null, error: null, blocked: false });
+    void fetchMusic();
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
     useCharacterStore.getState().applySync(payload);
@@ -2052,6 +2058,25 @@ export const saveKnowledgeEntry = (payload: KnowledgeUpsertPayload) =>
   emitSceneAck<KnowledgeEntryView>('knowledge:upsert', payload);
 
 export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:delete', { id });
+
+/** Music has its own revision; refresh it after each table synchronization. */
+export async function fetchMusic() {
+  const ack = await emitMusicAck<MusicState>('music:request', undefined);
+  if (ack.ok && ack.data) useMusicStore.getState().apply(ack.data);
+}
+
+function emitMusicAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
+  return new Promise((resolve) => {
+    if (!socket?.connected) {
+      resolve({ ok: false, error: 'NOT_CONNECTED' });
+      return;
+    }
+    socket.timeout(8000).emit(event, payload, (error: Error | null, ack: SocketAck<T>) => {
+      resolve(error ? { ok: false, error: 'TIMEOUT' } : ack);
+    });
+  });
+}
+export const controlMusic = (command: MusicCommand) => emitMusicAck('music:control', command);
 
 /** Tabele losowe (34). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
 export function fetchRandomTables(): Promise<RandomTableListPayload | null> {

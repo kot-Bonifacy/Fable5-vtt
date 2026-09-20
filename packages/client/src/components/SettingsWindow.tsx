@@ -8,6 +8,7 @@ import {
   useFullscreenActive,
 } from '../fullscreen.js';
 import { auditionFxSound } from '../sfx.js';
+import { auditionCupNotification } from '../cup-notification.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
@@ -56,6 +57,8 @@ const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
  * skórka kości jedzie na serwer, bo przy stole widać kości rzucającego.
  */
 export function SettingsWindow() {
+  const notificationVolume = useSettingsStore((s) => s.notificationVolume);
+  const setNotificationVolume = useSettingsStore((s) => s.setNotificationVolume);
   const open = useSettingsStore((s) => s.open);
   const setOpen = useSettingsStore((s) => s.setOpen);
 
@@ -96,6 +99,7 @@ export function SettingsWindow() {
       className="settings-window"
       style={placement.style}
       aria-label="Ustawienia"
+      data-owns-keys
     >
       <div className="settings-window-header" {...placement.dragProps}>
         <span className="settings-window-title">⚙ Ustawienia</span>
@@ -111,6 +115,27 @@ export function SettingsWindow() {
       </div>
 
       <div className="settings-window-body">
+        <section className="settings-group">
+          <h3 className="settings-group-title">Gotowość rzutu</h3>
+          <label className="settings-row">
+            <span className="settings-label">Sygnał kubka</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={notificationVolume}
+              onChange={(event) => setNotificationVolume(Number(event.target.value))}
+            />
+            <span className="settings-value">{notificationVolume}</span>
+          </label>
+          <p className="settings-note">
+            Jeden sygnał, gdy Twój kubek jest gotowy. Zero wycisza powiadomienia.
+          </p>
+          <button type="button" className="settings-sample" onClick={auditionCupNotification}>
+            Posłuchaj sygnału kubka
+          </button>
+        </section>
         <section className="settings-group">
           <h3 className="settings-group-title">Kości</h3>
 

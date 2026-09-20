@@ -11,10 +11,11 @@ import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
  * wiarygodne miejsce jest na serwerze (kolumna `User.diceSkin`). Tutaj leży
  * kopia, żeby okno ustawień miało co pokazać przed odpowiedzią serwera.
  *
- * Głośności są trzy, bo to trzy różne rzeczy: kości uderzają o stół
+ * Osobne głośności: kości uderzają o stół
  * (biblioteka 3D), kubek grzechocze w ręce (próbki odtwarzane u nas), a mapa
  * strzela i wybucha (etap 27i). Zero wycisza każdą z osobna — stół, który chce
- * grzechoczących kości i cichej mapy, istnieje.
+ * grzechoczących kości i cichej mapy, istnieje. Sygnał gotowości kubka i muzyka
+ * mają własne suwaki i nie zależą od przełącznika animacji.
  */
 export interface SettingsState {
   /** Wyłączone = rzut nie toczy kości, karta czatu pojawia się natychmiast. */
@@ -25,6 +26,10 @@ export interface SettingsState {
   cupVolume: number;
   /** 0–100, efekty walki na mapie: strzały, wybuchy, przeładowanie (etap 27i). */
   sfxVolume: number;
+  notificationVolume: number;
+  musicVolume: number;
+  setNotificationVolume: (volume: number) => void;
+  setMusicVolume: (volume: number) => void;
   /**
    * Kroki figur na mapie (etap 27j) — własny przełącznik, nie własny suwak.
    *
@@ -110,6 +115,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   diceVolume: readVolume(DICE_VOLUME_KEY, 50),
   cupVolume: readVolume(CUP_VOLUME_KEY, 50),
   sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
+  notificationVolume: readVolume('vtt.notification.volume', 60),
+  musicVolume: readVolume('vtt.music.volume', 40),
+  setNotificationVolume: (volume) => {
+    const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 60;
+    write('vtt.notification.volume', String(value));
+    set({ notificationVolume: value });
+  },
+  setMusicVolume: (volume) => {
+    const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 40;
+    write('vtt.music.volume', String(value));
+    set({ musicVolume: value });
+  },
   stepSounds: readFlag(STEP_SOUNDS_KEY, true),
   fullscreen: readFlag(FULLSCREEN_KEY, false),
   skin: readSkin(),

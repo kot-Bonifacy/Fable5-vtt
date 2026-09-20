@@ -817,6 +817,12 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Audio stołu (20.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
+  kubka; wezwanie i załadowany Test dzielą klucz. `music-player.ts` ma jeden
+  odtwarzacz niezależny od otwarcia okna. Dźwięki nowe mają być naturalne;
+  głośności powiadomień i muzyki nie zależą od animacji. Pełna umowa i źródła:
+  `docs/assety-audio.md`.
+
 - **`styles.css` jest spisem `@import` — 19 plików `styles/NN-obszar.css` w kolejności kaskady** (od 18.09). Nową regułę dopisuj do pliku swojego obszaru, nowy obszar to nowy plik wpięty do spisu tam, gdzie stałby w dawnym pliku; `theme.test.ts` bierze listę plików ze spisu. Nie łącz plików z powrotem i nie zmieniaj kolejności — `.small-button--primary` musi stać po `.small-button`.
 - **Skóra chromu „stara kartka” mieszka w `chrome.css` + tokenach `--paper-*`, `--notch*`, `--font-ui*`** — nowa duża powierzchnia (panel, okno, dialog) dopisuje się do list w `chrome.css` (kafel, ścięty róg, belka), nie dostaje własnego `background-image`; czerwony nagłówek musi stać na **obu** listach: w `chrome.css` i w bloku „Belka” w `theme.css`. Źródła kafli i granice: `docs/assety-chrom.md`.
 - **Okno, w którym klawisze należą do niego, nosi `data-owns-keys`** — nasłuch mapy w `MapArea` pomija zdarzenia z jego wnętrza (Tab, Delete, litery narzędzi, cyfry paska, Esc). Od 2b mają go kreator i karta postaci; znacznik mówi „gdzie jest fokus”, nie „czy okno jest otwarte”.

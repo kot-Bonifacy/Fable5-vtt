@@ -126,6 +126,25 @@ a nie do tego pliku.
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 
+### Sesja 20.09 — naturalny sygnał kubka i muzyka MG
+
+**Zlecenie MG poza etapem 28:** pojedynczy sygnał gotowości kubka, podkłady
+muzyczne MG oraz propozycje innych zdarzeń do późniejszej decyzji. Doprecyzowanie:
+naturalne odgłosy fizycznych przedmiotów, bez elektronicznych powiadomień.
+
+**Wdrożone:** próbka 470 ms prawdziwych kości wkładanych do kubka (2BACH,
+Freesound, CC0), lokalny suwak i odsłuch. Jedno wezwanie nie powtarza sygnału
+przy załadowaniu Testu. Przycisk nut otwiera bibliotekę muzyki MG: MP3/OGG/WAV
+do 40 MB, odtwarzanie/pauza/wznowienie/stop/pętla, głośność stołu i lokalna.
+Stan zapisany w kampanii, synchronizacja po połączeniu, obsługa blokady autoplay.
+Serwer chroni sterowanie MG i bibliotekę; eksport, snapshot i GC obejmują muzykę.
+Migracja zastosowana na dev. Źródła i propozycje: `docs/assety-audio.md`.
+
+**Weryfikacja:** 2164 testy shared, 1197 serwera, 260 klienta; TypeScript
+trzech pakietów, ESLint, Prettier i build Vite. Serwer i Vite uruchomione.
+Chrome: okna MG, odsłuch, przygotowanie kubka wpisem w polu czatu (bez rzutu).
+Sceny i karty nietknięte. Safari/iPad i odsłuch przez dwóch ludzi czekają.
+
 ### Sesja 20.09 — siatka wyłącznie dla MG
 
 **Zlecenie MG:** gracz nie widzi siatki ani na mapie, ani poza nią; przełącznik
@@ -140,39 +159,4 @@ Skala, przyciąganie i pomiary bez zmian. Praca poza etapem 28.
 **Weryfikacja:** 255 testów klienta, TypeScript, build Vite, ESLint i Prettier.
 Serwer i Vite uruchomione. Bez nowych oględzin w przeglądarce. Przy starcie
 serwera snapshot zgłosił ENOENT podczas równoległego sprzątania uploads — zapis w zaległościach.
-
-### Sesja 20.09 — oba style UI z karty postaci
-
-**Zlecenie MG:** zastąpić jasny i ciemny stary papier stylem karty wraz z teksturami;
-doprecyzowanie: „w całości oba style”, także czerwone nagłówki i czarne belki sekcji.
-
-**Wdrożone:** kolory powierzchni, tekstu i ramek UI są aliasami palety `--cp-*`.
-`chrome-paper.py` przetwarza istniejącą maskę karty na przezroczyste WebP, czytając
-kolor i krycie z `theme.css`; CSS używa tej samej skali co karta. Papier leży pod
-napisami i zdjęciami, działa także po przewinięciu. Nagłówki mają czerwień i istniejące
-pęknięcia tuszu karty; sekcje i zakładki czarne belki, okna czerwone obramowania.
-Poprawiono kontrast tytułu aplikacji na czerwieni. Dokumentacja w `assety-chrom.md`
-i umowie `ui`. Praca poza etapem 28; danych gry nie zmieniano.
-
-**Weryfikacja:** 255 testów klienta, TypeScript i build Vite przechodzą; format CSS
-sprawdzony. Serwer i Vite działają. Oględziny Chrome na istniejącej sesji gracza:
-oba motywy, HUD, panel boczny, czat i przewijane ustawienia; przywrócono jasny motyw.
-Build ostrzega o paczkach JS >500 kB. Safari/iPad nadal czekają na oględziny.
-
-**Korekta po screenie MG (20.09):** pierwsza wersja miała zbyt jasny podkład
-`--cp-paper`, a wąskie panele pokazywały niemal pusty początek maski. Duże
-powierzchnie dostały podkład strony karty `--cp-back` oraz przesunięcie tekstury
-`--paper-position` (różne dla HUD-u i części okien). Rysy i przetarcia są teraz
-widoczne w panelach i ustawieniach. Skala i siła maski bez zmian. Ponowna
-weryfikacja: 26 testów motywu, Prettier, oględziny jasnego i ciemnego UI w Chrome.
-
-**Dostrojenie MG:** główny ekran odrobinę jaśniejszy — `--paper-main: #ebdfc9`
-w dzień dla tła strony i obu paneli bocznych; okna, karta i tekstury bez zmian.
-Testy motywu (26) i format CSS przechodzą.
-
-**Naprawa linku MG:** „Panel MG” zachował czerwień akcentu po zmianie belki
-na czerwoną, więc zlewał się z tłem. `.top-bar-link` ma teraz jasny kolor
-`--cp-on-red`, razem z tytułem aplikacji. Na życzenie MG biel ograniczona
-do czerwonej górnej belki; „Wróć do gry” w Panelu MG pozostaje czerwone.
-26 testów motywu i format CSS przechodzą.
 

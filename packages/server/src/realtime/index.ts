@@ -241,6 +241,7 @@ import {
   archiveSnapshotEvent,
 } from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
+import { musicControlEvent, musicStateEvent } from './music.js';
 
 declare module 'socket.io' {
   interface SocketData {
@@ -253,6 +254,8 @@ declare module 'socket.io' {
 }
 
 const EVENTS: RealtimeEvent<never, unknown>[] = [
+  musicControlEvent,
+  musicStateEvent,
   archiveListEvent,
   archiveSnapshotEvent,
   archiveCharacterImportEvent,

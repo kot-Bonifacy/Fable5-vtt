@@ -3,6 +3,7 @@ import { ClockChip } from './ClockWindow.js';
 import { CombatBar } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
+import { MusicButton } from './MusicWindow.js';
 import { ShortcutsButton } from './ShortcutsWindow.js';
 import { useAuthStore } from '../stores/authStore.js';
 
@@ -42,6 +43,7 @@ export function TopBar() {
             stan gry, a nie listę preferencji jednego użytkownika. */}
         <ShortcutsButton />
         <SettingsButton />
+        <MusicButton />
         {user && (
           <span className="top-bar-user">
             {user.name} ({user.role === 'GM' ? 'MG' : 'Gracz'})

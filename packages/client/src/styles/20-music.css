@@ -1,0 +1,31 @@
+.music-window {
+  width: min(460px, calc(100vw - 24px));
+}
+.music-upload {
+  display: grid;
+  gap: 8px;
+}
+.music-upload input {
+  max-width: 100%;
+}
+.music-tracks {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.music-tracks li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+.music-tracks li > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-tracks button {
+  flex: none;
+}

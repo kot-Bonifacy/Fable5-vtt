@@ -739,6 +739,7 @@ export async function exportCampaign(
       // Wyjątki dostępności MG (naprawa 3b) — bez nich kopia kampanii otworzyłaby
       // albo zamknęła sklep inaczej, niż grał stół.
       shopTierOverrides: true,
+      music: true,
       sandbox: true,
       createdAt: true,
       // Zegar świata (etap 37) — kopia kampanii bez daty w Night City nie jest

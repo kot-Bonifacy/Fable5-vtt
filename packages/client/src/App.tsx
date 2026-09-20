@@ -18,6 +18,8 @@ import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
+import { MusicWindow } from './components/MusicWindow.js';
+import { useMusicPlayer } from './music-player.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
@@ -82,6 +84,7 @@ function useShortcutsKey(): void {
 }
 
 function GameView() {
+  useMusicPlayer();
   useGameContextMenu();
   useShortcutsKey();
   return (
@@ -110,6 +113,7 @@ function GameView() {
       <PortraitCropEditor />
       <CheckRequestDialog />
       <SettingsWindow />
+      <MusicWindow />
       <ClockWindow />
       <ShortcutsWindow />
       <DiceCup />

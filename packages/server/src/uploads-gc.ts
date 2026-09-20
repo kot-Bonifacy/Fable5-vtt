@@ -27,7 +27,7 @@ import type { PrismaClient } from './db.js';
  */
 
 /** Katalogi, które zbieracz w ogóle ogląda. Nic poza nimi nie jest ruszane. */
-const SWEPT_DIRECTORIES = ['maps', 'portraits', 'tokens', 'handouts'] as const;
+const SWEPT_DIRECTORIES = ['maps', 'portraits', 'tokens', 'handouts', 'music'] as const;
 
 /** Ile plik musi mieć lat, żeby brak odnośnika uznać za sierotę, nie za wyścig. */
 export const UPLOAD_GRACE_MS = 60 * 60 * 1000;
@@ -44,6 +44,7 @@ export async function referencedUploadUrls(prisma: PrismaClient): Promise<Set<st
     if (!value) return;
     for (const match of value.matchAll(UPLOAD_URL_PATTERN)) urls.add(match[0]);
   };
+  for (const row of await prisma.campaign.findMany({ select: { music: true } })) scan(row.music);
 
   for (const row of await prisma.scene.findMany({ select: { backgroundUrl: true } })) {
     add(row.backgroundUrl);

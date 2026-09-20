@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**20.09.2026 — naturalne audio: propozycje czekające na wybór MG.** Sygnał
+kubka i podkłady muzyczne wdrożone. Do decyzji: własna tura (drewno), szept
+(papier), prośba o Test u MG (stuk), przekazany handout/przedmiot (szelest/brzęk),
+otoczenie sceny (deszcz, wiatr, ogień, ulica). Bez elektronicznych piknięć.
+Szczegóły i inspiracje Foundry: `docs/assety-audio.md`. Nie wdrażać bez wyboru MG.
+
 **17.09.2026 (zlecenie MG, trzecia sesja) — rzuty kreatora przez kubek, po jednej pozycji.**
 MG: „rzucanie kośćmi to jeden z przyjemniejszych elementów gry […] gracze powinni rzucać małą
 ilością kości na raz. Nie podobają mi się te rzuty 10 lub więcej kośćmi naraz i zamiast wciśnięcia

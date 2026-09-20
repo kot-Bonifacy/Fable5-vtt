@@ -39,6 +39,7 @@ model Session {
 }
 
 model Campaign {
+  music String @default("{}")
   id        String   @id @default(cuid())
   name      String
   active    Boolean  @default(true)

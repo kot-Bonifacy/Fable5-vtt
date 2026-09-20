@@ -44,3 +44,4 @@ export * from './zones.js';
 // CP RED system module. Core modules above must never import from it —
 // re-exporting here is only the package's public entry point.
 export * from './systems/cpred/index.js';
+export * from './music.js';

@@ -8,6 +8,7 @@ import {
   parseChatInput,
 } from '@vtt/shared';
 import { playFunRoll, sweepDice } from '../dice3d.js';
+import { useCupNotification } from '../cup-notification.js';
 import {
   sendAttackEvade,
   sendAttackSmart,
@@ -296,6 +297,17 @@ export function DiceCup() {
     isGm,
   ]);
   modeRef.current = mode;
+  const notificationKey =
+    mode.kind === 'call'
+      ? `call:${mode.messageId}`
+      : mode.kind === 'sheet' && mode.pending.call
+        ? `call:${mode.pending.call.messageId}`
+        : 'pending' in mode
+          ? `${mode.kind}:${JSON.stringify(mode.pending)}`
+          : mode.kind === 'roll' || mode.kind === 'randtable'
+            ? mode.kind
+            : null;
+  useCupNotification(synced && campaign ? notificationKey : null, campaign?.id ?? null);
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
   useEffect(() => {
