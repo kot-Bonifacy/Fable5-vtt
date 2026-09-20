@@ -157,7 +157,8 @@ Testy motywu (26) i format CSS przechodzą.
 
 **Naprawa linku MG:** „Panel MG” zachował czerwień akcentu po zmianie belki
 na czerwoną, więc zlewał się z tłem. `.top-bar-link` ma teraz jasny kolor
-`--cp-on-red`, razem z tytułem aplikacji; dotyczy także powrotu z Panelu MG.
+`--cp-on-red`, razem z tytułem aplikacji. Na życzenie MG biel ograniczona
+do czerwonej górnej belki; „Wróć do gry” w Panelu MG pozostaje czerwone.
 26 testów motywu i format CSS przechodzą.
 
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza

@@ -288,7 +288,7 @@ textarea {
 }
 
 .top-bar-title,
-.top-bar-link {
+.top-bar .top-bar-link {
   color: var(--cp-on-red);
 }
 
