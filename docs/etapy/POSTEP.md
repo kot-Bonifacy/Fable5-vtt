@@ -35,8 +35,8 @@ Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do po
 refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socket.ts` (152 KB),
 `roleability.ts` (121 KB), `CharacterCreator.tsx` (111 KB) — czytaj je fragmentami (`grep` + zakres).
 
-**Stan UI (18.09):** cały chrom i karta postaci są „starą kartką” — `chrome.css`, `sheet.css`,
-tokeny papieru w `theme.css`, kafle z `tools/art/chrome-paper.py` i `sheet-paper.py`; MG odrzuca
+**Stan UI (20.09):** cały chrom i karta postaci są „starą kartką” — `chrome.css`, `sheet.css`,
+tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py`), wspólna paleta `--cp-*`; MG odrzuca
 wszystko ciemniejsze od papieru („żadnego brudu”). Poza skórą: Sieć, pasek mapy, screamsheet,
 logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
@@ -126,6 +126,24 @@ a nie do tego pliku.
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 
+### Sesja 20.09 — oba style UI z karty postaci
+
+**Zlecenie MG:** zastąpić jasny i ciemny stary papier stylem karty wraz z teksturami;
+doprecyzowanie: „w całości oba style”, także czerwone nagłówki i czarne belki sekcji.
+
+**Wdrożone:** kolory powierzchni, tekstu i ramek UI są aliasami palety `--cp-*`.
+`chrome-paper.py` przetwarza istniejącą maskę karty na przezroczyste WebP, czytając
+kolor i krycie z `theme.css`; CSS używa tej samej skali co karta. Papier leży pod
+napisami i zdjęciami, działa także po przewinięciu. Nagłówki mają czerwień i istniejące
+pęknięcia tuszu karty; sekcje i zakładki czarne belki, okna czerwone obramowania.
+Poprawiono kontrast tytułu aplikacji na czerwieni. Dokumentacja w `assety-chrom.md`
+i umowie `ui`. Praca poza etapem 28; danych gry nie zmieniano.
+
+**Weryfikacja:** 255 testów klienta, TypeScript i build Vite przechodzą; format CSS
+sprawdzony. Serwer i Vite działają. Oględziny Chrome na istniejącej sesji gracza:
+oba motywy, HUD, panel boczny, czat i przewijane ustawienia; przywrócono jasny motyw.
+Build ostrzega o paczkach JS >500 kB. Safari/iPad nadal czekają na oględziny.
+
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
 
 **Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.
@@ -135,32 +153,4 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 **Wdrożone:** `gridLinePositions` w `map/grid-style.ts` (pomija linie na brzegu, tolerancja 1 px świata) — `drawGrid` z niej korzysta; `.map-area--plain` (dawne `--welcome`) gasi kratkę stołu u gracza na każdej scenie. Umowa w `mapa`. Cztery testy `gridLinePositions`.
 
 **Weryfikacja:** vitest klienta **255**, `tsc`, ESLint i Prettier zmienionych plików czyste; u MG w Chrome linia na brzegu mapy zniknęła. **Widok gracza nieobejrzany** (brak linku zaproszenia) — do sprawdzenia przy następnej sesji z graczem.
-
-### Sesja 18.09 (trzecia) — odchudzenie kontekstu sesji
-
-**Zlecenie MG:** okno kontekstowe na starcie sesji jest o ~30 % za duże — ocenić, co nieistotne,
-wykasować albo przenieść tak, żeby nie wczytywało się w całości (pomysł MG: `styles.css` za duży
-jak na jeden plik); dopytywać i zgłaszać możliwe błędy.
-
-**Pomiar:** na starcie z repo wchodzą `CLAUDE.md` (8,3 KB) i `POSTEP.md` (35 KB, z czego „Od czego
-zacząć” 15 KB i tabela 90 etapów 7 KB); w trakcie pracy największy jednorazowy koszt to
-`styles.css` (242 KB, 11 530 linii, ~60 k tokenów za jedno przeczytanie).
-
-**Wdrożone:** (1) `styles.css` pocięty na **19 plików `styles/NN-obszar.css`** po granicach sekcji,
-w kolejności kaskady; `styles.css` został spisem `@import`, Vite skleja je w jeden arkusz — **zbudowany
-CSS jest bajt w bajt identyczny** (ten sam hash `index-MxIJcRsJ.css`). `theme.test.ts` bierze listę
-plików ze spisu `@import` (wskazuje winny plik, nie „styles.css”), `portrait-crop.test.ts` czyta
-`styles/16-creator.css`. Odwołania w `docs/assety-*.md`, pułapce `ui`, `naprawa_karty_postaci.md`
-i komentarzach `HudIcon`/`MapTools` przepisane. Umowa w `ui`. (2) `POSTEP.md` z 35 KB do ~14 KB:
-tabela etapów wyprowadzona do `archiwum/tabela-etapow.md` (tu zostały trzy wiersze stanu), stara
-sekcja „Od czego zacząć” w całości do `archiwum/od-czego-zaczac.md`, nowa opisuje stan na dziś.
-(3) `CLAUDE.md` — punkt 5 skrócony (spis plików „kiedy czytać” stoi już w `POSTEP.md`).
-
-**Zgłoszone MG:** poza repo na start sesji wchodzą też opisy skilli synchronizowanych z claude.ai
-(docs, docx, pdf, pptx, xlsx, morning, import-memory, skill-creator) i dwa serwery MCP (Chrome,
-Claude Docs) — z poziomu repo nie da się ich wyłączyć; `.claude/settings.local.json` trzyma martwe
-uprawnienia `mcp__chrome-devtools__*`. Wielkie pliki TS zostają do refaktoryzacji przed 28.
-
-**Weryfikacja:** vitest klienta **251** (18 nowych: strażnik motywu per plik), build Vite identyczny,
-Prettier i ESLint zmienionych plików czyste. Serwer i Vite nieuruchamiane.
 

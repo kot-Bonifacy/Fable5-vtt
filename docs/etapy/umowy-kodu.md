@@ -817,7 +817,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 ## ui — Okna, motyw, style, dostępność
 
 - **`styles.css` jest spisem `@import` — 19 plików `styles/NN-obszar.css` w kolejności kaskady** (od 18.09). Nową regułę dopisuj do pliku swojego obszaru, nowy obszar to nowy plik wpięty do spisu tam, gdzie stałby w dawnym pliku; `theme.test.ts` bierze listę plików ze spisu. Nie łącz plików z powrotem i nie zmieniaj kolejności — `.small-button--primary` musi stać po `.small-button`.
-- **Skóra chromu „stara kartka” mieszka w `chrome.css` + tokenach `--paper-*`, `--notch*`, `--font-ui*`** — nowa duża powierzchnia (panel, okno, dialog) dopisuje się do list w `chrome.css` (kafel, ścięty róg, belka), nie dostaje własnego `background-image`; belka czarna w dzień musi stać na **obu** listach: w `chrome.css` i w bloku „Belka” w `theme.css`. Źródła kafli i granice: `docs/assety-chrom.md`.
+- **Skóra chromu „stara kartka” mieszka w `chrome.css` + tokenach `--paper-*`, `--notch*`, `--font-ui*`** — nowa duża powierzchnia (panel, okno, dialog) dopisuje się do list w `chrome.css` (kafel, ścięty róg, belka), nie dostaje własnego `background-image`; czerwony nagłówek musi stać na **obu** listach: w `chrome.css` i w bloku „Belka” w `theme.css`. Źródła kafli i granice: `docs/assety-chrom.md`.
 - **Okno, w którym klawisze należą do niego, nosi `data-owns-keys`** — nasłuch mapy w `MapArea` pomija zdarzenia z jego wnętrza (Tab, Delete, litery narzędzi, cyfry paska, Esc). Od 2b mają go kreator i karta postaci; znacznik mówi „gdzie jest fokus”, nie „czy okno jest otwarte”.
 - **Pełny ekran — wyłącznie przez `fullscreen.ts`**, nigdy gołe `requestFullscreen`: nowe wejście do gry woła `enterPreferredFullscreen()` **przed** pierwszym `await` w obsłudze gestu, a automat po F5 i tłumik przytrzymanego Esc żyją w `useFullscreen` w korzeniu `App`. Kolejność pilnuje `fullscreen.test.ts`.
 - **Naklejka statusu poza mapą** — wyłącznie `StatusIcon` (`HudIcon.tsx`), nigdy `<img>`: maska z `mask-mode: luminance` (`.status-icon`) gasi czarny podkład pliku i barwi sylwetkę kolorem tekstu. Rozmiar daje kontekst w CSS, nie atrybuty. Mapa rysuje te same pliki jako sprite'y **z** podkładem i tak zostaje.
@@ -847,27 +847,17 @@ mówi, co zawiera. Trzy rzeczy do pilnowania:
   i `.dialog-backdrop:has(…)` zależą od miejsca (pułapki w `ui` i `karta`).
 - **`chrome.css` i `sheet.css` zostają osobno** i ładują się po spisie — nie wpinaj ich do niego.
 
-**Skóra chromu „stara kartka” — `chrome.css`, tokeny papieru i belki w `theme.css` (18.09).**
-Chrom był płaskim kolorem z jednopikselową ramką („excelowy” — MG). Od 18.09 duże powierzchnie
-(panel boczny, HUD, okna, dialogi, menu kontekstowe, `.panel-card`, karta obiektu sceny) mają
-kafel ziarna `--paper-tile` jako warstwę tła z `background-blend-mode: soft-light`; okna mają
-ścięty lewy górny i prawy dolny róg (`--notch`), ramkę w narożnikach z gradientu i cień przez
-`filter: drop-shadow(var(--shadow-window))`, bo `clip-path` obcina `border` i `box-shadow`.
-Belki (górny pasek, belki okien, nagłówek karty obiektu sceny) są czarne z czerwoną kreską
-**w obu motywach**: w dzień blok „Belka” w `theme.css` przestawia im tokeny na nocne, a `chrome.css`
-deklaruje `color: var(--text)` wprost — bez tego belka dziedziczy po oknie policzony ciemny
-kolor i tytuł znika (tak wyszło przy pierwszym podejściu). Trzy rzeczy do pilnowania:
+**Skóra UI — wspólna z kartą postaci (20.09).** `chrome.css` używa palety
+`--cp-*` przez aliasy `--bg-*`, `--border*`, `--text*`. Kafle `--paper-tile` są
+przezroczystą wersją maski karty; `tools/art/chrome-paper.py` czyta kolory i krycie
+z `theme.css`. Po zmianie `--cp-wear`, `--cp-wear-alpha` albo maski uruchom generator.
+Skala `--paper-size` jest aliasem `--cp-wear-size`. Bez `soft-light`.
 
-- **Nowe okno albo panel** dopisuje się do list selektorów w `chrome.css` (kafel, róg, pasek
-  przewijania), a jego belkę do **obu** list belek — `chrome.css` i `theme.css`. Własne
-  `background: var(--bg-panel)` w `styles.css` zostaje; `chrome.css` ładuje się po nim.
-- **Uchwyt rozciągania 13 px od rogu** (umowa wyżej) nadal wystarcza: skos ma 10 px.
-- **Poza skórą** zostają karta i kreator (`sheet.css` ładuje się po `chrome.css` i wygrywa),
-  okno Sieci, pasek narzędzi mapy, screamsheet i ekran wejścia — nie dopisuj ich do list.
-  Ogniska na przycisku głównym: `outline-offset: -4px`, bo `clip-path` obciąłby obwódkę.
-
-`theme.test.ts` pilnuje `chrome.css` tak samo jak `styles.css` (bez literałów koloru, każdy token
-z motywu, każdy token motywu z odbiorcą).
+Nowe powierzchnie dopisuj do list w `chrome.css`; czerwone nagłówki okien także
+do listy „Belka” w `theme.css`, która zapewnia jasny tekst w obu motywach.
+Sekcje i zakładki mają czarne belki. Karta/kreator, mapa, Sieć, screamsheet i ekran
+wejścia zachowują własne reguły. Ścięte rogi i uchwyty 13 px od brzegu bez zmian.
+Szczegóły, źródła i polecenie generatora: `docs/assety-chrom.md`.
 
 ---
 

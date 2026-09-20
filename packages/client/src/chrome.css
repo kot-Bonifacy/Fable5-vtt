@@ -1,32 +1,8 @@
-/* ============================================================================
-   Skóra chromu „stara kartka" (18.09.2026, zlecenie MG)
-   ----------------------------------------------------------------------------
-   Do tej sesji chrom aplikacji był płaskim kolorem z jednopikselową ramką
-   i systemowym krojem — „excelowy" (słowa MG). Karta postaci i kreator dostały
-   w naprawie 2c wytarty papier, a ekran wejścia stoi na plakacie; ten plik
-   ciągnie resztę interfejsu w tę samą stronę:
-
-     • ziarno papieru na dużych powierzchniach (panel boczny, HUD, okna,
-       karty) — szary kafel `--paper-tile` zmieszany z kolorem tokenu przez
-       `background-blend-mode`, więc kolor nadal pochodzi z `theme.css`;
-     • czarna belka z czerwoną kreską na górnym pasku i belkach okien —
-       belka kategorii arkusza i ramka plakatu, w dzień też (tokeny belki
-       w `theme.css`);
-     • ścięty lewy górny i prawy dolny róg okna oraz przycisku głównego — róg
-       arkusza; ramka rysowana gradientem w narożniku, bo `clip-path` obcina
-       `border`, a cień idzie przez `filter: drop-shadow()`, bo obcina też
-       `box-shadow`;
-     • kroje karty: Jost na treść, Oswald na belki, zakładki i etykiety.
-
-   Zasady: ten plik NIE pisze koloru wprost (pilnuje `theme.test.ts`) i nie
-   dotyka tego, co MG wyłączył 18.09 — karty postaci i kreatora
-   (`.sheet-window--paper`, `sheet.css` ładuje się po nim), okna Sieci
-   (`.net-window`, `.net-run-window`), paska narzędzi nad mapą (`--map-*`),
-   screamsheetu i ekranu wejścia (`.auth-screen`).
-
-   Kolejność ładowania: po `styles.css`, przed `sheet.css` — reguły niżej
-   wygrywają z `styles.css` samą kolejnością przy tej samej specyficzności.
-   ========================================================================== */
+/* Skóra UI współdzieli kolory, przetarcia i pęknięcia tuszu z kartą postaci.
+   Papier jest tłem z alfą, przygotowanym z maski karty przez chrome-paper.py;
+   nie przykrywa napisów ani zdjęć i powtarza się także po przewinięciu panelu.
+   Kolejność: styles.css → chrome.css → sheet.css. Kolory tylko w theme.css.
+   Mapa, Sieć, screamsheet i ekran wejścia zachowują swoje osobne materiały. */
 
 /* ===== Kroje ===== */
 
@@ -96,7 +72,7 @@ body {
 body {
   background-image: var(--paper-tile);
   background-size: var(--paper-size);
-  background-blend-mode: soft-light;
+  background-blend-mode: normal;
 }
 
 /* Duże powierzchnie chromu. Kafel leży POD treścią jako warstwa tła, więc nie
@@ -109,22 +85,25 @@ body {
 .dialog,
 .context-menu,
 .panel-card,
-.scene-card {
+.scene-card,
+.hud-card,
+.chat-roll-body {
   background-image: var(--paper-tile);
   background-size: var(--paper-size);
-  background-blend-mode: soft-light;
+  background-blend-mode: normal;
 }
 
-/* Belki: czarne z czerwoną kreską pod spodem — w obu motywach. `color`
-   stoi tu wprost, bo w dzień belka przestawia tokeny (`theme.css`, blok
-   „Belka"), a odziedziczony po oknie `color` jest już policzony — ciemny. */
+/* Czerwone nagłówki z pęknięciami tuszu — jak nagłówek karty. */
 .top-bar,
 .settings-window-header,
 .handout-window-header,
 .inventory-window-header,
 .scene-card-header {
-  color: var(--text);
-  border-bottom: 1px solid var(--accent);
+  color: var(--cp-on-red);
+  background-color: var(--cp-red);
+  background-image: var(--cp-cracks);
+  background-size: var(--cp-cracks-size);
+  border-bottom: 1px solid var(--cp-red-deep);
 }
 
 .top-bar {
@@ -179,7 +158,7 @@ body {
     100% 100%,
     0 0;
   background-repeat: no-repeat, no-repeat, repeat;
-  background-blend-mode: normal, normal, soft-light;
+  background-blend-mode: normal;
 }
 
 /* Uchwyt rozciągania siedzi 13 px od rogu (umowa w `ui`), czyli za skosem. */
@@ -245,4 +224,59 @@ textarea {
 .gm-panel {
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-width: thin;
+}
+
+/* Czarne belki sekcji i zakładki — jak belki kategorii na karcie. */
+.side-tabs,
+.panel-section-title,
+.settings-group-title,
+.hud-group-title,
+.hud-head,
+.context-menu-title,
+.context-menu-section,
+.panel-card-header {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+}
+
+.panel-section-title,
+.settings-group-title,
+.hud-group-title,
+.context-menu-title,
+.context-menu-section,
+.panel-card-header {
+  padding: 0.35rem 0.6rem;
+}
+
+.side-tab,
+.side-tabs-label,
+.hud-head-title,
+.hud-head button,
+.panel-card-header h2 {
+  color: var(--cp-bar-ink);
+}
+
+.side-tab--active {
+  border-bottom-color: var(--cp-red);
+}
+
+.top-bar-title {
+  color: var(--cp-on-red);
+}
+
+.side-tab:hover,
+.side-tab--active {
+  color: var(--cp-bar-ink);
+  background-color: var(--cp-bar);
+}
+
+/* Czerwone obramowanie papierowych okien jak rama arkusza. */
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.context-menu,
+.panel-card,
+.scene-card {
+  border-color: var(--cp-red);
 }

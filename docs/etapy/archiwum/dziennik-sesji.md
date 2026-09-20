@@ -1,5 +1,35 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.09 (trzecia) — odchudzenie kontekstu sesji
+
+**Zlecenie MG:** okno kontekstowe na starcie sesji jest o ~30 % za duże — ocenić, co nieistotne,
+wykasować albo przenieść tak, żeby nie wczytywało się w całości (pomysł MG: `styles.css` za duży
+jak na jeden plik); dopytywać i zgłaszać możliwe błędy.
+
+**Pomiar:** na starcie z repo wchodzą `CLAUDE.md` (8,3 KB) i `POSTEP.md` (35 KB, z czego „Od czego
+zacząć” 15 KB i tabela 90 etapów 7 KB); w trakcie pracy największy jednorazowy koszt to
+`styles.css` (242 KB, 11 530 linii, ~60 k tokenów za jedno przeczytanie).
+
+**Wdrożone:** (1) `styles.css` pocięty na **19 plików `styles/NN-obszar.css`** po granicach sekcji,
+w kolejności kaskady; `styles.css` został spisem `@import`, Vite skleja je w jeden arkusz — **zbudowany
+CSS jest bajt w bajt identyczny** (ten sam hash `index-MxIJcRsJ.css`). `theme.test.ts` bierze listę
+plików ze spisu `@import` (wskazuje winny plik, nie „styles.css”), `portrait-crop.test.ts` czyta
+`styles/16-creator.css`. Odwołania w `docs/assety-*.md`, pułapce `ui`, `naprawa_karty_postaci.md`
+i komentarzach `HudIcon`/`MapTools` przepisane. Umowa w `ui`. (2) `POSTEP.md` z 35 KB do ~14 KB:
+tabela etapów wyprowadzona do `archiwum/tabela-etapow.md` (tu zostały trzy wiersze stanu), stara
+sekcja „Od czego zacząć” w całości do `archiwum/od-czego-zaczac.md`, nowa opisuje stan na dziś.
+(3) `CLAUDE.md` — punkt 5 skrócony (spis plików „kiedy czytać” stoi już w `POSTEP.md`).
+
+**Zgłoszone MG:** poza repo na start sesji wchodzą też opisy skilli synchronizowanych z claude.ai
+(docs, docx, pdf, pptx, xlsx, morning, import-memory, skill-creator) i dwa serwery MCP (Chrome,
+Claude Docs) — z poziomu repo nie da się ich wyłączyć; `.claude/settings.local.json` trzyma martwe
+uprawnienia `mcp__chrome-devtools__*`. Wielkie pliki TS zostają do refaktoryzacji przed 28.
+
+**Weryfikacja:** vitest klienta **251** (18 nowych: strażnik motywu per plik), build Vite identyczny,
+Prettier i ESLint zmienionych plików czyste. Serwer i Vite nieuruchamiane.
+
+
+
 Pełne notatki z zakończonych etapów, przeniesione tu 2026-07-30, żeby `POSTEP.md`
 (czytany na starcie każdej sesji) został lekki. **Tego pliku nie czyta się rutynowo** —
 sięgaj po niego tylko wtedy, gdy potrzebujesz szczegółu konkretnego etapu: uzasadnienia
