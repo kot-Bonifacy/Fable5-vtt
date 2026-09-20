@@ -155,6 +155,11 @@ weryfikacja: 26 testów motywu, Prettier, oględziny jasnego i ciemnego UI w Chr
 w dzień dla tła strony i obu paneli bocznych; okna, karta i tekstury bez zmian.
 Testy motywu (26) i format CSS przechodzą.
 
+**Naprawa linku MG:** „Panel MG” zachował czerwień akcentu po zmianie belki
+na czerwoną, więc zlewał się z tłem. `.top-bar-link` ma teraz jasny kolor
+`--cp-on-red`, razem z tytułem aplikacji; dotyczy także powrotu z Panelu MG.
+26 testów motywu i format CSS przechodzą.
+
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
 
 **Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.

@@ -287,7 +287,8 @@ textarea {
   border-bottom-color: var(--cp-red);
 }
 
-.top-bar-title {
+.top-bar-title,
+.top-bar-link {
   color: var(--cp-on-red);
 }
 
