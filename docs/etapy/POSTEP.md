@@ -151,6 +151,10 @@ powierzchnie dostały podkład strony karty `--cp-back` oraz przesunięcie tekst
 widoczne w panelach i ustawieniach. Skala i siła maski bez zmian. Ponowna
 weryfikacja: 26 testów motywu, Prettier, oględziny jasnego i ciemnego UI w Chrome.
 
+**Dostrojenie MG:** główny ekran odrobinę jaśniejszy — `--paper-main: #ebdfc9`
+w dzień dla tła strony i obu paneli bocznych; okna, karta i tekstury bez zmian.
+Testy motywu (26) i format CSS przechodzą.
+
 ### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
 
 **Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.

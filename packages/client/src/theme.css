@@ -463,6 +463,7 @@
   --notch-sm: 7px;
   --paper-size: var(--cp-wear-size);
   --paper-position: -340px -420px;
+  --paper-main: var(--cp-back);
 
   /* Chrom w oknie na papierze (naprawa 2c): pola formularzy, przyciski,
      obwódki i opisy wewnątrz karty i kreatora. W nocy ciepła czerń kartonu
@@ -503,6 +504,8 @@
   --cp-bar: #000000;
   --cp-bar-ink: #ffffff;
   --cp-back: #e6d9c0;
+  /* Główny ekran: odrobinę jaśniejszy papier niż w oknach (MG, 20.09). */
+  --paper-main: #ebdfc9;
   --cp-focus: #fdf0c4;
   --cp-hover: #efe3cc;
 

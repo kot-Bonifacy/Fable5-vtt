@@ -307,3 +307,10 @@ textarea {
 .scene-card {
   border-color: var(--cp-red);
 }
+
+/* Delikatnie jaśniejszy papier głównego ekranu; tekstura zostaje ta sama. */
+body,
+.side-panel,
+.hud-rail {
+  background-color: var(--paper-main);
+}
