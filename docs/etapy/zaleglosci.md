@@ -1,5 +1,10 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
+**Start serwera — snapshot i sprzątanie uploads (20.09).** Podczas sprawdzenia
+uruchomienia serwera `snapshot failed` zgłosił ENOENT w `linkTree` (`snapshots.ts:142`)
+przy kopiowaniu mapy; równolegle `swept orphaned uploads` usunął jeden plik.
+Sprawdzić możliwy wyścig snapshotu ze sprzątaniem. Serwer dalej odpowiada `/health`.
+
 Lista rzeczy **otwartych**, przenoszona między etapami; wyprowadzona z `POSTEP.md` 22.08.2026,
 żeby nie obciążała pliku czytanego na starcie każdej sesji. Czytaj ją, gdy siadasz do
 odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutynowo.

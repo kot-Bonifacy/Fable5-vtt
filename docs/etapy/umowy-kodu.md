@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Siatka wyłącznie dla MG (20.09)** — `MapRenderer.drawGrid` wymaga `viewerIsGm`; `setTokens` przerysowuje ją przy zmianie roli. `scene.grid.visible` steruje tylko widokiem MG, gracz nigdy nie widzi nakładki siatki (także przy kontraście edytora i na mapie powitalnej). Kratkę CSS poza mapą nadal usuwa `map-area--plain`. Geometria ruchu i pomiary zachowują parametry siatki.
 - **Siatka nie wystaje poza mapę u gracza (18.09)** — linie siatki liczy `gridLinePositions` w `map/grid-style.ts` i **pomija te na brzegu mapy** (tolerancja `GRID_EDGE_TOLERANCE_PX`); `drawGrid` tylko je rysuje. Kratka stołu w tle `.map-area` gaśnie u gracza klasą `map-area--plain` (dawne `map-area--welcome`, teraz dla każdej sceny gracza); MG ją zachowuje.
 - **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09)** — jedno pytanie dla planera i serwera: `fogFloorPassable` (`shared/fog.ts`: odsłonięte albo pola, na których figura stoi) sprawdzane przez `firstClosedFloorStep` (`shared/pathfinding.ts`, próbka `everyRunCell` — ta sama co wygładzanie). Serwer: `refuseWalkIntoFog` **przed** `refuseWalkThroughSolid`. Klient: `walkFloorFor` → `'revealed'` i `setWalkPassable(passable, canStep, enforcedFloor)`; `enforcedFloor` pilnuje lądowań w `clipToBudget` i `marchLanding` i podaje się go **tylko** tam, gdzie serwer sam egzekwuje podłogę.
 

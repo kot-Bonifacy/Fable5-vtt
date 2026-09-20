@@ -509,7 +509,7 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
               checked={grid.visible}
               onChange={(e) => patchDraft({ grid: { visible: e.target.checked } })}
             />{' '}
-            Siatka widoczna
+            Siatka widoczna tylko dla MG
           </label>
 
           <label className="auth-label" htmlFor="meters-per-square">

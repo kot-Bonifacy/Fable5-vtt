@@ -1,5 +1,15 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
+
+**Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.
+
+**Ustalone:** siatka Pixi rysuje się tylko po prostokącie sceny, a każda scena z tłem w bazie ma rozmiar równy obrazowi; kamera gracza jest domknięta (`coverZoom`), więc kratkowany margines to kratka CSS `.map-area` (u MG — robocza), a „wystająca” linia to kreska siatki na brzegu mapy (offset 0 albo równy podział).
+
+**Wdrożone:** `gridLinePositions` w `map/grid-style.ts` (pomija linie na brzegu, tolerancja 1 px świata) — `drawGrid` z niej korzysta; `.map-area--plain` (dawne `--welcome`) gasi kratkę stołu u gracza na każdej scenie. Umowa w `mapa`. Cztery testy `gridLinePositions`.
+
+**Weryfikacja:** vitest klienta **255**, `tsc`, ESLint i Prettier zmienionych plików czyste; u MG w Chrome linia na brzegu mapy zniknęła. **Widok gracza nieobejrzany** (brak linku zaproszenia) — do sprawdzenia przy następnej sesji z graczem.
+
 ### Sesja 18.09 (trzecia) — odchudzenie kontekstu sesji
 
 **Zlecenie MG:** okno kontekstowe na starcie sesji jest o ~30 % za duże — ocenić, co nieistotne,

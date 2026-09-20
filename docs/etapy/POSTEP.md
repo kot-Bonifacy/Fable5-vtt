@@ -126,6 +126,21 @@ a nie do tego pliku.
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 
+### Sesja 20.09 — siatka wyłącznie dla MG
+
+**Zlecenie MG:** gracz nie widzi siatki ani na mapie, ani poza nią; przełącznik
+widoczności wpływa tylko na widok MG.
+
+**Wdrożone:** `MapRenderer.drawGrid` pomija gracza, również przy kontrastowej
+siatce edytora i na mapie powitalnej. Zmiana roli przerysowuje siatkę.
+Istniejące `map-area--plain` nadal usuwa kratkę poza mapą u gracza.
+Przełącznik w edytorze opisany jako „Siatka widoczna tylko dla MG”.
+Skala, przyciąganie i pomiary bez zmian. Praca poza etapem 28.
+
+**Weryfikacja:** 255 testów klienta, TypeScript, build Vite, ESLint i Prettier.
+Serwer i Vite uruchomione. Bez nowych oględzin w przeglądarce. Przy starcie
+serwera snapshot zgłosił ENOENT podczas równoległego sprzątania uploads — zapis w zaległościach.
+
 ### Sesja 20.09 — oba style UI z karty postaci
 
 **Zlecenie MG:** zastąpić jasny i ciemny stary papier stylem karty wraz z teksturami;
@@ -160,14 +175,4 @@ na czerwoną, więc zlewał się z tłem. `.top-bar-link` ma teraz jasny kolor
 `--cp-on-red`, razem z tytułem aplikacji. Na życzenie MG biel ograniczona
 do czerwonej górnej belki; „Wróć do gry” w Panelu MG pozostaje czerwone.
 26 testów motywu i format CSS przechodzą.
-
-### Sesja 18.09 (czwarta) — siatka nie wystaje poza mapę u gracza
-
-**Zlecenie MG:** siatka w widoku gracza nigdy nie może wystawać poza mapę ani być jakkolwiek widoczna; dopytywać. Na zrzucie MG: kratkowany margines stołu za krawędzią mapy i linie siatki na samym brzegu obrazu.
-
-**Ustalone:** siatka Pixi rysuje się tylko po prostokącie sceny, a każda scena z tłem w bazie ma rozmiar równy obrazowi; kamera gracza jest domknięta (`coverZoom`), więc kratkowany margines to kratka CSS `.map-area` (u MG — robocza), a „wystająca” linia to kreska siatki na brzegu mapy (offset 0 albo równy podział).
-
-**Wdrożone:** `gridLinePositions` w `map/grid-style.ts` (pomija linie na brzegu, tolerancja 1 px świata) — `drawGrid` z niej korzysta; `.map-area--plain` (dawne `--welcome`) gasi kratkę stołu u gracza na każdej scenie. Umowa w `mapa`. Cztery testy `gridLinePositions`.
-
-**Weryfikacja:** vitest klienta **255**, `tsc`, ESLint i Prettier zmienionych plików czyste; u MG w Chrome linia na brzegu mapy zniknęła. **Widok gracza nieobejrzany** (brak linku zaproszenia) — do sprawdzenia przy następnej sesji z graczem.
 

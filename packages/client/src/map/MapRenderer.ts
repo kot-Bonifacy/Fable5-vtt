@@ -1929,9 +1929,11 @@ export class MapRenderer {
   setTokens(tokens: TokenView[], ctx: TokenNodeCtx): void {
     if (!this.viewport || this.destroyed) return;
     this.activeTokenId = ctx.activeTokenId;
-    // Kto patrzy — wyłącznie po to, by gracz nie łapał obrysem cudzej kreski
-    // (etap 27k). Nie nowe wejście do renderera: te dwa pola i tak tu jadą.
-    this.viewerIsGm = ctx.isGm;
+    // Rola steruje także siatką: gracz nie widzi jej niezależnie od ustawień sceny.
+    if (this.viewerIsGm !== ctx.isGm) {
+      this.viewerIsGm = ctx.isGm;
+      if (this.scene) this.drawGrid(this.scene);
+    }
     this.viewerId = ctx.myUserId;
     const seen = new Set<string>();
     for (const token of tokens) {
@@ -7064,7 +7066,7 @@ export class MapRenderer {
 
   private drawGrid(scene: SceneView): void {
     this.grid.clear();
-    if (scene.gridMode === 'gridless' || !scene.grid.visible) return;
+    if (!this.viewerIsGm || scene.gridMode === 'gridless' || !scene.grid.visible) return;
     const size = scene.grid.sizePx;
     if (size < 4) return;
 
