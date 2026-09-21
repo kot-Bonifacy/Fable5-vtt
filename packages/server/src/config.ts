@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 import { SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
 
 export interface ServerConfig {
+  /** Optional Python executable with tools/audio/requirements.txt installed. */
+  audioPython?: string;
   port: number;
   host: string;
   clientOrigin: string;
@@ -55,6 +57,7 @@ export interface BackupConfig {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
+    audioPython: env.AUDIO_PYTHON || undefined,
     port: Number(env.PORT ?? 3001),
     host: env.HOST ?? '127.0.0.1',
     clientOrigin: env.CLIENT_ORIGIN ?? 'http://localhost:5173',

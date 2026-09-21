@@ -13,6 +13,7 @@ import type {
 } from '@vtt/shared';
 import {
   ROLE_GM,
+  isAmbiencePreset,
   isSceneVisibility,
   normalizeGridOffset,
   sanitizeSceneName,
@@ -59,6 +60,7 @@ export function toSceneView(scene: Scene): SceneView {
     // Blokada ruchu graczy (12.09) — jedzie też do graczy, bo to ich klient ma
     // nie podnosić figury i ma umieć powiedzieć, dlaczego.
     playerMoveLocked: scene.playerMoveLocked,
+    ambience: isAmbiencePreset(scene.ambience) ? scene.ambience : 'none',
     // Miejsce startu drużyny (11.09): para kolumn albo nic. Jedzie też do
     // graczy — to ich kamera je czyta, gdy nie mają jeszcze figury na mapie.
     spawn:
@@ -186,6 +188,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     if (patch.width !== undefined) data.width = patch.width;
     if (patch.height !== undefined) data.height = patch.height;
     if (patch.playerMoveLocked !== undefined) data.playerMoveLocked = patch.playerMoveLocked;
+    if (patch.ambience !== undefined) data.ambience = patch.ambience;
     if (patch.spawn !== undefined) {
       data.spawnX = patch.spawn === null ? null : patch.spawn.x;
       data.spawnY = patch.spawn === null ? null : patch.spawn.y;

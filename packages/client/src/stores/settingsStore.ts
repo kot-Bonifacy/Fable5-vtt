@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { DiceSkinId } from '@vtt/shared';
 import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
+import type { NotificationKind } from '../game-notifications.js';
 
 /**
  * Ustawienia stołu widziane oczami jednego użytkownika (etap 27d).
@@ -27,6 +28,10 @@ export interface SettingsState {
   /** 0–100, efekty walki na mapie: strzały, wybuchy, przeładowanie (etap 27i). */
   sfxVolume: number;
   notificationVolume: number;
+  notifications: Record<NotificationKind, boolean>;
+  setNotification: (kind: NotificationKind, enabled: boolean) => void;
+  ambientVolume: number;
+  setAmbientVolume: (volume: number) => void;
   musicVolume: number;
   setNotificationVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
@@ -116,6 +121,23 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   cupVolume: readVolume(CUP_VOLUME_KEY, 50),
   sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
   notificationVolume: readVolume('vtt.notification.volume', 60),
+  notifications: {
+    turn: readFlag('vtt.notification.turn', true),
+    whisper: readFlag('vtt.notification.whisper', true),
+    request: readFlag('vtt.notification.request', true),
+    handout: readFlag('vtt.notification.handout', true),
+    inventory: readFlag('vtt.notification.inventory', true),
+  },
+  setNotification: (kind, enabled) => {
+    write(`vtt.notification.${kind}`, enabled ? '1' : '0');
+    set({ notifications: { ...get().notifications, [kind]: enabled } });
+  },
+  ambientVolume: readVolume('vtt.ambience.volume', 35),
+  setAmbientVolume: (volume) => {
+    const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 35;
+    write('vtt.ambience.volume', String(value));
+    set({ ambientVolume: value });
+  },
   musicVolume: readVolume('vtt.music.volume', 40),
   setNotificationVolume: (volume) => {
     const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 60;

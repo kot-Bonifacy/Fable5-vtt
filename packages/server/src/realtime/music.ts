@@ -1,5 +1,5 @@
 import type { MusicCommand, MusicState } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, youtubeVideoId } from '@vtt/shared';
 import { musicFor, readMusic, updateMusic } from '../music.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
@@ -32,6 +32,7 @@ export const musicControlEvent = defineEvent<MusicCommand>({
         case 'play': {
           const track = state.tracks.find((t) => t.id === payload.trackId);
           if (!track) throw new RealtimeError('NOT_FOUND');
+          if (youtubeVideoId(track.url)) throw new RealtimeError('IMPORT_REQUIRED');
           state.playback = {
             track,
             playing: true,

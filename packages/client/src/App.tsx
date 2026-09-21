@@ -19,6 +19,7 @@ import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { MusicWindow } from './components/MusicWindow.js';
+import { useSceneAmbience } from './components/SceneAmbience.js';
 import { useMusicPlayer } from './music-player.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -85,6 +86,7 @@ function useShortcutsKey(): void {
 
 function GameView() {
   useMusicPlayer();
+  useSceneAmbience();
   useGameContextMenu();
   useShortcutsKey();
   return (

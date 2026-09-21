@@ -1,4 +1,5 @@
 import type { ScenePoint } from './measure.js';
+import { isAmbiencePreset, type AmbiencePreset } from './music.js';
 
 export const GRID_MODES = ['grid', 'gridless'] as const;
 export type GridMode = (typeof GRID_MODES)[number];
@@ -87,6 +88,7 @@ export interface SceneView {
    * niczym, czego gracz nie zobaczyłby przy pierwszej próbie.
    */
   playerMoveLocked: boolean;
+  ambience?: AmbiencePreset;
   /**
    * Gdzie na tej mapie zaczyna patrzeć gracz, który nie ma tu jeszcze figury
    * (11.09.2026) — „miejsce startu drużyny", stawiane przez MG narzędziem mapy.
@@ -140,6 +142,7 @@ export interface ScenePatch {
    * pytanie „wolno mi tę figurę podnieść".
    */
   playerMoveLocked?: boolean;
+  ambience?: AmbiencePreset;
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
   // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
@@ -270,6 +273,10 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const input = raw as Record<string, unknown>;
   const patch: ScenePatch = {};
+  if ('ambience' in input) {
+    if (!isAmbiencePreset(input.ambience)) return null;
+    patch.ambience = input.ambience;
+  }
 
   if ('name' in input) {
     const name = sanitizeSceneName(input.name);

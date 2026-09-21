@@ -26,3 +26,46 @@ export type MusicCommand =
   | { action: 'loop'; loop: boolean; campaignId: string }
   | { action: 'volume'; volume: number; campaignId: string }
   | { action: 'remove'; trackId: string; campaignId: string };
+
+/** Only individual videos on recognized YouTube hosts; never arbitrary embeds. */
+export function youtubeVideoId(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length > 2048) return null;
+  try {
+    const url = new URL(raw.trim());
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.port)
+      return null;
+    let id: string | null = null;
+    if (url.hostname === 'youtu.be') id = url.pathname.slice(1);
+    else if (
+      ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(
+        url.hostname,
+      )
+    ) {
+      if (url.pathname === '/watch') id = url.searchParams.get('v');
+      else id = /^\/(?:shorts|live|embed)\/([^/]+)\/?$/.exec(url.pathname)?.[1] ?? null;
+    }
+    return id && /^[\w-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export const AMBIENCE_PRESETS = {
+  none: 'Cisza',
+  rain: 'Deszcz',
+  wind: 'Wiatr',
+  fire: 'Ogień',
+  street: 'Ulica',
+} as const;
+export type AmbiencePreset = keyof typeof AMBIENCE_PRESETS;
+export function isAmbiencePreset(value: unknown): value is AmbiencePreset {
+  return typeof value === 'string' && Object.hasOwn(AMBIENCE_PRESETS, value);
+}
+
+export interface MusicImportStatus {
+  campaignId: string;
+  phase: 'idle' | 'downloading' | 'converting' | 'complete' | 'error' | 'cancelled';
+  progress: number;
+  name?: string;
+  error?: string;
+}

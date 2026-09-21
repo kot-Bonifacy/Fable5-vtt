@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { youtubeVideoId } from '@vtt/shared';
 import { useMusicStore } from './stores/musicStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useChatStore } from './stores/chatStore.js';
@@ -50,7 +51,7 @@ export function useMusicPlayer() {
   const synced = useChatStore((s) => s.synced);
   const campaignId = useChatStore((s) => s.campaign?.id);
   const playback = synced && state?.campaignId === campaignId ? state?.playback : null;
-  const url = playback?.track.url;
+  const url = playback && !youtubeVideoId(playback.track.url) ? playback.track.url : undefined;
   useEffect(() => {
     if (!url) return;
     const audio = new Audio(url);

@@ -817,10 +817,12 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
-- **Audio stołu (20.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
+- **Audio stołu (21.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
   kubka; wezwanie i załadowany Test dzielą klucz. `music-player.ts` ma jeden
   odtwarzacz niezależny od otwarcia okna. Dźwięki nowe mają być naturalne;
-  głośności powiadomień i muzyki nie zależą od animacji. Pełna umowa i źródła:
+  `game-notifications.ts` adresuje nowe zdarzenia, `Scene.ambience` wybiera otoczenie.
+  YouTube służy wyłącznie do importu MP3 (`music-import.ts`, `tools/audio`), bez wideo.
+  Głośności powiadomień, otoczenia i muzyki nie zależą od animacji. Pełna umowa i źródła:
   `docs/assety-audio.md`.
 
 - **`styles.css` jest spisem `@import` — 19 plików `styles/NN-obszar.css` w kolejności kaskady** (od 18.09). Nową regułę dopisuj do pliku swojego obszaru, nowy obszar to nowy plik wpięty do spisu tam, gdzie stałby w dawnym pliku; `theme.test.ts` bierze listę plików ze spisu. Nie łącz plików z powrotem i nie zmieniaj kolejności — `.small-button--primary` musi stać po `.small-button`.

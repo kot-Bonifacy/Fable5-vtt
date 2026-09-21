@@ -9,6 +9,11 @@ import {
 } from '../fullscreen.js';
 import { auditionFxSound } from '../sfx.js';
 import { auditionCupNotification } from '../cup-notification.js';
+import {
+  NOTIFICATION_LABELS,
+  auditionNotification,
+  type NotificationKind,
+} from '../game-notifications.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
@@ -57,6 +62,8 @@ const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
  * skórka kości jedzie na serwer, bo przy stole widać kości rzucającego.
  */
 export function SettingsWindow() {
+  const notifications = useSettingsStore((s) => s.notifications);
+  const setNotification = useSettingsStore((s) => s.setNotification);
   const notificationVolume = useSettingsStore((s) => s.notificationVolume);
   const setNotificationVolume = useSettingsStore((s) => s.setNotificationVolume);
   const open = useSettingsStore((s) => s.open);
@@ -116,9 +123,9 @@ export function SettingsWindow() {
 
       <div className="settings-window-body">
         <section className="settings-group">
-          <h3 className="settings-group-title">Gotowość rzutu</h3>
+          <h3 className="settings-group-title">Naturalne powiadomienia</h3>
           <label className="settings-row">
-            <span className="settings-label">Sygnał kubka</span>
+            <span className="settings-label">Głośność powiadomień</span>
             <input
               type="range"
               min={0}
@@ -135,6 +142,26 @@ export function SettingsWindow() {
           <button type="button" className="settings-sample" onClick={auditionCupNotification}>
             Posłuchaj sygnału kubka
           </button>
+          {(Object.keys(NOTIFICATION_LABELS) as NotificationKind[]).map((kind) => (
+            <div className="settings-row" key={kind}>
+              <label className="settings-label">
+                <input
+                  type="checkbox"
+                  checked={notifications[kind]}
+                  onChange={(e) => setNotification(kind, e.target.checked)}
+                />{' '}
+                {NOTIFICATION_LABELS[kind]}
+              </label>
+              <button
+                type="button"
+                className="settings-sample"
+                onClick={() => auditionNotification(kind)}
+                aria-label={`Posłuchaj: ${NOTIFICATION_LABELS[kind]}`}
+              >
+                Posłuchaj
+              </button>
+            </div>
+          ))}
         </section>
         <section className="settings-group">
           <h3 className="settings-group-title">Kości</h3>

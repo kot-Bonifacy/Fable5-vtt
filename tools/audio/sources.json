@@ -1,0 +1,44 @@
+[
+  {
+    "name": "wood",
+    "url": "https://freesound.org/people/JohnsonBrandEditing/sounds/173941/",
+    "preview": "https://cdn.freesound.org/previews/173/173941_3229685-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "paper",
+    "url": "https://freesound.org/people/keweldog/sounds/181774/",
+    "preview": "https://cdn.freesound.org/previews/181/181774_3153523-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "coins",
+    "url": "https://freesound.org/people/kbnevel/sounds/119832/",
+    "preview": "https://cdn.freesound.org/previews/119/119832_1990690-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "rain",
+    "url": "https://freesound.org/people/Rvgerxini/sounds/527658/",
+    "preview": "https://cdn.freesound.org/previews/527/527658_9453283-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "wind",
+    "url": "https://freesound.org/people/Aeonemi/sounds/180328/",
+    "preview": "https://cdn.freesound.org/previews/180/180328_3356065-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "fire",
+    "url": "https://freesound.org/people/soundofsong/sounds/650574/",
+    "preview": "https://cdn.freesound.org/previews/650/650574_9782868-hq.mp3",
+    "license": "CC0-1.0"
+  },
+  {
+    "name": "street",
+    "url": "https://freesound.org/people/mzui/sounds/135095/",
+    "preview": "https://cdn.freesound.org/previews/135/135095_658546-hq.mp3",
+    "license": "CC0-1.0"
+  }
+]

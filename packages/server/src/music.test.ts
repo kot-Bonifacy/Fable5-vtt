@@ -3,13 +3,20 @@ import { randomUUID } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { io, type Socket } from 'socket.io-client';
-import type { MusicState, MusicTrack, SocketAck } from '@vtt/shared';
+import type { MusicState, MusicTrack, SocketAck, SceneView, StateSyncPayload } from '@vtt/shared';
 import { buildApp, type BuiltApp } from './app.js';
-import { musicExtension } from './music.js';
-import { exportCampaign } from './archive.js';
+import { importYoutubeAudio } from './youtube-import.js';
+import { writeFile, access } from 'node:fs/promises';
+import { musicExtension, readMusic, updateMusic } from './music.js';
+import { exportCampaign, exportScene } from './archive.js';
 import { referencedUploadUrls } from './uploads-gc.js';
+
+vi.mock('./youtube-import.js', () => ({
+  importYoutubeAudio: vi.fn(),
+  YOUTUBE_AUDIO_MAX_BYTES: 128 * 1024 * 1024,
+}));
 
 const db = `./.test-music-${randomUUID()}.db`;
 let built: BuiltApp;
@@ -208,4 +215,210 @@ it('broadcasts playback, resumes on reconnect, pauses, loops and stops for every
   const stopped = await ack<MusicState>(player, 'music:request');
   expect(stopped.ok && stopped.data?.playback).toBeNull();
   expect(await referencedUploadUrls(built.prisma)).not.toContain(track.url);
+});
+
+it('saves scene ambience, protects GM control and sends only the viewed scene', async () => {
+  const created = await ack<SceneView>(gm, 'scene:create', { name: 'Otoczenie' });
+  if (!created.ok || !created.data) throw new Error('missing scene');
+  const sceneId = created.data.id;
+  expect(created.data.ambience).toBe('none');
+  const change = { sceneId, patch: { ambience: 'rain' } };
+  expect(await ack(player, 'scene:update', change)).toEqual({ ok: false, error: 'FORBIDDEN' });
+  expect(await ack(gm, 'scene:update', { sceneId, patch: { ambience: '../private' } })).toEqual({
+    ok: false,
+    error: 'BAD_REQUEST',
+  });
+  const updated = await ack<SceneView>(gm, 'scene:update', change);
+  expect(updated.ok && updated.data?.ambience).toBe('rain');
+  expect((await built.prisma.scene.findUniqueOrThrow({ where: { id: sceneId } })).ambience).toBe(
+    'rain',
+  );
+  const exported = await exportScene(built.prisma, sceneId);
+  expect(JSON.stringify(exported)).toContain('"ambience":"rain"');
+  await ack(gm, 'scene:activate', { sceneId });
+  const sync = new Promise<StateSyncPayload>((resolve) => player.once('state:sync', resolve));
+  player.emit('state:request');
+  expect((await sync).scene?.ambience).toBe('rain');
+  const other = await ack<SceneView>(gm, 'scene:create', { name: 'Ukryte otoczenie' });
+  if (!other.ok || !other.data) throw new Error('missing scene');
+  await ack(gm, 'scene:update', { sceneId: other.data.id, patch: { ambience: 'fire' } });
+  const resync = new Promise<StateSyncPayload>((resolve) => player.once('state:sync', resolve));
+  player.emit('state:request');
+  expect((await resync).scene?.ambience).toBe('rain');
+});
+
+it('imports only audio for GM, broadcasts a private MP3 and includes it in export/GC', async () => {
+  let temporary = '';
+  vi.mocked(importYoutubeAudio).mockImplementationOnce(async (id, directory, _signal, progress) => {
+    expect(id).toBe('jNQXAC9IVRw');
+    temporary = directory;
+    progress({ phase: 'converting', progress: 0 });
+    await writeFile(join(directory, 'audio.mp3'), Buffer.from('ID3000000000000000000'));
+    return 'Title from video';
+  });
+  const request = {
+    method: 'POST' as const,
+    url: `/api/music/${campaignId}/youtube`,
+    payload: { url: 'https://youtu.be/jNQXAC9IVRw', name: 'Audio only' },
+  };
+  expect(
+    (await built.app.inject({ ...request, headers: { cookie: playerCookie } })).statusCode,
+  ).toBe(403);
+  expect(
+    (
+      await built.app.inject({
+        ...request,
+        headers: { cookie: gmCookie },
+        payload: { url: 'http://localhost/private' },
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect((await built.app.inject({ ...request, headers: { cookie: gmCookie } })).statusCode).toBe(
+    202,
+  );
+  await vi.waitFor(async () => {
+    const status = await built.app.inject({ url: request.url, headers: { cookie: gmCookie } });
+    expect(status.json().phase).toBe('complete');
+  });
+  const state = await ack<MusicState>(gm, 'music:request');
+  if (!state.ok || !state.data) throw new Error('missing music');
+  const imported = state.data.tracks.find((track) => track.name === 'Audio only')!;
+  expect(imported.url).toMatch(/^\/uploads\/music\/[\w-]+\.mp3$/);
+  expect(imported).not.toHaveProperty('youtubeId');
+  expect(await referencedUploadUrls(built.prisma)).toContain(imported.url);
+  expect(
+    JSON.stringify(await exportCampaign(built.prisma, campaignId, { includeChat: false })),
+  ).toContain(imported.url);
+  await vi.waitFor(async () => {
+    await expect(access(temporary)).rejects.toThrow();
+  });
+  await ack(gm, 'music:control', { campaignId, action: 'play', trackId: imported.id });
+  const playback = await ack<MusicState>(player, 'music:request');
+  expect(playback.ok && playback.data?.playback?.track).toEqual(imported);
+  expect(playback.ok && playback.data?.tracks).toEqual([]);
+  await ack(gm, 'music:control', { campaignId, action: 'stop' });
+});
+
+it('limits concurrent imports, allows cancellation and leaves no incomplete track', async () => {
+  vi.mocked(importYoutubeAudio).mockImplementationOnce(
+    async (_id, _directory, signal) =>
+      new Promise((_resolve, reject) => {
+        if (signal.aborted) reject(new Error('IMPORT_CANCELLED'));
+        else
+          signal.addEventListener('abort', () => reject(new Error('IMPORT_CANCELLED')), {
+            once: true,
+          });
+      }),
+  );
+  const request = {
+    method: 'POST' as const,
+    url: `/api/music/${campaignId}/youtube`,
+    headers: { cookie: gmCookie },
+    payload: { url: 'https://youtu.be/jNQXAC9IVRw' },
+  };
+  expect((await built.app.inject(request)).statusCode).toBe(202);
+  expect((await built.app.inject(request)).json().error).toBe('IMPORT_BUSY');
+  expect(
+    (
+      await built.app.inject({
+        method: 'POST',
+        url: `${request.url}/cancel`,
+        headers: { cookie: playerCookie },
+      })
+    ).statusCode,
+  ).toBe(403);
+  await built.app.inject({
+    method: 'POST',
+    url: `${request.url}/cancel`,
+    headers: request.headers,
+  });
+  await vi.waitFor(async () => {
+    expect(
+      (await built.app.inject({ url: request.url, headers: request.headers })).json().phase,
+    ).toBe('cancelled');
+  });
+  vi.mocked(importYoutubeAudio).mockRejectedValueOnce(new Error('VIDEO_UNAVAILABLE'));
+  await vi.waitFor(async () => {
+    expect((await built.app.inject(request)).statusCode).toBe(202);
+  });
+  await vi.waitFor(async () => {
+    expect(
+      (await built.app.inject({ url: request.url, headers: request.headers })).json(),
+    ).toMatchObject({ phase: 'error', error: 'VIDEO_UNAVAILABLE' });
+  });
+  const state = await ack<MusicState>(gm, 'music:request');
+  expect(state.ok && state.data?.tracks).toHaveLength(1);
+});
+
+it('rejects malformed converter output and cleans it without adding a library entry', async () => {
+  let temporary = '';
+  vi.mocked(importYoutubeAudio).mockImplementationOnce(async (_id, directory) => {
+    temporary = directory;
+    await writeFile(join(directory, 'audio.mp3'), '<html>not audio</html>');
+    return 'Invalid';
+  });
+  const url = `/api/music/${campaignId}/youtube`;
+  expect((await built.app.inject({ url, headers: { cookie: playerCookie } })).statusCode).toBe(403);
+  await built.app.inject({
+    method: 'POST',
+    url,
+    headers: { cookie: gmCookie },
+    payload: { url: 'https://youtu.be/jNQXAC9IVRw' },
+  });
+  await vi.waitFor(async () => {
+    expect((await built.app.inject({ url, headers: { cookie: gmCookie } })).json()).toMatchObject({
+      phase: 'error',
+      error: 'INVALID_AUDIO',
+    });
+    await expect(access(temporary)).rejects.toThrow();
+  });
+  const state = await ack<MusicState>(gm, 'music:request');
+  expect(state.ok && state.data?.tracks).toHaveLength(1);
+});
+
+it('replaces a legacy embedded link in place and never tries to play its HTML URL', async () => {
+  const legacy = {
+    id: 'legacy-id',
+    name: 'Existing music',
+    url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+  };
+  await updateMusic(built.prisma, campaignId, (state) => {
+    state.tracks.push(legacy);
+    state.playback = {
+      track: legacy,
+      playing: true,
+      position: 0,
+      startedAt: Date.now(),
+      loop: true,
+      volume: 70,
+    };
+  });
+  const stored = await built.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+  expect(readMusic(campaignId, stored.music).playback).toBeNull();
+  expect(
+    await ack(gm, 'music:control', { campaignId, action: 'play', trackId: legacy.id }),
+  ).toEqual({ ok: false, error: 'IMPORT_REQUIRED' });
+  vi.mocked(importYoutubeAudio).mockImplementationOnce(async (_id, directory) => {
+    await writeFile(join(directory, 'audio.mp3'), Buffer.from('ID3000000000000000000'));
+    return 'Source title';
+  });
+  const url = `/api/music/${campaignId}/youtube`;
+  await built.app.inject({
+    method: 'POST',
+    url,
+    headers: { cookie: gmCookie },
+    payload: { url: legacy.url, name: legacy.name },
+  });
+  await vi.waitFor(async () => {
+    expect((await built.app.inject({ url, headers: { cookie: gmCookie } })).json().phase).toBe(
+      'complete',
+    );
+  });
+  const state = await ack<MusicState>(gm, 'music:request');
+  if (!state.ok || !state.data) throw new Error('missing music');
+  expect(state.data.tracks).toHaveLength(2);
+  expect(state.data.tracks.find((track) => track.id === legacy.id)).toMatchObject({
+    name: legacy.name,
+    url: expect.stringMatching(/\.mp3$/),
+  });
 });

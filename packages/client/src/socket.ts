@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type { MusicCommand, MusicState } from '@vtt/shared';
 import { useMusicStore } from './stores/musicStore.js';
+import { chatNotification, notifyGame, startsOwnTurn } from './game-notifications.js';
 import type {
   CharacterStatEffectPayload,
   ArchiveCharacterImportPayload,
@@ -745,6 +746,7 @@ export function connectSocket(userId: string): Socket {
     const store = useHandoutStore.getState();
     store.upsert(broadcast.handout);
     store.openHandout(broadcast.handout.id);
+    if (chat().synced && useAuthStore.getState().user?.role !== ROLE_GM) notifyGame('handout');
   });
 
   // Generator screamsheetów (24c) — artykuł przychodzi osobnym zdarzeniem,
@@ -833,6 +835,12 @@ export function connectSocket(userId: string): Socket {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
+    const fresh =
+      chat().synced &&
+      !chat().items.some(
+        (item) => item.type === 'message' && item.message.id === broadcast.message.id,
+      ) &&
+      !chat().held.some((message) => message.id === broadcast.message.id);
     // Losowanie z tabeli (34) tumbla **pierwszą** kością łańcucha: patrzy się
     // na nią tak samo, jak na każdy inny rzut, a podrzuty zostają liczbami na
     // karcie — dwie animacje z jednego kliknięcia nikomu nic nie mówią.
@@ -844,6 +852,9 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
+    const listener = useAuthStore.getState().user;
+    const notification = fresh && listener ? chatNotification(broadcast.message, listener) : null;
+    if (notification) notifyGame(notification);
     // Świeża wypowiedź NPC-a dopisuje się słowo po słowie — linia jest już
     // w kanale, odsłania się tylko stopniowo (efekt czysto kliencki).
     if (shouldTypeOut(broadcast.message)) {
@@ -924,7 +935,16 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    if (viewingScene(broadcast.sceneId)) useCombatStore.getState().setCombat(broadcast.combat);
+    if (viewingScene(broadcast.sceneId)) {
+      const user = useAuthStore.getState().user;
+      if (
+        chat().synced &&
+        user &&
+        startsOwnTurn(useCombatStore.getState().combat, broadcast.combat, user.id)
+      )
+        notifyGame('turn');
+      useCombatStore.getState().setCombat(broadcast.combat);
+    }
   });
 
   socket.on('token:move', (broadcast: TokenMoveBroadcast) => {

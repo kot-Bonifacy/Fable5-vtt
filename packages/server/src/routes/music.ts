@@ -8,8 +8,10 @@ import { requireGm } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import { musicExtension, updateMusic } from '../music.js';
 import { broadcastMusic } from '../realtime/music.js';
+import { registerMusicImportRoutes } from './music-import.js';
 
 export function registerMusicRoutes(app: FastifyInstance, ctx: AppContext, io: Server) {
+  registerMusicImportRoutes(app, ctx, io);
   app.post<{ Params: { campaignId: string } }>(
     '/api/music/:campaignId/upload',
     { preHandler: requireGm },

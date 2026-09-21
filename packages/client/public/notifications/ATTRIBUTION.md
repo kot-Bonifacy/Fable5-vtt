@@ -11,3 +11,11 @@ autor **2BACH**, Freesound, 24.04.2013.
 - Obróbka: wycinek 0,18–0,65 s (470 ms), normalizacja szczytu do 0,8,
   wejście 5 ms i wyjście 25 ms; WAV PCM 16-bit mono, 48 kHz.
 - Bez syntezy, zmiany wysokości ani elektronicznego efektu.
+
+# Dodatkowe powiadomienia
+
+`turn.wav` i `request.wav`: naturalne stukanie w drewno (JohnsonBrandEditing).
+`whisper.wav` i `handout.wav`: szelest prawdziwego papieru (keweldog).
+`inventory.wav`: upuszczane monety (kbnevel).
+Źródła CC0 i linki: [pełne uznania](../ambience/ATTRIBUTION.md).
+Dokładne wycinki, obwiednie i normalizacja: `tools/audio/prepare-natural.py`.

@@ -18,26 +18,34 @@ export class CupNotificationGate {
 }
 
 let context: AudioContext | null = null;
-let sample: Promise<AudioBuffer> | null = null;
-function audioContext(): AudioContext {
+const samples = new Map<string, Promise<AudioBuffer>>();
+export function audioContext(): AudioContext {
   return (context ??= new AudioContext());
 }
 export async function playCupNotification(stillCurrent: () => boolean = () => true) {
+  return playNaturalNotification('cup-ready', stillCurrent);
+}
+export async function playNaturalNotification(
+  file: string,
+  stillCurrent: () => boolean = () => true,
+) {
   const volume = useSettingsStore.getState().notificationVolume / 100;
   if (!volume) return;
   try {
     const ctx = audioContext();
     if (ctx.state !== 'running') return;
-    sample ??= fetch('/notifications/cup-ready.wav')
+    let sample = samples.get(file);
+    sample ??= fetch(`/notifications/${file}.wav`)
       .then((r) => {
         if (!r.ok) throw new Error('Audio unavailable');
         return r.arrayBuffer();
       })
       .then((data) => ctx.decodeAudioData(data))
       .catch((error: unknown) => {
-        sample = null;
+        samples.delete(file);
         throw error;
       });
+    samples.set(file, sample);
     const buffer = await sample;
     if (!stillCurrent() || !useSettingsStore.getState().notificationVolume) return;
     const gain = ctx.createGain();

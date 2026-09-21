@@ -1,5 +1,5 @@
 import type { MusicState, SessionUser } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, youtubeVideoId } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 import { RealtimeError } from './realtime/registry.js';
 
@@ -9,7 +9,7 @@ export function readMusic(campaignId: string, raw: string): MusicState {
     campaignId,
     revision: saved.revision ?? 0,
     tracks: saved.tracks ?? [],
-    playback: saved.playback ?? null,
+    playback: saved.playback && !youtubeVideoId(saved.playback.track.url) ? saved.playback : null,
     serverNow: Date.now(),
   };
 }

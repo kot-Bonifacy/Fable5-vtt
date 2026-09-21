@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.09 — siatka wyłącznie dla MG
+
+**Zlecenie MG:** gracz nie widzi siatki ani na mapie, ani poza nią; przełącznik
+widoczności wpływa tylko na widok MG.
+
+**Wdrożone:** `MapRenderer.drawGrid` pomija gracza, również przy kontrastowej
+siatce edytora i na mapie powitalnej. Zmiana roli przerysowuje siatkę.
+Istniejące `map-area--plain` nadal usuwa kratkę poza mapą u gracza.
+Przełącznik w edytorze opisany jako „Siatka widoczna tylko dla MG”.
+Skala, przyciąganie i pomiary bez zmian. Praca poza etapem 28.
+
+**Weryfikacja:** 255 testów klienta, TypeScript, build Vite, ESLint i Prettier.
+Serwer i Vite uruchomione. Bez nowych oględzin w przeglądarce. Przy starcie
+serwera snapshot zgłosił ENOENT podczas równoległego sprzątania uploads — zapis w zaległościach.
+
 ### Sesja 20.09 — oba style UI z karty postaci
 
 **Zlecenie MG:** zastąpić jasny i ciemny stary papier stylem karty wraz z teksturami;

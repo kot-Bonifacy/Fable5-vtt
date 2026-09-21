@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { MUSIC_ACCEPT, MUSIC_MAX_BYTES, ROLE_GM, type MusicCommand } from '@vtt/shared';
-import { apiUpload } from '../api.js';
+import {
+  MUSIC_ACCEPT,
+  MUSIC_MAX_BYTES,
+  ROLE_GM,
+  youtubeVideoId,
+  type MusicCommand,
+} from '@vtt/shared';
+import { SceneAmbience } from './SceneAmbience.js';
+import { YouTubeAudioImport } from './YouTubeAudioImport.js';
+import { apiPost, apiUpload } from '../api.js';
 import { confirmDestructive } from '../confirm.js';
 import { controlMusic } from '../socket.js';
 import { enableMusic } from '../music-player.js';
@@ -68,6 +76,7 @@ export function MusicWindow() {
         useMusicStore.setState({
           error: 'Nie udało się zmienić muzyki. Sprawdź połączenie i aktywną kampanię.',
         });
+      return result.ok;
     } finally {
       setBusy(false);
     }
@@ -85,6 +94,19 @@ export function MusicWindow() {
     } catch {
       useMusicStore.setState({
         error: 'Nie udało się wgrać pliku. Wybierz MP3, OGG lub WAV do 40 MB i sprawdź połączenie.',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function importLegacy(url: string, name: string) {
+    setBusy(true);
+    useMusicStore.setState({ error: null });
+    try {
+      await apiPost(`/api/music/${encodeURIComponent(campaignId!)}/youtube`, { url, name });
+    } catch {
+      useMusicStore.setState({
+        error: 'Nie udało się rozpocząć importu. Sprawdź, czy inne pobieranie jeszcze trwa.',
       });
     } finally {
       setBusy(false);
@@ -111,6 +133,7 @@ export function MusicWindow() {
         </button>
       </div>
       <div className="settings-window-body">
+        <SceneAmbience />
         <section className="settings-group">
           <label className="settings-row">
             <span className="settings-label">Głośność u Ciebie</span>
@@ -204,6 +227,9 @@ export function MusicWindow() {
                 }}
               />
             </label>
+            {campaignId && (
+              <YouTubeAudioImport key={campaignId} campaignId={campaignId} ready={ready} />
+            )}
             {busy && <p role="status">Zapisywanie…</p>}
             <ul className="music-tracks">
               {state &&
@@ -216,10 +242,12 @@ export function MusicWindow() {
                       type="button"
                       disabled={!ready}
                       onClick={() =>
-                        void command({ campaignId, action: 'play', trackId: track.id })
+                        youtubeVideoId(track.url)
+                          ? void importLegacy(track.url, track.name)
+                          : void command({ campaignId, action: 'play', trackId: track.id })
                       }
                     >
-                      Odtwórz
+                      {youtubeVideoId(track.url) ? 'Pobierz dźwięk' : 'Odtwórz'}
                     </button>
                     <button
                       type="button"

@@ -1,6 +1,15 @@
 .music-window {
   width: min(460px, calc(100vw - 24px));
 }
+.music-youtube {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.music-youtube input {
+  min-width: 0;
+  width: 100%;
+}
 .music-upload {
   display: grid;
   gap: 8px;

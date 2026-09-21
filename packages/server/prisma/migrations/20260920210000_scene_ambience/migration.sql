@@ -1,0 +1,1 @@
+ALTER TABLE "Scene" ADD COLUMN "ambience" TEXT NOT NULL DEFAULT 'none';

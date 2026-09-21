@@ -78,8 +78,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2164** w `shared`, **1193** na serwerze, **251** u klienta —
-zielone (18.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2183** w `shared`, **1202** na serwerze, **265** u klienta —
+zielone (21.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -126,6 +126,31 @@ a nie do tego pliku.
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
 
+### Sesja 21.09 — wszystkie naturalne powiadomienia i import audio YouTube
+
+**Zlecenie MG poza etapem 28:** włączyć wszystkie zaproponowane dźwięki.
+Doprecyzowanie 21.09: z YouTube pobierać sam dźwięk, bez filmu.
+
+**Wdrożone:** własna tura (dwa stuki drewna), szept (papier), prośba o Test
+u MG (stuk), otrzymany handout (papier), przedmiot do przyjęcia (monety).
+Domyślnie włączone, własne wyłączniki/odsłuchy i wspólna głośność powiadomień.
+Adresowanie wyłącznie do odbiorców, bez historii/resync. Otoczenia CC0 deszcz,
+wiatr, ogień i ulica zapisane per scena; osobny lokalny suwak, grają z muzyką.
+Migracja `20260920210000_scene_ambience` zastosowana na dev; eksport/import ją zachowuje.
+
+**YouTube → MP3:** import MG w tle, postęp/anulowanie, limit 2 h/128 MB,
+jedno zadanie, timeout i sprzątanie; gotowy plik w prywatnym `uploads/music/`.
+Wersja z osadzonym filmem została zastąpiona. Stare linki można przekonwertować
+w miejscu. Narzędzia yt-dlp/FFmpeg zainstalowane w ignorowanym `tools/audio/.venv`;
+instalacja na innym serwerze i ograniczenia w `tools/audio/README.md`.
+
+**Weryfikacja:** 2183 testy shared, 1202 serwera, 265 klienta; tsc trzech
+pakietów, ESLint, Prettier, build Vite. Rzeczywisty import krótkiego audio
+przez Python i most Node (MP3 305 989 B). Chrome: podkład ze starego linku MG
+przekonwertowany do MP3; odtwarzanie i pauza bez filmu. Pozostawiony w bibliotece,
+w pauzie. Naturalne przełączniki włączone; odsłuch tury i papieru uruchomiony.
+Serwer i Vite działają. Safari/iPad i ocena brzmienia przez ludzi nadal przy stole.
+
 ### Sesja 20.09 — naturalny sygnał kubka i muzyka MG
 
 **Zlecenie MG poza etapem 28:** pojedynczy sygnał gotowości kubka, podkłady
@@ -144,19 +169,4 @@ Migracja zastosowana na dev. Źródła i propozycje: `docs/assety-audio.md`.
 trzech pakietów, ESLint, Prettier i build Vite. Serwer i Vite uruchomione.
 Chrome: okna MG, odsłuch, przygotowanie kubka wpisem w polu czatu (bez rzutu).
 Sceny i karty nietknięte. Safari/iPad i odsłuch przez dwóch ludzi czekają.
-
-### Sesja 20.09 — siatka wyłącznie dla MG
-
-**Zlecenie MG:** gracz nie widzi siatki ani na mapie, ani poza nią; przełącznik
-widoczności wpływa tylko na widok MG.
-
-**Wdrożone:** `MapRenderer.drawGrid` pomija gracza, również przy kontrastowej
-siatce edytora i na mapie powitalnej. Zmiana roli przerysowuje siatkę.
-Istniejące `map-area--plain` nadal usuwa kratkę poza mapą u gracza.
-Przełącznik w edytorze opisany jako „Siatka widoczna tylko dla MG”.
-Skala, przyciąganie i pomiary bez zmian. Praca poza etapem 28.
-
-**Weryfikacja:** 255 testów klienta, TypeScript, build Vite, ESLint i Prettier.
-Serwer i Vite uruchomione. Bez nowych oględzin w przeglądarce. Przy starcie
-serwera snapshot zgłosił ENOENT podczas równoległego sprzątania uploads — zapis w zaległościach.
 
