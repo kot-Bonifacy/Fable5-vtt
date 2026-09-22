@@ -1,3 +1,4 @@
+import { withPresentation } from './presentation.js';
 import type {
   CheckCallEntry,
   ChatMessageView,
@@ -859,6 +860,8 @@ export async function performCharacterRoll(
     payload: CharacterRollPayload<CpredRollRequest> | undefined;
   },
 ): Promise<{ messageId: number }> {
+  if (!deps.presentation)
+    return withPresentation(deps, (scoped) => performCharacterRoll(scoped, options));
   {
     const { user, sceneId, campaignId } = options;
 

@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type {
   CoverClearPayload,
   CoverCreatePayload,
@@ -55,6 +56,7 @@ export async function emitCovers(
   campaignId: string,
   scene: Pick<Scene, 'id' | 'active'>,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitCovers(ready, campaignId, scene))) return;
   const covers = await fetchSceneCovers(deps.ctx.prisma, scene.id);
   const payload = { sceneId: scene.id, covers } satisfies CoverSyncBroadcast;
   if (!scene.active) {

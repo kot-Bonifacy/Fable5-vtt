@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type { ScenePoint, SmokeClearPayload, SmokeSyncBroadcast, SmokeView } from '@vtt/shared';
 import { ROLE_GM, SMOKE_SIDE_M_MAX, smokeAt, snapToSquareCentre } from '@vtt/shared';
 import { toSceneView } from './scenes.js';
@@ -36,6 +37,7 @@ export async function emitSmoke(
   campaignId: string,
   scene: Pick<Scene, 'id' | 'active'>,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitSmoke(ready, campaignId, scene))) return;
   const smoke = await fetchSceneSmoke(deps.ctx.prisma, scene.id);
   const payload = { sceneId: scene.id, smoke } satisfies SmokeSyncBroadcast;
   if (!scene.active) {

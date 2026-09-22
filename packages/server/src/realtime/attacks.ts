@@ -1,3 +1,4 @@
+import { withPresentation } from './presentation.js';
 import type {
   AttackEvadePayload,
   AttackSmartPayload,
@@ -872,6 +873,8 @@ export async function performAttackRoll(
     device?: { operator?: CpredCharacterData; combatValue?: number };
   },
 ): Promise<AttackRollResult> {
+  if (!deps.presentation)
+    return withPresentation(deps, (scoped) => performAttackRoll(scoped, options));
   {
     const { campaignId, user, payload, device } = options;
     {

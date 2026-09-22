@@ -78,8 +78,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2183** w `shared`, **1202** na serwerze, **265** u klienta —
-zielone (21.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2183** w `shared`, **1206** na serwerze, **275** u klienta —
+zielone (22.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -103,9 +103,9 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 9    | 16      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 10   | 16      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 13   | 12      |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 14   | 1       |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
@@ -124,6 +124,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 22.09 — wyniki dopiero po zatrzymaniu kości
+
+**Zlecenie MG poza etapem 28:** wynik nie może pojawić się w kreatorze ani innym
+elemencie VTT podczas animacji. Przyczyną w Ścieżce Życia było natychmiastowe
+przyjęcie odpowiedzi serwera; dotąd czekała tylko karta czatu.
+
+**Wdrożone:** wspólna kolejka prezentacji komunikatów i odpowiedzi (kreator,
+karty, inicjatywa, Sieć, czat, mapa, resynchronizacja). Wynik czeka na obie fale
+rzutu i dotychczasowe 2,5 s na odczytanie kości. Kolejne rzuty czekają; chwyt
+kubka nie przerywa prawdziwego rzutu. Awaria/limit 30 s usuwa animację przed
+odsłonięciem wyniku. Rozłączenie odrzuca stare widoki i zwalnia oczekujące zapisy.
+Serwer odkłada emisje skutków do końca obsługi akcji, aby komunikat rzutu
+wyprzedzał m.in. stan po rzucie na śmierć; zapis danych pozostaje natychmiastowy.
+
+**Weryfikacja:** 2183 testy shared, 1206 serwera, 275 klienta; TypeScript klienta
+i serwera, ESLint, Prettier, build Vite. Testy obejmują
+odpowiedź Ścieżki Życia, kolejkę, dorzut, timeout i rozłączenie. Chrome na
+osobnej tymczasowej stronie: koniec kości 3241 ms, dorzut 8009 ms, wynik 8010 ms;
+próba chwytu kubka nie przerwała rzutu. Strona testowa usunięta. Aplikacja działa
+na localhost; zastany ekran logowania MG, bez zmian w szkicu użytkownika.
 
 
 ### Sesja 21.09 — wszystkie naturalne powiadomienia i import audio YouTube
@@ -150,23 +171,3 @@ przez Python i most Node (MP3 305 989 B). Chrome: podkład ze starego linku MG
 przekonwertowany do MP3; odtwarzanie i pauza bez filmu. Pozostawiony w bibliotece,
 w pauzie. Naturalne przełączniki włączone; odsłuch tury i papieru uruchomiony.
 Serwer i Vite działają. Safari/iPad i ocena brzmienia przez ludzi nadal przy stole.
-
-### Sesja 20.09 — naturalny sygnał kubka i muzyka MG
-
-**Zlecenie MG poza etapem 28:** pojedynczy sygnał gotowości kubka, podkłady
-muzyczne MG oraz propozycje innych zdarzeń do późniejszej decyzji. Doprecyzowanie:
-naturalne odgłosy fizycznych przedmiotów, bez elektronicznych powiadomień.
-
-**Wdrożone:** próbka 470 ms prawdziwych kości wkładanych do kubka (2BACH,
-Freesound, CC0), lokalny suwak i odsłuch. Jedno wezwanie nie powtarza sygnału
-przy załadowaniu Testu. Przycisk nut otwiera bibliotekę muzyki MG: MP3/OGG/WAV
-do 40 MB, odtwarzanie/pauza/wznowienie/stop/pętla, głośność stołu i lokalna.
-Stan zapisany w kampanii, synchronizacja po połączeniu, obsługa blokady autoplay.
-Serwer chroni sterowanie MG i bibliotekę; eksport, snapshot i GC obejmują muzykę.
-Migracja zastosowana na dev. Źródła i propozycje: `docs/assety-audio.md`.
-
-**Weryfikacja:** 2164 testy shared, 1197 serwera, 260 klienta; TypeScript
-trzech pakietów, ESLint, Prettier i build Vite. Serwer i Vite uruchomione.
-Chrome: okna MG, odsłuch, przygotowanie kubka wpisem w polu czatu (bez rzutu).
-Sceny i karty nietknięte. Safari/iPad i odsłuch przez dwóch ludzi czekają.
-

@@ -519,12 +519,22 @@ describe('damage, armor and Death Saves', () => {
   });
 
   it('rolls Death Saves that get harder each time', async () => {
+    const presentation: string[] = [];
+    const record = (event: string) => {
+      if (event === 'chat:message' || event === 'character:upsert' || event === 'token:upsert') {
+        presentation.push(event);
+      }
+    };
+    player.onAny(record);
     const first = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     await emitAck(player, 'character:roll', {
       characterId,
       request: { kind: 'deathSave' },
       visibility: 'public',
     });
+    player.offAny(record);
+    expect(presentation[0]).toBe('chat:message');
+    expect(presentation).toContain('character:upsert');
     const firstRoll = (await first).message.roll;
     expect(firstRoll?.notation).toBe('1d10');
     expect(firstRoll?.title).toBe('Test Przeżywalności');

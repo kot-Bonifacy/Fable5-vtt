@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type {
   FogShapeView,
   FogState,
@@ -547,6 +548,8 @@ export async function emitTokenUpsert(
   token: Token,
   linkedSheet?: LinkedSheet | null,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitTokenUpsert(ready, campaignId, scene, token, linkedSheet)))
+    return;
   const linked = linkedSheet !== undefined ? linkedSheet : await loadLinkedSheet(deps, token);
   const privatePayload: TokenUpsertBroadcast = { token: toTokenView(token, true, linked) };
 

@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type {
   CharacterDeleteBroadcast,
   CharacterUpsertBroadcast,
@@ -62,6 +63,7 @@ export async function emitCharacterUpsert(
   campaignId: string,
   view: CharacterView,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitCharacterUpsert(ready, campaignId, view))) return;
   const payload: CharacterUpsertBroadcast = { character: view };
   deps.io.to(gmRoom(campaignId)).emit('character:upsert', payload);
   for (const userId of await characterAudience(deps, view.id, view.ownerId)) {

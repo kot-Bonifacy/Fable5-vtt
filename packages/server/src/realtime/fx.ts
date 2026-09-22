@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type { Scene } from '../generated/prisma/client.js';
 import type { MapFxBroadcast, MapFxEffect, ScenePoint, SessionUser } from '@vtt/shared';
 import { ROLE_GM, isPointRevealed, isPointVisible, trimMapFxBatch } from '@vtt/shared';
@@ -81,6 +82,8 @@ export async function emitMapFx(
   /** Roll card the batch waits for, when it belongs to one (see `MapFxBroadcast`). */
   afterMessageId?: number,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitMapFx(ready, campaignId, scene, effects, afterMessageId)))
+    return;
   if (effects.length === 0) return;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   const viewers = sockets.filter(

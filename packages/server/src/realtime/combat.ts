@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type {
   ChatMessageView,
   CombatAddPayload,
@@ -297,6 +298,7 @@ function emitCombat(
   scene: Scene,
   combat: CombatView | null,
 ): void {
+  if (deferView(deps, (ready) => emitCombat(ready, campaignId, scene, combat))) return;
   const full: CombatUpdateBroadcast = { sceneId: scene.id, combat };
   if (!scene.active) {
     deps.io.to(sceneRoom(scene.id)).emit('combat:update', full);

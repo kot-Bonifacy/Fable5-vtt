@@ -22,6 +22,7 @@ import type { RollResult } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
+import { deferView } from './presentation.js';
 
 /**
  * Storage and delivery of chat messages, split out of `chat.ts` so the bot
@@ -376,6 +377,12 @@ export function broadcastChatMessage(
   campaignId: string,
   message: ChatMessageView,
 ): void {
+  if (
+    !message.roll &&
+    !message.rolltable &&
+    deferView(deps, (ready) => broadcastChatMessage(ready, campaignId, message))
+  )
+    return;
   const room = campaignRoom(campaignId);
   const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message };
   deps.io.to(room).emit('chat:message', payload);
@@ -395,6 +402,13 @@ export async function deliverChatMessageTo(
   includeGm = false,
   event: 'chat:message' | 'chat:update' = 'chat:message',
 ): Promise<void> {
+  if (
+    (event === 'chat:update' || (!message.roll && !message.rolltable)) &&
+    deferView(deps, (ready) =>
+      deliverChatMessageTo(ready, campaignId, message, userIds, includeGm, event),
+    )
+  )
+    return;
   const targets = new Set(userIds.filter((id): id is string => typeof id === 'string'));
   const payload: ChatMessageBroadcast = { message };
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
@@ -418,6 +432,11 @@ export async function broadcastRedactedChatMessage(
   message: ChatMessageView,
   event: 'chat:message' | 'chat:update' = 'chat:message',
 ): Promise<void> {
+  if (
+    (event === 'chat:update' || (!message.roll && !message.rolltable)) &&
+    deferView(deps, (ready) => broadcastRedactedChatMessage(ready, campaignId, message, event))
+  )
+    return;
   const room = campaignRoom(campaignId);
   const seq = deps.seqs.next(room);
   const sockets = await deps.io.in(room).fetchSockets();

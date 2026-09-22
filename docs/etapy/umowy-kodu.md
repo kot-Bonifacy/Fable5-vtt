@@ -684,6 +684,7 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Emisja skutku rzutu nie wyprzedza jego kości (22.09)** — `defineEvent` obejmuje handler przez `withPresentation`; `performCharacterRoll` i `performAttackRoll` robią to również dla wywołań botów. Funkcje wysyłające widok wyniku używają `deferView` (karty, figury, walka, Sieć, osłony, dym, efekty i nierzutowe komunikaty czatu). Mutacje wykonują się od razu, emisje po handlerze, także przy błędzie. Numery `seq` nadaje dopiero emisja. Nie odkładaj mutacji wewnątrz funkcji udającej samą emisję.
 - **Biblioteka portretów MG (14.09)** — `PortraitPicker manage` w panelu postaci dodaje wiele plików bez kadrowania. `preparePortraitImage` w serwerze egzekwuje wspólne limity i zapisuje WebP; `PortraitAsset.retired` usuwa z wyboru bez utraty kadru, `includeRetired=true` służy rendererowi i edytorowi kadru.
 
 **Portrety po ustaleniach MG z 14.09:** pula pozostaje osobna dla każdej kampanii. Upload
@@ -968,6 +969,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Wynik czeka na animację we wszystkich widokach (22.09)** — `rollPresentation` w `socket.ts` zachowuje kolejność komunikatów, odpowiedzi kreatora i odczytów stanu. Nowy odbiornik widoku rejestruj przez `onPresented`, a odpowiedź z wynikiem przez `rollPresentation.deliver`. `playRollAnimation` kończy obie fale; timeout najpierw zatrzymuje i usuwa kości. Chwyt kubka nie przerywa prawdziwego rzutu.
 - **Kara za rany w rozbiciu rzutu składa się w JEDNYM miejscu — `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`** (`rolls.ts`); woła ją `finishCheck` i atak, a rachunki ręczne (kubek Ustabilizowania i Leczenia, targowanie, napis na karcie) biorą `cpredSheetWoundCheckPenalty`. Zawieszenie (Stym, Edytor bólu) to **własny wiersz obok kary**, nie brak kary; `woundCheckPenalty(woundState(hp, stats))` na karcie to regres z 38a.
 - **Wezwanie do Testu powstaje w JEDNYM miejscu — `createCheckCall`** (`realtime/checks.ts`); wołają je `check:call` i zgoda na prośbę z 40, a ramę MG (próg, modyfikator, widoczność) czyta wspólne `parseCheckFrame`. Druga kopia rozjedzie się przy pierwszej zmianie wezwania.
 - **Prośba o Test nie zna progu ani widoczności** — `CheckRequestPayload` to `CheckCallPayload` bez tego, co należy do MG. Przy zgodzie Umiejętność idzie z **zapisanej prośby**; podmienić ją da się wyłącznie przez „Ustaw…”, czyli `check:call` z `requestMessageId`.

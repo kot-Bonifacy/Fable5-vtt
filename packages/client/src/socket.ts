@@ -270,7 +270,8 @@ import {
   TOKEN_PATH_MAX_POINTS,
   parseChatInput,
 } from '@vtt/shared';
-import { playRollAnimation, toAnimationNotation } from './dice3d.js';
+import { playRollAnimation, toAnimationNotation, cancelDiceAnimations } from './dice3d.js';
+import { rollPresentation } from './roll-presentation.js';
 import { receiveMapFx, releaseMapFx } from './map-fx.js';
 import { shouldTypeOut, typeOutMessage } from './typewriter.js';
 import { useConnectionStore } from './stores/connectionStore.js';
@@ -322,8 +323,6 @@ let lastRulerSentAt = 0;
 
 /** Extra time after the dice settle before the chat card spoils the total. */
 const CARD_REVEAL_DELAY_MS = 2500;
-/** Safety net: reveal the card even if the animation never reports back. */
-const MAX_ANIMATION_WAIT_MS = 15_000;
 
 function chatErrorText(code: string): string {
   switch (code) {
@@ -504,8 +503,13 @@ export function connectSocket(userId: string): Socket {
   const { setConnected, setDisconnected, setServerHello } = useConnectionStore.getState();
   const chat = () => useChatStore.getState();
 
+  // Keep every state broadcast in wire order, including resync and chat updates.
+  // A roll pauses presentation, never the network or the authoritative server.
+  const onPresented = <T>(event: string, listener: (payload: T) => void) =>
+    socket!.on(event, (payload: T) => rollPresentation.deliver(() => listener(payload)));
+
   socket.on('connect', () => setConnected());
-  socket.on('creation:rank', (rank: { draftId: string; statRankId: string }) => {
+  onPresented('creation:rank', (rank: { draftId: string; statRankId: string }) => {
     const store = useCreationStore.getState();
     if (store.draftId === rank.draftId && store.draft) {
       useCreationStore.setState({
@@ -515,10 +519,12 @@ export function connectSocket(userId: string): Socket {
     }
   });
   // Naprawa 2b: the GM's rank list lives off the server's pushes.
-  socket.on('creation:ranks-sync', (rows: CreationRankDraft[]) =>
+  onPresented('creation:ranks-sync', (rows: CreationRankDraft[]) =>
     useCreationRankStore.getState().replace(rows),
   );
   socket.on('disconnect', () => {
+    rollPresentation.clear();
+    cancelDiceAnimations();
     setDisconnected();
     chat().setDesynced();
   });
@@ -533,7 +539,7 @@ export function connectSocket(userId: string): Socket {
     return { myUserId: user?.id ?? null, isGm: user?.role === ROLE_GM };
   };
 
-  socket.on('state:sync', (payload: StateSyncPayload) => {
+  onPresented('state:sync', (payload: StateSyncPayload) => {
     chat().applySync(payload);
     if (useMusicStore.getState().state?.campaignId !== payload.campaign?.id)
       useMusicStore.setState({ state: null, error: null, blocked: false });
@@ -584,7 +590,7 @@ export function connectSocket(userId: string): Socket {
    * (mieszka w sklepie logowania, karmionym RESTem) i wskaźniki tego widza,
    * które pokazują na figury z poprzedniej kampanii.
    */
-  socket.on('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
+  onPresented('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
     useAuthStore.setState({ activeCampaign: broadcast.campaign });
     usePortraitStore.getState().reset();
     if (broadcast.campaign) void usePortraitStore.getState().load(true);
@@ -601,62 +607,62 @@ export function connectSocket(userId: string): Socket {
 
   // Bot profiles are GM-only and targeted at the GM room — no seq, like whispers.
   const bots = () => useBotStore.getState();
-  socket.on('bot:upsert', (broadcast: BotUpsertBroadcast) => bots().applyUpsert(broadcast.bot));
-  socket.on('bot:delete', (broadcast: BotDeleteBroadcast) => bots().applyDelete(broadcast.botId));
-  socket.on('bot:chunk', (broadcast: BotChunkBroadcast) =>
+  onPresented('bot:upsert', (broadcast: BotUpsertBroadcast) => bots().applyUpsert(broadcast.bot));
+  onPresented('bot:delete', (broadcast: BotDeleteBroadcast) => bots().applyDelete(broadcast.botId));
+  onPresented('bot:chunk', (broadcast: BotChunkBroadcast) =>
     bots().appendChunk(broadcast.botId, broadcast.text, broadcast.reset === true),
   );
-  socket.on('bot:reply', (broadcast: BotReplyBroadcast) => bots().finishBotTurn(broadcast));
-  socket.on('bot:error', (broadcast: BotErrorBroadcast) =>
+  onPresented('bot:reply', (broadcast: BotReplyBroadcast) => bots().finishBotTurn(broadcast));
+  onPresented('bot:error', (broadcast: BotErrorBroadcast) =>
     bots().failBotTurn(broadcast.botId, botErrorText(broadcast.code, broadcast.detail)),
   );
 
   // Session chat: turns in flight („Vex pisze…" + queue) are ephemeral state,
   // broadcast without a seq; failures arrive targeted as a local chat note.
-  socket.on('bot:activity', (broadcast: BotActivityBroadcast) =>
+  onPresented('bot:activity', (broadcast: BotActivityBroadcast) =>
     chat().setBotActivity(broadcast.entries ?? []),
   );
-  socket.on('bot:trace', (broadcast: BotTraceBroadcast) => chat().addBotTrace(broadcast));
-  socket.on('bot:action-trace', (broadcast: BotActionTraceBroadcast) =>
+  onPresented('bot:trace', (broadcast: BotTraceBroadcast) => chat().addBotTrace(broadcast));
+  onPresented('bot:action-trace', (broadcast: BotActionTraceBroadcast) =>
     chat().addNote(botActionTraceText(broadcast)),
   );
-  socket.on('bot:notice', (broadcast: BotNoticeBroadcast) =>
+  onPresented('bot:notice', (broadcast: BotNoticeBroadcast) =>
     chat().addNote(botNoticeText(broadcast)),
   );
 
   // AI status/streams are targeted, carry no seq and are never persisted —
   // the gateway is an external service, not game state.
   const ai = () => useAiStore.getState();
-  socket.on('ai:status', (broadcast: AiStatusBroadcast) => {
+  onPresented('ai:status', (broadcast: AiStatusBroadcast) => {
     ai().setStatus(broadcast.status);
     // Gateway wrócił — zdejmij zdanie, które właśnie przestało być prawdą.
     // Dziennik trzyma swój błąd u siebie (nie w statusie z serwera), więc bez
     // tego „Brak połączenia z AI Gateway" wisiał w panelu do następnej akcji MG.
     if (broadcast.status.available) useJournalStore.getState().clearAiError();
   });
-  socket.on('ai:queue', (broadcast: AiQueueBroadcast) =>
+  onPresented('ai:queue', (broadcast: AiQueueBroadcast) =>
     ai().setQueuePosition(broadcast.requestId, broadcast.position),
   );
-  socket.on('ai:chunk', (broadcast: AiChunkBroadcast) =>
+  onPresented('ai:chunk', (broadcast: AiChunkBroadcast) =>
     ai().appendChunk(broadcast.requestId, broadcast.kind, broadcast.text),
   );
-  socket.on('ai:done', (broadcast: AiDoneBroadcast) =>
+  onPresented('ai:done', (broadcast: AiDoneBroadcast) =>
     ai().finishExchange(broadcast.requestId, broadcast.usage),
   );
-  socket.on('ai:error', (broadcast: AiErrorBroadcast) =>
+  onPresented('ai:error', (broadcast: AiErrorBroadcast) =>
     ai().failExchange(broadcast.requestId, aiErrorText(broadcast.code, broadcast.detail)),
   );
 
   // Asystent zasad (etap 19a): fragmenty przychodzą PRZED odpowiedzią, więc MG
   // widzi źródła nawet wtedy, gdy generacja się urwie.
   const rules = () => useRulesStore.getState();
-  socket.on('rules:sources', (broadcast: RulesSourcesBroadcast) =>
+  onPresented('rules:sources', (broadcast: RulesSourcesBroadcast) =>
     rules().setSources(broadcast.requestId, broadcast.passages, broadcast.searchMs),
   );
-  socket.on('rules:chunk', (broadcast: RulesChunkBroadcast) =>
+  onPresented('rules:chunk', (broadcast: RulesChunkBroadcast) =>
     rules().appendChunk(broadcast.requestId, broadcast.kind, broadcast.text),
   );
-  socket.on('rules:done', (broadcast: RulesDoneBroadcast) =>
+  onPresented('rules:done', (broadcast: RulesDoneBroadcast) =>
     rules().finish(
       broadcast.requestId,
       broadcast.totalMs,
@@ -664,40 +670,40 @@ export function connectSocket(userId: string): Socket {
       broadcast.retriedWithoutReasoning ?? false,
     ),
   );
-  socket.on('rules:error', (broadcast: RulesErrorBroadcast) =>
+  onPresented('rules:error', (broadcast: RulesErrorBroadcast) =>
     rules().fail(broadcast.requestId, rulesErrorText(broadcast.code, broadcast.detail)),
   );
 
   // Baza wiedzy kampanii (etap 19b) — emisje celowane w pokój MG, bez seq:
   // wpisy niosą sekrety fabuły i nie mają prawa dotrzeć do gracza.
-  socket.on('knowledge:upsert', (broadcast: KnowledgeUpsertBroadcast) =>
+  onPresented('knowledge:upsert', (broadcast: KnowledgeUpsertBroadcast) =>
     useKnowledgeStore.getState().upsert(broadcast.entry, broadcast.index),
   );
-  socket.on('knowledge:delete', (broadcast: KnowledgeDeleteBroadcast) =>
+  onPresented('knowledge:delete', (broadcast: KnowledgeDeleteBroadcast) =>
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
   );
 
   // Tabele losowe (34) — jak wyżej, wyłącznie do pokoju MG: tabela jest
   // narzędziem MG, a jej wiersze zdradzają, co jeszcze może się wydarzyć.
-  socket.on('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
+  onPresented('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
     useTableStore.getState().upsert(broadcast.table),
   );
-  socket.on('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
+  onPresented('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
     useTableStore.getState().remove(broadcast.id),
   );
 
   // Biblioteka Architektur Sieciowych (26a) — ta sama zasada co wyżej: PT,
   // Czarne LOD-y i notatki MG lecą wyłącznie do pokoju MG.
-  socket.on('net:architectures', (payload: NetArchitectureListPayload) =>
+  onPresented('net:architectures', (payload: NetArchitectureListPayload) =>
     useNetStore.getState().replaceAll(payload.architectures),
   );
-  socket.on('netpoint:sync', (broadcast: NetAccessPointSyncBroadcast) =>
+  onPresented('netpoint:sync', (broadcast: NetAccessPointSyncBroadcast) =>
     useNetRunStore.getState().replacePoints(broadcast.points),
   );
-  socket.on('netrun:sync', (broadcast: NetRunSyncBroadcast) =>
+  onPresented('netrun:sync', (broadcast: NetRunSyncBroadcast) =>
     useNetRunStore.getState().replaceRuns(broadcast.runs),
   );
-  socket.on('net:deleted', (broadcast: NetArchitectureDeleteBroadcast) =>
+  onPresented('net:deleted', (broadcast: NetArchitectureDeleteBroadcast) =>
     useNetStore.getState().remove(broadcast.id),
   );
 
@@ -705,7 +711,7 @@ export function connectSocket(userId: string): Socket {
   // i graczowi **dwa różne kształty** pod tą samą nazwą zdarzenia — gniazdo
   // należy do jednego konta, więc rozstrzyga o tym rola, a nie zgadywanie po
   // polach payloadu.
-  socket.on(
+  onPresented(
     'journal:upsert',
     (broadcast: JournalUpsertBroadcast | JournalPlayerUpsertBroadcast) => {
       const store = useJournalStore.getState();
@@ -717,32 +723,32 @@ export function connectSocket(userId: string): Socket {
       }
     },
   );
-  socket.on('journal:delete', (broadcast: JournalDeleteBroadcast) => {
+  onPresented('journal:delete', (broadcast: JournalDeleteBroadcast) => {
     const store = useJournalStore.getState();
     if (useAuthStore.getState().user?.role === ROLE_GM) store.remove(broadcast.id, broadcast.index);
     else store.removeShared(broadcast.id);
   });
-  socket.on('journal:progress', (broadcast: JournalProgressBroadcast) =>
+  onPresented('journal:progress', (broadcast: JournalProgressBroadcast) =>
     useJournalStore.getState().setProgress(broadcast),
   );
-  socket.on('journal:draft', (broadcast: JournalDraftBroadcast) =>
+  onPresented('journal:draft', (broadcast: JournalDraftBroadcast) =>
     useJournalStore.getState().setDraft(broadcast.draft, broadcast.proposals, broadcast.batches),
   );
-  socket.on('journal:error', (broadcast: JournalErrorBroadcast) =>
+  onPresented('journal:error', (broadcast: JournalErrorBroadcast) =>
     useJournalStore
       .getState()
       .fail(journalErrorText(broadcast.code, broadcast.detail), broadcast.code),
   );
   // Handouty (etap 24a) — jedyna lista MG z wyjściem do gracza. Serwer wysyła
   // je celowanym emitem do kont z udostępnieniem, więc klient nic nie odsiewa.
-  socket.on('handout:upsert', (broadcast: HandoutUpsertBroadcast) =>
+  onPresented('handout:upsert', (broadcast: HandoutUpsertBroadcast) =>
     useHandoutStore.getState().upsert(broadcast.handout),
   );
-  socket.on('handout:delete', (broadcast: HandoutDeleteBroadcast) =>
+  onPresented('handout:delete', (broadcast: HandoutDeleteBroadcast) =>
     useHandoutStore.getState().remove(broadcast.id),
   );
   // „Masz to w ręku" — okno wyskakuje samo, ale tylko świeżo dopisanym odbiorcom.
-  socket.on('handout:open', (broadcast: HandoutOpenBroadcast) => {
+  onPresented('handout:open', (broadcast: HandoutOpenBroadcast) => {
     const store = useHandoutStore.getState();
     store.upsert(broadcast.handout);
     store.openHandout(broadcast.handout.id);
@@ -752,21 +758,21 @@ export function connectSocket(userId: string): Socket {
   // Generator screamsheetów (24c) — artykuł przychodzi osobnym zdarzeniem,
   // bo model pisze go kilkanaście sekund. Nic tu nie ląduje w bazie: szkic
   // czeka w formularzu MG.
-  socket.on('screamsheet:draft', (broadcast: ScreamsheetDraftBroadcast) =>
+  onPresented('screamsheet:draft', (broadcast: ScreamsheetDraftBroadcast) =>
     useScreamsheetStore
       .getState()
       .complete(broadcast.requestId, broadcast.draft, broadcast.totalMs),
   );
-  socket.on('screamsheet:error', (broadcast: ScreamsheetErrorBroadcast) =>
+  onPresented('screamsheet:error', (broadcast: ScreamsheetErrorBroadcast) =>
     useScreamsheetStore
       .getState()
       .fail(broadcast.requestId, screamsheetErrorText(broadcast.code, broadcast.detail)),
   );
 
-  socket.on('relation:upsert', (broadcast: RelationUpsertBroadcast) =>
+  onPresented('relation:upsert', (broadcast: RelationUpsertBroadcast) =>
     useRelationStore.getState().upsert(broadcast.relation),
   );
-  socket.on('relation:delete', (broadcast: RelationDeleteBroadcast) =>
+  onPresented('relation:delete', (broadcast: RelationDeleteBroadcast) =>
     useRelationStore.getState().remove(broadcast.botId, broadcast.characterId),
   );
 
@@ -776,14 +782,14 @@ export function connectSocket(userId: string): Socket {
   // **skonsumować** — inaczej następna wiadomość czatu wygląda jak luka i cały
   // stół idzie w zbędny `state:request` (znalezione 05.09 przy etapie 37,
   // dotyczyło czterech zdarzeń naraz: obu kompendium, sklepu i zegara).
-  socket.on('compendium:upsert', (broadcast: CompendiumUpsertBroadcast) => {
+  onPresented('compendium:upsert', (broadcast: CompendiumUpsertBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
     }
     useCompendiumStore.getState().applyUpsert(broadcast.entry);
   });
-  socket.on('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
+  onPresented('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -792,7 +798,7 @@ export function connectSocket(userId: string): Socket {
   });
   // The GM's shop dial (stage 25c): a room broadcast, because a catalogue that
   // opened up only after a reload is a catalogue the table argues about.
-  socket.on('shop:tier', (broadcast: ShopTierBroadcast) => {
+  onPresented('shop:tier', (broadcast: ShopTierBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -800,7 +806,7 @@ export function connectSocket(userId: string): Socket {
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
   });
   // One entry moved by the GM for this campaign (naprawa 3b) — same reasoning.
-  socket.on('shop:entry-tier', (broadcast: ShopEntryTierBroadcast) => {
+  onPresented('shop:entry-tier', (broadcast: ShopEntryTierBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -810,7 +816,7 @@ export function connectSocket(userId: string): Socket {
   // Kadr portretu na mapie (12.09). Rozgłoszenie do całego stołu, bo kadr jest
   // cechą obrazka: poprawione ujęcie ma trafić na każdą figurę, która ten plik
   // nosi, u wszystkich naraz.
-  socket.on('portrait:crop', (broadcast: PortraitCropBroadcast) => {
+  onPresented('portrait:crop', (broadcast: PortraitCropBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -819,7 +825,7 @@ export function connectSocket(userId: string): Socket {
   });
   // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
   // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
-  socket.on('time:set', (broadcast: GameTimeBroadcast) => {
+  onPresented('time:set', (broadcast: GameTimeBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -828,13 +834,13 @@ export function connectSocket(userId: string): Socket {
   });
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
-  socket.on('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
+  onPresented('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
     useCharacterStore.getState().applyUpsert(broadcast.character);
   });
-  socket.on('character:delete', (broadcast: CharacterDeleteBroadcast) => {
+  onPresented('character:delete', (broadcast: CharacterDeleteBroadcast) => {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
-  socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
+  onPresented('chat:message', (broadcast: ChatMessageBroadcast) => {
     const fresh =
       chat().synced &&
       !chat().items.some(
@@ -847,7 +853,7 @@ export function connectSocket(userId: string): Socket {
     const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
     // Live rolls (never history/resync) replay the server's results in 3D;
     // their chat card is held back so the table reads the dice first.
-    const hold = roll !== undefined && toAnimationNotation(roll) !== null;
+    const hold = fresh && roll !== undefined && toAnimationNotation(roll) !== null;
     if (chat().applyMessage(broadcast, hold)) {
       socket?.emit('state:request');
       return;
@@ -867,11 +873,11 @@ export function connectSocket(userId: string): Socket {
         // …and with the card, whatever the map was holding behind it (27i).
         releaseMapFx(broadcast.message.id);
       };
-      const guard = window.setTimeout(reveal, MAX_ANIMATION_WAIT_MS);
-      void playRollAnimation(roll).then((played) => {
-        window.clearTimeout(guard);
-        window.setTimeout(reveal, played ? CARD_REVEAL_DELAY_MS : 0);
+      const presentation = playRollAnimation(roll).then(async (played) => {
+        if (played)
+          await new Promise((resolve) => window.setTimeout(resolve, CARD_REVEAL_DELAY_MS));
       });
+      rollPresentation.hold(presentation, reveal);
       return;
     }
     // No dice to wait for — an ordinary message, or a table with the animation
@@ -880,21 +886,21 @@ export function connectSocket(userId: string): Socket {
   });
   // A message that changed after the fact (stage 15: the GM took an applied
   // damage entry back) — replaced in place, never appended again.
-  socket.on('chat:update', (broadcast: ChatMessageBroadcast) => {
+  onPresented('chat:update', (broadcast: ChatMessageBroadcast) => {
     if (chat().updateMessage(broadcast)) socket?.emit('state:request');
   });
-  socket.on('presence:update', (broadcast: PresenceBroadcast) => {
+  onPresented('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
   });
 
-  socket.on('scene:update', (broadcast: SceneUpdateBroadcast) => {
+  onPresented('scene:update', (broadcast: SceneUpdateBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
     }
     scenes().applyScene(broadcast.scene);
   });
-  socket.on('scene:activate', (broadcast: SceneActivateBroadcast) => {
+  onPresented('scene:activate', (broadcast: SceneActivateBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -904,8 +910,10 @@ export function connectSocket(userId: string): Socket {
     const isGm = useAuthStore.getState().user?.role === ROLE_GM;
     if (scenes().followActivation(broadcast.scene, isGm)) socket?.emit('state:request');
   });
-  socket.on('scene:list', (broadcast: SceneListBroadcast) => scenes().setScenes(broadcast.scenes));
-  socket.on('scene:view', (broadcast: SceneViewBroadcast) => {
+  onPresented('scene:list', (broadcast: SceneListBroadcast) =>
+    scenes().setScenes(broadcast.scenes),
+  );
+  onPresented('scene:view', (broadcast: SceneViewBroadcast) => {
     scenes().setScene(broadcast.scene);
     socket?.emit('state:request');
   });
@@ -914,14 +922,14 @@ export function connectSocket(userId: string): Socket {
   // while the GM previews another scene) — filter by the viewed scene.
   const viewingScene = (sceneId: string) => useSceneStore.getState().scene?.id === sceneId;
 
-  socket.on('token:upsert', (broadcast: TokenUpsertBroadcast) => {
+  onPresented('token:upsert', (broadcast: TokenUpsertBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
     }
     if (viewingScene(broadcast.token.sceneId)) tokens().upsert(broadcast.token, viewer());
   });
-  socket.on('token:delete', (broadcast: TokenDeleteBroadcast) => {
+  onPresented('token:delete', (broadcast: TokenDeleteBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -930,7 +938,7 @@ export function connectSocket(userId: string): Socket {
   });
   // The tracker arrives as a whole: the public view campaign-wide (with a
   // seq), the GM's full view targeted right after it (no seq, like whispers).
-  socket.on('combat:update', (broadcast: CombatUpdateBroadcast) => {
+  onPresented('combat:update', (broadcast: CombatUpdateBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -947,7 +955,7 @@ export function connectSocket(userId: string): Socket {
     }
   });
 
-  socket.on('token:move', (broadcast: TokenMoveBroadcast) => {
+  onPresented('token:move', (broadcast: TokenMoveBroadcast) => {
     // Intermediate frames carry no seq on purpose — never gap-check them.
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
@@ -962,26 +970,26 @@ export function connectSocket(userId: string): Socket {
   // Map effects (stage 27i) — never sequenced and never replayed on a resync,
   // exactly like the ruler below: an effect is something that happened, not
   // something that is.
-  socket.on('fx:play', (broadcast: MapFxBroadcast) => receiveMapFx(broadcast));
-  socket.on('ruler:update', (broadcast: RulerBroadcast) => {
+  onPresented('fx:play', (broadcast: MapFxBroadcast) => receiveMapFx(broadcast));
+  onPresented('ruler:update', (broadcast: RulerBroadcast) => {
     if (!viewingScene(broadcast.sceneId)) return;
     useRulerStore.getState().receive(broadcast);
   });
 
-  socket.on('ruler:clear', (broadcast: RulerClearBroadcast) => {
+  onPresented('ruler:clear', (broadcast: RulerClearBroadcast) => {
     useRulerStore.getState().drop(broadcast.userId);
   });
 
   // Ping (etap 35) — efemeryczny jak linijka wyżej: bez `seq`, bez zapisu, bez
   // powtórki. Idzie prosto do mapy przez `map-ping.js`, tą samą drogą co efekty
   // walki: to nie jest stan, z którego cokolwiek się renderuje.
-  socket.on('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
+  onPresented('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
 
   // Fog of war (stage 17). The mask is campaign-wide state on the active
   // scene, so it is sequenced like tokens; a GM previewing another map gets
   // targeted, seq-less copies which must not be gap-checked.
   const fog = () => useFogStore.getState();
-  socket.on('fog:paint', (broadcast: FogPaintBroadcast) => {
+  onPresented('fog:paint', (broadcast: FogPaintBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -990,7 +998,7 @@ export function connectSocket(userId: string): Socket {
       fog().append(broadcast.sceneId, broadcast.shape, broadcast.override === true);
     }
   });
-  socket.on('fog:sync', (broadcast: FogSyncBroadcast) => {
+  onPresented('fog:sync', (broadcast: FogSyncBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -1000,7 +1008,7 @@ export function connectSocket(userId: string): Socket {
 
   // Repainting the fog can both add and remove tokens for one viewer, so the
   // server sends the whole filtered list instead of a stream of deltas.
-  socket.on('token:sync', (broadcast: TokenSyncBroadcast) => {
+  onPresented('token:sync', (broadcast: TokenSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) tokens().applyTokens(broadcast.tokens, viewer());
   });
 
@@ -1008,21 +1016,21 @@ export function connectSocket(userId: string): Socket {
   // seq; the GM layer arrives targeted at the GM room, so — like whispers and
   // note pins — those must never be gap-checked.
   const drawings = () => useDrawingStore.getState();
-  socket.on('drawing:upsert', (broadcast: DrawingUpsertBroadcast) => {
+  onPresented('drawing:upsert', (broadcast: DrawingUpsertBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
     }
     if (viewingScene(broadcast.drawing.sceneId)) drawings().upsert(broadcast.drawing);
   });
-  socket.on('drawing:delete', (broadcast: DrawingDeleteBroadcast) => {
+  onPresented('drawing:delete', (broadcast: DrawingDeleteBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
     }
     if (viewingScene(broadcast.sceneId)) drawings().remove(broadcast.drawingId);
   });
-  socket.on('drawing:clear', (broadcast: DrawingClearBroadcast) => {
+  onPresented('drawing:clear', (broadcast: DrawingClearBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -1036,12 +1044,12 @@ export function connectSocket(userId: string): Socket {
   // Walls, openings and the field of view (stage 18a). All three are targeted —
   // walls at the GM room, vision and openings at one player's socket — so none of
   // them carries a seq and none may be gap-checked.
-  socket.on('wall:sync', (broadcast: WallSyncBroadcast) => {
+  onPresented('wall:sync', (broadcast: WallSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
       useWallStore.getState().setWalls(broadcast.sceneId, broadcast.walls);
     }
   });
-  socket.on('vision:sync', (broadcast: VisionSyncBroadcast) => {
+  onPresented('vision:sync', (broadcast: VisionSyncBroadcast) => {
     if (!viewingScene(broadcast.sceneId)) return;
     // One event, two stores: the server computes the field of view and the light
     // inside it in a single pass, and splitting the payload here would only mean
@@ -1050,7 +1058,7 @@ export function connectSocket(userId: string): Socket {
     useLightStore.getState().setVisionLight(broadcast.light ?? null, broadcast.glows ?? []);
   });
   // Lamp rows are GM-only and targeted at the GM room — no seq, like walls.
-  socket.on('light:sync', (broadcast: LightSyncBroadcast) => {
+  onPresented('light:sync', (broadcast: LightSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
       useLightStore.getState().setLights(broadcast.sceneId, broadcast.lights);
     }
@@ -1059,7 +1067,7 @@ export function connectSocket(userId: string): Socket {
   // `wall:sync` this one goes to the room and carries a seq on the active
   // scene — a missed edit would leave somebody planning a route through a car
   // that is no longer there.
-  socket.on('cover:sync', (broadcast: CoverSyncBroadcast & { seq?: number }) => {
+  onPresented('cover:sync', (broadcast: CoverSyncBroadcast & { seq?: number }) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -1071,7 +1079,7 @@ export function connectSocket(userId: string): Socket {
   // Smoke rides with the covers (stage 16h) and for the same reason: everybody
   // sees the cloud, and a missed edit would leave a player rolling -4 for a
   // square that has been clear for a round.
-  socket.on('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
+  onPresented('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
     if (chat().applySeq(broadcast.seq)) {
       socket?.emit('state:request');
       return;
@@ -1084,34 +1092,34 @@ export function connectSocket(userId: string): Socket {
   // pułapkę w payloadzie, zależy od tego, czy jego postać ją zauważyła — więc
   // jeden broadcast dla wszystkich byłby wyciekiem. Bez `seq` z tego samego
   // powodu, dla którego nie ma go `vision:sync`.
-  socket.on('zone:sync', (broadcast: DefenseZoneSyncBroadcast) => {
+  onPresented('zone:sync', (broadcast: DefenseZoneSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
       useZoneStore.getState().setZones(broadcast.sceneId, broadcast.zones);
     }
   });
-  socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
+  onPresented('opening:sync', (broadcast: OpeningSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setOpenings(broadcast.openings);
   });
   // What the route planner walks round although the player sees past it (stage
   // 42a) — per socket like the openings, and never the walls themselves.
-  socket.on('blocker:sync', (broadcast: BlockerSyncBroadcast) => {
+  onPresented('blocker:sync', (broadcast: BlockerSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setBlockers(broadcast.segments);
   });
   // The party's memory of the map (stage 18c). One broadcast for everybody —
   // exploration is shared, so unlike `vision:sync` it is not composed per
   // socket — and no seq, because a missed one is corrected by the next
   // discovery rather than by a resync.
-  socket.on('explore:sync', (broadcast: ExplorationSyncBroadcast) => {
+  onPresented('explore:sync', (broadcast: ExplorationSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
       useExplorationStore.getState().setExploration(broadcast.mask);
     }
   });
 
   // GM layer notes are targeted at the GM room — no seq, like whispers.
-  socket.on('note:upsert', (broadcast: NoteUpsertBroadcast) => {
+  onPresented('note:upsert', (broadcast: NoteUpsertBroadcast) => {
     if (viewingScene(broadcast.note.sceneId)) useNoteStore.getState().upsert(broadcast.note);
   });
-  socket.on('note:delete', (broadcast: NoteDeleteBroadcast) => {
+  onPresented('note:delete', (broadcast: NoteDeleteBroadcast) => {
     useNoteStore.getState().remove(broadcast.noteId);
   });
 
@@ -1119,6 +1127,8 @@ export function connectSocket(userId: string): Socket {
 }
 
 export function disconnectSocket(): void {
+  rollPresentation.clear();
+  cancelDiceAnimations();
   socket?.disconnect();
   socket = undefined;
   connectedUserId = null;
@@ -2556,7 +2566,12 @@ function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<S
       resolve({ ok: false, error: 'NOT_CONNECTED' });
       return;
     }
-    socket.emit(event, payload, (ack: SocketAck<T>) => resolve(ack));
+    socket.emit(event, payload, (ack: SocketAck<T>) =>
+      rollPresentation.deliver(
+        () => resolve(ack),
+        () => resolve({ ok: false, error: 'NOT_CONNECTED' }),
+      ),
+    );
   });
 }
 
@@ -2952,7 +2967,9 @@ function emitCreationAck<T = undefined>(event: string, payload: unknown): Promis
       return;
     }
     socket.timeout(10000).emit(event, payload, (error: Error | null, ack: SocketAck<T>) => {
-      resolve(error ? { ok: false, error: 'CREATION_TIMEOUT' } : ack);
+      rollPresentation.deliver(() =>
+        resolve(error ? { ok: false, error: 'CREATION_TIMEOUT' } : ack),
+      );
     });
   });
 }
@@ -3554,12 +3571,14 @@ export function loadOlderHistory(): void {
 
   store.setLoadingHistory(true);
   socket.emit('chat:history', { beforeId }, (ack: SocketAck<ChatHistoryPage>) => {
-    const chat = useChatStore.getState();
-    if (ack.ok && ack.data) {
-      chat.prependHistory(ack.data);
-    } else {
-      chat.setLoadingHistory(false);
-    }
+    rollPresentation.deliver(() => {
+      const chat = useChatStore.getState();
+      if (ack.ok && ack.data) {
+        chat.prependHistory(ack.data);
+      } else {
+        chat.setLoadingHistory(false);
+      }
+    });
   });
 }
 
@@ -3695,7 +3714,12 @@ function emitEconomy<T>(event: string, payload: unknown): Promise<SocketAck<T>> 
       resolve({ ok: false, error: 'OFFLINE' });
       return;
     }
-    socket.emit(event, payload, (ack: SocketAck<T>) => resolve(ack));
+    socket.emit(event, payload, (ack: SocketAck<T>) =>
+      rollPresentation.deliver(
+        () => resolve(ack),
+        () => resolve({ ok: false, error: 'NOT_CONNECTED' }),
+      ),
+    );
   });
 }
 

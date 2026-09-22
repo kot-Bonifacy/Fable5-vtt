@@ -26,6 +26,8 @@ const FADE_OUT_DELAY_MS = 3200;
  * extra die lands on it, short enough that nobody reaches for the mouse.
  */
 const EXTRA_DIE_DELAY_MS = 550;
+/** A failed renderer must be stopped before any result is released. */
+const MAX_ROLL_MS = 30_000;
 
 /**
  * Builds the predetermined-outcome notation for a server roll: dice groups
@@ -80,6 +82,9 @@ let fadeTimer: number | undefined;
 let current: DiceJob | null = null;
 /** Bumped by every throw — lets a superseded roll detect it lost the table. */
 let rollGeneration = 0;
+const jobs: DiceJob[] = [];
+let pumping = false;
+let cancelCurrent: (() => void) | null = null;
 
 interface PendingThrow {
   toss: RollToss;
@@ -213,9 +218,9 @@ function applyVolume(dice: DiceBoxClass): void {
 }
 
 /**
- * Plays a roll immediately. No queueing: a new throw sweeps dice still on
- * the table (the superseded roll's promise resolves right away so its chat
- * card is never held back).
+ * Plays one queued throw. A later throw cannot release an unfinished roll.
+ * The promise resolves only after both waves settle, or after the renderer
+ * has been stopped and cleared on failure.
  *
  * A check that exploded rolls in **two waves** (stage 27d): the ordinary dice
  * first, then — once they have settled — the crit or fumble die, gold or
@@ -234,8 +239,6 @@ async function play(job: DiceJob): Promise<void> {
     job.resolve(false);
     return;
   }
-  current?.resolve(true);
-  current = job;
   window.clearTimeout(fadeTimer);
   overlay.classList.add('dice-overlay--active');
   overlay.classList.toggle('dice-overlay--fun', job.fun);
@@ -244,6 +247,7 @@ async function play(job: DiceJob): Promise<void> {
     const skin = DICE_SKINS[job.skin] ?? DICE_SKINS[DEFAULT_DICE_SKIN];
     applyVolume(dice);
     await applyColorset(dice, skin.colorset);
+    if (generation !== rollGeneration) return;
     pendingThrow = job.toss ? { toss: job.toss, strength: job.strength } : null;
     await dice.roll(job.notation);
     if (job.extra && generation === rollGeneration) {
@@ -251,6 +255,7 @@ async function play(job: DiceJob): Promise<void> {
       if (generation === rollGeneration) {
         const colorset = job.extra.type === 'crit' ? CRIT_COLORSET : FUMBLE_COLORSET;
         await applyColorset(dice, colorset);
+        if (generation !== rollGeneration) return;
         // `add` throws onto the table instead of sweeping it, so the first
         // wave stays where it landed and the extra die drops among it.
         // No `pendingThrow`: this die falls out of a hand that already threw.
@@ -260,6 +265,9 @@ async function play(job: DiceJob): Promise<void> {
   } catch (error) {
     console.warn('3D dice roll failed', error);
     played = false;
+    dice.clearDice();
+    dice.rolling = false;
+    overlay.classList.remove('dice-overlay--active', 'dice-overlay--fun');
   }
   // Superseded mid-flight — the newer roll owns the table and the fade.
   if (generation !== rollGeneration) return;
@@ -269,29 +277,72 @@ async function play(job: DiceJob): Promise<void> {
     overlay?.classList.remove('dice-overlay--active', 'dice-overlay--fun');
     // Let the fade-out transition finish before removing the dice.
     window.setTimeout(() => {
-      if (current === null) box?.clearDice();
+      if (generation === rollGeneration && current === null) box?.clearDice();
     }, 400);
   }, FADE_OUT_DELAY_MS);
 }
 
 function enqueue(job: Omit<DiceJob, 'resolve'>): Promise<boolean> {
   return new Promise((resolve) => {
-    void play({ ...job, resolve });
+    jobs.push({ ...job, resolve });
+    void pump();
   });
 }
 
-/**
- * Immediately clears the table — grabbing the cup while dice from the
- * previous roll are still tumbling makes them vanish into the cup. A roll
- * still animating resolves right away so its chat card is never held back.
- */
-export function sweepDice(): void {
-  rollGeneration++;
-  current?.resolve(true);
-  current = null;
+async function pump(): Promise<void> {
+  if (pumping) return;
+  pumping = true;
+  try {
+    while (jobs.length) {
+      const job = jobs.shift()!;
+      current = job;
+      await new Promise<void>((done) => {
+        const resolve = job.resolve;
+        let finished = false;
+        const finish = (played: boolean) => {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeout);
+          cancelCurrent = null;
+          current = null;
+          resolve(played);
+          done();
+        };
+        const cancel = () => {
+          rollGeneration++;
+          clearTable();
+          finish(false);
+        };
+        const timeout = window.setTimeout(cancel, MAX_ROLL_MS);
+        cancelCurrent = cancel;
+        void play({ ...job, resolve: finish }).catch(cancel);
+      });
+    }
+  } finally {
+    pumping = false;
+  }
+}
+
+function clearTable(): void {
   window.clearTimeout(fadeTimer);
+  pendingThrow = null;
   overlay?.classList.remove('dice-overlay--active', 'dice-overlay--fun');
   box?.clearDice();
+  if (box) box.rolling = false;
+}
+
+/** Picking up the cup may clear a toy, but never interrupt a real roll. */
+export function sweepDice(): void {
+  if ((current && !current.fun) || jobs.some((job) => !job.fun)) return;
+  cancelCurrent?.();
+  clearTable();
+}
+
+/** Disconnect/logout: remove dice before releasing their pending promises. */
+export function cancelDiceAnimations(): void {
+  for (const job of jobs.splice(0)) job.resolve(false);
+  cancelCurrent?.();
+  clearTable();
 }
 
 /**

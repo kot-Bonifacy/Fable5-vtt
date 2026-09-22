@@ -3,6 +3,7 @@ import type { Server as SocketIOServer, Socket } from 'socket.io';
 import type { Role, SessionUser, SocketAck } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import type { RoomSequences } from './state.js';
+import { withPresentation } from './presentation.js';
 
 /** Shared dependencies passed to every realtime event handler. */
 export interface RealtimeDeps {
@@ -10,6 +11,7 @@ export interface RealtimeDeps {
   log: FastifyBaseLogger;
   ctx: AppContext;
   seqs: RoomSequences;
+  presentation?: (() => Promise<void> | void)[];
 }
 
 /** Thrown by handlers to reject an event with a machine-readable code. */
@@ -39,11 +41,14 @@ export interface RealtimeEvent<TPayload = unknown, TResult = unknown> {
   handler: (args: EventArgs<TPayload>) => Promise<TResult> | TResult;
 }
 
-/** Identity helper that preserves payload/result types of an event definition. */
+/** Preserve event types and publish roll messages before result-dependent views. */
 export function defineEvent<TPayload = unknown, TResult = void>(
   event: RealtimeEvent<TPayload, TResult>,
 ): RealtimeEvent<TPayload, TResult> {
-  return event;
+  return {
+    ...event,
+    handler: (args) => withPresentation(args.deps, (deps) => event.handler({ ...args, deps })),
+  };
 }
 
 /**

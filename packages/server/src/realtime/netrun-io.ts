@@ -1,3 +1,4 @@
+import { deferView } from './presentation.js';
 import type {
   ChatMessageView,
   CombatActionLogEntry,
@@ -133,6 +134,7 @@ export async function emitAccessPoints(
   campaignId: string,
   sceneId: string,
 ): Promise<void> {
+  if (deferView(deps, (ready) => emitAccessPoints(ready, campaignId, sceneId))) return;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
@@ -392,6 +394,7 @@ export async function fetchRunsFor(
 
 /** Pushes every run each socket is entitled to — one cut per viewer. */
 export async function emitRuns(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  if (deferView(deps, (ready) => emitRuns(ready, campaignId))) return;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser };
