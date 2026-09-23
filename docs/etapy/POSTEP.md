@@ -78,7 +78,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1219** na serwerze, **279** u klienta —
+**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1220** na serwerze, **279** u klienta —
 zielone (23.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -116,7 +116,7 @@ a nie do tego pliku.
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
-| `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 1       |
+| `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 85      |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
@@ -124,6 +124,22 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.09 (druga) — dwie zaległości: kopia startowa i Prettier
+
+**Zlecenie MG:** kilka zaległości na jedną sesję; MG wybrał dwie drobne (bez nowych funkcji
+i bez oględzin automatem).
+
+**Wdrożone:** `linkTree` (`snapshots.ts`) pomija plik skasowany przez sprzątanie sierot między
+listą a dowiązaniem — dotąd ENOENT w zapasowym `copyFile` przerywał **całą** kopię startową.
+Test z atrapą `link` odtwarza wyścig (bez poprawki pada tym samym błędem co dziennik).
+`aim-preview.test.ts` był w repo sformatowany — CRLF tylko na dysku; razem 15 takich plików
+wypakowanych od nowa z LF (bez zmiany treści). Pułapki w `kopie` i `testy`, zamknięcie
+w archiwum zaległości.
+
+**Weryfikacja:** 1220 testów serwera (+1), tsc serwera, ESLint, Prettier trzech pakietów czysty.
+`shared` i klient nieruszone. Serwer dev przeładował się sam; kopia startowa 22:41 powstała
+(83 pliki, dowiązania), `/health` odpowiada.
 
 ### Sesja 23.09 — handel między figurami (etap 38c)
 
@@ -146,24 +162,3 @@ czysty poza zastanym `aim-preview.test.ts` (zaległość). Chrome na kampanii �
 zdjęcie zgody zmianą pola, F5 w trakcie, odrzucenie zaproszenia; konsola czysta. Nieobejrzane:
 dotyk (iPad) i dwóch graczy w przeglądarce. Serwer i Vite działają. Wyścig snapshotu ze
 sprzątaniem przy starcie potwierdzony i zdiagnozowany (`zaleglosci.md`, nie naprawiany).
-
-### Sesja 22.09 — wyniki dopiero po zatrzymaniu kości
-
-**Zlecenie MG poza etapem 28:** wynik nie może pojawić się w kreatorze ani innym
-elemencie VTT podczas animacji. Przyczyną w Ścieżce Życia było natychmiastowe
-przyjęcie odpowiedzi serwera; dotąd czekała tylko karta czatu.
-
-**Wdrożone:** wspólna kolejka prezentacji komunikatów i odpowiedzi (kreator,
-karty, inicjatywa, Sieć, czat, mapa, resynchronizacja). Wynik czeka na obie fale
-rzutu i dotychczasowe 2,5 s na odczytanie kości. Kolejne rzuty czekają; chwyt
-kubka nie przerywa prawdziwego rzutu. Awaria/limit 30 s usuwa animację przed
-odsłonięciem wyniku. Rozłączenie odrzuca stare widoki i zwalnia oczekujące zapisy.
-Serwer odkłada emisje skutków do końca obsługi akcji, aby komunikat rzutu
-wyprzedzał m.in. stan po rzucie na śmierć; zapis danych pozostaje natychmiastowy.
-
-**Weryfikacja:** 2183 testy shared, 1206 serwera, 275 klienta; TypeScript klienta
-i serwera, ESLint, Prettier, build Vite. Testy obejmują
-odpowiedź Ścieżki Życia, kolejkę, dorzut, timeout i rozłączenie. Chrome na
-osobnej tymczasowej stronie: koniec kości 3241 ms, dorzut 8009 ms, wynik 8010 ms;
-próba chwytu kubka nie przerwała rzutu. Strona testowa usunięta. Aplikacja działa
-na localhost; zastany ekran logowania MG, bez zmian w szkicu użytkownika.

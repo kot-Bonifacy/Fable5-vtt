@@ -9,6 +9,27 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-23 (druga sesja — kopia startowa i Prettier)
+
+**Start serwera — snapshot i sprzątanie uploads (20.09).** Podczas sprawdzenia
+uruchomienia serwera `snapshot failed` zgłosił ENOENT w `linkTree` (`snapshots.ts:142`)
+przy kopiowaniu mapy; równolegle `swept orphaned uploads` usunął jeden plik.
+Sprawdzić możliwy wyścig snapshotu ze sprzątaniem. Serwer dalej odpowiada `/health`.
+**Potwierdzone 23.09:** ten sam objaw przy starcie (sprzątanie usunęło osierocone MP3 68 MB z `uploads/music`, snapshot padł na tym pliku). Przyczyna w `linkTree`: komentarz przewiduje „plik zniknął w międzyczasie”, ale zapasowe `copyFile` też rzuca ENOENT i przerywa **cały** snapshot. Lekarstwo: pominąć ENOENT w gałęzi zapasowej (albo sprzątać dopiero po snapshocie startowym).
+
+**Prettier: `packages/client/src/aim-preview.test.ts` niesformatowany w repo (zauważone 23.09)** — plik spoza zmian handlu, zostawiony; `prettier --write` na nim i osobny commit.
+
+**Naprawa (23.09, druga sesja).** Kopia startowa: `linkTree` w `snapshots.ts` pomija plik, który
+zniknął między listą katalogu a dowiązaniem (ENOENT w zapasowym `copyFile`), zamiast przerywać
+całą kopię; manifest liczy tylko odłożone pliki, a zniknięty plik nie zdejmuje flagi `linked`.
+Kolejności startu (sprzątanie po kopii) nie ruszano — kopia i tak łapie stan sprzed sprzątania
+tam, gdzie zdąży dowiązać, a hard link trzyma treść po `unlink`. Test w `snapshots.test.ts`
+kasuje plik dokładnie w tej szczelinie (atrapa `link` przez `vi.mock`); bez poprawki pada tym
+samym ENOENT co dziennik serwera. Kopia startowa po restarcie dev (22:41) przeszła: 83 pliki.
+Prettier: `aim-preview.test.ts` **był w repo sformatowany** — na dysku miał tylko CRLF (git nie
+widział różnicy treści). Tak samo 14 innych plików (`git ls-files --eol | grep w/crlf`);
+wszystkie wypakowane od nowa z LF, commit niczego nie zmienia. Pułapka w `testy`.
+
 ## Zamknięte 2026-09-18 (naprawa kreatora 3d — odbiór obu metod)
 
 - **17.09: „Po kreatorze zostało” i gotowość do gry (naprawa 3c) — trzy rzeczy nieobejrzane.**

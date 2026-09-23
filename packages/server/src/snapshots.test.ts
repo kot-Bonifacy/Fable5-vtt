@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { snapshotName } from '@vtt/shared';
 import {
   databaseFileFromUrl,
@@ -17,6 +17,23 @@ import {
   takeSnapshotAndRotate,
   type SnapshotPaths,
 } from './snapshots.js';
+
+/**
+ * Wyścig ze sprzątaniem sierot (20.09, 23.09): `beforeLink` pozwala skasować
+ * plik dokładnie między listą katalogu a dowiązaniem — tak jak robi to
+ * `uploads-gc.ts`, chodzący przy starcie serwera równolegle z kopią.
+ */
+const race = vi.hoisted(() => ({ beforeLink: null as ((source: string) => void) | null }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...actual,
+    link: async (source: string, target: string) => {
+      race.beforeLink?.(source);
+      return actual.link(source, target);
+    },
+  };
+});
 
 /**
  * Kopie zapasowe od strony dysku (etap 33).
@@ -60,6 +77,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  race.beforeLink = null;
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -89,6 +107,29 @@ describe('takeSnapshot', () => {
     } finally {
       held.close();
     }
+  });
+
+  it('plik skasowany w trakcie kopii jest pomijany, a kopia powstaje', async () => {
+    const orphan = join(paths.uploadsDir, 'music', 'sierota.mp3');
+    mkdirSync(join(paths.uploadsDir, 'music'), { recursive: true });
+    writeFileSync(orphan, 'udawana-muzyka');
+    race.beforeLink = (source) => {
+      if (resolve(source) === resolve(orphan)) rmSync(orphan);
+    };
+
+    const summary = await takeSnapshot(paths, 'start');
+    const dir = join(paths.backupDir, summary.name);
+
+    expect(summary.files).toBe(1);
+    expect(readFileSync(join(dir, SNAPSHOT_UPLOADS_DIR, 'maps', 'plan.png'), 'utf8')).toBe(
+      'udawana-mapa',
+    );
+    expect(existsSync(join(dir, SNAPSHOT_UPLOADS_DIR, 'music', 'sierota.mp3'))).toBe(false);
+    const manifest = JSON.parse(readFileSync(join(dir, SNAPSHOT_MANIFEST_FILE), 'utf8')) as {
+      files: number;
+      linked: boolean;
+    };
+    expect(manifest).toMatchObject({ files: 1, linked: true });
   });
 
   it('druga kopia w tej samej minucie zastępuje pierwszą', async () => {

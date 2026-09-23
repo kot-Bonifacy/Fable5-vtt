@@ -934,6 +934,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## kopie — Kopie zapasowe, eksport i import
 
+- **Kopia startowa i sprzątanie sierot chodzą równolegle** — plik znika między listą a dowiązaniem; `linkTree` ma go pominąć (ENOENT), nie przerwać kopii.
 - **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku** — objawem jest „eksport nie działa dla niektórych postaci"; nagłówek jest latin-1.
 
 ---
@@ -942,6 +943,13 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   z `Content-Disposition: attachment; filename="character-bezpanski-…"` wywracała całą trasę
   (`TypeError: Invalid character in header content`) — a objawem było „eksport nie działa dla
   niektórych postaci". Nagłówek jest latin-1; nazwy z ogonkami idą przez `filename*=UTF-8''…`.
+
+- **Kopia startowa i sprzątanie sierot chodzą równolegle (20.09, naprawione 23.09).** `app.ts`
+  puszcza `sweepUploadsInBackground`, a `startSnapshotSchedule` od razu robi kopię `start` — obie
+  bez czekania na siebie. Sprzątanie skasowało osierocone MP3 z `uploads/music` między listą
+  katalogu a dowiązaniem, zapasowe `copyFile` rzuciło ENOENT i w dzienniku stanęło `snapshot
+  failed` — **bez kopii startowej**. `linkTree` pomija teraz plik, którego już nie ma; każdy inny
+  błąd kopiowania dalej przerywa kopię.
 
 
 ## ogledziny — Oględziny w przeglądarce
@@ -1551,7 +1559,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
-- **Python na Windows zapisuje pliki z CRLF** — `open(p, 'w')` zamienia `\n` na `\r\n` w całym pliku; `git diff` tego nie pokaże (normalizuje), Prettier i ESLint owszem. Pisz z `newline=''` albo po fakcie `sed -i 's/\r$//'`.
+- **Python na Windows zapisuje pliki z CRLF** — `open(p, 'w')` zamienia `\n` na `\r\n` w całym pliku; `git diff` tego nie pokaże (normalizuje), Prettier i ESLint owszem. Pisz z `newline=''` albo po fakcie `sed -i 's/\r$//'`. Plik „niesformatowany” z pustym `git diff` to CRLF na dysku: `git ls-files --eol | grep w/crlf`, naprawa `rm` + `git checkout --`.
 - **`vitest -t` w `creation.test.ts` serwera wycina test, który otwiera gniazda** — gniazda `vex`/`gm` powstają w pierwszym `it`, więc filtrowany test pada na `Cannot read properties of undefined (reading 'emit')`. Puszczaj cały plik.
 - **Zatrzymanie `pnpm dev` puszczonego w tle nie gasi jego dzieci na Windows** — `tsx` i `vite` dalej trzymają :3001 i :5173, a następny start pada na `EADDRINUSE`. Zabij drzewo po PID (`taskkill //PID <pid> //T //F`), zanim uznasz port za zajęty przez coś obcego.
 - **Żeton zadany na połówce kratki staje o pół kratki DALEJ** — `snapAxis` robi `Math.round`, a `Math.round(4.5)` to 5: (450, 1450) ląduje na (500, 1500), środek (550, 1550). Komentarze w `walls.test.ts` z 18a mówią „centre (500, 1500)" i mylą; geometrię testu licz od pozycji po przyciągnięciu.
@@ -1583,6 +1591,9 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
   zgłosiłby cały plik. Zapisuj z `newline=''` (i czytaj tak samo), a po wypadku `sed -i 's/\r$//'`.
   Przy okazji: długi heredoc z polskimi cudzysłowami urwał się w Bash w połowie — dłuższy kod
   zapisz najpierw plikiem w scratchpadzie i wklej skryptem.
+  **23.09:** Prettier zgłaszał `aim-preview.test.ts`, a `prettier --write` dał plik, w którym git
+  nie widział żadnej zmiany — repo miało LF, dysk CRLF (razem 15 plików). Sam `git checkout --`
+  ich nie przepisze (indeks uznaje je za aktualne); trzeba je najpierw usunąć z dysku.
 
 - **`vitest -t` nie działa na `creation.test.ts` serwera (17.09).** Gniazda `vex` i `gm` opisu
   „kreator postaci” zakłada pierwszy test („opens a fresh draft…”), nie `beforeAll`. Filtr `-t`

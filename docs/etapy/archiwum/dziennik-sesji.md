@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.09 — wyniki dopiero po zatrzymaniu kości
+
+**Zlecenie MG poza etapem 28:** wynik nie może pojawić się w kreatorze ani innym
+elemencie VTT podczas animacji. Przyczyną w Ścieżce Życia było natychmiastowe
+przyjęcie odpowiedzi serwera; dotąd czekała tylko karta czatu.
+
+**Wdrożone:** wspólna kolejka prezentacji komunikatów i odpowiedzi (kreator,
+karty, inicjatywa, Sieć, czat, mapa, resynchronizacja). Wynik czeka na obie fale
+rzutu i dotychczasowe 2,5 s na odczytanie kości. Kolejne rzuty czekają; chwyt
+kubka nie przerywa prawdziwego rzutu. Awaria/limit 30 s usuwa animację przed
+odsłonięciem wyniku. Rozłączenie odrzuca stare widoki i zwalnia oczekujące zapisy.
+Serwer odkłada emisje skutków do końca obsługi akcji, aby komunikat rzutu
+wyprzedzał m.in. stan po rzucie na śmierć; zapis danych pozostaje natychmiastowy.
+
+**Weryfikacja:** 2183 testy shared, 1206 serwera, 275 klienta; TypeScript klienta
+i serwera, ESLint, Prettier, build Vite. Testy obejmują
+odpowiedź Ścieżki Życia, kolejkę, dorzut, timeout i rozłączenie. Chrome na
+osobnej tymczasowej stronie: koniec kości 3241 ms, dorzut 8009 ms, wynik 8010 ms;
+próba chwytu kubka nie przerwała rzutu. Strona testowa usunięta. Aplikacja działa
+na localhost; zastany ekran logowania MG, bez zmian w szkicu użytkownika.
+
 ### Sesja 21.09 — wszystkie naturalne powiadomienia i import audio YouTube
 
 **Zlecenie MG poza etapem 28:** włączyć wszystkie zaproponowane dźwięki.

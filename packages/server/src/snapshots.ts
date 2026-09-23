@@ -124,26 +124,41 @@ export function vacuumInto(databaseFile: string, targetFile: string): void {
   }
 }
 
+function isMissingFile(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT';
+}
+
 /**
  * Dowiąż (a gdy się nie da — skopiuj) wszystkie pliki z `from` do `to`.
- * Zwraca liczbę plików i to, czy udało się użyć dowiązań.
+ * Zwraca liczbę odłożonych plików i to, czy udało się użyć dowiązań.
+ *
+ * Plik, który zniknął między listą a dowiązaniem, jest pomijany, a nie
+ * przewraca całej kopii: przy starcie serwera równolegle chodzi sprzątanie
+ * sierot (`uploads-gc.ts`), które kasuje dokładnie takie pliki (20.09, 23.09).
  */
 async function linkTree(from: string, to: string): Promise<{ files: number; linked: boolean }> {
   const names = await listFilesUnder(from);
-  let linked = names.length > 0;
+  let files = 0;
+  let linked = true;
   for (const name of names) {
     const target = join(to, name);
     await mkdir(dirname(target), { recursive: true });
     try {
       await link(join(from, name), target);
     } catch {
-      // Inny wolumin, system plików bez dowiązań, plik zniknął w międzyczasie —
-      // kopia ma powstać mimo wszystko, bo to ona jest tu celem.
-      await copyFile(join(from, name), target);
+      // Inny wolumin, system plików bez dowiązań — kopia ma powstać mimo
+      // wszystko, bo to ona jest tu celem.
+      try {
+        await copyFile(join(from, name), target);
+      } catch (error) {
+        if (isMissingFile(error)) continue;
+        throw error;
+      }
       linked = false;
     }
+    files += 1;
   }
-  return { files: names.length, linked };
+  return { files, linked: linked && files > 0 };
 }
 
 /**
