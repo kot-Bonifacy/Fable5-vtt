@@ -93,6 +93,8 @@ razy". (12.09: Stym i Edytor bólu rozliczone osobnym polem `woundSuspension`, n
 03.09): mają to być **dwa osobne przyciski** z gotowymi liczbami z tabeli, nie jedno okno
 „obrażenia środowiskowe".
 
+**23.09.2026 (etap 38c) dołożył jeden wpis — handel z botem.** NPC prowadzony przez bota LLM mógłby sam kłaść rzeczy w pole wymiany i zgadzać się na cenę (paser, handlarz bronią). Etap 38c oddaje stronę NPC-a MG; bot musiałby wołać `trade:offer`/`trade:accept` z uprawnieniami MG i dostać w prompt obie oferty oraz ceny katalogowe. Ścieżka degradacji: gateway offline ⇒ stronę prowadzi MG, jak dziś.
+
 **06.09.2026 (etap 38b) dołożył jeden wpis — kontener na scenie w stylu Item Piles.** MG poprosił
 przy rozstrzyganiu etapu, żeby rozważyć „jakąś formę brania łupu w stylu modułu Item Piles
 z Foundry". Dwie rzeczy z tamtego modułu **weszły do 38b** i są zrobione: „Zabierz wszystko"

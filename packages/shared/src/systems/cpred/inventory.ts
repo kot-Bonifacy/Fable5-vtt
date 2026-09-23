@@ -197,6 +197,97 @@ function defaultMakeId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+type ItemLists = Record<CpredItemList, CpredItemRow[]>;
+
+function listsOf(data: CpredCharacterData): ItemLists {
+  return { weapons: [...data.weapons], armor: [...data.armor], gear: [...data.gear] };
+}
+
+function withLists(data: CpredCharacterData, lists: ItemLists): CpredCharacterData {
+  return {
+    ...data,
+    weapons: lists.weapons as CpredWeaponRow[],
+    armor: lists.armor as CpredArmorRow[],
+    gear: lists.gear as CpredGearRow[],
+  };
+}
+
+/** Wiersz zdjęty z karty źródłowej — w drodze, jeszcze nigdzie nie wylądował. */
+interface TakenRow {
+  list: CpredItemList;
+  row: CpredItemRow;
+  view: CpredItemView;
+}
+
+/**
+ * Zdejmuje wskazane wiersze z list (mutuje je — to kopie z `listsOf`).
+ *
+ * Wiersz wyposażenia rozbija się przy `qty` mniejszym niż stos; reszta zostaje
+ * na miejscu z tym samym id.
+ */
+function takeRows(
+  source: ItemLists,
+  refs: readonly CpredItemRef[],
+): { ok: true; taken: TakenRow[] } | { ok: false; error: CpredItemMoveError } {
+  const taken: TakenRow[] = [];
+  for (const ref of refs) {
+    const rows = source[ref.list];
+    const index = rows.findIndex((row) => row.id === ref.rowId);
+    if (index === -1) return { ok: false, error: 'ITEM_NOT_FOUND' };
+    const row = rows[index]!;
+
+    if (ref.list === 'gear') {
+      const gear = row as CpredGearRow;
+      const want = ref.qty === undefined ? gear.qty : ref.qty;
+      if (!Number.isInteger(want) || want < 1 || want > gear.qty) {
+        return { ok: false, error: 'BAD_QTY' };
+      }
+      const left: CpredGearRow = { ...gear, qty: gear.qty - want };
+      const going: CpredGearRow = { ...gear, qty: want };
+      if (want === gear.qty) rows.splice(index, 1);
+      else rows[index] = left;
+      taken.push({
+        list: 'gear',
+        row: going,
+        view: { ...cpredItemView('gear', gear), qty: want },
+      });
+      continue;
+    }
+
+    rows.splice(index, 1);
+    taken.push({ list: ref.list, row, view: cpredItemView(ref.list, row) });
+  }
+  return { ok: true, taken };
+}
+
+/** Kładzie zdjęte wiersze na liście odbiorcy: sklejanie, zdjęty pancerz, świeże id. */
+function landRows(target: ItemLists, taken: readonly TakenRow[], makeId: () => string): void {
+  for (const { list, row } of taken) {
+    if (list === 'gear') {
+      const gear = row as CpredGearRow;
+      const gearTarget = target.gear as CpredGearRow[];
+      const stack = gearTarget.findIndex((candidate) => stacksWith(gear, candidate));
+      if (stack === -1) {
+        const ids = new Set(gearTarget.map((candidate) => candidate.id));
+        gearTarget.push(landedRow(gear, ids, makeId));
+      } else {
+        const existing = gearTarget[stack]!;
+        gearTarget[stack] = { ...existing, qty: existing.qty + gear.qty };
+      }
+      continue;
+    }
+    const ids = new Set(target[list].map((candidate) => candidate.id));
+    // Zdjęty pancerz: patrz nagłówek pliku. Broń nie ma odpowiednika tej
+    // decyzji, bo samo trzymanie broni nie zmienia na karcie żadnej liczby.
+    const landing = list === 'armor' ? { ...(row as CpredArmorRow), equipped: false } : row;
+    target[list].push(landedRow(landing, ids, makeId));
+  }
+}
+
+function overflows(lists: ItemLists): boolean {
+  return CPRED_ITEM_LISTS.some((list) => lists[list].length > ITEM_ROWS_MAX);
+}
+
 /**
  * Przenosi wskazane wiersze z jednej karty na drugą.
  *
@@ -214,78 +305,103 @@ export function cpredMoveItems(
   if (refs.length === 0) return { ok: false, error: 'NO_ITEMS' };
   const makeId = options.makeId ?? defaultMakeId;
 
-  const source: Record<CpredItemList, CpredItemRow[]> = {
-    weapons: [...from.weapons],
-    armor: [...from.armor],
-    gear: [...from.gear],
-  };
-  const target: Record<CpredItemList, CpredItemRow[]> = {
-    weapons: [...to.weapons],
-    armor: [...to.armor],
-    gear: [...to.gear],
-  };
-  const moved: CpredItemView[] = [];
-
-  for (const ref of refs) {
-    const rows = source[ref.list];
-    const index = rows.findIndex((row) => row.id === ref.rowId);
-    if (index === -1) return { ok: false, error: 'ITEM_NOT_FOUND' };
-    const row = rows[index]!;
-
-    if (ref.list === 'gear') {
-      const gear = row as CpredGearRow;
-      const want = ref.qty === undefined ? gear.qty : ref.qty;
-      if (!Number.isInteger(want) || want < 1 || want > gear.qty) {
-        return { ok: false, error: 'BAD_QTY' };
-      }
-      const left: CpredGearRow = { ...gear, qty: gear.qty - want };
-      if (want === gear.qty) rows.splice(index, 1);
-      else rows[index] = left;
-
-      const gearTarget = target.gear as CpredGearRow[];
-      const stack = gearTarget.findIndex((candidate) => stacksWith(gear, candidate));
-      if (stack === -1) {
-        const taken = new Set(gearTarget.map((candidate) => candidate.id));
-        const fresh: CpredGearRow = { ...gear, qty: want };
-        gearTarget.push(landedRow(fresh, taken, makeId));
-      } else {
-        const existing = gearTarget[stack]!;
-        gearTarget[stack] = { ...existing, qty: existing.qty + want };
-      }
-      moved.push({ ...cpredItemView('gear', gear), qty: want });
-      continue;
-    }
-
-    rows.splice(index, 1);
-    const taken = new Set(target[ref.list].map((candidate) => candidate.id));
-    // Zdjęty pancerz: patrz nagłówek pliku. Broń nie ma odpowiednika tej
-    // decyzji, bo samo trzymanie broni nie zmienia na karcie żadnej liczby.
-    const landing = ref.list === 'armor' ? { ...(row as CpredArmorRow), equipped: false } : row;
-    target[ref.list].push(landedRow(landing, taken, makeId));
-    moved.push(cpredItemView(ref.list, row));
-  }
-
-  for (const list of CPRED_ITEM_LISTS) {
-    if (target[list].length > ITEM_ROWS_MAX) return { ok: false, error: 'TOO_MANY_ROWS' };
-  }
+  const source = listsOf(from);
+  const target = listsOf(to);
+  const took = takeRows(source, refs);
+  if (!took.ok) return took;
+  landRows(target, took.taken, makeId);
+  if (overflows(target)) return { ok: false, error: 'TOO_MANY_ROWS' };
 
   return {
     ok: true,
     result: {
-      from: {
-        ...from,
-        weapons: source.weapons as CpredWeaponRow[],
-        armor: source.armor as CpredArmorRow[],
-        gear: source.gear as CpredGearRow[],
-      },
-      to: {
-        ...to,
-        weapons: target.weapons as CpredWeaponRow[],
-        armor: target.armor as CpredArmorRow[],
-        gear: target.gear as CpredGearRow[],
-      },
-      moved,
+      from: withLists(from, source),
+      to: withLists(to, target),
+      moved: took.taken.map((entry) => entry.view),
     },
+  };
+}
+
+export interface CpredItemSwapResult {
+  a: CpredCharacterData;
+  b: CpredCharacterData;
+  /** Co pojechało od A do B. */
+  fromA: CpredItemView[];
+  /** Co pojechało od B do A. */
+  fromB: CpredItemView[];
+}
+
+/**
+ * Wymiana w obie strony naraz — handel (etap 38c).
+ *
+ * **Nie jest** dwoma wywołaniami `cpredMoveItems` po kolei, i to z dwóch
+ * powodów. Po pierwsze stos: gdyby A → B poszło pierwsze, trzy stimpaki A
+ * skleiłyby się ze stimpakami B, a „oddaję wszystkie" po stronie B zabrałoby
+ * i te, które właśnie dostał. Po drugie limit wierszy: B z pełną listą broni,
+ * który wymienia pistolet na pistolet, w połowie drogi miałby o jeden wiersz
+ * za dużo. Dlatego obie strony najpierw **zdejmują**, a dopiero potem obie
+ * **kładą** — a limit liczy się na stanie końcowym.
+ *
+ * Puste listy są dozwolone po obu stronach: handel bywa „pistolet za 500 ed",
+ * a o tym, czy w ogóle jest co wymieniać, rozstrzyga wołający.
+ */
+export function cpredSwapItems(
+  a: CpredCharacterData,
+  b: CpredCharacterData,
+  aRefs: readonly CpredItemRef[],
+  bRefs: readonly CpredItemRef[],
+  options: CpredMoveOptions = {},
+): { ok: true; result: CpredItemSwapResult } | { ok: false; error: CpredItemMoveError } {
+  const makeId = options.makeId ?? defaultMakeId;
+  const aLists = listsOf(a);
+  const bLists = listsOf(b);
+  const fromA = takeRows(aLists, aRefs);
+  if (!fromA.ok) return fromA;
+  const fromB = takeRows(bLists, bRefs);
+  if (!fromB.ok) return fromB;
+  landRows(bLists, fromA.taken, makeId);
+  landRows(aLists, fromB.taken, makeId);
+  if (overflows(aLists) || overflows(bLists)) return { ok: false, error: 'TOO_MANY_ROWS' };
+  return {
+    ok: true,
+    result: {
+      a: withLists(a, aLists),
+      b: withLists(b, bLists),
+      fromA: fromA.taken.map((entry) => entry.view),
+      fromB: fromB.taken.map((entry) => entry.view),
+    },
+  };
+}
+
+/**
+ * Oferta w polu wymiany, sprawdzona z kartą: co dokładnie by pojechało.
+ *
+ * Zwraca widoki z **jawną** ilością i adresy z jawną ilością — oferta nie może
+ * znaczyć „cały stos", bo stos zmienia się pod nią (dokupiony stimpak nie ma
+ * po cichu dołączyć do ceny). Ten sam wiersz dwa razy to błąd żądania.
+ */
+export function cpredOfferViews(
+  data: CpredCharacterData,
+  refs: readonly CpredItemRef[],
+):
+  | { ok: true; refs: CpredItemRef[]; views: CpredItemView[] }
+  | { ok: false; error: CpredItemMoveError } {
+  const seen = new Set<string>();
+  for (const ref of refs) {
+    const key = `${ref.list}:${ref.rowId}`;
+    if (seen.has(key)) return { ok: false, error: 'BAD_QTY' };
+    seen.add(key);
+  }
+  const took = takeRows(listsOf(data), refs);
+  if (!took.ok) return took;
+  return {
+    ok: true,
+    refs: took.taken.map(({ list, row }) =>
+      list === 'gear'
+        ? { list, rowId: row.id, qty: (row as CpredGearRow).qty }
+        : { list, rowId: row.id },
+    ),
+    views: took.taken.map((entry) => entry.view),
   };
 }
 

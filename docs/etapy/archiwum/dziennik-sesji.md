@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.09 — wszystkie naturalne powiadomienia i import audio YouTube
+
+**Zlecenie MG poza etapem 28:** włączyć wszystkie zaproponowane dźwięki.
+Doprecyzowanie 21.09: z YouTube pobierać sam dźwięk, bez filmu.
+
+**Wdrożone:** własna tura (dwa stuki drewna), szept (papier), prośba o Test
+u MG (stuk), otrzymany handout (papier), przedmiot do przyjęcia (monety).
+Domyślnie włączone, własne wyłączniki/odsłuchy i wspólna głośność powiadomień.
+Adresowanie wyłącznie do odbiorców, bez historii/resync. Otoczenia CC0 deszcz,
+wiatr, ogień i ulica zapisane per scena; osobny lokalny suwak, grają z muzyką.
+Migracja `20260920210000_scene_ambience` zastosowana na dev; eksport/import ją zachowuje.
+
+**YouTube → MP3:** import MG w tle, postęp/anulowanie, limit 2 h/128 MB,
+jedno zadanie, timeout i sprzątanie; gotowy plik w prywatnym `uploads/music/`.
+Wersja z osadzonym filmem została zastąpiona. Stare linki można przekonwertować
+w miejscu. Narzędzia yt-dlp/FFmpeg zainstalowane w ignorowanym `tools/audio/.venv`;
+instalacja na innym serwerze i ograniczenia w `tools/audio/README.md`.
+
+**Weryfikacja:** 2183 testy shared, 1202 serwera, 265 klienta; tsc trzech
+pakietów, ESLint, Prettier, build Vite. Rzeczywisty import krótkiego audio
+przez Python i most Node (MP3 305 989 B). Chrome: podkład ze starego linku MG
+przekonwertowany do MP3; odtwarzanie i pauza bez filmu. Pozostawiony w bibliotece,
+w pauzie. Naturalne przełączniki włączone; odsłuch tury i papieru uruchomiony.
+Serwer i Vite działają. Safari/iPad i ocena brzmienia przez ludzi nadal przy stole.
+
 ### Sesja 20.09 — naturalny sygnał kubka i muzyka MG
 
 **Zlecenie MG poza etapem 28:** pojedynczy sygnał gotowości kubka, podkłady

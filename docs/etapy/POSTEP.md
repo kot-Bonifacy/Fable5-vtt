@@ -22,7 +22,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
 | ⬜ otwarty   | **28** Wdrożenie na VPS                                                                        |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c (ostatni zamknięty: 42c, 2026-09-13)   |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c (ostatni zamknięty: 38c, 2026-09-23)   |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
@@ -78,8 +78,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2183** w `shared`, **1206** na serwerze, **275** u klienta —
-zielone (22.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1219** na serwerze, **279** u klienta —
+zielone (23.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -104,14 +104,14 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 10   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 13   | 12      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 13   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 40   | 2       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       | 14   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 15   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
@@ -124,6 +124,28 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.09 — handel między figurami (etap 38c)
+
+**Zlecenie MG poza etapem 28:** handel przez przeciąganie rzeczy i gotówki do pól wymiany
+widocznych dla stron, wykonany po zgodzie obu. Rozstrzygnięcia MG przed kodem: gracz ↔ gracz
+i gracz ↔ NPC (NPC-a prowadzi MG), zasięg ramienia, zaproszenie ze zgodą, zmiana pola kasuje obie
+zgody, MG podgląda i przerywa, **bez czatu w oknie** (MG zrezygnował). Opis i wynik:
+`etap-38c-handel.md`; umowa w `ekwipunek`, pułapka przeciągania w `ui`.
+
+**Wdrożone:** `cpredSwapItems`/`cpredOfferViews` (shared), stan handlu w `shared/src/trade.ts`,
+siedem zdarzeń `trade:*` z wykonaniem w jednej transakcji (`realtime/trade.ts`, negocjacje
+w pamięci serwera), okno z przeciąganiem na zdarzeniach wskaźnika, dok w rogu mapy, wejścia
+z menu figury i z karty, karta czatu „Handel”. **Po drodze:** naprawiony błąd 38b — „Gotówka →”
+w oknie „Wymiana” nie przenosiła samej gotówki (`NO_ITEMS`); ESLint z korzenia ignoruje
+`**/.venv/**` (vendorowany JS yt-dlp z 21.09 dawał 378 błędów).
+
+**Weryfikacja:** 2202 / 1219 / 279 testów; tsc trzech pakietów, ESLint, build Vite. Prettier
+czysty poza zastanym `aim-preview.test.ts` (zaległość). Chrome na kampanii „Oględziny 12.09”
+(`Tester` ↔ nowy NPC „Paser Oględzin”), potem aktywna wróciła na **„Test2”**: pełen handel myszą,
+zdjęcie zgody zmianą pola, F5 w trakcie, odrzucenie zaproszenia; konsola czysta. Nieobejrzane:
+dotyk (iPad) i dwóch graczy w przeglądarce. Serwer i Vite działają. Wyścig snapshotu ze
+sprzątaniem przy starcie potwierdzony i zdiagnozowany (`zaleglosci.md`, nie naprawiany).
 
 ### Sesja 22.09 — wyniki dopiero po zatrzymaniu kości
 
@@ -145,29 +167,3 @@ odpowiedź Ścieżki Życia, kolejkę, dorzut, timeout i rozłączenie. Chrome n
 osobnej tymczasowej stronie: koniec kości 3241 ms, dorzut 8009 ms, wynik 8010 ms;
 próba chwytu kubka nie przerwała rzutu. Strona testowa usunięta. Aplikacja działa
 na localhost; zastany ekran logowania MG, bez zmian w szkicu użytkownika.
-
-
-### Sesja 21.09 — wszystkie naturalne powiadomienia i import audio YouTube
-
-**Zlecenie MG poza etapem 28:** włączyć wszystkie zaproponowane dźwięki.
-Doprecyzowanie 21.09: z YouTube pobierać sam dźwięk, bez filmu.
-
-**Wdrożone:** własna tura (dwa stuki drewna), szept (papier), prośba o Test
-u MG (stuk), otrzymany handout (papier), przedmiot do przyjęcia (monety).
-Domyślnie włączone, własne wyłączniki/odsłuchy i wspólna głośność powiadomień.
-Adresowanie wyłącznie do odbiorców, bez historii/resync. Otoczenia CC0 deszcz,
-wiatr, ogień i ulica zapisane per scena; osobny lokalny suwak, grają z muzyką.
-Migracja `20260920210000_scene_ambience` zastosowana na dev; eksport/import ją zachowuje.
-
-**YouTube → MP3:** import MG w tle, postęp/anulowanie, limit 2 h/128 MB,
-jedno zadanie, timeout i sprzątanie; gotowy plik w prywatnym `uploads/music/`.
-Wersja z osadzonym filmem została zastąpiona. Stare linki można przekonwertować
-w miejscu. Narzędzia yt-dlp/FFmpeg zainstalowane w ignorowanym `tools/audio/.venv`;
-instalacja na innym serwerze i ograniczenia w `tools/audio/README.md`.
-
-**Weryfikacja:** 2183 testy shared, 1202 serwera, 265 klienta; tsc trzech
-pakietów, ESLint, Prettier, build Vite. Rzeczywisty import krótkiego audio
-przez Python i most Node (MP3 305 989 B). Chrome: podkład ze starego linku MG
-przekonwertowany do MP3; odtwarzanie i pauza bez filmu. Pozostawiony w bibliotece,
-w pauzie. Naturalne przełączniki włączone; odsłuch tury i papieru uruchomiony.
-Serwer i Vite działają. Safari/iPad i ocena brzmienia przez ludzi nadal przy stole.

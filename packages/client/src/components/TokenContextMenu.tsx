@@ -36,10 +36,12 @@ import {
   addToCombat,
   deleteToken,
   duplicateToken,
+  inviteTrade,
   removeFromCombat,
   toggleTokenLight,
   setTokenFeared,
   statToken,
+  tradeErrorText,
   updateToken,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -50,6 +52,8 @@ import { askAboutFigureCard } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useInventoryStore } from '../stores/inventoryStore.js';
+import { useTradeStore } from '../stores/tradeStore.js';
+import { activeTradeFor } from './TradeWindow.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
@@ -823,6 +827,10 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const statuses = useTokenStore((s) => s.statuses);
   const combat = useCombatStore((s) => s.combat);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const npcCard = useCharacterStore((s) =>
+    token?.characterId ? s.characters[token.characterId]?.ownerId === null : false,
+  );
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
@@ -855,6 +863,39 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     onClose();
   }
 
+  /**
+   * Etap 38c: zaproszenie do handlu prosto z figury. Gracz handluje kartą,
+   * której figura stoi najbliżej wskazanej — tą, którą przy stole „podchodzi";
+   * resztę (zasięg, czy figura ma kartę) rozstrzyga serwer.
+   */
+  async function proposeTrade() {
+    if (!token || !userId) return;
+    const mine = Object.values(useCharacterStore.getState().characters).filter(
+      (card) => card.ownerId === userId,
+    );
+    const stands = Object.values(useTokenStore.getState().tokens).filter(
+      (other) =>
+        other.sceneId === token.sceneId &&
+        other.id !== token.id &&
+        mine.some((card) => card.id === other.characterId),
+    );
+    const nearest = stands.sort(
+      (p, q) => Math.hypot(p.x - token.x, p.y - token.y) - Math.hypot(q.x - token.x, q.y - token.y),
+    )[0];
+    const fromCharacterId = nearest?.characterId ?? mine[0]?.id;
+    onClose();
+    if (!fromCharacterId) {
+      useChatStore.getState().addNote('Nie prowadzisz żadnej postaci, którą dałoby się handlować.');
+      return;
+    }
+    const ack = await inviteTrade({ fromCharacterId, toTokenId: token.id });
+    useChatStore
+      .getState()
+      .addNote(
+        ack.ok ? `Zaproszenie do handlu wysłane: ${token.name}.` : tradeErrorText(ack.error),
+      );
+  }
+
   /*
    * Etap 41: menu gracza to **jedna pozycja**, i celowo tylko jedna.
    *
@@ -862,8 +903,14 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
    * kolejka walki, edycja żetonu — a atak i Konfrontację gracz ma z celownika
    * i z paska akcji, gdzie płaci się za nie budżetem tury. Dokładanie ich tutaj
    * dałoby drugie wejście do tego samego, tyle że z pominięciem paska.
+   *
+   * Etap 38c dołożył drugą pozycję — handel. Nie łamie tamtej zasady: handlu
+   * nie ma na pasku akcji i nie kosztuje budżetu tury, więc to jest jego
+   * jedyne wejście z mapy, a nie drugie. Własnej figurze handlu się nie
+   * proponuje.
    */
   if (!isGm) {
+    const own = token.ownerId === userId;
     return (
       <>
         <div
@@ -879,6 +926,11 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           <button type="button" className="context-menu-item" onClick={inspect}>
             🔍 Przyjrzyj się…
           </button>
+          {!own && (
+            <button type="button" className="context-menu-item" onClick={() => void proposeTrade()}>
+              🤝 Handluj…
+            </button>
+          )}
         </div>
       </>
     );
@@ -913,6 +965,15 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   function openExchange() {
     if (!token?.characterId) return;
     useInventoryStore.getState().open(token.characterId, token.id);
+    onClose();
+  }
+
+  /** Etap 38c: MG handluje NPC-em — wybiera, z którym graczem. */
+  function openTradePicker() {
+    if (!token?.characterId) return;
+    const running = activeTradeFor(token.characterId);
+    if (running) useTradeStore.getState().open(running.id);
+    else useTradeStore.getState().openPicker(token.characterId);
     onClose();
   }
 
@@ -973,6 +1034,13 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         {token.characterId && (
           <button type="button" className="context-menu-item" onClick={openExchange}>
             🎒 Przeszukaj…
+          </button>
+        )}
+        {/* Etap 38c: handel prowadzi MG wyłącznie za NPC-a — kartę gracza
+            prowadzi gracz, a MG może handel tylko podejrzeć i przerwać. */}
+        {npcCard && (
+          <button type="button" className="context-menu-item" onClick={openTradePicker}>
+            🤝 Handluj jako NPC…
           </button>
         )}
         {/* Etap 41: to samo okno, które widzi gracz — MG zagląda w nie, żeby

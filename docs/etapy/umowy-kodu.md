@@ -2229,6 +2229,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Handel (38c) to stan w pamięci serwera (`realtime/trade.ts`) + czyste reguły w `shared/src/trade.ts`** — wymianę wykonuje wyłącznie `cpredSwapItems` w jednej transakcji z `applyBalance({ tx, emit: false })`; każda zmiana pola kasuje obie zgody (`setTradeOffer`), zgoda niesie `version`, a oferta sprawdza się z kartą jeszcze raz przy wykonaniu (`OFFER_STALE`). Stronę NPC-a prowadzi MG, strony gracza — tylko gracz.
 - **Poziom dostępności liczy `shopTierVerdict` (naprawa 3b)** — kolejno: wyjątek MG na kampanii, `tier` wpisu, reguła rodzaju (typ broni, OB, rodzina wszczepu, klasa Programu, sprzęt deku) podniesiona ceną, na końcu stara drabina cenowa. Każde miejsce pokazujące poziom woła ją z `ShopTierContext` (wyjątki MG + nazwy typów broni), inaczej lista i serwer rozjadą się o to, co zablokowane.
 - **Rzecz, której poziomu nie wyczyta rodzaj, przypisuje się po id w `shop-tiers.json`** — nie gałęzią w kodzie: sprzęt, amunicja, dodatki, bojowy chrom i broń egzotyczna. Publiczna próbka w `data/public/cpred`, prawdziwa lista w `data/private/cpred` (wygrywa po id i po Roli); strażnik licencji pilnuje, żeby w repo stały wyłącznie wymyślone identyfikatory.
 - **Co widać na cudzej figurze, składa `cpredSighting`** (`systems/cpred/sighting.ts`, moduł czysty) — dwie warstwy w **jednym kształcie**: rzut oka bez liczb, oględziny z liczbami. Nazwę typu broni podaje wołający, moduł nie chodzi do katalogu.
@@ -2245,6 +2246,8 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Handel: negocjacje w pamięci, wymiana w jednej transakcji (23.09, etap 38c).** Otwarty handel nie jest faktem świata, więc nie ma tabeli: `trades` w `realtime/trade.ts` znika z restartem, a klient odtwarza listę `trade:list` po każdym `state:sync`. Reguły — kto prowadzi stronę, wersja, zgody, widok per widz — to czyste funkcje w `shared/src/trade.ts`; serwer tylko je woła. **Wymianę robi `cpredSwapItems`, nigdy dwa `cpredMoveItems` po kolei** (stos po drodze połknąłby cudze sztuki, a limit wierszy liczyłby się na stanie pośrednim). Obie karty i wszystkie wpisy historii zapisuje **jedna** `$transaction` (`applyBalance` z `tx` i `emit: false`, emisje dopiero po niej). Oferta przechowuje adresy z **jawną** ilością i gotowe widoki; przy wykonaniu `cpredOfferViews` liczy je z bazy od nowa, a różnica zdejmuje zgody (`OFFER_STALE`) zamiast wysłać rzecz w innym stanie. Gracz nie dostaje `characterId` karty NPC-a ani w liście partnerów, ani w widoku handlu — tą samą umową, co `inventory:sources`.
 
 **Oględziny: dwie warstwy, jeden kształt (10.09, etap 41).** `cpredSighting` zwraca ten sam typ
 w obu warstwach, a różni je to, czy pola liczbowe są wypełnione. To jest decyzja, nie skrót:

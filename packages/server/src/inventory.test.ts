@@ -636,4 +636,22 @@ describe('przedmioty między kartami', () => {
       }),
     ).toEqual({ ok: false, error: 'ITEM_NOT_FOUND' });
   });
+
+  it('przekazuje same eurodolce — wiersz „Gotówka" w oknie wymiany (naprawa 23.09)', async () => {
+    // Do 23.09 serwer odrzucał pustą listę przedmiotów (`NO_ITEMS`), więc guzik
+    // „Gotówka →" w oknie „Wymiana" nie przenosił niczego.
+    const before = (await sheetOf(vex, vexCharacterId)).eddies;
+    const ack = data(
+      await emitAck<{ messageId: number; pending: boolean }>(vex, 'inventory:give', {
+        fromCharacterId: vexCharacterId,
+        toCharacterId: gangerCharacterId,
+        items: [],
+        eddies: 50,
+      }),
+      'inventory:give',
+    );
+    expect(ack.pending).toBe(false);
+    expect((await sheetOf(vex, vexCharacterId)).eddies).toBe(before - 50);
+    expect((await sheetOf(gm, gangerCharacterId)).eddies).toBe(50);
+  });
 });

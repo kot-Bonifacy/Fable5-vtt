@@ -71,6 +71,13 @@ import type {
   InventoryGiveResult,
   InventoryRespondPayload,
   InventorySourcesPayload,
+  TradeAcceptPayload,
+  TradeInvitePayload,
+  TradeListResult,
+  TradeOfferPayload,
+  TradePartnersResult,
+  TradeUpdateBroadcast,
+  TradeView,
   InventorySourcesResult,
   InventoryTakePayload,
   CharacterUpsertBroadcast,
@@ -311,6 +318,7 @@ import { useZoneStore } from './stores/zoneStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useHudStore } from './stores/hudStore.js';
+import { useTradeStore } from './stores/tradeStore.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -580,6 +588,20 @@ export function connectSocket(userId: string): Socket {
         useCreationRankStore.getState().replace(ack.ok ? (ack.data ?? []) : []),
       );
     } else useCreationRankStore.getState().replace([]);
+    // Etap 38c: otwarte handle żyją w pamięci serwera, nie w `state:sync` —
+    // po przeładowaniu i po przełączeniu kampanii dociąga się je osobno.
+    void listTrades().then((ack) =>
+      useTradeStore.getState().replace(ack.ok ? (ack.data?.trades ?? []) : []),
+    );
+  });
+
+  // Etap 38c: każdy widz dostaje własny, przycięty widok handlu. Zaproszenie
+  // do handlu dzwoni tym samym dźwiękiem, co przedmiot czekający na przyjęcie.
+  onPresented('trade:update', (broadcast: TradeUpdateBroadcast) => {
+    const trade = broadcast.trade;
+    const known = useTradeStore.getState().trades[trade.id];
+    if (trade.status === 'invited' && !known && trade.sides[1].mine) notifyGame('inventory');
+    useTradeStore.getState().apply(trade);
   });
 
   /**
@@ -1297,6 +1319,55 @@ export const takeInventory = (payload: InventoryTakePayload) =>
 /** „Przyjmij" / „Odrzuć" / „Wycofaj" na karcie przekazania. */
 export const respondInventory = (messageId: number, accept: boolean) =>
   emitSceneAck('inventory:respond', { messageId, accept } satisfies InventoryRespondPayload);
+
+/* ----- Handel (etap 38c) ----- */
+
+export const fetchTradePartners = (characterId: string) =>
+  emitSceneAck<TradePartnersResult>('trade:partners', { characterId });
+
+export const inviteTrade = (payload: TradeInvitePayload) =>
+  emitSceneAck<{ trade: TradeView }>('trade:invite', payload);
+
+export const respondTrade = (tradeId: string, accept: boolean) =>
+  emitSceneAck('trade:respond', { tradeId, accept });
+
+export const offerTrade = (payload: TradeOfferPayload) => emitSceneAck('trade:offer', payload);
+
+export const acceptTrade = (payload: TradeAcceptPayload) => emitSceneAck('trade:accept', payload);
+
+export const cancelTrade = (tradeId: string) => emitSceneAck('trade:cancel', { tradeId });
+
+export const listTrades = () => emitSceneAck<TradeListResult>('trade:list', undefined);
+
+/** Polskie komunikaty odmowy przy handlu — wspólne kody z 38b idą przez `inventoryErrorText`. */
+export function tradeErrorText(code: string): string {
+  switch (code) {
+    case 'TRADE_NOT_FOUND':
+      return 'Tego handlu już nie ma.';
+    case 'TRADE_NOT_OPEN':
+      return 'Ten handel nie jest otwarty — czeka na przyjęcie zaproszenia albo już się skończył.';
+    case 'TRADE_CHANGED':
+      return 'Pole wymiany zmieniło się przed twoją zgodą — sprawdź je jeszcze raz.';
+    case 'TRADE_EMPTY':
+      return 'Oba pola wymiany są puste — nie ma na co się zgadzać.';
+    case 'TRADE_BUSY':
+      return 'Wymiana właśnie się wykonuje.';
+    case 'TRADE_FAILED':
+      return 'Wymiana nie zapisała się — nic się nie zmieniło. Spróbujcie jeszcze raz.';
+    case 'CHARACTER_BUSY':
+      return 'Któraś z tych kart już handluje — najpierw trzeba skończyć tamten handel.';
+    case 'SAME_OPERATOR':
+      return 'Obie karty prowadzisz ty — do tego służy przekazanie w oknie „Wymiana".';
+    case 'OFFER_STALE':
+      return 'Coś z pola wymiany zmieniło się na karcie (zużyte, zdjęte, wystrzelane) — popraw ofertę i zgódźcie się jeszcze raz.';
+    case 'OWNER_CHANGED':
+      return 'Karta zmieniła właściciela w trakcie handlu — handel przerwany.';
+    case 'NOT_YOURS':
+      return 'To nie twoja strona handlu.';
+    default:
+      return inventoryErrorText(code);
+  }
+}
 
 /** Polskie komunikaty odmowy przy przenoszeniu przedmiotów (etap 38b). */
 export function inventoryErrorText(code: string): string {

@@ -4,6 +4,11 @@
 uruchomienia serwera `snapshot failed` zgłosił ENOENT w `linkTree` (`snapshots.ts:142`)
 przy kopiowaniu mapy; równolegle `swept orphaned uploads` usunął jeden plik.
 Sprawdzić możliwy wyścig snapshotu ze sprzątaniem. Serwer dalej odpowiada `/health`.
+**Potwierdzone 23.09:** ten sam objaw przy starcie (sprzątanie usunęło osierocone MP3 68 MB z `uploads/music`, snapshot padł na tym pliku). Przyczyna w `linkTree`: komentarz przewiduje „plik zniknął w międzyczasie”, ale zapasowe `copyFile` też rzuca ENOENT i przerywa **cały** snapshot. Lekarstwo: pominąć ENOENT w gałęzi zapasowej (albo sprzątać dopiero po snapshocie startowym).
+
+**Prettier: `packages/client/src/aim-preview.test.ts` niesformatowany w repo (zauważone 23.09)** — plik spoza zmian handlu, zostawiony; `prettier --write` na nim i osobny commit.
+
+**Oględziny handlu 38c (23.09) — nieobejrzane:** przeciąganie palcem na iPadzie (`touch-action: pan-y`, poziomy gest do pola) i handel dwóch graczy w przeglądarce (pokryty testem serwera). Pierwsze przeciągnięcie kabla u MG z automatu nie wylądowało przy poprawnej geometrii, drugie tak — jeśli MG zobaczy to ręką, zacząć od `startDrag`/przechwycenia wskaźnika w `TradeWindow.tsx`.
 
 Lista rzeczy **otwartych**, przenoszona między etapami; wyprowadzona z `POSTEP.md` 22.08.2026,
 żeby nie obciążała pliku czytanego na starcie każdej sesji. Czytaj ją, gdy siadasz do

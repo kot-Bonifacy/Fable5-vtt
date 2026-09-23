@@ -59,11 +59,30 @@ export function InventoryMoveRow({
       <div className="chat-action-body">
         <span className="chat-action-name">{inventoryMoveHeadline(entry)}</span>
       </div>
-      <ul className="chat-inventory-lines">
-        {entry.lines.map((line, index) => (
-          <li key={`${index}:${line}`}>{line}</li>
-        ))}
-      </ul>
+      {entry.kind === 'trade' ? (
+        // Etap 38c: handel idzie w obie strony, więc karta mówi dwa razy,
+        // kto co dał — jedna lista „A → B" skłamałaby o połowie wymiany.
+        <>
+          <p className="chat-inventory-side">{entry.fromName} daje:</p>
+          <ul className="chat-inventory-lines">
+            {entry.lines.map((line, index) => (
+              <li key={`a${index}:${line}`}>{line}</li>
+            ))}
+          </ul>
+          <p className="chat-inventory-side">{entry.toName} daje:</p>
+          <ul className="chat-inventory-lines">
+            {(entry.returnLines ?? []).map((line, index) => (
+              <li key={`b${index}:${line}`}>{line}</li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <ul className="chat-inventory-lines">
+          {entry.lines.map((line, index) => (
+            <li key={`${index}:${line}`}>{line}</li>
+          ))}
+        </ul>
+      )}
       {entry.note && <p className="chat-proposal-reason">„{entry.note}"</p>}
 
       {resolution && (

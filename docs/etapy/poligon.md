@@ -26,6 +26,8 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 23.09 — handel 38c obejrzany na kampanii-śmieciu, aktywna wróciła na „Test2”.** Aktywną kampanią była **„Test2”** (nie Poligon) i na nią wróciła. Na „Test Brak sceny” doszedł NPC **„Paser Oględzin”** (karta bez właściciela, żeton na (1900, 1500), obok „Oględziny Stym”). Po wymianie: Stym ma 5150 ed, „Nóż testowy” i „Kabel światłowodowy ×2”, a paser — 50 ed, „Pistolet oględzinowy” (8/8) i kabel ×1. Na czacie karta „Handel”; drugi handel odrzucony przez `Testera`.
+
 **Stan po sesji 14.09 — oględziny „tylko po odsłoniętym" na kampanii-śmieciu, Poligon nietknięty.**
 Aktywna kampania była przełączona na „Oględziny 12.09 — do usunięcia" i wróciła na „Poligon bojowy".
 Scena **„Test Brak sceny"** wróciła z Dynamicznej (tak zostawiła ją piąta sesja 13.09) na **ręczną

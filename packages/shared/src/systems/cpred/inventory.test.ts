@@ -4,6 +4,8 @@ import {
   cpredInventoryView,
   cpredItemLine,
   cpredMoveItems,
+  cpredOfferViews,
+  cpredSwapItems,
   type CpredItemRef,
 } from './inventory.js';
 import {
@@ -187,5 +189,123 @@ describe('cpredItemLine', () => {
   it('liczy sztuki wyposażenia', () => {
     const [view] = cpredInventoryView(sheet({ gear: [stimpak] }));
     expect(cpredItemLine(view!)).toBe('Stimpak × 3');
+  });
+});
+
+/**
+ * Etap 38c: handel — obie strony oddają naraz.
+ *
+ * Pilnowane są dwie rzeczy, które dwa wywołania `cpredMoveItems` po kolei
+ * zrobiłyby źle: stos, w który wpadają cudze sztuki w połowie drogi, i limit
+ * wierszy liczony na stanie pośrednim zamiast końcowego.
+ */
+describe('cpredSwapItems', () => {
+  function swap(
+    a: CpredCharacterData,
+    b: CpredCharacterData,
+    aRefs: CpredItemRef[],
+    bRefs: CpredItemRef[],
+  ) {
+    const result = cpredSwapItems(a, b, aRefs, bRefs, { makeId: () => 'fresh' });
+    if (!result.ok) throw new Error(`nieoczekiwana odmowa: ${result.error}`);
+    return result.result;
+  }
+
+  it('wymienia broń na pancerz: każda rzecz ląduje po drugiej stronie ze swoim stanem', () => {
+    const result = swap(
+      sheet({ weapons: [weapon] }),
+      sheet({ armor: [armor] }),
+      [{ list: 'weapons', rowId: 'w1' }],
+      [{ list: 'armor', rowId: 'a1' }],
+    );
+    expect(result.a.weapons).toEqual([]);
+    expect(result.a.armor[0]).toMatchObject({ spCurrent: 7, equipped: false });
+    expect(result.b.armor).toEqual([]);
+    expect(result.b.weapons[0]).toMatchObject({
+      ammoCurrent: 12,
+      attachmentIds: ['attachment.celownik'],
+    });
+    expect(result.fromA.map((view) => view.name)).toEqual(['Zgrzyt 9']);
+    expect(result.fromB.map((view) => view.name)).toEqual(['Kurtka Kevlarowa']);
+  });
+
+  it('stos po stronie B nie połyka sztuk, które właśnie przyszły od A', () => {
+    // A daje 2 stimpaki, B oddaje swoje 3 — B zostaje z dwoma od A, nie z zerem.
+    const result = swap(
+      sheet({ gear: [{ ...stimpak, id: 'ga', qty: 2 }] }),
+      sheet({ gear: [{ ...stimpak, id: 'gb', qty: 3 }] }),
+      [{ list: 'gear', rowId: 'ga', qty: 2 }],
+      [{ list: 'gear', rowId: 'gb', qty: 3 }],
+    );
+    expect(result.a.gear.map((row) => row.qty)).toEqual([3]);
+    expect(result.b.gear.map((row) => row.qty)).toEqual([2]);
+  });
+
+  it('limit wierszy liczy się na stanie końcowym: pełna lista broni wymienia pistolet na pistolet', () => {
+    const full = Array.from({ length: ITEM_ROWS_MAX }, (_, index) => ({
+      ...weapon,
+      id: `wb${index}`,
+    }));
+    const result = swap(
+      sheet({ weapons: [weapon] }),
+      sheet({ weapons: full }),
+      [{ list: 'weapons', rowId: 'w1' }],
+      [{ list: 'weapons', rowId: 'wb0' }],
+    );
+    expect(result.b.weapons).toHaveLength(ITEM_ROWS_MAX);
+    expect(result.a.weapons.map((row) => row.id)).toEqual(['wb0']);
+  });
+
+  it('dopuszcza pustą stronę — pistolet za gotówkę rozlicza się obok', () => {
+    const result = swap(
+      sheet({ weapons: [weapon] }),
+      sheet(),
+      [{ list: 'weapons', rowId: 'w1' }],
+      [],
+    );
+    expect(result.b.weapons).toHaveLength(1);
+    expect(result.fromB).toEqual([]);
+  });
+
+  it('odmawia, gdy jednej ze stron brakuje wiersza — i nie rusza żadnej karty', () => {
+    const a = sheet({ weapons: [weapon] });
+    const b = sheet();
+    const result = cpredSwapItems(
+      a,
+      b,
+      [{ list: 'weapons', rowId: 'w1' }],
+      [{ list: 'gear', rowId: 'nie-ma' }],
+    );
+    expect(result).toEqual({ ok: false, error: 'ITEM_NOT_FOUND' });
+    expect(a.weapons).toHaveLength(1);
+  });
+});
+
+describe('cpredOfferViews', () => {
+  it('zamienia „cały stos" na jawną liczbę sztuk', () => {
+    const offer = cpredOfferViews(sheet({ gear: [stimpak] }), [{ list: 'gear', rowId: 'g1' }]);
+    expect(offer.ok).toBe(true);
+    if (!offer.ok) return;
+    expect(offer.refs).toEqual([{ list: 'gear', rowId: 'g1', qty: 3 }]);
+    expect(offer.views[0]).toMatchObject({ name: 'Stimpak', qty: 3 });
+  });
+
+  it('odmawia tego samego wiersza dwa razy', () => {
+    const offer = cpredOfferViews(sheet({ gear: [stimpak] }), [
+      { list: 'gear', rowId: 'g1', qty: 1 },
+      { list: 'gear', rowId: 'g1', qty: 1 },
+    ]);
+    expect(offer).toEqual({ ok: false, error: 'BAD_QTY' });
+  });
+
+  it('odmawia więcej sztuk, niż leży na karcie', () => {
+    const offer = cpredOfferViews(sheet({ gear: [stimpak] }), [
+      { list: 'gear', rowId: 'g1', qty: 4 },
+    ]);
+    expect(offer).toEqual({ ok: false, error: 'BAD_QTY' });
+  });
+
+  it('pusta oferta jest ofertą', () => {
+    expect(cpredOfferViews(sheet(), [])).toEqual({ ok: true, refs: [], views: [] });
   });
 });

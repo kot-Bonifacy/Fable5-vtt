@@ -28,6 +28,7 @@ import {
   cpredMoveItems,
   cpredSheetHpMax,
   isCpredItemList,
+  inventoryMoveHeadline,
   isInventoryMoveOpen,
   mayAnswerInventoryMove,
   mayCancelInventoryMove,
@@ -85,7 +86,7 @@ const SOURCES_MAX = 12;
  * Wspólne pytania
  * ------------------------------------------------------------------ */
 
-async function findCampaignCharacter(
+export async function findCampaignCharacter(
   prisma: PrismaClient,
   campaignId: string,
   characterId: unknown,
@@ -107,7 +108,7 @@ async function findCampaignCharacter(
  * ostrożność, co w `character:update`: gracz nie ma się dowiedzieć nawet tego,
  * że dana karta istnieje.
  */
-async function requireOwnCharacter(
+export async function requireOwnCharacter(
   prisma: PrismaClient,
   campaignId: string,
   user: SessionUser,
@@ -120,8 +121,13 @@ async function requireOwnCharacter(
   return character;
 }
 
-function readItemRefs(raw: unknown): CpredItemRef[] {
-  if (!Array.isArray(raw) || raw.length === 0) throw new RealtimeError('NO_ITEMS');
+/**
+ * Adresy wierszy z żądania. Pusta lista przechodzi wyłącznie na życzenie
+ * wołającego — przy przekazaniu samej gotówki i w polu wymiany handlu.
+ */
+export function readItemRefs(raw: unknown, allowEmpty = false): CpredItemRef[] {
+  if (!Array.isArray(raw)) throw new RealtimeError(allowEmpty ? 'BAD_REQUEST' : 'NO_ITEMS');
+  if (raw.length === 0 && !allowEmpty) throw new RealtimeError('NO_ITEMS');
   if (raw.length > INVENTORY_ITEMS_MAX) throw new RealtimeError('BAD_REQUEST');
   return raw.map((entry) => {
     const item = entry as InventoryItemRefWire;
@@ -138,7 +144,7 @@ function readItemRefs(raw: unknown): CpredItemRef[] {
   });
 }
 
-function readEddies(raw: unknown): number {
+export function readEddies(raw: unknown): number {
   if (raw === undefined || raw === null) return 0;
   if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 0 || raw > EDDIES_MAX) {
     throw new RealtimeError('BAD_REQUEST');
@@ -150,12 +156,12 @@ function readEddies(raw: unknown): number {
  * Zasięg ramienia
  * ------------------------------------------------------------------ */
 
-interface PlacedToken {
+export interface PlacedToken {
   token: Token;
   scene: Scene;
 }
 
-async function tokensOf(prisma: PrismaClient, characterId: string): Promise<PlacedToken[]> {
+export async function tokensOf(prisma: PrismaClient, characterId: string): Promise<PlacedToken[]> {
   const rows = await prisma.token.findMany({
     where: { characterId },
     include: { scene: true },
@@ -166,7 +172,7 @@ async function tokensOf(prisma: PrismaClient, characterId: string): Promise<Plac
   });
 }
 
-function metresBetweenPlaced(a: PlacedToken, b: PlacedToken): number {
+export function metresBetweenPlaced(a: PlacedToken, b: PlacedToken): number {
   return metresForRules(
     metresBetweenTokens(
       toTokenView(a.token, true),
@@ -184,7 +190,7 @@ function metresBetweenPlaced(a: PlacedToken, b: PlacedToken): number {
  * nigdzie nie stoi, jest poza sceną, a przekazywanie czegokolwiek między
  * scenami dzieje się w przerwie, którą i tak rozlicza MG.
  */
-async function closestMetres(
+export async function closestMetres(
   prisma: PrismaClient,
   aId: string,
   bId: string,
@@ -295,9 +301,15 @@ async function moveBetweenCards(
   const fromData = parseCharacterData(from.data, registry);
   const toData = parseCharacterData(to.data, registry);
 
-  const move = cpredMoveItems(fromData, toData, refs);
+  // Sama gotówka (okno „Wymiana", wiersz „Gotówka →") nie przesuwa żadnego
+  // wiersza — `cpredMoveItems` odmawia pustej listy, więc tu się go nie woła.
+  const move: ReturnType<typeof cpredMoveItems> =
+    refs.length > 0
+      ? cpredMoveItems(fromData, toData, refs)
+      : { ok: true, result: { from: fromData, to: toData, moved: [] } };
   if (!move.ok) throw new RealtimeError(move.error);
   if (eddies > fromData.eddies) throw new RealtimeError('NOT_ENOUGH_EDDIES');
+  if (move.result.moved.length === 0 && eddies === 0) throw new RealtimeError('NO_ITEMS');
 
   const nextFrom = mergeCharacterData(fromData, {
     weapons: move.result.from.weapons,
@@ -333,7 +345,7 @@ async function moveBetweenCards(
  * Karta czatu
  * ------------------------------------------------------------------ */
 
-function entryLines(moved: CpredItemView[], eddies: number): string[] {
+export function entryLines(moved: CpredItemView[], eddies: number): string[] {
   const lines = moved.map((view) => cpredItemLine(view));
   if (eddies > 0) lines.push(`Gotówka: ${eddies} ed`);
   return lines;
@@ -360,19 +372,20 @@ function historyRecipient(
   return null;
 }
 
-async function postInventoryCard(
+export async function postInventoryCard(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
   entry: InventoryMoveEntry,
   audience: (string | null)[],
+  fromOwnerId: string | null,
 ): Promise<ChatMessageView> {
   const message = await insertChatMessage(deps.ctx.prisma, {
     campaignId,
     authorId: user.id,
     kind: 'inventory',
-    text: `${entry.fromName} → ${entry.toName}`,
-    recipientId: historyRecipient(user.id, null, entry.toOwnerId),
+    text: inventoryMoveHeadline(entry),
+    recipientId: historyRecipient(user.id, fromOwnerId, entry.toOwnerId),
     payload: JSON.stringify(entry),
   });
   await deliverChatMessageTo(deps, campaignId, message, audience, true);
@@ -501,8 +514,8 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
     const to = await findCampaignCharacter(prisma, campaignId, payload?.toCharacterId);
     if (to.id === from.id) throw new RealtimeError('BAD_REQUEST');
 
-    const refs = readItemRefs(payload?.items);
     const eddies = readEddies(payload?.eddies);
+    const refs = readItemRefs(payload?.items, eddies > 0);
     const note =
       typeof payload?.note === 'string' ? payload.note.trim().slice(0, INVENTORY_NOTE_MAX) : '';
 
@@ -515,7 +528,11 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
     // a nie odbiorcy przy „Przyjmij" — tą samą umową, którą wezwanie do Testu
     // planuje rzut w chwili wystawiania (etap 32).
     const fromData = parseCharacterData(from.data, deps.ctx.cpred);
-    const preview = cpredMoveItems(fromData, parseCharacterData(to.data, deps.ctx.cpred), refs);
+    const toData = parseCharacterData(to.data, deps.ctx.cpred);
+    const preview: ReturnType<typeof cpredMoveItems> =
+      refs.length > 0
+        ? cpredMoveItems(fromData, toData, refs)
+        : { ok: true, result: { from: fromData, to: toData, moved: [] } };
     if (!preview.ok) throw new RealtimeError(preview.error);
     if (eddies > fromData.eddies) throw new RealtimeError('NOT_ENOUGH_EDDIES');
 
@@ -539,10 +556,14 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
     if (direct) {
       await moveBetweenCards(deps, campaignId, from, to, refs, eddies, user.id);
     }
-    const message = await postInventoryCard(deps, campaignId, user, entry, [
+    const message = await postInventoryCard(
+      deps,
+      campaignId,
+      user,
+      entry,
+      [from.ownerId, to.ownerId],
       from.ownerId,
-      to.ownerId,
-    ]);
+    );
     return { messageId: message.id, pending: !direct };
   },
 });
@@ -564,8 +585,8 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
     if (token.characterId === to.id) throw new RealtimeError('BAD_REQUEST');
     const from = await findCampaignCharacter(prisma, campaignId, token.characterId);
 
-    const refs = readItemRefs(payload?.items);
     const eddies = readEddies(payload?.eddies);
+    const refs = readItemRefs(payload?.items, eddies > 0);
     const fromData = parseCharacterData(from.data, deps.ctx.cpred);
 
     if (!isGm) {
@@ -597,10 +618,14 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
       system: { items: refs } as unknown as Record<string, unknown>,
       resolution: { kind: 'accepted', byName: user.name },
     };
-    const message = await postInventoryCard(deps, campaignId, user, entry, [
+    const message = await postInventoryCard(
+      deps,
+      campaignId,
+      user,
+      entry,
+      [from.ownerId, to.ownerId],
       from.ownerId,
-      to.ownerId,
-    ]);
+    );
     return { messageId: message.id };
   },
 });

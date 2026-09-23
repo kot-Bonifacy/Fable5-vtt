@@ -100,6 +100,15 @@ import {
   inventorySourcesEvent,
   inventoryTakeEvent,
 } from './inventory.js';
+import {
+  tradeAcceptEvent,
+  tradeCancelEvent,
+  tradeInviteEvent,
+  tradeListEvent,
+  tradeOfferEvent,
+  tradePartnersEvent,
+  tradeRespondEvent,
+} from './trade.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
   economyAdjustEvent,
@@ -351,6 +360,13 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   inventoryGiveEvent,
   inventoryTakeEvent,
   inventoryRespondEvent,
+  tradePartnersEvent,
+  tradeInviteEvent,
+  tradeRespondEvent,
+  tradeOfferEvent,
+  tradeAcceptEvent,
+  tradeCancelEvent,
+  tradeListEvent,
   characterCyberwareEvent,
   economyBuyEvent,
   economyTransferEvent,

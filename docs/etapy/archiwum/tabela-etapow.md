@@ -95,6 +95,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 38     | ~~Przedmioty między kartami~~                 | ⛔     | rozdzielony 05.09   |
 | 38a    | Statysta jako karta postaci                   | ✅     | 2026-09-05          |
 | 38b    | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06          |
+| 38c    | Handel: pola wymiany i dwie zgody             | ✅     | 2026-09-23          |
 | 39     | Efekty czasowe modyfikujące Cechy             | ✅     | 2026-09-05          |
 | 40     | Prośba gracza o Test                          | ✅     | 2026-09-06          |
 | 41     | Oględziny wyposażenia figury                  | ✅     | 2026-09-10          |

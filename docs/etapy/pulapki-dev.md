@@ -327,6 +327,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Przeciąganie na zdarzeniach wskaźnika trzymaj w `ref`, nie w stanie Reacta** — szybki ruch daje jeden `pointermove` i od razu `pointerup`, zanim React przerysuje; `pointerup` sprawdzający stan widzi „nie przeciągam” i upuszczenie ginie jak kliknięcie (okno handlu 38c, 23.09).
 - **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury** — nasłuch mapy na `window` łapie klawisze z przycisków okna (pola tekstowe omija). Rozpoznanie: fokus na przycisku, nie w polu; lekarstwo: `data-owns-keys` na oknie.
 - **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie** — efekt Reacta działa już po wstawieniu elementów, klatka jest zbędna; objaw w automacie to `activeElement` = `BODY` i niespełnione „Przejdź”.
 - **`requestFullscreen` zużywa gest — także wtedy, gdy przeglądarka odmawia** — nasłuch po nim widzi `userActivation.isActive === false` i wygląda to, jakby zdarzenie w ogóle nie niosło gestu. Rozpoznanie: loguj `isActive` i ślad stosu **w samym** `requestFullscreen`, nie w nasłuchu dopiętym później.
@@ -341,6 +342,8 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Upuszczenie ginęło przy szybkim przeciągnięciu (23.09, etap 38c).** Okno handlu trzymało „przeciągam” w `useState`, a `onPointerUp` czytał je z zamknięcia. `left_click_drag` z automatu (i szybki ruch prawdziwej myszy) wysyła jeden `pointermove` i od razu `pointerup` — React nie zdąży przerysować, `pointerup` widzi stan sprzed ruchu i puszczenie wygląda jak kliknięcie. Lekarstwo: flaga ruchu w `useRef` i odległość liczona jeszcze raz przy `pointerup`; stan Reacta służy tylko do rysowania ducha i podświetlenia pola.
 
 - **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury (16.09, naprawa 2b).**
   Nasłuch klawiatury mapy (`MapArea`) wisi na `window` i omija tylko `input`, `textarea`, `select`

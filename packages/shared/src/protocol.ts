@@ -27,6 +27,7 @@ import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
+import type { TradeView } from './trade.js';
 import type { Segment, VisionSyncBroadcast } from './vision.js';
 import type { WallView } from './walls.js';
 
@@ -597,6 +598,80 @@ export interface InventoryTakePayload {
 export interface InventoryRespondPayload {
   messageId: number;
   accept: boolean;
+}
+
+/* ------------------------------------------------------------------ *
+ * Handel (etap 38c)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Client → server payload of `trade:partners` — „z kim mogę teraz handlować".
+ *
+ * Tą samą umową, co `inventory:sources`: listę buduje serwer, bo o zasięgu
+ * i o tym, czyja karta stoi za figurą, klient gracza nie wie.
+ */
+export interface TradePartnersPayload {
+  /** Karta, która handluje — własna gracza albo NPC prowadzony przez MG. */
+  characterId: string;
+}
+
+/** Możliwy partner handlu. Adresem jest figura albo — poza sceną — karta gracza. */
+export interface TradePartnerView {
+  tokenId?: string;
+  characterId?: string;
+  name: string;
+  /** Odległość w metrach; brak znaczy „nie stoicie na wspólnej scenie". */
+  metres?: number;
+}
+
+export interface TradePartnersResult {
+  partners: TradePartnerView[];
+}
+
+/**
+ * Client → server payload of `trade:invite`. Adresem drugiej strony jest
+ * figura (NPC i gracz na scenie) albo karta gracza, gdy wspólnej sceny nie ma.
+ */
+export interface TradeInvitePayload {
+  fromCharacterId: string;
+  toTokenId?: string;
+  toCharacterId?: string;
+}
+
+/** Odpowiedź zaproszonego: `accept: false` odrzuca zaproszenie. */
+export interface TradeRespondPayload {
+  tradeId: string;
+  accept: boolean;
+}
+
+/** Cała nowa zawartość własnego pola wymiany — kasuje obie zgody. */
+export interface TradeOfferPayload {
+  tradeId: string;
+  items: InventoryItemRefWire[];
+  eddies: number;
+}
+
+/**
+ * Zgoda na wymianę. `version` to wersja, którą klikający widział — zgoda na
+ * starszą odpada, bo w międzyczasie ktoś zmienił pole wymiany.
+ */
+export interface TradeAcceptPayload {
+  tradeId: string;
+  version: number;
+  accepted: boolean;
+}
+
+export interface TradeCancelPayload {
+  tradeId: string;
+}
+
+/** Server → client `trade:update` — pełny widok handlu, przycięty dla odbiorcy. */
+export interface TradeUpdateBroadcast {
+  trade: TradeView;
+}
+
+export interface TradeListResult {
+  trades: TradeView[];
 }
 
 /**

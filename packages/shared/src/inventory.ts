@@ -21,11 +21,14 @@
  * to z ciała" — nie czeka na nic, bo nie ma kto potwierdzić, a warunki, na
  * jakich w ogóle wolno je wykonać, sprawdził serwer, zanim cokolwiek pojechało.
  */
-export type InventoryMoveKind = 'give' | 'take';
+export type InventoryMoveKind = 'give' | 'take' | 'trade';
 
 export const INVENTORY_MOVE_TITLES: Record<InventoryMoveKind, string> = {
   give: 'Przekazanie',
   take: 'Łup',
+  // Etap 38c: handel ma kartę dopiero po wykonaniu — negocjacje żyją w oknie
+  // handlu, a na czat trafia jedno zdanie o tym, co w obie strony pojechało.
+  trade: 'Handel',
 };
 
 /** Jak skończyła się propozycja przekazania. */
@@ -66,6 +69,11 @@ export interface InventoryMoveEntry {
   lines: string[];
   /** Eurodolce jadące tą samą operacją; nieobecne, gdy nie ruszyły. */
   eddies?: number;
+  /**
+   * Handel (etap 38c): co pojechało **z powrotem**, od `to` do `from`. Tylko
+   * przy `kind: 'trade'`; `lines` mówi wtedy, co dała strona `from`.
+   */
+  returnLines?: string[];
   /** Zdanie od wysyłającego („za opatrunek"). */
   note?: string;
   /** Żądanie dla systemu (CP RED: `CpredItemRef[]`) — tu nieprzezroczyste. */
@@ -117,10 +125,11 @@ export function inventoryResolutionLabel(entry: InventoryMoveEntry): string {
   const resolution = entry.resolution;
   if (!resolution) return '';
   if (resolution.kind === 'accepted' && entry.kind === 'take') return 'Zabrane';
+  if (resolution.kind === 'accepted' && entry.kind === 'trade') return 'Wymienione';
   return INVENTORY_RESOLUTION_LABELS[resolution.kind];
 }
 
-/** „Vex → Rico" — nagłówek karty czatu. */
+/** „Vex → Rico" — nagłówek karty czatu; handel idzie w obie strony: „Vex ⇄ Rico". */
 export function inventoryMoveHeadline(entry: InventoryMoveEntry): string {
-  return `${entry.fromName} → ${entry.toName}`;
+  return `${entry.fromName} ${entry.kind === 'trade' ? '⇄' : '→'} ${entry.toName}`;
 }

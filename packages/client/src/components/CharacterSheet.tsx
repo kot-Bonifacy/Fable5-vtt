@@ -200,6 +200,8 @@ import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useInventoryStore } from '../stores/inventoryStore.js';
+import { useTradeStore } from '../stores/tradeStore.js';
+import { activeTradeFor } from './TradeWindow.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
@@ -3363,6 +3365,9 @@ function CyberdeckSection({ data, saveData }: TabProps) {
  * zostają na dole do etapu 27c — tam dostaną własną stronę z sylwetką.
  */
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+  const user = useAuthStore((s) => s.user);
+  const operatesCard =
+    character.ownerId === null ? user?.role === ROLE_GM : character.ownerId === user?.id;
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
@@ -3379,6 +3384,22 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         >
           Wymiana…
         </button>
+        {/* Etap 38c: handel — dwa pola wymiany i dwie zgody. Tylko temu, kto
+            tę kartę prowadzi: MG za gracza nie handluje. */}
+        {operatesCard && (
+          <button
+            type="button"
+            className="cp-add"
+            title="Zaproponuj handel komuś obok — rzeczy i gotówka w obie strony, za zgodą obu stron"
+            onClick={() => {
+              const running = activeTradeFor(character.id);
+              if (running) useTradeStore.getState().open(running.id);
+              else useTradeStore.getState().openPicker(character.id);
+            }}
+          >
+            Handel…
+          </button>
+        )}
       </div>
       <RowTable
         rows={data.gear}

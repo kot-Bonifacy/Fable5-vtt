@@ -140,6 +140,7 @@ import {
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { SightingWindow } from './SightingWindow.js';
+import { TradeDock } from './TradeDock.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
@@ -1981,6 +1982,7 @@ export function MapArea() {
       )}
       <MapTools />
       <TokenGroupBar />
+      <TradeDock />
       <TargetTooltip hover={aimHover} />
       <AimMenu />
       <DrawingTextEditor />
