@@ -561,6 +561,12 @@ model TokenAsset {
 model PortraitAsset {
   /** Usunięty z wyboru; plik i kadr zachowane dla istniejących przypisań. */
   retired    Boolean  @default(false)
+  /**
+   * Portret NPC (23.09) — widzi go tylko MG. Gracz dostaje z niego wyłącznie
+   * adres i kadr, i to tylko wtedy, gdy coś go już nosi (figura NPC-a musi
+   * być u niego ujęta tak samo); nazwy i nieprzypisanych twarzy nie dostaje.
+   */
+  gmOnly     Boolean  @default(false)
   id         String   @id @default(cuid())
   campaignId String
   /** Nazwa w bibliotece; domyślnie nazwa wgranego pliku bez rozszerzenia. */

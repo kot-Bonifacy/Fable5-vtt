@@ -9,6 +9,49 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-23 (trzecia sesja — portrety NPC i oględziny automatem)
+
+- **14.09: biblioteka portretów MG — nieobejrzane samo wgrywanie.** Sesja portretów obejrzała
+  w Chrome tylko wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą; ścieżki są
+  pokryte testami serwera, ale w przeglądarce nikt ich nie przeszedł. Do sprawdzenia: (1) wybór
+  **kilku plików naraz** i kolejka z podsumowaniem; (2) **błąd osobno dla pliku** — za mały
+  (poniżej 256 × 256 px), za duży (ponad 10 MB albo 20 mln pikseli), zły format — a reszta kolejki
+  przechodzi; (3) plik z obrotem w **EXIF** stoi prosto; (4) **kosz** wycofuje portret z wyboru, a
+  karta i figura, które go używają, zachowują obraz i kadr, także po restarcie serwera;
+  (5) **zmiana kampanii** w trakcie kolejki przerywa dodawanie. Dopisane 14.09 przy przeglądzie
+  zaległości — sesja portretów nie otworzyła tej pozycji.
+
+**Odhaczone 23.09 (trzecia sesja), kampania „Oględziny 12.09”, MG + `Tester`.** (1) Sześć plików
+naraz w zakładce „NPC — tylko MG”: „Dodano: 3 z 6. Nie dodano: 3.” (2) Odmowa osobno dla pliku —
+za mały (200 × 200), zły format (GIF), za dużo pikseli (5000 × 4200, odmowa serwera) i ponad 10 MB
+(plik złożony w przeglądarce, odmowa przed wysyłką) — każda z pełnym wymaganiem, reszta kolejki
+przeszła. (3) JPEG z EXIF `orientation 6` stoi prosto. (4) Kosz „NPC Ochrona”, który nosiła karta
+i figura „Pasera Oględzin”: znika z wyboru, figura zachowuje obraz i kadr ×2 — także po restarcie
+serwera (backfill nie przywrócił wpisu) i po F5 u gracza. **(5) zmiana kampanii w trakcie kolejki —
+nieobejrzana**, automat nie przełączy kampanii w środku wysyłki; pokrywa ją test serwera
+(`CAMPAIGN_CHANGED`) i straż klienta w `PortraitPicker.upload`. Po drodze: portrety NPC
+(`gmOnly`) i figury idące za portretem karty — patrz notatka sesji w `POSTEP.md`.
+
+- **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
+  „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)
+  Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
+  (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich
+  zwolniony** — a ripperdoc, którym MG operuje, jest jedyną drogą przez UI, więc przy oględzinach
+  04.09 nie było jak zobaczyć czerwonego zdania w czacie. To ta sama sytuacja co przy odmowach
+  ruchu: trzeba konta gracza. **13.09 obejrzana `MISSING_FOUNDATION` z konta `Tester`:** Kompendium
+  → „Celownik optyczny" → „Zainstaluj — 1000 ed" na karcie bez cyberoka daje w czacie notatkę „Nie
+  ma w co tego wszczepić…" (szarą i lokalną, nie czerwony wiersz), a karta zostaje z 5000 ed i bez
+  wszczepu. **Zostają:** `NO_SLOTS` i `POOL_FULL` (zdania z tej samej tablicy, co obejrzane) oraz
+  `SELF_INSTALL`, do którego gracz potrzebuje Medyka z Chirurgią. `NO_SURGERY_SKILL` jest z UI
+  nieosiągalne z założenia: lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią.
+
+**Odhaczone 23.09 (trzecia sesja), konto `Tester`, karta „Oględziny Stym”.** `POOL_FULL`: gracz
+kupił z Kompendium siedem wszczepów Cybermody (galeria, bez Testu), ósmy („Techfryz”) dał pod
+guzikiem i w czacie szarą notatkę „Ciało mieści tylko 7 cyborgizacji tej rodziny (s. 111).”
+`NO_SLOTS`: MG dodał za darmo Cyberoko (3 gniazda), Mikrokamerę (2) i Wyświetlacz (1), a „Zainstaluj
+— 500 ed” przy Celowniku optycznym dało „Brak wolnych gniazd modyfikacji w tej rodzinie (s. 111).”
+Saldo po odmowach bez zmian (4540 ed).
+
 ## Zamknięte 2026-09-23 (druga sesja — kopia startowa i Prettier)
 
 **Start serwera — snapshot i sprzątanie uploads (20.09).** Podczas sprawdzenia

@@ -8,6 +8,7 @@ import {
   uploadRequirementText,
 } from '@vtt/shared';
 import { apiDelete, apiUpload } from '../api.js';
+import { setPortraitGmOnly } from '../socket.js';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
@@ -28,12 +29,18 @@ import { usePortraitStore } from '../stores/portraitStore.js';
  * kadr portretu na mapie jest cechą obrazka, więc tej samej listy potrzebuje
  * renderer — a dwie kopie tej samej puli rozjechałyby się przy pierwszym
  * przestawieniu kadru. Przy okazji pula odświeża się u wszystkich naraz.
+ *
+ * **Od 23.09 MG ma dwie zakładki: „Dla graczy” i „NPC — tylko MG”.** Portret
+ * NPC nie trafia do galerii gracza (twarz i nazwa zdradzają, kogo drużyna
+ * dopiero spotka); gracz dostaje z niego sam kadr, gdy coś go nosi. Wgranie
+ * idzie do zakładki, która jest otwarta, a kafelek da się przenieść.
  */
 export function PortraitPicker({
   selectedUrl,
   onPick,
   disabled = false,
   manage = false,
+  npc = false,
 }: {
   /** Adres portretu wybranego w tej chwili — podświetla kafelek w puli. */
   selectedUrl?: string | null;
@@ -41,10 +48,17 @@ export function PortraitPicker({
   disabled?: boolean;
   /** Osobne wejście MG do biblioteki, bez wyboru portretu ani kadrowania. */
   manage?: boolean;
+  /** Portret dla karty NPC — MG widzi najpierw zakładkę „NPC — tylko MG”. */
+  npc?: boolean;
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const assets = usePortraitStore((s) => s.assets);
-  const availableAssets = assets.filter((asset) => !asset.retired);
+  const [section, setSection] = useState<'players' | 'npc'>(npc ? 'npc' : 'players');
+  const inSection = (asset: PortraitAssetView) =>
+    !asset.retired && !!asset.gmOnly === (isGm && section === 'npc');
+  const availableAssets = assets.filter(inSection);
+  const npcCount = assets.filter((asset) => !asset.retired && asset.gmOnly).length;
+  const playersCount = assets.filter((asset) => !asset.retired && !asset.gmOnly).length;
   const loaded = usePortraitStore((s) => s.loaded);
   const load = usePortraitStore((s) => s.load);
   const applyUpsert = usePortraitStore((s) => s.applyUpsert);
@@ -136,7 +150,9 @@ export function PortraitPicker({
         }
         try {
           const asset = await apiUpload<PortraitAssetView>(
-            `/api/uploads/portrait-assets?campaignId=${encodeURIComponent(campaignId)}`,
+            `/api/uploads/portrait-assets?campaignId=${encodeURIComponent(campaignId)}${
+              section === 'npc' ? '&gmOnly=true' : ''
+            }`,
             file,
           );
           if (campaignId === useAuthStore.getState().activeCampaign?.id) applyUpsert(asset);
@@ -150,6 +166,13 @@ export function PortraitPicker({
       setFailures(rejected);
       setUploading(false);
     }
+  }
+
+  async function move(asset: PortraitAssetView) {
+    setError(null);
+    const ack = await setPortraitGmOnly(asset.id, !asset.gmOnly);
+    if (ack.ok && ack.data) applyUpsert(ack.data);
+    else setError('Nie udało się przenieść portretu.');
   }
 
   async function remove(id: string) {
@@ -223,9 +246,34 @@ export function PortraitPicker({
                     {uploadRequirementText('portrait')}. Każdy plik jest sprawdzany osobno.
                   </p>
                 ) : null}
+                {isGm ? (
+                  <div className="portrait-pool-tabs" role="tablist" aria-label="Rodzaj portretów">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={section === 'players'}
+                      className="small-button"
+                      onClick={() => setSection('players')}
+                    >
+                      Dla graczy ({playersCount})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={section === 'npc'}
+                      className="small-button"
+                      title="Tych portretów gracze nie widzą w swojej galerii"
+                      onClick={() => setSection('npc')}
+                    >
+                      NPC — tylko MG ({npcCount})
+                    </button>
+                  </div>
+                ) : null}
                 <div className="portrait-pool">
                   <p className="portrait-pool-head">
-                    Pula portretów
+                    {isGm && section === 'npc'
+                      ? 'Portrety NPC — gracze ich nie widzą'
+                      : 'Pula portretów'}
                     {isGm && manage ? (
                       <>
                         <button
@@ -254,9 +302,11 @@ export function PortraitPicker({
                     <p className="portrait-pool-empty">
                       {!loaded
                         ? 'Wczytywanie…'
-                        : isGm
-                          ? 'Pula jest pusta — dodaj portrety w bibliotece MG.'
-                          : 'Pula jest pusta. Portrety dokłada MG.'}
+                        : isGm && section === 'npc'
+                          ? 'Brak portretów NPC — dodaj je w bibliotece MG albo przenieś z puli graczy.'
+                          : isGm
+                            ? 'Pula jest pusta — dodaj portrety w bibliotece MG.'
+                            : 'Pula jest pusta. Portrety dokłada MG.'}
                     </p>
                   ) : (
                     <div className="portrait-pool-grid">
@@ -306,6 +356,25 @@ export function PortraitPicker({
                               }}
                             >
                               ⛶
+                            </button>
+                          ) : null}
+                          {isGm && manage && confirmingId !== asset.id ? (
+                            <button
+                              type="button"
+                              className="small-button portrait-pool-move"
+                              title={
+                                asset.gmOnly
+                                  ? 'Przenieś do puli graczy — zobaczą go w galerii'
+                                  : 'Przenieś do portretów NPC — gracze przestaną go widzieć'
+                              }
+                              aria-label={
+                                asset.gmOnly
+                                  ? `Przenieś portret „${asset.name}” do puli graczy`
+                                  : `Przenieś portret „${asset.name}” do portretów NPC`
+                              }
+                              onClick={() => void move(asset)}
+                            >
+                              {asset.gmOnly ? '→ Gracze' : '→ NPC'}
                             </button>
                           ) : null}
                           {isGm && manage ? (

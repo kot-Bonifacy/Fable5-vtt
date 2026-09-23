@@ -842,6 +842,9 @@ export function MapArea() {
   const pushTokens = useCallback(() => {
     const tokenState = useTokenStore.getState();
     const current = useSceneStore.getState().effectiveScene;
+    // Portret NPC (23.09) dochodzi do gracza, dopiero gdy coś go nosi — figura
+    // z nieznanym plikiem dociąga pulę raz, po kadr.
+    usePortraitStore.getState().notice(Object.values(tokenState.tokens).map((t) => t.imageUrl));
     const user = useAuthStore.getState().user;
     rendererRef.current?.setTokens(current ? Object.values(tokenState.tokens) : [], {
       gridSizePx: current?.grid.sizePx ?? 100,

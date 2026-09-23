@@ -11,10 +11,11 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 **Dług oględzin — naprawa 3b (17.09, druga sesja).** Obejrzane w Chrome: półki Medyka i Solo,
 rozwinięty podgląd broni i pancerza, okno strat przy zmianie Roli, wyjątek MG na żywo (znikający
 wpis, zdanie w koszyku, brak w podsumowaniu, powrót na „Automatycznie”) i karta wpisu u gracza.
-**Nie obejrzane:** motyw dzienny rozwiniętego podglądu i karty wpisu w Kompendium, wąskie okno
-i powiększenie nowego wiersza sklepu, półki Netrunnera i Nomady (półkę Technika obejrzał odbiór 3d
-18.09 — przybornik ze znacznikiem narzędzia Roli), zakup z Kompendium przy wyjątku MG u gracza
-z pieniędzmi (pokryty testem serwera) oraz obsługa rozwijania klawiaturą.
+**23.09:** półki Netrunnera (cyberdeki, Bariera, obwody ze znacznikiem) i Nomady (strzelby, kusza,
+wyrzutnia haków), rozwinięty podgląd w motywie dziennym i rozwijanie klawiaturą (Enter/Spacja,
+fokus zostaje). **Nie obejrzane:** motyw dzienny karty wpisu w Kompendium, wąskie okno
+i powiększenie nowego wiersza sklepu, zakup z Kompendium przy wyjątku MG u gracza z pieniędzmi
+(pokryty testem serwera).
 
 **Zamknięte 13.09 (piąta sesja): zasłona figur 42c w komplecie i przerwany marsz cofający figurę
 za róg.** Oględziny 42c domknięte na „Test Brak sceny": obejście końca bariery pod mgłą
@@ -204,16 +205,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   w schowanej karcie automatyki marsz idzie ok. 1 klatkę na sekundę, więc przerwano go Esc po kilku
   pikselach. Najlepiej ręką MG w widocznym oknie. Stan sceny — `poligon.md`.
 
-- **14.09: biblioteka portretów MG — nieobejrzane samo wgrywanie.** Sesja portretów obejrzała
-  w Chrome tylko wejście z panelu postaci i okno z wymaganiami oraz istniejącą pulą; ścieżki są
-  pokryte testami serwera, ale w przeglądarce nikt ich nie przeszedł. Do sprawdzenia: (1) wybór
-  **kilku plików naraz** i kolejka z podsumowaniem; (2) **błąd osobno dla pliku** — za mały
-  (poniżej 256 × 256 px), za duży (ponad 10 MB albo 20 mln pikseli), zły format — a reszta kolejki
-  przechodzi; (3) plik z obrotem w **EXIF** stoi prosto; (4) **kosz** wycofuje portret z wyboru, a
-  karta i figura, które go używają, zachowują obraz i kadr, także po restarcie serwera;
-  (5) **zmiana kampanii** w trakcie kolejki przerywa dodawanie. Dopisane 14.09 przy przeglądzie
-  zaległości — sesja portretów nie otworzyła tej pozycji.
-
 - **13.09: OB bariery (etap 42b) — zostały karta obrażeń i napis na mapie.** Obejrzane 13.09 (czwarta
   sesja): pole „OB” na pasku przy „Bariera” i „Brama”, liczba zostaje po przełączeniu rodzaju tam
   i z powrotem, ściana narysowana zaraz po siatce ma OB 0 (sprawdzone w bazie); karta segmentu
@@ -236,18 +227,10 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   **zamkniętym oknie z bliska** w Dynamicznej; (2) **odmowa wręcz** pod celownikiem przez siatkę —
   dymek budzi tylko ręka MG.
 
-- **Odmowy montażu u gracza — obejrzana jedna z pięciu.** (Druga połowa tej pozycji — zdanie
-  „Minęła minuta … wraca" — zamknięta 13.09 testem, patrz archiwum.)
-  Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
-  (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich
-  zwolniony** — a ripperdoc, którym MG operuje, jest jedyną drogą przez UI, więc przy oględzinach
-  04.09 nie było jak zobaczyć czerwonego zdania w czacie. To ta sama sytuacja co przy odmowach
-  ruchu: trzeba konta gracza. **13.09 obejrzana `MISSING_FOUNDATION` z konta `Tester`:** Kompendium
-  → „Celownik optyczny" → „Zainstaluj — 1000 ed" na karcie bez cyberoka daje w czacie notatkę „Nie
-  ma w co tego wszczepić…" (szarą i lokalną, nie czerwony wiersz), a karta zostaje z 5000 ed i bez
-  wszczepu. **Zostają:** `NO_SLOTS` i `POOL_FULL` (zdania z tej samej tablicy, co obejrzane) oraz
-  `SELF_INSTALL`, do którego gracz potrzebuje Medyka z Chirurgią. `NO_SURGERY_SKILL` jest z UI
-  nieosiągalne z założenia: lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią.
+- **Odmowy montażu u gracza — została `SELF_INSTALL`.** `MISSING_FOUNDATION` obejrzana 13.09,
+  `POOL_FULL` i `NO_SLOTS` 23.09 z konta `Tester` (szczegóły w archiwum). Zostaje `SELF_INSTALL`,
+  do którego gracz potrzebuje Medyka z Chirurgią; `NO_SURGERY_SKILL` jest z UI nieosiągalne
+  z założenia (lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią).
 
 - **13.09 (trzecia sesja): cztery poprawki nieobejrzane w przeglądarce.** Testy pokrywają tylko
   silnik (odmowa rąk: planer, pasek, gniazda serwera); reszta to UI. Do sprawdzenia na koncie

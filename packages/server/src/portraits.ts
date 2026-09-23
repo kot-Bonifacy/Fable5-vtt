@@ -48,6 +48,7 @@ export function draftPortraitUrl(data: string): string | null {
 /** Tyle z wiersza `PortraitAsset` potrzeba, żeby zbudować widok puli. */
 export interface PortraitAssetRow {
   retired?: boolean;
+  gmOnly?: boolean;
   id: string;
   name: string;
   url: string;
@@ -73,6 +74,7 @@ export interface PortraitAssetRow {
 export function toPortraitAssetView(asset: PortraitAssetRow): PortraitAssetView {
   return {
     retired: asset.retired ?? false,
+    gmOnly: asset.gmOnly ?? false,
     id: asset.id,
     name: asset.name,
     url: asset.url,
@@ -83,4 +85,23 @@ export function toPortraitAssetView(asset: PortraitAssetRow): PortraitAssetView 
       { width: asset.width, height: asset.height },
     ),
   };
+}
+
+/**
+ * Ten sam wiersz oczami gracza (23.09) — `null`, gdy gracz ma go nie znać.
+ *
+ * Portret NPC („tylko MG”) nie trafia do galerii gracza, bo jego nazwa i sama
+ * twarz zdradzają, kogo drużyna dopiero spotka. Gdy jednak coś go już nosi,
+ * figura może stanąć przed graczem — a wtedy jego mapa potrzebuje kadru, inaczej
+ * ujęłaby twarz inaczej niż u MG. Jedzie więc sam adres i kadr, bez nazwy.
+ * Świadomy kompromis (decyzja MG z 23.09): adres twarzy ukrytej figury da się
+ * wydłubać z narzędzi przeglądarki; nieprzypisane portrety NPC nie wychodzą.
+ */
+export function playerPortraitView(
+  view: PortraitAssetView,
+  used: boolean,
+): PortraitAssetView | null {
+  if (!view.gmOnly) return view;
+  if (!used) return null;
+  return { ...view, name: '' };
 }

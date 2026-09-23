@@ -300,10 +300,27 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         });
       }
     }
+    // Figury karty idą za jej portretem (decyzja MG z 23.09) — inaczej nowy
+    // portret NPC-a dostałaby dopiero figura postawiona od nowa. Tylko te,
+    // które nosiły stary portret albo nie miały obrazu: grafika z biblioteki
+    // żetonów to wybór MG dla tej jednej figury i zostaje.
+    const portraitMoved = 'portraitUrl' in patch && updated.portraitUrl !== character.portraitUrl;
+    if (portraitMoved) {
+      await deps.ctx.prisma.token.updateMany({
+        where: {
+          characterId: character.id,
+          OR: [
+            { imageUrl: null },
+            ...(character.portraitUrl ? [{ imageUrl: character.portraitUrl }] : []),
+          ],
+        },
+        data: { imageUrl: updated.portraitUrl },
+      });
+    }
     const view = toCharacterView(updated, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
     // HP and stats drive the bars of every token bound to this sheet.
-    if ('data' in patch || 'ownerId' in patch || 'name' in patch) {
+    if ('data' in patch || 'ownerId' in patch || 'name' in patch || portraitMoved) {
       await emitTokensOfCharacter(deps, campaignId, updated);
     }
     // The run window paints this sheet's cyberdeck (stage 26c), so a Program

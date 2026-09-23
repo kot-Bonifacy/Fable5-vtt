@@ -1,9 +1,20 @@
-import type { PortraitAssetView, PortraitCropBroadcast, PortraitCropPayload } from '@vtt/shared';
+import type {
+  PortraitAssetView,
+  PortraitCropBroadcast,
+  PortraitCropPayload,
+  PortraitVisibilityPayload,
+} from '@vtt/shared';
 import { ROLE_GM, sanitizePortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import { draftPortraitUrl, toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
+import {
+  draftPortraitUrl,
+  playerPortraitView,
+  toPortraitAssetView,
+  usedPortraitUrls,
+} from '../portraits.js';
+import type { RealtimeDeps } from './registry.js';
 import { RealtimeError, defineEvent } from './registry.js';
-import { campaignRoom } from './state.js';
+import { campaignRoom, gmRoom } from './state.js';
 
 /**
  * Kadr portretu na mapie (12.09) — jedyna rzecz, którą da się zmienić
@@ -58,13 +69,72 @@ export const portraitCropEvent = defineEvent<PortraitCropPayload, PortraitAssetV
       data: { cropX: crop.x, cropY: crop.y, cropZoom: crop.zoom },
     });
     const view = toPortraitAssetView(saved);
-
-    const room = campaignRoom(campaign.id);
-    const broadcast: PortraitCropBroadcast = { seq: deps.seqs.next(room), asset: view };
-    deps.io.to(room).emit('portrait:crop', broadcast);
+    await emitPortraitAsset(deps, campaign.id, 'portrait:crop', view);
     return view;
   },
 });
+
+/**
+ * MG przenosi portret między pulą graczy a portretami NPC (23.09).
+ *
+ * Gniazdo z tego samego powodu co kadr: przestawienie zmienia to, co gracze
+ * mają w pamięci — portret przeniesiony do NPC-ów ma im zniknąć z galerii od
+ * razu, a nie przy przeładowaniu.
+ */
+export const portraitVisibilityEvent = defineEvent<PortraitVisibilityPayload, PortraitAssetView>({
+  name: 'portrait:visibility',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    const assetId = payload?.assetId;
+    if (
+      typeof assetId !== 'string' ||
+      assetId.length === 0 ||
+      typeof payload.gmOnly !== 'boolean'
+    ) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const asset = await deps.ctx.prisma.portraitAsset.findUnique({ where: { id: assetId } });
+    if (!asset || asset.campaignId !== campaign.id) throw new RealtimeError('NOT_FOUND');
+    const saved = await deps.ctx.prisma.portraitAsset.update({
+      where: { id: asset.id },
+      data: { gmOnly: payload.gmOnly },
+    });
+    const view = toPortraitAssetView(saved);
+    await emitPortraitAsset(deps, campaign.id, 'portrait:visibility', view);
+    return view;
+  },
+});
+
+/**
+ * Rozgłasza wiersz puli — MG w całości, gracze w wersji `playerPortraitView`.
+ *
+ * Dwie emisje z **jednym** numerem `seq`: każdy klient dostaje dokładnie jedną
+ * z nich, więc ciąg numerów w pokoju kampanii zostaje bez luki (luka to pełny
+ * resync całego stołu). Portret NPC, którego nic nie nosi, dochodzi do graczy
+ * jako `removedId` — muszą go zapomnieć, jeśli znali go z puli graczy.
+ */
+async function emitPortraitAsset(
+  deps: RealtimeDeps,
+  campaignId: string,
+  event: 'portrait:crop' | 'portrait:visibility',
+  view: PortraitAssetView,
+): Promise<void> {
+  const room = campaignRoom(campaignId);
+  const gm = gmRoom(campaignId);
+  const seq = deps.seqs.next(room);
+  const used = view.gmOnly
+    ? (await usedPortraitUrls(deps.ctx.prisma, campaignId)).has(view.url)
+    : true;
+  const forPlayers = playerPortraitView(view, used);
+  const full: PortraitCropBroadcast = { seq, asset: view };
+  const players: PortraitCropBroadcast = forPlayers
+    ? { seq, asset: forPlayers }
+    : { seq, removedId: view.id };
+  deps.io.to(gm).emit(event, full);
+  deps.io.to(room).except(gm).emit(event, players);
+}
 
 /**
  * Czy ten gracz nosi ten portret na własnej karcie lub zarezerwował go w szkicu.

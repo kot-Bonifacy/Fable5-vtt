@@ -843,7 +843,15 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    usePortraitStore.getState().applyUpsert(broadcast.asset);
+    applyPortraitBroadcast(broadcast);
+  });
+  // MG przeniósł portret między pulą graczy a portretami NPC (23.09).
+  onPresented('portrait:visibility', (broadcast: PortraitCropBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    applyPortraitBroadcast(broadcast);
   });
   // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
   // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
@@ -3939,6 +3947,32 @@ export function setPortraitCrop(
       return;
     }
     socket.emit('portrait:crop', { assetId, crop }, (ack: SocketAck<PortraitAssetView>) =>
+      resolve(ack),
+    );
+  });
+}
+
+/**
+ * Wiersz puli z rozgłoszenia: pełny albo — u gracza, przy portrecie NPC, którego
+ * nic nie nosi — samo polecenie „zapomnij” (23.09).
+ */
+function applyPortraitBroadcast(broadcast: PortraitCropBroadcast): void {
+  const store = usePortraitStore.getState();
+  if (broadcast.asset) store.applyUpsert(broadcast.asset);
+  else if (broadcast.removedId) store.applyRemove(broadcast.removedId);
+}
+
+/** MG: przenosi portret między pulą graczy a portretami NPC (23.09). */
+export function setPortraitGmOnly(
+  assetId: string,
+  gmOnly: boolean,
+): Promise<SocketAck<PortraitAssetView>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('portrait:visibility', { assetId, gmOnly }, (ack: SocketAck<PortraitAssetView>) =>
       resolve(ack),
     );
   });

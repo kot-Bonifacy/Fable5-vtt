@@ -342,7 +342,7 @@ describe('portrait pool', () => {
       });
       if (!ack.ok || !ack.data) throw new Error('portrait:crop failed');
       expect(ack.data.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
-      expect((await heard).asset.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
+      expect((await heard).asset?.crop).toEqual({ x: 0.9, y: 0.1, zoom: 2 });
 
       // Poza obraz nie wychodzi już sam punkt kadru: 1,4 wraca jako 1.
       const beyond = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
@@ -473,6 +473,98 @@ describe('portrait pool', () => {
     expect(moved.statusCode).toBe(409);
     expect(moved.json()).toEqual({ error: 'CAMPAIGN_CHANGED' });
     expect(await built.prisma.portraitAsset.count()).toBe(count);
+  });
+
+  /**
+   * Portrety NPC (23.09) — twarz i nazwa zdradzają, kogo drużyna dopiero
+   * spotka, więc gracz ich nie dostaje. Wyjątek jest jeden: portret, który coś
+   * już nosi, jedzie do gracza jako sam adres i kadr, bez nazwy — jego mapa
+   * musi ująć figurę NPC-a tak samo jak mapa MG.
+   */
+  it('keeps GM-only portraits away from players until something wears them', async () => {
+    const { payload, headers } = multipartBody(
+      'Adam Smasher.png',
+      await sharp({ create: { width: 256, height: 256, channels: 3, background: 'blue' } })
+        .png()
+        .toBuffer(),
+    );
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portrait-assets?gmOnly=true',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(res.statusCode).toBe(201);
+    const npc = res.json() as PortraitAssetView;
+    expect(npc.gmOnly).toBe(true);
+
+    const listFor = async (cookie: string) =>
+      (
+        await built.app.inject({
+          url: '/api/portrait-assets?includeRetired=true',
+          headers: { cookie },
+        })
+      ).json() as PortraitAssetView[];
+    expect((await listFor(gmCookie)).find((a) => a.id === npc.id)?.name).toBe('Adam Smasher');
+    expect((await listFor(playerCookie)).map((a) => a.id)).not.toContain(npc.id);
+
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    try {
+      // Kadr nieprzypisanego portretu NPC: MG dostaje wiersz, gracz — każ zapomnieć.
+      const gmHeard = waitFor<PortraitCropBroadcast>(gmConn.socket, 'portrait:crop');
+      const playerHeard = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:crop');
+      const crop = { assetId: npc.id, crop: { x: 0.4, y: 0.3, zoom: 1.5 } };
+      expect((await emitAck(gmConn.socket, 'portrait:crop', crop)).ok).toBe(true);
+      const [toGm, toPlayer] = await Promise.all([gmHeard, playerHeard]);
+      expect(toGm.asset?.name).toBe('Adam Smasher');
+      expect(toPlayer).toEqual({ seq: toGm.seq, removedId: npc.id });
+
+      // Karta NPC-a nosi portret — gracz dostaje adres i kadr, bez nazwy.
+      const card = await emitAck<CharacterView>(gmConn.socket, 'character:create', {
+        name: 'Smasher',
+      });
+      if (!card.ok || !card.data) throw new Error('character:create failed');
+      expect(
+        (
+          await emitAck(gmConn.socket, 'character:update', {
+            characterId: card.data.id,
+            patch: { portraitUrl: npc.url },
+          })
+        ).ok,
+      ).toBe(true);
+      expect((await listFor(playerCookie)).find((a) => a.id === npc.id)).toMatchObject({
+        name: '',
+        gmOnly: true,
+        url: npc.url,
+        crop: { x: 0.4, y: 0.3, zoom: 1.5 },
+      });
+      const worn = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:crop');
+      expect((await emitAck(gmConn.socket, 'portrait:crop', crop)).ok).toBe(true);
+      expect((await worn).asset).toMatchObject({ id: npc.id, name: '' });
+
+      // Przeniesienie do puli graczy — jawne, z nazwą; przestawia wyłącznie MG.
+      expect(
+        await emitAck(playerConn.socket, 'portrait:visibility', {
+          assetId: npc.id,
+          gmOnly: false,
+        }),
+      ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+      const opened = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:visibility');
+      const toggled = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:visibility', {
+        assetId: npc.id,
+        gmOnly: false,
+      });
+      expect(toggled.ok && toggled.data?.gmOnly).toBe(false);
+      expect((await opened).asset).toMatchObject({ name: 'Adam Smasher', gmOnly: false });
+      expect(
+        await emitAck(gmConn.socket, 'portrait:visibility', { assetId: npc.id, gmOnly: 'tak' }),
+      ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
+    } finally {
+      gmConn.socket.close();
+      playerConn.socket.close();
+    }
   });
 });
 
@@ -1215,6 +1307,39 @@ describe('statysta jako karta postaci (etap 38a)', () => {
     ).toBe(true);
     const state = await stateOf(gm);
     expect(state.characters.some((entry) => entry.id === card.data!.id)).toBe(true);
+  });
+
+  it('przestawia figury karty za jej portretem, ale nie grafikę z biblioteki żetonów', async () => {
+    const card = await emitAck<CharacterView>(gm, 'character:create', { name: 'Paser 23.09' });
+    if (!card.ok || !card.data) throw new Error('character:create failed');
+    const place = async (imageUrl?: string) => {
+      const token = await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Paser 23.09',
+        x: 600,
+        y: 600,
+        characterId: card.data!.id,
+        ...(imageUrl ? { imageUrl } : {}),
+      });
+      if (!token.ok || !token.data) throw new Error('token:create failed');
+      return token.data.id;
+    };
+    const bare = await place();
+    const art = await place('/uploads/tokens/wlasna-grafika.png');
+    const imageOf = async (id: string) =>
+      (await stateOf(gm)).tokens.find((entry) => entry.id === id)?.imageUrl;
+    for (const url of ['/uploads/portraits/paser-1.webp', '/uploads/portraits/paser-2.webp']) {
+      expect(
+        (
+          await emitAck(gm, 'character:update', {
+            characterId: card.data.id,
+            patch: { portraitUrl: url },
+          })
+        ).ok,
+      ).toBe(true);
+      expect(await imageOf(bare)).toBe(url);
+      expect(await imageOf(art)).toBe('/uploads/tokens/wlasna-grafika.png');
+    }
   });
 
   it('nie zabiera karty, pod którą stoi jeszcze inna figura', async () => {

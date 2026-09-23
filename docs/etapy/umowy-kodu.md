@@ -684,6 +684,8 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Portret NPC — `PortraitAsset.gmOnly` (23.09)** — gracz nie dostaje portretów NPC; noszony jedzie do niego jako sam adres i kadr bez nazwy (`playerPortraitView`). Rozgłoszenia puli idą dwiema emisjami z **jednym** `seq` (`emitPortraitAsset`: `gmRoom` pełny wiersz, reszta pokoju wersję gracza albo `removedId`). Klient dociąga pulę na nieznany adres figury (`portraitStore.notice`).
+- **Figury idą za portretem karty (23.09)** — `character:update` z nowym `portraitUrl` przestawia figury tej karty, które nosiły stary portret albo nie miały obrazu; grafika z biblioteki żetonów zostaje.
 - **Emisja skutku rzutu nie wyprzedza jego kości (22.09)** — `defineEvent` obejmuje handler przez `withPresentation`; `performCharacterRoll` i `performAttackRoll` robią to również dla wywołań botów. Funkcje wysyłające widok wyniku używają `deferView` (karty, figury, walka, Sieć, osłony, dym, efekty i nierzutowe komunikaty czatu). Mutacje wykonują się od razu, emisje po handlerze, także przy błędzie. Numery `seq` nadaje dopiero emisja. Nie odkładaj mutacji wewnątrz funkcji udającej samą emisję.
 - **Biblioteka portretów MG (14.09)** — `PortraitPicker manage` w panelu postaci dodaje wiele plików bez kadrowania. `preparePortraitImage` w serwerze egzekwuje wspólne limity i zapisuje WebP; `PortraitAsset.retired` usuwa z wyboru bez utraty kadru, `includeRetired=true` służy rendererowi i edytorowi kadru.
 
@@ -711,6 +713,39 @@ po zmianie kampanii; klient czyści pulę i unieważnia starsze odczyty przy prz
 - **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
 
 ---
+
+**Portrety NPC są w tej samej puli, z flagą `gmOnly` (zlecenie MG z 23.09).** Twarz i nazwa
+portretu zdradzają, kogo drużyna dopiero spotka, a pula była publiczna dla każdego zalogowanego —
+razem z nazwami i wycofanymi wpisami. Osobna biblioteka zdublowałaby kadr, kosz i backfill, więc
+MG dostał w `PortraitPicker` dwie zakładki („Dla graczy”, „NPC — tylko MG”), wgranie idzie do
+otwartej (`?gmOnly=true`), a kafelek przenosi `portrait:visibility` (tylko MG). Karta bez
+właściciela otwiera galerię na zakładce NPC (`npc` w `CharacterSheet`).
+
+Gracz **potrzebuje** kadru portretu NPC, który stoi przed nim na mapie, więc szczelność jest
+kompromisem przyjętym przez MG: `GET /api/portrait-assets` oddaje graczowi wiersz `gmOnly` tylko
+wtedy, gdy coś go nosi (`usedPortraitUrls`), z pustą nazwą — adres twarzy ukrytej figury da się
+wydłubać z narzędzi przeglądarki, nieprzypisanych twarzy już nie. Pełna szczelność wymagałaby
+kadru w widoku figury (57 miejsc `toTokenView`) — odrzucona jako zbyt droga.
+
+Rozgłoszenie wiersza puli (`portrait:crop`, `portrait:visibility`) robi **`emitPortraitAsset`**:
+`gmRoom` dostaje pełny wiersz, `campaignRoom` bez `gmRoom` — `playerPortraitView` albo
+`{ removedId }` (gracz ma zapomnieć), **z tym samym numerem `seq`**. Każdy klient słyszy
+dokładnie jedną z dwóch emisji, więc ciąg numerów w pokoju kampanii nie ma luki (luka to pełny
+resync stołu). Nowe zdarzenie puli idzie tą funkcją, nie gołym `io.to(room).emit`.
+
+Pula gracza nie dowie się o portrecie NPC nadanym po jej wczytaniu (wgranie niczego nie rozgłasza),
+więc `pushTokens` w `MapArea` woła `portraitStore.notice(adresy figur)`: nieznany adres spod
+`/uploads/portraits/` dociąga pulę **raz** (`noticed` pamięta, o co już pytano — stary plik bez
+wiersza nie może wywołać pętli). Kreator odmawia graczowi nowego wyboru portretu `gmOnly`
+(`PORTRAIT_NOT_AVAILABLE`), tak jak wycofanego.
+
+**Figury idą za portretem karty (decyzja MG z 23.09).** Do tej pory portret karty trafiał na
+figurę wyłącznie przy jej postawieniu (`createCharacterToken`), a obrazu stojącej figury nie
+zmieniało nic w UI — nowy portret NPC-a wymagał postawienia figury od nowa. `character:update`
+przestawia teraz `Token.imageUrl` figur tej karty, które nosiły **stary portret albo nie miały
+obrazu**, i odsyła je `emitTokensOfCharacter`. Grafika wybrana z biblioteki żetonów zostaje: to
+wybór MG dla tej jednej figury.
+
 
 **Blokada ruchu graczy po mapie jest polem sceny, nie własnym zdarzeniem (zlecenie MG, 12.09).**
 Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed rozpoczęciem gry, obejdzie ją

@@ -31,6 +31,14 @@ interface PortraitStoreState {
   load: (force?: boolean) => Promise<void>;
   applyUpsert: (asset: PortraitAssetView) => void;
   applyDelete: (assetId: string) => void;
+  /** Gracz ma portret zapomnieć — MG przeniósł go do portretów NPC (23.09). */
+  applyRemove: (assetId: string) => void;
+  /**
+   * Figury na mapie noszą te adresy. Portret, którego pula nie zna, dociąga
+   * ją raz od nowa: portret NPC przychodzi do gracza dopiero wtedy, gdy coś go
+   * nosi, a bez wiersza jego figura dostałaby kadr domyślny.
+   */
+  notice: (urls: Iterable<string | null | undefined>) => void;
   openCrop: (assetId: string) => void;
   closeCrop: () => void;
   reset: () => void;
@@ -54,6 +62,12 @@ function indexCrops(assets: PortraitAssetView[]): ReadonlyMap<string, PortraitCr
 /** Żeby dwa miejsca, które zamontowały się w tej samej klatce, nie pytały dwa razy. */
 let inFlight: Promise<void> | null = null;
 let requestVersion = 0;
+/**
+ * Adresy, o które `notice` już raz dociągnął pulę. Stary plik bez wiersza puli
+ * nie przyjdzie nigdy — bez tej listy mapa pytałaby o niego przy każdej klatce.
+ */
+const noticed = new Set<string>();
+const PORTRAIT_PATH = '/uploads/portraits/';
 
 export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   assets: [],
@@ -90,6 +104,29 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
       return { assets, crops: indexCrops(assets) };
     }),
 
+  applyRemove: (assetId) =>
+    set((state) => {
+      const assets = state.assets.filter((a) => a.id !== assetId);
+      return {
+        assets,
+        crops: indexCrops(assets),
+        cropping: state.cropping === assetId ? null : state.cropping,
+      };
+    }),
+
+  notice: (urls) => {
+    const state = get();
+    if (!state.loaded || inFlight) return;
+    let unknown = false;
+    for (const url of urls) {
+      if (!url?.startsWith(PORTRAIT_PATH) || noticed.has(url)) continue;
+      if (state.assets.some((a) => a.url === url)) continue;
+      noticed.add(url);
+      unknown = true;
+    }
+    if (unknown) void get().load(true);
+  },
+
   applyDelete: (assetId) =>
     set((state) => {
       const assets = state.assets.map((a) => (a.id === assetId ? { ...a, retired: true } : a));
@@ -104,6 +141,7 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   reset: () => {
     requestVersion += 1;
     inFlight = null;
+    noticed.clear();
     set({ assets: [], crops: new Map(), loaded: false, cropping: null });
   },
 }));

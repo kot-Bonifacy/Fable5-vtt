@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.09 — handel między figurami (etap 38c)
+
+**Zlecenie MG poza etapem 28:** handel przez przeciąganie rzeczy i gotówki do pól wymiany
+widocznych dla stron, wykonany po zgodzie obu. Rozstrzygnięcia MG przed kodem: gracz ↔ gracz
+i gracz ↔ NPC (NPC-a prowadzi MG), zasięg ramienia, zaproszenie ze zgodą, zmiana pola kasuje obie
+zgody, MG podgląda i przerywa, **bez czatu w oknie** (MG zrezygnował). Opis i wynik:
+`etap-38c-handel.md`; umowa w `ekwipunek`, pułapka przeciągania w `ui`.
+
+**Wdrożone:** `cpredSwapItems`/`cpredOfferViews` (shared), stan handlu w `shared/src/trade.ts`,
+siedem zdarzeń `trade:*` z wykonaniem w jednej transakcji (`realtime/trade.ts`, negocjacje
+w pamięci serwera), okno z przeciąganiem na zdarzeniach wskaźnika, dok w rogu mapy, wejścia
+z menu figury i z karty, karta czatu „Handel”. **Po drodze:** naprawiony błąd 38b — „Gotówka →”
+w oknie „Wymiana” nie przenosiła samej gotówki (`NO_ITEMS`); ESLint z korzenia ignoruje
+`**/.venv/**` (vendorowany JS yt-dlp z 21.09 dawał 378 błędów).
+
+**Weryfikacja:** 2202 / 1219 / 279 testów; tsc trzech pakietów, ESLint, build Vite. Prettier
+czysty poza zastanym `aim-preview.test.ts` (zaległość). Chrome na kampanii „Oględziny 12.09”
+(`Tester` ↔ nowy NPC „Paser Oględzin”), potem aktywna wróciła na **„Test2”**: pełen handel myszą,
+zdjęcie zgody zmianą pola, F5 w trakcie, odrzucenie zaproszenia; konsola czysta. Nieobejrzane:
+dotyk (iPad) i dwóch graczy w przeglądarce. Serwer i Vite działają. Wyścig snapshotu ze
+sprzątaniem przy starcie potwierdzony i zdiagnozowany (`zaleglosci.md`, nie naprawiany).
+
 ### Sesja 22.09 — wyniki dopiero po zatrzymaniu kości
 
 **Zlecenie MG poza etapem 28:** wynik nie może pojawić się w kreatorze ani innym

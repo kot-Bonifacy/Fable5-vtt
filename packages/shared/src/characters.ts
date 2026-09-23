@@ -482,6 +482,11 @@ export interface CpredDataPayload {
 export interface PortraitAssetView {
   /** Wycofany z wyboru; kadr istniejących przypisań pozostaje dostępny. */
   retired?: boolean;
+  /**
+   * Portret NPC widoczny tylko dla MG (23.09). Gracz dostaje taki wiersz
+   * wyłącznie wtedy, gdy coś go już nosi — z pustą nazwą, tylko po kadr.
+   */
+  gmOnly?: boolean;
   id: string;
   name: string;
   url: string;

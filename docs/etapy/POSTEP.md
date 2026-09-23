@@ -46,7 +46,7 @@ obu metod). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md` (rozbicie rzutó
 kości przez kubek — zlecenie MG z 17.09, opis na górze pliku) i z `zaleglosci.md`. Co obowiązuje
 w kodzie — sekcja `postac` w umowach; kontekst — `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 15 pozycji w `zaleglosci.md`.** Większość czeka na **żywy model** (19a–20b, 24c)
+**Dług oględzin — 14 pozycji w `zaleglosci.md`.** Większość czeka na **żywy model** (19a–20b, 24c)
 albo na rękę MG (pełny ekran, maszynopis, dymek pod celownikiem z 41, skórka na Safari/iPad).
 Kampania-śmieć „Oględziny 12.09” ma członka `Tester`; **stałe zaproszenie `tester-dev` prowadzi
 na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
@@ -78,7 +78,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1220** na serwerze, **279** u klienta —
+**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1222** na serwerze, **281** u klienta —
 zielone (23.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -103,7 +103,7 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 10   | 16      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 13   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
@@ -117,13 +117,37 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 85      |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 86      |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.09 (trzecia) — portrety NPC i oględziny automatem
+
+**Zlecenie MG:** kilka zaległości; MG wybrał oględziny automatem (biblioteka portretów, odmowy
+montażu, półki kreatora) i dołożył **portrety NPC widoczne tylko dla MG**. Rozstrzygnięcia MG:
+flaga w tej samej puli zamiast drugiej biblioteki; gracz dostaje portret NPC tylko noszony, jako
+adres i kadr bez nazwy (kompromis — pełna szczelność kosztowałaby 57 miejsc `toTokenView`);
+istniejące portrety zostają „dla graczy”; **figury idą za portretem karty**.
+
+**Wdrożone:** `PortraitAsset.gmOnly` (migracja `20260923200000_portrait_gm_only`), zakładki
+„Dla graczy” / „NPC — tylko MG” w `PortraitPicker` z przenoszeniem (`portrait:visibility`),
+`emitPortraitAsset` (dwie emisje, jeden `seq`), `portraitStore.notice`, odmowa wyboru w kreatorze,
+`character:update` przestawiający figury karty. **Znaleziony przeciek (stan sprzed sesji):**
+`GET /api/portrait-assets` oddawał graczom całą pulę z nazwami, także NPC-owe i wycofane —
+zamknięty dla portretów `gmOnly`; stare portrety NPC trzeba przenieść ręką do zakładki NPC.
+Umowy w `serwer`, pułapka w `ogledziny`.
+
+**Oględziny (Chrome, kampania „Oględziny 12.09”, MG + `Tester`):** biblioteka portretów — punkty
+1–4 (kolejka, odmowy osobno, EXIF, kosz po restarcie), punkt 5 tylko testem; zakładki, przenoszenie
+i kadr NPC na żywo u gracza; `POOL_FULL` i `NO_SLOTS` u gracza; półki Netrunnera i Nomady, podgląd
+w dzień, klawiatura. Zamknięte w `archiwum/zamkniete-zaleglosci.md`.
+
+**Weryfikacja:** 2202 / 1222 / 281 testów; tsc, ESLint, Prettier trzech pakietów czyste. Aktywna
+kampania wróciła na **„Test2”**; szkic kreatora MG wyrzucony. Serwer i Vite działają.
 
 ### Sesja 23.09 (druga) — dwie zaległości: kopia startowa i Prettier
 
@@ -140,25 +164,3 @@ w archiwum zaległości.
 **Weryfikacja:** 1220 testów serwera (+1), tsc serwera, ESLint, Prettier trzech pakietów czysty.
 `shared` i klient nieruszone. Serwer dev przeładował się sam; kopia startowa 22:41 powstała
 (83 pliki, dowiązania), `/health` odpowiada.
-
-### Sesja 23.09 — handel między figurami (etap 38c)
-
-**Zlecenie MG poza etapem 28:** handel przez przeciąganie rzeczy i gotówki do pól wymiany
-widocznych dla stron, wykonany po zgodzie obu. Rozstrzygnięcia MG przed kodem: gracz ↔ gracz
-i gracz ↔ NPC (NPC-a prowadzi MG), zasięg ramienia, zaproszenie ze zgodą, zmiana pola kasuje obie
-zgody, MG podgląda i przerywa, **bez czatu w oknie** (MG zrezygnował). Opis i wynik:
-`etap-38c-handel.md`; umowa w `ekwipunek`, pułapka przeciągania w `ui`.
-
-**Wdrożone:** `cpredSwapItems`/`cpredOfferViews` (shared), stan handlu w `shared/src/trade.ts`,
-siedem zdarzeń `trade:*` z wykonaniem w jednej transakcji (`realtime/trade.ts`, negocjacje
-w pamięci serwera), okno z przeciąganiem na zdarzeniach wskaźnika, dok w rogu mapy, wejścia
-z menu figury i z karty, karta czatu „Handel”. **Po drodze:** naprawiony błąd 38b — „Gotówka →”
-w oknie „Wymiana” nie przenosiła samej gotówki (`NO_ITEMS`); ESLint z korzenia ignoruje
-`**/.venv/**` (vendorowany JS yt-dlp z 21.09 dawał 378 błędów).
-
-**Weryfikacja:** 2202 / 1219 / 279 testów; tsc trzech pakietów, ESLint, build Vite. Prettier
-czysty poza zastanym `aim-preview.test.ts` (zaległość). Chrome na kampanii „Oględziny 12.09”
-(`Tester` ↔ nowy NPC „Paser Oględzin”), potem aktywna wróciła na **„Test2”**: pełen handel myszą,
-zdjęcie zgody zmianą pola, F5 w trakcie, odrzucenie zaproszenia; konsola czysta. Nieobejrzane:
-dotyk (iPad) i dwóch graczy w przeglądarce. Serwer i Vite działają. Wyścig snapshotu ze
-sprzątaniem przy starcie potwierdzony i zdiagnozowany (`zaleglosci.md`, nie naprawiany).

@@ -260,6 +260,7 @@ describe('wybór portretu w galerii', () => {
     expect(Object.keys(shown).sort()).toEqual([
       'assigned',
       'crop',
+      'gmOnly',
       'height',
       'id',
       'name',
@@ -285,6 +286,15 @@ describe('wybór portretu w galerii', () => {
     await built.prisma.portraitAsset.update({ where: { id: asset.id }, data: { retired: true } });
     expect((await emitAck(sockets[winner]!, 'creation:patch', choice)).ok).toBe(true);
     await patch(sockets[winner]!, { portraitUrl: null });
+    expect(await emitAck(sockets[winner]!, 'creation:patch', choice)).toEqual({
+      ok: false,
+      error: 'PORTRAIT_NOT_AVAILABLE',
+    });
+    // Portret NPC (23.09) nie jest do wyboru, nawet wolny i niewycofany.
+    await built.prisma.portraitAsset.update({
+      where: { id: asset.id },
+      data: { retired: false, gmOnly: true },
+    });
     expect(await emitAck(sockets[winner]!, 'creation:patch', choice)).toEqual({
       ok: false,
       error: 'PORTRAIT_NOT_AVAILABLE',

@@ -1139,6 +1139,33 @@
   opacity: 1;
 }
 
+/* Zakładki MG (23.09): pula graczy i portrety NPC, których gracze nie widzą. */
+.portrait-pool-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.portrait-pool-tabs [aria-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Przeniesienie między zakładkami — w bibliotece MG róg kadru jest wolny. */
+.portrait-pool-move {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  padding: 0 0.25rem;
+  font-size: 0.65rem;
+  opacity: 0;
+}
+
+.portrait-pool-item:hover .portrait-pool-move,
+.portrait-pool-move:focus-visible {
+  opacity: 1;
+}
+
 /* Kafelek z ustawionym kadrem — kropka, żeby MG widział, którego portretu już
    dotknął, bez otwierania każdego po kolei. */
 .portrait-pool-item--framed .portrait-pool-pick::after {

@@ -842,6 +842,7 @@ function IdentityColumn({
         </div>
         {isGm ? (
           <PortraitPicker
+            npc={!character.ownerId}
             selectedUrl={character.portraitUrl}
             onPick={async (url) => (await updateCharacter(character.id, { portraitUrl: url })).ok}
           />

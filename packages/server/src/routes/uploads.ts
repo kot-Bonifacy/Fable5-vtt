@@ -6,13 +6,14 @@ import { imageSize } from 'image-size';
 import type { HandoutImage, MapUploadResult, PortraitAssetView, TokenAssetView } from '@vtt/shared';
 import {
   PORTRAIT_NAME_MAX_LENGTH,
+  ROLE_GM,
   SCENE_DIMENSION_MAX,
   TOKEN_NAME_MAX_LENGTH,
   UPLOAD_LIMITS,
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
-import { toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
+import { playerPortraitView, toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
 import { getActiveCampaign } from './helpers.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
@@ -191,7 +192,8 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     if (!campaign) {
       return reply.code(409).send({ error: 'NO_CAMPAIGN' });
     }
-    const expectedCampaign = (request.query as { campaignId?: string }).campaignId;
+    const query = request.query as { campaignId?: string; gmOnly?: string };
+    const expectedCampaign = query.campaignId;
     if (expectedCampaign && expectedCampaign !== campaign.id) {
       return reply.code(409).send({ error: 'CAMPAIGN_CHANGED' });
     }
@@ -230,13 +232,22 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     );
 
     const asset = await ctx.prisma.portraitAsset.create({
-      data: { campaignId: campaign.id, name, url: `/uploads/portraits/${filename}`, width, height },
+      data: {
+        campaignId: campaign.id,
+        name,
+        url: `/uploads/portraits/${filename}`,
+        width,
+        height,
+        // Wgrane w sekcji „NPC — tylko MG” od razu omija galerię graczy.
+        gmOnly: query.gmOnly === 'true',
+      },
     });
     const result: PortraitAssetView = toPortraitAssetView(asset);
     return reply.code(201).send(result);
   });
 
-  // Listę widzi **każdy zalogowany** — to z niej gracz wybiera portret.
+  // Listę widzi **każdy zalogowany** — to z niej gracz wybiera portret. Portrety
+  // NPC („tylko MG”, 23.09) gracz dostaje wyłącznie noszone i bez nazwy.
   app.get('/api/portrait-assets', { preHandler: requireAuth }, async (request, reply) => {
     const campaign = await getActiveCampaign(ctx.prisma);
     if (!campaign) {
@@ -252,10 +263,13 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       orderBy: { createdAt: 'desc' },
     });
     const used = await usedPortraitUrls(ctx.prisma, campaign.id, request.user!.id);
-    const views: PortraitAssetView[] = assets.map((asset) => ({
-      ...toPortraitAssetView(asset),
-      assigned: used.has(asset.url),
-    }));
+    const isGm = request.user!.role === ROLE_GM;
+    const views: PortraitAssetView[] = [];
+    for (const asset of assets) {
+      const view = { ...toPortraitAssetView(asset), assigned: used.has(asset.url) };
+      const visible = isGm ? view : playerPortraitView(view, view.assigned);
+      if (visible) views.push(visible);
+    }
     return reply.send(views);
   });
 

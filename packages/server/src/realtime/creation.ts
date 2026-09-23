@@ -256,7 +256,8 @@ export const creationPatchEvent = defineCreationEvent<
           where: {
             campaignId,
             url: next.portraitUrl,
-            ...(next.portraitUrl === current.portraitUrl ? {} : { retired: false }),
+            // Portret NPC (23.09) gracz może nosić tylko z nadania MG, nie z wyboru.
+            ...(next.portraitUrl === current.portraitUrl ? {} : { retired: false, gmOnly: false }),
           },
         });
         if (!asset) throw new RealtimeError('PORTRAIT_NOT_AVAILABLE');

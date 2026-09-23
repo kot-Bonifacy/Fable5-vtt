@@ -954,6 +954,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Karta rzutu u drugiej sesji spóźnia się o 30 s — to schowana karta, nie zawieszona kolejka** — karta automatyki poza wierzchem ma `visibilityState: hidden`, kości 3D w niej nie spadają, a kolejka prezentacji puszcza wynik dopiero po `MAX_ROLL_MS`. Zrzuty ekranu działają mimo to. Sprawdź `document.visibilityState`, zanim uznasz to za błąd.
 - **Ekran logowania w obu kartach po zmianie w `shared` to HMR, nie wylogowanie** — `tsx watch` restartuje serwer, a Vite unieważnia `App.tsx` („Could not Fast Refresh”), więc magazyn sesji startuje od zera; `/api/auth/me` nadal odpowiada użytkownikiem, F5 wystarczy. Kod aplikacji zmieniaj przed oględzinami albo licz się z przeładowaniem kart.
 - **Skrypt z `setTimeout` w karcie w tle dławi się do 1 tyknięcia na sekundę** — `javascript_tool` kończy się „Runtime.evaluate timed out after 45000ms”, choć skrypt **dokończy się sam** (25 pauz po 60 ms = 25 s). W karcie, która nie jest na wierzchu, klikaj bez pauz albo w małych partiach i czytaj wynik osobnym wywołaniem.
 - **„Brak aktywnej sceny” wymaga kampanii bez scen** — aktywnej sceny nie da się usunąć (`SCENE_ACTIVE`) ani wyłączyć, a nowa scena startuje jako podgląd; `POST /api/campaigns` zakłada kampanię i od razu ją aktywuje (przełącza wszystkich), a wraca się przez „Panel MG” → „Aktywuj”. Na `dev.db` używaj „Oględzin 12.09”, nie zakładaj nowej.
@@ -972,6 +973,14 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
 - **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
+- **Brakujące karty Utraty Człowieczeństwa u gracza (23.09).** MG dodał skryptem za darmo trzy
+  cyborgizacje, a czat gracza pokazał kartę tylko pierwszej — dwie następne były w bazie
+  (`ChatMessage` 1040, 1041), a w DOM-ie nie. Wyglądało to na zawieszoną kolejkę z 22.09
+  (`rollPresentation`), bo na mapie gracza wciąż leżała kość. Przyczyna: karta gracza była
+  **schowana** (`document.visibilityState === 'hidden'`, choć `computer screenshot` ją fotografuje),
+  więc animacja nie kończyła się sama i każdy rzut czekał na 30-sekundowy limit `MAX_ROLL_MS`.
+  Po ~1,5 min obie karty stały na czacie. Przy stole (karta na wierzchu) to się nie zdarza.
 
 - **Ekran logowania po zmianie w `shared` w trakcie oględzin (18.09, odbiór 3d).** Poprawka
   odmiany w `readiness.ts` zrestartowała serwer testowy (`tsx watch` obserwuje `../shared`), a Vite
@@ -1141,6 +1150,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
 
 - **Dwie instancje na tych samych portach wyglądają jak zepsute logowanie (17.09, naprawa 3b).**
   Oględziny wymagają zalogowanego MG, a hasła w przeglądarce nie wpisuje automat — MG loguje się

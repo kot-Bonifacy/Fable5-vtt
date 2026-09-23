@@ -1,0 +1,1 @@
+ALTER TABLE "PortraitAsset" ADD COLUMN "gmOnly" BOOLEAN NOT NULL DEFAULT false;

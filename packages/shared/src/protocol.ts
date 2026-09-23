@@ -262,8 +262,19 @@ export interface PortraitCropPayload {
 
 export interface PortraitCropBroadcast {
   seq: number;
-  /** Cały wiersz puli, nie sam kadr: klient, który go jeszcze nie zna, uczy się go tu. */
-  asset: PortraitAssetView;
+  /**
+   * Cały wiersz puli, nie sam kadr: klient, który go jeszcze nie zna, uczy się
+   * go tu. Brak wiersza (23.09) — portret stał się „tylko MG” i nic go nie
+   * nosi, więc gracz ma go zapomnieć (`removedId`).
+   */
+  asset?: PortraitAssetView;
+  removedId?: string;
+}
+
+/** MG przenosi portret między pulą graczy a portretami NPC (23.09). */
+export interface PortraitVisibilityPayload {
+  assetId: string;
+  gmOnly: boolean;
 }
 
 /** Weapon base rows plus every entry: imported ones and the GM's own. */
