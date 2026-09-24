@@ -43,9 +43,10 @@ logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
-obu metod). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md` (rozbicie rzutów na pojedyncze
-kości przez kubek — zlecenie MG z 17.09, opis na górze pliku) i z `zaleglosci.md`. Co obowiązuje
-w kodzie — sekcja `postac` w umowach; kontekst — `archiwum/od-czego-zaczac.md`.
+obu metod). **Od 24.09 rzuty kreatora idą po jednej kości przez kubek** (zlecenie MG z 17.09 —
+gracz rzuca Cechę raz, przerzut daje MG). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md`
+i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontekst —
+`archiwum/od-czego-zaczac.md`.
 
 **Model lokalny to od 24.09 Qwen3.8-27B UD-Q3_K_XL** (build 10735 w `C:/AI/llm/llama-prism/`,
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
@@ -83,7 +84,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2220** w `shared`, **1224** na serwerze, **282** u klienta,
+**Testy na koniec ostatniej sesji:** **2222** w `shared`, **1226** na serwerze, **281** u klienta,
 **59** w gatewayu — zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -115,7 +116,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 40   | 2       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 41   | 2       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
@@ -129,6 +130,31 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.09 (szósta) — rzuty kreatora przez kubek, po jednej kości
+
+**Zlecenie MG z 17.09 (z `POMYSLY.md`):** gracz rzuca małą liczbą kości naraz i kubkiem, a nie
+przyciskiem. Rozstrzygnięcia MG z tej sesji: **każdą Cechę gracz rzuca raz, przerzut daje tylko
+MG**; **kubek po rzucie sam bierze następną pozycję**; **MG zachowuje skrót bez kubka** („Rzuć
+brakujące”).
+
+**Wdrożone:** `creation:roll` rzuca jedną Cechę (`statId`), a bez niej — tylko u MG — brakujące
+naraz; `creation:lifepath-roll` u gracza przyjmuje jedną tabelę; `creation:lifepath-count` i
+Ścieżka niosą gest kubka. Nowe `creation:reroll` (MG) + push `creation:rerolled`; panel MG
+„Szkice postaci graczy” pokazuje Krawędziarzy („Cechy n/10”, wybór Cechy, „Pozwól przerzucić”).
+**`statRolls` przeżywają zmianę Roli i metody** (inaczej zmiana Roli tam i z powrotem byłaby
+darmowym przerzutem), Cechy Krawędziarza liczy z nich `creationRolledStats`, a okno strat mówi
+o tym w notatkach. W kreatorze: „🥤 Weź kubek” w nagłówku Cech i Ścieżki (łańcuch), 🥤 przy
+każdym wierszu, „🥤 ilu” zamiast „🎲 ilu”; „🎲 Rzuć całą Ścieżkę” i „🎲 Rzuć od razu” zniknęły.
+Karta Cechy na czacie: „Refleks (REF) — Solo”, 1k10, suma = wartość Cechy. Umowa w `postac`.
+**Spoza zlecenia (prośba MG w trakcie sesji):** limit czekania na animację rzutu `MAX_ROLL_MS`
+skrócony z 30 s do 10 s (`dice3d.ts`).
+
+**Weryfikacja:** 2222 testy `shared`, 1226 serwera, 281 klienta; tsc, ESLint i Prettier czyste.
+Obejrzane w Chrome na kampanii-śmieciu: gracz `Tester` — łańcuch kubka po Cechach (INT → REF →
+ZW → TECH), brak kubka przy wylosowanej Cesze, Ścieżka (Kultura → Osobowość), „ilu”; MG —
+karty na czacie, „Pozwól przerzucić” dla REF (u gracza wraca „—” bez przeładowania), własny
+szkic ze skrótem „Rzuć brakujące” i kubkami przerzutu. Aktywna wróciła na „Test2”.
 
 ### Sesja 24.09 (piąta) — szybkie tworzenie postaci tylko dla MG
 
@@ -144,24 +170,3 @@ a character always owns it” zastąpiony testem odmowy.
 
 **Weryfikacja:** 1224 testy serwera, tsc klienta i serwera, ESLint, Prettier. UI nieobejrzane
 w przeglądarce (zmiana to sam warunek `isGm`).
-
-### Sesja 24.09 (czwarta) — dzienny papier w tonie tapety logowania
-
-**Zlecenie MG:** dzień „zbyt jednolity (kremowy) i bardziej żółty niż okno logowania”, ma
-wyglądać jak stary papier z tapety. Trzy próbki kafla obejrzane na żywo. Rozstrzygnięcia MG:
-**tylko jaśniejsza zmienność, bez plamek kilkumilimetrowych** („wytarty, pognieciony, ale nie
-brudny”, ciemniejsze chmury plakatu odrzucone), **karta postaci i kreator na tym samym
-papierze**, **wpisy czatu jako jaśniejsze wklejki**, **zagięcia/rysy i przypalone brzegi**
-(bez zmian w chipach filtrów czatu i w tle za panelami).
-
-**Wdrożone:** paleta dnia w `theme.css` w odcieniu plakatu (~35° zamiast ~39°): `--cp-back`
-`#dfc8a6`, `--paper-main` `#e1caa8`, `--cp-paper` `#f4e2c8` (i `PAPER_DAY`, pęknięcia
-przebudowane), linie, wkłady, `--cp-ink-dim` `#574d44`. Nowa maska dnia
-`art/sheet/paper-wear-day.jpg` (`day_mask` w `sheet-paper.py`: szersze wyblaknięcia, rysy,
-jasna strona pognieceń z ambientCG „Paper 003”, CC0). `chrome-paper.py` bierze maskę każdej
-skóry z `--cp-wear-mask`. Nowe tokeny `--paper-edge` (przypalony brzeg, noc `none`),
-`--paper-card` (wklejka czatu) i `--cp-wear-print` (siła wytarć nad kartą, dzień 0,45). Noc bez
-zmian bajt w bajt. Opis w `docs/assety-chrom.md` (sekcja 24.09) i tabeli źródeł karty.
-
-**Weryfikacja:** 281 testów klienta, Prettier; obejrzane w Chrome jako gracz (czat, pasek
-postaci, karta, ustawienia). **Panel MG i okna MG nieobejrzane** — do oględzin ręką MG.

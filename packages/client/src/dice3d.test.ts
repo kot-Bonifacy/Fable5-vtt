@@ -110,10 +110,10 @@ describe('dice completion', () => {
     const finished = vi.fn(() => expect(mock.clearDice).toHaveBeenCalled());
     const result = dice.playRollAnimation(roll).then(finished);
     await vi.dynamicImportSettled();
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(5_000);
     expect(finished).not.toHaveBeenCalled();
     await vi.dynamicImportSettled();
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(5_000);
     await result;
     expect(finished).toHaveBeenCalledWith(false);
   });

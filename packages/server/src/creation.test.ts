@@ -146,6 +146,16 @@ async function patch(socket: ClientSocket, body: Record<string, unknown>): Promi
   return data(await emitAck<Draft>(socket, 'creation:patch', { patch: body }), 'creation:patch');
 }
 
+/** Throws every stat still without a die, one cup at a time, as a player does. */
+async function rollMissingStats(socket: ClientSocket): Promise<Draft> {
+  let current = data(await emitAck<Draft>(socket, 'creation:start'), 'creation:start');
+  for (const statId of CPRED_STAT_IDS) {
+    if (current.draft.statRolls[statId] !== undefined) continue;
+    current = data(await emitAck<Draft>(socket, 'creation:roll', { statId }), 'creation:roll');
+  }
+  return current;
+}
+
 beforeAll(async () => {
   execSync('npx prisma migrate deploy', {
     env: { ...process.env, DATABASE_URL: config.databaseUrl },
@@ -440,32 +450,44 @@ describe('kreator postaci', () => {
     expect(refusal(ack)).toBe('INVALID_DATA');
   });
 
-  it('rolls the spread on the server and puts the card on the chat', async () => {
+  it('rolls one stat on the server and puts its card on the chat', async () => {
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const rolled = data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+    const rolled = data(
+      await emitAck<Draft>(vex, 'creation:roll', { statId: 'int' }),
+      'creation:roll',
+    );
 
-    for (const id of CPRED_STAT_IDS) {
-      const roll = rolled.draft.statRolls[id];
-      expect(roll).toBeGreaterThanOrEqual(1);
-      expect(roll).toBeLessThanOrEqual(10);
-      expect(rolled.draft.stats[id]).toBeGreaterThan(0);
-    }
+    const face = rolled.draft.statRolls.int;
+    expect(face).toBeGreaterThanOrEqual(1);
+    expect(face).toBeLessThanOrEqual(10);
+    expect(rolled.draft.stats.int).toBeGreaterThan(0);
+    // One die per throw (zlecenie MG z 17.09) — nothing else moved.
+    expect(rolled.draft.statRolls.ref).toBeUndefined();
+    expect(rolled.draft.stats.ref).toBeUndefined();
 
-    const message = await card;
-    const roll = message.message.roll;
-    expect(roll?.notation).toBe('10k10');
-    expect(roll?.title).toContain('Rozkład Cech');
-    // The card's total is what the spread is worth, not the meaningless sum of
-    // ten row numbers.
-    const spread = CPRED_STAT_IDS.reduce((sum, id) => sum + (rolled.draft.stats[id] ?? 0), 0);
-    expect(roll?.total).toBe(spread);
-    expect(roll?.breakdown).toHaveLength(CPRED_STAT_IDS.length);
+    const roll = (await card).message.roll;
+    expect(roll?.notation).toBe('1k10');
+    expect(roll?.title).toContain('Inteligencja (INT)');
+    // The card's total is the stat, not the meaningless row number.
+    expect(roll?.total).toBe(rolled.draft.stats.int);
+    expect(roll?.breakdown).toHaveLength(1);
+  });
+
+  it('lets a player roll each stat once, and never the whole spread', async () => {
+    expect(refusal(await emitAck(vex, 'creation:roll', { statId: 'int' }))).toBe(
+      'STAT_ALREADY_ROLLED',
+    );
+    expect(refusal(await emitAck(vex, 'creation:roll'))).toBe('FORBIDDEN');
+    expect(refusal(await emitAck(vex, 'creation:roll', { statId: 'humanity' }))).toBe(
+      'BAD_REQUEST',
+    );
   });
 
   it('carries the cup gesture onto the card, so the throw animates for everyone', async () => {
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     data(
       await emitAck<Draft>(vex, 'creation:roll', {
+        statId: 'ref',
         gesture: {
           entropy: 'a1b2c3d4',
           strength: 2,
@@ -494,7 +516,7 @@ describe('kreator postaci', () => {
     const solo = creation.roles.find((role) => role.id === 'solo')!;
     roleSkills = solo.skills;
 
-    const current = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    const current = await rollMissingStats(vex);
     for (const id of CPRED_STAT_IDS) {
       const roll = current.draft.statRolls[id]!;
       const column = creation.statOrder.indexOf(id);
@@ -502,14 +524,58 @@ describe('kreator postaci', () => {
     }
   });
 
-  it('will not roll for the method that buys its stats', async () => {
+  it('lets the GM take a die off, and only the GM', async () => {
+    const before = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    expect(refusal(await emitAck(vex, 'creation:reroll', { draftId: before.id }))).toBe(
+      'FORBIDDEN',
+    );
+    const rows = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
+    const row = rows.find((entry) => entry.id === before.id);
+    expect(row?.method).toBe('edgerunner');
+    expect(row?.rolledStats).toHaveLength(CPRED_STAT_IDS.length);
+    // A Krawędziarz waits for no rank, so the tab badge does not count him.
+    expect(row?.rankApproved).toBe(true);
+
+    const told = waitFor<{ draftId: string; statIds: string[] }>(vex, 'creation:rerolled');
+    const synced = waitFor<CreationRankDraft[]>(gm, 'creation:ranks-sync');
+    expect((await emitAck(gm, 'creation:reroll', { draftId: before.id, statId: 'body' })).ok).toBe(
+      true,
+    );
+    expect(await told).toEqual({ draftId: before.id, statIds: ['body'] });
+    expect((await synced).find((entry) => entry.id === before.id)?.rolledStats).not.toContain(
+      'body',
+    );
+    const cleared = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    expect(cleared.draft.statRolls.body).toBeUndefined();
+    expect(cleared.draft.stats.body).toBeUndefined();
+    expect(cleared.draft.stats.int).toBe(before.draft.stats.int);
+    expect(
+      refusal(await emitAck(gm, 'creation:reroll', { draftId: before.id, statId: 'body' })),
+    ).toBe('NOTHING_TO_REROLL');
+
+    const again = data(
+      await emitAck<Draft>(vex, 'creation:roll', { statId: 'body' }),
+      'creation:roll',
+    );
+    expect(again.draft.stats.body).toBeGreaterThan(0);
+  });
+
+  it('will not roll for the method that buys its stats, and keeps the dice for later', async () => {
+    const rolled = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     await patch(vex, { method: 'complete' });
-    const ack = await emitAck<Draft>(vex, 'creation:roll');
+    const ack = await emitAck<Draft>(vex, 'creation:roll', { statId: 'body' });
     expect(refusal(ack)).toBe('METHOD_DOES_NOT_ROLL');
-    // Switching the method threw the rolled spread away — it was read off a
-    // template this method never looks at.
-    const back = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
-    expect(back.draft.stats.body).toBeUndefined();
+    const complete = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    expect(complete.draft.stats.body).toBeUndefined();
+    // Decyzja MG z 24.09: the dice outlive the method, or „switch and back"
+    // would be a free re-roll.
+    expect(complete.draft.statRolls).toEqual(rolled.draft.statRolls);
+    const back = await patch(vex, { method: 'edgerunner' });
+    expect(back.draft.stats).toEqual(rolled.draft.stats);
+    expect(refusal(await emitAck(vex, 'creation:roll', { statId: 'body' }))).toBe(
+      'STAT_ALREADY_ROLLED',
+    );
+    await patch(vex, { method: 'complete' });
   });
 
   it('drops skills that leave the Role list when the Role changes', async () => {
@@ -531,7 +597,7 @@ describe('kreator postaci', () => {
 
   it('finishes into a real sheet the player owns, and the draft is gone', async () => {
     await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Zgrzyt' });
-    data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+    await rollMissingStats(vex);
     await patch(vex, { skills: Object.fromEntries(roleSkills.map((id) => [id, 4])) });
 
     await allocateRemaining(vex);
@@ -600,7 +666,7 @@ describe('kreator postaci', () => {
       );
     });
 
-    it('answers every question of the path in one throw', async () => {
+    it('answers the path one table per throw; many at once only for the GM', async () => {
       const before = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       const ids = [
         'culture',
@@ -611,10 +677,33 @@ describe('kreator postaci', () => {
         'familyBackground',
         'solo.typ',
       ];
-      const rolled = data(
-        await emitAck<Draft>(vex, 'creation:lifepath-roll', { tableIds: ids }),
+      // Zlecenie MG z 17.09: a player throws one table per cup.
+      expect(refusal(await emitAck(vex, 'creation:lifepath-roll', { tableIds: ids }))).toBe(
+        'FORBIDDEN',
+      );
+      let rolled = before;
+      for (const tableId of ids) {
+        rolled = data(
+          await emitAck<Draft>(vex, 'creation:lifepath-roll', {
+            tableIds: [tableId],
+            gesture: { entropy: 'a1b2c3d4', strength: 1 },
+          }),
+          'creation:lifepath-roll',
+        );
+      }
+
+      // The GM's plain „Rzuć brakujące" for NPCs: one throw, one card.
+      data(await emitAck<Draft>(gm, 'creation:start'), 'creation:start');
+      await patch(gm, { roleId: 'solo' });
+      const card = waitFor<ChatMessageBroadcast>(vex, 'chat:message');
+      const npc = data(
+        await emitAck<Draft>(gm, 'creation:lifepath-roll', { tableIds: ids }),
         'creation:lifepath-roll',
       );
+      expect(npc.draft.lifepath.hair).not.toBe('');
+      expect((await card).message.roll?.breakdown).toHaveLength(ids.length);
+      await emitAck(gm, 'creation:discard');
+
       expect(rolled.draft.lifepath.culture).not.toBe('');
       expect(rolled.draft.lifepath.hair).not.toBe('');
       expect(rolled.draft.lifepath.familyBackground).not.toBe('');
@@ -640,10 +729,16 @@ describe('kreator postaci', () => {
     });
 
     it('rolls how many enemies there are, then a row for each of them', async () => {
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
       const counted = data(
-        await emitAck<Draft>(vex, 'creation:lifepath-count', { group: 'enemies' }),
+        await emitAck<Draft>(vex, 'creation:lifepath-count', {
+          group: 'enemies',
+          gesture: { entropy: 'a1b2c3d4', strength: 2 },
+        }),
         'creation:lifepath-count',
       );
+      // The cup's throw animates for everyone, like any other roll.
+      expect((await card).message.roll?.tossStrength).toBe(2);
       // 1k10 − 7, minimum 0 — three is the most the throw can give.
       expect(counted.draft.lifepath.enemies.length).toBeLessThanOrEqual(3);
 
@@ -655,11 +750,12 @@ describe('kreator postaci', () => {
       });
       expect(grown.draft.lifepath.enemies).toHaveLength(1);
 
+      data(
+        await emitAck<Draft>(vex, 'creation:lifepath-roll', { tableIds: ['enemyWho'], index: 0 }),
+        'creation:lifepath-roll',
+      );
       const rolled = data(
-        await emitAck<Draft>(vex, 'creation:lifepath-roll', {
-          tableIds: ['enemyWho', 'enemyCause'],
-          index: 0,
-        }),
+        await emitAck<Draft>(vex, 'creation:lifepath-roll', { tableIds: ['enemyCause'], index: 0 }),
         'creation:lifepath-roll',
       );
       expect(rolled.draft.lifepath.enemies[0]?.name).toBe('Vex');
@@ -682,7 +778,7 @@ describe('kreator postaci', () => {
         skills: Object.fromEntries(roleSkills.map((id) => [id, 2])),
         name: 'Zgrzyt',
       });
-      data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+      await rollMissingStats(vex);
 
       await allocateRemaining(vex);
       const character = data(
@@ -706,7 +802,7 @@ describe('kreator postaci', () => {
     async function readyDraft(socket: ClientSocket, name: string): Promise<void> {
       data(await emitAck<Draft>(socket, 'creation:start'), 'creation:start');
       await patch(socket, { method: 'edgerunner', roleId: 'solo', name });
-      data(await emitAck<Draft>(socket, 'creation:roll'), 'creation:roll');
+      await rollMissingStats(socket);
     }
 
     it('takes an item into the basket and back out of it', async () => {
@@ -828,7 +924,7 @@ describe('kreator postaci', () => {
 
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Na scenie' });
-      data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+      await rollMissingStats(vex);
       await patch(vex, {
         skills: Object.fromEntries(roleSkills.map((id) => [id, 2])),
         portraitUrl: '/uploads/portraits/na-scenie.png',
@@ -1257,7 +1353,7 @@ describe('kreator postaci', () => {
   });
 
   describe('naprawa 2b — lista rang MG na żywo', () => {
-    it('pushes only the players Kompletny Pakiet drafts to the GM, waiting ones first', async () => {
+    it('pushes the players drafts to the GM, only Kompletny Pakiet waiting for a rank', async () => {
       let last: CreationRankDraft[] | null = null;
       let leaked = false;
       const onGm = (rows: CreationRankDraft[]) => {
@@ -1280,9 +1376,14 @@ describe('kreator postaci', () => {
       try {
         await emitAck(vex, 'creation:discard');
         const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
-        // A Krawędziarz rolls his stats — no rank to wait for.
+        // A Krawędziarz rolls his stats — listed for „Pozwól przerzucić" (24.09),
+        // but with no rank to wait for.
         const listed = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
-        expect(listed.some((row) => row.id === fresh.id)).toBe(false);
+        expect(listed.find((row) => row.id === fresh.id)).toMatchObject({
+          method: 'edgerunner',
+          rankApproved: true,
+          rolledStats: [],
+        });
 
         await patch(vex, { method: 'complete' });
         await until((rows) =>

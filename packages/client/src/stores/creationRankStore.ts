@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import type { CreationRankDraft } from '@vtt/shared';
 
 /**
- * The GM's list of players' Kompletny Pakiet drafts and their ranks (naprawa
- * 2b). Filled by the `creation:ranks` answer when the GM's socket syncs and
+ * The GM's list of players' drafts: Kompletny Pakiet ranks (naprawa 2b) and,
+ * since 24.09, Krawędziarz dice the GM may let a player throw again. Filled by the `creation:ranks` answer when the GM's socket syncs and
  * replaced whole by every `creation:ranks-sync` push — the server sends the
  * list after anything that could change it, so nothing here merges rows.
  */

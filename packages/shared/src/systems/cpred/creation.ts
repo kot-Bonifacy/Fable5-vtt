@@ -937,9 +937,12 @@ export function creationIssues(
  *    Role template by `creation:roll` on the server; a client that could write
  *    them would be rolling its own dice. Kompletny Pakiet buys its stats, so
  *    there the patch is the only way in — and the pool is checked at the end.
- *  - **Changing the Role or the method wipes what it invalidates.** A spread
- *    rolled off the Solo template means nothing on the Netrunner one, and a
- *    skill bought off one Role's list is not on another's.
+ *  - **Changing the Role or the method wipes what it invalidates** — a skill
+ *    bought off one Role's list is not on another's — **but never the dice.**
+ *    A player rolls each stat once (decyzja MG z 24.09), so the faces in
+ *    `statRolls` outlive every Role and method change and a Krawędziarz's
+ *    stats are re-read from them off the current Role's template. Wiping them
+ *    would make „change the Role and back" a free re-roll.
  */
 export function mergeCreationDraft(
   current: CpredCreationDraft,
@@ -975,7 +978,6 @@ export function mergeCreationDraft(
     if (!isCreationMethod(method)) return null;
     if (method !== current.method) {
       next.stats = {};
-      next.statRolls = {};
       // The two methods shop with different money (500 vs 2550 ed), so a basket
       // filled under one of them is not a bill the other agreed to.
       next.purchases = {};
@@ -988,7 +990,6 @@ export function mergeCreationDraft(
     if (roleId !== null && creationRole(data, roleId) === null) return null;
     if (roleId !== current.roleId) {
       next.stats = {};
-      next.statRolls = {};
       // „Jakim rodzajem Solo jesteś?" means nothing on a Netrunner's sheet, so
       // the Role's own Lifepath answers go with the Role. The general half —
       // culture, family, enemies — is the character's and stays.
@@ -1011,7 +1012,6 @@ export function mergeCreationDraft(
     const stats = readStatPatch(patch.stats, data);
     if (stats === null) return null;
     next.stats = stats;
-    next.statRolls = {};
   }
   if ('skills' in patch) {
     const skills = readSkillPatch(patch.skills, data, registry);
@@ -1049,6 +1049,15 @@ export function mergeCreationDraft(
     // only let a basic skill slip below the floor the finish refuses anyway.
     if (patch.skillMinimaAuto !== true) return null;
     next.skillMinimaAuto = true;
+  }
+
+  // A Krawędziarz's stats are a pure function of the Role and the dice, so a
+  // Role or method change reads them again instead of losing them.
+  if (
+    next.method === 'edgerunner' &&
+    (next.method !== current.method || next.roleId !== current.roleId)
+  ) {
+    next.stats = creationRolledStats(next, data);
   }
 
   // A Role or method change may have orphaned skills; drop them rather than
@@ -1127,16 +1136,40 @@ export function creationChangeEffect(
   const names = new Map(registry.skills.map((skill) => [skill.id, skill.name]));
   const nameOf = (skillId: string) => names.get(skillId) ?? skillId;
 
-  const goneStats = CPRED_STAT_IDS.filter(
-    (id) => current.stats[id] !== undefined && next.stats[id] === undefined,
-  );
-  if (goneStats.length > 0) {
-    const rolled = goneStats.some((id) => current.statRolls[id] !== undefined);
-    lost.push(
-      `${rolled ? 'Wylosowane Cechy' : 'Rozdzielone Cechy'} (${goneStats.length}): ${goneStats
-        .map((id) => `${CPRED_STAT_LABELS[id].abbr} ${current.stats[id]}`)
-        .join(' · ')}.`,
+  const statList = (ids: readonly CpredStatId[], stats: Partial<Record<CpredStatId, number>>) =>
+    ids.map((id) => `${CPRED_STAT_LABELS[id].abbr} ${stats[id]}`).join(' · ');
+  if (current.method === 'complete') {
+    // Typed points are the only stats a change can really take away.
+    const typed = CPRED_STAT_IDS.filter(
+      (id) => current.stats[id] !== undefined && next.stats[id] !== current.stats[id],
     );
+    if (typed.length > 0 && next.method !== 'complete') {
+      lost.push(`Rozdzielone Cechy (${typed.length}): ${statList(typed, current.stats)}.`);
+    }
+  } else {
+    // The dice stay in the draft whatever happens (decyzja MG z 24.09), so a
+    // Krawędziarz loses nothing — the stats are hidden or read off another
+    // template, and the note says which.
+    const rolled = CPRED_STAT_IDS.filter((id) => current.statRolls[id] !== undefined);
+    if (rolled.length > 0 && next.method !== 'edgerunner') {
+      notes.push(
+        `Wylosowane Cechy znikną z widoku, ale rzuty zostają w szkicu — wrócą po powrocie do Krawędziarza.`,
+      );
+    } else if (rolled.length > 0) {
+      const moved = rolled.filter((id) => next.stats[id] !== current.stats[id]);
+      const hidden = moved.filter((id) => next.stats[id] === undefined);
+      if (hidden.length > 0) {
+        notes.push(
+          `Nowa Rola nie ma szablonu Cech — wylosowane (${statList(hidden, current.stats)}) wrócą z rzutami, gdy go dostanie.`,
+        );
+      } else if (moved.length > 0) {
+        notes.push(
+          `Rzuty zostają, a Cechy czyta szablon nowej Roli: ${moved
+            .map((id) => `${CPRED_STAT_LABELS[id].abbr} ${current.stats[id]} → ${next.stats[id]}`)
+            .join(' · ')}.`,
+        );
+      }
+    }
   }
 
   const lowered = Object.entries(current.skills).filter(
@@ -1360,6 +1393,48 @@ function readSkillPatch(
     skills[skillId] = value;
   }
   return skills;
+}
+
+/**
+ * A Krawędziarz's stats read out of the current Role's template from the dice
+ * already in the draft; empty without a Role or a template.
+ */
+export function creationRolledStats(
+  draft: CpredCreationDraft,
+  data: CpredCreationData,
+): Partial<Record<CpredStatId, number>> {
+  const role = creationRole(data, draft.roleId);
+  const stats: Partial<Record<CpredStatId, number>> = {};
+  if (role === null) return stats;
+  for (const id of CPRED_STAT_IDS) {
+    const roll = draft.statRolls[id];
+    if (roll === undefined) continue;
+    const value = creationTemplateStat(role, data, id, roll);
+    if (value !== null) stats[id] = value;
+  }
+  return stats;
+}
+
+/** The first stat still without a die, in the order the templates print them. */
+export function creationNextStatToRoll(draft: CpredCreationDraft): CpredStatId | null {
+  return CPRED_STAT_IDS.find((id) => draft.statRolls[id] === undefined) ?? null;
+}
+
+/**
+ * Takes the dice off the given stats (all of them without a list) — the GM's
+ * „Pozwól przerzucić" and nothing else: a player rolls each stat once.
+ */
+export function clearRolledStats(
+  draft: CpredCreationDraft,
+  statIds: readonly CpredStatId[] = CPRED_STAT_IDS,
+): CpredCreationDraft {
+  const statRolls = { ...draft.statRolls };
+  const stats = { ...draft.stats };
+  for (const id of statIds) {
+    delete statRolls[id];
+    if (draft.method === 'edgerunner') delete stats[id];
+  }
+  return { ...draft, stats, statRolls };
 }
 
 /**

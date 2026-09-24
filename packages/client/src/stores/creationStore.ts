@@ -6,7 +6,16 @@ import type {
   CreationPatchPayload,
   RollGesture,
 } from '@vtt/shared';
-import { CPRED_CREATION_STEPS, creationIssueStep } from '@vtt/shared';
+import type { CpredLifepathGroup, CpredLifepathTable, CpredStatId } from '@vtt/shared';
+import {
+  CPRED_CREATION_STEPS,
+  CPRED_STAT_LABELS,
+  LIFEPATH_GROUP_LABELS,
+  creationIssueStep,
+  creationNextStatToRoll,
+  lifepathDataOf,
+  lifepathUnanswered,
+} from '@vtt/shared';
 import {
   buyCreationItem,
   creationErrorText,
@@ -17,7 +26,8 @@ import {
   rollCreationStats,
   startCreation,
 } from '../socket.js';
-import { useRollStore } from './rollStore.js';
+import { useCharacterStore } from './characterStore.js';
+import { useRollStore, type PendingCreation } from './rollStore.js';
 
 /**
  * The character creator's window state (stage 25a).
@@ -299,9 +309,9 @@ export function enqueueCreationCall<T>(task: () => Promise<T>): Promise<T> {
   return enqueue(task);
 }
 
-/** Puts the stat spread in the cup, waiting for a shake (stage 25a). */
-export function loadCreationCup(title: string): void {
-  useRollStore.getState().loadCreationCup({ title });
+/** Puts one creator roll in the cup, waiting for a shake. */
+export function loadCreationCup(pending: PendingCreation): void {
+  useRollStore.getState().loadCreationCup(pending);
 }
 
 /** Takes it back out — window closed, method changed, `Esc` pressed. */
@@ -309,30 +319,112 @@ export function clearCreationCup(): void {
   if (useRollStore.getState().creation) useRollStore.getState().clearCup();
 }
 
+/** The cup for one stat; `chain` walks on to the next one after the throw. */
+export function creationStatCup(
+  statId: CpredStatId,
+  roleName: string,
+  chain = false,
+): PendingCreation {
+  const label = CPRED_STAT_LABELS[statId];
+  return {
+    title: `${label.name} (${label.abbr})${roleName ? ` — ${roleName}` : ''}`,
+    roll: { kind: 'stat', statId },
+    notation: '1d10',
+    ...(chain ? { chain: 'stats' as const } : {}),
+  };
+}
+
+/** The cup for one Lifepath table; `index` names the friend, enemy or love. */
+export function creationLifepathCup(
+  table: CpredLifepathTable,
+  index?: number,
+  chain = false,
+): PendingCreation {
+  return {
+    title: `Ścieżka Życia — ${table.label}`,
+    roll: { kind: 'lifepath', tableId: table.id, ...(index === undefined ? {} : { index }) },
+    notation: `1d${table.sides}`,
+    ...(chain ? { chain: 'lifepath' as const } : {}),
+  };
+}
+
+/** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
+export function creationCountCup(group: CpredLifepathGroup, sides: number): PendingCreation {
+  return {
+    title: `${LIFEPATH_GROUP_LABELS[group]} — ilu`,
+    roll: { kind: 'lifepath-count', group },
+    notation: `1d${sides}`,
+  };
+}
+
 /**
- * Rolls the spread with the cup's gesture and stores whatever came back.
+ * What „Weź kubek" loads next: the first stat without a die, or the first
+ * Lifepath table without an answer — null when there is nothing left.
+ */
+export function nextCreationCup(
+  draft: CpredCreationDraft,
+  chain: 'stats' | 'lifepath',
+): PendingCreation | null {
+  const registry = useCharacterStore.getState().registry;
+  if (chain === 'stats') {
+    if (draft.method !== 'edgerunner') return null;
+    const statId = creationNextStatToRoll(draft);
+    const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
+    return statId ? creationStatCup(statId, roleName, true) : null;
+  }
+  const table = lifepathUnanswered(draft.lifepath, lifepathDataOf(registry), draft.roleId)[0];
+  return table ? creationLifepathCup(table, undefined, true) : null;
+}
+
+function cupIsEmpty(): boolean {
+  const cup = useRollStore.getState();
+  return (
+    !cup.pending &&
+    !cup.initiative &&
+    !cup.attack &&
+    !cup.evasion &&
+    !cup.grapple &&
+    !cup.facedown &&
+    !cup.creation
+  );
+}
+
+/**
+ * Throws what the cup held, with its gesture, and stores whatever came back
+ * (zlecenie MG z 17.09: one die per throw). A cup loaded by „Weź kubek" then
+ * waits with the next stat or table — unless the window closed or the hand has
+ * picked up something else while the dice rolled.
  *
  * Lives here rather than in `DiceCup` because the draft is this store's
  * business: the cup's job ends the moment the hand lets go.
  */
-export async function rollCreationWithGesture(gesture?: RollGesture): Promise<void> {
-  await runCreationCall(() => rollCreationStats(gesture));
+export async function rollCreationFromCup(
+  pending: PendingCreation,
+  gesture: RollGesture,
+): Promise<void> {
+  const { roll } = pending;
+  const ok = await runCreationCall(() =>
+    roll.kind === 'stat'
+      ? rollCreationStats(roll.statId, gesture)
+      : roll.kind === 'lifepath'
+        ? rollCreationLifepath([roll.tableId], roll.index, gesture)
+        : rollCreationLifepathCount(roll.group, gesture),
+  );
+  if (!ok || !pending.chain) return;
+  const { open, draft } = useCreationStore.getState();
+  if (!open || !draft || !cupIsEmpty()) return;
+  const next = nextCreationCup(draft, pending.chain);
+  if (next) loadCreationCup(next);
 }
 
-/**
- * Rolls Lifepath tables on the server and stores what came back (stage 25b).
- *
- * The list is passed through whole rather than one call per table: „Rzuć całą
- * Ścieżkę" is one throw and one chat card, which is what keeps the session-zero
- * log readable.
- */
-export async function rollLifepathTables(tableIds: string[], index?: number): Promise<void> {
-  await runCreationCall(() => rollCreationLifepath(tableIds, index));
+/** The GM's plain button: every stat still missing, no cup, one card. */
+export async function rollMissingStatsPlain(): Promise<void> {
+  await runCreationCall(() => rollCreationStats());
 }
 
-/** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
-export async function rollLifepathCount(group: string): Promise<void> {
-  await runCreationCall(() => rollCreationLifepathCount(group));
+/** The GM's plain button: the given Lifepath tables in one throw, no cup. */
+export async function rollLifepathTablesPlain(tableIds: string[]): Promise<void> {
+  await runCreationCall(() => rollCreationLifepath(tableIds));
 }
 
 /**
@@ -350,25 +442,25 @@ async function runCreationCall(
     error?: string;
     data?: CreationDraftView<CpredCreationDraft>;
   }>,
-): Promise<void> {
+): Promise<boolean> {
   const store = useCreationStore.getState();
   if (store.pendingPatch) {
     store.setError('Najpierw ponów zapis oczekujących zmian.');
-    return;
+    return false;
   }
   store.setBusy(true);
   store.setError(null);
-  await enqueue(async () => {
+  return enqueue(async () => {
     if (useCreationStore.getState().pendingPatch) {
       store.setBusy(false);
-      return;
+      return false;
     }
     store.setBusy(true);
     const ack = await call();
     if (!ack.ok || !ack.data) {
       store.setBusy(false);
       store.setError(creationErrorText(ack.ok ? undefined : ack.error));
-      return;
+      return false;
     }
     useCreationStore.setState({
       draft: ack.data.draft,
@@ -377,5 +469,6 @@ async function runCreationCall(
       rankApproved: ack.data.rankApproved,
     });
     store.setBusy(false);
+    return true;
   });
 }

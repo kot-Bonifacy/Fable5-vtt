@@ -24,7 +24,7 @@ import {
 import { openCheckCallFor, useChatStore } from '../stores/chatStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
-import { rollCreationWithGesture } from '../stores/creationStore.js';
+import { rollCreationFromCup } from '../stores/creationStore.js';
 import {
   useRollStore,
   type PendingAttack,
@@ -467,12 +467,13 @@ export function DiceCup() {
           }
         });
       } else if (current.kind === 'creation') {
-        lastFunNotation = '10k10';
+        const { pending: loaded } = current;
+        lastFunNotation = loaded.notation;
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
-          // The creator holds the draft, so it takes the answer; the cup's job
-          // ends with the gesture (stage 25a).
-          void rollCreationWithGesture({ entropy, strength, toss });
+          // The creator holds the draft, so it takes the answer — and loads
+          // the next stat or table when the throw came from „Weź kubek".
+          void rollCreationFromCup(loaded, { entropy, strength, toss });
         });
       } else if (current.kind === 'roll' || current.kind === 'randtable') {
         if (current.kind === 'roll') lastFunNotation = current.notation;
@@ -570,7 +571,7 @@ export function DiceCup() {
     mode.kind === 'call'
       ? `Wezwanie od ${mode.entry.calledByName}: ${callLabel(mode.entry)} — kliknij, żeby wziąć kubek`
       : mode.kind === 'creation'
-        ? `Potrząśnij i rzuć Cechy: ${mode.pending.title} · Esc odkłada kubek`
+        ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada kubek`
         : mode.kind === 'attack'
           ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
           : mode.kind === 'evasion'

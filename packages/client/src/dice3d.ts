@@ -26,8 +26,13 @@ const FADE_OUT_DELAY_MS = 3200;
  * extra die lands on it, short enough that nobody reaches for the mouse.
  */
 const EXTRA_DIE_DELAY_MS = 550;
-/** A failed renderer must be stopped before any result is released. */
-const MAX_ROLL_MS = 30_000;
+/**
+ * A failed or hidden renderer must be stopped before any result is released.
+ * 10 s (decyzja MG z 24.09, było 30 s): a real throw settles well inside it,
+ * and a tab in the background — where the dice never land — held every later
+ * result, the creator's answers included, for half a minute.
+ */
+const MAX_ROLL_MS = 10_000;
 
 /**
  * Builds the predetermined-outcome notation for a server roll: dice groups

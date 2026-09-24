@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 (czwarta) — dzienny papier w tonie tapety logowania
+
+**Zlecenie MG:** dzień „zbyt jednolity (kremowy) i bardziej żółty niż okno logowania”, ma
+wyglądać jak stary papier z tapety. Trzy próbki kafla obejrzane na żywo. Rozstrzygnięcia MG:
+**tylko jaśniejsza zmienność, bez plamek kilkumilimetrowych** („wytarty, pognieciony, ale nie
+brudny”, ciemniejsze chmury plakatu odrzucone), **karta postaci i kreator na tym samym
+papierze**, **wpisy czatu jako jaśniejsze wklejki**, **zagięcia/rysy i przypalone brzegi**
+(bez zmian w chipach filtrów czatu i w tle za panelami).
+
+**Wdrożone:** paleta dnia w `theme.css` w odcieniu plakatu (~35° zamiast ~39°): `--cp-back`
+`#dfc8a6`, `--paper-main` `#e1caa8`, `--cp-paper` `#f4e2c8` (i `PAPER_DAY`, pęknięcia
+przebudowane), linie, wkłady, `--cp-ink-dim` `#574d44`. Nowa maska dnia
+`art/sheet/paper-wear-day.jpg` (`day_mask` w `sheet-paper.py`: szersze wyblaknięcia, rysy,
+jasna strona pognieceń z ambientCG „Paper 003”, CC0). `chrome-paper.py` bierze maskę każdej
+skóry z `--cp-wear-mask`. Nowe tokeny `--paper-edge` (przypalony brzeg, noc `none`),
+`--paper-card` (wklejka czatu) i `--cp-wear-print` (siła wytarć nad kartą, dzień 0,45). Noc bez
+zmian bajt w bajt. Opis w `docs/assety-chrom.md` (sekcja 24.09) i tabeli źródeł karty.
+
+**Weryfikacja:** 281 testów klienta, Prettier; obejrzane w Chrome jako gracz (czat, pasek
+postaci, karta, ustawienia). **Panel MG i okna MG nieobejrzane** — do oględzin ręką MG.
+
 ### Sesja 24.09 (trzecia) — porządki w ustawieniach dźwięku
 
 **Zlecenie MG:** ograniczyć ustawienia i opisy efektów dźwiękowych, usunąć rządek próbek,

@@ -6,7 +6,10 @@ import {
   createDefaultCreationDraft,
   creationAvailableSkills,
   creationBudget,
+  clearRolledStats,
   creationChangeEffect,
+  creationNextStatToRoll,
+  creationRolledStats,
   creationIssues,
   creationPreview,
   creationPurchases,
@@ -849,7 +852,7 @@ describe('naprawa 2a — gdzie naprawić brak', () => {
 describe('naprawa 2b — co zabiera zmiana Roli albo metody', () => {
   const answer = { id: 'soloType', question: 'Jakim Solo jesteś?', answer: 'Ochroniarz' };
 
-  it('names the rolled spread, the skills off the new list and the Role answers', () => {
+  it('keeps the dice, names the skills off the new list and the Role answers', () => {
     const reg = registry();
     const rolls = Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6]));
     const solo = finished({
@@ -858,13 +861,62 @@ describe('naprawa 2b — co zabiera zmiana Roli albo metody', () => {
       lifepath: { ...finished().lifepath, roleAnswers: [answer] },
     });
     const effect = creationChangeEffect(solo, { roleId: 'netrunner' }, data(reg), reg, lookup);
+    // The dice outlive the Role (decyzja MG z 24.09) — nothing to lose there.
     expect(effect.lost).toEqual([
-      'Wylosowane Cechy (10): INT 6 · REF 6 · ZW 6 · TECH 6 · CHA 6 · SW 6 · SZ 6 · RUCH 6 · BC 6 · EMP 6.',
       'Umiejętności (2): Broń krótka 4 · Ogień ciągły 6.',
       'Odpowiedzi Ścieżki Życia Roli (1): Ochroniarz.',
     ]);
     // A Role change keeps the basket — only the method decides the money.
-    expect(effect.notes).toEqual(['Punkty umiejętności: pozostało 0 → 16.']);
+    expect(effect.notes).toEqual([
+      'Rzuty zostają, a Cechy czyta szablon nowej Roli: REF 6 → 8.',
+      'Punkty umiejętności: pozostało 0 → 16.',
+    ]);
+  });
+
+  it('keeps the dice through a method change and back, and reads them again', () => {
+    const reg = registry();
+    const rolls = Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6]));
+    const rolled = {
+      ...finished(),
+      statRolls: rolls,
+      stats: creationRolledStats({ ...finished(), statRolls: rolls }, data(reg)),
+    };
+    const toComplete = creationChangeEffect(rolled, { method: 'complete' }, data(reg), reg);
+    expect(toComplete.lost.some((line) => line.includes('Cechy'))).toBe(false);
+    expect(toComplete.notes).toContain(
+      'Wylosowane Cechy znikną z widoku, ale rzuty zostają w szkicu — wrócą po powrocie do Krawędziarza.',
+    );
+    const complete = mergeCreationDraft(rolled, { method: 'complete' }, data(reg), reg)!;
+    expect(complete.stats).toEqual({});
+    expect(complete.statRolls).toEqual(rolls);
+    const typed = mergeCreationDraft(
+      complete,
+      { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 5])) },
+      data(reg),
+      reg,
+    )!;
+    expect(typed.statRolls).toEqual(rolls);
+    const back = creationChangeEffect(typed, { method: 'edgerunner' }, data(reg), reg);
+    expect(back.lost[0]).toMatch(/^Rozdzielone Cechy \(10\): INT 5/);
+    const edgerunner = mergeCreationDraft(typed, { method: 'edgerunner' }, data(reg), reg)!;
+    expect(edgerunner.stats).toEqual(rolled.stats);
+  });
+
+  it('lets the GM take the dice off one stat or all of them', () => {
+    const reg = registry();
+    const rolls = Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6]));
+    const base = { ...finished(), statRolls: rolls };
+    const rolled = { ...base, stats: creationRolledStats(base, data(reg)) };
+    expect(creationNextStatToRoll(rolled)).toBeNull();
+    const one = clearRolledStats(rolled, ['ref']);
+    expect(one.statRolls.ref).toBeUndefined();
+    expect(one.stats.ref).toBeUndefined();
+    expect(one.stats.int).toBe(rolled.stats.int);
+    expect(creationNextStatToRoll(one)).toBe('ref');
+    const all = clearRolledStats(rolled);
+    expect(all.statRolls).toEqual({});
+    expect(all.stats).toEqual({});
+    expect(creationNextStatToRoll(all)).toBe(CPRED_STAT_IDS[0]);
   });
 
   it('empties a Krawędziarz without a Role and prices the basket it drops', () => {

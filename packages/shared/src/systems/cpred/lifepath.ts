@@ -31,7 +31,7 @@ export const LIFEPATH_LINE_MAX_LENGTH = 300;
 export const LIFEPATH_GROUP_MAX = 8;
 /** Role questions the sheet will hold; the fattest Role Lifepath has seven. */
 export const LIFEPATH_ROLE_ANSWERS_MAX = 24;
-/** Tables one throw may cover — „Rzuć całą Ścieżkę" needs about twenty. */
+/** Tables one throw may cover — only the GM's plain „Rzuć brakujące" sends more than one. */
 export const LIFEPATH_ROLL_TABLES_MAX = 24;
 
 // ─────────────────────────────── dane wejściowe ───────────────────────────────
@@ -718,16 +718,29 @@ export function lifepathMissing(
   data: CpredLifepathData,
   roleId: string | null,
 ): number {
-  let missing = 0;
+  return lifepathUnanswered(lifepath, data, roleId).length;
+}
+
+/**
+ * The tables still without an answer, in the order the step prints them —
+ * „Kim jesteś" first, then the Role's own. The dice cup walks this list one
+ * table at a time (zlecenie MG z 17.09): after each throw it loads the next.
+ */
+export function lifepathUnanswered(
+  lifepath: CpredLifepath,
+  data: CpredLifepathData,
+  roleId: string | null,
+): CpredLifepathTable[] {
+  const open: CpredLifepathTable[] = [];
   for (const table of data.general) {
     if (isLifepathFieldTable(table.id) && lifepath[LIFEPATH_FIELD_TABLES[table.id]] === '') {
-      missing += 1;
+      open.push(table);
     }
   }
   for (const table of lifepathRoleTables(data, roleId)) {
     if (!lifepath.roleAnswers.some((answer) => answer.id === table.id && answer.answer !== '')) {
-      missing += 1;
+      open.push(table);
     }
   }
-  return missing;
+  return open;
 }

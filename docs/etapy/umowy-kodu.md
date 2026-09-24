@@ -1873,6 +1873,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Rzut kreatora to jedna kość na pozycję, przez kubek (24.09)** — `PendingCreation.roll` mówi, co kubek rzuca (Cecha, tabela Ścieżki, „ilu”), `chain` każe po rzucie wziąć następną pozycję (`nextCreationCup`). Gracz rzuca Cechę **raz** (`STAT_ALREADY_ROLLED`), przerzut daje tylko MG (`creation:reroll`); **`statRolls` przeżywają zmianę Roli i metody**, a Cechy Krawędziarza liczy z nich `creationRolledStats`. Zbiorcze rzuty (bez `statId`, wiele tabel) są wyłącznie skrótem MG.
 - **Szkic widoczny poza kreatorem idzie z `creation:peek` (naprawa 3d)** — nagłówek własnego szkicu (ksywa, Rola, metoda, krok), pytany po każdym `state:sync`; `creationStore.peek` ustępuje `draft`, gdy okno go wczyta, a zakończenie i „Wyrzuć szkic” czyszczą oba. Etykietę składa `creationResumeLabel` (`CharacterPanel.tsx`). Kreator po „Przejdź”/„Pokaż kartę” z ekranu końcowego **schodzi pod karty** (`behind` → z-index 290) zamiast się zamykać.
 - **Co zostaje po kreatorze, mówi `cpredRoleChores` (naprawa 3c)** — liczone **z karty**, nie z zapisanego stanu: nowa decyzja Roli dokłada gałąź tam i `data-sheet-panel` w karcie, a nie checkbox w bazie. Gotowość do gry to osobna kolumna `Character.playReady` i osobne zdarzenie `character:play-ready` (tylko MG), które **niczego nie blokuje**.
 - **Podsumowanie kreatora czyta `creationOutcome` (naprawa 3a)** — kartę, którą zapisze `creation:finish`: wiersze zakupów, resztę, Poziom życia (`creationLifestyle`). Nowa rzecz, którą zakończenie dopisuje na kartę, wchodzi do `creationToCharacterData` albo `creationOutcome`, a test serwera „writes exactly the sheet the summary computed” pilnuje zgodności.
@@ -1915,6 +1916,27 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Rzut kreatora: jedna kość na pozycję, przez kubek (24.09, zlecenie MG z 17.09).**
+Do 24.09 `creation:roll` rzucał komplet 10k10 jedną kartą, a Ścieżka Życia miała „🎲 Rzuć całą
+Ścieżkę” i kostki przy wierszach bez kubka. Teraz każda pozycja to osobny rzut z gestem kubka:
+`creation:roll` z `statId`, `creation:lifepath-roll` z **jedną** tabelą, `creation:lifepath-count`
+— wszystkie trzy przyjmują `gesture`. Slot kubka `PendingCreation` niesie opis rzutu
+(`CreationCupRoll`) i notację; rzut wykonuje `rollCreationFromCup` (`creationStore.ts`), nie
+`DiceCup`. „Weź kubek” w nagłówku kroku ładuje kubek z `chain`, więc po odpowiedzi serwera kubek
+sam czeka z następną Cechą albo tabelą bez odpowiedzi (`nextCreationCup`, `lifepathUnanswered`) —
+chyba że okno zamknięto albo ręka wzięła coś innego. Kubek przy wierszu rzuca tylko ten wiersz.
+**Decyzje MG z 24.09:** gracz rzuca każdą Cechę **raz** — serwer odmawia `STAT_ALREADY_ROLLED`,
+a przerzut (jednej Cechy albo wszystkich) daje wyłącznie MG zdarzeniem `creation:reroll` z panelu
+„Szkice postaci graczy” (`CreationRankPanel`; lista od 24.09 obejmuje też Krawędziarzy, z
+`method` i `rolledStats`, a `rankApproved` Krawędziarza jest zawsze `true`, żeby nie liczył się do
+plakietki). Właściciel dostaje `creation:rerolled` i zdejmuje te Cechy u siebie. Żeby przerzutu
+nie dało się wymusić zmianą Roli tam i z powrotem, **`statRolls` przeżywają zmianę Roli i metody**
+(`mergeCreationDraft`), a Cechy Krawędziarza są czystą funkcją Roli i rzutów
+(`creationRolledStats`); okno strat (`creationChangeEffect`) mówi o tym w `notes`, nie w `lost`.
+MG zachował skróty bez kubka: „🎲 Rzuć brakujące” przy Cechach (`creation:roll` bez `statId`)
+i przy Ścieżce (wiele tabel naraz) — gracz dostaje na nie `FORBIDDEN`. Tabele Ścieżki wolno
+przerzucać każdemu, bo podręcznik i tak pozwala wynik zmienić ręcznie.
 
 **Szkic widoczny poza kreatorem i kreator ustępujący karcie (naprawa 3d, 18.09).** Po F5 zakładka
 „Postacie” pokazywała gołe „Kreator postaci…”, bo klient dowiadywał się o szkicu dopiero z odpowiedzi

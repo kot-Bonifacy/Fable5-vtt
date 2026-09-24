@@ -362,16 +362,34 @@ export interface CreationPatchPayload {
 }
 
 /**
- * Client → server `creation:roll` — the whole stat spread, one d10 per stat.
+ * Client → server `creation:roll` — one d10 for one stat (zlecenie MG z 17.09).
  *
  * The gesture is the point rather than a decoration: the shake's entropy is
  * mixed into the server's RNG, so the hand that threw the cup genuinely picks
- * which of the equally likely spreads comes out. A player rolls their character
- * up the same way they roll everything else at this table; the GM has a plain
- * button as well, because a GM builds five NPCs in an evening.
+ * the face. A player rolls each stat once, through the cup, and cannot throw a
+ * stat that already has a die — only the GM's „Pozwól przerzucić" takes it
+ * off. Without `statId` the GM's plain button rolls every stat still missing
+ * in one card, because a GM builds five NPCs in an evening; a player sending
+ * that is refused.
  */
 export interface CreationRollPayload {
+  statId?: string;
   gesture?: RollGesture;
+}
+
+/**
+ * Client → server `creation:reroll` (GM only) — takes the dice off one stat,
+ * or all of them, in any draft of the campaign, so its owner can throw again.
+ */
+export interface CreationRerollPayload {
+  draftId: string;
+  statId?: string;
+}
+
+/** Server → the draft's owner `creation:rerolled` — which stats lost their dice. */
+export interface CreationRerolledPush {
+  draftId: string;
+  statIds: string[];
 }
 
 /**
@@ -409,6 +427,13 @@ export interface CreationRankDraft {
   id: string;
   userName: string;
   characterName: string;
+  /**
+   * Since 24.09 the list holds Krawędziarz drafts as well: the GM is the only
+   * one who can let a player roll a stat again.
+   */
+  method: 'complete' | 'edgerunner';
+  /** Stats of a Krawędziarz draft that already have their die. */
+  rolledStats: string[];
   /** The GM's pick; `null` until one is made (or when it no longer exists). */
   statRankId: string | null;
   /** False while the player waits — what the tab badge counts. */
@@ -436,17 +461,16 @@ export interface CreationDraftPeek {
 
 /**
  * Client → server `creation:lifepath-roll` (stage 25b) — one throw covering one
- * or many Lifepath tables.
+ * Lifepath table, from the dice cup (zlecenie MG z 17.09).
  *
- * Many, because „Rzuć całą Ścieżkę" is how a table actually uses this chapter:
- * fourteen separate cards on the chat would bury the session zero it is meant
- * to document, and one throw of fourteen dice is the same fourteen dice.
- * `index` picks which friend, enemy or tragic love the row is for and is
- * ignored by the tables that fill a single field.
+ * Only the GM may list more than one table: that is the plain „Rzuć brakujące"
+ * button for NPCs. `index` picks which friend, enemy or tragic love the row is
+ * for and is ignored by the tables that fill a single field.
  */
 export interface CreationLifepathRollPayload {
   tableIds: string[];
   index?: number;
+  gesture?: RollGesture;
 }
 
 /**
@@ -455,6 +479,7 @@ export interface CreationLifepathRollPayload {
  */
 export interface CreationLifepathCountPayload {
   group: string;
+  gesture?: RollGesture;
 }
 
 /**

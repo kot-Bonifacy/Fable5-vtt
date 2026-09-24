@@ -78,7 +78,7 @@ import {
   isLifepathFieldTable,
   lifepathBotDraft,
   lifepathDataOf,
-  lifepathMissing,
+  lifepathUnanswered,
   lifepathRoleTables,
   lifepathRollLabel,
   resolveWeapon,
@@ -101,13 +101,16 @@ import {
   buyCreationEntry,
   clearCreationCup,
   enqueueCreationCall,
+  creationCountCup,
+  creationLifepathCup,
+  creationStatCup,
   loadCreationCup,
-  rollCreationWithGesture,
-  rollLifepathCount,
-  rollLifepathTables,
+  nextCreationCup,
+  rollLifepathTablesPlain,
+  rollMissingStatsPlain,
   useCreationStore,
 } from '../stores/creationStore.js';
-import { useRollStore } from '../stores/rollStore.js';
+import { useRollStore, type PendingCreation } from '../stores/rollStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
@@ -726,8 +729,9 @@ function RoleStep({
         ))}
         {/* Naprawa 2b: the window lists the losses before the change is made. */}
         <p className="creator-hint">
-          Zmiana metody albo Roli może skasować Cechy, umiejętności, koszyk i odpowiedzi Ścieżki
-          Życia Roli — kreator najpierw pokaże, co dokładnie przepadnie.
+          Zmiana metody albo Roli może skasować wpisane Cechy, umiejętności, koszyk i odpowiedzi
+          Ścieżki Życia Roli — kreator najpierw pokaże, co dokładnie przepadnie. Wylosowane rzuty
+          Cech zostają zawsze.
         </p>
       </fieldset>
 
@@ -775,15 +779,16 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
-  const inCup = useRollStore((s) => s.creation !== null);
+  const cup = useRollStore((s) => s.creation);
+  const inCup = cup !== null;
   const data = creationDataOf(registry);
   const role = creationRole(data, draft.roleId);
-  const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
 
   const preview = creationPreview(creationStats(draft, data));
   const pool = creationStatPool(data, draft);
   const spent = creationStatPointsSpent(draft);
-  const unset = CPRED_STAT_IDS.filter((id) => draft.stats[id] === undefined).length;
+  const unrolled = CPRED_STAT_IDS.filter((id) => draft.statRolls[id] === undefined).length;
+  const next = nextCreationCup(draft, 'stats');
   // Naprawa 2a: the pool is the GM's call, so a player types nothing until it
   // is made — the server refuses the write the same way.
   const locked = draft.method === 'complete' && !isGm && !rankApproved;
@@ -808,40 +813,45 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
       <div className="creator-stats-head" data-creation-field="stats">
         {draft.method === 'edgerunner' ? (
           <>
-            {/* The spread goes through the cup, like every other roll at this
-                table: shaking it is what a player came here for, and the shake
-                really seeds the server's dice. The GM keeps a plain button as
-                well — five NPCs in an evening is not a ceremony. */}
+            {/* One die per stat, through the cup (zlecenie MG z 17.09): shaking
+                it is what a player came here for, and the shake really seeds
+                the server's dice. „Weź kubek" walks the stats in order and
+                reloads after each throw. The GM keeps a plain button for the
+                stats still missing — five NPCs in an evening is not a ceremony. */}
             <button
               type="button"
               className={`small-button ${inCup ? '' : 'small-button--primary'}`}
-              disabled={busy}
-              onClick={() =>
-                inCup
-                  ? clearCreationCup()
-                  : loadCreationCup(`Rozkład Cech${roleName ? ` — ${roleName}` : ''}`)
-              }
+              disabled={busy || (!inCup && next === null)}
+              onClick={() => (inCup ? clearCreationCup() : next && loadCreationCup(next))}
             >
-              {inCup ? '↩ Odłóż kubek' : '🥤 Weź kubek i rzuć Cechy'}
+              {inCup ? '↩ Odłóż kubek' : '🥤 Weź kubek'}
             </button>
-            {isGm && (
+            {isGm && unrolled > 0 && (
               <button
                 type="button"
                 className="small-button"
                 disabled={busy}
-                onClick={() => void rollCreationWithGesture()}
-                title="Skrót dla MG: rzuca bez potrząsania kubkiem"
+                onClick={() => void rollMissingStatsPlain()}
+                title="Skrót dla MG: rzuca brakujące Cechy naraz, bez kubka"
               >
-                🎲 Rzuć od razu
+                🎲 Rzuć brakujące
               </button>
             )}
             <span className="creator-hint">
               {inCup
-                ? 'Kubek czeka w rogu ekranu — złap go, potrząśnij i puść. Esc odkłada.'
-                : 'Rzuca serwer i zostawia kartę na czacie. Można rzucać ponownie — liczy się ostatni rzut.'}
+                ? cup.chain
+                  ? 'Kubek czeka w rogu ekranu — złap go, potrząśnij i puść. Po rzucie weźmie następną Cechę. Esc odkłada.'
+                  : 'Kubek czeka w rogu ekranu — złap go, potrząśnij i puść. Esc odkłada.'
+                : isGm
+                  ? 'Jedna kość na Cechę; rzuca serwer i zostawia kartę na czacie. Kubek przy wylosowanej Cesze ją przerzuca.'
+                  : 'Jedna kość na Cechę; rzuca serwer i zostawia kartę na czacie. Każdą Cechę rzuca się raz — przerzut może pozwolić tylko MG.'}
             </span>
-            {unset > 0 && !inCup && (
-              <span className="creator-pool creator-pool--open">Cechy jeszcze nie wylosowane</span>
+            {unrolled > 0 && !inCup && (
+              <span className="creator-pool creator-pool--open">
+                {unrolled === CPRED_STAT_IDS.length
+                  ? 'Cechy jeszcze nie wylosowane'
+                  : `Do wylosowania: ${unrolled}`}
+              </span>
             )}
           </>
         ) : (
@@ -985,6 +995,12 @@ function StatRow({
   const label = CPRED_STAT_LABELS[statId];
   const value = draft.stats[statId];
   const roll = draft.statRolls[statId];
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const busy = useCreationStore((s) => s.busy);
+  const inThisCup = useRollStore(
+    (s) => s.creation?.roll.kind === 'stat' && s.creation.roll.statId === statId,
+  );
+  const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
   const field = useDraftFieldText(
     value === undefined ? '' : String(value),
     draft,
@@ -1033,7 +1049,38 @@ function StatRow({
           <strong>{value ?? '—'}</strong>
         )}
       </td>
-      <td className="creator-stat-roll">{roll !== undefined ? `rzut ${roll}` : ''}</td>
+      <td className="creator-stat-roll">
+        {/* The dice stay in the draft under Kompletny Pakiet (decyzja MG
+            z 24.09), but they mean nothing there. */}
+        {draft.method === 'edgerunner' && roll !== undefined && `rzut ${roll}`}
+        {draft.method === 'edgerunner' && (roll === undefined || isGm) && (
+          <button
+            type="button"
+            className={`small-button creator-stat-cup${inThisCup ? ' small-button--primary' : ''}`}
+            disabled={busy || locked}
+            aria-pressed={inThisCup}
+            title={
+              inThisCup
+                ? 'Odłóż kubek'
+                : roll === undefined
+                  ? `Weź kubek: ${label.name}`
+                  : `Przerzuć ${label.name} (tylko MG)`
+            }
+            aria-label={
+              inThisCup
+                ? 'Odłóż kubek'
+                : roll === undefined
+                  ? `Weź kubek: ${label.name}`
+                  : `Przerzuć ${label.name}`
+            }
+            onClick={() =>
+              inThisCup ? clearCreationCup() : loadCreationCup(creationStatCup(statId, roleName))
+            }
+          >
+            🥤
+          </button>
+        )}
+      </td>
     </tr>
   );
 }
@@ -1513,6 +1560,10 @@ function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
   const data = useMemo(() => lifepathDataOf(registry), [registry]);
   const roleTables = useMemo(() => lifepathRoleTables(data, draft.roleId), [data, draft.roleId]);
   const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const busy = useCreationStore((s) => s.busy);
+  const cup = useRollStore((s) => s.creation);
+  const inCup = cup !== null;
 
   if (data.general.length === 0) {
     return (
@@ -1524,27 +1575,42 @@ function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
   }
 
   const fieldTables = data.general.filter((table) => isLifepathFieldTable(table.id));
-  const missing = lifepathMissing(draft.lifepath, data, draft.roleId);
-  // One throw for the whole path: fourteen questions, fourteen dice, one card.
-  const everything = [...fieldTables, ...roleTables].map((table) => table.id);
+  const unanswered = lifepathUnanswered(draft.lifepath, data, draft.roleId);
+  const missing = unanswered.length;
+  const next = nextCreationCup(draft, 'lifepath');
 
   return (
     <div className="creator-step">
       <div className="creator-stats-head">
+        {/* One table per throw, through the cup (zlecenie MG z 17.09).
+            „Weź kubek" walks the unanswered tables in the order below; the GM
+            keeps a plain button for NPCs. */}
         <button
           type="button"
-          className="small-button small-button--primary"
-          disabled={everything.length === 0}
-          onClick={() => void rollLifepathTables(everything)}
+          className={`small-button ${inCup ? '' : 'small-button--primary'}`}
+          disabled={busy || (!inCup && next === null)}
+          onClick={() => (inCup ? clearCreationCup() : next && loadCreationCup(next))}
         >
-          🎲 Rzuć całą Ścieżkę
+          {inCup ? '↩ Odłóż kubek' : '🥤 Weź kubek'}
         </button>
+        {isGm && missing > 0 && (
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            title="Skrót dla MG: rzuca wszystkie tabele bez odpowiedzi naraz, bez kubka"
+            onClick={() => void rollLifepathTablesPlain(unanswered.map((table) => table.id))}
+          >
+            🎲 Rzuć brakujące
+          </button>
+        )}
         <span className={`creator-pool ${missing > 0 ? '' : 'creator-pool--done'}`}>
           {missing === 0 ? 'Ścieżka wypełniona' : `${missing} bez odpowiedzi`}
         </span>
         <span className="creator-hint">
-          Rzuca serwer i zostawia kartę na czacie. Każdy wynik można zmienić ręcznie — tak mówi
-          podręcznik.
+          {inCup && cup.chain
+            ? 'Kubek czeka w rogu ekranu — po rzucie weźmie następną tabelę bez odpowiedzi. Esc odkłada.'
+            : 'Jedna kość na tabelę; rzuca serwer i zostawia kartę na czacie. Każdy wynik można zmienić ręcznie — tak mówi podręcznik.'}
         </span>
       </div>
 
@@ -1642,6 +1708,39 @@ function LifepathTextInput({
   );
 }
 
+/**
+ * A row's own cup (zlecenie MG z 17.09): loads this one roll and nothing after
+ * it; pressed again while it waits, it puts the cup down.
+ */
+function CreationCupButton({
+  cup,
+  label,
+  children = '🥤',
+}: {
+  cup: PendingCreation;
+  label: string;
+  children?: string;
+}) {
+  const busy = useCreationStore((s) => s.busy);
+  const key = JSON.stringify(cup.roll);
+  const loaded = useRollStore(
+    (s) => s.creation !== null && JSON.stringify(s.creation.roll) === key,
+  );
+  return (
+    <button
+      type="button"
+      className={`small-button${loaded ? ' small-button--primary' : ''}`}
+      disabled={busy}
+      aria-pressed={loaded}
+      title={loaded ? 'Odłóż kubek' : label}
+      aria-label={loaded ? 'Odłóż kubek' : label}
+      onClick={() => (loaded ? clearCreationCup() : loadCreationCup(cup))}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** The value a table currently holds on the draft, whatever kind of table it is. */
 function lifepathValue(lifepath: CpredLifepath, table: CpredLifepathTable): string {
   if (isLifepathFieldTable(table.id)) return lifepath[LIFEPATH_FIELD_TABLES[table.id]];
@@ -1725,15 +1824,10 @@ function LifepathFieldRow({
         >
           ✎
         </button>
-        <button
-          type="button"
-          className="small-button"
-          title={`Rzuć 1k${table.sides}`}
-          aria-label={`Rzuć 1k${table.sides}`}
-          onClick={() => void rollLifepathTables([table.id])}
-        >
-          🎲
-        </button>
+        <CreationCupButton
+          cup={creationLifepathCup(table)}
+          label={`Weź kubek: ${table.label} (1k${table.sides})`}
+        />
       </div>
       {/* „Tło rodzinne" prints a paragraph beside the answer; it is the half of
           that table a player actually reads back at the session. */}
@@ -1881,6 +1975,7 @@ function LifepathPeople({
     tables.some((table) => table.id === column.tableId),
   );
   const rows = draft.lifepath[group];
+  const groupRoll = lifepathDataOf(useCharacterStore((s) => s.registry)).groupRoll;
 
   function add() {
     write((current) => {
@@ -1928,14 +2023,12 @@ function LifepathPeople({
       <h4>
         {LIFEPATH_GROUP_LABELS[group]}
         <span className="creator-lifepath-count">{rows.length}</span>
-        <button
-          type="button"
-          className="small-button"
-          title="Rzuć 1k10 − 7 (minimum 0)"
-          onClick={() => void rollLifepathCount(group)}
+        <CreationCupButton
+          cup={creationCountCup(group, groupRoll.sides)}
+          label={`Weź kubek: 1k${groupRoll.sides} − ${Math.abs(groupRoll.modifier)} (minimum 0)`}
         >
-          🎲 ilu
-        </button>
+          🥤 ilu
+        </CreationCupButton>
         <button
           type="button"
           className="small-button"
@@ -1974,15 +2067,10 @@ function LifepathPeople({
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  className="small-button"
-                  title={`Rzuć: ${table.label}`}
-                  aria-label={`Rzuć: ${table.label}`}
-                  onClick={() => void rollLifepathTables([table.id], index)}
-                >
-                  🎲
-                </button>
+                <CreationCupButton
+                  cup={creationLifepathCup(table, index)}
+                  label={`Weź kubek: ${table.label} (1k${table.sides})`}
+                />
               </span>
             );
           })}

@@ -16,6 +16,8 @@ import type {
   CreationLifepathCountPayload,
   CreationLifepathRollPayload,
   CreationPatchPayload,
+  CreationRerolledPush,
+  CreationRerollPayload,
   CreationRollPayload,
   PurchasedRow,
   RollBreakdownEntry,
@@ -32,6 +34,7 @@ import {
   ROLE_GM,
   applyLifepathEntry,
   applyRolledSpread,
+  clearRolledStats,
   createDefaultCreationDraft,
   creationBudget,
   creationDataOf,
@@ -42,6 +45,7 @@ import {
   creationSpentEddies,
   creationToCharacterData,
   entryPrice,
+  isCpredStatId,
   isLifepathGroup,
   lifepathDataOf,
   lifepathEntryFor,
@@ -285,10 +289,14 @@ export const creationPatchEvent = defineCreationEvent<
 });
 
 /**
- * Rolls the whole spread: one 1d10 per stat, each read out of the Role's
- * template column (s. 77). One card rather than ten — the breakdown names
- * every stat and the total is the spread's point value, which is the number a
- * table actually compares (62 is what Kompletny Pakiet gets to spend).
+ * Rolls one stat — or, for the GM's plain button, every stat still missing —
+ * off the Role's template column (s. 77).
+ *
+ * One stat per throw is the GM's order (17.09): „gracze powinni rzucać małą
+ * ilością kości na raz", through the cup, a card per die. A player rolls each
+ * stat **once** (decyzja MG z 24.09); a face already in the draft refuses the
+ * throw with `STAT_ALREADY_ROLLED` until the GM's `creation:reroll` takes it
+ * off. The GM's own drafts may throw a stat again — that is the NPC workbench.
  */
 export const creationRollEvent = defineCreationEvent<
   CreationRollPayload,
@@ -298,6 +306,10 @@ export const creationRollEvent = defineCreationEvent<
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const data = creationDataOf(deps.ctx.cpred);
+    const isGm = user.role === ROLE_GM;
+    const statId = payload?.statId;
+    if (statId !== undefined && !isCpredStatId(statId)) throw new RealtimeError('BAD_REQUEST');
+    if (statId === undefined && !isGm) throw new RealtimeError('FORBIDDEN');
     const existing = await loadDraft(deps, campaignId, user.id);
     if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
 
@@ -307,21 +319,27 @@ export const creationRollEvent = defineCreationEvent<
     if (role === null) throw new RealtimeError('ROLE_NOT_CHOSEN');
     if (role.statTemplates.length === 0) throw new RealtimeError('ROLE_HAS_NO_TEMPLATE');
 
-    // Ten real d10 through the same engine every other roll goes through — the
-    // card is not decoration, it is the audit trail of session zero. The dice
-    // land in `CPRED_STAT_IDS` order, which is the order the templates print.
+    const ids: CpredStatId[] =
+      statId === undefined
+        ? CPRED_STAT_IDS.filter((id) => current.statRolls[id] === undefined)
+        : [statId];
+    if (ids.length === 0) throw new RealtimeError('STATS_ALREADY_ROLLED');
+    if (statId !== undefined && !isGm && current.statRolls[statId] !== undefined)
+      throw new RealtimeError('STAT_ALREADY_ROLLED');
+
+    // Real d10 through the same engine every other roll goes through — the
+    // card is not decoration, it is the audit trail of session zero.
     //
     // The cup's shake is mixed into the seed exactly as it is for a sheet
-    // check: the hand picks which of the equally likely spreads comes out, and
-    // the server still decides what „equally likely" means. A GM pressing the
-    // plain button rolls without a gesture and the seed is simply all-server.
+    // check: the hand picks the face, and the server still decides what
+    // „equally likely" means. The GM's plain button rolls without a gesture.
     //
     // `plain` (stage 27d) is what stops the card from painting the tens green
-    // and the ones red: these dice are template columns, not Checks, and a 10
-    // here means „the tenth spread", not a critical.
+    // and the ones red: these dice are template rows, not Checks, and a 10
+    // here means „the tenth row", not a critical.
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(
-      { terms: [{ kind: 'dice', count: CPRED_STAT_IDS.length, sides: 10, sign: 1 }] },
+      { terms: [{ kind: 'dice', count: ids.length, sides: 10, sign: 1 }] },
       createMixedRng(gesture?.entropy),
       { checkRule: false, plain: true },
     );
@@ -330,7 +348,7 @@ export const creationRollEvent = defineCreationEvent<
     const term = result.terms[0];
     const faces = term && term.kind === 'dice' ? term.rolls : [];
     const rolls: Partial<Record<CpredStatId, number>> = {};
-    CPRED_STAT_IDS.forEach((id, index) => {
+    ids.forEach((id, index) => {
       const face = faces[index];
       if (face !== undefined) rolls[id] = face;
     });
@@ -338,7 +356,50 @@ export const creationRollEvent = defineCreationEvent<
     const next = applyRolledSpread(current, role, data, rolls);
     const saved = await saveDraft(deps, campaignId, user.id, next);
     await publishSpread(deps, campaignId, user.id, deps.ctx.cpred, role, next, rolls, result);
+    if (!isGm) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(saved, deps);
+  },
+});
+
+/**
+ * The GM's „Pozwól przerzucić" (decyzja MG z 24.09): takes the dice off one
+ * stat, or all of them, in any draft of the campaign. The chat keeps the old
+ * card — the log says what was thrown and the draft says what counts.
+ *
+ * No `revision` bump, for the reason `creation:set-rank` gives: stats and dice
+ * are not patch fields, so a player's write in flight cannot overwrite them,
+ * and a bump would only refuse that write as DRAFT_CHANGED. The owner's
+ * windows hear `creation:rerolled` and drop the same stats from their copy.
+ */
+export const creationRerollEvent = defineCreationEvent<CreationRerollPayload, void>({
+  name: 'creation:reroll',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (!payload || typeof payload.draftId !== 'string' || !payload.draftId)
+      throw new RealtimeError('BAD_REQUEST');
+    const statId = payload.statId;
+    if (statId !== undefined && !isCpredStatId(statId)) throw new RealtimeError('BAD_REQUEST');
+    const row = await deps.ctx.prisma.characterDraft.findFirst({
+      where: { id: payload.draftId, campaignId },
+    });
+    if (!row) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const current = toDraftView(row, deps).draft;
+    const statIds = (statId === undefined ? CPRED_STAT_IDS : [statId]).filter(
+      (id) => current.statRolls[id] !== undefined,
+    );
+    if (statIds.length === 0) throw new RealtimeError('NOTHING_TO_REROLL');
+    await deps.ctx.prisma.characterDraft.update({
+      where: { id: row.id },
+      data: { data: JSON.stringify(clearRolledStats(current, statIds)) },
+    });
+    const push: CreationRerolledPush = { draftId: row.id, statIds };
+    for (const peer of await deps.io.fetchSockets()) {
+      if (peer.data.user?.id === row.userId && peer.data.campaign?.id === campaignId) {
+        peer.emit('creation:rerolled', push);
+      }
+    }
+    await broadcastCreationRanks(deps, campaignId);
   },
 });
 
@@ -354,7 +415,8 @@ async function publishSpread(
 ): Promise<void> {
   const breakdown: RollBreakdownEntry[] = [];
   let total = 0;
-  for (const id of CPRED_STAT_IDS) {
+  const rolled = CPRED_STAT_IDS.filter((id) => rolls[id] !== undefined);
+  for (const id of rolled) {
     const value = draft.stats[id];
     const roll = rolls[id];
     if (value === undefined || roll === undefined) continue;
@@ -365,13 +427,16 @@ async function publishSpread(
       kind: 'stat',
     });
   }
-  // The dice sum means nothing here (the faces are row numbers), so the card
-  // shows what the spread is worth instead.
+  // The die means nothing here (the face is a row number), so the card shows
+  // what it is worth instead: the stat itself, or the missing stats' sum.
   result.total = total;
-  result.notation = `${CPRED_STAT_IDS.length}k10`;
+  result.notation = `${rolled.length}k10`;
   result.breakdown = breakdown;
   const roleName = registry.roles.find((entry) => entry.id === role.id)?.name ?? role.id;
-  result.title = `Rozkład Cech — ${roleName} · ${CPRED_CREATION_METHOD_LABELS.edgerunner}`;
+  const only = rolled.length === 1 ? rolled[0] : undefined;
+  result.title = only
+    ? `${CPRED_STAT_LABELS[only].name} (${CPRED_STAT_LABELS[only].abbr}) — ${roleName}`
+    : `Rozkład Cech — ${roleName} · ${CPRED_CREATION_METHOD_LABELS.edgerunner}`;
   if (draft.name.trim().length > 0) result.actor = draft.name.trim();
   await publishRoll(deps, campaignId, userId, result);
 }
@@ -512,13 +577,15 @@ async function creationRankRows(
   });
   return rows
     .map((row) => ({ row, view: toDraftView(row, deps) }))
-    .filter(({ view }) => view.draft.method === 'complete')
     .map(({ row, view }) => ({
       id: row.id,
       userName: row.user.name,
       characterName: view.draft.name.trim(),
+      method: view.draft.method,
+      rolledStats: CPRED_STAT_IDS.filter((id) => view.draft.statRolls[id] !== undefined),
       statRankId: view.rankApproved ? row.statRankId : null,
-      rankApproved: view.rankApproved,
+      // A Krawędziarz waits for nobody — only a pool can be pending.
+      rankApproved: view.draft.method === 'complete' ? view.rankApproved : true,
     }))
     .sort(
       (a, b) =>
@@ -811,12 +878,13 @@ function addPurchasedRow(
 }
 
 /**
- * Rolls one or many Lifepath tables in a single throw (stage 25b).
+ * Rolls one Lifepath table from the dice cup (stage 25b; one table per throw
+ * since the GM's order of 17.09). Only the GM's plain „Rzuć brakujące" sends
+ * many at once — one card, one line per question, the die beside each.
  *
- * Many, because that is how a table uses this chapter: „Rzuć całą Ścieżkę"
- * answers fourteen questions at once, and fourteen separate chat cards would
- * bury the session zero the cards exist to document. One card, one line per
- * question, the die result beside each.
+ * A table may be thrown again as often as anybody likes: the book says to
+ * change a result that does not fit („odpowiednio zmień wynik", s. 44), and
+ * the picker beside every row can write any answer anyway.
  *
  * The dice are grouped by their number of sides — the general tables are d10,
  * a Role's are mostly d6 — and the faces are dealt back out in the order the
@@ -839,6 +907,7 @@ export const creationLifepathRollEvent = defineCreationEvent<
     if (ids.length === 0 || ids.length > LIFEPATH_ROLL_TABLES_MAX) {
       throw new RealtimeError('BAD_REQUEST');
     }
+    if (ids.length > 1 && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     const tables: CpredLifepathTable[] = [];
     for (const id of ids) {
       const table = lifepathTable(lifepathData, current.roleId, id);
@@ -847,6 +916,7 @@ export const creationLifepathRollEvent = defineCreationEvent<
     }
 
     const sides = [...new Set(tables.map((table) => table.sides))];
+    const gesture = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(
       {
         terms: sides.map((count) => ({
@@ -856,9 +926,11 @@ export const creationLifepathRollEvent = defineCreationEvent<
           sides: count,
         })),
       },
-      createMixedRng(),
+      createMixedRng(gesture?.entropy),
       { checkRule: false, plain: true },
     );
+    if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+    if (gesture?.toss) result.toss = gesture.toss;
     const faces = new Map<number, number[]>();
     for (const term of result.terms) {
       if (term.kind === 'dice') faces.set(term.sides, [...term.rolls]);
@@ -921,6 +993,7 @@ export const creationLifepathCountEvent = defineCreationEvent<
     const current = toDraftView(existing, deps).draft;
 
     const { sides, modifier } = lifepathData.groupRoll;
+    const gesture = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(
       {
         terms: [
@@ -928,9 +1001,11 @@ export const creationLifepathCountEvent = defineCreationEvent<
           { kind: 'modifier', sign: modifier < 0 ? -1 : 1, value: Math.abs(modifier) },
         ],
       },
-      createMixedRng(),
+      createMixedRng(gesture?.entropy),
       { checkRule: false, plain: true },
     );
+    if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+    if (gesture?.toss) result.toss = gesture.toss;
     const term = result.terms[0];
     const face = term && term.kind === 'dice' ? (term.rolls[0] ?? 0) : 0;
     const count = lifepathGroupCount(face, lifepathData.groupRoll);

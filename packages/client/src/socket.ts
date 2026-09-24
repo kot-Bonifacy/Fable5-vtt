@@ -32,12 +32,14 @@ import type {
   DefenseZoneUpdatePayload,
   DefenseZoneView,
   CpredCreationDraft,
+  CpredStatId,
   CreationDraftView,
   CreationPatchPayload,
   CreationFinishPayload,
   CreationFinishResult,
   CreationDraftPeek,
   CreationRankDraft,
+  CreationRerolledPush,
   SmokeSyncBroadcast,
   CoverUpdatePayload,
   CoverView,
@@ -525,6 +527,18 @@ export function connectSocket(userId: string): Socket {
         rankApproved: true,
       });
     }
+  });
+  // Decyzja MG z 24.09: the GM let this draft throw some stats again.
+  onPresented('creation:rerolled', (push: CreationRerolledPush) => {
+    const store = useCreationStore.getState();
+    if (store.draftId !== push.draftId || !store.draft) return;
+    const stats = { ...store.draft.stats };
+    const statRolls = { ...store.draft.statRolls };
+    for (const id of push.statIds) {
+      if (store.draft.method === 'edgerunner') delete stats[id as CpredStatId];
+      delete statRolls[id as CpredStatId];
+    }
+    useCreationStore.setState({ draft: { ...store.draft, stats, statRolls } });
   });
   // Naprawa 2b: the GM's rank list lives off the server's pushes.
   onPresented('creation:ranks-sync', (rows: CreationRankDraft[]) =>
@@ -3072,26 +3086,28 @@ export const patchCreation = (
 ) => emitCreationAck<CreationDraft>('creation:patch', { patch, ...guard });
 
 /**
- * One 1d10 per stat, rolled by the server against the Role's template.
- *
- * The gesture is present when the spread came out of the dice cup — a player
- * shakes for their Cechy like for everything else; the GM's plain button rolls
- * without one.
+ * One 1d10 for one stat, rolled by the server against the Role's template —
+ * from the dice cup, with its gesture. Without `statId` it is the GM's plain
+ * button: every stat still missing, no cup (the server refuses it a player).
  */
-export const rollCreationStats = (gesture?: RollGesture) =>
-  emitCreationAck<CreationDraft>('creation:roll', { gesture });
+export const rollCreationStats = (statId?: CpredStatId, gesture?: RollGesture) =>
+  emitCreationAck<CreationDraft>('creation:roll', { statId, gesture });
 
 /**
- * Rolls one or many Lifepath tables in a single throw (stage 25b). `index`
- * picks the friend / enemy / tragic love the row belongs to and is ignored by
- * the tables that fill a field of their own.
+ * Rolls one Lifepath table from the cup (stage 25b); many at once only for the
+ * GM's plain button. `index` picks the friend / enemy / tragic love the row
+ * belongs to and is ignored by the tables that fill a field of their own.
  */
-export const rollCreationLifepath = (tableIds: string[], index?: number) =>
-  emitCreationAck<CreationDraft>('creation:lifepath-roll', { tableIds, index });
+export const rollCreationLifepath = (tableIds: string[], index?: number, gesture?: RollGesture) =>
+  emitCreationAck<CreationDraft>('creation:lifepath-roll', { tableIds, index, gesture });
 
 /** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
-export const rollCreationLifepathCount = (group: string) =>
-  emitCreationAck<CreationDraft>('creation:lifepath-count', { group });
+export const rollCreationLifepathCount = (group: string, gesture?: RollGesture) =>
+  emitCreationAck<CreationDraft>('creation:lifepath-count', { group, gesture });
+
+/** The GM's „Pozwól przerzucić" — the dice off one stat of a draft, or all of them. */
+export const rerollCreationStats = (draftId: string, statId?: CpredStatId) =>
+  emitCreationAck('creation:reroll', { draftId, statId });
 
 /**
  * One item into or out of the wizard's basket (stage 25c). A delta rather than
@@ -3145,6 +3161,12 @@ export function creationErrorText(code: string | undefined): string {
       return 'Najpierw wybierz Rolę.';
     case 'ROLE_HAS_NO_TEMPLATE':
       return 'Ta Rola nie ma w danych szablonu Cech — wybierz Kompletny Pakiet.';
+    case 'STAT_ALREADY_ROLLED':
+      return 'Ta Cecha jest już wylosowana. Przerzut może pozwolić tylko MG.';
+    case 'STATS_ALREADY_ROLLED':
+      return 'Wszystkie Cechy są już wylosowane.';
+    case 'NOTHING_TO_REROLL':
+      return 'Tu nie ma czego przerzucać — ta Cecha nie jest jeszcze wylosowana.';
     case 'CREATION_INCOMPLETE':
       return 'Postać nie jest jeszcze gotowa — sprawdź listę braków.';
     case 'INVALID_NAME':

@@ -189,6 +189,13 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **24.09: rzuty kreatora przez kubek — do oceny MG przy stole.** Obejrzane automatem (łańcuch
+  Cech i Ścieżki, przerzut MG, skrót MG). **Zostają ręką MG:** (1) **dźwięk „kubek gotowy” po
+  każdym rzucie łańcucha** — gra przy każdym ponownym załadowaniu, czyli ~10 razy przy Cechach;
+  jeśli męczy, wyciszyć go dla `chain` w `DiceCup.tsx` (`notificationKey`); (2) tempo sesji zero
+  z ~25 osobnymi kartami na czacie (10 Cech + ~15 tabel Ścieżki); (3) prawdziwy gest ręką —
+  automat rzucał jednym przeciągnięciem.
+
 - **18.09: skóra chromu „stara kartka” — obejrzana tylko automatyką.** W Chrome (MG, Poligon,
   1568×781): dzień i noc, okno ustawień, Panel MG, górny pasek z kolejką inicjatywy. **Zostało ręką
   MG:** handout, okno wymiany i oględzin, karta obiektu sceny (belka czarna w dzień), dialogi

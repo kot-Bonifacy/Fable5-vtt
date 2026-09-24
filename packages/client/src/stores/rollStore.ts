@@ -10,6 +10,7 @@ import type {
   CpredCharismaAudience,
   CpredCharismaPurpose,
   CpredProofLevel,
+  CpredStatId,
   ScenePoint,
 } from '@vtt/shared';
 import {
@@ -194,17 +195,33 @@ export interface PendingFacedown {
 }
 
 /**
- * The character creator's stat spread waiting in the cup (stage 25a).
+ * What the character creator's cup throws — one die at a time (zlecenie MG
+ * z 17.09): a stat, a Lifepath table, or „how many friends / enemies / loves".
+ */
+export type CreationCupRoll =
+  | { kind: 'stat'; statId: CpredStatId }
+  | { kind: 'lifepath'; tableId: string; index?: number }
+  | { kind: 'lifepath-count'; group: string };
+
+/**
+ * One creator roll waiting in the cup (stage 25a; one die per throw since the
+ * GM's order of 17.09).
  *
- * It carries nothing but a label, because unlike every other slot it names no
- * character and no request: the server already knows whose draft it is and
- * what to roll. What it borrows from the others is the only thing that matters
- * here — the gesture, so a player rolls their Cechy the same way they roll
- * everything else at this table.
+ * Unlike every other slot it names no character: the server knows whose draft
+ * it is. What it borrows from the others is the gesture, so a player rolls
+ * their Cechy the same way they roll everything else at this table.
  */
 export interface PendingCreation {
-  /** Cup label, e.g. `Rozkład Cech — Solo`. */
+  /** Cup label, e.g. `Refleks (REF) — Solo`. */
   title: string;
+  roll: CreationCupRoll;
+  /** Die for the idle animation afterwards, e.g. `1d10`. */
+  notation: string;
+  /**
+   * Loaded by „Weź kubek" rather than a row: after the throw the cup waits
+   * with the next stat or unanswered table, so a player just grabs it again.
+   */
+  chain?: 'stats' | 'lifepath';
 }
 
 interface RollStoreState {
