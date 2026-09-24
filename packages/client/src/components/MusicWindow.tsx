@@ -135,8 +135,12 @@ export function MusicWindow() {
       <div className="settings-window-body">
         <SceneAmbience />
         <section className="settings-group">
-          <label className="settings-row">
-            <span className="settings-label">Głośność u Ciebie</span>
+          {/* „u Ciebie" tylko u MG — tylko on ma obok „Głośność dla stołu" (24.09). */}
+          <label
+            className="settings-row"
+            title={gm ? 'Zero wycisza muzykę tylko u Ciebie — stół słyszy dalej.' : undefined}
+          >
+            <span className="settings-label">{gm ? 'Głośność u Ciebie' : 'Głośność muzyki'}</span>
             <input
               type="range"
               min={0}
@@ -146,9 +150,6 @@ export function MusicWindow() {
             />
             <span className="settings-value">{volume}</span>
           </label>
-          <p className="settings-note">
-            Zero wycisza muzykę tylko u Ciebie. Efekty i sygnał kubka mają osobne ustawienia.
-          </p>
           {blocked && (
             <button type="button" onClick={enableMusic}>
               Włącz odtwarzanie dźwięku

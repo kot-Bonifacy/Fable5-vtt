@@ -62,8 +62,13 @@ export function SceneAmbience() {
   return (
     <section className="settings-group">
       <h3 className="settings-group-title">Otoczenie sceny{scene ? ` — ${scene.name}` : ''}</h3>
-      <label className="settings-row">
-        <span className="settings-label">Głośność otoczenia u Ciebie</span>
+      <label
+        className="settings-row"
+        title={gm ? 'Zero wycisza otoczenie tylko u Ciebie — stół słyszy dalej.' : undefined}
+      >
+        <span className="settings-label">
+          {gm ? 'Głośność otoczenia u Ciebie' : 'Głośność otoczenia'}
+        </span>
         <input
           type="range"
           min={0}
@@ -74,7 +79,10 @@ export function SceneAmbience() {
         <span className="settings-value">{volume}</span>
       </label>
       {gm && scene ? (
-        <label className="settings-row">
+        <label
+          className="settings-row"
+          title="Otoczenie gra razem z muzyką. Każdy słyszy odgłos sceny, którą ogląda."
+        >
           <span className="settings-label">Odgłos na oglądanej scenie</span>
           <select
             disabled={!synced || busy}
@@ -88,17 +96,9 @@ export function SceneAmbience() {
             ))}
           </select>
         </label>
-      ) : (
-        <p>
-          {scene
-            ? AMBIENCE_PRESETS[scene.ambience ?? 'none']
-            : 'Wybierz scenę, aby ustawić jej otoczenie.'}
-        </p>
-      )}
-      <p className="settings-note">
-        Otoczenie gra razem z muzyką. Każdy słyszy odgłos sceny, którą ogląda; zero wycisza go tylko
-        u Ciebie.
-      </p>
+      ) : gm ? (
+        <p>Wybierz scenę, aby ustawić jej otoczenie.</p>
+      ) : null}
       {error && <p role="alert">Nie udało się zapisać otoczenia. Sprawdź połączenie.</p>}
     </section>
   );

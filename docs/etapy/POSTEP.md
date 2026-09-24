@@ -144,7 +144,9 @@ i `stepSounds` (stare klucze localStorage po prostu przestają być czytane). Pr
 `SFX_GAIN` w `sfx.ts`, sygnał powiadomień `× 0.72` w `cup-notification.ts` (ta sama głośność co
 dawne 60 × 0.6). `notifyGame` gra każde zdarzenie; `NOTIFICATION_LABELS` zastąpiony typem.
 Usunięte `SFX_SAMPLES` i wszystkie funkcje `audition*`. „Kości” w oknie łączą animację 3D ze
-skórkami. Umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca.
+skórkami. Umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca. Okno muzyki: gracz
+widzi same suwaki „Głośność otoczenia” / „Głośność muzyki”; „u Ciebie” i wyjaśnienia (w dymku)
+tylko u MG, bo tylko on ma obok „Głośność dla stołu”.
 
 **Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier; okno obejrzane w Chrome jako MG.
 
