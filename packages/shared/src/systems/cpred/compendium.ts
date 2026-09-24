@@ -26,6 +26,7 @@ import {
   type CpredMagazineKind,
 } from './attachments.js';
 import { isValidCompendiumId, slugify } from './ids.js';
+import { isCpredWeaponIcon, type CpredWeaponIcon } from './weaponicons.js';
 import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
@@ -358,6 +359,12 @@ export interface WeaponEntry extends CompendiumEntryBase {
   attachmentSlots?: number;
   /** Free-text features: "Ogień ciągły (4)", "Złącze smartguna". */
   features?: string[];
+  /**
+   * The model's own picture, when its type's would mislead (24.09.2026) — the
+   * rulebook's revolvers are medium and heavy pistols by type. Absent means
+   * „draw the type". Comes from `weapon-icons.json` or the GM's editor.
+   */
+  icon?: CpredWeaponIcon;
 }
 
 /**
@@ -862,6 +869,14 @@ function validateWeapon(
       });
     } else {
       weapon.attachmentSlots = input.attachmentSlots;
+    }
+  }
+
+  if (input.icon !== undefined && input.icon !== null && input.icon !== '') {
+    if (!isCpredWeaponIcon(input.icon)) {
+      issues.push({ field: 'icon', message: 'Nieznana miniatura broni.' });
+    } else {
+      weapon.icon = input.icon;
     }
   }
 
@@ -2039,6 +2054,8 @@ export interface ResolvedWeapon {
    * picture.
    */
   typeId?: string;
+  /** The entry's own picture (`WeaponEntry.icon`); absent draws the type's. */
+  icon?: CpredWeaponIcon;
   melee: boolean;
   /**
    * „Broń doskonałej i niskiej jakości" (s. 244) — carried here so the planner
@@ -2083,6 +2100,7 @@ export function resolveWeapon(
     ...(type?.ammoIds ? { ammoIds: type.ammoIds } : {}),
     ...(type ? { typeName: type.name } : {}),
     ...(weapon.weaponTypeId ? { typeId: weapon.weaponTypeId } : {}),
+    ...(weapon.icon ? { icon: weapon.icon } : {}),
     melee: type?.melee ?? false,
     ...(weapon.quality !== 'standard' ? { quality: weapon.quality } : {}),
   };

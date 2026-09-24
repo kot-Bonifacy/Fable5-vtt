@@ -14,6 +14,8 @@ import type {
   WeaponQuality,
 } from '@vtt/shared';
 import {
+  CPRED_WEAPON_ICONS,
+  CPRED_WEAPON_ICON_LABELS,
   NET_ABILITIES_AVAILABLE,
   NET_DEFENSE_KINDS,
   NET_DEFENSE_TRIGGERS,
@@ -227,6 +229,22 @@ export function CompendiumEditor() {
                   {WEAPON_QUALITIES.map((id) => (
                     <option key={id} value={id}>
                       {WEAPON_QUALITY_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {/* Miniatura modelu (24.09): tylko gdy sylwetka typu kłamie —
+                  rewolwer jest w regułach średnim albo ciężkim pistoletem. */}
+              <label className="bot-field">
+                Miniatura na listach
+                <select
+                  value={form.weaponIcon}
+                  onChange={(event) => patch({ weaponIcon: event.target.value })}
+                >
+                  <option value="">— jak typ broni —</option>
+                  {CPRED_WEAPON_ICONS.map((id) => (
+                    <option key={id} value={id}>
+                      {CPRED_WEAPON_ICON_LABELS[id]}
                     </option>
                   ))}
                 </select>
@@ -1643,6 +1661,8 @@ interface EditorForm {
   costCategory: string;
   weaponTypeId: string;
   quality: WeaponQuality;
+  /** `WeaponEntry.icon`; pusty — sylwetka typu. */
+  weaponIcon: string;
   damage: string;
   rof: string;
   magazine: string;
@@ -1757,6 +1777,7 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     ...defenseEffectFields(entry?.category === 'netDefense' ? entry.effects : undefined),
     weaponTypeId: entry?.category === 'weapon' ? (entry.weaponTypeId ?? '') : '',
     quality: entry?.category === 'weapon' ? entry.quality : 'standard',
+    weaponIcon: entry?.category === 'weapon' ? (entry.icon ?? '') : '',
     damage: entry?.category === 'weapon' ? (entry.damage ?? '') : '',
     rof: entry?.category === 'weapon' && entry.rof !== undefined ? String(entry.rof) : '',
     magazine:
@@ -1937,6 +1958,7 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       ...base,
       weaponTypeId: form.weaponTypeId || null,
       quality: form.quality,
+      icon: form.weaponIcon || undefined,
       damage: form.damage || undefined,
       rof: numberOrUndefined(form.rof),
       magazine: numberOrUndefined(form.magazine),

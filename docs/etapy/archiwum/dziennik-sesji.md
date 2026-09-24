@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.09 (druga) — dwie zaległości: kopia startowa i Prettier
+
+**Zlecenie MG:** kilka zaległości na jedną sesję; MG wybrał dwie drobne (bez nowych funkcji
+i bez oględzin automatem).
+
+**Wdrożone:** `linkTree` (`snapshots.ts`) pomija plik skasowany przez sprzątanie sierot między
+listą a dowiązaniem — dotąd ENOENT w zapasowym `copyFile` przerywał **całą** kopię startową.
+Test z atrapą `link` odtwarza wyścig (bez poprawki pada tym samym błędem co dziennik).
+`aim-preview.test.ts` był w repo sformatowany — CRLF tylko na dysku; razem 15 takich plików
+wypakowanych od nowa z LF (bez zmiany treści). Pułapki w `kopie` i `testy`, zamknięcie
+w archiwum zaległości.
+
+**Weryfikacja:** 1220 testów serwera (+1), tsc serwera, ESLint, Prettier trzech pakietów czysty.
+`shared` i klient nieruszone. Serwer dev przeładował się sam; kopia startowa 22:41 powstała
+(83 pliki, dowiązania), `/health` odpowiada.
+
 ### Sesja 23.09 — handel między figurami (etap 38c)
 
 **Zlecenie MG poza etapem 28:** handel przez przeciąganie rzeczy i gotówki do pól wymiany

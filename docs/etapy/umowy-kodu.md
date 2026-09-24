@@ -2264,6 +2264,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Miniatura rodzaju przedmiotu na liście to `cpredEntryIcon` / `cpredItemRowIcon` (`systems/cpred/itemicons.ts`)**, a w kliencie `ItemIcon` / `useEntryIcon` / `useRowIcon` z `ItemIcons.tsx` — nowe miejsce z listą przedmiotów nie składa sylwetki samo. Rodzaj czyta się z pól maszyny (typ broni, `patterns`, efekt dodatku, lokacja pancerza), nigdy z nazwy ani id; model, któremu typ kłamie (rewolwer), dostaje `WeaponEntry.icon` z `cpred/weapon-icons.json` albo z edytora MG. Listy broni sortuje `cpredSortWeapons`, filtruje `WeaponTypeFilter`.
 - **Handel (38c) to stan w pamięci serwera (`realtime/trade.ts`) + czyste reguły w `shared/src/trade.ts`** — wymianę wykonuje wyłącznie `cpredSwapItems` w jednej transakcji z `applyBalance({ tx, emit: false })`; każda zmiana pola kasuje obie zgody (`setTradeOffer`), zgoda niesie `version`, a oferta sprawdza się z kartą jeszcze raz przy wykonaniu (`OFFER_STALE`). Stronę NPC-a prowadzi MG, strony gracza — tylko gracz.
 - **Poziom dostępności liczy `shopTierVerdict` (naprawa 3b)** — kolejno: wyjątek MG na kampanii, `tier` wpisu, reguła rodzaju (typ broni, OB, rodzina wszczepu, klasa Programu, sprzęt deku) podniesiona ceną, na końcu stara drabina cenowa. Każde miejsce pokazujące poziom woła ją z `ShopTierContext` (wyjątki MG + nazwy typów broni), inaczej lista i serwer rozjadą się o to, co zablokowane.
 - **Rzecz, której poziomu nie wyczyta rodzaj, przypisuje się po id w `shop-tiers.json`** — nie gałęzią w kodzie: sprzęt, amunicja, dodatki, bojowy chrom i broń egzotyczna. Publiczna próbka w `data/public/cpred`, prawdziwa lista w `data/private/cpred` (wygrywa po id i po Roli); strażnik licencji pilnuje, żeby w repo stały wyłącznie wymyślone identyfikatory.
@@ -2281,6 +2282,20 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Miniatura rodzaju: jedna odpowiedź w całym VTT (24.09.2026).** Sylwetka broni na liście
+sklepu, na karcie, w wymianie i na pasku broni panelu postaci pochodzi z tego samego
+`cpredWeaponIcon` — `cpredEntryIcon` tylko rozszerza go o amunicję (kształt naboju; kilka
+kształtów to skrzynka, a nie pierwszy z brzegu), dodatki (doczepiona broń swoją sylwetką,
+ostrze bagnetem, reszta po efekcie) i pancerz (tarcza albo kamizelka). **Rewolwer nie jest
+typem broni** w podręczniku, więc nie wynika z żadnego pola: mówi go `WeaponEntry.icon`,
+wpisywany z `cpred/weapon-icons.json` (jak `shop-tiers.json`: publiczna próbka z wymyślonymi
+id, prywatny plik wygrywa; strażnik w `licensing.test.ts`) albo polem „Miniatura na listach”
+w edytorze wpisu MG. `ResolvedWeapon.icon` wygrywa z typem, więc pasek broni i dźwięk strzału
+idą za modelem. Widok wymiany (`CpredItemView`) niesie `compendiumId` i `armorLocation`, bo
+klient nie ma cudzej karty; oględziny niosą gotowe `icon`. Nowa sylwetka = nazwa w
+`CPRED_WEAPON_ICONS` albo `CPRED_GEAR_ICONS`, plik w `public/icons/hud/` (pilnuje
+`item-icons.test.ts`), wiersz w `ATTRIBUTION.md`; nowa sylwetka broni także w `ICON_FX`.
 
 **Handel: negocjacje w pamięci, wymiana w jednej transakcji (23.09, etap 38c).** Otwarty handel nie jest faktem świata, więc nie ma tabeli: `trades` w `realtime/trade.ts` znika z restartem, a klient odtwarza listę `trade:list` po każdym `state:sync`. Reguły — kto prowadzi stronę, wersja, zgody, widok per widz — to czyste funkcje w `shared/src/trade.ts`; serwer tylko je woła. **Wymianę robi `cpredSwapItems`, nigdy dwa `cpredMoveItems` po kolei** (stos po drodze połknąłby cudze sztuki, a limit wierszy liczyłby się na stanie pośrednim). Obie karty i wszystkie wpisy historii zapisuje **jedna** `$transaction` (`applyBalance` z `tx` i `emit: false`, emisje dopiero po niej). Oferta przechowuje adresy z **jawną** ilością i gotowe widoki; przy wykonaniu `cpredOfferViews` liczy je z bazy od nowa, a różnica zdejmuje zgody (`OFFER_STALE`) zamiast wysłać rzecz w innym stanie. Gracz nie dostaje `characterId` karty NPC-a ani w liście partnerów, ani w widoku handlu — tą samą umową, co `inventory:sources`.
 

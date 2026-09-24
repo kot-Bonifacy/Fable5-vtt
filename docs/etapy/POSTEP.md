@@ -68,7 +68,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 - `requireCallableRequest` (`realtime/checks.ts`) to **biała lista** — nowe pole `CpredRollRequest`
   trzeba do niej dopisać, inaczej ginie po cichu między prośbą gracza a rzutem.
 - `data/private/cpred/compendium/` bywa starsze niż parser — `python tools/import/parse-manual.py`
-  przed szukaniem błędu. `shop-tiers.json` też jest poza gitem i jedzie na VPS z kompendium.
+  przed szukaniem błędu. `shop-tiers.json` i `weapon-icons.json` (24.09) też są poza gitem i jadą na VPS z kompendium.
 - Pozycje z `POMYSLY.md` sprawdź w kodzie, zanim je ruszysz (29.08 cztery były nieaktualne);
   triaż z 28.08 w `decyzje-i-uproszczenia.md` nie wraca jako nowe odkrycia.
 - Karty czatu piszą alias figury (`Token.publicName`) wyłącznie przez `tokenTableName` (umowa
@@ -78,8 +78,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2202** w `shared`, **1222** na serwerze, **281** u klienta —
-zielone (23.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2217** w `shared`, **1223** na serwerze, **282** u klienta —
+zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -111,7 +111,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 40   | 2       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 15   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
@@ -124,6 +124,34 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.09 — miniatury rodzaju przy broni i ekwipunku
+
+**Zlecenie MG:** każda broń na listach (sklep i gdzie indziej) ma miniaturę swojej kategorii,
+żeby łatwiej znaleźć rodzaj broni. Rozstrzygnięcia MG: te same sylwetki co pasek broni
+w panelu postaci, ale **trzy pistolety rozdzielone** i **rewolwer per model** (w regułach
+rewolwer jest średnim/ciężkim pistoletem); miejsca: Kompendium/sklep, kreator, karta postaci,
+wymiana, łup, oględziny; **filtr typami + sort typami** nad listami broni; do tego amunicja,
+dodatki i pancerz; brakujące sylwetki z game-icons.net.
+
+**Wdrożone:** `weaponicons.ts` (lista `CPRED_WEAPON_ICONS`, bez importów) i `itemicons.ts`
+(`cpredEntryIcon`, `cpredItemRowIcon`, `cpredSortWeapons`, `withWeaponIcons`) w `shared`;
+`WeaponEntry.icon` / `ResolvedWeapon.icon` (wygrywa z typem w `cpredWeaponIcon`, więc pasek
+broni też pokazuje rewolwer); plik **`cpred/weapon-icons.json`** (publiczna próbka +
+prywatny z Towa Type-12 i Militech Sheriff) wczytywany w `loadCompendium`; „Miniatura na
+listach” w edytorze wpisu MG; `CpredItemView` i `CpredItemViewWire` niosą `compendiumId`
+i `armorLocation`, oględziny — `icon` broni. Klient: `ItemIcons.tsx` (`ItemIcon`,
+`WeaponTypeFilter`, `useEntryIcon`, `useRowIcon`, `ItemViewIcon`), `HudIcon` z `title`,
+`RowTable` z `lead`. Stary `revolver.svg` (masywny pistolet) to teraz `pistol-very-heavy.svg`;
+`revolver.svg` jest nowym, prawdziwym rewolwerem. Umowa w `ekwipunek`.
+
+**Oględziny (Chrome, MG):** Kompendium — miniatury, sort, filtr (8 ciężkich pistoletów),
+rewolwer na liście i w karcie wpisu; karta Portosa — pas broni i okienko „+ Broń z katalogu”.
+**Nie oglądane ręką:** półka kreatora, okno wymiany i łupu, okno oględzin (pokryte testami
+i `tsc`). Znak: zrzuty w karcie Chrome po `scrollIntoView` rozjeżdżają się z DOM — świeża
+karta pomaga.
+
+**Weryfikacja:** 2217 / 1223 / 282 testów; tsc, ESLint, Prettier trzech pakietów czyste.
 
 ### Sesja 23.09 (trzecia) — portrety NPC i oględziny automatem
 
@@ -148,19 +176,3 @@ w dzień, klawiatura. Zamknięte w `archiwum/zamkniete-zaleglosci.md`.
 
 **Weryfikacja:** 2202 / 1222 / 281 testów; tsc, ESLint, Prettier trzech pakietów czyste. Aktywna
 kampania wróciła na **„Test2”**; szkic kreatora MG wyrzucony. Serwer i Vite działają.
-
-### Sesja 23.09 (druga) — dwie zaległości: kopia startowa i Prettier
-
-**Zlecenie MG:** kilka zaległości na jedną sesję; MG wybrał dwie drobne (bez nowych funkcji
-i bez oględzin automatem).
-
-**Wdrożone:** `linkTree` (`snapshots.ts`) pomija plik skasowany przez sprzątanie sierot między
-listą a dowiązaniem — dotąd ENOENT w zapasowym `copyFile` przerywał **całą** kopię startową.
-Test z atrapą `link` odtwarza wyścig (bez poprawki pada tym samym błędem co dziennik).
-`aim-preview.test.ts` był w repo sformatowany — CRLF tylko na dysku; razem 15 takich plików
-wypakowanych od nowa z LF (bez zmiany treści). Pułapki w `kopie` i `testy`, zamknięcie
-w archiwum zaległości.
-
-**Weryfikacja:** 1220 testów serwera (+1), tsc serwera, ESLint, Prettier trzech pakietów czysty.
-`shared` i klient nieruszone. Serwer dev przeładował się sam; kopia startowa 22:41 powstała
-(83 pliki, dowiązania), `/health` odpowiada.

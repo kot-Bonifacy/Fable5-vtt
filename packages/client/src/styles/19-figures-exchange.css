@@ -529,3 +529,9 @@
 .trade-dock-meta {
   opacity: 0.75;
 }
+
+/* Miniatura rodzaju w oględzinach (24.09.2026): broń czyta się od sylwetki,
+   więc jej nazwa stoi przy niej, a nie przy prawej krawędzi. */
+.sighting-what--lead {
+  text-align: left;
+}

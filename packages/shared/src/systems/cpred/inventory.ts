@@ -28,6 +28,7 @@ import {
   type CpredItemRow,
   type CpredWeaponRow,
 } from './character.js';
+import type { ArmorLocation } from './locations.js';
 
 /** Trzy listy ekwipunku, które da się przenieść między kartami. */
 export type CpredItemList = 'weapons' | 'armor' | 'gear';
@@ -69,6 +70,14 @@ export interface CpredItemView {
   qty: number;
   /** Wiersz, którego ilość da się rozbić przy przenoszeniu. */
   stackable: boolean;
+  /**
+   * Wpis kompendium, z którego wiersz pochodzi (24.09.2026) — po nim okno
+   * wymiany i łupu rysuje miniaturę rodzaju. Katalog jest wspólny dla stołu,
+   * więc id nie mówi graczowi nic, czego nie widzi w zakładce „Kompendium”.
+   */
+  compendiumId?: string;
+  /** Gdzie siedzi pancerz — tarcza ma inną miniaturę niż kurtka. */
+  armorLocation?: ArmorLocation;
 }
 
 export type CpredItemMoveError = 'ITEM_NOT_FOUND' | 'BAD_QTY' | 'TOO_MANY_ROWS' | 'NO_ITEMS';
@@ -99,6 +108,7 @@ function armorDetail(row: CpredArmorRow): string {
 
 /** Jak wiersz opisuje się sam — w oknie wymiany i na karcie czatu. */
 export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItemView {
+  const source = row.compendiumId ? { compendiumId: row.compendiumId } : {};
   switch (list) {
     case 'weapons': {
       const weapon = row as CpredWeaponRow;
@@ -109,6 +119,7 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
         detail: weaponDetail(weapon),
         qty: 1,
         stackable: false,
+        ...source,
       };
     }
     case 'armor': {
@@ -120,6 +131,8 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
         detail: armorDetail(armor),
         qty: 1,
         stackable: false,
+        ...source,
+        armorLocation: armor.location,
       };
     }
     case 'gear': {
@@ -131,6 +144,7 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
         detail: gear.notes.slice(0, 60),
         qty: gear.qty,
         stackable: true,
+        ...source,
       };
     }
   }

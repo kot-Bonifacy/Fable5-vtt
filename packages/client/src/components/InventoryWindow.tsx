@@ -16,6 +16,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useInventoryStore } from '../stores/inventoryStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { ItemViewIcon } from './ItemIcons.js';
 
 /**
  * Okno „Wymiana" (etap 38b) — jedno miejsce na przekazanie, łup i przeszukanie.
@@ -230,6 +231,7 @@ function ExchangeWindow({ anchorId }: { anchorId: string }) {
           <ul className="inventory-list">
             {items.map((item) => (
               <li key={`${item.list}:${item.rowId}`} className="inventory-row">
+                <ItemViewIcon item={item} />
                 <span className="inventory-row-name" title={CPRED_ITEM_LIST_LABELS[item.list]}>
                   {item.name}
                 </span>

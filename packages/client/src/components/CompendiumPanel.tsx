@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { CompendiumEntry, CyberwareSurgeon, WeaponTypeDefinition } from '@vtt/shared';
 import {
+  isWeaponEntry,
   NET_DEFENSE_KIND_LABELS,
   describeNetDefenseEffects,
   netDefenseActs,
@@ -60,6 +61,7 @@ import {
 } from '../compendium-items.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
 import { EmptyState } from './EmptyState.js';
+import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
 
 /**
  * Side-panel tab with the item catalogue (stage 13). Everyone browses the same
@@ -90,10 +92,18 @@ export function CompendiumPanel() {
     () => shopTierContextOf(shopTierOverrides, weaponTypeById),
     [shopTierOverrides, weaponTypeById],
   );
-  const entries = useMemo(
+  const found = useMemo(
     () => visibleEntries(entriesById, order, query, category),
     [entriesById, order, query, category],
   );
+  // Broń: filtr typem i kolejność typami (24.09) — reszta kategorii bez zmian.
+  const [weaponType, setWeaponType] = useState<string | null>(null);
+  const foundWeapons = useMemo(() => found.filter(isWeaponEntry), [found]);
+  const entries = useMemo(
+    () => (category === 'weapon' ? filterWeaponsByType(foundWeapons, weaponType) : found),
+    [category, found, foundWeapons, weaponType],
+  );
+  const entryIcon = useEntryIcon();
   const counts = useMemo(() => countByCategory(entriesById, order), [entriesById, order]);
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
@@ -129,6 +139,10 @@ export function CompendiumPanel() {
       </nav>
 
       <ShopTierBar isGm={isGm} />
+
+      {category === 'weapon' && !selected ? (
+        <WeaponTypeFilter weapons={foundWeapons} value={weaponType} onChange={setWeaponType} />
+      ) : null}
 
       {selected ? (
         <EntryCard entry={selected} isGm={isGm} onBack={() => select(null)} />
@@ -169,6 +183,12 @@ export function CompendiumPanel() {
                   onClick={() => select(entry.id)}
                 >
                   <span className="compendium-row-name">
+                    {category === 'weapon' ||
+                    category === 'ammo' ||
+                    category === 'armor' ||
+                    category === 'attachment' ? (
+                      <ItemIcon icon={entryIcon(entry)} />
+                    ) : null}
                     {entry.name}
                     {entry.custom ? <span className="compendium-tag">własny</span> : null}
                     {entry.incomplete ? (
@@ -299,6 +319,7 @@ function EntryCard({
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const entriesById = useCompendiumStore((s) => s.entries);
   const statusRegistry = useTokenStore((s) => s.statuses);
+  const cardIcon = useEntryIcon()(entry);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const edit = useCompendiumStore((s) => s.edit);
@@ -444,7 +465,10 @@ function EntryCard({
         ) : null}
       </div>
 
-      <h3 className="compendium-card-name">{entry.name}</h3>
+      <h3 className="compendium-card-name">
+        {cardIcon ? <ItemIcon icon={cardIcon} /> : null}
+        {entry.name}
+      </h3>
       {entry.nameOriginal && entry.nameOriginal !== entry.name ? (
         <p className="compendium-card-original">{entry.nameOriginal}</p>
       ) : null}

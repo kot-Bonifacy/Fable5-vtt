@@ -6,11 +6,13 @@ import {
   useState,
   type ChangeEvent,
   type MouseEvent,
+  type ReactNode,
 } from 'react';
 import type {
   CpredStatId,
   ArmorLocation,
   CompendiumEntry,
+  CpredGearRow,
   EconomyPayee,
   CpredArmorRow,
   CpredSkillDefinition,
@@ -217,6 +219,13 @@ import {
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { NumberStepper } from './NumberStepper.js';
+import {
+  ItemIcon,
+  WeaponTypeFilter,
+  filterWeaponsByType,
+  useEntryIcon,
+  useRowIcon,
+} from './ItemIcons.js';
 
 type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 
@@ -1389,6 +1398,7 @@ function RowTable<T extends CpredItemRow>({
   addLabel,
   makeRow,
   onChange,
+  lead,
 }: {
   rows: T[];
   columns: {
@@ -1402,6 +1412,8 @@ function RowTable<T extends CpredItemRow>({
   addLabel: string;
   makeRow: () => T;
   onChange: (rows: T[]) => void;
+  /** Co stoi przed polem pierwszej kolumny — miniatura rodzaju (24.09). */
+  lead?: (row: T) => ReactNode;
 }) {
   function updateRow(rowId: string, key: keyof T & string, value: string | number) {
     onChange(rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)));
@@ -1423,31 +1435,41 @@ function RowTable<T extends CpredItemRow>({
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              {columns.map((c) => (
-                <td key={c.key}>
-                  {c.numeric ? (
-                    <input
-                      type="number"
-                      min={0}
-                      max={c.max ?? 999}
-                      value={row[c.key] as number}
-                      aria-label={c.label}
-                      onChange={(e) => {
-                        const value = parseNumberInput(e);
-                        if (value !== undefined) updateRow(row.id, c.key, value);
-                      }}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      maxLength={c.maxLength ?? 64}
-                      value={row[c.key] as string}
-                      aria-label={c.label}
-                      onChange={(e) => updateRow(row.id, c.key, e.target.value)}
-                    />
-                  )}
-                </td>
-              ))}
+              {columns.map((c, index) => {
+                const field = c.numeric ? (
+                  <input
+                    type="number"
+                    min={0}
+                    max={c.max ?? 999}
+                    value={row[c.key] as number}
+                    aria-label={c.label}
+                    onChange={(e) => {
+                      const value = parseNumberInput(e);
+                      if (value !== undefined) updateRow(row.id, c.key, value);
+                    }}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    maxLength={c.maxLength ?? 64}
+                    value={row[c.key] as string}
+                    aria-label={c.label}
+                    onChange={(e) => updateRow(row.id, c.key, e.target.value)}
+                  />
+                );
+                return (
+                  <td key={c.key}>
+                    {index === 0 && lead ? (
+                      <span className="item-name-cell">
+                        {lead(row)}
+                        {field}
+                      </span>
+                    ) : (
+                      field
+                    )}
+                  </td>
+                );
+              })}
               <td>
                 <button
                   type="button"
@@ -1675,6 +1697,7 @@ function WeaponStrip({
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const tokens = useTokenStore((s) => s.tokens);
+  const rowIcon = useRowIcon();
   /**
    * Otwarty wybór broni z katalogu (naprawa 31.08): `null` — zamknięty,
    * `{ rowId: null }` — dopisuje nowy wiersz, `{ rowId }` — wiąże istniejący.
@@ -1828,12 +1851,15 @@ function WeaponStrip({
             return [
               <tr key={row.id}>
                 <td>
-                  <input
-                    type="text"
-                    maxLength={64}
-                    value={row.name}
-                    onChange={(e) => updateRow(row.id, { name: e.target.value })}
-                  />
+                  <span className="item-name-cell">
+                    <ItemIcon icon={rowIcon('weapons', row)} />
+                    <input
+                      type="text"
+                      maxLength={64}
+                      value={row.name}
+                      onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                    />
+                  </span>
                   {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
                       nie strzela. Do 31.08 mówił to dopiero planer, w chwili
                       gdy strzał już się nie udał — teraz mówi to karta. */}
@@ -2167,13 +2193,21 @@ function WeaponCatalogPicker({
   const order = useCompendiumStore((s) => s.order);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const [query, setQuery] = useState('');
+  const [weaponType, setWeaponType] = useState<string | null>(null);
+  const entryIcon = useEntryIcon();
 
-  const found = useMemo(() => {
+  const matching = useMemo(() => {
     const catalogue = order
       .map((id) => entries[id])
       .filter((entry): entry is CompendiumEntry => !!entry);
-    return searchCompendium(catalogue, query, 'weapon').slice(0, WEAPON_PICKER_LIMIT);
+    return searchCompendium(catalogue, query, 'weapon').filter(isWeaponEntry);
   }, [entries, order, query]);
+  // Typ i kolejność typami przed limitem (24.09) — inaczej filtr zawężałby
+  // pierwsze dwadzieścia wyników alfabetu, a nie cały katalog.
+  const found = useMemo(
+    () => filterWeaponsByType(matching, weaponType).slice(0, WEAPON_PICKER_LIMIT),
+    [matching, weaponType],
+  );
 
   const types = useMemo(() => new Map(Object.entries(weaponTypeById)), [weaponTypeById]);
 
@@ -2199,6 +2233,7 @@ function WeaponCatalogPicker({
           Anuluj
         </button>
       </div>
+      <WeaponTypeFilter weapons={matching} value={weaponType} onChange={setWeaponType} />
       {found.length === 0 ? (
         <p className="weapon-picker-empty">
           {order.length === 0
@@ -2218,7 +2253,10 @@ function WeaponCatalogPicker({
                   className="weapon-picker-row"
                   onClick={() => onPick(entry, resolved)}
                 >
-                  <span className="weapon-picker-name">{entry.name}</span>
+                  <span className="weapon-picker-name">
+                    <ItemIcon icon={entryIcon(entry)} />
+                    {entry.name}
+                  </span>
                   {/* Trzy liczby, po których poznaje się model: obrażenia,
                       magazynek i szybkostrzelność. Brak typu broni widać
                       od razu, bo to jedyny wiersz bez nich. */}
@@ -2263,6 +2301,7 @@ const ARMOR_DEFAULT_SP = 11;
  */
 function ArmorStrip({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const registry = useCharacterStore((s) => s.registry);
+  const rowIcon = useRowIcon();
   const tokens = useTokenStore((s) => s.tokens);
   // Poziom Specjalizacji Naprawa decyduje, czy „Prowizorka" ma się w ogóle
   // pokazać; figura na scenie — kto płaci za nią Akcję, gdy trwa walka.
@@ -2336,13 +2375,16 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
               <td className="armor-slot-cell">
                 <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
                 {row ? (
-                  <input
-                    type="text"
-                    maxLength={64}
-                    value={row.name}
-                    onChange={(e) => update(row.id, { name: e.target.value })}
-                    aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
-                  />
+                  <span className="item-name-cell">
+                    <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
+                    <input
+                      type="text"
+                      maxLength={64}
+                      value={row.name}
+                      onChange={(e) => update(row.id, { name: e.target.value })}
+                      aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
+                    />
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -2462,13 +2504,16 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="text"
-                      maxLength={64}
-                      value={row.name}
-                      onChange={(e) => update(row.id, { name: e.target.value })}
-                      aria-label="Nazwa pancerza"
-                    />
+                    <span className="item-name-cell">
+                      <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
+                      <input
+                        type="text"
+                        maxLength={64}
+                        value={row.name}
+                        onChange={(e) => update(row.id, { name: e.target.value })}
+                        aria-label="Nazwa pancerza"
+                      />
+                    </span>
                   </td>
                   <td className="armor-sp-cell">
                     <ArmorSp row={row} update={update} />
@@ -3367,6 +3412,7 @@ function CyberdeckSection({ data, saveData }: TabProps) {
  */
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const user = useAuthStore((s) => s.user);
+  const rowIcon = useRowIcon();
   const operatesCard =
     character.ownerId === null ? user?.role === ROLE_GM : character.ownerId === user?.id;
   return (
@@ -3402,7 +3448,7 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
           </button>
         )}
       </div>
-      <RowTable
+      <RowTable<CpredGearRow>
         rows={data.gear}
         columns={[
           { key: 'name', label: 'Wyposażenie' },
@@ -3412,6 +3458,12 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         addLabel="+ Wyposażenie"
         makeRow={() => ({ id: newRowId(), name: '', qty: 1, notes: '' })}
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
+        lead={(row) => {
+          // Sprzęt bez rodzaju zostaje bez miniatury i bez pustego miejsca —
+          // kolumna nazw nie przesuwa się dla garstki naboi.
+          const icon = rowIcon('gear', row);
+          return icon ? <ItemIcon icon={icon} /> : null;
+        }}
       />
 
       <DosesSection character={character} data={data} />

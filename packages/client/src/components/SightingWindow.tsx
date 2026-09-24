@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   CPRED_PERCEPTION_SKILL_ID,
   CPRED_SIGHTING_BARE_HEAD,
+  cpredArmorIcon,
   type CpredSighting,
   type SightingLogEntry,
 } from '@vtt/shared';
@@ -12,6 +13,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCheckStore } from '../stores/checkStore.js';
 import { useWindowPlacement } from '../window-placement.js';
+import { ItemIcon } from './ItemIcons.js';
 
 /**
  * „Co on ma na sobie" — okno oględzin (etap 41).
@@ -124,6 +126,7 @@ export function SightingWindow() {
               <ul className="sighting-list">
                 {sighting.armor.map((row, index) => (
                   <li key={`${row.location}-${index}`}>
+                    <ItemIcon icon={cpredArmorIcon(row.location)} />
                     <span className="sighting-where">{row.locationLabel}</span>
                     <span className="sighting-what">
                       {row.name}
@@ -154,7 +157,8 @@ export function SightingWindow() {
               <ul className="sighting-list">
                 {sighting.weapons.map((row, index) => (
                   <li key={`weapon-${index}`}>
-                    <span className="sighting-what">{row.name}</span>
+                    <ItemIcon icon={row.icon ?? null} />
+                    <span className="sighting-what sighting-what--lead">{row.name}</span>
                     <span className="sighting-numbers">
                       {row.damage ? row.damage : ''}
                       {row.ammoMax !== undefined ? ` · ${row.ammoCurrent}/${row.ammoMax}` : ''}

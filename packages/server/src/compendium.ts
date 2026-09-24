@@ -1,7 +1,14 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
-import { EMPTY_COMPENDIUM, buildCompendium, type CompendiumRegistry } from '@vtt/shared';
+import {
+  EMPTY_COMPENDIUM,
+  buildCompendium,
+  parseWeaponIcons,
+  withWeaponIcons,
+  type CompendiumRegistry,
+  type CpredWeaponIcon,
+} from '@vtt/shared';
 
 /**
  * Loads the item compendium from JSON files (stage 13).
@@ -45,10 +52,46 @@ export async function loadCompendium(
     log.warn({ dirs }, 'compendium is empty');
     return EMPTY_COMPENDIUM;
   }
-  const registry = buildCompendium(files);
+  const registry = withWeaponIcons(
+    buildCompendium(files),
+    await loadWeaponIcons(dataPublicDir, dataPrivateDir, log),
+  );
   log.info(
     { weaponTypes: registry.weaponTypes.length, entries: registry.entries.length },
     'compendium loaded',
   );
   return registry;
+}
+
+/**
+ * `cpred/weapon-icons.json` (24.09.2026) — modele, którym sylwetka typu kłamie
+ * (rewolwery). Te same dwa katalogi i ta sama kolejność, co przy
+ * `shop-tiers.json`: publiczna próbka nazywa wymyślone wpisy, prywatny plik
+ * grupy wygrywa po id. Brak obu jest normalny — broń rysuje wtedy swój typ.
+ */
+async function loadWeaponIcons(
+  dataPublicDir: string,
+  dataPrivateDir: string,
+  log: FastifyBaseLogger,
+): Promise<Record<string, CpredWeaponIcon>> {
+  let icons: Record<string, CpredWeaponIcon> = {};
+  for (const dir of [dataPublicDir, dataPrivateDir]) {
+    const file = join(dir, 'cpred', 'weapon-icons.json');
+    let raw: string;
+    try {
+      raw = await readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+    try {
+      const parsed = parseWeaponIcons(JSON.parse(raw));
+      if (parsed.issues.length > 0) {
+        log.warn({ file, issues: parsed.issues }, 'weapon icons: entries skipped');
+      }
+      icons = { ...icons, ...parsed.icons };
+    } catch (error) {
+      log.warn({ err: error, file }, 'weapon icons file skipped');
+    }
+  }
+  return icons;
 }

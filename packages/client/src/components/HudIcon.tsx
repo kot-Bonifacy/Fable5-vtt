@@ -20,14 +20,21 @@ interface HudIconProps {
   name: string;
   /** Dodatkowa klasa; sama `.hud-icon` niesie maskę i rozmiar. */
   className?: string;
+  /** Dymek po najechaniu — ikona zostaje `aria-hidden`, nazwę niesie tekst obok. */
+  title?: string;
 }
 
-export function HudIcon({ name, className }: HudIconProps) {
+export function HudIcon({ name, className, title }: HudIconProps) {
   // Zmienna CSS zamiast `mask-image` wprost: `styles/12-hud.css` trzyma wtedy całą
   // mechanikę maski (rozmiar, powtarzanie, tło), a komponent podaje sam adres.
   const style = { '--hud-icon': `url("/icons/hud/${name}.svg")` } as CSSProperties;
   return (
-    <span className={className ? `hud-icon ${className}` : 'hud-icon'} style={style} aria-hidden />
+    <span
+      className={className ? `hud-icon ${className}` : 'hud-icon'}
+      style={style}
+      title={title}
+      aria-hidden
+    />
   );
 }
 

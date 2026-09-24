@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "$comment": "Miniatury modeli, którym sylwetka typu broni kłamie — np. rewolwer, który w regułach jest ciężkim pistoletem. Wartość to nazwa sylwetki z CPRED_WEAPON_ICONS. Identyfikatory wskazują wymyślone wpisy z compendium/sample.json; prawdziwy plik grupy leży w data/private/cpred/weapon-icons.json i wygrywa po id.",
+  "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
+  "icons": {
+    "weapon.zardzewiak": "revolver"
+  }
+}

@@ -28,6 +28,7 @@ import {
   type CompendiumRegistry,
   type ResolvedWeapon,
 } from './compendium.js';
+import type { CpredWeaponIcon } from './weaponicons.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import {
   CPRED_ATTACK_MODE_LABELS,
@@ -217,34 +218,9 @@ export function cpredFireModes(resolved: ResolvedWeapon | null): CpredAttackMode
   return modes;
 }
 
-/**
- * Pictures a slot may wear (stage 27h).
- *
- * Names of *things*, not of files: the client owns the artwork and only needs
- * to be told what the slot is holding. The list is deliberately short — three
- * kinds of pistol share one silhouette, because at 18 px the difference between
- * them is invisible and the name underneath already says which one it is.
- */
+/** Pictures a slot may wear: a weapon, or one of the actions beside it. */
 export type CpredSlotIcon =
-  | 'pistol'
-  | 'revolver'
-  | 'smg'
-  | 'smg-heavy'
-  | 'rifle'
-  | 'sniper'
-  | 'shotgun'
-  | 'flamethrower'
-  | 'grenade'
-  | 'launcher'
-  | 'rocket'
-  | 'crossbow'
-  | 'bow'
-  | 'knife'
-  | 'sword'
-  | 'broadsword'
-  | 'two-handed-sword'
-  | 'fist'
-  | 'martial-arts'
+  | CpredWeaponIcon
   | 'reload'
   | 'first-aid'
   | 'grab'
@@ -255,22 +231,28 @@ export type CpredSlotIcon =
   | 'combat-awareness'
   | 'backup';
 
-/** Weapon type id (last segment) → picture. */
-const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
-  'very-heavy-pistol': 'revolver',
-  'heavy-pistol': 'pistol',
+/**
+ * Weapon type id (last segment) → picture.
+ *
+ * The key order is also the order a weapon list is sorted in
+ * (`cpredWeaponTypeRank`): pistols from the smallest, automatics, long arms,
+ * bows, the heavy weapons, then blades from the lightest and bare hands.
+ */
+const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredWeaponIcon>> = {
   'medium-pistol': 'pistol',
+  'heavy-pistol': 'pistol-heavy',
+  'very-heavy-pistol': 'pistol-very-heavy',
   'submachine-gun': 'smg',
   'heavy-submachine-gun': 'smg-heavy',
+  shotgun: 'shotgun',
   'assault-rifle': 'rifle',
   'sniper-rifle': 'sniper',
-  shotgun: 'shotgun',
-  flamethrower: 'flamethrower',
-  grenade: 'grenade',
+  bow: 'bow',
+  crossbow: 'crossbow',
   'grenade-launcher': 'launcher',
   'rocket-launcher': 'rocket',
-  crossbow: 'crossbow',
-  bow: 'bow',
+  flamethrower: 'flamethrower',
+  grenade: 'grenade',
   'light-melee': 'knife',
   'medium-melee': 'sword',
   'heavy-melee': 'broadsword',
@@ -279,8 +261,33 @@ const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   'martial-arts': 'martial-arts',
 };
 
+/** Picture of a weapon type by its id, or null for a type nobody mapped. */
+export function cpredWeaponTypeIcon(typeId: string | null | undefined): CpredWeaponIcon | null {
+  if (!typeId) return null;
+  return WEAPON_TYPE_ICONS[typeId.slice(typeId.lastIndexOf('.') + 1)] ?? null;
+}
+
+/** Rank of a weapon type in the canonical list order; unknown types go last. */
+const WEAPON_TYPE_RANK: ReadonlyMap<string, number> = new Map(
+  Object.keys(WEAPON_TYPE_ICONS).map((tail, index) => [tail, index]),
+);
+
+/**
+ * Where a weapon type sorts in a list (24.09.2026) — the order of
+ * `WEAPON_TYPE_ICONS`, so a list reads pistols → rifles → heavy → blades.
+ *
+ * A type the table does not know (the public sample, a GM's homebrew type)
+ * sorts after every known one rather than being dropped, and a weapon with no
+ * type at all after that.
+ */
+export function cpredWeaponTypeRank(typeId: string | null | undefined): number {
+  if (!typeId) return WEAPON_TYPE_RANK.size + 1;
+  const tail = typeId.slice(typeId.lastIndexOf('.') + 1);
+  return WEAPON_TYPE_RANK.get(tail) ?? WEAPON_TYPE_RANK.size;
+}
+
 /** Skill the weapon fires with → picture, for a type nobody has mapped. */
-const SKILL_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
+const SKILL_ICONS: Readonly<Record<string, CpredWeaponIcon>> = {
   handgun: 'pistol',
   'shoulder-arms': 'rifle',
   'heavy-weapons': 'launcher',
@@ -300,13 +307,12 @@ const SKILL_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
  * still thrown, or is still swung, and any of those is a better picture than a
  * pistol nobody is holding.
  */
-export function cpredWeaponIcon(resolved: ResolvedWeapon | null): CpredSlotIcon {
-  const typeId = resolved?.typeId;
-  if (typeId) {
-    const tail = typeId.slice(typeId.lastIndexOf('.') + 1);
-    const byType = WEAPON_TYPE_ICONS[tail];
-    if (byType) return byType;
-  }
+export function cpredWeaponIcon(resolved: ResolvedWeapon | null): CpredWeaponIcon {
+  // A model's own picture beats its type's: a revolver is a medium or heavy
+  // pistol by the rules and a revolver to anybody looking at it.
+  if (resolved?.icon) return resolved.icon;
+  const byType = cpredWeaponTypeIcon(resolved?.typeId);
+  if (byType) return byType;
   const bySkill = resolved?.skillId ? SKILL_ICONS[resolved.skillId] : undefined;
   if (bySkill) return bySkill;
   if (resolved?.explosive) return 'grenade';

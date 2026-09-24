@@ -30,6 +30,7 @@
  * powtórzenie ich tutaj byłoby drugim domem dla jednego faktu.
  */
 
+import type { CpredWeaponIcon } from './weaponicons.js';
 import type { CpredArmorRow, CpredCharacterData, CpredWeaponRow } from './character.js';
 import { cpredDrawnWeapons } from './character.js';
 import {
@@ -91,6 +92,11 @@ export interface CpredSightingArmor {
 export interface CpredSightingWeapon {
   /** „Karabin szturmowy" przy rzucie oka, „Militech Ronin" po Teście. */
   name: string;
+  /**
+   * Sylwetka rodzaju (24.09.2026) — w obu warstwach, bo rodzaj widać gołym
+   * okiem. Brak przy broni spoza katalogu: jej rodzaju nie ma skąd wziąć.
+   */
+  icon?: CpredWeaponIcon;
   /** Obrażenia, magazynek i zacięcie — wyłącznie w warstwie szczegółowej. */
   damage?: string;
   ammoCurrent?: number;
@@ -128,6 +134,8 @@ export interface CpredSighting {
 export interface CpredSightingWeaponFacts {
   /** `ResolvedWeapon.typeName`, np. „Karabin szturmowy". */
   typeName?: string;
+  /** `cpredWeaponIcon` tej broni — sylwetka, którą rysuje okno oględzin. */
+  icon?: CpredWeaponIcon;
 }
 
 /**
@@ -166,10 +174,14 @@ function weaponSighting(
     // karabin, a nie to, że jest to Militech Ronin. Broń wpisana z ręki nie ma
     // typu w katalogu i nie ma z czego tej klasy wziąć — wtedy uczciwiej jest
     // powiedzieć „coś w rękach" niż podać nazwę, którą MG wpisał dla siebie.
-    return { name: facts?.typeName ?? GLANCE_WEAPON_UNKNOWN };
+    return {
+      name: facts?.typeName ?? GLANCE_WEAPON_UNKNOWN,
+      ...(facts?.icon ? { icon: facts.icon } : {}),
+    };
   }
   return {
     name: row.name,
+    ...(facts?.icon ? { icon: facts.icon } : {}),
     damage: row.damage,
     ...(row.ammoMax > 0 ? { ammoCurrent: row.ammoCurrent, ammoMax: row.ammoMax } : {}),
     ...(row.jammed === true ? { jammed: true } : {}),

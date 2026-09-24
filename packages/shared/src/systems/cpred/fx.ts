@@ -26,6 +26,8 @@ export interface CpredWeaponFx {
 
 const ICON_FX: Readonly<Record<CpredSlotIcon, CpredWeaponFx>> = {
   pistol: { style: 'bullet', sound: 'shot-pistol' },
+  'pistol-heavy': { style: 'bullet', sound: 'shot-pistol' },
+  'pistol-very-heavy': { style: 'bullet', sound: 'shot-pistol' },
   revolver: { style: 'bullet', sound: 'shot-pistol' },
   smg: { style: 'bullet', sound: 'shot-pistol' },
   'smg-heavy': { style: 'bullet', sound: 'shot-rifle' },

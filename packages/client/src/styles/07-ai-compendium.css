@@ -886,3 +886,53 @@
   gap: 0.3rem;
   margin-bottom: 0.4rem;
 }
+
+/* Miniatura rodzaju przedmiotu (24.09.2026) — sylwetka z `public/icons/hud`
+   jako maska, więc bierze kolor tekstu wiersza, także przygaszonego
+   w zablokowanym wierszu. Przedmiot bez miniatury trzyma puste miejsce tej
+   samej szerokości, żeby nazwy na liście mieszanej stały w jednej kolumnie. */
+.item-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  align-self: center;
+}
+
+.item-icon--none {
+  display: inline-block;
+}
+
+.weapon-type-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.25rem 0;
+}
+
+.weapon-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.72rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+}
+
+.weapon-type-chip--active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.weapon-type-chip-count {
+  opacity: 0.7;
+}
+
+.compendium-card-name .item-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-right: 0.35rem;
+  vertical-align: -0.3rem;
+}

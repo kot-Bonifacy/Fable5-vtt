@@ -1397,7 +1397,40 @@
 }
 
 .weapon-picker-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-weight: 600;
+}
+
+/* Miniatura rodzaju przy nazwie (24.09.2026): pole nazwy dzieli komórkę
+   z sylwetką, więc komórka układa je w rząd i oddaje polu resztę szerokości. */
+.cp-table .item-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.cp-table .item-name-cell input {
+  flex: 1 1 auto;
+}
+
+.cp-table .item-icon {
+  color: var(--cp-ink-dim);
+}
+
+/* Filtr typów w okienku wyboru broni — ten sam rząd co w Kompendium, ale
+   w barwach kartki, nie panelu. */
+.weapon-picker .weapon-type-chip {
+  background: transparent;
+  border-color: var(--cp-ink-dim);
+  color: var(--cp-ink-dim);
+}
+
+.weapon-picker .weapon-type-chip--active {
+  color: var(--cp-ink);
+  border-color: var(--cp-red);
 }
 
 .weapon-picker-stats {

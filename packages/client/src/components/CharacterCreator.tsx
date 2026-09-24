@@ -82,6 +82,7 @@ import {
   lifepathRoleTables,
   lifepathRollLabel,
   resolveWeapon,
+  isWeaponEntry,
   searchCompendium,
   shopTierVerdict,
 } from '@vtt/shared';
@@ -111,6 +112,7 @@ import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { RoleChoresList } from './RoleChores.js';
+import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
 
@@ -2014,6 +2016,11 @@ function LifepathPeople({
 // ───────────────────────── krok 5: Wyposażenie ─────────────────────────
 
 /** The three catalogue shelves a starting character can carry off. */
+/** Półki z miniaturą rodzaju — na „Sprzęcie” stałaby przy garstce pozycji. */
+function shelfIcons(category: CompendiumCategory): boolean {
+  return category === 'weapon' || category === 'armor' || category === 'ammo';
+}
+
 const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
   { id: 'weapon', label: 'Broń' },
   { id: 'armor', label: 'Pancerz' },
@@ -2057,13 +2064,28 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const budget = creationBudget(data, draft);
   const left = budget - spent;
 
-  const shelfEntries = useMemo(() => {
+  // Półka broni: filtr typem i kolejność typami (24.09), jak w Kompendium.
+  const [weaponType, setWeaponType] = useState<string | null>(null);
+  const entryIcon = useEntryIcon();
+  const onShelf = useMemo(() => {
     const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
     return searchCompendium(all, query, shelf)
       .filter((entry) => entryPrice(entry) !== null)
       .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
       .filter((row) => row.verdict.allowed);
   }, [entriesById, order, query, shelf, draft.roleId, shopRules]);
+  const shelfWeapons = useMemo(
+    () => onShelf.map((row) => row.entry).filter(isWeaponEntry),
+    [onShelf],
+  );
+  const shelfEntries = useMemo(() => {
+    if (shelf !== 'weapon') return onShelf;
+    const verdicts = new Map(onShelf.map((row) => [row.entry.id, row.verdict]));
+    return filterWeaponsByType(shelfWeapons, weaponType).map((entry) => ({
+      entry: entry as CompendiumEntry,
+      verdict: verdicts.get(entry.id)!,
+    }));
+  }, [shelf, onShelf, shelfWeapons, weaponType]);
 
   return (
     <div className="creator-step creator-gear">
@@ -2114,6 +2136,9 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
             return (
               <li key={line.entryId}>
                 <span className="creator-basket-name">
+                  {entry && shelfIcons(entry.category) ? (
+                    <ItemIcon icon={entryIcon(entry)} />
+                  ) : null}
                   {line.name}
                   {line.qty > 1 ? <span className="creator-basket-qty">×{line.qty}</span> : null}
                   {onShelf && !onShelf.allowed ? (
@@ -2164,6 +2189,10 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
         />
       </div>
 
+      {shelf === 'weapon' ? (
+        <WeaponTypeFilter weapons={shelfWeapons} value={weaponType} onChange={setWeaponType} />
+      ) : null}
+
       <ul className="creator-shop">
         {shelfEntries.length === 0 ? (
           <li className="placeholder-text">
@@ -2189,6 +2218,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
                   <span className="creator-shop-caret" aria-hidden="true">
                     {open ? '▾' : '▸'}
                   </span>
+                  {shelfIcons(entry.category) ? <ItemIcon icon={entryIcon(entry)} /> : null}
                   {entry.name}
                   {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
                   {verdict.roleTool ? (

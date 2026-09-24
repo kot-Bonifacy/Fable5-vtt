@@ -85,6 +85,22 @@ describe('licence guard', () => {
     for (const id of named) expect(invented).toContain(id);
   });
 
+  it('ships only invented weapon pictures in data/public (24.09.2026)', () => {
+    // Same bargain as shop-tiers.json: the real catalogue's ids stay private.
+    const file = join(REPO_ROOT, 'data', 'public', 'cpred', 'weapon-icons.json');
+    if (!existsSync(file)) return;
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      source?: string;
+      icons?: Record<string, string>;
+    };
+    expect(parsed.source ?? '').toMatch(/przykładowe|wymyślone/i);
+    const sample = JSON.parse(
+      readFileSync(join(REPO_ROOT, 'data', 'public', 'cpred', 'compendium', 'sample.json'), 'utf8'),
+    ) as { entries: { id: string }[] };
+    const invented = new Set(sample.entries.map((entry) => entry.id));
+    for (const id of Object.keys(parsed.icons ?? {})) expect(invented).toContain(id);
+  });
+
   it('ships only invented cover material values in data/public (stage 16c)', () => {
     // The material × thickness table is rulebook content (s. 180), so the
     // committed file carries the right *shape* with made-up numbers and the

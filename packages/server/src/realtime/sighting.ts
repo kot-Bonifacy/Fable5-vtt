@@ -10,8 +10,10 @@ import {
   ROLE_GM,
   cpredDrawnWeapons,
   cpredSighting,
+  cpredWeaponIcon,
   isWeaponEntry,
   parseCharacterData,
+  resolveWeapon,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -62,7 +64,8 @@ export async function weaponFactsFor(
     const entry = compendium.entries.find((candidate) => candidate.id === row.compendiumId);
     if (!entry || !isWeaponEntry(entry)) continue;
     const type = entry.weaponTypeId ? typeById.get(entry.weaponTypeId) : undefined;
-    if (type) facts[row.id] = { typeName: type.name };
+    const icon = cpredWeaponIcon(resolveWeapon(entry, { weaponTypeById: typeById }));
+    facts[row.id] = type ? { typeName: type.name, icon } : { icon };
   }
   return facts;
 }

@@ -1625,3 +1625,10 @@
   border-color: var(--border);
   color: var(--text-dim);
 }
+
+/* Miniatura rodzaju w koszyku (24.09.2026) — tekst płynie, więc ikona
+   siada na linii pisma zamiast w kolumnie flexa. */
+.creator-basket-name .item-icon {
+  margin-right: 0.3rem;
+  vertical-align: -0.2rem;
+}

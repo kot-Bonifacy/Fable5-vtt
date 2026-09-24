@@ -498,6 +498,10 @@ export interface CpredItemViewWire {
   detail: string;
   qty: number;
   stackable: boolean;
+  /** Wpis kompendium wiersza — po nim klient rysuje miniaturę rodzaju (24.09). */
+  compendiumId?: string;
+  /** Lokacja pancerza: tarcza ma inną miniaturę niż kurtka. */
+  armorLocation?: 'head' | 'body' | 'shield';
 }
 
 export interface InventorySourcesResult {

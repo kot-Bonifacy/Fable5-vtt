@@ -31,6 +31,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useTradeStore } from '../stores/tradeStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { ItemViewIcon } from './ItemIcons.js';
 
 /**
  * Okno handlu (etap 38c) — dwa pola wymiany, dwie zgody.
@@ -334,6 +335,7 @@ function OpenTrade({ trade }: { trade: TradeView }) {
                   <span className="trade-grip" aria-hidden="true">
                     ⠿
                   </span>
+                  <ItemViewIcon item={item} />
                   <span className="inventory-row-name">{item.name}</span>
                   <span className="inventory-row-detail">{itemDetail(item)}</span>
                   <button
@@ -385,6 +387,7 @@ function OpenTrade({ trade }: { trade: TradeView }) {
                     <span className="trade-grip" aria-hidden="true">
                       ⠿
                     </span>
+                    <ItemViewIcon item={item} />
                     <span className="inventory-row-name">{item.name}</span>
                     {item.stackable ? (
                       <input
@@ -444,6 +447,7 @@ function OpenTrade({ trade }: { trade: TradeView }) {
               <OfferZone key={index} side={side} editable={false} hover={false} stale={false}>
                 {side.items.map((item) => (
                   <li key={itemKey(item)} className="inventory-row">
+                    <ItemViewIcon item={item} />
                     <span className="inventory-row-name">{item.name}</span>
                     <span className="inventory-row-detail">{itemDetail(item)}</span>
                   </li>

@@ -443,11 +443,19 @@ describe('cpredWeaponIcon', () => {
   it('reads the weapon type first, whatever the row is called', () => {
     expect(cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.shotgun' })).toBe('shotgun');
     expect(cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.very-heavy-pistol' })).toBe(
-      'revolver',
+      'pistol-very-heavy',
     );
+    expect(cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.heavy-pistol' })).toBe('pistol-heavy');
     expect(cpredWeaponIcon({ ...smg, typeId: 'weapon-type.heavy-submachine-gun' })).toBe(
       'smg-heavy',
     );
+  });
+
+  it('draws the model when the entry names its own picture (24.09)', () => {
+    // A revolver is a heavy pistol by the rules — only the entry can say so.
+    expect(
+      cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.heavy-pistol', icon: 'revolver' }),
+    ).toBe('revolver');
   });
 
   it('falls back to the skill when the type is one nobody mapped', () => {
