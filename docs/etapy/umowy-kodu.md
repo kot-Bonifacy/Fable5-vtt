@@ -110,7 +110,7 @@ pozycji schowanego właściciela. Pola bariery są zerowane w otworach wysyłany
 - **Nowa karta obiektu sceny** — gałąź w `findSceneObject` (`SceneObjectCard.tsx`, `switch`, więc kompilator pilnuje kompletu), ikona **ta sama, co narzędzie na pasku**, i gałąź w `moveSceneObject` w `MapArea`, jeśli obiekt da się przesunąć. Karta nie kasuje sama — `onDelete` prowadzi do `deleteSceneObject`.
 - **`Esc` w karcie** — obsługiwany przez `onKeyDown` samej karty, bo globalna drabina odrzuca każdy klawisz naciśnięty w polu tekstowym, a karta notatki sama ustawia tam kursor.
 - **Uchwyty obiektu** — geometria w `shared/scene-handles.ts` (trzy kształty na siedem rodzajów); renderer woła `onSceneTransform(ref, shape)` i **nie wysyła nic sam**. Róg wygrywa z wnętrzem; przyciąganie domyślne, `Ctrl` je wyłącza.
-- **Nowa próbka dźwiękowa mapy** — pięć miejsc naraz: plik w `public/sfx/`, `MAP_FX_SOUNDS` w `shared/fx.ts`, `SFX_FILES` + `SFX_GAIN`, wiersz w `SFX_SAMPLES` (`SettingsWindow`) i wiersz w `ATTRIBUTION.md`. Którą broń co gra, rozstrzyga wyłącznie `ICON_FX`; kompletu pilnuje `sfx.test.ts`.
+- **Nowa próbka dźwiękowa mapy** — cztery miejsca naraz: plik w `public/sfx/`, `MAP_FX_SOUNDS` w `shared/fx.ts`, `SFX_FILES` + `SFX_GAIN` i wiersz w `ATTRIBUTION.md` (odsłuch w ustawieniach usunięty 24.09). Którą broń co gra, rozstrzyga wyłącznie `ICON_FX`; kompletu pilnuje `sfx.test.ts`.
 - **Nowy tryb kliknięcia w mapę** — do `mapToolStore`, obok `tool` i `tokenPlacement`: jedno pole na tryb, więc dwóch mieć się nie da. Pilnuje `map-mode.test.ts`.
 - **Żeton postaci z UI** — przez `TokenPlacement.characterId` (+ `ownerId` z karty); bez tego powstaje pusty krążek o tej samej nazwie, nie figura postaci.
 - **Klik w cudzą figurę** — `onTokenPreview` → `selectionStore.focus`: pasek ją opisuje, nikt nią nie steruje.
@@ -495,7 +495,7 @@ domyślne i wyłącza je `Ctrl` na czas gestu.
 
 ### Nowa próbka dźwiękowa mapy
 
-Dźwięk mapy żyje w **pięciu** miejscach i wszystkie pięć musi się zgadzać, bo cztery z nich nie
+Dźwięk mapy żyje w **czterech** miejscach i wszystkie cztery muszą się zgadzać, bo trzy z nich nie
 mają typu, który by tego pilnował:
 
 1. **plik** w `packages/client/public/sfx/` (`.wav` albo `.ogg` — paczki się różnią),
@@ -503,17 +503,15 @@ mają typu, który by tego pilnował:
    nazwę pliku,
 3. `SFX_FILES` **i** `SFX_GAIN` w `packages/client/src/sfx.ts` (`Record<MapFxSound, …>`, więc te
    dwa pilnuje kompilator),
-4. wiersz w `SFX_SAMPLES` w `SettingsWindow.tsx` — bez niego nikt próbki nie **usłyszy**, dopóki
-   nie trafi na nią w walce,
-5. wiersz w `public/sfx/ATTRIBUTION.md` z paczką, autorem i licencją.
+4. wiersz w `public/sfx/ATTRIBUTION.md` z paczką, autorem i licencją.
 
 Który dźwięk gra która broń, rozstrzyga **jedna tabela** — `ICON_FX` w
 `shared/src/systems/cpred/fx.ts`, indeksowana ikoną z `cpredWeaponIcon`. Nie dokładaj drugiego
 rozgałęzienia „czy to strzelba" po stronie klienta: renderer ma nie wiedzieć, co to Cyberpunk.
 
-Kompletu pilnuje `packages/client/src/sfx.test.ts` (dźwięk bez pliku, plik-sierota i dźwięk bez
-przycisku odsłuchu wywalają test) — tak wyszedł zapomniany `bowstring.ogg` po wymianie próbki
-cięciwy na `bowstring.wav` 28.08.
+Kompletu pilnuje `packages/client/src/sfx.test.ts` (dźwięk bez pliku i plik-sierota wywalają
+test) — tak wyszedł zapomniany `bowstring.ogg` po wymianie próbki cięciwy na `bowstring.wav` 28.08.
+Rządek przycisków odsłuchu w „⚙ Ustawienia" usunięto 24.09 na życzenie MG — nie przywracaj go.
 
 **„Jedno kliknięcie w mapę trafia w jedną rzecz" — a to znaczy jedno pole na tryb.**
 `mapToolStore` trzyma i `tool`, i `tokenPlacement` (żeton czekający na postawienie), bo to jest

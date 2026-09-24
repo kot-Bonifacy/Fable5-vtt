@@ -125,11 +125,12 @@ function tailSpeed(recent: ShakeSample[], now: number): number {
 }
 
 /**
- * `energy` (0–1) is how hard the hand is shaking; the user's cup slider
- * (0–100, stage 27d) scales the whole thing, and zero silences it outright.
+ * `energy` (0–1) is how hard the hand is shaking; the user's dice slider
+ * (0–100 — the cup had its own until 24.09) scales the whole thing, and zero
+ * silences it outright.
  */
 function playRattle(energy: number): void {
-  const setting = useSettingsStore.getState().cupVolume / 100;
+  const setting = useSettingsStore.getState().diceVolume / 100;
   if (setting <= 0) return;
   const src = RATTLE_SOUNDS[Math.floor(Math.random() * RATTLE_SOUNDS.length)]!;
   const audio = new Audio(src);

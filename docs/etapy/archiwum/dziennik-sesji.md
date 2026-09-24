@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 — miniatury rodzaju przy broni i ekwipunku
+
+**Zlecenie MG:** każda broń na listach (sklep i gdzie indziej) ma miniaturę swojej kategorii,
+żeby łatwiej znaleźć rodzaj broni. Rozstrzygnięcia MG: te same sylwetki co pasek broni
+w panelu postaci, ale **trzy pistolety rozdzielone** i **rewolwer per model** (w regułach
+rewolwer jest średnim/ciężkim pistoletem); miejsca: Kompendium/sklep, kreator, karta postaci,
+wymiana, łup, oględziny; **filtr typami + sort typami** nad listami broni; do tego amunicja,
+dodatki i pancerz; brakujące sylwetki z game-icons.net.
+
+**Wdrożone:** `weaponicons.ts` (lista `CPRED_WEAPON_ICONS`, bez importów) i `itemicons.ts`
+(`cpredEntryIcon`, `cpredItemRowIcon`, `cpredSortWeapons`, `withWeaponIcons`) w `shared`;
+`WeaponEntry.icon` / `ResolvedWeapon.icon` (wygrywa z typem w `cpredWeaponIcon`, więc pasek
+broni też pokazuje rewolwer); plik **`cpred/weapon-icons.json`** (publiczna próbka +
+prywatny z Towa Type-12 i Militech Sheriff) wczytywany w `loadCompendium`; „Miniatura na
+listach” w edytorze wpisu MG; `CpredItemView` i `CpredItemViewWire` niosą `compendiumId`
+i `armorLocation`, oględziny — `icon` broni. Klient: `ItemIcons.tsx` (`ItemIcon`,
+`WeaponTypeFilter`, `useEntryIcon`, `useRowIcon`, `ItemViewIcon`), `HudIcon` z `title`,
+`RowTable` z `lead`. Stary `revolver.svg` (masywny pistolet) to teraz `pistol-very-heavy.svg`;
+`revolver.svg` jest nowym, prawdziwym rewolwerem. Umowa w `ekwipunek`.
+
+**Oględziny (Chrome, MG):** Kompendium — miniatury, sort, filtr (8 ciężkich pistoletów),
+rewolwer na liście i w karcie wpisu; karta Portosa — pas broni i okienko „+ Broń z katalogu”.
+**Nie oglądane ręką:** półka kreatora, okno wymiany i łupu, okno oględzin (pokryte testami
+i `tsc`). Znak: zrzuty w karcie Chrome po `scrollIntoView` rozjeżdżają się z DOM — świeża
+karta pomaga.
+
+**Weryfikacja:** 2217 / 1223 / 282 testów; tsc, ESLint, Prettier trzech pakietów czyste.
+
 ### Sesja 23.09 (trzecia) — portrety NPC i oględziny automatem
 
 **Zlecenie MG:** kilka zaległości; MG wybrał oględziny automatem (biblioteka portretów, odmowy

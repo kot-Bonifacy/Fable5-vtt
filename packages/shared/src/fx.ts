@@ -43,7 +43,7 @@ export type MapFxSound =
   /** A single footstep (stage 27j) — the only sound the map makes on its own. */
   | 'step';
 
-/** Every sound, for the client's preloader and the settings' audition button. */
+/** Every sound, for the client's preloader. */
 export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
   'shot-pistol',
   'shot-rifle',

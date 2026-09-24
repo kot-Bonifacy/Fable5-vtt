@@ -1,4 +1,3 @@
-import type { MapFxSound } from '@vtt/shared';
 import { DICE_SKIN_LIST } from '../dice-skins.js';
 import {
   enterFullscreen,
@@ -7,47 +6,13 @@ import {
   setFullscreenPreference,
   useFullscreenActive,
 } from '../fullscreen.js';
-import { auditionFxSound } from '../sfx.js';
-import { auditionCupNotification } from '../cup-notification.js';
-import {
-  NOTIFICATION_LABELS,
-  auditionNotification,
-  type NotificationKind,
-} from '../game-notifications.js';
+import { NOTIFICATION_LABELS, type NotificationKind } from '../game-notifications.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
-
-/**
- * Próbki mapy do odsłuchu (etap 27i).
- *
- * Wybrane z paczek CC0 **bez odsłuchu** — nazwy plików w archiwach mówiły „hit",
- * „metal", „spark", i to musiało wystarczyć. Ten rządek przycisków jest tego
- * konsekwencją: podmiana źle dobranej próbki to jeden plik w `public/sfx/`
- * i jeden wiersz w `SFX_FILES`, ale najpierw ktoś musi ją usłyszeć.
- */
-const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
-  { id: 'shot-pistol', label: 'Pistolet' },
-  { id: 'shot-rifle', label: 'Karabin' },
-  { id: 'shot-sniper', label: 'Snajperka' },
-  { id: 'shot-shotgun', label: 'Strzelba' },
-  { id: 'swing', label: 'Cięcie' },
-  { id: 'punch', label: 'Cios pięścią' },
-  { id: 'flame', label: 'Miotacz ognia' },
-  { id: 'launch', label: 'Wyrzutnia' },
-  { id: 'bowstring', label: 'Cięciwa' },
-  { id: 'impact', label: 'Trafienie' },
-  { id: 'ricochet', label: 'Rykoszet' },
-  { id: 'explosion', label: 'Wybuch' },
-  { id: 'gas', label: 'Gaz' },
-  { id: 'zap', label: 'Wyładowanie' },
-  { id: 'reload-pistol', label: 'Magazynek — pistolet' },
-  { id: 'reload-rifle', label: 'Magazynek — karabin' },
-  { id: 'step', label: 'Krok' },
-];
 
 /**
  * Okno ustawień (etap 27d).
@@ -73,12 +38,8 @@ export function SettingsWindow() {
   const setAnimate = useSettingsStore((s) => s.setAnimate);
   const diceVolume = useSettingsStore((s) => s.diceVolume);
   const setDiceVolume = useSettingsStore((s) => s.setDiceVolume);
-  const cupVolume = useSettingsStore((s) => s.cupVolume);
-  const setCupVolume = useSettingsStore((s) => s.setCupVolume);
   const sfxVolume = useSettingsStore((s) => s.sfxVolume);
   const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
-  const stepSounds = useSettingsStore((s) => s.stepSounds);
-  const setStepSounds = useSettingsStore((s) => s.setStepSounds);
   const skin = useSettingsStore((s) => s.skin);
   const fullscreen = useSettingsStore((s) => s.fullscreen);
   const fullscreenActive = useFullscreenActive();
@@ -123,46 +84,39 @@ export function SettingsWindow() {
 
       <div className="settings-window-body">
         <section className="settings-group">
-          <h3 className="settings-group-title">Naturalne powiadomienia</h3>
-          <label className="settings-row">
-            <span className="settings-label">Głośność powiadomień</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={notificationVolume}
-              onChange={(event) => setNotificationVolume(Number(event.target.value))}
-            />
-            <span className="settings-value">{notificationVolume}</span>
-          </label>
-          <p className="settings-note">
-            Jeden sygnał, gdy Twój kubek jest gotowy. Zero wycisza powiadomienia.
-          </p>
-          <button type="button" className="settings-sample" onClick={auditionCupNotification}>
-            Posłuchaj sygnału kubka
-          </button>
-          {(Object.keys(NOTIFICATION_LABELS) as NotificationKind[]).map((kind) => (
-            <div className="settings-row" key={kind}>
-              <label className="settings-label">
+          <h3 className="settings-group-title">Dźwięk</h3>
+          <VolumeRow
+            label="Efekty mapy"
+            hint="Strzały, wybuchy, przeładowanie i kroki figur na mapie. Zero wycisza."
+            value={sfxVolume}
+            onChange={setSfxVolume}
+          />
+          <VolumeRow
+            label="Kości"
+            hint="Stukot kości o stół i grzechot kubka. Zero wycisza."
+            value={diceVolume}
+            onChange={setDiceVolume}
+          />
+          <VolumeRow
+            label="Powiadomienia"
+            hint="Sygnał gotowego kubka i zdarzeń zaznaczonych niżej. Zero wycisza."
+            value={notificationVolume}
+            onChange={setNotificationVolume}
+          />
+          <div className="settings-checks" role="group" aria-label="Zdarzenia z sygnałem">
+            {(Object.keys(NOTIFICATION_LABELS) as NotificationKind[]).map((kind) => (
+              <label className="settings-check" key={kind}>
                 <input
                   type="checkbox"
                   checked={notifications[kind]}
                   onChange={(e) => setNotification(kind, e.target.checked)}
-                />{' '}
+                />
                 {NOTIFICATION_LABELS[kind]}
               </label>
-              <button
-                type="button"
-                className="settings-sample"
-                onClick={() => auditionNotification(kind)}
-                aria-label={`Posłuchaj: ${NOTIFICATION_LABELS[kind]}`}
-              >
-                Posłuchaj
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
+
         <section className="settings-group">
           <h3 className="settings-group-title">Kości</h3>
 
@@ -180,87 +134,6 @@ export function SettingsWindow() {
             </span>
           </label>
 
-          <label className="settings-row">
-            <span className="settings-label">Głośność kości</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={diceVolume}
-              onChange={(event) => setDiceVolume(Number(event.target.value))}
-            />
-            <span className="settings-value">{diceVolume}</span>
-          </label>
-
-          <label className="settings-row">
-            <span className="settings-label">Głośność kubka</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={cupVolume}
-              onChange={(event) => setCupVolume(Number(event.target.value))}
-            />
-            <span className="settings-value">{cupVolume}</span>
-          </label>
-        </section>
-
-        <section className="settings-group">
-          <h3 className="settings-group-title">Efekty walki na mapie</h3>
-
-          <label className="settings-row">
-            <span className="settings-label">Głośność efektów</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={sfxVolume}
-              onChange={(event) => setSfxVolume(Number(event.target.value))}
-            />
-            <span className="settings-value">{sfxVolume}</span>
-          </label>
-
-          <p className="settings-note">
-            Strzały, wybuchy i przeładowanie na mapie. Wyłączenie „Animacji 3D" wycisza je razem z
-            kośćmi — to jeden przełącznik na całe przedstawienie. Kliknij próbkę, żeby jej
-            posłuchać.
-          </p>
-
-          <label className="settings-row settings-row--switch">
-            <input
-              type="checkbox"
-              checked={stepSounds}
-              onChange={(event) => setStepSounds(event.target.checked)}
-            />
-            <span>
-              Kroki figur
-              <span className="settings-hint">
-                Cichy krok, gdy figura idzie zaplanowaną trasą. Jedyny dźwięk, który słychać bez
-                strzału — wyłącz, jeśli męczy.
-              </span>
-            </span>
-          </label>
-
-          <div className="settings-samples">
-            {SFX_SAMPLES.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className="settings-sample"
-                onClick={() => auditionFxSound(entry.id)}
-                title={`Posłuchaj: ${entry.label}`}
-              >
-                🔊 {entry.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="settings-group">
-          <h3 className="settings-group-title">Twoje kości</h3>
           <p className="settings-note">
             Skórka jedzie z rzutem: przy Twoim rzucie cały stół widzi te kości. Kliknięcie od razu
             toczy próbny rzut — na niby, bez znaczenia dla gry.
@@ -343,5 +216,31 @@ export function SettingsWindow() {
       </div>
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
+  );
+}
+
+/**
+ * Suwak głośności z opisem w dymku (24.09). Wyjaśnienie siedzi w `title`, nie
+ * pod suwakiem — MG chciał sekcji dźwięku bez ściany tekstu.
+ */
+function VolumeRow(props: {
+  label: string;
+  hint: string;
+  value: number;
+  onChange: (volume: number) => void;
+}) {
+  return (
+    <label className="settings-row" title={props.hint}>
+      <span className="settings-label">{props.label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={props.value}
+        onChange={(event) => props.onChange(Number(event.target.value))}
+      />
+      <span className="settings-value">{props.value}</span>
+    </label>
   );
 }

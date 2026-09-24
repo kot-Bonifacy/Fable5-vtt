@@ -10,12 +10,10 @@ import { useSettingsStore } from './stores/settingsStore.js';
  * to do so break anything. A gunshot that cannot play because the browser has
  * not seen a click yet is a gunshot nobody misses.
  *
- * Two dials from 27d apply here without being re-invented:
- *
- *  - **the SFX slider** (its own, next to dice and cup — a table that wants
- *    rattling dice and a silent map is a table that exists);
- *  - **„Animacja 3D" off**, which stops the map too. The switch means „nie chcę
- *    przedstawienia", and a bang with no picture is the worst half of one.
+ * One dial governs it: **the SFX slider** (its own, next to dice — a table
+ * that wants rattling dice and a silent map is a table that exists). Until
+ * 24.09 „Animacja 3D" off silenced the map too, but the map's pictures never
+ * obeyed that switch, so it only took the sound away without saying so.
  */
 
 /** Sample file per sound. Extensions differ — the packs differ (see ATTRIBUTION). */
@@ -100,9 +98,8 @@ function poolFor(sound: MapFxSound): { elements: HTMLAudioElement[]; next: numbe
 }
 
 /** Is the map allowed to make noise at all right now? */
-export function sfxEnabled(): boolean {
-  const settings = useSettingsStore.getState();
-  return settings.animate && settings.sfxVolume > 0;
+function sfxEnabled(): boolean {
+  return useSettingsStore.getState().sfxVolume > 0;
 }
 
 /**
@@ -132,37 +129,16 @@ export function playFxSound(sound: MapFxSound, options?: { pitch?: number; gain?
 /**
  * One footstep of a figure walking a planned route (stage 27j).
  *
- * Left and right are the same sample at two pitches rather than two files: the
- * pack has both feet, but a second entry in `MAP_FX_SOUNDS` would put a second
- * „Krok" button in the settings for a difference nobody can name out loud.
- * Alternating is what makes a walk sound like a walk instead of a loop.
+ * Left and right are the same sample at two pitches rather than two files —
+ * alternating is what makes a walk sound like a walk instead of a loop. It
+ * has no switch of its own since 24.09: the SFX slider is the only dial, and
+ * `SFX_GAIN.step` keeps it quiet enough not to tire the table.
  */
 let stepFoot = 0;
 
 export function playStepSound(): void {
-  if (!useSettingsStore.getState().stepSounds) return;
   stepFoot ^= 1;
   playFxSound('step', { pitch: stepFoot === 0 ? 0.94 : 1.08 });
-}
-
-/**
- * Plays one sample **ignoring the „bez animacji" switch** — the audition button
- * in „⚙ Ustawienia", whose whole job is to let somebody hear a sample and tell
- * whether it belongs on the map. Still obeys the slider: auditioning at zero
- * would be a button that lies.
- */
-export function auditionFxSound(sound: MapFxSound): void {
-  const volume = useSettingsStore.getState().sfxVolume / 100;
-  if (volume <= 0) return;
-  const audio = poolFor(sound).elements[0]!;
-  audio.volume = Math.max(0, Math.min(1, volume * SFX_GAIN[sound]));
-  audio.playbackRate = 1;
-  try {
-    audio.currentTime = 0;
-  } catch {
-    // see above
-  }
-  void audio.play().catch(() => undefined);
 }
 
 /**

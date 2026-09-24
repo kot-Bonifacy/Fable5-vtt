@@ -1,5 +1,5 @@
 import { ROLE_GM, type ChatMessageView, type CombatView, type SessionUser } from '@vtt/shared';
-import { audioContext, playNaturalNotification } from './cup-notification.js';
+import { playNaturalNotification } from './cup-notification.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useChatStore } from './stores/chatStore.js';
 
@@ -60,10 +60,4 @@ export function notifyGame(kind: NotificationKind) {
         useChatStore.getState().synced &&
         useChatStore.getState().campaign?.id === campaignId,
     );
-}
-export function auditionNotification(kind: NotificationKind) {
-  void audioContext()
-    .resume()
-    .then(() => playNaturalNotification(kind))
-    .catch(() => undefined);
 }

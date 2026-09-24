@@ -12,20 +12,17 @@ import type { NotificationKind } from '../game-notifications.js';
  * wiarygodne miejsce jest na serwerze (kolumna `User.diceSkin`). Tutaj leży
  * kopia, żeby okno ustawień miało co pokazać przed odpowiedzią serwera.
  *
- * Osobne głośności: kości uderzają o stół
- * (biblioteka 3D), kubek grzechocze w ręce (próbki odtwarzane u nas), a mapa
- * strzela i wybucha (etap 27i). Zero wycisza każdą z osobna — stół, który chce
- * grzechoczących kości i cichej mapy, istnieje. Sygnał gotowości kubka i muzyka
- * mają własne suwaki i nie zależą od przełącznika animacji.
+ * Osobne głośności: kości (stukot o stół i grzechot kubka — jeden suwak od
+ * 24.09), mapa (strzały, wybuchy, kroki — etap 27i) i powiadomienia. Zero
+ * wycisza każdą z osobna — stół, który chce grzechoczących kości i cichej mapy,
+ * istnieje. Żaden dźwięk nie zależy od przełącznika animacji (od 24.09).
  */
 export interface SettingsState {
   /** Wyłączone = rzut nie toczy kości, karta czatu pojawia się natychmiast. */
   animate: boolean;
-  /** 0–100, uderzenia kości o stół. */
+  /** 0–100, uderzenia kości o stół i grzechot kubka podczas potrząsania. */
   diceVolume: number;
-  /** 0–100, grzechot kubka podczas potrząsania. */
-  cupVolume: number;
-  /** 0–100, efekty walki na mapie: strzały, wybuchy, przeładowanie (etap 27i). */
+  /** 0–100, efekty mapy: strzały, wybuchy, przeładowanie, kroki figur (etap 27i). */
   sfxVolume: number;
   notificationVolume: number;
   notifications: Record<NotificationKind, boolean>;
@@ -35,15 +32,6 @@ export interface SettingsState {
   musicVolume: number;
   setNotificationVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
-  /**
-   * Kroki figur na mapie (etap 27j) — własny przełącznik, nie własny suwak.
-   *
-   * Głośność bierze z suwaka efektów, bo to ten sam rodzaj dźwięku; wyłącznik
-   * jest osobny, bo to jedyna próbka odtwarzana **za każdym razem, gdy ktoś
-   * przejdzie przez pokój**, a nie raz na strzał. Zakres etapu mówi wprost:
-   * „o ile nie zmęczy przy stole".
-   */
-  stepSounds: boolean;
   /**
    * Pełny ekran przy logowaniu i po odświeżeniu strony (12.09). To tylko
    * życzenie: wejściem i wyjściem zajmuje się `fullscreen.ts`, bo przeglądarka
@@ -57,9 +45,7 @@ export interface SettingsState {
 
   setAnimate: (animate: boolean) => void;
   setDiceVolume: (volume: number) => void;
-  setCupVolume: (volume: number) => void;
   setSfxVolume: (volume: number) => void;
-  setStepSounds: (on: boolean) => void;
   /** Sam zapis — wejście i wyjście woła `setFullscreenPreference` z `fullscreen.ts`. */
   setFullscreen: (on: boolean) => void;
   /** Ustawia kopię lokalną; wysyłką na serwer zajmuje się `socket.ts`. */
@@ -70,9 +56,7 @@ export interface SettingsState {
 
 const ANIMATE_KEY = 'vtt.dice.animate';
 const DICE_VOLUME_KEY = 'vtt.dice.volume';
-const CUP_VOLUME_KEY = 'vtt.cup.volume';
 const SFX_VOLUME_KEY = 'vtt.sfx.volume';
-const STEP_SOUNDS_KEY = 'vtt.sfx.steps';
 const FULLSCREEN_KEY = 'vtt.view.fullscreen';
 const SKIN_KEY = 'vtt.dice.skin';
 
@@ -118,7 +102,6 @@ function write(key: string, value: string): void {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   animate: readFlag(ANIMATE_KEY, true),
   diceVolume: readVolume(DICE_VOLUME_KEY, 50),
-  cupVolume: readVolume(CUP_VOLUME_KEY, 50),
   sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
   notificationVolume: readVolume('vtt.notification.volume', 60),
   notifications: {
@@ -149,7 +132,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     write('vtt.music.volume', String(value));
     set({ musicVolume: value });
   },
-  stepSounds: readFlag(STEP_SOUNDS_KEY, true),
   fullscreen: readFlag(FULLSCREEN_KEY, false),
   skin: readSkin(),
   open: false,
@@ -165,21 +147,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ diceVolume: clamped });
   },
 
-  setCupVolume: (volume) => {
-    const clamped = Math.min(100, Math.max(0, Math.round(volume)));
-    write(CUP_VOLUME_KEY, String(clamped));
-    set({ cupVolume: clamped });
-  },
-
   setSfxVolume: (volume) => {
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
     write(SFX_VOLUME_KEY, String(clamped));
     set({ sfxVolume: clamped });
-  },
-
-  setStepSounds: (on) => {
-    write(STEP_SOUNDS_KEY, on ? '1' : '0');
-    set({ stepSounds: on });
   },
 
   setFullscreen: (on) => {

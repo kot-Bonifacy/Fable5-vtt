@@ -129,6 +129,23 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 24.09 (trzecia) — porządki w ustawieniach dźwięku
+
+**Zlecenie MG:** ograniczyć ustawienia i opisy efektów dźwiękowych, usunąć rządek próbek,
+uporządkować. Rozstrzygnięcia MG: **jedna sekcja „Dźwięk”** w ⚙ Ustawieniach (muzyka i otoczenie
+zostają w oknie muzyki), **wszystkie przyciski odsłuchu precz**, opisy tylko w dymku (`title`),
+**kości + kubek jednym suwakiem**, **efekty mapy odłączone od „Animacji 3D”**, **bez przełącznika
+kroków**.
+
+**Wdrożone:** `SettingsWindow` — sekcja „Dźwięk” (Efekty mapy, Kości, Powiadomienia + zdarzenia
+w dwóch kolumnach, `VolumeRow`), „Kości” łączy animację 3D ze skórkami. Usunięte: `SFX_SAMPLES`,
+`auditionFxSound`, `auditionCupNotification`, `auditionNotification`, `cupVolume`, `stepSounds`
+(klucze `vtt.cup.volume` i `vtt.sfx.steps` w localStorage po prostu przestają być czytane);
+grzechot kubka bierze `diceVolume`; `sfxEnabled` patrzy tylko na suwak. `sfx.test.ts` bez
+testu przycisków odsłuchu; umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca.
+
+**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier; okno obejrzane w Chrome jako MG.
+
 ### Sesja 24.09 (druga) — zaległości lokalnego LLM na nowym modelu
 
 **Zlecenie MG:** zaległości dotyczące lokalnego LLM, z pytaniami przy wątpliwościach. Na starcie
@@ -157,30 +174,3 @@ Aktywna kampania wróciła na **„Test2”**. Gateway i serwery dev działają.
 **Weryfikacja:** 2220 / 1224 / 282 testów, gateway 59; tsc, ESLint, Prettier trzech pakietów
 czyste, `ruff check` czysty (`ruff format` — stary dryf 4 plików, zaległość).
 
-### Sesja 24.09 — miniatury rodzaju przy broni i ekwipunku
-
-**Zlecenie MG:** każda broń na listach (sklep i gdzie indziej) ma miniaturę swojej kategorii,
-żeby łatwiej znaleźć rodzaj broni. Rozstrzygnięcia MG: te same sylwetki co pasek broni
-w panelu postaci, ale **trzy pistolety rozdzielone** i **rewolwer per model** (w regułach
-rewolwer jest średnim/ciężkim pistoletem); miejsca: Kompendium/sklep, kreator, karta postaci,
-wymiana, łup, oględziny; **filtr typami + sort typami** nad listami broni; do tego amunicja,
-dodatki i pancerz; brakujące sylwetki z game-icons.net.
-
-**Wdrożone:** `weaponicons.ts` (lista `CPRED_WEAPON_ICONS`, bez importów) i `itemicons.ts`
-(`cpredEntryIcon`, `cpredItemRowIcon`, `cpredSortWeapons`, `withWeaponIcons`) w `shared`;
-`WeaponEntry.icon` / `ResolvedWeapon.icon` (wygrywa z typem w `cpredWeaponIcon`, więc pasek
-broni też pokazuje rewolwer); plik **`cpred/weapon-icons.json`** (publiczna próbka +
-prywatny z Towa Type-12 i Militech Sheriff) wczytywany w `loadCompendium`; „Miniatura na
-listach” w edytorze wpisu MG; `CpredItemView` i `CpredItemViewWire` niosą `compendiumId`
-i `armorLocation`, oględziny — `icon` broni. Klient: `ItemIcons.tsx` (`ItemIcon`,
-`WeaponTypeFilter`, `useEntryIcon`, `useRowIcon`, `ItemViewIcon`), `HudIcon` z `title`,
-`RowTable` z `lead`. Stary `revolver.svg` (masywny pistolet) to teraz `pistol-very-heavy.svg`;
-`revolver.svg` jest nowym, prawdziwym rewolwerem. Umowa w `ekwipunek`.
-
-**Oględziny (Chrome, MG):** Kompendium — miniatury, sort, filtr (8 ciężkich pistoletów),
-rewolwer na liście i w karcie wpisu; karta Portosa — pas broni i okienko „+ Broń z katalogu”.
-**Nie oglądane ręką:** półka kreatora, okno wymiany i łupu, okno oględzin (pokryte testami
-i `tsc`). Znak: zrzuty w karcie Chrome po `scrollIntoView` rozjeżdżają się z DOM — świeża
-karta pomaga.
-
-**Weryfikacja:** 2217 / 1223 / 282 testów; tsc, ESLint, Prettier trzech pakietów czyste.

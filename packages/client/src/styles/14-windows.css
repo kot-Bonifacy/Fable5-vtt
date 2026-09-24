@@ -562,16 +562,30 @@
   color: var(--text-dim);
 }
 
-/* Rządek próbek dźwięku (27i). Przyciski są celowo małe i gęste: to nie jest
-   wybór ustawienia, tylko „posłuchaj, czy ta próbka pasuje" — jedna z rzeczy,
-   których nie dało się rozstrzygnąć przy dobieraniu paczek CC0. */
+/* Zdarzenia z sygnałem (24.09): dwie kolumny pod suwakiem powiadomień zamiast
+   pięciu wierszy z guzikiem „Posłuchaj" przy każdym. */
+.settings-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.15rem 0.6rem;
+  padding: 0.2rem 0 0;
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* Rządek guzików sterowania muzyką (okno muzyki). */
 .settings-samples {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
 
-.settings-sample,
 .settings-action {
   padding: 0.22rem 0.5rem;
   font: inherit;
@@ -583,7 +597,6 @@
   cursor: pointer;
 }
 
-.settings-sample:hover,
 .settings-action:hover {
   color: var(--text);
   border-color: var(--text-dim);

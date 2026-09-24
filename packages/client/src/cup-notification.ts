@@ -62,12 +62,6 @@ export async function playNaturalNotification(
     /* Visual cup remains usable when audio is unavailable. */
   }
 }
-export function auditionCupNotification() {
-  void audioContext()
-    .resume()
-    .then(() => playCupNotification())
-    .catch(() => undefined);
-}
 export function useCupNotification(key: string | null, campaignId: string | null) {
   const gate = useRef(new CupNotificationGate());
   const current = useRef(key);

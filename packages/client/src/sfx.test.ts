@@ -6,12 +6,10 @@ import { MAP_FX_SOUNDS } from '@vtt/shared';
 /**
  * Strażnik warstwy dźwięku mapy (etap 27i, dołożony 28.08).
  *
- * Próbki dobrano po nazwach plików w paczkach CC0 i **wymienia się je ręcznie**:
- * MG odsłuchuje rządek przycisków w „⚙ Ustawienia" i podmienia to, co nie pasuje.
- * Ten test pilnuje trzech rzeczy, których żaden typ nie pilnuje:
+ * Próbki dobrano po nazwach plików w paczkach CC0 i **wymienia się je ręcznie**.
+ * Rządek przycisków odsłuchu w „⚙ Ustawienia" zniknął 24.09 (MG: mniej
+ * ustawień), więc zostały dwie rzeczy, których żaden typ nie pilnuje:
  *
- *  - **każdy dźwięk ma przycisk odsłuchu** — bez wiersza w `SFX_SAMPLES` nikt nie
- *    usłyszy próbki, dopóki nie trafi na nią w walce;
  *  - **każdy plik z `SFX_FILES` leży w `public/sfx/`** — literówka w nazwie daje
  *    ciszę, a nie błąd;
  *  - **żaden plik nie został sierotą** — tak przez tydzień leżał `bowstring.ogg`
@@ -31,20 +29,10 @@ function filesInSfxModule(): Map<string, string> {
   return found;
 }
 
-function auditionRowIds(): string[] {
-  const source = read(join('components', 'SettingsWindow.tsx'));
-  const list = source.split('const SFX_SAMPLES')[1]?.split('];')[0] ?? '';
-  return [...list.matchAll(/id:\s*'([a-z-]+)'/g)].map((match) => match[1]!);
-}
-
 describe('próbki dźwiękowe mapy', () => {
   it('każdy dźwięk ma plik', () => {
     const files = filesInSfxModule();
     expect([...files.keys()].sort()).toEqual([...MAP_FX_SOUNDS].sort());
-  });
-
-  it('każdy dźwięk ma przycisk odsłuchu w ustawieniach', () => {
-    expect(auditionRowIds().sort()).toEqual([...MAP_FX_SOUNDS].sort());
   });
 
   it('pliki z katalogu i pliki z kodu to ten sam zbiór', () => {
