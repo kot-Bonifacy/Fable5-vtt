@@ -59,7 +59,7 @@ import { grappleStateForToken } from './combat.js';
 import { addTokenStatus } from './grapple-state.js';
 import { activeRoundOfScene } from './timed-effects.js';
 import { requireTurnSpend } from './combat-actions.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import {
   emitTokensById,
   emitTokensOfCharacter,
@@ -105,6 +105,7 @@ export async function requireRollableCharacter(
   if (user.role !== ROLE_GM && character.ownerId !== user.id) {
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
+  refuseAwaitingGm(character, user);
   return character;
 }
 

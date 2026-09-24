@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
-import type { CpredCreationRank, CpredStatId, CreationRankDraft } from '@vtt/shared';
+import type {
+  CpredCreationRank,
+  CpredStatId,
+  CreationPermitRow,
+  CreationRankDraft,
+} from '@vtt/shared';
 import { CPRED_STAT_IDS, CPRED_STAT_LABELS, creationDataOf } from '@vtt/shared';
-import { creationErrorText, rerollCreationStats, setCreationRank } from '../socket.js';
+import {
+  answerCreationRequest,
+  creationErrorText,
+  discardPlayerDraft,
+  rerollCreationStats,
+  setCreationRank,
+} from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
 
@@ -20,10 +31,11 @@ import { useCreationRankStore, waitingRankCount } from '../stores/creationRankSt
  */
 export function CreationRankPanel() {
   const rows = useCreationRankStore((s) => s.rows);
+  const permits = useCreationRankStore((s) => s.permits);
   const registry = useCharacterStore((s) => s.registry);
   const ranks = creationDataOf(registry).statRanks;
-  if (rows.length === 0) return null;
-  const waiting = waitingRankCount(rows);
+  if (rows.length === 0 && permits.length === 0) return null;
+  const waiting = waitingRankCount(rows, permits);
   const complete = rows.filter((row) => row.method === 'complete');
   const rolled = rows.filter((row) => row.method === 'edgerunner');
 
@@ -33,6 +45,19 @@ export function CreationRankPanel() {
         Szkice postaci graczy
         {waiting > 0 && <span className="side-tab-badge">{waiting}</span>}
       </h4>
+      {permits.length > 0 && (
+        <>
+          <p className="creation-ranks-hint">
+            Nowa postać gracza powstaje za Twoją zgodą. Jedna zgoda to jedna postać; gracz przed
+            startem czyta zasady (Cechy raz, szkicu nie wyrzuci, gotową postać zatwierdzasz Ty).
+          </p>
+          <ul className="creation-ranks-list">
+            {permits.map((row) => (
+              <CreationPermitRowView key={row.userId} row={row} />
+            ))}
+          </ul>
+        </>
+      )}
       {complete.length > 0 && (
         <>
           <p className="creation-ranks-hint">
@@ -113,6 +138,7 @@ function CreationRerollRow({ row }: { row: CreationRankDraft }) {
       >
         Pozwól przerzucić
       </button>
+      <DiscardDraftButton draftId={row.id} who={who} onError={setError} />
       {error && (
         <p role="alert" className="auth-error creation-rank-error">
           {error}
@@ -172,11 +198,123 @@ function CreationRankRow({ row, ranks }: { row: CreationRankDraft; ranks: CpredC
       >
         {row.rankApproved ? 'Zmień' : 'Zatwierdź'}
       </button>
+      <DiscardDraftButton draftId={row.id} who={who} onError={setError} />
       {error && (
         <p role="alert" className="auth-error creation-rank-error">
           {error}
         </p>
       )}
     </li>
+  );
+}
+
+/** A player asking for a new character, or holding a consent not used yet. */
+function CreationPermitRowView({ row }: { row: CreationPermitRow }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function answer(grant: boolean) {
+    setSaving(true);
+    setError(null);
+    const ack = await answerCreationRequest(row.userId, grant);
+    setSaving(false);
+    if (!ack.ok) setError(creationErrorText(ack.error));
+  }
+
+  return (
+    <li
+      className={`creation-rank-row${row.status === 'requested' ? ' creation-rank-row--waiting' : ''}`}
+    >
+      <span className="creation-rank-who">
+        <strong>{row.userName}</strong>
+      </span>
+      <span className="creation-rank-state">
+        {row.status === 'requested'
+          ? 'prosi o nową postać'
+          : row.rulesAccepted
+            ? 'zgoda — zasady przeczytane'
+            : 'zgoda — czeka na gracza'}
+      </span>
+      {row.status === 'requested' ? (
+        <>
+          <button
+            type="button"
+            className="small-button small-button--primary"
+            disabled={saving}
+            onClick={() => void answer(true)}
+          >
+            Zgoda
+          </button>
+          <button
+            type="button"
+            className="small-button"
+            disabled={saving}
+            onClick={() => void answer(false)}
+          >
+            Odmowa
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="small-button"
+          disabled={saving}
+          onClick={() => void answer(false)}
+          title="Gracz nie zaczął jeszcze szkicu — zgoda wraca do Ciebie"
+        >
+          Cofnij zgodę
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="auth-error creation-rank-error">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/**
+ * The GM's „Wyrzuć szkic" for a player's draft — the only way a player's
+ * creation starts over (decyzja MG z 24.09). The second click confirms; a
+ * browser `confirm` would freeze the table's automation and looks foreign.
+ */
+function DiscardDraftButton({
+  draftId,
+  who,
+  onError,
+}: {
+  draftId: string;
+  who: string;
+  onError: (error: string | null) => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = window.setTimeout(() => setArmed(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [armed]);
+
+  async function discard() {
+    setSaving(true);
+    onError(null);
+    const ack = await discardPlayerDraft(draftId);
+    setSaving(false);
+    setArmed(false);
+    if (!ack.ok) onError(creationErrorText(ack.error));
+  }
+
+  return (
+    <button
+      type="button"
+      className={`small-button${armed ? ' small-button--danger' : ''}`}
+      disabled={saving}
+      aria-label={armed ? `Na pewno wyrzucić szkic: ${who}?` : `Wyrzuć szkic: ${who}`}
+      title="Kasuje szkic gracza; nowa postać zacznie się od nowej prośby"
+      onClick={() => (armed ? void discard() : setArmed(true))}
+    >
+      {armed ? 'Na pewno?' : '🗑 Wyrzuć szkic'}
+    </button>
   );
 }

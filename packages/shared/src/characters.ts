@@ -414,7 +414,11 @@ export interface CreationFinishPayload {
 }
 
 export interface CreationFinishResult extends CharacterView {
-  tokenStatus: 'not-requested' | 'placed' | 'no-scene' | 'failed';
+  /**
+   * `awaiting-gm` (24.09): a player's character waits for „Przyjmij do gry"
+   * and walks onto the map only then.
+   */
+  tokenStatus: 'not-requested' | 'placed' | 'no-scene' | 'failed' | 'awaiting-gm';
 }
 
 /**
@@ -448,6 +452,33 @@ export interface CreationRankDraft {
  * method, step) is enough for „Wznów szkic: Medyk „Igła” · Wyposażenie"; the
  * choices themselves come only with `creation:start`, as before.
  */
+/**
+ * Where a player stands with the GM's consent to a new character (24.09).
+ * Without a draft a player first asks („requested"), the GM agrees („granted"),
+ * and the wizard opens only after the rules were read and accepted. The GM
+ * never needs one.
+ */
+export interface CreationPermitState {
+  status: 'none' | 'requested' | 'granted';
+  rulesAccepted: boolean;
+  /** Set on the push that answers a refusal, so the panel can say so once. */
+  refused?: boolean;
+}
+
+/** One player on the GM's list who asked for, or holds, a consent without a draft yet. */
+export interface CreationPermitRow {
+  userId: string;
+  userName: string;
+  status: 'requested' | 'granted';
+  rulesAccepted: boolean;
+}
+
+/** Client → server `creation:permit` (GM only) — agree to, refuse or revoke a request. */
+export interface CreationPermitPayload {
+  userId: string;
+  grant: boolean;
+}
+
 export interface CreationDraftPeek {
   id: string;
   /** The nickname typed so far — may be empty. */

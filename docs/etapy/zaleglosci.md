@@ -189,6 +189,15 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **24.09: zgoda MG na nową postać i zatwierdzenie — UI nieobejrzane w przeglądarce.** Serwer
+  pokryty testami (prośba, odmowa, zgoda, zasady, `DRAFT_EXISTS`, wyrzucenie szkicu przez MG,
+  blokada karty i żeton przy przyjęciu). **Nie obejrzane**, bo na „Test2” grała Mara i nie
+  przełączałem kampanii: przycisk prośby i napis „Czekasz na zgodę MG” u gracza, okno zasad,
+  sekcja próśb i „🗑 Wyrzuć szkic” / „Na pewno?” w panelu MG, napis „Szkic wyrzuca tylko MG”
+  w stopce kreatora, pas „Czeka na MG” na karcie gracza. **Znane ograniczenie:** przyciski karty
+  czekającej na MG nie są wyszarzone — serwer odmawia, a gracz czyta zdanie odmowy; jeśli to
+  przeszkadza, następny krok to wyłączenie kontrolek karty przy `!playReady` u właściciela.
+
 - **24.09: rzuty kreatora przez kubek — do oceny MG przy stole.** Obejrzane automatem (łańcuch
   Cech i Ścieżki, przerzut MG, skrót MG). **Zostają ręką MG:** (1) **dźwięk „kubek gotowy” po
   każdym rzucie łańcucha** — gra przy każdym ponownym załadowaniu, czyli ~10 razy przy Cechach;

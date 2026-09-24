@@ -13,8 +13,9 @@ import { RoleChoresList } from './RoleChores.js';
  * mu o tym **zanim** zacznie się sesja: wiersz na postać, pod nim to, czego
  * brakuje, i przycisk „Przyjmij do gry".
  *
- * Znacznik niczego nie blokuje (decyzja MG z 17.09) — gracz może grać i
- * uzupełniać kartę dalej. Lista znika, gdy nikt nie czeka; gotowość cofa się
+ * Od 24.09 znacznik blokuje (decyzja MG, wcześniej z 17.09 — nie blokował):
+ * do przyjęcia gracz ma kartę tylko do podglądu, a żeton z kreatora staje na
+ * scenie przy przyjęciu. Lista znika, gdy nikt nie czeka; gotowość cofa się
  * z samej karty, żeby ta lista nie rosła bez końca.
  */
 export function useWaitingCharacters(isGm: boolean): CharacterSheetView[] {
@@ -36,8 +37,8 @@ export function CharacterReadyPanel({ rows }: { rows: CharacterSheetView[] }) {
         <span className="side-tab-badge">{rows.length}</span>
       </h4>
       <p className="creation-ranks-hint">
-        Karty prosto z kreatora. Znacznik niczego nie blokuje — mówi tylko, że gracz skończył, a
-        Rola zostawiła jeszcze decyzje. „Przejdź” otwiera właściwy panel karty.
+        Karty prosto z kreatora. Do przyjęcia gracz ma kartę tylko do podglądu, a żeton z kreatora
+        stanie na aktywnej scenie dopiero po przyjęciu. „Przejdź” otwiera właściwy panel karty.
       </p>
       <ul className="creation-ranks-list">
         {rows.map((row) => (

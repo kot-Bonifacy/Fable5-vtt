@@ -11,6 +11,7 @@ import type {
   CpredRollRequest,
   SessionUser,
 } from '@vtt/shared';
+import { refuseAwaitingGm } from './character-io.js';
 import {
   CHECK_CALL_DV_MAX,
   CHECK_CALL_DV_MIN,
@@ -441,6 +442,7 @@ export const checkRequestEvent = defineEvent<
     // MG nie prosi samego siebie — ma wezwanie z etapu 32 (decyzja MG nr 1
     // z 06.09.2026), i dlatego nie ma tu furtki „albo MG".
     if (character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_YOURS');
+    refuseAwaitingGm(character, user);
 
     // Modyfikator 0: sytuacyjny należy do MG i dochodzi dopiero przy zgodzie.
     const request = requireCallableRequest(payload?.request, 0);

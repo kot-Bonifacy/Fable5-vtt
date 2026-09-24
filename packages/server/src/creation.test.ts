@@ -16,6 +16,8 @@ import type {
   CpredDataPayload,
   CreationDraftView,
   CreationFinishResult,
+  CreationPermitRow,
+  CreationPermitState,
   CreationRankDraft,
   InvitationSummary,
   PortraitAssetView,
@@ -146,6 +148,24 @@ async function patch(socket: ClientSocket, body: Record<string, unknown>): Promi
   return data(await emitAck<Draft>(socket, 'creation:patch', { patch: body }), 'creation:patch');
 }
 
+/**
+ * The GM's consent and the accepted rules (24.09), written straight into the
+ * database — the cases below are about the wizard, not about asking for it.
+ * The real request → consent → „Rozumiem" path has its own case.
+ */
+async function allowCreation(userId: string): Promise<void> {
+  await built.prisma.campaignMember.updateMany({
+    where: { userId },
+    data: { creationPermit: 'granted', creationRulesAcceptedAt: new Date() },
+  });
+}
+
+/** A player's draft goes only by the GM's hand since 24.09; a fresh one needs a new consent. */
+async function dropDraft(userId: string): Promise<void> {
+  await built.prisma.characterDraft.deleteMany({ where: { userId } });
+  await allowCreation(userId);
+}
+
 /** Throws every stat still without a die, one cup at a time, as a player does. */
 async function rollMissingStats(socket: ClientSocket): Promise<Draft> {
   let current = data(await emitAck<Draft>(socket, 'creation:start'), 'creation:start');
@@ -230,6 +250,7 @@ describe('wybór portretu w galerii', () => {
     const token = (invite.json() as InvitationSummary).token;
     const cookies: string[] = [];
     const sockets: ClientSocket[] = [];
+    const ids: string[] = [];
     for (const name of ['Portret A', 'Portret B']) {
       const joined = await built.app.inject({
         method: 'POST',
@@ -238,6 +259,9 @@ describe('wybór portretu w galerii', () => {
       });
       const cookie = cookieOf(joined.headers['set-cookie']);
       cookies.push(cookie);
+      const userId = (joined.json() as { user: { id: string } }).user.id;
+      ids.push(userId);
+      await allowCreation(userId);
       const connection = createSocket(cookie);
       await connection.firstSync;
       sockets.push(connection.socket);
@@ -286,7 +310,7 @@ describe('wybór portretu w galerii', () => {
     });
     await patch(sockets[winner]!, { portraitUrl: null });
     expect((await emitAck(sockets[loser]!, 'creation:patch', choice)).ok).toBe(true);
-    await emitAck(sockets[loser]!, 'creation:discard');
+    await dropDraft(ids[loser]!);
     expect((await emitAck(sockets[winner]!, 'creation:patch', choice)).ok).toBe(true);
     expect(
       await emitAck(sockets[winner]!, 'creation:patch', {
@@ -309,7 +333,7 @@ describe('wybór portretu w galerii', () => {
       ok: false,
       error: 'PORTRAIT_NOT_AVAILABLE',
     });
-    await emitAck(sockets[winner]!, 'creation:discard');
+    await dropDraft(ids[winner]!);
   });
 });
 
@@ -407,6 +431,7 @@ describe('kreator postaci', () => {
     vex = vexConn.socket;
     gm = gmConn.socket;
     await Promise.all([vexConn.firstSync, gmConn.firstSync]);
+    await allowCreation(vexId);
 
     const first = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     expect(first.draft.step).toBe('role');
@@ -613,13 +638,48 @@ describe('kreator postaci', () => {
     // instead of being skipped by the monthly settlement.
     expect(sheet.lifestyle).toEqual({ level: 'kibble', housing: 'container' });
 
-    // The wizard opens on a clean sheet afterwards, not on the finished one.
+    // Decyzja MG z 24.09: the consent bought one character and is spent now;
+    // the finished sheet waits for the GM, so nothing on it can be used yet.
+    expect(character.playReady).toBe(false);
+    expect(refusal(await emitAck(vex, 'creation:start'))).toBe('CREATION_NOT_PERMITTED');
+    expect(
+      refusal(
+        await emitAck(vex, 'character:update', {
+          characterId: character.id,
+          patch: { notes: 'przed zgodą' },
+        }),
+      ),
+    ).toBe('CHARACTER_AWAITING_GM');
+    expect(
+      refusal(
+        await emitAck(vex, 'character:roll', {
+          characterId: character.id,
+          request: { kind: 'stat', statId: 'ref' },
+        }),
+      ),
+    ).toBe('CHARACTER_AWAITING_GM');
+    data(
+      await emitAck(gm, 'character:play-ready', { characterId: character.id, ready: true }),
+      'play-ready',
+    );
+    expect(
+      (
+        await emitAck(vex, 'character:update', {
+          characterId: character.id,
+          patch: { notes: 'po zgodzie' },
+        })
+      ).ok,
+    ).toBe(true);
+
+    // With a new consent the wizard opens on a clean sheet, not on the finished one.
+    await allowCreation(vexId);
     const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     expect(fresh.draft.roleId).toBeNull();
     expect(fresh.draft.name).toBe('');
   });
 
   it('keeps the draft across a reconnect — that is why it is in the database', async () => {
+    data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     await patch(vex, { roleId: 'fixer', name: 'Kolec' });
     vex.disconnect();
     const again = createSocket(vexCookie);
@@ -630,11 +690,73 @@ describe('kreator postaci', () => {
     expect(restored.draft.name).toBe('Kolec');
   });
 
-  it('throws the draft away on request', async () => {
-    const ack = await emitAck(vex, 'creation:discard');
-    expect(ack.ok).toBe(true);
+  it('throws the draft away only by the GM hand, and the consent goes with it', async () => {
+    const current = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    // Decyzja MG z 24.09: a player cannot start over by himself.
+    expect(refusal(await emitAck(vex, 'creation:discard'))).toBe('FORBIDDEN');
+    expect(refusal(await emitAck(vex, 'creation:discard-player', { draftId: current.id }))).toBe(
+      'FORBIDDEN',
+    );
+
+    const told = waitFor<{ draftId: string }>(vex, 'creation:discarded');
+    const state = waitFor<CreationPermitState>(vex, 'creation:permit-state');
+    expect((await emitAck(gm, 'creation:discard-player', { draftId: current.id })).ok).toBe(true);
+    expect((await told).draftId).toBe(current.id);
+    expect(await state).toEqual({ status: 'none', rulesAccepted: false });
+    expect(refusal(await emitAck(vex, 'creation:start'))).toBe('CREATION_NOT_PERMITTED');
+
+    await allowCreation(vexId);
     const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     expect(fresh.draft.roleId).toBeNull();
+  });
+
+  it('asks the GM first, then the rules, and only then opens a draft', async () => {
+    await dropDraft(vexId);
+    await built.prisma.campaignMember.updateMany({
+      where: { userId: vexId },
+      data: { creationPermit: null, creationRulesAcceptedAt: null },
+    });
+    expect(data(await emitAck(vex, 'creation:permit-state'), 'state')).toEqual({
+      status: 'none',
+      rulesAccepted: false,
+    });
+    expect(refusal(await emitAck(vex, 'creation:start'))).toBe('CREATION_NOT_PERMITTED');
+    expect(refusal(await emitAck(vex, 'creation:accept-rules'))).toBe('CREATION_NOT_PERMITTED');
+
+    const listed = waitFor<CreationPermitRow[]>(gm, 'creation:permits-sync');
+    expect(data(await emitAck(vex, 'creation:request'), 'request')).toEqual({
+      status: 'requested',
+      rulesAccepted: false,
+    });
+    expect((await listed).find((row) => row.userId === vexId)?.status).toBe('requested');
+    // The player cannot grant himself anything.
+    expect(refusal(await emitAck(vex, 'creation:permit', { userId: vexId, grant: true }))).toBe(
+      'FORBIDDEN',
+    );
+
+    // A refusal says so once and leaves the player where he started.
+    const refused = waitFor<CreationPermitState>(vex, 'creation:permit-state');
+    expect((await emitAck(gm, 'creation:permit', { userId: vexId, grant: false })).ok).toBe(true);
+    expect(await refused).toEqual({ status: 'none', rulesAccepted: false, refused: true });
+
+    await emitAck(vex, 'creation:request');
+    const granted = waitFor<CreationPermitState>(vex, 'creation:permit-state');
+    expect((await emitAck(gm, 'creation:permit', { userId: vexId, grant: true })).ok).toBe(true);
+    expect(await granted).toEqual({ status: 'granted', rulesAccepted: false });
+    expect(refusal(await emitAck(vex, 'creation:start'))).toBe('CREATION_RULES_PENDING');
+
+    expect(data(await emitAck(vex, 'creation:accept-rules'), 'rules')).toEqual({
+      status: 'granted',
+      rulesAccepted: true,
+    });
+    const opened = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    expect(opened.draft.roleId).toBeNull();
+    // A consent in use is ended only by discarding the draft.
+    expect(refusal(await emitAck(gm, 'creation:permit', { userId: vexId, grant: false }))).toBe(
+      'DRAFT_EXISTS',
+    );
+    const rows = data(await emitAck<CreationPermitRow[]>(gm, 'creation:permits'), 'permits');
+    expect(rows.some((row) => row.userId === vexId)).toBe(false);
   });
 
   /**
@@ -647,7 +769,7 @@ describe('kreator postaci', () => {
    */
   describe('Ścieżka Życia', () => {
     it('rolls one table on the server and writes the row into the draft', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       await patch(vex, { roleId: 'solo', name: 'Zgrzyt' });
 
@@ -800,6 +922,7 @@ describe('kreator postaci', () => {
   describe('wyposażenie startowe', () => {
     /** A draft far enough along that only shopping is left to test. */
     async function readyDraft(socket: ClientSocket, name: string): Promise<void> {
+      await allowCreation(vexId);
       data(await emitAck<Draft>(socket, 'creation:start'), 'creation:start');
       await patch(socket, { method: 'edgerunner', roleId: 'solo', name });
       await rollMissingStats(socket);
@@ -922,6 +1045,7 @@ describe('kreator postaci', () => {
       );
       expect((await emitAck(gm, 'scene:activate', { sceneId: scene.id })).ok).toBe(true);
 
+      await allowCreation(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Na scenie' });
       await rollMissingStats(vex);
@@ -930,14 +1054,21 @@ describe('kreator postaci', () => {
         portraitUrl: '/uploads/portraits/na-scenie.png',
       });
 
+      await allocateRemaining(vex);
+      const character = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish'),
+        'creation:finish',
+      );
+      // Decyzja MG z 24.09: the figure walks on when the GM lets it into play.
+      expect(character.tokenStatus).toBe('awaiting-gm');
+      expect(await built.prisma.token.count({ where: { characterId: character.id } })).toBe(0);
       const appeared = waitFor<{ token: { name: string; imageUrl: string | null } }>(
         gm,
         'token:upsert',
       );
-      await allocateRemaining(vex);
-      const character = data(
-        await emitAck<CharacterView>(vex, 'creation:finish'),
-        'creation:finish',
+      data(
+        await emitAck(gm, 'character:play-ready', { characterId: character.id, ready: true }),
+        'play-ready',
       );
       const token = (await appeared).token;
       expect(token.name).toBe('Na scenie');
@@ -1036,7 +1167,7 @@ describe('kreator postaci', () => {
 
   describe('naprawa 1 — autorytet MG i odporność operacji', () => {
     it('requires a GM-selected rank per draft, ignores legacy self-selected ranks and preserves allocation', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
       const stored = await built.prisma.characterDraft.findUniqueOrThrow({
         where: { id: fresh.id },
@@ -1236,7 +1367,7 @@ describe('kreator postaci', () => {
     });
 
     it('lets a player write built before the GM set the rank through, with that rank in the reply', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       const before = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
       expect(
         (await emitAck(gm, 'creation:set-rank', { draftId: before.id, statRankId: 'minor-hero' }))
@@ -1292,7 +1423,7 @@ describe('kreator postaci', () => {
 
   describe('naprawa 2a — minima i Cechy przed rangą', () => {
     it('grants the basic minimums once, keeps them through a reopen and leaves an older draft alone', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       await emitAck(vex, 'creation:start');
       const complete = await patch(vex, { method: 'complete' });
       const response = await built.app.inject({
@@ -1334,7 +1465,7 @@ describe('kreator postaci', () => {
     });
 
     it('holds player stats until the GM sets the rank, but never the GM own draft', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
       await patch(vex, { method: 'complete', roleId: 'solo' });
       expect(refusal(await emitAck(vex, 'creation:patch', { patch: { stats: { body: 6 } } }))).toBe(
@@ -1374,7 +1505,7 @@ describe('kreator postaci', () => {
       gm.on('creation:ranks-sync', onGm);
       vex.on('creation:ranks-sync', onPlayer);
       try {
-        await emitAck(vex, 'creation:discard');
+        await dropDraft(vexId);
         const fresh = data(await emitAck<Draft>(vex, 'creation:start'), 'start');
         // A Krawędziarz rolls his stats — listed for „Pozwól przerzucić" (24.09),
         // but with no rank to wait for.
@@ -1410,8 +1541,9 @@ describe('kreator postaci', () => {
         const withGm = data(await emitAck<CreationRankDraft[]>(gm, 'creation:ranks'), 'ranks');
         expect(withGm.map((row) => row.userName)).toEqual(['Vex']);
 
-        await emitAck(vex, 'creation:discard');
+        await emitAck(gm, 'creation:discard-player', { draftId: fresh.id });
         await until((rows) => !rows.some((row) => row.id === fresh.id));
+        await allowCreation(vexId);
         expect(leaked).toBe(false);
       } finally {
         gm.off('creation:ranks-sync', onGm);
@@ -1422,7 +1554,7 @@ describe('kreator postaci', () => {
 
   describe('naprawa 3a — podsumowanie zgodne z kartą', () => {
     it('writes exactly the sheet the summary computed: goods, change and lifestyle', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       const started = await patch(vex, {
         method: 'complete',
@@ -1492,7 +1624,7 @@ describe('kreator postaci', () => {
     // data/public/cpred/shop-tiers.json: the field medkit is a Medyk's tool on
     // level 2, the sample rifle type is a Solo's (500 ed — level 2 by price).
     it('sells a Role its own tools and takes them off when the Role changes', async () => {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       await patch(vex, { method: 'edgerunner', roleId: 'medtech', name: 'Łatacz' });
       const medic = data(
@@ -1602,7 +1734,7 @@ describe('kreator postaci', () => {
   describe('naprawa 3c — gotowość do gry', () => {
     /** Szkic Kompletnego Pakietu gotowy do „Utwórz postać", z zatwierdzoną rangą. */
     async function readyDraft(roleId: string, name: string): Promise<Draft> {
-      await emitAck(vex, 'creation:discard');
+      await dropDraft(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       const started = await patch(vex, {
         method: 'complete',

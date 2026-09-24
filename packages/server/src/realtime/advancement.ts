@@ -27,7 +27,7 @@ import {
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
@@ -202,6 +202,7 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
+    refuseAwaitingGm(character, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
     // The same function the panel greys its buttons with, so a lit button and a
@@ -261,6 +262,7 @@ export const characterRoleChangeEvent = defineEvent<CharacterRoleChangePayload, 
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
+    refuseAwaitingGm(character, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
     // The same function the panel greys its button with.

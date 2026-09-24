@@ -232,6 +232,8 @@ function CreatorWindow() {
     // on the „Postacie" tab. The last screen reads `finished.draft`, so the
     // store's copy can go now rather than when the window closes.
     useCreationStore.getState().setPeek(null);
+    // The consent bought this one character (24.09); the next one is asked for.
+    if (!isGm) useCreationStore.getState().setPermit({ status: 'none', rulesAccepted: false });
     setDraft(null);
     setBehind(false);
   }
@@ -440,25 +442,35 @@ function CreatorWindow() {
                 Dalej →
               </button>
             )}
-            <button
-              type="button"
-              className="small-button small-button--danger"
-              onClick={() =>
-                setQuestion({
-                  title: 'Wyrzucić szkic postaci?',
-                  lost: draftSummaryLines(draft, registry.roles),
-                  note:
-                    campaign && !campaign.sandbox
-                      ? `Kampania „${campaign.name}” nie jest oznaczona jako poligon.`
-                      : undefined,
-                  confirmLabel: 'Wyrzuć szkic',
-                  onConfirm: () => void discard(),
-                })
-              }
-              title="Kasuje szkic razem z tym, co już wybrano"
-            >
-              🗑 Wyrzuć szkic
-            </button>
+            {/* Decyzja MG z 24.09: a player's draft goes only by the GM's hand. */}
+            {isGm ? (
+              <button
+                type="button"
+                className="small-button small-button--danger"
+                onClick={() =>
+                  setQuestion({
+                    title: 'Wyrzucić szkic postaci?',
+                    lost: draftSummaryLines(draft, registry.roles),
+                    note:
+                      campaign && !campaign.sandbox
+                        ? `Kampania „${campaign.name}” nie jest oznaczona jako poligon.`
+                        : undefined,
+                    confirmLabel: 'Wyrzuć szkic',
+                    onConfirm: () => void discard(),
+                  })
+                }
+                title="Kasuje szkic razem z tym, co już wybrano"
+              >
+                🗑 Wyrzuć szkic
+              </button>
+            ) : (
+              <span
+                className="creator-hint creator-footer-hint"
+                title="Zasada z początku kreatora: szkic wyrzuca tylko MG"
+              >
+                Szkic wyrzuca tylko MG
+              </span>
+            )}
           </footer>
 
           {error && <p className="auth-error creator-error">{error}</p>}
@@ -2945,6 +2957,8 @@ function CreatorFinishedScreen({
         <p className="creator-notice creator-notice--done" role="status">
           Postać „{result.name}” utworzona — karta, eurodolce i zakupy są zapisane, a karta jest
           otwarta obok.
+          {!result.playReady &&
+            ' Teraz czeka na zatwierdzenie MG: do tego czasu karta jest tylko do podglądu.'}
         </p>
 
         <dl className="creator-facts">
@@ -2953,11 +2967,13 @@ function CreatorFinishedScreen({
             <dd>
               {result.tokenStatus === 'placed'
                 ? 'Stoi na aktywnej scenie.'
-                : result.tokenStatus === 'not-requested'
-                  ? 'Nie stawiano — tak wybrano w kroku „Opis”.'
-                  : result.tokenStatus === 'no-scene'
-                    ? 'Nie stoi: nie ma aktywnej sceny.'
-                    : 'Nie udało się potwierdzić postawienia.'}
+                : result.tokenStatus === 'awaiting-gm'
+                  ? 'Stanie na aktywnej scenie, gdy MG przyjmie postać do gry.'
+                  : result.tokenStatus === 'not-requested'
+                    ? 'Nie stawiano — tak wybrano w kroku „Opis”.'
+                    : result.tokenStatus === 'no-scene'
+                      ? 'Nie stoi: nie ma aktywnej sceny.'
+                      : 'Nie udało się potwierdzić postawienia.'}
             </dd>
           </div>
           <div>

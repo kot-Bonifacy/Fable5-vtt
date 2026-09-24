@@ -51,7 +51,7 @@ import {
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { applyBalance } from './economy.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import {
   emitTokensById,
   emitTokensOfCharacter,
@@ -100,6 +100,7 @@ async function requireOwnCharacter(
   if (user.role !== ROLE_GM && character.ownerId !== user.id) {
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
+  refuseAwaitingGm(character, user);
   return character;
 }
 

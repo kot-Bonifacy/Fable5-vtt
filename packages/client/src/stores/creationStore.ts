@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   CreationDraftPeek,
+  CreationPermitState,
   CpredCreationDraft,
   CreationDraftView,
   CreationPatchPayload,
@@ -68,6 +69,14 @@ interface CreationStoreState {
    */
   peek: CreationDraftPeek | null;
   setPeek: (peek: CreationDraftPeek | null) => void;
+  /**
+   * My standing with the GM's consent to a new character (24.09); null until
+   * the first answer after `state:sync`. The GM always reads as granted.
+   */
+  permit: CreationPermitState | null;
+  setPermit: (permit: CreationPermitState | null) => void;
+  /** The GM threw this draft away: close the wizard and forget it. */
+  dropDiscarded: (draftId: string) => void;
 
   openCreator: () => Promise<void>;
   closeCreator: () => void;
@@ -216,6 +225,23 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
   focusField: null,
   peek: null,
   setPeek: (peek) => set({ peek }),
+  permit: null,
+  setPermit: (permit) => set({ permit }),
+  dropDiscarded: (draftId) => {
+    const { draftId: mine, peek } = get();
+    if (mine !== draftId && peek?.id !== draftId) return;
+    clearCreationCup();
+    deferredPatches.length = 0;
+    set({
+      open: false,
+      draft: null,
+      draftId: null,
+      pendingPatch: null,
+      busy: false,
+      peek: null,
+      error: 'MG wyrzucił ten szkic postaci.',
+    });
+  },
 
   markVisited: (step) => {
     const index = CPRED_CREATION_STEPS.indexOf(step);

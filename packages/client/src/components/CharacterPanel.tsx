@@ -26,6 +26,7 @@ import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
+import { CreationGate } from './CreationGate.js';
 import { CreationRankPanel } from './CreationRankPanel.js';
 import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
@@ -388,6 +389,9 @@ export function CharacterPanel() {
           : creationPeek
             ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
             : null;
+        // 24.09: a player's new character starts with the GM's consent and
+        // the rules; the GM opens the wizard as before.
+        if (!isGm) return <CreationGate resume={resume} />;
         return (
           <button
             type="button"

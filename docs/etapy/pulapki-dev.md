@@ -716,6 +716,7 @@ karty **przed** zapisem.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Test, w którym gracz otwiera kreator, od 24.09 dostaje `CREATION_NOT_PERMITTED`** — bez zgody MG i przeczytanych zasad szkicu nie ma; w `creation.test.ts` służą do tego `allowCreation(userId)` i `dropDraft(userId)` (gracz nie wyrzuca już szkicu sam). Test, który czeka na push po wyrzuceniu, musi iść przez `creation:discard-player`.
 - **Pole tekstowe, które „nie przyjmuje znaków", bywa zgubionym odczytem** — sprawdź po kolei `activeElement`, atrybuty pola, inne pole obok, a potem **bazę**; automat podejrzewaj ostatni.
 - **Test stawiający postać łatą gracza od 29a dostaje `FORBIDDEN`** — i pada w asercji o czymś zupełnie innym, bo przygotowanie stołu wygląda w teście jak tło. Kartę stawia gniazdo MG.
 

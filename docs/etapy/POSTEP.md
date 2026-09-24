@@ -44,7 +44,8 @@ logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
 obu metod). **Od 24.09 rzuty kreatora idą po jednej kości przez kubek** (zlecenie MG z 17.09 —
-gracz rzuca Cechę raz, przerzut daje MG). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md`
+gracz rzuca Cechę raz, przerzut daje MG), a **nowa postać gracza wymaga zgody MG, przeczytanych
+zasad i zatwierdzenia** („Przyjmij do gry” od 24.09 blokuje kartę). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md`
 i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontekst —
 `archiwum/od-czego-zaczac.md`.
 
@@ -84,7 +85,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2222** w `shared`, **1226** na serwerze, **281** u klienta,
+**Testy na koniec ostatniej sesji:** **2222** w `shared`, **1227** na serwerze, **281** u klienta,
 **59** w gatewayu — zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -116,7 +117,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 41   | 2       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 43   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
@@ -130,6 +131,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.09 (szósta, część 2) — zgoda MG, zasady i zatwierdzenie nowej postaci
+
+**Zlecenie MG po części 1:** gracz najpierw dostaje zgodę na tworzenie postaci, potem informację,
+że nie zresetuje jej w trakcie, a na koniec MG postać zatwierdza. Rozstrzygnięcia MG: **prośba
+gracza + zgoda MG** (jedna zgoda = jedna postać), **„reset” to tylko „Wyrzuć szkic”** (robi to
+wyłącznie MG, potem nowa prośba), **jednorazowe okno „Rozumiem, zaczynam”**, **karta powstaje,
+ale do „Przyjmij do gry” jest tylko do podglądu i bez żetonu** (odwraca decyzję z 17.09, że
+znacznik niczego nie blokuje).
+
+**Wdrożone:** migracja `20260924230000_creation_permit` (dwie kolumny `CampaignMember`), zdarzenia
+`creation:permit-state`, `request`, `permit`, `permits`, `accept-rules`, `discard-player`,
+pushe `creation:permit-state`, `permits-sync`, `discarded`; `refuseAwaitingGm` w kilkunastu
+handlerach karty; żeton przy przyjęciu. Klient: `CreationGate.tsx` (prośba, oczekiwanie, okno
+zasad), sekcja próśb i „Wyrzuć szkic” w panelu MG, bez „Wyrzuć szkic” u gracza, nowe zdania
+na karcie i na ekranie końcowym kreatora. Szczegóły i lista handlerów — umowa w `postac`.
+Istniejące szkice (Mara w „Test2”, Tony na Poligonie) otwierają się bez zgody.
+
+**Weryfikacja:** 2222 / 1227 / 281 testów, tsc, ESLint, Prettier. **UI nieobejrzane** — na „Test2”
+grała Mara, a przełączenie aktywnej kampanii przeniosłoby jej sesję (pozycja w `zaleglosci.md`).
 
 ### Sesja 24.09 (szósta) — rzuty kreatora przez kubek, po jednej kości
 
@@ -155,18 +176,3 @@ Obejrzane w Chrome na kampanii-śmieciu: gracz `Tester` — łańcuch kubka po C
 ZW → TECH), brak kubka przy wylosowanej Cesze, Ścieżka (Kultura → Osobowość), „ilu”; MG —
 karty na czacie, „Pozwól przerzucić” dla REF (u gracza wraca „—” bez przeładowania), własny
 szkic ze skrótem „Rzuć brakujące” i kubkami przerzutu. Aktywna wróciła na „Test2”.
-
-### Sesja 24.09 (piąta) — szybkie tworzenie postaci tylko dla MG
-
-**Zlecenie MG:** po co graczowi w zakładce „Postacie” pole „Imię nowej postaci” i „Utwórz”,
-skoro postać tworzy kreator. Okazało się, że formularz z etapu 07 był u gracza jedynie
-obejściem kreatora: pusta karta z domyślnymi Cechami, bez pilnowania budżetów punktów.
-Rozstrzygnięcie MG: **formularz tylko u MG, a serwer odrzuca go od gracza**.
-
-**Wdrożone:** `CharacterPanel` pokazuje formularz tylko przy `isGm`. `character:create` od
-gracza kończy się `FORBIDDEN`, bo postać gracza powstaje wyłącznie przez `creation:*`
-(import archiwum i postacie zakładane z żetonów to i tak ścieżki MG). Test „a player creating
-a character always owns it” zastąpiony testem odmowy.
-
-**Weryfikacja:** 1224 testy serwera, tsc klienta i serwera, ESLint, Prettier. UI nieobejrzane
-w przeglądarce (zmiana to sam warunek `isGm`).

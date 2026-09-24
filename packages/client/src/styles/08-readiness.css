@@ -72,6 +72,47 @@
   margin: 0;
 }
 
+/* ===== Zgoda MG na nową postać (24.09) ===== */
+
+.creation-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.creation-gate-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.dialog.creation-rules {
+  width: min(30rem, 92vw);
+}
+
+.creation-rules-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.creation-rules-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.creator-footer-hint {
+  align-self: center;
+}
+
 /* ===== Gotowość do gry i czynności po kreatorze (naprawa 3c) ===== */
 
 /* Ta sama skrzynka co rangi wyżej — dwie listy MG w jednej zakładce mają

@@ -9,7 +9,7 @@ import type {
 import { ROLE_GM, parseCharacterData } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Character } from '../generated/prisma/client.js';
-import type { RealtimeDeps } from './registry.js';
+import { RealtimeError, type RealtimeDeps } from './registry.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
 
 /**
@@ -104,4 +104,18 @@ export async function emitCharacterDelete(
   if (ownerId) {
     await emitToCampaignUser(deps.io, campaignId, ownerId, 'character:delete', payload);
   }
+}
+
+/**
+ * A player's character fresh from the creator that the GM has not let into
+ * play yet is a card to look at, not to use (decyzja MG z 24.09): every write
+ * and every roll from it is refused until „Przyjmij do gry". The GM is never
+ * held back — he is the one reviewing and fixing it.
+ */
+export function refuseAwaitingGm(
+  character: Pick<Character, 'playReady' | 'ownerId'>,
+  user: { id: string; role: string },
+): void {
+  if (user.role !== ROLE_GM && !character.playReady && character.ownerId === user.id)
+    throw new RealtimeError('CHARACTER_AWAITING_GM');
 }

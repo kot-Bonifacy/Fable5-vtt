@@ -16,6 +16,9 @@ import type {
   CreationLifepathCountPayload,
   CreationLifepathRollPayload,
   CreationPatchPayload,
+  CreationPermitPayload,
+  CreationPermitRow,
+  CreationPermitState,
   CreationRerolledPush,
   CreationRerollPayload,
   CreationRollPayload,
@@ -174,10 +177,168 @@ async function saveDraft(
   });
 }
 
+/* ───────────── zgoda MG na nową postać (decyzja MG z 24.09) ───────────── */
+
+/**
+ * The GM's consent, as the player sees it. A player asks, the GM agrees, the
+ * player reads the rules („each stat once, no discarding, the GM approves the
+ * result") and only then can a draft exist. The GM needs none of it.
+ *
+ * A draft that already exists never asks — it was started before the rule, or
+ * under a consent that is already in use — so nobody loses session zero to
+ * the migration.
+ */
+async function permitStateOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: { id: string; role: string },
+): Promise<CreationPermitState> {
+  if (user.role === ROLE_GM) return { status: 'granted', rulesAccepted: true };
+  const member = await deps.ctx.prisma.campaignMember.findUnique({
+    where: { campaignId_userId: { campaignId, userId: user.id } },
+  });
+  const status = member?.creationPermit;
+  return {
+    status: status === 'requested' || status === 'granted' ? status : 'none',
+    rulesAccepted: status === 'granted' && member?.creationRulesAcceptedAt != null,
+  };
+}
+
+/** Tells every window of one player where their consent stands now. */
+async function pushPermitState(
+  deps: RealtimeDeps,
+  campaignId: string,
+  userId: string,
+  extra: Partial<CreationPermitState> = {},
+): Promise<void> {
+  const state = { ...(await permitStateOf(deps, campaignId, { id: userId, role: '' })), ...extra };
+  for (const peer of await deps.io.fetchSockets()) {
+    if (peer.data.user?.id === userId && peer.data.campaign?.id === campaignId) {
+      peer.emit('creation:permit-state', state);
+    }
+  }
+}
+
+async function setPermit(
+  deps: RealtimeDeps,
+  campaignId: string,
+  userId: string,
+  permit: 'requested' | 'granted' | null,
+): Promise<void> {
+  await deps.ctx.prisma.campaignMember.updateMany({
+    where: { campaignId, userId },
+    data: { creationPermit: permit, creationRulesAcceptedAt: null },
+  });
+}
+
+export const creationPermitStateEvent = defineCreationEvent<undefined, CreationPermitState>({
+  name: 'creation:permit-state',
+  handler: async ({ deps, socket, user }) =>
+    permitStateOf(deps, requireCampaignId(socket.data), user),
+});
+
+/** „Poproś MG o stworzenie postaci" — and, with `cancel`, taking it back. */
+export const creationRequestEvent = defineCreationEvent<
+  { cancel?: boolean } | undefined,
+  CreationPermitState
+>({
+  name: 'creation:request',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (user.role === ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    const current = await permitStateOf(deps, campaignId, user);
+    if (payload?.cancel) {
+      if (current.status === 'requested') await setPermit(deps, campaignId, user.id, null);
+    } else if (current.status === 'none') {
+      if (await loadDraft(deps, campaignId, user.id)) throw new RealtimeError('DRAFT_EXISTS');
+      await setPermit(deps, campaignId, user.id, 'requested');
+    }
+    await broadcastCreationRanks(deps, campaignId);
+    return permitStateOf(deps, campaignId, user);
+  },
+});
+
+/**
+ * The GM's answer. `grant: true` agrees to a request; `grant: false` refuses
+ * it, or takes back a consent the player has not used yet. A consent in use —
+ * a draft exists — is ended only by discarding that draft.
+ */
+export const creationPermitEvent = defineCreationEvent<CreationPermitPayload, void>({
+  name: 'creation:permit',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (!payload || typeof payload.userId !== 'string' || typeof payload.grant !== 'boolean')
+      throw new RealtimeError('BAD_REQUEST');
+    const member = await deps.ctx.prisma.campaignMember.findUnique({
+      where: { campaignId_userId: { campaignId, userId: payload.userId } },
+    });
+    if (!member) throw new RealtimeError('OWNER_NOT_FOUND');
+    if (await loadDraft(deps, campaignId, payload.userId)) throw new RealtimeError('DRAFT_EXISTS');
+    if (payload.grant) {
+      if (member.creationPermit !== 'requested') throw new RealtimeError('NO_REQUEST');
+      await setPermit(deps, campaignId, payload.userId, 'granted');
+      await pushPermitState(deps, campaignId, payload.userId);
+    } else {
+      if (member.creationPermit === null) throw new RealtimeError('NO_REQUEST');
+      await setPermit(deps, campaignId, payload.userId, null);
+      await pushPermitState(deps, campaignId, payload.userId, { refused: true });
+    }
+    await broadcastCreationRanks(deps, campaignId);
+  },
+});
+
+/** „Rozumiem, zaczynam" under the creation rules — the last step before a draft. */
+export const creationAcceptRulesEvent = defineCreationEvent<undefined, CreationPermitState>({
+  name: 'creation:accept-rules',
+  handler: async ({ deps, socket, user }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const current = await permitStateOf(deps, campaignId, user);
+    if (current.status !== 'granted') throw new RealtimeError('CREATION_NOT_PERMITTED');
+    if (user.role !== ROLE_GM) {
+      await deps.ctx.prisma.campaignMember.updateMany({
+        where: { campaignId, userId: user.id },
+        data: { creationRulesAcceptedAt: new Date() },
+      });
+      await broadcastCreationRanks(deps, campaignId);
+    }
+    return permitStateOf(deps, campaignId, user);
+  },
+});
+
+/**
+ * The GM throws away a player's draft — the only way a player's creation can
+ * start over (decyzja MG z 24.09). The consent goes with it, so a new attempt
+ * begins with a new request.
+ */
+export const creationDiscardPlayerEvent = defineCreationEvent<{ draftId: string }, void>({
+  name: 'creation:discard-player',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (!payload || typeof payload.draftId !== 'string' || !payload.draftId)
+      throw new RealtimeError('BAD_REQUEST');
+    const row = await deps.ctx.prisma.characterDraft.findFirst({
+      where: { id: payload.draftId, campaignId },
+    });
+    if (!row) throw new RealtimeError('DRAFT_NOT_FOUND');
+    await deps.ctx.prisma.characterDraft.delete({ where: { id: row.id } });
+    await setPermit(deps, campaignId, row.userId, null);
+    for (const peer of await deps.io.fetchSockets()) {
+      if (peer.data.user?.id === row.userId && peer.data.campaign?.id === campaignId) {
+        peer.emit('creation:discarded', { draftId: row.id });
+      }
+    }
+    await pushPermitState(deps, campaignId, row.userId);
+    await broadcastCreationRanks(deps, campaignId);
+  },
+});
+
 /**
  * Opens the wizard: hands back the draft that was already there, or starts a
  * fresh one. Idempotent on purpose — „Nowa postać" pressed twice must not
- * throw away half an hour of session zero.
+ * throw away half an hour of session zero. A player's fresh draft needs the
+ * GM's consent and the accepted rules first (24.09).
  */
 export const creationStartEvent = defineCreationEvent<
   undefined,
@@ -191,6 +352,9 @@ export const creationStartEvent = defineCreationEvent<
 
     const existing = await loadDraft(deps, campaignId, user.id);
     if (existing) return toDraftView(existing, deps);
+    const permit = await permitStateOf(deps, campaignId, user);
+    if (permit.status !== 'granted') throw new RealtimeError('CREATION_NOT_PERMITTED');
+    if (!permit.rulesAccepted) throw new RealtimeError('CREATION_RULES_PENDING');
     const row = await saveDraft(deps, campaignId, user.id, createDefaultCreationDraft(data));
     if (user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(row, deps);
@@ -604,7 +768,51 @@ async function broadcastCreationRanks(deps: RealtimeDeps, campaignId: string): P
   deps.io
     .to(gmRoom(campaignId))
     .emit('creation:ranks-sync', await creationRankRows(deps, campaignId));
+  deps.io
+    .to(gmRoom(campaignId))
+    .emit('creation:permits-sync', await creationPermitRows(deps, campaignId));
 }
+
+/**
+ * Players who asked for a new character, or hold a consent they have not
+ * used yet (24.09). A consent in use shows as a draft row instead.
+ */
+async function creationPermitRows(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<CreationPermitRow[]> {
+  const members = await deps.ctx.prisma.campaignMember.findMany({
+    where: { campaignId, creationPermit: { not: null } },
+    include: { user: true },
+  });
+  const drafting = new Set(
+    (
+      await deps.ctx.prisma.characterDraft.findMany({
+        where: { campaignId },
+        select: { userId: true },
+      })
+    ).map((row) => row.userId),
+  );
+  return members
+    .filter((member) => !drafting.has(member.userId))
+    .map((member) => ({
+      userId: member.userId,
+      userName: member.user.name,
+      status: member.creationPermit === 'granted' ? ('granted' as const) : ('requested' as const),
+      rulesAccepted: member.creationRulesAcceptedAt !== null,
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.status === 'granted') - Number(b.status === 'granted') ||
+        a.userName.localeCompare(b.userName, 'pl'),
+    );
+}
+
+export const creationPermitsEvent = defineCreationEvent<undefined, CreationPermitRow[]>({
+  name: 'creation:permits',
+  role: ROLE_GM,
+  handler: async ({ deps, socket }) => creationPermitRows(deps, requireCampaignId(socket.data)),
+});
 
 /**
  * The header of my own draft, if there is one (naprawa 3d). The „Postacie" tab
@@ -683,7 +891,10 @@ async function finishResult(
   placeToken: boolean,
 ): Promise<CreationFinishResult> {
   let tokenStatus: CreationFinishResult['tokenStatus'] = 'not-requested';
-  if (character.creationTokenDone) {
+  if (!character.playReady && !character.creationTokenDone && placeToken) {
+    // Decyzja MG z 24.09: the figure walks on at „Przyjmij do gry".
+    tokenStatus = 'awaiting-gm';
+  } else if (character.creationTokenDone) {
     if (await deps.ctx.prisma.token.findFirst({ where: { characterId: character.id } }))
       tokenStatus = 'placed';
   } else if (placeToken) {
@@ -702,6 +913,26 @@ async function finishResult(
   const view = toCharacterView(character, deps.ctx.cpred);
   await emitCharacterUpsert(deps, campaignId, view);
   return { ...view, tokenStatus };
+}
+
+/**
+ * The figure a waiting character asked for, placed when the GM lets it into
+ * play (24.09). Without an active scene it stays owed and the GM places it by
+ * hand — the same as a finish without a scene.
+ */
+export async function placeApprovedCreationToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+): Promise<void> {
+  if (character.creationTokenDone || character.creationDraftId === null) return;
+  const scene = await getActiveScene(deps.ctx.prisma, campaignId);
+  if (!scene) return;
+  try {
+    await createCharacterToken(deps, campaignId, scene, character, true);
+  } catch (error) {
+    deps.log.error({ err: error, characterId: character.id }, 'approved token placement failed');
+  }
 }
 
 /**
@@ -785,8 +1016,10 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
             creationTokenDone: !draft.placeToken,
             // Naprawa 3c: postać, którą ktoś będzie grał, czeka na MG. Karta
             // bez właściciela to NPC MG — przed samym sobą nie ma czego
-            // zatwierdzać, a lista gotowości zapełniłaby się statystami.
-            playReady: ownerId === null,
+            // zatwierdzać, a lista gotowości zapełniłaby się statystami. Od
+            // 24.09 czekanie blokuje, więc postać zrobioną ręką MG MG już
+            // zatwierdził — tym, że ją zrobił.
+            playReady: ownerId === null || user.role === ROLE_GM,
             name,
             ownerId,
             portraitUrl: draft.portraitUrl,
@@ -795,6 +1028,13 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         });
         await payStartingKit(deps, campaignId, created, sheet, draft, data, lookup, user.id, tx);
         await tx.characterDraft.delete({ where: { id: existing.id } });
+        // The consent bought one character (24.09); the next one is asked for.
+        if (user.role !== ROLE_GM) {
+          await tx.campaignMember.updateMany({
+            where: { campaignId, userId: user.id },
+            data: { creationPermit: null, creationRulesAcceptedAt: null },
+          });
+        }
         return tx.character.findUniqueOrThrow({ where: { id: created.id } });
       });
       if (user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
@@ -1026,11 +1266,16 @@ export const creationLifepathCountEvent = defineCreationEvent<
   },
 });
 
-/** Throws the draft away. The wizard asks twice before it gets here. */
+/**
+ * Throws the draft away. The wizard asks twice before it gets here. Only the
+ * GM's own drafts since 24.09 — a player's creation starts over through the
+ * GM's `creation:discard-player`, never by the player's hand.
+ */
 export const creationDiscardEvent = defineCreationEvent<{ draftId?: string } | undefined, void>({
   name: 'creation:discard',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     if (payload?.draftId !== undefined && (typeof payload.draftId !== 'string' || !payload.draftId))
       throw new RealtimeError('BAD_REQUEST');
     const removed = await deps.ctx.prisma.characterDraft.deleteMany({

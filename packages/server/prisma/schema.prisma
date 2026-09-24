@@ -288,6 +288,11 @@ model CampaignMember {
   campaignId String
   userId     String
   joinedAt   DateTime @default(now())
+  /// The GM's consent to one new character (24.09): null, "requested" or
+  /// "granted". Spent by `creation:finish`, dropped with a discarded draft.
+  creationPermit          String?
+  /// When the player clicked „Rozumiem, zaczynam" under the creation rules.
+  creationRulesAcceptedAt DateTime?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

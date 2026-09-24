@@ -1873,6 +1873,8 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Nowa postać gracza = zgoda MG, zasady, zatwierdzenie (24.09)** — zgoda w `CampaignMember.creationPermit` (`requested`/`granted`) + `creationRulesAcceptedAt`; `creation:start` zakłada szkic graczowi tylko przy obu (istniejący szkic zawsze się otwiera). Zgodę zużywa `creation:finish`, a zdejmuje ją razem ze szkicem wyłącznie `creation:discard-player` (MG) — gracz `creation:discard` dostaje `FORBIDDEN`. Lista MG: `creation:permits-sync`.
+- **Karta gracza przed „Przyjmij do gry” jest tylko do podglądu (24.09)** — `refuseAwaitingGm` (`character-io.ts`) odmawia `CHARACTER_AWAITING_GM`; **nowy handler, który pisze do karty gracza albo z niej rzuca, woła go** (odczyty — historia PD i portfela — nie). Żeton z kreatora staje przy przyjęciu (`placeApprovedCreationToken`), a postać zrobiona ręką MG jest gotowa od razu.
 - **Rzut kreatora to jedna kość na pozycję, przez kubek (24.09)** — `PendingCreation.roll` mówi, co kubek rzuca (Cecha, tabela Ścieżki, „ilu”), `chain` każe po rzucie wziąć następną pozycję (`nextCreationCup`). Gracz rzuca Cechę **raz** (`STAT_ALREADY_ROLLED`), przerzut daje tylko MG (`creation:reroll`); **`statRolls` przeżywają zmianę Roli i metody**, a Cechy Krawędziarza liczy z nich `creationRolledStats`. Zbiorcze rzuty (bez `statId`, wiele tabel) są wyłącznie skrótem MG.
 - **Szkic widoczny poza kreatorem idzie z `creation:peek` (naprawa 3d)** — nagłówek własnego szkicu (ksywa, Rola, metoda, krok), pytany po każdym `state:sync`; `creationStore.peek` ustępuje `draft`, gdy okno go wczyta, a zakończenie i „Wyrzuć szkic” czyszczą oba. Etykietę składa `creationResumeLabel` (`CharacterPanel.tsx`). Kreator po „Przejdź”/„Pokaż kartę” z ekranu końcowego **schodzi pod karty** (`behind` → z-index 290) zamiast się zamykać.
 - **Co zostaje po kreatorze, mówi `cpredRoleChores` (naprawa 3c)** — liczone **z karty**, nie z zapisanego stanu: nowa decyzja Roli dokłada gałąź tam i `data-sheet-panel` w karcie, a nie checkbox w bazie. Gotowość do gry to osobna kolumna `Character.playReady` i osobne zdarzenie `character:play-ready` (tylko MG), które **niczego nie blokuje**.
@@ -1916,6 +1918,31 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Nowa postać gracza: zgoda MG, zasady, zatwierdzenie (24.09, decyzje MG).**
+Gracz bez szkicu nie otwiera kreatora sam. W zakładce „Postacie” ma „✋ Poproś MG o stworzenie
+postaci” (`creation:request`, z `cancel` — wycofanie); MG widzi prośbę w „Szkicach postaci
+graczy” (`creation:permits` / push `creation:permits-sync`, plakietka zakładki liczy prośby) i
+odpowiada `creation:permit` — zgoda albo odmowa; odmowę gracz dostaje jednorazowo
+(`creation:permit-state` z `refused`). Po zgodzie pierwszy klik pokazuje okno zasad
+(`CreationGate.tsx`: Cechy raz, szkicu nie wyrzucisz, gotową postać zatwierdza MG), a dopiero
+„Rozumiem, zaczynam” (`creation:accept-rules`) pozwala `creation:start` założyć szkic. Stan
+siedzi w dwóch kolumnach `CampaignMember` (`creationPermit`, `creationRulesAcceptedAt`) — jedna
+zgoda na gracza w kampanii, tak jak jeden szkic. **Szkic, który już istnieje, otwiera się bez
+pytania** (szkice sprzed zmiany, m.in. Mary w „Test2”, nie utknęły). Zgodę zużywa
+`creation:finish`; zgodę niewykorzystaną MG cofa `creation:permit` z `grant: false`, a zgodę
+w użyciu kończy tylko wyrzucenie szkicu przez MG (`creation:discard-player`, push
+`creation:discarded` zamyka kreator u gracza). Gracz nie wyrzuci własnego szkicu
+(`creation:discard` → `FORBIDDEN`; w kreatorze zamiast przycisku napis „Szkic wyrzuca tylko MG”).
+**Zatwierdzenie odwraca decyzję z 17.09:** `playReady` przestał być samym znacznikiem. Do
+„Przyjmij do gry” karta gracza z kreatora jest tylko do podglądu — `refuseAwaitingGm` stoi
+w `requireRollableCharacter`, obu `requireOwnCharacter`, `character:update`,
+`combat-awareness`, `field-repair`, `backup-call`, `haggle`, `team-hire`, `check:request`,
+`character:advance`, `role-change`, `economy:buy` i `economy:transfer` — a żeton, o który
+prosił kreator, staje na aktywnej scenie dopiero przy przyjęciu (`tokenStatus: 'awaiting-gm'`,
+potem `placeApprovedCreationToken` w `character:play-ready`). Postać skończona ręką MG (także
+dla gracza) wychodzi gotowa — MG zatwierdził ją, robiąc ją. Klient tłumaczy odmowę jednym
+zdaniem `CHARACTER_AWAITING_GM_TEXT` we wszystkich `*ErrorText`.
 
 **Rzut kreatora: jedna kość na pozycję, przez kubek (24.09, zlecenie MG z 17.09).**
 Do 24.09 `creation:roll` rzucał komplet 10k10 jedną kartą, a Ścieżka Życia miała „🎲 Rzuć całą

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CreationRankDraft } from '@vtt/shared';
+import type { CreationPermitRow, CreationRankDraft } from '@vtt/shared';
 
 /**
  * The GM's list of players' drafts: Kompletny Pakiet ranks (naprawa 2b) and,
@@ -10,14 +10,28 @@ import type { CreationRankDraft } from '@vtt/shared';
 interface CreationRankState {
   rows: CreationRankDraft[];
   replace: (rows: CreationRankDraft[]) => void;
+  /** Players asking for a new character, or holding an unused consent (24.09). */
+  permits: CreationPermitRow[];
+  replacePermits: (permits: CreationPermitRow[]) => void;
 }
 
 export const useCreationRankStore = create<CreationRankState>((set) => ({
   rows: [],
   replace: (rows) => set({ rows }),
+  permits: [],
+  replacePermits: (permits) => set({ permits }),
 }));
 
-/** Drafts whose player cannot buy stats until the GM picks a rank. */
-export function waitingRankCount(rows: readonly CreationRankDraft[]): number {
-  return rows.reduce((count, row) => (row.rankApproved ? count : count + 1), 0);
+/**
+ * What waits for the GM's hand: drafts whose player cannot buy stats until a
+ * rank is picked, and players asking for a new character (24.09).
+ */
+export function waitingRankCount(
+  rows: readonly CreationRankDraft[],
+  permits: readonly CreationPermitRow[] = [],
+): number {
+  return (
+    rows.reduce((count, row) => (row.rankApproved ? count : count + 1), 0) +
+    permits.filter((row) => row.status === 'requested').length
+  );
 }

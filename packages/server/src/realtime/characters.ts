@@ -43,12 +43,18 @@ import { RealtimeError, defineEvent } from './registry.js';
 import { applyBalance } from './economy.js';
 import { applyImprovementPoints } from './advancement.js';
 import { emitToCampaignUser } from './state.js';
-import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
+import {
+  emitCharacterDelete,
+  emitCharacterUpsert,
+  toCharacterView,
+  refuseAwaitingGm,
+} from './character-io.js';
 import { emitRuns } from './netrun-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { scheduleBackup } from './backup.js';
 import { dropFromTeams } from './team.js';
+import { placeApprovedCreationToken } from './creation.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
@@ -132,6 +138,7 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     const isGm = user.role === ROLE_GM;
     // Non-owners must not learn the character exists.
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(character, user);
 
     const patch = payload?.patch;
     if (typeof patch !== 'object' || patch === null) throw new RealtimeError('BAD_REQUEST');
@@ -376,9 +383,10 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
  *
  * Postać wychodząca z kreatora z właścicielem czeka na MG: on widzi w zakładce
  * „Postacie", co po Roli jeszcze zostało (`cpredRoleChores` liczy to z karty),
- * i przyjmuje ją do gry przyciskiem. Znacznik **niczego nie blokuje** — jest
- * odpowiedzią na „czy ja mam jeszcze coś z tą postacią zrobić", a nie bramką
- * przy stole.
+ * i przyjmuje ją do gry przyciskiem. Do 24.09 znacznik niczego nie blokował;
+ * **od decyzji MG z 24.09 blokuje**: dopóki MG nie przyjmie postaci, gracz ma
+ * kartę tylko do podglądu (`refuseAwaitingGm`), a żeton z kreatora staje na
+ * mapie dopiero przy przyjęciu (`placeApprovedCreationToken`).
  *
  * Zdarzenie jest osobne, a nie polem `character:update`, z tego samego powodu,
  * co `eddies` z 23b: to decyzja MG, a nie wartość, którą zapisuje autozapis
@@ -402,6 +410,7 @@ export const characterPlayReadyEvent = defineEvent<CharacterPlayReadyPayload, Ch
       where: { id: character.id },
       data: { playReady: payload.ready },
     });
+    if (payload.ready) await placeApprovedCreationToken(deps, campaignId, saved);
     const view = toCharacterView(saved, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
     return view;
@@ -434,6 +443,7 @@ export const characterCombatAwarenessEvent = defineEvent<
     );
     const isGm = user.role === ROLE_GM;
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(character, user);
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_COMBAT_AWARENESS_ABILITY);
@@ -514,6 +524,7 @@ export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload
     );
     const isGm = user.role === ROLE_GM;
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(character, user);
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const row = data.armor.find((entry) => entry.id === payload?.armorRowId);
@@ -605,6 +616,7 @@ export const characterBackupCallEvent = defineEvent<
     );
     const isGm = user.role === ROLE_GM;
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(character, user);
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_BACKUP_ABILITY);

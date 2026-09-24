@@ -585,8 +585,8 @@ function ReadinessStrip({
         <p className="cp-readiness-state">
           <strong>Czeka na MG.</strong>{' '}
           {isGm
-            ? 'Przejrzyj, czego brakuje, i przyjmij postać do gry.'
-            : 'MG zobaczy tę postać w swojej liście i potwierdzi gotowość. Nic ci to nie blokuje — możesz grać i uzupełniać kartę dalej.'}
+            ? 'Przejrzyj kartę i przyjmij postać do gry — dopiero wtedy gracz może z niej korzystać, a żeton z kreatora staje na aktywnej scenie.'
+            : 'Do zatwierdzenia przez MG karta jest tylko do podglądu: rzuty, zapisy i zakupy ruszą po przyjęciu do gry, a żeton stanie wtedy na mapie.'}
         </p>
       )}
       {chores.length > 0 ? (

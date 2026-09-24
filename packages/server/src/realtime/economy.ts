@@ -33,7 +33,7 @@ import {
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 import { markMonthSettled } from './gametime.js';
@@ -224,6 +224,7 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireWallet(deps, campaign.id, user, payload?.characterId);
+    refuseAwaitingGm(character, user);
     const entry: CompendiumEntry | undefined = await campaignEntry(
       deps,
       campaign.id,
@@ -351,6 +352,7 @@ export const economyTransferEvent = defineEvent<EconomyTransferPayload, { balanc
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const from = await requireWallet(deps, campaign.id, user, payload?.fromCharacterId);
+    refuseAwaitingGm(from, user);
     // The payee is *not* run through `requireWallet`: you may pay somebody
     // whose sheet you cannot read. What still has to hold is that they play in
     // this campaign — which is what refuses a transfer to an outside sheet.

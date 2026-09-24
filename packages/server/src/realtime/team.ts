@@ -41,7 +41,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { buildCompendiumSync } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
@@ -236,6 +236,7 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
     );
     const isGm = user.role === ROLE_GM;
     if (!isGm && employer.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(employer, user);
 
     const data = parseCharacterData(employer.data, deps.ctx.cpred);
     const { team, rank } = rosterOf(data, deps);

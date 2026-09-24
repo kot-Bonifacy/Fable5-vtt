@@ -116,7 +116,9 @@ export function SidePanel() {
   const waitingRequests = useWaitingRequestCount(isGm);
   // Naprawa 2b: players' drafts waiting for the GM's rank. The list is empty
   // for a player, so the badge never shows there.
-  const waitingRanks = useCreationRankStore((s) => (isGm ? waitingRankCount(s.rows) : 0));
+  const waitingRanks = useCreationRankStore((s) =>
+    isGm ? waitingRankCount(s.rows, s.permits) : 0,
+  );
   // Naprawa 3c: karty prosto z kreatora, które czekają na „Przyjmij do gry".
   // Liczone z magazynu postaci, a nie z osobnej listy — MG widzi wszystkie
   // karty kampanii, więc drugi tor synchronizacji tylko by się rozjeżdżał.

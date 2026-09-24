@@ -19,7 +19,7 @@ import {
   cpredWoundPenaltyRows,
 } from '@vtt/shared';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
@@ -74,6 +74,7 @@ export const characterHaggleEvent = defineEvent<
     }
     const isGm = user.role === ROLE_GM;
     if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    refuseAwaitingGm(character, user);
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_OPERATOR_ABILITY);

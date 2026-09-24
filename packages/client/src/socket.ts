@@ -39,6 +39,8 @@ import type {
   CreationFinishResult,
   CreationDraftPeek,
   CreationRankDraft,
+  CreationPermitRow,
+  CreationPermitState,
   CreationRerolledPush,
   SmokeSyncBroadcast,
   CoverUpdatePayload,
@@ -334,7 +336,15 @@ let lastRulerSentAt = 0;
 /** Extra time after the dice settle before the chat card spoils the total. */
 const CARD_REVEAL_DELAY_MS = 2500;
 
+/**
+ * A player's character fresh from the creator, before the GM's „Przyjmij do
+ * gry" (decyzja MG z 24.09): the sheet is for looking at, nothing on it works.
+ */
+export const CHARACTER_AWAITING_GM_TEXT =
+  'Ta postać czeka na zatwierdzenie MG — do tego czasu karta jest tylko do podglądu.';
+
 function chatErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'UNKNOWN_COMMAND':
       return `Nieznana komenda. ${CHAT_COMMANDS_HELP}`;
@@ -440,6 +450,7 @@ function rollErrorText(reason: 'MISSING_NOTATION' | RollParseError): string {
 
 /** Polish messages for AI failures — the gateway is optional by design. */
 function aiErrorText(code: string, detail?: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'AI_UNAVAILABLE':
       return 'Model jest niedostępny — sprawdź, czy AI Gateway i llama-server działają.';
@@ -456,6 +467,7 @@ function aiErrorText(code: string, detail?: string): string {
 
 /** Polish messages for rules-assistant failures (stage 19a). */
 function rulesErrorText(code: string, detail?: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'RULES_EMPTY_QUESTION':
       return 'Wpisz pytanie o zasady.';
@@ -474,6 +486,7 @@ function rulesErrorText(code: string, detail?: string): string {
 
 /** Polish messages for bot-editor failures (stage 10). */
 export function botErrorText(code: string, detail?: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'BOT_NOT_FOUND':
       return 'Nie znaleziono bota — odśwież stronę.';
@@ -540,6 +553,17 @@ export function connectSocket(userId: string): Socket {
     }
     useCreationStore.setState({ draft: { ...store.draft, stats, statRolls } });
   });
+  // 24.09: the GM's answer to my request, or a consent spent or taken back.
+  onPresented('creation:permit-state', (state: CreationPermitState) =>
+    useCreationStore.getState().setPermit(state),
+  );
+  onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>
+    useCreationRankStore.getState().replacePermits(rows),
+  );
+  // 24.09: the GM threw my draft away — the wizard has nothing left to show.
+  onPresented('creation:discarded', (push: { draftId: string }) =>
+    useCreationStore.getState().dropDiscarded(push.draftId),
+  );
   // Naprawa 2b: the GM's rank list lives off the server's pushes.
   onPresented('creation:ranks-sync', (rows: CreationRankDraft[]) =>
     useCreationRankStore.getState().replace(rows),
@@ -597,11 +621,21 @@ export function connectSocket(userId: string): Socket {
     void peekCreation().then((ack) =>
       useCreationStore.getState().setPeek(ack.ok ? (ack.data ?? null) : null),
     );
+    // 24.09: a player's next character starts with the GM's consent.
+    void creationPermitState().then((ack) =>
+      useCreationStore.getState().setPermit(ack.ok ? (ack.data ?? null) : null),
+    );
     if (viewer().isGm) {
       void listCreationRanks().then((ack) =>
         useCreationRankStore.getState().replace(ack.ok ? (ack.data ?? []) : []),
       );
-    } else useCreationRankStore.getState().replace([]);
+      void listCreationPermits().then((ack) =>
+        useCreationRankStore.getState().replacePermits(ack.ok ? (ack.data ?? []) : []),
+      );
+    } else {
+      useCreationRankStore.getState().replace([]);
+      useCreationRankStore.getState().replacePermits([]);
+    }
     // Etap 38c: otwarte handle żyją w pamięci serwera, nie w `state:sync` —
     // po przeładowaniu i po przełączeniu kampanii dociąga się je osobno.
     void listTrades().then((ack) =>
@@ -1222,6 +1256,7 @@ export function sendChatInput(text: string, gesture?: RollGesture): void {
 
 /** Polish hints for the sheet-roll rejections the server can return. */
 function rollAckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz rzucać tą postacią.';
@@ -1363,6 +1398,7 @@ export const listTrades = () => emitSceneAck<TradeListResult>('trade:list', unde
 
 /** Polskie komunikaty odmowy przy handlu — wspólne kody z 38b idą przez `inventoryErrorText`. */
 export function tradeErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'TRADE_NOT_FOUND':
       return 'Tego handlu już nie ma.';
@@ -1393,6 +1429,7 @@ export function tradeErrorText(code: string): string {
 
 /** Polskie komunikaty odmowy przy przenoszeniu przedmiotów (etap 38b). */
 export function inventoryErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
       return 'Nie ma takiej karty w tej kampanii.';
@@ -1436,6 +1473,7 @@ export function inventoryErrorText(code: string): string {
  * zdaniem, więc klient go **nie tłumaczy**, tylko pokazuje.
  */
 export function randomTableErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code.startsWith('INVALID_TABLE:')) {
     const message = code.slice('INVALID_TABLE:'.length).trim();
     return message.length > 0 ? message : 'Tabela ma błąd — sprawdź zakresy wierszy.';
@@ -1462,6 +1500,7 @@ export function randomTableErrorText(code: string): string {
 
 /** Polskie zdania odmów prośby o Test (etap 40). */
 export function checkRequestErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
       return 'Nie ma takiej postaci w tej kampanii.';
@@ -1489,6 +1528,7 @@ export function checkRequestErrorText(code: string): string {
 }
 
 export function checkCallErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
       return 'Nie ma takiej postaci w tej kampanii.';
@@ -1511,6 +1551,7 @@ export function checkCallErrorText(code: string): string {
 
 /** Polish hints for the damage rejections (GM-only actions, stage 15). */
 function damageAckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'MESSAGE_NOT_FOUND':
       return 'Nie znalazłem tego rzutu na czacie.';
@@ -1584,6 +1625,7 @@ export function setStatEffect(payload: CharacterStatEffectPayload): void {
 }
 
 function statEffectAckErrorText(code: string | undefined): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'EFFECT_NOT_FOUND':
       return 'Tego efektu nie ma już na karcie.';
@@ -1608,6 +1650,7 @@ function statEffectAckErrorText(code: string | undefined): string {
 
 /** Polish hints for attack rejections (stage 16). */
 function attackAckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   const known = CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
   if (known) return known;
   switch (code) {
@@ -2477,6 +2520,7 @@ export const cancelSummary = () => socket?.emit('journal:cancel');
 
 /** Po polsku, z następnym krokiem — kody odmowy widzi tylko MG. */
 export function journalErrorText(code: string, detail?: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code.startsWith('INVALID_ENTRY:')) {
     return code.slice('INVALID_ENTRY:'.length) || 'Nieprawidłowe dane wpisu.';
   }
@@ -2950,6 +2994,7 @@ export function sendReputationRecognise(characterId: string, targetTokenId: stri
 }
 
 function facedownAckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   const known =
     CPRED_FACEDOWN_PROBLEM_MESSAGES[code as keyof typeof CPRED_FACEDOWN_PROBLEM_MESSAGES];
   if (known) return known;
@@ -2966,6 +3011,7 @@ function facedownAckErrorText(code: string): string {
 }
 
 function grappleAckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   const known = CPRED_GRAPPLE_PROBLEM_MESSAGES[code as keyof typeof CPRED_GRAPPLE_PROBLEM_MESSAGES];
   if (known) return known;
   switch (code) {
@@ -2982,6 +3028,7 @@ function grappleAckErrorText(code: string): string {
 
 /** Polish messages for tracker rejections. */
 export function combatErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'COMBAT_NOT_FOUND':
       return 'Nie ma trwającej walki na tej scenie.';
@@ -3105,6 +3152,24 @@ export const rollCreationLifepath = (tableIds: string[], index?: number, gesture
 export const rollCreationLifepathCount = (group: string, gesture?: RollGesture) =>
   emitCreationAck<CreationDraft>('creation:lifepath-count', { group, gesture });
 
+/** Where my consent to a new character stands (24.09). */
+export const creationPermitState = () =>
+  emitCreationAck<CreationPermitState>('creation:permit-state', undefined);
+/** „Poproś MG o stworzenie postaci" — or, with `cancel`, taking the request back. */
+export const requestCreation = (cancel = false) =>
+  emitCreationAck<CreationPermitState>('creation:request', cancel ? { cancel: true } : undefined);
+/** „Rozumiem, zaczynam" under the creation rules. */
+export const acceptCreationRules = () =>
+  emitCreationAck<CreationPermitState>('creation:accept-rules', undefined);
+/** The GM's answer to a request, or taking back a consent not used yet. */
+export const answerCreationRequest = (userId: string, grant: boolean) =>
+  emitCreationAck('creation:permit', { userId, grant });
+export const listCreationPermits = () =>
+  emitCreationAck<CreationPermitRow[]>('creation:permits', undefined);
+/** The GM throws away a player's draft — the only way a player's creation starts over. */
+export const discardPlayerDraft = (draftId: string) =>
+  emitCreationAck('creation:discard-player', { draftId });
+
 /** The GM's „Pozwól przerzucić" — the dice off one stat of a draft, or all of them. */
 export const rerollCreationStats = (draftId: string, statId?: CpredStatId) =>
   emitCreationAck('creation:reroll', { draftId, statId });
@@ -3124,6 +3189,7 @@ export const discardCreation = (draftId?: string) =>
   emitCreationAck('creation:discard', { draftId });
 
 export function creationErrorText(code: string | undefined): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   // „CREATION_SHOP_LOCKED:2:1" — the item's level and whether it is a tool of
   // the draft's Role (naprawa 3b); the creator has its own shelf, not the
   // campaign's, so the sentence says that shelf's rule.
@@ -3165,6 +3231,14 @@ export function creationErrorText(code: string | undefined): string {
       return 'Ta Cecha jest już wylosowana. Przerzut może pozwolić tylko MG.';
     case 'STATS_ALREADY_ROLLED':
       return 'Wszystkie Cechy są już wylosowane.';
+    case 'CREATION_NOT_PERMITTED':
+      return 'Nową postać tworzy się za zgodą MG — najpierw poproś o nią w zakładce „Postacie”.';
+    case 'CREATION_RULES_PENDING':
+      return 'Najpierw przeczytaj zasady tworzenia postaci i kliknij „Rozumiem, zaczynam”.';
+    case 'DRAFT_EXISTS':
+      return 'Ten gracz ma już szkic postaci — zgoda jest w użyciu.';
+    case 'NO_REQUEST':
+      return 'Ten gracz nie prosi teraz o kreator.';
     case 'NOTHING_TO_REROLL':
       return 'Tu nie ma czego przerzucać — ta Cecha nie jest jeszcze wylosowana.';
     case 'CREATION_INCOMPLETE':
@@ -3270,6 +3344,7 @@ export async function endFieldRepair(characterId: string, armorRowId: string): P
 
 /** Polskie zdania dla odmów, którymi kończy się `character:field-repair`. */
 export function fieldRepairErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'UNKNOWN_ARMOR':
       return 'Nie ma takiej sztuki pancerza na karcie.';
@@ -3336,6 +3411,7 @@ export async function useDose(
 
 /** Polskie zdania dla odmów z trzech zdarzeń powrotu do zdrowia. */
 export function recoveryErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'UNKNOWN_PHARMA':
       return 'Nie znam takiego farmaceutyku.';
@@ -3444,6 +3520,7 @@ export async function changeTeamLoyalty(
 
 /** Polskie zdania dla odmów zespołu — te same, którymi silnik wyszarza guziki. */
 export function teamErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_TEAM_PROBLEMS) return CPRED_TEAM_PROBLEMS[code as CpredTeamProblem];
   switch (code) {
     case 'TEAM_MEMBER_NOT_FOUND':
@@ -3490,6 +3567,7 @@ export async function dropHaggle(characterId: string): Promise<void> {
 
 /** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */
 export function haggleErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_HAGGLE_PROBLEMS) return CPRED_HAGGLE_PROBLEMS[code as CpredHaggleProblem];
   if (code in CPRED_FLEET_PROBLEMS) {
     return CPRED_FLEET_PROBLEMS[code as keyof typeof CPRED_FLEET_PROBLEMS];
@@ -3499,6 +3577,7 @@ export function haggleErrorText(code: string): string {
 
 /** Polish sentences for the refusals `character:combat-awareness` can return. */
 export function combatAwarenessErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_COMBAT_AWARENESS_PROBLEMS) {
     return CPRED_COMBAT_AWARENESS_PROBLEMS[code as CpredCombatAwarenessProblem];
   }
@@ -3515,6 +3594,7 @@ export function combatAwarenessErrorText(code: string): string {
  * be two different sentences.
  */
 export function characterSaveErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ROLES_PROBLEMS) {
     return CPRED_ROLES_PROBLEMS[code as keyof typeof CPRED_ROLES_PROBLEMS];
   }
@@ -3685,6 +3765,7 @@ export function loadOlderHistory(): void {
 
 /** Polish text for a refusal of `character:cyberware` (stage 23a). */
 function cyberwareErrorText(code: string | undefined): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'ENTRY_NOT_FOUND':
       return 'Nie znalazłem tej cyborgizacji w kompendium.';
@@ -3782,6 +3863,7 @@ function shopTierErrorText(code: string | undefined): string | null {
 }
 
 export function economyErrorText(code: string | undefined): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   const locked = shopTierErrorText(code);
   if (locked) return locked;
   switch (code) {
@@ -3892,6 +3974,7 @@ export function fetchAdvancementHistory(
 
 /** Polskie zdania dla odmów, które potrafi zwrócić `character:advance`. */
 export function advanceErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ADVANCE_PROBLEMS) {
     return CPRED_ADVANCE_PROBLEMS[code as CpredAdvanceProblem];
   }
@@ -3913,6 +3996,7 @@ export function changeCharacterRole(
 
 /** Polskie zdania dla odmów, które potrafi zwrócić `character:role-change`. */
 export function roleChangeErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ROLE_CHANGE_PROBLEMS) {
     return CPRED_ROLE_CHANGE_PROBLEMS[code as CpredRoleChangeProblem];
   }

@@ -1,5 +1,20 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 (piąta) — szybkie tworzenie postaci tylko dla MG
+
+**Zlecenie MG:** po co graczowi w zakładce „Postacie” pole „Imię nowej postaci” i „Utwórz”,
+skoro postać tworzy kreator. Okazało się, że formularz z etapu 07 był u gracza jedynie
+obejściem kreatora: pusta karta z domyślnymi Cechami, bez pilnowania budżetów punktów.
+Rozstrzygnięcie MG: **formularz tylko u MG, a serwer odrzuca go od gracza**.
+
+**Wdrożone:** `CharacterPanel` pokazuje formularz tylko przy `isGm`. `character:create` od
+gracza kończy się `FORBIDDEN`, bo postać gracza powstaje wyłącznie przez `creation:*`
+(import archiwum i postacie zakładane z żetonów to i tak ścieżki MG). Test „a player creating
+a character always owns it” zastąpiony testem odmowy.
+
+**Weryfikacja:** 1224 testy serwera, tsc klienta i serwera, ESLint, Prettier. UI nieobejrzane
+w przeglądarce (zmiana to sam warunek `isGm`).
+
 ### Sesja 24.09 (czwarta) — dzienny papier w tonie tapety logowania
 
 **Zlecenie MG:** dzień „zbyt jednolity (kremowy) i bardziej żółty niż okno logowania”, ma
