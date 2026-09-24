@@ -28,7 +28,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 | Baza danych       | SQLite + Prisma (migracje w repo)                                                                         |
 | Kod współdzielony | `packages/shared` — typy + silnik zasad CP RED (czysta logika, testy vitest)                              |
 | AI Gateway        | Python 3.12 + FastAPI w `ai-gateway/` — spina llama-server i RAG                                          |
-| LLM               | Qwythos-9B-v2 GGUF Q8_0 przez `llama-server` (llama.cpp), API zgodne z OpenAI, RTX 5070 Ti na lokalnym PC |
+| LLM               | Qwen3.8-27B GGUF UD-Q3_K_XL przez `llama-server` (llama.cpp build 10735), API zgodne z OpenAI, RTX 5070 Ti na lokalnym PC (od 24.09.2026; wcześniej Qwythos-9B-v2 Q8_0) |
 | Głos              | brak — TTS, STT i WebRTC wycofane 09.08.2026 (patrz akapit nad tabelą)                                    |
 | Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), Caddy (HTTPS), Tailscale dla kanału VPS↔PC                 |
 
@@ -73,4 +73,4 @@ Uwaga: `@vtt/shared` jest konsumowany jako źródła TS (bez kroku build w dev) 
 
 - Dev: Windows 11, ten sam komputer hostuje llama-server (RTX 5070 Ti, 16 GB VRAM). Wszystko na localhost.
 - Prod (etap 28): VPS home.pl (8 GB RAM / 4 vCPU / Ubuntu 24.04), domena `vtt.tatanga.eu` (tymczasowo `http://217.154.210.181:8088`), kanał VPS↔PC przez Tailscale.
-- Po wycofaniu głosu budżet VRAM jest luźny: na karcie stoi wyłącznie model Q8_0 (~9,5 GB) z KV cache, a embeddingi RAG liczą się na CPU. Przed dołożeniem czegokolwiek na GPU sprawdź bilans w „Ryzyka" w `docs/etapy/00-przeglad.md` i pomiary w `ai-gateway/README.md`.
+- **Budżet VRAM jest ciasny (od 24.09.2026):** Qwen3.8-27B UD-Q3_K_XL (13,1 GB) z KV cache 32k zajmuje kartę do ~15,5 / 16,3 GB, a embeddingi RAG liczą się na CPU. Na GPU nie dokładamy nic. Przed dołożeniem czegokolwiek na GPU sprawdź bilans w „Ryzyka" w `docs/etapy/00-przeglad.md` i pomiary w `ai-gateway/README.md`.

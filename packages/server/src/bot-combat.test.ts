@@ -589,6 +589,40 @@ describe('automat', () => {
     gm.socket.disconnect();
   });
 
+  // Oględziny na żywym modelu 24.09: bot przeszedł prosto przez siatkę stojącą
+  // na linii kratek. `planWalk` od 23.08 podaje `canStep` środki pól, a bot
+  // dokładał do nich drugie pół kratki — sprawdzana linia biegła po liniach
+  // siatki, czyli dokładnie po ścianach, i styk z nimi uchodził za „czysto".
+  it('walks around a barrier drawn on a grid line instead of through it', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    await emitAck(gm.socket, 'wall:create', {
+      sceneId,
+      points: [
+        { x: 400, y: 0 },
+        { x: 400, y: 300 },
+      ],
+      kind: 'barrier',
+      hidesFigures: false,
+    });
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await place(gm.socket, enemyTokenId, 40);
+    await startFight(gm.socket);
+    gateway.answers = [
+      decision({ akcja: 'podejście', cel: 'Rico', bron: 'Zgrzyt 9', powod: 'Podchodzę.' }),
+      decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' }),
+    ];
+
+    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+
+    const moved = await tokenOf(gm.socket, botTokenId);
+    expect(moved.x !== 0 || moved.y !== 0).toBe(true);
+    // Za siatką (środek na prawo od x = 400) wolno stanąć tylko pod jej końcem.
+    if (moved.x + 50 > 400) expect(moved.y).toBeGreaterThanOrEqual(300);
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  });
+
   it('plays a whole turn: walk in, then shoot', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;

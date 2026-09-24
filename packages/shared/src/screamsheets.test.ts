@@ -92,6 +92,8 @@ describe('buildScreamsheetPrompt', () => {
     expect(system).toContain('NET-54');
     expect(system).toContain('Poligon bojowy');
     expect(system).toContain('NAGŁÓWEK:');
+    // Wersaliki robi skład; model piszący WERSALIKAMI psuł słowa (24.09).
+    expect(system).toContain('nie wersalikami');
     expect(user).toContain('strzelanina w Kabuki');
   });
 

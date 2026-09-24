@@ -80,6 +80,17 @@ describe('compileBotPrompt — where the bot is talking (stage 11)', () => {
     expect(repeatedCatchphrase(data, 'czas to EDDIESY skarbie!')).toBe('Czas to eddiesy, skarbie.');
   });
 
+  it('asks for new sentences after any own line, not only after a catchphrase', () => {
+    const anchor = (lastOwnLine: string | null) =>
+      buildRoleAnchor({ name: 'Vex', data: fixer(), mode: 'chat', lastOwnLine });
+    expect(anchor('Nie znam takiego gościa.')).toContain(
+      'Nie powtarzaj zdań ze swojej poprzedniej wypowiedzi',
+    );
+    // The named catchphrase rule replaces the general one — one sentence, not two.
+    expect(anchor('Czas to eddiesy, skarbie.')).not.toContain('Nie powtarzaj zdań');
+    expect(anchor(null)).not.toContain('Nie powtarzaj');
+  });
+
   it('says nothing about the situation in the editor sandbox', () => {
     const prompt = compileBotPrompt({ name: 'Vex', data: fixer() });
     expect(prompt).not.toContain('Rozmowa toczy się na żywo');
@@ -272,7 +283,18 @@ describe('compileBotPrompt — attitude towards the speaker (stage 19c)', () => 
     // The GM's own lines and the editor sandbox carry no relation at all.
     const prompt = compileBotPrompt({ name: 'Barman', data: fixer() });
     expect(prompt).not.toContain('Z kim rozmawiasz');
-    expect(buildRoleAnchor({ name: 'Barman', data: fixer() })).not.toContain('Mówisz do postaci');
+    expect(buildRoleAnchor({ name: 'Barman', data: fixer() })).not.toContain('nastawienie');
+  });
+
+  it('keeps the anchor grammatical for the noun labels at ±3', () => {
+    const anchor = (value: number) =>
+      buildRoleAnchor({ name: 'Barman', data: fixer(), relation: { ...relation, value } });
+    // „jest wobec niej oddany przyjaciel" was the broken form.
+    expect(anchor(3)).toContain('Twoje nastawienie do postaci Vex: oddany przyjaciel — okazujesz');
+    expect(anchor(-3)).toContain('Twoje nastawienie do postaci Vex: zaprzysięgły wróg — okazujesz');
+    expect(anchor(3)).toContain('życzliwość');
+    expect(anchor(-1)).toContain('niechęć');
+    expect(anchor(0)).toContain('obojętny.');
   });
 
   it('keeps secrets above the attitude — a warm NPC still does not spill them', () => {

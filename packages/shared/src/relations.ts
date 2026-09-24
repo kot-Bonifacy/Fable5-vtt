@@ -108,10 +108,20 @@ export function relationPromptLines(relation: {
   characterName: string;
   value: number;
   note: string;
+  /** Podpis gracza na czacie (nazwa konta), gdy różni się od imienia postaci. */
+  speakerName?: string | null;
 }): string {
   const value = clampRelation(relation.value);
   const label = RELATION_LABELS[value] ?? RELATION_LABELS[0]!;
-  const lines = [`Rozmawiasz z: ${relation.characterName}. Twoje nastawienie: ${label}.`];
+  // Wiersze czatu gracza podpisuje nazwa KONTA, a relacja zna imię POSTACI.
+  // Bez tego zdania 27B (24.09) mówił do gracza o jego własnej postaci jak
+  // o kimś trzecim: „trzymaj się blisko Styma, on się za tobą wstawi".
+  const speaker = relation.speakerName?.trim();
+  const alias =
+    speaker && speaker !== relation.characterName
+      ? ` (na czacie podpisuje się „${speaker}" — to ta sama osoba)`
+      : '';
+  const lines = [`Rozmawiasz z: ${relation.characterName}${alias}. Twoje nastawienie: ${label}.`];
   const note = relation.note.trim();
   if (note.length > 0) lines.push(`Skąd się wzięło: ${note}`);
   lines.push(

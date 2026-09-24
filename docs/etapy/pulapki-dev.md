@@ -807,11 +807,30 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## boty — Boty, AI Gateway, RAG
 
+- **Bot w walce rusza się kontem MG, a MG jest zwolniony z blokad ruchu** — jedynym bezpiecznikiem przed przejściem przez ścianę jest planer bota (`walkTowards`); `canStep` dostaje od `planWalk` już ŚRODKI pól.
+- **Budżet myślenia pilnuje `thinking_budget_tokens`, nie `reasoning_budget`** (build 10735, 24.09) — gateway wysyła oba; bez tego 27B myśli cały limit i oddaje pustą odpowiedź.
+- **Pytanie do bota, który jeszcze myśli, przepada bez śladu** — „jedna tura bota naraz” (`requestBotTurns`); przy 27B okno to 3–4 s. Decyzja MG z 24.09: zostaje, to nie usterka.
 - **`reasoning_budget` w llama-server egzekwuje tylko 0 i −1** — każda ścieżka z `reasoning: true` musi znieść pustą odpowiedź.
 - **Chip „⟳ nieaktualny" na nietkniętym wpisie to zwykle stary odcisk**, nie regres indeksowania — policz digest kodem aplikacji i porównaj z bazą.
 - **Powrót gatewaya odklikasz atrapą `/health` na :8100** — kilkanaście linijek `node:http`, bez modelu; serwer odpytuje ją co 10 s.
 
 ---
+
+- **Bot przechodził przez ściany stojące na liniach kratki (znalezione 24.09 na żywym modelu).**
+  `planWalk` od 23.08 (pasy figury 2×2) wywołuje `canStep` ze **środkami** pól, a `walkTowards`
+  w `bot-combat.ts` — pisany 08.08, gdy dostawał lewe górne rogi — dokładał do nich drugie pół
+  kratki. Sprawdzana linia biegła więc po liniach siatki, dokładnie po ścianach, a styk z końcem
+  odcinka `isSegmentClear` uznaje za „czysto”: Paser przeszedł prosto przez siatkę na x = 600.
+  Serwer tego **nie złapał**, bo bot porusza się kontem MG, które `movement.ts` zwalnia z blokad —
+  planer bota jest jedynym bezpiecznikiem. Test ze ścianą w środku pola tego nie widział; nowy
+  („walks around a barrier drawn on a grid line”) stawia ją na linii kratki. **Wniosek:** każdy
+  nowy wołający `planWalk` z `canStep` podaje funkcję, która przyjmuje środki — jak `MapArea`.
+
+- **Budżet myślenia na buildzie 10735: `thinking_budget_tokens` (24.09).** Po przejściu na
+  Qwen3.8-27B pytanie o zasady wracało po 30 s puste: `reasoning_budget: 640` w żądaniu przechodzi
+  bez błędu i nadal niczego nie pilnuje. Ten sam build respektuje `thinking_budget_tokens` (300 →
+  ~300 tokenów myślenia, odpowiedź po 10,6 s). Gateway wysyła oba; flaga serwera
+  `--reasoning-budget N` też działa, ale jest globalna i nie odróżnia asystenta od NPC-ów.
 
 - **`reasoning_budget` w llama-server nie działa dla wartości dodatnich** — przyjmuje 640 bez błędu, ale egzekwuje wyłącznie 0 i −1. Każda ścieżka z `reasoning: true` musi umieć obsłużyć **pustą odpowiedź** po zużyciu całego `max_tokens` na blok think. Szczegóły w `ai-gateway/README.md`.
 - ~~**Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu**~~ —

@@ -83,13 +83,16 @@ def build_payload(request: ChatRequest, settings: Settings) -> dict[str, Any]:
         payload["reasoning_budget"] = 0
         payload["chat_template_kwargs"] = {"enable_thinking": False}
     else:
-        # UWAGA (zmierzone 08.08 w etapie 19a): llama-server **przyjmuje** dowolną
-        # liczbę bez błędu, ale egzekwuje wyłącznie 0 (wyłącz) i -1 (bez limitu).
-        # Wartość dodatnia niczego nie gwarantuje — model potrafi przemyśleć cały
-        # `max_tokens` i oddać PUSTĄ odpowiedź. Zostawiamy ją, bo nie szkodzi i
-        # zadziała, jeśli llama.cpp kiedyś zacznie ją respektować, ale wołający
-        # MUSI mieć własną ścieżkę na pustą odpowiedź (patrz `realtime/rules.ts`).
+        # UWAGA (zmierzone 08.08 w etapie 19a, potwierdzone 24.09 na buildzie 10735):
+        # `reasoning_budget` w żądaniu llama-server **przyjmuje** bez błędu, ale
+        # egzekwuje wyłącznie 0 (wyłącz) i -1 (bez limitu). Budżet dodatni pilnuje
+        # dopiero `thinking_budget_tokens` (build 10735): Qwen3.8-27B z samym
+        # `reasoning_budget` przemyślał cały `max_tokens` i oddał pustą odpowiedź
+        # po 30 s, z `thinking_budget_tokens` 300 — pełną odpowiedź po 10 s.
+        # Wysyłamy oba; wołający i tak MUSI mieć ścieżkę na pustą odpowiedź
+        # (patrz `realtime/rules.ts`), bo starszy build zignoruje oba.
         payload["reasoning_budget"] = settings.reasoning_budget
+        payload["thinking_budget_tokens"] = settings.reasoning_budget
     if request.json_schema is not None:
         # Structured output (etap 20a). llama-server kompiluje schemat do gramatyki
         # GBNF i próbkuje wyłącznie tokeny, które ją spełniają — nieistniejąca

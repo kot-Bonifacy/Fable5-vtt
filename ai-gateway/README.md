@@ -2,7 +2,7 @@
 
 Usługa Python 3.12 + FastAPI spinająca lokalne AI dla VTT:
 
-- **LLM** — Qwythos-9B-v2 (GGUF Q8_0) przez `llama-server` (llama.cpp), API zgodne z OpenAI — **działa od etapu 09**,
+- **LLM** — Qwen3.8-27B (GGUF UD-Q3_K_XL) przez `llama-server` (build 10735 w `C:/AI/llm/llama-prism/`), API zgodne z OpenAI — **działa od etapu 09**; do 24.09.2026 był to Qwythos-9B-v2 Q8_0 (pomiary niżej zostają dla porównania),
 - **RAG** — pamięć botów i wiedza z kompendium — **działa od etapu 19**.
 
 Głosu tu nie ma: TTS (etap 12) i STT (etap 21) zostały wycofane 09.08.2026 — patrz
@@ -28,8 +28,8 @@ Testy: `uv run pytest` (w katalogu `ai-gateway/`).
 
 | Element   | Skąd                                                                                                                      | Domyślna ścieżka w `.env`                  |
 | --------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| llama.cpp | [releases](https://github.com/ggml-org/llama.cpp/releases) — `bin-win-cuda-13.3-x64` + `cudart-*`                         | `C:/AI/llm/llama.cpp/llama-server.exe`     |
-| Model     | [empero-ai/Qwythos-9B-v2-GGUF](https://huggingface.co/empero-ai/Qwythos-9B-v2-GGUF) → `Qwythos-9B-v2-Q8_0.gguf` (9,53 GB) | `C:/AI/llm/models/Qwythos-9B-v2-Q8_0.gguf` |
+| llama.cpp | build 10735 (`842b18804`, CUDA 13.3) — **starszy b10107 nie wystarczy**, patrz „Bloki `think`”                              | `C:/AI/llm/llama-prism/llama-server.exe`   |
+| Model     | Qwen3.8-27B, kwantyzacja Unsloth Dynamic `UD-Q3_K_XL` → `Qwen3.8-27B-UD-Q3_K_XL.gguf` (13,1 GB)                            | `C:/AI/llm/models/Qwen3.8-27B-UD-Q3_K_XL.gguf` |
 
 Wersję CUDA dobierz do sterownika (`nvidia-smi` → „CUDA UMD Version”). Wariant `-MTP-` modelu pomijamy — llama.cpp nie korzysta z głowicy multi-token prediction.
 
@@ -68,11 +68,29 @@ Model **domyślnie zawsze** otwiera odpowiedź blokiem rozumowania. Gateway ster
 - `reasoning: false` (domyślne dla `npc` i `test`) → `reasoning_budget: 0` + `chat_template_kwargs.enable_thinking = false`; blok think w ogóle nie powstaje,
 - `reasoning: true` (domyślne dla `gm_assistant`) → budżet `GATEWAY_REASONING_BUDGET` tokenów na myślenie i wyższy limit odpowiedzi (`GATEWAY_REASONING_MAX_TOKENS`).
 
+**Budżet myślenia egzekwuje `thinking_budget_tokens`, nie `reasoning_budget` (zmierzone 24.09.2026 na buildzie 10735).** Pole `reasoning_budget` w żądaniu llama-server przyjmuje bez błędu, ale pilnuje tylko 0 i −1. Qwen3.8-27B z samym `reasoning_budget: 300` przemyślał cały limit 1536 tokenów i oddał **pustą** odpowiedź po 30 s; z `thinking_budget_tokens: 300` — ~300 tokenów myślenia i pełną odpowiedź po 10,6 s. Gateway wysyła oba pola z tą samą wartością. Starszy build (b10107) ignoruje oba, więc ścieżka „pusta odpowiedź → powtórka bez rozumowania” w `realtime/rules.ts` zostaje.
+
 Rozdzielenie budżetów jest konieczne: przy wspólnym limicie 400 tokenów model przemyślał całą pulę i zwrócił **pustą** odpowiedź. Rozumowanie nigdy nie trafia do `content` — llama-server wystawia je osobno (`--reasoning-format deepseek`), więc nie wycinamy go regexem.
 
 Uwaga: model rozumuje po angielsku, nawet gdy odpowiada po polsku. To wyłącznie treść pod przyciskiem „Pokaż rozumowanie” w panelu MG.
 
-## Pomiary (2026-07-24, RTX 5070 Ti 16 GB, sterownik 610.62, llama.cpp b10107, CUDA 13.3)
+## Pomiary Qwen3.8-27B UD-Q3_K_XL (2026-09-24, RTX 5070 Ti 16 GB, build 10735, CUDA 13.3)
+
+Generacja **~50 tok/s** (45–52), prompt processing **~1300–1600 tok/s**. Wczytanie modelu: ~5 s. VRAM przy kontekście 32 768: **15,5 / 16,3 GB** (z pulpitem, Chrome i Discordem na GPU — ~700 MB zapasu). Kontekst 64k wczytuje się, ale nie ma już zapasu; **zostajemy przy 32k**. Gdyby karta zaczęła się przelewać do pamięci współdzielonej (objaw: tok/s spada kilkukrotnie), pierwsze cięcie to `--cache-type-k q8_0 --cache-type-v q8_0`, drugie — kontekst 16k.
+
+Czasy na żywym VTT (oględziny 24.09):
+
+| Ścieżka                                            | Czas                     |
+| -------------------------------------------------- | ------------------------ |
+| wypowiedź NPC na czacie (60–110 tokenów)            | 1,8–4,6 s                |
+| decyzja taktyczna bota (JSON)                      | 1,4–1,9 s; cała tura 3,4–6,6 s |
+| pytanie o zasady z rozumowaniem (budżet 640)       | 5,7–21 s                 |
+| streszczenie sesji, 2432 linie = 2 porcje          | 57,6 s                   |
+| screamsheet                                        | 7,7 s                    |
+
+Polszczyzna jest wyraźnie lepsza niż w 9B, ale Q3 zostawia potknięcia odmiany („z mojej baru”, „zdołały odparta”) — przy stole to zadanie dla lekcji bota, nie dla kodu.
+
+## Pomiary Qwythos-9B-v2 Q8_0 (2026-07-24, RTX 5070 Ti 16 GB, sterownik 610.62, llama.cpp b10107, CUDA 13.3) — poprzedni model
 
 Generacja: **~80 tokenów/s** (76–83 w kilkunastu próbach), prompt processing **~1440 tok/s**. Wczytanie modelu: ~3,5 s. Typowa odpowiedź bota NPC (35–85 tokenów) wraca w **0,5–1,5 s** — z zapasem poniżej limitu 15 s z ankiety. Odpowiedź asystenta MG z rozumowaniem (848 tokenów łącznie): ~10,5 s.
 

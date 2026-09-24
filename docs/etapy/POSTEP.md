@@ -46,8 +46,12 @@ obu metod). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md` (rozbicie rzutó
 kości przez kubek — zlecenie MG z 17.09, opis na górze pliku) i z `zaleglosci.md`. Co obowiązuje
 w kodzie — sekcja `postac` w umowach; kontekst — `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 14 pozycji w `zaleglosci.md`.** Większość czeka na **żywy model** (19a–20b, 24c)
-albo na rękę MG (pełny ekran, maszynopis, dymek pod celownikiem z 41, skórka na Safari/iPad).
+**Model lokalny to od 24.09 Qwen3.8-27B UD-Q3_K_XL** (build 10735 w `C:/AI/llm/llama-prism/`,
+~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
+z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
+
+**Dług oględzin — 14 pozycji w `zaleglosci.md`.** Żywy model nie blokuje już żadnej; czekają na
+rękę MG (pełny ekran, tempo maszynopisu, dymek pod celownikiem z 41, skórka na Safari/iPad).
 Kampania-śmieć „Oględziny 12.09” ma członka `Tester`; **stałe zaproszenie `tester-dev` prowadzi
 na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
 
@@ -78,8 +82,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2217** w `shared`, **1223** na serwerze, **282** u klienta —
-zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2220** w `shared`, **1224** na serwerze, **282** u klienta,
+**59** w gatewayu — zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -114,7 +118,7 @@ a nie do tego pliku.
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 1    | 3       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 86      |
@@ -124,6 +128,34 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.09 (druga) — zaległości lokalnego LLM na nowym modelu
+
+**Zlecenie MG:** zaległości dotyczące lokalnego LLM, z pytaniami przy wątpliwościach. Na starcie
+wyszło, że `.env` gatewaya wskazuje na skasowany Qwythos-9B, a na dysku leży Qwen3.8-27B
+UD-Q3_K_XL z nowym buildem llama-server. Rozstrzygnięcia MG: **przejście na Qwen3.8-27B**,
+wszystkie cztery grupy (20a/20b, 19a–19c, 24c, polszczyzna + maszynopis), oględziny na
+kampanii-śmieciu, map-reduce na sztucznym logu; po oględzinach: nagłówek screamsheetu zwykłą
+pisownią, zakaz powtarzania zdań w kotwicy, pytanie do myślącego bota **zostaje** bez zmian,
+taktyka bota do `POMYSLY.md`.
+
+**Wdrożone:** gateway wysyła `thinking_budget_tokens` obok `reasoning_budget` (bez tego pytanie
+o zasady wracało po 30 s puste); `walkTowards` bota nie dokłada drugiego pół kratki do `canStep`
+(**bot przechodził przez ściany na liniach kratki**, test regresji); kotwica relacji gramatyczna
+przy ±3 i z kierunkiem tonu; `relationForSpeaker`/`relationPromptLines` łączą podpis konta
+z postacią; ogólny zakaz powtarzania zdań w `buildRoleAnchor`; nagłówek screamsheetu zwykłą
+pisownią; podwojone zdanie odmowy w śladzie MG; typ testu w `itemicons.test.ts` (czerwony `tsc`
+z poprzedniego commita). Dokumenty: CLAUDE.md (stos, VRAM), README gatewaya (model, pomiary,
+budżet myślenia), `.env.example`, „Ryzyka” w przeglądzie. Umowa i trzy pułapki w `boty`.
+
+**Oględziny (skrypty na gniazdach + Chrome u MG):** 19a, 19b, 19c, 20a, cały 20b, 24c, maszynopis
+bez tempa — wyniki i czasy w `archiwum/zamkniete-zaleglosci.md`. Kampania-śmieć wróciła do stanu
+sprzed sesji (figury, broń Pasera, bez walki i bez bariery 75); zostały w niej boty testowe
+(nieaktywne), wpis wiedzy „Bar «Pod Zardzewiałym Kablem»” i ~2500 linii sztucznego czatu.
+Aktywna kampania wróciła na **„Test2”**. Gateway i serwery dev działają.
+
+**Weryfikacja:** 2220 / 1224 / 282 testów, gateway 59; tsc, ESLint, Prettier trzech pakietów
+czyste, `ruff check` czysty (`ruff format` — stary dryf 4 plików, zaległość).
 
 ### Sesja 24.09 — miniatury rodzaju przy broni i ekwipunku
 
@@ -152,27 +184,3 @@ i `tsc`). Znak: zrzuty w karcie Chrome po `scrollIntoView` rozjeżdżają się z
 karta pomaga.
 
 **Weryfikacja:** 2217 / 1223 / 282 testów; tsc, ESLint, Prettier trzech pakietów czyste.
-
-### Sesja 23.09 (trzecia) — portrety NPC i oględziny automatem
-
-**Zlecenie MG:** kilka zaległości; MG wybrał oględziny automatem (biblioteka portretów, odmowy
-montażu, półki kreatora) i dołożył **portrety NPC widoczne tylko dla MG**. Rozstrzygnięcia MG:
-flaga w tej samej puli zamiast drugiej biblioteki; gracz dostaje portret NPC tylko noszony, jako
-adres i kadr bez nazwy (kompromis — pełna szczelność kosztowałaby 57 miejsc `toTokenView`);
-istniejące portrety zostają „dla graczy”; **figury idą za portretem karty**.
-
-**Wdrożone:** `PortraitAsset.gmOnly` (migracja `20260923200000_portrait_gm_only`), zakładki
-„Dla graczy” / „NPC — tylko MG” w `PortraitPicker` z przenoszeniem (`portrait:visibility`),
-`emitPortraitAsset` (dwie emisje, jeden `seq`), `portraitStore.notice`, odmowa wyboru w kreatorze,
-`character:update` przestawiający figury karty. **Znaleziony przeciek (stan sprzed sesji):**
-`GET /api/portrait-assets` oddawał graczom całą pulę z nazwami, także NPC-owe i wycofane —
-zamknięty dla portretów `gmOnly`; stare portrety NPC trzeba przenieść ręką do zakładki NPC.
-Umowy w `serwer`, pułapka w `ogledziny`.
-
-**Oględziny (Chrome, kampania „Oględziny 12.09”, MG + `Tester`):** biblioteka portretów — punkty
-1–4 (kolejka, odmowy osobno, EXIF, kosz po restarcie), punkt 5 tylko testem; zakładki, przenoszenie
-i kadr NPC na żywo u gracza; `POOL_FULL` i `NO_SLOTS` u gracza; półki Netrunnera i Nomady, podgląd
-w dzień, klawiatura. Zamknięte w `archiwum/zamkniete-zaleglosci.md`.
-
-**Weryfikacja:** 2202 / 1222 / 281 testów; tsc, ESLint, Prettier trzech pakietów czyste. Aktywna
-kampania wróciła na **„Test2”**; szkic kreatora MG wyrzucony. Serwer i Vite działają.

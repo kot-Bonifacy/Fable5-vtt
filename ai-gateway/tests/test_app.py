@@ -185,6 +185,8 @@ async def test_gm_assistant_receives_thinking():
         # Rozumowanie dostaje własny budżet i wyższy limit odpowiedzi — inaczej
         # model przemyśla całą pulę tokenów i zwraca pustą treść.
         assert sent["reasoning_budget"] > 0
+        # Dodatni budżet egzekwuje tylko `thinking_budget_tokens` (build 10735).
+        assert sent["thinking_budget_tokens"] == sent["reasoning_budget"]
         assert sent["max_tokens"] == 1536
         assert "chat_template_kwargs" not in sent
 

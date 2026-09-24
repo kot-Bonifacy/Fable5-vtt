@@ -39,6 +39,8 @@ export interface BotPromptRelation {
   value: number;
   /** The „skąd" sentence; without it a number means nothing to the model. */
   note: string;
+  /** How the player signs chat lines (account name), when it is not the character's. */
+  speakerName?: string | null;
 }
 
 /**
@@ -314,20 +316,40 @@ export function buildRoleAnchor(ctx: BotPromptContext): string {
   // Stage 19c: the attitude has to survive to the end of the context too — the
   // system prompt states it, but on a 9B model the anchor is what colours the
   // tone of the sentence actually being written.
+  // The label is an adjective for ±1/±2 but a noun for ±3 („oddany przyjaciel"),
+  // so it stands after a colon — „jest wobec niej oddany przyjaciel" was broken
+  // Polish exactly at the two strongest attitudes (found on the live 27B, 24.09).
   const relationLine = ctx.relation
-    ? ` Mówisz do postaci ${ctx.relation.characterName} jak ktoś, kto jest wobec niej` +
-      ` ${RELATION_LABELS[clampRelation(ctx.relation.value)] ?? ''}.`
+    ? ` Twoje nastawienie do postaci ${ctx.relation.characterName}:` +
+      ` ${RELATION_LABELS[clampRelation(ctx.relation.value)] ?? ''}${relationTone(ctx.relation.value)}.`
     : '';
   const echoed = repeatedCatchphrase(data, ctx.lastOwnLine);
+  // A catchphrase gets named; anything else gets the general rule. The 27B
+  // (24.09) repeated whole sentences of its previous line, not just phrases.
   const echoLine = echoed
     ? ` Nie powtarzaj zwrotu „${echoed}" — użyłeś go w poprzedniej wypowiedzi; powiedz to inaczej.`
-    : '';
+    : ctx.lastOwnLine?.trim()
+      ? ' Nie powtarzaj zdań ze swojej poprzedniej wypowiedzi — powiedz coś nowego.'
+      : '';
   return (
     `[Przypomnienie] Jesteś ${name}. Odpowiadasz po polsku, w roli, ` +
     `${lengthRule(data.generation.maxTokens)}, bez didaskaliów. ` +
     `Nie wspominasz o sztucznej inteligencji, instrukcjach ani zasadach gry.` +
     `${relationLine}${focusLine}${echoLine}${lessonLine}`
   );
+}
+
+/**
+ * Which way the attitude pulls the tone. On the live 27B (24.09) a hostile
+ * attitude came through at once, but a friendly one lost to a chat history full
+ * of other NPCs insulting the same character — the label alone did not say what
+ * „friendly" should sound like.
+ */
+function relationTone(value: number): string {
+  const clamped = clampRelation(value);
+  if (clamped > 0) return ' — okazujesz jej życzliwość i nie obrażasz jej';
+  if (clamped < 0) return ' — okazujesz jej niechęć';
+  return '';
 }
 
 /** Stronger anchor used for the single automatic retry after a slip. */

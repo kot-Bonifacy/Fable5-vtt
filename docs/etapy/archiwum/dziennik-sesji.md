@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.09 (trzecia) — portrety NPC i oględziny automatem
+
+**Zlecenie MG:** kilka zaległości; MG wybrał oględziny automatem (biblioteka portretów, odmowy
+montażu, półki kreatora) i dołożył **portrety NPC widoczne tylko dla MG**. Rozstrzygnięcia MG:
+flaga w tej samej puli zamiast drugiej biblioteki; gracz dostaje portret NPC tylko noszony, jako
+adres i kadr bez nazwy (kompromis — pełna szczelność kosztowałaby 57 miejsc `toTokenView`);
+istniejące portrety zostają „dla graczy”; **figury idą za portretem karty**.
+
+**Wdrożone:** `PortraitAsset.gmOnly` (migracja `20260923200000_portrait_gm_only`), zakładki
+„Dla graczy” / „NPC — tylko MG” w `PortraitPicker` z przenoszeniem (`portrait:visibility`),
+`emitPortraitAsset` (dwie emisje, jeden `seq`), `portraitStore.notice`, odmowa wyboru w kreatorze,
+`character:update` przestawiający figury karty. **Znaleziony przeciek (stan sprzed sesji):**
+`GET /api/portrait-assets` oddawał graczom całą pulę z nazwami, także NPC-owe i wycofane —
+zamknięty dla portretów `gmOnly`; stare portrety NPC trzeba przenieść ręką do zakładki NPC.
+Umowy w `serwer`, pułapka w `ogledziny`.
+
+**Oględziny (Chrome, kampania „Oględziny 12.09”, MG + `Tester`):** biblioteka portretów — punkty
+1–4 (kolejka, odmowy osobno, EXIF, kosz po restarcie), punkt 5 tylko testem; zakładki, przenoszenie
+i kadr NPC na żywo u gracza; `POOL_FULL` i `NO_SLOTS` u gracza; półki Netrunnera i Nomady, podgląd
+w dzień, klawiatura. Zamknięte w `archiwum/zamkniete-zaleglosci.md`.
+
+**Weryfikacja:** 2202 / 1222 / 281 testów; tsc, ESLint, Prettier trzech pakietów czyste. Aktywna
+kampania wróciła na **„Test2”**; szkic kreatora MG wyrzucony. Serwer i Vite działają.
+
 ### Sesja 23.09 (druga) — dwie zaległości: kopia startowa i Prettier
 
 **Zlecenie MG:** kilka zaległości na jedną sesję; MG wybrał dwie drobne (bez nowych funkcji

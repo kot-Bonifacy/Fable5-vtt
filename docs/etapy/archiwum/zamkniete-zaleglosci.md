@@ -9,6 +9,122 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-24 (druga sesja — zaległości lokalnego LLM na Qwen3.8-27B)
+
+- **Etap 19a — dwie ścieżki nieodklikane po poprawce.** ~~Degradacja panelu~~ — **odklikana
+  27.08** (chip „brak indeksu", czerwone „brak połączenia z AI Gateway (fetch failed)",
+  podpowiedź „Model offline — uruchom AI Gateway"), patrz archiwum.
+  (1) **Powtórka bez rozumowania**: pytanie, przy którym model przemyśli całą pulę tokenów, ma teraz wrócić z odpowiedzią i przypisem „rozumowanie zajęło cały limit… pytanie poszło jeszcze raz bez rozumowania" — poprawka weszła po tym, jak błąd się pokazał, i nie została obejrzana na żywym modelu (pokryta testem `rules.test.ts`). Pytanie, które to wywołało: „Jak działa korzystanie z osłony w walce i co daje osłona?". (2) Kosmetyka: pytanie o **PT strzału z odległości** to jedyne z zestawu pomiarowego, które nie trafia w tabelę PT — tabela jest w indeksie, ale wygrywają z nią sąsiednie akapity.
+
+**Odhaczone 24.09 (druga sesja) na Qwen3.8-27B.** (1) „Jak działa korzystanie z osłony w walce
+i co daje osłona?” — **21,4 s, odpowiedź od razu z rozumowaniem, bez powtórki**; treść zgodna
+z podręcznikiem (brak częściowej osłony, PW osłony, tarcza). Po drodze wyszedł błąd: nowy build
+llama-server (10735) nadal nie egzekwuje `reasoning_budget` z żądania — model przemyślał cały limit
+1536 tokenów i oddał pustą odpowiedź po 30 s. Pilnuje dopiero `thinking_budget_tokens`; gateway
+wysyła teraz oba pola (`llama_client.py`, test w `test_app.py`). Samej ścieżki „powtórka bez
+rozumowania” nie dało się już wywołać — zostaje na teście `rules.test.ts`. (2) „Jaki jest PT
+strzału z pistoletu na odległość 20 metrów?” — **trafia w tabelę PT (s. 173)** i podaje PT 20
+dla 13–25 m, 5,7 s.
+
+- **Etap 19b — jedna ścieżka nieodklikana.** ~~Degradacja z martwym gatewayem~~ i ~~kosz przy
+  wpisie~~ — **odklikane 27.08**, przy okazji naprawiony błąd (reindeks nie zdejmował chipów
+  z wierszy); patrz archiwum. Zostaje: **Filtr tagów u bota**: sprawdzone, że bot **bez** dostępu nic nie dostaje i że bot **z** dostępem dostaje wpis; nieoglądany przypadek pośredni — bot z tagiem, który nie pasuje do żadnego wpisu (test to pokrywa).
+
+**Odhaczone 24.09 (druga sesja), kampania-śmieć.** Wpis wiedzy z tagiem `watson` i trzy boty:
+bez źródeł → „Bot nie ma dostępu do żadnego źródła”; tag `watson` → 1 fragment; **tag `heywood`
+(żaden wpis go nie ma) → 0 fragmentów** i zdanie „Nic w bazie wiedzy nie pasuje…”. Na żywym
+modelu bot bez pasującego tagu nie zmyśla hasła z wpisu, bot z tagiem je podaje.
+
+- **Etap 19c — dwie ścieżki nieodklikane; obie wymagają żywego modelu.** ~~Kosz przy wpisie
+  i „+ Wpis ręcznie"~~ oraz ~~degradacja „Zakończ sesję"~~ — **odklikane 27.08**, patrz archiwum.
+  (1) **Mapowanie-redukcja na żywym modelu**: w przeglądarce log miał 4 wypowiedzi, czyli jedną porcję; podział na porcje jest pokryty testem serwera z ciasnym kontekstem (`journal.test.ts`, atrapa raportuje 2048 tokenów) i testem czystej funkcji w `shared`, ale na 32k modelu wymagałoby kilku tysięcy linii czatu. (2) **Relacja u gracza**: sprawdzona na żywym modelu skryptem A/B na tym samym prompcie (wrogi / przyjazny / bez relacji — odpowiedzi różnią się tonem nie do pomylenia) i testem serwera, ale **nie z konta gracza w przeglądarce** — wszystkie postacie w kampanii to „NPC (MG)", a relacja wiąże się z postać gracza.
+
+**Odhaczone 24.09 (druga sesja).** (1) Sztuczna sesja 2400 linii (MG + `Tester`, 20 faktów
+fabularnych rozsianych w wypełniaczu) — „Zakończ sesję” na kontekście 32k: **2 porcje, 57,6 s**
+(29 s + 16 s mapowania, 10 s redukcji, 1,5 s relacji); streszczenie zawiera wszystkie 20 faktów
+z obu porcji. Szkic nie został zapisany. (2) Relacja z konta gracza (gniazdo `Tester`, bez
+przeglądarki — relacja jest po stronie serwera): wróg (−3) słychać od razu, przyjaciel (+3)
+przegrywał z historią czatu pełną obelg innych NPC-ów. Dwie poprawki promptu z A/B na żywo:
+kotwica była niegramatyczna dokładnie przy ±3 („jest wobec niej oddany przyjaciel”) — teraz
+„Twoje nastawienie do postaci X: oddany przyjaciel — okazujesz jej życzliwość…”; a sekcja relacji
+mówi, pod jakim podpisem konta pisze ta postać (bez tego bot mówił do Styma „trzymaj się blisko
+Styma”). Po poprawkach przyjaciel pożycza pieniądze, wróg wyrzuca z baru.
+
+- **Etap 20a — jedna ścieżka nieodklikana.** **Tryb „kontrolowany"** — bot ma tylko mówić i nie
+  dotykać mechaniki; pokryte testem (przebieg decyzyjny w ogóle nie dociera do modelu), w przeglądarce
+  nieoglądane. ~~Sterowanie propozycją przez gracza i „Odrzuć"~~ — **odklikane 10.08**: gracz
+  zatwierdził propozycję rzutu na Percepcję i **odrzucił** propozycję rzutu na Atletykę ze swojego
+  ekranu (linie „ZATWIERDZONE — AVATAR9" i „ODRZUCONE — AVATAR9" na czacie).
+
+**Odhaczone 24.09 (druga sesja).** Bot „Paser” w trybie kontrolowanym: „🤖 Graj turę” jest
+wyszarzony z podpowiedzią, gniazdo odmawia „mechanikę wykonuje człowiek”, a prośby gracza
+„rzuć na Percepcję” i „strzel do tego gościa” kończą się samą wypowiedzią (4–4,6 s) — bez rzutu
+i bez karty propozycji.
+
+- **Etap 20b — CAŁY etap nieodklikany w przeglądarce i niezmierzony na żywym modelu.** Kod jest
+  pokryty 20 testami serwera na żywych gniazdach i 29 w `shared`, ale atrapa gatewaya odpowiada
+  natychmiast i zawsze poprawnym JSON-em, więc **nie wie się nic o jakości decyzji 9B**. Do
+  sprawdzenia przy stole, po kolei: (1) **„🤖 Graj turę"** — przycisk pojawia się sam obok ▶
+  w górnym pasku i w wierszu zakładki „Walka", ale **tylko przy figurze, której karta postaci
+  jest przypisana do bota**; na Poligonie trzeba więc najpierw komuś (np. Kai) podpiąć bota.
+  (2) **Czy bot wybiera sensownie** — czy podchodzi, zanim strzeli, i czy nie strzela do
+  sojusznika; strona bota to `data/private/bot-decisions.jsonl` z polami `figures` i `weapons`,
+  czyli dokładnie tym, co model dostał w menu. (3) **Dwa kroki tury** — pierwszy ruch, drugi
+  atak; w śladzie MG widać „krok 1 z 2" i „krok 2 z 2". (4) **Tryb propozycja** — karta na
+  czacie z podsumowaniem („Atak: Rico — Zgrzyt 9"), a po „Zatwierdź" **druga karta na krok 2**.
+  (5) **Czas całej tury** — jedyne kryterium etapu, którego nie da się odhaczyć bez GPU;
+  szacunek to ~2 s (dwa przebiegi po 0,50–1,10 s z 20a), limit z etapu 11 to 20 s.
+  (6) **Ruch po ścianach** — trasa liczy się A-gwiazdką na serwerze z `movementSegments`, więc
+  bot nie powinien przejść przez mur; na Strzelnicy nie ma ścian, trzeba oglądać na scenie,
+  która je ma. ~~(7) Strona gracza~~ — **odklikane 10.08**: gracz zatwierdził propozycję bojową
+  bota ze swojego ekranu (linia „ZATWIERDZONE — AVATAR9" na czacie).
+
+**Odhaczone 24.09 (druga sesja), „Test Brak sceny” na kampanii-śmieciu.** (1) Przycisk stoi obok
+▶ i odpala turę z UI. (2) Jedyna widoczna figura to sojusznik → bot pasuje „aby nie strzelić do
+sojusznika”; cel za barierą zasłaniającą nie trafia do menu. (3) Dwa kroki: atak, potem podejście
+(krok 1 z 2, krok 2 z 2). (4) Propozycja → „Zatwierdź” → rzut + **karta kroku 2** → „Zatwierdź” →
+ruch. (5) **Cała tura 3,4–6,6 s**, decyzja 1,4–1,9 s (limit 20 s). (6) **Znaleziony błąd: bot
+przechodził przez siatkę narysowaną na linii kratki** — `planWalk` od 23.08 podaje `canStep`
+środki pól, a `walkTowards` dokładał drugie pół kratki, więc sprawdzana linia biegła po liniach
+siatki, po których stoją ściany, a styk liczył się jako „czysto”. Serwer tego nie złapał, bo bot
+rusza się kontem MG zwolnionym z blokad. Naprawione (test „walks around a barrier drawn on a grid
+line”) i obejrzane: Paser obchodzi siatkę dołem. Taktyka (strzał z 24 m zamiast najpierw podejść,
+pas mimo ruchu) — w `POMYSLY.md`. Dopisek: broń wpisana ręcznie bez typu z kompendium jest w menu,
+a strzał kończy się `UNKNOWN_WEAPON` („Nie masz przy sobie tej broni”); podwojone zdanie odmowy
+w śladzie MG usunięte.
+
+- **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
+  i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
+  `archiwum/zamkniete-zaleglosci.md`. Zostają: (2) **„Przerwij" w trakcie generacji** — przycisk
+  pojawia się na czas pisania (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał
+  jednak w 7 s i nie było czego przerywać. (4) **Drugi generator pod rząd** — szkic nadpisuje
+  nagłówek, lead i treść, ale pustym polem niczego nie kasuje (decyzja MG z 13.09; do tego dnia pusty
+  lead wymazywał poprawiony przez MG).
+
+**Odhaczone 24.09 (druga sesja), w Chrome u MG.** (2) Generacja trwa na 27B ~7,7 s, więc
+„Przerwij” jest widoczny; kliknięty po 2 s zostawia pola nietknięte i nie pokazuje błędu, gateway
+wolny po 0,1 s. (Serwer loguje przerwanie jako `error` „This operation was aborted” — kosmetyka,
+w `POMYSLY.md`.) (4) Drugi przebieg nadpisuje nagłówek, lead i treść.
+
+- **Etap 24c — polszczyzna 9B, nie kod.** W artykule z oględzin padło „tłumek zmyślonych
+  bogaczy" i „krzyki prosić o pomoc" — model gubi odmianę w dłuższych zdaniach. Przy
+  temperaturze 0,9 (świadomie wysokiej: brukowiec ma zmyślać) będzie się to zdarzać częściej
+  niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
+  `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
+
+**Zamknięte 24.09 (druga sesja) zmianą modelu i decyzją MG.** A/B T 0,9 vs 0,7 po 3 próbki:
+obie mają błędy, niższa niewiele pomaga — temperatura zostaje. Najgorsze błędy siedziały
+w nagłówkach pisanych WERSALIKAMI („TYGRSY UROCZYSTE ZAMIAST ZŁAMU”, „KRAŻDŻ”); prompt prosi teraz
+o zwykłą pisownię (wersaliki robi CSS) — błędne nagłówki 2/6 → 1/6. Dalsza obserwacja polszczyzny:
+pozycja „24.09: polszczyzna Qwen3.8-27B” w `zaleglosci.md`.
+
+- **Jakość polszczyzny modelu, nie kodu:** przy sprawdzaniu odpowiedzi bez wiedzy model powiedział „w moim pamięci nic mi o tym nie mówi" i „w moim wymiarze pojęcia…". To 9B, nie błąd promptu — ale jeśli takie potknięcia będą się powtarzać przy stole, warto rozważyć wniosek MG („Mów poprawną polszczyzną") jako lekcję albo wzmocnić zasadę 3.
+
+**Zamknięte 24.09 (druga sesja) zmianą modelu.** Qwen3.8-27B nie popełnia potknięć tego rodzaju
+w odpowiedziach bez wiedzy; zostały drobniejsze błędy odmiany — pozycja „24.09: polszczyzna
+Qwen3.8-27B” w `zaleglosci.md`. Przy okazji wyszło powtarzanie całych zdań z własnej poprzedniej
+wypowiedzi — kotwica ma od 24.09 ogólny zakaz (decyzja MG), obejrzany na żywo.
+
 ## Zamknięte 2026-09-23 (trzecia sesja — portrety NPC i oględziny automatem)
 
 - **14.09: biblioteka portretów MG — nieobejrzane samo wgrywanie.** Sesja portretów obejrzała

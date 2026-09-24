@@ -207,7 +207,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 
 ## Ryzyka i ograniczenia
 
-- **VRAM (16 GB) — przestał być wąskim gardłem po wycofaniu głosu (09.08.2026).** Bilans po pomiarach z etapu 09: Windows z pulpitem ~2,8 GB + llama-server @32k ~9,2 GB ⇒ **wolne ~4,0 GB**. Ta rezerwa była pisana na whispera (etap 21) i TTS (etap 12); oba etapy wypadły, a embeddingi RAG z etapu 19a i tak liczą się na CPU, więc dziś **na karcie stoi wyłącznie model językowy**. Zapas wraca do puli: przy dokładaniu czegokolwiek na GPU (większy kontekst, mocniejszy kwant, model wizyjny) mierz od tych ~4,0 GB i aktualizuj tabelę w `ai-gateway/README.md`.
+- **VRAM (16 GB) — znów wąskie gardło od 24.09.2026 (przejście na Qwen3.8-27B UD-Q3_K_XL).** Model 13,1 GB z KV cache 32k zajmuje kartę do ~15,5 / 16,3 GB razem z pulpitem, Chrome i Discordem — zapas ~700 MB. Na GPU nie dokłada się nic; objaw przelania do pamięci współdzielonej to kilkukrotny spadek tok/s (z ~50). Kolejność cięć: `--cache-type-k q8_0 --cache-type-v q8_0` → kontekst 16k. Poprzedni bilans (Qwythos-9B Q8_0, ~4,0 GB wolnego) i pomiary obu modeli: `ai-gateway/README.md`.
 - **Czas odpowiedzi bota ≤ 15 s:** limituje długość promptu (RAG top-k, przycinanie historii) i max tokenów odpowiedzi; kolejka jeden-bot-naraz zgodnie z ankietą.
 - **Upload 50 Mb/s w domu:** wystarcza na Tailscale (tekst do LLM), ale duże mapy trzymamy na VPS, nie serwujemy z PC.
 - **Etapy 13, 23, 25, 26 wymagają materiałów od Ciebie** (skonwertowany tekst podręcznika) — przygotuj je przed tymi sesjami.

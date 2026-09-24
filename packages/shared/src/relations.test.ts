@@ -45,6 +45,22 @@ describe('relacja w prompcie', () => {
     expect(text).toContain('nie mówisz o nim wprost');
   });
 
+  it('łączy podpis gracza na czacie z imieniem postaci', () => {
+    const text = relationPromptLines({
+      characterName: 'Stym',
+      value: 3,
+      note: '',
+      speakerName: 'Marek',
+    });
+    expect(text).toContain(
+      'Rozmawiasz z: Stym (na czacie podpisuje się „Marek" — to ta sama osoba).',
+    );
+    // Ten sam podpis co imię postaci niczego nie dokleja.
+    expect(
+      relationPromptLines({ characterName: 'Stym', value: 3, note: '', speakerName: 'Stym' }),
+    ).toContain('Rozmawiasz z: Stym. Twoje');
+  });
+
   it('bez notatki podaje sam stopień', () => {
     const text = relationPromptLines({ characterName: 'Kaya', value: 2, note: '   ' });
     expect(text).toContain('życzliwy');

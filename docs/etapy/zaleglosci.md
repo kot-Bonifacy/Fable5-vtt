@@ -8,6 +8,17 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 24.09 (druga sesja): zaległości lokalnego LLM — na nowym modelu Qwen3.8-27B.**
+MG przełączył model z Qwythos-9B Q8_0 na **Qwen3.8-27B UD-Q3_K_XL** (build 10735); wszystkie
+oględziny poszły na nim. Odhaczone na żywym modelu: 19a (obie), 19b, 19c (obie — map-reduce na
+sztucznym logu 2432 linii), 20a (tryb kontrolowany), **cały 20b** i 24c (obie ścieżki).
+Znalezione i naprawione **trzy błędy**: gateway nie egzekwował budżetu myślenia na nowym buildzie
+(pytanie o zasady — 30 s i pusta odpowiedź), **bot w walce przechodził przez ściany i siatki
+stojące na liniach kratki** (podwójne pół kratki w `canStep` od 23.08) oraz niegramatyczna kotwica
+relacji przy ±3. Do tego dwie poprawki promptów z A/B na żywo (relacja + podpis konta gracza,
+zakaz powtarzania zdań) i nagłówek screamsheetu zwykłą pisownią (decyzja MG). Maszynopis zawężony
+do tempa. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Dług oględzin — naprawa 3b (17.09, druga sesja).** Obejrzane w Chrome: półki Medyka i Solo,
 rozwinięty podgląd broni i pancerza, okno strat przy zmianie Roli, wyjątek MG na żywo (znikający
 wpis, zdanie w koszyku, brak w podsumowaniu, powrót na „Automatycznie”) i karta wpisu u gracza.
@@ -258,71 +269,32 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
   z 16h, tylko od drugiej strony.
 
-- **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
-  i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
-  `archiwum/zamkniete-zaleglosci.md`. Zostają: (2) **„Przerwij" w trakcie generacji** — przycisk
-  pojawia się na czas pisania (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał
-  jednak w 7 s i nie było czego przerywać. (4) **Drugi generator pod rząd** — szkic nadpisuje
-  nagłówek, lead i treść, ale pustym polem niczego nie kasuje (decyzja MG z 13.09; do tego dnia pusty
-  lead wymazywał poprawiony przez MG).
+- **Maszynopis wypowiedzi NPC-a (09.08) — zostało tylko tempo, do oceny MG.** Obejrzane 24.09
+  automatem w widocznej karcie MG (kampania-śmieć, Qwen3.8-27B): tekst przyrasta porcjami po
+  kilka–kilkanaście znaków, czyli całymi wyrazami (2); przy dwóch botach wezwanych jednym zdaniem
+  druga wypowiedź stoi pusta, dopóki pierwsza się nie dopisze (3); po F5 linie z historii mają
+  pełną długość od pierwszej klatki (4). **Zostaje (1) tempo** — 15 zn/s z limitem
+  `MAX_DURATION_MS` = 12 s na linię; wypowiedź 27B (300–450 znaków) pisała się 8–9 s. Jeśli przy
+  stole za wolno albo za szybko, zmienia się `CHARS_PER_SECOND` w `packages/client/src/typewriter.ts`.
 
-- **Etap 24c — polszczyzna 9B, nie kod.** W artykule z oględzin padło „tłumek zmyślonych
-  bogaczy" i „krzyki prosić o pomoc" — model gubi odmianę w dłuższych zdaniach. Przy
-  temperaturze 0,9 (świadomie wysokiej: brukowiec ma zmyślać) będzie się to zdarzać częściej
-  niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
-  `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
+- **24.09: polszczyzna Qwen3.8-27B UD-Q3_K_XL — do obserwacji przy stole, nie kodu.** Wyraźnie
+  lepsza niż w 9B (streszczenie 2432 linii bez jednego błędu), ale Q3 zostawia potknięcia odmiany
+  i słowa-widma: „z mojej baru”, „ten piwo”, „serce Babcie Ruth”, „to cywil, a nie targe”,
+  „ty szkodzie”; w screamsheecie (T 0,9) „zdołały odparta atak”, „kulebionych pocisków”,
+  „zwykła napad”. Obniżka temperatury screamsheetu do 0,7 pomagała niewiele (A/B po 3 próbki),
+  więc została 0,9; nagłówek pisze się od 24.09 zwykłą pisownią (decyzja MG). Dźwignie, gdyby
+  przeszkadzało: lekcja bota („Mów poprawną polszczyzną”), mocniejszy kwant, gdy zwolni się VRAM.
+  Notatkę relacji pisz **do bota w drugiej osobie** („Stym uratował ci bar”) — model przepisuje
+  notatkę w trzeciej osobie i potrafi mówić o rozmówcy jak o kimś obok.
 
-- **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
-  wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
-  czyli typowa wypowiedź 1–4 zdań pisze się 10–20 s; jeśli to za wolno albo za szybko, zmienia
-  się jedną stałą `CHARS_PER_SECOND` w `packages/client/src/typewriter.ts` (obok
-  `MAX_DURATION_MS` = 12 s, twardy limit na linię). (2) **Granica słowa** — tekst ma przyrastać
-  całymi wyrazami, nie literami. (3) **Dwa boty pod rząd** — druga wypowiedź czeka, aż pierwsza
-  się dopisze. (4) **Historia i resync** — linie wczytane z historii nigdy się nie animują.
-
-- **Etap 20b — CAŁY etap nieodklikany w przeglądarce i niezmierzony na żywym modelu.** Kod jest
-  pokryty 20 testami serwera na żywych gniazdach i 29 w `shared`, ale atrapa gatewaya odpowiada
-  natychmiast i zawsze poprawnym JSON-em, więc **nie wie się nic o jakości decyzji 9B**. Do
-  sprawdzenia przy stole, po kolei: (1) **„🤖 Graj turę"** — przycisk pojawia się sam obok ▶
-  w górnym pasku i w wierszu zakładki „Walka", ale **tylko przy figurze, której karta postaci
-  jest przypisana do bota**; na Poligonie trzeba więc najpierw komuś (np. Kai) podpiąć bota.
-  (2) **Czy bot wybiera sensownie** — czy podchodzi, zanim strzeli, i czy nie strzela do
-  sojusznika; strona bota to `data/private/bot-decisions.jsonl` z polami `figures` i `weapons`,
-  czyli dokładnie tym, co model dostał w menu. (3) **Dwa kroki tury** — pierwszy ruch, drugi
-  atak; w śladzie MG widać „krok 1 z 2" i „krok 2 z 2". (4) **Tryb propozycja** — karta na
-  czacie z podsumowaniem („Atak: Rico — Zgrzyt 9"), a po „Zatwierdź" **druga karta na krok 2**.
-  (5) **Czas całej tury** — jedyne kryterium etapu, którego nie da się odhaczyć bez GPU;
-  szacunek to ~2 s (dwa przebiegi po 0,50–1,10 s z 20a), limit z etapu 11 to 20 s.
-  (6) **Ruch po ścianach** — trasa liczy się A-gwiazdką na serwerze z `movementSegments`, więc
-  bot nie powinien przejść przez mur; na Strzelnicy nie ma ścian, trzeba oglądać na scenie,
-  która je ma. ~~(7) Strona gracza~~ — **odklikane 10.08**: gracz zatwierdził propozycję bojową
-  bota ze swojego ekranu (linia „ZATWIERDZONE — AVATAR9" na czacie).
-
-- **Etap 20a — jedna ścieżka nieodklikana.** **Tryb „kontrolowany"** — bot ma tylko mówić i nie
-  dotykać mechaniki; pokryte testem (przebieg decyzyjny w ogóle nie dociera do modelu), w przeglądarce
-  nieoglądane. ~~Sterowanie propozycją przez gracza i „Odrzuć"~~ — **odklikane 10.08**: gracz
-  zatwierdził propozycję rzutu na Percepcję i **odrzucił** propozycję rzutu na Atletykę ze swojego
-  ekranu (linie „ZATWIERDZONE — AVATAR9" i „ODRZUCONE — AVATAR9" na czacie).
+- **24.09: `ruff format --check` w `ai-gateway/` zgłasza 4 pliki** (m.in. `rag/chunker.py`) —
+  dryf sprzed sesji, `ruff check` czysty. Jednym `uv run ruff format src tests` przy okazji
+  najbliższej zmiany w gatewayu.
 
 - **Etap 20a — gdy bot „nie chce rzucić", zajrzyj do dziennika decyzji.** Przy oględzinach „Kolec, rzuć
   na Wygadanie" wróciło jako „rozmowa" — i słusznie: **„Wygadanie" nie jest umiejętnością CP RED**, a Kaya
   nie ma żadnej umiejętności perswazji. `data/private/bot-decisions.jsonl` (gitignore, jedna linia JSON
   na decyzję) ma pole `options` z pełnym menu, które bot dostał — to zwykle wystarcza za diagnozę.
-
-- **Etap 19c — dwie ścieżki nieodklikane; obie wymagają żywego modelu.** ~~Kosz przy wpisie
-  i „+ Wpis ręcznie"~~ oraz ~~degradacja „Zakończ sesję"~~ — **odklikane 27.08**, patrz archiwum.
-  (1) **Mapowanie-redukcja na żywym modelu**: w przeglądarce log miał 4 wypowiedzi, czyli jedną porcję; podział na porcje jest pokryty testem serwera z ciasnym kontekstem (`journal.test.ts`, atrapa raportuje 2048 tokenów) i testem czystej funkcji w `shared`, ale na 32k modelu wymagałoby kilku tysięcy linii czatu. (2) **Relacja u gracza**: sprawdzona na żywym modelu skryptem A/B na tym samym prompcie (wrogi / przyjazny / bez relacji — odpowiedzi różnią się tonem nie do pomylenia) i testem serwera, ale **nie z konta gracza w przeglądarce** — wszystkie postacie w kampanii to „NPC (MG)", a relacja wiąże się z postać gracza.
-
-- **Etap 19b — jedna ścieżka nieodklikana.** ~~Degradacja z martwym gatewayem~~ i ~~kosz przy
-  wpisie~~ — **odklikane 27.08**, przy okazji naprawiony błąd (reindeks nie zdejmował chipów
-  z wierszy); patrz archiwum. Zostaje: **Filtr tagów u bota**: sprawdzone, że bot **bez** dostępu nic nie dostaje i że bot **z** dostępem dostaje wpis; nieoglądany przypadek pośredni — bot z tagiem, który nie pasuje do żadnego wpisu (test to pokrywa).
-
-- **Jakość polszczyzny modelu, nie kodu:** przy sprawdzaniu odpowiedzi bez wiedzy model powiedział „w moim pamięci nic mi o tym nie mówi" i „w moim wymiarze pojęcia…". To 9B, nie błąd promptu — ale jeśli takie potknięcia będą się powtarzać przy stole, warto rozważyć wniosek MG („Mów poprawną polszczyzną") jako lekcję albo wzmocnić zasadę 3.
-
-- **Etap 19a — dwie ścieżki nieodklikane po poprawce.** ~~Degradacja panelu~~ — **odklikana
-  27.08** (chip „brak indeksu", czerwone „brak połączenia z AI Gateway (fetch failed)",
-  podpowiedź „Model offline — uruchom AI Gateway"), patrz archiwum.
-  (1) **Powtórka bez rozumowania**: pytanie, przy którym model przemyśli całą pulę tokenów, ma teraz wrócić z odpowiedzią i przypisem „rozumowanie zajęło cały limit… pytanie poszło jeszcze raz bez rozumowania" — poprawka weszła po tym, jak błąd się pokazał, i nie została obejrzana na żywym modelu (pokryta testem `rules.test.ts`). Pytanie, które to wywołało: „Jak działa korzystanie z osłony w walce i co daje osłona?". (2) Kosmetyka: pytanie o **PT strzału z odległości** to jedyne z zestawu pomiarowego, które nie trafia w tabelę PT — tabela jest w indeksie, ale wygrywają z nią sąsiednie akapity.
 
 - **⚠️ ZANIM ODHACZYSZ COKOLWIEK NIŻEJ: przeczytaj `docs/testy/sesja-testow-walki-2026-08-08.md`.**
   Sesja 08.08 zbudowała **gotowy poligon testowy** (kampania „Poligon bojowy", scena

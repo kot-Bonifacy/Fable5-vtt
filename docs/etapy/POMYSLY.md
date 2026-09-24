@@ -1,5 +1,29 @@
 # Pomysły poza zakresem etapów
 
+**24.09.2026 (oględziny botów na Qwen3.8-27B) — taktyka bota w walce.** Bot prawie zawsze
+strzela z miejsca (24 m, PT 20) zamiast najpierw podejść na 7–12 m (PT 15), a po zużytej Akcji
+w ~połowie tur pasuje („skoro nie mogę już atakować”), choć ma cały ruch. Oba zachowania są
+zgodne z zasadami, tylko słabe. Menu bota (`buildBotCombatPrompt`) nie zna PT: pełna wersja to
+PT każdej broni na obecnym dystansie w liście figur plus zdanie „po Akcji możesz jeszcze podejść
+albo się wycofać”. Decyzja MG z 24.09: zapisać, nie robić teraz.
+
+**24.09.2026 — konto i postać gracza w prompcie bota to dwie osoby.** Lista „przy stole są:”
+(`campaignParticipants`) wypisuje osobno nazwy kont i imiona postaci („Tester, Oględziny Stym”),
+a wiersze gracza w historii podpisuje konto. Sekcja relacji łączy je od 24.09 („na czacie
+podpisuje się…”), ale bot **bez relacji** dalej nie wie, że „Marek” to „Stym”. Kierunek: w liście
+uczestników pary „konto (postać)” i ten sam podpis w historii czatu.
+
+**24.09.2026 — broń wpisana ręcznie bez typu z kompendium.** Od 31.08 nowych takich wierszy nie
+ma, ale stare żyją (np. „Pistolet oględzinowy”). Pasek akcji i menu bota ją pokazują, a strzał
+kończy się `UNKNOWN_WEAPON` („Nie masz przy sobie tej broni” — mylące, bo broń jest na karcie).
+Bot traci na to jedyną poprawkę. Kierunek: slot wyszarzony w `weaponRefusal` z podpowiedzią
+„przypnij model z kompendium” i uczciwsze zdanie odmowy.
+
+**24.09.2026 — screamsheet: dwa drobiazgi.** (1) `stripDecorations` zdejmuje końcowy cudzysłów
+jako „ozdobnik”, także gdy należy do tekstu: nagłówek „…STRZELANINA W „KABLU” zostaje bez
+zamknięcia. (2) „Przerwij” loguje na serwerze błąd poziomu `error` („This operation was aborted”)
+i wysyła `AI_ERROR`, który klient i tak ignoruje — przerwanie przez MG to nie awaria.
+
 **17.09.2026 (zlecenie MG, trzecia sesja) — rzuty kreatora przez kubek, po jednej pozycji.**
 MG: „rzucanie kośćmi to jeden z przyjemniejszych elementów gry […] gracze powinni rzucać małą
 ilością kości na raz. Nie podobają mi się te rzuty 10 lub więcej kośćmi naraz i zamiast wciśnięcia

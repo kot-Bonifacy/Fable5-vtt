@@ -11,6 +11,7 @@ import {
   parseWeaponIcons,
   withWeaponIcons,
 } from './itemicons.js';
+import type { CpredWeaponRow } from './character.js';
 import { cpredItemView } from './inventory.js';
 
 /**
@@ -179,7 +180,7 @@ describe('cpredItemRowIcon', () => {
   const lookup = (id: string) => registry.entryById.get(id);
 
   it('wiersz z wpisem idzie za wpisem — także w widoku wymiany', () => {
-    const view = cpredItemView('weapons', {
+    const row: CpredWeaponRow = {
       id: 'w1',
       name: 'Mój gnat',
       notes: '',
@@ -189,7 +190,8 @@ describe('cpredItemRowIcon', () => {
       ammoMax: 8,
       ammoType: '',
       rof: '2',
-    });
+    };
+    const view = cpredItemView('weapons', row);
     expect(cpredItemRowIcon('weapons', view, lookup, registry)).toBe('pistol-heavy');
   });
 

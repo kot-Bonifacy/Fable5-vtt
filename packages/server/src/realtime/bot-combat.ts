@@ -655,12 +655,11 @@ async function walkTowards(
       // Podłoga jest wszędzie tam, gdzie nie ma ściany: bot nie ma maski
       // eksploracji (ta jest własnością drużyny), a ściany są testem krawędzi.
       isPassable: () => true,
-      canStep: (from, to) =>
-        isSegmentClear(
-          { x: from.x + half, y: from.y + half },
-          { x: to.x + half, y: to.y + half },
-          blockers,
-        ),
+      // `planWalk` podaje tu już ŚRODKI pól (od 23.08, pasy figury) — tak jak
+      // planerowi gracza w `MapArea`. Dokładanie drugiego `half` przesuwało
+      // sprawdzaną linię na linie kratek, czyli na ściany, i bot przechodził
+      // przez siatkę narysowaną wzdłuż kratki (oględziny 24.09).
+      canStep: (from, to) => isSegmentClear(from, to, blockers),
       size: actor.size,
       radiusCells: Math.max(1, Math.ceil(metresLeft / (cell * perPixel)) + 1),
       // Bez wygładzania — i to nie jest kosmetyka. `clipWalkToBudget` tnie na
@@ -901,16 +900,18 @@ async function runStep(
       await executeDecision(deps, ctx, actor, retryStep, retry.decision);
     } catch (secondError) {
       const secondCode = secondError instanceof RealtimeError ? secondError.code : 'INTERNAL';
+      const secondRefusal = refusalText(secondCode);
       trace(deps, ctx.campaignId, {
         ...base,
         decision: retry.decision.kind,
         outcome: 'refused',
         optionLabel: second,
-        refusal: `${refusal} ${refusalText(secondCode)}`,
+        // Ten sam błąd dwa razy to jedno zdanie, nie „X. X." w śladzie MG.
+        refusal: secondRefusal === refusal ? refusal : `${refusal} ${secondRefusal}`,
         retried: true,
         combat: { ...base.combat, summary: second },
       });
-      return { kind: 'refused', refusal: refusalText(secondCode) };
+      return { kind: 'refused', refusal: secondRefusal };
     }
     trace(deps, ctx.campaignId, {
       ...base,

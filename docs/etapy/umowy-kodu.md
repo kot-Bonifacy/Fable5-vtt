@@ -2544,9 +2544,20 @@ takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli ef
 
 ## boty — Boty, AI Gateway, RAG
 
+- **Relacja bota mówi, pod jakim podpisem pisze postać** — `relationForSpeaker` oddaje `speakerName` (nazwa konta), `relationPromptLines` dokleja „na czacie podpisuje się…”, gdy różni się od imienia postaci; notatkę relacji MG pisze do bota w drugiej osobie.
 - **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 
 ---
+
+### Relacja: postać, konto i ton (24.09)
+
+Historia czatu podpisuje gracza nazwą **konta** („Tester”), a relacja zna imię **postaci**
+(„Oględziny Stym”). Bez połączenia 27B mówił do gracza o jego własnej postaci jak o kimś obok.
+`relationForSpeaker` zwraca więc `speakerName`, a `relationPromptLines` dokleja „(na czacie
+podpisuje się „X” — to ta sama osoba)”, gdy podpis różni się od imienia. Kotwica
+(`buildRoleAnchor`) mówi „Twoje nastawienie do postaci X: <etykieta> — okazujesz jej
+życzliwość / niechęć”: etykiety ±3 są rzeczownikami, więc stoją po dwukropku, a kierunek tonu
+jest dopisany, bo sama etykieta „oddany przyjaciel” przegrywała z wrogą historią czatu.
 
 ### Reindeks RAG-u (dziennik, baza wiedzy)
 

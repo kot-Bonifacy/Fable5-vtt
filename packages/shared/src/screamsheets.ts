@@ -129,7 +129,11 @@ export function buildScreamsheetPrompt(options: {
         ` Cyberpunk RED${where}. Piszesz krótkie, sensacyjne notki prasowe.`,
       '',
       '# Format odpowiedzi',
-      'NAGŁÓWEK: krzykliwy tytuł, do 70 znaków, bez kropki na końcu',
+      // Zwykłą pisownią, bo wersaliki robi skład (`text-transform` w arkuszu
+      // handoutu), a model piszący WERSALIKAMI psuł słowa: na 27B (24.09) błędne
+      // nagłówki spadły z 2/6 do 1/6 („TYGRSY… ZŁAMU", „KRAŻDŻ" znikły).
+      'NAGŁÓWEK: krzykliwy tytuł zwykłą pisownią, nie wersalikami (wielkie litery doda' +
+        ' skład gazety), do 70 znaków, bez kropki na końcu',
       'LEAD: jedno–dwa zdania streszczające całą sprawę',
       'TREŚĆ:',
       'dwa do czterech krótkich akapitów artykułu',
