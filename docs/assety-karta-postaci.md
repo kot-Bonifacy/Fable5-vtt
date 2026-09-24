@@ -137,6 +137,7 @@ na propozycję MG.
 | --- | ---: | --- | --- |
 | `paper-wear.jpg` — maska luminancji wytarć | 165 kB* | [„Old paper6.jpg”](https://commons.wikimedia.org/wiki/File:Old_paper6.jpg), Wikimedia Commons, The Digital Yard Sale | **domena publiczna** (PD-author) |
 | `ink-cracks-day.webp`, `ink-cracks-night.webp` — przezroczyste rysy w kolorze papieru | ~200 kB każdy | [ambientCG „Asphalt 011”](https://ambientcg.com/view?id=Asphalt011), mapa wysokości 2K | **CC0 1.0** |
+| `paper-wear-day.jpg` — maska wytarć dnia (od 24.09): szersze wyblaknięcia, rysy i jasna strona pognieceń | ~290 kB | „Old paper6.jpg” jak wyżej + [ambientCG „Paper 003”](https://ambientcg.com/view?id=Paper003), mapa normalnych 2K | domena publiczna + **CC0 1.0** |
 
 \* rozmiar zależy od siły wytarć (`BLEACH_GAIN`, `SCRATCH_GAIN`); przy obecnych ustawieniach
 ok. 0,1–0,3 MB.

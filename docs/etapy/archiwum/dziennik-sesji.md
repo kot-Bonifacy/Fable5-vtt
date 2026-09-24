@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 (druga) — zaległości lokalnego LLM na nowym modelu
+
+**Zlecenie MG:** zaległości dotyczące lokalnego LLM, z pytaniami przy wątpliwościach. Na starcie
+wyszło, że `.env` gatewaya wskazuje na skasowany Qwythos-9B, a na dysku leży Qwen3.8-27B
+UD-Q3_K_XL z nowym buildem llama-server. Rozstrzygnięcia MG: **przejście na Qwen3.8-27B**,
+wszystkie cztery grupy (20a/20b, 19a–19c, 24c, polszczyzna + maszynopis), oględziny na
+kampanii-śmieciu, map-reduce na sztucznym logu; po oględzinach: nagłówek screamsheetu zwykłą
+pisownią, zakaz powtarzania zdań w kotwicy, pytanie do myślącego bota **zostaje** bez zmian,
+taktyka bota do `POMYSLY.md`.
+
+**Wdrożone:** gateway wysyła `thinking_budget_tokens` obok `reasoning_budget` (bez tego pytanie
+o zasady wracało po 30 s puste); `walkTowards` bota nie dokłada drugiego pół kratki do `canStep`
+(**bot przechodził przez ściany na liniach kratki**, test regresji); kotwica relacji gramatyczna
+przy ±3 i z kierunkiem tonu; `relationForSpeaker`/`relationPromptLines` łączą podpis konta
+z postacią; ogólny zakaz powtarzania zdań w `buildRoleAnchor`; nagłówek screamsheetu zwykłą
+pisownią; podwojone zdanie odmowy w śladzie MG; typ testu w `itemicons.test.ts` (czerwony `tsc`
+z poprzedniego commita). Dokumenty: CLAUDE.md (stos, VRAM), README gatewaya (model, pomiary,
+budżet myślenia), `.env.example`, „Ryzyka” w przeglądzie. Umowa i trzy pułapki w `boty`.
+
+**Oględziny (skrypty na gniazdach + Chrome u MG):** 19a, 19b, 19c, 20a, cały 20b, 24c, maszynopis
+bez tempa — wyniki i czasy w `archiwum/zamkniete-zaleglosci.md`. Kampania-śmieć wróciła do stanu
+sprzed sesji (figury, broń Pasera, bez walki i bez bariery 75); zostały w niej boty testowe
+(nieaktywne), wpis wiedzy „Bar «Pod Zardzewiałym Kablem»” i ~2500 linii sztucznego czatu.
+Aktywna kampania wróciła na **„Test2”**. Gateway i serwery dev działają.
+
+**Weryfikacja:** 2220 / 1224 / 282 testów, gateway 59; tsc, ESLint, Prettier trzech pakietów
+czyste, `ruff check` czysty (`ruff format` — stary dryf 4 plików, zaległość).
+
 ### Sesja 24.09 — miniatury rodzaju przy broni i ekwipunku
 
 **Zlecenie MG:** każda broń na listach (sklep i gdzie indziej) ma miniaturę swojej kategorii,

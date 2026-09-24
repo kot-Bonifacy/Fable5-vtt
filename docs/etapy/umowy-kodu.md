@@ -898,6 +898,13 @@ Skala `--paper-size` jest aliasem `--cp-wear-size`. Bez `soft-light`.
 
 Nowe powierzchnie dopisuj do list w `chrome.css`; czerwone nagłówki okien także
 do listy „Belka” w `theme.css`, która zapewnia jasny tekst w obu motywach.
+
+**Od 24.09 każda skóra ma własną maskę wytarć** (`--cp-wear-mask`; dzień:
+`paper-wear-day.jpg` z `day_mask` w `sheet-paper.py`), a `chrome-paper.py` czyta ją
+z motywu. Nowa duża powierzchnia dostaje z listy w `chrome.css` także przypalony brzeg
+(`box-shadow: var(--paper-edge)`, w nocy `none`). Jaśniejsza wklejka na panelu bierze
+`--paper-card`, a nie `--cp-paper` wprost, bo w nocy ma zostać kartonem. Siła wytarć
+nad kartą to `--cp-wear-print`, osobno od `--cp-wear-alpha` kafli.
 Sekcje i zakładki mają czarne belki. Karta/kreator, mapa, Sieć, screamsheet i ekran
 wejścia zachowują własne reguły. Ścięte rogi i uchwyty 13 px od brzegu bez zmian.
 Szczegóły, źródła i polecenie generatora: `docs/assety-chrom.md`.

@@ -120,6 +120,27 @@ body {
   --paper-position: -560px -720px;
 }
 
+/* Przypalony brzeg kartki (24.09, wzór: tapeta logowania). Cień wewnętrzny
+   leży nad tłem, a pod treścią; w nocy `--paper-edge` to `none`. Okna ze
+   ściętym rogiem rzucają cień zewnętrzny przez `filter`, więc `box-shadow`
+   jest tu wolny. */
+.side-panel,
+.hud-rail,
+.settings-window,
+.handout-window,
+.inventory-window,
+.dialog,
+.context-menu,
+.panel-card,
+.scene-card {
+  box-shadow: var(--paper-edge);
+}
+
+/* Wpis czatu to jaśniejsza wklejka na papierze panelu (24.09). */
+.chat-roll-body {
+  background-color: var(--paper-card);
+}
+
 /* Czerwone nagłówki z pęknięciami tuszu — jak nagłówek karty. */
 .top-bar,
 .settings-window-header,
@@ -158,7 +179,7 @@ body {
     0 100%,
     0 var(--notch)
   );
-  box-shadow: none;
+  box-shadow: var(--paper-edge);
   filter: drop-shadow(var(--shadow-window));
   background-image:
     linear-gradient(

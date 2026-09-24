@@ -484,6 +484,15 @@
   --cp-wear-alpha: 0.3;
   --cp-wear-mask: url('/art/sheet/paper-wear.jpg');
   --cp-wear-size: 1100px auto;
+  /* Siła tych samych wytarć nad drukiem karty. Kafle chromu leżą pod treścią,
+     karta — nad nią, więc w dzień karta dostaje słabszą warstwę (24.09). */
+  --cp-wear-print: var(--cp-wear-alpha);
+  /* Przypalony brzeg kartki (24.09, wzór: tapeta logowania) — cień wewnętrzny
+     paneli i okien. W nocy czarny karton nie ma czego przypalać. */
+  --paper-edge: none;
+  /* Wklejka na papierze: wpis czatu jaśniejszy od panelu (24.09). W nocy
+     zostaje karton panelu. */
+  --paper-card: var(--cp-back);
   /* Pęknięcia tuszu na czerwieni i czerni (propozycja MG z 16.09) — obraz tła
      pod napisami. Rysy odsłaniają kartkę, więc plik niesie jej kolor: w nocy
      `--cp-paper` nocy, w dzień dnia. Zmiana `--cp-paper` wymaga przebudowania
@@ -493,30 +502,39 @@
 }
 
 :root[data-theme='day'] {
-  /* Dzień: wydruk na pożółkłej kartce. Czerwień i czerń dokładnie z arkusza,
-     papier od 2c w kremie głównego interfejsu (decyzja MG: „pożółkły, jak
-     główny UI", potem „jaśniej"), a nie biel wydruku. */
+  /* Dzień: wydruk na pożółkłej kartce. Czerwień i czerń dokładnie z arkusza.
+     Papier od 24.09 w tonie tapety logowania (#dec4a1, odcień ~35°), a nie
+     w żółtszym kremie (~39°) z 2c — MG: „zbyt jednolity i bardziej żółty niż
+     okno logowania". Tło paneli jest ciemniejsze od pól, bo wytarcia je
+     rozjaśniają; pola i wklejki zostają jasne. */
   --cp-red: #cc2316;
   --cp-red-deep: #a81c11;
-  --cp-paper: #f6eddb;
+  --cp-paper: #f4e2c8;
   --cp-ink: #100e0d;
-  --cp-ink-dim: #62584f;
+  --cp-ink-dim: #574d44;
   --cp-bar: #000000;
   --cp-bar-ink: #ffffff;
-  --cp-back: #e6d9c0;
+  --cp-back: #dfc8a6;
   /* Główny ekran: odrobinę jaśniejszy papier niż w oknach (MG, 20.09). */
-  --paper-main: #ebdfc9;
+  --paper-main: #e1caa8;
   --cp-focus: #fdf0c4;
-  --cp-hover: #efe3cc;
+  --cp-hover: #eedabe;
 
-  --cp-inset: #efe3cb;
-  --cp-inset-2: #e7d9bd;
-  --cp-line: #cbb792;
+  --cp-inset: #f0dcc0;
+  --cp-inset-2: #e9d3b4;
+  --cp-line: #c7ad88;
   --cp-line-soft: rgb(160 132 92 / 45%);
-  --cp-line-strong: #a38b64;
+  --cp-line-strong: #a08660;
 
-  --cp-wear: #fffcf4;
-  --cp-wear-alpha: 0.95;
+  /* Dzień ma własną maskę (24.09): szersze wyblaknięcia bez kilkumilimetrowych
+     plamek i jasna strona pogniecionej kartki — dalej nic ciemniejszego od
+     papieru (MG: „wytarty, pognieciony, ale nie brudny"). */
+  --cp-wear: #fcf0dd;
+  --cp-wear-alpha: 0.9;
+  --cp-wear-mask: url('/art/sheet/paper-wear-day.jpg');
+  --cp-wear-print: 0.45;
+  --paper-edge: inset 0 0 22px rgb(128 78 30 / 26%), inset 0 0 4px rgb(110 64 24 / 30%);
+  --paper-card: var(--cp-paper);
   --cp-cracks: url('/art/sheet/ink-cracks-day.webp');
 }
 

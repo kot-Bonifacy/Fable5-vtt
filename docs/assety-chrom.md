@@ -18,7 +18,9 @@ Generator czyta kolor `--cp-wear` i krycie `--cp-wear-alpha` bezpośrednio z
 uv run --with pillow python tools/art/chrome-paper.py
 ```
 
-Przebuduj kafle po zmianie maski lub tokenów przetarć karty. Stary generator
+Przebuduj kafle po zmianie maski lub tokenów przetarć karty. Od 24.09 każda
+skóra ma własną maskę (`--cp-wear-mask` w bloku nocy i dnia), a generator
+bierze ją z `theme.css` razem z kolorem i kryciem. Stary generator
 osobnego ziarna i załamań został zastąpiony; nowe kafle nie zawierają dodatkowych
 włókien ani tekstur Paper004/Paper005. Źródło maski i licencja: Wikimedia Commons,
 „Old paper6.jpg”, domena publiczna; szczegóły w `assety-karta-postaci.md`.
@@ -50,3 +52,34 @@ Duże powierzchnie mają podkład strony karty `--cp-back`; na jaśniejszym
 HUD −80/−620 px, dialogi i parzyste karty panelu −560/−720 px. Skala 1100 px
 oraz krycie pozostają wspólne z kartą. W oknach ze ściętymi rogami przesunięcie
 dotyczy wyłącznie trzeciej warstwy tła, czyli papieru, nie gradientów narożników.
+
+## Dzień w tonie tapety logowania (24.09.2026)
+
+Zlecenie MG: dzień był „zbyt jednolity (kremowy) i bardziej żółty niż okno
+logowania”. Plakat ma papier `#dec4a1` (odcień ~34°), a chrom stał na
+`#e6d9c0` (~39°) z rzadkimi białymi przetarciami. MG obejrzał trzy próbki na
+żywo i wybrał wariant „tylko jaśniej”: zmienność wyłącznie w stronę
+jaśniejszego, **bez plamek wielkości kilku milimetrów** („wytarty, pognieciony,
+ale nie brudny”). Ciemniejsze chmury jak na plakacie zostały odrzucone.
+
+- **Kolory.** Tło paneli `--cp-back` `#dfc8a6`, główny ekran `--paper-main`
+  `#e1caa8`, pola i wklejki `--cp-paper` `#f4e2c8`, wszystko ~35°. Tło jest
+  ciemniejsze od pól, bo wytarcia je rozjaśniają. `--cp-ink-dim` przyciemniony do
+  `#574d44`, żeby opisy na ciemniejszym tle trzymały 5:1.
+- **Maska dnia** `art/sheet/paper-wear-day.jpg` (`tools/art/sheet-paper.py`,
+  `day_mask`): szersze wyblaknięcia (σ = 40 px) na całej kartce zamiast połowy,
+  jasne rysy jak w nocy oraz **jasna strona pogniecionej kartki** z mapy
+  normalnych ambientCG „Paper 003” (CC0), oświetlonej z lewej góry, dwa razy
+  na bok kafla. Nic ciemniejszego od papieru.
+- **Przypalony brzeg** `--paper-edge`: cień wewnętrzny paneli, okien i strony
+  karty. W nocy `none`. Okna ze ściętym rogiem mają cień zewnętrzny w `filter`,
+  więc `box-shadow` niesie tylko brzeg.
+- **Wklejki** `--paper-card`: wpis czatu leży na jaśniejszym `--cp-paper`,
+  a kafel wytarć idzie po nim tak samo jak po panelu. W nocy zostaje karton.
+- **Karta postaci** bierze tę samą maskę, ale nad drukiem słabiej
+  (`--cp-wear-print` 0,45 zamiast 0,9). Przy pełnej sile pognieciona kartka
+  spierała czerwone panele na różowo.
+
+Noc jest bez zmian: `paper-wear.jpg` i `paper-night.webp` przebudowane
+generatorem wychodzą bajt w bajt te same.
+

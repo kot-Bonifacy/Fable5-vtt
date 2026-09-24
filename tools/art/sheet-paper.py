@@ -9,6 +9,8 @@ by git):
     https://commons.wikimedia.org/wiki/File:Old_paper6.jpg
   * cracks — ambientCG "Asphalt 011" height map, CC0 1.0:
     https://ambientcg.com/view?id=Asphalt011
+  * crumples (day only) — ambientCG "Paper 003" normal map, CC0 1.0:
+    https://ambientcg.com/view?id=Paper003
 
 Outputs:
 
@@ -45,11 +47,13 @@ CACHE = Path(__file__).resolve().parent / ".cache"
 PAPER_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e8/Old_paper6.jpg"
 CRACKS_URL = "https://ambientcg.com/get?file=Asphalt011_2K-JPG.zip"
 CRACKS_MEMBER = "Asphalt011_2K-JPG_Displacement.jpg"
+CRUMPLE_URL = "https://ambientcg.com/get?file=Paper003_2K-JPG.zip"
+CRUMPLE_MEMBER = "Paper003_2K-JPG_NormalGL.jpg"
 USER_AGENT = "VTT-sheet-paper/1.0 (private tabletop project)"
 
 # Must match `--cp-paper` in theme.css (night :root and :root[data-theme='day']).
 PAPER_NIGHT = "#171514"
-PAPER_DAY = "#f6eddb"
+PAPER_DAY = "#f4e2c8"
 
 # The middle of the 2401 x 3500 scan: edges carry vignette and a torn border
 # that would show up as a stripe in every tile.
@@ -68,6 +72,18 @@ BLEACH_GAIN = 7.0
 SCRATCH_SIGMA = 45
 SCRATCH_FLOOR = 0.06
 SCRATCH_GAIN = 22.0
+
+# Day skin (24.09, MG: like the login poster, but "worn and crumpled, not
+# dirty"): the bleaching is blurred wider, so no pale spot is a few millimetres
+# across, and is spread over the whole sheet instead of half of it.
+DAY_BLEACH_SIGMA = 40
+DAY_BLEACH_GAIN = 0.45
+DAY_SCRATCH_GAIN = 14.0
+# Crumples: the crumpled sheet is repeated CRUMPLE_REPEAT times per side, so a
+# facet is 5-10 cm on screen; only facets facing the light (upper left) wear.
+CRUMPLE_REPEAT = 2
+CRUMPLE_GAIN = 2.5
+CRUMPLE_LIGHT = (-0.5, 0.6, 0.62)
 
 # Cracks: valleys of the height map deeper than LO start to show, HI is solid.
 CRACK_LO, CRACK_HI = 0.05, 0.13
@@ -120,7 +136,8 @@ def save_mask(values: np.ndarray, name: str) -> None:
     print(f"{name}: mean {values.mean():.3f}, p99 {np.percentile(values, 99):.3f}")
 
 
-def paper_masks() -> None:
+def paper_luminance() -> np.ndarray:
+    """Log luminance of the scan's middle, flattened and made tileable."""
     scan = Image.open(io.BytesIO(fetch(PAPER_URL))).convert("RGB")
     w, h = scan.size
     half = PAPER_CROP // 2
@@ -129,13 +146,45 @@ def paper_masks() -> None:
     lum = np.log(np.clip(rgb @ np.array([0.2126, 0.7152, 0.0722]), 1e-3, 1))
     lum = lum - blur(lum, FLATTEN_SIGMA)
     lum = periodic(lum)
-    lum -= lum.mean()
+    return lum - lum.mean()
+
+
+def scratch_mask(lum: np.ndarray, gain: float) -> np.ndarray:
     lighter = np.maximum(lum - blur(lum, SCRATCH_SIGMA) - SCRATCH_FLOOR, 0)
-    scratches = blur(lighter, 0.8) * SCRATCH_GAIN
+    return blur(lighter, 0.8) * gain
+
+
+def paper_masks() -> None:
+    lum = paper_luminance()
+    scratches = scratch_mask(lum, SCRATCH_GAIN)
     lum = np.maximum(lum, blur(lum, SPECK_SIGMA))
     bleached = blur(lum, STAIN_SIGMA)
     bleached -= bleached.mean()
     save_mask(np.maximum(bleached * BLEACH_GAIN, scratches), "paper-wear.jpg")
+
+
+def crumples(size: int) -> np.ndarray:
+    """Lit side of a crumpled sheet, 0..1, tileable at `size`."""
+    archive = zipfile.ZipFile(io.BytesIO(fetch(CRUMPLE_URL)))
+    normal = Image.open(io.BytesIO(archive.read(CRUMPLE_MEMBER))).convert("RGB")
+    side = size // CRUMPLE_REPEAT
+    normal = normal.resize((side, side), Image.LANCZOS)
+    n = np.asarray(normal).astype(np.float64) / 255.0 * 2 - 1
+    n = np.tile(n, (CRUMPLE_REPEAT, CRUMPLE_REPEAT, 1))
+    light = np.array(CRUMPLE_LIGHT)
+    shade = n @ (light / np.linalg.norm(light))
+    return np.clip((shade - np.median(shade)) * CRUMPLE_GAIN, 0, 1)
+
+
+def day_mask() -> None:
+    lum = paper_luminance()
+    scratches = scratch_mask(lum, DAY_SCRATCH_GAIN)
+    lum = np.maximum(lum, blur(lum, SPECK_SIGMA))
+    broad = blur(lum, DAY_BLEACH_SIGMA)
+    broad = (broad - np.median(broad)) / broad.std()
+    bleached = np.clip(broad * DAY_BLEACH_GAIN, 0, 1)
+    worn = np.clip(bleached + crumples(PAPER_CROP), 0, 1)
+    save_mask(np.maximum(worn, scratches), "paper-wear-day.jpg")
 
 
 def cracks() -> None:
@@ -162,4 +211,5 @@ def cracks() -> None:
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     paper_masks()
+    day_mask()
     cracks()

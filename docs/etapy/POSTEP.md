@@ -37,7 +37,8 @@ refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socke
 
 **Stan UI (20.09):** cały chrom i karta postaci są „starą kartką” — `chrome.css`, `sheet.css`,
 tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py`), wspólna paleta `--cp-*`; MG odrzuca
-wszystko ciemniejsze od papieru („żadnego brudu”). Poza skórą: Sieć, pasek mapy, screamsheet,
+wszystko ciemniejsze od papieru („żadnego brudu”). Dzień od 24.09 w tonie tapety logowania,
+z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`assety-chrom.md`). Poza skórą: Sieć, pasek mapy, screamsheet,
 logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
@@ -129,6 +130,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 24.09 (czwarta) — dzienny papier w tonie tapety logowania
+
+**Zlecenie MG:** dzień „zbyt jednolity (kremowy) i bardziej żółty niż okno logowania”, ma
+wyglądać jak stary papier z tapety. Trzy próbki kafla obejrzane na żywo. Rozstrzygnięcia MG:
+**tylko jaśniejsza zmienność, bez plamek kilkumilimetrowych** („wytarty, pognieciony, ale nie
+brudny”, ciemniejsze chmury plakatu odrzucone), **karta postaci i kreator na tym samym
+papierze**, **wpisy czatu jako jaśniejsze wklejki**, **zagięcia/rysy i przypalone brzegi**
+(bez zmian w chipach filtrów czatu i w tle za panelami).
+
+**Wdrożone:** paleta dnia w `theme.css` w odcieniu plakatu (~35° zamiast ~39°): `--cp-back`
+`#dfc8a6`, `--paper-main` `#e1caa8`, `--cp-paper` `#f4e2c8` (i `PAPER_DAY`, pęknięcia
+przebudowane), linie, wkłady, `--cp-ink-dim` `#574d44`. Nowa maska dnia
+`art/sheet/paper-wear-day.jpg` (`day_mask` w `sheet-paper.py`: szersze wyblaknięcia, rysy,
+jasna strona pognieceń z ambientCG „Paper 003”, CC0). `chrome-paper.py` bierze maskę każdej
+skóry z `--cp-wear-mask`. Nowe tokeny `--paper-edge` (przypalony brzeg, noc `none`),
+`--paper-card` (wklejka czatu) i `--cp-wear-print` (siła wytarć nad kartą, dzień 0,45). Noc bez
+zmian bajt w bajt. Opis w `docs/assety-chrom.md` (sekcja 24.09) i tabeli źródeł karty.
+
+**Weryfikacja:** 281 testów klienta, Prettier; obejrzane w Chrome jako gracz (czat, pasek
+postaci, karta, ustawienia). **Panel MG i okna MG nieobejrzane** — do oględzin ręką MG.
+
 ### Sesja 24.09 (trzecia) — porządki w ustawieniach dźwięku
 
 **Zlecenie MG:** ograniczyć ustawienia i opisy efektów dźwiękowych, usunąć rządek próbek,
@@ -149,32 +171,3 @@ widzi same suwaki „Głośność otoczenia” / „Głośność muzyki”; „u
 tylko u MG, bo tylko on ma obok „Głośność dla stołu”.
 
 **Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier; okno obejrzane w Chrome jako MG.
-
-### Sesja 24.09 (druga) — zaległości lokalnego LLM na nowym modelu
-
-**Zlecenie MG:** zaległości dotyczące lokalnego LLM, z pytaniami przy wątpliwościach. Na starcie
-wyszło, że `.env` gatewaya wskazuje na skasowany Qwythos-9B, a na dysku leży Qwen3.8-27B
-UD-Q3_K_XL z nowym buildem llama-server. Rozstrzygnięcia MG: **przejście na Qwen3.8-27B**,
-wszystkie cztery grupy (20a/20b, 19a–19c, 24c, polszczyzna + maszynopis), oględziny na
-kampanii-śmieciu, map-reduce na sztucznym logu; po oględzinach: nagłówek screamsheetu zwykłą
-pisownią, zakaz powtarzania zdań w kotwicy, pytanie do myślącego bota **zostaje** bez zmian,
-taktyka bota do `POMYSLY.md`.
-
-**Wdrożone:** gateway wysyła `thinking_budget_tokens` obok `reasoning_budget` (bez tego pytanie
-o zasady wracało po 30 s puste); `walkTowards` bota nie dokłada drugiego pół kratki do `canStep`
-(**bot przechodził przez ściany na liniach kratki**, test regresji); kotwica relacji gramatyczna
-przy ±3 i z kierunkiem tonu; `relationForSpeaker`/`relationPromptLines` łączą podpis konta
-z postacią; ogólny zakaz powtarzania zdań w `buildRoleAnchor`; nagłówek screamsheetu zwykłą
-pisownią; podwojone zdanie odmowy w śladzie MG; typ testu w `itemicons.test.ts` (czerwony `tsc`
-z poprzedniego commita). Dokumenty: CLAUDE.md (stos, VRAM), README gatewaya (model, pomiary,
-budżet myślenia), `.env.example`, „Ryzyka” w przeglądzie. Umowa i trzy pułapki w `boty`.
-
-**Oględziny (skrypty na gniazdach + Chrome u MG):** 19a, 19b, 19c, 20a, cały 20b, 24c, maszynopis
-bez tempa — wyniki i czasy w `archiwum/zamkniete-zaleglosci.md`. Kampania-śmieć wróciła do stanu
-sprzed sesji (figury, broń Pasera, bez walki i bez bariery 75); zostały w niej boty testowe
-(nieaktywne), wpis wiedzy „Bar «Pod Zardzewiałym Kablem»” i ~2500 linii sztucznego czatu.
-Aktywna kampania wróciła na **„Test2”**. Gateway i serwery dev działają.
-
-**Weryfikacja:** 2220 / 1224 / 282 testów, gateway 59; tsc, ESLint, Prettier trzech pakietów
-czyste, `ruff check` czysty (`ruff format` — stary dryf 4 plików, zaległość).
-

@@ -147,6 +147,8 @@
    działała i przy wąskim oknie strona zostawała trójkolumnowa. */
 .sheet-window .sheet-body {
   background: var(--cp-back);
+  /* Przypalony brzeg kartki, jak w oknach chromu (24.09). */
+  box-shadow: var(--paper-edge);
   container-type: inline-size;
 }
 
@@ -204,7 +206,7 @@
   z-index: 3;
   pointer-events: none;
   background: var(--cp-wear);
-  opacity: var(--cp-wear-alpha);
+  opacity: var(--cp-wear-print);
   mask-image: var(--cp-wear-mask);
   mask-mode: luminance;
   mask-repeat: repeat;

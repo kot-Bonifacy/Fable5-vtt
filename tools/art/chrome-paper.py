@@ -2,8 +2,9 @@
 
 Run: uv run --with pillow python tools/art/chrome-paper.py
 No new artwork: source and licence are documented in assety-karta-postaci.md.
-Colours and opacity come directly from theme.css. Regenerate after changing
-sheet wear tokens or paper-wear.jpg. Backgrounds stay below text and work in
+Colours, opacity and the mask of each skin come directly from theme.css (the
+day skin has its own mask since 24.09). Regenerate after changing sheet wear
+tokens or a paper-wear mask. Backgrounds stay below text and work in
 scrolling panels without introducing overlay stacking contexts.
 """
 
@@ -20,8 +21,11 @@ def main():
     theme = THEME.read_text(encoding="utf-8")
     colours = re.findall(r"--cp-wear: (#[0-9a-f]+);", theme)
     strengths = re.findall(r"--cp-wear-alpha: ([0-9.]+);", theme)
-    mask = Image.open(ART / "sheet/paper-wear.jpg").convert("L")
-    for mode, colour, strength in zip(("night", "day"), colours, strengths, strict=True):
+    masks = re.findall(r"--cp-wear-mask: url\('/art/([^']+)'\);", theme)
+    for mode, colour, strength, source in zip(
+        ("night", "day"), colours, strengths, masks, strict=True
+    ):
+        mask = Image.open(ART / source).convert("L")
         tile = Image.new("RGBA", mask.size, colour)
         tile.putalpha(mask.point(lambda value: round(value * float(strength))))
         target = ART / "chrome" / f"paper-{mode}.webp"
