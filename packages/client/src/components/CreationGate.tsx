@@ -1,6 +1,17 @@
 import { useState } from 'react';
+import type { CpredCreationData, CreationTerms } from '@vtt/shared';
+import { CPRED_CREATION_METHOD_LABELS, creationDataOf } from '@vtt/shared';
 import { acceptCreationRules, creationErrorText, requestCreation } from '../socket.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
+
+/** „Kompletny Pakiet · Postać początkująca (62 pkt Cech) · 86 pkt umiejętności". */
+export function creationTermsLine(terms: CreationTerms, data: CpredCreationData): string {
+  const rank = data.statRanks.find((entry) => entry.id === terms.statRankId);
+  const stats =
+    terms.method === 'complete' && rank ? ` · ${rank.name} (${rank.points} pkt Cech)` : '';
+  return `${CPRED_CREATION_METHOD_LABELS[terms.method]}${stats} · ${terms.skillPoints} pkt umiejętności`;
+}
 
 /**
  * A player's way into the character creator (decyzja MG z 24.09).
@@ -14,6 +25,8 @@ export function CreationGate({ resume }: { resume: string | null }) {
   const permit = useCreationStore((s) => s.permit);
   const openCreator = useCreationStore((s) => s.openCreator);
   const setPermit = useCreationStore((s) => s.setPermit);
+  const registry = useCharacterStore((s) => s.registry);
+  const terms = permit?.terms ? creationTermsLine(permit.terms, creationDataOf(registry)) : null;
   const [rulesOpen, setRulesOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +112,9 @@ export function CreationGate({ resume }: { resume: string | null }) {
           🧬 Kreator postaci…
         </button>
       )}
+      {status === 'granted' && terms && (
+        <p className="creation-gate-note">Warunki od MG: {terms}.</p>
+      )}
       {error && (
         <p className="auth-error" role="alert">
           {error}
@@ -116,6 +132,7 @@ export function CreationGate({ resume }: { resume: string | null }) {
             <h3 id="creation-rules-title" className="panel-section-title">
               Zanim zaczniesz: zasady tworzenia postaci
             </h3>
+            {terms && <p className="creation-gate-note">Warunki od MG: {terms}.</p>}
             <ul className="creation-rules-list">
               <li>
                 Każdą Cechę losujesz <strong>raz</strong>, kubkiem. Przerzucić może pozwolić tylko

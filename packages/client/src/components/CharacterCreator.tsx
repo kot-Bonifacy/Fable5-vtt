@@ -61,6 +61,7 @@ import {
   creationPreview,
   creationPurchases,
   creationRole,
+  creationSkillPool,
   creationSkillPointsSpent,
   creationShopRefusalText,
   creationShopVerdict,
@@ -684,6 +685,10 @@ function RoleStep({
   const entriesById = useCompendiumStore((s) => s.entries);
   const shopRules = useCreationShopRules();
   const data = creationDataOf(registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Decyzja MG z 24.09: the GM chose the method with the consent.
+  const methodLocked = draft.methodFixed && !isGm;
+  const skillPool = creationSkillPool(data, draft);
 
   /**
    * Naprawa 2b: a change that takes something off the draft asks first, with
@@ -727,18 +732,22 @@ function RoleStep({
               type="radio"
               name="creation-method"
               checked={draft.method === method}
+              disabled={methodLocked && draft.method !== method}
               onChange={() => change({ method })}
             />
             <span>
               <strong>{CPRED_CREATION_METHOD_LABELS[method]}</strong>
               <span className="creator-method-note">
                 {method === 'edgerunner'
-                  ? `1k10 na każdą Cechę z szablonu Roli · ${data.skillPoints} pkt na 20 umiejętności Roli`
-                  : `pula punktów na Cechy · ${data.skillPoints} pkt na dowolne umiejętności`}
+                  ? `1k10 na każdą Cechę z szablonu Roli · ${skillPool} pkt na 20 umiejętności Roli`
+                  : `pula punktów na Cechy · ${skillPool} pkt na dowolne umiejętności`}
               </span>
             </span>
           </label>
         ))}
+        {methodLocked && (
+          <p className="creator-hint">Metodę i pulę punktów ustalił MG, udzielając zgody.</p>
+        )}
         {/* Naprawa 2b: the window lists the losses before the change is made. */}
         <p className="creator-hint">
           Zmiana metody albo Roli może skasować wpisane Cechy, umiejętności, koszyk i odpowiedzi
@@ -1148,7 +1157,8 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
     [draft, data, registry],
   );
   const spent = creationSkillPointsSpent(draft, data, registry);
-  const left = data.skillPoints - spent;
+  const skillPool = creationSkillPool(data, draft);
+  const left = skillPool - spent;
   const legacyMinima = draft.skillMinimaAuto
     ? []
     : creationMissingSkillMinima(draft, data, registry);
@@ -1204,8 +1214,8 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
     <div className="creator-step">
       <div className="creator-sticky" data-creation-field="skills">
         <div className="creator-sticky-row">
-          <span className={`creator-pool ${poolStateClass(spent, data.skillPoints)}`} role="status">
-            Punkty umiejętności: wydane {spent} z {data.skillPoints} · pozostało {left}
+          <span className={`creator-pool ${poolStateClass(spent, skillPool)}`} role="status">
+            Punkty umiejętności: wydane {spent} z {skillPool} · pozostało {left}
           </span>
           {counts.missing > 0 && (
             <span className="creator-pool creator-pool--over">

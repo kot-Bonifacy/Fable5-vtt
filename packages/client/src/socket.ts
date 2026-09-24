@@ -42,6 +42,7 @@ import type {
   CreationPermitRow,
   CreationPermitState,
   CreationRerolledPush,
+  CreationTerms,
   SmokeSyncBroadcast,
   CoverUpdatePayload,
   CoverView,
@@ -560,6 +561,11 @@ export function connectSocket(userId: string): Socket {
   onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>
     useCreationRankStore.getState().replacePermits(rows),
   );
+  // 24.09: the GM changed the terms of my draft — read it again from the server.
+  onPresented('creation:terms-changed', (push: { draftId: string }) => {
+    const store = useCreationStore.getState();
+    if (store.draftId === push.draftId && store.open) void store.reload();
+  });
   // 24.09: the GM threw my draft away — the wizard has nothing left to show.
   onPresented('creation:discarded', (push: { draftId: string }) =>
     useCreationStore.getState().dropDiscarded(push.draftId),
@@ -3161,9 +3167,15 @@ export const requestCreation = (cancel = false) =>
 /** „Rozumiem, zaczynam" under the creation rules. */
 export const acceptCreationRules = () =>
   emitCreationAck<CreationPermitState>('creation:accept-rules', undefined);
-/** The GM's answer to a request, or taking back a consent not used yet. */
-export const answerCreationRequest = (userId: string, grant: boolean) =>
-  emitCreationAck('creation:permit', { userId, grant });
+/**
+ * The GM's answer to a request — with the terms when agreeing (24.09) — or
+ * taking back a consent not used yet.
+ */
+export const answerCreationRequest = (userId: string, grant: boolean, terms?: CreationTerms) =>
+  emitCreationAck('creation:permit', { userId, grant, terms });
+/** New terms for a player's draft already being built. */
+export const setCreationTerms = (draftId: string, terms: CreationTerms) =>
+  emitCreationAck('creation:terms', { draftId, terms });
 export const listCreationPermits = () =>
   emitCreationAck<CreationPermitRow[]>('creation:permits', undefined);
 /** The GM throws away a player's draft — the only way a player's creation starts over. */
@@ -3237,6 +3249,8 @@ export function creationErrorText(code: string | undefined): string {
       return 'Najpierw przeczytaj zasady tworzenia postaci i kliknij „Rozumiem, zaczynam”.';
     case 'DRAFT_EXISTS':
       return 'Ten gracz ma już szkic postaci — zgoda jest w użyciu.';
+    case 'BAD_TERMS':
+      return 'Warunki zgody są niepełne: metoda, Ranga Postaci i pula umiejętności (1–300).';
     case 'NO_REQUEST':
       return 'Ten gracz nie prosi teraz o kreator.';
     case 'NOTHING_TO_REROLL':

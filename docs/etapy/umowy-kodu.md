@@ -1873,6 +1873,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Warunki zgody MG: metoda, ranga, pula umiejętności (25.09)** — `CreationTerms` w `CampaignMember.creationTerms` (JSON, czyta `readTerms`); `creation:start` zakłada szkic z `method` + `methodFixed`, rangą w kolumnie szkicu (od razu zatwierdzoną) i `skillPool`. Pulę umiejętności czytaj **wyłącznie** przez `creationSkillPool(data, draft)` — `data.skillPoints` to tylko podręcznikowe 86. Zmiana w trakcie: `creation:terms` (MG), push `creation:terms-changed`.
 - **Nowa postać gracza = zgoda MG, zasady, zatwierdzenie (24.09)** — zgoda w `CampaignMember.creationPermit` (`requested`/`granted`) + `creationRulesAcceptedAt`; `creation:start` zakłada szkic graczowi tylko przy obu (istniejący szkic zawsze się otwiera). Zgodę zużywa `creation:finish`, a zdejmuje ją razem ze szkicem wyłącznie `creation:discard-player` (MG) — gracz `creation:discard` dostaje `FORBIDDEN`. Lista MG: `creation:permits-sync`.
 - **Karta gracza przed „Przyjmij do gry” jest tylko do podglądu (24.09)** — `refuseAwaitingGm` (`character-io.ts`) odmawia `CHARACTER_AWAITING_GM`; **nowy handler, który pisze do karty gracza albo z niej rzuca, woła go** (odczyty — historia PD i portfela — nie). Żeton z kreatora staje przy przyjęciu (`placeApprovedCreationToken`), a postać zrobiona ręką MG jest gotowa od razu.
 - **Rzut kreatora to jedna kość na pozycję, przez kubek (24.09)** — `PendingCreation.roll` mówi, co kubek rzuca (Cecha, tabela Ścieżki, „ilu”), `chain` każe po rzucie wziąć następną pozycję (`nextCreationCup`). Gracz rzuca Cechę **raz** (`STAT_ALREADY_ROLLED`), przerzut daje tylko MG (`creation:reroll`); **`statRolls` przeżywają zmianę Roli i metody**, a Cechy Krawędziarza liczy z nich `creationRolledStats`. Zbiorcze rzuty (bez `statId`, wiele tabel) są wyłącznie skrótem MG.
@@ -1918,6 +1919,23 @@ i przytrzymanie stanęłoby w miejscu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ---
+
+**Warunki zgody MG: metoda, ranga, pula umiejętności (25.09, decyzje MG).**
+MG udziela zgody **na warunkach** (`CreationTerms`): metoda (Krawędziarz / Kompletny Pakiet),
+Ranga Postaci (pula Cech Kompletnego Pakietu, 50–80) i pula umiejętności — **zasada domowa**:
+podręcznik daje zawsze 86, MG wpisuje dowolną liczbę 1–300 (`isCreationSkillPool`), dla obu
+metod. Zgoda bez poprawnych warunków → `BAD_TERMS`; ponowna zgoda na niewykorzystaną zgodę
+nadpisuje warunki. `creation:start` przenosi je na szkic: `method` z `methodFixed: true` (łata
+gracza zmieniająca metodę → `mergeCreationDraft` zwraca `null`), ranga w kolumnie
+`CharacterDraft.statRankId` (więc `rankApproved` od razu), `skillPool` (null = 86). Pola
+`skillPool` i `methodFixed` nie przychodzą z łaty nigdy. MG zmienia warunki w trakcie
+(`creation:terms`): zmiana metody idzie przez `mergeCreationDraft` z chwilowo zdjętym
+`methodFixed` (odpada to, czego nowa metoda nie opłaci; kości zostają), `revision` rośnie, a
+gracz dostaje `creation:terms-changed` i kreator wczytuje szkic od nowa. Rozdzielone punkty nie
+przepadają — kreator pokazuje nadwyżkę albo brak. Szkice sprzed zmiany nie mają warunków do
+pierwszego „Zapisz warunki” w panelu (i do tego czasu metodę wybiera gracz). Panel MG
+(`CreationRankPanel`) ma jeden edytor warunków (`TermsEditor`) dla próśb i szkiców; osobne
+„Zatwierdź” rangi zniknęło z UI (zdarzenie `creation:set-rank` zostaje w protokole).
 
 **Nowa postać gracza: zgoda MG, zasady, zatwierdzenie (24.09, decyzje MG).**
 Gracz bez szkicu nie otwiera kreatora sam. W zakładce „Postacie” ma „✋ Poproś MG o stworzenie

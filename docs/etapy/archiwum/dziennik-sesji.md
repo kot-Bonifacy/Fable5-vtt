@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 (szósta) — rzuty kreatora przez kubek, po jednej kości
+
+**Zlecenie MG z 17.09 (z `POMYSLY.md`):** gracz rzuca małą liczbą kości naraz i kubkiem, a nie
+przyciskiem. Rozstrzygnięcia MG z tej sesji: **każdą Cechę gracz rzuca raz, przerzut daje tylko
+MG**; **kubek po rzucie sam bierze następną pozycję**; **MG zachowuje skrót bez kubka** („Rzuć
+brakujące”).
+
+**Wdrożone:** `creation:roll` rzuca jedną Cechę (`statId`), a bez niej — tylko u MG — brakujące
+naraz; `creation:lifepath-roll` u gracza przyjmuje jedną tabelę; `creation:lifepath-count` i
+Ścieżka niosą gest kubka. Nowe `creation:reroll` (MG) + push `creation:rerolled`; panel MG
+„Szkice postaci graczy” pokazuje Krawędziarzy („Cechy n/10”, wybór Cechy, „Pozwól przerzucić”).
+**`statRolls` przeżywają zmianę Roli i metody** (inaczej zmiana Roli tam i z powrotem byłaby
+darmowym przerzutem), Cechy Krawędziarza liczy z nich `creationRolledStats`, a okno strat mówi
+o tym w notatkach. W kreatorze: „🥤 Weź kubek” w nagłówku Cech i Ścieżki (łańcuch), 🥤 przy
+każdym wierszu, „🥤 ilu” zamiast „🎲 ilu”; „🎲 Rzuć całą Ścieżkę” i „🎲 Rzuć od razu” zniknęły.
+Karta Cechy na czacie: „Refleks (REF) — Solo”, 1k10, suma = wartość Cechy. Umowa w `postac`.
+**Spoza zlecenia (prośba MG w trakcie sesji):** limit czekania na animację rzutu `MAX_ROLL_MS`
+skrócony z 30 s do 10 s (`dice3d.ts`).
+
+**Weryfikacja:** 2222 testy `shared`, 1226 serwera, 281 klienta; tsc, ESLint i Prettier czyste.
+Obejrzane w Chrome na kampanii-śmieciu: gracz `Tester` — łańcuch kubka po Cechach (INT → REF →
+ZW → TECH), brak kubka przy wylosowanej Cesze, Ścieżka (Kultura → Osobowość), „ilu”; MG —
+karty na czacie, „Pozwól przerzucić” dla REF (u gracza wraca „—” bez przeładowania), własny
+szkic ze skrótem „Rzuć brakujące” i kubkami przerzutu. Aktywna wróciła na „Test2”.
+
 ### Sesja 24.09 (piąta) — szybkie tworzenie postaci tylko dla MG
 
 **Zlecenie MG:** po co graczowi w zakładce „Postacie” pole „Imię nowej postaci” i „Utwórz”,

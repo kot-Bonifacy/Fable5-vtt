@@ -242,9 +242,36 @@ export interface CpredCreationDraft {
    * nobody's pool changes on its own when a window opens.
    */
   skillMinimaAuto: boolean;
+  /**
+   * The GM's terms from the consent (decyzja MG z 24.09). `skillPool` is the
+   * skill budget the GM wrote down — a house rule over the book's fixed 86;
+   * null means the book's number. `methodFixed` means the GM chose the method
+   * and a player's patch cannot change it. Neither ever comes off a patch:
+   * only the server writes them, at `creation:start` and `creation:terms`.
+   */
+  skillPool: number | null;
+  methodFixed: boolean;
 }
 
 export const CREATION_NAME_MAX_LENGTH = 64;
+
+/** The skill budget the GM may write into a consent (24.09). */
+export const CREATION_SKILL_POOL_MIN = 1;
+export const CREATION_SKILL_POOL_MAX = 300;
+
+/** Skill points this draft spends: the GM's number, or the book's 86. */
+export function creationSkillPool(data: CpredCreationData, draft: CpredCreationDraft): number {
+  return draft.skillPool ?? data.skillPoints;
+}
+
+export function isCreationSkillPool(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= CREATION_SKILL_POOL_MIN &&
+    value <= CREATION_SKILL_POOL_MAX
+  );
+}
 
 /** How many copies of one catalogue entry the basket may hold. */
 export const CREATION_PURCHASE_QTY_MAX = 20;
@@ -268,6 +295,8 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     // GM building five gangers in an evening unticks it once.
     placeToken: true,
     skillMinimaAuto: true,
+    skillPool: null,
+    methodFixed: false,
   };
 }
 
@@ -867,11 +896,12 @@ export function creationIssues(
   }
 
   const spent = creationSkillPointsSpent(draft, data, registry);
-  if (spent !== data.skillPoints) {
+  const skillPool = creationSkillPool(data, draft);
+  if (spent !== skillPool) {
     issues.push(
       issue(
         'skills',
-        `Punkty umiejętności: wydane ${spent} z ${data.skillPoints}. Pozostało: ${data.skillPoints - spent}. Rozdziel całą pulę.`,
+        `Punkty umiejętności: wydane ${spent} z ${skillPool}. Pozostało: ${skillPool - spent}. Rozdziel całą pulę.`,
       ),
     );
   }
@@ -967,6 +997,8 @@ export function mergeCreationDraft(
 
   // The basket is the server's ledger, not a form field — see `purchases`.
   if ('purchases' in patch) return null;
+  // The GM's terms (24.09) are written by the server alone.
+  if ('skillPool' in patch || 'methodFixed' in patch) return null;
 
   if ('step' in patch) {
     const step = patch.step;
@@ -976,6 +1008,9 @@ export function mergeCreationDraft(
   if ('method' in patch) {
     const method = patch.method;
     if (!isCreationMethod(method)) return null;
+    // The GM chose the method with the consent (24.09); only `creation:terms`
+    // changes it, and it unfixes the draft for that one merge.
+    if (current.methodFixed && method !== current.method) return null;
     if (method !== current.method) {
       next.stats = {};
       // The two methods shop with different money (500 vs 2550 ed), so a basket
@@ -1236,8 +1271,9 @@ export function creationChangeEffect(
         .join(' · ')}.`,
     );
   }
-  const leftBefore = data.skillPoints - creationSkillPointsSpent(current, data, registry);
-  const leftAfter = data.skillPoints - creationSkillPointsSpent(next, data, registry);
+  const leftBefore =
+    creationSkillPool(data, current) - creationSkillPointsSpent(current, data, registry);
+  const leftAfter = creationSkillPool(data, next) - creationSkillPointsSpent(next, data, registry);
   if (leftBefore !== leftAfter) {
     notes.push(`Punkty umiejętności: pozostało ${leftBefore} → ${leftAfter}.`);
   }
@@ -1316,6 +1352,8 @@ export function parseCreationDraft(
     placeToken: input.placeToken !== false,
     // Absent means a draft from before naprawa 2a: its levels stay as saved.
     skillMinimaAuto: input.skillMinimaAuto === true,
+    skillPool: isCreationSkillPool(input.skillPool) ? input.skillPool : null,
+    methodFixed: input.methodFixed === true,
   };
   const allowed = new Set(creationAvailableSkills(draft, data, registry));
   draft.skills = Object.fromEntries(

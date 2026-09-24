@@ -189,7 +189,10 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **24.09: zgoda MG na nową postać i zatwierdzenie — UI nieobejrzane w przeglądarce.** Serwer
+- **24–25.09: zgoda MG na nową postać, warunki i zatwierdzenie — UI prawie nieobejrzane.**
+  25.09 obejrzany (bez klikania) tylko wiersz szkicu Mary w panelu MG: edytor warunków
+  (metoda, „Postać początkująca — 62 pkt Cech”, pole puli umiejętności), „Zatwierdź warunki”
+  i „Wyrzuć szkic” mieszczą się w wąskim panelu. Serwer
   pokryty testami (prośba, odmowa, zgoda, zasady, `DRAFT_EXISTS`, wyrzucenie szkicu przez MG,
   blokada karty i żeton przy przyjęciu). **Nie obejrzane**, bo na „Test2” grała Mara i nie
   przełączałem kampanii: przycisk prośby i napis „Czekasz na zgodę MG” u gracza, okno zasad,

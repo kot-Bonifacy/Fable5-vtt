@@ -45,7 +45,8 @@ logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
 obu metod). **Od 24.09 rzuty kreatora idą po jednej kości przez kubek** (zlecenie MG z 17.09 —
 gracz rzuca Cechę raz, przerzut daje MG), a **nowa postać gracza wymaga zgody MG, przeczytanych
-zasad i zatwierdzenia** („Przyjmij do gry” od 24.09 blokuje kartę). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md`
+zasad i zatwierdzenia** („Przyjmij do gry” od 24.09 blokuje kartę); **od 25.09 zgoda niesie
+warunki** — metodę, Rangę Postaci i pulę umiejętności (zasada domowa, podręcznik: 86). Dalsza praca przy kreatorze wychodzi z `POMYSLY.md`
 i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontekst —
 `archiwum/od-czego-zaczac.md`.
 
@@ -85,7 +86,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2222** w `shared`, **1227** na serwerze, **281** u klienta,
+**Testy na koniec ostatniej sesji:** **2224** w `shared`, **1227** na serwerze, **281** u klienta,
 **59** w gatewayu — zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -117,7 +118,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 43   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 44   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
@@ -131,6 +132,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (szósta, część 3) — warunki zgody: metoda, ranga, pula umiejętności
+
+**Zlecenie MG:** to, ile postać ma punktów (np. „Postać początkująca”, 62), MG ustala w chwili
+udzielania zgody. Rozstrzygnięcia MG: przy zgodzie **metoda i ranga**, do tego **pula
+umiejętności wpisywana przez MG** (zasada domowa — podręcznik ma zawsze 86), **MG może zmienić
+warunki w trakcie**. Przed decyzją powiedziałem MG, że ranga w podręczniku zmienia tylko pulę
+Cech.
+
+**Wdrożone:** migracja `20260925000000_creation_terms`; `CreationTerms` w zgodzie
+(`creation:permit`), szkic startuje z metodą zablokowaną dla gracza, zatwierdzoną rangą
+i `skillPool`; `creation:terms` + push `creation:terms-changed`; `creationSkillPool` zamiast
+`data.skillPoints` w walidacji, oknie strat i kreatorze. Panel MG „Nowe postaci graczy”: jeden
+edytor warunków dla próśb i szkiców. Gracz widzi „Warunki od MG: …” przy przycisku i w oknie
+zasad. Umowa w `postac`.
+
+**Weryfikacja:** 2224 / 1227 / 281 testów, tsc, ESLint, Prettier. Obejrzany tylko wiersz szkicu
+Mary w panelu MG (bez klikania — Mara była w grze); reszta w `zaleglosci.md`. **Szkic Mary czeka
+na „Zatwierdź warunki”** (Kompletny Pakiet bez zatwierdzonej rangi) — to zastępuje dawne
+„Zatwierdź” rangi.
 
 ### Sesja 24.09 (szósta, część 2) — zgoda MG, zasady i zatwierdzenie nowej postaci
 
@@ -151,28 +172,3 @@ Istniejące szkice (Mara w „Test2”, Tony na Poligonie) otwierają się bez z
 
 **Weryfikacja:** 2222 / 1227 / 281 testów, tsc, ESLint, Prettier. **UI nieobejrzane** — na „Test2”
 grała Mara, a przełączenie aktywnej kampanii przeniosłoby jej sesję (pozycja w `zaleglosci.md`).
-
-### Sesja 24.09 (szósta) — rzuty kreatora przez kubek, po jednej kości
-
-**Zlecenie MG z 17.09 (z `POMYSLY.md`):** gracz rzuca małą liczbą kości naraz i kubkiem, a nie
-przyciskiem. Rozstrzygnięcia MG z tej sesji: **każdą Cechę gracz rzuca raz, przerzut daje tylko
-MG**; **kubek po rzucie sam bierze następną pozycję**; **MG zachowuje skrót bez kubka** („Rzuć
-brakujące”).
-
-**Wdrożone:** `creation:roll` rzuca jedną Cechę (`statId`), a bez niej — tylko u MG — brakujące
-naraz; `creation:lifepath-roll` u gracza przyjmuje jedną tabelę; `creation:lifepath-count` i
-Ścieżka niosą gest kubka. Nowe `creation:reroll` (MG) + push `creation:rerolled`; panel MG
-„Szkice postaci graczy” pokazuje Krawędziarzy („Cechy n/10”, wybór Cechy, „Pozwól przerzucić”).
-**`statRolls` przeżywają zmianę Roli i metody** (inaczej zmiana Roli tam i z powrotem byłaby
-darmowym przerzutem), Cechy Krawędziarza liczy z nich `creationRolledStats`, a okno strat mówi
-o tym w notatkach. W kreatorze: „🥤 Weź kubek” w nagłówku Cech i Ścieżki (łańcuch), 🥤 przy
-każdym wierszu, „🥤 ilu” zamiast „🎲 ilu”; „🎲 Rzuć całą Ścieżkę” i „🎲 Rzuć od razu” zniknęły.
-Karta Cechy na czacie: „Refleks (REF) — Solo”, 1k10, suma = wartość Cechy. Umowa w `postac`.
-**Spoza zlecenia (prośba MG w trakcie sesji):** limit czekania na animację rzutu `MAX_ROLL_MS`
-skrócony z 30 s do 10 s (`dice3d.ts`).
-
-**Weryfikacja:** 2222 testy `shared`, 1226 serwera, 281 klienta; tsc, ESLint i Prettier czyste.
-Obejrzane w Chrome na kampanii-śmieciu: gracz `Tester` — łańcuch kubka po Cechach (INT → REF →
-ZW → TECH), brak kubka przy wylosowanej Cesze, Ścieżka (Kultura → Osobowość), „ilu”; MG —
-karty na czacie, „Pozwól przerzucić” dla REF (u gracza wraca „—” bez przeładowania), własny
-szkic ze skrótem „Rzuć brakujące” i kubkami przerzutu. Aktywna wróciła na „Test2”.

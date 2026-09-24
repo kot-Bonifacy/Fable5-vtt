@@ -19,6 +19,8 @@ import type {
   CreationPermitPayload,
   CreationPermitRow,
   CreationPermitState,
+  CreationTerms,
+  CreationTermsPayload,
   CreationRerolledPush,
   CreationRerollPayload,
   CreationRollPayload,
@@ -45,10 +47,12 @@ import {
   creationLifestyle,
   creationPurchases,
   creationRole,
+  creationSkillPool,
   creationSpentEddies,
   creationToCharacterData,
   entryPrice,
   isCpredStatId,
+  isCreationSkillPool,
   isLifepathGroup,
   lifepathDataOf,
   lifepathEntryFor,
@@ -198,10 +202,39 @@ async function permitStateOf(
     where: { campaignId_userId: { campaignId, userId: user.id } },
   });
   const status = member?.creationPermit;
+  const terms = status === 'granted' ? readTerms(member?.creationTerms, deps) : null;
   return {
     status: status === 'requested' || status === 'granted' ? status : 'none',
     rulesAccepted: status === 'granted' && member?.creationRulesAcceptedAt != null,
+    ...(terms ? { terms } : {}),
   };
+}
+
+/**
+ * The GM's terms from a payload or the stored column (24.09): a method, a
+ * rank that exists in the data files, and a skill budget in range. Anything
+ * else is not a term the wizard can honour.
+ */
+function readTerms(raw: unknown, deps: RealtimeDeps): CreationTerms | null {
+  let input: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      input = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof input !== 'object' || input === null) return null;
+  const terms = input as Record<string, unknown>;
+  const data = creationDataOf(deps.ctx.cpred);
+  if (terms.method !== 'edgerunner' && terms.method !== 'complete') return null;
+  if (
+    typeof terms.statRankId !== 'string' ||
+    !data.statRanks.some((rank) => rank.id === terms.statRankId)
+  )
+    return null;
+  if (!isCreationSkillPool(terms.skillPoints)) return null;
+  return { method: terms.method, statRankId: terms.statRankId, skillPoints: terms.skillPoints };
 }
 
 /** Tells every window of one player where their consent stands now. */
@@ -227,7 +260,7 @@ async function setPermit(
 ): Promise<void> {
   await deps.ctx.prisma.campaignMember.updateMany({
     where: { campaignId, userId },
-    data: { creationPermit: permit, creationRulesAcceptedAt: null },
+    data: { creationPermit: permit, creationRulesAcceptedAt: null, creationTerms: null },
   });
 }
 
@@ -276,8 +309,21 @@ export const creationPermitEvent = defineCreationEvent<CreationPermitPayload, vo
     if (!member) throw new RealtimeError('OWNER_NOT_FOUND');
     if (await loadDraft(deps, campaignId, payload.userId)) throw new RealtimeError('DRAFT_EXISTS');
     if (payload.grant) {
-      if (member.creationPermit !== 'requested') throw new RealtimeError('NO_REQUEST');
-      await setPermit(deps, campaignId, payload.userId, 'granted');
+      // Decyzja MG z 24.09: the consent carries the method, the rank and the
+      // skill budget. Agreeing again to an unused consent rewrites them and
+      // keeps the rules the player may already have read.
+      const terms = readTerms(payload.terms, deps);
+      if (!terms) throw new RealtimeError('BAD_TERMS');
+      if (member.creationPermit !== 'requested' && member.creationPermit !== 'granted')
+        throw new RealtimeError('NO_REQUEST');
+      await deps.ctx.prisma.campaignMember.update({
+        where: { id: member.id },
+        data: {
+          creationPermit: 'granted',
+          creationTerms: JSON.stringify(terms),
+          ...(member.creationPermit === 'requested' ? { creationRulesAcceptedAt: null } : {}),
+        },
+      });
       await pushPermitState(deps, campaignId, payload.userId);
     } else {
       if (member.creationPermit === null) throw new RealtimeError('NO_REQUEST');
@@ -355,7 +401,24 @@ export const creationStartEvent = defineCreationEvent<
     const permit = await permitStateOf(deps, campaignId, user);
     if (permit.status !== 'granted') throw new RealtimeError('CREATION_NOT_PERMITTED');
     if (!permit.rulesAccepted) throw new RealtimeError('CREATION_RULES_PENDING');
-    const row = await saveDraft(deps, campaignId, user.id, createDefaultCreationDraft(data));
+    // The GM's terms (24.09) shape the fresh draft: his method, fixed; his
+    // rank, already approved; his skill budget. A consent without terms (only
+    // ever written by hand) opens the draft the way it opened before.
+    const terms = user.role === ROLE_GM ? null : (permit.terms ?? null);
+    const fresh = createDefaultCreationDraft(data);
+    const row = await saveDraft(
+      deps,
+      campaignId,
+      user.id,
+      terms ? { ...fresh, ...draftTermsPatch(terms, data) } : fresh,
+    );
+    if (terms) {
+      await deps.ctx.prisma.characterDraft.update({
+        where: { id: row.id },
+        data: { statRankId: terms.statRankId },
+      });
+      row.statRankId = terms.statRankId;
+    }
     if (user.role !== ROLE_GM) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(row, deps);
   },
@@ -522,6 +585,71 @@ export const creationRollEvent = defineCreationEvent<
     await publishSpread(deps, campaignId, user.id, deps.ctx.cpred, role, next, rolls, result);
     if (!isGm) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(saved, deps);
+  },
+});
+
+/** The draft fields that carry the GM's terms (the rank lives in its own column). */
+function draftTermsPatch(
+  terms: CreationTerms,
+  data: ReturnType<typeof creationDataOf>,
+): Pick<CpredCreationDraft, 'method' | 'methodFixed' | 'skillPool'> {
+  return {
+    method: terms.method,
+    methodFixed: true,
+    skillPool: terms.skillPoints === data.skillPoints ? null : terms.skillPoints,
+  };
+}
+
+/**
+ * New terms for a player's draft (decyzja MG z 24.09: the GM may change them
+ * while the character is being built). A method change goes through the same
+ * `mergeCreationDraft` a player's switch used to — it drops what the other
+ * method cannot pay for, but never the dice — and the revision moves, so a
+ * write built on the old terms is refused instead of landing on the new ones.
+ * Skills already spent stay; the wizard shows the surplus or the shortfall.
+ */
+export const creationTermsEvent = defineCreationEvent<CreationTermsPayload, void>({
+  name: 'creation:terms',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const data = creationDataOf(deps.ctx.cpred);
+    const terms = readTerms(payload?.terms, deps);
+    if (!payload || typeof payload.draftId !== 'string' || !payload.draftId || !terms)
+      throw new RealtimeError('BAD_TERMS');
+    const row = await deps.ctx.prisma.characterDraft.findFirst({
+      where: { id: payload.draftId, campaignId },
+    });
+    if (!row) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const current = toDraftView(row, deps).draft;
+    let next: CpredCreationDraft | null = current;
+    if (terms.method !== current.method) {
+      const shopRules = await creationShopRules(deps, campaignId);
+      const lookup = await purchaseLookup(deps, campaignId, Object.keys(current.purchases));
+      next = mergeCreationDraft(
+        { ...current, methodFixed: false },
+        { method: terms.method },
+        data,
+        deps.ctx.cpred,
+        { lookup, rules: shopRules },
+      );
+      if (!next) throw new RealtimeError('BAD_TERMS');
+    }
+    next = { ...next, ...draftTermsPatch(terms, data) };
+    await deps.ctx.prisma.characterDraft.update({
+      where: { id: row.id },
+      data: {
+        data: JSON.stringify(next),
+        statRankId: terms.statRankId,
+        revision: { increment: 1 },
+      },
+    });
+    for (const peer of await deps.io.fetchSockets()) {
+      if (peer.data.user?.id === row.userId && peer.data.campaign?.id === campaignId) {
+        peer.emit('creation:terms-changed', { draftId: row.id });
+      }
+    }
+    await broadcastCreationRanks(deps, campaignId);
   },
 });
 
@@ -747,6 +875,8 @@ async function creationRankRows(
       characterName: view.draft.name.trim(),
       method: view.draft.method,
       rolledStats: CPRED_STAT_IDS.filter((id) => view.draft.statRolls[id] !== undefined),
+      skillPoints: creationSkillPool(creationDataOf(deps.ctx.cpred), view.draft),
+      methodFixed: view.draft.methodFixed,
       statRankId: view.rankApproved ? row.statRankId : null,
       // A Krawędziarz waits for nobody — only a pool can be pending.
       rankApproved: view.draft.method === 'complete' ? view.rankApproved : true,
@@ -800,6 +930,7 @@ async function creationPermitRows(
       userName: member.user.name,
       status: member.creationPermit === 'granted' ? ('granted' as const) : ('requested' as const),
       rulesAccepted: member.creationRulesAcceptedAt !== null,
+      terms: readTerms(member.creationTerms, deps),
     }))
     .sort(
       (a, b) =>

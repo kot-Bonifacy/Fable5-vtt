@@ -156,7 +156,9 @@ async function patch(socket: ClientSocket, body: Record<string, unknown>): Promi
 async function allowCreation(userId: string): Promise<void> {
   await built.prisma.campaignMember.updateMany({
     where: { userId },
-    data: { creationPermit: 'granted', creationRulesAcceptedAt: new Date() },
+    // No terms: the draft opens the way it did before 24.09, free to switch
+    // method — the cases below exercise the wizard, not the GM's terms.
+    data: { creationPermit: 'granted', creationRulesAcceptedAt: new Date(), creationTerms: null },
   });
 }
 
@@ -740,17 +742,69 @@ describe('kreator postaci', () => {
     expect(await refused).toEqual({ status: 'none', rulesAccepted: false, refused: true });
 
     await emitAck(vex, 'creation:request');
+    // Decyzja MG z 24.09: the consent carries the method, the rank and the
+    // skill budget, and a consent without valid terms is refused.
+    expect(refusal(await emitAck(gm, 'creation:permit', { userId: vexId, grant: true }))).toBe(
+      'BAD_TERMS',
+    );
+    const terms = { method: 'complete', statRankId: 'starting', skillPoints: 90 };
+    expect(
+      refusal(
+        await emitAck(gm, 'creation:permit', {
+          userId: vexId,
+          grant: true,
+          terms: { ...terms, skillPoints: 0 },
+        }),
+      ),
+    ).toBe('BAD_TERMS');
     const granted = waitFor<CreationPermitState>(vex, 'creation:permit-state');
-    expect((await emitAck(gm, 'creation:permit', { userId: vexId, grant: true })).ok).toBe(true);
-    expect(await granted).toEqual({ status: 'granted', rulesAccepted: false });
+    expect((await emitAck(gm, 'creation:permit', { userId: vexId, grant: true, terms })).ok).toBe(
+      true,
+    );
+    expect(await granted).toEqual({ status: 'granted', rulesAccepted: false, terms });
     expect(refusal(await emitAck(vex, 'creation:start'))).toBe('CREATION_RULES_PENDING');
 
     expect(data(await emitAck(vex, 'creation:accept-rules'), 'rules')).toEqual({
       status: 'granted',
       rulesAccepted: true,
+      terms,
     });
     const opened = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
     expect(opened.draft.roleId).toBeNull();
+    // The draft opens on the GM's terms: his method, fixed; his rank, approved.
+    expect(opened.draft.method).toBe('complete');
+    expect(opened.draft.methodFixed).toBe(true);
+    expect(opened.draft.skillPool).toBe(90);
+    expect(opened.rankApproved).toBe(true);
+    expect(opened.draft.statRankId).toBe('starting');
+    expect(refusal(await emitAck(vex, 'creation:patch', { patch: { method: 'edgerunner' } }))).toBe(
+      'INVALID_DATA',
+    );
+    expect(refusal(await emitAck(vex, 'creation:terms', { draftId: opened.id, terms }))).toBe(
+      'FORBIDDEN',
+    );
+
+    // The GM changes his mind while the character is being built.
+    const told = waitFor<{ draftId: string }>(vex, 'creation:terms-changed');
+    const synced = waitFor<CreationRankDraft[]>(gm, 'creation:ranks-sync');
+    expect(
+      (
+        await emitAck(gm, 'creation:terms', {
+          draftId: opened.id,
+          terms: { method: 'edgerunner', statRankId: 'minor-hero', skillPoints: 86 },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await told).draftId).toBe(opened.id);
+    expect((await synced).find((row) => row.id === opened.id)).toMatchObject({
+      method: 'edgerunner',
+      skillPoints: 86,
+      methodFixed: true,
+    });
+    const changed = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+    expect(changed.draft.method).toBe('edgerunner');
+    expect(changed.draft.skillPool).toBeNull();
+    expect(changed.revision).toBeGreaterThan(opened.revision);
     // A consent in use is ended only by discarding the draft.
     expect(refusal(await emitAck(gm, 'creation:permit', { userId: vexId, grant: false }))).toBe(
       'DRAFT_EXISTS',

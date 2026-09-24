@@ -9,6 +9,7 @@ import {
   clearRolledStats,
   creationChangeEffect,
   creationNextStatToRoll,
+  creationSkillPool,
   creationRolledStats,
   creationIssues,
   creationPreview,
@@ -1082,5 +1083,32 @@ describe('naprawa 3b — narzędzia Roli w koszyku', () => {
         (issue) => issue.field === 'purchases',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('warunki MG ze zgody (24.09)', () => {
+  it('counts the skill budget from the GM number, or from the book', () => {
+    const reg = registry();
+    const rules = data(reg);
+    expect(creationSkillPool(rules, draft())).toBe(rules.skillPoints);
+    const richer = finished({ skillPool: rules.skillPoints + 10 });
+    expect(creationSkillPool(rules, richer)).toBe(rules.skillPoints + 10);
+    const line = creationIssues(richer, rules, reg).find((x) => x.field === 'skills');
+    expect(line?.message).toContain(`z ${rules.skillPoints + 10}`);
+  });
+
+  it('keeps the method the GM chose and never takes the terms off a patch', () => {
+    const reg = registry();
+    const fixed = draft({ methodFixed: true, skillPool: 90 });
+    expect(mergeCreationDraft(fixed, { method: 'complete' }, data(reg), reg)).toBeNull();
+    expect(mergeCreationDraft(fixed, { method: 'edgerunner' }, data(reg), reg)?.method).toBe(
+      'edgerunner',
+    );
+    expect(mergeCreationDraft(draft(), { skillPool: 200 }, data(reg), reg)).toBeNull();
+    expect(mergeCreationDraft(draft(), { methodFixed: true }, data(reg), reg)).toBeNull();
+    const reread = parseCreationDraft(JSON.parse(JSON.stringify(fixed)), data(reg), reg);
+    expect(reread.skillPool).toBe(90);
+    expect(reread.methodFixed).toBe(true);
+    expect(parseCreationDraft({ skillPool: 9999 }, data(reg), reg).skillPool).toBeNull();
   });
 });

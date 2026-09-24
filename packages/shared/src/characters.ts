@@ -438,6 +438,10 @@ export interface CreationRankDraft {
   method: 'complete' | 'edgerunner';
   /** Stats of a Krawędziarz draft that already have their die. */
   rolledStats: string[];
+  /** The draft's skill budget — the GM's number or the book's 86 (24.09). */
+  skillPoints: number;
+  /** The GM chose the method with the consent; the player cannot switch it. */
+  methodFixed: boolean;
   /** The GM's pick; `null` until one is made (or when it no longer exists). */
   statRankId: string | null;
   /** False while the player waits — what the tab badge counts. */
@@ -461,8 +465,21 @@ export interface CreationRankDraft {
 export interface CreationPermitState {
   status: 'none' | 'requested' | 'granted';
   rulesAccepted: boolean;
+  /** What the GM set with the consent; null before it (or for an old consent). */
+  terms?: CreationTerms | null;
   /** Set on the push that answers a refusal, so the panel can say so once. */
   refused?: boolean;
+}
+
+/**
+ * What the GM decides with the consent (decyzja MG z 24.09): the method, the
+ * „Ranga Postaci" that pays for Kompletny Pakiet's stats, and the skill
+ * budget — the book's 86, or the GM's own number.
+ */
+export interface CreationTerms {
+  method: 'edgerunner' | 'complete';
+  statRankId: string;
+  skillPoints: number;
 }
 
 /** One player on the GM's list who asked for, or holds, a consent without a draft yet. */
@@ -471,12 +488,24 @@ export interface CreationPermitRow {
   userName: string;
   status: 'requested' | 'granted';
   rulesAccepted: boolean;
+  terms: CreationTerms | null;
 }
 
-/** Client → server `creation:permit` (GM only) — agree to, refuse or revoke a request. */
+/**
+ * Client → server `creation:permit` (GM only) — agree to (with the terms),
+ * refuse or revoke a request. Agreeing again to a consent not used yet
+ * rewrites its terms.
+ */
 export interface CreationPermitPayload {
   userId: string;
   grant: boolean;
+  terms?: CreationTerms;
+}
+
+/** Client → server `creation:terms` (GM only) — new terms for a player's draft. */
+export interface CreationTermsPayload {
+  draftId: string;
+  terms: CreationTerms;
 }
 
 export interface CreationDraftPeek {

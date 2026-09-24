@@ -109,6 +109,25 @@
   margin-top: 0.3rem;
 }
 
+/* Warunki zgody: metoda, ranga i pula umiejętności w jednym zawijanym wierszu. */
+.creation-terms {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.creation-terms-skills {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.creation-terms-skills input {
+  width: 4.5rem;
+}
+
 .creator-footer-hint {
   align-self: center;
 }

@@ -293,6 +293,8 @@ model CampaignMember {
   creationPermit          String?
   /// When the player clicked „Rozumiem, zaczynam" under the creation rules.
   creationRulesAcceptedAt DateTime?
+  /// The GM's terms with the consent, as JSON: method, rank, skill points.
+  creationTerms           String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
