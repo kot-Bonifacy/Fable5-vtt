@@ -103,9 +103,7 @@ export function CharacterPanel() {
     const name = newName.trim();
     if (name.length === 0) return;
     setError(null);
-    const ack = await createCharacter(
-      isGm ? { name, ownerId: newOwnerId === '' ? null : newOwnerId } : { name },
-    );
+    const ack = await createCharacter({ name, ownerId: newOwnerId === '' ? null : newOwnerId });
     if (!ack.ok) {
       setError(ackErrorText(ack.error));
       return;
@@ -373,7 +371,9 @@ export function CharacterPanel() {
 
       {/* Stage 25a. Two doors on purpose: the wizard for a character somebody
           will play, and the one-line form below for the mannequin a GM needs
-          on the map in five seconds. */}
+          on the map in five seconds. The form is the GM's alone: for a player
+          it was only a way round the wizard's point budgets, and the server
+          refuses `character:create` from players as well. */}
       {(() => {
         // Naprawa 3d: a draft on the server shows up here by name, so a player
         // back from F5 (or from another day) resumes instead of wondering
@@ -404,15 +404,15 @@ export function CharacterPanel() {
         );
       })()}
 
-      <form className="scene-editor-row character-create" onSubmit={(e) => void submitCreate(e)}>
-        <input
-          type="text"
-          maxLength={64}
-          placeholder="Imię nowej postaci"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-        />
-        {isGm && (
+      {isGm && (
+        <form className="scene-editor-row character-create" onSubmit={(e) => void submitCreate(e)}>
+          <input
+            type="text"
+            maxLength={64}
+            placeholder="Imię nowej postaci"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
           <select
             value={newOwnerId}
             onChange={(e) => setNewOwnerId(e.target.value)}
@@ -425,11 +425,11 @@ export function CharacterPanel() {
               </option>
             ))}
           </select>
-        )}
-        <button type="submit" className="small-button" disabled={newName.trim().length === 0}>
-          Utwórz
-        </button>
-      </form>
+          <button type="submit" className="small-button" disabled={newName.trim().length === 0}>
+            Utwórz
+          </button>
+        </form>
+      )}
 
       {error && <p className="auth-error">{error}</p>}
     </div>

@@ -99,14 +99,12 @@ export const characterCreateEvent = defineEvent<CharacterCreatePayload, Characte
     const name = sanitizeCharacterName(payload?.name);
     if (name === null) throw new RealtimeError('INVALID_NAME');
 
-    // Players always own what they create; only the GM assigns freely (NPC = null).
-    let ownerId: string | null;
-    if (user.role === ROLE_GM) {
-      ownerId = payload?.ownerId ?? null;
-      await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
-    } else {
-      ownerId = user.id;
-    }
+    // GM only: the one-line blank sheet is the GM's quick NPC. A player's
+    // character goes through the creator (`creation:*`), which holds the
+    // rulebook's point budgets — a blank sheet would sidestep them.
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    const ownerId = payload?.ownerId ?? null;
+    await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
 
     const character = await deps.ctx.prisma.character.create({
       data: {

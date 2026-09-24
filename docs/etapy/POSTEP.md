@@ -130,6 +130,21 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 24.09 (piąta) — szybkie tworzenie postaci tylko dla MG
+
+**Zlecenie MG:** po co graczowi w zakładce „Postacie” pole „Imię nowej postaci” i „Utwórz”,
+skoro postać tworzy kreator. Okazało się, że formularz z etapu 07 był u gracza jedynie
+obejściem kreatora: pusta karta z domyślnymi Cechami, bez pilnowania budżetów punktów.
+Rozstrzygnięcie MG: **formularz tylko u MG, a serwer odrzuca go od gracza**.
+
+**Wdrożone:** `CharacterPanel` pokazuje formularz tylko przy `isGm`. `character:create` od
+gracza kończy się `FORBIDDEN`, bo postać gracza powstaje wyłącznie przez `creation:*`
+(import archiwum i postacie zakładane z żetonów to i tak ścieżki MG). Test „a player creating
+a character always owns it” zastąpiony testem odmowy.
+
+**Weryfikacja:** 1224 testy serwera, tsc klienta i serwera, ESLint, Prettier. UI nieobejrzane
+w przeglądarce (zmiana to sam warunek `isGm`).
+
 ### Sesja 24.09 (czwarta) — dzienny papier w tonie tapety logowania
 
 **Zlecenie MG:** dzień „zbyt jednolity (kremowy) i bardziej żółty niż okno logowania”, ma
@@ -150,24 +165,3 @@ zmian bajt w bajt. Opis w `docs/assety-chrom.md` (sekcja 24.09) i tabeli źróde
 
 **Weryfikacja:** 281 testów klienta, Prettier; obejrzane w Chrome jako gracz (czat, pasek
 postaci, karta, ustawienia). **Panel MG i okna MG nieobejrzane** — do oględzin ręką MG.
-
-### Sesja 24.09 (trzecia) — porządki w ustawieniach dźwięku
-
-**Zlecenie MG:** ograniczyć ustawienia i opisy efektów dźwiękowych, usunąć rządek próbek,
-uporządkować; po pierwszym podejściu (trzy suwaki + pięć zdarzeń) — „wciąż za dużo opcji”.
-Rozstrzygnięcia MG: **jeden suwak „Głośność”** w sekcji „Dźwięk” (kości, kubek, mapa,
-powiadomienia), **muzyka i otoczenie zostają osobno** w oknie muzyki, **bez przycisków
-odsłuchu**, opis tylko w dymku (`title`), **bez przełączników zdarzeń i kroków**, **efekty mapy
-odłączone od „Animacji 3D”**.
-
-**Wdrożone:** `settingsStore` — jedno `soundVolume` (klucz `vtt.sound.volume`, domyślnie 50)
-zamiast `diceVolume`, `cupVolume`, `sfxVolume`, `notificationVolume`, `notifications`
-i `stepSounds` (stare klucze localStorage po prostu przestają być czytane). Proporcje w kodzie:
-`SFX_GAIN` w `sfx.ts`, sygnał powiadomień `× 0.72` w `cup-notification.ts` (ta sama głośność co
-dawne 60 × 0.6). `notifyGame` gra każde zdarzenie; `NOTIFICATION_LABELS` zastąpiony typem.
-Usunięte `SFX_SAMPLES` i wszystkie funkcje `audition*`. „Kości” w oknie łączą animację 3D ze
-skórkami. Umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca. Okno muzyki: gracz
-widzi same suwaki „Głośność otoczenia” / „Głośność muzyki”; „u Ciebie” i wyjaśnienia (w dymku)
-tylko u MG, bo tylko on ma obok „Głośność dla stołu”.
-
-**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier; okno obejrzane w Chrome jako MG.

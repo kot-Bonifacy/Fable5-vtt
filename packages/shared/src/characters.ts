@@ -57,10 +57,13 @@ export interface CharacterInjuryPayload {
   injuryId: string;
 }
 
-/** Client → server payload of `character:create`. */
+/**
+ * Client → server payload of `character:create` — GM only (a blank sheet for a
+ * quick NPC); a player's character goes through the creator (`creation:*`).
+ */
 export interface CharacterCreatePayload {
   name: string;
-  /** GM only; players always own the characters they create. */
+  /** `null` or absent: an NPC. */
   ownerId?: string | null;
 }
 

@@ -253,15 +253,10 @@ describe('characters', () => {
     expect(vexSync.characters.map((c) => c.name)).toEqual(['Forty']);
   });
 
-  it('a player creating a character always owns it', async () => {
-    const ack = await emitAck<CharacterView>(rogue, 'character:create', {
-      name: 'Sznur',
-      ownerId: vexId, // ignored for players
-    });
-    expect(ack.ok).toBe(true);
-    if (!ack.ok || !ack.data) throw new Error('create failed');
-    expect(ack.data.ownerId).toBe(rogueId);
-    await emitAck(rogue, 'character:delete', { characterId: ack.data.id });
+  it('a player cannot create a blank character — theirs goes through the creator', async () => {
+    const ack = await emitAck<CharacterView>(rogue, 'character:create', { name: 'Sznur' });
+    expect(ack).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect((await roundTrip(rogue)).characters).toHaveLength(0);
   });
 
   it('owner edits propagate live to the GM, with derived HP recomputed', async () => {
