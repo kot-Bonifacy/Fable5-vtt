@@ -10,8 +10,9 @@ import { useSettingsStore } from './stores/settingsStore.js';
  * to do so break anything. A gunshot that cannot play because the browser has
  * not seen a click yet is a gunshot nobody misses.
  *
- * One dial governs it: **the SFX slider** (its own, next to dice — a table
- * that wants rattling dice and a silent map is a table that exists). Until
+ * One dial governs it: **the sound slider**, shared with dice, cup and
+ * notifications since 24.09 (the GM found separate sliders too many options);
+ * `SFX_GAIN` below is what keeps the map in proportion to the rest. Until
  * 24.09 „Animacja 3D" off silenced the map too, but the map's pictures never
  * obeyed that switch, so it only took the sound away without saying so.
  */
@@ -99,7 +100,7 @@ function poolFor(sound: MapFxSound): { elements: HTMLAudioElement[]; next: numbe
 
 /** Is the map allowed to make noise at all right now? */
 function sfxEnabled(): boolean {
-  return useSettingsStore.getState().sfxVolume > 0;
+  return useSettingsStore.getState().soundVolume > 0;
 }
 
 /**
@@ -112,7 +113,7 @@ function sfxEnabled(): boolean {
  */
 export function playFxSound(sound: MapFxSound, options?: { pitch?: number; gain?: number }): void {
   if (!sfxEnabled()) return;
-  const volume = useSettingsStore.getState().sfxVolume / 100;
+  const volume = useSettingsStore.getState().soundVolume / 100;
   const pool = poolFor(sound);
   const audio = pool.elements[pool.next % pool.elements.length]!;
   pool.next += 1;

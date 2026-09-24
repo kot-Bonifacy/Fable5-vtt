@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { DiceSkinId } from '@vtt/shared';
 import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
-import type { NotificationKind } from '../game-notifications.js';
 
 /**
  * Ustawienia stołu widziane oczami jednego użytkownika (etap 27d).
@@ -12,25 +11,19 @@ import type { NotificationKind } from '../game-notifications.js';
  * wiarygodne miejsce jest na serwerze (kolumna `User.diceSkin`). Tutaj leży
  * kopia, żeby okno ustawień miało co pokazać przed odpowiedzią serwera.
  *
- * Osobne głośności: kości (stukot o stół i grzechot kubka — jeden suwak od
- * 24.09), mapa (strzały, wybuchy, kroki — etap 27i) i powiadomienia. Zero
- * wycisza każdą z osobna — stół, który chce grzechoczących kości i cichej mapy,
- * istnieje. Żaden dźwięk nie zależy od przełącznika animacji (od 24.09).
+ * Efekty dźwiękowe mają **jeden suwak** (24.09, decyzja MG: „wciąż za dużo
+ * opcji"): kości, kubek, mapa i powiadomienia. Proporcje między nimi siedzą
+ * w kodzie (`SFX_GAIN`, wzmocnienie sygnału w `cup-notification.ts`), nie
+ * u gracza. Muzyka i otoczenie sceny mają własne suwaki w oknie muzyki.
  */
 export interface SettingsState {
   /** Wyłączone = rzut nie toczy kości, karta czatu pojawia się natychmiast. */
   animate: boolean;
-  /** 0–100, uderzenia kości o stół i grzechot kubka podczas potrząsania. */
-  diceVolume: number;
-  /** 0–100, efekty mapy: strzały, wybuchy, przeładowanie, kroki figur (etap 27i). */
-  sfxVolume: number;
-  notificationVolume: number;
-  notifications: Record<NotificationKind, boolean>;
-  setNotification: (kind: NotificationKind, enabled: boolean) => void;
+  /** 0–100, wszystkie efekty: kości, kubek, mapa, powiadomienia. Zero wycisza. */
+  soundVolume: number;
   ambientVolume: number;
   setAmbientVolume: (volume: number) => void;
   musicVolume: number;
-  setNotificationVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
   /**
    * Pełny ekran przy logowaniu i po odświeżeniu strony (12.09). To tylko
@@ -44,8 +37,7 @@ export interface SettingsState {
   open: boolean;
 
   setAnimate: (animate: boolean) => void;
-  setDiceVolume: (volume: number) => void;
-  setSfxVolume: (volume: number) => void;
+  setSoundVolume: (volume: number) => void;
   /** Sam zapis — wejście i wyjście woła `setFullscreenPreference` z `fullscreen.ts`. */
   setFullscreen: (on: boolean) => void;
   /** Ustawia kopię lokalną; wysyłką na serwer zajmuje się `socket.ts`. */
@@ -55,8 +47,7 @@ export interface SettingsState {
 }
 
 const ANIMATE_KEY = 'vtt.dice.animate';
-const DICE_VOLUME_KEY = 'vtt.dice.volume';
-const SFX_VOLUME_KEY = 'vtt.sfx.volume';
+const SOUND_VOLUME_KEY = 'vtt.sound.volume';
 const FULLSCREEN_KEY = 'vtt.view.fullscreen';
 const SKIN_KEY = 'vtt.dice.skin';
 
@@ -101,20 +92,7 @@ function write(key: string, value: string): void {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   animate: readFlag(ANIMATE_KEY, true),
-  diceVolume: readVolume(DICE_VOLUME_KEY, 50),
-  sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
-  notificationVolume: readVolume('vtt.notification.volume', 60),
-  notifications: {
-    turn: readFlag('vtt.notification.turn', true),
-    whisper: readFlag('vtt.notification.whisper', true),
-    request: readFlag('vtt.notification.request', true),
-    handout: readFlag('vtt.notification.handout', true),
-    inventory: readFlag('vtt.notification.inventory', true),
-  },
-  setNotification: (kind, enabled) => {
-    write(`vtt.notification.${kind}`, enabled ? '1' : '0');
-    set({ notifications: { ...get().notifications, [kind]: enabled } });
-  },
+  soundVolume: readVolume(SOUND_VOLUME_KEY, 50),
   ambientVolume: readVolume('vtt.ambience.volume', 35),
   setAmbientVolume: (volume) => {
     const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 35;
@@ -122,11 +100,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ ambientVolume: value });
   },
   musicVolume: readVolume('vtt.music.volume', 40),
-  setNotificationVolume: (volume) => {
-    const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 60;
-    write('vtt.notification.volume', String(value));
-    set({ notificationVolume: value });
-  },
   setMusicVolume: (volume) => {
     const value = Number.isFinite(volume) ? Math.min(100, Math.max(0, Math.round(volume))) : 40;
     write('vtt.music.volume', String(value));
@@ -141,16 +114,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ animate });
   },
 
-  setDiceVolume: (volume) => {
+  setSoundVolume: (volume) => {
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
-    write(DICE_VOLUME_KEY, String(clamped));
-    set({ diceVolume: clamped });
-  },
-
-  setSfxVolume: (volume) => {
-    const clamped = Math.min(100, Math.max(0, Math.round(volume)));
-    write(SFX_VOLUME_KEY, String(clamped));
-    set({ sfxVolume: clamped });
+    write(SOUND_VOLUME_KEY, String(clamped));
+    set({ soundVolume: clamped });
   },
 
   setFullscreen: (on) => {

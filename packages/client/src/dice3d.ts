@@ -172,7 +172,7 @@ async function ensureBox(): Promise<DiceBoxClass | null> {
         assetPath: '/dice/',
         theme_customColorset: own.colorset,
         sounds: true,
-        volume: useSettingsStore.getState().diceVolume,
+        volume: useSettingsStore.getState().soundVolume,
         light_intensity: 0.9,
         shadows: true,
       });
@@ -212,7 +212,7 @@ async function applyColorset(dice: DiceBoxClass, colorset: DiceColorset): Promis
 
 /** Volume follows the slider live — the box reads it at playback time. */
 function applyVolume(dice: DiceBoxClass): void {
-  const volume = useSettingsStore.getState().diceVolume;
+  const volume = useSettingsStore.getState().soundVolume;
   dice.volume = volume;
   dice.sounds = volume > 0;
 }

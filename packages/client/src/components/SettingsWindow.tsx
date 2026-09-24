@@ -6,7 +6,6 @@ import {
   setFullscreenPreference,
   useFullscreenActive,
 } from '../fullscreen.js';
-import { NOTIFICATION_LABELS, type NotificationKind } from '../game-notifications.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
@@ -27,19 +26,13 @@ import { WindowResizeGrip } from './WindowResizeGrip.js';
  * skórka kości jedzie na serwer, bo przy stole widać kości rzucającego.
  */
 export function SettingsWindow() {
-  const notifications = useSettingsStore((s) => s.notifications);
-  const setNotification = useSettingsStore((s) => s.setNotification);
-  const notificationVolume = useSettingsStore((s) => s.notificationVolume);
-  const setNotificationVolume = useSettingsStore((s) => s.setNotificationVolume);
   const open = useSettingsStore((s) => s.open);
   const setOpen = useSettingsStore((s) => s.setOpen);
 
   const animate = useSettingsStore((s) => s.animate);
   const setAnimate = useSettingsStore((s) => s.setAnimate);
-  const diceVolume = useSettingsStore((s) => s.diceVolume);
-  const setDiceVolume = useSettingsStore((s) => s.setDiceVolume);
-  const sfxVolume = useSettingsStore((s) => s.sfxVolume);
-  const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
+  const soundVolume = useSettingsStore((s) => s.soundVolume);
+  const setSoundVolume = useSettingsStore((s) => s.setSoundVolume);
   const skin = useSettingsStore((s) => s.skin);
   const fullscreen = useSettingsStore((s) => s.fullscreen);
   const fullscreenActive = useFullscreenActive();
@@ -85,36 +78,21 @@ export function SettingsWindow() {
       <div className="settings-window-body">
         <section className="settings-group">
           <h3 className="settings-group-title">Dźwięk</h3>
-          <VolumeRow
-            label="Efekty mapy"
-            hint="Strzały, wybuchy, przeładowanie i kroki figur na mapie. Zero wycisza."
-            value={sfxVolume}
-            onChange={setSfxVolume}
-          />
-          <VolumeRow
-            label="Kości"
-            hint="Stukot kości o stół i grzechot kubka. Zero wycisza."
-            value={diceVolume}
-            onChange={setDiceVolume}
-          />
-          <VolumeRow
-            label="Powiadomienia"
-            hint="Sygnał gotowego kubka i zdarzeń zaznaczonych niżej. Zero wycisza."
-            value={notificationVolume}
-            onChange={setNotificationVolume}
-          />
-          <div className="settings-checks" role="group" aria-label="Zdarzenia z sygnałem">
-            {(Object.keys(NOTIFICATION_LABELS) as NotificationKind[]).map((kind) => (
-              <label className="settings-check" key={kind}>
-                <input
-                  type="checkbox"
-                  checked={notifications[kind]}
-                  onChange={(e) => setNotification(kind, e.target.checked)}
-                />
-                {NOTIFICATION_LABELS[kind]}
-              </label>
-            ))}
-          </div>
+          <label
+            className="settings-row"
+            title="Kości, kubek, efekty na mapie i powiadomienia. Zero wycisza. Muzyka i otoczenie mają własne suwaki w oknie muzyki."
+          >
+            <span className="settings-label">Głośność</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={soundVolume}
+              onChange={(event) => setSoundVolume(Number(event.target.value))}
+            />
+            <span className="settings-value">{soundVolume}</span>
+          </label>
         </section>
 
         <section className="settings-group">
@@ -216,31 +194,5 @@ export function SettingsWindow() {
       </div>
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
-  );
-}
-
-/**
- * Suwak głośności z opisem w dymku (24.09). Wyjaśnienie siedzi w `title`, nie
- * pod suwakiem — MG chciał sekcji dźwięku bez ściany tekstu.
- */
-function VolumeRow(props: {
-  label: string;
-  hint: string;
-  value: number;
-  onChange: (volume: number) => void;
-}) {
-  return (
-    <label className="settings-row" title={props.hint}>
-      <span className="settings-label">{props.label}</span>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        step={5}
-        value={props.value}
-        onChange={(event) => props.onChange(Number(event.target.value))}
-      />
-      <span className="settings-value">{props.value}</span>
-    </label>
   );
 }

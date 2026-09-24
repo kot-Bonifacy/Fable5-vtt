@@ -8,7 +8,9 @@ const mock = vi.hoisted(() => ({
   animate: true,
 }));
 vi.mock('./stores/settingsStore.js', () => ({
-  useSettingsStore: { getState: () => ({ animate: mock.animate, skin: 'classic', diceVolume: 0 }) },
+  useSettingsStore: {
+    getState: () => ({ animate: mock.animate, skin: 'classic', soundVolume: 0 }),
+  },
 }));
 vi.mock('@3d-dice/dice-box-threejs', () => ({
   default: class {

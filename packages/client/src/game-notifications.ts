@@ -1,16 +1,9 @@
 import { ROLE_GM, type ChatMessageView, type CombatView, type SessionUser } from '@vtt/shared';
 import { playNaturalNotification } from './cup-notification.js';
-import { useSettingsStore } from './stores/settingsStore.js';
 import { useChatStore } from './stores/chatStore.js';
 
-export const NOTIFICATION_LABELS = {
-  turn: 'Początek Twojej tury',
-  whisper: 'Otrzymany szept',
-  request: 'Prośba o Test (MG)',
-  handout: 'Otrzymany materiał',
-  inventory: 'Przedmiot do przyjęcia',
-} as const;
-export type NotificationKind = keyof typeof NOTIFICATION_LABELS;
+/** Each kind names its own sample in `public/notifications/`. No per-kind switch since 24.09. */
+export type NotificationKind = 'turn' | 'whisper' | 'request' | 'handout' | 'inventory';
 export function chatNotification(
   message: ChatMessageView,
   user: Pick<SessionUser, 'id' | 'role'>,
@@ -52,12 +45,8 @@ export function startsOwnTurn(
 }
 export function notifyGame(kind: NotificationKind) {
   const campaignId = useChatStore.getState().campaign?.id;
-  if (useSettingsStore.getState().notifications[kind])
-    void playNaturalNotification(
-      kind,
-      () =>
-        useSettingsStore.getState().notifications[kind] &&
-        useChatStore.getState().synced &&
-        useChatStore.getState().campaign?.id === campaignId,
-    );
+  void playNaturalNotification(
+    kind,
+    () => useChatStore.getState().synced && useChatStore.getState().campaign?.id === campaignId,
+  );
 }

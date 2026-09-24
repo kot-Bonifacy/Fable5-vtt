@@ -29,7 +29,7 @@ export async function playNaturalNotification(
   file: string,
   stillCurrent: () => boolean = () => true,
 ) {
-  const volume = useSettingsStore.getState().notificationVolume / 100;
+  const volume = useSettingsStore.getState().soundVolume / 100;
   if (!volume) return;
   try {
     const ctx = audioContext();
@@ -47,9 +47,11 @@ export async function playNaturalNotification(
       });
     samples.set(file, sample);
     const buffer = await sample;
-    if (!stillCurrent() || !useSettingsStore.getState().notificationVolume) return;
+    if (!stillCurrent() || !useSettingsStore.getState().soundVolume) return;
     const gain = ctx.createGain();
-    gain.gain.value = volume * 0.6;
+    // 0.72, not 0.6: the signal had its own slider defaulting to 60 until 24.09,
+    // and the shared one defaults to 50 — same loudness out of the box.
+    gain.gain.value = volume * 0.72;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(gain).connect(ctx.destination);

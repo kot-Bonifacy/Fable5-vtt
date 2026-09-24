@@ -1,7 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { ROLE_GM, ROLE_PLAYER, type ChatMessageView } from '@vtt/shared';
 import { chatNotification, notifyGame, startsOwnTurn } from './game-notifications.js';
-import { useSettingsStore } from './stores/settingsStore.js';
 import { playNaturalNotification } from './cup-notification.js';
 vi.mock('./cup-notification.js', () => ({
   playNaturalNotification: vi.fn(),
@@ -89,14 +88,9 @@ it('turn cue ignores action updates, spectators and the pre-combat round', () =>
   expect(startsOwnTurn(null, turn, gm.id)).toBe(false);
   expect(startsOwnTurn(turn, null, user.id)).toBe(false);
 });
-it('all new cues default on, and each can be muted independently', () => {
-  expect(Object.values(useSettingsStore.getState().notifications).every(Boolean)).toBe(true);
+it('every cue plays — there are no per-event switches since 24.09', () => {
+  vi.mocked(playNaturalNotification).mockClear();
   notifyGame('turn');
-  expect(playNaturalNotification).toHaveBeenCalledTimes(1);
-  useSettingsStore.getState().setNotification('turn', false);
-  notifyGame('turn');
-  expect(playNaturalNotification).toHaveBeenCalledTimes(1);
   notifyGame('whisper');
   expect(playNaturalNotification).toHaveBeenCalledTimes(2);
-  useSettingsStore.getState().setNotification('turn', true);
 });

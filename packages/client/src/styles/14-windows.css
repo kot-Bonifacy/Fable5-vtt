@@ -562,23 +562,6 @@
   color: var(--text-dim);
 }
 
-/* Zdarzenia z sygnałem (24.09): dwie kolumny pod suwakiem powiadomień zamiast
-   pięciu wierszy z guzikiem „Posłuchaj" przy każdym. */
-.settings-checks {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: 0.15rem 0.6rem;
-  padding: 0.2rem 0 0;
-}
-
-.settings-check {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
 /* Rządek guzików sterowania muzyką (okno muzyki). */
 .settings-samples {
   display: flex;

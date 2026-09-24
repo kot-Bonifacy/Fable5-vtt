@@ -132,17 +132,19 @@ Starsze — w całości w `archiwum/dziennik-sesji.md`.
 ### Sesja 24.09 (trzecia) — porządki w ustawieniach dźwięku
 
 **Zlecenie MG:** ograniczyć ustawienia i opisy efektów dźwiękowych, usunąć rządek próbek,
-uporządkować. Rozstrzygnięcia MG: **jedna sekcja „Dźwięk”** w ⚙ Ustawieniach (muzyka i otoczenie
-zostają w oknie muzyki), **wszystkie przyciski odsłuchu precz**, opisy tylko w dymku (`title`),
-**kości + kubek jednym suwakiem**, **efekty mapy odłączone od „Animacji 3D”**, **bez przełącznika
-kroków**.
+uporządkować; po pierwszym podejściu (trzy suwaki + pięć zdarzeń) — „wciąż za dużo opcji”.
+Rozstrzygnięcia MG: **jeden suwak „Głośność”** w sekcji „Dźwięk” (kości, kubek, mapa,
+powiadomienia), **muzyka i otoczenie zostają osobno** w oknie muzyki, **bez przycisków
+odsłuchu**, opis tylko w dymku (`title`), **bez przełączników zdarzeń i kroków**, **efekty mapy
+odłączone od „Animacji 3D”**.
 
-**Wdrożone:** `SettingsWindow` — sekcja „Dźwięk” (Efekty mapy, Kości, Powiadomienia + zdarzenia
-w dwóch kolumnach, `VolumeRow`), „Kości” łączy animację 3D ze skórkami. Usunięte: `SFX_SAMPLES`,
-`auditionFxSound`, `auditionCupNotification`, `auditionNotification`, `cupVolume`, `stepSounds`
-(klucze `vtt.cup.volume` i `vtt.sfx.steps` w localStorage po prostu przestają być czytane);
-grzechot kubka bierze `diceVolume`; `sfxEnabled` patrzy tylko na suwak. `sfx.test.ts` bez
-testu przycisków odsłuchu; umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca.
+**Wdrożone:** `settingsStore` — jedno `soundVolume` (klucz `vtt.sound.volume`, domyślnie 50)
+zamiast `diceVolume`, `cupVolume`, `sfxVolume`, `notificationVolume`, `notifications`
+i `stepSounds` (stare klucze localStorage po prostu przestają być czytane). Proporcje w kodzie:
+`SFX_GAIN` w `sfx.ts`, sygnał powiadomień `× 0.72` w `cup-notification.ts` (ta sama głośność co
+dawne 60 × 0.6). `notifyGame` gra każde zdarzenie; `NOTIFICATION_LABELS` zastąpiony typem.
+Usunięte `SFX_SAMPLES` i wszystkie funkcje `audition*`. „Kości” w oknie łączą animację 3D ze
+skórkami. Umowa „Nowa próbka dźwiękowa mapy” w `mapa` — cztery miejsca.
 
 **Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier; okno obejrzane w Chrome jako MG.
 
