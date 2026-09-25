@@ -91,7 +91,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2231** w `shared`, **1228** na serwerze, **286** u klienta,
+**Testy na koniec ostatniej sesji:** **2232** w `shared`, **1228** na serwerze, **286** u klienta,
 **59** w gatewayu — zielone (25.09, piętnasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -150,12 +150,15 @@ i **dźwięk dla każdej sprawy** (bez powiadomień systemowych); baner **w lewy
 w nowej kolumnie `.map-corner` nad dokiem handli, `watchGmAttention` w `socket.ts` (kafel i dźwięk
 tylko z pushy — F5 milczy), `data-attention` na pięciu rodzajach wierszy, przewinięcie z błyskiem
 w `SidePanel`. Prośba o Test dzwoni teraz stąd, nie z `chatNotification`. Baner: `portraitBannerPlacement`
-w `shared/portrait-crop.ts`; bez własnego kadru baner jak dotąd. Trzy umowy w `ui`.
+w `shared/portrait-crop.ts`. **Poprawka po uwadze MG („ucięte głowy”):** baner trzyma się góry —
+górna krawędź krążka żetonu u góry banera, portret bez kadru `object-position: 50% 0%` (było 22 %).
+Trzy umowy w `ui`.
 
-**Weryfikacja:** klient 286, `shared` 2231, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
+**Weryfikacja:** klient 286, `shared` 2232, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
 w Chromium (MG) i Firefoksie (MG), gracz `Tester` na „Oględzinach 12.09” — prośba o zgodę i o Test,
 „Przejdź” do obu, F5 bez kafli, wycofanie zeruje znacznik i tytuł. Baner obejrzany na `avatar9`
-podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu). Dźwięku nie słuchano — ścieżka
+podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu); po poprawce — Franc i Portos
+z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Dźwięku nie słuchano — ścieżka
 `notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.
 
 ### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony

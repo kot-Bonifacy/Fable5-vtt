@@ -145,10 +145,12 @@ export function portraitCropPlacement(
 export const PORTRAIT_BANNER_ZOOM_OUT = 1.5;
 
 /**
- * Na jakiej wysokości banera siada punkt kadru. Nie na środku: dolną część
- * kadru przykrywa podpis (imię, Rola, PW), więc twarz idzie nad niego.
+ * Na jakiej wysokości banera siada górna krawędź krążka żetonu (poprawka MG
+ * z 25.09). Baner trzyma się góry kadru, a nie jego środka: przy wąskim
+ * portrecie skala „pokryj ramkę” powiększa krążek ponad wysokość banera,
+ * a środek na 40 % ucinał wtedy czubek głowy.
  */
-export const PORTRAIT_BANNER_FOCUS_Y = 0.4;
+export const PORTRAIT_BANNER_TOP = 0.02;
 
 /**
  * Jak ułożyć obraz w banerze, wszystko w ułamkach ramki: `width` i `left`
@@ -168,8 +170,9 @@ export interface PortraitBannerPlacement {
  * `1 / PORTRAIT_BANNER_ZOOM_OUT` wysokości — ale nigdy mniej niż „obraz pokrywa
  * baner”, bo pusty pas nad głową wyglądałby w panelu jak zepsuty plik (na
  * mapie zamalowuje go tło żetonu, tu nie ma czym). Położenie: punkt kadru na
- * środku szerokości i na `PORTRAIT_BANNER_FOCUS_Y` wysokości, dosunięty do
- * krawędzi, jeśli inaczej ramka wyjechałaby poza obraz.
+ * środku szerokości, a górna krawędź krążka na `PORTRAIT_BANNER_TOP` wysokości
+ * — to, co MG ujął w krążku, zaczyna się u góry banera, a podpis przykrywa
+ * najwyżej ramiona. Przy krawędzi obrazu kadr się dosuwa.
  *
  * `aspect` to wysokość ramki przez szerokość (baner 4:3 → 0,75).
  */
@@ -187,11 +190,14 @@ export function portraitBannerPlacement(
   );
   const width = image.width * scale;
   const height = (image.height * scale) / aspect;
+  // Promień krążka w ułamkach wysokości obrazu: krążek żetonu obejmuje
+  // krótszy bok obrazu podzielony przez przybliżenie.
+  const radius = Math.min(image.width, image.height) / safe.zoom / 2 / image.height;
   return {
     width,
     height,
     left: clamp(0.5 - safe.x * width, 1 - width, 0),
-    top: clamp(PORTRAIT_BANNER_FOCUS_Y - safe.y * height, 1 - height, 0),
+    top: clamp(PORTRAIT_BANNER_TOP - (safe.y - radius) * height, 1 - height, 0),
   };
 }
 

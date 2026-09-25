@@ -898,7 +898,9 @@ przełącza zakładkę i po dwóch klatkach przewija do `[data-attention]` z bł
 wierszu i — jeśli przychodzi nowym zdarzeniem — `watchGmAttention` wokół jego obsługi.
 
 **Kadr portretu w banerze lewego panelu (25.09, zlecenie MG).** Kadr robiony pod żeton trafia też do
-banera 4:3: punkt kadru na środku szerokości i na 40 % wysokości (niżej leży podpis), skala taka,
+banera 4:3: punkt kadru na środku szerokości, a **górna krawędź krążka żetonu u góry banera** (poprawka
+MG z 25.09 — pierwsza wersja stawiała punkt kadru na 40 % wysokości i ucinała czubki głów; portret
+bez kadru trzyma się góry grafiki, `object-position: 50% 0%`, zamiast 22 %), skala taka,
 że to, co krążek pokazuje na całej średnicy, zajmuje 2/3 wysokości banera (decyzja MG: „szerzej,
 więcej postaci”) — ale nigdy mniejsza niż pokrycie ramki, więc przy wąskim portrecie bez
 przybliżenia baner wychodzi tak szeroki jak sam obraz. Przy krawędzi obrazu kadr się dosuwa zamiast

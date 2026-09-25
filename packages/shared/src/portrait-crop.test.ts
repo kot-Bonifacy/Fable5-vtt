@@ -141,15 +141,19 @@ describe('kadr z drutu', () => {
 describe('portraitBannerPlacement — kadr w banerze lewego panelu (25.09)', () => {
   const BANNER = 0.75;
 
-  it('bez przybliżenia obraz pokrywa baner, a twarz z góry kadru stoi nad podpisem', () => {
+  it('bez przybliżenia obraz pokrywa baner, a kadr z góry obrazu stoi u góry banera', () => {
     expect(portraitBannerPlacement({ x: 0.5, y: 0.2, zoom: 1 }, TALL, BANNER)).toEqual({
       width: 1,
       height: 2,
       left: 0,
       top: 0,
     });
+  });
+
+  it('górna krawędź krążka żetonu siada u góry banera — głowa nie jest ucięta', () => {
+    // Krążek przy zoomie 1 obejmuje 800 px, czyli od 1/6 do 5/6 wysokości obrazu.
     const middle = portraitBannerPlacement({ x: 0.5, y: 0.5, zoom: 1 }, TALL, BANNER);
-    expect(middle.top).toBeCloseTo(-0.6);
+    expect(middle.top + (1 / 6) * middle.height).toBeCloseTo(0.02);
   });
 
   it('krążek żetonu zajmuje w banerze dwie trzecie wysokości — półtora raza szerzej', () => {
@@ -159,7 +163,8 @@ describe('portraitBannerPlacement — kadr w banerze lewego panelu (25.09)', () 
     // Krążek przy zoomie 4 pokazuje 200 px obrazu; w banerze to 200 / 1200 wysokości obrazu.
     expect((place.height * 200) / 1200).toBeCloseTo(2 / 3);
     expect(place.left).toBeCloseTo(-0.5);
-    expect(place.top).toBeCloseTo(-0.4);
+    // Górna krawędź krążka: 0,2 − 100/1200 wysokości obrazu.
+    expect(place.top + (0.2 - 100 / 1200) * place.height).toBeCloseTo(0.02);
   });
 
   it('dosuwa kadr przy krawędzi obrazu, zamiast odsłaniać pusty pas', () => {

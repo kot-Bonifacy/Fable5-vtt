@@ -331,7 +331,9 @@
 .hud-portrait-frame .hud-portrait {
   position: absolute;
   inset: 0;
-  object-position: 50% 22%;
+  /* Góra grafiki (poprawka MG z 25.09): 22 % ucinało czubek głowy na
+     portretach w pionie, a dół banera i tak przykrywa podpis. */
+  object-position: 50% 0%;
   clip-path: none;
 }
 
