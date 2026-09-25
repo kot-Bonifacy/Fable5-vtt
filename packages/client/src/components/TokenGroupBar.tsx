@@ -97,7 +97,7 @@ export function TokenGroupBar() {
       window.confirm(
         withCards.length === 1
           ? `Usunąć też kartę „${figureCardName(withCards[0]!)}”?`
-          : `Usunąć też ${withCards.length} kart tych figur? Zostaną w kampanii, jeśli odmówisz.`,
+          : `Usunąć też ${plural(withCards.length, 'kartę', 'karty', 'kart')} tych figur? Zostaną w kampanii, jeśli odmówisz.`,
       );
     const doomed = new Set(withCards.map((token) => token.id));
     await apply(
