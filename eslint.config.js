@@ -12,6 +12,7 @@ export default tseslint.config(
       'ai-gateway/**',
       '**/src/generated/**',
       '**/.venv/**',
+      '.playwright-mcp/**',
     ],
   },
   js.configs.recommended,

@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "playwright-firefox": {
+      "command": "node",
+      "args": [
+        "node_modules/@playwright/mcp/cli.js",
+        "--browser",
+        "firefox",
+        "--caps",
+        "vision",
+        "--user-data-dir",
+        ".playwright-mcp/profile-firefox",
+        "--output-dir",
+        ".playwright-mcp/output",
+        "--secrets",
+        ".playwright-mcp/secrets.env"
+      ]
+    },
+    "playwright-chromium": {
+      "command": "node",
+      "args": [
+        "node_modules/@playwright/mcp/cli.js",
+        "--browser",
+        "chromium",
+        "--caps",
+        "vision",
+        "--user-data-dir",
+        ".playwright-mcp/profile-chromium",
+        "--output-dir",
+        ".playwright-mcp/output",
+        "--secrets",
+        ".playwright-mcp/secrets.env"
+      ]
+    }
+  }
+}

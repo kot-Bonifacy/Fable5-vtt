@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (ósma) — główny ekran: portret-baner, filtry czatu, nagłówek panelu
+
+**Zlecenie MG:** poprawić wygląd i układ głównego ekranu przy tej samej kolorystyce — większy
+portret w lewej belce i filtry czatu, które „wisiały doczepione z prawej”. Rozstrzygnięcia MG
+(cztery rekomendacje): **portret jako baner na całą szerokość z nakładką** (imię, Rola, PW na
+czarnym przejściu, chipy pod spodem); **filtry jako czarny pas pod zakładkami**, belka „Czat”
+zdjęta; **zwarty pasek obecnych** (nazwa kampanii + żetony w jednym wierszu); **zakładki
+szerokie według nazwy**, rząd MG na papierze; **belki BROŃ/AKCJE jak na karcie** (ścięty róg,
+bez kreski). Zakres objął też pole wiadomości i „Wyślij”.
+
+**Wdrożone:** `IdentityCard` (`CombatHud.tsx`) z `.hud-portrait-caption`, podpowiedź „Podgląd”
+w jednej linii z okiem; `PresenceList.tsx` przepisany; `ChatPanel` bez `.chat-panel-head`,
+filtry na sylwetkach game-icons (`chat-bubble`, `d10`, `crossed-swords`, `notebook` w
+`public/icons/hud/`, atrybucja dopisana); zakładki `flex: 1 1 auto` + zawijanie; listwa pola
+i „Wyślij” (wyłączony = papier, nie różowa czerwień); `.hud-portrait-caption`
+i `.chat-filter-bar` na liście „Belka” (`theme.css`), pas filtrów na liście belek (`chrome.css`).
+Umowa w `ui`.
+
+**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Obejrzane w Chrome u MG w obu
+skórach, przy panelu 280 px (zakładki w dwóch liniach, filtry same ikony) i u gracza bez
+kampanii (rząd zakładek w jednej linii przy ~357 px). Figura bez portretu — tylko atrapą w DOM
+(`zaleglosci.md`).
+
 ### Sesja 25.09 (siódma) — pas kolejki inicjatywy i „Kończę turę” w lewym panelu
 
 **Zlecenie MG:** poprawić wygląd głównego ekranu przy tej samej kolorystyce, w tym pasek

@@ -50,6 +50,14 @@ pnpm --filter @vtt/server restore -- <nazwa> # przywrócenie — przy ZATRZYMANY
 
 Przywrócenie odmawia, gdy bazę trzyma inny proces, i zawsze odkłada najpierw kopię stanu sprzed przywrócenia. Eksport i import pojedynczej karty albo sceny robi się w zakładce MG „Kopie".
 
+Oględziny w przeglądarce przez Playwright (dla Claude Code — serwery MCP w `.mcp.json`, zasady w `CLAUDE.md`). Przeglądarki pobiera się raz po `pnpm install` i po każdej zmianie wersji `playwright`:
+
+```bash
+pnpm exec playwright install firefox chromium   # ~1,1 GB w %LOCALAPPDATA%\ms-playwright
+```
+
+Hasło MG dla automatu leży w `.playwright-mcp/secrets.env` (gitignore) jako `VTT_GM_PASSWORD=…`.
+
 Boty (osobno, na PC z GPU):
 
 ```powershell

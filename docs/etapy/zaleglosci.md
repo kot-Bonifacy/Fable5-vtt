@@ -1,5 +1,7 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
+**Brak favicony (25.09, znalezione przy wdrożeniu Playwrighta):** `packages/client/index.html` nie deklaruje `<link rel="icon">`, a w `public/` nie ma `favicon.ico`, więc każde wczytanie strony zostawia w konsoli 404 `/favicon.ico` (Chromium liczy go jako błąd). Kosmetyka, ale zaśmieca odczyt konsoli przy oględzinach.
+
 **Główny ekran (25.09, ósma sesja) — do obejrzenia ręką MG:** baner figury **bez portretu** (widziany tylko atrapą w DOM — niski pasek z inicjałem), baner u gracza z „Kończę turę” nad nim, kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) i pas filtrów czatu na iPadzie (`@container` od Safari 16).
 
 **Pas kolejki i „Kończę turę” (25.09) — do obejrzenia ręką MG:** przycisk gracza na górze lewego panelu i „✓” w zwiniętym (widziane tylko atrapą w DOM — MG go nie dostaje, a sesji gracza nie było), podwójny klik przy dwóch figurach gracza pod rząd w kolejce, pas przy 10+ uczestnikach (przewijanie kółkiem, dojazd do aktywnego) i na iPadzie (`@container` od Safari 16).

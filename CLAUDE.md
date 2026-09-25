@@ -67,6 +67,22 @@ cd ai-gateway && uv run pytest              # testy gatewaya
 cd ai-gateway && uv run ruff check .        # lint Pythona
 ```
 
+## Oględziny w przeglądarce — dwa narzędzia, dobieraj do zadania
+
+Masz **dwa** sposoby oglądania VTT i korzystasz z obu, a nie z jednego z przyzwyczajenia (decyzja z 25.09.2026):
+
+| Narzędzie                                                                   | Kiedy                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **claude-in-chrome** (`mcp__claude-in-chrome__*`)                           | Prawdziwy Chrome MG z jego profilem i rozszerzeniami, praca na tym, co MG ma właśnie otwarte, nagrania GIF, szybki rzut oka na żywy stół.                                                                                                                                                                                                                                             |
+| **Playwright MCP** (`mcp__playwright-firefox__*`, `mcp__playwright-chromium__*`) | **Firefox** — wszystko, co ma działać u graczy spoza Chrome (CSS, `@container`, WebGL Pixi, kości 3D, pełny ekran). **Czysty Chromium** — powtarzalne oględziny bez profilu MG, karta zawsze na wierzchu (brak dławienia timerów z „Pułapek dev”), gracz obok MG w **innym silniku** niż Chrome MG. Klikanie po płótnie mapy: `browser_mouse_*_xy`. |
+| **Biblioteka `playwright`** (skrypt `node` w scratchpadzie)                  | Scenariusze wielu sesji naraz (osobne `browser.newContext()` = osobne ciasteczka, np. MG + dwóch graczy w jednym przebiegu), pomiary w pętli, porównanie Firefox ↔ Chromium tym samym skryptem. Import przez `createRequire('C:/AI/web/VTT/package.json')`.                                                                                                                                    |
+
+- **Oględziny zmiany UI domyka co najmniej jedna przeglądarka inna niż Chrome MG** (Firefox z Playwright), chyba że zmiana nie dotyka wyglądu ani zachowania przeglądarki. W notatce sesji pisz, w czym oglądano.
+- **Hasło MG:** wpisz w pole hasła dosłownie `VTT_GM_PASSWORD` (`browser_type`). Serwer MCP podstawi wartość z `.playwright-mcp/secrets.env` (gitignore; wypełnia MG) i wytnie ją z odpowiedzi. Nie proś MG o hasło na czacie i nie czytaj tego pliku. Pusty plik = MG loguje się ręką w oknie Playwrighta; ciasteczko zostaje w profilu `.playwright-mcp/profile-*`.
+- Karty jednego serwera Playwright MCP dzielą ciasteczka, więc sztuczka `localhost` / `[::1]` z „Pułapek dev” dalej obowiązuje. Prościej: MG w jednym narzędziu, gracz w drugim.
+- Wersja `playwright` w `package.json` jest **przypięta do tej, której używa `@playwright/mcp`** (jeden komplet przeglądarek w `%LOCALAPPDATA%\ms-playwright`). Aktualizujesz jedną, aktualizujesz obie, potem `pnpm exec playwright install firefox chromium`.
+- Pułapki obu narzędzi: sekcja `ogledziny` w `docs/etapy/pulapki-dev.md`.
+
 Uwaga: `@vtt/shared` jest konsumowany jako źródła TS (bez kroku build w dev) — patrz „Decyzje techniczne" w README.
 
 ## Środowisko

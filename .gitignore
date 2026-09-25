@@ -53,3 +53,7 @@ AGENTS.md
 
 # Źródła tekstur karty (etap naprawy 2c) — pobierane przez tools/art/sheet-paper.py.
 tools/art/.cache/
+
+# Playwright MCP (.mcp.json) — profile przeglądarek, zrzuty i hasło MG w secrets.env.
+# Profil trzyma ciasteczko sesji MG, więc jest tak samo tajny jak samo hasło.
+.playwright-mcp/

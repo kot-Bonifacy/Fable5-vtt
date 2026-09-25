@@ -974,6 +974,10 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Firefox z Playwrighta podaje kartę „GTX 980, or similar”, a konsola Chromium liczy „3 errors” na ekranie logowania — oba to nie błędy** — Firefox maskuje `UNMASKED_RENDERER_WEBGL` (ochrona przed fingerprintingiem), WebGL i tak idzie sprzętowo przez ANGLE. Trzy „błędy” to dwa 401 z `/api/auth/me` u niezalogowanego i 404 `/favicon.ico` (zaległość).
+- **Hasło MG w Playwright MCP to nazwa sekretu, nie wartość** — `browser_type` z tekstem `VTT_GM_PASSWORD` podstawia wartość z `.playwright-mcp/secrets.env`; każdy inny tekst idzie dosłownie. Pusta wartość w pliku = wpisze się napis `VTT_GM_PASSWORD` i logowanie da 401.
+- **`@playwright/mcp` jedzie na dziennej alfie Playwrighta — stabilna biblioteka obok niej ściąga drugi komplet przeglądarek** — `playwright` w `package.json` jest przypięty (`-E`) do tej samej alfy co MCP. Aktualizacja: `pnpm add -D -w -E @playwright/mcp@<v> playwright@<wersja z npm view @playwright/mcp@<v> dependencies>`, potem `pnpm exec playwright install firefox chromium`.
+- **Narzędzia `mcp__playwright-*` pojawiają się dopiero po restarcie Claude Code** — serwery z `.mcp.json` startują przy uruchomieniu sesji (projektowe wymagają jednorazowej zgody). Ścieżki w argumentach są względne, więc Claude Code musi stać w katalogu repo.
 - **Karta rzutu u drugiej sesji spóźnia się o 10 s — to schowana karta, nie zawieszona kolejka** — karta automatyki poza wierzchem ma `visibilityState: hidden`, kości 3D w niej nie spadają, a kolejka prezentacji puszcza wynik dopiero po `MAX_ROLL_MS` (10 s od 24.09, wcześniej 30 s). Zrzuty ekranu działają mimo to. Sprawdź `document.visibilityState`, zanim uznasz to za błąd.
 - **Ekran logowania w obu kartach po zmianie w `shared` to HMR, nie wylogowanie** — `tsx watch` restartuje serwer, a Vite unieważnia `App.tsx` („Could not Fast Refresh”), więc magazyn sesji startuje od zera; `/api/auth/me` nadal odpowiada użytkownikiem, F5 wystarczy. Kod aplikacji zmieniaj przed oględzinami albo licz się z przeładowaniem kart.
 - **Skrypt z `setTimeout` w karcie w tle dławi się do 1 tyknięcia na sekundę** — `javascript_tool` kończy się „Runtime.evaluate timed out after 45000ms”, choć skrypt **dokończy się sam** (25 pauz po 60 ms = 25 s). W karcie, która nie jest na wierzchu, klikaj bez pauz albo w małych partiach i czytaj wynik osobnym wywołaniem.
@@ -993,6 +997,16 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
 - **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
+- **Wdrożenie Playwright MCP (25.09).** Serwery `playwright-firefox` i `playwright-chromium`
+  w `.mcp.json` uruchamiają `node node_modules/@playwright/mcp/cli.js` z repo (bez `npx`, więc bez
+  pobierania przy starcie i bez opakowania `cmd /c` na Windows), z `--caps vision` (klik i przeciąganie
+  po współrzędnych — płótno Pixi nie ma drzewa dostępności) i trwałym profilem w
+  `.playwright-mcp/profile-*`. Sprawdzone dymem przez stdio i biblioteką na żywym `localhost:5173`:
+  obie przeglądarki mają sprzętowy WebGL, `visibilityState: visible`, zero `pageerror`. Pierwsza
+  instalacja stabilnego `playwright@1.63.0` obok MCP 0.0.82 (alfa 1.64) dałaby rewizje Firefox
+  1543 vs 1549 i Chromium 1243 vs 1246 — stąd przypięcie biblioteki do alfy MCP. Nawet MCP 0.0.80
+  (alfa 1.63) miał innego Firefoksa (1542) niż stabilne 1.63.0.
 
 - **Brakujące karty Utraty Człowieczeństwa u gracza (23.09).** MG dodał skryptem za darmo trzy
   cyborgizacje, a czat gracza pokazał kartę tylko pierwszej — dwie następne były w bazie

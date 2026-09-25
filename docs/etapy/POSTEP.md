@@ -126,13 +126,32 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     | 0    | 86      |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 90      |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (dziesiąta) — narzędzia: Playwright obok claude-in-chrome
+
+**Zlecenie MG:** zainstalować Playwrighta i zapisać w `CLAUDE.md`, żeby oględziny szły dwiema
+drogami, a nie tylko przez claude-in-chrome. Rozstrzygnięcia MG: **serwer MCP + biblioteka**;
+przeglądarki **Firefox i Chromium** (bez WebKita); okno **widoczne**; hasło MG w **pliku secrets**.
+
+**Wdrożone:** `.mcp.json` z serwerami `playwright-firefox` i `playwright-chromium`
+(`node node_modules/@playwright/mcp/cli.js`, `--caps vision`, profile i zrzuty w gitignorowanym
+`.playwright-mcp/`, `--secrets .playwright-mcp/secrets.env` z pustym `VTT_GM_PASSWORD=` do
+wypełnienia przez MG); `@playwright/mcp@0.0.82` i `playwright` **przypięty do jego alfy**
+(`1.64.0-alpha-1789764292000`) — stabilne 1.63.0 ściągałoby drugi komplet przeglądarek;
+przeglądarki (~1,1 GB) w `%LOCALAPPDATA%\ms-playwright`. `.playwright-mcp/**` w ignorach ESLinta
+(profil Firefoksa ma `prefs.js`). Sekcja „Oględziny w przeglądarce” w `CLAUDE.md`, krok w README,
+cztery pułapki w `ogledziny`. **Błąd spoza zakresu:** brak favicony (404 w konsoli) → `zaleglosci.md`.
+
+**Weryfikacja:** biblioteka w obu przeglądarkach na żywym `localhost:5173` (sprzętowy WebGL,
+`visible`, zero `pageerror`); oba serwery MCP przez stdio (31 narzędzi, `browser_navigate`, zrzut).
+Narzędzia `mcp__playwright-*` będą widoczne dopiero od następnej sesji Claude Code. ESLint czysty.
 
 ### Sesja 25.09 (dziewiąta) — zaległości: strzykawka bezigłowa, karta czekająca na MG, dialogi
 
@@ -152,26 +171,3 @@ się w środku. Umowy w `ui`, `karta`, `atak`; decyzja w `decyzje-i-uproszczenia
 ESLint, Prettier, ruff. W Chrome (kampania-śmieć, aktywna wróciła na „Test2”): atak strzykawką
 Styma na Pasera (pudło, dawka została), blokada karty atrapą w DOM u Mary, trzy z czterech
 poprawek z 13.09. Trafienie strzykawką i żywa karta czekająca na MG — tylko testem i atrapą.
-
-### Sesja 25.09 (ósma) — główny ekran: portret-baner, filtry czatu, nagłówek panelu
-
-**Zlecenie MG:** poprawić wygląd i układ głównego ekranu przy tej samej kolorystyce — większy
-portret w lewej belce i filtry czatu, które „wisiały doczepione z prawej”. Rozstrzygnięcia MG
-(cztery rekomendacje): **portret jako baner na całą szerokość z nakładką** (imię, Rola, PW na
-czarnym przejściu, chipy pod spodem); **filtry jako czarny pas pod zakładkami**, belka „Czat”
-zdjęta; **zwarty pasek obecnych** (nazwa kampanii + żetony w jednym wierszu); **zakładki
-szerokie według nazwy**, rząd MG na papierze; **belki BROŃ/AKCJE jak na karcie** (ścięty róg,
-bez kreski). Zakres objął też pole wiadomości i „Wyślij”.
-
-**Wdrożone:** `IdentityCard` (`CombatHud.tsx`) z `.hud-portrait-caption`, podpowiedź „Podgląd”
-w jednej linii z okiem; `PresenceList.tsx` przepisany; `ChatPanel` bez `.chat-panel-head`,
-filtry na sylwetkach game-icons (`chat-bubble`, `d10`, `crossed-swords`, `notebook` w
-`public/icons/hud/`, atrybucja dopisana); zakładki `flex: 1 1 auto` + zawijanie; listwa pola
-i „Wyślij” (wyłączony = papier, nie różowa czerwień); `.hud-portrait-caption`
-i `.chat-filter-bar` na liście „Belka” (`theme.css`), pas filtrów na liście belek (`chrome.css`).
-Umowa w `ui`.
-
-**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Obejrzane w Chrome u MG w obu
-skórach, przy panelu 280 px (zakładki w dwóch liniach, filtry same ikony) i u gracza bez
-kampanii (rząd zakładek w jednej linii przy ~357 px). Figura bez portretu — tylko atrapą w DOM
-(`zaleglosci.md`).
