@@ -196,12 +196,13 @@ body {
 /*
  * Pasek ma trzy grupy i przy ~900 px przestawały się w nim mieścić. Nadmiar nie
  * ucinał się, tylko *nachodził*: tytuł i prawa grupa miały `flex: none`, więc
- * przy ujemnej przestrzeni całą różnicę brał na siebie środek — a `.combat-bar`
- * ma `flex-basis: 0`, czyli kurczy się do zera i wypuszcza swoje przyciski
+ * przy ujemnej przestrzeni całą różnicę brał na siebie środek — a środek
+ * miał `flex-basis: 0`, czyli kurczył się do zera i wypuszczał swoje przyciski
  * („Włącz tryb turowy") na boki, na sąsiadów. Stąd trzy poprawki naraz:
- * kolejka nie schodzi poniżej swojej treści (`min-width: min-content` niżej),
- * nazwa kampanii i tytuł oddają miejsce wielokropkiem, a poniżej 1000 px tytuł
- * znika — jest dekoracją, a „Wyloguj" i kolejka inicjatywy nie są.
+ * środek nie schodzi poniżej swojej treści (`min-width: min-content` na
+ * `.top-bar-turn`), nazwa kampanii i tytuł oddają miejsce wielokropkiem,
+ * a poniżej 1000 px tytuł znika — jest dekoracją, a „Wyloguj" nie jest.
+ * Kolejka inicjatywy mieszka od 25.09 w pasie nad mapą (`.combat-bar`).
  */
 .top-bar-title {
   flex: 0 1 auto;
@@ -248,6 +249,29 @@ body {
 .app-main {
   display: flex;
   flex: 1;
+  min-height: 0;
+}
+
+/* Środek paska: w trybie turowym pusty, bez niego — „Włącz tryb turowy" MG.
+   Trzyma prawą grupę przy prawej krawędzi niezależnie od treści. */
+.top-bar-turn {
+  flex: 1;
+  min-width: min-content;
+  display: flex;
+  justify-content: center;
+}
+
+/* Kolumna mapy (25.09): pas kolejki inicjatywy nad płótnem, nie na nim.
+   Pixi mierzy `.map-area` obserwatorem, więc pojawienie się pasa po prostu
+   skraca płótno; panele boczne zostają pełnej wysokości. */
+.map-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-column > .map-area {
   min-height: 0;
 }
 

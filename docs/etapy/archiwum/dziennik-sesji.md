@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.09 (szósta, część 2) — zgoda MG, zasady i zatwierdzenie nowej postaci
+
+**Zlecenie MG po części 1:** gracz najpierw dostaje zgodę na tworzenie postaci, potem informację,
+że nie zresetuje jej w trakcie, a na koniec MG postać zatwierdza. Rozstrzygnięcia MG: **prośba
+gracza + zgoda MG** (jedna zgoda = jedna postać), **„reset” to tylko „Wyrzuć szkic”** (robi to
+wyłącznie MG, potem nowa prośba), **jednorazowe okno „Rozumiem, zaczynam”**, **karta powstaje,
+ale do „Przyjmij do gry” jest tylko do podglądu i bez żetonu** (odwraca decyzję z 17.09, że
+znacznik niczego nie blokuje).
+
+**Wdrożone:** migracja `20260924230000_creation_permit` (dwie kolumny `CampaignMember`), zdarzenia
+`creation:permit-state`, `request`, `permit`, `permits`, `accept-rules`, `discard-player`,
+pushe `creation:permit-state`, `permits-sync`, `discarded`; `refuseAwaitingGm` w kilkunastu
+handlerach karty; żeton przy przyjęciu. Klient: `CreationGate.tsx` (prośba, oczekiwanie, okno
+zasad), sekcja próśb i „Wyrzuć szkic” w panelu MG, bez „Wyrzuć szkic” u gracza, nowe zdania
+na karcie i na ekranie końcowym kreatora. Szczegóły i lista handlerów — umowa w `postac`.
+Istniejące szkice (Mara w „Test2”, Tony na Poligonie) otwierają się bez zgody.
+
+**Weryfikacja:** 2222 / 1227 / 281 testów, tsc, ESLint, Prettier. **UI nieobejrzane** — na „Test2”
+grała Mara, a przełączenie aktywnej kampanii przeniosłoby jej sesję (pozycja w `zaleglosci.md`).
+
 ### Sesja 24.09 (szósta) — rzuty kreatora przez kubek, po jednej kości
 
 **Zlecenie MG z 17.09 (z `POMYSLY.md`):** gracz rzuca małą liczbą kości naraz i kubkiem, a nie

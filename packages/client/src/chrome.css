@@ -275,6 +275,7 @@ textarea {
 }
 
 /* Czarne belki sekcji i zakładki — jak belki kategorii na karcie. */
+.combat-bar,
 .side-tabs,
 .panel-section-title,
 .settings-group-title,

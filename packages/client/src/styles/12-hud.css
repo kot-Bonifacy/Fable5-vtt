@@ -174,6 +174,116 @@
   }
 }
 
+/* „Kończę turę" (25.09) — the player's end of the turn, first thing in the
+   rail whenever the turn is theirs. A black belt with the figure's name over
+   the sheet's red button: the one control of a fight that must never be
+   looked for. */
+.hud-end-turn {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--cp-bar);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.7rem), calc(100% - 0.7rem) 100%, 0 100%);
+  animation: hud-banner-in 220ms ease-out;
+}
+
+.hud-end-turn-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--font-ui-head);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cp-bar-ink);
+}
+
+.hud-end-turn-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.75;
+}
+
+.hud-end-turn-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0 0.3rem 0.3rem;
+  padding: 0.6rem 0.8rem;
+  border: none;
+  border-radius: 0;
+  background-color: var(--cp-red);
+  background-image: var(--cp-cracks);
+  background-size: var(--cp-cracks-size);
+  color: var(--cp-on-red);
+  font-family: var(--font-ui-head);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.55rem), calc(100% - 0.55rem) 100%, 0 100%);
+}
+
+.hud-end-turn-button:hover:not(:disabled) {
+  background-color: var(--cp-red-deep);
+}
+
+.hud-end-turn-button:focus-visible {
+  outline: 2px solid var(--cp-on-red);
+  outline-offset: -4px;
+}
+
+.hud-end-turn-button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/* The shortcut, said on the button rather than in a manual. */
+.hud-end-turn-key {
+  padding: 0 0.3rem;
+  border: 1px solid var(--cp-on-red-faint);
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--cp-on-red-dim);
+}
+
+/* Collapsed rail: the same button, a square under ▸. */
+.hud-end-turn-compact {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--cp-red);
+  color: var(--cp-on-red);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.4rem), calc(100% - 0.4rem) 100%, 0 100%);
+}
+
+.hud-end-turn-compact:hover:not(:disabled) {
+  background: var(--cp-red-deep);
+}
+
+.hud-end-turn-compact:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* ---- Karta tożsamości ---- */
 
 .hud-card {
@@ -1447,7 +1557,8 @@
 @media (prefers-reduced-motion: reduce) {
   .hud-hp-delta,
   .hud-armed-mark,
-  .hud-turn-banner {
+  .hud-turn-banner,
+  .hud-end-turn {
     animation: none;
   }
 }

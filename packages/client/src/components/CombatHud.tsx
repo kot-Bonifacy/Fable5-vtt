@@ -42,6 +42,7 @@ import { FigureSkills } from './FigureSkills.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
 import { HudIcon, StatusIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
+import { HudEndTurn, HudEndTurnCompact } from './HudEndTurn.js';
 
 /**
  * The combat HUD (stage 16f) — a rail down the left edge of the table.
@@ -554,6 +555,7 @@ export function CombatHud() {
         >
           ▸
         </button>
+        <HudEndTurnCompact />
         {token && (
           <span className="hud-collapsed-figure" title={token.name}>
             {token.imageUrl ? (
@@ -601,6 +603,8 @@ export function CombatHud() {
         </button>
       </div>
 
+      <HudEndTurn />
+
       {!token && (
         <p className="hud-empty">
           <HudIcon name="stand-up" className="hud-empty-icon" />
@@ -613,12 +617,10 @@ export function CombatHud() {
 
       {token && (
         <>
-          {/* Whose turn it is, said where the hand already is. The queue itself
-              lives in the top bar (stage 16f) — this is the one fact from it
-              that concerns the figure in this panel. */}
-          {context.acting && (
-            <p className="hud-turn-banner">{context.isGm ? 'Tura tej figury' : 'Twoja tura'}</p>
-          )}
+          {/* Whose turn it is, said where the hand already is — for the GM. The
+              player's „Twoja tura" is the end-turn block at the top of the rail
+              (25.09), which shows whatever the rail describes. */}
+          {context.acting && context.isGm && <p className="hud-turn-banner">Tura tej figury</p>}
 
           <IdentityCard
             name={token.name}
@@ -644,8 +646,8 @@ export function CombatHud() {
           {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
 
           {/* Stepping the queue is not here on purpose: it belongs to the strip
-              in the top bar, which owns the queue and works with nothing
-              selected. „E" still ends the turn from the map. */}
+              over the map, which owns the queue and works with nothing
+              selected. The player's own „Kończę turę" is at the top of the rail. */}
 
           {/* Karta jest, ale nie twoja (28.08) — i to **nie** jest przypadek
               pustego paska niżej. Akcje z katalogu (Ustabilizowanie, Bieg…)

@@ -2,28 +2,33 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ROLE_GM, cpredTurnReminders } from '@vtt/shared';
 import { endCombat, nextCombatTurn, previousCombatTurn, startCombat } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useCombatStore, activeCombatantOf, myActiveCombatant } from '../stores/combatStore.js';
+import { useCombatStore, activeCombatantOf } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 import { BotTurnButton } from './BotTurnButton.js';
 
 /**
- * The turn tracker's always-visible face — a fixed strip in the top bar,
- * between the title and the session name.
+ * The turn tracker's always-visible face — a black strip over the map column,
+ * shown only while turn mode is on.
  *
- * It used to float over the map and could be dragged anywhere; the map is the
- * table, and nothing that belongs to the interface should sit on top of it.
- * Up here the queue also gets the one thing it could never have over the map:
- * a row as wide as the window.
+ * History: it floated over the map first, then moved into the red top bar
+ * (01.08). On the owner's request (25.09) it left the bar again for a strip of
+ * its own between the bar and the map — not over the map, the map column just
+ * gets shorter. The red bar kept too little room for a portrait one can
+ * recognise, and gold on red read poorly; black gives the queue the contrast
+ * of the sheet's section belts. The strip spans the map only, so neither side
+ * panel loses height.
  *
  * The division of labour with the left rail (stage 16f) is deliberate — nothing
  * appears in both places. The rail describes **one figure**: portrait, HP,
- * statuses, the turn budget, the weapons. The bar owns **the queue**: the round,
- * who is up, and stepping through it — which works with nothing selected at all,
- * so it cannot live in a panel that follows the selection. The one thing kept
- * here that is not the queue is the death save, because it belongs to whoever
- * the queue says is acting, not to whoever the user happens to be looking at.
+ * statuses, the turn budget, the weapons — and, since 25.09, the player's
+ * „Kończę turę", which belongs beside the actions the turn is played with. The
+ * strip owns **the queue**: the round, who is up, and stepping through it —
+ * which works with nothing selected at all, so it cannot live in a panel that
+ * follows the selection. The one thing kept here that is not the queue is the
+ * death save, because it belongs to whoever the queue says is acting, not to
+ * whoever the user happens to be looking at.
  *
  * Everything that needs more room — rolling, reordering, adding participants —
  * still lives in the „Walka" tab.
@@ -68,11 +73,21 @@ function TurnModeButton() {
   );
 }
 
+/**
+ * What turn mode leaves in the red top bar: with no queue, the GM's button that
+ * starts one; with a queue, nothing (the strip over the map took it). The slot
+ * itself stays either way — it is the flexible middle that keeps the right-hand
+ * group at the right edge.
+ */
+export function TurnModeSlot() {
+  const running = useCombatStore((s) => s.combat !== null);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  return <div className="top-bar-turn">{isGm && !running && <TurnModeButton />}</div>;
+}
+
 export function CombatBar() {
   const combat = useCombatStore((s) => s.combat);
-  const user = useAuthStore((s) => s.user);
-  const isGm = user?.role === ROLE_GM;
-  const myTurn = useMemo(() => myActiveCombatant(combat, user?.id ?? null), [combat, user?.id]);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const acting = useMemo(() => activeCombatantOf(combat), [combat]);
   const tokens = useTokenStore((s) => s.tokens);
   // What the acting participant's own statuses want them to remember (stage
@@ -132,15 +147,25 @@ export function CombatBar() {
     await endCombat();
   }
 
-  if (!combat) {
-    // Players see nothing: an empty top bar is the honest picture of „no queue".
-    return <div className="combat-bar combat-bar--idle">{isGm && <TurnModeButton />}</div>;
-  }
+  // No queue, no strip: the map gets its full height back.
+  if (!combat) return null;
+
+  // Participants before the running one have had their turn this round — they
+  // fade, so „who is still to act" reads without counting. Round 0 has no such
+  // thing, and neither does a queue whose runner is unknown.
+  const activeIndex = combat.combatants.findIndex((combatant) => combatant.id === activeId);
 
   return (
     <div className="combat-bar" role="group" aria-label="Kolejka inicjatywy">
       <span className="combat-bar-round">
-        {combat.round === 0 ? 'PRZED WALKĄ' : `RUNDA ${combat.round}`}
+        {combat.round === 0 ? (
+          <span className="combat-bar-round-label">Przed walką</span>
+        ) : (
+          <>
+            <span className="combat-bar-round-label">Runda</span>
+            <span className="combat-bar-round-number">{combat.round}</span>
+          </>
+        )}
       </span>
       {isGm && (
         <button
@@ -158,8 +183,9 @@ export function CombatBar() {
         ref={queueRef}
         onWheel={onWheel}
       >
-        {combat.combatants.map((combatant) => {
+        {combat.combatants.map((combatant, index) => {
           const isActive = combatant.id === activeId;
+          const done = combat.round > 0 && activeIndex >= 0 && index < activeIndex;
           const held = combatant.held ? 'Akcja wstrzymana' : null;
           const grapple = combatant.grapple
             ? combatant.grapple.role === 'attacker'
@@ -181,8 +207,8 @@ export function CombatBar() {
               key={combatant.id}
               data-active={isActive}
               className={`combat-chip${isActive ? ' combat-chip--active' : ''}${
-                combatant.hidden ? ' combat-chip--hidden' : ''
-              }`}
+                done ? ' combat-chip--done' : ''
+              }${combatant.hidden ? ' combat-chip--hidden' : ''}`}
               title={label}
             >
               <span className="combat-chip-figure">
@@ -238,12 +264,6 @@ export function CombatBar() {
         >
           Test Przeżywalności
           {deathSave.modifier > 0 ? ` +${deathSave.modifier}` : ''}
-        </button>
-      )}
-      {/* The acting player ends their own turn; the server re-checks whose it is. */}
-      {!isGm && myTurn && (
-        <button type="button" className="combat-bar-end-turn" onClick={() => void nextCombatTurn()}>
-          Kończę turę
         </button>
       )}
       {isGm && (

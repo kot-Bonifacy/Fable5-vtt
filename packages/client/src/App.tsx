@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { TopBar } from './components/TopBar.js';
 import { MapArea } from './components/MapArea.js';
+import { CombatBar } from './components/CombatBar.js';
 import { CombatHud } from './components/CombatHud.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
@@ -98,7 +99,13 @@ function GameView() {
             overlay, so the panel and the action bar never sit on top of the
             ground somebody is trying to click. */}
         <CombatHud />
-        <MapArea />
+        {/* The initiative strip (25.09) stands above the map, not over it:
+            the column gets shorter and Pixi re-measures its host. Both side
+            panels keep their full height. */}
+        <div className="map-column">
+          <CombatBar />
+          <MapArea />
+        </div>
         <SidePanel />
       </main>
       <CharacterSheets />

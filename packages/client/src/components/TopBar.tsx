@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ClockChip } from './ClockWindow.js';
-import { CombatBar } from './CombatBar.js';
+import { TurnModeSlot } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
 import { MusicButton } from './MusicWindow.js';
@@ -15,9 +15,9 @@ export function TopBar() {
   return (
     <header className="top-bar">
       <span className="top-bar-title">VTT — Cyberpunk RED</span>
-      {/* The turn tracker sits in the middle of the bar rather than over the
-          map: the table stays uncovered, and the queue gets a full-width row. */}
-      <CombatBar />
+      {/* The queue itself lives in a strip over the map column (25.09); the bar
+          keeps only the GM's way into turn mode. */}
+      <TurnModeSlot />
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
         {/* Zegar świata (etap 37). Data i pora dnia są wspólne dla stołu, więc

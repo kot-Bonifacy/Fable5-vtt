@@ -39,7 +39,8 @@ refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socke
 tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py`), wspólna paleta `--cp-*`; MG odrzuca
 wszystko ciemniejsze od papieru („żadnego brudu”). Dzień od 24.09 w tonie tapety logowania,
 z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`assety-chrom.md`). Poza skórą: Sieć, pasek mapy, screamsheet,
-logowanie. **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **`styles.css` jest od
+logowanie. **Od 25.09 kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza stoi na
+górze lewego panelu** (umowa w `ui`). **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
@@ -112,7 +113,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 13   | 13      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 14   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
@@ -133,6 +134,24 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 25.09 (siódma) — pas kolejki inicjatywy i „Kończę turę” w lewym panelu
+
+**Zlecenie MG:** poprawić wygląd głównego ekranu przy tej samej kolorystyce, w tym pasek
+inicjatyw i oddanie tury. Rozstrzygnięcia MG: zakres — **górny pasek i kolejka**; kolejka
+w **osobnym czarnym pasie tylko nad mapą**; **„Kończę turę” wyłącznie w lewym panelu**, zawsze
+w turze gracza; MG zostaje przy ◀ ▶ w pasie; paleta ta sama, role barw wolno przestawić.
+
+**Wdrożone:** `CombatBar` w nowej `.map-column` (App), `TurnModeSlot` w `TopBar`,
+`HudEndTurn.tsx` (blok w panelu + „✓” w zwiniętym), przepisany pas w `09-turn.css`, blok
+w `12-hud.css`, `.combat-bar` na liście „Belka” (`theme.css`) i belek (`chrome.css`). Umowa
+w `ui`.
+
+**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Pas obejrzany na kampanii-śmieciu
+(„Przed walką”, runda 1, ✕ — tryb turowy wyłączony z powrotem, aktywna wróciła na „Test2”) oraz
+atrapą w DOM w obu skórach i na wąskim oknie. **Przycisk gracza nieobejrzany na żywo** — tylko
+atrapą (pozycja w `zaleglosci.md`). Poziomy pasek przewijania strony przy ~1100 px był już
+wcześniej (1 px nadmiaru także bez pasa) — nie ruszany.
+
 ### Sesja 25.09 (szósta, część 3) — warunki zgody: metoda, ranga, pula umiejętności
 
 **Zlecenie MG:** to, ile postać ma punktów (np. „Postać początkująca”, 62), MG ustala w chwili
@@ -152,23 +171,3 @@ zasad. Umowa w `postac`.
 Mary w panelu MG (bez klikania — Mara była w grze); reszta w `zaleglosci.md`. **Szkic Mary czeka
 na „Zatwierdź warunki”** (Kompletny Pakiet bez zatwierdzonej rangi) — to zastępuje dawne
 „Zatwierdź” rangi.
-
-### Sesja 24.09 (szósta, część 2) — zgoda MG, zasady i zatwierdzenie nowej postaci
-
-**Zlecenie MG po części 1:** gracz najpierw dostaje zgodę na tworzenie postaci, potem informację,
-że nie zresetuje jej w trakcie, a na koniec MG postać zatwierdza. Rozstrzygnięcia MG: **prośba
-gracza + zgoda MG** (jedna zgoda = jedna postać), **„reset” to tylko „Wyrzuć szkic”** (robi to
-wyłącznie MG, potem nowa prośba), **jednorazowe okno „Rozumiem, zaczynam”**, **karta powstaje,
-ale do „Przyjmij do gry” jest tylko do podglądu i bez żetonu** (odwraca decyzję z 17.09, że
-znacznik niczego nie blokuje).
-
-**Wdrożone:** migracja `20260924230000_creation_permit` (dwie kolumny `CampaignMember`), zdarzenia
-`creation:permit-state`, `request`, `permit`, `permits`, `accept-rules`, `discard-player`,
-pushe `creation:permit-state`, `permits-sync`, `discarded`; `refuseAwaitingGm` w kilkunastu
-handlerach karty; żeton przy przyjęciu. Klient: `CreationGate.tsx` (prośba, oczekiwanie, okno
-zasad), sekcja próśb i „Wyrzuć szkic” w panelu MG, bez „Wyrzuć szkic” u gracza, nowe zdania
-na karcie i na ekranie końcowym kreatora. Szczegóły i lista handlerów — umowa w `postac`.
-Istniejące szkice (Mara w „Test2”, Tony na Poligonie) otwierają się bez zgody.
-
-**Weryfikacja:** 2222 / 1227 / 281 testów, tsc, ESLint, Prettier. **UI nieobejrzane** — na „Test2”
-grała Mara, a przełączenie aktywnej kampanii przeniosłoby jej sesję (pozycja w `zaleglosci.md`).

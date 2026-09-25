@@ -470,24 +470,25 @@
 
 /* --- stage 14e: turn automation (periodic damage, injuries, reminders) --- */
 
-/* „Przygwożdżony — rusz się do osłony": a nudge on the bar, in front of the
+/* „Przygwożdżony — rusz się do osłony": a nudge on the strip, in front of the
    person whose turn it is. Warning colours, not error ones — nothing here
    refuses anything. */
 .combat-bar-reminder {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  /* Shares the bar with the queue now, so it yields space instead of taking
-     it: the full sentence is in the tooltip either way. */
-  flex: 0 1 auto;
-  min-width: 0;
+  /* Shares the strip with the queue, so it yields space first — down to the
+     ⚠ alone — instead of taking it: the full sentence is in the tooltip. */
+  flex: 0 1000 auto;
+  min-width: 2rem;
   max-width: 18rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0.25rem 0.5rem;
+  height: 2rem;
+  padding: 0 0.6rem;
   border: 1px solid var(--warn);
-  border-radius: 6px;
+  border-radius: 0;
   background: rgb(var(--remind-rgb) / 12%);
   color: var(--warn);
   font-size: 0.8rem;

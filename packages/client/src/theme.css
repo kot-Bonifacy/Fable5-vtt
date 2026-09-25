@@ -256,11 +256,14 @@
    Górny pasek i nagłówki okien mają czerwień i pęknięcia tuszu karty.
    Kontrolki na nich zachowują ciemne powierzchnie; napisy na czerwieni
    biorą biel z karty. Lista selektorów odpowiada belkom w chrome.css.
+   Czarny pas kolejki inicjatywy (`.combat-bar`, 25.09) bierze te same
+   nocne tokeny: złoto, biel i czerwień czytają się na czerni w obu skórach.
    ========================================================================== */
 
 :root
   :is(
     .top-bar,
+    .combat-bar,
     .settings-window-header,
     .handout-window-header,
     .inventory-window-header,

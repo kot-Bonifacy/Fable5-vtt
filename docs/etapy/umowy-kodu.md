@@ -851,6 +851,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza — góra lewego panelu (25.09).** `CombatBar` stoi w `.map-column` nad `MapArea` i istnieje tylko w trybie turowym; czerwony pasek trzyma wyłącznie `TurnModeSlot` („Włącz tryb turowy” MG). Pas bierze nocne tokeny z bloku „Belka” w `theme.css` (`.combat-bar` na liście) i czarne tło z listy belek w `chrome.css`. Przycisk gracza to `HudEndTurn` / `HudEndTurnCompact` (`HudEndTurn.tsx`), niezależny od zaznaczenia; nowy element pasa dostaje `flex: none`, a ustępuje wyłącznie kolejka i przypomnienie.
 - **Audio stołu (21.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
   kubka; wezwanie i załadowany Test dzielą klucz. `music-player.ts` ma jeden
   odtwarzacz niezależny od otwarcia okna. Dźwięki nowe mają być naturalne;
@@ -869,11 +870,26 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Nowe pływające okno** — hook `useWindowPlacement` (`window-placement.ts`) + `<WindowResizeGrip />`; uchwyt 13 px od krawędzi, bo róg jest wycięty.
 - **Kolor** — wyłącznie w `packages/client/src/theme.css`; pilnuje `theme.test.ts` (literał w `styles/*.css`/`sheet.css`, token bez odbiorcy, token chromu bez pary dziennej).
 - **Ikonowy przycisk** — `title` + `aria-label`, gdy treścią jest znak; ikony SVG są `aria-hidden`, więc tam wystarczy `title`. Pilnuje `a11y.test.ts`.
-- **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a `.combat-bar` ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
+- **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a środek (`.top-bar-turn`) ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Pas kolejki inicjatywy i „Kończę turę” (25.09, zlecenie MG poza etapami).** Kolejka wyszła
+z czerwonego paska (tam od 01.08) do własnej czarnej belki między paskiem a mapą — **tylko nad
+kolumną mapy**, panele boczne zostają pełnej wysokości. Pas pojawia się wyłącznie w trybie
+turowym; Pixi mierzy `.map-area` obserwatorem, więc płótno po prostu się skraca. Powody MG:
+złoto `--warn` na czerwieni było nieczytelne, a „Kończę turę” miało wagę przypomnienia.
+Rozstrzygnięcia MG: paleta ta sama, role barw wolno przestawić; **tło pasa czarne**;
+**„Kończę turę” tylko w lewym panelu**, zawsze w turze gracza (także bez zaznaczonej figury;
+zastępuje napis „Twoja tura”, baner „Tura tej figury” został u MG); **MG prowadzi kolejkę
+◀ ▶ z pasa**, bez przycisku w panelu. Wygląd: aktywny żeton w czerwieni karty z pęknięciami,
+większy; ci, którzy już grali w tej rundzie, przygaszeni (`combat-chip--done`, po kolejności
+w liście); portrety kwadratowe ze ściętym rogiem jak w panelu; ◀ ▶ ✕ jednym stylem, ✕ na końcu
+pasa. Wąski pas (`@container`, poniżej 44 rem) chowa imiona poza aktywnym, a przypomnienie
+zwija się do ⚠ wcześniej niż kolejka. Przycisk w panelu blokuje drugie kliknięcie do ruchu
+kolejki albo odmowy serwera — inaczej podwójny klik oddawałby też turę drugiej figury gracza.
 
 **`styles.css` pocięty na 19 plików w `styles/` (18.09).** Jeden plik miał 11 530 linii (242 KB)
 i każde przeczytanie go w całości kosztowało ~60 k tokenów kontekstu. Podział poszedł **po granicach
