@@ -107,7 +107,14 @@ export function AimMenu() {
   }
 
   const left = Math.max(8, Math.min(offer.x + OFFSET, window.innerWidth - ESTIMATED_WIDTH));
-  const top = Math.max(8, Math.min(offer.y + OFFSET, window.innerHeight - ESTIMATED_HEIGHT));
+  // Nad kursorem, bo pod nim stoi dymek celownika (`TargetTooltip`) z „Głowa
+  // bez ochrony" — dokładnie tym, na co patrzy się, wybierając strzał w głowę.
+  // Pod kursor schodzi dopiero przy górnej krawędzi ekranu.
+  const above = offer.y - OFFSET - ESTIMATED_HEIGHT;
+  const top =
+    above >= 8
+      ? above
+      : Math.max(8, Math.min(offer.y + OFFSET, window.innerHeight - ESTIMATED_HEIGHT));
 
   return (
     <div ref={ref} className="aim-menu" style={{ left, top }}>
