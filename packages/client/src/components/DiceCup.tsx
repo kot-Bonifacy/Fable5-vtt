@@ -134,7 +134,9 @@ function playRattle(energy: number): void {
   if (setting <= 0) return;
   const src = RATTLE_SOUNDS[Math.floor(Math.random() * RATTLE_SOUNDS.length)]!;
   const audio = new Audio(src);
-  audio.volume = Math.min(0.12 + energy * 0.25, 0.5) * setting;
+  // Doubled 25.09 (MG: too quiet at the default slider of 50) — a hard shake now
+  // sits level with the „kubek gotowy" chime (0.36 at 50).
+  audio.volume = Math.min(0.25 + energy * 0.5, 1) * setting;
   void audio.play().catch(() => undefined);
 }
 
