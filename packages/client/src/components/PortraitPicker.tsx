@@ -348,8 +348,8 @@ export function PortraitPicker({
                             <button
                               type="button"
                               className="small-button portrait-pool-crop"
-                              title="Kadr tego portretu na mapie"
-                              aria-label={`Ustaw kadr portretu „${asset.name}” na mapie`}
+                              title="Kadr tego portretu — żeton i baner"
+                              aria-label={`Ustaw kadr portretu „${asset.name}”`}
                               onClick={() => {
                                 setOpen(false);
                                 openCrop(asset.id);

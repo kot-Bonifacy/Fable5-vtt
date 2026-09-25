@@ -295,6 +295,7 @@ describe('wybór portretu w galerii', () => {
     expect(shown.assigned).toBe(true);
     expect(Object.keys(shown).sort()).toEqual([
       'assigned',
+      'bannerCrop',
       'crop',
       'gmOnly',
       'height',

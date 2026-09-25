@@ -596,10 +596,16 @@ export interface PortraitAssetView {
    *
    * Kadr jedzie razem z portretem, bo jest cechą **obrazka**, a nie postaci:
    * MG ustawia go raz, dokładając portret do puli, i obowiązuje wszędzie, gdzie
-   * ten plik stanie na mapie. Poza mapą nikt go nie czyta — karta, kreator,
-   * czat i panel pokazują oryginał (decyzja MG z 12.09).
+   * ten plik stanie na mapie. Od 25.09 czyta go też baner lewego panelu,
+   * gdy nie ma własnego kadru; karta, kreator i czat pokazują oryginał.
    */
   crop: PortraitCrop;
+  /**
+   * Własny kadr banera portretu w lewym panelu (25.09, zlecenie MG) —
+   * `null`, dopóki właściciel go nie ustawi: wtedy baner wylicza się z kadru
+   * żetonu. Znaczenie liczb: `portraitBannerCropPlacement`.
+   */
+  bannerCrop: PortraitCrop | null;
 }
 
 /** Najdłuższa nazwa portretu w bibliotece — jak przy żetonach. */

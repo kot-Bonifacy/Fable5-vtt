@@ -1,5 +1,5 @@
 import type { PortraitAssetView } from '@vtt/shared';
-import { clampPortraitCrop } from '@vtt/shared';
+import { clampPortraitBannerCrop, clampPortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 
 type PortraitDb = Pick<PrismaClient, 'character' | 'characterDraft' | 'token' | 'botProfile'>;
@@ -57,6 +57,10 @@ export interface PortraitAssetRow {
   cropX: number;
   cropY: number;
   cropZoom: number;
+  /** Własny kadr banera (25.09); `null` w którejkolwiek — „jak żeton”. */
+  bannerX?: number | null;
+  bannerY?: number | null;
+  bannerZoom?: number | null;
 }
 
 /**
@@ -84,6 +88,13 @@ export function toPortraitAssetView(asset: PortraitAssetRow): PortraitAssetView 
       { x: asset.cropX, y: asset.cropY, zoom: asset.cropZoom },
       { width: asset.width, height: asset.height },
     ),
+    bannerCrop:
+      asset.bannerX == null || asset.bannerY == null || asset.bannerZoom == null
+        ? null
+        : clampPortraitBannerCrop(
+            { x: asset.bannerX, y: asset.bannerY, zoom: asset.bannerZoom },
+            { width: asset.width, height: asset.height },
+          ),
   };
 }
 

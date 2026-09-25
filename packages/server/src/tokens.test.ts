@@ -397,6 +397,35 @@ describe('portrait pool', () => {
       });
       if (!own.ok || !own.data) throw new Error('player portrait:crop failed');
       expect(own.data.crop).toEqual({ x: 0.3, y: 0.7, zoom: 2 });
+      expect(own.data.bannerCrop).toBeNull();
+
+      // Baner lewego panelu (25.09): właściciel kadruje oba wystąpienia.
+      const banner = await emitAck<PortraitAssetView>(playerConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.3, y: 0.7, zoom: 2 },
+        bannerCrop: { x: 0.5, y: 0.5, zoom: 2 },
+      });
+      if (!banner.ok || !banner.data) throw new Error('banner portrait:crop failed');
+      expect(banner.data.bannerCrop).toEqual({ x: 0.5, y: 0.5, zoom: 2 });
+      // Bez pola kadr banera zostaje, `null` wraca do „jak żeton”.
+      const kept = await emitAck<PortraitAssetView>(playerConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.3, y: 0.7, zoom: 2 },
+      });
+      expect(kept.ok && kept.data?.bannerCrop).toEqual({ x: 0.5, y: 0.5, zoom: 2 });
+      const reset = await emitAck<PortraitAssetView>(playerConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.3, y: 0.7, zoom: 2 },
+        bannerCrop: null,
+      });
+      expect(reset.ok && reset.data?.bannerCrop).toBeNull();
+      expect(
+        await emitAck(playerConn.socket, 'portrait:crop', {
+          assetId,
+          crop: { x: 0.3, y: 0.7, zoom: 2 },
+          bannerCrop: { x: 'góra' },
+        }),
+      ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
       // Kadrem nie jest cokolwiek: brak pola albo tekst to złe żądanie.
       expect(
         await emitAck(gmConn.socket, 'portrait:crop', { assetId, crop: { x: 0.5, y: 0.5 } }),

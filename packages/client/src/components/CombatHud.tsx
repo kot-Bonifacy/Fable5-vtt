@@ -16,7 +16,7 @@ import {
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
-  portraitBannerPlacement,
+  portraitBannerFor,
   woundStateFromHp,
 } from '@vtt/shared';
 import {
@@ -38,6 +38,7 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
+import { bannerImageStyle } from '../portrait-banner.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
@@ -352,28 +353,17 @@ function ModeDrawer({
   );
 }
 
-/** Baner portretu jest 4:3 (`.hud-portrait-frame` w `12-hud.css`). */
-const BANNER_ASPECT = 3 / 4;
-
 /**
- * Kadr z mapy w banerze (zlecenie MG, 25.09): portret, który MG wykadrował pod
- * żeton, pokazuje w panelu to samo miejsce, tylko szerzej. Bez własnego kadru
- * baner zostaje przy `object-position` z CSS — `crops` trzyma wyłącznie kadry
- * inne niż domyślny.
+ * Kadr portretu w banerze (zlecenie MG, 25.09): własny kadr banera, jeśli
+ * właściciel go ustawił, inaczej kadr żetonu przeniesiony na baner, a portret
+ * bez żadnego kadru — od góry grafiki (`portraitBannerFor`). Portret spoza puli
+ * zostaje przy `object-position` z CSS.
  */
 function useBannerCrop(imageUrl: string | null): CSSProperties | null {
   const asset = usePortraitStore((s) =>
-    imageUrl && s.crops.has(imageUrl) ? (s.assets.find((a) => a.url === imageUrl) ?? null) : null,
+    imageUrl ? (s.assets.find((a) => a.url === imageUrl) ?? null) : null,
   );
-  if (!asset) return null;
-  const place = portraitBannerPlacement(asset.crop, asset, BANNER_ASPECT);
-  const pct = (value: number) => `${(value * 100).toFixed(3)}%`;
-  return {
-    width: pct(place.width),
-    height: pct(place.height),
-    left: pct(place.left),
-    top: pct(place.top),
-  };
+  return asset ? bannerImageStyle(portraitBannerFor(asset)) : null;
 }
 
 /** Portrait, name, role and the three numbers a fight is fought with. */

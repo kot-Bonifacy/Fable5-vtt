@@ -14,6 +14,7 @@ function asset(id: string, url: string, extra: Partial<PortraitAssetView> = {}):
     width: 512,
     height: 512,
     crop: { x: 0.2, y: 0.3, zoom: 2 },
+    bannerCrop: null,
     ...extra,
   };
 }

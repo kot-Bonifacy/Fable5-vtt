@@ -4090,14 +4090,18 @@ export function setGameTime(
 export function setPortraitCrop(
   assetId: string,
   crop: PortraitCrop,
+  /** Kadr banera (25.09): pominięty — bez zmian, `null` — „jak żeton”. */
+  bannerCrop?: PortraitCrop | null,
 ): Promise<SocketAck<PortraitAssetView>> {
   return new Promise((resolve) => {
     if (!socket) {
       resolve({ ok: false, error: 'OFFLINE' });
       return;
     }
-    socket.emit('portrait:crop', { assetId, crop }, (ack: SocketAck<PortraitAssetView>) =>
-      resolve(ack),
+    socket.emit(
+      'portrait:crop',
+      { assetId, crop, ...(bannerCrop !== undefined ? { bannerCrop } : {}) },
+      (ack: SocketAck<PortraitAssetView>) => resolve(ack),
     );
   });
 }

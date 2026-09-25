@@ -596,6 +596,14 @@ model PortraitAsset {
   cropX      Float    @default(0.5)
   cropY      Float    @default(0.5)
   cropZoom   Float    @default(1)
+  /**
+   * Własny kadr banera lewego panelu (25.09) — trzy puste kolumny znaczą
+   * „jak żeton”: baner wylicza się wtedy z kadru powyżej. Znaczenie liczb:
+   * `portraitBannerCropPlacement` w `shared/src/portrait-crop.ts`.
+   */
+  bannerX    Float?
+  bannerY    Float?
+  bannerZoom Float?
   createdAt  DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

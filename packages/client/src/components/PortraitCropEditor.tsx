@@ -2,9 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PortraitAssetView, PortraitCrop } from '@vtt/shared';
 import {
   DEFAULT_PORTRAIT_CROP,
+  PORTRAIT_BANNER_ASPECT,
+  PORTRAIT_BANNER_ZOOM_MAX,
   PORTRAIT_CROP_ZOOM_MAX,
   PORTRAIT_CROP_ZOOM_MIN,
+  clampPortraitBannerCrop,
   clampPortraitCrop,
+  portraitBannerCropOf,
+  portraitBannerFor,
   portraitCropPlacement,
 } from '@vtt/shared';
 import { RING_WIDTH, portraitRadius } from '../map/token-ring.js';
@@ -49,6 +54,15 @@ const STAGE_CELL = 208;
 /** Ile miejsca zostaje wokół kratki na resztę obrazu. */
 const STAGE_PAD = 44;
 const STAGE_BOX = STAGE_CELL + STAGE_PAD * 2;
+/**
+ * Baner w oknie w swojej prawdziwej wielkości — tyle mniej więcej ma w lewym
+ * panelu (17 rem szyny minus marginesy), więc twarz ocenia się tak, jak przy
+ * stole.
+ */
+const BANNER_W = 240;
+const BANNER_H = BANNER_W * PORTRAIT_BANNER_ASPECT;
+const BANNER_BOX_W = BANNER_W + STAGE_PAD * 2;
+const BANNER_BOX_H = BANNER_H + STAGE_PAD * 2;
 /** Ile przesuwa jedno naciśnięcie strzałki, w pikselach okna. */
 const NUDGE_PX = 4;
 /** Jedno kliknięcie kółka (deltaY ≈ 100) daje z tego ok. 1,22×. */
@@ -59,6 +73,8 @@ function clampFactor(factor: number): number {
   return Math.min(1.5, Math.max(1 / 1.5, factor));
 }
 
+type CropTab = 'token' | 'banner';
+
 function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   const close = usePortraitStore((s) => s.closeCrop);
   const applyUpsert = usePortraitStore((s) => s.applyUpsert);
@@ -66,7 +82,12 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   // portretu (obwódka ma stałe 3 px świata, więc na małej kratce zjada więcej).
   const gridPx = useSceneStore((s) => s.effectiveScene?.grid.sizePx ?? 100);
 
+  // Dwa wystąpienia portretu, dwie zakładki (zlecenie MG z 25.09): krążek
+  // żetonu i baner lewego panelu. Kadr banera `null` znaczy „jak żeton” —
+  // baner wylicza się wtedy z kadru żetonu, także tego właśnie zmienianego.
+  const [tab, setTab] = useState<CropTab>('token');
   const [crop, setCrop] = useState<PortraitCrop>(asset.crop);
+  const [bannerCrop, setBannerCrop] = useState<PortraitCrop | null>(asset.bannerCrop);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; crop: PortraitCrop } | null>(
@@ -77,6 +98,10 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
 
   const change = useCallback(
     (next: PortraitCrop) => setCrop(clampPortraitCrop(next, size)),
+    [size],
+  );
+  const changeBanner = useCallback(
+    (next: PortraitCrop) => setBannerCrop(clampPortraitBannerCrop(next, size)),
     [size],
   );
 
@@ -96,6 +121,13 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   const left = STAGE_BOX / 2 - place.anchorX * shownW;
   const top = STAGE_BOX / 2 - place.anchorY * shownH;
 
+  // Baner: to, co pokaże lewy panel, i ten sam układ wyrażony jako własny kadr
+  // — przeciąganie rusza od tego, co widać, także gdy baner jest „jak żeton”.
+  const bannerPlace = portraitBannerFor({ ...size, crop, bannerCrop });
+  const bannerView = bannerCrop ?? portraitBannerCropOf(bannerPlace, size);
+  const bannerShownW = bannerPlace.width * BANNER_W;
+  const bannerShownH = bannerPlace.height * BANNER_H;
+
   // Promienie liczy ta sama funkcja, co dla figury na mapie, i dla kratki tej
   // sceny — inaczej okno obiecywałoby kadr, którego mapa nie narysuje.
   //
@@ -107,9 +139,21 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
   const ringWidth = RING_WIDTH * cellRatio;
   const ringBox = STAGE_CELL + ringWidth * 2;
 
+  // Jedna para rąk dla obu zakładek: co ciągniemy, jak to zacisnąć i ile
+  // pikseli okna ma cały obraz.
+  const active =
+    tab === 'token'
+      ? { crop, set: change, width: shownW, height: shownH }
+      : { crop: bannerView, set: changeBanner, width: bannerShownW, height: bannerShownH };
+
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, crop };
+    dragRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      crop: active.crop,
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -117,9 +161,9 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     // Ciągnięcie obrazu w prawo przesuwa punkt kadru w lewo — stąd minus.
-    change({
-      x: drag.crop.x - (event.clientX - drag.x) / shownW,
-      y: drag.crop.y - (event.clientY - drag.y) / shownH,
+    active.set({
+      x: drag.crop.x - (event.clientX - drag.x) / active.width,
+      y: drag.crop.y - (event.clientY - drag.y) / active.height,
       zoom: drag.crop.zoom,
     });
   }
@@ -139,7 +183,7 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
     // ok. ±100, gładzik — kilka jednostek na klatkę. Stały skok na zdarzenie
     // dałby na gładziku przeskok z 1 na sufit w pół gestu.
     const factor = Math.exp(-event.deltaY / WHEEL_ZOOM_DIVISOR);
-    change({ ...crop, zoom: crop.zoom * clampFactor(factor) });
+    active.set({ ...active.crop, zoom: active.crop.zoom * clampFactor(factor) });
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -153,13 +197,17 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
     const move = moves[event.key];
     if (!move) return;
     event.preventDefault();
-    change({ x: crop.x + move[0] / shownW, y: crop.y + move[1] / shownH, zoom: crop.zoom });
+    active.set({
+      x: active.crop.x + move[0] / active.width,
+      y: active.crop.y + move[1] / active.height,
+      zoom: active.crop.zoom,
+    });
   }
 
   async function save() {
     setSaving(true);
     setError(null);
-    const ack = await setPortraitCrop(asset.id, crop);
+    const ack = await setPortraitCrop(asset.id, crop, bannerCrop);
     setSaving(false);
     if (!ack.ok) {
       setError(
@@ -178,96 +226,171 @@ function PortraitCropEditorBody({ asset }: { asset: PortraitAssetView }) {
     close();
   }
 
+  const stageEvents = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: endDrag,
+    onPointerCancel: endDrag,
+    onWheel,
+    onKeyDown,
+  };
+
   return (
     <div className="dialog-backdrop" onClick={close}>
       <div className="dialog portrait-crop" onClick={(event) => event.stopPropagation()}>
-        <h3 className="panel-section-title">Kadr na mapie — {asset.name}</h3>
+        <h3 className="panel-section-title">Kadr portretu — {asset.name}</h3>
+        <div className="portrait-crop-tabs" role="tablist" aria-label="Gdzie widać portret">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'token'}
+            className="small-button"
+            onClick={() => setTab('token')}
+          >
+            Żeton
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'banner'}
+            className="small-button"
+            title="Portret u góry lewego panelu, pod nim imię i PW"
+            onClick={() => setTab('banner')}
+          >
+            Baner
+          </button>
+        </div>
         <p className="portrait-crop-hint">
-          Ciągnij portret, kółkiem myszy albo suwakiem przybliż. Kadr wolno wywieźć poza obraz —
-          puste miejsce wypełnia wtedy tło żetonu. Poza mapą — na karcie, w kreatorze i na czacie —
-          portret zostaje widoczny w całości.
+          {tab === 'token'
+            ? 'Ciągnij portret, kółkiem myszy albo suwakiem przybliż. Kadr wolno wywieźć poza obraz — puste miejsce wypełnia wtedy tło żetonu.'
+            : bannerCrop
+              ? 'Baner ma własny kadr. Ciągnij i przybliżaj; dół przykryje podpis z imieniem i PW. „Jak żeton” wraca do kadru liczonego z żetonu.'
+              : 'Baner liczy się teraz z kadru żetonu. Pociągnij albo przybliż, żeby ustawić mu własny kadr.'}{' '}
+          Karta, kreator i czat pokazują portret w całości.
         </p>
 
-        <div className="portrait-crop-stage-row">
-          <div
-            className="portrait-crop-stage"
-            style={{ width: STAGE_BOX, height: STAGE_BOX }}
-            role="group"
-            aria-label="Kadr portretu na mapie — ciągnij myszą, strzałki przesuwają"
-            tabIndex={0}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-            onWheel={onWheel}
-            onKeyDown={onKeyDown}
-          >
-            {/* Tło krążka — widać je tam, gdzie kadr wyjechał poza obraz (12.09). */}
-            <span
-              className="portrait-crop-backdrop"
-              style={{ width: circle * 2, height: circle * 2 }}
-              aria-hidden
-            />
-            <img
-              className="portrait-crop-image"
-              src={asset.url}
-              alt=""
-              draggable={false}
-              style={{ left, top, width: shownW, height: shownH }}
-            />
-            {/* Cień na wszystkim poza krążkiem: MG ma widzieć, co odcina. */}
-            <span
-              className="portrait-crop-mask"
-              style={{ width: circle * 2, height: circle * 2 }}
-              aria-hidden
-            />
-            {/* Obwódka właściciela — od 12.09 biegnie dookoła portretu, nie po nim. */}
-            <span
-              className="portrait-crop-ring"
-              style={{ width: ringBox, height: ringBox, borderWidth: ringWidth }}
-              aria-hidden
-            />
-            <span
-              className="portrait-crop-cell"
-              style={{ width: STAGE_CELL, height: STAGE_CELL }}
-              aria-hidden
-            />
-          </div>
+        {tab === 'token' ? (
+          <div className="portrait-crop-stage-row">
+            <div
+              className="portrait-crop-stage"
+              style={{ width: STAGE_BOX, height: STAGE_BOX }}
+              role="group"
+              aria-label="Kadr portretu na mapie — ciągnij myszą, strzałki przesuwają"
+              tabIndex={0}
+              {...stageEvents}
+            >
+              {/* Tło krążka — widać je tam, gdzie kadr wyjechał poza obraz (12.09). */}
+              <span
+                className="portrait-crop-backdrop"
+                style={{ width: circle * 2, height: circle * 2 }}
+                aria-hidden
+              />
+              <img
+                className="portrait-crop-image"
+                src={asset.url}
+                alt=""
+                draggable={false}
+                style={{ left, top, width: shownW, height: shownH }}
+              />
+              {/* Cień na wszystkim poza krążkiem: MG ma widzieć, co odcina. */}
+              <span
+                className="portrait-crop-mask"
+                style={{ width: circle * 2, height: circle * 2 }}
+                aria-hidden
+              />
+              {/* Obwódka właściciela — od 12.09 biegnie dookoła portretu, nie po nim. */}
+              <span
+                className="portrait-crop-ring"
+                style={{ width: ringBox, height: ringBox, borderWidth: ringWidth }}
+                aria-hidden
+              />
+              <span
+                className="portrait-crop-cell"
+                style={{ width: STAGE_CELL, height: STAGE_CELL }}
+                aria-hidden
+              />
+            </div>
 
-          <div className="portrait-crop-side">
-            <p className="portrait-crop-side-label">Tak na mapie</p>
-            {/* Prawdziwa wielkość: kratka tej sceny, co do piksela. Krążek bywa
-                mały i to jest właśnie ta informacja — twarz ma być czytelna
-                przy stole, nie w oknie edycji. */}
-            <TruePreview asset={asset} crop={crop} gridPx={gridPx} />
-            <p className="portrait-crop-side-note">kratka {Math.round(gridPx)} px</p>
+            <div className="portrait-crop-side">
+              <p className="portrait-crop-side-label">Tak na mapie</p>
+              {/* Prawdziwa wielkość: kratka tej sceny, co do piksela. Krążek bywa
+                  mały i to jest właśnie ta informacja — twarz ma być czytelna
+                  przy stole, nie w oknie edycji. */}
+              <TruePreview asset={asset} crop={crop} gridPx={gridPx} />
+              <p className="portrait-crop-side-note">kratka {Math.round(gridPx)} px</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="portrait-crop-stage-row">
+            <div
+              className="portrait-crop-stage"
+              style={{ width: BANNER_BOX_W, height: BANNER_BOX_H }}
+              role="group"
+              aria-label="Kadr portretu w banerze lewego panelu — ciągnij myszą, strzałki przesuwają"
+              tabIndex={0}
+              {...stageEvents}
+            >
+              <img
+                className="portrait-crop-image"
+                src={asset.url}
+                alt=""
+                draggable={false}
+                style={{
+                  left: STAGE_PAD + bannerPlace.left * BANNER_W,
+                  top: STAGE_PAD + bannerPlace.top * BANNER_H,
+                  width: bannerShownW,
+                  height: bannerShownH,
+                }}
+              />
+              {/* Ta sama ramka i to samo przejście, co w panelu: podpis przykrywa
+                  dół banera, więc widać od razu, czy twarz nad nim zostaje. */}
+              <span
+                className="portrait-crop-banner"
+                style={{ width: BANNER_W, height: BANNER_H }}
+                aria-hidden
+              >
+                <span className="portrait-crop-banner-caption">imię · PW</span>
+              </span>
+            </div>
+          </div>
+        )}
 
         <label className="portrait-crop-zoom">
           Przybliżenie
           <input
             type="range"
-            min={PORTRAIT_CROP_ZOOM_MIN}
-            max={PORTRAIT_CROP_ZOOM_MAX}
+            min={tab === 'token' ? PORTRAIT_CROP_ZOOM_MIN : 1}
+            max={tab === 'token' ? PORTRAIT_CROP_ZOOM_MAX : PORTRAIT_BANNER_ZOOM_MAX}
             step={0.01}
-            value={crop.zoom}
-            onChange={(event) => change({ ...crop, zoom: Number(event.target.value) })}
+            value={active.crop.zoom}
+            onChange={(event) => active.set({ ...active.crop, zoom: Number(event.target.value) })}
           />
-          <span className="portrait-crop-zoom-value">{crop.zoom.toFixed(2)}×</span>
+          <span className="portrait-crop-zoom-value">{active.crop.zoom.toFixed(2)}×</span>
         </label>
 
         {error ? <p className="auth-error">{error}</p> : null}
 
         <div className="portrait-crop-buttons">
-          <button
-            type="button"
-            className="small-button"
-            disabled={saving}
-            onClick={() => change(DEFAULT_PORTRAIT_CROP)}
-          >
-            Wyśrodkuj
-          </button>
+          {tab === 'token' ? (
+            <button
+              type="button"
+              className="small-button"
+              disabled={saving}
+              onClick={() => change(DEFAULT_PORTRAIT_CROP)}
+            >
+              Wyśrodkuj
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="small-button"
+              disabled={saving || bannerCrop === null}
+              title="Baner znowu liczy się z kadru żetonu"
+              onClick={() => setBannerCrop(null)}
+            >
+              Jak żeton
+            </button>
+          )}
           <span className="portrait-crop-spacer" />
           <button type="button" className="small-button" disabled={saving} onClick={close}>
             Anuluj
@@ -328,7 +451,8 @@ function TruePreview({
 }
 
 /**
- * „Kadr na mapie" przy portrecie karty albo kreatora (12.09).
+ * „Kadr portretu" przy portrecie karty albo kreatora (12.09; od 25.09 okno
+ * ma też zakładkę banera lewego panelu).
  *
  * Osobny, maleńki komponent, bo wołają go trzy miejsca i każde ma inny układ
  * wokół portretu — a odszukanie wiersza puli po adresie pliku jest wszędzie
@@ -384,7 +508,7 @@ export function PortraitCropButton({
           'Wgraj go ponownie przyciskiem „+ Dodaj" w puli.'
         }
       >
-        Kadr na mapie
+        Kadr portretu
       </button>
     );
   }
@@ -393,10 +517,10 @@ export function PortraitCropButton({
       type="button"
       className={className}
       disabled={disabled}
-      title="Jak ten portret jest ujęty w krążku żetonu"
+      title="Jak ten portret jest ujęty w krążku żetonu i w banerze lewego panelu"
       onClick={() => openCrop(asset.id)}
     >
-      Kadr na mapie
+      Kadr portretu
     </button>
   );
 }

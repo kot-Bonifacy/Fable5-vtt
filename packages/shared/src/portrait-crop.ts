@@ -201,6 +201,106 @@ export function portraitBannerPlacement(
   };
 }
 
+/** Baner portretu w lewym panelu jest 4:3 — wysokość przez szerokość. */
+export const PORTRAIT_BANNER_ASPECT = 3 / 4;
+
+/** Sufit przybliżenia własnego kadru banera — ten sam powód, co przy żetonie. */
+export const PORTRAIT_BANNER_ZOOM_MAX = 4;
+
+/** Skala „obraz pokrywa ramkę” w szerokościach ramki na piksel obrazu. */
+function bannerCover(image: PortraitImageSize, aspect: number): number {
+  return Math.max(1 / image.width, aspect / image.height);
+}
+
+/**
+ * Wciska własny kadr banera w granice (25.09). Inaczej niż przy żetonie
+ * ramka **nie** wyjeżdża poza obraz — w panelu pustego pasa nie ma czym
+ * zamalować — więc punkt kadru (środek banera) trzyma się tak daleko od
+ * krawędzi, żeby ramka jeszcze mieściła się na grafice. `zoom` 1 znaczy
+ * „obraz dokładnie pokrywa baner”.
+ */
+export function clampPortraitBannerCrop(
+  crop: PortraitCrop,
+  image: PortraitImageSize,
+  aspect: number = PORTRAIT_BANNER_ASPECT,
+): PortraitCrop {
+  if (!(image.width > 0) || !(image.height > 0)) return { ...DEFAULT_PORTRAIT_CROP };
+  const zoom = clamp(crop.zoom, 1, PORTRAIT_BANNER_ZOOM_MAX);
+  const scale = bannerCover(image, aspect) * zoom;
+  const width = image.width * scale;
+  const height = (image.height * scale) / aspect;
+  return {
+    x: clamp(crop.x, 0.5 / width, 1 - 0.5 / width),
+    y: clamp(crop.y, 0.5 / height, 1 - 0.5 / height),
+    zoom,
+  };
+}
+
+/** Własny kadr banera: punkt kadru na środku ramki, skala „pokryj” × `zoom`. */
+export function portraitBannerCropPlacement(
+  crop: PortraitCrop,
+  image: PortraitImageSize,
+  aspect: number = PORTRAIT_BANNER_ASPECT,
+): PortraitBannerPlacement {
+  const safe = clampPortraitBannerCrop(crop, image, aspect);
+  const scale = bannerCover(image, aspect) * safe.zoom;
+  const width = image.width * scale;
+  const height = (image.height * scale) / aspect;
+  return { width, height, left: 0.5 - safe.x * width, top: 0.5 - safe.y * height };
+}
+
+/**
+ * Odwrotność `portraitBannerCropPlacement`: jakim własnym kadrem da się
+ * powtórzyć dane ułożenie. Edytor zaczyna od niego zakładkę „Baner”, gdy
+ * baner jeszcze wylicza się sam — przeciąganie rusza od tego, co już widać.
+ */
+export function portraitBannerCropOf(
+  placement: PortraitBannerPlacement,
+  image: PortraitImageSize,
+  aspect: number = PORTRAIT_BANNER_ASPECT,
+): PortraitCrop {
+  const zoom = placement.width / (image.width * bannerCover(image, aspect));
+  return clampPortraitBannerCrop(
+    {
+      x: (0.5 - placement.left) / placement.width,
+      y: (0.5 - placement.top) / placement.height,
+      zoom,
+    },
+    image,
+    aspect,
+  );
+}
+
+/**
+ * Jak baner ma pokazać portret (25.09): własny kadr, jeśli jest; inaczej kadr
+ * żetonu przeniesiony na baner; a portret, którego nikt nie kadrował — od góry
+ * grafiki, bo tam siedzi głowa.
+ */
+export function portraitBannerFor(
+  asset: PortraitImageSize & { crop: PortraitCrop; bannerCrop: PortraitCrop | null },
+  aspect: number = PORTRAIT_BANNER_ASPECT,
+): PortraitBannerPlacement {
+  if (asset.bannerCrop) return portraitBannerCropPlacement(asset.bannerCrop, asset, aspect);
+  if (isDefaultPortraitCrop(asset.crop)) {
+    const scale = bannerCover(asset, aspect);
+    const width = asset.width * scale;
+    return { width, height: (asset.height * scale) / aspect, left: 0.5 - width / 2, top: 0 };
+  }
+  return portraitBannerPlacement(asset.crop, asset, aspect);
+}
+
+/** Kadr banera z drutu albo z bazy — `null`, gdy to nie jest kadr. */
+export function sanitizePortraitBannerCrop(
+  input: unknown,
+  image: PortraitImageSize,
+): PortraitCrop | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const raw = input as Record<string, unknown>;
+  const { x, y, zoom } = raw;
+  if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFiniteNumber(zoom)) return null;
+  return clampPortraitBannerCrop({ x, y, zoom }, image);
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

@@ -5,7 +5,13 @@ import {
   PORTRAIT_CROP_ZOOM_MIN,
   clampPortraitCrop,
   isDefaultPortraitCrop,
+  PORTRAIT_BANNER_ASPECT,
+  clampPortraitBannerCrop,
+  portraitBannerCropOf,
+  portraitBannerCropPlacement,
+  portraitBannerFor,
   portraitBannerPlacement,
+  sanitizePortraitBannerCrop,
   portraitCropPlacement,
   sanitizePortraitCrop,
 } from './portrait-crop.js';
@@ -178,5 +184,58 @@ describe('portraitBannerPlacement — kadr w banerze lewego panelu (25.09)', () 
     expect(place.height).toBeCloseTo(1);
     expect(place.width).toBeGreaterThan(1);
     expect(place.left).toBeCloseTo(0.5 - place.width / 2);
+  });
+});
+
+describe('własny kadr banera (25.09)', () => {
+  it('zoom 1 pokrywa baner, a punkt kadru siada na środku ramki', () => {
+    const place = portraitBannerCropPlacement({ x: 0.5, y: 0.3, zoom: 1 }, TALL);
+    expect(place.width).toBeCloseTo(1);
+    expect(place.height).toBeCloseTo(2);
+    expect(place.left).toBeCloseTo(0);
+    expect(place.top + 0.3 * place.height).toBeCloseTo(0.5);
+  });
+
+  it('nie wypuszcza ramki poza obraz — punkt kadru dosuwa się do krawędzi', () => {
+    const safe = clampPortraitBannerCrop({ x: 0, y: 0, zoom: 1 }, TALL);
+    expect(safe).toEqual({ x: 0.5, y: 0.25, zoom: 1 });
+    const place = portraitBannerCropPlacement({ x: 0, y: 0, zoom: 1 }, TALL);
+    expect(place.top).toBeCloseTo(0);
+    expect(clampPortraitBannerCrop({ x: 0.5, y: 0.5, zoom: 0.2 }, TALL).zoom).toBe(1);
+  });
+
+  it('odwrotność odtwarza ułożenie, więc zakładka „Baner” rusza od tego, co widać', () => {
+    const auto = portraitBannerPlacement(
+      { x: 0.45, y: 0.3, zoom: 2 },
+      TALL,
+      PORTRAIT_BANNER_ASPECT,
+    );
+    const again = portraitBannerCropPlacement(portraitBannerCropOf(auto, TALL), TALL);
+    expect(again.width).toBeCloseTo(auto.width);
+    expect(again.left).toBeCloseTo(auto.left);
+    expect(again.top).toBeCloseTo(auto.top);
+  });
+
+  it('baner wybiera: własny kadr, potem kadr żetonu, a bez kadru — górę grafiki', () => {
+    const own = { x: 0.5, y: 0.7, zoom: 1 };
+    const withOwn = portraitBannerFor({ ...TALL, crop: DEFAULT_PORTRAIT_CROP, bannerCrop: own });
+    expect(withOwn).toEqual(portraitBannerCropPlacement(own, TALL));
+    const fromToken = portraitBannerFor({
+      ...TALL,
+      crop: { x: 0.5, y: 0.5, zoom: 2 },
+      bannerCrop: null,
+    });
+    expect(fromToken).toEqual(
+      portraitBannerPlacement({ x: 0.5, y: 0.5, zoom: 2 }, TALL, PORTRAIT_BANNER_ASPECT),
+    );
+    const plain = portraitBannerFor({ ...TALL, crop: DEFAULT_PORTRAIT_CROP, bannerCrop: null });
+    expect(plain.top).toBe(0);
+    expect(plain.left).toBeCloseTo(0);
+  });
+
+  it('odrzuca śmieci z drutu, liczby zaciska', () => {
+    expect(sanitizePortraitBannerCrop({ x: 'a', y: 0, zoom: 1 }, TALL)).toBeNull();
+    expect(sanitizePortraitBannerCrop(null, TALL)).toBeNull();
+    expect(sanitizePortraitBannerCrop({ x: 0.5, y: 0.5, zoom: 9 }, TALL)?.zoom).toBe(4);
   });
 });

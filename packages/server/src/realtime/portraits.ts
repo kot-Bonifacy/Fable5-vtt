@@ -4,7 +4,7 @@ import type {
   PortraitCropPayload,
   PortraitVisibilityPayload,
 } from '@vtt/shared';
-import { ROLE_GM, sanitizePortraitCrop } from '@vtt/shared';
+import { ROLE_GM, sanitizePortraitBannerCrop, sanitizePortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import {
   draftPortraitUrl,
@@ -58,15 +58,29 @@ export const portraitCropEvent = defineEvent<PortraitCropPayload, PortraitAssetV
 
     // Granice liczy się z wymiarów **tego** obrazu, więc odpowiedź na „czy ten
     // kadr pokrywa krążek" nie zależy od tego, w co wierzy klient.
-    const crop = sanitizePortraitCrop(payload?.crop, {
-      width: asset.width,
-      height: asset.height,
-    });
+    const size = { width: asset.width, height: asset.height };
+    const crop = sanitizePortraitCrop(payload?.crop, size);
     if (!crop) throw new RealtimeError('BAD_REQUEST');
+    // Kadr banera (25.09): brak pola — bez zmian, `null` — z powrotem „jak
+    // żeton”, cokolwiek innego musi być kadrem. Te same prawa co do żetonu:
+    // właściciel kadruje oba wystąpienia swojego portretu.
+    const rawBanner = payload?.bannerCrop;
+    let banner: {
+      bannerX: number | null;
+      bannerY: number | null;
+      bannerZoom: number | null;
+    } | null = null;
+    if (rawBanner === null) {
+      banner = { bannerX: null, bannerY: null, bannerZoom: null };
+    } else if (rawBanner !== undefined) {
+      const parsed = sanitizePortraitBannerCrop(rawBanner, size);
+      if (!parsed) throw new RealtimeError('BAD_REQUEST');
+      banner = { bannerX: parsed.x, bannerY: parsed.y, bannerZoom: parsed.zoom };
+    }
 
     const saved = await deps.ctx.prisma.portraitAsset.update({
       where: { id: asset.id },
-      data: { cropX: crop.x, cropY: crop.y, cropZoom: crop.zoom },
+      data: { cropX: crop.x, cropY: crop.y, cropZoom: crop.zoom, ...(banner ?? {}) },
     });
     const view = toPortraitAssetView(saved);
     await emitPortraitAsset(deps, campaign.id, 'portrait:crop', view);

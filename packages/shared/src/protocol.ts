@@ -258,6 +258,11 @@ export interface ShopEntryTierBroadcast {
 export interface PortraitCropPayload {
   assetId: string;
   crop: PortraitCrop;
+  /**
+   * Kadr banera lewego panelu (25.09): brak pola — bez zmian, `null` — z powrotem
+   * „jak żeton” (wyliczany z `crop`).
+   */
+  bannerCrop?: PortraitCrop | null;
 }
 
 export interface PortraitCropBroadcast {

@@ -1190,6 +1190,41 @@
   gap: 0.6rem;
 }
 
+/* Zakładki „Żeton” / „Baner” (25.09) — wzorem zakładek puli portretów. */
+.portrait-crop-tabs {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.portrait-crop-tabs [aria-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Ramka banera: cień na tym, co poza nią, i to samo czarne przejście pod
+   podpisem, co w lewym panelu (`.hud-portrait-caption`). */
+.portrait-crop-banner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  box-shadow: 0 0 0 9999px var(--map-crop-scrim);
+  outline: 1px dashed var(--map-line-soft);
+}
+
+.portrait-crop-banner-caption {
+  width: 100%;
+  padding: 1.6rem 0.55rem 0.9rem;
+  background: linear-gradient(to top, var(--cp-bar) 35%, transparent);
+  color: var(--map-ink);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .portrait-crop-hint {
   margin: 0;
   font-size: 0.78rem;
