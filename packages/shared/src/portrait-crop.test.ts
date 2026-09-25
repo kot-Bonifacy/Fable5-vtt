@@ -5,6 +5,7 @@ import {
   PORTRAIT_CROP_ZOOM_MIN,
   clampPortraitCrop,
   isDefaultPortraitCrop,
+  portraitBannerPlacement,
   portraitCropPlacement,
   sanitizePortraitCrop,
 } from './portrait-crop.js';
@@ -134,5 +135,43 @@ describe('kadr z drutu', () => {
     expect(clampPortraitCrop({ x: 0.2, y: 0.2, zoom: 3 }, { width: 0, height: 0 })).toEqual(
       DEFAULT_PORTRAIT_CROP,
     );
+  });
+});
+
+describe('portraitBannerPlacement — kadr w banerze lewego panelu (25.09)', () => {
+  const BANNER = 0.75;
+
+  it('bez przybliżenia obraz pokrywa baner, a twarz z góry kadru stoi nad podpisem', () => {
+    expect(portraitBannerPlacement({ x: 0.5, y: 0.2, zoom: 1 }, TALL, BANNER)).toEqual({
+      width: 1,
+      height: 2,
+      left: 0,
+      top: 0,
+    });
+    const middle = portraitBannerPlacement({ x: 0.5, y: 0.5, zoom: 1 }, TALL, BANNER);
+    expect(middle.top).toBeCloseTo(-0.6);
+  });
+
+  it('krążek żetonu zajmuje w banerze dwie trzecie wysokości — półtora raza szerzej', () => {
+    const place = portraitBannerPlacement({ x: 0.5, y: 0.2, zoom: 4 }, TALL, BANNER);
+    expect(place.width).toBeCloseTo(2);
+    expect(place.height).toBeCloseTo(4);
+    // Krążek przy zoomie 4 pokazuje 200 px obrazu; w banerze to 200 / 1200 wysokości obrazu.
+    expect((place.height * 200) / 1200).toBeCloseTo(2 / 3);
+    expect(place.left).toBeCloseTo(-0.5);
+    expect(place.top).toBeCloseTo(-0.4);
+  });
+
+  it('dosuwa kadr przy krawędzi obrazu, zamiast odsłaniać pusty pas', () => {
+    const place = portraitBannerPlacement({ x: 1, y: 1, zoom: 4 }, TALL, BANNER);
+    expect(place.left).toBeCloseTo(1 - place.width);
+    expect(place.top).toBeCloseTo(1 - place.height);
+  });
+
+  it('szeroki obraz pokrywa baner wysokością', () => {
+    const place = portraitBannerPlacement(DEFAULT_PORTRAIT_CROP, WIDE, BANNER);
+    expect(place.height).toBeCloseTo(1);
+    expect(place.width).toBeGreaterThan(1);
+    expect(place.left).toBeCloseTo(0.5 - place.width / 2);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type {
   CpredStatEffect,
   CpredAttackMode,
@@ -16,6 +16,7 @@ import {
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
+  portraitBannerPlacement,
   woundStateFromHp,
 } from '@vtt/shared';
 import {
@@ -36,6 +37,7 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
@@ -350,6 +352,30 @@ function ModeDrawer({
   );
 }
 
+/** Baner portretu jest 4:3 (`.hud-portrait-frame` w `12-hud.css`). */
+const BANNER_ASPECT = 3 / 4;
+
+/**
+ * Kadr z mapy w banerze (zlecenie MG, 25.09): portret, który MG wykadrował pod
+ * żeton, pokazuje w panelu to samo miejsce, tylko szerzej. Bez własnego kadru
+ * baner zostaje przy `object-position` z CSS — `crops` trzyma wyłącznie kadry
+ * inne niż domyślny.
+ */
+function useBannerCrop(imageUrl: string | null): CSSProperties | null {
+  const asset = usePortraitStore((s) =>
+    imageUrl && s.crops.has(imageUrl) ? (s.assets.find((a) => a.url === imageUrl) ?? null) : null,
+  );
+  if (!asset) return null;
+  const place = portraitBannerPlacement(asset.crop, asset, BANNER_ASPECT);
+  const pct = (value: number) => `${(value * 100).toFixed(3)}%`;
+  return {
+    width: pct(place.width),
+    height: pct(place.height),
+    left: pct(place.left),
+    top: pct(place.top),
+  };
+}
+
 /** Portrait, name, role and the three numbers a fight is fought with. */
 function IdentityCard({
   name,
@@ -365,11 +391,17 @@ function IdentityCard({
   // Baner, nie miniatura (zlecenie MG, 25.09): portret na całą szerokość
   // karty, a imię, Rola i PW leżą na nim, na czarnym przejściu u dołu kadru.
   // Chipy SP/RUCH/EMP schodzą pod obraz — na twarzy byłyby szumem.
+  const banner = useBannerCrop(imageUrl);
   return (
     <div className={`hud-card${imageUrl ? '' : ' hud-card--no-portrait'}`}>
       <span className="hud-portrait-frame">
         {imageUrl ? (
-          <img className="hud-portrait" src={imageUrl} alt="" />
+          <img
+            className={`hud-portrait${banner ? ' hud-portrait--cropped' : ''}`}
+            src={imageUrl}
+            alt=""
+            {...(banner ? { style: banner } : {})}
+          />
         ) : (
           <span className="hud-portrait hud-portrait--empty">
             {name.trim().charAt(0).toUpperCase() || '?'}

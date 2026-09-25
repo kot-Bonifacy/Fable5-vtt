@@ -138,6 +138,63 @@ export function portraitCropPlacement(
   return { scale: cover * safe.zoom, anchorX: safe.x, anchorY: safe.y };
 }
 
+/**
+ * Ile razy szerzej od krążka żetonu patrzy baner portretu (decyzja MG z 25.09:
+ * „szerzej, więcej postaci” — widać ramiona, twarz mniejsza niż na mapie).
+ */
+export const PORTRAIT_BANNER_ZOOM_OUT = 1.5;
+
+/**
+ * Na jakiej wysokości banera siada punkt kadru. Nie na środku: dolną część
+ * kadru przykrywa podpis (imię, Rola, PW), więc twarz idzie nad niego.
+ */
+export const PORTRAIT_BANNER_FOCUS_Y = 0.4;
+
+/**
+ * Jak ułożyć obraz w banerze, wszystko w ułamkach ramki: `width` i `left`
+ * względem jej szerokości, `height` i `top` — wysokości.
+ */
+export interface PortraitBannerPlacement {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+}
+
+/**
+ * Kadr z mapy przeniesiony na baner lewego panelu (zlecenie MG z 25.09).
+ *
+ * Skala: to, co krążek żetonu pokazuje na całej średnicy, zajmuje w banerze
+ * `1 / PORTRAIT_BANNER_ZOOM_OUT` wysokości — ale nigdy mniej niż „obraz pokrywa
+ * baner”, bo pusty pas nad głową wyglądałby w panelu jak zepsuty plik (na
+ * mapie zamalowuje go tło żetonu, tu nie ma czym). Położenie: punkt kadru na
+ * środku szerokości i na `PORTRAIT_BANNER_FOCUS_Y` wysokości, dosunięty do
+ * krawędzi, jeśli inaczej ramka wyjechałaby poza obraz.
+ *
+ * `aspect` to wysokość ramki przez szerokość (baner 4:3 → 0,75).
+ */
+export function portraitBannerPlacement(
+  crop: PortraitCrop,
+  image: PortraitImageSize,
+  aspect: number,
+): PortraitBannerPlacement {
+  const safe = clampPortraitCrop(crop, image);
+  // Skala w szerokościach ramki na piksel obrazu (ramka ma szerokość 1).
+  const scale = Math.max(
+    1 / image.width,
+    aspect / image.height,
+    (aspect * safe.zoom) / (PORTRAIT_BANNER_ZOOM_OUT * Math.min(image.width, image.height)),
+  );
+  const width = image.width * scale;
+  const height = (image.height * scale) / aspect;
+  return {
+    width,
+    height,
+    left: clamp(0.5 - safe.x * width, 1 - width, 0),
+    top: clamp(PORTRAIT_BANNER_FOCUS_Y - safe.y * height, 1 - height, 0),
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

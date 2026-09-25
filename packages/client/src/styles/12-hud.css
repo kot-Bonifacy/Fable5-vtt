@@ -335,6 +335,15 @@
   clip-path: none;
 }
 
+/* Portret wykadrowany pod żeton (25.09): rozmiar i położenie liczy
+   `portraitBannerPlacement` i podaje w stylu elementu, w procentach ramki. */
+.hud-portrait-frame .hud-portrait--cropped {
+  right: auto;
+  bottom: auto;
+  max-width: none;
+  object-fit: fill;
+}
+
 /* Bez portretu baner nie udaje zdjęcia: niski pasek z inicjałem nad podpisem,
    zamiast pustego kadru 4:3, który zepchnąłby bronie o pół ekranu. */
 .hud-card--no-portrait .hud-portrait-frame {

@@ -31,9 +31,10 @@ import { useSceneStore } from '../stores/sceneStore.js';
  * portretem leży więc krążek tła żetonu — dokładnie ten, który rysuje
  * `TokenNode` — żeby okno pokazywało pustkę tak, jak pokaże ją mapa.
  *
- * Kadruje się **wyłącznie mapę** (decyzja MG z 12.09): karta, kreator, czat
- * i panel pokazują wgrany plik w całości. Sam plik zostaje nietknięty — kadr to
- * trzy liczby przy wierszu puli, nie nowy upload.
+ * Kadruje się mapę (decyzja MG z 12.09), a od 25.09 także baner portretu
+ * w lewym panelu — to samo miejsce, szerzej (`portraitBannerPlacement`). Karta,
+ * kreator i czat pokazują wgrany plik w całości. Sam plik zostaje nietknięty —
+ * kadr to trzy liczby przy wierszu puli, nie nowy upload.
  */
 export function PortraitCropEditor() {
   const asset = usePortraitStore((s) => s.assets.find((a) => a.id === s.cropping) ?? null);
