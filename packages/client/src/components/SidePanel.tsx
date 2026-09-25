@@ -20,6 +20,7 @@ import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
+import { useGmAttentionStore } from '../stores/gmAttentionStore.js';
 import { useWaitingCharacters } from './CharacterReadyPanel.js';
 import { useJournalStore } from '../stores/journalStore.js';
 
@@ -132,6 +133,29 @@ export function SidePanel() {
   useEffect(() => {
     if (journalFocus) setTab('journal');
   }, [journalFocus]);
+
+  // „Czeka na MG” (25.09): „Przejdź” otwiera zakładkę decyzji, a gdy panel
+  // się narysuje — przewija do wiersza z tym samym kluczem i go podświetla.
+  const attentionFocus = useGmAttentionStore((s) => s.focus);
+  useEffect(() => {
+    if (!attentionFocus) return;
+    setTab(attentionFocus.tab);
+    const highlight = () => {
+      const row = document.querySelector<HTMLElement>(
+        `.side-panel [data-attention="${CSS.escape(attentionFocus.key)}"]`,
+      );
+      if (!row) return;
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      row.classList.remove('attention-flash');
+      void row.offsetWidth;
+      row.classList.add('attention-flash');
+    };
+    // Two frames: the first lets React commit the switched tab.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(highlight);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [attentionFocus]);
 
   const renderTab = (entry: { id: Tab; label: string }) => (
     <button

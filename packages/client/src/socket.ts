@@ -308,6 +308,8 @@ import { useScreamsheetStore } from './stores/screamsheetStore.js';
 import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCreationRankStore } from './stores/creationRankStore.js';
+import { gmAttentionNow, useGmAttentionStore } from './stores/gmAttentionStore.js';
+import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
@@ -531,6 +533,21 @@ export function connectSocket(userId: string): Socket {
   // A roll pauses presentation, never the network or the authoritative server.
   const onPresented = <T>(event: string, listener: (payload: T) => void) =>
     socket!.on(event, (payload: T) => rollPresentation.deliver(() => listener(payload)));
+  /**
+   * „Czeka na MG” (25.09): a live push that opens a new matter for the GM
+   * pops a card and rings. Only pushes are wrapped — the answers that load
+   * state after a sync or F5 are history, not news, and must stay silent.
+   */
+  const watchGmAttention = <T>(apply: () => T): T => {
+    const before = gmAttentionNow();
+    const result = apply();
+    const fresh = useChatStore.getState().synced ? newGmAttention(before, gmAttentionNow()) : [];
+    if (fresh.length > 0) {
+      useGmAttentionStore.getState().announce(fresh);
+      notifyGame('request');
+    }
+    return result;
+  };
 
   socket.on('connect', () => setConnected());
   onPresented('creation:rank', (rank: { draftId: string; statRankId: string }) => {
@@ -559,7 +576,7 @@ export function connectSocket(userId: string): Socket {
     useCreationStore.getState().setPermit(state),
   );
   onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>
-    useCreationRankStore.getState().replacePermits(rows),
+    watchGmAttention(() => useCreationRankStore.getState().replacePermits(rows)),
   );
   // 24.09: the GM changed the terms of my draft — read it again from the server.
   onPresented('creation:terms-changed', (push: { draftId: string }) => {
@@ -572,7 +589,7 @@ export function connectSocket(userId: string): Socket {
   );
   // Naprawa 2b: the GM's rank list lives off the server's pushes.
   onPresented('creation:ranks-sync', (rows: CreationRankDraft[]) =>
-    useCreationRankStore.getState().replace(rows),
+    watchGmAttention(() => useCreationRankStore.getState().replace(rows)),
   );
   socket.on('disconnect', () => {
     rollPresentation.clear();
@@ -592,6 +609,8 @@ export function connectSocket(userId: string): Socket {
   };
 
   onPresented('state:sync', (payload: StateSyncPayload) => {
+    // Another campaign, or the same one after a gap: old cards are history.
+    useGmAttentionStore.getState().clear();
     chat().applySync(payload);
     if (useMusicStore.getState().state?.campaignId !== payload.campaign?.id)
       useMusicStore.setState({ state: null, error: null, blocked: false });
@@ -919,7 +938,7 @@ export function connectSocket(userId: string): Socket {
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
   onPresented('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
-    useCharacterStore.getState().applyUpsert(broadcast.character);
+    watchGmAttention(() => useCharacterStore.getState().applyUpsert(broadcast.character));
   });
   onPresented('character:delete', (broadcast: CharacterDeleteBroadcast) => {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
@@ -938,7 +957,7 @@ export function connectSocket(userId: string): Socket {
     // Live rolls (never history/resync) replay the server's results in 3D;
     // their chat card is held back so the table reads the dice first.
     const hold = fresh && roll !== undefined && toAnimationNotation(roll) !== null;
-    if (chat().applyMessage(broadcast, hold)) {
+    if (watchGmAttention(() => chat().applyMessage(broadcast, hold))) {
       socket?.emit('state:request');
       return;
     }

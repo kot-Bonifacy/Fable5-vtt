@@ -9,6 +9,7 @@ import {
   mayCancelCheckRequest,
 } from '@vtt/shared';
 import { cancelCheckRequest, checkRequestErrorText, resolveCheckRequest } from '../socket.js';
+import { gmAttentionKey } from '../gm-attention.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCheckStore } from '../stores/checkStore.js';
@@ -89,6 +90,7 @@ export function CheckRequestRow({
         resolution && resolution.kind !== 'approved' ? ' chat-request--closed' : ''
       }`}
       data-testid="check-request"
+      data-attention={gmAttentionKey.message(message.id)}
     >
       <div className="chat-message-meta">
         <span className="chat-message-author">Prośba o Test</span>

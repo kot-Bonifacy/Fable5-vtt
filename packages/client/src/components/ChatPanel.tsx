@@ -48,6 +48,7 @@ import { InventoryMoveRow } from './InventoryMove.js';
 import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
@@ -248,6 +249,7 @@ function BotProposalRow({
       className={`chat-message chat-proposal${
         proposal.resolution === 'rejected' ? ' chat-proposal--rejected' : ''
       }`}
+      data-attention={gmAttentionKey.message(message.id)}
     >
       <div className="chat-message-meta">
         <span className="chat-message-author">{proposal.botName}</span>

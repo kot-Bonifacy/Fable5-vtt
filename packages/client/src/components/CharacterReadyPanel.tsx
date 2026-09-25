@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cpredRoleChores } from '@vtt/shared';
 import { setCharacterPlayReady } from '../socket.js';
+import { gmAttentionKey } from '../gm-attention.js';
 import { useCharacterStore, type CharacterSheetView } from '../stores/characterStore.js';
 import { RoleChoresList } from './RoleChores.js';
 
@@ -66,7 +67,10 @@ function ReadyRow({ character }: { character: CharacterSheetView }) {
   }
 
   return (
-    <li className="creation-rank-row creation-rank-row--waiting creation-ready-row">
+    <li
+      className="creation-rank-row creation-rank-row--waiting creation-ready-row"
+      data-attention={gmAttentionKey.ready(character.id)}
+    >
       <span className="creation-rank-who">
         <strong>{character.name}</strong>
         {role ? ` · ${role}` : ''}

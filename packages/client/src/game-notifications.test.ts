@@ -49,7 +49,7 @@ it('inventory notifies its recipient only while waiting for receipt', () => {
   ).toBeNull();
   expect(chatNotification(message({ kind: 'say' }), user)).toBeNull();
 });
-it('a pending Test request notifies GM only', () => {
+it('a Test request never rings from the chat — „Czeka na MG” rings it for the GM', () => {
   const request: NonNullable<ChatMessageView['request']> = {
     characterId: 'a',
     characterName: 'A',
@@ -58,7 +58,7 @@ it('a pending Test request notifies GM only', () => {
     rollLabel: 'Test',
     system: {},
   };
-  expect(chatNotification(message({ kind: 'request', request }), gm)).toBe('request');
+  expect(chatNotification(message({ kind: 'request', request }), gm)).toBeNull();
   expect(chatNotification(message({ kind: 'request', request }), user)).toBeNull();
   expect(
     chatNotification(

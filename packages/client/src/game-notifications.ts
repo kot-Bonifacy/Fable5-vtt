@@ -1,4 +1,4 @@
-import { ROLE_GM, type ChatMessageView, type CombatView, type SessionUser } from '@vtt/shared';
+import type { ChatMessageView, CombatView, SessionUser } from '@vtt/shared';
 import { playNaturalNotification } from './cup-notification.js';
 import { useChatStore } from './stores/chatStore.js';
 
@@ -11,13 +11,8 @@ export function chatNotification(
   if (message.authorId === user.id) return null;
   if (message.kind === 'whisper' && message.recipientId === user.id && !message.recipientBotId)
     return 'whisper';
-  if (
-    message.kind === 'request' &&
-    message.request &&
-    !message.request.resolution &&
-    user.role === ROLE_GM
-  )
-    return 'request';
+  // A Test request rings for the GM through „Czeka na MG” (`gm-attention.ts`,
+  // 25.09) together with every other matter waiting for the GM's hand.
   if (
     message.kind === 'inventory' &&
     message.inventory?.toOwnerId === user.id &&

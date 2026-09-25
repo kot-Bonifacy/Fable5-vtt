@@ -489,7 +489,9 @@
 /* Dok handli w prawym górnym rogu mapy: zaproszenia, zwinięte handle, ślad
    po zakończonym. Tła i tuszu mapy (`--map-panel`, `--map-ink`), jak pasek
    operacji na figurach — to nakładka na mapę, nie okno. */
-.trade-dock {
+/* Prawy górny róg mapy to jedna kolumna (25.09): „Czeka na MG” nad dokiem
+   handli. Kolumna nie łapie kliknięć — tylko to, co w niej stoi. */
+.map-corner {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
@@ -499,6 +501,19 @@
   align-items: flex-end;
   gap: 0.35rem;
   max-width: min(26rem, calc(100% - 1.5rem));
+  pointer-events: none;
+}
+
+.map-corner > * {
+  pointer-events: auto;
+}
+
+.trade-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  max-width: 100%;
 }
 
 .trade-dock-row {
@@ -534,4 +549,139 @@
    więc jej nazwa stoi przy niej, a nie przy prawej krawędzi. */
 .sighting-what--lead {
   text-align: left;
+}
+
+/* „Czeka na MG” (25.09, zlecenie MG): znacznik stoi, dopóki cokolwiek czeka
+   na decyzję MG, i oddycha czerwienią akcentu — ma zawołać przez cały stół.
+   Kafle świeżych spraw i rozwinięta lista biorą tło i tusz mapy, jak dok. */
+.gm-attention {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.gm-attention-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--map-ink-bright);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  animation: gm-attention-call 1.6s ease-in-out infinite;
+}
+
+.gm-attention-badge[aria-expanded='true'] {
+  animation: none;
+}
+
+.gm-attention-count {
+  min-width: 1.4em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  background: var(--map-panel);
+  color: var(--map-ink-bright);
+  text-align: center;
+}
+
+@keyframes gm-attention-call {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgb(var(--accent-rgb) / 45%);
+  }
+  50% {
+    box-shadow: 0 0 18px rgb(var(--accent-rgb) / 90%);
+  }
+}
+
+.gm-attention-list,
+.gm-attention-toasts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 100%;
+}
+
+.gm-attention-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.gm-attention-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--map-panel);
+  color: var(--map-ink);
+  box-shadow: var(--map-shadow-panel);
+  font-size: 0.82rem;
+}
+
+.gm-attention-toast {
+  animation: gm-attention-in 0.25s ease-out;
+}
+
+@keyframes gm-attention-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4rem);
+  }
+}
+
+.gm-attention-icon {
+  flex: none;
+}
+
+.gm-attention-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-attention-close {
+  flex: none;
+  padding: 0 0.2rem;
+  border: none;
+  background: none;
+  color: var(--map-ink);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Wiersz, do którego prowadzi „Przejdź”, błyska raz obwódką ostrzeżenia. */
+.attention-flash {
+  animation: attention-flash 1.8s ease-out;
+}
+
+@keyframes attention-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px rgb(var(--warn-rgb) / 90%);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgb(var(--warn-rgb) / 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-attention-badge,
+  .gm-attention-toast {
+    animation: none;
+  }
 }

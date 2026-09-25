@@ -141,6 +141,7 @@ import {
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { SightingWindow } from './SightingWindow.js';
 import { TradeDock } from './TradeDock.js';
+import { GmAttention } from './GmAttention.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
@@ -1985,7 +1986,12 @@ export function MapArea() {
       )}
       <MapTools />
       <TokenGroupBar />
-      <TradeDock />
+      {/* Prawy górny róg to jedna kolumna (25.09): „Czeka na MG” nad dokiem
+          handli, żeby dwie nakładki nie malowały się jedna na drugiej. */}
+      <div className="map-corner">
+        <GmAttention />
+        <TradeDock />
+      </div>
       <TargetTooltip hover={aimHover} />
       <AimMenu />
       <DrawingTextEditor />

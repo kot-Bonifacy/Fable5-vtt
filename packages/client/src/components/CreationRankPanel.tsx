@@ -23,6 +23,7 @@ import {
   setCreationTerms,
 } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { gmAttentionKey } from '../gm-attention.js';
 import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
 
 /**
@@ -195,7 +196,10 @@ function CreationPermitRowView({ row }: { row: CreationPermitRow }) {
   const requested = row.status === 'requested';
   const changed = row.terms === null || !sameTerms(terms, row.terms);
   return (
-    <li className={`creation-rank-row${requested ? ' creation-rank-row--waiting' : ''}`}>
+    <li
+      className={`creation-rank-row${requested ? ' creation-rank-row--waiting' : ''}`}
+      data-attention={gmAttentionKey.permit(row.userId)}
+    >
       <span className="creation-rank-who">
         <strong>{row.userName}</strong>
       </span>
@@ -305,7 +309,10 @@ function CreationDraftRow({ row }: { row: CreationRankDraft }) {
   }
 
   return (
-    <li className={`creation-rank-row${waitingRank ? ' creation-rank-row--waiting' : ''}`}>
+    <li
+      className={`creation-rank-row${waitingRank ? ' creation-rank-row--waiting' : ''}`}
+      data-attention={gmAttentionKey.rank(row.id)}
+    >
       <span className="creation-rank-who">
         <strong>{row.userName}</strong>
         {row.characterName ? ` · ${row.characterName}` : ' · bez ksywy'}
