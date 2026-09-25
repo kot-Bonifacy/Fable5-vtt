@@ -40,7 +40,7 @@ tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py
 wszystko ciemniejsze od papieru („żadnego brudu”). Dzień od 24.09 w tonie tapety logowania,
 z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`assety-chrom.md`). Poza skórą: Sieć, pasek mapy, screamsheet,
 logowanie. **Od 25.09 kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza stoi na
-górze lewego panelu** (umowa w `ui`). **Oględziny ręką MG czekają** (`zaleglosci.md`); **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
+górze lewego panelu** (umowa w `ui`). **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
@@ -55,11 +55,10 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Dług oględzin — w `zaleglosci.md` zostało głównie to, co wymaga ręki albo oka MG.** Od 25.09
+**Zaległości: brak (od 25.09, czternasta sesja).** Co ocenia się tylko przy stole (kafel papieru,
+sesja zero w kreatorze, pełny ekran, polszczyzna Qwen, Wsparcie 10) — pierwszy wpis `POMYSLY.md`.
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
-`await import('/src/socket.ts')` — pułapki w `ogledziny`); budzi dymek celownika, nie dławi marszu
-i widzi pełny ekran, więc to, co automat z Chrome zostawiał „dla ręki MG”, sprawdzaj nim najpierw. Ręką MG zostają: przytrzymane Esc, tempo
-maszynopisu, siła kafla papieru i menu figury prawdziwą myszą (naprawa z 25.09). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
+`await import('/src/socket.ts')` — pułapki w `ogledziny`). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
 **zaproszenie `tester-dev` jest unieważnione od 17.09** — wchodzi się ważnym zaproszeniem
 aktywnej kampanii (`poligon.md`).
 
@@ -91,7 +90,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2227** w `shared`, **1228** na serwerze, **281** u klienta,
-**59** w gatewayu — zielone (25.09, trzynasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**59** w gatewayu — zielone (25.09, czternasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -126,16 +125,33 @@ a nie do tego pliku.
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 7       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 103     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
+
+**Zlecenie MG:** zaległości w jednej sesji, bez VPS; gdy ich brak — wyczyścić plik. Rozstrzygnięcia
+MG: dźwięk kubka **wyciszyć w łańcuchu kreatora**, tempo maszynopisu **zostaje**, przewijanie
+**zmierzyć automatem**, resztę „przy stole” — **krótka lista w `POMYSLY.md`**.
+
+**Zrobione:** łańcuch Cech i Ścieżki dzwoni tylko przy pierwszym „Weź kubek” (pole `quiet`
+w `PendingCreation`). Przewijanie karty i kroku Umiejętności przy dławieniu CPU 1–6× — 160 kl./s bez
+jednej długiej klatki, przy 20× p95 ≤ 25 ms (dławi tylko CPU, nie GPU). **`zaleglosci.md` jest pusty**;
+cała dawna treść bez zmian w `archiwum/zamkniete-zaleglosci.md`, decyzje z 11.09 w
+`decyzje-i-uproszczenia.md`, pięć pozycji „przy stole” na górze `POMYSLY.md`. Dwie nowe pułapki
+(`boty`, `ogledziny` — import modułu z konsoli po HMR).
+
+**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
+Oglądane w Chromium (Playwright MCP) — zmiana dotyczy dźwięku, nie wyglądu. Pięć kart rzutów Cech
+szkicu MG zostało na czacie „Test2”; szkic wyrzucony.
 
 ### Sesja 25.09 (trzynasta) — zaległości: karta czekająca na MG, okno z bliska, skóra, drobiazgi
 
@@ -157,24 +173,3 @@ w `POMYSLY.md` (warstwy okien, prośba o postać obok karty czekającej).
 
 **Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
 Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan w `poligon.md`.
-
-### Sesja 25.09 (dwunasta) — zaległości: kolejka, handel, drobne odmowy, sklep 3b
-
-**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: paczki
-**„Kolejka i handel”, „Drobne odmowy”, „Sklep 3b i baner”**; **Safari i iPada nie testujemy ani
-nie dostosowujemy** (wszystkie takie pozycje zdjęte); refaktoryzacja całości — **osobna sesja**.
-
-**Oględziny** (pierwszy raz Playwright MCP: MG w Chromium, `Tester` w Firefoksie, `Handlarz`
-w drugiej karcie Chromium na `[::1]`, kampania-śmieć): podwójny klik „Kończę turę”, pas 13
-uczestników, handel dwóch graczy, `SELF_INSTALL`, wszczep bez podstawy, pistolet przy karabinie
-(slot i dymek), kosz grupowy z kartami, całe 3b (motyw dzienny, wąskie okno, zakup przy wyjątku
-MG), baner bez portretu. **Nie zrobione z zaproponowanej paczki:** trasa gracza przy zamkniętym
-oknie z bliska w Dynamicznej (42a) — wymaga „Korytarza 16e” na Poligonie.
-
-**Trzy błędy spoza listy, naprawione i obejrzane:** pas kolejki ucinał aktywnego na pierwszym
-miejscu (`offsetLeft` od `<body>`, pułapka w `ui`); kursor paska trzymał schowaną broń („W ręku:
-nóż” pod wyszarzonym nożem) — nowe pole `outOfHand` na slocie broni (umowa w `atak`); kosz grupowy
-pisał „2 kart”. Dwa drobiazgi i stos figur u gracza w `POMYSLY.md`.
-
-**Weryfikacja:** `shared` 2227 (+1), serwer 1228, klient 281; `tsc`, ESLint, Prettier czyste.
-Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.

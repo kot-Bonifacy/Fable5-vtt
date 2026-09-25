@@ -817,6 +817,7 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## boty — Boty, AI Gateway, RAG
 
+- **Bot „nie chce rzucić” — zajrzyj do `data/private/bot-decisions.jsonl`** (jedna linia JSON na decyzję); pole `options` to pełne menu, które bot dostał. 20a: „rzuć na Wygadanie” wróciło jako rozmowa, bo takiej umiejętności w CP RED nie ma.
 - **Bot w walce rusza się kontem MG, a MG jest zwolniony z blokad ruchu** — jedynym bezpiecznikiem przed przejściem przez ścianę jest planer bota (`walkTowards`); `canStep` dostaje od `planWalk` już ŚRODKI pól.
 - **Budżet myślenia pilnuje `thinking_budget_tokens`, nie `reasoning_budget`** (build 10735, 24.09) — gateway wysyła oba; bez tego 27B myśli cały limit i oddaje pustą odpowiedź.
 - **Pytanie do bota, który jeszcze myśli, przepada bez śladu** — „jedna tura bota naraz” (`requestBotTurns`); przy 27B okno to 3–4 s. Decyzja MG z 24.09: zostaje, to nie usterka.
@@ -983,6 +984,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **`await import('/src/stores/…ts')` z konsoli po HMR daje drugą, pustą kopię magazynu** — aplikacja trzyma moduł pod adresem z `?t=<czas>`, a F5 tego nie zeruje. Adres weź z `performance.getEntriesByType('resource')` i importuj dokładnie ten.
 - **Menu figury „nie otwiera się” z prawego kliku Playwrighta — do 25.09 to był błąd aplikacji, nie automatu** — `contextmenu` po `mouseup` trafiał w tło pod ściętym rogiem menu (umowa w `ui`). Jeśli wróci: podsłuch `pointerdown`/`contextmenu` na `window` z `target` pokaże, kto dostał zdarzenie.
 - **Pierwsze pole kroku Umiejętności w kreatorze to wyszukiwarka, nie dziedzina** — `locator('input').first()` wpisuje „Chemia” w filtr listy i brak nie znika. Dziedzina Nauki/Wiedzy lokalnej to `.creator-skill-specialty` (brakująca: `--missing`); Język ojczysty w Ścieżce Życia jest listą (`[data-creation-field="lifepath.language"] select`).
 - **Zaproszenia Poligonu wygasają (wszystkie trzy do 24.09)** — `POST /api/campaigns/<id>/invitations` kontem MG wystawia nowe na tydzień; imię `avatar9` wraca na istniejące konto. Nowe z 25.09 ważne do 02.10.

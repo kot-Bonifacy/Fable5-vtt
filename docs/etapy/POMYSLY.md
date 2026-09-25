@@ -1,5 +1,16 @@
 # Pomysły poza zakresem etapów
 
+**25.09.2026 (czternasta sesja) — Do sprawdzenia przy stole** (resztki `zaleglosci.md`; automat
+tego nie oceni, szczegóły w `archiwum/zamkniete-zaleglosci.md`, sekcja czternastej sesji):
+(1) **siła kafla papieru** — `DAY`/`NIGHT` w `tools/art/chrome-paper.py`; (2) **sesja zero
+w kreatorze** — tempo ~25 osobnych kart na czacie (10 Cech + ~15 tabel Ścieżki) i rzut prawdziwym
+gestem; (3) **pełny ekran**: przytrzymane Esc wychodzi bez schodzenia po drabinie, a `window.confirm`
+i wybór pliku portretu — czy zdejmują pełny ekran (na `http://217…:8088` Keyboard Lock nie działa,
+zadziała po etapie 28 na HTTPS); (4) **polszczyzna Qwen3.8-27B Q3** — potknięcia odmiany; dźwignie:
+lekcja bota albo mocniejszy kwant; notatki relacji pisz do bota w drugiej osobie; (5) **Wsparcie
+poziomu 10** nie pamięta „tej samej sprawy” (s. 159) — decyzja MG z 25.09: zostaje, nie ruszamy;
+wymagałoby pojęcia „sprawy” (najbliżej wątek dziennika z 24b).
+
 **25.09.2026 (trzynasta sesja) — okna pływające nie wychodzą na wierzch po kliknięciu.** Każde okno
 ma stałą warstwę (`z-index`): okno oględzin figury (`.sighting-window`, 330) zawsze przykrywa handout
 (320), nawet otwarty później i kliknięty. Przy stole to dwa okna naraz u gracza. Kierunek: jeden

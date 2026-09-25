@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (dwunasta) — zaległości: kolejka, handel, drobne odmowy, sklep 3b
+
+**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: paczki
+**„Kolejka i handel”, „Drobne odmowy”, „Sklep 3b i baner”**; **Safari i iPada nie testujemy ani
+nie dostosowujemy** (wszystkie takie pozycje zdjęte); refaktoryzacja całości — **osobna sesja**.
+
+**Oględziny** (pierwszy raz Playwright MCP: MG w Chromium, `Tester` w Firefoksie, `Handlarz`
+w drugiej karcie Chromium na `[::1]`, kampania-śmieć): podwójny klik „Kończę turę”, pas 13
+uczestników, handel dwóch graczy, `SELF_INSTALL`, wszczep bez podstawy, pistolet przy karabinie
+(slot i dymek), kosz grupowy z kartami, całe 3b (motyw dzienny, wąskie okno, zakup przy wyjątku
+MG), baner bez portretu. **Nie zrobione z zaproponowanej paczki:** trasa gracza przy zamkniętym
+oknie z bliska w Dynamicznej (42a) — wymaga „Korytarza 16e” na Poligonie.
+
+**Trzy błędy spoza listy, naprawione i obejrzane:** pas kolejki ucinał aktywnego na pierwszym
+miejscu (`offsetLeft` od `<body>`, pułapka w `ui`); kursor paska trzymał schowaną broń („W ręku:
+nóż” pod wyszarzonym nożem) — nowe pole `outOfHand` na slocie broni (umowa w `atak`); kosz grupowy
+pisał „2 kart”. Dwa drobiazgi i stos figur u gracza w `POMYSLY.md`.
+
+**Weryfikacja:** `shared` 2227 (+1), serwer 1228, klient 281; `tsc`, ESLint, Prettier czyste.
+Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
+
 ### Sesja 25.09 (jedenasta) — zaległości: favicona i oględziny Playwrightem
 
 **Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:

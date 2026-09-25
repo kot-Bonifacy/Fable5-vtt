@@ -576,6 +576,21 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
 
 ## Zakres VTT — czego świadomie nie ma
 
+- **Kamera i mapa gracza — decyzje MG z 11–12.09 (przeniesione z `zaleglosci.md` 25.09).**
+  - **„Ani piksela czerni" zostaje.** Gracz przy maksymalnym oddaleniu nie obejmie całej mapy
+    40 × 30 na szerokim oknie i **tak ma być** — „może sobie poprzesuwać albo odpowiednio rozciągnąć
+    okno". Nie proponuj powrotu do wariantu „cała mapa z czarnymi pasami".
+  - **Mapa powitalna zostaje bez wyznaczanego punktu startu** — zawsze środek dolnej krawędzi.
+    Tło nie ma wiersza w bazie, w którym MG mógłby punkt zapisać, i nikomu to nie przeszkadza.
+  - **Czarne pole gracza pod nieodsłoniętą mgłą jest zachowaniem, nie usterką** — ale czyta się jak
+    awaria: MG sam „miał obawy, że jest zepsuta", patrząc na własną scenę z widocznością `fog`.
+    Nic z tym nie robimy; warto o tym pamiętać przy oględzinach i przy pierwszej sesji z drużyną.
+  - **Pełny plik „StrefyPrzemysłowej" (2896 × 2176) — nie teraz (decyzja MG z 12.09).** Siatka jest
+    poprawiona wpisem „40 kolumn" (36,2 px) na obecnym pliku 1448 × 1086. Wgranie większego pliku
+    **przesunie całą scenę**: wgranie ustawia rozmiar sceny na wymiary pliku, a figury, ściany, mgła,
+    rysunki i światła leżą w pikselach świata — bez przeskalowania ×2 wszystko zjedzie do lewej
+    górnej ćwiartki. Do tego ten plik nie dzieli się równo (72,4 px w poziomie, 72,53 w pionie).
+
 - **Figury mogą stać na jednej kratce (25.09, decyzja MG).** Planer, marsz, przycięcie
   budżetem i serwer nie znają pojęcia „zajęte pole” — jak w Foundry. Znalezione przy oględzinach:
   marsz gracza przycięty budżetem (8,5 z 10 m) zatrzymał figurę dokładnie na polu innej. To nie
