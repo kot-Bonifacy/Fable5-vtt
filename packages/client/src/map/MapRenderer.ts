@@ -1046,7 +1046,12 @@ export class MapRenderer {
   private readonly coverLabels = new Map<number, Text>();
   private readonly rangeLayer = new Container();
   private readonly rangeGraphics = new Graphics();
-  private readonly tokenLayer = new Container();
+  /**
+   * Figury gracza leżą nad cudzymi (`zIndex`, 25.09) — stos na jednej kratce
+   * jest dozwolony, a Pixi oddaje klik figurze z wierzchu, więc bez tego gracz,
+   * którego figura leżała pod cudzą, nie mógł jej chwycić z mapy.
+   */
+  private readonly tokenLayer = new Container({ sortableChildren: true });
   private readonly dragGhost = new Graphics();
   /**
    * Shots, blasts and floating numbers (stage 27i).
@@ -1957,6 +1962,8 @@ export class MapRenderer {
       this.movableTokens.set(token.id, movable);
       node.eventMode = 'static';
       node.cursor = movable ? 'pointer' : 'default';
+      // MG prowadzi wszystkie, więc u niego kolejność zostaje kolejnością wstawiania.
+      node.zIndex = movable && !ctx.isGm ? 1 : 0;
       // A figure in the middle of a march owns its own position, exactly as a
       // dragged one does: the store still holds where the server last saw it.
       node.update(token, ctx, this.drag?.node === node || this.march?.node === node);

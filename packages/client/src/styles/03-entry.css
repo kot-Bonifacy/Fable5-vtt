@@ -281,8 +281,11 @@
   font-size: 0.8rem;
 }
 
+/* `search` od 25.09: osiem pól wyszukiwania (Kompendium, dziennik, broń)
+   rysowało się w Firefoksie jak goła kontrolka — biała ramka na papierze. */
 input[type='text'],
-input[type='password'] {
+input[type='password'],
+input[type='search'] {
   padding: 0.55rem 0.7rem;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -293,6 +296,31 @@ input[type='password'] {
 
 input:focus {
   outline: 1px solid var(--accent);
+}
+
+/* Pola, których nikt nie ostylował, dostają papier zamiast gołej kontrolki
+   przeglądarki (25.09) — w dzień były białe na kartce (liczby na karcie
+   bariery, listy, wybór pliku handoutu). `:where` ma zerową specyficzność,
+   więc każda klasa, która już maluje swoje pole, wygrywa bez wyjątku. */
+:where(input[type='number'], select, textarea) {
+  background-color: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+:where(input[type='file']) {
+  color: var(--text);
+}
+
+:where(input[type='file'])::file-selector-button {
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
 }
 
 /* Umowa o przyciskach odwrócona w 27f. Do 27e goły `button` malował się jak

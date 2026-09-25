@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
@@ -62,6 +62,34 @@ import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
 
 const MENU_WIDTH = 240;
+
+/**
+ * Tło pod menu: klik gdziekolwiek obok je zamyka, prawy przycisk też.
+ *
+ * Prawy przycisk zamyka **tylko wtedy, gdy wciśnięto go na tym tle** (25.09).
+ * Na Windows `contextmenu` przychodzi dopiero po puszczeniu przycisku, czyli
+ * już po `pointerdown` na mapie, który to menu otworzył — a lewy górny róg
+ * menu stoi pod kursorem i od skórki z 18.09 jest ścięty (`clip-path`), więc
+ * to zdarzenie trafiało w tło i gasiło menu w tej samej chwili, w której się
+ * pokazało. `contextmenu` z gestu otwierającego nie ma tu poprzedzającego
+ * `pointerdown`, więc tylko je połykamy.
+ */
+function MenuBackdrop({ onClose }: { onClose: () => void }) {
+  const rightPressed = useRef(false);
+  return (
+    <div
+      className="context-menu-backdrop"
+      onClick={onClose}
+      onPointerDown={(e) => {
+        if (e.button === 2) rightPressed.current = true;
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (rightPressed.current) onClose();
+      }}
+    />
+  );
+}
 
 interface PlayerOption {
   id: string;
@@ -913,14 +941,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     const own = token.ownerId === userId;
     return (
       <>
-        <div
-          className="context-menu-backdrop"
-          onClick={onClose}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-        />
+        <MenuBackdrop onClose={onClose} />
         <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
           <p className="context-menu-title">{token.name}</p>
           <button type="button" className="context-menu-item" onClick={inspect}>
@@ -994,14 +1015,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
 
   return (
     <>
-      <div
-        className="context-menu-backdrop"
-        onClick={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      />
+      <MenuBackdrop onClose={onClose} />
       <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
         <p className="context-menu-title">{token.name}</p>
         {token.hp && (

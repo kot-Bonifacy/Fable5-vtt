@@ -221,6 +221,7 @@ button {
 
 input[type='text'],
 input[type='password'],
+input[type='search'],
 select,
 textarea {
   border-radius: 2px;

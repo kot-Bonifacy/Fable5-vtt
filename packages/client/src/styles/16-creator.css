@@ -1523,7 +1523,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.6rem;
-  padding: 0.6rem 0.8rem;
+  /* Prawy margines omija uchwyt okna (13 px od rogu + 14 px, `.window-resizer`)
+     — do 25.09 ostatnie litery „Szkic wyrzuca tylko MG” wchodziły pod kreski. */
+  padding: 0.6rem 2rem 0.6rem 0.8rem;
   border-top: 1px solid var(--border);
   background: var(--bg-topbar);
 }

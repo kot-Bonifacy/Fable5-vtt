@@ -22,6 +22,7 @@ import {
   CYBERWARE_SURGEON_SKILL_MAX,
   CYBERWARE_TYPE_LABELS,
   cpredMedicineSkillLevel,
+  cyberwareAllowsSelfInstall,
   criticalInjuryNames,
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -379,6 +380,12 @@ function EntryCard({
       surgery: cpredMedicineSkillLevel(character.data, registry, 'medicine.surgery'),
     }))
     .filter((row) => row.surgery > 0);
+  // „Nie możesz sam sobie wszczepić cyborgizacji, chyba że…" (s. 226). Serwer
+  // i tak odmówi (`SELF_INSTALL`), ale lista nie powinna tego podsuwać —
+  // pacjent zostaje na niej wyszarzony, żeby było widać, dlaczego go nie ma.
+  const selfInstallBlocked =
+    entry.category === 'cyberware' && !cyberwareAllowsSelfInstall(entry.install);
+  const surgeonIsPatient = (id: string) => selfInstallBlocked && id === target;
 
   async function addToSheet() {
     if (!target) return;
@@ -395,6 +402,7 @@ function EntryCard({
   function surgeonPayload(): CyberwareSurgeon {
     if (installDv === null || surgeonId === '') return { kind: 'none' };
     if (surgeonId === 'gm') return { kind: 'gm', skill: ripperdocSkill };
+    if (surgeonIsPatient(surgeonId)) return { kind: 'none' };
     return { kind: 'character', characterId: surgeonId };
   }
 
@@ -880,17 +888,28 @@ function EntryCard({
               {installDv === null ? null : (
                 <>
                   <select
-                    value={surgeonId}
+                    value={surgeonIsPatient(surgeonId) ? '' : surgeonId}
                     title={`Kto operuje. Bez wyboru montaż wchodzi bez Testu — PT ${installDv} (s. 226).`}
                     onChange={(event) => setSurgeonId(event.target.value)}
                   >
                     <option value="">Bez Testu montażu</option>
                     {isGm ? <option value="gm">Ripperdoc MG — PT {installDv}</option> : null}
-                    {surgeons.map((row) => (
-                      <option key={row.character.id} value={row.character.id}>
-                        {row.character.name} — Chirurgia {row.surgery}
-                      </option>
-                    ))}
+                    {surgeons.map((row) =>
+                      surgeonIsPatient(row.character.id) ? (
+                        <option
+                          key={row.character.id}
+                          value={row.character.id}
+                          disabled
+                          title="Poza galerią potrzebny jest ktoś drugi (s. 226)."
+                        >
+                          {row.character.name} — to pacjent
+                        </option>
+                      ) : (
+                        <option key={row.character.id} value={row.character.id}>
+                          {row.character.name} — Chirurgia {row.surgery}
+                        </option>
+                      ),
+                    )}
                   </select>
                   {surgeonId === 'gm' ? (
                     <input

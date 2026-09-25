@@ -212,9 +212,15 @@
   padding-top: 0.5rem;
 }
 
+/* Globalny styl pól nie obejmuje list (tak samo jak w kreatorze), więc do
+   25.09 stała tu goła kontrolka przeglądarki — w Firefoksie biała na papierze. */
 .compendium-assign select {
   flex: 1 1 8rem;
   min-width: 8rem;
+  padding: 0.25rem 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 /* Poziom ripperdoca (04.09.2026) — jedna liczba obok listy chirurgów, więc
