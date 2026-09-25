@@ -126,8 +126,15 @@
   background: var(--scrim);
 }
 
+/* Wysokość przycięta do okna z przewijaniem w środku (25.09): edycja żetonu
+   z rozwiniętymi „Statystykami bojowymi” ma ~1100 px i na laptopie chowała
+   „Zapisz” pod dolną krawędzią ekranu, bez żadnej drogi, żeby do niego dojść. */
 .dialog {
   width: min(22rem, 92vw);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1rem;
   display: flex;
   flex-direction: column;
