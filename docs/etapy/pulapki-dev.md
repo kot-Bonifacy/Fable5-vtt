@@ -974,7 +974,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
-- **Serwery Playwright MCP mogą stać w `disabledMcpjsonServers` w `.claude/settings.local.json`** — wtedy narzędzi `mcp__playwright-*` nie ma w sesji, choć `.mcp.json` jest poprawny (25.09 tak było od pierwszego uruchomienia). Biblioteka `playwright` ze skryptu `node` działa niezależnie od tego.
+- **Serwery Playwright MCP mogą stać w `disabledMcpjsonServers` w `.claude/settings.local.json`** — wtedy narzędzi `mcp__playwright-*` nie ma w sesji, choć `.mcp.json` jest poprawny (25.09 tak było od pierwszego uruchomienia). **Od 25.09 oba stoją w `enabledMcpjsonServers`** (zlecenie MG); plik jest w globalnym ignorze gita, więc zgoda żyje tylko na tym komputerze i działa od następnego startu Claude Code. Biblioteka `playwright` ze skryptu `node` działa niezależnie od tego.
 - **Klik w slot paska, którego broń już jest w ręku, zdejmuje ją (przełącznik)** — kubek zostaje pusty, a klik w mapę staje się rozkazem marszu. Przed klikiem slotu sprawdź w lewym panelu zdanie „W ręku: …”.
 - **Linijki „Głowa / W rękach” w dymku celownika są tylko przy dozwolonym ataku** — odmowa (np. „Do ataku wręcz cel musi być nie dalej niż 2 m.”) chowa rzut oka. Broń z ⚠ „Wskaż broń z katalogu” nie uzbraja celownika wcale.
 - **„Na pewno?” przy „🗑 Wyrzuć szkic” wraca samo do „Wyrzuć szkic” po kilku sekundach** — oba kliknięcia rób w jednym kroku skryptu.
