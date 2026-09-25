@@ -1,5 +1,17 @@
 # Pomysły poza zakresem etapów
 
+**25.09.2026 (oględziny Playwrightem) — dwa drobiazgi.** (1) W Firefoksie pole „Szukaj
+przedmiotu…” w Kompendium i lista wyboru postaci pod wpisem rysują się jak natywne kontrolki
+(biała ramka, szary przycisk), bez skórki kartki — widać to wyraźnie w motywie dziennym.
+(2) Lista chirurgów przy wszczepie z kliniki podsuwa samego pacjenta, choć serwer i tak odmówi
+(`SELF_INSTALL`). Zdanie odmowy jest jasne, ale można by od razu wyszarzyć tę pozycję
+z podpowiedzią „poza galerią potrzebny jest ktoś drugi”.
+
+**25.09.2026 — klik gracza w stos figur bierze do podglądu figurę z wierzchu, także cudzą.**
+Stos jest dozwolony (decyzja MG z 25.09), ale gracz, którego figura leży pod cudzą, nie zaznaczy
+jej kliknięciem na mapie. Musi zejść ze stosu albo wybrać ją z listy postaci. Kierunek: przy
+kliku gracza w stos pierwszeństwo dla jego własnej figury.
+
 **24.09.2026 (oględziny botów na Qwen3.8-27B) — taktyka bota w walce.** Bot prawie zawsze
 strzela z miejsca (24 m, PT 20) zamiast najpierw podejść na 7–12 m (PT 15), a po zużytej Akcji
 w ~połowie tur pasuje („skoro nie mogę już atakować”), choć ma cały ruch. Oba zachowania są

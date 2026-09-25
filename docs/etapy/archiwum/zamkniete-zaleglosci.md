@@ -9,6 +9,62 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-25 (dwunasta sesja — kolejka, handel, drobne odmowy, sklep 3b)
+
+Narzędzie: **Playwright MCP** (od tej sesji włączony). MG w Chromium (`localhost:5173`, hasło
+z `secrets.env`), `Tester` w Firefoksie, drugi gracz „Handlarz” w drugiej karcie Chromium
+(`[::1]:5173`). Kampania „Oględziny 12.09 — do usunięcia”, scena „Test Brak sceny”. Stan ustawiany
+z konsoli przez moduły Vite (`await import('/src/socket.ts')`, pułapka w `ogledziny`).
+**Decyzja MG: Safari i iPada nie testujemy ani nie dostosowujemy** — pozycje „Safari/iPad” (pas
+kolejki, pas filtrów czatu, przeciąganie palcem w handlu, maska karty, `background-blend-mode`)
+zdjęte bez oglądania.
+
+- **Pas kolejki przy 13 uczestnikach — błąd spoza listy.** Tura Styma (inicjatywa 20, pierwszy
+  w kolejce), a pas przewinięty o 135 px: z kafla zostało „ym 20”. `CombatBar.tsx` liczył środek
+  z `chip.offsetLeft`, a `offsetParent` kafla to `<body>` (pas nie jest pozycjonowany), więc do
+  wyniku wpadało 341 px lewego brzegu pasa. Naprawa: pozycja z `getBoundingClientRect()` względem
+  pasa plus `scrollLeft`. Po naprawie: pierwszy aktywny przy krawędzi (`scrollLeft` 0), piąty
+  z kolei dokładnie na środku (623/623 u MG, 620/620 u gracza, także po przewinięciu kółkiem na
+  koniec). Kółko przewija pas (300 → 240 px, dojazd do końca = `scrollWidth − clientWidth`).
+- **Podwójny klik „Kończę turę” przy dwóch figurach gracza pod rząd.** `dblclick` w Firefoksie
+  zakończył tylko turę Styma, a tura przeszła na „Drugiego Testera”. Pilnuje tego `pending`
+  w `useEndTurn` (`HudEndTurn.tsx`), zdejmowany dopiero, gdy kolejka ruszy.
+- **Handel dwóch graczy (38c).** `Tester` (Firefox) → „Handel…” z ekwipunku → lista partnerów
+  („Oględziny Korpo · 2 m”) → „Zaproś”; „Handlarz” (Chromium) dostał pasek „proponuje handel —
+  Przyjmij / Odrzuć”. Przeciągnięcie kabla **myszą** wylądowało w polu za pierwszym razem
+  (wątpliwość z 23.09 o `startDrag` się nie potwierdziła), ilość 2 → 1, gotówka 500, zgody obu
+  stron, karta „Handel” na czacie, dymek „Wymienione”. Baza: Stym 4490 → 3990 ed i kabel 2 → 1,
+  Korpo 0 → 500 ed i kabel 1.
+- **`SELF_INSTALL` u gracza.** Lista chirurgów pokazuje tylko karty z Chirurgią, a Stym miał całą
+  Medycynę w Farmaceutykach — na czas oględzin przestawiony na Chirurgię 1 + Farmaceutyki 2
+  i z powrotem. Cyberoko (Klinika), pacjent i chirurg Stym: „Sam sobie tego nie wszczepisz — poza
+  galerią potrzebny jest ktoś drugi (s. 226).” Pieniądze nietknięte (3990 ed). Próg sklepu na
+  czas oględzin „Zawodowe”, bo wszystkie wszczepy z „Ulicznych” to cybermoda z galerii.
+- **„Zainstaluj” gracza bez podstawy.** Chwytna Dłoń bez cyberręki: pod guzikiem „Nie ma w co
+  tego wszczepić — ta rodzina wymaga najpierw cyborgizacji podstawowej (s. 111).”
+- **Pistolet przy karabinie w rękach (13.09, trzecia sesja).** Slot pistoletu szary z „Masz
+  w rękach co innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń.”; pistolet
+  uzbrojony przyciskiem „Atak” z karty daje to samo zdanie w dymku pod celownikiem nad Paserem.
+- **Kursor paska trzymał schowaną broń — błąd spoza listy.** Po „Schowaj” noża i „Dobądź”
+  karabinu slot noża był jednocześnie uzbrojony (czerwona ramka) i wyszarzony, a pod paskiem
+  stało „W ręku: Nóż testowy — kliknij cel na mapie”. Efekt auto-uzbrojenia w `CombatHud.tsx`
+  kończył pracę, gdy kursor miał już jakąkolwiek broń tej figury. Naprawa: slot broni niesie
+  `outOfHand` (`shared/hotbar.ts`, test), efekt wybiera na nowo, gdy uzbrojony slot wyszedł z rąk
+  albo zniknął — pusty magazynek i wydana Akcja kursora nie ruszają. Obejrzane: schowanie noża →
+  kursor pusty, dobycie karabinu → karabin, zamiana na pistolet → pistolet.
+- **Kosz grupowy z kartami (38a) — i błąd językowy.** MG zaznaczył 12 figur (9 „Kolejka”, „Drugi
+  Tester”, „Kosz A”, „Kosz B” z kartami NPC): „Usunąć ze sceny 12 figur? … nie można cofnąć.”,
+  potem jedno pytanie o karty — „Usunąć też **2 kart** tych figur?”. Odmiana poprawiona przez
+  `plural()` (1 kartę / 2 karty / 5 kart). Figury i obie karty usunięte.
+- **Sklep 3b w komplecie.** Motyw dzienny karty wpisu w Kompendium (Firefox, `data-theme="day"`,
+  `--cp-paper` #f4e2c8): kafle statystyk, tabela PT, „Dostępność: 1 — Uliczne (ustawione przez
+  MG w tej kampanii)”. Zakup przy wyjątku MG: „Ciężki pistolet” (Zawodowe) z wyjątkiem na
+  „Uliczne”, `Tester` „Kup — 100 ed” → 3990 → 3890 ed, broń na karcie. Okno 1102 × 576:
+  plakietki kategorii i filtr typów zawijają się, wiersze z plakietką progu bez przepełnienia.
+  Chipy filtru bez ikon przy pierwszym wyrenderowaniu to doczytywanie masek SVG, nie błąd.
+- **Baner figury bez portretu** (ósma sesja) — na żywo w Firefoksie: inicjał w kółku, nazwa,
+  pasek PW; u gracza pod „Kończę turę”.
+
 ## Zamknięte 2026-09-25 (jedenasta sesja — favicona i oględziny Playwrightem)
 
 Narzędzie: biblioteka `playwright` ze skryptu w scratchpadzie (serwery MCP były wyłączone

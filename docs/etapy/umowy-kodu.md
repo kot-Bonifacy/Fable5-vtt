@@ -1288,6 +1288,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Kursor paska trzyma tylko broń w rękach — `outOfHand` na slocie broni (25.09)** — `cpredHotbarSlots` znaczy broń schowaną lub wypchniętą z rąk (`notDrawn`) osobno od przejściowych odmów; efekt auto-uzbrojenia w `CombatHud.tsx` wybiera na nowo tylko wtedy, gdy uzbrojony slot ma `outOfHand` albo zniknął. Pole jest w `hudSignature`.
 - **Wybór Celowania (`AimMenu`) stoi nad kursorem, dymek celownika (`TargetTooltip`) pod nim (25.09)** — dymek niesie „Głowa bez ochrony”, czyli to, na co patrzy się przy strzale w głowę; pod kursor okienko schodzi tylko przy górnej krawędzi ekranu. Nowy element przy kursorze celownika nie może siadać na żadnym z nich.
 - **Zastrzyk siłą (s. 150) nie idzie przez planer ataku (25.09, decyzja MG)** — `character:use-dose` z `hostile: true`: `rollHostileDose` (`realtime/recovery.ts`) rzuca ZW + Broń biała przeciw **prawdziwemu** rzutowi ZW + Unik celu (bierne PT, gdy cel nie może unikać; PT 13 dla figury bez karty), karta czatu to zwykły rzut. Strzykawkę w ekwipunku sprawdza `cpredHasAirhypo` **po nazwie**. Pudło płaci Akcję, dawka zostaje. Gdyby strzykawka miała kiedyś wejść na pasek i pod celownik, to nowa droga ataku, nie rozbudowa tej.
 - **Kara bariery (42c)** — `barrierConcealPenaltyAlong` wybiera najgorszą przeciętą zasłonę, `cpredBarrierModifiers` daje nazwany wiersz `situational`, którego optyka nie usuwa. Dostępność celu sprawdza `fetchSceneTokensFor` przed linią strzału: niewidoczny i nieistniejący cel dają `TOKEN_NOT_FOUND` w każdym trybie.
@@ -1325,6 +1326,15 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**Kursor paska trzyma tylko broń w rękach (25.09, zaległości).** Slot broni niesie `outOfHand`
+(`option.notDrawn !== undefined`) obok `disabled`. Rozróżnienie jest celowe: pusty magazynek,
+wydana Akcja czy blokada tury też szarzeją slot, ale wtedy gracz ma przeładować albo poczekać, więc
+kursor zostaje przy jego broni. Schowanie albo dobycie czegoś, co wypycha broń z rąk, zdejmuje ją
+z kursora i efekt w `CombatHud.tsx` bierze pierwszą użyteczną. Przed poprawką pasek pisał „W ręku:
+Nóż testowy” pod wyszarzonym nożem, gdy w rękach był już karabin. Pole jest w `hudSignature`, bo
+przy wydanej Akcji schowanie broni nie zmienia zdania odmowy.
+
 
 **OB bariery jedzie kartą, a przestawione „Zastosuj" mierzy od nowa (13.09, etap 42b).** Zasada
 domowa MG (`decyzje-i-uproszczenia.md`): siatka odejmuje swoje OB od obrażeń, zanim dotrą do

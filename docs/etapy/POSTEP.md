@@ -40,7 +40,7 @@ tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py
 wszystko ciemniejsze od papieru („żadnego brudu”). Dzień od 24.09 w tonie tapety logowania,
 z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`assety-chrom.md`). Poza skórą: Sieć, pasek mapy, screamsheet,
 logowanie. **Od 25.09 kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza stoi na
-górze lewego panelu** (umowa w `ui`). **Oględziny ręką MG i Safari/iPad czekają** (`zaleglosci.md`). **`styles.css` jest od
+górze lewego panelu** (umowa w `ui`). **Oględziny ręką MG czekają** (`zaleglosci.md`); **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
@@ -55,9 +55,10 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Dług oględzin — 10 pozycji w `zaleglosci.md`.** Od 25.09 **Playwright budzi dymek celownika,
-nie dławi marszu i widzi pełny ekran** — to, co automat z Chrome zostawiał „dla ręki MG”, sprawdzaj
-nim najpierw (sterownik i pułapki w `ogledziny`). Ręką MG zostają: przytrzymane Esc, tempo
+**Dług oględzin — w `zaleglosci.md` zostało głównie to, co wymaga ręki albo oka MG.** Od 25.09
+**Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
+`await import('/src/socket.ts')` — pułapki w `ogledziny`); budzi dymek celownika, nie dławi marszu
+i widzi pełny ekran, więc to, co automat z Chrome zostawiał „dla ręki MG”, sprawdzaj nim najpierw. Ręką MG zostają: przytrzymane Esc, tempo
 maszynopisu, skórka na Safari/iPad. Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
 **zaproszenie `tester-dev` jest unieważnione od 17.09** — wchodzi się ważnym zaproszeniem
 aktywnej kampanii (`poligon.md`).
@@ -89,8 +90,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2226** w `shared`, **1228** na serwerze, **281** u klienta,
-**59** w gatewayu — zielone (25.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2227** w `shared`, **1228** na serwerze, **281** u klienta,
+**59** w gatewayu — zielone (25.09, dwunasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -115,10 +116,10 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 16   | 13      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 16   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 34   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 35   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 44   | 3       |
@@ -128,13 +129,34 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 97      |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 99      |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (dwunasta) — zaległości: kolejka, handel, drobne odmowy, sklep 3b
+
+**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: paczki
+**„Kolejka i handel”, „Drobne odmowy”, „Sklep 3b i baner”**; **Safari i iPada nie testujemy ani
+nie dostosowujemy** (wszystkie takie pozycje zdjęte); refaktoryzacja całości — **osobna sesja**.
+
+**Oględziny** (pierwszy raz Playwright MCP: MG w Chromium, `Tester` w Firefoksie, `Handlarz`
+w drugiej karcie Chromium na `[::1]`, kampania-śmieć): podwójny klik „Kończę turę”, pas 13
+uczestników, handel dwóch graczy, `SELF_INSTALL`, wszczep bez podstawy, pistolet przy karabinie
+(slot i dymek), kosz grupowy z kartami, całe 3b (motyw dzienny, wąskie okno, zakup przy wyjątku
+MG), baner bez portretu. **Nie zrobione z zaproponowanej paczki:** trasa gracza przy zamkniętym
+oknie z bliska w Dynamicznej (42a) — wymaga „Korytarza 16e” na Poligonie.
+
+**Trzy błędy spoza listy, naprawione i obejrzane:** pas kolejki ucinał aktywnego na pierwszym
+miejscu (`offsetLeft` od `<body>`, pułapka w `ui`); kursor paska trzymał schowaną broń („W ręku:
+nóż” pod wyszarzonym nożem) — nowe pole `outOfHand` na slocie broni (umowa w `atak`); kosz grupowy
+pisał „2 kart”. Dwa drobiazgi i stos figur u gracza w `POMYSLY.md`.
+
+**Weryfikacja:** `shared` 2227 (+1), serwer 1228, klient 281; `tsc`, ESLint, Prettier czyste.
+Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
 
 ### Sesja 25.09 (jedenasta) — zaległości: favicona i oględziny Playwrightem
 
@@ -156,22 +178,3 @@ w Firefoksie. **Znalezione:** `tester-dev` unieważnione 17.09 (dokumenty mówi�
 
 **Weryfikacja:** 281 testów klienta, `tsc`, ESLint, Prettier; `shared`, serwer i gateway bez
 zmian. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
-
-### Sesja 25.09 (dziesiąta) — narzędzia: Playwright obok claude-in-chrome
-
-**Zlecenie MG:** zainstalować Playwrighta i zapisać w `CLAUDE.md`, żeby oględziny szły dwiema
-drogami, a nie tylko przez claude-in-chrome. Rozstrzygnięcia MG: **serwer MCP + biblioteka**;
-przeglądarki **Firefox i Chromium** (bez WebKita); okno **widoczne**; hasło MG w **pliku secrets**.
-
-**Wdrożone:** `.mcp.json` z serwerami `playwright-firefox` i `playwright-chromium`
-(`node node_modules/@playwright/mcp/cli.js`, `--caps vision`, profile i zrzuty w gitignorowanym
-`.playwright-mcp/`, `--secrets .playwright-mcp/secrets.env` z pustym `VTT_GM_PASSWORD=` do
-wypełnienia przez MG); `@playwright/mcp@0.0.82` i `playwright` **przypięty do jego alfy**
-(`1.64.0-alpha-1789764292000`) — stabilne 1.63.0 ściągałoby drugi komplet przeglądarek;
-przeglądarki (~1,1 GB) w `%LOCALAPPDATA%\ms-playwright`. `.playwright-mcp/**` w ignorach ESLinta
-(profil Firefoksa ma `prefs.js`). Sekcja „Oględziny w przeglądarce” w `CLAUDE.md`, krok w README,
-cztery pułapki w `ogledziny`. **Błąd spoza zakresu:** brak favicony (404 w konsoli) → `zaleglosci.md`.
-
-**Weryfikacja:** biblioteka w obu przeglądarkach na żywym `localhost:5173` (sprzętowy WebGL,
-`visible`, zero `pageerror`); oba serwery MCP przez stdio (31 narzędzi, `browser_navigate`, zrzut).
-Narzędzia `mcp__playwright-*` będą widoczne dopiero od następnej sesji Claude Code. ESLint czysty.

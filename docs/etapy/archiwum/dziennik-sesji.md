@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (dziesiąta) — narzędzia: Playwright obok claude-in-chrome
+
+**Zlecenie MG:** zainstalować Playwrighta i zapisać w `CLAUDE.md`, żeby oględziny szły dwiema
+drogami, a nie tylko przez claude-in-chrome. Rozstrzygnięcia MG: **serwer MCP + biblioteka**;
+przeglądarki **Firefox i Chromium** (bez WebKita); okno **widoczne**; hasło MG w **pliku secrets**.
+
+**Wdrożone:** `.mcp.json` z serwerami `playwright-firefox` i `playwright-chromium`
+(`node node_modules/@playwright/mcp/cli.js`, `--caps vision`, profile i zrzuty w gitignorowanym
+`.playwright-mcp/`, `--secrets .playwright-mcp/secrets.env` z pustym `VTT_GM_PASSWORD=` do
+wypełnienia przez MG); `@playwright/mcp@0.0.82` i `playwright` **przypięty do jego alfy**
+(`1.64.0-alpha-1789764292000`) — stabilne 1.63.0 ściągałoby drugi komplet przeglądarek;
+przeglądarki (~1,1 GB) w `%LOCALAPPDATA%\ms-playwright`. `.playwright-mcp/**` w ignorach ESLinta
+(profil Firefoksa ma `prefs.js`). Sekcja „Oględziny w przeglądarce” w `CLAUDE.md`, krok w README,
+cztery pułapki w `ogledziny`. **Błąd spoza zakresu:** brak favicony (404 w konsoli) → `zaleglosci.md`.
+
+**Weryfikacja:** biblioteka w obu przeglądarkach na żywym `localhost:5173` (sprzętowy WebGL,
+`visible`, zero `pageerror`); oba serwery MCP przez stdio (31 narzędzi, `browser_navigate`, zrzut).
+Narzędzia `mcp__playwright-*` będą widoczne dopiero od następnej sesji Claude Code. ESLint czysty.
+
 ### Sesja 25.09 (dziewiąta) — zaległości: strzykawka bezigłowa, karta czekająca na MG, dialogi
 
 **Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:

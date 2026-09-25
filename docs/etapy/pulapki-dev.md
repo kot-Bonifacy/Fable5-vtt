@@ -327,6 +327,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **`offsetLeft` liczy od najbliższego pozycjonowanego przodka, nie od rodzica** — pas kolejki (niepozycjonowany `<ol>`) dostawał od kafla 341 px lewego brzegu strony i przewijał się za daleko, ucinając aktywnego na pierwszym miejscu. Mierz `getBoundingClientRect()` kafla względem pojemnika + `scrollLeft`.
 - **Przeciąganie na zdarzeniach wskaźnika trzymaj w `ref`, nie w stanie Reacta** — szybki ruch daje jeden `pointermove` i od razu `pointerup`, zanim React przerysuje; `pointerup` sprawdzający stan widzi „nie przeciągam” i upuszczenie ginie jak kliknięcie (okno handlu 38c, 23.09).
 - **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury** — nasłuch mapy na `window` łapie klawisze z przycisków okna (pola tekstowe omija). Rozpoznanie: fokus na przycisku, nie w polu; lekarstwo: `data-owns-keys` na oknie.
 - **Fokus po zmianie widoku w `requestAnimationFrame` nie wykona się w schowanej karcie** — efekt Reacta działa już po wstawieniu elementów, klatka jest zbędna; objaw w automacie to `activeElement` = `BODY` i niespełnione „Przejdź”.
@@ -342,6 +343,14 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Pas kolejki ucinał aktywnego na pierwszym miejscu (25.09, zaległości).** „Dojazd do aktywnego”
+  w `CombatBar.tsx` liczył środek z `chip.offsetLeft`, a `offsetParent` kafla to `<body>`, bo pas
+  kolejki nie jest pozycjonowany. Do wyniku wpadało 341 px lewego brzegu pasa: przy 13 uczestnikach
+  `scrollLeft` wynosił 135 zamiast 0 i z „Oględziny Stym” zostało „ym 20”. Naprawa: pozycja kafla
+  z `getBoundingClientRect()` względem pasa plus `scrollLeft`. Obejrzane w Chromium i Firefoksie:
+  pierwszy kafel przy krawędzi, środkowy dokładnie na środku.
+
 
 - **Upuszczenie ginęło przy szybkim przeciągnięciu (23.09, etap 38c).** Okno handlu trzymało „przeciągam” w `useState`, a `onPointerUp` czytał je z zamknięcia. `left_click_drag` z automatu (i szybki ruch prawdziwej myszy) wysyła jeden `pointermove` i od razu `pointerup` — React nie zdąży przerysować, `pointerup` widzi stan sprzed ruchu i puszczenie wygląda jak kliknięcie. Lekarstwo: flaga ruchu w `useRef` i odległość liczona jeszcze raz przy `pointerup`; stan Reacta służy tylko do rysowania ducha i podświetlenia pola.
 
@@ -974,6 +983,8 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Konto MG w oknie gracza z Playwrighta to ręczne logowanie MG, nie przeciek sesji** — okna MCP są widoczne na pulpicie; po restarcie serwera okno gracza pokazuje ekran logowania i MG potrafi się w nim zalogować. Wyloguj i zużyj zaproszenie ponownie z tym samym imieniem.
+- **Mysz Firefoksa z Playwrighta wisi bez końca, gdy okno jest zminimalizowane albo zasłonięte** — `page.mouse.*`, `click` i `browser_resize` czekają na klatkę, a `requestAnimationFrame` nie przychodzi, choć `visibilityState` mówi „visible”. `evaluate` i zrzuty działają. Sprawdź rAF (`evaluate` z `requestAnimationFrame` i limitem 2 s), zanim zaczniesz szukać błędu; pomaga tylko przywrócenie okna na ekran ręką.
 - **Serwery Playwright MCP mogą stać w `disabledMcpjsonServers` w `.claude/settings.local.json`** — wtedy narzędzi `mcp__playwright-*` nie ma w sesji, choć `.mcp.json` jest poprawny (25.09 tak było od pierwszego uruchomienia). **Od 25.09 oba stoją w `enabledMcpjsonServers`** (zlecenie MG); plik jest w globalnym ignorze gita, więc zgoda żyje tylko na tym komputerze i działa od następnego startu Claude Code. Biblioteka `playwright` ze skryptu `node` działa niezależnie od tego.
 - **Klik w slot paska, którego broń już jest w ręku, zdejmuje ją (przełącznik)** — kubek zostaje pusty, a klik w mapę staje się rozkazem marszu. Przed klikiem slotu sprawdź w lewym panelu zdanie „W ręku: …”.
 - **Linijki „Głowa / W rękach” w dymku celownika są tylko przy dozwolonym ataku** — odmowa (np. „Do ataku wręcz cel musi być nie dalej niż 2 m.”) chowa rzut oka. Broń z ⚠ „Wskaż broń z katalogu” nie uzbraja celownika wcale.
@@ -1203,6 +1214,20 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
+- **Stan sceny z konsoli przez moduły Vite (25.09).** W dev `await import('/src/socket.ts')`
+  w `browser_evaluate` daje **tę samą** instancję gniazda co aplikacja, więc MG ustawia kampanię,
+  figury, kolejkę, próg sklepu i karty wyeksportowanymi funkcjami (`activateCampaign`, `createToken`,
+  `startCombat`, `setCombatInitiative`, `setShopTier`, `updateCharacter`) bez osobnego
+  `socket.io-client`. Magazyny czyta się tak samo (`/src/stores/*.ts`). Zaproszenie gracza: MG
+  `POST …/invitations` w Chromium, gracz `POST /api/join/<token>` w Firefoksie. Token trzeba
+  przenieść między przeglądarkami w odpowiedzi narzędzia, bo `browser_run_code_unsafe` nie ma
+  `require` ani `import()`.
+- **MG zalogowany ręką w oknie Playwrighta podmienia gracza (25.09).** Okna MCP są widoczne na
+  pulpicie MG. Gdy po restarcie serwera okno gracza pokazało ekran logowania, MG wpisał tam hasło
+  i Firefox `Testera` stał się kontem MG. To nie jest błąd sesji (`vtt_sid` w bazie). Wystarczy
+  wylogować i ponownie zużyć zaproszenie z tym samym imieniem.
+
 
 
 - **Dwie instancje na tych samych portach wyglądają jak zepsute logowanie (17.09, naprawa 3b).**

@@ -1,10 +1,17 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
-**Główny ekran (25.09, ósma sesja) — do obejrzenia ręką MG:** baner figury **bez portretu** (widziany tylko atrapą w DOM — niski pasek z inicjałem), baner u gracza z „Kończę turę” nad nim, kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) i pas filtrów czatu na iPadzie (`@container` od Safari 16).
+**Zamknięte 25.09 (dwunasta sesja): kolejka, handel, drobne odmowy, sklep 3b — i Safari/iPad poza zakresem.**
+**Decyzja MG z 25.09: Safari i iPada nie testujemy ani nie dostosowujemy** — wszystkie pozycje
+„Safari/iPad” zdjęte z tej listy, nie wracaj do nich. Playwright MCP (MG w Chromium, `Tester`
+i „Handlarz” w dwóch przeglądarkach) domknął: podwójny klik „Kończę turę” przy dwóch figurach gracza
+pod rząd i pas 13 uczestników, **handel dwóch graczy** (przeciągnięcie myszą w Firefoksie ląduje za
+pierwszym razem), `SELF_INSTALL`, „Zainstaluj” gracza bez podstawy, pistolet przy karabinie
+w rękach (slot i dymek pod celownikiem), **kosz grupowy** z kartami, całe 3b (motyw dzienny karty
+wpisu, wąskie okno, zakup przy wyjątku MG) i baner bez portretu. Po drodze **trzy błędy spoza
+listy**: pas kolejki ucinał aktywnego na pierwszym miejscu, kursor paska trzymał schowaną broń,
+a kosz grupowy pisał „2 kart”. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
 
-**Pas kolejki i „Kończę turę” (25.09) — do obejrzenia ręką MG:** ~~przycisk gracza na górze lewego panelu i „✓” w zwiniętym~~ — **obejrzane 25.09 (jedenasta sesja) na żywej turze `Testera` w Firefoksie** („KOŃCZĘ TURĘ [E]” nad kartą postaci, czerwony „✓” w zwiniętym pasku, klik kończy turę). Zostają: podwójny klik przy dwóch figurach gracza pod rząd w kolejce, pas przy 10+ uczestnikach (przewijanie kółkiem, dojazd do aktywnego) i na iPadzie (`@container` od Safari 16).
-
-**Oględziny handlu 38c (23.09) — nieobejrzane:** przeciąganie palcem na iPadzie (`touch-action: pan-y`, poziomy gest do pola) i handel dwóch graczy w przeglądarce (pokryty testem serwera). Pierwsze przeciągnięcie kabla u MG z automatu nie wylądowało przy poprawnej geometrii, drugie tak — jeśli MG zobaczy to ręką, zacząć od `startDrag`/przechwycenia wskaźnika w `TradeWindow.tsx`.
+**Główny ekran (25.09, ósma sesja) — został kadr portretu.** Baner figury **bez portretu** (niski pasek z inicjałem) i baner u gracza pod „Kończę turę” obejrzane 25.09 (dwunasta sesja) na żywo w Firefoksie. Zostaje kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) — na kampanii-śmieciu żadna figura nie ma portretu na żetonie.
 
 **Zamknięte 25.09 (jedenasta sesja): favicona i oględziny, których automat z Chrome nie umiał.**
 Playwright (biblioteka, prawdziwy kursor, okno na wierzchu) budzi `onAimHover` i nie dławi marszu,
@@ -38,15 +45,6 @@ stojące na liniach kratki** (podwójne pół kratki w `canStep` od 23.08) oraz 
 relacji przy ±3. Do tego dwie poprawki promptów z A/B na żywo (relacja + podpis konta gracza,
 zakaz powtarzania zdań) i nagłówek screamsheetu zwykłą pisownią (decyzja MG). Maszynopis zawężony
 do tempa. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
-
-**Dług oględzin — naprawa 3b (17.09, druga sesja).** Obejrzane w Chrome: półki Medyka i Solo,
-rozwinięty podgląd broni i pancerza, okno strat przy zmianie Roli, wyjątek MG na żywo (znikający
-wpis, zdanie w koszyku, brak w podsumowaniu, powrót na „Automatycznie”) i karta wpisu u gracza.
-**23.09:** półki Netrunnera (cyberdeki, Bariera, obwody ze znacznikiem) i Nomady (strzelby, kusza,
-wyrzutnia haków), rozwinięty podgląd w motywie dziennym i rozwijanie klawiaturą (Enter/Spacja,
-fokus zostaje). **Nie obejrzane:** motyw dzienny karty wpisu w Kompendium, wąskie okno
-i powiększenie nowego wiersza sklepu, zakup z Kompendium przy wyjątku MG u gracza z pieniędzmi
-(pokryty testem serwera).
 
 **Zamknięte 13.09 (piąta sesja): zasłona figur 42c w komplecie i przerwany marsz cofający figurę
 za róg.** Oględziny 42c domknięte na „Test Brak sceny": obejście końca bariery pod mgłą
@@ -134,16 +132,6 @@ zależeć od przeglądarki) — **zostaje dla MG**;
 Na `http://217.154.210.181:8088` Keyboard Lock nie działa (brak HTTPS) i Esc wychodzi od razu —
 to nie regres; zadziała na `vtt.tatanga.eu` po etapie 28.
 
-**05.09 (etap 38a — statysta jako karta postaci): został JEDEN kosz — grupowy.** Zmigrowane figury
-poligonu przeszły przez przeglądarkę 05.09. **13.09 obejrzany szybki edytor** na kampanii-śmieciu
-(„Figura testowa" bez karty): przełącznik „Statystyki bojowe (figura dostaje własną kartę)", pola
-profilu, „Wartość bojowa zamiast Cech" z podpowiedzią i „Nie unika pocisków (s. 158)" — wszystko
-mieści się w oknie, a zapis **założył kartę** (`statBlock`: Wartość bojowa 4, `noBulletDodge`,
-`hpMax` 10). **Kosz pojedynczy** pyta dwa razy: „Usunąć token „Figura testowa"?" i „Usunąć też
-kartę „Figura testowa"? Zostanie w kampanii, jeśli odmówisz." — obie odpowiedzi „tak" usunęły żeton
-i kartę. Dwie drobne uwagi do słów edytora — poprawione 13.09 (trzecia sesja). **Zostaje:** pytanie o kartę
-przy **koszu grupowym** z 35 — na scenie nie zostały dwie figury z kartami.
-
 **05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
 w tej samej sesji — pozycja „nie był oglądany" żyła kilkanaście minut. Przez przeglądarkę przeszły
 wszystkie trzy kawałki UI (panel na karcie, małe pole „z" pod Cechą, chipy w pasku figury), obie
@@ -228,17 +216,15 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   automat rzucał jednym przeciągnięciem.
 
 - **18.09: skóra chromu „stara kartka” — obejrzana tylko automatyką.** W Chrome (MG, Poligon,
-  1568×781): dzień i noc, okno ustawień, Panel MG, górny pasek z kolejką inicjatywy. **Zostało ręką
-  MG:** handout, okno wymiany i oględzin, karta obiektu sceny (belka czarna w dzień), dialogi
-  (`.dialog`), menu kontekstowe figury, kompendium i pozostałe zakładki panelu, ekran gracza;
-  **Safari/iPad** — `background-blend-mode` na kaflu i `filter: drop-shadow` na oknach z przewijaną
-  treścią (płynność); siła kafla (`DAY`/`NIGHT` w `tools/art/chrome-paper.py`) do oceny MG.
+  1568×781): dzień i noc, okno ustawień, Panel MG, górny pasek z kolejką inicjatywy. 25.09
+  (dwunasta) w Firefoksie: okno handlu, Kompendium w obu motywach, pasek gracza, dialogi `confirm`.
+  **Zostało ręką MG:** handout, okno oględzin, karta obiektu sceny (belka czarna w dzień), menu
+  kontekstowe figury; siła kafla (`DAY`/`NIGHT` w `tools/art/chrome-paper.py`) do oceny MG.
 
-- **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — dwie rzeczy nieobejrzane.**
+- **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — została płynność.**
   Obejrzane w Chrome: karta (4 zakładki), kreator (7 kroków, okno strat), oba motywy, okna 1708×882
   i 1102×576; **18.09 (odbiór 3d):** portret na papierze w obu motywach — wytarcia go omijają.
-  Zostało: (1) **Safari/iPad** — maska `mask-mode: luminance` i `:is()` w selektorach;
-  (2) **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
+  Zostało: **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
   (warstwa z maską nad całą stroną). Prawdziwe powiększenie przeglądarki 125/150% ręką MG —
   **zdjęte 18.09 decyzją MG** („ze zmian w tym elemencie rezygnuję”).
 
@@ -254,21 +240,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   siatkę obejrzana z Playwrighta — dymek pokazuje PT (klient nie widzi ścian, z założenia), a rzut
   kończy serwer zdaniem „Między wami stoi przeszkoda — wręcz przez nią nie sięgniesz.” **Zostaje:**
   trasa gracza przy **zamkniętym oknie z bliska** w Dynamicznej.
-
-- **Odmowy montażu u gracza — została `SELF_INSTALL`.** `MISSING_FOUNDATION` obejrzana 13.09,
-  `POOL_FULL` i `NO_SLOTS` 23.09 z konta `Tester` (szczegóły w archiwum). Zostaje `SELF_INSTALL`,
-  do którego gracz potrzebuje Medyka z Chirurgią; `NO_SURGERY_SKILL` jest z UI nieosiągalne
-  z założenia (lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią).
-
-- **13.09 (trzecia sesja): cztery poprawki — zostały dwie połówki.** 25.09 obejrzane na
-  kampanii-śmieciu: podpowiedź wyszarzonego slotu schowanej broni („Nóż testowy — Broń jest
-  w kaburze — dobądź ją (bez Akcji).”), szybki edytor 38a (bez „Paska HP” pisze „karta ma PW
-  25/25”, przy „Wartości bojowej” Umiejętność i Unik tracą strzałki, Cechy zostają), okno edycji
-  żetonu (zasięg `0` → błąd, „Zapisz” aktywne) i „Dodaj za darmo” u MG (notka po odpowiedzi
-  serwera). **Zostają:** (1) z karabinem w rękach pistolet ma dostać stare „schowaj tamto”,
-  a odmowa pod celownikiem — dymek budzi Playwright (25.09), brakuje tylko karty z karabinem; (2) „Zainstaluj” **gracza** na karcie bez
-  podstawy — pod guzikiem zdanie odmowy (wpisy „Zawodowe” są u gracza wyszarzone progiem
-  sklepu, więc trzeba wpisu z „Ulicznych” albo przestawić próg).
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy". 25.09: MG — zostaje na liście, nie ruszamy.** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
