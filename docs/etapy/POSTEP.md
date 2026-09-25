@@ -59,7 +59,7 @@ z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model”
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
 `await import('/src/socket.ts')` — pułapki w `ogledziny`); budzi dymek celownika, nie dławi marszu
 i widzi pełny ekran, więc to, co automat z Chrome zostawiał „dla ręki MG”, sprawdzaj nim najpierw. Ręką MG zostają: przytrzymane Esc, tempo
-maszynopisu, skórka na Safari/iPad. Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
+maszynopisu, siła kafla papieru i menu figury prawdziwą myszą (naprawa z 25.09). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
 **zaproszenie `tester-dev` jest unieważnione od 17.09** — wchodzi się ważnym zaproszeniem
 aktywnej kampanii (`poligon.md`).
 
@@ -91,7 +91,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2227** w `shared`, **1228** na serwerze, **281** u klienta,
-**59** w gatewayu — zielone (25.09, dwunasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**59** w gatewayu — zielone (25.09, trzynasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -113,10 +113,10 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 47   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 16   | 14      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 18   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 35   | 8       |
@@ -129,13 +129,34 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 99      |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 103     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (trzynasta) — zaległości: karta czekająca na MG, okno z bliska, skóra, drobiazgi
+
+**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: **wszystkie
+cztery paczki** (karta czekająca na MG, 42a okno z bliska, oględziny wizualne, drobiazgi
+z `POMYSLY.md`); przełączanie kampanii wolno; białe pola w dzień — **globalnie, regułą bez ryzyka**.
+
+**Oględziny** (Playwright MCP: MG w Chromium, `Tester`, potem `avatar9` i MG w Firefoksie): cały
+kreator do „Przyjmij do gry” z pasem „Czeka na MG” i wyłączoną kartą; planer gracza obchodzi zamknięte
+okno z bliska w Dynamicznej („Korytarz 16e”, okno tymczasowe, usunięte); kadr portretu 1:3 i 4:1;
+handout, okno oględzin, menu figury i karta bariery w obu motywach.
+
+**Naprawione:** pacjent wyszarzony na liście chirurgów; skórka pól `search`, listy postaci
+w Kompendium i — globalnie przez `:where(...)` — pól liczbowych, list, `textarea` i wyboru pliku;
+własne figury gracza nad cudzymi w stosie (`zIndex`); stopka kreatora omija uchwyt okna. **Błąd spoza
+listy: menu figury gasło w chwili otwarcia** — `contextmenu` po `mouseup` trafiał w tło pod ściętym
+rogiem menu (od 18.09); `MenuBackdrop` (umowa w `ui`). Niepotwierdzone ręką MG. Dwa nowe wpisy
+w `POMYSLY.md` (warstwy okien, prośba o postać obok karty czekającej).
+
+**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
+Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan w `poligon.md`.
 
 ### Sesja 25.09 (dwunasta) — zaległości: kolejka, handel, drobne odmowy, sklep 3b
 
@@ -157,24 +178,3 @@ pisał „2 kart”. Dwa drobiazgi i stos figur u gracza w `POMYSLY.md`.
 
 **Weryfikacja:** `shared` 2227 (+1), serwer 1228, klient 281; `tsc`, ESLint, Prettier czyste.
 Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
-
-### Sesja 25.09 (jedenasta) — zaległości: favicona i oględziny Playwrightem
-
-**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
-**favicona + oględziny** zablokowane dotąd przez automat; favicona jako **proste SVG w palecie
-`--cp-*`**; logowanie MG **skryptem czytającym `secrets.env`**; okienko Celowania **nad
-kursorem**; stos figur na jednej kratce **dozwolony**; `tester-dev` — **poprawić tylko dokumenty**.
-
-**Wdrożone:** `public/favicon.svg` (d10 w `--cp-red` na `--cp-bar`) i `<link rel="icon">`
-w `index.html`; `AimMenu` stoi nad kursorem (umowa w `atak`). Decyzja o stosie figur
-w `decyzje-i-uproszczenia.md`, siedem pułapek w `ogledziny`.
-
-**Oględziny** (biblioteka Playwright ze sterownikiem w scratchpadzie — serwery MCP są wyłączone
-w `settings.local.json`; MG w Chromium, `Tester` w Firefoksie, kampania-śmieć): zamknięte dymek
-z 41, całe 42b, całe 14.09 i odmowa wręcz z 42a; z pełnego ekranu (1), (3), (4), (6); ze zgody MG
-wszystko poza pasem „Czeka na MG”; „Kończę turę” i „✓” gracza na żywej turze. **Błąd spoza
-listy:** okienko Celowania zasłaniało „Głowa bez ochrony” w dymku — naprawione i obejrzane
-w Firefoksie. **Znalezione:** `tester-dev` unieważnione 17.09 (dokumenty mówiły, że działa).
-
-**Weryfikacja:** 281 testów klienta, `tsc`, ESLint, Prettier; `shared`, serwer i gateway bez
-zmian. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.

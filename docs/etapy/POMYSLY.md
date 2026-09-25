@@ -1,16 +1,16 @@
 # Pomysły poza zakresem etapów
 
-**25.09.2026 (oględziny Playwrightem) — dwa drobiazgi.** (1) W Firefoksie pole „Szukaj
-przedmiotu…” w Kompendium i lista wyboru postaci pod wpisem rysują się jak natywne kontrolki
-(biała ramka, szary przycisk), bez skórki kartki — widać to wyraźnie w motywie dziennym.
-(2) Lista chirurgów przy wszczepie z kliniki podsuwa samego pacjenta, choć serwer i tak odmówi
-(`SELF_INSTALL`). Zdanie odmowy jest jasne, ale można by od razu wyszarzyć tę pozycję
-z podpowiedzią „poza galerią potrzebny jest ktoś drugi”.
+**25.09.2026 (trzynasta sesja) — okna pływające nie wychodzą na wierzch po kliknięciu.** Każde okno
+ma stałą warstwę (`z-index`): okno oględzin figury (`.sighting-window`, 330) zawsze przykrywa handout
+(320), nawet otwarty później i kliknięty. Przy stole to dwa okna naraz u gracza. Kierunek: jeden
+licznik „ostatnio dotknięte na wierzch” dla okien `useWindowPlacement`, z zachowaniem umowy o 400
+dla okien znad karty postaci.
 
-**25.09.2026 — klik gracza w stos figur bierze do podglądu figurę z wierzchu, także cudzą.**
-Stos jest dozwolony (decyzja MG z 25.09), ale gracz, którego figura leży pod cudzą, nie zaznaczy
-jej kliknięciem na mapie. Musi zejść ze stosu albo wybrać ją z listy postaci. Kierunek: przy
-kliku gracza w stos pierwszeństwo dla jego własnej figury.
+**25.09.2026 (trzynasta sesja) — prośba o nową postać zaraz po „Utwórz postać”.** Gdy szkic gracza
+zamienia się w kartę czekającą na MG, lista postaci gracza od razu podsuwa „✋ Poproś MG o stworzenie
+postaci” (zgoda jest zużyta). Zgodne z zasadą „zgoda na jedną postać”, ale obok karty z pasem „Czeka
+na MG” czyta się jak zaproszenie do drugiej. Kierunek: schować przycisk, dopóki własna karta gracza
+czeka na zatwierdzenie.
 
 **24.09.2026 (oględziny botów na Qwen3.8-27B) — taktyka bota w walce.** Bot prawie zawsze
 strzela z miejsca (24 m, PT 20) zamiast najpierw podejść na 7–12 m (PT 15), a po zużytej Akcji

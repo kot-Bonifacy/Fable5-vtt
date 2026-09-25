@@ -1,5 +1,12 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
+**Zamknięte 25.09 (trzynasta sesja): karta czekająca na MG, okno z bliska (42a), kadr portretu,
+reszta skóry chromu z automatu i trzy drobiazgi z `POMYSLY.md`.** Kreator przeszedł do końca
+(`Tester`, Firefox) — pas „Czeka na MG”, 197 wyłączonych kontrolek i „Przyjmij do gry” odblokowujące
+kartę na żywo z żetonem na scenie. Planer gracza obchodzi zamknięte okno z bliska w Dynamicznej.
+Po drodze **błąd spoza listy: menu figury gasło w chwili otwarcia** (Chromium i Firefox, obie role)
+— naprawione. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 25.09 (dwunasta sesja): kolejka, handel, drobne odmowy, sklep 3b — i Safari/iPad poza zakresem.**
 **Decyzja MG z 25.09: Safari i iPada nie testujemy ani nie dostosowujemy** — wszystkie pozycje
 „Safari/iPad” zdjęte z tej listy, nie wracaj do nich. Playwright MCP (MG w Chromium, `Tester`
@@ -10,8 +17,6 @@ w rękach (slot i dymek pod celownikiem), **kosz grupowy** z kartami, całe 3b (
 wpisu, wąskie okno, zakup przy wyjątku MG) i baner bez portretu. Po drodze **trzy błędy spoza
 listy**: pas kolejki ucinał aktywnego na pierwszym miejscu, kursor paska trzymał schowaną broń,
 a kosz grupowy pisał „2 kart”. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
-
-**Główny ekran (25.09, ósma sesja) — został kadr portretu.** Baner figury **bez portretu** (niski pasek z inicjałem) i baner u gracza pod „Kończę turę” obejrzane 25.09 (dwunasta sesja) na żywo w Firefoksie. Zostaje kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) — na kampanii-śmieciu żadna figura nie ma portretu na żetonie.
 
 **Zamknięte 25.09 (jedenasta sesja): favicona i oględziny, których automat z Chrome nie umiał.**
 Playwright (biblioteka, prawdziwy kursor, okno na wierzchu) budzi `onAimHover` i nie dławi marszu,
@@ -188,26 +193,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **24–25.09: zgoda MG na nową postać, warunki i zatwierdzenie — UI prawie nieobejrzane.**
-  25.09 obejrzany (bez klikania) tylko wiersz szkicu Mary w panelu MG: edytor warunków
-  (metoda, „Postać początkująca — 62 pkt Cech”, pole puli umiejętności), „Zatwierdź warunki”
-  i „Wyrzuć szkic” mieszczą się w wąskim panelu. Serwer
-  pokryty testami (prośba, odmowa, zgoda, zasady, `DRAFT_EXISTS`, wyrzucenie szkicu przez MG,
-  blokada karty i żeton przy przyjęciu). **Nie obejrzane**, bo na „Test2” grała Mara i nie
-  przełączałem kampanii: przycisk prośby i napis „Czekasz na zgodę MG” u gracza, okno zasad,
-  sekcja próśb i „🗑 Wyrzuć szkic” / „Na pewno?” w panelu MG, napis „Szkic wyrzuca tylko MG”
-  w stopce kreatora, pas „Czeka na MG” na karcie gracza. **25.09 (jedenasta) obejrzane w Firefoksie
-  (gracz) i Chromium (MG) z Playwrighta, kampania-śmieć:** „🗑 Wyrzuć szkic” → „Na pewno?” (wraca sam
-  po kilku sekundach), „✋ Poproś MG o stworzenie postaci”, „Czekasz na zgodę MG na nową postać.
-  Wycofaj prośbę”, sekcja „Nowe postaci graczy” z warunkami i „Zgoda / Odmowa”, warunki u gracza,
-  okno zasad („Jeszcze nie / Rozumiem, zaczynam”) i „Szkic wyrzuca tylko MG” w stopce (ostatnie litery
-  zachodzą na uchwyt zmiany rozmiaru okna — kosmetyka). **Zostaje:** pas „Czeka na MG” i żywa karta
-  czekająca na MG — trzeba przejść cały kreator (18 braków; szkic `Testera` z warunkami czeka
-  w „Oględzinach 12.09”). **Znane ograniczenie:** przyciski karty
-  czekającej na MG nie były wyszarzone — **od 25.09 są** (decyzja MG): `<fieldset disabled>`
-  wokół treści karty u właściciela. Sprawdzone atrapą w DOM na karcie „dar” u Mary (182 kontrolki
-  wyłączone, zakładki i ✕ działają); **żywej karty czekającej na MG nikt jeszcze nie oglądał**.
-
 - **24.09: rzuty kreatora przez kubek — do oceny MG przy stole.** Obejrzane automatem (łańcuch
   Cech i Ścieżki, przerzut MG, skrót MG). **Zostają ręką MG:** (1) **dźwięk „kubek gotowy” po
   każdym rzucie łańcucha** — gra przy każdym ponownym załadowaniu, czyli ~10 razy przy Cechach;
@@ -218,8 +203,10 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 - **18.09: skóra chromu „stara kartka” — obejrzana tylko automatyką.** W Chrome (MG, Poligon,
   1568×781): dzień i noc, okno ustawień, Panel MG, górny pasek z kolejką inicjatywy. 25.09
   (dwunasta) w Firefoksie: okno handlu, Kompendium w obu motywach, pasek gracza, dialogi `confirm`.
-  **Zostało ręką MG:** handout, okno oględzin, karta obiektu sceny (belka czarna w dzień), menu
-  kontekstowe figury; siła kafla (`DAY`/`NIGHT` w `tools/art/chrome-paper.py`) do oceny MG.
+  25.09 (trzynasta) w obu motywach: handout i okno oględzin (Firefox, gracz), menu figury (gracz
+  w Firefoksie, MG w Chromium), karta obiektu sceny (Chromium — belka czerwona z pęknięciami także
+  w dzień, pola liczbowe od tej sesji na papierze). **Zostało ręką MG:** siła kafla
+  (`DAY`/`NIGHT` w `tools/art/chrome-paper.py`).
 
 - **16.09: skórka „stara kartka” karty i kreatora (naprawa 2c) — została płynność.**
   Obejrzane w Chrome: karta (4 zakładki), kreator (7 kroków, okno strat), oba motywy, okna 1708×882
@@ -227,19 +214,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   Zostało: **płynność przewijania** długiej karty i kroku Umiejętności na słabszym laptopie gracza
   (warstwa z maską nad całą stroną). Prawdziwe powiększenie przeglądarki 125/150% ręką MG —
   **zdjęte 18.09 decyzją MG** („ze zmian w tym elemencie rezygnuję”).
-
-- **13.09: bariera i brama (etap 42a) — zostało zamknięte okno z bliska.** Obejrzane 13.09
-  (czwarta sesja): pięć rodzajów mieści się w rzędzie paska, oko „gracze mogą otwierać” stoi przy
-  bramie; na warstwie MG bariera fioletowa, brama z 🚧; karta segmentu pisze „Bariera”, „Brama —
-  zamknięta” i „Brama — otwarta”; trasa gracza pod ręczną mgłą omija siatkę, zanim padnie klik.
-  **13.09 (piąta sesja):** trasa gracza w **Dynamicznej** omija siatkę dołem; **klamka bramy**
-  u `Tester` — z trzech kratek „Za daleko — podejdź do bramy (na jedną kratkę).”, z bliska na ryglu
-  „Brama zamknięta na kłódkę — nie ustąpi.”, bez rygla otwiera (`open = 1`, „Za bramą” widoczne)
-  i zamyka; **zmiana rodzaju z karty** na wszystkie pięć i **wygląd otwartej bramy** na warstwie MG
-  (znak przygaszony, wyraźnie inny niż przy zamkniętej). **25.09 (jedenasta):** odmowa wręcz przez
-  siatkę obejrzana z Playwrighta — dymek pokazuje PT (klient nie widzi ścian, z założenia), a rzut
-  kończy serwer zdaniem „Między wami stoi przeszkoda — wręcz przez nią nie sięgniesz.” **Zostaje:**
-  trasa gracza przy **zamkniętym oknie z bliska** w Dynamicznej.
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy". 25.09: MG — zostaje na liście, nie ruszamy.** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej

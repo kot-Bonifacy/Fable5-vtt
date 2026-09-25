@@ -9,6 +9,49 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-25 (trzynasta sesja — karta czekająca na MG, okno z bliska, skóra, drobiazgi)
+
+Narzędzie: **Playwright MCP** — MG w Chromium, `Tester` w Firefoksie (kampania „Oględziny 12.09”,
+scena „Test Brak sceny”), potem `avatar9` w Firefoksie na Poligonie („Korytarz 16e”). Stan
+ustawiany osobnym gniazdem `socket.io-client` z konsoli MG (`campaign:activate`, `scene:activate`,
+`wall:create`, `token:update`, `character:update`). Na koniec aktywna wróciła na „Test2”.
+
+- **Karta czekająca na MG — żywa, od kreatora do przyjęcia.** Szkic `Testera` z warunkami
+  (Kompletny Pakiet, 62 pkt Cech, 86 pkt umiejętności) przeszedł wszystkie kroki: Solo, Cechy 7/7/6×8,
+  pula umiejętności do zera, dziedzina Nauki, język z listy, ksywa „Kruk”. Po „Utwórz postać”:
+  karta z pasem „Po kreatorze zostało → Czeka na MG”, `<fieldset disabled>` z 197 kontrolkami,
+  zakładki i ✕ żywe; w stopce kreatora „Szkic wyrzuca tylko MG” już nie wchodzi pod uchwyt okna
+  (prawy margines stopki 2 rem, sprawdzone prostokątami: napis kończy się 5 px przed uchwytem).
+  Panel MG: sekcja „Nowe postaci: gotowość do gry 1” z „Pokaż kartę / Przyjmij do gry”. Po przyjęciu
+  u gracza bez przeładowania: `fieldset` włączony, pas zniknął, żeton „Kruk” stanął na (1300, 1300).
+- **Okno z bliska w Dynamicznej (42a).** Tymczasowe zamknięte okno x = 3900, y 2000–2900 na lewej
+  krawędzi pola `avatar9` (środek figury 1 m od szyby). Podgląd trasy na punkt za oknem prowadzi
+  ślady wzdłuż szyby i dookoła jej dolnego końca — nie przez okno. Okno o pole dalej (3 m) zasłania
+  wzrok, więc druga strona jest wtedy ciemna (pułapka w `ogledziny`). Okna usunięte.
+- **Kadr portretu 4:3.** Obrazy testowe wgrane na żeton „Kruk”: 300 × 900 (1:3) — kadr pokazuje pas
+  ok. 16–41% wysokości, „twarz” na 22% cała w kadrze, górne ~16% obrazu ucięte (portret całej
+  postaci z głową przy samej górze straci czubek głowy); 1200 × 300 — środek w poziomie, cała
+  wysokość, twarz widoczna. Zachowanie zgodne z `object-position: 50% 22%`; obraz zdjęty z żetonu.
+- **Menu figury gasło w chwili otwarcia — błąd spoza listy.** Prawy klik Playwrighta (Chromium u MG,
+  Firefox u gracza) nie zostawiał menu. Podsłuch zdarzeń: `pointerdown` na `canvas` otwierał menu,
+  a `pointerup` i `contextmenu` szły już w `.context-menu-backdrop`, bo lewy górny róg menu (pod
+  kursorem) jest od 18.09 ścięty `clip-path`. Tło zamykało menu na `contextmenu`. Sprawdzone, że to
+  nie zmiana z tej sesji (cofnięta na czas próby). Naprawa: `MenuBackdrop` zamyka prawym przyciskiem
+  tylko po `pointerdown` na sobie. Po naprawie: menu MG („Paser Oględzin”, PW, karta) i gracza
+  („Przyjrzyj się… / Handluj…”) otwierają się prawdziwym klikiem, prawy klik obok zamyka.
+  **Niepotwierdzone przy stole** — MG nie pamięta, czy menu działało mu ostatnio ręką.
+- **Skóra chromu z automatu.** Handout (Markdown z nagłówkiem, listą, cytatem) i okno oględzin
+  w obu motywach (Firefox), menu figury w obu motywach, karta obiektu sceny (bariera) w obu —
+  belka czerwona z pęknięciami także w dzień. Białe pola liczbowe na karcie bariery i goły wybór
+  pliku w handoucie poprawione regułą `:where(...)` (decyzja MG: globalnie, bez ryzyka).
+- **Trzy drobiazgi z `POMYSLY.md` (25.09, dwunasta).** (1) Pole „Szukaj przedmiotu…” i lista postaci
+  pod wpisem w Firefoksie — papier w obu motywach (`input[type='search']` w globalnej regule,
+  `.compendium-assign select`). (2) Lista chirurgów: pacjent wyszarzony jako „… — to pacjent”
+  z podpowiedzią „Poza galerią potrzebny jest ktoś drugi (s. 226).”; wybrany wcześniej chirurg,
+  który stał się pacjentem, wraca na „Bez Testu montażu” (sprawdzone na Stymie z chwilową Chirurgią 3,
+  przywrócone Farmaceutyki 3). (3) Stos figur: u gracza własne figury leżą nad cudzymi (`zIndex`),
+  klik w stos Styma i „Za bramą” zaznaczył Styma; u MG kolejność bez zmian.
+
 ## Zamknięte 2026-09-25 (dwunasta sesja — kolejka, handel, drobne odmowy, sklep 3b)
 
 Narzędzie: **Playwright MCP** (od tej sesji włączony). MG w Chromium (`localhost:5173`, hasło

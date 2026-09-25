@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (jedenasta) — zaległości: favicona i oględziny Playwrightem
+
+**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
+**favicona + oględziny** zablokowane dotąd przez automat; favicona jako **proste SVG w palecie
+`--cp-*`**; logowanie MG **skryptem czytającym `secrets.env`**; okienko Celowania **nad
+kursorem**; stos figur na jednej kratce **dozwolony**; `tester-dev` — **poprawić tylko dokumenty**.
+
+**Wdrożone:** `public/favicon.svg` (d10 w `--cp-red` na `--cp-bar`) i `<link rel="icon">`
+w `index.html`; `AimMenu` stoi nad kursorem (umowa w `atak`). Decyzja o stosie figur
+w `decyzje-i-uproszczenia.md`, siedem pułapek w `ogledziny`.
+
+**Oględziny** (biblioteka Playwright ze sterownikiem w scratchpadzie — serwery MCP są wyłączone
+w `settings.local.json`; MG w Chromium, `Tester` w Firefoksie, kampania-śmieć): zamknięte dymek
+z 41, całe 42b, całe 14.09 i odmowa wręcz z 42a; z pełnego ekranu (1), (3), (4), (6); ze zgody MG
+wszystko poza pasem „Czeka na MG”; „Kończę turę” i „✓” gracza na żywej turze. **Błąd spoza
+listy:** okienko Celowania zasłaniało „Głowa bez ochrony” w dymku — naprawione i obejrzane
+w Firefoksie. **Znalezione:** `tester-dev` unieważnione 17.09 (dokumenty mówiły, że działa).
+
+**Weryfikacja:** 281 testów klienta, `tsc`, ESLint, Prettier; `shared`, serwer i gateway bez
+zmian. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
+
 ### Sesja 25.09 (dziesiąta) — narzędzia: Playwright obok claude-in-chrome
 
 **Zlecenie MG:** zainstalować Playwrighta i zapisać w `CLAUDE.md`, żeby oględziny szły dwiema

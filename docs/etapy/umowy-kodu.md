@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Figury gracza leżą nad cudzymi (25.09)** — `tokenLayer` z `sortableChildren`, `node.zIndex = 1` dla figury, którą widz prowadzi, gdy nie jest MG. Stos na jednej kratce jest dozwolony, a Pixi oddaje klik figurze z wierzchu; u MG kolejność zostaje kolejnością wstawiania. Nowa warstwa w `tokenLayer` musi pamiętać o `zIndex`.
 - **Siatka wyłącznie dla MG (20.09)** — `MapRenderer.drawGrid` wymaga `viewerIsGm`; `setTokens` przerysowuje ją przy zmianie roli. `scene.grid.visible` steruje tylko widokiem MG, gracz nigdy nie widzi nakładki siatki (także przy kontraście edytora i na mapie powitalnej). Kratkę CSS poza mapą nadal usuwa `map-area--plain`. Geometria ruchu i pomiary zachowują parametry siatki.
 - **Siatka nie wystaje poza mapę u gracza (18.09)** — linie siatki liczy `gridLinePositions` w `map/grid-style.ts` i **pomija te na brzegu mapy** (tolerancja `GRID_EDGE_TOLERANCE_PX`); `drawGrid` tylko je rysuje. Kratka stołu w tle `.map-area` gaśnie u gracza klasą `map-area--plain` (dawne `map-area--welcome`, teraz dla każdej sceny gracza); MG ją zachowuje.
 - **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09)** — jedno pytanie dla planera i serwera: `fogFloorPassable` (`shared/fog.ts`: odsłonięte albo pola, na których figura stoi) sprawdzane przez `firstClosedFloorStep` (`shared/pathfinding.ts`, próbka `everyRunCell` — ta sama co wygładzanie). Serwer: `refuseWalkIntoFog` **przed** `refuseWalkThroughSolid`. Klient: `walkFloorFor` → `'revealed'` i `setWalkPassable(passable, canStep, enforcedFloor)`; `enforcedFloor` pilnuje lądowań w `clipToBudget` i `marchLanding` i podaje się go **tylko** tam, gdzie serwer sam egzekwuje podłogę.
@@ -851,6 +852,8 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Tło menu kontekstowego zamyka prawym przyciskiem tylko po `pointerdown` na sobie (25.09)** — `MenuBackdrop` w `TokenContextMenu.tsx`; nowe menu z tłem bierze ten komponent, nie gołe `onContextMenu={onClose}`. Na Windows `contextmenu` gestu otwierającego przychodzi po `mouseup` i trafia w tło pod ściętym rogiem.
+- **Pole bez własnej klasy dostaje papier z `:where(input[type='number'], select, textarea)` i `::file-selector-button` w `03-entry.css` (25.09)** — zerowa specyficzność, więc każda reguła klasy wygrywa; nowe pole z własnym wyglądem pisze go klasą, a nie zdejmuje bazowej. `search` stoi obok `text` w regule z paddingiem.
 - **`.dialog` ma wysokość przyciętą do okna i przewija się w środku (25.09)** — `max-height: calc(100dvh - 2rem)` + `overflow-y: auto` w `05-tokens.css` dla wszystkich dialogów naraz; `clip-path` ściętego rogu i tak obcinał wszystko poza ramką, więc przewijanie niczego nie chowa. Dialog, który ma własny limit (`.creator-dialog`, `.portrait-gallery`), nadpisuje go swoją regułą — nie zdejmuj bazowej.
 - **Główny ekran od 25.09: portret w lewym panelu to baner, filtry czatu — czarny pas pod zakładkami.** Imię, Rola i PW figury leżą **na** portrecie (`.hud-portrait-caption`, nocne tokeny z bloku „Belka”); nowa informacja o figurze idzie pod baner, nie na obraz. Filtry czatu to `.chat-filter-bar` na liście belek w `chrome.css` i w „Belce” — nowy filtr dostaje sylwetkę z `public/icons/hud/` przez `HudIcon`, nie emoji. Nad zakładkami stoi `PresenceList` w jednym wierszu; zakładki są szerokie według nazwy i zawijają się, zamiast ucinać.
 - **Kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza — góra lewego panelu (25.09).** `CombatBar` stoi w `.map-column` nad `MapArea` i istnieje tylko w trybie turowym; czerwony pasek trzyma wyłącznie `TurnModeSlot` („Włącz tryb turowy” MG). Pas bierze nocne tokeny z bloku „Belka” w `theme.css` (`.combat-bar` na liście) i czarne tło z listy belek w `chrome.css`. Przycisk gracza to `HudEndTurn` / `HudEndTurnCompact` (`HudEndTurn.tsx`), niezależny od zaznaczenia; nowy element pasa dostaje `flex: none`, a ustępuje wyłącznie kolejka i przypomnienie.
@@ -877,6 +880,23 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Menu figury gasło w chwili otwarcia — `MenuBackdrop` (25.09, trzynasta sesja).** Menu otwiera się
+na `pointerdown` prawego przycisku na mapie, a jego lewy górny róg stoi pod kursorem. Od skórki
+z 18.09 ten róg jest ścięty (`clip-path` z listy okien w `chrome.css`), więc piksel pod kursorem
+należy do tła. Na Windows `contextmenu` przychodzi dopiero po `mouseup` — trafiał w tło, a tło
+zamykało menu. Automat (Playwright, Chromium i Firefox) widział to za każdym razem; syntetyczne
+`PointerEvent` z pułapki 12.09 omijały problem, bo wysyłały `contextmenu` wprost na `canvas`.
+Tło pamięta teraz, czy prawy przycisk wciśnięto **na nim**, i tylko wtedy zamyka menu; zabłąkany
+`contextmenu` połyka. Dotyczy obu wersji menu (MG i gracza).
+
+**Pola formularzy bez klasy — papier zamiast gołej kontrolki (25.09, decyzja MG).** Globalny styl pól
+obejmował tylko `text` i `password`, więc wyszukiwarki, listy, pola liczbowe i wybór pliku bez własnej
+reguły rysowały się jak kontrolki systemu — w motywie dziennym białe na kartce (zgłoszone
+z oględzin Firefoksem). `search` dołączył do reguły z paddingiem; `number`, `select` i `textarea`
+dostały tło, kolor i ramkę przez `:where(...)`, bez paddingu, żeby nie ruszać rozmiarów pól, które
+opierały się na natywnych. Lista postaci pod wpisem Kompendium ma dodatkowo własną regułę
+(`.compendium-assign select`).
 
 **Główny ekran: baner portretu, pas filtrów czatu, zwarty nagłówek panelu (25.09, zlecenie MG
 poza etapami).** MG chciał większego portretu i filtrów czatu, które nie wiszą „doczepione” przy
