@@ -3409,17 +3409,24 @@ export async function craftPharmaceutical(
  *
  * `targetTokenId` pominięty znaczy „sobie". Dawka schodzi z ekwipunku
  * podającego, a skutek ląduje na karcie celu — obie rzeczy robi jedno zdarzenie.
+ * `hostile` to atak strzykawką bezigłową na cel, który się broni: rzut robi
+ * serwer, a pudło zostawia dawkę.
  */
 export async function useDose(
   characterId: string,
   gearRowId: string,
   targetTokenId?: string,
+  hostile = false,
 ): Promise<void> {
-  const ack = await emitSceneAck<{ qtyLeft: number; healed: number }>('character:use-dose', {
-    characterId,
-    gearRowId,
-    ...(targetTokenId ? { targetTokenId } : {}),
-  });
+  const ack = await emitSceneAck<{ qtyLeft: number; healed: number; hit?: boolean }>(
+    'character:use-dose',
+    {
+      characterId,
+      gearRowId,
+      ...(targetTokenId ? { targetTokenId } : {}),
+      ...(hostile ? { hostile: true } : {}),
+    },
+  );
   if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
 }
 
@@ -3443,6 +3450,10 @@ export function recoveryErrorText(code: string): string {
       return 'Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków (s. 150).';
     case 'DOSE_OUT_OF_REACH':
       return 'Za daleko — zastrzyk wymaga zasięgu ramienia (2 m).';
+    case 'NO_AIRHYPO':
+      return 'Do zastrzyku siłą potrzebna jest Strzykawka bezigłowa w ekwipunku.';
+    case 'HOSTILE_DOSE_TARGET':
+      return 'Siłą podaje się komuś innemu, kto stoi na mapie — wybierz go w polu „Komu”.';
     default:
       return combatErrorText(code);
   }

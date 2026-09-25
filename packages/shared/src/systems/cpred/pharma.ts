@@ -141,3 +141,19 @@ export function cpredPharmaAccess(points: number): readonly CpredPharmaceutical[
 export function cpredCanCraftPharma(points: number, id: string): boolean {
   return cpredPharmaAccess(points).some((row) => row.id === id);
 }
+
+/** Nazwa przedmiotu, którym dawkę wbija się komuś, kto się broni (s. 150). */
+export const CPRED_AIRHYPO_NAME = 'Strzykawka bezigłowa';
+
+/**
+ * Czy w ekwipunku leży strzykawka bezigłowa — bez niej nie ma czym zaatakować
+ * celu, który „nie chce przyjąć środka" (opis przedmiotu w kompendium i s. 150).
+ *
+ * **Po nazwie**, jak `hasRequiredCyberware` przy smartgunie: wiersz z katalogu
+ * i wiersz wpisany ręcznie („strzykawka bezigłowa ×1" z sesji zero) mają
+ * wspólną tylko nazwę, a id wpisu powstaje z niej przy imporcie.
+ */
+export function cpredHasAirhypo(gear: readonly { name: string; qty: number }[]): boolean {
+  const wanted = CPRED_AIRHYPO_NAME.toLocaleLowerCase('pl');
+  return gear.some((row) => row.qty > 0 && row.name.trim().toLocaleLowerCase('pl') === wanted);
+}

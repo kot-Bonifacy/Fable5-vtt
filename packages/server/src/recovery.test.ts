@@ -670,6 +670,97 @@ describe('naturalne leczenie i farmaceutyki', () => {
     });
   });
 
+  it('zastrzyk siłą: atak strzykawką przeciw Unikowi, pudło zostawia dawkę (s. 150)', async () => {
+    const dose = () =>
+      sheetOf(medicId).then((d) => d.gear.find((e) => e.consumable === 'pharma.antybiotyk')!);
+    const row = await dose();
+    const force = () =>
+      emitAck<{ qtyLeft: number; hit?: boolean }>(gm, 'character:use-dose', {
+        characterId: medicId,
+        gearRowId: row.id,
+        targetTokenId: patientTokenId,
+        hostile: true,
+      });
+
+    // Bez strzykawki w plecaku nie ma czym zaatakować.
+    expect(await force()).toMatchObject({ ok: false, error: 'NO_AIRHYPO' });
+
+    const medic = await sheetOf(medicId);
+    const stats = (dex: number) => ({ ...medic.stats, dex });
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: {
+        data: {
+          // Zapas dawek na obie pętle — trafienie zjada jedną, a ile wyszło
+          // z wcześniejszych partii, zależy od rzutów.
+          gear: [
+            ...medic.gear.map((e) => (e.id === row.id ? { ...e, qty: 30 } : e)),
+            { id: 'airhypo', name: 'Strzykawka bezigłowa', notes: '', qty: 1 },
+          ],
+        },
+      },
+    });
+
+    // Samemu sobie nikt się nie opiera.
+    const self = await emitAck(gm, 'character:use-dose', {
+      characterId: medicId,
+      gearRowId: row.id,
+      hostile: true,
+    });
+    expect(self).toMatchObject({ ok: false, error: 'HOSTILE_DOSE_TARGET' });
+
+    // Sprawny Medyk na bezbronnym celu: trafienie wstrzykuje i zjada dawkę.
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: { data: { stats: stats(8), skills: { paramedic: 10, 'melee-weapon': 10 } } },
+    });
+    const patient = await sheetOf(patientId);
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { stats: { ...patient.stats, dex: 2 }, skills: { evasion: 0 } } },
+    });
+    let hitSeen = false;
+    for (let attempt = 0; attempt < 10 && !hitSeen; attempt += 1) {
+      const before = (await dose()).qty;
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const result = data(await force(), 'character:use-dose');
+      const roll = (await card).message.roll;
+      expect(roll?.title).toBe('Strzykawka bezigłowa → Pacjent');
+      expect(roll?.outcome?.detail).toContain('Unik Pacjent');
+      expect(result.qtyLeft).toBe(result.hit ? before - 1 : before);
+      expect((await dose()).qty).toBe(result.qtyLeft);
+      hitSeen = result.hit === true;
+    }
+    expect(hitSeen).toBe(true);
+
+    // Niezdarny Medyk na zwinnym celu: pudło kosztuje Akcję, ale nie dawkę.
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: { data: { stats: stats(1), skills: { paramedic: 10, 'melee-weapon': 0 } } },
+    });
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { stats: { ...patient.stats, dex: 8 }, skills: { evasion: 10 } } },
+    });
+    let missSeen = false;
+    for (let attempt = 0; attempt < 10 && !missSeen; attempt += 1) {
+      const before = (await dose()).qty;
+      const result = data(await force(), 'character:use-dose');
+      expect(result.qtyLeft).toBe(result.hit ? before - 1 : before);
+      missSeen = result.hit === false;
+    }
+    expect(missSeen).toBe(true);
+
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: { data: { stats: stats(medic.stats.dex), gear: medic.gear } },
+    });
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { stats: patient.stats, skills: patient.skills } },
+    });
+  });
+
   it('odmawia zastrzyku spoza zasięgu ramienia', async () => {
     await emitAck(gm, 'token:move', {
       tokenId: patientTokenId,

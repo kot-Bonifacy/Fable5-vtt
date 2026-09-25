@@ -19,11 +19,15 @@ import type {
   CpredGearRow,
   CpredPharmaceutical,
   RecoveryLogEntry,
+  RollGesture,
   SessionUser,
 } from '@vtt/shared';
 import {
   cpredEffectiveStats,
   CPRED_ACTION_DOSE,
+  CPRED_AIRHYPO_NAME,
+  CPRED_EVASION_SKILL_ID,
+  CPRED_EVERYDAY_DV,
   CPRED_MELEE_REACH_M,
   CPRED_PHARMA_BATCH_COST,
   CPRED_PHARMA_BATCH_HOURS,
@@ -33,6 +37,7 @@ import {
   ROLE_GM,
   cpredApplyAntibiotic,
   cpredCanCraftPharma,
+  cpredHasAirhypo,
   cpredHealRate,
   cpredPharmaceutical,
   cpredRestDay,
@@ -45,9 +50,13 @@ import {
   metresBetweenTokens,
   metresForRules,
   parseCharacterData,
+  passiveEvasionDv,
+  planCpredRoll,
+  resolveCpredAttack,
   rollFormula,
   tokenTableName,
 } from '@vtt/shared';
+import type { CpredCharacterData } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { applyBalance } from './economy.js';
@@ -70,6 +79,11 @@ import {
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
 import { applyWoundSuspension, effectClockForCharacter } from './stat-effects.js';
+import { readTokenStatuses } from './combat.js';
+import { sheetDodgeBlock, sheetForRoll } from '../sheets.js';
+
+/** Umiejętność ataku strzykawką — „Atak bronią białą" (s. 150). */
+const MELEE_WEAPON_SKILL_ID = 'melee-weapon';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -348,7 +362,7 @@ function addDoses(
  */
 export const characterUseDoseEvent = defineEvent<
   CharacterUseDosePayload,
-  { qtyLeft: number; healed: number }
+  { qtyLeft: number; healed: number; hit?: boolean }
 >({
   name: 'character:use-dose',
   handler: async ({ deps, socket, user, payload }) => {
@@ -364,10 +378,17 @@ export const characterUseDoseEvent = defineEvent<
     if (cpredSheetMedicine(medicData, deps.ctx.cpred).pharma < 1) {
       throw new RealtimeError('NOT_A_MEDIC');
     }
+    const hostile = payload?.hostile === true;
+    if (hostile && !cpredHasAirhypo(medicData.gear)) throw new RealtimeError('NO_AIRHYPO');
 
     // Kto dostaje zastrzyk. Brak żetonu znaczy „sobie" — najczęstszy przypadek
     // przy stole i jedyny, który nie potrzebuje mapy.
     const target = await resolveDoseTarget(deps, campaignId, medic, payload?.targetTokenId);
+    // Siłą wbija się igłę komuś **innemu**, kto stoi na mapie — samemu sobie
+    // nikt się nie opiera, a bez żetonu nie ma czyjego Uniku rzucić.
+    if (hostile && (!target.token || target.character?.id === medic.id)) {
+      throw new RealtimeError('HOSTILE_DOSE_TARGET');
+    }
 
     // Akcja przed skutkiem, tak jak przy Ustabilizowaniu: odmowa „nie masz już
     // Akcji" nie ma prawa zjeść dawki. Poza walką `requireTurnSpend` przepuszcza.
@@ -386,10 +407,27 @@ export const characterUseDoseEvent = defineEvent<
           CPRED_ACTION_DOSE,
           {
             silent: true,
-            note: `${drug.name} → ${tokenTableName(target.token, target.token.name)}`,
+            note: `${hostile ? `${CPRED_AIRHYPO_NAME}: ` : ''}${drug.name} → ${tokenTableName(target.token, target.token.name)}`,
           },
         );
       }
+    }
+
+    // Atak strzykawką: Akcja już zapłacona, a pudło zostawia dawkę w komorze
+    // (decyzja MG z 25.09 — podręcznik mówi tylko „jeśli trafisz, wstrzykujesz").
+    if (hostile) {
+      const hit = await rollHostileDose(
+        deps,
+        campaignId,
+        user,
+        medic,
+        medicData,
+        drug,
+        target,
+        payload?.gesture,
+        socket.data.viewedSceneId,
+      );
+      if (!hit) return { qtyLeft: row.qty, healed: 0, hit: false };
     }
 
     // Dawka schodzi z ekwipunku niezależnie od tego, co środek zrobi: fiolka
@@ -439,9 +477,102 @@ export const characterUseDoseEvent = defineEvent<
       effectTarget.scene?.id ?? socket.data.viewedSceneId,
     );
 
-    return { qtyLeft, healed: applied.healed };
+    return { qtyLeft, healed: applied.healed, ...(hostile ? { hit: true } : {}) };
   },
 });
+
+/**
+ * „Jeśli cel nie chce przyjąć środka, w ramach Akcji wykonujesz jeden Atak
+ * bronią białą i jeśli trafisz, zamiast zadać obrażenia, wstrzykujesz"
+ * (opis strzykawki bezigłowej, s. 150).
+ *
+ * Wręcz podręcznik rozgrywa jako rzut przeciwstawny: ZW + Broń biała + 1k10
+ * przeciw ZW + Unik + 1k10 obrońcy. Ścieżka ataku z mapy zastępuje drugą kość
+ * biernym PT, bo czeka na drugiego gracza; tu serwer rzuca **obie** strony od
+ * razu (decyzja MG z 25.09 — „z karty, jeden rzut"). Obrońca, który unikać nie
+ * może (Nieprzytomny, odcięta noga), dostaje bierne PT jak na mapie; figura
+ * bez karty — Codzienne PT 13, jak w planerze ataku.
+ *
+ * Karta na czacie to zwykły rzut z kubka (kości 3D pokazują atak); wynik obrony
+ * stoi w jej szczegółach. Zwraca, czy igła weszła.
+ */
+async function rollHostileDose(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  medic: Character,
+  medicData: CpredCharacterData,
+  drug: CpredPharmaceutical,
+  target: DoseTarget,
+  rawGesture: unknown,
+  viewedSceneId: string | null | undefined,
+): Promise<boolean> {
+  const registry = deps.ctx.cpred;
+  const planned = planCpredRoll(sheetForRoll(medicData, MELEE_WEAPON_SKILL_ID), registry, {
+    kind: 'skill',
+    skillId: MELEE_WEAPON_SKILL_ID,
+  });
+  if (!planned.ok) throw new RealtimeError(planned.error);
+
+  const gesture: RollGesture | undefined = sanitizeGesture(rawGesture);
+  const rng = createMixedRng(gesture?.entropy);
+  const roll = rollFormula(planned.plan.formula, rng, { checkRule: true });
+  const defence = hostileDoseDefence(registry, target, rng);
+  const outcome = resolveCpredAttack(roll.total, defence.total);
+
+  roll.title = `${CPRED_AIRHYPO_NAME} → ${target.name}`;
+  roll.actor = medic.name;
+  roll.breakdown = planned.plan.breakdown;
+  roll.outcome = {
+    success: outcome.hit,
+    label: outcome.hit ? `Trafienie — ${drug.name} wstrzyknięty` : 'Pudło — dawka zostaje',
+    detail: `${roll.total} vs ${defence.label}`,
+  };
+  if (gesture && gesture.strength > 0) roll.tossStrength = gesture.strength;
+  if (gesture?.toss) roll.toss = gesture.toss;
+
+  const sceneId = target.scene?.id ?? viewedSceneId;
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: user.id,
+      kind: 'roll',
+      text: roll.title,
+      payload: JSON.stringify(roll),
+      ...(sceneId ? { sceneId } : {}),
+    },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
+  return outcome.hit;
+}
+
+/** Druga strona rzutu przeciwstawnego: ile musi przebić atak strzykawką. */
+function hostileDoseDefence(
+  registry: RealtimeDeps['ctx']['cpred'],
+  target: DoseTarget,
+  rng: ReturnType<typeof createMixedRng>,
+): { total: number; label: string } {
+  if (!target.character) {
+    return { total: CPRED_EVERYDAY_DV, label: `PT ${CPRED_EVERYDAY_DV}` };
+  }
+  const data = sheetForRoll(
+    parseCharacterData(target.character.data, registry),
+    CPRED_EVASION_SKILL_ID,
+  );
+  const blocked = target.token
+    ? sheetDodgeBlock(readTokenStatuses(target.token.statuses), data.criticalInjuries)
+    : null;
+  const planned = blocked
+    ? null
+    : planCpredRoll(data, registry, { kind: 'skill', skillId: CPRED_EVASION_SKILL_ID });
+  if (!planned?.ok) {
+    const dv = passiveEvasionDv(data, registry);
+    return { total: dv, label: `PT ${dv} (${target.name} nie unika)` };
+  }
+  const evasion = rollFormula(planned.plan.formula, rng, { checkRule: true });
+  return { total: evasion.total, label: `Unik ${target.name}: ${evasion.total}` };
+}
 
 interface DoseTarget {
   name: string;

@@ -311,6 +311,15 @@ export interface CharacterUseDosePayload {
    * przypadkiem przy stole i jedynym, który nie potrzebuje mapy.
    */
   targetTokenId?: string;
+  /**
+   * Cel się broni (s. 150): „w ramach Akcji wykonujesz jeden Atak bronią białą
+   * i jeśli trafisz, zamiast zadać obrażenia, wstrzykujesz" — strzykawką
+   * bezigłową z ekwipunku. Serwer rzuca ZW + Broń biała przeciw ZW + Unik celu;
+   * pudło kosztuje Akcję, ale dawka zostaje w strzykawce (decyzja MG z 25.09).
+   */
+  hostile?: boolean;
+  /** Gest rzutu ataku — tylko przy `hostile`. */
+  gesture?: RollGesture;
 }
 
 /** Client → server payload of `character:delete` (owner or GM). */

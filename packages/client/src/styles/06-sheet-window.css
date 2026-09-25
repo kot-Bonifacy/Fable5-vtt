@@ -159,6 +159,23 @@
   min-height: 0;
 }
 
+/* Opakowanie treści karty: przy postaci czekającej na MG `disabled` gasi
+   wszystkie kontrolki naraz (25.09). Bez własnego wyglądu — przejmuje rolę
+   jedynego dziecka `.sheet-body` (także nośnika wytarć w `sheet.css`). */
+.sheet-lock {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.sheet-lock > * {
+  flex: 1 0 auto;
+}
+
 .sheet-body h3 {
   font-size: 0.82rem;
   text-transform: uppercase;

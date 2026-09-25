@@ -45,6 +45,7 @@ import {
   describeCpredStatEffectValue,
   describeCpredWoundSuspension,
   CPRED_LANGUAGE_SKILL_ID,
+  cpredHasAirhypo,
   cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
   CYBERDECK_SLOTS_MAX,
@@ -282,6 +283,8 @@ function CharacterSheetWindow({
   const saveError = useCharacterStore((s) => s.saveErrors[characterId]);
   const closeSheet = useCharacterStore((s) => s.closeSheet);
   const focusSheet = useCharacterStore((s) => s.focusSheet);
+  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   const [tab, setTab] = useState<SheetTab>('stats');
   // Naprawa 3c: „Przejdź" przy czynności po kreatorze — z kreatora, z listy MG
@@ -368,6 +371,7 @@ function CharacterSheetWindow({
   const saveLabel =
     saveState === 'saving' ? 'Zapisywanie…' : saveState === 'error' ? 'Błąd zapisu!' : '';
   const roleName = registry.roles.find((r) => r.id === data.roleId)?.name ?? '';
+  const awaitingGm = !isGm && !character.playReady && character.ownerId === userId;
 
   return (
     <section
@@ -423,20 +427,27 @@ function CharacterSheetWindow({
       </nav>
 
       <div className="sheet-body" ref={bodyRef}>
-        {tab === 'stats' && (
-          <FrontPage
-            character={character}
-            data={data}
-            saveData={saveData}
-            saveName={saveName}
-            setIssues={setIssues}
-          />
-        )}
-        {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-        {tab === 'bio' && <LifepathPage character={character} data={data} saveData={saveData} />}
-        {tab === 'chrome' && (
-          <ChromePage characterId={character.id} data={data} saveData={saveData} />
-        )}
+        {/* Karta czekająca na MG jest u właściciela tylko do podglądu (25.09):
+            serwer i tak odmawia (`refuseAwaitingGm`), a wyłączony `fieldset`
+            gasi naraz każdy przycisk i pole wszystkich czterech stron, zamiast
+            nieść flagę przez kilkadziesiąt komponentów. Zakładki i ✕ leżą
+            poza nim, więc kartę da się dalej przeglądać. */}
+        <fieldset className="sheet-lock" disabled={awaitingGm}>
+          {tab === 'stats' && (
+            <FrontPage
+              character={character}
+              data={data}
+              saveData={saveData}
+              saveName={saveName}
+              setIssues={setIssues}
+            />
+          )}
+          {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
+          {tab === 'bio' && <LifepathPage character={character} data={data} saveData={saveData} />}
+          {tab === 'chrome' && (
+            <ChromePage characterId={character.id} data={data} saveData={saveData} />
+          )}
+        </fieldset>
       </div>
 
       {issueList.length > 0 && (
@@ -3517,6 +3528,16 @@ function DosesSection({
   if (doses.length === 0) return null;
 
   const figures = Object.values(tokens).filter((token) => token.name.length > 0);
+  // „Siłą" (s. 150) ma sens wyłącznie przy cudzej figurze i ze strzykawką
+  // bezigłową w plecaku — samemu sobie nikt się nie opiera.
+  const target = targetId ? tokens[targetId] : undefined;
+  const mayForce =
+    cpredHasAirhypo(data.gear) && target !== undefined && target.characterId !== character.id;
+
+  function give(rowId: string, hostile: boolean) {
+    setBusy(true);
+    void useDose(character.id, rowId, targetId || undefined, hostile).finally(() => setBusy(false));
+  }
 
   return (
     <div className="cp-panel cp-doses">
@@ -3547,15 +3568,20 @@ function DosesSection({
                   ? 'Nie ma już ani jednej dawki.'
                   : `Wstrzyknięcie jednej dawki zajmuje Akcję. ${row.notes}`
               }
-              onClick={() => {
-                setBusy(true);
-                void useDose(character.id, row.id, targetId || undefined).finally(() =>
-                  setBusy(false),
-                );
-              }}
+              onClick={() => give(row.id, false)}
             >
               Podaj
             </button>
+            {mayForce && (
+              <button
+                type="button"
+                disabled={busy || row.qty < 1}
+                title={`Cel się broni: Atak bronią białą strzykawką bezigłową (ZW + Broń biała) przeciw jego ZW + Unik — Akcja. Trafienie wstrzykuje dawkę, pudło ją zostawia (s. 150).`}
+                onClick={() => give(row.id, true)}
+              >
+                Siłą
+              </button>
+            )}
           </li>
         ))}
       </ul>
