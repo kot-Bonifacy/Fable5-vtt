@@ -87,9 +87,7 @@ class OnnxEmbedder:
                 raise
             except Exception as exc:  # ImportError, sieć, uszkodzony plik…
                 self._last_error = f"{type(exc).__name__}: {exc}"
-                raise EmbeddingError(
-                    f"nie udało się wczytać modelu {self.spec.id}: {exc}"
-                ) from exc
+                raise EmbeddingError(f"nie udało się wczytać modelu {self.spec.id}: {exc}") from exc
             self._load_ms = int((time.perf_counter() - started) * 1000)
             self._last_error = None
             log.info(

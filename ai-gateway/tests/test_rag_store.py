@@ -92,9 +92,7 @@ def test_ponowne_indeksowanie_nie_dubluje(tmp_path: Path) -> None:
 
 def test_usuniecie_kolekcji_czysci_takze_fts(tmp_path: Path) -> None:
     store = RagStore(tmp_path / "rag.sqlite3")
-    store.replace_document(
-        "rulebook", "plik.md", "Plik", [("Fragment o pancerzu.", {}, 3)], None
-    )
+    store.replace_document("rulebook", "plik.md", "Plik", [("Fragment o pancerzu.", {}, 3)], None)
     assert store.delete_collection("rulebook") == 1
     assert store.collections() == []
     assert store.search_fts("rulebook", "pancer*", 10) == []

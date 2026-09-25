@@ -124,9 +124,7 @@ class RagService:
     @property
     def enabled(self) -> bool:
         return (
-            self._disabled_reason is None
-            and self.spec is not None
-            and self._embedder is not None
+            self._disabled_reason is None and self.spec is not None and self._embedder is not None
         )
 
     @property
@@ -254,9 +252,7 @@ class RagService:
         names = [collection] if isinstance(collection, str) else list(collection)
         if not names:
             return []
-        return await asyncio.to_thread(
-            self._search_blocking, text, names, limit, chosen, filters
-        )
+        return await asyncio.to_thread(self._search_blocking, text, names, limit, chosen, filters)
 
     def _search_blocking(
         self,
@@ -347,8 +343,7 @@ class RagService:
         if not files:
             raise RagError(f"w katalogu {directory} nie ma plików .md")
         documents = [
-            RagDocument(source=path.name, text=path.read_text(encoding="utf-8"))
-            for path in files
+            RagDocument(source=path.name, text=path.read_text(encoding="utf-8")) for path in files
         ]
         documents.extend(self._plain_text_documents())
         return await self.index_documents(RULEBOOK_COLLECTION, documents)

@@ -69,9 +69,7 @@ class Chunk:
         if self.page is None:
             return where
         pages = (
-            f"s. {self.page}"
-            if self.page == self.page_end
-            else f"s. {self.page}–{self.page_end}"
+            f"s. {self.page}" if self.page == self.page_end else f"s. {self.page}–{self.page_end}"
         )
         return f"{where} ({pages})" if where else pages
 
