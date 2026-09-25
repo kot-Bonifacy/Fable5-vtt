@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (trzynasta) — zaległości: karta czekająca na MG, okno z bliska, skóra, drobiazgi
+
+**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: **wszystkie
+cztery paczki** (karta czekająca na MG, 42a okno z bliska, oględziny wizualne, drobiazgi
+z `POMYSLY.md`); przełączanie kampanii wolno; białe pola w dzień — **globalnie, regułą bez ryzyka**.
+
+**Oględziny** (Playwright MCP: MG w Chromium, `Tester`, potem `avatar9` i MG w Firefoksie): cały
+kreator do „Przyjmij do gry” z pasem „Czeka na MG” i wyłączoną kartą; planer gracza obchodzi zamknięte
+okno z bliska w Dynamicznej („Korytarz 16e”, okno tymczasowe, usunięte); kadr portretu 1:3 i 4:1;
+handout, okno oględzin, menu figury i karta bariery w obu motywach.
+
+**Naprawione:** pacjent wyszarzony na liście chirurgów; skórka pól `search`, listy postaci
+w Kompendium i — globalnie przez `:where(...)` — pól liczbowych, list, `textarea` i wyboru pliku;
+własne figury gracza nad cudzymi w stosie (`zIndex`); stopka kreatora omija uchwyt okna. **Błąd spoza
+listy: menu figury gasło w chwili otwarcia** — `contextmenu` po `mouseup` trafiał w tło pod ściętym
+rogiem menu (od 18.09); `MenuBackdrop` (umowa w `ui`). Niepotwierdzone ręką MG. Dwa nowe wpisy
+w `POMYSLY.md` (warstwy okien, prośba o postać obok karty czekającej).
+
+**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
+Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan w `poligon.md`.
+
 ### Sesja 25.09 (dwunasta) — zaległości: kolejka, handel, drobne odmowy, sklep 3b
 
 **Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: paczki

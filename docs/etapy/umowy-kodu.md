@@ -852,6 +852,9 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Sprawa czekająca na MG — gałąź w `gmAttentionItems` (`gm-attention.ts`) + `data-attention` na wierszu decyzji (25.09)** — klucz wyłącznie z `gmAttentionKey`. Lista jest liczona z magazynów źródłowych, nie prowadzona osobno; kafel i dźwięk daje tylko **push** owinięty w `watchGmAttention` w `socket.ts` (odpowiedzi po synchronizacji milczą, więc F5 nie dzwoni historią). Prośba o Test nie dzwoni już z `chatNotification`.
+- **Prawy górny róg mapy to kolumna `.map-corner` (25.09)** — „Czeka na MG” nad dokiem handli; nowa nakładka w tym rogu staje w kolumnie, a nie dostaje własnego `position: absolute`.
+- **Kadr portretu obowiązuje na mapie i w banerze lewego panelu (25.09)** — baner liczy `portraitBannerPlacement` (`shared/portrait-crop.ts`, 1,5× szerzej od krążka, zawsze pokrywa ramkę); portret bez własnego kadru zostaje przy `object-position` z `12-hud.css`. Karta, kreator i czat pokazują plik w całości.
 - **Tło menu kontekstowego zamyka prawym przyciskiem tylko po `pointerdown` na sobie (25.09)** — `MenuBackdrop` w `TokenContextMenu.tsx`; nowe menu z tłem bierze ten komponent, nie gołe `onContextMenu={onClose}`. Na Windows `contextmenu` gestu otwierającego przychodzi po `mouseup` i trafia w tło pod ściętym rogiem.
 - **Pole bez własnej klasy dostaje papier z `:where(input[type='number'], select, textarea)` i `::file-selector-button` w `03-entry.css` (25.09)** — zerowa specyficzność, więc każda reguła klasy wygrywa; nowe pole z własnym wyglądem pisze go klasą, a nie zdejmuje bazowej. `search` stoi obok `text` w regule z paddingiem.
 - **`.dialog` ma wysokość przyciętą do okna i przewija się w środku (25.09)** — `max-height: calc(100dvh - 2rem)` + `overflow-y: auto` w `05-tokens.css` dla wszystkich dialogów naraz; `clip-path` ściętego rogu i tak obcinał wszystko poza ramką, więc przewijanie niczego nie chowa. Dialog, który ma własny limit (`.creator-dialog`, `.portrait-gallery`), nadpisuje go swoją regułą — nie zdejmuj bazowej.
@@ -880,6 +883,26 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**„Czeka na MG” — wyraźne powiadomienie o decyzjach MG (25.09, zlecenie MG poza etapami).** Dotąd
+każda sprawa miała własną cyfrę na własnej zakładce, a prośba o zgodę na nową postać nie dzwoniła
+wcale. Rozstrzygnięcia MG: **cztery źródła** (zgoda na postać; szkic czekający na Rangę i karta
+czekająca na „Przyjmij do gry”; prośby o Test i oględziny; propozycje botów, które rozstrzyga
+tylko MG — `controllerUserId === null`), **trwały znacznik + wyskakujący kafel**, kliknięcie
+**przenosi** do miejsca decyzji (zgoda na postać niesie warunki, więc decyzja zostaje w panelu),
+**licznik w tytule karty** i **dźwięk `request` dla każdej nowej sprawy**; powiadomienia systemowe
+Windows — odrzucone. Znacznik stoi w `.map-corner` nad dokiem handli, kafel żyje 9 s, lista
+rozwija się pod znacznikiem, „Przejdź” ustawia `focus` w `gmAttentionStore`, a `SidePanel`
+przełącza zakładkę i po dwóch klatkach przewija do `[data-attention]` z błyskiem
+`.attention-flash`. Nowe źródło: gałąź w `gmAttentionItems`, klucz w `gmAttentionKey`, atrybut na
+wierszu i — jeśli przychodzi nowym zdarzeniem — `watchGmAttention` wokół jego obsługi.
+
+**Kadr portretu w banerze lewego panelu (25.09, zlecenie MG).** Kadr robiony pod żeton trafia też do
+banera 4:3: punkt kadru na środku szerokości i na 40 % wysokości (niżej leży podpis), skala taka,
+że to, co krążek pokazuje na całej średnicy, zajmuje 2/3 wysokości banera (decyzja MG: „szerzej,
+więcej postaci”) — ale nigdy mniejsza niż pokrycie ramki, więc przy wąskim portrecie bez
+przybliżenia baner wychodzi tak szeroki jak sam obraz. Przy krawędzi obrazu kadr się dosuwa zamiast
+odsłaniać pusty pas (na mapie zamalowuje go tło żetonu, w panelu nie ma czym).
 
 **Menu figury gasło w chwili otwarcia — `MenuBackdrop` (25.09, trzynasta sesja).** Menu otwiera się
 na `pointerdown` prawego przycisku na mapie, a jego lewy górny róg stoi pod kursorem. Od skórki

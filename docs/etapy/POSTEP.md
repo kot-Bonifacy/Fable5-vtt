@@ -40,7 +40,9 @@ tokeny papieru w `theme.css`, kafle UI z maski karty (`tools/art/chrome-paper.py
 wszystko ciemniejsze od papieru („żadnego brudu”). Dzień od 24.09 w tonie tapety logowania,
 z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`assety-chrom.md`). Poza skórą: Sieć, pasek mapy, screamsheet,
 logowanie. **Od 25.09 kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza stoi na
-górze lewego panelu** (umowa w `ui`). **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
+górze lewego panelu** (umowa w `ui`). **Od 25.09 (piętnasta) MG ma w prawym górnym rogu mapy
+znacznik „Czeka na MG”** z listą spraw, kaflem i licznikiem w tytule karty, a baner portretu
+bierze kadr żetonu (umowy w `ui`). **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
@@ -89,8 +91,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2227** w `shared`, **1228** na serwerze, **281** u klienta,
-**59** w gatewayu — zielone (25.09, czternasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2231** w `shared`, **1228** na serwerze, **286** u klienta,
+**59** w gatewayu — zielone (25.09, piętnasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -115,7 +117,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 47   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 18   | 14      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 21   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 35   | 8       |
@@ -136,6 +138,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze
+
+**Zlecenie MG (poza etapami):** wyraźne powiadomienie MG o sprawach czekających na jego reakcję;
+w trakcie — kadr portretu z żetonu także w banerze lewego panelu. Rozstrzygnięcia MG: **wszystkie
+cztery źródła** (zgoda na postać, Ranga i „Przyjmij do gry”, prośby o Test, propozycje botów),
+**trwały znacznik + kafel**, kliknięcie **przenosi** do decyzji, **licznik w tytule karty**
+i **dźwięk dla każdej sprawy** (bez powiadomień systemowych); baner **w lewym panelu, ~1,5× szerzej**.
+
+**Zrobione:** `gm-attention.ts` (lista liczona z magazynów), `gmAttentionStore`, `GmAttention.tsx`
+w nowej kolumnie `.map-corner` nad dokiem handli, `watchGmAttention` w `socket.ts` (kafel i dźwięk
+tylko z pushy — F5 milczy), `data-attention` na pięciu rodzajach wierszy, przewinięcie z błyskiem
+w `SidePanel`. Prośba o Test dzwoni teraz stąd, nie z `chatNotification`. Baner: `portraitBannerPlacement`
+w `shared/portrait-crop.ts`; bez własnego kadru baner jak dotąd. Trzy umowy w `ui`.
+
+**Weryfikacja:** klient 286, `shared` 2231, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
+w Chromium (MG) i Firefoksie (MG), gracz `Tester` na „Oględzinach 12.09” — prośba o zgodę i o Test,
+„Przejdź” do obu, F5 bez kafli, wycofanie zeruje znacznik i tytuł. Baner obejrzany na `avatar9`
+podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu). Dźwięku nie słuchano — ścieżka
+`notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.
+
 ### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
 
 **Zlecenie MG:** zaległości w jednej sesji, bez VPS; gdy ich brak — wyczyścić plik. Rozstrzygnięcia
@@ -153,23 +175,3 @@ cała dawna treść bez zmian w `archiwum/zamkniete-zaleglosci.md`, decyzje z 11
 Oglądane w Chromium (Playwright MCP) — zmiana dotyczy dźwięku, nie wyglądu. Pięć kart rzutów Cech
 szkicu MG zostało na czacie „Test2”; szkic wyrzucony.
 
-### Sesja 25.09 (trzynasta) — zaległości: karta czekająca na MG, okno z bliska, skóra, drobiazgi
-
-**Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: **wszystkie
-cztery paczki** (karta czekająca na MG, 42a okno z bliska, oględziny wizualne, drobiazgi
-z `POMYSLY.md`); przełączanie kampanii wolno; białe pola w dzień — **globalnie, regułą bez ryzyka**.
-
-**Oględziny** (Playwright MCP: MG w Chromium, `Tester`, potem `avatar9` i MG w Firefoksie): cały
-kreator do „Przyjmij do gry” z pasem „Czeka na MG” i wyłączoną kartą; planer gracza obchodzi zamknięte
-okno z bliska w Dynamicznej („Korytarz 16e”, okno tymczasowe, usunięte); kadr portretu 1:3 i 4:1;
-handout, okno oględzin, menu figury i karta bariery w obu motywach.
-
-**Naprawione:** pacjent wyszarzony na liście chirurgów; skórka pól `search`, listy postaci
-w Kompendium i — globalnie przez `:where(...)` — pól liczbowych, list, `textarea` i wyboru pliku;
-własne figury gracza nad cudzymi w stosie (`zIndex`); stopka kreatora omija uchwyt okna. **Błąd spoza
-listy: menu figury gasło w chwili otwarcia** — `contextmenu` po `mouseup` trafiał w tło pod ściętym
-rogiem menu (od 18.09); `MenuBackdrop` (umowa w `ui`). Niepotwierdzone ręką MG. Dwa nowe wpisy
-w `POMYSLY.md` (warstwy okien, prośba o postać obok karty czekającej).
-
-**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
-Oglądane w Firefoksie i Chromium. Aktywna kampania wróciła na „Test2”, stan w `poligon.md`.
