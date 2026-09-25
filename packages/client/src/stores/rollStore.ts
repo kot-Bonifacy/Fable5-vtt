@@ -222,6 +222,11 @@ export interface PendingCreation {
    * with the next stat or unanswered table, so a player just grabs it again.
    */
   chain?: 'stats' | 'lifepath';
+  /**
+   * Reloaded by the chain after a throw: the ready chime sounded for the first
+   * link only, not ~10 times over the stats (decyzja MG z 25.09).
+   */
+  quiet?: boolean;
 }
 
 interface RollStoreState {

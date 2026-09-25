@@ -440,7 +440,7 @@ export async function rollCreationFromCup(
   const { open, draft } = useCreationStore.getState();
   if (!open || !draft || !cupIsEmpty()) return;
   const next = nextCreationCup(draft, pending.chain);
-  if (next) loadCreationCup(next);
+  if (next) loadCreationCup({ ...next, quiet: true });
 }
 
 /** The GM's plain button: every stat still missing, no cup, one card. */

@@ -303,11 +303,13 @@ export function DiceCup() {
       ? `call:${mode.messageId}`
       : mode.kind === 'sheet' && mode.pending.call
         ? `call:${mode.pending.call.messageId}`
-        : 'pending' in mode
-          ? `${mode.kind}:${JSON.stringify(mode.pending)}`
-          : mode.kind === 'roll' || mode.kind === 'randtable'
-            ? mode.kind
-            : null;
+        : mode.kind === 'creation' && mode.pending.quiet
+          ? null
+          : 'pending' in mode
+            ? `${mode.kind}:${JSON.stringify(mode.pending)}`
+            : mode.kind === 'roll' || mode.kind === 'randtable'
+              ? mode.kind
+              : null;
   useCupNotification(synced && campaign ? notificationKey : null, campaign?.id ?? null);
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
