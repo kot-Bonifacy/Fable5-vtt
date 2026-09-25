@@ -131,7 +131,11 @@ export function CombatBar() {
     if (!queue || !activeId) return;
     const chip = queue.querySelector<HTMLElement>('[data-active="true"]');
     if (!chip) return;
-    const centred = chip.offsetLeft - (queue.clientWidth - chip.offsetWidth) / 2;
+    // Measured against the strip itself: `offsetLeft` counts from the nearest
+    // positioned ancestor (the page), which pushed the first chip off the edge.
+    const chipLeft =
+      chip.getBoundingClientRect().left - queue.getBoundingClientRect().left + queue.scrollLeft;
+    const centred = chipLeft - (queue.clientWidth - chip.offsetWidth) / 2;
     queue.scrollTo({ left: Math.max(0, centred), behavior: 'smooth' });
   }, [activeId, combat?.round]);
 
