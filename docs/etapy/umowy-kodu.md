@@ -854,7 +854,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 - **Sprawa czekająca na MG — gałąź w `gmAttentionItems` (`gm-attention.ts`) + `data-attention` na wierszu decyzji (25.09)** — klucz wyłącznie z `gmAttentionKey`. Lista jest liczona z magazynów źródłowych, nie prowadzona osobno; kafel i dźwięk daje tylko **push** owinięty w `watchGmAttention` w `socket.ts` (odpowiedzi po synchronizacji milczą, więc F5 nie dzwoni historią). Prośba o Test nie dzwoni już z `chatNotification`.
 - **Prawy górny róg mapy to kolumna `.map-corner` (25.09)** — „Czeka na MG” nad dokiem handli; nowa nakładka w tym rogu staje w kolumnie, a nie dostaje własnego `position: absolute`.
-- **Kadr portretu obowiązuje na mapie i w banerze lewego panelu (25.09)** — baner liczy `portraitBannerPlacement` (`shared/portrait-crop.ts`, 1,5× szerzej od krążka, zawsze pokrywa ramkę); portret bez własnego kadru zostaje przy `object-position` z `12-hud.css`. Karta, kreator i czat pokazują plik w całości.
+- **Portret ma dwa kadry: żetonu i banera lewego panelu (25.09)** — `PortraitAsset.bannerX/Y/Zoom` (puste = „jak żeton”), baner rysuje wyłącznie `portraitBannerFor` (`shared/portrait-crop.ts`) przez `bannerImageStyle` (`portrait-banner.ts`); okno kadru ma zakładki „Żeton” / „Baner”, a `portrait:crop` niesie `bannerCrop` (brak — bez zmian, `null` — „jak żeton”) z tymi samymi prawami co kadr żetonu: MG wszystko, gracz portret własnej postaci. Karta, kreator i czat pokazują plik w całości.
 - **Tło menu kontekstowego zamyka prawym przyciskiem tylko po `pointerdown` na sobie (25.09)** — `MenuBackdrop` w `TokenContextMenu.tsx`; nowe menu z tłem bierze ten komponent, nie gołe `onContextMenu={onClose}`. Na Windows `contextmenu` gestu otwierającego przychodzi po `mouseup` i trafia w tło pod ściętym rogiem.
 - **Pole bez własnej klasy dostaje papier z `:where(input[type='number'], select, textarea)` i `::file-selector-button` w `03-entry.css` (25.09)** — zerowa specyficzność, więc każda reguła klasy wygrywa; nowe pole z własnym wyglądem pisze go klasą, a nie zdejmuje bazowej. `search` stoi obok `text` w regule z paddingiem.
 - **`.dialog` ma wysokość przyciętą do okna i przewija się w środku (25.09)** — `max-height: calc(100dvh - 2rem)` + `overflow-y: auto` w `05-tokens.css` dla wszystkich dialogów naraz; `clip-path` ściętego rogu i tak obcinał wszystko poza ramką, więc przewijanie niczego nie chowa. Dialog, który ma własny limit (`.creator-dialog`, `.portrait-gallery`), nadpisuje go swoją regułą — nie zdejmuj bazowej.
@@ -905,6 +905,15 @@ bez kadru trzyma się góry grafiki, `object-position: 50% 0%`, zamiast 22 %), s
 więcej postaci”) — ale nigdy mniejsza niż pokrycie ramki, więc przy wąskim portrecie bez
 przybliżenia baner wychodzi tak szeroki jak sam obraz. Przy krawędzi obrazu kadr się dosuwa zamiast
 odsłaniać pusty pas (na mapie zamalowuje go tło żetonu, w panelu nie ma czym).
+
+**Własny kadr banera (25.09, zlecenie MG: „właściciel tokena sam kadruje oba wystąpienia”).** Portret
+w puli ma drugi kadr — trzy puste kolumny `bannerX/Y/Zoom`, dopóki nikt go nie ustawi; wtedy baner
+liczy się z kadru żetonu jak wyżej. Własny kadr ma inne znaczenie liczb niż żetonowy: punkt kadru
+na **środku** ramki, `zoom` 1 = obraz dokładnie pokrywa baner, a ramka **nie** wyjeżdża poza obraz
+(`clampPortraitBannerCrop`). Rozstrzygnięcia MG: **dwie zakładki w jednym oknie**, baner bez kadru
+**wylicza się z żetonu** („Jak żeton” wraca do automatu), wejście **z dotychczasowych miejsc**
+(przycisk przemianowany na „Kadr portretu”). Zakładka „Baner” rusza od tego, co już widać
+(`portraitBannerCropOf`), więc pierwsze przeciągnięcie nie przeskakuje.
 
 **Menu figury gasło w chwili otwarcia — `MenuBackdrop` (25.09, trzynasta sesja).** Menu otwiera się
 na `pointerdown` prawego przycisku na mapie, a jego lewy górny róg stoi pod kursorem. Od skórki

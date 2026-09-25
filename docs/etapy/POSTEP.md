@@ -42,7 +42,7 @@ z własną maską (wyblaknięcia + pognieciona kartka) i przypalonym brzegiem (`
 logowanie. **Od 25.09 kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza stoi na
 górze lewego panelu** (umowa w `ui`). **Od 25.09 (piętnasta) MG ma w prawym górnym rogu mapy
 znacznik „Czeka na MG”** z listą spraw, kaflem i licznikiem w tytule karty, a baner portretu
-bierze kadr żetonu (umowy w `ui`). **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
+ma własny kadr albo bierze kadr żetonu (umowy w `ui`). **Safari i iPada nie testujemy ani nie dostosowujemy** (decyzja MG z 25.09). **`styles.css` jest od
 18.09 spisem `@import` 19 plików w `styles/`** — czytaj plik obszaru, nie całość (umowa w `ui`).
 
 **Naprawa kreatora (`naprawa_karty_postaci.md`) zamknięta 18.09** (etapy 1, 2a–2c, 3a–3d, odbiór
@@ -91,7 +91,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2232** w `shared`, **1228** na serwerze, **286** u klienta,
+**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1228** na serwerze, **286** u klienta,
 **59** w gatewayu — zielone (25.09, piętnasta; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -138,7 +138,7 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze
+### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze (własny kadr banera)
 
 **Zlecenie MG (poza etapami):** wyraźne powiadomienie MG o sprawach czekających na jego reakcję;
 w trakcie — kadr portretu z żetonu także w banerze lewego panelu. Rozstrzygnięcia MG: **wszystkie
@@ -152,13 +152,16 @@ tylko z pushy — F5 milczy), `data-attention` na pięciu rodzajach wierszy, prz
 w `SidePanel`. Prośba o Test dzwoni teraz stąd, nie z `chatNotification`. Baner: `portraitBannerPlacement`
 w `shared/portrait-crop.ts`. **Poprawka po uwadze MG („ucięte głowy”):** baner trzyma się góry —
 górna krawędź krążka żetonu u góry banera, portret bez kadru `object-position: 50% 0%` (było 22 %).
-Trzy umowy w `ui`.
+**Własny kadr banera** (drugie zlecenie MG: właściciel kadruje oba wystąpienia): kolumny
+`PortraitAsset.bannerX/Y/Zoom` (migracja `portrait_banner_crop`), zakładki „Żeton” / „Baner”
+w oknie kadru, `bannerCrop` w `portrait:crop`, przycisk „Kadr portretu”. Trzy umowy w `ui`.
 
-**Weryfikacja:** klient 286, `shared` 2232, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
+**Weryfikacja:** klient 286, `shared` 2237, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
 w Chromium (MG) i Firefoksie (MG), gracz `Tester` na „Oględzinach 12.09” — prośba o zgodę i o Test,
 „Przejdź” do obu, F5 bez kafli, wycofanie zeruje znacznik i tytuł. Baner obejrzany na `avatar9`
 podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu); po poprawce — Franc i Portos
-z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Dźwięku nie słuchano — ścieżka
+z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Własny kadr banera Franca
+zapisany w Chromium, dotarł do Firefoksa, a potem przywrócony tam „Jak żeton” (stan jak przed próbą). Dźwięku nie słuchano — ścieżka
 `notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.
 
 ### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
