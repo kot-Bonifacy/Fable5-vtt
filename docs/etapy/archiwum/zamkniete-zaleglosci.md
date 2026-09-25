@@ -9,6 +9,54 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-25 (jedenasta sesja — favicona i oględziny Playwrightem)
+
+Narzędzie: biblioteka `playwright` ze skryptu w scratchpadzie (serwery MCP były wyłączone
+w `settings.local.json`), MG w Chromium, `Tester` w Firefoksie, kampania „Oględziny 12.09 — do
+usunięcia”, scena „Test Brak sceny”. Obie karty na wierzchu (`visibilityState: visible`),
+kursor prawdziwy (`page.mouse`), Alt przez `keyboard.down('Alt')`.
+
+- **Brak favicony (25.09).** Każde wczytanie strony zostawiało 404 `/favicon.ico`. Doszło
+  `packages/client/public/favicon.svg` (kość d10 w `--cp-red` na polu `--cp-bar`) i
+  `<link rel="icon" type="image/svg+xml">` w `index.html`. Sprawdzone w Chromium i Firefoksie:
+  zero odpowiedzi ≥ 400 przy wczytaniu. Safari starsze niż 26 nie pokaże ikony SVG — bez 404,
+  bo przeglądarka nie szuka `/favicon.ico`, gdy strona deklaruje ikonę.
+- **Dymek pod celownikiem (etap 41, 12.09).** Pułapka „kursor automatu nie budzi `onAimHover`”
+  dotyczy tylko claude-in-chrome — `page.mouse.move` Playwrighta budzi go w obu silnikach.
+  `Tester` z nożem przy Paserze: „Paser Oględzin · Nóż testowy · Dystans 2 m · PT 13 · Głowa:
+  **Głowa bez ochrony** (wyróżniona) · W rękach: Coś w rękach” (pistolet bez wpisu katalogu —
+  zgodnie z `GLANCE_WEAPON_UNKNOWN`). U MG (Chromium, Alt) dymek nad Stymem pisze „W rękach: Lekka
+  broń biała”. Dwie rzeczy, które wyglądały na usterkę, a nie są: linijki rzutu oka znikają przy
+  odmowie („Do ataku wręcz cel musi być nie dalej niż 2 m.”) — pokazuje je tylko `preview.ok`;
+  broń z ⚠ „Wskaż broń z katalogu” w ogóle nie uzbraja celownika.
+- **Odmowa wręcz przez siatkę (42a).** Stym (1600, 1100) i Paser (1700, 1100) po obu stronach
+  bariery OB 7: dymek wycenia cios (PT 13 — klient nie widzi ścian, z założenia), kubek się ładuje,
+  a rzut kończy serwer: „Między wami stoi przeszkoda — wręcz przez nią nie sięgniesz.”
+- **Karta obrażeń i napis bariery (42b).** Paser (X-9MM) strzela w Styma przez barierę OB 7.
+  Pierwszy strzał z karą „Cel zasłonięty barierą −6” spudłował; na czas dalszych strzałów
+  barierze 70 zdjęto „Zasłania figury” (OB zostaje) i przywrócono po oględzinach. Trafienie
+  2k6 = 3 → na mapie napis **„BARIERA”** nad Stymem, na czacie „**Bariera zatrzymała cios (3 obr.,
+  bariera OB 7)**” i „rzut 3 − bariera OB 7 · bez pancerza · PW 10 → 10”.
+- **Pod ręczną mgłą tylko po odsłoniętym (14.09) — wszystkie trzy punkty.** (2) Marsz od
+  zachodu bariery przerwał się na (1700, 800) zdaniem „Ktoś pojawił się w polu widzenia — marsz
+  przerwany.” — kratka odsłonięta, serwer przyjął. (3) Marsz do końca: trasa dookoła ściany
+  i bariery do drugiego prostokąta, 7,9 s w widocznym oknie, lądowanie (2100, 1500) w bazie.
+  (1) W walce (RUNDA 1, budżet 10 m) cel na drugim końcu mapy: podgląd trasy niebieski do budżetu,
+  pomarańczowy dalej; marsz stanął po 8,5 m na (1800, 1300), odsłonięte, zdanie „Koniec ruchu
+  w tej turze — postać zatrzymuje się.” Stym stanął przy tym **na polu figury „Za bramą”** —
+  stos figur to decyzja MG, nie błąd (`decyzje-i-uproszczenia.md`).
+- **Pełny ekran (12.09) — (1), (3), (4), (6).** Chromium: pole wchodzi i wychodzi; po F5 pierwszy
+  klik wraca do pełnego ekranu, a po wyjściu (`document.exitFullscreen` w roli przeglądarki)
+  kolejny już nie wciąga, za to „⛶ Wróć do pełnego ekranu” w ustawieniach wraca; wylogowanie
+  wychodzi, zalogowanie Enterem wchodzi; krótkie Esc w pełnym ekranie przerwało marsz. Firefox:
+  podpowiedź pola w wariancie „pierwsze Esc wychodzi…”, Esc wychodzi od razu. Okna ustawień Esc
+  nie zamyka — w pełnym ekranie i poza nim tak samo, więc to nie regres.
+- **Błąd spoza listy: okienko Celowania zasłaniało dymek celownika.** `AimMenu` stało 14 px
+  pod kursorem, a `TargetTooltip` 18 px pod nim, więc cztery sylwetki siadały na tytule dymku
+  i na linijce „Głowa bez ochrony” — dokładnie w chwili wyboru strzału w głowę. Od dziś okienko
+  stoi nad kursorem (pod kursor schodzi tylko przy górnej krawędzi ekranu). Obejrzane
+  w Firefoksie: okienko y 469–503, dymek od y 545, kursor 527.
+
 ## Zamknięte 2026-09-25 (dziewiąta sesja — strzykawka, ruff, karta czekająca, dialogi)
 
 - **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może

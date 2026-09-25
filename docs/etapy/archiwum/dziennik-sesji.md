@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (dziewiąta) — zaległości: strzykawka bezigłowa, karta czekająca na MG, dialogi
+
+**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
+**drobiazgi kodu + oględziny automatem**; kartę czekającą na MG **wyszarzyć**; Wsparcie 10
+(„ta sama sprawa”) **zostaje na liście**; strzykawka **z karty, jednym rzutem**, a **pudło
+zostawia dawkę**.
+
+**Wdrożone:** guzik „Siłą” w sekcji Farmaceutyków (`character:use-dose` z `hostile`,
+`rollHostileDose` rzuca ZW + Broń biała przeciw prawdziwemu ZW + Unik celu, `cpredHasAirhypo`);
+`<fieldset className="sheet-lock">` wyłącza treść karty u właściciela przy `!playReady`;
+`ruff format` w gatewayu. **Błąd spoza listy:** `.dialog` nie miał limitu wysokości — edycja żetonu
+ze „Statystykami bojowymi” (1105 px) chowała „Zapisz” pod ekranem; od dziś każdy dialog przewija
+się w środku. Umowy w `ui`, `karta`, `atak`; decyzja w `decyzje-i-uproszczenia.md`.
+
+**Weryfikacja:** 2226 testów w `shared`, 1228 na serwerze, 281 u klienta, 59 w gatewayu; tsc,
+ESLint, Prettier, ruff. W Chrome (kampania-śmieć, aktywna wróciła na „Test2”): atak strzykawką
+Styma na Pasera (pudło, dawka została), blokada karty atrapą w DOM u Mary, trzy z czterech
+poprawek z 13.09. Trafienie strzykawką i żywa karta czekająca na MG — tylko testem i atrapą.
+
 ### Sesja 25.09 (ósma) — główny ekran: portret-baner, filtry czatu, nagłówek panelu
 
 **Zlecenie MG:** poprawić wygląd i układ głównego ekranu przy tej samej kolorystyce — większy

@@ -1,12 +1,19 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
-**Brak favicony (25.09, znalezione przy wdrożeniu Playwrighta):** `packages/client/index.html` nie deklaruje `<link rel="icon">`, a w `public/` nie ma `favicon.ico`, więc każde wczytanie strony zostawia w konsoli 404 `/favicon.ico` (Chromium liczy go jako błąd). Kosmetyka, ale zaśmieca odczyt konsoli przy oględzinach.
-
 **Główny ekran (25.09, ósma sesja) — do obejrzenia ręką MG:** baner figury **bez portretu** (widziany tylko atrapą w DOM — niski pasek z inicjałem), baner u gracza z „Kończę turę” nad nim, kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) i pas filtrów czatu na iPadzie (`@container` od Safari 16).
 
-**Pas kolejki i „Kończę turę” (25.09) — do obejrzenia ręką MG:** przycisk gracza na górze lewego panelu i „✓” w zwiniętym (widziane tylko atrapą w DOM — MG go nie dostaje, a sesji gracza nie było), podwójny klik przy dwóch figurach gracza pod rząd w kolejce, pas przy 10+ uczestnikach (przewijanie kółkiem, dojazd do aktywnego) i na iPadzie (`@container` od Safari 16).
+**Pas kolejki i „Kończę turę” (25.09) — do obejrzenia ręką MG:** ~~przycisk gracza na górze lewego panelu i „✓” w zwiniętym~~ — **obejrzane 25.09 (jedenasta sesja) na żywej turze `Testera` w Firefoksie** („KOŃCZĘ TURĘ [E]” nad kartą postaci, czerwony „✓” w zwiniętym pasku, klik kończy turę). Zostają: podwójny klik przy dwóch figurach gracza pod rząd w kolejce, pas przy 10+ uczestnikach (przewijanie kółkiem, dojazd do aktywnego) i na iPadzie (`@container` od Safari 16).
 
 **Oględziny handlu 38c (23.09) — nieobejrzane:** przeciąganie palcem na iPadzie (`touch-action: pan-y`, poziomy gest do pola) i handel dwóch graczy w przeglądarce (pokryty testem serwera). Pierwsze przeciągnięcie kabla u MG z automatu nie wylądowało przy poprawnej geometrii, drugie tak — jeśli MG zobaczy to ręką, zacząć od `startDrag`/przechwycenia wskaźnika w `TradeWindow.tsx`.
+
+**Zamknięte 25.09 (jedenasta sesja): favicona i oględziny, których automat z Chrome nie umiał.**
+Playwright (biblioteka, prawdziwy kursor, okno na wierzchu) budzi `onAimHover` i nie dławi marszu,
+więc domknął **dymek pod celownikiem z 41**, **całe 42b** (karta „Bariera zatrzymała cios” i napis
+„BARIERA”), **całe 14.09** (przycięcie budżetem pod mgłą, przerwanie „ktoś w polu widzenia”, marsz
+do końca) i odmowę wręcz przez siatkę z 42a. Z pełnego ekranu i zgody MG odhaczona większość.
+Po drodze **błąd spoza listy**: okienko wyboru miejsca trafienia siadało na dymku celownika i zasłaniało
+„Głowa bez ochrony” — od dziś stoi nad kursorem. Stos figur na jednej kratce to **decyzja MG, nie
+błąd** (`decyzje-i-uproszczenia.md`). Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
 
 Lista rzeczy **otwartych**, przenoszona między etapami; wyprowadzona z `POSTEP.md` 22.08.2026,
 żeby nie obciążała pliku czytanego na starcie każdej sesji. Czytaj ją, gdy siadasz do
@@ -108,33 +115,24 @@ na kampanii-śmieciu; diagnozy w `archiwum/zamkniete-zaleglosci.md`. **Żadna no
 otwarta.** Dwie istniejące dostały dopisek z weryfikacji: „Dodaj za darmo" (w dużej części
 nieaktualne) i cyberdek netrunnera Korpo (w bazie nie ma zespołów).
 
-**12.09 (pełny ekran, zlecenie MG poza etapami): NIEOBEJRZANY w widocznym oknie.** Przełącznik
+**12.09 (pełny ekran, zlecenie MG poza etapami): zostały (2) i (5) — ręką MG.** 25.09 (jedenasta) Playwright w widocznym oknie odhaczył (1), (3) i (4) w Chromium oraz (6) w Firefoksie — szczegóły w archiwum. Syntetyczne Esc z automatu nie dochodzi do obsługi przytrzymania w samej przeglądarce, a `window.confirm` automat zamyka sam, więc (2) i (5) zostają dla MG. Przełącznik
 „Pełny ekran" (⚙ Ustawienia → Widok, `fullscreen.ts`) jest zrobiony i pokryty testami. W przeglądarce
 odklikane: pole, podpowiedź w wariancie „przytrzymaj Esc", zapis w `localStorage`, guzik „⛶ Wróć do
 pełnego ekranu" oraz wywołania `requestFullscreen` z automatu (klik i klawisz) przy aktywnym geście.
-**Samego pełnego ekranu automatyka nie zobaczy** — Chrome odmawia schowanej karcie (pułapka
-w `ogledziny`). Do sprawdzenia ręką, najlepiej na koncie gracza w Chrome:
+**Samego pełnego ekranu claude-in-chrome nie zobaczy** — Chrome odmawia schowanej karcie (pułapka
+w `ogledziny`); Playwright (okno na wierzchu) widzi go normalnie. Lista kontrolna:
 (1) zaznaczenie pola wchodzi od razu, odznaczenie wychodzi;
 (2) krótkie Esc zamyka rzeczy w VTT (np. zdejmuje zaznaczenie figury), a przytrzymane wychodzi
-z pełnego ekranu **bez** schodzenia po całej drabinie;
+z pełnego ekranu **bez** schodzenia po całej drabinie — **krótkie Esc sprawdzone 25.09** (przerwało
+marsz w pełnym ekranie Chromium); **przytrzymane zostaje dla MG**;
 (3) F5 → pierwszy klik wraca do pełnego ekranu, ale po wyjściu przytrzymanym Esc kolejne kliknięcia
 **nie** wciągają z powrotem;
 (4) wylogowanie wychodzi, zalogowanie i dołączenie wchodzą;
 (5) okno `window.confirm` i wybór pliku portretu — czy zdejmują pełny ekran (niesprawdzone, może
-zależeć od przeglądarki);
+zależeć od przeglądarki) — **zostaje dla MG**;
 (6) Firefox: Esc wychodzi od razu, a podpowiedź pola mówi to wprost.
 Na `http://217.154.210.181:8088` Keyboard Lock nie działa (brak HTTPS) i Esc wychodzi od razu —
 to nie regres; zadziała na `vtt.tatanga.eu` po etapie 28.
-
-**12.09 (etap 41): została JEDNA ścieżka — dymek pod celownikiem.** Etap przeszedł oględziny 12.09
-(okno oględzin u MG i u gracza, dokładne oględziny z prośby, „Pokaż wszystko", „Dobądź / Schowaj
-(Akcja) / Upuść"; po drodze naprawiony błąd, przez który dokładne oględziny nie działały — patrz
-archiwum). **13.09 obejrzany wyszarzony slot paska** na kampanii-śmieciu, z konta `Tester`: po
-„Schowaj (Akcja)" oba wiersze broni („Pistolet oględzinowy" i jego „Przeładuj") dostają
-`hud-slot--refused` (przezroczystość 0,4), a karta zamienia plakietkę „✊ W rękach" na „Dobądź".
-Przy okazji wyszła usterka tekstu odmowy — poprawiona 13.09 (trzecia sesja). **Zostaje:** dwie linijki w dymku
-pod celownikiem — `onAimHover` nie budzi się od syntetycznego ruchu kursora (pułapka z 10.09), więc
-to jedyna droga przez rękę MG.
 
 **05.09 (etap 38a — statysta jako karta postaci): został JEDEN kosz — grupowy.** Zmigrowane figury
 poligonu przeszły przez przeglądarkę 05.09. **13.09 obejrzany szybki edytor** na kampanii-śmieciu
@@ -210,7 +208,14 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   blokada karty i żeton przy przyjęciu). **Nie obejrzane**, bo na „Test2” grała Mara i nie
   przełączałem kampanii: przycisk prośby i napis „Czekasz na zgodę MG” u gracza, okno zasad,
   sekcja próśb i „🗑 Wyrzuć szkic” / „Na pewno?” w panelu MG, napis „Szkic wyrzuca tylko MG”
-  w stopce kreatora, pas „Czeka na MG” na karcie gracza. **Znane ograniczenie:** przyciski karty
+  w stopce kreatora, pas „Czeka na MG” na karcie gracza. **25.09 (jedenasta) obejrzane w Firefoksie
+  (gracz) i Chromium (MG) z Playwrighta, kampania-śmieć:** „🗑 Wyrzuć szkic” → „Na pewno?” (wraca sam
+  po kilku sekundach), „✋ Poproś MG o stworzenie postaci”, „Czekasz na zgodę MG na nową postać.
+  Wycofaj prośbę”, sekcja „Nowe postaci graczy” z warunkami i „Zgoda / Odmowa”, warunki u gracza,
+  okno zasad („Jeszcze nie / Rozumiem, zaczynam”) i „Szkic wyrzuca tylko MG” w stopce (ostatnie litery
+  zachodzą na uchwyt zmiany rozmiaru okna — kosmetyka). **Zostaje:** pas „Czeka na MG” i żywa karta
+  czekająca na MG — trzeba przejść cały kreator (18 braków; szkic `Testera` z warunkami czeka
+  w „Oględzinach 12.09”). **Znane ograniczenie:** przyciski karty
   czekającej na MG nie były wyszarzone — **od 25.09 są** (decyzja MG): `<fieldset disabled>`
   wokół treści karty u właściciela. Sprawdzone atrapą w DOM na karcie „dar” u Mary (182 kontrolki
   wyłączone, zakładki i ✕ działają); **żywej karty czekającej na MG nikt jeszcze nie oglądał**.
@@ -237,29 +242,7 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   (warstwa z maską nad całą stroną). Prawdziwe powiększenie przeglądarki 125/150% ręką MG —
   **zdjęte 18.09 decyzją MG** („ze zmian w tym elemencie rezygnuję”).
 
-- **14.09: pod ręczną mgłą gracz chodzi tylko po odsłoniętym — nieobejrzane straże lądowania
-  i pełny marsz.** Obejrzane 14.09 na „Test Brak sceny" z konta `Tester`: serwer dev odmawia ruchu
-  w czerń (`MOVE_REFUSED`), figura stojąca środkiem w czerni dostaje trasę na odsłonięte, nad czernią
-  trasy nie ma, a odsłonięcie MG dochodzi do planera bez przeładowania. Trasę do celu za barierą
-  planer prowadzi dookoła po odsłoniętym — odtworzona w Node tym samym kodem przechodzi oba
-  sprawdzenia serwera, a stara prosta przez barierę pod mgłą odpada. **Zostają:** (1) **przycięcie
-  budżetem w walce** pod mgłą — ostatni krok, na który starcza metrów, nie może stanąć w czerni
-  (`clipToBudget` z `enforcedFloor`); (2) **przerwanie „ktoś w polu widzenia"** przy krawędzi
-  odsłoniętego (`marchLanding`); (3) **marsz do końca** długą trasą i zgoda serwera na lądowanie —
-  w schowanej karcie automatyki marsz idzie ok. 1 klatkę na sekundę, więc przerwano go Esc po kilku
-  pikselach. Najlepiej ręką MG w widocznym oknie. Stan sceny — `poligon.md`.
-
-- **13.09: OB bariery (etap 42b) — zostały karta obrażeń i napis na mapie.** Obejrzane 13.09 (czwarta
-  sesja): pole „OB” na pasku przy „Bariera” i „Brama”, liczba zostaje po przełączeniu rodzaju tam
-  i z powrotem, ściana narysowana zaraz po siatce ma OB 0 (sprawdzone w bazie); karta segmentu
-  zapisuje „OB bariery” przy wyjściu z pola (5 → 7, serwer odesłał 7) i zmienia zdanie pod nim.
-  **13.09 (piąta sesja):** karta segmentu ściany przestawiona kolejno na Drzwi, Okno, Barierę
-  i z powrotem na Ścianę — pole „OB bariery” jest wyłącznie przy Barierze i Bramie, a ściana wróciła
-  w bazie bez zmian. **Zostają:** (1) **karta obrażeń** — „rzut N − bariera OB n − OB m” i nagłówek
-  „Bariera zatrzymała cios” przy trafieniu słabszym od siatki; (2) napis **„BARIERA”** na mapie
-  zamiast „PANCERZ”. Przepis na ustawienie sceny — `poligon.md`.
-
-- **13.09: bariera i brama (etap 42a) — zostały zamknięte okno z bliska i wręcz.** Obejrzane 13.09
+- **13.09: bariera i brama (etap 42a) — zostało zamknięte okno z bliska.** Obejrzane 13.09
   (czwarta sesja): pięć rodzajów mieści się w rzędzie paska, oko „gracze mogą otwierać” stoi przy
   bramie; na warstwie MG bariera fioletowa, brama z 🚧; karta segmentu pisze „Bariera”, „Brama —
   zamknięta” i „Brama — otwarta”; trasa gracza pod ręczną mgłą omija siatkę, zanim padnie klik.
@@ -267,9 +250,10 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   u `Tester` — z trzech kratek „Za daleko — podejdź do bramy (na jedną kratkę).”, z bliska na ryglu
   „Brama zamknięta na kłódkę — nie ustąpi.”, bez rygla otwiera (`open = 1`, „Za bramą” widoczne)
   i zamyka; **zmiana rodzaju z karty** na wszystkie pięć i **wygląd otwartej bramy** na warstwie MG
-  (znak przygaszony, wyraźnie inny niż przy zamkniętej). **Zostają:** (1) trasa gracza przy
-  **zamkniętym oknie z bliska** w Dynamicznej; (2) **odmowa wręcz** pod celownikiem przez siatkę —
-  dymek budzi tylko ręka MG.
+  (znak przygaszony, wyraźnie inny niż przy zamkniętej). **25.09 (jedenasta):** odmowa wręcz przez
+  siatkę obejrzana z Playwrighta — dymek pokazuje PT (klient nie widzi ścian, z założenia), a rzut
+  kończy serwer zdaniem „Między wami stoi przeszkoda — wręcz przez nią nie sięgniesz.” **Zostaje:**
+  trasa gracza przy **zamkniętym oknie z bliska** w Dynamicznej.
 
 - **Odmowy montażu u gracza — została `SELF_INSTALL`.** `MISSING_FOUNDATION` obejrzana 13.09,
   `POOL_FULL` i `NO_SLOTS` 23.09 z konta `Tester` (szczegóły w archiwum). Zostaje `SELF_INSTALL`,
@@ -282,7 +266,7 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   25/25”, przy „Wartości bojowej” Umiejętność i Unik tracą strzałki, Cechy zostają), okno edycji
   żetonu (zasięg `0` → błąd, „Zapisz” aktywne) i „Dodaj za darmo” u MG (notka po odpowiedzi
   serwera). **Zostają:** (1) z karabinem w rękach pistolet ma dostać stare „schowaj tamto”,
-  a odmowa pod celownikiem — tylko ręką MG (dymek); (2) „Zainstaluj” **gracza** na karcie bez
+  a odmowa pod celownikiem — dymek budzi Playwright (25.09), brakuje tylko karty z karabinem; (2) „Zainstaluj” **gracza** na karcie bez
   podstawy — pod guzikiem zdanie odmowy (wpisy „Zawodowe” są u gracza wyszarzone progiem
   sklepu, więc trzeba wpisu z „Ulicznych” albo przestawić próg).
 

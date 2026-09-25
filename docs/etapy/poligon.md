@@ -26,6 +26,8 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 25.09 (jedenasta) — oględziny Playwrightem na kampanii-śmieciu, aktywna wróciła na „Test2”.** Na „Test Brak sceny”: „Oględziny Stym” (`Tester`) stoi na **(1800, 1300) — na tym samym polu co „Za bramą”** (stos figur zostawiony świadomie), Paser na (1700, 1100). **Nóż Styma** ma wpis katalogu „Lekka broń biała” i jest **w rękach**; **pistolet Pasera** ma wpis „Federated Arms X-9MM” (magazynek 12, zostało 2). Bariera 70 miała na chwilę zdjęte „Zasłania figury” — **przywrócone** (OB 7, kara −6). Tryb turowy włączony i wyłączony (kolejka skasowana). **Stary szkic `Testera` wyrzucony** przez MG; `Tester` poprosił o nową postać, MG dał zgodę (Kompletny Pakiet, 62 pkt Cech, 86 pkt umiejętności), zasady przeczytane — **szkic „bez Roli” z warunkami czeka** na dalsze oględziny pasa „Czeka na MG”. Na czacie: atak nożem (odmowa przez siatkę), sześć strzałów Pasera, obrażenia „Bariera zatrzymała cios”, „Marsz przerwany”. W `localStorage` Playwrighta nic nie zostało (konteksty ulotne).
+
 **Stan po sesji 25.09 (dziewiąta) — strzykawka i poprawki 13.09 na kampanii-śmieciu, aktywna wróciła na „Test2”.** „Oględziny Stym” (`Tester`) ma **Strzykawkę bezigłową** (kupioną przez MG z Kompendium, saldo 4490 ed) i wciąż jedną dawkę Stymu — atak „Siłą” na Pasera spudłował. **„Paser Oględzin” ma Mikrokamerę bez cyberoka** (MG „Dodaj za darmo”, Człowieczeństwo 47/48) — gotowy przypadek „wszczep bez podstawy” na karcie. Okno edycji „Za bramą” otwierane i anulowane (bez zapisu). Na czacie: zakup, rzut strzykawki, Utrata Człowieczeństwa. **Karta `[::1]:5173` jest zalogowana jako `Tester`.** W „Test2” nic nie zmieniano (Mara oglądana tylko na podglądzie).
 
 **Stan po sesji 24.09 (szósta) — rzuty kreatora na kampanii-śmieciu, aktywna wróciła na „Test2”.** W „Oględzinach 12.09” zostały dwa szkice kreatora: `Tester` (Solo, Krawędziarz — INT, ZW, TECH wylosowane, REF zdjęty przerzutem MG; Kultura wylosowana, Przyjaciele 0) i szkic MG (Solo, wszystkie Cechy skrótem „Rzuć brakujące”). Na czacie karty rzutów Cech i Ścieżki. Sceny i figury nietknięte.
@@ -368,9 +370,10 @@ Cztery zaległości typu „strona gracza nieodklikana" miały jedną przyczynę
 w bazie dev siedzi na stałe gracz **`Tester`** — członek **wszystkich** kampanii, **bez żadnej
 postaci** (to jego zadanie: pokazuje pusty stan listy postaci z 27f).
 
-- **Wejście na konto:** `http://localhost:5173/join/tester-dev` → na ekranie dołączenia kliknij
-  **„Tester"** (zaproszenie o stałym adresie, ważne do sierpnia 2027, przypięte do „Poligonu bojowego" — nie do aktywnej kampanii,
-  sprawdzone 13.09).
+- **Wejście na konto — od 17.09 NIE przez `tester-dev`.** Wszystkie pięć zaproszeń `tester-dev*`
+  ma `revokedAt` 17.09 19:35 (`/join/tester-dev` daje 404; wykryte 25.09, decyzja MG: poprawić
+  tylko dokumenty). Wchodzi się **ważnym zaproszeniem aktywnej kampanii** (Panel MG → kampanie,
+  albo `GET /api/campaigns` kontem MG) i imieniem **„Tester"** — konto już jest członkiem.
   Gracze **nie mają haseł** — `routes/auth.ts` loguje wyłącznie MG — więc link zaproszenia jest
   całą procedurą i dlatego może stać jawnie w repo: prowadzi do lokalnej bazy dev, a `dev.db`
   jest w `.gitignore`.

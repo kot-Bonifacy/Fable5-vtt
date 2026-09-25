@@ -1288,6 +1288,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Wybór Celowania (`AimMenu`) stoi nad kursorem, dymek celownika (`TargetTooltip`) pod nim (25.09)** — dymek niesie „Głowa bez ochrony”, czyli to, na co patrzy się przy strzale w głowę; pod kursor okienko schodzi tylko przy górnej krawędzi ekranu. Nowy element przy kursorze celownika nie może siadać na żadnym z nich.
 - **Zastrzyk siłą (s. 150) nie idzie przez planer ataku (25.09, decyzja MG)** — `character:use-dose` z `hostile: true`: `rollHostileDose` (`realtime/recovery.ts`) rzuca ZW + Broń biała przeciw **prawdziwemu** rzutowi ZW + Unik celu (bierne PT, gdy cel nie może unikać; PT 13 dla figury bez karty), karta czatu to zwykły rzut. Strzykawkę w ekwipunku sprawdza `cpredHasAirhypo` **po nazwie**. Pudło płaci Akcję, dawka zostaje. Gdyby strzykawka miała kiedyś wejść na pasek i pod celownik, to nowa droga ataku, nie rozbudowa tej.
 - **Kara bariery (42c)** — `barrierConcealPenaltyAlong` wybiera najgorszą przeciętą zasłonę, `cpredBarrierModifiers` daje nazwany wiersz `situational`, którego optyka nie usuwa. Dostępność celu sprawdza `fetchSceneTokensFor` przed linią strzału: niewidoczny i nieistniejący cel dają `TOKEN_NOT_FOUND` w każdym trybie.
 

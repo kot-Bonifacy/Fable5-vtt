@@ -55,10 +55,12 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Dług oględzin — 14 pozycji w `zaleglosci.md`.** Żywy model nie blokuje już żadnej; czekają na
-rękę MG (pełny ekran, tempo maszynopisu, dymek pod celownikiem z 41, skórka na Safari/iPad).
-Kampania-śmieć „Oględziny 12.09” ma członka `Tester`; **stałe zaproszenie `tester-dev` prowadzi
-na Poligon**, do śmiecia wpuszcza nowe (do 20.09).
+**Dług oględzin — 10 pozycji w `zaleglosci.md`.** Od 25.09 **Playwright budzi dymek celownika,
+nie dławi marszu i widzi pełny ekran** — to, co automat z Chrome zostawiał „dla ręki MG”, sprawdzaj
+nim najpierw (sterownik i pułapki w `ogledziny`). Ręką MG zostają: przytrzymane Esc, tempo
+maszynopisu, skórka na Safari/iPad. Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
+**zaproszenie `tester-dev` jest unieważnione od 17.09** — wchodzi się ważnym zaproszeniem
+aktywnej kampanii (`poligon.md`).
 
 **Sceny testowe — pięć.** Aktywna **„StrefaPrzemysłowa”** (kratka 36,2 px, 40 × 30) z **włączonym
 trybem turowym** (RUNDA 1: Marcin, Tony — decyzja MG z 12.09, wyłącza tylko jego ręka; „✕” woła
@@ -116,7 +118,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 16   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 33   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 34   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 44   | 3       |
@@ -126,13 +128,34 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 6       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 90      |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 97      |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 22      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (jedenasta) — zaległości: favicona i oględziny Playwrightem
+
+**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
+**favicona + oględziny** zablokowane dotąd przez automat; favicona jako **proste SVG w palecie
+`--cp-*`**; logowanie MG **skryptem czytającym `secrets.env`**; okienko Celowania **nad
+kursorem**; stos figur na jednej kratce **dozwolony**; `tester-dev` — **poprawić tylko dokumenty**.
+
+**Wdrożone:** `public/favicon.svg` (d10 w `--cp-red` na `--cp-bar`) i `<link rel="icon">`
+w `index.html`; `AimMenu` stoi nad kursorem (umowa w `atak`). Decyzja o stosie figur
+w `decyzje-i-uproszczenia.md`, siedem pułapek w `ogledziny`.
+
+**Oględziny** (biblioteka Playwright ze sterownikiem w scratchpadzie — serwery MCP są wyłączone
+w `settings.local.json`; MG w Chromium, `Tester` w Firefoksie, kampania-śmieć): zamknięte dymek
+z 41, całe 42b, całe 14.09 i odmowa wręcz z 42a; z pełnego ekranu (1), (3), (4), (6); ze zgody MG
+wszystko poza pasem „Czeka na MG”; „Kończę turę” i „✓” gracza na żywej turze. **Błąd spoza
+listy:** okienko Celowania zasłaniało „Głowa bez ochrony” w dymku — naprawione i obejrzane
+w Firefoksie. **Znalezione:** `tester-dev` unieważnione 17.09 (dokumenty mówiły, że działa).
+
+**Weryfikacja:** 281 testów klienta, `tsc`, ESLint, Prettier; `shared`, serwer i gateway bez
+zmian. Aktywna kampania wróciła na „Test2”, stan śmiecia w `poligon.md`.
 
 ### Sesja 25.09 (dziesiąta) — narzędzia: Playwright obok claude-in-chrome
 
@@ -152,22 +175,3 @@ cztery pułapki w `ogledziny`. **Błąd spoza zakresu:** brak favicony (404 w ko
 **Weryfikacja:** biblioteka w obu przeglądarkach na żywym `localhost:5173` (sprzętowy WebGL,
 `visible`, zero `pageerror`); oba serwery MCP przez stdio (31 narzędzi, `browser_navigate`, zrzut).
 Narzędzia `mcp__playwright-*` będą widoczne dopiero od następnej sesji Claude Code. ESLint czysty.
-
-### Sesja 25.09 (dziewiąta) — zaległości: strzykawka bezigłowa, karta czekająca na MG, dialogi
-
-**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
-**drobiazgi kodu + oględziny automatem**; kartę czekającą na MG **wyszarzyć**; Wsparcie 10
-(„ta sama sprawa”) **zostaje na liście**; strzykawka **z karty, jednym rzutem**, a **pudło
-zostawia dawkę**.
-
-**Wdrożone:** guzik „Siłą” w sekcji Farmaceutyków (`character:use-dose` z `hostile`,
-`rollHostileDose` rzuca ZW + Broń biała przeciw prawdziwemu ZW + Unik celu, `cpredHasAirhypo`);
-`<fieldset className="sheet-lock">` wyłącza treść karty u właściciela przy `!playReady`;
-`ruff format` w gatewayu. **Błąd spoza listy:** `.dialog` nie miał limitu wysokości — edycja żetonu
-ze „Statystykami bojowymi” (1105 px) chowała „Zapisz” pod ekranem; od dziś każdy dialog przewija
-się w środku. Umowy w `ui`, `karta`, `atak`; decyzja w `decyzje-i-uproszczenia.md`.
-
-**Weryfikacja:** 2226 testów w `shared`, 1228 na serwerze, 281 u klienta, 59 w gatewayu; tsc,
-ESLint, Prettier, ruff. W Chrome (kampania-śmieć, aktywna wróciła na „Test2”): atak strzykawką
-Styma na Pasera (pudło, dawka została), blokada karty atrapą w DOM u Mary, trzy z czterech
-poprawek z 13.09. Trafienie strzykawką i żywa karta czekająca na MG — tylko testem i atrapą.

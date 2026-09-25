@@ -576,6 +576,11 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
 
 ## Zakres VTT — czego świadomie nie ma
 
+- **Figury mogą stać na jednej kratce (25.09, decyzja MG).** Planer, marsz, przycięcie
+  budżetem i serwer nie znają pojęcia „zajęte pole” — jak w Foundry. Znalezione przy oględzinach:
+  marsz gracza przycięty budżetem (8,5 z 10 m) zatrzymał figurę dokładnie na polu innej. To nie
+  jest błąd i nie wraca jako zaległość; rozdziela je MG albo gracz przy stole.
+
 - **Makra i własny pasek akcji — wycofane 05.09.2026 (decyzja MG).** Etap 36 („Makra i pasek
   własnych akcji", dopisany 02.09 po przeglądzie względem Foundry) został skasowany razem
   z opisem: model `Macro` w bazie, trzy zdarzenia (`macro:upsert`/`delete`/`run`), edytor

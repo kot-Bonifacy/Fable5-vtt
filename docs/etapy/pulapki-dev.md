@@ -974,6 +974,14 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Serwery Playwright MCP mogą stać w `disabledMcpjsonServers` w `.claude/settings.local.json`** — wtedy narzędzi `mcp__playwright-*` nie ma w sesji, choć `.mcp.json` jest poprawny (25.09 tak było od pierwszego uruchomienia). Biblioteka `playwright` ze skryptu `node` działa niezależnie od tego.
+- **Klik w slot paska, którego broń już jest w ręku, zdejmuje ją (przełącznik)** — kubek zostaje pusty, a klik w mapę staje się rozkazem marszu. Przed klikiem slotu sprawdź w lewym panelu zdanie „W ręku: …”.
+- **Linijki „Głowa / W rękach” w dymku celownika są tylko przy dozwolonym ataku** — odmowa (np. „Do ataku wręcz cel musi być nie dalej niż 2 m.”) chowa rzut oka. Broń z ⚠ „Wskaż broń z katalogu” nie uzbraja celownika wcale.
+- **„Na pewno?” przy „🗑 Wyrzuć szkic” wraca samo do „Wyrzuć szkic” po kilku sekundach** — oba kliknięcia rób w jednym kroku skryptu.
+- **Okno ustawień nie zamyka się Esc i przeżywa wylogowanie** — przechwytuje kliknięcia w panel boczny; zamykaj je jego ✕ (`.settings-window button`).
+- **Syntetyczne Esc z Playwrighta nie wychodzi z pełnego ekranu w Chromium, w Firefoksie wychodzi** — przytrzymanie Esc z Keyboard Lock obsługuje sama przeglądarka, poza zasięgiem automatu; wyjście „przeglądarką” udaje `document.exitFullscreen()`.
+- **Polskie znaki w argumencie `curl` z Git Basha na Windows giną** (strona kodowa ANSI) — skrypt dla sterownika podawaj przez stdin (`--data-binary @-` z heredoca), nie w argumencie.
+
 - **Firefox z Playwrighta podaje kartę „GTX 980, or similar”, a konsola Chromium liczy „3 errors” na ekranie logowania — oba to nie błędy** — Firefox maskuje `UNMASKED_RENDERER_WEBGL` (ochrona przed fingerprintingiem), WebGL i tak idzie sprzętowo przez ANGLE. Trzy „błędy” to dwa 401 z `/api/auth/me` u niezalogowanego i 404 `/favicon.ico` (zaległość).
 - **Hasło MG w Playwright MCP to nazwa sekretu, nie wartość** — `browser_type` z tekstem `VTT_GM_PASSWORD` podstawia wartość z `.playwright-mcp/secrets.env`; każdy inny tekst idzie dosłownie. Pusta wartość w pliku = wpisze się napis `VTT_GM_PASSWORD` i logowanie da 401.
 - **`@playwright/mcp` jedzie na dziennej alfie Playwrighta — stabilna biblioteka obok niej ściąga drugi komplet przeglądarek** — `playwright` w `package.json` jest przypięty (`-E`) do tej samej alfy co MCP. Aktualizacja: `pnpm add -D -w -E @playwright/mcp@<v> playwright@<wersja z npm view @playwright/mcp@<v> dependencies>`, potem `pnpm exec playwright install firefox chromium`.
@@ -993,10 +1001,21 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **Co klient wysłał serwerowi, pokaże podsłuch `WebSocket.prototype.send`** — łata na prototypie łapie też już otwarte gniazdo Socket.IO; ramka `token:move` z `final: true` niesie lądowanie i trasę, pośrednie — przebieg marszu. Tak złapano błędną pierwszą wersję naprawy przerwanego marszu (13.09).
 - **`zoom` na `[::1]` w serii odmawia** („Permission denied for this action on this domain”), choć `javascript_tool` i `screenshot` w tej samej serii przechodzą — zbliżenia z karty gracza rób pojedynczym wywołaniem.
 - **Marsz w karcie w tle idzie kilka razy wolniej** — `tickMarch` połyka przestoje klatek (`MARCH_MAX_FRAME_MS`), a schowana karta ma ~1 klatkę na sekundę. Pozycję sprawdzaj w bazie (`Token.x`/`y`), nie zrzutem po stałym czekaniu.
-- **Stałe zaproszenie `tester-dev` prowadzi na „Poligon bojowy", nie do aktywnej kampanii** — kampanię-śmieć wpuszcza nowe zaproszenie (`POST /api/campaigns/:id/invitations` z karty MG) i imię istniejącego konta; to samo imię = to samo konto, nowe nie powstaje.
+- **Zaproszenie `tester-dev` jest unieważnione od 17.09 19:35 (wszystkie pięć `tester-dev*`)** — `POST /api/join/tester-dev` daje 404. Wchodzi się ważnym zaproszeniem aktywnej kampanii: konto MG czyta `GET /api/campaigns` (pole `invitations`, `revoked: false`) i zużywa token w tym samym skrypcie, niczego nie wypisując; to samo imię = to samo konto, nowe nie powstaje.
 - **`innerText` przejmuje `text-transform`** — zakładki karty to „KARTA", więc `innerText === 'Karta'` ani `/^Dobądź$/` nie trafią; szukaj po `textContent`.
 - **„Dobądź" nie istnieje, dopóki nikt nie zadeklarował rąk** — karta bez deklaracji pokazuje pierwszą broń „✊ W rękach" z „Schowaj (Akcja)"; slot szarzeje (`hud-slot--refused` na **wierszu**, nie na przycisku) dopiero po schowaniu.
 - **Serie akcji rozszerzenia (`browser_batch`) potrzebują stałej zgody na domenę** — bez niej na `localhost` i `[::1]` przechodzą tylko pojedyncze wywołania; `navigate` na `[::1]` w serii odmawia nawet po zgodzie, a `find` odmawia zawsze.
+
+- **Oględziny Playwrightem bez serwera MCP (25.09, jedenasta sesja).** Serwery MCP były
+  wyłączone w `settings.local.json`, więc oględziny szły biblioteką przez mały „sterownik”
+  w scratchpadzie: proces `node` trzyma przeglądarki otwarte i wykonuje kroki JS przysłane
+  `curl`-em na `127.0.0.1`. MG loguje się `context.request.post('/api/auth/login')` z hasłem
+  wczytanym w skrypcie z `.playwright-mcp/secrets.env` (nigdy nie wypisywanym), gracz — ważnym
+  zaproszeniem aktywnej kampanii; kampanię i figury przestawia osobne gniazdo `socket.io-client`
+  z ciasteczkiem kontekstu (`campaign:activate`, `token:move`, `wall:update`). Prawdziwy kursor
+  i okna na wierzchu odblokowały dymek celownika, pełny marsz i pełny ekran — pięć pozycji długu
+  czekających od 12–14.09 na „rękę MG” zamknęło się w jednej sesji. Dwa pierwsze podejścia
+  do celownika MG spaliły się na przełączniku slotu (broń była już w ręku po zaznaczeniu figury).
 
 - **Wdrożenie Playwright MCP (25.09).** Serwery `playwright-firefox` i `playwright-chromium`
   w `.mcp.json` uruchamiają `node node_modules/@playwright/mcp/cli.js` z repo (bez `npx`, więc bez
@@ -1058,7 +1077,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`hover` + `left_click` z `computer` nie jest rozkazem marszu** — trasa liczy się na `pointermove`, więc figura stoi, a w rendererze zostaje **rozpoczęty marsz**, który gasi podgląd trasy: kolejne najechania nic już nie rysują i wygląda to jak zepsuty ruch. Rozpoznanie: następny klik odkłada w czacie „Marsz przerwany.”. Działa dopiero pełna seria z konsoli (`pointermove` → pauza ~400 ms → `pointermove` o 2 px → `pointerdown`/`pointerup`) we współrzędnych CSS.
 - **Odmowy Akcji lądują w kategorii czatu „Stół”, a filtr bywa wyłączony** — zamiast „Zbyt daleko — Pochwycenie wymaga zwarcia (2 m).” widać „⋯ 1 ukryty wiersz ⋯” i klik wygląda na przycisk, który nic nie robi. Filtry są prywatne i lokalne (`localStorage`), więc trzymają się karty, nie konta: **włącz wszystkie cztery przed oględzinami**.
 - **Lista statusów w menu kontekstowym żetonu wychodzi poza dolną krawędź okna** — „Powalony” wypada ok. 150 px pod widokiem, `scrollIntoView` nie pomaga (menu się nie przewija), a `computer` nie kliknie poza zrzutem. Tu akurat `input.click()` na checkboksie **działa** (React łapie zdarzenie) — inaczej niż przy `form_input` z pułapki niżej.
-- **Kursor najechany automatem nie budzi `onAimHover` w Pixi** — celownik się uzbraja i linia strzału się rysuje, ale dymek pod kursorem nie wychodzi. Bliźniak pułapki o prawym kliku w kanwę: obie drogi kliknięte ręką MG działają, obie z automatyki milczą.
+- **Kursor najechany claude-in-chrome nie budzi `onAimHover` w Pixi — Playwright budzi (korekta z 25.09)** — celownik się uzbraja i linia strzału się rysuje, ale dymek pod kursorem nie wychodzi. `page.mouse.move` Playwrighta (Firefox i Chromium) wystawia dymek normalnie, z Alt przez `keyboard.down('Alt')`.
 - **Ścieżka z przycisku i ścieżka ze skrótu to dwie ścieżki** — Alt+klik przeszedł oględziny etapu 40, przycisk „Poproś MG” nie; usterka siedziała w tej drugiej. Przy dwóch wejściach sprawdzaj oba.
 - **Karta w tle dławi `setInterval` i `requestAnimationFrame` do ~1 Hz** — pomiar przytrzymania guzika w automatyce przeglądarki jest nieważny; rAF nie zwraca ani jednej klatki.
 - **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu** — Alt+klik nie dochodzi do strony i wygląda jak niedziałająca funkcja. Obejście: `dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))`.
