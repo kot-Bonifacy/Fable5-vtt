@@ -422,6 +422,12 @@ export interface CpredHotbarWeaponSlot {
    * lands on a figure, exactly as an ordinary shot's does.
    */
   coneRangeM: number | null;
+  /**
+   * Not in the figure's hands (stage 41): holstered, or the hands hold
+   * something else. Unlike an empty magazine or a spent Action this is not a
+   * pause — the weapon is gone from the hand, so the bar must stop holding it.
+   */
+  outOfHand: boolean;
   /** Why it cannot be used right now, or null. */
   disabled: string | null;
   /** `'1'`–`'9'`, or null past the ninth slot. */
@@ -645,6 +651,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         ammo: option.ammo,
         ammoLabel: option.ammoProfile?.name ?? null,
         coneRangeM: spread && mode === 'single' ? spread.coneRangeM : null,
+        outOfHand: option.notDrawn !== undefined,
         disabled: weaponRefusal(option, mode, actionRefusal),
         key: null,
       });

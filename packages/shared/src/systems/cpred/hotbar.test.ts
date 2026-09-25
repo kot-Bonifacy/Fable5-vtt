@@ -181,6 +181,20 @@ describe('broń spoza rąk na pasku akcji (etap 41, zdania z 13.09)', () => {
     expect(weapons.length).toBeGreaterThan(0);
     for (const slot of weapons) expect(slot.disabled).toBe(CPRED_HOLSTERED_REFUSAL);
   });
+
+  it('znaczy broń spoza rąk osobno od przejściowych odmów (25.09)', () => {
+    // Pasek zdejmuje z kursora tylko broń, która wyszła z rąk — pusty magazynek
+    // też szarzeje slot, ale gracz ma wtedy przeładować, a nie zmienić broń.
+    const holstered = weaponSlots(
+      hotbarSlotsFor(input({ sheet: { weapons: [weaponRow()], drawnWeaponRowIds: [] } })),
+    );
+    expect(holstered.every((slot) => slot.outOfHand)).toBe(true);
+    const empty = weaponSlots(
+      hotbarSlotsFor(input({ sheet: { weapons: [weaponRow({ ammoCurrent: 0 })] } })),
+    );
+    expect(empty[0]!.disabled).not.toBeNull();
+    expect(empty.every((slot) => !slot.outOfHand)).toBe(true);
+  });
 });
 
 describe('cpredFireModes — the weapon decides how many slots it takes', () => {

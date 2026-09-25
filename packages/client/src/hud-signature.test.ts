@@ -31,6 +31,7 @@ function slot(patch: Partial<CpredHotbarWeaponSlot> = {}): CpredHotbarWeaponSlot
     ammo: null,
     ammoLabel: null,
     coneRangeM: null,
+    outOfHand: false,
     disabled: null,
     key: '1',
     ...patch,

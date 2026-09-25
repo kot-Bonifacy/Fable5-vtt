@@ -517,7 +517,15 @@ export function CombatHud() {
       if (state.activeWeapon) state.setActiveWeapon(null);
       return;
     }
-    if (state.activeWeapon?.tokenId === token.id) return;
+    if (state.activeWeapon?.tokenId === token.id) {
+      // A weapon put away or crowded out of the hands leaves the cursor too:
+      // the bar kept „W ręku: nóż" under a greyed knife after the rifle came
+      // out (25.09). Only that — an empty magazine or a spent Action keeps it,
+      // since the player's next move is to reload or wait, not to switch.
+      const held = state.activeWeapon.slotId;
+      const current = context.slots.find((entry) => entry.id === held);
+      if (current && !(current.kind === 'weapon' && current.outOfHand)) return;
+    }
     const slot = context.slots.find((entry) => entry.kind === 'weapon' && !entry.disabled);
     if (!slot || slot.kind !== 'weapon') {
       state.setActiveWeapon(null);

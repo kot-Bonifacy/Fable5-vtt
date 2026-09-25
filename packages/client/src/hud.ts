@@ -488,6 +488,9 @@ export function hudSignature(context: HudContext): string {
       slot.kind === 'weapon' ? slot.ammoLabel : null,
       slot.kind === 'weapon' || slot.kind === 'reload' ? (slot.ammo ?? null) : null,
       slot.kind === 'weapon' ? slot.coneRangeM : null,
+      // Schowanie broni przy wydanej Akcji nie zmienia zdania odmowy, a zmienia
+      // to, co kursor ma trzymać (25.09).
+      slot.kind === 'weapon' ? slot.outOfHand : null,
     ]),
   ]);
 }
