@@ -11,6 +11,16 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Zastrzyk siłą: serwer rzuca za obie strony, a pudło zostawia dawkę (25.09, decyzje MG).**
+  „Jeśli cel nie chce przyjąć środka, w ramach Akcji wykonujesz jeden Atak bronią białą i jeśli
+  trafisz, zamiast zadać obrażenia, wstrzykujesz” (strzykawka bezigłowa, s. 150). VTT robi to
+  guzikiem „Siłą” w sekcji Farmaceutyków na karcie, a nie atakiem z mapy: bez celownika, bez
+  karty ataku z „Broń się” i bez Szczęścia obrońcy. Za to Unik celu jest **rzucony naprawdę**
+  (ZW + Unik + 1k10), a nie zastąpiony biernym PT jak na mapie, bo nikt nie czeka na drugiego
+  gracza. Podręcznik nie mówi, co z dawką przy pudle; VTT zostawia ją w strzykawce, a przepada
+  tylko Akcja. Figura bez karty broni się Codziennym PT 13, a cel, który nie może unikać,
+  biernym PT. Powrót do „pudło zjada dawkę” to jedna linia w `characterUseDoseEvent`.
+
 - **Bariera ma OB, choć podręcznik nie zna częściowej osłony (13.09, etap 42b, decyzja MG).**
   „Nie ma czegoś takiego jak »częściowa« osłona" (s. 179), a osłona ma PW, nie OB (16c). Mimo to
   bariera — siatka, krata, barierka — ma w VTT liczbę OB, którą strzał i wybuch tracą **przed**

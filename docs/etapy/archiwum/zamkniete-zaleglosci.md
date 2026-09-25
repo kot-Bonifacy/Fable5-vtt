@@ -9,6 +9,71 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-25 (dziewiąta sesja — strzykawka, ruff, karta czekająca, dialogi)
+
+- **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może
+  w ramach Akcji wykonać pojedynczy Atak Bronią Białą (strzykawką bezigłową). W przypadku
+  trafienia, Atak zamiast obrażeń wstrzykuje celowi dawkę farmaceutyku" (s. 150). `character:use-dose`
+  podaje dawkę **bez rzutu**, bo przy stole niemal zawsze podaje się ją komuś przytomnemu
+  i chętnemu. Wrogi cel wymagałby broni „strzykawka" w kompendium i gałęzi w `planCpredAttack`,
+  która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
+  z 16h, tylko od drugiej strony.
+
+**Zamknięte 25.09 (decyzje MG).** Zastrzyk siłą **z karty**, nie z mapy: w sekcji „Farmaceutyki”
+guzik „Siłą” pojawia się przy cudzej figurze, gdy w ekwipunku leży „Strzykawka bezigłowa”
+(`cpredHasAirhypo`, po nazwie). `character:use-dose` z `hostile: true` płaci Akcję, a
+`rollHostileDose` rzuca ZW + Broń biała + 1k10 (kary ran i pancerza z `planCpredRoll`) przeciw
+prawdziwemu ZW + Unik + 1k10 celu. Trafienie idzie dalej zwykłą drogą dawki, a pudło zostawia
+dawkę. Testy: `pharma.test.ts` (shared) i nowy przypadek w `recovery.test.ts` (brak strzykawki,
+cel = ja, trafienie zjada dawkę, pudło nie). Obejrzane w przeglądarce jako `Tester` na „Test Brak
+sceny”: Stym → Paser Oględzin, karta „Strzykawka bezigłowa → Paser Oględzin · 1d10+3”
+z rozbiciem (ZW +5, Broń biała nietrenowana +0, Poważnie ranny −2, krytyk +4) i werdyktem „Pudło
+— dawka zostaje · 17 vs Unik Paser Oględzin: 24”; „Siłą” znika przy „sobie” i przy własnej
+figurze. Trafienie widział tylko test serwera.
+
+- **24.09: `ruff format --check` w `ai-gateway/` zgłasza 4 pliki** (m.in. `rag/chunker.py`) —
+  dryf sprzed sesji, `ruff check` czysty. Jednym `uv run ruff format src tests` przy okazji
+  najbliższej zmiany w gatewayu.
+
+**Zamknięte 25.09.** `uv run ruff format .` przeformatował 4 pliki (`chunker.py`,
+`embeddings.py`, `service.py`, `test_rag_store.py`); `ruff check` i 59 testów gatewaya zielone.
+
+- **Karta czekająca na MG nie była wyszarzona (znane ograniczenie z 24.09).** Gracz mógł klikać
+  rzuty i pola, a serwer odmawiał zdaniem `CHARACTER_AWAITING_GM`.
+
+**Zamknięte 25.09 (decyzja MG: wyszarzyć).** Treść karty jest owinięta `<fieldset
+className="sheet-lock" disabled={awaitingGm}>`; warunek jest lustrem `refuseAwaitingGm`.
+Zakładki i ✕ leżą poza nim. `.sheet-lock` przejął rolę jedynego dziecka `.sheet-body` (nośnik
+wytarć). Reguła `cursor: not-allowed` była próbowana i zdjęta — łapała tylko część pól, bo
+reguły karty są bardziej szczegółowe. Sprawdzone atrapą w DOM (182 kontrolki wyłączone); żywa
+karta czekająca na MG nieobejrzana — pozycja zgody MG w `zaleglosci.md` zostaje.
+
+- **Błąd spoza listy: dialog wyższy od okna chował „Zapisz” (znaleziony 25.09).** Okno edycji
+  żetonu z rozwiniętymi „Statystykami bojowymi” miało 1105 px przy oknie 1036 px: nagłówek
+  wystawał górą, „Zapisz” dołem, a `.dialog` nie miał ani `max-height`, ani przewijania. Na
+  laptopie gracza (768 px) guzik byłby nieosiągalny.
+
+**Zamknięte 25.09.** `.dialog` w `05-tokens.css`: `max-height: calc(100dvh - 2rem)` (z `100vh`
+jako zapasem), `overflow-y: auto`, `overscroll-behavior: contain`. Obejrzane: edycja żetonu mieści
+się (16–1020 px) i przewija do „Zapisz”; okno rzutu (459 px) bez zmian, bez paska przewijania.
+
+- **13.09 (trzecia sesja): cztery poprawki nieobejrzane w przeglądarce.** Testy pokrywają tylko
+  silnik (odmowa rąk: planer, pasek, gniazda serwera); reszta to UI. Do sprawdzenia na koncie
+  `Tester` i u MG: (1) **odmowa rąk** — po „Schowaj (Akcja)" jedynej broni podpowiedź wyszarzonego
+  slotu i odmowa pod celownikiem mówią „Broń jest w kaburze — dobądź ją (bez Akcji)", a z karabinem
+  w rękach pistolet dostaje stare „schowaj tamto"; (2) **„Zainstaluj"** w kompendium na karcie bez
+  cyberoka — pod guzikiem ta sama odmowa co na czacie, nie „Instaluję…" (to samo przy „Dodaj za
+  darmo" u MG); (3) **szybki edytor 38a** — bez „Paska HP" podpowiedź pisze liczby PW karty, przy
+  „Wartości bojowej" Umiejętność, Unik i poziomy Testów tracą strzałki; (4) **okno edycji żetonu** —
+  zły „Zasięg widzenia" (np. `0`) pokazuje błąd, a „Zapisz" zostaje aktywne. Screamsheet czeka na
+  model — patrz 24c (4).
+
+**Zawężone 25.09** — obejrzane (1) podpowiedź slotu schowanej broni, (3) szybki edytor, (4) okno
+edycji żetonu i „Dodaj za darmo” u MG; nowa, węższa pozycja została w `zaleglosci.md`. Przy
+„Dodaj za darmo” Mikrokamery Pasera (bez cyberoka) wszczep **wszedł** — to zamierzone: MG omija
+odmowy montażu (`installCyberware`), a karta Utraty Człowieczeństwa zapisuje „Nie ma w co tego
+wszczepić … (montaż MG)”.
+
 ## Zamknięte 2026-09-24 (druga sesja — zaległości lokalnego LLM na Qwen3.8-27B)
 
 - **Etap 19a — dwie ścieżki nieodklikane po poprawce.** ~~Degradacja panelu~~ — **odklikana

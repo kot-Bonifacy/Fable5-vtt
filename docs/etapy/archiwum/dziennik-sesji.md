@@ -1,5 +1,23 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (siódma) — pas kolejki inicjatywy i „Kończę turę” w lewym panelu
+
+**Zlecenie MG:** poprawić wygląd głównego ekranu przy tej samej kolorystyce, w tym pasek
+inicjatyw i oddanie tury. Rozstrzygnięcia MG: zakres — **górny pasek i kolejka**; kolejka
+w **osobnym czarnym pasie tylko nad mapą**; **„Kończę turę” wyłącznie w lewym panelu**, zawsze
+w turze gracza; MG zostaje przy ◀ ▶ w pasie; paleta ta sama, role barw wolno przestawić.
+
+**Wdrożone:** `CombatBar` w nowej `.map-column` (App), `TurnModeSlot` w `TopBar`,
+`HudEndTurn.tsx` (blok w panelu + „✓” w zwiniętym), przepisany pas w `09-turn.css`, blok
+w `12-hud.css`, `.combat-bar` na liście „Belka” (`theme.css`) i belek (`chrome.css`). Umowa
+w `ui`.
+
+**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Pas obejrzany na kampanii-śmieciu
+(„Przed walką”, runda 1, ✕ — tryb turowy wyłączony z powrotem, aktywna wróciła na „Test2”) oraz
+atrapą w DOM w obu skórach i na wąskim oknie. **Przycisk gracza nieobejrzany na żywo** — tylko
+atrapą (pozycja w `zaleglosci.md`). Poziomy pasek przewijania strony przy ~1100 px był już
+wcześniej (1 px nadmiaru także bez pasa) — nie ruszany.
+
 ### Sesja 25.09 (szósta, część 3) — warunki zgody: metoda, ranga, pula umiejętności
 
 **Zlecenie MG:** to, ile postać ma punktów (np. „Postać początkująca”, 62), MG ustala w chwili

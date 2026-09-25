@@ -12,6 +12,13 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 25.09 (dziewiąta sesja): strzykawka bezigłowa, `ruff format`, wyszarzona karta
+czekająca na MG.** Zastrzyk siłą (s. 150) działa z karty guzikiem „Siłą” — obejrzany na
+kampanii-śmieciu (pudło, dawka została). Po drodze wyszedł **błąd spoza listy**: okno edycji
+żetonu z rozwiniętymi „Statystykami bojowymi” miało ~1100 px i chowało „Zapisz” pod krawędzią
+ekranu — naprawione dla wszystkich dialogów (`.dialog` z limitem wysokości i przewijaniem).
+Wsparcie 10 zostaje decyzją MG. Diagnozy w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 24.09 (druga sesja): zaległości lokalnego LLM — na nowym modelu Qwen3.8-27B.**
 MG przełączył model z Qwythos-9B Q8_0 na **Qwen3.8-27B UD-Q3_K_XL** (build 10735); wszystkie
 oględziny poszły na nim. Odhaczone na żywym modelu: 19a (obie), 19b, 19c (obie — map-reduce na
@@ -202,8 +209,9 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   przełączałem kampanii: przycisk prośby i napis „Czekasz na zgodę MG” u gracza, okno zasad,
   sekcja próśb i „🗑 Wyrzuć szkic” / „Na pewno?” w panelu MG, napis „Szkic wyrzuca tylko MG”
   w stopce kreatora, pas „Czeka na MG” na karcie gracza. **Znane ograniczenie:** przyciski karty
-  czekającej na MG nie są wyszarzone — serwer odmawia, a gracz czyta zdanie odmowy; jeśli to
-  przeszkadza, następny krok to wyłączenie kontrolek karty przy `!playReady` u właściciela.
+  czekającej na MG nie były wyszarzone — **od 25.09 są** (decyzja MG): `<fieldset disabled>`
+  wokół treści karty u właściciela. Sprawdzone atrapą w DOM na karcie „dar” u Mary (182 kontrolki
+  wyłączone, zakładki i ✕ działają); **żywej karty czekającej na MG nikt jeszcze nie oglądał**.
 
 - **24.09: rzuty kreatora przez kubek — do oceny MG przy stole.** Obejrzane automatem (łańcuch
   Cech i Ścieżki, przerzut MG, skrót MG). **Zostają ręką MG:** (1) **dźwięk „kubek gotowy” po
@@ -266,31 +274,22 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   do którego gracz potrzebuje Medyka z Chirurgią; `NO_SURGERY_SKILL` jest z UI nieosiągalne
   z założenia (lista chirurgów w Kompendium pokazuje wyłącznie karty z Chirurgią).
 
-- **13.09 (trzecia sesja): cztery poprawki nieobejrzane w przeglądarce.** Testy pokrywają tylko
-  silnik (odmowa rąk: planer, pasek, gniazda serwera); reszta to UI. Do sprawdzenia na koncie
-  `Tester` i u MG: (1) **odmowa rąk** — po „Schowaj (Akcja)" jedynej broni podpowiedź wyszarzonego
-  slotu i odmowa pod celownikiem mówią „Broń jest w kaburze — dobądź ją (bez Akcji)", a z karabinem
-  w rękach pistolet dostaje stare „schowaj tamto"; (2) **„Zainstaluj"** w kompendium na karcie bez
-  cyberoka — pod guzikiem ta sama odmowa co na czacie, nie „Instaluję…" (to samo przy „Dodaj za
-  darmo" u MG); (3) **szybki edytor 38a** — bez „Paska HP" podpowiedź pisze liczby PW karty, przy
-  „Wartości bojowej" Umiejętność, Unik i poziomy Testów tracą strzałki; (4) **okno edycji żetonu** —
-  zły „Zasięg widzenia" (np. `0`) pokazuje błąd, a „Zapisz" zostaje aktywne. Screamsheet czeka na
-  model — patrz 24c (4).
+- **13.09 (trzecia sesja): cztery poprawki — zostały dwie połówki.** 25.09 obejrzane na
+  kampanii-śmieciu: podpowiedź wyszarzonego slotu schowanej broni („Nóż testowy — Broń jest
+  w kaburze — dobądź ją (bez Akcji).”), szybki edytor 38a (bez „Paska HP” pisze „karta ma PW
+  25/25”, przy „Wartości bojowej” Umiejętność i Unik tracą strzałki, Cechy zostają), okno edycji
+  żetonu (zasięg `0` → błąd, „Zapisz” aktywne) i „Dodaj za darmo” u MG (notka po odpowiedzi
+  serwera). **Zostają:** (1) z karabinem w rękach pistolet ma dostać stare „schowaj tamto”,
+  a odmowa pod celownikiem — tylko ręką MG (dymek); (2) „Zainstaluj” **gracza** na karcie bez
+  podstawy — pod guzikiem zdanie odmowy (wpisy „Zawodowe” są u gracza wyszarzone progiem
+  sklepu, więc trzeba wpisu z „Ulicznych” albo przestawić próg).
 
-- **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
+- **Wsparcie poziomu 10 nie pamięta „tej samej sprawy". 25.09: MG — zostaje na liście, nie ruszamy.** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
   »sprawy«, aż do jej zamknięcia lub śmierci tych funkcjonariuszy" (s. 159). VTT stawia za
   każdym razem nowe figury z pełnymi PW. Wymaga pojęcia „sprawy", którego projekt nie ma —
   najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
   ciągłość jest zasadą, a nie kolorytem.
-
-- **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może
-  w ramach Akcji wykonać pojedynczy Atak Bronią Białą (strzykawką bezigłową). W przypadku
-  trafienia, Atak zamiast obrażeń wstrzykuje celowi dawkę farmaceutyku" (s. 150). `character:use-dose`
-  podaje dawkę **bez rzutu**, bo przy stole niemal zawsze podaje się ją komuś przytomnemu
-  i chętnemu. Wrogi cel wymagałby broni „strzykawka" w kompendium i gałęzi w `planCpredAttack`,
-  która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
-  z 16h, tylko od drugiej strony.
 
 - **Maszynopis wypowiedzi NPC-a (09.08) — zostało tylko tempo, do oceny MG.** Obejrzane 24.09
   automatem w widocznej karcie MG (kampania-śmieć, Qwen3.8-27B): tekst przyrasta porcjami po
@@ -309,10 +308,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   przeszkadzało: lekcja bota („Mów poprawną polszczyzną”), mocniejszy kwant, gdy zwolni się VRAM.
   Notatkę relacji pisz **do bota w drugiej osobie** („Stym uratował ci bar”) — model przepisuje
   notatkę w trzeciej osobie i potrafi mówić o rozmówcy jak o kimś obok.
-
-- **24.09: `ruff format --check` w `ai-gateway/` zgłasza 4 pliki** (m.in. `rag/chunker.py`) —
-  dryf sprzed sesji, `ruff check` czysty. Jednym `uv run ruff format src tests` przy okazji
-  najbliższej zmiany w gatewayu.
 
 - **Etap 20a — gdy bot „nie chce rzucić", zajrzyj do dziennika decyzji.** Przy oględzinach „Kolec, rzuć
   na Wygadanie" wróciło jako „rozmowa" — i słusznie: **„Wygadanie" nie jest umiejętnością CP RED**, a Kaya

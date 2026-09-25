@@ -87,8 +87,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2224** w `shared`, **1227** na serwerze, **281** u klienta,
-**59** w gatewayu — zielone (24.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2226** w `shared`, **1228** na serwerze, **281** u klienta,
+**59** w gatewayu — zielone (25.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -113,12 +113,12 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 15   | 13      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 16   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 33   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 7    | 11      |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 44   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
@@ -133,6 +133,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 25.09 (dziewiąta) — zaległości: strzykawka bezigłowa, karta czekająca na MG, dialogi
+
+**Zlecenie MG:** zrobić zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG:
+**drobiazgi kodu + oględziny automatem**; kartę czekającą na MG **wyszarzyć**; Wsparcie 10
+(„ta sama sprawa”) **zostaje na liście**; strzykawka **z karty, jednym rzutem**, a **pudło
+zostawia dawkę**.
+
+**Wdrożone:** guzik „Siłą” w sekcji Farmaceutyków (`character:use-dose` z `hostile`,
+`rollHostileDose` rzuca ZW + Broń biała przeciw prawdziwemu ZW + Unik celu, `cpredHasAirhypo`);
+`<fieldset className="sheet-lock">` wyłącza treść karty u właściciela przy `!playReady`;
+`ruff format` w gatewayu. **Błąd spoza listy:** `.dialog` nie miał limitu wysokości — edycja żetonu
+ze „Statystykami bojowymi” (1105 px) chowała „Zapisz” pod ekranem; od dziś każdy dialog przewija
+się w środku. Umowy w `ui`, `karta`, `atak`; decyzja w `decyzje-i-uproszczenia.md`.
+
+**Weryfikacja:** 2226 testów w `shared`, 1228 na serwerze, 281 u klienta, 59 w gatewayu; tsc,
+ESLint, Prettier, ruff. W Chrome (kampania-śmieć, aktywna wróciła na „Test2”): atak strzykawką
+Styma na Pasera (pudło, dawka została), blokada karty atrapą w DOM u Mary, trzy z czterech
+poprawek z 13.09. Trafienie strzykawką i żywa karta czekająca na MG — tylko testem i atrapą.
 
 ### Sesja 25.09 (ósma) — główny ekran: portret-baner, filtry czatu, nagłówek panelu
 
@@ -156,21 +175,3 @@ Umowa w `ui`.
 skórach, przy panelu 280 px (zakładki w dwóch liniach, filtry same ikony) i u gracza bez
 kampanii (rząd zakładek w jednej linii przy ~357 px). Figura bez portretu — tylko atrapą w DOM
 (`zaleglosci.md`).
-
-### Sesja 25.09 (siódma) — pas kolejki inicjatywy i „Kończę turę” w lewym panelu
-
-**Zlecenie MG:** poprawić wygląd głównego ekranu przy tej samej kolorystyce, w tym pasek
-inicjatyw i oddanie tury. Rozstrzygnięcia MG: zakres — **górny pasek i kolejka**; kolejka
-w **osobnym czarnym pasie tylko nad mapą**; **„Kończę turę” wyłącznie w lewym panelu**, zawsze
-w turze gracza; MG zostaje przy ◀ ▶ w pasie; paleta ta sama, role barw wolno przestawić.
-
-**Wdrożone:** `CombatBar` w nowej `.map-column` (App), `TurnModeSlot` w `TopBar`,
-`HudEndTurn.tsx` (blok w panelu + „✓” w zwiniętym), przepisany pas w `09-turn.css`, blok
-w `12-hud.css`, `.combat-bar` na liście „Belka” (`theme.css`) i belek (`chrome.css`). Umowa
-w `ui`.
-
-**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Pas obejrzany na kampanii-śmieciu
-(„Przed walką”, runda 1, ✕ — tryb turowy wyłączony z powrotem, aktywna wróciła na „Test2”) oraz
-atrapą w DOM w obu skórach i na wąskim oknie. **Przycisk gracza nieobejrzany na żywo** — tylko
-atrapą (pozycja w `zaleglosci.md`). Poziomy pasek przewijania strony przy ~1100 px był już
-wcześniej (1 px nadmiaru także bez pasa) — nie ruszany.
