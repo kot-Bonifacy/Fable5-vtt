@@ -220,9 +220,13 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Wąski panel zawija zakładki do drugiej linii zamiast ucinać je do „C…”
+   i „WA…” (25.09): każda zakładka jest szeroka jak jej nazwa, więc linia
+   kończy się na całym słowie, a `flex-grow` wyrównuje prawy brzeg. */
 .side-tabs {
   display: flex;
-  gap: 0.15rem;
+  flex-wrap: wrap;
+  gap: 0;
 }
 
 /* Second row: the GM's tools, visually subordinate to the shared row. */
@@ -241,10 +245,14 @@
   color: var(--accent);
 }
 
+/* Szerokość według nazwy, nie po równo (25.09): przy równych polach „Czat”
+   marnował miejsce, a „Kompendium” i „Postacie” ucinały się do wielokropka
+   już przy domyślnej szerokości panelu. `flex-basis: auto` daje każdej
+   zakładce jej napis, a nadmiar rozkłada się proporcjonalnie. */
 .side-tab {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 0.45rem 0.15rem;
+  padding: 0.45rem 0.25rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -258,7 +266,7 @@
 
 .side-tabs--gm .side-tab {
   font-size: 0.75rem;
-  padding: 0.3rem 0.15rem;
+  padding: 0.3rem 0.2rem;
 }
 
 .side-tab--active {

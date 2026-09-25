@@ -258,12 +258,15 @@
    biorą biel z karty. Lista selektorów odpowiada belkom w chrome.css.
    Czarny pas kolejki inicjatywy (`.combat-bar`, 25.09) bierze te same
    nocne tokeny: złoto, biel i czerwień czytają się na czerni w obu skórach.
+   Tak samo podpis na portrecie w lewym panelu i czarny pas filtrów czatu.
    ========================================================================== */
 
 :root
   :is(
     .top-bar,
     .combat-bar,
+    .hud-portrait-caption,
+    .chat-filter-bar,
     .settings-window-header,
     .handout-window-header,
     .inventory-window-header,

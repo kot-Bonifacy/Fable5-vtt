@@ -38,6 +38,7 @@ import {
   stopBots,
 } from '../socket.js';
 import { AttackRow } from './AttackControls.js';
+import { HudIcon } from './HudIcon.js';
 import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
@@ -772,12 +773,22 @@ function FeedRow({
 }
 
 const CATEGORY_BUTTONS: { id: ChatCategory; icon: string; label: string; title: string }[] = [
-  { id: 'talk', icon: '💬', label: 'Rozmowy', title: 'Wypowiedzi i szepty — także NPC-ów' },
-  { id: 'dice', icon: '🎲', label: 'Rzuty', title: 'Karty rzutów: testy, ataki, obrażenia' },
-  { id: 'combat', icon: '⚔', label: 'Walka', title: 'Rozliczone obrażenia i akcje tury' },
+  {
+    id: 'talk',
+    icon: 'chat-bubble',
+    label: 'Rozmowy',
+    title: 'Wypowiedzi i szepty — także NPC-ów',
+  },
+  { id: 'dice', icon: 'd10', label: 'Rzuty', title: 'Karty rzutów: testy, ataki, obrażenia' },
+  {
+    id: 'combat',
+    icon: 'crossed-swords',
+    label: 'Walka',
+    title: 'Rozliczone obrażenia i akcje tury',
+  },
   {
     id: 'table',
-    icon: '📋',
+    icon: 'notebook',
     label: 'Stół',
     title: 'Eurodolce, handouty, dziennik, propozycje botów i notatki systemowe',
   },
@@ -936,23 +947,25 @@ export function ChatPanel() {
   if (!user) return null;
 
   return (
-    <section className="chat-panel">
-      <div className="chat-panel-head">
-        <h2 className="panel-section-title">Czat</h2>
-        <div className="chat-filter-bar" role="group" aria-label="Filtry czatu">
-          {CATEGORY_BUTTONS.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              className={`chat-filter${categories[category.id] ? ' chat-filter--on' : ''}`}
-              aria-pressed={categories[category.id]}
-              title={category.title}
-              onClick={() => toggleCategory(category.id)}
-            >
-              <span aria-hidden>{category.icon}</span> {category.label}
-            </button>
-          ))}
-        </div>
+    <section className="chat-panel" aria-label="Czat">
+      {/* Filtry to czarny pas na całą szerokość tuż pod zakładkami (25.09,
+          zlecenie MG) — dawna belka „Czat” powtarzała otwartą zakładkę,
+          a pigułki filtrów wisiały doczepione z jej prawej strony. */}
+      <div className="chat-filter-bar" role="group" aria-label="Filtry czatu">
+        {CATEGORY_BUTTONS.map((category) => (
+          <button
+            key={category.id}
+            type="button"
+            className={`chat-filter${categories[category.id] ? ' chat-filter--on' : ''}`}
+            aria-pressed={categories[category.id]}
+            aria-label={category.label}
+            title={category.title}
+            onClick={() => toggleCategory(category.id)}
+          >
+            <HudIcon name={category.icon} className="chat-filter-icon" />
+            <span className="chat-filter-label">{category.label}</span>
+          </button>
+        ))}
       </div>
       <div className="chat-feed" ref={feedRef} onScroll={onScroll}>
         {!synced && <p className="placeholder-text">Synchronizacja…</p>}
@@ -1009,7 +1022,7 @@ export function ChatPanel() {
           placeholder={
             campaign
               ? isGm
-                ? 'Wiadomość… (/w — szept, /jako <NPC> — mów jako NPC)'
+                ? 'Wiadomość… (/w szept, /jako NPC)'
                 : 'Wiadomość… (/w <imię> — szept)'
               : 'Czat niedostępny'
           }

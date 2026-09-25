@@ -26,6 +26,7 @@ import {
   type HudContext,
   type HudVitals,
 } from '../hud.js';
+import { IconEye } from './MapIcons.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
@@ -361,8 +362,11 @@ function IdentityCard({
   hp: { current: number; max: number } | null | undefined;
   vitals: HudVitals | null;
 }) {
+  // Baner, nie miniatura (zlecenie MG, 25.09): portret na całą szerokość
+  // karty, a imię, Rola i PW leżą na nim, na czarnym przejściu u dołu kadru.
+  // Chipy SP/RUCH/EMP schodzą pod obraz — na twarzy byłyby szumem.
   return (
-    <div className="hud-card">
+    <div className={`hud-card${imageUrl ? '' : ' hud-card--no-portrait'}`}>
       <span className="hud-portrait-frame">
         {imageUrl ? (
           <img className="hud-portrait" src={imageUrl} alt="" />
@@ -371,18 +375,20 @@ function IdentityCard({
             {name.trim().charAt(0).toUpperCase() || '?'}
           </span>
         )}
-      </span>
-      <div className="hud-card-body">
-        <span className="hud-card-name" title={name}>
-          {name}
+        <span className="hud-portrait-caption">
+          <span className="hud-card-title">
+            <span className="hud-card-name" title={name}>
+              {name}
+            </span>
+            {vitals?.roleName && <span className="hud-card-role">{vitals.roleName}</span>}
+          </span>
+          {/* HP is redacted by the server (stage 05): a token whose points this
+              viewer may not see arrives without them, so „no bar" is the honest
+              rendering rather than a hidden one. */}
+          {hp ? <HealthBar hp={hp} /> : <span className="hud-hp-none">PW ukryte</span>}
         </span>
-        {vitals?.roleName && <span className="hud-card-role">{vitals.roleName}</span>}
-        {/* HP is redacted by the server (stage 05): a token whose points this
-            viewer may not see arrives without them, so „no bar" is the honest
-            rendering rather than a hidden one. */}
-        {hp ? <HealthBar hp={hp} /> : <span className="hud-hp-none">PW ukryte</span>}
-        {vitals && <Vitals vitals={vitals} />}
-      </div>
+      </span>
+      {vitals && <Vitals vitals={vitals} />}
     </div>
   );
 }
@@ -637,8 +643,12 @@ export function CombatHud() {
               so. Without this line an unmoving token after a click on the floor
               reads as a broken map rather than as „you have not picked me up". */}
           {!context.steering && (
-            <p className="hud-preview">
-              Podgląd — kliknij tę figurę na mapie albo naciśnij slot, żeby nią sterować.
+            <p
+              className="hud-preview"
+              title="Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot."
+            >
+              <IconEye size={14} />
+              <span>Podgląd — kliknij figurę albo slot, żeby sterować</span>
             </p>
           )}
 

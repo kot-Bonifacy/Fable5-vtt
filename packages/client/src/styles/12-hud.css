@@ -288,9 +288,9 @@
 
 .hud-card {
   display: flex;
-  gap: 0.55rem;
-  align-items: flex-start;
-  padding: 0.45rem;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.3rem;
   background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -299,20 +299,25 @@
 /* The frame is a square with one corner cut, not a circle: the map already
    draws this figure as a disc, and a panel that repeats the token is a panel
    that says nothing new. */
-/* 6 rem, nie 3,6 (zlecenie MG, 12.09): dwukrotnie większa powierzchnia twarzy.
-   Portret zostaje **obok** imienia i paska PW, a nie nad nimi — wybór MG spośród
-   trzech wariantów: karta tożsamości nie rośnie w dół, więc pasek akcji (bronie,
-   przeładowanie) zostaje tam, gdzie ręka go szuka. Ceną jest ~9 rem na tekst,
-   czyli chipy SP/RUCH/EMP zawijają się teraz do dwóch rzędów; `.hud-vitals` ma
-   `flex-wrap` od początku, więc to działo się już wcześniej przy dłuższej Roli. */
+/* Baner na całą szerokość karty (zlecenie MG, 25.09) — zastąpił 6-remowy
+   kwadrat obok imienia z 12.09. Twarz jest ~2,5 raza większa, a karta rośnie
+   w dół tylko o tyle, ile zajmował dawny tekst obok, bo imię, Rola i PW leżą
+   **na** obrazie (`.hud-portrait-caption`). Kadr 4:3 z portretu kwadratowego:
+   `object-position` trzyma górną część, tam gdzie siedzi twarz. */
 .hud-portrait-frame {
   position: relative;
-  flex: none;
-  width: 6rem;
-  height: 6rem;
-  padding: 2px;
-  background: linear-gradient(140deg, var(--border-strong), var(--border));
-  clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--bg-inset);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--notch)),
+    calc(100% - var(--notch)) 100%,
+    0 100%
+  );
 }
 
 .hud-portrait {
@@ -321,6 +326,20 @@
   display: block;
   object-fit: cover;
   clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
+}
+
+.hud-portrait-frame .hud-portrait {
+  position: absolute;
+  inset: 0;
+  object-position: 50% 22%;
+  clip-path: none;
+}
+
+/* Bez portretu baner nie udaje zdjęcia: niski pasek z inicjałem nad podpisem,
+   zamiast pustego kadru 4:3, który zepchnąłby bronie o pół ekranu. */
+.hud-card--no-portrait .hud-portrait-frame {
+  aspect-ratio: auto;
+  height: 5.6rem;
 }
 
 /* Inicjał rośnie razem z ramką (12.09) — 1,4 rem w kadrze 6 rem wyglądało jak
@@ -334,17 +353,43 @@
   color: var(--text-dim);
 }
 
-.hud-card-body {
-  flex: 1;
-  min-width: 0;
+.hud-card--no-portrait .hud-portrait--empty {
+  place-items: start center;
+  padding-top: 0.2rem;
+  line-height: 1;
+}
+
+/* Podpis na obrazie. Czarne przejście niesie nocne tokeny z bloku „Belka”
+   (`theme.css`), więc biel imienia, czerwień Roli i barwy paska PW czytają się
+   tak samo w obu skórach. */
+.hud-portrait-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   gap: 0.28rem;
+  padding: 1.6rem 0.55rem 0.5rem;
+  background: linear-gradient(to top, var(--cp-bar) 35%, transparent);
+  color: var(--text);
+}
+
+.hud-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .hud-card-name {
-  font-size: 0.88rem;
-  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui-head);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -352,7 +397,9 @@
 }
 
 .hud-card-role {
+  flex: none;
   font-size: 0.6rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);
@@ -475,6 +522,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
+}
+
+/* Pod banerem trzy chipy dzielą szerokość karty po równo — jeden rząd, który
+   oko czyta jak tabliczkę pod zdjęciem, a nie jak zawinięty tekst. */
+.hud-card .hud-vital {
+  flex: 1;
+  justify-content: center;
+  padding: 0.18rem 0.3rem;
 }
 
 .hud-vital {
@@ -610,15 +665,29 @@
 
 /* „This is a view, not a grip" — quieter than a refusal, which is a rule
    speaking; this one is only telling the user where the map's attention is. */
+/* Jedna linia z okiem (25.09): dawny dwuwierszowy akapit ważył tyle, co slot,
+   a to tylko uwaga na marginesie. Pełne zdanie siedzi w podpowiedzi. */
 .hud-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.68rem;
+  padding: 0.05rem 0.2rem;
+  font-size: 0.66rem;
   line-height: 1.3;
   color: var(--text-dim);
-  background: var(--veil-soft);
-  border-left: 2px solid var(--border);
-  border-radius: 3px;
+}
+
+.hud-preview svg {
+  flex: none;
+  opacity: 0.8;
+}
+
+.hud-preview span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- Sloty ---- */
@@ -632,23 +701,26 @@
 /* A weapon, a reload and an Action stopped being the same rectangle in 27h;
    the heading is what makes the row of them scannable rather than merely
    different. */
+/* Czarna belka ze ściętym prawym dolnym rogiem — jak belka kategorii karty
+   postaci (25.09). Dawna kreska po napisie (`::after`) była pomysłem sprzed
+   czarnego tła i na czerni wyglądała jak przekreślenie. */
 .hud-group-title {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0;
-  font-size: 0.58rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--text-dim);
-}
-
-.hud-group-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--notch-sm)),
+    calc(100% - var(--notch-sm)) 100%,
+    0 100%
+  );
 }
 
 .hud-slots {
@@ -677,8 +749,8 @@
   color: var(--text);
   background: var(--bg-inset-2);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  border-left: 2px solid var(--border-strong);
+  border-radius: 2px;
+  border-left: 3px solid var(--border-strong);
 }
 
 /* The icon keeps the left edge and the number key the right, so the eye finds

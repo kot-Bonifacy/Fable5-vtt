@@ -1,5 +1,7 @@
 # Otwarte zaległości (dług oględzin i drobne braki)
 
+**Główny ekran (25.09, ósma sesja) — do obejrzenia ręką MG:** baner figury **bez portretu** (widziany tylko atrapą w DOM — niski pasek z inicjałem), baner u gracza z „Kończę turę” nad nim, kadr 4:3 portretów o nietypowych proporcjach (`object-position: 50% 22%` trzyma górę kadru) i pas filtrów czatu na iPadzie (`@container` od Safari 16).
+
 **Pas kolejki i „Kończę turę” (25.09) — do obejrzenia ręką MG:** przycisk gracza na górze lewego panelu i „✓” w zwiniętym (widziane tylko atrapą w DOM — MG go nie dostaje, a sesji gracza nie było), podwójny klik przy dwóch figurach gracza pod rząd w kolejce, pas przy 10+ uczestnikach (przewijanie kółkiem, dojazd do aktywnego) i na iPadzie (`@container` od Safari 16).
 
 **Oględziny handlu 38c (23.09) — nieobejrzane:** przeciąganie palcem na iPadzie (`touch-action: pan-y`, poziomy gest do pola) i handel dwóch graczy w przeglądarce (pokryty testem serwera). Pierwsze przeciągnięcie kabla u MG z automatu nie wylądowało przy poprawnej geometrii, drugie tak — jeśli MG zobaczy to ręką, zacząć od `startDrag`/przechwycenia wskaźnika w `TradeWindow.tsx`.

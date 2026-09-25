@@ -851,6 +851,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Główny ekran od 25.09: portret w lewym panelu to baner, filtry czatu — czarny pas pod zakładkami.** Imię, Rola i PW figury leżą **na** portrecie (`.hud-portrait-caption`, nocne tokeny z bloku „Belka”); nowa informacja o figurze idzie pod baner, nie na obraz. Filtry czatu to `.chat-filter-bar` na liście belek w `chrome.css` i w „Belce” — nowy filtr dostaje sylwetkę z `public/icons/hud/` przez `HudIcon`, nie emoji. Nad zakładkami stoi `PresenceList` w jednym wierszu; zakładki są szerokie według nazwy i zawijają się, zamiast ucinać.
 - **Kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza — góra lewego panelu (25.09).** `CombatBar` stoi w `.map-column` nad `MapArea` i istnieje tylko w trybie turowym; czerwony pasek trzyma wyłącznie `TurnModeSlot` („Włącz tryb turowy” MG). Pas bierze nocne tokeny z bloku „Belka” w `theme.css` (`.combat-bar` na liście) i czarne tło z listy belek w `chrome.css`. Przycisk gracza to `HudEndTurn` / `HudEndTurnCompact` (`HudEndTurn.tsx`), niezależny od zaznaczenia; nowy element pasa dostaje `flex: none`, a ustępuje wyłącznie kolejka i przypomnienie.
 - **Audio stołu (21.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
   kubka; wezwanie i załadowany Test dzielą klucz. `music-player.ts` ma jeden
@@ -875,6 +876,22 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Główny ekran: baner portretu, pas filtrów czatu, zwarty nagłówek panelu (25.09, zlecenie MG
+poza etapami).** MG chciał większego portretu i filtrów czatu, które nie wiszą „doczepione” przy
+belce. Rozstrzygnięcia MG: **portret na całą szerokość karty w kadrze 4:3**, a imię, Rola i PW na
+czarnym przejściu u dołu obrazu — to odwraca wybór z 12.09 („portret obok imienia, karta nie
+rośnie w dół”), karta rośnie o ~4 rem; chipy SP/RUCH/EMP w jednym rzędzie pod banerem; bez
+portretu niski pasek z inicjałem zamiast pustego kadru. **Belka „Czat” zdjęta** (powtarzała
+zakładkę), **filtry to czarny pas na całą szerokość** z czterema równymi przełącznikami
+(sylwetki game-icons zamiast emoji, bo emoji nie bierze `currentColor`); włączony — biały napis
+i czerwona kreska jak zakładka, wyłączony — przygaszony, ale widoczny. Pas ma własny kontener
+(`chat-filters`), a nie `.side-panel`: `container-type` na panelu zrobiłby z niego blok
+zawierający dla `position: fixed` okienek z paneli. **Obecni w jednym wierszu** z nazwą kampanii;
+**zakładki szerokie według nazwy** (`flex: 1 1 auto`) i zawijane w wąskim panelu, rząd MG na
+papierze z czarnym kaflem otwartej zakładki. **Pole i „Wyślij” to jedna listwa**; pusty szkic
+gasi przycisk do papieru (półprzezroczysta czerwień dawała róż). Belki BROŃ/AKCJE w lewym panelu
+mają ścięty róg jak belki karty, a kreska `::after` sprzed czarnego tła zniknęła.
 
 **Pas kolejki inicjatywy i „Kończę turę” (25.09, zlecenie MG poza etapami).** Kolejka wyszła
 z czerwonego paska (tam od 01.08) do własnej czarnej belki między paskiem a mapą — **tylko nad

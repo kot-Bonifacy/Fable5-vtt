@@ -113,7 +113,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 46   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 16      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 14   | 13      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 15   | 13      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 15   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 32   | 8       |
@@ -134,6 +134,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 25.09 (ósma) — główny ekran: portret-baner, filtry czatu, nagłówek panelu
+
+**Zlecenie MG:** poprawić wygląd i układ głównego ekranu przy tej samej kolorystyce — większy
+portret w lewej belce i filtry czatu, które „wisiały doczepione z prawej”. Rozstrzygnięcia MG
+(cztery rekomendacje): **portret jako baner na całą szerokość z nakładką** (imię, Rola, PW na
+czarnym przejściu, chipy pod spodem); **filtry jako czarny pas pod zakładkami**, belka „Czat”
+zdjęta; **zwarty pasek obecnych** (nazwa kampanii + żetony w jednym wierszu); **zakładki
+szerokie według nazwy**, rząd MG na papierze; **belki BROŃ/AKCJE jak na karcie** (ścięty róg,
+bez kreski). Zakres objął też pole wiadomości i „Wyślij”.
+
+**Wdrożone:** `IdentityCard` (`CombatHud.tsx`) z `.hud-portrait-caption`, podpowiedź „Podgląd”
+w jednej linii z okiem; `PresenceList.tsx` przepisany; `ChatPanel` bez `.chat-panel-head`,
+filtry na sylwetkach game-icons (`chat-bubble`, `d10`, `crossed-swords`, `notebook` w
+`public/icons/hud/`, atrybucja dopisana); zakładki `flex: 1 1 auto` + zawijanie; listwa pola
+i „Wyślij” (wyłączony = papier, nie różowa czerwień); `.hud-portrait-caption`
+i `.chat-filter-bar` na liście „Belka” (`theme.css`), pas filtrów na liście belek (`chrome.css`).
+Umowa w `ui`.
+
+**Weryfikacja:** 281 testów klienta, tsc, ESLint, Prettier. Obejrzane w Chrome u MG w obu
+skórach, przy panelu 280 px (zakładki w dwóch liniach, filtry same ikony) i u gracza bez
+kampanii (rząd zakładek w jednej linii przy ~357 px). Figura bez portretu — tylko atrapą w DOM
+(`zaleglosci.md`).
+
 ### Sesja 25.09 (siódma) — pas kolejki inicjatywy i „Kończę turę” w lewym panelu
 
 **Zlecenie MG:** poprawić wygląd głównego ekranu przy tej samej kolorystyce, w tym pasek
@@ -151,23 +174,3 @@ w `ui`.
 atrapą w DOM w obu skórach i na wąskim oknie. **Przycisk gracza nieobejrzany na żywo** — tylko
 atrapą (pozycja w `zaleglosci.md`). Poziomy pasek przewijania strony przy ~1100 px był już
 wcześniej (1 px nadmiaru także bez pasa) — nie ruszany.
-
-### Sesja 25.09 (szósta, część 3) — warunki zgody: metoda, ranga, pula umiejętności
-
-**Zlecenie MG:** to, ile postać ma punktów (np. „Postać początkująca”, 62), MG ustala w chwili
-udzielania zgody. Rozstrzygnięcia MG: przy zgodzie **metoda i ranga**, do tego **pula
-umiejętności wpisywana przez MG** (zasada domowa — podręcznik ma zawsze 86), **MG może zmienić
-warunki w trakcie**. Przed decyzją powiedziałem MG, że ranga w podręczniku zmienia tylko pulę
-Cech.
-
-**Wdrożone:** migracja `20260925000000_creation_terms`; `CreationTerms` w zgodzie
-(`creation:permit`), szkic startuje z metodą zablokowaną dla gracza, zatwierdzoną rangą
-i `skillPool`; `creation:terms` + push `creation:terms-changed`; `creationSkillPool` zamiast
-`data.skillPoints` w walidacji, oknie strat i kreatorze. Panel MG „Nowe postaci graczy”: jeden
-edytor warunków dla próśb i szkiców. Gracz widzi „Warunki od MG: …” przy przycisku i w oknie
-zasad. Umowa w `postac`.
-
-**Weryfikacja:** 2224 / 1227 / 281 testów, tsc, ESLint, Prettier. Obejrzany tylko wiersz szkicu
-Mary w panelu MG (bez klikania — Mara była w grze); reszta w `zaleglosci.md`. **Szkic Mary czeka
-na „Zatwierdź warunki”** (Kompletny Pakiet bez zatwierdzonej rangi) — to zastępuje dawne
-„Zatwierdź” rangi.

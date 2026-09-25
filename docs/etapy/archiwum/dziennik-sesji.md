@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (szósta, część 3) — warunki zgody: metoda, ranga, pula umiejętności
+
+**Zlecenie MG:** to, ile postać ma punktów (np. „Postać początkująca”, 62), MG ustala w chwili
+udzielania zgody. Rozstrzygnięcia MG: przy zgodzie **metoda i ranga**, do tego **pula
+umiejętności wpisywana przez MG** (zasada domowa — podręcznik ma zawsze 86), **MG może zmienić
+warunki w trakcie**. Przed decyzją powiedziałem MG, że ranga w podręczniku zmienia tylko pulę
+Cech.
+
+**Wdrożone:** migracja `20260925000000_creation_terms`; `CreationTerms` w zgodzie
+(`creation:permit`), szkic startuje z metodą zablokowaną dla gracza, zatwierdzoną rangą
+i `skillPool`; `creation:terms` + push `creation:terms-changed`; `creationSkillPool` zamiast
+`data.skillPoints` w walidacji, oknie strat i kreatorze. Panel MG „Nowe postaci graczy”: jeden
+edytor warunków dla próśb i szkiców. Gracz widzi „Warunki od MG: …” przy przycisku i w oknie
+zasad. Umowa w `postac`.
+
+**Weryfikacja:** 2224 / 1227 / 281 testów, tsc, ESLint, Prettier. Obejrzany tylko wiersz szkicu
+Mary w panelu MG (bez klikania — Mara była w grze); reszta w `zaleglosci.md`. **Szkic Mary czeka
+na „Zatwierdź warunki”** (Kompletny Pakiet bez zatwierdzonej rangi) — to zastępuje dawne
+„Zatwierdź” rangi.
+
 ### Sesja 24.09 (szósta, część 2) — zgoda MG, zasady i zatwierdzenie nowej postaci
 
 **Zlecenie MG po części 1:** gracz najpierw dostaje zgodę na tworzenie postaci, potem informację,

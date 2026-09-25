@@ -20,6 +20,7 @@ body {
 .panel-section-title,
 .side-tab,
 .side-tabs-label,
+.chat-filter,
 .hud-head-title,
 .context-menu-title,
 .context-menu-section,
@@ -277,6 +278,7 @@ textarea {
 /* Czarne belki sekcji i zakładki — jak belki kategorii na karcie. */
 .combat-bar,
 .side-tabs,
+.chat-filter-bar,
 .panel-section-title,
 .settings-group-title,
 .hud-group-title,
@@ -318,6 +320,35 @@ textarea {
 .side-tab--active {
   color: var(--cp-bar-ink);
   background-color: var(--cp-bar);
+}
+
+/* Rząd narzędzi MG leży na papierze, nie na czerni (25.09): dwie czarne belki
+   jedna pod drugą czytały się jak jedna gruba, a ten rząd jest podrzędny wobec
+   zakładek stołu. Otwarta zakładka MG to czarny kafel z czerwoną kreską —
+   ten sam znak „tu jesteś”, co w rzędzie wyżej. */
+.side-tabs--gm {
+  background: transparent;
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-tabs--gm .side-tab {
+  color: var(--text-dim);
+}
+
+.side-tabs--gm .side-tab:hover {
+  color: var(--text);
+  background-color: var(--veil-soft);
+}
+
+.side-tabs--gm .side-tab--active,
+.side-tabs--gm .side-tab--active:hover {
+  color: var(--cp-bar-ink);
+  background-color: var(--cp-bar);
+}
+
+.side-tabs--gm .side-tabs-label {
+  color: var(--accent);
 }
 
 /* Czerwone obramowanie papierowych okien jak rama arkusza. */

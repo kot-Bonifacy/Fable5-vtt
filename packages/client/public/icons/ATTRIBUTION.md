@@ -93,3 +93,16 @@ czarne tło usunięte jak w reszcie katalogu. Licencja: CC BY 3.0.
 | `hud/shield.svg`       | Riot shield      | Lorc       | pancerz: tarcza                                  |
 
 Magazynki (wydłużony, bębnowy) używają `hud/ammo.svg`, pancerz poza tarczą — `hud/armor.svg`.
+
+## Filtry czatu (25.09.2026)
+
+Cztery przełączniki w czarnym pasie nad czatem (Rozmowy, Rzuty, Walka, Stół). Zastąpiły emoji,
+które na czerni nie przyjmowały koloru motywu. Rysowane maską (`HudIcon`), czarne tło usunięte.
+Licencja: CC BY 3.0.
+
+| Plik                     | Oryginalna ikona | Autor      | Gdzie używana         |
+| ------------------------ | ---------------- | ---------- | --------------------- |
+| `hud/chat-bubble.svg`    | Chat bubble      | Delapouite | filtr czatu „Rozmowy” |
+| `hud/d10.svg`            | D10              | Skoll      | filtr czatu „Rzuty”   |
+| `hud/crossed-swords.svg` | Crossed swords   | Lorc       | filtr czatu „Walka”   |
+| `hud/notebook.svg`       | Notebook         | Delapouite | filtr czatu „Stół”    |
