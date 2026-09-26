@@ -63,6 +63,7 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | widoczność scen        | **„Knajpa” Dynamiczna + ciemność + pamięć terenu, „Brama” na ręcznej mgle** (decyzja MG z 26.09, sesja T3b) — w Dynamicznej serwer nie sprawdza pola widzenia, więc odmowę ruchu w mgłę (`MOVE_INTO_FOG`) sprawdza T5 na „Bramie” |
 | plan ścian             | **realistyczny**, odczytany z obrazów map (`fixtures/maps.ts`); Rzeźnik i Paser to **statyści z kartą**, do których przypięto boty (decyzje MG z 26.09, sesja T3b) |
 | triaż #2               | gracz zmieniający własne Cechy po przyjęciu = **B1** (decyzja MG z 26.09, sesja T3b) |
+| triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
 | śmieci od MG           | śmieciowe ładunki idą **także w zdarzenia MG** z gniazda MG (pad serwera od MG to też B0), na kopii `po-T3` (decyzja MG z 26.09, sesja T2) |
@@ -578,8 +579,8 @@ karty statysty, pinezka), gracze na zimno: F5, `state:sync`, 11 list na żądani
 listy `EVENTS` (umowa w `serwer`). Nowe fixtures: `security.ts`, `nocna-zmiana.ts`.
 
 **Znalezione:** #13 **B1** — zalew jednego gracza (500 wiadomości + 2000 ruchów) opóźnia czat
-i ruchy innych o 5,8–6,3 s, ekran Oli o 6,8–7,7 s (same ruchy 2,5 s, sam czat 1,6 s); #14 **B1 do
-triażu** — gracz trwale usuwa własną przyjętą postać (`character:delete`, UI daje ✕ tylko MG);
+i ruchy innych o 5,8–6,3 s, ekran Oli o 6,8–7,7 s (same ruchy 2,5 s, sam czat 1,6 s); #14 **B1**
+(triaż MG 26.09) — gracz trwale usuwa własną przyjętą postać (`character:delete`, UI daje ✕ tylko MG);
 #11 B2 — gniazdo po wylogowaniu/wygaśnięciu sesji; #12 B2 — logowanie MG bez limitu (30 prób
 w 0,3 s); #10 B3 — gracz spoza kampanii dostaje jej pulę portretów; #15 B3 zbiorczo — śmieciowe id
 kończy się `INTERNAL` (Prisma) w 32 zdarzeniach, bez szkody w stanie. Zadania Z2–Z9 (etap 28 i „Konta
@@ -593,7 +594,7 @@ T2), pełne `pnpm test:e2e` ~9 min, **zielone dwa razy z rzędu** (z T3 i botem 
 Serwer 1245/1245 po eksporcie `EVENTS`. Oglądane: automat — MG i Marek w Chromium, Ola w Firefoksie,
 headless (XSS, zalew na ekranie Oli, F5 po śmieciach); reszta T2 bez UI (HTTP, surowe gniazda).
 
-**Następny krok:** triaż #14 (propozycja B1, jak #2), potem T4 (walka pierwsza) od `E2E_FROM=po-T3`
+**Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`
 — jak w notatce T3b niżej. Poprawki #10–#15 w osobnej sesji; Z2–Z9 czekają na swoje etapy.
 
 ### Sesja 26.09 — T3b: sceny, figury, boty, aktywacja i czat

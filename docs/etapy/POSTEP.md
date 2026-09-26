@@ -32,7 +32,7 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
 rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
 retescie tego samego dnia; T2 (bezpieczeństwo) zamknięty 26.09 z błędami #10–#15 do poprawki**
-(dwa B1: zalew dławiący innych #13 i usuwanie własnej przyjętej postaci #14 — ten czeka na triaż MG)
+(dwa B1: zalew dławiący innych #13 i usuwanie własnej przyjętej postaci #14, waga z triażu MG)
 **i zadaniami Z2–Z9 dla etapów 28 i „Konta MG”** — suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T4** (walka
 pierwsza) od punktu `po-T3`. Kolejność (decyzja MG z 26.09):
