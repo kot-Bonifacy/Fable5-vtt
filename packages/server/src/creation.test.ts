@@ -1898,6 +1898,10 @@ describe('kreator postaci', () => {
       );
       expect(approved.playReady).toBe(true);
       expect((await heard).character.playReady).toBe(true);
+      // #14: przyjętą kartę usuwa tylko MG — także właściciel dostaje odmowę.
+      expect(refusal(await emitAck(vex, 'character:delete', { characterId: made.id }))).toBe(
+        'FORBIDDEN',
+      );
 
       // Cofnięcie idzie tą samą drogą — MG bywa szybszy niż gracz.
       expect(
@@ -1912,6 +1916,10 @@ describe('kreator postaci', () => {
       expect(
         refusal(await emitAck(gm, 'character:play-ready', { characterId: made.id, ready: 'tak' })),
       ).toBe('BAD_REQUEST');
+
+      // Karta, która znów czeka na MG, jest jeszcze gracza — może ją porzucić.
+      const dropped = await emitAck(vex, 'character:delete', { characterId: made.id });
+      expect(dropped.ok, JSON.stringify(dropped)).toBe(true);
     });
   });
 });

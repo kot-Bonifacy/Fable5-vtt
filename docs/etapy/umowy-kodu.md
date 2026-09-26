@@ -1295,6 +1295,7 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Widok walki w odpowiedzi (ack) idzie przez `emitReloadedFor(…, user)` (26.09, #19)** — ack trafia do jednego gniazda z pominięciem filtra pokoi, więc handler zwracający `CombatView` oddaje widok **pytającego** (`filterCombatForPlayer` dla gracza), nigdy pełny widok MG. `emitReloaded` tylko rozgłasza i zwraca `void` — nowy handler nie ma czego zwrócić przez pomyłkę.
 - **Powód odmowy Akcji ma JEDNO źródło** — `cpredActionRefusal(actionId, { statuses, turn, isGm })` w `hotbar.ts`; wołają je **oba** wejścia (pasek mapy i zakładka „Walka"). Akcja o koszcie `move` odmawia z budżetu ruchu, nie Akcji. Budżet tury czyta `cpredTurnRefusalInput(turn)`, nie ręczne `resources.find`.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek. Pod ręczną mgłą **przed nim** stoi `refuseWalkIntoFog` (14.09) — nowa odmowa, która mogłaby zdradzić coś schowanego w czerni, idzie za mgłą, nie przed nią (umowa w `mapa`).
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
@@ -1380,6 +1381,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Arkusz do rzutu ≠ karta w bazie — `AttackSource.data` i `AttackSource.stored` (26.09, #16)** — strzał statysty rzuca się z `sheetForRoll` (poziom broni z `statBlock.weaponSkill`, Wartość bojowa zeruje Cechy) **na obu ścieżkach**: po żetonie (`buildFigureSource`) i po `characterId` (`buildCharacterSource`, tak strzelają klient i boty). Amunicja, Szczęście i zacięcie zapisują się na `stored`, nigdy na `data` — zapis arkusza do rzutu utrwalał podstawiony poziom w `skills` i edytor przestawał działać po pierwszym strzale.
 - **Kursor paska trzyma tylko broń w rękach — `outOfHand` na slocie broni (25.09)** — `cpredHotbarSlots` znaczy broń schowaną lub wypchniętą z rąk (`notDrawn`) osobno od przejściowych odmów; efekt auto-uzbrojenia w `CombatHud.tsx` wybiera na nowo tylko wtedy, gdy uzbrojony slot ma `outOfHand` albo zniknął. Pole jest w `hudSignature`.
 - **Wybór Celowania (`AimMenu`) stoi nad kursorem, dymek celownika (`TargetTooltip`) pod nim (25.09)** — dymek niesie „Głowa bez ochrony”, czyli to, na co patrzy się przy strzale w głowę; pod kursor okienko schodzi tylko przy górnej krawędzi ekranu. Nowy element przy kursorze celownika nie może siadać na żadnym z nich.
 - **Zastrzyk siłą (s. 150) nie idzie przez planer ataku (25.09, decyzja MG)** — `character:use-dose` z `hostile: true`: `rollHostileDose` (`realtime/recovery.ts`) rzuca ZW + Broń biała przeciw **prawdziwemu** rzutowi ZW + Unik celu (bierne PT, gdy cel nie może unikać; PT 13 dla figury bez karty), karta czatu to zwykły rzut. Strzykawkę w ekwipunku sprawdza `cpredHasAirhypo` **po nazwie**. Pudło płaci Akcję, dawka zostaje. Gdyby strzykawka miała kiedyś wejść na pasek i pod celownik, to nowa droga ataku, nie rozbudowa tej.
@@ -2757,6 +2759,8 @@ takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli ef
 
 ## boty — Boty, AI Gateway, RAG
 
+- **Odpowiedź na kartę propozycji bota bierze blokadę przed pierwszym `await` (26.09, #20)** — `proposalsInFlight` w `realtime/bot-actions.ts`: drugi klik w trakcie zatwierdzania dostaje `PROPOSAL_ALREADY_RESOLVED`, zanim przeczyta kartę. Nowe zdarzenie, które wykonuje coś i dopiero potem zapisuje „zrobione", trzyma tę samą kolejność.
+- **Zdanie o nieudanym pytaniu do modelu daje `botFailureText(kod, powód)` (26.09, #21)** — `realtime/bot-runtime.ts`: `AI_UNREACHABLE` = brak połączenia, `AI_UNAVAILABLE` (503: pełna kolejka, model się ładuje) = „zajęty, spróbuj za chwilę" z powodem od gatewaya (`fastApiDetail` wyjmuje go z `{"detail": …}`). Nie wpisuj jednego zdania na oba kody.
 - **Relacja bota mówi, pod jakim podpisem pisze postać** — `relationForSpeaker` oddaje `speakerName` (nazwa konta), `relationPromptLines` dokleja „na czacie podpisuje się…”, gdy różni się od imienia postaci; notatkę relacji MG pisze do bota w drugiej osobie.
 - **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 

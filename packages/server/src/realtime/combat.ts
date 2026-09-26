@@ -594,16 +594,48 @@ export async function fireHeldAction(
   }
 }
 
+/** Reloads a combat and broadcasts it — each room gets the view it may see. */
 export async function emitReloaded(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
   combatId: string,
-): Promise<CombatView> {
+): Promise<void> {
+  await emitReloadedFor(deps, campaignId, scene, combatId, null);
+}
+
+/**
+ * The same broadcast, plus the tracker as `viewer` may see it — the shape an
+ * ack carries back. The ack goes to one socket past the room filter, so the
+ * GM's full view (hidden participants, a clone's real name) must never ride on
+ * a player's answer (#19: „Kończę turę" leaked it).
+ */
+export async function emitReloadedFor(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combatId: string,
+  viewer: SessionUser,
+): Promise<CombatView>;
+export async function emitReloadedFor(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combatId: string,
+  viewer: SessionUser | null,
+): Promise<CombatView | null>;
+export async function emitReloadedFor(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combatId: string,
+  viewer: SessionUser | null,
+): Promise<CombatView | null> {
   const row = await loadCombatById(deps.ctx.prisma, combatId);
   const view = toCombatView(row);
   emitCombat(deps, campaignId, scene, view);
-  return view;
+  if (!viewer) return null;
+  return viewer.role === ROLE_GM ? view : filterCombatForPlayer(view);
 }
 
 /* ------------------------------------------------------------------ *
@@ -789,7 +821,7 @@ export async function spendTurnForCombatant(
 export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
   name: 'combat:start',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const sceneId = payload?.sceneId ?? socket.data.viewedSceneId;
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
@@ -811,14 +843,14 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
         },
       },
     });
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
 export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
   name: 'combat:add',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const tokenIds = requireIdList(payload?.tokenIds);
     const { combat, scene } = await requireCombatOfTokens(deps.ctx.prisma, campaignId, tokenIds);
@@ -836,14 +868,14 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
         data: { combatId: combat.id, tokenId, order: order++ },
       });
     }
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
 export const combatRollAllEvent = defineEvent<CombatRollAllPayload, CombatView>({
   name: 'combat:roll-all',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const sceneId = socket.data.viewedSceneId;
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
@@ -858,14 +890,14 @@ export const combatRollAllEvent = defineEvent<CombatRollAllPayload, CombatView>(
     await rollFor(deps, targets);
     const reloaded = await loadCombatById(deps.ctx.prisma, combat.id);
     await renumberOrder(deps.ctx.prisma, reloaded);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
 export const combatRerollTieEvent = defineEvent<CombatRerollTiePayload, CombatView>({
   name: 'combat:reroll-tie',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const ids = requireIdList(payload?.combatantIds);
     const { combat, scene } = await requireCombatant(deps.ctx.prisma, campaignId, ids[0]);
@@ -875,7 +907,7 @@ export const combatRerollTieEvent = defineEvent<CombatRerollTiePayload, CombatVi
     await rollFor(deps, targets);
     const reloaded = await loadCombatById(deps.ctx.prisma, combat.id);
     await renumberOrder(deps.ctx.prisma, reloaded);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -946,7 +978,7 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
 export const combatSetInitiativeEvent = defineEvent<CombatInitiativePayload, CombatView>({
   name: 'combat:set-initiative',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { combat, combatant, scene } = await requireCombatant(
       deps.ctx.prisma,
@@ -969,14 +1001,14 @@ export const combatSetInitiativeEvent = defineEvent<CombatInitiativePayload, Com
     // A typed-in value slots the participant into the order the same way a
     // rolled one does (REF resolving equal totals).
     await renumberOrder(deps.ctx.prisma, await loadCombatById(deps.ctx.prisma, combat.id));
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
 export const combatOrderEvent = defineEvent<CombatOrderPayload, CombatView>({
   name: 'combat:order',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const ids = requireIdList(payload?.combatantIds);
     const { combat, scene } = await requireCombatant(deps.ctx.prisma, campaignId, ids[0]);
@@ -990,7 +1022,7 @@ export const combatOrderEvent = defineEvent<CombatOrderPayload, CombatView>({
         deps.ctx.prisma.combatant.update({ where: { id }, data: { order: index } }),
       ),
     );
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 

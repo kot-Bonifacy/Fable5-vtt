@@ -60,3 +60,20 @@ export async function botActorUser(deps: RealtimeDeps, authorId: string): Promis
     diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
   };
 }
+
+/**
+ * Zdanie dla MG, gdy model nie oddał decyzji. Martwy gateway i gateway, który
+ * żyje, ale odmawia (pełna kolejka, model jeszcze się ładuje — 503), to dwie
+ * różne rady: pierwszy trzeba podnieść, na drugi wystarczy chwilę poczekać.
+ * Jedno zdanie na oba kazało MG szukać awarii sieci (#21).
+ */
+export function botFailureText(code: string, detail?: string): string {
+  switch (code) {
+    case 'AI_UNREACHABLE':
+      return 'Brak połączenia z AI Gateway.';
+    case 'AI_UNAVAILABLE':
+      return `Model jest zajęty albo jeszcze niegotowy${detail ? ` (${detail})` : ''} — AI Gateway działa, spróbuj za chwilę.`;
+    default:
+      return `Model zwrócił błąd${detail ? `: ${detail}` : ''}.`;
+  }
+}

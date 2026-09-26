@@ -1059,6 +1059,74 @@ describe('ranged combat from the map', () => {
       expect((await profileOf(statistTokenId)).ammoCurrent).toBe(9);
     });
 
+    /**
+     * #16: the client and the bots name the statist's card (`characterId`) —
+     * the weapon level from its stat block has to ride along that path too,
+     * not only the one that goes by the token. And whichever path fired, the
+     * level stays in the stat block: the round spent is written onto the card
+     * as stored, never onto the sheet the shot was rolled with.
+     */
+    it('fires by its card with the weapon level of its stat block (#16)', async () => {
+      const zbirTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Zbir',
+          x: 4 * PX_PER_M,
+          y: 4 * PX_PER_M,
+          hp: { current: 25, max: 25 },
+        }),
+        'token:create',
+      ).id;
+      await emitAck(gm, 'token:stat', { tokenId: zbirTokenId, quick: PROFILE });
+      const zbirCard = async () => {
+        const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+        await emitAck(gm, 'state:request');
+        const state = await sync;
+        const token = state.tokens.find((entry) => entry.id === zbirTokenId);
+        const card = state.characters.find((entry) => entry.id === token?.characterId);
+        if (!card) throw new Error('figure carries no character sheet');
+        return card;
+      };
+      const card = await zbirCard();
+      await placeTargetAt(20);
+
+      for (const byCard of [true, false]) {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {
+          ...(byCard ? { characterId: card.id } : {}),
+          targetTokenId,
+          attackerTokenId: zbirTokenId,
+          request: { weaponRowId: 'statist-weapon', mode: 'single' },
+        });
+        expect(ack.ok, JSON.stringify(ack)).toBe(true);
+        expect((await message).message.roll?.breakdown, `byCard: ${byCard}`).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ label: 'Broń krótka', kind: 'skill', value: 4 }),
+          ]),
+        );
+        const stored = (await zbirCard()).data as CpredCharacterData;
+        expect(stored.skills, `byCard: ${byCard}`).toEqual({ evasion: 3 });
+      }
+      expect((await profileOf(zbirTokenId)).ammoCurrent).toBe(8);
+
+      // The level is the editor's: raised there, it is what the next shot uses.
+      await emitAck(gm, 'token:stat', {
+        tokenId: zbirTokenId,
+        quick: { ...PROFILE, skillLevel: 6 },
+      });
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(gm, 'attack:roll', {
+        characterId: card.id,
+        targetTokenId,
+        attackerTokenId: zbirTokenId,
+        request: { weaponRowId: 'statist-weapon', mode: 'single' },
+      });
+      expect((await message).message.roll?.breakdown).toEqual(
+        expect.arrayContaining([expect.objectContaining({ kind: 'skill', value: 6 })]),
+      );
+      await emitAck(gm, 'token:delete', { tokenId: zbirTokenId });
+    });
+
     it('refuses to fire with a token nobody has statted', async () => {
       const bare = data(
         await emitAck<TokenView>(gm, 'token:create', {

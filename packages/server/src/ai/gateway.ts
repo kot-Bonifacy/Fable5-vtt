@@ -493,7 +493,7 @@ export class AiGateway {
     }
 
     if (!response.ok || !response.body) {
-      const detail = await safeText(response);
+      const detail = fastApiDetail(await safeText(response));
       yield {
         type: 'error',
         code: response.status === 503 ? 'AI_UNAVAILABLE' : 'AI_ERROR',
@@ -693,6 +693,23 @@ async function safeText(response: Response): Promise<string> {
   } catch {
     return '';
   }
+}
+
+/**
+ * FastAPI wraps a refusal as `{"detail": "…"}` — the sentence inside is what a
+ * GM can act on („kolejka pełna (4 oczekujących)"), not the JSON around it.
+ */
+function fastApiDetail(text: string): string {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && 'detail' in parsed) {
+      const { detail } = parsed as { detail: unknown };
+      if (typeof detail === 'string') return detail;
+    }
+  } catch {
+    // Not JSON — the raw text is the best there is.
+  }
+  return text;
 }
 
 function describeError(error: unknown): string {

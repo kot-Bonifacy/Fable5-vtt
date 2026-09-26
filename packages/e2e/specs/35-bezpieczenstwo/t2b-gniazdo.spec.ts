@@ -536,10 +536,6 @@ test.describe.serial('T2 gniazdo: role, własność, śmieci, zalew', () => {
   });
 
   test('6.2.2 gracz nie usuwa własnej postaci przyjętej do gry (#14)', async () => {
-    test.fail(
-      true,
-      '#14 (B1): character:delete sprawdza tylko właściciela; ✕ w UI ma wyłącznie MG',
-    );
     const socket = await socketOf(marek);
     const ack = await emitAck(socket, 'character:delete', { characterId: kowal });
     socket.disconnect();

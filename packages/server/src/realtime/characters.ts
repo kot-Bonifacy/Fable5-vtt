@@ -361,8 +361,13 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
       campaignId,
       payload?.characterId,
     );
-    if (user.role !== ROLE_GM && character.ownerId !== user.id) {
-      throw new RealtimeError('CHARACTER_NOT_FOUND');
+    if (user.role !== ROLE_GM) {
+      if (character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+      // A card taken into play carries history the GM answers for — deleting
+      // it is the GM's call, like its Stats and priced fields (#14). The ✕ in
+      // the panel is the GM's alone; a player may only drop a card that still
+      // waits for „Przyjmij do gry".
+      if (character.playReady) throw new RealtimeError('FORBIDDEN');
     }
     // Tokens are unlinked by the DB (SetNull); refresh them so their bars
     // fall back to their own HP instead of showing the dead sheet's.

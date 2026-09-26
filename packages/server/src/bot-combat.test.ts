@@ -64,7 +64,13 @@ type ChatBody = {
   json_schema: Record<string, unknown> | null;
 };
 
-const gateway = { up: true, answers: [] as string[], bodies: [] as ChatBody[] };
+const gateway = {
+  up: true,
+  /** Alive but refusing (`/chat` → 503), like a full queue — #21. */
+  busy: false,
+  answers: [] as string[],
+  bodies: [] as ChatBody[],
+};
 
 function sseStream(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -102,6 +108,9 @@ const aiFetch: typeof fetch = async (input, init) => {
     return Response.json({ count: Math.ceil((body.text?.length ?? 0) / 4), context_size: 32768 });
   }
   if (url.endsWith('/chat')) {
+    if (gateway.busy) {
+      return Response.json({ detail: 'kolejka pełna (4 oczekujących)' }, { status: 503 });
+    }
     gateway.bodies.push(JSON.parse(String(init?.body ?? '{}')) as ChatBody);
     return new Response(sseStream(gateway.answers.shift() ?? '{"akcja":"pas","powod":"."}'), {
       status: 200,
@@ -403,6 +412,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   gateway.up = true;
+  gateway.busy = false;
   gateway.answers = [];
   gateway.bodies = [];
   await built.prisma.chatMessage.deleteMany({});
@@ -893,6 +903,27 @@ describe('bezpieczniki', () => {
     expect(ack.ok).toBe(false);
     if (!ack.ok) expect(ack.error).toBe('AI_UNAVAILABLE');
     gateway.up = true;
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  });
+
+  it('tells a busy model from a dead gateway (#21)', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await startFight(gm.socket);
+    gateway.busy = true;
+
+    const ack = data(
+      await emitAck<BotPlayTurnResult>(gm.socket, 'bot:play-turn', { tokenId: botTokenId }),
+      'bot:play-turn',
+    );
+
+    expect(ack.outcome).toBe('refused');
+    expect(ack.refusal).toContain('zajęty');
+    expect(ack.refusal).toContain('kolejka pełna (4 oczekujących)');
+    expect(ack.refusal).not.toContain('Brak połączenia');
+    gateway.busy = false;
     await endFight(gm.socket);
     gm.socket.disconnect();
   });

@@ -301,6 +301,10 @@ describe('characters', () => {
     });
     expect(foreignDelete).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
 
+    // #14: a card in play is deleted by the GM only — its owner included.
+    const ownDelete = await emitAck(vex, 'character:delete', { characterId: vexCharacterId });
+    expect(ownDelete).toEqual({ ok: false, error: 'FORBIDDEN' });
+
     // Owner cannot reassign ownership — that is a GM action.
     const ownerChange = await emitAck(vex, 'character:update', {
       characterId: vexCharacterId,

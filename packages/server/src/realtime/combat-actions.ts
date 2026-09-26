@@ -37,7 +37,7 @@ import {
   combatantOwnerId,
   dueHold,
   emitCombatOfScene,
-  emitReloaded,
+  emitReloadedFor,
   fireHeldAction,
   findCombatantForToken,
   loadCombatById,
@@ -158,7 +158,7 @@ async function settleSpend(
     throw new RealtimeError(outcome.error);
   }
 
-  const view = await emitReloaded(deps, campaignId, scene, outcome.combatant.combatId);
+  const view = await emitReloadedFor(deps, campaignId, scene, outcome.combatant.combatId, user);
   if (options.silent === true && !outcome.forced && !outcome.bypassed) return view;
   const entry: CombatActionLogEntry = {
     ...actionEntry(outcome.combatant, actionId, name, note),
@@ -304,7 +304,7 @@ export const combatActionEvent = defineEvent<CombatActionPayload, CombatView>({
     // `settleSpend` already emitted the fresh tracker — re-emitting it here
     // would burn a second seq for one action.
     const view = await settleSpend(deps, campaignId, scene, user, outcome, actionId, note);
-    return view ?? (await emitReloaded(deps, campaignId, scene, combat.id));
+    return view ?? (await emitReloadedFor(deps, campaignId, scene, combat.id, user));
   },
 });
 
@@ -320,7 +320,7 @@ export const combatActionEvent = defineEvent<CombatActionPayload, CombatView>({
 export const combatAllowEvent = defineEvent<CombatAllowPayload, CombatView>({
   name: 'combat:allow',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { combat, combatant, scene } = await requireCombatant(
       deps.ctx.prisma,
@@ -350,7 +350,7 @@ export const combatAllowEvent = defineEvent<CombatAllowPayload, CombatView>({
         await deliverChatMessageTo(deps, campaignId, view, [message.authorId], true, 'chat:update');
       }
     }
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -396,7 +396,7 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
       ...actionEntry(combatant, 'hold', sheetActionName('hold'), trigger),
       ...(initiative !== null ? { note: `przy inicjatywie ${initiative}` } : {}),
     });
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -408,7 +408,7 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
 export const combatHoldReleaseEvent = defineEvent<CombatHoldReleasePayload, CombatView>({
   name: 'combat:hold-release',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { combat, combatant, scene } = await requireCombatant(
       deps.ctx.prisma,
@@ -417,7 +417,7 @@ export const combatHoldReleaseEvent = defineEvent<CombatHoldReleasePayload, Comb
     );
     if (!combatant.held) throw new RealtimeError('NOTHING_HELD');
     await fireHeldAction(deps.ctx.prisma, combat, combatant);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -425,7 +425,7 @@ export const combatHoldReleaseEvent = defineEvent<CombatHoldReleasePayload, Comb
 export const combatResetTurnEvent = defineEvent<CombatResetTurnPayload, CombatView>({
   name: 'combat:reset-turn',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { combat, combatant, scene } = await requireCombatant(
       deps.ctx.prisma,
@@ -437,7 +437,7 @@ export const combatResetTurnEvent = defineEvent<CombatResetTurnPayload, CombatVi
       where: { id: combatant.id },
       data: { turnState: freshTurnState(move), actionBypass: false },
     });
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -468,7 +468,7 @@ export const combatTerrainEvent = defineEvent<CombatTerrainPayload, CombatView>(
       where: { id: combatant.id },
       data: { turnState: setTurnHardTerrain(combatant.turnState, payload.hard) },
     });
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -482,7 +482,7 @@ export const combatTerrainEvent = defineEvent<CombatTerrainPayload, CombatView>(
 export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
   name: 'combat:remove',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const { combat, combatant, scene } = await requireCombatant(
       deps.ctx.prisma,
@@ -500,7 +500,7 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
     }
     await clearGrapplesOf(deps, campaignId, combat, combatant);
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -537,7 +537,7 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
     const held = dueHold(combat, pointer);
     if (held) await fireHeldAction(deps.ctx.prisma, combat, held);
     else await advanceTurn(deps, campaignId, scene, combat, pointer, user);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 
@@ -550,7 +550,7 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
 export const combatPreviousEvent = defineEvent<undefined, CombatView>({
   name: 'combat:previous',
   role: ROLE_GM,
-  handler: async ({ deps, socket }) => {
+  handler: async ({ deps, socket, user }) => {
     const campaignId = requireCampaignId(socket.data);
     const sceneId = socket.data.viewedSceneId;
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
@@ -559,7 +559,7 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
 
     const pointer = previousTurn(toCombatView(combat));
     await applyTurnPointer(deps, combat, pointer, false);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 

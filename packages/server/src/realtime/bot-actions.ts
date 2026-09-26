@@ -29,7 +29,7 @@ import type { AiChatRequest } from '../ai/gateway.js';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { resolveBotCombatProposal } from './bot-combat.js';
-import { botActorUser, logBotDecision } from './bot-runtime.js';
+import { botActorUser, botFailureText, logBotDecision } from './bot-runtime.js';
 import { requireCampaignBot } from './bots.js';
 import { performCharacterRoll } from './character-rolls.js';
 import { INCLUDE_CHAT_NAMES, insertChatMessage, deliverChatMessageTo } from './chat-io.js';
@@ -147,6 +147,8 @@ interface DecisionRun {
   error: BotActionParseError | null;
   /** Kod błędu gatewaya (AI_UNAVAILABLE, AI_UNREACHABLE…). */
   failure: string | null;
+  /** Powód od gatewaya, gdy go podał. */
+  failureDetail?: string;
   raw: string;
   retried: boolean;
   tookMs: number;
@@ -174,7 +176,9 @@ async function runDecision(
   });
   const schema = buildBotActionSchema(options);
 
-  const ask = async (extra: string): Promise<{ raw: string; failure: string | null }> => {
+  const ask = async (
+    extra: string,
+  ): Promise<{ raw: string; failure: string | null; failureDetail?: string }> => {
     const request: AiChatRequest = {
       messages: [
         { role: 'system', content: prompt.system },
@@ -192,7 +196,13 @@ async function runDecision(
     let raw = '';
     for await (const event of deps.ctx.ai.streamChat(request, ctx.signal)) {
       if (event.type === 'delta') raw += event.text;
-      if (event.type === 'error') return { raw, failure: event.code };
+      if (event.type === 'error') {
+        return {
+          raw,
+          failure: event.code,
+          ...(event.detail ? { failureDetail: event.detail } : {}),
+        };
+      }
     }
     return { raw, failure: null };
   };
@@ -203,6 +213,7 @@ async function runDecision(
       action: null,
       error: null,
       failure: first.failure,
+      ...(first.failureDetail ? { failureDetail: first.failureDetail } : {}),
       raw: first.raw,
       retried: false,
       tookMs: Date.now() - started,
@@ -229,6 +240,7 @@ async function runDecision(
       action: null,
       error: parsedFirst.error,
       failure: second.failure,
+      ...(second.failureDetail ? { failureDetail: second.failureDetail } : {}),
       raw: `${first.raw}\n---\n${second.raw}`,
       retried: true,
       tookMs: Date.now() - started,
@@ -301,13 +313,13 @@ export async function runBotAction(
   };
 
   if (run.failure) {
-    // Degradacja: gateway leży, więc bot niczego nie robi — ale czat żyje dalej
-    // i wołający pozna to po tym, że rzut nie przyszedł.
+    // Degradacja: model nie odpowiedział, więc bot niczego nie robi — ale czat
+    // żyje dalej i wołający pozna to po tym, że rzut nie przyszedł.
     trace(deps, request.campaignId, {
       ...base,
       decision: null,
       outcome: 'refused',
-      refusal: 'Brak połączenia z AI Gateway.',
+      refusal: botFailureText(run.failure, run.failureDetail),
     });
     return 'talk';
   }
@@ -427,6 +439,16 @@ function mayResolve(user: SessionUser, proposal: BotActionProposal): boolean {
 }
 
 /**
+ * Karty propozycji, na które właśnie ktoś odpowiada. Zatwierdzenie wykonuje
+ * akcję i czeka na następny krok bota, zanim zapisze rozstrzygnięcie — drugi
+ * klik w tym oknie przechodził i akcja szła dwa razy (#20). Blokadę zakłada się
+ * synchronicznie, przed pierwszym `await`, więc drugi klik albo ją zastanie,
+ * albo przeczyta już zapisane rozstrzygnięcie. Jeden proces serwera — pamięć
+ * wystarcza.
+ */
+const proposalsInFlight = new Set<number>();
+
+/**
  * „Zatwierdź" / „Odrzuć". Stan zapisuje się w wiadomości, nie w pamięci — karta
  * ma przeżyć restart serwera z sensownym wyglądem, a nie z martwymi przyciskami.
  */
@@ -442,76 +464,92 @@ export const botProposalResolveEvent = defineEvent<
     if (typeof messageId !== 'number' || !Number.isInteger(messageId)) {
       throw new RealtimeError('BAD_REQUEST');
     }
-    const message = await deps.ctx.prisma.chatMessage.findUnique({
-      where: { id: messageId },
-      include: INCLUDE_CHAT_NAMES,
-    });
-    if (!message || message.campaignId !== campaignId || message.kind !== 'proposal') {
-      throw new RealtimeError('MESSAGE_NOT_FOUND');
+    if (proposalsInFlight.has(messageId)) throw new RealtimeError('PROPOSAL_ALREADY_RESOLVED');
+    proposalsInFlight.add(messageId);
+    try {
+      return await resolveProposal(deps, campaignId, user, messageId, payload.approve === true);
+    } finally {
+      proposalsInFlight.delete(messageId);
     }
-    if (!message.payload) throw new RealtimeError('MESSAGE_NOT_FOUND');
-    const proposal = JSON.parse(message.payload) as BotActionProposal;
-    if (!mayResolve(user, proposal)) throw new RealtimeError('FORBIDDEN');
-    if (proposal.resolution) throw new RealtimeError('PROPOSAL_ALREADY_RESOLVED');
-
-    let rollMessageId: number | null = null;
-    let refusal: string | undefined;
-    if (payload?.approve === true) {
-      // Karta trzyma id postaci sprzed kliknięcia, ale prawo do działania
-      // odczytujemy z bota TERAZ: MG mógł w międzyczasie odpiąć mu kartę.
-      const bot = await deps.ctx.prisma.botProfile.findUnique({ where: { id: proposal.botId } });
-      if (!bot || bot.campaignId !== campaignId || bot.characterId !== proposal.characterId) {
-        throw new RealtimeError('BOT_CHARACTER_CHANGED');
-      }
-      if (proposal.combat) {
-        // Akcja bojowa (20b) idzie inną ścieżką niż rzut z karty — i jest
-        // odtwarzana na świeżym stanie taktycznym, bo między propozycją
-        // a kliknięciem mogła minąć runda.
-        const played = await resolveBotCombatProposal(deps, {
-          campaignId,
-          proposal: proposal.combat,
-        });
-        if (played.outcome === 'refused') refusal = played.refusal ?? 'Akcja nie doszła do skutku.';
-      } else {
-        const rolled = await performCharacterRoll(deps, {
-          campaignId,
-          user: await botActorUser(deps, message.authorId),
-          sceneId: message.sceneId ?? null,
-          payload: {
-            characterId: proposal.characterId ?? '',
-            request: { kind: 'skill', skillId: proposal.optionId },
-            visibility: 'public',
-          },
-        });
-        rollMessageId = rolled.messageId;
-      }
-    }
-
-    const resolved: BotActionProposal = {
-      ...proposal,
-      resolution: payload?.approve === true ? 'approved' : 'rejected',
-      resolvedByName: user.name,
-      ...(rollMessageId !== null ? { rollMessageId } : {}),
-      // Zatwierdzona akcja, która i tak się nie odbyła, musi zostawić ślad na
-      // karcie: inaczej MG widzi „ZATWIERDZONE" i nic więcej się nie dzieje.
-      ...(refusal ? { blocked: refusal } : {}),
-    };
-    const saved = await deps.ctx.prisma.chatMessage.update({
-      where: { id: message.id },
-      data: { payload: JSON.stringify(resolved) },
-      include: INCLUDE_CHAT_NAMES,
-    });
-    await deliverChatMessageTo(
-      deps,
-      campaignId,
-      toChatMessageView(saved),
-      [proposal.controllerUserId],
-      true,
-      'chat:update',
-    );
-    return { rollMessageId };
   },
 });
+
+async function resolveProposal(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  messageId: number,
+  approve: boolean,
+): Promise<{ rollMessageId: number | null }> {
+  const message = await deps.ctx.prisma.chatMessage.findUnique({
+    where: { id: messageId },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  if (!message || message.campaignId !== campaignId || message.kind !== 'proposal') {
+    throw new RealtimeError('MESSAGE_NOT_FOUND');
+  }
+  if (!message.payload) throw new RealtimeError('MESSAGE_NOT_FOUND');
+  const proposal = JSON.parse(message.payload) as BotActionProposal;
+  if (!mayResolve(user, proposal)) throw new RealtimeError('FORBIDDEN');
+  if (proposal.resolution) throw new RealtimeError('PROPOSAL_ALREADY_RESOLVED');
+
+  let rollMessageId: number | null = null;
+  let refusal: string | undefined;
+  if (approve) {
+    // Karta trzyma id postaci sprzed kliknięcia, ale prawo do działania
+    // odczytujemy z bota TERAZ: MG mógł w międzyczasie odpiąć mu kartę.
+    const bot = await deps.ctx.prisma.botProfile.findUnique({ where: { id: proposal.botId } });
+    if (!bot || bot.campaignId !== campaignId || bot.characterId !== proposal.characterId) {
+      throw new RealtimeError('BOT_CHARACTER_CHANGED');
+    }
+    if (proposal.combat) {
+      // Akcja bojowa (20b) idzie inną ścieżką niż rzut z karty — i jest
+      // odtwarzana na świeżym stanie taktycznym, bo między propozycją
+      // a kliknięciem mogła minąć runda.
+      const played = await resolveBotCombatProposal(deps, {
+        campaignId,
+        proposal: proposal.combat,
+      });
+      if (played.outcome === 'refused') refusal = played.refusal ?? 'Akcja nie doszła do skutku.';
+    } else {
+      const rolled = await performCharacterRoll(deps, {
+        campaignId,
+        user: await botActorUser(deps, message.authorId),
+        sceneId: message.sceneId ?? null,
+        payload: {
+          characterId: proposal.characterId ?? '',
+          request: { kind: 'skill', skillId: proposal.optionId },
+          visibility: 'public',
+        },
+      });
+      rollMessageId = rolled.messageId;
+    }
+  }
+
+  const resolved: BotActionProposal = {
+    ...proposal,
+    resolution: approve ? 'approved' : 'rejected',
+    resolvedByName: user.name,
+    ...(rollMessageId !== null ? { rollMessageId } : {}),
+    // Zatwierdzona akcja, która i tak się nie odbyła, musi zostawić ślad na
+    // karcie: inaczej MG widzi „ZATWIERDZONE" i nic więcej się nie dzieje.
+    ...(refusal ? { blocked: refusal } : {}),
+  };
+  const saved = await deps.ctx.prisma.chatMessage.update({
+    where: { id: message.id },
+    data: { payload: JSON.stringify(resolved) },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await deliverChatMessageTo(
+    deps,
+    campaignId,
+    toChatMessageView(saved),
+    [proposal.controllerUserId],
+    true,
+    'chat:update',
+  );
+  return { rollMessageId };
+}
 
 /**
  * „Poproś o akcję" — ścieżka pewna, z pominięciem detektora z `requests.ts`.

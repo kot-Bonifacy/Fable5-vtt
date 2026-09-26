@@ -339,6 +339,44 @@ async function requireAttackerScene(
   throw new RealtimeError('ATTACKER_NOT_ON_SCENE');
 }
 
+/** The Skill a shot rolls on — the weapon's own, or Autofire for a burst. */
+function attackSkillId(
+  weapon: ResolvedWeaponRow,
+  request: CpredAttackRequest | undefined,
+): string | null {
+  return request?.mode === 'autofire' || request?.mode === 'suppressive'
+    ? CPRED_AUTOFIRE_SKILL_ID
+    : (weapon.resolved?.skillId ?? request?.skillId ?? null);
+}
+
+/**
+ * The attacker's card when the request names it (`characterId`).
+ *
+ * A statist has had a card since stage 38a, so the client and the bots fire it
+ * by `characterId` too — and its weapon level lives in `statBlock.weaponSkill`,
+ * which only `sheetForRoll` folds into the Skill the weapon rolls on. Reading
+ * the card raw shot „Broń krótka (nietrenowana) +0" instead of +6 (#16). A
+ * character without a stat block comes back untouched.
+ */
+async function buildCharacterSource(
+  deps: RealtimeDeps,
+  campaignId: string,
+  registry: CpredRegistry,
+  character: Character,
+  token: Token,
+  request: CpredAttackRequest | undefined,
+): Promise<AttackSource> {
+  const data = parseCharacterData(character.data, registry);
+  if (!data.statBlock) return { character, token, data, stored: data };
+  const weapon = await resolveWeaponRow(deps, campaignId, data, request?.weaponRowId);
+  return {
+    character,
+    token,
+    data: sheetForRoll(data, attackSkillId(weapon, request)),
+    stored: data,
+  };
+}
+
 /**
  * Stand-in evasion DV of the defender.
  *
@@ -390,7 +428,16 @@ function facedownPenaltyRows(
 interface AttackSource {
   character: Character;
   token: Token;
+  /** The sheet the shot is rolled with — a figure's weapon level folded in. */
   data: CpredCharacterData;
+  /**
+   * The card as stored, which is what spent ammunition, Luck and a jam are
+   * written back onto. Never `data`: that one carries the substituted Skill
+   * (and for a combat value, zeroed Stats), and saving it made the stand-in
+   * permanent — the quick editor's weapon level stopped counting after the
+   * first shot that spent a round.
+   */
+  stored: CpredCharacterData;
 }
 
 /**
@@ -454,7 +501,7 @@ async function spendAttackCosts(
 ): Promise<void> {
   if (luckSpent === 0 && meta.ammoCost === 0) return;
 
-  const { character, data } = source;
+  const { character, stored: data } = source;
   // Stage 31: a shot from a bolted-on weapon spends the *attachment's* rounds.
   // The card already carries which weapon fired („attachmentId"), so the write
   // needs no second lookup — and the rifle's magazine is left alone, which is
@@ -513,7 +560,7 @@ async function jamPoorWeapon(
   if (resolved?.quality !== 'poor') return false;
   const critical = result.critical;
   if (!critical || critical.type !== 'fumble' || critical.ignored === true) return false;
-  const { character, data } = source;
+  const { character, stored: data } = source;
   const row = data.weapons.find((weapon) => weapon.id === meta.weaponRowId);
   if (!row || row.jammed === true) return false;
   await saveWeaponRow(deps, campaignId, character, data, row.id, { jammed: true });
@@ -823,10 +870,7 @@ async function buildFigureSource(
 
   // Pass one: a sheet good enough to look the weapon up with.
   const weapon = await resolveWeaponRow(deps, campaignId, data, SHEET_STATIST_WEAPON_ROW_ID);
-  const skillId =
-    request?.mode === 'autofire' || request?.mode === 'suppressive'
-      ? CPRED_AUTOFIRE_SKILL_ID
-      : (weapon.resolved?.skillId ?? request?.skillId ?? null);
+  const skillId = attackSkillId(weapon, request);
 
   // Pass two: the same sheet with that one skill filled in — from the figure's
   // own combat level, or from whoever is aiming it instead.
@@ -835,7 +879,7 @@ async function buildFigureSource(
     : hands?.combatValue !== undefined
       ? cpredSheetWithCombatValue(data, hands.combatValue)
       : data;
-  return { character, token, data: sheetForRoll(firing, skillId) };
+  return { character, token, data: sheetForRoll(firing, skillId), stored: data };
 }
 
 export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>, AttackRollResult>(
@@ -938,11 +982,14 @@ export async function performAttackRoll(
       if (target && attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
 
       const source = character
-        ? ({
+        ? await buildCharacterSource(
+            deps,
+            campaignId,
+            registry,
             character,
-            token: attacker,
-            data: parseCharacterData(character.data, registry),
-          } satisfies AttackSource)
+            attacker,
+            payload?.request,
+          )
         : await buildFigureSource(deps, campaignId, registry, attacker, payload?.request, device);
       const data = source.data;
 

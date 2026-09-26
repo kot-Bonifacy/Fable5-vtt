@@ -450,9 +450,17 @@ describe('combat tracker', () => {
     while (state.activeCombatantId !== ziti.id) {
       state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
     }
+    // #19: an ack goes to one socket past the room filter — the tracker in it
+    // is the player's, never the GM's (the hidden sniper stays out of it).
+    const terrain = await emitAck<CombatView>(player, 'combat:terrain', { hard: false });
+    expect(data(terrain, 'combat:terrain').combatants).toHaveLength(2);
+    expect(JSON.stringify(terrain)).not.toContain('Snajper');
+
     const own = await emitAck<CombatView>(player, 'combat:next');
     expect(own.ok).toBe(true);
     expect(data(own, 'combat:next').activeCombatantId).not.toBe(ziti.id);
+    expect(data(own, 'combat:next').combatants).toHaveLength(2);
+    expect(JSON.stringify(own)).not.toContain('Snajper');
 
     // The GM steps back so later assertions start from a known place.
     await emitAck(gm, 'combat:previous');

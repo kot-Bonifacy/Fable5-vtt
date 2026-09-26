@@ -386,7 +386,10 @@ function chatErrorText(code: string): string {
  */
 function botNoticeText(notice: BotNoticeBroadcast): string {
   switch (notice.code) {
+    // 503: gateway żyje, ale model jest zajęty albo się ładuje — inna rada niż
+    // martwy gateway (#21).
     case 'AI_UNAVAILABLE':
+      return `${notice.botName} nie odpowiada — model jest zajęty albo jeszcze niegotowy; spróbuj za chwilę.`;
     case 'AI_UNREACHABLE':
       return `${notice.botName} nie odpowiada — model jest niedostępny (AI Gateway offline).`;
     case 'BOT_STOPPED':

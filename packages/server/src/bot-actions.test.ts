@@ -528,6 +528,29 @@ describe('resolving a proposal', () => {
     gm.socket.disconnect();
   });
 
+  it('two „Zatwierdź" at once roll once — the second click is refused (#20)', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const seen = collect(gm.socket);
+    const bot = await createBot(gm.socket, 'Kolec');
+    gateway.answers = [decision({ akcja: 'rzut', umiejetnosc: 'Percepcja', powod: 'Nasłuchuję.' })];
+
+    await emitAck(gm.socket, 'bot:act', { botId: bot.id, request: 'rzuć na Percepcję' });
+    const card = await until(() => seen.messages.find((m) => m.kind === 'proposal'));
+    const answers = await Promise.all([
+      emitAck(gm.socket, 'bot:proposal', { messageId: card.id, approve: true }),
+      emitAck(gm.socket, 'bot:proposal', { messageId: card.id, approve: true }),
+    ]);
+    expect(answers.filter((answer) => answer.ok)).toHaveLength(1);
+    expect(answers.find((answer) => !answer.ok)).toEqual({
+      ok: false,
+      error: 'PROPOSAL_ALREADY_RESOLVED',
+    });
+    await until(() => seen.updates.find((m) => m.id === card.id));
+    expect(seen.messages.filter((m) => m.kind === 'roll')).toHaveLength(1);
+    gm.socket.disconnect();
+  });
+
   it('reaches the steering player, and nobody else', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;

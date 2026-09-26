@@ -54,6 +54,7 @@ import {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   emitReloaded,
+  emitReloadedFor,
   findGrapple,
   loadCombat,
   readTokenStatuses,
@@ -575,7 +576,7 @@ export const grappleActionEvent = defineEvent<CombatGrappleActionPayload, Combat
           tokenTableName(defender.token, defender.token.name),
         ),
       });
-      return emitReloaded(deps, campaignId, scene, combat.id);
+      return emitReloadedFor(deps, campaignId, scene, combat.id, user);
     }
 
     // Everything else is an Action, booked before it happens (stage 14b).
@@ -597,7 +598,7 @@ export const grappleActionEvent = defineEvent<CombatGrappleActionPayload, Combat
         where: { id: defender.id },
         data: { humanShield: true },
       });
-      return emitReloaded(deps, campaignId, scene, combat.id);
+      return emitReloadedFor(deps, campaignId, scene, combat.id, user);
     }
 
     const body = await attackerBody(deps, combatant);
@@ -628,7 +629,7 @@ export const grappleActionEvent = defineEvent<CombatGrappleActionPayload, Combat
     }
 
     await logGrappleDamage(deps, campaignId, user, defender, applied, kind, rounds);
-    return emitReloaded(deps, campaignId, scene, combat.id);
+    return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
 

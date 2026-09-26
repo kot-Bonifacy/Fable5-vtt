@@ -54,7 +54,7 @@ import type { BotProfile, Character, Scene, Token } from '../generated/prisma/cl
 import { statusName } from '../statuses.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { performAttackRoll, performWeaponReload } from './attacks.js';
-import { botActorUser, logBotDecision } from './bot-runtime.js';
+import { botActorUser, botFailureText, logBotDecision } from './bot-runtime.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 import { buildCompendiumSync } from './compendium.js';
 import {
@@ -384,6 +384,8 @@ interface DecisionRun {
   error: BotCombatParseError | null;
   /** Kod błędu gatewaya (AI_UNAVAILABLE, AI_UNREACHABLE…). */
   failure: string | null;
+  /** Powód od gatewaya, gdy go podał („kolejka pełna…", „Model niedostępny…"). */
+  failureDetail?: string;
   raw: string;
   retried: boolean;
   tookMs: number;
@@ -410,7 +412,9 @@ async function runCombatDecision(
     ? `Poprzednia próba nie powiodła się: ${correction} Wybierz coś innego.\n\n`
     : '';
 
-  const ask = async (extra: string): Promise<{ raw: string; failure: string | null }> => {
+  const ask = async (
+    extra: string,
+  ): Promise<{ raw: string; failure: string | null; failureDetail?: string }> => {
     const request: AiChatRequest = {
       messages: [
         { role: 'system', content: prompt.system },
@@ -428,7 +432,13 @@ async function runCombatDecision(
     let raw = '';
     for await (const event of deps.ctx.ai.streamChat(request, ctx.signal)) {
       if (event.type === 'delta') raw += event.text;
-      if (event.type === 'error') return { raw, failure: event.code };
+      if (event.type === 'error') {
+        return {
+          raw,
+          failure: event.code,
+          ...(event.detail ? { failureDetail: event.detail } : {}),
+        };
+      }
     }
     return { raw, failure: null };
   };
@@ -439,6 +449,7 @@ async function runCombatDecision(
       decision: null,
       error: null,
       failure: first.failure,
+      ...(first.failureDetail ? { failureDetail: first.failureDetail } : {}),
       raw: first.raw,
       retried: false,
       tookMs: Date.now() - started,
@@ -465,6 +476,7 @@ async function runCombatDecision(
       decision: null,
       error: parsedFirst.error,
       failure: second.failure,
+      ...(second.failureDetail ? { failureDetail: second.failureDetail } : {}),
       raw: `${first.raw}\n---\n${second.raw}`,
       retried: true,
       tookMs: Date.now() - started,
@@ -830,15 +842,11 @@ async function runStep(
   } satisfies Omit<BotActionTraceBroadcast, 'decision' | 'outcome'>;
 
   if (run.failure) {
-    // Degradacja: gateway leży, więc bot niczego nie robi — a walka toczy się
-    // dalej ręką MG, tak jak przed etapem 20.
-    trace(deps, ctx.campaignId, {
-      ...base,
-      decision: null,
-      outcome: 'refused',
-      refusal: 'Brak połączenia z AI Gateway.',
-    });
-    return { kind: 'refused', refusal: 'Brak połączenia z AI Gateway.' };
+    // Degradacja: model nie odpowiedział, więc bot niczego nie robi — a walka
+    // toczy się dalej ręką MG, tak jak przed etapem 20.
+    const refusal = botFailureText(run.failure, run.failureDetail);
+    trace(deps, ctx.campaignId, { ...base, decision: null, outcome: 'refused', refusal });
+    return { kind: 'refused', refusal };
   }
   if (!run.decision) {
     const refusal = run.error ? BOT_COMBAT_ERROR_LABELS[run.error] : 'Model nie oddał decyzji.';
