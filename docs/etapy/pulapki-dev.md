@@ -1664,6 +1664,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **`instance start` z powłoki agenta stawia instancję E2E na kilka sekund** — procesy serwera i `vite preview` giną razem z poleceniem, choć `cli.ts` je odpina; do oględzin MCP na instancji E2E trzymaj ją `node instance/hold.ts` w tle, a gaś `instance stop`.
 - **Python na Windows zapisuje pliki z CRLF** — `open(p, 'w')` zamienia `\n` na `\r\n` w całym pliku; `git diff` tego nie pokaże (normalizuje), Prettier i ESLint owszem. Pisz z `newline=''` albo po fakcie `sed -i 's/\r$//'`. Plik „niesformatowany” z pustym `git diff` to CRLF na dysku: `git ls-files --eol | grep w/crlf`, naprawa `rm` + `git checkout --`.
 - **`vitest -t` w `creation.test.ts` serwera wycina test, który otwiera gniazda** — gniazda `vex`/`gm` powstają w pierwszym `it`, więc filtrowany test pada na `Cannot read properties of undefined (reading 'emit')`. Puszczaj cały plik.
 - **Zatrzymanie `pnpm dev` puszczonego w tle nie gasi jego dzieci na Windows** — `tsx` i `vite` dalej trzymają :3001 i :5173, a następny start pada na `EADDRINUSE`. Zabij drzewo po PID (`taskkill //PID <pid> //T //F`), zanim uznasz port za zajęty przez coś obcego.
@@ -1688,6 +1689,16 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Instancja E2E z `instance start` umiera po powrocie polecenia (26.09, T3a).** Uruchomiona
+  z narzędzia Bash agenta (także w tle z `&& tail -f`), odpowiadała na `/health` przez chwilę,
+  a potem porty :3101/:4173 były puste, `tasklist` nie znał PID-ów z `.e2e/instance.json`,
+  a Chromium z Playwright MCP dostawał `ERR_CONNECTION_REFUSED`. Windows zamyka drzewo procesów
+  polecenia, choć `launch()` robi `unref()`. Pod `playwright test` problemu nie ma — proces
+  testów żyje do końca przebiegu. Do oględzin MCP: `E2E_GM_PASSWORD=… node instance/hold.ts
+  --skip-build` jako zadanie w tle (proces trzyma instancję), potem `instance stop`. Przy okazji:
+  `vite preview --host localhost` słucha tylko na `[::1]`, więc `curl 127.0.0.1:4173` milczy —
+  to nie jest martwa instancja.
 
 - **Python na Windows zapisuje pliki z CRLF (17.09, naprawa kreatora 3a).** Skrypt podmieniający
   fragmenty kodu przez `open(p, 'w', encoding='utf-8')` przepisał trzy pliki TypeScript na `\r\n`.

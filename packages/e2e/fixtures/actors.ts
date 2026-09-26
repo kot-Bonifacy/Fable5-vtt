@@ -40,7 +40,10 @@ export class Actor {
     this.page = page;
     this.sniffer = new Sniffer(page);
     page.on('console', (message) => {
-      if (message.type() === 'error') this.consoleErrors.push(message.text());
+      if (message.type() !== 'error') return;
+      // „Failed to load resource” nie mówi, czego — adres zasobu siedzi w `location`.
+      const url = message.location().url;
+      this.consoleErrors.push(url ? `${message.text()} @ ${url}` : message.text());
     });
     page.on('pageerror', (error) => this.consoleErrors.push(`pageerror: ${error.message}`));
     // `window.confirm` zawiesza kartę pod automatem — przechwycony od pierwszej chwili.

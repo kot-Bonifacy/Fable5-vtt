@@ -24,6 +24,9 @@ export const BOT_DECISION_LOG = join(E2E_DIR, 'bot-decisions.jsonl');
 export const DATABASE_URL = 'file:./e2e.db';
 export const DATABASE_FILE = join(SERVER_DIR, 'e2e.db');
 
+/** Grafika stołu spoza repo (mapa powitalna) — kopiowana do instancji, tylko do odczytu. */
+export const MG_ART_DIR = join(REPO_DIR, 'uploads/art');
+
 /** Kompendium z podręcznika — prawdziwe, tylko do odczytu (beta gra na nim). */
 export const DATA_PRIVATE_DIR = join(REPO_DIR, 'data/private');
 

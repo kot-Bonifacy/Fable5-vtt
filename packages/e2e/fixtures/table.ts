@@ -19,6 +19,14 @@ export async function say(actor: Actor, text: string): Promise<void> {
  */
 export async function rollWithCup(page: Page, notation: string): Promise<void> {
   await page.getByLabel('Wiadomość czatu').fill(notation);
+  await shakeCup(page);
+}
+
+/**
+ * Sam gest kubka: chwyt, potrząśnięcie, puszczenie. Kubek musi być już
+ * załadowany (formuła w polu czatu, „Weź kubek” w kreatorze, slot broni).
+ */
+export async function shakeCup(page: Page): Promise<void> {
   const cup = page.locator('.dice-cup');
   const box = await cup.boundingBox();
   if (!box) throw new Error('E2E: the dice cup is not on screen');
@@ -50,4 +58,19 @@ export async function createInvitation(mg: Actor, campaignId: string): Promise<s
   });
   if (response.status() !== 201) throw new Error(`E2E: invitation ${response.status()}`);
   return ((await response.json()) as { token: string }).token;
+}
+
+/**
+ * Sprawa ze znacznika „Czeka na MG” (prawy górny róg mapy): rozwija listę
+ * i klika „Przejdź” przy wierszu z tekstem. Kafle same gasną po kilku
+ * sekundach, więc droga przez znacznik jest jedyną pewną.
+ */
+export async function goToGmAttention(mg: Actor, text: string | RegExp): Promise<void> {
+  const badge = mg.page.locator('.gm-attention-badge');
+  if ((await badge.getAttribute('aria-expanded')) !== 'true') await badge.click();
+  await mg.page
+    .locator('.gm-attention-list .gm-attention-row', { hasText: text })
+    .first()
+    .getByRole('button', { name: 'Przejdź' })
+    .click();
 }

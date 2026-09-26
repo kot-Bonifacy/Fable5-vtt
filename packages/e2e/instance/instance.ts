@@ -1,6 +1,7 @@
 import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   openSync,
@@ -135,6 +136,12 @@ export async function prepareFresh(): Promise<void> {
   }
   rmSync(P.BOT_DECISION_LOG, { force: true });
   mkdirSync(P.UPLOADS_DIR, { recursive: true });
+  // `uploads/art/` jedzie na VPS ręcznie, razem z resztą `uploads/` (etap 28,
+  // `docs/assety-mapy.md`) — bez niego gracz na pustym stole dostaje 404 zamiast
+  // mapy powitalnej. Instancja udaje produkcję po tym kroku; kopia, nie dowiązanie.
+  if (existsSync(P.MG_ART_DIR)) {
+    cpSync(P.MG_ART_DIR, join(P.UPLOADS_DIR, 'art'), { recursive: true });
+  }
   migrate();
   writeFileSync(P.DICE_SCRIPT_FILE, '');
 }
