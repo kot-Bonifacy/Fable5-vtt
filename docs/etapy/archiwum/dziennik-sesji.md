@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze (własny kadr banera)
+
+**Zlecenie MG (poza etapami):** wyraźne powiadomienie MG o sprawach czekających na jego reakcję;
+w trakcie — kadr portretu z żetonu także w banerze lewego panelu. Rozstrzygnięcia MG: **wszystkie
+cztery źródła** (zgoda na postać, Ranga i „Przyjmij do gry”, prośby o Test, propozycje botów),
+**trwały znacznik + kafel**, kliknięcie **przenosi** do decyzji, **licznik w tytule karty**
+i **dźwięk dla każdej sprawy** (bez powiadomień systemowych); baner **w lewym panelu, ~1,5× szerzej**.
+
+**Zrobione:** `gm-attention.ts` (lista liczona z magazynów), `gmAttentionStore`, `GmAttention.tsx`
+w nowej kolumnie `.map-corner` nad dokiem handli, `watchGmAttention` w `socket.ts` (kafel i dźwięk
+tylko z pushy — F5 milczy), `data-attention` na pięciu rodzajach wierszy, przewinięcie z błyskiem
+w `SidePanel`. Prośba o Test dzwoni teraz stąd, nie z `chatNotification`. Baner: `portraitBannerPlacement`
+w `shared/portrait-crop.ts`. **Poprawka po uwadze MG („ucięte głowy”):** baner trzyma się góry —
+górna krawędź krążka żetonu u góry banera, portret bez kadru `object-position: 50% 0%` (było 22 %).
+**Własny kadr banera** (drugie zlecenie MG: właściciel kadruje oba wystąpienia): kolumny
+`PortraitAsset.bannerX/Y/Zoom` (migracja `portrait_banner_crop`), zakładki „Żeton” / „Baner”
+w oknie kadru, `bannerCrop` w `portrait:crop`, przycisk „Kadr portretu”. Trzy umowy w `ui`.
+
+**Weryfikacja:** klient 286, `shared` 2237, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
+w Chromium (MG) i Firefoksie (MG), gracz `Tester` na „Oględzinach 12.09” — prośba o zgodę i o Test,
+„Przejdź” do obu, F5 bez kafli, wycofanie zeruje znacznik i tytuł. Baner obejrzany na `avatar9`
+podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu); po poprawce — Franc i Portos
+z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Własny kadr banera Franca
+zapisany w Chromium, dotarł do Firefoksa, a potem przywrócony tam „Jak żeton” (stan jak przed próbą). Dźwięku nie słuchano — ścieżka
+`notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.
+
 ### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
 
 **Zlecenie MG:** zaległości w jednej sesji, bez VPS; gdy ich brak — wyczyścić plik. Rozstrzygnięcia

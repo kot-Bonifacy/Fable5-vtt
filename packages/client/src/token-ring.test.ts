@@ -10,6 +10,8 @@ import {
   hpRingCasing,
   hpRingRadius,
   hpRingWidth,
+  noseLength,
+  nosePolygon,
   ownerRingRadius,
   portraitRadius,
 } from './map/token-ring.js';
@@ -250,6 +252,30 @@ describe('okienko w mgle wokół własnej figury', () => {
       const furniture = furnitureRadius(grid * size, true);
       const core = fogPeepRadius(furniture, grid) * FOG_PEEP_CORE_RATIO;
       expect(core).toBeGreaterThanOrEqual(furniture);
+    }
+  });
+});
+
+/**
+ * Grot kierunku (26.09): uchwytem obrotu jest sam grot, bez patyka przez
+ * portret i bez kropki — więc grot musi leżeć w całości **za** oprawą figury
+ * i mieć wcięcie, po którym czyta się jak strzałka.
+ */
+describe('nosePolygon', () => {
+  it.each(GRIDS)('grot na kratce %i px leży za oprawą i ma wcięcie', (grid) => {
+    for (const hasHp of [true, false]) {
+      const base = furnitureRadius(grid, hasHp) + 1;
+      for (const angle of [0, Math.PI / 3, -Math.PI / 2, 2.5]) {
+        const points = nosePolygon(0, 0, angle, base, grid);
+        const dist = (i: number) => Math.hypot(points[i * 2]!, points[i * 2 + 1]!);
+        // Czubek na osi, dokładnie długość grotu za nasadą.
+        expect(dist(0)).toBeCloseTo(base + noseLength(grid), 6);
+        // Żaden wierzchołek nie wchodzi na oprawę (portret, obwódka, pasek PW).
+        for (let i = 0; i < 4; i += 1) expect(dist(i)).toBeGreaterThanOrEqual(base - 1e-9);
+        // Wcięcie: środek nasady cofnięty ku czubkowi.
+        expect(dist(2)).toBeGreaterThan(base);
+        expect(dist(2)).toBeLessThan(dist(0));
+      }
     }
   });
 });

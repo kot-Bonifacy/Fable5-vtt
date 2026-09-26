@@ -16,6 +16,8 @@ import {
   hpRingCasing,
   hpRingRadius,
   hpRingWidth,
+  NOSE_GAP,
+  nosePolygon,
   ownerRingRadius,
   portraitRadius,
 } from './token-ring.js';
@@ -648,23 +650,23 @@ export class TokenNode extends Container {
     const radius = this.furniture || centre - RING_WIDTH / 2;
     // Screen degrees: 0 is up, and up is −Y.
     const angle = ((facing - 90) * Math.PI) / 180;
-    // Sized off the figure rather than off the screen, and generously: the
-    // first attempt was a thirteen-percent nub in the owner's own colour, and
-    // it vanished into the ring it was sitting on.
-    const tip = Math.max(9, extent * 0.22);
-    const half = Math.max(6, extent * 0.15);
-    const base = radius + 1;
-    const ax = centre + Math.cos(angle) * (base + tip);
-    const ay = centre + Math.sin(angle) * (base + tip);
-    const bx = centre + Math.cos(angle + Math.PI / 2) * half + Math.cos(angle) * base;
-    const by = centre + Math.sin(angle + Math.PI / 2) * half + Math.sin(angle) * base;
-    const cx = centre + Math.cos(angle - Math.PI / 2) * half + Math.cos(angle) * base;
-    const cy = centre + Math.sin(angle - Math.PI / 2) * half + Math.sin(angle) * base;
+    // Grot z wcięciem (26.09), nie płaski trójkąt: skrzydła leżą na nasadzie,
+    // a środek nasady cofa się ku czubkowi. Trójkąt o prostej podstawie przy
+    // stole czytał się jak „ząbek” na obrączce, a strzałka z wcięciem — jak
+    // strzałka, także na kilkunastu pikselach ekranu. Rozmiar liczy się od
+    // figury, nie od ekranu (`noseLength`): pierwsza wersja z 27j, trzynaście
+    // procent w kolorze właściciela, znikała w obwódce, na której siedziała.
+    const points = nosePolygon(centre, centre, angle, radius + NOSE_GAP, extent);
     this.nose
-      .poly([ax, ay, bx, by, cx, cy])
+      .poly(points)
       .fill({ color, alpha: 0.95 })
-      .poly([ax, ay, bx, by, cx, cy])
-      .stroke({ color: 0x0b1220, width: Math.max(2, extent * 0.025), alpha: 0.85 });
+      .poly(points)
+      .stroke({
+        color: 0x0b1220,
+        width: Math.max(1.5, extent * 0.016),
+        alpha: 0.9,
+        join: 'round',
+      });
   }
 
   /**

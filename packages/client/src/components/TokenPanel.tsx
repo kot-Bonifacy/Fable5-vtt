@@ -6,10 +6,12 @@ import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { plural } from '../plural.js';
 import { deleteTokenAsset } from '../socket.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
+import { startTokenDrag } from '../map/token-drag.js';
 
 /**
  * GM tab: the campaign's token image library. Selecting an entry arms
- * placement mode — the next click on the map creates the token there.
+ * placement mode — the next click on the map creates the token there. Since
+ * 26.09 an entry can also be dragged straight onto the map (`token-drag.ts`).
  *
  * Kosz (27.08) jest dwustopniowy jak w puli portretów, ale mówi więcej:
  * zdjęcie grafiki zdejmuje ją **także z żetonów**, które ją noszą, więc panel
@@ -110,7 +112,11 @@ export function TokenPanel() {
               <button
                 type="button"
                 className={`token-asset ${placement?.imageUrl === asset.url ? 'token-asset--armed' : ''}`}
-                title={asset.name}
+                title={`${asset.name} — kliknij i kliknij na mapie albo przeciągnij na mapę`}
+                draggable
+                onDragStart={(event) =>
+                  startTokenDrag(event, { name: asset.name, imageUrl: asset.url })
+                }
                 onClick={() => toggleAsset(asset)}
               >
                 <img src={asset.url} alt="" loading="lazy" />
@@ -160,14 +166,24 @@ export function TokenPanel() {
           value={blankName}
           onChange={(e) => setBlankName(e.target.value)}
         />
-        <button type="button" className="small-button" onClick={placeBlank}>
+        <button
+          type="button"
+          className="small-button"
+          onClick={placeBlank}
+          draggable
+          onDragStart={(event) =>
+            startTokenDrag(event, { name: blankName.trim() || 'Token', imageUrl: null })
+          }
+          title="Kliknij i kliknij na mapie albo przeciągnij na mapę"
+        >
           Postaw pusty
         </button>
       </div>
 
       {placement && (
         <p className="auth-hint">
-          Tryb stawiania: „{placement.name}” — kliknij na mapie (Esc anuluje).
+          Tryb stawiania: „{placement.name}” — kliknij na mapie (Esc anuluje). Grafikę można też
+          przeciągnąć prosto na mapę.
         </p>
       )}
       {notice && <p className="auth-hint">{notice}</p>}

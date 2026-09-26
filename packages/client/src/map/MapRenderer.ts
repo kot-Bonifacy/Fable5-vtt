@@ -97,7 +97,14 @@ import {
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 import { marchStopPoint, type MarchLanding } from './march-landing.js';
-import { FOG_PEEP_CORE_RATIO, RING_WIDTH, fogPeepRadius } from './token-ring.js';
+import {
+  FOG_PEEP_CORE_RATIO,
+  NOSE_GAP,
+  RING_WIDTH,
+  fogPeepRadius,
+  noseLength,
+  nosePolygon,
+} from './token-ring.js';
 import { gridLinePositions, gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
@@ -3154,24 +3161,31 @@ export class MapRenderer {
       .circle(centre.x, centre.y, radius)
       .stroke({ color: node.ownerRingTint, width, alpha: 1 });
 
-    // The rotation knob (stage 27j). On the overlay rather than on the token, so
-    // it stays a thumb-sized target at every zoom.
-    //
-    // Do 12.09 siedział na białym przerywanym okręgu; okręgu już nie ma
-    // (MG: „skoro obwódka i tak mówi, że to ta figura"), więc uchwyt trzyma się
-    // sam — kropka na patyku wychodzącym ze środka figury. Odległość liczy
-    // `facingKnob` od brzegu oprawy i to się nie zmieniło.
-    const knob = this.facingKnob();
-    if (!knob) return;
-    const grabbed = this.rotating !== null;
+    // Uchwyt obrotu (27j) to od 26.09 **sam grot** (zlecenie MG): najpierw
+    // zniknął biały patyk od środka figury, który przecinał portret, potem
+    // kropka na czubku grotu — „niepotrzebna", bo grot i tak mówi, gdzie
+    // chwycić. Rysuje się tu tylko to, czego figura sama nie pokazuje: blady,
+    // pusty zarys grotu u góry, gdy nikt jej jeszcze nie obrócił — inaczej nie
+    // byłoby widać, że obrócić ją w ogóle można.
+    if (node.facing !== null || this.rotating !== null) return;
+    if (this.movableTokens.get(node.tokenId) === false) return;
+    const hint = nosePolygon(
+      centre.x,
+      centre.y,
+      -Math.PI / 2,
+      Math.max(half, node.outerRadius) + NOSE_GAP,
+      extent,
+    );
     this.selectGraphics
-      .moveTo(node.x + half, node.y + half)
-      .lineTo(knob.x, knob.y)
-      .stroke({ color: 0xffffff, width: 1.5 * k, alpha: grabbed ? 0.55 : 0.25 })
-      .circle(knob.x, knob.y, 6 * k)
-      .fill({ color: grabbed ? 0xfacc15 : 0xe2e8f0, alpha: 0.95 })
-      .circle(knob.x, knob.y, 6 * k)
-      .stroke({ color: 0x0b1220, width: 1.5 * k, alpha: 0.9 });
+      .poly(hint)
+      .fill({ color: node.ownerRingTint, alpha: 0.18 })
+      .poly(hint)
+      .stroke({
+        color: node.ownerRingTint,
+        width: Math.max(1.5 * k, extent * 0.025),
+        alpha: 0.8,
+        join: 'round',
+      });
   }
 
   // ─────────────── sceneria: zaznaczanie, obrys i dwuklik (27k) ───────────────
@@ -3676,7 +3690,7 @@ export class MapRenderer {
    * turn. Pointing „up" when the figure has never been turned, so the handle is
    * always somewhere the hand can find it rather than nowhere at all.
    */
-  private facingKnob(): (ScenePoint & { centre: ScenePoint }) | null {
+  private facingKnob(): (ScenePoint & { centre: ScenePoint; reach: number }) | null {
     const scene = this.scene;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     if (!scene || !node || node.destroyed) return null;
@@ -3684,14 +3698,21 @@ export class MapRenderer {
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
     const centre = { x: node.x + half, y: node.y + half };
-    // Jak przy obrączce zaznaczenia (12.09): uchwyt ma zostać poza oprawą
-    // figury, a tą bywa od 12.09 pasek życia, nie krawędź kratki.
-    const distance = Math.max(half, node.outerRadius) + 22 * k;
+    // Od 26.09 uchwytem jest sam grot, więc punkt chwytu leży w połowie jego
+    // długości. Ale grot liczy się w pikselach świata i przy oddaleniu ma kilka
+    // pikseli ekranu — cel chwytu (`reach`, w pikselach ekranu 10) wystaje wtedy
+    // poza narysowany grot na zewnątrz, **nie do środka**: strefa chwytu wpuszczona
+    // w figurę zabierałaby przeciąganie figury za jej brzeg.
+    const outer = Math.max(half, node.outerRadius);
+    const tip = noseLength(half * 2);
+    const reach = Math.max(10 * k, tip * 0.6);
+    const distance = Math.max(outer + NOSE_GAP + tip / 2, outer + reach * 0.8);
     const angle = (((this.rotating?.facing ?? node.facing ?? 0) - 90) * Math.PI) / 180;
     return {
       x: centre.x + Math.cos(angle) * distance,
       y: centre.y + Math.sin(angle) * distance,
       centre,
+      reach,
     };
   }
 
@@ -3700,7 +3721,7 @@ export class MapRenderer {
     const knob = this.facingKnob();
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     if (!knob || !node) return false;
-    if (Math.hypot(point.x - knob.x, point.y - knob.y) > 11 * this.overlayScale()) return false;
+    if (Math.hypot(point.x - knob.x, point.y - knob.y) > knob.reach) return false;
     this.rotating = { tokenId: node.tokenId, facing: node.facing ?? 0 };
     this.viewport?.plugins.pause('drag');
     this.app.stage.eventMode = 'static';
@@ -6974,6 +6995,41 @@ export class MapRenderer {
       this.moveGroupWith(drag.node, snapScene, true);
       this.groupDrag = null;
     }
+  }
+
+  /**
+   * Punkt świata pod kursorem przeglądarki (26.09) — dla żetonu upuszczonego
+   * z panelu, który przychodzi zdarzeniem DOM, a nie zdarzeniem Pixi.
+   */
+  clientToWorld(clientX: number, clientY: number): ScenePoint | null {
+    const viewport = this.viewport;
+    if (this.destroyed || !viewport) return null;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const world = viewport.toWorld(clientX - rect.left, clientY - rect.top);
+    return { x: world.x, y: world.y };
+  }
+
+  /**
+   * Obrys pola, na którym stanie żeton przeciągany z panelu (26.09), albo
+   * nic, gdy `centre` jest `null`.
+   *
+   * Ten sam `dragGhost` i to samo przyciąganie do kratki co przy przesuwaniu
+   * figury: serwer i tak dociąga nowy żeton do kratki, więc obrys pokazuje,
+   * gdzie figura naprawdę wyląduje, a nie gdzie jest kursor.
+   */
+  showDropGhost(centre: ScenePoint | null, size = 1): void {
+    if (this.destroyed) return;
+    this.dragGhost.clear();
+    const snapScene = this.snapScene();
+    if (!centre || !snapScene) return;
+    const extent = size * snapScene.grid.sizePx;
+    const free = clampTokenPosition(centre.x - extent / 2, centre.y - extent / 2, size, snapScene);
+    const landing =
+      snapScene.gridMode === 'grid' ? snapTokenPosition(free.x, free.y, size, snapScene) : free;
+    this.dragGhost
+      .rect(landing.x, landing.y, extent, extent)
+      .stroke({ color: 0xfacc15, width: 2, alpha: 0.9 })
+      .fill({ color: 0xfacc15, alpha: 0.12 });
   }
 
   /**

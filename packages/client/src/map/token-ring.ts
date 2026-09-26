@@ -132,3 +132,59 @@ export function fogPeepRadius(furniture: number, gridSizePx: number): number {
  * gaśnie gładko do zera na samym brzegu.
  */
 export const FOG_PEEP_CORE_RATIO = 0.75;
+
+/**
+ * Wymiary grotu kierunku (27j, kształt grotu z 26.09) — długość od brzegu
+ * oprawy do czubka i połowa rozpiętości skrzydeł, w pikselach świata.
+ *
+ * Tutaj, a nie w `TokenNode`, bo od 26.09 czyta je także uchwyt obrotu:
+ * uchwytem jest **sam grot** — bez patyka wbitego w środek portretu (MG:
+ * „cienka biała kreska idąca od środka tokenu") i bez kropki na czubku.
+ */
+export function noseLength(extent: number): number {
+  // 26.09 powiększony z 0,22 kratki (MG: „lepiej większy grot") — przy stole
+  // żeton ma kilkadziesiąt pikseli ekranu i dawny grot był kilkupikselowym
+  // ząbkiem, na którym nie było widać ani kształtu, ani koloru obrysu.
+  return Math.max(12, extent * 0.3);
+}
+
+export function noseHalfWidth(extent: number): number {
+  return Math.max(8, extent * 0.2);
+}
+
+/** Prześwit między brzegiem oprawy a nasadą grotu. */
+export const NOSE_GAP = 1;
+
+/**
+ * Wierzchołki grotu z wcięciem (26.09) — czubek, skrzydło, wcięcie, skrzydło —
+ * jako płaska lista dla `Graphics.poly`.
+ *
+ * Wspólne dla grotu na figurze (`TokenNode`) i dla bladego zarysu, którym
+ * nakładka zaznaczenia pokazuje, że figurę bez kierunku da się obrócić.
+ * `angle` w radianach ekranu (0 = w prawo), `base` — promień nasady.
+ */
+export function nosePolygon(
+  cx: number,
+  cy: number,
+  angle: number,
+  base: number,
+  extent: number,
+): number[] {
+  const tip = noseLength(extent);
+  const half = noseHalfWidth(extent);
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  // Prostopadła do kierunku — oś skrzydeł grotu.
+  const px = -dy;
+  const py = dx;
+  return [
+    cx + dx * (base + tip),
+    cy + dy * (base + tip),
+    cx + dx * base + px * half,
+    cy + dy * base + py * half,
+    cx + dx * (base + tip * 0.42),
+    cy + dy * (base + tip * 0.42),
+    cx + dx * base - px * half,
+    cy + dy * base - py * half,
+  ];
+}

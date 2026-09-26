@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react';
 import {
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BLAST_SIDE_M,
@@ -40,6 +40,7 @@ import {
 import { exposeMapToE2E } from '../e2e-hook.js';
 import { partyStart } from '../map/camera.js';
 import { walkFloorFor } from '../map/walk-sight.js';
+import { isTokenDrag, readTokenDrag } from '../map/token-drag.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -138,6 +139,7 @@ import {
   currentWallArmor,
   ensureCoverCatalogueLoaded,
   useMapToolStore,
+  type TokenPlacement,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { SightingWindow } from './SightingWindow.js';
@@ -452,6 +454,35 @@ function tokensSeenFrom(
   return seen;
 }
 
+/**
+ * Stawia żeton z ręki MG na punkcie świata — wspólne dla kliknięcia w mapę
+ * i dla przeciągnięcia z panelu (26.09).
+ */
+function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: number): boolean {
+  const current = useSceneStore.getState().effectiveScene;
+  if (!current) return false;
+  const extent = current.grid.sizePx;
+  void createToken({
+    sceneId: current.id,
+    name: pending.name,
+    imageUrl: pending.imageUrl,
+    // Center the new token on the clicked point; the server snaps it.
+    x: worldX - extent / 2,
+    y: worldY - extent / 2,
+    // Żeton postaci (28.08): wiązanie z kartą i właściciel przepisany z niej,
+    // dokładnie tak, jak stawia figurę kreator (`createCharacterToken`).
+    // Bez `characterId` powstaje pusty żeton z biblioteki — i to jest różnica
+    // między „dorobiłem żeton Kolca" a „postawiłem krążek o tej samej nazwie".
+    ...(pending.characterId
+      ? { characterId: pending.characterId, ownerId: pending.ownerId ?? null }
+      : {}),
+  }).then((ack) => {
+    if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+  });
+  useMapToolStore.getState().setTokenPlacement(null);
+  return true;
+}
+
 export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -508,27 +539,49 @@ export function MapArea() {
 
   const placeToken = useCallback((worldX: number, worldY: number): boolean => {
     const pending = useMapToolStore.getState().tokenPlacement;
-    const current = useSceneStore.getState().effectiveScene;
-    if (!pending || !current) return false;
-    const extent = current.grid.sizePx;
-    void createToken({
-      sceneId: current.id,
-      name: pending.name,
-      imageUrl: pending.imageUrl,
-      // Center the new token on the clicked point; the server snaps it.
-      x: worldX - extent / 2,
-      y: worldY - extent / 2,
-      // Żeton postaci (28.08): wiązanie z kartą i właściciel przepisany z niej,
-      // dokładnie tak, jak stawia figurę kreator (`createCharacterToken`).
-      // Bez `characterId` powstaje pusty żeton z biblioteki — i to jest różnica
-      // między „dorobiłem żeton Kolca" a „postawiłem krążek o tej samej nazwie".
-      ...(pending.characterId
-        ? { characterId: pending.characterId, ownerId: pending.ownerId ?? null }
-        : {}),
-    });
-    useMapToolStore.getState().setTokenPlacement(null);
-    return true;
+    if (!pending) return false;
+    return createPlacedToken(pending, worldX, worldY);
   }, []);
+
+  /**
+   * Żeton przeciągnięty z panelu (26.09): nad mapą obrys pola lądowania,
+   * po upuszczeniu ten sam `token:create` co z kliknięcia. Tylko MG — panele,
+   * z których da się żeton wyciągnąć, i tak widzi tylko on.
+   */
+  const onTokenDragOver = useCallback(
+    (event: ReactDragEvent<HTMLElement>) => {
+      if (!isGm || !isTokenDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      const renderer = rendererRef.current;
+      renderer?.showDropGhost(renderer.clientToWorld(event.clientX, event.clientY));
+    },
+    [isGm],
+  );
+
+  const onTokenDragLeave = useCallback((event: ReactDragEvent<HTMLElement>) => {
+    // `dragleave` przychodzi także przy przejściu nad dziecko sekcji (podpowiedź,
+    // spinner) — obrys gaśnie dopiero, gdy kursor naprawdę opuścił mapę.
+    const next = event.relatedTarget;
+    if (next instanceof Node && event.currentTarget.contains(next)) return;
+    rendererRef.current?.showDropGhost(null);
+  }, []);
+
+  const onTokenDrop = useCallback(
+    (event: ReactDragEvent<HTMLElement>) => {
+      if (!isGm || !isTokenDrag(event)) return;
+      event.preventDefault();
+      const renderer = rendererRef.current;
+      renderer?.showDropGhost(null);
+      const pending = readTokenDrag(event);
+      const world = renderer?.clientToWorld(event.clientX, event.clientY);
+      if (!pending || !world) return;
+      // Odkłada też żeton wzięty wcześniej kliknięciem — po upuszczeniu ręka
+      // ma być pusta, a nie czekać na drugi klik w mapę.
+      createPlacedToken(pending, world.x, world.y);
+    },
+    [isGm],
+  );
 
   /**
    * What a bare click on the map means, in the order the answers outrank each
@@ -1945,7 +1998,12 @@ export function MapArea() {
   // i tak nie wyjeżdża poza mapę, ale gdyby kiedyś wyjechała — pod spodem ma
   // być sam ciemny stół, tak jak pod mapą powitalną.
   return (
-    <section className={`map-area${!isGm ? ' map-area--plain' : ''}`}>
+    <section
+      className={`map-area${!isGm ? ' map-area--plain' : ''}`}
+      onDragOver={onTokenDragOver}
+      onDragLeave={onTokenDragLeave}
+      onDrop={onTokenDrop}
+    >
       <div
         ref={hostRef}
         className={`map-canvas-host ${placement ? 'map-canvas-host--placing' : ''}`}

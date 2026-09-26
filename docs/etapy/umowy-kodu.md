@@ -15,10 +15,24 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Grot kierunku jest uchwytem obrotu; żeton z panelu przeciąga się na mapę (26.09)** — kształt grotu ma jedno źródło: `nosePolygon` / `noseLength` w `map/token-ring.ts` (figura i nakładka). Nowe źródło przeciągania żetonu woła `startTokenDrag(event, TokenPlacement)` z `map/token-drag.ts`; mapa przyjmuje tylko typ `TOKEN_DRAG_MIME` i stawia przez to samo `createPlacedToken` co klik.
 - **Figury gracza leżą nad cudzymi (25.09)** — `tokenLayer` z `sortableChildren`, `node.zIndex = 1` dla figury, którą widz prowadzi, gdy nie jest MG. Stos na jednej kratce jest dozwolony, a Pixi oddaje klik figurze z wierzchu; u MG kolejność zostaje kolejnością wstawiania. Nowa warstwa w `tokenLayer` musi pamiętać o `zIndex`.
 - **Siatka wyłącznie dla MG (20.09)** — `MapRenderer.drawGrid` wymaga `viewerIsGm`; `setTokens` przerysowuje ją przy zmianie roli. `scene.grid.visible` steruje tylko widokiem MG, gracz nigdy nie widzi nakładki siatki (także przy kontraście edytora i na mapie powitalnej). Kratkę CSS poza mapą nadal usuwa `map-area--plain`. Geometria ruchu i pomiary zachowują parametry siatki.
 - **Siatka nie wystaje poza mapę u gracza (18.09)** — linie siatki liczy `gridLinePositions` w `map/grid-style.ts` i **pomija te na brzegu mapy** (tolerancja `GRID_EDGE_TOLERANCE_PX`); `drawGrid` tylko je rysuje. Kratka stołu w tle `.map-area` gaśnie u gracza klasą `map-area--plain` (dawne `map-area--welcome`, teraz dla każdej sceny gracza); MG ją zachowuje.
 - **Pod ręczną mgłą gracz chodzi tylko po odsłoniętym (14.09)** — jedno pytanie dla planera i serwera: `fogFloorPassable` (`shared/fog.ts`: odsłonięte albo pola, na których figura stoi) sprawdzane przez `firstClosedFloorStep` (`shared/pathfinding.ts`, próbka `everyRunCell` — ta sama co wygładzanie). Serwer: `refuseWalkIntoFog` **przed** `refuseWalkThroughSolid`. Klient: `walkFloorFor` → `'revealed'` i `setWalkPassable(passable, canStep, enforcedFloor)`; `enforcedFloor` pilnuje lądowań w `clipToBudget` i `marchLanding` i podaje się go **tylko** tam, gdzie serwer sam egzekwuje podłogę.
+
+**Grot kierunku jest uchwytem obrotu; żeton z panelu przeciąga się na mapę (zlecenie MG, 26.09).**
+Uchwyt obrotu zaznaczonej figury to od 26.09 **sam grot**: zniknął biały patyk od środka figury
+do kropki (przecinał portret) i sama kropka (MG: „niepotrzebna”). Punkt chwytu liczy
+`facingKnob` w połowie grotu, a strefa chwytu (`reach`, co najmniej 10 px ekranu) przy oddaleniu
+wystaje **na zewnątrz**, nigdy w głąb figury — inaczej zabierałaby przeciąganie figury za brzeg.
+Figura bez kierunku pokazuje po zaznaczeniu blady, pusty zarys grotu u góry (`drawSelectionRing`).
+Grot jest większy niż w 27j (0,3 kratki długości, 0,4 rozpiętości) i ma wcięcie; jego wierzchołki
+daje `nosePolygon`, a pilnuje ich `token-ring.test.ts` (cały grot za oprawą figury). Przeciąganie
+z panelu: `startTokenDrag` (kafel biblioteki, „Postaw pusty”, wiersz postaci i „⊕” — wszystko
+tylko u MG) → `onDragOver`/`onDrop` na `.map-area` → `MapRenderer.clientToWorld` +
+`showDropGhost` (żółty obrys pola lądowania) → `createPlacedToken`. Przesuwanie figur graczy przez
+MG było już wcześniej (`movable = isGm || właściciel`, serwer MG nie ogranicza).
 
 **Siatka nie wystaje poza mapę u gracza (zlecenie MG, 18.09).** Na zrzucie widać było dwie rzeczy: kratkowany margines stołu za krawędzią mapy i linię siatki leżącą dokładnie na brzegu obrazu (przy `offset = 0` i gdy kratka dzieli mapę równo, np. 40 × 36,2 = 1448) — ta linia nie oddziela pól, tylko robi za ramkę. `gridLinePositions(offset, size, extent)` oddaje pozycje linii wzdłuż osi bez tych bliżej brzegu niż `GRID_EDGE_TOLERANCE_PX` (1 px świata, co zbiera też ułamki z sumowania kratki). Kamera gracza i tak nie wyjeżdża poza mapę (`coverZoom`, 11.09), ale tło `.map-area` u gracza dostaje `map-area--plain` (sam ciemny stół) na każdej scenie, nie tylko pod mapą powitalną — gdyby kadr kiedyś wyszedł poza mapę, kratki stołu nie zobaczy. MG zachowuje kratkę stołu (robocza) i linie liczone tą samą funkcją.
 

@@ -96,8 +96,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1245** na serwerze, **286** u klienta,
-**59** w gatewayu, **40** E2E — zielone (26.09, poprawki #2–#9; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1245** na serwerze, **289** u klienta,
+**59** w gatewayu, **40** E2E — zielone (26.09, poprawki #2–#9, klient 26.09 druga; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -119,7 +119,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 47   | 20      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 48   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 17      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 22   | 14      |
@@ -142,6 +142,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 26.09 (druga) — grot kierunku jako uchwyt obrotu, żeton przeciągany z panelu na mapę
+
+**Zlecenie MG (poza etapami):** MG ma przeciągać figury graczy i stawiać nowe przeciągnięciem;
+cienka biała kreska od środka zaznaczonej figury do uchwytu obrotu — naprawić, najlepiej lepszą
+wizualizacją z widocznym portretem. W trakcie MG: kropka na czubku grotu „niepotrzebna”, grot
+„lepiej większy”.
+
+**Zrobione:** przesuwanie figur graczy przez MG już działało (bez zmian). **Nowe:** przeciąganie
+żetonu z panelu na mapę — kafel biblioteki, „Postaw pusty”, wiersz postaci i „⊕” (`map/token-drag.ts`,
+żółty obrys pola lądowania, ten sam `token:create` co klik; błąd trafia na czat). **Grot:** z wcięciem,
+większy (0,3 / 0,4 kratki), wspólny `nosePolygon`; **uchwytem obrotu jest sam grot** — bez patyka
+i bez kropki; figura bez kierunku pokazuje po zaznaczeniu blady zarys grotu u góry. Umowa w `mapa`.
+
+**Weryfikacja:** klient 289 (+3, `nosePolygon`), `tsc`, ESLint, Prettier czyste. Oglądane
+w Chromium (MG, Playwright): grot przy zbliżeniu stołu i z bliska, zarys dla figury bez kierunku,
+przeciągnięcie „Postaw pusty” i wiersza Franca (dubler z kartą i właścicielem, karta się nie
+otworzyła). W Firefoksie (MG): przeciągnięcie „Postaw pusty” i obrót za grot (zapis 111°).
+Kampania „Test2”: figury testowe „DnD test”, „DnD FF” i dubler Franca **usunięte**; kierunek
+Franca i Portosa ustawiany tylko lokalnie w magazynie (F5 przywraca). `dev.db` poza tym nietknięta.
 
 ### Sesja 26.09 — poprawki #2–#9 z rejestru testów (po T3b)
 
@@ -166,29 +186,3 @@ zostaje etapowi 28.
 na pustej instancji E2E: #6, okno zegara z nowym polem, #7; #8 i #9 sprawdza automat (Ola
 w Firefoksie). Karta gracza z Cechami `readOnly` nieoglądana okiem — ten sam `NumberStepper`
 co poziomy Umiejętności. `dev.db` nietknięta.
-
-### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze (własny kadr banera)
-
-**Zlecenie MG (poza etapami):** wyraźne powiadomienie MG o sprawach czekających na jego reakcję;
-w trakcie — kadr portretu z żetonu także w banerze lewego panelu. Rozstrzygnięcia MG: **wszystkie
-cztery źródła** (zgoda na postać, Ranga i „Przyjmij do gry”, prośby o Test, propozycje botów),
-**trwały znacznik + kafel**, kliknięcie **przenosi** do decyzji, **licznik w tytule karty**
-i **dźwięk dla każdej sprawy** (bez powiadomień systemowych); baner **w lewym panelu, ~1,5× szerzej**.
-
-**Zrobione:** `gm-attention.ts` (lista liczona z magazynów), `gmAttentionStore`, `GmAttention.tsx`
-w nowej kolumnie `.map-corner` nad dokiem handli, `watchGmAttention` w `socket.ts` (kafel i dźwięk
-tylko z pushy — F5 milczy), `data-attention` na pięciu rodzajach wierszy, przewinięcie z błyskiem
-w `SidePanel`. Prośba o Test dzwoni teraz stąd, nie z `chatNotification`. Baner: `portraitBannerPlacement`
-w `shared/portrait-crop.ts`. **Poprawka po uwadze MG („ucięte głowy”):** baner trzyma się góry —
-górna krawędź krążka żetonu u góry banera, portret bez kadru `object-position: 50% 0%` (było 22 %).
-**Własny kadr banera** (drugie zlecenie MG: właściciel kadruje oba wystąpienia): kolumny
-`PortraitAsset.bannerX/Y/Zoom` (migracja `portrait_banner_crop`), zakładki „Żeton” / „Baner”
-w oknie kadru, `bannerCrop` w `portrait:crop`, przycisk „Kadr portretu”. Trzy umowy w `ui`.
-
-**Weryfikacja:** klient 286, `shared` 2237, serwer 1228; `tsc`, ESLint, Prettier czyste. Oglądane
-w Chromium (MG) i Firefoksie (MG), gracz `Tester` na „Oględzinach 12.09” — prośba o zgodę i o Test,
-„Przejdź” do obu, F5 bez kafli, wycofanie zeruje znacznik i tytuł. Baner obejrzany na `avatar9`
-podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu); po poprawce — Franc i Portos
-z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Własny kadr banera Franca
-zapisany w Chromium, dotarł do Firefoksa, a potem przywrócony tam „Jak żeton” (stan jak przed próbą). Dźwięku nie słuchano — ścieżka
-`notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.

@@ -30,6 +30,7 @@ import { CreationGate } from './CreationGate.js';
 import { CreationRankPanel } from './CreationRankPanel.js';
 import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
+import { startTokenDrag } from '../map/token-drag.js';
 
 interface PlayerOption {
   id: string;
@@ -297,7 +298,21 @@ export function CharacterPanel() {
                   type="button"
                   className="character-open"
                   onClick={() => openSheet(id)}
-                  title="Otwórz kartę"
+                  // MG wyciąga postać prosto na mapę (26.09) — ten sam żeton
+                  // co „⊕", z kartą i właścicielem.
+                  draggable={isGm}
+                  onDragStart={
+                    isGm
+                      ? (event) =>
+                          startTokenDrag(event, {
+                            name: character.name,
+                            imageUrl: character.portraitUrl,
+                            characterId: id,
+                            ownerId: character.ownerId,
+                          })
+                      : undefined
+                  }
+                  title={isGm ? 'Otwórz kartę — albo przeciągnij postać na mapę' : 'Otwórz kartę'}
                 >
                   {character.portraitUrl ? (
                     <img className="character-thumb" src={character.portraitUrl} alt="" />
@@ -493,6 +508,10 @@ function PlaceOnSceneButton({
     <button
       type="button"
       className={`small-button ${armed ? 'small-button--armed' : ''}`}
+      draggable
+      onDragStart={(event) =>
+        startTokenDrag(event, { name, imageUrl: portraitUrl, characterId, ownerId })
+      }
       onClick={() =>
         useMapToolStore
           .getState()
@@ -502,8 +521,8 @@ function PlaceOnSceneButton({
         armed
           ? 'Kliknij na mapie, żeby postawić figurę (Esc anuluje)'
           : onScene
-            ? `Ta postać ma już figurę na scenie — postawi się druga`
-            : 'Postaw figurę tej postaci na aktywnej scenie'
+            ? `Ta postać ma już figurę na scenie — postawi się druga (kliknij albo przeciągnij na mapę)`
+            : 'Postaw figurę tej postaci na aktywnej scenie (kliknij albo przeciągnij na mapę)'
       }
       aria-label={`Postaw na scenie: ${name}`}
     >
