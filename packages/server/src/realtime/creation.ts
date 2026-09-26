@@ -69,7 +69,7 @@ import {
   creationShopVerdict,
   type CreationShopRules,
 } from '@vtt/shared';
-import type { Character, CharacterDraft, Prisma } from '../generated/prisma/client.js';
+import type { Character, CharacterDraft, Prisma, Scene } from '../generated/prisma/client.js';
 import { usedPortraitUrls } from '../portraits.js';
 import { RealtimeError, defineEvent, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { createMixedRng } from './dice-rng.js';
@@ -1048,8 +1048,10 @@ async function finishResult(
 
 /**
  * The figure a waiting character asked for, placed when the GM lets it into
- * play (24.09). Without an active scene it stays owed and the GM places it by
- * hand — the same as a finish without a scene.
+ * play (24.09). Without an active scene it stays owed — `creationTokenDone`
+ * is still false — and `placeOwedCreationTokens` pays it on the next
+ * `scene:activate` (#9, 26.09): the wizard promised „Żeton stanie… gdy MG
+ * przyjmie", and before that nobody was told the promise had lapsed.
  */
 export async function placeApprovedCreationToken(
   deps: RealtimeDeps,
@@ -1059,6 +1061,46 @@ export async function placeApprovedCreationToken(
   if (character.creationTokenDone || character.creationDraftId === null) return;
   const scene = await getActiveScene(deps.ctx.prisma, campaignId);
   if (!scene) return;
+  await payCreationToken(deps, campaignId, scene, character);
+}
+
+/**
+ * Every figure still owed to a character let into play without an active
+ * scene (#9), placed on the scene the GM has just activated. A character still
+ * waiting for „Przyjmij do gry" is not owed yet — its figure walks on then.
+ */
+export async function placeOwedCreationTokens(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+): Promise<void> {
+  const owed = await deps.ctx.prisma.character.findMany({
+    where: {
+      campaignId,
+      playReady: true,
+      creationTokenDone: false,
+      creationDraftId: { not: null },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  for (const character of owed) await payCreationToken(deps, campaignId, scene, character);
+}
+
+async function payCreationToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  character: Character,
+): Promise<void> {
+  // A figure that already stands somewhere (the GM placed it by hand before
+  // `token:create` started paying the debt) closes it without a second one.
+  if (await deps.ctx.prisma.token.findFirst({ where: { characterId: character.id } })) {
+    await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { creationTokenDone: true },
+    });
+    return;
+  }
   try {
     await createCharacterToken(deps, campaignId, scene, character, true);
   } catch (error) {
@@ -1326,9 +1368,11 @@ export const creationLifepathRollEvent = defineCreationEvent<
 
     const next: CpredCreationDraft = { ...current, lifepath };
     const saved = await saveDraft(deps, campaignId, user.id, next);
-    // The dice sum means nothing (the faces are row numbers), so the card
-    // counts answers instead — the same reasoning as the stat spread above.
-    result.total = breakdown.length;
+    // One table (every player's throw since 24.09): the card's big number is
+    // the die, like any single roll — counting answers printed „1" next to a
+    // 5 (#4). Several tables are the GM's shortcut, where the sum of row
+    // numbers means nothing, so the card counts answers instead.
+    result.total = breakdown.length === 1 ? breakdown[0]!.value : breakdown.length;
     result.breakdown = breakdown;
     // Polish notation, like the stat spread's `10k10`: the two cards of the
     // wizard sit side by side on the chat at session zero.

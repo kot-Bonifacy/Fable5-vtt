@@ -201,6 +201,12 @@ export interface StateSyncPayload {
 export interface GameTimeSetPayload {
   step?: GameTimeStepId;
   minutes?: number;
+  /**
+   * #3 (26.09.2026): data startu kampanii — tylko razem z `minutes`. Miesiąc
+   * startu liczy się jako rozliczony, a skok nie proponuje odpoczynku: czas
+   * sprzed kampanii nie kosztuje czynszu i nikogo nie leczy.
+   */
+  start?: boolean;
 }
 
 export interface GameTimeBroadcast {

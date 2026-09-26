@@ -906,7 +906,9 @@ export function creationIssues(
     );
   }
   if (data.freeLanguage && !draft.lifepath.language.trim()) {
-    issues.push(issue('lifepath.language', 'Wpisz nazwę darmowego języka kultury pochodzenia.'));
+    issues.push(
+      issue('lifepath.language', 'Wybierz język ojczysty — darmowy język kultury pochodzenia.'),
+    );
   }
 
   if (lookup) {

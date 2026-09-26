@@ -244,6 +244,7 @@ describe('zegar świata na czacie', () => {
     expect(timeLogTitle('day', false)).toBe('Minęła doba');
     expect(timeLogTitle(null, false)).toBe('Zegar ustawiony');
     expect(timeLogTitle('day', true)).toBe('Zegar cofnięty');
+    expect(timeLogTitle(null, true, true)).toBe('Początek kampanii');
   });
 
   it('rodzaj `time` czyta się razem z papierami i pieniędzmi', () => {

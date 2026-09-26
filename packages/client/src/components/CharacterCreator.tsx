@@ -113,6 +113,7 @@ import {
 } from '../stores/creationStore.js';
 import { useRollStore, type PendingCreation } from '../stores/rollStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { RoleChoresList } from './RoleChores.js';
@@ -2682,7 +2683,7 @@ function SummaryStep({
               ? 'Bez żetonu na mapie.'
               : activeScene
                 ? `Stanie na aktywnej scenie „${activeScene.name}”.`
-                : 'Brak aktywnej sceny — po utworzeniu będzie można ponowić postawienie.'}
+                : 'Brak aktywnej sceny — stanie sam, gdy MG ją włączy.'}
           </dd>
         </div>
         <div>
@@ -2938,6 +2939,10 @@ interface CreatorFinished {
  * The wizard's last screen (naprawa 3a). The sheet is already open beside it;
  * this says where the token went — with the retry when it did not — and what
  * the character still lacks compared to the book, before the window closes.
+ *
+ * The approval and the figure are read **live** (#8, 26.09): the screen stays
+ * open while the GM presses „Przyjmij do gry", and a promise frozen at
+ * „Utwórz postać" kept saying „czeka na zatwierdzenie" after it had come.
  */
 function CreatorFinishedScreen({
   finished,
@@ -2959,7 +2964,17 @@ function CreatorFinishedScreen({
   const data = creationDataOf(registry);
   const { result, draft } = finished;
   const sheet = result.data as CpredCharacterData;
-  const retry = result.tokenStatus === 'no-scene' || result.tokenStatus === 'failed';
+  const playReady = useCharacterStore(
+    (s) => s.characters[result.id]?.playReady ?? result.playReady,
+  );
+  // The player always stands on the active scene, so a figure placed there
+  // reaches this store — the server sends it before the approved sheet.
+  const standing = useTokenStore((s) =>
+    Object.values(s.tokens).some((token) => token.characterId === result.id),
+  );
+  const tokenStatus = standing ? 'placed' : result.tokenStatus;
+  // #9: a figure owed without an active scene walks on at the next activation.
+  const retry = tokenStatus === 'failed';
 
   return (
     <div className="sheet-body creator-body">
@@ -2967,22 +2982,27 @@ function CreatorFinishedScreen({
         <p className="creator-notice creator-notice--done" role="status">
           Postać „{result.name}” utworzona — karta, eurodolce i zakupy są zapisane, a karta jest
           otwarta obok.
-          {!result.playReady &&
-            ' Teraz czeka na zatwierdzenie MG: do tego czasu karta jest tylko do podglądu.'}
+          {!playReady
+            ? ' Teraz czeka na zatwierdzenie MG: do tego czasu karta jest tylko do podglądu.'
+            : !result.playReady
+              ? ' MG przyjął ją do gry — karta jest już w pełni twoja.'
+              : null}
         </p>
 
         <dl className="creator-facts">
           <div>
             <dt>Żeton</dt>
             <dd>
-              {result.tokenStatus === 'placed'
+              {tokenStatus === 'placed'
                 ? 'Stoi na aktywnej scenie.'
-                : result.tokenStatus === 'awaiting-gm'
-                  ? 'Stanie na aktywnej scenie, gdy MG przyjmie postać do gry.'
-                  : result.tokenStatus === 'not-requested'
+                : tokenStatus === 'awaiting-gm'
+                  ? playReady
+                    ? 'Nie stoi: nie ma aktywnej sceny — stanie sam, gdy MG ją włączy.'
+                    : 'Stanie na aktywnej scenie, gdy MG przyjmie postać do gry.'
+                  : tokenStatus === 'not-requested'
                     ? 'Nie stawiano — tak wybrano w kroku „Opis”.'
-                    : result.tokenStatus === 'no-scene'
-                      ? 'Nie stoi: nie ma aktywnej sceny.'
+                    : tokenStatus === 'no-scene'
+                      ? 'Nie stoi: nie ma aktywnej sceny — stanie sam, gdy MG ją włączy.'
                       : 'Nie udało się potwierdzić postawienia.'}
             </dd>
           </div>
@@ -2998,11 +3018,8 @@ function CreatorFinishedScreen({
         {retry ? (
           <div className="creator-notice creator-notice--warn" role="alert">
             <p>
-              {result.tokenStatus === 'no-scene'
-                ? 'Gdy MG włączy scenę, ponów postawienie — karta nie powstanie drugi raz.'
-                : 'Ponowienie nie utworzy drugiej karty.'}{' '}
-              Po zamknięciu kreatora żeton postawi już tylko MG (⊕ przy postaci w zakładce
-              „Postacie”).
+              Ponowienie nie utworzy drugiej karty. Po zamknięciu kreatora żeton postawi już tylko
+              MG (⊕ przy postaci w zakładce „Postacie”).
             </p>
             <button type="button" className="small-button" disabled={busy} onClick={onRetryToken}>
               Ponów postawienie żetonu

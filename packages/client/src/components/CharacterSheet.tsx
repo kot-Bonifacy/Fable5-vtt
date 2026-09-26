@@ -1110,6 +1110,7 @@ function StatColumn({
   mayAsk: boolean;
 }) {
   const rollHint = rollHintFor(mayAsk);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const psychosis = cyberpsychosisFor(data.humanityCurrent);
   // Etap 39: to samo małe pole „z", którym Empatia mówi od 23a, ile jej realnie
   // działa — teraz dla każdej Cechy, którą przesunął efekt czasowy. Nowego
@@ -1140,6 +1141,10 @@ function StatColumn({
             min={CPRED_STAT_MIN}
             max={CPRED_STAT_MAX}
             value={data.stats[id]}
+            // #2 (26.09): Cechę rzuca się w kreatorze raz, a przerzut daje MG —
+            // u gracza pole jest do odczytu, jak poziom Umiejętności od 29a.
+            readOnly={!isGm}
+            {...(isGm ? {} : { title: 'Cechy zmienia MG.' })}
             onChange={(value) => setStat(id, value)}
             label={CPRED_STAT_LABELS[id].name}
           />

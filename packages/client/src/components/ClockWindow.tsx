@@ -51,6 +51,7 @@ export function ClockWindow() {
 
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<{ date: string; time: string } | null>(null);
+  const [start, setStart] = useState(false);
 
   const placement = useWindowPlacement('clock', () => ({
     x: Math.max(12, window.innerWidth - 460),
@@ -99,10 +100,18 @@ export function ClockWindow() {
       return;
     }
     setBusy(true);
-    const ack = await setGameTime({ minutes: wanted });
+    const ack = await setGameTime(start ? { minutes: wanted, start } : { minutes: wanted });
     setBusy(false);
     setDraft(null);
-    if (!ack.ok) addNote('Nie udało się ustawić zegara.');
+    if (!ack.ok) {
+      addNote('Nie udało się ustawić zegara.');
+      return;
+    }
+    // Start kampanii niczego nie proponuje — także odpoczynku z dawnych skoków.
+    if (start) {
+      clearRestDays();
+      setStart(false);
+    }
   }
 
   async function settle(preview: boolean) {
@@ -179,6 +188,17 @@ export function ClockWindow() {
               Ustaw
             </button>
           </div>
+          <label
+            className="settings-row settings-row--switch"
+            title="Od tej daty liczy się kampania: jej miesiąc uznaje się za rozliczony, a czasu wcześniej nikt nie odpoczywał ani nie płacił czynszu."
+          >
+            <input
+              type="checkbox"
+              checked={start}
+              onChange={(event) => setStart(event.target.checked)}
+            />
+            <span>Data startu kampanii</span>
+          </label>
           <p className="settings-hint">
             Zegar wolno cofnąć, ale cofnięcie <strong>niczego nie odwraca</strong>: pobrany czynsz
             zostaje pobrany, a wyleczone PW wyleczone.

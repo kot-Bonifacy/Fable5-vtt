@@ -104,6 +104,9 @@ export async function markMonthSettled(deps: RealtimeDeps, campaignId: string): 
  * zostaje pobrany, wyleczone PW wyleczone, a `settledMonth` się nie zmienia.
  * Karta czatu mówi to wprost, bo jedyną szkodą byłoby przekonanie MG, że
  * cofnięcie coś naprawia.
+ *
+ * Wyjątkiem jest **data startu** (`start`, #3): świadoma decyzja MG, że od tej
+ * chwili liczy się kampania — przestawia też `settledMonth`, w obie strony.
  */
 export const timeSetEvent = defineEvent<GameTimeSetPayload, GameTimeAck>({
   name: 'time:set',
@@ -114,6 +117,12 @@ export const timeSetEvent = defineEvent<GameTimeSetPayload, GameTimeAck>({
 
     const before = await campaignGameTime(deps.ctx.prisma, campaign.id);
     const step = payload?.step;
+    const start = payload?.start === true;
+    if (payload?.start !== undefined && typeof payload.start !== 'boolean') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    // Data startu to chwila, nie skok: „+1 h od startu" nie ma sensu.
+    if (start && step !== undefined) throw new RealtimeError('BAD_REQUEST');
     let minutes: number;
     if (step !== undefined) {
       if (!isGameTimeStepId(step)) throw new RealtimeError('BAD_REQUEST');
@@ -124,27 +133,36 @@ export const timeSetEvent = defineEvent<GameTimeSetPayload, GameTimeAck>({
       throw new RealtimeError('BAD_REQUEST');
     }
 
+    // #3 (26.09.2026): data startu stempluje swój miesiąc jako rozliczony —
+    // inaczej świeża kampania ustawiona na marzec zgłaszała czynsz za styczeń
+    // i luty, których przy stole nie było. Monit zapala dopiero następny
+    // pierwszy dzień miesiąca.
+    const settledMonth = start ? gameMonthKey(minutes) : before.settledMonth;
+
     // Zegar postawiony tam, gdzie już stoi, nie jest skokiem: karta „Minęło
     // zero minut" byłaby szumem w dzienniku sesji.
-    if (minutes === before.minutes) return { time: before, days: 0 };
+    if (minutes === before.minutes && settledMonth === before.settledMonth) {
+      return { time: before, days: 0 };
+    }
 
     await deps.ctx.prisma.campaign.update({
       where: { id: campaign.id },
-      data: { gameTime: minutes },
+      data: { gameTime: minutes, settledMonth },
     });
-    const after: GameTimeState = { ...before, minutes };
+    const after: GameTimeState = { minutes, settledMonth };
     broadcastGameTime(deps, campaign.id, after);
 
-    const backwards = minutes < before.minutes;
+    const backwards = !start && minutes < before.minutes;
     const entry: TimeLogEntry = {
-      title: timeLogTitle(step ?? null, backwards),
+      title: timeLogTitle(step ?? null, backwards, start),
       // Bez minut — dla wszystkich, także dla MG. Karta jest **cezurą**
       // („minęła noc"), a nie stemplem czasu: dokładna godzina mieszka w oknie
       // zegara, gdzie da się ją zmienić, a nie w dzienniku sesji, gdzie zostaje
       // na zawsze. Zostawienie jej tutaj odsłoniłoby też to, co pasek chowa.
       from: formatGameDayTime(before.minutes),
       to: formatGameDayTime(minutes),
-      days: gameDaysBetween(before.minutes, minutes),
+      // Start nie mierzy upływu: doby sprzed kampanii nie są odpoczynkiem.
+      days: start ? 0 : gameDaysBetween(before.minutes, minutes),
       ...(backwards ? { backwards: true } : {}),
     };
     const stored = await deps.ctx.prisma.chatMessage.create({

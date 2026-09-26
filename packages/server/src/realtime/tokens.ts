@@ -416,12 +416,17 @@ export async function createCharacterToken(
 }
 
 /**
- * A square near the middle of the scene that nobody is standing on. The search
- * spirals outward in grid steps, so five gangers built in one evening line up
- * instead of stacking into one disc.
+ * A square near the players' start (or the middle of the scene) that nobody
+ * is standing on. The search spirals outward in grid steps, so five gangers
+ * built in one evening line up instead of stacking into one disc.
  */
 async function freeSpot(prisma: PrismaClient, scene: Scene): Promise<{ x: number; y: number }> {
-  const spots = await freeSpotsNear(prisma, scene, null, 1);
+  // Figura gracza staje przy miejscu startu, jeśli MG je wyznaczył (26.09, #9):
+  // od tej poprawki żeton z kreatora wchodzi sam przy aktywacji sceny, a środek
+  // mapy bywa wnętrzem zamkniętego pokoju.
+  const spawn =
+    scene.spawnX !== null && scene.spawnY !== null ? { x: scene.spawnX, y: scene.spawnY } : null;
+  const spots = await freeSpotsNear(prisma, scene, spawn, 1);
   return spots[0]!;
 }
 
@@ -788,6 +793,14 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
         hpMax: hp?.max ?? null,
       },
     });
+    // #9 (26.09): figura postawiona ręką MG spłaca żeton obiecany w kreatorze —
+    // inaczej najbliższa aktywacja sceny postawiłaby drugą.
+    if (character && !character.creationTokenDone && character.creationDraftId !== null) {
+      await deps.ctx.prisma.character.update({
+        where: { id: character.id },
+        data: { creationTokenDone: true },
+      });
+    }
     const linked = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
     await emitTokenUpsert(deps, campaignId, scene, token, linked);
     return toTokenView(token, true, linked);

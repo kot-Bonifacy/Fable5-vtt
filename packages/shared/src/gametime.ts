@@ -421,8 +421,17 @@ export interface TimeLogEntry {
   backwards?: boolean;
 }
 
-/** Tytuł karty czatu dla danego skoku; ustawienie daty wprost ma własne zdanie. */
-export function timeLogTitle(step: GameTimeStepId | null, backwards: boolean): string {
+/**
+ * Tytuł karty czatu dla danego skoku; ustawienie daty wprost ma własne zdanie,
+ * a data startu kampanii (#3) jeszcze inne — także wtedy, gdy leży przed
+ * chwilą, w której stał zegar, bo to nie cofnięcie, tylko początek.
+ */
+export function timeLogTitle(
+  step: GameTimeStepId | null,
+  backwards: boolean,
+  start = false,
+): string {
+  if (start) return 'Początek kampanii';
   if (backwards) return 'Zegar cofnięty';
   if (step === null) return 'Zegar ustawiony';
   return gameTimeStep(step).past;

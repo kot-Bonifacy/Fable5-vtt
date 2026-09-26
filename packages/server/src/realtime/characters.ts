@@ -194,6 +194,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         throw new RealtimeError('FORBIDDEN');
       }
       if (!isGm && sheet.roleId !== undefined) throw new RealtimeError('FORBIDDEN');
+      // 26.09.2026 (#2, triaż MG): Cechy też. W kreatorze gracz rzuca każdą
+      // raz, a przerzut daje MG (`creation:reroll`) — łata karty po „Przyjmij
+      // do gry" byłaby darmowym przerzutem bez kości. MG zostaje polem, bo
+      // sędzia musi móc naprawić kartę; pula `luckCurrent` idzie obok.
+      if (!isGm && sheet.stats !== undefined) throw new RealtimeError('FORBIDDEN');
       // Stage 29b: and the list of previous Roles goes with it. Taking up a new
       // Role costs 60 PD and is gated on a rank (s. 143); a player who can type
       // the list makes both free. The GM keeps it — a referee has to be able to

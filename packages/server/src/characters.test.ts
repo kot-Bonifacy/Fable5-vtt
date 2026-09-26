@@ -259,12 +259,14 @@ describe('characters', () => {
     expect((await roundTrip(rogue)).characters).toHaveLength(0);
   });
 
-  it('owner edits propagate live to the GM, with derived HP recomputed', async () => {
-    const gmUpsert = waitFor<CharacterUpsertBroadcast>(gm, 'character:upsert');
+  it('sheet edits propagate live to the owner, with derived HP recomputed', async () => {
+    // Od #2 (26.09) Cechy pisze wyłącznie MG, więc kierunek jest odwrotny niż
+    // przed poprawką: MG zmienia, właściciel dostaje przeliczoną kartę.
+    const vexUpsert = waitFor<CharacterUpsertBroadcast>(vex, 'character:upsert');
     const sync = await roundTrip(vex);
     const current = sync.characters[0]!.data as CpredCharacterData;
 
-    const ack = await emitAck<CharacterView>(vex, 'character:update', {
+    const ack = await emitAck<CharacterView>(gm, 'character:update', {
       characterId: vexCharacterId,
       patch: { data: { stats: { ...current.stats, body: 2, will: 2 } } },
     });
@@ -274,7 +276,7 @@ describe('characters', () => {
     // 10 + 5*ceil((2+2)/2) = 20; hpCurrent clamped down from 35.
     expect(data.hpCurrent).toBe(20);
 
-    const received = await gmUpsert;
+    const received = await vexUpsert;
     expect((received.character.data as CpredCharacterData).stats.body).toBe(2);
   });
 
@@ -367,12 +369,15 @@ describe('characters', () => {
    * tyle że przez `character:advance`, który liczy cenę, a nie przez wpisanie
    * liczby. Te same drzwi, które `eddies` zamknęły w 23b.
    */
-  it('the player may no longer type PD, a skill level or the ability rank', async () => {
+  it('the player may no longer type PD, a skill level, the ability rank or a Stat', async () => {
+    const stats = ((await roundTrip(rogue)).characters[0]!.data as CpredCharacterData).stats;
     for (const data of [
       { improvementPoints: 45 },
       { skills: { perception: 7 } },
       { roleAbilityRank: 6 },
       { roleId: 'solo' },
+      // #2 (26.09): Cechę rzuca się w kreatorze raz, przerzut daje MG.
+      { stats: { ...stats, cool: stats.cool + 1 } },
     ]) {
       const ack = await emitAck<CharacterView>(rogue, 'character:update', {
         characterId: vexCharacterId,

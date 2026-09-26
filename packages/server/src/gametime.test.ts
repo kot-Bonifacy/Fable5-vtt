@@ -360,6 +360,60 @@ describe('zegar a rozliczenie miesiąca', () => {
   });
 });
 
+describe('data startu kampanii (#3)', () => {
+  it('stempluje swój miesiąc jako rozliczony i nie proponuje odpoczynku', async () => {
+    const gmConn = createSocket(gmCookie);
+    const gm = gmConn.socket;
+    await gmConn.firstSync;
+
+    const incoming = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const minutes = gameTimeFromInput('2045-06-14', '20:00')!;
+    const ack = await setTime(gm, { minutes, start: true });
+    // Pół roku od stycznia, a monitu nie ma: czas sprzed kampanii nie kosztuje.
+    expect(ack.time).toEqual({ minutes, settledMonth: '2045-06' });
+    expect(settleDue(ack.time)).toBe(false);
+    expect(ack.days).toBe(0);
+    expect(await storedTime()).toEqual({ gameTime: minutes, settledMonth: '2045-06' });
+
+    const message = (await incoming).message;
+    expect(message.time?.title).toBe('Początek kampanii');
+    expect(message.time?.days).toBe(0);
+    expect(message.time?.backwards).toBeUndefined();
+
+    // Następny pierwszy dzień miesiąca zapala monit jak zwykle.
+    const next = await setTime(gm, { minutes: gameTimeFromInput('2045-07-01', '09:00')! });
+    expect(settleDue(next.time)).toBe(true);
+  });
+
+  it('start wcześniejszy niż zegar nie jest cofnięciem i przestawia rozliczenie wstecz', async () => {
+    const gmConn = createSocket(gmCookie);
+    const gm = gmConn.socket;
+    await gmConn.firstSync;
+
+    const incoming = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = await setTime(gm, {
+      minutes: gameTimeFromInput('2045-02-10', '08:00')!,
+      start: true,
+    });
+    expect(ack.time.settledMonth).toBe('2045-02');
+    expect((await incoming).message.time?.backwards).toBeUndefined();
+  });
+
+  it('start tylko z datą wprost', async () => {
+    const gmConn = createSocket(gmCookie);
+    const gm = gmConn.socket;
+    await gmConn.firstSync;
+    const before = await storedTime();
+    for (const payload of [
+      { step: 'day', start: true },
+      { minutes: 39_447_840, start: 'tak' },
+    ]) {
+      expect(await emitAck(gm, 'time:set', payload)).toEqual({ ok: false, error: 'BAD_REQUEST' });
+    }
+    expect(await storedTime()).toEqual(before);
+  });
+});
+
 describe('zegar a dziennik kampanii', () => {
   it('wpis dziennika niesie datę świata obok daty realnej', async () => {
     const gmConn = createSocket(gmCookie);

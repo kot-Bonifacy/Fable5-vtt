@@ -472,6 +472,9 @@ export function MapArea() {
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useMapToolStore((s) => s.tokenPlacement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // #6 (26.09): scena należy do kampanii, więc MG bez kampanii dostaje radę
+  // o kampanii — „Sceny" są wtedy pustą zakładką bez przycisku „Nowa".
+  const noCampaign = useChatStore((s) => s.synced && s.campaign === null);
   const tool = useMapToolStore((s) => s.tool);
   const fogMode = useMapToolStore((s) => s.fogMode);
   const fogShape = useMapToolStore((s) => s.fogShape);
@@ -1954,9 +1957,11 @@ export function MapArea() {
       {!scene && (isGm || welcome === null) && (
         <div className="map-overlay">
           <p className="placeholder-text">
-            {isGm
-              ? 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.'
-              : 'Brak aktywnej sceny — MG musi ją aktywować.'}
+            {!isGm
+              ? 'Brak aktywnej sceny — MG musi ją aktywować.'
+              : noCampaign
+                ? 'Brak kampanii — załóż ją i aktywuj w „Panel MG” (u góry po prawej), potem utwórz scenę w zakładce „Sceny”.'
+                : 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.'}
           </p>
         </div>
       )}

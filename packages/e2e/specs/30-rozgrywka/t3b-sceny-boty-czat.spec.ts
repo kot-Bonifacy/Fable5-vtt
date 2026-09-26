@@ -414,18 +414,13 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     expect(npcCards).toHaveLength(5);
 
     // Figury graczy: postacie przyjęto w T3a bez aktywnej sceny, więc żeton z kreatora
-    // nie stanął (`placeApprovedCreationToken`) — MG stawia je ręką z panelu postaci.
-    await page.getByRole('button', { name: 'Postacie', exact: true }).click();
-    for (const [name, column] of [
-      ['Kowal', 8],
-      ['Iskra', 10],
-    ] as const) {
-      await page.getByRole('button', { name: `Postaw na scenie: ${name}` }).click();
-      await clickOnMap(page, cellCentre(cell, column, 21));
-      await expect
-        .poll(() => tokensOn(knajpaId).some((t) => t.characterId === characterId(name)))
-        .toBe(true);
-      await page.keyboard.press('Escape');
+    // czeka na aktywację sceny (#9) — MG niczego nie stawia ręką, a „Knajpa” tylko
+    // oglądana (nie aktywna) figur nie dostaje.
+    for (const name of ['Kowal', 'Iskra']) {
+      expect(
+        tokensOn(knajpaId).some((t) => t.characterId === characterId(name)),
+        name,
+      ).toBe(false);
     }
   });
 
@@ -555,7 +550,8 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
         )
         .toBe(knajpaId);
     }
-    // Figury graczy postawione w 3.11 czekają na tarasie, przy miejscu startu.
+    // #9: figury graczy przyjętych w T3a bez sceny wchodzą same przy aktywacji —
+    // na taras, przy miejscu startu (a nie na środek mapy).
     const byCard = (name: string) =>
       tokensOn(knajpaId).find((t) => t.characterId === characterId(name));
     await expect.poll(() => [!!byCard('Kowal'), !!byCard('Iskra')]).toEqual([true, true]);

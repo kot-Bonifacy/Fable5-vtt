@@ -13,11 +13,13 @@ import {
 /**
  * Loads the item compendium from JSON files (stage 13).
  *
- * Two directories, in order: `data/public/cpred/compendium` ships invented
- * sample entries with the repository, `data/private/cpred/compendium` holds
- * whatever the group imported from their own rulebook material and is
- * gitignored. Private files are read last, so they win on id collisions — and
- * a fresh clone without them still starts, just with the samples.
+ * Two directories: `data/public/cpred/compendium` ships invented sample
+ * entries with the repository, `data/private/cpred/compendium` holds whatever
+ * the group imported from their own rulebook material and is gitignored.
+ * **One or the other, never both** (#5, 26.09.2026): the samples exist so that
+ * a fresh clone starts, and next to the rulebook they were a shop shelf with
+ * „Zgrzyt 9" beside real guns. A private directory with at least one readable
+ * data file replaces the samples whole.
  */
 export async function loadCompendium(
   dataPublicDir: string,
@@ -25,27 +27,14 @@ export async function loadCompendium(
   log: FastifyBaseLogger,
 ): Promise<CompendiumRegistry> {
   const dirs = [
-    join(dataPublicDir, 'cpred', 'compendium'),
     join(dataPrivateDir, 'cpred', 'compendium'),
+    join(dataPublicDir, 'cpred', 'compendium'),
   ];
-  const files: unknown[] = [];
+  let files: unknown[] = [];
 
   for (const dir of dirs) {
-    let names: string[];
-    try {
-      names = await readdir(dir);
-    } catch {
-      continue; // Missing directory is normal: private data is optional.
-    }
-    for (const name of names.sort()) {
-      // The importers' reports sit next to the data but are not data itself.
-      if (!name.endsWith('.json') || name.startsWith('import-report')) continue;
-      try {
-        files.push(JSON.parse(await readFile(join(dir, name), 'utf8')));
-      } catch (error) {
-        log.warn({ err: error, file: join(dir, name) }, 'compendium file skipped');
-      }
-    }
+    files = await readCompendiumDir(dir, log);
+    if (files.length > 0) break;
   }
 
   if (files.length === 0) {
@@ -61,6 +50,27 @@ export async function loadCompendium(
     'compendium loaded',
   );
   return registry;
+}
+
+/** Every data file of one compendium directory; a missing directory is empty. */
+async function readCompendiumDir(dir: string, log: FastifyBaseLogger): Promise<unknown[]> {
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return []; // Missing directory is normal: private data is optional.
+  }
+  const files: unknown[] = [];
+  for (const name of names.sort()) {
+    // The importers' reports sit next to the data but are not data itself.
+    if (!name.endsWith('.json') || name.startsWith('import-report')) continue;
+    try {
+      files.push(JSON.parse(await readFile(join(dir, name), 'utf8')));
+    } catch (error) {
+      log.warn({ err: error, file: join(dir, name) }, 'compendium file skipped');
+    }
+  }
+  return files;
 }
 
 /**

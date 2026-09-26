@@ -4,6 +4,7 @@ import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import {
   buy,
+  creatorWindow,
   goToStep,
   lifepathAnswers,
   lifepathLeft,
@@ -109,19 +110,17 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     const clock = mg.page.getByRole('region', { name: 'Zegar świata' });
     await clock.getByLabel('Data w świecie gry').fill('2045-03-14');
     await clock.getByLabel('Godzina w świecie gry').fill('22:00');
+    // #3: data startu kampanii — miesiąc startu jest rozliczony, odpoczynku za
+    // 72 doby sprzed kampanii nikt nie proponuje.
+    await clock.getByLabel('Data startu kampanii').check();
     await clock.getByRole('button', { name: 'Ustaw' }).click();
     await expect(mg.page.locator('.top-bar-clock')).toHaveAttribute(
       'aria-label',
       /14 marca 2045, 22:00/,
     );
-    // Świeża kampania nie ma kogo rozliczać, a zegar i tak zgłasza zaległość (#3):
-    // MG czyści ją jednym „Rozlicz” — bez postaci nic nie kosztuje.
-    if (await clock.getByRole('button', { name: 'Rozlicz' }).isVisible()) {
-      await clock.getByRole('button', { name: 'Rozlicz' }).click();
-    }
     await expect(clock.getByText(/Nic nie czeka/)).toBeVisible();
-    const pomin = clock.getByRole('button', { name: 'Pomiń' });
-    if (await pomin.isVisible()) await pomin.click();
+    await expect(clock.getByRole('button', { name: 'Pomiń' })).toHaveCount(0);
+    await expect(clock.getByLabel('Data startu kampanii')).not.toBeChecked();
     await clock.getByRole('button', { name: 'Zamknij zegar' }).click();
 
     expect(
@@ -418,7 +417,8 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await goToStep(page, /Podsumowanie/);
     await window.getByRole('button', { name: 'Utwórz postać' }).click();
     await expect(window.getByText(/Postać „Iskra” utworzona/)).toBeVisible();
-    await window.getByRole('button', { name: 'Zamknij kreator' }).click();
+    await expect(window.getByText(/Teraz czeka na zatwierdzenie MG/)).toBeVisible();
+    // Ekran końcowy zostaje otwarty do „Przyjmij do gry” w 3.8 (#8).
     expect(sheetOf('Iskra').eddies).toBe(1_850);
   });
 
@@ -437,6 +437,14 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       .poll(() => [character('Kowal').playReady, character('Iskra').playReady])
       .toEqual([1, 1]);
     await expect(mg.page).not.toHaveTitle(/^\(\d+\) /);
+
+    // #8: ekran końcowy kreatora Oli wie o przyjęciu, a o żetonie mówi prawdę —
+    // sceny jeszcze nie ma, więc figura stanie przy jej aktywacji (#9, T3b 3.13).
+    const creator = creatorWindow(ola.page);
+    await expect(creator.getByText(/MG przyjął ją do gry/)).toBeVisible();
+    await expect(creator.getByText(/Teraz czeka na zatwierdzenie MG/)).toHaveCount(0);
+    await expect(creator.getByText(/stanie sam, gdy MG ją włączy/)).toBeVisible();
+    await creator.getByRole('button', { name: 'Zamknij kreator' }).click();
 
     // Karta gracza ma pełną listę z kompendium, nie 42 umiejętności próbki.
     const sheet = await openSheet(marek, 'Kowal');
@@ -470,7 +478,6 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
   });
 
   test('3.8 gracz nie podnosi sobie Cechy po przyjęciu (#2)', async () => {
-    test.fail(true, '#2: character:update przyjmuje od gracza nowe Cechy');
     const kowal = character('Kowal');
     const stats = sheetOf('Kowal').stats as Record<string, number>;
     const socket = await marek.socket();
@@ -537,7 +544,6 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
  */
 test.describe.serial('T3a: znalezione błędy', () => {
   test('#4 karta rzutu Ścieżki Życia pokazuje wynik kości, nie liczbę odpowiedzi', () => {
-    test.fail(true, '#4: total = liczba odpowiedzi (zawsze 1 przy rzucie po jednej tabeli)');
     const cards = query<{ payload: string }>(
       `SELECT payload FROM ChatMessage WHERE kind = 'roll' AND text LIKE 'Ścieżka Życia — %'`,
     ).map((row) => JSON.parse(row.payload) as { total: number; terms: { rolls: number[] }[] });
@@ -546,7 +552,6 @@ test.describe.serial('T3a: znalezione błędy', () => {
   });
 
   test('#5 kompendium z podręcznika nie miesza się z wymyśloną próbką z repo', async ({ cast }) => {
-    test.fail(true, '#5: wpisy `data/public/.../sample.json` stoją obok podręcznikowych');
     const sample = JSON.parse(
       readFileSync(join(REPO_DIR, 'data/public/cpred/compendium/sample.json'), 'utf8'),
     ) as { entries?: { id: string }[] } | { id: string }[];

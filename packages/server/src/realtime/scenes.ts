@@ -23,6 +23,7 @@ import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { forgetScene } from './undo-buffer.js';
+import { placeOwedCreationTokens } from './creation.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -281,6 +282,9 @@ export const sceneActivateEvent = defineEvent<SceneIdPayload>({
     const broadcast: SceneActivateBroadcast = { seq: deps.seqs.next(room), scene: view };
     deps.io.to(room).emit('scene:activate', broadcast);
     await emitSceneList(deps, campaignId);
+    // #9 (26.09): postać przyjęta do gry bez aktywnej sceny czekała na żeton.
+    // Po rozgłoszeniu, żeby gracze stali już na tej scenie, gdy figura wejdzie.
+    await placeOwedCreationTokens(deps, campaignId, activated);
   },
 });
 

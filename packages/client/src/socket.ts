@@ -4067,7 +4067,7 @@ export function saveCompendiumEntry(entry: unknown): Promise<SocketAck<Compendiu
  * się zegar cofnąć.
  */
 export function setGameTime(
-  payload: { step: GameTimeStepId } | { minutes: number },
+  payload: { step: GameTimeStepId } | { minutes: number; start?: boolean },
 ): Promise<SocketAck<GameTimeAck>> {
   return new Promise((resolve) => {
     if (!socket) {

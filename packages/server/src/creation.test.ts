@@ -841,6 +841,9 @@ describe('kreator postaci', () => {
       expect(broadcast.message.roll?.breakdown?.[0]?.label).toContain(
         rolled.draft.lifepath.lifeGoal,
       );
+      // #4 (26.09): the big number is the die, not „1 answer".
+      const die = broadcast.message.roll?.terms[0];
+      expect(die?.kind === 'dice' ? die.rolls[0] : null).toBe(broadcast.message.roll?.total);
     });
 
     it('answers the path one table per throw; many at once only for the GM', async () => {
@@ -878,7 +881,10 @@ describe('kreator postaci', () => {
         'creation:lifepath-roll',
       );
       expect(npc.draft.lifepath.hair).not.toBe('');
-      expect((await card).message.roll?.breakdown).toHaveLength(ids.length);
+      const npcCard = (await card).message.roll;
+      expect(npcCard?.breakdown).toHaveLength(ids.length);
+      // Many tables: the sum of row numbers means nothing, so it counts answers.
+      expect(npcCard?.total).toBe(ids.length);
       await emitAck(gm, 'creation:discard');
 
       expect(rolled.draft.lifepath.culture).not.toBe('');
@@ -1093,13 +1099,39 @@ describe('kreator postaci', () => {
   });
 
   describe('żeton po zakończeniu', () => {
-    it('walks the finished character onto the active scene', async () => {
+    /**
+     * #9 (26.09): „Zgrzyt" z przypadku wyżej został przyjęty do gry, gdy żadna
+     * scena nie była aktywna — żeton przepadał, choć kreator go obiecał. Teraz
+     * czeka na pierwszą aktywację sceny i staje na niej sam, dokładnie raz.
+     */
+    it('pays the token owed from an approval without a scene on the next activation', async () => {
+      const owed = await built.prisma.character.findFirstOrThrow({
+        where: { name: 'Zgrzyt', playReady: true },
+      });
+      expect(owed.creationTokenDone).toBe(false);
+      expect(await built.prisma.token.count({ where: { characterId: owed.id } })).toBe(0);
+
+      const placed: string[] = [];
+      const onUpsert = (payload: { token: { name: string } }) => placed.push(payload.token.name);
+      gm.on('token:upsert', onUpsert);
       const scene = data(
         await emitAck<{ id: string }>(gm, 'scene:create', { name: 'Zaułek' }),
         'scene:create',
       );
+      // The figures go out before the ack, and one socket keeps the order.
       expect((await emitAck(gm, 'scene:activate', { sceneId: scene.id })).ok).toBe(true);
+      expect(placed).toContain('Zgrzyt');
+      expect(await built.prisma.token.count({ where: { characterId: owed.id } })).toBe(1);
 
+      // The debt is paid: activating again places nothing more.
+      placed.length = 0;
+      expect((await emitAck(gm, 'scene:activate', { sceneId: scene.id })).ok).toBe(true);
+      gm.off('token:upsert', onUpsert);
+      expect(placed).toEqual([]);
+      expect(await built.prisma.token.count({ where: { characterId: owed.id } })).toBe(1);
+    });
+
+    it('walks the finished character onto the active scene', async () => {
       await allowCreation(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
       await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Na scenie' });
