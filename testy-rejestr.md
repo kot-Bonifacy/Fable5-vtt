@@ -24,8 +24,15 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 11  | T2   | B2   | serwer | Otwarte gniazdo działa po wylogowaniu i po wygaśnięciu sesji | gracz loguje się, gniazdo otwarte → `POST /api/auth/logout` (wiersz `Session` znika, HTTP 401, nowe gniazdo `UNAUTHORIZED`) → stare gniazdo dalej wysyła `chat:send` z sukcesem; to samo po `SESSION_TTL_DAYS`. Sesję sprawdza tylko `io.use` przy nawiązaniu | testy `6.2.8 otwarte gniazdo po wylogowaniu…` i `…wygasłej sesji traci prawa (#11)` (`test.fail`); **waga: decyzja MG z 26.09 (sesja T2) — B2 + zadanie Z** (Z8) | nowy | |
 | 12  | T2   | B2   | serwer | Logowanie MG bez limitu prób                             | 30 złych haseł pod rząd z jednego adresu → 30 × 401 w 0,3 s, bez 429 i bez opóźnienia; prawdziwe hasło dalej działa | testy `6.2.11 …30 złych prób…` (pomiar) i `…trafia na limit (#12)` (`test.fail`); plan 6.2.11: brak limitu = B2 i zadanie (Z6) | nowy | |
 | 13  | T2   | B1   | serwer | Zalew jednego gracza dławi innych ponad 5 s              | Marek wysyła naraz 500 `chat:send` i 2000 pośrednich `token:move` → czat Oli do MG dochodzi po 5,8–6,3 s, ruch MG u Oli po 5,8–6,3 s, czat MG na ekranie Oli (Firefox) po 6,8–7,7 s; zapisane 500/500, zero odmów. Diagnoza: same 2000 ruchów = 2,5 s (~1,2 ms/ruch), samo 500 wiadomości = 1,6 s (~3 ms/zapis); zwykły klient nie wysyła takiego tempa | test `6.2.4 zalew nie dławi innych graczy ponad 5 s (#13)` (`test.fail`), pomiar w adnotacji `6.2.4 zalew…`; **próg 5 s i waga B1: decyzja MG z 26.09 (sesja T2)**; lekarstwo = limit tempa (Z5) | nowy | |
-| 14  | T2   | B1   | postac | Gracz trwale usuwa własną postać przyjętą do gry         | `character:delete` z gniazda gracza z id własnej, przyjętej karty (Kowal) → `{ ok: true }`, karta z historią znika, figury tracą kartę. W UI ✕ „Usuń postać” ma wyłącznie MG; serwer sprawdza tylko właściciela (`characters.ts`) | test `6.2.2 gracz nie usuwa własnej postaci przyjętej do gry (#14)` (`test.fail`); znalezione śmieciami gracza (`id + null`). **triaż MG 26.09 (sesja T2): B1**, jak #2 — gracz wykonuje akcję MG, bezpowrotnie | nowy | |
+| 14  | T2   | B1   | postac | Gracz trwale usuwa własną postać przyjętą do gry         | `character:delete` z gniazda gracza z id własnej, przyjętej karty (Kowal) → `{ ok: true }`, karta z historią znika, figury tracą kartę. W UI ✕ „Usuń postać” ma wyłącznie MG; serwer sprawdza tylko właściciela (`characters.ts`) | test `6.2.2 gracz nie usuwa własnej postaci przyjętej do gry (#14)` (`test.fail`); znalezione śmieciami gracza (`id + null`). **triaż MG 26.09 (sesja T2): B1**, jak #2 — gracz wykonuje akcję MG, bezpowrotnie | retest OK | `0b30a71` |
 | 15  | T2   | B3   | serwer | Śmieciowe id kończą się `INTERNAL` zamiast odmowy (zbiorczo) | liczba spoza zakresu Int (`1e308`) albo zły typ trafia wprost do zapytania Prismy: gracz — `chat:history` (`beforeId`), `grapple:resist`, `facedown:resist`, `creation:finish` (`creationDraftId` nie-napis), `character:roll`, `check:request-cancel`, `inventory:respond`, `attack:evade`, `attack:smart`, `opening:toggle`, `drawing:update`, `drawing:delete`, `bot:proposal`; MG dodatkowo — `table:show`, `check:cancel`, `check:request-resolve`, `damage:apply`, `damage:undo`, `wall:update`/`delete`, `cover:update`/`delete`, `zone:update`/`fire`/`delete`, `light:update`/`delete`, `smoke:clear`, `netpoint:update`/`remove`, a `ai:ask` i `rules:ask` padają na `.trim is not a function`. Bez zapisu w bazie, serwer i klienci żyją | testy `6.2.3 śmieci gracza/MG: żadnego INTERNAL (#15)` (`test.fail`), lista w adnotacjach `fuzz-INTERNAL` i `fuzz-log`; **waga: decyzja MG z 26.09 (sesja T3a) — jeden zbiorczy B3** | nowy | |
+| 16  | T4a  | B1   | statysta | Statysta z karty strzela bez poziomu broni (`statBlock.weaponSkill`) | statysta z „Statystyk bojowych” (Zbir: Broń krótka 6) → MG zaznacza go i celuje z Alt w Kowala albo bot „Rzeźnik” gra turę → karta ataku: „Broń krótka (nietrenowana) +0” zamiast +6; to samo w turze bota. `attack:roll` z `characterId` bierze kartę wprost (`parseCharacterData`), bez `sheetForRoll` — ścieżka figury bez `characterId` dolicza poziom broni, ale klient i bot wysyłają `characterId`, bo od 38a statysta ma kartę | test `#16 statysta z karty strzela z poziomem broni` (`test.fail`), adnotacja „strzał Rzeźnika” w 4.4 (`Broń krótka (nietrenowana) 0`); `realtime/attacks.ts` ok. 940 (`character ? { data: parseCharacterData(…) }`) | naprawiony | `0b30a71` |
+| 17  | T4a  | B1   | dane   | Postać bez broni nie uderzy pięścią — brak wpisu Bijatyki i Sztuk walki | kompendium z `data/private`: typy „Bijatyka” i „Sztuki walki” istnieją (`weapon-types.json`), ale żaden wpis broni ich nie ma → filtr typów w Kompendium MG ich nie pokazuje, „+ Broń z katalogu” nic nie znajduje, pasek Iskry (bez broni) nie ma slotu ataku; atak wręcz bez broni wymaga wiersza typu Bijatyka (`UNARMED_TYPE_IDS`). Obejście MG: „+ Własny wpis” (Broń, typ Bijatyka) i „+ Broń z katalogu” na każdej karcie. **Triaż MG 26.09 (sesja T4a): B1** — pięść to akcja z podręcznika dostępna każdemu | test `#17 kompendium z podręcznika ma broń typu Bijatyka` (`test.fail`); scenariusz gra obejściem („Pięści” z własnego wpisu) | nowy | |
+| 18  | T4a  | B2   | dane   | Granatu ręcznego nie da się kupić ani dopisać z katalogu | typ „Granat” (6k6, rzucany, obszar 10×10 m, sklep: poziom 3) nie ma żadnego wpisu broni w kompendium z podręcznika; jedyny granat ręczny („Puszka hukowa”) był w wymyślonej próbce, którą #5 zdjął z kompendium. Obejście MG: „+ Własny wpis” (Broń, typ Granat, magazynek = liczba sztuk). **Triaż MG 26.09 (sesja T4a): B2** | test `#18 kompendium z podręcznika ma granat ręczny` (`test.fail`); scenariusz: „Granat odłamkowy” z własnego wpisu, 2/2 na karcie Kowala | nowy | |
+| 19  | T4a  | B1   | serwer | „Kończę turę” oddaje graczowi pełny widok walki MG | walka z ukrytą figurą (Cień) i klonem z aliasem → gracz w swojej turze klika „Kończę turę” → odpowiedź (ack) `combat:next` niesie `emitReloaded(…)`, czyli widok MG: ukryty uczestnik z `"hidden":true`, id jego figury i prawdziwe imię klona (`Szrama KANAREK-prawdziwe-imie`). Pushe `combat:update` do gracza są filtrowane, ack — nie. Ten sam `return emitReloaded(…)` kończy inne zdarzenia walki dostępne graczowi w `combat-actions.ts` (Akcja, Wstrzymanie, teren…) — do sprawdzenia przy poprawce. T2 tego nie złapał: podsłuch surowych gniazd nie sprawdzał kanarków w ackach | test `4.3 „Kończę turę” nie oddaje graczowi widoku walki MG (#19)` (`test.fail`), adnotacje „wyciek u Marek/Ola” z wycinkiem ramki `43…[{"ok":true,"data":{…}}]`; Marek (Chromium) i Ola (Firefox) | naprawiony | `0b30a71` |
+| 20  | T4a  | B1   | boty   | Propozycja bota zatwierdzona dwa razy wykonuje się dwa razy | tura bota (Propozycja) → MG klika „Zatwierdź” ponownie, zanim karta zmieni się na „Zatwierdzone” (klient MG wstrzymuje zmiany do końca animacji kości, więc to trwa kilkanaście sekund) → oba zatwierdzenia przechodzą; w jednym przebiegu Rzeźnik oddał 7 strzałów w jednej turze (`attack.count: 7`, `overspent: 5`), a kolejka gatewaya urosła do 6. `bot:proposal` sprawdza `resolution` przed `resolveBotCombatProposal` (akcja + następny krok bota), a zapisuje je po nim; bot działa ręką MG, więc budżet tury tylko liczy przekroczenie. Dwie ODMOWY naraz serwer rozstrzyga dobrze | test `#20 propozycję bota zatwierdza się raz` (`test.fail`) — dwa `bot:proposal` z `approve: true` naraz → oba `ok`; `realtime/bot-actions.ts` ok. 455–495 | naprawiony | `0b30a71` |
+| 21  | T4a  | B3   | boty   | „Brak połączenia z AI Gateway” przy zajętym modelu | gateway odpowiada 503 (pełna kolejka po #20 albo model chwilowo niegotowy) → karta tury bota i ślad u MG: „Brak połączenia z AI Gateway”, choć gateway żyje (`/health` = ok); dziennik decyzji ma `failure: "AI_UNAVAILABLE"`. `bot-combat.ts` podmienia każdy `run.failure` na to jedno zdanie — MG szuka awarii sieci zamiast poczekać | `.e2e/bot-decisions.jsonl` (lokalnie) z 26.09 17:48 i 17:53 — `tookMs` 13 i 6; `realtime/bot-combat.ts` ok. 833–841 | naprawiony | `0b30a71` |
+| 22  | poprawki 26.09 | B1 (do triażu MG) | atak | Strzał statysty utrwala na karcie podstawiony poziom broni | statysta z „Statystyk bojowych” (Broń krótka 4) strzela z żetonu → wydany nabój zapisuje na kartę **arkusz do rzutu** (`source.data`) zamiast karty z bazy → w `skills` zostaje `handgun: 4`, a podniesienie poziomu w edytorze przestaje działać (karta wygrywa z `statBlock.weaponSkill`); figura z Wartością bojową dostałaby tak wyzerowane Cechy. Znalezione przy poprawce #16, która bez tego rozszerzyłaby błąd na strzał po `characterId` | test serwera `fires by its card with the weapon level of its stat block (#16)` (karta po strzale ma tylko `evasion`, poziom 6 z edytora działa); `spendAttackCosts`, `jamPoorWeapon` w `realtime/attacks.ts` | naprawiony | `0b30a71` |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -39,6 +46,22 @@ bez `test.fail()`; #3 — krok 3.2 T3a przez nowe pole; #8 — krok 3.8 T3a (ekr
 w Firefoksie); #9 — krok 3.13 T3b (Kowal i Iskra wchodzą sami); cała suita 40/40 i T3a 16/16.
 #6 i #7 obejrzane w Firefoksie (Playwright MCP) na pustej instancji E2E — zrzuty
 `.playwright-mcp/fix-06-mg-bez-kampanii.png`, `fix-07-jezyk.png` (lokalnie).
+
+Poprawki #14, #16, #19, #20 i #21 (oraz znaleziony przy nich #22) zrobiono w sesji 26.09 (po T4a)
+**na zlecenie MG**, w jednym commicie `0b30a71`. Każda ma test serwera, który pada bez niej (sprawdzone
+cofnięciem poprawki): #19 — ack `combat:terrain` i `combat:next` gracza bez ukrytego uczestnika;
+#20 — dwa `bot:proposal` naraz → jedno `ok`, drugie `PROPOSAL_ALREADY_RESOLVED`, jeden rzut;
+#16/#22 — strzał statysty po karcie i po żetonie z poziomem 4, karta po strzale bez `handgun`;
+#14 — właściciel dostaje `FORBIDDEN` dla przyjętej karty, a kartę czekającą na MG może porzucić;
+#21 — gateway z 503 („kolejka pełna…”) daje w turze bota „Model jest zajęty albo jeszcze niegotowy
+(…) — AI Gateway działa, spróbuj za chwilę.”, ta sama różnica w nocie czatu bota u klienta.
+Serwer 1248/1248, klient 300/300. **Retest E2E:** #14 — T2b od `po-T3` 17/17 bez `test.fail()`
+(retest OK). #16, #19, #20 — znaczniki `test.fail()` zdjęte, ale **T4a nie przechodzi od obecnego
+`po-T3`**: ostatni pełny przebieg sesji T4a (20:18) nadpisał `po-T3` Kowalem z kreatora po
+poprawkach #2–#9 (MOVE 7, inne Cechy), a spec T4a jest skalibrowany pod stary stan (4.2: budżet
+6 m zamiast 10 m, strzał 21 zamiast 22; w tamtym pełnym przebiegu padł już 4.1) — testy #16, #19
+i #20 są za 4.2 w opisie seryjnym i zostały pominięte. Retest E2E tych trzech czeka na
+przekalibrowanie T4a.
 
 ## Zadania dla innych etapów (nie błędy)
 
@@ -59,6 +82,43 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 ## Starsze notatki sesji testowych
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
+
+### Sesja 26.09 — T3b: sceny, figury, boty, aktywacja i czat
+
+**Rozstrzygnięcia MG na starcie:** „Knajpa” Dynamiczna z ciemnością i pamięcią terenu, „Brama” na
+ręcznej mgle (odmowę ruchu w mgłę sprawdza T5); realistyczny plan ścian; Rzeźnik i Paser jako
+statyści z kartą i przypiętym botem; triaż #2 → **B1** (sekcja 2). Gateway z modelem na sesję.
+
+**Zrobione:** rozpoznanie UI w Playwright MCP (Chromium), potem `30-rozgrywka/t3b-sceny-boty-czat.spec.ts`
+(13 testów, ~1,5 min od `po-T3a`): „Knajpa” 33 × 24 z 60 odcinkami (44 ściany, 13 drzwi dla graczy,
+3 okna), rygiel na tylnych drzwiach z karty segmentu, dwa światła, notatka-kanarek, start na tarasie,
+widzenie po ciemku 4 m; „Brama” 40 × 30 z murem (OB 20, zasłania figury), bramą (OB 10), płotem,
+ścianami budynków, osłoną i ukrytym gniazdem Sieci. Statyści „Zbir”, klon „Zbir 2” przemianowany na
+imię-kanarek z aliasem „Ochroniarz”, Rzeźnik (45 PW), Paser, ukryty „Cień” — każdy z własną kartą NPC.
+Boty z szablonów („Solo — ochroniarz”, „Fikserka”), persony po polsku, sekrety-kanarki, karty
+statystów, Propozycja, Paser przypięty do „Knajpy”. Aktywacja bez F5, `MOVE_LOCKED` do zdjęcia
+blokady, Marek otwiera drzwi na taras i idzie do baru, Ola widzi salę przez okno (na ciemnej scenie
+okno nie zasłania), Paser w ciemności widoczny tylko z bliska, pamięć terenu po F5, marsz do kuchni
+staje przed zamkniętymi drzwiami. Paser odpowiada po polsku w 6–15 s; szepty w obie strony, handout
+tylko dla Oli; kanarki czyste (z kontrolą podsłuchu); punkt `po-T3`. Nowe fixtures: `scene.ts`,
+`maps.ts`; podsłuch zapisuje ramki w obie strony i przy porażce zostawia `<aktor>-ramki.txt`; hak E2E
+czyta też magazyny `bot`, `exploration`, `handout`.
+
+**Znalezione:** #9 B3 — żeton z kreatora przepada, gdy MG przyjmie postać bez aktywnej sceny (notatka
+T3a mówiła, że żetony „stają dopiero na aktywnej scenie” — nie stają; MG stawia je ręką „Postaw na
+scenie”, krok 3.11). Infrastruktura: headless Chromium Playwrighta renderował WebGL programowo (7,7
+kl./s, SwiftShader) — marsz szedł 5× wolniej i test padał na limicie; aktorzy Chromium mają od teraz
+`channel: 'chromium'` (GPU), całość z tym przyspieszyła (T3a+T3b z ~15 do 8 min). Cztery pułapki
+w `testy`. Obserwacje do sekcji 8: Paser nie zna swojego towaru i miesza idiomy; płynność bez GPU → T7.
+
+**Suita:** 40 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13; 3 `test.fail`), pełne `pnpm test:e2e`
+~8 min, **zielone dwa razy z rzędu**. Oglądane: MCP — MG i Marek w Chromium, stan `po-T3` u Oli
+w Firefoksie (sala przez okno, alias, szept, handout); automat — MG i Marek w Chromium, Ola
+w Firefoksie, headless.
+
+**Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`: Solo ma 4 pkt Zmysłu Walki do rozdzielenia;
+Rzeźnik gra turę botem (karta statysty, Propozycja); „Cień” ukryty w kuchni (kolumna 20, wiersz 15);
+Kowal stoi przy barze obok Pasera, Iskra na tarasie. Potem T2 (czeka na `po-T3` — już jest).
 
 ### Sesja 26.09 — T3a: kampania, gracze, zgody i oba kreatory (plan T2 → T3)
 

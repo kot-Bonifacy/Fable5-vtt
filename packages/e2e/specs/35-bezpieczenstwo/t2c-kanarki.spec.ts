@@ -1,12 +1,14 @@
 import type { APIRequestContext } from '@playwright/test';
 import type { Socket } from 'socket.io-client';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
-import { query, tableNames } from '../../fixtures/db.ts';
+import { query } from '../../fixtures/db.ts';
 import {
   campaignId,
+  canariesInDatabase,
   characterId,
   cookieHeader,
   apiGm,
+  ONLY_FROM,
   sceneId,
   startFromPoT3,
 } from '../../fixtures/nocna-zmiana.ts';
@@ -28,30 +30,6 @@ import { BASE_URL } from '../../instance/paths.ts';
  * Kanarek o nieznanej etykiecie jest tajny przed obojgiem, dopóki ktoś go nie
  * sklasyfikuje niżej.
  */
-
-/** Kanarki tajne tylko przed jednym graczem (reszta — przed obojgiem). */
-const ONLY_FROM: Record<string, 'Marek' | 'Ola'> = {
-  'szept-Oli': 'Marek', // szept Oli do MG
-  'handout-Oli': 'Marek', // handout pokazany tylko Oli
-  'notatka-Kowala': 'Ola', // notatka na karcie Marka
-  'szept-MG': 'Ola', // szept MG do Marka
-};
-
-const CANARY = /KANAREK-([\w-]+?)-[0-9A-F]{4}/g;
-
-/** Wszystkie kanarki w bazie E2E: kod → etykieta. */
-function canariesInDatabase(): Map<string, string> {
-  const found = new Map<string, string>();
-  for (const table of tableNames()) {
-    for (const row of query(`SELECT * FROM "${table}"`)) {
-      for (const value of Object.values(row)) {
-        if (typeof value !== 'string' || !value.includes('KANAREK-')) continue;
-        for (const match of value.matchAll(CANARY)) found.set(match[0], match[1]!);
-      }
-    }
-  }
-  return found;
-}
 
 async function cookieOf(actor: Actor): Promise<string> {
   const cookies = await actor.context.cookies(BASE_URL);

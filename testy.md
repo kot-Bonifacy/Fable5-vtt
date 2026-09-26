@@ -20,7 +20,8 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T2   | Bezpieczeństwo i autoryzacja                              | ✅     | 26.09.2026 |
 | T3a  | Rozgrywka 1a/4: kampania, gracze, zgody, oba kreatory     | ✅     | 26.09.2026 |
 | T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ✅     | 26.09.2026 |
-| T4   | Rozgrywka 2/4: walka pierwsza na scenie „Knajpa”          | ⬜     |            |
+| T4a  | Rozgrywka 2a/4: walka pierwsza — inicjatywa, tury 1. rundy | ✅     | 26.09.2026 |
+| T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ⬜     |            |
 | T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Brama”       | ⬜     |            |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
@@ -63,6 +64,10 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | widoczność scen        | **„Knajpa” Dynamiczna + ciemność + pamięć terenu, „Brama” na ręcznej mgle** (decyzja MG z 26.09, sesja T3b) — w Dynamicznej serwer nie sprawdza pola widzenia, więc odmowę ruchu w mgłę (`MOVE_INTO_FOG`) sprawdza T5 na „Bramie” |
 | plan ścian             | **realistyczny**, odczytany z obrazów map (`fixtures/maps.ts`); Rzeźnik i Paser to **statyści z kartą**, do których przypięto boty (decyzje MG z 26.09, sesja T3b) |
 | triaż #2               | gracz zmieniający własne Cechy po przyjęciu = **B1** (decyzja MG z 26.09, sesja T3b) |
+| podział T4             | **T4a** = kroki 4.1–4.5 i punkt `po-T4a` w środku pierwszej rundy, **T4b** = 4.6–4.10 i `po-T4` (decyzja MG z 26.09, sesja T4a) |
+| broń w T4              | granat Kowala i pięści Iskry z **własnych wpisów Kompendium MG** — katalog z podręcznika ich nie ma (#17, #18); Zmysł Walki Kowala: Błyskawiczna reakcja 1 + Precyzyjny atak 3; „Cień” w kolejce **od startu, ukryty** (decyzje MG z 26.09, sesja T4a) |
+| tura bota              | serwer przepuszcza nielegalną akcję bota = **B1**; tura wisi albo MG nie zamknie jej bez F5 = **B2**; głupia, ale legalna taktyka = obserwacja w sekcji 8 (decyzja MG z 26.09, sesja T4a) |
+| triaż #17              | postać bez broni nie uderzy pięścią (brak wpisu Bijatyki) = **B1**, granat bez wpisu (#18) = B2 (decyzja MG z 26.09, sesja T4a) |
 | triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
@@ -281,6 +286,12 @@ startuje z `po-T3a`). T2 czeka na `po-T3`.
 ### 5.2. T4 — Walka pierwsza („Knajpa”)
 
 Strony: Marek i Ola kontra dwaj statyści i bot „Rzeźnik”; „Cień” ukryty do połowy walki.
+
+**Podział (decyzja MG z 26.09, sesja T4a):** T4a to kroki 4.1–4.5 i punkt `po-T4a` w turze Cienia
+(plik `30-rozgrywka/t4a-*.spec.ts`), T4b — kroki 4.6–4.10 i `po-T4` (plik `t4b-*.spec.ts`, startuje
+z `po-T4a`). Przesunięcia z T4a do T4b: **strzał przez ścianę** (w 4.2 zamiast niego ukryty cel —
+`TOKEN_NOT_FOUND`; ściana dopiero na odsłoniętym Cieniu w kuchni, za zamkniętymi drzwiami) i **cios
+pięścią, który trafia** (w 4.3 tylko odmowa „za daleko” — Iskra stoi na tarasie).
 
 | #    | krok                                                                                                  | sprawdzamy                                                                                 |
 | ---- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -514,7 +525,13 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - bot-handlarz nie zna ekwipunku swojej karty — Paser obiecał „sztucery z tłumikami”, których nie
   ma, i mieszał idiomy („trzaska jak kaczka na deszczu”) — T3b, 26.09;
 - płynność u gracza bez akceleracji GPU (SwiftShader: 2–8 kl./s na ciemnej scenie z oświetleniem,
-  marsz zwalnia proporcjonalnie) — do pomiaru w T7.
+  marsz zwalnia proporcjonalnie) — do pomiaru w T7;
+- MG widzi rzuty graczy z opóźnieniem animacji kości (klient wstrzymuje skutek do jej końca) —
+  przy inicjatywie trzech rzutów pas MG dochodzi po ~15 s, a karta propozycji bota zmienia się na
+  „Zatwierdzone” po kilkunastu sekundach, co kusi do drugiego kliknięcia (#20) — T4a, 26.09;
+- w turze ukrytej figury gracze widzą, że nikt nie ma tury (brak podświetlenia na pasie) — to
+  zdradza, że ktoś ukryty działa; do oceny przy stole — T4a, 26.09;
+- odmiana w ustach bota: „Otwieram ogień do Iskrzy” (Rzeźnik, tura w walce) — T4a, 26.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -596,40 +613,3 @@ headless (XSS, zalew na ekranie Oli, F5 po śmieciach); reszta T2 bez UI (HTTP, 
 
 **Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`
 — jak w notatce T3b niżej. Poprawki #10–#15 w osobnej sesji; Z2–Z9 czekają na swoje etapy.
-
-### Sesja 26.09 — T3b: sceny, figury, boty, aktywacja i czat
-
-**Rozstrzygnięcia MG na starcie:** „Knajpa” Dynamiczna z ciemnością i pamięcią terenu, „Brama” na
-ręcznej mgle (odmowę ruchu w mgłę sprawdza T5); realistyczny plan ścian; Rzeźnik i Paser jako
-statyści z kartą i przypiętym botem; triaż #2 → **B1** (sekcja 2). Gateway z modelem na sesję.
-
-**Zrobione:** rozpoznanie UI w Playwright MCP (Chromium), potem `30-rozgrywka/t3b-sceny-boty-czat.spec.ts`
-(13 testów, ~1,5 min od `po-T3a`): „Knajpa” 33 × 24 z 60 odcinkami (44 ściany, 13 drzwi dla graczy,
-3 okna), rygiel na tylnych drzwiach z karty segmentu, dwa światła, notatka-kanarek, start na tarasie,
-widzenie po ciemku 4 m; „Brama” 40 × 30 z murem (OB 20, zasłania figury), bramą (OB 10), płotem,
-ścianami budynków, osłoną i ukrytym gniazdem Sieci. Statyści „Zbir”, klon „Zbir 2” przemianowany na
-imię-kanarek z aliasem „Ochroniarz”, Rzeźnik (45 PW), Paser, ukryty „Cień” — każdy z własną kartą NPC.
-Boty z szablonów („Solo — ochroniarz”, „Fikserka”), persony po polsku, sekrety-kanarki, karty
-statystów, Propozycja, Paser przypięty do „Knajpy”. Aktywacja bez F5, `MOVE_LOCKED` do zdjęcia
-blokady, Marek otwiera drzwi na taras i idzie do baru, Ola widzi salę przez okno (na ciemnej scenie
-okno nie zasłania), Paser w ciemności widoczny tylko z bliska, pamięć terenu po F5, marsz do kuchni
-staje przed zamkniętymi drzwiami. Paser odpowiada po polsku w 6–15 s; szepty w obie strony, handout
-tylko dla Oli; kanarki czyste (z kontrolą podsłuchu); punkt `po-T3`. Nowe fixtures: `scene.ts`,
-`maps.ts`; podsłuch zapisuje ramki w obie strony i przy porażce zostawia `<aktor>-ramki.txt`; hak E2E
-czyta też magazyny `bot`, `exploration`, `handout`.
-
-**Znalezione:** #9 B3 — żeton z kreatora przepada, gdy MG przyjmie postać bez aktywnej sceny (notatka
-T3a mówiła, że żetony „stają dopiero na aktywnej scenie” — nie stają; MG stawia je ręką „Postaw na
-scenie”, krok 3.11). Infrastruktura: headless Chromium Playwrighta renderował WebGL programowo (7,7
-kl./s, SwiftShader) — marsz szedł 5× wolniej i test padał na limicie; aktorzy Chromium mają od teraz
-`channel: 'chromium'` (GPU), całość z tym przyspieszyła (T3a+T3b z ~15 do 8 min). Cztery pułapki
-w `testy`. Obserwacje do sekcji 8: Paser nie zna swojego towaru i miesza idiomy; płynność bez GPU → T7.
-
-**Suita:** 40 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13; 3 `test.fail`), pełne `pnpm test:e2e`
-~8 min, **zielone dwa razy z rzędu**. Oglądane: MCP — MG i Marek w Chromium, stan `po-T3` u Oli
-w Firefoksie (sala przez okno, alias, szept, handout); automat — MG i Marek w Chromium, Ola
-w Firefoksie, headless.
-
-**Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`: Solo ma 4 pkt Zmysłu Walki do rozdzielenia;
-Rzeźnik gra turę botem (karta statysty, Propozycja); „Cień” ukryty w kuchni (kolumna 20, wiersz 15);
-Kowal stoi przy barze obok Pasera, Iskra na tarasie. Potem T2 (czeka na `po-T3` — już jest).

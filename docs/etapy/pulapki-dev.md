@@ -1664,6 +1664,11 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Rzut w teście szybszy niż animacja kości u innych aktorów** — klient wstrzymuje skutek rzutu do końca animacji (umowa `serwer`, 22.09), więc pas kolejki i karty u MG spóźniają się o kilka–kilkanaście sekund. Następny rzut dopiero po wyniku na ekranie odbiorcy; asercje UI po rzucie z limitem ≥ 30 s.
+- **Ponowny klik „Zatwierdź” propozycji bota wykonuje ją drugi raz (#20)** — karta długo nie zmienia się na „Zatwierdzone”, a `toPass` z klikiem w środku klika do skutku. Jeden klik, potem czekanie do 90 s; kolejka gatewaya po takim przebiegu zostaje pełna i następny przebieg dostaje 503 („Brak połączenia z AI Gateway”).
+- **Ack zdarzenia to też dane dla gracza** — podsłuch przeglądarki łapie ramki `43…` (odpowiedzi na własne żądania), a surowe gniazdo `socket.io-client` nie jest podsłuchiwane; wyciek przez ack (#19) widać tylko na karcie gracza. `Sniffer.evidence()` daje wycinek ramki, `mark()` — kontrolę po znanym wycieku.
+- **Klik w jedyny slot broni na pasku odkłada ją z ręki** — pasek sam bierze jedyną broń („W ręku: …”); klik w slot przed klikiem w cel rozbraja, a klik w cel robi z niego podgląd figury.
+- **`fitCamera` odrzuca kadr gracza** — asercja zakłada pasek narzędzi MG nad mapą; gracz ma niższy pasek, a scena i tak mieści się na ekranie: u graczy `.catch(() => undefined)`.
 - **Surowe gniazdo E2E wysyła zdarzenie przed przydziałem kampanii** — kampanię i pokoje gniazdo dostaje asynchronicznie po `connect`; zdarzenie wysłane od razu kończy się odmową „brak kampanii”, a test czyta to jako poprawną odmowę uprawnień. Czekaj na `state:sync` (`rawSocket` w `fixtures/security.ts`).
 - **Zaproszenia w punktach kontrolnych wygasają tydzień po zapisie punktu** (domyślny czas zaproszenia; `po-T3` z 26.09 — 03.10) — plik startujący z punktu bierze świeże zaproszenie z API MG (`invite()` w `fixtures/nocna-zmiana.ts`, `createInvitation` w `table.ts`), a nie wiersz z bazy. T3b z `E2E_FROM=po-T3a` czyta zaproszenia z bazy — po tygodniu pada na wejściu graczy; pełny przebieg od zera tego nie ma.
 - **Śmieciowe ładunki z prawdziwym id kasują cel reszcie prób** — `character:delete`, `scene:delete` z id i śmieciem w reszcie pól przechodzą; zdarzenia niszczące idą na koniec serii (`destructiveLast`), a to, co ma własny test, wypada z serii.
@@ -1697,6 +1702,35 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Rzut w teście szybszy niż animacja kości u innych aktorów (26.09, T4a).** Marek i Ola rzucali
+  inicjatywę kubkiem jedno po drugim, MG od razu „Rzuć wszystkim” i „Start”; baza miała już rundę 1,
+  ramki doszły do MG w 0,1 s, a pas MG przez 10 s pokazywał „Przed pierwszą rundą” z pustymi
+  inicjatywami. Na zrzucie MG toczyły się jeszcze kości Kowala: klient trzyma skutek rzutu do końca
+  animacji (`withPresentation`, umowa w `serwer`), więc każdy rzut przesuwa cały stan o kilka sekund.
+  Przy stole nikt tak szybko nie rzuca — w teście następny rzut dopiero po wyniku na pasie MG.
+
+- **Ponowny klik „Zatwierdź” propozycji bota (26.09, T4a).** Karta propozycji Rzeźnika przez 10 s
+  nie przeszła na „Zatwierdzone”; `expect(…).toPass()` z klikiem w środku klikał co 5 s. Serwer
+  przyjął każde kliknięcie (#20): 7 strzałów w jednej turze, `overspent: 5`, kolejka gatewaya 6 —
+  a dwa kolejne przebiegi dostały w 13 ms „Brak połączenia z AI Gateway” (w dzienniku decyzji
+  `AI_UNAVAILABLE`, czyli 503 z pełnej kolejki). Jeden klik i cierpliwość; po przerwanym przebiegu
+  z botem sprawdź `queue_length` w `/health` gatewaya, zanim uznasz 503 za błąd.
+
+- **Ack zdarzenia to też dane dla gracza (26.09, T4a).** Kanarki T2 sprawdzały pushe, `state:sync`,
+  listy i HTTP — surowe gniazda T2 nie mają podsłuchu, więc odpowiedzi na żądania gracza nikt nie
+  czytał. Wyciek #19 przyszedł ramką `4310[{"ok":true,"data":{…widok walki MG…}}]` — ackiem na
+  „Kończę turę”. Dziennik ramek tnie każdą do 600 znaków, a id figury było dalej; `Sniffer.evidence`
+  podaje wycinek wokół kodu z początkiem ramki (nazwa zdarzenia albo numer acka).
+
+- **Klik w jedyny slot broni odkłada ją z ręki (26.09, T4a).** Iskra z jedną bronią („Pięści”):
+  test klikał slot na pasku, potem Zbira — Zbir otworzył się jako „Podgląd”, a pasek zgubił broń.
+  Pasek uzbraja jedyną broń sam („W ręku: Pięści — kliknij cel”); klik w slot był drugim.
+
+- **`fitCamera` u gracza (26.09, T4a).** Asercja „scene top below the toolbar” (≥ górna krawędź
+  mapy + 90 px) liczy pasek narzędzi MG; gracz ma dwa przyciski, a kadr z kółka staje wyżej — cała
+  scena i tak jest na ekranie. T3b łapał to `.catch`, T4a też.
+
 
 - **Surowe gniazdo i kampania po połączeniu (26.09, T2).** `emitAck(chat:history)` zaraz po
   `connect` dostawało odmowę, choć ta sama sesja w przeglądarce czytała historię. Serwer w

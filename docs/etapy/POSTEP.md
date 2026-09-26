@@ -33,9 +33,16 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
 retescie tego samego dnia; T2 (bezpieczeństwo) zamknięty 26.09 z błędami #10–#15 do poprawki**
 (dwa B1: zalew dławiący innych #13 i usuwanie własnej przyjętej postaci #14, waga z triażu MG)
-**i zadaniami Z2–Z9 dla etapów 28 i „Konta MG”** — suita `packages/e2e` (`pnpm test:e2e`)
-stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T4** (walka
-pierwsza) od punktu `po-T3`. Kolejność (decyzja MG z 26.09):
+**i zadaniami Z2–Z9 dla etapów 28 i „Konta MG”; T4 podzielony (decyzja MG z 26.09) — T4a
+(inicjatywa i pierwsze tury walki w „Knajpie”) zamknięty 26.09 z błędami #16–#21: cztery B1 —
+statysta z karty strzela bez poziomu broni #16, postać bez broni nie uderzy pięścią #17, „Kończę
+turę” oddaje graczowi widok walki MG #19, podwójne „Zatwierdź” wykonuje propozycję bota dwa razy
+#20 — oraz granat bez wpisu w katalogu #18 (B2) i mylące „Brak połączenia z AI Gateway” #21 (B3);
+#14, #16, #19, #20, #21 i znaleziony przy nich #22 (zapis arkusza do rzutu na kartę statysty)
+naprawione tego samego dnia (`0b30a71`), retest E2E #16/#19/#20 czeka na przekalibrowanie specu
+T4a pod obecne `po-T3` (szczegóły pod tabelą błędów w rejestrze)**
+— suita `packages/e2e` (`pnpm test:e2e`) stawia izolowaną instancję z `dist/` na :3101/:4173
+i nie dotyka `dev.db`; **następny T4b** (granat, rany, Pochwycenie, łup) od punktu `po-T4a`. Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
@@ -126,19 +133,19 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 17      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 22   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 8    | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 35   | 8       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 9    | 5       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 36   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 45   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 7       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 4    | 7       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 3    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 27      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 32      |
 
 
 ## Notatki z dwóch ostatnich sesji

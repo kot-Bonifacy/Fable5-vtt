@@ -63,10 +63,35 @@ export class Sniffer {
     await Promise.all([...this.pending]);
   }
 
-  /** Kody kanarków z listy, które trafiły do gracza. */
-  async found(codes: Iterable<string>): Promise<string[]> {
+  /**
+   * Znacznik w podsłuchu: `found(codes, since)` patrzy wtedy tylko na treści
+   * odebrane później. Po znanym, zapisanym w rejestrze wycieku kolejne kontrole
+   * nie powtarzają go w nieskończoność, a dalej łapią każdy nowy.
+   */
+  async mark(): Promise<number> {
     await this.settle();
-    return [...codes].filter((code) => this.received.some((chunk) => chunk.includes(code)));
+    return this.received.length;
+  }
+
+  /** Kody kanarków z listy, które trafiły do gracza (od znacznika `since`). */
+  async found(codes: Iterable<string>, since = 0): Promise<string[]> {
+    await this.settle();
+    const received = this.received.slice(since);
+    return [...codes].filter((code) => received.some((chunk) => chunk.includes(code)));
+  }
+
+  /**
+   * Wycinek odebranej treści wokół kodu — dowód do rejestru błędów, gdy kanarek
+   * wyciekł (dziennik ramek tnie każdą do 600 znaków, a kod bywa dalej).
+   */
+  async evidence(code: string, since = 0, radius = 500): Promise<string | null> {
+    await this.settle();
+    const chunk = this.received.slice(since).find((text) => text.includes(code));
+    if (!chunk) return null;
+    const at = chunk.indexOf(code);
+    // Początek ramki niesie nazwę zdarzenia (`42["combat:update",…`).
+    const head = at - radius > 160 ? `${chunk.slice(0, 160)} … ` : '';
+    return head + chunk.slice(Math.max(0, at - radius), at + code.length + radius);
   }
 
   get size(): number {
