@@ -10,7 +10,7 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 VTT ma być serwerem dla kilku grup, każda z własnym MG. Dziś jest jedno konto MG (`User.role`
 globalne) i jedna aktywna kampania dla wszystkich (`campaign:activate` przenosi każdego
 połączonego gracza), a CLAUDE.md mówi „jedna aktywna sesja, nie optymalizuj pod multi-tenant” —
-do poprawienia razem z etapem, który to zmieni. Trzy pozycje:
+do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
 
 1. **Osobne konta MG z otwartą rejestracją — WARUNEK BETY.** Każdy MG zakłada konto sam (otwarta
    rejestracja, własne hasło), widzi i steruje tylko swoimi kampaniami, botami, architekturami Sieci
@@ -23,8 +23,16 @@ do poprawienia razem z etapem, który to zmieni. Trzy pozycje:
    w kampanii są **za logowaniem**, tylko dla jej członków; boty innych MG są w becie
    **niedostępne** (gateway właściciela obsługuje tylko jego kampanie); **kompendium z
    `data/private/` na VPS jest wspólne** dla wszystkich MG i graczy.
-2. **Równoległa gra kilku grup naraz — PO BECIE.** Kilka kampanii aktywnych jednocześnie, każda
-   ze swoim MG; wspólna karta GPU nie wchodzi w grę (każdy MG ma własne AI, pozycja 3).
+   **Korekta MG z 26.09 (trzecia tura):** boty innych MG przestają być z góry niedostępne —
+   MG może poprosić właściciela o dostęp do jego AI (pozycja 4).
+2. **Równoległa gra najwyżej dwóch grup — WCHODZI DO BETY, do etapu „Konta MG” (decyzja MG
+   z 26.09, trzecia tura; wcześniej „po becie”).** Serwer prowadzi **najwyżej dwie sesje naraz**
+   (dwie aktywne kampanie różnych MG). **Slot zajmuje start gry, nie logowanie:** trzeci MG loguje
+   się i przygotowuje swoją kampanię (sceny, karty, boty), a przy „Aktywuj kampanię” dostaje
+   komunikat, że wszystkie miejsca są zajęte i serwer nie obsłuży większej liczby sesji
+   równocześnie. Slot zwalnia MG, kończąc sesję, oraz serwer po bezczynności (próg do ustalenia
+   w etapie; bez tego porzucona sesja blokuje miejsce na zawsze). Limit w konfiguracji (env,
+   domyślnie 2), bo to granica VPS (8 GB / 4 vCPU), nie zasada gry. Wspólna karta GPU — pozycja 4.
 3. **Paczka instalacyjna AI dla innych MG — PO BECIE.** Gateway + llama-server + model na PC MG
    z RTX serii 5000 i co najmniej 16 GB VRAM, łatwe uruchomienie; VPS nie ma GPU, więc bez tego
    inni MG nie mają botów (VTT degraduje się łagodnie). Ustalone: **RAG podręcznika buduje się
@@ -34,3 +42,21 @@ do poprawienia razem z etapem, który to zmieni. Trzy pozycje:
    z kluczem konta MG) i jak VTT kieruje żądania AI kampanii do gatewaya jej MG. Oddzielone od
    testów bety decyzją MG z 26.09. Inni MG mają mieć możliwość **pobrania paczki** (np. odnośnik w panelu
    MG), która łatwo skonfiguruje ich komputer pod lokalne AI dla własnej sesji VTT.
+4. **Prośba MG o dostęp do AI właściciela (decyzja MG z 26.09, trzecia tura) — do etapu „Konta MG”
+   albo osobnego etapu zaraz po nim.** MG bez własnego AI wysyła z panelu MG prośbę do
+   **właściciela instancji** o udostępnienie jego AI (gateway + llama-server na PC właściciela),
+   żeby nie instalować paczki z pozycji 3. Ustalenia:
+   - **Właściciel to osobna flaga konta, nie rola MG.** Domyślnie właściciel jest **graczem**
+     w kampanii innego MG; prośbę widzi, gdy jest zalogowany (dowolna rola), i ją zatwierdza,
+     odrzuca albo później cofa. Prośba czeka w bazie, dopóki właściciel nie wejdzie.
+   - **Zatwierdzenie jest per kampania** (albo per konto MG — do ustalenia w etapie); tylko
+     zatwierdzone kampanie wysyłają żądania do gatewaya właściciela, reszta ma boty niedostępne
+     jak dziś (T9, punkt 8, zmieniony).
+   - **AI obsługuje najwyżej jedną kampanię naraz** (jedno GPU, `--parallel 1`). Druga zatwierdzona
+     kampania, gdy pierwsza gra, ma boty niedostępne z komunikatem „AI zajęte przez inną sesję”
+     i działa w pełni bez AI (łagodna degradacja). Do ustalenia w etapie: kto zajmuje AI (pierwszy
+     start sesji?) i czy własna kampania właściciela ma pierwszeństwo.
+   - **Kanał: Tailscale, jak w etapie 28** — VPS woła gateway po adresie tailnetowym, gateway nie
+     słucha na publicznym adresie, mimo że PC właściciela jest poza NAT-em.
+   - Kolekcje RAG pamięci i bazy wiedzy są per kampania, więc dane jednej kampanii nie trafiają do
+     botów drugiej — sprawdzić w etapie. RAG podręcznika jest wspólny, jak kompendium (pozycja 1).

@@ -54,7 +54,7 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | liczba graczy          | **do czterech** na grupę plus MG — test obciążenia w 6.3                                                                                                                  |
 | materiały              | mapy z `C:\AI\materialy\mapy`, portrety z `C:\AI\materialy\avatary` — wgrywane przez UI do instancji testowej, **nigdy do repo** (sekcja 4.6)                             |
 | kości i hak klienta    | zgoda na `VTT_DICE_SCRIPT` w serwerze (4.2) i `window.__vttE2E` w buildzie testowym klienta (4.3)                                                                         |
-| konta MG               | **osobne konta MG z otwartą rejestracją — warunek bety** (nowy etap przed 28, testy w T9); każdy MG widzi i steruje tylko swoim                                           |
+| konta MG               | **osobne konta MG z otwartą rejestracją — warunek bety** (nowy etap przed 28, testy w T9); każdy MG widzi i steruje tylko swoim; **najwyżej dwie sesje naraz** i **prośba MG o dostęp do AI właściciela** (26.09, trzecia tura) |
 | kolejność prac         | T1–T6 → refaktoryzacja → „Konta MG” → T9 → reszta (sesja T1, akapit „Kolejność” w sekcji 1); T1 bez modelu — testy `@llm` pomijane                                        |
 | poprawki w T1          | wyjątek od „tylko notuje”: bloker #1 (build `dist/` nie startował) naprawiony w T1, bo blokował samą infrastrukturę — w rejestrze jako „retest OK”                        |
 | T2 po T3               | **T2 czeka na T3** (decyzja MG z 26.09, sesja T2): stan do macierzy, własności i kanarków na zimno bierze się z punktu `po-T3`, nie z własnego zasiewu |
@@ -411,7 +411,8 @@ VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `20-sec
 Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
 w `docs/etapy/zaleglosci.md`); T9 jest jego odbiorem z perspektywy bety. Aktorzy: **MG-A** (grupa
 z Markiem i Olą, stan z punktu `po-T6`) i **MG-B** z własnym graczem **Kuba**, oba konta założone
-przez otwartą rejestrację.
+przez otwartą rejestrację; do punktu 10 — **MG-C**. Właściciel instancji (z AI na swoim PC) gra jako
+gracz u MG-A.
 
 1. **Rejestracja:** formularz, walidacja hasła, zajęta nazwa, logowanie, wylogowanie, zmiana hasła
    (jeśli etap ją przewiduje); limit prób logowania i rejestracji z jednego adresu.
@@ -421,7 +422,8 @@ przez otwartą rejestrację.
    obiektów MG-A → odmowa, zero zmian w bazie.
 4. **Aktywacja:** MG-B aktywuje swoją kampanię, gdy grupa MG-A gra → **Marek i Ola zostają na swojej
    scenie** (dziś `campaign:activate` przeniósłby wszystkich — to byłby B1). Aktywna kampania per MG
-   wchodzi do etapu „Konta MG” (decyzja MG z 26.09).
+   wchodzi do etapu „Konta MG” (decyzja MG z 26.09). Obie grupy grają naraz (limit dwóch sesji,
+   decyzja MG z 26.09, trzecia tura) — ruch, rzuty i czat jednej nie docierają do drugiej.
 5. **Uploady i biblioteki:** pliki wgrane w kampanii (mapy, portrety, handouty) są za logowaniem —
    widzi je tylko MG-właściciel i gracze tej kampanii. Kuba i MG-B dostają odmowę także po dokładnym
    adresie `/uploads/…` skopiowanym od Marka; niezalogowany — tak samo. Portret z biblioteki MG-A
@@ -431,12 +433,23 @@ przez otwartą rejestrację.
    kampanii MG-A. Wygasły i unieważniony link nie wpuszcza (jak T2, punkt 7).
 7. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A; odtworzenie kopii całości zachowuje
    właścicieli.
-8. **Boty:** u MG-B boty są **niedostępne** (decyzja MG z 26.09 — gateway właściciela obsługuje tylko
-   jego kampanie), a stół MG-B działa w pełni bez AI, jak przy martwym gatewayu. Żadne żądanie AI
-   z kampanii MG-B nie trafia do gatewaya właściciela (sprawdzić w logu gatewaya). MG-B widzi, skąd
-   wziąć paczkę instalacyjną AI, jeśli etap „Konta MG” dołoży do niej odnośnik (zaległości, pozycja 3).
+8. **Boty:** bez zatwierdzonej prośby u MG-B boty są **niedostępne**, a stół MG-B działa w pełni bez
+   AI, jak przy martwym gatewayu. Żadne żądanie AI z kampanii MG-B nie trafia do gatewaya właściciela
+   (sprawdzić w logu gatewaya). MG-B widzi, skąd wziąć paczkę instalacyjną AI, jeśli etap „Konta MG”
+   dołoży do niej odnośnik (zaległości, pozycja 3).
+   **Prośba o AI (zaległości, pozycja 4 — decyzja MG z 26.09, trzecia tura):** MG-B wysyła prośbę,
+   gdy właściciel jest wylogowany; właściciel loguje się **jako gracz** w kampanii MG-A i widzi
+   prośbę, zatwierdza → boty MG-B odpowiadają. Gdy AI zajmuje sesja MG-A, boty MG-B są niedostępne
+   z komunikatem „AI zajęte przez inną sesję”, a stół MG-B gra dalej. Cofnięcie dostępu → boty MG-B
+   niedostępne bez restartu serwera. Odrzucona albo cofnięta prośba nie przepuszcza żadnego żądania.
+   Prośby nie widzi nikt poza właścicielem (kanarek w podsłuchu MG-A, Marka i Oli).
 9. **Kompendium:** MG-B i Kuba widzą to samo kompendium co grupa MG-A (66 umiejętności, katalog) —
    kompendium jest wspólne dla wszystkich na VPS (decyzja MG z 26.09), to nie jest wyciek.
+10. **Limit sesji:** trzeci MG (**MG-C**, konto z rejestracji) loguje się i przygotowuje kampanię,
+    gdy grają MG-A i MG-B; przy „Aktywuj kampanię” dostaje komunikat, że wszystkie miejsca są zajęte
+    i serwer nie obsłuży więcej sesji naraz — stoły MG-A i MG-B bez zmian. MG-A kończy sesję → MG-C
+    aktywuje. Porzucona sesja zwalnia slot po progu bezczynności z etapu (decyzja MG z 26.09,
+    trzecia tura).
 
 ### 6.6. T11 — VPS (po etapie 28)
 
