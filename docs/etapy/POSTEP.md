@@ -30,7 +30,8 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09** — suita `packages/e2e` (`pnpm test:e2e`)
+rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
+retescie tego samego dnia** — suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T4** (walka
 pierwsza) od punktu `po-T3`, a T2 może iść w dowolnej chwili — `po-T3` już jest (decyzja MG z 26.09). Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
@@ -95,8 +96,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1236** na serwerze, **286** u klienta,
-**59** w gatewayu, **40** E2E — zielone (26.09, T3b testów; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1243** na serwerze, **286** u klienta,
+**59** w gatewayu, **40** E2E — zielone (26.09, poprawki #2–#9; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -127,12 +128,12 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 35   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 44   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 45   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
-| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 16   | 2       |
+| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 2    | 7       |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 3    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 27      |
@@ -141,6 +142,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 26.09 — poprawki #2–#9 z rejestru testów (po T3b)
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, które mieszczą się w jednej sesji; wolno
+uruchamiać wszystko. Rozstrzygnięcia MG: **#3** — pole „Data startu kampanii” w oknie zegara;
+**#5** — `data/private` zastępuje próbkę w całości; **#9** — zaległy żeton staje przy najbliższej
+aktywacji sceny.
+
+**Zrobione (`5ee4a59`):** #2 `stats` wypada z `character:update` u gracza, na karcie `readOnly`;
+#3 `time:set` z `start: true` (miesiąc startu rozliczony, karta „Początek kampanii”, `days: 0`);
+#4 `total` rzutu jednej tabeli = kość; #5 `loadCompendium` czyta prywatny katalog albo próbkę;
+#6 MG bez kampanii dostaje radę o „Panel MG”; #7 „Wybierz język ojczysty…”; #8 ekran końcowy
+kreatora czyta `playReady` i figurę na żywo; #9 `placeOwedCreationTokens` w `scene:activate`,
+ręczny `token:create` spłaca dług, a figura z kreatora staje przy `Scene.spawn` (dotąd na środku
+mapy). Umowy: `postac` (2), `czas`, `dane`. Wszystkie osiem wierszy rejestru — „retest OK”.
+
+**Weryfikacja:** `shared` 2237, serwer 1243 (+7), klient 286, E2E 40/40 (z `@llm`), potem T3a
+16/16 z nowym krokiem #8; `tsc`, ESLint, Prettier czyste. Oglądane w Firefoksie (Playwright MCP)
+na pustej instancji E2E: #6, okno zegara z nowym polem, #7; #8 i #9 sprawdza automat (Ola
+w Firefoksie). Karta gracza z Cechami `readOnly` nieoglądana okiem — ten sam `NumberStepper`
+co poziomy Umiejętności. `dev.db` nietknięta.
 
 ### Sesja 25.09 (piętnasta) — „Czeka na MG” i kadr portretu w banerze (własny kadr banera)
 
@@ -167,21 +189,3 @@ podmienionym **lokalnie** w magazynie figury Pasera (bez zapisu); po poprawce �
 z „Test2” (Chromium) i portret bez kadru (Firefox), głowy w całości. Własny kadr banera Franca
 zapisany w Chromium, dotarł do Firefoksa, a potem przywrócony tam „Jak żeton” (stan jak przed próbą). Dźwięku nie słuchano — ścieżka
 `notifyGame('request')` ta sama co dotąd. Aktywna kampania wróciła na „Test2”.
-
-### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
-
-**Zlecenie MG:** zaległości w jednej sesji, bez VPS; gdy ich brak — wyczyścić plik. Rozstrzygnięcia
-MG: dźwięk kubka **wyciszyć w łańcuchu kreatora**, tempo maszynopisu **zostaje**, przewijanie
-**zmierzyć automatem**, resztę „przy stole” — **krótka lista w `POMYSLY.md`**.
-
-**Zrobione:** łańcuch Cech i Ścieżki dzwoni tylko przy pierwszym „Weź kubek” (pole `quiet`
-w `PendingCreation`). Przewijanie karty i kroku Umiejętności przy dławieniu CPU 1–6× — 160 kl./s bez
-jednej długiej klatki, przy 20× p95 ≤ 25 ms (dławi tylko CPU, nie GPU). **`zaleglosci.md` jest pusty**;
-cała dawna treść bez zmian w `archiwum/zamkniete-zaleglosci.md`, decyzje z 11.09 w
-`decyzje-i-uproszczenia.md`, pięć pozycji „przy stole” na górze `POMYSLY.md`. Dwie nowe pułapki
-(`boty`, `ogledziny` — import modułu z konsoli po HMR).
-
-**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
-Oglądane w Chromium (Playwright MCP) — zmiana dotyczy dźwięku, nie wyglądu. Pięć kart rzutów Cech
-szkicu MG zostało na czacie „Test2”; szkic wyrzucony.
-

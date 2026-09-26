@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 25.09 (czternasta) — ostatnie zaległości, `zaleglosci.md` wyczyszczony
+
+**Zlecenie MG:** zaległości w jednej sesji, bez VPS; gdy ich brak — wyczyścić plik. Rozstrzygnięcia
+MG: dźwięk kubka **wyciszyć w łańcuchu kreatora**, tempo maszynopisu **zostaje**, przewijanie
+**zmierzyć automatem**, resztę „przy stole” — **krótka lista w `POMYSLY.md`**.
+
+**Zrobione:** łańcuch Cech i Ścieżki dzwoni tylko przy pierwszym „Weź kubek” (pole `quiet`
+w `PendingCreation`). Przewijanie karty i kroku Umiejętności przy dławieniu CPU 1–6× — 160 kl./s bez
+jednej długiej klatki, przy 20× p95 ≤ 25 ms (dławi tylko CPU, nie GPU). **`zaleglosci.md` jest pusty**;
+cała dawna treść bez zmian w `archiwum/zamkniete-zaleglosci.md`, decyzje z 11.09 w
+`decyzje-i-uproszczenia.md`, pięć pozycji „przy stole” na górze `POMYSLY.md`. Dwie nowe pułapki
+(`boty`, `ogledziny` — import modułu z konsoli po HMR).
+
+**Weryfikacja:** klient 281, `tsc`, ESLint, Prettier czyste; `shared`, serwer i gateway bez zmian.
+Oglądane w Chromium (Playwright MCP) — zmiana dotyczy dźwięku, nie wyglądu. Pięć kart rzutów Cech
+szkicu MG zostało na czacie „Test2”; szkic wyrzucony.
+
 ### Sesja 25.09 (trzynasta) — zaległości: karta czekająca na MG, okno z bliska, skóra, drobiazgi
 
 **Zlecenie MG:** zaległości mieszczące się w jednej sesji, bez VPS. Rozstrzygnięcia MG: **wszystkie
