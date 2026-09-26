@@ -88,6 +88,18 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@26.1.1)(jiti@2.7.0)(tsx@4.23.1)
 
+  packages/e2e:
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.64.0-alpha-1789764292000
+        version: 1.64.0-alpha-1789764292000
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      socket.io-client:
+        specifier: ^4.8.3
+        version: 4.8.3
+
   packages/server:
     dependencies:
       '@fastify/cookie':
@@ -972,6 +984,11 @@ packages:
   '@playwright/mcp@0.0.82':
     resolution: {integrity: sha512-OCqftfb8H4dnqm/njbTBRk3seUvUPttOlJUxCtEzXGETYOlRH5Qt3bbXIjmZIuWAxD9RF+yg1ASrPeXvm0y5cA==}
     engines: {node: '>=18'}
+    hasBin: true
+
+  '@playwright/test@1.64.0-alpha-1789764292000':
+    resolution: {integrity: sha512-fLZsEdWPIf61CW8Pfkzee1/1QoRyGt8V+I/XJ7Tq09m8uYYihQzvIcUqBLv5cAORlOhLjp/0YrhXAYFCb3cyPw==}
+    engines: {node: '>=20'}
     hasBin: true
 
   '@prisma/adapter-better-sqlite3@7.8.0':
@@ -3546,6 +3563,10 @@ snapshots:
     dependencies:
       playwright: 1.64.0-alpha-1789764292000
       playwright-core: 1.64.0-alpha-1789764292000
+
+  '@playwright/test@1.64.0-alpha-1789764292000':
+    dependencies:
+      playwright: 1.64.0-alpha-1789764292000
 
   '@prisma/adapter-better-sqlite3@7.8.0':
     dependencies:

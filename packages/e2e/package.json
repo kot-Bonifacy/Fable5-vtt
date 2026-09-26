@@ -1,0 +1,15 @@
+{
+  "name": "@vtt/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "instance": "node instance/cli.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0-alpha-1789764292000",
+    "@types/node": "^26.1.1",
+    "socket.io-client": "^4.8.3"
+  }
+}

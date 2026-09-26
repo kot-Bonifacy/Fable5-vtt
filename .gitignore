@@ -57,3 +57,7 @@ tools/art/.cache/
 # Playwright MCP (.mcp.json) — profile przeglądarek, zrzuty i hasło MG w secrets.env.
 # Profil trzyma ciasteczko sesji MG, więc jest tak samo tajny jak samo hasło.
 .playwright-mcp/
+
+# Instancja testów E2E (packages/e2e, testy.md 4.1): baza, uploady z materiałów MG,
+# kopie, punkty kontrolne i raporty. Materiały MG nigdy nie trafiają do repo.
+.e2e/
