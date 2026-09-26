@@ -19,7 +19,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T1   | Infrastruktura E2E, instancja testowa, linia bazowa       | ✅     | 26.09.2026 |
 | T2   | Bezpieczeństwo i autoryzacja                              | ⬜     |            |
 | T3a  | Rozgrywka 1a/4: kampania, gracze, zgody, oba kreatory     | ✅     | 26.09.2026 |
-| T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ⬜     |            |
+| T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ✅     | 26.09.2026 |
 | T4   | Rozgrywka 2/4: walka pierwsza na scenie „Knajpa”          | ⬜     |            |
 | T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Brama”       | ⬜     |            |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
@@ -60,6 +60,9 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | T2 po T3               | **T2 czeka na T3** (decyzja MG z 26.09, sesja T2): stan do macierzy, własności i kanarków na zimno bierze się z punktu `po-T3`, nie z własnego zasiewu |
 | waga `INTERNAL`        | śmieciowy ładunek kończący się `INTERNAL` bez zmian w bazie i u innych graczy = **jeden zbiorczy wiersz B3** z listą zdarzeń; zapis częściowy lub zepsuty stan = B2; pad procesu = B0 |
 | brak limitów tempa     | stół przeżył zalew bez limitu = **zadanie Z** dla etapu „Konta MG” (limit na gnieździe per sesja) i dla 28 (Caddy); zdławieni inni gracze = B1, pad = B0 |
+| widoczność scen        | **„Knajpa” Dynamiczna + ciemność + pamięć terenu, „Brama” na ręcznej mgle** (decyzja MG z 26.09, sesja T3b) — w Dynamicznej serwer nie sprawdza pola widzenia, więc odmowę ruchu w mgłę (`MOVE_INTO_FOG`) sprawdza T5 na „Bramie” |
+| plan ścian             | **realistyczny**, odczytany z obrazów map (`fixtures/maps.ts`); Rzeźnik i Paser to **statyści z kartą**, do których przypięto boty (decyzje MG z 26.09, sesja T3b) |
+| triaż #2               | gracz zmieniający własne Cechy po przyjęciu = **B1** (decyzja MG z 26.09, sesja T3b) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -145,6 +148,8 @@ packages/e2e/
     db.ts                  odczyt bazy tylko do asercji (node:sqlite), odcisk stanu do punktów kontrolnych
     llm.ts                 znacznik @llm, pomijanie przy martwym gatewayu, dłuższe czasy oczekiwania
     creator.ts             kreator gracza przez UI: kubek po jednej kości, umiejętności, sklep, portret z kadrami
+    scene.ts               kamera nad sceną, łańcuchy ścian, światła, pinezki, osłony, figury, stepper karty
+    maps.ts                plany ścian map „Knajpa” i „Brama” (same liczby, obrazy zostają poza repo)
     materials.ts           mapy i portrety z `VTT_E2E_MATERIALS`, kopie-kanarki w `.e2e/tmp`
     socket.ts              `emitAck` — surowa intencja z gniazda aktora i odpowiedź serwera
     table.ts               czat, rzut kubkiem, kampania i zaproszenie przez API
@@ -162,7 +167,8 @@ packages/e2e/
 Uruchamianie: `pnpm test:e2e` (całość), `pnpm test:e2e --grep @szybkie` (bez LLM i bez długich
 przebiegów, cel: poniżej 10 minut). Zmienne: `E2E_FROM=po-T3` (start z punktu kontrolnego),
 `E2E_SKIP_BUILD=1` (bez buildu), `E2E_HEADED=1` (okna przeglądarek na ekranie; domyślnie headless —
-T1 sprawdził, że WebGL 2 i `requestAnimationFrame` działają tak w obu silnikach). Po przerwanym
+T1 sprawdził, że WebGL 2 i `requestAnimationFrame` działają tak w obu silnikach; od T3b Chromium
+startuje z `channel: 'chromium'`, bo domyślny headless renderuje programowo — pułapka w `testy`). Po przerwanym
 przebiegu: `pnpm --filter @vtt/e2e instance stop`. Klient E2E buduje się do `.e2e/client-dist`,
 więc zwykłego `packages/client/dist` nie nadpisuje. Zasady pisania wynikające z pułapek `ogledziny`:
 
@@ -290,7 +296,7 @@ Demon) — nieodkryte piętra to kanarki.
 
 | #    | krok                                                                                   | sprawdzamy                                                                                  |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 5.1  | Aktywacja sceny                                                                        | obaj gracze przechodzą bez F5, stan „Knajpy” zachowany w bazie                              |
+| 5.1  | Aktywacja sceny                                                                        | obaj gracze przechodzą bez F5, stan „Knajpy” zachowany w bazie; ruch w mgłę odmówiony (`MOVE_INTO_FOG`, przeniesione z 3.13) |
 | 5.2  | Marek przez **bramę w barierze**; strzał przez barierę z SP; figura zasłonięta barierą | ruch, SP bariery dla strzału, kara za cel                                                   |
 | 5.3  | Ola podłącza się do punktu dostępu, run: winda, Akcje Sieciowe, hasło, plik            | piętra odsłaniane po kolei (kanarki), budżet Akcji Sieciowych                               |
 | 5.4  | Walka druga: tryb turowy, Ola w Sieci i Marek na mapie w tej samej kolejce             | kolejka obejmuje obu, Czarny LOD lub Demon atakuje Olę, obrażenia w Sieci i w ciele         |
@@ -482,7 +488,11 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - siła kafla papieru i czytelność w nocy;
 - pełny ekran i Esc (Keyboard Lock działa dopiero na HTTPS);
 - taktyka bota w walce (strzela z miejsca, pasuje po Akcji — zapisane 24.09);
-- dźwięki powiadomień (automat ich nie słucha).
+- dźwięki powiadomień (automat ich nie słucha);
+- bot-handlarz nie zna ekwipunku swojej karty — Paser obiecał „sztucery z tłumikami”, których nie
+  ma, i mieszał idiomy („trzaska jak kaczka na deszczu”) — T3b, 26.09;
+- płynność u gracza bez akceleracji GPU (SwiftShader: 2–8 kl./s na ciemnej scenie z oświetleniem,
+  marsz zwalnia proporcjonalnie) — do pomiaru w T7.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -524,6 +534,43 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 26.09 — T3b: sceny, figury, boty, aktywacja i czat
+
+**Rozstrzygnięcia MG na starcie:** „Knajpa” Dynamiczna z ciemnością i pamięcią terenu, „Brama” na
+ręcznej mgle (odmowę ruchu w mgłę sprawdza T5); realistyczny plan ścian; Rzeźnik i Paser jako
+statyści z kartą i przypiętym botem; triaż #2 → **B1** (sekcja 2). Gateway z modelem na sesję.
+
+**Zrobione:** rozpoznanie UI w Playwright MCP (Chromium), potem `30-rozgrywka/t3b-sceny-boty-czat.spec.ts`
+(13 testów, ~1,5 min od `po-T3a`): „Knajpa” 33 × 24 z 60 odcinkami (44 ściany, 13 drzwi dla graczy,
+3 okna), rygiel na tylnych drzwiach z karty segmentu, dwa światła, notatka-kanarek, start na tarasie,
+widzenie po ciemku 4 m; „Brama” 40 × 30 z murem (OB 20, zasłania figury), bramą (OB 10), płotem,
+ścianami budynków, osłoną i ukrytym gniazdem Sieci. Statyści „Zbir”, klon „Zbir 2” przemianowany na
+imię-kanarek z aliasem „Ochroniarz”, Rzeźnik (45 PW), Paser, ukryty „Cień” — każdy z własną kartą NPC.
+Boty z szablonów („Solo — ochroniarz”, „Fikserka”), persony po polsku, sekrety-kanarki, karty
+statystów, Propozycja, Paser przypięty do „Knajpy”. Aktywacja bez F5, `MOVE_LOCKED` do zdjęcia
+blokady, Marek otwiera drzwi na taras i idzie do baru, Ola widzi salę przez okno (na ciemnej scenie
+okno nie zasłania), Paser w ciemności widoczny tylko z bliska, pamięć terenu po F5, marsz do kuchni
+staje przed zamkniętymi drzwiami. Paser odpowiada po polsku w 6–15 s; szepty w obie strony, handout
+tylko dla Oli; kanarki czyste (z kontrolą podsłuchu); punkt `po-T3`. Nowe fixtures: `scene.ts`,
+`maps.ts`; podsłuch zapisuje ramki w obie strony i przy porażce zostawia `<aktor>-ramki.txt`; hak E2E
+czyta też magazyny `bot`, `exploration`, `handout`.
+
+**Znalezione:** #9 B3 — żeton z kreatora przepada, gdy MG przyjmie postać bez aktywnej sceny (notatka
+T3a mówiła, że żetony „stają dopiero na aktywnej scenie” — nie stają; MG stawia je ręką „Postaw na
+scenie”, krok 3.11). Infrastruktura: headless Chromium Playwrighta renderował WebGL programowo (7,7
+kl./s, SwiftShader) — marsz szedł 5× wolniej i test padał na limicie; aktorzy Chromium mają od teraz
+`channel: 'chromium'` (GPU), całość z tym przyspieszyła (T3a+T3b z ~15 do 8 min). Cztery pułapki
+w `testy`. Obserwacje do sekcji 8: Paser nie zna swojego towaru i miesza idiomy; płynność bez GPU → T7.
+
+**Suita:** 40 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13; 3 `test.fail`), pełne `pnpm test:e2e`
+~8 min, **zielone dwa razy z rzędu**. Oglądane: MCP — MG i Marek w Chromium, stan `po-T3` u Oli
+w Firefoksie (sala przez okno, alias, szept, handout); automat — MG i Marek w Chromium, Ola
+w Firefoksie, headless.
+
+**Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`: Solo ma 4 pkt Zmysłu Walki do rozdzielenia;
+Rzeźnik gra turę botem (karta statysty, Propozycja); „Cień” ukryty w kuchni (kolumna 20, wiersz 15);
+Kowal stoi przy barze obok Pasera, Iskra na tarasie. Potem T2 (czeka na `po-T3` — już jest).
+
 ### Sesja 26.09 — T3a: kampania, gracze, zgody i oba kreatory (plan T2 → T3)
 
 **Rozstrzygnięcia MG na starcie:** T2 **czeka na T3** (stan z `po-T3`, nie własny zasiew); waga
@@ -557,30 +604,3 @@ headless.
 `creationTokenDone = 0`), boty „Rzeźnik” i „Paser” (`@llm`, gateway), aktywacja, czat, punkt `po-T3`.
 Solo ma jeszcze 4 pkt Zmysłu Walki do rozdzielenia — przed walką w T4.
 
-### Sesja 26.09 — T1: infrastruktura E2E, instancja testowa, linia bazowa
-
-**Rozstrzygnięcia MG na starcie:** T1 teraz; kolejność T1–T6 → refaktoryzacja → „Konta MG”; T1 bez
-modelu (testy `@llm` pomijane). W trakcie: bloker #1 **naprawić od razu** (wyjątek od „tylko notuje”).
-
-**Zrobione:** `packages/e2e` (Playwright Test 1.64-alfa, ta sama co MCP): instancja na :3101/:4173
-z `e2e.db` i `.e2e/`, serwer z `dist/`, klient `--mode e2e` przez `vite preview`; procesy bez powłoki,
-PID-y w `.e2e/instance.json`. Punkty kontrolne przez prawdziwe `snapshot`/`restore` serwera. Fixtures:
-aktorzy w osobnych przeglądarkach, podsłuch z kanarkami, płótno przez kamerę, `node:sqlite` do asercji,
-znacznik `@llm`. W aplikacji: `VTT_DICE_SCRIPT` (umowa `kosci`), hak `window.__vttE2E` (umowa `ui`),
-cel proxy Vite z `VTT_API_TARGET`. Rejestr `testy-rejestr.md` założony.
-
-**Linia bazowa (26.09, przed zmianami):** `shared` 2237, serwer 1228, klient 286, gateway 59 — zielone;
-`tsc --noEmit` i ESLint czyste; `ruff` czysty. **Prettier:** kod czysty, niesformatowanych 13 plików
-`.md` (m.in. `POSTEP.md`, `umowy-kodu.md`, `pulapki-dev.md` — celowo, patrz `POSTEP.md`) i
-`.claude/settings.local.json` — stan znany, nie błąd. **Po T1:** serwer 1236 (+8 skryptu kości).
-
-**Znalezione:** #1 **B0** — `dist/main.js` nie startował od etapu 33 (tsup zdejmował `node:` z
-`node:sqlite`), naprawione (`ed681a8`), retest OK. **Z1** dla etapu 28 — brak ostrzeżenia o próbce
-kompendium bez `data/private`. Produkcja z `VTT_DICE_SCRIPT` loguje „ignored in production”.
-
-**Suita:** 12 testów (`00-baseline` 5, `01-dym` 7), ~38 s z buildem, zielona cztery razy z rzędu
-(w tym raz `pnpm test:e2e --grep @szybkie` z korzenia). Oglądane automatem: MG w Chromium, Ola
-w Firefoksie, headless. Porty po przebiegu wolne.
-
-**Następny krok:** T3 (rozgrywka 1/4) — pierwsza sesja z modelem (bot „Paser” i „Rzeźnik”, 3.12,
-3.14): przed nią `pwsh ai-gateway/scripts/start-gateway.ps1`. T2 może iść wcześniej albo później.

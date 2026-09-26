@@ -11,12 +11,21 @@ import type { Page } from '@playwright/test';
  */
 export class Sniffer {
   private readonly received: string[] = [];
+  /** Ramki w obie strony z czasem — do załącznika przy porażce testu, nie do asercji. */
+  private readonly journal: string[] = [];
   private readonly pending = new Set<Promise<void>>();
 
   constructor(page: Page) {
     page.on('websocket', (socket) => {
       socket.on('framereceived', (frame) => {
-        this.received.push(
+        const text =
+          typeof frame.payload === 'string' ? frame.payload : frame.payload.toString('utf8');
+        this.received.push(text);
+        this.note('←', text);
+      });
+      socket.on('framesent', (frame) => {
+        this.note(
+          '→',
           typeof frame.payload === 'string' ? frame.payload : frame.payload.toString('utf8'),
         );
       });
@@ -35,6 +44,18 @@ export class Sniffer {
         .finally(() => this.pending.delete(read));
       this.pending.add(read);
     });
+  }
+
+  private note(direction: string, text: string): void {
+    this.journal.push(
+      `${new Date().toISOString().slice(11, 23)} ${direction} ${text.slice(0, 600)}`,
+    );
+    if (this.journal.length > 2_000) this.journal.splice(0, 500);
+  }
+
+  /** Ostatnie ramki gniazda w obie strony (skrócone) — załącznik przy porażce. */
+  recentFrames(count = 400): string {
+    return this.journal.slice(-count).join('\n');
   }
 
   /** Czeka na treści odpowiedzi, które jeszcze się czytają. */
@@ -65,6 +86,12 @@ export class Canaries {
   secret(label: string): string {
     this.counter += 1;
     const code = `KANAREK-${label}-${this.counter.toString(16).toUpperCase().padStart(4, '0')}`;
+    this.secretCodes.add(code);
+    return code;
+  }
+
+  /** Napis spoza generatora (id sceny, id figury), który też ma zostać u MG. */
+  track(code: string): string {
     this.secretCodes.add(code);
     return code;
   }

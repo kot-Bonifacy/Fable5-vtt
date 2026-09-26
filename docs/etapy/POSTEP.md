@@ -30,9 +30,9 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1 i T3a zamknięte 26.09** — suita `packages/e2e` (`pnpm test:e2e`)
-stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T3b** od punktu
-`po-T3a`, a T2 czeka na `po-T3` (decyzja MG z 26.09). Kolejność (decyzja MG z 26.09):
+rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09** — suita `packages/e2e` (`pnpm test:e2e`)
+stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T4** (walka
+pierwsza) od punktu `po-T3`, a T2 może iść w dowolnej chwili — `po-T3` już jest (decyzja MG z 26.09). Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
@@ -96,7 +96,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2237** w `shared`, **1236** na serwerze, **286** u klienta,
-**59** w gatewayu, **27** E2E — zielone (26.09, T3a testów; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**59** w gatewayu, **40** E2E — zielone (26.09, T3b testów; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -135,7 +135,7 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 2    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 23      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 27      |
 
 
 ## Notatki z dwóch ostatnich sesji

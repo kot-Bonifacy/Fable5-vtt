@@ -7,7 +7,8 @@ import { DATABASE_FILE } from '../instance/paths.ts';
  * aplikację — UI albo gniazdo — tak jak u prawdziwego MG i gracza.
  */
 function withDb<T>(read: (db: DatabaseSync) => T): T {
-  const db = new DatabaseSync(DATABASE_FILE, { readOnly: true });
+  // Serwer pisze w tym samym czasie — bez `timeout` odczyt trafia na „database is locked”.
+  const db = new DatabaseSync(DATABASE_FILE, { readOnly: true, timeout: 5_000 });
   try {
     return read(db);
   } finally {

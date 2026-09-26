@@ -7,6 +7,7 @@ import {
   type BrowserContext,
   type Page,
 } from '@playwright/test';
+import { writeFileSync } from 'node:fs';
 import { io, type Socket } from 'socket.io-client';
 import { BASE_URL, SERVER_URL } from '../instance/paths.ts';
 import { Sniffer } from './sniffer.ts';
@@ -108,7 +109,12 @@ export class Cast {
     let browser = this.browsers.get(engine);
     if (!browser) {
       const headless = !process.env.E2E_HEADED;
-      browser = await (engine === 'chromium' ? chromium : firefox).launch({ headless });
+      // Chromium: nowy tryb headless (`channel: 'chromium'`) — domyślny `headless_shell`
+      // renderuje WebGL programowo (SwiftShader), a ciemna scena z oświetleniem schodzi
+      // wtedy do 2–8 kl./s i marsz figury wlecze się 5× wolniej (T3b, pułapka `testy`).
+      browser = await (engine === 'chromium'
+        ? chromium.launch({ headless, channel: 'chromium' })
+        : firefox.launch({ headless }));
       this.browsers.set(engine, browser);
     }
     return browser;
@@ -175,6 +181,13 @@ export const test = base.extend<{ actorShots: void }, { cast: Cast }>({
         await testInfo.attach(`${actor.name}-${actor.engine}.png`, {
           body: await actor.page.screenshot(),
           contentType: 'image/png',
+        });
+        // Plik obok zrzutu, nie treść w raporcie HTML — do czytania bez przeglądarki.
+        const frames = testInfo.outputPath(`${actor.name}-ramki.txt`);
+        writeFileSync(frames, actor.sniffer.recentFrames());
+        await testInfo.attach(`${actor.name}-ramki.txt`, {
+          path: frames,
+          contentType: 'text/plain',
         });
       }
     },

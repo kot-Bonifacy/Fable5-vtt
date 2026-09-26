@@ -1,8 +1,11 @@
 import type { ScenePoint } from '@vtt/shared';
 import { useAuthStore } from './stores/authStore.js';
+import { useBotStore } from './stores/botStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
 import { useCombatStore } from './stores/combatStore.js';
+import { useExplorationStore } from './stores/explorationStore.js';
+import { useHandoutStore } from './stores/handoutStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
@@ -39,9 +42,12 @@ export function installE2EHook(): void {
       worldToClient: (point) => mapToClient?.(point) ?? null,
       stores: {
         auth: useAuthStore,
+        bot: useBotStore,
         character: useCharacterStore,
         chat: useChatStore,
         combat: useCombatStore,
+        exploration: useExplorationStore,
+        handout: useHandoutStore,
         roll: useRollStore,
         scene: useSceneStore,
         token: useTokenStore,

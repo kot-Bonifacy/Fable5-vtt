@@ -1664,6 +1664,10 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Headless Chromium Playwrighta renderuje WebGL programowo (SwiftShader)** — domyślny `headless_shell` daje 2–8 kl./s na ciemnej scenie z oświetleniem, a marsz figury (limit `MARCH_MAX_FRAME_MS`) wlecze się wtedy 5× wolniej niż w oknie; aktorzy E2E startują z `channel: 'chromium'` (nowy headless z GPU, 160 kl./s). Firefox headless ma GPU od początku.
+- **Narzędzie ścian: pierwszy klik łańcucha w środek istniejącej ściany ją zaznacza, zamiast zacząć rysunek** — styk „T” rysuj jako wspólny koniec obu łańcuchów (dziel ścianę w punkcie styku); karta segmentu (dwuklik) otwiera się tylko z narzędziem „Ściany” w ręku, a Esc zdejmuje najpierw zaznaczenie, dopiero drugi — narzędzie.
+- **Odczyt `node:sqlite` w asercji trafia na „database is locked”**, gdy serwer akurat pisze — `new DatabaseSync(plik, { readOnly: true, timeout: 5_000 })` w `fixtures/db.ts`.
+- **Checkbox sterowany stanem z serwera (np. „w sesji” bota, „Ciemna scena”) nie przeżywa `locator.check()`** — Playwright sprawdza stan zaraz po kliknięciu, a ten zmienia się dopiero po odpowiedzi serwera. `click()` + `expect(…).toBeChecked()`.
 - **`instance start` z powłoki agenta stawia instancję E2E na kilka sekund** — procesy serwera i `vite preview` giną razem z poleceniem, choć `cli.ts` je odpina; do oględzin MCP na instancji E2E trzymaj ją `node instance/hold.ts` w tle, a gaś `instance stop`.
 - **Python na Windows zapisuje pliki z CRLF** — `open(p, 'w')` zamienia `\n` na `\r\n` w całym pliku; `git diff` tego nie pokaże (normalizuje), Prettier i ESLint owszem. Pisz z `newline=''` albo po fakcie `sed -i 's/\r$//'`. Plik „niesformatowany” z pustym `git diff` to CRLF na dysku: `git ls-files --eol | grep w/crlf`, naprawa `rm` + `git checkout --`.
 - **`vitest -t` w `creation.test.ts` serwera wycina test, który otwiera gniazda** — gniazda `vex`/`gm` powstają w pierwszym `it`, więc filtrowany test pada na `Cannot read properties of undefined (reading 'emit')`. Puszczaj cały plik.
@@ -1689,6 +1693,36 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Headless Chromium Playwrighta renderuje WebGL programowo (26.09, T3b).** Marsz Kowala do
+  baru w „Knajpie” (ciemna scena Dynamiczna, dwa światła) ruszał 10 s po kliknięciu i szedł po
+  ~6 px świata co ~0,55 s — w MCP (okno z GPU) ta sama trasa trwała 3 s. Pomiar `rAF`:
+  `chromium.launch({ headless: true })` → 7,7 kl./s, `UNMASKED_RENDERER` = SwiftShader; przy trzech
+  aktorach naraz jeszcze mniej. Marsz liczy się czasem, ale z limitem 100 ms na klatkę
+  (`MARCH_MAX_FRAME_MS`), więc przy 2 kl./s figura idzie 5× wolniej i `expect.poll` na pozycję
+  w bazie przekracza limit, choć lądowanie w końcu dochodzi i serwer je przyjmuje. Lek:
+  `channel: 'chromium'` (nowy tryb headless, ANGLE D3D11 na karcie) — 160 kl./s, T3b z 8,7 min do
+  1,5 min. Firefox headless od razu ma GPU. Rozpoznanie: ramki gniazda aktora (`<aktor>-ramki.txt`
+  w wynikach porażki) pokazują gęstość `token:move` z `final:false`.
+
+- **Pierwszy klik łańcucha ścian w środek istniejącej ściany ją zaznacza (26.09, T3b).** Łańcuch
+  `(44,178)→(88,178)` zaczynał się na środku ściany zachodniej `(44,265)–(44,44)`: klik zaznaczył
+  ją („Zaznaczono: ściana”), drugi klik zaczął nowy łańcuch z jednym punktem i Enter nie zapisał nic.
+  Tak samo płot startujący 5 px od ściany magazynu (przy skali kamery 0,4 promień trafienia
+  w ekranie obejmuje kilkanaście pikseli świata). Plan mapy w `fixtures/maps.ts` ma każdy styk
+  jako wspólny koniec — dzielisz dłuższą ścianę w punkcie, w którym coś do niej dochodzi (to przy
+  okazji uszczelnia styk dla wzroku i światła). `drawWalls` czeka po każdym łańcuchu na liczbę
+  odcinków w bazie i mówi, który łańcuch nie wszedł.
+
+- **„database is locked” w odczycie asercji (26.09, T3b).** `fixtures/db.ts` otwierał bazę E2E
+  `readOnly` bez `timeout`; gdy serwer w tej samej chwili zapisywał marsz figury, `expect.poll`
+  kończył się błędem SQLite zamiast wartością. Od T3b odczyt ma `timeout: 5_000` (busy timeout).
+
+- **`locator.check()` na checkboxie sterowanym z serwera (26.09, T3b).** „w sesji” w wierszu bota
+  ma `checked={bot.active}` — stan zmienia dopiero `bot:upsert`. Na wolnym (SwiftShader) przebiegu
+  przechodziło, na szybkim `check()` padał „Clicking the checkbox did not change its state”. Tak samo
+  „Ciemna scena” w edytorze sceny i blokada ruchu graczy. `click()` i czekanie na `toBeChecked()`.
+
 
 - **Instancja E2E z `instance start` umiera po powrocie polecenia (26.09, T3a).** Uruchomiona
   z narzędzia Bash agenta (także w tle z `&& tail -f`), odpowiadała na `/health` przez chwilę,
