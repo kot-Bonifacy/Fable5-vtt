@@ -96,7 +96,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1243** na serwerze, **286** u klienta,
+**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1245** na serwerze, **286** u klienta,
 **59** w gatewayu, **40** E2E — zielone (26.09, poprawki #2–#9; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -157,8 +157,11 @@ aktywacji sceny.
 kreatora czyta `playReady` i figurę na żywo; #9 `placeOwedCreationTokens` w `scene:activate`,
 ręczny `token:create` spłaca dług, a figura z kreatora staje przy `Scene.spawn` (dotąd na środku
 mapy). Umowy: `postac` (2), `czas`, `dane`. Wszystkie osiem wierszy rejestru — „retest OK”.
+Na dokładkę **Z1** (zadanie etapu 28): ostrzeżenie w logu przy starcie na próbce (`cpred.ts`,
+`compendium.ts`), sprawdzone na `dist/` z pustym i pełnym `DATA_PRIVATE_DIR`; komunikat w panelu MG
+zostaje etapowi 28.
 
-**Weryfikacja:** `shared` 2237, serwer 1243 (+7), klient 286, E2E 40/40 (z `@llm`), potem T3a
+**Weryfikacja:** `shared` 2237, serwer 1245 (+9), klient 286, E2E 40/40 (z `@llm`), potem T3a
 16/16 z nowym krokiem #8; `tsc`, ESLint, Prettier czyste. Oglądane w Firefoksie (Playwright MCP)
 na pustej instancji E2E: #6, okno zegara z nowym polem, #7; #8 i #9 sprawdza automat (Ola
 w Firefoksie). Karta gracza z Cechami `readOnly` nieoglądana okiem — ten sam `NumberStepper`

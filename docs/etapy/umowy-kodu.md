@@ -2769,7 +2769,7 @@ doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: nu
 
 ## dane — Kompendium, parsery, dane podręcznika
 
-- **Kompendium to `data/private` ALBO próbka, nigdy obie (26.09, #5)** — `loadCompendium` czyta `data/private/cpred/compendium`, a `sample.json` z `data/public` tylko wtedy, gdy prywatny katalog nie dał ani jednego pliku danych. Testy serwera jadą na próbce (`fixtures/no-private-data`); coś, co ma działać przy stole, nie może zakładać wpisów próbki.
+- **Kompendium to `data/private` ALBO próbka, nigdy obie (26.09, #5)** — `loadCompendium` czyta `data/private/cpred/compendium`, a `sample.json` z `data/public` tylko wtedy, gdy prywatny katalog nie dał ani jednego pliku danych. Testy serwera jadą na próbce (`fixtures/no-private-data`); coś, co ma działać przy stole, nie może zakładać wpisów próbki. Zjazd na próbkę loguje się **raz przy starcie** (Z1): nowy plik, który pisze import podręcznika, ładuje się w `loadCpredRegistry` przez `load(nazwa, true)`, inaczej jego brak przejdzie po cichu.
 - **Nowe pole typu broni idzie w TRZY miejsca**: `CpredWeaponTypeInput`, `manual-overrides.json` **i** biała lista `schema_fields` w `parse-manual.py`. Pominięta lista wycina pole po cichu (tak zginęły `explosive`, `ammoPatterns`, a potem `thrown`, `maxRangeM`, `ammoIds`); od 04.09 parser ostrzega o każdym wyciętym polu.
 - **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).
 

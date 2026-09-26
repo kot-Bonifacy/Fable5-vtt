@@ -40,7 +40,7 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 
 | id  | etap | dla etapu | tytuł                                                   | co wykazał test                                                                                                                                                                                                     |
 | --- | ---- | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Z1  | T1   | 28        | Brak ostrzeżenia o próbce kompendium bez `data/private` | Serwer z `dist/` i `DATA_PRIVATE_DIR` wskazującym pusty katalog loguje tylko `compendium loaded` (50 pozycji próbki) i wstaje bez słowa ostrzeżenia. Kryterium etapu 28: ostrzeżenie w logu przy starcie na próbce. |
+| Z1  | T1   | 28        | Brak ostrzeżenia o próbce kompendium bez `data/private` | Serwer z `dist/` i `DATA_PRIVATE_DIR` wskazującym pusty katalog loguje tylko `compendium loaded` (50 pozycji próbki) i wstaje bez słowa ostrzeżenia. Kryterium etapu 28: ostrzeżenie w logu przy starcie na próbce. **Zrobione 26.09 (`7746954`)**: `loadCpredRegistry` i `loadCompendium` ostrzegają raz przy starcie z listą plików z próbki; sprawdzone na `dist/` z pustym i pełnym `DATA_PRIVATE_DIR`. Dla etapu 28 zostaje komunikat w panelu MG. |
 
 ## Starsze notatki sesji testowych
 
