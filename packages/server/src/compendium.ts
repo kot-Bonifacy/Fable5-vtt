@@ -32,9 +32,18 @@ export async function loadCompendium(
   ];
   let files: unknown[] = [];
 
-  for (const dir of dirs) {
+  for (const [index, dir] of dirs.entries()) {
     files = await readCompendiumDir(dir, log);
-    if (files.length > 0) break;
+    if (files.length === 0) continue;
+    // Z1 (26.09.2026, kryterium etapu 28): on production the sample is a quiet
+    // slide into invented gear, so the fallback is said out loud, once.
+    if (index > 0) {
+      log.warn(
+        { privateDir: dirs[0] },
+        'compendium missing from data/private — running on the repo sample',
+      );
+    }
+    break;
   }
 
   if (files.length === 0) {

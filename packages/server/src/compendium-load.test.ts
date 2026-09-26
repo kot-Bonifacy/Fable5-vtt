@@ -12,7 +12,12 @@ import { loadCompendium } from './compendium.js';
  */
 
 const PUBLIC_DIR = resolve(import.meta.dirname, '../../../data/public');
-const silent = { warn: () => {}, info: () => {} } as unknown as FastifyBaseLogger;
+const warnings: string[] = [];
+const silent = {
+  warn: (_context: unknown, message: string) => warnings.push(message),
+  info: () => {},
+} as unknown as FastifyBaseLogger;
+const onSample = () => warnings.filter((message) => message.includes('running on the repo sample'));
 
 interface SampleFile {
   entries: { id: string; kind?: string }[];
@@ -35,11 +40,13 @@ function privateDirWith(files: Record<string, unknown>): string {
 }
 
 describe('loadCompendium', () => {
-  it('runs on the sample when there is no private data', async () => {
+  it('runs on the sample when there is no private data — and says so (Z1)', async () => {
+    warnings.length = 0;
     const registry = await loadCompendium(PUBLIC_DIR, join(tmpdir(), 'vtt-no-such-dir'), silent);
     expect(registry.entries.map((e) => e.id)).toEqual(
       expect.arrayContaining(sample().entries.map((e) => e.id)),
     );
+    expect(onSample()).toHaveLength(1);
   });
 
   it('drops the whole sample once the private directory has data', async () => {
@@ -52,8 +59,10 @@ describe('loadCompendium', () => {
       'import-report.json': { entries: [] },
     });
 
+    warnings.length = 0;
     const registry = await loadCompendium(PUBLIC_DIR, privateDir, silent);
     expect(registry.entries.map((e) => e.id)).toEqual(['gear.wlasny-wpis']);
+    expect(onSample()).toEqual([]);
     expect(registry.weaponTypes).toEqual([]);
   });
 

@@ -66,6 +66,46 @@ describe('loadCpredRegistry', () => {
     expect(registry.skills[0]?.group).toBeUndefined();
   });
 
+  /** Z1 (26.09.2026): what the private import owes, named once at startup. */
+  function sampleWarnings(): unknown[] {
+    return warnings.filter(
+      (args) => Array.isArray(args) && String(args[1]).includes('running on the repo samples'),
+    );
+  }
+
+  it('warns once, listing every rulebook file that came from the samples', async () => {
+    warnings.length = 0;
+    await loadCpredRegistry(PUBLIC_DIR, MISSING_PRIVATE, log);
+    const found = sampleWarnings();
+    expect(found).toHaveLength(1);
+    // roles.json ships only with the repo — warning about it would warn always.
+    expect((found[0] as [{ files: string[] }])[0].files).toEqual([
+      'skills.json',
+      'creation.json',
+      'lifepath.json',
+      'netrunning.json',
+    ]);
+  });
+
+  it('names only the files the private directory lacks, and none when it has them all', async () => {
+    const skills = JSON.stringify({
+      skills: [{ id: 'archery', name: 'Łucznictwo', stat: 'ref', group: 'ranged' }],
+    });
+    warnings.length = 0;
+    await loadCpredRegistry(PUBLIC_DIR, privateDirWith({ 'skills.json': skills }), log);
+    expect((sampleWarnings()[0] as [{ files: string[] }])[0].files).not.toContain('skills.json');
+
+    warnings.length = 0;
+    const full = privateDirWith({
+      'skills.json': skills,
+      'creation.json': '{}',
+      'lifepath.json': '{}',
+      'netrunning.json': '{}',
+    });
+    await loadCpredRegistry(PUBLIC_DIR, full, log);
+    expect(sampleWarnings()).toEqual([]);
+  });
+
   it('keeps the public data when the private file is malformed', async () => {
     warnings.length = 0;
     const dir = privateDirWith({ 'skills.json': '{ this is not json' });

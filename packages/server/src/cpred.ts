@@ -27,17 +27,35 @@ import {
  * only files here that may legitimately be missing: the creator, the sheet's
  * page two and the architecture generator then refuse at that step instead of
  * building something out of nothing.
+ *
+ * Z1 (26.09.2026, kryterium etapu 28): a server that fell back to the samples
+ * for any file the rulebook import writes says so **once**, at startup, with
+ * the list — on production that is 42 skills instead of 66, and silence made
+ * it look like a working sheet. `roles.json` is not on the list: it ships only
+ * with the repository, so warning about it would warn always.
  */
 export async function loadCpredRegistry(
   dataPublicDir: string,
   dataPrivateDir: string,
   log: FastifyBaseLogger,
 ): Promise<CpredRegistry> {
-  const skills = await loadFile(dataPublicDir, dataPrivateDir, 'skills.json', log);
-  const roles = await loadFile(dataPublicDir, dataPrivateDir, 'roles.json', log);
-  const creation = await loadFile(dataPublicDir, dataPrivateDir, 'creation.json', log);
-  const lifepath = await loadFile(dataPublicDir, dataPrivateDir, 'lifepath.json', log);
-  const netrunning = await loadFile(dataPublicDir, dataPrivateDir, 'netrunning.json', log);
+  const fromSample: string[] = [];
+  const load = async (name: string, fromRulebook: boolean) => {
+    const file = await loadFile(dataPublicDir, dataPrivateDir, name, log);
+    if (fromRulebook && !file.fromPrivate) fromSample.push(name);
+    return file.loaded;
+  };
+  const skills = await load('skills.json', true);
+  const roles = await load('roles.json', false);
+  const creation = await load('creation.json', true);
+  const lifepath = await load('lifepath.json', true);
+  const netrunning = await load('netrunning.json', true);
+  if (fromSample.length > 0) {
+    log.warn(
+      { files: fromSample, privateDir: join(dataPrivateDir, 'cpred') },
+      'cpred rulebook data missing from data/private — running on the repo samples',
+    );
+  }
   if (skills === undefined && roles === undefined) return EMPTY_CPRED_REGISTRY;
 
   const registry = withNetrunningData(
@@ -59,13 +77,15 @@ async function loadFile(
   dataPrivateDir: string,
   name: string,
   log: FastifyBaseLogger,
-): Promise<unknown> {
+): Promise<{ loaded: unknown; fromPrivate: boolean }> {
   // Private last so it wins; a missing private directory is the normal case.
   const paths = [join(dataPublicDir, 'cpred', name), join(dataPrivateDir, 'cpred', name)];
   let loaded: unknown;
-  for (const path of paths) {
+  let fromPrivate = false;
+  for (const [index, path] of paths.entries()) {
     try {
       loaded = JSON.parse(await readFile(path, 'utf8'));
+      fromPrivate = index === 1;
     } catch (error) {
       // A malformed private file must not silently fall back to the samples:
       // the GM would see a shorter skill list and no reason why.
@@ -75,5 +95,5 @@ async function loadFile(
     }
   }
   if (loaded === undefined) log.warn({ paths }, 'cpred data file not found');
-  return loaded;
+  return { loaded, fromPrivate };
 }
