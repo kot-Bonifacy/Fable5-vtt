@@ -852,6 +852,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **`window.__vttE2E` istnieje tylko w buildzie `vite build --mode e2e` (26.09, T1 testów)** — `e2e-hook.ts`: kamera (`worldToClient`) i magazyny do odczytu; oba wejścia owinięte w `import.meta.env.MODE === 'e2e'`, więc w zwykłym buildzie to martwy kod. Test `00-baseline` pilnuje, że napisu nie ma w paczce produkcyjnej. Nowy magazyn dla testów dopisuje się do `stores` w haku i do `fixtures/vtt-e2e.d.ts`.
 - **Sprawa czekająca na MG — gałąź w `gmAttentionItems` (`gm-attention.ts`) + `data-attention` na wierszu decyzji (25.09)** — klucz wyłącznie z `gmAttentionKey`. Lista jest liczona z magazynów źródłowych, nie prowadzona osobno; kafel i dźwięk daje tylko **push** owinięty w `watchGmAttention` w `socket.ts` (odpowiedzi po synchronizacji milczą, więc F5 nie dzwoni historią). Prośba o Test nie dzwoni już z `chatNotification`.
 - **Prawy górny róg mapy to kolumna `.map-corner` (25.09)** — „Czeka na MG” nad dokiem handli; nowa nakładka w tym rogu staje w kolumnie, a nie dostaje własnego `position: absolute`.
 - **Portret ma dwa kadry: żetonu i banera lewego panelu (25.09)** — `PortraitAsset.bannerX/Y/Zoom` (puste = „jak żeton”), baner rysuje wyłącznie `portraitBannerFor` (`shared/portrait-crop.ts`) przez `bannerImageStyle` (`portrait-banner.ts`); okno kadru ma zakładki „Żeton” / „Baner”, a `portrait:crop` niesie `bannerCrop` (brak — bez zmian, `null` — „jak żeton”) z tymi samymi prawami co kadr żetonu: MG wszystko, gracz portret własnej postaci. Karta, kreator i czat pokazują plik w całości.
@@ -883,6 +884,16 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Hak testów `window.__vttE2E` — tylko build `--mode e2e`, tylko odczyt (26.09.2026, T1 testów bety).**
+Zgoda MG z 26.09 (`testy.md` 4.3). `installE2EHook()` z `main.tsx` wystawia magazyny, a `MapArea`
+rejestruje renderer przez `exposeMapToE2E` (i wyrejestrowuje przy sprzątaniu); `MapRenderer.worldToClient`
+przelicza punkt sceny na `clientX/Y`, żeby automat klikał w płótno z kamery, nie z pikseli zrzutu.
+Każde wejście jest owinięte w `if (import.meta.env.MODE === 'e2e')` — Vite podmienia to na stałą
+i minifikator wycina całość z buildu produkcyjnego; **nie** zamieniaj tego na wczesny `return`, bo
+martwy kod za nim nie zawsze wypada. Hak niczego nie zmienia — stan rusza się przez UI albo gniazdo.
+Kształt powtórzony w `packages/e2e/fixtures/vtt-e2e.d.ts`: zmiana w jednym = zmiana w drugim.
+
 
 **„Czeka na MG” — wyraźne powiadomienie o decyzjach MG (25.09, zlecenie MG poza etapami).** Dotąd
 każda sprawa miała własną cyfrę na własnej zakładce, a prośba o zgodę na nową postać nie dzwoniła
@@ -1097,6 +1108,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Skrypt kości E2E — `VTT_DICE_SCRIPT` czyta WYŁĄCZNIE `createMixedRng` (26.09, T1 testów)** — `realtime/dice-script.ts`: plik z kolejką ścianek, każda kość serwera zdejmuje pierwszą; pusta kolejka = zwykłe losowanie. `NODE_ENV=production` wyłącza go bez wyjątku. Nowe losowanie na serwerze idzie przez `createMixedRng`, inaczej scenariusz E2E go nie wymusi.
 - **Wynik czeka na animację we wszystkich widokach (22.09)** — `rollPresentation` w `socket.ts` zachowuje kolejność komunikatów, odpowiedzi kreatora i odczytów stanu. Nowy odbiornik widoku rejestruj przez `onPresented`, a odpowiedź z wynikiem przez `rollPresentation.deliver`. `playRollAnimation` kończy obie fale; timeout najpierw zatrzymuje i usuwa kości. Chwyt kubka nie przerywa prawdziwego rzutu.
 - **Kara za rany w rozbiciu rzutu składa się w JEDNYM miejscu — `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`** (`rolls.ts`); woła ją `finishCheck` i atak, a rachunki ręczne (kubek Ustabilizowania i Leczenia, targowanie, napis na karcie) biorą `cpredSheetWoundCheckPenalty`. Zawieszenie (Stym, Edytor bólu) to **własny wiersz obok kary**, nie brak kary; `woundCheckPenalty(woundState(hp, stats))` na karcie to regres z 38a.
 - **Wezwanie do Testu powstaje w JEDNYM miejscu — `createCheckCall`** (`realtime/checks.ts`); wołają je `check:call` i zgoda na prośbę z 40, a ramę MG (próg, modyfikator, widoczność) czyta wspólne `parseCheckFrame`. Druga kopia rozjedzie się przy pierwszej zmianie wezwania.
@@ -1114,6 +1126,17 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
 
 ---
+
+**Skrypt kości E2E tylko przez `createMixedRng` i nigdy w produkcji (26.09.2026, T1 testów bety).**
+Zgoda MG z 26.09 (`testy.md` 4.2). `VTT_DICE_SCRIPT` wskazuje plik z liczbami (spacje, przecinki,
+nowe wiersze, `#` komentarz); `takeScriptedDie` zdejmuje pierwszą przy każdej kości i zapisuje
+resztę, więc test dopisuje kolejkę do pliku przy żywym serwerze (`scriptDice` w `packages/e2e`).
+Kolejność to kolejność losowania: dopisek Krytyka po 10 na k10 jest następną kością. Ścianka
+większa od liczby ścian wysadza rzut — cichy powrót do losowania dałby test przechodzący przez
+inną gałąź. Start serwera loguje ostrzeżenie w obu przypadkach („dice are forced from …” albo
+„ignored in production”). Testy: `dice-script.test.ts`; losowanie z pominięciem `createMixedRng`
+byłoby jedynym miejscem, którego scenariusz nie wymusi.
+
 
 **Kara za rany składa się w JEDNYM miejscu: `cpredWoundPenaltyRows` (12.09).**
 Do 12.09 wiersz „Poważnie ranny −2" dopisywały osobno `finishCheck` i `planCpredAttack`, a trzy

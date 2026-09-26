@@ -202,6 +202,7 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **`tsup` zdejmuje `node:` z importów — `node:sqlite` zamienia się w pakiet `sqlite` i `dist/` pada na starcie** — od etapu 33 do 26.09 (T1 testów) build produkcyjny serwera nie wstawał, a nikt go nie uruchamiał. Lek: `removeNodeProtocol: false` w `tsup.config.ts`; strażnikiem jest instancja E2E, która startuje z `dist/`.
 - **`requireCallableRequest` to BIAŁA LISTA** (`realtime/checks.ts`) — przepisuje żądanie Testu pole po polu, więc nowe pole w `CpredRollRequest` **ginie po cichu** na drodze prośba → zgoda → rzut. Objaw: funkcja działa z wezwania, a z prośby gracza nie robi nic, bez jednego błędu w logu.
 - **Plik na stałe w `uploads/` znika po godzinie** — zbieracz sierot zamiata `maps`, `portraits`, `tokens` i `handouts`, kasując wszystko, czego nie wymienia żaden wiersz bazy. Asset bez wiersza (np. mapa powitalna) musi leżeć **poza tą czwórką** — stąd `uploads/art/`.
 - **`socket.data.viewedSceneId` to scena WIDZA, nie celu** — okno karty jej nie zmienia, więc runda dla efektu czyta się ze sceny **żetonu celu** (`effectClockForCharacter`). Inaczej efekt nałożony w walce nie ma terminu rundowego.
@@ -231,6 +232,16 @@ nietrafioną — sprawdzaj obie.
   Znalezione dopiero oględzinami — **żaden test nie dotykał tego pola**.
 
 ---
+
+**Build produkcyjny serwera nie wstawał od etapu 33 — `tsup` zdejmuje `node:` z importów (26.09.2026, T1 testów bety).**
+`tsup` 8 domyślnie przepisuje `node:fs` na `fs` (zgodność ze starszym Node). Dla modułów, które mają
+obie nazwy, to nic nie zmienia, ale `sqlite` istnieje **wyłącznie** jako `node:sqlite` — kopie
+zapasowe (`snapshots.ts`, etap 33) importują z niego `DatabaseSync`, a `dist/main.js` dostawał
+`import … from "sqlite"` i padał na `ERR_MODULE_NOT_FOUND: Cannot find package 'sqlite'`. Dev
+(`tsx watch`) i testy (vitest) ładują źródła, więc przez trzy tygodnie nic tego nie pokazało. Na VPS
+(etap 28) serwer by nie wstał. Lek: `removeNodeProtocol: false`; od T1 instancja E2E startuje z `dist/`,
+więc każdy przebieg suity sprawdza, że build żyje. Rejestr testów: #1 (B0, naprawiony).
+
 
 - **Plik położony w `uploads/` „na stałe" ginie godzinę po wgraniu (11.09).** `uploads-gc.ts`
   zamiata cztery katalogi — `maps`, `portraits`, `tokens`, `handouts` — i kasuje z nich każdy

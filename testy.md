@@ -16,7 +16,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | etap | nazwa                                                     | status | data       |
 | ---- | --------------------------------------------------------- | ------ | ---------- |
 | T0   | Projekt testów (ten plik)                                 | ✅     | 26.09.2026 |
-| T1   | Infrastruktura E2E, instancja testowa, linia bazowa       | ⬜     |            |
+| T1   | Infrastruktura E2E, instancja testowa, linia bazowa       | ✅     | 26.09.2026 |
 | T2   | Bezpieczeństwo i autoryzacja                              | ⬜     |            |
 | T3   | Rozgrywka 1/4: kampania, gracze, kreator, sceny, figury   | ⬜     |            |
 | T4   | Rozgrywka 2/4: walka pierwsza na scenie „Knajpa”          | ⬜     |            |
@@ -32,6 +32,10 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 kontrolnego poprzedniego, sekcja 4.4). T2, T7 i T8 wymagają tylko T1 i T3, więc można je
 przestawiać. T9 dopiero po nowym etapie „Konta MG” (sekcja 6.5) — do tego czasu scenariusz gra
 jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
+
+**Kolejność prac wokół testów (decyzja MG z 26.09, sesja T1):** T1 → T3–T6 (T2 dowolnie po T3)
+→ **refaktoryzacja całości** pod osłoną suity → **etap „Konta MG”** (przepisuje krok 3.1 i część
+T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 
 ## 2. Decyzje MG z 26.09.2026 (podstawa planu)
 
@@ -50,6 +54,8 @@ jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 | materiały              | mapy z `C:\AI\materialy\mapy`, portrety z `C:\AI\materialy\avatary` — wgrywane przez UI do instancji testowej, **nigdy do repo** (sekcja 4.6)                             |
 | kości i hak klienta    | zgoda na `VTT_DICE_SCRIPT` w serwerze (4.2) i `window.__vttE2E` w buildzie testowym klienta (4.3)                                                                         |
 | konta MG               | **osobne konta MG z otwartą rejestracją — warunek bety** (nowy etap przed 28, testy w T9); każdy MG widzi i steruje tylko swoim                                           |
+| kolejność prac         | T1–T6 → refaktoryzacja → „Konta MG” → T9 → reszta (sesja T1, akapit „Kolejność” w sekcji 1); T1 bez modelu — testy `@llm` pomijane                                        |
+| poprawki w T1          | wyjątek od „tylko notuje”: bloker #1 (build `dist/` nie startował) naprawiony w T1, bo blokował samą infrastrukturę — w rejestrze jako „retest OK”                        |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -126,15 +132,18 @@ wypadają rzadko (rana krytyczna, trafienie granatem, nieudany Death Save). Dwie
 ```
 packages/e2e/
   playwright.config.ts     workers: 1 (jedna instancja, stan wspólny), timeout pod LLM
-  instance/                start i stop instancji (4.1), punkty kontrolne (4.4)
+  instance/                start i stop instancji (4.1), punkty kontrolne (4.4), cli.ts do ręcznego sterowania
   fixtures/
-    actors.ts              mg(), gracz('Marek', 'chromium'), gracz('Ola', 'firefox') — osobne konteksty i silniki
-    sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + asercja kanarków (4.5)
+    actors.ts              cast.mg(), cast.gracz('Ola', 'firefox', token) — osobne przeglądarki, konteksty, gniazdo
+    sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + kanarki (4.5)
     canvas.ts              klik, prawy klik, przeciąganie i marsz po płótnie Pixi we współrzędnych sceny
-    db.ts                  odczyt bazy tylko do asercji (zapis wyłącznie przez aplikację)
+    db.ts                  odczyt bazy tylko do asercji (node:sqlite), odcisk stanu do punktów kontrolnych
     llm.ts                 znacznik @llm, pomijanie przy martwym gatewayu, dłuższe czasy oczekiwania
+    table.ts               czat, rzut kubkiem, kampania i zaproszenie przez API
+    vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
   specs/
-    00-baseline/           build, start, /health, liczba umiejętności 66
+    00-baseline/           build, start, /health, pusta baza, 66 umiejętności, hak poza buildem produkcyjnym
+    01-dym/                test dymny T1: MG Chromium + Ola Firefox, czat, kubek, WebGL, punkt kontrolny
     10-api/                trasy HTTP
     20-security/           macierz uprawnień gniazda, kanarki, uploady, zaproszenia
     30-rozgrywka/          T3–T6, `test.describe.serial`, każdy plik startuje z punktu kontrolnego
@@ -143,7 +152,11 @@ packages/e2e/
 ```
 
 Uruchamianie: `pnpm test:e2e` (całość), `pnpm test:e2e --grep @szybkie` (bez LLM i bez długich
-przebiegów, cel: poniżej 10 minut). Zasady pisania wynikające z pułapek `ogledziny`:
+przebiegów, cel: poniżej 10 minut). Zmienne: `E2E_FROM=po-T3` (start z punktu kontrolnego),
+`E2E_SKIP_BUILD=1` (bez buildu), `E2E_HEADED=1` (okna przeglądarek na ekranie; domyślnie headless —
+T1 sprawdził, że WebGL 2 i `requestAnimationFrame` działają tak w obu silnikach). Po przerwanym
+przebiegu: `pnpm --filter @vtt/e2e instance stop`. Klient E2E buduje się do `.e2e/client-dist`,
+więc zwykłego `packages/client/dist` nie nadpisuje. Zasady pisania wynikające z pułapek `ogledziny`:
 
 - Każdy aktor ma **własne okno na wierzchu** (Playwright Test, nie karty w tle) — inaczej `rAF`
   i timery dławią się do 1 Hz, a karty rzutów spóźniają się o `MAX_ROLL_MS`.
@@ -173,13 +186,26 @@ u Marka i Oli przez cały przebieg; po każdym kroku asercja: żaden kanarek z l
 nie pojawił się u gracza. Kanarek, który zostaje ujawniony zgodnie z zasadami (odsłonięta figura,
 handout pokazany graczowi, pokazana karta), przechodzi z listy „tajne” na „jawne” w tym samym kroku.
 
-Kanarki w scenariuszu (lista startowa — T1 porówna ją z umowami `czat`, `statysta`, `siec`, `mapa`):
+Kanarki w scenariuszu (lista startowa, porównana w T1 z umowami `czat`, `statysta`, `siec`, `mapa` —
+wynik pod listą):
 ukryta figura na warstwie MG i jej nazwa, notatki MG sceny i figury, niewidoczne ściany/obiekty poza
 wzrokiem gracza (nieodsłonięta mgła), szept MG → Marek (nie może trafić do Oli) i szept Ola → MG
 (nie może trafić do Marka), prompt i sekret bota NPC, dziennik decyzji bota, niewidoczne piętra i hasła
 architektury Sieci, zawartość przeszukiwanego ekwipunku przed przeszukaniem, rzut ukryty MG, karta
 postaci Marka w części, której Ola nie ma widzieć, handout nieudostępniony, wpis dziennika tylko dla MG,
 nieprzyznane jeszcze PD, PW i statystyki statystów — **o ile** umowa `statysta` mówi, że gracz ich nie widzi.
+
+**Wynik porównania z umowami (T1, 26.09):**
+
+- `statysta`: **cudze PW nie opuszczają serwera** (`observedWoundState`) — PW i profil statysty są
+  kanarkiem. **Rany** statysty jadą publicznie (`TokenView.injuries`) — to **nie** kanarek. Karta
+  statysty jedzie też do **właściciela figury** — gracz prowadzący gangera może ją widzieć.
+- `mapa`: **prawdziwa nazwa figury z aliasem** (`Token.publicName`) — kanarek dopisany; gracz widzi
+  alias także w kartach czatu (`tokenTableName`). Miejsce startu (`Scene.spawn`) czyta kamera gracza
+  — nie kanarek, choć chorągiewkę rysuje tylko MG.
+- `czat`: rzut z tabeli **cichy** (`gmrolltable`) obok `gmroll` — kanarek dopisany. Dopiero „Pokaż
+  stołowi” dokłada wiersz publiczny (kanarek przechodzi na jawne).
+- `siec`: umowa ma jeden wpis (hak Programu) — lista z planu (piętra, hasła) zostaje bez zmian.
 
 ### 4.6. Materiały: mapy i portrety
 
@@ -484,4 +510,30 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
-_(pusto — pierwsza notatka po T1)_
+### Sesja 26.09 — T1: infrastruktura E2E, instancja testowa, linia bazowa
+
+**Rozstrzygnięcia MG na starcie:** T1 teraz; kolejność T1–T6 → refaktoryzacja → „Konta MG”; T1 bez
+modelu (testy `@llm` pomijane). W trakcie: bloker #1 **naprawić od razu** (wyjątek od „tylko notuje”).
+
+**Zrobione:** `packages/e2e` (Playwright Test 1.64-alfa, ta sama co MCP): instancja na :3101/:4173
+z `e2e.db` i `.e2e/`, serwer z `dist/`, klient `--mode e2e` przez `vite preview`; procesy bez powłoki,
+PID-y w `.e2e/instance.json`. Punkty kontrolne przez prawdziwe `snapshot`/`restore` serwera. Fixtures:
+aktorzy w osobnych przeglądarkach, podsłuch z kanarkami, płótno przez kamerę, `node:sqlite` do asercji,
+znacznik `@llm`. W aplikacji: `VTT_DICE_SCRIPT` (umowa `kosci`), hak `window.__vttE2E` (umowa `ui`),
+cel proxy Vite z `VTT_API_TARGET`. Rejestr `testy-rejestr.md` założony.
+
+**Linia bazowa (26.09, przed zmianami):** `shared` 2237, serwer 1228, klient 286, gateway 59 — zielone;
+`tsc --noEmit` i ESLint czyste; `ruff` czysty. **Prettier:** kod czysty, niesformatowanych 13 plików
+`.md` (m.in. `POSTEP.md`, `umowy-kodu.md`, `pulapki-dev.md` — celowo, patrz `POSTEP.md`) i
+`.claude/settings.local.json` — stan znany, nie błąd. **Po T1:** serwer 1236 (+8 skryptu kości).
+
+**Znalezione:** #1 **B0** — `dist/main.js` nie startował od etapu 33 (tsup zdejmował `node:` z
+`node:sqlite`), naprawione (`ed681a8`), retest OK. **Z1** dla etapu 28 — brak ostrzeżenia o próbce
+kompendium bez `data/private`. Produkcja z `VTT_DICE_SCRIPT` loguje „ignored in production”.
+
+**Suita:** 12 testów (`00-baseline` 5, `01-dym` 7), ~38 s z buildem, zielona cztery razy z rzędu
+(w tym raz `pnpm test:e2e --grep @szybkie` z korzenia). Oglądane automatem: MG w Chromium, Ola
+w Firefoksie, headless. Porty po przebiegu wolne.
+
+**Następny krok:** T3 (rozgrywka 1/4) — pierwsza sesja z modelem (bot „Paser” i „Rzeźnik”, 3.12,
+3.14): przed nią `pwsh ai-gateway/scripts/start-gateway.ps1`. T2 może iść wcześniej albo później.

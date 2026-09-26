@@ -67,6 +67,14 @@ cd ai-gateway && uv run pytest              # testy gatewaya
 cd ai-gateway && uv run ruff check .        # lint Pythona
 ```
 
+Testy E2E przed betą (plan i stan: `testy.md`, rejestr błędów: `testy-rejestr.md`):
+
+```
+pnpm test:e2e                          # build + izolowana instancja (:3101/:4173, e2e.db, .e2e/) + suita
+pnpm test:e2e --grep @szybkie          # bez LLM i długich przebiegów
+pnpm --filter @vtt/e2e instance stop   # sprzątanie po przerwanym przebiegu
+```
+
 ## Oględziny w przeglądarce — dwa narzędzia, dobieraj do zadania
 
 Masz **dwa** sposoby oglądania VTT i korzystasz z obu, a nie z jednego z przyzwyczajenia (decyzja z 25.09.2026):
