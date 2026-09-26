@@ -374,14 +374,23 @@ przez otwartą rejestrację.
 3. **Izolacja zapisu:** macierz ról z T2 (punkt 1) powtórzona z gniazda MG-B na identyfikatorach
    obiektów MG-A → odmowa, zero zmian w bazie.
 4. **Aktywacja:** MG-B aktywuje swoją kampanię, gdy grupa MG-A gra → **Marek i Ola zostają na swojej
-   scenie** (dziś `campaign:activate` przeniósłby wszystkich — to byłby B1). Jeśli etap „Konta MG”
-   nie obejmie aktywnej kampanii per MG, T9 zapisuje to jako B1 i bramka stoi.
-5. **Uploady i biblioteki:** portret z biblioteki MG-A nie jest dostępny dla MG-B z UI; dostęp po
-   zgadniętym adresie `/uploads/…` zależy od pytania otwartego 3.
-6. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A; odtworzenie kopii całości zachowuje
+   scenie** (dziś `campaign:activate` przeniósłby wszystkich — to byłby B1). Aktywna kampania per MG
+   wchodzi do etapu „Konta MG” (decyzja MG z 26.09).
+5. **Uploady i biblioteki:** pliki wgrane w kampanii (mapy, portrety, handouty) są za logowaniem —
+   widzi je tylko MG-właściciel i gracze tej kampanii. Kuba i MG-B dostają odmowę także po dokładnym
+   adresie `/uploads/…` skopiowanym od Marka; niezalogowany — tak samo. Portret z biblioteki MG-A
+   nie istnieje w UI MG-B.
+6. **Indywidualne linki graczy:** każde zaproszenie jest imienne, dla jednego gracza; link Marka
+   po użyciu nie wpuszcza nikogo innego jako nowego gracza, a link z kampanii MG-B nie daje wstępu do
+   kampanii MG-A. Wygasły i unieważniony link nie wpuszcza (jak T2, punkt 7).
+7. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A; odtworzenie kopii całości zachowuje
    właścicieli.
-7. **Boty:** bot MG-B odpowiada albo jest „niedostępny” zgodnie z decyzją etapu (pytanie otwarte 2),
-   ale nigdy nie widzi pamięci, wiedzy ani dziennika kampanii MG-A.
+8. **Boty:** u MG-B boty są **niedostępne** (decyzja MG z 26.09 — gateway właściciela obsługuje tylko
+   jego kampanie), a stół MG-B działa w pełni bez AI, jak przy martwym gatewayu. Żadne żądanie AI
+   z kampanii MG-B nie trafia do gatewaya właściciela (sprawdzić w logu gatewaya). MG-B widzi, skąd
+   wziąć paczkę instalacyjną AI, jeśli etap „Konta MG” dołoży do niej odnośnik (zaległości, pozycja 3).
+9. **Kompendium:** MG-B i Kuba widzą to samo kompendium co grupa MG-A (66 umiejętności, katalog) —
+   kompendium jest wspólne dla wszystkich na VPS (decyzja MG z 26.09), to nie jest wyciek.
 
 ### 6.6. T11 — VPS (po etapie 28)
 
@@ -463,17 +472,15 @@ testów — to nie jest błąd aplikacji.
 
 ## 11. Pytania otwarte
 
-Rozstrzygnięte 26.09 (baza, liczba graczy, kości, hak klienta, tożsamość gracza) — w sekcji 2.
-Zostały, do rozstrzygnięcia przy projektowaniu etapu „Konta MG” (nie blokują T1–T8):
+Brak. Rozstrzygnięte 26.09 — pierwsza tura (baza, liczba graczy, kości, hak klienta, tożsamość
+gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
-1. **Aktywna kampania per MG** — czy wchodzi do etapu „Konta MG”? Bez niej T9 punkt 4 kończy się B1
-   (MG-B przenosi graczy MG-A), choć sama równoległa gra grup jest po becie.
-2. **Boty innych MG w becie** — do czasu paczki AI jedyny gateway to PC właściciela. Czy boty MG-B
-   mają z niego korzystać (kolejka na jednej karcie), czy u innych MG są „niedostępne”?
-3. **Uploady** — dziś `/uploads/` jest serwowane statycznie bez logowania; czy przy wielu MG ma tak
-   zostać (adres trudny do zgadnięcia), czy trafić za logowanie?
-4. **Kompendium podręcznika na VPS** — 66 umiejętności i katalog z `data/private/` zobaczą też grupy
-   innych MG. Czy to mieści się w „użytku prywatnym”? Decyzja MG, nie testów.
+1. **Aktywna kampania per MG** — **wchodzi** do etapu „Konta MG” (T9, punkt 4).
+2. **Boty innych MG** — w becie **niedostępne**; inni MG dostaną paczkę instalacyjną AI na własny PC
+   (zaległości, pozycja 3) — T9, punkt 8.
+3. **Dostęp** — każdy MG ma własne hasło, gracze wchodzą **indywidualnymi linkami**; uploady kampanii
+   za logowaniem, tylko dla jej członków — T9, punkty 5 i 6.
+4. **Kompendium na VPS** — **wspólne dla wszystkich** MG i graczy — T9, punkt 9.
 
 ## 12. Notatki z sesji testowych
 
