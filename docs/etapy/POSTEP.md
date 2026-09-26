@@ -145,6 +145,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 26.09 (trzecia) — odciski butów: zakręty łukiem, poświata gaśnie od najstarszych
+
+**Zlecenie MG (poza etapami):** poprawić odciski butów przy ruchu figury — „zakręty mi się nie
+podobają”; w trakcie: ślady mają zanikać **od najstarszych do najnowszych**, a nie cała trasa naraz.
+
+**Zrobione:** rozmieszczanie odcisków wyjęte do `map/footprints.ts` (`placeFootprints`): chód idzie
+po wygładzonej kopii trasy (dwa przebiegi średniej ruchomej, końce trzymane), odstęp i pasy kolorów
+dalej liczone po trasie prawdziwej — „odcisk = metr” bez zmian. Dotąd but brał kierunek i bok od
+odcinka, więc na rogu obracał się skokowo, a po wewnętrznej stronie buty się nakładały. Szerokość
+łuku `FOOTPRINT_TURN_RATIO = 1,5` żetonu (dobrana okiem: 1 — obrót na dwóch odciskach, 4 — ścina
+róg). Marsz podaje całą trasę i `untilPx`, żeby odcisk za rogiem nie pełzał w trakcie. Poświata
+po marszu/ciągnięciu: 20% życia w pełnej sile, potem fala od startu do figury (`trailFadeStrength`),
+nadal 5 s, w pełnej sile marszu (dawny mnożnik 0,7 przyciemniał całą trasę w chwili
+zatrzymania). Umowa w `mapa` rozszerzona (licznik bez zmian).
+
+**Weryfikacja:** klient 300 (+11, `footprints.test.ts`), `tsc`, ESLint czyste, Prettier na
+zmienionych plikach kodu (`umowy-kodu.md` był niesformatowany już wcześniej). Oglądane w Firefoksie
+(MG, Playwright) na „Test2”: podgląd trasy z punktem pośrednim (róg 90°), zakręt z „schodkiem”,
+marsz Franca przez róg, zrzuty zanikania co sekundę i klatki co 300 ms wokół zatrzymania. Franc wrócił na pole startowe; zmienił się
+tylko jego kierunek (ostatni krok marszu powrotnego). `dev.db` poza tym nietknięta.
+
 ### Sesja 26.09 (druga) — grot kierunku jako uchwyt obrotu, żeton przeciągany z panelu na mapę
 
 **Zlecenie MG (poza etapami):** MG ma przeciągać figury graczy i stawiać nowe przeciągnięciem;
@@ -164,27 +185,3 @@ przeciągnięcie „Postaw pusty” i wiersza Franca (dubler z kartą i właści
 otworzyła). W Firefoksie (MG): przeciągnięcie „Postaw pusty” i obrót za grot (zapis 111°).
 Kampania „Test2”: figury testowe „DnD test”, „DnD FF” i dubler Franca **usunięte**; kierunek
 Franca i Portosa ustawiany tylko lokalnie w magazynie (F5 przywraca). `dev.db` poza tym nietknięta.
-
-### Sesja 26.09 — poprawki #2–#9 z rejestru testów (po T3b)
-
-**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, które mieszczą się w jednej sesji; wolno
-uruchamiać wszystko. Rozstrzygnięcia MG: **#3** — pole „Data startu kampanii” w oknie zegara;
-**#5** — `data/private` zastępuje próbkę w całości; **#9** — zaległy żeton staje przy najbliższej
-aktywacji sceny.
-
-**Zrobione (`5ee4a59`):** #2 `stats` wypada z `character:update` u gracza, na karcie `readOnly`;
-#3 `time:set` z `start: true` (miesiąc startu rozliczony, karta „Początek kampanii”, `days: 0`);
-#4 `total` rzutu jednej tabeli = kość; #5 `loadCompendium` czyta prywatny katalog albo próbkę;
-#6 MG bez kampanii dostaje radę o „Panel MG”; #7 „Wybierz język ojczysty…”; #8 ekran końcowy
-kreatora czyta `playReady` i figurę na żywo; #9 `placeOwedCreationTokens` w `scene:activate`,
-ręczny `token:create` spłaca dług, a figura z kreatora staje przy `Scene.spawn` (dotąd na środku
-mapy). Umowy: `postac` (2), `czas`, `dane`. Wszystkie osiem wierszy rejestru — „retest OK”.
-Na dokładkę **Z1** (zadanie etapu 28): ostrzeżenie w logu przy starcie na próbce (`cpred.ts`,
-`compendium.ts`), sprawdzone na `dist/` z pustym i pełnym `DATA_PRIVATE_DIR`; komunikat w panelu MG
-zostaje etapowi 28.
-
-**Weryfikacja:** `shared` 2237, serwer 1245 (+9), klient 286, E2E 40/40 (z `@llm`), potem T3a
-16/16 z nowym krokiem #8; `tsc`, ESLint, Prettier czyste. Oglądane w Firefoksie (Playwright MCP)
-na pustej instancji E2E: #6, okno zegara z nowym polem, #7; #8 i #9 sprawdza automat (Ola
-w Firefoksie). Karta gracza z Cechami `readOnly` nieoglądana okiem — ten sam `NumberStepper`
-co poziomy Umiejętności. `dev.db` nietknięta.

@@ -97,6 +97,7 @@ import {
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 import { marchStopPoint, type MarchLanding } from './march-landing.js';
+import { placeFootprints, trailFadeStrength } from './footprints.js';
 import {
   FOG_PEEP_CORE_RATIO,
   NOSE_GAP,
@@ -477,6 +478,18 @@ const WALK_FREE_RANGE_M = 80;
  * five seconds without turning a fight into a drawing.
  */
 const TRAIL_FADE_MS = 5000;
+/**
+ * Share of `TRAIL_FADE_MS` the whole trail stands at full strength before the
+ * oldest print starts to go (MG, 26.09) — the moment right after a stop is when
+ * the table asks which way the figure came in.
+ */
+const TRAIL_HOLD = 0.2;
+/**
+ * How soft the fading front is, as a share of the trail's length: a handful of
+ * prints are on their way out at once, so the trail thins out along the route
+ * rather than blinking off one boot at a time.
+ */
+const TRAIL_FADE_EDGE = 0.3;
 
 /**
  * Metres of ground between footsteps (stage 27j).
@@ -581,6 +594,14 @@ const FOOTPRINT_OFFSET_RATIO = 0.13;
  * toe-out is what a walking human actually leaves behind.
  */
 const FOOTPRINT_TOE_OUT = 0.09;
+/**
+ * How wide a corner the trail rounds, as a share of the token's width (MG,
+ * 26.09: „zakręty mi się nie podobają"). The route turns on a point; the boots
+ * turn over three or four steps, the way a person walks round a corner. Seen
+ * in Firefox on a right-angle waypoint: at 1 the whole turn still fell on two
+ * prints, at 4 the trail cut across the corner it was meant to show.
+ */
+const FOOTPRINT_TURN_RATIO = 1.5;
 /**
  * Least room a print gets before the trail thins itself out, as a multiple of
  * the print's own length. Below this the boots overlap into a smear.
@@ -4394,7 +4415,9 @@ export class MapRenderer {
    *
    * Sized off the token rather than off the screen, so the trail stays the same
    * size at every zoom, and thinned to whole metres when a print would be
-   * longer than the metre it stands on.
+   * longer than the metre it stands on. Corners are walked round, not pivoted
+   * on (26.09): the boots stand on a rounded copy of the route, while the
+   * metres are still counted on the route itself (`placeFootprints`).
    */
   private drawFootprints(
     pool: FootprintPool,
@@ -4402,6 +4425,7 @@ export class MapRenderer {
     scene: SceneView,
     half: number,
     bandAt: (metres: number) => { color: number; alpha: number },
+    untilPx?: number,
   ): void {
     pool.hide();
     const texture = this.footprintTexture;
@@ -4418,49 +4442,34 @@ export class MapRenderer {
     // „one print = two metres" rather than becoming an arbitrary spacing.
     const stride = Math.max(1, Math.ceil((printH * FOOTPRINT_GAP_RATIO) / metrePx));
     const stepPx = stride * metrePx;
+    // Corners rounded over a few strides, never over fewer than one and a half
+    // — see `placeFootprints`.
+    const turnPx = Math.max(tokenPx * FOOTPRINT_TURN_RATIO, stepPx * 1.5);
 
-    let used = 0;
-    let travelled = 0;
-    let next = stepPx;
-    for (let i = 1; i < points.length && used < FOOTPRINT_MAX; i++) {
-      const from = points[i - 1]!;
-      const to = points[i]!;
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const length = Math.hypot(dx, dy);
-      if (length <= 0) continue;
-      const ux = dx / length;
-      const uy = dy / length;
-      const angle = Math.atan2(dy, dx);
-      while (next <= travelled + length && used < FOOTPRINT_MAX) {
-        const along = next - travelled;
-        // +1 is the walker's right — the perpendicular below is their right
-        // hand, because the map's y runs down the screen.
-        const side = used % 2 === 0 ? 1 : -1;
-        const offset = offsetPx * side;
-        // Each print asks for itself: the band is a question about the metre it
-        // stands on, not about the leg it happens to lie in, so a boundary
-        // falling in the middle of a long straight still lands in the right
-        // place.
-        const band = bandAt(next * perPixel);
-        const print = pool.at(used, texture);
-        print.visible = true;
-        print.tint = band.color;
-        print.alpha = band.alpha;
-        // Turned out of the line of travel, so the pair reads as a gait.
-        print.rotation = angle + Math.PI / 2 + FOOTPRINT_TOE_OUT * side;
-        print.setSize(printW, printH);
-        // The glyph is the left boot, so the right one is the mirrored print.
-        print.scale.x = Math.abs(print.scale.x) * -side;
-        print.position.set(
-          from.x + half + ux * along - uy * offset,
-          from.y + half + uy * along + ux * offset,
-        );
-        used += 1;
-        next += stepPx;
-      }
-      travelled += length;
-    }
+    const placements = placeFootprints(points, {
+      stepPx,
+      offsetPx,
+      turnPx,
+      max: FOOTPRINT_MAX,
+      untilPx,
+    });
+    placements.forEach(({ x, y, heading, along, side }, used) => {
+      // Each print asks for itself: the band is a question about the metre it
+      // stands on, not about the leg it happens to lie in, so a boundary
+      // falling in the middle of a long straight still lands in the right
+      // place.
+      const band = bandAt(along * perPixel);
+      const print = pool.at(used, texture);
+      print.visible = true;
+      print.tint = band.color;
+      print.alpha = band.alpha;
+      // Turned out of the line of travel, so the pair reads as a gait.
+      print.rotation = heading + Math.PI / 2 + FOOTPRINT_TOE_OUT * side;
+      print.setSize(printW, printH);
+      // The glyph is the left boot, so the right one is the mirrored print.
+      print.scale.x = Math.abs(print.scale.x) * -side;
+      print.position.set(x + half, y + half);
+    });
   }
 
   /**
@@ -4643,12 +4652,24 @@ export class MapRenderer {
       this.fadingPrints.hide();
       return;
     }
-    // Ostatnia ćwiartka życia gasi ślad, reszta trzyma go w pełnej sile: ślad,
-    // który blaknie od pierwszej klatki, przez większość swojego istnienia jest
-    // już ledwie widoczny — a właśnie w tym czasie pada pytanie „którędy on tu
-    // wszedł?", dla którego ten ślad w ogóle leży.
-    const left = trail.life / TRAIL_FADE_MS;
-    const alpha = Math.min(1, left / 0.25) * 0.7;
+    // Ślad gaśnie tak, jak go stawiano — od najstarszego odcisku do najnowszego
+    // (MG, 26.09: „a nie wszystkie na raz"). Przez `TRAIL_HOLD` życia stoi cały
+    // w pełnej sile, bo zaraz po zatrzymaniu pada pytanie „którędy on tu
+    // wszedł?"; potem wzdłuż drogi idzie fala z miękkim brzegiem szerokim na
+    // `TRAIL_FADE_EDGE` trasy i ostatni odcisk znika razem z końcem życia.
+    const elapsed = 1 - trail.life / TRAIL_FADE_MS;
+    const perPixel = metresPerPixel(scene);
+    let totalMetres = 0;
+    for (let i = 1; i < trail.points.length; i++) {
+      const from = trail.points[i - 1]!;
+      const to = trail.points[i]!;
+      totalMetres += Math.hypot(to.x - from.x, to.y - from.y) * perPixel;
+    }
+    // Pełna siła, ta sama co marszu i ciągnięcia: poświata przejmuje ślad bez
+    // skoku. Z mnożnikiem 0,7 cała trasa bladła naraz w chwili, gdy figura
+    // stawała (MG, 26.09: „przyciemniają się, gdy przestaje iść").
+    const alpha = (metres: number): number =>
+      trailFadeStrength(metres, totalMetres, elapsed, TRAIL_HOLD, TRAIL_FADE_EDGE);
     this.drawWalkedTrail(
       this.fadingPrints,
       this.trailGraphics,
@@ -4858,14 +4879,23 @@ export class MapRenderer {
     const scene = this.scene;
     if (!scene) return;
     const half = (march.node.token.size * scene.grid.sizePx) / 2;
+    const walked = [march.start, ...march.walked, { x: march.x, y: march.y }];
+    let walkedPx = 0;
+    for (let i = 1; i < walked.length; i++) {
+      walkedPx += Math.hypot(walked[i]!.x - walked[i - 1]!.x, walked[i]!.y - walked[i - 1]!.y);
+    }
+    // The whole plan, cut at the figure: the ground still ahead only bends the
+    // corner the prints stand on, so a print laid just past it does not slide
+    // onto the curve as the figure walks on (`placeFootprints`, 26.09).
     this.drawWalkedTrail(
       this.trailPrints,
       this.walkGraphics,
-      [march.start, ...march.walked, { x: march.x, y: march.y }],
+      [march.start, ...march.route],
       scene,
       half,
       march.overFrom,
       1,
+      walkedPx,
     );
   }
 
@@ -4903,29 +4933,47 @@ export class MapRenderer {
     scene: SceneView,
     half: number,
     overFrom: number | null,
-    alpha: number,
+    alpha: number | ((metres: number) => number),
+    untilPx?: number,
   ): void {
     if (points.length < 2) {
       pool.hide();
       return;
     }
+    const alphaAt = typeof alpha === 'number' ? (): number => alpha : alpha;
     const band = (metres: number): { color: number; alpha: number } => ({
       color: overFrom !== null && metres > overFrom + 0.05 ? TRAIL_COLOR_OVER : TRAIL_COLOR,
-      alpha,
+      alpha: alphaAt(metres),
     });
     if (this.footprintTexture) {
-      this.drawFootprints(pool, points, scene, half, band);
+      this.drawFootprints(pool, points, scene, half, band, untilPx);
       return;
     }
     pool.hide();
     const k = this.overlayScale();
     const [first, ...rest] = points;
     graphics.moveTo(first!.x + half, first!.y + half);
-    for (const point of rest) graphics.lineTo(point.x + half, point.y + half);
+    // Only as far as the figure has got — a march passes its whole plan.
+    let left = untilPx ?? Infinity;
+    let drawnPx = 0;
+    let from = first!;
+    for (const point of rest) {
+      const length = Math.hypot(point.x - from.x, point.y - from.y);
+      const t = length > left ? left / length : 1;
+      graphics.lineTo(
+        from.x + (point.x - from.x) * t + half,
+        from.y + (point.y - from.y) * t + half,
+      );
+      drawnPx += length * t;
+      if (t < 1) break;
+      left -= length;
+      from = point;
+    }
     graphics.stroke({
       color: TRAIL_COLOR,
       width: 2 * k,
-      alpha: alpha * 0.7,
+      // Kreska jest jedna, więc bierze siłę najnowszego końca — gaśnie ostatnia.
+      alpha: alphaAt(drawnPx * metresPerPixel(scene)) * 0.7,
       cap: 'round',
       join: 'round',
     });
