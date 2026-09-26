@@ -403,10 +403,8 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     // dziesiątce, Iskra tuż pod nim — oboje nad Rzeźnikiem.
     async function rollInitiative(actor: Actor, face: number): Promise<RollJson> {
       scriptDice([face]);
-      await actor.page.getByRole('button', { name: 'Walka', exact: true }).first().click();
-      await actor.page
-        .getByRole('button', { name: 'Załaduj kubek — rzut wykonasz potrząsając kubkiem' })
-        .click();
+      // Od 43a kubek inicjatywy siedzi na własnym żetonie czarnego pasa.
+      await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click();
       const id = await rollAndWait(actor, lastMessageId(), 'Inicjatywa');
       const roll = rollById(id);
       // Klient wstrzymuje skutek rzutu do końca animacji kości (umowa `serwer`, 22.09),

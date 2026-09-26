@@ -136,11 +136,58 @@ export function tokenHpRung(hp: Pick<TokenHp, 'current' | 'max'>): TokenHpRung {
   return 'healthy';
 }
 
+/**
+ * Ile zostało z PW figury — bez samych liczb (etap 43a).
+ *
+ * Decyzja MG z 26.09: odsetek ran widzą **wszyscy** przy stole — obrączka na
+ * żetonie i czerwień portretu w zakładce „Walka". Świadome odstępstwo od zasady,
+ * że PW cudzej figury nie opuszczają serwera, ale tylko do połowy: gracz dostaje
+ * ułamek i szczebel, a nie „17/35". Serwer liczy go z prawdziwego licznika
+ * (`tokenHpShareOf`), więc drabinka szczebli jest ta sama co u MG.
+ */
+export interface TokenHpShare {
+  /** Zostało PW, 0…1, zaokrąglone do setnych. */
+  ratio: number;
+  rung: TokenHpRung;
+}
+
+/**
+ * Ułamek z licznika. Zaokrąglenie nie kłamie w dwie strony, które widać
+ * gołym okiem: żywa figura nie spada do 0, a draśnięta nie wraca do pełna.
+ */
+export function tokenHpShareOf(hp: Pick<TokenHp, 'current' | 'max'>): TokenHpShare {
+  const rung = tokenHpRung(hp);
+  if (hp.max <= 0 || hp.current <= 0) return { ratio: 0, rung };
+  const rounded = Math.round((hp.current / hp.max) * 100) / 100;
+  const ceiling = hp.current < hp.max ? 0.99 : 1;
+  return { ratio: Math.min(ceiling, Math.max(0.01, rounded)), rung };
+}
+
+/**
+ * Ułamek dla tego widza: z pełnych PW, gdy je dostał, inaczej z jawnego
+ * `hpShare`; `null` — figura bez PW.
+ */
+export function tokenHpShare(token: {
+  hp?: TokenHp | null;
+  hpShare?: TokenHpShare | null;
+}): TokenHpShare | null {
+  if (token.hp && token.hp.max > 0) return tokenHpShareOf(token.hp);
+  return token.hpShare ?? null;
+}
+
 /** A figure at zero hit points is down whatever else it is wearing. */
-function conditionFromHp(hp: TokenHp | null | undefined): TokenCondition {
-  if (!hp || hp.max <= 0) return 'ok';
-  if (hp.current <= 0) return 'down';
-  return hp.current / hp.max < WOUNDED_HP_RATIO ? 'wounded' : 'ok';
+function conditionFromHp(
+  hp: TokenHp | null | undefined,
+  share: TokenHpShare | null | undefined,
+): TokenCondition {
+  if (hp && hp.max > 0) {
+    if (hp.current <= 0) return 'down';
+    return hp.current / hp.max < WOUNDED_HP_RATIO ? 'wounded' : 'ok';
+  }
+  // Widz bez PW: zaokrąglony ułamek wystarcza, bo próg i tak mówi o połowie.
+  if (!share) return 'ok';
+  if (share.rung === 'mortal') return 'down';
+  return share.ratio < WOUNDED_HP_RATIO ? 'wounded' : 'ok';
 }
 
 /**
@@ -153,10 +200,10 @@ function conditionFromHp(hp: TokenHp | null | undefined): TokenCondition {
  * player can see an enemy drop without ever learning its hit points.
  */
 export function tokenCondition(
-  token: Pick<TokenView, 'statuses'> & { hp?: TokenHp | null },
+  token: Pick<TokenView, 'statuses'> & { hp?: TokenHp | null; hpShare?: TokenHpShare | null },
   conditions: ReadonlyMap<string, TokenCondition>,
 ): TokenCondition {
-  let worst = conditionFromHp(token.hp);
+  let worst = conditionFromHp(token.hp, token.hpShare);
   for (const statusId of token.statuses) {
     const condition = conditions.get(statusId);
     if (condition && CONDITION_ORDER[condition] > CONDITION_ORDER[worst]) worst = condition;

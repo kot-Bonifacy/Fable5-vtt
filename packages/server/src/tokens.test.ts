@@ -677,6 +677,9 @@ describe('tokens', () => {
     const npcView = payload.tokens.find((t) => t.id === npcTokenId)!;
     // The key must be absent entirely — foreign HP never crosses the wire.
     expect('hp' in npcView).toBe(false);
+    // Etap 43a: what is left of it travels as a share, never as numbers.
+    expect(npcView.hpShare).toEqual({ ratio: 1, rung: 'healthy' });
+    expect('hpShare' in ownView).toBe(false);
 
     // The hidden token's create broadcast never reached the player either.
     expect(JSON.stringify(playerTokenTraffic)).not.toContain(hiddenTokenId);
@@ -687,6 +690,26 @@ describe('tokens', () => {
       current: 25,
       max: 25,
     });
+  });
+
+  it('tells players how hurt a foreign figure is without its HP (stage 43a)', async () => {
+    const upserted = waitFor<TokenUpsertBroadcast>(player, 'token:upsert');
+    const hurt = await emitAck(gm, 'token:update', {
+      tokenId: npcTokenId,
+      patch: { hp: { current: 10, max: 25 } },
+    });
+    expect(hurt.ok).toBe(true);
+    const upsert = await upserted;
+    expect(upsert.token.id).toBe(npcTokenId);
+    expect('hp' in upsert.token).toBe(false);
+    expect(upsert.token.hpShare).toEqual({ ratio: 0.4, rung: 'serious' });
+
+    const restored = await emitAck(gm, 'token:update', {
+      tokenId: npcTokenId,
+      patch: { hp: { current: 25, max: 25 } },
+    });
+    expect(restored.ok).toBe(true);
+    await roundTrip(player);
   });
 
   it('lets the owner move their token with server-side snapping', async () => {

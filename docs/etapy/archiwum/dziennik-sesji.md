@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 26.09 (druga) — grot kierunku jako uchwyt obrotu, żeton przeciągany z panelu na mapę
+
+**Zlecenie MG (poza etapami):** MG ma przeciągać figury graczy i stawiać nowe przeciągnięciem;
+cienka biała kreska od środka zaznaczonej figury do uchwytu obrotu — naprawić, najlepiej lepszą
+wizualizacją z widocznym portretem. W trakcie MG: kropka na czubku grotu „niepotrzebna”, grot
+„lepiej większy”.
+
+**Zrobione:** przesuwanie figur graczy przez MG już działało (bez zmian). **Nowe:** przeciąganie
+żetonu z panelu na mapę — kafel biblioteki, „Postaw pusty”, wiersz postaci i „⊕” (`map/token-drag.ts`,
+żółty obrys pola lądowania, ten sam `token:create` co klik; błąd trafia na czat). **Grot:** z wcięciem,
+większy (0,3 / 0,4 kratki), wspólny `nosePolygon`; **uchwytem obrotu jest sam grot** — bez patyka
+i bez kropki; figura bez kierunku pokazuje po zaznaczeniu blady zarys grotu u góry. Umowa w `mapa`.
+
+**Weryfikacja:** klient 289 (+3, `nosePolygon`), `tsc`, ESLint, Prettier czyste. Oglądane
+w Chromium (MG, Playwright): grot przy zbliżeniu stołu i z bliska, zarys dla figury bez kierunku,
+przeciągnięcie „Postaw pusty” i wiersza Franca (dubler z kartą i właścicielem, karta się nie
+otworzyła). W Firefoksie (MG): przeciągnięcie „Postaw pusty” i obrót za grot (zapis 111°).
+Kampania „Test2”: figury testowe „DnD test”, „DnD FF” i dubler Franca **usunięte**; kierunek
+Franca i Portosa ustawiany tylko lokalnie w magazynie (F5 przywraca). `dev.db` poza tym nietknięta.
+
 ### Sesja 26.09 — poprawki #2–#9 z rejestru testów (po T3b)
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, które mieszczą się w jednej sesji; wolno

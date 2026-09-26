@@ -16,7 +16,6 @@ import {
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
-  portraitBannerFor,
   woundStateFromHp,
 } from '@vtt/shared';
 import {
@@ -37,8 +36,7 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
-import { usePortraitStore } from '../stores/portraitStore.js';
-import { bannerImageStyle } from '../portrait-banner.js';
+import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
@@ -360,10 +358,7 @@ function ModeDrawer({
  * zostaje przy `object-position` z CSS.
  */
 function useBannerCrop(imageUrl: string | null): CSSProperties | null {
-  const asset = usePortraitStore((s) =>
-    imageUrl ? (s.assets.find((a) => a.url === imageUrl) ?? null) : null,
-  );
-  return asset ? bannerImageStyle(portraitBannerFor(asset)) : null;
+  return usePortraitFrameStyle(imageUrl);
 }
 
 /** Portrait, name, role and the three numbers a fight is fought with. */

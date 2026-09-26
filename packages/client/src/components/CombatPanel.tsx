@@ -1,35 +1,42 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CombatantView, TokenView, TurnBudgetView } from '@vtt/shared';
-import { formatMetres } from '@vtt/shared';
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type {
+  CombatantView,
+  CpredStatEffect,
+  StatusDefinition,
+  TokenView,
+  TurnBudgetView,
+} from '@vtt/shared';
 import {
-  COMBAT_INITIATIVE_MAX,
-  COMBAT_INITIATIVE_MIN,
   CPRED_BACKUP_TIERS,
+  CPRED_MANAGED_WOUND_STATUS_IDS,
   ROLE_GM,
-  findInitiativeTies,
+  conditionRegistry,
+  cpredStatusSeverity,
+  describeCpredStatEffect,
+  describeCpredStatEffectTimer,
+  formatMetres,
+  tokenCondition,
+  tokenHpShare,
 } from '@vtt/shared';
 import {
   addToCombat,
   endCombat,
-  nextCombatTurn,
-  previousCombatTurn,
   releaseCombatHold,
   removeFromCombat,
-  reorderCombat,
-  rerollCombatTie,
   resetCombatTurn,
   resolveBackup,
-  rollCombatInitiativeForAll,
-  setCombatInitiative,
   startCombat,
 } from '../socket.js';
+import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { CombatActions } from './CombatActions.js';
+import { HudIcon, StatusIcon } from './HudIcon.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
+import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { useRollStore } from '../stores/rollStore.js';
 import { EmptyState } from './EmptyState.js';
 
 /** Tokens likely to fight: the players' characters come pre-ticked. */
@@ -130,192 +137,284 @@ function budgetSummary(budget: TurnBudgetView): string {
   return parts.join(' · ');
 }
 
-/** One row of the tracker; the GM can drag it to settle a tie by hand. */
-function CombatRow({
-  combatant,
-  index,
-  isActive,
-  isGm,
-  canRoll,
-  hp,
-  onDragStart,
-  onDrop,
+/** Proporcje portretu w zakładce (wysokość przez szerokość) — pod `usePortraitFrameStyle`. */
+const PORTRAIT_ASPECT = 1.2;
+
+/** Ile naklejek mieści się na portrecie, zanim reszta zejdzie do „+N". */
+const PORTRAIT_MARKS_MAX = 4;
+
+/** Jedna ikona na portrecie: skąd obrazek, jak groźna i co mówi po najechaniu. */
+interface PortraitMark {
+  key: string;
+  title: string;
+  tone: 'info' | 'warn' | 'critical' | 'up' | 'down';
+  /** Plik naklejki z rejestru (`StatusIcon`) albo sylwetka HUD-u (`HudIcon`). */
+  status?: string;
+  hud?: string;
+  /** Znak zamiast ikony — strzałka efektu na Cesze. */
+  glyph?: string;
+}
+
+/**
+ * Portret uczestnika z ranami (etap 43a, zlecenie MG z 26.09).
+ *
+ * Odsetek utraconych PW barwi portret **od dołu**: 40 % ran to dolne 40 %
+ * obrazu w czerwono-czarnym monochromie. Druga kopia obrazu leży na pierwszej,
+ * przycięta `clip-path` do wysokości ran — szarość z filtra, czerwień z warstwy
+ * `multiply`, więc biel staje się czerwienią, a czerń zostaje czernią. 0 PW
+ * (Śmiertelnie ranny) to cały portret w czerwieni; czarno-biały jest dopiero
+ * trup — naklejka ze stanem `dead`.
+ */
+function WoundPortrait({
+  name,
+  imageUrl,
+  damage,
+  dead,
+  marks,
 }: {
-  combatant: CombatantView;
-  index: number;
-  isActive: boolean;
-  isGm: boolean;
-  canRoll: boolean;
-  hp: { current: number; max: number } | null;
-  onDragStart: (id: string) => void;
-  onDrop: (id: string) => void;
+  name: string;
+  imageUrl: string | null;
+  /** Utracone PW, 0…1; `null` — figura bez PW (albo bez figury). */
+  damage: number | null;
+  dead: boolean;
+  marks: readonly PortraitMark[];
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
+  const crop = usePortraitFrameStyle(imageUrl, PORTRAIT_ASPECT);
+  const picture = imageUrl ? (
+    <img
+      className={`combat-portrait-img${crop ? ' combat-portrait-img--cropped' : ''}`}
+      src={imageUrl}
+      alt=""
+      draggable={false}
+      {...(crop ? { style: crop } : {})}
+    />
+  ) : (
+    <span className="combat-portrait-img combat-portrait-img--empty">
+      {name.trim().charAt(0).toUpperCase() || '?'}
+    </span>
+  );
+  const wound = !dead && damage !== null && damage > 0 ? damage : 0;
+  const shown = marks.slice(0, PORTRAIT_MARKS_MAX);
+  const rest = marks.slice(PORTRAIT_MARKS_MAX);
+  return (
+    <span
+      className={`combat-portrait${dead ? ' combat-portrait--dead' : ''}`}
+      style={{ '--wound': wound } as CSSProperties}
+    >
+      {picture}
+      {wound > 0 && (
+        <>
+          <span className="combat-portrait-wound" aria-hidden>
+            {picture}
+          </span>
+          {wound < 1 && <span className="combat-portrait-waterline" aria-hidden />}
+        </>
+      )}
+      {marks.length > 0 && (
+        <ul className="combat-portrait-marks">
+          {shown.map((mark) => (
+            <li
+              key={mark.key}
+              className={`combat-mark combat-mark--${mark.tone}`}
+              title={mark.title}
+            >
+              {mark.status ? (
+                <StatusIcon src={mark.status} />
+              ) : mark.hud ? (
+                <HudIcon name={mark.hud} />
+              ) : (
+                <span className="combat-mark-glyph" aria-hidden>
+                  {mark.glyph}
+                </span>
+              )}
+              <span className="visually-hidden">{mark.title}</span>
+            </li>
+          ))}
+          {rest.length > 0 && (
+            <li
+              className="combat-mark combat-mark--more"
+              title={rest.map((mark) => mark.title).join('\n')}
+            >
+              +{rest.length}
+            </li>
+          )}
+        </ul>
+      )}
+    </span>
+  );
+}
 
-  function commit() {
-    setEditing(false);
-    const trimmed = draft.trim();
-    if (trimmed === '') {
-      void setCombatInitiative(combatant.id, null);
-      return;
-    }
-    const value = Number.parseInt(trimmed, 10);
-    if (Number.isNaN(value)) return;
-    const clamped = Math.min(Math.max(value, COMBAT_INITIATIVE_MIN), COMBAT_INITIATIVE_MAX);
-    void setCombatInitiative(combatant.id, clamped);
-  }
-
-  function loadCup() {
-    useRollStore.getState().loadInitiativeCup({
-      combatantId: combatant.id,
-      name: combatant.name,
-      modifierTotal: combatant.tieBreak ?? 0,
+/**
+ * Wszystko, co wisi na figurze, jako ikony na portret (decyzja MG z 26.09):
+ * naklejki stanów, efekty na Cechach, chwyt, wstrzymana Akcja i to, co jej
+ * następna tura jest winna ranom krytycznym. Stany ran pomija — o nich mówi
+ * czerwień, a „Martwy" — czarno-biały portret.
+ */
+function portraitMarks(
+  combatant: CombatantView,
+  token: TokenView | undefined,
+  registry: ReadonlyMap<string, StatusDefinition>,
+  effects: readonly CpredStatEffect[],
+  clock: { round: number | null; minutes: number },
+): PortraitMark[] {
+  const marks: PortraitMark[] = [];
+  for (const id of token?.statuses ?? []) {
+    const definition = registry.get(id);
+    if (CPRED_MANAGED_WOUND_STATUS_IDS.includes(id) || definition?.condition === 'dead') continue;
+    // Chwyt ma własną ikonę z nazwą drugiej strony (niżej) — naklejka byłaby dublem.
+    if (id === 'grappled' && combatant.grapple) continue;
+    marks.push({
+      key: `status:${id}`,
+      title: definition?.name ?? id,
+      tone: cpredStatusSeverity(id),
+      ...(definition ? { status: definition.icon } : { glyph: '?' }),
     });
   }
+  for (const effect of effects) {
+    marks.push({
+      key: `effect:${effect.id}`,
+      title: `${describeCpredStatEffect(effect)} — ${describeCpredStatEffectTimer(effect, clock)}`,
+      tone: effect.value < 0 ? 'down' : 'up',
+      glyph: effect.value < 0 ? '▼' : '▲',
+    });
+  }
+  if (combatant.grapple) {
+    const grapple = combatant.grapple;
+    marks.push({
+      key: 'grapple',
+      title:
+        (grapple.role === 'attacker'
+          ? `Trzyma: ${grapple.otherName}`
+          : `W Trzymaniu: ${grapple.otherName}`) +
+        (grapple.shield ? ' · Ludzka tarcza' : '') +
+        (grapple.chokeStreak ? ` · Duszenie ×${grapple.chokeStreak}` : ''),
+      tone: 'warn',
+      hud: 'grab',
+    });
+  }
+  if (combatant.held) {
+    marks.push({
+      key: 'held',
+      title:
+        combatant.held.initiative !== null
+          ? `Akcja wstrzymana przy ${combatant.held.initiative}`
+          : `Akcja wstrzymana: ${combatant.held.trigger ?? 'wyzwalacz opisany'}`,
+      tone: 'info',
+      hud: 'hourglass',
+    });
+  }
+  for (const line of combatant.owes ?? []) {
+    marks.push({ key: `owes:${line}`, title: line, tone: 'critical', hud: 'first-aid' });
+  }
+  return marks;
+}
 
+/** One card of the fight: portrait with its wounds, the name, the turn left. */
+function CombatantCard({
+  combatant,
+  token,
+  isActive,
+  isDone,
+  isGm,
+  marks,
+  dead,
+}: {
+  combatant: CombatantView;
+  token: TokenView | undefined;
+  isActive: boolean;
+  isDone: boolean;
+  isGm: boolean;
+  marks: PortraitMark[];
+  dead: boolean;
+}) {
+  const share = token ? tokenHpShare(token) : null;
+  const damage = share ? 1 - share.ratio : null;
+  const hp = token?.hp ?? null;
+  // Liczby tylko temu, kto je dostał (MG, właściciel); reszta stołu widzi
+  // odsetek — to on decyduje o czerwieni, więc może też stać słowem.
+  const hpLabel = hp
+    ? `PW ${hp.current}/${hp.max}`
+    : share
+      ? `Rany ${Math.round((1 - share.ratio) * 100)}%`
+      : null;
   return (
     <li
-      className={`combat-row${isActive ? ' combat-row--active' : ''}`}
-      draggable={isGm}
-      onDragStart={() => onDragStart(combatant.id)}
-      onDragOver={(e) => {
-        if (isGm) e.preventDefault();
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop(combatant.id);
-      }}
+      className={`combat-card${isActive ? ' combat-card--active' : ''}${
+        isDone ? ' combat-card--done' : ''
+      }${combatant.hidden ? ' combat-card--hidden' : ''}`}
+      aria-current={isActive ? 'true' : undefined}
     >
-      <span className="combat-row-index">{index + 1}</span>
-      {combatant.imageUrl ? (
-        <img className="combat-row-portrait" src={combatant.imageUrl} alt="" />
-      ) : (
-        <span className="combat-row-portrait combat-row-portrait--empty">
-          {combatant.name.trim().charAt(0).toUpperCase() || '?'}
-        </span>
-      )}
-      <span className="combat-row-main">
-        <span className="combat-row-name">
+      <WoundPortrait
+        name={combatant.name}
+        imageUrl={combatant.imageUrl}
+        damage={damage}
+        dead={dead}
+        marks={marks}
+      />
+      <span className="combat-card-body">
+        <span className="combat-card-name">
           {/* Figura, której MG nie dał graczom żadnej nazwy: na mapie stoi bez
               podpisu, ale wiersz listy musi się dać wskazać palcem. */}
           {combatant.name.trim() === '' ? <em>Nieznana figura</em> : combatant.name}
+        </span>
+        <span className="combat-card-tags">
+          {isActive && <span className="combat-card-now">Tura</span>}
+          {dead && <span className="combat-tag">martwy</span>}
           {combatant.hidden && <span className="combat-tag">ukryty</span>}
           {combatant.tokenId === null && <span className="combat-tag">w Sieci</span>}
         </span>
-        <span className="combat-row-meta">
-          {hp ? `PW ${hp.current}/${hp.max}` : ''}
-          {combatant.tieBreak !== null ? ` · REF ${combatant.tieBreak}` : ''}
-          {combatant.turn ? ` · ${budgetSummary(combatant.turn)}` : ''}
-        </span>
-        {/* What their next turn already owes (stage 14e). Shown before the turn
-            starts on purpose: a wound that landed on somebody else's turn is
-            invisible until the tracker says so. */}
-        {combatant.owes?.map((line) => (
-          <span key={line} className="combat-row-held combat-row-held--owes">
-            🩼 {line}
-          </span>
-        ))}
-        {combatant.grapple && (
-          <span className="combat-row-held">
-            🤼{' '}
-            {combatant.grapple.role === 'attacker'
-              ? `trzyma ${combatant.grapple.otherName}`
-              : `w Trzymaniu — ${combatant.grapple.otherName}`}
-            {combatant.grapple.shield ? ' · Ludzka tarcza' : ''}
-            {combatant.grapple.chokeStreak ? ` · Duszenie ×${combatant.grapple.chokeStreak}` : ''}
-          </span>
+        {hpLabel && <span className="combat-card-hp">{hpLabel}</span>}
+        {combatant.turn && (
+          <span className="combat-card-budget">{budgetSummary(combatant.turn)}</span>
         )}
-        {combatant.held && (
-          <span className="combat-row-held">
-            ⏸{' '}
-            {combatant.held.initiative !== null
-              ? `wstrzymana przy ${combatant.held.initiative}`
-              : `wstrzymana: ${combatant.held.trigger ?? 'wyzwalacz opisany'}`}
-            {isGm && (
-              <button
-                type="button"
-                className="small-button"
-                onClick={() => void releaseCombatHold(combatant.id)}
-                title="Odpal wstrzymaną Akcję teraz"
-              >
-                Odpal
-              </button>
-            )}
-          </span>
+        {isGm && combatant.held && (
+          <button
+            type="button"
+            className="small-button combat-card-release"
+            onClick={() => void releaseCombatHold(combatant.id)}
+            title="Odpal wstrzymaną Akcję teraz"
+          >
+            Odpal wstrzymaną
+          </button>
         )}
       </span>
-      {canRoll && (
-        <button
-          type="button"
-          className="small-button"
-          onClick={loadCup}
-          title="Załaduj kubek — rzut wykonasz potrząsając kubkiem"
-          aria-label="Załaduj kubek — rzut wykonasz potrząsając kubkiem"
-        >
-          🎲
-        </button>
-      )}
-      {isGm && editing ? (
-        <input
-          className="combat-row-initiative-input"
-          type="number"
-          autoFocus
-          // Select what is there: typing a new value must replace the old one,
-          // not append to it (3 + „15" would land as 315, clamped to 99).
-          onFocus={(e) => e.target.select()}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') setEditing(false);
-          }}
-        />
-      ) : (
-        <span
-          className="combat-row-initiative"
-          onClick={
-            isGm
-              ? () => {
-                  setDraft(combatant.initiative === null ? '' : String(combatant.initiative));
-                  setEditing(true);
-                }
-              : undefined
-          }
-          title={isGm ? 'Kliknij, aby wpisać inicjatywę ręcznie' : undefined}
-        >
-          {combatant.initiative ?? '—'}
-        </span>
-      )}
-      {/* Etap 20b: pokazuje się samo przy figurze prowadzonej przez bota. */}
-      <BotTurnButton tokenId={combatant.tokenId} />
-      {isGm && combatant.turn && (
-        <button
-          type="button"
-          className="small-button"
-          onClick={() => void resetCombatTurn(combatant.id)}
-          title="Zwróć turę — pełny budżet Ruchu i Akcji"
-          aria-label="Zwróć turę — pełny budżet Ruchu i Akcji"
-        >
-          ↺
-        </button>
-      )}
       {isGm && (
-        <button
-          type="button"
-          className="small-button"
-          onClick={() => void removeFromCombat(combatant.id)}
-          title="Usuń z walki"
-          aria-label="Usuń z walki"
-        >
-          ✕
-        </button>
+        <span className="combat-card-tools">
+          {/* Etap 20b: pokazuje się samo przy figurze prowadzonej przez bota. */}
+          <BotTurnButton tokenId={combatant.tokenId} />
+          {combatant.turn && (
+            <button
+              type="button"
+              className="small-button"
+              onClick={() => void resetCombatTurn(combatant.id)}
+              title="Zwróć turę — pełny budżet Ruchu i Akcji"
+              aria-label="Zwróć turę — pełny budżet Ruchu i Akcji"
+            >
+              ↺
+            </button>
+          )}
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => void removeFromCombat(combatant.id)}
+            title="Usuń z walki"
+            aria-label="Usuń z walki"
+          >
+            ✕
+          </button>
+        </span>
       )}
     </li>
   );
 }
 
+/**
+ * Zakładka „Walka" w trakcie walki (etap 43a): portrety z ranami zamiast
+ * tabelki inicjatywy. Kolejka, liczby inicjatywy, rzuty, remisy i przestawianie
+ * kolejności mieszkają na czarnym pasie nad mapą (`CombatBar`) — tu zostaje to,
+ * czego pas nie pomieści: kto jak oberwał, co na kim wisi, ile zostało z tury,
+ * posiłki w drodze i Akcje tego, kto gra.
+ */
 export function CombatPanel() {
   const combat = useCombatStore((s) => s.combat);
   const user = useAuthStore((s) => s.user);
@@ -323,10 +422,13 @@ export function CombatPanel() {
   // Raw store slices only — a selector deriving a new array on every render
   // loops React (the trap from stages 10 and 13).
   const tokenMap = useTokenStore((s) => s.tokens);
-  const [dragged, setDragged] = useState<string | null>(null);
+  const statusRows = useTokenStore((s) => s.statuses);
+  const characters = useCharacterStore((s) => s.characters);
+  const minutes = useGameTimeStore((s) => s.minutes);
 
   const tokens = useMemo(() => Object.values(tokenMap), [tokenMap]);
-  const ties = useMemo(() => (combat ? findInitiativeTies(combat.combatants) : []), [combat]);
+  const registry = useMemo(() => new Map(statusRows.map((row) => [row.id, row])), [statusRows]);
+  const conditions = useMemo(() => conditionRegistry(statusRows), [statusRows]);
   const outsiders = useMemo(() => {
     if (!combat) return [];
     const inFight = new Set(combat.combatants.map((c) => c.tokenId));
@@ -338,16 +440,10 @@ export function CombatPanel() {
       <CombatSetup tokens={tokens} />
     ) : (
       <div className="combat-panel">
-        <EmptyState text="Walka nie trwa — Kolejka Inicjatywy pojawi się tutaj, gdy MG włączy tryb turowy." />
+        <EmptyState text="Walka nie trwa — portrety uczestników pojawią się tutaj, gdy MG włączy tryb turowy." />
       </div>
     );
   }
-
-  /** May this viewer roll for the participant? Owner or GM. */
-  // Uczestnik bez figury to Czarny LOD z etapu 26c: inicjatywy się nie rzuca,
-  // bo LOD wskakuje na czoło kolejki „o jeden punkt wyżej" (s. 205).
-  const mayRoll = (combatant: CombatantView): boolean =>
-    combatant.tokenId !== null && (isGm || (user !== null && combatant.ownerId === user.id));
 
   /** The participant this viewer may spend a turn for, if any (stage 14b). */
   const active = combat.combatants.find((c) => c.id === combat.activeCombatantId) ?? null;
@@ -356,93 +452,38 @@ export function CombatPanel() {
     : (combat.combatants.find(
         (c) => user !== null && c.ownerId === user.id && (c.id === active?.id || c.held),
       ) ?? null);
-
-  function handleDrop(targetId: string) {
-    if (!isGm || !combat || dragged === null || dragged === targetId) return;
-    const ids = combat.combatants.map((c) => c.id);
-    const from = ids.indexOf(dragged);
-    const to = ids.indexOf(targetId);
-    if (from === -1 || to === -1) return;
-    ids.splice(to, 0, ...ids.splice(from, 1));
-    setDragged(null);
-    void reorderCombat(ids);
-  }
+  // Ci przed grającym mieli już swoją turę w tej Rundzie — jak na pasie.
+  const activeIndex = combat.combatants.findIndex((c) => c.id === combat.activeCombatantId);
+  const clock = { round: combat.round, minutes };
 
   return (
     <div className="combat-panel">
-      <div className="combat-header">
-        <span className="combat-header-round">
-          {combat.round === 0 ? 'Przed pierwszą rundą' : `Runda ${combat.round}`}
-        </span>
-        {isGm && (
-          <span className="combat-header-buttons">
-            <button
-              type="button"
-              className="small-button"
-              onClick={() => void previousCombatTurn()}
-              title="Poprzednia tura"
-              aria-label="Poprzednia tura"
-            >
-              ◀
-            </button>
-            <button type="button" className="small-button" onClick={() => void nextCombatTurn()}>
-              {combat.round === 0 ? 'Start' : 'Następna tura ▶'}
-            </button>
-          </span>
-        )}
-      </div>
-
-      {isGm && (
-        <div className="scene-editor-row">
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => void rollCombatInitiativeForAll(false)}
-          >
-            Rzuć wszystkim
-          </button>
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => void rollCombatInitiativeForAll(true)}
-            title="Przerzuca inicjatywę także tym, którzy już ją mają"
-          >
-            Przerzuć wszystkim
-          </button>
-        </div>
-      )}
-
-      {ties.map((group) => (
-        <p key={group.map((c) => c.id).join('-')} className="combat-tie">
-          Remis ({group[0]?.initiative}): {group.map((c) => c.name).join(', ')}
-          {isGm && (
-            <button
-              type="button"
-              className="small-button"
-              onClick={() => void rerollCombatTie(group.map((c) => c.id))}
-              title="Zasady: remis rozstrzyga się ponownym rzutem"
-            >
-              Przerzuć remis
-            </button>
-          )}
-        </p>
-      ))}
-
-      <ol className="combat-list">
+      <ol className="combat-cards" aria-label="Uczestnicy walki">
         {combat.combatants.map((combatant, index) => {
           const token = combatant.tokenId ? tokenMap[combatant.tokenId] : undefined;
+          const characterId = token?.characterId ?? null;
+          const effects = characterId ? (characters[characterId]?.data.statEffects ?? []) : [];
           return (
-            <CombatRow
-              key={combatant.id}
-              combatant={combatant}
-              index={index}
-              isActive={combatant.id === combat.activeCombatantId}
-              isGm={isGm}
-              canRoll={mayRoll(combatant)}
-              hp={token?.hp ?? null}
-              onDragStart={setDragged}
-              onDrop={handleDrop}
-            />
+            <Fragment key={combatant.id}>
+              <CombatantCard
+                combatant={combatant}
+                token={token}
+                isActive={combatant.id === combat.activeCombatantId}
+                isDone={combat.round > 0 && activeIndex >= 0 && index < activeIndex}
+                isGm={isGm}
+                marks={portraitMarks(combatant, token, registry, effects, clock)}
+                dead={token ? tokenCondition(token, conditions) === 'dead' : false}
+              />
+              {/* Akcje stoją pod kartą tego, kto je wydaje (uwaga MG z 26.09:
+                  pod całą listą były za daleko od jego portretu). Należą do
+                  MG (zawsze, za grającego) i do gracza w jego turze — albo
+                  z Akcją wstrzymaną w cudzą. */}
+              {actor?.id === combatant.id && (
+                <li className="combat-card-turn">
+                  <CombatActions combat={combat} combatant={actor} />
+                </li>
+              )}
+            </Fragment>
           );
         })}
       </ol>
@@ -505,18 +546,6 @@ export function CombatPanel() {
             </li>
           ))}
         </ul>
-      )}
-
-      {/* Action buttons belong to whoever may actually act: the GM (always,
-          for the acting participant) and a player on their own turn — or with
-          an Action they held into somebody else's. */}
-      {actor && <CombatActions combat={combat} combatant={actor} />}
-
-      {isGm && (
-        <p className="combat-hint">
-          Kolejność: wyższa inicjatywa zawsze pierwsza, remisy rozstrzyga REF. Przeciągnij wiersz,
-          żeby zdecydować inaczej — kolejny rzut inicjatywy porządkuje listę od nowa.
-        </p>
       )}
 
       {isGm && outsiders.length > 0 && (

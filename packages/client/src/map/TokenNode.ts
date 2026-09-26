@@ -4,7 +4,7 @@ import {
   fallbackConditionStatusId,
   portraitCropPlacement,
   tokenCondition,
-  tokenHpRung,
+  tokenHpShare,
   type PortraitCrop,
   type TokenCondition,
   type TokenHpRung,
@@ -101,9 +101,9 @@ function cropFor(url: string | null, ctx: TokenNodeCtx): PortraitCrop {
 }
 
 /** Czy ta figura w ogóle nosi obrączkę PW — patrz `drawHpArc`. */
+/** Obrączkę dostaje każda figura z PW — od 43a także cudza (`hpShare`). */
 function hasHpRing(token: TokenView): boolean {
-  const hp = token.hp;
-  return hp !== undefined && hp !== null && hp.max > 0;
+  return tokenHpShare(token) !== null;
 }
 
 /**
@@ -331,6 +331,7 @@ export class TokenNode extends Container {
       token.hidden,
       token.statuses,
       token.hp ?? null,
+      token.hpShare ?? null,
       condition,
       this.shownFacing,
       ctx.gridSizePx,
@@ -592,14 +593,14 @@ export class TokenNode extends Container {
    */
   private drawHpArc(token: TokenView, extent: number, condition: TokenCondition): void {
     this.hpArc.clear();
-    const hp = token.hp;
-    // Absent hp = not visible to this viewer; null = token simply has none.
-    if (!hasHpRing(token) || hp === undefined || hp === null) return;
-    const ratio = Math.max(0, Math.min(1, hp.current / hp.max));
+    // Pełne PW albo — u gracza patrzącego na cudzą figurę — sam ułamek (43a).
+    const share = tokenHpShare(token);
+    if (!share) return;
+    const ratio = Math.max(0, Math.min(1, share.ratio));
     // Kolor bierze się ze szczebla, nie z ułamka — tego samego, na którym stoi
     // pasek PW w panelu postaci. Długość łuku dalej z ułamka: szczebel mówi
     // „jak źle", łuk „ile jeszcze".
-    const color = HP_RUNG_COLORS[tokenHpRung(hp)];
+    const color = HP_RUNG_COLORS[share.rung];
     const width = hpRingWidth(extent);
     const centre = extent / 2;
     const radius = hpRingRadius(extent);

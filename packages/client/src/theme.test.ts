@@ -69,9 +69,16 @@ describe('motyw (etap 27e)', () => {
      * Tokeny ustawiane w miejscu przez samą regułę albo przez komponent — nie
      * należą do motywu, bo ich wartość zależy od stanu elementu, a nie od pory
      * dnia. `--hud-icon` przychodzi wprost z Reacta (`HudIcon` podaje adres
-     * pliku maski), `--hud-mag-color` zmienia się z zawartością magazynka.
+     * pliku maski), `--hud-mag-color` zmienia się z zawartością magazynka, a `--wound`
+     * (43a) to odsetek ran na portrecie w zakładce „Walka”.
      */
-    const local = new Set(['--hud-hp-color', '--hud-icon', '--hud-mag-color', '--rattle']);
+    const local = new Set([
+      '--hud-hp-color',
+      '--hud-icon',
+      '--hud-mag-color',
+      '--rattle',
+      '--wound',
+    ]);
     expect([...used].filter((t) => !defined.has(t) && !local.has(t))).toEqual([]);
   });
 

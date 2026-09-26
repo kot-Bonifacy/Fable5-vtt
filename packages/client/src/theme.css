@@ -629,3 +629,24 @@
      `box-shadow`, i tak trzeba jej używać. */
   --login-shadow: 0 4px 10px rgb(26 22 19 / 35%);
 }
+
+/* ============================================================================
+   PORTRET W WALCE — rany od dołu (etap 43a)
+   ----------------------------------------------------------------------------
+   Czerwień ran leży **na zdjęciu**, nie na chromie, więc — jak mapa — nie ma
+   wariantu dziennego: portret wygląda tak samo o każdej porze. Ikony na
+   portrecie mają własny ciemny krążek, bo stoją na cudzej grafice.
+   ========================================================================== */
+
+:root {
+  /* Farba nakładana `multiply` na szary portret: biel → ta czerwień. */
+  --wound-tint: #d4141c;
+  /* Linia wody — gdzie kończy się zdrowie. */
+  --wound-line: #ff4a3d;
+  --wound-mark-bg: rgb(14 12 11 / 82%);
+  --wound-mark-edge: rgb(255 255 255 / 28%);
+  --wound-mark-ink: #efe7dc;
+  --wound-mark-warn: #f0b429;
+  --wound-mark-bad: #ff6b5b;
+  --wound-mark-good: #7fd99a;
+}

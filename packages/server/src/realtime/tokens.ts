@@ -36,6 +36,7 @@ import {
   nextTokenCopyName,
   sanitizeFacing,
   tokenCentre,
+  tokenHpShareOf,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
@@ -132,6 +133,12 @@ export function toTokenView(
   if (linked && linked.ownerId === null && linked.injuries.length > 0) {
     view.injuries = linked.injuries;
   }
+  // A link to a deleted/unreadable sheet falls back to the token's own HP.
+  const hp: TokenHp | null = linked
+    ? linked.hp
+    : token.hpMax === null
+      ? null
+      : { current: token.hpCurrent ?? 0, max: token.hpMax };
   if (includePrivate) {
     // The alias itself is private: the editor needs it to show what the table
     // is being told, and a player who could read it would learn there *is* a
@@ -145,12 +152,11 @@ export function toTokenView(
     // The lamp itself is private (the GM configures it, the controller flips
     // it); what everybody else gets is the lit corridor it produces.
     view.light = tokenLightOf(token);
-    // A link to a deleted/unreadable sheet falls back to the token's own HP.
-    view.hp = linked
-      ? linked.hp
-      : token.hpMax === null
-        ? null
-        : { current: token.hpCurrent ?? 0, max: token.hpMax };
+    view.hp = hp;
+  } else {
+    // Etap 43a, decyzja MG z 26.09: ile figurze zostało, widzi cały stół —
+    // ułamek i szczebel, nigdy same liczby.
+    view.hpShare = hp && hp.max > 0 ? tokenHpShareOf(hp) : null;
   }
   return view;
 }
@@ -606,7 +612,7 @@ export async function emitTokenUpsert(
   const room = campaignRoom(campaignId);
   const publicPayload: TokenUpsertBroadcast = {
     seq: deps.seqs.next(room),
-    token: toTokenView(token, false),
+    token: toTokenView(token, false, linked),
   };
   deps.io.to(room).emit('token:upsert', publicPayload);
   deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);

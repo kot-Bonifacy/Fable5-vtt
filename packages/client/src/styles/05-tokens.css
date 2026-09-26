@@ -347,6 +347,95 @@
   font-size: 0.75rem;
 }
 
+/* ---- Zakładka „Postacie": dwa wiersze na postać (etap 43a) ----
+   Portret na oba wiersze, imię w całości u góry, Rola pod nim; właściciel
+   i przyciski MG leżą w prawym dolnym rogu karty, na wysokości Roli. Klasy
+   bazowe dzieli panel botów, więc wszystko idzie przez modyfikator. */
+.character-row--card {
+  position: relative;
+}
+
+.character-row--card .character-open {
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0.4rem;
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.55rem), calc(100% - 0.55rem) 100%, 0 100%);
+}
+
+.character-row--card .character-thumb {
+  width: 3.9rem;
+  height: 3.9rem;
+  border-radius: 0;
+  object-position: 50% 15%;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.45rem), calc(100% - 0.45rem) 100%, 0 100%);
+}
+
+.character-row--card .character-thumb--empty {
+  font-size: 1.2rem;
+}
+
+.character-row--card .character-row-text {
+  flex: 1;
+  justify-content: space-between;
+  padding: 0.1rem 0;
+}
+
+.character-row--card .character-row-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-family: var(--font-ui-head);
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.character-row--card .character-row-meta {
+  font-size: 0.75rem;
+}
+
+.character-row--card .character-row-actions {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.35rem;
+}
+
+/* Miejsce na właściciela i przyciski MG, które leżą na wierszu Roli. */
+.character-row--card:has(.character-row-actions) .character-row-meta {
+  padding-right: 9rem;
+}
+
+/* Właściciel jako słowo — lista dopiero po kliknięciu. */
+.character-owner {
+  max-width: 5rem;
+  padding: 0.1rem 0.25rem;
+  border: 0;
+  border-bottom: 1px dotted var(--text-dim);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.character-owner:hover {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.character-owner-select {
+  max-width: 6.5rem;
+  font-size: 0.75rem;
+}
+
 .character-delete {
   color: var(--err);
 }

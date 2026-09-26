@@ -11,6 +11,8 @@ import {
   sanitizeFacing,
   tokenCondition,
   tokenHpRung,
+  tokenHpShare,
+  tokenHpShareOf,
   type StatusDefinition,
   fallbackConditionStatusId,
   type TokenCondition,
@@ -193,5 +195,40 @@ describe('tokenHpRung — jedna drabinka dla mapy i panelu', () => {
   it('zero i mniej to szczebel śmiertelny', () => {
     expect(tokenHpRung({ current: 0, max: 40 })).toBe('mortal');
     expect(tokenHpRung({ current: -12, max: 40 })).toBe('mortal');
+  });
+});
+
+describe('tokenHpShareOf — PW bez liczb (etap 43a)', () => {
+  it('rounds to hundredths without lying at either end', () => {
+    expect(tokenHpShareOf({ current: 10, max: 25 })).toEqual({ ratio: 0.4, rung: 'serious' });
+    // 1/300 would round to 0 — a living figure must not read as down.
+    expect(tokenHpShareOf({ current: 1, max: 300 }).ratio).toBe(0.01);
+    // 299/300 would round to 1 — a scratched figure must not read as whole.
+    expect(tokenHpShareOf({ current: 299, max: 300 }).ratio).toBe(0.99);
+    expect(tokenHpShareOf({ current: 0, max: 30 })).toEqual({ ratio: 0, rung: 'mortal' });
+    expect(tokenHpShareOf({ current: -4, max: 30 }).ratio).toBe(0);
+    expect(tokenHpShareOf({ current: 30, max: 30 })).toEqual({ ratio: 1, rung: 'healthy' });
+  });
+
+  it('prefers the full HP and falls back on the public share', () => {
+    expect(tokenHpShare({ hp: { current: 15, max: 30 } })).toEqual({
+      ratio: 0.5,
+      rung: 'serious',
+    });
+    expect(tokenHpShare({ hpShare: { ratio: 0.3, rung: 'serious' } })).toEqual({
+      ratio: 0.3,
+      rung: 'serious',
+    });
+    expect(tokenHpShare({ hp: null })).toBeNull();
+  });
+
+  it('lets a viewer without HP see the figure wounded and down', () => {
+    const none = new Map<string, TokenCondition>();
+    expect(tokenCondition({ statuses: [], hpShare: { ratio: 0.3, rung: 'serious' } }, none)).toBe(
+      'wounded',
+    );
+    expect(tokenCondition({ statuses: [], hpShare: { ratio: 0, rung: 'mortal' } }, none)).toBe(
+      'down',
+    );
   });
 });

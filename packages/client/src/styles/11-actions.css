@@ -135,14 +135,6 @@
   color: var(--warn);
 }
 
-.combat-row-held {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.66rem;
-  color: var(--warn);
-}
-
 .combat-actions {
   display: flex;
   flex-direction: column;
@@ -492,12 +484,6 @@
   background: rgb(var(--remind-rgb) / 12%);
   color: var(--warn);
   font-size: 0.8rem;
-}
-
-/* A debt the next turn already carries („Uraz kręgosłupa: bez Akcji"). Reads
-   like the Hold line above it, one notch dimmer: it is not happening yet. */
-.combat-row-held--owes {
-  color: var(--err);
 }
 
 /* The GM's switchboard for fire, poison and drowning. */

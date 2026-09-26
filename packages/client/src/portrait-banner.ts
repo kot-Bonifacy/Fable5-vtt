@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { PortraitBannerPlacement } from '@vtt/shared';
+import { PORTRAIT_BANNER_ASPECT, portraitBannerFor } from '@vtt/shared';
+import { usePortraitStore } from './stores/portraitStore.js';
 
 /**
  * Ułożenie portretu w banerze jako styl `<img>` w procentach ramki (25.09).
@@ -14,4 +16,20 @@ export function bannerImageStyle(place: PortraitBannerPlacement): CSSProperties 
     left: pct(place.left),
     top: pct(place.top),
   };
+}
+
+/**
+ * Styl `<img>` dla portretu w ramce o proporcjach `aspect` (wysokość przez
+ * szerokość) — kadr banera właściciela albo przeniesiony kadr żetonu; `null`,
+ * gdy portretu nie ma w puli (wtedy zostaje `object-position` z CSS).
+ * Czytają go baner lewego panelu i portrety zakładki „Walka" (43a).
+ */
+export function usePortraitFrameStyle(
+  imageUrl: string | null,
+  aspect: number = PORTRAIT_BANNER_ASPECT,
+): CSSProperties | null {
+  const asset = usePortraitStore((s) =>
+    imageUrl ? (s.assets.find((a) => a.url === imageUrl) ?? null) : null,
+  );
+  return asset ? bannerImageStyle(portraitBannerFor(asset, aspect)) : null;
 }

@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS                                                                        |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c (ostatni zamknięty: 38c, 2026-09-23)   |
+| ⬜ otwarty   | **28** Wdrożenie na VPS; **43b** animacja trafienia, **43c** plamy krwi (UI walki)             |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a (ostatni zamknięty: 43a, 2026-09-26) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
+dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
+gracza, kolejność) żyje tylko na czarnym pasie; **odsetek PW widzi cały stół** (`hpShare`, decyzja
+MG — obrączka na cudzych żetonach), „Postacie” w dwa wiersze. **43b** (animacja trafienia, iskry,
+cięcie wręcz) i **43c** (plamy krwi na serwerze) rozpisane — MG wybrał „43a teraz, potem T4b”, więc
+kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
 rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
@@ -105,8 +112,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2237** w `shared`, **1245** na serwerze, **289** u klienta,
-**59** w gatewayu, **81** E2E (8 `test.fail` z T2) — zielone (26.09, T2; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2240** w `shared`, **1249** na serwerze, **300** u klienta,
+**59** w gatewayu, **81** E2E (8 `test.fail` z T2) — zielone (26.09, 43a; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -128,10 +135,10 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 48   | 20      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 49   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 17      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 22   | 14      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 24   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 9    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 36   | 8       |
@@ -145,12 +152,32 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 3    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 32      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 33      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 26.09 (czwarta) — etap 43a: portrety z ranami w „Walce”, PW dla stołu, „Postacie”
+
+**Zlecenie MG (poza planem):** ładniejsze przedstawienie walki w zakładce „Walka” — wyraźne
+portrety czerwieniejące od dołu z obrażeniami, czarno-białe po śmierci, z ikonami efektów, bez
+inicjatywy (jest na pasie); „Postacie” w dwa wiersze z większym obrazkiem. W trakcie: obrażenia
+widać też na żetonach; akcje grającego nie mogą leżeć daleko pod jego portretem. Pytania zadane
+w trzech turach — decyzje w pliku etapu; podział na **43a / 43b / 43c** zaakceptowany.
+
+**Zrobione (43a):** `TokenView.hpShare` z serwera (ułamek + szczebel, bez liczb) i obrączka PW
+na cudzych żetonach; nowa „Walka” (`CombatantCard`, `WoundPortrait`, `portraitMarks`, akcje pod
+kartą grającego); narzędzia inicjatywy na `CombatBar` (klik w liczbę, „Rzuć wszystkim”, ⟳,
+„Remis”, przeciąganie); „Postacie” jako karty (`character-row--card`, `OwnerPicker`); hak
+`usePortraitFrameStyle` wspólny z banerem lewego panelu. Spec T4a klika kubek na pasie.
+
+**Weryfikacja:** shared 2240 (+3), serwer 1249 (+1 test i asercje `hpShare`), klient 300; `tsc`,
+ESLint, Prettier czyste w pakietach (pliki zapisane Pythonem miały CRLF — naprawione). Oglądane
+w Chromium (MG, noc i dzień) i Firefoksie (gracz Mara). Na „Test2” powstały i **zostały usunięte**
+statysty Ochroniarz/Zbir/Snajper; Portos wrócił do 30/30 bez naklejek, walka zakończona.
+`dev.db` poza tym nietknięta.
 
 ### Sesja 26.09 (trzecia) — odciski butów: zakręty łukiem, poświata gaśnie od najstarszych
 
@@ -172,23 +199,3 @@ zmienionych plikach kodu (`umowy-kodu.md` był niesformatowany już wcześniej).
 (MG, Playwright) na „Test2”: podgląd trasy z punktem pośrednim (róg 90°), zakręt z „schodkiem”,
 marsz Franca przez róg, zrzuty zanikania co sekundę i klatki co 300 ms wokół zatrzymania. Franc wrócił na pole startowe; zmienił się
 tylko jego kierunek (ostatni krok marszu powrotnego). `dev.db` poza tym nietknięta.
-
-### Sesja 26.09 (druga) — grot kierunku jako uchwyt obrotu, żeton przeciągany z panelu na mapę
-
-**Zlecenie MG (poza etapami):** MG ma przeciągać figury graczy i stawiać nowe przeciągnięciem;
-cienka biała kreska od środka zaznaczonej figury do uchwytu obrotu — naprawić, najlepiej lepszą
-wizualizacją z widocznym portretem. W trakcie MG: kropka na czubku grotu „niepotrzebna”, grot
-„lepiej większy”.
-
-**Zrobione:** przesuwanie figur graczy przez MG już działało (bez zmian). **Nowe:** przeciąganie
-żetonu z panelu na mapę — kafel biblioteki, „Postaw pusty”, wiersz postaci i „⊕” (`map/token-drag.ts`,
-żółty obrys pola lądowania, ten sam `token:create` co klik; błąd trafia na czat). **Grot:** z wcięciem,
-większy (0,3 / 0,4 kratki), wspólny `nosePolygon`; **uchwytem obrotu jest sam grot** — bez patyka
-i bez kropki; figura bez kierunku pokazuje po zaznaczeniu blady zarys grotu u góry. Umowa w `mapa`.
-
-**Weryfikacja:** klient 289 (+3, `nosePolygon`), `tsc`, ESLint, Prettier czyste. Oglądane
-w Chromium (MG, Playwright): grot przy zbliżeniu stołu i z bliska, zarys dla figury bez kierunku,
-przeciągnięcie „Postaw pusty” i wiersza Franca (dubler z kartą i właścicielem, karta się nie
-otworzyła). W Firefoksie (MG): przeciągnięcie „Postaw pusty” i obrót za grot (zapis 111°).
-Kampania „Test2”: figury testowe „DnD test”, „DnD FF” i dubler Franca **usunięte**; kierunek
-Franca i Portosa ustawiany tylko lokalnie w magazynie (F5 przywraca). `dev.db` poza tym nietknięta.

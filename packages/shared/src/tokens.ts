@@ -1,4 +1,4 @@
-import type { TokenCondition } from './figures.js';
+import type { TokenCondition, TokenHpShare } from './figures.js';
 import { sanitizeFacing } from './figures.js';
 import { sanitizeTokenLight, type TokenLight } from './lights.js';
 // Type-only, like `measure.ts` imports `TokenView` back — erased at runtime,
@@ -73,6 +73,12 @@ export interface TokenView {
    * tokens keep their own pair.
    */
   hp?: TokenHp | null;
+  /**
+   * Jawna część PW (etap 43a): ułamek i szczebel bez liczb, dla widza, który
+   * `hp` nie dostał; `null` — figura bez PW (klient scala widoki spreadem, więc
+   * brak klucza znaczyłby „bez zmian"). Widz z `hp` tego pola nie dostaje.
+   */
+  hpShare?: TokenHpShare | null;
   /** Linked character id; null = standalone token. */
   characterId?: string | null;
   /**

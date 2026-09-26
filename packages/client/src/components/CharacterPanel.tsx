@@ -37,6 +37,59 @@ interface PlayerOption {
   name: string;
 }
 
+/**
+ * Właściciel postaci jako słowo, a lista dopiero po kliknięciu (etap 43a):
+ * stały `<select>` zjadał połowę wiersza i ucinał imiona do trzech liter.
+ */
+function OwnerPicker({
+  ownerId,
+  label,
+  players,
+  onChange,
+}: {
+  ownerId: string | null;
+  label: string;
+  players: PlayerOption[];
+  onChange: (ownerId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (open) {
+    return (
+      <select
+        className="character-owner-select"
+        autoFocus
+        value={ownerId ?? ''}
+        onChange={(e) => {
+          setOpen(false);
+          onChange(e.target.value);
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false);
+        }}
+        title="Właściciel postaci"
+      >
+        <option value="">NPC (MG)</option>
+        {players.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="character-owner"
+      onClick={() => setOpen(true)}
+      title="Właściciel postaci — kliknij, żeby zmienić"
+    >
+      {label}
+    </button>
+  );
+}
+
 function ackErrorText(code: string): string {
   switch (code) {
     case 'INVALID_NAME':
@@ -293,7 +346,10 @@ export function CharacterPanel() {
             const character = characters[id];
             if (!character) return null;
             return (
-              <li key={id} className="character-row">
+              // Etap 43a: dwa wiersze na postać, portret przez oba (zlecenie MG
+              // z 26.09) — imię u góry w całości, niżej Rola, a po prawej
+              // właściciel i przyciski MG.
+              <li key={id} className="character-row character-row--card">
                 <button
                   type="button"
                   className="character-open"
@@ -328,12 +384,17 @@ export function CharacterPanel() {
                     </span>
                     <span className="character-row-meta">
                       {roleName(character.data.roleId) || '—'}
-                      {isGm ? ` · ${ownerName(character.ownerId)}` : ''}
                     </span>
                   </span>
                 </button>
                 {isGm && (
                   <span className="character-row-actions">
+                    <OwnerPicker
+                      ownerId={character.ownerId}
+                      label={ownerName(character.ownerId)}
+                      players={players}
+                      onChange={(ownerId) => void changeOwner(id, ownerId)}
+                    />
                     {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
                         żetonie — nietypowe wydarzenie trafia też kogoś, kto
                         akurat nie stoi na aktywnej scenie. */}
@@ -356,18 +417,6 @@ export function CharacterPanel() {
                       portraitUrl={character.portraitUrl}
                       ownerId={character.ownerId}
                     />
-                    <select
-                      value={character.ownerId ?? ''}
-                      onChange={(e) => void changeOwner(id, e.target.value)}
-                      title="Właściciel postaci"
-                    >
-                      <option value="">NPC (MG)</option>
-                      {players.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
                     <button
                       type="button"
                       className="small-button character-delete"

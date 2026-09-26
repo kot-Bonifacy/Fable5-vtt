@@ -102,3 +102,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 42a    | Bariera i brama: ruch, wręcz, planer gracza   | ✅     | 2026-09-13          |
 | 42b    | Bariera: SP dla strzałów i wybuchów           | ✅     | 2026-09-13          |
 | 42c    | Bariera zasłaniająca figury, kara za cel      | ✅     | 2026-09-13          |
+| 43a    | Walka z portretami, PW dla wszystkich, „Postacie” | ✅     | 2026-09-26          |
+| 43b    | Animacja trafienia: portret, figura, iskry    | ⬜     |                     |
+| 43c    | Plamy krwi do końca walki                     | ⬜     |                     |

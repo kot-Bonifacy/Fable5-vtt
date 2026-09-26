@@ -1,7 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ROLE_GM, cpredTurnReminders } from '@vtt/shared';
-import { endCombat, nextCombatTurn, previousCombatTurn, startCombat } from '../socket.js';
+import type { CombatantView } from '@vtt/shared';
+import {
+  COMBAT_INITIATIVE_MAX,
+  COMBAT_INITIATIVE_MIN,
+  ROLE_GM,
+  cpredTurnReminders,
+  findInitiativeTies,
+} from '@vtt/shared';
+import {
+  endCombat,
+  nextCombatTurn,
+  previousCombatTurn,
+  reorderCombat,
+  rerollCombatTie,
+  rollCombatInitiativeForAll,
+  setCombatInitiative,
+  startCombat,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useRollStore } from '../stores/rollStore.js';
 import { useCombatStore, activeCombatantOf } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -85,9 +102,107 @@ export function TurnModeSlot() {
   return <div className="top-bar-turn">{isGm && !running && <TurnModeButton />}</div>;
 }
 
+/**
+ * Liczba inicjatywy na żetonie kolejki — i jedyne miejsce, w którym się ją
+ * ustawia (etap 43a: zakładka „Walka" pokazuje już tylko portrety).
+ *
+ * MG klika i wpisuje; gracz klika swoją i ładuje kubek, jak dawniej 🎲 przy
+ * wierszu. Cudzą liczbę gracz tylko czyta.
+ */
+function ChipInitiative({
+  combatant,
+  isGm,
+  mayRoll,
+}: {
+  combatant: CombatantView;
+  isGm: boolean;
+  mayRoll: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const shown = combatant.initiative ?? '—';
+
+  function commit() {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed === '') {
+      void setCombatInitiative(combatant.id, null);
+      return;
+    }
+    const value = Number.parseInt(trimmed, 10);
+    if (Number.isNaN(value)) return;
+    const clamped = Math.min(Math.max(value, COMBAT_INITIATIVE_MIN), COMBAT_INITIATIVE_MAX);
+    void setCombatInitiative(combatant.id, clamped);
+  }
+
+  if (isGm && editing) {
+    return (
+      <input
+        className="combat-chip-initiative-input"
+        type="number"
+        autoFocus
+        aria-label={`Inicjatywa: ${combatant.name}`}
+        // Select what is there: typing a new value must replace the old one,
+        // not append to it (3 + „15" would land as 315, clamped to 99).
+        onFocus={(e) => e.target.select()}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+  if (isGm) {
+    return (
+      <button
+        type="button"
+        className="combat-chip-initiative combat-chip-initiative--button"
+        onClick={() => {
+          setDraft(combatant.initiative === null ? '' : String(combatant.initiative));
+          setEditing(true);
+        }}
+        title="Kliknij, aby wpisać inicjatywę ręcznie"
+        aria-label={`Wpisz inicjatywę: ${combatant.name}`}
+      >
+        {shown}
+      </button>
+    );
+  }
+  if (mayRoll) {
+    const unrolled = combatant.initiative === null;
+    return (
+      <button
+        type="button"
+        className={`combat-chip-initiative combat-chip-initiative--button${
+          unrolled ? ' combat-chip-initiative--roll' : ''
+        }`}
+        onClick={() =>
+          useRollStore.getState().loadInitiativeCup({
+            combatantId: combatant.id,
+            name: combatant.name,
+            modifierTotal: combatant.tieBreak ?? 0,
+          })
+        }
+        title="Rzuć inicjatywę — załaduj kubek i potrząśnij nim"
+        aria-label={`Rzuć inicjatywę: ${combatant.name}`}
+      >
+        {unrolled ? '🎲' : shown}
+      </button>
+    );
+  }
+  return <span className="combat-chip-initiative">{shown}</span>;
+}
+
 export function CombatBar() {
   const combat = useCombatStore((s) => s.combat);
-  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const user = useAuthStore((s) => s.user);
+  const isGm = user?.role === ROLE_GM;
+  const [dragged, setDragged] = useState<string | null>(null);
+  const ties = useMemo(() => (combat ? findInitiativeTies(combat.combatants) : []), [combat]);
+  const tiedIds = useMemo(() => new Set(ties.flat().map((c) => c.id)), [ties]);
   const acting = useMemo(() => activeCombatantOf(combat), [combat]);
   const tokens = useTokenStore((s) => s.tokens);
   // What the acting participant's own statuses want them to remember (stage
@@ -154,6 +269,22 @@ export function CombatBar() {
   // No queue, no strip: the map gets its full height back.
   if (!combat) return null;
 
+  /** Uczestnik bez figury (Czarny LOD, 26c) inicjatywy nie rzuca. */
+  const mayRoll = (combatant: CombatantView): boolean =>
+    combatant.tokenId !== null && user !== null && combatant.ownerId === user.id;
+  const unrolled = combat.combatants.some((c) => c.tokenId !== null && c.initiative === null);
+
+  function dropOn(targetId: string) {
+    if (!isGm || !combat || dragged === null || dragged === targetId) return;
+    const ids = combat.combatants.map((c) => c.id);
+    const from = ids.indexOf(dragged);
+    const to = ids.indexOf(targetId);
+    setDragged(null);
+    if (from === -1 || to === -1) return;
+    ids.splice(to, 0, ...ids.splice(from, 1));
+    void reorderCombat(ids);
+  }
+
   // Participants before the running one have had their turn this round — they
   // fade, so „who is still to act" reads without counting. Round 0 has no such
   // thing, and neither does a queue whose runner is unknown.
@@ -171,6 +302,42 @@ export function CombatBar() {
           </>
         )}
       </span>
+      {/* Etap 43a: narzędzia inicjatywy zeszły tu z zakładki „Walka". */}
+      {isGm && unrolled && (
+        <button
+          type="button"
+          className="combat-bar-roll"
+          onClick={() => void rollCombatInitiativeForAll(false)}
+          title="Rzuca inicjatywę wszystkim, którzy jeszcze jej nie mają"
+        >
+          Rzuć wszystkim
+        </button>
+      )}
+      {isGm && (
+        <button
+          type="button"
+          className="combat-bar-step"
+          onClick={() => void rollCombatInitiativeForAll(true)}
+          title="Przerzuć inicjatywę wszystkim — także tym, którzy już ją mają"
+          aria-label="Przerzuć inicjatywę wszystkim"
+        >
+          ⟳
+        </button>
+      )}
+      {isGm && ties.length > 0 && (
+        <button
+          type="button"
+          className="combat-bar-roll combat-bar-roll--tie"
+          onClick={() => {
+            for (const group of ties) void rerollCombatTie(group.map((c) => c.id));
+          }}
+          title={`Zasady: remis rozstrzyga się ponownym rzutem — ${ties
+            .map((group) => `${group[0]?.initiative}: ${group.map((c) => c.name).join(', ')}`)
+            .join(' · ')}`}
+        >
+          Remis
+        </button>
+      )}
       {isGm && (
         <button
           type="button"
@@ -201,8 +368,10 @@ export function CombatBar() {
           const label = [
             `${combatant.name} — inicjatywa ${combatant.initiative ?? '—'}`,
             combatant.tieBreak !== null ? `(REF ${combatant.tieBreak})` : null,
+            tiedIds.has(combatant.id) ? 'remis' : null,
             held,
             grapple,
+            isGm ? 'przeciągnij, żeby zmienić kolejność' : null,
           ]
             .filter(Boolean)
             .join(' · ');
@@ -212,8 +381,22 @@ export function CombatBar() {
               data-active={isActive}
               className={`combat-chip${isActive ? ' combat-chip--active' : ''}${
                 done ? ' combat-chip--done' : ''
-              }${combatant.hidden ? ' combat-chip--hidden' : ''}`}
+              }${combatant.hidden ? ' combat-chip--hidden' : ''}${
+                tiedIds.has(combatant.id) ? ' combat-chip--tie' : ''
+              }${dragged === combatant.id ? ' combat-chip--dragged' : ''}`}
               title={label}
+              // Kolejność w remisie ustala MG przeciągnięciem (dawniej w
+              // zakładce „Walka"); następny rzut inicjatywy porządkuje od nowa.
+              draggable={isGm}
+              onDragStart={() => setDragged(combatant.id)}
+              onDragEnd={() => setDragged(null)}
+              onDragOver={(e) => {
+                if (isGm && dragged !== null) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                dropOn(combatant.id);
+              }}
             >
               <span className="combat-chip-figure">
                 {combatant.imageUrl ? (
@@ -231,7 +414,7 @@ export function CombatBar() {
                 )}
               </span>
               <span className="combat-chip-name">{combatant.name}</span>
-              <span className="combat-chip-initiative">{combatant.initiative ?? '—'}</span>
+              <ChipInitiative combatant={combatant} isGm={isGm} mayRoll={mayRoll(combatant)} />
             </li>
           );
         })}
@@ -242,7 +425,7 @@ export function CombatBar() {
           className="combat-bar-step"
           onClick={() => void nextCombatTurn()}
           title={combat.round === 0 ? 'Rozpocznij rundę 1' : 'Następna tura'}
-          aria-label="Następna tura"
+          aria-label={combat.round === 0 ? 'Start' : 'Następna tura'}
         >
           ▶
         </button>

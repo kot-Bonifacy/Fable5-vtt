@@ -26,7 +26,6 @@ body {
 .context-menu-section,
 .gm-panel-header h1,
 .panel-card-header h2,
-.combat-header,
 .top-bar-sandbox {
   font-family: var(--font-ui-head);
   font-weight: 500;
