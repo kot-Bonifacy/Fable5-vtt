@@ -19,23 +19,25 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T1   | Infrastruktura E2E, instancja testowa, linia bazowa       | ⬜     |            |
 | T2   | Bezpieczeństwo i autoryzacja                              | ⬜     |            |
 | T3   | Rozgrywka 1/4: kampania, gracze, kreator, sceny, figury   | ⬜     |            |
-| T4   | Rozgrywka 2/4: walka pierwsza na scenie „Parking”         | ⬜     |            |
-| T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Serwerownia” | ⬜     |            |
+| T4   | Rozgrywka 2/4: walka pierwsza na scenie „Knajpa”          | ⬜     |            |
+| T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Brama”       | ⬜     |            |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
-| T9   | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
-| T10  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
+| T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
+| T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
+| T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
 
 **Kolejność:** T1 przed wszystkim. T3 → T4 → T5 → T6 po kolei (każdy startuje z punktu
 kontrolnego poprzedniego, sekcja 4.4). T2, T7 i T8 wymagają tylko T1 i T3, więc można je
-przestawiać. T9 po wszystkich od T1 do T8. T10 po etapie 28.
+przestawiać. T9 dopiero po nowym etapie „Konta MG” (sekcja 6.5) — do tego czasu scenariusz gra
+jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 
 ## 2. Decyzje MG z 26.09.2026 (podstawa planu)
 
 | sprawa                 | rozstrzygnięcie                                                                                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| środowisko             | wszystkie testy lokalnie na **izolowanej instancji** (osobna baza i uploady, `dev.db` nietknięta); etap 28 jest **warunkiem bety**, a T10 powtarza skrót rozgrywki na VPS |
+| środowisko             | wszystkie testy lokalnie na **izolowanej instancji** (osobna baza i uploady, `dev.db` nietknięta); etap 28 jest **warunkiem bety**, a T11 powtarza skrót rozgrywki na VPS |
 | automaty               | **stała suita w repo** (`packages/e2e`, Playwright Test, Firefox + Chromium); pełna rozgrywka zostaje testem regresji na refaktoryzację i dalsze etapy                    |
 | błędy w trakcie testów | sesja testowa **tylko notuje** (kroki odtworzenia, waga, dowód); poprawki w osobnych sesjach, potem retest (🔁)                                                           |
 | boty LLM               | **w pełni**: bot NPC rozmawia na czacie i gra swoją turę w walce pierwszej; w walce drugiej gateway **pada w trakcie** (test łagodnej degradacji)                         |
@@ -43,6 +45,12 @@ przestawiać. T9 po wszystkich od T1 do T8. T10 po etapie 28.
 | próg                   | **zero blokerów i zero krytycznych**; poważne tylko z obejściem przy stole, najwyżej pięć, każdy wpisany do „znanych problemów bety”                                      |
 | przeglądarki graczy    | **Chrome i Firefox na PC/laptopie**. Edge, Android, Safari i iPad poza zakresem (Safari/iPad: decyzja z 25.09)                                                            |
 | sesja próbna z ludźmi  | **nie** — pierwsza sesja bety sama jest playtestem; to, czego automat nie oceni, idzie do listy obserwacji (sekcja 8)                                                     |
+| baza bety              | **pusta** — wszystkie dotychczasowe kampanie, sceny, rozmowy, boty i architektury z `dev.db` zostają za burtą; migracji `dev.db` nie testujemy                            |
+| liczba graczy          | **do czterech** na grupę plus MG — test obciążenia w 6.3                                                                                                                  |
+| materiały              | mapy z `C:\AI\materialy\mapy`, portrety z `C:\AI\materialy\avatary` — wgrywane przez UI do instancji testowej, **nigdy do repo** (sekcja 4.6)                             |
+| kości i hak klienta    | zgoda na `VTT_DICE_SCRIPT` w serwerze (4.2) i `window.__vttE2E` w buildzie testowym klienta (4.3)                                                                         |
+| konta MG               | **osobne konta MG z otwartą rejestracją — warunek bety** (nowy etap przed 28, testy w T9); każdy MG widzi i steruje tylko swoim                                           |
+| poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
 
@@ -54,7 +62,8 @@ PD) jest więc sprawdzona **na poziomie funkcji**. Czego nikt dotąd nie sprawdz
    dwie walki; stan jednej funkcji wchodzi do następnej (łup z walki pierwszej → handel → PD → awans
    → walka druga na zmienionej karcie).
 2. **Czystej bazy.** Wszystkie oględziny szły na `dev.db`, gdzie od lipca narastały dane, poprawki
-   ręczne i sceny poligonowe. Beta wystartuje z bazy, której nikt nie widział pustej od etapu 02.
+   ręczne i sceny poligonowe. Beta wystartuje z **pustej** bazy (decyzja MG), której nikt nie widział
+   od etapu 02 — pierwsze boty, architektury Sieci i sceny powstaną w niej od zera.
 3. **Wycieku danych przez cały przebieg**, a nie per funkcja — każdy zapis MG w trakcie rozgrywki
    jest potencjalnym źródłem przecieku do gracza.
 4. **Wielu graczy naraz, w dwóch silnikach, z opóźnieniem sieci i restartem serwera.**
@@ -109,8 +118,8 @@ wypadają rzadko (rana krytyczna, trafienie granatem, nieudany Death Save). Dwie
 2. **Skrypt kości** — tylko tam, gdzie scenariusz musi przejść przez konkretną gałąź. Zmienna
    `VTT_DICE_SCRIPT` (plik z kolejką wymuszonych wartości) czytana przez serwer **wyłącznie**, gdy
    `NODE_ENV !== 'production'`, z testem jednostkowym, że w produkcji jest ignorowana. To zmiana
-   w kodzie serwera → **wymaga zgody MG w T1** (pytanie otwarte 3). Bez zgody: gałęzie rzadkie
-   wymusza MG narzędziami stołu (ręczna rana krytyczna, ustawienie PW), a test to odnotowuje.
+   w kodzie serwera — **MG zgodził się 26.09**. Robi się ją w T1, z testem jednostkowym i wpisem
+   w umowach `kosci`.
 
 ### 4.3. Suita `packages/e2e`
 
@@ -144,8 +153,9 @@ przebiegów, cel: poniżej 10 minut). Zasady pisania wynikające z pułapek `ogl
 - Filtry czatu gracza włączone wszystkie na starcie (odmowy lądują w kategorii „Stół”).
 - Pozycję figury po marszu sprawdza się w bazie, nie zrzutem.
 - Do odczytu stanu klienta: mały hak `window.__vttE2E` (kamera, magazyny) **tylko w buildzie
-  `--mode e2e`** — zmiana w kliencie, więc też pytanie otwarte 4. Bez zgody: odczyt przez osobne
-  gniazdo `socket.io-client` z ciasteczkiem kontekstu (sprawdzone 25.09).
+  `--mode e2e`** (zgoda MG z 26.09). Wpis w umowach `ui`, żeby nikt nie wciągnął go do zwykłego
+  buildu. Stan serwera czyta się dodatkowo osobnym gniazdem `socket.io-client` z ciasteczkiem
+  kontekstu (sprawdzone 25.09).
 
 ### 4.4. Punkty kontrolne
 
@@ -171,33 +181,53 @@ architektury Sieci, zawartość przeszukiwanego ekwipunku przed przeszukaniem, r
 postaci Marka w części, której Ola nie ma widzieć, handout nieudostępniony, wpis dziennika tylko dla MG,
 nieprzyznane jeszcze PD, PW i statystyki statystów — **o ile** umowa `statysta` mówi, że gracz ich nie widzi.
 
+### 4.6. Materiały: mapy i portrety
+
+Źródło: `C:\AI\materialy\mapy` (13 plików, 28 MB) i `C:\AI\materialy\avatary` (41 portretów, 36 MB),
+wskazywane zmienną `VTT_E2E_MATERIALS` (domyślnie `C:/AI/materialy`). Suita **wgrywa je przez UI**
+(upload mapy, żetonu, portretu) do `.e2e/uploads` i nigdy nie kopiuje do repo — repozytorium jest
+publiczne. Brak katalogu = testy zależne od materiałów pomijają się z czytelnym powodem, a nie
+padają. Przydział w scenariuszu:
+
+| do czego                            | plik                                              | uwaga                                                     |
+| ----------------------------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| scena 1 „Knajpa”                    | `mapy/SmallRestaurant-33x24.png` (1470 × 1070)    | kratka 33 × 24 z nazwy pliku; drzwi, okna, ciasne wnętrze |
+| scena 2 „Brama”                     | `mapy/IndustrialAreaGate-40x30.png` (1448 × 1086) | kratka 40 × 30; brama pod barierę, otwarta przestrzeń     |
+| lombard Pasera (pobieżnie, T8)      | `mapy/Pawn_Shop-24x18.png`                        | trzecia scena tylko do testu przełączania i uploadu       |
+| portret Marka / Oli                 | dwa różne `avatary/avatar*.png`                   | kadr żetonu i osobny kadr banera                          |
+| portrety statystów, botów, „Cienia” | kolejne `avatary/avatar*.png`                     | biblioteka portretów MG, ponowne użycie tego samego pliku |
+| wydajność (T7)                      | `data/public/maps/test-map-4096.png`              | jedyna mapa 4096 px                                       |
+
 ## 5. Scenariusz pełnej rozgrywki „Nocna zmiana”
 
 Obsada: **MG** w Chromium, **Marek** (gracz A) w Chromium, **Ola** (gracz B) w **Firefoksie** —
 gracz w innym silniku niż MG, zgodnie z zasadą oględzin. Wszystko robi się **przez UI**, chyba że
 wiersz mówi inaczej; stan sprawdza się w bazie i u wszystkich trzech aktorów.
 
+Dopóki nie ma etapu „Konta MG”, scenariusz gra jedynym kontem MG (`GM_PASSWORD` instancji). Po tym
+etapie krok 3.1 zmienia się w **rejestrację nowego MG** przez formularz, a T9 dokłada drugiego MG.
+
 ### 5.1. T3 — Kampania, gracze, postacie, sceny, figury
 
-| #    | krok                                                                                                                                                                                       | sprawdzamy                                                                                            |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| 3.1  | MG loguje się na pustej instancji; ekran powitalny przy braku kampanii                                                                                                                     | brak błędów w konsoli poza znanymi (401 przed zalogowaniem), sensowny stan pusty                      |
-| 3.2  | MG zakłada kampanię „Nocna zmiana”, ustawia poziom dostępności sklepu, datę startową kalendarza                                                                                            | kampania aktywna, kalendarz na dacie startowej                                                        |
-| 3.3  | MG wystawia dwa zaproszenia; Marek i Ola wchodzą z linków pod imionami „Marek” i „Ola”                                                                                                     | konta graczy, członkostwo, gracz widzi mapę powitalną albo pusty stół (brak sceny)                    |
-| 3.4  | Marek prosi o zgodę na postać; MG zgadza się z warunkami: **Krawędziarz (Na skróty)**, Ranga standardowa                                                                                   | znacznik „Czeka na MG” (licznik w tytule), przejście z kafla do decyzji                               |
-| 3.5  | Ola prosi; MG: **Kompletny Pakiet (Wyliczanie)**, z pulą umiejętności                                                                                                                      | warunki zgody docierają do kreatora Oli                                                               |
-| 3.6  | Marek tworzy **Solo**: Cechy przez kubek, Ścieżka Życia, wyposażenie startowe, ksywa, portret (upload `solo-red.png`), kadr żetonu i banera                                                | karta czeka na zatwierdzenie; rzuty kreatora po jednej kości; przerzut tylko przez MG                 |
-| 3.7  | Ola tworzy **Netrunnera** z cyberdekiem i Programami; w trakcie **F5 w połowie Ścieżki Życia**                                                                                             | szkic przeżywa F5 bez utraty wyborów                                                                  |
-| 3.8  | MG przegląda obie karty i „Przyjmij do gry”                                                                                                                                                | karty odblokowane, 66 umiejętności (nie 42 z próbki), gracz nie edytuje pól zablokowanych             |
-| 3.9  | MG zakłada scenę **„Parking pod Kablem”** z `data/public/maps/night-city-crossroads-2508.webp`, kratka, ściany, **drzwi** i **okno**, dwa światła, ciemność, mgła                          | scena w podglądzie niewidoczna dla graczy (kanarek w nazwie sceny do chwili aktywacji)                |
-| 3.10 | MG zakłada scenę **„Serwerownia”** z `test-map-4096.png` (duża mapa), ściany, osłona, **bariera z bramą**, punkt dostępu                                                                   | druga scena istnieje, gracze jej nie widzą                                                            |
-| 3.11 | Nowe figury: żetony z uploadu (`netrunner-cyan.png`, `fixer-gold.png`), dwóch statystów z `statBlock`, **ukryta figura** „Cień” na warstwie MG (kanarek), figury graczy związane z kartami | właściciele figur, klonowanie statysty, statysta jako karta                                           |
-| 3.12 | MG tworzy **bota NPC „Rzeźnik”** (sekret w prompcie = kanarek), tryb autonomii w walce, i bota-handlarza „Paser”                                                                           | bot dostępny, sekret nie wychodzi do graczy                                                           |
-| 3.13 | Aktywacja „Parkingu”; `playerMoveLocked` zdjęte; gracze chodzą klikiem po odsłoniętym, otwierają drzwi, patrzą przez okno                                                                  | mgła i widoczność u każdego osobno, ruch w mgłę odmówiony, pamięć terenu po F5                        |
-| 3.14 | Marek rozmawia z Paserem na czacie; Ola szepcze do MG; MG szepcze do Marka; MG pokazuje handout tylko Oli                                                                                  | odpowiedź bota po polsku, szepty i handout widoczne wyłącznie adresatom (kanarki)                     |
-| 3.15 | **Punkt kontrolny `po-T3`**                                                                                                                                                                | odtworzenie punktu na czystym katalogu daje ten sam stan (liczba wierszy kluczowych tabel, hash kart) |
+| #    | krok                                                                                                                                                            | sprawdzamy                                                                                            |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 3.1  | MG loguje się na pustej instancji; ekran powitalny przy braku kampanii                                                                                          | brak błędów w konsoli poza znanymi (401 przed zalogowaniem), sensowny stan pusty                      |
+| 3.2  | MG zakłada kampanię „Nocna zmiana”, ustawia poziom dostępności sklepu, datę startową kalendarza                                                                 | kampania aktywna, kalendarz na dacie startowej                                                        |
+| 3.3  | MG wystawia dwa zaproszenia; Marek i Ola wchodzą z linków pod imionami „Marek” i „Ola”                                                                          | konta graczy, członkostwo, gracz widzi mapę powitalną albo pusty stół (brak sceny)                    |
+| 3.4  | Marek prosi o zgodę na postać; MG zgadza się z warunkami: **Krawędziarz (Na skróty)**, Ranga standardowa                                                        | znacznik „Czeka na MG” (licznik w tytule), przejście z kafla do decyzji                               |
+| 3.5  | Ola prosi; MG: **Kompletny Pakiet (Wyliczanie)**, z pulą umiejętności                                                                                           | warunki zgody docierają do kreatora Oli                                                               |
+| 3.6  | Marek tworzy **Solo**: Cechy przez kubek, Ścieżka Życia, wyposażenie startowe, ksywa, portret z `avatary/` (4.6), kadr żetonu i banera                          | karta czeka na zatwierdzenie; rzuty kreatora po jednej kości; przerzut tylko przez MG                 |
+| 3.7  | Ola tworzy **Netrunnera** z cyberdekiem i Programami; w trakcie **F5 w połowie Ścieżki Życia**                                                                  | szkic przeżywa F5 bez utraty wyborów                                                                  |
+| 3.8  | MG przegląda obie karty i „Przyjmij do gry”                                                                                                                     | karty odblokowane, 66 umiejętności (nie 42 z próbki), gracz nie edytuje pól zablokowanych             |
+| 3.9  | MG zakłada scenę **„Knajpa”** z `SmallRestaurant-33x24.png`, kratka 33 × 24, ściany, **drzwi** i **okno**, dwa światła, ciemność, mgła                          | scena w podglądzie niewidoczna dla graczy (kanarek w nazwie sceny do chwili aktywacji)                |
+| 3.10 | MG zakłada scenę **„Brama”** z `IndustrialAreaGate-40x30.png`, kratka 40 × 30, ściany, osłona, **bariera z bramą**, punkt dostępu                               | druga scena istnieje, gracze jej nie widzą                                                            |
+| 3.11 | Nowe figury: żetony i portrety z `avatary/`, dwóch statystów z `statBlock`, **ukryta figura** „Cień” na warstwie MG (kanarek), figury graczy związane z kartami | właściciele figur, klonowanie statysty, statysta jako karta                                           |
+| 3.12 | MG tworzy **bota NPC „Rzeźnik”** (sekret w prompcie = kanarek), tryb autonomii w walce, i bota-handlarza „Paser”                                                | bot dostępny, sekret nie wychodzi do graczy                                                           |
+| 3.13 | Aktywacja „Knajpy”; `playerMoveLocked` zdjęte; gracze chodzą klikiem po odsłoniętym, otwierają drzwi, patrzą przez okno                                         | mgła i widoczność u każdego osobno, ruch w mgłę odmówiony, pamięć terenu po F5                        |
+| 3.14 | Marek rozmawia z Paserem na czacie; Ola szepcze do MG; MG szepcze do Marka; MG pokazuje handout tylko Oli                                                       | odpowiedź bota po polsku, szepty i handout widoczne wyłącznie adresatom (kanarki)                     |
+| 3.15 | **Punkt kontrolny `po-T3`**                                                                                                                                     | odtworzenie punktu na czystym katalogu daje ten sam stan (liczba wierszy kluczowych tabel, hash kart) |
 
-### 5.2. T4 — Walka pierwsza („Parking pod Kablem”)
+### 5.2. T4 — Walka pierwsza („Knajpa”)
 
 Strony: Marek i Ola kontra dwaj statyści i bot „Rzeźnik”; „Cień” ukryty do połowy walki.
 
@@ -214,15 +244,15 @@ Strony: Marek i Ola kontra dwaj statyści i bot „Rzeźnik”; „Cień” ukry
 | 4.9  | Koniec walki; przeszukanie ciała statysty i łup; przekazanie przedmiotu Marek → Ola                   | ekwipunek po obu stronach, zawartość przed przeszukaniem tajna (kanarek)                   |
 | 4.10 | **Punkt kontrolny `po-T4`**                                                                           | jak 3.15                                                                                   |
 
-### 5.3. T5 — Sieć i walka druga („Serwerownia”)
+### 5.3. T5 — Sieć i walka druga („Brama”)
 
-MG przełącza scenę. W Serwerowni: statysta-ochroniarz (bot `@llm`), wieżyczka związana z węzłem
+MG przełącza scenę. Przy Bramie: statysta-ochroniarz (bot `@llm`), wieżyczka związana z węzłem
 kontrolnym, broniona strefa, architektura Sieci o trzech piętrach (hasło, plik, węzeł wieżyczki,
 Demon) — nieodkryte piętra to kanarki.
 
 | #    | krok                                                                                   | sprawdzamy                                                                                  |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 5.1  | Aktywacja sceny                                                                        | obaj gracze przechodzą bez F5, stan „Parkingu” zachowany w bazie                            |
+| 5.1  | Aktywacja sceny                                                                        | obaj gracze przechodzą bez F5, stan „Knajpy” zachowany w bazie                              |
 | 5.2  | Marek przez **bramę w barierze**; strzał przez barierę z SP; figura zasłonięta barierą | ruch, SP bariery dla strzału, kara za cel                                                   |
 | 5.3  | Ola podłącza się do punktu dostępu, run: winda, Akcje Sieciowe, hasło, plik            | piętra odsłaniane po kolei (kanarki), budżet Akcji Sieciowych                               |
 | 5.4  | Walka druga: tryb turowy, Ola w Sieci i Marek na mapie w tej samej kolejce             | kolejka obejmuje obu, Czarny LOD lub Demon atakuje Olę, obrażenia w Sieci i w ciele         |
@@ -258,8 +288,9 @@ Demon) — nieodkryte piętra to kanarki.
 - `pnpm -r build` przechodzi; serwer z `dist/` wstaje na pustej bazie po `prisma migrate deploy`.
 - `/health` odpowiada; serwer bez `data/private` loguje ostrzeżenie o próbce (kryterium etapu 28 —
   sprawdzamy, czy już jest; jeśli nie, zapis w rejestrze jako zadanie etapu 28, nie błąd).
-- Migracja **kopii** `dev.db` (nie oryginału) do najnowszego schematu na świeżym katalogu — gdyby
-  beta miała startować z danych MG (pytanie otwarte 1).
+- Pusta baza po `prisma migrate deploy` ma wszystko, czego stół potrzebuje bez ręcznych kroków
+  (konto MG z env, brak kampanii, sensowne stany puste w każdym panelu MG) — tak wystartuje produkcja.
+- `VTT_DICE_SCRIPT` i `window.__vttE2E` (4.2, 4.3) z testami, że nie działają w produkcji.
 - Pierwszy test dymny suity: MG loguje się w Chromium, Ola wchodzi z zaproszenia w Firefoksie,
   wiadomość na czacie dochodzi w obie strony, rzut kubkiem ma ten sam wynik u obu.
 
@@ -281,16 +312,19 @@ VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `20-sec
    upload bez zalogowania, upload mapy przez gracza → odmowa; `/uploads/` nie listuje katalogu.
 6. **Import muzyki z adresu URL** (tylko MG?) — kto może wywołać, czy adres wewnętrzny
    (`127.0.0.1:8100`, adres tailnetu) jest odrzucany. Na VPS gateway będzie w tailnecie.
-7. **Zaproszenia i tożsamość.** Dziś to samo imię = to samo konto, bez hasła (`routes/join.ts`).
-   Test mierzy: czy zaproszenie jest wielokrotnego użytku, jak długo żyje, czy po unieważnieniu
-   ciasteczko gracza nadal działa, czy ktoś z linkiem może wejść jako „Marek”. **Wynik to decyzja
-   MG przed betą** (pytanie otwarte 5), nie automatycznie błąd.
+7. **Zaproszenia i tożsamość gracza.** To samo imię = to samo konto, bez hasła (`routes/join.ts`).
+   MG 26.09: **podrabianie linków graczy nie jest zmartwieniem**, więc wejście „jako Marek” z ważnym
+   linkiem nie jest błędem. Test sprawdza tylko, że **wygasłe i unieważnione** zaproszenie nie
+   wpuszcza, a zaproszenie jednej kampanii nie daje wstępu do innej.
 8. **Ciasteczko i sesja.** `httpOnly`, `SameSite`, wygasanie po `SESSION_TTL_DAYS`, wylogowanie
    unieważnia sesję po stronie serwera; produkcja odmawia startu (albo krzyczy) z domyślnym
    `COOKIE_SECRET` — jeśli nie, zapis jako zadanie etapu 28.
 9. **Kanarki na zimno.** Gracz tuż po zalogowaniu (pełny stan początkowy sceny i kampanii) nie
    dostaje żadnego kanarka — osobny test poza scenariuszem, bo stan początkowy idzie inną ścieżką niż pushe.
 10. **Nagłówki HTTP** na buildzie produkcyjnym — co musi dołożyć Caddy w etapie 28 (lista do etapu 28).
+11. **Hasło MG z internetu.** Seria nieudanych logowań MG — czy jest limit prób albo opóźnienie. Przy
+    otwartej rejestracji MG (T9) to samo dla każdego konta MG. Brak limitu = B2 i zadanie dla etapu
+    „Konta MG” albo 28.
 
 ### 6.3. T7 — Odporność
 
@@ -300,8 +334,8 @@ VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `20-sec
 | zerwanie połączenia           | gracz offline na 30 s w trakcie swojej tury i w trakcie handlu                                                     | czytelny stan „rozłączony”, po powrocie ten sam stan bez F5                                       |
 | restart serwera               | zabicie procesu w trakcie walki i w trakcie kreatora, start ponowny                                                | nic zapisanego nie znika; klienci wracają sami albo po F5 bez logowania                           |
 | dwie karty tego samego gracza | Marek w dwóch oknach                                                                                               | spójny stan, brak podwójnych rzutów                                                               |
-| obciążenie stołu              | MG + 4 graczy + (opcjonalnie) 5. kontekst obserwatora, 10 minut ruchu i rzutów                                     | na koniec hash stanu sceny i kart identyczny u wszystkich i w bazie                               |
-| wydajność mapy                | „Serwerownia” 4096 px, 40 figur, 200 odcinków ścian, 10 świateł, mgła — Firefox i Chromium                         | klatki w marszu i przy przesuwaniu kamery (p50, p95) zapisane; próg do ustalenia z liczb bazowych |
+| obciążenie stołu              | MG + 4 graczy (decyzja MG) + 5. kontekst obserwatora, 10 minut ruchu i rzutów                                      | na koniec hash stanu sceny i kart identyczny u wszystkich i w bazie                               |
+| wydajność mapy                | `test-map-4096.png`, 40 figur, 200 odcinków ścian, 10 świateł, mgła — Firefox i Chromium                           | klatki w marszu i przy przesuwaniu kamery (p50, p95) zapisane; próg do ustalenia z liczb bazowych |
 | wyciek pamięci                | 30 przełączeń scen i 300 rzutów w jednej karcie                                                                    | sterta JS i liczba obiektów Pixi nie rosną liniowo                                                |
 | długi czat                    | 3000 wierszy w kampanii, wejście nowego gracza                                                                     | czas do gotowego stołu, przewijanie bez długich klatek                                            |
 | rozmiar bazy                  | po pełnym scenariuszu                                                                                              | zapisany — wejście do budżetu kopii w etapie 28                                                   |
@@ -321,12 +355,37 @@ VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `20-sec
   każdy komunikat po angielsku, bez polskich znaków albo z kodem błędu zamiast zdania.
 - **Pobieżna regresja** — lista kontrolna obszarów z tabeli „Zanim dotkniesz obszaru” (`POSTEP.md`),
   po jednym sprawdzeniu na obszar, którego scenariusz nie dotknął (np. rysowanie po mapie, ping,
-  tabele losowe, muzyka, ustawienia kości 3D, pomoc i skróty, pełny ekran w Firefoksie).
+  tabele losowe, muzyka, ustawienia kości 3D, pomoc i skróty, pełny ekran w Firefoksie, trzecia
+  scena „Lombard” z `Pawn_Shop-24x18.png` do przełączania scen).
 - Konsola bez nowych błędów w obu silnikach przez cały skrót (znane: dwa 401 przed zalogowaniem,
   404 `favicon.ico`).
 
-### 6.5. T10 — VPS (po etapie 28)
+### 6.5. T9 — Konta MG: rejestracja i izolacja
 
+Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
+w `docs/etapy/zaleglosci.md`); T9 jest jego odbiorem z perspektywy bety. Aktorzy: **MG-A** (grupa
+z Markiem i Olą, stan z punktu `po-T6`) i **MG-B** z własnym graczem **Kuba**, oba konta założone
+przez otwartą rejestrację.
+
+1. **Rejestracja:** formularz, walidacja hasła, zajęta nazwa, logowanie, wylogowanie, zmiana hasła
+   (jeśli etap ją przewiduje); limit prób logowania i rejestracji z jednego adresu.
+2. **Izolacja odczytu:** MG-B nie widzi kampanii, scen, kart, botów, architektur Sieci, handoutów,
+   uploadów ani czatu MG-A — kanarki MG-A w podsłuchu **MG-B i Kuby** przez cały test.
+3. **Izolacja zapisu:** macierz ról z T2 (punkt 1) powtórzona z gniazda MG-B na identyfikatorach
+   obiektów MG-A → odmowa, zero zmian w bazie.
+4. **Aktywacja:** MG-B aktywuje swoją kampanię, gdy grupa MG-A gra → **Marek i Ola zostają na swojej
+   scenie** (dziś `campaign:activate` przeniósłby wszystkich — to byłby B1). Jeśli etap „Konta MG”
+   nie obejmie aktywnej kampanii per MG, T9 zapisuje to jako B1 i bramka stoi.
+5. **Uploady i biblioteki:** portret z biblioteki MG-A nie jest dostępny dla MG-B z UI; dostęp po
+   zgadniętym adresie `/uploads/…` zależy od pytania otwartego 3.
+6. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A; odtworzenie kopii całości zachowuje
+   właścicieli.
+7. **Boty:** bot MG-B odpowiada albo jest „niedostępny” zgodnie z decyzją etapu (pytanie otwarte 2),
+   ale nigdy nie widzi pamięci, wiedzy ani dziennika kampanii MG-A.
+
+### 6.6. T11 — VPS (po etapie 28)
+
+Produkcja startuje z **pustej bazy** (decyzja MG z 26.09) — `dev.db` nie jedzie na VPS.
 Skrót scenariusza `@szybkie` przeciw `https://vtt.tatanga.eu` (albo adresowi przejściowemu), gracz
 z innej sieci niż MG (np. telefon jako hotspot dla laptopa), bot przez Tailscale, wyłączenie PC MG
 → boty niedostępne, stół gra dalej. Kanarki i macierz ról puszczone jeszcze raz przeciw produkcji
@@ -351,21 +410,22 @@ Obszary dodatkowe (Sieć, ekonomia, rozwój, narracja i czas) ważą tak samo ja
 Wszystkie naraz:
 
 1. **B0 = 0 i B1 = 0** w rejestrze (po retestach 🔁).
-2. **B2 ≤ 5**, każdy z opisanym obejściem w „Znanych problemach bety” (plik do utworzenia w T9,
+2. **B2 ≤ 5**, każdy z opisanym obejściem w „Znanych problemach bety” (plik do utworzenia w T10,
    przeznaczony do pokazania graczom).
 3. Pełny `pnpm test:e2e` zielony **dwa razy z rzędu** na świeżej instancji, w tym `@llm`.
 4. Linia bazowa (sekcja 6.1) zielona, bez spadku liczby testów.
 5. Podsłuch nie znalazł żadnego kanarka w całym przebiegu (T3–T6) ani na zimno (T2).
 6. Kopia i odtworzenie na rozegranym stanie działają (6.8, 6.9).
-7. Etap 28 ukończony według jego kryteriów i T10 zielony.
+7. Etap „Konta MG” ukończony i T9 zielony (izolacja dwóch MG, w tym aktywacji).
+8. Etap 28 ukończony według jego kryteriów i T11 zielony.
 
-**Werdykt T9** brzmi „gotowe do bety po etapie 28” albo „niegotowe, powód: …” z listą B0/B1.
-Werdykt końcowy wydaje T10.
+**Werdykt T10** brzmi „gotowe do bety po etapie 28” albo „niegotowe, powód: …” z listą B0/B1.
+Werdykt końcowy wydaje T11.
 
 ## 8. Czego automat nie oceni — lista obserwacji na pierwsze sesje bety
 
 Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa sesja. Lista startowa
-(z `POMYSLY.md`, 25.09) — T9 dopisze do niej wszystko, co wyjdzie z „pierwszego kontaktu” (6.4):
+(z `POMYSLY.md`, 25.09) — T10 dopisze do niej wszystko, co wyjdzie z „pierwszego kontaktu” (6.4):
 
 - tempo sesji zero w kreatorze (~25 kart na czacie) i rzut prawdziwym gestem;
 - polszczyzna Qwen3.8-27B Q3 w rozmowie i w screamsheetach;
@@ -401,17 +461,19 @@ testów — to nie jest błąd aplikacji.
    `testy-rejestr.md` na dół), commit suity i dokumentów. Punkty kontrolne i `.e2e/` nie idą do gita.
 6. Zanim cokolwiek z danych trafi do commita: `git status` bez `data/private/`, `uploads/`, `.e2e/`, `*.db`.
 
-## 11. Pytania otwarte (rozstrzygnąć najpóźniej na starcie T1)
+## 11. Pytania otwarte
 
-1. **Baza bety:** start od pustej bazy (tylko konto MG, boty i architektury Sieci tworzone od nowa)
-   czy przeniesienie `dev.db` bez kampanii testowych? Od tego zależy, czy testujemy migrację kopii
-   `dev.db` i porządki (w `dev.db` są kampanie-śmieci, których serwer nie umie usunąć).
-2. **Ilu graczy w becie?** Plan zakłada do czterech plus MG (test obciążenia z 6.3).
-3. **Skrypt kości** `VTT_DICE_SCRIPT` w serwerze, nieczynny w produkcji (4.2) — zgoda?
-4. **Hak `window.__vttE2E`** w kliencie, tylko w buildzie `--mode e2e` (4.3) — zgoda?
-5. **Tożsamość gracza** = imię z zaproszenia, bez hasła. Przy stole w internecie każdy z linkiem
-   może wejść jako inny gracz. T2 zmierzy skalę; czy przed betą wystarczy krótki czas życia
-   zaproszeń i ich unieważnianie po wejściu, czy potrzebne jest hasło gracza?
+Rozstrzygnięte 26.09 (baza, liczba graczy, kości, hak klienta, tożsamość gracza) — w sekcji 2.
+Zostały, do rozstrzygnięcia przy projektowaniu etapu „Konta MG” (nie blokują T1–T8):
+
+1. **Aktywna kampania per MG** — czy wchodzi do etapu „Konta MG”? Bez niej T9 punkt 4 kończy się B1
+   (MG-B przenosi graczy MG-A), choć sama równoległa gra grup jest po becie.
+2. **Boty innych MG w becie** — do czasu paczki AI jedyny gateway to PC właściciela. Czy boty MG-B
+   mają z niego korzystać (kolejka na jednej karcie), czy u innych MG są „niedostępne”?
+3. **Uploady** — dziś `/uploads/` jest serwowane statycznie bez logowania; czy przy wielu MG ma tak
+   zostać (adres trudny do zgadnięcia), czy trafić za logowanie?
+4. **Kompendium podręcznika na VPS** — 66 umiejętności i katalog z `data/private/` zobaczą też grupy
+   innych MG. Czy to mieści się w „użytku prywatnym”? Decyzja MG, nie testów.
 
 ## 12. Notatki z sesji testowych
 
