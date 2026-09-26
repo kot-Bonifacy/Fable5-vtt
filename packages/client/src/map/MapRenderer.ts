@@ -3011,6 +3011,19 @@ export class MapRenderer {
   }
 
   /**
+   * Punkt sceny we współrzędnych okna przeglądarki (`clientX`/`clientY`) —
+   * albo `null`, gdy płótna jeszcze nie ma. Czyta to wyłącznie hak testów E2E
+   * (`e2e-hook.ts`): automat klika w płótno z kamery, a nie z pikseli zrzutu.
+   */
+  worldToClient(point: ScenePoint): ScenePoint | null {
+    const viewport = this.viewport;
+    if (!viewport || this.destroyed) return null;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const screen = viewport.toScreen(point.x, point.y);
+    return { x: rect.left + screen.x, y: rect.top + screen.y };
+  }
+
+  /**
    * Zamyka kamerę w granicach mapy albo ją wypuszcza (decyzja MG, 11.09).
    *
    * Zamknięta jest u **gracza**: ani przeciągnięciem, ani oddaleniem nie wyjdzie

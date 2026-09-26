@@ -37,6 +37,7 @@ import {
   type RenderGlow,
   type RulerLine,
 } from '../map/MapRenderer.js';
+import { exposeMapToE2E } from '../e2e-hook.js';
 import { partyStart } from '../map/camera.js';
 import { walkFloorFor } from '../map/walk-sight.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
@@ -825,6 +826,7 @@ export function MapArea() {
       else clearRuler(current.id);
     };
     rendererRef.current = renderer;
+    exposeMapToE2E(renderer);
     let cancelled = false;
     void renderer.init(host).then(() => {
       if (!cancelled) setReady(true);
@@ -833,6 +835,7 @@ export function MapArea() {
       cancelled = true;
       setReady(false);
       setSteerHandler(null);
+      exposeMapToE2E(null);
       renderer.destroy();
       rendererRef.current = null;
     };
