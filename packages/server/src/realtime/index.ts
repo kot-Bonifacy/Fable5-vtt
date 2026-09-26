@@ -270,7 +270,12 @@ declare module 'socket.io' {
   }
 }
 
-const EVENTS: RealtimeEvent<never, unknown>[] = [
+/**
+ * Every event a socket can emit. Exported for the E2E role matrix
+ * (`packages/e2e`, `testy.md` 6.2): the test reads this list rather than a copy,
+ * so an event added later is probed without anyone editing the test.
+ */
+export const EVENTS: RealtimeEvent<never, unknown>[] = [
   musicControlEvent,
   musicStateEvent,
   archiveListEvent,

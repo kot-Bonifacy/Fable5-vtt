@@ -1664,6 +1664,10 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Surowe gniazdo E2E wysyła zdarzenie przed przydziałem kampanii** — kampanię i pokoje gniazdo dostaje asynchronicznie po `connect`; zdarzenie wysłane od razu kończy się odmową „brak kampanii”, a test czyta to jako poprawną odmowę uprawnień. Czekaj na `state:sync` (`rawSocket` w `fixtures/security.ts`).
+- **Zaproszenia w punktach kontrolnych wygasają tydzień po zapisie punktu** (domyślny czas zaproszenia; `po-T3` z 26.09 — 03.10) — plik startujący z punktu bierze świeże zaproszenie z API MG (`invite()` w `fixtures/nocna-zmiana.ts`, `createInvitation` w `table.ts`), a nie wiersz z bazy. T3b z `E2E_FROM=po-T3a` czyta zaproszenia z bazy — po tygodniu pada na wejściu graczy; pełny przebieg od zera tego nie ma.
+- **Śmieciowe ładunki z prawdziwym id kasują cel reszcie prób** — `character:delete`, `scene:delete` z id i śmieciem w reszcie pól przechodzą; zdarzenia niszczące idą na koniec serii (`destructiveLast`), a to, co ma własny test, wypada z serii.
+- **Test „odmowa” bez kontroli pozytywnej przechodzi za darmo** — `chat:history` bez `beforeId` odmawia `BAD_REQUEST` każdemu, więc „gracz spoza kampanii nie dostał historii” nic nie sprawdzał; każdą odmowę poprzedź tym samym żądaniem, które przechodzi u uprawnionego.
 - **Headless Chromium Playwrighta renderuje WebGL programowo (SwiftShader)** — domyślny `headless_shell` daje 2–8 kl./s na ciemnej scenie z oświetleniem, a marsz figury (limit `MARCH_MAX_FRAME_MS`) wlecze się wtedy 5× wolniej niż w oknie; aktorzy E2E startują z `channel: 'chromium'` (nowy headless z GPU, 160 kl./s). Firefox headless ma GPU od początku.
 - **Narzędzie ścian: pierwszy klik łańcucha w środek istniejącej ściany ją zaznacza, zamiast zacząć rysunek** — styk „T” rysuj jako wspólny koniec obu łańcuchów (dziel ścianę w punkcie styku); karta segmentu (dwuklik) otwiera się tylko z narzędziem „Ściany” w ręku, a Esc zdejmuje najpierw zaznaczenie, dopiero drugi — narzędzie.
 - **Odczyt `node:sqlite` w asercji trafia na „database is locked”**, gdy serwer akurat pisze — `new DatabaseSync(plik, { readOnly: true, timeout: 5_000 })` w `fixtures/db.ts`.
@@ -1693,6 +1697,22 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Surowe gniazdo i kampania po połączeniu (26.09, T2).** `emitAck(chat:history)` zaraz po
+  `connect` dostawało odmowę, choć ta sama sesja w przeglądarce czytała historię. Serwer w
+  `io.on('connection')` rozwiązuje kampanię w `void (async …)`, a handler czyta
+  `socket.data.campaign` — w pierwszych milisekundach `null`. Objaw myli, bo test na „odmowę”
+  przechodzi. `rawSocket()` czeka na `state:sync` i oddaje go do sprawdzenia kanarków.
+
+- **Kontrola pozytywna przy każdej odmowie (26.09, T2).** Test „gracz spoza kampanii nie czyta
+  historii czatu” przechodził, bo `chat:history` bez `beforeId` odmawia każdemu. Dopiero wariant
+  „ta sama sesja przed wylogowaniem czyta historię” ujawnił, że ładunek był zły. Podobnie
+  `fetch` i `APIRequestContext` zwijają `..` w ścieżce przed wysyłką — próby wyjścia z
+  `/uploads/` idą `node:http` z surową ścieżką (`rawGet` w `t2a-http.spec.ts`).
+
+- **PNG z fixture: bajt filtra każdego wiersza musi być 0–4 (26.09, T2).** `png()` wypełniał
+  cały bufor 0x80; `image-size` (mapy, żetony, handouty) czyta sam nagłówek i przyjmował plik,
+  a `sharp` w portretach go dekodował i zwracał `INVALID_IMAGE`. Wyglądało na błąd portretów.
 
 - **Headless Chromium Playwrighta renderuje WebGL programowo (26.09, T3b).** Marsz Kowala do
   baru w „Knajpie” (ciemna scena Dynamiczna, dwa światła) ruszał 10 s po kliknięciu i szedł po

@@ -17,7 +17,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | ---- | --------------------------------------------------------- | ------ | ---------- |
 | T0   | Projekt testów (ten plik)                                 | ✅     | 26.09.2026 |
 | T1   | Infrastruktura E2E, instancja testowa, linia bazowa       | ✅     | 26.09.2026 |
-| T2   | Bezpieczeństwo i autoryzacja                              | ⬜     |            |
+| T2   | Bezpieczeństwo i autoryzacja                              | ✅     | 26.09.2026 |
 | T3a  | Rozgrywka 1a/4: kampania, gracze, zgody, oba kreatory     | ✅     | 26.09.2026 |
 | T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ✅     | 26.09.2026 |
 | T4   | Rozgrywka 2/4: walka pierwsza na scenie „Knajpa”          | ⬜     |            |
@@ -63,6 +63,10 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | widoczność scen        | **„Knajpa” Dynamiczna + ciemność + pamięć terenu, „Brama” na ręcznej mgle** (decyzja MG z 26.09, sesja T3b) — w Dynamicznej serwer nie sprawdza pola widzenia, więc odmowę ruchu w mgłę (`MOVE_INTO_FOG`) sprawdza T5 na „Bramie” |
 | plan ścian             | **realistyczny**, odczytany z obrazów map (`fixtures/maps.ts`); Rzeźnik i Paser to **statyści z kartą**, do których przypięto boty (decyzje MG z 26.09, sesja T3b) |
 | triaż #2               | gracz zmieniający własne Cechy po przyjęciu = **B1** (decyzja MG z 26.09, sesja T3b) |
+| gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
+| unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
+| śmieci od MG           | śmieciowe ładunki idą **także w zdarzenia MG** z gniazda MG (pad serwera od MG to też B0), na kopii `po-T3` (decyzja MG z 26.09, sesja T2) |
+| próg zalewu            | wiadomość innego gracza albo ruch MG dochodzi w trakcie zalewu po ponad **5 s** = B1 (decyzja MG z 26.09, sesja T2) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -92,7 +96,7 @@ z podręcznikiem sprawdzamy w `docs/etapy/decyzje-i-uproszczenia.md`, **zanim** 
 | warstwa                   | narzędzie                                                       | gdzie                                      |
 | ------------------------- | --------------------------------------------------------------- | ------------------------------------------ |
 | linia bazowa (istniejące) | `pnpm test`, `tsc --noEmit`, ESLint, Prettier, `pytest`, `ruff` | T1, T9 — bez zmian w testach               |
-| API HTTP i gniazdo bez UI | Playwright `request` + `socket.io-client`                       | `packages/e2e/specs/10-api`, `20-security` |
+| API HTTP i gniazdo bez UI | Playwright `request` + `socket.io-client`                       | `packages/e2e/specs/35-bezpieczenstwo`     |
 | E2E w przeglądarce        | Playwright Test, wiele kontekstów i silników                    | `packages/e2e/specs/30-rozgrywka` i dalej  |
 | oględziny eksploracyjne   | Playwright MCP (Firefox, Chromium), claude-in-chrome            | T8 i każde „coś wygląda dziwnie”           |
 | pomiary                   | skrypt `node` z biblioteką `playwright`                         | T7                                         |
@@ -152,14 +156,16 @@ packages/e2e/
     maps.ts                plany ścian map „Knajpa” i „Brama” (same liczby, obrazy zostają poza repo)
     materials.ts           mapy i portrety z `VTT_E2E_MATERIALS`, kopie-kanarki w `.e2e/tmp`
     socket.ts              `emitAck` — surowa intencja z gniazda aktora i odpowiedź serwera
+    security.ts            T2: rejestr zdarzeń serwera (`EVENTS`), śmieciowe ładunki, log serwera, surowe gniazdo, PNG
+    nocna-zmiana.ts        start z `po-T3` (martwy gateway), id po nazwach, logowanie MG i gracza przez API
     table.ts               czat, rzut kubkiem, kampania i zaproszenie przez API
     vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
   specs/
     00-baseline/           build, start, /health, pusta baza, 66 umiejętności, hak poza buildem produkcyjnym
     01-dym/                test dymny T1: MG Chromium + Ola Firefox, czat, kubek, WebGL, punkt kontrolny
-    10-api/                trasy HTTP
-    20-security/           macierz uprawnień gniazda, kanarki, uploady, zaproszenia
     30-rozgrywka/          T3–T6, `test.describe.serial`, każdy plik startuje z punktu kontrolnego
+    35-bezpieczenstwo/     T2: trasy HTTP, gniazdo (role, własność, śmieci, zalew), kanarki na zimno —
+                           każdy plik odtwarza `po-T3` sam, więc w pełnym przebiegu idzie po T3–T6
     40-odpornosc/          T7
     50-przegladarki/       T8
 ```
@@ -340,7 +346,9 @@ Demon) — nieodkryte piętra to kanarki.
 
 ### 6.2. T2 — Bezpieczeństwo i autoryzacja
 
-VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `20-security`:
+VTT będzie wystawiony do internetu. Każdy punkt to test automatyczny w `35-bezpieczenstwo`
+(`t2a-http` — punkty 5–8, 10, 11; `t2b-gniazdo` — 1–4; `t2c-kanarki` — 9). Numery testów
+w suicie idą za punktami (`6.2.5 …`):
 
 1. **Macierz ról gniazda.** Test wylicza wszystkie zdarzenia z `role` MG z rejestru serwera
    (`realtime/registry.ts`) i wysyła każde z gniazda gracza → oczekiwane `FORBIDDEN`, zero zmian w bazie.
@@ -547,6 +555,47 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 26.09 — T2: bezpieczeństwo i autoryzacja
+
+**Rozstrzygnięcia MG na starcie:** gniazdo żyjące po wylogowaniu = B2 + zadanie; unieważnienie
+zaproszenia zamyka tylko nowe wejścia; śmieciowe ładunki także w zdarzenia MG; próg zalewu 5 s
+(sekcja 2). Gateway w T2 celowo martwy (`DEAD_GATEWAY`) — śmieci w zdarzeniach botów mają paść szybko.
+
+**Zrobione:** `specs/35-bezpieczenstwo` (41 testów, ~1,5 min z trzema odtworzeniami `po-T3`):
+`t2a-http` — uploady (401/403, nie-obraz, SVG ze skryptem, 413, bomba wymiarów, `../` w nazwie,
+lista katalogu i wyjście poza `/uploads/` i `/public/`), import muzyki (tylko MG, adresy
+wewnętrzne), zaproszenia (unieważnione, wygasłe, cudza kampania, imię „MG”), ciasteczko
+(flagi, podpis, podróbki, domyślny sekret), wylogowanie i wygaśnięcie sesji (restart z TTL 2,6 s),
+produkcja z domyślnym `COOKIE_SECRET`, nagłówki i `Origin`, 30 złych haseł MG; `t2b-gniazdo` —
+macierz ról z **rejestru serwera** (136 zdarzeń MG × 2 ładunki z gniazda Marka, baza bez zmian),
+przegląd „cudzego” (95 otwartych zdarzeń Oli z id Kowala), własność wg planu (ruch, karta, rzut,
+ekwipunek, eurodolce, handel Kowal ↔ Paser, wezwanie do Testu), XSS na czacie, zalew z pomiarem,
+ładunek 1,1 MB, śmieci gracza (3102 próby) i MG (7623 próby) z F5 u wszystkich po każdej serii;
+`t2c-kanarki` — 10 kanarków z T3 czytanych **z bazy** + 14 nowych od MG (rzut ukryty, tabela MG
+i jej rzut, dziennik MG, handout nieudostępniony, wiedza i relacja bota, architektura Sieci, notatka
+karty statysty, pinezka), gracze na zimno: F5, `state:sync`, 11 list na żądanie, trasy HTTP —
+**żaden kanarek nie wyciekł**, kontrola podsłuchu przechodzi. W aplikacji jedna zmiana: `export`
+listy `EVENTS` (umowa w `serwer`). Nowe fixtures: `security.ts`, `nocna-zmiana.ts`.
+
+**Znalezione:** #13 **B1** — zalew jednego gracza (500 wiadomości + 2000 ruchów) opóźnia czat
+i ruchy innych o 5,8–6,3 s, ekran Oli o 6,8–7,7 s (same ruchy 2,5 s, sam czat 1,6 s); #14 **B1 do
+triażu** — gracz trwale usuwa własną przyjętą postać (`character:delete`, UI daje ✕ tylko MG);
+#11 B2 — gniazdo po wylogowaniu/wygaśnięciu sesji; #12 B2 — logowanie MG bez limitu (30 prób
+w 0,3 s); #10 B3 — gracz spoza kampanii dostaje jej pulę portretów; #15 B3 zbiorczo — śmieciowe id
+kończy się `INTERNAL` (Prisma) w 32 zdarzeniach, bez szkody w stanie. Zadania Z2–Z9 (etap 28 i „Konta
+MG”): `Secure`, domyślny sekret, nagłówki w Caddy, limit tempa, limit logowań, `/uploads/` za
+logowaniem, gniazda sesji, `Origin`. Obserwacje: imię „mg” zakłada osobne konto gracza;
+`/api/auth/me` gracza spoza kampanii podaje nazwę aktywnej. Bez zastrzeżeń: uploady, import
+muzyki, zaproszenia, podpis ciasteczka, macierz ról, własność, XSS, pad serwera — żadnego.
+
+**Suita:** 81 testów (`00-baseline` 5, `01-dym` 7, T3a 16, T3b 12, T2 41; 8 `test.fail` — wszystkie
+T2), pełne `pnpm test:e2e` ~9 min, **zielone dwa razy z rzędu** (z T3 i botem na żywym modelu).
+Serwer 1245/1245 po eksporcie `EVENTS`. Oglądane: automat — MG i Marek w Chromium, Ola w Firefoksie,
+headless (XSS, zalew na ekranie Oli, F5 po śmieciach); reszta T2 bez UI (HTTP, surowe gniazda).
+
+**Następny krok:** triaż #14 (propozycja B1, jak #2), potem T4 (walka pierwsza) od `E2E_FROM=po-T3`
+— jak w notatce T3b niżej. Poprawki #10–#15 w osobnej sesji; Z2–Z9 czekają na swoje etapy.
+
 ### Sesja 26.09 — T3b: sceny, figury, boty, aktywacja i czat
 
 **Rozstrzygnięcia MG na starcie:** „Knajpa” Dynamiczna z ciemnością i pamięcią terenu, „Brama” na
@@ -583,37 +632,3 @@ w Firefoksie, headless.
 **Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`: Solo ma 4 pkt Zmysłu Walki do rozdzielenia;
 Rzeźnik gra turę botem (karta statysty, Propozycja); „Cień” ukryty w kuchni (kolumna 20, wiersz 15);
 Kowal stoi przy barze obok Pasera, Iskra na tarasie. Potem T2 (czeka na `po-T3` — już jest).
-
-### Sesja 26.09 — T3a: kampania, gracze, zgody i oba kreatory (plan T2 → T3)
-
-**Rozstrzygnięcia MG na starcie:** T2 **czeka na T3** (stan z `po-T3`, nie własny zasiew); waga
-`INTERNAL` ze śmieciowych ładunków — zbiorczy B3; brak limitów tempa — zadanie Z dla „Kont MG” i 28
-(sekcja 2). T3 **podzielony na T3a i T3b** (sekcja 5.1). Gateway z modelem uruchomiony na sesję.
-
-**Zrobione:** najpierw kroki 3.1–3.8 ręką w Playwright MCP (MG i Marek w Chromium, Ola w Firefoksie),
-potem `30-rozgrywka/t3a-kampania-postacie.spec.ts` (15 testów, ~6,6 min): kampania od pustej bazy,
-sklep 2, zegar 14.03.2045 22:00, zaproszenia z UI, zgody z warunkami przez znacznik „Czeka na MG”,
-pula portretów MG, Kowal (Solo, Krawędziarz, 10 Cech i 17 tabel Ścieżki kubkiem), Iskra (Netrunner,
-Kompletny Pakiet 62/80, **F5 w połowie Ścieżki bez strat**), przyjęcie do gry, 66 umiejętności,
-odmowy `CHARACTER_AWAITING_GM` i `FORBIDDEN` dla pól z ceną, dek z sześcioma Programami, kanarki
-(portret NPC, notatka Kowala), punkt `po-T3a` (kopia → odtworzenie → ten sam odcisk). Nowe fixtures:
-`creator.ts`, `materials.ts`, `socket.ts`; `prepareFresh` kopiuje `uploads/art` (mapa powitalna jak na VPS).
-
-**Znalezione:** #2 **B2 do triażu** — gracz zmienia własne Cechy po przyjęciu (`character:update`
-z `stats`); #3–#8 B3 (zaległe rozliczenie po ustawieniu daty startowej, karta Ścieżki z wynikiem
-„1”, wymyślona próbka w kompendium obok podręcznika, rada o „Scenach” dla MG bez kampanii, „Wpisz”
-przy liście języków, nieaktualny ekran końcowy kreatora). Obserwacje dla T8: Firefox loguje „WebGL
-context was lost” przy wejściu z zaproszenia; okno kreatora i karta zasłaniają zakładki panelu przy
-szerokości 1500–1600 px; okno zegara zasłania znacznik „Czeka na MG”. Tempo: ~6,5 s na rzut kubkiem,
-Krawędziarz = 27 rzutów ≈ 3 min (lista obserwacji, sekcja 8).
-
-**Suita:** 27 testów (`00-baseline` 5, `01-dym` 7, T3a 15, w tym 3 `test.fail`), pełne `pnpm test:e2e`
-~7,2 min, **zielone dwa razy z rzędu**; wcześniej jeden przebieg padł na jednorazowym
-`ERR_CONNECTION_TIMED_OUT` w konsoli MG — od tej sesji błąd konsoli aktora niesie adres zasobu. Oglądane: MCP — MG i Marek w Chromium, Ola w Firefoksie; automat — to samo,
-headless.
-
-**Następny krok:** T3b (kroki 3.9–3.15) od `E2E_FROM=po-T3a`: sceny „Knajpa” i „Brama” z mapami,
-ściany, drzwi, okno, światła, figury (żetony kreatora stają dopiero na aktywnej scenie —
-`creationTokenDone = 0`), boty „Rzeźnik” i „Paser” (`@llm`, gateway), aktywacja, czat, punkt `po-T3`.
-Solo ma jeszcze 4 pkt Zmysłu Walki do rozdzielenia — przed walką w T4.
-

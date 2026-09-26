@@ -31,9 +31,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
 rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
-retescie tego samego dnia** — suita `packages/e2e` (`pnpm test:e2e`)
+retescie tego samego dnia; T2 (bezpieczeństwo) zamknięty 26.09 z błędami #10–#15 do poprawki**
+(dwa B1: zalew dławiący innych #13 i usuwanie własnej przyjętej postaci #14 — ten czeka na triaż MG)
+**i zadaniami Z2–Z9 dla etapów 28 i „Konta MG”** — suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T4** (walka
-pierwsza) od punktu `po-T3`, a T2 może iść w dowolnej chwili — `po-T3` już jest (decyzja MG z 26.09). Kolejność (decyzja MG z 26.09):
+pierwsza) od punktu `po-T3`. Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
@@ -97,7 +99,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2237** w `shared`, **1245** na serwerze, **289** u klienta,
-**59** w gatewayu, **40** E2E — zielone (26.09, poprawki #2–#9, klient 26.09 druga; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**59** w gatewayu, **81** E2E (8 `test.fail` z T2) — zielone (26.09, T2; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
