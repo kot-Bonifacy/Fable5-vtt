@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { DiceRng } from '@vtt/shared';
+import { diceScriptPath, takeScriptedDie } from './dice-script.js';
 
 /**
  * Crypto-strong die roller, optionally mixing in client shake entropy.
@@ -10,6 +11,9 @@ import type { DiceRng } from '@vtt/shared';
  * fresh and secret for every roll. Values are drawn from the hash stream with
  * rejection sampling (no modulo bias); the stream extends by hashing a
  * counter when exhausted.
+ *
+ * Outside production, `VTT_DICE_SCRIPT` can force the next faces for E2E tests
+ * (see `dice-script.ts`); the gesture is then ignored for those dice.
  */
 export function createMixedRng(clientEntropy = ''): DiceRng {
   const seed = createHash('sha256').update(randomBytes(32)).update(clientEntropy).digest();
@@ -26,7 +30,13 @@ export function createMixedRng(clientEntropy = ''): DiceRng {
     return block[offset++]!;
   };
 
+  const script = diceScriptPath();
+
   return (sides) => {
+    if (script) {
+      const forced = takeScriptedDie(script, sides);
+      if (forced !== null) return forced;
+    }
     const limit = Math.floor(65536 / sides) * sides;
     for (;;) {
       const value = (nextByte() << 8) | nextByte();

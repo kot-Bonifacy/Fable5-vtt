@@ -19,6 +19,7 @@ import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js'
 import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime } from './realtime/index.js';
+import { diceScriptPath } from './realtime/dice-script.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
 import { loadStatusRegistry } from './statuses.js';
@@ -51,6 +52,15 @@ export async function buildApp(
 ): Promise<BuiltApp> {
   const prisma = createPrisma(config.databaseUrl);
   const app = Fastify({ logger: options.logger ?? true });
+  // Skrypt kości E2E (`dice-script.ts`) ma być widoczny w logu — a w produkcji martwy.
+  if (process.env.VTT_DICE_SCRIPT) {
+    const script = diceScriptPath();
+    app.log.warn(
+      script
+        ? `VTT_DICE_SCRIPT: dice are forced from ${script} (E2E only)`
+        : 'VTT_DICE_SCRIPT is ignored in production',
+    );
+  }
 
   await app.register(fastifyCookie, { secret: config.cookieSecret });
   await app.register(fastifyMultipart, {
