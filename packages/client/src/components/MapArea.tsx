@@ -188,12 +188,20 @@ function openSheetOfToken(tokenId: string): void {
 /**
  * Why a drag was refused (stage 14c). The detail — how many metres were
  * missing, which status is holding the token — is on the card the server posts
- * to the GM and to whoever tried; this line is the nudge at the map.
+ * to the GM and to whoever tried; this line is the nudge at the map. Fog and
+ * terrain are refused outside a fight too, with no card, so their line is the
+ * whole reason (#29).
  */
 function moveErrorText(code: string | undefined): string {
   switch (code) {
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — sprawdź kartę odmowy na czacie.';
+    // #29: te dwie odmowy padają także poza walką, gdzie karty nie ma, więc
+    // notka mówi powód sama (to samo zdanie, co karta w walce).
+    case 'MOVE_INTO_FOG':
+      return 'Tam jeszcze nic nie widać — idź po odsłoniętym terenie albo poproś MG o jego odsłonięcie.';
+    case 'MOVE_BLOCKED_BY_TERRAIN':
+      return 'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
     case 'MOVE_LOCKED':

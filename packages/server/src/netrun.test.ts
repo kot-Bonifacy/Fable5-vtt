@@ -423,12 +423,16 @@ describe('run netrunnera na żywych gniazdach', () => {
       expect(floor.dv).toBeUndefined();
     }
     expect(JSON.stringify(started)).not.toContain('Listy przewozowe');
+    // #32: the architecture's name is the GM's label — the player's window says „SIEĆ".
+    expect(started.run.architectureName).toBeUndefined();
+    expect((await roundTrip(player)).netRuns[0]?.run.architectureName).toBeUndefined();
   });
 
   it('gives the GM the whole shaft of the same run', async () => {
     const sync = await roundTrip(gm);
     const run = sync.netRuns.find((entry) => entry.runId === runId);
     expect(run?.gmView).toBe(true);
+    expect(run?.run.architectureName).toBeTruthy();
     const floors = run!.run.branches[0]!.floors;
     expect(floors.map((floor) => floor.kind)).toEqual(['empty', 'password', 'file', 'controlNode']);
     expect(floors[3]!.dv).toBe(1);

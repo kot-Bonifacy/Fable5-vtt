@@ -1,5 +1,18 @@
-import type { BlockerSyncBroadcast, Segment, SessionUser } from '@vtt/shared';
-import { ROLE_GM, movementSegments, revealedStretches } from '@vtt/shared';
+import type {
+  BlockerSyncBroadcast,
+  OpeningSyncBroadcast,
+  Segment,
+  SessionUser,
+  WallView,
+} from '@vtt/shared';
+import {
+  ROLE_GM,
+  isOpening,
+  isPointRevealed,
+  movementSegments,
+  revealedStretches,
+  wallMidpoint,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import type { RealtimeDeps } from './registry.js';
@@ -8,6 +21,7 @@ import { campaignRoom } from './state.js';
 import { fetchSceneWalls } from './walls-io.js';
 import {
   loadVisionContext,
+  playerOpeningView,
   usesDynamicVision,
   viewerSightFor,
   visibleWalkBlockersFor,
@@ -47,6 +61,28 @@ async function standingBlockersFor(prisma: PrismaClient, scene: Scene): Promise<
   return revealedStretches(segments, await fetchFogState(prisma, scene), scene.gridSizePx / 2);
 }
 
+/**
+ * The doors, windows and gates a player may work on a scene without dynamic
+ * vision (#30, 27.09.2026) — the handles that go with `standingBlockersFor`.
+ *
+ * Until then only a dynamic scene handed out handles (`visibleOpeningsFor`), so
+ * on a map painted by hand a player stood at a gate the GM had flagged
+ * `playerToggle` and had nothing to click — the server would have let them. An
+ * open map shows every flagged opening; a fogged one only those whose middle
+ * stands on revealed floor, by the same reasoning as the walls: a door under
+ * the fog tells where a building has its rooms.
+ */
+export async function standingOpeningsFor(prisma: PrismaClient, scene: Scene): Promise<WallView[]> {
+  const openings = (await fetchSceneWalls(prisma, scene.id)).filter(
+    (wall) => isOpening(wall) && wall.playerToggle,
+  );
+  if (openings.length === 0) return [];
+  const fog = scene.visibility === 'fog' ? await fetchFogState(prisma, scene) : null;
+  return openings
+    .filter((door) => !fog || isPointRevealed(wallMidpoint(door), fog))
+    .map(playerOpeningView);
+}
+
 /** The planner's obstacles for one viewer — empty for the GM, who has the walls. */
 export async function walkBlockersFor(
   prisma: PrismaClient,
@@ -60,10 +96,11 @@ export async function walkBlockersFor(
 }
 
 /**
- * Pushes the list to every player looking at a scene without dynamic vision —
- * after a wall edit, a fog stroke or a change of visibility mode. A dynamic
- * scene sends it with each player's vision instead (`emitVisionToPlayers`), so
- * this returns there without a single query.
+ * Pushes the list — and the handles, `standingOpeningsFor` (#30) — to every
+ * player looking at a scene without dynamic vision, after a wall edit, a fog
+ * stroke or a change of visibility mode. A dynamic scene sends both with each
+ * player's vision instead (`emitVisionToPlayers`), so this returns there
+ * without a single query.
  */
 export async function emitBlockersToPlayers(
   deps: RealtimeDeps,
@@ -81,5 +118,12 @@ export async function emitBlockersToPlayers(
     sceneId: scene.id,
     segments: await standingBlockersFor(deps.ctx.prisma, scene),
   };
-  for (const member of players) member.emit('blocker:sync', payload);
+  const openings: OpeningSyncBroadcast = {
+    sceneId: scene.id,
+    openings: await standingOpeningsFor(deps.ctx.prisma, scene),
+  };
+  for (const member of players) {
+    member.emit('blocker:sync', payload);
+    member.emit('opening:sync', openings);
+  }
 }

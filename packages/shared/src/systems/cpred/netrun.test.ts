@@ -162,6 +162,19 @@ describe('ruch po piętrach', () => {
     expect(verdict.path).toEqual([{ branchId: 'trunk', floor: 1 }]);
   });
 
+  it('holds a netrunner standing on the unbroken password — down, not up (#31)', () => {
+    const onPassword = runAt({ branchId: 'trunk', floor: 1 });
+    const down = netCanMove(ARCHITECTURE, onPassword, { branchId: 'trunk', floor: 2 });
+    expect(down.ok).toBe(false);
+    expect(down.problem).toBe('NET_PASSWORD_BLOCKS');
+    expect(down.blockedBy?.id).toBe('f1');
+    // The branch hangs off the password floor, so it is below it too.
+    expect(netCanMove(ARCHITECTURE, onPassword, { branchId: 'b1', floor: 0 }).ok).toBe(false);
+    expect(netCanMove(ARCHITECTURE, onPassword, TOP).ok).toBe(true);
+    const broken = runAt({ branchId: 'trunk', floor: 1 }, { broken: ['f1'] });
+    expect(netCanMove(ARCHITECTURE, broken, { branchId: 'trunk', floor: 2 }).ok).toBe(true);
+  });
+
   it('opens the whole shaft once the password is broken', () => {
     const state = runAt(TOP, { broken: ['f1'] });
     const verdict = netCanMove(ARCHITECTURE, state, { branchId: 'b1', floor: 1 });

@@ -53,13 +53,19 @@ import { fetchFogState } from './fog-io.js';
  *     client reported and ends the server owns, and charged against the turn.
  *
  * A refusal is never silent: the token snaps back and the GM gets the same kind
- * of card stage 14b gives them for a refused Action, „Przepuść" included.
+ * of card stage 14b gives them for a refused Action, „Przepuść" included. The
+ * way-is-not-clear refusals of step 3 are asked outside a fight too, where
+ * there is no card to point at, so they come back under their own code and the
+ * client says the sentence itself (#29, 27.09.2026).
  */
 
 /** How a refused move is reported back to the client that tried it. */
 export const MOVE_REFUSED = 'MOVE_REFUSED';
 
-/** A route that went through a wall, a closed window or a standing cover. */
+/**
+ * A route that went through a wall, a closed window or a standing cover. The
+ * code travels to the client as it is — the sentence here is the fight card's.
+ */
 export const MOVE_BLOCKED_BY_TERRAIN = 'MOVE_BLOCKED_BY_TERRAIN';
 export const MOVE_BLOCKED_BY_TERRAIN_MESSAGE =
   'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
@@ -286,7 +292,7 @@ async function refuseWalkIntoFog(
       refusal: { code: MOVE_INTO_FOG, message: MOVE_INTO_FOG_MESSAGE },
     });
   }
-  throw new RealtimeError(MOVE_REFUSED);
+  throw new RealtimeError(MOVE_INTO_FOG);
 }
 
 /**
@@ -336,7 +342,7 @@ async function refuseWalkThroughSolid(
       refusal: { code: MOVE_BLOCKED_BY_TERRAIN, message: MOVE_BLOCKED_BY_TERRAIN_MESSAGE },
     });
   }
-  throw new RealtimeError(MOVE_REFUSED);
+  throw new RealtimeError(MOVE_BLOCKED_BY_TERRAIN);
 }
 
 /**

@@ -582,7 +582,7 @@ describe('cover as an object on the scene', () => {
       y: 0,
       final: true,
     });
-    expect(errorOf(ack)).toBe('MOVE_REFUSED');
+    expect(errorOf(ack)).toBe('MOVE_BLOCKED_BY_TERRAIN');
     // The refusal has to leave the figure where it stood, or the map and the
     // database would disagree about where the player is.
     const after = await roundTrip(player);

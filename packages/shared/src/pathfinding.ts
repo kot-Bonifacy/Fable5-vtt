@@ -290,10 +290,14 @@ function everyRunCell(
     const x = from.x + (to.x - from.x) * t;
     const y = from.y + (to.y - from.y) * t;
     // The footprint of an off-lattice sample straddles one more cell per axis
-    // than a snapped one, and all of them have to hold the token.
-    const colFrom = Math.floor((x - grid.originX) / grid.cell);
+    // than a snapped one, and all of them have to hold the token. The pixel of
+    // slack is given on *both* edges: on a fractional lattice (1448 / 40 =
+    // 36.2 px) a snapped corner arrives as 543 = 15 × 36.2, and 543 / 36.2 is
+    // 14.999…, so a floor without it counted a column the figure never touched
+    // and refused a route the planner drew along the edge of a reveal (#28).
+    const colFrom = Math.floor((x + 1 - grid.originX) / grid.cell);
     const colTo = Math.floor((x + extent - 1 - grid.originX) / grid.cell);
-    const rowFrom = Math.floor((y - grid.originY) / grid.cell);
+    const rowFrom = Math.floor((y + 1 - grid.originY) / grid.cell);
     const rowTo = Math.floor((y + extent - 1 - grid.originY) / grid.cell);
     for (let row = rowFrom; row <= rowTo; row++) {
       for (let col = colFrom; col <= colTo; col++) {

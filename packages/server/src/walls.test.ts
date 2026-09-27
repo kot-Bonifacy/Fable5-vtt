@@ -329,7 +329,7 @@ describe('walls and dynamic vision', () => {
       y: 1450,
       final: true,
     });
-    expect(errorOf(refused)).toBe('MOVE_REFUSED');
+    expect(errorOf(refused)).toBe('MOVE_BLOCKED_BY_TERRAIN');
 
     await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const allowed = await emitAck(player, 'token:move', {
@@ -391,7 +391,7 @@ describe('walls and dynamic vision', () => {
         final: true,
       });
       // Its centre walks the same clear line; its lower half walks into the stub.
-      expect(errorOf(twoByTwo)).toBe('MOVE_REFUSED');
+      expect(errorOf(twoByTwo)).toBe('MOVE_BLOCKED_BY_TERRAIN');
       // …and says nothing about what stopped it, like every refusal in here.
       expect(JSON.stringify(twoByTwo)).not.toContain('1520');
     } finally {
@@ -890,11 +890,11 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
   it('refuses a figure dragged through the barrier itself', async () => {
     // Middles (550, 1550) → (1550, 950) cross x = 1000 at y = 1280: the northern
     // fence, well clear of the gate below it.
-    expect(errorOf(await moveOwn(player, 1450, 850))).toBe('MOVE_REFUSED');
+    expect(errorOf(await moveOwn(player, 1450, 850))).toBe('MOVE_BLOCKED_BY_TERRAIN');
   });
 
   it('refuses the shut gate, and lets the figure through once it stands open', async () => {
-    expect(errorOf(await moveOwn(player, 1450, 1450))).toBe('MOVE_REFUSED');
+    expect(errorOf(await moveOwn(player, 1450, 1450))).toBe('MOVE_BLOCKED_BY_TERRAIN');
 
     // An open gate is nothing to walk round, so it leaves the planner's list.
     const opened = blockersWhere((segments) => !has(segments, GATE));

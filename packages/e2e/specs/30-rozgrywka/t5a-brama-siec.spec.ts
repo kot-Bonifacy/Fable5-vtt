@@ -400,38 +400,29 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   });
 
   test('#33 karta strefy wiąże ją z węzłem kontrolnym (wyłączenie wieżyczki ją rozbraja)', async () => {
-    test.fail(
-      true,
-      '#33: `zone:update` przyjmuje `architectureId/floorId/deviceId`, ale UI ich nie ustawia',
-    );
+    // Pole „Węzeł kontrolny” na karcie strefy (#33) — T5b sprawdza potem most
+    // serwera: wyłączone urządzenie węzła rozbraja strefę (`zoneDisarmedByNetrunner`).
     const page = mg.page;
+    const arch = architecture(architectureName);
+    const node = arch.shaft.branches[0]!.floors[3]!;
+    const zone = zonesOn(bramaId).find((z) => z.entryId === 'defense.automatyczna-wiezyczka')!;
     const card = await openZoneCard(page, {
       x: (BRAMA.turretZone.from.x + BRAMA.turretZone.to.x) / 2,
       y: (BRAMA.turretZone.from.y + BRAMA.turretZone.to.y) / 2,
     });
     try {
-      await expect(card.getByText(/węzeł kontrolny|Węzeł kontrolny/)).toBeVisible({
-        timeout: 2_000,
-      });
+      const select = card.locator('label', { hasText: 'Węzeł kontrolny' }).locator('select');
+      await expect(select).toBeEnabled();
+      const option = select.locator('option', { hasText: 'Wieżyczka nad placem' });
+      await expect(option).toHaveCount(1);
+      await select.selectOption({ label: (await option.textContent())! });
+      await expect
+        .poll(() => zonesOn(bramaId).find((z) => z.id === zone.id)?.deviceId)
+        .toBe(node.devices![0]!.id);
     } finally {
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
     }
-  });
-
-  test('przygotowanie: strefa wieżyczki związana z węzłem z gniazda MG (obejście #33)', async () => {
-    // Przy stole MG rozbroiłby strefę ręką („Rozbrój”), gdy Ola wyłączy wieżyczkę.
-    // Automat wiąże ją zdarzeniem, które UI miałoby wysłać — T5b sprawdza wtedy
-    // most serwera: wyłączone urządzenie węzła rozbraja strefę (`zoneDisarmedByNetrunner`).
-    const arch = architecture(architectureName);
-    const node = arch.shaft.branches[0]!.floors[3]!;
-    const zone = zonesOn(bramaId).find((z) => z.entryId === 'defense.automatyczna-wiezyczka')!;
-    expect(
-      await emitAck(await mg.socket(), 'zone:update', {
-        zoneId: zone.id,
-        patch: { architectureId: arch.id, floorId: node.id, deviceId: node.devices![0]!.id },
-      }),
-    ).toMatchObject({ ok: true });
     expect(zonesOn(bramaId).find((z) => z.id === zone.id)).toMatchObject({
       architectureId: arch.id,
       floorId: node.id,
@@ -565,8 +556,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   });
 
   test('5.1 skok w mgłę prosto z gniazda: serwer odmawia, figura stoi', async () => {
-    // `refuseWalkIntoFog`: kod dla klienta to `MOVE_REFUSED`, a `MOVE_INTO_FOG`
-    // ze zdaniem trafia na kartę odmowy — tylko w walce.
+    // `refuseWalkIntoFog`: kod `MOVE_INTO_FOG` idzie do klienta także poza walką
+    // (#29) — karta odmowy ze zdaniem powstaje tylko w walce.
     const before = { x: kowal().x, y: kowal().y };
     expect(
       await emitAck(await marek.socket(), 'token:move', {
@@ -575,16 +566,12 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
         y: Math.floor(BRAMA.inFog.y / cell) * cell,
         final: true,
       }),
-    ).toEqual({ ok: false, error: 'MOVE_REFUSED' });
+    ).toEqual({ ok: false, error: 'MOVE_INTO_FOG' });
     await marek.page.waitForTimeout(1_000);
     expect({ x: kowal().x, y: kowal().y }).toEqual(before);
   });
 
   test('#28 marsz klikiem w mgłę staje na skraju odsłoniętego, a nie wraca na start', async () => {
-    test.fail(
-      true,
-      '#28: serwer liczy kolumnę z `Math.floor(543 / 36.2)` = 14 i odmawia trasy planera',
-    );
     const page = marek.page;
     await fitCamera(page, BRAMA.width, BRAMA.height).catch(() => undefined);
     const start = { x: kowal().x, y: kowal().y };
@@ -594,8 +581,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       await page.waitForTimeout(300);
       await clickOnMap(page, BRAMA.inFog);
       // Planer prowadzi figurę najdalej, jak się da po odsłoniętym — pod zachodni
-      // skraj drogi (x = 560) — i ani kroku w mgłę. Z #28 figura przechodzi całą
-      // trasę, a serwer na końcu odmawia i odsyła ją na start.
+      // skraj drogi (x = 560) — i ani kroku w mgłę. Przed poprawką #28 figura
+      // przechodziła całą trasę, a serwer na końcu odmawiał i odsyłał ją na start.
       await page.waitForTimeout(12_000);
       test.info().annotations.push({
         type: 'marsz pod skraj mgły',
@@ -610,10 +597,6 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   });
 
   test('#29 odmowa ruchu poza walką mówi graczowi dlaczego, a nie odsyła do karty', async () => {
-    test.fail(
-      true,
-      '#29: „Ruch odrzucony — sprawdź kartę odmowy na czacie”, a karty poza walką nie ma',
-    );
     const page = marek.page;
     const notesOf = async () =>
       ((await marek.store<{ items: { type: string; text?: string }[] }>('chat'))?.items ?? [])
@@ -630,7 +613,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     expect({ x: kowal().x, y: kowal().y }).toEqual(before);
     const notes = (await notesOf()).slice(seen);
     test.info().annotations.push({ type: 'notatka Marka', description: JSON.stringify(notes) });
-    // Karty odmowy nie ma — poza walką `logMovementRefusal` niczego nie pisze.
+    // Karty odmowy nie ma — poza walką `logMovementRefusal` niczego nie pisze,
+    // więc powód niesie sama notka (#29).
     expect(lastMessageId()).toBe(since);
     expect(notes.join(' ')).toContain('odsłonięt');
   });
@@ -642,11 +626,9 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   });
 
   test('#30 na ręcznej mgle gracz dostaje klamkę bramy, którą wolno mu otworzyć', async () => {
-    test.fail(true, '#30: `computeViewerVision` wysyła otwory tylko na scenie Dynamicznej');
     const gate = gateRow();
     expect(gate.playerToggle).toBe(1);
-    // Serwer i tak by przepuścił (`opening:toggle` nie pyta o tryb sceny) —
-    // brakuje tylko klamki na mapie Marka.
+    // Od #30 klamka przychodzi z przeszkodami planera (`standingOpeningsFor`).
     await expect
       .poll(
         async () =>
@@ -658,12 +640,15 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       .toContain(gate.id);
   });
 
-  test('5.2 MG otwiera bramę (obejście #30), Marek wchodzi na plac odsłonięty przez MG', async () => {
+  test('5.2 Marek otwiera bramę swoją klamką, wchodzi na plac odsłonięty przez MG', async () => {
     test.setTimeout(3 * 60_000);
     const page = mg.page;
     await fitCamera(page, BRAMA.width, BRAMA.height);
     await page.keyboard.press('Escape');
-    await clickOnMap(page, BRAMA.gateHandle);
+    // Do #30 bramę otwierał MG — gracz na ręcznej mgle nie miał klamki.
+    await fitCamera(marek.page, BRAMA.width, BRAMA.height).catch(() => undefined);
+    await marek.page.keyboard.press('Escape');
+    await clickOnMap(marek.page, BRAMA.gateHandle);
     await expect.poll(gateOpen).toBe(1);
     // Otwarta brama znika z przeszkód planera Oli (Firefox) bez F5.
     const gate = gateRow();
@@ -749,19 +734,12 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
         description: `${code} … ${await ola.sniffer.evidence(code, 0, 200)}`,
       });
     }
-    // Znany wyciek zostaje tajny już tylko przed Markiem (cudzego runu nie dostaje),
-    // żeby ogólna kontrola kanarków łapała każdy następny.
-    fromPlayers.reveal(code);
-    fromMarek.track(code);
-    test.fail(true, '#32: `netRunView` oddaje `architectureName` także graczowi');
+    // Nazwa zostaje kanarkiem dla obojga graczy — kontrola po T5a złapie każdy
+    // następny wyciek.
     expect(leaked).toEqual([]);
   });
 
   test('#31 niezłamane hasło na piętrze wejścia blokuje zjazd niżej', async () => {
-    test.fail(
-      true,
-      '#31: `netCanMove` sprawdza hasła po drodze bez piętra, na którym netrunner stoi',
-    );
     const window = runWindow(ola);
     const floors = window.locator('.net-run-floor');
     try {
@@ -778,8 +756,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
         timeout: 2_000,
       });
     } finally {
-      // Z #31 Ola stoi już na Pliku — wraca na hasło (w górę wolno zawsze),
-      // żeby dalszy przebieg był ten sam przed poprawką i po niej.
+      // Gdyby #31 wrócił, Ola stałaby już na Pliku — wraca na hasło (w górę
+      // wolno zawsze), żeby dalszy przebieg był ten sam.
       // Z gniazda, nie klikiem: to sprzątanie, a nie krok, który testujemy.
       const run = runOf('Iskra')!;
       if (run.state.position.floor !== 0) {

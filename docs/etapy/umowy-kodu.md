@@ -15,6 +15,8 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Klamki drzwi i bram gracza na scenie bez widzenia Dynamicznego daje `standingOpeningsFor` (27.09, #30)** — `realtime/blockers.ts`, obok `standingBlockersFor`: flaga `playerToggle`, na ręcznej mgle tylko otwory ze środkiem na odsłoniętym (`isPointRevealed`), na mapie otwartej wszystkie. Jedzie w `state:sync` (`openings`) i w `emitBlockersToPlayers` (`opening:sync` razem z `blocker:sync`). Każdy widok otworu dla gracza przechodzi przez `playerOpeningView` (`vision.ts`) — nowe pole tajne MG na ścianie wycina się tam.
+- **Odmowa „mgła” i „przeszkoda” wraca do klienta własnym kodem (27.09, #29)** — `refuseWalkIntoFog` rzuca `MOVE_INTO_FOG`, `refuseWalkThroughSolid` — `MOVE_BLOCKED_BY_TERRAIN`, w walce i poza nią; karta odmowy (tylko w walce) dalej niesie zdanie. `MOVE_REFUSED` zostaje odmowom tury i stanu, gdzie karta jest zawsze. Nowa odmowa z kroku 3 `validateTokenMove` dostaje własny kod i zdanie w `moveErrorText` (`MapArea.tsx`) i w `REFUSAL_TEXTS` botów.
 - **Grot kierunku nie łapie kliknięć (27.09, #25)** — `TokenNode.nose.eventMode = 'none'`; obrót chwyta wyłącznie `grabFacingKnob` przy zaznaczonej figurze. Każde dziecko żetonu wystające na sąsiednie pole potrzebuje `eventMode = 'none'`, inaczej Pixi oddaje mu klik w sąsiada.
 - **Ile figurze zostało PW, widzi cały stół — przez `TokenView.hpShare` (26.09, etap 43a, decyzja MG)** — widz bez prawa do `hp` dostaje od `toTokenView` ułamek i szczebel (`tokenHpShareOf`), nigdy liczby; `null` = figura bez PW (klient scala widoki spreadem). Nowe miejsce, które rysuje rany figury, czyta `tokenHpShare(token)` (pełne PW, a bez nich ułamek), nie `token.hp` — tak robią obrączka na mapie i portrety zakładki „Walka”. Publiczne rozgłoszenie żetonu musi dostać kartę (`toTokenView(token, false, linked)`), inaczej figura z kartą nie ma skąd wziąć ułamka. Figury ukryte i pod mgłą dalej nie jadą wcale.
 - **Grot kierunku jest uchwytem obrotu; żeton z panelu przeciąga się na mapę (26.09)** — kształt grotu ma jedno źródło: `nosePolygon` / `noseLength` w `map/token-ring.ts` (figura i nakładka). Nowe źródło przeciągania żetonu woła `startTokenDrag(event, TokenPlacement)` z `map/token-drag.ts`; mapa przyjmuje tylko typ `TOKEN_DRAG_MIME` i stawia przez to samo `createPlacedToken` co klik.
@@ -2756,6 +2758,9 @@ bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mecha
 
 ## siec — Sieć (netrunning)
 
+- **Nazwa Architektury jedzie tylko do MG (27.09, #32)** — `netRunView` wkłada `architectureName` wyłącznie przy `gm: true` (pole opcjonalne); okno runu gracza pisze „SIEĆ”. Tak samo `toAccessPointView`.
+- **Hasło, na którym netrunner stoi, blokuje zjazd niżej (27.09, #31)** — `netCanMove` dokłada pozycję startową do sprawdzanych pięter, gdy cel leży pod nią (`ancestry(to)` zawiera start); wspinaczka w górę z niezłamanego hasła jest wolna.
+- **Strefę bronioną wiąże się z urządzeniem węzła kontrolnego polem „Węzeł kontrolny” na karcie strefy (27.09, #33)** — `SceneCardZone.tsx` dociąga pełne Architektury (`net:get`) i wysyła `architectureId/floorId/deviceId` naraz; rozbrojenie przez netrunnera liczy `zoneDisarmedByNetrunner`.
 - **Hak Programu, którego silnik nie rozlicza, idzie do `NET_PROGRAM_HOOKS_MANUAL`** — lista jest od 39 **pusta**, ale ani jej, ani gałęzi `netHookIsManual` nie kasuj.
 
 ---

@@ -642,19 +642,22 @@ export function visibleOpeningsFor(
       return isSegmentClear(source.origin, midpoint, others);
     });
   });
-  // Whether the bolt is thrown is the one thing about an opening a player learns
-  // by pulling the handle rather than by looking, so it never leaves the server.
-  // Scrubbed here — the single function that answers „what is a player told
-  // about doors and windows" — rather than at each emit site, where the next one
-  // added would forget. A gate's armour goes the same way (stage 42b): what the
-  // mesh takes off a round is the GM's number, not something seen through it.
-  return visible.map((door) => ({
-    ...door,
-    locked: false,
-    armor: 0,
-    hidesFigures: false,
-    concealPenalty: 0,
-  }));
+  return visible.map(playerOpeningView);
+}
+
+/**
+ * One opening as a player is told about it.
+ *
+ * Whether the bolt is thrown is the one thing about an opening a player learns
+ * by pulling the handle rather than by looking, so it never leaves the server.
+ * Scrubbed here — the single function both opening lists go through (this
+ * module's for a dynamic scene, `standingOpeningsFor` for any other) — rather
+ * than at each emit site, where the next one added would forget. A gate's
+ * armour goes the same way (stage 42b): what the mesh takes off a round is the
+ * GM's number, not something seen through it.
+ */
+export function playerOpeningView(door: WallView): WallView {
+  return { ...door, locked: false, armor: 0, hidesFigures: false, concealPenalty: 0 };
 }
 
 /**

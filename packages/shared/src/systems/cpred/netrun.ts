@@ -571,7 +571,11 @@ export interface NetMoveVerdict {
  * sieciowej, która blokuje ci drogę, takiej jak hasło" (s. 198).
  *
  * The password floor itself is reachable — it has to be, or nobody could ever
- * Backdoor it. What it stops is everything below.
+ * Backdoor it. What it stops is everything below — including when the
+ * netrunner is standing on it: `netRunPath` leaves the start out, so until
+ * 27.09.2026 a password on the entry floor (the usual build) guarded nothing
+ * (#31). The start counts only on the way *down*; climbing back up off an
+ * unbroken password goes nowhere it protects.
  */
 export function netCanMove(
   architecture: CpredNetArchitecture,
@@ -581,7 +585,11 @@ export function netCanMove(
   const path = netRunPath(architecture, state.position, to);
   if (!path) return { ok: false, problem: 'NET_NO_SUCH_FLOOR' };
   const broken = new Set(state.broken);
-  for (const step of path.slice(0, -1)) {
+  const descending =
+    path.length > 0 &&
+    ancestry(architecture, to).some((step) => netSamePosition(step, state.position));
+  const passed = descending ? [state.position, ...path.slice(0, -1)] : path.slice(0, -1);
+  for (const step of passed) {
     const floor = netFloorAt(architecture, step);
     if (floor && floor.kind === 'password' && !broken.has(floor.id)) {
       return { ok: false, problem: 'NET_PASSWORD_BLOCKS', blockedBy: floor };
@@ -700,7 +708,12 @@ export interface NetShaftBranchView {
 
 export interface NetRunView {
   architectureId: string;
-  architectureName: string;
+  /**
+   * The GM's copy only (#32, 27.09.2026). A player's window says „SIEĆ": the
+   * name is the GM's label for a building, and the access point's view drops it
+   * for the same reason (`toAccessPointView`).
+   */
+  architectureName?: string;
   branches: NetShaftBranchView[];
   position: CpredNetPosition;
   netActionsMax: number;
@@ -821,7 +834,7 @@ export function netRunView(
 
   return {
     architectureId: architecture.id,
-    architectureName: architecture.name,
+    ...(options.gm ? { architectureName: architecture.name } : {}),
     branches,
     position: state.position,
     netActionsMax: options.netActionsMax,

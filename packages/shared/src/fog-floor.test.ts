@@ -169,4 +169,18 @@ describe('firstClosedFloorStep', () => {
     ];
     expect(firstClosedFloorStep(down, shifted, passable)).not.toBeNull();
   });
+
+  it('does not count a column on a fractional lattice that the corner only touches (#28)', () => {
+    // „Brama”: 1448 / 40 = 36.2 px. Floor revealed from x = 543 (column 15) on;
+    // 543 / 36.2 is 14.999…, which used to put the figure into column 14.
+    const fractional = { cell: 36.2, originX: 0, originY: 0 };
+    const passable = fogFloorPassable(fogOf(reveal(543, 0, 362, 362)));
+    const along = [
+      { x: 579.2, y: 36.2 },
+      { x: 543, y: 36.2 },
+    ];
+    expect(firstClosedFloorStep(along, fractional, passable)).toBeNull();
+    const intoFog = [along[1]!, { x: 506.8, y: 36.2 }];
+    expect(firstClosedFloorStep(intoFog, fractional, passable)).not.toBeNull();
+  });
 });

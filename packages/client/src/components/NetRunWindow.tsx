@@ -800,11 +800,12 @@ export function NetRunWindow() {
       ref={placement.ref}
       className="sheet-window net-run-window"
       style={{ ...placement.style, zIndex: 330 }}
-      aria-label={`Sieć: ${run.run.architectureName}`}
+      aria-label={`Sieć: ${run.run.architectureName ?? 'SIEĆ'}`}
     >
       <div className="sheet-header" {...placement.dragProps}>
         <span className="sheet-name net-run-title">
-          {isGm ? run.run.architectureName : 'SIEĆ'}
+          {/* Nazwa przychodzi tylko do MG (#32); gracz widzi „SIEĆ”. */}
+          {run.run.architectureName ?? 'SIEĆ'}
           <span className="net-entry-meta"> · {run.characterName}</span>
         </span>
         {runs.length > 1 && (

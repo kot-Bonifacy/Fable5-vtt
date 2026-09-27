@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ROLE_GM,
   describeNetDefense,
@@ -11,12 +11,54 @@ import {
   tokenCentre,
   type DefenseZoneView,
 } from '@vtt/shared';
-import { fireZone, updateZone } from '../socket.js';
+import { fetchNetArchitecture, fetchNetArchitectures, fireZone, updateZone } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { netErrorText } from '../netErrors.js';
+
+/** Jedno urządzenie na węźle kontrolnym — kandydat do wiązania strefy (#33). */
+interface NodeDevice {
+  architectureId: string;
+  floorId: string;
+  deviceId: string;
+  label: string;
+}
+
+/**
+ * Urządzenia wszystkich węzłów kontrolnych w bibliotece Architektur kampanii.
+ *
+ * Biblioteka u klienta trzyma same podsumowania (`netStore`), a urządzenia żyją
+ * w pełnym szybie, więc karta dociąga każdą Architekturę `net:get` przy
+ * otwarciu. W kampanii jest ich garść — jedno pole wyboru zamiast dwóch
+ * (Architektura, potem urządzenie) jest warte tych kilku zapytań.
+ */
+async function loadNodeDevices(): Promise<NodeDevice[]> {
+  const list = await fetchNetArchitectures();
+  const views = await Promise.all(
+    (list?.architectures ?? []).map((summary) => fetchNetArchitecture(summary.id)),
+  );
+  const devices: NodeDevice[] = [];
+  for (const ack of views) {
+    if (!ack.ok || !ack.data) continue;
+    const view = ack.data;
+    for (const branch of view.architecture.branches) {
+      for (const floor of branch.floors) {
+        if (floor.kind !== 'controlNode') continue;
+        for (const device of floor.devices ?? []) {
+          devices.push({
+            architectureId: view.id,
+            floorId: floor.id,
+            deviceId: device.id,
+            label: `${view.name} · ${floor.label || 'węzeł'} · ${device.name}`,
+          });
+        }
+      }
+    }
+  }
+  return devices;
+}
 
 /**
  * Karta strefy bronionej (etap 26f) — dwuklik w prostokąt na warstwie stref.
@@ -42,6 +84,18 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   const isGm = user?.role === ROLE_GM;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [nodeDevices, setNodeDevices] = useState<NodeDevice[] | null>(null);
+
+  useEffect(() => {
+    if (!isGm) return;
+    let live = true;
+    void loadNodeDevices().then((devices) => {
+      if (live) setNodeDevices(devices);
+    });
+    return () => {
+      live = false;
+    };
+  }, [isGm]);
 
   const entry = entries[zone.entryId];
   const profile = entry && isNetDefenseEntry(entry) ? entry : null;
@@ -79,6 +133,25 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   }
 
   const exempt = zone.exempt ?? [];
+  const boundIndex =
+    nodeDevices?.findIndex(
+      (device) =>
+        device.architectureId === zone.architectureId &&
+        device.floorId === zone.floorId &&
+        device.deviceId === zone.deviceId,
+    ) ?? -1;
+  // Związana z urządzeniem, którego w bibliotece już nie ma (skasowane, zmieniony szyb).
+  const boundElsewhere = Boolean(zone.deviceId) && nodeDevices !== null && boundIndex < 0;
+
+  function bindNode(value: string) {
+    const device = value === '' ? null : nodeDevices?.[Number(value)];
+    if (device === undefined) return;
+    void patch({
+      architectureId: device?.architectureId ?? null,
+      floorId: device?.floorId ?? null,
+      deviceId: device?.deviceId ?? null,
+    });
+  }
   const effects = profile?.effects;
   const trigger = netDefenseTrigger(effects);
 
@@ -142,6 +215,30 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
           {figures.map((token) => (
             <option key={token.id} value={token.id}>
               {token.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="bot-field">
+        <span className="auth-label">Węzeł kontrolny</span>
+        <select
+          value={boundIndex >= 0 ? String(boundIndex) : boundElsewhere ? 'gone' : ''}
+          disabled={nodeDevices === null}
+          title="Urządzenie na węźle kontrolnym Architektury: netrunner, który je wyłączy, rozbraja tę strefę"
+          onChange={(event) => bindNode(event.target.value)}
+        >
+          <option value="">
+            {nodeDevices === null ? 'Wczytuję Architektury…' : '— bez węzła —'}
+          </option>
+          {boundElsewhere && (
+            <option value="gone" disabled>
+              urządzenia nie ma już w Architekturze
+            </option>
+          )}
+          {(nodeDevices ?? []).map((device, index) => (
+            <option key={`${device.architectureId}:${device.deviceId}`} value={String(index)}>
+              {device.label}
             </option>
           ))}
         </select>

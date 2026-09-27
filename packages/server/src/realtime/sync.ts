@@ -29,7 +29,7 @@ import { fetchZonesFor } from './zones-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { fetchAccessPointsFor, fetchRunsFor } from './netrun-io.js';
 import { computeViewerVision, usesDynamicVision, type ViewerVision } from './vision.js';
-import { walkBlockersFor } from './blockers.js';
+import { standingOpeningsFor, walkBlockersFor } from './blockers.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCombatFor } from './combat.js';
@@ -208,6 +208,14 @@ export async function buildStateSync(
     : usesDynamicVision(viewedScene)
       ? (vision?.blockers ?? [])
       : await walkBlockersFor(deps.ctx.prisma, viewedScene, user);
+  // The handles go the same way (#30): per player with the vision on a dynamic
+  // scene, one list for the table anywhere else.
+  const openings =
+    !viewedScene || user.role === ROLE_GM
+      ? []
+      : usesDynamicVision(viewedScene)
+        ? (vision?.openings ?? [])
+        : await standingOpeningsFor(deps.ctx.prisma, viewedScene);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
     seq: deps.seqs.current(campaignRoom(campaign.id)),
@@ -235,7 +243,7 @@ export async function buildStateSync(
           glows: vision.glows,
         }
       : null,
-    openings: vision?.openings ?? [],
+    openings,
     blockers,
     exploration,
     characters,

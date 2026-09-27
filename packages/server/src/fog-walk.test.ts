@@ -11,11 +11,13 @@ import type {
   CombatActionLogEntry,
   CombatView,
   InvitationSummary,
+  OpeningSyncBroadcast,
   ScenePoint,
   SceneView,
   SocketAck,
   StateSyncPayload,
   TokenView,
+  WallView,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
@@ -290,7 +292,7 @@ describe('a player under painted fog walks on revealed floor alone', () => {
   });
 
   it('refuses a step off revealed floor into the black and leaves the figure where it was', async () => {
-    expect(await moveVex(player, 1100, 700)).toEqual({ ok: false, error: 'MOVE_REFUSED' });
+    expect(await moveVex(player, 1100, 700)).toEqual({ ok: false, error: 'MOVE_INTO_FOG' });
     expect(await positionOfVex()).toEqual({ x: 700, y: 700 });
   });
 
@@ -337,6 +339,59 @@ describe('a player under painted fog walks on revealed floor alone', () => {
     expect(entry.refusal?.code).toBe('MOVE_INTO_FOG');
     expect(entry.refusal?.message).not.toContain('Coś stoi na drodze');
     await emitAck(gm, 'combat:end');
+  });
+
+  it('hands a player the handles of flagged openings on revealed floor only (#30)', async () => {
+    async function door(points: ScenePoint[], playerToggle: boolean): Promise<number> {
+      return data(
+        await emitAck<WallView[]>(gm, 'wall:create', {
+          sceneId,
+          kind: 'door',
+          playerToggle,
+          points,
+        }),
+        'wall:create door',
+      )[0]!.id;
+    }
+    const inView = await door(
+      [
+        { x: 300, y: 900 },
+        { x: 500, y: 900 },
+      ],
+      true,
+    );
+    const underFog = await door(
+      [
+        { x: 1100, y: 800 },
+        { x: 1100, y: 1000 },
+      ],
+      true,
+    );
+    const gmOnly = await door(
+      [
+        { x: 600, y: 900 },
+        { x: 800, y: 900 },
+      ],
+      false,
+    );
+    const sync = waitFor<StateSyncPayload>(player, 'state:sync');
+    await emitAck(player, 'state:request');
+    const ids = (await sync).openings.map((opening) => opening.id);
+    expect(ids).toContain(inView);
+    expect(ids).not.toContain(underFog);
+    expect(ids).not.toContain(gmOnly);
+
+    // A reveal over the second door hands it over without a reload.
+    const pushed = waitFor<OpeningSyncBroadcast>(player, 'opening:sync');
+    await emitAck(gm, 'fog:paint', {
+      sceneId,
+      shape: { kind: 'rect', mode: 'reveal', x: 1050, y: 850, width: 100, height: 100 },
+    });
+    expect((await pushed).openings.map((opening) => opening.id).sort()).toEqual(
+      [inView, underFog].sort(),
+    );
+
+    for (const id of [inView, underFog, gmOnly]) await emitAck(gm, 'wall:delete', { wallId: id });
   });
 
   it('stops asking once the GM opens the map', async () => {

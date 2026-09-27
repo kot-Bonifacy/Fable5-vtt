@@ -502,6 +502,8 @@ async function runCombatDecision(
  */
 const REFUSAL_TEXTS: Record<string, string> = {
   MOVE_REFUSED: 'Ten ruch został odrzucony przez zasady.',
+  MOVE_BLOCKED_BY_TERRAIN: 'Coś stoi na drodze — tędy nie przejdziesz, obejdź przeszkodę.',
+  MOVE_INTO_FOG: 'Tam jeszcze nic nie widać — idź po odsłoniętym terenie.',
   NO_MOVE_LEFT: 'Nie masz już metrów ruchu w tej turze.',
   NO_ACTION_LEFT: 'Nie masz już Akcji w tej turze.',
   // Trzy różne powody, dla których podejście się nie odbyło. Do 22.08 wszystkie

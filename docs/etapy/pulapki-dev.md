@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Kratka niecałkowita (36,2 px) i `Math.floor` na rogu figury (27.09, #28)** — róg zaczepiony na kolumnie 15 to 543, a 543 / 36,2 = 14,999…, więc sprawdzenie pól trasy liczyło kolumnę, której figura nie dotyka, i serwer odsyłał marsz pod skraj mgły na start. `everyRunCell` (`pathfinding.ts`) daje piksel luzu na obu brzegach; każde nowe `floor(x / cell)` na pozycji figury potrzebuje tego samego.
 - **„Ktoś pojawił się w polu widzenia”, a nikogo nie widać** — przerwany marsz zaokrąglał figurę wstecz za róg; wyglądało to jak szczelina w barierze, której nie ma. Nowy powód przerwania dotyczący widzenia podaje `interruptWalk(note, 'ahead')`.
 - **`hasVision` nie znaczy „scena Dynamiczna”** — od 42c `vision:sync` przychodzi w każdym trybie (puste `polygons`, maska figur); kto z samego przyjścia widoku wnioskował Dynamiczną, zamykał graczowi trasę w pustym wielokącie, a pełna synchronizacja gubiła `blockers`. Pytaj o `scene.visibility` (`confinesWalkToSight`).
 - **Rozmycie złożone z pierścieni widać jako koncentryczne okręgi** — pięć wycięć o malejącej alfie miało dać miękki brzeg okienka w mgle, a dało prążki (MG odrzucił to na pierwszym zrzucie). Gradient wypala się na kanwie (`fogPeepTexture`), tak jak światło z 18b i pamięć mapy z 18c.
