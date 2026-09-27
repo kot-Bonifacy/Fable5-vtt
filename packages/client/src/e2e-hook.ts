@@ -5,10 +5,14 @@ import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
+import { useFogStore } from './stores/fogStore.js';
 import { useHandoutStore } from './stores/handoutStore.js';
+import { useNetRunStore } from './stores/netRunStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
+import { useWallStore } from './stores/wallStore.js';
+import { useZoneStore } from './stores/zoneStore.js';
 
 /**
  * Hak testów E2E: `window.__vttE2E` (plan testów bety, `testy.md` 4.3; zgoda MG z 26.09.2026).
@@ -47,10 +51,14 @@ export function installE2EHook(): void {
         chat: useChatStore,
         combat: useCombatStore,
         exploration: useExplorationStore,
+        fog: useFogStore,
         handout: useHandoutStore,
+        netRun: useNetRunStore,
         roll: useRollStore,
         scene: useSceneStore,
         token: useTokenStore,
+        wall: useWallStore,
+        zone: useZoneStore,
       },
     };
   }

@@ -383,4 +383,21 @@ export const BRAMA = {
   accessPoint: { x: 905, y: 505 },
   spawn: { x: 720, y: 1000 },
   note: { x: 1300, y: 200 },
+  /**
+   * T5 (kratka 36,2 px, bariera na y = 467 przecina dół wiersza 12): wieżyczka
+   * pod narożnikiem magazynu, Strażnik przy budce szlabanu, klamka bramy
+   * w środku jej odcinka.
+   */
+  turret: { x: 1140, y: 344 },
+  guard: { x: 561, y: 380 },
+  gateHandle: { x: 778, y: 467 },
+  /** Strefa ostrzału wieżyczki — wschodnia część placu za bramą. */
+  turretZone: { from: { x: 905, y: 335 }, to: { x: 1150, y: 462 } },
+  /** Podłoga elektryczna między bramą a budką Strażnika. */
+  floorZone: { from: { x: 583, y: 362 }, to: { x: 650, y: 465 } },
+  /** Mgła: droga od miejsca startu z linią bramy (inaczej gracz jej nie dostaje), potem pas placu. */
+  roadReveal: { from: { x: 560, y: 440 }, to: { x: 1000, y: 1080 } },
+  yardReveal: { from: { x: 662, y: 360 }, to: { x: 898, y: 470 } },
+  /** Parking na zachodzie — zostaje pod mgłą (odmowa `MOVE_INTO_FOG`). */
+  inFog: { x: 300, y: 800 },
 } as const;

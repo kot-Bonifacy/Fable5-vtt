@@ -22,7 +22,8 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ✅     | 26.09.2026 |
 | T4a  | Rozgrywka 2a/4: walka pierwsza — inicjatywa, tury 1. rundy | ✅     | 26.09.2026 |
 | T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ✅     | 27.09.2026 |
-| T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Brama”       | ⬜     |            |
+| T5a  | Rozgrywka 3a/4: „Brama” — przygotowanie, wejście, run Oli | ✅     | 27.09.2026 |
+| T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ⬜     |            |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
@@ -71,6 +72,11 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | T4a przed T4b          | `po-T4a` powstał ze starego `po-T3` — **najpierw przekalibrowanie T4a** pod obecne `po-T3` (liczby z karty, nie na sztywno), retest #16/#19/#20, świeży `po-T4a`, potem T4b (decyzja MG z 27.09, sesja T4b) |
 | przebieg T4b           | rana krytyczna Kowala **z ataku w walce** (Cień, strzał w głowę); **Ochroniarz chwyta Iskrę**, ona broni się ze swojej karty; **Zbir ginie** (granat, nieudany Test Przeżywalności), Ochroniarz zostaje pod progiem ran, **Rzeźnik i Cień uciekają** (ukryci), walkę kończy MG; tura Rzeźnika **ręką MG**; Kowal daje Iskrze **pistolet Zbira** (decyzje MG z 27.09, sesja T4b) |
 | triaż #23–#27          | #23 = **B2** (z ukrytą figurą jako pierwszą kartą byłby B1), #24 = **B1** (sąsiad po skosie jest w zasięgu ręki), #25 = **B3**, #26 = **B1** jak #20, #27 = **B1** (gracz wykonuje cudzą akcję) — decyzje MG z 27.09, sesja T4b |
+| podział T5             | **T5a** = przygotowanie „Bramy” przez MG (architektura, wieżyczka, strefy, Strażnik z botem, amunicja Kowala), 5.1–5.3 poza walką i `po-T5a` tuż przed inicjatywą; **T5b** = walka 5.4–5.9, 5.10 i `po-T5` (decyzja MG z 27.09, sesja T5a) |
+| T5: architektura       | piętra **Hasło → Plik → Czarny LOD (Kruk) → Węzeł kontrolny wieżyczki**, na dnie piętro **Demona** (Diablik), który trzyma węzeł; w walce Olę atakują oba (decyzja MG z 27.09, sesja T5a) |
+| T5: pad gatewaya       | **pośrednik TCP w suicie** między instancją a gatewayem — test zrywa i odmawia połączeń w trakcie tury bota, w 5.10 przywraca; prawdziwy gateway i llama-server nietknięte (decyzja MG z 27.09, sesja T5a) |
+| T5: Kowal i amunicja   | Kowal wchodzi **ranny, jak skończył T4b** — 6k6 strefy dobiera skrypt kości, żeby przeżył; MG daje mu z katalogu **amunicję przeciwpancerną** do B.C. pistoletu (przeładowanie w 5.9); Iskra strzela zdobycznym pistoletem (decyzja MG z 27.09, sesja T5a) |
+| T5: Strażnik i wieżyczka | **nowy statysta „Strażnik” z nowym botem** (Propozycja); wieżyczka strzela sama na wejście w strefę, a po przejęciu węzła Ola **strzela nią w Strażnika, potem ją wyłącza** (decyzja MG z 27.09, sesja T5a) |
 | triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
@@ -170,6 +176,8 @@ packages/e2e/
     table.ts               czat, rzut kubkiem, kampania i zaproszenie przez API
     walka.ts               T4: stan walki z bazy, rzut i czekanie na wiersz, tury, celowanie, karty czatu
                            z rozróżnieniem liter (`chatCards`, `freshCard`), kamera bliżej (`zoomAt`)
+    brama.ts               T5: lista scen MG, statysta z kartą, bot, mgła prostokątem, strefy bronione,
+                           architektura i run z bazy (`architecture`, `runOf`)
     vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
   specs/
     00-baseline/           build, start, /health, pusta baza, 66 umiejętności, hak poza buildem produkcyjnym
@@ -323,6 +331,25 @@ turze bota wybiera żywy model, MG na starcie T4b stawia w drzwiach tarasu.
 MG przełącza scenę. Przy Bramie: statysta-ochroniarz (bot `@llm`), wieżyczka związana z węzłem
 kontrolnym, broniona strefa, architektura Sieci o trzech piętrach (hasło, plik, węzeł wieżyczki,
 Demon) — nieodkryte piętra to kanarki.
+
+**Podział (decyzja MG z 27.09, sesja T5a):** T5a to przygotowanie „Bramy” przez MG i kroki
+5.1–5.3 poza walką, punkt `po-T5a` tuż przed inicjatywą (plik `30-rozgrywka/t5a-*.spec.ts`);
+T5b — walka 5.4–5.9, 5.10 i `po-T5` (plik `t5b-*.spec.ts`, startuje z `po-T5a`). Strzał przez
+barierę z 5.2 przechodzi do T5b (to już walka).
+
+**Przebieg T5a (sesja 27.09):** MG ogląda „Bramę” i stawia „Wieżyczkę” (statysta, B.C. pistolet,
+bez Uniku) pod narożnikiem magazynu oraz „Strażnika” (30 PW, C. pistolet) przy budce szlabanu;
+buduje w edytorze architekturę „Ochrona bramy” (Hasło PT 8 → Plik PT 6 → Czarny LOD „Kruk” →
+Węzeł kontrolny PT 10 z urządzeniem „Wieżyczka nad placem” → Demon „Diablik”), wiąże z nią ukryte
+gniazdo, rysuje dwie ukryte strefy (ostrzał wieżyczki ze stanowiskiem i podłogę elektryczną
+między bramą a budką), zakłada bota „Strażnik” (Propozycja, w scenie „Brama”) i dopisuje
+Kowalowi amunicję przeciwpancerną. Po aktywacji **MG stawia figury graczy ręką** (⊕ „Postaw na
+scenie” — Kowal i Iskra mają figury w „Knajpie”, więc #9 ich nie przenosi), odsłania drogę z linią
+bramy, **sam otwiera bramę** (obejście #30) i odsłania pas placu; Marek wchodzi na plac, Ola
+Skanerem znajduje gniazdo, podłącza się, łamie hasło i rozpoznaje Plik. Strefę wieżyczki automat
+wiąże z węzłem zdarzeniem z gniazda MG (obejście #33), żeby T5b sprawdził most serwera.
+Odmowa skoku w mgłę ma dla klienta kod `MOVE_REFUSED` (`MOVE_INTO_FOG` trafia na kartę odmowy
+tylko w walce).
 
 | #    | krok                                                                                   | sprawdzamy                                                                                  |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -549,6 +576,10 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
   rzutu), ale o dodatkowych obrażeniach „Ciała obcego” po biegu nikt nie przypomina — T4b, 27.09;
 - karta Pochwycenia: „Udane · PT 13 (ZW + Bijatyka celu) · Obrona Iskra: 10 → mimo wszystko
   udane” przy wyniku 12 — czy gracz zrozumie, dlaczego chwyt poniżej PT się udał — T4b, 27.09.
+- po aktywacji nowej sceny figury graczy, którzy mają figurę na innej scenie, nie przechodzą same —
+  MG stawia każdą ⊕ „Postaw na scenie” z listy postaci; czy MG o tym pamięta przy stole — T5a, 27.09;
+- na ręcznej mgle MG musi odsłonić **linię** drzwi i bramy, nie tylko podłogę przed nimi, bo
+  inaczej gracz ich nie dostaje (a z #30 i tak nie ma klamki) — T5a, 27.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -589,6 +620,42 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 4. **Kompendium na VPS** — **wspólne dla wszystkich** MG i graczy — T9, punkt 9.
 
 ## 12. Notatki z sesji testowych
+
+### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście przez bramę, run Oli
+
+**Rozstrzygnięcia MG na starcie (dwie tury pytań):** T5 dzielimy na T5a (przed walką) i T5b
+(walka); architektura Hasło → Plik → Czarny LOD → Węzeł wieżyczki, na dnie Demon; pad gatewaya
+przez pośrednika TCP w suicie; Kowal wchodzi ranny (6k6 strefy ze skryptu kości); nowy
+„Strażnik” z botem; Ola strzela wieżyczką w Strażnika, potem ją wyłącza; MG daje Kowalowi
+amunicję przeciwpancerną (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5a-brama-siec.spec.ts` (24 testy, ~1,6 min od `po-T4`) i
+`fixtures/brama.ts` (statysta z kartą, bot, mgła prostokątem, strefy, stan Sieci z bazy);
+`walka.ts` czyta aktywną scenę zamiast „Knajpy”; hak `__vttE2E` dostał magazyny `netRun`, `zone`,
+`wall`, `fog` (tylko build `--mode e2e`). Przebieg w 5.3 wyżej. Kanarki: nazwa architektury,
+etykiety pięter 3–5, notatki MG pięter, gniazda i strefy, sekret Strażnika, id Wieżyczki
+i Strażnika; notatka Pliku po Ajdi jawna dla Oli, tajna przed Markiem (`ONLY_FROM`). Konsola
+czysta u trojga. Punkt `po-T5a`: Kowal na placu za otwartą bramą (21, 11), Iskra przy skrzynce
+(24, 15) podłączona, na Pliku (piętro 2) po Backdoorze i Ajdi; walka nie trwa; bot „Strażnik”
+w sesji; gateway martwy przez całą sesję (T5a go nie woła).
+
+**Znalezione (do triażu MG):** #28 **B2?** — marsz pod skraj ręcznej mgły wraca na start
+(`Math.floor(543 / 36.2)` = 14 w `everyRunCell`, kratka niecałkowita); #29 **B3?** — odmowa ruchu
+poza walką odsyła do karty, której nie ma; #30 **B2?** — na ręcznej mgle gracz nie dostaje klamek
+(`openings` tylko na Dynamicznej), a serwer by przepuścił; #31 **B1?** — hasło na piętrze wejścia
+nie blokuje zjazdu (`netCanMove` pomija piętro startowe); #32 **B1?** — nazwa architektury
+w ładunku runu gracza; #33 **B2?** — brak UI wiązania strefy z węzłem. Wszystkie jako `test.fail`
+z obejściem w scenariuszu. Dwie obserwacje do sekcji 8.
+
+**Suita:** 139 testów (T5a 24, w tym 6 `test.fail`; razem 11 `test.fail`). T5a od `po-T4`
+zielony, T4b + T5a od `po-T4a` 43/43 (4,2 min). Pełnego przebiegu od zera w tej sesji nie było.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; `dev.db` nietknięta.
+
+**Następny krok:** T5b od `E2E_FROM=po-T5a` — **gateway z modelem potrzebny** (tura Strażnika,
+5.6), pośrednik TCP do napisania w `instance/` (instancja z `E2E_AI_GATEWAY_URL` na pośrednika).
+Strefa wieżyczki jest już związana z węzłem (obejście #33); Demon czuwa (MG: „Demon wykrywa
+intruza”); zjazd na piętro 3 spawnuje Kruka. Znany wyciek #32 trzeba w T5b obsłużyć jak w T5a
+(kanarek `nazwa-architektury` tajny tylko przed Markiem). Albo najpierw poprawki #28–#33.
 
 ### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
 
@@ -644,28 +711,3 @@ poprawki B1 (#13, #17, #24, #26, #27), jak po T4a. Stan `po-T4`: Kowal 7/40 z �
 granat 1/2, chip z łupem na karcie Kowala, pistolet Zbira u Iskry (id `statist-weapon` — #27; T5
 sprawdzi, czy Iskra z niego strzela); Iskra 35/40; Ochroniarz 3/25; Zbir martwy; Rzeźnik i Cień
 ukryci; walka zakończona, scena „Knajpa” aktywna.
-
-### Sesja 26.09 — T4a: inicjatywa i pierwsze tury walki w „Knajpie”
-
-_Notatka odtworzona 27.09 z commita `2e8b090`, rejestru i specu — w tamtym commicie nie trafiła
-do pliku._
-
-**Rozstrzygnięcia MG:** podział T4 na T4a (4.1–4.5, punkt `po-T4a` w turze Cienia) i T4b; granat
-Kowala i pięści Iskry z własnych wpisów Kompendium MG; Zmysł Walki Kowala: Błyskawiczna reakcja 1
-+ Precyzyjny atak 3; Cień w kolejce od startu, ukryty; tura bota — nielegalna akcja = B1, wisząca
-tura = B2, głupia taktyka = obserwacja; triaż #17 = B1, #18 = B2 (sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t4a-walka-knajpa.spec.ts` (15 testów): Zmysł Walki z banera karty,
-własne wpisy „Pięści” i „Granat odłamkowy”, przewrócony stół (osłona), łup-kanarek w kieszeni
-Zbira; inicjatywa kubkiem na czarnym pasie (skrypt kości), ta sama kolejność u trojga, Cień tylko
-u MG, klon pod aliasem; tura Marka (ukryty cel `TOKEN_NOT_FOUND`, ruch w budżecie, strzał zza
-osłony, karta rzutu u trojga, PW statysty tylko jako strata); tura Oli (prośba o Test przyciskiem
-i Alt+klikiem, odmowa z powodem, wezwanie, pięść „za daleko” notką bez rzutu); tura Rzeźnika na
-żywym modelu (propozycje, akceptacja, budżet tury); odsłonięcie Cienia bez F5; kanarki (także
-w ackach — `Sniffer.mark`); punkt `po-T4a`.
-
-**Znalezione:** #16 B1 (statysta strzela bez poziomu broni), #17 B1 (brak broni typu Bijatyka),
-#18 B2 (brak granatu ręcznego), #19 B1 („Kończę turę” oddaje graczowi widok walki MG w acku), #20
-B1 (propozycja bota zatwierdzona dwa razy), #21 B3 („Brak połączenia z AI Gateway” przy zajętym
-modelu). #16, #19, #20, #21 (i #22 znaleziony przy nich) naprawione tego samego dnia (`0b30a71`);
-retest E2E #16, #19, #20 — 27.09, sesja T4b.

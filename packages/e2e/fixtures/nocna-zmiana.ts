@@ -74,6 +74,7 @@ export const ONLY_FROM: Record<string, 'Marek' | 'Ola'> = {
   'notatka-Kowala': 'Ola', // notatka na karcie Marka
   'szept-MG': 'Ola', // szept MG do Marka
   'prosba-Oli': 'Marek', // prośba Oli o Test, odrzucona przez MG (T4a)
+  'notatka-pliku': 'Marek', // notatka MG Pliku w Sieci — jawna dla Oli od Ajdi (T5a)
 };
 
 const CANARY = /KANAREK-([\w-]+?)-[0-9A-F]{4}/g;

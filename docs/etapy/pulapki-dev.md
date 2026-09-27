@@ -1664,6 +1664,11 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Aktywacja nowej sceny nie przenosi figur graczy, którzy mają figurę gdzie indziej (27.09, T5a)** — #9 stawia sam tylko żeton postaci bez żadnej figury; na „Bramie” MG stawia Kowala i Iskrę ⊕ „Postaw na scenie: <imię>” i klikiem w mapę.
+- **Na ręcznej mgle gracz nie dostaje ściany ani bramy leżącej choćby o piksel poza odsłoniętym (27.09, T5a)** — odsłonięcie od y = 472 przy barierze na y = 467 zostawia bramę w mgle; prostokąt MG obejmuje **linię** otworu. Klamek na ręcznej mgle i tak nie ma (#30).
+- **Klamka 🚪 pod własnym żetonem łapie klik jako figurę (27.09, T5a)** — figura na polu tuż pod środkiem odcinka przykrywa uchwyt; stań o pole w bok.
+- **Klik gracza w mgłę to marsz do skraju odsłoniętego, nie odmowa (27.09, T5a)** — „figura stoi” po kliku jest fałszywe; odmowę serwera (`MOVE_REFUSED`) sprawdza surowy `token:move`, a marsz pod skraj psuje dziś #28.
+- **`locator.textContent()` na nieistniejącym elemencie czeka do końca limitu testu (27.09, T5a)** — w adnotacji po porażce (np. treść komunikatu, którego może nie być) używaj `allTextContents()` albo `count()`; zawieszony `try` wygląda jak zawieszony klik w `finally`.
 - **Gniazdo przez proxy `vite preview` (:4173) czasem dostaje odmowę — pełny przebieg pada na konsoli aktora (27.09, T4b, do zbadania)** — w 2 z 5 przebiegów: `WebSocket … ws://localhost:4173/socket.io … ERR_CONNECTION_REFUSED` (Chromium) albo „Firefox can’t establish a connection…” w `unexpectedErrors()`, raz poprzedzone `ERR_CONNECTION_TIMED_OUT` na pliku z `/public/`, raz z padem następnego pliku na `page.goto` (podgląd nie wstał). Strażnik pytający :4173 co 2 s w zielonym przebiegu nic nie złapał. Log `client.log` zeruje każdy start instancji — przy następnym wystąpieniu kopiuj `.e2e/logs` zaraz po porażce.
 - **Cechy i PW postaci z kreatora T3a są losowe w każdym przebiegu od zera (27.09, T4a/T4b)** — punkt kontrolny ma jednego Kowala, pełny przebieg innego (REF 6–8, ZW 6–7, RUCH 5–7): stała kość „9 → trafia” raz trafia, raz nie. Kość dobiera się do modyfikatora z kubka (`store('roll').attack.modifierTotal`) bez 10 (eksploduje), budżet i PW czyta się z karty. Spec zielony od punktu nic nie mówi o przebiegu od zera.
 - **`hasText` z napisem nie rozróżnia wielkości liter, a nowa karta czatu czeka na animację kości (27.09, T4b)** — „Ciężki pistolet — obrażenia” łapie też „Bardzo ciężki pistolet — obrażenia”, a `.last()` tuż po rzucie to jeszcze stara karta; jej „Zastosuj” działa drugi raz (#26). `chatCards` (tytuł z rozróżnieniem liter) i `freshCard` (karta ponad liczbę sprzed rzutu) w `fixtures/walka.ts`.
@@ -1711,6 +1716,19 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+**Test „zawieszonego kliku” w Firefoksie, który był zawieszonym odczytem (27.09, T5a).** Test #31
+klikał piętro 2 w oknie runu, a w adnotacji czytał `window.locator('.net-run-notice').textContent()`
+— komunikatu nie było (to był sam błąd #31), więc odczyt czekał do limitu testu, a sprzątanie
+w `finally` padło na „Target page … has been closed”. Wyglądało to na klik Oli (Firefox) w przycisk
+piętra, który „nie reaguje”; dwa przebiegi poszły na szukanie pułapki myszy Firefoksa. Odczyt do
+adnotacji: `allTextContents()` (nie czeka), sprzątanie po znanym błędzie — z gniazda aktora
+(`netrun:move`), bo to nie jest krok, który test sprawdza.
+
+**Klik w mgłę to marsz do skraju, a nie odmowa (27.09, T5a).** Planer gracza prowadzi figurę
+„najdalej, jak się da” po odsłoniętym, tak jak pod zamknięte drzwi w T3b, więc asercja „figura stoi”
+po kliku w mgłę jest fałszywa. Odmowę serwera sprawdza surowy `token:move` z gniazda gracza
+(`MOVE_REFUSED`); marsz pod skraj mgły zatrzymuje dziś #28 (figura przechodzi trasę i wraca na start).
 
 **Stara karta czatu zamiast nowej (27.09, T4b).** Pierwszy przebieg T4b kliknął „Zastosuj” na
 karcie obrażeń strzału Rzeźnika, a obrażenia dostał… Rzeźnik — drugi raz od pięści Iskry. Dwie

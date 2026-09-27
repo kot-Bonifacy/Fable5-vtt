@@ -6,7 +6,8 @@ import { clickOnMap } from './scene.ts';
 import { shakeCup } from './table.ts';
 
 /**
- * Walka w „Knajpie” (T4a, T4b — `testy.md` 5.2): stan walki czytany z bazy,
+ * Walka na aktywnej scenie (T4a, T4b w „Knajpie”, T5 na „Bramie” — `testy.md`
+ * 5.2, 5.3): stan walki czytany z bazy,
  * rzut kubkiem z czekaniem na wiersz czatu, tury, celowanie po płótnie
  * i kontrola podsłuchu. Wszystko po nazwach — punkty kontrolne zapisuje każdy
  * pełny przebieg od nowa, więc id się zmieniają.
@@ -49,9 +50,10 @@ export type RollJson = {
   };
 };
 
+/** Aktywna scena — „Knajpa” w T4, „Brama” od aktywacji w T5a. */
 export const sceneRow = () =>
   queryOne<{ id: string; gridSizePx: number }>(
-    `SELECT id, gridSizePx FROM Scene WHERE name = 'Knajpa'`,
+    'SELECT id, gridSizePx FROM Scene WHERE active = 1',
   )!;
 export const tokens = (): TokenRow[] =>
   query<TokenRow>('SELECT * FROM Token WHERE sceneId = ? ORDER BY createdAt', sceneRow().id);

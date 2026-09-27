@@ -1,5 +1,22 @@
 # Dziennik sesji — archiwum
 
+### Sesja 27.09 — T4b: walka pierwsza do końca (rany, granat, zwarcie, łup); T4a przekalibrowany
+
+**Zlecenie MG:** etap testowy T4b (`testy.md` 5.2, kroki 4.6–4.10). Pytania w dwóch turach —
+decyzje w `testy.md`, sekcja 2 (stary `po-T4a` → najpierw T4a; rana krytyczna z ataku; Ochroniarz
+chwyta Iskrę; statyści padają, Rzeźnik i Cień uciekają; tura Rzeźnika ręką MG; pistolet Zbira dla
+Iskry) i triaż #23–#27.
+
+**Zrobione:** T4a liczy budżet i strzał z karty (Kowal z kreatora bywa inny w każdym przebiegu),
+retest #16/#19/#20 OK; nowy `30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 testów) i
+`fixtures/walka.ts` (wspólne z T4a). W aplikacji bez zmian. Znalezione: #23 B2, #24 B1, #25 B3,
+#26 B1, #27 B1 (szczegóły w rejestrze); obserwacje w `testy.md` 8; siedem pułapek w `testy`.
+
+**Weryfikacja:** suita 115 E2E (13 `test.fail`), ostatni pełny przebieg od zera zielony
+(14 min); dwa z pięciu padły na gnieździe przez proxy `vite preview` — pułapka w `testy`, „zielono
+dwa razy z rzędu” do powtórki. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane: MCP — MG w Chromium, Marek w Chromium na `[::1]`;
+automat — MG i Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta (tylko `e2e.db`).
+
 ### Sesja 26.09 (czwarta) — etap 43a: portrety z ranami w „Walce”, PW dla stołu, „Postacie”
 
 **Zlecenie MG (poza planem):** ładniejsze przedstawienie walki w zakładce „Walka” — wyraźne
