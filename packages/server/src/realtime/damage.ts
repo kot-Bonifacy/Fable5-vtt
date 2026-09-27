@@ -37,7 +37,7 @@ import {
   type SheetDamageRequest,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
-import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { RealtimeError, defineEvent, type EventArgs, type RealtimeDeps } from './registry.js';
 import { clearFacedownFear, restoreFacedownFear } from './facedown.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
@@ -164,132 +164,190 @@ async function applyDamageToCoverRow(
   return { coverId: row.id, name: row.name, log: applied.log };
 }
 
+/**
+ * „Zastosuj” w toku, po kluczu `karta:cel` — drugie kliknięcie w tę samą kartę,
+ * zanim pierwsze zapisze swój wpis, nie przejdzie obok `requireNotApplied`.
+ */
+const appliesInFlight = new Set<string>();
+
+/**
+ * Ta sama karta obrażeń trafia ten sam cel raz (#26, 27.09).
+ *
+ * Do tej sesji każde `damage:apply` z tym samym `messageId` i celem odejmowało
+ * PW od nowa i losowało nową Ranę Krytyczną — a przy stole łatwo o drugie
+ * kliknięcie, bo nowa karta pojawia się dopiero po animacji kości i „ostatnia”
+ * widoczna jest stara. Wpis rozliczenia (`kind: 'damage'`) zawsze leży po
+ * karcie, którą rozlicza, więc szuka się go tylko wśród późniejszych wiadomości.
+ * Cofnięte rozliczenie się nie liczy — po „Cofnij” kartę wolno zastosować znowu.
+ */
+async function requireNotApplied(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sourceMessageId: number,
+  target: { tokenId: unknown } | { coverId: unknown },
+): Promise<void> {
+  const logs = await deps.ctx.prisma.chatMessage.findMany({
+    where: { campaignId, kind: 'damage', id: { gt: sourceMessageId } },
+    select: { payload: true },
+  });
+  for (const log of logs) {
+    if (!log.payload) continue;
+    const entry = JSON.parse(log.payload) as DamageLogEntry;
+    if (entry.sourceMessageId !== sourceMessageId || entry.undone) continue;
+    const same =
+      'tokenId' in target
+        ? entry.targetTokenId === target.tokenId
+        : entry.targetCoverId === target.coverId;
+    if (same) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
+  }
+}
+
 export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: number }>({
   name: 'damage:apply',
   role: ROLE_GM,
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const sourceMessageId = requireMessageId(payload?.messageId);
-    const roll = await loadDamageRoll(deps, campaignId, sourceMessageId);
-
-    // Stage 16c: the thing taking the hit may be a cover. Its whole path is
-    // three lines long and shares nothing with the sheet — no armour, no
-    // injury table, no Death Save — so it forks here rather than growing
-    // branches inside `applyDamageToSheet`.
-    if (payload?.coverId !== undefined) {
-      const view = await applyDamageToCoverRow(deps, campaignId, payload.coverId, roll);
-      const entry: DamageLogEntry = {
-        ...view.log,
-        sourceMessageId,
-        targetCoverId: view.coverId,
-        targetName: view.name,
-        characterId: null,
-        // A car has no owner to keep its numbers from: everybody at the table
-        // can see the bonnet coming apart.
-        targetOwnerId: null,
-      };
-      const logged = await logDamage(deps, campaignId, user.id, entry);
-      return { messageId: logged.id };
+  handler: async (args) => {
+    const sourceMessageId = requireMessageId(args.payload?.messageId);
+    const target =
+      args.payload?.coverId !== undefined
+        ? { coverId: args.payload.coverId }
+        : { tokenId: args.payload?.tokenId };
+    const key = `${sourceMessageId}:${JSON.stringify(target)}`;
+    if (appliesInFlight.has(key)) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
+    appliesInFlight.add(key);
+    try {
+      const campaignId = requireCampaignId(args.socket.data);
+      await requireNotApplied(args.deps, campaignId, sourceMessageId, target);
+      return await applyDamageCard(args, campaignId, sourceMessageId);
+    } finally {
+      appliesInFlight.delete(key);
     }
-
-    const { token, scene } = await requireCampaignToken(
-      deps.ctx.prisma,
-      campaignId,
-      payload?.tokenId,
-    );
-
-    const location = isValidHitLocation(payload?.location)
-      ? payload.location
-      : isValidHitLocation(roll.damage?.location)
-        ? roll.damage.location
-        : 'body';
-    if (payload?.armorSp !== undefined) {
-      if (
-        typeof payload.armorSp !== 'number' ||
-        !Number.isInteger(payload.armorSp) ||
-        payload.armorSp < 0 ||
-        payload.armorSp > ARMOR_SP_MAX
-      ) {
-        throw new RealtimeError('BAD_REQUEST');
-      }
-    }
-
-    // Stage 16g: the round that was fired, carried by the damage roll itself.
-    // Read from the stored message like every other number here — a client
-    // naming its own ammunition would be a client choosing its own armour
-    // penetration.
-    const ammo = readRollAmmo(roll);
-    // Same rule, same reason (s. 170): the aim point rides on the stored roll,
-    // so the leg breaks because of the shot that was aimed, not because of what
-    // the client puts in the payload now.
-    const aimedAt = readRollAimPoint(roll);
-    // „to była maczeta" — a fact about the swing, read where the swing was
-    // stored (s. 176). Same reasoning as the two above.
-    const halvesArmor = readRollHalvesArmor(roll);
-    // The fence between the shot and this figure (stage 42b) — off the card when
-    // the attack named them, measured on the map when it did not.
-    const barrierSp = await barrierSpOfHit(deps, roll, scene, {
-      tokenId: token.id,
-      at: tokenCentre(toTokenView(token, true), toSceneView(scene)),
-    });
-
-    const request: SheetDamageRequest = {
-      // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
-      // read off the stored roll, never off the client's request.
-      damage: damageTotal(roll),
-      criticalInjury: roll.criticalDamage === true,
-      location,
-      ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),
-      ...(payload?.ignoreArmor === true || roll.damage?.ignoreArmor ? { ignoreArmor: true } : {}),
-      ...(ammo ? { ammo } : {}),
-      // Only while „Zastosuj" still points where the shot did: the GM may move
-      // the damage onto somebody else, and a leg aimed at one person must not
-      // break another's (the head keeps working because it is `location`).
-      ...(aimedAt && roll.damage?.targetTokenId === token.id ? { aimedAt } : {}),
-      ...(halvesArmor ? { halvesArmor: true } : {}),
-      ...(barrierSp > 0 ? { barrierSp } : {}),
-    };
-
-    const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
-    const log = landed.log;
-    const character = landed.character;
-
-    // „Gdy ten typ amunicji po przejściu przez zbroję celu zadaje mu obrażenia,
-    // cel zostaje także podpalony" (s. 346) — through the armour and *hurting*,
-    // so a round the vest stopped sets nobody alight. The status then burns on
-    // the ordinary end-of-turn path from 14e.
-    const ignited =
-      ammo?.ignites && log.damageThrough > 0
-        ? await igniteToken(deps, campaignId, token.id, ammo.ignites)
-        : null;
-
-    // „Modyfikator ... znika, gdy tylko uda ci się pokonać wroga" (s. 194,
-    // stage 23c). Zero Hit Points is where this project already draws „pokonany"
-    // — it is the line that makes somebody Mortally Wounded — so everybody who
-    // backed down from this one stops being afraid of them here.
-    //
-    // Whom it freed is written into the card, because „Cofnij" has to be able to
-    // put the fear back: re-ticking the sticker by hand restores half a penalty
-    // and no one can tell (the address in `statusData` is the other half).
-    const fearCleared =
-      log.hp && log.hp.after <= 0
-        ? await clearFacedownFear(deps, campaignId, token.sceneId, token.id)
-        : [];
-
-    const entry: DamageLogEntry = {
-      ...log,
-      ...(ignited ? describeIgnition(log, ammo!.ignites!, ignited) : {}),
-      ...(fearCleared.length > 0 ? { fearCleared } : {}),
-      sourceMessageId,
-      targetTokenId: token.id,
-      targetName: tokenTableName(token, token.name),
-      characterId: character?.id ?? null,
-      targetOwnerId: character?.ownerId ?? token.ownerId,
-    };
-    const view = await logDamage(deps, campaignId, user.id, entry);
-    return { messageId: view.id };
   },
 });
+
+async function applyDamageCard(
+  { deps, user, payload }: EventArgs<DamageApplyPayload>,
+  campaignId: string,
+  sourceMessageId: number,
+): Promise<{ messageId: number }> {
+  const roll = await loadDamageRoll(deps, campaignId, sourceMessageId);
+
+  // Stage 16c: the thing taking the hit may be a cover. Its whole path is
+  // three lines long and shares nothing with the sheet — no armour, no
+  // injury table, no Death Save — so it forks here rather than growing
+  // branches inside `applyDamageToSheet`.
+  if (payload?.coverId !== undefined) {
+    const view = await applyDamageToCoverRow(deps, campaignId, payload.coverId, roll);
+    const entry: DamageLogEntry = {
+      ...view.log,
+      sourceMessageId,
+      targetCoverId: view.coverId,
+      targetName: view.name,
+      characterId: null,
+      // A car has no owner to keep its numbers from: everybody at the table
+      // can see the bonnet coming apart.
+      targetOwnerId: null,
+    };
+    const logged = await logDamage(deps, campaignId, user.id, entry);
+    return { messageId: logged.id };
+  }
+
+  const { token, scene } = await requireCampaignToken(
+    deps.ctx.prisma,
+    campaignId,
+    payload?.tokenId,
+  );
+
+  const location = isValidHitLocation(payload?.location)
+    ? payload.location
+    : isValidHitLocation(roll.damage?.location)
+      ? roll.damage.location
+      : 'body';
+  if (payload?.armorSp !== undefined) {
+    if (
+      typeof payload.armorSp !== 'number' ||
+      !Number.isInteger(payload.armorSp) ||
+      payload.armorSp < 0 ||
+      payload.armorSp > ARMOR_SP_MAX
+    ) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+  }
+
+  // Stage 16g: the round that was fired, carried by the damage roll itself.
+  // Read from the stored message like every other number here — a client
+  // naming its own ammunition would be a client choosing its own armour
+  // penetration.
+  const ammo = readRollAmmo(roll);
+  // Same rule, same reason (s. 170): the aim point rides on the stored roll,
+  // so the leg breaks because of the shot that was aimed, not because of what
+  // the client puts in the payload now.
+  const aimedAt = readRollAimPoint(roll);
+  // „to była maczeta" — a fact about the swing, read where the swing was
+  // stored (s. 176). Same reasoning as the two above.
+  const halvesArmor = readRollHalvesArmor(roll);
+  // The fence between the shot and this figure (stage 42b) — off the card when
+  // the attack named them, measured on the map when it did not.
+  const barrierSp = await barrierSpOfHit(deps, roll, scene, {
+    tokenId: token.id,
+    at: tokenCentre(toTokenView(token, true), toSceneView(scene)),
+  });
+
+  const request: SheetDamageRequest = {
+    // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
+    // read off the stored roll, never off the client's request.
+    damage: damageTotal(roll),
+    criticalInjury: roll.criticalDamage === true,
+    location,
+    ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),
+    ...(payload?.ignoreArmor === true || roll.damage?.ignoreArmor ? { ignoreArmor: true } : {}),
+    ...(ammo ? { ammo } : {}),
+    // Only while „Zastosuj" still points where the shot did: the GM may move
+    // the damage onto somebody else, and a leg aimed at one person must not
+    // break another's (the head keeps working because it is `location`).
+    ...(aimedAt && roll.damage?.targetTokenId === token.id ? { aimedAt } : {}),
+    ...(halvesArmor ? { halvesArmor: true } : {}),
+    ...(barrierSp > 0 ? { barrierSp } : {}),
+  };
+
+  const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
+  const log = landed.log;
+  const character = landed.character;
+
+  // „Gdy ten typ amunicji po przejściu przez zbroję celu zadaje mu obrażenia,
+  // cel zostaje także podpalony" (s. 346) — through the armour and *hurting*,
+  // so a round the vest stopped sets nobody alight. The status then burns on
+  // the ordinary end-of-turn path from 14e.
+  const ignited =
+    ammo?.ignites && log.damageThrough > 0
+      ? await igniteToken(deps, campaignId, token.id, ammo.ignites)
+      : null;
+
+  // „Modyfikator ... znika, gdy tylko uda ci się pokonać wroga" (s. 194,
+  // stage 23c). Zero Hit Points is where this project already draws „pokonany"
+  // — it is the line that makes somebody Mortally Wounded — so everybody who
+  // backed down from this one stops being afraid of them here.
+  //
+  // Whom it freed is written into the card, because „Cofnij" has to be able to
+  // put the fear back: re-ticking the sticker by hand restores half a penalty
+  // and no one can tell (the address in `statusData` is the other half).
+  const fearCleared =
+    log.hp && log.hp.after <= 0
+      ? await clearFacedownFear(deps, campaignId, token.sceneId, token.id)
+      : [];
+
+  const entry: DamageLogEntry = {
+    ...log,
+    ...(ignited ? describeIgnition(log, ammo!.ignites!, ignited) : {}),
+    ...(fearCleared.length > 0 ? { fearCleared } : {}),
+    sourceMessageId,
+    targetTokenId: token.id,
+    targetName: tokenTableName(token, token.name),
+    characterId: character?.id ?? null,
+    targetOwnerId: character?.ownerId ?? token.ownerId,
+  };
+  const view = await logDamage(deps, campaignId, user.id, entry);
+  return { messageId: view.id };
+}
 
 /**
  * One hit landing on one figure — the whole of stage 15, socket-free.

@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Server as SocketIOServer, Socket } from 'socket.io';
 import type { Role, SessionUser, SocketAck } from '@vtt/shared';
 import type { AppContext } from '../context.js';
+import { Prisma } from '../generated/prisma/client.js';
 import type { RoomSequences } from './state.js';
 import { withPresentation } from './presentation.js';
 
@@ -88,6 +89,13 @@ export function registerEvents(
         } catch (error) {
           if (error instanceof RealtimeError) {
             ack?.({ ok: false, error: error.code });
+          } else if (error instanceof Prisma.PrismaClientValidationError) {
+            // Ładunek, którego zapytanie nie przyjęło — id spoza zakresu Int
+            // (`1e308`), ułamek, zły typ (#15, 26.09). To odmowa, nie awaria:
+            // stan jest nietknięty, a „INTERNAL” w logu zasłaniałby prawdziwe
+            // awarie. Zostaje ślad w logu, na wypadek gdyby zły typ podał serwer.
+            deps.log.warn({ err: error, event: event.name }, 'realtime payload rejected by query');
+            ack?.({ ok: false, error: 'BAD_REQUEST' });
           } else {
             deps.log.error({ err: error, event: event.name }, 'realtime handler failed');
             ack?.({ ok: false, error: 'INTERNAL' });

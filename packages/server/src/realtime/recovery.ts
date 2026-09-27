@@ -47,7 +47,7 @@ import {
   cpredWoundSuspensionSource,
   CPRED_HOUR_S,
   mergeCharacterData,
-  metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   parseCharacterData,
   passiveEvasionDv,
@@ -604,7 +604,7 @@ async function resolveDoseTarget(
   });
   if (injector && injector.id !== token.id) {
     const metres = metresForRules(
-      metresBetweenTokens(
+      reachMetresBetweenTokens(
         toTokenView(injector, true),
         toTokenView(token, true),
         toSceneView(scene),

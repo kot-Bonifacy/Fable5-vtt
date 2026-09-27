@@ -520,7 +520,6 @@ test.describe.serial('T2 gniazdo: role, własność, śmieci, zalew', () => {
   });
 
   test('6.2.3 śmieci gracza: żadnego INTERNAL (#15)', async () => {
-    test.fail(true, '#15: id bez sprawdzenia typu trafia do zapytania Prismy → INTERNAL');
     expect(playerFuzz.internal).toEqual([]);
   });
 
@@ -559,7 +558,6 @@ test.describe.serial('T2 gniazdo: role, własność, śmieci, zalew', () => {
   });
 
   test('6.2.3 śmieci MG: żadnego INTERNAL (#15)', async () => {
-    test.fail(true, '#15: id bez sprawdzenia typu trafia do zapytania Prismy → INTERNAL');
     expect(gmFuzz.internal).toEqual([]);
   });
 

@@ -95,6 +95,27 @@ export function metresBetweenTokens(
 }
 
 /**
+ * Distance an arm has to cover between two tokens, in metres (#24, 27.09).
+ *
+ * Counted in squares with the diagonals in, so the figure standing on the square
+ * diagonally next to yours is exactly one square away — 2 m on a CP RED map, and
+ * within reach — while the straight line between the two centres is 2,83 m and
+ * used to round up to 3. „Tuż obok” is a question about neighbouring squares, not
+ * about the ruler, which is why this is kept apart from `metresBetweenTokens`:
+ * range bands still read the straight line. Rounded like `metresBetween`.
+ */
+export function reachMetresBetweenTokens(
+  from: Pick<TokenView, 'x' | 'y' | 'size'>,
+  to: Pick<TokenView, 'x' | 'y' | 'size'>,
+  scene: Pick<SceneView, 'grid' | 'metersPerSquare'>,
+): number {
+  const a = tokenCentre(from, scene);
+  const b = tokenCentre(to, scene);
+  const px = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+  return Math.round(px * metresPerPixel(scene) * 10) / 10;
+}
+
+/**
  * The whole metre a rules lookup uses. Range bands are written in whole metres
  * („7 – 12 m"), so a measured 6.5 m has to land in one of them; rounding half
  * up puts the ambiguous case in the harder band, which is the reading a GM

@@ -49,7 +49,9 @@ export const aiAskEvent = defineEvent<AiAskPayload, { requestId: string }>({
   name: 'ai:ask',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
-    const prompt = payload?.prompt?.trim() ?? '';
+    // Napisy albo nic (#15) — liczba w tych polach padała na `.trim` jako INTERNAL.
+    const prompt = typeof payload?.prompt === 'string' ? payload.prompt.trim() : '';
+    const system = typeof payload?.system === 'string' ? payload.system.trim() : '';
     if (!prompt) throw new RealtimeError('AI_EMPTY_PROMPT');
     if (prompt.length > MAX_AI_PROMPT_LENGTH) throw new RealtimeError('AI_PROMPT_TOO_LONG');
     if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
@@ -58,9 +60,7 @@ export const aiAskEvent = defineEvent<AiAskPayload, { requestId: string }>({
     const purpose = payload.purpose ?? 'test';
     const request: AiChatRequest = {
       messages: [
-        ...(payload.system?.trim()
-          ? [{ role: 'system' as const, content: payload.system.trim() }]
-          : []),
+        ...(system ? [{ role: 'system' as const, content: system }] : []),
         { role: 'user' as const, content: prompt },
       ],
       purpose,

@@ -190,10 +190,6 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
   });
 
   test('#17 kompendium z podręcznika ma broń typu Bijatyka — pięść bez własnego wpisu MG', async () => {
-    test.fail(
-      true,
-      '#17: typy Bijatyka i Sztuki walki bez żadnego wpisu — postać bez broni nie uderzy',
-    );
     await mg.page.getByRole('button', { name: 'Kompendium', exact: true }).click();
     // Filtr typów broni pokazuje tylko typy, które mają wpisy (`title` = „Typ — liczba”).
     await expect(mg.page.locator('.side-panel button[title^="Średni pistolet"]')).toBeVisible();
@@ -203,7 +199,6 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
   });
 
   test('#18 kompendium z podręcznika ma granat ręczny do wzięcia na kartę', async () => {
-    test.fail(true, '#18: typ Granat bez żadnego wpisu — granatu nie da się kupić ani dopisać');
     await mg.page.getByRole('button', { name: 'Kompendium', exact: true }).click();
     await expect(mg.page.locator('.side-panel button[title^="Granatnik"]')).toBeVisible();
     await expect(mg.page.locator('.side-panel button[title^="Granat —"]')).toBeVisible({

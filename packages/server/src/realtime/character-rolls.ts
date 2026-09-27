@@ -35,7 +35,7 @@ import {
   cpredSheetHpMax,
   isCpredAimPoint,
   mergeCharacterData,
-  metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   parseCharacterData,
   planCpredRoll,
@@ -420,7 +420,46 @@ async function resolveRollRequest(
 }
 
 /**
- * Fills in what „Ustabilizowanie" needs from the *target* (stage 14b): the DV
+ * Obrażenia za kartę ataku rzuca ten, kto strzelał (#27, 27.09).
+ *
+ * `weaponRowId` pochodzi z zapisanej karty, a karta rzucającego musiała mieć
+ * tylko wiersz o tym id — i to nie wystarczało: każdy statysta nosi broń
+ * `statist-weapon`, więc gracz z pistoletem zdobytym na Zbirze rzucał obrażenia
+ * za strzał Cienia. Strzelca wskazuje żeton z karty ataku (`attackerTokenId`,
+ * wypełniany na serwerze), a karta rzutu musi być kartą tej figury. Żeton
+ * strzelca, którego już nie ma na mapie, zostawia rzut tylko MG.
+ */
+async function requireAttackShooter(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  request: CpredRollRequest,
+  source: RollSource,
+): Promise<void> {
+  if (request.kind !== 'damage' || request.attackMessageId === undefined) return;
+  const message = await deps.ctx.prisma.chatMessage.findUnique({
+    where: { id: request.attackMessageId },
+  });
+  const roll = message?.payload ? (JSON.parse(message.payload) as RollResult) : null;
+  const shooterTokenId = (roll?.attack?.system as { attackerTokenId?: unknown } | undefined)
+    ?.attackerTokenId;
+  if (typeof shooterTokenId !== 'string') return;
+  const shooter = await deps.ctx.prisma.token.findUnique({ where: { id: shooterTokenId } });
+  if (!shooter) {
+    if (user.role === ROLE_GM) return;
+    throw new RealtimeError('NOT_THE_SHOOTER');
+  }
+  const rollingCharacterId =
+    source.kind === 'character' ? source.character.id : source.token.characterId;
+  const same =
+    source.kind === 'statist' && source.token.id === shooter.id
+      ? true
+      : shooter.characterId !== null && rollingCharacterId === shooter.characterId;
+  if (!same) throw new RealtimeError('NOT_THE_SHOOTER');
+}
+
+/**
+ * Fills in what „Ustabilizowanie” needs from the *target* (stage 14b): the DV
  * follows from their wound threshold, so it is read here rather than taken from
  * the client — otherwise a medic could declare their patient lightly wounded.
  *
@@ -499,7 +538,11 @@ async function requireStabilizeReach(
   if (!healer) throw new RealtimeError('STABILIZE_NOT_ON_SCENE');
 
   const metres = metresForRules(
-    metresBetweenTokens(toTokenView(healer, true), toTokenView(target, true), toSceneView(scene)),
+    reachMetresBetweenTokens(
+      toTokenView(healer, true),
+      toTokenView(target, true),
+      toSceneView(scene),
+    ),
   );
   if (metres > CPRED_MELEE_REACH_M) throw new RealtimeError('STABILIZE_OUT_OF_REACH');
 }
@@ -877,6 +920,7 @@ export async function performCharacterRoll(
 
     const request = await resolveRollRequest(deps, campaignId, user, payload);
     const source = await resolveRollSource(deps, campaignId, user, payload, request);
+    await requireAttackShooter(deps, campaignId, user, request, source);
     const data = source.data;
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
     // every Check made from the sheet carries it, named, so the player can see

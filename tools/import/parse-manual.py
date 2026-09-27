@@ -606,6 +606,10 @@ def parse_quality_prices(market: str) -> dict[int, dict[str, int]]:
     return ladder
 
 
+# Typy walki bez broni (s. 176–178) — dostają wpis do wzięcia na kartę za 0 ed.
+UNARMED_TYPES = ("brawling", "martial arts")
+
+
 def base_weapon_entries(types: dict[str, dict], page: int | None) -> list[dict]:
     """
     A buyable entry per base weapon type.
@@ -616,7 +620,8 @@ def base_weapon_entries(types: dict[str, dict], page: int | None) -> list[dict]:
     """
     entries: list[dict] = []
     for key, weapon_type in types.items():
-        if weapon_type.get("cost") is None:
+        unarmed = key in UNARMED_TYPES
+        if weapon_type.get("cost") is None and not unarmed:
             continue
         entry = {
             "id": f"weapon.{slugify(key)}",
@@ -625,16 +630,27 @@ def base_weapon_entries(types: dict[str, dict], page: int | None) -> list[dict]:
             "nameOriginal": weapon_type.get("nameOriginal"),
             "weaponTypeId": weapon_type["id"],
             "quality": "standard",
-            "cost": weapon_type["cost"],
+            # #17: gołe ręce nie mają ceny, bo nikt ich nie kupuje — ale bez
+            # wpisu nie było czego wziąć na kartę, a atak wręcz bez broni
+            # wymaga wiersza typu Bijatyka. Zero, żeby gracz wziął je sam.
+            "cost": 0 if unarmed else weapon_type["cost"],
             "source": weapon_type.get("source") or (f"{SOURCE}, s. {page}" if page else SOURCE),
         }
+        if unarmed:
+            entry["description"] = (
+                "Gołe ręce — nie kupuje się ich. Obrażenia zależą od Budowy Ciała atakującego."
+            )
+        # #18: granat to amunicja kupowana na sztuki (s. 344), więc jeden wpis
+        # to jeden granat — wiersz na karcie od razu ma go w „magazynku".
+        if weapon_type.get("thrown") and weapon_type.get("magazine") is None:
+            entry["magazine"] = 1
         if weapon_type.get("costCategory"):
             entry["costCategory"] = weapon_type["costCategory"]
         if weapon_type.get("features"):
             entry["features"] = weapon_type["features"]
         # The ammunition type is printed under the magazine size and is what a
         # player actually has to buy, but it is not a weapon-type field.
-        if weapon_type.get("ammunition"):
+        if weapon_type.get("ammunition") and not weapon_type.get("thrown"):
             entry["description"] = f"Standardowa amunicja: {weapon_type['ammunition']}."
         entries.append({key: value for key, value in entry.items() if value is not None})
     return entries
@@ -1404,6 +1420,15 @@ def main() -> int:
         # sheet copies the cartridge onto the weapon row (stage 16).
     page_gear = page_of(gear, gear.find("Typ broniUmiejętność"))
     entries = base_weapon_entries(ordered, page_gear)
+    # #18: typy spoza tabeli broni (granat z overrides) też dostają wpis, jeśli
+    # overrides podają ich cenę — bez wpisu typu nie dało się ani kupić, ani
+    # wziąć z katalogu na kartę. Klucz wpisu to id typu bez przedrostka.
+    extra = {
+        entry["id"].removeprefix("weapon-type."): entry
+        for entry in weapon_types
+        if entry["id"] in overrides.get("weaponTypesExtra", {}) and entry.get("cost") is not None
+    }
+    entries += base_weapon_entries(extra, page_gear)
     entries += parse_exotics(market, gear, overrides)
     apply_overrides(entries, overrides, "weapons")
 

@@ -33,7 +33,7 @@ import {
   mayAnswerInventoryMove,
   mayCancelInventoryMove,
   mergeCharacterData,
-  metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   parseCharacterData,
   tokenCondition,
@@ -173,9 +173,13 @@ export async function tokensOf(prisma: PrismaClient, characterId: string): Promi
   });
 }
 
+/**
+ * Zasięg ręki między dwiema figurami — po polach, ze skosami (#24): sąsiad po
+ * skosie stoi tuż obok, choć prosta między środkami ma 2,83 m.
+ */
 export function metresBetweenPlaced(a: PlacedToken, b: PlacedToken): number {
   return metresForRules(
-    metresBetweenTokens(
+    reachMetresBetweenTokens(
       toTokenView(a.token, true),
       toTokenView(b.token, true),
       toSceneView(a.scene),

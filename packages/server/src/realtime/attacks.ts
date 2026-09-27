@@ -72,6 +72,7 @@ import {
   mergeCharacterData,
   metresBetween,
   metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   nearestPointOfCover,
   parseCharacterData,
@@ -1110,6 +1111,13 @@ export async function performAttackRoll(
               name: tokenTableName(target, target.name),
               tokenId: target.id,
               metres,
+              reachMetres: metresForRules(
+                reachMetresBetweenTokens(
+                  toTokenView(attacker, true),
+                  toTokenView(target, true),
+                  sceneView,
+                ),
+              ),
               ...(weapon.resolved?.melee
                 ? { evasionDv: await targetEvasionDv(deps, registry, target) }
                 : {}),

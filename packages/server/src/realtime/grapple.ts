@@ -24,7 +24,7 @@ import {
   ROLE_GM,
   formatMetres,
   isTokenInFog,
-  metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   parseCharacterData,
   planCpredRoll,
@@ -236,7 +236,7 @@ export const grappleAttemptEvent = defineEvent<
     if (attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
 
     const metres = metresForRules(
-      metresBetweenTokens(
+      reachMetresBetweenTokens(
         toTokenView(attacker, true),
         toTokenView(target, true),
         toSceneView(scene),

@@ -287,6 +287,12 @@ export interface CpredAttackTarget {
   /** Whole metres between the two tokens (see `metresForRules`). */
   metres: number;
   /**
+   * Whole metres an arm has to cover (`reachMetresBetweenTokens`, #24) — the
+   * diagonal neighbour is one square away, not 2,83 m. Only the melee reach reads
+   * it; absent (a cover, a patch of ground) it is `metres`.
+   */
+  reachMetres?: number;
+  /**
    * Stand-in DV from the defender's sheet. Absent for a statist token, which
    * falls back to the everyday DV.
    */
@@ -674,6 +680,8 @@ export function planCpredAttack(
   if (!isInteger(luckSpent) || luckSpent < 0) return { ok: false, error: 'BAD_REQUEST' };
   if (luckSpent > data.luckCurrent) return { ok: false, error: 'NOT_ENOUGH_LUCK' };
   if (!isInteger(target.metres) || target.metres < 0) return { ok: false, error: 'BAD_REQUEST' };
+  const reachMetres = target.reachMetres ?? target.metres;
+  if (!isInteger(reachMetres) || reachMetres < 0) return { ok: false, error: 'BAD_REQUEST' };
 
   // Stage 31: the gun, or what somebody bolted onto it. Three of the eight
   // printed attachments turn one object into two — „Trzymaną oburącz broń można
@@ -823,7 +831,7 @@ export function planCpredAttack(
   }
 
   // Reach and range: the map decides whether this attack is possible at all.
-  if (melee && target.metres > CPRED_MELEE_REACH_M) {
+  if (melee && reachMetres > CPRED_MELEE_REACH_M) {
     return { ok: false, error: 'MELEE_OUT_OF_REACH' };
   }
   if (!melee && mode !== 'suppressive' && !rangeDv) {

@@ -1300,6 +1300,9 @@ function rollAckErrorText(code: string): string {
       return 'Ta figura nie ma profilu bojowego — uzupełnij go w menu żetonu.';
     case 'STATIST_CANNOT_ROLL_THIS':
       return 'Figura bez karty rzuca na obrażenia i Umiejętnościami wpisanymi w jej profil.';
+    // #27 — obrażenia za atak rzuca figura, która strzelała, nie ta z tą samą bronią.
+    case 'NOT_THE_SHOOTER':
+      return 'Obrażenia za ten atak rzuca ten, kto go wykonał.';
     // Stage 30b — the three refusals „Leczenie" can come back with.
     case 'INJURY_NOT_FOUND':
       return 'Ta figura nie ma już tej rany.';
@@ -1594,6 +1597,9 @@ function damageAckErrorText(code: string): string {
       return 'Ta figura nie ma profilu bojowego — nie ma gdzie zapisać rany. Uzupełnij profil w „Edytuj…”.';
     case 'ALREADY_UNDONE':
       return 'To rozliczenie zostało już cofnięte.';
+    // #26 — jedna karta obrażeń trafia jeden cel raz; „Cofnij” zdejmuje blokadę.
+    case 'DAMAGE_ALREADY_APPLIED':
+      return 'Te obrażenia już trafiły ten cel — żeby rozliczyć je od nowa, najpierw „Cofnij”.';
     case 'FORBIDDEN':
       return 'Obrażenia rozlicza MG.';
     default:

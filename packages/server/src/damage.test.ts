@@ -652,6 +652,42 @@ describe('damage, armor and Death Saves', () => {
   });
 
   /**
+   * #26: druga „Zastosuj" tej samej karty na tym samym celu odejmowała PW drugi
+   * raz i losowała nową Ranę Krytyczną. Karta trafia cel raz — dopiero „Cofnij"
+   * pozwala rozliczyć ją od nowa — a dwa kliknięcia naraz dają jedno trafienie.
+   */
+  it('applies one damage card to one target once (#26)', async () => {
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: { data: { hpCurrent: 35, criticalInjuries: [], armor: [] } },
+    });
+    const messageId = await rollUntilCritical();
+    const [first, second] = await Promise.all([
+      emitAck<{ messageId: number }>(gm, 'damage:apply', { messageId, tokenId: playerTokenId }),
+      emitAck<{ messageId: number }>(gm, 'damage:apply', { messageId, tokenId: playerTokenId }),
+    ]);
+    expect([first.ok, second.ok].sort()).toEqual([false, true]);
+    expect(first.ok ? second : first).toEqual({ ok: false, error: 'DAMAGE_ALREADY_APPLIED' });
+    const hurt = await sheetOf(characterId);
+    expect(hurt.criticalInjuries).toHaveLength(1);
+
+    const again = await emitAck(gm, 'damage:apply', { messageId, tokenId: playerTokenId });
+    expect(again).toEqual({ ok: false, error: 'DAMAGE_ALREADY_APPLIED' });
+    expect((await sheetOf(characterId)).hpCurrent).toBe(hurt.hpCurrent);
+
+    const applied = data(first.ok ? first : second, 'damage:apply');
+    expect((await emitAck(gm, 'damage:undo', { messageId: applied.messageId })).ok).toBe(true);
+    const redo = data(
+      await emitAck<{ messageId: number }>(gm, 'damage:apply', {
+        messageId,
+        tokenId: playerTokenId,
+      }),
+      'damage:apply',
+    );
+    expect((await emitAck(gm, 'damage:undo', { messageId: redo.messageId })).ok).toBe(true);
+  });
+
+  /**
    * 29.08: „Pęknięta czaszka — pomnóż obrażenia głowy, które przejdą przez OB
    * pancerza, x 3 (a nie x 2)" (s. 188). Do tej sesji `CPRED_HEAD_DAMAGE_
    * MULTIPLIER` było stałą 2, a cały efekt rany stał w prozie wpisu.

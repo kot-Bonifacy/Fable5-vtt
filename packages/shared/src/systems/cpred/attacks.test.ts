@@ -108,6 +108,7 @@ function plan(
     resolved = pistol,
     row = weaponRow(),
     metres = 24,
+    reachMetres,
     evasionDv,
     typeId,
     context,
@@ -118,6 +119,7 @@ function plan(
     resolved?: ResolvedWeapon | null;
     row?: ReturnType<typeof weaponRow>;
     metres?: number;
+    reachMetres?: number;
     evasionDv?: number;
     typeId?: string;
     context?: CpredAttackContext;
@@ -140,6 +142,7 @@ function plan(
       name: 'Ganger',
       tokenId: 'token-1',
       metres,
+      ...(reachMetres !== undefined ? { reachMetres } : {}),
       ...(evasionDv !== undefined ? { evasionDv } : {}),
     },
     context ?? {},
@@ -420,6 +423,16 @@ describe('planCpredAttack — melee', () => {
       ok: true,
     });
     expect(plan({}, { data, resolved: blade, metres: CPRED_MELEE_REACH_M + 1 })).toEqual({
+      ok: false,
+      error: 'MELEE_OUT_OF_REACH',
+    });
+  });
+
+  it('measures the reach by the arm, not by the ruler, when the caller says so (#24)', () => {
+    // The diagonal neighbour: 3 m by the straight line, one square by the arm.
+    const target = { data, resolved: blade, metres: 3, reachMetres: CPRED_MELEE_REACH_M };
+    expect(plan({}, target)).toMatchObject({ ok: true });
+    expect(plan({}, { ...target, reachMetres: CPRED_MELEE_REACH_M + 1 })).toEqual({
       ok: false,
       error: 'MELEE_OUT_OF_REACH',
     });

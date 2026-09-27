@@ -35,10 +35,25 @@ export function AttackRow({
     attackerTokenId?: string;
   };
 
-  /** The sheet that fired — needed to roll its weapon's damage. */
-  const attackerSheet = Object.values(characters).find((character) =>
-    character.data.weapons.some((weapon) => weapon.id === system.weaponRowId),
-  );
+  /**
+   * The sheet that fired — needed to roll its weapon's damage.
+   *
+   * Szukana po żetonie strzelca z karty ataku (#23, 27.09), a po id wiersza
+   * broni tylko na kartach sprzed 16b, które żetonu nie niosą. Id wiersza nie
+   * jest unikalne: każdy statysta ma broń `statist-weapon`, więc „Obrażenia"
+   * na strzale Cienia ładowały kubek pierwszej karty statysty w magazynie.
+   */
+  const attackerToken = system.attackerTokenId ? tokens[system.attackerTokenId] : undefined;
+  const attackerSheet =
+    system.attackerTokenId === undefined
+      ? Object.values(characters).find((character) =>
+          character.data.weapons.some((weapon) => weapon.id === system.weaponRowId),
+        )
+      : attackerToken?.characterId
+        ? characters[attackerToken.characterId]
+        : undefined;
+  /** Karta gracza rzuca sama; karta NPC-a — przez swój żeton (alias, `statBlock`). */
+  const playerSheet = attackerSheet?.ownerId != null ? attackerSheet : undefined;
 
   /**
    * Figura bez karty też zadaje obrażenia (zaległość z 23.08).
@@ -50,17 +65,18 @@ export function AttackRow({
    * (`statistDefender` niżej). Od 38a rozstrzyga o tym adres: rzut jedzie
    * `attackerTokenId`, a serwer bierze z niego kartę tej figury.
    */
-  const attackerToken = system.attackerTokenId ? tokens[system.attackerTokenId] : undefined;
   const statistAttacker =
-    !attackerSheet && attackerToken?.characterId
+    !playerSheet && attackerToken?.characterId
       ? isGm || (user?.id !== undefined && attackerToken.ownerId === user.id)
         ? attackerToken
         : undefined
       : undefined;
 
   /** Whoever the damage roll is loaded for: a sheet, or a figure without one. */
-  const shooter = attackerSheet
-    ? { name: attackerSheet.name, address: { characterId: attackerSheet.id } }
+  const sheetShooter =
+    playerSheet ?? (system.attackerTokenId === undefined ? attackerSheet : undefined);
+  const shooter = sheetShooter
+    ? { name: sheetShooter.name, address: { characterId: sheetShooter.id } }
     : statistAttacker
       ? { name: statistAttacker.name, address: { attackerTokenId: statistAttacker.id } }
       : undefined;

@@ -290,6 +290,11 @@ export class TokenNode extends Container {
       resolution: 2,
     });
     this.image.mask = this.imageMask;
+    // Grot wystaje poza oprawę na pole sąsiada (#25, 27.09) — jako dziecko
+    // żetonu łapał klik w środek sąsiedniej figury i zaznaczał tę, która na nią
+    // patrzy. Obrót chwyta `grabFacingKnob` w MapRenderer, z nakładki
+    // zaznaczenia, więc sam rysunek grotu kliknięć nie potrzebuje.
+    this.nose.eventMode = 'none';
     this.addChild(
       this.shadow,
       this.base,

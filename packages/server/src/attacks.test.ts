@@ -543,6 +543,18 @@ describe('ranged combat from the map', () => {
     expect(card.system.melee).toBe(true);
     expect(card.system.dvSource).toBe('everyday'); // the Ganger has no sheet
     expect(card.detail).toContain('zwarcie');
+
+    // #24: the square diagonally next door is next door — 2,83 m by the ruler,
+    // one square by the arm.
+    await emitAck(gm, 'token:move', {
+      tokenId: targetTokenId,
+      x: 2 * PX_PER_M,
+      y: 2 * PX_PER_M,
+      final: true,
+    });
+    const diagonal = await attack({ weaponRowId: 'w-blade', mode: 'single' });
+    expect(diagonal.system.melee).toBe(true);
+    await placeTargetAt(2);
   });
 
   it('refuses a swing through a barrier, and lets a round through it (stage 42a)', async () => {
@@ -1511,6 +1523,79 @@ describe('ranged combat from the map', () => {
           visibility: 'public',
         });
         expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+      });
+
+      /**
+       * #27 i #23: id wiersza broni nie wskazuje strzelca — każdy statysta ma
+       * `statist-weapon`, a zdobyczny pistolet wjeżdżał z tym id na kartę
+       * gracza. Obrażenia za kartę ataku rzuca figura z jej `attackerTokenId`.
+       */
+      it('refuses damage rolled for somebody else’s shot by a sheet with the same row id (#27)', async () => {
+        const hitMessageId = await landHit();
+        const before = await sheetOf(characterId);
+        await emitAck(gm, 'character:update', {
+          characterId,
+          patch: {
+            data: {
+              weapons: [...before.weapons, { ...before.weapons[0]!, id: 'statist-weapon' }],
+            },
+          },
+        });
+        const request = {
+          kind: 'damage',
+          weaponRowId: 'statist-weapon',
+          attackMessageId: hitMessageId,
+        };
+        const byPlayer = await emitAck(player, 'character:roll', {
+          characterId,
+          request,
+          visibility: 'public',
+        });
+        expect(byPlayer).toEqual({ ok: false, error: 'NOT_THE_SHOOTER' });
+
+        // Ten sam strzał z karty innego statysty — tak MG podpisywał go „Zbirem" (#23).
+        const otherTokenId = data(
+          await emitAck<TokenView>(gm, 'token:create', {
+            sceneId,
+            name: 'Zbir',
+            x: 12 * PX_PER_M,
+            y: 12 * PX_PER_M,
+          }),
+          'token:create',
+        ).id;
+        await emitAck(gm, 'token:stat', { tokenId: otherTokenId, quick: PROFILE });
+        const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+        await emitAck(gm, 'state:request');
+        const otherCardId = (await sync).tokens.find(
+          (entry) => entry.id === otherTokenId,
+        )?.characterId;
+        for (const address of [{ characterId: otherCardId }, { attackerTokenId: otherTokenId }]) {
+          const ack = await emitAck(gm, 'character:roll', {
+            ...address,
+            request,
+            visibility: 'public',
+          });
+          expect(ack, JSON.stringify(address)).toEqual({ ok: false, error: 'NOT_THE_SHOOTER' });
+        }
+
+        // Strzelec po karcie — tak rzuca klient MG od #23 — przechodzi.
+        const shooterSync = waitFor<StateSyncPayload>(gm, 'state:sync');
+        await emitAck(gm, 'state:request');
+        const shooterCardId = (await shooterSync).tokens.find(
+          (entry) => entry.id === statistTokenId,
+        )?.characterId;
+        const own = await emitAck(gm, 'character:roll', {
+          characterId: shooterCardId,
+          request,
+          visibility: 'public',
+        });
+        expect(own.ok, JSON.stringify(own)).toBe(true);
+
+        await emitAck(gm, 'token:delete', { tokenId: otherTokenId });
+        await emitAck(gm, 'character:update', {
+          characterId,
+          patch: { data: { weapons: before.weapons } },
+        });
       });
     });
   });

@@ -29,6 +29,7 @@ import {
   type CpredWeaponRow,
 } from './character.js';
 import type { ArmorLocation } from './locations.js';
+import { STATIST_WEAPON_ROW_ID } from './statist.js';
 
 /** Trzy listy ekwipunku, które da się przenieść między kartami. */
 export type CpredItemList = 'weapons' | 'armor' | 'gear';
@@ -190,13 +191,17 @@ function stacksWith(a: CpredGearRow, b: CpredGearRow): boolean {
  * figury dostaje kartę z przepisanym ekwipunkiem, więc dwie karty naprawdę
  * potrafią nieść ten sam identyfikator. Kolizję rozstrzyga się nowym id, nie
  * nadpisaniem cudzego wiersza.
+ *
+ * Id zastrzeżone — broń statysty (`STATIST_WEAPON_ROW_ID`) — nie jedzie z łupem
+ * nigdy (#27, 27.09): po nim karta ataku szukała strzelca, a gracz z pistoletem
+ * zdobytym na Zbirze stawał się strzelcem ataków wszystkich statystów.
  */
 function landedRow<T extends CpredItemRow>(
   row: T,
   taken: ReadonlySet<string>,
   makeId: () => string,
 ): T {
-  if (!taken.has(row.id)) return row;
+  if (!taken.has(row.id) && row.id !== STATIST_WEAPON_ROW_ID) return row;
   let id = makeId();
   while (taken.has(id)) id = makeId();
   return { ...row, id };

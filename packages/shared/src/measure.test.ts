@@ -6,6 +6,7 @@ import {
   metresForRules,
   metresPerPixel,
   polylineMetres,
+  reachMetresBetweenTokens,
   sanitizeRulerPoints,
   squaresForDistance,
   tokenCentre,
@@ -62,6 +63,19 @@ describe('metresBetweenTokens', () => {
     expect(metresBetweenTokens(shooter, small, scene)).toBe(20);
     // The big target's centre sits half a square further away.
     expect(metresBetweenTokens(shooter, large, scene)).toBe(21);
+  });
+});
+
+describe('reachMetresBetweenTokens', () => {
+  it('counts the diagonal neighbour as one square away (#24)', () => {
+    const me = { x: 600, y: 1900, size: 1 };
+    const diagonal = { x: 500, y: 1800, size: 1 };
+    // The straight line is 2,83 m and rounds to 3 — past an arm's 2 m.
+    expect(metresForRules(metresBetweenTokens(me, diagonal, scene))).toBe(3);
+    expect(reachMetresBetweenTokens(me, diagonal, scene)).toBe(2);
+    // Two squares out stays two squares out, diagonals or not.
+    expect(reachMetresBetweenTokens(me, { x: 400, y: 1800, size: 1 }, scene)).toBe(4);
+    expect(reachMetresBetweenTokens(me, { x: 800, y: 2100, size: 1 }, scene)).toBe(4);
   });
 });
 

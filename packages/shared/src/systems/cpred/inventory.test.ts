@@ -16,6 +16,7 @@ import {
   type CpredGearRow,
   type CpredWeaponRow,
 } from './character.js';
+import { STATIST_WEAPON_ROW_ID } from './statist.js';
 
 /**
  * Etap 38b: przedmiot zmieniający kartę.
@@ -125,6 +126,16 @@ describe('cpredMoveItems', () => {
     expect(result.to.weapons).toHaveLength(2);
     expect(result.to.weapons[1]!.id).toBe('fresh');
     expect(result.to.weapons[0]!.name).toBe('Inna sztuka');
+  });
+
+  it('broń statysty zmienia id przy każdym przeniesieniu, także bez kolizji (#27)', () => {
+    // Po `statist-weapon` szukało się strzelca karty ataku — gracz z pistoletem
+    // zdobytym na Zbirze stawał się strzelcem ataków wszystkich statystów.
+    const loot = { ...weapon, id: STATIST_WEAPON_ROW_ID };
+    const result = move(sheet({ weapons: [loot] }), sheet(), [
+      { list: 'weapons', rowId: STATIST_WEAPON_ROW_ID },
+    ]);
+    expect(result.to.weapons[0]).toMatchObject({ id: 'fresh', name: 'Zgrzyt 9', ammoCurrent: 12 });
   });
 
   it('odmawia, gdy wiersza nie ma na karcie źródłowej', () => {

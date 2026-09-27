@@ -82,7 +82,8 @@ export const rulesAskEvent = defineEvent<RulesAskPayload, { requestId: string }>
   name: 'rules:ask',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
-    const question = payload?.question?.trim() ?? '';
+    // Napis albo nic (#15) — liczba w tym polu padała na `.trim` jako INTERNAL.
+    const question = typeof payload?.question === 'string' ? payload.question.trim() : '';
     if (!question) throw new RealtimeError('RULES_EMPTY_QUESTION');
     if (question.length > MAX_RULES_QUESTION_LENGTH) {
       throw new RealtimeError('RULES_QUESTION_TOO_LONG');

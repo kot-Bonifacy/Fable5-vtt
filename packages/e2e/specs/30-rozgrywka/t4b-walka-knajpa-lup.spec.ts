@@ -110,26 +110,12 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     y: (row + 0.85) * cell,
   });
 
-  /** Górna część żetonu — poza grotem kierunku sąsiada z dołu (#25). */
-  const upperOf = (name: string): WorldPoint => {
-    const centre = tokenCentre(token(name), cell);
-    return { x: centre.x, y: centre.y - 0.3 * cell };
-  };
-
   /** Zaznacza figurę i klika pole marszu. */
-  async function walk(
-    actor: Actor,
-    name: string,
-    to: WorldPoint,
-    grip: 'centre' | 'lower' = 'centre',
-  ) {
+  async function walk(actor: Actor, name: string, to: WorldPoint) {
     await actor.page.keyboard.press('Escape');
-    // Dolna część żetonu — gdy środek przykrywa grot kierunku sąsiada (#25).
-    const centre = tokenCentre(token(name), cell);
-    await clickOnMap(
-      actor.page,
-      grip === 'lower' ? { x: centre.x, y: centre.y + 0.3 * cell } : centre,
-    );
+    // Środek żetonu, także gdy leży na nim grot kierunku sąsiada — od #25 grot
+    // nie łapie kliknięć.
+    await clickOnMap(actor.page, tokenCentre(token(name), cell));
     await actor.page.waitForTimeout(300);
     await clickOnMap(actor.page, to);
   }
@@ -288,10 +274,6 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   });
 
   test('#23 karta obrażeń ze strzału statysty podpisana strzelcem (Cień), nie pierwszą kartą statysty', async () => {
-    test.fail(
-      true,
-      '#23: klient szuka strzelca po id wiersza broni, a każdy statysta ma „statist-weapon”',
-    );
     const damage = rollById(cienDamageId);
     test.info().annotations.push({
       type: 'karta obrażeń Cienia',
@@ -489,7 +471,6 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   });
 
   test('#26 tej samej karty obrażeń nie stosuje się drugi raz do tego samego celu', async () => {
-    test.fail(true, '#26: `damage:apply` bez strażnika — druga pięść w Rzeźnika i druga rana');
     const punchDamage = messageAfter(0, 'Pięści — obrażenia')!;
     const socket = await mg.socket();
     // Dwie szóstki na karcie: gdyby przeszło, tabela ran rzuca od nowa — 2k6 = 9.
@@ -523,8 +504,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     let before = lastMessageId();
     await mg.page.keyboard.press('Escape');
     await zoomAt(mg.page, tokenCentre(token('Rzeźnik'), cell));
-    // Środek Rzeźnika przykrywa grot kierunku Iskry (#25) — klik w górę żetonu.
-    await aim(mg, upperOf('Rzeźnik'), tokenCentre(token('Iskra'), cell), true);
+    // Środek Rzeźnika przykrywa grot kierunku Iskry — retest #25: klik w sam środek.
+    await aim(mg, tokenCentre(token('Rzeźnik'), cell), tokenCentre(token('Iskra'), cell), true);
     const shotId = await rollAndWait(mg, before, 'Ciężki pistolet → Iskra');
     expect(rollById(shotId).attack?.hit).toBe(true);
     scriptDice([2, 2, 1]);
@@ -622,7 +603,6 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   });
 
   test('#24 cios wręcz w figurę stojącą po skosie tuż obok (2,8 m) nie jest „za daleko”', async () => {
-    test.fail(true, '#24: odległość liczona po prostej — sąsiad po skosie ma 3 m, zasięg ręki 2 m');
     const page = ola.page;
     const after = lastMessageId();
     await clickOnMap(page, tokenCentre(token('Rzeźnik'), cell));
@@ -817,7 +797,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
 
     // Iskra podchodzi pod Kowala, Kowal proponuje jej pistolet, Ola przyjmuje.
     await fitCamera(ola.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
-    await walk(ola, 'Iskra', floorOf(8, 9), 'lower');
+    await walk(ola, 'Iskra', floorOf(8, 9));
     await waitAt('Iskra', 8, 9);
     await from.selectOption('@anchor');
     const to = exchange.locator('select').nth(1);
@@ -841,10 +821,6 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   });
 
   test('#27 zdobyczny pistolet statysty nie robi z Iskry strzelca cudzych ataków', async () => {
-    test.fail(
-      true,
-      '#27: wiersz jedzie z łupem z id „statist-weapon”, a po tym id klient (#23) i serwer szukają strzelca',
-    );
     // Strzał Cienia w Kowala (4.7) — statysta, z którym Ola nie ma nic wspólnego.
     const shot = messageAfter(0, 'Bardzo ciężki pistolet → Kowal')!;
     const onOlaScreen = await chatCards(ola.page, 'Bardzo ciężki pistolet → Kowal')

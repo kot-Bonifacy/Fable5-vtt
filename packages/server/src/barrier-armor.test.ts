@@ -299,9 +299,9 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
   async function apply(
     messageId: number,
     target: { tokenId: string } | { coverId: number },
-  ): Promise<DamageLogEntry> {
+  ): Promise<DamageLogEntry & { logMessageId: number }> {
     const logged = waitForMessage(gm, (payload) => payload.message.damage !== undefined);
-    data(
+    const { messageId: logMessageId } = data(
       await emitAck<{ messageId: number }>(gm, 'damage:apply', {
         messageId,
         ...target,
@@ -309,7 +309,7 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
       }),
       'damage:apply',
     );
-    return (await logged).message.damage!;
+    return { ...(await logged).message.damage!, logMessageId };
   }
 
   function damageOf(roll: RollResult): number {
@@ -606,7 +606,9 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     expect(fenced.hp!.before - fenced.hp!.after).toBe(lossThrough(fenced, damage, 7, bonus));
 
     // The shooter steps south, below the end of the fence: from where they stand
-    // now the line to the same figure passes it by.
+    // now the line to the same figure passes it by. The same card hits the same
+    // figure once (#26), so the first hit comes off before it is measured again.
+    await emitAck(gm, 'damage:undo', { messageId: fenced.logMessageId });
     await moveToken(shooterTokenId, 0, 300);
     const stepped = await apply(damageId, { tokenId: fencedTokenId });
     expect(stepped.barrierSp).toBeUndefined();

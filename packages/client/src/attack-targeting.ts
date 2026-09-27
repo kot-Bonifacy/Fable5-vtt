@@ -29,6 +29,7 @@ import {
   loadedAmmoFor,
   metresBetween,
   metresBetweenTokens,
+  reachMetresBetweenTokens,
   metresForRules,
   metresPerPixel,
   planCpredAttack,
@@ -302,6 +303,7 @@ function tokenAim(attacker: TokenView, target: TokenView | undefined, scene: Sce
       name: target.name,
       tokenId: target.id,
       metres: metresForRules(metresBetweenTokens(attacker, target, scene)),
+      reachMetres: metresForRules(reachMetresBetweenTokens(attacker, target, scene)),
     },
     point: tokenCentre(target, scene),
   };
