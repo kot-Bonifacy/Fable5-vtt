@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście, run Oli (sześć nowych błędów)
+
+**Zlecenie MG:** etap testowy T5 (`testy.md` 5.3), z prawem podziału. Dwie tury pytań — decyzje
+w `testy.md`, sekcja 2: **T5a przed walką / T5b walka**, architektura Hasło → Plik → Czarny LOD →
+Węzeł wieżyczki z Demonem na dnie, pad gatewaya przez pośrednika TCP w suicie, Kowal wchodzi
+ranny, nowy „Strażnik” z botem, Ola strzela wieżyczką i ją wyłącza, amunicja przeciwpancerna od MG.
+
+**Zrobione:** `30-rozgrywka/t5a-brama-siec.spec.ts` (24 testy) i `fixtures/brama.ts`; `walka.ts`
+czyta aktywną scenę; hak `__vttE2E` dostał magazyny `netRun`, `zone`, `wall`, `fog` (tylko build
+`--mode e2e`). W aplikacji bez zmian. Przebieg i punkt `po-T5a` — `testy.md` 5.3 i notatka sesji.
+
+**Znalezione (do triażu MG, wszystkie `test.fail` z obejściem):** #28 marsz pod skraj ręcznej mgły
+wraca na start (`Math.floor(543 / 36.2)` = 14, kratka niecałkowita); #29 odmowa ruchu poza walką
+odsyła do nieistniejącej karty; #30 na ręcznej mgle gracz nie ma klamek drzwi i bram; #31 hasło na
+piętrze wejścia nie blokuje zjazdu (`netCanMove`); #32 nazwa architektury w ładunku runu gracza;
+#33 brak UI wiązania strefy z węzłem. Proponowane wagi w rejestrze: dwa B1 (#31, #32), trzy B2, B3.
+
+**Weryfikacja:** T5a od `po-T4` zielony (24, w tym 6 `test.fail`), T4b + T5a od `po-T4a` 43/43;
+`tsc`, ESLint, Prettier czyste w `packages/e2e` i kliencie. Oglądane automatem: MG i Marek
+w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta; gateway martwy (T5a go nie woła).
+
 ### Sesja 27.09 — poprawki po T4b: #15, #17, #18, #23–#27 (retest E2E OK)
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, ile zmieści się w sesji. #10–#13 zostały

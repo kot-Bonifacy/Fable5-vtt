@@ -1665,6 +1665,14 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Okno runu stoi na pasku narzędzi i czacie MG, a u gracza na pasie kolejki (27.09, T5b, #34)** — klik w mgłę, „Obrażenia” albo kość inicjatywy trafia w okno. Klamra trzyma okno całe na ekranie, więc wypchnąć go się nie da: MG zwęża je uchwytem (`.window-resizer`) nad lewy panel, gracz zsuwa pod pas (`tuckRunWindow` w T5b). Położenie przeżywa F5.
+- **Klik w środek sąsiedniego pola w kierunku, w którym patrzy zaznaczona figura, łapie uchwyt obrotu (27.09, T5b, #36)** — marsz nie rusza, nic się nie dzieje. Klikaj dolną część pola celu (`y + 0,3 × kratka`), jak `walk` w T5b.
+- **Na otwartym placu marsz staje „Ktoś pojawił się w polu widzenia”** — figura nie dochodzi do celu, a pomocnik czekający na pozycję wisi do limitu. `walk` w T5b ponawia rozkaz (do trzech razy); przed czekaniem na „stoi” daj marszowi 1,5 s na start, inaczej figura „stoi” jeszcze na starcie.
+- **Broń nie zawsze sama trafia do ręki po zaznaczeniu figury** (Strażnik po marszu MG, Kowal po zmianie naboju na karcie) — Alt+klik MG w cel bez „W ręku” nie ładuje kubka i nic nie mówi. `aimAs` w T5b sprawdza „W ręku:” i w razie braku klika slot.
+- **Węzeł kontrolny, z którego Demon strzelił w tej rundzie, jest dla netrunnera „użyty w tej Turze”** — „Strzelaj/Wyłącz” wyszarzone do następnej rundy; Kontrola (przejęcie) działa. Scenariusz przejmuje węzeł w rundzie 1, strzela w 2, wyłącza w 3 (Demon bez węzła już nie strzela).
+- **Lista celów wieżyczki netrunnera to figury, które widzi jego ciało** — Strażnik za barierą (zasłania figury) nie ma opcji w „Cel strzału”; `selectOption` czeka do limitu testu na „did not find some options”.
+- **Model 27B oddaje pierwszy krok tury bota w 2–3 s** — pad gatewaya „w trakcie generowania” tnij zaraz po zobaczeniu `POST /chat` w pośredniku (`poll` co 50 ms); czekanie 2 s wpuściło propozycję.
+- **Po Turze Demona klienci widzą następną turę po kilkunastu sekundach** (animacje kilku rzutów) — `nextTurn` i `clientsSeeTurn` czekają do 30 s; stan runu (LOD „zderezowany”) sprawdzaj najpierw w bazie, okno — z limitem 30 s.
 - **Aktywacja nowej sceny nie przenosi figur graczy, którzy mają figurę gdzie indziej (27.09, T5a)** — #9 stawia sam tylko żeton postaci bez żadnej figury; na „Bramie” MG stawia Kowala i Iskrę ⊕ „Postaw na scenie: <imię>” i klikiem w mapę.
 - **Na ręcznej mgle gracz nie dostaje ściany ani bramy leżącej choćby o piksel poza odsłoniętym (27.09, T5a)** — odsłonięcie od y = 472 przy barierze na y = 467 zostawia bramę w mgle; prostokąt MG obejmuje **linię** otworu. Klamek na ręcznej mgle i tak nie ma (#30).
 - **Klamka 🚪 pod własnym żetonem łapie klik jako figurę (27.09, T5a)** — figura na polu tuż pod środkiem odcinka przykrywa uchwyt; stań o pole w bok.

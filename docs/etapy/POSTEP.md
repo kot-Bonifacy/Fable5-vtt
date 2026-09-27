@@ -37,13 +37,15 @@ cięcie wręcz) i **43c** (plamy krwi na serwerze) rozpisane — MG wybrał „4
 kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b i T5a zamknięte** — T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
+rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b, T5a i T5b zamknięte** — T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
-(`574cf4d`) oraz #28–#33 z T5a (wagi w rejestrze dalej „do triażu MG”). **Otwarte tylko #10–#13**
-(na etap „Konta MG”, zadania Z5–Z8); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
-stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T5b** (walka
-druga na „Bramie”, potrzebny gateway z modelem) od punktu `po-T5a` (nagrany na nowo po poprawkach).
+(`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **Otwarte:
+#10–#13** (na etap „Konta MG”, zadania Z5–Z8) **i #34–#39 z T5b** (do triażu MG: #37 — etykieta
+piętra węzła w publicznym dzienniku — proponowany B1, reszta B3); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T6** (po
+walkach: handel, sklep, cyborgizacja, PD, czas, screamsheet, eksport i kopie) od punktu `po-T5` —
+albo najpierw poprawki #34–#39.
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -108,7 +110,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2245** w `shared`, **1254** na serwerze, **300** u klienta,
-**59** w gatewayu (27.09, poprawki po T5a), **138** E2E (5 `test.fail` — #10–#13, 27.09 — T5a od `po-T4` zielony po poprawkach; pełnego przebiegu od zera po T5a nie było) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**59** w gatewayu (27.09, poprawki po T5a), **165** E2E (11 `test.fail` — #10–#13 i #34–#39, 27.09 — T5b od `po-T5a` zielony trzy razy, T5a + T5b od `po-T4` 50/50; pełny przebieg od zera po T5b przerwany na starcie — system zabił procesy w tle z braku pamięci — do powtórzenia) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -147,12 +149,36 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 50      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 58      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya (sześć nowych błędów)
+
+**Zlecenie MG:** etap testowy T5b (`testy.md` 5.3, kroki 5.4–5.11). Pytania na starcie: poprawki
+#28–#33 domknąć osobnym commitem, gateway uruchamia Claude, Ola derezuje Kruka Mieczem, walka
+kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (decyzje w `testy.md`, sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów) i `instance/gateway-proxy.ts`
+(pośrednik TCP: serwer instancji woła gateway przez :3108, test tnie połączenia zaraz po `POST /chat`
+i odmawia nowych, w 5.10 wraca); `walka.ts` czeka na turę u klientów do 30 s; hak `__vttE2E` dostał
+magazyn `ai` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w `testy.md` 5.3.
+
+**Znalezione (do triażu MG, wszystkie `test.fail`):** #34 okno runu na pasie kolejki netrunnera
+i na pasku/czacie MG; #35 pad gatewaya w turze bota daje „(INTERNAL)” — zerwany SSE bez `try`
+w `ai/gateway.ts` — i „(AI_UNAVAILABLE)” zamiast zdania (stan nie wisi); #36 klik w środek pola
+przed zaznaczoną figurą łapie uchwyt obrotu; #37 etykieta piętra węzła w publicznym wierszu
+dziennika dociera do Marka (proponowany B1); #38 za wieżyczkę netrunnerki obrażenia rzuca tylko
+MG; #39 strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Pięć obserwacji do
+`testy.md` 8, osiem pułapek automatu w `testy`.
+
+**Weryfikacja:** T5b od `po-T5a` zielony trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min); pełny
+przebieg — wyżej. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane automatem: MG i Marek
+w Chromium, Ola w Firefoksie, headless; #36 i celowanie MG rozpoznane w Playwright MCP (Chromium,
+Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta; gateway z modelem przez całą sesję.
 
 ### Sesja 27.09 — poprawki po T5a: #28–#33 (retest E2E OK)
 
@@ -172,24 +198,3 @@ na nowo (brama otwarta klamką Marka, strefa związana z karty).
 **Weryfikacja (powtórzona 27.09 na starcie T5b):** shared 2245, serwer 1254, klient 300; `tsc`,
 ESLint i Prettier czyste w czterech pakietach. Oglądane automatem: MG i Marek w Chromium, Ola
 w Firefoksie, headless. `dev.db` nietknięta.
-
-### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście, run Oli (sześć nowych błędów)
-
-**Zlecenie MG:** etap testowy T5 (`testy.md` 5.3), z prawem podziału. Dwie tury pytań — decyzje
-w `testy.md`, sekcja 2: **T5a przed walką / T5b walka**, architektura Hasło → Plik → Czarny LOD →
-Węzeł wieżyczki z Demonem na dnie, pad gatewaya przez pośrednika TCP w suicie, Kowal wchodzi
-ranny, nowy „Strażnik” z botem, Ola strzela wieżyczką i ją wyłącza, amunicja przeciwpancerna od MG.
-
-**Zrobione:** `30-rozgrywka/t5a-brama-siec.spec.ts` (24 testy) i `fixtures/brama.ts`; `walka.ts`
-czyta aktywną scenę; hak `__vttE2E` dostał magazyny `netRun`, `zone`, `wall`, `fog` (tylko build
-`--mode e2e`). W aplikacji bez zmian. Przebieg i punkt `po-T5a` — `testy.md` 5.3 i notatka sesji.
-
-**Znalezione (do triażu MG, wszystkie `test.fail` z obejściem):** #28 marsz pod skraj ręcznej mgły
-wraca na start (`Math.floor(543 / 36.2)` = 14, kratka niecałkowita); #29 odmowa ruchu poza walką
-odsyła do nieistniejącej karty; #30 na ręcznej mgle gracz nie ma klamek drzwi i bram; #31 hasło na
-piętrze wejścia nie blokuje zjazdu (`netCanMove`); #32 nazwa architektury w ładunku runu gracza;
-#33 brak UI wiązania strefy z węzłem. Proponowane wagi w rejestrze: dwa B1 (#31, #32), trzy B2, B3.
-
-**Weryfikacja:** T5a od `po-T4` zielony (24, w tym 6 `test.fail`), T4b + T5a od `po-T4a` 43/43;
-`tsc`, ESLint, Prettier czyste w `packages/e2e` i kliencie. Oglądane automatem: MG i Marek
-w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta; gateway martwy (T5a go nie woła).

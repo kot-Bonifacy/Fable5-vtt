@@ -23,7 +23,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T4a  | Rozgrywka 2a/4: walka pierwsza — inicjatywa, tury 1. rundy | ✅     | 26.09.2026 |
 | T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ✅     | 27.09.2026 |
 | T5a  | Rozgrywka 3a/4: „Brama” — przygotowanie, wejście, run Oli | ✅     | 27.09.2026 |
-| T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ⬜     |            |
+| T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ✅     | 27.09.2026 |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
@@ -77,6 +77,7 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | T5: pad gatewaya       | **pośrednik TCP w suicie** między instancją a gatewayem — test zrywa i odmawia połączeń w trakcie tury bota, w 5.10 przywraca; prawdziwy gateway i llama-server nietknięte (decyzja MG z 27.09, sesja T5a) |
 | T5: Kowal i amunicja   | Kowal wchodzi **ranny, jak skończył T4b** — 6k6 strefy dobiera skrypt kości, żeby przeżył; MG daje mu z katalogu **amunicję przeciwpancerną** do B.C. pistoletu (przeładowanie w 5.9); Iskra strzela zdobycznym pistoletem (decyzja MG z 27.09, sesja T5a) |
 | T5: Strażnik i wieżyczka | **nowy statysta „Strażnik” z nowym botem** (Propozycja); wieżyczka strzela sama na wejście w strefę, a po przejęciu węzła Ola **strzela nią w Strażnika, potem ją wyłącza** (decyzja MG z 27.09, sesja T5a) |
+| przebieg T5b           | Ola **derezuje Kruka Mieczem** (Kruk atakuje ją raz — darmowym atakiem przy wykryciu); walka kończy się, gdy **Strażnik pada od strzału przeciwpancernego Kowala** — Test Przeżywalności na pasie MG, potem ✕ (decyzje MG z 27.09, sesja T5b) |
 | triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
@@ -159,7 +160,8 @@ wypadają rzadko (rana krytyczna, trafienie granatem, nieudany Death Save). Dwie
 packages/e2e/
   playwright.config.ts     workers: 1 (jedna instancja, stan wspólny), timeout pod LLM
   instance/                start i stop instancji (4.1), punkty kontrolne (4.4), cli.ts do ręcznego sterowania,
-                           hold.ts — instancja trzymana procesem do oględzin MCP (pułapka w `testy`)
+                           hold.ts — instancja trzymana procesem do oględzin MCP (pułapka w `testy`),
+                           gateway-proxy.ts — pośrednik TCP do AI Gatewaya: zerwanie w trakcie `POST /chat` (T5b)
   fixtures/
     actors.ts              cast.mg(), cast.gracz('Ola', 'firefox', token) — osobne przeglądarki, konteksty, gniazdo
     sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + kanarki (4.5)
@@ -350,6 +352,23 @@ i wchodzi na plac, Ola Skanerem znajduje gniazdo, podłącza się, łamie hasło
 MG wiąże strefę wieżyczki z węzłem **polem „Węzeł kontrolny” na karcie strefy** (od poprawki
 #33), żeby T5b sprawdził most serwera. Odmowa skoku w mgłę ma dla klienta kod `MOVE_INTO_FOG`
 także poza walką (od #29), a karta odmowy ze zdaniem powstaje tylko w walce.
+
+**Przebieg T5b (sesja 27.09):** serwer instancji woła gateway przez pośrednika TCP
+(`instance/gateway-proxy.ts`). MG odsłania plac; Kowal wchodzi w strefę wieżyczki — **wieżyczka
+strzela sama** (Wartość bojowa 14, obrażenia rzuca MG, 4k6 = 4 na kurtkę OB 12). Tryb turowy:
+Kowal, Iskra, Strażnik, a „Demon wykrywa intruza” stawia Diablika na czele kolejki. **Runda 1:**
+Demon strzela wieżyczką w ciało Oli **przez barierę** (−4 „Cel zasłonięty barierą”, karta obrażeń
+z OB bariery 20 — krok 5.2) i trafia ją Pafem; Kowal Biegiem wchodzi na **podłogę elektryczną**
+(6k6 przy wejściu i na końcu tury, pancerz trzyma; „Ciało obce” −5 po marszu 16 m — 5.7); Ola
+zjeżdża do Kruka (MG: „LOD wykrywa intruza”, darmowy atak 1k6 w mózg), derezuje go Mieczem, zjeżdża
+na węzeł i **przejmuje go Kontrolą** (węzeł „użyty w tej Turze” przez Demona blokuje obsługę
+urządzeń, nie przejęcie); tura bota Strażnika — **pośrednik tnie zaraz po `POST /chat`**, bot
+„offline”, MG gra ręką (5.6). **Runda 2:** Demon nie odbiera węzła; Kowal schodzi z podłogi
+i ładuje **amunicję przeciwpancerną** (Akcja); **F5 u Oli** w jej turze (5.8); Ola strzela wieżyczką
+w Strażnika (30 → 14, rana krytyczna). **Runda 3:** strzał przeciwpancerny Kowala (pancerz −2)
+kładzie Strażnika, Ola **wyłącza wieżyczkę**, Test Przeżywalności na pasie MG, ✕. Po walce Kowal
+wchodzi w strefę wyłączonej wieżyczki — nic nie strzela (most #33); pośrednik wraca, Strażnik
+odpowiada po polsku bez restartu serwera (5.10). Okna runu MG i Oli scenariusz odsuwa (#34).
 
 | #    | krok                                                                                   | sprawdzamy                                                                                  |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -579,7 +598,16 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - po aktywacji nowej sceny figury graczy, którzy mają figurę na innej scenie, nie przechodzą same —
   MG stawia każdą ⊕ „Postaw na scenie” z listy postaci; czy MG o tym pamięta przy stole — T5a, 27.09;
 - na ręcznej mgle MG musi odsłonić **linię** drzwi i bramy, nie tylko podłogę przed nimi, bo
-  inaczej gracz ich nie dostaje (a z #30 i tak nie ma klamki) — T5a, 27.09.
+  inaczej gracz ich nie dostaje (a z #30 i tak nie ma klamki) — T5a, 27.09;
+- na otwartym placu marsz co chwilę staje („Ktoś pojawił się w polu widzenia — marsz przerwany”:
+  cztery razy w jednej turze Kowala) — czy gracze nie uznają tego za zacięcie — T5b, 27.09;
+- netrunner celuje wieżyczką tylko w figury, które widzi **jego ciało** (lista celów z widoku
+  klienta), więc Strażnik za barierą był dla wieżyczki nietykalny, choć ona go widziała; Demon
+  strzela z tej samej wieżyczki w każdego — do oceny przy stole — T5b, 27.09;
+- Demon używa węzła na początku rundy, więc netrunner, który go przejmie, obsłuży urządzenie
+  dopiero w następnej rundzie („raz na Turę” liczone na rundę, `decyzje-i-uproszczenia.md`) — T5b, 27.09;
+- po zaznaczeniu figury broń nie zawsze sama trafia do ręki („W ręku: …” — Strażnik po marszu MG,
+  Kowal po zmianie naboju na karcie); klik w slot na pasku pomaga — T5b, 27.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -621,6 +649,38 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya
+
+**Rozstrzygnięcia MG na starcie:** poprawki #28–#33 z poprzedniej sesji domknąć osobnym commitem
+(`77e0f6f`, `dc98deb`); gateway z modelem uruchamia Claude; Ola derezuje Kruka Mieczem; walka
+kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów, ~3,5 min od `po-T5a`)
+i `instance/gateway-proxy.ts`; `walka.ts`: `nextTurn` i `clientsSeeTurn` czekają na klienta do
+30 s (Tura Demona rzuca kilka razy); hak `__vttE2E` dostał magazyn `ai` (tylko build `--mode e2e`).
+W aplikacji bez zmian. Przebieg w 5.3 wyżej. Kanarki: etykiety pięter LOD-a i węzła jawne dla
+Oli od wejścia na nie, tajne przed Markiem; Strażnik i Wieżyczka jawne od odsłonięcia placu. Konsola
+czysta u trojga. Punkt `po-T5`: walka zakończona, Strażnik Śmiertelnie ranny (Test Przeżywalności
+zdany), Kowal 7/45 na placu w strefie wyłączonej wieżyczki, Iskra 28/40 podłączona na węźle
+(przejęty), Kowal z amunicją przeciwpancerną 7/8, gateway wrócił.
+
+**Znalezione (do triażu MG):** #34 **B3?** — okno runu na pasie kolejki netrunnera i na pasku
+narzędzi/czacie MG, klamra nie pozwala go wypchnąć; #35 **B3?** — pad gatewaya w turze bota daje
+MG kod „(INTERNAL)” (zerwany SSE bez `try` w `ai/gateway.ts`) i „(AI_UNAVAILABLE)”, stan nie
+wisi; #36 **B3?** — klik w środek pola przed zaznaczoną figurą łapie uchwyt obrotu, marsz nie
+rusza; #37 **B1?** — etykieta piętra węzła w publicznym wierszu dziennika („Tura Demona”, strzał
+z węzła) dociera do Marka; #38 **B3?** — netrunnerka nie rzuca obrażeń za swoją wieżyczkę (tylko
+MG); #39 **B3?** — strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Wszystkie jako
+`test.fail`; pięć obserwacji do sekcji 8.
+
+**Suita:** 165 testów (T5b 27, w tym 6 `test.fail`; razem 11 `test.fail`). T5b od `po-T5a` zielony
+trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min). Pełny przebieg od zera przerwany na starcie (system zabił procesy w tle z braku pamięci) — do powtórzenia.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; rozpoznanie #36 i celowania
+MG w Playwright MCP (Chromium: MG, Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta.
+
+**Następny krok:** T6 (po walkach, ekonomia, rozwój, czas, kopie) od `E2E_FROM=po-T5` — albo
+najpierw poprawki #34–#39 (w tym B1 #37). Stan `po-T5` wyżej; Paser i handel czekają w T6.
+
 ### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście przez bramę, run Oli
 
 **Rozstrzygnięcia MG na starcie (dwie tury pytań):** T5 dzielimy na T5a (przed walką) i T5b
@@ -661,58 +721,3 @@ intruza”); zjazd na piętro 3 spawnuje Kruka. Znany wyciek #32 trzeba w T5b ob
 wchłonął krok obejścia), `po-T5a` nagrany na nowo: brama otwarta ręką Marka, strefa związana
 z karty, nazwa architektury jest kanarkiem dla obojga graczy — **w T5b wyciek #32 nie wymaga już
 obsługi**.
-
-### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
-
-**Rozstrzygnięcia MG na starcie:** stary `po-T4a` (ze starego `po-T3`) → najpierw przekalibrować
-T4a; rana krytyczna Kowala z ataku w walce; Ochroniarz chwyta Iskrę; Zbir ginie, Ochroniarz
-zostaje pod progiem ran, Rzeźnik i Cień uciekają; tura Rzeźnika ręką MG; pistolet Zbira dla Iskry
-(sekcja 2). Gateway z modelem na sesję (T4a 4.4 i #20).
-
-**T4a przekalibrowany:** budżet ruchu i strzał Kowala liczone z karty (Cechy losuje kreator T3a,
-więc każdy przebieg od zera ma innego Kowala — pełne przebiegi pokazały REF 6–8 i ZW 6–7; kość
-strzału i rzutu granatem dobiera się do modyfikatora z kubka, PW Kowala czyta się z karty), #16 odpowiada na „Strzelaj mimo osłony” (jako
-`test.fail` padał na tym pytaniu, nie na błędzie). Pomocniki walki wyjęte do `fixtures/walka.ts`.
-**Retest #16, #19, #20 OK** — T4a 15/15 od `po-T3`.
-
-**Zrobione:** rozpoznanie w Playwright MCP (Chromium: MG, Marek na `[::1]`), potem
-`30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 testów, ~2,5 min od `po-T4a`): Cień otwiera drzwi
-wahadłowe (marsz staje, gdy Kowal wchodzi w pole widzenia), strzał w głowę 16 > PT 15, dwie
-szóstki → „Ciało obce”, Kowal 40 → 7 (14 × 2 + 5), „Poważnie ranny” na panelu Marka, PW Kowala
-u Oli bez liczb; strzał przez ścianę — gracz `TOKEN_NOT_FOUND` (nie widzi Cienia), MG
-`NO_LINE_OF_FIRE`, Akcja zostaje; granat z podłogi 16 > PT 15 z „Poważnie ranny −2”, obszar 10 ×
-10 m na Zbira i „Ochroniarza” (alias), 28 obrażeń, Zbir → Śmiertelnie ranny, Ochroniarz 3 PW,
-ablacja o 1, granat 2 → 1; pięść Iskry (Bijatyka, pełne OB — s. 177) z raną; strzał Rzeźnika z
-przyłożenia; Test Przeżywalności Zbira na pasie MG (naturalna 10 → Śmierć, `dead` u graczy);
-„Bieg” po Akcji Ruchu; Pochwycenie z obroną Oli („Broń się”), `grappled`, „Wyrwij się” na panelu,
-karta chwytu podpisana aliasem; wezwanie MG (Atletyka PT 13, „Trzymanie −2” w rozbiciu) tylko do
-Oli; „Uwolnij”, ukrycie Rzeźnika i Cienia, ✕ kończy walkę; Kowal przeszukuje martwego Zbira
-(„Zabierz wszystko”), Iskra przyjmuje pistolet (propozycja + „Przyjmij”); kanarki czyste (łup
-tajny do przeszukania, potem tylko przed Olą), konsola bez błędów; punkt `po-T4`. Skrypt kości
-wszędzie, gdzie wynik wybiera drogę (także 2k6 tabeli ran), niezmienniki z karty.
-
-**Znalezione (triaż MG 27.09):** #23 **B2** — karta obrażeń strzału statysty podpisana pierwszą
-kartą statysty („Zbir · Ciężki pistolet” zamiast Cienia); #24 **B1** — cios wręcz w sąsiada po
-skosie „za daleko” (2,83 m po prostej); #25 **B3** — grot kierunku przykrywa środek sąsiedniej
-figury i łapie klik; #26 **B1** — „Zastosuj” tej samej karty obrażeń działa wielokrotnie (automat
-dwa razy przypadkiem: druga pięść w Rzeźnika, strzał z T4a w martwego Zbira); #27 **B1** —
-pistolet z łupu ma na karcie Iskry id `statist-weapon`, więc Ola widzi „Obrażenia” na atakach
-statystów i serwer przyjmuje jej rzut. Obserwacje do sekcji 8: brak monitu na początku tury z raną,
-czytelność karty chwytu. Siedem pułapek automatu w `testy` (losowy Kowal z kreatora, stara karta
-czatu, grot sąsiada, zmiana tury w trakcie marszu, kości tabeli ran, pozycja po turze bota, „Bieg”
-przed ruchem).
-
-**Suita:** 115 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13, T4a 15, T4b 19, T2 41;
-13 `test.fail`), pełne `pnpm test:e2e` ~14 min z botem na żywym modelu. Pięć pełnych przebiegów od
-zera: 1 i 3 padły na losowym Kowalu (ZW 6, REF 6 — poprawione, kość z kubka), **2 i 4 na gnieździe
-przez proxy `vite preview`** (`ERR_CONNECTION_REFUSED`/`TIMED_OUT` na `ws://localhost:4173` w konsoli
-MG albo Oli, raz w T3b, raz w T4b i T2c — pułapka w `testy`, do zbadania), **5 zielony 115/115**;
-„dwa razy z rzędu” jeszcze nie spełnione. T4a + T4b od `po-T3` zielone trzy razy. Oglądane: MCP —
-MG w Chromium, Marek w Chromium na `[::1]`; automat — MG i Marek w Chromium, Ola w Firefoksie,
-headless.
-
-**Następny krok:** T5 (Sieć i walka druga na „Bramie”) od `E2E_FROM=po-T4` — albo najpierw
-poprawki B1 (#13, #17, #24, #26, #27), jak po T4a. Stan `po-T4`: Kowal 7/40 z „Ciałem obcym”,
-granat 1/2, chip z łupem na karcie Kowala, pistolet Zbira u Iskry (id `statist-weapon` — #27; T5
-sprawdzi, czy Iskra z niego strzela); Iskra 35/40; Ochroniarz 3/25; Zbir martwy; Rzeźnik i Cień
-ukryci; walka zakończona, scena „Knajpa” aktywna.

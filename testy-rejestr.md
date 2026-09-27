@@ -44,6 +44,12 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 31  | T5a  | B1 (do triażu MG) | siec | Niezłamane hasło na piętrze wejścia nie blokuje zjazdu niżej | architektura z hasłem na piętrze 1 → Ola podłącza się (stoi na haśle) i klika piętro 2 → zjeżdża na Plik bez Backdoora, bez komunikatu. `netCanMove` sprawdza hasła na `path.slice(0, -1)`, a `netRunPath` zwraca drogę **bez** piętra startowego — hasło, na którym netrunner stoi, nigdy nie trafia do pętli. Podręcznik: „Nie możesz jednak ominąć przeszkody sieciowej… takiej jak hasło” (s. 198); hasło na pierwszym piętrze (typowe) nie chroni niczego | test `#31 niezłamane hasło na piętrze wejścia blokuje zjazd niżej` (`test.fail`), adnotacja „zjazd przez niezłamane hasło”: piętro 2, brak komunikatu; `shared/src/systems/cpred/netrun.ts` (`netCanMove`, `netRunPath`). Poprawka: `netCanMove` sprawdza też piętro startowe przy zjeździe niżej (test w `netrun.test.ts`); retest: test `#31` zielony — „Hasło: szlaban (PT 8) blokuje drogę” | retest OK | `77e0f6f` |
 | 32  | T5a  | B1 (do triażu MG) | siec | Nazwa architektury Sieci dociera do netrunnera-gracza | Ola podłącza się do gniazda „Bramy” → ack `netrun:start` i `netrun:sync` niosą `run.architectureName` = „Ochrona bramy KANAREK-nazwa-architektury…”, a klient ma ją w `aria-label` okna („Sieć: …”). Nagłówek pokazuje graczowi „SIEĆ”, a widok gniazda celowo wycina nazwę (`toAccessPointView`: „What the architecture is called never travels to a player”); `netRunView` (`shared`) wkłada ją każdemu | test `#32 nazwa architektury nie dociera do netrunnerki` (`test.fail`), adnotacja „wyciek u Ola” z wycinkiem ramki; Marek (bez runu) nie dostaje. Poprawka: `netRunView` daje `architectureName` tylko MG (test w `netrun.test.ts` serwera); retest: test `#32` zielony, nazwa jest kanarkiem dla obojga graczy do końca T5a | retest OK | `77e0f6f` |
 | 33  | T5a  | B2 (do triażu MG) | siec | Strefy bronionej nie da się w UI związać z węzłem kontrolnym | MG stawia strefę „Automatyczna wieżyczka” i węzeł z urządzeniem „Wieżyczka” w architekturze → karta strefy ma stanowisko, przepustki i notatkę, ale ani ona, ani pasek narzędzia nie wskazują węzła; serwer umie (`zone:update` z `architectureId/floorId/deviceId`, `zoneDisarmedByNetrunner`), więc wyłączenie wieżyczki przez netrunnera **nie** rozbraja strefy. Obejście: MG klika „Rozbrój” na karcie strefy | test `#33 karta strefy wiąże ją z węzłem kontrolnym…` (`test.fail`); scenariusz wiąże strefę zdarzeniem z gniazda MG, żeby T5b sprawdził most serwera. Poprawka: pole „Węzeł kontrolny” na karcie strefy (`SceneCardZone.tsx`); retest: test `#33` wiąże strefę z karty, krok obejścia zdjęty | retest OK | `77e0f6f` |
+| 34  | T5b  | B3 (do triażu MG) | ui | Okno runu stoi na czarnym pasie kolejki netrunnera i na pasku narzędzi oraz czacie MG | walka z netrunnerem w Sieci → okno runu Oli otwiera się w (200, 80) i przykrywa pas kolejki (y 56–112): kość „Rzuć inicjatywę” jest pod belką okna, klik trafia w okno; u MG to samo okno przykrywa pasek narzędzi mapy (mgła) i czat z kartami „Obrażenia”. Klamra okien trzyma okno całe na ekranie, więc nie da się go wypchnąć — trzeba je zwęzić uchwytem i przestawić. Obejście: przeciągnąć okno za belkę (położenie zapamiętuje się, przeżywa F5) | test `#34 okno runu netrunnerki nie zasłania czarnego pasa kolejki` (`test.fail`), adnotacja „okno i pas”: okno `{x:200,y:80,w:560,h:780}`, pas `{x:272,y:56,w:1008,h:56}`; scenariusz odsuwa oba okna (`tuckRunWindow`) | nowy | |
+| 35  | T5b  | B3 (do triażu MG) | boty | Pad gatewaya w turze bota: MG dostaje kod błędu zamiast zdania | „Graj turę” Strażnika → pośrednik zrywa połączenie w trakcie `POST /chat` → notka MG „🤖 Strażnik: tura się nie odbyła (INTERNAL).”, w logu serwera `realtime handler failed bot:play-turn TypeError: terminated` (zerwany strumień SSE w `ai/gateway.ts`: pętla `parseSse` bez `try`, więc błąd nie staje się `AI_UNREACHABLE`); drugie „Graj turę” przy martwym gatewayu → „(AI_UNAVAILABLE).” — `BotTurnButton` wkleja kod. Stan nie wisi: przycisk wraca, boty „offline”, żadnej propozycji, MG gra ręką. Ta sama pętla SSE obsługuje asystenta zasad i inne strumienie — do sprawdzenia przy poprawce | test `#35 pad gatewaya w turze bota: MG dostaje zdanie, a nie kod błędu` (`test.fail`); `.e2e/logs/server.log` (lokalnie, poziom 50) | nowy | |
+| 36  | T5b  | B3 (do triażu MG) | mapa | Klik w środek pola tuż przed zaznaczoną figurą nie rusza jej (łapie uchwyt obrotu) | Kowal zaznaczony, patrzy na wschód (90°) → klik w środek pola na wschód obok → nic: marsz nie rusza, figura się nie obraca, żadnej notki; klik w dolną część tego samego pola rusza. `facingKnob` (27j, od 26.09 grot jest uchwytem): przy oddalonej kamerze punkt chwytu leży w odległości `outer + NOSE_GAP + tip/2` od środka, a `reach` ≥ 10 px ekranu — sięga środka sąsiedniego pola. W walce wygląda jak „figura nie chce iść o jedno pole” (w T5b trzy próby pod rząd) | test `#36 klik w środek pola przed figurą rusza ją…` (`test.fail`), adnotacja „patrzy 90°, przed [25,11], po [25,11]”; oględziny MCP (Chromium, Marek na `[::1]`): klik w (822, 506) — nic, w (822, 522) — marsz | nowy | |
+| 37  | T5b  | B1 (do triażu MG) | siec | Opis piętra węzła kontrolnego dociera do gracza spoza runu | Ola przejmuje węzeł („Węzeł: wieżyczka …” — etykieta piętra z edytora Architektury) → „Tura Demona” (nieudany Test Kontroli) i strzał Oli z wieżyczki piszą wiersz dziennika `action` do całego stołu z etykietą piętra: „Węzeł: wieżyczka KANAREK-pietro-wezla — Test Kontroli nieudany (PT 13). · Paf chybia.” i „Węzeł: wieżyczka KANAREK-… · Wieżyczka nad placem — strzał…”. Marek (nie jest w Sieci) dostaje etykietę piętra, którą widzi tylko netrunnerka, która na nie weszła (26b: „reszta stołu widzi skrót, nie zawartość Architektury”). `nodeName` w `realtime/netdemons.ts` (Tura Demona) i `realtime/netdevices.ts` (`${nodeName} · ${summary}`) | test `#37 opis piętra węzła nie dociera do gracza spoza runu` (`test.fail`), adnotacja „wyciek u Marek” z ramką `chat:message` (`kind: action`, `note`) | nowy | |
+| 38  | T5b  | B3 (do triażu MG) | siec | Netrunnerka nie rzuca obrażeń za strzał wieżyczki, którą prowadzi | Ola przejmuje węzeł i strzela wieżyczką w Strażnika (jej REF i Broń krótka, trafienie) → „Obrażenia 4k6” na karcie ma tylko MG (MG: 1, Ola: 0, Marek: 0). Od #23/#27 strzelca karty wskazuje `attackerTokenId` = żeton wieżyczki bez właściciela. Obejście: rzuca MG. Może być zamierzone — do decyzji MG | test `#38 netrunnerka rzuca obrażenia za strzał wieżyczki…` (`test.fail`), adnotacja „przycisk „Obrażenia” za wieżyczkę” | nowy | |
+| 39  | T5b  | B3 (do triażu MG) | siec | Strzał wieżyczki ze strefy idzie na konto gracza, który w nią wszedł | Kowal (Marek) wchodzi w strefę „Automatyczna wieżyczka” → karta strzału na czacie: „Wieżyczka (Marek)”, autor wiadomości = konto Marka (kości, animacja i historia rzutów Marka), a karta obrażeń tej samej wieżyczki — „Wieżyczka (MG)”. `runZonesAfterMove` → `fireZone` → `fireDevice` z użytkownikiem, który ruszył figurą | test `#39 strzał wieżyczki ze strefy nie idzie na konto gracza…` (`test.fail`), adnotacja „autor karty”: `{"name":"Marek","role":"PLAYER"}` | nowy | |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -110,6 +116,61 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 ## Starsze notatki sesji testowych
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
+
+### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
+
+**Rozstrzygnięcia MG na starcie:** stary `po-T4a` (ze starego `po-T3`) → najpierw przekalibrować
+T4a; rana krytyczna Kowala z ataku w walce; Ochroniarz chwyta Iskrę; Zbir ginie, Ochroniarz
+zostaje pod progiem ran, Rzeźnik i Cień uciekają; tura Rzeźnika ręką MG; pistolet Zbira dla Iskry
+(sekcja 2). Gateway z modelem na sesję (T4a 4.4 i #20).
+
+**T4a przekalibrowany:** budżet ruchu i strzał Kowala liczone z karty (Cechy losuje kreator T3a,
+więc każdy przebieg od zera ma innego Kowala — pełne przebiegi pokazały REF 6–8 i ZW 6–7; kość
+strzału i rzutu granatem dobiera się do modyfikatora z kubka, PW Kowala czyta się z karty), #16 odpowiada na „Strzelaj mimo osłony” (jako
+`test.fail` padał na tym pytaniu, nie na błędzie). Pomocniki walki wyjęte do `fixtures/walka.ts`.
+**Retest #16, #19, #20 OK** — T4a 15/15 od `po-T3`.
+
+**Zrobione:** rozpoznanie w Playwright MCP (Chromium: MG, Marek na `[::1]`), potem
+`30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 testów, ~2,5 min od `po-T4a`): Cień otwiera drzwi
+wahadłowe (marsz staje, gdy Kowal wchodzi w pole widzenia), strzał w głowę 16 > PT 15, dwie
+szóstki → „Ciało obce”, Kowal 40 → 7 (14 × 2 + 5), „Poważnie ranny” na panelu Marka, PW Kowala
+u Oli bez liczb; strzał przez ścianę — gracz `TOKEN_NOT_FOUND` (nie widzi Cienia), MG
+`NO_LINE_OF_FIRE`, Akcja zostaje; granat z podłogi 16 > PT 15 z „Poważnie ranny −2”, obszar 10 ×
+10 m na Zbira i „Ochroniarza” (alias), 28 obrażeń, Zbir → Śmiertelnie ranny, Ochroniarz 3 PW,
+ablacja o 1, granat 2 → 1; pięść Iskry (Bijatyka, pełne OB — s. 177) z raną; strzał Rzeźnika z
+przyłożenia; Test Przeżywalności Zbira na pasie MG (naturalna 10 → Śmierć, `dead` u graczy);
+„Bieg” po Akcji Ruchu; Pochwycenie z obroną Oli („Broń się”), `grappled`, „Wyrwij się” na panelu,
+karta chwytu podpisana aliasem; wezwanie MG (Atletyka PT 13, „Trzymanie −2” w rozbiciu) tylko do
+Oli; „Uwolnij”, ukrycie Rzeźnika i Cienia, ✕ kończy walkę; Kowal przeszukuje martwego Zbira
+(„Zabierz wszystko”), Iskra przyjmuje pistolet (propozycja + „Przyjmij”); kanarki czyste (łup
+tajny do przeszukania, potem tylko przed Olą), konsola bez błędów; punkt `po-T4`. Skrypt kości
+wszędzie, gdzie wynik wybiera drogę (także 2k6 tabeli ran), niezmienniki z karty.
+
+**Znalezione (triaż MG 27.09):** #23 **B2** — karta obrażeń strzału statysty podpisana pierwszą
+kartą statysty („Zbir · Ciężki pistolet” zamiast Cienia); #24 **B1** — cios wręcz w sąsiada po
+skosie „za daleko” (2,83 m po prostej); #25 **B3** — grot kierunku przykrywa środek sąsiedniej
+figury i łapie klik; #26 **B1** — „Zastosuj” tej samej karty obrażeń działa wielokrotnie (automat
+dwa razy przypadkiem: druga pięść w Rzeźnika, strzał z T4a w martwego Zbira); #27 **B1** —
+pistolet z łupu ma na karcie Iskry id `statist-weapon`, więc Ola widzi „Obrażenia” na atakach
+statystów i serwer przyjmuje jej rzut. Obserwacje do sekcji 8: brak monitu na początku tury z raną,
+czytelność karty chwytu. Siedem pułapek automatu w `testy` (losowy Kowal z kreatora, stara karta
+czatu, grot sąsiada, zmiana tury w trakcie marszu, kości tabeli ran, pozycja po turze bota, „Bieg”
+przed ruchem).
+
+**Suita:** 115 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13, T4a 15, T4b 19, T2 41;
+13 `test.fail`), pełne `pnpm test:e2e` ~14 min z botem na żywym modelu. Pięć pełnych przebiegów od
+zera: 1 i 3 padły na losowym Kowalu (ZW 6, REF 6 — poprawione, kość z kubka), **2 i 4 na gnieździe
+przez proxy `vite preview`** (`ERR_CONNECTION_REFUSED`/`TIMED_OUT` na `ws://localhost:4173` w konsoli
+MG albo Oli, raz w T3b, raz w T4b i T2c — pułapka w `testy`, do zbadania), **5 zielony 115/115**;
+„dwa razy z rzędu” jeszcze nie spełnione. T4a + T4b od `po-T3` zielone trzy razy. Oglądane: MCP —
+MG w Chromium, Marek w Chromium na `[::1]`; automat — MG i Marek w Chromium, Ola w Firefoksie,
+headless.
+
+**Następny krok:** T5 (Sieć i walka druga na „Bramie”) od `E2E_FROM=po-T4` — albo najpierw
+poprawki B1 (#13, #17, #24, #26, #27), jak po T4a. Stan `po-T4`: Kowal 7/40 z „Ciałem obcym”,
+granat 1/2, chip z łupem na karcie Kowala, pistolet Zbira u Iskry (id `statist-weapon` — #27; T5
+sprawdzi, czy Iskra z niego strzela); Iskra 35/40; Ochroniarz 3/25; Zbir martwy; Rzeźnik i Cień
+ukryci; walka zakończona, scena „Knajpa” aktywna.
 
 ### Sesja 26.09 — T4a: inicjatywa i pierwsze tury walki w „Knajpie”
 
