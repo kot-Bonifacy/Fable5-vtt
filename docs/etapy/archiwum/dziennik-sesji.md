@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 26.09 (czwarta) — etap 43a: portrety z ranami w „Walce”, PW dla stołu, „Postacie”
+
+**Zlecenie MG (poza planem):** ładniejsze przedstawienie walki w zakładce „Walka” — wyraźne
+portrety czerwieniejące od dołu z obrażeniami, czarno-białe po śmierci, z ikonami efektów, bez
+inicjatywy (jest na pasie); „Postacie” w dwa wiersze z większym obrazkiem. W trakcie: obrażenia
+widać też na żetonach; akcje grającego nie mogą leżeć daleko pod jego portretem. Pytania zadane
+w trzech turach — decyzje w pliku etapu; podział na **43a / 43b / 43c** zaakceptowany.
+
+**Zrobione (43a):** `TokenView.hpShare` z serwera (ułamek + szczebel, bez liczb) i obrączka PW
+na cudzych żetonach; nowa „Walka” (`CombatantCard`, `WoundPortrait`, `portraitMarks`, akcje pod
+kartą grającego); narzędzia inicjatywy na `CombatBar` (klik w liczbę, „Rzuć wszystkim”, ⟳,
+„Remis”, przeciąganie); „Postacie” jako karty (`character-row--card`, `OwnerPicker`); hak
+`usePortraitFrameStyle` wspólny z banerem lewego panelu. Spec T4a klika kubek na pasie.
+
+**Weryfikacja:** shared 2240 (+3), serwer 1249 (+1 test i asercje `hpShare`), klient 300; `tsc`,
+ESLint, Prettier czyste w pakietach (pliki zapisane Pythonem miały CRLF — naprawione). Oglądane
+w Chromium (MG, noc i dzień) i Firefoksie (gracz Mara). Na „Test2” powstały i **zostały usunięte**
+statysty Ochroniarz/Zbir/Snajper; Portos wrócił do 30/30 bez naklejek, walka zakończona.
+`dev.db` poza tym nietknięta.
+
 ### Sesja 26.09 (trzecia) — odciski butów: zakręty łukiem, poświata gaśnie od najstarszych
 
 **Zlecenie MG (poza etapami):** poprawić odciski butów przy ruchu figury — „zakręty mi się nie

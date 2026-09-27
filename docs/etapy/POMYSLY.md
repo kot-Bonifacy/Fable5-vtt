@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**27.09.2026 (poprawki po T4b) — pięść bez wiersza na karcie (dalszy ciąg #17).** Od poprawki #17
+kompendium ma „Bijatykę” i „Sztuki walki” za 0 ed, ale postać bez broni dalej potrzebuje wiersza
+na karcie (gracz bierze go sam ze sklepu, MG „+ Broń z katalogu”). Podręcznik daje pięść każdemu,
+więc pełne domknięcie to syntetyczny slot „Pięści” na pasku (Bijatyka, a przy Sztukach walki
+na karcie — i one), bez wiersza w ekwipunku: `cpredHotbarSlots`, `resolveWeaponRow` na serwerze
+i u klienta, rzut obrażeń (`weaponRowId`) i ręce (`drawnWeaponRowIds`). Do decyzji MG.
+
 **25.09.2026 (czternasta sesja) — Do sprawdzenia przy stole** (resztki `zaleglosci.md`; automat
 tego nie oceni, szczegóły w `archiwum/zamkniete-zaleglosci.md`, sekcja czternastej sesji):
 (1) **siła kafla papieru** — `DAY`/`NIGHT` w `tools/art/chrome-paper.py`; (2) **sesja zero

@@ -39,13 +39,11 @@ kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
 rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a i T4b zamknięte** — T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
-obecne `po-T3`, retest #16, #19, #20 OK). **Otwarte B1:** #13 (zalew dławi innych), #17 (brak broni
-typu Bijatyka), #24 (cios w sąsiada po skosie „za daleko” — odległość po prostej), #26 („Zastosuj”
-tej samej karty obrażeń działa wielokrotnie), #27 (broń z łupu statysty niesie id `statist-weapon`
-i gracz rzuca obrażenia cudzych ataków — ta sama przyczyna co #23, B2); B2: #11, #12, #18, #23;
-B3: #10, #15, #25; zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
+(`574cf4d`). **Otwarte zostają tylko #10–#13** (B1 #13 zalew, B2 #11 i #12, B3 #10) — wszystkie
+na etap „Konta MG” (zadania Z5–Z8); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T5** (Sieć
-i walka druga na „Bramie”) od punktu `po-T4` — albo najpierw poprawki B1, jak po T4a (wybiera MG).
+i walka druga na „Bramie”) od punktu `po-T4`.
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -109,8 +107,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2240** w `shared`, **1249** na serwerze, **300** u klienta,
-**59** w gatewayu (26.09, 43a), **115** E2E (13 `test.fail`, 27.09, T4b — ostatni pełny przebieg zielony) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2243** w `shared`, **1253** na serwerze, **300** u klienta,
+**59** w gatewayu (27.09, poprawki po T4b), **115** E2E (5 `test.fail` — #10–#13, 27.09 — przebieg od `po-T3` i `@szybkie` od zera zielone) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -132,21 +130,21 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 49   | 20      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 50   | 20      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 12   | 17      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 13   | 17      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 24   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 9    | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 36   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 39   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 45   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 16   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 17   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 1    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 4    | 7       |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 3    | 9       |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 41      |
@@ -155,6 +153,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.09 — poprawki po T4b: #15, #17, #18, #23–#27 (retest E2E OK)
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, ile zmieści się w sesji. #10–#13 zostały
+na etap „Konta MG” (decyzje MG z 26.09, Z5–Z8); wzięte B1 walki, dane, grot i zbiorczy #15.
+
+**Zrobione (`574cf4d`):** strzelca karty ataku wskazuje `attackerTokenId` — klient (`AttackRow`)
+i serwer (`requireAttackShooter`, `NOT_THE_SHOOTER`), a łup nie niesie id `statist-weapon`
+(#23, #27); `damage:apply` stosuje kartę do celu raz, do „Cofnij” (`DAMAGE_ALREADY_APPLIED`, #26);
+zasięg ręki po polach ze skosami (`reachMetresBetweenTokens`, `CpredAttackTarget.reachMetres`) —
+atak wręcz, Pochwycenie, Ustabilizowanie, zastrzyk, przekazanie, handel (#24); grot kierunku
+z `eventMode = 'none'` (#25); `PrismaClientValidationError` → `BAD_REQUEST` w rejestrze zdarzeń,
+`ai:ask`/`rules:ask` sprawdzają typ napisu (#15); `parse-manual.py` daje wpisy „Bijatyka”,
+„Sztuki walki” (0 ed) i „Granat” (10 ed na sztukę, cena w prywatnym `manual-overrides.json`),
+`data/private` przegenerowane (#17, #18). Umowy w `atak`, `ekwipunek`, `serwer`, `mapa`, `dane`;
+pięść bez wiersza na karcie → `POMYSLY.md` (decyzja MG). **Cena granatu to mój odczyt s. 344–345**
+— do potwierdzenia przez MG. Działający serwer dev trzeba zrestartować, żeby wczytał nowe kompendium.
+
+**Weryfikacja:** shared 2243 (+3), serwer 1253 (+5, w tym `junk-payloads.test.ts`; test 42b
+cofa pierwsze trafienie przed drugim „Zastosuj”), klient 300; ESLint, Prettier, `tsc` czyste
+w czterech pakietach. Testy #26 i #27 padają po cofnięciu poprawek. E2E: `E2E_FROM=po-T3` —
+107 zaliczonych (T3a–T4b i T2, bez `test.fail()` dla naprawionych), `@szybkie` od zera 12/12.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; #25 retestowany kliknięciem
+w środek żetonu przykrytego grotem (T4b, Chromium). `dev.db` nietknięta.
 
 ### Sesja 27.09 — T4b: walka pierwsza do końca (rany, granat, zwarcie, łup); T4a przekalibrowany
 
@@ -172,23 +194,3 @@ retest #16/#19/#20 OK; nowy `30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 test
 (14 min); dwa z pięciu padły na gnieździe przez proxy `vite preview` — pułapka w `testy`, „zielono
 dwa razy z rzędu” do powtórki. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane: MCP — MG w Chromium, Marek w Chromium na `[::1]`;
 automat — MG i Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta (tylko `e2e.db`).
-
-### Sesja 26.09 (czwarta) — etap 43a: portrety z ranami w „Walce”, PW dla stołu, „Postacie”
-
-**Zlecenie MG (poza planem):** ładniejsze przedstawienie walki w zakładce „Walka” — wyraźne
-portrety czerwieniejące od dołu z obrażeniami, czarno-białe po śmierci, z ikonami efektów, bez
-inicjatywy (jest na pasie); „Postacie” w dwa wiersze z większym obrazkiem. W trakcie: obrażenia
-widać też na żetonach; akcje grającego nie mogą leżeć daleko pod jego portretem. Pytania zadane
-w trzech turach — decyzje w pliku etapu; podział na **43a / 43b / 43c** zaakceptowany.
-
-**Zrobione (43a):** `TokenView.hpShare` z serwera (ułamek + szczebel, bez liczb) i obrączka PW
-na cudzych żetonach; nowa „Walka” (`CombatantCard`, `WoundPortrait`, `portraitMarks`, akcje pod
-kartą grającego); narzędzia inicjatywy na `CombatBar` (klik w liczbę, „Rzuć wszystkim”, ⟳,
-„Remis”, przeciąganie); „Postacie” jako karty (`character-row--card`, `OwnerPicker`); hak
-`usePortraitFrameStyle` wspólny z banerem lewego panelu. Spec T4a klika kubek na pasie.
-
-**Weryfikacja:** shared 2240 (+3), serwer 1249 (+1 test i asercje `hpShare`), klient 300; `tsc`,
-ESLint, Prettier czyste w pakietach (pliki zapisane Pythonem miały CRLF — naprawione). Oglądane
-w Chromium (MG, noc i dzień) i Firefoksie (gracz Mara). Na „Test2” powstały i **zostały usunięte**
-statysty Ochroniarz/Zbir/Snajper; Portos wrócił do 30/30 bez naklejek, walka zakończona.
-`dev.db` poza tym nietknięta.
