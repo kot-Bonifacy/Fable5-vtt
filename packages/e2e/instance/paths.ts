@@ -32,6 +32,8 @@ export const DATA_PRIVATE_DIR = join(REPO_DIR, 'data/private');
 
 /** 3001 i 5173 zostają dla `pnpm dev` MG. */
 export const SERVER_PORT = 3101;
+/** Pośrednik TCP do AI Gatewaya (T5b: pad gatewaya w trakcie tury bota). */
+export const GATEWAY_PROXY_PORT = 3108;
 export const CLIENT_PORT = 4173;
 export const SERVER_URL = `http://127.0.0.1:${SERVER_PORT}`;
 export const BASE_URL = `http://localhost:${CLIENT_PORT}`;

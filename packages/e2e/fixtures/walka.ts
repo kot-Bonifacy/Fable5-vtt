@@ -166,6 +166,8 @@ export async function nextTurn(mg: Actor) {
       async () =>
         (await mg.store<{ combat: { activeCombatantId: string | null } | null }>('combat'))?.combat
           ?.activeCombatantId,
+      // Klient czeka z nową turą na koniec animacji kości (Tura Demona rzuca kilka razy).
+      { timeout: 30_000 },
     )
     .toBe(now);
 }
@@ -251,7 +253,11 @@ export async function freshCard(page: Page, title: string, seen: number) {
   return cards.nth(seen);
 }
 
-/** Klienci widzą tę samą turę co baza — zanim któryś z nich rozkaże marsz. */
+/**
+ * Klienci widzą tę samą turę co baza — zanim któryś z nich rozkaże marsz. Zmiana
+ * tury czeka u klienta na koniec animacji kości poprzedniej tury (Tura Demona
+ * rzuca kilka razy), więc limit jest jak dla karty rzutu.
+ */
 export async function clientsSeeTurn(...actors: Actor[]): Promise<void> {
   const now = combatRow()?.activeCombatantId;
   for (const actor of actors) {
@@ -260,7 +266,7 @@ export async function clientsSeeTurn(...actors: Actor[]): Promise<void> {
         async () =>
           (await actor.store<{ combat: { activeCombatantId: string | null } | null }>('combat'))
             ?.combat?.activeCombatantId,
-        { message: actor.name },
+        { message: actor.name, timeout: 30_000 },
       )
       .toBe(now);
   }

@@ -398,6 +398,8 @@ export const BRAMA = {
   /** Mgła: droga od miejsca startu z linią bramy (inaczej gracz jej nie dostaje), potem pas placu. */
   roadReveal: { from: { x: 560, y: 440 }, to: { x: 1000, y: 1080 } },
   yardReveal: { from: { x: 662, y: 360 }, to: { x: 898, y: 470 } },
+  /** T5b: cały plac za barierą — Strażnik przy budce i Wieżyczka pod magazynem. */
+  yardWide: { from: { x: 110, y: 325 }, to: { x: 1190, y: 470 } },
   /** Parking na zachodzie — zostaje pod mgłą (odmowa `MOVE_INTO_FOG`). */
   inFog: { x: 300, y: 800 },
 } as const;

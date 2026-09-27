@@ -1,4 +1,5 @@
 import type { ScenePoint } from '@vtt/shared';
+import { useAiStore } from './stores/aiStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
@@ -45,6 +46,7 @@ export function installE2EHook(): void {
     window.__vttE2E = {
       worldToClient: (point) => mapToClient?.(point) ?? null,
       stores: {
+        ai: useAiStore,
         auth: useAuthStore,
         bot: useBotStore,
         character: useCharacterStore,
