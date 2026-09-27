@@ -345,11 +345,11 @@ gniazdo, rysuje dwie ukryte strefy (ostrzał wieżyczki ze stanowiskiem i podło
 między bramą a budką), zakłada bota „Strażnik” (Propozycja, w scenie „Brama”) i dopisuje
 Kowalowi amunicję przeciwpancerną. Po aktywacji **MG stawia figury graczy ręką** (⊕ „Postaw na
 scenie” — Kowal i Iskra mają figury w „Knajpie”, więc #9 ich nie przenosi), odsłania drogę z linią
-bramy, **sam otwiera bramę** (obejście #30) i odsłania pas placu; Marek wchodzi na plac, Ola
-Skanerem znajduje gniazdo, podłącza się, łamie hasło i rozpoznaje Plik. Strefę wieżyczki automat
-wiąże z węzłem zdarzeniem z gniazda MG (obejście #33), żeby T5b sprawdził most serwera.
-Odmowa skoku w mgłę ma dla klienta kod `MOVE_REFUSED` (`MOVE_INTO_FOG` trafia na kartę odmowy
-tylko w walce).
+bramy i pas placu; **Marek otwiera bramę swoją klamką** (od poprawki #30; wcześniej robił to MG)
+i wchodzi na plac, Ola Skanerem znajduje gniazdo, podłącza się, łamie hasło i rozpoznaje Plik.
+MG wiąże strefę wieżyczki z węzłem **polem „Węzeł kontrolny” na karcie strefy** (od poprawki
+#33), żeby T5b sprawdził most serwera. Odmowa skoku w mgłę ma dla klienta kod `MOVE_INTO_FOG`
+także poza walką (od #29), a karta odmowy ze zdaniem powstaje tylko w walce.
 
 | #    | krok                                                                                   | sprawdzamy                                                                                  |
 | ---- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -656,6 +656,11 @@ Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; `dev.db`
 Strefa wieżyczki jest już związana z węzłem (obejście #33); Demon czuwa (MG: „Demon wykrywa
 intruza”); zjazd na piętro 3 spawnuje Kruka. Znany wyciek #32 trzeba w T5b obsłużyć jak w T5a
 (kanarek `nazwa-architektury` tajny tylko przed Markiem). Albo najpierw poprawki #28–#33.
+
+**Aktualizacja 27.09 (poprawki #28–#33, retest OK):** T5a ma 23 testy bez `test.fail` (#33
+wchłonął krok obejścia), `po-T5a` nagrany na nowo: brama otwarta ręką Marka, strefa związana
+z karty, nazwa architektury jest kanarkiem dla obojga graczy — **w T5b wyciek #32 nie wymaga już
+obsługi**.
 
 ### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
 

@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 27.09 — poprawki po T4b: #15, #17, #18, #23–#27 (retest E2E OK)
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`, ile zmieści się w sesji. #10–#13 zostały
+na etap „Konta MG” (decyzje MG z 26.09, Z5–Z8); wzięte B1 walki, dane, grot i zbiorczy #15.
+
+**Zrobione (`574cf4d`):** strzelca karty ataku wskazuje `attackerTokenId` — klient (`AttackRow`)
+i serwer (`requireAttackShooter`, `NOT_THE_SHOOTER`), a łup nie niesie id `statist-weapon`
+(#23, #27); `damage:apply` stosuje kartę do celu raz, do „Cofnij” (`DAMAGE_ALREADY_APPLIED`, #26);
+zasięg ręki po polach ze skosami (`reachMetresBetweenTokens`, `CpredAttackTarget.reachMetres`) —
+atak wręcz, Pochwycenie, Ustabilizowanie, zastrzyk, przekazanie, handel (#24); grot kierunku
+z `eventMode = 'none'` (#25); `PrismaClientValidationError` → `BAD_REQUEST` w rejestrze zdarzeń,
+`ai:ask`/`rules:ask` sprawdzają typ napisu (#15); `parse-manual.py` daje wpisy „Bijatyka”,
+„Sztuki walki” (0 ed) i „Granat” (10 ed na sztukę, cena w prywatnym `manual-overrides.json`),
+`data/private` przegenerowane (#17, #18). Umowy w `atak`, `ekwipunek`, `serwer`, `mapa`, `dane`;
+pięść bez wiersza na karcie → `POMYSLY.md` (decyzja MG). **Cena granatu to mój odczyt s. 344–345**
+— do potwierdzenia przez MG. Działający serwer dev trzeba zrestartować, żeby wczytał nowe kompendium.
+
+**Weryfikacja:** shared 2243 (+3), serwer 1253 (+5, w tym `junk-payloads.test.ts`; test 42b
+cofa pierwsze trafienie przed drugim „Zastosuj”), klient 300; ESLint, Prettier, `tsc` czyste
+w czterech pakietach. Testy #26 i #27 padają po cofnięciu poprawek. E2E: `E2E_FROM=po-T3` —
+107 zaliczonych (T3a–T4b i T2, bez `test.fail()` dla naprawionych), `@szybkie` od zera 12/12.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; #25 retestowany kliknięciem
+w środek żetonu przykrytego grotem (T4b, Chromium). `dev.db` nietknięta.
+
 ### Sesja 27.09 — T4b: walka pierwsza do końca (rany, granat, zwarcie, łup); T4a przekalibrowany
 
 **Zlecenie MG:** etap testowy T4b (`testy.md` 5.2, kroki 4.6–4.10). Pytania w dwóch turach —
