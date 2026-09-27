@@ -21,7 +21,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T3a  | Rozgrywka 1a/4: kampania, gracze, zgody, oba kreatory     | ✅     | 26.09.2026 |
 | T3b  | Rozgrywka 1b/4: sceny, figury, boty, aktywacja, czat      | ✅     | 26.09.2026 |
 | T4a  | Rozgrywka 2a/4: walka pierwsza — inicjatywa, tury 1. rundy | ✅     | 26.09.2026 |
-| T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ⬜     |            |
+| T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ✅     | 27.09.2026 |
 | T5   | Rozgrywka 3/4: Sieć i walka druga na scenie „Brama”       | ⬜     |            |
 | T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
@@ -68,6 +68,9 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | broń w T4              | granat Kowala i pięści Iskry z **własnych wpisów Kompendium MG** — katalog z podręcznika ich nie ma (#17, #18); Zmysł Walki Kowala: Błyskawiczna reakcja 1 + Precyzyjny atak 3; „Cień” w kolejce **od startu, ukryty** (decyzje MG z 26.09, sesja T4a) |
 | tura bota              | serwer przepuszcza nielegalną akcję bota = **B1**; tura wisi albo MG nie zamknie jej bez F5 = **B2**; głupia, ale legalna taktyka = obserwacja w sekcji 8 (decyzja MG z 26.09, sesja T4a) |
 | triaż #17              | postać bez broni nie uderzy pięścią (brak wpisu Bijatyki) = **B1**, granat bez wpisu (#18) = B2 (decyzja MG z 26.09, sesja T4a) |
+| T4a przed T4b          | `po-T4a` powstał ze starego `po-T3` — **najpierw przekalibrowanie T4a** pod obecne `po-T3` (liczby z karty, nie na sztywno), retest #16/#19/#20, świeży `po-T4a`, potem T4b (decyzja MG z 27.09, sesja T4b) |
+| przebieg T4b           | rana krytyczna Kowala **z ataku w walce** (Cień, strzał w głowę); **Ochroniarz chwyta Iskrę**, ona broni się ze swojej karty; **Zbir ginie** (granat, nieudany Test Przeżywalności), Ochroniarz zostaje pod progiem ran, **Rzeźnik i Cień uciekają** (ukryci), walkę kończy MG; tura Rzeźnika **ręką MG**; Kowal daje Iskrze **pistolet Zbira** (decyzje MG z 27.09, sesja T4b) |
+| triaż #23–#27          | #23 = **B2** (z ukrytą figurą jako pierwszą kartą byłby B1), #24 = **B1** (sąsiad po skosie jest w zasięgu ręki), #25 = **B3**, #26 = **B1** jak #20, #27 = **B1** (gracz wykonuje cudzą akcję) — decyzje MG z 27.09, sesja T4b |
 | triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
@@ -165,6 +168,8 @@ packages/e2e/
     security.ts            T2: rejestr zdarzeń serwera (`EVENTS`), śmieciowe ładunki, log serwera, surowe gniazdo, PNG
     nocna-zmiana.ts        start z `po-T3` (martwy gateway), id po nazwach, logowanie MG i gracza przez API
     table.ts               czat, rzut kubkiem, kampania i zaproszenie przez API
+    walka.ts               T4: stan walki z bazy, rzut i czekanie na wiersz, tury, celowanie, karty czatu
+                           z rozróżnieniem liter (`chatCards`, `freshCard`), kamera bliżej (`zoomAt`)
     vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
   specs/
     00-baseline/           build, start, /health, pusta baza, 66 umiejętności, hak poza buildem produkcyjnym
@@ -292,6 +297,13 @@ Strony: Marek i Ola kontra dwaj statyści i bot „Rzeźnik”; „Cień” ukry
 z `po-T4a`). Przesunięcia z T4a do T4b: **strzał przez ścianę** (w 4.2 zamiast niego ukryty cel —
 `TOKEN_NOT_FOUND`; ściana dopiero na odsłoniętym Cieniu w kuchni, za zamkniętymi drzwiami) i **cios
 pięścią, który trafia** (w 4.3 tylko odmowa „za daleko” — Iskra stoi na tarasie).
+
+**Przebieg T4b (sesja 27.09):** koniec 1. rundy (Cień otwiera drzwi wahadłowe kuchni, strzela
+Kowalowi w głowę i je zatrzaskuje), runda 2 (strzał przez ścianę — gracz `TOKEN_NOT_FOUND`, bo
+Cienia w ciemnej kuchni nie widzi, MG `NO_LINE_OF_FIRE`; granat w Zbira i Ochroniarza; Iskra trafia
+pięścią Rzeźnika; Rzeźnik ręką MG; Test Przeżywalności Zbira; bieg Ochroniarza), runda 3
+(Pochwycenie, wezwanie MG do Testu), koniec walki, łup i przekazanie. Rzeźnika, którego miejsce po
+turze bota wybiera żywy model, MG na starcie T4b stawia w drzwiach tarasu.
 
 | #    | krok                                                                                                  | sprawdzamy                                                                                 |
 | ---- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -531,7 +543,12 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
   „Zatwierdzone” po kilkunastu sekundach, co kusi do drugiego kliknięcia (#20) — T4a, 26.09;
 - w turze ukrytej figury gracze widzą, że nikt nie ma tury (brak podświetlenia na pasie) — to
   zdradza, że ktoś ukryty działa; do oceny przy stole — T4a, 26.09;
-- odmiana w ustach bota: „Otwieram ogień do Iskrzy” (Rzeźnik, tura w walce) — T4a, 26.09.
+- odmiana w ustach bota: „Otwieram ogień do Iskrzy” (Rzeźnik, tura w walce) — T4a, 26.09;
+- na początku tury Kowala z raną krytyczną („Ciało obce”) i stanem „Poważnie ranny” pas MG nie ma
+  żadnego monitu, a gracz — tylko naklejkę „Poważnie ranny” na panelu; kara działa (−2 w rozbiciu
+  rzutu), ale o dodatkowych obrażeniach „Ciała obcego” po biegu nikt nie przypomina — T4b, 27.09;
+- karta Pochwycenia: „Udane · PT 13 (ZW + Bijatyka celu) · Obrona Iskra: 10 → mimo wszystko
+  udane” przy wyniku 12 — czy gracz zrozumie, dlaczego chwyt poniżej PT się udał — T4b, 27.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -573,43 +590,82 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
-### Sesja 26.09 — T2: bezpieczeństwo i autoryzacja
+### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
 
-**Rozstrzygnięcia MG na starcie:** gniazdo żyjące po wylogowaniu = B2 + zadanie; unieważnienie
-zaproszenia zamyka tylko nowe wejścia; śmieciowe ładunki także w zdarzenia MG; próg zalewu 5 s
-(sekcja 2). Gateway w T2 celowo martwy (`DEAD_GATEWAY`) — śmieci w zdarzeniach botów mają paść szybko.
+**Rozstrzygnięcia MG na starcie:** stary `po-T4a` (ze starego `po-T3`) → najpierw przekalibrować
+T4a; rana krytyczna Kowala z ataku w walce; Ochroniarz chwyta Iskrę; Zbir ginie, Ochroniarz
+zostaje pod progiem ran, Rzeźnik i Cień uciekają; tura Rzeźnika ręką MG; pistolet Zbira dla Iskry
+(sekcja 2). Gateway z modelem na sesję (T4a 4.4 i #20).
 
-**Zrobione:** `specs/35-bezpieczenstwo` (41 testów, ~1,5 min z trzema odtworzeniami `po-T3`):
-`t2a-http` — uploady (401/403, nie-obraz, SVG ze skryptem, 413, bomba wymiarów, `../` w nazwie,
-lista katalogu i wyjście poza `/uploads/` i `/public/`), import muzyki (tylko MG, adresy
-wewnętrzne), zaproszenia (unieważnione, wygasłe, cudza kampania, imię „MG”), ciasteczko
-(flagi, podpis, podróbki, domyślny sekret), wylogowanie i wygaśnięcie sesji (restart z TTL 2,6 s),
-produkcja z domyślnym `COOKIE_SECRET`, nagłówki i `Origin`, 30 złych haseł MG; `t2b-gniazdo` —
-macierz ról z **rejestru serwera** (136 zdarzeń MG × 2 ładunki z gniazda Marka, baza bez zmian),
-przegląd „cudzego” (95 otwartych zdarzeń Oli z id Kowala), własność wg planu (ruch, karta, rzut,
-ekwipunek, eurodolce, handel Kowal ↔ Paser, wezwanie do Testu), XSS na czacie, zalew z pomiarem,
-ładunek 1,1 MB, śmieci gracza (3102 próby) i MG (7623 próby) z F5 u wszystkich po każdej serii;
-`t2c-kanarki` — 10 kanarków z T3 czytanych **z bazy** + 14 nowych od MG (rzut ukryty, tabela MG
-i jej rzut, dziennik MG, handout nieudostępniony, wiedza i relacja bota, architektura Sieci, notatka
-karty statysty, pinezka), gracze na zimno: F5, `state:sync`, 11 list na żądanie, trasy HTTP —
-**żaden kanarek nie wyciekł**, kontrola podsłuchu przechodzi. W aplikacji jedna zmiana: `export`
-listy `EVENTS` (umowa w `serwer`). Nowe fixtures: `security.ts`, `nocna-zmiana.ts`.
+**T4a przekalibrowany:** budżet ruchu i strzał Kowala liczone z karty (Cechy losuje kreator T3a,
+więc każdy przebieg od zera ma innego Kowala — pełne przebiegi pokazały REF 6–8 i ZW 6–7; kość
+strzału i rzutu granatem dobiera się do modyfikatora z kubka, PW Kowala czyta się z karty), #16 odpowiada na „Strzelaj mimo osłony” (jako
+`test.fail` padał na tym pytaniu, nie na błędzie). Pomocniki walki wyjęte do `fixtures/walka.ts`.
+**Retest #16, #19, #20 OK** — T4a 15/15 od `po-T3`.
 
-**Znalezione:** #13 **B1** — zalew jednego gracza (500 wiadomości + 2000 ruchów) opóźnia czat
-i ruchy innych o 5,8–6,3 s, ekran Oli o 6,8–7,7 s (same ruchy 2,5 s, sam czat 1,6 s); #14 **B1**
-(triaż MG 26.09) — gracz trwale usuwa własną przyjętą postać (`character:delete`, UI daje ✕ tylko MG);
-#11 B2 — gniazdo po wylogowaniu/wygaśnięciu sesji; #12 B2 — logowanie MG bez limitu (30 prób
-w 0,3 s); #10 B3 — gracz spoza kampanii dostaje jej pulę portretów; #15 B3 zbiorczo — śmieciowe id
-kończy się `INTERNAL` (Prisma) w 32 zdarzeniach, bez szkody w stanie. Zadania Z2–Z9 (etap 28 i „Konta
-MG”): `Secure`, domyślny sekret, nagłówki w Caddy, limit tempa, limit logowań, `/uploads/` za
-logowaniem, gniazda sesji, `Origin`. Obserwacje: imię „mg” zakłada osobne konto gracza;
-`/api/auth/me` gracza spoza kampanii podaje nazwę aktywnej. Bez zastrzeżeń: uploady, import
-muzyki, zaproszenia, podpis ciasteczka, macierz ról, własność, XSS, pad serwera — żadnego.
+**Zrobione:** rozpoznanie w Playwright MCP (Chromium: MG, Marek na `[::1]`), potem
+`30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 testów, ~2,5 min od `po-T4a`): Cień otwiera drzwi
+wahadłowe (marsz staje, gdy Kowal wchodzi w pole widzenia), strzał w głowę 16 > PT 15, dwie
+szóstki → „Ciało obce”, Kowal 40 → 7 (14 × 2 + 5), „Poważnie ranny” na panelu Marka, PW Kowala
+u Oli bez liczb; strzał przez ścianę — gracz `TOKEN_NOT_FOUND` (nie widzi Cienia), MG
+`NO_LINE_OF_FIRE`, Akcja zostaje; granat z podłogi 16 > PT 15 z „Poważnie ranny −2”, obszar 10 ×
+10 m na Zbira i „Ochroniarza” (alias), 28 obrażeń, Zbir → Śmiertelnie ranny, Ochroniarz 3 PW,
+ablacja o 1, granat 2 → 1; pięść Iskry (Bijatyka, pełne OB — s. 177) z raną; strzał Rzeźnika z
+przyłożenia; Test Przeżywalności Zbira na pasie MG (naturalna 10 → Śmierć, `dead` u graczy);
+„Bieg” po Akcji Ruchu; Pochwycenie z obroną Oli („Broń się”), `grappled`, „Wyrwij się” na panelu,
+karta chwytu podpisana aliasem; wezwanie MG (Atletyka PT 13, „Trzymanie −2” w rozbiciu) tylko do
+Oli; „Uwolnij”, ukrycie Rzeźnika i Cienia, ✕ kończy walkę; Kowal przeszukuje martwego Zbira
+(„Zabierz wszystko”), Iskra przyjmuje pistolet (propozycja + „Przyjmij”); kanarki czyste (łup
+tajny do przeszukania, potem tylko przed Olą), konsola bez błędów; punkt `po-T4`. Skrypt kości
+wszędzie, gdzie wynik wybiera drogę (także 2k6 tabeli ran), niezmienniki z karty.
 
-**Suita:** 81 testów (`00-baseline` 5, `01-dym` 7, T3a 16, T3b 12, T2 41; 8 `test.fail` — wszystkie
-T2), pełne `pnpm test:e2e` ~9 min, **zielone dwa razy z rzędu** (z T3 i botem na żywym modelu).
-Serwer 1245/1245 po eksporcie `EVENTS`. Oglądane: automat — MG i Marek w Chromium, Ola w Firefoksie,
-headless (XSS, zalew na ekranie Oli, F5 po śmieciach); reszta T2 bez UI (HTTP, surowe gniazda).
+**Znalezione (triaż MG 27.09):** #23 **B2** — karta obrażeń strzału statysty podpisana pierwszą
+kartą statysty („Zbir · Ciężki pistolet” zamiast Cienia); #24 **B1** — cios wręcz w sąsiada po
+skosie „za daleko” (2,83 m po prostej); #25 **B3** — grot kierunku przykrywa środek sąsiedniej
+figury i łapie klik; #26 **B1** — „Zastosuj” tej samej karty obrażeń działa wielokrotnie (automat
+dwa razy przypadkiem: druga pięść w Rzeźnika, strzał z T4a w martwego Zbira); #27 **B1** —
+pistolet z łupu ma na karcie Iskry id `statist-weapon`, więc Ola widzi „Obrażenia” na atakach
+statystów i serwer przyjmuje jej rzut. Obserwacje do sekcji 8: brak monitu na początku tury z raną,
+czytelność karty chwytu. Siedem pułapek automatu w `testy` (losowy Kowal z kreatora, stara karta
+czatu, grot sąsiada, zmiana tury w trakcie marszu, kości tabeli ran, pozycja po turze bota, „Bieg”
+przed ruchem).
 
-**Następny krok:** T4 (walka pierwsza) od `E2E_FROM=po-T3`
-— jak w notatce T3b niżej. Poprawki #10–#15 w osobnej sesji; Z2–Z9 czekają na swoje etapy.
+**Suita:** 115 testów (`00-baseline` 5, `01-dym` 7, T3a 15, T3b 13, T4a 15, T4b 19, T2 41;
+13 `test.fail`), pełne `pnpm test:e2e` ~14 min z botem na żywym modelu. Pięć pełnych przebiegów od
+zera: 1 i 3 padły na losowym Kowalu (ZW 6, REF 6 — poprawione, kość z kubka), **2 i 4 na gnieździe
+przez proxy `vite preview`** (`ERR_CONNECTION_REFUSED`/`TIMED_OUT` na `ws://localhost:4173` w konsoli
+MG albo Oli, raz w T3b, raz w T4b i T2c — pułapka w `testy`, do zbadania), **5 zielony 115/115**;
+„dwa razy z rzędu” jeszcze nie spełnione. T4a + T4b od `po-T3` zielone trzy razy. Oglądane: MCP —
+MG w Chromium, Marek w Chromium na `[::1]`; automat — MG i Marek w Chromium, Ola w Firefoksie,
+headless.
+
+**Następny krok:** T5 (Sieć i walka druga na „Bramie”) od `E2E_FROM=po-T4` — albo najpierw
+poprawki B1 (#13, #17, #24, #26, #27), jak po T4a. Stan `po-T4`: Kowal 7/40 z „Ciałem obcym”,
+granat 1/2, chip z łupem na karcie Kowala, pistolet Zbira u Iskry (id `statist-weapon` — #27; T5
+sprawdzi, czy Iskra z niego strzela); Iskra 35/40; Ochroniarz 3/25; Zbir martwy; Rzeźnik i Cień
+ukryci; walka zakończona, scena „Knajpa” aktywna.
+
+### Sesja 26.09 — T4a: inicjatywa i pierwsze tury walki w „Knajpie”
+
+_Notatka odtworzona 27.09 z commita `2e8b090`, rejestru i specu — w tamtym commicie nie trafiła
+do pliku._
+
+**Rozstrzygnięcia MG:** podział T4 na T4a (4.1–4.5, punkt `po-T4a` w turze Cienia) i T4b; granat
+Kowala i pięści Iskry z własnych wpisów Kompendium MG; Zmysł Walki Kowala: Błyskawiczna reakcja 1
++ Precyzyjny atak 3; Cień w kolejce od startu, ukryty; tura bota — nielegalna akcja = B1, wisząca
+tura = B2, głupia taktyka = obserwacja; triaż #17 = B1, #18 = B2 (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t4a-walka-knajpa.spec.ts` (15 testów): Zmysł Walki z banera karty,
+własne wpisy „Pięści” i „Granat odłamkowy”, przewrócony stół (osłona), łup-kanarek w kieszeni
+Zbira; inicjatywa kubkiem na czarnym pasie (skrypt kości), ta sama kolejność u trojga, Cień tylko
+u MG, klon pod aliasem; tura Marka (ukryty cel `TOKEN_NOT_FOUND`, ruch w budżecie, strzał zza
+osłony, karta rzutu u trojga, PW statysty tylko jako strata); tura Oli (prośba o Test przyciskiem
+i Alt+klikiem, odmowa z powodem, wezwanie, pięść „za daleko” notką bez rzutu); tura Rzeźnika na
+żywym modelu (propozycje, akceptacja, budżet tury); odsłonięcie Cienia bez F5; kanarki (także
+w ackach — `Sniffer.mark`); punkt `po-T4a`.
+
+**Znalezione:** #16 B1 (statysta strzela bez poziomu broni), #17 B1 (brak broni typu Bijatyka),
+#18 B2 (brak granatu ręcznego), #19 B1 („Kończę turę” oddaje graczowi widok walki MG w acku), #20
+B1 (propozycja bota zatwierdzona dwa razy), #21 B3 („Brak połączenia z AI Gateway” przy zajętym
+modelu). #16, #19, #20, #21 (i #22 znaleziony przy nich) naprawione tego samego dnia (`0b30a71`);
+retest E2E #16, #19, #20 — 27.09, sesja T4b.

@@ -305,6 +305,8 @@ export const KNAJPA = {
   backDoor: { x: 1180, y: 801 },
   /** Drzwi na taras — wejście drużyny. */
   frontDoor: { x: 223, y: 801 },
+  /** Środek drzwi wahadłowych z sali do kuchni (klik otwiera i zamyka). */
+  swingDoor: { x: 666, y: 710 },
   /** Lampa nad salą i lampa nad tarasem; kuchnia i bar zostają w ciemności. */
   lights: [
     { x: 330, y: 500 },

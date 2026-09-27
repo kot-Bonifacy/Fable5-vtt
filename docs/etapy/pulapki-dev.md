@@ -1664,6 +1664,14 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Gniazdo przez proxy `vite preview` (:4173) czasem dostaje odmowę — pełny przebieg pada na konsoli aktora (27.09, T4b, do zbadania)** — w 2 z 5 przebiegów: `WebSocket … ws://localhost:4173/socket.io … ERR_CONNECTION_REFUSED` (Chromium) albo „Firefox can’t establish a connection…” w `unexpectedErrors()`, raz poprzedzone `ERR_CONNECTION_TIMED_OUT` na pliku z `/public/`, raz z padem następnego pliku na `page.goto` (podgląd nie wstał). Strażnik pytający :4173 co 2 s w zielonym przebiegu nic nie złapał. Log `client.log` zeruje każdy start instancji — przy następnym wystąpieniu kopiuj `.e2e/logs` zaraz po porażce.
+- **Cechy i PW postaci z kreatora T3a są losowe w każdym przebiegu od zera (27.09, T4a/T4b)** — punkt kontrolny ma jednego Kowala, pełny przebieg innego (REF 6–8, ZW 6–7, RUCH 5–7): stała kość „9 → trafia” raz trafia, raz nie. Kość dobiera się do modyfikatora z kubka (`store('roll').attack.modifierTotal`) bez 10 (eksploduje), budżet i PW czyta się z karty. Spec zielony od punktu nic nie mówi o przebiegu od zera.
+- **`hasText` z napisem nie rozróżnia wielkości liter, a nowa karta czatu czeka na animację kości (27.09, T4b)** — „Ciężki pistolet — obrażenia” łapie też „Bardzo ciężki pistolet — obrażenia”, a `.last()` tuż po rzucie to jeszcze stara karta; jej „Zastosuj” działa drugi raz (#26). `chatCards` (tytuł z rozróżnieniem liter) i `freshCard` (karta ponad liczbę sprzed rzutu) w `fixtures/walka.ts`.
+- **Klik w środek figury obok sąsiada łapie grot kierunku sąsiada (#25), a klik w pole pod cudzą figurą — jej podpis** — MG zaznacza nie tę figurę, gracz zamiast marszu dostaje atak. Przybliż kamerę (`zoomAt`), klikaj górę/dół żetonu (`upperOf`, `walk(…, 'lower')`) i dolną część pola (`floorOf`).
+- **Marsz rozkazany tuż po zmianie tury w bazie przerywa „Zmiana tury — marsz przerwany”** — klient dostaje nową turę chwilę po bazie; figura robi jedno pole. `nextTurn` czeka na magazyn `combat` klienta MG, przed marszem gracza `clientsSeeTurn(gracz)`.
+- **Dwie szóstki na obrażeniach biorą ze skryptu kości jeszcze 2k6 tabeli ran — na każdy cel** — bez nich rana jest losowa (w T4b „Złamana ręka” wytrąciła Rzeźnikowi pistolet i dalszy krok padł). Skryptuj `[…obrażenia, …2k6 × liczba celów]` i sprawdzaj `pendingDice() === ''`.
+- **Pozycję figury po turze bota wybiera żywy model** — T4a kończy z Rzeźnikiem raz w drzwiach tarasu, raz w sali za oknem; następny plik ustawia figurę MG-iem (`token:move` z gniazda MG) przed krokami, które od niej zależą.
+- **„Bieg” przed ruchem odmawia (`RUN_NEEDS_MOVE`), a MG idzie wtedy dalej po cichu z `overspent`** — kolejność RAW: marsz do RUCH × 2 m, „Bieg”, drugi marsz; asercja `overspent === 0` pilnuje, że MG nie przekroczył budżetu.
 - **Vite przegapia drugi zapis pliku w ciągu ~1 s (26.09, etap 43a)** — dopisanie funkcji (`cat >>`) i zaraz potem dopisanie importu (skrypt) dało moduł z pierwszego zapisu: `ReferenceError: X is not defined`, choć plik na dysku i `tsc` są poprawne, a F5 serwuje ten sam `?t=`. `touch` pliku wymusza przeładowanie; sprawdzisz `curl localhost:5173/src/<plik>`.
 - **Rzut w teście szybszy niż animacja kości u innych aktorów** — klient wstrzymuje skutek rzutu do końca animacji (umowa `serwer`, 22.09), więc pas kolejki i karty u MG spóźniają się o kilka–kilkanaście sekund. Następny rzut dopiero po wyniku na ekranie odbiorcy; asercje UI po rzucie z limitem ≥ 30 s.
 - **Ponowny klik „Zatwierdź” propozycji bota wykonuje ją drugi raz (#20)** — karta długo nie zmienia się na „Zatwierdzone”, a `toPass` z klikiem w środku klika do skutku. Jeden klik, potem czekanie do 90 s; kolejka gatewaya po takim przebiegu zostaje pełna i następny przebieg dostaje 503 („Brak połączenia z AI Gateway”).
@@ -1703,6 +1711,23 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+**Stara karta czatu zamiast nowej (27.09, T4b).** Pierwszy przebieg T4b kliknął „Zastosuj” na
+karcie obrażeń strzału Rzeźnika, a obrażenia dostał… Rzeźnik — drugi raz od pięści Iskry. Dwie
+przyczyny naraz: klient wstrzymuje nową kartę do końca animacji kości (umowa `serwer`, 22.09),
+więc `rollAndWait` (który czeka na wiersz w **bazie**) wraca, zanim karta jest w DOM-ie; a
+`locator('.chat-message', { hasText: 'obrażenia (Korpus)' }).last()` trafiał w poprzednią pasującą
+kartę. Poprawiona wersja z `hasText: 'Ciężki pistolet — obrażenia (Korpus)'` trafiła w kartę
+**z T4a** („Bardzo ciężki pistolet…”), bo dopasowanie napisem ignoruje wielkość liter — i martwy
+Zbir stracił punkt pancerza. Serwer przyjął oba zastosowania (#26). `chatCards(page, tytuł)` buduje
+wyrażenie regularne z rozróżnieniem liter, a `freshCard(page, tytuł, ile_przed)` czeka, aż kart
+będzie więcej niż przed rzutem, i zwraca tę nową.
+
+**Grot kierunku jako uchwyt obrotu łapie kliki w sąsiada (27.09, T4b, #25).** MG klikał środek
+Rzeźnika, a panel pokazywał Iskrę stojącą pole niżej: od `f26ed9c` grot jest uchwytem obrotu
+i wystaje poza oprawę na sąsiednie pole. Mapa w całości (`fitCamera`) zlewa figury jeszcze
+bardziej. Ta sama rodzina: klik w **środek** pola tuż pod cudzą figurą trafia w jej podpis —
+Iskra zamiast marszu „atakowała” Rzeźnika, a MG-owi zaznaczał się Ochroniarz zamiast pola.
 
 - **Rzut w teście szybszy niż animacja kości u innych aktorów (26.09, T4a).** Marek i Ola rzucali
   inicjatywę kubkiem jedno po drugim, MG od razu „Rzuć wszystkim” i „Start”; baza miała już rundę 1,

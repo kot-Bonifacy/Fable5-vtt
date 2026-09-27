@@ -7,7 +7,29 @@ import { clickOnMap, drawCover, fitCamera, tokenCentre } from '../../fixtures/sc
 import { emitAck } from '../../fixtures/socket.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { createInvitation, shakeCup } from '../../fixtures/table.ts';
+import { createInvitation } from '../../fixtures/table.ts';
+import {
+  activeName,
+  aim,
+  cellCentre,
+  chipInitiatives,
+  closeSheet,
+  combatantOf,
+  combatants,
+  endPlayerTurn,
+  expectClean,
+  lastMessageId,
+  nextTurn,
+  openSheet,
+  queueOf,
+  rollAndWait,
+  rollById,
+  sceneRow,
+  sheet,
+  sumOf,
+  token,
+  type RollJson,
+} from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
   pendingDice,
@@ -35,96 +57,6 @@ import type { WorldPoint } from '../../fixtures/canvas.ts';
  * Kości: asercje niezmiennicze tam, gdzie wynik nie zmienia drogi; skrypt kości
  * (`testy.md` 4.2) dla inicjatywy (stała kolejka), trafienia Kowala i rzutu Oli.
  */
-
-type TokenRow = {
-  id: string;
-  name: string;
-  publicName: string | null;
-  x: number;
-  y: number;
-  size: number;
-  hidden: number;
-  characterId: string | null;
-};
-type CombatantRow = {
-  id: string;
-  tokenId: string;
-  initiative: number | null;
-  order: number;
-  turnState: string | null;
-};
-type RollJson = {
-  total: number;
-  breakdown?: { label: string; value: number }[];
-  attack?: { hit?: boolean; system?: { dv?: number; metres?: number; dvSource?: string } };
-};
-
-const sceneRow = () =>
-  queryOne<{ id: string; gridSizePx: number }>(
-    `SELECT id, gridSizePx FROM Scene WHERE name = 'Knajpa'`,
-  )!;
-const tokens = (): TokenRow[] =>
-  query<TokenRow>('SELECT * FROM Token WHERE sceneId = ? ORDER BY createdAt', sceneRow().id);
-const token = (name: string): TokenRow => {
-  const row = tokens().find((t) => t.name === name || t.name.startsWith(`${name} `));
-  if (!row) throw new Error(`E2E: no token "${name}"`);
-  return row;
-};
-const characterRow = (name: string) =>
-  queryOne<{ id: string; data: string }>('SELECT id, data FROM Character WHERE name = ?', name)!;
-const sheet = <T = Record<string, unknown>>(name: string) =>
-  JSON.parse(characterRow(name).data) as T;
-const combatants = (): CombatantRow[] =>
-  query<CombatantRow>(
-    `SELECT c.id, c.tokenId, c.initiative, c."order", c.turnState FROM Combatant c
-       JOIN Combat k ON k.id = c.combatId WHERE k.sceneId = ? ORDER BY c."order"`,
-    sceneRow().id,
-  );
-const combatantOf = (name: string) => combatants().find((c) => c.tokenId === token(name).id)!;
-const activeName = () => {
-  const combat = queryOne<{ activeCombatantId: string | null }>(
-    'SELECT activeCombatantId FROM Combat WHERE sceneId = ?',
-    sceneRow().id,
-  );
-  const active = combatants().find((c) => c.id === combat?.activeCombatantId);
-  return active ? tokens().find((t) => t.id === active.tokenId)?.name : null;
-};
-const lastMessageId = () =>
-  queryOne<{ id: number }>('SELECT max(id) AS id FROM ChatMessage')?.id ?? 0;
-/** Wiadomość czatu nowsza niż `after`, której tekst zawiera `text`. */
-const messageAfter = (after: number, text: string, kind = 'roll') =>
-  queryOne<{ id: number; text: string; payload: string | null }>(
-    `SELECT id, text, payload FROM ChatMessage WHERE id > ? AND kind = ? AND text LIKE ? ORDER BY id`,
-    after,
-    kind,
-    `%${text}%`,
-  );
-/** Rzut z kolumny `payload` wiersza czatu (kind = 'roll'). */
-const rollOf = (row: { payload: string | null }): RollJson =>
-  JSON.parse(row.payload ?? '{}') as RollJson;
-const rollById = (id: number): RollJson =>
-  rollOf(queryOne<{ payload: string }>('SELECT payload FROM ChatMessage WHERE id = ?', id)!);
-
-/** Środek kratki (kolumna, wiersz). */
-const cellCentre = (cell: number, column: number, row: number): WorldPoint => ({
-  x: (column + 0.5) * cell,
-  y: (row + 0.5) * cell,
-});
-
-/** Karta z listy „Postacie” (MG widzi wszystkie, gracz — swoją). */
-async function openSheet(actor: Actor, name: string) {
-  const page = actor.page;
-  await page.getByRole('button', { name: 'Postacie', exact: true }).click();
-  await page.locator('.side-panel').getByText(name, { exact: true }).first().click();
-  const region = page.getByRole('region', { name: `Karta postaci: ${name}` });
-  await expect(region).toBeVisible();
-  return region;
-}
-
-async function closeSheet(page: Page) {
-  await page.getByRole('button', { name: 'Zamknij kartę' }).click();
-  await expect(page.getByRole('button', { name: 'Zamknij kartę' })).toHaveCount(0);
-}
 
 /** Pole formularza w panelu (etykieta obejmuje pole, a jej nazwa niesie też opcje listy). */
 function panelField(page: Page, label: string) {
@@ -168,73 +100,6 @@ async function weaponFromCatalogue(actor: Actor, character: string, weapon: stri
     .poll(() => sheet<{ weapons: { name: string }[] }>(character).weapons.map((w) => w.name))
     .toContain(weapon);
   await closeSheet(page);
-}
-
-/** Zaznacza własną figurę i celuje w punkt sceny (MG celuje z Alt), klik ładuje kubek. */
-async function aim(actor: Actor, from: WorldPoint, target: WorldPoint, alt = false) {
-  const page = actor.page;
-  await clickOnMap(page, from);
-  await page.waitForTimeout(300);
-  if (alt) await page.keyboard.down('Alt');
-  await clickOnMap(page, target);
-  if (alt) await page.keyboard.up('Alt');
-  await page.waitForTimeout(300);
-}
-
-/** Kubek załadowany przyciskiem (inicjatywa, wezwanie) albo celownikiem — rzut gestem. */
-async function rollAndWait(actor: Actor, after: number, text: string): Promise<number> {
-  await shakeCup(actor.page);
-  await expect
-    .poll(() => messageAfter(after, text)?.id ?? 0, { timeout: 20_000, message: text })
-    .toBeGreaterThan(0);
-  return messageAfter(after, text)!.id;
-}
-
-async function endPlayerTurn(actor: Actor) {
-  const before = activeName();
-  await actor.page.getByRole('button', { name: 'Kończę turę' }).click();
-  await expect.poll(activeName).not.toBe(before);
-}
-
-async function nextTurn(mg: Actor) {
-  const before = activeName();
-  await mg.page
-    .getByRole('group', { name: 'Kolejka inicjatywy' })
-    .getByRole('button', { name: /Następna tura/ })
-    .first()
-    .click();
-  await expect.poll(activeName).not.toBe(before);
-}
-
-/** Inicjatywy na czarnym pasie (od lewej). */
-async function chipInitiatives(actor: Actor): Promise<string[]> {
-  return actor.page
-    .getByRole('group', { name: 'Kolejka inicjatywy' })
-    .locator('.combat-chip-initiative')
-    .allTextContents();
-}
-
-/** Nazwy uczestników tak, jak rysuje je czarny pas kolejki (od lewej). */
-async function queueOf(actor: Actor): Promise<string[]> {
-  return actor.page
-    .getByRole('group', { name: 'Kolejka inicjatywy' })
-    .locator('.combat-chip-name')
-    .allTextContents();
-}
-
-/**
- * Żaden z kodów nie dotarł do gracza; wyciek zostawia w raporcie wycinek ramki
- * albo odpowiedzi HTTP, którą przyszedł — dowód do rejestru.
- */
-async function expectClean(player: Actor, codes: string[], since = 0) {
-  const leaked = await player.sniffer.found(codes, since);
-  for (const code of leaked) {
-    test.info().annotations.push({
-      type: `wyciek u ${player.name}`,
-      description: `${code} … ${await player.sniffer.evidence(code, since)}`,
-    });
-  }
-  expect(leaked, player.name).toEqual([]);
 }
 
 test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierwsze tury', () => {
@@ -414,7 +279,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
         .toContain(String(roll.total));
       return roll;
     }
-    const sum = (roll: RollJson) => (roll.breakdown ?? []).reduce((acc, row) => acc + row.value, 0);
+    const sum = sumOf;
 
     const kowalRoll = await rollInitiative(marek, 10);
     test.info().annotations.push({
@@ -490,7 +355,9 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       }),
     ).toEqual({ ok: false, error: 'TOKEN_NOT_FOUND' });
 
-    // Ruch klikiem: dwie kratki na zachód, pod przewrócony stół (budżet 6 m po karze kurtki).
+    // Ruch klikiem: dwie kratki na zachód, pod przewrócony stół. Cechy Kowala losuje
+    // kreator T3a, więc budżet liczy się z karty: RUCH − 2 (kara kurtki OB 12) × 2 m.
+    const kowalStats = sheet<{ stats: { move: number; ref: number } }>('Kowal').stats;
     const page = marek.page;
     await clickOnMap(page, tokenCentre(kowal, cell));
     await clickOnMap(page, firingSpot);
@@ -502,20 +369,31 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       metresPerMove: number;
       overspent: number;
     };
-    expect(turn.metresPerMove).toBe(6);
-    expect(turn.metresUsed).toBeLessThanOrEqual(6);
+    expect(turn.metresPerMove).toBe((kowalStats.move - 2) * 2);
+    expect(turn.metresUsed).toBeLessThanOrEqual(turn.metresPerMove);
     expect(turn.overspent).toBe(0);
 
-    // Strzał zza własnej osłony: 9 + 7 + 6 − 2 + 1 (Precyzyjny atak) = 21 — trafia
-    // w każdym przedziale do 25 m; obrażenia 5 + 4 + 3 + 2 = 14 − OB 11 = 3.
+    // Strzał zza własnej osłony: kość + REF + Broń krótka − 2 (kurtka) + 1 (Precyzyjny
+    // atak) ≥ 21 trafia w każdym przedziale do 25 m; obrażenia 5 + 4 + 3 + 2 = 14 − OB 11 = 3.
     const zbir = token('Zbir');
-    scriptDice([9]);
     let before = lastMessageId();
     await aim(marek, firingSpot, tokenCentre(zbir, cell));
+    // REF Kowala losuje kreator — kość dobiera się do modyfikatora z kubka, żeby suma
+    // przekroczyła 20 (bez 10, która eksploduje).
+    const cup = await marek.store<{ attack: { modifierTotal: number } | null }>('roll');
+    const face = Math.min(9, Math.max(2, 21 - (cup?.attack?.modifierTotal ?? 0)));
+    scriptDice([face]);
     const attackId = await rollAndWait(marek, before, 'Bardzo ciężki pistolet → Zbir');
     const attack = rollById(attackId);
     test.info().annotations.push({ type: 'karta strzału', description: JSON.stringify(attack) });
-    expect(attack.total).toBe(21);
+    const shotTotal = attack.total;
+    expect(shotTotal).toBe(face + sumOf(attack));
+    expect(shotTotal).toBeGreaterThanOrEqual(21);
+    expect(attack.breakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Refleks (REF)', value: kowalStats.ref }),
+      ]),
+    );
     expect(attack.breakdown).toEqual(
       expect.arrayContaining([expect.objectContaining({ label: 'Precyzyjny atak 1', value: 1 })]),
     );
@@ -528,7 +406,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       await expect(
         actor.page.locator('.chat-roll', { hasText: 'Bardzo ciężki pistolet → Zbir' }).last(),
         actor.name,
-      ).toContainText('21');
+      ).toContainText(String(shotTotal));
     }
 
     scriptDice([5, 4, 3, 2]);
@@ -818,6 +696,8 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     scriptDice([2]);
     const before = lastMessageId();
     await aim(mg, tokenCentre(token('Zbir'), cell), tokenCentre(token('Kowal'), cell), true);
+    // Kowal kuca za przewróconym stołem — wybór przy celowniku ładuje kubek dopiero po decyzji.
+    await mg.page.getByRole('button', { name: 'Strzelaj mimo osłony' }).last().click();
     const id = await rollAndWait(mg, before, 'Ciężki pistolet → Kowal');
     const roll = rollById(id);
     test.info().annotations.push({

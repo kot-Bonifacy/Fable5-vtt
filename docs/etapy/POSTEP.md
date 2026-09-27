@@ -37,19 +37,16 @@ cięcie wręcz) i **43c** (plamy krwi na serwerze) rozpisane — MG wybrał „4
 kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1, T3a i T3b zamknięte 26.09, a ich błędy #2–#9 naprawione i po
-retescie tego samego dnia; T2 (bezpieczeństwo) zamknięty 26.09 z błędami #10–#15 do poprawki**
-(dwa B1: zalew dławiący innych #13 i usuwanie własnej przyjętej postaci #14, waga z triażu MG)
-**i zadaniami Z2–Z9 dla etapów 28 i „Konta MG”; T4 podzielony (decyzja MG z 26.09) — T4a
-(inicjatywa i pierwsze tury walki w „Knajpie”) zamknięty 26.09 z błędami #16–#21: cztery B1 —
-statysta z karty strzela bez poziomu broni #16, postać bez broni nie uderzy pięścią #17, „Kończę
-turę” oddaje graczowi widok walki MG #19, podwójne „Zatwierdź” wykonuje propozycję bota dwa razy
-#20 — oraz granat bez wpisu w katalogu #18 (B2) i mylące „Brak połączenia z AI Gateway” #21 (B3);
-#14, #16, #19, #20, #21 i znaleziony przy nich #22 (zapis arkusza do rzutu na kartę statysty)
-naprawione tego samego dnia (`0b30a71`), retest E2E #16/#19/#20 czeka na przekalibrowanie specu
-T4a pod obecne `po-T3` (szczegóły pod tabelą błędów w rejestrze)**
-— suita `packages/e2e` (`pnpm test:e2e`) stawia izolowaną instancję z `dist/` na :3101/:4173
-i nie dotyka `dev.db`; **następny T4b** (granat, rany, Pochwycenie, łup) od punktu `po-T4a`. Kolejność (decyzja MG z 26.09):
+rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a i T4b zamknięte** — T4b 27.09 (granat, rana
+krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
+obecne `po-T3`, retest #16, #19, #20 OK). **Otwarte B1:** #13 (zalew dławi innych), #17 (brak broni
+typu Bijatyka), #24 (cios w sąsiada po skosie „za daleko” — odległość po prostej), #26 („Zastosuj”
+tej samej karty obrażeń działa wielokrotnie), #27 (broń z łupu statysty niesie id `statist-weapon`
+i gracz rzuca obrażenia cudzych ataków — ta sama przyczyna co #23, B2); B2: #11, #12, #18, #23;
+B3: #10, #15, #25; zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T5** (Sieć
+i walka druga na „Bramie”) od punktu `po-T4` — albo najpierw poprawki B1, jak po T4a (wybiera MG).
+Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
@@ -113,7 +110,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2240** w `shared`, **1249** na serwerze, **300** u klienta,
-**59** w gatewayu, **81** E2E (8 `test.fail` z T2) — zielone (26.09, 43a; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół). ESLint, Prettier
+**59** w gatewayu (26.09, 43a), **115** E2E (13 `test.fail`, 27.09, T4b — ostatni pełny przebieg zielony) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -152,12 +149,29 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 3    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 33      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 41      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.09 — T4b: walka pierwsza do końca (rany, granat, zwarcie, łup); T4a przekalibrowany
+
+**Zlecenie MG:** etap testowy T4b (`testy.md` 5.2, kroki 4.6–4.10). Pytania w dwóch turach —
+decyzje w `testy.md`, sekcja 2 (stary `po-T4a` → najpierw T4a; rana krytyczna z ataku; Ochroniarz
+chwyta Iskrę; statyści padają, Rzeźnik i Cień uciekają; tura Rzeźnika ręką MG; pistolet Zbira dla
+Iskry) i triaż #23–#27.
+
+**Zrobione:** T4a liczy budżet i strzał z karty (Kowal z kreatora bywa inny w każdym przebiegu),
+retest #16/#19/#20 OK; nowy `30-rozgrywka/t4b-walka-knajpa-lup.spec.ts` (19 testów) i
+`fixtures/walka.ts` (wspólne z T4a). W aplikacji bez zmian. Znalezione: #23 B2, #24 B1, #25 B3,
+#26 B1, #27 B1 (szczegóły w rejestrze); obserwacje w `testy.md` 8; siedem pułapek w `testy`.
+
+**Weryfikacja:** suita 115 E2E (13 `test.fail`), ostatni pełny przebieg od zera zielony
+(14 min); dwa z pięciu padły na gnieździe przez proxy `vite preview` — pułapka w `testy`, „zielono
+dwa razy z rzędu” do powtórki. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane: MCP — MG w Chromium, Marek w Chromium na `[::1]`;
+automat — MG i Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta (tylko `e2e.db`).
 
 ### Sesja 26.09 (czwarta) — etap 43a: portrety z ranami w „Walce”, PW dla stołu, „Postacie”
 
@@ -178,24 +192,3 @@ ESLint, Prettier czyste w pakietach (pliki zapisane Pythonem miały CRLF — nap
 w Chromium (MG, noc i dzień) i Firefoksie (gracz Mara). Na „Test2” powstały i **zostały usunięte**
 statysty Ochroniarz/Zbir/Snajper; Portos wrócił do 30/30 bez naklejek, walka zakończona.
 `dev.db` poza tym nietknięta.
-
-### Sesja 26.09 (trzecia) — odciski butów: zakręty łukiem, poświata gaśnie od najstarszych
-
-**Zlecenie MG (poza etapami):** poprawić odciski butów przy ruchu figury — „zakręty mi się nie
-podobają”; w trakcie: ślady mają zanikać **od najstarszych do najnowszych**, a nie cała trasa naraz.
-
-**Zrobione:** rozmieszczanie odcisków wyjęte do `map/footprints.ts` (`placeFootprints`): chód idzie
-po wygładzonej kopii trasy (dwa przebiegi średniej ruchomej, końce trzymane), odstęp i pasy kolorów
-dalej liczone po trasie prawdziwej — „odcisk = metr” bez zmian. Dotąd but brał kierunek i bok od
-odcinka, więc na rogu obracał się skokowo, a po wewnętrznej stronie buty się nakładały. Szerokość
-łuku `FOOTPRINT_TURN_RATIO = 1,5` żetonu (dobrana okiem: 1 — obrót na dwóch odciskach, 4 — ścina
-róg). Marsz podaje całą trasę i `untilPx`, żeby odcisk za rogiem nie pełzał w trakcie. Poświata
-po marszu/ciągnięciu: 20% życia w pełnej sile, potem fala od startu do figury (`trailFadeStrength`),
-nadal 5 s, w pełnej sile marszu (dawny mnożnik 0,7 przyciemniał całą trasę w chwili
-zatrzymania). Umowa w `mapa` rozszerzona (licznik bez zmian).
-
-**Weryfikacja:** klient 300 (+11, `footprints.test.ts`), `tsc`, ESLint czyste, Prettier na
-zmienionych plikach kodu (`umowy-kodu.md` był niesformatowany już wcześniej). Oglądane w Firefoksie
-(MG, Playwright) na „Test2”: podgląd trasy z punktem pośrednim (róg 90°), zakręt z „schodkiem”,
-marsz Franca przez róg, zrzuty zanikania co sekundę i klatki co 300 ms wokół zatrzymania. Franc wrócił na pole startowe; zmienił się
-tylko jego kierunek (ostatni krok marszu powrotnego). `dev.db` poza tym nietknięta.

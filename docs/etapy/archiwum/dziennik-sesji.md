@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 26.09 (trzecia) — odciski butów: zakręty łukiem, poświata gaśnie od najstarszych
+
+**Zlecenie MG (poza etapami):** poprawić odciski butów przy ruchu figury — „zakręty mi się nie
+podobają”; w trakcie: ślady mają zanikać **od najstarszych do najnowszych**, a nie cała trasa naraz.
+
+**Zrobione:** rozmieszczanie odcisków wyjęte do `map/footprints.ts` (`placeFootprints`): chód idzie
+po wygładzonej kopii trasy (dwa przebiegi średniej ruchomej, końce trzymane), odstęp i pasy kolorów
+dalej liczone po trasie prawdziwej — „odcisk = metr” bez zmian. Dotąd but brał kierunek i bok od
+odcinka, więc na rogu obracał się skokowo, a po wewnętrznej stronie buty się nakładały. Szerokość
+łuku `FOOTPRINT_TURN_RATIO = 1,5` żetonu (dobrana okiem: 1 — obrót na dwóch odciskach, 4 — ścina
+róg). Marsz podaje całą trasę i `untilPx`, żeby odcisk za rogiem nie pełzał w trakcie. Poświata
+po marszu/ciągnięciu: 20% życia w pełnej sile, potem fala od startu do figury (`trailFadeStrength`),
+nadal 5 s, w pełnej sile marszu (dawny mnożnik 0,7 przyciemniał całą trasę w chwili
+zatrzymania). Umowa w `mapa` rozszerzona (licznik bez zmian).
+
+**Weryfikacja:** klient 300 (+11, `footprints.test.ts`), `tsc`, ESLint czyste, Prettier na
+zmienionych plikach kodu (`umowy-kodu.md` był niesformatowany już wcześniej). Oglądane w Firefoksie
+(MG, Playwright) na „Test2”: podgląd trasy z punktem pośrednim (róg 90°), zakręt z „schodkiem”,
+marsz Franca przez róg, zrzuty zanikania co sekundę i klatki co 300 ms wokół zatrzymania. Franc wrócił na pole startowe; zmienił się
+tylko jego kierunek (ostatni krok marszu powrotnego). `dev.db` poza tym nietknięta.
+
 ### Sesja 26.09 (druga) — grot kierunku jako uchwyt obrotu, żeton przeciągany z panelu na mapę
 
 **Zlecenie MG (poza etapami):** MG ma przeciągać figury graczy i stawiać nowe przeciągnięciem;
