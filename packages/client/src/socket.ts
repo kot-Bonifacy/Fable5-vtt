@@ -2722,6 +2722,24 @@ export const playBotTurn = (tokenId: string) =>
   emitSceneAck<BotPlayTurnResult>('bot:play-turn', { tokenId });
 
 /**
+ * Zdanie dla MG, gdy „Graj turę" wróciło odmową gniazda (#35, 29.09) — kod
+ * w nawiasie („(AI_UNAVAILABLE)") nie mówił, co zrobić. Tura i tak toczy się
+ * dalej ręką MG, więc każde zdanie o modelu kończy się tą radą.
+ */
+export function botTurnErrorText(code: string): string {
+  switch (code) {
+    case 'AI_UNAVAILABLE':
+      return 'model jest niedostępny (AI Gateway nie odpowiada albo model się ładuje) — zagraj tę turę ręką.';
+    case 'AI_UNREACHABLE':
+      return 'brak połączenia z AI Gateway — zagraj tę turę ręką.';
+    case 'TOKEN_NOT_FOUND':
+      return 'tej figury już nie ma na scenie.';
+    default:
+      return 'tura się nie odbyła — coś poszło nie tak po stronie serwera; zagraj ją ręką.';
+  }
+}
+
+/**
  * `Ctrl+Z` — cofnij ostatnie własne usunięcie na tej scenie (etap 27k).
  *
  * Bez wskazania, co cofnąć: bufor jest stosem na serwerze, a klient zna tylko

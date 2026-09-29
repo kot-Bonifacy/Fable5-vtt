@@ -69,6 +69,8 @@ let baseUrl: string;
 let gmCookie: string;
 let playerCookie: string;
 let playerId: string;
+/** Gracz spoza runu — sprawdza, czego nie widzi reszta stołu (#37). */
+let bystanderCookie: string;
 const openSockets: ClientSocket[] = [];
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
@@ -184,6 +186,13 @@ beforeAll(async () => {
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;
+
+  const bystanderRes = await built.app.inject({
+    method: 'POST',
+    url: `/api/join/${invite}`,
+    payload: { name: 'Gapa' },
+  });
+  bystanderCookie = cookieOf(bystanderRes.headers['set-cookie']);
 }, 60_000);
 
 afterAll(async () => {
@@ -472,6 +481,63 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(walls.find((wall) => wall.id === doorWallId)?.open).toBe(true);
   });
 
+  it('etykieta piętra i nazwa urządzenia nie docierają do gracza spoza runu (#37)', async () => {
+    const bystanderConn = createSocket(bystanderCookie);
+    const bystander = bystanderConn.socket;
+    await bystanderConn.firstSync;
+    const heard: Record<'bystander' | 'player' | 'gm', string[]> = {
+      bystander: [],
+      player: [],
+      gm: [],
+    };
+    const listen = (socket: ClientSocket, into: string[]) => {
+      const onMessage = (payload: ChatMessageBroadcast) => {
+        into.push(`${payload.message.kind} ${JSON.stringify(payload.message)}`);
+      };
+      socket.on('chat:message', onMessage);
+      return () => socket.off('chat:message', onMessage);
+    };
+    const stops = [
+      listen(bystander, heard.bystander),
+      listen(player, heard.player),
+      listen(gm, heard.gm),
+    ];
+    // Dwa obroty kamery: stan wraca tam, gdzie był, a dziennik dostaje dwa wiersze.
+    data(await operate('dev-cam', 'turn'), 'netrun:device');
+    data(await operate('dev-cam', 'turn'), 'netrun:device');
+    await roundTrip(bystander);
+    await roundTrip(player);
+    stops.forEach((stop) => stop());
+
+    // Reszta stołu: skrót — „węzeł kontrolny" i rodzaj urządzenia (kamera nie ma figury).
+    expect(heard.bystander.length).toBe(2);
+    for (const line of heard.bystander) {
+      expect(line).not.toContain('Węzeł ochrony');
+      expect(line).not.toContain('Kamera nad bramą');
+      expect(line).toContain('węzeł kontrolny');
+      expect(line).toContain('Kamera');
+    }
+    // MG i netrunner: skrót i pełny wiersz (`gmaction`) z etykietą piętra.
+    for (const own of [heard.player, heard.gm]) {
+      expect(own.filter((line) => line.startsWith('action '))).toHaveLength(2);
+      const full = own.filter((line) => line.startsWith('gmaction '));
+      expect(full).toHaveLength(2);
+      expect(full[0]).toContain('Węzeł ochrony');
+      expect(full[0]).toContain('Kamera nad bramą');
+    }
+    // Historia po F5: pełny wiersz wraca netrunnerowi, a graczowi spoza runu nie.
+    const history = async (socket: ClientSocket) =>
+      JSON.stringify(
+        data(
+          await emitAck<unknown>(socket, 'chat:history', { beforeId: 2_000_000_000 }),
+          'chat:history',
+        ),
+      );
+    expect(await history(player)).toContain('Węzeł ochrony');
+    expect(await history(bystander)).not.toContain('Węzeł ochrony');
+    bystander.disconnect();
+  });
+
   it('strzela wieżyczką Umiejętnościami netrunnera, nie profilem figury', async () => {
     const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const shot = data(
@@ -494,6 +560,47 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(card?.weapons[0]?.ammoCurrent).toBe(9);
     // A karta ataku wyszła z figury wieżyczki, nie z karty netrunnera.
     expect(roll?.actor).toBe('Grzechot');
+  });
+
+  it('netrunner rzuca obrażenia za strzał wieżyczki, którą prowadzi — i tylko on (#38)', async () => {
+    // Strzał do skutku: REF 8 + Broń krótka 9 + k10 przeciw PT z 8 m trafia
+    // prawie zawsze, a tylko trafienie ma obrażenia do rzucenia.
+    let messageId = 0;
+    for (let attempt = 0; attempt < 4 && messageId === 0; attempt += 1) {
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      data(await operate('dev-turret', 'fire', { targetTokenId }), 'netrun:device — strzał');
+      const roll = (await card).message;
+      if (roll.roll?.attack?.hit) messageId = roll.id;
+    }
+    expect(messageId).toBeGreaterThan(0);
+    const damage = (socket: ClientSocket, attackMessageId: number) =>
+      emitAck(socket, 'character:roll', {
+        attackerTokenId: turretTokenId,
+        request: { kind: 'damage', weaponRowId: 'statist-weapon', attackMessageId },
+      });
+
+    // Gracz spoza runu nie rzuca za cudzą wieżyczkę.
+    const bystanderConn = createSocket(bystanderCookie);
+    await bystanderConn.firstSync;
+    expect(errorOf(await damage(bystanderConn.socket, messageId))).toBe('CHARACTER_NOT_FOUND');
+    bystanderConn.socket.disconnect();
+
+    // Netrunner — tak, obrażeniami broni wieżyczki.
+    const rolled = await damage(player, messageId);
+    expect(errorOf(rolled)).toBeUndefined();
+
+    // Strzał wieżyczki ręką MG (bez operatora na karcie) zostaje rzutem MG.
+    const gmShot = data(
+      await emitAck<{ messageId?: number; hit?: boolean }>(gm, 'attack:roll', {
+        attackerTokenId: turretTokenId,
+        targetTokenId,
+        request: { weaponRowId: 'statist-weapon' },
+      }),
+      'attack:roll (MG)',
+    );
+    expect(gmShot.messageId).toBeGreaterThan(0);
+    // Pudło nie ma obrażeń w ogóle (`NOT_A_HIT`) — ale nie może być `ok`.
+    expect((await damage(player, gmShot.messageId!)).ok).toBe(false);
   });
 
   it('wyłączonego urządzenia nie da się obsłużyć, dopóki nie wróci', async () => {

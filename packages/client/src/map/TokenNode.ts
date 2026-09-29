@@ -295,6 +295,10 @@ export class TokenNode extends Container {
     // patrzy. Obrót chwyta `grabFacingKnob` w MapRenderer, z nakładki
     // zaznaczenia, więc sam rysunek grotu kliknięć nie potrzebuje.
     this.nose.eventMode = 'none';
+    // Aureola tury to wypełniony krążek szerszy od oprawy (#36, 29.09): w turze
+    // figury łapała klik w środek sąsiedniego pola jako klik w figurę, więc
+    // marsz o jedno pole nie ruszał. Też tylko rysunek.
+    this.turnRing.eventMode = 'none';
     this.addChild(
       this.shadow,
       this.base,

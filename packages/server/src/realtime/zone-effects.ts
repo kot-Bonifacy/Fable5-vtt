@@ -7,6 +7,7 @@ import type {
   TokenHp,
 } from '@vtt/shared';
 import {
+  ROLE_GM,
   cpredAmmoCheckOutcome,
   createDefaultCharacterData,
   cpredCheckBase,
@@ -30,6 +31,7 @@ import {
   type SheetDamageRequest,
   type SheetForcedFailure,
 } from '../sheets.js';
+import { toSessionUser } from '../auth/sessions.js';
 import { statusName } from '../statuses.js';
 import { buildCompendiumSync } from './compendium.js';
 import { applyDamageToFigure, logDamage } from './damage.js';
@@ -68,6 +70,24 @@ import { readZoneExempt, readZoneSightings } from './zones-io.js';
  * What it never does is decide *whether* the system goes off. That question is
  * geometry plus a switch, and it is asked by whoever moved the figure.
  */
+
+/**
+ * Czyja ręka stoi za systemem, który odpalił sam (#39, 29.09).
+ *
+ * Wieżyczka w strefie strzela, bo ktoś w nią wszedł — ale nie jego ręką: karta
+ * strzału, kości, karta obrażeń i wiersz dziennika podpisane kontem gracza
+ * („Wieżyczka (Marek)") szły mu też do historii rzutów. System należy do MG,
+ * więc odpala się kontem MG — pierwszym, jak NPC-e botów (`gmUserId`
+ * w `bot-turns.ts`). Ruch MG zostaje przy jego własnym koncie.
+ */
+export async function systemHand(deps: RealtimeDeps, mover: SessionUser): Promise<SessionUser> {
+  if (mover.role === ROLE_GM) return mover;
+  const gm = await deps.ctx.prisma.user.findFirst({
+    where: { role: ROLE_GM },
+    orderBy: { createdAt: 'asc' },
+  });
+  return gm ? toSessionUser(gm) : mover;
+}
 
 /** Somebody a system caught, and the sentence saying how it caught them. */
 export interface ZoneVictim {

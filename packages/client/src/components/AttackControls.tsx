@@ -33,6 +33,7 @@ export function AttackRow({
     weaponName?: string;
     dvSource?: string;
     attackerTokenId?: string;
+    operatorUserId?: string;
   };
 
   /**
@@ -71,6 +72,22 @@ export function AttackRow({
         ? attackerToken
         : undefined
       : undefined;
+  /**
+   * Netrunner na spuście wieżyczki przejętego węzła rzuca jej obrażenia (#38).
+   * Figury wieżyczki zwykle nie widzi (stoi poza jego polem widzenia), więc
+   * adres idzie wprost z karty ataku, a imię — z karty rzutu.
+   */
+  const operatedTurret =
+    !playerSheet &&
+    !statistAttacker &&
+    system.attackerTokenId !== undefined &&
+    user?.id !== undefined &&
+    system.operatorUserId === user.id
+      ? {
+          name: attackerToken?.name ?? message.roll?.actor ?? 'Wieżyczka',
+          address: { attackerTokenId: system.attackerTokenId },
+        }
+      : undefined;
 
   /** Whoever the damage roll is loaded for: a sheet, or a figure without one. */
   const sheetShooter =
@@ -79,7 +96,7 @@ export function AttackRow({
     ? { name: sheetShooter.name, address: { characterId: sheetShooter.id } }
     : statistAttacker
       ? { name: statistAttacker.name, address: { attackerTokenId: statistAttacker.id } }
-      : undefined;
+      : operatedTurret;
 
   /**
    * The defender's sheet, if this viewer may act for it. A player sees only

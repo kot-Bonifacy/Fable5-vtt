@@ -512,6 +512,12 @@ function CombatActionRow({
         {entry.passed && !refused && (
           <span className="chat-action-badge">przepuszczone przez MG</span>
         )}
+        {/* Pełny wiersz Sieci obok publicznego skrótu (#37) — reszta stołu go nie ma. */}
+        {message.kind === 'gmaction' && !refused && (
+          <span className="chat-action-badge" title="Ten wiersz widzą tylko MG i netrunner">
+            poufne
+          </span>
+        )}
       </div>
       {entry.refusal && (
         <div className="chat-action-refusal">

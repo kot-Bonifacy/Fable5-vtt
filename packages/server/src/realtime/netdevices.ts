@@ -3,7 +3,6 @@ import type {
   CpredCharacterData,
   CpredNetDevice,
   CpredNetFloor,
-  NetDeviceProblem,
   NetRunAbilityResult,
   NetRunDevicePayload,
   RollGesture,
@@ -34,8 +33,9 @@ import {
   controlsRun,
   emitRuns,
   loadRunRow,
-  logNetLine,
+  logNetLineWithSecret,
   readFullRun,
+  runnerOwnerOf,
   saveRunState,
   saveRuntime,
 } from './netrun-io.js';
@@ -169,7 +169,9 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       state,
     });
 
+    const shownAs = await publicDeviceName(deps, device);
     let summary: string;
+    let publicSummary: string;
     let messageId = 0;
     if (operation === 'fire') {
       const character = await deps.ctx.prisma.character.findUnique({
@@ -195,9 +197,11 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       if (shot.blocked) throw new RealtimeError(shot.blocked.code);
       messageId = shot.messageId;
       summary = shot.summary;
+      publicSummary = `${shownAs} — strzał Umiejętnością netrunnera.`;
     } else if (operation === 'open' || operation === 'close') {
       await setOpening(deps, campaignId, device.wallId!, operation === 'open');
       summary = netDeviceLine(device, operation, before);
+      publicSummary = netDeviceLine({ ...device, name: shownAs }, operation, before);
     } else {
       const after = netDeviceStateAfter(before, operation) ?? before;
       await saveRuntime(deps.ctx.prisma, row.architectureId, {
@@ -205,6 +209,7 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
         devices: netApplyDeviceState(runtime.devices, after),
       });
       summary = netDeviceLine(device, operation, after);
+      publicSummary = netDeviceLine({ ...device, name: shownAs }, operation, after);
     }
 
     next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floor.id, round) };
@@ -212,14 +217,15 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
 
     const nodeName =
       floor.label || netFloorAt(architecture, state.position)?.label || 'Węzeł kontrolny';
-    const line = await logNetLine(
-      deps,
-      campaignId,
-      user,
+    // Etykieta piętra i nazwa urządzenia z edytora Architektury to jej zawartość
+    // — reszta stołu dostaje skrót, MG i netrunner pełny wiersz (#37).
+    const line = await logNetLineWithSecret(deps, campaignId, user, {
       actorName,
-      `Węzeł kontrolny: ${device.name || NET_DEVICE_KIND_LABELS[device.deviceKind]}`,
-      `${nodeName} · ${summary}`,
-    );
+      actionName: `Węzeł kontrolny: ${shownAs}`,
+      publicNote: `węzeł kontrolny · ${publicSummary}`,
+      secretNote: `${nodeName} · ${summary}`,
+      runnerOwnerId: runnerOwnerOf(row),
+    });
     await emitRuns(deps, campaignId);
     return {
       messageId: messageId || line.id,
@@ -229,6 +235,22 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
     };
   },
 });
+
+/**
+ * Urządzenie tak, jak nazywa je stół (#37): figura na mapie pod swoją nazwą
+ * stołu (alias też), a urządzenie bez figury albo figura ukryta — rodzajem
+ * („Drzwi lub winda"). Nazwa z edytora Architektury jest jej zawartością.
+ */
+export async function publicDeviceName(
+  deps: RealtimeDeps,
+  device: Pick<CpredNetDevice, 'deviceKind' | 'tokenId'>,
+): Promise<string> {
+  const kind = NET_DEVICE_KIND_LABELS[device.deviceKind];
+  if (!device.tokenId) return kind;
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: device.tokenId } });
+  if (!token || token.hidden) return kind;
+  return tokenTableName(token, token.name);
+}
 
 /**
  * The turret pulls its own trigger, with somebody else's hand behind it.
@@ -261,7 +283,11 @@ export async function fireDevice(
   messageId: number;
   summary: string;
   /** Kod dla okna Sieci, zdanie dla logu — patrz `NET_DEVICE_MESSAGES`. */
-  blocked?: { code: NetDeviceProblem; text: string };
+  blocked?: {
+    code: 'NET_SHOT_COVERED' | 'NET_SHOT_BLOCKED';
+    text: string;
+    blockerName: string;
+  };
 }> {
   const result = await performAttackRoll(deps, {
     campaignId: input.campaignId,
@@ -282,22 +308,29 @@ export async function fireDevice(
   });
   if (result.blocked) {
     // A blocked shot never became a card, so there is no message to point at.
+    const code = result.blocked.kind === 'cover' ? 'NET_SHOT_COVERED' : 'NET_SHOT_BLOCKED';
     return {
       messageId: 0,
       summary: input.summary,
-      blocked:
-        result.blocked.kind === 'cover'
-          ? {
-              code: 'NET_SHOT_COVERED',
-              text: `${input.device.name}: strzał zasłania ${result.blocked.name} — strzel jeszcze raz mimo osłony`,
-            }
-          : {
-              code: 'NET_SHOT_BLOCKED',
-              text: `${input.device.name}: na linii strzału stoi ${result.blocked.name}`,
-            },
+      blocked: {
+        code,
+        text: deviceShotBlockedText(input.device.name, code, result.blocked.name),
+        blockerName: result.blocked.name,
+      },
     };
   }
   return { messageId: result.messageId ?? 0, summary: input.summary };
+}
+
+/** Zdanie o strzale, który nie poszedł — z nazwą urządzenia, jaką zna czytelnik (#37). */
+export function deviceShotBlockedText(
+  deviceName: string,
+  code: 'NET_SHOT_COVERED' | 'NET_SHOT_BLOCKED',
+  blockerName: string,
+): string {
+  return code === 'NET_SHOT_COVERED'
+    ? `${deviceName}: strzał zasłania ${blockerName} — strzel jeszcze raz mimo osłony`
+    : `${deviceName}: na linii strzału stoi ${blockerName}`;
 }
 
 /** Opening a door or window of stage 18d from the other end of the cable. */

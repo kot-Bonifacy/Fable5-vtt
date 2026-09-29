@@ -46,7 +46,12 @@ import type { FullRunState } from './netice.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import { campaignEntry } from './compendium.js';
-import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
+import {
+  INCLUDE_CHAT_NAMES,
+  broadcastChatMessage,
+  deliverChatMessageTo,
+  toChatMessageView,
+} from './chat-io.js';
 import { toSceneView } from './scenes.js';
 import { hasLineOfFire, loadVisionContext } from './vision.js';
 
@@ -539,5 +544,72 @@ export async function logNetLine(
   });
   const view = toChatMessageView(stored);
   broadcastChatMessage(deps, campaignId, view);
+  return view;
+}
+
+/** Właściciel figury netrunnera — ten, komu idzie pełny wiersz dziennika (#37). */
+export function runnerOwnerOf(row: {
+  token: { ownerId: string | null; character: { ownerId: string | null } | null };
+}): string | null {
+  return row.token.character?.ownerId ?? row.token.ownerId;
+}
+
+/**
+ * Wiersz dziennika Sieci, który zdradziłby zawartość Architektury (#37, 29.09).
+ *
+ * Stół dostaje skrót (`publicNote`: „węzeł kontrolny" zamiast etykiety piętra,
+ * urządzenie pod nazwą z mapy), a MG i netrunner — dodatkowo pełny wiersz
+ * (`secretNote`) jako `gmaction` z adresatem: tak wraca im z historią po F5
+ * (`visibleTo`: MG po rodzaju, netrunner po `recipientId` albo `authorId`),
+ * a nikomu innemu nie dociera nawet ramką. Decyzja MG: dwa wiersze u MG
+ * i netrunnera, jeden u reszty stołu.
+ */
+export async function logNetLineWithSecret(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  input: {
+    actorName: string;
+    actionName: string;
+    publicNote: string;
+    secretNote: string;
+    /** Właściciel figury netrunnera — adresat pełnego wiersza. */
+    runnerOwnerId: string | null;
+  },
+): Promise<ChatMessageView> {
+  const view = await logNetLine(
+    deps,
+    campaignId,
+    user,
+    input.actorName,
+    input.actionName,
+    input.publicNote,
+  );
+  if (input.secretNote === input.publicNote) return view;
+  const entry: CombatActionLogEntry = {
+    combatantId: '',
+    actorName: input.actorName,
+    actionId: CPRED_ACTION_NET,
+    actionName: input.actionName,
+    note: input.secretNote,
+  };
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: user.id,
+      kind: 'gmaction',
+      text: input.actionName,
+      payload: JSON.stringify(entry),
+      recipientId: input.runnerOwnerId,
+    },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await deliverChatMessageTo(
+    deps,
+    campaignId,
+    toChatMessageView(stored),
+    [user.id, input.runnerOwnerId],
+    true,
+  );
   return view;
 }

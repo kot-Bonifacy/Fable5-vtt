@@ -1239,6 +1239,11 @@ export async function performAttackRoll(
               }
             : undefined,
       );
+      // Netrunner na spuście wieżyczki rzuca też jej obrażenia (#38): karta
+      // pamięta, czyje to było ramię, bo żeton wieżyczki nie ma właściciela.
+      if (device?.operator) {
+        result.attack.system = { ...result.attack.system, operatorUserId: user.id };
+      }
       // Whoever fired past a cover said so out loud (stage 16c): the card carries
       // the decision, because „he leaned out" is a ruling the table made and the
       // log is where rulings live.

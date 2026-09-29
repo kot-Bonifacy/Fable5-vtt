@@ -66,12 +66,14 @@ import {
   fetchRunsFor,
   loadRunForToken,
   logNetLine,
+  logNetLineWithSecret,
   loadRunRow,
   netAccessVerdict,
   netActionsForRun,
   readFullRun,
   releaseNodeHold,
   rivalNodeHold,
+  runnerOwnerOf,
   saveRunState,
   saveRuntime,
   toAccessPointView,
@@ -468,14 +470,14 @@ export const netRunCopyEvent = defineEvent<NetRunCopyPayload, NetRunPayload>({
         copied: [...state.copied, floor.id],
       });
     }
-    await logNetLine(
-      deps,
-      campaignId,
-      user,
-      tokenTableName(row.token, row.token.character?.name ?? row.token.name),
-      'Kopia Pliku',
-      floor.label || undefined,
-    );
+    // Etykieta Pliku to zawartość Architektury — widzą ją MG i netrunner (#37).
+    await logNetLineWithSecret(deps, campaignId, user, {
+      actorName: tokenTableName(row.token, row.token.character?.name ?? row.token.name),
+      actionName: 'Kopia Pliku',
+      publicNote: '',
+      secretNote: floor.label,
+      runnerOwnerId: runnerOwnerOf(row),
+    });
     await emitRuns(deps, campaignId);
     return requireMyRun(deps, campaignId, row.tokenId, user);
   },

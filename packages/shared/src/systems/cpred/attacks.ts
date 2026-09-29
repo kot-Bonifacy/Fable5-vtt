@@ -382,6 +382,14 @@ export interface CpredAttackMeta {
    * the attack that actually happened, never off the client's word for it.
    */
   attackerTokenId?: string;
+  /**
+   * Konto netrunnera, który strzelił z urządzenia przejętego węzła (#38, 29.09).
+   *
+   * Żeton wieżyczki nie ma właściciela i mieć go nie będzie (26d: uprawnieniem
+   * jest węzeł), więc bez tego pola „Obrażenia" za strzał netrunnera rzucał
+   * wyłącznie MG. Wypełnia serwer; strzały Demona i strefy go nie mają.
+   */
+  operatorUserId?: string;
   /** Cover being shot at instead of a token (stage 16c). */
   targetCoverId?: number;
   metres: number;

@@ -680,7 +680,53 @@ function VirusForm({
   );
 }
 
+/** Odstęp okna runu od pasa, znacznika i krawędzi mapy. */
+const NET_RUN_GAP = 8;
+
+/**
+ * Gdzie okno runu staje za pierwszym razem (#34, 29.09, decyzja MG).
+ *
+ * Do 29.09 stało w (200, 80): na czarnym pasie kolejki netrunnera (kość
+ * „Rzuć inicjatywę" pod belką okna), a u MG na pasku narzędzi mapy i czacie.
+ * Teraz przy prawej krawędzi mapy, górą pod pasem kolejki i pod znacznikiem
+ * „Czeka na MG". Oba miejsca rezerwuje się także wtedy, gdy ich jeszcze nie
+ * ma: run zaczyna się zwykle przed walką, a pas wchodzi nad mapę dopiero z nią
+ * i spycha ją (razem ze znacznikiem) w dół — okno postawione pod gołą mapą
+ * wylądowałoby wtedy na pasie. Znacznik pojawia się u MG, gdy coś czeka.
+ */
+function netRunFallback(isGm: boolean): { x: number; y: number } {
+  const box = (selector: string) => {
+    const rect = document.querySelector(selector)?.getBoundingClientRect();
+    return rect && rect.height > 0 ? rect : undefined;
+  };
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const map = box('.map-area');
+  const bar = box('.combat-bar');
+  const badge = box('.gm-attention-badge');
+  // Pas kolejki: `height: 3.5rem` i czerwona kreska 2 px (`09-turn.css`).
+  const barShift = bar ? 0 : 3.5 * rem + 2;
+  const mapTop = (map?.top ?? 0) + barShift;
+  // Znacznik: `top: 0.75rem` kolumny rogu mapy i jeden wiersz odznaki.
+  const badgeBottom = badge ? badge.bottom + barShift : isGm ? mapTop + 2.75 * rem : 0;
+  const width = Math.min(560, window.innerWidth - 32);
+  const right = map?.right ?? window.innerWidth;
+  return {
+    x: Math.max(0, right - width - NET_RUN_GAP * 2),
+    y: Math.max(mapTop, bar?.bottom ?? 0, badgeBottom) + NET_RUN_GAP,
+  };
+}
+
+/**
+ * Okno runu żyje tylko wtedy, gdy jest run — żeby pierwsze położenie liczyło
+ * się w chwili otwarcia, a nie przy starcie aplikacji, kiedy nie ma jeszcze ani
+ * pasa kolejki, ani mapy (#34).
+ */
 export function NetRunWindow() {
+  const run = useNetRunStore(currentRun);
+  return run ? <NetRunWindowBody /> : null;
+}
+
+function NetRunWindowBody() {
   const run = useNetRunStore(currentRun);
   const runs = useNetRunStore((s) => s.runs);
   const openRun = useNetRunStore((s) => s.openRun);
@@ -688,7 +734,10 @@ export function NetRunWindow() {
   const setNotice = useNetRunStore((s) => s.setNotice);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tokens = useTokenStore((s) => s.tokens);
-  const placement = useWindowPlacement('net-run', () => ({ x: 200, y: 80 }));
+  // Liczone raz, przy otwarciu: miejsce pierwszego otwarcia i zarazem granica
+  // wysokości okna (niżej), żeby klamra nie wypychała go z powrotem na pas.
+  const [fit] = useState(() => netRunFallback(isGm));
+  const placement = useWindowPlacement('net-run', () => fit);
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
   /**
@@ -799,7 +848,16 @@ export function NetRunWindow() {
     <section
       ref={placement.ref}
       className="sheet-window net-run-window"
-      style={{ ...placement.style, zIndex: 330 }}
+      style={{
+        ...placement.style,
+        // Okno bez własnej wysokości mieści się pod pasem w całości: z samym
+        // arkuszowym `100vh − 120px` klamra podciągała je z powrotem na pas
+        // kolejki, gdy stało niżej niż 120 px (#34).
+        ...(placement.style.height === undefined
+          ? { maxHeight: `calc(100vh - ${fit.y + NET_RUN_GAP}px)` }
+          : {}),
+        zIndex: 330,
+      }}
       aria-label={`Sieć: ${run.run.architectureName ?? 'SIEĆ'}`}
     >
       <div className="sheet-header" {...placement.dragProps}>

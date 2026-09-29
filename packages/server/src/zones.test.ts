@@ -404,12 +404,25 @@ describe('defended zones on a scene', () => {
   it('goes off when a figure walks onto it, and the card can be taken back', async () => {
     const before = await healUp();
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const system: string[] = [];
+    // Percepcja (ukryta podłoga) to rzut gracza i zostaje jego — liczy się
+    // karta obrażeń i wiersz systemu.
+    const onMessage = ({ message }: ChatMessageBroadcast) => {
+      if (message.kind === 'damage' || message.text === 'Wejście na broniony obszar') {
+        system.push(message.authorId);
+      }
+    };
+    gm.on('chat:message', onMessage);
     await walk(player, runnerTokenId, 12 * PX_PER_M, 0);
     // Pierwsza wiadomość to karta obrażeń albo linia „Wejście na broniony
     // obszar"; obie lecą, więc bierzemy tę, która niesie rozliczenie.
     await card;
     const after = await hp();
+    gm.off('chat:message', onMessage);
     expect(after).toBeLessThan(before);
+    // System odpala kontem MG, nie gracza, który w niego wszedł (#39).
+    expect(system).toHaveLength(2);
+    expect(system).not.toContain(playerId);
   });
 
   it('does not go off a second time for a figure already standing on it', async () => {

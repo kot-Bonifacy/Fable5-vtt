@@ -49,8 +49,14 @@ import {
   roundOfScene,
 } from './netcombat.js';
 import { damageBrain, type FullRunState } from './netice.js';
-import { fireDevice } from './netdevices.js';
-import { emitRuns, logNetLine, netActionsForRun, saveRunState } from './netrun-io.js';
+import { deviceShotBlockedText, fireDevice, publicDeviceName } from './netdevices.js';
+import {
+  emitRuns,
+  logNetLine,
+  logNetLineWithSecret,
+  netActionsForRun,
+  saveRunState,
+} from './netrun-io.js';
 
 /**
  * Demony (etap 26e) — Architektura, która broni się sama.
@@ -337,6 +343,12 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
     /** Nodes this Turn is done with: fired from, or failed to take back. */
     const spent = new Set<string>();
     const lines: string[] = [];
+    /** To samo dla reszty stołu: bez etykiet pięter i nazw z edytora Architektury (#37). */
+    const publicLines: string[] = [];
+    const note = (line: string, shown = line) => {
+      lines.push(line);
+      publicLines.push(shown);
+    };
     const tokenIds: string[] = [];
 
     while (actionsLeft > 0) {
@@ -368,12 +380,18 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
             controlled: next.controlled.filter((hold) => hold.floorId !== floorId),
           };
           next = { ...stripped, ...netDemonTakesNode(stripped, floorId, check.total) };
-          lines.push(`${nodeName} odebrany — PT odebrania go Demonowi: ${check.total}.`);
+          note(
+            `${nodeName} odebrany — PT odebrania go Demonowi: ${check.total}.`,
+            `Węzeł kontrolny odebrany — PT odebrania go Demonowi: ${check.total}.`,
+          );
         } else {
           // One Test Kontroli per node per Turn: without this the Demon would
           // spend every remaining Action re-rolling the same lock.
           spent.add(floorId);
-          lines.push(`${nodeName} — Test Kontroli nieudany (PT ${dv}).`);
+          note(
+            `${nodeName} — Test Kontroli nieudany (PT ${dv}).`,
+            `Węzeł kontrolny — Test Kontroli nieudany (PT ${dv}).`,
+          );
         }
         await postExchange(deps, {
           campaignId,
@@ -401,10 +419,14 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
           runnerTokenId: row.tokenId,
           devices,
         });
+        const shownAs = await publicDeviceName(deps, device);
         if (!target) {
           // Nothing in sight from this barrel, so nothing is spent on it.
           spent.add(floorId);
-          lines.push(`${device.name} — nie ma do kogo strzelić.`);
+          note(
+            `${device.name} — nie ma do kogo strzelić.`,
+            `${shownAs} — nie ma do kogo strzelić.`,
+          );
           continue;
         }
         const shot = await fireDevice(deps, {
@@ -415,11 +437,11 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
           targetTokenId: target.id,
           summary: `${device.name} → ${tokenTableName(target, target.name)}`,
         });
-        lines.push(
+        const firedAt = (name: string) =>
           shot.blocked
-            ? `${shot.blocked.text}.`
-            : `${device.name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`,
-        );
+            ? `${deviceShotBlockedText(name, shot.blocked.code, shot.blocked.blockerName)}.`
+            : `${name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`;
+        note(firedAt(device.name), firedAt(shownAs));
         next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floorId, round) };
         spent.add(floorId);
         actionsLeft -= 1;
@@ -452,7 +474,7 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
               : `${demon.name}: Paf ${plan.dice}k6 = ${rolled} — bezpośrednio w mózg`,
         });
         if (card) tokenIds.push(row.tokenId);
-        lines.push(
+        note(
           armour > 0
             ? `Paf: ${plan.dice}k6 = ${rolled}, Pancerz zdjął ${armour} — ${through} w mózg.`
             : `Paf: ${plan.dice}k6 = ${rolled} bezpośrednio w mózg.`,
@@ -462,7 +484,7 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
           detail: `${exchange.roll.opposed!.detail} · ${through} w mózg`,
         };
       } else {
-        lines.push('Paf chybia.');
+        note('Paf chybia.');
       }
       await postExchange(deps, {
         campaignId,
@@ -475,9 +497,15 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
     }
 
     await saveRunState(deps.ctx.prisma, row.id, next);
-    const summary =
-      lines.length === 0 ? `${demon.name} nie ma czym zagrać Tury.` : lines.join(' · ');
-    const message = await logNetLine(deps, campaignId, user, demon.name, 'Tura Demona', summary);
+    const idle = `${demon.name} nie ma czym zagrać Tury.`;
+    const summary = lines.length === 0 ? idle : lines.join(' · ');
+    const message = await logNetLineWithSecret(deps, campaignId, user, {
+      actorName: demon.name,
+      actionName: 'Tura Demona',
+      publicNote: publicLines.length === 0 ? idle : publicLines.join(' · '),
+      secretNote: summary,
+      runnerOwnerId,
+    });
     if (tokenIds.length > 0) await emitTokensById(deps, campaignId, [...new Set(tokenIds)]);
     await emitRuns(deps, campaignId);
     return { messageId: message.id, total: 0, success: true, summary };

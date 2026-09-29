@@ -43,7 +43,13 @@ import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { emitTokensById } from './tokens.js';
-import { checkPerceptionOf, controllerOf, fireZone, type ZoneProfile } from './zone-effects.js';
+import {
+  checkPerceptionOf,
+  controllerOf,
+  fireZone,
+  systemHand,
+  type ZoneProfile,
+} from './zone-effects.js';
 import {
   emitZones,
   fetchSceneZones,
@@ -373,6 +379,8 @@ export async function runZonesAfterMove(
   }
 
   // ── the systems themselves ──
+  // Strzał i obrażenia idą kontem MG, nie gracza, który wszedł w strefę (#39).
+  let hand: SessionUser | null = null;
   for (const { row, profile } of live) {
     if (!profile || !netDefenseActs(profile.effects)) continue;
     if (!row.armed) continue;
@@ -401,9 +409,10 @@ export async function runZonesAfterMove(
     // `move` selects.
     if (trigger === 'enter' && isPointInRect(row, before)) continue;
 
+    hand ??= await systemHand(deps, user);
     const fired = await fireZone(deps, {
       campaignId,
-      user,
+      user: hand,
       scene,
       zone: row,
       profile,
@@ -414,7 +423,7 @@ export async function runZonesAfterMove(
       await logZoneLine(
         deps,
         campaignId,
-        user,
+        hand,
         row.name,
         trigger === 'move' ? 'Ruch na bronionym obszarze' : 'Wejście na broniony obszar',
         fired.lines.join(' · '),
@@ -453,7 +462,7 @@ export async function runZonesAtTurnEnd(
 
     const fired = await fireZone(deps, {
       campaignId,
-      user,
+      user: await systemHand(deps, user),
       scene,
       zone: row,
       profile,

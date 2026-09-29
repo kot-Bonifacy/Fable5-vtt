@@ -474,6 +474,7 @@ export class AiGateway {
       json_schema: request.jsonSchema ?? null,
     };
 
+    const effective = signal ?? AbortSignal.timeout(this.options.requestTimeoutMs);
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.options.url}/chat`, {
@@ -483,7 +484,7 @@ export class AiGateway {
           ...(this.options.apiKey ? { 'x-api-key': this.options.apiKey } : {}),
         },
         body: JSON.stringify(body),
-        signal: signal ?? AbortSignal.timeout(this.options.requestTimeoutMs),
+        signal: effective,
       });
     } catch (error) {
       // A dead gateway must be reflected in the UI without waiting for the poll.
@@ -502,26 +503,37 @@ export class AiGateway {
       return;
     }
 
-    for await (const event of parseSse(response.body)) {
-      switch (event.name) {
-        case 'queue':
-          yield { type: 'queue', position: Number(event.data.position ?? 0) };
-          break;
-        case 'think':
-          yield { type: 'think', text: String(event.data.text ?? '') };
-          break;
-        case 'delta':
-          yield { type: 'delta', text: String(event.data.text ?? '') };
-          break;
-        case 'done':
-          yield { type: 'done', usage: toUsage(event.data.usage) };
-          return;
-        case 'error':
-          yield { type: 'error', code: 'AI_ERROR', detail: String(event.data.message ?? '') };
-          return;
-        default:
-          break;
+    try {
+      for await (const event of parseSse(response.body)) {
+        switch (event.name) {
+          case 'queue':
+            yield { type: 'queue', position: Number(event.data.position ?? 0) };
+            break;
+          case 'think':
+            yield { type: 'think', text: String(event.data.text ?? '') };
+            break;
+          case 'delta':
+            yield { type: 'delta', text: String(event.data.text ?? '') };
+            break;
+          case 'done':
+            yield { type: 'done', usage: toUsage(event.data.usage) };
+            return;
+          case 'error':
+            yield { type: 'error', code: 'AI_ERROR', detail: String(event.data.message ?? '') };
+            return;
+          default:
+            break;
+        }
       }
+    } catch (error) {
+      // Przerwanie sygnałem (stop MG, limit czasu) leci dalej jak zawsze —
+      // wołający rozpoznają je po `signal.aborted`. Zerwane w pół odpowiedzi
+      // połączenie („TypeError: terminated", #35) to ten sam gateway, który
+      // przestał odpowiadać, co odmowa połączenia wyżej: błąd jako zdarzenie,
+      // a nie wyjątek, który gniazdo zamienia w `INTERNAL`.
+      if (effective.aborted) throw error;
+      void this.checkHealth();
+      yield { type: 'error', code: 'AI_UNREACHABLE', detail: describeError(error) };
     }
   }
 }

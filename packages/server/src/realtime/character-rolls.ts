@@ -180,8 +180,13 @@ async function resolveRollSource(
     campaignId,
     payload.attackerTokenId,
   );
-  // A statist has no owner in the sheet sense, so control follows the token.
-  if (user.role !== ROLE_GM && token.ownerId !== user.id) {
+  // A statist has no owner in the sheet sense, so control follows the token —
+  // albo węzeł: netrunner, który strzelił z wieżyczki, rzuca jej obrażenia (#38).
+  if (
+    user.role !== ROLE_GM &&
+    token.ownerId !== user.id &&
+    !(await operatedThisShot(deps, campaignId, user, token.id, request))
+  ) {
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
   if (!token.characterId) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
@@ -214,6 +219,30 @@ async function resolveRollSource(
     token,
     data: sheetForRoll(data, skillRoll ? skillId : null),
   };
+}
+
+/**
+ * Czy ten gracz prowadził figurę, która oddała strzał z karty ataku (#38)?
+ *
+ * Tylko rzut obrażeń za wskazaną kartę, tylko za strzał tej właśnie figury
+ * i tylko konto zapisane na karcie przez serwer (`operatorUserId`) — przejęty
+ * węzeł nie daje prawa do innych rzutów wieżyczki ani do cudzych kart.
+ */
+async function operatedThisShot(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  tokenId: string,
+  request: CpredRollRequest,
+): Promise<boolean> {
+  if (request.kind !== 'damage' || !Number.isInteger(request.attackMessageId)) return false;
+  const message = await deps.ctx.prisma.chatMessage.findUnique({
+    where: { id: request.attackMessageId },
+  });
+  if (!message || message.campaignId !== campaignId || !message.payload) return false;
+  const system = (JSON.parse(message.payload) as RollResult).attack?.system as
+    { attackerTokenId?: unknown; operatorUserId?: unknown } | undefined;
+  return system?.attackerTokenId === tokenId && system.operatorUserId === user.id;
 }
 
 /** The natural die of a roll — the first die of the first dice term. */

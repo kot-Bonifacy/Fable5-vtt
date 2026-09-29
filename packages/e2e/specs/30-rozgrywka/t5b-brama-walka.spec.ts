@@ -78,6 +78,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   const fromOla = new Canaries();
   /** Domyślne położenie okna runu Oli, zanim je odsunęła (#34). */
   let olaWindowDefault: { x: number; y: number; width: number; height: number } | null = null;
+  /** To samo u MG — okno nie może stać na pasku narzędzi mapy ani na czacie (#34). */
+  let mgWindowDefault: { x: number; y: number; width: number; height: number } | null = null;
   /** Id karty strzału wieżyczki ze strefy (#39). */
   let zoneShotId = 0;
   /** Notatki MG po padzie gatewaya w turze bota (#35). */
@@ -168,9 +170,9 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     expect(Math.abs(placed.y - target.y), `${actor.name}: okno runu w y`).toBeLessThan(8);
   }
   /**
-   * Okno runu stoi domyślnie na pasku narzędzi MG, na czarnym pasie kolejki i na
-   * czacie, a klamra okien trzyma je całe na ekranie. MG zwęża je nad lewy panel
-   * (mapa, pasek, czat i kubek wolne); Ola zsuwa je pod pas kolejki (#34).
+   * Okno runu otwiera się od 29.09 przy prawej krawędzi mapy, pod pasem kolejki
+   * (#34) — ale plac, po którym klika scenariusz, też jest mapą. MG zwęża je nad
+   * lewy panel (mapa, pasek, czat i kubek wolne); Ola zsuwa je pod pas kolejki.
    */
   const tuckRunWindow = (actor: Actor) =>
     actor === mg
@@ -225,10 +227,9 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       await page.keyboard.press('Escape');
       await clickOnMap(page, tokenCentre(token(name), cell));
       await page.waitForTimeout(300);
-      // Dolna część pola: środek sąsiedniego pola w kierunku, w którym figura
-      // patrzy, zajmuje uchwyt obrotu (grot) — klik tam obraca, a nie idzie (#36).
-      const target = point(column, row);
-      await clickOnMap(page, { x: target.x, y: target.y + 0.3 * cell });
+      // Środek pola — także tego, na który zachodzi grot zaznaczonej figury:
+      // klik bez przeciągnięcia to marsz, nie obrót (#36, poprawione 29.09).
+      await clickOnMap(page, point(column, row));
       // Marsz rusza po chwili (planer, animacja) — dopiero potem czekamy, aż stanie.
       await page.waitForTimeout(1_500);
       let last = '';
@@ -314,6 +315,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     );
     await expect(runWindow(mg)).toBeVisible();
     olaWindowDefault = await runWindow(ola).boundingBox();
+    mgWindowDefault = await runWindow(mg).boundingBox();
     await tuckRunWindow(mg);
     await tuckRunWindow(ola);
     // Gateway przez pośrednika: MG widzi boty dostępne.
@@ -409,7 +411,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('#39 strzał wieżyczki ze strefy nie idzie na konto gracza, który w nią wszedł', async () => {
     // Strefa strzela „ręką” tego, kto ruszył figurą (`fireZone` z użytkownikiem
     // ruchu) — karta u stołu ma podpis „Wieżyczka (Marek)”.
-    test.fail(true, '#39: karta strzału wieżyczki ze strefy podpisana kontem gracza');
     const row = queryOne<{ name: string; role: string }>(
       `SELECT u.name, u.role FROM ChatMessage m JOIN User u ON u.id = m.authorId WHERE m.id = ?`,
       zoneShotId,
@@ -481,19 +482,24 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('#34 okno runu netrunnerki nie zasłania czarnego pasa kolejki', async () => {
     // Domyślnie okno runu stoi na pasie kolejki (inicjatywa, tura) — Ola musiała
     // je odsunąć, żeby rzucić inicjatywę; klamra okien nie pozwala go wypchnąć.
-    test.fail(true, '#34: okno runu na pasie kolejki i na pasku narzędzi MG');
+    type Box = { x: number; y: number; width: number; height: number };
+    const overlaps = (a: Box, b: Box) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
     const bar = (await ola.page.getByRole('group', { name: 'Kolejka inicjatywy' }).boundingBox())!;
-    const box = olaWindowDefault!;
+    const mgBar = (await mg.page.getByRole('group', { name: 'Kolejka inicjatywy' }).boundingBox())!;
+    const tools = (await mg.page.getByRole('toolbar', { name: 'Narzędzia mapy' }).boundingBox())!;
+    const side = (await mg.page.locator('.side-panel').boundingBox())!;
     test.info().annotations.push({
       type: 'okno i pas',
-      description: JSON.stringify({ okno: box, pas: bar }),
+      description: JSON.stringify({
+        Ola: { okno: olaWindowDefault, pas: bar },
+        MG: { okno: mgWindowDefault, pas: mgBar, narzędzia: tools, panel: side },
+      }),
     });
-    const overlaps =
-      box.x < bar.x + bar.width &&
-      bar.x < box.x + box.width &&
-      box.y < bar.y + bar.height &&
-      bar.y < box.y + box.height;
-    expect(overlaps).toBe(false);
+    expect(overlaps(olaWindowDefault!, bar), 'Ola: okno na pasie').toBe(false);
+    expect(overlaps(mgWindowDefault!, mgBar), 'MG: okno na pasie').toBe(false);
+    expect(overlaps(mgWindowDefault!, tools), 'MG: okno na narzędziach mapy').toBe(false);
+    expect(overlaps(mgWindowDefault!, side), 'MG: okno na panelu z czatem').toBe(false);
   });
 
   test('5.2 runda 1, tura Demona: wieżyczka trafia Olę przez barierę, Paf w mózg', async () => {
@@ -645,7 +651,10 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     expect(pendingDice()).toBe('');
     // Darmowy atak Kruka: nie ma zrezowanego Obrońcy, więc 1k6 = 4 wprost w mózg.
     await expect.poll(() => hp('Iskra')).toBe(iskraHp - 4);
-    expect(messageAfter(since, 'Wykrycie — Kruk', 'gmroll')).toBeTruthy();
+    // Karta wymiany zapisuje się po obrażeniach w mózg — czekamy, a nie sprawdzamy raz.
+    await expect
+      .poll(() => messageAfter(since, 'Wykrycie — Kruk', 'gmroll')?.id ?? 0)
+      .toBeGreaterThan(0);
     await expect
       .poll(() => queueOf(mg), { timeout: 30_000 })
       .toEqual(['Kruk', 'Diablik', 'Kowal', 'Iskra', 'Strażnik']);
@@ -764,7 +773,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     // Zerwany strumień SSE rzuca `TypeError: terminated` w `ai/gateway.ts` (pętla
     // `parseSse` bez `try`) — gniazdo odpowiada `INTERNAL`; drugie „Graj turę”
     // przy martwym gatewayu — `AI_UNAVAILABLE`. Oba lądują w notce jako kody.
-    test.fail(true, '#35: „tura się nie odbyła (INTERNAL)” / „(AI_UNAVAILABLE)”');
     test.info().annotations.push({ type: 'notatki', description: JSON.stringify(botTurnNotes) });
     expect(botTurnNotes.length).toBeGreaterThan(0);
     for (const note of botTurnNotes) expect(note).not.toMatch(/\((INTERNAL|AI_[A-Z_]+)\)/);
@@ -899,6 +907,11 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         .getByRole('button', { name: /^Obrażenia/ })
         .count();
     await expect.poll(() => buttonAt(mg), { timeout: 30_000 }).toBeGreaterThan(0);
+    // Karta dochodzi do Oli po animacji jej własnych kości — czekamy jak na MG.
+    await expect
+      .poll(() => buttonAt(ola), { timeout: 30_000 })
+      .toBeGreaterThan(0)
+      .catch(() => undefined);
     olaTurretDamageButton = await buttonAt(ola);
     const olaHasButton = olaTurretDamageButton > 0;
     test.info().annotations.push({
@@ -937,7 +950,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('#38 netrunnerka rzuca obrażenia za strzał wieżyczki, którą prowadzi', async () => {
     // Strzelec karty to żeton wieżyczki (bez właściciela, #23/#27), więc „Obrażenia”
     // ma tylko MG — Ola strzela swoimi Umiejętnościami, a obrażeń nie rzuci.
-    test.fail(true, '#38: „Obrażenia” za wieżyczkę netrunnerki tylko u MG');
     expect(olaTurretDamageButton).toBeGreaterThan(0);
   });
 
@@ -1080,7 +1092,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('#36 klik w środek pola przed figurą rusza ją, a nie łapie uchwytu obrotu', async () => {
     // Grot (uchwyt obrotu, 27j/26.09) sięga do środka sąsiedniego pola w kierunku
     // patrzenia: klik tam zaczyna obrót o 0°, marsz nie rusza i nic o tym nie mówi.
-    test.fail(true, '#36: klik w sąsiednie pole przed figurą obraca zamiast iść');
     const page = marek.page;
     const start = at('Kowal');
     const facing = token('Kowal') as unknown as { facing: number | null };
@@ -1105,7 +1116,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   test('#37 opis piętra węzła nie dociera do gracza spoza runu (dziennik Tury Demona i węzła)', async () => {
     // `logNetLine` pisze do wszystkich wiersz „Tura Demona” z etykietą piętra
     // („Węzeł: … — Test Kontroli nieudany”) i „Węzeł kontrolny: …” po strzale Oli.
-    test.fail(true, '#37: etykieta piętra węzła w publicznym wierszu dziennika');
     const code = codes.get('pietro-wezla')!;
     const leaked = await marek.sniffer.found([code]);
     if (leaked.length > 0) {
@@ -1114,8 +1124,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         description: `${code} … ${await marek.sniffer.evidence(code, 0, 300)}`,
       });
     }
-    // Znany wyciek — kontrola po T5b pilnuje reszty.
-    fromMarek.reveal(code);
     expect(leaked).toEqual([]);
   });
 

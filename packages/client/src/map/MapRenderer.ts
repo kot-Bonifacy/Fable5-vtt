@@ -1583,7 +1583,14 @@ export class MapRenderer {
    * dragged. Null the rest of the time — the knob is drawn regardless, it is
    * only *grabbed* rarely.
    */
-  private rotating: { tokenId: string; facing: number } | null = null;
+  private rotating: {
+    tokenId: string;
+    facing: number;
+    /** Gdzie na ekranie złapano grot — obrót zaczyna się dopiero za progiem (#36). */
+    from: { x: number; y: number };
+    /** Czy ręka ruszyła się ponad próg kliknięcia `pixi-viewport`. */
+    moved: boolean;
+  } | null = null;
   /**
    * Last planned route, keyed by the goal cell. A* would otherwise run on every
    * pointer event — dozens of times a second — to produce the same polyline.
@@ -1797,6 +1804,10 @@ export class MapRenderer {
      *   → armed crosshair (16b) → steered token walks → empty click
      */
     viewport.on('clicked', (event) => {
+      // Grot złapany i puszczony w miejscu (#36): to klik, nie obrót. Chwyt
+      // puszcza się tutaj, bo `trackWalkHover` przy trwającym obrocie nie
+      // planuje trasy — resztę sprząta `onRotateEnd`.
+      if (this.rotating && !this.rotating.moved) this.rotating = null;
       // The tools that finish their gesture on pointerdown have already spent
       // this click; letting it through here would also drop a token in the
       // middle of a floor plan or send a figure marching (see the getter).
@@ -2304,7 +2315,7 @@ export class MapRenderer {
       // 27j): a click meant to paint fog must not turn a figure standing under
       // the brush, and the knob is a handle on the selection, not a tool of
       // its own.
-      if (!this.mapToolArmed && this.grabFacingKnob(world)) return;
+      if (!this.mapToolArmed && this.grabFacingKnob(world, event.global)) return;
 
       // Uchwyty zaznaczonego obiektu (27l) wyprzedzają wszystkie narzędzia:
       // klik zaznaczył, więc drugi gest **z niego** znaczy „przesuń to", a nie
@@ -3738,12 +3749,17 @@ export class MapRenderer {
   }
 
   /** Did this click land on the rotation knob? Starts the turn if it did. */
-  private grabFacingKnob(point: ScenePoint): boolean {
+  private grabFacingKnob(point: ScenePoint, screen: { x: number; y: number }): boolean {
     const knob = this.facingKnob();
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     if (!knob || !node) return false;
     if (Math.hypot(point.x - knob.x, point.y - knob.y) > knob.reach) return false;
-    this.rotating = { tokenId: node.tokenId, facing: node.facing ?? 0 };
+    this.rotating = {
+      tokenId: node.tokenId,
+      facing: node.facing ?? 0,
+      from: { x: screen.x, y: screen.y },
+      moved: false,
+    };
     this.viewport?.plugins.pause('drag');
     this.app.stage.eventMode = 'static';
     this.app.stage.on('pointermove', this.onRotateMove);
@@ -3758,6 +3774,15 @@ export class MapRenderer {
     const viewport = this.viewport;
     const knob = this.facingKnob();
     if (!rotating || !viewport || !knob) return;
+    // Obrót zaczyna się dopiero za progiem kliknięcia (#36): przy oddalonej
+    // kamerze strefa chwytu sięga środka sąsiedniego pola, a klik tam znaczy
+    // „idź", nie „obróć o 0°".
+    if (!rotating.moved) {
+      const dx = event.global.x - rotating.from.x;
+      const dy = event.global.y - rotating.from.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < viewport.threshold) return;
+      rotating.moved = true;
+    }
     const world = viewport.toWorld(event.global.x, event.global.y);
     const facing = facingFromDelta(world.x - knob.centre.x, world.y - knob.centre.y);
     if (facing === null || facing === rotating.facing) return;
@@ -3786,13 +3811,16 @@ export class MapRenderer {
     this.app.stage.off('pointerup', this.onRotateEnd);
     this.app.stage.off('pointerupoutside', this.onRotateEnd);
     this.viewport?.plugins.resume('drag');
+    this.drawSelectionRing();
+    this.drawWalkPreview();
+    // Chwyt bez ruchu nie był obrotem, tylko kliknięciem w pole pod grotem
+    // (#36) — `clicked` z `pixi-viewport` ma przejść jak każdy inny klik w mapę.
+    if (!rotating?.moved) return;
     // The release of a turn is not an order to walk — the same guard a token
     // drag needs, and for the same reason: `pixi-viewport` still calls a short
     // gesture a click on the map underneath it.
     this.dragEndedAt = performance.now();
-    this.drawSelectionRing();
-    this.drawWalkPreview();
-    if (rotating) this.onTokenFacing?.(rotating.tokenId, rotating.facing);
+    this.onTokenFacing?.(rotating.tokenId, rotating.facing);
   };
 
   /**
@@ -6755,7 +6783,7 @@ export class MapRenderer {
       // up the neighbour instead of turning the selection.
       if (this.viewport) {
         const world = this.viewport.toWorld(event.global.x, event.global.y);
-        if (this.grabFacingKnob(world)) {
+        if (this.grabFacingKnob(world, event.global)) {
           event.stopPropagation();
           return;
         }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ROLE_GM, BOT_AUTONOMY_LABELS } from '@vtt/shared';
-import { playBotTurn } from '../socket.js';
+import { botTurnErrorText, playBotTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useBotStore } from '../stores/botStore.js';
 import { useChatStore } from '../stores/chatStore.js';
@@ -60,7 +60,7 @@ export function BotTurnButton({
     try {
       const ack = await playBotTurn(tokenId);
       const note = !ack.ok
-        ? `tura się nie odbyła (${ack.error}).`
+        ? botTurnErrorText(ack.error)
         : ack.data?.outcome === 'refused'
           ? (ack.data.refusal ?? 'tura się nie odbyła.')
           : null;
