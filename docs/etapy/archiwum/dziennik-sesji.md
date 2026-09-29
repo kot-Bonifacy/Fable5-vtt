@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 27.09 — poprawki po T5a: #28–#33 (retest E2E OK)
+
+**Zlecenie MG:** naprawić sześć błędów T5a przed T5b. Sesja skończyła się bez commitu i bez tej
+notatki — domknięte na starcie sesji T5b (commit poprawek i wpis hashu w rejestrze).
+
+**Zrobione:** `everyRunCell` (`pathfinding.ts`) z pikselem luzu na brzegach pól — kratka 36,2 px
+nie liczy już kolumny, której figura nie dotyka (#28); `refuseWalkIntoFog`/`refuseWalkThroughSolid`
+rzucają `MOVE_INTO_FOG`/`MOVE_BLOCKED_BY_TERRAIN` także poza walką, notka klienta i zdania bota
+mówią powód (#29); `standingOpeningsFor` (`realtime/blockers.ts`) daje klamki drzwi i bram na
+scenie bez Dynamicznej, na ręcznej mgle tylko odsłonięte (#30); `netCanMove` sprawdza hasło na
+piętrze startowym przy zjeździe niżej (#31); `netRunView` wkłada `architectureName` tylko MG,
+okno runu gracza pisze „SIEĆ” (#32); pole „Węzeł kontrolny” na karcie strefy (`SceneCardZone.tsx`,
+#33). Umowy w `mapa` i `siec`, pułapka w `mapa`. T5a: 23 testy bez `test.fail`, `po-T5a` nagrany
+na nowo (brama otwarta klamką Marka, strefa związana z karty).
+
+**Weryfikacja (powtórzona 27.09 na starcie T5b):** shared 2245, serwer 1254, klient 300; `tsc`,
+ESLint i Prettier czyste w czterech pakietach. Oglądane automatem: MG i Marek w Chromium, Ola
+w Firefoksie, headless. `dev.db` nietknięta.
+
 ### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście, run Oli (sześć nowych błędów)
 
 **Zlecenie MG:** etap testowy T5 (`testy.md` 5.3), z prawem podziału. Dwie tury pytań — decyzje

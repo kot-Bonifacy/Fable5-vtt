@@ -40,12 +40,10 @@ kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b, T5a i T5b zamknięte** — T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
-(`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **Otwarte:
-#10–#13** (na etap „Konta MG”, zadania Z5–Z8) **i #34–#39 z T5b** (do triażu MG: #37 — etykieta
-piętra węzła w publicznym dzienniku — proponowany B1, reszta B3); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+(`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`). **Otwarte
+tylko #10–#13** (na etap „Konta MG”, zadania Z5–Z8); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T6** (po
-walkach: handel, sklep, cyborgizacja, PD, czas, screamsheet, eksport i kopie) od punktu `po-T5` —
-albo najpierw poprawki #34–#39.
+walkach: handel, sklep, cyborgizacja, PD, czas, screamsheet, eksport i kopie) od punktu `po-T5`.
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -109,8 +107,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2245** w `shared`, **1254** na serwerze, **300** u klienta,
-**59** w gatewayu (27.09, poprawki po T5a), **165** E2E (11 `test.fail` — #10–#13 i #34–#39, 27.09 — T5b od `po-T5a` zielony trzy razy, T5a + T5b od `po-T4` 50/50; pełny przebieg od zera po T5b przerwany na starcie — system zabił procesy w tle z braku pamięci — do powtórzenia) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2245** w `shared`, **1258** na serwerze, **300** u klienta,
+**59** w gatewayu (29.09, poprawki po T5b), **165** E2E (5 `test.fail` — #10–#13; 29.09 — T5b od `po-T5a` 27/27, T4a → T5b od `po-T3` 84/84; pełny przebieg od zera po T5b wciąż do powtórzenia — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -132,10 +130,10 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 52   | 21      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 53   | 22      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 13   | 17      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 24   | 14      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 9    | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 39   | 8       |
@@ -144,17 +142,36 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 45   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 17   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury                     | 4    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 4    | 7       |
+| `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 5    | 7       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 58      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 59      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.09 — poprawki po T5b: #34–#39 (retest E2E OK)
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 zostają na „Konta
+MG”; wagi z propozycji (#37 B1, reszta B3); #37 — skrót dla stołu + pełny wiersz dla MG i
+netrunnera; #38 — obrażenia rzuca netrunnerka; #34 — okno runu przy prawej krawędzi mapy pod pasem.
+
+**Zrobione (`8277386`):** `netRunFallback` + przycięta wysokość okna runu (#34); `streamChat` łapie
+zerwany SSE jako `AI_UNREACHABLE`, `botTurnErrorText` (#35); obrót grotem od progu kliknięcia
+i **aureola tury bez trafiania** — druga przyczyna #36 wyszła dopiero w reteście 5.9 (#36);
+`logNetLineWithSecret` + `publicDeviceName`, znaczek „poufne” (#37, także „Kopia Pliku”);
+`operatorUserId` na karcie strzału urządzenia (#38); `systemHand` dla stref (#39). Umowy w `mapa`,
+`ui`, `siec`, `boty`; pułapki w `mapa` i `testy`. E2E: zdjęte `test.fail` i obejście klika w `walk`,
+#34 sprawdza też okno MG, utwardzony wyścig „Wykrycie — Kruk”.
+
+**Weryfikacja:** shared 2245, serwer 1258, klient 300; `tsc`, ESLint, Prettier czyste. T5b od
+`po-T5a` 27/27, łańcuch T4a → T5b od `po-T3` 84/84. Oglądane automatem: MG i Marek w Chromium,
+Ola w Firefoksie, headless. Gateway z modelem (port 8080 zwolniony za zgodą MG — pułapka w `testy`).
+`dev.db` nietknięta. **Następny krok:** T6 od `E2E_FROM=po-T5`.
 
 ### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya (sześć nowych błędów)
 
@@ -180,21 +197,3 @@ przebieg — wyżej. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane 
 w Chromium, Ola w Firefoksie, headless; #36 i celowanie MG rozpoznane w Playwright MCP (Chromium,
 Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta; gateway z modelem przez całą sesję.
 
-### Sesja 27.09 — poprawki po T5a: #28–#33 (retest E2E OK)
-
-**Zlecenie MG:** naprawić sześć błędów T5a przed T5b. Sesja skończyła się bez commitu i bez tej
-notatki — domknięte na starcie sesji T5b (commit poprawek i wpis hashu w rejestrze).
-
-**Zrobione:** `everyRunCell` (`pathfinding.ts`) z pikselem luzu na brzegach pól — kratka 36,2 px
-nie liczy już kolumny, której figura nie dotyka (#28); `refuseWalkIntoFog`/`refuseWalkThroughSolid`
-rzucają `MOVE_INTO_FOG`/`MOVE_BLOCKED_BY_TERRAIN` także poza walką, notka klienta i zdania bota
-mówią powód (#29); `standingOpeningsFor` (`realtime/blockers.ts`) daje klamki drzwi i bram na
-scenie bez Dynamicznej, na ręcznej mgle tylko odsłonięte (#30); `netCanMove` sprawdza hasło na
-piętrze startowym przy zjeździe niżej (#31); `netRunView` wkłada `architectureName` tylko MG,
-okno runu gracza pisze „SIEĆ” (#32); pole „Węzeł kontrolny” na karcie strefy (`SceneCardZone.tsx`,
-#33). Umowy w `mapa` i `siec`, pułapka w `mapa`. T5a: 23 testy bez `test.fail`, `po-T5a` nagrany
-na nowo (brama otwarta klamką Marka, strefa związana z karty).
-
-**Weryfikacja (powtórzona 27.09 na starcie T5b):** shared 2245, serwer 1254, klient 300; `tsc`,
-ESLint i Prettier czyste w czterech pakietach. Oglądane automatem: MG i Marek w Chromium, Ola
-w Firefoksie, headless. `dev.db` nietknięta.
