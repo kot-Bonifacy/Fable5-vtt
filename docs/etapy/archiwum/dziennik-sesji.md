@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya (sześć nowych błędów)
+
+**Zlecenie MG:** etap testowy T5b (`testy.md` 5.3, kroki 5.4–5.11). Pytania na starcie: poprawki
+#28–#33 domknąć osobnym commitem, gateway uruchamia Claude, Ola derezuje Kruka Mieczem, walka
+kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (decyzje w `testy.md`, sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów) i `instance/gateway-proxy.ts`
+(pośrednik TCP: serwer instancji woła gateway przez :3108, test tnie połączenia zaraz po `POST /chat`
+i odmawia nowych, w 5.10 wraca); `walka.ts` czeka na turę u klientów do 30 s; hak `__vttE2E` dostał
+magazyn `ai` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w `testy.md` 5.3.
+
+**Znalezione (do triażu MG, wszystkie `test.fail`):** #34 okno runu na pasie kolejki netrunnera
+i na pasku/czacie MG; #35 pad gatewaya w turze bota daje „(INTERNAL)” — zerwany SSE bez `try`
+w `ai/gateway.ts` — i „(AI_UNAVAILABLE)” zamiast zdania (stan nie wisi); #36 klik w środek pola
+przed zaznaczoną figurą łapie uchwyt obrotu; #37 etykieta piętra węzła w publicznym wierszu
+dziennika dociera do Marka (proponowany B1); #38 za wieżyczkę netrunnerki obrażenia rzuca tylko
+MG; #39 strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Pięć obserwacji do
+`testy.md` 8, osiem pułapek automatu w `testy`.
+
+**Weryfikacja:** T5b od `po-T5a` zielony trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min); pełny
+przebieg — wyżej. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane automatem: MG i Marek
+w Chromium, Ola w Firefoksie, headless; #36 i celowanie MG rozpoznane w Playwright MCP (Chromium,
+Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta; gateway z modelem przez całą sesję.
+
 ### Sesja 27.09 — poprawki po T5a: #28–#33 (retest E2E OK)
 
 **Zlecenie MG:** naprawić sześć błędów T5a przed T5b. Sesja skończyła się bez commitu i bez tej

@@ -50,6 +50,8 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 37  | T5b  | B1 | siec | Opis piętra węzła kontrolnego dociera do gracza spoza runu | Ola przejmuje węzeł („Węzeł: wieżyczka …” — etykieta piętra z edytora Architektury) → „Tura Demona” (nieudany Test Kontroli) i strzał Oli z wieżyczki piszą wiersz dziennika `action` do całego stołu z etykietą piętra: „Węzeł: wieżyczka KANAREK-pietro-wezla — Test Kontroli nieudany (PT 13). · Paf chybia.” i „Węzeł: wieżyczka KANAREK-… · Wieżyczka nad placem — strzał…”. Marek (nie jest w Sieci) dostaje etykietę piętra, którą widzi tylko netrunnerka, która na nie weszła (26b: „reszta stołu widzi skrót, nie zawartość Architektury”). `nodeName` w `realtime/netdemons.ts` (Tura Demona) i `realtime/netdevices.ts` (`${nodeName} · ${summary}`) | test `#37 opis piętra węzła nie dociera do gracza spoza runu` (`test.fail`), adnotacja „wyciek u Marek” z ramką `chat:message` (`kind: action`, `note`); **triaż MG 29.09: B1**. Poprawka (decyzja MG 29.09: skrót dla stołu + pełny wiersz dla MG i netrunnera): `logNetLineWithSecret` — publicznie „węzeł kontrolny” i urządzenie pod nazwą z mapy, pełny wiersz `gmaction` z adresatem (znaczek „poufne”); to samo dla „Kopii Pliku”; test w `netdevices.test.ts`; retest: test `#37` zielony, kanarek piętra zostaje pod kontrolą do końca T5b | retest OK | `8277386` |
 | 38  | T5b  | B3 | siec | Netrunnerka nie rzuca obrażeń za strzał wieżyczki, którą prowadzi | Ola przejmuje węzeł i strzela wieżyczką w Strażnika (jej REF i Broń krótka, trafienie) → „Obrażenia 4k6” na karcie ma tylko MG (MG: 1, Ola: 0, Marek: 0). Od #23/#27 strzelca karty wskazuje `attackerTokenId` = żeton wieżyczki bez właściciela. Obejście: rzuca MG. Może być zamierzone — do decyzji MG | test `#38 netrunnerka rzuca obrażenia za strzał wieżyczki…` (`test.fail`), adnotacja „przycisk „Obrażenia” za wieżyczkę”; **triaż MG 29.09: B3**. Poprawka (decyzja MG 29.09: rzuca netrunnerka): karta strzału niesie `operatorUserId`, serwer wpuszcza to konto do rzutu obrażeń za tę kartę, klient bierze adres z karty (Ola nie widzi figury wieżyczki); test w `netdevices.test.ts`; retest: test `#38` zielony, obrażenia 5.5 rzuca Ola | retest OK | `8277386` |
 | 39  | T5b  | B3 | siec | Strzał wieżyczki ze strefy idzie na konto gracza, który w nią wszedł | Kowal (Marek) wchodzi w strefę „Automatyczna wieżyczka” → karta strzału na czacie: „Wieżyczka (Marek)”, autor wiadomości = konto Marka (kości, animacja i historia rzutów Marka), a karta obrażeń tej samej wieżyczki — „Wieżyczka (MG)”. `runZonesAfterMove` → `fireZone` → `fireDevice` z użytkownikiem, który ruszył figurą | test `#39 strzał wieżyczki ze strefy nie idzie na konto gracza…` (`test.fail`), adnotacja „autor karty”: `{"name":"Marek","role":"PLAYER"}`; **triaż MG 29.09: B3**. Poprawka: `systemHand` — strefa odpala się kontem MG (strzał, karta obrażeń, wiersz strefy), Percepcja zostaje rzutem gracza; test w `zones.test.ts`; retest: test `#39` zielony | retest OK | `8277386` |
+| 40  | T6a  | B3 (do triażu MG) | ekwipunek | Karta czatu handlu z NPC-em niesie graczowi id karty NPC-a | Marek (Kowal) proponuje handel Paserowi z menu figury, MG prowadzi stronę NPC-a, wymiana Ronin ↔ 400 ed → karta czatu `kind: inventory` („Kowal ⇄ Paser”) jedzie do Marka z `inventory.toCharacterId` = id karty Pasera. Umowa handlu (`trade:partners`, `trade:invite`): „Id karty NPC-a gracz poznawać nie ma” — NPC-a gracz wskazuje figurą. Treści karty id nie odsłania (serwer pilnuje własności przy każdym zdarzeniu), ale to ten sam wpis `InventoryMoveEntry` co przy łupie z 38b (`fromCharacterId` ciała statysty) — do sprawdzenia przy poprawce | test `#40 id karty NPC-a nie dociera do gracza w karcie czatu handlu` (`test.fail`), adnotacja „wyciek u Marek” z ramką `chat:message` (`"toCharacterId":"…","toName":"Paser","toOwnerId":null`); `postInventoryCard` w `realtime/trade.ts` | nowy | |
+| 41  | T6a  | B3 (do triażu MG; może być zgodne z projektem) | postac | Medyk-gracz nie zoperuje drugiego gracza — montaż z chirurgiem-postacią uruchamia tylko MG | Ola bierze Rolę Medyka i punkt w Chirurgię (Chirurgia 2) → Marek w Kompendium, wpis „Cyberoko”, cel Kowal: lista chirurgów ma tylko „Bez Testu montażu” (Iskry nie ma); Ola: lista pacjentów ma tylko „Iskra”. Surowe `character:cyberware` z `surgeon: { kind: 'character' }` → `CHARACTER_NOT_FOUND` z obu stron: `resolveSurgeon` woła `requireRollableCharacter` dla chirurga **i** pacjenta na koncie klikającego. Gracz może sam wszczepić bez Testu montażu (płaci, rzuca Człowieczeństwo). Obejście: montaż klika MG (wybiera Kowala i „Iskra — Chirurgia 2”, Test rzuca się za Iskrę). Poprawka wymagałaby zgody drugiej strony (jak propozycja przy `inventory:give`) | test `6.3 gracze sami nie spinają operacji…` (dokumentuje stan, nie `test.fail` — oczekiwane zachowanie do decyzji MG), adnotacje „chirurdzy w Kompendium Marka”, „pacjenci w Kompendium Oli”, oba acki `CHARACTER_NOT_FOUND`; scenariusz montuje ręką MG (6.3/6.5) | nowy | |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -126,10 +128,52 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 | Z7  | T2   | „Konta MG” | Pliki `/uploads/` bez logowania (z #10)                  | Każdy, kto zna adres (16 losowych znaków), pobiera mapę, portret, handout bez logowania — także handout nieudostępniony. Rozstrzygnięte w `testy.md` 11.3: uploady kampanii za logowaniem, tylko dla jej członków. |
 | Z8  | T2   | „Konta MG” | Gniazdo po wylogowaniu i wygaśnięciu sesji (z #11)       | Wylogowanie i usunięcie sesji rozłącza jej gniazda (lista gniazd per sesja albo sprawdzenie sesji przy zdarzeniu). Decyzja MG z 26.09: B2 + zadanie. |
 | Z9  | T2   | 28        | Gniazdo nie sprawdza nagłówka `Origin`                    | Handshake WebSocket z `Origin: http://zly.example` i ważnym ciasteczkiem przechodzi (CORS dotyczy tylko long-pollingu). Dziś chroni tylko `SameSite=Lax`; `allowRequest` w Socket.IO z listą pochodzeń. |
+| Z10 | T6a  | 28        | Brak importu całej kampanii                               | Krok 6.8 planu („eksport kampanii i import do świeżej instancji”) zakładał import zrzutu kampanii, a etap 33 dał świadomie tylko eksport kampanii (`GET /api/archive/campaign`) oraz import pojedynczej karty i sceny (`archive:character`, `archive:scene`); całość odtwarza się snapshotem i skryptem `restore`. **Decyzja MG z 29.09 (sesja T6a):** T6b testuje to, co jest (eksport z czatem i bez, import kart Kowala i Iskry oraz sceny „Brama” z uploadami do nowej kampanii na świeżej instancji), a brak importu kampanii to zadanie, nie błąd. Przy etapie 28 rozstrzygnąć, czy przenosiny kampanii między instancjami (np. `dev.db` → VPS) idą snapshotem, czy trzeba importu. |
 
 ## Starsze notatki sesji testowych
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
+
+### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście przez bramę, run Oli
+
+**Rozstrzygnięcia MG na starcie (dwie tury pytań):** T5 dzielimy na T5a (przed walką) i T5b
+(walka); architektura Hasło → Plik → Czarny LOD → Węzeł wieżyczki, na dnie Demon; pad gatewaya
+przez pośrednika TCP w suicie; Kowal wchodzi ranny (6k6 strefy ze skryptu kości); nowy
+„Strażnik” z botem; Ola strzela wieżyczką w Strażnika, potem ją wyłącza; MG daje Kowalowi
+amunicję przeciwpancerną (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5a-brama-siec.spec.ts` (24 testy, ~1,6 min od `po-T4`) i
+`fixtures/brama.ts` (statysta z kartą, bot, mgła prostokątem, strefy, stan Sieci z bazy);
+`walka.ts` czyta aktywną scenę zamiast „Knajpy”; hak `__vttE2E` dostał magazyny `netRun`, `zone`,
+`wall`, `fog` (tylko build `--mode e2e`). Przebieg w 5.3 wyżej. Kanarki: nazwa architektury,
+etykiety pięter 3–5, notatki MG pięter, gniazda i strefy, sekret Strażnika, id Wieżyczki
+i Strażnika; notatka Pliku po Ajdi jawna dla Oli, tajna przed Markiem (`ONLY_FROM`). Konsola
+czysta u trojga. Punkt `po-T5a`: Kowal na placu za otwartą bramą (21, 11), Iskra przy skrzynce
+(24, 15) podłączona, na Pliku (piętro 2) po Backdoorze i Ajdi; walka nie trwa; bot „Strażnik”
+w sesji; gateway martwy przez całą sesję (T5a go nie woła).
+
+**Znalezione (do triażu MG):** #28 **B2?** — marsz pod skraj ręcznej mgły wraca na start
+(`Math.floor(543 / 36.2)` = 14 w `everyRunCell`, kratka niecałkowita); #29 **B3?** — odmowa ruchu
+poza walką odsyła do karty, której nie ma; #30 **B2?** — na ręcznej mgle gracz nie dostaje klamek
+(`openings` tylko na Dynamicznej), a serwer by przepuścił; #31 **B1?** — hasło na piętrze wejścia
+nie blokuje zjazdu (`netCanMove` pomija piętro startowe); #32 **B1?** — nazwa architektury
+w ładunku runu gracza; #33 **B2?** — brak UI wiązania strefy z węzłem. Wszystkie jako `test.fail`
+z obejściem w scenariuszu. Dwie obserwacje do sekcji 8.
+
+**Suita:** 139 testów (T5a 24, w tym 6 `test.fail`; razem 11 `test.fail`). T5a od `po-T4`
+zielony, T4b + T5a od `po-T4a` 43/43 (4,2 min). Pełnego przebiegu od zera w tej sesji nie było.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; `dev.db` nietknięta.
+
+**Następny krok:** T5b od `E2E_FROM=po-T5a` — **gateway z modelem potrzebny** (tura Strażnika,
+5.6), pośrednik TCP do napisania w `instance/` (instancja z `E2E_AI_GATEWAY_URL` na pośrednika).
+Strefa wieżyczki jest już związana z węzłem (obejście #33); Demon czuwa (MG: „Demon wykrywa
+intruza”); zjazd na piętro 3 spawnuje Kruka. Znany wyciek #32 trzeba w T5b obsłużyć jak w T5a
+(kanarek `nazwa-architektury` tajny tylko przed Markiem). Albo najpierw poprawki #28–#33.
+
+**Aktualizacja 27.09 (poprawki #28–#33, retest OK):** T5a ma 23 testy bez `test.fail` (#33
+wchłonął krok obejścia), `po-T5a` nagrany na nowo: brama otwarta ręką Marka, strefa związana
+z karty, nazwa architektury jest kanarkiem dla obojga graczy — **w T5b wyciek #32 nie wymaga już
+obsługi**.
 
 ### Sesja 27.09 — T4b: walka pierwsza do końca — rany, granat, zwarcie, łup
 

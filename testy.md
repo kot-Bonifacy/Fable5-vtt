@@ -24,7 +24,9 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T4b  | Rozgrywka 2b/4: walka pierwsza — granat, rany, łup        | ✅     | 27.09.2026 |
 | T5a  | Rozgrywka 3a/4: „Brama” — przygotowanie, wejście, run Oli | ✅     | 27.09.2026 |
 | T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ✅     | 27.09.2026 |
-| T6   | Rozgrywka 4/4: po walkach, ekonomia, rozwój, czas, kopie  | ⬜     |            |
+| T6a  | Rozgrywka 4a/4: handel, sklep, Paser, PD, Medyk, chrom    | ✅     | 29.09.2026 |
+| T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ⬜     |            |
+| T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
@@ -83,6 +85,10 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
 | śmieci od MG           | śmieciowe ładunki idą **także w zdarzenia MG** z gniazda MG (pad serwera od MG to też B0), na kopii `po-T3` (decyzja MG z 26.09, sesja T2) |
 | próg zalewu            | wiadomość innego gracza albo ruch MG dochodzi w trakcie zalewu po ponad **5 s** = B1 (decyzja MG z 26.09, sesja T2) |
+| podział T6             | **T6a** = 6.1–6.5 i `po-T6a`, **T6b** = 6.6–6.9 i `po-T6`, **T6c** = 6.10 (dwa pełne przebiegi od zera i łatanie migotania suity) — decyzja MG z 29.09, sesja T6a |
+| T6: eksport i import   | aplikacja nie ma importu całej kampanii (etap 33 świadomie) — T6b testuje to, co jest: eksport kampanii z czatem i bez, import kart i sceny do nowej kampanii na świeżej instancji; brak importu kampanii = **zadanie Z10**, nie błąd (decyzja MG z 29.09, sesja T6a) |
+| T6: rozwój i chrom     | Ola bierze **Rolę Medyka** (wieloklasowość), punkt Medycyny w Chirurgię i **operuje Marka** — montaż Cyberoka jej Chirurgią (6.3–6.5 w łańcuchu, 6.4 przed 6.3) (decyzja MG z 29.09, sesja T6a) |
+| T6: Paser              | Marek **rozmawia z botem** (`@llm`) i kupuje **oknem handlu**, stronę Pasera prowadzi MG; obok zakup i odmowa w sklepie kampanii (decyzja MG z 29.09, sesja T6a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -386,6 +392,29 @@ odpowiada po polsku bez restartu serwera (5.10). Okna runu MG i Oli scenariusz o
 
 ### 5.4. T6 — Po walkach, ekonomia, rozwój, czas, kopie
 
+**Podział (decyzja MG z 29.09, sesja T6a):** T6a to kroki 6.1–6.5 i punkt `po-T6a` (plik
+`30-rozgrywka/t6a-*.spec.ts`, startuje z `po-T5`), T6b — 6.6–6.9 i `po-T6` (plik `t6b-*.spec.ts`,
+startuje z `po-T6a`), T6c — 6.10. Import całej kampanii nie istnieje (etap 33): 6.8 sprawdza eksport
+kampanii i import kart oraz sceny, brak importu kampanii to zadanie Z10.
+
+**Przebieg T6a (sesja 29.09):** Ola „Odłącz się” kończy run na „Bramie”, MG aktywuje „Knajpę” i sam
+przechodzi do niej „Pokaż” (MG zostaje przy podglądzie, gracze idą za aktywną). Kowal (8, 8) i Iskra
+(8, 9) stoją obok siebie od końca T4b. **6.1:** Marek „Handel…” z karty Kowala, Ola przyjmuje z doku;
+Marek kładzie „Chip z kodem do chłodni” (łup Zbira — od tej chwili jawny dla Oli), surowa oferta Oli
+ponad portfel → `NOT_ENOUGH_EDDIES`, Ola 300 ed, Marek się zgadza, Ola podbija na 350 — zgoda Marka
+spada sama, dwie zgody → wymiana (suma eurodolców i liczba przedmiotów stała, dwa wiersze `transfer`).
+**6.2:** Marek kupuje w Kompendium „Zestaw wytrychów” (20 ed, poziom 2); „Militech Ronin” (poziom 3)
+ma wyszarzone „Kup”, surowe `economy:buy` → `SHOP_TIER_LOCKED:3:2`. Kowal podchodzi do baru (12, 13),
+MG „Dodaj za darmo” daje Ronina karcie Pasera, Marek pyta Pasera na czacie (`@llm`), potem „🤝 Handluj…”
+z menu figury Pasera, MG przyjmuje za NPC-a i kładzie Ronina, Marek płaci 400 ed. **6.4:** MG „✦ Przyznaj
+wszystkim” 500 PD; Marek: Zmysł Walki 4 → 5 (300 PD) i Broń krótka o jeden (poziom × 20); „Podnieś:
+Zmysł Walki na poziom 6” wyszarzone, surowe `LEVEL_SKIP`, `NO_POINTS`, łata PD karty → `FORBIDDEN`.
+Ola: „Nowa Rola” → „Medyk — 60 PD” (Netrunner 4 zostaje w `formerRoles`), punkt Medycyny w Chirurgię
+(Chirurgia 2). **6.3/6.5:** gracze sami operacji nie spinają (#41); MG w Kompendium: Cyberoko, cel
+Kowal, chirurg „Iskra — Chirurgia 2”, „Zainstaluj — 100 ed” — Test montażu za Iskrę (skrypt 9 + TECH
++ Chirurgia vs PT 15), Utrata Człowieczeństwa 2k6 = 7 (40 → 33), 100 ed z konta pacjenta; obie karty
+u Marka i Oli z wynikiem z bazy.
+
 | #    | krok                                                                                             | sprawdzamy                                                                                          |
 | ---- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | 6.1  | **Handel** Marek ↔ Ola (pola wymiany, dwie zgody, wycofanie zgody po zmianie oferty)             | przedmioty i eurodolce atomowo po obu stronach, nic nie ginie ani się nie dubluje                   |
@@ -608,6 +637,15 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
   dopiero w następnej rundzie („raz na Turę” liczone na rundę, `decyzje-i-uproszczenia.md`) — T5b, 27.09;
 - po zaznaczeniu figury broń nie zawsze sama trafia do ręki („W ręku: …” — Strażnik po marszu MG,
   Kowal po zmianie naboju na karcie); klik w slot na pasku pomaga — T5b, 27.09.
+- po aktywacji innej sceny MG zostaje przy starej jako „podgląd” (gracze już są na nowej) — MG musi
+  sam kliknąć „Pokaż”; czy przy stole nie zacznie przygotowywać sceny, której nikt nie widzi — T6a, 29.09;
+- bot-handlarz dalej nie zna ekwipunku swojej karty: z Roninem na karcie Paser za każdym razem odmawia
+  albo zbywa („wojsko to już inna liga”), raz zaproponował pistolet maszynowy, którego nie ma; polszczyzna
+  z potknięciami („włosy z głowy wydworował”, „pokazać te „gotówkę””, „dyskrekcji”) — odpowiedź w 2–8 s;
+  raz na dziewięć wywołań nie odpowiedział w 3 minuty (przyczyna nieuchwycona, test zbiera teraz log
+  serwera) — T6a, 29.09;
+- zgoda w handlu spada sama po zmianie oferty drugiej strony — czy gracz zauważy, że musi kliknąć
+  „Zgadzam się” jeszcze raz — T6a, 29.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -649,6 +687,35 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja
+
+**Rozstrzygnięcia MG na starcie:** T6 w trzech częściach (T6a = 6.1–6.5, T6b = 6.6–6.9, T6c = 6.10);
+brak importu całej kampanii → testujemy eksport i import kart oraz sceny, brak = zadanie Z10; Ola
+zostaje Medykiem i operuje Marka; u Pasera rozmowa z botem i wymiana oknem handlu (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t6a-handel-rozwoj.spec.ts` (14 testów, ~1,1 min od `po-T5`); hak
+`__vttE2E` dostał magazyn `trade` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w 5.4
+wyżej. Kanarki: łup Zbira jawny dla Oli od położenia chipa w polu wymiany; reszta jak na końcu T5b.
+Konsola czysta u trojga. Punkt `po-T6a`: „Knajpa” aktywna, Kowal przy barze (12, 13) z Roninem,
+wytrychami i Cyberokiem (Człowieczeństwo 33, 80 ed, 60 PD, Zmysł Walki 5), Iskra Medyk 1 / Netrunner
+4 (Chirurgia 2, 1500 ed, 440 PD) z chipem, Paser 400 ed; walki i runu nie ma.
+
+**Znalezione (do triażu MG):** #40 **B3?** — karta czatu handlu z NPC-em niesie graczowi id karty
+NPC-a (`toCharacterId`), choć umowa handlu mówi, że gracz go nie poznaje (`test.fail`); #41 **B3?
+albo zgodne z projektem** — Medyk-gracz nie zoperuje drugiego gracza: montaż z chirurgiem-postacią
+uruchamia tylko MG (`resolveSurgeon` wymaga prawa rzutu za obie karty). Zadanie Z10 (import
+kampanii). Trzy obserwacje do sekcji 8 (MG na podglądzie po aktywacji, Paser nie zna swojej karty,
+zgoda w handlu spada po zmianie oferty).
+
+**Suita:** 179 testów (T6a 14, w tym 1 `test.fail`; razem 6 `test.fail` — #10–#13 i #40). T6a od
+`po-T5` zielony cztery razy z rzędu (wcześniej raz Paser nie odpowiedział w 3 min — test zbiera
+teraz log serwera); łańcuch T5b → T6a od `po-T5a` 41/41 (5,8 min). Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway
+z modelem. `dev.db` nietknięta.
+
+**Następny krok:** T6b od `E2E_FROM=po-T6a` — czas (doba, leczenie, wygasanie efektu), screamsheet
+i dziennik (`@llm`), eksport kampanii i import kart/sceny (Z10), kopia z harmonogramu i odtworzenie.
+Albo najpierw triaż #40 i #41.
+
 ### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya
 
 **Rozstrzygnięcia MG na starcie:** poprawki #28–#33 z poprzedniej sesji domknąć osobnym commitem
@@ -680,44 +747,3 @@ MG w Playwright MCP (Chromium: MG, Marek na `[::1]`) na instancji E2E. `dev.db` 
 
 **Następny krok:** T6 (po walkach, ekonomia, rozwój, czas, kopie) od `E2E_FROM=po-T5` — albo
 najpierw poprawki #34–#39 (w tym B1 #37). Stan `po-T5` wyżej; Paser i handel czekają w T6.
-
-### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście przez bramę, run Oli
-
-**Rozstrzygnięcia MG na starcie (dwie tury pytań):** T5 dzielimy na T5a (przed walką) i T5b
-(walka); architektura Hasło → Plik → Czarny LOD → Węzeł wieżyczki, na dnie Demon; pad gatewaya
-przez pośrednika TCP w suicie; Kowal wchodzi ranny (6k6 strefy ze skryptu kości); nowy
-„Strażnik” z botem; Ola strzela wieżyczką w Strażnika, potem ją wyłącza; MG daje Kowalowi
-amunicję przeciwpancerną (sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t5a-brama-siec.spec.ts` (24 testy, ~1,6 min od `po-T4`) i
-`fixtures/brama.ts` (statysta z kartą, bot, mgła prostokątem, strefy, stan Sieci z bazy);
-`walka.ts` czyta aktywną scenę zamiast „Knajpy”; hak `__vttE2E` dostał magazyny `netRun`, `zone`,
-`wall`, `fog` (tylko build `--mode e2e`). Przebieg w 5.3 wyżej. Kanarki: nazwa architektury,
-etykiety pięter 3–5, notatki MG pięter, gniazda i strefy, sekret Strażnika, id Wieżyczki
-i Strażnika; notatka Pliku po Ajdi jawna dla Oli, tajna przed Markiem (`ONLY_FROM`). Konsola
-czysta u trojga. Punkt `po-T5a`: Kowal na placu za otwartą bramą (21, 11), Iskra przy skrzynce
-(24, 15) podłączona, na Pliku (piętro 2) po Backdoorze i Ajdi; walka nie trwa; bot „Strażnik”
-w sesji; gateway martwy przez całą sesję (T5a go nie woła).
-
-**Znalezione (do triażu MG):** #28 **B2?** — marsz pod skraj ręcznej mgły wraca na start
-(`Math.floor(543 / 36.2)` = 14 w `everyRunCell`, kratka niecałkowita); #29 **B3?** — odmowa ruchu
-poza walką odsyła do karty, której nie ma; #30 **B2?** — na ręcznej mgle gracz nie dostaje klamek
-(`openings` tylko na Dynamicznej), a serwer by przepuścił; #31 **B1?** — hasło na piętrze wejścia
-nie blokuje zjazdu (`netCanMove` pomija piętro startowe); #32 **B1?** — nazwa architektury
-w ładunku runu gracza; #33 **B2?** — brak UI wiązania strefy z węzłem. Wszystkie jako `test.fail`
-z obejściem w scenariuszu. Dwie obserwacje do sekcji 8.
-
-**Suita:** 139 testów (T5a 24, w tym 6 `test.fail`; razem 11 `test.fail`). T5a od `po-T4`
-zielony, T4b + T5a od `po-T4a` 43/43 (4,2 min). Pełnego przebiegu od zera w tej sesji nie było.
-Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; `dev.db` nietknięta.
-
-**Następny krok:** T5b od `E2E_FROM=po-T5a` — **gateway z modelem potrzebny** (tura Strażnika,
-5.6), pośrednik TCP do napisania w `instance/` (instancja z `E2E_AI_GATEWAY_URL` na pośrednika).
-Strefa wieżyczki jest już związana z węzłem (obejście #33); Demon czuwa (MG: „Demon wykrywa
-intruza”); zjazd na piętro 3 spawnuje Kruka. Znany wyciek #32 trzeba w T5b obsłużyć jak w T5a
-(kanarek `nazwa-architektury` tajny tylko przed Markiem). Albo najpierw poprawki #28–#33.
-
-**Aktualizacja 27.09 (poprawki #28–#33, retest OK):** T5a ma 23 testy bez `test.fail` (#33
-wchłonął krok obejścia), `po-T5a` nagrany na nowo: brama otwarta ręką Marka, strefa związana
-z karty, nazwa architektury jest kanarkiem dla obojga graczy — **w T5b wyciek #32 nie wymaga już
-obsługi**.

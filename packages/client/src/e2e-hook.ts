@@ -12,6 +12,7 @@ import { useNetRunStore } from './stores/netRunStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
+import { useTradeStore } from './stores/tradeStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { useZoneStore } from './stores/zoneStore.js';
 
@@ -59,6 +60,7 @@ export function installE2EHook(): void {
         roll: useRollStore,
         scene: useSceneStore,
         token: useTokenStore,
+        trade: useTradeStore,
         wall: useWallStore,
         zone: useZoneStore,
       },

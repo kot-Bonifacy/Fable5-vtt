@@ -37,13 +37,14 @@ cięcie wręcz) i **43c** (plamy krwi na serwerze) rozpisane — MG wybrał „4
 kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b, T5a i T5b zamknięte** — T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
+rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b, T5a, T5b i T6a zamknięte** — T6a 29.09 (handel, sklep, Paser, PD,
+Ola Medykiem operuje Kowala; nowe #40 i #41 do triażu MG, zadanie Z10 — brak importu kampanii), T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`). **Otwarte
-tylko #10–#13** (na etap „Konta MG”, zadania Z5–Z8); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
-stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **następny T6** (po
-walkach: handel, sklep, cyborgizacja, PD, czas, screamsheet, eksport i kopie) od punktu `po-T5`.
+#10–#13** (na etap „Konta MG”, zadania Z5–Z8) **oraz #40 i #41 z T6a (do triażu)**; zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **następny T6b**
+(czas, screamsheet, dziennik, eksport kampanii i import kart/sceny, kopia z harmonogramu) od `po-T6a`, potem T6c (dwa pełne przebiegi od zera).
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -108,7 +109,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2245** w `shared`, **1258** na serwerze, **300** u klienta,
-**59** w gatewayu (29.09, poprawki po T5b), **165** E2E (5 `test.fail` — #10–#13; 29.09 — T5b od `po-T5a` 27/27, T4a → T5b od `po-T3` 84/84; pełny przebieg od zera po T5b wciąż do powtórzenia — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**59** w gatewayu (29.09, poprawki po T5b), **179** E2E (6 `test.fail` — #10–#13 i #40; 29.09 — T6a od `po-T5` 14/14 cztery razy, T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -147,12 +148,32 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 59      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 64      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja (dwa nowe błędy)
+
+**Zlecenie MG:** T6 (`testy.md` 5.4), podzielony po pytaniach na T6a (6.1–6.5), T6b (6.6–6.9) i T6c
+(6.10). Decyzje: import całej kampanii nie istnieje — T6b testuje eksport kampanii i import kart/sceny,
+brak = zadanie Z10; Ola zostaje Medykiem i operuje Marka; u Pasera rozmowa z botem i okno handlu.
+
+**Zrobione:** `30-rozgrywka/t6a-handel-rozwoj.spec.ts` (14 testów): powrót do „Knajpy”, handel Marek ↔
+Ola z cofniętą zgodą, sklep i odmowa poziomu 3, Paser (`@llm`) i handel z NPC-em, 500 PD, awans
+Kowala z blokadami, Ola Netrunner → Medyk z Chirurgią, montaż Cyberoka jej Testem; punkt `po-T6a`.
+Hak `__vttE2E` dostał magazyn `trade`. W aplikacji bez zmian. Pięć pułapek automatu w `testy`.
+
+**Znalezione (do triażu MG):** #40 B3? — karta czatu handlu z NPC-em niesie graczowi id karty NPC-a
+(`test.fail`); #41 B3? albo zgodne z projektem — montaż z chirurgiem-graczem uruchamia tylko MG.
+Trzy obserwacje do `testy.md` 8 (m.in. Paser dalej nie zna towaru ze swojej karty).
+
+**Weryfikacja:** T6a od `po-T5` zielony cztery razy z rzędu (1,1 min); łańcuch T5b → T6a od `po-T5a`
+41/41 (5,8 min). Klient: `tsc`, ESLint, 300/300; suita: `tsc`, ESLint, Prettier
+czyste. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem.
+`dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a` (albo triaż #40/#41).
 
 ### Sesja 29.09 — poprawki po T5b: #34–#39 (retest E2E OK)
 
@@ -172,28 +193,3 @@ i **aureola tury bez trafiania** — druga przyczyna #36 wyszła dopiero w rete�
 `po-T5a` 27/27, łańcuch T4a → T5b od `po-T3` 84/84. Oglądane automatem: MG i Marek w Chromium,
 Ola w Firefoksie, headless. Gateway z modelem (port 8080 zwolniony za zgodą MG — pułapka w `testy`).
 `dev.db` nietknięta. **Następny krok:** T6 od `E2E_FROM=po-T5`.
-
-### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya (sześć nowych błędów)
-
-**Zlecenie MG:** etap testowy T5b (`testy.md` 5.3, kroki 5.4–5.11). Pytania na starcie: poprawki
-#28–#33 domknąć osobnym commitem, gateway uruchamia Claude, Ola derezuje Kruka Mieczem, walka
-kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (decyzje w `testy.md`, sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów) i `instance/gateway-proxy.ts`
-(pośrednik TCP: serwer instancji woła gateway przez :3108, test tnie połączenia zaraz po `POST /chat`
-i odmawia nowych, w 5.10 wraca); `walka.ts` czeka na turę u klientów do 30 s; hak `__vttE2E` dostał
-magazyn `ai` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w `testy.md` 5.3.
-
-**Znalezione (do triażu MG, wszystkie `test.fail`):** #34 okno runu na pasie kolejki netrunnera
-i na pasku/czacie MG; #35 pad gatewaya w turze bota daje „(INTERNAL)” — zerwany SSE bez `try`
-w `ai/gateway.ts` — i „(AI_UNAVAILABLE)” zamiast zdania (stan nie wisi); #36 klik w środek pola
-przed zaznaczoną figurą łapie uchwyt obrotu; #37 etykieta piętra węzła w publicznym wierszu
-dziennika dociera do Marka (proponowany B1); #38 za wieżyczkę netrunnerki obrażenia rzuca tylko
-MG; #39 strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Pięć obserwacji do
-`testy.md` 8, osiem pułapek automatu w `testy`.
-
-**Weryfikacja:** T5b od `po-T5a` zielony trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min); pełny
-przebieg — wyżej. `tsc`, ESLint, Prettier czyste w `packages/e2e`. Oglądane automatem: MG i Marek
-w Chromium, Ola w Firefoksie, headless; #36 i celowanie MG rozpoznane w Playwright MCP (Chromium,
-Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta; gateway z modelem przez całą sesję.
-
