@@ -114,7 +114,7 @@ pozycji schowanego właściciela. Pola bariery są zerowane w otworach wysyłany
 - **Kamera mapy** — reguły w `map/camera.ts` (`coverZoom`, `startCamera`, `partyStart`, stałe zoomu), nie w rendererze. Gracz ma kamerę **zamkniętą w mapie** (`setCameraLocked`), MG wolną; kadr startowy to `frameAround`, osobno od `fitScene`.
 - **Miejsce startu graczy** — `Scene.spawnX/spawnY` → `SceneView.spawn` → `ScenePatch.spawn` (`null` kasuje) → `SCENE_COLUMNS` w `archive.ts`. Stawia je narzędzie mapy `spawn` (klawisz `G`, MG), chorągiewkę rysuje `setSpawn` **tylko MG**, a czyta ją kamera gracza bez figury.
 - **Tło powitalne gracza** — `map/welcome-map.ts` jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma `null`, więc żadne narzędzie, żadne zdarzenie i żaden zapis go nie widzą. Nowa droga „pokaż coś bez sceny" idzie tędy, a nie przez atrapę w store.
-- **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy, jak `payees` z 23b.
+- **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy **drużyny** (od 30.09, #40 — `teamCardsWhere`), jak `payees` z 23b.
 - **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
 - **Leżąca figura** — `CONDITION_TILT_DEG` w `TokenNode.ts`, 35° dla `down` i `dead`; obraca się **wyłącznie** portret (`image`, `initial`), a kąt dobiera się w przeglądarce przy zoomie stołu, nie w edytorze.
 - **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana per widz w `toTokenView` i `filterCombatForPlayer`, a karty czatu od 13.09 piszą alias **u wszystkich** przez `tokenTableName` (umowa w `czat`). Nowa ścieżka do gracza filtruje nazwę u siebie.
@@ -380,7 +380,8 @@ Kratkę atrapa liczy z **wymiarów wczytanego pliku** (`szerokość / 40`), wię
 **Klient nie zna `characterId` cudzej figury i nie ma poznać (06.09).** `TokenView.characterId`
 jest częścią prywatną żetonu od etapu 05, więc `inventory:take` adresuje źródło **żetonem**
 (`fromTokenId`), a listę kart, z których wolno brać, buduje serwer (`inventory:sources`). Lista
-odbiorców to same nazwy wszystkich kart kampanii — ta sama umowa, co `payees` przy przelewie z 23b.
+odbiorców to same nazwy kart drużyny (do 30.09 — wszystkich kart kampanii; #40, umowa w `ekwipunek`)
+— ta sama umowa, co `payees` przy przelewie z 23b.
 
 **Wszystko, co wisi przy naklejce żetonu, mieszka w `Token.statusData` i schodzi razem z nią (04.09).**
 Kolumna trzyma `{ damage?, timer?, feared?, disabled? }` na status; `disabled` to nazwy
@@ -628,6 +629,7 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
+- **Co gracz może zobaczyć z karty czatu, przycina `redactChatMessage` — w historii I w dostarczeniu (30.09, #40)** — `deliverChatMessageTo` (karty prywatne, `chat:update`) woła ją per gniazdo od 30.09; wcześniej przycinała tylko historia i `broadcastRedactedChatMessage`, więc karta przekazania niosła graczowi na żywo id karty NPC-a. Nowe pole tajne dla gracza — gałąź w `redactChatMessage`, typ widoku z polem opcjonalnym (wzór `InventoryMoveView`).
 - **Nazwa figury w karcie czatu idzie przez `tokenTableName(token, realName)`** (`shared/tokens.ts`, 13.09) — alias u wszystkich, MG też; `''` → „Nieznajomy". Rzut z samej karty (bez żetonu) pisze nazwę karty. Uczestnik kolejki: `combatantTableName`, nie `combatantName`.
 - **Widoczność wyniku to RODZAJ wiersza czatu**: `rolltable` publiczny, `gmrolltable` cichy — wzorem `roll`/`gmroll`. „Pokaż stołowi” **dokłada** publiczny wiersz (treść z zapisanej karty, nie z żądania), bo `visibleTo` jest białą listą rodzajów w zapytaniu do bazy.
 - **Nowy rodzaj wiersza czatu** — `chatCategoryOf` w `shared/src/chat.ts` + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół".
@@ -2026,6 +2028,7 @@ i przytrzymanie stanęłoby w miejscu.
 
 ## postac — Kreator, PD, Role, cyborgizacje
 
+- **Operacja u Medyka innego gracza to prośba, nie montaż (30.09, #41)** — `cyberware:surgeons` / `cyberware:request` / `cyberware:respond` w `realtime/surgery.ts`, stan na karcie czatu `surgery` (`SurgeryRequestEntry`, reguły w `shared/src/surgery.ts`). Pacjent prosi, Medyk podaje cenę (od domyślnej z guzika, zero dozwolone), wyższą zatwierdza pacjent; cała kwota na kartę Medyka (`CyberwareBill.payee`). Sam montaż — **wyłącznie** `performInstall` z `cyberware.ts`, Chirurgię czyta `surgeonRollFor`. `character:cyberware` z cudzym Medykiem zostaje `CHARACTER_NOT_FOUND`; MG montuje wprost i prośby nie składa (`FORBIDDEN`).
 - **Warunki zgody MG: metoda, ranga, pula umiejętności (25.09)** — `CreationTerms` w `CampaignMember.creationTerms` (JSON, czyta `readTerms`); `creation:start` zakłada szkic z `method` + `methodFixed`, rangą w kolumnie szkicu (od razu zatwierdzoną) i `skillPool`. Pulę umiejętności czytaj **wyłącznie** przez `creationSkillPool(data, draft)` — `data.skillPoints` to tylko podręcznikowe 86. Zmiana w trakcie: `creation:terms` (MG), push `creation:terms-changed`.
 - **Nowa postać gracza = zgoda MG, zasady, zatwierdzenie (24.09)** — zgoda w `CampaignMember.creationPermit` (`requested`/`granted`) + `creationRulesAcceptedAt`; `creation:start` zakłada szkic graczowi tylko przy obu (istniejący szkic zawsze się otwiera). Zgodę zużywa `creation:finish`, a zdejmuje ją razem ze szkicem wyłącznie `creation:discard-player` (MG) — gracz `creation:discard` dostaje `FORBIDDEN`. Lista MG: `creation:permits-sync`.
 - **Karta gracza przed „Przyjmij do gry” jest tylko do podglądu (24.09)** — `refuseAwaitingGm` (`character-io.ts`) odmawia `CHARACTER_AWAITING_GM`; **nowy handler, który pisze do karty gracza albo z niej rzuca, woła go** (odczyty — historia PD i portfela — nie). Żeton z kreatora staje przy przyjęciu (`placeApprovedCreationToken`), a postać zrobiona ręką MG jest gotowa od razu.
@@ -2490,6 +2493,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Gracz wskazuje po id wyłącznie drużynę (30.09, #40)** — karty graczy i towarzyszy-botów (profil `companion`, nie w archiwum). Listę buduje `teamCardsWhere`, odbiorcę sprawdza `requireTeamCard` (`realtime/team-cards.ts`) — przelew, przekazanie i każda nowa lista „komu” gracza idą przez nie. NPC-a spoza drużyny gracz wskazuje **figurą**; id karty ciała przy łupie (`InventorySourceView.characterId`) i id kart w karcie czatu przekazania (`InventoryMoveView`) dostaje tylko MG.
 - **Id `statist-weapon` nie jedzie z łupem (27.09, #27)** — `landedRow` nadaje wierszowi z `STATIST_WEAPON_ROW_ID` nowe id zawsze, także bez kolizji; inaczej gracz z pistoletem zdobytym na statyście „był” strzelcem ataków wszystkich statystów.
 - **Miniatura rodzaju przedmiotu na liście to `cpredEntryIcon` / `cpredItemRowIcon` (`systems/cpred/itemicons.ts`)**, a w kliencie `ItemIcon` / `useEntryIcon` / `useRowIcon` z `ItemIcons.tsx` — nowe miejsce z listą przedmiotów nie składa sylwetki samo. Rodzaj czyta się z pól maszyny (typ broni, `patterns`, efekt dodatku, lokacja pancerza), nigdy z nazwy ani id; model, któremu typ kłamie (rewolwer), dostaje `WeaponEntry.icon` z `cpred/weapon-icons.json` albo z edytora MG. Listy broni sortuje `cpredSortWeapons`, filtruje `WeaponTypeFilter`.
 - **Handel (38c) to stan w pamięci serwera (`realtime/trade.ts`) + czyste reguły w `shared/src/trade.ts`** — wymianę wykonuje wyłącznie `cpredSwapItems` w jednej transakcji z `applyBalance({ tx, emit: false })`; każda zmiana pola kasuje obie zgody (`setTradeOffer`), zgoda niesie `version`, a oferta sprawdza się z kartą jeszcze raz przy wykonaniu (`OFFER_STALE`). Stronę NPC-a prowadzi MG, strony gracza — tylko gracz.
@@ -2509,6 +2513,18 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Gracz wskazuje po id wyłącznie drużynę (30.09.2026, #40, decyzja MG).** Do 30.09 lista odbiorców
+przelewu (`economy:history`, „lista nie kurczy się o nikogo” z 12.09) i lista celów przekazania
+(`inventory:sources`) niosły graczowi **wszystkie** karty kampanii — z id i prawdziwymi nazwami, więc
+umowa handlu („id karty NPC-a gracz nie poznaje”) nie ukrywała niczego. Teraz gracz dostaje drużynę:
+karty z właścicielem i karty towarzyszy-botów (`BotProfile` typu `companion`, niezarchiwizowany —
+mówi na czacie pod swoim imieniem, przy grze solo stoi obok gracza). NPC z głosem bota (Paser, typ
+`npc`) drużyną **nie jest**. `economy:transfer` i `inventory:give` odmawiają karty spoza drużyny
+tym samym `CHARACTER_NOT_FOUND`, co karty spoza kampanii — NPC-owi płaci się i daje przez okno
+handlu z figurą. MG widzi wszystko (filtr pusty). Karta czatu przekazania i łupu traci u gracza oba
+id (`redactChatMessage`), a `deliverChatMessageTo` przycina per widz tak samo jak historia (umowa
+w `czat`).
 
 **Miniatura rodzaju: jedna odpowiedź w całym VTT (24.09.2026).** Sylwetka broni na liście
 sklepu, na karcie, w wymianie i na pasku broni panelu postaci pochodzi z tego samego

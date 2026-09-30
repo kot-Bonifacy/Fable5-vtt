@@ -1666,6 +1666,9 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Atrapa gatewaya musi mówić `llama: 'ready'` w `/health` (30.09, retest #21)** — `status: 'ok'` nie wystarcza: `toStatus` liczy `available` z `llama` `ready`/`external`, a tura bota odmawia na starcie (`AI_UNAVAILABLE` w acku, zero zapytań do `/chat`) — wygląda jak brak poprawki #21. Skrypt retestu: atrapa HTTP, `restoreCheckpoint('po-T4a')`, `startServer({ AI_GATEWAY_URL })`, `bot:play-turn` Rzeźnika.
+- **Zamknięcie karty czatu (`chat:update`) po rzutach dochodzi dopiero po animacji kości (30.09, T6a)** — klient trzyma widoki do końca prezentacji rzutów; po operacji (Test + Człowieczeństwo) plakietka „Zoperowane” u Oli w Firefoksie przyszła po >5 s. Czekaj z `timeout: 20_000`, jak na karty rzutów.
+- **`locator.screenshot()` elementu schowanego za zakładką panelu czeka do limitu testu (30.09)** — `.catch()` nie pomaga, bo najpierw mija 2 min; zrzut Kompendium rób, zanim klikniesz „Czat”.
 - **Po `scene:activate` MG zostaje przy scenie, którą oglądał — jako „podgląd” (29.09, T6a)** — gracze idą za aktywną, MG nie (`followActivation` w `sceneStore`, zamierzone); `store('scene')` MG dalej pokazuje starą. Po aktywacji MG klika „Pokaż” przy nowej scenie (`sceneListRow`).
 - **Pierwszy `select` karty wpisu Kompendium u MG to „Poziom w tej kampanii”, nie odbiorca (29.09, T6a)** — `selectOption({ label: 'Paser' })` czeka do limitu na „did not find some options”, co wygląda jak „karty statysty nie ma na liście”. Odbiorca i chirurg: `.compendium-assign select` (pierwszy i drugi); u gracza poziomu nie ma.
 - **`character:update` niesie pola karty w `patch.data` — pole na wierzchu łaty serwer pomija z `ok: true` (29.09, T6a)** — test „gracz nie podbije sobie PD” z `patch: { improvementPoints }` wyglądał jak dziura w uprawnieniach; poprawnie `patch: { data: { improvementPoints } }` → `FORBIDDEN`.

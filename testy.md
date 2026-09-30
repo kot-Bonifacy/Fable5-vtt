@@ -410,10 +410,13 @@ z menu figury Pasera, MG przyjmuje za NPC-a i kładzie Ronina, Marek płaci 400 
 wszystkim” 500 PD; Marek: Zmysł Walki 4 → 5 (300 PD) i Broń krótka o jeden (poziom × 20); „Podnieś:
 Zmysł Walki na poziom 6” wyszarzone, surowe `LEVEL_SKIP`, `NO_POINTS`, łata PD karty → `FORBIDDEN`.
 Ola: „Nowa Rola” → „Medyk — 60 PD” (Netrunner 4 zostaje w `formerRoles`), punkt Medycyny w Chirurgię
-(Chirurgia 2). **6.3/6.5:** gracze sami operacji nie spinają (#41); MG w Kompendium: Cyberoko, cel
-Kowal, chirurg „Iskra — Chirurgia 2”, „Zainstaluj — 100 ed” — Test montażu za Iskrę (skrypt 9 + TECH
-+ Chirurgia vs PT 15), Utrata Człowieczeństwa 2k6 = 7 (40 → 33), 100 ed z konta pacjenta; obie karty
-u Marka i Oli z wynikiem z bazy.
+(Chirurgia 2). **6.3/6.5 (od 30.09, poprawka #41):** montaż wprost z Medykiem innego gracza dalej
+`CHARACTER_NOT_FOUND`; Marek w Kompendium: Cyberoko, cel Kowal, chirurg „Iskra — Chirurgia 2 ·
+poproś”, „Zainstaluj — 100 ed” → karta prośby na czacie; Ola (Firefox) widzi cenę domyślną 100 ed
+w polu, wycenia na 150 ed, Marek „Zgadzam się na 150 ed” — Test montażu za Iskrę (skrypt 9 + TECH
++ Chirurgia vs PT 15), Utrata Człowieczeństwa 2k6 = 7 (40 → 33), 150 ed z konta pacjenta na kartę
+Iskry (`cyberware` −150, `transfer` +150); obie karty rzutów u Marka i Oli z wynikiem z bazy.
+**#40:** lista odbiorców przelewu Marka ma Iskrę, a nie Pasera; id karty Pasera nie dociera do Marka.
 
 | #    | krok                                                                                             | sprawdzamy                                                                                          |
 | ---- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
@@ -686,6 +689,14 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 4. **Kompendium na VPS** — **wspólne dla wszystkich** MG i graczy — T9, punkt 9.
 
 ## 12. Notatki z sesji testowych
+
+### Sesja 30.09 — poprawki #40 i #41, retest T6a
+
+Poprawki w `21cbedd`, szczegóły w rejestrze (`testy-rejestr.md`). T6a ma teraz **13 testów** (dwa
+kroki 6.3 zlane w jeden: prośba o operację zamiast montażu ręką MG), bez `test.fail`; suita 178
+testów, 5 `test.fail` (#10–#13). **Punkt `po-T6a` nagrany na nowo:** Kowal zapłacił Iskrze 150 ed
+zamiast 100 ed do sklepu — Kowal **30 ed**, Iskra **1650 ed**; reszta jak niżej. T6a od `po-T5`
+zielony cztery razy, T2 od `po-T3` 41/41; gateway z modelem, Ola w Firefoksie.
 
 ### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja
 

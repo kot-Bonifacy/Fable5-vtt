@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 29.09 — poprawki po T5b: #34–#39 (retest E2E OK)
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 zostają na „Konta
+MG”; wagi z propozycji (#37 B1, reszta B3); #37 — skrót dla stołu + pełny wiersz dla MG i
+netrunnera; #38 — obrażenia rzuca netrunnerka; #34 — okno runu przy prawej krawędzi mapy pod pasem.
+
+**Zrobione (`8277386`):** `netRunFallback` + przycięta wysokość okna runu (#34); `streamChat` łapie
+zerwany SSE jako `AI_UNREACHABLE`, `botTurnErrorText` (#35); obrót grotem od progu kliknięcia
+i **aureola tury bez trafiania** — druga przyczyna #36 wyszła dopiero w reteście 5.9 (#36);
+`logNetLineWithSecret` + `publicDeviceName`, znaczek „poufne” (#37, także „Kopia Pliku”);
+`operatorUserId` na karcie strzału urządzenia (#38); `systemHand` dla stref (#39). Umowy w `mapa`,
+`ui`, `siec`, `boty`; pułapki w `mapa` i `testy`. E2E: zdjęte `test.fail` i obejście klika w `walk`,
+#34 sprawdza też okno MG, utwardzony wyścig „Wykrycie — Kruk”.
+
+**Weryfikacja:** shared 2245, serwer 1258, klient 300; `tsc`, ESLint, Prettier czyste. T5b od
+`po-T5a` 27/27, łańcuch T4a → T5b od `po-T3` 84/84. Oglądane automatem: MG i Marek w Chromium,
+Ola w Firefoksie, headless. Gateway z modelem (port 8080 zwolniony za zgodą MG — pułapka w `testy`).
+`dev.db` nietknięta. **Następny krok:** T6 od `E2E_FROM=po-T5`.
+
 ### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya (sześć nowych błędów)
 
 **Zlecenie MG:** etap testowy T5b (`testy.md` 5.3, kroki 5.4–5.11). Pytania na starcie: poprawki

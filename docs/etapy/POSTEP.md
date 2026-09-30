@@ -38,11 +38,12 @@ kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
 rejestr `testy-rejestr.md`): **T1, T2, T3a, T3b, T4a, T4b, T5a, T5b i T6a zamknięte** — T6a 29.09 (handel, sklep, Paser, PD,
-Ola Medykiem operuje Kowala; nowe #40 i #41 do triażu MG, zadanie Z10 — brak importu kampanii), T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
+Ola Medykiem operuje Kowala; zadanie Z10 — brak importu kampanii), T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
-(`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`). **Otwarte
-#10–#13** (na etap „Konta MG”, zadania Z5–Z8) **oraz #40 i #41 z T6a (do triażu)**; zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+(`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
+gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
+retest #21 i #22. **Otwarte wyłącznie #10–#13** (na etap „Konta MG”, zadania Z5–Z8); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **następny T6b**
 (czas, screamsheet, dziennik, eksport kampanii i import kart/sceny, kopia z harmonogramu) od `po-T6a`, potem T6c (dwa pełne przebiegi od zera).
 Kolejność (decyzja MG z 26.09):
@@ -108,8 +109,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2245** w `shared`, **1258** na serwerze, **300** u klienta,
-**59** w gatewayu (29.09, poprawki po T5b), **179** E2E (6 `test.fail` — #10–#13 i #40; 29.09 — T6a od `po-T5` 14/14 cztery razy, T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2245** w `shared`, **1272** na serwerze, **301** u klienta,
+**59** w gatewayu (29.09, poprawki po T5b), **178** E2E (5 `test.fail` — #10–#13; 30.09 — T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -132,7 +133,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 53   | 22      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 5    | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 6    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 13   | 17      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
@@ -140,20 +141,43 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 39   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 45   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 17   | 2       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 46   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 18   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 5    | 7       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 64      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 67      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.09 — poprawki #40 i #41 (retest E2E OK), retest #21 i #22
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #40 i #41 — B3; #40 obejmuje
+kartę czatu **i** obie listy (odbiorcy przelewu, cele przekazania — zmienia decyzję z 12.09),
+towarzysze-boty zostają na listach gracza; #41 — pacjent prosi, Medyk przyjmuje i ustala cenę
+(domyślna widoczna w polu, zero dozwolone, wyższą zatwierdza pacjent, całość na kartę Medyka, bez
+zasięgu); #10–#13 zostają na „Konta MG”; #21/#22 domknąć retestem.
+
+**Zrobione (`21cbedd`):** #40 — `realtime/team-cards.ts` (`teamCardsWhere`, `requireTeamCard`) na
+listach i w `economy:transfer`/`inventory:give`, `InventoryMoveView` bez id u gracza,
+`deliverChatMessageTo` przycina per widz. #41 — `cyberware:surgeons`/`request`/`respond`
+(`realtime/surgery.ts`), rodzaj czatu `surgery` (`shared/src/surgery.ts`, `SurgeryRequest.tsx`),
+Medycy innych graczy w Kompendium („· poproś”), `performInstall` i `surgeonRollFor` wyjęte
+z `cyberware.ts`, zapłata z `payee`. Umowy w `ekwipunek`, `postac`, `czat`; pułapki w `testy`.
+**#21** retest skryptem z atrapą gatewaya 503 (`po-T4a`, tura Rzeźnika — „Model jest zajęty…”),
+**#22** — retestem #16 z 27.09 (decyzja MG).
+
+**Weryfikacja:** shared 2245, serwer 1272 (nowy `surgery.test.ts`), klient 301; `tsc`, ESLint,
+Prettier czyste. E2E: T6a od `po-T5` 13/13 cztery razy (6.3/6.5 przez prośbę o operację; `po-T6a`
+nagrany na nowo: Kowal 30 ed, Iskra 1650 ed), T2 od `po-T3` 41/41. Oglądane automatem: MG i Marek
+w Chromium, Ola w Firefoksie (karta prośby — zrzuty w scratchpadzie), headless; gateway z modelem
+(port 8080 zwolnił MG). `dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a`.
 
 ### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja (dwa nowe błędy)
 
@@ -174,22 +198,3 @@ Trzy obserwacje do `testy.md` 8 (m.in. Paser dalej nie zna towaru ze swojej kart
 41/41 (5,8 min). Klient: `tsc`, ESLint, 300/300; suita: `tsc`, ESLint, Prettier
 czyste. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem.
 `dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a` (albo triaż #40/#41).
-
-### Sesja 29.09 — poprawki po T5b: #34–#39 (retest E2E OK)
-
-**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 zostają na „Konta
-MG”; wagi z propozycji (#37 B1, reszta B3); #37 — skrót dla stołu + pełny wiersz dla MG i
-netrunnera; #38 — obrażenia rzuca netrunnerka; #34 — okno runu przy prawej krawędzi mapy pod pasem.
-
-**Zrobione (`8277386`):** `netRunFallback` + przycięta wysokość okna runu (#34); `streamChat` łapie
-zerwany SSE jako `AI_UNREACHABLE`, `botTurnErrorText` (#35); obrót grotem od progu kliknięcia
-i **aureola tury bez trafiania** — druga przyczyna #36 wyszła dopiero w reteście 5.9 (#36);
-`logNetLineWithSecret` + `publicDeviceName`, znaczek „poufne” (#37, także „Kopia Pliku”);
-`operatorUserId` na karcie strzału urządzenia (#38); `systemHand` dla stref (#39). Umowy w `mapa`,
-`ui`, `siec`, `boty`; pułapki w `mapa` i `testy`. E2E: zdjęte `test.fail` i obejście klika w `walk`,
-#34 sprawdza też okno MG, utwardzony wyścig „Wykrycie — Kruk”.
-
-**Weryfikacja:** shared 2245, serwer 1258, klient 300; `tsc`, ESLint, Prettier czyste. T5b od
-`po-T5a` 27/27, łańcuch T4a → T5b od `po-T3` 84/84. Oglądane automatem: MG i Marek w Chromium,
-Ola w Firefoksie, headless. Gateway z modelem (port 8080 zwolniony za zgodą MG — pułapka w `testy`).
-`dev.db` nietknięta. **Następny krok:** T6 od `E2E_FROM=po-T5`.
