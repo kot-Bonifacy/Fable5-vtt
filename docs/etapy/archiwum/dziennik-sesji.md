@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja (dwa nowe błędy)
+
+**Zlecenie MG:** T6 (`testy.md` 5.4), podzielony po pytaniach na T6a (6.1–6.5), T6b (6.6–6.9) i T6c
+(6.10). Decyzje: import całej kampanii nie istnieje — T6b testuje eksport kampanii i import kart/sceny,
+brak = zadanie Z10; Ola zostaje Medykiem i operuje Marka; u Pasera rozmowa z botem i okno handlu.
+
+**Zrobione:** `30-rozgrywka/t6a-handel-rozwoj.spec.ts` (14 testów): powrót do „Knajpy”, handel Marek ↔
+Ola z cofniętą zgodą, sklep i odmowa poziomu 3, Paser (`@llm`) i handel z NPC-em, 500 PD, awans
+Kowala z blokadami, Ola Netrunner → Medyk z Chirurgią, montaż Cyberoka jej Testem; punkt `po-T6a`.
+Hak `__vttE2E` dostał magazyn `trade`. W aplikacji bez zmian. Pięć pułapek automatu w `testy`.
+
+**Znalezione (do triażu MG):** #40 B3? — karta czatu handlu z NPC-em niesie graczowi id karty NPC-a
+(`test.fail`); #41 B3? albo zgodne z projektem — montaż z chirurgiem-graczem uruchamia tylko MG.
+Trzy obserwacje do `testy.md` 8 (m.in. Paser dalej nie zna towaru ze swojej karty).
+
+**Weryfikacja:** T6a od `po-T5` zielony cztery razy z rzędu (1,1 min); łańcuch T5b → T6a od `po-T5a`
+41/41 (5,8 min). Klient: `tsc`, ESLint, 300/300; suita: `tsc`, ESLint, Prettier
+czyste. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem.
+`dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a` (albo triaż #40/#41).
+
 ### Sesja 29.09 — poprawki po T5b: #34–#39 (retest E2E OK)
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 zostają na „Konta

@@ -52,6 +52,9 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 39  | T5b  | B3 | siec | Strzał wieżyczki ze strefy idzie na konto gracza, który w nią wszedł | Kowal (Marek) wchodzi w strefę „Automatyczna wieżyczka” → karta strzału na czacie: „Wieżyczka (Marek)”, autor wiadomości = konto Marka (kości, animacja i historia rzutów Marka), a karta obrażeń tej samej wieżyczki — „Wieżyczka (MG)”. `runZonesAfterMove` → `fireZone` → `fireDevice` z użytkownikiem, który ruszył figurą | test `#39 strzał wieżyczki ze strefy nie idzie na konto gracza…` (`test.fail`), adnotacja „autor karty”: `{"name":"Marek","role":"PLAYER"}`; **triaż MG 29.09: B3**. Poprawka: `systemHand` — strefa odpala się kontem MG (strzał, karta obrażeń, wiersz strefy), Percepcja zostaje rzutem gracza; test w `zones.test.ts`; retest: test `#39` zielony | retest OK | `8277386` |
 | 40  | T6a  | B3 | ekwipunek | Karta czatu handlu z NPC-em niesie graczowi id karty NPC-a | Marek (Kowal) proponuje handel Paserowi z menu figury, MG prowadzi stronę NPC-a, wymiana Ronin ↔ 400 ed → karta czatu `kind: inventory` („Kowal ⇄ Paser”) jedzie do Marka z `inventory.toCharacterId` = id karty Pasera. Umowa handlu (`trade:partners`, `trade:invite`): „Id karty NPC-a gracz poznawać nie ma” — NPC-a gracz wskazuje figurą. Treści karty id nie odsłania (serwer pilnuje własności przy każdym zdarzeniu), ale to ten sam wpis `InventoryMoveEntry` co przy łupie z 38b (`fromCharacterId` ciała statysty) — do sprawdzenia przy poprawce | test `#40 id karty NPC-a nie dociera do gracza w karcie czatu handlu` (`test.fail`), adnotacja „wyciek u Marek” z ramką `chat:message` (`"toCharacterId":"…","toName":"Paser","toOwnerId":null`); `postInventoryCard` w `realtime/trade.ts`; **triaż MG 30.09: B3**, zakres: karta czatu **i** obie listy — odbiorcy przelewu (`economy:history`) i cele przekazania (`inventory:sources`) niosły graczowi id i prawdziwe nazwy wszystkich kart kampanii; od poprawki gracz widzi drużynę (karty graczy i towarzyszy-botów), NPC-owi płaci i daje przez figurę; retest: T6a od `po-T5` bez `test.fail` (także lista odbiorców Marka bez Pasera), 4 przebiegi | retest OK | `21cbedd` |
 | 41  | T6a  | B3 | postac | Medyk-gracz nie zoperuje drugiego gracza — montaż z chirurgiem-postacią uruchamia tylko MG | Ola bierze Rolę Medyka i punkt w Chirurgię (Chirurgia 2) → Marek w Kompendium, wpis „Cyberoko”, cel Kowal: lista chirurgów ma tylko „Bez Testu montażu” (Iskry nie ma); Ola: lista pacjentów ma tylko „Iskra”. Surowe `character:cyberware` z `surgeon: { kind: 'character' }` → `CHARACTER_NOT_FOUND` z obu stron: `resolveSurgeon` woła `requireRollableCharacter` dla chirurga **i** pacjenta na koncie klikającego. Gracz może sam wszczepić bez Testu montażu (płaci, rzuca Człowieczeństwo). Obejście: montaż klika MG (wybiera Kowala i „Iskra — Chirurgia 2”, Test rzuca się za Iskrę). Poprawka wymagałaby zgody drugiej strony (jak propozycja przy `inventory:give`) | test `6.3 gracze sami nie spinają operacji…` (dokumentuje stan, nie `test.fail` — oczekiwane zachowanie do decyzji MG), adnotacje „chirurdzy w Kompendium Marka”, „pacjenci w Kompendium Oli”, oba acki `CHARACTER_NOT_FOUND`; scenariusz montuje ręką MG (6.3/6.5); **triaż MG 30.09: B3, do zrobienia** — pacjent prosi, Medyk przyjmuje i ustala cenę (domyślna widoczna, zero dozwolone, wyższa wraca do pacjenta), cała kwota na kartę Medyka, bez warunku zasięgu; retest: T6a 6.3/6.5 — Marek prosi w Kompendium, Ola (Firefox) wycenia na 150 ed, Marek zatwierdza, Test za Iskrę, 150 ed na jej kartę | retest OK | `21cbedd` |
+| 42  | T6b  | B1 | tura | Ustabilizowanie poza walką nie ma drogi w UI — naturalne leczenie po walce nie rusza | Po walce (T5b) Kowal 12/50 PW, `recovery.stabilized = false` → Ola zaznacza Iskrę (Medyk, Pierwsza pomoc 2) obok Kowala, pasek akcji pokazuje slot „Ustabilizowanie”, klik → nic (formularz `stabilize` rysuje się w `CombatHud.tsx` tylko przy `combat && context.combatant`; karta Kowala mówi „Ktoś musi wykonać Akcję »Ustabilizowanie«”, „Dzień odpoczynku” wyszarzony, `character:rest` → `refusal: notStabilized`). Serwer przyjmuje rzut `stabilize` także poza walką (`spendStabilizeAction` bez walki nic nie pobiera) — brakuje tylko wejścia w UI. **Obejście przy stole:** MG zaczyna walkę („Tylko postacie graczy”), Medyk stabilizuje w swojej turze, MG ją kończy. **Sugestia poprawki (MG, 30.09):** Ustabilizowanie dostępne także poza walką — z paska akcji Medyka (podręcznik: każdy z Pierwszą pomocą albo Paramedykiem), bez kosztu Akcji. | `t6b-czas-kopie.spec.ts` › „6.6b #42 …” (`test.fail`), zrzut paska Iskry w adnotacji; obejście — „6.6d” | nowy | — |
+| 43  | T6b  | B3? | boty | Licznik „Zakończ sesję i streść (N)” u MG nie rośnie z nowymi wypowiedziami | MG ma otwartą zakładkę „Dziennik” (licznik 4) → Marek mówi do Pasera, bot odpowiada (w bazie 6 wypowiedzi po ostatnim streszczeniu) → guzik dalej „(4)”; streszczenie obejmuje 6 i zapisuje `lineCount: 6`. `pendingLines` przychodzi wyłącznie z `journal:list` (wejście w zakładkę), żadne zdarzenie czatu go nie podbija — przy „(0)” guzik jest wyszarzony, choć jest co streszczać. Obejście: przełączyć zakładkę i wrócić. | `t6b-czas-kopie.spec.ts` › „6.7c #43 …” (`test.fail`), adnotacja `{ przedRozmowa: 4, wBazie: 6 }` | nowy | — |
+| 44  | T6b  | B3? | kopie | „4 figur straciło powiązanie” — zdanie po imporcie sceny zna dwie formy liczby mnogiej zamiast trzech | Import sceny „Brama” (4 figury powiązane z kartami) do nowej kampanii na pustej instancji → komunikat „Scena weszła w podglądzie. 4 figur straciło powiązanie z kartą lub właścicielem…”. `realtime/archive.ts:126`: `=== 1 ? 'figura straciła' : 'figur straciło'` — brakuje formy 2–4 („figury straciły”, poza 12–14); rdzeń ma do tego wzorzec (`gameDaysLabel`, umowa `czas`). | `t6b-czas-kopie.spec.ts` › „#44 …” (`test.fail`), notatka importu w adnotacji 6.8b | nowy | — |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -140,11 +143,72 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 | Z7  | T2   | „Konta MG” | Pliki `/uploads/` bez logowania (z #10)                  | Każdy, kto zna adres (16 losowych znaków), pobiera mapę, portret, handout bez logowania — także handout nieudostępniony. Rozstrzygnięte w `testy.md` 11.3: uploady kampanii za logowaniem, tylko dla jej członków. |
 | Z8  | T2   | „Konta MG” | Gniazdo po wylogowaniu i wygaśnięciu sesji (z #11)       | Wylogowanie i usunięcie sesji rozłącza jej gniazda (lista gniazd per sesja albo sprawdzenie sesji przy zdarzeniu). Decyzja MG z 26.09: B2 + zadanie. |
 | Z9  | T2   | 28        | Gniazdo nie sprawdza nagłówka `Origin`                    | Handshake WebSocket z `Origin: http://zly.example` i ważnym ciasteczkiem przechodzi (CORS dotyczy tylko long-pollingu). Dziś chroni tylko `SameSite=Lax`; `allowRequest` w Socket.IO z listą pochodzeń. |
-| Z10 | T6a  | 28        | Brak importu całej kampanii                               | Krok 6.8 planu („eksport kampanii i import do świeżej instancji”) zakładał import zrzutu kampanii, a etap 33 dał świadomie tylko eksport kampanii (`GET /api/archive/campaign`) oraz import pojedynczej karty i sceny (`archive:character`, `archive:scene`); całość odtwarza się snapshotem i skryptem `restore`. **Decyzja MG z 29.09 (sesja T6a):** T6b testuje to, co jest (eksport z czatem i bez, import kart Kowala i Iskry oraz sceny „Brama” z uploadami do nowej kampanii na świeżej instancji), a brak importu kampanii to zadanie, nie błąd. Przy etapie 28 rozstrzygnąć, czy przenosiny kampanii między instancjami (np. `dev.db` → VPS) idą snapshotem, czy trzeba importu. |
+| Z10 | T6a  | 28        | Brak importu całej kampanii                               | Krok 6.8 planu („eksport kampanii i import do świeżej instancji”) zakładał import zrzutu kampanii, a etap 33 dał świadomie tylko eksport kampanii (`GET /api/archive/campaign`) oraz import pojedynczej karty i sceny (`archive:character`, `archive:scene`); całość odtwarza się snapshotem i skryptem `restore`. **Decyzja MG z 29.09 (sesja T6a):** T6b testuje to, co jest (eksport z czatem i bez, import kart Kowala i Iskry oraz sceny „Brama” z uploadami do nowej kampanii na świeżej instancji), a brak importu kampanii to zadanie, nie błąd. Przy etapie 28 rozstrzygnąć, czy przenosiny kampanii między instancjami (np. `dev.db` → VPS) idą snapshotem, czy trzeba importu. **T6b (30.09) — co pęka przy przenosinach plikami wymiany:** karty wchodzą jako NPC (właściciela nadaje się ręką), figury sceny tracą powiązanie z kartami i graczami (nowe id kart — 4 z 4 figur „Bramy”, zgodnie z etapem 33), a obrazy z `manifest.files` (mapa, żetony, portrety) dają 404, dopóki ktoś nie przeniesie ich do `uploads/` ręką — po skopiowaniu 5 plików wszystko 200. UI nie mówi, skąd wziąć pliki. |
 
 ## Starsze notatki sesji testowych
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
+
+### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja
+
+**Rozstrzygnięcia MG na starcie:** T6 w trzech częściach (T6a = 6.1–6.5, T6b = 6.6–6.9, T6c = 6.10);
+brak importu całej kampanii → testujemy eksport i import kart oraz sceny, brak = zadanie Z10; Ola
+zostaje Medykiem i operuje Marka; u Pasera rozmowa z botem i wymiana oknem handlu (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t6a-handel-rozwoj.spec.ts` (14 testów, ~1,1 min od `po-T5`); hak
+`__vttE2E` dostał magazyn `trade` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w 5.4
+wyżej. Kanarki: łup Zbira jawny dla Oli od położenia chipa w polu wymiany; reszta jak na końcu T5b.
+Konsola czysta u trojga. Punkt `po-T6a`: „Knajpa” aktywna, Kowal przy barze (12, 13) z Roninem,
+wytrychami i Cyberokiem (Człowieczeństwo 33, 80 ed, 60 PD, Zmysł Walki 5), Iskra Medyk 1 / Netrunner
+4 (Chirurgia 2, 1500 ed, 440 PD) z chipem, Paser 400 ed; walki i runu nie ma.
+
+**Znalezione (do triażu MG):** #40 **B3?** — karta czatu handlu z NPC-em niesie graczowi id karty
+NPC-a (`toCharacterId`), choć umowa handlu mówi, że gracz go nie poznaje (`test.fail`); #41 **B3?
+albo zgodne z projektem** — Medyk-gracz nie zoperuje drugiego gracza: montaż z chirurgiem-postacią
+uruchamia tylko MG (`resolveSurgeon` wymaga prawa rzutu za obie karty). Zadanie Z10 (import
+kampanii). Trzy obserwacje do sekcji 8 (MG na podglądzie po aktywacji, Paser nie zna swojej karty,
+zgoda w handlu spada po zmianie oferty).
+
+**Suita:** 179 testów (T6a 14, w tym 1 `test.fail`; razem 6 `test.fail` — #10–#13 i #40). T6a od
+`po-T5` zielony cztery razy z rzędu (wcześniej raz Paser nie odpowiedział w 3 min — test zbiera
+teraz log serwera); łańcuch T5b → T6a od `po-T5a` 41/41 (5,8 min). Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway
+z modelem. `dev.db` nietknięta.
+
+**Następny krok:** T6b od `E2E_FROM=po-T6a` — czas (doba, leczenie, wygasanie efektu), screamsheet
+i dziennik (`@llm`), eksport kampanii i import kart/sceny (Z10), kopia z harmonogramu i odtworzenie.
+Albo najpierw triaż #40 i #41.
+
+### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya
+
+**Rozstrzygnięcia MG na starcie:** poprawki #28–#33 z poprzedniej sesji domknąć osobnym commitem
+(`77e0f6f`, `dc98deb`); gateway z modelem uruchamia Claude; Ola derezuje Kruka Mieczem; walka
+kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów, ~3,5 min od `po-T5a`)
+i `instance/gateway-proxy.ts`; `walka.ts`: `nextTurn` i `clientsSeeTurn` czekają na klienta do
+30 s (Tura Demona rzuca kilka razy); hak `__vttE2E` dostał magazyn `ai` (tylko build `--mode e2e`).
+W aplikacji bez zmian. Przebieg w 5.3 wyżej. Kanarki: etykiety pięter LOD-a i węzła jawne dla
+Oli od wejścia na nie, tajne przed Markiem; Strażnik i Wieżyczka jawne od odsłonięcia placu. Konsola
+czysta u trojga. Punkt `po-T5`: walka zakończona, Strażnik Śmiertelnie ranny (Test Przeżywalności
+zdany), Kowal 7/45 na placu w strefie wyłączonej wieżyczki, Iskra 28/40 podłączona na węźle
+(przejęty), Kowal z amunicją przeciwpancerną 7/8, gateway wrócił.
+
+**Znalezione (do triażu MG):** #34 **B3?** — okno runu na pasie kolejki netrunnera i na pasku
+narzędzi/czacie MG, klamra nie pozwala go wypchnąć; #35 **B3?** — pad gatewaya w turze bota daje
+MG kod „(INTERNAL)” (zerwany SSE bez `try` w `ai/gateway.ts`) i „(AI_UNAVAILABLE)”, stan nie
+wisi; #36 **B3?** — klik w środek pola przed zaznaczoną figurą łapie uchwyt obrotu, marsz nie
+rusza; #37 **B1?** — etykieta piętra węzła w publicznym wierszu dziennika („Tura Demona”, strzał
+z węzła) dociera do Marka; #38 **B3?** — netrunnerka nie rzuca obrażeń za swoją wieżyczkę (tylko
+MG); #39 **B3?** — strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Wszystkie jako
+`test.fail`; pięć obserwacji do sekcji 8.
+
+**Suita:** 165 testów (T5b 27, w tym 6 `test.fail`; razem 11 `test.fail`). T5b od `po-T5a` zielony
+trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min). Pełny przebieg od zera przerwany na starcie (system zabił procesy w tle z braku pamięci) — do powtórzenia.
+Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; rozpoznanie #36 i celowania
+MG w Playwright MCP (Chromium: MG, Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta.
+
+**Następny krok:** T6 (po walkach, ekonomia, rozwój, czas, kopie) od `E2E_FROM=po-T5` — albo
+najpierw poprawki #34–#39 (w tym B1 #37). Stan `po-T5` wyżej; Paser i handel czekają w T6.
 
 ### Sesja 27.09 — T5a: „Brama” — przygotowanie MG, wejście przez bramę, run Oli
 

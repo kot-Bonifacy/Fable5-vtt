@@ -25,7 +25,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T5a  | Rozgrywka 3a/4: „Brama” — przygotowanie, wejście, run Oli | ✅     | 27.09.2026 |
 | T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ✅     | 27.09.2026 |
 | T6a  | Rozgrywka 4a/4: handel, sklep, Paser, PD, Medyk, chrom    | ✅     | 29.09.2026 |
-| T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ⬜     |            |
+| T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ✅     | 30.09.2026 |
 | T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ⬜     |            |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
@@ -89,6 +89,10 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | T6: eksport i import   | aplikacja nie ma importu całej kampanii (etap 33 świadomie) — T6b testuje to, co jest: eksport kampanii z czatem i bez, import kart i sceny do nowej kampanii na świeżej instancji; brak importu kampanii = **zadanie Z10**, nie błąd (decyzja MG z 29.09, sesja T6a) |
 | T6: rozwój i chrom     | Ola bierze **Rolę Medyka** (wieloklasowość), punkt Medycyny w Chirurgię i **operuje Marka** — montaż Cyberoka jej Chirurgią (6.3–6.5 w łańcuchu, 6.4 przed 6.3) (decyzja MG z 29.09, sesja T6a) |
 | T6: Paser              | Marek **rozmawia z botem** (`@llm`) i kupuje **oknem handlu**, stronę Pasera prowadzi MG; obok zakup i odmowa w sklepie kampanii (decyzja MG z 29.09, sesja T6a) |
+| T6b: leczenie i efekt   | **Iskra stabilizuje Kowala**, potem „+1 dzień” i odpoczynek z okna zegara; efekt na Cesze z **formularza MG** (REF −2 na godzinę, wygaśnięcie co do minuty skokami „+10 min”) — decyzje MG z 30.09, sesja T6b |
+| T6b: kronika           | wpis ręczny „tylko MG” z kanarkiem; **streszczenie i screamsheet jawne dla stołu**, jedna relacja NPC przyjęta z propozycji (bez propozycji — MG ustawia ręcznie, obserwacja) — decyzja MG z 30.09, sesja T6b |
+| T6b: import           | **obie drogi**: import na pustej instancji bez plików (notujemy, co pęka), potem z plikami z `manifest.files`; odpięte figury i karty jako NPC to zachowanie etapu 33 — dopisek do Z10, nie błąd (decyzja MG z 30.09, sesja T6b) |
+| triaż #42              | Ustabilizowanie poza walką bez drogi w UI = **B1**; obejście przy stole krótką walką; poprawka ma dać Ustabilizowanie **także poza walką** (decyzja MG z 30.09, sesja T6b) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -418,6 +422,8 @@ w polu, wycenia na 150 ed, Marek „Zgadzam się na 150 ed” — Test montażu 
 Iskry (`cyberware` −150, `transfer` +150); obie karty rzutów u Marka i Oli z wynikiem z bazy.
 **#40:** lista odbiorców przelewu Marka ma Iskrę, a nie Pasera; id karty Pasera nie dociera do Marka.
 
+**Przebieg T6b (sesja 30.09, `t6b-czas-kopie.spec.ts`, 17 testów, ~3 min od `po-T6a`):** **6.6** MG na karcie Kowala „Efekty czasowe”: REF −2 „Kac po Knajpie” na godzinę; Marek rzuca Broń krótką — w rozbiciu wiersz „Kac po Knajpie −2” obok „Poważnie ranny −2” i pancerza; pięć skoków „+10 min” — efekt trwa, szósty (60 min) go zdejmuje, wiersz „Efekty wygasły” u trojga. Ola klika „Ustabilizowanie” na pasku Iskry poza walką — nic (**#42**, `test.fail`); „Dzień odpoczynku” Kowala wyszarzony, surowe `character:rest` → `refusal: notStabilized`. Obejście: MG „Walka” → „Tylko postacie graczy” → inicjatywa (Iskra 16, Kowal 7), Iskra stabilizuje Kowala (skrypt 9 + TECH 7 + Pierwsza pomoc 2 = 18 vs PT 13), MG ✕. „+1 dzień” → „Odpoczynek — minęła doba”: Kowal +8 PW (= BODY), Iskra bez Ustabilizowania bez zmian. **6.7** wpis ręczny „tylko MG” z kanarkiem; Marek dziękuje Paserowi w roli (`@llm`); licznik „Zakończ sesję i streść” u MG stoi (**#43**, `test.fail`) — obejście: zakładka od nowa; streszczenie 6 wypowiedzi w 12–21 s, jawne dla stołu; propozycji relacji brak w dwóch próbach → MG ustawia Paser → Kowal +1 z gniazda (`relation:set`), `relation:upsert` nie dociera do graczy. Screamsheet „strzelanina pod bramą strefy przemysłowej” w ~10 s, zapis, dopiero „Wszystkim” pokazuje go obojgu. **6.8a** „Kopie”: zrzut z czatem 253 KB, bez czatu 99 KB (manifest mówi, czego nie ma), karty Kowala i Iskry, scena „Brama”; gracz dostaje 403. **6.9** restart z `BACKUP_INTERVAL_MINUTES=1` — kopia `start` i po minucie `timer` (12 plików), panel „kopia co 1 min”; odtworzenie kopii `timer` na czystym katalogu (bez bazy i uploadów) — baza równa stanowi przy kopii, wiersz czatu sprzed kopii jest, po kopii nie ma; MG, Marek i Ola wracają **tymi samymi ciasteczkami**, link zaproszenia prowadzi do tego samego konta, mapa 200; punkt `po-T6`. **6.8b** pusta instancja, kampania „Nocna zmiana — import”: karty Kowala i Iskry wchodzą jako NPC z tymi samymi Cechami, umiejętnościami, ekwipunkiem i ranami; scena „Brama” — ściany i 4 figury są, powiązań 0 z 4, obrazy 404; po skopiowaniu 5 plików z `manifest.files` — 200 (Z10). Komunikat „4 figur straciło” (**#44**, `test.fail`).
+
 | #    | krok                                                                                             | sprawdzamy                                                                                          |
 | ---- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | 6.1  | **Handel** Marek ↔ Ola (pola wymiany, dwie zgody, wycofanie zgody po zmianie oferty)             | przedmioty i eurodolce atomowo po obu stronach, nic nie ginie ani się nie dubluje                   |
@@ -649,6 +655,10 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
   serwera) — T6a, 29.09;
 - zgoda w handlu spada sama po zmianie oferty drugiej strony — czy gracz zauważy, że musi kliknąć
   „Zgadzam się” jeszcze raz — T6a, 29.09.
+- bot i kronikarz widzą gracza pod nazwą **konta**, nie postaci: Paser mówi do Kowala „Marek”, streszczenie pisze „Marek zapytał Strażnika” (umowa `boty` z 24.09 łata tylko relację); czy gracze to zaakceptują — T6b, 30.09;
+- Paser dalej nie zna swojej karty ani historii handlu: „Ronin? Nie znam go”, choć sprzedał go Kowalowi w T6a; potknięcia („świeży espresso”, streszczenie: „Marek podziękował Roninowi”) — T6b, 30.09;
+- streszczenie sesji nie zaproponowało ani jednej zmiany relacji w czterech próbach (log to 6 wypowiedzi — reszta „Nocnej zmiany” to rzuty i akcje, których kronikarz nie czyta); czy MG będzie ustawiał nastawienie ręcznie — T6b, 30.09;
+- screamsheet zmyśla fakty wokół tematu (cztery ciała, kurierzy, SecuTech) — model zna tylko hasło, nie przebieg walki; polszczyzna dobra z potknięciami („chodźcy cybernetyczni”, „ślady po kule”) — T6b, 30.09.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -690,6 +700,36 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import
+
+**Rozstrzygnięcia MG na starcie:** Iskra stabilizuje Kowala; efekt z formularza MG; streszczenie
+i screamsheet jawne dla stołu; import „obie drogi” (bez plików i z plikami z manifestu), odpięte
+figury — dopisek do Z10. W trakcie: #42 **B1**, obejście krótką walką, poprawka ma dać
+Ustabilizowanie poza walką (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (17 testów, ~3 min od `po-T6a`) i
+`restoreBackup()` w `instance/instance.ts` — odtworzenie kopii z harmonogramu (`.e2e/backups`)
+na czystym katalogu tym samym skryptem `restore`. W aplikacji bez zmian. Przebieg w 5.4 wyżej.
+Kanarki: nowy `dziennik-MG` (wpis „tylko MG”) — tajny dla obojga, jest w zrzucie kampanii MG;
+relacje nie opuszczają pokoju MG. Konsola czysta u trojga poza zerwaniem gniazda przy restarcie
+w 6.9. Punkt `po-T6`: „Knajpa” aktywna, 15 marca 2045 23:00, Kowal 20/50 PW (ustabilizowany),
+dwa wpisy dziennika (MG i jawne streszczenie), screamsheet u obojga, relacja Paser → Kowal +1.
+Instancja kończy przebieg **pusta** (6.8b idzie po `po-T6`).
+
+**Znalezione (do triażu MG):** #42 **B1** — Ustabilizowanie poza walką bez drogi w UI (slot
+jest, formularz tylko w walce); #43 **B3?** — licznik „Zakończ sesję i streść (N)” u MG stoi,
+dopóki zakładka się nie przeładuje; #44 **B3?** — „4 figur straciło powiązanie” (dwie formy
+liczby mnogiej). Wszystkie jako `test.fail`. Dopisek do Z10 (co pęka przy przenosinach plikami
+wymiany), cztery obserwacje do sekcji 8.
+
+**Suita:** 195 testów (T6b 17, w tym 3 `test.fail`; razem 8 `test.fail` — #10–#13, #42–#44).
+T6b od `po-T6a` zielony trzy razy (raz padł 6.9c: Firefox logował font `PT Serif` z odmową połączenia w oknie restartu instancji — filtr konsoli 6.9c poszerzony, potem zielono), łańcuch T6a → T6b od `po-T5` 30/30 (3,9 min). Oglądane
+automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem (w trakcie sesji
+system zabił go z braku pamięci — MG kazał podnieść ponownie). `dev.db` nietknięta.
+
+**Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania; albo
+najpierw poprawki #42–#44.
+
 ### Sesja 30.09 — poprawki #40 i #41, retest T6a
 
 Poprawki w `21cbedd`, szczegóły w rejestrze (`testy-rejestr.md`). T6a ma teraz **13 testów** (dwa
@@ -697,64 +737,3 @@ kroki 6.3 zlane w jeden: prośba o operację zamiast montażu ręką MG), bez `t
 testów, 5 `test.fail` (#10–#13). **Punkt `po-T6a` nagrany na nowo:** Kowal zapłacił Iskrze 150 ed
 zamiast 100 ed do sklepu — Kowal **30 ed**, Iskra **1650 ed**; reszta jak niżej. T6a od `po-T5`
 zielony cztery razy, T2 od `po-T3` 41/41; gateway z modelem, Ola w Firefoksie.
-
-### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja
-
-**Rozstrzygnięcia MG na starcie:** T6 w trzech częściach (T6a = 6.1–6.5, T6b = 6.6–6.9, T6c = 6.10);
-brak importu całej kampanii → testujemy eksport i import kart oraz sceny, brak = zadanie Z10; Ola
-zostaje Medykiem i operuje Marka; u Pasera rozmowa z botem i wymiana oknem handlu (sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t6a-handel-rozwoj.spec.ts` (14 testów, ~1,1 min od `po-T5`); hak
-`__vttE2E` dostał magazyn `trade` (tylko build `--mode e2e`). W aplikacji bez zmian. Przebieg w 5.4
-wyżej. Kanarki: łup Zbira jawny dla Oli od położenia chipa w polu wymiany; reszta jak na końcu T5b.
-Konsola czysta u trojga. Punkt `po-T6a`: „Knajpa” aktywna, Kowal przy barze (12, 13) z Roninem,
-wytrychami i Cyberokiem (Człowieczeństwo 33, 80 ed, 60 PD, Zmysł Walki 5), Iskra Medyk 1 / Netrunner
-4 (Chirurgia 2, 1500 ed, 440 PD) z chipem, Paser 400 ed; walki i runu nie ma.
-
-**Znalezione (do triażu MG):** #40 **B3?** — karta czatu handlu z NPC-em niesie graczowi id karty
-NPC-a (`toCharacterId`), choć umowa handlu mówi, że gracz go nie poznaje (`test.fail`); #41 **B3?
-albo zgodne z projektem** — Medyk-gracz nie zoperuje drugiego gracza: montaż z chirurgiem-postacią
-uruchamia tylko MG (`resolveSurgeon` wymaga prawa rzutu za obie karty). Zadanie Z10 (import
-kampanii). Trzy obserwacje do sekcji 8 (MG na podglądzie po aktywacji, Paser nie zna swojej karty,
-zgoda w handlu spada po zmianie oferty).
-
-**Suita:** 179 testów (T6a 14, w tym 1 `test.fail`; razem 6 `test.fail` — #10–#13 i #40). T6a od
-`po-T5` zielony cztery razy z rzędu (wcześniej raz Paser nie odpowiedział w 3 min — test zbiera
-teraz log serwera); łańcuch T5b → T6a od `po-T5a` 41/41 (5,8 min). Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway
-z modelem. `dev.db` nietknięta.
-
-**Następny krok:** T6b od `E2E_FROM=po-T6a` — czas (doba, leczenie, wygasanie efektu), screamsheet
-i dziennik (`@llm`), eksport kampanii i import kart/sceny (Z10), kopia z harmonogramu i odtworzenie.
-Albo najpierw triaż #40 i #41.
-
-### Sesja 27.09 — T5b: „Brama” — walka druga, Sieć, wieżyczka, pad gatewaya
-
-**Rozstrzygnięcia MG na starcie:** poprawki #28–#33 z poprzedniej sesji domknąć osobnym commitem
-(`77e0f6f`, `dc98deb`); gateway z modelem uruchamia Claude; Ola derezuje Kruka Mieczem; walka
-kończy się, gdy Strażnik pada od strzału przeciwpancernego Kowala (sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t5b-brama-walka.spec.ts` (27 testów, ~3,5 min od `po-T5a`)
-i `instance/gateway-proxy.ts`; `walka.ts`: `nextTurn` i `clientsSeeTurn` czekają na klienta do
-30 s (Tura Demona rzuca kilka razy); hak `__vttE2E` dostał magazyn `ai` (tylko build `--mode e2e`).
-W aplikacji bez zmian. Przebieg w 5.3 wyżej. Kanarki: etykiety pięter LOD-a i węzła jawne dla
-Oli od wejścia na nie, tajne przed Markiem; Strażnik i Wieżyczka jawne od odsłonięcia placu. Konsola
-czysta u trojga. Punkt `po-T5`: walka zakończona, Strażnik Śmiertelnie ranny (Test Przeżywalności
-zdany), Kowal 7/45 na placu w strefie wyłączonej wieżyczki, Iskra 28/40 podłączona na węźle
-(przejęty), Kowal z amunicją przeciwpancerną 7/8, gateway wrócił.
-
-**Znalezione (do triażu MG):** #34 **B3?** — okno runu na pasie kolejki netrunnera i na pasku
-narzędzi/czacie MG, klamra nie pozwala go wypchnąć; #35 **B3?** — pad gatewaya w turze bota daje
-MG kod „(INTERNAL)” (zerwany SSE bez `try` w `ai/gateway.ts`) i „(AI_UNAVAILABLE)”, stan nie
-wisi; #36 **B3?** — klik w środek pola przed zaznaczoną figurą łapie uchwyt obrotu, marsz nie
-rusza; #37 **B1?** — etykieta piętra węzła w publicznym wierszu dziennika („Tura Demona”, strzał
-z węzła) dociera do Marka; #38 **B3?** — netrunnerka nie rzuca obrażeń za swoją wieżyczkę (tylko
-MG); #39 **B3?** — strzał wieżyczki ze strefy na koncie gracza, który w nią wszedł. Wszystkie jako
-`test.fail`; pięć obserwacji do sekcji 8.
-
-**Suita:** 165 testów (T5b 27, w tym 6 `test.fail`; razem 11 `test.fail`). T5b od `po-T5a` zielony
-trzy razy, T5a + T5b od `po-T4` 50/50 (5,2 min). Pełny przebieg od zera przerwany na starcie (system zabił procesy w tle z braku pamięci) — do powtórzenia.
-Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; rozpoznanie #36 i celowania
-MG w Playwright MCP (Chromium: MG, Marek na `[::1]`) na instancji E2E. `dev.db` nietknięta.
-
-**Następny krok:** T6 (po walkach, ekonomia, rozwój, czas, kopie) od `E2E_FROM=po-T5` — albo
-najpierw poprawki #34–#39 (w tym B1 #37). Stan `po-T5` wyżej; Paser i handel czekają w T6.
