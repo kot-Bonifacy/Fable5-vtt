@@ -520,6 +520,27 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     expect(pendingSay()).toBe(pendingAtStart + 2);
   });
 
+  test('#45 wypowiedź gracza podpisana postacią — bot i kronikarz mówią do Kowala, nie do Marka', async () => {
+    test.fail(
+      true,
+      '#45 — wiersz `say` gracza bez `speakerName`, historia bota i transkrypt biorą nazwę konta',
+    );
+    // Podpis wiersza jest źródłem obu: historii czatu w prompcie bota i transkryptu
+    // streszczenia (`speakerName ?? author.name`). Odpowiedź modelu jest losowa — podpis nie.
+    const lines = query<{ speakerName: string | null; text: string }>(
+      `SELECT m.speakerName, m.text FROM ChatMessage m JOIN User u ON u.id = m.authorId
+         WHERE m.kind = 'say' AND m.botId IS NULL AND u.name = 'Marek' ORDER BY m.id`,
+    );
+    test
+      .info()
+      .annotations.push(
+        { type: 'podpisy wypowiedzi Marka', description: JSON.stringify(lines) },
+        { type: 'odpowiedź Pasera', description: paserReply },
+      );
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.map((line) => line.speakerName)).toEqual(lines.map(() => 'Kowal'));
+  });
+
   test('6.7c #43 licznik „Zakończ sesję i streść (N)” u MG rośnie z nowymi wypowiedziami', async () => {
     test.fail(true, '#43 — licznik przychodzi tylko z `journal:list` (wejście w zakładkę)');
     const pending = pendingSay();

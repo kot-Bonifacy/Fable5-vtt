@@ -2797,12 +2797,14 @@ takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli ef
 - **Zerwany strumień SSE to zdarzenie `AI_UNREACHABLE`, nie wyjątek (29.09, #35)** — `AiGateway.streamChat` łapie błąd pętli `parseSse`; wyjątek leci dalej tylko przy przerwanym sygnale (stop MG, limit czasu — wołający rozpoznają je po `signal.aborted`). Kod odmowy „Graj turę” zamienia na zdanie `botTurnErrorText` (`socket.ts`); nowy przycisk bota, który pokazuje odmowę gniazda, bierze zdanie stamtąd, nie gołe `ack.error`.
 - **Odpowiedź na kartę propozycji bota bierze blokadę przed pierwszym `await` (26.09, #20)** — `proposalsInFlight` w `realtime/bot-actions.ts`: drugi klik w trakcie zatwierdzania dostaje `PROPOSAL_ALREADY_RESOLVED`, zanim przeczyta kartę. Nowe zdarzenie, które wykonuje coś i dopiero potem zapisuje „zrobione", trzyma tę samą kolejność.
 - **Zdanie o nieudanym pytaniu do modelu daje `botFailureText(kod, powód)` (26.09, #21)** — `realtime/bot-runtime.ts`: `AI_UNREACHABLE` = brak połączenia, `AI_UNAVAILABLE` (503: pełna kolejka, model się ładuje) = „zajęty, spróbuj za chwilę" z powodem od gatewaya (`fastApiDetail` wyjmuje go z `{"detail": …}`). Nie wpisuj jednego zdania na oba kody.
-- **Relacja bota mówi, pod jakim podpisem pisze postać** — `relationForSpeaker` oddaje `speakerName` (nazwa konta), `relationPromptLines` dokleja „na czacie podpisuje się…”, gdy różni się od imienia postaci; notatkę relacji MG pisze do bota w drugiej osobie.
+- **~~Relacja bota mówi, pod jakim podpisem pisze postać~~ — COFNIĘTE 30.09 (decyzja MG, #45): bot mówi do postaci, nie do konta; do poprawki** — `relationForSpeaker` oddaje `speakerName` (nazwa konta), `relationPromptLines` dokleja „na czacie podpisuje się…”, gdy różni się od imienia postaci; notatkę relacji MG pisze do bota w drugiej osobie.
 - **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 
 ---
 
-### Relacja: postać, konto i ton (24.09)
+### Relacja: postać, konto i ton (24.09) — cofnięte 30.09, #45
+
+**MG cofnął tę decyzję 30.09 (sesja T6b):** wypowiedź gracza ma być podpisana postacią, którą mówi, w historii bota i w transkrypcie kronikarza — dopisek „na czacie podpisuje się…” był łatą na objaw. Opis niżej to stan kodu do czasu poprawki #45.
 
 Historia czatu podpisuje gracza nazwą **konta** („Tester”), a relacja zna imię **postaci**
 („Oględziny Stym”). Bez połączenia 27B mówił do gracza o jego własnej postaci jak o kimś obok.

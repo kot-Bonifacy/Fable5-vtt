@@ -37,15 +37,15 @@ cięcie wręcz) i **43c** (plamy krwi na serwerze) rozpisane — MG wybrał „4
 kolejność 43b/43c względem testów ustala MG. Umowy w `ui` i `mapa`.
 
 **Otwarty jest tylko etap 28 (wdrożenie na VPS).** Przed nim idą **testy przed betą** (`testy.md`,
-rejestr `testy-rejestr.md`): **T1, T2, T3a–T6b zamknięte** — T6b 30.09 (efekt na Cesze co do minuty, Ustabilizowanie obejściem krótką walką — **#42 B1: poza walką nie ma go w UI**, doba i odpoczynek, dziennik z kanarkiem, streszczenie i screamsheet botem, eksport, kopia z harmonogramu odtworzona na czystym katalogu, import na pustej instancji; nowe #42–#44, dopisek do Z10), T6a 29.09 (handel, sklep, Paser, PD,
+rejestr `testy-rejestr.md`): **T1, T2, T3a–T6b zamknięte** — T6b 30.09 (efekt na Cesze co do minuty, Ustabilizowanie obejściem krótką walką — **#42 B1: poza walką nie ma go w UI**, doba i odpoczynek, dziennik z kanarkiem, streszczenie i screamsheet botem, eksport, kopia z harmonogramu odtworzona na czystym katalogu, import na pustej instancji; nowe #42–#45, dopisek do Z10), T6a 29.09 (handel, sklep, Paser, PD,
 Ola Medykiem operuje Kowala; zadanie Z10 — brak importu kampanii), T5b 27.09 (walka druga na „Bramie”: wieżyczka ze strefy, Demon, Kruk, przejęcie węzła, pad gatewaya w turze bota przez pośrednika TCP, F5 w Sieci, amunicja przeciwpancerna; sześć nowych błędów #34–#39), T5a 27.09 (przygotowanie „Bramy”, Skaner, run do Pliku; jego błędy #28–#33 naprawione i retestowane tego samego dnia), T4b 27.09 (granat, rana
 krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a przekalibrowany pod
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
 gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
-retest #21 i #22. **Otwarte #10–#13** (na etap „Konta MG”, zadania Z5–Z8) **oraz #42–#44 z T6b** (do triażu i poprawki); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+retest #21 i #22. **Otwarte #10–#13** (na etap „Konta MG”, zadania Z5–Z8) **oraz #42–#45 z T6b** (do triażu i poprawki); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **następny T6c**
-(dwa pełne przebiegi `pnpm test:e2e` od zera, łatanie migotania) albo najpierw poprawki #42–#44.
+(dwa pełne przebiegi `pnpm test:e2e` od zera, łatanie migotania) albo najpierw poprawki #42–#45.
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -110,7 +110,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2245** w `shared`, **1272** na serwerze, **301** u klienta,
-**59** w gatewayu (29.09, poprawki po T5b), **195** E2E (8 `test.fail` — #10–#13, #42–#44; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**59** w gatewayu (29.09, poprawki po T5b), **196** E2E (9 `test.fail` — #10–#13, #42–#45; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -163,15 +163,16 @@ Kowala, efekt na Cesze z formularza MG, streszczenie i screamsheet jawne, import
 (odpięte figury → Z10). W trakcie: Ustabilizowanie poza walką nie ma drogi w UI — #42 **B1**,
 obejście krótką walką, poprawka ma dać Ustabilizowanie także poza walką.
 
-**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (17 testów, ~3 min od `po-T6a`),
+**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (18 testów, ~3 min od `po-T6a`),
 `restoreBackup()` w `instance/instance.ts`; punkt `po-T6`. W aplikacji bez zmian. Znalezione:
-#42 B1, #43 B3? (licznik „Zakończ sesję i streść” stoi), #44 B3? („4 figur straciło”), dopisek
-do Z10, cztery obserwacje do `testy.md` 8. Siedem pułapek w `testy`.
+#42 B1, #43 B3? (licznik „Zakończ sesję i streść” stoi), #44 B3? („4 figur straciło”); po sesji MG cofnął umowę `boty` z 24.09 —
+**#45 B2?: bot i kronikarz mają mówić do postaci, nie do konta gracza** (umowa oznaczona jako cofnięta). Dopisek
+do Z10, trzy obserwacje do `testy.md` 8. Siedem pułapek w `testy`.
 
 **Weryfikacja:** T6b od `po-T6a` zielony trzy razy (raz padł 6.9c: Firefox logował font `PT Serif` z odmową połączenia w oknie restartu instancji — filtr konsoli 6.9c poszerzony, potem zielono), łańcuch T6a → T6b od `po-T5` 30/30 (3,9 min);
 suita `tsc`, ESLint, Prettier czyste. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie,
 headless; gateway z modelem (system zabił go w trakcie z braku pamięci, podniesiony za zgodą MG).
-`dev.db` nietknięta. **Następny krok:** T6c (dwa pełne przebiegi od zera) albo poprawki #42–#44.
+`dev.db` nietknięta. **Następny krok:** T6c (dwa pełne przebiegi od zera) albo poprawki #42–#45.
 
 ### Sesja 30.09 — poprawki #40 i #41 (retest E2E OK), retest #21 i #22
 
