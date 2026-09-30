@@ -64,7 +64,7 @@ import { emitTokensOfCharacter } from './tokens.js';
  */
 
 /** The catalogue entry, refused unless it is cyberware this campaign knows. */
-function requireCyberwareEntry(deps: RealtimeDeps, entryId: unknown): CyberwareEntry {
+export function requireCyberwareEntry(deps: RealtimeDeps, entryId: unknown): CyberwareEntry {
   if (typeof entryId !== 'string' || entryId.length === 0) throw new RealtimeError('BAD_REQUEST');
   const entry: CompendiumEntry | undefined = deps.ctx.compendium.entryById.get(entryId);
   if (!entry || entry.category !== 'cyberware') throw new RealtimeError('ENTRY_NOT_FOUND');
@@ -210,10 +210,56 @@ function installBill(
  * Medyk gracza jest odwrotnie — jego Chirurgia stoi na karcie i tylko stamtąd
  * wolno ją czytać, bo inaczej gracz nazwałby swój własny bonus.
  */
-interface CyberwareSurgeonRoll {
+export interface CyberwareSurgeonRoll {
   label: string;
   bonus: number;
   breakdown: RollBreakdownEntry[];
+}
+
+/**
+ * Strona Testu montażu za Medyka z karty — TECHNIKA + Chirurgia, czytane
+ * wyłącznie z jego karty. Kto może go wskazać, rozstrzyga wołający:
+ * `resolveSurgeon` (ktoś, kto prowadzi obie karty) albo prośba o operację
+ * z `surgery.ts` (#41, zgoda właściciela Medyka).
+ */
+export function surgeonRollFor(
+  deps: RealtimeDeps,
+  doctor: Character,
+  patient: Character,
+  entry: CyberwareEntry,
+): CyberwareSurgeonRoll {
+  // „Nie możesz sam sobie wszczepić cyborgizacji, chyba że jest to cyborgizacja
+  // dostępna w galerii" (s. 226) — jedyne miejsce, w którym miejsce montażu
+  // decyduje o czymś innym niż PT i cena.
+  if (doctor.id === patient.id && !cyberwareAllowsSelfInstall(entry.install)) {
+    throw new RealtimeError('SELF_INSTALL');
+  }
+  const doctorData = parseCharacterData(doctor.data, deps.ctx.cpred);
+  const surgery = cpredMedicineSkillLevel(doctorData, deps.ctx.cpred, 'medicine.surgery');
+  // „PT montażu (Tylko Medycy)" (s. 226). Karta bez Chirurgii nie jest odmową
+  // uznaniową — to ta sama Umiejętność, której podręcznik nie daje nikomu poza
+  // Medykiem, a MG ma na tę operację ripperdoca.
+  if (surgery < 1) throw new RealtimeError('NO_SURGERY_SKILL');
+  // Etap 39: TECHNIKA **jak teraz** — operuje ta ręka, która operuje dzisiaj.
+  const tech = cpredEffectiveStats(doctorData).tech;
+  return {
+    label: doctor.name,
+    bonus: tech + surgery,
+    breakdown: [
+      { label: 'TECHNIKA', value: tech, kind: 'stat' },
+      { label: 'Chirurgia', value: surgery, kind: 'skill' },
+    ],
+  };
+}
+
+/**
+ * Rachunek za montaż. `payee` to Medyk-gracz z prośby o operację (#41): cała
+ * kwota jedzie na jego kartę, a nie znika w sklepie.
+ */
+export interface CyberwareBill {
+  cost: number;
+  label: string;
+  payee?: Character;
 }
 
 async function resolveSurgeon(
@@ -241,30 +287,59 @@ async function resolveSurgeon(
     };
   }
 
+  // Medyk innego gracza nie przechodzi tędy (`CHARACTER_NOT_FOUND`) — jego
+  // drogą jest prośba o operację (`cyberware:request`, #41).
   const doctor = await requireRollableCharacter(deps, campaignId, user, surgeon.characterId);
   if (doctor.campaignId !== campaignId) throw new RealtimeError('CHARACTER_NOT_FOUND');
-  // „Nie możesz sam sobie wszczepić cyborgizacji, chyba że jest to cyborgizacja
-  // dostępna w galerii" (s. 226) — jedyne miejsce, w którym miejsce montażu
-  // decyduje o czymś innym niż PT i cena.
-  if (doctor.id === patient.id && !cyberwareAllowsSelfInstall(entry.install)) {
-    throw new RealtimeError('SELF_INSTALL');
+  return surgeonRollFor(deps, doctor, patient, entry);
+}
+
+/**
+ * Zapłata za montaż: pacjent płaci, a Medyk z prośby o operację (#41) dostaje
+ * całość przelewem. Zwraca kartę pacjenta po zapisie.
+ */
+async function payBill(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  character: Character,
+  data: CpredCharacterData,
+  bill: CyberwareBill,
+  label: string,
+): Promise<CpredCharacterData> {
+  const updated = await applyBalance(
+    deps,
+    campaignId,
+    character,
+    data,
+    {
+      kind: 'cyberware',
+      amount: -bill.cost,
+      label,
+      ...(bill.payee ? { counterpartyId: bill.payee.id } : {}),
+    },
+    user.id,
+  );
+  if (bill.payee) {
+    // Karta Medyka czytana od nowa — między prośbą a operacją mogła się zmienić.
+    const payee = await deps.ctx.prisma.character.findUnique({ where: { id: bill.payee.id } });
+    if (payee) {
+      await applyBalance(
+        deps,
+        campaignId,
+        payee,
+        parseCharacterData(payee.data, deps.ctx.cpred),
+        {
+          kind: 'transfer',
+          amount: bill.cost,
+          label: `od: ${character.name} · ${label}`,
+          counterpartyId: character.id,
+        },
+        user.id,
+      );
+    }
   }
-  const doctorData = parseCharacterData(doctor.data, deps.ctx.cpred);
-  const surgery = cpredMedicineSkillLevel(doctorData, deps.ctx.cpred, 'medicine.surgery');
-  // „PT montażu (Tylko Medycy)" (s. 226). Karta bez Chirurgii nie jest odmową
-  // uznaniową — to ta sama Umiejętność, której podręcznik nie daje nikomu poza
-  // Medykiem, a MG ma na tę operację ripperdoca.
-  if (surgery < 1) throw new RealtimeError('NO_SURGERY_SKILL');
-  // Etap 39: TECHNIKA **jak teraz** — operuje ta ręka, która operuje dzisiaj.
-  const tech = cpredEffectiveStats(doctorData).tech;
-  return {
-    label: doctor.name,
-    bonus: tech + surgery,
-    breakdown: [
-      { label: 'TECHNIKA', value: tech, kind: 'stat' },
-      { label: 'Chirurgia', value: surgery, kind: 'skill' },
-    ],
-  };
+  return updated;
 }
 
 /**
@@ -285,7 +360,7 @@ async function rollSurgery(
   input: {
     entry: CyberwareEntry;
     surgeon: CyberwareSurgeonRoll;
-    bill: { cost: number; label: string };
+    bill: CyberwareBill;
     gesture: RollGesture | undefined;
   },
 ): Promise<number | null> {
@@ -325,14 +400,7 @@ async function rollSurgery(
   // został na stole. Karta ekonomii mówi to wprost, żeby saldo dało się jutro
   // przeczytać bez pamiętania, co się stało.
   if (bill.cost > 0) {
-    await applyBalance(
-      deps,
-      campaignId,
-      character,
-      data,
-      { kind: 'cyberware', amount: -bill.cost, label: `${bill.label} — nieudany montaż` },
-      user.id,
-    );
+    await payBill(deps, campaignId, user, character, data, bill, `${bill.label} — nieudany montaż`);
   }
   return messageId;
 }
@@ -364,6 +432,35 @@ async function installCyberware(
   const bill = installBill(entry, payload.payment, user);
   if (data.eddies < bill.cost) throw new RealtimeError('NOT_ENOUGH_EDDIES');
 
+  return performInstall(deps, campaignId, user, character, data, {
+    entry,
+    surgeon,
+    bill,
+    gesture,
+    refusal,
+  });
+}
+
+/**
+ * Sam montaż, po wszystkich pytaniach „czy wolno" i „czy stać": Test montażu,
+ * Utrata Człowieczeństwa, zapłata i karty czatu. Wspólny dla montażu
+ * z Kompendium i prośby o operację (#41).
+ */
+export async function performInstall(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  character: Character,
+  data: CpredCharacterData,
+  input: {
+    entry: CyberwareEntry;
+    surgeon: CyberwareSurgeonRoll | null;
+    bill: CyberwareBill;
+    gesture: RollGesture | undefined;
+    refusal: ReturnType<typeof cyberwareInstallRefusal>;
+  },
+): Promise<{ messageId: number }> {
+  const { entry, surgeon, bill, gesture, refusal } = input;
   if (surgeon) {
     const failed = await rollSurgery(deps, campaignId, user, character, data, {
       entry,
@@ -394,14 +491,7 @@ async function installCyberware(
   // is handed, so a paid-for implant cannot end up on nobody's card.
   let updated = withRow;
   if (bill.cost > 0) {
-    updated = await applyBalance(
-      deps,
-      campaignId,
-      character,
-      withRow,
-      { kind: 'cyberware', amount: -bill.cost, label: bill.label },
-      user.id,
-    );
+    updated = await payBill(deps, campaignId, user, character, withRow, bill, bill.label);
   } else {
     await saveSheet(deps, campaignId, character, withRow);
   }

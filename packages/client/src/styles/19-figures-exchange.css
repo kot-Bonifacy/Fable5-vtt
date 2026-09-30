@@ -685,3 +685,8 @@
     animation: none;
   }
 }
+
+/* Prośba o operację (#41): pole ceny Medyka obok „Operuję”, startuje od ceny domyślnej. */
+.chat-surgery-price {
+  width: 5.5rem;
+}

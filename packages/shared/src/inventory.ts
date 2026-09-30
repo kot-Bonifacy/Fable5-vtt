@@ -82,8 +82,18 @@ export interface InventoryMoveEntry {
   resolution?: { kind: InventoryResolutionKind; byName: string };
 }
 
+/**
+ * Karta przekazania tak, jak jedzie do widza (#40, 30.09.2026). Graczowi
+ * `redactChatMessage` zdejmuje oba id kart — karta czatu mówi nazwami, a id
+ * karty NPC-a (Paser w handlu, ciało przy łupie) gracz poznawać nie ma.
+ * Klient ich nie czyta; decyzję o propozycji serwer i tak bierze z zapisanego
+ * wpisu.
+ */
+export type InventoryMoveView = Omit<InventoryMoveEntry, 'fromCharacterId' | 'toCharacterId'> &
+  Partial<Pick<InventoryMoveEntry, 'fromCharacterId' | 'toCharacterId'>>;
+
 /** Propozycja, na którą nikt jeszcze nie odpowiedział. */
-export function isInventoryMoveOpen(entry: InventoryMoveEntry): boolean {
+export function isInventoryMoveOpen(entry: InventoryMoveView): boolean {
   return entry.resolution === undefined;
 }
 
@@ -95,7 +105,7 @@ export function isInventoryMoveOpen(entry: InventoryMoveEntry): boolean {
  * kawę.
  */
 export function mayAnswerInventoryMove(
-  entry: InventoryMoveEntry,
+  entry: InventoryMoveView,
   userId: string,
   isGm: boolean,
 ): boolean {
@@ -105,7 +115,7 @@ export function mayAnswerInventoryMove(
 
 /** Kto może wycofać propozycję: ten, kto ją wysłał, albo MG. */
 export function mayCancelInventoryMove(
-  entry: InventoryMoveEntry,
+  entry: InventoryMoveView,
   userId: string,
   isGm: boolean,
   authorId: string,
@@ -121,7 +131,7 @@ export function mayCancelInventoryMove(
  * `accepted` czyta się przy nim innym słowem. Jedna funkcja zamiast gałęzi
  * w karcie czatu, bo to samo zdanie pada też w dzienniku.
  */
-export function inventoryResolutionLabel(entry: InventoryMoveEntry): string {
+export function inventoryResolutionLabel(entry: InventoryMoveView): string {
   const resolution = entry.resolution;
   if (!resolution) return '';
   if (resolution.kind === 'accepted' && entry.kind === 'take') return 'Zabrane';
@@ -130,6 +140,6 @@ export function inventoryResolutionLabel(entry: InventoryMoveEntry): string {
 }
 
 /** „Vex → Rico" — nagłówek karty czatu; handel idzie w obie strony: „Vex ⇄ Rico". */
-export function inventoryMoveHeadline(entry: InventoryMoveEntry): string {
+export function inventoryMoveHeadline(entry: InventoryMoveView): string {
   return `${entry.fromName} ${entry.kind === 'trade' ? '⇄' : '→'} ${entry.toName}`;
 }

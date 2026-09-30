@@ -521,6 +521,7 @@ describe('handel', () => {
       accepted: true,
     });
     const done = nextTrade(vex, 'done');
+    const vexCard = waitFor<ChatMessageBroadcast>(vex, 'chat:message');
     expect(
       (
         await emitAck(vex, 'trade:accept', {
@@ -531,6 +532,11 @@ describe('handel', () => {
       ).ok,
     ).toBe(true);
     await done;
+    // Karta czatu „Vex ⇄ Paser" nie niesie graczowi id karty pasera (#40).
+    const card = (await vexCard).message.inventory;
+    expect(card?.toName).toBe('Paser Mirek');
+    expect(card).not.toHaveProperty('toCharacterId');
+    expect(JSON.stringify(card)).not.toContain(paserCharacterId);
     const vexSheet = await sheetOf(vex, vexCharacterId);
     expect(vexSheet.eddies).toBe(350);
     expect(vexSheet.gear[0]?.qty).toBe(4);

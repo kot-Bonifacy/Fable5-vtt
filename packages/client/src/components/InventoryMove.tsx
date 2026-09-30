@@ -1,4 +1,4 @@
-import type { ChatMessageView, InventoryMoveEntry } from '@vtt/shared';
+import type { ChatMessageView, InventoryMoveView } from '@vtt/shared';
 import {
   INVENTORY_MOVE_TITLES,
   ROLE_GM,
@@ -30,7 +30,7 @@ export function InventoryMoveRow({
   entry,
 }: {
   message: ChatMessageView;
-  entry: InventoryMoveEntry;
+  entry: InventoryMoveView;
 }) {
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);

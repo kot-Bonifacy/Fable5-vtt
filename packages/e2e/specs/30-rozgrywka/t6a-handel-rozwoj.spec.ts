@@ -38,7 +38,8 @@ import { LOG_DIR } from '../../instance/paths.ts';
  * z botem „Paser” (`@llm`) i handel z jego kartą (stronę NPC-a prowadzi MG),
  * PD po sesji, awans Marka (Zdolność i Umiejętność, blokady), wieloklasowość
  * Oli (Netrunner → Medyk, punkt w Chirurgii) i montaż Cyberoka Kowalowi rękami
- * Iskry (Test montażu jej Chirurgią, Utrata Człowieczeństwa). Na końcu punkt
+ * Iskry — Marek prosi, Ola wycenia, Marek zatwierdza (#41, od 30.09; Test montażu
+ * jej Chirurgią, Utrata Człowieczeństwa, cena na kartę Iskry). Na końcu punkt
  * `po-T6a`.
  *
  * Decyzje MG z 29.09 (sesja T6a): T6 dzielony na trzy części (T6a = 6.1–6.5,
@@ -404,17 +405,15 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
         .filter((line) => /bot|gateway|ai|llm|chat/i.test(line))
         .slice(-40)
         .join('\n');
-      test
-        .info()
-        .annotations.push(
-          { type: 'log serwera (bot, gateway)', description: log },
-          {
-            type: 'wiersze czatu po pytaniu',
-            description: JSON.stringify(
-              query('SELECT id, kind, botId, text FROM ChatMessage WHERE id > ? ORDER BY id', mark),
-            ),
-          },
-        );
+      test.info().annotations.push(
+        { type: 'log serwera (bot, gateway)', description: log },
+        {
+          type: 'wiersze czatu po pytaniu',
+          description: JSON.stringify(
+            query('SELECT id, kind, botId, text FROM ChatMessage WHERE id > ? ORDER BY id', mark),
+          ),
+        },
+      );
       throw error;
     }
     const reply = queryOne<{ text: string }>(
@@ -474,9 +473,22 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     ]);
   });
 
-  test.fail('#40 id karty NPC-a nie dociera do gracza w karcie czatu handlu', async () => {
+  test('#40 id karty NPC-a nie dociera do gracza — ani w karcie czatu handlu, ani na listach', async () => {
     // Umowa handlu (`trade:partners`): NPC-a gracz wskazuje figurą, id jego karty
-    // nie poznaje. Karta czatu „Kowal ⇄ Paser” niesie `toCharacterId` (29.09, T6a).
+    // nie poznaje. Do 30.09 niosła je karta czatu „Kowal ⇄ Paser” (`toCharacterId`),
+    // a lista odbiorców przelewu miała wszystkie karty kampanii z prawdziwymi nazwami.
+    const history = await emitAck<{ payees: { name: string }[] }>(
+      await marek.socket(),
+      'economy:history',
+      { characterId: characterRow('Kowal').id },
+    );
+    if (!history.ok) throw new Error(`economy:history: ${history.error}`);
+    const payees = (history.data?.payees ?? []).map((p) => p.name);
+    test
+      .info()
+      .annotations.push({ type: 'odbiorcy przelewu Marka', description: JSON.stringify(payees) });
+    expect(payees).toContain('Iskra');
+    expect(payees).not.toContain('Paser');
     await expectClean(marek, [characterRow('Paser').id]);
   });
 
@@ -580,71 +592,65 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await closeSheet(ola.page);
   });
 
-  test('6.3 gracze sami nie spinają operacji: Medyk jednego gracza nie operuje drugiego', async () => {
-    // Marek z Kompendium: czy Iskra jest na liście chirurgów i co mówi serwer.
-    const entry = await compendiumEntry(marek, 'Cyberoko');
-    const selects = entry.locator('.compendium-assign select');
-    const surgeons = await selects.nth(1).locator('option').allTextContents();
-    const olaTargets = async () => {
-      const olaEntry = await compendiumEntry(ola, 'Cyberoko');
-      return olaEntry
-        .locator('.compendium-assign select')
-        .first()
-        .locator('option')
-        .allTextContents();
-    };
-    const olaSees = await olaTargets();
-    const socket = await marek.socket();
-    const asMarek = await emitAck(socket, 'character:cyberware', {
+  test('6.3 i 6.5 Marek prosi Iskrę o Cyberoko, Ola wycenia, Marek zatwierdza — Test jej Chirurgią (#41)', async () => {
+    // Montaż wprost z Medykiem innego gracza dalej odpada — drogą jest prośba.
+    const direct = await emitAck(await marek.socket(), 'character:cyberware', {
       characterId: characterRow('Kowal').id,
       action: 'install',
       entryId: 'cyberware.cyberoko',
       payment: 'full',
       surgeon: { kind: 'character', characterId: characterRow('Iskra').id },
     });
-    const asOla = await emitAck(await ola.socket(), 'character:cyberware', {
-      characterId: characterRow('Kowal').id,
-      action: 'install',
-      entryId: 'cyberware.cyberoko',
-      payment: 'full',
-      surgeon: { kind: 'character', characterId: characterRow('Iskra').id },
-    });
-    test
-      .info()
-      .annotations.push(
-        { type: 'chirurdzy w Kompendium Marka', description: JSON.stringify(surgeons) },
-        { type: 'pacjenci w Kompendium Oli', description: JSON.stringify(olaSees) },
-        { type: 'Marek: montaż z Iskrą', description: JSON.stringify(asMarek) },
-        { type: 'Ola: montaż Kowalowi', description: JSON.stringify(asOla) },
-      );
-    expect(asMarek).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
-    expect(asOla).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
-    expect(card('Kowal').cyberware).toEqual([]);
-  });
+    expect(direct).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
 
-  test('6.3 i 6.5 montaż Cyberoka: MG spina Kowala z Iskrą — Test jej Chirurgią, Utrata Człowieczeństwa', async () => {
     const before = card('Kowal');
     const surgeonEddies = card('Iskra').eddies;
     const ledgerMark = lastLedgerId();
     const mark = lastMessageId();
-    // Test montażu (1k10) musi przejść — porażka niszczy wszczep; 9, nie 10 (dziesiątka wybucha
-    // i bierze następną kość ze skryptu). 2k6 Człowieczeństwa = 3 + 4.
-    scriptDice([9, 3, 4]);
-    const entry = await compendiumEntry(mg, 'Cyberoko');
+
+    // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 100 ed”.
+    const entry = await compendiumEntry(marek, 'Cyberoko');
     const selects = entry.locator('.compendium-assign select');
     await selects.first().selectOption({ label: 'Kowal' });
-    await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2' });
+    await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2 · poproś' });
     await entry.getByRole('button', { name: 'Zainstaluj — 100 ed' }).click();
+    await expect(entry.locator('.compendium-note')).toContainText('Prośba do: Iskra');
+    // Prośba to nie operacja — nikt jeszcze nie zapłacił.
+    expect(card('Kowal').eddies).toBe(before.eddies);
+
+    // Ola (Firefox): karta prośby na czacie, pole ceny startuje od domyślnej 100 ed.
+    await ola.page.getByRole('button', { name: 'Czat', exact: true }).click();
+    const olaCard = ola.page.getByTestId('surgery-request').last();
+    await expect(olaCard).toContainText('Kowal → Iskra: Cyberoko');
+    await expect(olaCard).toContainText('Cena domyślna: 100 ed');
+    const price = olaCard.getByLabel('Cena operacji w eurodolcach');
+    await expect(price).toHaveValue('100');
+    await price.fill('150');
+    await olaCard.getByRole('button', { name: 'Wyceń na 150 ed' }).click();
+    await expect(olaCard).toContainText('Wycena Medyka: 150 ed');
+    expect(card('Kowal').eddies, 'wycena to jeszcze nie operacja').toBe(before.eddies);
+
+    // Marek zatwierdza wyższą cenę. Test montażu (1k10) musi przejść — porażka niszczy
+    // wszczep; 9, nie 10 (dziesiątka wybucha i bierze następną kość). 2k6 Człowieczeństwa = 3 + 4.
+    scriptDice([9, 3, 4]);
+    await marek.page.getByRole('button', { name: 'Czat', exact: true }).click();
+    const marekCard = marek.page.getByTestId('surgery-request').last();
+    await marekCard.getByRole('button', { name: 'Zgadzam się na 150 ed' }).click();
     await expect.poll(() => card('Kowal').cyberware.map((c) => c.name)).toContain('Cyberoko');
     expect(pendingDice()).toBe('');
+    // Zamknięcie karty dochodzi po animacji obu rzutów (klient trzyma widoki do jej końca).
+    for (const cardOf of [olaCard, marekCard]) {
+      await expect(cardOf).toContainText('Zoperowane — 150 ed', { timeout: 20_000 });
+    }
 
     const after = card('Kowal');
-    expect(after.eddies).toBe(before.eddies - 100);
+    expect(after.eddies).toBe(before.eddies - 150);
     expect(after.humanityCurrent).toBe(before.humanityCurrent - 7);
     expect(ledger('Kowal', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([
-      ['cyberware', -100],
+      ['cyberware', -150],
     ]);
-    expect(card('Iskra').eddies, 'płaci pacjent, nie chirurg').toBe(surgeonEddies);
+    expect(ledger('Iskra', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([['transfer', 150]]);
+    expect(card('Iskra').eddies, 'cała kwota trafia do Medyka').toBe(surgeonEddies + 150);
 
     const cards = query<{ id: number; kind: string; text: string; payload: string }>(
       'SELECT id, kind, text, payload FROM ChatMessage WHERE id > ? ORDER BY id',

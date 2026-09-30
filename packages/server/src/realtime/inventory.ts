@@ -47,6 +47,7 @@ import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './charac
 import { applyBalance } from './economy.js';
 import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
 import { toSceneView } from './scenes.js';
+import { requireTeamCard, teamCardsWhere } from './team-cards.js';
 import {
   INCLUDE_CHAT_NAMES,
   deliverChatMessageTo,
@@ -433,11 +434,14 @@ export const inventorySourcesEvent = defineEvent<InventorySourcesPayload, Invent
     const isGm = user.role === ROLE_GM;
     const conditions = conditionsOf(deps.ctx.statuses.list);
 
-    // Nazwy wszystkich kart kampanii — bez tej listy „oddaj Kai stimpak" nie ma
-    // w co wycelować, bo klient gracza trzyma wyłącznie własne karty. Ta sama
-    // umowa, co `payees` przy przelewie z etapu 23b.
+    // Nazwy kart drużyny — bez tej listy „oddaj Kai stimpak" nie ma w co
+    // wycelować, bo klient gracza trzyma wyłącznie własne karty. Ta sama umowa,
+    // co `payees` przy przelewie z etapu 23b; NPC-a spoza drużyny gracz tu nie
+    // dostaje (#40, `teamCardsWhere`) — wskazuje go figurą.
     const targets = await prisma.character.findMany({
-      where: { campaignId, id: { not: mine.id } },
+      where: {
+        AND: [{ campaignId, id: { not: mine.id } }, await teamCardsWhere(prisma, campaignId, user)],
+      },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
@@ -488,7 +492,9 @@ export const inventorySourcesEvent = defineEvent<InventorySourcesPayload, Invent
         if (metres === null || metres > CPRED_MELEE_REACH_M) continue;
       }
       sources.push({
-        characterId: card.id,
+        // Gracz przeszukuje figurę (`inventory:take` bierze `fromTokenId`), więc
+        // id karty ciała nie jest mu do niczego potrzebne (#40).
+        ...(isGm ? { characterId: card.id } : {}),
         tokenId: placed.token.id,
         // Okno przeszukania to droga figury do gracza, więc filtruje nazwę u siebie
         // (umowa `mapa` o `publicName`) — do 13.09 pisało graczowi prawdziwą.
@@ -516,7 +522,8 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
     const campaignId = requireCampaignId(socket.data);
     const prisma = deps.ctx.prisma;
     const from = await requireOwnCharacter(prisma, campaignId, user, payload?.fromCharacterId);
-    const to = await findCampaignCharacter(prisma, campaignId, payload?.toCharacterId);
+    // NPC-owi spoza drużyny gracz daje przez okno handlu, nie po id karty (#40).
+    const to = await requireTeamCard(prisma, campaignId, user, payload?.toCharacterId);
     if (to.id === from.id) throw new RealtimeError('BAD_REQUEST');
 
     const eddies = readEddies(payload?.eddies);

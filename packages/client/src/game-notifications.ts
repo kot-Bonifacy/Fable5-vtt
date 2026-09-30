@@ -19,6 +19,13 @@ export function chatNotification(
     !message.inventory.resolution
   )
     return 'inventory';
+  // Prośba o operację (#41) dzwoni u Medyka — jak przekazanie u odbiorcy.
+  if (
+    message.kind === 'surgery' &&
+    message.surgery?.surgeonOwnerId === user.id &&
+    !message.surgery.resolution
+  )
+    return 'inventory';
   return null;
 }
 type TurnView = Pick<CombatView, 'id' | 'round' | 'activeCombatantId'> & {

@@ -64,6 +64,10 @@ import type {
   BotView,
   CharacterCreatePayload,
   CharacterCyberwarePayload,
+  CyberwareRequestPayload,
+  CyberwareRespondPayload,
+  CyberwareSurgeonsPayload,
+  CyberwareSurgeonsResult,
   CharacterDeleteBroadcast,
   CharacterPatch,
   CharacterRollPayload,
@@ -3909,6 +3913,52 @@ export function sendCyberwareAction(
       resolve(text);
     });
   });
+}
+
+/* ----- Prośba o operację u Medyka innego gracza (#41, 30.09.2026) ----- */
+
+/** Medycy innych graczy, u których pacjent może poprosić o operację. */
+export const fetchSurgeons = (patientId: string) =>
+  emitSceneAck<CyberwareSurgeonsResult>('cyberware:surgeons', {
+    patientId,
+  } satisfies CyberwareSurgeonsPayload);
+
+/** „Zainstaluj" z Medykiem innego gracza — karta prośby zamiast montażu. */
+export function requestSurgery(payload: CyberwareRequestPayload) {
+  // Zapis karty pacjenta czekający w buforze wyprzedziłby odczyt serwera.
+  flushCharacterSave(payload.patientId);
+  return emitSceneAck<{ messageId: number }>('cyberware:request', payload);
+}
+
+/** „Operuję", „Zgadzam się", „Odmawiam", „Wycofaj" na karcie prośby. */
+export const respondSurgery = (payload: CyberwareRespondPayload) =>
+  emitSceneAck<{ pending: boolean }>('cyberware:respond', payload);
+
+/** Polskie zdanie odmowy przy prośbie o operację — reszta jak przy montażu. */
+export function surgeryErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'SURGERY_NOT_FOUND':
+    case 'SURGERY_CLOSED':
+      return 'Ta prośba jest już zamknięta.';
+    case 'SURGERY_NOT_YOURS':
+      return 'To nie twoja decyzja — odpowiada Medyk albo pacjent.';
+    case 'SURGERY_QUOTED':
+      return 'Wycena czeka na zgodę pacjenta.';
+    case 'SURGERY_NOT_QUOTED':
+      return 'Medyk nie podał jeszcze ceny.';
+    case 'BAD_PRICE':
+      return 'Cena musi być liczbą całkowitą od zera w górę.';
+    case 'NO_SURGERY_NEEDED':
+      return 'Ten wszczep wchodzi bez operacji — nie ma o co prosić.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Pacjenta na to nie stać — Medyk może zejść z ceny.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie znalazłem tej postaci.';
+    case 'NOT_CONNECTED':
+      return cyberwareErrorText('OFFLINE');
+    default:
+      return cyberwareErrorText(code);
+  }
 }
 
 /* ------------------------------------------------------------------ *

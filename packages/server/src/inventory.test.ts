@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
+  BotView,
   CampaignSummary,
   CharacterView,
   ChatMessageBroadcast,
@@ -155,6 +156,8 @@ let sceneId: string;
 let vexCharacterId: string;
 let ricoCharacterId: string;
 let gangerCharacterId: string;
+/** Karta towarzysza-bota — bez właściciela, ale w drużynie (#40). */
+let companionCharacterId: string;
 let gangerTokenId: string;
 let vexTokenId: string;
 let ricoTokenId: string;
@@ -348,7 +351,23 @@ describe('przedmioty między kartami', () => {
     ]);
     // Kartę Rico — gracza — ma widzieć jako **cel**, nie jako źródło.
     expect(result.sources.some((row) => row.name === 'Rico')).toBe(false);
+    // Celem jest drużyna: karty NPC-ów spoza niej gracz nie dostaje ani po
+    // nazwie, ani po id — ciało przeszukuje figurą (#40).
+    expect(result.targets.map((row) => row.name)).toEqual(['Rico']);
+    expect(ganger).not.toHaveProperty('characterId');
+  });
+
+  it('MG dostaje wszystkie karty kampanii i id karty ciała (#40)', async () => {
+    const result = data(
+      await emitAck<InventorySourcesResult>(gm, 'inventory:sources', {
+        characterId: vexCharacterId,
+      }),
+      'inventory:sources',
+    );
     expect(result.targets.map((row) => row.name).sort()).toEqual(['Ganger', 'Rico']);
+    expect(result.sources.find((row) => row.name === 'Ganger')?.characterId).toBe(
+      gangerCharacterId,
+    );
   });
 
   it('gracz zabiera broń z ciała razem z magazynkiem i przykręconym celownikiem', async () => {
@@ -376,6 +395,9 @@ describe('przedmioty między kartami', () => {
     expect(message.inventory?.lines).toEqual(['Zgrzyt 9 (12/30 · Pistoletowa · 1 dodatek)']);
     // Łup nie czeka na niczyją zgodę — nie ma kogo pytać.
     expect(message.inventory?.resolution?.kind).toBe('accepted');
+    // Karta mówi nazwami; id karty ciała gracz nie dostaje (#40).
+    expect(message.inventory).not.toHaveProperty('fromCharacterId');
+    expect(message.inventory).not.toHaveProperty('toCharacterId');
   });
 
   it('pancerz z ciała przychodzi zdjęty, ze zużytym OB', async () => {
@@ -485,6 +507,7 @@ describe('przedmioty między kartami', () => {
 
   it('przekazanie graczowi czeka na „Przyjmij" i dopiero wtedy rusza karty', async () => {
     const ricoCard = waitFor<ChatMessageBroadcast>(rico, 'chat:message');
+    const gmCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const ack = data(
       await emitAck<{ messageId: number }>(vex, 'inventory:give', {
         fromCharacterId: vexCharacterId,
@@ -498,6 +521,10 @@ describe('przedmioty między kartami', () => {
     expect(offered.inventory?.resolution).toBeUndefined();
     expect(offered.inventory?.note).toBe('za opatrunek');
     expect(offered.inventory?.lines).toEqual(['Stimpak × 2']);
+    // Id kart zdejmuje graczowi także dostarczenie na żywo, nie tylko historia
+    // (#40); MG dostaje wpis w całości.
+    expect(offered.inventory).not.toHaveProperty('toCharacterId');
+    expect((await gmCard).message.inventory?.toCharacterId).toBe(ricoCharacterId);
 
     // Nic się jeszcze nie ruszyło — propozycja to nie przelew.
     expect((await sheetOf(rico, ricoCharacterId)).gear).toEqual([]);
@@ -585,21 +612,59 @@ describe('przedmioty między kartami', () => {
     ).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
   });
 
-  it('oddanie na kartę BEZ właściciela idzie od ręki — nie ma kogo pytać o zgodę', async () => {
+  it('gracz nie daje NPC-owi spoza drużyny po id karty — tylko przez handel z figurą (#40)', async () => {
+    expect(
+      await emitAck(vex, 'inventory:give', {
+        fromCharacterId: vexCharacterId,
+        toCharacterId: gangerCharacterId,
+        items: [{ list: 'gear', rowId: 'g-vex', qty: 1 }],
+      }),
+    ).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+  });
+
+  it('oddanie na kartę towarzysza-bota idzie od ręki — nie ma kogo pytać o zgodę', async () => {
+    companionCharacterId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Szczur' }),
+      'character:create',
+    ).id;
+    const bot = data(
+      await emitAck<BotView>(gm, 'bot:create', {
+        name: 'Szczur',
+        data: {
+          type: 'companion',
+          knowledge: { world: '', campaign: '', people: '', forbidden: '' },
+        },
+      }),
+      'bot:create',
+    );
+    expect(
+      (
+        await emitAck(gm, 'bot:update', {
+          botId: bot.id,
+          patch: { characterId: companionCharacterId },
+        })
+      ).ok,
+    ).toBe(true);
+    const listed = data(
+      await emitAck<InventorySourcesResult>(vex, 'inventory:sources', {
+        characterId: vexCharacterId,
+      }),
+      'inventory:sources',
+    );
+    expect(listed.targets.map((row) => row.name).sort()).toEqual(['Rico', 'Szczur']);
+
     const totalGear = (data: CpredCharacterData) =>
       data.gear.reduce((sum, row) => sum + row.qty, 0);
-    const before = totalGear(await sheetOf(gm, gangerCharacterId));
     const ack = data(
       await emitAck<{ messageId: number; pending: boolean }>(vex, 'inventory:give', {
         fromCharacterId: vexCharacterId,
-        toCharacterId: gangerCharacterId,
+        toCharacterId: companionCharacterId,
         items: [{ list: 'gear', rowId: 'g-vex', qty: 1 }],
       }),
       'inventory:give',
     );
     expect(ack.pending).toBe(false);
-    // Wiersz się nie mnoży, tylko rośnie: to ta sama pozycja katalogu.
-    expect(totalGear(await sheetOf(gm, gangerCharacterId))).toBe(before + 1);
+    expect(totalGear(await sheetOf(gm, companionCharacterId))).toBe(1);
   });
 
   it('MG przenoszący na kartę gracza wystawia propozycję, a nie przelew', async () => {
@@ -644,7 +709,7 @@ describe('przedmioty między kartami', () => {
     const ack = data(
       await emitAck<{ messageId: number; pending: boolean }>(vex, 'inventory:give', {
         fromCharacterId: vexCharacterId,
-        toCharacterId: gangerCharacterId,
+        toCharacterId: companionCharacterId,
         items: [],
         eddies: 50,
       }),
@@ -652,6 +717,6 @@ describe('przedmioty między kartami', () => {
     );
     expect(ack.pending).toBe(false);
     expect((await sheetOf(vex, vexCharacterId)).eddies).toBe(before - 50);
-    expect((await sheetOf(gm, gangerCharacterId)).eddies).toBe(50);
+    expect((await sheetOf(gm, companionCharacterId)).eddies).toBe(50);
   });
 });

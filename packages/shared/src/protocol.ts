@@ -486,7 +486,8 @@ export interface InventorySourcesPayload {
 
 /** Jedna karta, z której ten użytkownik może w tej chwili brać. */
 export interface InventorySourceView {
-  characterId: string;
+  /** Tylko u MG — gracz przeszukuje figurę i id karty NPC-a nie poznaje (#40). */
+  characterId?: string;
   /** Figura, przy której stoi ta karta; brak znaczy „poza sceną". */
   tokenId?: string;
   name: string;
@@ -721,6 +722,45 @@ export interface TradeListResult {
  */
 export type CyberwareSurgeon =
   { kind: 'none' } | { kind: 'gm'; skill: number } | { kind: 'character'; characterId: string };
+
+/**
+ * Client → server payload of `cyberware:surgeons` (#41) — Medycy innych graczy,
+ * u których pacjent może poprosić o operację. Klient gracza trzyma wyłącznie
+ * własne karty, więc listę buduje serwer.
+ */
+export interface CyberwareSurgeonsPayload {
+  patientId: string;
+}
+
+export interface CyberwareSurgeonView {
+  characterId: string;
+  name: string;
+  /** Poziom Chirurgii (Specjalizacja Medyka). */
+  surgery: number;
+}
+
+export interface CyberwareSurgeonsResult {
+  surgeons: CyberwareSurgeonView[];
+}
+
+/** Client → server payload of `cyberware:request` — „poproś o operację" (#41). */
+export interface CyberwareRequestPayload {
+  patientId: string;
+  surgeonId: string;
+  entryId: string;
+  payment: 'full' | 'installOnly';
+}
+
+/**
+ * Client → server payload of `cyberware:respond` (#41). `operate` i `decline`
+ * należą do Medyka, `approve` (zgoda na wycenę) i `cancel` — do pacjenta; MG
+ * może każde. Cenę podaje wyłącznie `operate`; resztę serwer czyta z karty.
+ */
+export interface CyberwareRespondPayload {
+  messageId: number;
+  action: 'operate' | 'approve' | 'decline' | 'cancel';
+  price?: number;
+}
 
 export interface CharacterCyberwarePayload {
   characterId: string;

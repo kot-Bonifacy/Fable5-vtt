@@ -118,6 +118,7 @@ import {
   tradeRespondEvent,
 } from './trade.js';
 import { characterCyberwareEvent } from './cyberware.js';
+import { cyberwareRequestEvent, cyberwareRespondEvent, cyberwareSurgeonsEvent } from './surgery.js';
 import {
   economyAdjustEvent,
   economyBuyEvent,
@@ -390,6 +391,9 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tradeCancelEvent,
   tradeListEvent,
   characterCyberwareEvent,
+  cyberwareSurgeonsEvent,
+  cyberwareRequestEvent,
+  cyberwareRespondEvent,
   economyBuyEvent,
   economyTransferEvent,
   economyAdjustEvent,

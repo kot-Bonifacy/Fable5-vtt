@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
+  BotView,
   CampaignSummary,
   CharacterView,
   ChatMessageBroadcast,
@@ -477,21 +478,56 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
   });
 
-  it('lista odbiorców zawiera wszystkie postacie kampanii poza własną', async () => {
+  it('lista odbiorców gracza to drużyna — bez NPC-ów MG (#40)', async () => {
     const { payees } = await ledgerOf(vex, kaiId);
     const names = payees.map((p) => p.name);
     expect(names).toContain('Rico');
-    expect(names).toContain('Manekin');
+    expect(names).not.toContain('Manekin');
     expect(names).not.toContain('Kai');
     expect(names).not.toContain('Obcy');
   });
 
-  it('odbiorcy niosą, kto siedzi przy stole — lista dzieli się, a nie kurczy', async () => {
-    // Od 38a statyści są kartami, więc obok drużyny stanęły figury MG. Nikogo
-    // nie ubywa (przelew do NPC-a bywa całym sensem sceny), ale klient ma czym
-    // rozdzielić je na dwie grupy (decyzja MG, 12.09).
-    const { payees } = await ledgerOf(vex, kaiId);
+  it('MG dostaje wszystkie karty, rozdzielone na graczy i figury MG (12.09)', async () => {
+    const { payees } = await ledgerOf(gm, kaiId);
     expect(payees.find((p) => p.name === 'Rico')?.player).toBe(true);
     expect(payees.find((p) => p.name === 'Manekin')?.player).toBe(false);
+  });
+
+  it('towarzysz-bot jest w drużynie; NPC z głosem bota nie jest (#40)', async () => {
+    const card = async (name: string) => {
+      const ack = await emitAck<CharacterView>(gm, 'character:create', { name });
+      if (!ack.ok || !ack.data) throw new Error('character:create failed');
+      return ack.data.id;
+    };
+    const bot = async (name: string, type: 'companion' | 'npc', characterId: string) => {
+      const created = await emitAck<BotView>(gm, 'bot:create', {
+        name,
+        data: { type, knowledge: { world: '', campaign: '', people: '', forbidden: '' } },
+      });
+      if (!created.ok || !created.data) throw new Error('bot:create failed');
+      await emitAck(gm, 'bot:update', { botId: created.data.id, patch: { characterId } });
+    };
+    const companionId = await card('Szczur');
+    const fenceId = await card('Paser');
+    await bot('Szczur', 'companion', companionId);
+    await bot('Paser', 'npc', fenceId);
+
+    const names = (await ledgerOf(vex, kaiId)).payees.map((p) => p.name);
+    expect(names).toContain('Szczur');
+    expect(names).not.toContain('Paser');
+
+    const toFence = await emitAck(vex, 'economy:transfer', {
+      fromCharacterId: kaiId,
+      toCharacterId: fenceId,
+      amount: 10,
+    });
+    expect(toFence).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+    const toCompanion = await emitAck(vex, 'economy:transfer', {
+      fromCharacterId: kaiId,
+      toCharacterId: companionId,
+      amount: 10,
+    });
+    expect(toCompanion.ok).toBe(true);
+    expect((await sheetOf(gm, companionId)).eddies).toBe(10);
   });
 });

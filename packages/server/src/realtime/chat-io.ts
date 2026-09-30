@@ -11,6 +11,7 @@ import type {
   EconomyLogEntry,
   HandoutLogEntry,
   InventoryMoveEntry,
+  SurgeryRequestEntry,
   SightingLogEntry,
   JournalLogEntry,
   RandomTableRollEntry,
@@ -131,6 +132,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.time = JSON.parse(message.payload) as TimeLogEntry;
   } else if (message.kind === 'inventory' && message.payload) {
     view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
+  } else if (message.kind === 'surgery' && message.payload) {
+    view.surgery = JSON.parse(message.payload) as SurgeryRequestEntry;
   } else if (message.kind === 'sighting' && message.payload) {
     view.sighting = JSON.parse(message.payload) as SightingLogEntry;
   } else if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.payload) {
@@ -203,6 +206,15 @@ export function redactChatMessage(message: ChatMessageView, user: SessionUser): 
     }
   }
 
+  // Karta przekazania mówi nazwami; id kart (Paser w handlu, ciało przy łupie)
+  // gracz poznawać nie ma (#40). Klient ich nie czyta, więc zdejmujemy oba —
+  // bez rozróżniania, czyja karta, bo to i tak wiedza dostępna graczowi inaczej.
+  const inventory = view.inventory;
+  if (inventory) {
+    const { fromCharacterId: _from, toCharacterId: _to, ...named } = inventory;
+    view = { ...view, inventory: named };
+  }
+
   const damage = view.damage;
   if (!damage) return view;
   if (damage.targetOwnerId && damage.targetOwnerId === user.id) return view;
@@ -273,6 +285,11 @@ export function visibleTo(user: SessionUser) {
               // ma wiedzieć, co gracze zdążyli o kimś wypatrzeć — inaczej
               // prowadziłby scenę, nie wiedząc, co druga strona już wie.
               'sighting',
+              // `surgery` (#41) jest tu z powodu, dla którego jest `inventory`:
+              // prośba o operację to rozmowa dwojga graczy, ale MG może
+              // odpowiedzieć za każdą ze stron — musi ją więc widzieć po
+              // przeładowaniu. Gracze widzą ją przez `authorId`/`recipientId`.
+              'surgery',
               // Tabele losowe (34): `rolltable` jest publiczny i jest tu z tego
               // samego powodu, co `time` — bez wiersza MG widziałby wyłącznie
               // własne karty. `gmrolltable` jest tu wzorem `proposal`: cicha
@@ -410,11 +427,13 @@ export async function deliverChatMessageTo(
   )
     return;
   const targets = new Set(userIds.filter((id): id is string => typeof id === 'string'));
-  const payload: ChatMessageBroadcast = { message };
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const socket of sockets) {
     const socketUser = (socket.data as { user: SessionUser }).user;
     if (targets.has(socketUser.id) || (includeGm && socketUser.role === ROLE_GM)) {
+      // Przycięte per widz jak w historii (`fetchHistoryPage`): do 30.09 wersja
+      // na żywo niosła graczowi to, co historia mu zdejmowała (#40).
+      const payload: ChatMessageBroadcast = { message: redactChatMessage(message, socketUser) };
       socket.emit(event, payload);
     }
   }

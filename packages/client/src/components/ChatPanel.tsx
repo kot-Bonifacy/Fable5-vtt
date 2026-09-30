@@ -28,6 +28,7 @@ import {
   isCheckCallOpen,
   isCheckRequestOpen,
   isInventoryMoveOpen,
+  isSurgeryOpen,
 } from '@vtt/shared';
 import {
   allowCombatAction,
@@ -45,6 +46,7 @@ import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
 import { CheckRequestRow } from './CheckRequest.js';
 import { InventoryMoveRow } from './InventoryMove.js';
+import { SurgeryRequestRow } from './SurgeryRequest.js';
 import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -739,6 +741,9 @@ function FullMessageRow({
   if (message.kind === 'sighting' && message.sighting) {
     return <SightingRow entry={message.sighting} />;
   }
+  if (message.kind === 'surgery' && message.surgery) {
+    return <SurgeryRequestRow message={message} entry={message.surgery} />;
+  }
   if (message.kind === 'recovery' && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;
   }
@@ -820,7 +825,7 @@ function hiddenLabel(count: number): string {
  */
 function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
-  const { proposal, check, request, inventory, kind } = item.message;
+  const { proposal, check, request, inventory, surgery, kind } = item.message;
   // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
   // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
   // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
@@ -832,6 +837,8 @@ function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   // Propozycja przekazania (38b) czeka na „Przyjmij" dokładnie tak, jak
   // wezwanie czeka na kubek — a schowana pod separatorem zawisłaby na dobre.
   if (kind === 'inventory') return inventory !== undefined && isInventoryMoveOpen(inventory);
+  // Prośba o operację (#41) czeka na Medyka, a potem może czekać na pacjenta.
+  if (kind === 'surgery') return surgery !== undefined && isSurgeryOpen(surgery);
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }

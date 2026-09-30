@@ -39,6 +39,7 @@ import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './c
 import { markMonthSettled } from './gametime.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignShopTier, campaignShopTierOverrides, requireUnlockedTier } from './shop.js';
+import { requireTeamCard, teamCardsWhere } from './team-cards.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
 /**
@@ -359,8 +360,8 @@ export const economyTransferEvent = defineEvent<EconomyTransferPayload, { balanc
     const toId = payload?.toCharacterId;
     if (typeof toId !== 'string' || toId.length === 0) throw new RealtimeError('BAD_REQUEST');
     if (toId === from.id) throw new RealtimeError('BAD_REQUEST');
-    const to = await deps.ctx.prisma.character.findUnique({ where: { id: toId } });
-    if (!to || to.campaignId !== campaign.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    // NPC-owi spoza drużyny gracz płaci przez okno handlu, nie po id karty (#40).
+    const to = await requireTeamCard(deps.ctx.prisma, campaign.id, user, toId);
 
     const amount = payload?.amount;
     if (typeof amount !== 'number' || !Number.isInteger(amount) || amount <= 0) {
@@ -559,17 +560,25 @@ export const economyHistoryEvent = defineEvent<EconomyHistoryPayload, EconomyHis
       orderBy: { id: 'desc' },
       take: LEDGER_PAGE_SIZE,
     });
-    // Names only, and everybody's: a player's client holds no sheet but their
-    // own, so without this list „przelej Kai 500 ed" has nothing to aim at.
+    // Names only: a player's client holds no sheet but their own, so without
+    // this list „przelej Kai 500 ed" has nothing to aim at. A player gets the
+    // team (#40, `teamCardsWhere`) — other NPCs are paid through a trade with
+    // their figure; the GM gets every card.
     const payees = await deps.ctx.prisma.character.findMany({
-      where: { campaignId: campaign.id, id: { not: character.id } },
+      where: {
+        AND: [
+          { campaignId: campaign.id, id: { not: character.id } },
+          await teamCardsWhere(deps.ctx.prisma, campaign.id, user),
+        ],
+      },
       select: { id: true, name: true, ownerId: true },
       orderBy: { name: 'asc' },
     });
     return {
       // Kto ma właściciela, ten siedzi przy stole; reszta to figury MG, których
-      // od 38a jest w kampanii tyle, ile statystów (12.09). Lista nie kurczy
-      // się o nikogo — dzieli się na dwie, a porządkuje ją klient.
+      // od 38a jest w kampanii tyle, ile statystów (12.09). Lista dzieli się na
+      // dwie, a porządkuje ją klient; u gracza druga to już tylko towarzysze-boty
+      // (#40, 30.09 — decyzja MG zmienia „nie kurczy się o nikogo" z 12.09).
       payees: payees.map((row) => ({
         id: row.id,
         name: row.name,

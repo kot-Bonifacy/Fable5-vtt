@@ -49,6 +49,34 @@ it('inventory notifies its recipient only while waiting for receipt', () => {
   ).toBeNull();
   expect(chatNotification(message({ kind: 'say' }), user)).toBeNull();
 });
+it('a surgery request rings for the surgeon only (#41)', () => {
+  const surgery: NonNullable<ChatMessageView['surgery']> = {
+    patientId: 'p',
+    patientName: 'Kowal',
+    patientOwnerId: 'other',
+    surgeonId: 's',
+    surgeonName: 'Iskra',
+    surgeonOwnerId: user.id,
+    entryId: 'cyberware.x',
+    entryName: 'Cyberoko',
+    payment: 'full',
+    dv: 15,
+    place: 'klinika',
+    defaultPrice: 100,
+    surgery: 2,
+  };
+  expect(chatNotification(message({ kind: 'surgery', surgery }), user)).toBe('inventory');
+  expect(chatNotification(message({ kind: 'surgery', surgery }), gm)).toBeNull();
+  expect(
+    chatNotification(
+      message({
+        kind: 'surgery',
+        surgery: { ...surgery, resolution: { kind: 'declined', byName: 'Ola' } },
+      }),
+      user,
+    ),
+  ).toBeNull();
+});
 it('a Test request never rings from the chat — „Czeka na MG” rings it for the GM', () => {
   const request: NonNullable<ChatMessageView['request']> = {
     characterId: 'a',

@@ -1,5 +1,10 @@
-import { useMemo, useState } from 'react';
-import type { CompendiumEntry, CyberwareSurgeon, WeaponTypeDefinition } from '@vtt/shared';
+import { useEffect, useMemo, useState } from 'react';
+import type {
+  CompendiumEntry,
+  CyberwareSurgeon,
+  CyberwareSurgeonView,
+  WeaponTypeDefinition,
+} from '@vtt/shared';
 import {
   isWeaponEntry,
   NET_DEFENSE_KIND_LABELS,
@@ -43,7 +48,10 @@ import {
 import {
   deleteCompendiumEntry,
   economyErrorText,
+  fetchSurgeons,
+  requestSurgery,
   sendCyberwareAction,
+  surgeryErrorText,
   setShopEntryTier,
   setShopTier,
 } from '../socket.js';
@@ -308,6 +316,9 @@ function shortStats(
   }
 }
 
+/** Wartość opcji „Medyk innego gracza" w liście chirurgów — prośba, nie montaż (#41). */
+const ASK_SURGEON = 'ask:';
+
 function EntryCard({
   entry,
   isGm,
@@ -387,6 +398,24 @@ function EntryCard({
     entry.category === 'cyberware' && !cyberwareAllowsSelfInstall(entry.install);
   const surgeonIsPatient = (id: string) => selfInstallBlocked && id === target;
 
+  // Medycy innych graczy (#41, 30.09.2026): ich kart klient gracza nie trzyma,
+  // więc listę podaje serwer. Wybór takiego Medyka nie montuje od ręki — wysyła
+  // prośbę, a cenę podaje Medyk na karcie czatu. MG ma wszystkie karty
+  // w `targets` i montuje wprost, więc go to nie dotyczy.
+  const asksOthers = !isGm && installDv !== null && target !== '';
+  const [remoteSurgeons, setRemoteSurgeons] = useState<CyberwareSurgeonView[]>([]);
+  useEffect(() => {
+    if (!asksOthers) return;
+    let alive = true;
+    void fetchSurgeons(target).then((ack) => {
+      if (alive && ack.ok && ack.data) setRemoteSurgeons(ack.data.surgeons);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [asksOthers, target]);
+  const askable = asksOthers ? remoteSurgeons : [];
+
   async function addToSheet() {
     if (!target) return;
     const result = await addCompendiumItemToCharacter(target, entry, resolved);
@@ -396,6 +425,25 @@ function EntryCard({
   async function buy() {
     if (!target) return;
     setNote(await buyCompendiumItemForCharacter(target, entry));
+  }
+
+  /** Prośba do Medyka innego gracza (#41) — pieniądze i Test dopiero po jego „Operuję”. */
+  async function askForSurgery(surgeonCardId: string, payment: 'full' | 'installOnly') {
+    const ack = await requestSurgery({
+      patientId: target,
+      surgeonId: surgeonCardId,
+      entryId: entry.id,
+      payment,
+    });
+    if (!ack.ok) {
+      setNote(surgeryErrorText(ack.error));
+      return;
+    }
+    const name = askable.find((row) => row.characterId === surgeonCardId)?.name ?? 'Medyk';
+    const listed = payment === 'installOnly' ? fitting : (price ?? 0);
+    setNote(
+      `Prośba do: ${name} — czeka na czacie. Medyk poda cenę (domyślnie ${listed} ed); wyższą zatwierdzasz ty.`,
+    );
   }
 
   /** Kto operuje, w kształcie, którego oczekuje serwer — albo nikt. */
@@ -409,6 +457,10 @@ function EntryCard({
   /** Cyberware never goes through `economy:buy` — the Humanity is rolled. */
   async function install(payment: 'full' | 'installOnly') {
     if (!target) return;
+    if (surgeonId.startsWith(ASK_SURGEON)) {
+      await askForSurgery(surgeonId.slice(ASK_SURGEON.length), payment);
+      return;
+    }
     const surgeon = surgeonPayload();
     // Notka dopiero po odpowiedzi serwera (13.09). Stała tu przed nią, więc
     // odmowa („Nie ma w co tego wszczepić…") zostawiała na karcie „Instaluję…",
@@ -894,6 +946,15 @@ function EntryCard({
                   >
                     <option value="">Bez Testu montażu</option>
                     {isGm ? <option value="gm">Ripperdoc MG — PT {installDv}</option> : null}
+                    {askable.map((row) => (
+                      <option
+                        key={row.characterId}
+                        value={`${ASK_SURGEON}${row.characterId}`}
+                        title="Medyk innego gracza — dostanie prośbę na czacie i poda cenę."
+                      >
+                        {row.name} — Chirurgia {row.surgery} · poproś
+                      </option>
+                    ))}
                     {surgeons.map((row) =>
                       surgeonIsPatient(row.character.id) ? (
                         <option

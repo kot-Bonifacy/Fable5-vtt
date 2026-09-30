@@ -8,7 +8,8 @@ import {
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
 import type { CheckCallEntry, CheckRequestEntry } from './checks.js';
-import type { InventoryMoveEntry } from './inventory.js';
+import type { InventoryMoveView } from './inventory.js';
+import type { SurgeryRequestEntry } from './surgery.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
@@ -57,6 +58,8 @@ export type ChatKind =
   | 'inventory'
   /** Co gracz wypatrzył na cudzej figurze po zdanym Teście (etap 41). */
   | 'sighting'
+  /** Prośba pacjenta o operację u Medyka innego gracza (#41, 30.09.2026). */
+  | 'surgery'
   /** Wynik losowania z tabeli, pokazany całemu stołowi (etap 34). */
   | 'rolltable'
   /**
@@ -370,7 +373,9 @@ export interface ChatMessageView {
   /** Skok zegara świata — kind `time` only (etap 37). */
   time?: TimeLogEntry;
   /** Przedmiot, który zmienił kartę — kind `inventory` only (etap 38b). */
-  inventory?: InventoryMoveEntry;
+  inventory?: InventoryMoveView;
+  /** Prośba o operację i jej rozstrzygnięcie — kind `surgery` only (#41). */
+  surgery?: SurgeryRequestEntry;
   /** Co widać na obejrzanej figurze — kind `sighting` only (etap 41). */
   sighting?: SightingLogEntry;
   /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
@@ -583,6 +588,11 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // Nie do „Rzutów" — tam siedzi Test, który tę kartę wywołał, a zgaszona
     // grupa rzutów ma gasić kości, nie zabierać zdobytej wiedzy.
     case 'sighting':
+      return 'table';
+    // Prośba o operację (#41) to rozmowa o pieniądzach i chromie między dwojgiem
+    // graczy — rubryka „kto co ma", jak przekazanie. Rzuty, które z niej wyjdą
+    // (Test montażu, Człowieczeństwo), są zwykłymi kartami `roll`.
+    case 'surgery':
       return 'table';
     // Losowanie z tabeli (34) NIE jest w grupie „Rzuty", choć pada w nim kość:
     // grupa dzieli wiersze po tym, po co się na nie patrzy, a na tę kartę

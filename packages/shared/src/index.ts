@@ -35,6 +35,7 @@ export * from './scene-objects.js';
 export * from './scenes.js';
 export * from './screamsheets.js';
 export * from './smoke.js';
+export * from './surgery.js';
 export * from './tables.js';
 export * from './tokens.js';
 export * from './trade.js';
