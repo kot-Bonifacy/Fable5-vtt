@@ -146,6 +146,26 @@ export async function prepareFresh(): Promise<void> {
   writeFileSync(P.DICE_SCRIPT_FILE, '');
 }
 
+/**
+ * Odtworzenie kopii **z harmonogramu serwera** (`.e2e/backups`, krok 6.9) na czystym
+ * katalogu: bez bazy i bez uploadów, jak na nowej maszynie. Ten sam skrypt `restore`,
+ * którym MG przywraca kopię ręcznie (`ArchivePanel`: „Zatrzymaj serwer i uruchom…”).
+ */
+export async function restoreBackup(name: string): Promise<void> {
+  if (!existsSync(join(P.BACKUP_DIR, name, 'db.sqlite'))) {
+    throw new Error(`E2E: no backup "${name}" in ${P.BACKUP_DIR}`);
+  }
+  await stopInstance();
+  for (const suffix of ['', '-wal', '-shm', '-journal']) {
+    rmSync(`${P.DATABASE_FILE}${suffix}`, { force: true });
+  }
+  rmSync(P.UPLOADS_DIR, { recursive: true, force: true });
+  mkdirSync(P.UPLOADS_DIR, { recursive: true });
+  migrate();
+  serverScript('scripts/restore.ts', [name], P.BACKUP_DIR);
+  migrate();
+}
+
 function readState(): InstanceState {
   try {
     return JSON.parse(readFileSync(P.STATE_FILE, 'utf8')) as InstanceState;
@@ -283,14 +303,14 @@ export function pendingDice(): string {
 // Idą przez **prawdziwe** skrypty kopii serwera (`snapshot`, `restore`), więc każde
 // przejście etapu T testuje kopię i odtworzenie na świeżym, rozegranym stanie.
 
-function serverScript(script: string, args: string[] = []): string {
+function serverScript(script: string, args: string[] = [], backupDir = P.CHECKPOINT_DIR): string {
   return run(NODE, [TSX_CLI, script, ...args], {
     cwd: P.SERVER_DIR,
     env: {
       ...cleanEnv(),
       DATABASE_URL: P.DATABASE_URL,
       UPLOADS_DIR: P.UPLOADS_DIR,
-      BACKUP_DIR: P.CHECKPOINT_DIR,
+      BACKUP_DIR: backupDir,
       // Rotacja nie ma tu nic do roboty — każda kopia od razu dostaje nazwę punktu.
       BACKUP_KEEP_HOURLY: '1000',
       BACKUP_KEEP_DAILY: '1000',
