@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 01.10 — poprawki #10–#13 i #42–#45 (retest E2E OK), rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 **też teraz**
+(nie na „Konta MG”); wagi #43 B3, #44 B3, #45 B2; #45 — „Kowal” wszędzie, także na czacie (konto
+w podpowiedzi); #42 — pacjenci poza walką = widoczne figury w zasięgu ramienia; #12 — per IP,
+10 błędów / 15 min, 429 także na dobre hasło; #13 — 20/s z zapasem 60, bez acku 40/s, MG też;
+#10 razem z uploadami za logowaniem; #11 — ekran logowania z notką, **sesja i link zaproszenia rok**.
+
+**Zrobione (`a551f3a`):** `realtime/session-guard.ts` (pokój sesji, `auth:ended`, zegar wygaśnięcia,
+`SESSION_ENDED`), `src/rate-limit.ts` (`SocketRateLimiter` w `registerEvents`, `LoginAttemptLimiter`
+w logowaniu i `/api/join`), `config.rateLimits?`/`trustProxy?`, `/uploads/` za logowaniem (zaczep
+`onRequest`), `getUserActiveCampaign`; `StabilizeNearbyPicker`; `journal:pending`; `polishPlural`
+w rdzeniu; podpis postacią (`playerSpeakerName`, `accountName`, lista „przy stole” bez kont z postacią,
+szept bota do postaci, `BOT_PROMPT_VERSION` 5). E2E: zdjęte wszystkie `test.fail`, instancja
+z `TRUST_PROXY=1`, `emitAck`/`probe` ponawiają `RATE_LIMITED`, T6b: 6.6c przed 6.6b, 6.6b stabilizuje
+poza walką. Umowy w `serwer`, `czat`, `tura`, `boty`; pułapki w `serwer` i `testy`; Z11 w rejestrze.
+
+**Weryfikacja:** shared 2247, serwer 1281 (nowy `security.test.ts`), klient 301; `tsc`, ESLint,
+Prettier czyste. E2E: T2 od `po-T3` 41/41 (drugi przebieg; pierwszy — 6.2.8 poprawiony i jednorazowe
+`ETIMEDOUT` proxy przy F5 MG), T6b od `po-T6a` 18/18 z modelem (nagrał nowy `po-T6`). Pierwsze
+podejście do T6b system zatrzymał z braku pamięci (gateway + suita), drugie za zgodą MG. Oglądane:
+Ola w Firefoksie (6.6b), skrypt Playwright w Firefoksie — autor „Kowal” z podpowiedzią „Gracz: Marek”,
+notka „Wylogowano w innej karcie…”; Paser odpowiada „Oho, Kowal…”. `dev.db` nietknięta.
+**Następny krok:** T6c (dwa pełne przebiegi od zera).
+
 ### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import (trzy nowe błędy)
 
 **Zlecenie MG:** T6b (`testy.md` 5.4, kroki 6.6–6.9). Pytania na starcie: Iskra stabilizuje

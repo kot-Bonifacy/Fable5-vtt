@@ -27,7 +27,9 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T6a  | Rozgrywka 4a/4: handel, sklep, Paser, PD, Medyk, chrom    | ✅     | 29.09.2026 |
 | T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ✅     | 30.09.2026 |
 | T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ✅     | 01.10.2026 |
-| T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
+| T7a  | Odporność 1/3: sieć, restart, dwie karty, degradacja AI   | ✅     | 01.10.2026 |
+| T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ⬜     |            |
+| T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
@@ -40,7 +42,9 @@ jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 
 **Kolejność prac wokół testów (decyzja MG z 26.09, sesja T1):** T1 → T3–T6 (T2 dowolnie po T3)
 → **refaktoryzacja całości** pod osłoną suity → **etap „Konta MG”** (przepisuje krok 3.1 i część
-T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
+T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11. **Korekta 01.10 (MG):** T7
+idzie teraz, przed refaktoryzacją, w trzech częściach a/b/c — pomiary T7b/T7c staną się linią
+bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 
 ## 2. Decyzje MG z 26.09.2026 (podstawa planu)
 
@@ -94,6 +98,11 @@ T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11.
 | T6b: import           | **obie drogi**: import na pustej instancji bez plików (notujemy, co pęka), potem z plikami z `manifest.files`; odpięte figury i karty jako NPC to zachowanie etapu 33 — dopisek do Z10, nie błąd (decyzja MG z 30.09, sesja T6b) |
 | triaż #45              | **cofnięta umowa `boty` z 24.09**: bot i kronikarz mają zwracać się do **postaci** („Kowal”), nie do konta gracza („Marek”) — do poprawki (decyzja MG z 30.09, sesja T6b) |
 | triaż #42              | Ustabilizowanie poza walką bez drogi w UI = **B1**; obejście przy stole krótką walką; poprawka ma dać Ustabilizowanie **także poza walką** (decyzja MG z 30.09, sesja T6b) |
+| T7: kolejność i podział | **T7 przed refaktoryzacją**, trzy części: **T7a** = opóźnienie, zerwanie, restart, dwie karty, degradacja AI; **T7b** = obciążenie, długi czat, rozmiar bazy; **T7c** = wydajność mapy, wyciek pamięci (decyzja MG z 01.10, sesja T7a) |
+| T7: miejsce w suicie    | testy w `specs/40-odpornosc` z tagiem `@odpornosc`, **poza domyślnym `pnpm test:e2e`** (`pnpm test:e2e 40-odpornosc`); pomiary T7b/T7c — skrypty z zapisem liczb (decyzja MG z 01.10) |
+| T7: sprzęt graczy       | **głównie PC z kartą graficzną** — pomiar mapy na GPU, SwiftShader tylko jako obserwacja (decyzja MG z 01.10) |
+| T7: degradacja AI       | **atrapa gatewaya w suicie** (`fixtures/fake-gateway.ts`) — prawdziwy gateway i llama-server nietknięte, w T7 gateway może być wyłączony (decyzja MG z 01.10) |
+| T7: wagi                | utrata zapisanego stanu albo pad = B0; rozjazd klientów, którego nie naprawia F5, albo podwójny rzut/akcja = B1; powrót tylko po F5 albo brak czytelnego „rozłączony” = B2; liczby wydajności poniżej progu = obserwacja (sekcja 8), B2 dopiero przy wyraźnym zacinaniu (propozycja z 01.10 bez sprzeciwu MG) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -175,6 +184,8 @@ packages/e2e/
                            gateway-proxy.ts — pośrednik TCP do AI Gatewaya: zerwanie w trakcie `POST /chat` (T5b)
   fixtures/
     actors.ts              cast.mg(), cast.gracz('Ola', 'firefox', token) — osobne przeglądarki, konteksty, gniazdo
+    network.ts             T7: pośrednik gniazda karty (`routeWebSocket`) — opóźnienie w kolejce i zerwanie sieci
+    fake-gateway.ts        T7: atrapa AI Gatewaya — llama-server martwy (503) albo `/chat` milczący 3 min
     sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + kanarki (4.5)
     canvas.ts              klik, prawy klik, przeciąganie i marsz po płótnie Pixi we współrzędnych sceny
     db.ts                  odczyt bazy tylko do asercji (node:sqlite), odcisk stanu do punktów kontrolnych
@@ -198,7 +209,7 @@ packages/e2e/
     30-rozgrywka/          T3–T6, `test.describe.serial`, każdy plik startuje z punktu kontrolnego
     35-bezpieczenstwo/     T2: trasy HTTP, gniazdo (role, własność, śmieci, zalew), kanarki na zimno —
                            każdy plik odtwarza `po-T3` sam, więc w pełnym przebiegu idzie po T3–T6
-    40-odpornosc/          T7
+    40-odpornosc/          T7, poza domyślnym przebiegiem: `pnpm test:e2e 40-odpornosc` (albo `--grep @odpornosc`)
     50-przegladarki/       T8
 ```
 
@@ -501,6 +512,12 @@ w suicie idą za punktami (`6.2.5 …`):
 
 ### 6.3. T7 — Odporność
 
+Podział (decyzja MG z 01.10): **T7a** — wiersze od „opóźnienie VPS” do „dwie karty” i „degradacja AI”
+(`specs/40-odpornosc/t7a-walka-siec`, `t7a-handel-kreator`, `t7a-ai`, ✅ 01.10); **T7b** —
+„obciążenie stołu”, „długi czat”, „rozmiar bazy”; **T7c** — „wydajność mapy” i „wyciek pamięci”.
+Zerwanie i opóźnienie gra `fixtures/network.ts` (pośrednik gniazda w obu silnikach), degradację AI —
+atrapa gatewaya.
+
 | test                          | jak                                                                                                                | oczekiwane                                                                                        |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | opóźnienie VPS                | 150 ms ± 50 ms na gnieździe (łata `WebSocket.prototype.send` albo CDP w Chromium), skrót walki pierwszej           | pola nie gubią wpisanych znaków, marsz nie skacze, brak podwójnych akcji z podwójnego kliku       |
@@ -668,6 +685,7 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
   „Zgadzam się” jeszcze raz — T6a, 29.09.
 - Paser dalej nie zna swojej karty ani historii handlu: „Ronin? Nie znam go”, choć sprzedał go Kowalowi w T6a; potknięcia („świeży espresso”, streszczenie: „Marek podziękował Roninowi”) — T6b, 30.09;
 - streszczenie sesji nie zaproponowało ani jednej zmiany relacji w czterech próbach (log to 6 wypowiedzi — reszta „Nocnej zmiany” to rzuty i akcje, których kronikarz nie czyta); czy MG będzie ustawiał nastawienie ręcznie — T6b, 30.09;
+- okno handlu gracza, któremu padła sieć, wygląda jak zwykle (przyciski działają lokalnie), a o przerwie mówi tylko „Rozłączono” w nagłówku — czy gracz to zauważy — T7a, 01.10;
 - screamsheet zmyśla fakty wokół tematu (cztery ciała, kurierzy, SecuTech) — model zna tylko hasło, nie przebieg walki; polszczyzna dobra z potknięciami („chodźcy cybernetyczni”, „ślady po kule”) — T6b, 30.09.
 
 ## 9. Rejestr błędów i raportowanie
@@ -710,6 +728,39 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 01.10 — T7a: sieć, restart, dwie karty, degradacja AI
+
+**Rozstrzygnięcia MG na starcie:** T7 teraz (przed refaktoryzacją), podział a/b/c, ta sesja T7a;
+testy w `40-odpornosc` poza domyślnym przebiegiem; gracze głównie na PC z GPU; degradacja AI na
+atrapie gatewaya. Wagi T7 w sekcji 2.
+
+**Zrobione:** `fixtures/network.ts` (pośrednik gniazda `routeWebSocket` — opóźnienie w kolejce,
+zerwanie z `setOffline`), `fixtures/fake-gateway.ts`, hak `prepare` w `cast.mg`/`cast.gracz`,
+przełącznik `odpornosc` w `playwright.config.ts`. Trzy pliki, 16 testów, ~6 min:
+`t7a-walka-siec` (`po-T4a`): notatki Kowala i Iskry pisane kawałkami pod 150 ± 50 ms bez straty
+znaku, marsz bez skoku, podwójny klik „Kończę turę” = jedna tura, Ola 30 s offline w swojej turze
+(„Rozłączono”, powrót bez F5 z czatem, ruchem i zmianą karty z przerwy, potem krok Iskry), Marek
+w dwóch kartach (wezwanie w obu, rzut z obu naraz → jeden rzut), zabicie serwera 250 ms po rozkazie
+marszu (baza bez zmian po starcie, trzy karty wracają same w ~5 s, każda figura u klienta = baza);
+`t7a-handel-kreator` (`po-T6a`): Ola 30 s offline w środku handlu (wytrychy i zgoda Marka czekają,
+wymiana po powrocie bez F5), Kuba w kreatorze — zabicie serwera po trzech Cechach (szkic co do bajtu,
+kubek dalej załadowany, czwarta Cecha raz); `t7a-ai` (`po-T4a`): „Graj turę” Rzeźnika przy martwym
+gatewayu i martwym llama-serverze — notka „model jest niedostępny…” w kilka sekund, przy odpowiedzi
+po 3 min — przycisk wraca po 120 s; w każdym wariancie czat Oli → MG ~70 ms, ruch MG ~50 ms, rzut
+Marka dochodzi do Oli.
+
+**Błędy:** #46 (B3 wg „waga `INTERNAL`”, do triażu) — limit 120 s w turze bota kończy się
+`INTERNAL` i notką „coś poszło nie tak po stronie serwera”; #47 (niepotwierdzony) — raz na ~12
+marszów pod opóźnieniem figura u MG cofnęła się o 1,2 pola. Obserwacja do sekcji 8: okno handlu
+gracza offline nie mówi, że jest offline (tylko „Rozłączono” w nagłówku).
+
+**Wynik:** `pnpm test:e2e 40-odpornosc` 16/16 (6,1 min), plik walki 3 × 7/7 w powtórkach; domyślny
+`pnpm test:e2e --list` dalej 196 testów. Oglądane automatem: MG i Marek w Chromium, Ola i Kuba
+w Firefoksie, headless. Punkty kontrolne nietknięte (T7a ich nie nagrywa), `dev.db` nietknięta.
+
+**Następny krok:** T7b — obciążenie stołu (MG + 4 graczy + obserwator, 10 min), długi czat,
+rozmiar bazy.
+
 ### Sesja 01.10 — T6c: dwa pełne przebiegi od zera
 
 **Rozstrzygnięcia MG na starcie:** przebiegi z modelem; „dwa z rzędu” = dwa kolejne zielone po
@@ -730,15 +781,3 @@ w `.e2e/checkpoints-bak-01.10/`. Oglądane automatem: MG i Marek w Chromium, Ola
 
 **Następny krok:** wg kolejności z 26.09 — refaktoryzacja całości pod osłoną suity, potem etap
 „Konta MG”.
-
-### Sesja 01.10 — poprawki #10–#13 i #42–#45, retest T2 i T6b
-
-Poprawki w `a551f3a`, rozstrzygnięcia MG i szczegóły w rejestrze. **Rejestr nie ma już otwartych
-błędów** (#1–#45: retest OK); zadania Z5, Z6, Z8 zrobione, Z7 częściowo (uploady za logowaniem),
-nowe Z11 (`TRUST_PROXY=1` za Caddy). Suita: **0 `test.fail`**. T2 od `po-T3` 41/41, T6b od `po-T6a`
-18/18 z modelem — T6b nagrał na nowo punkt `po-T6` (Kowal ustabilizowany poza walką, potem drugi raz
-w krótkiej walce). Instancja E2E ma od teraz `TRUST_PROXY=1`, a `emitAck`/`probe` ponawiają
-`RATE_LIMITED`. Sesja i link zaproszenia ważne rok (6.2.8 sprawdza 364–365 dób).
-
-**Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania (nowe
-podejrzenie: jednorazowe `connect ETIMEDOUT` proxy `vite preview` przy F5 po fuzzie MG).

@@ -13,6 +13,7 @@ import { BASE_URL, SERVER_URL } from '../instance/paths.ts';
 import { Sniffer } from './sniffer.ts';
 
 export type Engine = 'chromium' | 'firefox';
+type Prepare = (context: BrowserContext) => Promise<unknown>;
 
 /**
  * Błędy konsoli, które nie są błędami (pułapki `ogledziny`, `testy.md` 6.4):
@@ -120,23 +121,28 @@ export class Cast {
     return browser;
   }
 
-  async open(name: string, engine: Engine): Promise<Actor> {
+  /**
+   * `prepare` dostaje kontekst przed pierwszym `goto` — np. pośrednik gniazda
+   * z `fixtures/network.ts` (T7), który musi stać, zanim karta się połączy.
+   */
+  async open(name: string, engine: Engine, prepare?: Prepare): Promise<Actor> {
     const browser = await this.browser(engine);
     const context = await browser.newContext({
       baseURL: BASE_URL,
       viewport: { width: 1600, height: 900 },
       locale: 'pl-PL',
     });
+    await prepare?.(context);
     const actor = new Actor(name, engine, context, await context.newPage());
     this.actors.push(actor);
     return actor;
   }
 
   /** MG loguje się przez formularz hasłem instancji (losowym na przebieg). */
-  async mg(engine: Engine = 'chromium'): Promise<Actor> {
+  async mg(engine: Engine = 'chromium', prepare?: Prepare): Promise<Actor> {
     const password = process.env.E2E_GM_PASSWORD;
     if (!password) throw new Error('E2E: no E2E_GM_PASSWORD — run through playwright test');
-    const actor = await this.open('MG', engine);
+    const actor = await this.open('MG', engine, prepare);
     await actor.page.goto('/');
     await actor.page.locator('#gm-password').fill(password);
     await actor.page.getByRole('button', { name: 'Zaloguj się' }).click();
@@ -145,8 +151,13 @@ export class Cast {
   }
 
   /** Gracz wchodzi z linku zaproszenia pod swoim imieniem. */
-  async gracz(name: string, engine: Engine, invitationToken: string): Promise<Actor> {
-    const actor = await this.open(name, engine);
+  async gracz(
+    name: string,
+    engine: Engine,
+    invitationToken: string,
+    prepare?: Prepare,
+  ): Promise<Actor> {
+    const actor = await this.open(name, engine, prepare);
     await actor.page.goto(`/join/${encodeURIComponent(invitationToken)}`);
     await actor.page.locator('#player-name').fill(name);
     await actor.page.getByRole('button', { name: 'Dołącz do gry' }).click();

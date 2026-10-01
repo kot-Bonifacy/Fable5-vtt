@@ -43,11 +43,12 @@ krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
 gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
-retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — **rejestr nie ma otwartych błędów**, suita bez `test.fail`; limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
-stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **następna jest refaktoryzacja** pod osłoną
-suity. **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
-Kolejność (decyzja MG z 26.09):
-**T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
+retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — #1–#45 zamknięte (otwarte od T7a: **#46, #47**); limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **T7a zamknięty 01.10** (sieć, restart, dwie karty, degradacja AI — `pnpm test:e2e 40-odpornosc`,
+16 testów poza domyślnym przebiegiem; #46 i #47 do triażu MG); **następny jest T7b, potem T7c**
+(korekta MG z 01.10: T7 przed refaktoryzacją), potem refaktoryzacja pod osłoną suity. **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
+Kolejność (decyzja MG z 26.09, korekta 01.10):
+**T3–T6 → T7a–T7c → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
 refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socket.ts` (152 KB),
@@ -110,7 +111,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2247** w `shared`, **1281** na serwerze, **301** u klienta,
-**61** w gatewayu (01.10, `--cache-ram`), **196** E2E (0 `test.fail`; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**61** w gatewayu (01.10, `--cache-ram`), **196** E2E + **16** odporności T7a poza domyślnym przebiegiem (01.10, 1 `test.fail` — #46) (domyślne 0 `test.fail`; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -149,12 +150,33 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 80      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 86      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 01.10 — T7a: odporność — sieć, restart, dwie karty, degradacja AI
+
+**Zlecenie MG:** T7 z `testy.md` (w całości albo w częściach). Pytania na starcie: T7 **teraz,
+przed refaktoryzacją**, podział **T7a/T7b/T7c** (ta sesja T7a); testy w `specs/40-odpornosc`
+z tagiem `@odpornosc`, **poza domyślnym `pnpm test:e2e`**; gracze głównie na PC z GPU; degradacja
+AI na **atrapie gatewaya** (prawdziwy gateway nietknięty).
+
+**Zrobione:** `fixtures/network.ts` (pośrednik gniazda `routeWebSocket` — opóźnienie w kolejce
+i zerwanie), `fixtures/fake-gateway.ts`, hak `prepare` w `Cast`, przełącznik w `playwright.config.ts`
+(`pnpm test:e2e 40-odpornosc`). Trzy pliki, 16 testów: opóźnienie 150 ± 50 ms (notatki, marsz,
+podwójny klik), 30 s offline w turze i w handlu, Marek w dwóch kartach (jeden rzut z dwóch kart),
+zabicie serwera w trakcie marszu i w kreatorze, tura bota przy martwym gatewayu, martwym llama-serverze
+i odpowiedzi po 3 min. Nowe w rejestrze: **#46** (B3, do triażu — limit 120 s w turze bota kończy się
+`INTERNAL` i notką „coś poszło nie tak po stronie serwera”), **#47** (niepotwierdzony — raz na ~12
+marszów pod opóźnieniem figura u MG cofnęła się o 1,2 pola). Sześć pułapek w `testy`.
+
+**Weryfikacja:** `pnpm test:e2e 40-odpornosc` 16/16 (6,1 min), plik walki jeszcze 3 × 7/7; domyślna
+suita dalej 196 testów; `tsc`, ESLint i Prettier suity czyste. Kod aplikacji bez zmian. Oglądane
+automatem: MG i Marek w Chromium, Ola i Kuba w Firefoksie, headless. `dev.db` i punkty kontrolne
+nietknięte. **Następny krok:** T7b (obciążenie MG + 4 graczy + obserwator, długi czat, rozmiar bazy).
 
 ### Sesja 01.10 — T6c: pełny przebieg E2E od zera dwa razy zielony
 
@@ -176,28 +198,3 @@ przebiegi 4 i 5 196/196 (31,5 i 31,6 min, najmniej 4,4 GB wolnego RAM-u); gatewa
 ruff czysty; `tsc` i Prettier suity czyste. Oglądane automatem: MG i Marek w Chromium, Ola
 w Firefoksie, headless. Punkty kontrolne nagrane na nowo (Kowal bez zmian), kopia sprzed sesji
 w `.e2e/checkpoints-bak-01.10/`. `dev.db` nietknięta. **Następny krok:** refaktoryzacja całości.
-
-### Sesja 01.10 — poprawki #10–#13 i #42–#45 (retest E2E OK), rejestr bez otwartych błędów
-
-**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 **też teraz**
-(nie na „Konta MG”); wagi #43 B3, #44 B3, #45 B2; #45 — „Kowal” wszędzie, także na czacie (konto
-w podpowiedzi); #42 — pacjenci poza walką = widoczne figury w zasięgu ramienia; #12 — per IP,
-10 błędów / 15 min, 429 także na dobre hasło; #13 — 20/s z zapasem 60, bez acku 40/s, MG też;
-#10 razem z uploadami za logowaniem; #11 — ekran logowania z notką, **sesja i link zaproszenia rok**.
-
-**Zrobione (`a551f3a`):** `realtime/session-guard.ts` (pokój sesji, `auth:ended`, zegar wygaśnięcia,
-`SESSION_ENDED`), `src/rate-limit.ts` (`SocketRateLimiter` w `registerEvents`, `LoginAttemptLimiter`
-w logowaniu i `/api/join`), `config.rateLimits?`/`trustProxy?`, `/uploads/` za logowaniem (zaczep
-`onRequest`), `getUserActiveCampaign`; `StabilizeNearbyPicker`; `journal:pending`; `polishPlural`
-w rdzeniu; podpis postacią (`playerSpeakerName`, `accountName`, lista „przy stole” bez kont z postacią,
-szept bota do postaci, `BOT_PROMPT_VERSION` 5). E2E: zdjęte wszystkie `test.fail`, instancja
-z `TRUST_PROXY=1`, `emitAck`/`probe` ponawiają `RATE_LIMITED`, T6b: 6.6c przed 6.6b, 6.6b stabilizuje
-poza walką. Umowy w `serwer`, `czat`, `tura`, `boty`; pułapki w `serwer` i `testy`; Z11 w rejestrze.
-
-**Weryfikacja:** shared 2247, serwer 1281 (nowy `security.test.ts`), klient 301; `tsc`, ESLint,
-Prettier czyste. E2E: T2 od `po-T3` 41/41 (drugi przebieg; pierwszy — 6.2.8 poprawiony i jednorazowe
-`ETIMEDOUT` proxy przy F5 MG), T6b od `po-T6a` 18/18 z modelem (nagrał nowy `po-T6`). Pierwsze
-podejście do T6b system zatrzymał z braku pamięci (gateway + suita), drugie za zgodą MG. Oglądane:
-Ola w Firefoksie (6.6b), skrypt Playwright w Firefoksie — autor „Kowal” z podpowiedzią „Gracz: Marek”,
-notka „Wylogowano w innej karcie…”; Paser odpowiada „Oho, Kowal…”. `dev.db` nietknięta.
-**Następny krok:** T6c (dwa pełne przebiegi od zera).
