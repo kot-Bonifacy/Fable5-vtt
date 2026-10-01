@@ -60,3 +60,10 @@ do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
      słucha na publicznym adresie, mimo że PC właściciela jest poza NAT-em.
    - Kolekcje RAG pamięci i bazy wiedzy są per kampania, więc dane jednej kampanii nie trafiają do
      botów drugiej — sprawdzić w etapie. RAG podręcznika jest wspólny, jak kompendium (pozycja 1).
+
+**01.10.2026 — llama-server trzyma ~15,5 GB RAM-u, choć model jest w całości na GPU (T6c).**
+Tuż po starcie, przy `--n-gpu-layers 999` i bez bufora promptów, pamięć prywatna procesu to
+~15,5 GB, a sam plik GGUF waży 13,1 GB. Wygląda to na kopię wag w RAM-ie (tryb wczytywania
+`--load-mode`, dawniej `--mmap`, build 10735). Na PC 32 GB to połowa pamięci, a przy stole MG
+ma jeszcze VTT, przeglądarkę i Discorda. Do sprawdzenia: `--load-mode` / `--no-mmap` / `--mlock`
+i czy RAM spada bez straty tok/s; wynik do `ai-gateway/README.md` (pomiary Qwen).

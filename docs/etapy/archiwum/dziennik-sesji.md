@@ -1,5 +1,23 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import (trzy nowe błędy)
+
+**Zlecenie MG:** T6b (`testy.md` 5.4, kroki 6.6–6.9). Pytania na starcie: Iskra stabilizuje
+Kowala, efekt na Cesze z formularza MG, streszczenie i screamsheet jawne, import „obie drogi”
+(odpięte figury → Z10). W trakcie: Ustabilizowanie poza walką nie ma drogi w UI — #42 **B1**,
+obejście krótką walką, poprawka ma dać Ustabilizowanie także poza walką.
+
+**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (18 testów, ~3 min od `po-T6a`),
+`restoreBackup()` w `instance/instance.ts`; punkt `po-T6`. W aplikacji bez zmian. Znalezione:
+#42 B1, #43 B3? (licznik „Zakończ sesję i streść” stoi), #44 B3? („4 figur straciło”); po sesji MG cofnął umowę `boty` z 24.09 —
+**#45 B2?: bot i kronikarz mają mówić do postaci, nie do konta gracza** (umowa oznaczona jako cofnięta). Dopisek
+do Z10, trzy obserwacje do `testy.md` 8. Siedem pułapek w `testy`.
+
+**Weryfikacja:** T6b od `po-T6a` zielony trzy razy (raz padł 6.9c: Firefox logował font `PT Serif` z odmową połączenia w oknie restartu instancji — filtr konsoli 6.9c poszerzony, potem zielono), łańcuch T6a → T6b od `po-T5` 30/30 (3,9 min);
+suita `tsc`, ESLint, Prettier czyste. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie,
+headless; gateway z modelem (system zabił go w trakcie z braku pamięci, podniesiony za zgodą MG).
+`dev.db` nietknięta. **Następny krok:** T6c (dwa pełne przebiegi od zera) albo poprawki #42–#45.
+
 ### Sesja 30.09 — poprawki #40 i #41 (retest E2E OK), retest #21 i #22
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #40 i #41 — B3; #40 obejmuje

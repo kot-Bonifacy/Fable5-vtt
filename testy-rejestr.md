@@ -169,6 +169,45 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
 
+### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import
+
+**Rozstrzygnięcia MG na starcie:** Iskra stabilizuje Kowala; efekt z formularza MG; streszczenie
+i screamsheet jawne dla stołu; import „obie drogi” (bez plików i z plikami z manifestu), odpięte
+figury — dopisek do Z10. W trakcie: #42 **B1**, obejście krótką walką, poprawka ma dać
+Ustabilizowanie poza walką (sekcja 2).
+
+**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (18 testów, ~3 min od `po-T6a`) i
+`restoreBackup()` w `instance/instance.ts` — odtworzenie kopii z harmonogramu (`.e2e/backups`)
+na czystym katalogu tym samym skryptem `restore`. W aplikacji bez zmian. Przebieg w 5.4 wyżej.
+Kanarki: nowy `dziennik-MG` (wpis „tylko MG”) — tajny dla obojga, jest w zrzucie kampanii MG;
+relacje nie opuszczają pokoju MG. Konsola czysta u trojga poza zerwaniem gniazda przy restarcie
+w 6.9. Punkt `po-T6`: „Knajpa” aktywna, 15 marca 2045 23:00, Kowal 20/50 PW (ustabilizowany),
+dwa wpisy dziennika (MG i jawne streszczenie), screamsheet u obojga, relacja Paser → Kowal +1.
+Instancja kończy przebieg **pusta** (6.8b idzie po `po-T6`).
+
+**Znalezione (do triażu MG):** #42 **B1** — Ustabilizowanie poza walką bez drogi w UI (slot
+jest, formularz tylko w walce); #43 **B3?** — licznik „Zakończ sesję i streść (N)” u MG stoi,
+dopóki zakładka się nie przeładuje; #44 **B3?** — „4 figur straciło powiązanie” (dwie formy
+liczby mnogiej); #45 **B2?** — bot i kronikarz mówią do konta gracza („Marek”), nie do postaci
+(MG cofnął umowę `boty` z 24.09 po sesji). Wszystkie jako `test.fail`. Dopisek do Z10 (co pęka
+przy przenosinach plikami wymiany), trzy obserwacje do sekcji 8.
+
+**Suita:** 196 testów (T6b 18, w tym 4 `test.fail`; razem 9 `test.fail` — #10–#13, #42–#45).
+T6b od `po-T6a` zielony trzy razy (raz padł 6.9c: Firefox logował font `PT Serif` z odmową połączenia w oknie restartu instancji — filtr konsoli 6.9c poszerzony, potem zielono), łańcuch T6a → T6b od `po-T5` 30/30 (3,9 min). Oglądane
+automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem (w trakcie sesji
+system zabił go z braku pamięci — MG kazał podnieść ponownie). `dev.db` nietknięta.
+
+**Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania; albo
+najpierw poprawki #42–#45.
+
+### Sesja 30.09 — poprawki #40 i #41, retest T6a
+
+Poprawki w `21cbedd`, szczegóły w rejestrze (`testy-rejestr.md`). T6a ma teraz **13 testów** (dwa
+kroki 6.3 zlane w jeden: prośba o operację zamiast montażu ręką MG), bez `test.fail`; suita 178
+testów, 5 `test.fail` (#10–#13). **Punkt `po-T6a` nagrany na nowo:** Kowal zapłacił Iskrze 150 ed
+zamiast 100 ed do sklepu — Kowal **30 ed**, Iskra **1650 ed**; reszta jak niżej. T6a od `po-T5`
+zielony cztery razy, T2 od `po-T3` 41/41; gateway z modelem, Ola w Firefoksie.
+
 ### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja
 
 **Rozstrzygnięcia MG na starcie:** T6 w trzech częściach (T6a = 6.1–6.5, T6b = 6.6–6.9, T6c = 6.10);

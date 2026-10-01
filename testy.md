@@ -26,7 +26,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T5b  | Rozgrywka 3b/4: walka druga — Sieć, wieżyczka, pad AI     | ✅     | 27.09.2026 |
 | T6a  | Rozgrywka 4a/4: handel, sklep, Paser, PD, Medyk, chrom    | ✅     | 29.09.2026 |
 | T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ✅     | 30.09.2026 |
-| T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ⬜     |            |
+| T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ✅     | 01.10.2026 |
 | T7   | Odporność: sieć, restart, wielu klientów, wydajność       | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
@@ -427,6 +427,16 @@ Iskry (`cyberware` −150, `transfer` +150); obie karty rzutów u Marka i Oli z 
 
 | #    | krok                                                                                             | sprawdzamy                                                                                          |
 | ---- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+**Przebieg T6c (sesja 01.10):** pięć pełnych przebiegów `pnpm test:e2e` od pustej bazy, gateway
+z modelem. Przebieg 1 padł na 4.2 (kreator dał Kowalowi REF 4 — kość 9 nie dawała 21) z kaskadą
+startów T4b–T6b; od tej chwili 3.6 skryptuje kości Cech (Kowal z `po-T3a` z 26.09). Przebieg 2
+przerwał brak RAM-u (gateway padł, potem `0xC0000142` w nowych procesach) — do miejsca padu 106
+zielonych. Przebieg 3 — **196/196, 31,7 min**. Bufor promptów llama-server urósł wtedy do 21 GB
+pamięci procesu i przerwałem przebieg 4 przy 1 GB wolnego RAM-u; gateway dostał `--cache-ram 2048`.
+Po tej poprawce **przebieg 4 — 196/196 w 31,5 min, przebieg 5 — 196/196 w 31,6 min** (najmniej
+wolnego RAM-u 4,4 GB). Najwolniejsze pliki: `t2b-gniazdo` ~9,5 min, `t3a` ~5,7 min. Podejrzenie
+z 27.09 i 01.10 (odmowa gniazda / `ETIMEDOUT` proxy `vite preview`) nie wystąpiło w żadnym z pięciu.
+
 | 6.1  | **Handel** Marek ↔ Ola (pola wymiany, dwie zgody, wycofanie zgody po zmianie oferty)             | przedmioty i eurodolce atomowo po obu stronach, nic nie ginie ani się nie dubluje                   |
 | 6.2  | Zakup w sklepie (poziom kampanii) i u Pasera                                                     | cena, eurodolce, przedmiot na karcie                                                                |
 | 6.3  | Cyborgizacja dla Marka z Utratą Człowieczeństwa                                                  | EMP/Człowieczeństwo, karta rzutu u właściwych osób                                                  |
@@ -700,6 +710,27 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 01.10 — T6c: dwa pełne przebiegi od zera
+
+**Rozstrzygnięcia MG na starcie:** przebiegi z modelem; „dwa z rzędu” = dwa kolejne zielone po
+ostatniej poprawce (suity albo aplikacji); migotanie w aplikacji — drobne od razu, większe do
+rejestru; najwyżej pięć przebiegów. W trakcie: gateway w terminalu MG (nie w tle agenta),
+przerwać przebieg 4 i ograniczyć bufor promptów llama-server.
+
+**Zrobione:** `t3a` 3.6 skryptuje dziesięć kości Cech Kowala i sprawdza Cechy na karcie
+(`KOWAL_STAT_FACES`/`KOWAL_STATS`) — pełny przebieg od zera ma tego samego Kowala co punkty
+kontrolne. Gateway: `GATEWAY_LLAMA_CACHE_RAM_MB` → `--cache-ram` (domyślnie 2048; build 10735
+miał 8192), test `test_supervisor.py`, pomiar w `ai-gateway/README.md`. Przebiegi w 5.4 wyżej.
+Nowe pułapki w `testy` (konsola przebiegu, nadpisane punkty kontrolne) i `boty` (`--cache-ram`);
+zaległość: llama-server trzyma ~15,5 GB RAM-u przy modelu w całości na GPU.
+
+**Wynik:** przebiegi 4 i 5 — 196/196 (~31,5 min każdy), bez migotania; nowych błędów aplikacji brak.
+Punkty kontrolne nagrane na nowo przez przebieg 5 (Kowal jak dotąd); kopia sprzed sesji
+w `.e2e/checkpoints-bak-01.10/`. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless.
+
+**Następny krok:** wg kolejności z 26.09 — refaktoryzacja całości pod osłoną suity, potem etap
+„Konta MG”.
+
 ### Sesja 01.10 — poprawki #10–#13 i #42–#45, retest T2 i T6b
 
 Poprawki w `a551f3a`, rozstrzygnięcia MG i szczegóły w rejestrze. **Rejestr nie ma już otwartych
@@ -711,42 +742,3 @@ w krótkiej walce). Instancja E2E ma od teraz `TRUST_PROXY=1`, a `emitAck`/`prob
 
 **Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania (nowe
 podejrzenie: jednorazowe `connect ETIMEDOUT` proxy `vite preview` przy F5 po fuzzie MG).
-
-### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import
-
-**Rozstrzygnięcia MG na starcie:** Iskra stabilizuje Kowala; efekt z formularza MG; streszczenie
-i screamsheet jawne dla stołu; import „obie drogi” (bez plików i z plikami z manifestu), odpięte
-figury — dopisek do Z10. W trakcie: #42 **B1**, obejście krótką walką, poprawka ma dać
-Ustabilizowanie poza walką (sekcja 2).
-
-**Zrobione:** `30-rozgrywka/t6b-czas-kopie.spec.ts` (18 testów, ~3 min od `po-T6a`) i
-`restoreBackup()` w `instance/instance.ts` — odtworzenie kopii z harmonogramu (`.e2e/backups`)
-na czystym katalogu tym samym skryptem `restore`. W aplikacji bez zmian. Przebieg w 5.4 wyżej.
-Kanarki: nowy `dziennik-MG` (wpis „tylko MG”) — tajny dla obojga, jest w zrzucie kampanii MG;
-relacje nie opuszczają pokoju MG. Konsola czysta u trojga poza zerwaniem gniazda przy restarcie
-w 6.9. Punkt `po-T6`: „Knajpa” aktywna, 15 marca 2045 23:00, Kowal 20/50 PW (ustabilizowany),
-dwa wpisy dziennika (MG i jawne streszczenie), screamsheet u obojga, relacja Paser → Kowal +1.
-Instancja kończy przebieg **pusta** (6.8b idzie po `po-T6`).
-
-**Znalezione (do triażu MG):** #42 **B1** — Ustabilizowanie poza walką bez drogi w UI (slot
-jest, formularz tylko w walce); #43 **B3?** — licznik „Zakończ sesję i streść (N)” u MG stoi,
-dopóki zakładka się nie przeładuje; #44 **B3?** — „4 figur straciło powiązanie” (dwie formy
-liczby mnogiej); #45 **B2?** — bot i kronikarz mówią do konta gracza („Marek”), nie do postaci
-(MG cofnął umowę `boty` z 24.09 po sesji). Wszystkie jako `test.fail`. Dopisek do Z10 (co pęka
-przy przenosinach plikami wymiany), trzy obserwacje do sekcji 8.
-
-**Suita:** 196 testów (T6b 18, w tym 4 `test.fail`; razem 9 `test.fail` — #10–#13, #42–#45).
-T6b od `po-T6a` zielony trzy razy (raz padł 6.9c: Firefox logował font `PT Serif` z odmową połączenia w oknie restartu instancji — filtr konsoli 6.9c poszerzony, potem zielono), łańcuch T6a → T6b od `po-T5` 30/30 (3,9 min). Oglądane
-automatem: MG i Marek w Chromium, Ola w Firefoksie, headless; gateway z modelem (w trakcie sesji
-system zabił go z braku pamięci — MG kazał podnieść ponownie). `dev.db` nietknięta.
-
-**Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania; albo
-najpierw poprawki #42–#45.
-
-### Sesja 30.09 — poprawki #40 i #41, retest T6a
-
-Poprawki w `21cbedd`, szczegóły w rejestrze (`testy-rejestr.md`). T6a ma teraz **13 testów** (dwa
-kroki 6.3 zlane w jeden: prośba o operację zamiast montażu ręką MG), bez `test.fail`; suita 178
-testów, 5 `test.fail` (#10–#13). **Punkt `po-T6a` nagrany na nowo:** Kowal zapłacił Iskrze 150 ed
-zamiast 100 ed do sklepu — Kowal **30 ed**, Iskra **1650 ed**; reszta jak niżej. T6a od `po-T5`
-zielony cztery razy, T2 od `po-T3` 41/41; gateway z modelem, Ola w Firefoksie.
