@@ -20,9 +20,11 @@ import { Canaries } from '../../fixtures/sniffer.ts';
 import { goToGmAttention } from '../../fixtures/table.ts';
 import {
   hasCheckpoint,
+  pendingDice,
   prepareFresh,
   restoreCheckpoint,
   saveCheckpoint,
+  scriptDice,
   startInstance,
 } from '../../instance/instance.ts';
 import { REPO_DIR } from '../../instance/paths.ts';
@@ -35,6 +37,24 @@ import { REPO_DIR } from '../../instance/paths.ts';
  *
  * Wszystko przez UI; baza tylko do asercji, gniazdo tylko do odmów.
  */
+
+/**
+ * Kości Cech Kowala w kolejności kubka (INT, REF, ZW, TECH, CHA, SW, SZ, RUCH, BC, EMP)
+ * i Cechy, które z nich wychodzą w tabeli Solo — Kowal z punktu `po-T3a` z 26.09.
+ */
+const KOWAL_STAT_FACES = [10, 7, 1, 4, 5, 4, 7, 6, 3, 8];
+const KOWAL_STATS = {
+  int: 6,
+  ref: 7,
+  dex: 7,
+  tech: 4,
+  cool: 7,
+  will: 7,
+  luck: 7,
+  move: 7,
+  body: 8,
+  emp: 4,
+};
 
 type CharacterRow = { id: string; name: string; ownerId: string; playReady: number; data: string };
 
@@ -240,7 +260,11 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     const window = await openCreator(page);
     await window.getByText('Solo', { exact: true }).click();
     await goToStep(page, /Cechy/);
+    // Kości Cech ze skryptu: pełny przebieg od zera ma tego samego Kowala co punkt
+    // `po-T3a`, na którym skalibrowano T4–T6 (REF 4 z losu nie trafiał w 4.2).
+    scriptDice(KOWAL_STAT_FACES);
     await rollStatsWithCup(page);
+    expect(pendingDice()).toBe('');
 
     // Każdą Cechę rzuca się raz — drugi rzut tej samej odmawia serwer.
     const socket = await marek.socket();
@@ -312,6 +336,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     const kowal = character('Kowal');
     expect(kowal.playReady).toBe(0);
     const sheet = sheetOf('Kowal');
+    expect(sheet.stats).toEqual(KOWAL_STATS);
     expect(sheet.eddies).toBe(250);
     expect(Object.keys(sheet.skills as object)).toHaveLength(20);
     expect(

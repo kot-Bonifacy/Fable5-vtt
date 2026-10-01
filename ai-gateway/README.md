@@ -88,6 +88,12 @@ Czasy na żywym VTT (oględziny 24.09):
 | streszczenie sesji, 2432 linie = 2 porcje          | 57,6 s                   |
 | screamsheet                                        | 7,7 s                    |
 
+**RAM, nie tylko VRAM (zmierzone 01.10, T6c).** llama-server tuż po starcie ma **~15,5 GB pamięci
+prywatnej** w RAM-ie, choć wszystkie warstwy siedzą na GPU. Do tego build 10735 domyślnie trzyma
+**do 8 GB bufora promptów** w RAM-ie (`--cache-ram 8192`). Przez długą sesję botów bufor rósł do
+~21 GB prywatnej i razem z trzema przeglądarkami suity E2E zostawiał na 32-gigabajtowym PC poniżej
+1 GB wolnego. Od 01.10 gateway podaje `--cache-ram` z `GATEWAY_LLAMA_CACHE_RAM_MB` (domyślnie 2048).
+
 Polszczyzna jest wyraźnie lepsza niż w 9B, ale Q3 zostawia potknięcia odmiany („z mojej baru”, „zdołały odparta”) — przy stole to zadanie dla lekcji bota, nie dla kodu.
 
 ## Pomiary Qwythos-9B-v2 Q8_0 (2026-07-24, RTX 5070 Ti 16 GB, sterownik 610.62, llama.cpp b10107, CUDA 13.3) — poprzedni model

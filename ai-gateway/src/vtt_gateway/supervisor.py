@@ -123,6 +123,8 @@ class LlamaSupervisor:
             "--jinja",
             "--reasoning-format",
             "deepseek",
+            "--cache-ram",
+            str(s.llama_cache_ram_mb),
         ]
         if s.llama_flash_attn:
             cmd += ["--flash-attn", "on"]

@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     llama_ctx_size: int = 32768
     llama_gpu_layers: int = 999
     llama_flash_attn: bool = True
+    # Bufor promptów llama-server w RAM (`--cache-ram`, MiB). Domyślne 8 GB builda 10735
+    # zjadały pamięć PC razem z przeglądarkami testów E2E; 0 wyłącza, -1 bez limitu.
+    llama_cache_ram_mb: int = 2048
     # Dodatkowe argumenty llama-server, rozdzielone spacją (np. "--cache-type-k q8_0").
     llama_extra_args: str = ""
     # Ile sekund czekać na wstanie llama-server po starcie/restarcie.
