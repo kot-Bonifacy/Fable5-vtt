@@ -73,3 +73,59 @@ describe('AiGateway.streamChat — zerwane połączenie', () => {
     ).rejects.toThrow('terminated');
   });
 });
+
+/**
+ * Własny limit `AI_REQUEST_TIMEOUT_MS` bez sygnału wołającego (#46, T7a).
+ *
+ * „Graj turę” nie podaje sygnału, więc `streamChat` przerywał się własnym
+ * `AbortSignal.timeout` i rzucał `TimeoutError` — gniazdo oddawało `INTERNAL`,
+ * a MG czytał „coś poszło nie tak po stronie serwera”, choć to model nie zdążył.
+ */
+describe('AiGateway.streamChat — własny limit czasu', () => {
+  /** Atrapa jak `fake-gateway.ts` w trybie `slow`: kolejka, potem cisza do przerwania. */
+  function silentGateway(phase: 'headers' | 'body'): AiGateway {
+    return new AiGateway({
+      url: 'http://gateway.test',
+      apiKey: '',
+      healthIntervalMs: 60_000,
+      requestTimeoutMs: 30,
+      fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
+        if (String(input).endsWith('/health')) throw new TypeError('fetch failed');
+        const signal = init?.signal;
+        const aborted = () =>
+          new Promise<never>((_, reject) =>
+            signal?.addEventListener('abort', () => reject(signal.reason as Error)),
+          );
+        if (phase === 'headers') return aborted();
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('event: queue\ndata: {"position":1}\n\n'));
+            signal?.addEventListener('abort', () => controller.error(signal.reason));
+          },
+        });
+        return new Response(body, { status: 200 });
+      }) as typeof fetch,
+    });
+  }
+
+  it('cisza po kolejce kończy się zdarzeniem AI_TIMEOUT z limitem, nie wyjątkiem', async () => {
+    const events = await collect(
+      silentGateway('body').streamChat({
+        messages: [{ role: 'user', content: 'Graj turę' }],
+        purpose: 'npc',
+      }),
+    );
+    expect(events[0]).toEqual({ type: 'queue', position: 1 });
+    expect(events.at(-1)).toEqual({ type: 'error', code: 'AI_TIMEOUT', detail: '0 s' });
+  });
+
+  it('brak nagłówków w limicie to też AI_TIMEOUT, a nie „brak połączenia”', async () => {
+    const events = await collect(
+      silentGateway('headers').streamChat({
+        messages: [{ role: 'user', content: 'Graj turę' }],
+        purpose: 'npc',
+      }),
+    );
+    expect(events).toEqual([{ type: 'error', code: 'AI_TIMEOUT', detail: '0 s' }]);
+  });
+});

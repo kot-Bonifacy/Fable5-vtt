@@ -65,7 +65,8 @@ export async function botActorUser(deps: RealtimeDeps, authorId: string): Promis
  * Zdanie dla MG, gdy model nie oddał decyzji. Martwy gateway i gateway, który
  * żyje, ale odmawia (pełna kolejka, model jeszcze się ładuje — 503), to dwie
  * różne rady: pierwszy trzeba podnieść, na drugi wystarczy chwilę poczekać.
- * Jedno zdanie na oba kazało MG szukać awarii sieci (#21).
+ * Jedno zdanie na oba kazało MG szukać awarii sieci (#21). Trzecia rada to
+ * model, który nie zdążył w limicie (#46).
  */
 export function botFailureText(code: string, detail?: string): string {
   switch (code) {
@@ -73,6 +74,10 @@ export function botFailureText(code: string, detail?: string): string {
       return 'Brak połączenia z AI Gateway.';
     case 'AI_UNAVAILABLE':
       return `Model jest zajęty albo jeszcze niegotowy${detail ? ` (${detail})` : ''} — AI Gateway działa, spróbuj za chwilę.`;
+    // Gateway żyje, ale generacja nie zmieściła się w `AI_REQUEST_TIMEOUT_MS`
+    // (#46) — to nie awaria serwera, a tura i tak idzie dalej ręką MG.
+    case 'AI_TIMEOUT':
+      return `Model nie odpowiedział w ${detail ?? 'limicie czasu'} — zagraj tę turę ręką albo kliknij „Graj turę” jeszcze raz.`;
     default:
       return `Model zwrócił błąd${detail ? `: ${detail}` : ''}.`;
   }

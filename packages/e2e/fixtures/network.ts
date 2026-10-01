@@ -23,6 +23,8 @@ export class Network {
   private readonly lanes = { up: 0, down: 0 };
   /** Ile razy karta próbowała połączyć się, gdy sieć leżała. */
   refused = 0;
+  /** Ramki serwer → karta zapisywane od `capture()` (nazwa zdarzenia i początek treści). */
+  private captured: string[] | null = null;
 
   private constructor(private readonly context: BrowserContext) {}
 
@@ -42,7 +44,12 @@ export class Network {
     const server = route.connectToServer();
     this.routes.add(route);
     route.onMessage((message) => this.later('up', () => server.send(message)));
-    server.onMessage((message) => this.later('down', () => route.send(message)));
+    server.onMessage((message) => {
+      if (this.captured && typeof message === 'string') {
+        this.captured.push(`${Date.now() % 100_000} ${message}`);
+      }
+      this.later('down', () => route.send(message));
+    });
     route.onClose((code, reason) => {
       this.routes.delete(route);
       void server.close({ code, reason });
@@ -80,6 +87,18 @@ export class Network {
   latency(ms: number, jitter = 0): void {
     this.delayMs = ms;
     this.jitterMs = Math.min(jitter, ms);
+  }
+
+  /** Zaczyna zapisywać ramki od serwera; `stop` oddaje zapis i kończy podsłuch. */
+  capture(): { stop: () => string[] } {
+    this.captured = [];
+    return {
+      stop: () => {
+        const frames = this.captured ?? [];
+        this.captured = null;
+        return frames;
+      },
+    };
   }
 
   get connections(): number {

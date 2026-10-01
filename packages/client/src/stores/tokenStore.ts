@@ -27,10 +27,20 @@ interface TokenStoreState {
   statuses: StatusDefinition[];
 
   applySync: (payload: StateSyncPayload, viewer: TokenViewerCtx) => void;
-  /** Replaces the whole list — used by `token:sync` after a fog repaint. */
+  /**
+   * Replaces the whole list — used by `token:sync` after a fog repaint. A token
+   * in the middle of a walk (`noteMoveFrame`) keeps its `x`/`y`: the list is
+   * built from the database, which holds the starting square until the drop
+   * (#47 on a Dynamic scene). Who is on the list still comes from the list.
+   */
   applyTokens: (tokens: TokenView[], viewer: TokenViewerCtx) => void;
-  /** Merges an upsert; absent keys (e.g. `hp` in public payloads) keep old values. */
-  upsert: (token: TokenView, viewer: TokenViewerCtx) => void;
+  /**
+   * Merges an upsert; absent keys (e.g. `hp` in public payloads) keep old values.
+   * A token already on the map keeps its `x`/`y` unless `moved` (#47): the
+   * position belongs to `token:move`, and a sheet save mid-walk carries the
+   * stored starting square.
+   */
+  upsert: (token: TokenView, viewer: TokenViewerCtx, moved?: boolean) => void;
   remove: (tokenId: string) => void;
   /** `facing` is sent only on the drop (stage 27j); undefined leaves it alone. */
   applyMove: (tokenId: string, x: number, y: number, facing?: number | null) => void;
@@ -49,16 +59,25 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
     }),
 
   applyTokens: (incoming, viewer) =>
-    set(() => {
+    set((state) => {
       const tokens: Record<string, TokenView> = {};
-      for (const token of incoming) tokens[token.id] = normalizeHp(token, viewer);
+      for (const token of incoming) {
+        const existing = state.tokens[token.id];
+        const kept = existing && isWalking(token.id) ? { x: existing.x, y: existing.y } : {};
+        tokens[token.id] = normalizeHp({ ...token, ...kept }, viewer);
+      }
       return { tokens };
     }),
 
-  upsert: (token, viewer) =>
+  upsert: (token, viewer, moved = false) =>
     set((state) => {
       const existing = state.tokens[token.id];
-      const merged = normalizeHp(existing ? { ...existing, ...token } : token, viewer);
+      const merged = normalizeHp(
+        existing
+          ? { ...existing, ...token, ...(moved ? {} : { x: existing.x, y: existing.y }) }
+          : token,
+        viewer,
+      );
       return { tokens: { ...state.tokens, [token.id]: merged } };
     }),
 
@@ -80,6 +99,27 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
 
   setStatuses: (statuses) => set({ statuses }),
 }));
+
+/**
+ * How long after its last drag frame a token still counts as walking. Frames
+ * come at `TOKEN_MOVE_RATE_HZ`; a hand that stopped (or a mover who dropped off
+ * the network before the drop) must not freeze the position for good.
+ */
+export const WALK_FRAME_HOLD_MS = 3000;
+
+/** Last intermediate `token:move` per token; the drop removes the entry. */
+const walkFrames = new Map<string, number>();
+
+/** Every `token:move` the client applies goes through here first (#47). */
+export function noteMoveFrame(tokenId: string, final: boolean, now = Date.now()): void {
+  if (final) walkFrames.delete(tokenId);
+  else walkFrames.set(tokenId, now);
+}
+
+function isWalking(tokenId: string, now = Date.now()): boolean {
+  const last = walkFrames.get(tokenId);
+  return last !== undefined && now - last < WALK_FRAME_HOLD_MS;
+}
 
 let statusesRequested = false;
 

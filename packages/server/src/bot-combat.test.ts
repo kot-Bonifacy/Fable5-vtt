@@ -68,6 +68,8 @@ const gateway = {
   up: true,
   /** Alive but refusing (`/chat` → 503), like a full queue — #21. */
   busy: false,
+  /** Alive, queues the request and goes quiet until aborted — #46. */
+  silent: false,
   answers: [] as string[],
   bodies: [] as ChatBody[],
 };
@@ -110,6 +112,16 @@ const aiFetch: typeof fetch = async (input, init) => {
   if (url.endsWith('/chat')) {
     if (gateway.busy) {
       return Response.json({ detail: 'kolejka pełna (4 oczekujących)' }, { status: 503 });
+    }
+    if (gateway.silent) {
+      const signal = init?.signal;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: queue\ndata: {"position":1}\n\n'));
+          signal?.addEventListener('abort', () => controller.error(signal.reason));
+        },
+      });
+      return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
     }
     gateway.bodies.push(JSON.parse(String(init?.body ?? '{}')) as ChatBody);
     return new Response(sseStream(gateway.answers.shift() ?? '{"akcja":"pas","powod":"."}'), {
@@ -927,6 +939,30 @@ describe('bezpieczniki', () => {
     await endFight(gm.socket);
     gm.socket.disconnect();
   });
+
+  it('says the model ran out of time instead of INTERNAL (#46)', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await startFight(gm.socket);
+    gateway.silent = true;
+
+    let ack: BotPlayTurnResult;
+    try {
+      ack = data(
+        await emitAck<BotPlayTurnResult>(gm.socket, 'bot:play-turn', { tokenId: botTokenId }),
+        'bot:play-turn',
+      );
+    } finally {
+      gateway.silent = false;
+    }
+
+    expect(ack.outcome).toBe('refused');
+    expect(ack.refusal).toContain('nie odpowiedział w 5 s');
+    expect(ack.refusal).toContain('zagraj tę turę ręką');
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  }, 15_000);
 
   it('refuses to be played by a player', async () => {
     const invite = await built.app.inject({

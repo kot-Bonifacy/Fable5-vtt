@@ -16,6 +16,7 @@ import type {
   SceneView,
   SocketAck,
   StateSyncPayload,
+  TokenUpsertBroadcast,
   TokenView,
   WallView,
 } from '@vtt/shared';
@@ -463,6 +464,9 @@ describe('grappling', () => {
   it('drags the Held one along when the Attacker walks', async () => {
     await giveTurnTo(vexTokenId);
     const before = await positionOf(thugTokenId);
+    const upserts: TokenUpsertBroadcast[] = [];
+    const collect = (payload: TokenUpsertBroadcast) => upserts.push(payload);
+    gm.on('token:upsert', collect);
     await emitAck(player, 'token:move', {
       tokenId: vexTokenId,
       x: 4 * PX_PER_M,
@@ -473,6 +477,12 @@ describe('grappling', () => {
     // Four metres of walking moved both figures by four metres.
     expect(after.x - before.x).toBe(4 * PX_PER_M);
     expect(after.y).toBe(before.y);
+    // The upsert is the move here, so it has to say so — clients keep the
+    // position of a known token on any other upsert (#47).
+    gm.off('token:upsert', collect);
+    const upsert = upserts.find((payload) => payload.token.id === thugTokenId);
+    expect(upsert?.token.x).toBe(after.x);
+    expect(upsert?.moved).toBe(true);
   });
 
   it('answers a Pochwycenie once, and the Hold follows the verdict', async () => {

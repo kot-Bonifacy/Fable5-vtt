@@ -304,6 +304,15 @@ export function sanitizeTokenPath(raw: unknown): ScenePoint[] | null {
 export interface TokenUpsertBroadcast {
   seq?: number;
   token: TokenView;
+  /**
+   * The upsert itself moved the token (#47, 01.10) — today only a Held figure
+   * dragged along by its captor. Without it a client that already has the token
+   * keeps its own `x`/`y`: the position in a sheet-change or status upsert is
+   * the stored one, which during a walk is still the starting square (drag
+   * frames are not persisted), so every save mid-walk threw the figure back.
+   * Position belongs to `token:move`; a token new to the client takes it all.
+   */
+  moved?: true;
 }
 
 /** Server → client `token:delete` — also emitted to players when a token is hidden. */

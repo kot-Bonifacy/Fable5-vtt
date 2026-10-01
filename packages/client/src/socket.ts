@@ -295,7 +295,7 @@ import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
-import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
+import { noteMoveFrame, useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCreationStore } from './stores/creationStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
@@ -1054,7 +1054,9 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    if (viewingScene(broadcast.token.sceneId)) tokens().upsert(broadcast.token, viewer());
+    if (viewingScene(broadcast.token.sceneId)) {
+      tokens().upsert(broadcast.token, viewer(), broadcast.moved === true);
+    }
   });
   onPresented('token:delete', (broadcast: TokenDeleteBroadcast) => {
     if (chat().applySeq(broadcast.seq)) {
@@ -1089,6 +1091,7 @@ export function connectSocket(userId: string): Socket {
       return;
     }
     if (viewingScene(broadcast.sceneId)) {
+      noteMoveFrame(broadcast.tokenId, broadcast.final);
       tokens().applyMove(broadcast.tokenId, broadcast.x, broadcast.y, broadcast.facing);
     }
   });

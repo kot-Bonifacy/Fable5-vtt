@@ -193,16 +193,16 @@ test.describe.serial('T7a odporność: tura bota bez AI — trzy warianty @odpor
   });
 
   test('#46 limit 120 s: notka mówi o czasie odpowiedzi, a serwer nie loguje awarii handlera', async () => {
-    // Znalezione w T7a (01.10): `TimeoutError` z `AbortSignal.timeout` wylatuje
-    // z `bot:play-turn` jako `INTERNAL`, a MG czyta „coś poszło nie tak po stronie
-    // serwera”, choć to model nie zdążył. Stół działa (B3 wg „waga INTERNAL”).
-    test.fail(true, '#46 — limit AI_REQUEST_TIMEOUT_MS w turze bota kończy się INTERNAL');
+    // Znalezione w T7a (01.10): `TimeoutError` z `AbortSignal.timeout` wylatywał
+    // z `bot:play-turn` jako `INTERNAL`, a MG czytał „coś poszło nie tak po stronie
+    // serwera”, choć to model nie zdążył. Od poprawki — `AI_TIMEOUT` i zdanie o limicie.
     test.info().annotations.push({
       type: 'awarie handlerów w wariancie 3',
       description: slow.failures.join(' | ') || '(brak)',
     });
     expect(slow.failures).toEqual([]);
     expect(slow.note).not.toMatch(/po stronie serwera/);
+    expect(slow.note).toContain('Model nie odpowiedział w 120 s');
   });
 
   test('po wariantach: MG zamyka turę Rzeźnika zwykłym „Następna tura”', async () => {

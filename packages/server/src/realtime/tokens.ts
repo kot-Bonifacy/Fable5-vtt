@@ -558,11 +558,21 @@ export async function emitTokenUpsert(
   scene: Scene,
   token: Token,
   linkedSheet?: LinkedSheet | null,
+  options: { moved?: boolean } = {},
 ): Promise<void> {
-  if (deferView(deps, (ready) => emitTokenUpsert(ready, campaignId, scene, token, linkedSheet)))
+  if (
+    deferView(deps, (ready) =>
+      emitTokenUpsert(ready, campaignId, scene, token, linkedSheet, options),
+    )
+  )
     return;
   const linked = linkedSheet !== undefined ? linkedSheet : await loadLinkedSheet(deps, token);
-  const privatePayload: TokenUpsertBroadcast = { token: toTokenView(token, true, linked) };
+  // Only an upsert that moved the token may move it at the clients (#47).
+  const moved = options.moved ? { moved: true as const } : {};
+  const privatePayload: TokenUpsertBroadcast = {
+    token: toTokenView(token, true, linked),
+    ...moved,
+  };
 
   if (!scene.active) {
     deps.io.to(sceneRoom(scene.id)).emit('token:upsert', privatePayload);
@@ -613,6 +623,7 @@ export async function emitTokenUpsert(
   const publicPayload: TokenUpsertBroadcast = {
     seq: deps.seqs.next(room),
     token: toTokenView(token, false, linked),
+    ...moved,
   };
   deps.io.to(room).emit('token:upsert', publicPayload);
   deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
@@ -679,6 +690,7 @@ export async function emitTokensById(
   deps: RealtimeDeps,
   campaignId: string,
   tokenIds: string[],
+  options: { moved?: boolean } = {},
 ): Promise<void> {
   if (tokenIds.length === 0) return;
   const tokens = await deps.ctx.prisma.token.findMany({
@@ -688,7 +700,7 @@ export async function emitTokensById(
   for (const row of tokens) {
     const { scene, ...token } = row;
     if (scene.campaignId !== campaignId) continue;
-    await emitTokenUpsert(deps, campaignId, scene, token as Token);
+    await emitTokenUpsert(deps, campaignId, scene, token as Token, undefined, options);
   }
 }
 
@@ -1444,8 +1456,8 @@ async function dragGrappledToken(
   await deps.ctx.prisma.token.update({ where: { id: held.id }, data: { x, y } });
   // An upsert rather than a move frame: the audience for the Held token can
   // differ from the mover's (fog, dynamic vision), and `emitTokensById` already
-  // answers that question per viewer.
-  await emitTokensById(deps, campaignId, [held.id]);
+  // answers that question per viewer. `moved`, because this upsert is the move.
+  await emitTokensById(deps, campaignId, [held.id], { moved: true });
 }
 
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({

@@ -61,6 +61,86 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     return view ? [Math.round(view.x / cell), Math.round(view.y / cell)] : null;
   }
 
+  /**
+   * Ślad pozycji figury z magazynu klienta co klatkę — skok wstecz to pole bliżej
+   * startu po polu dalej (echo spóźnionego `token:move`, upsert z pozycją z bazy).
+   */
+  function recordTrail(actor: Actor, name: string, ms = 8_000) {
+    return actor.page.evaluate(
+      ({ id, ms }) =>
+        new Promise<{ x: number; y: number }[]>((resolve) => {
+          const trail: { x: number; y: number }[] = [];
+          const end = performance.now() + ms;
+          const tick = () => {
+            const state = window.__vttE2E?.stores.token?.getState() as
+              { tokens: Record<string, { x: number; y: number }> } | undefined;
+            const view = state?.tokens[id];
+            if (view) {
+              const last = trail[trail.length - 1];
+              if (!last || last.x !== view.x || last.y !== view.y)
+                trail.push({ x: view.x, y: view.y });
+            }
+            if (performance.now() < end) requestAnimationFrame(tick);
+            else resolve(trail);
+          };
+          tick();
+        }),
+      { id: token(name).id, ms },
+    );
+  }
+
+  /** Marek prowadzi Kowala marszem na pole `to`; `during` biegnie w czasie marszu. */
+  async function marchKowal(to: number[], during?: () => Promise<void>) {
+    await marek.page.keyboard.press('Escape');
+    await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
+    await marek.page.waitForTimeout(300);
+    await clickOnMap(marek.page, cellCentre(cell, to[0]!, to[1]!));
+    await during?.();
+    await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual(to);
+  }
+
+  /** Ramki z `Network.capture`, które niosą pozycję figury: ruch i lista (`token:sync`). */
+  function kowalFrames(frames: string[], id: string): string[] {
+    const shown: string[] = [];
+    for (const frame of frames) {
+      const space = frame.indexOf(' ');
+      const raw = frame.slice(space + 1);
+      if (!raw.startsWith('42[')) continue;
+      const [event, body] = JSON.parse(raw.slice(2)) as [string, Record<string, unknown>];
+      const where = (x: number) => (x / cell).toFixed(2);
+      if (event === 'token:move' && body.tokenId === id) {
+        shown.push(
+          `${frame.slice(0, space)} move${body.final ? '!' : ''} ${where(body.x as number)}`,
+        );
+      } else if (event === 'token:sync' || event === 'token:upsert' || event === 'state:sync') {
+        const list = (body.tokens ?? [body.token]) as { id: string; x: number }[] | undefined;
+        const mine = list?.find((entry) => entry?.id === id);
+        shown.push(`${frame.slice(0, space)} ${event.slice(6)} ${mine ? where(mine.x) : '—'}`);
+      }
+    }
+    return shown;
+  }
+
+  function expectNoBackwardJump(who: string, trail: { x: number; y: number }[], startX: number) {
+    const progress = trail.map((p) => Math.abs(p.x - startX));
+    // Skok to cofnięcie o ćwierć pola i więcej; drgania interpolacji o kilka pikseli
+    // (0,07 pola u Marka 01.10) przy stole są niewidoczne — tylko do adnotacji.
+    const steps = progress.map((d, i) => (i > 0 ? progress[i - 1]! - d : 0));
+    const backwards = steps.filter((back) => back > cell / 4);
+    const jitter = Math.max(0, ...steps);
+    if (jitter > 0) {
+      test.info().annotations.push({
+        type: `drganie marszu u ${who}`,
+        description: `${(jitter / cell).toFixed(2)} pola`,
+      });
+    }
+    const shown = trail
+      .map((p) => `${(p.x / cell).toFixed(2)},${(p.y / cell).toFixed(2)}`)
+      .join(' ');
+    test.info().annotations.push({ type: `ślad marszu u ${who}`, description: shown });
+    expect.soft(backwards, `${who}: kroki wstecz w marszu — ślad ${shown}`).toEqual([]);
+  }
+
   /** Wiadomość z zakładki „Czat” — po karcie postaci panel stoi na „Postaciach”. */
   async function chat(actor: Actor, text: string) {
     await actor.page.getByRole('button', { name: /^Czat/ }).first().click();
@@ -155,64 +235,64 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     test.setTimeout(2 * 60_000);
     const from = at('Kowal');
     const to = [from[0]! - 2, from[1]!];
-    const kowalId = token('Kowal').id;
-    // Ślad pozycji z magazynu klienta co klatkę — skok wstecz to pole bliżej startu
-    // po polu dalej (echo spóźnionego `token:move` nadpisuje marsz).
-    const record = (actor: Actor) =>
-      actor.page.evaluate(
-        ({ id, ms }) =>
-          new Promise<{ x: number; y: number }[]>((resolve) => {
-            const trail: { x: number; y: number }[] = [];
-            const end = performance.now() + ms;
-            const tick = () => {
-              const state = window.__vttE2E?.stores.token?.getState() as
-                { tokens: Record<string, { x: number; y: number }> } | undefined;
-              const view = state?.tokens[id];
-              if (view) {
-                const last = trail[trail.length - 1];
-                if (!last || last.x !== view.x || last.y !== view.y)
-                  trail.push({ x: view.x, y: view.y });
-              }
-              if (performance.now() < end) requestAnimationFrame(tick);
-              else resolve(trail);
-            };
-            tick();
-          }),
-        { id: kowalId, ms: 8_000 },
-      );
-    const trails = Promise.all([record(marek), record(mg)]);
-    await marek.page.keyboard.press('Escape');
-    await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
-    await marek.page.waitForTimeout(300);
-    await clickOnMap(marek.page, cellCentre(cell, to[0]!, to[1]!));
-    await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual(to);
+    const trails = Promise.all([recordTrail(marek, 'Kowal'), recordTrail(mg, 'Kowal')]);
+    await marchKowal(to);
     const [mine, gms] = await trails;
-    const startX = from[0]! * cell;
-    for (const [who, trail] of [
-      ['Marek', mine],
-      ['MG', gms],
-    ] as const) {
-      const progress = trail.map((p) => Math.abs(p.x - startX));
-      // Skok to cofnięcie o ćwierć pola i więcej; drgania interpolacji o kilka pikseli
-      // (0,07 pola u Marka 01.10) przy stole są niewidoczne — tylko do adnotacji.
-      const steps = progress.map((d, i) => (i > 0 ? progress[i - 1]! - d : 0));
-      const backwards = steps.filter((back) => back > cell / 4);
-      const jitter = Math.max(0, ...steps);
-      if (jitter > 0) {
-        test.info().annotations.push({
-          type: `drganie marszu u ${who}`,
-          description: `${(jitter / cell).toFixed(2)} pola`,
-        });
-      }
-      const shown = trail
-        .map((p) => `${(p.x / cell).toFixed(2)},${(p.y / cell).toFixed(2)}`)
-        .join(' ');
-      test.info().annotations.push({ type: `ślad marszu u ${who}`, description: shown });
-      expect.soft(backwards, `${who}: kroki wstecz w marszu — ślad ${shown}`).toEqual([]);
-    }
+    expectNoBackwardJump('Marek', mine, from[0]! * cell);
+    expectNoBackwardJump('MG', gms, from[0]! * cell);
     for (const actor of everyone()) {
       await expect.poll(() => seenAt(actor, 'Kowal'), { message: actor.name }).toEqual(to);
     }
+  });
+
+  test('#47 zapis karty Kowala w trakcie marszu nie cofa figury u nikogo', async () => {
+    // Znalezione w T7a (01.10): każdy zapis karty rozsyłał `token:upsert` z pozycją
+    // z bazy, a ta w czasie marszu jest jeszcze polem startowym (klatki pośrednie
+    // nie trafiają do bazy) — u MG figura cofnęła się o 1,2 pola. Tu zapis notatek
+    // Kowala (jak autozapis w trakcie marszu) leci celowo w połowie drogi, dwa razy.
+    test.setTimeout(2 * 60_000);
+    const from = at('Kowal');
+    const to = [from[0]! + 2, from[1]!];
+    const kowalId = characterRow('Kowal').id;
+    const notes = sheet<Sheet>('Kowal').notes;
+    const socket = await marek.socket();
+    const trails = Promise.all([
+      recordTrail(marek, 'Kowal'),
+      recordTrail(mg, 'Kowal'),
+      recordTrail(ola, 'Kowal'),
+    ]);
+    const saves = async () => {
+      for (const [wait, mark] of [
+        [500, ' | zapis w marszu 1'],
+        [400, ' | zapis w marszu 2'],
+      ] as const) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        const ack = await emitAck(socket, 'character:update', {
+          characterId: kowalId,
+          patch: { data: { notes: `${notes}${mark}` } },
+        });
+        expect(ack.ok, mark).toBe(true);
+      }
+    };
+    const olaFrames = net.get(ola)!.capture();
+    await marchKowal(to, saves);
+    const [mine, gms, olas] = await trails;
+    test.info().annotations.push({
+      type: 'Kowal w ramkach do Oli w czasie marszu (ms, zdarzenie, pole)',
+      description: kowalFrames(olaFrames.stop(), token('Kowal').id).join(' | '),
+    });
+    expectNoBackwardJump('Marek', mine, from[0]! * cell);
+    expectNoBackwardJump('MG', gms, from[0]! * cell);
+    expectNoBackwardJump('Ola', olas, from[0]! * cell);
+    // „Knajpa” ma widzenie Dynamiczne: gracze nie dostają upsertu, tylko listę
+    // `token:sync` z bazy — pierwsza wersja poprawki (sam upsert) zostawiała
+    // im ten skok. Z tarasu Ola nie widzi pola docelowego, więc figura znika
+    // z jej magazynu (lista końcowa jej nie ma) — to widzenie, nie błąd.
+    for (const actor of [mg, marek]) {
+      await expect.poll(() => seenAt(actor, 'Kowal'), { message: actor.name }).toEqual(to);
+    }
+    await expect.poll(() => seenAt(ola, 'Kowal'), { message: 'Ola' }).not.toEqual(from);
+    expect(sheet<Sheet>('Kowal').notes).toBe(`${notes} | zapis w marszu 2`);
   });
 
   test('7.1 opóźnienie: podwójny klik „Kończę turę” oddaje jedną turę, nie dwie', async () => {

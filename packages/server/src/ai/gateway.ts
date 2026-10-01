@@ -475,6 +475,17 @@ export class AiGateway {
     };
 
     const effective = signal ?? AbortSignal.timeout(this.options.requestTimeoutMs);
+    // Własny limit (wołający bez sygnału, np. „Graj turę”) nie ma komu rzucić
+    // wyjątku: nikt nie trzyma tego sygnału, więc `signal.aborted` niczego nie
+    // rozpozna, a gniazdo zamieniało `TimeoutError` w `INTERNAL` (#46).
+    const timedOut = (): AiStreamEvent | null =>
+      !signal && effective.aborted
+        ? {
+            type: 'error',
+            code: 'AI_TIMEOUT',
+            detail: `${Math.round(this.options.requestTimeoutMs / 1000)} s`,
+          }
+        : null;
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.options.url}/chat`, {
@@ -487,6 +498,11 @@ export class AiGateway {
         signal: effective,
       });
     } catch (error) {
+      const timeout = timedOut();
+      if (timeout) {
+        yield timeout;
+        return;
+      }
       // A dead gateway must be reflected in the UI without waiting for the poll.
       void this.checkHealth();
       yield { type: 'error', code: 'AI_UNREACHABLE', detail: describeError(error) };
@@ -530,7 +546,13 @@ export class AiGateway {
       // wołający rozpoznają je po `signal.aborted`. Zerwane w pół odpowiedzi
       // połączenie („TypeError: terminated", #35) to ten sam gateway, który
       // przestał odpowiadać, co odmowa połączenia wyżej: błąd jako zdarzenie,
-      // a nie wyjątek, który gniazdo zamienia w `INTERNAL`.
+      // a nie wyjątek, który gniazdo zamienia w `INTERNAL`. Własny limit bez
+      // sygnału wołającego — tak samo, zdarzeniem `AI_TIMEOUT` (#46).
+      const timeout = timedOut();
+      if (timeout) {
+        yield timeout;
+        return;
+      }
       if (effective.aborted) throw error;
       void this.checkHealth();
       yield { type: 'error', code: 'AI_UNREACHABLE', detail: describeError(error) };

@@ -114,12 +114,13 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     await marek.page.getByRole('button', { name: 'Zamknij kartę' }).click();
     await dock(ola).getByRole('button', { name: 'Przyjmij' }).click();
     for (const actor of [marek, ola]) {
-      if (
-        !(await tradeWindow(actor)
-          .isVisible()
-          .catch(() => false))
-      ) {
-        await dock(actor).getByRole('button', { name: 'Otwórz' }).click();
+      // Okno otwiera się samo chwilę po „Przyjmij” albo czeka na „Otwórz” w doku —
+      // migawka `isVisible()` łapała Olę w pół drogi i test czekał 4 min na
+      // przycisk, którego już nie było (01.10). Najpierw jedno albo drugie.
+      const open = dock(actor).getByRole('button', { name: 'Otwórz' });
+      await expect(tradeWindow(actor).or(open).first()).toBeVisible();
+      if (!(await tradeWindow(actor).isVisible())) {
+        await open.click({ timeout: 5_000 }).catch(() => undefined);
       }
       await expect(tradeWindow(actor)).toBeVisible();
     }
