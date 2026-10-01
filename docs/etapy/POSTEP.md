@@ -43,9 +43,9 @@ krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
 gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
-retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — #1–#45 zamknięte (otwarte od T7a: **#46, #47**); limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — #1–#45 zamknięte; **01/02.10 naprawione i retestowane #46 i #47** (`1e6f5dd`: limit odpowiedzi modelu w turze bota to `AI_TIMEOUT`, zapis karty nie cofa figury w marszu — umowy w `boty` i `mapa`) — rejestr bez otwartych błędów; limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **T7a zamknięty 01.10** (sieć, restart, dwie karty, degradacja AI — `pnpm test:e2e 40-odpornosc`,
-16 testów poza domyślnym przebiegiem; #46 i #47 do triażu MG); **następny jest T7b, potem T7c**
+16 testów poza domyślnym przebiegiem, od 02.10 17); **następny jest T7b, potem T7c**
 (korekta MG z 01.10: T7 przed refaktoryzacją), potem refaktoryzacja pod osłoną suity. **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
 **T3–T6 → T7a–T7c → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T8, T10 → 28 → T11**.
@@ -76,7 +76,7 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Zaległości: cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9); **od 01.10 piąta: llama-server trzyma ~15,5 GB RAM-u przy modelu na GPU**. Co ocenia się tylko przy stole (kafel papieru,
+**Zaległości: cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9); **od 01.10 piąta: llama-server trzyma ~15,5 GB RAM-u przy modelu na GPU; od 02.10 szósta: teoretyczny wyścig listy `token:sync` po upuszczeniu (reszta #47)**. Co ocenia się tylko przy stole (kafel papieru,
 sesja zero w kreatorze, pełny ekran, polszczyzna Qwen, Wsparcie 10) — pierwszy wpis `POMYSLY.md`.
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
 `await import('/src/socket.ts')` — pułapki w `ogledziny`). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
@@ -110,8 +110,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2247** w `shared`, **1281** na serwerze, **301** u klienta,
-**61** w gatewayu (01.10, `--cache-ram`), **196** E2E + **16** odporności T7a poza domyślnym przebiegiem (01.10, 1 `test.fail` — #46) (domyślne 0 `test.fail`; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2247** w `shared`, **1284** na serwerze, **307** u klienta,
+**61** w gatewayu (01.10, `--cache-ram`), **196** E2E + **17** odporności T7a poza domyślnym przebiegiem (02.10, 0 `test.fail`) (domyślne 0 `test.fail`; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -133,7 +133,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 53   | 22      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 54   | 23      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 14   | 18      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
@@ -146,16 +146,37 @@ a nie do tego pliku.
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 18   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 5    | 8       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 6    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 86      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 87      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 01/02.10 — poprawki #46 i #47 z T7a, rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (otwarte #46, #47). Pytania na starcie: #46
+B3 z notką „Model nie odpowiedział w 120 s — zagraj tę turę ręką albo kliknij „Graj turę” jeszcze
+raz.”; #47 B2, poprawka „upsert nie przesuwa figury”; retest `40-odpornosc` + T4a → T4b.
+
+**Zrobione (`1e6f5dd`):** #46 — `streamChat` bez sygnału wołającego oddaje `AI_TIMEOUT` (ciało albo
+nagłówki po limicie), `botFailureText` mówi o limicie. #47 — przyczyna: każdy zapis karty rozsyła
+figurę z pozycją z bazy, a ta do upuszczenia jest polem startowym; MG dostaje `token:upsert`
+(znana figura bierze pozycję tylko z `moved` — ciągnięty Pochwycony), gracze na scenie Dynamicznej
+`token:sync` (lista nie rusza figury w marszu, `noteMoveFrame`). Deterministyczny test E2E #47
+odtworzył skok u wszystkich trojga przed poprawką; podsłuch ramek `Network.capture()` w
+`fixtures/network.ts`. Przy okazji wyścig samego testu 7.2 (okno handlu). Umowy w `boty`
+i `mapa`, pułapki w `mapa` i `testy`, zaległość — teoretyczny wyścig listy po upuszczeniu.
+
+**Weryfikacja:** serwer 1284, klient 307, `shared` 2247; `tsc`, ESLint, Prettier czyste.
+`40-odpornosc` 17/17 dwa razy z rzędu, T4b od `po-T4a` 19/19, T4a → T4b od `po-T3` 34/34
+z modelem (gateway w terminalu MG). Oglądane automatem: MG i Marek w Chromium, Ola i Kuba
+w Firefoksie, headless. Punkty kontrolne przywrócone z kopii, `dev.db` nietknięta. **Następny
+krok:** T7b (obciążenie stołu), potem T7c.
 
 ### Sesja 01.10 — T7a: odporność — sieć, restart, dwie karty, degradacja AI
 
@@ -177,24 +198,3 @@ marszów pod opóźnieniem figura u MG cofnęła się o 1,2 pola). Sześć puła
 suita dalej 196 testów; `tsc`, ESLint i Prettier suity czyste. Kod aplikacji bez zmian. Oglądane
 automatem: MG i Marek w Chromium, Ola i Kuba w Firefoksie, headless. `dev.db` i punkty kontrolne
 nietknięte. **Następny krok:** T7b (obciążenie MG + 4 graczy + obserwator, długi czat, rozmiar bazy).
-
-### Sesja 01.10 — T6c: pełny przebieg E2E od zera dwa razy zielony
-
-**Zlecenie MG:** T6c (`testy.md` 6.10). Pytania na starcie: przebiegi z modelem; „dwa z rzędu” =
-dwa kolejne zielone po ostatniej poprawce; migotanie w aplikacji — drobne od razu, większe do
-rejestru; najwyżej pięć przebiegów. W trakcie: gateway w terminalu MG, przerwać przebieg 4
-i ograniczyć bufor promptów llama-server.
-
-**Zrobione:** `t3a` 3.6 skryptuje dziesięć kości Cech Kowala (przebieg 1 padł na 4.2: los dał
-REF 4) i sprawdza Cechy na karcie; gateway: `GATEWAY_LLAMA_CACHE_RAM_MB` → `--cache-ram`
-(domyślnie 2048 MiB, build 10735 trzymał do 8 GB — llama-server miał 21 GB pamięci prywatnej,
-PC schodził poniżej 1 GB wolnego), `test_supervisor.py`, pomiar w `ai-gateway/README.md`.
-Pułapki w `testy` (przebieg w osobnej konsoli — inaczej `0xC0000142` po zabiciu powłoki; pełny
-przebieg nadpisuje punkty kontrolne) i `boty` (`--cache-ram`); zaległość: llama-server ma ~15,5 GB
-RAM-u już po starcie, przy modelu w całości na GPU.
-
-**Weryfikacja:** pełny `pnpm test:e2e` od zera — przebieg 3 196/196 (przed poprawką gatewaya),
-przebiegi 4 i 5 196/196 (31,5 i 31,6 min, najmniej 4,4 GB wolnego RAM-u); gateway 61 testów,
-ruff czysty; `tsc` i Prettier suity czyste. Oglądane automatem: MG i Marek w Chromium, Ola
-w Firefoksie, headless. Punkty kontrolne nagrane na nowo (Kowal bez zmian), kopia sprzed sesji
-w `.e2e/checkpoints-bak-01.10/`. `dev.db` nietknięta. **Następny krok:** refaktoryzacja całości.

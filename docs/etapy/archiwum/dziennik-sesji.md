@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 01.10 — T6c: pełny przebieg E2E od zera dwa razy zielony
+
+**Zlecenie MG:** T6c (`testy.md` 6.10). Pytania na starcie: przebiegi z modelem; „dwa z rzędu” =
+dwa kolejne zielone po ostatniej poprawce; migotanie w aplikacji — drobne od razu, większe do
+rejestru; najwyżej pięć przebiegów. W trakcie: gateway w terminalu MG, przerwać przebieg 4
+i ograniczyć bufor promptów llama-server.
+
+**Zrobione:** `t3a` 3.6 skryptuje dziesięć kości Cech Kowala (przebieg 1 padł na 4.2: los dał
+REF 4) i sprawdza Cechy na karcie; gateway: `GATEWAY_LLAMA_CACHE_RAM_MB` → `--cache-ram`
+(domyślnie 2048 MiB, build 10735 trzymał do 8 GB — llama-server miał 21 GB pamięci prywatnej,
+PC schodził poniżej 1 GB wolnego), `test_supervisor.py`, pomiar w `ai-gateway/README.md`.
+Pułapki w `testy` (przebieg w osobnej konsoli — inaczej `0xC0000142` po zabiciu powłoki; pełny
+przebieg nadpisuje punkty kontrolne) i `boty` (`--cache-ram`); zaległość: llama-server ma ~15,5 GB
+RAM-u już po starcie, przy modelu w całości na GPU.
+
+**Weryfikacja:** pełny `pnpm test:e2e` od zera — przebieg 3 196/196 (przed poprawką gatewaya),
+przebiegi 4 i 5 196/196 (31,5 i 31,6 min, najmniej 4,4 GB wolnego RAM-u); gateway 61 testów,
+ruff czysty; `tsc` i Prettier suity czyste. Oglądane automatem: MG i Marek w Chromium, Ola
+w Firefoksie, headless. Punkty kontrolne nagrane na nowo (Kowal bez zmian), kopia sprzed sesji
+w `.e2e/checkpoints-bak-01.10/`. `dev.db` nietknięta. **Następny krok:** refaktoryzacja całości.
+
 ### Sesja 01.10 — poprawki #10–#13 i #42–#45 (retest E2E OK), rejestr bez otwartych błędów
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 **też teraz**

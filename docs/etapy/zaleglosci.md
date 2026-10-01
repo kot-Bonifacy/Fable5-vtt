@@ -61,6 +61,16 @@ do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
    - Kolekcje RAG pamięci i bazy wiedzy są per kampania, więc dane jednej kampanii nie trafiają do
      botów drugiej — sprawdzić w etapie. RAG podręcznika jest wspólny, jak kompendium (pozycja 1).
 
+**01.10.2026 — Lista `token:sync` odczytana przed zapisem końcowej pozycji (reszta #47, niepotwierdzone).**
+Po #47 klient nie bierze z listy pozycji figury w marszu (`noteMoveFrame`/`isWalking`
+w `tokenStore.ts`), a upsert znanej figury rusza ją tylko z `moved`. Zostaje wyścig, którego
+żaden przebieg nie pokazał: lista zbudowana po zapisie karty (`emitSceneTokensToPlayers`,
+`findMany` przed `token.update` końcowego ruchu), a wysłana **po** końcowej klatce, ustawi
+figurę z powrotem na starcie u gracza na scenie Dynamicznej — do następnego ruchu albo F5.
+Okno to kilka `await` między odczytem a wysyłką; kierunek, gdyby wrócił: znacznik wersji
+pozycji (licznik serwera stemplowany po zapisie końcowego ruchu i przed odczytem listy),
+a klient odrzuca pozycję z listy starszej niż ostatni ruch figury.
+
 **01.10.2026 — llama-server trzyma ~15,5 GB RAM-u, choć model jest w całości na GPU (T6c).**
 Tuż po starcie, przy `--n-gpu-layers 999` i bez bufora promptów, pamięć prywatna procesu to
 ~15,5 GB, a sam plik GGUF waży 13,1 GB. Wygląda to na kopię wag w RAM-ie (tryb wczytywania
