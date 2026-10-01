@@ -67,6 +67,8 @@ interface JournalState {
   upsertShared: (entry: JournalPlayerEntry) => void;
   removeShared: (id: string) => void;
   setIndex: (index: JournalIndexStatus) => void;
+  /** `journal:pending` (#43): licznik idzie za czatem, nie za wejściem w zakładkę. */
+  setPending: (pendingLines: number) => void;
   setEditing: (editing: string | 'new' | null) => void;
   setFocus: (id: string | null) => void;
 
@@ -167,6 +169,8 @@ export const useJournalStore = create<JournalState>((set) => ({
         focus: state.focus === id ? null : state.focus,
       };
     }),
+
+  setPending: (pendingLines) => set({ pendingLines }),
 
   setIndex: (index) => set({ index }),
   setEditing: (editing) => set({ editing }),

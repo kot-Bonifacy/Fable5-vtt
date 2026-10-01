@@ -33,7 +33,8 @@ import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from '.
 import { campaignParticipants, lastIncomingLine, runBotTurn, type BotRuntime } from './bot-chat.js';
 import { runBotAction } from './bot-actions.js';
 import { collectBotKnowledge, type BotKnowledgeResult } from './knowledge.js';
-import { relationForSpeaker } from './relations.js';
+import { relationForSpeaker, speakingCharacter } from './relations.js';
+import { emitJournalPending } from './journal.js';
 import { getSceneById } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
 
@@ -452,13 +453,22 @@ async function runQueuedTurn(
     deps.log.error('no GM account to attribute a bot line to');
     return;
   }
+  // Szept też idzie do postaci, którą gracz mówi (#45); konto bez postaci — nazwą konta.
   const whisperWith = request.whisperToUserId
     ? ((
+        await speakingCharacter(deps.ctx.prisma, {
+          campaignId: request.campaignId,
+          userId: request.whisperToUserId,
+          sceneId: request.sceneId,
+        })
+      )?.name ??
+      (
         await deps.ctx.prisma.user.findUnique({
           where: { id: request.whisperToUserId },
           select: { name: true },
         })
-      )?.name ?? null)
+      )?.name ??
+      null)
     : null;
 
   // Hard cap on one turn, on top of the GM's stop button.
@@ -626,6 +636,7 @@ async function deliverBotLine(deps: RealtimeDeps, line: BotLine): Promise<ChatMe
     await deliverChatMessageTo(deps, line.campaignId, message, [line.whisperToUserId], true);
   } else {
     broadcastChatMessage(deps, line.campaignId, message);
+    emitJournalPending(deps, line.campaignId);
   }
   return message;
 }

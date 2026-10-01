@@ -612,7 +612,12 @@ function MessageRow({
     >
       <div className="chat-message-meta">
         <Speaker message={message} />
-        <span className="chat-message-author">{message.authorName}</span>
+        <span
+          className="chat-message-author"
+          title={message.accountName ? `Gracz: ${message.accountName}` : undefined}
+        >
+          {message.authorName}
+        </span>
         {isWhisper && <span className="chat-whisper-label">{whisperLabel}</span>}
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
       </div>

@@ -6,7 +6,7 @@ import { useAutofillableField } from '../autofill-field.js';
 import { enterPreferredFullscreen } from '../fullscreen.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type PageState = 'loading' | 'ready' | 'invalid';
+type PageState = 'loading' | 'ready' | 'invalid' | 'limited';
 
 export function JoinPage() {
   const { token } = useParams<{ token: string }>();
@@ -29,7 +29,10 @@ export function JoinPage() {
         setInfo(joinInfo);
         setPageState('ready');
       })
-      .catch(() => setPageState('invalid'));
+      // 429 (#12): ten adres zgadywał zaproszenia — „nieważne" byłoby kłamstwem.
+      .catch((err: unknown) =>
+        setPageState(err instanceof ApiError && err.status === 429 ? 'limited' : 'invalid'),
+      );
   }, [token]);
 
   async function join(chosenName: string) {
@@ -47,6 +50,8 @@ export function JoinPage() {
         setError('To imię jest zajęte — wybierz inne.');
       } else if (err instanceof ApiError && err.status === 404) {
         setPageState('invalid');
+      } else if (err instanceof ApiError && err.status === 429) {
+        setPageState('limited');
       } else {
         setError('Nie udało się dołączyć. Spróbuj ponownie.');
       }
@@ -71,6 +76,21 @@ export function JoinPage() {
     return (
       <div className="auth-screen">
         <p className="placeholder-text">Sprawdzanie zaproszenia…</p>
+      </div>
+    );
+  }
+
+  if (pageState === 'limited') {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+          <h1 className="auth-title">Chwila przerwy</h1>
+          <div className="auth-rule" aria-hidden="true" />
+          <p className="auth-error">
+            Za dużo nieudanych prób z tego adresu — spróbuj ponownie za kilkanaście minut.
+          </p>
+        </div>
       </div>
     );
   }

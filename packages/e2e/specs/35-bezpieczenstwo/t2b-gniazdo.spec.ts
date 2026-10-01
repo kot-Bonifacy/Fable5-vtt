@@ -478,7 +478,6 @@ test.describe.serial('T2 gniazdo: role, własność, śmieci, zalew', () => {
   });
 
   test('6.2.4 zalew nie dławi innych graczy ponad 5 s (#13)', async () => {
-    test.fail(true, '#13: 500 wiadomości jednego gracza opóźnia czat i ruchy innych o 6–8 s');
     expect(floodLatency.chat, 'czat Oli do MG w trakcie zalewu').toBeLessThanOrEqual(5);
     expect(floodLatency.move, 'ruch MG u Oli w trakcie zalewu').toBeLessThanOrEqual(5);
     expect(floodLatency.page, 'czat MG na ekranie Oli w trakcie zalewu').toBeLessThanOrEqual(5);

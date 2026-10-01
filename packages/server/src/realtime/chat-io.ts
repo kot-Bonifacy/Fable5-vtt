@@ -95,6 +95,9 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
   if (message.botId) {
     view.botId = message.botId;
     view.portraitUrl = message.bot?.portraitUrl ?? null;
+  } else if (message.speakerName && message.speakerName !== message.author.name) {
+    // Gracz mówi postacią (#45) — kto siedzi za nią, czat podaje w podpowiedzi.
+    view.accountName = message.author.name;
   }
   if (message.recipientId && message.recipient) {
     view.recipientId = message.recipientId;

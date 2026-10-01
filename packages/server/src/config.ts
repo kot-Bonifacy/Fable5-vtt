@@ -39,6 +39,19 @@ export interface ServerConfig {
    * tymczasowej, a osobna flaga „wyłącz" byłaby drugim sposobem na to samo.
    */
   backups?: BackupConfig;
+  /**
+   * Limity tempa (01.10, #12 i #13): złe hasła i zaproszenia per adres IP oraz
+   * zdarzenia gniazda per konto. **Opcjonalne i domyślnie wyłączone w testach
+   * dymnych** — tam jedno gniazdo wysyła setki zdarzeń w sekundę i ma do tego
+   * prawo; `loadConfig` włącza je zawsze, chyba że `RATE_LIMITS=0`.
+   */
+  rateLimits?: boolean;
+  /**
+   * Adres klienta z `X-Forwarded-For` (Caddy na VPS, etap 28). Bez zaufanego
+   * pośrednika włączenie tego pozwala podać dowolny adres i obejść limit
+   * logowania, więc domyślnie wyłączone (`TRUST_PROXY=1` włącza).
+   */
+  trustProxy?: boolean;
 }
 
 export interface BackupConfig {
@@ -65,7 +78,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     gmName: env.GM_NAME ?? 'MG',
     gmPassword: env.GM_PASSWORD,
     cookieSecret: env.COOKIE_SECRET ?? 'dev-secret-change-me',
-    sessionTtlDays: Number(env.SESSION_TTL_DAYS ?? 30),
+    // Rok (decyzja MG z 01.10) — gracz nie ma hasła i wraca linkiem zaproszenia.
+    sessionTtlDays: Number(env.SESSION_TTL_DAYS ?? 365),
     // Defaults assume cwd = packages/server (dev scripts) → repo-root dirs.
     uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
     dataPublicDir: resolve(env.DATA_PUBLIC_DIR ?? '../../data/public'),
@@ -80,6 +94,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       env.BOT_DECISION_LOG === ''
         ? ''
         : resolve(env.BOT_DECISION_LOG ?? '../../data/private/bot-decisions.jsonl'),
+    rateLimits: env.RATE_LIMITS !== '0',
+    trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),

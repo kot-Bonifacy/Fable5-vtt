@@ -14,7 +14,7 @@ import {
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { playerPortraitView, toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
-import { getActiveCampaign } from './helpers.js';
+import { getActiveCampaign, getUserActiveCampaign } from './helpers.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
@@ -246,10 +246,11 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     return reply.code(201).send(result);
   });
 
-  // Listę widzi **każdy zalogowany** — to z niej gracz wybiera portret. Portrety
-  // NPC („tylko MG”, 23.09) gracz dostaje wyłącznie noszone i bez nazwy.
+  // Listę widzi **każdy członek aktywnej kampanii** — to z niej gracz wybiera
+  // portret. Portrety NPC („tylko MG”, 23.09) gracz dostaje wyłącznie noszone
+  // i bez nazwy; gracz spoza kampanii — pustą listę (#10, 01.10).
   app.get('/api/portrait-assets', { preHandler: requireAuth }, async (request, reply) => {
-    const campaign = await getActiveCampaign(ctx.prisma);
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
     if (!campaign) {
       return reply.send([]);
     }

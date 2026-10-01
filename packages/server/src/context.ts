@@ -8,6 +8,7 @@ import type { AiGateway } from './ai/gateway.js';
 import type { ServerConfig } from './config.js';
 import type { PrismaClient } from './db.js';
 import type { StatusRegistry } from './statuses.js';
+import type { LoginAttemptLimiter } from './rate-limit.js';
 
 export interface AppContext {
   config: ServerConfig;
@@ -28,4 +29,6 @@ export interface AppContext {
   covers: CpredCoverCatalogue;
   /** Bots and the GM assistant; always optional at runtime — may be offline. */
   ai: AiGateway;
+  /** Złe hasła i zaproszenia per IP (#12); brak = bez limitu (`config.rateLimits`). */
+  loginLimiter?: LoginAttemptLimiter;
 }

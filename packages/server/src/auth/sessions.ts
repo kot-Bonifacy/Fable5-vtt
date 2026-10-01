@@ -24,11 +24,17 @@ export async function createSession(prisma: PrismaClient, userId: string, ttlDay
   });
 }
 
-/** Returns the user for a valid, unexpired session — otherwise null. */
-export async function resolveSessionUser(
+/** A valid session: its user and the moment it stops being valid. */
+export interface ResolvedSession {
+  user: SessionUser;
+  expiresAt: Date;
+}
+
+/** Returns a valid, unexpired session — otherwise null (an expired row is removed). */
+export async function resolveSession(
   prisma: PrismaClient,
   sessionId: string,
-): Promise<SessionUser | null> {
+): Promise<ResolvedSession | null> {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     include: { user: true },
@@ -38,7 +44,15 @@ export async function resolveSessionUser(
     await prisma.session.deleteMany({ where: { id: sessionId } });
     return null;
   }
-  return toSessionUser(session.user);
+  return { user: toSessionUser(session.user), expiresAt: session.expiresAt };
+}
+
+/** Returns the user for a valid, unexpired session — otherwise null. */
+export async function resolveSessionUser(
+  prisma: PrismaClient,
+  sessionId: string,
+): Promise<SessionUser | null> {
+  return (await resolveSession(prisma, sessionId))?.user ?? null;
 }
 
 export async function deleteSession(prisma: PrismaClient, sessionId: string): Promise<void> {

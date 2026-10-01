@@ -176,6 +176,14 @@ export interface JournalPlayerUpsertBroadcast {
   entry: JournalPlayerEntry;
 }
 
+/**
+ * `journal:pending` (do pokoju MG, #43): ile wypowiedzi czeka na streszczenie.
+ * Leci po każdej zapisanej wypowiedzi i po przesunięciu granicy streszczenia.
+ */
+export interface JournalPendingPush {
+  pendingLines: number;
+}
+
 export interface JournalDeleteBroadcast {
   id: string;
   index?: JournalIndexStatus;

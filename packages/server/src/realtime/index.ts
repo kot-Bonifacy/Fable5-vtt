@@ -3,7 +3,9 @@ import type { Server as SocketIOServer } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_GM, createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import { SESSION_COOKIE, resolveSessionUser } from '../auth/sessions.js';
+import { SESSION_COOKIE, resolveSession } from '../auth/sessions.js';
+import { SocketRateLimiter } from '../rate-limit.js';
+import { armSessionExpiry, sessionRoom } from './session-guard.js';
 import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
@@ -264,6 +266,10 @@ import { musicControlEvent, musicStateEvent } from './music.js';
 declare module 'socket.io' {
   interface SocketData {
     user: SessionUser;
+    /** Session that opened this socket — logout disconnects its room (#11). */
+    sessionId: string;
+    /** Epoch ms after which the session (and this socket) is over (#11). */
+    sessionExpiresAt: number;
     /** Active campaign this socket belongs to (room joined); null when none. */
     campaign: CampaignSummary | null;
     /** Scene this socket currently views (scene room joined); null when none. */
@@ -517,18 +523,25 @@ async function authenticateHandshake(
   app: FastifyInstance,
   ctx: AppContext,
   cookieHeader: string | undefined,
-): Promise<SessionUser | null> {
+): Promise<{ user: SessionUser; sessionId: string; expiresAt: Date } | null> {
   if (!cookieHeader) return null;
   const cookies = app.parseCookie(cookieHeader);
   const raw = cookies[SESSION_COOKIE];
   if (!raw) return null;
   const unsigned = app.unsignCookie(raw);
   if (!unsigned.valid || !unsigned.value) return null;
-  return resolveSessionUser(ctx.prisma, unsigned.value);
+  const session = await resolveSession(ctx.prisma, unsigned.value);
+  return session ? { ...session, sessionId: unsigned.value } : null;
 }
 
 export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: AppContext): void {
-  const deps: RealtimeDeps = { io, log: app.log, ctx, seqs: new RoomSequences() };
+  const deps: RealtimeDeps = {
+    io,
+    log: app.log,
+    ctx,
+    seqs: new RoomSequences(),
+    ...(ctx.config.rateLimits ? { rateLimiter: new SocketRateLimiter() } : {}),
+  };
 
   // Gateway coming back or going down flips bot availability for everyone.
   ctx.ai.onStatusChange((status) => {
@@ -537,12 +550,14 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
 
   io.use((socket, next) => {
     authenticateHandshake(app, ctx, socket.handshake.headers.cookie)
-      .then((user) => {
-        if (!user) {
+      .then((session) => {
+        if (!session) {
           next(new Error('UNAUTHORIZED'));
           return;
         }
-        socket.data.user = user;
+        socket.data.user = session.user;
+        socket.data.sessionId = session.sessionId;
+        socket.data.sessionExpiresAt = session.expiresAt.getTime();
         next();
       })
       .catch(() => next(new Error('UNAUTHORIZED')));
@@ -553,6 +568,10 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
     app.log.info({ socketId: socket.id, userId: user.id, role: user.role }, 'socket connected');
 
     socket.emit('server:hello', createServerHello());
+    // #11: gniazdo żyje tyle, co jego sesja — wylogowanie rozłącza pokój sesji,
+    // a wygaśnięcie — zegar.
+    void socket.join(sessionRoom(socket.data.sessionId));
+    armSessionExpiry(socket);
     registerEvents(deps, socket, EVENTS);
     sendAiStatus(deps, socket);
 

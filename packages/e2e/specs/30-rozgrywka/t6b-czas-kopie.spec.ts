@@ -46,10 +46,10 @@ import { BACKUP_DIR, CHECKPOINT_DIR, E2E_DIR, UPLOADS_DIR } from '../../instance
  *
  * - **6.6** MG nakłada Kowalowi efekt na Cesze (REF −2 na godzinę), Marek widzi
  *   go w rozbiciu Testu, efekt schodzi dokładnie po sześciu skokach „+10 min”.
- *   Ustabilizowanie poza walką nie ma drogi w UI (#42, B1) — obejście przy stole:
- *   MG zaczyna krótką walkę, Iskra stabilizuje Kowala w swojej turze, MG ją
- *   kończy. Potem „+1 dzień” i „Odpoczynek” z okna zegara; Iskra bez
- *   Ustabilizowania dostaje odmowę.
+ *   Iskra stabilizuje Kowala **poza walką** z paska akcji (#42, poprawione
+ *   01.10), potem jeszcze raz w krótkiej walce, w swojej turze — ścieżka z tury.
+ *   Potem „+1 dzień” i „Odpoczynek” z okna zegara; Iskra bez Ustabilizowania
+ *   dostaje odmowę.
  * - **6.7** wpis dziennika „tylko MG” z kanarkiem, streszczenie sesji botem
  *   (`@llm`) udostępnione stołowi, jedna propozycja relacji przyjęta, screamsheet
  *   o strzelaninie pod bramą zapisany i udostępniony obojgu.
@@ -64,8 +64,8 @@ import { BACKUP_DIR, CHECKPOINT_DIR, E2E_DIR, UPLOADS_DIR } from '../../instance
  *
  * Decyzje MG z 30.09 (sesja T6b): Iskra stabilizuje; efekt z formularza MG;
  * streszczenie i gazeta jawne; import „obie drogi” — odpięte figury to zachowanie
- * etapu 33 (dopisek do Z10), nie błąd. #42: obejście krótką walką, B1, poprawka
- * ma dać Ustabilizowanie także poza walką.
+ * etapu 33 (dopisek do Z10), nie błąd. #42 (B1) naprawiony 01.10: poza walką
+ * pacjentem jest każda figura w zasięgu ramienia, bez kosztu Akcji.
  */
 
 type Row = { name: string; qty?: number };
@@ -119,6 +119,8 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   /** Licznik „Zakończ sesję” u MG przed rozmową z Paserem (#43) i odpowiedź bota. */
   let pendingAtStart = 0;
   let paserReply = '';
+  /** Ostatnia wiadomość przed rozmową z Paserem — wiersze z wcześniejszych etapów są sprzed #45. */
+  let talkMark = 0;
   /** Wypowiedzi czatu po ostatnim streszczeniu — to, co liczy `pendingLineCount` serwera. */
   const pendingSay = () =>
     queryOne<{ n: number }>(
@@ -300,32 +302,6 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await closeClock(mg);
   });
 
-  test('6.6b #42 Ustabilizowanie poza walką: guzik na pasku Iskry nie otwiera wyboru pacjenta', async () => {
-    test.fail(true, '#42 — Ustabilizowanie poza walką nie ma drogi w UI (B1)');
-    // Kowal wraca od baru do Iskry (pole z końca T4b), żeby był na wyciągnięcie ręki.
-    await walk(marek, 'Kowal', 8, 8);
-    const page = ola.page;
-    await page.keyboard.press('Escape');
-    await clickOnMap(page, tokenCentre(token('Iskra'), cell));
-    const slot = page.locator('.hud-slot', {
-      has: page.locator('.hud-slot-label', { hasText: 'Ustabilizowanie' }),
-    });
-    test.info().annotations.push({
-      type: 'pasek Iskry poza walką',
-      description: await page
-        .locator('.hud-rail')
-        .ariaSnapshot()
-        .catch(() => '(brak paska)'),
-    });
-    await expect(slot).toBeVisible();
-    await slot.click();
-    await expect(
-      page
-        .locator('.combat-picker-row', { hasText: 'Kowal' })
-        .getByRole('button', { name: 'Ustabilizuj' }),
-    ).toBeVisible({ timeout: 5_000 });
-  });
-
   test('6.6c odpoczynek przed Ustabilizowaniem: guzik wyszarzony, serwer odmawia', async () => {
     const region = await openSheet(marek, 'Kowal');
     await expect(region.getByRole('button', { name: 'Dzień odpoczynku' })).toBeDisabled();
@@ -342,7 +318,47 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     expect(card('Kowal').hpCurrent).toBe(hp);
   });
 
-  test('6.6d obejście #42: krótka walka, Iskra stabilizuje Kowala w swojej turze', async () => {
+  test('6.6b #42 Ustabilizowanie poza walką: Iskra z paska akcji stabilizuje Kowala', async () => {
+    // Kowal wraca od baru do Iskry (pole z końca T4b), żeby był na wyciągnięcie ręki.
+    await walk(marek, 'Kowal', 8, 8);
+    const page = ola.page;
+    await page.keyboard.press('Escape');
+    await clickOnMap(page, tokenCentre(token('Iskra'), cell));
+    const slot = page.locator('.hud-slot', {
+      has: page.locator('.hud-slot-label', { hasText: 'Ustabilizowanie' }),
+    });
+    await expect(slot).toBeVisible();
+    await slot.click();
+    // Pacjenci poza walką: sama Iskra i figury w zasięgu ramienia (decyzja MG z 01.10).
+    const rows = page.locator('.combat-picker-row');
+    await expect(rows.filter({ hasText: 'Kowal' })).toBeVisible({ timeout: 5_000 });
+    await expect(rows.filter({ hasText: 'Iskra' })).toBeVisible();
+    test.info().annotations.push({
+      type: 'pacjenci poza walką',
+      description: (await rows.locator('.combat-picker-name').allTextContents()).join(', '),
+    });
+    await rows.filter({ hasText: 'Kowal' }).getByRole('button', { name: 'Ustabilizuj' }).click();
+    scriptDice([9]);
+    const mark = lastMessageId();
+    await shakeCup(page);
+    await expect
+      .poll(() => messageAfter(mark, 'Ustabilizowanie')?.id ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(0);
+    const roll = rollById(messageAfter(mark, 'Ustabilizowanie')!.id);
+    test
+      .info()
+      .annotations.push({ type: 'Ustabilizowanie poza walką', description: JSON.stringify(roll) });
+    expect(pendingDice()).toBe('');
+    await expect.poll(() => card('Kowal').recovery.stabilized).toBe(true);
+    // Karta Kowala: naturalne leczenie ruszyło, „Dzień odpoczynku” odblokowany.
+    const region = await openSheet(marek, 'Kowal');
+    await expect(region.getByRole('button', { name: 'Dzień odpoczynku' })).toBeEnabled();
+    await closeSheet(marek.page);
+  });
+
+  test('6.6d Ustabilizowanie w walce: krótka walka, Iskra stabilizuje Kowala w swojej turze', async () => {
+    // Do 01.10 jedyna droga (obejście #42); dziś druga ścieżka tej samej Akcji —
+    // Kowal jest już ustabilizowany, rzut i karta przy stole lądują tak samo.
     test.setTimeout(4 * 60_000);
     const page = mg.page;
     await page.getByRole('button', { name: 'Walka', exact: true }).first().click();
@@ -493,6 +509,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     // (poza tym czat „Nocnej zmiany” to prawie same rzuty i akcje, nie wypowiedzi).
     const paser = queryOne<{ id: string }>(`SELECT id FROM BotProfile WHERE name = 'Paser'`)!.id;
     const talk = lastMessageId();
+    talkMark = talk;
     await marek.page.getByRole('button', { name: 'Czat', exact: true }).click();
     await say(
       marek,
@@ -521,15 +538,12 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   });
 
   test('#45 wypowiedź gracza podpisana postacią — bot i kronikarz mówią do Kowala, nie do Marka', async () => {
-    test.fail(
-      true,
-      '#45 — wiersz `say` gracza bez `speakerName`, historia bota i transkrypt biorą nazwę konta',
-    );
     // Podpis wiersza jest źródłem obu: historii czatu w prompcie bota i transkryptu
     // streszczenia (`speakerName ?? author.name`). Odpowiedź modelu jest losowa — podpis nie.
     const lines = query<{ speakerName: string | null; text: string }>(
       `SELECT m.speakerName, m.text FROM ChatMessage m JOIN User u ON u.id = m.authorId
-         WHERE m.kind = 'say' AND m.botId IS NULL AND u.name = 'Marek' ORDER BY m.id`,
+         WHERE m.kind = 'say' AND m.botId IS NULL AND u.name = 'Marek' AND m.id > ? ORDER BY m.id`,
+      talkMark,
     );
     test
       .info()
@@ -542,7 +556,6 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   });
 
   test('6.7c #43 licznik „Zakończ sesję i streść (N)” u MG rośnie z nowymi wypowiedziami', async () => {
-    test.fail(true, '#43 — licznik przychodzi tylko z `journal:list` (wejście w zakładkę)');
     const pending = pendingSay();
     test.info().annotations.push({
       type: 'licznik',
@@ -558,7 +571,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await requireGateway();
     const paser = queryOne<{ id: string }>(`SELECT id FROM BotProfile WHERE name = 'Paser'`)!.id;
     const page = mg.page;
-    // Obejście #43: zakładka od nowa — licznik przychodzi z `journal:list`.
+    // Zakładka od nowa — do 01.10 obejście #43, dziś tylko pewność, że „Dziennik” jest otwarty.
     await page.getByRole('button', { name: 'Czat', exact: true }).click();
     await page.getByRole('button', { name: 'Dziennik', exact: true }).click();
     const summarize = page.getByRole('button', { name: /^Zakończ sesję i streść \(\d+\)/ });
@@ -1090,10 +1103,6 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   });
 
   test('#44 zdanie po imporcie sceny odmienia liczbę figur po polsku', async () => {
-    test.fail(
-      true,
-      '#44 — „4 figur straciło” zamiast „4 figury straciły” (dwie formy zamiast trzech)',
-    );
     const count = Number(/(\d+) figur/.exec(sceneImportNote)?.[1]);
     expect(count).toBe(4);
     expect(sceneImportNote).toContain('4 figury straciły powiązanie');

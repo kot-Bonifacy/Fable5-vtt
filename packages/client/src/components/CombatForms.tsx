@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react';
-import type { CombatView, CombatantView } from '@vtt/shared';
+import type { CombatView, CombatantView, CpredCharacterData } from '@vtt/shared';
 import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   CPRED_CHOKE_ROUNDS_TO_UNCONSCIOUS,
+  CPRED_MELEE_REACH_M,
+  TOKEN_UNLABELLED_TABLE_NAME,
+  metresForRules,
   observedWoundState,
+  reachMetresBetweenTokens,
 } from '@vtt/shared';
 import { combatErrorText, holdCombatAction, sendGrappleAction } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { loadStabilizeCup, useRollStore } from '../stores/rollStore.js';
 
@@ -136,9 +141,7 @@ export function StabilizePicker({
   onDone: () => void;
 }) {
   const tokens = useTokenStore((s) => s.tokens);
-  const registry = useCharacterStore((s) => s.registry);
   const acting = useActingCharacter(combatant);
-  const [error, setError] = useState<string | null>(null);
 
   const targets = useMemo(
     () =>
@@ -158,6 +161,76 @@ export function StabilizePicker({
       }),
     [combat.combatants, tokens],
   );
+
+  return <StabilizeTargetList acting={acting} targets={targets} onDone={onDone} />;
+}
+
+/**
+ * „Ustabilizowanie" poza walką (#42, 01.10) — z paska akcji figury, bez kosztu
+ * Akcji.
+ *
+ * Bez kolejki inicjatywy nie ma listy uczestników, więc pacjentami są figury
+ * **na wyciągnięcie ręki** (decyzja MG): sam medyk („w tym siebie", s. 222)
+ * i każda widoczna figura sceny w zasięgu ramienia — tym samym, który i tak
+ * mierzy serwer (`requireStabilizeReach`). Lista nie proponuje więc nikogo,
+ * kogo serwer by odrzucił „za daleko". Do 01.10 slot stał na pasku poza walką
+ * i nie robił nic, a ranny po walce nie mógł ruszyć z naturalnym leczeniem.
+ */
+export function StabilizeNearbyPicker({
+  tokenId,
+  onDone,
+}: {
+  /** Figura medyka — ta, której pasek akcji jest otwarty. */
+  tokenId: string;
+  onDone: () => void;
+}) {
+  const tokens = useTokenStore((s) => s.tokens);
+  const characters = useCharacterStore((s) => s.characters);
+  const scene = useSceneStore((s) => s.effectiveScene);
+  const medic = tokens[tokenId];
+  const acting = medic?.characterId ? (characters[medic.characterId] ?? null) : null;
+
+  const targets = useMemo(() => {
+    if (!medic || !scene) return [];
+    return Object.values(tokens)
+      .filter((token) => token.sceneId === medic.sceneId)
+      .filter(
+        (token) =>
+          token.id === medic.id ||
+          metresForRules(reachMetresBetweenTokens(medic, token, scene)) <= CPRED_MELEE_REACH_M,
+      )
+      .map((token) => ({
+        tokenId: token.id,
+        name: token.name.length > 0 ? token.name : TOKEN_UNLABELLED_TABLE_NAME,
+        wounds: observedWoundState({ hp: token.hp, statuses: token.statuses }),
+        self: token.id === medic.id,
+      }))
+      .sort((a, b) => Number(b.self) - Number(a.self) || a.name.localeCompare(b.name, 'pl'));
+  }, [medic, scene, tokens]);
+
+  if (targets.length <= 1 && targets[0]?.self && targets[0].wounds === 'healthy') {
+    return (
+      <p className="hud-refusal">
+        Nikogo na wyciągnięcie ręki — Ustabilizowanie wymaga zasięgu ramienia ({CPRED_MELEE_REACH_M}{' '}
+        m).
+      </p>
+    );
+  }
+  return <StabilizeTargetList acting={acting} targets={targets} onDone={onDone} />;
+}
+
+/** Lista pacjentów i kubek — wspólna dla walki i dla czasu poza nią. */
+function StabilizeTargetList({
+  acting,
+  targets,
+  onDone,
+}: {
+  acting: { id: string; name: string; data: CpredCharacterData } | null;
+  targets: { tokenId: string; name: string; wounds: ReturnType<typeof observedWoundState> }[];
+  onDone: () => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const [error, setError] = useState<string | null>(null);
 
   function stabilize(target: { tokenId: string; name: string }) {
     if (!acting) {

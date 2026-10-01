@@ -26,8 +26,12 @@ import { BOT_BREAK_LABELS } from './guardrails.js';
  * criterion is that a hostile NPC answers the same question audibly
  * differently from a friendly one, and a section read forty lines ago does
  * not survive that far on a 9B model.
+ *
+ * Version 5 (#45, 30.09): the player's chat lines carry the character's name,
+ * so the relation section no longer explains which account „is" the character
+ * (the 24.09 alias line, shipped under version 4, is gone).
  */
-export const BOT_PROMPT_VERSION = 4;
+export const BOT_PROMPT_VERSION = 5;
 
 /**
  * How this bot feels about the character it is talking to (stage 19c). Resolved
@@ -39,8 +43,6 @@ export interface BotPromptRelation {
   value: number;
   /** The „skąd" sentence; without it a number means nothing to the model. */
   note: string;
-  /** How the player signs chat lines (account name), when it is not the character's. */
-  speakerName?: string | null;
 }
 
 /**

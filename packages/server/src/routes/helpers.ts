@@ -1,6 +1,8 @@
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import '@fastify/cookie';
-import type { CampaignSummary } from '@vtt/shared';
+import type { CampaignSummary, SessionUser } from '@vtt/shared';
+import { ROLE_GM } from '@vtt/shared';
+import type { AppContext } from '../context.js';
 import type { PrismaClient } from '../db.js';
 import type { Session } from '../generated/prisma/client.js';
 import { SESSION_COOKIE } from '../auth/sessions.js';
@@ -11,6 +13,25 @@ export async function getActiveCampaign(prisma: PrismaClient): Promise<CampaignS
     orderBy: { createdAt: 'desc' },
   });
   return campaign ? { id: campaign.id, name: campaign.name, sandbox: campaign.sandbox } : null;
+}
+
+/**
+ * Aktywna kampania **dla tego konta** (#10, 01.10): MG zawsze, gracz tylko
+ * wtedy, gdy jest jej członkiem. Gracz innej kampanii dostawał z REST nazwę
+ * cudzej aktywnej kampanii i jej pulę portretów — gniazdo pilnowało tego od
+ * początku (`resolveSocketCampaign`), trasy HTTP nie.
+ */
+export async function getUserActiveCampaign(
+  prisma: PrismaClient,
+  user: SessionUser,
+): Promise<CampaignSummary | null> {
+  const campaign = await getActiveCampaign(prisma);
+  if (!campaign) return null;
+  if (user.role === ROLE_GM) return campaign;
+  const membership = await prisma.campaignMember.findUnique({
+    where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } },
+  });
+  return membership ? campaign : null;
 }
 
 export function setSessionCookie(reply: FastifyReply, session: Session): void {
@@ -25,4 +46,22 @@ export function setSessionCookie(reply: FastifyReply, session: Session): void {
 
 export function clearSessionCookie(reply: FastifyReply): void {
   reply.clearCookie(SESSION_COOKIE, { path: '/' });
+}
+
+/**
+ * 429 z `Retry-After` dla adresu po serii złych haseł albo zaproszeń (#12).
+ * Zwraca true, gdy odpowiedź już poszła.
+ */
+export function refuseRateLimited(
+  ctx: AppContext,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): boolean {
+  const retryAfter = ctx.loginLimiter?.retryAfter(request.ip) ?? null;
+  if (retryAfter === null) return false;
+  void reply
+    .code(429)
+    .header('Retry-After', String(retryAfter))
+    .send({ error: 'TOO_MANY_ATTEMPTS', retryAfter });
+  return true;
 }

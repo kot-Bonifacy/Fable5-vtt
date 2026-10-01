@@ -119,7 +119,7 @@ export async function speakingCharacter(
 export async function relationForSpeaker(
   prisma: PrismaClient,
   options: { botId: string; campaignId: string; userId: string | null; sceneId: string | null },
-): Promise<{ characterName: string; value: number; note: string; speakerName: string } | null> {
+): Promise<{ characterName: string; value: number; note: string } | null> {
   if (!options.userId) return null;
   const character = await speakingCharacter(prisma, {
     campaignId: options.campaignId,
@@ -132,20 +132,11 @@ export async function relationForSpeaker(
     select: { value: true, note: true },
   });
   // Brak wiersza to nie „obojętny", tylko „nie ma o czym mówić" — pusta sekcja
-  // promptu jest tańsza i nie każe modelowi udawać znajomości.
+  // promptu jest tańsza i nie każe modelowi udawać znajomości. Wiersze gracza
+  // w historii czatu od 30.09 (#45) podpisuje ta sama postać, więc relacja nie
+  // musi już tłumaczyć modelowi, kim jest „Marek".
   if (!row) return null;
-  // Wiersze gracza w historii czatu podpisuje nazwa konta — model musi wiedzieć,
-  // że to ta sama osoba co postać z relacji.
-  const speaker = await prisma.user.findUnique({
-    where: { id: options.userId },
-    select: { name: true },
-  });
-  return {
-    characterName: character.name,
-    value: row.value,
-    note: row.note,
-    speakerName: speaker?.name ?? character.name,
-  };
+  return { characterName: character.name, value: row.value, note: row.note };
 }
 
 // ---------------------------------------------------------------------------

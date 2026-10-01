@@ -45,10 +45,16 @@ const file = (name: string, buffer: Buffer, mimeType = 'image/png') => ({
 });
 
 /** GET bez normalizacji ścieżki (`fetch` i Playwright zwijają `..` przed wysyłką). */
-function rawGet(path: string): Promise<{ status: number; body: Buffer }> {
+function rawGet(path: string, cookie?: string): Promise<{ status: number; body: Buffer }> {
   return new Promise((resolve, reject) => {
     const req = httpRequest(
-      { host: '127.0.0.1', port: SERVER_PORT, path, method: 'GET' },
+      {
+        host: '127.0.0.1',
+        port: SERVER_PORT,
+        path,
+        method: 'GET',
+        ...(cookie ? { headers: { cookie } } : {}),
+      },
       (res) => {
         const chunks: Buffer[] = [];
         res.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -152,35 +158,38 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.5 /uploads/: bez listy katalogu, bez wyjścia poza katalog', async () => {
+    // Od 01.10 (#10 / Z7) `/uploads/` wymaga zalogowania — wyjście poza katalog
+    // sprawdzamy więc i bez ciasteczka, i z ciasteczkiem MG, który przez bramkę
+    // logowania przechodzi.
+    const gmCookie = await cookieHeader(gm);
     for (const path of ['/uploads/', '/uploads/maps/', '/uploads/portraits/', '/public/']) {
-      const response = await rawGet(path);
-      expect(response.status, path).toBeGreaterThanOrEqual(400);
+      for (const cookie of [undefined, gmCookie]) {
+        const response = await rawGet(path, cookie);
+        expect(response.status, path).toBeGreaterThanOrEqual(400);
+      }
     }
-    for (const path of [
-      '/uploads/../packages/server/e2e.db',
-      '/uploads/..%2f..%2fpackages%2fserver%2fe2e.db',
-      '/uploads/%2e%2e/%2e%2e/packages/server/e2e.db',
-      '/uploads/..\\..\\packages\\server\\e2e.db',
-      '/public/../private/cpred/skills.json',
-      '/public/..%2fprivate%2fcpred%2fskills.json',
-    ]) {
-      const response = await rawGet(path);
-      expect(response.status, path).toBeGreaterThanOrEqual(400);
-      expect(response.body.subarray(0, 15).toString('latin1'), path).not.toBe('SQLite format 3');
-    }
-    // Pliki kampanii są dziś jawne dla każdego, kto zna adres (losowe 16 znaków).
+    for (const cookie of [undefined, gmCookie])
+      for (const path of [
+        '/uploads/../packages/server/e2e.db',
+        '/uploads/..%2f..%2fpackages%2fserver%2fe2e.db',
+        '/uploads/%2e%2e/%2e%2e/packages/server/e2e.db',
+        '/uploads/..\\..\\packages\\server\\e2e.db',
+        '/public/../private/cpred/skills.json',
+        '/public/..%2fprivate%2fcpred%2fskills.json',
+      ]) {
+        const response = await rawGet(path, cookie);
+        expect(response.status, path).toBeGreaterThanOrEqual(400);
+        expect(response.body.subarray(0, 15).toString('latin1'), path).not.toBe('SQLite format 3');
+      }
+    // Pliki kampanii tylko dla zalogowanych (#10 / Z7, 01.10); członkostwo
+    // w kampanii pliku zostaje w Z7 na etap „Konta MG”.
     const map = queryOne<{ backgroundUrl: string }>(
       `SELECT backgroundUrl FROM Scene WHERE backgroundUrl LIKE '/uploads/%' LIMIT 1`,
     );
     if (map) {
-      const response = await anon.get(map.backgroundUrl);
-      if (response.status() === 200) {
-        note(
-          'zadanie',
-          `Pliki z /uploads/ podaje każdy bez logowania (${map.backgroundUrl} → 200) — ` +
-            'etap „Konta MG”: uploady za logowaniem, tylko dla członków kampanii (testy.md 11.3).',
-        );
-      }
+      expect((await anon.get(map.backgroundUrl)).status(), 'bez logowania').toBe(401);
+      expect((await gm.get(map.backgroundUrl)).status(), 'MG').toBe(200);
+      expect((await marek.get(map.backgroundUrl)).status(), 'gracz').toBe(200);
     }
   });
 
@@ -287,13 +296,12 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.7 gracz spoza kampanii nie dostaje jej puli portretów (#10)', async () => {
-    test.fail(true, '#10: /api/portrait-assets sprawdza tylko zalogowanie, nie członkostwo');
     const portraits = (await (await obcy.get('/api/portrait-assets')).json()) as unknown[];
     await obcy.dispose();
     expect(portraits, 'pula portretów aktywnej kampanii u gracza spoza niej').toEqual([]);
   });
 
-  test('6.2.8 ciasteczko sesji: httpOnly, SameSite, ważność SESSION_TTL_DAYS', async () => {
+  test('6.2.8 ciasteczko sesji: httpOnly, SameSite, ważność SESSION_TTL_DAYS (rok)', async () => {
     const password = process.env.E2E_GM_PASSWORD!;
     const response = await anon.post('/api/auth/login', { data: { password } });
     expect(response.status()).toBe(200);
@@ -305,8 +313,9 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     expect(cookie).toMatch(/;\s*Path=\//i);
     const expires = new Date(/Expires=([^;]+)/i.exec(cookie)?.[1] ?? 0).getTime();
     const days = (expires - Date.now()) / 86_400_000;
-    expect(days).toBeGreaterThan(29);
-    expect(days).toBeLessThanOrEqual(30);
+    // Rok od 01.10 (decyzja MG przy poprawce #11) — wcześniej 30 dób.
+    expect(days).toBeGreaterThan(364);
+    expect(days).toBeLessThanOrEqual(365);
     if (!/;\s*Secure/i.test(cookie)) {
       note(
         'zadanie',
@@ -355,7 +364,6 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.8 otwarte gniazdo po wylogowaniu traci prawa (#11)', async () => {
-    test.fail(true, '#11: gniazdo sprawdza sesję tylko przy nawiązaniu połączenia');
     const ola = await apiPlayer('Ola', await invite(gm));
     const { socket } = await rawSocket(await cookieHeader(ola));
     expect((await emitAck(socket!, 'chat:history', { beforeId: 1_000_000 })).ok).toBe(true);
@@ -382,7 +390,11 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       await new Promise((resolve) => setTimeout(resolve, 3_500));
       expect((await ola.get('/api/auth/me')).status()).toBe(401);
       expect((await rawSocket(cookie)).error).toBe('UNAUTHORIZED');
-      const live = await emitAck(socket!, 'chat:send', { text: 'Piszę po wygaśnięciu sesji.' });
+      // Od #11 (01.10) serwer sam rozłącza gniazdo w chwili wygaśnięcia sesji —
+      // rozłączone gniazdo niczego już nie wyśle, i o to chodzi.
+      const live = socket!.connected
+        ? await emitAck(socket!, 'chat:send', { text: 'Piszę po wygaśnięciu sesji.' })
+        : { ok: false as const, error: 'DISCONNECTED' };
       liveAfterExpiry = live.ok;
       socket!.disconnect();
       await ola.dispose();
@@ -394,7 +406,6 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.8 otwarte gniazdo wygasłej sesji traci prawa (#11)', async () => {
-    test.fail(true, '#11: gniazdo sprawdza sesję tylko przy nawiązaniu połączenia');
     expect(liveAfterExpiry, 'otwarte gniazdo wygasłej sesji dalej wysyła wiadomości').toBe(false);
   });
 
@@ -470,13 +481,21 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     }
   });
 
-  test('6.2.11 hasło MG z internetu: 30 złych prób pod rząd nie blokują prawdziwego', async () => {
+  test('6.2.11 hasło MG z internetu: 30 złych prób z jednego adresu nie blokują MG gdzie indziej', async () => {
     test.setTimeout(120_000);
+    // Zgadujący stoi pod „obcym” adresem (`X-Forwarded-For`, instancja ma
+    // `TRUST_PROXY=1` jak za Caddy). Limit liczy się per adres (#12, 01.10).
+    const attacker = { 'x-forwarded-for': '203.0.113.50' };
     const started = Date.now();
     const statuses: number[] = [];
     for (let i = 0; i < 30; i += 1) {
       statuses.push(
-        (await anon.post('/api/auth/login', { data: { password: `zgaduje-${i}` } })).status(),
+        (
+          await anon.post('/api/auth/login', {
+            data: { password: `zgaduje-${i}` },
+            headers: attacker,
+          })
+        ).status(),
       );
     }
     const seconds = (Date.now() - started) / 1000;
@@ -484,7 +503,15 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       type: 'pomiar',
       description: `30 złych haseł w ${seconds.toFixed(1)} s, statusy: ${[...new Set(statuses)].join(', ')}`,
     });
-    // Prawdziwe hasło po serii nadal działa (brak blokady konta = brak DoS na MG).
+    // Z zablokowanego adresu nawet prawdziwe hasło dostaje 429 — inaczej
+    // zgadujący dowiedziałby się o trafieniu mimo limitu.
+    const fromAttacker = await anon.post('/api/auth/login', {
+      data: { password: process.env.E2E_GM_PASSWORD },
+      headers: attacker,
+    });
+    expect(fromAttacker.status()).toBe(429);
+    expect(Number(fromAttacker.headers()['retry-after'])).toBeGreaterThan(0);
+    // MG z innego adresu wchodzi (brak blokady konta = brak DoS na MG).
     const ok = await anon.post('/api/auth/login', {
       data: { password: process.env.E2E_GM_PASSWORD },
     });
@@ -494,7 +521,8 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.11 seria złych haseł MG trafia na limit (#12)', async () => {
-    test.fail(true, '#12: logowanie MG bez limitu prób i bez opóźnienia');
-    expect(loginStatuses, 'żadnego limitu prób logowania MG').toContain(429);
+    // 10 złych prób z adresu w 15 minut, potem 429 (decyzja MG z 01.10).
+    expect(loginStatuses.slice(0, 10)).toEqual(Array(10).fill(401));
+    expect(loginStatuses.slice(10), 'limit prób logowania MG').toEqual(Array(20).fill(429));
   });
 });

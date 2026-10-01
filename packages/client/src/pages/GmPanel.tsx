@@ -144,7 +144,7 @@ function CampaignCard({
         ))}
       </ul>
       <button className="primary-button" type="button" onClick={() => void createInvitation()}>
-        Nowy link zaproszenia (ważny 7 dni)
+        Nowy link zaproszenia (ważny rok)
       </button>
     </section>
   );

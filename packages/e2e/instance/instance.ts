@@ -56,7 +56,7 @@ function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (
-      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN)/.test(
+      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY)/.test(
         key,
       )
     ) {
@@ -87,6 +87,11 @@ function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     AI_GATEWAY_URL: process.env.E2E_AI_GATEWAY_URL ?? 'http://127.0.0.1:8100',
     AI_GATEWAY_API_KEY: process.env.E2E_AI_GATEWAY_API_KEY ?? '',
     VTT_DICE_SCRIPT: P.DICE_SCRIPT_FILE,
+    // Jak za Caddy na VPS: adres klienta z `X-Forwarded-For`. Przeglądarki suity
+    // idą przez proxy `vite preview` bez tego nagłówka (adres 127.0.0.1), a test
+    // limitu logowania (6.2.11, #12) zgaduje hasło z „obcego” adresu w nagłówku —
+    // inaczej zablokowałby na 15 minut logowanie MG całej reszcie suity.
+    TRUST_PROXY: '1',
     ...extra,
   };
 }

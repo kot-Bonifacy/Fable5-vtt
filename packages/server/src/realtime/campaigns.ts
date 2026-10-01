@@ -2,7 +2,7 @@ import type { Socket } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import { getActiveCampaign } from '../routes/helpers.js';
+import { getUserActiveCampaign } from '../routes/helpers.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
@@ -21,13 +21,7 @@ export async function resolveSocketCampaign(
   prisma: PrismaClient,
   user: SessionUser,
 ): Promise<CampaignSummary | null> {
-  const campaign = await getActiveCampaign(prisma);
-  if (!campaign) return null;
-  if (user.role === ROLE_GM) return campaign;
-  const membership = await prisma.campaignMember.findUnique({
-    where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } },
-  });
-  return membership ? campaign : null;
+  return getUserActiveCampaign(prisma, user);
 }
 
 /**

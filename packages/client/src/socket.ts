@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import type { MusicCommand, MusicState } from '@vtt/shared';
+import type { AuthEndedPush, MusicCommand, MusicState } from '@vtt/shared';
 import { useMusicStore } from './stores/musicStore.js';
 import { chatNotification, notifyGame, startsOwnTurn } from './game-notifications.js';
 import type {
@@ -145,6 +145,7 @@ import type {
   JournalIndexStatus,
   JournalPlayerSyncPayload,
   JournalPlayerUpsertBroadcast,
+  JournalPendingPush,
   JournalProgressBroadcast,
   JournalSyncPayload,
   JournalUpsertBroadcast,
@@ -353,6 +354,8 @@ export const CHARACTER_AWAITING_GM_TEXT =
 function chatErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
+    case 'RATE_LIMITED':
+      return RATE_LIMITED_TEXT;
     case 'UNKNOWN_COMMAND':
       return `Nieznana komenda. ${CHAT_COMMANDS_HELP}`;
     case 'WHISPER_MISSING_TARGET':
@@ -604,7 +607,18 @@ export function connectSocket(userId: string): Socket {
     setDisconnected();
     chat().setDesynced();
   });
-  socket.on('connect_error', () => setDisconnected());
+  socket.on('connect_error', (error: Error) => {
+    setDisconnected();
+    // Sesja skończyła się, gdy gniazdo było rozłączone (uśpiony laptop, #11):
+    // ponowne połączenie odbija się od `io.use`, a „rozłączono" wisiałoby
+    // w nieskończoność. Ekran logowania mówi, co zrobić.
+    if (error.message === 'UNAUTHORIZED') useAuthStore.getState().sessionEnded('expired');
+  });
+  // #11: serwer kończy sesję tego gniazda (wylogowanie w innej karcie, wygaśnięcie)
+  // i zaraz je rozłączy — klient wraca na ekran logowania z notką.
+  socket.on('auth:ended', (push: AuthEndedPush) =>
+    useAuthStore.getState().sessionEnded(push.reason),
+  );
   socket.on('server:hello', (hello: ServerHello) => setServerHello(hello));
   socket.on('music:state', (state: MusicState) => useMusicStore.getState().apply(state));
 
@@ -830,6 +844,9 @@ export function connectSocket(userId: string): Socket {
     if (useAuthStore.getState().user?.role === ROLE_GM) store.remove(broadcast.id, broadcast.index);
     else store.removeShared(broadcast.id);
   });
+  onPresented('journal:pending', (push: JournalPendingPush) =>
+    useJournalStore.getState().setPending(push.pendingLines),
+  );
   onPresented('journal:progress', (broadcast: JournalProgressBroadcast) =>
     useJournalStore.getState().setProgress(broadcast),
   );
@@ -2759,13 +2776,30 @@ function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<S
       resolve({ ok: false, error: 'NOT_CONNECTED' });
       return;
     }
-    socket.emit(event, payload, (ack: SocketAck<T>) =>
+    socket.emit(event, payload, (ack: SocketAck<T>) => {
+      if (!ack.ok && ack.error === 'RATE_LIMITED') noteRateLimited();
       rollPresentation.deliver(
         () => resolve(ack),
         () => resolve({ ok: false, error: 'NOT_CONNECTED' }),
-      ),
-    );
+      );
+    });
   });
+}
+
+const RATE_LIMITED_TEXT = 'Za szybko — odczekaj chwilę i spróbuj ponownie.';
+let rateLimitedNotedAt = 0;
+
+/**
+ * Limit tempa serwera (#13, 01.10): zwykły klient go nie dotyka (20 zdarzeń na
+ * sekundę z zapasem 60), więc odmowa to seria kliknięć albo skrypt. Jedna
+ * notka na kilka sekund zamiast tylu, ile było odmów — każda formatka i tak
+ * pokaże swój błąd obok siebie.
+ */
+function noteRateLimited(): void {
+  const now = Date.now();
+  if (now - rateLimitedNotedAt < 5_000) return;
+  rateLimitedNotedAt = now;
+  useChatStore.getState().addNote(RATE_LIMITED_TEXT);
 }
 
 /**

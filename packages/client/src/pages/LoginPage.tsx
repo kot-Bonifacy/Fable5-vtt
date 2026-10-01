@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore.js';
 
 export function LoginPage() {
   const loginGm = useAuthStore((s) => s.loginGm);
+  const endedNote = useAuthStore((s) => s.endedNote);
   const password = useAutofillableField();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,7 +33,9 @@ export function LoginPage() {
       setError(
         err instanceof ApiError && err.status === 401
           ? 'Nieprawidłowe hasło.'
-          : 'Błąd logowania. Spróbuj ponownie.',
+          : err instanceof ApiError && err.status === 429
+            ? 'Za dużo nieudanych prób z tego adresu — spróbuj ponownie za kilkanaście minut.'
+            : 'Błąd logowania. Spróbuj ponownie.',
       );
     } finally {
       setBusy(false);
@@ -48,6 +51,11 @@ export function LoginPage() {
         <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
         <h1 className="auth-title">Logowanie Mistrza Gry</h1>
         <div className="auth-rule" aria-hidden="true" />
+        {endedNote && (
+          <p className="auth-hint" role="status">
+            {endedNote}
+          </p>
+        )}
         <label className="auth-label" htmlFor="gm-password">
           Hasło
         </label>

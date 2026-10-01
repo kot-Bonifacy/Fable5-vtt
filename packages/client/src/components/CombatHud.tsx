@@ -41,7 +41,12 @@ import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { FigureInjuries } from './FigureInjuries.js';
 import { FigureSkills } from './FigureSkills.js';
-import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
+import {
+  GrapplePanel,
+  HoldActionForm,
+  StabilizeNearbyPicker,
+  StabilizePicker,
+} from './CombatForms.js';
 import { HudIcon, StatusIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
 import { HudEndTurn, HudEndTurnCompact } from './HudEndTurn.js';
@@ -827,6 +832,14 @@ export function CombatHud() {
             </div>
           )}
 
+          {/* #42 (01.10): Ustabilizowanie nie czeka na walkę — ranny po starciu
+              bez niego nie zaczyna naturalnego leczenia. Poza walką pacjentem
+              jest każda figura na wyciągnięcie ręki, a Akcji nikt nie liczy. */}
+          {form === 'stabilize' && !combat && (
+            <div className="hud-form">
+              <StabilizeNearbyPicker tokenId={token.id} onDone={() => setForm(null)} />
+            </div>
+          )}
           {form && form !== 'awareness' && form !== 'backup' && combat && context.combatant && (
             <div className="hud-form">
               {form === 'hold' && (
@@ -850,11 +863,15 @@ export function CombatHud() {
               )}
             </div>
           )}
-          {form && form !== 'awareness' && form !== 'backup' && !context.combatant && (
-            <p className="hud-refusal">
-              Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
-            </p>
-          )}
+          {form &&
+            form !== 'awareness' &&
+            form !== 'backup' &&
+            !(form === 'stabilize' && !combat) &&
+            !context.combatant && (
+              <p className="hud-refusal">
+                Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
+              </p>
+            )}
 
           {/* Ściągawka ze skrótami zniknęła w 27f: pełną listę — z tymi
               czterema i całą resztą — otwiera `?` w górnym pasku. Pasek boczny

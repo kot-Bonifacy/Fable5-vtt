@@ -338,8 +338,13 @@ export interface ChatMessageView {
    * indistinguishable on purpose, so players cannot tell a bot from the GM.
    */
   authorId: string;
-  /** Display name: the user's, or the NPC's when `botId` is set. */
+  /**
+   * Display name: the NPC's when `botId` is set, the character's for a player
+   * speaking in character (#45, 30.09), otherwise the user's.
+   */
   authorName: string;
+  /** The player's account behind a character-signed line (#45) — shown as a tooltip. */
+  accountName?: string;
   /** Set when the line was spoken by a bot profile. */
   botId?: string;
   /** NPC portrait (`/uploads/...`); NPC lines only. */

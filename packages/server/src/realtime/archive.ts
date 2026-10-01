@@ -4,7 +4,7 @@ import type {
   ArchiveSceneImportPayload,
   SnapshotListView,
 } from '@vtt/shared';
-import { ROLE_GM, SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
+import { ROLE_GM, SNAPSHOT_RULES_DEFAULT, polishPlural } from '@vtt/shared';
 import { importCharacter, importScene } from '../archive.js';
 import { listSnapshots, snapshotPathsFor, takeSnapshotAndRotate } from '../snapshots.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
@@ -122,9 +122,12 @@ export const archiveSceneImportEvent = defineEvent<ArchiveSceneImportPayload, Ar
       name: scene.name,
       note:
         result.droppedBindings > 0
-          ? `Scena weszła w podglądzie. ${result.droppedBindings} ${
-              result.droppedBindings === 1 ? 'figura straciła' : 'figur straciło'
-            } powiązanie z kartą lub właścicielem — te karty nie istnieją w tej kampanii.`
+          ? `Scena weszła w podglądzie. ${result.droppedBindings} ${polishPlural(
+              result.droppedBindings,
+              'figura straciła',
+              'figury straciły',
+              'figur straciło',
+            )} powiązanie z kartą lub właścicielem — te karty nie istnieją w tej kampanii.`
           : 'Scena weszła w podglądzie — aktywuj ją, gdy będzie gotowa.',
     };
   },

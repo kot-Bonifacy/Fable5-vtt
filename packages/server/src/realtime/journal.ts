@@ -10,6 +10,7 @@ import type {
   JournalIdPayload,
   JournalIndexStatus,
   JournalLogEntry,
+  JournalPendingPush,
   JournalPlayerEntry,
   JournalPlayerSyncPayload,
   JournalPlayerUpsertBroadcast,
@@ -416,6 +417,29 @@ async function pendingLineCount(prisma: PrismaClient, campaignId: string): Promi
   });
 }
 
+/**
+ * Licznik „Zakończ sesję i streść (N)” u MG idzie za czatem (#43, 30.09).
+ *
+ * Do 30.09 przychodził wyłącznie z `journal:list`, czyli z wejścia w zakładkę:
+ * MG z otwartym „Dziennikiem” patrzył na „(4)”, gdy w bazie czekało sześć
+ * wypowiedzi, a przy „(0)” guzik był wyszarzony, choć było co streszczać.
+ * Liczba jest **policzona z bazy**, a nie podbijana u klienta — kasowanie
+ * wpisu z `throughMessageId` cofa granicę i dopiero serwer wie, o ile.
+ *
+ * Woła się po każdej zapisanej wypowiedzi `say` (gracz, MG, NPC) i po zmianie
+ * granicy (zapis streszczenia, skasowanie wpisu). Błąd nie psuje wypowiedzi.
+ */
+export function emitJournalPending(deps: RealtimeDeps, campaignId: string): void {
+  void pendingLineCount(deps.ctx.prisma, campaignId)
+    .then((pendingLines) => {
+      const push: JournalPendingPush = { pendingLines };
+      deps.io.to(gmRoom(campaignId)).emit('journal:pending', push);
+    })
+    .catch((error: unknown) => {
+      deps.log.warn({ err: error, campaignId }, 'journal pending count failed');
+    });
+}
+
 async function emitUpsert(
   deps: RealtimeDeps,
   campaignId: string,
@@ -532,6 +556,7 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
     };
     await emitUpsert(deps, campaignId, view);
     await emitToPlayers(deps, campaignId, view.id);
+    if (covered !== undefined) emitJournalPending(deps, campaignId);
 
     // Ślad na czacie tylko przy odsłonięciu, nie przy każdej poprawce
     // odsłoniętego wpisu — „udostępnienie jest zdarzeniem", jak w 24a.
@@ -621,6 +646,7 @@ export const journalDeleteEvent = defineEvent<JournalIdPayload, void>({
 
     const broadcast: JournalDeleteBroadcast = { id, index: await indexStatus(deps, campaignId) };
     deps.io.to(gmRoom(campaignId)).emit('journal:delete', broadcast);
+    emitJournalPending(deps, campaignId);
     // Bez rozróżniania, kto go miał: wpis odsłonięty stołowi jest odsłonięty
     // całemu stołowi, a `journal:delete` na nieznane id jest u gracza pustą
     // operacją.

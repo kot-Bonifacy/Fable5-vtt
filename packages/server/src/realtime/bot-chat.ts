@@ -300,13 +300,17 @@ export async function campaignParticipants(
   const [members, characters, bots] = await Promise.all([
     prisma.campaignMember.findMany({
       where: { campaignId },
-      select: { user: { select: { name: true } } },
+      select: { userId: true, user: { select: { name: true } } },
     }),
-    prisma.character.findMany({ where: { campaignId }, select: { name: true } }),
+    prisma.character.findMany({ where: { campaignId }, select: { name: true, ownerId: true } }),
     prisma.botProfile.findMany({ where: { campaignId, archived: false }, select: { name: true } }),
   ]);
+  // Gracz z postacią mówi nią (#45, 30.09), więc przy stole stoi postać, a nie
+  // konto — nazwa konta w tej liście kusiła model, żeby mówić „Marek" do Kowala.
+  // Konto bez postaci zostaje: pisze na czacie pod własną nazwą.
+  const playing = new Set(characters.map((character) => character.ownerId));
   const names = new Set<string>();
-  for (const member of members) names.add(member.user.name);
+  for (const member of members) if (!playing.has(member.userId)) names.add(member.user.name);
   for (const character of characters) names.add(character.name);
   for (const bot of bots) names.add(bot.name);
   return [...names];

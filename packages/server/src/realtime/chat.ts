@@ -35,6 +35,8 @@ import {
   triggerBotsForLine,
   type ChatBot,
 } from './bot-turns.js';
+import { emitJournalPending } from './journal.js';
+import { speakingCharacter } from './relations.js';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -51,6 +53,31 @@ function messageSceneId(socketData: { viewedSceneId: string | null }): string | 
   return socketData.viewedSceneId ?? null;
 }
 
+/**
+ * Pod czyim imieniem mówi gracz: postaci, którą gra (#45, decyzja MG z 30.09).
+ *
+ * Podpis wiersza jest źródłem trzech rzeczy naraz — nazwy autora na czacie,
+ * historii rozmowy w prompcie bota i transkryptu kronikarza (`speakerName ??
+ * author.name`). Z nazwą konta Paser mówił „niech ci będzie, Marek”, a
+ * streszczenie „Marek zapytał Strażnika…”, choć przy stole stał Kowal. Postać
+ * wybiera `speakingCharacter` (ta na scenie, inaczej jedyna albo ostatnio
+ * ruszana). MG i gracz bez postaci mówią nazwą konta — `null`.
+ */
+async function playerSpeakerName(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  sceneId: string | null,
+): Promise<string | null> {
+  if (user.role === ROLE_GM) return null;
+  const character = await speakingCharacter(deps.ctx.prisma, {
+    campaignId,
+    userId: user.id,
+    sceneId,
+  });
+  return character?.name ?? null;
+}
+
 async function persistAndEmitSay(
   deps: RealtimeDeps,
   campaignId: string,
@@ -64,8 +91,10 @@ async function persistAndEmitSay(
     kind: 'say',
     text,
     sceneId,
+    speakerName: await playerSpeakerName(deps, campaignId, user, sceneId),
   });
   broadcastChatMessage(deps, campaignId, message);
+  emitJournalPending(deps, campaignId);
   return message;
 }
 
@@ -89,6 +118,7 @@ async function persistAndEmitWhisperToBot(
     text,
     recipientBotId: bot.id,
     sceneId,
+    speakerName: await playerSpeakerName(deps, campaignId, user, sceneId),
   });
   await deliverChatMessageTo(deps, campaignId, message, [user.id], true);
   await requestBotTurns(deps, [
@@ -282,7 +312,8 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           text: parsed.text,
           messageId: message.id,
           calledByUserId: user.id,
-          calledByName: user.name,
+          // Prośba o działanie („rzuć na…”) też trafia do bota od postaci.
+          calledByName: message.authorName,
           bots,
         });
         return;

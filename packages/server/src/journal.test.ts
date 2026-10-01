@@ -891,9 +891,11 @@ describe('relacje NPC↔postacie', () => {
 
     expect(trace.relation).toEqual({ characterName: 'Vex', value: -3 });
     const prompt = gateway.chatPrompts.at(-1) ?? '';
-    // Gracz pisze na czacie jako konto „Johnny", a relacja zna postać „Vex" —
-    // prompt musi powiedzieć, że to ta sama osoba (oględziny 24.09).
-    expect(prompt).toContain('Rozmawiasz z: Vex (na czacie podpisuje się „Johnny"');
+    // #45 (30.09): konto „Johnny" mówi postacią „Vex" — historia czatu w prompcie
+    // podpisuje wypowiedź postacią, więc relacja nie tłumaczy już, kim jest konto.
+    expect(prompt).toContain('Rozmawiasz z: Vex. Twoje nastawienie');
+    expect(prompt).toContain('Vex: Barman, nalej coś.');
+    expect(prompt).not.toContain('Johnny');
     expect(prompt).toContain('zaprzysięgły wróg');
     // Nastawienie do CUDZEJ postaci nie ma prawa pojawić się w tym prompcie.
     // (Samo imię Rico w prompcie jest — to lista osób przy stole z etapu 11.)

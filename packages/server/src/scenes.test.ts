@@ -209,9 +209,21 @@ describe('map upload', () => {
     expect(result).toMatchObject({ width: 1, height: 1 });
     expect(result.url).toMatch(/^\/uploads\/maps\/.+\.png$/);
 
-    const served = await built.app.inject({ method: 'GET', url: result.url });
+    const served = await built.app.inject({
+      method: 'GET',
+      url: result.url,
+      headers: { cookie: gmCookie },
+    });
     expect(served.statusCode).toBe(200);
     expect(served.rawPayload.equals(PNG_1X1)).toBe(true);
+    // #10 / Z7 (01.10): bez zalogowania sam adres pliku już nie wystarcza.
+    const anonymous = await built.app.inject({ method: 'GET', url: result.url });
+    expect(anonymous.statusCode).toBe(401);
+    const encoded = await built.app.inject({
+      method: 'GET',
+      url: result.url.replace('/uploads/', '/%75ploads/'),
+    });
+    expect(encoded.statusCode).not.toBe(200);
   });
 
   it('rejects non-image content and player uploads', async () => {

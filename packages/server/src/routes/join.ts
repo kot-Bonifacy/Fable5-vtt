@@ -4,7 +4,7 @@ import { ROLE_PLAYER } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import type { PrismaClient } from '../db.js';
 import { createSession, toSessionUser } from '../auth/sessions.js';
-import { setSessionCookie } from './helpers.js';
+import { refuseRateLimited, setSessionCookie } from './helpers.js';
 
 const MAX_NAME_LENGTH = 32;
 
@@ -22,8 +22,11 @@ async function findValidInvitation(prisma: PrismaClient, token: string) {
 export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.get('/api/join/:token', async (request, reply) => {
     const { token } = request.params as { token: string };
+    // Zgadywanie zaproszeń liczy się do tego samego limitu co złe hasła (#12).
+    if (refuseRateLimited(ctx, request, reply)) return reply;
     const invitation = await findValidInvitation(ctx.prisma, token);
     if (!invitation) {
+      ctx.loginLimiter?.fail(request.ip);
       return reply.code(404).send({ error: 'INVALID_INVITATION' });
     }
 
@@ -41,8 +44,10 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
 
   app.post('/api/join/:token', async (request, reply) => {
     const { token } = request.params as { token: string };
+    if (refuseRateLimited(ctx, request, reply)) return reply;
     const invitation = await findValidInvitation(ctx.prisma, token);
     if (!invitation) {
+      ctx.loginLimiter?.fail(request.ip);
       return reply.code(404).send({ error: 'INVALID_INVITATION' });
     }
 

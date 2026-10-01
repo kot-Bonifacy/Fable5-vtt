@@ -6,7 +6,8 @@ import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import type { Invitation } from '../generated/prisma/client.js';
 
-const DEFAULT_INVITATION_TTL_HOURS = 7 * 24;
+// Rok (decyzja MG z 01.10) — tyle co sesja; MG i tak może link unieważnić.
+const DEFAULT_INVITATION_TTL_HOURS = 365 * 24;
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CAMPAIGN_NAME_LENGTH = 64;
 

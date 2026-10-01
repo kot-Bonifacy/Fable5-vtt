@@ -70,3 +70,14 @@ export interface CampaignDetail extends CampaignSummary {
 
 /** Standard acknowledgement payload for Socket.IO events. */
 export type SocketAck<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
+
+/**
+ * Why the server closed this socket's session (#11, 01.10): logged out (in this
+ * or another tab) or past `SESSION_TTL_DAYS`. Sent as `auth:ended` right before
+ * the server disconnects the socket.
+ */
+export type AuthEndedReason = 'logout' | 'expired';
+
+export interface AuthEndedPush {
+  reason: AuthEndedReason;
+}

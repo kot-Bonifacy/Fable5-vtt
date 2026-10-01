@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import { io, type Socket } from 'socket.io-client';
 import { LOG_DIR, REPO_DIR, SERVER_DIR, SERVER_URL } from '../instance/paths.ts';
-import type { Ack } from './socket.ts';
+import { RATE_LIMIT_BACKOFF_MS, RATE_LIMIT_RETRIES, type Ack } from './socket.ts';
 
 /**
  * Narzędzia T2 (`testy.md` 6.2): katalog zdarzeń gniazda, śmieciowe ładunki,
@@ -127,12 +127,35 @@ export function probesFor(realIds: Record<string, unknown> = {}): Probe[] {
 export type ProbeOutcome =
   { kind: 'ack'; ack: Ack } | { kind: 'no-ack' } | { kind: 'disconnected'; reason: string };
 
-/** Jedna próba: emit z potwierdzeniem, limit czasu, zerwane połączenie osobno. */
-export function probe(
+/**
+ * Jedna próba: emit z potwierdzeniem, limit czasu, zerwane połączenie osobno.
+ * `RATE_LIMITED` (#13) ponawia po chwili — macierz ról i śmieci pytają
+ * o odpowiedź zdarzenia, a nie o limit tempa, który stoi przed nim.
+ */
+export async function probe(
   socket: Socket,
   event: string,
   sample: Probe,
   timeoutMs = 15_000,
+): Promise<ProbeOutcome> {
+  for (let attempt = 0; ; attempt += 1) {
+    const outcome = await probeOnce(socket, event, sample, timeoutMs);
+    if (
+      outcome.kind !== 'ack' ||
+      outcome.ack.ok ||
+      outcome.ack.error !== 'RATE_LIMITED' ||
+      attempt >= RATE_LIMIT_RETRIES
+    )
+      return outcome;
+    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_BACKOFF_MS));
+  }
+}
+
+function probeOnce(
+  socket: Socket,
+  event: string,
+  sample: Probe,
+  timeoutMs: number,
 ): Promise<ProbeOutcome> {
   return new Promise((resolve) => {
     const onDisconnect = (reason: string) => finish({ kind: 'disconnected', reason });

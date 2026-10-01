@@ -29,6 +29,8 @@
  *    miesięcy i pory dnia — reszta to arytmetyka `Date` w UTC.
  */
 
+import { polishPlural } from './plural.js';
+
 /**
  * Domyślny start kampanii: 1 stycznia 2045, 08:00.
  *
@@ -332,20 +334,13 @@ export function gameTimeFromInput(date: string, time: string): number | null {
 export function gameDaysLabel(days: number): string {
   const abs = Math.abs(days);
   if (abs === 1) return 'jedna doba';
-  const last = abs % 10;
-  const lastTwo = abs % 100;
-  const few = last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14);
-  return `${abs} ${few ? 'doby' : 'dób'}`;
+  return `${abs} ${polishPlural(abs, 'doba', 'doby', 'dób')}`;
 }
 
 /** „Minęła doba", „Minęły trzy doby", „Minęło 30 dób" — czasownik idzie za liczbą. */
 export function gameDaysPassed(days: number): string {
   const abs = Math.abs(days);
-  if (abs === 1) return 'minęła doba';
-  const last = abs % 10;
-  const lastTwo = abs % 100;
-  const few = last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14);
-  return few ? `minęły ${abs} doby` : `minęło ${abs} dób`;
+  return polishPlural(abs, 'minęła doba', `minęły ${abs} doby`, `minęło ${abs} dób`);
 }
 
 /**

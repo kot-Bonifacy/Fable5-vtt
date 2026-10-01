@@ -27,6 +27,7 @@ import { loadCompendium } from './compendium.js';
 import { loadShopRules } from './shop-rules.js';
 import { loadCpredRegistry } from './cpred.js';
 import { loadCoverCatalogue } from './covers.js';
+import { LoginAttemptLimiter } from './rate-limit.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -51,7 +52,9 @@ export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<BuiltApp> {
   const prisma = createPrisma(config.databaseUrl);
-  const app = Fastify({ logger: options.logger ?? true });
+  // `trustProxy` tylko za zaufanym pośrednikiem (Caddy, etap 28): bez niego
+  // `request.ip` to adres Caddy'ego i limit logowania liczyłby wszystkich razem.
+  const app = Fastify({ logger: options.logger ?? true, trustProxy: config.trustProxy ?? false });
   // Skrypt kości E2E (`dice-script.ts`) ma być widoczny w logu — a w produkcji martwy.
   if (process.env.VTT_DICE_SCRIPT) {
     const script = diceScriptPath();
@@ -63,6 +66,39 @@ export async function buildApp(
   }
 
   await app.register(fastifyCookie, { secret: config.cookieSecret });
+  app.decorateRequest('user', null);
+  app.decorateRequest('sessionId', null);
+
+  // Sesja rozpoznawana już w `onRequest`, a nie w `preHandler`: od 01.10 (#10, Z7)
+  // pliki `/uploads/` wymagają zalogowania, a trasę statyczną obsługuje wtyczka
+  // zarejestrowana niżej — zaczep musi stać przed nią, żeby ją objąć.
+  app.addHook('onRequest', async (request) => {
+    const raw = request.cookies[SESSION_COOKIE];
+    if (!raw) return;
+    const unsigned = request.unsignCookie(raw);
+    if (!unsigned.valid || !unsigned.value) return;
+    const user = await resolveSessionUser(prisma, unsigned.value);
+    if (user) {
+      request.user = user;
+      request.sessionId = unsigned.value;
+    }
+  });
+
+  /**
+   * Mapy, portrety, żetony i handouty tylko dla zalogowanych (#10 / Z7, decyzja
+   * MG z 01.10). Do tej pory wystarczał adres (16 losowych znaków) — także do
+   * handoutu, którego MG jeszcze nikomu nie pokazał. Przeglądarka wysyła
+   * ciasteczko sesji do obrazków i `fetch` Pixi z tego samego pochodzenia, więc
+   * stół niczego nie zauważa. Członkostwo w kampanii pliku i nieudostępnione
+   * handouty zostają w Z7 na etap „Konta MG”.
+   */
+  app.addHook('onRequest', async (request, reply) => {
+    // Trasa, a nie surowy adres: `/%75ploads/…` trafia w tę samą trasę statyczną.
+    const route = request.routeOptions.url ?? '';
+    if (!route.startsWith('/uploads/') && !request.url.startsWith('/uploads/')) return;
+    if (!request.user) return reply.code(401).send({ error: 'UNAUTHORIZED' });
+  });
+
   await app.register(fastifyMultipart, {
     limits: { fileSize: MAX_MAP_UPLOAD_BYTES, files: 1 },
   });
@@ -77,21 +113,6 @@ export async function buildApp(
     root: config.dataPublicDir,
     prefix: '/public/',
     decorateReply: false,
-  });
-
-  app.decorateRequest('user', null);
-  app.decorateRequest('sessionId', null);
-
-  app.addHook('preHandler', async (request) => {
-    const raw = request.cookies[SESSION_COOKIE];
-    if (!raw) return;
-    const unsigned = request.unsignCookie(raw);
-    if (!unsigned.valid || !unsigned.value) return;
-    const user = await resolveSessionUser(prisma, unsigned.value);
-    if (user) {
-      request.user = user;
-      request.sessionId = unsigned.value;
-    }
   });
 
   app.get('/health', () => ({ status: 'ok', uptime: process.uptime() }));
@@ -117,16 +138,18 @@ export async function buildApp(
     shopRules,
     covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
+    ...(config.rateLimits ? { loginLimiter: new LoginAttemptLimiter() } : {}),
   };
-  registerAuthRoutes(app, ctx);
+  // Gniazda przed trasami: wylogowanie rozłącza gniazda swojej sesji (#11).
+  const io = new SocketIOServer(app.server, {
+    cors: { origin: config.clientOrigin, credentials: true },
+  });
+  registerAuthRoutes(app, ctx, io);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);
   registerArchiveRoutes(app, ctx);
 
-  const io = new SocketIOServer(app.server, {
-    cors: { origin: config.clientOrigin, credentials: true },
-  });
   setupRealtime(io, app, ctx);
   registerMusicRoutes(app, ctx, io);
   ai.start();

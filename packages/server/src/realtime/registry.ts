@@ -4,7 +4,9 @@ import type { Role, SessionUser, SocketAck } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { RoomSequences } from './state.js';
+import type { SocketRateLimiter } from '../rate-limit.js';
 import { withPresentation } from './presentation.js';
+import { endSocketSession, socketSessionExpired } from './session-guard.js';
 
 /** Shared dependencies passed to every realtime event handler. */
 export interface RealtimeDeps {
@@ -13,6 +15,8 @@ export interface RealtimeDeps {
   ctx: AppContext;
   seqs: RoomSequences;
   presentation?: (() => Promise<void> | void)[];
+  /** Limit tempa zdarzeń per konto (#13); brak = bez limitu (`config.rateLimits`). */
+  rateLimiter?: SocketRateLimiter;
 }
 
 /** Thrown by handlers to reject an event with a machine-readable code. */
@@ -77,6 +81,19 @@ export function registerEvents(
       const payload = ack && args.length === 1 ? undefined : args[0];
 
       const user = socket.data.user;
+      // #11: zdarzenie, które zdążyło przed zegarem wygaśnięcia, też dostaje odmowę.
+      if (socketSessionExpired(socket)) {
+        ack?.({ ok: false, error: 'SESSION_ENDED' });
+        endSocketSession(socket, 'expired');
+        return;
+      }
+      // #13: limit per konto, przed rolą i przed bazą — odmowa nic nie kosztuje.
+      // Zdarzenie bez potwierdzenia (klatka przeciągania, miarka) przepada po
+      // cichu: następna i tak zaraz przyjdzie, a odpowiedzieć nie ma komu.
+      if (deps.rateLimiter && !deps.rateLimiter.allow(user.id, ack ? 'acked' : 'fireAndForget')) {
+        ack?.({ ok: false, error: 'RATE_LIMITED' });
+        return;
+      }
       if (event.role && user.role !== event.role) {
         ack?.({ ok: false, error: 'FORBIDDEN' });
         return;
