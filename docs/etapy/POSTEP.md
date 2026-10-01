@@ -43,9 +43,9 @@ krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
 gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
-retest #21 i #22. **Otwarte #10–#13** (na etap „Konta MG”, zadania Z5–Z8) **oraz #42–#45 z T6b** (do triażu i poprawki); zadania Z2–Z9 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — **rejestr nie ma otwartych błędów**, suita bez `test.fail`; limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **następny T6c**
-(dwa pełne przebiegi `pnpm test:e2e` od zera, łatanie migotania) albo najpierw poprawki #42–#45.
+(dwa pełne przebiegi `pnpm test:e2e` od zera, łatanie migotania).
 Kolejność (decyzja MG z 26.09):
 **T3–T6 → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T7, T8, T10 → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -109,8 +109,8 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2245** w `shared`, **1272** na serwerze, **301** u klienta,
-**59** w gatewayu (29.09, poprawki po T5b), **196** E2E (9 `test.fail` — #10–#13, #42–#45; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**Testy na koniec ostatniej sesji:** **2247** w `shared`, **1281** na serwerze, **301** u klienta,
+**59** w gatewayu (29.09, poprawki po T5b), **196** E2E (0 `test.fail`; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; pełny przebieg od zera to T6c — 27.09 system zabił procesy w tle z braku pamięci) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -133,11 +133,11 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 53   | 22      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 6    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 13   | 17      |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 14   | 18      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 16   | 1       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 9    | 5       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 10   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 39   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 8    | 11      |
@@ -149,12 +149,37 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 74      |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 78      |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 01.10 — poprawki #10–#13 i #42–#45 (retest E2E OK), rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #10–#13 **też teraz**
+(nie na „Konta MG”); wagi #43 B3, #44 B3, #45 B2; #45 — „Kowal” wszędzie, także na czacie (konto
+w podpowiedzi); #42 — pacjenci poza walką = widoczne figury w zasięgu ramienia; #12 — per IP,
+10 błędów / 15 min, 429 także na dobre hasło; #13 — 20/s z zapasem 60, bez acku 40/s, MG też;
+#10 razem z uploadami za logowaniem; #11 — ekran logowania z notką, **sesja i link zaproszenia rok**.
+
+**Zrobione (`a551f3a`):** `realtime/session-guard.ts` (pokój sesji, `auth:ended`, zegar wygaśnięcia,
+`SESSION_ENDED`), `src/rate-limit.ts` (`SocketRateLimiter` w `registerEvents`, `LoginAttemptLimiter`
+w logowaniu i `/api/join`), `config.rateLimits?`/`trustProxy?`, `/uploads/` za logowaniem (zaczep
+`onRequest`), `getUserActiveCampaign`; `StabilizeNearbyPicker`; `journal:pending`; `polishPlural`
+w rdzeniu; podpis postacią (`playerSpeakerName`, `accountName`, lista „przy stole” bez kont z postacią,
+szept bota do postaci, `BOT_PROMPT_VERSION` 5). E2E: zdjęte wszystkie `test.fail`, instancja
+z `TRUST_PROXY=1`, `emitAck`/`probe` ponawiają `RATE_LIMITED`, T6b: 6.6c przed 6.6b, 6.6b stabilizuje
+poza walką. Umowy w `serwer`, `czat`, `tura`, `boty`; pułapki w `serwer` i `testy`; Z11 w rejestrze.
+
+**Weryfikacja:** shared 2247, serwer 1281 (nowy `security.test.ts`), klient 301; `tsc`, ESLint,
+Prettier czyste. E2E: T2 od `po-T3` 41/41 (drugi przebieg; pierwszy — 6.2.8 poprawiony i jednorazowe
+`ETIMEDOUT` proxy przy F5 MG), T6b od `po-T6a` 18/18 z modelem (nagrał nowy `po-T6`). Pierwsze
+podejście do T6b system zatrzymał z braku pamięci (gateway + suita), drugie za zgodą MG. Oglądane:
+Ola w Firefoksie (6.6b), skrypt Playwright w Firefoksie — autor „Kowal” z podpowiedzią „Gracz: Marek”,
+notka „Wylogowano w innej karcie…”; Paser odpowiada „Oho, Kowal…”. `dev.db` nietknięta.
+**Następny krok:** T6c (dwa pełne przebiegi od zera).
 
 ### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import (trzy nowe błędy)
 
@@ -174,25 +199,3 @@ suita `tsc`, ESLint, Prettier czyste. Oglądane automatem: MG i Marek w Chromium
 headless; gateway z modelem (system zabił go w trakcie z braku pamięci, podniesiony za zgodą MG).
 `dev.db` nietknięta. **Następny krok:** T6c (dwa pełne przebiegi od zera) albo poprawki #42–#45.
 
-### Sesja 30.09 — poprawki #40 i #41 (retest E2E OK), retest #21 i #22
-
-**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #40 i #41 — B3; #40 obejmuje
-kartę czatu **i** obie listy (odbiorcy przelewu, cele przekazania — zmienia decyzję z 12.09),
-towarzysze-boty zostają na listach gracza; #41 — pacjent prosi, Medyk przyjmuje i ustala cenę
-(domyślna widoczna w polu, zero dozwolone, wyższą zatwierdza pacjent, całość na kartę Medyka, bez
-zasięgu); #10–#13 zostają na „Konta MG”; #21/#22 domknąć retestem.
-
-**Zrobione (`21cbedd`):** #40 — `realtime/team-cards.ts` (`teamCardsWhere`, `requireTeamCard`) na
-listach i w `economy:transfer`/`inventory:give`, `InventoryMoveView` bez id u gracza,
-`deliverChatMessageTo` przycina per widz. #41 — `cyberware:surgeons`/`request`/`respond`
-(`realtime/surgery.ts`), rodzaj czatu `surgery` (`shared/src/surgery.ts`, `SurgeryRequest.tsx`),
-Medycy innych graczy w Kompendium („· poproś”), `performInstall` i `surgeonRollFor` wyjęte
-z `cyberware.ts`, zapłata z `payee`. Umowy w `ekwipunek`, `postac`, `czat`; pułapki w `testy`.
-**#21** retest skryptem z atrapą gatewaya 503 (`po-T4a`, tura Rzeźnika — „Model jest zajęty…”),
-**#22** — retestem #16 z 27.09 (decyzja MG).
-
-**Weryfikacja:** shared 2245, serwer 1272 (nowy `surgery.test.ts`), klient 301; `tsc`, ESLint,
-Prettier czyste. E2E: T6a od `po-T5` 13/13 cztery razy (6.3/6.5 przez prośbę o operację; `po-T6a`
-nagrany na nowo: Kowal 30 ed, Iskra 1650 ed), T2 od `po-T3` 41/41. Oglądane automatem: MG i Marek
-w Chromium, Ola w Firefoksie (karta prośby — zrzuty w scratchpadzie), headless; gateway z modelem
-(port 8080 zwolnił MG). `dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a`.

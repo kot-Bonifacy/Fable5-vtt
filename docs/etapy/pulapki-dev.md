@@ -204,6 +204,7 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Nowe wymagane pole `ServerConfig` wywraca ~78 plików testów (01.10)** — każdy test dymny ma **własny literał konfiguracji**. Nowy przełącznik rób opcjonalnym (`rateLimits?`, `trustProxy?`, wzór `backups?`): `loadConfig` ustawia wartość produkcyjną, a brak pola w teście znaczy „wyłączone”.
 - **`tsup` zdejmuje `node:` z importów — `node:sqlite` zamienia się w pakiet `sqlite` i `dist/` pada na starcie** — od etapu 33 do 26.09 (T1 testów) build produkcyjny serwera nie wstawał, a nikt go nie uruchamiał. Lek: `removeNodeProtocol: false` w `tsup.config.ts`; strażnikiem jest instancja E2E, która startuje z `dist/`.
 - **`requireCallableRequest` to BIAŁA LISTA** (`realtime/checks.ts`) — przepisuje żądanie Testu pole po polu, więc nowe pole w `CpredRollRequest` **ginie po cichu** na drodze prośba → zgoda → rzut. Objaw: funkcja działa z wezwania, a z prośby gracza nie robi nic, bez jednego błędu w logu.
 - **Plik na stałe w `uploads/` znika po godzinie** — zbieracz sierot zamiata `maps`, `portraits`, `tokens` i `handouts`, kasując wszystko, czego nie wymienia żaden wiersz bazy. Asset bez wiersza (np. mapa powitalna) musi leżeć **poza tą czwórką** — stąd `uploads/art/`.
@@ -234,6 +235,13 @@ nietrafioną — sprawdzaj obie.
   Znalezione dopiero oględzinami — **żaden test nie dotykał tego pola**.
 
 ---
+
+**Konfiguracja testów dymnych to ~78 osobnych literałów (01.10, poprawki #12–#13).** Pole
+wymagane w `ServerConfig` łamie kompilację każdego pliku `*.test.ts` serwera. Limity tempa
+weszły więc jako `rateLimits?: boolean` — `loadConfig` (dev, E2E, produkcja) daje `true`, a test
+bez pola jedzie bez limitu, co jest tam pożądane (jedno gniazdo wysyła setki zdarzeń). Test samego
+limitu ustawia pole jawnie (`security.test.ts`).
+
 
 **Build produkcyjny serwera nie wstawał od etapu 33 — `tsup` zdejmuje `node:` z importów (26.09.2026, T1 testów bety).**
 `tsup` 8 domyślnie przepisuje `node:fs` na `fs` (zgodność ze starszym Node). Dla modułów, które mają
@@ -1666,6 +1674,10 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Gniazdo aktora E2E dzieli wiadro limitu tempa z kartą przeglądarki tego konta (01.10, #13)** — limit jest per konto, nie per gniazdo. Pętla `emitAck` z `actor.socket()` zjada zapas, z którego korzysta UI tej samej osoby. `emitAck` i `probe` ponawiają `RATE_LIMITED` po 250 ms; po długiej serii surowych zdarzeń daj stronie 3 s, zanim klikniesz.
+- **Gniazdo wygasłej sesji rozłącza się samo (01.10, #11)** — `emit` na rozłączonym gnieździe socket.io buforuje i ack nigdy nie przychodzi (`E2E: no ack for chat:send`). Test „sesja traci prawa” sprawdza najpierw `socket.connected`.
+- **`/uploads/` wymaga ciasteczka (01.10, #10)** — `rawGet` bez ciasteczka dostaje 401 na wszystko, więc test „bez wyjścia poza katalog” musi iść też z ciasteczkiem MG, inaczej niczego nie sprawdza. `page.request` niesie ciasteczka strony, `APIRequestContext` aktora — swoje.
+- **Test limitu logowania blokuje `127.0.0.1` na 15 minut całej reszcie suity (01.10, #12)** — dlatego instancja E2E ma `TRUST_PROXY=1`, a 6.2.11 zgaduje z adresu w `X-Forwarded-For`. Przeglądarki idą przez proxy `vite preview` bez tego nagłówka.
 - **Restart instancji przy otwartych kartach zostawia w konsoli Firefoksa „downloadable font: download failed … status=2152398861” (30.09, T6b)** — to `NS_ERROR_CONNECTION_REFUSED` z chwili, gdy `vite preview` leżał; Chromium pisze to samo jako `ERR_CONNECTION_REFUSED`. Test z restartem filtruje oba, inaczej migocze raz na kilka przebiegów.
 - **`pnpm test:e2e -g "…6\.6…"` nie dopasowuje niczego (30.09, T6b)** — `pnpm --filter` cytuje argument drugi raz i ukośnik się podwaja; „Running 1 test” zamiast sześciu. Pisz wzorzec bez ukośnika (`-g "start z po-T6a|6.6"` — kropka i tak pasuje).
 - **Okno zegara MG stoi nad zakładkami panelu bocznego (30.09, T6b)** — po skokach „+10 min” klik w „Walka” czeka do limitu testu („settings-window-body intercepts pointer events”). Zamykaj zegar („Zamknij zegar”) zaraz po skokach.
@@ -1742,6 +1754,15 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+**Limity z 01.10 w suicie E2E (#11–#13).** Instancja E2E startuje z `loadConfig`, więc limity
+są włączone jak na produkcji. Trzy skutki: (1) wiadro jest per **konto** — `actor.socket()`
+i karta przeglądarki tej samej osoby czerpią z jednego zapasu, dlatego `emitAck` i `probe`
+ponawiają `RATE_LIMITED` (surowy zalew 6.2.4 emituje bez nich i mierzy limit); (2) zgadywanie
+hasła z `127.0.0.1` zablokowałoby logowanie MG reszcie przebiegu — 6.2.11 zgaduje spod
+`X-Forwarded-For: 203.0.113.50` (instancja ma `TRUST_PROXY=1`); (3) gniazdo wygasłej sesji jest
+rozłączane przez serwer, a `emit` na rozłączonym gnieździe nie dostaje acku nigdy.
+
 
 **Test „zawieszonego kliku” w Firefoksie, który był zawieszonym odczytem (27.09, T5a).** Test #31
 klikał piętro 2 w oknie runu, a w adnotacji czytał `window.locator('.net-run-notice').textContent()`

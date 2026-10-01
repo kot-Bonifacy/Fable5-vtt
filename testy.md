@@ -700,6 +700,18 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 01.10 — poprawki #10–#13 i #42–#45, retest T2 i T6b
+
+Poprawki w `a551f3a`, rozstrzygnięcia MG i szczegóły w rejestrze. **Rejestr nie ma już otwartych
+błędów** (#1–#45: retest OK); zadania Z5, Z6, Z8 zrobione, Z7 częściowo (uploady za logowaniem),
+nowe Z11 (`TRUST_PROXY=1` za Caddy). Suita: **0 `test.fail`**. T2 od `po-T3` 41/41, T6b od `po-T6a`
+18/18 z modelem — T6b nagrał na nowo punkt `po-T6` (Kowal ustabilizowany poza walką, potem drugi raz
+w krótkiej walce). Instancja E2E ma od teraz `TRUST_PROXY=1`, a `emitAck`/`probe` ponawiają
+`RATE_LIMITED`. Sesja i link zaproszenia ważne rok (6.2.8 sprawdza 364–365 dób).
+
+**Następny krok:** T6c — dwa pełne przebiegi `pnpm test:e2e` od zera i łatanie migotania (nowe
+podejrzenie: jednorazowe `connect ETIMEDOUT` proxy `vite preview` przy F5 po fuzzie MG).
+
 ### Sesja 30.09 — T6b: czas, kronika, eksport, kopia z harmonogramu, import
 
 **Rozstrzygnięcia MG na starcie:** Iskra stabilizuje Kowala; efekt z formularza MG; streszczenie

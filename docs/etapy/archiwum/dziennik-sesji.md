@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 30.09 — poprawki #40 i #41 (retest E2E OK), retest #21 i #22
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md`. Pytania na starcie: #40 i #41 — B3; #40 obejmuje
+kartę czatu **i** obie listy (odbiorcy przelewu, cele przekazania — zmienia decyzję z 12.09),
+towarzysze-boty zostają na listach gracza; #41 — pacjent prosi, Medyk przyjmuje i ustala cenę
+(domyślna widoczna w polu, zero dozwolone, wyższą zatwierdza pacjent, całość na kartę Medyka, bez
+zasięgu); #10–#13 zostają na „Konta MG”; #21/#22 domknąć retestem.
+
+**Zrobione (`21cbedd`):** #40 — `realtime/team-cards.ts` (`teamCardsWhere`, `requireTeamCard`) na
+listach i w `economy:transfer`/`inventory:give`, `InventoryMoveView` bez id u gracza,
+`deliverChatMessageTo` przycina per widz. #41 — `cyberware:surgeons`/`request`/`respond`
+(`realtime/surgery.ts`), rodzaj czatu `surgery` (`shared/src/surgery.ts`, `SurgeryRequest.tsx`),
+Medycy innych graczy w Kompendium („· poproś”), `performInstall` i `surgeonRollFor` wyjęte
+z `cyberware.ts`, zapłata z `payee`. Umowy w `ekwipunek`, `postac`, `czat`; pułapki w `testy`.
+**#21** retest skryptem z atrapą gatewaya 503 (`po-T4a`, tura Rzeźnika — „Model jest zajęty…”),
+**#22** — retestem #16 z 27.09 (decyzja MG).
+
+**Weryfikacja:** shared 2245, serwer 1272 (nowy `surgery.test.ts`), klient 301; `tsc`, ESLint,
+Prettier czyste. E2E: T6a od `po-T5` 13/13 cztery razy (6.3/6.5 przez prośbę o operację; `po-T6a`
+nagrany na nowo: Kowal 30 ed, Iskra 1650 ed), T2 od `po-T3` 41/41. Oglądane automatem: MG i Marek
+w Chromium, Ola w Firefoksie (karta prośby — zrzuty w scratchpadzie), headless; gateway z modelem
+(port 8080 zwolnił MG). `dev.db` nietknięta. **Następny krok:** T6b od `E2E_FROM=po-T6a`.
+
 ### Sesja 29.09 — T6a: handel, sklep, Paser, PD, Medyk, cyborgizacja (dwa nowe błędy)
 
 **Zlecenie MG:** T6 (`testy.md` 5.4), podzielony po pytaniach na T6a (6.1–6.5), T6b (6.6–6.9) i T6c

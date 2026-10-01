@@ -629,6 +629,7 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
+- **Gracz mówi postacią (01.10, #45)** — `say` i szept do bota gracza zapisują `speakerName` = imię postaci (`playerSpeakerName` w `realtime/chat.ts` → `speakingCharacter`); MG i gracz bez postaci — `null` (nazwa konta). Widok niesie wtedy `accountName` (konto w podpowiedzi autora). Po zapisie wypowiedzi `say` (gracz, MG, NPC) idzie `emitJournalPending` → `journal:pending` do pokoju MG (#43).
 - **Co gracz może zobaczyć z karty czatu, przycina `redactChatMessage` — w historii I w dostarczeniu (30.09, #40)** — `deliverChatMessageTo` (karty prywatne, `chat:update`) woła ją per gniazdo od 30.09; wcześniej przycinała tylko historia i `broadcastRedactedChatMessage`, więc karta przekazania niosła graczowi na żywo id karty NPC-a. Nowe pole tajne dla gracza — gałąź w `redactChatMessage`, typ widoku z polem opcjonalnym (wzór `InventoryMoveView`).
 - **Nazwa figury w karcie czatu idzie przez `tokenTableName(token, realName)`** (`shared/tokens.ts`, 13.09) — alias u wszystkich, MG też; `''` → „Nieznajomy". Rzut z samej karty (bez żetonu) pisze nazwę karty. Uczestnik kolejki: `combatantTableName`, nie `combatantName`.
 - **Widoczność wyniku to RODZAJ wiersza czatu**: `rolltable` publiczny, `gmrolltable` cichy — wzorem `roll`/`gmroll`. „Pokaż stołowi” **dokłada** publiczny wiersz (treść z zapisanej karty, nie z żądania), bo `visibleTo` jest białą listą rodzajów w zapytaniu do bazy.
@@ -637,6 +638,15 @@ droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
 - **Nowy rodzaj wiersza czatu ma PIĘĆ miejsc, nie cztery** — do dwóch czystych funkcji, `toChatMessageView` i `FullMessageRow` dochodzi **`visibleTo` w `chat-io.ts`**: to biała lista rodzajów, a wiersz spoza niej znika z historii i widzi go tylko autor. Rodzaj publiczny dopisuje się do **obu** gałęzi (gracza i MG).
 
 ---
+
+**Podpis wypowiedzi gracza i licznik streszczenia (01.10, #45 i #43).** `speakerName` jest
+jednocześnie autorem na czacie, podpisem w historii bota i w transkrypcie kronikarza
+(`speakerName ?? author.name`), więc postać wpisuje się **przy zapisie**, a nie przy odczycie
+(decyzja MG: „Kowal” wszędzie, konto w podpowiedzi). Lista „przy stole” w prompcie
+(`campaignParticipants`) pomija konta, które mają postać; szept bota idzie do postaci
+(`whisperWith`). Nowe miejsce, które zapisuje wypowiedź `say`, woła `emitJournalPending` —
+inaczej licznik „Zakończ sesję i streść (N)” u MG stoi do wejścia w zakładkę.
+
 
 **Nazwa figury w karcie czatu idzie przez `tokenTableName`, nigdy wprost z `token.name` (13.09).**
 Alias `Token.publicName` (03.09) zasłaniał nazwę na mapie i w kolejce, a ponad pięćdziesiąt miejsc
@@ -704,6 +714,7 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Gniazdo żyje tyle, co sesja; limity tempa w `registerEvents` i trasach logowania (01.10, #11–#13)** — `socket.data.sessionId`/`sessionExpiresAt` z handshake'u, pokój `sessionRoom(id)`; wylogowanie woła `endSessionSockets(io, id, 'logout')`, wygaśnięcie — zegar `armSessionExpiry` i odmowa `SESSION_ENDED`. Limit per konto (`SocketRateLimiter`, 20/s z zapasem 60, bez acku 40/s po cichu) i złe hasła/zaproszenia per IP (`LoginAttemptLimiter`, 10 / 15 min, 429 z `Retry-After`) w `src/rate-limit.ts`; włącza je `config.rateLimits` (domyślnie tak, testy dymne bez). `/uploads/` tylko dla zalogowanych (zaczep `onRequest` w `app.ts`), aktywna kampania z REST przez `getUserActiveCampaign`.
 - **Błąd walidacji Prismy to `BAD_REQUEST`, nie `INTERNAL` (27.09, #15)** — `registerEvents` łapie `Prisma.PrismaClientValidationError` (id `1e308`, ułamek, zły typ) i loguje go na `warn`. Pole tekstowe handler sprawdza `typeof … === 'string'` przed `.trim()`. `junk-payloads.test.ts` puszcza śmieci przez każde zdarzenie z `EVENTS` z gniazda gracza i MG.
 - **Zdarzenie gniazda istnieje tylko w `EVENTS` (26.09, T2)** — `realtime/index.ts` eksportuje tę listę, a macierz ról i śmieciowe ładunki E2E (`packages/e2e/fixtures/security.ts`, `realtimeEvents()`) czytają ją stamtąd. Zdarzenie tylko dla MG stoi na `role: ROLE_GM` — **odmowa wewnątrz handlera nie wchodzi do macierzy**, więc sprawdzanie roli „ręką” zostaw dla zdarzeń, które gracz woła legalnie o własne rzeczy. Id z ładunku sprawdzaj co do typu, zanim trafi do Prismy — inaczej śmieć kończy się `INTERNAL` zamiast odmowy (#15).
 - **Portret NPC — `PortraitAsset.gmOnly` (23.09)** — gracz nie dostaje portretów NPC; noszony jedzie do niego jako sam adres i kadr bez nazwy (`playerPortraitView`). Rozgłoszenia puli idą dwiema emisjami z **jednym** `seq` (`emitPortraitAsset`: `gmRoom` pełny wiersz, reszta pokoju wersję gracza albo `removedId`). Klient dociąga pulę na nieznany adres figury (`portraitStore.notice`).
@@ -735,6 +746,35 @@ po zmianie kampanii; klient czyści pulę i unieważnia starsze odczyty przy prz
 - **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
 
 ---
+
+**Sesja, limity i pliki za logowaniem (01.10, poprawki #10–#13 z T2).**
+
+- **Sesja gniazda.** `io.use` zapisuje w `socket.data` `sessionId` i `sessionExpiresAt`, gniazdo
+  wchodzi do pokoju `sessionRoom(sessionId)` (`realtime/session-guard.ts`). `POST /api/auth/logout`
+  woła `endSessionSockets(io, id, 'logout')` — `auth:ended` i rozłączenie każdej karty tej sesji.
+  Wygaśnięcie: `armSessionExpiry` (zegar nastawiany co ≤ 23 doby, bo `setTimeout` nie sięga roku)
+  i odmowa `SESSION_ENDED` w `registerEvents`. Klient na `auth:ended` i na `connect_error`
+  `UNAUTHORIZED` woła `sessionEnded(reason)` — ekran logowania z notką (`endedNote`).
+  **Sesja i link zaproszenia żyją rok** (decyzja MG z 01.10; `SESSION_TTL_DAYS`, `DEFAULT_INVITATION_TTL_HOURS`).
+- **Limit tempa gniazda** stoi w `registerEvents` **przed rolą i przed bazą**: `deps.rateLimiter`
+  (`SocketRateLimiter`, klucz = konto, wszystkie jego gniazda razem). Zdarzenie z ackiem — 20/s,
+  zapas 60, nadmiar `RATE_LIMITED`; bez acku (klatka przeciągania, miarka) — 40/s, nadmiar
+  przepada po cichu. Klient: `emitSceneAck` i `chatErrorText` dają notkę „Za szybko…”.
+  E2E: `emitAck` i `probe` ponawiają `RATE_LIMITED` — surowy zalew mierzy tylko 6.2.4.
+- **Złe hasła i zaproszenia** liczy `ctx.loginLimiter` (`LoginAttemptLimiter`) per `request.ip`:
+  10 porażek w oknie 15 min → 429 z `Retry-After` **także na dobre hasło**; inne adresy i otwarte
+  sesje działają, udane wejście zeruje licznik. Nowa trasa wejścia: `refuseRateLimited` przed
+  sprawdzeniem sekretu, `fail` przy porażce. Za Caddy potrzebny `TRUST_PROXY=1` (etap 28, Z11).
+- **Oba limity włącza `config.rateLimits`** — pole opcjonalne: `loadConfig` daje `true`
+  (`RATE_LIMITS=0` wyłącza), a konfiguracje testów dymnych go nie mają, więc tam limitów nie ma.
+  Test limitu ustawia `rateLimits: true` sam (`security.test.ts`).
+- **`/uploads/` za logowaniem** — zaczep `onRequest` w `app.ts` (sesja rozpoznawana też
+  w `onRequest`, przed wtyczką statyczną; sprawdza trasę, nie surowy adres). Członkostwo w kampanii
+  pliku i nieudostępnione handouty zostają w Z7 („Konta MG”).
+- **Aktywna kampania z REST** dla gracza tylko, gdy jest członkiem: `getUserActiveCampaign`
+  (`routes/helpers.ts`; `resolveSocketCampaign` woła to samo). Nowa trasa REST o kampanii gracza
+  bierze kampanię stamtąd, nie z `getActiveCampaign`.
+
 
 **Portrety NPC są w tej samej puli, z flagą `gmOnly` (zlecenie MG z 23.09).** Twarz i nazwa
 portretu zdradzają, kogo drużyna dopiero spotka, a pula była publiczna dla każdego zalogowanego —
@@ -1306,6 +1346,7 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Ustabilizowanie poza walką (01.10, #42)** — `form === 'stabilize' && !combat` rysuje `StabilizeNearbyPicker` (`CombatForms.tsx`): medyk i widoczne figury w zasięgu ramienia (`reachMetresBetweenTokens` ≤ `CPRED_MELEE_REACH_M`), bez kosztu Akcji (serwer: `spendStabilizeAction` bez walki nic nie pobiera). W walce bez zmian — `StabilizePicker` z uczestników. Oba rysują tę samą `StabilizeTargetList`.
 - **Widok walki w odpowiedzi (ack) idzie przez `emitReloadedFor(…, user)` (26.09, #19)** — ack trafia do jednego gniazda z pominięciem filtra pokoi, więc handler zwracający `CombatView` oddaje widok **pytającego** (`filterCombatForPlayer` dla gracza), nigdy pełny widok MG. `emitReloaded` tylko rozgłasza i zwraca `void` — nowy handler nie ma czego zwrócić przez pomyłkę.
 - **Powód odmowy Akcji ma JEDNO źródło** — `cpredActionRefusal(actionId, { statuses, turn, isGm })` w `hotbar.ts`; wołają je **oba** wejścia (pasek mapy i zakładka „Walka"). Akcja o koszcie `move` odmawia z budżetu ruchu, nie Akcji. Budżet tury czyta `cpredTurnRefusalInput(turn)`, nie ręczne `resources.find`.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek. Pod ręczną mgłą **przed nim** stoi `refuseWalkIntoFog` (14.09) — nowa odmowa, która mogłaby zdradzić coś schowanego w czerni, idzie za mgłą, nie przed nią (umowa w `mapa`).
@@ -1317,6 +1358,14 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 - **Stan gry dotyczący całej walki** (nie uczestnika) mieszka w `Combat.systemState` — nieprzezroczystej kolumnie jak `turnState`; tłumaczy ją `reinforcementsOf` na `ReinforcementView`. Umiera razem z walką i to jest jej sens.
 
 ---
+
+**Ustabilizowanie poza walką (01.10, #42, decyzja MG).** Bez kolejki nie ma listy uczestników,
+więc pacjentami są medyk („w tym siebie”, s. 222) i widoczne figury sceny w zasięgu ramienia —
+tym samym, który mierzy `requireStabilizeReach`. Slot paska otwiera formularz jak w walce, a
+`CombatHud` wybiera `StabilizeNearbyPicker`, gdy walki nie ma; odmowa „wymaga trwającej walki”
+nie dotyczy tej akcji. Nowa akcja, która ma działać i w walce, i poza nią, idzie tym wzorem
+(formularz przed blokiem wymagającym `context.combatant`), jak Zmysł Walki i radio.
+
 
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
@@ -2797,14 +2846,14 @@ takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli ef
 - **Zerwany strumień SSE to zdarzenie `AI_UNREACHABLE`, nie wyjątek (29.09, #35)** — `AiGateway.streamChat` łapie błąd pętli `parseSse`; wyjątek leci dalej tylko przy przerwanym sygnale (stop MG, limit czasu — wołający rozpoznają je po `signal.aborted`). Kod odmowy „Graj turę” zamienia na zdanie `botTurnErrorText` (`socket.ts`); nowy przycisk bota, który pokazuje odmowę gniazda, bierze zdanie stamtąd, nie gołe `ack.error`.
 - **Odpowiedź na kartę propozycji bota bierze blokadę przed pierwszym `await` (26.09, #20)** — `proposalsInFlight` w `realtime/bot-actions.ts`: drugi klik w trakcie zatwierdzania dostaje `PROPOSAL_ALREADY_RESOLVED`, zanim przeczyta kartę. Nowe zdarzenie, które wykonuje coś i dopiero potem zapisuje „zrobione", trzyma tę samą kolejność.
 - **Zdanie o nieudanym pytaniu do modelu daje `botFailureText(kod, powód)` (26.09, #21)** — `realtime/bot-runtime.ts`: `AI_UNREACHABLE` = brak połączenia, `AI_UNAVAILABLE` (503: pełna kolejka, model się ładuje) = „zajęty, spróbuj za chwilę" z powodem od gatewaya (`fastApiDetail` wyjmuje go z `{"detail": …}`). Nie wpisuj jednego zdania na oba kody.
-- **~~Relacja bota mówi, pod jakim podpisem pisze postać~~ — COFNIĘTE 30.09 (decyzja MG, #45): bot mówi do postaci, nie do konta; do poprawki** — `relationForSpeaker` oddaje `speakerName` (nazwa konta), `relationPromptLines` dokleja „na czacie podpisuje się…”, gdy różni się od imienia postaci; notatkę relacji MG pisze do bota w drugiej osobie.
+- **Bot mówi do postaci, nie do konta (01.10, #45; zastępuje umowę z 24.09)** — wiersze gracza nosi imię postaci (umowa w `czat`), więc `relationForSpeaker` nie oddaje już `speakerName`, a `relationPromptLines` nie dokleja „na czacie podpisuje się…” (`BOT_PROMPT_VERSION` 5). Lista „przy stole” pomija konta z postacią, szept bota idzie do postaci. Notatkę relacji MG pisze do bota w drugiej osobie.
 - **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 
 ---
 
 ### Relacja: postać, konto i ton (24.09) — cofnięte 30.09, #45
 
-**MG cofnął tę decyzję 30.09 (sesja T6b):** wypowiedź gracza ma być podpisana postacią, którą mówi, w historii bota i w transkrypcie kronikarza — dopisek „na czacie podpisuje się…” był łatą na objaw. Opis niżej to stan kodu do czasu poprawki #45.
+**MG cofnął tę decyzję 30.09 (sesja T6b), poprawka #45 weszła 01.10:** wypowiedź gracza jest podpisana postacią, którą mówi — na czacie, w historii bota i w transkrypcie kronikarza; dopisek „na czacie podpisuje się…” zniknął z promptu. Opis niżej to historia (stan kodu 24.09–30.09).
 
 Historia czatu podpisuje gracza nazwą **konta** („Tester”), a relacja zna imię **postaci**
 („Oględziny Stym”). Bez połączenia 27B mówił do gracza o jego własnej postaci jak o kimś obok.
