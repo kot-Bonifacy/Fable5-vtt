@@ -13,6 +13,7 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
+import { DESTROY_TREE, releasePooledGraphicsData } from './pixi-destroy.js';
 import {
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
@@ -1634,7 +1635,7 @@ export class MapRenderer {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
     // React StrictMode may unmount while init is in flight.
     if (this.destroyed) {
-      this.app.destroy(true, { children: true });
+      this.app.destroy(true, DESTROY_TREE);
       return;
     }
     host.appendChild(this.app.canvas);
@@ -1923,6 +1924,7 @@ export class MapRenderer {
       this.fogSprite.visible = false;
       this.fx.setScene(null);
       this.clearTokens();
+      releasePooledGraphicsData();
       return;
     }
 
@@ -1960,6 +1962,9 @@ export class MapRenderer {
       this.cancelDrawGesture();
       this.cancelWallChain();
       this.fitScene(scene);
+      // Stara scena zdjęta — jej dane renderowania nie mogą przejść do nowej
+      // z buforami rozdętymi przez cudze grafiki (#50).
+      releasePooledGraphicsData();
     }
     // `fitScene` changes the zoom by hand, and pixi-viewport only emits
     // `zoomed` for its own plugins (wheel, pinch) — so nothing else would tell
@@ -2022,7 +2027,7 @@ export class MapRenderer {
         if (this.aimTokenId === id) this.clearAim();
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
-        node.destroy({ children: true });
+        node.destroy(DESTROY_TREE);
       }
     }
     // The ring and the reticle live on the overlay, so they do not travel with
@@ -2257,7 +2262,7 @@ export class MapRenderer {
       if (existing) {
         if (this.drawSignatures.get(drawing.id) === signature) continue;
         this.drawNodes.delete(drawing.id);
-        existing.destroy({ children: true });
+        existing.destroy(DESTROY_TREE);
       }
       this.drawSignatures.set(drawing.id, signature);
       const layer = drawing.gmOnly ? this.gmDrawLayer : this.drawLayer;
@@ -2282,7 +2287,7 @@ export class MapRenderer {
       if (seen.has(id)) continue;
       this.drawNodes.delete(id);
       this.drawSignatures.delete(id);
-      node.destroy({ children: true });
+      node.destroy(DESTROY_TREE);
     }
     this.refreshSceneSelectOutline('drawing');
   }
@@ -3178,7 +3183,7 @@ export class MapRenderer {
       const ping = this.pings[index]!;
       const progress = (now - ping.at) / MAP_PING_TTL_MS;
       if (progress >= 1) {
-        ping.node.destroy({ children: true });
+        ping.node.destroy(DESTROY_TREE);
         this.pings.splice(index, 1);
         continue;
       }
@@ -5971,7 +5976,7 @@ export class MapRenderer {
     for (const [id, node] of this.openingNodes) {
       if (seen.has(id)) continue;
       this.openingNodes.delete(id);
-      node.destroy({ children: true });
+      node.destroy(DESTROY_TREE);
     }
   }
 
@@ -6452,7 +6457,7 @@ export class MapRenderer {
     for (const [id, node] of this.lightNodes) {
       if (seen.has(id)) continue;
       this.lightNodes.delete(id);
-      node.destroy({ children: true });
+      node.destroy(DESTROY_TREE);
     }
     this.refreshSceneSelectOutline('light');
   }
@@ -6572,7 +6577,7 @@ export class MapRenderer {
     for (const [id, node] of this.netPointNodes) {
       if (seen.has(id)) continue;
       this.netPointNodes.delete(id);
-      node.destroy({ children: true });
+      node.destroy(DESTROY_TREE);
     }
     this.refreshSceneSelectOutline('netpoint');
   }
@@ -6619,7 +6624,7 @@ export class MapRenderer {
     for (const [id, node] of this.noteNodes) {
       if (seen.has(id)) continue;
       this.noteNodes.delete(id);
-      node.destroy({ children: true });
+      node.destroy(DESTROY_TREE);
     }
     this.refreshSceneSelectOutline('note');
   }
@@ -6637,7 +6642,7 @@ export class MapRenderer {
     if (this.destroyed) return;
     this.lastSpawn = point;
     if (!point) {
-      this.spawnNode?.destroy({ children: true });
+      this.spawnNode?.destroy(DESTROY_TREE);
       this.spawnNode = null;
       return;
     }
@@ -6723,7 +6728,7 @@ export class MapRenderer {
     if (this.drag) this.endDrag(false);
     if (this.cloneDrag) this.onCloneEnd();
     this.clearWalkState();
-    for (const node of this.tokenNodes.values()) node.destroy({ children: true });
+    for (const node of this.tokenNodes.values()) node.destroy(DESTROY_TREE);
     this.tokenNodes.clear();
     this.movableTokens.clear();
     this.tokenLayer.removeChildren();
@@ -6738,7 +6743,7 @@ export class MapRenderer {
 
   /** Zdejmuje wszystkie kółka pingów — zmiana sceny, zamknięcie mapy. */
   private clearPings(): void {
-    for (const ping of this.pings) ping.node.destroy({ children: true });
+    for (const ping of this.pings) ping.node.destroy(DESTROY_TREE);
     this.pings.length = 0;
   }
 
@@ -7180,16 +7185,16 @@ export class MapRenderer {
       // throws („Cannot read properties of null (reading 'next')"), which took
       // the whole app down with a white screen whenever the map unmounted —
       // leaving the game for the GM panel, or any HMR reload during a session.
-      viewport.destroy({ children: true });
+      viewport.destroy(DESTROY_TREE);
       // The fog scratch container is off-stage, so `destroy({children:true})`
       // above never reaches it — and its render texture is real VRAM.
       this.fogPeepTex?.destroy(true);
       this.fogPeepTex = null;
-      this.fogScratch.destroy({ children: true });
+      this.fogScratch.destroy(DESTROY_TREE);
       this.fogTexture?.destroy(true);
       this.fogTexture = null;
-      this.visionScratch.destroy({ children: true });
-      this.figureScratch.destroy({ children: true });
+      this.visionScratch.destroy(DESTROY_TREE);
+      this.figureScratch.destroy(DESTROY_TREE);
       this.figureTexture?.destroy(true);
       this.visionTexture?.destroy(true);
       this.visionTexture = null;
@@ -7204,7 +7209,7 @@ export class MapRenderer {
       // The layer owns sprites and text of its own; the viewport teardown above
       // reaches its container, but its item list still holds the references.
       this.fx.destroy();
-      this.app.destroy(true, { children: true });
+      this.app.destroy(true, DESTROY_TREE);
       this.tokenNodes.clear();
       this.noteNodes.clear();
       this.drawNodes.clear();

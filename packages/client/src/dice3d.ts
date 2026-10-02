@@ -11,6 +11,7 @@
 import type { DiceSkinId, RollResult, RollToss } from '@vtt/shared';
 import { DEFAULT_DICE_SKIN } from '@vtt/shared';
 import type DiceBoxClass from '@3d-dice/dice-box-threejs';
+import type { DiceMesh } from '@3d-dice/dice-box-threejs';
 import { CRIT_COLORSET, DICE_SKINS, FUMBLE_COLORSET, type DiceColorset } from './dice-skins.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 
@@ -151,6 +152,34 @@ function installDirectedThrow(dice: DiceBoxClass): void {
   };
 }
 
+/**
+ * Zwalnia geometrie, które biblioteka klonuje dla wymuszonego wyniku (#51, 02.10).
+ *
+ * Każdy rzut z serwera wymusza ściankę przez `swapDiceFace`, a ta podmienia
+ * kości geometrię na `geometry.clone()` z przestawionymi grupami materiałów.
+ * `clearDice` zdejmuje potem kość ze sceny bez `dispose()`, więc klon zostawał
+ * w rendererze three.js razem z buforami karty graficznej — ~1,4 geometrii na
+ * rzut u każdego widza. Geometrii wspólnych fabryki (`DiceFactory.geometries`)
+ * nie ruszamy: z nich rodzi się następna kość tego typu.
+ */
+function installGeometryRelease(dice: DiceBoxClass): void {
+  const release = (geometry: DiceMesh['geometry']) => {
+    if (!Object.values(dice.DiceFactory.geometries).includes(geometry)) geometry.dispose();
+  };
+  const swapFace = dice.swapDiceFace.bind(dice);
+  dice.swapDiceFace = (die, value) => {
+    const before = die.geometry;
+    swapFace(die, value);
+    // Druga podmiana tej samej kości (dorzut, przerzut) wypiera pierwszy klon.
+    if (die.geometry !== before) release(before);
+  };
+  const clearDice = dice.clearDice.bind(dice);
+  dice.clearDice = () => {
+    for (const die of dice.diceList) release(die.geometry);
+    clearDice();
+  };
+}
+
 function ensureOverlay(): HTMLDivElement {
   if (overlay) return overlay;
   overlay = document.createElement('div');
@@ -183,6 +212,7 @@ async function ensureBox(): Promise<DiceBoxClass | null> {
       });
       await instance.initialize();
       installDirectedThrow(instance);
+      installGeometryRelease(instance);
       activeColorset = own.colorset.name;
       box = instance;
       return instance;

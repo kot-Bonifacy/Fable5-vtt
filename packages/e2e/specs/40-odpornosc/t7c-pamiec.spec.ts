@@ -28,7 +28,8 @@ import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
  * Node — na starcie, po przełączeniach, po rzutach i po 5 min spoczynku. „Nie
  * rośnie liniowo” = nachylenie po rozgrzewce (`slope`); wagi z decyzji MG z 02.10
  * (B2 > ~200 MB albo spadek klatek, mniejszy liniowy wzrost B3) — test zapisuje
- * liczby, błąd do rejestru wpisuje sesja.
+ * liczby, a od poprawek #50 i #51 pilnuje też progów (`SWITCH_LEAK_MB`,
+ * `ROLL_LEAK_GEOMETRIES`).
  */
 
 const FILE = 't7c-pamiec';
@@ -37,6 +38,12 @@ const SWITCHES = 30;
 const ROLLS = Number(process.env.E2E_T7C_RZUTY ?? 300);
 const REST_MS = Number(process.env.E2E_T7C_SPOCZYNEK_MS ?? 5 * 60_000);
 const FORMULAS = ['/r 1d10', '/r 2d6', '/r 1d10+3', '/r 3d6', '/r 1d6'];
+/**
+ * Progi wycieku po poprawkach #50 i #51 (decyzja MG z 02.10: test pilnuje, a nie
+ * tylko mierzy). Nachylenie po rozgrzewce — zero z szumem odśmiecania, nie zero.
+ */
+const SWITCH_LEAK_MB = 0.2;
+const ROLL_LEAK_GEOMETRIES = 0.1;
 
 interface Sample {
   step: number;
@@ -185,6 +192,13 @@ test.describe.serial('T7c odporność: wyciek pamięci @odpornosc', () => {
       description: JSON.stringify(result.trendy),
     });
     expect(result.bledyKonsoli).toEqual({ MG: [], Ola: [] });
+    // #50 (02.10): przed poprawką +1,72 MB buforów i +1,34 MB sterty MG na przełączenie.
+    expect
+      .soft(result.trendy.mgBuforyMb?.naKrok, 'bufory MG, MB na przełączenie')
+      .toBeLessThan(SWITCH_LEAK_MB);
+    expect
+      .soft(result.trendy.mgStertaMb?.naKrok, 'sterta MG, MB na przełączenie')
+      .toBeLessThan(SWITCH_LEAK_MB);
   });
 
   test(`${ROLLS} rzutów kubkiem Oli, każdy z animacją 3D u Oli i MG`, async () => {
@@ -224,6 +238,15 @@ test.describe.serial('T7c odporność: wyciek pamięci @odpornosc', () => {
       description: JSON.stringify(result.trendy),
     });
     expect(result.bledyKonsoli).toEqual({ MG: [], Ola: [] });
+    // #51 (02.10): przed poprawką +1,43 (MG) i +1,48 (Ola) geometrii three.js na rzut.
+    for (const [who, trend] of [
+      ['MG', result.trendy.mgKosciGeometrie],
+      ['Ola', result.trendy.olaKosciGeometrie],
+    ] as const) {
+      expect
+        .soft(trend?.naKrok, `geometrie kości u ${who} na rzut`)
+        .toBeLessThan(ROLL_LEAK_GEOMETRIES);
+    }
   });
 
   test('spoczynek 5 min: pamięć klientów i serwera po odśmiecaniu', async () => {

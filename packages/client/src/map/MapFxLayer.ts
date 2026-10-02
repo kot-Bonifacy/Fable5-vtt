@@ -2,6 +2,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'p
 import type { MapFxEffect, MapFxSound, SceneView, ScenePoint } from '@vtt/shared';
 import { mapFxTracerCount, metresPerPixel } from '@vtt/shared';
 import { playFxSound } from '../sfx.js';
+import { DESTROY_TREE } from './pixi-destroy.js';
 
 /**
  * Everything the map draws when somebody pulls a trigger (stage 27i).
@@ -215,7 +216,7 @@ export class MapFxLayer {
     }
     this.items.length = 0;
     // Every child here may already be gone: `destroy()` runs *after*
-    // `viewport.destroy({ children: true })` in `MapRenderer.destroy`, which
+    // `viewport.destroy(DESTROY_TREE)` in `MapRenderer.destroy`, which
     // reaches this layer's container. `Graphics.clear()` on a destroyed one
     // throws, and the throw takes the whole app down with a white screen —
     // the same shape as the viewport-order bug documented in that method,
@@ -227,9 +228,9 @@ export class MapFxLayer {
     this.destroyed = true;
     this.clear();
     // The viewport this container hangs off is torn down with
-    // `destroy({ children: true })`, which already reached it — so this is
+    // `destroy(DESTROY_TREE)`, which already reached it — so this is
     // only for the case where it never got added to one.
-    if (!this.container.destroyed) this.container.destroy({ children: true });
+    if (!this.container.destroyed) this.container.destroy(DESTROY_TREE);
   }
 
   /** True while something is still animating — the renderer's tick asks. */

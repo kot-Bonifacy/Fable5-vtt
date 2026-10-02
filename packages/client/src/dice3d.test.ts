@@ -6,6 +6,9 @@ const mock = vi.hoisted(() => ({
   add: vi.fn(),
   clearDice: vi.fn(),
   animate: true,
+  /** The factory's d10 geometry — every die of the type is born with it. */
+  shared: { dispose: vi.fn() },
+  clones: [] as { dispose: ReturnType<typeof vi.fn> }[],
 }));
 vi.mock('./stores/settingsStore.js', () => ({
   useSettingsStore: {
@@ -21,6 +24,14 @@ vi.mock('@3d-dice/dice-box-threejs', () => ({
     roll = mock.roll;
     add = mock.add;
     clearDice = mock.clearDice;
+    diceList: { geometry: unknown }[] = [];
+    DiceFactory = { geometries: { d10: mock.shared } };
+    /** Like the library: the forced face goes onto a fresh clone. */
+    swapDiceFace(die: { geometry: unknown }) {
+      const clone = { dispose: vi.fn() };
+      mock.clones.push(clone);
+      die.geometry = clone;
+    }
   },
 }));
 
@@ -42,6 +53,8 @@ beforeEach(() => {
   mock.roll.mockReset();
   mock.add.mockReset();
   mock.clearDice.mockReset();
+  mock.shared.dispose.mockReset();
+  mock.clones.length = 0;
   vi.stubGlobal('window', globalThis);
   vi.stubGlobal('document', {
     createElement: () => ({ classList: { add() {}, remove() {}, toggle() {} }, appendChild() {} }),
@@ -123,5 +136,32 @@ describe('dice completion', () => {
     mock.animate = false;
     expect(await dice.playRollAnimation(roll)).toBe(false);
     expect(mock.roll).not.toHaveBeenCalled();
+  });
+});
+
+describe('dice geometry (#51)', () => {
+  it('disposes the clone a forced face leaves behind, never the shared geometry', async () => {
+    const dice = await import('./dice3d.js');
+    type Box = {
+      diceList: { geometry: unknown }[];
+      swapDiceFace(die: { geometry: unknown }, value: number): void;
+    };
+    mock.roll.mockImplementation(async function (this: Box) {
+      const die = { geometry: mock.shared };
+      this.diceList.push(die);
+      this.swapDiceFace(die, 7);
+      // A second swap of the same die (the extra critical die, a reroll)
+      // supersedes the first clone.
+      this.swapDiceFace(die, 3);
+    });
+    expect(await dice.playRollAnimation(roll)).toBe(true);
+    expect(mock.clones).toHaveLength(2);
+    expect(mock.clones[0]!.dispose).toHaveBeenCalledTimes(1);
+    // Still lying on the table until the fade sweeps it.
+    expect(mock.clones[1]!.dispose).not.toHaveBeenCalled();
+    dice.sweepDice();
+    expect(mock.clearDice).toHaveBeenCalled();
+    expect(mock.clones[1]!.dispose).toHaveBeenCalledTimes(1);
+    expect(mock.shared.dispose).not.toHaveBeenCalled();
   });
 });

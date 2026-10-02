@@ -14,7 +14,8 @@ import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
  * docelowym stała inna figura — klik w środek pola trafia w podpis tamtej figury
  * (`TokenNode.nameText` wisi pod żetonem, w polu niżej), a nie w mapę. Odtworzenie
  * bez walki i bez obciążenia: Ola (Firefox) prowadzi Iskrę z (8, 9) na (9, 9);
- * w próbie kontrolnej Kowal stoi z boku, w próbie właściwej — na (9, 8).
+ * w próbie kontrolnej Kowal stoi z boku, w próbie właściwej — na (9, 8). Od poprawki
+ * (02.10) figura łapie klik wyłącznie na swoich polach (`TokenNode.hitArea`).
  */
 
 test.describe.serial('T7c: marsz na pole pod cudzą figurą (#52) @odpornosc', () => {
@@ -80,7 +81,6 @@ test.describe.serial('T7c: marsz na pole pod cudzą figurą (#52) @odpornosc', (
   });
 
   test('#52 Kowal tuż nad celem (9, 8) — klik w środek (9, 9) rusza Iskrę', async () => {
-    test.fail(true, '#52: podpis Kowala pod żetonem łapie klik w środek pola niżej');
     await place('Iskra', [8, 9]);
     await place('Kowal', [9, 8]);
     await marchIskra();

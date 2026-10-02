@@ -1,4 +1,4 @@
-import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import {
   DEFAULT_PORTRAIT_CROP,
   fallbackConditionStatusId,
@@ -356,6 +356,12 @@ export class TokenNode extends Container {
 
     const extent = TokenNode.extent(token, ctx);
     this.extentPx = extent;
+    // Figura łapie klik wyłącznie na swoich polach (#52, 02.10). Podpis wisi
+    // w polu niżej, cień i podstawka wystają pod nie, obrączka PW — na boki;
+    // każde z nich oddawało klik w środek sąsiedniego pola figurze, więc marsz
+    // „tuż pod kolegą” nie ruszał. `hitArea` przycina też dzieci, więc nowa
+    // ozdoba poza kratką nie potrzebuje już własnego `eventMode = 'none'`.
+    this.hitArea = new Rectangle(0, 0, extent, extent);
     this.ringTint = ringColor(token, ctx);
     const center = extent / 2;
     const radius = ownerRingRadius(extent);

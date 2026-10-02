@@ -45,6 +45,16 @@ declare module '@3d-dice/dice-box-threejs' {
     vectors: DiceThrowVector[];
   }
 
+  /** three.js `BufferGeometry`, reduced to what the client touches. */
+  export interface DiceGeometry {
+    dispose(): void;
+  }
+
+  /** One die on the table — a three.js `Mesh` (internal). */
+  export interface DiceMesh {
+    geometry: DiceGeometry;
+  }
+
   export default class DiceBox {
     constructor(selector: string, config?: DiceBoxConfig);
     initialize(): Promise<void>;
@@ -93,6 +103,17 @@ declare module '@3d-dice/dice-box-threejs' {
       containerHeight: number;
       scale: number;
     };
+    // Internals used to release the geometry a forced face clones (#51).
+    /** Dice on the table right now — emptied by `clearDice`. */
+    diceList: DiceMesh[];
+    /** One geometry per die type, shared by every die of that type. */
+    DiceFactory: { geometries: Record<string, DiceGeometry | undefined> };
+    /**
+     * Forces a die's face by swapping material groups on a **clone** of its
+     * geometry — the clone is never disposed by the library. Called through
+     * `this`, so an instance property replaces it.
+     */
+    swapDiceFace(die: DiceMesh, value: number | string): void;
     /** Random-direction throw used by `roll()` — patchable per instance. */
     startClickThrow(notation: string): NotationVectors | null;
     /** Computes spawn/velocity vectors for a given throw direction. */
