@@ -106,6 +106,7 @@ bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 | T7b: obciążenie        | **oba tryby po kolei**: ~7 min swobodnie na „Bramie” z odsłoniętą mgłą, potem ~3 min walki turowej w „Knajpie”; tempo **mieszane** (8 min co 3–8 s + 2 min szczytu co 0,5–1 s); nowi gracze Kuba i Ewa dostają **puste karty od MG**; obserwator = **spóźniony gracz** (Zosia, wchodzi w 5. minucie); silniki **pół na pół** (decyzja MG z 02.10, sesja T7b) |
 | T7b: czat i baza       | 3000 wierszy **przez gniazdo** (~50% mowy, ~35% rzutów, ~10% szeptów, ~5% wtrąceń); liczby **bez progów** — linia bazowa refaktoryzacji; rozmiar bazy **pełnym obrazem** (tabele, kopia, rzut na sezon) (decyzja MG z 02.10, sesja T7b) |
 | triaż #48 i #49        | **#48 = B2** (obejście: wyłączona animacja kości), **#49 = B0** — blokuje betę (decyzja MG z 02.10, sesja T7b) |
+| poprawki #48 i #49     | #48 — **dogonienie**: rzut czekający > 3 s wychodzi kartą bez animacji, reszta ruchu dalej czeka za kośćmi; #49 — **licznik wersji** `Character.revision`; retest pełny T7b + T7a (decyzja MG z 02.10, sesja poprawek) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -544,6 +545,7 @@ atrapa gatewaya.
 | zgodność stołu po obciążeniu | klient = świeży `state:sync` = baza u wszystkich sześciorga, **ale po 850–1130 s** (#48: karty rzutów co ~6,1 s, wszystko inne czeka za nimi); mowa innego gracza — mediana 6–8 min |
 | walka „Knajpa” (3 min, tempo stołu) | 3 tury w 3 min — klient widzi przekazanie tury po 82 s (mediana, maks. 119 s); zgodność po ~150 s; konsola czysta |
 | zapisy karty pod obciążeniem | **#49**: zgubione dopiski notatek u 1–3 z 4 graczy w każdym pełnym przebiegu; odtworzenie deterministyczne `t7b-zapis-karty` |
+| **po poprawkach #48/#49 (02.10, `715df2b`)** | zgodność „Brama” po 6–16 s (było 850–1130 s), mowa innego gracza p50 ~4 s, p95 ≤ 10 s; „Knajpa” 15 tur w 3 min (były 3), przekazanie tury p50 1,9 s, zgodność ≤ 5,2 s; zero zgubionych dopisków; `40-odpornosc` 26/26 w 24,1 min |
 | wejście nowego gracza | stół gotowy w 0,35 s (Chromium) / 0,64 s (Firefox), **tak samo** przy 178 i 3178 wierszach (historia stronami po 50); spóźniona Zosia pod obciążeniem — 8,6 s |
 | długi czat | 3000 wierszy w 47 s (64/s, ack p50 11 ms); przewinięcie całej historii: 56 stron, DOM ~24 tys. węzłów, Chromium 10 klatek > 100 ms, Firefox 97 |
 | rozmiar bazy | `po-T6` 676 KB + uploady 10,6 MB; po 3000 wierszach 1,64 MB (343 B/wiersz z indeksem); kopia 17 ms; sezon 20 × 1000 wierszy ≈ 7,4 MB bazy (uploady w kopiach to twarde dowiązania) |
@@ -778,6 +780,10 @@ kontrolne nietknięte (T7b ich nie nagrywa).
 
 **Następny krok:** MG przyjął wagi (#48 B2, #49 B0 — blokuje betę); poprawki, potem T7c — wydajność mapy
 i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod obciążeniem).
+
+**02.10 (sesja poprawek):** #48 i #49 naprawione i retestowane (`715df2b`, opis w rejestrze);
+w T7c obejrzeć też jeden nieudany marsz Sowy w walce w „Knajpie” (pierwszy raz, gdy Sowa w ogóle
+chodzi w walce — przed poprawką walka miała 3 tury).
 
 ### Sesja 01.10 — T7a: sieć, restart, dwie karty, degradacja AI
 

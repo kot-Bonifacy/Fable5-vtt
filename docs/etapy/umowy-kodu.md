@@ -1175,6 +1175,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Rzut, który czekał w kolejce prezentacji > 3 s, wychodzi kartą bez animacji (02.10, #48)** — `CATCH_UP_LAG_MS` w `socket.ts`, opóźnienie mierzy `rollPresentation.lagMs()` (czas od przyjścia z gniazda do obsługi). Pauza 2,5 s przed kartą urywa się, gdy za rzutem czeka następny (`untilRollWaiting`); rzut znakuje trzeci argument `onPresented`. Reszta ruchu dalej czeka za kośćmi (umowa z 22.09 bez zmian), ale stół jest najwyżej kilka sekund za serwerem.
 - **Skrypt kości E2E — `VTT_DICE_SCRIPT` czyta WYŁĄCZNIE `createMixedRng` (26.09, T1 testów)** — `realtime/dice-script.ts`: plik z kolejką ścianek, każda kość serwera zdejmuje pierwszą; pusta kolejka = zwykłe losowanie. `NODE_ENV=production` wyłącza go bez wyjątku. Nowe losowanie na serwerze idzie przez `createMixedRng`, inaczej scenariusz E2E go nie wymusi.
 - **Wynik czeka na animację we wszystkich widokach (22.09)** — `rollPresentation` w `socket.ts` zachowuje kolejność komunikatów, odpowiedzi kreatora i odczytów stanu. Nowy odbiornik widoku rejestruj przez `onPresented`, a odpowiedź z wynikiem przez `rollPresentation.deliver`. `playRollAnimation` kończy obie fale; timeout najpierw zatrzymuje i usuwa kości. Chwyt kubka nie przerywa prawdziwego rzutu.
 - **Kara za rany w rozbiciu rzutu składa się w JEDNYM miejscu — `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`** (`rolls.ts`); woła ją `finishCheck` i atak, a rachunki ręczne (kubek Ustabilizowania i Leczenia, targowanie, napis na karcie) biorą `cpredSheetWoundCheckPenalty`. Zawieszenie (Stym, Edytor bólu) to **własny wiersz obok kary**, nie brak kary; `woundCheckPenalty(woundState(hp, stats))` na karcie to regres z 38a.
@@ -1193,6 +1194,19 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
 
 ---
+
+**Dogonienie rzutów: najwyżej kilka sekund za serwerem (02.10, poprawka #48 z T7b, decyzja MG).**
+Klient odtwarza rzuty po jednym (lot ~3,5 s + 2,5 s pauzy przed kartą), a od 22.09 cały ruch
+gniazda czeka za nimi. Pięć osób rzucających co kilka sekund wyprzedzało animacje: w T7b stół
+zgadzał się z bazą po 14–19 min, mowa innego gracza dochodziła z medianą ~6 min. MG wybrał
+„dogonienie” (nie rzuty naraz ani przyspieszanie) i zostawił czekanie reszty ruchu za kośćmi.
+Dwie reguły w obsłudze `chat:message`: (1) rzut obsługiwany po ponad `CATCH_UP_LAG_MS` = 3 s od
+przyjścia nie dostaje animacji — karta od razu, efekty mapy od razu; (2) pauza po wylądowaniu
+kości to wyścig `CARD_REVEAL_DELAY_MS` z `rollPresentation.untilRollWaiting()`. Przy zwykłym tempie
+nic się nie zmienia; przy rzucie inicjatywy kubkiem naraz animuje się pierwszy rzut (czasem dwa),
+reszta wychodzi kartami. Testy: `socket-roll-presentation.test.ts` › „#48”, E2E `t7b-obciazenie`
+(zgodność stołu po końcu obciążenia < 60 s).
+
 
 **Skrypt kości E2E tylko przez `createMixedRng` i nigdy w produkcji (26.09.2026, T1 testów bety).**
 Zgoda MG z 26.09 (`testy.md` 4.2). `VTT_DICE_SCRIPT` wskazuje plik z liczbami (spacje, przecinki,
@@ -1920,6 +1934,7 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Widok karty niesie `revision`; starszy od posiadanego klient odrzuca (02.10, #49)** — kolumnę `Character.revision` podbija **rozszerzenie klienta Prismy w `db.ts`** przy każdym `update`/`updateMany`/`upsert`, więc handler nic nie dopisuje (i nie może zapomnieć). `characterStore` sprawdza numer w `applyUpsert`, w acku (`endSave` bierze nowszy z acku i cienia) i w `applySync` — poza pierwszą synchronizacją po połączeniu, która bierze bazę w całości (kopia przywrócona przy zatrzymanym serwerze ma mniejsze numery). Nowy sposób zapisu karty z pominięciem klienta Prismy (surowy SQL) musi podbić numer sam.
 - **Karta czekająca na MG jest u właściciela wyłączona jednym `<fieldset disabled>` (`.sheet-lock`, 25.09)** — owija treść wszystkich czterech stron wewnątrz `.sheet-body`; zakładki i ✕ są poza nim. Nowa kontrolka karty musi być `<button>`/`<input>`/`<select>`, żeby blokada ją objęła — `onClick` na `<span>` przeszedłby obok. Warunek (`!isGm && !playReady && właściciel`) jest lustrem `refuseAwaitingGm` na serwerze.
 - **Panel karty, do którego da się skoczyć z zewnątrz, nosi `data-sheet-panel`** — `characterStore.focusPanel(id, zakładka, panel)` otwiera kartę, przełącza zakładkę i podświetla go; okno kasuje żądanie po obsłużeniu, inaczej wracałoby przy każdym otwarciu karty. Pas „Po kreatorze zostało” (`.cp-readiness`) stoi pierwszy w siatce strony pierwszej i znika, gdy nie ma czego powiedzieć.
 - **Okno „na papierze” to klasa `sheet-window--paper`** (karta postaci i kreator; edytor botów i okna Sieci celowo nie) — przestawia chrom na papier (`theme.css`), kładzie wytarcia jako `::after` jedynego dziecka `.sheet-body`, a pęknięcia jako tło czerwieni na końcu `sheet.css`. Nowy przyklejony albo stały element nad przewijaną treścią dostaje własne `::after` i `z-index` wyżej; nic ciemniejszego od papieru (decyzja MG).
@@ -1931,6 +1946,19 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 
 ---
+
+**Numer zapisu karty: `revision` (02.10, poprawka #49 z T7b).** Rozgłoszenia czekają za animacją
+rzutu (`rollPresentation`), a acki nie — echo zapisu A przychodziło po acku zapisu B, gdy nic nie
+było już w locie, i `applyUpsert` cofał kartę do A; następny autozapis wysyłał pole z A + C i B
+ginęło w bazie (pod obciążeniem T7b u trzech z czterech graczy). Odtąd `CharacterView.revision`
+rośnie przy każdym zapisie wiersza, a klient traktuje mniejszy numer jak historię: echo, ack
+i ponowna synchronizacja na żywym połączeniu nie cofają karty. Równy numer przechodzi (echo tego
+samego zapisu). Wyjątek: pierwszy `state:sync` po (ponownym) połączeniu — `socket.ts` przekazuje
+`fresh`, bo po `restore` przy zatrzymanym serwerze numery w bazie są mniejsze niż w pamięci klienta.
+Licznik siedzi w `createPrisma` (rozszerzenie `query.character`), nie w handlerach — tych jest
+ponad dwadzieścia plików. Testy: `character-revision.test.ts` (klient), `characters.test.ts` › „#49”
+(serwer), E2E `t7b-zapis-karty`.
+
 
 **Okno na papierze: `sheet-window--paper` (16.09, naprawa kreatora 2c).** Karta postaci i kreator
 wyglądają jak wydruk na starej kartce. Trzy rzeczy obowiązują dalej:

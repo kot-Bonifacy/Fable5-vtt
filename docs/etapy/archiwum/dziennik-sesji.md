@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 01/02.10 — poprawki #46 i #47 z T7a, rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (otwarte #46, #47). Pytania na starcie: #46
+B3 z notką „Model nie odpowiedział w 120 s — zagraj tę turę ręką albo kliknij „Graj turę” jeszcze
+raz.”; #47 B2, poprawka „upsert nie przesuwa figury”; retest `40-odpornosc` + T4a → T4b.
+
+**Zrobione (`1e6f5dd`):** #46 — `streamChat` bez sygnału wołającego oddaje `AI_TIMEOUT` (ciało albo
+nagłówki po limicie), `botFailureText` mówi o limicie. #47 — przyczyna: każdy zapis karty rozsyła
+figurę z pozycją z bazy, a ta do upuszczenia jest polem startowym; MG dostaje `token:upsert`
+(znana figura bierze pozycję tylko z `moved` — ciągnięty Pochwycony), gracze na scenie Dynamicznej
+`token:sync` (lista nie rusza figury w marszu, `noteMoveFrame`). Deterministyczny test E2E #47
+odtworzył skok u wszystkich trojga przed poprawką; podsłuch ramek `Network.capture()` w
+`fixtures/network.ts`. Przy okazji wyścig samego testu 7.2 (okno handlu). Umowy w `boty`
+i `mapa`, pułapki w `mapa` i `testy`, zaległość — teoretyczny wyścig listy po upuszczeniu.
+
+**Weryfikacja:** serwer 1284, klient 307, `shared` 2247; `tsc`, ESLint, Prettier czyste.
+`40-odpornosc` 17/17 dwa razy z rzędu, T4b od `po-T4a` 19/19, T4a → T4b od `po-T3` 34/34
+z modelem (gateway w terminalu MG). Oglądane automatem: MG i Marek w Chromium, Ola i Kuba
+w Firefoksie, headless. Punkty kontrolne przywrócone z kopii, `dev.db` nietknięta. **Następny
+krok:** T7b (obciążenie stołu), potem T7c.
+
 ### Sesja 01.10 — T7a: odporność — sieć, restart, dwie karty, degradacja AI
 
 **Zlecenie MG:** T7 z `testy.md` (w całości albo w częściach). Pytania na starcie: T7 **teraz,
