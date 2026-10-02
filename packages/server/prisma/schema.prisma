@@ -337,6 +337,13 @@ model Character {
   portraitUrl String?
   /** System-specific sheet payload (CP RED: CpredCharacterData JSON, schemaVersion inside). */
   data       String   @default("{}")
+  /**
+   * #49 (02.10): rośnie o 1 przy KAŻDYM zapisie wiersza — podbija je
+   * rozszerzenie klienta w `db.ts`, nie handler. Klient odrzuca widok karty
+   * starszy od tego, który już ma: echo zapisu potrafi przyjść po acku
+   * następnego (czeka za animacją rzutu) i cofało kartę.
+   */
+  revision   Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
 

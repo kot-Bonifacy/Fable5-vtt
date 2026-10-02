@@ -9,9 +9,10 @@ import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
 /**
  * T7b, część 3: deterministyczne odtworzenie utraty notatek z obciążenia stołu
  * (`t7b-obciazenie`, 02.10). Echo zapisu karty (`character:upsert`) idzie przez
- * kolejkę prezentacji rzutów (`onPresented`), a ack zapisu — od razu. Spóźnione
- * echo zapisu A przychodzi po zapisie B i cofa kartę gracza do A; dopisek
- * w tym oknie zapisuje A + C, a B ginie w bazie.
+ * kolejkę prezentacji rzutów (`onPresented`), a ack zapisu — od razu. Do
+ * poprawki #49 spóźnione echo zapisu A przychodziło po zapisie B i cofało kartę
+ * gracza do A; dopisek w tym oknie zapisywał A + C, a B ginęło w bazie. Od 02.10
+ * widok karty niesie `revision` i klient odrzuca starszy od posiadanego.
  */
 
 type CharacterStore = { characters: Record<string, { data: { notes: string } }> };
@@ -33,7 +34,6 @@ test.describe.serial('T7b odporność: spóźnione echo zapisu karty @odpornosc'
   test('#49 notatka zapisana między dwoma rzutami MG nie ginie po spóźnionym echu', async ({
     cast,
   }) => {
-    test.fail(true, '#49 — spóźnione echo zapisu karty cofa kartę, następny zapis nadpisuje');
     test.setTimeout(3 * 60_000);
     mg = await cast.mg('chromium');
     const campaign = queryOne<{ id: string }>(
@@ -77,6 +77,7 @@ test.describe.serial('T7b odporność: spóźnione echo zapisu karty @odpornosc'
       type: 'karta Marka cofnięta do zapisu A (bez ·B)',
       description: String(reverted),
     });
+    expect.soft(reverted, '#49: spóźnione echo zapisu A cofnęło kartę Marka').toBe(false);
     test.info().annotations.push({
       type: 'pole „Notatki” w tej chwili',
       description: await notes.inputValue(),

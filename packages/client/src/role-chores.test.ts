@@ -75,6 +75,7 @@ describe('żądanie „Przejdź" w magazynie postaci', () => {
           portraitUrl: null,
           data: sheetOf('solo'),
           playReady: false,
+          revision: 0,
           updatedAt: new Date().toISOString(),
         },
       },

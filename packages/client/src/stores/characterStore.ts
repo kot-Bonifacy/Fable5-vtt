@@ -62,7 +62,13 @@ interface CharacterStoreState {
    */
   panelFocus: { characterId: string; tab: CpredRoleChoreTab; panel: string; seq: number } | null;
 
-  applySync: (payload: StateSyncPayload) => void;
+  /**
+   * `fresh` — the first sync on a new connection: taken whole, because the
+   * database may have gone back in time meanwhile (snapshot restore with the
+   * server stopped). A resync on a live connection keeps any sheet the client
+   * already holds in a newer revision (#49).
+   */
+  applySync: (payload: StateSyncPayload, fresh?: boolean) => void;
   applyUpsert: (character: CharacterView) => void;
   applyDelete: (characterId: string) => void;
   /** Optimistic merge of a local edit — the debounced save follows. */
@@ -88,6 +94,19 @@ function asSheetView(view: CharacterView): CharacterSheetView {
   return view as CharacterSheetView;
 }
 
+/**
+ * #49 (02.10): a view the server sent *before* one we already applied.
+ *
+ * Broadcasts wait behind the dice (`rollPresentation`), acks do not — so the
+ * echo of save A could land after the ack of save B and put the sheet back to
+ * A; the next autosave then wrote A over B. `revision` grows with every write
+ * of the row, so an older one is history, never news.
+ */
+function isStale(state: CharacterStoreState, view: CharacterView): boolean {
+  const known = state.serverViews[view.id] ?? state.characters[view.id];
+  return known !== undefined && known.revision > view.revision;
+}
+
 export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
   characters: {},
   order: [],
@@ -99,21 +118,30 @@ export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
   serverViews: {},
   registry: EMPTY_CPRED_REGISTRY,
 
-  applySync: (payload) =>
+  applySync: (payload, fresh = true) =>
     set((state) => {
       const characters: Record<string, CharacterSheetView> = {};
+      const serverViews: Record<string, CharacterSheetView> = {};
       const order: string[] = [];
       for (const character of payload.characters) {
-        characters[character.id] = asSheetView(character);
+        if (!fresh && isStale(state, character)) {
+          // A resync held behind the dice; the ack of a later save is already here.
+          characters[character.id] = state.characters[character.id]!;
+          serverViews[character.id] = state.serverViews[character.id] ?? characters[character.id]!;
+        } else {
+          characters[character.id] = asSheetView(character);
+          serverViews[character.id] = characters[character.id]!;
+        }
         order.push(character.id);
       }
       // A character that vanished (deleted / reassigned) closes its window.
       const openSheets = state.openSheets.filter((id) => id in characters);
-      return { characters, order, openSheets, serverViews: { ...characters } };
+      return { characters, order, openSheets, serverViews };
     }),
 
   applyUpsert: (character) =>
     set((state) => {
+      if (isStale(state, character)) return state;
       const view = asSheetView(character);
       // The shadow copy is written either way: it is *the server's* word, and
       // the whole point of keeping it is to have somewhere to go back to when
@@ -180,9 +208,12 @@ export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
         saveStates: { ...state.saveStates, [characterId]: ok ? 'saved' : 'error' },
         saveErrors,
       };
-      // Last in-flight save resolved — adopt the server's authoritative view.
+      // Last in-flight save resolved — adopt the server's authoritative view,
+      // or the newer one a broadcast brought while the save was in flight (#49).
       if (ok && pending === 0 && serverView && characterId in state.characters) {
-        const view = asSheetView(serverView);
+        const view = isStale(state, serverView)
+          ? (state.serverViews[characterId] ?? state.characters[characterId]!)
+          : asSheetView(serverView);
         next.characters = { ...state.characters, [characterId]: view };
         next.serverViews = { ...state.serverViews, [characterId]: view };
         return next;

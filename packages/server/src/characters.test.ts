@@ -280,6 +280,31 @@ describe('characters', () => {
     expect((received.character.data as CpredCharacterData).stats.body).toBe(2);
   });
 
+  it('#49: every write bumps the revision, the echo carries the ack number', async () => {
+    const before = (await roundTrip(vex)).characters[0]!;
+    const vexUpsert = waitFor<CharacterUpsertBroadcast>(vex, 'character:upsert');
+    const ack = await emitAck<CharacterView>(vex, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { notes: '·A' } },
+    });
+    if (!ack.ok || !ack.data) throw new Error('update failed');
+    expect(ack.data.revision).toBe(before.revision + 1);
+    expect((await vexUpsert).character.revision).toBe(ack.data.revision);
+
+    // Any write of the row — not only `character:update` — moves the number,
+    // because the bump lives in the Prisma client, not in a handler.
+    await built.prisma.character.update({
+      where: { id: vexCharacterId },
+      data: { name: 'Forty' },
+    });
+    await built.prisma.character.updateMany({
+      where: { id: vexCharacterId },
+      data: { playReady: true },
+    });
+    const after = (await roundTrip(vex)).characters[0]!;
+    expect(after.revision).toBe(ack.data.revision + 2);
+  });
+
   it('rejects invalid sheet data and foreign edits', async () => {
     const sync = await roundTrip(vex);
     const current = sync.characters[0]!.data as CpredCharacterData;

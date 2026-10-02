@@ -58,6 +58,11 @@ const SCALE = Number(process.env.E2E_T7B_SKALA ?? 1);
 const BRAMA_CALM_MS = 5 * 60_000 * SCALE;
 const BRAMA_PEAK_MS = 2 * 60_000 * SCALE;
 const KNAJPA_MS = 3 * 60_000 * SCALE;
+/**
+ * #48 (02.10): po końcu obciążenia każdy klient zgadza się ze świeżym
+ * `state:sync` w tym czasie. Przed poprawką — 850–1130 s.
+ */
+const CONVERGENCE_LIMIT_MS = 60_000;
 
 type Pace = { min: number; max: number };
 type TokenStore = { tokens: Record<string, { x: number; y: number }> };
@@ -518,8 +523,9 @@ test.describe
    */
   async function tableAgrees(label: string, maxWaitMs = 20 * 60_000) {
     // Klient odtwarza animacje rzutów po jednej i trzyma za nimi cały ruch gniazda
-    // (`RollPresentation`, umowa `serwer` z 22.09) — po obciążeniu stół dochodzi do
-    // zgodności z zaległością. Mierzymy, po jakim czasie; rozjazd po limicie = B1.
+    // (`RollPresentation`, umowa `serwer` z 22.09). Do poprawki #48 (02.10) stół
+    // dochodził do zgodności po 14–19 min; od niej rzut, który czekał w kolejce
+    // ponad 3 s, wychodzi kartą bez animacji. Rozjazd po limicie = B1.
     const t0 = Date.now();
     const key = (actor: Actor) => `${actor.name} (${actor.engine})`;
     const pending = new Set(everyone());
@@ -558,6 +564,15 @@ test.describe
         const at = hash({ x: (t as { x: number }).x, y: (t as { y: number }).y });
         shared.set(id, (shared.get(id) ?? new Set()).add(at));
       }
+    }
+    // #48: stół jest najwyżej kilka sekund za serwerem — z zapasem na sondę co 5 s
+    // i na ostatnią animację, która jeszcze leci.
+    for (const [who, ms] of Object.entries(converged)) {
+      expect.soft(ms, `${label}: ${who} — zgodność ze świeżym state:sync (ms, #48)`).not.toBeNull();
+      if (ms !== null)
+        expect
+          .soft(ms, `${label}: ${who} — zgodność po (ms, #48)`)
+          .toBeLessThan(CONVERGENCE_LIMIT_MS);
     }
     const split = [...shared.entries()].filter(([, at]) => at.size > 1).map(([id]) => id);
     expect.soft(split, `${label}: figura w dwóch miejscach u różnych klientów`).toEqual([]);
@@ -853,18 +868,19 @@ test.describe
               .data,
           ) as { notes?: string }
         ).notes ?? '';
-      // Dopiski giną pod obciążeniem przez spóźnione echo zapisu (#49, odtworzenie
-      // w `t7b-zapis-karty`) — tu tylko zapis, czego brakuje, żeby nie zasłaniać reszty.
+      // Do poprawki #49 (02.10) dopiski ginęły pod obciążeniem przez spóźnione echo
+      // zapisu (odtworzenie w `t7b-zapis-karty`).
       const lost = (notesTail.get(seat.character)!.match(/ ·\S+/g) ?? []).filter(
         (chunk) => !stored.split(' ').includes(chunk.trim()),
       );
       if (lost.length > 0) {
         notesLost[seat.character] = lost.map((chunk) => chunk.trim());
         test.info().annotations.push({
-          type: `#49 (znany): ${seat.character} — zgubione dopiski notatek`,
+          type: `#49: ${seat.character} — zgubione dopiski notatek`,
           description: lost.join(''),
         });
       }
+      expect.soft(lost, `#49: ${seat.character} — zgubione dopiski notatek`).toEqual([]);
     }
     recordMeasurement(FILE, SCALE === 1 ? 'brama' : `brama-proba-${SCALE}`, {
       czasWejsciaZosiMs: lateReadyMs,

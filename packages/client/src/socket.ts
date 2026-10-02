@@ -343,6 +343,13 @@ let lastRulerSentAt = 0;
 
 /** Extra time after the dice settle before the chat card spoils the total. */
 const CARD_REVEAL_DELAY_MS = 2500;
+/**
+ * #48 (T7b, 02.10): a live roll that waited behind the dice longer than this
+ * shows as a card at once, without its animation. Rolls play one at a time
+ * (~6 s each) and the whole socket waits behind them, so a busy table fell
+ * minutes behind the server; this keeps it a few seconds behind at most.
+ */
+const CATCH_UP_LAG_MS = 3000;
 
 /**
  * A player's character fresh from the creator, before the GM's „Przyjmij do
@@ -541,8 +548,14 @@ export function connectSocket(userId: string): Socket {
 
   // Keep every state broadcast in wire order, including resync and chat updates.
   // A roll pauses presentation, never the network or the authoritative server.
-  const onPresented = <T>(event: string, listener: (payload: T) => void) =>
-    socket!.on(event, (payload: T) => rollPresentation.deliver(() => listener(payload)));
+  const onPresented = <T>(
+    event: string,
+    listener: (payload: T) => void,
+    isRoll: (payload: T) => boolean = () => false,
+  ) =>
+    socket!.on(event, (payload: T) =>
+      rollPresentation.deliver(() => listener(payload), undefined, isRoll(payload)),
+    );
   /**
    * „Czeka na MG” (25.09): a live push that opens a new matter for the GM
    * pops a card and rings. Only pushes are wrapped — the answers that load
@@ -559,7 +572,13 @@ export function connectSocket(userId: string): Socket {
     return result;
   };
 
-  socket.on('connect', () => setConnected());
+  // #49: the first `state:sync` of a connection is taken whole (a restored
+  // snapshot may hold older sheets); a later resync keeps newer revisions.
+  let syncedSinceConnect = false;
+  socket.on('connect', () => {
+    syncedSinceConnect = false;
+    setConnected();
+  });
   onPresented('creation:rank', (rank: { draftId: string; statRankId: string }) => {
     const store = useCreationStore.getState();
     if (store.draftId === rank.draftId && store.draft) {
@@ -638,7 +657,8 @@ export function connectSocket(userId: string): Socket {
     void fetchMusic();
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
-    useCharacterStore.getState().applySync(payload);
+    useCharacterStore.getState().applySync(payload, !syncedSinceConnect);
+    syncedSinceConnect = true;
     useBotStore.getState().applySync(payload);
     useCompendiumStore.getState().applySync(payload);
     useCombatStore.getState().applySync(payload);
@@ -967,50 +987,67 @@ export function connectSocket(userId: string): Socket {
   onPresented('character:delete', (broadcast: CharacterDeleteBroadcast) => {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
-  onPresented('chat:message', (broadcast: ChatMessageBroadcast) => {
-    const fresh =
-      chat().synced &&
-      !chat().items.some(
-        (item) => item.type === 'message' && item.message.id === broadcast.message.id,
-      ) &&
-      !chat().held.some((message) => message.id === broadcast.message.id);
-    // Losowanie z tabeli (34) tumbla **pierwszą** kością łańcucha: patrzy się
-    // na nią tak samo, jak na każdy inny rzut, a podrzuty zostają liczbami na
-    // karcie — dwie animacje z jednego kliknięcia nikomu nic nie mówią.
-    const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
-    // Live rolls (never history/resync) replay the server's results in 3D;
-    // their chat card is held back so the table reads the dice first.
-    const hold = fresh && roll !== undefined && toAnimationNotation(roll) !== null;
-    if (watchGmAttention(() => chat().applyMessage(broadcast, hold))) {
-      socket?.emit('state:request');
-      return;
-    }
-    const listener = useAuthStore.getState().user;
-    const notification = fresh && listener ? chatNotification(broadcast.message, listener) : null;
-    if (notification) notifyGame(notification);
-    // Świeża wypowiedź NPC-a dopisuje się słowo po słowie — linia jest już
-    // w kanale, odsłania się tylko stopniowo (efekt czysto kliencki).
-    if (shouldTypeOut(broadcast.message)) {
-      typeOutMessage(broadcast.message);
-      return;
-    }
-    if (hold && roll) {
-      const reveal = () => {
-        useChatStore.getState().revealMessage(broadcast.message.id);
-        // …and with the card, whatever the map was holding behind it (27i).
-        releaseMapFx(broadcast.message.id);
-      };
-      const presentation = playRollAnimation(roll).then(async (played) => {
-        if (played)
-          await new Promise((resolve) => window.setTimeout(resolve, CARD_REVEAL_DELAY_MS));
-      });
-      rollPresentation.hold(presentation, reveal);
-      return;
-    }
-    // No dice to wait for — an ordinary message, or a table with the animation
-    // switched off. The card is already on screen, so the map may fire at once.
-    releaseMapFx(broadcast.message.id);
-  });
+  onPresented(
+    'chat:message',
+    (broadcast: ChatMessageBroadcast) => {
+      const fresh =
+        chat().synced &&
+        !chat().items.some(
+          (item) => item.type === 'message' && item.message.id === broadcast.message.id,
+        ) &&
+        !chat().held.some((message) => message.id === broadcast.message.id);
+      // Losowanie z tabeli (34) tumbla **pierwszą** kością łańcucha: patrzy się
+      // na nią tak samo, jak na każdy inny rzut, a podrzuty zostają liczbami na
+      // karcie — dwie animacje z jednego kliknięcia nikomu nic nie mówią.
+      const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
+      // Live rolls (never history/resync) replay the server's results in 3D;
+      // their chat card is held back so the table reads the dice first. A roll
+      // that already waited too long behind other dice catches up instead (#48).
+      const hold =
+        fresh &&
+        roll !== undefined &&
+        toAnimationNotation(roll) !== null &&
+        rollPresentation.lagMs() <= CATCH_UP_LAG_MS;
+      if (watchGmAttention(() => chat().applyMessage(broadcast, hold))) {
+        socket?.emit('state:request');
+        return;
+      }
+      const listener = useAuthStore.getState().user;
+      const notification = fresh && listener ? chatNotification(broadcast.message, listener) : null;
+      if (notification) notifyGame(notification);
+      // Świeża wypowiedź NPC-a dopisuje się słowo po słowie — linia jest już
+      // w kanale, odsłania się tylko stopniowo (efekt czysto kliencki).
+      if (shouldTypeOut(broadcast.message)) {
+        typeOutMessage(broadcast.message);
+        return;
+      }
+      if (hold && roll) {
+        const reveal = () => {
+          useChatStore.getState().revealMessage(broadcast.message.id);
+          // …and with the card, whatever the map was holding behind it (27i).
+          releaseMapFx(broadcast.message.id);
+        };
+        const presentation = playRollAnimation(roll).then(async (played) => {
+          // The pause is for reading the dice — cut short when the next roll is
+          // already waiting for the table (#48).
+          if (played)
+            await Promise.race([
+              new Promise((resolve) => window.setTimeout(resolve, CARD_REVEAL_DELAY_MS)),
+              rollPresentation.untilRollWaiting(),
+            ]);
+        });
+        rollPresentation.hold(presentation, reveal);
+        return;
+      }
+      // No dice to wait for — an ordinary message, or a table with the animation
+      // switched off. The card is already on screen, so the map may fire at once.
+      releaseMapFx(broadcast.message.id);
+    },
+    (broadcast) => {
+      const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
+      return roll !== undefined && toAnimationNotation(roll) !== null;
+    },
+  );
   // A message that changed after the fact (stage 15: the GM took an applied
   // damage entry back) — replaced in place, never appended again.
   onPresented('chat:update', (broadcast: ChatMessageBroadcast) => {

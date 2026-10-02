@@ -35,6 +35,12 @@ export interface CharacterView<TData = unknown> {
    * „Postacie" i stawia na karcie napis „czeka na MG".
    */
   playReady: boolean;
+  /**
+   * #49 (02.10): numer zapisu wiersza — rośnie przy każdym. Widok z mniejszym
+   * numerem niż ten, który klient już ma, jest echem starszego zapisu
+   * (przyszedł za animacją rzutu) i nie może cofnąć karty.
+   */
+  revision: number;
   updatedAt: string;
 }
 

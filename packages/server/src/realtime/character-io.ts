@@ -35,6 +35,7 @@ export function toCharacterView(character: Character, registry: CpredRegistry): 
     portraitUrl: character.portraitUrl,
     data: parseCharacterData(character.data, registry),
     playReady: character.playReady,
+    revision: character.revision,
     updatedAt: character.updatedAt.toISOString(),
   };
 }

@@ -89,4 +89,79 @@ describe('live socket roll presentation', () => {
     socket.disconnectSocket();
     update.mockRestore();
   });
+
+  describe('#48 — dogonienie, gdy rzuty zbierają się w kolejkę', () => {
+    const rollMessage = (id: number) => ({
+      seq: id,
+      message: {
+        id,
+        kind: 'roll',
+        authorId: 'someone',
+        authorName: 'Gracz',
+        text: '/r 1d10',
+        createdAt: new Date().toISOString(),
+        roll: {
+          notation: '1d10',
+          total: 7,
+          terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10, rolls: [7] }],
+        } as RollResult,
+      },
+    });
+
+    async function setup() {
+      const socket = await import('./socket.js');
+      const { useChatStore } = await import('./stores/chatStore.js');
+      socket.connectSocket('viewer');
+      useChatStore.setState({ synced: true, seq: 0, items: [], held: [] });
+      const finishes: ((played: boolean) => void)[] = [];
+      mock.animate.mockImplementation(
+        () => new Promise<boolean>((resolve) => finishes.push(resolve)),
+      );
+      const shown = () =>
+        useChatStore
+          .getState()
+          .items.filter((item) => item.type === 'message')
+          .map((item) => (item as { message: { id: number } }).message.id);
+      const isHeld = (id: number) => useChatStore.getState().held.some((m) => m.id === id);
+      return { socket, finishes, shown, isHeld };
+    }
+
+    it('karta odsłania się zaraz po wylądowaniu, gdy za rzutem czeka następny', async () => {
+      const { socket, finishes, isHeld } = await setup();
+      mock.handlers.get('chat:message')!(rollMessage(1));
+      await vi.advanceTimersByTimeAsync(1000);
+      mock.handlers.get('chat:message')!(rollMessage(2));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(isHeld(1)).toBe(true);
+      finishes[0]!(true);
+      // Bez pauzy 2,5 s: rzut 2 czeka, więc karta 1 wychodzi od razu…
+      await vi.advanceTimersByTimeAsync(0);
+      expect(isHeld(1)).toBe(false);
+      // …a rzut 2 czekał tylko ~1 s, więc dostaje swoją animację.
+      expect(mock.animate).toHaveBeenCalledTimes(2);
+      expect(isHeld(2)).toBe(true);
+      finishes[1]!(true);
+      // Nic już nie czeka — zwykła pauza przed kartą.
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(isHeld(2)).toBe(true);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(isHeld(2)).toBe(false);
+      socket.disconnectSocket();
+    });
+
+    it('rzut, który czekał dłużej niż 3 s, pokazuje się od razu kartą, bez kości', async () => {
+      const { socket, finishes, shown, isHeld } = await setup();
+      mock.handlers.get('chat:message')!(rollMessage(1));
+      mock.handlers.get('chat:message')!(rollMessage(2));
+      mock.handlers.get('chat:message')!(rollMessage(3));
+      mock.handlers.get('presence:update')!({ seq: 4, users: [] });
+      await vi.advanceTimersByTimeAsync(3500);
+      finishes[0]!(true);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mock.animate).toHaveBeenCalledOnce();
+      expect(shown()).toEqual([1, 2, 3]);
+      expect(isHeld(2) || isHeld(3)).toBe(false);
+      socket.disconnectSocket();
+    });
+  });
 });
