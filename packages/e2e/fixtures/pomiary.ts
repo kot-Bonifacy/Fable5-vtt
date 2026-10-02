@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import type { Page } from '@playwright/test';
-import { BACKUP_DIR, DATABASE_FILE, E2E_DIR, UPLOADS_DIR } from '../instance/paths.ts';
+import {
+  BACKUP_DIR,
+  DATABASE_FILE,
+  E2E_DIR,
+  SERVER_INSPECT_PORT,
+  UPLOADS_DIR,
+} from '../instance/paths.ts';
 import { serverPid } from '../instance/instance.ts';
 
 /**
@@ -229,4 +235,173 @@ export async function readChatArrivals(page: Page): Promise<Arrival[]> {
   return page.evaluate(
     () => ((window as unknown as { __t7Arrivals?: unknown[] }).__t7Arrivals ?? []) as Arrival[],
   );
+}
+
+// --- T7c: pamięć klienta i serwera ------------------------------------------------
+
+const mb = (bytes: number) => Math.round((bytes / 1024 / 1024) * 10) / 10;
+
+/** Jedno polecenie CDP przez gniazdo inspektora i odpowiedź z tym samym `id`. */
+async function cdp<T>(socket: WebSocket, id: number, method: string, params = {}): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`CDP ${method}: timeout`)), 60_000);
+    const onMessage = (event: MessageEvent) => {
+      const message = JSON.parse(String(event.data)) as {
+        id?: number;
+        result?: T;
+        error?: { message: string };
+      };
+      if (message.id !== id) return;
+      clearTimeout(timer);
+      socket.removeEventListener('message', onMessage);
+      if (message.error) reject(new Error(`CDP ${method}: ${message.error.message}`));
+      else resolve(message.result as T);
+    };
+    socket.addEventListener('message', onMessage);
+    socket.send(JSON.stringify({ id, method, params }));
+  });
+}
+
+export interface ServerHeap {
+  heapUsedMb: number;
+  heapTotalMb: number;
+  rssMb: number;
+  externalMb: number;
+  arrayBuffersMb: number;
+}
+
+/**
+ * Sterta serwera po wymuszonym GC — przez inspektor Node (`startInstance(…, { inspect: true })`).
+ * Odróżnia wyciek od leniwego odśmiecania, czego pamięć procesu z systemu nie umie (T7b).
+ */
+export async function serverHeap(): Promise<ServerHeap> {
+  const list = (await (
+    await fetch(`http://127.0.0.1:${SERVER_INSPECT_PORT}/json/list`)
+  ).json()) as { webSocketDebuggerUrl: string }[];
+  const socket = new WebSocket(list[0]!.webSocketDebuggerUrl);
+  await new Promise<void>((resolve, reject) => {
+    socket.addEventListener('open', () => resolve(), { once: true });
+    socket.addEventListener('error', () => reject(new Error('CDP: no inspector')), { once: true });
+  });
+  try {
+    await cdp(socket, 1, 'HeapProfiler.collectGarbage');
+    await cdp(socket, 2, 'HeapProfiler.collectGarbage');
+    const evaluated = await cdp<{ result: { value: string } }>(socket, 3, 'Runtime.evaluate', {
+      expression: 'JSON.stringify(process.memoryUsage())',
+      returnByValue: true,
+    });
+    const usage = JSON.parse(evaluated.result.value) as NodeJS.MemoryUsage;
+    return {
+      heapUsedMb: mb(usage.heapUsed),
+      heapTotalMb: mb(usage.heapTotal),
+      rssMb: mb(usage.rss),
+      externalMb: mb(usage.external),
+      arrayBuffersMb: mb(usage.arrayBuffers),
+    };
+  } finally {
+    socket.close();
+  }
+}
+
+export interface ClientMemory {
+  /** Sterta JS po wymuszonym GC — tylko Chromium (CDP); w Firefoksie `null`. */
+  heapMb: number | null;
+  /**
+   * Pamięć `ArrayBuffer` poza stertą (`backingStorageSize`) — `JSHeapUsedSize` jej
+   * nie liczy, a tu siedzą bufory geometrii Pixi (#50, T7c). Tylko Chromium.
+   */
+  buffersMb: number | null;
+  listeners: number | null;
+  pixi: Record<string, number> | null;
+  dice: Record<string, number> | null;
+  dom: { nodes: number; canvases: number };
+}
+
+/**
+ * Pamięć karty aktora: w Chromium sterta po GC i słuchacze zdarzeń z CDP, w obu
+ * silnikach liczniki haka E2E (drzewo i tekstury Pixi, kości 3D, DOM — zgoda MG z 02.10).
+ */
+export async function clientMemory(
+  page: Page,
+  engine: 'chromium' | 'firefox',
+): Promise<ClientMemory> {
+  let heapMb: number | null = null;
+  let buffersMb: number | null = null;
+  let listeners: number | null = null;
+  if (engine === 'chromium') {
+    const session = await page.context().newCDPSession(page);
+    try {
+      await session.send('HeapProfiler.collectGarbage');
+      await session.send('HeapProfiler.collectGarbage');
+      await session.send('Performance.enable');
+      const { metrics } = await session.send('Performance.getMetrics');
+      const metric = (name: string) => metrics.find((m) => m.name === name)?.value ?? 0;
+      heapMb = mb(metric('JSHeapUsedSize'));
+      buffersMb = mb((await session.send('Runtime.getHeapUsage')).backingStorageSize);
+      listeners = metric('JSEventListeners');
+    } finally {
+      await session.detach().catch(() => undefined);
+    }
+  }
+  const counts = await page.evaluate(() => window.__vttE2E!.counts());
+  return { heapMb, buffersMb, listeners, ...counts };
+}
+
+/**
+ * Nachylenie prostej najmniejszych kwadratów (przyrost na krok) — „rośnie liniowo”
+ * z `testy.md` 6.3 to dodatnie nachylenie utrzymane od rozgrzewki do końca.
+ */
+export function slope(points: readonly { x: number; y: number }[]): number {
+  const n = points.length;
+  if (n < 2) return 0;
+  const mx = points.reduce((s, p) => s + p.x, 0) / n;
+  const my = points.reduce((s, p) => s + p.y, 0) / n;
+  const num = points.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0);
+  const den = points.reduce((s, p) => s + (p.x - mx) ** 2, 0);
+  return den === 0 ? 0 : num / den;
+}
+
+export interface MainThreadLoad {
+  /** Odsetek czasu ściany, w którym wątek główny karty miał zadanie (`TaskDuration`). */
+  busyPct: number;
+  /** Z tego — sam JavaScript (`ScriptDuration`). */
+  scriptPct: number;
+}
+
+/**
+ * Zajętość wątku głównego w oknie pomiaru — tylko Chromium (CDP `Performance`).
+ * Headless trzyma `rAF` na 60 Hz, więc same klatki nie pokażą zapasu mocnej karty
+ * graficznej; zajętość pokazuje, ile z każdej klatki zjada aplikacja (T7c).
+ */
+export async function mainThreadLoad<T>(
+  page: Page,
+  body: () => Promise<T>,
+): Promise<{ result: T; load: MainThreadLoad }> {
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Performance.enable');
+    const read = async () => {
+      const { metrics } = await session.send('Performance.getMetrics');
+      const metric = (name: string) => metrics.find((m) => m.name === name)?.value ?? 0;
+      return {
+        task: metric('TaskDuration'),
+        script: metric('ScriptDuration'),
+        at: performance.now(),
+      };
+    };
+    const before = await read();
+    const result = await body();
+    const after = await read();
+    const wall = (after.at - before.at) / 1000;
+    const pct = (seconds: number) => Math.round((seconds / wall) * 1000) / 10;
+    return {
+      result,
+      load: {
+        busyPct: pct(after.task - before.task),
+        scriptPct: pct(after.script - before.script),
+      },
+    };
+  } finally {
+    await session.detach().catch(() => undefined);
+  }
 }

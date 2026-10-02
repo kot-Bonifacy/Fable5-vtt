@@ -35,6 +35,8 @@ export const SERVER_PORT = 3101;
 /** Pośrednik TCP do AI Gatewaya (T5b: pad gatewaya w trakcie tury bota). */
 export const GATEWAY_PROXY_PORT = 3108;
 export const CLIENT_PORT = 4173;
+/** Inspektor Node serwera instancji (T7c: sterta serwera), tylko na 127.0.0.1. */
+export const SERVER_INSPECT_PORT = 9339;
 export const SERVER_URL = `http://127.0.0.1:${SERVER_PORT}`;
 export const BASE_URL = `http://localhost:${CLIENT_PORT}`;
 

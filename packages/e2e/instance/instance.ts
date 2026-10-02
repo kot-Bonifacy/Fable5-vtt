@@ -237,14 +237,28 @@ function launch(name: string, args: string[], cwd: string, env: NodeJS.ProcessEn
 const serverUp = () => responds(`${P.SERVER_URL}/health`);
 const clientUp = () => responds(P.BASE_URL);
 
+export interface ServerOptions {
+  /**
+   * Inspektor Node na `127.0.0.1:9339` (`SERVER_INSPECT_PORT`) — T7c wymusza przez niego
+   * GC i czyta stertę serwera (`fixtures/pomiary.ts`, `serverHeap`). Tylko lokalnie.
+   */
+  inspect?: boolean;
+}
+
 /** Sam serwer — osobno, bo T7 restartuje go w trakcie walki przy żywym kliencie. */
-export async function startServer(extraEnv: NodeJS.ProcessEnv = {}): Promise<void> {
+export async function startServer(
+  extraEnv: NodeJS.ProcessEnv = {},
+  options: ServerOptions = {},
+): Promise<void> {
   if (await serverUp()) {
     throw new Error(
       `E2E: port ${P.SERVER_PORT} is taken — run \`pnpm --filter @vtt/e2e instance stop\``,
     );
   }
-  const serverPid = launch('server', ['dist/main.js'], P.SERVER_DIR, serverEnv(extraEnv));
+  const args = options.inspect
+    ? [`--inspect=127.0.0.1:${P.SERVER_INSPECT_PORT}`, 'dist/main.js']
+    : ['dist/main.js'];
+  const serverPid = launch('server', args, P.SERVER_DIR, serverEnv(extraEnv));
   writeState({ ...readState(), serverPid });
   await waitFor(serverUp, 'server /health');
 }
@@ -256,8 +270,11 @@ export async function stopServer(): Promise<void> {
   await waitFor(async () => !(await serverUp()), 'server shutdown', 15_000);
 }
 
-export async function startInstance(extraEnv: NodeJS.ProcessEnv = {}): Promise<void> {
-  await startServer(extraEnv);
+export async function startInstance(
+  extraEnv: NodeJS.ProcessEnv = {},
+  options: ServerOptions = {},
+): Promise<void> {
+  await startServer(extraEnv, options);
   if (await clientUp()) {
     throw new Error(
       `E2E: port ${P.CLIENT_PORT} is taken — run \`pnpm --filter @vtt/e2e instance stop\``,

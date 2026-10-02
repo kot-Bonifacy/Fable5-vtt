@@ -104,6 +104,8 @@ async function waitSignedIn(actor: Actor): Promise<void> {
  */
 export class Cast {
   readonly actors: Actor[] = [];
+  /** Okno nowych aktorów; T7c mierzy mapę w Full HD (decyzja MG z 02.10). */
+  viewport = { width: 1600, height: 900 };
   private readonly browsers = new Map<Engine, Browser>();
 
   private async browser(engine: Engine): Promise<Browser> {
@@ -129,7 +131,7 @@ export class Cast {
     const browser = await this.browser(engine);
     const context = await browser.newContext({
       baseURL: BASE_URL,
-      viewport: { width: 1600, height: 900 },
+      viewport: this.viewport,
       locale: 'pl-PL',
     });
     await prepare?.(context);

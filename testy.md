@@ -29,7 +29,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ✅     | 01.10.2026 |
 | T7a  | Odporność 1/3: sieć, restart, dwie karty, degradacja AI   | ✅     | 01.10.2026 |
 | T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ✅     | 02.10.2026 |
-| T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ⬜     |            |
+| T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ✅     | 02.10.2026 |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
@@ -107,6 +107,9 @@ bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 | T7b: czat i baza       | 3000 wierszy **przez gniazdo** (~50% mowy, ~35% rzutów, ~10% szeptów, ~5% wtrąceń); liczby **bez progów** — linia bazowa refaktoryzacji; rozmiar bazy **pełnym obrazem** (tabele, kopia, rzut na sezon) (decyzja MG z 02.10, sesja T7b) |
 | triaż #48 i #49        | **#48 = B2** (obejście: wyłączona animacja kości), **#49 = B0** — blokuje betę (decyzja MG z 02.10, sesja T7b) |
 | poprawki #48 i #49     | #48 — **dogonienie**: rzut czekający > 3 s wychodzi kartą bez animacji, reszta ruchu dalej czeka za kośćmi; #49 — **licznik wersji** `Character.revision`; retest pełny T7b + T7a (decyzja MG z 02.10, sesja poprawek) |
+| T7c: wydajność mapy    | scena `test-map-4096.png` (40 figur, 200 odcinków ścian, 10 świateł) w **dwóch trybach** — Dynamiczna + ciemność + pamięć terenu oraz ręczna mgła; oczami **MG i gracza w obu silnikach**; **headless Full HD (1920 × 1080)**; liczby klatek bez progów (decyzja MG z 02.10, sesja T7c) |
+| T7c: wyciek pamięci    | **hak E2E rozszerzony o liczniki** (drzewo i tekstury Pixi, kości 3D, DOM — tylko odczyt, tylko build `e2e`), sterta JS w Chromium przez CDP; **300 rzutów, każdy z animacją 3D** (rzuca Ola w Firefoksie, MG w Chromium patrzy); **sterta serwera po GC przez `--inspect`** instancji E2E, także po 5 min spoczynku; liniowy wzrost = błąd w rejestrze, **B2 przy przyroście > ~200 MB albo spadku klatek, mniejszy B3** (decyzja MG z 02.10, sesja T7c) |
+| T7c: marsz Sowy        | **próba odtworzenia**: walka „Knajpa” z `t7b-obciazenie` 3–4 razy z pełnym śladem nieudanego marszu; nieodtworzony = notka, nie wpis (decyzja MG z 02.10, sesja T7c) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -191,7 +194,11 @@ packages/e2e/
     network.ts             T7: pośrednik gniazda karty (`routeWebSocket`) — opóźnienie w kolejce i zerwanie sieci
     fake-gateway.ts        T7: atrapa AI Gatewaya — llama-server martwy (503) albo `/chat` milczący 3 min
     pomiary.ts             T7b/T7c: liczby do `.e2e/pomiary/*.json` — rozrzut, klatki `rAF`, przyjście wierszy czatu,
-                           rozmiar bazy, uploadów i kopii, bajty tabel (`dbstat`), pamięć i CPU serwera
+                           rozmiar bazy, uploadów i kopii, bajty tabel (`dbstat`), pamięć i CPU serwera; T7c: sterta i bufory
+                           karty po GC (Chromium, CDP), liczniki haka (Pixi, kości 3D, DOM), zajętość wątku głównego,
+                           sterta serwera po GC przez inspektor Node (`startInstance(…, { inspect: true })`)
+    wydajnosc.ts           T7c: scena „Wydajność 4096” z gniazda MG (40 figur, 200 ścian, 10 świateł), kamera
+                           (`zoomAllOut`, `frameBoth`, `centreOn`, `panCircle`, `wheelInOut`)
     sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + kanarki (4.5)
     canvas.ts              klik, prawy klik, przeciąganie i marsz po płótnie Pixi we współrzędnych sceny
     db.ts                  odczyt bazy tylko do asercji (node:sqlite), odcisk stanu do punktów kontrolnych
@@ -550,6 +557,23 @@ atrapa gatewaya.
 | długi czat | 3000 wierszy w 47 s (64/s, ack p50 11 ms); przewinięcie całej historii: 56 stron, DOM ~24 tys. węzłów, Chromium 10 klatek > 100 ms, Firefox 97 |
 | rozmiar bazy | `po-T6` 676 KB + uploady 10,6 MB; po 3000 wierszach 1,64 MB (343 B/wiersz z indeksem); kopia 17 ms; sezon 20 × 1000 wierszy ≈ 7,4 MB bazy (uploady w kopiach to twarde dowiązania) |
 
+**Wynik T7c (02.10, linia bazowa refaktoryzacji; liczby w `.e2e/pomiary/t7c-*.json`).** Headless,
+1920 × 1080, RTX 5070 Ti; każdy aktor mierzy sam. Headless trzyma `rAF` na 60 Hz, więc w Chromium
+obok klatek stoi zajętość wątku głównego (CDP, odsetek czasu ściany):
+
+| pomiar | wynik |
+| --- | --- |
+| scena „Wydajność 4096” | `test-map-4096.png`, kratka 64 px, 40 figur (38 statystów z portretami), 200 odcinków ścian (25 kwartałów), 10 świateł (co trzecie migocze); `fixtures/wydajnosc.ts` |
+| mapa gotowa (scena w magazynie + tekstura 4096² na karcie) | Chromium 0,8–1,2 s, Firefox 3,1–4,0 s (oba tryby, MG i gracz) |
+| klatki: spoczynek, przesuwanie, kółko, marsz | 60/s, p95 17 ms we wszystkich 40 pomiarach poza jednym: **Ola (Firefox) w marszu na Dynamicznej — 51–52/s, p95 33 ms** (dwa przebiegi, powtarzalne); zero klatek > 50 ms |
+| zajętość wątku (Chromium) | spoczynek 1–2%, przesuwanie całej mapy 10–11%, kółko 4–8%, marsz 8–13% (MG na Dynamicznej 12,9%, Marek 12,1%; na mgle 9,8% / 8%) |
+| marsz | gracz 10 pól w ~7,2 s bez przerw; MG statystą 16 pól w ~21 s — **5 przerw „… w polu widzenia — marsz przerwany”** (sekcja 8) |
+| scena u klienta | MG: 657–709 węzłów Pixi, 90 napisów, 64–90 tekstur (81–110 MB), 40 figur; gracz: 65–219 węzłów, 19–27 tekstur (87–123 MB), sterta 12–14 MB (MG 20–22 MB) |
+| 30 przełączeń scen (UI MG, 1,7 s każde) | drzewo Pixi, tekstury, `Assets` i DOM **bez zmian** u MG i Oli; **sterta MG +1,34 MB i bufory `ArrayBuffer` +1,72 MB na przełączenie, trwale (#50)**; u gracza (Chromium) +2,2 MB buforów na 12 przełączeń |
+| 300 rzutów z animacją 3D (Ola rzuca, MG patrzy) | rzut z kartą u obojga p50 7,2 s, maks. 12,9 s; sterta MG +0,015 MB/rzut; **geometrie three.js +1,4 na rzut u obojga (#51)**; DOM +11,4 węzła/rzut (karty czatu — czat bez wirtualizacji, sekcja 8 z T7b); konsola czysta |
+| serwer (sterta po GC, inspektor Node) | start 42,4 MB → po przełączeniach 42,1 → po rzutach 42,6 → po 5 min spoczynku 42,6 MB; RSS 163–169 MB. Brak wycieku przy dwóch klientach i tym ruchu. Wzrostu 149 → 430 MB z T7b (pamięć procesu, bez GC, sześć osób) ta próba nie powtarza — najpewniej zapas sterty pod obciążeniem, ale pod pełnym obciążeniem sterty po GC nikt nie zmierzył |
+| marsz Sowy z T7b | **odtworzony — #52**: 4 nieudane marsze w 4 przebiegach walki „Knajpa”, każdy z figurą tuż nad polem docelowym; test deterministyczny `t7c-marsz-pod-figura` |
+
 ### 6.4. T8 — Przeglądarki, ekrany, pierwszy kontakt, regresja
 
 - **Macierz:** skrót scenariusza (`@szybkie`) w dwóch układach — MG Chromium / gracz Firefox
@@ -708,6 +732,9 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - screamsheet zmyśla fakty wokół tematu (cztery ciała, kurierzy, SecuTech) — model zna tylko hasło, nie przebieg walki; polszczyzna dobra z potknięciami („chodźcy cybernetyczni”, „ślady po kule”) — T6b, 30.09.
 - czat nie jest wirtualizowany: po przewinięciu całej historii (3178 wierszy, 56 stron po 50) w DOM-ie zostaje ~24 tys. węzłów; przewijanie w górę w Firefoksie ma ~100 klatek > 100 ms (Chromium 10), w dół — płynnie; dociągnięcie strony historii 1,1 s (Chromium) / 2,4 s (Firefox, p95 6 s) — czy gracz przewijający starą sesję to poczuje — T7b, 02.10;
 - spóźniony gracz (nowe wejście albo F5) widzi stół od razu, a gracze obecni od początku — z zaległością animacji rzutów (#48); przy stole może się zdarzyć, że „nowy” wie więcej niż reszta — T7b, 02.10.
+- MG prowadzący statystę przez zatłoczoną scenę klika co kilka pól: marsz staje na „… w polu widzenia — marsz przerwany” także dla figur MG (16 pól ulicą między 38 statystami — 5 przerw), choć MG i tak widzi wszystko — czy to przeszkadza przy stole — T7c, 02.10;
+- gracz w Firefoksie na scenie Dynamicznej traci w marszu ~8 klatek na sekundę (52/s, p95 33 ms; Chromium 60/s) — przy stole niewidoczne, do pilnowania przy refaktoryzacji `MapRenderer.ts` — T7c, 02.10;
+- mapa 4096 px rysuje się u gracza w Firefoksie po 3–4 s od wejścia (Chromium ~1 s) — czy ktoś zauważy czarną planszę przy przełączeniu sceny — T7c, 02.10.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -749,6 +776,38 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci
+
+**Rozstrzygnięcia MG na starcie:** scena 4096 w dwóch trybach (Dynamiczna + ciemność + pamięć terenu
+oraz ręczna mgła), MG i gracz w obu silnikach, headless Full HD; hak E2E rozszerzony o liczniki;
+300 rzutów z animacją (Ola rzuca, MG patrzy); sterta serwera przez `--inspect`; marsz Sowy — próba
+odtworzenia; wagi wycieku: liniowy wzrost = błąd, B2 > ~200 MB albo spadek klatek, inaczej B3.
+Wiersze w sekcji 2.
+
+**Zrobione:** hak `counts()` w kliencie (`MapRenderer.e2eCounts`, `diceE2ECounts`, DOM — tylko build
+`e2e`, `00-baseline` zielony; umowa w `ui`), `startInstance(…, { inspect: true })`, w `pomiary.ts`
+`serverHeap`, `clientMemory` (sterta i bufory po GC), `mainThreadLoad`, `slope`; `Cast.viewport`;
+`fixtures/wydajnosc.ts`. Cztery pliki w `40-odpornosc` (16 testów): `t7c-mapa` (9, ~6 min),
+`t7c-pamiec` (4, ~44 min; `E2E_T7C_RZUTY`, `E2E_T7C_SPOCZYNEK_MS` do prób), `t7c-diag-sterta`
+(1, zrzuty sterty do #50), `t7c-marsz-pod-figura` (2, `test.fail` #52). W `t7b-obciazenie` ślad
+nieudanego marszu (`diag`) i `E2E_T7B_BRAMA_SKALA`. Liczby w 6.3, dziewięć pułapek w `testy`.
+
+**Błędy:** **#50** (B3 do triażu) — każde przełączenie sceny zostawia u MG ~3 MB osieroconych
+buforów geometrii Pixi (520 `WebGLBuffer` na 12 przełączeń), drzewo i tekstury bez zmian.
+**#51** (B3 do triażu) — kości 3D nie zwalniają geometrii three.js (+1,4 na rzut u każdego widza).
+**#52** (B3 do triażu) — klik w środek pola tuż pod cudzą figurą łapie jej podpis, marsz nie rusza;
+to jest „marsz Sowy” z T7b (4/4 nieudane marsze z figurą nad celem). Serwer: sterta po GC płaska
+(42 MB). Klatki mapy: 60/s wszędzie poza Firefoksem gracza w marszu na Dynamicznej (52/s).
+
+**Wynik:** `t7c-mapa` 9/9 (trzy pełne przebiegi), `t7c-pamiec` 4/4 (43,7 min) + przełączenia
+powtórzone z miernikiem buforów, `t7c-diag-sterta` 1/1 (trzy przebiegi), `t7c-marsz-pod-figura` 2/2
+trzy razy (kontrola zielona, #52 pada zgodnie z `test.fail`), `t7b-obciazenie` przy krótkiej
+„Bramie” 4 × 3/3; `00-baseline` 5/5; `40-odpornosc --list` 42 testy, domyślny przebieg dalej 196.
+Klient 314/314. Oglądane automatem: MG w Chromium i Firefoksie, Marek w Chromium, Ola w Firefoksie
+(headless, 1920 × 1080). `dev.db` i punkty kontrolne nietknięte.
+
+**Następny krok:** triaż MG #50–#52, potem refaktoryzacja całości pod osłoną suity (T7 zamknięty).
+
 ### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
 
 **Rozstrzygnięcia MG na starcie:** obciążenie w obu trybach po kolei („Brama” swobodnie z odsłoniętą
@@ -784,36 +843,3 @@ i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod ob
 **02.10 (sesja poprawek):** #48 i #49 naprawione i retestowane (`715df2b`, opis w rejestrze);
 w T7c obejrzeć też jeden nieudany marsz Sowy w walce w „Knajpie” (pierwszy raz, gdy Sowa w ogóle
 chodzi w walce — przed poprawką walka miała 3 tury).
-
-### Sesja 01.10 — T7a: sieć, restart, dwie karty, degradacja AI
-
-**Rozstrzygnięcia MG na starcie:** T7 teraz (przed refaktoryzacją), podział a/b/c, ta sesja T7a;
-testy w `40-odpornosc` poza domyślnym przebiegiem; gracze głównie na PC z GPU; degradacja AI na
-atrapie gatewaya. Wagi T7 w sekcji 2.
-
-**Zrobione:** `fixtures/network.ts` (pośrednik gniazda `routeWebSocket` — opóźnienie w kolejce,
-zerwanie z `setOffline`), `fixtures/fake-gateway.ts`, hak `prepare` w `cast.mg`/`cast.gracz`,
-przełącznik `odpornosc` w `playwright.config.ts`. Trzy pliki, 16 testów, ~6 min:
-`t7a-walka-siec` (`po-T4a`): notatki Kowala i Iskry pisane kawałkami pod 150 ± 50 ms bez straty
-znaku, marsz bez skoku, podwójny klik „Kończę turę” = jedna tura, Ola 30 s offline w swojej turze
-(„Rozłączono”, powrót bez F5 z czatem, ruchem i zmianą karty z przerwy, potem krok Iskry), Marek
-w dwóch kartach (wezwanie w obu, rzut z obu naraz → jeden rzut), zabicie serwera 250 ms po rozkazie
-marszu (baza bez zmian po starcie, trzy karty wracają same w ~5 s, każda figura u klienta = baza);
-`t7a-handel-kreator` (`po-T6a`): Ola 30 s offline w środku handlu (wytrychy i zgoda Marka czekają,
-wymiana po powrocie bez F5), Kuba w kreatorze — zabicie serwera po trzech Cechach (szkic co do bajtu,
-kubek dalej załadowany, czwarta Cecha raz); `t7a-ai` (`po-T4a`): „Graj turę” Rzeźnika przy martwym
-gatewayu i martwym llama-serverze — notka „model jest niedostępny…” w kilka sekund, przy odpowiedzi
-po 3 min — przycisk wraca po 120 s; w każdym wariancie czat Oli → MG ~70 ms, ruch MG ~50 ms, rzut
-Marka dochodzi do Oli.
-
-**Błędy:** #46 (B3 wg „waga `INTERNAL`”, do triażu) — limit 120 s w turze bota kończy się
-`INTERNAL` i notką „coś poszło nie tak po stronie serwera”; #47 (niepotwierdzony) — raz na ~12
-marszów pod opóźnieniem figura u MG cofnęła się o 1,2 pola. Obserwacja do sekcji 8: okno handlu
-gracza offline nie mówi, że jest offline (tylko „Rozłączono” w nagłówku).
-
-**Wynik:** `pnpm test:e2e 40-odpornosc` 16/16 (6,1 min), plik walki 3 × 7/7 w powtórkach; domyślny
-`pnpm test:e2e --list` dalej 196 testów. Oglądane automatem: MG i Marek w Chromium, Ola i Kuba
-w Firefoksie, headless. Punkty kontrolne nietknięte (T7a ich nie nagrywa), `dev.db` nietknięta.
-
-**Następny krok:** T7b — obciążenie stołu (MG + 4 graczy + obserwator, 10 min), długi czat,
-rozmiar bazy.

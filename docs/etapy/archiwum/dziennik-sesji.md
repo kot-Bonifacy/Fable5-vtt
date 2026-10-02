@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
+
+**Zlecenie MG:** T7b z `testy.md`. Pytania na starcie: obciążenie „Bramą” swobodnie, potem walką
+w „Knajpie”; tempo mieszane (8 min stołu + 2 min szczytu); Kuba i Ewa z pustymi kartami od MG;
+obserwator = spóźniona Zosia; silniki pół na pół; 3000 wierszy przez gniazdo; liczby bez progów;
+rozmiar bazy pełnym obrazem.
+
+**Zrobione:** `fixtures/pomiary.ts` (rozrzut, klatki `rAF`, przyjście wierszy czatu, rozmiar bazy
+i tabel przez `dbstat`, pamięć serwera), `serverPid()` w `instance.ts`, w `40-odpornosc`:
+`t7b-obciazenie` (3 testy, ~35 min; `E2E_T7B_SKALA=0.1` do prób), `t7b-czat-baza` (5),
+`t7b-zapis-karty` (1, `test.fail` #49). Liczby w `testy.md` 6.3, cztery pułapki w `testy`.
+Kod aplikacji bez zmian.
+
+**Błędy:** **#48** — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały ruch gniazda
+(`RollPresentation`); po 7 min gry pięciu osób stół zbiega się z bazą dopiero po ~17 min, w walce
+przekazanie tury dochodzi po ~1,5 min. Serwer 1–2 ms, klatki 60/s. **#49** — spóźnione echo
+`character:upsert` (w tej samej kolejce, a ack od razu) cofa kartę gracza, następny zapis kasuje
+to, co było pomiędzy; odtworzenie deterministyczne. Wagi przyjęte przez MG 02.10: #48 B2, #49 B0.
+
+**Weryfikacja:** `t7b-obciazenie` w pełnej skali 3/3 (34,4 min), `t7b-czat-baza` 5/5,
+`t7b-zapis-karty` 1/1 (`test.fail`); domyślna suita dalej 196; `tsc`, ESLint i Prettier suity czyste.
+Oglądane automatem: Chromium (MG, Marek, Ewa) i Firefox (Ola, Kuba, Zosia), headless.
+`dev.db` i punkty kontrolne nietknięte. **Następny krok:** poprawki #48/#49 (osobna sesja), retest, potem T7c.
+
 ### Sesja 01/02.10 — poprawki #46 i #47 z T7a, rejestr bez otwartych błędów
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (otwarte #46, #47). Pytania na starcie: #46

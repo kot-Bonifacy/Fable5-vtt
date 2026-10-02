@@ -1,6 +1,7 @@
 import {
   Application,
   Assets,
+  Cache,
   Circle,
   Container,
   Graphics,
@@ -3054,6 +3055,44 @@ export class MapRenderer {
    * albo `null`, gdy płótna jeszcze nie ma. Czyta to wyłącznie hak testów E2E
    * (`e2e-hook.ts`): automat klika w płótno z kamery, a nie z pikseli zrzutu.
    */
+  /**
+   * Liczniki sceny Pixi dla haka testów E2E (T7c: wyciek pamięci) — węzły drzewa,
+   * napisy, tekstury na karcie graficznej z przybliżoną wagą (RGBA) i wpisy
+   * `Assets`. Wołane wyłącznie z bloku `MODE === 'e2e'` w `e2e-hook.ts`.
+   */
+  e2eCounts(): Record<string, number> | null {
+    if (this.destroyed || !this.viewport) return null;
+    let nodes = 0;
+    let texts = 0;
+    const walk = (node: Container) => {
+      nodes += 1;
+      if (node instanceof Text) texts += 1;
+      for (const child of node.children) walk(child);
+    };
+    walk(this.app.stage);
+    // Lista menedżera ma dziury po zwolnionych teksturach (Firefox, WebGL).
+    const managed = (
+      this.app.renderer.texture as unknown as {
+        managedTextures?: readonly ({ pixelWidth: number; pixelHeight: number } | null)[];
+      }
+    ).managedTextures?.filter((t) => t !== null);
+    const cache = (Cache as unknown as { _cache?: Map<unknown, unknown> })._cache;
+    return {
+      nodes,
+      texts,
+      gpuTextures: managed?.length ?? -1,
+      gpuTextureMb:
+        Math.round(
+          ((managed ?? []).reduce((sum, t) => sum + t.pixelWidth * t.pixelHeight * 4, 0) /
+            1024 /
+            1024) *
+            10,
+        ) / 10,
+      assetsCached: cache?.size ?? -1,
+      tokenNodes: this.tokenNodes.size,
+    };
+  }
+
   worldToClient(point: ScenePoint): ScenePoint | null {
     const viewport = this.viewport;
     if (!viewport || this.destroyed) return null;

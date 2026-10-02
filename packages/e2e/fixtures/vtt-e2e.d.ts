@@ -11,5 +11,10 @@ interface Window {
   __vttE2E?: {
     worldToClient(point: VttE2EPoint): VttE2EPoint | null;
     stores: Record<string, { getState(): unknown }>;
+    counts(): {
+      pixi: Record<string, number> | null;
+      dice: Record<string, number> | null;
+      dom: { nodes: number; canvases: number };
+    };
   };
 }

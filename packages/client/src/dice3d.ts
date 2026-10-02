@@ -404,3 +404,26 @@ export function previewSkin(skin: DiceSkinId): Promise<boolean> {
   if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   return enqueue({ notation: '!1d10+1d6', fun: true, toss: undefined, strength: 1, skin });
 }
+
+/**
+ * Liczniki stołu kości dla haka testów E2E (`e2e-hook.ts`, T7c: wyciek pamięci).
+ * Czyta pola biblioteki bez typów (`renderer.info`, `meshes`, świat fizyki) —
+ * wołane wyłącznie z bloku `MODE === 'e2e'`, więc poza tym buildem wypada.
+ */
+export function diceE2ECounts(): Record<string, number> | null {
+  if (!box) return null;
+  const inner = box as unknown as {
+    renderer?: { info?: { memory?: { geometries: number; textures: number } } };
+    scene?: { children: unknown[] };
+    world?: { bodies: unknown[] };
+    meshes?: unknown[];
+  };
+  return {
+    geometries: inner.renderer?.info?.memory?.geometries ?? -1,
+    textures: inner.renderer?.info?.memory?.textures ?? -1,
+    sceneChildren: inner.scene?.children.length ?? -1,
+    bodies: inner.world?.bodies.length ?? -1,
+    meshes: inner.meshes?.length ?? -1,
+    queuedJobs: jobs.length,
+  };
+}

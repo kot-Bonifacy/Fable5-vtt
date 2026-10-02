@@ -55,8 +55,20 @@ const REALISTIC = { min: 3_000, max: 8_000 };
 const PEAK = { min: 500, max: 1_000 };
 /** `E2E_T7B_SKALA=0.1` skraca części do próby suity (pomiary zapisuje się z pełnych 10 min). */
 const SCALE = Number(process.env.E2E_T7B_SKALA ?? 1);
-const BRAMA_CALM_MS = 5 * 60_000 * SCALE;
-const BRAMA_PEAK_MS = 2 * 60_000 * SCALE;
+/**
+ * Skala samej „Bramy” — T7c (02.10) powtarza walkę w „Knajpie” w pełnej długości
+ * przy krótkiej „Bramie”, żeby odtworzyć marsz Sowy (`E2E_T7B_BRAMA_SKALA=0.05`).
+ */
+const BRAMA_SCALE = Number(process.env.E2E_T7B_BRAMA_SKALA ?? SCALE);
+const BRAMA_CALM_MS = 5 * 60_000 * BRAMA_SCALE;
+/** Pełny przebieg nadpisuje linię bazową (`brama`, `knajpa`); próby idą pod własnym kluczem. */
+const RUN_SUFFIX =
+  SCALE === 1 && BRAMA_SCALE === 1
+    ? ''
+    : BRAMA_SCALE === SCALE
+      ? `-proba-${SCALE}`
+      : `-proba-${SCALE}-brama-${BRAMA_SCALE}-${new Date().toISOString().slice(11, 19)}`;
+const BRAMA_PEAK_MS = 2 * 60_000 * BRAMA_SCALE;
 const KNAJPA_MS = 3 * 60_000 * SCALE;
 /**
  * #48 (02.10): po końcu obciążenia każdy klient zgadza się ze świeżym
@@ -83,6 +95,8 @@ interface Failure {
   action: string;
   phase: string;
   error: string;
+  /** Ślad nieudanego marszu w walce (T7c): figura w bazie i u klienta, stan tury, notki czatu. */
+  diag?: unknown;
 }
 
 test.describe
@@ -882,7 +896,7 @@ test.describe
       }
       expect.soft(lost, `#49: ${seat.character} — zgubione dopiski notatek`).toEqual([]);
     }
-    recordMeasurement(FILE, SCALE === 1 ? 'brama' : `brama-proba-${SCALE}`, {
+    recordMeasurement(FILE, `brama${RUN_SUFFIX}`, {
       czasWejsciaZosiMs: lateReadyMs,
       notatkiZgubione49: notesLost,
       czynnosci: Object.fromEntries(actions),
@@ -997,6 +1011,43 @@ test.describe
       turnWaits.push(Date.now() - t0);
     }
 
+    /** Co wiedzą baza i klient gracza po marszu, który nie doszedł (marsz Sowy, T7c). */
+    async function marchDiagnosis(actor: Actor, seat: Seat, to: [number, number]) {
+      const f = figure('Knajpa', seat.character);
+      const seen = (await actor.store<TokenStore>('token'))?.tokens[f.id];
+      const chat = await actor.store<{
+        items: { type: string; message?: { kind: string; text: string }; text?: string }[];
+      }>('chat');
+      const combatant = queryOne(
+        `SELECT turnState, held, actionBypass, grappledById FROM Combatant WHERE tokenId = ?`,
+        f.id,
+      );
+      return {
+        cel: to,
+        baza: [f.x / cells.Knajpa, f.y / cells.Knajpa],
+        klient: seen ? [seen.x / cells.Knajpa, seen.y / cells.Knajpa] : null,
+        tura: activeName(),
+        uczestnik: combatant,
+        sasiedzi: query<{ name: string; x: number; y: number }>(
+          `SELECT t.name, t.x, t.y FROM Token t JOIN Scene s ON s.id = t.sceneId
+             WHERE s.name = 'Knajpa' AND abs(t.x - ?) < ? AND abs(t.y - ?) < ?`,
+          f.x,
+          3 * cells.Knajpa,
+          f.y,
+          3 * cells.Knajpa,
+        ).map((t) => `${t.name} ${t.x / cells.Knajpa},${t.y / cells.Knajpa}`),
+        notki: (chat?.items ?? [])
+          .slice(-6)
+          .map((item) => item.text ?? `${item.message?.kind}: ${item.message?.text}`)
+          .map((text) => String(text).slice(0, 160)),
+        zaznaczenie: await actor.page.evaluate(
+          () =>
+            document.querySelector('.token-hud, .selection-hud')?.textContent?.slice(0, 160) ??
+            null,
+        ),
+      };
+    }
+
     async function driver() {
       while (Date.now() < until) {
         const name = activeName() ?? '';
@@ -1015,6 +1066,7 @@ test.describe
         await attempt(actor, 'widzi turę', () => seesTurn(actor));
         const out = away.get(seat.character) ?? false;
         const to: [number, number] = [seat.knajpa[0] + (out ? 0 : 1), seat.knajpa[1]];
+        const marchFailuresBefore = failures.length;
         await attempt(actor, 'marsz', async () => {
           await march(actor, figure('Knajpa', seat.character).id, cells.Knajpa, to);
           await expect
@@ -1028,6 +1080,9 @@ test.describe
             .toEqual(to);
           away.set(seat.character, !out);
         });
+        if (failures.length > marchFailuresBefore) {
+          failures[failures.length - 1]!.diag = await marchDiagnosis(actor, seat, to);
+        }
         await attempt(actor, 'rzut', () => roll(actor, seat.formula));
         await actor.page.waitForTimeout(rand(REALISTIC));
         await attempt(actor, 'czat', () => sayMarked(actor, pick(LINES)));
@@ -1062,7 +1117,7 @@ test.describe
       type: 'konsola',
       description: JSON.stringify(errors).slice(0, 2_000),
     });
-    recordMeasurement(FILE, SCALE === 1 ? 'knajpa' : `knajpa-proba-${SCALE}`, {
+    recordMeasurement(FILE, `knajpa${RUN_SUFFIX}`, {
       tury: turns,
       czekanieNaTureMs: spread(turnWaits),
       runda: combatRow()?.round,
