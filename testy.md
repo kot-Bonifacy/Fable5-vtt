@@ -569,10 +569,10 @@ obok klatek stoi zajętość wątku głównego (CDP, odsetek czasu ściany):
 | zajętość wątku (Chromium) | spoczynek 1–2%, przesuwanie całej mapy 10–11%, kółko 4–8%, marsz 8–13% (MG na Dynamicznej 12,9%, Marek 12,1%; na mgle 9,8% / 8%) |
 | marsz | gracz 10 pól w ~7,2 s bez przerw; MG statystą 16 pól w ~21 s — **5 przerw „… w polu widzenia — marsz przerwany”** (sekcja 8) |
 | scena u klienta | MG: 657–709 węzłów Pixi, 90 napisów, 64–90 tekstur (81–110 MB), 40 figur; gracz: 65–219 węzłów, 19–27 tekstur (87–123 MB), sterta 12–14 MB (MG 20–22 MB) |
-| 30 przełączeń scen (UI MG, 1,7 s każde) | drzewo Pixi, tekstury, `Assets` i DOM **bez zmian** u MG i Oli; **sterta MG +1,34 MB i bufory `ArrayBuffer` +1,72 MB na przełączenie, trwale (#50)**; u gracza (Chromium) +2,2 MB buforów na 12 przełączeń |
-| 300 rzutów z animacją 3D (Ola rzuca, MG patrzy) | rzut z kartą u obojga p50 7,2 s, maks. 12,9 s; sterta MG +0,015 MB/rzut; **geometrie three.js +1,4 na rzut u obojga (#51)**; DOM +11,4 węzła/rzut (karty czatu — czat bez wirtualizacji, sekcja 8 z T7b); konsola czysta |
+| 30 przełączeń scen (UI MG, 1,7 s każde) | drzewo Pixi, tekstury, `Assets` i DOM **bez zmian** u MG i Oli; **sterta MG +1,34 MB i bufory `ArrayBuffer` +1,72 MB na przełączenie, trwale (#50)**; u gracza (Chromium) +2,2 MB buforów na 12 przełączeń. **Po poprawce #50 (02/03.10): sterta +0,10 MB, bufory +0,007 MB na przełączenie (8,6 → 9,0 MB w 30), zrzut sterty +0,15 MB `ArrayBuffer` na 12 przełączeń (było 21,7 MB)** — próg w teście |
+| 300 rzutów z animacją 3D (Ola rzuca, MG patrzy) | rzut z kartą u obojga p50 7,2 s, maks. 12,9 s; sterta MG +0,015 MB/rzut; **geometrie three.js +1,4 na rzut u obojga (#51; po poprawce 02/03.10 stoją: MG 4 → 5, Ola 3 → 3 w 300 rzutach — próg w teście)**; DOM +11,4 węzła/rzut (karty czatu — czat bez wirtualizacji, sekcja 8 z T7b); konsola czysta |
 | serwer (sterta po GC, inspektor Node) | start 42,4 MB → po przełączeniach 42,1 → po rzutach 42,6 → po 5 min spoczynku 42,6 MB; RSS 163–169 MB. Brak wycieku przy dwóch klientach i tym ruchu. Wzrostu 149 → 430 MB z T7b (pamięć procesu, bez GC, sześć osób) ta próba nie powtarza — najpewniej zapas sterty pod obciążeniem, ale pod pełnym obciążeniem sterty po GC nikt nie zmierzył |
-| marsz Sowy z T7b | **odtworzony — #52**: 4 nieudane marsze w 4 przebiegach walki „Knajpa”, każdy z figurą tuż nad polem docelowym; test deterministyczny `t7c-marsz-pod-figura` |
+| marsz Sowy z T7b | **odtworzony — #52** (naprawiony 02/03.10, figura łapie klik tylko na swoich polach): 4 nieudane marsze w 4 przebiegach walki „Knajpa”, każdy z figurą tuż nad polem docelowym; test deterministyczny `t7c-marsz-pod-figura` |
 
 ### 6.4. T8 — Przeglądarki, ekrany, pierwszy kontakt, regresja
 

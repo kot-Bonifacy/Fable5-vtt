@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.10 — poprawki #48 i #49 z T7b, rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (otwarte #48 B2, #49 B0). Pytania na starcie:
+#48 — **dogonienie** (nie rzuty naraz ani przyspieszanie), ruch niezwiązany z rzutem **dalej czeka**
+za kośćmi; #49 — **licznik wersji** z migracją (nie `updatedAt`); retest pełny T7b + T7a.
+
+**Zrobione (`715df2b`):** #48 — rzut obsługiwany po > 3 s od przyjścia wychodzi kartą bez animacji
+(`CATCH_UP_LAG_MS`, `rollPresentation.lagMs()`), pauza 2,5 s przed kartą urywa się, gdy czeka
+następny rzut (`untilRollWaiting`, trzeci argument `onPresented` znakuje rzut). #49 — migracja
+`Character.revision`, podbijana rozszerzeniem klienta Prismy w `db.ts` przy każdym zapisie wiersza;
+`CharacterView.revision`; `characterStore` odrzuca starszy widok w echu, acku i ponownej
+synchronizacji, a pierwszy `state:sync` po połączeniu bierze bazę w całości (kopia przywrócona przy
+zatrzymanym serwerze). E2E: `t7b-zapis-karty` bez `test.fail`, w `t7b-obciazenie` asercje zgodności
+< 60 s i zera zgubionych dopisków. Umowy w `kosci` i `karta`, pułapka w `testy` („No tests found”
+bez `E2E_ODPORNOSC`). `dev.db` zmigrowana (`prisma migrate deploy`).
+
+**Weryfikacja:** serwer 1285, klient 314, `shared` 2247; nowe testy padają bez poprawki (`git stash`);
+`tsc`, ESLint, Prettier czyste. `40-odpornosc` w pełnej skali **26/26 (24,1 min)**: zgodność „Bramy”
+6–16 s (było 850–1130 s), mowa innego gracza p50 ~4 s; „Knajpa” 15 tur w 3 min (były 3).
+Obserwacja do T7c: jeden marsz Sowy w walce nie doszedł do pola (przyczyny nie ustalono, opis
+w rejestrze). Oglądane automatem: Chromium (MG, Marek, Ewa) i Firefox (Ola, Kuba, Zosia), headless.
+**Następny krok:** T7c (wydajność mapy, wyciek pamięci).
+
 ### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
 
 **Zlecenie MG:** T7b z `testy.md`. Pytania na starcie: obciążenie „Bramą” swobodnie, potem walką
