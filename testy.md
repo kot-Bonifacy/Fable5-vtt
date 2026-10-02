@@ -105,6 +105,7 @@ bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 | T7: wagi                | utrata zapisanego stanu albo pad = B0; rozjazd klientów, którego nie naprawia F5, albo podwójny rzut/akcja = B1; powrót tylko po F5 albo brak czytelnego „rozłączony” = B2; liczby wydajności poniżej progu = obserwacja (sekcja 8), B2 dopiero przy wyraźnym zacinaniu (propozycja z 01.10 bez sprzeciwu MG) |
 | T7b: obciążenie        | **oba tryby po kolei**: ~7 min swobodnie na „Bramie” z odsłoniętą mgłą, potem ~3 min walki turowej w „Knajpie”; tempo **mieszane** (8 min co 3–8 s + 2 min szczytu co 0,5–1 s); nowi gracze Kuba i Ewa dostają **puste karty od MG**; obserwator = **spóźniony gracz** (Zosia, wchodzi w 5. minucie); silniki **pół na pół** (decyzja MG z 02.10, sesja T7b) |
 | T7b: czat i baza       | 3000 wierszy **przez gniazdo** (~50% mowy, ~35% rzutów, ~10% szeptów, ~5% wtrąceń); liczby **bez progów** — linia bazowa refaktoryzacji; rozmiar bazy **pełnym obrazem** (tabele, kopia, rzut na sezon) (decyzja MG z 02.10, sesja T7b) |
+| triaż #48 i #49        | **#48 = B2** (obejście: wyłączona animacja kości), **#49 = B0** — blokuje betę (decyzja MG z 02.10, sesja T7b) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -761,10 +762,10 @@ porównanie magazynów klienta ze świeżym `state:sync` tego konta i z bazą, c
 i przewijanie całej historii w obu silnikach), `t7b-zapis-karty` (#49, `test.fail`). Liczby
 w 6.3. Pułapki w `testy` (cztery nowe).
 
-**Błędy:** **#48** (B2? do triażu) — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały
+**Błędy:** **#48** (B2, triaż MG 02.10) — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały
 ruch gniazda; przy pięciu osobach rzucających stół jest kilka do kilkunastu minut za serwerem, w walce
 przekazanie tury dochodzi po ~1,5 min. Stan się zbiega; obejście — wyłączenie animacji kości.
-**#49** (B0? do triażu) — spóźnione echo zapisu karty cofa kartę gracza, a następny zapis kasuje
+**#49** (B0, triaż MG 02.10) — spóźnione echo zapisu karty cofa kartę gracza, a następny zapis kasuje
 to, co było pomiędzy (zgubione notatki w obu pełnych przebiegach, odtworzenie deterministyczne).
 Obserwacje w sekcji 8 (czat bez wirtualizacji, spóźniony gracz widzi więcej niż reszta).
 
@@ -775,7 +776,7 @@ domyślny przebieg dalej 196. Kod aplikacji bez zmian. Oglądane automatem: MG, 
 Celina w Chromium; Ola, Kuba, Zosia, Basia, Darek w Firefoksie, headless. `dev.db` i punkty
 kontrolne nietknięte (T7b ich nie nagrywa).
 
-**Następny krok:** triaż #48 i #49 przez MG (#49 jako B0 blokuje betę), potem T7c — wydajność mapy
+**Następny krok:** MG przyjął wagi (#48 B2, #49 B0 — blokuje betę); poprawki, potem T7c — wydajność mapy
 i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod obciążeniem).
 
 ### Sesja 01.10 — T7a: sieć, restart, dwie karty, degradacja AI

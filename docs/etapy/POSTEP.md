@@ -43,12 +43,12 @@ krytyczna, Test Przeżywalności, Pochwycenie, wezwanie, łup i przekazanie; T4a
 obecne `po-T3`, retest #16, #19, #20 OK). **27.09 naprawione i retestowane:** #15, #17, #18, #23–#27
 (`574cf4d`) oraz #28–#33 z T5a (`77e0f6f`; wagi w rejestrze dalej „do triażu MG”). **29.09 naprawione i retestowane #34–#39** (`8277386`), **30.09 — #40 i #41** (`21cbedd`:
 gracz wskazuje po id tylko drużynę; operacja u Medyka innego gracza to prośba z ceną Medyka) oraz
-retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — #1–#45 zamknięte; **01/02.10 naprawione i retestowane #46 i #47** (`1e6f5dd`: limit odpowiedzi modelu w turze bota to `AI_TIMEOUT`, zapis karty nie cofa figury w marszu — umowy w `boty` i `mapa`) — **od 02.10 otwarte #48 i #49 z T7b (do triażu MG)**; limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
+retest #21 i #22. **01.10 naprawione i retestowane #10–#13 oraz #42–#45** (`a551f3a`) — #1–#45 zamknięte; **01/02.10 naprawione i retestowane #46 i #47** (`1e6f5dd`: limit odpowiedzi modelu w turze bota to `AI_TIMEOUT`, zapis karty nie cofa figury w marszu — umowy w `boty` i `mapa`) — **od 02.10 otwarte #48 (B2) i #49 (B0 — blokuje betę) z T7b**; limity tempa, sesja gniazda i uploady za logowaniem (umowa w `serwer`), sesja i link zaproszenia ważne rok; zadania Z2–Z4, Z7 (reszta), Z9–Z11 dla etapów 28 i „Konta MG”. Suita `packages/e2e` (`pnpm test:e2e`)
 stawia izolowaną instancję z `dist/` na :3101/:4173 i nie dotyka `dev.db`; **T6 podzielony na T6a/T6b/T6c** (decyzja MG z 29.09); **T7a zamknięty 01.10** (sieć, restart, dwie karty, degradacja AI — `pnpm test:e2e 40-odpornosc`,
 poza domyślnym przebiegiem, od 02.10 z T7b 26 testów); **T7b zamknięty 02.10** (obciążenie stołu,
 długi czat, rozmiar bazy — liczby w `testy.md` 6.3; **#48** stół minuty za serwerem przy częstych
-rzutach, **#49** spóźnione echo zapisu karty gubi dopiski — B0? do triażu); **następny: triaż #48/#49
-przez MG, potem T7c**
+rzutach, **#49** spóźnione echo zapisu karty gubi dopiski — triaż MG 02.10: B2 i B0); **następny: poprawki #48/#49,
+potem T7c**
 (korekta MG z 01.10: T7 przed refaktoryzacją), potem refaktoryzacja pod osłoną suity. **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
 **T3–T6 → T7a–T7c → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T8, T10 → 28 → T11**.
@@ -177,12 +177,12 @@ Kod aplikacji bez zmian.
 (`RollPresentation`); po 7 min gry pięciu osób stół zbiega się z bazą dopiero po ~17 min, w walce
 przekazanie tury dochodzi po ~1,5 min. Serwer 1–2 ms, klatki 60/s. **#49** — spóźnione echo
 `character:upsert` (w tej samej kolejce, a ack od razu) cofa kartę gracza, następny zapis kasuje
-to, co było pomiędzy; odtworzenie deterministyczne. Wagi do triażu MG (proponowane B2 i B0).
+to, co było pomiędzy; odtworzenie deterministyczne. Wagi przyjęte przez MG 02.10: #48 B2, #49 B0.
 
 **Weryfikacja:** `t7b-obciazenie` w pełnej skali 3/3 (34,4 min), `t7b-czat-baza` 5/5,
 `t7b-zapis-karty` 1/1 (`test.fail`); domyślna suita dalej 196; `tsc`, ESLint i Prettier suity czyste.
 Oglądane automatem: Chromium (MG, Marek, Ewa) i Firefox (Ola, Kuba, Zosia), headless.
-`dev.db` i punkty kontrolne nietknięte. **Następny krok:** triaż #48/#49, potem T7c.
+`dev.db` i punkty kontrolne nietknięte. **Następny krok:** poprawki #48/#49 (osobna sesja), retest, potem T7c.
 
 ### Sesja 01/02.10 — poprawki #46 i #47 z T7a, rejestr bez otwartych błędów
 
