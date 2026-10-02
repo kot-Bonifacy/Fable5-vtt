@@ -28,7 +28,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T6b  | Rozgrywka 4b/4: czas, screamsheet, dziennik, eksport, kopie | ✅     | 30.09.2026 |
 | T6c  | Rozgrywka 4c/4: dwa pełne przebiegi od zera, migotanie    | ✅     | 01.10.2026 |
 | T7a  | Odporność 1/3: sieć, restart, dwie karty, degradacja AI   | ✅     | 01.10.2026 |
-| T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ⬜     |            |
+| T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ✅     | 02.10.2026 |
 | T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ⬜     |            |
 | T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
@@ -103,6 +103,8 @@ bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 | T7: sprzęt graczy       | **głównie PC z kartą graficzną** — pomiar mapy na GPU, SwiftShader tylko jako obserwacja (decyzja MG z 01.10) |
 | T7: degradacja AI       | **atrapa gatewaya w suicie** (`fixtures/fake-gateway.ts`) — prawdziwy gateway i llama-server nietknięte, w T7 gateway może być wyłączony (decyzja MG z 01.10) |
 | T7: wagi                | utrata zapisanego stanu albo pad = B0; rozjazd klientów, którego nie naprawia F5, albo podwójny rzut/akcja = B1; powrót tylko po F5 albo brak czytelnego „rozłączony” = B2; liczby wydajności poniżej progu = obserwacja (sekcja 8), B2 dopiero przy wyraźnym zacinaniu (propozycja z 01.10 bez sprzeciwu MG) |
+| T7b: obciążenie        | **oba tryby po kolei**: ~7 min swobodnie na „Bramie” z odsłoniętą mgłą, potem ~3 min walki turowej w „Knajpie”; tempo **mieszane** (8 min co 3–8 s + 2 min szczytu co 0,5–1 s); nowi gracze Kuba i Ewa dostają **puste karty od MG**; obserwator = **spóźniony gracz** (Zosia, wchodzi w 5. minucie); silniki **pół na pół** (decyzja MG z 02.10, sesja T7b) |
+| T7b: czat i baza       | 3000 wierszy **przez gniazdo** (~50% mowy, ~35% rzutów, ~10% szeptów, ~5% wtrąceń); liczby **bez progów** — linia bazowa refaktoryzacji; rozmiar bazy **pełnym obrazem** (tabele, kopia, rzut na sezon) (decyzja MG z 02.10, sesja T7b) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -186,6 +188,8 @@ packages/e2e/
     actors.ts              cast.mg(), cast.gracz('Ola', 'firefox', token) — osobne przeglądarki, konteksty, gniazdo
     network.ts             T7: pośrednik gniazda karty (`routeWebSocket`) — opóźnienie w kolejce i zerwanie sieci
     fake-gateway.ts        T7: atrapa AI Gatewaya — llama-server martwy (503) albo `/chat` milczący 3 min
+    pomiary.ts             T7b/T7c: liczby do `.e2e/pomiary/*.json` — rozrzut, klatki `rAF`, przyjście wierszy czatu,
+                           rozmiar bazy, uploadów i kopii, bajty tabel (`dbstat`), pamięć i CPU serwera
     sniffer.ts             zapis wszystkich ramek gniazda i odpowiedzi HTTP każdego gracza + kanarki (4.5)
     canvas.ts              klik, prawy klik, przeciąganie i marsz po płótnie Pixi we współrzędnych sceny
     db.ts                  odczyt bazy tylko do asercji (node:sqlite), odcisk stanu do punktów kontrolnych
@@ -531,6 +535,18 @@ atrapa gatewaya.
 | rozmiar bazy                  | po pełnym scenariuszu                                                                                              | zapisany — wejście do budżetu kopii w etapie 28                                                   |
 | degradacja AI — warianty      | gateway martwy od startu; llama-server martwy przy żywym gatewayu; odpowiedź 3 min (limit `AI_REQUEST_TIMEOUT_MS`) | boty „niedostępne”, reszta stołu bez zmian, żadna akcja MG nie wisi                               |
 
+**Wynik T7b (02.10, linia bazowa refaktoryzacji; liczby w `.e2e/pomiary/t7b-*.json`):**
+
+| pomiar | wynik |
+| --- | --- |
+| obciążenie „Brama” (7 min, 5 osób + Zosia od 5. min) | 811 czynności (w tym 239 rzutów kubkiem i 277 marszów), 0 nieudanych; serwer: sonda `chat:history` p50 1–2 ms, p95 ≤ 31 ms; proces 149 → ~430 MB; klatki 60/s u wszystkich |
+| zgodność stołu po obciążeniu | klient = świeży `state:sync` = baza u wszystkich sześciorga, **ale po 850–1130 s** (#48: karty rzutów co ~6,1 s, wszystko inne czeka za nimi); mowa innego gracza — mediana 6–8 min |
+| walka „Knajpa” (3 min, tempo stołu) | 3 tury w 3 min — klient widzi przekazanie tury po 82 s (mediana, maks. 119 s); zgodność po ~150 s; konsola czysta |
+| zapisy karty pod obciążeniem | **#49**: zgubione dopiski notatek u 1–3 z 4 graczy w każdym pełnym przebiegu; odtworzenie deterministyczne `t7b-zapis-karty` |
+| wejście nowego gracza | stół gotowy w 0,35 s (Chromium) / 0,64 s (Firefox), **tak samo** przy 178 i 3178 wierszach (historia stronami po 50); spóźniona Zosia pod obciążeniem — 8,6 s |
+| długi czat | 3000 wierszy w 47 s (64/s, ack p50 11 ms); przewinięcie całej historii: 56 stron, DOM ~24 tys. węzłów, Chromium 10 klatek > 100 ms, Firefox 97 |
+| rozmiar bazy | `po-T6` 676 KB + uploady 10,6 MB; po 3000 wierszach 1,64 MB (343 B/wiersz z indeksem); kopia 17 ms; sezon 20 × 1000 wierszy ≈ 7,4 MB bazy (uploady w kopiach to twarde dowiązania) |
+
 ### 6.4. T8 — Przeglądarki, ekrany, pierwszy kontakt, regresja
 
 - **Macierz:** skrót scenariusza (`@szybkie`) w dwóch układach — MG Chromium / gracz Firefox
@@ -687,6 +703,8 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - streszczenie sesji nie zaproponowało ani jednej zmiany relacji w czterech próbach (log to 6 wypowiedzi — reszta „Nocnej zmiany” to rzuty i akcje, których kronikarz nie czyta); czy MG będzie ustawiał nastawienie ręcznie — T6b, 30.09;
 - okno handlu gracza, któremu padła sieć, wygląda jak zwykle (przyciski działają lokalnie), a o przerwie mówi tylko „Rozłączono” w nagłówku — czy gracz to zauważy — T7a, 01.10;
 - screamsheet zmyśla fakty wokół tematu (cztery ciała, kurierzy, SecuTech) — model zna tylko hasło, nie przebieg walki; polszczyzna dobra z potknięciami („chodźcy cybernetyczni”, „ślady po kule”) — T6b, 30.09.
+- czat nie jest wirtualizowany: po przewinięciu całej historii (3178 wierszy, 56 stron po 50) w DOM-ie zostaje ~24 tys. węzłów; przewijanie w górę w Firefoksie ma ~100 klatek > 100 ms (Chromium 10), w dół — płynnie; dociągnięcie strony historii 1,1 s (Chromium) / 2,4 s (Firefox, p95 6 s) — czy gracz przewijający starą sesję to poczuje — T7b, 02.10;
+- spóźniony gracz (nowe wejście albo F5) widzi stół od razu, a gracze obecni od początku — z zaległością animacji rzutów (#48); przy stole może się zdarzyć, że „nowy” wie więcej niż reszta — T7b, 02.10.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -728,6 +746,38 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
+
+**Rozstrzygnięcia MG na starcie:** obciążenie w obu trybach po kolei („Brama” swobodnie z odsłoniętą
+mgłą, potem walka w „Knajpie”), tempo mieszane (8 min stołu + 2 min szczytu), Kuba i Ewa z pustymi
+kartami od MG, obserwator = spóźniona Zosia, silniki pół na pół; 3000 wierszy przez gniazdo; liczby
+bez progów; rozmiar bazy pełnym obrazem. Wiersze w sekcji 2.
+
+**Zrobione:** `fixtures/pomiary.ts`, `serverPid()` w `instance.ts`, trzy pliki w `40-odpornosc`
+(9 testów): `t7b-obciazenie` (MG + 4 graczy + Zosia, UI: marsz, kubek, czat, szepty, notatki;
+porównanie magazynów klienta ze świeżym `state:sync` tego konta i z bazą, czekanie na zbieżność do
+20 min, każdy znacznik czatu w bazie raz, rzuty ≤ gesty; `E2E_T7B_SKALA=0.1` do prób),
+`t7b-czat-baza` (rozmiar `po-T6`, wejście dwóch nowych graczy, 3000 wierszy, rozmiar po, wejście
+i przewijanie całej historii w obu silnikach), `t7b-zapis-karty` (#49, `test.fail`). Liczby
+w 6.3. Pułapki w `testy` (cztery nowe).
+
+**Błędy:** **#48** (B2? do triażu) — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały
+ruch gniazda; przy pięciu osobach rzucających stół jest kilka do kilkunastu minut za serwerem, w walce
+przekazanie tury dochodzi po ~1,5 min. Stan się zbiega; obejście — wyłączenie animacji kości.
+**#49** (B0? do triażu) — spóźnione echo zapisu karty cofa kartę gracza, a następny zapis kasuje
+to, co było pomiędzy (zgubione notatki w obu pełnych przebiegach, odtworzenie deterministyczne).
+Obserwacje w sekcji 8 (czat bez wirtualizacji, spóźniony gracz widzi więcej niż reszta).
+
+**Wynik:** `t7b-obciazenie` pełny 3/3 (34,4 min; pierwszy pełny przebieg czerwony na notatkach — #49,
+potem kontrola zamieniona na adnotację „znany #49”), trzy próby w skali 0,1; `t7b-czat-baza` 5/5
+(5,5 min); `t7b-zapis-karty` 1/1 (`test.fail` — „·B” ginie). `40-odpornosc --list` 26 testów,
+domyślny przebieg dalej 196. Kod aplikacji bez zmian. Oglądane automatem: MG, Marek, Ewa, Adam,
+Celina w Chromium; Ola, Kuba, Zosia, Basia, Darek w Firefoksie, headless. `dev.db` i punkty
+kontrolne nietknięte (T7b ich nie nagrywa).
+
+**Następny krok:** triaż #48 i #49 przez MG (#49 jako B0 blokuje betę), potem T7c — wydajność mapy
+i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod obciążeniem).
+
 ### Sesja 01.10 — T7a: sieć, restart, dwie karty, degradacja AI
 
 **Rozstrzygnięcia MG na starcie:** T7 teraz (przed refaktoryzacją), podział a/b/c, ta sesja T7a;
@@ -760,24 +810,3 @@ w Firefoksie, headless. Punkty kontrolne nietknięte (T7a ich nie nagrywa), `dev
 
 **Następny krok:** T7b — obciążenie stołu (MG + 4 graczy + obserwator, 10 min), długi czat,
 rozmiar bazy.
-
-### Sesja 01.10 — T6c: dwa pełne przebiegi od zera
-
-**Rozstrzygnięcia MG na starcie:** przebiegi z modelem; „dwa z rzędu” = dwa kolejne zielone po
-ostatniej poprawce (suity albo aplikacji); migotanie w aplikacji — drobne od razu, większe do
-rejestru; najwyżej pięć przebiegów. W trakcie: gateway w terminalu MG (nie w tle agenta),
-przerwać przebieg 4 i ograniczyć bufor promptów llama-server.
-
-**Zrobione:** `t3a` 3.6 skryptuje dziesięć kości Cech Kowala i sprawdza Cechy na karcie
-(`KOWAL_STAT_FACES`/`KOWAL_STATS`) — pełny przebieg od zera ma tego samego Kowala co punkty
-kontrolne. Gateway: `GATEWAY_LLAMA_CACHE_RAM_MB` → `--cache-ram` (domyślnie 2048; build 10735
-miał 8192), test `test_supervisor.py`, pomiar w `ai-gateway/README.md`. Przebiegi w 5.4 wyżej.
-Nowe pułapki w `testy` (konsola przebiegu, nadpisane punkty kontrolne) i `boty` (`--cache-ram`);
-zaległość: llama-server trzyma ~15,5 GB RAM-u przy modelu w całości na GPU.
-
-**Wynik:** przebiegi 4 i 5 — 196/196 (~31,5 min każdy), bez migotania; nowych błędów aplikacji brak.
-Punkty kontrolne nagrane na nowo przez przebieg 5 (Kowal jak dotąd); kopia sprzed sesji
-w `.e2e/checkpoints-bak-01.10/`. Oglądane automatem: MG i Marek w Chromium, Ola w Firefoksie, headless.
-
-**Następny krok:** wg kolejności z 26.09 — refaktoryzacja całości pod osłoną suity, potem etap
-„Konta MG”.

@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 01.10 — T7a: odporność — sieć, restart, dwie karty, degradacja AI
+
+**Zlecenie MG:** T7 z `testy.md` (w całości albo w częściach). Pytania na starcie: T7 **teraz,
+przed refaktoryzacją**, podział **T7a/T7b/T7c** (ta sesja T7a); testy w `specs/40-odpornosc`
+z tagiem `@odpornosc`, **poza domyślnym `pnpm test:e2e`**; gracze głównie na PC z GPU; degradacja
+AI na **atrapie gatewaya** (prawdziwy gateway nietknięty).
+
+**Zrobione:** `fixtures/network.ts` (pośrednik gniazda `routeWebSocket` — opóźnienie w kolejce
+i zerwanie), `fixtures/fake-gateway.ts`, hak `prepare` w `Cast`, przełącznik w `playwright.config.ts`
+(`pnpm test:e2e 40-odpornosc`). Trzy pliki, 16 testów: opóźnienie 150 ± 50 ms (notatki, marsz,
+podwójny klik), 30 s offline w turze i w handlu, Marek w dwóch kartach (jeden rzut z dwóch kart),
+zabicie serwera w trakcie marszu i w kreatorze, tura bota przy martwym gatewayu, martwym llama-serverze
+i odpowiedzi po 3 min. Nowe w rejestrze: **#46** (B3, do triażu — limit 120 s w turze bota kończy się
+`INTERNAL` i notką „coś poszło nie tak po stronie serwera”), **#47** (niepotwierdzony — raz na ~12
+marszów pod opóźnieniem figura u MG cofnęła się o 1,2 pola). Sześć pułapek w `testy`.
+
+**Weryfikacja:** `pnpm test:e2e 40-odpornosc` 16/16 (6,1 min), plik walki jeszcze 3 × 7/7; domyślna
+suita dalej 196 testów; `tsc`, ESLint i Prettier suity czyste. Kod aplikacji bez zmian. Oglądane
+automatem: MG i Marek w Chromium, Ola i Kuba w Firefoksie, headless. `dev.db` i punkty kontrolne
+nietknięte. **Następny krok:** T7b (obciążenie MG + 4 graczy + obserwator, długi czat, rozmiar bazy).
+
 ### Sesja 01.10 — T6c: pełny przebieg E2E od zera dwa razy zielony
 
 **Zlecenie MG:** T6c (`testy.md` 6.10). Pytania na starcie: przebiegi z modelem; „dwa z rzędu” =

@@ -179,6 +179,11 @@ function readState(): InstanceState {
   }
 }
 
+/** PID serwera instancji — T7b próbkuje jego pamięć i czas procesora. */
+export function serverPid(): number | undefined {
+  return readState().serverPid;
+}
+
 function writeState(state: InstanceState): void {
   mkdirSync(P.E2E_DIR, { recursive: true });
   writeFileSync(P.STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
