@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **44a–44d** Konta MG (następny: 44a); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
+| ⬜ otwarty   | **44a** (zrobiony, czeka na pełne E2E), **44b–44d** Konta MG (następny: 44b); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a (ostatni zamknięty: 43a, 2026-09-26) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,14 +29,14 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Następny: etap 44a (Konta MG).** 03.10 (piąta sesja) MG zlecił T9, ale T9 jest odbiorem etapu
-„Konta MG”, którego nie było — sesja go rozpisała: `etap-44-konta-mg.md` (stan wyjściowy z kodu,
-11 decyzji MG z 03.10, podział) i części **44a** (rejestracja, logowanie loginem, właściciel, kopie
-tylko dla niego), **44b** (strażnik własności na 144 zdarzeniach MG, uploady per kampania, imienne
-linki), **44c** (przygotowanie ≠ sesja, dwie sesje naraz, bezczynność, gracz między sesjami widzi
-kartę), **44d** (AI właściciela: zgoda per konto MG, przełącznik + obecność, „Przejmij”). **Nowa
-kolejność (MG 03.10): 44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10 → 28 → T11.**
-44a i 44b mają na górze „Do decyzji MG na starcie sesji” — zapytaj, zanim zaczniesz.
+**Etap 44a (Konta MG: rejestracja, logowanie, właściciel) zrobiony 03.10 (szósta sesja, `ed9b811`)
+— zamyka go pełny przebieg E2E z gatewayem, który puszcza MG.** MG loguje się **loginem** (`MG`,
+z `GM_NAME`) i hasłem; inni MG zakładają konta sami („Załóż konto MG”, `VTT_REGISTRATION`),
+właściciel ma w Panelu MG „Konta MG” (reset hasła linkiem 24 h, blokada). Kampanie należą do
+`Campaign.gmId`, ale **aktywna jest dalej jedna na serwer** (per MG — 44c), więc dwóch MG naraz to
+tylko dev. **Następny: 44b** (strażnik własności na zdarzeniach i trasach, uploady per kampania,
+imienne linki) — ma na górze „Do decyzji MG”. Rozpiska etapu 44: `etap-44-konta-mg.md`.
+**Kolejność (MG 03.10): 44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -126,7 +126,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2255** w `shared`, **1296** na serwerze, **319** u klienta, **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** **2261** w `shared`, **1317** na serwerze, **319** u klienta (03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -151,7 +151,7 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 61   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 16   | 18      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 17   | 18      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 26   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 20   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 12   | 5       |
@@ -165,13 +165,42 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 6    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 109     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 113     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.10 (szósta) — etap 44a „Konta MG: rejestracja, logowanie, właściciel”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44a)”, pytać o niejasności. **Decyzje MG:** blokada
+„Zablokuj” + „Odblokuj”; `VTT_REGISTRATION` domyślnie `open`; imię przy stole konta z rejestracji
+to „MG”; nowe konto zaczyna od pustego stołu z „Nowa kampania” (szczegóły w `etap-44a`).
+
+**Zrobione (`ed9b811`):** migracja `gm_accounts` (`User.login` małymi literami, `owner`,
+`blockedAt`, `lastSeenAt`, `name` bez unikalności, `Campaign.gmId`, `PasswordReset` ze skrótem
+SHA-256; backfill: dotychczasowy MG → login `mg`, właściciel, wszystkie kampanie); trasy
+`/api/auth/register|login|password|reset/:token|config` i `/api/owner/accounts*`; `ensureGmUser`
+szuka po loginie; kampanie tylko swoje (lista, poligon, zaproszenia, `campaign:activate`), MG
+dostaje aktywną kampanię tylko swoją; konto systemu = `campaignGmUser`; kopie całej bazy
+`ownerOnly`. Klient: ekrany logowania/rejestracji/resetu, nakładka „Nowa kampania”, „Konto” w
+ustawieniach, „Konta MG” w Panelu MG. Umowa w `serwer`, pułapki w `ogledziny` (2).
+`dev.db` zmigrowana (kopia sprzed migracji w scratchpadzie sesji) — **MG loguje się teraz loginem
+`MG` i swoim hasłem; działający serwer dev trzeba zrestartować.**
+
+**Weryfikacja:** `shared` 2261, serwer 1317 (nowy `gm-accounts.test.ts`, 21), klient 319; ESLint,
+Prettier, `tsc` czyste w czterech pakietach. E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo`
+58/59 → po zawężeniu filtra konsoli (gniazdo zerwane przez serwer w Firefoksie, pułapka
+`ogledziny`) nowe `t2d-konta-mg` 6/6 (start z `po-T3`, czyli też migracja starej bazy).
+**Pełny domyślny przebieg z gatewayem — puszcza MG (wynik niżej, gdy będzie).** Oglądane w
+**Firefoksie** (Playwright MCP) na instancji E2E z `po-T3`: logowanie, rejestracja z odmowami
+(formularz rejestracji zagęszczony, bo wchodził na kreski ramki plakatu), pusty stół z „Nowa
+kampania”, zakładka „Kopie” bez kopii całej bazy, zmiana hasła, panel właściciela, link resetu,
+ekran „Nowe hasło”.
+
+**Następny krok:** 44b (izolacja kampanii, imienne linki) — zacząć od „Do decyzji MG” w `etap-44b`.
 
 ### Sesja 03.10 (piąta) — projekt etapu 44 „Konta MG”
 
@@ -195,31 +224,3 @@ etapy w `archiwum/tabela-etapow.md`; dwa pomysły w `POMYSLY.md`. Kodu nie rusza
 
 **Następny krok:** etap 44a — zacząć od dwóch pytań z jego „Do decyzji MG” (blokada kont, wyłącznik
 rejestracji).
-
-### Sesja 03.10 (czwarta) — poprawki #66, #68, #71–#78
-
-**Zlecenie MG:** „napraw błędy z rejestru”. Pytania: wagi #72–#78 — B3, naprawić wszystkie dziesięć;
-#78 — poprawka skryptu i przebudowa; #74 — gracz widzi samo imię; #68 — zdanie u gracza + sprawa
-w „Czeka na MG”; #71 — wyraźniejsza obwódka właściciela (bez wroga/sojusznika), plakat „NEVER FADE
-AWAY” bez trzech pojazdów, literówki książki poprawione w nadpisaniach, wszystkie drobiazgi kreatora.
-
-**Zrobione (`b9873e8`):** #72 pole treści tabeli zwija się po puszczeniu przycisku, treść w osobnym
-wierszu; #73 odmowy `/tab` mówią o tabelach; #74 imię w wpisie zespołu (`CpredTeamMember.name`,
-odświeżane przy zmianie nazwy); #75 Lojalność tylko u MG; #76 wiersz Taboru w Firefoksie; #77 pas
-Zdolności bez czerwonych dziur; #68 `portrait:want` → „Czeka na MG”, nazwy plików tylko u MG;
-#71 kreator (Rola, metoda, braki po sprawie, Ścieżka nieobowiązkowa, podpisy filtrów, podpowiedź
-ksywy), pole imienia z ramką, obwódka właściciela za paskiem PW i jego szerokości, plakat
-(`tools/art/poster-retouch.py`, bezstratnie); #66 `parse-lifepath.py` bez dwóch śródtytułów;
-#78 `build-manual.mjs` zachowuje inicjały nagłówków, zrzut przebudowany, RAG przeindeksowany.
-Umowy w `mapa`, `serwer`, `ui`, `postac`, `dane`; pułapki w `dane` (2) i `ogledziny`.
-
-**Weryfikacja:** `shared` 2255, serwer 1296, klient 319; ESLint, Prettier, `tsc` czyste. E2E:
-`00-baseline` + `t8c-` 36/36 (pełny build, gateway; `#72`–`#75` bez `test.fail`, nowy test
-#76/#77). Parsery na nowym zrzucie — zero różnic w `data/private/cpred`. Oglądane: gracz w
-**Firefoksie** i MG w Chromium skryptem `playwright` na instancji E2E (wejście, kreator, portret,
-„Czeka na MG”, żetony), asystent zasad w Chromium MCP — Firefox z Playwright MCP nie wstał.
-`dev.db` nietknięta; `data/private` zmienione (zrzut podręcznika, `lifepath.json`, nadpisania —
-kopie sprzed zmian w scratchpadzie sesji). **Uwaga:** działający serwer dev trzeba zrestartować,
-żeby wczytał nowy `lifepath.json`.
-
-**Następny krok:** refaktoryzacja pod osłoną suity (pełny przebieg z T8c jeszcze nie puszczany).

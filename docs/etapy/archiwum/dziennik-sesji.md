@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 (czwarta) — poprawki #66, #68, #71–#78
+
+**Zlecenie MG:** „napraw błędy z rejestru”. Pytania: wagi #72–#78 — B3, naprawić wszystkie dziesięć;
+#78 — poprawka skryptu i przebudowa; #74 — gracz widzi samo imię; #68 — zdanie u gracza + sprawa
+w „Czeka na MG”; #71 — wyraźniejsza obwódka właściciela (bez wroga/sojusznika), plakat „NEVER FADE
+AWAY” bez trzech pojazdów, literówki książki poprawione w nadpisaniach, wszystkie drobiazgi kreatora.
+
+**Zrobione (`b9873e8`):** #72 pole treści tabeli zwija się po puszczeniu przycisku, treść w osobnym
+wierszu; #73 odmowy `/tab` mówią o tabelach; #74 imię w wpisie zespołu (`CpredTeamMember.name`,
+odświeżane przy zmianie nazwy); #75 Lojalność tylko u MG; #76 wiersz Taboru w Firefoksie; #77 pas
+Zdolności bez czerwonych dziur; #68 `portrait:want` → „Czeka na MG”, nazwy plików tylko u MG;
+#71 kreator (Rola, metoda, braki po sprawie, Ścieżka nieobowiązkowa, podpisy filtrów, podpowiedź
+ksywy), pole imienia z ramką, obwódka właściciela za paskiem PW i jego szerokości, plakat
+(`tools/art/poster-retouch.py`, bezstratnie); #66 `parse-lifepath.py` bez dwóch śródtytułów;
+#78 `build-manual.mjs` zachowuje inicjały nagłówków, zrzut przebudowany, RAG przeindeksowany.
+Umowy w `mapa`, `serwer`, `ui`, `postac`, `dane`; pułapki w `dane` (2) i `ogledziny`.
+
+**Weryfikacja:** `shared` 2255, serwer 1296, klient 319; ESLint, Prettier, `tsc` czyste. E2E:
+`00-baseline` + `t8c-` 36/36 (pełny build, gateway; `#72`–`#75` bez `test.fail`, nowy test
+#76/#77). Parsery na nowym zrzucie — zero różnic w `data/private/cpred`. Oglądane: gracz w
+**Firefoksie** i MG w Chromium skryptem `playwright` na instancji E2E (wejście, kreator, portret,
+„Czeka na MG”, żetony), asystent zasad w Chromium MCP — Firefox z Playwright MCP nie wstał.
+`dev.db` nietknięta; `data/private` zmienione (zrzut podręcznika, `lifepath.json`, nadpisania —
+kopie sprzed zmian w scratchpadzie sesji). **Uwaga:** działający serwer dev trzeba zrestartować,
+żeby wczytał nowy `lifepath.json`.
+
+**Następny krok:** refaktoryzacja pod osłoną suity (pełny przebieg z T8c jeszcze nie puszczany).
+
 ### Sesja 03.10 (trzecia) — T8c: pobieżna regresja obszarów
 
 **Zlecenie MG:** T8c z `testy.md`. Pytania: forma — **hybryda** (spec w suicie + ręczne oględziny
