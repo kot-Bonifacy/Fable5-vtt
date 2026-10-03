@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 (trzecia) — T8c: pobieżna regresja obszarów
+
+**Zlecenie MG:** T8c z `testy.md`. Pytania: forma — **hybryda** (spec w suicie + ręczne oględziny
+w Firefoksie), zakres — **wszystkie cztery grupy** (mapa i sceny, UI i ustawienia, narracja i AI,
+Zdolności spoza scenariusza), start **z `po-T6`**, **jeden układ** (MG Chromium, gracze Firefox),
+gateway uruchamia MG.
+
+**Zrobione:** `specs/50-przegladarki/t8c-mapa|ui|narracja|zdolnosci` (31 testów, start
+`fixtures/regresja.ts`), hak E2E czyta też `drawing`, `selection`, `music`, `settings`, `cover`, `light`,
+`table` (umowa w `ui`). Zdolności Ról na jednej karcie wieloklasowej „Wielorak” nowego gracza Kuby.
+Lista kontrolna z wynikami w `testy.md` 6.4; pułapki w `testy` (7) i `ogledziny` (2).
+
+**Błędy (B3, do triażu MG):** #72 formularz tabeli gubi pierwszy klik (pole z fokusem kurczy się spod
+kursora) i ma wąską kolumnę treści; #73 `/tab` gracza → zdanie o `/jako`; #74 pracownik Korpo bez
+imienia u gracza; #75 przyciski Lojalności u gracza → „To nie jest twoja tura.”; #76 ✕ Taboru poza
+kartą Moto w Firefoksie; #77 czerwone puste pola siatki Zdolności; #78 cytaty asystenta zasad bez
+inicjałów nagłówków. Cztery z nich mają testy `test.fail` (#72–#75).
+
+**Weryfikacja:** `t8c-` 31/31 (2,7 min) i po formatowaniu `00-baseline` + `t8c-` 36/36 (2,9 min) z pełnym buildem;
+klient 319, `tsc` i ESLint czyste w `client` i `e2e`. Oglądane: automat — MG Chromium, gracze
+Firefox (headless, 1920 × 1080); ręcznie Playwright MCP — Kuba w **Firefoksie**, MG w Chromium
+(`hold.ts`). `dev.db` nietknięta.
+
+**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity.
+
 ### Sesja 03.10 (druga) — zaległości po T8b, grot dla całego stołu, RAM llama-server
 
 **Zlecenie MG:** zrobić zaległości z `zaleglosci.md` i zamienić „grot widzi tylko celujący” na

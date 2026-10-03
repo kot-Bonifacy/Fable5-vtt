@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS; **43b** animacja trafienia, **43c** plamy krwi (UI walki)             |
+| ⬜ otwarty   | **44a–44d** Konta MG (następny: 44a); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a (ostatni zamknięty: 43a, 2026-09-26) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Następny: etap 44a (Konta MG).** 03.10 (piąta sesja) MG zlecił T9, ale T9 jest odbiorem etapu
+„Konta MG”, którego nie było — sesja go rozpisała: `etap-44-konta-mg.md` (stan wyjściowy z kodu,
+11 decyzji MG z 03.10, podział) i części **44a** (rejestracja, logowanie loginem, właściciel, kopie
+tylko dla niego), **44b** (strażnik własności na 144 zdarzeniach MG, uploady per kampania, imienne
+linki), **44c** (przygotowanie ≠ sesja, dwie sesje naraz, bezczynność, gracz między sesjami widzi
+kartę), **44d** (AI właściciela: zgoda per konto MG, przełącznik + obecność, „Przejmij”). **Nowa
+kolejność (MG 03.10): 44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10 → 28 → T11.**
+44a i 44b mają na górze „Do decyzji MG na starcie sesji” — zapytaj, zanim zaczniesz.
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -53,9 +62,9 @@ mapa 60 kl./s wszędzie poza Firefoksem gracza w marszu na Dynamicznej, serwer b
 **#50** bufory Pixi po przełączeniu sceny, **#51** geometrie kości 3D, **#52** klik pod cudzą figurą
 łapie jej podpis — to był „marsz Sowy”); **T8a zamknięty 03.10** (decyzja MG: T8 przed refaktoryzacją, podział T8a/T8b/T8c — `specs/50-przegladarki`,
 macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55 — **03.10 triaż MG: #53 naprawiony** (szew sprite'a zasłony, `isRenderGroup`, umowa w `mapa`), **#54 i #55 odrzucone** — rejestr znów bez otwartych błędów);
-**T8b zamknięty 03.10** (pierwszy kontakt: nowy gracz od linku do strzału w ~20 min bez pytań o UI; #56–#71 w rejestrze) i **tego samego dnia nowa zasada stołu (decyzja MG): obrażenia za kartę ataku rozliczają się same, Unik przed obrażeniami, jeden rzut na trafienie, grot za celownikiem** (`029cd36`, umowy w `atak` i `mapa`) — **03.10 (druga sesja): retest T5b → T6b z gatewayem zielony, triaż #57–#71 zrobiony (12 naprawionych w `120646b`, #66/#68/#71 B3 czekają), grot celowania widzi cały stół (`token:aim`, umowa w `mapa`), pełny przebieg 240/240**; **T8c zamknięty 03.10 (trzecia sesja)** — pobieżna regresja obszarów spoza scenariusza: `pnpm test:e2e t8c-` 31 testów z `po-T6` (mapa i „Lombard”, UI i ustawienia, tabele, asystent zasad, baza wiedzy, siedem Zdolności Ról, Reputacja, styl życia; lista w `testy.md` 6.4), nowe #72–#78; **03.10 (czwarta sesja) triaż MG i poprawki #66, #68, #71–#78** (`b9873e8`, retest `00-baseline` + `t8c-` 36/36) — **rejestr znów bez otwartych błędów**; **następny: refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
+**T8b zamknięty 03.10** (pierwszy kontakt: nowy gracz od linku do strzału w ~20 min bez pytań o UI; #56–#71 w rejestrze) i **tego samego dnia nowa zasada stołu (decyzja MG): obrażenia za kartę ataku rozliczają się same, Unik przed obrażeniami, jeden rzut na trafienie, grot za celownikiem** (`029cd36`, umowy w `atak` i `mapa`) — **03.10 (druga sesja): retest T5b → T6b z gatewayem zielony, triaż #57–#71 zrobiony (12 naprawionych w `120646b`, #66/#68/#71 B3 czekają), grot celowania widzi cały stół (`token:aim`, umowa w `mapa`), pełny przebieg 240/240**; **T8c zamknięty 03.10 (trzecia sesja)** — pobieżna regresja obszarów spoza scenariusza: `pnpm test:e2e t8c-` 31 testów z `po-T6` (mapa i „Lombard”, UI i ustawienia, tabele, asystent zasad, baza wiedzy, siedem Zdolności Ról, Reputacja, styl życia; lista w `testy.md` 6.4), nowe #72–#78; **03.10 (czwarta sesja) triaż MG i poprawki #66, #68, #71–#78** (`b9873e8`, retest `00-baseline` + `t8c-` 36/36) — **rejestr znów bez otwartych błędów**; **refaktoryzacja pod osłoną suity przesunięta za etap 44 (decyzja MG 03.10)** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
-**T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T10 (z powtórką automatu T8a) → 28 → T11**.
+**T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → 44a → 44b → T9a → 44c → 44d → T9b (korekta 03.10, piąta sesja) → refaktoryzacja całości pod osłoną suity → T10 (z powtórką automatu T8a) → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
 refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socket.ts` (152 KB),
@@ -164,6 +173,29 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.10 (piąta) — projekt etapu 44 „Konta MG”
+
+**Zlecenie MG:** „teraz kolej na T9” (podzielić, jeśli za duży; pytać o niejasności). T9 jest
+odbiorem etapu „Konta MG”, którego nie było ani w planie, ani w kodzie (`User.role` globalne,
+logowanie samym hasłem, jedna aktywna kampania na serwer). MG wybrał: **najpierw zaprojektować etap**.
+
+**Decyzje MG (pytania w sesji):** konta MG i gracza **osobne**; gracz — **imienny link = klucz**
+(konto w jednej kampanii, link odnowienia); zapomniane hasło MG — **reset przez właściciela**; kopie
+całej bazy **tylko właściciel**; slot zwalnia **15 min bez gniazd albo 3 h bez zdarzeń**; między
+sesjami gracz widzi **kartę bez stołu**; zgoda na AI **per konto MG**; AI dla innych tylko przy
+**obecności właściciela i przełączniku „Udostępniam AI”** (dopisek MG: nie chce oddać GPU, gdy gra
+w coś innego); zajętość AI **„pierwszy + Przejmij”**; „Konta MG” **przed** refaktoryzacją.
+
+**Zrobione:** `etap-44-konta-mg.md` i `etap-44a`–`44d`; `testy.md` — T9 podzielony na **T9a** (po 44b)
+i **T9b** (po 44d), sekcja 6.5 przepisana pod decyzje (obsada: MG-A to konto właściciela z `po-T6`,
+właściciel jako gracz u MG-B), wiersz decyzji w sekcji 2, kolejność; dopisek w `zaleglosci.md`;
+etapy w `archiwum/tabela-etapow.md`; dwa pomysły w `POMYSLY.md`. Kodu nie ruszano.
+
+**Weryfikacja:** sesja tylko dokumentów — testów nie puszczano, `dev.db` nietknięta.
+
+**Następny krok:** etap 44a — zacząć od dwóch pytań z jego „Do decyzji MG” (blokada kont, wyłącznik
+rejestracji).
+
 ### Sesja 03.10 (czwarta) — poprawki #66, #68, #71–#78
 
 **Zlecenie MG:** „napraw błędy z rejestru”. Pytania: wagi #72–#78 — B3, naprawić wszystkie dziesięć;
@@ -191,28 +223,3 @@ kopie sprzed zmian w scratchpadzie sesji). **Uwaga:** działający serwer dev tr
 żeby wczytał nowy `lifepath.json`.
 
 **Następny krok:** refaktoryzacja pod osłoną suity (pełny przebieg z T8c jeszcze nie puszczany).
-
-### Sesja 03.10 (trzecia) — T8c: pobieżna regresja obszarów
-
-**Zlecenie MG:** T8c z `testy.md`. Pytania: forma — **hybryda** (spec w suicie + ręczne oględziny
-w Firefoksie), zakres — **wszystkie cztery grupy** (mapa i sceny, UI i ustawienia, narracja i AI,
-Zdolności spoza scenariusza), start **z `po-T6`**, **jeden układ** (MG Chromium, gracze Firefox),
-gateway uruchamia MG.
-
-**Zrobione:** `specs/50-przegladarki/t8c-mapa|ui|narracja|zdolnosci` (31 testów, start
-`fixtures/regresja.ts`), hak E2E czyta też `drawing`, `selection`, `music`, `settings`, `cover`, `light`,
-`table` (umowa w `ui`). Zdolności Ról na jednej karcie wieloklasowej „Wielorak” nowego gracza Kuby.
-Lista kontrolna z wynikami w `testy.md` 6.4; pułapki w `testy` (7) i `ogledziny` (2).
-
-**Błędy (B3, do triażu MG):** #72 formularz tabeli gubi pierwszy klik (pole z fokusem kurczy się spod
-kursora) i ma wąską kolumnę treści; #73 `/tab` gracza → zdanie o `/jako`; #74 pracownik Korpo bez
-imienia u gracza; #75 przyciski Lojalności u gracza → „To nie jest twoja tura.”; #76 ✕ Taboru poza
-kartą Moto w Firefoksie; #77 czerwone puste pola siatki Zdolności; #78 cytaty asystenta zasad bez
-inicjałów nagłówków. Cztery z nich mają testy `test.fail` (#72–#75).
-
-**Weryfikacja:** `t8c-` 31/31 (2,7 min) i po formatowaniu `00-baseline` + `t8c-` 36/36 (2,9 min) z pełnym buildem;
-klient 319, `tsc` i ESLint czyste w `client` i `e2e`. Oglądane: automat — MG Chromium, gracze
-Firefox (headless, 1920 × 1080); ręcznie Playwright MCP — Kuba w **Firefoksie**, MG w Chromium
-(`hold.ts`). `dev.db` nietknięta.
-
-**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity.

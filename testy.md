@@ -33,13 +33,14 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T8a  | Przeglądarki 1/3: macierz silników, ekrany, motyw, konsola | ✅     | 03.10.2026 |
 | T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ✅     | 03.10.2026 |
 | T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ✅     | 03.10.2026 |
-| T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
+| T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ⬜     |            |
+| T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
 
 **Kolejność:** T1 przed wszystkim. T3 → T4 → T5 → T6 po kolei (każdy startuje z punktu
 kontrolnego poprzedniego, sekcja 4.4). T2, T7 i T8 wymagają tylko T1 i T3, więc można je
-przestawiać. T9 dopiero po nowym etapie „Konta MG” (sekcja 6.5) — do tego czasu scenariusz gra
+przestawiać. T9a dopiero po etapie 44b, T9b po 44d (etap „Konta MG”, sekcja 6.5) — do tego czasu scenariusz gra
 jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 
 **Kolejność prac wokół testów (decyzja MG z 26.09, sesja T1):** T1 → T3–T6 (T2 dowolnie po T3)
@@ -47,7 +48,9 @@ jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11. **Korekta 01.10 (MG):** T7
 idzie teraz, przed refaktoryzacją, w trzech częściach a/b/c — pomiary T7b/T7c staną się linią
 bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”. **Korekta 03.10 (MG):** T8 też
-idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po „Kontach MG”.
+idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po „Kontach MG”. **Korekta 03.10 (MG, sesja projektowa):** „Konta MG”
+idą **przed** refaktoryzacją, jako etap 44 w czterech częściach (`docs/etapy/etap-44-konta-mg.md`):
+**44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10**.
 
 ## 2. Decyzje MG z 26.09.2026 (podstawa planu)
 
@@ -120,6 +123,7 @@ idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po �
 | obrażenia i Unik       | obrażenia rzucone za kartę ataku **rozliczają się same** (cel, osłona, każdy dosięgnięty z obszaru), **Unik przed obrażeniami** — rzut czeka na każdego, kto może się uchylić, aż rzuci Unik albo kliknie „Bez uniku” (cel albo MG), **jeden rzut obrażeń na trafienie** (#56), **grot strzelca idzie za celownikiem** (decyzja MG z 03.10, sesja T8b) |
 | T8c: forma i zakres    | **hybryda**: spec `specs/50-przegladarki/t8c-*` (jeden test na obszar — szczęśliwa ścieżka i jedna odmowa; wchodzi do osłony refaktoryzacji) plus ręczne oględziny Playwright MCP w Firefoksie tam, gdzie automat nie oceni (dźwięk, pełny ekran, kości 3D, wygląd okien); **wszystkie cztery grupy**: mapa i sceny, UI i ustawienia, narracja i AI (asystent zasad i baza wiedzy z gatewayem, `@llm`), Zdolności Ról spoza scenariusza z Facedown, Reputacją i stylem życia; start **z `po-T6`**, **jeden układ** — MG Chromium, gracze Firefox (decyzja MG z 03.10, sesja T8c) |
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
+| Konta MG: projekt      | etap 44 (44a–44d) zamiast „nowego etapu do zaprojektowania”; **osobne konta MG i gracza** (rola globalna), **imienny link = klucz** gracza (konto w jednej kampanii, link odnowienia), reset hasła MG przez właściciela, **kopie całej bazy tylko dla właściciela**, przygotowanie ≠ sesja, **gracz między sesjami widzi kartę bez stołu**, slot zwalnia **15 min bez gniazd albo 3 h bez zdarzeń**, zgoda na AI **per konto MG**, AI dla innych tylko przy **obecności właściciela i przełączniku „Udostępniam AI”**, zajętość AI „pierwszy + Przejmij” (decyzje MG z 03.10, sesja projektowa; pełna lista w `etap-44-konta-mg.md`) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -669,48 +673,66 @@ Nowe błędy #72–#78, wszystkie B3 do triażu; żadnego B0–B2, wycieku ani n
 
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 
-Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
-w `docs/etapy/zaleglosci.md`); T9 jest jego odbiorem z perspektywy bety. Aktorzy: **MG-A** (grupa
-z Markiem i Olą, stan z punktu `po-T6`) i **MG-B** z własnym graczem **Kuba**, oba konta założone
-przez otwartą rejestrację; do punktu 10 — **MG-C**. Właściciel instancji (z AI na swoim PC) gra jako
-gracz u MG-A.
+Warunek bety z decyzji MG z 26.09 i odbiór **etapu 44 „Konta MG”** z perspektywy bety
+(`docs/etapy/etap-44-konta-mg.md`, decyzje MG z 03.10). Dwie części:
 
-1. **Rejestracja:** formularz, walidacja hasła, zajęta nazwa, logowanie, wylogowanie, zmiana hasła
-   (jeśli etap ją przewiduje); limit prób logowania i rejestracji z jednego adresu.
+- **T9a, po 44b:** punkty 1, 2, 3, 5, 6, 7 i 9 (konta, izolacja, uploady, linki, kopie,
+  kompendium);
+- **T9b, po 44d:** punkty 4, 8 i 10 (dwie grupy naraz, AI właściciela, limit sesji) oraz powtórka
+  kanarków z punktu 2 w trakcie równoległej gry.
+
+**Aktorzy.** Konta są osobne dla MG i gracza (decyzja z 03.10), więc obsada z 26.09 („właściciel
+gra jako gracz u MG-A” jednym kontem) zmienia się tak:
+
+- **MG-A** to konto właściciela z `.env`, z grupą Marka i Oli w stanie `po-T6` (migracja 44a
+  przypisuje mu istniejące kampanie);
+- **MG-B** zakłada konto przez otwartą rejestrację i ma własnego gracza **Kubę**;
+- **właściciel jako gracz**: drugie konto właściciela z flagą, imiennym linkiem u MG-B;
+- **MG-C** z rejestracji, tylko do punktu 10.
+
+1. **Rejestracja:** formularz, walidacja hasła, zajęty login, logowanie, wylogowanie, zmiana
+   hasła, reset hasła przez właściciela (link jednorazowy, 24 h); limit prób logowania
+   i rejestracji z jednego adresu. Zwykły MG nie widzi kopii całej bazy, a serwer mu jej odmawia.
 2. **Izolacja odczytu:** MG-B nie widzi kampanii, scen, kart, botów, architektur Sieci, handoutów,
    uploadów ani czatu MG-A — kanarki MG-A w podsłuchu **MG-B i Kuby** przez cały test.
 3. **Izolacja zapisu:** macierz ról z T2 (punkt 1) powtórzona z gniazda MG-B na identyfikatorach
-   obiektów MG-A → odmowa, zero zmian w bazie.
-4. **Aktywacja:** MG-B aktywuje swoją kampanię, gdy grupa MG-A gra → **Marek i Ola zostają na swojej
-   scenie** (dziś `campaign:activate` przeniósłby wszystkich — to byłby B1). Aktywna kampania per MG
-   wchodzi do etapu „Konta MG” (decyzja MG z 26.09). Obie grupy grają naraz (limit dwóch sesji,
-   decyzja MG z 26.09, trzecia tura) — ruch, rzuty i czat jednej nie docierają do drugiej.
+   obiektów MG-A → odmowa `NOT_FOUND`, zero zmian w bazie.
+4. **Aktywacja i dwie grupy (T9b):** MG-B przygotowuje swoją kampanię i rozpoczyna sesję, gdy grupa
+   MG-A gra → **Marek i Ola zostają na swojej scenie** (dawne globalne `campaign:activate` przeniosłoby
+   wszystkich, czyli B1). Obie grupy grają naraz (limit dwóch sesji): ruch, rzuty i czat jednej nie
+   docierają do drugiej. Po „Zakończ sesję” gracze widzą swoją kartę bez stołu i nie wykonają
+   żadnego zdarzenia stołu, także z konsoli.
 5. **Uploady i biblioteki:** pliki wgrane w kampanii (mapy, portrety, handouty) są za logowaniem —
    widzi je tylko MG-właściciel i gracze tej kampanii. Kuba i MG-B dostają odmowę także po dokładnym
    adresie `/uploads/…` skopiowanym od Marka; niezalogowany — tak samo. Portret z biblioteki MG-A
    nie istnieje w UI MG-B.
-6. **Indywidualne linki graczy:** każde zaproszenie jest imienne, dla jednego gracza; link Marka
-   po użyciu nie wpuszcza nikogo innego jako nowego gracza, a link z kampanii MG-B nie daje wstępu do
-   kampanii MG-A. Wygasły i unieważniony link nie wpuszcza (jak T2, punkt 7).
-7. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A; odtworzenie kopii całości zachowuje
-   właścicieli.
-8. **Boty:** bez zatwierdzonej prośby u MG-B boty są **niedostępne**, a stół MG-B działa w pełni bez
-   AI, jak przy martwym gatewayu. Żadne żądanie AI z kampanii MG-B nie trafia do gatewaya właściciela
-   (sprawdzić w logu gatewaya). MG-B widzi, skąd wziąć paczkę instalacyjną AI, jeśli etap „Konta MG”
-   dołoży do niej odnośnik (zaległości, pozycja 3).
-   **Prośba o AI (zaległości, pozycja 4 — decyzja MG z 26.09, trzecia tura):** MG-B wysyła prośbę,
-   gdy właściciel jest wylogowany; właściciel loguje się **jako gracz** w kampanii MG-A i widzi
-   prośbę, zatwierdza → boty MG-B odpowiadają. Gdy AI zajmuje sesja MG-A, boty MG-B są niedostępne
-   z komunikatem „AI zajęte przez inną sesję”, a stół MG-B gra dalej. Cofnięcie dostępu → boty MG-B
-   niedostępne bez restartu serwera. Odrzucona albo cofnięta prośba nie przepuszcza żadnego żądania.
-   Prośby nie widzi nikt poza właścicielem (kanarek w podsłuchu MG-A, Marka i Oli).
+6. **Imienne linki graczy:** każdy link jest wystawiony na imię jednego gracza i zużywa się przy
+   pierwszym wejściu; drugi raz nie wpuszcza nikogo. **Link odnowienia** prowadzi do tego samego
+   konta. Link z kampanii MG-B nie daje wstępu do kampanii MG-A, a imię „Marek” w kampanii MG-B
+   to inne konto niż Marek u MG-A. Wygasły i unieważniony link nie wpuszcza (jak T2, punkt 7).
+7. **Kopie:** eksport kampanii MG-B nie zawiera niczego od MG-A. Kopia całej bazy i jej
+   odtworzenie są tylko u właściciela, a odtworzenie zachowuje właścicieli kampanii (`gmId`).
+8. **Boty (T9b):** bez zatwierdzonej prośby u MG-B boty są **niedostępne**, a stół MG-B działa
+   w pełni bez AI, jak przy martwym gatewayu. Żadne żądanie AI z kampanii MG-B nie trafia do
+   gatewaya właściciela (licznik na atrapie i log gatewaya).
+   **Prośba o AI** (decyzje z 26.09 i 03.10): MG-B wysyła prośbę, gdy właściciel jest wylogowany.
+   Właściciel wchodzi **kontem gracza** i widzi prośbę, a potem ją zatwierdza (zgoda per konto MG).
+   Boty MG-B odpowiadają **dopiero po włączeniu „Udostępniam AI”** i tylko wtedy, gdy któreś konto
+   właściciela ma otwartą kartę. Po zamknięciu ostatniej karty właściciela boty MG-B gasną po 2 min,
+   a po jego ponownym wejściu przełącznik jest znów wyłączony. Gdy AI trzyma sesja MG-A, boty MG-B
+   są niedostępne z komunikatem „AI zajęte przez inną sesję”, a stół MG-B gra dalej. Koniec sesji
+   MG-A przekazuje AI sesji MG-B. „Przejmij AI” właściciela odbiera AI bez cofania zgody.
+   Cofnięcie dostępu wyłącza boty MG-B bez restartu serwera. Odrzucona albo cofnięta prośba nie
+   przepuszcza żadnego żądania. Prośby nie widzi nikt poza kontami właściciela (kanarek
+   w podsłuchu MG-B, Marka, Oli i Kuby).
 9. **Kompendium:** MG-B i Kuba widzą to samo kompendium co grupa MG-A (66 umiejętności, katalog) —
-   kompendium jest wspólne dla wszystkich na VPS (decyzja MG z 26.09), to nie jest wyciek.
-10. **Limit sesji:** trzeci MG (**MG-C**, konto z rejestracji) loguje się i przygotowuje kampanię,
-    gdy grają MG-A i MG-B; przy „Aktywuj kampanię” dostaje komunikat, że wszystkie miejsca są zajęte
-    i serwer nie obsłuży więcej sesji naraz — stoły MG-A i MG-B bez zmian. MG-A kończy sesję → MG-C
-    aktywuje. Porzucona sesja zwalnia slot po progu bezczynności z etapu (decyzja MG z 26.09,
-    trzecia tura).
+   kompendium jest wspólne dla wszystkich na VPS (decyzja MG z 26.09), to nie jest wyciek. Wpisy
+   własne MG-A w kompendium kampanii są tylko u MG-A.
+10. **Limit sesji (T9b):** trzeci MG (**MG-C**, konto z rejestracji) loguje się i przygotowuje
+    kampanię, gdy grają MG-A i MG-B. Przy „Rozpocznij sesję” dostaje komunikat, że wszystkie miejsca
+    są zajęte i serwer nie obsłuży więcej sesji naraz, a stoły MG-A i MG-B się nie zmieniają. MG-A
+    kończy sesję → MG-C startuje. Porzucona sesja zwalnia slot po **15 min bez gniazd albo 3 h
+    bez zdarzeń** (decyzja z 03.10; w suicie progi skrócone przez env).
 
 ### 6.6. T11 — VPS (po etapie 28)
 
@@ -745,7 +767,7 @@ Wszystkie naraz:
 4. Linia bazowa (sekcja 6.1) zielona, bez spadku liczby testów.
 5. Podsłuch nie znalazł żadnego kanarka w całym przebiegu (T3–T6) ani na zimno (T2).
 6. Kopia i odtworzenie na rozegranym stanie działają (6.8, 6.9).
-7. Etap „Konta MG” ukończony i T9 zielony (izolacja dwóch MG, w tym aktywacji).
+7. Etap „Konta MG” (44a–44d) ukończony, T9a i T9b zielone (izolacja dwóch MG, w tym aktywacji).
 8. Etap 28 ukończony według jego kryteriów i T11 zielony.
 
 **Werdykt T10** brzmi „gotowe do bety po etapie 28” albo „niegotowe, powód: …” z listą B0/B1.

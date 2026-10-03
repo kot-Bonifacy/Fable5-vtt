@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**03.10.2026 (projekt etapu 44) — kwota miejsca na uploady per konto MG.** Przy otwartej rejestracji
+na VPS (8 GB RAM, dysk home.pl) jeden MG może zapełnić dysk mapami i muzyką. Dziś są tylko limity
+rozmiaru jednego pliku. Do rozważenia po becie: suma bajtów per MG w panelu właściciela i próg
+w env.
+
+**03.10.2026 (projekt etapu 44) — reset hasła MG pocztą.** MG wybrał reset przez właściciela
+(link 24 h, przekazany ręcznie), bo serwer nie wysyła e-maili. Gdy MG będzie dużo, SMTP na VPS
+i adres przy rejestracji zdejmą to z właściciela.
+
 **03.10.2026 (poprawka #62) — bot nie bierze drugiego ataku z broni o SS 2.** Gracz od 03.10 widzi
 żywą broń po pierwszym strzale (`attackOpen` w pasku), ale `bot-combat.ts` liczy budżet po staremu
 (`actionSpent` = koniec ataków), więc statysta-bot z ciężkim pistoletem strzela raz na turę. Kierunek:

@@ -12,6 +12,11 @@ globalne) i jedna aktywna kampania dla wszystkich (`campaign:activate` przenosi 
 połączonego gracza), a CLAUDE.md mówi „jedna aktywna sesja, nie optymalizuj pod multi-tenant” —
 do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
 
+**03.10.2026 — pozycje 1, 2 i 4 rozpisane jako etap 44 „Konta MG” (44a–44d)** w sesji projektowej:
+decyzje MG i podział w `etap-44-konta-mg.md` rozstrzygają wszystkie „do ustalenia w etapie” niżej
+(próg bezczynności, zgoda per konto MG, kto zajmuje AI, konta osobne). Pozycje zostają otwarte do
+ukończenia etapu; pozycja 3 dalej po becie.
+
 1. **Osobne konta MG z otwartą rejestracją — WARUNEK BETY.** Każdy MG zakłada konto sam (otwarta
    rejestracja, własne hasło), widzi i steruje tylko swoimi kampaniami, botami, architekturami Sieci
    i scenami. Do zaprojektowania jako nowy etap przed 28. Testy: `testy.md`, etap T9. Uwaga
