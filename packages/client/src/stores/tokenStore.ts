@@ -63,7 +63,7 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
       const tokens: Record<string, TokenView> = {};
       for (const token of incoming) {
         const existing = state.tokens[token.id];
-        const kept = existing && isWalking(token.id) ? { x: existing.x, y: existing.y } : {};
+        const kept = existing && holdsPosition(token.id) ? { x: existing.x, y: existing.y } : {};
         tokens[token.id] = normalizeHp({ ...token, ...kept }, viewer);
       }
       return { tokens };
@@ -107,18 +107,37 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
  */
 export const WALK_FRAME_HOLD_MS = 3000;
 
+/**
+ * How long after the drop a `token:sync` list still may not move the figure
+ * (reszta #47, 03.10). The server builds the list for a scene with hiding
+ * walls or dynamic vision *before* the final move is written and sends it a
+ * few `await`s later — after the drop broadcast. Applied as it stands, that
+ * list put the figure back on its starting square until the next move or F5.
+ * A list never moves a figure the client already has on purpose (position
+ * belongs to `token:move` and to an upsert with `moved`), so holding the
+ * landed square for a moment costs nothing.
+ */
+export const WALK_LANDED_HOLD_MS = 2000;
+
 /** Last intermediate `token:move` per token; the drop removes the entry. */
 const walkFrames = new Map<string, number>();
+/** When each figure last landed — the drop of its walk. */
+const landedAt = new Map<string, number>();
 
 /** Every `token:move` the client applies goes through here first (#47). */
 export function noteMoveFrame(tokenId: string, final: boolean, now = Date.now()): void {
-  if (final) walkFrames.delete(tokenId);
-  else walkFrames.set(tokenId, now);
+  if (final) {
+    walkFrames.delete(tokenId);
+    landedAt.set(tokenId, now);
+  } else walkFrames.set(tokenId, now);
 }
 
-function isWalking(tokenId: string, now = Date.now()): boolean {
+/** Does the client's own position outrank the one in a token list? */
+export function holdsPosition(tokenId: string, now = Date.now()): boolean {
   const last = walkFrames.get(tokenId);
-  return last !== undefined && now - last < WALK_FRAME_HOLD_MS;
+  if (last !== undefined && now - last < WALK_FRAME_HOLD_MS) return true;
+  const landed = landedAt.get(tokenId);
+  return landed !== undefined && now - landed < WALK_LANDED_HOLD_MS;
 }
 
 let statusesRequested = false;

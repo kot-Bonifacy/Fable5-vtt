@@ -270,6 +270,13 @@
   opacity: 1;
 }
 
+/* #67 (T8b): w kreatorze Cechę rzuca się kubkiem raz na zawsze, a kość toczyła
+   się pod oknem kreatora (`.sheet-window`, z-index 300) i ledwie ją było widać.
+   Póki kreator jest otwarty, kości idą nad okna — pod dialogi (400) dalej. */
+body:has(.creator-window) .dice-overlay {
+  z-index: 350;
+}
+
 .dice-overlay canvas {
   width: 100% !important;
   height: 100% !important;

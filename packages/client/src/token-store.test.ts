@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { TokenView } from '@vtt/shared';
-import { noteMoveFrame, useTokenStore, WALK_FRAME_HOLD_MS } from './stores/tokenStore.js';
+import {
+  noteMoveFrame,
+  useTokenStore,
+  WALK_FRAME_HOLD_MS,
+  WALK_LANDED_HOLD_MS,
+} from './stores/tokenStore.js';
 
 /**
  * #47 (T7a, 01.10): zapis karty w trakcie marszu cofał figurę na start.
@@ -53,7 +58,8 @@ describe('magazyn figur — upsert a pozycja (#47)', () => {
 describe('magazyn figur — lista `token:sync` a figura w marszu (#47)', () => {
   beforeEach(() => {
     useTokenStore.setState({ tokens: {} });
-    noteMoveFrame('kowal', true);
+    // Lądowanie dawno temu — czysta karta dla każdego testu.
+    noteMoveFrame('kowal', true, 0);
   });
 
   it('lista z bazy nie cofa figury w marszu, ale zdejmuje i dodaje figury', () => {
@@ -70,11 +76,24 @@ describe('magazyn figur — lista `token:sync` a figura w marszu (#47)', () => {
     expect([tokens.zbir!.x, tokens.zbir!.y]).toEqual([140, 160]);
   });
 
-  it('po końcowej klatce lista znowu ustawia pozycję', () => {
+  it('lista zbudowana przed zapisem lądowania nie cofa figury na start (reszta #47)', () => {
     const store = useTokenStore.getState();
     store.applyTokens([kowal(450, 630)], viewer);
     noteMoveFrame('kowal', false);
     noteMoveFrame('kowal', true);
+    store.applyMove('kowal', 540, 630);
+
+    // Serwer odczytał listę przed zapisem końcowej pozycji i wysłał ją po klatce.
+    store.applyTokens([kowal(450, 630)], viewer);
+
+    expect(useTokenStore.getState().tokens.kowal!.x).toBe(540);
+  });
+
+  it('chwilę po lądowaniu lista znowu ustawia pozycję', () => {
+    const store = useTokenStore.getState();
+    store.applyTokens([kowal(450, 630)], viewer);
+    noteMoveFrame('kowal', false, Date.now() - WALK_LANDED_HOLD_MS - 10);
+    noteMoveFrame('kowal', true, Date.now() - WALK_LANDED_HOLD_MS - 1);
 
     store.applyTokens([kowal(540, 630)], viewer);
 

@@ -1251,6 +1251,27 @@ export async function turnTokenToward(
 }
 
 /**
+ * The player holds this figure — owns the token or the sheet it carries. The GM
+ * holds every one. Shared by the two ways of turning a figure: by hand
+ * (`token:facing`) and by aiming (`token:aim`).
+ */
+export async function requireTokenControl(
+  prisma: PrismaClient,
+  user: SessionUser,
+  token: Token,
+): Promise<void> {
+  if (user.role === ROLE_GM) return;
+  // A hidden token is refused the way an unseen one is: the rejection must
+  // not become a way to learn the token is there.
+  if (token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+  const character = token.characterId
+    ? await prisma.character.findUnique({ where: { id: token.characterId } })
+    : null;
+  const controls = token.ownerId === user.id || character?.ownerId === user.id;
+  if (!controls) throw new RealtimeError('FORBIDDEN');
+}
+
+/**
  * Turning a figure by hand (stage 27j) — the second token operation a *player*
  * performs, and it is here for the reason `token:light` is not in
  * `token:update`: deciding which way you are looking is a tactical choice made
@@ -1271,17 +1292,7 @@ export const tokenFacingEvent = defineEvent<TokenFacingPayload, TokenView>({
       campaignId,
       payload?.tokenId,
     );
-    const isGm = user.role === ROLE_GM;
-    if (!isGm) {
-      // A hidden token is refused the way an unseen one is: the rejection must
-      // not become a way to learn the token is there.
-      if (token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-      const character = token.characterId
-        ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
-        : null;
-      const controls = token.ownerId === user.id || character?.ownerId === user.id;
-      if (!controls) throw new RealtimeError('FORBIDDEN');
-    }
+    await requireTokenControl(deps.ctx.prisma, user, token);
     const facing = sanitizeFacing(payload?.facing);
     if (facing === undefined) throw new RealtimeError('BAD_REQUEST');
 

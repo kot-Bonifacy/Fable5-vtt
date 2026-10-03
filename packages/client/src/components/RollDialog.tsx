@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CpredHitLocation, CpredRollRequest } from '@vtt/shared';
 import {
+  displayDiceNotation,
   CPRED_AIMED_SHOT_PENALTY,
   CPRED_HIT_LOCATIONS,
   CPRED_HIT_LOCATION_LABELS,
@@ -153,7 +154,7 @@ function RollDialogBody({ target }: { target: RollTarget }) {
               <span>{isDamage ? 'Rzut na obrażenia' : '1k10 +'}</span>
               <span>
                 {isDamage
-                  ? formatRollNotation(planned.plan.formula).replace('d', 'k')
+                  ? displayDiceNotation(formatRollNotation(planned.plan.formula))
                   : planned.plan.modifierTotal}
               </span>
             </li>

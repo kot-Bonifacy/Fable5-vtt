@@ -201,6 +201,7 @@ import type {
   RollGesture,
   MapFxBroadcast,
   MapPingBroadcast,
+  TokenAimBroadcast,
   MapPingPayload,
   RulerBroadcast,
   RulerClearBroadcast,
@@ -285,6 +286,7 @@ import {
   screamsheetErrorText,
   shopTierRefusalText,
   TOKEN_MOVE_RATE_HZ,
+  TOKEN_AIM_INTERVAL_MS,
   TOKEN_PATH_MAX_POINTS,
   parseChatInput,
 } from '@vtt/shared';
@@ -319,6 +321,7 @@ import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
+import { receiveTokenAim } from './map-aim.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
@@ -602,9 +605,18 @@ export function connectSocket(userId: string): Socket {
     useCreationStore.setState({ draft: { ...store.draft, stats, statRolls } });
   });
   // 24.09: the GM's answer to my request, or a consent spent or taken back.
-  onPresented('creation:permit-state', (state: CreationPermitState) =>
-    useCreationStore.getState().setPermit(state),
-  );
+  onPresented('creation:permit-state', (state: CreationPermitState) => {
+    const before = useCreationStore.getState().permit?.status;
+    useCreationStore.getState().setPermit(state);
+    // #57 (T8b): zgoda przychodziła po cichu — w „Postaciach” pojawiał się
+    // kreator, a gracz patrzący na czat nie wiedział, że może zaczynać.
+    if (before === 'requested' && state.status === 'granted') {
+      chat().addNote('Masz zgodę MG na postać — kreator czeka w zakładce „Postacie”.', [
+        { label: 'Otwórz kreator', run: () => void useCreationStore.getState().openCreator() },
+      ]);
+      notifyGame('handout');
+    }
+  });
   onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>
     watchGmAttention(() => useCreationRankStore.getState().replacePermits(rows)),
   );
@@ -622,6 +634,8 @@ export function connectSocket(userId: string): Socket {
     watchGmAttention(() => useCreationRankStore.getState().replace(rows)),
   );
   socket.on('disconnect', () => {
+    // Serwer zdejmuje grot rozłączonego gniazda sam; po powrocie nie ma czego zdejmować.
+    resetTokenAim();
     rollPresentation.clear();
     cancelDiceAnimations();
     setDisconnected();
@@ -983,7 +997,26 @@ export function connectSocket(userId: string): Socket {
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
   onPresented('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
+    const known = useCharacterStore.getState().characters[broadcast.character.id];
     watchGmAttention(() => useCharacterStore.getState().applyUpsert(broadcast.character));
+    // #57: „Przyjmij do gry” też szło po cichu — zmianę widać było tylko po
+    // figurze na mapie. Notka idzie do właściciela karty, nie do MG.
+    const me = useAuthStore.getState().user;
+    if (
+      known &&
+      !known.playReady &&
+      broadcast.character.playReady &&
+      me &&
+      me.role !== ROLE_GM &&
+      broadcast.character.ownerId === me.id
+    ) {
+      const id = broadcast.character.id;
+      chat().addNote(
+        `Postać „${broadcast.character.name}” przyjęta do gry — karta jest odblokowana, a figura stoi na mapie.`,
+        [{ label: 'Otwórz kartę', run: () => useCharacterStore.getState().openSheet(id) }],
+      );
+      notifyGame('handout');
+    }
   });
   onPresented('character:delete', (broadcast: CharacterDeleteBroadcast) => {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
@@ -1152,6 +1185,8 @@ export function connectSocket(userId: string): Socket {
   // powtórki. Idzie prosto do mapy przez `map-ping.js`, tą samą drogą co efekty
   // walki: to nie jest stan, z którego cokolwiek się renderuje.
   onPresented('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
+  // Grot celowania (03.10) — ulotny jak ping: bez `seq`, bez zapisu, bez powtórki.
+  onPresented('token:aim', (broadcast: TokenAimBroadcast) => receiveTokenAim(broadcast));
 
   // Fog of war (stage 17). The mask is campaign-wide state on the active
   // scene, so it is sequenced like tokens; a GM previewing another map gets
@@ -3860,6 +3895,53 @@ export function flushCharacterSave(characterId: string): void {
 }
 
 let lastMoveSentAt = 0;
+
+type AimReport = { tokenId: string; facing: number | null };
+/** Ostatni grot, który poszedł do serwera; null — nic nie wisi u stołu. */
+let aimSent: AimReport | null = null;
+let aimPending: AimReport | null = null;
+let aimSentAt = 0;
+let aimTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Grot celowania do reszty stołu (03.10, zlecenie MG) — najwyżej jeden
+ * `token:aim` na `TOKEN_AIM_INTERVAL_MS`. Pierwsza zmiana idzie od razu,
+ * następne zbierają się w jedną wysyłkę na końcu okna: stół widzi obrót bez
+ * zwłoki, a przeciągnięcie kursora przez tłum to jedna wiadomość, nie dziesięć.
+ * Liczy się tylko ostatni stan — gniazdo ma jeden celownik, a serwer sam
+ * zdejmuje stary grot, gdy przychodzi nowa figura.
+ */
+export function reportTokenAim(tokenId: string, facing: number | null): void {
+  aimPending = { tokenId, facing };
+  if (aimTimer) return;
+  const wait = aimSentAt + TOKEN_AIM_INTERVAL_MS - Date.now();
+  if (wait <= 0) flushTokenAim();
+  else aimTimer = setTimeout(flushTokenAim, wait);
+}
+
+function flushTokenAim(): void {
+  aimTimer = null;
+  const next = aimPending;
+  aimPending = null;
+  if (!next || !socket?.connected) return;
+  if (next.facing === null) {
+    // Zdjęcie celownika zdejmuje to, co wisi — a gdy nic nie wisi, nie ma o czym mówić.
+    if (!aimSent || aimSent.facing === null) return;
+    next.tokenId = aimSent.tokenId;
+  } else if (aimSent && aimSent.tokenId === next.tokenId && aimSent.facing === next.facing) {
+    return;
+  }
+  socket.emit('token:aim', next);
+  aimSent = next;
+  aimSentAt = Date.now();
+}
+
+function resetTokenAim(): void {
+  if (aimTimer) clearTimeout(aimTimer);
+  aimTimer = null;
+  aimPending = null;
+  aimSent = null;
+}
 
 /**
  * Streams drag positions, throttled to TOKEN_MOVE_RATE_HZ; the final position

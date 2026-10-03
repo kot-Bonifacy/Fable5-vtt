@@ -384,6 +384,14 @@ export function CharacterPanel() {
                     </span>
                     <span className="character-row-meta">
                       {roleName(character.data.roleId) || '—'}
+                      {/* #58 (T8b): gracz po „Utwórz postać” nie był pewien, czy
+                          w ogóle ją oddał — lista nie mówiła, że czeka na MG. */}
+                      {!character.playReady && (
+                        <span className="character-row-pending">
+                          {' '}
+                          · czeka na przyjęcie przez MG
+                        </span>
+                      )}
                     </span>
                   </span>
                 </button>
@@ -455,7 +463,7 @@ export function CharacterPanel() {
             : null;
         // 24.09: a player's new character starts with the GM's consent and
         // the rules; the GM opens the wizard as before.
-        if (!isGm) return <CreationGate resume={resume} />;
+        if (!isGm) return <CreationGate resume={resume} another={order.length > 0} />;
         return (
           <button
             type="button"

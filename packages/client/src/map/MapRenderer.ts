@@ -953,6 +953,13 @@ export class MapRenderer {
   onWalkNote: ((text: string) => void) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
   onWalkStateChange: ((tokenId: string | null) => void) | null = null;
+  /**
+   * Podgląd trasy pod kursorem pojawił się albo zniknął (#69, T8b) — figura,
+   * której to trasa, albo null. Ślady stóp nie mają podpisu (decyzja MG
+   * z 23.08), więc legendę dla nowego gracza pokazuje mapa nad płótnem.
+   */
+  onWalkPreview: ((tokenId: string | null) => void) | null = null;
+  private walkPreviewFor: string | null = null;
   /** „Turn this figure by hand" (stage 27j) — the knob on the selection ring. */
   onTokenFacing: ((tokenId: string, facing: number) => void) | null = null;
   /** Double-click on a token — opens its character sheet (stage 08). */
@@ -973,6 +980,12 @@ export class MapRenderer {
    */
   onAimHover:
     ((hover: { tokenId: string; clientX: number; clientY: number } | null) => void) | null = null;
+  /**
+   * Grot figury poszedł za celownikiem albo wrócił (03.10) — `facing: null`
+   * znaczy „już nie celuje”. Woła się przy każdej zmianie, a dławi nadawca
+   * (`reportTokenAim`), bo to on wie, kiedy ostatnio coś poszło do stołu.
+   */
+  onAimFacing: ((tokenId: string, facing: number | null) => void) | null = null;
   /** The local ruler changed; null means the measurement ended. */
   onRulerChange: ((points: ScenePoint[] | null) => void) | null = null;
   /** A fog stroke/rectangle is being drawn (preview); null ends the gesture. */
@@ -1232,6 +1245,9 @@ export class MapRenderer {
    * a w odsłoniętym pasie świeciła kratka z CSS-a `.map-area`.
    */
   private hostResize: ResizeObserver | null = null;
+  /** Gospodarz płótna i jego lewy górny róg na stronie — do trzymania kadru (#70). */
+  private host: HTMLElement | null = null;
+  private hostCorner: { left: number; top: number } | null = null;
   /** Fog brush settings; `armed` decides whether a drag paints. */
   private fogBrush: FogBrushSettings = {
     armed: false,
@@ -1875,6 +1891,7 @@ export class MapRenderer {
 
     this.app.renderer.on('resize', (width: number, height: number) => {
       viewport.resize(width, height);
+      this.holdViewOnPage(viewport);
       // Dolna granica zbliżenia zależy od kształtu płótna: okno rozciągnięte
       // w bok przy niezmienionym zoomie odsłoniłoby czerń za krawędzią mapy.
       this.applyCameraBounds();
@@ -1903,12 +1920,41 @@ export class MapRenderer {
    * w obsłudze `resize` wyżej.
    */
   private watchHostSize(host: HTMLElement): void {
+    this.host = host;
+    this.hostCorner = cornerOf(host);
     if (typeof ResizeObserver === 'undefined') return;
     this.hostResize = new ResizeObserver(() => {
       if (this.destroyed) return;
       this.app.queueResize();
     });
     this.hostResize.observe(host);
+  }
+
+  /**
+   * Mapa nie podskakuje, gdy jej krawędź się przesuwa (#70, T8b).
+   *
+   * Pas inicjatywy wjeżdża nad mapę i spycha jej górną krawędź w dół; lewy panel
+   * zwija się i odsłania pas z boku. `pixi-viewport` trzyma po zmianie rozmiaru
+   * lewy górny róg świata, więc cały obraz jechał razem z krawędzią — żeton
+   * gracza przy dolnej krawędzi wypadał za nią z podpisem. Tu świat zostaje
+   * w tym samym miejscu **na stronie**: nowa krawędź tylko zasłania albo
+   * odsłania pas mapy. To jest dosłownie decyzja MG z 12.09 („kamera zostaje,
+   * dochodzi sam pas mapy”), której stary kod dotrzymywał tylko przy prawej
+   * i dolnej krawędzi.
+   */
+  private holdViewOnPage(viewport: Viewport): void {
+    const host = this.host;
+    if (!host) return;
+    const corner = cornerOf(host);
+    const before = this.hostCorner;
+    this.hostCorner = corner;
+    if (!before) return;
+    const dx = corner.left - before.left;
+    const dy = corner.top - before.top;
+    if (dx === 0 && dy === 0) return;
+    const scale = viewport.scale.x || 1;
+    viewport.moveCorner(viewport.left + dx / scale, viewport.top + dy / scale);
+    this.refreshOverlays();
   }
 
   setScene(scene: SceneView | null): void {
@@ -3186,6 +3232,23 @@ export class MapRenderer {
     this.refreshOverlays();
   }
 
+  /**
+   * Czy punkt sceny stoi w widoku z zapasem od krawędzi (#70) — piątą częścią
+   * kadru z każdej strony, żeby figura z podpisem nie siedziała na krawędzi.
+   */
+  showsWell(point: ScenePoint): boolean {
+    const viewport = this.viewport;
+    if (!viewport || this.destroyed) return false;
+    const marginX = viewport.worldScreenWidth * 0.2;
+    const marginY = viewport.worldScreenHeight * 0.2;
+    return (
+      point.x >= viewport.left + marginX &&
+      point.x <= viewport.right - marginX &&
+      point.y >= viewport.top + marginY &&
+      point.y <= viewport.bottom - marginY
+    );
+  }
+
   private readonly tickPing = (): void => {
     if (this.pings.length === 0) return;
     const now = performance.now();
@@ -4026,6 +4089,16 @@ export class MapRenderer {
     );
   }
 
+  /**
+   * Zdejmuje celownik z zewnątrz — zmiana tury (#64, T8b): dymek i grot wisiały
+   * nad celem, dopóki kursor stał w miejscu, także po „Kończę turę”. Najechanie
+   * jeszcze raz pokazuje go od nowa, więc planowanie strzału poza turą zostaje.
+   */
+  dropAim(): void {
+    if (this.destroyed) return;
+    this.clearAim();
+  }
+
   /** Takes the reticle down — selection changed, weapon put away, scene swapped. */
   private clearAim(): void {
     if (this.aimTokenId === null) return;
@@ -4040,13 +4113,42 @@ export class MapRenderer {
    * Grot strzelca idzie za celownikiem (03.10, decyzja MG po T8b: „strzałki
    * powinny się kierować na cel, w który celujemy”).
    *
-   * Tylko obraz u tego, kto celuje: kierunek zapisuje serwer dopiero przy
-   * strzale (`turnTokenToward`, 27j), bo wycelowanie to jeszcze nie decyzja,
-   * a reszta stołu nie powinna widzieć, w kogo ktoś mierzy, zanim pociągnie za
-   * spust. Zejście celownika oddaje figurze kąt z serwera — chyba że figura
-   * właśnie maszeruje, bo wtedy grot prowadzi marsz.
+   * Od drugiej decyzji MG z 03.10 widzi go cały stół: zmiana idzie przez
+   * `onAimFacing` jako ulotny `token:aim`, najwyżej raz na sekundę. Kierunek
+   * **zapisuje** serwer dalej dopiero przy strzale (`turnTokenToward`, 27j), bo
+   * wycelowanie to jeszcze nie decyzja. Zejście celownika oddaje figurze kąt
+   * z serwera — chyba że figura właśnie maszeruje, bo wtedy grot prowadzi marsz.
    */
   private turnShooterToAim(): void {
+    const previous = this.aimTurnedTokenId;
+    this.applyShooterAim();
+    const current = this.aimTurnedTokenId;
+    if (previous && previous !== current) this.onAimFacing?.(previous, null);
+    if (current) this.onAimFacing?.(current, this.tokenNodes.get(current)?.facing ?? null);
+  }
+
+  /**
+   * Cudzy grot z `token:aim` (03.10). Własny ruch figury ma pierwszeństwo:
+   * ten klient ją właśnie ciągnie, prowadzi marszem, obraca gałką albo sam
+   * nią celuje — wtedy cudzy kąt byłby drugim, sprzecznym obrazem tej samej
+   * figury. `null` oddaje kąt z serwera.
+   */
+  showRemoteAim(tokenId: string, facing: number | null): void {
+    if (this.destroyed) return;
+    const node = this.tokenNodes.get(tokenId);
+    if (!node || node.destroyed) return;
+    if (
+      this.aimTurnedTokenId === tokenId ||
+      this.march?.node === node ||
+      this.drag?.node === node ||
+      this.rotating?.tokenId === tokenId
+    )
+      return;
+    node.showFacing(facing ?? node.token.facing ?? null);
+    this.drawSelectionRing();
+  }
+
+  private applyShooterAim(): void {
     const scene = this.scene;
     const shooter = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     const target = this.aimTokenId ? this.tokenNodes.get(this.aimTokenId) : undefined;
@@ -4481,45 +4583,58 @@ export class MapRenderer {
    * server, never by a click on the floor.
    */
   private drawWalkPreview(): void {
-    this.walkGraphics.clear();
-    this.routePrints.hide();
-    const hover = this.walkHover;
-    const scene = this.scene;
-    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
-    if (!hover || !scene || !node || node.destroyed || this.march) return;
-    if (hover.points.length < 2) return;
+    // Czyja trasa jest narysowana — dla legendy śladów (#69). `finally`, bo
+    // podgląd ma kilka wyjść, a każde musi powiedzieć, co zostało na mapie.
+    let shown: string | null = null;
+    try {
+      this.walkGraphics.clear();
+      this.routePrints.hide();
+      const hover = this.walkHover;
+      const scene = this.scene;
+      const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+      if (!hover || !scene || !node || node.destroyed || this.march) return;
+      if (hover.points.length < 2) return;
 
-    const half = (node.token.size * scene.grid.sizePx) / 2;
-    const k = this.overlayScale();
-    const budget = this.walkBudget();
-    const color = hover.truncated ? WALK_COLOR_UNKNOWN : WALK_COLOR;
-    // Band edges in metres of *ground*, which is what the route is measured in;
-    // the budget is in metres of turn, and hard going makes the two differ.
-    const moveGround = budget ? budget.metresLeft / budget.costFactor : Infinity;
-    const extraGround = budget
-      ? (budget.metresLeft + budget.extraMetres) / budget.costFactor
-      : Infinity;
-    const bandAt = (metres: number): { color: number; alpha: number } => {
-      if (metres <= moveGround + 0.05) return { color, alpha: 0.95 };
-      if (metres <= extraGround + 0.05) return { color: WALK_COLOR_EXTRA, alpha: 0.9 };
-      return { color: WALK_COLOR_BEYOND, alpha: 0.45 };
-    };
-    this.drawFootprints(this.routePrints, hover.points, scene, half, bandAt);
+      const half = (node.token.size * scene.grid.sizePx) / 2;
+      const k = this.overlayScale();
+      const budget = this.walkBudget();
+      const color = hover.truncated ? WALK_COLOR_UNKNOWN : WALK_COLOR;
+      // Band edges in metres of *ground*, which is what the route is measured in;
+      // the budget is in metres of turn, and hard going makes the two differ.
+      const moveGround = budget ? budget.metresLeft / budget.costFactor : Infinity;
+      const extraGround = budget
+        ? (budget.metresLeft + budget.extraMetres) / budget.costFactor
+        : Infinity;
+      const bandAt = (metres: number): { color: number; alpha: number } => {
+        if (metres <= moveGround + 0.05) return { color, alpha: 0.95 };
+        if (metres <= extraGround + 0.05) return { color: WALK_COLOR_EXTRA, alpha: 0.9 };
+        return { color: WALK_COLOR_BEYOND, alpha: 0.45 };
+      };
+      this.drawFootprints(this.routePrints, hover.points, scene, half, bandAt);
 
-    // The corners the player insisted on, so „I asked for this route" is visible
-    // while it is being built rather than only inferable from its shape.
-    for (const waypoint of this.walkWaypoints) {
-      this.walkGraphics.circle(waypoint.x, waypoint.y, 5 * k).fill({ color: 0xfacc15, alpha: 0.9 });
+      // The corners the player insisted on, so „I asked for this route" is visible
+      // while it is being built rather than only inferable from its shape.
+      for (const waypoint of this.walkWaypoints) {
+        this.walkGraphics
+          .circle(waypoint.x, waypoint.y, 5 * k)
+          .fill({ color: 0xfacc15, alpha: 0.9 });
+      }
+
+      // Nothing else on the route (MG, 23.08).
+      //
+      // The preview grew a bar where each band ended, a big ✖ on the landing
+      // square, a number on every leg, a total, and what „Bieg" would buy — and
+      // one by one they all came off. Each was a second way of saying what the
+      // colours already say, drawn at a precision nobody plans a turn to. Where
+      // the green runs out is where the figure stops; that is the whole message,
+      // and anyone who wants the exact metre has the ruler.
+      shown = node.tokenId;
+    } finally {
+      if (shown !== this.walkPreviewFor) {
+        this.walkPreviewFor = shown;
+        this.onWalkPreview?.(shown);
+      }
     }
-
-    // Nothing else on the route (MG, 23.08).
-    //
-    // The preview grew a bar where each band ended, a big ✖ on the landing
-    // square, a number on every leg, a total, and what „Bieg" would buy — and
-    // one by one they all came off. Each was a second way of saying what the
-    // colours already say, drawn at a precision nobody plans a turn to. Where
-    // the green runs out is where the figure stops; that is the whole message,
-    // and anyone who wants the exact metre has the ruler.
   }
 
   /**
@@ -7217,6 +7332,9 @@ export class MapRenderer {
     // Before the flag: a march holds a node and a ticker, and both are about to
     // stop existing. Nothing is committed — the server keeps its own position.
     this.finishMarch(null, false);
+    // Grot, który poszedł do stołu, schodzi razem z mapą — inaczej reszta
+    // widziałaby figurę wpatrzoną w cel do następnego ruchu.
+    if (this.aimTurnedTokenId) this.onAimFacing?.(this.aimTurnedTokenId, null);
     this.destroyed = true;
     // Obserwator trzyma gospodarza, a ten trzyma płótno — rozłączany przed
     // `app.destroy`, żeby ostatnia notatka o rozmiarze nie trafiła w martwy
@@ -7343,4 +7461,10 @@ export class MapRenderer {
     viewport.setZoom(Math.min(Math.max(scale, MIN_ZOOM), 1), true);
     viewport.moveCenter(scene.width / 2, scene.height / 2);
   }
+}
+
+/** Lewy górny róg elementu na stronie, w pikselach CSS. */
+function cornerOf(element: HTMLElement): { left: number; top: number } {
+  const rect = element.getBoundingClientRect();
+  return { left: rect.left, top: rect.top };
 }

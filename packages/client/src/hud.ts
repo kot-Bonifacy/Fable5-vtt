@@ -193,6 +193,11 @@ export function hudTurnRefusal(
   if (!tokenId || isGm || !combat) return null;
   const combatant = combat.combatants.find((row) => row.tokenId === tokenId);
   if (!combatant) return null;
+  // Przed pierwszą rundą nikt nie ma tury (#63, T8b) — „to nie jest tura tej
+  // postaci” brzmiało, jakby ktoś inny już działał.
+  if (combat.round === 0) {
+    return 'Walka jeszcze się nie zaczęła — poczekaj, aż MG rozpocznie pierwszą rundę.';
+  }
   if (combat.activeCombatantId !== combatant.id) {
     return 'To nie jest tura tej postaci — poczekaj na swoją kolej.';
   }

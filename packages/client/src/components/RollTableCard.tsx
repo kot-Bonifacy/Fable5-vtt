@@ -1,5 +1,5 @@
 import type { ChatMessageView, RandomTableRollEntry, RandomTableRollStep } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, displayDiceNotation } from '@vtt/shared';
 import { randomTableErrorText, rollRandomTableNow, showRandomTableRoll } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
@@ -29,7 +29,7 @@ function StepDice({ step }: { step: RandomTableRollStep }) {
   return (
     <span className="chat-table-dice">
       {dice.map((value, index) => (
-        <span key={index} className="chat-die" title={step.roll.notation}>
+        <span key={index} className="chat-die" title={displayDiceNotation(step.roll.notation)}>
           {value}
         </span>
       ))}

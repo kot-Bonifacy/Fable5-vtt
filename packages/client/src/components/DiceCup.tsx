@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CheckCallEntry, CpredRollRequest, RollGesture, RollToss } from '@vtt/shared';
 import {
+  displayDiceNotation,
   MAX_GESTURE_STRENGTH,
   ROLE_GM,
   checkCallTargetText,
@@ -589,7 +590,7 @@ export function DiceCup() {
                       mode.pending.visibility === 'gm' ? ' (do MG)' : ''
                     } · Esc odkłada rzut`
                   : mode.kind === 'roll'
-                    ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
+                    ? `Potrząśnij i rzuć: ${displayDiceNotation(mode.notation)}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
                     : mode.kind === 'randtable'
                       ? `Potrząśnij i losuj z tabeli: ${mode.tableName}`
                       : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
@@ -620,7 +621,9 @@ export function DiceCup() {
         <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
       </svg>
       {mode.kind === 'call' && <span className="dice-cup-label">{callLabel(mode.entry)}</span>}
-      {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
+      {mode.kind === 'roll' && (
+        <span className="dice-cup-label">{displayDiceNotation(mode.notation)}</span>
+      )}
       {mode.kind === 'randtable' && <span className="dice-cup-label">🎲 {mode.tableName}</span>}
       {(mode.kind === 'attack' ||
         mode.kind === 'evasion' ||

@@ -507,6 +507,11 @@ export function CombatHud() {
   const combat = useCombatStore((s) => s.combat);
   const cupBusy = useRollStore((s) => s.pending !== null);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const myId = useAuthStore((s) => s.user?.id ?? null);
+  // Gracz bez żadnej własnej karty (#58) — szkic z kreatora też się liczy.
+  const noCharacter = useCharacterStore(
+    (s) => !isGm && !Object.values(s.characters).some((character) => character.ownerId === myId),
+  );
 
   const token = context.token;
   const armed = activeWeaponOf(activeWeapon, token?.id ?? null);
@@ -573,6 +578,21 @@ export function CombatHud() {
     setOpenDrawer(null);
   }, [focusId]);
 
+  // #60 (T8b): formularz rozwija się pod akcjami, czyli zwykle pod dolną
+  // krawędzią panelu — gracz widział ucięte „Zapisz” pod kubkiem i nie wiedział,
+  // że wystarczy przewinąć. Otwarty formularz sam wjeżdża w widok
+  // (`scroll-margin-bottom` w CSS trzyma go nad kubkiem).
+  const railRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!form) return;
+    const frame = requestAnimationFrame(() => {
+      railRef.current
+        ?.querySelector('.hud-form')
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [form]);
+
   // Collapsed is a strip, not a hole: the portrait and a sliver of the health
   // bar survive, because „I do not know how hurt I am" is not a saving of space
   // anybody asked for.
@@ -625,7 +645,7 @@ export function CombatHud() {
   }
 
   return (
-    <aside className="hud-rail" aria-label="Panel aktywnej postaci">
+    <aside ref={railRef} className="hud-rail" aria-label="Panel aktywnej postaci">
       <div className="hud-head">
         <span className="hud-head-title">Postać</span>
         <button
@@ -645,8 +665,10 @@ export function CombatHud() {
         <p className="hud-empty">
           <HudIcon name="stand-up" className="hud-empty-icon" />
           <span>
-            Kliknij token, którym chcesz sterować. Potem klikaj podłoże, żeby iść, i przeciwnika,
-            żeby wycelować.
+            {/* #58: nowy gracz bez postaci dostawał radę o tokenie, którego nie ma. */}
+            {noCharacter
+              ? 'Nie masz jeszcze postaci — poproś o nią MG w zakładce „Postacie” po prawej.'
+              : 'Kliknij token, którym chcesz sterować. Potem klikaj podłoże, żeby iść, i przeciwnika, żeby wycelować.'}
           </span>
         </p>
       )}
@@ -802,7 +824,10 @@ export function CombatHud() {
             <p className="hud-armed">
               <span className="hud-armed-mark" aria-hidden />
               <span>
-                W ręku: <strong>{armed.name}</strong> — kliknij cel na mapie.
+                {/* Przy odmowie tury bez zachęty do celowania (#63, T8b): „kliknij cel”
+                    pod „to nie jest tura tej postaci” to dwie sprzeczne rady. */}
+                W ręku: <strong>{armed.name}</strong>
+                {context.refusal ? '.' : ' — kliknij cel na mapie.'}
                 {isGm && <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>}
               </span>
             </p>

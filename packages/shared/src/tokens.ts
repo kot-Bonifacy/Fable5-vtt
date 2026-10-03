@@ -359,6 +359,34 @@ export interface TokenFacingPayload {
 }
 
 /**
+ * How often a client reports where its shooter is aiming (03.10, MG's request):
+ * at most one `token:aim` per this many milliseconds. The first change goes out
+ * at once, later ones fold into a trailing send, so the table sees the turn
+ * promptly and the server gets one message a second however fast the pointer
+ * sweeps across a crowd.
+ */
+export const TOKEN_AIM_INTERVAL_MS = 1000;
+
+/**
+ * Client → server `token:aim`: the figure is aiming that way right now.
+ *
+ * Ephemeral like the ruler: never stored, no seq, not replayed on a resync.
+ * `facing: null` takes the aim down and gives the figure back its stored angle.
+ */
+export interface TokenAimPayload {
+  tokenId: string;
+  /** Degrees clockwise from up; null — not aiming any more. */
+  facing: number | null;
+}
+
+/** Server → client `token:aim` — somebody else's figure turned to its aim, or stopped. */
+export interface TokenAimBroadcast {
+  sceneId: string;
+  tokenId: string;
+  facing: number | null;
+}
+
+/**
  * Client → server `token:feared`: whom this figure backed down from (stage 23c).
  *
  * The −2 of a lost Konfrontacja needs **two** things — the „Onieśmielony"

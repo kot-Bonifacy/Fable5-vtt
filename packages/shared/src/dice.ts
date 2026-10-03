@@ -92,6 +92,15 @@ export function formatRollNotation(formula: RollFormula): string {
     .join('');
 }
 
+/**
+ * Notacja kości do oczu stołu: „1k10+8”, „3k6” (#65, T8b). Polski podręcznik
+ * pisze „k”, a karty czatu raz „1d10+8”, raz „Obrażenia 3k6” — dwie notacje
+ * obok siebie. Maszyna (parser, kości 3D) dalej mówi „d”; to wyłącznie napis.
+ */
+export function displayDiceNotation(notation: string): string {
+  return notation.replace(/\b(\d*)d(\d+)/g, '$1k$2');
+}
+
 export interface DiceTermResult extends DiceTerm {
   rolls: number[];
   /** Sum of the rolls, sign applied. */
@@ -149,6 +158,11 @@ export interface RollBreakdownEntry {
   value: number;
   /** Free-form category used for styling, e.g. `stat`, `skill`, `wound`. */
   kind?: string;
+  /**
+   * Wartość odczytana z tabeli, a nie premia (#65, T8b): karta pisze „SW: rzut
+   * 8 → 6” zamiast „SW · rzut 8 +6”, które wyglądało jak modyfikator do rzutu.
+   */
+  lookup?: true;
 }
 
 /**

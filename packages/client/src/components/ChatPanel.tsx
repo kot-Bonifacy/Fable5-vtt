@@ -24,6 +24,7 @@ import type {
 import {
   ROLE_GM,
   chatCategoryOf,
+  displayDiceNotation,
   gameDaysLabel,
   isCheckCallOpen,
   isCheckRequestOpen,
@@ -132,8 +133,9 @@ function RollBreakdown({ roll }: { roll: RollResult }) {
           key={`${entry.kind}-${entry.label}`}
           className={`chat-roll-source chat-roll-source--${entry.kind ?? 'other'}`}
         >
-          {entry.label} {entry.value >= 0 ? '+' : '−'}
-          {Math.abs(entry.value)}
+          {entry.lookup
+            ? `${entry.label} → ${entry.value}`
+            : `${entry.label} ${entry.value >= 0 ? '+' : '−'}${Math.abs(entry.value)}`}
         </span>
       ))}
     </div>
@@ -159,8 +161,10 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
       <div className="chat-roll-body">
         <div className="chat-roll-header">
           <span className="chat-roll-notation">
-            {roll.title ?? roll.notation}
-            {roll.title && <span className="chat-roll-formula"> · {roll.notation}</span>}
+            {roll.title ?? displayDiceNotation(roll.notation)}
+            {roll.title && (
+              <span className="chat-roll-formula"> · {displayDiceNotation(roll.notation)}</span>
+            )}
             {message.text && !roll.title && (
               <span className="chat-roll-flavor"> — {message.text}</span>
             )}

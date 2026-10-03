@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # Bufor promptów llama-server w RAM (`--cache-ram`, MiB). Domyślne 8 GB builda 10735
     # zjadały pamięć PC razem z przeglądarkami testów E2E; 0 wyłącza, -1 bez limitu.
     llama_cache_ram_mb: int = 2048
+    # Tryb wczytywania wag (`--load-mode`). Domyślne „auto” (mmap) trzymało ~11 GB
+    # zmapowanego GGUF-a w pamięci rezydentnej, choć wagi siedzą na GPU; „none” czyta
+    # plik raz i zwalnia — ten sam tok/s (pomiary 03.10.2026 w README). Pusty = auto.
+    llama_load_mode: str = "none"
     # Dodatkowe argumenty llama-server, rozdzielone spacją (np. "--cache-type-k q8_0").
     llama_extra_args: str = ""
     # Ile sekund czekać na wstanie llama-server po starcie/restarcie.

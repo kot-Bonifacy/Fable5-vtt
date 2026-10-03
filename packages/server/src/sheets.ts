@@ -36,14 +36,13 @@ import {
   cpredExpireStatEffects,
   cpredStatEffectExpired,
   cpredEffectiveStats,
-  cpredArmorStatPenalty,
   cpredSheetCombatAwareness,
+  cpredSheetInitiative,
   cpredRoundOnceUsed,
   markCpredRoundOnce,
   clearCpredRoundOnce,
   CPRED_ACTIONS,
   CPRED_AIM_POINT_LABELS,
-  CPRED_ARMOR_PENALTY_LABEL,
   CPRED_BROKEN_LEG_ROLL,
   CPRED_BROKEN_LEG_TABLE,
   CPRED_EMP_STATUS_ID,
@@ -57,7 +56,6 @@ import {
   CPRED_INTIMIDATED_STATUS_ID,
   CPRED_ON_FIRE_STATUS_ID,
   CPRED_PRONE_STATUS_ID,
-  CPRED_STAT_LABELS,
   CPRED_STATIST_GRAPPLE_DV,
   CPRED_SLOWED_STATUS_ID,
   CPRED_SUPPRESSED_STATUS_ID,
@@ -185,30 +183,7 @@ export function readSheetInitiative(
   character: Pick<Character, 'data'>,
   registry: SheetRegistry,
 ): SheetInitiative {
-  const data = parseCharacterData(character.data, registry);
-  // Etap 39: REF **jak teraz**. Inicjatywa jest wprost REF-em, więc Lisz musi
-  // przestawić figurę w kolejce — i przestawia też remis, bo remis **jest**
-  // REF-em i drugiego REF-u nie ma.
-  const stats = cpredEffectiveStats(data);
-  // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). Initiative is REF, so
-  // heavy armour slows the queue too — and it moves the tie-break with it,
-  // because the tie-break *is* REF and there is only one REF to be had.
-  const armor = cpredArmorStatPenalty(data.armor, 'ref', stats.ref);
-  const ref = stats.ref + armor;
-  // „Każdy przydzielony punkt to +1 do rzutów na Inicjatywę" (Błyskawiczna
-  // reakcja, s. 146). It moves the total, never the tie-break: RAW breaks ties
-  // by REF, and a Solo's training is not reflexes.
-  const fastReflexes = cpredSheetCombatAwareness(data, registry).initiative;
-  const refLabel = `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`;
-  const armorLabel = armor === 0 ? '' : ` ${CPRED_ARMOR_PENALTY_LABEL} ${armor}`;
-  return {
-    modifier: ref + fastReflexes,
-    tieBreak: ref,
-    label:
-      fastReflexes > 0
-        ? `${refLabel}${armorLabel} + Błyskawiczna reakcja ${fastReflexes}`
-        : `${refLabel}${armorLabel}`,
-  };
+  return cpredSheetInitiative(parseCharacterData(character.data, registry), registry);
 }
 
 /* ------------------------------------------------------------------ *

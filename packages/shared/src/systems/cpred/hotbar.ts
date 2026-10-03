@@ -516,6 +516,14 @@ export interface CpredHotbarInput {
     moveSpent: boolean;
     blockedAction?: string | null;
     blockedMove?: string | null;
+    /**
+     * Akcja Ataku jest otwarta i ma wolne miejsce na drugi atak (#62, T8b):
+     * pierwszy strzał z broni o SS 2 wydał Akcję, ale nie zamknął jej. Broń
+     * o SS ≥ 2 zostaje wtedy żywa na pasku — serwer (`spendAttack`) i tak ją
+     * przyjmie, a szary slot kazał graczowi kończyć turę z niewykorzystanym
+     * atakiem.
+     */
+    attackOpen?: boolean;
   } | null;
   /**
    * The GM is never blocked by a budget (stage 14b logs the overspend and lets
@@ -621,6 +629,11 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   const actionRefusal =
     statusActionBlock ?? input.turn?.blockedAction ?? (budgetSpent ? ACTION_SPENT_REFUSAL : null);
   const moveRefusal = statusMoveBlock ?? input.turn?.blockedMove ?? null;
+  // Wydana Akcja to jeszcze nie koniec ataków (#62): przy otwartej Akcji Ataku
+  // broń o SS ≥ 2 strzela drugi raz. Tylko gdy jedyną odmową jest wydany budżet —
+  // status i rana dalej mówią „nie”.
+  const secondAttackFits =
+    actionRefusal === ACTION_SPENT_REFUSAL && input.turn?.attackOpen === true;
 
   const slots: CpredHotbarSlot[] = [];
 
@@ -652,7 +665,11 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         ammoLabel: option.ammoProfile?.name ?? null,
         coneRangeM: spread && mode === 'single' ? spread.coneRangeM : null,
         outOfHand: option.notDrawn !== undefined,
-        disabled: weaponRefusal(option, mode, actionRefusal),
+        disabled: weaponRefusal(
+          option,
+          mode,
+          secondAttackFits && (option.resolved?.rof ?? 1) >= 2 ? null : actionRefusal,
+        ),
         key: null,
       });
     }
@@ -751,9 +768,11 @@ export function cpredTurnRefusalInput(
   if (!turn) return null;
   const action = turn.resources.find((row) => row.id === 'action');
   const move = turn.resources.find((row) => row.id === 'move');
+  const attacks = turn.resources.find((row) => row.id === 'attacks');
   return {
     actionSpent: action?.used === 1,
     moveSpent: (move?.used ?? 0) > 0,
+    attackOpen: attacks !== undefined && attacks.used > 0 && attacks.used < attacks.max,
     // Why the resource is gone, when it was never there to spend: a wound that
     // took the Action away carries its own sentence (stage 14e).
     blockedAction: action?.blocked ?? null,

@@ -400,6 +400,11 @@
   font-size: 0.75rem;
 }
 
+/* #58: karta z kreatora przed „Przyjmij do gry” — ostrzeżenie, nie błąd. */
+.character-row-pending {
+  color: var(--warn);
+}
+
 .character-row--card .character-row-actions {
   position: absolute;
   right: 0.4rem;

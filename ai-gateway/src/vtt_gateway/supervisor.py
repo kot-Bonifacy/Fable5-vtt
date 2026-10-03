@@ -126,6 +126,8 @@ class LlamaSupervisor:
             "--cache-ram",
             str(s.llama_cache_ram_mb),
         ]
+        if s.llama_load_mode.strip():
+            cmd += ["--load-mode", s.llama_load_mode.strip()]
         if s.llama_flash_attn:
             cmd += ["--flash-attn", "on"]
         if s.llama_extra_args.strip():

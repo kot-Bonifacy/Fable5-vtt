@@ -21,7 +21,14 @@ export function creationTermsLine(terms: CreationTerms, data: CpredCreationData)
  * away, the GM approves the result — and only „Rozumiem, zaczynam" opens the
  * wizard. A draft already on the server skips all of it: it is resumed.
  */
-export function CreationGate({ resume }: { resume: string | null }) {
+export function CreationGate({
+  resume,
+  another = false,
+}: {
+  resume: string | null;
+  /** Gracz ma już postać (#58) — przycisk prosi o **kolejną**, nie o pierwszą. */
+  another?: boolean;
+}) {
   const permit = useCreationStore((s) => s.permit);
   const openCreator = useCreationStore((s) => s.openCreator);
   const setPermit = useCreationStore((s) => s.setPermit);
@@ -79,7 +86,7 @@ export function CreationGate({ resume }: { resume: string | null }) {
             onClick={() => void ask(false)}
             title="Nową postać tworzy się za zgodą MG"
           >
-            ✋ Poproś MG o stworzenie postaci
+            {another ? '✋ Poproś MG o kolejną postać' : '✋ Poproś MG o stworzenie postaci'}
           </button>
           {permit?.refused && (
             <p className="creation-gate-note" role="status">

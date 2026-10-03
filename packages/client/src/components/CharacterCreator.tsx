@@ -807,6 +807,11 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
   const role = creationRole(data, draft.roleId);
 
   const preview = creationPreview(creationStats(draft, data));
+  // Kompletny Pakiet startuje z minimum na każdej Cesze, więc liczby są prawdą
+  // od początku; rzucane metody czekają na ostatni rzut.
+  const statsSet =
+    draft.method === 'complete' || CPRED_STAT_IDS.every((id) => draft.stats[id] !== undefined);
+  const derived = (value: number) => (statsSet ? value : '—');
   const pool = creationStatPool(data, draft);
   const spent = creationStatPointsSpent(draft);
   const unrolled = CPRED_STAT_IDS.filter((id) => draft.statRolls[id] === undefined).length;
@@ -919,22 +924,25 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
         </tbody>
       </table>
 
+      {/* #67 (T8b): przed rzutami i w ich połowie liczby liczyły się z Cech,
+          których jeszcze nie ma (PW 20 przed pierwszym rzutem) — kreska, jak
+          w podsumowaniu, dopóki wszystkie Cechy nie są ustalone. */}
       <dl className="creator-derived">
         <div>
           <dt>Punkty Wytrzymałości</dt>
-          <dd>{preview.hpMax}</dd>
+          <dd>{derived(preview.hpMax)}</dd>
         </div>
         <div>
           <dt>Poważnie Ranny</dt>
-          <dd>{preview.seriousWound}</dd>
+          <dd>{derived(preview.seriousWound)}</dd>
         </div>
         <div>
           <dt>Przeżywalność</dt>
-          <dd>{preview.deathSave}</dd>
+          <dd>{derived(preview.deathSave)}</dd>
         </div>
         <div>
           <dt>Człowieczeństwo</dt>
-          <dd>{preview.humanity}</dd>
+          <dd>{derived(preview.humanity)}</dd>
         </div>
       </dl>
     </div>
@@ -2905,11 +2913,17 @@ function CreatorRoleChores({
   sheet,
   characterId,
   upcoming = false,
+  waiting = false,
   onGo,
 }: {
   sheet: CpredCharacterData;
   characterId?: string;
   upcoming?: boolean;
+  /**
+   * Karta czeka na „Przyjmij do gry” (#59, T8b): jest tylko do podglądu, więc
+   * „Przejdź” prowadziło do wyłączonych przycisków bez słowa wyjaśnienia.
+   */
+  waiting?: boolean;
   onGo?: () => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
@@ -2922,9 +2936,11 @@ function CreatorRoleChores({
       <p className="creator-hint">
         {upcoming
           ? 'Kreator ustawia Zdolność Specjalną na poziom 4, ale jej wyborów za ciebie nie dokonuje. Te decyzje podejmiesz na karcie po utworzeniu postaci.'
-          : 'Te decyzje podejmuje się na karcie — nic nie przepada i nic nie blokuje gry.'}
+          : waiting
+            ? 'Te decyzje podejmiesz na karcie, gdy MG przyjmie postać do gry — do tego czasu karta jest tylko do podglądu.'
+            : 'Te decyzje podejmuje się na karcie — nic nie przepada i nic nie blokuje gry.'}
       </p>
-      <RoleChoresList chores={chores} characterId={characterId} onGo={onGo} />
+      <RoleChoresList chores={chores} characterId={waiting ? undefined : characterId} onGo={onGo} />
     </section>
   );
 }
@@ -3032,7 +3048,7 @@ function CreatorFinishedScreen({
           <CreatorLeftOutside draft={draft} data={data} />
         </section>
 
-        <CreatorRoleChores sheet={sheet} characterId={result.id} onGo={onGo} />
+        <CreatorRoleChores sheet={sheet} characterId={result.id} waiting={!playReady} onGo={onGo} />
 
         <div className="creator-finished-actions">
           <button type="button" className="small-button" onClick={onOpenSheet}>

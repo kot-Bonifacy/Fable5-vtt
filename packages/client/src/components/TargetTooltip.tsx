@@ -87,11 +87,13 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
 
   return (
     <div className="aim-tooltip" style={{ left: Math.max(8, left), top: Math.max(8, top) }}>
-      <p className="aim-tooltip-title">{target?.name ?? 'Cel'}</p>
+      {/* „Cel:” i „Twoja broń:” (#64, T8b): nowy gracz nie wiedział, czyja jest
+          broń pod imieniem i czyj pancerz pod kreską. */}
+      <p className="aim-tooltip-title">Cel: {target?.name ?? '—'}</p>
       {preview.ok ? (
         <>
           <p className="aim-tooltip-line">
-            <span className="aim-tooltip-weapon">{preview.attack.weaponName}</span>
+            <span className="aim-tooltip-weapon">Twoja broń: {preview.attack.weaponName}</span>
             {preview.attack.mode !== 'single' && (
               <span className="aim-tooltip-mode">
                 {CPRED_ATTACK_MODE_LABELS[preview.attack.mode].toLowerCase()}
@@ -133,14 +135,14 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
           {glance && (
             <dl className="aim-tooltip-facts aim-tooltip-facts--seen">
               <div>
-                <dt>Głowa</dt>
+                <dt>Głowa celu</dt>
                 <dd className={cpredHeadIsArmored(glance) ? '' : 'aim-tooltip-bare'}>
                   {glance.armor.find((row) => row.location === 'head')?.name ??
                     CPRED_SIGHTING_BARE_HEAD}
                 </dd>
               </div>
               <div>
-                <dt>W rękach</dt>
+                <dt>Cel trzyma</dt>
                 <dd>
                   {glance.weapons.length > 0
                     ? glance.weapons.map((row) => row.name).join(' + ')

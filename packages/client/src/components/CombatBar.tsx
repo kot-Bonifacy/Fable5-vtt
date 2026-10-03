@@ -4,6 +4,7 @@ import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   ROLE_GM,
+  cpredSheetInitiative,
   cpredTurnReminders,
   findInitiativeTies,
 } from '@vtt/shared';
@@ -22,6 +23,7 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useCombatStore, activeCombatantOf } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 import { BotTurnButton } from './BotTurnButton.js';
 
@@ -183,7 +185,7 @@ function ChipInitiative({
           useRollStore.getState().loadInitiativeCup({
             combatantId: combatant.id,
             name: combatant.name,
-            modifierTotal: combatant.tieBreak ?? 0,
+            modifierTotal: initiativeModifierOf(combatant),
           })
         }
         title="Rzuć inicjatywę — załaduj kubek i potrząśnij nim"
@@ -194,6 +196,20 @@ function ChipInitiative({
     );
   }
   return <span className="combat-chip-initiative">{shown}</span>;
+}
+
+/**
+ * Co serwer doda do 1k10 (#61, T8b) — z karty, którą gracz ma w ręku, tą samą
+ * funkcją co `combat:roll`. Do 03.10 kubek brał `tieBreak`, którego przed
+ * pierwszym rzutem nie ma, i pokazywał „Inicjatywa +0” przy rzucie za +8.
+ * Figura bez karty rzuca gołe 1k10, więc zero jest wtedy prawdą.
+ */
+function initiativeModifierOf(combatant: CombatantView): number {
+  const token = combatant.tokenId ? useTokenStore.getState().tokens[combatant.tokenId] : undefined;
+  const characters = useCharacterStore.getState();
+  const character = token?.characterId ? characters.characters[token.characterId] : undefined;
+  if (!character) return 0;
+  return cpredSheetInitiative(character.data, characters.registry).modifier;
 }
 
 export function CombatBar() {

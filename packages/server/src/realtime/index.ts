@@ -9,6 +9,7 @@ import { armSessionExpiry, sessionRoom } from './session-guard.js';
 import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
+import { releaseSocketAim, tokenAimEvent } from './aim.js';
 import { campaignActivateEvent, resolveSocketCampaign } from './campaigns.js';
 import { chatHistoryEvent, chatSendEvent } from './chat.js';
 import { diceSkinEvent } from './dice-skins.js';
@@ -308,6 +309,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenAssetDeleteEvent,
   tokenMoveEvent,
   tokenFacingEvent,
+  tokenAimEvent,
   tokenFearedEvent,
   combatStartEvent,
   combatAddEvent,
@@ -596,6 +598,8 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
 
     socket.on('disconnect', (reason) => {
       app.log.info({ socketId: socket.id, reason }, 'socket disconnected');
+      // Grot zostałby u reszty stołu obrócony na zawsze (`token:aim`).
+      releaseSocketAim(deps, socket.id);
       const campaign = socket.data.campaign;
       if (campaign) {
         // The socket already left its rooms — recompute presence for the rest.

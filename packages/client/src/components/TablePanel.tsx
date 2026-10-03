@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { RandomTableUpsertPayload, RandomTableView, RandomTableVisibility } from '@vtt/shared';
 import {
+  displayDiceNotation,
   RANDOM_TABLE_DESCRIPTION_MAX_LENGTH,
   RANDOM_TABLE_NAME_MAX_LENGTH,
   RANDOM_TABLE_ROWS_MAX,
@@ -321,7 +322,7 @@ function TableRow({ table, onEdit }: { table: RandomTableView; onEdit: () => voi
   return (
     <li className="knowledge-entry table-entry">
       <button type="button" className="knowledge-entry-head" onClick={onEdit}>
-        <span className="knowledge-type">{table.formula}</span>
+        <span className="knowledge-type">{displayDiceNotation(table.formula)}</span>
         <span className="knowledge-entry-title">{table.name}</span>
         <span className="knowledge-flag">
           {table.visibility === 'gm' ? '🔒 tylko MG' : '🔊 cały stół'}

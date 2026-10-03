@@ -97,6 +97,22 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
   const tradeWindow = (actor: Actor) => actor.page.locator('section.trade-window');
   const dock = (actor: Actor) => actor.page.locator('.trade-dock');
 
+  /**
+   * Okno handlu otwiera się samo po „Przyjmij”, a gdy nie — zostaje „Otwórz” w doku.
+   * Czeka na jedno z dwojga: samo `isVisible()` pytało, zanim okno MG zdążyło
+   * wyskoczyć, i klikało „Otwórz”, którego już nie było (retest 03.10).
+   */
+  async function openTradeWindow(actor: Actor): Promise<void> {
+    const open = dock(actor).getByRole('button', { name: 'Otwórz' });
+    await expect(tradeWindow(actor).or(open).first()).toBeVisible();
+    // „Otwórz” bywa widoczne ułamek sekundy przed samym oknem — wtedy klik nie
+    // ma już w co trafić, a okno i tak stoi.
+    if (!(await tradeWindow(actor).isVisible())) {
+      await open.click({ timeout: 5_000 }).catch(() => undefined);
+    }
+    await expect(tradeWindow(actor)).toBeVisible();
+  }
+
   /** Marsz figury klikiem właściciela; pozycję sprawdza baza, nie zrzut. */
   async function walk(actor: Actor, name: string, column: number, row: number) {
     const page = actor.page;
@@ -242,16 +258,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
 
     // Ola przyjmuje z doku; okno otwiera się u obojga (albo „Otwórz” w doku).
     await dock(ola).getByRole('button', { name: 'Przyjmij' }).click();
-    for (const actor of [marek, ola]) {
-      if (
-        !(await tradeWindow(actor)
-          .isVisible()
-          .catch(() => false))
-      ) {
-        await dock(actor).getByRole('button', { name: 'Otwórz' }).click();
-      }
-      await expect(tradeWindow(actor)).toBeVisible();
-    }
+    for (const actor of [marek, ola]) await openTradeWindow(actor);
     // MG widzi handel w doku jako podgląd — zgody dać nie może.
     await expect(dock(mg)).toContainText('Kowal ⇄ Iskra');
 
@@ -444,16 +451,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const invite = dock(mg).locator('.trade-dock-row--invite', { hasText: 'Kowal' });
     await expect(invite).toContainText('(Paser)');
     await invite.getByRole('button', { name: 'Przyjmij' }).click();
-    for (const actor of [marek, mg]) {
-      if (
-        !(await tradeWindow(actor)
-          .isVisible()
-          .catch(() => false))
-      ) {
-        await dock(actor).getByRole('button', { name: 'Otwórz' }).click();
-      }
-      await expect(tradeWindow(actor)).toBeVisible();
-    }
+    for (const actor of [marek, mg]) await openTradeWindow(actor);
     await tradeWindow(mg)
       .getByRole('button', { name: 'Połóż w polu wymiany: Militech Ronin' })
       .click();

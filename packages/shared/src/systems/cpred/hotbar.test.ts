@@ -326,6 +326,23 @@ describe('hotbarSlotsFor — what a status and a spent turn forbid', () => {
     expect(weaponSlots(slots)[0]!.disabled).toMatch(/już wykorzystana/);
   });
 
+  it('keeps an LA 2 weapon live for the second attack of an open Attack Action (#62)', () => {
+    const turn = { actionSpent: true, moveSpent: false, attackOpen: true };
+    const slots = weaponSlots(hotbarSlotsFor(input({ turn })));
+    expect(slots.find((slot) => slot.mode === 'single')?.disabled).toBeNull();
+    // Broń o SS 1 nie mieści się w połowie Akcji — ta sama odmowa co na serwerze.
+    const slow = weaponSlots(
+      hotbarSlotsFor(input({ turn, resolve: () => ({ ...pistol, rof: 1 }) })),
+    );
+    expect(slow[0]!.disabled).toMatch(/już wykorzystana/);
+    // Przeładowanie dalej kosztuje Akcję, której już nie ma.
+    const reload = hotbarSlotsFor(input({ turn })).find((slot) => slot.kind === 'reload');
+    expect(reload?.disabled).toMatch(/już wykorzystana/);
+    // Status mówi „nie” niezależnie od budżetu.
+    const stunned = weaponSlots(hotbarSlotsFor(input({ turn, statuses: ['unconscious'] })));
+    expect(stunned[0]!.disabled).not.toBeNull();
+  });
+
   it('never refuses the GM, whose overspend is logged rather than blocked', () => {
     const slots = hotbarSlotsFor(
       input({ turn: { actionSpent: true, moveSpent: true }, isGm: true }),
@@ -886,8 +903,22 @@ describe('cpredTurnRefusalInput — jedno czytanie budżetu tury', () => {
     ).toEqual({
       actionSpent: true,
       moveSpent: false,
+      attackOpen: false,
       blockedAction: null,
       blockedMove: 'Uraz nogi.',
     });
+  });
+
+  it('says the Attack Action still has room for a second attack (#62)', () => {
+    const budget = (used: number, max: number) => ({
+      resources: [
+        { id: 'action', label: 'Akcja', used: 1, max: 1 },
+        { id: 'attacks', label: 'Ataki', used, max },
+      ],
+    });
+    expect(cpredTurnRefusalInput(budget(1, 2))?.attackOpen).toBe(true);
+    expect(cpredTurnRefusalInput(budget(2, 2))?.attackOpen).toBe(false);
+    // Zamknięta Akcja (SS 1, Celowanie) pokazuje sufit równy liczbie ataków.
+    expect(cpredTurnRefusalInput(budget(1, 1))?.attackOpen).toBe(false);
   });
 });

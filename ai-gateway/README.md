@@ -94,6 +94,21 @@ prywatnej** w RAM-ie, choć wszystkie warstwy siedzą na GPU. Do tego build 1073
 ~21 GB prywatnej i razem z trzema przeglądarkami suity E2E zostawiał na 32-gigabajtowym PC poniżej
 1 GB wolnego. Od 01.10 gateway podaje `--cache-ram` z `GATEWAY_LLAMA_CACHE_RAM_MB` (domyślnie 2048).
 
+**`--load-mode` (zmierzone 03.10, build 10735, `--cache-ram 2048`, 32k, flash-attn).** Te ~15,5 GB to
+w większości zmapowany plik GGUF: przy domyślnym `auto` (= mmap) llama-server trzyma go w pamięci
+rezydentnej, choć wagi są już na GPU. Jedno uruchomienie na wariant, generacja 256 tokenów:
+
+| `--load-mode`  | pamięć prywatna | zbiór roboczy | wolny RAM PC (32 GB) | tok/s (generacja / prompt) |
+| -------------- | --------------- | ------------- | -------------------- | -------------------------- |
+| auto (= mmap)  | 15,6 GB         | 12,2 GB       | 12,0 GB              | 52,1 / 160                 |
+| mmap           | 15,6 GB         | 12,2 GB       | 12,1 GB              | 52,1 / 161                 |
+| **none**       | 16,1 GB         | **1,1 GB**    | **23,2 GB**          | 52,1 / 165                 |
+| dio            | 16,2 GB         | 1,1 GB        | 23,2 GB              | 52,1 / 169                 |
+
+Pamięć prywatna to zobowiązanie (commit), nie rezydentna — przy `none` system jej nie trzyma w RAM-ie.
+Start z pliku w pamięci podręcznej systemu: 3–5 s w każdym wariancie. Od 03.10 gateway podaje
+`--load-mode` z `GATEWAY_LLAMA_LOAD_MODE` (domyślnie `none`; pusty = domyślne llama-server).
+
 Polszczyzna jest wyraźnie lepsza niż w 9B, ale Q3 zostawia potknięcia odmiany („z mojej baru”, „zdołały odparta”) — przy stole to zadanie dla lekcji bota, nie dla kodu.
 
 ## Pomiary Qwythos-9B-v2 Q8_0 (2026-07-24, RTX 5070 Ti 16 GB, sterownik 610.62, llama.cpp b10107, CUDA 13.3) — poprzedni model

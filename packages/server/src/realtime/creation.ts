@@ -714,9 +714,10 @@ async function publishSpread(
     if (value === undefined || roll === undefined) continue;
     total += value;
     breakdown.push({
-      label: `${CPRED_STAT_LABELS[id].abbr} · rzut ${roll}`,
+      label: `${CPRED_STAT_LABELS[id].abbr}: rzut ${roll}`,
       value,
       kind: 'stat',
+      lookup: true,
     });
   }
   // The die means nothing here (the face is a row number), so the card shows

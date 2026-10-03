@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  displayDiceNotation,
   DEFAULT_DICE_SKIN,
   DICE_SKIN_IDS,
   createSeededRng,
@@ -87,6 +88,17 @@ describe('formatRollNotation', () => {
   it('renders canonical notation', () => {
     expect(formatRollNotation(parse(' 1K10 +5 '))).toBe('1d10+5');
     expect(formatRollNotation(parse('-d6+2d4-1'))).toBe('-1d6+2d4-1');
+  });
+});
+
+describe('displayDiceNotation (#65)', () => {
+  it('pisze kości po polsku, nie ruszając liczb ani reszty napisu', () => {
+    expect(displayDiceNotation('1d10+8')).toBe('1k10+8');
+    expect(displayDiceNotation('3d6')).toBe('3k6');
+    expect(displayDiceNotation('2d6+1d10-2')).toBe('2k6+1k10-2');
+    expect(displayDiceNotation('d10')).toBe('k10');
+    expect(displayDiceNotation('1k10')).toBe('1k10');
+    expect(displayDiceNotation('Obrażenia 3d6')).toBe('Obrażenia 3k6');
   });
 });
 

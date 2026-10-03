@@ -79,6 +79,7 @@ import {
   sendRuler,
   sendTokenMove,
   setTokenFacing,
+  reportTokenAim,
   toggleOpening,
   updateCover,
   updateDrawing,
@@ -91,6 +92,7 @@ import {
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
+import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
   activateGroup,
@@ -428,6 +430,30 @@ function walkRefusalFor(
   return hudTurnRefusal(combat, tokenId, isGm);
 }
 
+const WALK_LEARNED_KEY = 'vtt.walkPreviewLearned';
+
+/** Czy ta przeglądarka widziała już marsz — wygoda jednego widza, nie stan gry. */
+function readWalkLearned(): boolean {
+  try {
+    return localStorage.getItem(WALK_LEARNED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberWalkLearned(): void {
+  try {
+    localStorage.setItem(WALK_LEARNED_KEY, '1');
+  } catch {
+    // Prywatne okno albo zablokowana pamięć — legenda wróci przy następnym wejściu.
+  }
+}
+
+/** Runda i czyja tura — zmiana któregokolwiek to nowa tura przy stole. */
+function turnKeyOf(combat: CombatView | null): string {
+  return combat ? `${combat.round}:${combat.activeCombatantId ?? ''}` : '';
+}
+
 /**
  * Which other tokens the marching figure can see from a given spot — the GM's
  * half of „ktoś nowy w polu widzenia".
@@ -499,6 +525,11 @@ export function MapArea() {
   const [menu, setMenu] = useState<TokenMenuState | null>(null);
   /** Token walking a planned route right now (stage 16e); null when none is. */
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
+  const [walkPreviewFor, setWalkPreviewFor] = useState<string | null>(null);
+  const [walkLearned, setWalkLearned] = useState(readWalkLearned);
+  const walkPreviewName = useTokenStore((s) =>
+    walkPreviewFor ? (s.tokens[walkPreviewFor]?.name ?? null) : null,
+  );
   /** Token under the crosshair and where the pointer is (stage 16f). */
   const [aimHover, setAimHover] = useState<AimHover | null>(null);
   /**
@@ -678,7 +709,15 @@ export function MapArea() {
       });
     };
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
-    renderer.onWalkStateChange = setMarchingTokenId;
+    renderer.onWalkStateChange = (tokenId) => {
+      setMarchingTokenId(tokenId);
+      // Pierwszy marsz to dowód, że ślady stóp są już zrozumiane (#69).
+      if (tokenId) {
+        rememberWalkLearned();
+        setWalkLearned(true);
+      }
+    };
+    renderer.onWalkPreview = setWalkPreviewFor;
     // Etap 41: menu figury otwiera się **także graczowi**, w wersji okrojonej do
     // jednej pozycji — oględzin. Do 41 był to wyłącznie panel MG, więc gracz nie
     // miał żadnego wejścia w cudzą figurę poza celownikiem; co w menu widzi kto,
@@ -701,6 +740,8 @@ export function MapArea() {
       attackWithActiveWeapon(tokenId);
     };
     renderer.onAimHover = setAimHover;
+    // Grot celowania widzi cały stół (03.10) — dławi go `reportTokenAim`.
+    renderer.onAimFacing = reportTokenAim;
     renderer.onFogPreview = (shape) => {
       // The preview is local only: the server hears about the stroke once,
       // when the GM lets go, rather than at pointer speed.
@@ -977,7 +1018,17 @@ export function MapArea() {
       // kadr może trafić na „nie masz tu figury". Po paru sekundach widok
       // należy już do gracza i nikt mu go nie przesuwa.
       if (framed.onOwnToken || !mine) return;
-      if (Date.now() - framed.at > CAMERA_REANCHOR_MS) return;
+      // Pierwsza własna figura przychodzi też dużo później — nowy gracz dostaje
+      // ją dopiero po „Przyjmij do gry” (#70, T8b). Wtedy kadr idzie na nią,
+      // chyba że gracz ma ją już dobrze w widoku: niczego mu nie zabieramy,
+      // bo do tej pory nie miał na mapie nic swojego.
+      if (
+        Date.now() - framed.at > CAMERA_REANCHOR_MS &&
+        renderer.showsWell(tokenCentre(mine, displayed))
+      ) {
+        framedRef.current = { ...framed, onOwnToken: true };
+        return;
+      }
     }
     renderer.frameAround(
       mine ? tokenCentre(mine, displayed) : partyStart(displayed, displayed.spawn),
@@ -1040,6 +1091,16 @@ export function MapArea() {
       (x, y) => rendererRef.current?.pullViewTo(x, y),
     );
     return () => bindMapPing(null, null, null);
+  }, [ready, scene]);
+
+  // Cudze groty celowania (03.10) — tą samą drogą co pingi.
+  useEffect(() => {
+    if (!ready || !scene) {
+      bindMapAim(null, null);
+      return;
+    }
+    bindMapAim(scene.id, (tokenId, facing) => rendererRef.current?.showRemoteAim(tokenId, facing));
+    return () => bindMapAim(null, null);
   }, [ready, scene]);
 
   /**
@@ -1463,6 +1524,19 @@ export function MapArea() {
           : null,
     );
   }, []);
+
+  // Nowa tura zdejmuje celownik (#64): stary dymek nad celem mówiłby o turze,
+  // która już minęła.
+  useEffect(() => {
+    if (!ready) return;
+    let turn = turnKeyOf(useCombatStore.getState().combat);
+    return useCombatStore.subscribe((state) => {
+      const next = turnKeyOf(state.combat);
+      if (next === turn) return;
+      turn = next;
+      rendererRef.current?.dropAim();
+    });
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -2049,6 +2123,15 @@ export function MapArea() {
             ? ` — ${CPRED_ATTACK_MODE_SHORT[targeting.mode]}`
             : ''}
           {' — kliknij cel na mapie (Esc anuluje)'}
+        </div>
+      )}
+      {/* Legenda śladów stóp (#69, T8b): nowy gracz wziął podgląd własnej trasy
+          za ruch cudzej figury. Same ślady zostają bez podpisu (MG, 23.08), a ta
+          linijka znika po pierwszym marszu i nie wraca w tej przeglądarce. */}
+      {!isGm && !walkLearned && walkPreviewFor && !targeting && !placement && (
+        <div className="map-placement-hint">
+          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” — klik w podłoże prowadzi ją
+          tam (Esc puszcza figurę)
         </div>
       )}
       {/* Visibility comes from tokens alone, so „no token" means „no map". The

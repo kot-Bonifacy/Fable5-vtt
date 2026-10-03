@@ -3,6 +3,7 @@ import type { CpredCombatAwareness, CpredCombatAwarenessId } from '@vtt/shared';
 import {
   CPRED_COMBAT_AWARENESS,
   CPRED_COMBAT_AWARENESS_ABILITY,
+  ROLE_GM,
   cpredCombatAwarenessProblem,
   cpredCombatAwarenessSpent,
   cpredCombatAwarenessValue,
@@ -10,7 +11,11 @@ import {
   readCpredCombatAwareness,
 } from '@vtt/shared';
 import { combatAwarenessErrorText, saveCombatAwareness } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useChatStore } from '../stores/chatStore.js';
+
+const LOCKED_HINT = 'Punkty rozdzielisz, gdy MG przyjmie postać do gry.';
 
 /**
  * Rozdzielanie punktów Zmysłu Walki (etap 30a, s. 146).
@@ -40,6 +45,7 @@ export function CombatAwarenessPanel({
 }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const stored = useMemo(
     () => readCpredCombatAwareness(character?.data.combatAwareness ?? {}),
     [character?.data.combatAwareness],
@@ -59,6 +65,10 @@ export function CombatAwarenessPanel({
 
   if (!character || rank === null) return null;
 
+  // #59 (T8b): karta z kreatora przed „Przyjmij do gry” jest tylko do
+  // podglądu — „+” wyglądały na żywe i nic nie mówiły, czemu nie działają.
+  const locked = !isGm && !character.playReady;
+  const characterName = character.name;
   const spent = cpredCombatAwarenessSpent(draft);
   const left = rank - spent;
   const dirty = JSON.stringify(draft) !== JSON.stringify(stored);
@@ -110,6 +120,8 @@ export function CombatAwarenessPanel({
       setError(combatAwarenessErrorText(ack.error));
       return;
     }
+    // #60: panel zwijał się po zapisie bez słowa — gracz nie wiedział, czy poszło.
+    useChatStore.getState().addNote(`Zapisano przydział Zmysłu Walki: ${characterName}.`);
     onDone?.();
   }
 
@@ -146,8 +158,14 @@ export function CombatAwarenessPanel({
                 <button
                   type="button"
                   onClick={() => bump(entry.id, -1)}
-                  disabled={down}
-                  title={down ? 'Nie ma czego zdejmować.' : `Zdejmij punkty: ${entry.name}`}
+                  disabled={locked || down}
+                  title={
+                    locked
+                      ? LOCKED_HINT
+                      : down
+                        ? 'Nie ma czego zdejmować.'
+                        : `Zdejmij punkty: ${entry.name}`
+                  }
                   aria-label={`Zdejmij punkty: ${entry.name}`}
                 >
                   −
@@ -155,8 +173,8 @@ export function CombatAwarenessPanel({
                 <button
                   type="button"
                   onClick={() => bump(entry.id, 1)}
-                  disabled={up !== null}
-                  title={up ?? `Dołóż punkty: ${entry.name}`}
+                  disabled={locked || up !== null}
+                  title={locked ? LOCKED_HINT : (up ?? `Dołóż punkty: ${entry.name}`)}
                   aria-label={`Dołóż punkty: ${entry.name}`}
                 >
                   +
@@ -168,10 +186,12 @@ export function CombatAwarenessPanel({
       </ul>
       {error && <p className="awareness-error">{error}</p>}
       <p className="awareness-hint">
-        Poza walką przydział zmienia się za darmo. W trakcie walki zapis kosztuje Akcję (s. 146).
+        {locked
+          ? LOCKED_HINT
+          : 'Poza walką przydział zmienia się za darmo. W trakcie walki zapis kosztuje Akcję (s. 146).'}
       </p>
       <div className="awareness-buttons">
-        <button type="button" onClick={() => void save()} disabled={!dirty || saving}>
+        <button type="button" onClick={() => void save()} disabled={locked || !dirty || saving}>
           {saving ? 'Zapisuję…' : 'Zapisz przydział'}
         </button>
         <button type="button" onClick={() => (dirty ? setDraft(stored) : onDone?.())}>

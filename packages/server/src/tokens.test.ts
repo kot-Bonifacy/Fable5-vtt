@@ -15,6 +15,7 @@ import type {
   StateSyncPayload,
   PortraitAssetView,
   PortraitCropBroadcast,
+  TokenAimBroadcast,
   TokenAssetView,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -979,6 +980,89 @@ describe('tokens', () => {
     const broken = await emitAck(player, 'token:facing', { tokenId: ownTokenId, facing: 'north' });
     expect(broken.ok).toBe(false);
     expect(!broken.ok && broken.error).toBe('BAD_REQUEST');
+  });
+
+  /**
+   * Grot celowania widzi cały stół (03.10). Ulotny: idzie do tych, którzy widzą
+   * figurę, nie wraca do nadawcy i nie zmienia kąta zapisanego w bazie.
+   */
+  it('sends the aim of a figure to the table without storing it', async () => {
+    const before = (await roundTrip(gm)).tokens.find((t) => t.id === ownTokenId)?.facing;
+    const echoes: TokenAimBroadcast[] = [];
+    const onEcho = (broadcast: TokenAimBroadcast) => echoes.push(broadcast);
+    player.on('token:aim', onEcho);
+
+    const gmSees = waitFor<TokenAimBroadcast>(gm, 'token:aim');
+    const aimed = await emitAck(player, 'token:aim', { tokenId: ownTokenId, facing: 135.6 });
+    expect(aimed.ok).toBe(true);
+    expect(await gmSees).toEqual({ sceneId, tokenId: ownTokenId, facing: 136 });
+
+    const stored = (await roundTrip(gm)).tokens.find((t) => t.id === ownTokenId)?.facing;
+    expect(stored).toBe(before);
+
+    const released = waitFor<TokenAimBroadcast>(gm, 'token:aim');
+    expect((await emitAck(player, 'token:aim', { tokenId: ownTokenId, facing: null })).ok).toBe(
+      true,
+    );
+    expect(await released).toEqual({ sceneId, tokenId: ownTokenId, facing: null });
+
+    await roundTrip(player);
+    player.off('token:aim', onEcho);
+    expect(echoes).toEqual([]);
+  });
+
+  it('keeps the aim of a hidden figure from players and refuses a foreign one', async () => {
+    const leaks: unknown[] = [];
+    const onLeak = (broadcast: unknown) => leaks.push(broadcast);
+    player.on('token:aim', onLeak);
+    expect((await emitAck(gm, 'token:aim', { tokenId: hiddenTokenId, facing: 90 })).ok).toBe(true);
+    expect((await emitAck(gm, 'token:aim', { tokenId: hiddenTokenId, facing: null })).ok).toBe(
+      true,
+    );
+    await roundTrip(player);
+    player.off('token:aim', onLeak);
+    expect(leaks).toEqual([]);
+
+    const foreign = await emitAck(player, 'token:aim', { tokenId: npcTokenId, facing: 90 });
+    expect(!foreign.ok && foreign.error).toBe('FORBIDDEN');
+    const hidden = await emitAck(player, 'token:aim', { tokenId: hiddenTokenId, facing: 90 });
+    expect(!hidden.ok && hidden.error).toBe('TOKEN_NOT_FOUND');
+    const broken = await emitAck(player, 'token:aim', { tokenId: ownTokenId, facing: 'north' });
+    expect(!broken.ok && broken.error).toBe('BAD_REQUEST');
+  });
+
+  it('takes the aim down when the aiming socket goes away', async () => {
+    const second = createSocket(gmCookie);
+    await second.firstSync;
+    const seen = waitFor<TokenAimBroadcast>(player, 'token:aim');
+    expect(
+      (await emitAck(second.socket, 'token:aim', { tokenId: npcTokenId, facing: 45 })).ok,
+    ).toBe(true);
+    expect(await seen).toMatchObject({ tokenId: npcTokenId, facing: 45 });
+
+    // Nowy cel tego samego gniazda zdejmuje stary grot — gniazdo ma jeden celownik.
+    const switched = new Promise<TokenAimBroadcast[]>((resolve) => {
+      const got: TokenAimBroadcast[] = [];
+      const on = (broadcast: TokenAimBroadcast) => {
+        got.push(broadcast);
+        if (got.length === 2) {
+          player.off('token:aim', on);
+          resolve(got);
+        }
+      };
+      player.on('token:aim', on);
+    });
+    expect((await emitAck(second.socket, 'token:aim', { tokenId: ownTokenId, facing: 0 })).ok).toBe(
+      true,
+    );
+    expect(await switched).toEqual([
+      { sceneId, tokenId: npcTokenId, facing: null },
+      { sceneId, tokenId: ownTokenId, facing: 0 },
+    ]);
+
+    const gone = waitFor<TokenAimBroadcast>(player, 'token:aim');
+    second.socket.disconnect();
+    expect(await gone).toEqual({ sceneId, tokenId: ownTokenId, facing: null });
   });
 
   it('deletes tokens campaign-wide', async () => {

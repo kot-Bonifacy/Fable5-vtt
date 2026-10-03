@@ -336,6 +336,8 @@
   font-size: 0.875rem;
   color: var(--text-dim);
   text-align: right;
+  /* #67: „rzut 10” łamało się na dwie linie przy TECH i RUCH. */
+  white-space: nowrap;
 }
 
 .creator-derived {
