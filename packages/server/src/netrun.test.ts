@@ -9,7 +9,6 @@ import type {
   CampaignSummary,
   CharacterView,
   CpredNetPosition,
-  InvitationSummary,
   NetAccessPointView,
   NetArchitectureView,
   NetRunAbilityResult,
@@ -21,6 +20,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Smoke tests of the run (stage 26b) on real sockets.
@@ -187,18 +187,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const invite = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const invite = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Kolec' },
+    url: await joinUrl(built, invite, 'Kolec'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   const me = await built.app.inject({

@@ -24,6 +24,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Etap 20b — tura bota w walce, na żywych gniazdach.
@@ -333,16 +334,9 @@ beforeAll(async () => {
   });
   campaignId = (campaign.json() as CampaignSummary).id;
 
-  const invite = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
   const join = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${(invite.json() as { token: string }).token}`,
-    payload: { name: 'Rico' },
+    url: await joinUrl(built, campaignId, 'Rico'),
   });
   const me = await built.app.inject({
     method: 'GET',
@@ -965,16 +959,9 @@ describe('bezpieczniki', () => {
   }, 15_000);
 
   it('refuses to be played by a player', async () => {
-    const invite = await built.app.inject({
-      method: 'POST',
-      url: `/api/campaigns/${campaignId}/invitations`,
-      headers: { cookie: gmCookie },
-      payload: {},
-    });
     const join = await built.app.inject({
       method: 'POST',
-      url: `/api/join/${(invite.json() as { token: string }).token}`,
-      payload: { name: 'Vex' },
+      url: await joinUrl(built, campaignId, 'Vex'),
     });
     const player = createSocket(cookieOf(join.headers['set-cookie']));
     await player.firstSync;

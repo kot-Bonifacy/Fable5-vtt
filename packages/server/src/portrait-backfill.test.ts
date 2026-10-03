@@ -49,11 +49,12 @@ const config: ServerConfig = {
 let built: BuiltApp;
 let campaignId: string;
 
+/** Plik portretu w katalogu kampanii (etap 44b) i jego adres. */
 function putPortrait(name: string): string {
-  const dir = join(UPLOADS, 'portraits');
+  const dir = join(UPLOADS, 'campaigns', campaignId, 'portraits');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, name), PNG_1X1);
-  return `/uploads/portraits/${name}`;
+  return `/uploads/campaigns/${campaignId}/portraits/${name}`;
 }
 
 beforeAll(async () => {
@@ -125,13 +126,17 @@ describe('backfillPortraitAssets', () => {
       data: { campaignId, name: 'Z grafiki', portraitUrl: '/public/art/ikona.png' },
     });
     await built.prisma.character.create({
-      data: { campaignId, name: 'Bez pliku', portraitUrl: '/uploads/portraits/nie-ma-mnie.png' },
+      data: {
+        campaignId,
+        name: 'Bez pliku',
+        portraitUrl: `/uploads/campaigns/${campaignId}/portraits/nie-ma-mnie.png`,
+      },
     });
 
     expect(await backfillPortraitAssets(built.prisma, UPLOADS, built.app.log)).toBe(0);
     expect(
       await built.prisma.portraitAsset.count({
-        where: { campaignId, url: '/uploads/portraits/nie-ma-mnie.png' },
+        where: { campaignId, url: `/uploads/campaigns/${campaignId}/portraits/nie-ma-mnie.png` },
       }),
     ).toBe(0);
   });

@@ -10,7 +10,6 @@ import type {
   ArchiveImportResult,
   CampaignSummary,
   CharacterView,
-  InvitationSummary,
   SceneView,
   SnapshotListView,
   SocketAck,
@@ -20,6 +19,7 @@ import { ARCHIVE_VERSION } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import type { CampaignArchive, CharacterArchive, SceneArchive } from './archive.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Pliki wymiany (etap 33) — szew między bazą, trasą i gniazdem.
@@ -148,17 +148,11 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Rogue' },
+    url: await joinUrl(built, token, 'Rogue'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;

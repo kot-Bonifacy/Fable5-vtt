@@ -12,6 +12,7 @@ import {
   parseCharacterData,
   sanitizeWallArmor,
   sanitizeConcealPenalty,
+  UPLOAD_URL_PATTERN,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 
@@ -46,9 +47,6 @@ import type { PrismaClient } from './db.js';
  * **tylko wtedy, gdy taki wiersz naprawdę istnieje w tej instalacji**. Reszta
  * schodzi do `null` — id z innego komputera nic tu nie znaczy.
  */
-
-/** Adresy `/uploads/...` w dowolnym ładunku — do listy plików w manifeście. */
-const UPLOAD_URL_PATTERN = /\/uploads\/[A-Za-z0-9_\-.]+\/[A-Za-z0-9_\-.]+/g;
 
 /** Kolumna tekstowa, która w bazie trzyma JSON; w pliku ma być obiektem. */
 function parseJsonColumn(value: string | null): unknown {
@@ -452,13 +450,17 @@ async function survivingIds(
           select: { id: true },
         })
       : Promise.resolve([]),
+    // Właściciel figury to gracz tej kampanii (etap 44b), nie dowolne konto.
     ownerIds.length
-      ? prisma.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true } })
+      ? prisma.campaignMember.findMany({
+          where: { campaignId, userId: { in: ownerIds } },
+          select: { userId: true },
+        })
       : Promise.resolve([]),
   ]);
   return {
     characters: new Set(characters.map((row) => row.id)),
-    owners: new Set(owners.map((row) => row.id)),
+    owners: new Set(owners.map((row) => row.userId)),
   };
 }
 
@@ -779,7 +781,9 @@ export async function exportCampaign(
       prisma.knowledgeEntry.findMany({ where: { campaignId } }),
       prisma.journalEntry.findMany({ where: { campaignId } }),
       prisma.handout.findMany({ where: { campaignId } }),
-      prisma.botRelation.findMany({}),
+      // Relacje botów tej kampanii — do 44b szły wszystkie z serwera, więc zrzut
+      // kampanii MG-B niósł relacje (i notatki) botów MG-A.
+      prisma.botRelation.findMany({ where: { bot: { campaignId } } }),
       prisma.netArchitecture.findMany({ where: { campaignId } }),
     ]);
   const [tokenAssets, portraitAssets] = await Promise.all([

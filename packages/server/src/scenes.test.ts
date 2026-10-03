@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
-  InvitationSummary,
   MapUploadResult,
   SceneActivateBroadcast,
   SceneListBroadcast,
@@ -18,6 +17,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -50,6 +50,8 @@ const PNG_1X1 = Buffer.from(
 );
 
 let built: BuiltApp;
+/** Katalog map kampanii testu (etap 44b). */
+let mapsDir = '';
 let baseUrl: string;
 let gmCookie: string;
 let playerCookie: string;
@@ -168,19 +170,14 @@ beforeAll(async () => {
     payload: { name: 'Kampania scen' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
+  mapsDir = `/uploads/campaigns/${campaignId}/maps/`;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Rogue' },
+    url: await joinUrl(built, token, 'Rogue'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
 }, 60_000);
@@ -207,7 +204,8 @@ describe('map upload', () => {
     expect(res.statusCode).toBe(201);
     const result = res.json() as MapUploadResult;
     expect(result).toMatchObject({ width: 1, height: 1 });
-    expect(result.url).toMatch(/^\/uploads\/maps\/.+\.png$/);
+    expect(result.url.startsWith(mapsDir)).toBe(true);
+    expect(result.url).toMatch(/\.png$/);
 
     const served = await built.app.inject({
       method: 'GET',
@@ -402,7 +400,7 @@ describe('scene lifecycle', () => {
     await gm.firstSync;
     const ack = await emitAck<SceneView>(gm.socket, 'scene:update', {
       sceneId: sceneBId,
-      patch: { background: { url: '/uploads/maps/x.png', width: 4096, height: 2048 } },
+      patch: { background: { url: `${mapsDir}x.png`, width: 4096, height: 2048 } },
     });
     if (!ack.ok || !ack.data) throw new Error('scene:update failed');
     expect(ack.data).toMatchObject({ width: 4096, height: 2048 });

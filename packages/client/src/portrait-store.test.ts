@@ -31,31 +31,37 @@ describe('portrait pool for a player', () => {
   });
 
   it('refetches once for a portrait a figure wears but the pool does not know', async () => {
-    apiGet.mockResolvedValueOnce([asset('a', '/uploads/portraits/a.webp')]);
+    apiGet.mockResolvedValueOnce([asset('a', '/uploads/campaigns/k1/portraits/a.webp')]);
     await usePortraitStore.getState().load();
     apiGet.mockResolvedValue([
-      asset('a', '/uploads/portraits/a.webp'),
-      asset('npc', '/uploads/portraits/npc.webp', { name: '', gmOnly: true }),
+      asset('a', '/uploads/campaigns/k1/portraits/a.webp'),
+      asset('npc', '/uploads/campaigns/k1/portraits/npc.webp', { name: '', gmOnly: true }),
     ]);
 
     usePortraitStore
       .getState()
-      .notice(['/uploads/portraits/npc.webp', null, '/uploads/tokens/x.png']);
+      .notice([
+        '/uploads/campaigns/k1/portraits/npc.webp',
+        null,
+        '/uploads/campaigns/k1/tokens/x.png',
+      ]);
     await vi.waitFor(() =>
-      expect(usePortraitStore.getState().crops.has('/uploads/portraits/npc.webp')).toBe(true),
+      expect(
+        usePortraitStore.getState().crops.has('/uploads/campaigns/k1/portraits/npc.webp'),
+      ).toBe(true),
     );
     expect(apiGet).toHaveBeenCalledTimes(2);
 
     // Plik, którego serwer nie odda (stary upload bez wiersza), pyta tylko raz.
-    usePortraitStore.getState().notice(['/uploads/portraits/stary.webp']);
+    usePortraitStore.getState().notice(['/uploads/campaigns/k1/portraits/stary.webp']);
     await vi.waitFor(() => expect(apiGet).toHaveBeenCalledTimes(3));
-    usePortraitStore.getState().notice(['/uploads/portraits/stary.webp']);
+    usePortraitStore.getState().notice(['/uploads/campaigns/k1/portraits/stary.webp']);
     await Promise.resolve();
     expect(apiGet).toHaveBeenCalledTimes(3);
   });
 
   it('forgets a portrait the GM moved to the NPC portraits', async () => {
-    apiGet.mockResolvedValueOnce([asset('a', '/uploads/portraits/a.webp')]);
+    apiGet.mockResolvedValueOnce([asset('a', '/uploads/campaigns/k1/portraits/a.webp')]);
     await usePortraitStore.getState().load();
     usePortraitStore.getState().applyRemove('a');
     expect(usePortraitStore.getState().assets).toEqual([]);

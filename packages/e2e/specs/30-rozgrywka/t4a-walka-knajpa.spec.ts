@@ -154,8 +154,8 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
   test('start z po-T3: MG, Marek i Ola przy „Knajpie”, walki jeszcze nie ma', async ({ cast }) => {
     mg = await cast.mg('chromium');
     // Zaproszenia z punktu wygasają po tygodniu — świeże z API MG (pułapka w `testy`).
-    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId));
-    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId));
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId, 'Marek'));
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId, 'Ola'));
     expect(query('SELECT id FROM Combat')).toEqual([]);
     for (const actor of [mg, marek, ola]) {
       await expect

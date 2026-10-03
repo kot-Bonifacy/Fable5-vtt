@@ -32,7 +32,7 @@ test.describe.serial('T7c: marsz na pole pod cudzą figurą (#52) @odpornosc', (
     const knajpa = sceneByName('Knajpa');
     cell = knajpa.gridSizePx;
     expect(await emitAck(gm, 'scene:activate', { sceneId: knajpa.id })).toMatchObject({ ok: true });
-    ola = await cast.gracz('Ola', 'firefox', await invite(await apiGm()));
+    ola = await cast.gracz('Ola', 'firefox', await invite(await apiGm(), 'Ola'));
     ola.page.setDefaultTimeout(15_000);
     await expect
       .poll(async () => (await ola.store<{ scene: { name: string } | null }>('scene'))?.scene?.name)

@@ -8,7 +8,7 @@ import {
   exportCharacter,
   exportScene,
 } from '../archive.js';
-import { getUserActiveCampaign } from './helpers.js';
+import { getUserActiveCampaign, ownCampaign } from './helpers.js';
 
 /**
  * Pobieranie plików wymiany (etap 33) — trasy REST, nie zdarzenia gniazda.
@@ -49,6 +49,14 @@ export function registerArchiveRoutes(app: FastifyInstance, ctx: AppContext): vo
     '/api/archive/character/:id',
     gmOnly,
     async (request, reply) => {
+      // Karta z kampanii tego MG (etap 44b) — cudza wygląda jak nieistniejąca.
+      const row = await ctx.prisma.character.findUnique({
+        where: { id: request.params.id },
+        select: { campaignId: true },
+      });
+      if (!row || !(await ownCampaign(ctx.prisma, row.campaignId, request.user!.id))) {
+        return reply.code(404).send({ error: 'NOT_FOUND' });
+      }
       const file = await exportCharacter(ctx.prisma, request.params.id);
       if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
       return sendArchive(reply, 'character', file.payload.name, file);
@@ -56,6 +64,13 @@ export function registerArchiveRoutes(app: FastifyInstance, ctx: AppContext): vo
   );
 
   app.get<{ Params: { id: string } }>('/api/archive/scene/:id', gmOnly, async (request, reply) => {
+    const row = await ctx.prisma.scene.findUnique({
+      where: { id: request.params.id },
+      select: { campaignId: true },
+    });
+    if (!row || !(await ownCampaign(ctx.prisma, row.campaignId, request.user!.id))) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
     const file = await exportScene(ctx.prisma, request.params.id);
     if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
     return sendArchive(reply, 'scene', String(file.payload.scene.name ?? 'scena'), file);

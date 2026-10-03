@@ -144,7 +144,7 @@ test.describe.serial('T7c odporność: wyciek pamięci @odpornosc', () => {
     test.setTimeout(5 * 60_000);
     await buildPerfScene(gm);
     mg = await cast.mg('chromium');
-    ola = await cast.gracz('Ola', 'firefox', await invite(await apiGm()));
+    ola = await cast.gracz('Ola', 'firefox', await invite(await apiGm(), 'Ola'));
     for (const actor of [mg, ola]) actor.page.setDefaultTimeout(20_000);
     await onScene(ola, PERF_SCENE);
     await chatTab(ola);

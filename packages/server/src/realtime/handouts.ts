@@ -20,6 +20,7 @@ import {
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 import { journalEntriesWithHandout, refreshJournalEntries } from './journal.js';
 import { campaignRoom, gmRoom } from './state.js';
@@ -234,6 +235,7 @@ export const handoutUpsertEvent = defineEvent<HandoutUpsertPayload, HandoutView>
       throw new RealtimeError(`INVALID_HANDOUT:${result.issues[0]?.message ?? ''}`);
     }
     const { title, body, image, kind, screamsheet } = result.handout;
+    requireOwnUploadUrl(image?.url, campaignId);
     const data = {
       title,
       body,

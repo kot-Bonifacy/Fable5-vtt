@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PortraitAssetView, PortraitCrop, PortraitWantedRow } from '@vtt/shared';
-import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
+import { DEFAULT_PORTRAIT_CROP, parseCampaignUploadUrl } from '@vtt/shared';
 import { apiGet } from '../api.js';
 
 /**
@@ -73,7 +73,6 @@ let requestVersion = 0;
  * nie przyjdzie nigdy — bez tej listy mapa pytałaby o niego przy każdej klatce.
  */
 const noticed = new Set<string>();
-const PORTRAIT_PATH = '/uploads/portraits/';
 
 export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   assets: [],
@@ -128,7 +127,8 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
     if (!state.loaded || inFlight) return;
     let unknown = false;
     for (const url of urls) {
-      if (!url?.startsWith(PORTRAIT_PATH) || noticed.has(url)) continue;
+      // Portret kampanii (`/uploads/campaigns/<id>/portraits/…`, etap 44b).
+      if (!url || parseCampaignUploadUrl(url)?.dir !== 'portraits' || noticed.has(url)) continue;
       if (state.assets.some((a) => a.url === url)) continue;
       noticed.add(url);
       unknown = true;

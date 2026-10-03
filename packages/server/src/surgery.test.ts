@@ -12,12 +12,12 @@ import type {
   CpredCharacterData,
   CyberwareSurgeonsResult,
   EconomyHistoryResult,
-  InvitationSummary,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Prośba o operację u Medyka innego gracza (#41, 30.09.2026), na żywych gniazdach.
@@ -155,8 +155,7 @@ function scriptDice(faces: number[]): void {
 async function joinAs(token: string, name: 'Marek' | 'Ola' | 'Obcy') {
   const res = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name },
+    url: await joinUrl(built, token, name),
   });
   const key = name.toLowerCase() as 'marek' | 'ola' | 'obcy';
   cookies[key] = cookieOf(res.headers['set-cookie']);
@@ -189,13 +188,8 @@ beforeAll(async () => {
     payload: { name: 'Klinika' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: cookies.gm },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
   await joinAs(token, 'Marek');
   await joinAs(token, 'Ola');
   await joinAs(token, 'Obcy');

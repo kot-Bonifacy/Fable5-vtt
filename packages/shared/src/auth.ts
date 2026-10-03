@@ -46,11 +46,20 @@ export interface AuthState {
 }
 
 /** Response of GET /api/join/:token — what a player sees before joining. */
+/**
+ * What the join screen shows before entering (stage 44b): the link is a named
+ * key, so the player sees whose seat it opens instead of picking a name.
+ */
 export interface JoinInfo {
   campaignName: string;
-  /** Names of players already in the campaign, offered for re-entry. */
-  players: string[];
+  /** The player's name — written on the link by the GM. */
+  playerName: string;
+  /** A renewal link: back into an existing account on a new device. */
+  renewal: boolean;
 }
+
+/** Where a named link stands (stage 44b). */
+export type InvitationState = 'waiting' | 'used' | 'expired' | 'revoked';
 
 export interface InvitationSummary {
   id: string;
@@ -58,7 +67,19 @@ export interface InvitationSummary {
   expiresAt: string;
   revoked: boolean;
   createdAt: string;
+  /** Player name on the link; null only on pre-44b anonymous links (all revoked). */
+  name: string | null;
+  /** Renewal link for an existing player (stage 44b). */
+  renewal: boolean;
+  usedAt: string | null;
+  state: InvitationState;
 }
+
+/** A named link is valid this long when nobody uses it (decision of 03.10). */
+export const INVITATION_TTL_HOURS = 7 * 24;
+
+/** Longest player name the GM can write on a link. */
+export const PLAYER_NAME_MAX_LENGTH = 32;
 
 export interface PlayerSummary {
   id: string;

@@ -1,19 +1,41 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthState, JoinInfo } from '@vtt/shared';
 import { ROLE_PLAYER } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import type { PrismaClient } from '../db.js';
+import type { Campaign, Invitation } from '../generated/prisma/client.js';
 import { createSession, toSessionUser } from '../auth/sessions.js';
+import { invitationState, playerNameTaken } from '../invitations.js';
 import { refuseRateLimited, setSessionCookie } from './helpers.js';
 
-const MAX_NAME_LENGTH = 32;
+type LoadedInvitation = Invitation & { campaign: Campaign };
 
-async function findValidInvitation(prisma: PrismaClient, token: string) {
-  const invitation = await prisma.invitation.findUnique({
+/**
+ * Imienny link (etap 44b) albo odmowa. Nieznany i unieważniony link to 404
+ * i liczy się do limitu zgadywania (#12); użyty i wygasły to 410 — token był
+ * prawdziwy, więc gracz dostaje zdanie, co dalej, a nie „nieważne”.
+ */
+async function requireUsableInvitation(
+  ctx: AppContext,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<LoadedInvitation | null> {
+  const { token } = request.params as { token: string };
+  const invitation = await ctx.prisma.invitation.findUnique({
     where: { token },
     include: { campaign: true },
   });
-  if (!invitation || invitation.revokedAt || invitation.expiresAt.getTime() <= Date.now()) {
+  const state = invitation ? invitationState(invitation) : 'revoked';
+  if (!invitation || state === 'revoked') {
+    ctx.loginLimiter?.fail(request.ip);
+    void reply.code(404).send({ error: 'INVALID_INVITATION' });
+    return null;
+  }
+  if (state === 'used') {
+    void reply.code(410).send({ error: 'INVITATION_USED' });
+    return null;
+  }
+  if (state === 'expired') {
+    void reply.code(410).send({ error: 'INVITATION_EXPIRED' });
     return null;
   }
   return invitation;
@@ -21,66 +43,72 @@ async function findValidInvitation(prisma: PrismaClient, token: string) {
 
 export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.get('/api/join/:token', async (request, reply) => {
-    const { token } = request.params as { token: string };
     // Zgadywanie zaproszeń liczy się do tego samego limitu co złe hasła (#12).
     if (refuseRateLimited(ctx, request, reply)) return reply;
-    const invitation = await findValidInvitation(ctx.prisma, token);
-    if (!invitation) {
-      ctx.loginLimiter?.fail(request.ip);
-      return reply.code(404).send({ error: 'INVALID_INVITATION' });
-    }
-
-    const members = await ctx.prisma.campaignMember.findMany({
-      where: { campaignId: invitation.campaignId },
-      include: { user: true },
-      orderBy: { joinedAt: 'asc' },
-    });
+    const invitation = await requireUsableInvitation(ctx, request, reply);
+    if (!invitation) return reply;
     const info: JoinInfo = {
       campaignName: invitation.campaign.name,
-      players: members.map((m) => m.user.name),
+      playerName: invitation.name!,
+      renewal: invitation.renewal,
     };
     return info;
   });
 
+  /**
+   * Wejście z linku. Imię bierze się z linku, nie z formularza: link nowego
+   * gracza zakłada konto w tej kampanii, link odnowienia otwiera istniejące.
+   * Oba zużywają się w tej samej transakcji, w której powstaje konto —
+   * dwa równoczesne kliknięcia nie założą dwóch kont.
+   */
   app.post('/api/join/:token', async (request, reply) => {
-    const { token } = request.params as { token: string };
     if (refuseRateLimited(ctx, request, reply)) return reply;
-    const invitation = await findValidInvitation(ctx.prisma, token);
-    if (!invitation) {
-      ctx.loginLimiter?.fail(request.ip);
-      return reply.code(404).send({ error: 'INVALID_INVITATION' });
-    }
+    const invitation = await requireUsableInvitation(ctx, request, reply);
+    if (!invitation) return reply;
+    const name = invitation.name!;
 
-    const { name } = (request.body ?? {}) as { name?: unknown };
-    const trimmed = typeof name === 'string' ? name.trim() : '';
-    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
-      return reply.code(400).send({ error: 'INVALID_NAME' });
-    }
+    const outcome = await ctx.prisma
+      .$transaction(async (tx) => {
+        let userId = invitation.userId;
+        if (invitation.renewal) {
+          // Gracz, którego MG w międzyczasie usunął z kampanii, nie wraca kluczem.
+          const member = userId
+            ? await tx.campaignMember.findUnique({
+                where: { campaignId_userId: { campaignId: invitation.campaignId, userId } },
+              })
+            : null;
+          if (!member) return 'INVALID_INVITATION' as const;
+        } else {
+          if (await playerNameTaken(tx, invitation.campaignId, name, invitation.id)) {
+            return 'NAME_TAKEN' as const;
+          }
+          const user = await tx.user.create({ data: { name, role: ROLE_PLAYER } });
+          await tx.campaignMember.create({
+            data: { campaignId: invitation.campaignId, userId: user.id },
+          });
+          userId = user.id;
+        }
+        const used = await tx.invitation.updateMany({
+          where: { id: invitation.id, usedAt: null },
+          data: { usedAt: new Date(), userId },
+        });
+        // Ktoś był szybszy tym samym linkiem — cała transakcja się cofa.
+        if (used.count !== 1) throw new LinkAlreadyUsed();
+        return tx.user.findUniqueOrThrow({ where: { id: userId! } });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof LinkAlreadyUsed) return 'INVITATION_USED' as const;
+        throw error;
+      });
 
-    // Same name = same player returning (trusted friends group, no password).
-    // Imię nie jest już unikalne na serwerze (44a: każde konto MG z rejestracji
-    // nazywa się „MG”), więc szukamy gracza, a imię konta MG zostaje zajęte.
-    // Imienne linki i imię unikalne w kampanii przychodzą w 44b.
-    const existing = await ctx.prisma.user.findFirst({
-      where: { name: trimmed, role: ROLE_PLAYER },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!existing && (await ctx.prisma.user.findFirst({ where: { name: trimmed } }))) {
-      return reply.code(400).send({ error: 'NAME_TAKEN' });
-    }
-    const user =
-      existing ?? (await ctx.prisma.user.create({ data: { name: trimmed, role: ROLE_PLAYER } }));
+    if (outcome === 'INVITATION_USED') return reply.code(410).send({ error: outcome });
+    if (outcome === 'INVALID_INVITATION') return reply.code(404).send({ error: outcome });
+    if (outcome === 'NAME_TAKEN') return reply.code(409).send({ error: outcome });
 
-    await ctx.prisma.campaignMember.upsert({
-      where: { campaignId_userId: { campaignId: invitation.campaignId, userId: user.id } },
-      update: {},
-      create: { campaignId: invitation.campaignId, userId: user.id },
-    });
-
-    const session = await createSession(ctx.prisma, user.id, ctx.config.sessionTtlDays);
+    const session = await createSession(ctx.prisma, outcome.id, ctx.config.sessionTtlDays);
     setSessionCookie(reply, session);
     const state: AuthState = {
-      user: toSessionUser(user),
+      user: toSessionUser(outcome),
       activeCampaign: {
         id: invitation.campaign.id,
         name: invitation.campaign.name,
@@ -90,3 +118,5 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
     return state;
   });
 }
+
+class LinkAlreadyUsed extends Error {}

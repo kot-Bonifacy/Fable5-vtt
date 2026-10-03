@@ -687,7 +687,7 @@ test.describe
   }
 
   async function join(cast: Cast, name: string, engine: Engine, campaign: string) {
-    const actor = await cast.gracz(name, engine, await createInvitation(mg, campaign));
+    const actor = await cast.gracz(name, engine, await createInvitation(mg, campaign, name));
     actor.page.setDefaultTimeout(10_000);
     return actor;
   }

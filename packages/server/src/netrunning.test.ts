@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
-  InvitationSummary,
   NetArchitectureListPayload,
   NetArchitectureRollResult,
   NetArchitectureView,
@@ -17,6 +16,7 @@ import type {
 import { netDeepestBranch, netFloorCount, validateNetArchitecture } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Smoke tests for the Net Architecture library (stage 26a).
@@ -160,18 +160,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const join = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, token, 'Vex'),
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
 }, 60_000);

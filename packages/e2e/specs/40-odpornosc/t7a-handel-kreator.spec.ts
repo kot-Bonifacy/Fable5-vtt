@@ -74,9 +74,19 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
       network = await Network.install(context);
     };
     mg = await cast.mg('chromium');
-    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId), prepare);
+    marek = await cast.gracz(
+      'Marek',
+      'chromium',
+      await createInvitation(mg, campaignId, 'Marek'),
+      prepare,
+    );
     net.set(marek, network!);
-    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId), prepare);
+    ola = await cast.gracz(
+      'Ola',
+      'firefox',
+      await createInvitation(mg, campaignId, 'Ola'),
+      prepare,
+    );
     net.set(ola, network!);
     for (const actor of [mg, marek, ola]) {
       await expect
@@ -190,7 +200,7 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     cast,
   }) => {
     test.setTimeout(6 * 60_000);
-    kuba = await cast.gracz('Kuba', 'firefox', await createInvitation(mg, campaignId));
+    kuba = await cast.gracz('Kuba', 'firefox', await createInvitation(mg, campaignId, 'Kuba'));
     await kuba.page.getByRole('button', { name: 'Postacie', exact: true }).click();
     await kuba.page.getByRole('button', { name: /Poproś MG o stworzenie postaci/ }).click();
     await expect(kuba.page.getByText('Czekasz na zgodę MG na nową postać.')).toBeVisible();

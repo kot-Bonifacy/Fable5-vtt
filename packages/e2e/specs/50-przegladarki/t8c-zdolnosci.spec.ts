@@ -79,7 +79,11 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
   }) => {
     test.setTimeout(3 * 60_000);
     mg = (await seat(cast, [])).mg;
-    kuba = await cast.gracz('Kuba', PLAYER_ENGINE, await createInvitation(mg, campaignId()));
+    kuba = await cast.gracz(
+      'Kuba',
+      PLAYER_ENGINE,
+      await createInvitation(mg, campaignId(), 'Kuba'),
+    );
     const gm = await mg.socket();
     expect(
       await emitAck(gm, 'character:create', { name: CARD, ownerId: userId('Kuba') }),
@@ -303,7 +307,7 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     const marek = await cast.gracz(
       'Marek',
       PLAYER_ENGINE,
-      await createInvitation(mg, campaignId()),
+      await createInvitation(mg, campaignId(), 'Marek'),
     );
     const refused = await emitAck(await marek.socket(), 'character:team-hire', {
       characterId: cardId,

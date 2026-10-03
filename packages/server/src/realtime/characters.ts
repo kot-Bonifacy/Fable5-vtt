@@ -40,6 +40,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { applyBalance } from './economy.js';
 import { applyImprovementPoints } from './advancement.js';
 import { emitToCampaignUser } from './state.js';
@@ -86,7 +87,7 @@ async function requireCampaignCharacter(
 }
 
 /** A character owner must be a member of the campaign (players only). */
-async function requireValidOwner(
+export async function requireValidOwner(
   prisma: PrismaClient,
   campaignId: string,
   ownerId: string | null | undefined,
@@ -153,6 +154,7 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       const portraitUrl = sanitizeTokenImageUrl(patch.portraitUrl ?? null);
       if (portraitUrl === undefined) throw new RealtimeError('BAD_REQUEST');
       if (!isGm && portraitUrl !== character.portraitUrl) throw new RealtimeError('FORBIDDEN');
+      requireOwnUploadUrl(portraitUrl, campaignId);
       data.portraitUrl = portraitUrl;
     }
     if ('ownerId' in patch) {

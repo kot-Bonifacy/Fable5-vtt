@@ -11,7 +11,6 @@ import type {
   CharacterView,
   CombatView,
   CpredCharacterData,
-  InvitationSummary,
   NetAccessPointView,
   NetArchitectureView,
   NetRunAbilityResult,
@@ -24,6 +23,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Węzły kontrolne i urządzenia (etap 26d) na żywych gniazdach.
@@ -171,26 +171,19 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const invite = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const invite = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Kolec' },
+    url: await joinUrl(built, invite, 'Kolec'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;
 
   const bystanderRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Gapa' },
+    url: await joinUrl(built, invite, 'Gapa'),
   });
   bystanderCookie = cookieOf(bystanderRes.headers['set-cookie']);
 }, 60_000);

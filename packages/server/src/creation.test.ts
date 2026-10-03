@@ -19,7 +19,6 @@ import type {
   CreationPermitRow,
   CreationPermitState,
   CreationRankDraft,
-  InvitationSummary,
   PortraitAssetView,
   SocketAck,
   StateSyncPayload,
@@ -37,6 +36,7 @@ import {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * The character creator (stage 25a), on live sockets.
@@ -68,6 +68,8 @@ const config: ServerConfig = {
 };
 
 let built: BuiltApp;
+/** Katalog portretów kampanii testu (etap 44b: pliki leżą per kampania). */
+let portraitDir = '';
 let baseUrl: string;
 let gmCookie: string;
 let vexCookie: string;
@@ -203,28 +205,23 @@ beforeAll(async () => {
     payload: { name: 'Sesja zerowa' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
+  portraitDir = `/uploads/campaigns/${campaignId}/portraits/`;
   await built.prisma.portraitAsset.createMany({
     data: ['test', 'na-scenie'].map((name) => ({
       campaignId,
       name,
-      url: `/uploads/portraits/${name}.png`,
+      url: `${portraitDir}${name}.png`,
       width: 100,
       height: 100,
     })),
   });
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinVex = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, token, 'Vex'),
   });
   vexCookie = cookieOf(joinVex.headers['set-cookie']);
   vexId = (joinVex.json() as { user: { id: string } }).user.id;
@@ -243,21 +240,15 @@ afterAll(async () => {
 describe('wybór portretu w galerii', () => {
   it('reserves atomically, permits draft cropping, releases choices and hides owners', async () => {
     const campaign = await built.prisma.campaign.findFirstOrThrow();
-    const invite = await built.app.inject({
-      method: 'POST',
-      url: `/api/campaigns/${campaign.id}/invitations`,
-      headers: { cookie: gmCookie },
-      payload: {},
-    });
-    const token = (invite.json() as InvitationSummary).token;
+    // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+    const token = campaign.id;
     const cookies: string[] = [];
     const sockets: ClientSocket[] = [];
     const ids: string[] = [];
     for (const name of ['Portret A', 'Portret B']) {
       const joined = await built.app.inject({
         method: 'POST',
-        url: `/api/join/${token}`,
-        payload: { name },
+        url: await joinUrl(built, token, name),
       });
       const cookie = cookieOf(joined.headers['set-cookie']);
       cookies.push(cookie);
@@ -273,7 +264,7 @@ describe('wybór portretu w galerii', () => {
       data: {
         campaignId: campaign.id,
         name: 'Własny rysunek',
-        url: '/uploads/portraits/selection-test.png',
+        url: `${portraitDir}selection-test.png`,
         width: 100,
         height: 100,
       },
@@ -317,7 +308,7 @@ describe('wybór portretu w galerii', () => {
     expect((await emitAck(sockets[winner]!, 'creation:patch', choice)).ok).toBe(true);
     expect(
       await emitAck(sockets[winner]!, 'creation:patch', {
-        patch: { portraitUrl: '/uploads/portraits/not-in-pool.png' },
+        patch: { portraitUrl: `${portraitDir}not-in-pool.png` },
       }),
     ).toEqual({ ok: false, error: 'PORTRAIT_NOT_AVAILABLE' });
     await built.prisma.portraitAsset.update({ where: { id: asset.id }, data: { retired: true } });
@@ -1062,7 +1053,7 @@ describe('kreator postaci', () => {
 
     it('writes the goods, the change and the audit when the wizard finishes', async () => {
       const skills = Object.fromEntries(roleSkills.map((id) => [id, 2]));
-      await patch(vex, { skills, portraitUrl: '/uploads/portraits/test.png', placeToken: false });
+      await patch(vex, { skills, portraitUrl: `${portraitDir}test.png`, placeToken: false });
 
       await allocateRemaining(vex);
       const character = data(
@@ -1074,7 +1065,7 @@ describe('kreator postaci', () => {
       expect(sheet.weapons).toHaveLength(9);
       expect(sheet.gear).toHaveLength(1);
       expect(sheet.eddies).toBe(30);
-      expect(character.portraitUrl).toBe('/uploads/portraits/test.png');
+      expect(character.portraitUrl).toBe(`${portraitDir}test.png`);
 
       const history = data(
         await emitAck<{ entries: { kind: string; amount: number; label: string }[] }>(
@@ -1138,7 +1129,7 @@ describe('kreator postaci', () => {
       await rollMissingStats(vex);
       await patch(vex, {
         skills: Object.fromEntries(roleSkills.map((id) => [id, 2])),
-        portraitUrl: '/uploads/portraits/na-scenie.png',
+        portraitUrl: `${portraitDir}na-scenie.png`,
       });
 
       await allocateRemaining(vex);
@@ -1160,7 +1151,7 @@ describe('kreator postaci', () => {
       const token = (await appeared).token;
       expect(token.name).toBe('Na scenie');
       // The portrait doubles as the token's art until somebody picks another.
-      expect(token.imageUrl).toBe('/uploads/portraits/na-scenie.png');
+      expect(token.imageUrl).toBe(`${portraitDir}na-scenie.png`);
       expect(character.name).toBe('Na scenie');
     });
   });

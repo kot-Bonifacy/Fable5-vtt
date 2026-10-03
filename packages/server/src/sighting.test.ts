@@ -10,7 +10,6 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CpredSighting,
-  InvitationSummary,
   SceneView,
   SightingLookResult,
   SocketAck,
@@ -19,6 +18,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Oględziny i ręce (etap 41), na żywych gniazdach.
@@ -220,18 +220,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinVex = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, token, 'Vex'),
   });
   vexCookie = cookieOf(joinVex.headers['set-cookie']);
   vexUserId = (joinVex.json() as { user: { id: string } }).user.id;

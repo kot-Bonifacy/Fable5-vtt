@@ -14,13 +14,13 @@ import type {
   ChatMessageBroadcast,
   ChatMessageView,
   CpredCharacterData,
-  InvitationSummary,
   SceneView,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Stage 20a smoke tests: a bot that rolls dice.
@@ -246,18 +246,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaign.json() as CampaignSummary).id;
 
-  const invite = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (invite.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
   for (const name of ['Johnny', 'Rogue']) {
     const join = await built.app.inject({
       method: 'POST',
-      url: `/api/join/${token}`,
-      payload: { name },
+      url: await joinUrl(built, token, name),
     });
     const cookie = cookieOf(join.headers['set-cookie']);
     if (name === 'Johnny') {

@@ -104,7 +104,11 @@ for (const screen of SCREENS) {
         test.setTimeout(3 * 60_000);
         cast.viewport = { ...screen };
         mg = await cast.mg(layout.mg);
-        marek = await cast.gracz('Marek', layout.gracz, await createInvitation(mg, campaignId()));
+        marek = await cast.gracz(
+          'Marek',
+          layout.gracz,
+          await createInvitation(mg, campaignId(), 'Marek'),
+        );
         for (const actor of [mg, marek]) {
           await expect
             .poll(
@@ -184,7 +188,11 @@ for (const screen of SCREENS) {
 
       test('kreator Kuby (Na skróty): wszystkie kroki w nocy i w dzień', async ({ cast }) => {
         test.setTimeout(4 * 60_000);
-        kuba = await cast.gracz('Kuba', layout.gracz, await createInvitation(mg, campaignId()));
+        kuba = await cast.gracz(
+          'Kuba',
+          layout.gracz,
+          await createInvitation(mg, campaignId(), 'Kuba'),
+        );
         await kuba.page.getByRole('button', { name: 'Postacie', exact: true }).click();
         await kuba.page.getByRole('button', { name: /Poproś MG o stworzenie postaci/ }).click();
         await goToGmAttention(mg, 'Kuba prosi o zgodę na nową postać');

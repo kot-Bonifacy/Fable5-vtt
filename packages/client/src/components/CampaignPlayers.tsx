@@ -1,0 +1,234 @@
+import { useState, type FormEvent } from 'react';
+import type { CampaignDetail, InvitationState, InvitationSummary } from '@vtt/shared';
+import { PLAYER_NAME_MAX_LENGTH } from '@vtt/shared';
+import { ApiError, apiPost } from '../api.js';
+
+function inviteUrl(token: string): string {
+  return `${window.location.origin}/join/${token}`;
+}
+
+const STATE_LABEL: Record<InvitationState, string> = {
+  waiting: 'czeka',
+  used: 'użyty',
+  expired: 'wygasł',
+  revoked: 'unieważniony',
+};
+
+/** Link do schowka; przeglądarka bez dostępu do schowka zostawia go na liście do ręcznego skopiowania. */
+async function copyLink(token: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(inviteUrl(token));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function InvitationRow({
+  invitation,
+  onRevoke,
+}: {
+  invitation: InvitationSummary;
+  onRevoke: (id: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const waiting = invitation.state === 'waiting';
+
+  async function copy() {
+    if (await copyLink(invitation.token)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  }
+
+  return (
+    <li className="invite-row">
+      <strong className="invite-name">{invitation.name ?? 'bez imienia'}</strong>
+      <span className="invite-expiry">
+        {invitation.renewal ? 'odnowienie' : invitation.name ? 'nowy gracz' : 'stary link'}
+      </span>
+      <span className={`badge ${waiting ? 'badge--ok' : 'badge--off'}`}>
+        {STATE_LABEL[invitation.state]}
+      </span>
+      <span className="invite-expiry">
+        {invitation.usedAt
+          ? `użyty ${new Date(invitation.usedAt).toLocaleString('pl-PL')}`
+          : `do ${new Date(invitation.expiresAt).toLocaleString('pl-PL')}`}
+      </span>
+      {waiting && (
+        <>
+          <code className="invite-url">{inviteUrl(invitation.token)}</code>
+          <button type="button" className="small-button" onClick={() => void copy()}>
+            {copied ? 'Skopiowano!' : 'Kopiuj'}
+          </button>
+          <button
+            type="button"
+            className="small-button small-button--danger"
+            onClick={() => onRevoke(invitation.id)}
+          >
+            Unieważnij
+          </button>
+        </>
+      )}
+    </li>
+  );
+}
+
+function issueErrorText(error: unknown): string {
+  if (error instanceof ApiError && error.code === 'NAME_TAKEN') {
+    return 'Przy tym stole ktoś już nosi to imię albo czeka na nie link — wybierz inne.';
+  }
+  if (error instanceof ApiError && error.code === 'INVALID_NAME') {
+    return `Imię gracza: od 1 do ${PLAYER_NAME_MAX_LENGTH} znaków.`;
+  }
+  return 'Nie udało się wystawić linku. Spróbuj ponownie.';
+}
+
+/**
+ * Gracze kampanii i ich imienne linki (etap 44b). Link jest kluczem do jednego
+ * miejsca przy stole: „Nowy gracz” wypisuje imię i daje link, który działa raz,
+ * a „Link odnowienia” przy graczu wpuszcza go na to samo konto z nowego
+ * komputera. Świeży link od razu trafia do schowka, bo następny krok MG to
+ * wkleić go graczowi na Discordzie.
+ */
+export function CampaignPlayers({
+  campaign,
+  onChanged,
+}: {
+  campaign: CampaignDetail;
+  onChanged: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [showSpent, setShowSpent] = useState(false);
+
+  const waiting = campaign.invitations.filter((link) => link.state === 'waiting');
+  const spent = campaign.invitations.filter((link) => link.state !== 'waiting');
+
+  async function issue(url: string, body: unknown, who: string) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const link = await apiPost<InvitationSummary>(url, body);
+      const copied = await copyLink(link.token);
+      setNotice(
+        copied
+          ? `Link dla gracza ${who} jest w schowku — wyślij mu go. Działa raz, przez tydzień.`
+          : `Link dla gracza ${who} czeka na liście niżej — skopiuj go i wyślij.`,
+      );
+      onChanged();
+      return true;
+    } catch (err) {
+      setError(issueErrorText(err));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function newPlayer(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (trimmed.length === 0 || busy) return;
+    if (await issue(`/api/campaigns/${campaign.id}/invitations`, { name: trimmed }, trimmed)) {
+      setName('');
+    }
+  }
+
+  async function revoke(invitationId: string) {
+    await apiPost(`/api/invitations/${invitationId}/revoke`);
+    onChanged();
+  }
+
+  return (
+    <>
+      <h3 className="panel-section-title">Gracze ({campaign.players.length})</h3>
+      {campaign.players.length === 0 ? (
+        <p className="placeholder-text">Nikt jeszcze nie dołączył.</p>
+      ) : (
+        <ul className="player-list">
+          {campaign.players.map((player) => (
+            <li key={player.id} className="player-row">
+              <span>{player.name}</span>
+              <span className="invite-expiry">
+                dołączył(a) {new Date(player.joinedAt).toLocaleDateString('pl-PL')}
+              </span>
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                title="Nowy komputer albo zgubione ciasteczko: link wpuszcza na to samo konto, inne urządzenia gracza zostają zalogowane"
+                onClick={() =>
+                  void issue(
+                    `/api/campaigns/${campaign.id}/players/${player.id}/renewal`,
+                    undefined,
+                    player.name,
+                  )
+                }
+              >
+                Link odnowienia
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form className="form-row new-player-form" onSubmit={(event) => void newPlayer(event)}>
+        <label className="visually-hidden" htmlFor={`new-player-${campaign.id}`}>
+          Imię nowego gracza
+        </label>
+        <input
+          id={`new-player-${campaign.id}`}
+          type="text"
+          maxLength={PLAYER_NAME_MAX_LENGTH}
+          placeholder="Imię nowego gracza"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button className="primary-button" type="submit" disabled={busy || !name.trim()}>
+          Nowy gracz
+        </button>
+      </form>
+      {error && <p className="auth-error">{error}</p>}
+      {notice && <p className="auth-hint">{notice}</p>}
+
+      <h3 className="panel-section-title">Linki</h3>
+      {waiting.length === 0 && <p className="placeholder-text">Żaden link nie czeka na gracza.</p>}
+      <ul className="invite-list">
+        {waiting.map((invitation) => (
+          <InvitationRow
+            key={invitation.id}
+            invitation={invitation}
+            onRevoke={(id) => void revoke(id)}
+          />
+        ))}
+      </ul>
+      {spent.length > 0 && (
+        <>
+          <button
+            type="button"
+            className="small-button"
+            aria-expanded={showSpent}
+            onClick={() => setShowSpent((value) => !value)}
+          >
+            {showSpent ? 'Ukryj' : 'Pokaż'} użyte i nieważne ({spent.length})
+          </button>
+          {showSpent && (
+            <ul className="invite-list">
+              {spent.map((invitation) => (
+                <InvitationRow
+                  key={invitation.id}
+                  invitation={invitation}
+                  onRevoke={(id) => void revoke(id)}
+                />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
+  );
+}

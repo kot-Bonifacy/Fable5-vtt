@@ -73,8 +73,12 @@ for (const layout of LAYOUTS) {
       test.setTimeout(2 * 60_000);
       cast.viewport = { width: 1920, height: 1080 };
       mg = await cast.mg(layout.mg);
-      marek = await cast.gracz('Marek', layout.gracze, await createInvitation(mg, campaignId()));
-      ola = await cast.gracz('Ola', layout.gracze, await createInvitation(mg, campaignId()));
+      marek = await cast.gracz(
+        'Marek',
+        layout.gracze,
+        await createInvitation(mg, campaignId(), 'Marek'),
+      );
+      ola = await cast.gracz('Ola', layout.gracze, await createInvitation(mg, campaignId(), 'Ola'));
       expect(query('SELECT id FROM Combat')).toEqual([]);
       for (const actor of everyone()) {
         await expect

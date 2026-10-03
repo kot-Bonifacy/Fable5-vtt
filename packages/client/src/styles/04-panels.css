@@ -214,6 +214,23 @@
   font-size: 0.8rem;
 }
 
+/* Imienne linki (44b): gracz z „Linkiem odnowienia” w jednym wierszu, który
+   zawija się na wąskim panelu zamiast ściskać datę do jednej litery. */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.invite-name {
+  font-size: 0.9rem;
+}
+
+.new-player-form {
+  margin-top: 0.6rem;
+}
+
 /* Panel właściciela (44a): wiersz konta to login, plakietki, metryka i dwa
    guziki; zawija się, zamiast ściskać metrykę do kolumny jednej litery. */
 .owner-account-list {

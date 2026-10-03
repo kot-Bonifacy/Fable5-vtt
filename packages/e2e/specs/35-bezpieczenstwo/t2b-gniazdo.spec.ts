@@ -156,9 +156,8 @@ test.describe.serial('T2 gniazdo: role, własność, śmieci, zalew', () => {
 
   test('start z po-T3: MG, Marek i Ola przy stole', async ({ cast }) => {
     mg = await cast.mg('chromium');
-    const token = await createInvitation(mg, campaign);
-    marek = await cast.gracz('Marek', 'chromium', token);
-    ola = await cast.gracz('Ola', 'firefox', token);
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaign, 'Marek'));
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaign, 'Ola'));
     for (const actor of [mg, marek, ola]) {
       await expect(actor.page.getByLabel('Wiadomość czatu')).toBeEnabled();
     }

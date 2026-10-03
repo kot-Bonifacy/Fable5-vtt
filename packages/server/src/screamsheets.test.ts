@@ -11,7 +11,6 @@ import type {
   HandoutLogEntry,
   HandoutSyncPayload,
   HandoutView,
-  InvitationSummary,
   ScreamsheetDraftBroadcast,
   ScreamsheetErrorBroadcast,
   SocketAck,
@@ -19,6 +18,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Screamsheety na żywych gniazdach (etap 24c).
@@ -208,17 +208,11 @@ beforeAll(async () => {
   });
   const campaignId = (campaign.json() as CampaignSummary).id;
 
-  const invite = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (invite.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
   const joined = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, token, 'Vex'),
   });
   playerCookie = cookieOf(joined.headers['set-cookie']);
   playerId = (joined.json() as { user: { id: string } }).user.id;

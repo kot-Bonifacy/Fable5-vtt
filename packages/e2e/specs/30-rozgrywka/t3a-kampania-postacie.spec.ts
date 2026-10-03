@@ -148,17 +148,17 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     ).toEqual({ shopTier: 2, settledMonth: '2045-03' });
   });
 
-  test('3.3 dwa zaproszenia; Marek (Chromium) i Ola (Firefox) wchodzą z linków', async ({
+  test('3.3 dwa imienne linki; Marek (Chromium) i Ola (Firefox) wchodzą z linków', async ({
     cast,
   }) => {
     await mg.page.getByText('Panel MG', { exact: true }).click();
-    const newLink = mg.page.getByRole('button', { name: /Nowy link zaproszenia/ });
-    await newLink.click();
-    await expect(mg.page.locator('.invite-url')).toHaveCount(1);
-    await newLink.click();
-    await expect(mg.page.locator('.invite-url')).toHaveCount(2);
-    for (const url of await mg.page.locator('.invite-url').allTextContents()) {
-      invites.push(url.split('/join/')[1]!);
+    // Etap 44b: MG wypisuje imię na linku — gracz niczego nie wpisuje.
+    for (const name of ['Marek', 'Ola']) {
+      await mg.page.getByPlaceholder('Imię nowego gracza').first().fill(name);
+      await mg.page.getByRole('button', { name: 'Nowy gracz' }).first().click();
+      const row = mg.page.locator('.invite-row', { hasText: name });
+      await expect(row.locator('.badge')).toHaveText('czeka');
+      invites.push((await row.locator('.invite-url').textContent())!.split('/join/')[1]!);
     }
 
     marek = await cast.gracz('Marek', 'chromium', invites[0]!);

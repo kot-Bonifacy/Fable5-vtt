@@ -19,7 +19,7 @@ import {
 } from '../../fixtures/scene.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { say } from '../../fixtures/table.ts';
+import { createInvitation, say } from '../../fixtures/table.ts';
 import {
   hasCheckpoint,
   restoreCheckpoint,
@@ -162,15 +162,16 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
   });
 
   test('start z po-T3a: MG, Marek i Ola przy stole, scen jeszcze nie ma', async ({ cast }) => {
-    const invites = query<{ token: string }>(
-      'SELECT token FROM Invitation WHERE campaignId = ? ORDER BY createdAt',
-      campaignId,
-    );
-    expect(invites).toHaveLength(2);
+    // Linki z T3a są zużyte (etap 44b: link działa raz) — wracają linki odnowienia.
+    expect(
+      query<{ state: string }>(
+        'SELECT usedAt IS NOT NULL AS state FROM Invitation WHERE campaignId = ? AND name IS NOT NULL',
+        campaignId,
+      ),
+    ).toEqual([{ state: 1 }, { state: 1 }]);
     mg = await cast.mg('chromium');
-    // Ten sam link i to samo imię = to samo konto (`routes/join.ts`).
-    marek = await cast.gracz('Marek', 'chromium', invites[0]!.token);
-    ola = await cast.gracz('Ola', 'firefox', invites[1]!.token);
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId, 'Marek'));
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId, 'Ola'));
     expect(query('SELECT id FROM Scene')).toEqual([]);
     expect(
       query<{ name: string }>(`SELECT name FROM User WHERE role = 'PLAYER' ORDER BY name`).map(

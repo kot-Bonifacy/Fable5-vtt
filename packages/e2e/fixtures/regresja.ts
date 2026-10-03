@@ -36,7 +36,9 @@ export async function seat(
   const mg = await cast.mg(MG_ENGINE);
   const seated: Actor[] = [];
   for (const name of players) {
-    seated.push(await cast.gracz(name, PLAYER_ENGINE, await createInvitation(mg, campaignId())));
+    seated.push(
+      await cast.gracz(name, PLAYER_ENGINE, await createInvitation(mg, campaignId(), name)),
+    );
   }
   for (const actor of [mg, ...seated]) await expect.poll(() => viewedScene(actor)).toBe(scene);
   return { mg, players: seated };

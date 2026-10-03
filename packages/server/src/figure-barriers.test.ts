@@ -8,7 +8,6 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import {
   isPointVisible,
   type CampaignSummary,
-  type InvitationSummary,
   type SocketAck,
   type StateSyncPayload,
   type TokenView,
@@ -22,6 +21,7 @@ import type { RealtimeDeps } from './realtime/registry.js';
 import type { CharacterView, CpredCharacterData, ChatMessageBroadcast } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -142,18 +142,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const invite = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const invite = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, invite, 'Vex'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;

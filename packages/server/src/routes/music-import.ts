@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, open, rm, stat, unlink } from 'node:fs/promises';
+import { copyFile, mkdtemp, open, rm, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -10,6 +10,8 @@ import { requireGm } from '../auth/guards.js';
 import { musicExtension, updateMusic } from '../music.js';
 import { broadcastMusic } from '../realtime/music.js';
 import { importYoutubeAudio, YOUTUBE_AUDIO_MAX_BYTES } from '../youtube-import.js';
+import { getUserActiveCampaign, ownCampaign } from './helpers.js';
+import { campaignUploadTarget } from '../campaign-uploads.js';
 
 export function registerMusicImportRoutes(app: FastifyInstance, ctx: AppContext, io: Server) {
   const jobs = new Map<string, MusicImportStatus>();
@@ -23,15 +25,22 @@ export function registerMusicImportRoutes(app: FastifyInstance, ctx: AppContext,
   app.get<{ Params: { campaignId: string } }>(
     path,
     { preHandler: requireGm },
-    async (request) => jobs.get(request.params.campaignId) ?? idle(request.params.campaignId),
+    async (request, reply) => {
+      // Stan importu tylko dla MG tej kampanii (etap 44b).
+      if (!(await ownCampaign(ctx.prisma, request.params.campaignId, request.user!.id))) {
+        return reply.code(404).send({ error: 'NOT_FOUND' });
+      }
+      return jobs.get(request.params.campaignId) ?? idle(request.params.campaignId);
+    },
   );
   app.post<{ Params: { campaignId: string }; Body: { url?: unknown; name?: unknown } }>(
     path,
     { preHandler: requireGm },
     async (request, reply) => {
       const campaignId = request.params.campaignId;
-      const campaign = await ctx.prisma.campaign.findUnique({ where: { id: campaignId } });
-      if (!campaign?.active) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+      // Aktywna kampania tego MG (etap 44b) — cudza odpada jak nieaktywna.
+      const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+      if (campaign?.id !== campaignId) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
       const videoId = youtubeVideoId(request.body?.url);
       const name = request.body?.name ?? '';
       if (!videoId || typeof name !== 'string' || name.length > 120)
@@ -73,14 +82,18 @@ export function registerMusicImportRoutes(app: FastifyInstance, ctx: AppContext,
           }
           if (musicExtension(header) !== 'mp3') throw new Error('INVALID_AUDIO');
           const id = randomUUID();
-          const musicDir = join(ctx.config.uploadsDir, 'music');
-          await mkdir(musicDir, { recursive: true });
-          output = join(musicDir, `${id}.mp3`);
+          const target = await campaignUploadTarget(
+            ctx.config.uploadsDir,
+            campaignId,
+            'music',
+            `${id}.mp3`,
+          );
+          output = target.path;
           await copyFile(source, output);
           const track: MusicTrack = {
             id,
             name: requestedName || title,
-            url: `/uploads/music/${id}.mp3`,
+            url: target.url,
           };
           const state = await updateMusic(ctx.prisma, campaignId, (state) => {
             abort.signal.throwIfAborted();
@@ -114,7 +127,10 @@ export function registerMusicImportRoutes(app: FastifyInstance, ctx: AppContext,
   app.post<{ Params: { campaignId: string } }>(
     `${path}/cancel`,
     { preHandler: requireGm },
-    async (request) => {
+    async (request, reply) => {
+      if (!(await ownCampaign(ctx.prisma, request.params.campaignId, request.user!.id))) {
+        return reply.code(404).send({ error: 'NOT_FOUND' });
+      }
       if (running?.campaignId === request.params.campaignId) running.abort.abort();
       return { ok: true };
     },

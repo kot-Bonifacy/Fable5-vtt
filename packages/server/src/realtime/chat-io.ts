@@ -24,6 +24,7 @@ import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import { deferView } from './presentation.js';
+import { campaignGmUser } from './campaign-gm.js';
 
 /**
  * Storage and delivery of chat messages, split out of `chat.ts` so the bot
@@ -38,17 +39,21 @@ export interface RosterUser {
 }
 
 /**
- * Everyone who can be addressed by name in a campaign: its members plus GMs.
+ * Everyone who can be addressed by name in a campaign: its members plus its GM.
  * Also the list bot names must not collide with — two „Vex" at one table make
  * `/w Vex` ambiguous and let a bot steal lines meant for a player.
+ *
+ * Only **this** campaign's GM since stage 44b: every GM account registered
+ * since 44a is called „MG", so the whole server's GMs made `/w MG` at table B
+ * a whisper to the GM of table A.
  */
 export async function getRoster(prisma: PrismaClient, campaignId: string): Promise<RosterUser[]> {
-  const [members, gms] = await Promise.all([
+  const [members, gm] = await Promise.all([
     prisma.campaignMember.findMany({ where: { campaignId }, include: { user: true } }),
-    prisma.user.findMany({ where: { role: ROLE_GM } }),
+    campaignGmUser(prisma, campaignId),
   ]);
   const byId = new Map<string, RosterUser>();
-  for (const gm of gms) byId.set(gm.id, { id: gm.id, name: gm.name });
+  if (gm) byId.set(gm.id, { id: gm.id, name: gm.name });
   for (const member of members)
     byId.set(member.userId, { id: member.userId, name: member.user.name });
   return [...byId.values()];

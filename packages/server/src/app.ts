@@ -4,7 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { Server as SocketIOServer } from 'socket.io';
-import { withShopTiers } from '@vtt/shared';
+import { SHARED_UPLOADS_PREFIX, parseCampaignUploadUrl, withShopTiers } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import type { AppContext } from './context.js';
 import { createPrisma, type PrismaClient } from './db.js';
@@ -22,6 +22,7 @@ import { registerMusicRoutes } from './routes/music.js';
 import { setupRealtime } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
+import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
@@ -87,17 +88,29 @@ export async function buildApp(
 
   /**
    * Mapy, portrety, żetony i handouty tylko dla zalogowanych (#10 / Z7, decyzja
-   * MG z 01.10). Do tej pory wystarczał adres (16 losowych znaków) — także do
-   * handoutu, którego MG jeszcze nikomu nie pokazał. Przeglądarka wysyła
-   * ciasteczko sesji do obrazków i `fetch` Pixi z tego samego pochodzenia, więc
-   * stół niczego nie zauważa. Członkostwo w kampanii pliku i nieudostępnione
-   * handouty zostają w Z7 na etap „Konta MG”.
+   * MG z 01.10), a od etapu 44b — tylko dla MG tej kampanii i jej graczy, przy
+   * handoucie: tylko dla tych, którym go udostępniono. Kampania stoi w ścieżce
+   * (`/uploads/campaigns/<id>/…`), więc decyzja nie szuka adresu w bazie.
+   * Przeglądarka wysyła ciasteczko sesji do obrazków i `fetch` Pixi z tego
+   * samego pochodzenia, więc stół niczego nie zauważa. Obcy plik daje 404 jak
+   * nieistniejący — odmowa nie zdradza, że coś pod adresem leży.
    */
   app.addHook('onRequest', async (request, reply) => {
     // Trasa, a nie surowy adres: `/%75ploads/…` trafia w tę samą trasę statyczną.
     const route = request.routeOptions.url ?? '';
     if (!route.startsWith('/uploads/') && !request.url.startsWith('/uploads/')) return;
     if (!request.user) return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    let path: string;
+    try {
+      path = decodeURIComponent(new URL(request.url, 'http://vtt').pathname);
+    } catch {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
+    if (path.startsWith(SHARED_UPLOADS_PREFIX) && !path.includes('..')) return;
+    const ref = parseCampaignUploadUrl(path);
+    if (!ref || !(await campaignUploadReadable(prisma, request.user, ref, path))) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
   });
 
   await app.register(fastifyMultipart, {
@@ -183,6 +196,9 @@ export async function buildApp(
   });
 
   await ensureGmUser(prisma, config, app.log);
+  // Płaskie `uploads/<katalog>/` sprzed 44b do katalogów kampanii — przed
+  // pierwszym żądaniem, bo strażnik płaskich adresów już nie wydaje.
+  await migrateFlatUploads(prisma, config.uploadsDir, app.log);
   // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po
   // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
   if (options.sweepUploads !== false) {

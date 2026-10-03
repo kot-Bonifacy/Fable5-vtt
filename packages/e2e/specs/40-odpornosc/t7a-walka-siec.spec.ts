@@ -157,9 +157,19 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     const campaignId = queryOne<{ id: string }>(
       `SELECT id FROM Campaign WHERE name = 'Nocna zmiana'`,
     )!.id;
-    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId), prepare);
+    marek = await cast.gracz(
+      'Marek',
+      'chromium',
+      await createInvitation(mg, campaignId, 'Marek'),
+      prepare,
+    );
     net.set(marek, network!);
-    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId), prepare);
+    ola = await cast.gracz(
+      'Ola',
+      'firefox',
+      await createInvitation(mg, campaignId, 'Ola'),
+      prepare,
+    );
     net.set(ola, network!);
   }
 

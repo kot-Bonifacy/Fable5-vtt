@@ -136,9 +136,13 @@ test.describe.serial('T2 kanarki na zimno: pełny stan po zalogowaniu', () => {
 
   test('Marek i Ola wchodzą na zimno: F5, listy na żądanie i trasy HTTP', async ({ cast }) => {
     test.setTimeout(180_000);
-    const token = await createInvitation(await cast.mg('chromium'), campaignId());
-    marek = await cast.gracz('Marek', 'chromium', token);
-    ola = await cast.gracz('Ola', 'firefox', token);
+    const mg = await cast.mg('chromium');
+    marek = await cast.gracz(
+      'Marek',
+      'chromium',
+      await createInvitation(mg, campaignId(), 'Marek'),
+    );
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId(), 'Ola'));
     for (const actor of [marek, ola]) {
       await expect(actor.page.getByLabel('Wiadomość czatu')).toBeEnabled();
       await actor.page.reload();

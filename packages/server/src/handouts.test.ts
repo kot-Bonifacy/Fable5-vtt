@@ -13,12 +13,12 @@ import type {
   HandoutSyncPayload,
   HandoutUpsertBroadcast,
   HandoutView,
-  InvitationSummary,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Handouty na żywych gniazdach (etap 24a).
@@ -52,6 +52,8 @@ const config: ServerConfig = {
 };
 
 let built: BuiltApp;
+/** Katalog handoutów kampanii testu (etap 44b). */
+let handoutDir = '';
 let baseUrl: string;
 let gmCookie: string;
 let vexCookie: string;
@@ -180,20 +182,15 @@ beforeAll(async () => {
     payload: { name: 'Nocne Targowisko' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
+  handoutDir = `/uploads/campaigns/${campaignId}/handouts/`;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   for (const name of ['Vex', 'Kaya', 'Rogue']) {
     const join = await built.app.inject({
       method: 'POST',
-      url: `/api/join/${token}`,
-      payload: { name },
+      url: await joinUrl(built, token, name),
     });
     const cookie = cookieOf(join.headers['set-cookie']);
     const id = (join.json() as { user: { id: string } }).user.id;
@@ -266,12 +263,12 @@ describe('handouty: tworzenie, udostępnianie i cofanie', () => {
     const ack = await emitAck<HandoutView>(gm, 'handout:upsert', {
       title: 'Mapa Kabuki',
       body: '## Kabuki\n\nWejście od **wschodu**.',
-      image: { url: '/uploads/handouts/kabuki01.png', width: 1200, height: 900 },
+      image: { url: `${handoutDir}kabuki01.png`, width: 1200, height: 900 },
     });
     expect(ack.ok).toBe(true);
     if (!ack.ok || !ack.data) throw new Error('handout:upsert failed');
     mapaId = ack.data.id;
-    expect(ack.data.image?.url).toBe('/uploads/handouts/kabuki01.png');
+    expect(ack.data.image?.url).toBe(`${handoutDir}kabuki01.png`);
     expect(ack.data.sharedWith).toEqual([]);
 
     for (const player of [vex, kaya, rogue]) {
@@ -295,6 +292,14 @@ describe('handouty: tworzenie, udostępnianie i cofanie', () => {
       image: { url: '/uploads/maps/tajna-mapa.png', width: 10, height: 10 },
     });
     expect(foreign.ok).toBe(false);
+
+    // Grafika handoutu innej kampanii (etap 44b) — format dobry, kampania obca.
+    const stranger = await emitAck(gm, 'handout:upsert', {
+      title: 'Cudza',
+      body: '',
+      image: { url: '/uploads/campaigns/obca/handouts/x.png', width: 10, height: 10 },
+    });
+    expect(stranger).toEqual({ ok: false, error: 'UPLOAD_NOT_FOUND' });
   });
 
   it('udostępnia dwóm z trzech graczy — trzeci nie widzi go nawet w payloadzie', async () => {

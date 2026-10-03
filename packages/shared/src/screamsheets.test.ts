@@ -157,7 +157,7 @@ describe('validateHandout dla screamsheetu', () => {
     const result = validateHandout({
       title: 'Pierwsza strona',
       body: '   ',
-      image: { url: '/uploads/handouts/abc.png', width: 800, height: 600 },
+      image: { url: '/uploads/campaigns/k1/handouts/abc.png', width: 800, height: 600 },
       kind: 'screamsheet',
     });
     expect(result.ok).toBe(false);

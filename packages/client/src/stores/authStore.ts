@@ -33,7 +33,8 @@ interface AuthStoreState {
   registerGm: (login: string, password: string, repeat: string) => Promise<void>;
   /** Hasło z linku od właściciela (44a) — też od razu loguje. */
   resetPassword: (token: string, password: string, repeat: string) => Promise<void>;
-  joinCampaign: (token: string, name: string) => Promise<void>;
+  /** Wejście z imiennego linku (etap 44b) — imię jest na linku, nie w formularzu. */
+  joinCampaign: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Serwer zakończył sesję tego gniazda (`auth:ended`) albo odbił ponowne połączenie. */
   sessionEnded: (reason: AuthEndedReason) => void;
@@ -93,8 +94,8 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     set(signedIn(await apiPost<AuthState>(url, { password, repeat })));
   },
 
-  joinCampaign: async (token, name) => {
-    set(signedIn(await apiPost<AuthState>(`/api/join/${encodeURIComponent(token)}`, { name })));
+  joinCampaign: async (token) => {
+    set(signedIn(await apiPost<AuthState>(`/api/join/${encodeURIComponent(token)}`)));
   },
 
   logout: async () => {

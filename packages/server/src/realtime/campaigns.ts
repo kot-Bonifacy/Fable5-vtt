@@ -36,6 +36,10 @@ export async function resolveSocketCampaign(
 async function rehomeSocket(deps: RealtimeDeps, socket: Socket): Promise<string | null> {
   const user = socket.data.user as SessionUser;
   const previous = (socket.data.campaign as CampaignSummary | null) ?? null;
+  const campaign = await resolveSocketCampaign(deps.ctx.prisma, user);
+  // Gniazdo, którego zmiana nie dotyczy — bez kampanii przed i po (np. inny
+  // MG, etap 44b) — nie dostaje pustego `state:sync` ani `campaign:switch`.
+  if (!previous && !campaign) return null;
   if (previous) {
     await socket.leave(campaignRoom(previous.id));
     await socket.leave(gmRoom(previous.id));
@@ -45,7 +49,6 @@ async function rehomeSocket(deps: RealtimeDeps, socket: Socket): Promise<string 
   // to a scene belonging to a campaign it is no longer in.
   await switchViewedScene(socket, null);
 
-  const campaign = await resolveSocketCampaign(deps.ctx.prisma, user);
   socket.data.campaign = campaign;
   if (campaign) {
     await socket.join(campaignRoom(campaign.id));

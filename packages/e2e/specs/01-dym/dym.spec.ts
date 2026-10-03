@@ -41,8 +41,7 @@ test.describe.serial('@szybkie dym: MG w Chromium, Ola w Firefoksie', () => {
   test('MG loguje się, Ola wchodzi z zaproszenia', async ({ cast }) => {
     mg = await cast.mg('chromium');
     campaignId = await createCampaign(mg, 'Dym T1');
-    const token = await createInvitation(mg, campaignId);
-    ola = await cast.gracz('Ola', 'firefox', token);
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId, 'Ola'));
     // Kampania założona przez API po zalogowaniu — ekran MG dowiaduje się o niej po F5.
     await mg.page.reload();
     await expect(mg.page.getByLabel('Wiadomość czatu')).toBeEnabled();

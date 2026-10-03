@@ -9,13 +9,13 @@ import type {
   CampaignSummary,
   ChatHistoryPage,
   ChatMessageBroadcast,
-  InvitationSummary,
   PresenceBroadcast,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -126,8 +126,7 @@ function emitAck<T = undefined>(
 async function joinPlayer(token: string, name: string): Promise<string> {
   const res = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name },
+    url: await joinUrl(built, token, name),
   });
   expect(res.statusCode).toBe(200);
   return cookieOf(res.headers['set-cookie']);
@@ -159,13 +158,8 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   rogueCookie = await joinPlayer(token, 'Rogue');
   vexCookie = await joinPlayer(token, 'Vex');

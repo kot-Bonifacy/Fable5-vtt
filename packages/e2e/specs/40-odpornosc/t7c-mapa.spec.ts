@@ -94,7 +94,11 @@ test.describe.serial('T7c odporność: wydajność mapy @odpornosc', () => {
   async function open(cast: Cast, viewer: Viewer): Promise<{ actor: Actor; readyMs: number }> {
     const t0 = Date.now();
     const actor = viewer.player
-      ? await cast.gracz(viewer.player.name, viewer.engine, await invite(await apiGm()))
+      ? await cast.gracz(
+          viewer.player.name,
+          viewer.engine,
+          await invite(await apiGm(), viewer.player.name),
+        )
       : await cast.mg(viewer.engine);
     actor.page.setDefaultTimeout(20_000);
     // Gotowa mapa = scena w magazynie i tekstura 4096² (64 MB RGBA) na karcie graficznej.

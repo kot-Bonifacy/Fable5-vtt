@@ -1,9 +1,10 @@
-import { basename, extname, join } from 'node:path';
+import { basename, extname } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import type { FastifyBaseLogger } from 'fastify';
 import { imageSize } from 'image-size';
-import { PORTRAIT_NAME_MAX_LENGTH } from '@vtt/shared';
+import { PORTRAIT_NAME_MAX_LENGTH, parseCampaignUploadUrl } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
+import { uploadPathOfUrl } from './campaign-uploads.js';
 
 /**
  * Wciąga do puli portrety wgrane przed 12.09 (jednorazowe uzupełnienie).
@@ -54,12 +55,14 @@ export async function backfillPortraitAssets(
       const url = row.portraitUrl;
       // Tylko własne uploady: portret wskazany na `/public/` albo z zewnątrz
       // nie jest plikiem, którym pula zarządza.
-      if (!url || known.has(url) || !url.startsWith('/uploads/portraits/')) continue;
+      if (!url || known.has(url)) continue;
+      const ref = parseCampaignUploadUrl(url);
+      if (ref?.dir !== 'portraits' || ref.campaignId !== campaign.id) continue;
       missing.add(url);
     }
 
     for (const url of missing) {
-      const file = join(uploadsDir, 'portraits', basename(url));
+      const file = uploadPathOfUrl(uploadsDir, url)!;
       let width: number;
       let height: number;
       try {

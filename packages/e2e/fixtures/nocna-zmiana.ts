@@ -3,6 +3,7 @@ import { GM_LOGIN, SERVER_URL } from '../instance/paths.ts';
 import { restoreCheckpoint, startInstance } from '../instance/instance.ts';
 import { query, queryOne, tableNames } from './db.ts';
 import { DEAD_GATEWAY } from './security.ts';
+import { playerLink } from './links.ts';
 
 /**
  * Stan kampanii „Nocna zmiana” z punktu `po-T3` — wspólny dla plików T2, które
@@ -46,17 +47,22 @@ export async function apiGm(): Promise<APIRequestContext> {
   return api;
 }
 
-/** Świeże zaproszenie do kampanii (zaproszenia z punktu wygasają po tygodniu). */
-export async function invite(gm: APIRequestContext, campaign = campaignId()): Promise<string> {
-  const response = await gm.post(`/api/campaigns/${campaign}/invitations`, { data: {} });
-  if (response.status() !== 201) throw new Error(`E2E: invitation ${response.status()}`);
-  return ((await response.json()) as { token: string }).token;
+/**
+ * Świeży imienny link dla gracza (etap 44b): nowe imię — link nowego gracza,
+ * gracz z punktu kontrolnego — link odnowienia na to samo konto.
+ */
+export async function invite(
+  gm: APIRequestContext,
+  name: string,
+  campaign = campaignId(),
+): Promise<string> {
+  return playerLink(gm, campaign, name);
 }
 
-/** Kontekst HTTP gracza wchodzącego z zaproszenia (to samo imię = to samo konto). */
+/** Kontekst HTTP gracza wchodzącego z imiennego linku (imię jest na linku). */
 export async function apiPlayer(name: string, token: string): Promise<APIRequestContext> {
   const api = await request.newContext({ baseURL: SERVER_URL });
-  const response = await api.post(`/api/join/${token}`, { data: { name } });
+  const response = await api.post(`/api/join/${token}`);
   if (response.status() !== 200) throw new Error(`E2E: ${name} join ${response.status()}`);
   return api;
 }

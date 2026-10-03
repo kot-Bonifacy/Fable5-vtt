@@ -1,7 +1,9 @@
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
+import { UPLOAD_URL_PATTERN } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
+import { uploadDirectories } from './campaign-uploads.js';
 
 /**
  * Sprzątanie osieroconych plików z `uploads/` (sesja naprawcza 22.08).
@@ -26,13 +28,23 @@ import type { PrismaClient } from './db.js';
  * rozsypana po miejscach usuwania.
  */
 
-/** Katalogi, które zbieracz w ogóle ogląda. Nic poza nimi nie jest ruszane. */
-const SWEPT_DIRECTORIES = ['maps', 'portraits', 'tokens', 'handouts', 'music'] as const;
+/**
+ * Katalogi, które zbieracz w ogóle ogląda — płaskie sprzed 44b i katalogi
+ * każdej kampanii na dysku (`uploadDirectories`). Nic poza nimi nie jest
+ * ruszane, więc `uploads/art/` jest bezpieczne.
+ */
+async function sweptDirectories(uploadsDir: string) {
+  return uploadDirectories(uploadsDir, async () => {
+    try {
+      return await readdir(join(uploadsDir, 'campaigns'));
+    } catch {
+      return [];
+    }
+  });
+}
 
 /** Ile plik musi mieć lat, żeby brak odnośnika uznać za sierotę, nie za wyścig. */
 export const UPLOAD_GRACE_MS = 60 * 60 * 1000;
-
-const UPLOAD_URL_PATTERN = /\/uploads\/[A-Za-z0-9_\-.]+\/[A-Za-z0-9_\-.]+/g;
 
 /** Każdy adres `/uploads/...`, który cokolwiek w bazie jeszcze wymienia. */
 export async function referencedUploadUrls(prisma: PrismaClient): Promise<Set<string>> {
@@ -57,9 +69,12 @@ export async function referencedUploadUrls(prisma: PrismaClient): Promise<Set<st
   // wybierze go na kartę — bez tej linii zbieracz skasowałby całą pulę po
   // godzinie od wgrania.
   for (const row of await prisma.portraitAsset.findMany({ select: { url: true } })) add(row.url);
-  for (const row of await prisma.handout.findMany({ select: { imageUrl: true } })) {
+  for (const row of await prisma.handout.findMany({ select: { imageUrl: true, body: true } })) {
     add(row.imageUrl);
+    // Odnośnik w treści handoutu (markdown) też trzyma plik przy życiu (44b).
+    scan(row.body);
   }
+  for (const row of await prisma.journalEntry.findMany({ select: { body: true } })) scan(row.body);
   for (const row of await prisma.character.findMany({
     select: { portraitUrl: true, data: true },
   })) {
@@ -109,8 +124,7 @@ export async function sweepOrphanUploads(
   const referenced = await referencedUploadUrls(prisma);
   const result: UploadSweepResult = { removed: [], spared: 0, freedBytes: 0 };
 
-  for (const directory of SWEPT_DIRECTORIES) {
-    const path = join(uploadsDir, directory);
+  for (const { path, urlPrefix } of await sweptDirectories(uploadsDir)) {
     let names: string[];
     try {
       names = await readdir(path);
@@ -119,7 +133,7 @@ export async function sweepOrphanUploads(
       continue;
     }
     for (const name of names) {
-      const url = `/uploads/${directory}/${name}`;
+      const url = `${urlPrefix}${name}`;
       if (referenced.has(url)) continue;
       const file = join(path, name);
       let size = 0;

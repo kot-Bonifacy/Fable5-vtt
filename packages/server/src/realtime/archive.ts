@@ -10,6 +10,22 @@ import { listSnapshots, snapshotPathsFor, takeSnapshotAndRotate } from '../snaps
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitSceneList } from './scenes.js';
+import { requireValidOwner } from './characters.js';
+import { localizeArchiveUploads } from '../campaign-uploads.js';
+import { ownCampaign } from '../routes/helpers.js';
+
+/**
+ * Plik wymiany niesie adresy grafik, nie same grafiki — import przenosi je do
+ * kampanii docelowej (etap 44b): plik z innej kampanii tego MG kopiuje,
+ * nieosiągalny zdejmuje. Bez tego scena B wskazywałaby mapę leżącą u A.
+ */
+function localizedFile(deps: RealtimeDeps, campaignId: string, gmId: string, file: unknown) {
+  return localizeArchiveUploads(file, {
+    uploadsDir: deps.ctx.config.uploadsDir,
+    campaignId,
+    canRead: async (sourceId) => (await ownCampaign(deps.ctx.prisma, sourceId, gmId)) !== null,
+  });
+}
 
 /**
  * Kopie zapasowe i import (etap 33) — strona gniazda.
@@ -81,14 +97,14 @@ export const archiveCharacterImportEvent = defineEvent<
 >({
   name: 'archive:character',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const ownerId = typeof payload?.ownerId === 'string' ? payload.ownerId : null;
-    if (ownerId) {
-      const owner = await deps.ctx.prisma.user.findUnique({ where: { id: ownerId } });
-      if (!owner) throw new RealtimeError('OWNER_NOT_FOUND');
-    }
-    const result = await importCharacter(deps.ctx.prisma, deps.ctx.cpred, payload?.file, {
+    // Właściciel to gracz tej kampanii (etap 44b) — dawniej wystarczało
+    // dowolne konto na serwerze, także gracz innego MG.
+    await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
+    const file = await localizedFile(deps, campaignId, user.id, payload?.file);
+    const result = await importCharacter(deps.ctx.prisma, deps.ctx.cpred, file, {
       campaignId,
       ownerId,
       name: typeof payload?.name === 'string' ? payload.name : undefined,
@@ -111,7 +127,8 @@ export const archiveSceneImportEvent = defineEvent<ArchiveSceneImportPayload, Ar
   role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const result = await importScene(deps.ctx.prisma, payload?.file, {
+    const file = await localizedFile(deps, campaignId, user.id, payload?.file);
+    const result = await importScene(deps.ctx.prisma, file, {
       campaignId,
       actorId: user.id,
       name: typeof payload?.name === 'string' ? payload.name : undefined,

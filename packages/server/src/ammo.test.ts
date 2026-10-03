@@ -12,7 +12,6 @@ import type {
   CharacterView,
   CpredCharacterData,
   DamageLogEntry,
-  InvitationSummary,
   RollAreaMeta,
   SceneView,
   SocketAck,
@@ -23,6 +22,7 @@ import type {
 import { statistQuick, type CpredStatistQuick } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Smoke tests of special ammunition (stage 16g) on real sockets.
@@ -165,18 +165,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const invite = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const invite = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, invite, 'Vex'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;

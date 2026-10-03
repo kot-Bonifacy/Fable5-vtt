@@ -9,7 +9,6 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
   MapPingBroadcast,
-  InvitationSummary,
   SceneView,
   SocketAck,
   StateSyncPayload,
@@ -28,6 +27,7 @@ import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { backfillPortraitAssets } from './portrait-backfill.js';
+import { joinUrl } from './test-join.js';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -59,6 +59,8 @@ const PNG_1X1 = Buffer.from(
 );
 
 let built: BuiltApp;
+/** Katalog plików kampanii testu (etap 44b). */
+let uploadsBase = '';
 let baseUrl: string;
 let gmCookie: string;
 let playerCookie: string;
@@ -174,19 +176,14 @@ beforeAll(async () => {
     payload: { name: 'Kampania tokenów' },
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
+  uploadsBase = `/uploads/campaigns/${campaignId}/`;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Rogue' },
+    url: await joinUrl(built, token, 'Rogue'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;
@@ -214,7 +211,7 @@ describe('token asset library', () => {
     expect(res.statusCode).toBe(201);
     const asset = res.json() as TokenAssetView;
     expect(asset.name).toBe('Morgan Blackhand');
-    expect(asset.url).toMatch(/^\/uploads\/tokens\/.+\.png$/);
+    expect(asset.url).toMatch(/^\/uploads\/campaigns\/[\w-]+\/tokens\/.+\.png$/);
 
     const list = await built.app.inject({
       method: 'GET',
@@ -259,7 +256,7 @@ describe('portrait pool', () => {
     const asset = res.json() as PortraitAssetView;
     assetId = asset.id;
     expect(asset.name).toBe('Rache Bartmoss');
-    expect(asset.url).toMatch(/^\/uploads\/portraits\/.+\.webp$/);
+    expect(asset.url).toMatch(/^\/uploads\/campaigns\/[\w-]+\/portraits\/.+\.webp$/);
 
     const seenByPlayer = await built.app.inject({
       method: 'GET',
@@ -1531,10 +1528,13 @@ describe('statysta jako karta postaci (etap 38a)', () => {
       return token.data.id;
     };
     const bare = await place();
-    const art = await place('/uploads/tokens/wlasna-grafika.png');
+    const art = await place(`${uploadsBase}tokens/wlasna-grafika.png`);
     const imageOf = async (id: string) =>
       (await stateOf(gm)).tokens.find((entry) => entry.id === id)?.imageUrl;
-    for (const url of ['/uploads/portraits/paser-1.webp', '/uploads/portraits/paser-2.webp']) {
+    for (const url of [
+      `${uploadsBase}portraits/paser-1.webp`,
+      `${uploadsBase}portraits/paser-2.webp`,
+    ]) {
       expect(
         (
           await emitAck(gm, 'character:update', {
@@ -1544,7 +1544,7 @@ describe('statysta jako karta postaci (etap 38a)', () => {
         ).ok,
       ).toBe(true);
       expect(await imageOf(bare)).toBe(url);
-      expect(await imageOf(art)).toBe('/uploads/tokens/wlasna-grafika.png');
+      expect(await imageOf(art)).toBe(`${uploadsBase}tokens/wlasna-grafika.png`);
     }
   });
 

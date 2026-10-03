@@ -12,7 +12,6 @@ import type {
   CombatView,
   CpredCharacterData,
   CpredStatistQuick,
-  InvitationSummary,
   SceneView,
   SocketAck,
   StateSyncPayload,
@@ -21,6 +20,7 @@ import type {
 import { statistQuick } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Wsparcie na żywych gniazdach (etap 30c).
@@ -149,18 +149,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const invite = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const invite = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite}`,
-    payload: { name: 'Slack' },
+    url: await joinUrl(built, invite, 'Slack'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
   playerId = (joinRes.json() as { user: { id: string } }).user.id;

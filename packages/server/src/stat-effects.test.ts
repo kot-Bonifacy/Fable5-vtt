@@ -23,6 +23,7 @@ import {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Efekty czasowe na Cechach na żywych gniazdach (etap 39).
@@ -147,16 +148,9 @@ beforeAll(async () => {
     headers: { cookie: gmCookie },
     payload: { name: 'Nerwosol' },
   });
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${(campaignRes.json() as { id: string }).id}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
   const join = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${(inviteRes.json() as { token: string }).token}`,
-    payload: { name: 'Tony' },
+    url: await joinUrl(built, (campaignRes.json() as { id: string }).id, 'Tony'),
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
   playerId = (join.json() as { user: { id: string } }).user.id;

@@ -87,7 +87,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     await startFromPoT3();
     campaign = campaignId();
     gm = await apiGm();
-    marek = await apiPlayer('Marek', await invite(gm));
+    marek = await apiPlayer('Marek', await invite(gm, 'Marek'));
     anon = await request.newContext({ baseURL: SERVER_URL });
   });
 
@@ -148,7 +148,8 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       const response = await gm.post(route, file('../../../zly.png', png(600, 600)));
       expect(response.status(), `${route} ${await response.text()}`).toBe(201);
       const body = (await response.json()) as { url: string; name?: string };
-      expect(body.url).toMatch(/^\/uploads\/[a-z]+\/[\w-]{16}\.(png|webp)$/);
+      // Etap 44b: plik ląduje w katalogu kampanii, nazwa dalej losowa.
+      expect(body.url).toMatch(/^\/uploads\/campaigns\/[\w-]+\/[a-z]+\/[\w-]{16}\.(png|webp)$/);
       if (body.name !== undefined) expect(body.name).not.toMatch(/[/\\]|\.\./);
     }
     expect(readdirSync(E2E_DIR).filter((entry) => !before.has(entry))).toEqual([]);
@@ -181,8 +182,8 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
         expect(response.status, path).toBeGreaterThanOrEqual(400);
         expect(response.body.subarray(0, 15).toString('latin1'), path).not.toBe('SQLite format 3');
       }
-    // Pliki kampanii tylko dla zalogowanych (#10 / Z7, 01.10); członkostwo
-    // w kampanii pliku zostaje w Z7 na etap „Konta MG”.
+    // Pliki kampanii tylko dla zalogowanych (#10 / Z7, 01.10), a od etapu 44b —
+    // tylko dla MG i graczy kampanii pliku (gracz spoza niej: test 6.2.7 niżej).
     const map = queryOne<{ backgroundUrl: string }>(
       `SELECT backgroundUrl FROM Scene WHERE backgroundUrl LIKE '/uploads/%' LIMIT 1`,
     );
@@ -218,7 +219,9 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.7 zaproszenia: unieważnione i wygasłe nie wpuszczają', async () => {
-    const revoked = await gm.post(`/api/campaigns/${campaign}/invitations`, { data: {} });
+    const revoked = await gm.post(`/api/campaigns/${campaign}/invitations`, {
+      data: { name: 'Intruz' },
+    });
     const { id, token } = (await revoked.json()) as { id: string; token: string };
     expect((await gm.post(`/api/invitations/${id}/revoke`)).status()).toBe(200);
     expect((await anon.get(`/api/join/${token}`)).status()).toBe(404);
@@ -227,14 +230,13 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     );
 
     const expiring = await gm.post(`/api/campaigns/${campaign}/invitations`, {
-      data: { expiresInHours: 1 / 3600 },
+      data: { name: 'Spóźniony', expiresInHours: 1 / 3600 },
     });
     const expired = ((await expiring.json()) as { token: string }).token;
     await new Promise((resolve) => setTimeout(resolve, 1_500));
-    expect((await anon.get(`/api/join/${expired}`)).status()).toBe(404);
-    expect(
-      (await anon.post(`/api/join/${expired}`, { data: { name: 'Spóźniony' } })).status(),
-    ).toBe(404);
+    // Etap 44b: wygasły link mówi, że wygasł (410) — token był prawdziwy.
+    expect((await anon.get(`/api/join/${expired}`)).status()).toBe(410);
+    expect((await anon.post(`/api/join/${expired}`)).status()).toBe(410);
     expect(query(`SELECT id FROM User WHERE name IN ('Intruz', 'Spóźniony')`)).toEqual([]);
     // Nieważne i zmyślone tokeny.
     for (const bogus of ['x', 'a'.repeat(32), '../../api/auth/me', '%00']) {
@@ -242,25 +244,32 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     }
   });
 
-  test('6.2.7 zaproszenia: imię MG nie przejmuje konta MG', async () => {
-    const token = await invite(gm);
-    const response = await anon.post(`/api/join/${token}`, { data: { name: 'MG' } });
-    expect(response.status()).toBe(400);
-    expect(((await response.json()) as { error: string }).error).toBe('NAME_TAKEN');
-    // Wariant „mg”/„MG ” to już osobne konto gracza — zapisujemy, czym się kończy.
-    const lookalike = await anon.post(`/api/join/${token}`, { data: { name: 'mg' } });
-    if (lookalike.status() === 200) {
-      const role = queryOne<{ role: string }>(`SELECT role FROM User WHERE name = 'mg'`)?.role;
-      expect(role).toBe('PLAYER');
-      note('obserwacja', 'Imię „mg” (małe litery) zakłada osobne konto gracza — rola PLAYER.');
+  test('6.2.7 zaproszenia: imię MG nie przejmuje konta MG, link działa raz', async () => {
+    // Etap 44b: imię wypisuje MG na linku — „MG” w żadnej pisowni nie przejdzie.
+    for (const name of ['MG', 'mg', ' Mg ']) {
+      const response = await gm.post(`/api/campaigns/${campaign}/invitations`, {
+        data: { name },
+      });
+      expect(response.status(), name).toBe(409);
+      expect(((await response.json()) as { error: string }).error).toBe('NAME_TAKEN');
     }
+    // Imię z formularza nic nie znaczy: wchodzi się jako imię z linku, i tylko raz.
+    const token = await invite(gm, 'Gapa');
+    const first = await anon.post(`/api/join/${token}`, { data: { name: 'MG' } });
+    expect(first.status()).toBe(200);
+    expect(((await first.json()) as { user: { name: string; role: string } }).user).toMatchObject({
+      name: 'Gapa',
+      role: 'PLAYER',
+    });
+    const second = await anon.post(`/api/join/${token}`);
+    expect(second.status()).toBe(410);
   });
 
   test('6.2.7 zaproszenie innej kampanii nie daje wstępu do aktywnej', async () => {
     const other = await gm.post('/api/campaigns', { data: { name: 'Obca kampania' } });
     expect(other.status()).toBe(201);
     const otherId = ((await other.json()) as { id: string }).id;
-    const otherToken = await invite(gm, otherId);
+    const otherToken = await invite(gm, 'Obcy', otherId);
     // Nowa kampania przejmuje aktywność — MG wraca do „Nocnej zmiany” gniazdem.
     const gmSocket = (await rawSocket(await cookieHeader(gm))).socket!;
     expect(await emitAck(gmSocket, 'campaign:activate', { campaignId: campaign })).toEqual({
@@ -295,10 +304,19 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     }
   });
 
-  test('6.2.7 gracz spoza kampanii nie dostaje jej puli portretów (#10)', async () => {
+  test('6.2.7 gracz spoza kampanii nie dostaje jej puli portretów ani plików (#10, 44b)', async () => {
     const portraits = (await (await obcy.get('/api/portrait-assets')).json()) as unknown[];
-    await obcy.dispose();
     expect(portraits, 'pula portretów aktywnej kampanii u gracza spoza niej').toEqual([]);
+    // Z7 (etap 44b): plik kampanii tylko dla jej MG i graczy — obcy dostaje 404
+    // jak na nieistniejący adres, choć jest zalogowany.
+    const map = queryOne<{ backgroundUrl: string }>(
+      `SELECT backgroundUrl FROM Scene WHERE campaignId = ? AND backgroundUrl LIKE '/uploads/%' LIMIT 1`,
+      campaign,
+    );
+    expect(map?.backgroundUrl).toMatch(/^\/uploads\/campaigns\//);
+    expect((await obcy.get(map!.backgroundUrl)).status(), 'gracz spoza kampanii').toBe(404);
+    expect((await marek.get(map!.backgroundUrl)).status(), 'gracz kampanii').toBe(200);
+    await obcy.dispose();
   });
 
   test('6.2.8 ciasteczko sesji: httpOnly, SameSite, ważność SESSION_TTL_DAYS (rok)', async () => {
@@ -350,7 +368,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.8 wylogowanie unieważnia sesję po stronie serwera', async () => {
-    const ola = await apiPlayer('Ola', await invite(gm));
+    const ola = await apiPlayer('Ola', await invite(gm, 'Ola'));
     const cookie = await cookieHeader(ola);
     const sessions = () =>
       query(`SELECT s.id FROM Session s JOIN User u ON u.id = s.userId WHERE u.name = 'Ola'`)
@@ -364,7 +382,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
   });
 
   test('6.2.8 otwarte gniazdo po wylogowaniu traci prawa (#11)', async () => {
-    const ola = await apiPlayer('Ola', await invite(gm));
+    const ola = await apiPlayer('Ola', await invite(gm, 'Ola'));
     const { socket } = await rawSocket(await cookieHeader(ola));
     expect((await emitAck(socket!, 'chat:history', { beforeId: 1_000_000 })).ok).toBe(true);
     await ola.post('/api/auth/logout');
@@ -383,7 +401,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     // 0,00003 doby ≈ 2,6 s.
     await startServer({ ...DEAD_GATEWAY, SESSION_TTL_DAYS: '0.00003' });
     try {
-      const ola = await apiPlayer('Ola', await invite(await apiGm()));
+      const ola = await apiPlayer('Ola', await invite(await apiGm(), 'Ola'));
       const cookie = await cookieHeader(ola);
       const { socket } = await rawSocket(cookie);
       expect((await ola.get('/api/auth/me')).status()).toBe(200);

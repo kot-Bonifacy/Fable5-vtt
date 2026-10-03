@@ -7,7 +7,11 @@ import {
   validateHandout,
 } from './handouts.js';
 
-const image = { url: '/uploads/handouts/abc123_-.png', width: 800, height: 600 };
+const image = {
+  url: '/uploads/campaigns/kampania1/handouts/abc123_-.png',
+  width: 800,
+  height: 600,
+};
 
 describe('validateHandout', () => {
   it('przyjmuje handout z tytułem i treścią', () => {
@@ -72,6 +76,10 @@ describe('validateHandout', () => {
     // niczego innego — inaczej handout stałby się czytnikiem cudzych plików.
     for (const url of [
       '/uploads/maps/inna.png',
+      // Płaski adres sprzed etapu 44b — plik bez kampanii w ścieżce.
+      '/uploads/handouts/abc.png',
+      '/uploads/campaigns/kampania1/maps/inna.png',
+      '/uploads/campaigns/kampania1/handouts/../maps/inna.png',
       '/uploads/handouts/../maps/inna.png',
       'https://evil.example/a.png',
       '/uploads/handouts/a.gif',

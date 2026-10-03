@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { basename, extname, join } from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { basename, extname } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import { imageSize } from 'image-size';
 import type { HandoutImage, MapUploadResult, PortraitAssetView, TokenAssetView } from '@vtt/shared';
@@ -20,6 +20,7 @@ import {
   usedPortraitUrls,
 } from '../portraits.js';
 import { getUserActiveCampaign } from './helpers.js';
+import { campaignUploadTarget } from '../campaign-uploads.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
@@ -43,6 +44,11 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
 
 export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.post('/api/uploads/maps', { preHandler: requireGm }, async (request, reply) => {
+    // Plik ląduje w katalogu aktywnej kampanii MG (etap 44b).
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+    if (!campaign) {
+      return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+    }
     const file = await request.file();
     if (!file) {
       return reply.code(400).send({ error: 'NO_FILE' });
@@ -73,12 +79,15 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
-    const mapsDir = join(ctx.config.uploadsDir, 'maps');
-    await mkdir(mapsDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
-    await writeFile(join(mapsDir, filename), buffer);
+    const target = await campaignUploadTarget(
+      ctx.config.uploadsDir,
+      campaign.id,
+      'maps',
+      `${randomBytes(12).toString('base64url')}.${extension}`,
+    );
+    await writeFile(target.path, buffer);
 
-    const result: MapUploadResult = { url: `/uploads/maps/${filename}`, width, height };
+    const result: MapUploadResult = { url: target.url, width, height };
     return reply.code(201).send(result);
   });
 
@@ -115,10 +124,13 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
-    const tokensDir = join(ctx.config.uploadsDir, 'tokens');
-    await mkdir(tokensDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
-    await writeFile(join(tokensDir, filename), buffer);
+    const target = await campaignUploadTarget(
+      ctx.config.uploadsDir,
+      campaign.id,
+      'tokens',
+      `${randomBytes(12).toString('base64url')}.${extension}`,
+    );
+    await writeFile(target.path, buffer);
 
     // Library display name from the original file name, sans extension.
     const original = basename(file.filename ?? 'token');
@@ -128,7 +140,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     );
 
     const asset = await ctx.prisma.tokenAsset.create({
-      data: { campaignId: campaign.id, name, url: `/uploads/tokens/${filename}`, width, height },
+      data: { campaignId: campaign.id, name, url: target.url, width, height },
     });
     const result: TokenAssetView = {
       id: asset.id,
@@ -143,6 +155,10 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
   // Handout images (stage 24a) — GM only, like maps: a handout is material the
   // GM hands out, and nobody else creates one.
   app.post('/api/uploads/handouts', { preHandler: requireGm }, async (request, reply) => {
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+    if (!campaign) {
+      return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+    }
     const file = await request.file({ limits: { fileSize: MAX_HANDOUT_UPLOAD_BYTES } });
     if (!file) {
       return reply.code(400).send({ error: 'NO_FILE' });
@@ -171,12 +187,15 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
-    const handoutsDir = join(ctx.config.uploadsDir, 'handouts');
-    await mkdir(handoutsDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
-    await writeFile(join(handoutsDir, filename), buffer);
+    const target = await campaignUploadTarget(
+      ctx.config.uploadsDir,
+      campaign.id,
+      'handouts',
+      `${randomBytes(12).toString('base64url')}.${extension}`,
+    );
+    await writeFile(target.path, buffer);
 
-    const result: HandoutImage = { url: `/uploads/handouts/${filename}`, width, height };
+    const result: HandoutImage = { url: target.url, width, height };
     return reply.code(201).send(result);
   });
 
@@ -225,10 +244,13 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
         .send({ error: error.message });
     }
 
-    const portraitsDir = join(ctx.config.uploadsDir, 'portraits');
-    await mkdir(portraitsDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.webp`;
-    await writeFile(join(portraitsDir, filename), buffer);
+    const target = await campaignUploadTarget(
+      ctx.config.uploadsDir,
+      campaign.id,
+      'portraits',
+      `${randomBytes(12).toString('base64url')}.webp`,
+    );
+    await writeFile(target.path, buffer);
 
     const original = basename(file.filename ?? 'portret');
     const name = (original.slice(0, original.length - extname(original).length) || 'portret').slice(
@@ -240,7 +262,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       data: {
         campaignId: campaign.id,
         name,
-        url: `/uploads/portraits/${filename}`,
+        url: target.url,
         width,
         height,
         // Wgrane w sekcji „NPC — tylko MG” od razu omija galerię graczy.

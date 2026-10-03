@@ -96,7 +96,7 @@ test.describe.serial('T7c diagnoza sterty @odpornosc', () => {
     test.setTimeout(20 * 60_000);
     await buildPerfScene(gm);
     mg = await cast.mg('chromium');
-    marek = await cast.gracz('Marek', 'chromium', await invite(await apiGm()));
+    marek = await cast.gracz('Marek', 'chromium', await invite(await apiGm(), 'Marek'));
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
     let n = 0;

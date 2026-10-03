@@ -61,6 +61,7 @@ import {
   type SheetRegistry,
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { fetchFogState } from './fog-io.js';
 import { tokenLightOf } from './lights-io.js';
@@ -777,6 +778,7 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     if (name === null) throw new RealtimeError('INVALID_NAME');
     const imageUrl = sanitizeTokenImageUrl(payload?.imageUrl ?? null);
     if (imageUrl === undefined) throw new RealtimeError('BAD_REQUEST');
+    requireOwnUploadUrl(imageUrl, campaignId);
     const size = sanitizeTokenSize(payload?.size ?? 1);
     if (size === null) throw new RealtimeError('BAD_REQUEST');
     const hp = sanitizeTokenHp(payload?.hp ?? null);
@@ -970,7 +972,10 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     const data: Record<string, unknown> = {};
     if (patch.name !== undefined) data.name = patch.name;
     if (patch.publicName !== undefined) data.publicName = patch.publicName;
-    if (patch.imageUrl !== undefined) data.imageUrl = patch.imageUrl;
+    if (patch.imageUrl !== undefined) {
+      requireOwnUploadUrl(patch.imageUrl, campaignId);
+      data.imageUrl = patch.imageUrl;
+    }
     if (patch.ownerId !== undefined) data.ownerId = patch.ownerId;
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);

@@ -95,15 +95,15 @@ test.describe.serial('T7b odporność: długi czat i rozmiar bazy @odpornosc', (
    * czat zsynchronizowany i narysowany, scena w magazynie, kamera mapy działa.
    */
   async function newPlayer(cast: Cast, name: string, engine: Engine) {
-    const token = await invite(await apiGm());
+    const token = await invite(await apiGm(), name);
     const actor = await cast.open(name, engine);
     actor.page.setDefaultTimeout(20_000);
     const t0 = Date.now();
     await actor.page.goto(`/join/${encodeURIComponent(token)}`);
     const form = Date.now() - t0;
-    await actor.page.locator('#player-name').fill(name);
+    await expect(actor.page.locator('.join-player-name')).toHaveText(name);
     const t1 = Date.now();
-    await actor.page.getByRole('button', { name: 'Dołącz do gry' }).click();
+    await actor.page.getByRole('button', { name: 'Wejdź do gry' }).click();
     const mark = async (check: () => Promise<boolean>) => {
       await expect.poll(check, { timeout: 60_000, intervals: [50] }).toBe(true);
       return Date.now() - t1;
@@ -241,9 +241,9 @@ test.describe.serial('T7b odporność: długi czat i rozmiar bazy @odpornosc', (
 
   test(`${LINES} wierszy czatu przez gniazdo: MG, Marek i Ola naraz`, async () => {
     test.setTimeout(10 * 60_000);
-    const token = await invite(await apiGm());
     const sockets: Record<string, Socket> = { MG: gm };
     for (const name of ['Marek', 'Ola'] as const) {
+      const token = await invite(await apiGm(), name);
       const { socket } = await rawSocket(await cookieHeader(await apiPlayer(name, token)));
       sockets[name] = socket!;
     }

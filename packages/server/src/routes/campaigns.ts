@@ -1,26 +1,28 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { CampaignDetail, CpredDataPayload, InvitationSummary } from '@vtt/shared';
-import { GAME_TIME_DEFAULT, gameMonthKey } from '@vtt/shared';
+import type { CampaignDetail, CpredDataPayload } from '@vtt/shared';
+import { GAME_TIME_DEFAULT, INVITATION_TTL_HOURS, ROLE_PLAYER, gameMonthKey } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
-import type { Invitation } from '../generated/prisma/client.js';
-import { campaignRunBy } from './helpers.js';
+import { playerNameTaken, sanitizePlayerName, toInvitationSummary } from '../invitations.js';
+import { ownCampaign as ownCampaignOf } from './helpers.js';
 
-// Rok (decyzja MG z 01.10) — tyle co sesja; MG i tak może link unieważnić.
-const DEFAULT_INVITATION_TTL_HOURS = 365 * 24;
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CAMPAIGN_NAME_LENGTH = 64;
 
-function toInvitationSummary(invitation: Invitation): InvitationSummary {
-  return {
-    id: invitation.id,
-    token: invitation.token,
-    expiresAt: invitation.expiresAt.toISOString(),
-    revoked: invitation.revokedAt !== null,
-    createdAt: invitation.createdAt.toISOString(),
-  };
+/** Ważność nieużytego linku: domyślnie tydzień (decyzja MG z 03.10), test może skrócić. */
+function invitationExpiry(body: unknown): Date {
+  const { expiresInHours } = (body ?? {}) as { expiresInHours?: unknown };
+  const hours =
+    typeof expiresInHours === 'number' &&
+    expiresInHours > 0 &&
+    expiresInHours <= INVITATION_TTL_HOURS
+      ? expiresInHours
+      : INVITATION_TTL_HOURS;
+  return new Date(Date.now() + hours * HOUR_MS);
 }
+
+const newToken = (): string => randomBytes(24).toString('base64url');
 
 export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): void {
   const gmOnly = { preHandler: requireGm };
@@ -57,14 +59,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     return payload;
   });
 
-  /**
-   * Kampania tego MG albo null (etap 44a) — cudza wygląda dokładnie jak
-   * nieistniejąca, żeby id nie zdradzało, że po drugiej stronie coś jest.
-   */
-  async function ownCampaign(id: string, userId: string) {
-    const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
-    return campaign && campaignRunBy(campaign, userId) ? campaign : null;
-  }
+  const ownCampaign = (id: string, userId: string) => ownCampaignOf(ctx.prisma, id, userId);
 
   app.get('/api/campaigns', gmOnly, async (request) => {
     // Każdy MG widzi tylko swoje kampanie (etap 44a).
@@ -138,25 +133,66 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     return { id: updated.id, name: updated.name, sandbox: updated.sandbox };
   });
 
+  /**
+   * „Nowy gracz” (etap 44b): imienny link, który przy pierwszym użyciu zakłada
+   * konto o tym imieniu w tej kampanii i się zużywa.
+   */
   app.post('/api/campaigns/:id/invitations', gmOnly, async (request, reply) => {
     const { id } = request.params as { id: string };
     const campaign = await ownCampaign(id, request.user!.id);
     if (!campaign) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
-
-    const { expiresInHours } = (request.body ?? {}) as { expiresInHours?: unknown };
-    const ttlHours =
-      typeof expiresInHours === 'number' && expiresInHours > 0
-        ? expiresInHours
-        : DEFAULT_INVITATION_TTL_HOURS;
+    const name = sanitizePlayerName((request.body as { name?: unknown } | undefined)?.name);
+    if (name === null) return reply.code(400).send({ error: 'INVALID_NAME' });
+    if (await playerNameTaken(ctx.prisma, campaign.id, name)) {
+      return reply.code(409).send({ error: 'NAME_TAKEN' });
+    }
 
     const invitation = await ctx.prisma.invitation.create({
       data: {
-        token: randomBytes(24).toString('base64url'),
+        token: newToken(),
         campaignId: campaign.id,
-        expiresAt: new Date(Date.now() + ttlHours * HOUR_MS),
+        name,
+        expiresAt: invitationExpiry(request.body),
       },
+    });
+    return reply.code(201).send(toInvitationSummary(invitation));
+  });
+
+  /**
+   * „Link odnowienia” (etap 44b): gracz na nowym komputerze albo bez
+   * ciasteczka wraca na **to samo** konto. Poprzedni czekający link odnowienia
+   * tego gracza traci ważność — klucz do jednego konta jest jeden naraz.
+   * Inne urządzenia gracza zostają zalogowane (decyzja MG z 03.10).
+   */
+  app.post('/api/campaigns/:id/players/:userId/renewal', gmOnly, async (request, reply) => {
+    const { id, userId } = request.params as { id: string; userId: string };
+    const campaign = await ownCampaign(id, request.user!.id);
+    if (!campaign) return reply.code(404).send({ error: 'NOT_FOUND' });
+    const member = await ctx.prisma.campaignMember.findUnique({
+      where: { campaignId_userId: { campaignId: campaign.id, userId } },
+      include: { user: true },
+    });
+    if (!member || member.user.role !== ROLE_PLAYER) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
+
+    const invitation = await ctx.prisma.$transaction(async (tx) => {
+      await tx.invitation.updateMany({
+        where: { campaignId: campaign.id, userId, renewal: true, usedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return tx.invitation.create({
+        data: {
+          token: newToken(),
+          campaignId: campaign.id,
+          name: member.user.name,
+          userId,
+          renewal: true,
+          expiresAt: invitationExpiry(request.body),
+        },
+      });
     });
     return reply.code(201).send(toInvitationSummary(invitation));
   });

@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { Actor } from './actors.ts';
+import { playerLink } from './links.ts';
 
 /**
  * Drobne czynności przy stole, wspólne dla wielu plików — przez UI, jak u ludzi.
@@ -52,12 +53,13 @@ export async function createCampaign(mg: Actor, name: string): Promise<string> {
   return ((await response.json()) as { id: string }).id;
 }
 
-export async function createInvitation(mg: Actor, campaignId: string): Promise<string> {
-  const response = await mg.page.request.post(`/api/campaigns/${campaignId}/invitations`, {
-    data: {},
-  });
-  if (response.status() !== 201) throw new Error(`E2E: invitation ${response.status()}`);
-  return ((await response.json()) as { token: string }).token;
+/** Imienny link dla gracza (etap 44b): nowy gracz albo odnowienie — `playerLink`. */
+export async function createInvitation(
+  mg: Actor,
+  campaignId: string,
+  name: string,
+): Promise<string> {
+  return playerLink(mg.page.request, campaignId, name);
 }
 
 /**

@@ -48,7 +48,7 @@ test.describe.serial('T8a: szew zasłony pola widzenia (#53) @szybkie', () => {
       const gracz = await cast.gracz(
         `Szew${engine}`,
         engine,
-        await createInvitation(mg, campaignId()),
+        await createInvitation(mg, campaignId(), `Szew${engine}`),
       );
       await expect
         .poll(

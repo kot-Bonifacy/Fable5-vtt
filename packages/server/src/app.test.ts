@@ -46,6 +46,7 @@ let gmCookie: string;
 let playerCookie: string;
 let inviteToken: string;
 let invitationId: string;
+let playerId: string;
 let campaignId: string;
 const openSockets: ClientSocket[] = [];
 
@@ -209,55 +210,143 @@ describe('campaigns and invitations (GM)', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('creates an invitation link', async () => {
+  it('creates a named invitation link (stage 44b)', async () => {
     const res = await built.app.inject({
       method: 'POST',
       url: `/api/campaigns/${campaignId}/invitations`,
       headers: { cookie: gmCookie },
-      payload: {},
+      payload: { name: 'Rogue' },
     });
     expect(res.statusCode).toBe(201);
     const invitation = res.json() as InvitationSummary;
     inviteToken = invitation.token;
     invitationId = invitation.id;
-    expect(invitation.revoked).toBe(false);
+    expect(invitation).toMatchObject({ name: 'Rogue', renewal: false, state: 'waiting' });
+    // Tydzień (decyzja MG z 03.10), nie rok jak anonimowy link sprzed 44b.
+    const days = (new Date(invitation.expiresAt).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThan(7.1);
+  });
+
+  it('refuses a link without a name, with the GM name, or a name already waiting', async () => {
+    for (const [name, error] of [
+      [undefined, 'INVALID_NAME'],
+      ['   ', 'INVALID_NAME'],
+      ['x'.repeat(33), 'INVALID_NAME'],
+      ['mg', 'NAME_TAKEN'],
+      ['rogue', 'NAME_TAKEN'],
+    ] as const) {
+      const res = await built.app.inject({
+        method: 'POST',
+        url: `/api/campaigns/${campaignId}/invitations`,
+        headers: { cookie: gmCookie },
+        payload: name === undefined ? {} : { name },
+      });
+      expect((res.json() as { error: string }).error, String(name)).toBe(error);
+    }
   });
 });
 
-describe('player join flow', () => {
-  it('shows campaign info for a valid token', async () => {
+describe('player join flow (stage 44b — named links)', () => {
+  it('shows the campaign and the name written on the link', async () => {
     const res = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
     expect(res.statusCode).toBe(200);
-    const info = res.json() as JoinInfo;
-    expect(info.campaignName).toBe('Testowa kampania');
-    expect(info.players).toEqual([]);
+    expect(res.json()).toEqual({
+      campaignName: 'Testowa kampania',
+      playerName: 'Rogue',
+      renewal: false,
+    } satisfies JoinInfo);
   });
 
-  it('lets a player join with a fresh name', async () => {
+  it('joins under the name from the link, whatever the form says', async () => {
     const res = await built.app.inject({
       method: 'POST',
       url: `/api/join/${inviteToken}`,
-      payload: { name: 'Rogue' },
+      payload: { name: 'Ktoś inny' },
     });
     expect(res.statusCode).toBe(200);
     const state = res.json() as AuthState;
-    expect(state.user.role).toBe('PLAYER');
+    expect(state.user).toMatchObject({ role: 'PLAYER', name: 'Rogue' });
     expect(state.activeCampaign?.id).toBe(campaignId);
     playerCookie = cookieOf(res.headers['set-cookie']);
+    playerId = state.user.id;
   });
 
-  it('lists the player for the next join attempt', async () => {
-    const res = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
-    expect((res.json() as JoinInfo).players).toEqual(['Rogue']);
+  it('works once — a used link says so, for both info and join', async () => {
+    const info = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
+    expect(info.statusCode).toBe(410);
+    expect(info.json()).toEqual({ error: 'INVITATION_USED' });
+    const again = await built.app.inject({ method: 'POST', url: `/api/join/${inviteToken}` });
+    expect(again.statusCode).toBe(410);
+    const listed = await built.app.inject({
+      method: 'GET',
+      url: '/api/campaigns',
+      headers: { cookie: gmCookie },
+    });
+    const link = (listed.json() as CampaignDetail[])
+      .flatMap((campaign) => campaign.invitations)
+      .find((row) => row.id === invitationId);
+    expect(link).toMatchObject({ state: 'used', name: 'Rogue' });
+    expect(link?.usedAt).not.toBeNull();
   });
 
-  it('rejects joining with the GM name', async () => {
+  it('a renewal link opens the same account and keeps the other device signed in', async () => {
     const res = await built.app.inject({
       method: 'POST',
-      url: `/api/join/${inviteToken}`,
-      payload: { name: 'MG' },
+      url: `/api/campaigns/${campaignId}/players/${playerId}/renewal`,
+      headers: { cookie: gmCookie },
     });
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(201);
+    const renewal = res.json() as InvitationSummary;
+    expect(renewal).toMatchObject({ name: 'Rogue', renewal: true, state: 'waiting' });
+    const info = await built.app.inject({ method: 'GET', url: `/api/join/${renewal.token}` });
+    expect(info.json()).toMatchObject({ playerName: 'Rogue', renewal: true });
+
+    const join = await built.app.inject({ method: 'POST', url: `/api/join/${renewal.token}` });
+    expect(join.statusCode).toBe(200);
+    expect((join.json() as AuthState).user.id).toBe(playerId);
+    // Stary komputer dalej zalogowany (decyzja MG z 03.10).
+    const me = await built.app.inject({ url: '/api/auth/me', headers: { cookie: playerCookie } });
+    expect((me.json() as AuthState).user.id).toBe(playerId);
+    const second = await built.app.inject({ method: 'POST', url: `/api/join/${renewal.token}` });
+    expect(second.statusCode).toBe(410);
+  });
+
+  it('a newer renewal link voids the older one still waiting', async () => {
+    const issue = async () =>
+      (
+        await built.app.inject({
+          method: 'POST',
+          url: `/api/campaigns/${campaignId}/players/${playerId}/renewal`,
+          headers: { cookie: gmCookie },
+        })
+      ).json() as InvitationSummary;
+    const older = await issue();
+    await issue();
+    const res = await built.app.inject({ method: 'GET', url: `/api/join/${older.token}` });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('refuses a renewal for somebody who is not a player of this campaign', async () => {
+    const gm = await built.prisma.user.findFirstOrThrow({ where: { login: 'mg' } });
+    for (const userId of ['nie-ma-takiego', gm.id]) {
+      const res = await built.app.inject({
+        method: 'POST',
+        url: `/api/campaigns/${campaignId}/players/${userId}/renewal`,
+        headers: { cookie: gmCookie },
+      });
+      expect(res.statusCode).toBe(404);
+    }
+  });
+
+  it('refuses a new-player link for a name somebody already plays', async () => {
+    const res = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/invitations`,
+      headers: { cookie: gmCookie },
+      payload: { name: 'ROGUE' },
+    });
+    expect(res.statusCode).toBe(409);
     expect((res.json() as { error: string }).error).toBe('NAME_TAKEN');
   });
 
@@ -266,15 +355,29 @@ describe('player join flow', () => {
     expect(res.statusCode).toBe(404);
   });
 
-  it('rejects an expired invitation', async () => {
+  it('rejects an expired invitation with its own code', async () => {
     const expired = await built.prisma.invitation.create({
       data: {
         token: 'expired-token',
         campaignId,
+        name: 'Spóźniony',
         expiresAt: new Date(Date.now() - 1000),
       },
     });
     const res = await built.app.inject({ method: 'GET', url: `/api/join/${expired.token}` });
+    expect(res.statusCode).toBe(410);
+    expect(res.json()).toEqual({ error: 'INVITATION_EXPIRED' });
+  });
+
+  it('a pre-44b anonymous link no longer lets anybody in', async () => {
+    const legacy = await built.prisma.invitation.create({
+      data: { token: 'anonimowy', campaignId, expiresAt: new Date(Date.now() + 86_400_000) },
+    });
+    const res = await built.app.inject({
+      method: 'POST',
+      url: `/api/join/${legacy.token}`,
+      payload: { name: 'Rogue' },
+    });
     expect(res.statusCode).toBe(404);
   });
 });
@@ -310,25 +413,34 @@ describe('role enforcement (HTTP)', () => {
 });
 
 describe('invitation revocation', () => {
-  it('revokes the invitation', async () => {
+  it('revokes a waiting link and refuses it for both info and join', async () => {
+    const created = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/invitations`,
+      headers: { cookie: gmCookie },
+      payload: { name: 'Odwołany' },
+    });
+    const link = created.json() as InvitationSummary;
     const res = await built.app.inject({
       method: 'POST',
-      url: `/api/invitations/${invitationId}/revoke`,
+      url: `/api/invitations/${link.id}/revoke`,
       headers: { cookie: gmCookie },
     });
     expect(res.statusCode).toBe(200);
-    expect((res.json() as InvitationSummary).revoked).toBe(true);
-  });
+    expect(res.json()).toMatchObject({ revoked: true, state: 'revoked' });
 
-  it('rejects the revoked link for both info and join', async () => {
-    const infoRes = await built.app.inject({ method: 'GET', url: `/api/join/${inviteToken}` });
+    const infoRes = await built.app.inject({ method: 'GET', url: `/api/join/${link.token}` });
     expect(infoRes.statusCode).toBe(404);
-    const joinRes = await built.app.inject({
-      method: 'POST',
-      url: `/api/join/${inviteToken}`,
-      payload: { name: 'Ktokolwiek' },
-    });
+    const joinRes = await built.app.inject({ method: 'POST', url: `/api/join/${link.token}` });
     expect(joinRes.statusCode).toBe(404);
+    // Imię z unieważnionego linku wolno dać od nowa.
+    const again = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/invitations`,
+      headers: { cookie: gmCookie },
+      payload: { name: 'Odwołany' },
+    });
+    expect(again.statusCode).toBe(201);
   });
 });
 

@@ -72,6 +72,7 @@ import {
 import type { Character, CharacterDraft, Prisma, Scene } from '../generated/prisma/client.js';
 import { usedPortraitUrls } from '../portraits.js';
 import { RealtimeError, defineEvent, type RealtimeDeps, type RealtimeEvent } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -481,6 +482,7 @@ export const creationPatchEvent = defineCreationEvent<
       throw new RealtimeError('CREATION_RANK_PENDING');
     // Rezerwacja i sprawdzenie w jednej transakcji: równoczesny wybór nie
     // może przydzielić tej samej twarzy dwóm szkicom.
+    if ('portraitUrl' in patch) requireOwnUploadUrl(next.portraitUrl, campaignId);
     const saved = await deps.ctx.prisma.$transaction(async (tx) => {
       if ('portraitUrl' in patch && next.portraitUrl && user.role !== ROLE_GM) {
         const asset = await tx.portraitAsset.findFirst({

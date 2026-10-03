@@ -4,7 +4,7 @@ import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
-import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
+import { apiGm, canariesInDatabase, invite, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
@@ -102,7 +102,6 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   let ola: Actor;
   let cell: number;
   let campaignId: string;
-  let invitation: string;
   const fromPlayers = new Canaries();
   const fromMarek = new Canaries();
   const fromOla = new Canaries();
@@ -206,9 +205,8 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     campaignId = queryOne<{ id: string }>(
       `SELECT id FROM Campaign WHERE name = 'Nocna zmiana'`,
     )!.id;
-    invitation = await createInvitation(mg, campaignId);
-    marek = await cast.gracz('Marek', 'chromium', invitation);
-    ola = await cast.gracz('Ola', 'firefox', invitation);
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId, 'Marek'));
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId, 'Ola'));
     cell = queryOne<{ gridSizePx: number }>(
       `SELECT gridSizePx FROM Scene WHERE name = 'Knajpa'`,
     )!.gridSizePx;
@@ -927,10 +925,9 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
       `SELECT backgroundUrl FROM Scene WHERE name = 'Knajpa'`,
     )!;
     expect((await ola.page.request.get(scene.backgroundUrl)).status()).toBe(200);
-    // Link zaproszenia dalej prowadzi do tego samego konta.
-    const again = await marek.page.request.post(`/api/join/${invitation}`, {
-      data: { name: 'Marek' },
-    });
+    // Link odnowienia po odtworzeniu dalej prowadzi do tego samego konta (etap 44b).
+    const invitation = await invite(await apiGm(), 'Marek', campaignId);
+    const again = await marek.page.request.post(`/api/join/${invitation}`);
     test
       .info()
       .annotations.push({ type: 'link po odtworzeniu', description: String(again.status()) });

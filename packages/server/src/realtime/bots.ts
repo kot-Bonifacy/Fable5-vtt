@@ -18,6 +18,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { BotProfile } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { getRoster } from './chat-io.js';
 import { gmRoom } from './state.js';
 
@@ -208,6 +209,7 @@ export const botUpdateEvent = defineEvent<BotUpdatePayload, BotView>({
     if ('portraitUrl' in patch) {
       const portraitUrl = sanitizeTokenImageUrl(patch.portraitUrl ?? null);
       if (portraitUrl === undefined) throw new RealtimeError('BAD_REQUEST');
+      requireOwnUploadUrl(portraitUrl, campaignId);
       data.portraitUrl = portraitUrl;
     }
     if ('characterId' in patch) {

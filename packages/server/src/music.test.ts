@@ -12,6 +12,7 @@ import { writeFile, access } from 'node:fs/promises';
 import { musicExtension, readMusic, updateMusic } from './music.js';
 import { exportCampaign, exportScene } from './archive.js';
 import { referencedUploadUrls } from './uploads-gc.js';
+import { joinUrl } from './test-join.js';
 
 vi.mock('./youtube-import.js', () => ({
   importYoutubeAudio: vi.fn(),
@@ -95,16 +96,9 @@ beforeAll(async () => {
     payload: { name: 'Test muzyki' },
   });
   campaignId = campaign.json().id;
-  const invite = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
   const joined = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${invite.json().token}`,
-    payload: { name: 'Słuchacz' },
+    url: await joinUrl(built, campaignId, 'Słuchacz'),
   });
   playerCookie = cookie(joined.headers['set-cookie']);
   gm = await connect(gmCookie);
@@ -283,7 +277,7 @@ it('imports only audio for GM, broadcasts a private MP3 and includes it in expor
   const state = await ack<MusicState>(gm, 'music:request');
   if (!state.ok || !state.data) throw new Error('missing music');
   const imported = state.data.tracks.find((track) => track.name === 'Audio only')!;
-  expect(imported.url).toMatch(/^\/uploads\/music\/[\w-]+\.mp3$/);
+  expect(imported.url).toMatch(/^\/uploads\/campaigns\/[\w-]+\/music\/[\w-]+\.mp3$/);
   expect(imported).not.toHaveProperty('youtubeId');
   expect(await referencedUploadUrls(built.prisma)).toContain(imported.url);
   expect(

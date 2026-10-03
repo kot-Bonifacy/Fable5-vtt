@@ -7,7 +7,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
-  InvitationSummary,
   RulesChunkBroadcast,
   RulesDoneBroadcast,
   RulesIndexStatus,
@@ -17,6 +16,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Asystent zasad na żywych gniazdach (etap 19a).
@@ -312,18 +312,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Rogue' },
+    url: await joinUrl(built, token, 'Rogue'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
 }, 60_000);

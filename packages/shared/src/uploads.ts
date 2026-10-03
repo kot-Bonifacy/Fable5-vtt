@@ -145,3 +145,51 @@ export function localUploadRejection(
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Pliki kampanii (etap 44b).
+
+/**
+ * Katalogi plików kampanii. Każdy plik wgrany do kampanii leży pod
+ * `/uploads/campaigns/<id kampanii>/<katalog>/<plik>`, a serwer wydaje go
+ * tylko MG tej kampanii i jej graczom — sama ścieżka mówi, czyj to plik, bez
+ * szukania adresu w bazie (decyzja MG z 03.10, wariant A).
+ */
+export const CAMPAIGN_UPLOAD_DIRS = ['maps', 'tokens', 'handouts', 'portraits', 'music'] as const;
+export type CampaignUploadDir = (typeof CAMPAIGN_UPLOAD_DIRS)[number];
+
+/** Pliki wspólne dla każdego zalogowanego (mapa powitalna) — bez kampanii w ścieżce. */
+export const SHARED_UPLOADS_PREFIX = '/uploads/art/';
+
+export interface CampaignUploadRef {
+  campaignId: string;
+  dir: CampaignUploadDir;
+  file: string;
+}
+
+const CAMPAIGN_UPLOAD_URL =
+  /^\/uploads\/campaigns\/([A-Za-z0-9_-]+)\/(maps|tokens|handouts|portraits|music)\/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$/;
+
+/**
+ * Każdy adres `/uploads/...` w tekście (kolumna JSON, ładunek czatu, plik
+ * wymiany) — i w nowym kształcie z kampanią, i w płaskim sprzed 44b.
+ * Flaga `g`: przed `exec` w pętli ustaw `lastIndex = 0` albo użyj `matchAll`.
+ */
+export const UPLOAD_URL_PATTERN =
+  /\/uploads\/(?:campaigns\/[A-Za-z0-9_-]+\/)?[A-Za-z0-9_\-.]+\/[A-Za-z0-9_\-.]+/g;
+
+export function campaignUploadUrl(
+  campaignId: string,
+  dir: CampaignUploadDir,
+  file: string,
+): string {
+  return `/uploads/campaigns/${campaignId}/${dir}/${file}`;
+}
+
+/** Adres pliku kampanii rozłożony na części albo null (plik wspólny, płaski, obcy). */
+export function parseCampaignUploadUrl(url: unknown): CampaignUploadRef | null {
+  if (typeof url !== 'string') return null;
+  const match = CAMPAIGN_UPLOAD_URL.exec(url);
+  if (!match) return null;
+  return { campaignId: match[1]!, dir: match[2] as CampaignUploadDir, file: match[3]! };
+}

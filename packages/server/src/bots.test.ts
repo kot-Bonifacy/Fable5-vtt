@@ -12,12 +12,12 @@ import type {
   BotReplyBroadcast,
   BotView,
   CampaignSummary,
-  InvitationSummary,
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Stage 10 smoke tests: bot profiles stay with the GM, the test conversation
@@ -264,18 +264,12 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinRes = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Johnny' },
+    url: await joinUrl(built, token, 'Johnny'),
   });
   playerCookie = cookieOf(joinRes.headers['set-cookie']);
 }, 60_000);

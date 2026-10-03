@@ -10,7 +10,6 @@ import type {
   ChatMessageBroadcast,
   GameTimeAck,
   GameTimeBroadcast,
-  InvitationSummary,
   JournalEntryView,
   SocketAck,
   StateSyncPayload,
@@ -18,6 +17,7 @@ import type {
 import { GAME_TIME_DEFAULT, gameMonthKey, gameTimeFromInput, settleDue } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Etap 37: zegar świata.
@@ -154,17 +154,11 @@ beforeAll(async () => {
   });
   campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
   const join = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Tony' },
+    url: await joinUrl(built, token, 'Tony'),
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
 }, 60_000);

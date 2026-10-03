@@ -13,7 +13,6 @@ import type {
   TradePartnersResult,
   TradeUpdateBroadcast,
   TradeView,
-  InvitationSummary,
   SceneView,
   SocketAck,
   StateSyncPayload,
@@ -21,6 +20,7 @@ import type {
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Testy dymne handlu (etap 38c), na żywych gniazdach.
@@ -191,26 +191,19 @@ beforeAll(async () => {
   });
   const campaignId = (campaignRes.json() as CampaignSummary).id;
 
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${campaignId}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
-  const token = (inviteRes.json() as InvitationSummary).token;
+  // Etap 44b: linki są imienne — wystawia je `joinUrl` przy każdym wejściu.
+  const token = campaignId;
 
   const joinVex = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Vex' },
+    url: await joinUrl(built, token, 'Vex'),
   });
   vexCookie = cookieOf(joinVex.headers['set-cookie']);
   vexUserId = (joinVex.json() as { user: { id: string } }).user.id;
 
   const joinRico = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${token}`,
-    payload: { name: 'Rico' },
+    url: await joinUrl(built, token, 'Rico'),
   });
   ricoCookie = cookieOf(joinRico.headers['set-cookie']);
   ricoUserId = (joinRico.json() as { user: { id: string } }).user.id;

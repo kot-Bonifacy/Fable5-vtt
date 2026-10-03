@@ -17,6 +17,7 @@ import type {
 import { CPRED_ANTIBIOTIC_DAYS, CPRED_HOUR_S, CPRED_PHARMA_BATCH_COST } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { joinUrl } from './test-join.js';
 
 /**
  * Naturalne leczenie i farmaceutyki na żywych gniazdach (03.09).
@@ -146,16 +147,9 @@ beforeAll(async () => {
   // jedzie z gniazda MG, a MG jest autorem każdej karty odpoczynku — więc
   // brak rodzaju `recovery` w `visibleTo` przechodził tu niezauważony przez
   // dwa etapy. Do tego błędu potrzebne są **dwie** pary oczu przy stole.
-  const inviteRes = await built.app.inject({
-    method: 'POST',
-    url: `/api/campaigns/${(campaignRes.json() as { id: string }).id}/invitations`,
-    headers: { cookie: gmCookie },
-    payload: {},
-  });
   const join = await built.app.inject({
     method: 'POST',
-    url: `/api/join/${(inviteRes.json() as { token: string }).token}`,
-    payload: { name: 'Widz' },
+    url: await joinUrl(built, (campaignRes.json() as { id: string }).id, 'Widz'),
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
 }, 60_000);

@@ -337,7 +337,7 @@ describe('kampanie są własnością MG', () => {
       method: 'POST',
       url: `/api/campaigns/${ownerCampaign}/invitations`,
       headers: { cookie: kasia.cookie },
-      payload: {},
+      payload: { name: 'Podrzutek' },
     });
     expect(invite.statusCode).toBe(404);
     const sandbox = await built.app.inject({

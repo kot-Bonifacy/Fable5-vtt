@@ -159,8 +159,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     const campaignId = queryOne<{ id: string }>(
       `SELECT id FROM Campaign WHERE name = 'Nocna zmiana'`,
     )!.id;
-    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId));
-    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId));
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaignId, 'Marek'));
+    ola = await cast.gracz('Ola', 'firefox', await createInvitation(mg, campaignId, 'Ola'));
     for (const actor of [mg, marek, ola]) {
       await expect
         .poll(

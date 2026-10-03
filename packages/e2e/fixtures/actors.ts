@@ -153,7 +153,7 @@ export class Cast {
     return actor;
   }
 
-  /** Gracz wchodzi z linku zaproszenia pod swoim imieniem. */
+  /** Gracz wchodzi z imiennego linku (etap 44b) — imię jest na linku, ekran tylko je pokazuje. */
   async gracz(
     name: string,
     engine: Engine,
@@ -162,8 +162,8 @@ export class Cast {
   ): Promise<Actor> {
     const actor = await this.open(name, engine, prepare);
     await actor.page.goto(`/join/${encodeURIComponent(invitationToken)}`);
-    await actor.page.locator('#player-name').fill(name);
-    await actor.page.getByRole('button', { name: 'Dołącz do gry' }).click();
+    await expect(actor.page.locator('.join-player-name')).toHaveText(name);
+    await actor.page.getByRole('button', { name: 'Wejdź do gry' }).click();
     await waitSignedIn(actor);
     return actor;
   }

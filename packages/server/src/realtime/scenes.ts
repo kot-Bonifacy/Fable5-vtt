@@ -22,6 +22,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { forgetScene } from './undo-buffer.js';
 import { placeOwedCreationTokens } from './creation.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
@@ -177,6 +178,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
         data.backgroundWidth = null;
         data.backgroundHeight = null;
       } else {
+        requireOwnUploadUrl(patch.background.url, campaignId);
         data.backgroundUrl = patch.background.url;
         data.backgroundWidth = patch.background.width;
         data.backgroundHeight = patch.background.height;

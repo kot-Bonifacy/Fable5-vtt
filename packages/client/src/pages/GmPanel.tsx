@@ -1,57 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import type { CampaignDetail, InvitationSummary } from '@vtt/shared';
+import type { CampaignDetail } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
 import { activateCampaign } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { CreateCampaignForm } from '../components/CreateCampaignForm.js';
 import { OwnerAccounts } from '../components/OwnerAccounts.js';
-
-function inviteUrl(token: string): string {
-  return `${window.location.origin}/join/${token}`;
-}
-
-function InvitationRow({
-  invitation,
-  onRevoke,
-}: {
-  invitation: InvitationSummary;
-  onRevoke: (id: string) => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const expired = new Date(invitation.expiresAt).getTime() <= Date.now();
-  const status = invitation.revoked ? 'unieważniony' : expired ? 'wygasł' : 'aktywny';
-
-  async function copy() {
-    await navigator.clipboard.writeText(inviteUrl(invitation.token));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  return (
-    <li className="invite-row">
-      <code className="invite-url">{inviteUrl(invitation.token)}</code>
-      <span className={`badge ${status === 'aktywny' ? 'badge--ok' : 'badge--off'}`}>{status}</span>
-      <span className="invite-expiry">
-        do {new Date(invitation.expiresAt).toLocaleString('pl-PL')}
-      </span>
-      {status === 'aktywny' && (
-        <>
-          <button type="button" className="small-button" onClick={() => void copy()}>
-            {copied ? 'Skopiowano!' : 'Kopiuj'}
-          </button>
-          <button
-            type="button"
-            className="small-button small-button--danger"
-            onClick={() => onRevoke(invitation.id)}
-          >
-            Unieważnij
-          </button>
-        </>
-      )}
-    </li>
-  );
-}
+import { CampaignPlayers } from '../components/CampaignPlayers.js';
 
 function CampaignCard({
   campaign,
@@ -60,16 +15,6 @@ function CampaignCard({
   campaign: CampaignDetail;
   onChanged: () => void;
 }) {
-  async function createInvitation() {
-    await apiPost(`/api/campaigns/${campaign.id}/invitations`);
-    onChanged();
-  }
-
-  async function revoke(invitationId: string) {
-    await apiPost(`/api/invitations/${invitationId}/revoke`);
-    onChanged();
-  }
-
   /**
    * Przełączenie stołu. Idzie gniazdem, nie RESTem, bo serwer musi przy okazji
    * przenieść **wszystkie** podpięte ekrany — do 22.08 zmieniała się sama nazwa
@@ -115,39 +60,7 @@ function CampaignCard({
         </button>
       </header>
 
-      <h3 className="panel-section-title">Gracze ({campaign.players.length})</h3>
-      {campaign.players.length === 0 ? (
-        <p className="placeholder-text">Nikt jeszcze nie dołączył.</p>
-      ) : (
-        <ul className="player-list">
-          {campaign.players.map((player) => (
-            <li key={player.id}>
-              {player.name}
-              <span className="invite-expiry">
-                {' '}
-                — dołączył(a) {new Date(player.joinedAt).toLocaleDateString('pl-PL')}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h3 className="panel-section-title">Linki zaproszeń</h3>
-      {campaign.invitations.length === 0 && (
-        <p className="placeholder-text">Brak linków — wygeneruj pierwszy.</p>
-      )}
-      <ul className="invite-list">
-        {campaign.invitations.map((invitation) => (
-          <InvitationRow
-            key={invitation.id}
-            invitation={invitation}
-            onRevoke={(id) => void revoke(id)}
-          />
-        ))}
-      </ul>
-      <button className="primary-button" type="button" onClick={() => void createInvitation()}>
-        Nowy link zaproszenia (ważny rok)
-      </button>
+      <CampaignPlayers campaign={campaign} onChanged={onChanged} />
     </section>
   );
 }

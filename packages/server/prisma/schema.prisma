@@ -33,6 +33,7 @@ model User {
 
   sessions         Session[]
   memberships      CampaignMember[]
+  invitations      Invitation[]
   characters       Character[]
   chatMessages     ChatMessage[] @relation("ChatAuthor")
   whispersReceived ChatMessage[] @relation("ChatRecipient")
@@ -336,6 +337,10 @@ model CampaignMember {
   @@unique([campaignId, userId])
 }
 
+/// Imienny link gracza (etap 44b): klucz do jednego miejsca przy stole.
+/// Link nowego gracza ma samo imię i zakłada konto przy pierwszym użyciu;
+/// link odnowienia ma `userId` od chwili wystawienia i wpuszcza na istniejące
+/// konto. Oba działają raz (`usedAt`).
 model Invitation {
   id         String    @id @default(cuid())
   token      String    @unique
@@ -343,8 +348,20 @@ model Invitation {
   expiresAt  DateTime
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
+  /// Imię gracza wypisane przez MG; null tylko na anonimowych linkach sprzed
+  /// 44b — migracja je unieważniła.
+  name       String?
+  /// Konto, które link otwiera: przy odnowieniu od wystawienia, przy nowym
+  /// graczu — od pierwszego użycia.
+  userId     String?
+  /// Link odnowienia (konto istniało, zanim link powstał).
+  renewal    Boolean   @default(false)
+  usedAt     DateTime?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }
 
 model Character {

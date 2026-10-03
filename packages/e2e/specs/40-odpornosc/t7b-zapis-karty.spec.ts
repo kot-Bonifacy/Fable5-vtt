@@ -39,7 +39,7 @@ test.describe.serial('T7b odporność: spóźnione echo zapisu karty @odpornosc'
     const campaign = queryOne<{ id: string }>(
       `SELECT id FROM Campaign WHERE name = 'Nocna zmiana'`,
     )!.id;
-    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaign));
+    marek = await cast.gracz('Marek', 'chromium', await createInvitation(mg, campaign, 'Marek'));
     const gm = await mg.socket();
     const kowal = characterRow('Kowal').id;
     const stored = () => (JSON.parse(characterRow('Kowal').data) as { notes: string }).notes ?? '';

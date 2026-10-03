@@ -35,6 +35,16 @@ export async function getUserActiveCampaign(
 }
 
 /**
+ * Kampania tego MG albo null (etap 44a, wspólna dla tras od 44b) — cudza
+ * wygląda dokładnie jak nieistniejąca, żeby id nie zdradzało, że po drugiej
+ * stronie coś jest.
+ */
+export async function ownCampaign(prisma: PrismaClient, campaignId: string, userId: string) {
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  return campaign && campaignRunBy(campaign, userId) ? campaign : null;
+}
+
+/**
  * Czy kampanię prowadzi ten MG (etap 44a). Kampania bez `gmId` — założona
  * z pominięciem trasy, w testach — należy do każdego MG, jak przed 44a.
  */

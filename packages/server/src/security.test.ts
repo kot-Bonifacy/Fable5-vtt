@@ -140,21 +140,21 @@ async function createCampaign(name: string): Promise<string> {
   return (res.json() as CampaignSummary).id;
 }
 
-async function invite(campaignId: string): Promise<string> {
+/** Imienny link (etap 44b) — trasą MG, bo to test zabezpieczeń. */
+async function invite(campaignId: string, name: string): Promise<string> {
   const res = await built.app.inject({
     method: 'POST',
     url: `/api/campaigns/${campaignId}/invitations`,
     headers: { cookie: gmCookie },
-    payload: {},
+    payload: { name },
   });
   return (res.json() as InvitationSummary).token;
 }
 
-async function joinAs(token: string, name: string): Promise<{ cookie: string; state: AuthState }> {
+async function joinAs(token: string): Promise<{ cookie: string; state: AuthState }> {
   const res = await built.app.inject({
     method: 'POST',
     url: `/api/join/${token}`,
-    payload: { name },
     remoteAddress: '10.0.0.1',
   });
   expect(res.statusCode).toBe(200);
@@ -179,7 +179,7 @@ beforeAll(async () => {
   });
   gmCookie = cookieOf(login.headers['set-cookie']);
   homeCampaignId = await createCampaign('Nocna zmiana');
-  const player = await joinAs(await invite(homeCampaignId), 'Marek');
+  const player = await joinAs(await invite(homeCampaignId, 'Marek'));
   playerCookie = player.cookie;
   playerId = player.state.user.id;
 }, 60_000);
@@ -221,7 +221,7 @@ describe('#10 — aktywna kampania i jej pliki tylko dla członków', () => {
 
     // Druga kampania z własnym graczem; MG wraca potem do „Nocnej zmiany”.
     const other = await createCampaign('Obca kampania');
-    const stranger = await joinAs(await invite(other), 'Obcy');
+    const stranger = await joinAs(await invite(other, 'Obcy'));
     expect(stranger.state.activeCampaign?.id).toBe(other);
     const gm = createSocket(gmCookie);
     await gm.firstSync;
@@ -271,7 +271,7 @@ describe('#10 — aktywna kampania i jej pliki tylko dla członków', () => {
 
 describe('#11 — gniazdo żyje tyle, co sesja', () => {
   it('wylogowanie rozłącza otwarte gniazda tej sesji z powodem „logout”', async () => {
-    const { cookie } = await joinAs(await invite(homeCampaignId), 'Ola');
+    const { cookie } = await joinAs(await invite(homeCampaignId, 'Ola'));
     const first = createSocket(cookie);
     const second = createSocket(cookie);
     await Promise.all([first.firstSync, second.firstSync]);
@@ -357,8 +357,7 @@ describe('#12 — limit złych haseł i zaproszeń per adres', () => {
     }
     const limited = await built.app.inject({
       method: 'POST',
-      url: `/api/join/${await invite(homeCampaignId)}`,
-      payload: { name: 'Marek' },
+      url: `/api/join/${await invite(homeCampaignId, 'Zgadywacz')}`,
       remoteAddress: '203.0.113.9',
     });
     expect(limited.statusCode).toBe(429);

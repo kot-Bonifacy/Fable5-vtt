@@ -123,8 +123,12 @@ export interface HandoutValidationIssue {
   message: string;
 }
 
-/** Adresy grafik, które serwer sam wystawił — nic spoza `/uploads/handouts/`. */
-const HANDOUT_IMAGE_URL = /^\/uploads\/handouts\/[A-Za-z0-9_-]+\.(png|jpg|webp)$/;
+/**
+ * Adresy grafik, które serwer sam wystawił — tylko katalog `handouts` kampanii
+ * (etap 44b). Czy to kampania tego stołu, sprawdza serwer (`requireOwnUploadUrl`).
+ */
+const HANDOUT_IMAGE_URL =
+  /^\/uploads\/campaigns\/[A-Za-z0-9_-]+\/handouts\/[A-Za-z0-9_-]+\.(png|jpg|webp)$/;
 
 function parseImage(raw: unknown): HandoutImage | null {
   if (typeof raw !== 'object' || raw === null) return null;

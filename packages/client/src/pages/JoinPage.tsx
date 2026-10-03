@@ -2,12 +2,49 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { JoinInfo } from '@vtt/shared';
 import { ApiError, apiGet } from '../api.js';
-import { useAutofillableField } from '../autofill-field.js';
 import { enterPreferredFullscreen } from '../fullscreen.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type PageState = 'loading' | 'ready' | 'invalid' | 'limited';
+type PageState = 'loading' | 'ready' | 'invalid' | 'used' | 'expired' | 'limited';
 
+/** Odmowa serwera → stan ekranu. 410 mówi, że link był dobry, tylko już nie działa. */
+function refusalState(err: unknown): PageState {
+  if (err instanceof ApiError && err.status === 429) return 'limited';
+  if (err instanceof ApiError && err.code === 'INVITATION_USED') return 'used';
+  if (err instanceof ApiError && err.code === 'INVITATION_EXPIRED') return 'expired';
+  return 'invalid';
+}
+
+/** Treść ekranów odmowy — tytuł, zdanie i podpowiedź. */
+const REFUSALS: Record<Exclude<PageState, 'loading' | 'ready'>, [string, string, string]> = {
+  invalid: [
+    'Zaproszenie nieważne',
+    'Link zaproszenia jest nieprawidłowy albo MG go unieważnił.',
+    'Poproś MG o nowy link.',
+  ],
+  used: [
+    'Link już wykorzystany',
+    'Ten link otworzył już miejsce przy stole i drugi raz nie zadziała.',
+    'Jeśli to Ty, a grasz z innego komputera albo przeglądarki, poproś MG o link odnowienia.',
+  ],
+  expired: [
+    'Link wygasł',
+    'Nieużyty link jest ważny tydzień.',
+    'Poproś MG o nowy — wystawi go jednym kliknięciem.',
+  ],
+  limited: [
+    'Chwila przerwy',
+    'Za dużo nieudanych prób z tego adresu — spróbuj ponownie za kilkanaście minut.',
+    '',
+  ],
+};
+
+/**
+ * Wejście gracza z imiennego linku (etap 44b). Link jest kluczem: MG wypisał
+ * na nim imię, więc ekran niczego nie pyta — pokazuje, czyje miejsce otwiera,
+ * i wpuszcza jednym przyciskiem. Wybieranie imienia z listy zniknęło razem
+ * z możliwością wejścia na cudze konto samym imieniem.
+ */
 export function JoinPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -15,7 +52,6 @@ export function JoinPage() {
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [info, setInfo] = useState<JoinInfo | null>(null);
-  const name = useAutofillableField();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -29,31 +65,30 @@ export function JoinPage() {
         setInfo(joinInfo);
         setPageState('ready');
       })
-      // 429 (#12): ten adres zgadywał zaproszenia — „nieważne" byłoby kłamstwem.
-      .catch((err: unknown) =>
-        setPageState(err instanceof ApiError && err.status === 429 ? 'limited' : 'invalid'),
-      );
+      .catch((err: unknown) => setPageState(refusalState(err)));
   }, [token]);
 
-  async function join(chosenName: string) {
+  async function join() {
     if (!token || busy) return;
     // Przed `await`, z tego samego powodu co na ekranie logowania: gestem jest
-    // kliknięcie „Dołącz do gry" albo imienia, a odpowiedź serwera go nie niesie.
+    // kliknięcie „Wejdź do gry", a odpowiedź serwera go nie niesie.
     enterPreferredFullscreen();
     setBusy(true);
     setError(null);
     try {
-      await joinCampaign(token, chosenName);
+      await joinCampaign(token);
       navigate('/', { replace: true });
     } catch (err) {
+      const state = refusalState(err);
       if (err instanceof ApiError && err.code === 'NAME_TAKEN') {
-        setError('To imię jest zajęte — wybierz inne.');
-      } else if (err instanceof ApiError && err.status === 404) {
-        setPageState('invalid');
-      } else if (err instanceof ApiError && err.status === 429) {
-        setPageState('limited');
+        setError('Przy tym stole jest już gracz o tym imieniu — poproś MG o nowy link.');
+      } else if (
+        err instanceof ApiError &&
+        (err.status === 404 || err.status === 410 || err.status === 429)
+      ) {
+        setPageState(state);
       } else {
-        setError('Nie udało się dołączyć. Spróbuj ponownie.');
+        setError('Nie udało się wejść. Spróbuj ponownie.');
       }
     } finally {
       setBusy(false);
@@ -62,14 +97,7 @@ export function JoinPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    // To samo co na ekranie logowania: imię podstawione przez przeglądarkę
-    // stoi w polu, a nie w stanie Reacta.
-    const trimmed = name.read().trim();
-    if (trimmed.length === 0) {
-      setError('Wpisz imię.');
-      return;
-    }
-    void join(trimmed);
+    void join();
   }
 
   if (pageState === 'loading') {
@@ -80,32 +108,16 @@ export function JoinPage() {
     );
   }
 
-  if (pageState === 'limited') {
+  if (pageState !== 'ready' || !info) {
+    const [title, sentence, hint] = REFUSALS[pageState === 'ready' ? 'invalid' : pageState];
     return (
       <div className="auth-screen">
         <div className="auth-card">
           <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
-          <h1 className="auth-title">Chwila przerwy</h1>
+          <h1 className="auth-title">{title}</h1>
           <div className="auth-rule" aria-hidden="true" />
-          <p className="auth-error">
-            Za dużo nieudanych prób z tego adresu — spróbuj ponownie za kilkanaście minut.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (pageState === 'invalid' || !info) {
-    return (
-      <div className="auth-screen">
-        <div className="auth-card">
-          <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
-          <h1 className="auth-title">Zaproszenie nieważne</h1>
-          <div className="auth-rule" aria-hidden="true" />
-          <p className="auth-error">
-            Link zaproszenia jest nieprawidłowy, wygasł lub został unieważniony.
-          </p>
-          <p className="auth-hint">Poproś MG o nowy link.</p>
+          <p className="auth-error">{sentence}</p>
+          {hint && <p className="auth-hint">{hint}</p>}
         </div>
       </div>
     );
@@ -115,47 +127,22 @@ export function JoinPage() {
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleSubmit}>
         <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
-        <h1 className="auth-title">Dołączasz do gry</h1>
+        <h1 className="auth-title">{info.renewal ? 'Wracasz do gry' : 'Dołączasz do gry'}</h1>
         <div className="auth-rule" aria-hidden="true" />
         <p className="auth-subtitle">
           Kampania: <strong>{info.campaignName}</strong>
         </p>
-
-        {info.players.length > 0 && (
-          <>
-            <p className="auth-label">Wracasz do gry? Wybierz swoje imię:</p>
-            <div className="player-choices">
-              {info.players.map((playerName) => (
-                <button
-                  key={playerName}
-                  type="button"
-                  className="player-chip"
-                  disabled={busy}
-                  onClick={() => void join(playerName)}
-                >
-                  {playerName}
-                </button>
-              ))}
-            </div>
-            <p className="auth-label">…albo dołącz jako nowa osoba:</p>
-          </>
-        )}
-
-        <label className="auth-label" htmlFor="player-name">
-          Twoje imię
-        </label>
-        <input
-          id="player-name"
-          type="text"
-          maxLength={32}
-          ref={name.ref}
-          value={name.value}
-          onChange={(e) => name.setValue(e.target.value)}
-          autoFocus
-        />
+        <p className="auth-subtitle">
+          Wchodzisz jako <strong className="join-player-name">{info.playerName}</strong>
+        </p>
+        <p className="auth-hint">
+          {info.renewal
+            ? 'Link odnowienia wpuszcza na Twoje dotychczasowe konto — z postacią i czatem.'
+            : 'Link działa raz. Ta przeglądarka zapamięta Cię na rok.'}
+        </p>
         {error && <p className="auth-error">{error}</p>}
-        <button className="primary-button" type="submit" disabled={busy}>
-          {busy ? 'Dołączanie…' : 'Dołącz do gry'}
+        <button className="primary-button" type="submit" disabled={busy} autoFocus>
+          {busy ? 'Wchodzenie…' : 'Wejdź do gry'}
         </button>
       </form>
     </div>
