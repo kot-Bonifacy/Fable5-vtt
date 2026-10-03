@@ -156,7 +156,7 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 6    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 106     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 104     |
 
 

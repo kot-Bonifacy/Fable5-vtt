@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**03.10.2026 (T8b, pierwszy kontakt) — szybsze rozdawanie punktów umiejętności w kreatorze.**
+Krawędziarz rozdaje 86 punktów wyłącznie przyciskiem „+”: nowy gracz policzył ok. 45 kliknięć
+na 60 punktów, a klawisz End przewija okno zamiast ustawić maksimum. Kierunek: pole poziomu
+z wpisaniem liczby (z tą samą walidacją co „+”: od 2 przy podstawowych, do 6, ×2) albo przycisk
+„do 6”. Do decyzji MG.
+
 **27.09.2026 (poprawki po T4b) — pięść bez wiersza na karcie (dalszy ciąg #17).** Od poprawki #17
 kompendium ma „Bijatykę” i „Sztuki walki” za 0 ed, ale postać bez broni dalej potrzebuje wiersza
 na karcie (gracz bierze go sam ze sklepu, MG „+ Broń z katalogu”). Podręcznik daje pięść każdemu,

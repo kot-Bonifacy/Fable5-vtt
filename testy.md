@@ -31,7 +31,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ✅     | 02.10.2026 |
 | T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ✅     | 02.10.2026 |
 | T8a  | Przeglądarki 1/3: macierz silników, ekrany, motyw, konsola | ✅     | 03.10.2026 |
-| T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ⬜     |            |
+| T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ✅     | 03.10.2026 |
 | T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
@@ -116,6 +116,7 @@ idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po �
 | T8: kolejność i podział | **T8 teraz, przed refaktoryzacją**; automat T8a wchodzi do osłony refaktoryzacji i T10 puszcza go ponownie po „Kontach MG” (pierwszego kontaktu się nie powtarza). Podział: **T8a** = macierz silników, ekrany, motyw dzień/noc, konsola (automat w `specs/50-przegladarki`), **T8b** = pierwszy kontakt, **T8c** = pobieżna regresja (decyzja MG z 03.10, sesja T8a) |
 | T8: ekrany i skrót     | ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**, oba z wagą; 1366 × 768 i powiększenia 125/150 % wypadają z macierzy. Skrót scenariusza **z `po-T3`**, ok. 5 min na układ: MG + Marek + Ola, a w drugim układzie silniki zamienione (decyzja MG z 03.10, sesja T8a) |
 | T8: pierwszy kontakt   | gra go **świeży subagent bez kontekstu** (Playwright MCP Firefox, zakaz czytania repo), Claude jest MG w Chromium i robi triaż notatek; postać powstaje metodą **Krawędziarz (Na skróty)** (decyzja MG z 03.10, sesja T8a) |
+| T8b: obsada i start    | nowy gracz „Kuba” **zna CP RED i z grubsza inne VTT, tego stołu nie widział**; subagent na **Opusie 5.5**; z MG rozmawia „na Discordzie” — przerywa raportem, MG odpowiada jak przy stole, bez podpowiedzi UI, chyba że gracz utknie (każda podpowiedź UI = notatka); start **z `po-T3`**, trzeci gracz dołącza nowym linkiem, figura w „Knajpie”, krótka walka z **jednym statystą** (decyzja MG z 03.10, sesja T8b) |
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
@@ -614,6 +615,19 @@ Przy 2560 panele zostają w pikselach z 1920, a resztę zabiera mapa. Ucięte na
 kreska w pamięci terenu: #53 (wszystkie B3). Triaż MG 03.10: #53 naprawiony (szew sprite'a zasłony,
 retest `t8a-szew-zaslony`), #54 i #55 odrzucone. T8b i T8c — osobne sesje.
 
+**T8b zamknięty 03.10** (obsada i start — decyzja MG w sekcji 2): nowy gracz „Kuba” (subagent
+na Opusie, Firefox przez Playwright MCP, 1920 × 1080, bez dostępu do repo) przeszedł z `po-T3` od
+linku zaproszenia przez prośbę o zgodę, kreator Krawędziarza (Solo „Kruk”), przyjęcie do gry,
+rozdzielenie Zmysłu Walki i inicjatywę do pierwszej tury: marsz 8,5 m, dwa strzały z ciężkiego
+pistoletu (19 i 22 przy PT 15), obrażenia 13 i 9, „Kończę turę” — **w ok. 20 minut i bez ani
+jednego pytania do MG o to, co kliknąć**; MG był potrzebny tylko do zgody, przyjęcia i startu
+walki. Mechanika zgodna z podręcznikiem na każdej karcie (wartości pochodne, koszty umiejętności,
+progi Zmysłu Walki, inicjatywa, PT, SS 2, OB 11 → 10 po przebiciu). Błędy: **#56 (B2)** drugi rzut
+obrażeń za to samo trafienie, **#62 (B2)** broń szarzeje przy wolnym drugim ataku, #57–#61,
+#63–#71 (B3). Ślad stóp, który gracz wziął za wyciek ruchu ukrytej figury, to podgląd jego własnej
+trasy (#69, sprawdzone drugą sesją). Zrzuty i klatki w `.e2e/pomiary/t8b` (poza repo). Pierwszego
+kontaktu się nie powtarza; T8c — osobna sesja.
+
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 
 Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
@@ -759,6 +773,9 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 
 - przy 2560 × 1440 panel boczny, lewa szyna i okna (karta, kreator) mają te same piksele co przy 1920 — czcionki są wyraźnie mniejsze, mapa zabiera całą resztę; czy gracz z monitorem 2k nie będzie mrużył oczu (powiększenie przeglądarki 125 % to 2048 × 1152, poza macierzą) — T8a, 03.10;
 - gracz bez figury (nowy, w kreatorze) widzi na mapie przyciemnioną pamięć terenu drużyny i napis „Nie masz tokenu na tej scenie — MG musi go wystawić”, który chowa się za oknem kreatora — T8a, 03.10.
+- nowy gracz od linku do pierwszego strzału: ~20 min z kreatorem Krawędziarza; najdłużej trwa rozdawanie 86 punktów umiejętności samym „+” (pomysł w `POMYSLY.md`) — czy przy stole nie zje to sesji zero — T8b, 03.10;
+- gracz czeka na MG trzy razy (zgoda, przyjęcie, start walki) i za każdym razem dowiaduje się o zmianie tylko patrząc na ekran (#57); przy stole MG powie to na Discordzie — czy to wystarczy — T8b, 03.10;
+- obrażenia gracza czekają na „Zastosuj” MG, więc gracz nie wie, czy trafienie „weszło” (karta rozliczenia przychodzi po kilkudziesięciu sekundach) — **decyzja MG 03.10: rozliczanie automatyczne**, poprawka razem z #56 — T8b, 03.10.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -800,6 +817,39 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 03.10 — T8b: pierwszy kontakt nowego gracza
+
+**Rozstrzygnięcia MG na starcie:** gracz „zna CP RED, nie zna tego stołu”, subagent na Opusie,
+kontakt z MG „na Discordzie” przez raport (podpowiedź UI tylko przy zacięciu — nie była potrzebna
+ani razu), start z `po-T3`, walka w „Knajpie” z jednym statystą. Wiersz w sekcji 2.
+
+**Przebieg:** instancja E2E z `po-T3` trzymana `hold.ts` (hasło MG z env), profil Firefoksa MCP
+wyczyszczony dla `localhost:4173`, zaproszenie z „Panelu MG”. MG w Chromium MCP: zgoda
+(Krawędziarz, 86 pkt), „Przyjmij do gry” (żeton stanął sam przy miejscu startu), Zbir przeciągnięty
+do ogródka, walka Kruk + Zbir, inicjatywa Zbira z „Rzuć wszystkim”, start rundy, potem „Zastosuj”
+obu kart obrażeń (OB 11 → 10, PW 25 → 23, drugi cios zatrzymany). Przebieg i notatki gracza —
+akapit T8b w 6.4. Zgłoszenie „wycieku ruchu” sprawdzone drugą sesją Kuby (skrypt `playwright`,
+80 klatek przy przeciąganiu Zbira przez MG): bez śladu, więc #69 jest podglądem trasy.
+
+**Błędy:** #56 (B2, potwierdzony — drugi rzut obrażeń przyjęty w turze Zbira), #62 (B2 do triażu),
+#57–#61, #63–#71 (B3 do triażu). Odpadły po sprawdzeniu: „Nie wtrącam się” ×2 (tak w podręczniku),
+19 umiejętności zamiast 20 (dwudziesta to darmowy język), lista „Rola” na karcie (płatna zmiana
+Roli z bramką, umowa w `postac`), ucięte „Rozmo…” i nazwy umiejętności (odrzucone jako #54, #55).
+Pomysł: wpisywanie poziomu umiejętności w kreatorze (`POMYSLY.md`).
+
+**Decyzja MG w trakcie (03.10):** obrażenia z rzutu z nazwanym celem (także obszar) rozliczają się
+same, bez „Zastosuj”; Unik obrońcy przed obrażeniami; serwer odmawia drugiego rzutu obrażeń (#56);
+figury w walce obracają się ku celowi. Robione po zamknięciu T8b, osobnym commitem.
+
+**Oglądane:** gracz w Firefoksie (Playwright MCP, okno na wierzchu), MG w Chromium (MCP), druga
+sesja gracza w Chromium (biblioteka, headless). Konsola MG: tylko `ERR_CACHE_OPERATION_NOT_SUPPORTED`
+na plikach `sfx/` (stały profil Chromium MCP z pamięcią podręczną; czyste konteksty T8a jej nie
+miały — pułapka w `ogledziny`). `dev.db` nietknięta, punkty kontrolne tylko
+czytane.
+
+**Następny krok:** poprawka automatycznego rozliczania obrażeń z #56 (ta sesja), potem triaż MG
+#57–#71 i T8c.
+
 ### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
 
 **Rozstrzygnięcia MG na starcie:** T8 teraz, przed refaktoryzacją (automat T8a wchodzi do jej
@@ -827,36 +877,3 @@ ręcznie. `dev.db` nietknięta; punkty kontrolne tylko odczytywane.
 
 **Następny krok:** T8b (pierwszy kontakt: subagent w Firefoksie przez Playwright MCP, Claude jako MG
 w Chromium na instancji z `hold.ts`) albo triaż #53–#55.
-
-### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci
-
-**Rozstrzygnięcia MG na starcie:** scena 4096 w dwóch trybach (Dynamiczna + ciemność + pamięć terenu
-oraz ręczna mgła), MG i gracz w obu silnikach, headless Full HD; hak E2E rozszerzony o liczniki;
-300 rzutów z animacją (Ola rzuca, MG patrzy); sterta serwera przez `--inspect`; marsz Sowy — próba
-odtworzenia; wagi wycieku: liniowy wzrost = błąd, B2 > ~200 MB albo spadek klatek, inaczej B3.
-Wiersze w sekcji 2.
-
-**Zrobione:** hak `counts()` w kliencie (`MapRenderer.e2eCounts`, `diceE2ECounts`, DOM — tylko build
-`e2e`, `00-baseline` zielony; umowa w `ui`), `startInstance(…, { inspect: true })`, w `pomiary.ts`
-`serverHeap`, `clientMemory` (sterta i bufory po GC), `mainThreadLoad`, `slope`; `Cast.viewport`;
-`fixtures/wydajnosc.ts`. Cztery pliki w `40-odpornosc` (16 testów): `t7c-mapa` (9, ~6 min),
-`t7c-pamiec` (4, ~44 min; `E2E_T7C_RZUTY`, `E2E_T7C_SPOCZYNEK_MS` do prób), `t7c-diag-sterta`
-(1, zrzuty sterty do #50), `t7c-marsz-pod-figura` (2, `test.fail` #52). W `t7b-obciazenie` ślad
-nieudanego marszu (`diag`) i `E2E_T7B_BRAMA_SKALA`. Liczby w 6.3, dziewięć pułapek w `testy`.
-
-**Błędy:** **#50** (B3 do triażu) — każde przełączenie sceny zostawia u MG ~3 MB osieroconych
-buforów geometrii Pixi (520 `WebGLBuffer` na 12 przełączeń), drzewo i tekstury bez zmian.
-**#51** (B3 do triażu) — kości 3D nie zwalniają geometrii three.js (+1,4 na rzut u każdego widza).
-**#52** (B3 do triażu) — klik w środek pola tuż pod cudzą figurą łapie jej podpis, marsz nie rusza;
-to jest „marsz Sowy” z T7b (4/4 nieudane marsze z figurą nad celem). Serwer: sterta po GC płaska
-(42 MB). Klatki mapy: 60/s wszędzie poza Firefoksem gracza w marszu na Dynamicznej (52/s).
-
-**Wynik:** `t7c-mapa` 9/9 (trzy pełne przebiegi), `t7c-pamiec` 4/4 (43,7 min) + przełączenia
-powtórzone z miernikiem buforów, `t7c-diag-sterta` 1/1 (trzy przebiegi), `t7c-marsz-pod-figura` 2/2
-trzy razy (kontrola zielona, #52 pada zgodnie z `test.fail`), `t7b-obciazenie` przy krótkiej
-„Bramie” 4 × 3/3; `00-baseline` 5/5; `40-odpornosc --list` 42 testy, domyślny przebieg dalej 196.
-Klient 314/314. Oglądane automatem: MG w Chromium i Firefoksie, Marek w Chromium, Ola w Firefoksie
-(headless, 1920 × 1080). `dev.db` i punkty kontrolne nietknięte.
-
-**Następny krok:** triaż MG #50–#52, potem refaktoryzacja całości pod osłoną suity (T7 zamknięty).
-
