@@ -37,3 +37,49 @@ export async function dragWorld(page: Page, from: WorldPoint, to: WorldPoint): P
   await page.mouse.move(end.x, end.y, { steps: 12 });
   await page.mouse.up();
 }
+
+/**
+ * Ile pikseli zrzutu jest jaśniejszych niż `threshold` (suma R + G + B) w pasie
+ * ±`band` px wzdłuż odcinka sceny `from` → `to` (#53: szew zasłony). Zrzut
+ * dekoduje sama przeglądarka (`<img>` → `<canvas>`), więc suita nie potrzebuje
+ * biblioteki do PNG.
+ */
+export async function brightPixelsAlong(
+  page: Page,
+  from: WorldPoint,
+  to: WorldPoint,
+  { band = 2, threshold = 60 }: { band?: number; threshold?: number } = {},
+): Promise<number> {
+  const a = await worldToClient(page, from);
+  const b = await worldToClient(page, to);
+  const png = (await page.screenshot()).toString('base64');
+  return page.evaluate(
+    async ({ png, a, b, band, threshold }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${png}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0);
+      const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+      // Zrzut jest w pikselach urządzenia, kamera — w pikselach CSS.
+      const scale = width / window.innerWidth;
+      const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * scale);
+      let bright = 0;
+      for (let i = 0; i <= steps; i += 1) {
+        const x = Math.round((a.x + ((b.x - a.x) * i) / steps) * scale);
+        const yc = (a.y + ((b.y - a.y) * i) / steps) * scale;
+        for (let dy = -band; dy <= band; dy += 1) {
+          const y = Math.round(yc + dy);
+          if (x < 0 || y < 0 || x >= width || y >= height) continue;
+          const o = (y * width + x) * 4;
+          if (data[o]! + data[o + 1]! + data[o + 2]! > threshold) bright += 1;
+        }
+      }
+      return bright;
+    },
+    { png, a, b, band, threshold },
+  );
+}

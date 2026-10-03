@@ -1704,11 +1704,20 @@ export class MapRenderer {
     // Fog hides the map and everything standing on it, so it sits above the
     // tokens; the GM layer and the ruler stay readable on top of the fog.
     this.fogLayer.addChild(this.fogSprite);
+    // Ta sama zasłona co pole widzenia niżej, więc i ta sama ochrona przed
+    // szwem na przekątnej (#53).
+    this.fogLayer.isRenderGroup = true;
     viewport.addChild(this.fogLayer);
     // The player's field of view sits with the fog: both are the same kind of
     // cover, and a scene never runs the two at once (one visibility mode).
     this.figureScratch.addChild(this.figureCover, this.figureCutout);
     this.visionLayer.addChild(this.figureSprite, this.visionSprite);
+    // Własna grupa renderowania (#53, 03.10): przekształcenie kamery liczy wtedy
+    // GPU, a nie batcher. Bez tego czworokąt zasłony rysowany na płótno z MSAA
+    // miał szew na przekątnej — gracz bez figury widział przez czarną zasłonę
+    // „Knajpy” nitkę mapy od rogu (0, 0) sceny. Tekstura zasłony była szczelna;
+    // szew znikał też po przesunięciu sprite'a, więc to nie treść, tylko rysunek.
+    this.visionLayer.isRenderGroup = true;
     viewport.addChild(this.visionLayer);
     // The GM's own layer: drawings the players never receive, drawn over the
     // fog so the GM can plan through it — the same treatment as note pins.
