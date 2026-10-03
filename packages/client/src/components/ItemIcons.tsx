@@ -164,6 +164,11 @@ export function WeaponTypeFilter({
             onClick={() => onChange(active ? null : chip.typeId)}
           >
             <ItemIcon icon={chip.icon} />
+            {/* #71 (T8b): same sylwetki nic nie mówiły nowemu graczowi — podpis
+                typu stoi przy ikonie, nie tylko w dymku. */}
+            <span className="weapon-type-chip-label" aria-hidden>
+              {chip.label}
+            </span>
             <span className="weapon-type-chip-count">{chip.count}</span>
           </button>
         );

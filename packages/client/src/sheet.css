@@ -604,10 +604,14 @@
 }
 
 /* Dwie karty w rzędzie na szerokim oknie: żadna Rola nie ma dziś więcej niż
-   jeden panel, ale Wieloklasowość z 29b pozwala nosić kilka naraz. */
+   jeden panel, ale Wieloklasowość z 29b pozwala nosić kilka naraz. Czerwone
+   linie między kartami to tło kontenera prześwitujące przez `gap`. Do 03.10
+   była tu siatka `auto-fit`, a niepełny ostatni wiersz siatki to puste komórki
+   — przy czterech panelach w trzech kolumnach świeciły dwoma polami czerwieni
+   (#77). Flex z zawijaniem rozciąga ostatni wiersz na całą szerokość. */
 .cp-role-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--cp-gutter);
   width: 100%;
   background: var(--cp-red);
@@ -615,6 +619,7 @@
 }
 
 .cp-ability-card {
+  flex: 1 1 22rem;
   background: var(--cp-paper);
   color: var(--cp-ink);
   padding: 0.45rem 0.6rem;

@@ -15,21 +15,37 @@
  * ~12% średnicy twarzy na każdej figurze, także tej bez PW.
  */
 
-/** Szerokość obwódki właściciela; liczona tu, bo od niej zaczyna się oprawa. */
+/**
+ * Najcieńsza obwódka właściciela — figura bez PW i podgląd kadru. Z obrączką PW
+ * obwódka ma szerokość paska (`ownerRingWidth`).
+ */
 export const RING_WIDTH = 3;
+
+/**
+ * Szerokość obwódki właściciela.
+ *
+ * Od 03.10 (#71, decyzja MG) obwódka z obrączką PW jest tak gruba jak pasek
+ * i leży **na zewnątrz** niego. Do tej pory była trzypikselową kreską pod
+ * zielonym paskiem i przy stole nie dało się odróżnić figury NPC od figury
+ * gracza — wróg i sojusznik nosili tę samą zieloną obrączkę.
+ */
+export function ownerRingWidth(extent: number, hasHp: boolean): number {
+  return hasHp ? Math.max(RING_WIDTH, hpRingWidth(extent)) : RING_WIDTH;
+}
 
 /**
  * Promień **osi** obwódki właściciela (zielona/niebieska/czerwona).
  *
- * Od 12.09 (druga poprawka tego dnia, zlecenie MG) obwódka leży **poza**
- * portretem: zajmuje pas `[extent/2, extent/2 + RING_WIDTH]`, czyli wysuwa się
- * poza kratkę dokładnie o własną grubość — tę samą znaną liczbę, o której MG
- * napisał wprost. Powód jest ten sam, dla którego wcześniej tego dnia wyjechał
- * pasek PW: kreska rysowana po brzegu twarzy zjadała górne piksele portretu
- * i kadru nie dało się do nich dowieźć.
+ * Bez obrączki PW obwódka leży tuż **poza** portretem (12.09, zlecenie MG):
+ * zajmuje pas `[extent/2, extent/2 + RING_WIDTH]`. Z obrączką — od 03.10 (#71)
+ * — dopiero za paskiem i jego koszulką: kolor „czyja figura” jest najdalej od
+ * twarzy, więc czyta się pierwszy, a pasek PW dalej dotyka portretu.
  */
-export function ownerRingRadius(extent: number): number {
-  return extent / 2 + RING_WIDTH / 2;
+export function ownerRingRadius(extent: number, hasHp = false): number {
+  const inner = hasHp
+    ? hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent)
+    : extent / 2;
+  return inner + ownerRingWidth(extent, hasHp) / 2;
 }
 
 /**
@@ -60,25 +76,19 @@ export function hpRingCasing(extent: number): number {
   return Math.max(1, extent * 0.015);
 }
 
-/** Prześwit między obwódką właściciela a obrączką — żeby nie zlały się w jedną. */
-export function hpRingGap(extent: number): number {
-  return Math.max(1, extent * 0.02);
-}
-
 /**
- * Promień **osi** obrączki PW: tuż za obwódką właściciela, z prześwitem.
+ * Promień **osi** obrączki PW: tuż za portretem, za ciemną koszulką.
  *
- * Obwódka kończy się na `extent / 2 + RING_WIDTH` (od 12.09 leży poza
- * portretem), więc pasek zaczyna się dopiero za nią — inaczej zjadłby prześwit
- * i obie kreski zlałyby się w jedną grubą obręcz.
+ * Od 03.10 (#71) pasek leży bliżej twarzy niż obwódka właściciela — koszulka
+ * zaczyna się na brzegu maski portretu, a obwódka siada na zewnątrz paska.
  */
 export function hpRingRadius(extent: number): number {
-  return extent / 2 + RING_WIDTH + hpRingGap(extent) + hpRingWidth(extent) / 2;
+  return extent / 2 + hpRingCasing(extent) + hpRingWidth(extent) / 2;
 }
 
 /**
- * Dokąd sięga cała oprawa figury — obrączka z koszulką, a bez niej sama
- * obwódka właściciela.
+ * Dokąd sięga cała oprawa figury — zewnętrzna krawędź obwódki właściciela,
+ * która od 03.10 (#71) leży za obrączką PW.
  *
  * Czytają to trzy rysunki naraz i każdy z innego powodu: aureola tury musi
  * zostać *na zewnątrz* paska (leży pod nim w kolejności rysowania, więc pasek
@@ -86,8 +96,7 @@ export function hpRingRadius(extent: number): number {
  * więc wycinałby w nim dziurę), a podpis figury musi zejść *pod* niego.
  */
 export function furnitureRadius(extent: number, hasHp: boolean): number {
-  if (!hasHp) return extent / 2 + RING_WIDTH;
-  return hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent);
+  return ownerRingRadius(extent, hasHp) + ownerRingWidth(extent, hasHp) / 2;
 }
 
 /**

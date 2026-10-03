@@ -19,6 +19,7 @@ import {
   NOSE_GAP,
   nosePolygon,
   ownerRingRadius,
+  ownerRingWidth,
   portraitRadius,
 } from './token-ring.js';
 
@@ -262,6 +263,8 @@ export class TokenNode extends Container {
   private serverFacing: number | null | undefined = undefined;
   /** Colour the nose is painted, kept so a local turn need not re-derive it. */
   private ringTint = RING_NPC;
+  /** Czy figura nosi obrączkę PW — od tego zależy, gdzie leży obwódka (#71). */
+  private hasHp = false;
   /**
    * Dokąd sięga oprawa figury (`furnitureRadius`), zapamiętane z ostatniego
    * przerysowania — klin kierunku rysuje się też poza `update`, ze `showFacing`,
@@ -364,21 +367,23 @@ export class TokenNode extends Container {
     this.hitArea = new Rectangle(0, 0, extent, extent);
     this.ringTint = ringColor(token, ctx);
     const center = extent / 2;
-    const radius = ownerRingRadius(extent);
-    // Obrączka PW leży od 12.09 **poza** portretem, więc to ona, a nie obwódka
-    // właściciela, wyznacza brzeg figury dla wszystkiego, co się o ten brzeg
-    // opiera: aureoli tury i klina kierunku.
-    this.furniture = furnitureRadius(extent, hasHpRing(token));
+    this.hasHp = hasHpRing(token);
+    // Od 03.10 (#71) obwódka właściciela leży **za** obrączką PW — to ona
+    // wyznacza brzeg figury dla aureoli tury i klina kierunku.
+    const radius = ownerRingRadius(extent, this.hasHp);
+    this.furniture = furnitureRadius(extent, this.hasHp);
 
     // Only the GM ever receives hidden tokens — render them ghosted.
     this.alpha = token.hidden ? 0.5 : CONDITION_ALPHA[condition];
 
-    this.drawGround(center, radius, condition);
+    // Podstawka i cień liczone od brzegu portretu, jak przed #71 — obwódka
+    // wyjechała dalej, ale figura stoi na tej samej podstawce.
+    this.drawGround(center, extent / 2 + RING_WIDTH / 2, condition);
 
     this.ring
       .clear()
       .circle(center, center, radius)
-      .stroke({ color: this.ringTint, width: RING_WIDTH });
+      .stroke({ color: this.ringTint, width: ownerRingWidth(extent, this.hasHp) });
 
     // Whose turn it is: a soft halo outside the owner ring, so both stay
     // readable (owner colour keeps its meaning during combat).
@@ -477,7 +482,12 @@ export class TokenNode extends Container {
 
   /** Promień osi obwódki właściciela w pikselach świata — dla tej samej nakładki. */
   get ownerRingRadius(): number {
-    return ownerRingRadius(this.extentPx);
+    return ownerRingRadius(this.extentPx, this.hasHp);
+  }
+
+  /** Grubość obwódki właściciela — nakładka zaznaczenia ją pogrubia. */
+  get ownerRingWidth(): number {
+    return ownerRingWidth(this.extentPx, this.hasHp);
   }
 
   /**

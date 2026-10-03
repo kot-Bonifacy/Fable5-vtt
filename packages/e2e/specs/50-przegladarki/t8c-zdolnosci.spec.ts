@@ -180,6 +180,34 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     expect(sheet().fleet.length).toBe(2);
   });
 
+  test('#76 ✕ Taboru mieści się w karcie Moto; #77 puste pola siatki Zdolności nie świecą czerwienią', async () => {
+    const strip = card.locator('.cp-role-strip');
+    const fleetCard = strip.locator('[data-sheet-panel="fleet"]');
+    const cardBox = (await fleetCard.boundingBox())!;
+    for (const button of await fleetCard.getByRole('button', { name: /^Usuń z Taboru/ }).all()) {
+      const box = (await button.boundingBox())!;
+      expect(box.x + box.width, '✕ wystaje poza kartę Moto').toBeLessThanOrEqual(
+        cardBox.x + cardBox.width,
+      );
+    }
+    // Ostatni rząd paneli wypełnia całą szerokość pasa: między kartami zostają
+    // tylko szczeliny `gap`, żadnej pustej komórki w czerwieni (#77).
+    const rows = await strip.locator('.cp-role-cards').evaluate((grid) => {
+      const inner = grid.getBoundingClientRect();
+      const style = getComputedStyle(grid);
+      const right = inner.right - parseFloat(style.paddingRight);
+      const byTop = new Map<number, number>();
+      for (const child of Array.from(grid.children)) {
+        const box = child.getBoundingClientRect();
+        const top = Math.round(box.top);
+        byTop.set(top, Math.max(byTop.get(top) ?? 0, box.right));
+      }
+      return [...byTop.values()].map((edge) => right - edge);
+    });
+    expect(rows.length).toBeGreaterThan(1);
+    for (const gap of rows) expect(gap, 'pusty kawałek rzędu paneli').toBeLessThan(2);
+  });
+
   test('Znajomości (Fixer 4): targ przeciw drugiej stronie; nieznanego targu serwer nie przyjmie', async () => {
     const strip = card.locator('.cp-role-strip');
     await expect(strip).toContainText('Znajomości 4');
@@ -246,21 +274,17 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
         ?.name,
     ).toBe('Jan Wiśniewski');
     // Karta pracownika jest NPC-em MG („członków zespołu kontroluje MG”, s. 154) —
-    // u Kuby wiersz bez imienia (#74, test niżej), u MG z imieniem.
+    // imię niesie wpis zespołu (#74, test niżej).
     await expect(strip.locator('.team-row')).toHaveCount(1);
-    // Test Lojalności rzuca MG (zdarzenie MG) — klik gracza kończy się notką (#75).
-    await kuba.page.getByRole('button', { name: 'Czat', exact: true }).click();
-    const notes = kuba.page.locator('.chat-note');
-    const notesBefore = await notes.count();
-    await card
-      .locator('.cp-role-strip')
-      .getByRole('button', { name: /^Test Lojalności: / })
-      .click();
-    await expect(notes).toHaveCount(notesBefore + 1);
-    test.info().annotations.push({
-      type: 'Test Lojalności z ręki gracza',
-      description: (await notes.last().textContent()) ?? '',
-    });
+    // Test Lojalności rzuca MG (zdarzenie MG) — gracz nie ma guzików (#75, test
+    // niżej), a podrobione zdarzenie dostaje odmowę.
+    expect(
+      await emitAck(await kuba.socket(), 'character:team-loyalty', {
+        characterId: cardId,
+        memberId: member.characterId,
+        test: true,
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
     const since = lastMessageId();
     const gmCard = await openSheet(mg, CARD);
     await gmCard
@@ -292,14 +316,12 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
   });
 
   test('#74 Kuba widzi imię pracownika, którego sam nazwał przy zatrudnieniu', async () => {
-    test.fail(true, '#74: karta pracownika nie dochodzi do gracza, panel pisze „Pracownik”');
     await expect(card.locator('.cp-role-strip .team-row')).toContainText('Jan Wiśniewski', {
       timeout: 3_000,
     });
   });
 
   test('#75 gracz nie dostaje przycisków Lojalności, które serwer zostawia MG', async () => {
-    test.fail(true, '#75: „Test” i „+” Lojalności stoją u gracza, klik daje odmowę');
     await expect(
       card.locator('.cp-role-strip').getByRole('button', { name: /^Test Lojalności: / }),
     ).toHaveCount(0, { timeout: 3_000 });

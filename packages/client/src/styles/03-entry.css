@@ -165,16 +165,16 @@
   letter-spacing: 0.05em;
 }
 
-/* Pole bez ramki: sam nadruk i kreska pod spodem, jak w formularzu na papierze.
-   Ognisko widać po tym, że kreska robi się czerwona — to jedyne pole na ekranie,
-   więc zmiana barwy na całej jego szerokości czyta się lepiej niż systemowa
-   obwódka doklejona do plakatu. */
+/* Pole jak kratka formularza na papierze: cienka ramka w tuszu kafli imion
+   i grubsza kreska pod spodem. Do 03.10 była sama kreska — nowy gracz w T8b
+   nie poznał w niej pola (#71). Ognisko widać po tym, że ramka robi się
+   czerwona; tło zostaje puste, bo pod spodem ma być ziarno plakatu. */
 .auth-screen input[type='text'],
 .auth-screen input[type='password'] {
-  padding: 0.3rem 0;
+  padding: 0.35rem 0.55rem;
   background: none;
-  border: none;
-  border-bottom: 2px solid var(--login-ink-dim);
+  border: 1px solid var(--login-ink-dim);
+  border-bottom-width: 2px;
   border-radius: 0;
   color: var(--login-ink);
   caret-color: var(--login-red);
@@ -185,7 +185,7 @@
 
 .auth-screen input:focus {
   outline: none;
-  border-bottom-color: var(--login-red);
+  border-color: var(--login-red);
 }
 
 /* Hasło podstawione z menedżera haseł Chrome dostaje od przeglądarki własne

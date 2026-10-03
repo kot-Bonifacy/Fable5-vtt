@@ -188,7 +188,12 @@ import {
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { sceneUndoEvent } from './scene-undo.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
-import { portraitCropEvent, portraitVisibilityEvent } from './portraits.js';
+import {
+  portraitCropEvent,
+  portraitVisibilityEvent,
+  portraitWantEvent,
+  portraitWantedEvent,
+} from './portraits.js';
 import { shopEntryTierEvent, shopTierEvent } from './shop.js';
 import {
   tableDeleteEvent,
@@ -341,6 +346,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   compendiumDeleteEvent,
   portraitCropEvent,
   portraitVisibilityEvent,
+  portraitWantEvent,
+  portraitWantedEvent,
   shopTierEvent,
   shopEntryTierEvent,
   timeSetEvent,

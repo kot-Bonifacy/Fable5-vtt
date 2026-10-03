@@ -134,6 +134,21 @@ it('lists open Test requests and proposals only the GM can answer', () => {
   ]);
 });
 
+it('lists players waiting for a portrait from an exhausted pool (#68)', () => {
+  const items = gmAttentionItems({
+    ...empty,
+    portraitWanted: [{ userId: 'u7', userName: 'Kuba' }],
+  });
+  expect(items).toEqual([
+    {
+      key: 'portrait:u7',
+      kind: 'portrait',
+      text: 'Kuba czeka na portret — w puli graczy nie ma wolnego',
+      tab: 'characters',
+    },
+  ]);
+});
+
 it('a matter is news only when it was not there before the push', () => {
   const before = gmAttentionItems({ ...empty, permits: [permit({})] });
   const after = gmAttentionItems({

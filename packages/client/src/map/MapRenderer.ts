@@ -103,7 +103,6 @@ import { placeFootprints, trailFadeStrength } from './footprints.js';
 import {
   FOG_PEEP_CORE_RATIO,
   NOSE_GAP,
-  RING_WIDTH,
   fogPeepRadius,
   noseLength,
   nosePolygon,
@@ -3300,7 +3299,10 @@ export class MapRenderer {
     // oddaleniu cały portret. Sufit to ułamek samej figury, więc obwódka
     // zostaje **obwódką** na każdym zoomie.
     const extent = node.token.size * scene.grid.sizePx;
-    const width = Math.min(Math.max(RING_WIDTH * 1.8, 3.5 * k), extent * 0.14);
+    // Od 03.10 (#71) obwódka figury z PW ma szerokość paska, więc pogrubienie
+    // liczy się od niej, a sufit nigdy nie schodzi poniżej samej obwódki.
+    const ring = node.ownerRingWidth;
+    const width = Math.min(Math.max(ring * 1.8, 3.5 * k), Math.max(extent * 0.14, ring * 1.25));
     const centre = { x: node.x + half, y: node.y + half };
     const radius = node.ownerRingRadius;
     // Ciemna koszulka po obu stronach, jak pod obrączką PW: pogrubiona obwódka

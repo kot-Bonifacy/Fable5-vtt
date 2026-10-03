@@ -8,8 +8,10 @@ import {
   cpredTeamProfession,
   cpredTeamSlots,
   cpredTeamworkPerks,
+  ROLE_GM,
 } from '@vtt/shared';
 import { changeTeamLoyalty, hireTeamMember } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 
 /**
@@ -30,6 +32,9 @@ export function TeamPanel({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const characters = useCharacterStore((s) => s.characters);
   const registry = useCharacterStore((s) => s.registry);
+  // Lojalność prowadzi MG („MG musi rzucić 1k6", s. 154) — serwer odmawia
+  // graczowi `character:team-loyalty`, więc gracz nie dostaje guzików (#75).
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [hiring, setHiring] = useState<{ professionId: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [openMember, setOpenMember] = useState<string | null>(null);
@@ -69,11 +74,14 @@ export function TeamPanel({ characterId }: { characterId: string }) {
         {team.map((member) => {
           const profession = cpredTeamProfession(member.professionId);
           const sheet = characters[member.characterId] ?? null;
-          const open = openMember === member.characterId;
+          // Karta pracownika to NPC MG i do gracza nie dochodzi — imię niesie
+          // wpis zespołu (#74).
+          const name = sheet?.name ?? member.name ?? null;
+          const open = isGm && openMember === member.characterId;
           return (
             <li key={member.characterId} className="awareness-row team-row">
               <span className="awareness-name" title={profession?.duty ?? ''}>
-                {sheet?.name ?? 'Pracownik'}
+                {name ?? 'Pracownik'}
                 <small className="backup-stats"> {profession?.name ?? member.professionId}</small>
               </span>
               <span
@@ -86,26 +94,28 @@ export function TeamPanel({ characterId }: { characterId: string }) {
               >
                 Lojalność {member.loyalty}
               </span>
-              <span className="awareness-steps">
-                <button
-                  type="button"
-                  onClick={() =>
-                    void changeTeamLoyalty(characterId, member.characterId, { test: true })
-                  }
-                  title="Test Lojalności: MG rzuca 1k6 przeciw Lojalności"
-                  aria-label={`Test Lojalności: ${sheet?.name ?? 'pracownik'}`}
-                >
-                  Test
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenMember(open ? null : member.characterId)}
-                  title="Zmień Lojalność wedle tabeli z s. 154"
-                  aria-label={`Zmień Lojalność: ${sheet?.name ?? 'pracownik'}`}
-                >
-                  {open ? '−' : '+'}
-                </button>
-              </span>
+              {isGm && (
+                <span className="awareness-steps">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void changeTeamLoyalty(characterId, member.characterId, { test: true })
+                    }
+                    title="Test Lojalności: MG rzuca 1k6 przeciw Lojalności"
+                    aria-label={`Test Lojalności: ${name ?? 'pracownik'}`}
+                  >
+                    Test
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpenMember(open ? null : member.characterId)}
+                    title="Zmień Lojalność wedle tabeli z s. 154"
+                    aria-label={`Zmień Lojalność: ${name ?? 'pracownik'}`}
+                  >
+                    {open ? '−' : '+'}
+                  </button>
+                </span>
+              )}
               {open && (
                 <ul className="team-loyalty">
                   {CPRED_LOYALTY_CHANGES.map((change) => (

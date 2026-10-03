@@ -9,6 +9,7 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
   permit: '✋',
   rank: '🎲',
   ready: '📋',
+  portrait: '🖼',
   request: '❓',
   proposal: '🤖',
 };

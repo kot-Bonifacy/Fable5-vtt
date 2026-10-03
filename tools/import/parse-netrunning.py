@@ -93,8 +93,8 @@ NOISE_PATTERNS: list[tuple[str, str]] = [
     ("nagłówek tabeli ulepszeń", r"NazwaOpisCena"),
     ("stopka strony", r":\s*\d+\s*NETRUNNER"),
     ("śródtytuł DOPALACZE", r"\bDOPALACZE\b"),
-    ("śródtytuł OBROŃCY", r"\bO\s+BROŃCY\b"),
-    ("śródtytuł AGRESORZY", r"\bA\s+GRESORZY\b"),
+    ("śródtytuł OBROŃCY", r"\bO\s*BROŃCY\b"),
+    ("śródtytuł AGRESORZY", r"\bA\s*GRESORZY\b"),
     ("marginalia REDEYE", r"NAJBARDZIEJ ZNIENAWIDZONY CZARNY LOD\?.*?—\s*REDEYE"),
 ]
 

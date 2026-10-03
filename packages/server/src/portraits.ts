@@ -1,4 +1,4 @@
-import type { PortraitAssetView } from '@vtt/shared';
+import type { PortraitAssetView, PortraitWantedRow } from '@vtt/shared';
 import { clampPortraitBannerCrop, clampPortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
 
@@ -115,4 +115,50 @@ export function playerPortraitView(
   if (!view.gmOnly) return view;
   if (!used) return null;
   return { ...view, name: '' };
+}
+
+/**
+ * Kto czeka na portret, bo pula graczy jest wyczerpana (#68, 03.10.2026).
+ *
+ * W pamięci procesu, nie w bazie: to prośba „dołóż twarz", a nie stan gry —
+ * restart serwera ją gubi, a gracz, który dalej nie ma z czego wybrać, poprosi
+ * jeszcze raz tym samym przyciskiem. Listę czyści każdy nowy portret w puli
+ * graczy (wgranie albo przeniesienie z NPC), bo od tej chwili gracz ma wybór.
+ */
+const portraitWanted = new Map<string, Map<string, string>>();
+
+export function addPortraitWanted(campaignId: string, userId: string, userName: string): void {
+  let rows = portraitWanted.get(campaignId);
+  if (!rows) {
+    rows = new Map();
+    portraitWanted.set(campaignId, rows);
+  }
+  rows.set(userId, userName);
+}
+
+export function portraitWantedRows(campaignId: string): PortraitWantedRow[] {
+  return [...(portraitWanted.get(campaignId) ?? [])].map(([userId, userName]) => ({
+    userId,
+    userName,
+  }));
+}
+
+/** `true`, gdy było co czyścić — wtedy wołający rozsyła MG pustą listę. */
+export function clearPortraitWanted(campaignId: string): boolean {
+  return portraitWanted.delete(campaignId);
+}
+
+/** Czy w puli graczy zostało coś, czego ten gracz może jeszcze użyć. */
+export async function hasFreePlayerPortrait(
+  prisma: PortraitDb & Pick<PrismaClient, 'portraitAsset'>,
+  campaignId: string,
+  userId: string,
+): Promise<boolean> {
+  const assets = await prisma.portraitAsset.findMany({
+    where: { campaignId, retired: false, gmOnly: false },
+    select: { url: true },
+  });
+  if (assets.length === 0) return false;
+  const used = await usedPortraitUrls(prisma, campaignId, userId);
+  return assets.some((asset) => !used.has(asset.url));
 }

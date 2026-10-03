@@ -3,12 +3,17 @@ import type {
   PortraitCropBroadcast,
   PortraitCropPayload,
   PortraitVisibilityPayload,
+  PortraitWantedRow,
 } from '@vtt/shared';
 import { ROLE_GM, sanitizePortraitBannerCrop, sanitizePortraitCrop } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import {
+  addPortraitWanted,
+  clearPortraitWanted,
   draftPortraitUrl,
+  hasFreePlayerPortrait,
   playerPortraitView,
+  portraitWantedRows,
   toPortraitAssetView,
   usedPortraitUrls,
 } from '../portraits.js';
@@ -117,9 +122,47 @@ export const portraitVisibilityEvent = defineEvent<PortraitVisibilityPayload, Po
     });
     const view = toPortraitAssetView(saved);
     await emitPortraitAsset(deps, campaign.id, 'portrait:visibility', view);
+    // Portret przeniesiony do graczy to nowa twarz do wyboru — prośby o portret
+    // są od tej chwili spełnione (#68).
+    if (!saved.gmOnly && clearPortraitWanted(campaign.id)) emitPortraitWanted(deps, campaign.id);
     return view;
   },
 });
+
+/**
+ * „Poproś MG o portret" (#68, 03.10.2026): gracz, któremu pula nie zostawiła
+ * wolnej twarzy, staje na liście „Czeka na MG". Odmowa, gdy wolny portret
+ * jest — wtedy gracz ma wybór i prośba byłaby fałszywym alarmem.
+ */
+export const portraitWantEvent = defineEvent<void, PortraitWantedRow[]>({
+  name: 'portrait:want',
+  handler: async ({ deps, socket, user }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    if (user.role === ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    if (await hasFreePlayerPortrait(deps.ctx.prisma, campaign.id, user.id)) {
+      throw new RealtimeError('PORTRAIT_AVAILABLE');
+    }
+    addPortraitWanted(campaign.id, user.id, user.name);
+    emitPortraitWanted(deps, campaign.id);
+    return portraitWantedRows(campaign.id);
+  },
+});
+
+/** Lista próśb o portret — MG pyta o nią przy wejściu do kampanii. */
+export const portraitWantedEvent = defineEvent<void, PortraitWantedRow[]>({
+  name: 'portrait:wanted',
+  role: ROLE_GM,
+  handler: ({ socket }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    return Promise.resolve(portraitWantedRows(campaign.id));
+  },
+});
+
+function emitPortraitWanted(deps: RealtimeDeps, campaignId: string): void {
+  deps.io.to(gmRoom(campaignId)).emit('portrait:wanted-sync', portraitWantedRows(campaignId));
+}
 
 /**
  * Rozgłasza wiersz puli — MG w całości, gracze w wersji `playerPortraitView`.

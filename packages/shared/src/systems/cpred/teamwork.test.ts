@@ -164,6 +164,15 @@ describe('lista zespołu na karcie Korpo', () => {
     expect(team[0]).toEqual(member);
   });
 
+  it('zachowuje imię pracownika, przycięte; puste pomija (#74)', () => {
+    const [named] = readCpredTeam([{ ...member, name: '  Jan Wiśniewski  ' }]);
+    expect(named).toEqual({ ...member, name: 'Jan Wiśniewski' });
+    const [blank] = readCpredTeam([{ ...member, name: '   ' }]);
+    expect(blank).toEqual(member);
+    const [long] = readCpredTeam([{ ...member, name: 'x'.repeat(200) }]);
+    expect(long?.name).toHaveLength(64);
+  });
+
   it('nigdy nie zwraca więcej wierszy, niż zespół może mieć', () => {
     const many = Array.from({ length: 8 }, (_unused, index) => ({
       characterId: `c${index}`,

@@ -15,6 +15,7 @@ import type {
   StateSyncPayload,
   PortraitAssetView,
   PortraitCropBroadcast,
+  PortraitWantedRow,
   TokenAimBroadcast,
   TokenAssetView,
   TokenDeleteBroadcast,
@@ -592,6 +593,75 @@ describe('portrait pool', () => {
         await emitAck(gmConn.socket, 'portrait:visibility', { assetId: npc.id, gmOnly: 'tak' }),
       ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
     } finally {
+      gmConn.socket.close();
+      playerConn.socket.close();
+    }
+  });
+
+  /**
+   * #68 (03.10.2026): gracz bez wolnej twarzy w puli prosi MG o portret,
+   * MG widzi prośbę, a nowy portret w puli graczy ją zdejmuje.
+   */
+  it('lets a player ask for a portrait only when the pool has none left', async () => {
+    const open = await built.prisma.portraitAsset.findMany({
+      where: { retired: false, gmOnly: false },
+      select: { id: true },
+    });
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    try {
+      if (open.length > 0) {
+        expect(await emitAck(playerConn.socket, 'portrait:want', undefined)).toEqual({
+          ok: false,
+          error: 'PORTRAIT_AVAILABLE',
+        });
+      }
+      await built.prisma.portraitAsset.updateMany({
+        where: { id: { in: open.map((row) => row.id) } },
+        data: { retired: true },
+      });
+      const heard = waitFor<PortraitWantedRow[]>(gmConn.socket, 'portrait:wanted-sync');
+      const asked = await emitAck<PortraitWantedRow[]>(
+        playerConn.socket,
+        'portrait:want',
+        undefined,
+      );
+      expect(asked.ok).toBe(true);
+      const rows = await heard;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.userName).toBeTruthy();
+      expect(await emitAck(gmConn.socket, 'portrait:wanted', undefined)).toEqual({
+        ok: true,
+        data: rows,
+      });
+      expect(await emitAck(gmConn.socket, 'portrait:want', undefined)).toMatchObject({
+        ok: false,
+        error: 'FORBIDDEN',
+      });
+
+      const { payload, headers } = multipartBody(
+        'Nowa twarz.png',
+        await sharp({ create: { width: 256, height: 256, channels: 3, background: 'red' } })
+          .png()
+          .toBuffer(),
+      );
+      const res = await built.app.inject({
+        method: 'POST',
+        url: '/api/uploads/portrait-assets',
+        headers: { ...headers, cookie: gmCookie },
+        payload,
+      });
+      expect(res.statusCode).toBe(201);
+      expect(await emitAck(gmConn.socket, 'portrait:wanted', undefined)).toEqual({
+        ok: true,
+        data: [],
+      });
+    } finally {
+      await built.prisma.portraitAsset.updateMany({
+        where: { id: { in: open.map((row) => row.id) } },
+        data: { retired: false },
+      });
       gmConn.socket.close();
       playerConn.socket.close();
     }

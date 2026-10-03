@@ -778,6 +778,17 @@ describe('Zespół Korpo', () => {
     expect(third).toEqual({ ok: false, error: 'TEAM_FULL' });
   });
 
+  it('wpis zespołu niesie imię pracownika i idzie za zmianą nazwy karty (#74)', async () => {
+    const row = (await sheetOf(execId)).team[0]!;
+    expect(row.name).toBe('Cyra');
+    const renamed = await emitAck(gm, 'character:update', {
+      characterId: row.characterId,
+      patch: { name: 'Cyra Nowak' },
+    });
+    expect(renamed.ok).toBe(true);
+    expect((await sheetOf(execId)).team[0]!.name).toBe('Cyra Nowak');
+  });
+
   it('Test Lojalności rzuca kością i niczego nie zmienia', async () => {
     const before = (await sheetOf(execId)).team[0]!;
     const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');

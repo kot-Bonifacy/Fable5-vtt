@@ -728,7 +728,17 @@ function RoleStep({
       <fieldset className="creator-methods">
         <legend>Metoda tworzenia</legend>
         {CPRED_CREATION_METHODS.map((method) => (
-          <label key={method} className="creator-method">
+          <label
+            key={method}
+            className={`creator-method ${
+              methodLocked && draft.method !== method ? 'creator-method--locked' : ''
+            }`}
+            title={
+              methodLocked && draft.method !== method
+                ? 'Metodę ustalił MG, udzielając zgody na postać.'
+                : undefined
+            }
+          >
             <input
               type="radio"
               name="creation-method"
@@ -774,12 +784,18 @@ function RoleStep({
                 if (!chosen) change({ roleId: role.id });
               }}
             >
-              <strong>{definition?.name ?? role.id}</strong>
+              <strong className="creator-role-name">
+                {definition?.name ?? role.id}
+                {chosen && <span className="creator-role-check">✓ wybrana</span>}
+              </strong>
               {definition?.summary && (
                 <span className="creator-role-summary">{definition.summary}</span>
               )}
               <span className="creator-role-ability">
-                Zdolność Specjalna: {definition?.ability ?? '—'} {data.roleAbilityStart}
+                Zdolność Specjalna: {/* #71: „Zmysł Walki 4” nie łamie się przed liczbą. */}
+                <span className="creator-role-ability-name">
+                  {definition?.ability ?? '—'} {data.roleAbilityStart}
+                </span>
               </span>
               <span className="creator-role-skills">
                 {role.skills.length} umiejętności na liście Roli
@@ -1635,8 +1651,17 @@ function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
             🎲 Rzuć brakujące
           </button>
         )}
-        <span className={`creator-pool ${missing > 0 ? '' : 'creator-pool--done'}`}>
-          {missing === 0 ? 'Ścieżka wypełniona' : `${missing} bez odpowiedzi`}
+        {/* #71 (T8b): pogrubiony licznik wyglądał jak wymóg, a wymagany jest
+            tylko język — reszta Ścieżki to opowieść, nie warunek utworzenia. */}
+        <span
+          className={`creator-pool ${missing > 0 ? 'creator-pool--optional' : 'creator-pool--done'}`}
+          title={
+            missing > 0
+              ? 'Wymagany jest tylko język ojczysty. Resztę Ścieżki Życia można dopisać później na karcie.'
+              : undefined
+          }
+        >
+          {missing === 0 ? 'Ścieżka wypełniona' : `Nieobowiązkowe: ${missing} bez odpowiedzi`}
         </span>
         <span className="creator-hint">
           {inCup && cup.chain
@@ -2520,7 +2545,7 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
           data-creation-field="name"
           maxLength={64}
           value={nameField.text}
-          placeholder="Zgrzyt"
+          placeholder="np. Zgrzyt"
           onFocus={nameField.onFocus}
           onBlur={nameField.onBlur}
           onChange={(event) => {
@@ -3115,6 +3140,10 @@ function SummaryIssues({
 
 /** Folds „Cecha X nie została ustalona" ×N into one line naming the stats. */
 function summaryLines(issues: CpredValidationIssue[]): CpredValidationIssue[] {
+  return groupBasicSkills(groupUnsetStats(issues));
+}
+
+function groupUnsetStats(issues: CpredValidationIssue[]): CpredValidationIssue[] {
   const unset = issues.filter(
     (issue) => issue.field.startsWith('stats.') && issue.message.includes('nie została ustalona'),
   );
@@ -3127,6 +3156,27 @@ function summaryLines(issues: CpredValidationIssue[]): CpredValidationIssue[] {
     { field: unset[0]!.field, message: `Nieustalone Cechy (${unset.length}): ${names}.` },
     ...issues.filter((issue) => !unset.includes(issue)),
   ];
+}
+
+const BASIC_SKILL_ISSUE = /^Umiejętność podstawowa (.+) musi być co najmniej na poziomie (\d+)\.$/;
+
+/**
+ * #71 (T8b): przed wyborem Roli każda umiejętność podstawowa była osobnym
+ * brakiem, więc licznik pokazywał 17, a po Roli (szablon wpisuje podstawowe)
+ * spadał do 4. Jedna linia, jak przy Cechach — liczy się sprawa, nie pole.
+ */
+function groupBasicSkills(issues: CpredValidationIssue[]): CpredValidationIssue[] {
+  const low = issues.filter((issue) => BASIC_SKILL_ISSUE.test(issue.message));
+  if (low.length < 2) return issues;
+  const names = low.map((issue) => BASIC_SKILL_ISSUE.exec(issue.message)![1]).join(', ');
+  const min = BASIC_SKILL_ISSUE.exec(low[0]!.message)![2];
+  const line = {
+    field: low[0]!.field,
+    message: `Umiejętności podstawowe poniżej poziomu ${min} (${low.length}): ${names}.`,
+  };
+  return issues.flatMap((issue) =>
+    issue === low[0] ? [line] : low.includes(issue) ? [] : [issue],
+  );
 }
 
 /** What the Lifepath step collected, in one paragraph. */

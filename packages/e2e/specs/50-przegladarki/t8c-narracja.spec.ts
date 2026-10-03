@@ -59,9 +59,8 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
     await fill(0, 1, 5, 'Stary kawałek Samuraia, ktoś podkręca głośność.');
     await fill(1, 6, 10, `Reklama Kiroshi przerywa muzykę. ${secret}`);
     await expect(form.locator('.table-issues')).toHaveCount(0);
-    // #72: pole treści z fokusem ma 7rem i kurczy się przy kliknięciu obok — Tab
-    // zdejmuje fokus wcześniej, żeby „Dodaj tabelę” nie uciekło spod kursora.
-    await rows.nth(1).locator('textarea').press('Tab');
+    // Klik prosto z pola treści — od poprawki #72 pole zwija się dopiero po
+    // puszczeniu przycisku, więc „Dodaj tabelę” nie ucieka spod kursora.
     await form.getByRole('button', { name: 'Dodaj tabelę' }).click();
     await expect(form).toBeHidden();
     await expect
@@ -129,15 +128,14 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
   });
 
   test('#73 gracz po /tab dostaje zdanie o tabelach, nie o mówieniu za NPC-a', async () => {
-    test.fail(true, '#73: odmowa /tab mapuje się na zdanie „Tylko MG może mówić w imieniu NPC-a.”');
     await say(marek, `/tab ${TABLE}`);
-    await expect(chatLine(marek.page, 'Tabele losowe są narzędziem MG.')).toBeVisible({
+    // `.last()`: ta sama notka padła już krok wyżej, przy odmowie `/tab`.
+    await expect(chatLine(marek.page, 'Tabele losowe są narzędziem MG.').last()).toBeVisible({
       timeout: 3_000,
     });
   });
 
   test('#72 „Dodaj tabelę” zaraz po wpisaniu treści wiersza zapisuje tabelę za pierwszym klikiem', async () => {
-    test.fail(true, '#72: kurczące się pole treści przesuwa przycisk spod kursora');
     const page = mg.page;
     await page.getByRole('button', { name: 'Tabele', exact: true }).click();
     await page.getByRole('button', { name: '+ Nowa tabela' }).click();

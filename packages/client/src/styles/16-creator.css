@@ -208,9 +208,38 @@
   border-color: var(--text-dim);
 }
 
+/* #71 (T8b): sama cienka ramka ginęła wśród jedenastu kart — wybrana Rola ma
+   grubą czerwień, przyciemnione tło i znacznik „✓ wybrana” przy nazwie. */
 .creator-role--chosen {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+
+.creator-role-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.5rem;
+  width: 100%;
+}
+
+.creator-role-check {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.creator-role-ability-name {
+  white-space: nowrap;
+}
+
+/* Wyłączone radio metody (MG ustalił ją przy zgodzie) wyglądało na aktywne. */
+.creator-method--locked {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .creator-role-ability,
@@ -258,6 +287,13 @@
 
 .creator-pool--done {
   color: var(--ok-ink);
+}
+
+/* Licznik tego, co można zostawić puste (Ścieżka Życia poza językiem, #71). */
+.creator-pool--optional {
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--text-dim);
 }
 
 /* Tabela na szerokość treści, nie okna (naprawa 2c): przy 1180 px pole
@@ -1670,4 +1706,41 @@
 .creator-basket-name .item-icon {
   margin-right: 0.3rem;
   vertical-align: -0.2rem;
+}
+
+/* #68 (03.10.2026): gracz, któremu pula nie zostawiła wolnej twarzy. Okno nie
+   trzyma 88vh na dwa szare kafle — rośnie z treścią, kafle są mniejsze, a na
+   górze stoi zdanie i „Poproś MG o portret”. */
+.portrait-gallery--exhausted {
+  height: auto;
+  width: min(720px, 94vw);
+}
+
+.portrait-gallery--exhausted .portrait-pool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(110px, 100%), 1fr));
+}
+
+.portrait-gallery--exhausted .portrait-pool-pick img {
+  height: 120px;
+}
+
+.portrait-pool-exhausted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.portrait-pool-exhausted .portrait-pool-empty {
+  flex: 1 1 20rem;
+  margin: 0;
+}
+
+/* #71 (T8b): podpowiedź w polu ksywy („np. Zgrzyt”) wyglądała jak wpisana
+   wartość — w kreatorze podpowiedzi są przygaszone i pochylone. */
+.creator-window input::placeholder,
+.creator-window textarea::placeholder {
+  color: var(--text-dim);
+  opacity: 0.75;
+  font-style: italic;
 }

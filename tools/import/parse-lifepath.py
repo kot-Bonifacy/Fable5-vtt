@@ -180,6 +180,11 @@ JUNK_PATTERNS: list[re.Pattern[str]] = [
     # Marginal notes pointing at another page, and the chapter's named sidebars.
     re.compile(r"Więcej (?:informacji|o )|Sieciowaniu poświęcono|[Pp]atrz str\."),
     re.compile(r"Trauma Team:|Nocny Market:|Przykładowe (?:watahy|grupy)|Ścieżki życia ról"),
+    # Section headings of the chapter in sentence case, which the display-type
+    # pattern above cannot see: „…10 Nikt Motywacja i relacje z innymi W każdej
+    # kolumnie…" and „…celem twojego życia Środowisko Jak wyglądała…" (#66,
+    # 03.10.2026 — both glued onto the last row of the table above them).
+    re.compile(r"Motywacja i relacje z innymi|\bŚrodowisko\b"),
 ]
 
 

@@ -13,6 +13,7 @@ import {
   noseLength,
   nosePolygon,
   ownerRingRadius,
+  ownerRingWidth,
   portraitRadius,
 } from './map/token-ring.js';
 
@@ -32,29 +33,20 @@ import {
 const GRIDS = [47, 72, 100];
 
 describe('obrączka PW leży poza portretem', () => {
-  it('wewnętrzna krawędź paska zaczyna się za obwódką właściciela', () => {
+  it('wewnętrzna krawędź koszulki paska zaczyna się na brzegu portretu', () => {
     for (const extent of GRIDS) {
-      const inner = hpRingRadius(extent) - hpRingWidth(extent) / 2;
-      // Koło portretu sięga `extent / 2`, obwódka kończy się o własną grubość
-      // dalej (od 12.09 leży poza portretem). Pasek zaczyna się za nią.
-      expect(inner, `kratka ${extent}px`).toBeGreaterThan(extent / 2 + RING_WIDTH);
+      const inner = hpRingRadius(extent) - hpRingWidth(extent) / 2 - hpRingCasing(extent);
+      // Od 03.10 (#71) pasek leży tuż za twarzą, a obwódka właściciela za nim.
+      expect(inner, `kratka ${extent}px`).toBeCloseTo(portraitRadius(extent), 6);
     }
   });
 
-  it('pasek nie dotyka obwódki właściciela — zostaje prześwit', () => {
-    for (const extent of GRIDS) {
-      const inner = hpRingRadius(extent) - hpRingWidth(extent) / 2;
-      const ownerRingOuter = extent / 2 + RING_WIDTH;
-      expect(inner - ownerRingOuter, `kratka ${extent}px`).toBeGreaterThanOrEqual(1);
-    }
-  });
-
-  it('figura wystaje poza kratkę najwyżej o oprawę paska', () => {
-    for (const extent of GRIDS) {
+  it('figura wystaje poza kratkę najwyżej o oprawę paska i obwódki', () => {
+    for (const extent of [36, ...GRIDS]) {
       const overflow = furnitureRadius(extent, true) - extent / 2;
-      // Świadoma cena dwóch decyzji MG z 12.09 (pasek PW, a potem obwódka, poza
-      // portretem) — ale ograniczona: trzecia część kratki to już nachodzenie
-      // na sąsiadów w sposób, którego nie da się rozczytać.
+      // Świadoma cena decyzji MG z 12.09 (pasek PW poza portretem) i z 03.10
+      // (gruba obwódka za paskiem) — ale ograniczona: trzecia część kratki to
+      // już nachodzenie na sąsiadów w sposób, którego nie da się rozczytać.
       expect(overflow, `kratka ${extent}px`).toBeGreaterThan(0);
       expect(overflow / extent, `kratka ${extent}px`).toBeLessThan(1 / 3);
     }
@@ -63,43 +55,31 @@ describe('obrączka PW leży poza portretem', () => {
 
 /**
  * Pytanie MG z 12.09, zadane wprost: „obrączka PW portretu nie zasłania, ale
- * czy nie robi tego okrąg **wewnętrzny**?".
- *
- * Okręgów wokół figury jest cztery i każdy rysuje kto inny, więc odpowiedź
- * łatwo dać na oko i się pomylić. Tu jest policzona:
- *
- *  1. **obwódka właściciela** (`TokenNode.ring`, kolor mówi „czyja figura") —
- *     jedyna, która leży tak blisko portretu, że mogłaby go zjeść;
- *  2. **obrączka PW** — poza kratką od 12.09;
- *  3. **obrączka zaznaczenia** i **pierścień grupy** (`MapRenderer`, warstwa
- *     nakładki) — liczone od `node.outerRadius`, więc też poza wszystkim.
+ * czy nie robi tego okrąg **wewnętrzny**?". Od 03.10 (#71) okręgi idą od twarzy
+ * w kolejności: koszulka i pasek PW, obwódka właściciela (kolor „czyja
+ * figura”), na końcu nakładki `MapRenderer` liczone od `node.outerRadius`.
  */
 describe('żaden okrąg nie wchodzi na portret', () => {
-  it('obwódka właściciela kończy się tam, gdzie zaczyna portret', () => {
+  it('bez PW obwódka właściciela zaczyna się tam, gdzie kończy portret', () => {
     for (const extent of GRIDS) {
-      const ringInner = ownerRingRadius(extent) - RING_WIDTH / 2;
-      // Kreska obwódki zaczyna się **dokładnie** na krawędzi maski portretu:
-      // ani piksela na twarzy, ani piksela przerwy między nimi.
+      const ringInner = ownerRingRadius(extent) - ownerRingWidth(extent, false) / 2;
       expect(ringInner, `kratka ${extent}px`).toBeCloseTo(portraitRadius(extent), 6);
+      expect(ownerRingWidth(extent, false)).toBe(RING_WIDTH);
     }
   });
 
-  it('portret zajmuje całą kratkę, a obwódka wystaje o swoją grubość', () => {
+  it('z PW obwódka właściciela leży za paskiem i jego koszulką (#71)', () => {
     for (const extent of GRIDS) {
-      // To jest zlecenie MG z 12.09 wypisane liczbami: „znana liczba pikseli"
-      // obwódki wysuwa się poza grafikę portretu dokładnie o tę grubość.
-      expect(portraitRadius(extent)).toBeCloseTo(extent / 2, 6);
-      expect(ownerRingRadius(extent) + RING_WIDTH / 2).toBeCloseTo(extent / 2 + RING_WIDTH, 6);
-      expect(portraitRadius(extent)).toBeLessThan(ownerRingRadius(extent));
+      const hpOuter = hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent);
+      const ownerInner = ownerRingRadius(extent, true) - ownerRingWidth(extent, true) / 2;
+      expect(ownerInner, `kratka ${extent}px`).toBeCloseTo(hpOuter, 6);
     }
   });
 
-  it('obrączka PW nie dotyka nawet obwódki, nie mówiąc o portrecie', () => {
+  it('z PW obwódka jest co najmniej tak gruba jak pasek — czyta się z daleka (#71)', () => {
     for (const extent of GRIDS) {
-      const hpInner = hpRingRadius(extent) - hpRingWidth(extent) / 2;
-      expect(hpInner, `kratka ${extent}px`).toBeGreaterThan(
-        ownerRingRadius(extent) + RING_WIDTH / 2,
-      );
+      expect(ownerRingWidth(extent, true)).toBeGreaterThanOrEqual(hpRingWidth(extent));
+      expect(ownerRingWidth(extent, true)).toBeGreaterThan(RING_WIDTH);
     }
   });
 });
@@ -154,13 +134,15 @@ describe('oprawa figury', () => {
     }
   });
 
-  it('z PW obejmuje pasek razem z koszulką', () => {
+  it('z PW kończy się na zewnętrznej krawędzi obwódki, za paskiem', () => {
     for (const extent of GRIDS) {
-      const outer = hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent);
+      const outer = ownerRingRadius(extent, true) + ownerRingWidth(extent, true) / 2;
       expect(furnitureRadius(extent, true)).toBeCloseTo(outer, 6);
       // Aureola tury i klin kierunku opierają się o tę liczbę; gdyby wypadła
       // wewnątrz paska, pasek zamalowałby aureolę, a klin wyciąłby w nim dziurę.
-      expect(furnitureRadius(extent, true)).toBeGreaterThan(hpRingRadius(extent));
+      expect(furnitureRadius(extent, true)).toBeGreaterThan(
+        hpRingRadius(extent) + hpRingWidth(extent) / 2 + hpRingCasing(extent),
+      );
     }
   });
 });

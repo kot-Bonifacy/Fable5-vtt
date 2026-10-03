@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PortraitAssetView, PortraitCrop } from '@vtt/shared';
+import type { PortraitAssetView, PortraitCrop, PortraitWantedRow } from '@vtt/shared';
 import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import { apiGet } from '../api.js';
 
@@ -27,6 +27,12 @@ interface PortraitStoreState {
   loaded: boolean;
   /** Który portret MG właśnie kadruje; `null` = okno zamknięte. */
   cropping: string | null;
+  /**
+   * Gracze, którzy poprosili o portret przy wyczerpanej puli (#68) — tylko u
+   * MG, źródło sprawy w „Czeka na MG”.
+   */
+  wanted: PortraitWantedRow[];
+  setWanted: (rows: PortraitWantedRow[]) => void;
 
   load: (force?: boolean) => Promise<void>;
   applyUpsert: (asset: PortraitAssetView) => void;
@@ -74,6 +80,9 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
   crops: new Map(),
   loaded: false,
   cropping: null,
+  wanted: [],
+
+  setWanted: (wanted) => set({ wanted }),
 
   load: (force = false) => {
     if (!force && (get().loaded || inFlight)) return inFlight ?? Promise.resolve();
@@ -142,6 +151,6 @@ export const usePortraitStore = create<PortraitStoreState>((set, get) => ({
     requestVersion += 1;
     inFlight = null;
     noticed.clear();
-    set({ assets: [], crops: new Map(), loaded: false, cropping: null });
+    set({ assets: [], crops: new Map(), loaded: false, cropping: null, wanted: [] });
   },
 }));

@@ -297,7 +297,7 @@ export const characterTeamHireEvent = defineEvent<CharacterTeamHirePayload, Char
 
     return saveRoster(deps, campaignId, employer, data, [
       ...team,
-      { characterId: member.id, professionId: profession.id, loyalty },
+      { characterId: member.id, professionId: profession.id, loyalty, name },
     ]);
   },
 });
@@ -330,7 +330,7 @@ export const characterTeamLoyaltyEvent = defineEvent<CharacterTeamLoyaltyPayload
     const employee = await deps.ctx.prisma.character.findUnique({
       where: { id: member.characterId },
     });
-    const memberName = employee?.name ?? describeTeamMember(member);
+    const memberName = employee?.name ?? member.name ?? describeTeamMember(member);
 
     if (payload?.dismiss === true) {
       // The sheet stays: a person the Korpo stopped employing is still a person,
@@ -417,6 +417,40 @@ export async function dropFromTeams(
         data: JSON.stringify(
           mergeCharacterData(data, {
             team: data.team.filter((row) => row.characterId !== memberId),
+          }),
+        ),
+      },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  }
+}
+
+/**
+ * Keeps the name a roster row carries in step with the employee's sheet (#74).
+ *
+ * The sheet is a GM's NPC and never reaches the Korpo's player, so the row's
+ * copy is all the player sees; a GM who renames „Jan" to „Janek" would
+ * otherwise leave the player's panel on the old name for good. Swept over the
+ * campaign for the same reason `dropFromTeams` is.
+ */
+export async function syncTeamMemberName(
+  deps: RealtimeDeps,
+  campaignId: string,
+  memberId: string,
+  name: string,
+): Promise<void> {
+  const sheets = await deps.ctx.prisma.character.findMany({ where: { campaignId } });
+  for (const sheet of sheets) {
+    if (sheet.id === memberId) continue;
+    const data = parseCharacterData(sheet.data, deps.ctx.cpred);
+    const row = data.team.find((member) => member.characterId === memberId);
+    if (!row || row.name === name) continue;
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: sheet.id },
+      data: {
+        data: JSON.stringify(
+          mergeCharacterData(data, {
+            team: data.team.map((member) => (member === row ? { ...member, name } : member)),
           }),
         ),
       },

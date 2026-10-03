@@ -239,6 +239,7 @@ import type {
   GameTimeBroadcast,
   GameTimeStepId,
   PortraitAssetView,
+  PortraitWantedRow,
   PortraitCrop,
   PortraitCropBroadcast,
   ShopEntryTierBroadcast,
@@ -620,6 +621,10 @@ export function connectSocket(userId: string): Socket {
   onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>
     watchGmAttention(() => useCreationRankStore.getState().replacePermits(rows)),
   );
+  // #68: gracz poprosił o portret, a pula graczy jest wyczerpana.
+  socket.on('portrait:wanted-sync', (rows: PortraitWantedRow[]) =>
+    watchGmAttention(() => usePortraitStore.getState().setWanted(rows)),
+  );
   // 24.09: the GM changed the terms of my draft — read it again from the server.
   onPresented('creation:terms-changed', (push: { draftId: string }) => {
     const store = useCreationStore.getState();
@@ -712,6 +717,9 @@ export function connectSocket(userId: string): Socket {
       );
       void listCreationPermits().then((ack) =>
         useCreationRankStore.getState().replacePermits(ack.ok ? (ack.data ?? []) : []),
+      );
+      void emitSceneAck<PortraitWantedRow[]>('portrait:wanted', undefined).then((ack) =>
+        usePortraitStore.getState().setWanted(ack.ok ? (ack.data ?? []) : []),
       );
     } else {
       useCreationRankStore.getState().replace([]);
@@ -1374,8 +1382,15 @@ export function sendChatInput(text: string, gesture?: RollGesture): void {
     return;
   }
   const payload: ChatSendPayload = parsed.kind === 'roll' && gesture ? { text, gesture } : { text };
+  // #73 — `/tab` jedzie przez `chat:send`, ale jego odmowy (FORBIDDEN, brak
+  // tabeli) mówią o tabelach, nie o `/jako`.
+  const tableCommand = parsed.kind === 'rolltable' || parsed.kind === 'invalid-rolltable';
+  const errorText = (code: string): string =>
+    tableCommand && (code === 'FORBIDDEN' || code.startsWith('TABLE_'))
+      ? randomTableErrorText(code)
+      : chatErrorText(code);
   socket?.emit('chat:send', payload, (ack: SocketAck) => {
-    if (!ack.ok) useChatStore.getState().addNote(chatErrorText(ack.error));
+    if (!ack.ok) useChatStore.getState().addNote(errorText(ack.error));
   });
 }
 
@@ -3730,6 +3745,10 @@ export function teamErrorText(code: string): string {
       return 'Tej osoby nie ma w zespole.';
     case 'INVALID_NAME':
       return 'Pracownik potrzebuje imienia.';
+    // #75 — jedyna odmowa FORBIDDEN zespołu to Lojalność, którą prowadzi MG;
+    // `combatErrorText` powiedziałby o turze.
+    case 'FORBIDDEN':
+      return 'Lojalność zespołu prowadzi MG.';
     default:
       return combatErrorText(code);
   }
@@ -4369,6 +4388,14 @@ function applyPortraitBroadcast(broadcast: PortraitCropBroadcast): void {
 }
 
 /** MG: przenosi portret między pulą graczy a portretami NPC (23.09). */
+/**
+ * „Poproś MG o portret" (#68) — gracz, któremu pula nie zostawiła wolnej
+ * twarzy. `PORTRAIT_AVAILABLE`: w międzyczasie coś się zwolniło.
+ */
+export function requestPortrait(): Promise<SocketAck<PortraitWantedRow[]>> {
+  return emitSceneAck<PortraitWantedRow[]>('portrait:want', undefined);
+}
+
 export function setPortraitGmOnly(
   assetId: string,
   gmOnly: boolean,

@@ -59,6 +59,44 @@ function parsedRows(rows: DraftRow[]): { min: number; max: number }[] {
     .filter((row) => Number.isFinite(row.min) && Number.isFinite(row.max));
 }
 
+/**
+ * Czy przycisk myszy (palec, rysik) jest teraz wciśnięty — liczone od
+ * pierwszego użycia, nasłuch na `window` w fazie przechwytywania.
+ */
+let pointerHeld = false;
+let pointerWatched = false;
+
+function watchPointer(): void {
+  if (pointerWatched || typeof window === 'undefined') return;
+  pointerWatched = true;
+  window.addEventListener('pointerdown', () => (pointerHeld = true), true);
+  const release = (): void => {
+    pointerHeld = false;
+  };
+  window.addEventListener('pointerup', release, true);
+  window.addEventListener('pointercancel', release, true);
+}
+
+/**
+ * #72: pole treści zwija się dopiero po puszczeniu przycisku. Fokus znika już
+ * przy mousedown, a zwinięcie wtedy przesuwało wszystko pod polem o ~5rem —
+ * mouseup trafiał w inny element i klik w „Dodaj tabelę" przepadał bez słowa.
+ */
+function collapseAfterPointer(collapse: () => void): void {
+  if (!pointerHeld) {
+    collapse();
+    return;
+  }
+  const done = (): void => {
+    window.removeEventListener('pointerup', done);
+    window.removeEventListener('pointercancel', done);
+    // Po `click`, który przychodzi zaraz za `pointerup`.
+    setTimeout(collapse, 0);
+  };
+  window.addEventListener('pointerup', done);
+  window.addEventListener('pointercancel', done);
+}
+
 function TableForm({
   table,
   others,
@@ -76,6 +114,8 @@ function TableForm({
   const [rows, setRows] = useState<DraftRow[]>(() => toDraftRows(table));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openText, setOpenText] = useState<number | null>(null);
+  useEffect(watchPointer, []);
 
   const parsedFormula = useMemo(() => parseRollNotation(formula), [formula]);
   const span = useMemo(
@@ -237,11 +277,16 @@ function TableForm({
               onChange={(event) => patchRow(index, { max: event.target.value })}
             />
             <textarea
-              className="table-row-text"
+              className={
+                openText === index ? 'table-row-text table-row-text--open' : 'table-row-text'
+              }
               rows={1}
               maxLength={RANDOM_TABLE_ROW_TEXT_MAX_LENGTH}
               value={row.text}
               placeholder="Co się dzieje"
+              aria-label="Treść wiersza"
+              onFocus={() => setOpenText(index)}
+              onBlur={() => collapseAfterPointer(() => setOpenText(null))}
               onChange={(event) => patchRow(index, { text: event.target.value })}
             />
             <select

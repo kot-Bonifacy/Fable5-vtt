@@ -68,25 +68,66 @@ function normalizeChars(s) {
 // ─────────────────────────── 2. słownik korpusu ───────────────────────────
 const flat = normalizeChars(raw);
 const VOCAB = new Set();
+// Wyrazy, które korpus choć raz pisze małymi literami. Ułamki rozbitych
+// nagłówków („NSTRUKCJA", „TRZYMYWANIE") są w `VOCAB`, ale tutaj nie — prawdziwy
+// wyraz trafia się też w zwykłym zdaniu (#78).
+const LOWER_VOCAB = new Set();
 const HYPH = new Map();
 for (const w of flat.split(/[^\p{L}-]+/u)) {
   if (!w) continue;
   const lw = w.toLowerCase();
   if (w.includes('-')) HYPH.set(lw, (HYPH.get(lw) || 0) + 1);
-  else if (w.length >= 2) VOCAB.add(lw);
+  else if (w.length >= 2) {
+    VOCAB.add(lw);
+    if (w === lw) LOWER_VOCAB.add(lw);
+  }
 }
 stats.slownik = VOCAB.size;
 
 // ─────────────────────────── 3. rozstrzelone napisy ozdobne ───────────────────────────
 let spacedRemoved = 0;
+// Inicjał nagłówka bywa w zrzucie odklejony od reszty wyrazu, a napis
+// rozstrzelony (zakładka rozdziału, zawsze małymi literami) stoi tuż przed nim:
+// „…z a w i e d z i e R ANY I ŚMIERĆ", „…z e s p o l o w a I M WIĘCEJ LUDZI".
+// Do 03.10.2026 cały ciąg szedł do kosza i nagłówek tracił pierwsze litery
+// („ANY I ŚMIERĆ", #78). Teraz wielkie litery z końca ciągu małych liter,
+// za którymi stoi wyraz wersalikami, zostają: jedna — osobno, bo sklei ją
+// etap kapitalików („R ANY" → „RANY"), dwie i więcej — jako wyraz („IM").
+// Litera, która z wyrazem za nią niczego nie tworzy („O PROGR."), idzie do kosza.
+// Ciąg pisany w całości wielkimi (kredyt „A D R I A N M A R C", „S I Ł A
+// W O L I") idzie do kosza w całości, jak dotąd.
 function dropLetterSpaced(s) {
-  return s.replace(/(?:(?<=^|\s)\p{L} ){7,}\p{L}(?=\s|$)/gu, () => {
+  return s.replace(/(?:(?<=^|\s)\p{L} ){7,}\p{L}(?=\s|$)/gu, (full, offset, all) => {
     spacedRemoved++;
+    const letters = full.split(' ');
+    let cut = letters.length;
+    while (cut > 0 && /\p{Lu}/u.test(letters[cut - 1])) cut--;
+    const head = letters.slice(0, cut);
+    const tail = letters.slice(cut);
+    const after = all.slice(offset + full.length);
+    const next = /^ (\p{Lu}{2,})/u.exec(after);
+    if (tail.length > 0 && head.length >= 7 && head.every((l) => /\p{Ll}/u.test(l)) && next) {
+      if (tail.length === 1 && capsJoinable(tail[0], next[1])) return ' ' + tail[0];
+      if (tail.length > 1 && VOCAB.has(tail.join('').toLowerCase())) return ' ' + tail.join('');
+    }
     return ' ';
   });
 }
 
 // ─────────────────────────── 4. kapitaliki / inicjały ───────────────────────────
+/**
+ * Czy odklejona litera i wyraz wersalikami za nią to jeden wyraz. Tak, gdy
+ * sklejona forma jest w korpusie (reguła sprzed 03.10) — albo gdy jest odmianą
+ * znanego wyrazu, a sama reszta w żadnym zdaniu nie pada małymi literami
+ * („O TRZYMYWANIE": „trzymywanie" to tylko ułamek nagłówka, rdzeń „otrzymyw-"
+ * jest w korpusie, #78). „W MIEŚCIE" zostaje rozdzielone.
+ */
+function capsJoinable(a, rest) {
+  const joined = (a + rest).toLowerCase();
+  if (VOCAB.has(joined)) return true;
+  return !LOWER_VOCAB.has(rest.toLowerCase()) && looksLikeInflection(joined);
+}
+
 // "S TRÓŻ P RAWA" → "STRÓŻ PRAWA";  "T worzenie" → "Tworzenie"
 const ONE_LETTER = new Set(['A', 'I', 'O', 'U', 'W', 'Z']);
 let scJoined = 0,
@@ -94,7 +135,11 @@ let scJoined = 0,
 function fixSmallCaps(s) {
   // wariant WIELKIE: "S TRÓŻ"
   s = s.replace(/(?<![\p{L}])(\p{Lu}) (\p{Lu}{2,})(?![\p{Ll}])/gu, (full, a, rest) => {
-    if (ONE_LETTER.has(a) && !VOCAB.has((a + rest).toLowerCase())) {
+    // Przyimek albo spójnik zostaje osobno, chyba że sklejona forma jest
+    // wyrazem korpusu — albo odmianą wyrazu, którego sama reszta nie jest
+    // („O TRZYMYWANIE" → „OTRZYMYWANIE": „trzymywanie" nie istnieje, a rdzeń
+    // „otrzymyw-" tak, #78). „W MIEŚCIE" dalej zostaje rozdzielone.
+    if (ONE_LETTER.has(a) && !capsJoinable(a, rest)) {
       scKept++;
       return full;
     }

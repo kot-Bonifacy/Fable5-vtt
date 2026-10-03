@@ -11,6 +11,7 @@ import { useAuthStore } from './authStore.js';
 import { useCharacterStore } from './characterStore.js';
 import { useChatStore } from './chatStore.js';
 import { useCreationRankStore } from './creationRankStore.js';
+import { usePortraitStore } from './portraitStore.js';
 
 /**
  * „Czeka na MG” (25.09): co wyskoczyło jako kafel i dokąd MG właśnie idzie.
@@ -65,6 +66,7 @@ function sourcesNow(): GmAttentionSources {
     permits: creation.permits,
     ranks: creation.rows,
     characters: characters.order.flatMap((id) => characters.characters[id] ?? []),
+    portraitWanted: usePortraitStore.getState().wanted,
   };
 }
 
@@ -81,6 +83,7 @@ export function useGmAttention(): GmAttentionItem[] {
   const ranks = useCreationRankStore((s) => s.rows);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
+  const portraitWanted = usePortraitStore((s) => s.wanted);
   return useMemo(
     () =>
       isGm
@@ -89,8 +92,9 @@ export function useGmAttention(): GmAttentionItem[] {
             permits,
             ranks,
             characters: order.flatMap((id) => characters[id] ?? []),
+            portraitWanted,
           })
         : [],
-    [isGm, chat, permits, ranks, characters, order],
+    [isGm, chat, permits, ranks, characters, order, portraitWanted],
   );
 }

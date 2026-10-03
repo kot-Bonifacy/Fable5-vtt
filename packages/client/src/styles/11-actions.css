@@ -375,6 +375,7 @@
 
 .table-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.25rem;
 }
@@ -389,21 +390,27 @@
   color: var(--text-dim);
 }
 
+/* #72 (03.10.2026): treść ma własny wiersz pod „od–do · podrzut · ✕". W panelu
+   320 px dzieliła linię z dwoma polami liczb i listą podrzutu i zostawało jej
+   ~55 px. */
 .table-row-text {
-  flex: 1 1 6rem;
+  order: 1;
+  flex: 1 1 100%;
   min-width: 0;
   resize: vertical;
 }
 
 /* Wiersz podręcznikowej tabeli bywa akapitem na 1 400 znaków, a lista dwustu
    takich pól nie zmieściłaby się na ekranie. Kompromis: jedna linia w spoczynku,
-   pełne okno pod kursorem — bez zmiany wysokości sąsiadów. */
-.table-row-text:focus {
+   pełne okno pod kursorem. Klasę, nie `:focus`, zdejmuje `TablePanel` dopiero
+   po puszczeniu przycisku myszy (#72): pole kurczyło się o ~5rem między
+   mousedown a mouseup, więc „Dodaj tabelę" uciekało spod kursora. */
+.table-row-text--open {
   min-height: 7rem;
 }
 
 .table-row-sub {
-  flex: 0 1 8rem;
+  flex: 1 1 8rem;
   min-width: 0;
 }
 

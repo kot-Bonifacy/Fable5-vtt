@@ -8,7 +8,8 @@ import {
   uploadRequirementText,
 } from '@vtt/shared';
 import { apiDelete, apiUpload } from '../api.js';
-import { setPortraitGmOnly } from '../socket.js';
+import { requestPortrait, setPortraitGmOnly } from '../socket.js';
+import { gmAttentionKey } from '../gm-attention.js';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
@@ -64,6 +65,8 @@ export function PortraitPicker({
   const applyUpsert = usePortraitStore((s) => s.applyUpsert);
   const applyDelete = usePortraitStore((s) => s.applyDelete);
   const openCrop = usePortraitStore((s) => s.openCrop);
+  const wanted = usePortraitStore((s) => s.wanted);
+  const setWanted = usePortraitStore((s) => s.setWanted);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState('');
   const [failures, setFailures] = useState<string[]>([]);
@@ -71,6 +74,15 @@ export function PortraitPicker({
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  /** #68: prośba „Poproś MG o portret” — `sent` po udanym wysłaniu. */
+  const [asked, setAsked] = useState<'idle' | 'sending' | 'sent'>('idle');
+  // Gracz bez niczego do wyboru: pula pusta albo każdy portret zajęty przez
+  // kogoś innego. Własny wybór (`selectedUrl`) się nie liczy jako zajęty.
+  const exhausted =
+    !isGm &&
+    !manage &&
+    loaded &&
+    !availableAssets.some((asset) => !asset.assigned || selectedUrl === asset.url);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const Tile = manage ? 'div' : 'button';
@@ -155,7 +167,12 @@ export function PortraitPicker({
             }`,
             file,
           );
-          if (campaignId === useAuthStore.getState().activeCampaign?.id) applyUpsert(asset);
+          if (campaignId === useAuthStore.getState().activeCampaign?.id) {
+            applyUpsert(asset);
+            // Serwer zdjął prośby o portret przy tym wgraniu (#68) — trasa REST
+            // nie ma jak tego rozgłosić, więc MG czyści listę u siebie sam.
+            if (!asset.gmOnly) setWanted([]);
+          }
           added += 1;
         } catch (caught) {
           rejected.push(`${file.name}: ${uploadErrorText(caught, 'portrait')}`);
@@ -166,6 +183,23 @@ export function PortraitPicker({
       setFailures(rejected);
       setUploading(false);
     }
+  }
+
+  async function askGm() {
+    setAsked('sending');
+    setError(null);
+    const ack = await requestPortrait();
+    if (ack.ok) {
+      setAsked('sent');
+      return;
+    }
+    setAsked('idle');
+    // Coś się zwolniło między odczytem puli a kliknięciem — odświeżona lista
+    // pokaże to zaraz; zdanie mówi, czemu prośba nie poszła.
+    if (ack.error === 'PORTRAIT_AVAILABLE') {
+      setError('W puli zwolnił się portret — wybierz go z listy.');
+      void load(true);
+    } else setError('Nie udało się wysłać prośby do MG.');
   }
 
   async function move(asset: PortraitAssetView) {
@@ -187,6 +221,28 @@ export function PortraitPicker({
 
   return (
     <>
+      {manage && isGm && wanted.length > 0 ? (
+        <section className="creation-ready" aria-label="Gracze czekający na portret">
+          <h4 className="creation-ranks-title">
+            Brak wolnych portretów
+            <span className="side-tab-badge">{wanted.length}</span>
+          </h4>
+          <ul className="creation-ranks-list">
+            {wanted.map((row) => (
+              <li
+                key={row.userId}
+                className="creation-rank-row creation-rank-row--waiting"
+                data-attention={gmAttentionKey.portrait(row.userId)}
+              >
+                <span className="creation-rank-who">
+                  <strong>{row.userName}</strong> prosi o portret — w puli graczy nie ma wolnego.
+                  Dodaj pliki w bibliotece poniżej.
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <button
         type="button"
         className="small-button"
@@ -204,7 +260,11 @@ export function PortraitPicker({
               }}
             >
               <div
-                className="dialog portrait-gallery"
+                className={
+                  exhausted
+                    ? 'dialog portrait-gallery portrait-gallery--exhausted'
+                    : 'dialog portrait-gallery'
+                }
                 ref={dialogRef}
                 tabIndex={-1}
                 role="dialog"
@@ -236,11 +296,34 @@ export function PortraitPicker({
                 <h3 className="panel-section-title">
                   {manage ? 'Biblioteka portretów MG' : 'Wybierz portret'}
                 </h3>
-                <p className="portrait-pool-empty">
-                  {manage
-                    ? 'Dodawaj wiele plików naraz. Portrety są zapisywane na serwerze w puli tej kampanii. Kadr ustawisz przy wyborze w karcie postaci. Usunięcie z puli zachowuje zdjęcie i kadr na istniejących kartach i figurach.'
-                    : 'Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.'}
-                </p>
+                {exhausted ? (
+                  <div className="portrait-pool-exhausted">
+                    <p className="portrait-pool-empty">
+                      {availableAssets.length === 0
+                        ? 'Pula portretów jest pusta.'
+                        : 'Wszystkie portrety z puli są już zajęte.'}{' '}
+                      {asked === 'sent'
+                        ? 'Prośba wysłana — MG zobaczy ją w „Czeka na MG”. Nowe portrety pojawią się w tym oknie same.'
+                        : 'Poproś MG o nowy — dołoży go do puli, a ty wybierzesz, gdy się pojawi.'}
+                    </p>
+                    {asked !== 'sent' ? (
+                      <button
+                        type="button"
+                        className="small-button small-button--primary"
+                        disabled={asked === 'sending'}
+                        onClick={() => void askGm()}
+                      >
+                        Poproś MG o portret
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="portrait-pool-empty">
+                    {manage
+                      ? 'Dodawaj wiele plików naraz. Portrety są zapisywane na serwerze w puli tej kampanii. Kadr ustawisz przy wyborze w karcie postaci. Usunięcie z puli zachowuje zdjęcie i kadr na istniejących kartach i figurach.'
+                      : 'Kliknij portret, aby przejść do kadrowania. Czarno-białe portrety są już zajęte.'}
+                  </p>
+                )}
                 {manage ? (
                   <p className="portrait-pool-empty">
                     {uploadRequirementText('portrait')}. Każdy plik jest sprawdzany osobno.
@@ -298,7 +381,8 @@ export function PortraitPicker({
                     ) : null}
                   </p>
 
-                  {availableAssets.length === 0 ? (
+                  {availableAssets.length === 0 && exhausted ? null : availableAssets.length ===
+                    0 ? (
                     <p className="portrait-pool-empty">
                       {!loaded
                         ? 'Wczytywanie…'
@@ -337,7 +421,9 @@ export function PortraitPicker({
                             onClick={() => void pick(asset)}
                           >
                             <img src={asset.url} alt="" loading="lazy" />
-                            <span className="portrait-pool-name">{asset.name}</span>
+                            {/* Nazwa to nazwa pliku MG („avatar13”) — graczowi nic
+                                nie mówi (#68), więc widzi ją tylko MG. */}
+                            {isGm ? <span className="portrait-pool-name">{asset.name}</span> : null}
                             {selectedUrl === asset.url ? (
                               <span className="portrait-pool-name">Wybrany</span>
                             ) : asset.assigned ? (

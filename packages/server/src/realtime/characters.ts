@@ -53,7 +53,7 @@ import { emitRuns } from './netrun-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { scheduleBackup } from './backup.js';
-import { dropFromTeams } from './team.js';
+import { dropFromTeams, syncTeamMemberName } from './team.js';
 import { placeApprovedCreationToken } from './creation.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
@@ -329,6 +329,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     }
     const view = toCharacterView(updated, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
+    // #74: a renamed employee has to reach the Korpo's roster, which is the
+    // only place their player can read the name from.
+    if ('name' in patch && updated.name !== character.name && updated.ownerId === null) {
+      await syncTeamMemberName(deps, campaignId, updated.id, updated.name);
+    }
     // HP and stats drive the bars of every token bound to this sheet.
     if ('data' in patch || 'ownerId' in patch || 'name' in patch || portraitMoved) {
       await emitTokensOfCharacter(deps, campaignId, updated);

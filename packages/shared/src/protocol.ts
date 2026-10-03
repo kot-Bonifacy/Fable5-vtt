@@ -288,6 +288,16 @@ export interface PortraitVisibilityPayload {
   gmOnly: boolean;
 }
 
+/**
+ * Gracz, który nie ma z czego wybrać portretu — pula graczy wyczerpana (#68,
+ * 03.10.2026). Serwer → MG: `portrait:wanted-sync` z całą listą; MG pyta o nią
+ * sam `portrait:wanted` przy wejściu do kampanii.
+ */
+export interface PortraitWantedRow {
+  userId: string;
+  userName: string;
+}
+
 /** Weapon base rows plus every entry: imported ones and the GM's own. */
 export interface CompendiumSyncPayload {
   weaponTypes: WeaponTypeDefinition[];

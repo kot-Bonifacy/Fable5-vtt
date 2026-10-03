@@ -1596,9 +1596,21 @@
   gap: 0.3rem;
 }
 
-/* Wiersz Taboru to cztery pola, nie odczyt: rodzaj, nazwa, kategoria, kosz. */
+/* Wiersz Taboru to cztery pola, nie odczyt: rodzaj, nazwa, kategoria, kosz.
+   `minmax(0, 1fr)` i `min-width: 0`, bo pole tekstowe ma w Firefoksie szerszą
+   wrodzoną szerokość niż w Chromium i rozpychało kolumnę — ✕ wychodził poza
+   prawą krawędź karty Moto (#76). */
 .fleet-row {
-  grid-template-columns: auto 1fr 3.2rem auto;
+  grid-template-columns: auto minmax(0, 1fr) 3.2rem auto;
+}
+
+.fleet-row > * {
+  min-width: 0;
+}
+
+.fleet-row input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fleet-row input[type='number'] {

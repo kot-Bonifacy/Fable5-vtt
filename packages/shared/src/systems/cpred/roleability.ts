@@ -2116,7 +2116,17 @@ export interface CpredTeamMember {
   characterId: string;
   professionId: string;
   loyalty: number;
+  /**
+   * The employee's name, copied off their sheet (#74, 03.10.2026). The sheet
+   * is the GM's NPC and never travels to the Korpo's player, so without this
+   * copy the player's panel could only say „Pracownik". Written at hiring and
+   * kept in step by the server when the GM renames the sheet.
+   */
+  name?: string;
 }
+
+/** The longest name a roster row keeps — the same cap a sheet's name has. */
+const CPRED_TEAM_NAME_MAX = 64;
 
 export type CpredTeamProblem = 'NO_ABILITY' | 'TEAM_FULL' | 'UNKNOWN_PROFESSION' | 'BAD_VALUE';
 
@@ -2145,10 +2155,12 @@ export function readCpredTeam(raw: unknown): CpredTeamMember[] {
     seen.add(row.characterId);
     const loyalty =
       typeof row.loyalty === 'number' && Number.isFinite(row.loyalty) ? Math.round(row.loyalty) : 1;
+    const name = typeof row.name === 'string' ? row.name.trim().slice(0, CPRED_TEAM_NAME_MAX) : '';
     team.push({
       characterId: row.characterId,
       professionId: row.professionId,
       loyalty: Math.min(CPRED_LOYALTY_MAX, Math.max(CPRED_LOYALTY_MIN, loyalty)),
+      ...(name.length > 0 ? { name } : {}),
     });
   }
   return team.slice(0, CPRED_TEAM_MAX);

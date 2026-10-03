@@ -3,6 +3,7 @@ import {
   type CharacterView,
   type CreationPermitRow,
   type CreationRankDraft,
+  type PortraitWantedRow,
 } from '@vtt/shared';
 import type { ChatItem } from './stores/chatStore.js';
 
@@ -16,7 +17,7 @@ import type { ChatItem } from './stores/chatStore.js';
  * zgody i szkice kreatora, karty postaci), a nie prowadzona osobno: drugi tor
  * rozjechałby się przy pierwszej odpowiedzi udzielonej z innego miejsca.
  */
-export type GmAttentionKind = 'permit' | 'rank' | 'ready' | 'request' | 'proposal';
+export type GmAttentionKind = 'permit' | 'rank' | 'ready' | 'portrait' | 'request' | 'proposal';
 
 /** Zakładka panelu bocznego, na której MG podejmuje decyzję. */
 export type GmAttentionTab = 'chat' | 'characters';
@@ -35,6 +36,8 @@ export interface GmAttentionSources {
   ranks: readonly CreationRankDraft[];
   /** Karty w kolejności listy; liczą się tylko te, które czekają na „Przyjmij do gry”. */
   characters: readonly Pick<CharacterView, 'id' | 'name' | 'playReady'>[];
+  /** Gracze bez wolnego portretu w puli (#68); bez pola — żadnych. */
+  portraitWanted?: readonly PortraitWantedRow[];
 }
 
 export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[] {
@@ -64,6 +67,15 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
       key: gmAttentionKey.ready(character.id),
       kind: 'ready',
       text: `„${character.name}” czeka na przyjęcie do gry`,
+      tab: 'characters',
+    });
+  }
+  // #68: pula graczy wyczerpana — decyzja MG to dołożyć twarz w bibliotece.
+  for (const row of sources.portraitWanted ?? []) {
+    items.push({
+      key: gmAttentionKey.portrait(row.userId),
+      kind: 'portrait',
+      text: `${row.userName} czeka na portret — w puli graczy nie ma wolnego`,
       tab: 'characters',
     });
   }
@@ -103,6 +115,7 @@ export const gmAttentionKey = {
   permit: (userId: string) => `permit:${userId}`,
   rank: (draftId: string) => `rank:${draftId}`,
   ready: (characterId: string) => `ready:${characterId}`,
+  portrait: (userId: string) => `portrait:${userId}`,
   message: (messageId: number) => `msg:${messageId}`,
 };
 

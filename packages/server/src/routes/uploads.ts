@@ -13,7 +13,12 @@ import {
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
-import { playerPortraitView, toPortraitAssetView, usedPortraitUrls } from '../portraits.js';
+import {
+  clearPortraitWanted,
+  playerPortraitView,
+  toPortraitAssetView,
+  usedPortraitUrls,
+} from '../portraits.js';
 import { getActiveCampaign, getUserActiveCampaign } from './helpers.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
@@ -242,6 +247,10 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
         gmOnly: query.gmOnly === 'true',
       },
     });
+    // Nowa twarz w puli graczy spełnia prośby „Poproś MG o portret" (#68).
+    // Trasa nie ma `io`, więc MG nie dostaje tu `portrait:wanted-sync` — to on
+    // wgrywa, a jego klient czyści listę sam po udanym wgraniu.
+    if (!asset.gmOnly) clearPortraitWanted(campaign.id);
     const result: PortraitAssetView = toPortraitAssetView(asset);
     return reply.code(201).send(result);
   });
