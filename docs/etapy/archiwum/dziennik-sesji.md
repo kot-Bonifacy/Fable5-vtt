@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 (piąta) — projekt etapu 44 „Konta MG”
+
+**Zlecenie MG:** „teraz kolej na T9” (podzielić, jeśli za duży; pytać o niejasności). T9 jest
+odbiorem etapu „Konta MG”, którego nie było ani w planie, ani w kodzie (`User.role` globalne,
+logowanie samym hasłem, jedna aktywna kampania na serwer). MG wybrał: **najpierw zaprojektować etap**.
+
+**Decyzje MG (pytania w sesji):** konta MG i gracza **osobne**; gracz — **imienny link = klucz**
+(konto w jednej kampanii, link odnowienia); zapomniane hasło MG — **reset przez właściciela**; kopie
+całej bazy **tylko właściciel**; slot zwalnia **15 min bez gniazd albo 3 h bez zdarzeń**; między
+sesjami gracz widzi **kartę bez stołu**; zgoda na AI **per konto MG**; AI dla innych tylko przy
+**obecności właściciela i przełączniku „Udostępniam AI”** (dopisek MG: nie chce oddać GPU, gdy gra
+w coś innego); zajętość AI **„pierwszy + Przejmij”**; „Konta MG” **przed** refaktoryzacją.
+
+**Zrobione:** `etap-44-konta-mg.md` i `etap-44a`–`44d`; `testy.md` — T9 podzielony na **T9a** (po 44b)
+i **T9b** (po 44d), sekcja 6.5 przepisana pod decyzje (obsada: MG-A to konto właściciela z `po-T6`,
+właściciel jako gracz u MG-B), wiersz decyzji w sekcji 2, kolejność; dopisek w `zaleglosci.md`;
+etapy w `archiwum/tabela-etapow.md`; dwa pomysły w `POMYSLY.md`. Kodu nie ruszano.
+
+**Weryfikacja:** sesja tylko dokumentów — testów nie puszczano, `dev.db` nietknięta.
+
+**Następny krok:** etap 44a — zacząć od dwóch pytań z jego „Do decyzji MG” (blokada kont, wyłącznik
+rejestracji).
+
 ### Sesja 03.10 (czwarta) — poprawki #66, #68, #71–#78
 
 **Zlecenie MG:** „napraw błędy z rejestru”. Pytania: wagi #72–#78 — B3, naprawić wszystkie dziesięć;

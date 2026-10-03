@@ -376,15 +376,14 @@ Cztery zaległości typu „strona gracza nieodklikana" miały jedną przyczynę
 w bazie dev siedzi na stałe gracz **`Tester`** — członek **wszystkich** kampanii, **bez żadnej
 postaci** (to jego zadanie: pokazuje pusty stan listy postaci z 27f).
 
-- **Wejście na konto — od 17.09 NIE przez `tester-dev`.** Wszystkie pięć zaproszeń `tester-dev*`
-  ma `revokedAt` 17.09 19:35 (`/join/tester-dev` daje 404; wykryte 25.09, decyzja MG: poprawić
-  tylko dokumenty). Wchodzi się **ważnym zaproszeniem aktywnej kampanii** (Panel MG → kampanie,
-  albo `GET /api/campaigns` kontem MG) i imieniem **„Tester"** — konto już jest członkiem.
-  Gracze **nie mają haseł** — `routes/auth.ts` loguje wyłącznie MG — więc link zaproszenia jest
-  całą procedurą i dlatego może stać jawnie w repo: prowadzi do lokalnej bazy dev, a `dev.db`
-  jest w `.gitignore`.
-- **Tym samym ekranem wraca się na dowolne inne konto** (Tony / avatar9 / Marcin) — imię, które
-  już jest w kampanii, to ten sam użytkownik, nie nowy.
+- **Wejście na konto — od 04.10 (etap 44b) linkiem odnowienia.** Migracja `named_invitations`
+  unieważniła wszystkie dotychczasowe (anonimowe) linki, a imię wpisane na ekranie wejścia nic już
+  nie znaczy. Wchodzi się **linkiem odnowienia**: Panel MG → kampania → „Gracze” → „Link
+  odnowienia” przy `Tester` (albo `POST /api/campaigns/<id>/players/<userId>/renewal` kontem MG).
+  Link działa raz i przez 7 dni, a inne zalogowane okna gracza zostają. Gracze **nie mają haseł**
+  — link jest całą procedurą.
+- **Tak samo wraca się na każde inne konto** (Tony / avatar9 / Marcin) — link odnowienia przy jego
+  imieniu. „Nowy gracz” zakłada **nowe** konto, nawet gdy imię istnieje w innej kampanii.
 - **Dwie sesje naraz w jednym Chrome** działają jak dotąd: `localhost:5173` i `[::1]:5173`
   (`127.0.0.1` **nie działa** — Vite tam nie słucha; sprawdzone 27.08). Który host trzyma MG,
   a który gracza, zależy od ciasteczek — sprawdź nagłówek okna, nie zakładaj.

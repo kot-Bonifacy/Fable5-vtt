@@ -16,6 +16,8 @@ do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
 decyzje MG i podział w `etap-44-konta-mg.md` rozstrzygają wszystkie „do ustalenia w etapie” niżej
 (próg bezczynności, zgoda per konto MG, kto zajmuje AI, konta osobne). Pozycje zostają otwarte do
 ukończenia etapu; pozycja 3 dalej po becie.
+**04.10.2026 — 44b zrobione** (izolacja kampanii, uploady per kampania, imienne linki): z pozycji 1
+zostaje aktywna kampania per MG (44c), z pozycji 2 — 44c, z pozycji 4 — 44d.
 
 1. **Osobne konta MG z otwartą rejestracją — WARUNEK BETY.** Każdy MG zakłada konto sam (otwarta
    rejestracja, własne hasło), widzi i steruje tylko swoimi kampaniami, botami, architekturami Sieci

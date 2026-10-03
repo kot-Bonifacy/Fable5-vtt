@@ -208,6 +208,7 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Płaski adres pliku w fiksturach testów odbija się od strażnika (04.10, 44b)** — test, który wstawia do bazy `/uploads/portraits/x.png`, dostaje `UPLOAD_NOT_FOUND` z `creation:patch`/`token:create`, a przy pobraniu 404. Od 44b plik ma adres kampanii: `/uploads/campaigns/<id>/<katalog>/<plik>` (wzór: `portraitDir` w `creation.test.ts`). Płaskie adresy zna już tylko migracja przy starcie (`migrateFlatUploads`).
 - **Nowe wymagane pole `ServerConfig` wywraca ~78 plików testów (01.10)** — każdy test dymny ma **własny literał konfiguracji**. Nowy przełącznik rób opcjonalnym (`rateLimits?`, `trustProxy?`, wzór `backups?`): `loadConfig` ustawia wartość produkcyjną, a brak pola w teście znaczy „wyłączone”.
 - **`tsup` zdejmuje `node:` z importów — `node:sqlite` zamienia się w pakiet `sqlite` i `dist/` pada na starcie** — od etapu 33 do 26.09 (T1 testów) build produkcyjny serwera nie wstawał, a nikt go nie uruchamiał. Lek: `removeNodeProtocol: false` w `tsup.config.ts`; strażnikiem jest instancja E2E, która startuje z `dist/`.
 - **`requireCallableRequest` to BIAŁA LISTA** (`realtime/checks.ts`) — przepisuje żądanie Testu pole po polu, więc nowe pole w `CpredRollRequest` **ginie po cichu** na drodze prośba → zgoda → rzut. Objaw: funkcja działa z wezwania, a z prośby gracza nie robi nic, bez jednego błędu w logu.
