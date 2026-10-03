@@ -6,6 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**03.10.2026 — dokończenie po T8b i poprawce obrażeń (`029cd36`).** Trzy rzeczy na następną sesję:
+
+1. **Retest T5b → T6c z nową zasadą obrażeń** (rozliczanie bez „Zastosuj”, Unik przed obrażeniami,
+   #56). T5b pada na starcie bez gatewaya, więc najpierw gateway w terminalu MG
+   (`pwsh ai-gateway/scripts/start-gateway.ps1`), potem we własnym oknie konsoli
+   `E2E_FROM=po-T5a pnpm test:e2e t5b- t6`. Spec T5b jest już przestawiony (`noDodge`, bez
+   „Zastosuj”), ale nie przeszedł ani razu. Po zielonym przebiegu: status #56 w `testy-rejestr.md`
+   na „retest OK”, ten punkt do archiwum.
+2. **Triaż MG #57–#71** (z T8b; #62 proponowany jako B2) — `testy-rejestr.md`.
+3. **T8c** (pobieżna regresja obszarów) — `testy.md` 6.4, potem refaktoryzacja pod osłoną suity.
+
 **26.09.2026 — Wiele grup i wielu MG (decyzje MG przy projekcie testów, `testy.md`).** Kontekst:
 VTT ma być serwerem dla kilku grup, każda z własnym MG. Dziś jest jedno konto MG (`User.role`
 globalne) i jedna aktywna kampania dla wszystkich (`campaign:activate` przenosi każdego

@@ -83,7 +83,7 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Zaległości: cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9); **od 01.10 piąta: llama-server trzyma ~15,5 GB RAM-u przy modelu na GPU; od 02.10 szósta: teoretyczny wyścig listy `token:sync` po upuszczeniu (reszta #47)**. Co ocenia się tylko przy stole (kafel papieru,
+**Zaległości: od 03.10 na górze dokończenie po T8b (retest T5b → T6c z gatewayem, triaż #57–#71, T8c); cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9); **od 01.10 piąta: llama-server trzyma ~15,5 GB RAM-u przy modelu na GPU; od 02.10 szósta: teoretyczny wyścig listy `token:sync` po upuszczeniu (reszta #47)**. Co ocenia się tylko przy stole (kafel papieru,
 sesja zero w kreatorze, pełny ekran, polszczyzna Qwen, Wsparcie 10) — pierwszy wpis `POMYSLY.md`.
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
 `await import('/src/socket.ts')` — pułapki w `ogledziny`). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
