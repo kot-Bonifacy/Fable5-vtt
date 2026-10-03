@@ -53,7 +53,7 @@ mapa 60 kl./s wszędzie poza Firefoksem gracza w marszu na Dynamicznej, serwer b
 **#50** bufory Pixi po przełączeniu sceny, **#51** geometrie kości 3D, **#52** klik pod cudzą figurą
 łapie jej podpis — to był „marsz Sowy”); **T8a zamknięty 03.10** (decyzja MG: T8 przed refaktoryzacją, podział T8a/T8b/T8c — `specs/50-przegladarki`,
 macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55 — **03.10 triaż MG: #53 naprawiony** (szew sprite'a zasłony, `isRenderGroup`, umowa w `mapa`), **#54 i #55 odrzucone** — rejestr znów bez otwartych błędów);
-**następny: T8b (pierwszy kontakt), T8c, potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
+**T8b zamknięty 03.10** (pierwszy kontakt: nowy gracz od linku do strzału w ~20 min bez pytań o UI; **#56** naprawiony, **#57–#71** do triażu MG) i **tego samego dnia nowa zasada stołu (decyzja MG): obrażenia za kartę ataku rozliczają się same, Unik przed obrażeniami, jeden rzut na trafienie, grot za celownikiem** (`029cd36`, umowy w `atak` i `mapa`) — **retest T5b → T6c czeka na przebieg z gatewayem**; **następny: ten przebieg, triaż #57–#71, T8c, potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
 **T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T10 (z powtórką automatu T8a) → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -117,7 +117,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2247** w `shared`, **1285** na serwerze, **315** u klienta,
+**Testy na koniec ostatniej sesji:** **2248** w `shared`, **1291** na serwerze, **315** u klienta (03.10 po poprawce #56; E2E: T4a → T5a od `po-T3` 55/55 + 2 `@llm` pominięte, `t8a-` 44/44, `35-bezpieczenstwo` 41/41, T5b → T6c do powtórki z gatewayem; dalej stan sprzed poprawki:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -140,13 +140,13 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 57   | 26      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 58   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 14   | 18      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 18   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 10   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 39   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 40   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 46   | 3       |
@@ -163,6 +163,34 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.10 — T8b (pierwszy kontakt) i obrażenia bez „Zastosuj”
+
+**Zlecenie MG:** T8b z `testy.md`. Pytania na starcie (wiersz w sekcji 2 `testy.md`): gracz zna CP RED,
+nie zna tego stołu; subagent na Opusie; kontakt z MG „na Discordzie” przez raport; start z `po-T3`,
+walka z jednym statystą. W trakcie MG zlecił poprawkę: obrażenia po strzale mają wchodzić bez
+akceptacji MG — pytania: zakres (każdy rzut z celem, także obszar), Unik przed obrażeniami (też
+odskok z obszaru), serwer odmawia drugiego rzutu (#56), grot idzie za celownikiem, kolejność: najpierw
+domknąć T8b.
+
+**Zrobione:** T8b — subagent „Kuba” w Firefoksie (MCP) przeszedł od linku do dwóch strzałów i „Kończę
+turę” w ~20 min, bez ani jednej podpowiedzi UI; MG w Chromium. Rejestr **#56–#71** (#56 B2, #62 B2,
+reszta B3; „wyciek ruchu” sprawdzony drugą sesją — to podgląd trasy, #69), pomysł w `POMYSLY.md`,
+dwie pułapki w `ogledziny` (`7c90b36`). Poprawka (`029cd36`): `settleDamageRoll` rozlicza rzut z
+`attackMessageId` drogą „Zastosuj” (efekty mapy czekają na kości), `damageRollId` + `DAMAGE_ALREADY_ROLLED`
+(przerzut po „Cofnij” wszystkich rozliczeń), `evasionPending` + `attack:no-evade` („Bez uniku” u celu
+i MG), panel „Zastosuj” znika po rozliczeniu, `turnShooterToAim` w `MapRenderer`. Umowy w `atak`
+i `mapa`; suita E2E: `noDodge`, `settledWithoutApply` w `fixtures/walka.ts`.
+
+**Weryfikacja:** `shared` 2248, serwer 1291 (5 nowych w `attacks.test.ts`, 1 w `areas.test.ts`,
+sześć plików przestawionych z „Zastosuj” na rozliczenie samo), klient 315; ESLint, Prettier i `tsc`
+czyste. E2E: T4a → T5a od `po-T3` 55/55, `t8a-` 44/44, `35-bezpieczenstwo` 41/41; **T5b pada na
+starcie bez gatewaya** (MG ma widzieć boty) — T5b → T6c nieprzetestowane z nową zasadą. Oglądane:
+Marek w Firefoksie, MG w Chromium (czekanie na Unik, „Bez uniku”, rozliczenie bez „Zastosuj”, grot).
+`dev.db` nietknięta; `po-T4a`, `po-T4`, `po-T5a` zapisane od nowa.
+
+**Następny krok:** gateway w terminalu MG i `E2E_FROM=po-T5a pnpm test:e2e t5b- t6` we własnym oknie
+konsoli; potem triaż #57–#71 i T8c.
 
 ### Sesja 03.10 — triaż #53–#55: szew zasłony naprawiony, dwa napisy odrzucone
 
@@ -183,24 +211,3 @@ klient 315/315; ESLint, Prettier i `tsc` czyste w kliencie i suicie. Oglądane a
 w Firefoksie i Chromium, MG w Chromium (headless, 1920 × 1080), zrzuty przejrzane rozjaśnione.
 Mgła „Bramy” (`po-T5a`) bez szwu przed poprawką i bez zmian po niej. `dev.db` nietknięta.
 **Następny krok:** T8b (pierwszy kontakt), potem T8c.
-
-### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
-
-**Zlecenie MG:** T8 z `testy.md`, podzielony, jeśli się nie zmieści. Pytania na starcie (wiersze
-w sekcji 2 `testy.md`): **T8 teraz, przed refaktoryzacją** — automat T8a wchodzi do jej osłony,
-T10 puszcza go ponownie; podział **T8a** (automat) / **T8b** (pierwszy kontakt — świeży subagent bez
-kontekstu, Na skróty) / **T8c** (pobieżna regresja); ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**;
-skrót z `po-T3`; wagi układu (nieosiągalne = B2, ucięte i kontrast = B3).
-
-**Zrobione:** `packages/e2e/fixtures/uklad.ts` (przegląd DOM-u: kontrolki poza oknem i przycięte,
-ucięte napisy, nachodzące obszary, kontrast; zrzut i JSON do `.e2e/pomiary/t8a`),
-`specs/50-przegladarki/`: `t8a-macierz` (16, `@szybkie`), `t8a-ekrany` (24), `t8a-uklad` (2,
-`@szybkie`, sprawdzian sprawdzacza). Trzy pułapki w `testy`, poprawiony papier dzienny w `ogledziny`.
-
-**Błędy (B3 do triażu MG):** **#53** szczelina w pamięci terenu u gracza bez figury, **#54** „ROZMO…”
-w filtrze czatu, **#55** ucięte nazwy umiejętności na karcie. Nieosiągalnego nic, konsola czysta.
-
-**Weryfikacja:** `pnpm test:e2e t8a-` 42/42 dwa razy (5,3 min), `--grep @szybkie` 30/30 (2,9 min);
-`tsc`, ESLint i Prettier suity czyste. Pełnego przebiegu od zera nie puszczano (okno konsoli
-i gateway MG). Oglądane automatem w Chromium i Firefoksie, zrzuty przejrzane. `dev.db` nietknięta.
-**Następny krok:** T8b albo triaż #53–#55.

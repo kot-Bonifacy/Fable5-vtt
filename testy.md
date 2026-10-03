@@ -117,6 +117,7 @@ idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po �
 | T8: ekrany i skrót     | ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**, oba z wagą; 1366 × 768 i powiększenia 125/150 % wypadają z macierzy. Skrót scenariusza **z `po-T3`**, ok. 5 min na układ: MG + Marek + Ola, a w drugim układzie silniki zamienione (decyzja MG z 03.10, sesja T8a) |
 | T8: pierwszy kontakt   | gra go **świeży subagent bez kontekstu** (Playwright MCP Firefox, zakaz czytania repo), Claude jest MG w Chromium i robi triaż notatek; postać powstaje metodą **Krawędziarz (Na skróty)** (decyzja MG z 03.10, sesja T8a) |
 | T8b: obsada i start    | nowy gracz „Kuba” **zna CP RED i z grubsza inne VTT, tego stołu nie widział**; subagent na **Opusie 5.5**; z MG rozmawia „na Discordzie” — przerywa raportem, MG odpowiada jak przy stole, bez podpowiedzi UI, chyba że gracz utknie (każda podpowiedź UI = notatka); start **z `po-T3`**, trzeci gracz dołącza nowym linkiem, figura w „Knajpie”, krótka walka z **jednym statystą** (decyzja MG z 03.10, sesja T8b) |
+| obrażenia i Unik       | obrażenia rzucone za kartę ataku **rozliczają się same** (cel, osłona, każdy dosięgnięty z obszaru), **Unik przed obrażeniami** — rzut czeka na każdego, kto może się uchylić, aż rzuci Unik albo kliknie „Bez uniku” (cel albo MG), **jeden rzut obrażeń na trafienie** (#56), **grot strzelca idzie za celownikiem** (decyzja MG z 03.10, sesja T8b) |
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
@@ -838,17 +839,20 @@ Roli z bramką, umowa w `postac`), ucięte „Rozmo…” i nazwy umiejętności
 Pomysł: wpisywanie poziomu umiejętności w kreatorze (`POMYSLY.md`).
 
 **Decyzja MG w trakcie (03.10):** obrażenia z rzutu z nazwanym celem (także obszar) rozliczają się
-same, bez „Zastosuj”; Unik obrońcy przed obrażeniami; serwer odmawia drugiego rzutu obrażeń (#56);
-figury w walce obracają się ku celowi. Robione po zamknięciu T8b, osobnym commitem.
+same, bez „Zastosuj”; Unik obrońcy przed obrażeniami (także odskok z obszaru — czeka się na każdego);
+serwer odmawia drugiego rzutu obrażeń (#56); grot strzelca idzie za celownikiem (strzelec obracał
+się już przy strzale). Zrobione po zamknięciu T8b (`029cd36`), retest w akapicie pod tabelą rejestru:
+serwer, E2E T4a → T5a, `t8a-`, `35-bezpieczenstwo` zielone; **T5b → T6 czekają na gateway MG**.
+Przy okazji `po-T4a`, `po-T4` i `po-T5a` zapisane od nowa z nową zasadą (`po-T5`, `po-T6*` stare).
 
 **Oglądane:** gracz w Firefoksie (Playwright MCP, okno na wierzchu), MG w Chromium (MCP), druga
 sesja gracza w Chromium (biblioteka, headless). Konsola MG: tylko `ERR_CACHE_OPERATION_NOT_SUPPORTED`
 na plikach `sfx/` (stały profil Chromium MCP z pamięcią podręczną; czyste konteksty T8a jej nie
-miały — pułapka w `ogledziny`). `dev.db` nietknięta, punkty kontrolne tylko
-czytane.
+miały — pułapka w `ogledziny`). Poprawkę oglądano: Marek w Firefoksie, MG w Chromium (MCP).
+`dev.db` nietknięta.
 
-**Następny krok:** poprawka automatycznego rozliczania obrażeń z #56 (ta sesja), potem triaż MG
-#57–#71 i T8c.
+**Następny krok:** przebieg T5b → T6c od `po-T5a` z gatewayem w terminalu MG (retest #56 w Sieci
+i na wieżyczkach), triaż MG #57–#71, potem T8c.
 
 ### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
 

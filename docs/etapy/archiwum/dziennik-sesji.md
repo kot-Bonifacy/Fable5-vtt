@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
+
+**Zlecenie MG:** T8 z `testy.md`, podzielony, jeśli się nie zmieści. Pytania na starcie (wiersze
+w sekcji 2 `testy.md`): **T8 teraz, przed refaktoryzacją** — automat T8a wchodzi do jej osłony,
+T10 puszcza go ponownie; podział **T8a** (automat) / **T8b** (pierwszy kontakt — świeży subagent bez
+kontekstu, Na skróty) / **T8c** (pobieżna regresja); ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**;
+skrót z `po-T3`; wagi układu (nieosiągalne = B2, ucięte i kontrast = B3).
+
+**Zrobione:** `packages/e2e/fixtures/uklad.ts` (przegląd DOM-u: kontrolki poza oknem i przycięte,
+ucięte napisy, nachodzące obszary, kontrast; zrzut i JSON do `.e2e/pomiary/t8a`),
+`specs/50-przegladarki/`: `t8a-macierz` (16, `@szybkie`), `t8a-ekrany` (24), `t8a-uklad` (2,
+`@szybkie`, sprawdzian sprawdzacza). Trzy pułapki w `testy`, poprawiony papier dzienny w `ogledziny`.
+
+**Błędy (B3 do triażu MG):** **#53** szczelina w pamięci terenu u gracza bez figury, **#54** „ROZMO…”
+w filtrze czatu, **#55** ucięte nazwy umiejętności na karcie. Nieosiągalnego nic, konsola czysta.
+
+**Weryfikacja:** `pnpm test:e2e t8a-` 42/42 dwa razy (5,3 min), `--grep @szybkie` 30/30 (2,9 min);
+`tsc`, ESLint i Prettier suity czyste. Pełnego przebiegu od zera nie puszczano (okno konsoli
+i gateway MG). Oglądane automatem w Chromium i Firefoksie, zrzuty przejrzane. `dev.db` nietknięta.
+**Następny krok:** T8b albo triaż #53–#55.
+
 ### Sesja 02/03.10 — poprawki #50–#52 z T7c, rejestr bez otwartych błędów
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#50–#52, B3 do triażu). Pytania na starcie:
