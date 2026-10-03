@@ -1,5 +1,15 @@
 # Pomysły poza zakresem etapów
 
+**03.10.2026 (poprawka #62) — bot nie bierze drugiego ataku z broni o SS 2.** Gracz od 03.10 widzi
+żywą broń po pierwszym strzale (`attackOpen` w pasku), ale `bot-combat.ts` liczy budżet po staremu
+(`actionSpent` = koniec ataków), więc statysta-bot z ciężkim pistoletem strzela raz na turę. Kierunek:
+`attackOpen` w `BotCombatState.self` i akcja `attack` dopuszczona przy otwartej Akcji Ataku dla
+broni o SS ≥ 2 — ta sama reguła co `spendAttack`.
+
+**03.10.2026 (reszta #59) — dwa krzyżyki obok siebie: karta nad kreatorem.** Po „Przejdź”/„Pokaż
+kartę” z ekranu końcowego kreator schodzi pod kartę (`behind`), a ich ✕ wypadają w tym samym rogu.
+Do rozważenia: kreator w stanie `behind` przesunięty w bok albo zwinięty do paska.
+
 **03.10.2026 (T8b, pierwszy kontakt) — szybsze rozdawanie punktów umiejętności w kreatorze.**
 Krawędziarz rozdaje 86 punktów wyłącznie przyciskiem „+”: nowy gracz policzył ok. 45 kliknięć
 na 60 punktów, a klawisz End przewija okno zamiast ustawić maksimum. Kierunek: pole poziomu

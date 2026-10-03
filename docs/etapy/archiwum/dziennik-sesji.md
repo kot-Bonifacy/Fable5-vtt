@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 — triaż #53–#55: szew zasłony naprawiony, dwa napisy odrzucone
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#53–#55, B3 do triażu). Pytania po diagnozie:
+wagi — **B3** dla trzech; **#54** („ROZMO…”) **odrzucony** — prawą belkę gracze i MG zwykle
+rozszerzają; **#55** (ucięte nazwy umiejętności) **odrzucony** — zostaje wielokropek z podpowiedzią.
+
+**Zrobione (`c28429d`):** #53 to nie szczelina w pamięci terenu, tylko jasna nitka mapy przez czarną
+zasłonę, dokładnie na przekątnej sceny. Tekstura zasłony jest szczelna (odczyt pikseli), a szew
+powstaje przy rysowaniu zagnieżdżonego sprite'a na płótno z MSAA → `visionLayer.isRenderGroup`
+i `fogLayer.isRenderGroup`. Zasłona czyszczona kolorem zamiast prostokąta nie pomogła i została
+cofnięta. Nowy `t8a-szew-zaslony` (`@szybkie`, oba silniki, z kontrolą jasnej sali) i pomocnik
+`brightPixelsAlong` w `fixtures/canvas.ts` (PNG dekoduje przeglądarka). Umowa i pułapka w `mapa`.
+
+**Weryfikacja:** nowy spec pada bez poprawki (99 jasnych pikseli w Firefoksie i w Chromium), a z nią
+przechodzi; jasność pamięci terenu przed i po identyczna. `pnpm test:e2e t8a-` **44/44 (5,6 min)**,
+klient 315/315; ESLint, Prettier i `tsc` czyste w kliencie i suicie. Oglądane automatem: gracz
+w Firefoksie i Chromium, MG w Chromium (headless, 1920 × 1080), zrzuty przejrzane rozjaśnione.
+Mgła „Bramy” (`po-T5a`) bez szwu przed poprawką i bez zmian po niej. `dev.db` nietknięta.
+**Następny krok:** T8b (pierwszy kontakt), potem T8c.
+
 ### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
 
 **Zlecenie MG:** T8 z `testy.md`, podzielony, jeśli się nie zmieści. Pytania na starcie (wiersze

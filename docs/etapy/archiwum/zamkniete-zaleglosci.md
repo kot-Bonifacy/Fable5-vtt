@@ -9,6 +9,62 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-03 (sesja po T8b: retest, triaż, wyścig listy figur)
+
+Zlecenie MG: „zrób zaległości z `zaleglosci.md`” i grot celowania widoczny dla całego stołu.
+
+- **Retest T5b → T6b z nową zasadą obrażeń — zielony.** Gateway w terminalu MG, przebieg we własnym
+  oknie konsoli: `E2E_FROM=po-T5a pnpm test:e2e t5b- t6` — T5b 27/27, T6a padł na wyścigu w samym
+  specu („Otwórz” w doku klikane, zanim okno handlu MG zdążyło wyskoczyć; obie strony miały okno na
+  zrzutach). Poprawka specu (`openTradeWindow`: czeka na okno albo przycisk), potem `E2E_FROM=po-T5`
+  T6a + T6b 31/31. #56 w rejestrze: retest OK.
+- **Triaż #57–#71 — decyzje MG z 03.10:** wagi jak w propozycji (#62 B2, reszta B3); w tej sesji
+  naprawione #57–#65, #67, #69, #70; #66, #68, #71 potwierdzone i zostają w `zaleglosci.md`; T8c —
+  osobna sesja.
+- **Wyścig listy `token:sync` (reszta #47) — zamknięty po stronie klienta.** Zamiast znacznika wersji
+  pozycji: `applyTokens` trzyma pozycję figury jeszcze `WALK_LANDED_HOLD_MS` (2 s) po klatce końcowej
+  (`holdsPosition` w `tokenStore.ts`). Lista nigdy celowo nie przesuwa figury, którą klient już ma —
+  pozycja należy do `token:move` i do upsertu z `moved` — więc chwila wstrzymania nic nie kosztuje,
+  a okno wyścigu to kilka `await`. Test: `token-store.test.ts` › „lista zbudowana przed zapisem
+  lądowania…”.
+
+- **llama-server i RAM — `--load-mode none` (zgoda MG na zatrzymanie gatewaya na czas pomiaru).**
+  Te ~15,5 GB to zmapowany GGUF: przy domyślnym `auto` (= mmap) zbiór roboczy 12,2 GB, przy `none`
+  i `dio` 1,1 GB, wolny RAM PC 12 → 23 GB, generacja bez zmian (52,1 tok/s), start 3–5 s z pamięci
+  podręcznej systemu. Gateway podaje `--load-mode` z `GATEWAY_LLAMA_LOAD_MODE` (domyślnie `none`),
+  tabela w `ai-gateway/README.md`. Pamięć prywatna (commit) zostaje ~16 GB — to zobowiązanie, nie
+  rezydentna. Gateway po pomiarach uruchomiony ponownie we własnym oknie konsoli.
+
+Treść wpisów sprzed zamknięcia:
+
+**03.10.2026 — dokończenie po T8b i poprawce obrażeń (`029cd36`).** Trzy rzeczy na następną sesję:
+
+1. **Retest T5b → T6c z nową zasadą obrażeń** (rozliczanie bez „Zastosuj”, Unik przed obrażeniami,
+   #56). T5b pada na starcie bez gatewaya, więc najpierw gateway w terminalu MG
+   (`pwsh ai-gateway/scripts/start-gateway.ps1`), potem we własnym oknie konsoli
+   `E2E_FROM=po-T5a pnpm test:e2e t5b- t6`. Spec T5b jest już przestawiony (`noDodge`, bez
+   „Zastosuj”), ale nie przeszedł ani razu. Po zielonym przebiegu: status #56 w `testy-rejestr.md`
+   na „retest OK”, ten punkt do archiwum.
+2. **Triaż MG #57–#71** (z T8b; #62 proponowany jako B2) — `testy-rejestr.md`.
+3. **T8c** (pobieżna regresja obszarów) — `testy.md` 6.4, potem refaktoryzacja pod osłoną suity.
+
+**01.10.2026 — Lista `token:sync` odczytana przed zapisem końcowej pozycji (reszta #47, niepotwierdzone).**
+Po #47 klient nie bierze z listy pozycji figury w marszu (`noteMoveFrame`/`isWalking`
+w `tokenStore.ts`), a upsert znanej figury rusza ją tylko z `moved`. Zostaje wyścig, którego
+żaden przebieg nie pokazał: lista zbudowana po zapisie karty (`emitSceneTokensToPlayers`,
+`findMany` przed `token.update` końcowego ruchu), a wysłana **po** końcowej klatce, ustawi
+figurę z powrotem na starcie u gracza na scenie Dynamicznej — do następnego ruchu albo F5.
+Okno to kilka `await` między odczytem a wysyłką; kierunek, gdyby wrócił: znacznik wersji
+pozycji (licznik serwera stemplowany po zapisie końcowego ruchu i przed odczytem listy),
+a klient odrzuca pozycję z listy starszej niż ostatni ruch figury.
+
+**01.10.2026 — llama-server trzyma ~15,5 GB RAM-u, choć model jest w całości na GPU (T6c).**
+Tuż po starcie, przy `--n-gpu-layers 999` i bez bufora promptów, pamięć prywatna procesu to
+~15,5 GB, a sam plik GGUF waży 13,1 GB. Wygląda to na kopię wag w RAM-ie (tryb wczytywania
+`--load-mode`, dawniej `--mmap`, build 10735). Na PC 32 GB to połowa pamięci, a przy stole MG
+ma jeszcze VTT, przeglądarkę i Discorda. Do sprawdzenia: `--load-mode` / `--no-mmap` / `--mlock`
+i czy RAM spada bez straty tok/s; wynik do `ai-gateway/README.md` (pomiary Qwen).
+
 ## Zamknięte 2026-09-25 (czternasta sesja — ostatnie pozycje, `zaleglosci.md` wyczyszczony)
 
 Zlecenie MG: dokończyć zaległości albo — gdy ich nie ma — wyczyścić plik, żeby nie zjadał tokenów.

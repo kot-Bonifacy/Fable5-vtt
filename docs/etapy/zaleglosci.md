@@ -6,16 +6,14 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**03.10.2026 — dokończenie po T8b i poprawce obrażeń (`029cd36`).** Trzy rzeczy na następną sesję:
+**03.10.2026 — po T8b zostały T8c i trzy potwierdzone B3.** Retest T5b → T6b z gatewayem i triaż
+#57–#71 zamknięte 03.10 (archiwum). Zostaje:
 
-1. **Retest T5b → T6c z nową zasadą obrażeń** (rozliczanie bez „Zastosuj”, Unik przed obrażeniami,
-   #56). T5b pada na starcie bez gatewaya, więc najpierw gateway w terminalu MG
-   (`pwsh ai-gateway/scripts/start-gateway.ps1`), potem we własnym oknie konsoli
-   `E2E_FROM=po-T5a pnpm test:e2e t5b- t6`. Spec T5b jest już przestawiony (`noDodge`, bez
-   „Zastosuj”), ale nie przeszedł ani razu. Po zielonym przebiegu: status #56 w `testy-rejestr.md`
-   na „retest OK”, ten punkt do archiwum.
-2. **Triaż MG #57–#71** (z T8b; #62 proponowany jako B2) — `testy-rejestr.md`.
-3. **T8c** (pobieżna regresja obszarów) — `testy.md` 6.4, potem refaktoryzacja pod osłoną suity.
+1. **T8c** (pobieżna regresja obszarów) — `testy.md` 6.4, **osobna sesja** (decyzja MG z 03.10), potem
+   refaktoryzacja pod osłoną suity.
+2. **#66, #68, #71 (B3, potwierdzone, poza sesją poprawek 03.10)** — nagłówek tabeli wklejony do dwóch
+   odpowiedzi Ścieżki Życia (`parse-manual.py`), wybór portretu przy wyczerpanej puli bez zdania
+   „poproś MG”, drobiazgi kreatora i wejścia — `testy-rejestr.md`.
 
 **26.09.2026 — Wiele grup i wielu MG (decyzje MG przy projekcie testów, `testy.md`).** Kontekst:
 VTT ma być serwerem dla kilku grup, każda z własnym MG. Dziś jest jedno konto MG (`User.role`
@@ -71,20 +69,3 @@ do poprawienia razem z etapem, który to zmieni. Cztery pozycje:
      słucha na publicznym adresie, mimo że PC właściciela jest poza NAT-em.
    - Kolekcje RAG pamięci i bazy wiedzy są per kampania, więc dane jednej kampanii nie trafiają do
      botów drugiej — sprawdzić w etapie. RAG podręcznika jest wspólny, jak kompendium (pozycja 1).
-
-**01.10.2026 — Lista `token:sync` odczytana przed zapisem końcowej pozycji (reszta #47, niepotwierdzone).**
-Po #47 klient nie bierze z listy pozycji figury w marszu (`noteMoveFrame`/`isWalking`
-w `tokenStore.ts`), a upsert znanej figury rusza ją tylko z `moved`. Zostaje wyścig, którego
-żaden przebieg nie pokazał: lista zbudowana po zapisie karty (`emitSceneTokensToPlayers`,
-`findMany` przed `token.update` końcowego ruchu), a wysłana **po** końcowej klatce, ustawi
-figurę z powrotem na starcie u gracza na scenie Dynamicznej — do następnego ruchu albo F5.
-Okno to kilka `await` między odczytem a wysyłką; kierunek, gdyby wrócił: znacznik wersji
-pozycji (licznik serwera stemplowany po zapisie końcowego ruchu i przed odczytem listy),
-a klient odrzuca pozycję z listy starszej niż ostatni ruch figury.
-
-**01.10.2026 — llama-server trzyma ~15,5 GB RAM-u, choć model jest w całości na GPU (T6c).**
-Tuż po starcie, przy `--n-gpu-layers 999` i bez bufora promptów, pamięć prywatna procesu to
-~15,5 GB, a sam plik GGUF waży 13,1 GB. Wygląda to na kopię wag w RAM-ie (tryb wczytywania
-`--load-mode`, dawniej `--mmap`, build 10735). Na PC 32 GB to połowa pamięci, a przy stole MG
-ma jeszcze VTT, przeglądarkę i Discorda. Do sprawdzenia: `--load-mode` / `--no-mmap` / `--mlock`
-i czy RAM spada bez straty tok/s; wynik do `ai-gateway/README.md` (pomiary Qwen).
