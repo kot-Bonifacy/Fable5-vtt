@@ -904,6 +904,8 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## dane — Kompendium, parsery, dane podręcznika
 
+- **Słownik korpusu `build-manual.mjs` zawiera ułamki rozbitych nagłówków (03.10, #78)** — „NSTRUKCJA”, „TRZYMYWANIE” są w `VOCAB`, bo ten liczy się z surowego zrzutu, więc reguła „reszta jest wyrazem → nie sklejaj” trzymała je rozdzielone. Pytaj `LOWER_VOCAB` (wyraz choć raz małymi literami). Pierwsza próba z `LOWER_VOCAB` także dla sklejonej formy zepsuła „ULEPSZANIE”, „AMERYKA”, „WITAJ” — reguła ma tylko **dokładać** sklejenia względem starej. Nagłówek z jednego wyrazu nigdy nie był nagłówkiem (próg dwóch wyrazów w `markHeadings`), więc „URAZÓWKA” i „AGRESORZY” po sklejeniu zostają w tekście.
+- **Python w heredocu: `\b` w zwykłym napisie to znak backspace (03.10)** — wzorzec `r"…\bŚrodowisko\b"` wpisany przez `python - <<'EOF'` w nie-surowym napisie z podwójnym ukośnikiem przed `b` dał w pliku znaki `\x08`; wzorzec nic nie łapał, a `grep` pokazywał „Środowisko” bez ukośników (ten wpis za pierwszym podejściem też się tak zepsuł). Sprawdzaj `grep -c $'\x08'` po takim zapisie, a kod z wyrażeniami regularnymi wpisuj narzędziem Edit.
 - **Regex na zrzucie podręcznika łapie każdą liczbę, także numer strony.** Pierwsza wersja `parse-encounters.py` zrobiła z „STR. 417” wiersz tabeli („dziura 101–417”). Zakres wiersza musi być zakotwiczony (nawias albo początek linii) **i** mieć po sobie krótką nazwę z dwukropkiem.
 - **Podręcznik bywa źródłem błędu, nie tylko parser.** Tabela wieczorna ma w druku wiersze „(70–72)” i „(72–77)” — 72 w obu. Errata siedzi w `KNOWN_FIXES` **w skrypcie**, bo JSON jest wynikiem i kolejny przebieg parsera skasowałby ręczną poprawkę bez śladu.
 - **Karta wpisu kompendium gubi wybór przy zmianie zakładki** — postać, chirurg i poziom ripperdoca wracają do wartości domyślnych; sprawdzaj je tuż przed kliknięciem guzika.
@@ -1011,6 +1013,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Firefox z Playwright MCP nie wstaje: `initializeServer: Timeout 180000ms` albo `process did exit: exitCode=0` (03.10)** — przy kilkunastu żywych procesach `firefox.exe` (nie wiadomo czyich — nie zabijaj ich na ślepo). Obejście bez ruszania profilu: skrypt biblioteki `playwright` w scratchpadzie (`firefox.launch()`, świeży kontekst, MG w `chromium` obok) — zrzuty kolejnych kroków do pliku; tak oglądano poprawki #68/#71.
 - **Pełny ekran w Playwright MCP wygląda, jakby zniknął pasek i panel boczny — to kadr zrzutu (03.10, T8c)** — okno Firefoksa rośnie do rozmiaru monitora (`innerWidth` 3072 × 1728), a zrzut pokazuje dalej emulowane 1920 × 1080 z lewego górnego rogu. Sprawdź `innerWidth`, zanim zgłosisz układ pełnego ekranu.
 - **Syntetyczny `keydown` wysłany na `window` daje w konsoli `TypeError: … closest is not a function` (03.10, T8c)** — obsługa skrótów woła `event.target.closest`, a `window` go nie ma. Klawisz wysyłaj na `document.body` albo przez `browser_press_key`.
 

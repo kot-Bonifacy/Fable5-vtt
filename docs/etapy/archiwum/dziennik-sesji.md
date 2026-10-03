@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 (druga) — zaległości po T8b, grot dla całego stołu, RAM llama-server
+
+**Zlecenie MG:** zrobić zaległości z `zaleglosci.md` i zamienić „grot widzi tylko celujący” na
+przekazywanie grota innym graczom na bieżąco (np. raz na sekundę). Pytania: triaż #57–#71 — wagi jak
+w propozycji (#62 B2, reszta B3), naprawić #57–#65, #67, #69, #70; **T8c osobna sesja**; zatrzymanie
+gatewaya na pomiar RAM-u — zgoda.
+
+**Zrobione (`120646b`):** `token:aim` — ulotny kąt celowania, najwyżej raz na sekundę (pierwsza zmiana
+od razu, reszta na końcu okna), widownia per gniazdo po widoczności figury, zdjęcie przy nowym celu,
+`null` i rozłączeniu; zapis kąta dalej tylko przy strzale (umowy w `mapa` i `serwer`). Poprawki #57–#65,
+#67, #69, #70 (opisy w rejestrze, umowy w `mapa`, `tura`, `kosci`). Wyścig listy `token:sync` (reszta
+#47) zamknięty po stronie klienta (`holdsPosition`, 2 s po lądowaniu). Gateway: `--load-mode none`
+domyślnie — zbiór roboczy llama-server 12,2 → 1,1 GB przy tym samym 52,1 tok/s (tabela w
+`ai-gateway/README.md`); gateway **chodzi teraz we własnym oknie pwsh**, nie w terminalu MG. Spec T6a
+czeka na okno handlu albo „Otwórz” (`openTradeWindow`, pułapka w `testy`). Pomysły: bot bez drugiego
+ataku z SS 2, dwa krzyżyki karta/kreator (`POMYSLY.md`).
+
+**Weryfikacja:** `shared` 2254, serwer 1294 (3 nowe dla `token:aim`), klient 319, gateway 63; ESLint,
+Prettier, `tsc`, `ruff` czyste. E2E: T5b 27/27, T6a + T6b 31/31, **pełny domyślny przebieg 240/240
+(36,4 min)**. Oglądane: MG w **Firefoksie** (Playwright, `dev.db`, „Test2”): podsłuch
+`WebSocket.prototype.send` złapał `token:aim` 180° i `null` po zejściu, dymek „Cel: / Twoja broń: /
+Głowa celu / Cel trzyma”, grot Franca na Portosie; przy zbliżeniu zwinięcie lewego panelu nie ruszyło
+obrazu (przy całej mapie w kadrze MG `clamp` centruje — zamierzone). **Nieoglądane:** strona gracza
+(legenda śladów, notki zgody i przyjęcia, „Walka jeszcze się nie zaczęła”) i odbiór grota w drugim
+oknie — logowanie drugiego okna zablokował klasyfikator uprawnień; pokrywają je testy jednostkowe,
+serwerowe i pełny E2E. `dev.db`: sesja MG w Firefoksie, nic poza tym.
+
+**Następny krok:** T8c (`testy.md` 6.4), potem refaktoryzacja.
+
 ### Sesja 03.10 — T8b (pierwszy kontakt) i obrażenia bez „Zastosuj”
 
 **Zlecenie MG:** T8b z `testy.md`. Pytania na starcie (wiersz w sekcji 2 `testy.md`): gracz zna CP RED,

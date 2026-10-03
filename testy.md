@@ -665,7 +665,7 @@ Kartę wieloklasową „Wielorak” (Rocker 2 + Media, Nomada, Fixer, Stróż Pr
 od MG nowy gracz Kuba — przygotowanie gniazdem, nie przedmiot testu. Ręcznie (Playwright MCP): Kuba
 w Firefoksie (panele Zdolności, rangi tylko do odczytu, ustawienia ze skórką, pełny ekran, okna muzyki
 i skrótów, rysunek), MG w Chromium (formularz tabeli, siatka Zdolności) — z tego **#76** i **#77**.
-Nowe błędy #72–#78, wszystkie B3 do triażu; żadnego B0–B2, wycieku ani nowego błędu konsoli.
+Nowe błędy #72–#78, wszystkie B3 do triażu; żadnego B0–B2, wycieku ani nowego błędu konsoli. **03.10 (czwarta sesja): triaż MG — wszystkie B3, naprawione i retestowane w `b9873e8`** (razem z #66, #68, #71 z T8b; retest `00-baseline` + `t8c-` 36/36).
 
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 

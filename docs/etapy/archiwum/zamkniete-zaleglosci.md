@@ -9,6 +9,25 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-03 (czwarta sesja: poprawki #66, #68, #71–#78)
+
+Zlecenie MG: „napraw błędy z rejestru”. Wszystkie dziesięć naprawione i retestowane w `b9873e8`;
+rozstrzygnięcia MG i retest — notatka pod tabelą w `testy-rejestr.md`. Wpis w brzmieniu sprzed
+zamknięcia:
+
+**03.10.2026 — po T8c: triaż siedmiu nowych B3 i trzy potwierdzone B3 z T8b.** T8c (pobieżna
+regresja) zamknięty 03.10 — `testy.md` 6.4. Zostaje:
+
+1. **Triaż MG #72–#78 (B3, T8c)** — formularz tabeli losowej gubi pierwszy klik (#72), mylące zdania
+   odmowy `/tab` (#73) i Lojalności u gracza (#75), pracownik Korpo bez imienia u gracza (#74), ✕ Taboru
+   poza kartą w Firefoksie (#76), czerwone puste pola siatki Zdolności (#77), cytaty asystenta zasad bez
+   inicjałów nagłówków (#78) — `testy-rejestr.md`; testy `test.fail` w `t8c-narracja` i `t8c-zdolnosci`.
+2. **#66, #68, #71 (B3, potwierdzone, poza sesją poprawek 03.10)** — nagłówek tabeli wklejony do dwóch
+   odpowiedzi Ścieżki Życia (`parse-manual.py`), wybór portretu przy wyczerpanej puli bez zdania
+   „poproś MG”, drobiazgi kreatora i wejścia — `testy-rejestr.md`.
+
+Potem refaktoryzacja pod osłoną suity (T8a–T8c w niej).
+
 ## Zamknięte 2026-10-03 (sesja po T8b: retest, triaż, wyścig listy figur)
 
 Zlecenie MG: „zrób zaległości z `zaleglosci.md`” i grot celowania widoczny dla całego stołu.
