@@ -357,19 +357,20 @@ describe('map effects', () => {
   it('floats the number a hit cost, over the figure that paid it', async () => {
     const { messageId } = await fire();
     const damageCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const gmSeen = record(gm);
     await emitAck(player, 'character:roll', {
       characterId,
       request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId: messageId },
     });
     const damageMessageId = (await damageCard).message.id;
-
-    const gmSeen = record(gm);
-    await emitAck(gm, 'damage:apply', { messageId: damageMessageId, tokenId: mookTokenId });
     await settle();
-    const batch = gmSeen.stop()[0];
-    if (!batch) throw new Error('applying damage drew nothing');
-    // Applying damage writes a plain card, not a roll — nothing to wait for.
-    expect(batch.afterMessageId).toBeUndefined();
+    const batch = gmSeen
+      .stop()
+      .find((seen) => seen.effects.some((effect) => effect.kind === 'float'));
+    if (!batch) throw new Error('the hit drew nothing');
+    // The damage settles itself (decyzja MG z 03.10), so the spark and the
+    // number wait for the dice that decided them — not a frame before.
+    expect(batch.afterMessageId).toBe(damageMessageId);
     expect(batch.effects.some((effect) => effect.kind === 'spark')).toBe(true);
     const float = batch.effects.find((effect) => effect.kind === 'float');
     if (float?.kind !== 'float') throw new Error('no number floated');

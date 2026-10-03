@@ -132,6 +132,7 @@ import { characterInjuryEvent, damageApplyEvent, damageUndoEvent } from './damag
 import { characterStatEffectEvent } from './stat-effects.js';
 import {
   attackEvadeEvent,
+  attackNoEvadeEvent,
   attackRollEvent,
   attackSmartEvent,
   weaponAttachmentEvent,
@@ -415,6 +416,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterStatEffectEvent,
   attackRollEvent,
   attackEvadeEvent,
+  attackNoEvadeEvent,
   attackSmartEvent,
   weaponAttachmentEvent,
   weaponClearJamEvent,

@@ -237,6 +237,19 @@ describe('planCpredRoll — damage (stage 15)', () => {
     expect(result.plan.title).toBe('Zgrzyt-9 — obrażenia (Korpus)');
   });
 
+  it('names the attack card it was rolled for (#56)', () => {
+    const data = sheet({ weapons: [weapon] });
+    const result = planCpredRoll(data, registry, {
+      kind: 'damage',
+      weaponRowId: 'w1',
+      attackMessageId: 41,
+      targetTokenId: 't1',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.damage).toMatchObject({ attackMessageId: 41, targetTokenId: 't1' });
+  });
+
   it('carries the aimed location and the GM’s flat modifier', () => {
     const data = sheet({ weapons: [weapon] });
     const result = planCpredRoll(data, registry, {

@@ -272,6 +272,17 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     return { card, messageId: broadcast.message.id };
   }
 
+  /**
+   * Log entries the damage rolls wrote by themselves (03.10: damage rolled for
+   * an attack card settles on the targets it named, without „Zastosuj"). They
+   * queue behind the roll card (`rollPresentation`), so they may come after the
+   * ack — the collector listens for the whole file.
+   */
+  const settled: (DamageLogEntry & { logMessageId: number })[] = [];
+  let collecting = false;
+  /** Entries „Zastosuj" made by hand — the collector hears them too. */
+  const handMade = new Set<number>();
+
   /** Rolls the damage an attack card offers and returns the stored roll. */
   async function rollDamage(
     weaponRowId: string,
@@ -279,6 +290,14 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     modifier = 0,
   ): Promise<{ roll: RollResult; messageId: number }> {
     const message = waitForMessage(gm, (payload) => payload.message.roll?.damage !== undefined);
+    if (!collecting) {
+      collecting = true;
+      gm.on('chat:message', (payload: ChatMessageBroadcast) => {
+        if (payload.message.damage) {
+          settled.push({ ...payload.message.damage, logMessageId: payload.message.id });
+        }
+      });
+    }
     data(
       await emitAck<{ messageId: number }>(player, 'character:roll', {
         characterId,
@@ -295,11 +314,29 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     return { roll: broadcast.message.roll!, messageId: broadcast.message.id };
   }
 
-  /** Applies a stored damage roll to one figure or car and returns the log entry. */
+  /**
+   * The log entry of a stored damage roll on one figure or car: the one the roll
+   * wrote by itself when the attack named this target, otherwise „Zastosuj"
+   * pointed here by hand (the GM can still move damage onto somebody else).
+   */
   async function apply(
     messageId: number,
     target: { tokenId: string } | { coverId: number },
   ): Promise<DamageLogEntry & { logMessageId: number }> {
+    const named = (entry: DamageLogEntry & { logMessageId: number }) =>
+      !handMade.has(entry.logMessageId) &&
+      entry.sourceMessageId === messageId &&
+      ('tokenId' in target
+        ? entry.targetTokenId === target.tokenId
+        : entry.targetCoverId === target.coverId);
+    const named0 = settled.findIndex(named);
+    if (named0 !== -1) return settled.splice(named0, 1)[0]!;
+    // Give the automat a moment — its entry rides behind the roll card.
+    for (let tries = 0; tries < 10; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const index = settled.findIndex(named);
+      if (index !== -1) return settled.splice(index, 1)[0]!;
+    }
     const logged = waitForMessage(gm, (payload) => payload.message.damage !== undefined);
     const { messageId: logMessageId } = data(
       await emitAck<{ messageId: number }>(gm, 'damage:apply', {
@@ -309,7 +346,10 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
       }),
       'damage:apply',
     );
-    return { ...(await logged).message.damage!, logMessageId };
+    const entry = (await logged).message.damage!;
+    // The collector hears this hand-made entry too; it is not the automat's.
+    handMade.add(logMessageId);
+    return { ...entry, logMessageId };
   }
 
   function damageOf(roll: RollResult): number {
@@ -566,12 +606,13 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     expect(card.detail).not.toContain('bariera');
 
     // 2k6 + 18 is 20 at the least — always past both layers, so the jacket wears.
+    // The sheet is read first: the damage lands the moment it is rolled (03.10).
+    const before = await sheetOf(armoredId);
     const { roll, messageId: damageId } = await rollDamage('w-pistol', messageId, 18);
     expect(roll.damage?.system?.barrierSp).toBe(7);
     const damage = damageOf(roll);
     expect(damage).toBeGreaterThanOrEqual(20);
 
-    const before = await sheetOf(armoredId);
     const entry = await apply(damageId, { tokenId: armoredTokenId });
     const after = await sheetOf(armoredId);
 

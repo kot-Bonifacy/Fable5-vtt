@@ -10,6 +10,7 @@ import type {
   MapFxEffect,
   RollResult,
   ScenePoint,
+  SessionUser,
   TokenHp,
 } from '@vtt/shared';
 import {
@@ -37,7 +38,7 @@ import {
   type SheetDamageRequest,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
-import { RealtimeError, defineEvent, type EventArgs, type RealtimeDeps } from './registry.js';
+import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { clearFacedownFear, restoreFacedownFear } from './facedown.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
@@ -205,29 +206,160 @@ async function requireNotApplied(
 export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: number }>({
   name: 'damage:apply',
   role: ROLE_GM,
-  handler: async (args) => {
-    const sourceMessageId = requireMessageId(args.payload?.messageId);
-    const target =
-      args.payload?.coverId !== undefined
-        ? { coverId: args.payload.coverId }
-        : { tokenId: args.payload?.tokenId };
-    const key = `${sourceMessageId}:${JSON.stringify(target)}`;
-    if (appliesInFlight.has(key)) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
-    appliesInFlight.add(key);
-    try {
-      const campaignId = requireCampaignId(args.socket.data);
-      await requireNotApplied(args.deps, campaignId, sourceMessageId, target);
-      return await applyDamageCard(args, campaignId, sourceMessageId);
-    } finally {
-      appliesInFlight.delete(key);
-    }
-  },
+  handler: async ({ deps, socket, user, payload }) =>
+    applyDamageRollTo(deps, requireCampaignId(socket.data), user, payload),
 });
 
+/**
+ * One damage roll settled on one target — the body of „Zastosuj" (stage 15),
+ * and since 03.10 also what a damage roll made for an attack card does by
+ * itself to the targets that attack named (decyzja MG po T8b: obrażenia bez
+ * akceptacji MG). One road for both, so the hand and the automat can never
+ * settle the same card twice (`requireNotApplied`, #26).
+ */
+export async function applyDamageRollTo(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  payload: DamageApplyPayload | undefined,
+  /** Set by the automat: the map waits for the damage dice (`applyDamageToFigure`). */
+  afterMessageId?: number,
+): Promise<{ messageId: number }> {
+  const sourceMessageId = requireMessageId(payload?.messageId);
+  const target =
+    payload?.coverId !== undefined ? { coverId: payload.coverId } : { tokenId: payload?.tokenId };
+  const key = `${sourceMessageId}:${JSON.stringify(target)}`;
+  if (appliesInFlight.has(key)) throw new RealtimeError('DAMAGE_ALREADY_APPLIED');
+  appliesInFlight.add(key);
+  try {
+    await requireNotApplied(deps, campaignId, sourceMessageId, target);
+    return await applyDamageCard(deps, user, payload, campaignId, sourceMessageId, afterMessageId);
+  } finally {
+    appliesInFlight.delete(key);
+  }
+}
+
+/**
+ * Who a damage roll made for an attack lands on by itself (03.10, decyzja MG po
+ * T8b) — exactly the targets the attack named and nobody else: the shot's one
+ * figure or car, or every figure and car a blast reached and nothing spared.
+ * The list on the roll was filtered when the damage was rolled, and nobody may
+ * jump clear after that (`evasionPending` held the roll back until they chose).
+ */
+function namedTargetsOf(roll: RollResult): Omit<DamageApplyPayload, 'messageId'>[] {
+  const damage = roll.damage;
+  if (!damage) return [];
+  if (damage.areaTargets && damage.areaTargets.length > 0) {
+    return damage.areaTargets.flatMap((target): Omit<DamageApplyPayload, 'messageId'>[] =>
+      target.spared !== undefined
+        ? []
+        : target.coverId !== undefined
+          ? [{ coverId: target.coverId }]
+          : target.tokenId
+            ? [{ tokenId: target.tokenId, location: 'body' }]
+            : [],
+    );
+  }
+  if (damage.targetCoverId !== undefined) return [{ coverId: damage.targetCoverId }];
+  if (damage.targetTokenId) return [{ tokenId: damage.targetTokenId }];
+  return [];
+}
+
+/**
+ * Damage rolled for an attack settles itself (03.10, decyzja MG po T8b: „dodaj
+ * poprawkę, żeby nie potrzebowały tej akceptacji”). Until then the hit waited
+ * for the GM's „Zastosuj", and the card that said what it did arrived long
+ * after the dice — on the GM's time, not the shooter's.
+ *
+ * The same road as the button (`applyDamageRollTo`), one call per target, so
+ * „Cofnij" still takes the grenade back off one person at a time. A target that
+ * is gone by now (a token deleted mid-fight) is skipped rather than failing the
+ * roll: the dice already fell, and the GM can still point „Zastosuj" elsewhere.
+ */
+export async function settleDamageRoll(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  rollMessageId: number,
+  roll: RollResult,
+): Promise<void> {
+  if (roll.damage?.attackMessageId === undefined) return;
+  for (const target of namedTargetsOf(roll)) {
+    try {
+      await applyDamageRollTo(
+        deps,
+        campaignId,
+        user,
+        { messageId: rollMessageId, ...target },
+        rollMessageId,
+      );
+    } catch (error) {
+      if (!(error instanceof RealtimeError)) throw error;
+    }
+  }
+}
+
+/** Rewrites an attack card in place and pushes it to the table (the dodge's road). */
+export async function rewriteAttackCard(
+  deps: RealtimeDeps,
+  campaignId: string,
+  attackMessageId: number,
+  rewrite: (attack: NonNullable<RollResult['attack']>) => NonNullable<RollResult['attack']> | null,
+): Promise<void> {
+  const message = await deps.ctx.prisma.chatMessage.findUnique({ where: { id: attackMessageId } });
+  if (!message || message.campaignId !== campaignId || !message.payload) return;
+  const roll = JSON.parse(message.payload) as RollResult;
+  if (!roll.attack) return;
+  const attack = rewrite(roll.attack);
+  if (!attack) return;
+  const saved = await deps.ctx.prisma.chatMessage.update({
+    where: { id: message.id },
+    data: { payload: JSON.stringify({ ...roll, attack }) },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+}
+
+/**
+ * Every application of this damage roll was taken back — the hit is open again
+ * and may be rolled anew (#56: „Przerzut tylko po »Cofnij« MG”). A roll that
+ * was never settled anywhere stays rolled: nothing about it was undone.
+ */
+async function reopenAttackAfterUndo(
+  deps: RealtimeDeps,
+  campaignId: string,
+  rollMessageId: number,
+): Promise<void> {
+  const rollMessage = await deps.ctx.prisma.chatMessage.findUnique({
+    where: { id: rollMessageId },
+  });
+  if (!rollMessage?.payload) return;
+  const attackMessageId = (JSON.parse(rollMessage.payload) as RollResult).damage?.attackMessageId;
+  if (attackMessageId === undefined) return;
+  const logs = await deps.ctx.prisma.chatMessage.findMany({
+    where: { campaignId, kind: 'damage', id: { gt: rollMessageId } },
+    select: { payload: true },
+  });
+  const live = logs.some((log) => {
+    if (!log.payload) return false;
+    const entry = JSON.parse(log.payload) as DamageLogEntry;
+    return entry.sourceMessageId === rollMessageId && !entry.undone;
+  });
+  if (live) return;
+  await rewriteAttackCard(deps, campaignId, attackMessageId, (attack) => {
+    if (attack.damageRollId !== rollMessageId) return null;
+    const { damageRollId: _rolled, ...open } = attack;
+    return open;
+  });
+}
+
 async function applyDamageCard(
-  { deps, user, payload }: EventArgs<DamageApplyPayload>,
+  deps: RealtimeDeps,
+  user: SessionUser,
+  payload: DamageApplyPayload | undefined,
   campaignId: string,
   sourceMessageId: number,
+  afterMessageId?: number,
 ): Promise<{ messageId: number }> {
   const roll = await loadDamageRoll(deps, campaignId, sourceMessageId);
 
@@ -309,7 +441,7 @@ async function applyDamageCard(
     ...(barrierSp > 0 ? { barrierSp } : {}),
   };
 
-  const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
+  const landed = await applyDamageToFigure(deps, campaignId, scene, token, request, afterMessageId);
   const log = landed.log;
   const character = landed.character;
 
@@ -369,9 +501,14 @@ export async function applyDamageToFigure(
   scene: Scene,
   token: Token,
   request: SheetDamageRequest,
+  /**
+   * The damage roll the hit belongs to, when it settles itself (03.10): the
+   * spark and the number then wait for those dice like the shot's bang does.
+   */
+  afterMessageId?: number,
 ): Promise<{ log: SheetDamageLog; character: Character | null }> {
   const landed = await landDamageOnFigure(deps, campaignId, scene, token, request);
-  await emitMapFx(deps, campaignId, scene, damageMapFx(landed.log, token, scene));
+  await emitMapFx(deps, campaignId, scene, damageMapFx(landed.log, token, scene), afterMessageId);
   return landed;
 }
 
@@ -848,5 +985,8 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
       include: INCLUDE_CHAT_NAMES,
     });
     await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(updated), 'chat:update');
+    if (entry.sourceMessageId !== undefined) {
+      await reopenAttackAfterUndo(deps, campaignId, entry.sourceMessageId);
+    }
   },
 });

@@ -186,6 +186,12 @@ export interface RollDamageMeta {
   /** Token this damage is meant for, so „Zastosuj" preselects it (stage 16). */
   targetTokenId?: string;
   /**
+   * The attack card this damage was rolled for (#56). Its presence also means
+   * the roll settled itself on the targets the attack named (03.10, decyzja MG
+   * po T8b) — „Zastosuj" is left for damage nobody aimed.
+   */
+  attackMessageId?: number;
+  /**
    * Cover this damage is meant for instead of a token (stage 16c). Exclusive
    * with `targetTokenId`: a shot is aimed either at somebody or at the car they
    * are behind, and „Zastosuj" needs to know which before it can preselect
@@ -309,6 +315,24 @@ export interface RollAttackMeta {
   damageMultiplier?: number;
   /** True once the defender contested the attack — it may only be done once. */
   evaded?: boolean;
+  /**
+   * The defender said „no dodge" (03.10, decyzja MG po T8b) — the button goes,
+   * and the damage stops waiting for them.
+   */
+  noEvade?: boolean;
+  /**
+   * Figures that may still dodge or jump clear, and whose answer the damage
+   * roll waits for (03.10, decyzja MG po T8b: „Unik przed obrażeniami"). Filled
+   * by the system module when the card is stored; a dodge or a „Bez uniku"
+   * takes the figure off. Absent or empty — nobody to wait for.
+   */
+  evasionPending?: string[];
+  /**
+   * Chat message id of the damage roll made for this attack (#56) — one hit,
+   * one damage roll. Cleared only when every application of that roll was
+   * taken back, which is the one way a damage roll may be made again.
+   */
+  damageRollId?: number;
   /** Results of checks the attack forced on others (suppressive fire). */
   forcedChecks?: RollForcedCheck[];
   /** Where this attack went off and whom it reached (stage 16d). */

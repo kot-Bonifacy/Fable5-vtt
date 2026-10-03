@@ -1560,6 +1560,8 @@ export class MapRenderer {
   private aimReady = false;
   /** Token under the crosshair, redrawn as a reticle on the overlay. */
   private aimTokenId: string | null = null;
+  /** Figura, której grot celownik odwrócił na cel (03.10) — do oddania przy zejściu. */
+  private aimTurnedTokenId: string | null = null;
   private readonly aimGraphics = new Graphics();
   /**
    * The area template that follows the pointer (stages 16d, 16g).
@@ -4014,6 +4016,7 @@ export class MapRenderer {
       this.aimTokenId = id;
       this.drawAimReticle();
       this.applyMapCursor();
+      this.turnShooterToAim();
     }
     // The position is reported even when the token has not changed: the bubble
     // follows the pointer across a large figure rather than sticking to the
@@ -4029,7 +4032,42 @@ export class MapRenderer {
     this.aimTokenId = null;
     this.drawAimReticle();
     this.applyMapCursor();
+    this.turnShooterToAim();
     this.onAimHover?.(null);
+  }
+
+  /**
+   * Grot strzelca idzie za celownikiem (03.10, decyzja MG po T8b: „strzałki
+   * powinny się kierować na cel, w który celujemy”).
+   *
+   * Tylko obraz u tego, kto celuje: kierunek zapisuje serwer dopiero przy
+   * strzale (`turnTokenToward`, 27j), bo wycelowanie to jeszcze nie decyzja,
+   * a reszta stołu nie powinna widzieć, w kogo ktoś mierzy, zanim pociągnie za
+   * spust. Zejście celownika oddaje figurze kąt z serwera — chyba że figura
+   * właśnie maszeruje, bo wtedy grot prowadzi marsz.
+   */
+  private turnShooterToAim(): void {
+    const scene = this.scene;
+    const shooter = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    const target = this.aimTokenId ? this.tokenNodes.get(this.aimTokenId) : undefined;
+    const turned = this.aimTurnedTokenId ? this.tokenNodes.get(this.aimTurnedTokenId) : undefined;
+    if (turned && !turned.destroyed && turned !== shooter && !this.march) {
+      turned.showFacing(turned.token.facing ?? null);
+    }
+    this.aimTurnedTokenId = null;
+    if (!scene || !shooter || shooter.destroyed) return;
+    if (!target || target.destroyed || target === shooter) {
+      if (turned === shooter && !this.march) shooter.showFacing(shooter.token.facing ?? null);
+      return;
+    }
+    const half = (node: TokenNode) => (node.token.size * scene.grid.sizePx) / 2;
+    const facing = facingFromDelta(
+      target.x + half(target) - (shooter.x + half(shooter)),
+      target.y + half(target) - (shooter.y + half(shooter)),
+    );
+    if (facing === null) return;
+    shooter.showFacing(facing);
+    this.aimTurnedTokenId = shooter.tokenId;
   }
 
   /**

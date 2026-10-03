@@ -19,12 +19,14 @@ import {
   endPlayerTurn,
   expectClean,
   lastMessageId,
+  noDodge,
   nextTurn,
   openSheet,
   queueOf,
   rollAndWait,
   rollById,
   sceneRow,
+  settledWithoutApply,
   sheet,
   sumOf,
   token,
@@ -404,6 +406,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       ).toContainText(String(shotTotal));
     }
 
+    await noDodge(mg, attackId, 'Bardzo ciężki pistolet → Zbir');
     scriptDice([5, 4, 3, 2]);
     before = lastMessageId();
     await marek.page
@@ -413,19 +416,16 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       .click();
     await rollAndWait(marek, before, 'Bardzo ciężki pistolet — obrażenia');
 
-    // „Zastosuj” ma tylko MG; cel podstawiony z karty strzału.
-    const damageCard = mg.page
-      .locator('.chat-message', { hasText: 'Bardzo ciężki pistolet — obrażenia' })
-      .last();
-    await expect(damageCard.locator('select').first()).toHaveValue(zbir.id);
+    // Obrażenia rozliczają się same na celu z karty strzału (decyzja MG z 03.10):
+    // nikt nie klika „Zastosuj”, a MG nie ma go już na karcie.
+    await expect.poll(() => sheet<{ hpCurrent: number }>('Zbir').hpCurrent).toBe(22);
+    await settledWithoutApply(mg, 'Bardzo ciężki pistolet — obrażenia');
     await expect(
       marek.page
         .locator('.chat-message', { hasText: 'Bardzo ciężki pistolet — obrażenia' })
         .last()
         .getByRole('button', { name: 'Zastosuj' }),
     ).toHaveCount(0);
-    await damageCard.getByRole('button', { name: 'Zastosuj' }).click();
-    await expect.poll(() => sheet<{ hpCurrent: number }>('Zbir').hpCurrent).toBe(22);
     const armor = sheet<{ armor: { location: string; spCurrent: number }[] }>('Zbir').armor;
     expect(armor.find((a) => a.location === 'body')?.spCurrent).toBe(10);
     expect(armor.find((a) => a.location === 'head')?.spCurrent).toBe(11);

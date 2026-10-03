@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { declineEvasion } from '../socket.js';
 
 /**
  * The attack card on the chat (stage 16).
@@ -198,6 +199,30 @@ export function AttackRow({
     });
   }
 
+  /**
+   * Obrażenia czekają na decyzję o Uniku (03.10, decyzja MG po T8b) i padają
+   * raz na trafienie (#56). Obie rzeczy rozstrzyga serwer; karta mówi tylko,
+   * na kogo czeka, żeby przycisk nie wyglądał na zepsuty.
+   */
+  const pending = attack.evasionPending ?? [];
+  const damageRolled = attack.damageRollId !== undefined;
+  const pendingNames = pending.map(
+    (tokenId) =>
+      attack.area?.targets.find((target) => target.tokenId === tokenId)?.name ??
+      tokens[tokenId]?.name ??
+      'cel',
+  );
+  const damageBlockedBy = damageRolled
+    ? 'Obrażenia za to trafienie już rzucone — ponownie dopiero po „Cofnij” MG'
+    : pending.length > 0
+      ? `Obrażenia czekają na decyzję o uniku: ${pendingNames.join(', ')}`
+      : undefined;
+  /** „Bez uniku" for a single target: whoever could have rolled the dodge. */
+  const mayAnswerDodge =
+    attack.targetTokenId !== undefined &&
+    pending.includes(attack.targetTokenId) &&
+    (defender ?? statistDefender) !== undefined;
+
   const verdict =
     attack.hit === undefined
       ? { text: 'Ogień zaporowy', className: 'suppressive' }
@@ -267,6 +292,20 @@ export function AttackRow({
                   {attack.area?.shape === 'cone' ? 'Unik' : 'Odskocz'}
                 </button>
               )}
+              {target.tokenId &&
+                pending.includes(target.tokenId) &&
+                (isGm || evadeableBy(target.tokenId)) && (
+                  <button
+                    type="button"
+                    className="small-button"
+                    title="Zostaje w obszarze — obrażenia przestają na niego czekać"
+                    onClick={() =>
+                      declineEvasion({ messageId: message.id, tokenId: target.tokenId! })
+                    }
+                  >
+                    Bez uniku
+                  </button>
+                )}
             </li>
           ))}
         </ul>
@@ -286,10 +325,12 @@ export function AttackRow({
           <button
             type="button"
             className="small-button"
+            disabled={damageBlockedBy !== undefined}
             title={
-              attack.damageMultiplier && attack.damageMultiplier > 1
+              damageBlockedBy ??
+              (attack.damageMultiplier && attack.damageMultiplier > 1
                 ? `Rzut na obrażenia ${attack.damageNotation} ×${attack.damageMultiplier} — ładuje kubek`
-                : `Rzut na obrażenia ${attack.damageNotation} — ładuje kubek`
+                : `Rzut na obrażenia ${attack.damageNotation} — ładuje kubek`)
             }
             onClick={rollDamage}
           >
@@ -299,14 +340,28 @@ export function AttackRow({
               : attack.damageNotation}
           </button>
         )}
-        {!attack.evaded && attack.hit !== undefined && (defender ?? statistDefender) && (
+        {!attack.evaded &&
+          !attack.noEvade &&
+          !damageRolled &&
+          attack.hit !== undefined &&
+          (defender ?? statistDefender) && (
+            <button
+              type="button"
+              className="small-button"
+              title="Zamiast PT z tabeli — rzut ZW + Unik obrońcy (ładuje kubek)"
+              onClick={rollEvasion}
+            >
+              Unik: {defender?.name ?? statistDefender?.name}
+            </button>
+          )}
+        {mayAnswerDodge && (
           <button
             type="button"
             className="small-button"
-            title="Zamiast PT z tabeli — rzut ZW + Unik obrońcy (ładuje kubek)"
-            onClick={rollEvasion}
+            title="Obrońca nie unika — obrażenia przestają czekać"
+            onClick={() => declineEvasion({ messageId: message.id })}
           >
-            Unik: {defender?.name ?? statistDefender?.name}
+            Bez uniku
           </button>
         )}
         {/*
@@ -329,6 +384,13 @@ export function AttackRow({
           </button>
         )}
       </div>
+      {/* Widać nie tylko w podpowiedzi: wyszarzony guzik bez słowa wyglądał
+          na zepsuty (T8b, 03.10). */}
+      {attack.damageNotation !== undefined && pending.length > 0 && !damageRolled && (
+        <p className="chat-attack-detail">
+          Obrażenia czekają na decyzję o uniku: {pendingNames.join(', ')}.
+        </p>
+      )}
       {attack.smart?.requires && (
         <p className="chat-attack-detail">
           Ten nabój wymaga cyborgizacji „{attack.smart.requires}" — VTT tego nie sprawdza.

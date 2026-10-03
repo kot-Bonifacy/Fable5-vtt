@@ -17,11 +17,13 @@ import {
   combatRow,
   endPlayerTurn,
   lastMessageId,
+  noDodge,
   openSheet,
   queueOf,
   rollAndWait,
   rollById,
   sceneRow,
+  settledWithoutApply,
   sheet,
   sumOf,
   token,
@@ -190,7 +192,8 @@ for (const layout of LAYOUTS) {
       const need = Math.max(2, 21 - (cup?.attack?.modifierTotal ?? 0));
       const faces = need <= 9 ? [need] : [10, Math.max(1, need - 10)];
       scriptDice(faces);
-      const attack = rollById(await rollAndWait(marek, before, 'Bardzo ciężki pistolet → Zbir'));
+      const attackId = await rollAndWait(marek, before, 'Bardzo ciężki pistolet → Zbir');
+      const attack = rollById(attackId);
       expect(pendingDice()).toBe('');
       expect(attack.total).toBe(faces.reduce((a, b) => a + b, 0) + sumOf(attack));
       expect(attack.attack?.hit).toBe(true);
@@ -203,6 +206,9 @@ for (const layout of LAYOUTS) {
         ).toContainText(String(attack.total), { timeout: 30_000 });
       }
 
+      await noDodge(mg, attackId, 'Bardzo ciężki pistolet → Zbir');
+      // PW przed rzutem: obrażenia rozliczają się same, gdy kości padną (03.10).
+      const hpBefore = sheet<{ hpCurrent: number }>('Zbir').hpCurrent;
       scriptDice([5, 4, 3, 2]);
       before = lastMessageId();
       await marek.page
@@ -211,13 +217,8 @@ for (const layout of LAYOUTS) {
         .getByRole('button', { name: /^Obrażenia/ })
         .click();
       await rollAndWait(marek, before, 'Bardzo ciężki pistolet — obrażenia');
-      const hpBefore = sheet<{ hpCurrent: number }>('Zbir').hpCurrent;
-      await mg.page
-        .locator('.chat-message', { hasText: 'Bardzo ciężki pistolet — obrażenia' })
-        .last()
-        .getByRole('button', { name: 'Zastosuj' })
-        .click();
       await expect.poll(() => sheet<{ hpCurrent: number }>('Zbir').hpCurrent).toBe(hpBefore - 3);
+      await settledWithoutApply(mg, 'Bardzo ciężki pistolet — obrażenia');
       await endPlayerTurn(marek);
       expect(activeName()).toBe('Iskra');
     });

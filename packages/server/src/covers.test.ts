@@ -257,24 +257,38 @@ describe('cover as an object on the scene', () => {
     return { card, messageId: broadcast.message.id };
   }
 
-  /** The whole stage-15 chain against a cover: roll damage, then apply it. */
+  /**
+   * The log entry a damage roll writes on the car by itself (03.10: damage
+   * rolled for an attack card needs no „Zastosuj"). Listen before the roll.
+   */
+  function carLog(ms = 3000): Promise<ChatMessageBroadcast> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        gm.off('chat:message', onMessage);
+        reject(new Error('damage log timeout'));
+      }, ms);
+      const onMessage = (payload: ChatMessageBroadcast) => {
+        if (payload.message.damage?.targetCoverId !== carId) return;
+        clearTimeout(timer);
+        gm.off('chat:message', onMessage);
+        resolve(payload);
+      };
+      gm.on('chat:message', onMessage);
+    });
+  }
+
+  /** The whole stage-15 chain against a cover: the damage roll settles itself. */
   async function damageCover(attackMessageId: number): Promise<DamageLogEntry> {
     const damageBroadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const logBroadcast = carLog();
     await emitAck(player, 'character:roll', {
       characterId,
       request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId },
     });
     const damageMessage = await damageBroadcast;
-    // The damage roll knows what it was aimed at, so „Zastosuj" cannot land it
-    // on a person by accident.
+    // The damage roll knows what it was aimed at, so it cannot land on a
+    // person by accident.
     expect(damageMessage.message.roll?.damage?.targetCoverId).toBe(carId);
-
-    const logBroadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const applied = await emitAck<{ messageId: number }>(gm, 'damage:apply', {
-      messageId: damageMessage.message.id,
-      coverId: carId,
-    });
-    if (!applied.ok) throw new Error(`damage:apply failed: ${JSON.stringify(applied)}`);
     const entry = (await logBroadcast).message.damage;
     if (!entry) throw new Error('damage message carried no log entry');
     return entry;
@@ -555,14 +569,11 @@ describe('cover as an object on the scene', () => {
   it('puts the wreck back together on „Cofnij"', async () => {
     await emitAck(gm, 'cover:update', { coverId: carId, patch: { hpCurrent: 5 } });
     const shot = await shoot({ targetCoverId: carId });
-    const damageBroadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const logBroadcast = carLog();
     await emitAck(player, 'character:roll', {
       characterId,
       request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId: shot.messageId },
     });
-    const damageMessage = await damageBroadcast;
-    const logBroadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    await emitAck(gm, 'damage:apply', { messageId: damageMessage.message.id, coverId: carId });
     const logId = (await logBroadcast).message.id;
 
     await emitAck(gm, 'damage:undo', { messageId: logId });

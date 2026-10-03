@@ -40,6 +40,10 @@ export type RollJson = {
   attack?: {
     hit?: boolean;
     area?: { targets: { tokenId: string; name: string }[] };
+    /** Na kogo czekają obrażenia — Unik przed obrażeniami (03.10). */
+    evasionPending?: string[];
+    /** Rzut obrażeń za to trafienie (#56). */
+    damageRollId?: number;
     system?: {
       dv?: number;
       metres?: number;
@@ -251,6 +255,39 @@ export async function freshCard(page: Page, title: string, seen: number) {
   const cards = chatCards(page, title);
   await expect.poll(() => cards.count(), { timeout: 30_000, message: title }).toBeGreaterThan(seen);
   return cards.nth(seen);
+}
+
+/**
+ * „Bez uniku” za każdego, na kogo czekają obrażenia tej karty ataku (03.10, decyzja
+ * MG po T8b: Unik przed obrażeniami). Kto czeka, mówi baza; klika MG przez UI — za
+ * figury bez gracza i tak odpowiada on, a scenariusz uników nie gra. Karta bez
+ * oczekujących (cel bez REF 8+, figura bez karty) przechodzi bez kliknięcia.
+ */
+export async function noDodge(mg: Actor, attackId: number, title: string): Promise<void> {
+  const pending = () => rollById(attackId).attack?.evasionPending ?? [];
+  if (pending().length === 0) return;
+  test
+    .info()
+    .annotations.push({ type: 'bez uniku', description: `${title}: ${pending().join(', ')}` });
+  await mg.page.getByRole('button', { name: /^Czat/ }).first().click();
+  const card = chatCards(mg.page, title).last();
+  while (pending().length > 0) {
+    const left = pending().length;
+    await card.getByRole('button', { name: 'Bez uniku' }).first().click();
+    await expect
+      .poll(() => pending().length, { message: `bez uniku: ${title}` })
+      .toBeLessThan(left);
+  }
+}
+
+/**
+ * Obrażenia za kartę ataku rozliczają się same (03.10) — MG nie ma już czego
+ * „Zastosować”, a panel znika z jego karty, gdy dojdzie wpis rozliczenia.
+ */
+export async function settledWithoutApply(mg: Actor, damageCardTitle: string): Promise<void> {
+  await expect(
+    chatCards(mg.page, damageCardTitle).last().getByRole('button', { name: 'Zastosuj' }),
+  ).toHaveCount(0);
 }
 
 /**

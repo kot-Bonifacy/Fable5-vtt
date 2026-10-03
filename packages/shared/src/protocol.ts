@@ -999,6 +999,18 @@ export interface AttackEvadePayload {
 }
 
 /**
+ * The defender declines to dodge (03.10, decyzja MG po T8b) — the damage roll
+ * stops waiting for them. The target's owner or the GM answers, exactly the
+ * people who could have rolled the dodge instead.
+ */
+export interface AttackNoEvadePayload {
+  /** Chat message id of the attack. */
+  messageId: number;
+  /** Which figure of an area attack declines; absent for a single target. */
+  tokenId?: string;
+}
+
+/**
  * The shooter takes the second roll a smart round earned (stage 16h).
  *
  * Its own payload rather than a flag on the evasion: this one is rolled by the

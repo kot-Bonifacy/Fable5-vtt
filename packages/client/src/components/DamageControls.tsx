@@ -9,6 +9,7 @@ import {
 import { applyDamage, expireTimedEffect, undoDamage } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
+import { useChatStore } from '../stores/chatStore.js';
 
 /**
  * Applying damage from the chat card (stage 15) — GM only.
@@ -35,6 +36,20 @@ export function DamageApplyControls({
 }) {
   const tokens = useTokenStore((s) => s.tokens);
   const covers = useCoverStore((s) => s.covers);
+  /**
+   * Damage rolled for an attack card settles itself (03.10, decyzja MG po T8b),
+   * so once a live entry for this roll is on the feed there is nothing left to
+   * press. „Cofnij" on that entry brings the controls back — which is how the
+   * GM moves a hit onto somebody else.
+   */
+  const settled = useChatStore((s) =>
+    s.items.some(
+      (item) =>
+        item.type === 'message' &&
+        item.message.damage?.sourceMessageId === message.id &&
+        !item.message.damage.undone,
+    ),
+  );
   const [tokenId, setTokenId] = useState<string>(
     // The attack already said what it was aimed at; „Zastosuj" only has to
     // agree with it (stage 16c: a shot at a car cannot land on a person).
@@ -94,6 +109,8 @@ export function DamageApplyControls({
       }
     }
   }
+
+  if (settled) return null;
 
   return (
     <div className="damage-apply">

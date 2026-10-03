@@ -477,6 +477,8 @@ describe('cover, throwing objects and jumping clear', () => {
     detail: string;
     area?: RollAreaMeta;
     system: Record<string, unknown>;
+    /** Who the damage waits on before it may be rolled (03.10). */
+    evasionPending?: string[];
   }
 
   const AIM = { x: 550, y: 450 };
@@ -676,6 +678,44 @@ describe('cover, throwing objects and jumping clear', () => {
       tokenId: hiderTokenId,
     });
     expect(errorOf(ack)).toBe('ALREADY_EVADED');
+  });
+
+  it('holds the grenade’s damage until REF 8+ jumps clear or says „Bez uniku” (03.10)', async () => {
+    const { card, messageId } = await lob({ targetPoint: AIM });
+    expect(card.evasionPending).toEqual([nimbleTokenId]);
+    const damage = () =>
+      emitAck(player, 'character:roll', {
+        characterId,
+        request: { kind: 'damage', weaponRowId: 'w-grenade', attackMessageId: messageId },
+      });
+    expect(errorOf(await damage())).toBe('AWAITING_EVASION');
+
+    // Zwinny is the player's, so the player answers for him — one row, not the grenade.
+    const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+    expect(
+      (await emitAck(player, 'attack:no-evade', { messageId, tokenId: nimbleTokenId })).ok,
+    ).toBe(true);
+    const rewritten = (await updated).message.roll?.attack as AttackCard | undefined;
+    expect(rewritten?.evasionPending).toBeUndefined();
+    const row = rewritten?.area?.targets.find((entry) => entry.tokenId === nimbleTokenId);
+    expect(row?.canEvade).toBe(false);
+    expect(row?.spared).toBeUndefined();
+
+    const settled = new Set<string>();
+    const collect = (payload: ChatMessageBroadcast) => {
+      const entry = payload.message.damage;
+      if (entry?.targetTokenId) settled.add(entry.targetTokenId);
+    };
+    gm.on('chat:message', collect);
+    expect((await damage()).ok).toBe(true);
+    for (let tries = 0; tries < 20 && !settled.has(nimbleTokenId); tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    gm.off('chat:message', collect);
+    // The damage landed on him by itself, with nobody pressing „Zastosuj".
+    expect(settled.has(nimbleTokenId)).toBe(true);
+    // …and on nobody the car saved.
+    expect(settled.has(hiderTokenId)).toBe(false);
   });
 
   it('throws an ordinary object down the same path, without an area', async () => {

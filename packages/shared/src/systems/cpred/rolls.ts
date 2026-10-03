@@ -506,6 +506,8 @@ export interface CpredDamagePlan {
   targetTokenId?: string;
   /** Cover the damage is aimed at instead (stage 16c) — a car, not a person. */
   targetCoverId?: number;
+  /** Attack card the damage is rolled for (#56) — copied from the request. */
+  attackMessageId?: number;
   /** Everyone an area attack reached (stage 16d) — each applied separately. */
   areaTargets?: RollAreaTarget[];
   /** The round that was fired (stage 16g) — „Zastosuj" reads its effects. */
@@ -1184,6 +1186,9 @@ function planDamageRoll(
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
         ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
+        ...(request.attackMessageId !== undefined
+          ? { attackMessageId: request.attackMessageId }
+          : {}),
         ...(request.ammo ? { ammo: request.ammo } : {}),
         ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
         ...(request.halvesArmor ? { halvesArmor: true as const } : {}),

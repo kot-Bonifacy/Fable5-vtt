@@ -97,6 +97,30 @@ function createSocket(cookie: string): {
   return { socket, firstSync };
 }
 
+/**
+ * The damage log a roll made for an attack card writes on `tokenId` by itself
+ * (03.10: no „Zastosuj"). Start listening before the roll.
+ */
+function waitForDamageOn(
+  socket: ClientSocket,
+  tokenId: string,
+  ms = 3000,
+): Promise<ChatMessageBroadcast> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off('chat:message', onMessage);
+      reject(new Error('damage log timeout'));
+    }, ms);
+    const onMessage = (payload: ChatMessageBroadcast) => {
+      if (payload.message.damage?.targetTokenId !== tokenId) return;
+      clearTimeout(timer);
+      socket.off('chat:message', onMessage);
+      resolve(payload);
+    };
+    socket.on('chat:message', onMessage);
+  });
+}
+
 function waitFor<T>(socket: ClientSocket, event: string, ms = 3000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${event} timeout`)), ms);
@@ -205,6 +229,17 @@ describe('ranged combat from the map', () => {
      * silently swallows a misspelled assertion instead of failing to compile.
      */
     system: CpredAttackMeta & { margin: number; multiplier?: number };
+    /** Who the damage waits on before it may be rolled (03.10). */
+    evasionPending?: string[];
+    /** The damage roll made for this card (#56). */
+    damageRollId?: number;
+  }
+
+  /** „Bez uniku" za obrońcę, na którego decyzję czekają obrażenia (03.10). */
+  async function declineDodge(card: AttackCard | undefined, messageId: number) {
+    if (!card?.evasionPending || card.evasionPending.length === 0) return;
+    const ack = await emitAck(gm, 'attack:no-evade', { messageId });
+    expect(ack.ok).toBe(true);
   }
 
   /**
@@ -1437,7 +1472,7 @@ describe('ranged combat from the map', () => {
         expect(roll?.damage?.targetTokenId).toBe(targetTokenId);
       });
 
-      it('lands on the target through „Zastosuj", exactly as a sheet’s damage does', async () => {
+      it('lands on the target by itself, exactly as a sheet’s damage does (03.10)', async () => {
         const hitMessageId = await landHit();
         const before = data(
           await emitAck<TokenView>(gm, 'token:update', {
@@ -1449,6 +1484,7 @@ describe('ranged combat from the map', () => {
         expect(before.hp?.current).toBe(40);
 
         const damageMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const applied = waitForDamageOn(gm, targetTokenId);
         const rolled = data(
           await emitAck<{ messageId: number }>(gm, 'character:roll', {
             attackerTokenId: statistTokenId,
@@ -1462,14 +1498,15 @@ describe('ranged combat from the map', () => {
           'character:roll',
         );
         const total = (await damageMessage).message.roll?.total ?? 0;
-
-        const applied = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        const ack = await emitAck(gm, 'damage:apply', {
+        // The log follows the roll card without anybody pressing „Zastosuj"
+        // (decyzja MG z 03.10) — and the button, pressed anyway, finds the
+        // target already settled (#26).
+        const entry = (await applied).message.damage;
+        const again = await emitAck(gm, 'damage:apply', {
           messageId: rolled.messageId,
           tokenId: targetTokenId,
         });
-        expect(ack.ok).toBe(true);
-        const entry = (await applied).message.damage;
+        expect(again.ok ? undefined : again.error).toBe('DAMAGE_ALREADY_APPLIED');
         // The number the dice showed reaches the target's HP bar: what the
         // GM used to type in by hand after doing the arithmetic themselves.
         expect(entry?.damageRolled).toBe(total);
@@ -1677,15 +1714,16 @@ describe('ranged combat from the map', () => {
         // decydowałby, ile warta jest kamizelka celu.
         expect(card.system.halvesArmor).toBe(true);
 
-        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(player, 'character:roll', {
+        // Unik przed obrażeniami (03.10): kto może się uchylić, odpowiada
+        // pierwszy — tu MG mówi „bez uniku", bo test jest o pancerzu.
+        await declineDodge(card, ack.data.messageId);
+        const logged = waitForDamageOn(gm, vestTokenId);
+        const rolled = await emitAck(player, 'character:roll', {
           characterId,
           request: { kind: 'damage', weaponRowId: 'w-blade', attackMessageId: ack.data.messageId },
           visibility: 'public',
         });
-        const rolledId = (await damage).message.id;
-        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: vestTokenId });
+        expect(rolled.ok).toBe(true);
         const entry = (await logged).message.damage;
         if (!entry) throw new Error('brak wpisu obrażeń na karcie');
 
@@ -1715,15 +1753,16 @@ describe('ranged combat from the map', () => {
         if (!card?.hit || !ack.ok || !ack.data) continue;
         expect(card.system.halvesArmor).toBeUndefined();
 
-        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(player, 'character:roll', {
+        // Unik przed obrażeniami (03.10): kto może się uchylić, odpowiada
+        // pierwszy — tu MG mówi „bez uniku", bo test jest o pancerzu.
+        await declineDodge(card, ack.data.messageId);
+        const logged = waitForDamageOn(gm, vestTokenId);
+        const rolled = await emitAck(player, 'character:roll', {
           characterId,
           request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId: ack.data.messageId },
           visibility: 'public',
         });
-        const rolledId = (await damage).message.id;
-        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: vestTokenId });
+        expect(rolled.ok).toBe(true);
         const entry = (await logged).message.damage;
         if (!entry) throw new Error('brak wpisu obrażeń na karcie');
         expect(entry.armorHalved).toBeUndefined();
@@ -1764,15 +1803,16 @@ describe('ranged combat from the map', () => {
         const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
 
-        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(player, 'character:roll', {
+        // Unik przed obrażeniami (03.10): kto może się uchylić, odpowiada
+        // pierwszy — tu MG mówi „bez uniku", bo test jest o pancerzu.
+        await declineDodge(card, ack.data.messageId);
+        const logged = waitForDamageOn(gm, kneeTokenId);
+        const rolled = await emitAck(player, 'character:roll', {
           characterId,
           request: { kind: 'damage', weaponRowId: 'w-rifle', attackMessageId: ack.data.messageId },
           visibility: 'public',
         });
-        const rolledId = (await damage).message.id;
-        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: kneeTokenId });
+        expect(rolled.ok).toBe(true);
         const entry = (await logged).message.damage;
         if (!entry) throw new Error('no damage entry on the card');
         // Ten sam rzut obrażeń potrafi wylosować ranę z tabeli (dwie szóstki na
@@ -2331,6 +2371,123 @@ describe('ranged combat from the map', () => {
       expect(
         await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'nie-ma-takiej' }),
       ).toEqual({ ok: false, error: 'UNKNOWN_WEAPON' });
+    });
+  });
+
+  describe('obrażenia rozliczają się same, po Uniku (03.10, decyzja MG po T8b; #56)', () => {
+    let quickId = '';
+    let quickTokenId = '';
+
+    /** Strzela z pistoletu, aż trafi, i oddaje kartę ataku z jej id. */
+    async function hitOn(tokenId: string): Promise<{ card: AttackCard; messageId: number }> {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-pistol' });
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: tokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-pistol', mode: 'single', modifier: 20 },
+        });
+        const card = attackCard(await message);
+        if (card?.hit && ack.ok && ack.data) return { card, messageId: ack.data.messageId };
+      }
+      throw new Error('pistolet nie trafił w 40 próbach');
+    }
+
+    function rollDamageFor(attackMessageId: number) {
+      return emitAck<{ messageId: number }>(player, 'character:roll', {
+        characterId,
+        request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId },
+        visibility: 'public',
+      });
+    }
+
+    function errorOfAck(ack: SocketAck<unknown>): string | undefined {
+      return ack.ok ? undefined : ack.error;
+    }
+
+    it('stawia obrońcę z REF 8, który umie Unikać', async () => {
+      const character = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Szybki' }),
+        'character:create',
+      );
+      quickId = character.id;
+      await emitAck(gm, 'character:update', {
+        characterId: quickId,
+        patch: {
+          data: {
+            stats: { ...(character.data as CpredCharacterData).stats, ref: 8, dex: 6 },
+            skills: { evasion: 4 },
+          },
+        },
+      });
+      quickTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Szybki',
+          x: 0,
+          y: 10 * PX_PER_M,
+          characterId: quickId,
+        }),
+        'token:create',
+      ).id;
+      expect(quickTokenId).toBeTruthy();
+    });
+
+    it('obrażenia czekają na Unik, a „Bez uniku” mówi tylko MG albo właściciel celu', async () => {
+      const { card, messageId } = await hitOn(quickTokenId);
+      expect(card.evasionPending).toEqual([quickTokenId]);
+      expect(errorOfAck(await rollDamageFor(messageId))).toBe('AWAITING_EVASION');
+      // Strzelec nie decyduje za cel.
+      expect(errorOfAck(await emitAck(player, 'attack:no-evade', { messageId }))).toBe(
+        'NOT_THE_TARGET',
+      );
+      const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+      expect((await emitAck(gm, 'attack:no-evade', { messageId })).ok).toBe(true);
+      const after = attackCard(await updated);
+      expect(after?.evasionPending).toBeUndefined();
+      expect(after?.detail).toContain('bez uniku');
+
+      const logged = waitForDamageOn(gm, quickTokenId);
+      expect((await rollDamageFor(messageId)).ok).toBe(true);
+      const entry = (await logged).message.damage!;
+      expect(entry.targetTokenId).toBe(quickTokenId);
+    });
+
+    it('jedno trafienie, jeden rzut obrażeń — drugi dopiero po „Cofnij” (#56)', async () => {
+      const { messageId } = await hitOn(targetTokenId);
+      const logged = waitForDamageOn(gm, targetTokenId);
+      const first = await rollDamageFor(messageId);
+      expect(first.ok).toBe(true);
+      const log = await logged;
+
+      // Ten sam przycisk na tej samej karcie — także w cudzej turze, jak w T8b.
+      expect(errorOfAck(await rollDamageFor(messageId))).toBe('DAMAGE_ALREADY_ROLLED');
+      // Unik po obrażeniach nie przepisze tego, co już zeszło z PW.
+      expect(errorOfAck(await emitAck(gm, 'attack:evade', { messageId }))).toBe(
+        'DAMAGE_ALREADY_ROLLED',
+      );
+
+      // MG cofa jedyne rozliczenie — trafienie wolno rzucić od nowa.
+      const reopened = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+      await emitAck(gm, 'damage:undo', { messageId: log.message.id });
+      await reopened;
+      const again = waitForDamageOn(gm, targetTokenId);
+      expect((await rollDamageFor(messageId)).ok).toBe(true);
+      await again;
+    });
+
+    it('dwa naciśnięcia naraz dają jeden rzut (#56)', async () => {
+      const { messageId } = await hitOn(targetTokenId);
+      const results = await Promise.all([rollDamageFor(messageId), rollDamageFor(messageId)]);
+      expect(results.filter((ack) => ack.ok)).toHaveLength(1);
+      expect(results.map(errorOfAck)).toContain('DAMAGE_ALREADY_ROLLED');
+    });
+
+    it('nie czeka na figurę bez karty — Ganger nie Unika', async () => {
+      const { card } = await hitOn(targetTokenId);
+      expect(card.evasionPending).toBeUndefined();
     });
   });
 });

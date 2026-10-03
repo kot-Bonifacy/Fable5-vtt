@@ -256,16 +256,29 @@ describe('special ammunition', () => {
     return (await broadcast).message.id;
   }
 
-  /** GM applies that damage to one token and returns the log entry. */
-  async function applyDamage(
-    messageId: number,
+  /**
+   * The log entry the damage roll writes on `tokenId` by itself (03.10: damage
+   * rolled for an attack card settles without „Zastosuj"). Listen before the
+   * roll — the entry follows the roll card at once.
+   */
+  function settledOn(
     tokenId: string,
+    ms = 3000,
   ): Promise<{ entry: DamageLogEntry; messageId: number }> {
-    const broadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    await emitAck(gm, 'damage:apply', { messageId, tokenId, location: 'body' });
-    const message = (await broadcast).message;
-    if (!message.damage) throw new Error('no damage entry on the card');
-    return { entry: message.damage, messageId: message.id };
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        gm.off('chat:message', onMessage);
+        reject(new Error('damage log timeout'));
+      }, ms);
+      const onMessage = (payload: ChatMessageBroadcast) => {
+        const entry = payload.message.damage;
+        if (!entry || entry.targetTokenId !== tokenId) return;
+        clearTimeout(timer);
+        gm.off('chat:message', onMessage);
+        resolve({ entry, messageId: payload.message.id });
+      };
+      gm.on('chat:message', onMessage);
+    });
   }
 
   /** The token as the GM currently sees it. */
@@ -578,7 +591,7 @@ describe('special ammunition', () => {
   });
 
   describe('what the round does to the damage', () => {
-    /** Fires the pistol with `ammoId` loaded and applies the hit to a target. */
+    /** Fires the pistol with `ammoId` loaded; the hit settles on the target by itself. */
     async function shootAndApply(
       ammoId: string | null,
       tokenId: string,
@@ -590,8 +603,9 @@ describe('special ammunition', () => {
         ammoId,
       });
       const { messageId } = await fire('w-pistol', tokenId);
-      const damageId = await rollDamage('w-pistol', messageId, damageRequest);
-      return applyDamage(damageId, tokenId);
+      const settled = settledOn(tokenId);
+      await rollDamage('w-pistol', messageId, damageRequest);
+      return settled;
     }
 
     it('an armour-piercing round takes two points of SP, and the card says so', async () => {
@@ -683,8 +697,9 @@ describe('special ammunition', () => {
         patch: { hp: { current: 30, max: 30 } },
       });
       const { messageId } = await fire('w-flamer', nearTokenId);
-      const damageId = await rollDamage('w-flamer', messageId);
-      const { entry } = await applyDamage(damageId, nearTokenId);
+      const settled = settledOn(nearTokenId);
+      await rollDamage('w-flamer', messageId);
+      const { entry } = await settled;
       expect(entry.ammo?.notes?.join(' ')).toContain('4 obr./turę');
       // …and no Critical Injury, whatever the dice showed.
       expect(entry.injury).toBeUndefined();

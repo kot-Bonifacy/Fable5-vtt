@@ -1,6 +1,7 @@
 import { withPresentation } from './presentation.js';
 import type {
   AttackEvadePayload,
+  AttackNoEvadePayload,
   AttackSmartPayload,
   AttackRollPayload,
   AttackRollResult,
@@ -35,6 +36,7 @@ import {
   cpredEffectiveStats,
   cpredWeaponInHands,
   CPRED_ACTION_ATTACK,
+  CPRED_EVADE_AREA_MIN_REF,
   CPRED_ACTION_CLEAR_JAM,
   CPRED_ACTION_HOLSTER,
   CPRED_ACTION_RELOAD,
@@ -840,6 +842,52 @@ async function requireFigureSheet(
 }
 
 /**
+ * Who may still answer this attack with a dodge, so its damage waits for them
+ * (03.10, decyzja MG po T8b: „Unik przed obrażeniami”).
+ *
+ * Damage now lands the moment it is rolled, so the rule's order is the table's
+ * order again: the defender decides first. A blast waits for everyone it reached
+ * who may jump clear — read off the row (`canEvade`, REF 8+ when it went off).
+ * A single target waits only when the dodge is really theirs to take: a figure
+ * with a sheet, REF 8+ for a ranged shot (always for melee, s. 169/176), and none
+ * of the refusals `attack:evade` would give — Wsparcie under fire, a human
+ * shield, a wound that forbids dodging. Anyone else's hit is not held back.
+ */
+async function evasionPendingOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  registry: CpredRegistry,
+  attack: RollAttackMeta,
+  meta: { melee: boolean; targetTokenId?: string | null },
+): Promise<string[]> {
+  if (attack.damageNotation === undefined) return [];
+  if (attack.area) {
+    return attack.area.targets.flatMap((target) =>
+      target.canEvade === true && target.spared === undefined && target.tokenId
+        ? [target.tokenId]
+        : [],
+    );
+  }
+  if (attack.hit !== true || attack.evaded || attack.noEvade || !meta.targetTokenId) return [];
+  const target = await deps.ctx.prisma.token.findUnique({ where: { id: meta.targetTokenId } });
+  if (!target?.characterId) return [];
+  let data: CpredCharacterData;
+  try {
+    data = (await requireFigureSheet(deps, campaignId, registry, target)).data;
+  } catch {
+    return [];
+  }
+  if (!meta.melee) {
+    if (data.statBlock?.noBulletDodge === true) return [];
+    if (cpredEffectiveStats(data).ref < CPRED_EVADE_AREA_MIN_REF) return [];
+    const defence = await grappleStateForToken(deps.ctx.prisma, target.sceneId, target.id);
+    if (defence.humanShield) return [];
+  }
+  if (sheetDodgeBlock(readTokenStatuses(target.statuses), data.criticalInjuries)) return [];
+  return [target.id];
+}
+
+/**
  * Dresses a token-run figure as an attacker.
  *
  * Two passes, and the second one is not laziness: which skill fires the weapon
@@ -1257,6 +1305,14 @@ export async function performAttackRoll(
       if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
         result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
       }
+      const evasionPending = await evasionPendingOf(
+        deps,
+        campaignId,
+        registry,
+        result.attack,
+        result.attack.system as unknown as CpredAttackMeta,
+      );
+      if (evasionPending.length > 0) result.attack.evasionPending = evasionPending;
 
       const stored = await deps.ctx.prisma.chatMessage.create({
         data: {
@@ -1606,6 +1662,9 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const roll = JSON.parse(message.payload) as RollResult;
     const meta = roll.attack?.system as CpredAttackMeta | undefined;
     if (!roll.attack || !meta || meta.dv === null) throw new RealtimeError('NOT_AN_ATTACK');
+    // The damage already landed (03.10: it settles itself), so a dodge now would
+    // only rewrite history the sheet has moved past (#56).
+    if (roll.attack.damageRollId !== undefined) throw new RealtimeError('DAMAGE_ALREADY_ROLLED');
 
     // Jumping clear of a blast is the same roll against the same total, but it
     // belongs to one figure out of many rather than to the attack (stage 16d),
@@ -1615,7 +1674,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       return evadeArea(deps, campaignId, user, message, roll, payload);
     }
 
-    if (roll.attack.evaded) throw new RealtimeError('ALREADY_EVADED');
+    if (roll.attack.evaded || roll.attack.noEvade) throw new RealtimeError('ALREADY_EVADED');
     // A car does not duck (stage 16c).
     if (!meta.targetTokenId) throw new RealtimeError('NOT_THE_TARGET');
 
@@ -1695,6 +1754,8 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
         ...roll.attack,
         hit: outcome.hit,
         evaded: true,
+        // The defender has answered — the damage stops waiting (03.10).
+        evasionPending: undefined,
         detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total} → ${
           outcome.hit ? 'trafienie mimo uniku' : 'pudło'
         }`,
@@ -1819,6 +1880,10 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
           : { damageNotation: undefined, damageMultiplier: undefined }),
       },
     };
+    // A miss had nobody to wait for; a corrected hit may (03.10) — „cel mogący
+    // Unikać dalej może Unikać", and now the damage holds still while they do.
+    const pending = await evasionPendingOf(deps, campaignId, registry, updated.attack!, meta);
+    updated.attack!.evasionPending = pending.length > 0 ? pending : undefined;
     const saved = await deps.ctx.prisma.chatMessage.update({
       where: { id: message.id },
       data: { payload: JSON.stringify(updated) },
@@ -1826,6 +1891,82 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
     });
     await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
     return { total: second.total, hit: outcome.hit };
+  },
+});
+
+/** The figure taken off the list the damage waits on; an empty list goes away. */
+function withoutPending(pending: string[] | undefined, tokenId: string): string[] | undefined {
+  const rest = (pending ?? []).filter((id) => id !== tokenId);
+  return rest.length > 0 ? rest : undefined;
+}
+
+/**
+ * „Bez uniku" — the defender lets the hit land (03.10, decyzja MG po T8b).
+ *
+ * The other half of „Unik przed obrażeniami": the damage waits for whoever may
+ * still dodge, so somebody who will not has to be able to say so, or the shooter
+ * waits forever. The same people answer as could have dodged — the target's
+ * owner or the GM — and for a blast it is one row, like a jump clear.
+ */
+export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
+  name: 'attack:no-evade',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (typeof payload?.messageId !== 'number' || !Number.isInteger(payload.messageId)) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    if (payload.tokenId !== undefined && typeof payload.tokenId !== 'string') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const message = await deps.ctx.prisma.chatMessage.findUnique({
+      where: { id: payload.messageId },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    if (!message || message.campaignId !== campaignId || !message.payload) {
+      throw new RealtimeError('MESSAGE_NOT_FOUND');
+    }
+    const roll = JSON.parse(message.payload) as RollResult;
+    const meta = roll.attack?.system as CpredAttackMeta | undefined;
+    if (!roll.attack || !meta) throw new RealtimeError('NOT_AN_ATTACK');
+    const tokenId = roll.attack.area ? payload.tokenId : meta.targetTokenId;
+    if (!tokenId || !(roll.attack.evasionPending ?? []).includes(tokenId)) {
+      throw new RealtimeError('NOT_THE_TARGET');
+    }
+    const target = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
+    if (!target) throw new RealtimeError('NOT_THE_TARGET');
+    if (user.role !== ROLE_GM) {
+      const character = target.characterId
+        ? await deps.ctx.prisma.character.findUnique({ where: { id: target.characterId } })
+        : null;
+      if (target.ownerId !== user.id && character?.ownerId !== user.id) {
+        throw new RealtimeError('NOT_THE_TARGET');
+      }
+    }
+    const name = tokenTableName(target, target.name);
+    const attack: RollAttackMeta = roll.attack.area
+      ? {
+          ...roll.attack,
+          area: {
+            ...roll.attack.area,
+            targets: roll.attack.area.targets.map((row) =>
+              row.tokenId === tokenId ? { ...row, canEvade: false } : row,
+            ),
+          },
+          evasionPending: withoutPending(roll.attack.evasionPending, tokenId),
+          detail: `${roll.attack.detail} · ${name}: bez uniku`,
+        }
+      : {
+          ...roll.attack,
+          noEvade: true,
+          evasionPending: undefined,
+          detail: `${roll.attack.detail} · ${name}: bez uniku`,
+        };
+    const saved = await deps.ctx.prisma.chatMessage.update({
+      where: { id: message.id },
+      data: { payload: JSON.stringify({ ...roll, attack }) },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
   },
 });
 
@@ -1896,6 +2037,8 @@ async function evadeArea(
     attack: {
       ...roll.attack!,
       area: { ...area, targets },
+      // One answer fewer for the grenade's damage to wait on (03.10).
+      evasionPending: withoutPending(roll.attack!.evasionPending, entry.tokenId!),
       detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total} vs ${
         roll.total
       } → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,

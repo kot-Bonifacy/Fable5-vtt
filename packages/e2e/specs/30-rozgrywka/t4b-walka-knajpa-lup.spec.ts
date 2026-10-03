@@ -24,11 +24,13 @@ import {
   lastMessageId,
   messageAfter,
   nextTurn,
+  noDodge,
   openSheet,
   queueOf,
   rollAndWait,
   rollById,
   sceneRow,
+  settledWithoutApply,
   sheet,
   statusesOf,
   sumOf,
@@ -242,6 +244,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
 
     // Obrażenia 6 + 6 + 1 + 1 = 14: dwie szóstki = rana krytyczna (2k6 = 3 + 4 = 7,
     // tabela głowy), bez pancerza × 2 = 28, + 5 za ranę = 33 (Kowal 40 → 7).
+    await noDodge(mg, shotId, 'Bardzo ciężki pistolet → Kowal');
     scriptDice([6, 6, 1, 1, 3, 4]);
     before = lastMessageId();
     const seenHead = await chatCards(page, 'obrażenia (Głowa)').count();
@@ -250,9 +253,10 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     cienDamageId = await rollAndWait(mg, before, 'obrażenia (Głowa)');
-    const damageCard = await freshCard(page, 'obrażenia (Głowa)', seenHead);
-    await damageCard.getByRole('button', { name: 'Zastosuj' }).click();
+    // Rozliczenie samo, bez „Zastosuj” (decyzja MG z 03.10).
+    await freshCard(page, 'obrażenia (Głowa)', seenHead);
     await expect.poll(() => sheet<Sheet>('Kowal').hpCurrent).toBe(kowalHp - 33);
+    await settledWithoutApply(mg, 'obrażenia (Głowa)');
     expect(pendingDice()).toBe('');
     const kowal = sheet<Sheet>('Kowal');
     expect(kowal.criticalInjuries.map((i) => i.name)).toEqual(['Ciało obce']);
@@ -372,6 +376,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     // 6 + 6 + 5 + 5 + 4 + 2 = 28 (dwie szóstki: rana u obu, 2k6 = 4 + 5 = 9 — nie
     // „Ciało obce”, które przy biegu dobiłoby Ochroniarza). Zbir: 28 − OB 10 + 5 ≥ 22
     // → Śmiertelnie ranny; Ochroniarz: 28 − 11 + 5 = 22 → 25 − 22 = 3.
+    await noDodge(mg, throwId, 'Granat odłamkowy → wybrane pole');
     scriptDice([6, 6, 5, 5, 4, 2, 4, 5, 4, 5]);
     before = lastMessageId();
     await chatCards(page, 'Granat odłamkowy → wybrane pole')
@@ -379,10 +384,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(marek, before, 'Granat odłamkowy — obrażenia');
-    await mg.page
-      .getByRole('button', { name: /Zastosuj wszystkim/ })
-      .last()
-      .click();
+    // Granat rozlicza się sam na każdym, kogo dosięgnął (03.10) — bez „Zastosuj wszystkim”.
     await expect.poll(() => sheet<Sheet>('Zbir 2').hpCurrent).toBe(3);
     await expect.poll(() => sheet<Sheet>('Zbir').hpCurrent).toBeLessThanOrEqual(0);
     expect(pendingDice()).toBe('');
@@ -444,6 +446,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     // pancerza (s. 177). Dwie szóstki: rana krytyczna (2k6 = 4 + 5 = 9, bez „Złamanej
     // ręki”, która wytrąciłaby Rzeźnikowi pistolet) i +5 prosto w PW.
     const hpBefore = sheet<Sheet>('Rzeźnik').hpCurrent;
+    await noDodge(mg, punchId, 'Pięści → Rzeźnik');
     scriptDice([6, 6, 4, 5]);
     const damageBefore = lastMessageId();
     const seenPunch = await chatCards(mg.page, 'Pięści — obrażenia').count();
@@ -453,11 +456,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       .click();
     const damageId = await rollAndWait(ola, damageBefore, 'Pięści — obrażenia');
     const rolled = rollById(damageId).total;
-    await (
-      await freshCard(mg.page, 'Pięści — obrażenia', seenPunch)
-    )
-      .getByRole('button', { name: 'Zastosuj' })
-      .click();
+    await freshCard(mg.page, 'Pięści — obrażenia', seenPunch);
     await expect
       .poll(() => sheet<Sheet>('Rzeźnik').hpCurrent)
       .toBe(hpBefore - (Math.max(0, rolled - 11) + 5));
@@ -508,6 +507,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await aim(mg, tokenCentre(token('Rzeźnik'), cell), tokenCentre(token('Iskra'), cell), true);
     const shotId = await rollAndWait(mg, before, 'Ciężki pistolet → Iskra');
     expect(rollById(shotId).attack?.hit).toBe(true);
+    await noDodge(mg, shotId, 'Ciężki pistolet → Iskra');
     scriptDice([2, 2, 1]);
     before = lastMessageId();
     const seenBody = await chatCards(mg.page, 'Ciężki pistolet — obrażenia (Korpus)').count();
@@ -516,10 +516,9 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(mg, before, 'obrażenia');
-    // Nowa karta, nie „ostatnia”: klient pokazuje ją dopiero po animacji kości, a „Zastosuj”
-    // starej karty działa drugi raz (#26).
-    const damageCard = await freshCard(mg.page, 'Ciężki pistolet — obrażenia (Korpus)', seenBody);
-    await damageCard.getByRole('button', { name: 'Zastosuj' }).click();
+    // Nowa karta, nie „ostatnia”: klient pokazuje ją dopiero po animacji kości. Rozlicza
+    // się sama (03.10).
+    await freshCard(mg.page, 'Ciężki pistolet — obrażenia (Korpus)', seenBody);
     await expect.poll(() => sheet<Sheet>('Iskra').hpCurrent).toBe(35);
     // Właścicielka widzi swoje PW, Marek — tylko stratę.
     await expect.poll(() => lastDamageCardOf(ola, 'Iskra')).toEqual([5, true]);

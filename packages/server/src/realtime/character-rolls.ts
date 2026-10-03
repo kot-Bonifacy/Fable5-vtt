@@ -76,6 +76,7 @@ import {
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { sanitizeGesture } from './chat.js';
+import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
 /**
  * Sheet-driven checks (stage 08). The client only sends an intention — which
@@ -389,6 +390,15 @@ async function resolveRollRequest(
   // so an area card offers its damage on both branches; everything else still
   // needs a hit before there is anything to roll.
   if (!attack || (attack.hit !== true && !attack.area)) throw new RealtimeError('NOT_A_HIT');
+  // One hit, one damage roll (#56, decyzja MG z 03.10). Until then the button
+  // on an old card rolled again whenever it was pressed — in somebody else's
+  // turn, too — and every roll was a fresh card for „Zastosuj".
+  if (attack.damageRollId !== undefined) throw new RealtimeError('DAMAGE_ALREADY_ROLLED');
+  // „Unik przed obrażeniami" (03.10): whoever may still dodge or jump clear
+  // answers first, because the damage now lands the moment it is rolled.
+  if (attack.evasionPending && attack.evasionPending.length > 0) {
+    throw new RealtimeError('AWAITING_EVASION');
+  }
 
   const system = attack.system as {
     location?: unknown;
@@ -935,6 +945,27 @@ export async function performCharacterRoll(
 ): Promise<{ messageId: number }> {
   if (!deps.presentation)
     return withPresentation(deps, (scoped) => performCharacterRoll(scoped, options));
+  // Two presses of „Obrażenia" at once would both pass the card's check before
+  // either marked it (#56) — the same race `appliesInFlight` closes for „Zastosuj".
+  const request = options.payload?.request;
+  const attackMessageId = request?.kind === 'damage' ? request.attackMessageId : undefined;
+  if (typeof attackMessageId !== 'number') return performScopedRoll(deps, options);
+  if (damageRollsInFlight.has(attackMessageId)) throw new RealtimeError('DAMAGE_ALREADY_ROLLED');
+  damageRollsInFlight.add(attackMessageId);
+  try {
+    return await performScopedRoll(deps, options);
+  } finally {
+    damageRollsInFlight.delete(attackMessageId);
+  }
+}
+
+/** Attack cards whose damage roll is being made right now (#56). */
+const damageRollsInFlight = new Set<number>();
+
+async function performScopedRoll(
+  deps: RealtimeDeps,
+  options: Parameters<typeof performCharacterRoll>[1],
+): Promise<{ messageId: number }> {
   {
     const { user, sceneId, campaignId } = options;
 
@@ -1021,6 +1052,9 @@ export async function performCharacterRoll(
           ? { targetCoverId: plan.damage.targetCoverId }
           : {}),
         ...(plan.damage.areaTargets ? { areaTargets: plan.damage.areaTargets } : {}),
+        ...(plan.damage.attackMessageId !== undefined
+          ? { attackMessageId: plan.damage.attackMessageId }
+          : {}),
         // Stage 16g: the round travels with the damage, so „Zastosuj" knows how
         // much armour to wear off and whether the target catches fire; the aim
         // point (s. 170) rides along for the same reason. Opaque to the dice
@@ -1225,6 +1259,18 @@ export async function performCharacterRoll(
       await deliverChatMessageTo(deps, campaignId, view, [user.id, call.entry.ownerId], true);
     } else {
       await deliverRollMessage(deps, campaignId, user.id, view);
+    }
+    // The hit has had its damage (#56), and the damage lands by itself on whom
+    // the attack named (03.10, decyzja MG po T8b). After the card, so every
+    // client already holds the roll the log entry and the new hit points queue
+    // behind — they show when the dice stop, not before (`rollPresentation`).
+    if (request.kind === 'damage' && request.attackMessageId !== undefined && result.damage) {
+      const rollId = view.id;
+      await rewriteAttackCard(deps, campaignId, request.attackMessageId, (attack) => ({
+        ...attack,
+        damageRollId: rollId,
+      }));
+      await settleDamageRoll(deps, campaignId, user, rollId, result);
     }
     // Wezwanie zamyka się razem z kartą rzutu: przycisk znika, a na karcie
     // zostaje werdykt, więc dziennik czyta się bez skakania po wiadomościach.

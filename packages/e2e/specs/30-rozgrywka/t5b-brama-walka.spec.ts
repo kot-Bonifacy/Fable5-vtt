@@ -21,6 +21,7 @@ import {
   lastMessageId,
   messageAfter,
   nextTurn,
+  noDodge,
   openSheet,
   queueOf,
   rollAndWait,
@@ -379,6 +380,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         .last()
         .getByRole('button', { name: /^Obrażenia/ }),
     ).toHaveCount(0);
+    await noDodge(mg, zoneShotId, title);
     scriptDice([1, 1, 1, 1]);
     const before = lastMessageId();
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
@@ -388,9 +390,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(mg, before, damageTitle);
-    const card = await freshCard(mg.page, damageTitle, seen);
-    await expect(card.locator('select').first()).toHaveValue(token('Kowal').id);
-    await card.getByRole('button', { name: 'Zastosuj' }).click();
+    // Obrażenia rozliczają się same na „Kowal” (decyzja MG z 03.10), bez „Zastosuj”.
+    await freshCard(mg.page, damageTitle, seen);
     // 4 obrażeń na kurtkę OB 12: nic nie przechodzi, pancerz bez ablacji.
     await expect
       .poll(
@@ -538,6 +539,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await page.getByRole('button', { name: 'Czat', exact: true }).click();
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
     const seen = await chatCards(page, damageTitle).count();
+    await noDodge(mg, messageAfter(since, title)!.id, title);
     scriptDice([5, 5, 4, 4]);
     const beforeDamage = lastMessageId();
     await chatCards(page, title)
@@ -545,9 +547,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(mg, beforeDamage, damageTitle);
-    const card = await freshCard(page, damageTitle, seen);
-    await expect(card.locator('select').first()).toHaveValue(token('Iskra').id);
-    await card.getByRole('button', { name: 'Zastosuj' }).click();
+    // Obrażenia rozliczają się same na „Iskra” (decyzja MG z 03.10), bez „Zastosuj”.
+    await freshCard(page, damageTitle, seen);
     await expect
       .poll(() => messageAfter(beforeDamage, 'Iskra', 'damage')?.id ?? 0)
       .toBeGreaterThan(0);
@@ -922,6 +923,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
     const seen = await chatCards(mg.page, damageTitle).count();
     // 4k6 = 22 (dwie szóstki: rana krytyczna, 2k6 tabeli = 7), OB 11.
+    await noDodge(mg, messageAfter(beforeShot, title)!.id, title);
     scriptDice([6, 6, 5, 5, 3, 4]);
     const beforeDamage = lastMessageId();
     await chatCards(roller.page, title)
@@ -929,9 +931,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(roller, beforeDamage, damageTitle);
-    const card = await freshCard(mg.page, damageTitle, seen);
-    await expect(card.locator('select').first()).toHaveValue(token('Strażnik').id);
-    await card.getByRole('button', { name: 'Zastosuj' }).click();
+    // Obrażenia rozliczają się same na „Strażnik” (decyzja MG z 03.10), bez „Zastosuj”.
+    await freshCard(mg.page, damageTitle, seen);
     await expect
       .poll(() => messageAfter(beforeDamage, 'Strażnik', 'damage')?.id ?? 0)
       .toBeGreaterThan(0);
@@ -990,6 +991,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     // 4k6 = 24 przeciwpancerną (dwie szóstki: rana, 2k6 tabeli = 7), OB korpusu 10.
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
     const seen = await chatCards(mg.page, damageTitle).count();
+    await noDodge(mg, shotId, title);
     scriptDice([6, 6, 6, 6, 3, 4]);
     const beforeDamage = lastMessageId();
     await chatCards(marek.page, title)
@@ -997,9 +999,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
     await rollAndWait(marek, beforeDamage, damageTitle);
-    const card = await freshCard(mg.page, damageTitle, seen);
-    await expect(card.locator('select').first()).toHaveValue(token('Strażnik').id);
-    await card.getByRole('button', { name: 'Zastosuj' }).click();
+    // Obrażenia rozliczają się same na „Strażnik” (decyzja MG z 03.10), bez „Zastosuj”.
+    await freshCard(mg.page, damageTitle, seen);
     await expect
       .poll(() => messageAfter(beforeDamage, 'Strażnik', 'damage')?.id ?? 0)
       .toBeGreaterThan(0);

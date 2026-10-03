@@ -19,6 +19,7 @@ import type {
   AiStatus,
   AiStatusBroadcast,
   AttackEvadePayload,
+  AttackNoEvadePayload,
   AttackSmartPayload,
   EffectExpirePayload,
   SmokeClearPayload,
@@ -1364,6 +1365,12 @@ function rollAckErrorText(code: string): string {
     // #27 — obrażenia za atak rzuca figura, która strzelała, nie ta z tą samą bronią.
     case 'NOT_THE_SHOOTER':
       return 'Obrażenia za ten atak rzuca ten, kto go wykonał.';
+    // #56 — jedno trafienie, jeden rzut obrażeń (03.10).
+    case 'DAMAGE_ALREADY_ROLLED':
+      return 'Obrażenia za to trafienie już rzucono — ponownie dopiero po „Cofnij” MG.';
+    // Unik przed obrażeniami (03.10, decyzja MG po T8b).
+    case 'AWAITING_EVASION':
+      return 'Obrażenia czekają, aż cel zdecyduje o uniku („Unik” albo „Bez uniku” na karcie ataku).';
     // Stage 30b — the three refusals „Leczenie" can come back with.
     case 'INJURY_NOT_FOUND':
       return 'Ta figura nie ma już tej rany.';
@@ -1760,9 +1767,11 @@ function attackAckErrorText(code: string): string {
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz atakować tą postacią.';
     case 'NOT_THE_TARGET':
-      return 'Unikać może tylko cel ataku.';
+      return 'O uniku decyduje tylko cel ataku albo MG.';
     case 'ALREADY_EVADED':
       return 'Ten atak został już zakwestionowany unikiem.';
+    case 'DAMAGE_ALREADY_ROLLED':
+      return 'Obrażenia za to trafienie już padły — na unik jest za późno.';
     case 'NOT_AN_ATTACK':
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
@@ -1877,6 +1886,16 @@ export function sendAttackEvade(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * „Bez uniku" (03.10, decyzja MG po T8b) — the defender lets the hit land, and
+ * the damage roll stops waiting for them. `tokenId` names the row of a blast.
+ */
+export function declineEvasion(payload: AttackNoEvadePayload): void {
+  socket?.emit('attack:no-evade', payload, (ack: SocketAck<void>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
   });
 }
