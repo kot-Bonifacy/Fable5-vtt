@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02/03.10 — poprawki #50–#52 z T7c, rejestr bez otwartych błędów
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#50–#52, B3 do triażu). Pytania na starcie:
+wagi — **B3** dla trzech; #52 — **figura łapie klik tylko na swoich polach** (nie samo wyłączenie
+podpisu); testy wycieku **pilnują progów**; retest — T7c celowo (bez pełnego 196).
+
+**Zrobione (`17f42a4`):** #52 — `TokenNode.hitArea` = kwadrat pól figury (Pixi przycina nim dzieci:
+podpis, cień, podstawka, obrączka PW). #50 — `map/pixi-destroy.ts`: `DESTROY_TREE`
+(`{ children: true, context: true }`) we wszystkich `destroy` drzew w `MapRenderer`/`MapFxLayer`
+oraz `releasePooledGraphicsData()` przy zmianie sceny (wolne `GraphicsContextRenderData` z `BigPool`
+— ich bufory tylko się podwajały). #51 — `installGeometryRelease` w `dice3d.ts` zwalnia klony
+geometrii z `swapDiceFace` (wyparte i przy `clearDice`). `t7c-pamiec` z progami (`SWITCH_LEAK_MB`,
+`ROLL_LEAK_GEOMETRIES`), #52 bez `test.fail`. Umowy w `mapa` (2) i `kosci` (1), pułapki w `mapa`
+(2) i `kosci` (1).
+
+**Weryfikacja:** klient 315 (nowy `dice3d.test.ts` › „#51” pada bez poprawki); `tsc`, ESLint,
+Prettier czyste w kliencie i suicie. `pnpm test:e2e t7c-` **16/16 (53,7 min)**: przełączenia —
+sterta MG +0,10 MB, bufory +0,007 MB na przełączenie (było 1,34 i 1,72); 300 rzutów — geometrie
+kości stoją (MG 4 → 5, Ola 3 → 3; było 44 → 428); zrzut sterty +0,15 MB buforów na 12 przełączeń
+(było 21,7 MB); `t7c-mapa` 9/9; `00-baseline` 5/5. Pierwszy przebieg bez opróżniania puli padł na
+progu buforów (0,9 MB/przełączenie) — stąd druga część #50. Oglądane automatem: MG w Chromium
+i Firefoksie, Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta.
+**Następny krok:** refaktoryzacja całości pod osłoną suity.
+
 ### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci (T7 zamknięty)
 
 **Zlecenie MG:** T7c z `testy.md`. Pytania na starcie: scena 4096 w obu trybach (Dynamiczna

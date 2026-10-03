@@ -52,7 +52,7 @@ rzutach, **#49** spóźnione echo zapisu karty gubi dopiski — triaż MG 02.10:
 mapa 60 kl./s wszędzie poza Firefoksem gracza w marszu na Dynamicznej, serwer bez wycieku;
 **#50** bufory Pixi po przełączeniu sceny, **#51** geometrie kości 3D, **#52** klik pod cudzą figurą
 łapie jej podpis — to był „marsz Sowy”); **T8a zamknięty 03.10** (decyzja MG: T8 przed refaktoryzacją, podział T8a/T8b/T8c — `specs/50-przegladarki`,
-macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55, B3 do triażu);
+macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55 — **03.10 triaż MG: #53 naprawiony** (szew sprite'a zasłony, `isRenderGroup`, umowa w `mapa`), **#54 i #55 odrzucone** — rejestr znów bez otwartych błędów);
 **następny: T8b (pierwszy kontakt), T8c, potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
 **T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T10 (z powtórką automatu T8a) → 28 → T11**.
@@ -118,7 +118,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2247** w `shared`, **1285** na serwerze, **315** u klienta,
-**61** w gatewayu (01.10, `--cache-ram`), **238** E2E w domyślnym przebiegu (196 + 42 T8a z 03.10: `t8a-` 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -140,7 +140,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 56   | 25      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 57   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 14   | 18      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 25   | 14      |
@@ -164,6 +164,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.10 — triaż #53–#55: szew zasłony naprawiony, dwa napisy odrzucone
+
+**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#53–#55, B3 do triażu). Pytania po diagnozie:
+wagi — **B3** dla trzech; **#54** („ROZMO…”) **odrzucony** — prawą belkę gracze i MG zwykle
+rozszerzają; **#55** (ucięte nazwy umiejętności) **odrzucony** — zostaje wielokropek z podpowiedzią.
+
+**Zrobione (`c28429d`):** #53 to nie szczelina w pamięci terenu, tylko jasna nitka mapy przez czarną
+zasłonę, dokładnie na przekątnej sceny. Tekstura zasłony jest szczelna (odczyt pikseli), a szew
+powstaje przy rysowaniu zagnieżdżonego sprite'a na płótno z MSAA → `visionLayer.isRenderGroup`
+i `fogLayer.isRenderGroup`. Zasłona czyszczona kolorem zamiast prostokąta nie pomogła i została
+cofnięta. Nowy `t8a-szew-zaslony` (`@szybkie`, oba silniki, z kontrolą jasnej sali) i pomocnik
+`brightPixelsAlong` w `fixtures/canvas.ts` (PNG dekoduje przeglądarka). Umowa i pułapka w `mapa`.
+
+**Weryfikacja:** nowy spec pada bez poprawki (99 jasnych pikseli w Firefoksie i w Chromium), a z nią
+przechodzi; jasność pamięci terenu przed i po identyczna. `pnpm test:e2e t8a-` **44/44 (5,6 min)**,
+klient 315/315; ESLint, Prettier i `tsc` czyste w kliencie i suicie. Oglądane automatem: gracz
+w Firefoksie i Chromium, MG w Chromium (headless, 1920 × 1080), zrzuty przejrzane rozjaśnione.
+Mgła „Bramy” (`po-T5a`) bez szwu przed poprawką i bez zmian po niej. `dev.db` nietknięta.
+**Następny krok:** T8b (pierwszy kontakt), potem T8c.
+
 ### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
 
 **Zlecenie MG:** T8 z `testy.md`, podzielony, jeśli się nie zmieści. Pytania na starcie (wiersze
@@ -184,28 +204,3 @@ w filtrze czatu, **#55** ucięte nazwy umiejętności na karcie. Nieosiągalnego
 `tsc`, ESLint i Prettier suity czyste. Pełnego przebiegu od zera nie puszczano (okno konsoli
 i gateway MG). Oglądane automatem w Chromium i Firefoksie, zrzuty przejrzane. `dev.db` nietknięta.
 **Następny krok:** T8b albo triaż #53–#55.
-
-### Sesja 02/03.10 — poprawki #50–#52 z T7c, rejestr bez otwartych błędów
-
-**Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#50–#52, B3 do triażu). Pytania na starcie:
-wagi — **B3** dla trzech; #52 — **figura łapie klik tylko na swoich polach** (nie samo wyłączenie
-podpisu); testy wycieku **pilnują progów**; retest — T7c celowo (bez pełnego 196).
-
-**Zrobione (`17f42a4`):** #52 — `TokenNode.hitArea` = kwadrat pól figury (Pixi przycina nim dzieci:
-podpis, cień, podstawka, obrączka PW). #50 — `map/pixi-destroy.ts`: `DESTROY_TREE`
-(`{ children: true, context: true }`) we wszystkich `destroy` drzew w `MapRenderer`/`MapFxLayer`
-oraz `releasePooledGraphicsData()` przy zmianie sceny (wolne `GraphicsContextRenderData` z `BigPool`
-— ich bufory tylko się podwajały). #51 — `installGeometryRelease` w `dice3d.ts` zwalnia klony
-geometrii z `swapDiceFace` (wyparte i przy `clearDice`). `t7c-pamiec` z progami (`SWITCH_LEAK_MB`,
-`ROLL_LEAK_GEOMETRIES`), #52 bez `test.fail`. Umowy w `mapa` (2) i `kosci` (1), pułapki w `mapa`
-(2) i `kosci` (1).
-
-**Weryfikacja:** klient 315 (nowy `dice3d.test.ts` › „#51” pada bez poprawki); `tsc`, ESLint,
-Prettier czyste w kliencie i suicie. `pnpm test:e2e t7c-` **16/16 (53,7 min)**: przełączenia —
-sterta MG +0,10 MB, bufory +0,007 MB na przełączenie (było 1,34 i 1,72); 300 rzutów — geometrie
-kości stoją (MG 4 → 5, Ola 3 → 3; było 44 → 428); zrzut sterty +0,15 MB buforów na 12 przełączeń
-(było 21,7 MB); `t7c-mapa` 9/9; `00-baseline` 5/5. Pierwszy przebieg bez opróżniania puli padł na
-progu buforów (0,9 MB/przełączenie) — stąd druga część #50. Oglądane automatem: MG w Chromium
-i Firefoksie, Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta.
-**Następny krok:** refaktoryzacja całości pod osłoną suity.
-

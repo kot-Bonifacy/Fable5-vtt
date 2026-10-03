@@ -611,7 +611,8 @@ Ekrany: na 1920 × 1080 i 2560 × 1440, w obu silnikach, żadna kontrolka widoku
 gracza, 15 zakładek panelu, czterech stron karty (gracz i statysta) ani siedmiu kroków kreatora
 Na skróty nie jest poza oknem ani przycięta, w nocy i w dzień; strona nigdzie się nie przewija.
 Przy 2560 panele zostają w pikselach z 1920, a resztę zabiera mapa. Ucięte napisy: #54, #55,
-kreska w pamięci terenu: #53 (wszystkie B3 do triażu). T8b i T8c — osobne sesje.
+kreska w pamięci terenu: #53 (wszystkie B3). Triaż MG 03.10: #53 naprawiony (szew sprite'a zasłony,
+retest `t8a-szew-zaslony`), #54 i #55 odrzucone. T8b i T8c — osobne sesje.
 
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 
