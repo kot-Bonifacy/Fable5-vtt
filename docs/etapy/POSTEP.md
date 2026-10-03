@@ -51,10 +51,11 @@ rzutach, **#49** spóźnione echo zapisu karty gubi dopiski — triaż MG 02.10:
 (wydajność mapy na scenie 4096 i wyciek pamięci — `t7c-mapa`, `t7c-pamiec`, liczby w `testy.md` 6.3:
 mapa 60 kl./s wszędzie poza Firefoksem gracza w marszu na Dynamicznej, serwer bez wycieku;
 **#50** bufory Pixi po przełączeniu sceny, **#51** geometrie kości 3D, **#52** klik pod cudzą figurą
-łapie jej podpis — to był „marsz Sowy”); **następny: refaktoryzacja pod osłoną suity**
-(T7 zamknięty, pomiary T7b/T7c to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
+łapie jej podpis — to był „marsz Sowy”); **T8a zamknięty 03.10** (decyzja MG: T8 przed refaktoryzacją, podział T8a/T8b/T8c — `specs/50-przegladarki`,
+macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55, B3 do triażu);
+**następny: T8b (pierwszy kontakt), T8c, potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
-**T3–T6 → T7a–T7c → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T8, T10 → 28 → T11**.
+**T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T10 (z powtórką automatu T8a) → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
 Nie proponuj makr (36 wycofany) ani głosu (12, 21, 22). Największe pliki do pocięcia przy
 refaktoryzacji: `MapRenderer.ts` (294 KB), `CharacterSheet.tsx` (172 KB), `socket.ts` (152 KB),
@@ -117,7 +118,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `.env` ani baz.
 
 **Testy na koniec ostatniej sesji:** **2247** w `shared`, **1285** na serwerze, **315** u klienta,
-**61** w gatewayu (01.10, `--cache-ram`), **196** E2E + **42** odporności T7a–T7c poza domyślnym przebiegiem (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
+**61** w gatewayu (01.10, `--cache-ram`), **238** E2E w domyślnym przebiegu (196 + 42 T8a z 03.10: `t8a-` 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
 
@@ -156,12 +157,33 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 104     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 101     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 104     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
+
+**Zlecenie MG:** T8 z `testy.md`, podzielony, jeśli się nie zmieści. Pytania na starcie (wiersze
+w sekcji 2 `testy.md`): **T8 teraz, przed refaktoryzacją** — automat T8a wchodzi do jej osłony,
+T10 puszcza go ponownie; podział **T8a** (automat) / **T8b** (pierwszy kontakt — świeży subagent bez
+kontekstu, Na skróty) / **T8c** (pobieżna regresja); ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**;
+skrót z `po-T3`; wagi układu (nieosiągalne = B2, ucięte i kontrast = B3).
+
+**Zrobione:** `packages/e2e/fixtures/uklad.ts` (przegląd DOM-u: kontrolki poza oknem i przycięte,
+ucięte napisy, nachodzące obszary, kontrast; zrzut i JSON do `.e2e/pomiary/t8a`),
+`specs/50-przegladarki/`: `t8a-macierz` (16, `@szybkie`), `t8a-ekrany` (24), `t8a-uklad` (2,
+`@szybkie`, sprawdzian sprawdzacza). Trzy pułapki w `testy`, poprawiony papier dzienny w `ogledziny`.
+
+**Błędy (B3 do triażu MG):** **#53** szczelina w pamięci terenu u gracza bez figury, **#54** „ROZMO…”
+w filtrze czatu, **#55** ucięte nazwy umiejętności na karcie. Nieosiągalnego nic, konsola czysta.
+
+**Weryfikacja:** `pnpm test:e2e t8a-` 42/42 dwa razy (5,3 min), `--grep @szybkie` 30/30 (2,9 min);
+`tsc`, ESLint i Prettier suity czyste. Pełnego przebiegu od zera nie puszczano (okno konsoli
+i gateway MG). Oglądane automatem w Chromium i Firefoksie, zrzuty przejrzane. `dev.db` nietknięta.
+**Następny krok:** T8b albo triaż #53–#55.
 
 ### Sesja 02/03.10 — poprawki #50–#52 z T7c, rejestr bez otwartych błędów
 
@@ -186,31 +208,4 @@ kości stoją (MG 4 → 5, Ola 3 → 3; było 44 → 428); zrzut sterty +0,15 MB
 progu buforów (0,9 MB/przełączenie) — stąd druga część #50. Oglądane automatem: MG w Chromium
 i Firefoksie, Marek w Chromium, Ola w Firefoksie, headless. `dev.db` nietknięta.
 **Następny krok:** refaktoryzacja całości pod osłoną suity.
-
-### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci (T7 zamknięty)
-
-**Zlecenie MG:** T7c z `testy.md`. Pytania na starcie: scena 4096 w obu trybach (Dynamiczna
-+ ciemność + pamięć terenu i ręczna mgła), MG i gracz w obu silnikach, headless Full HD; zgoda na
-liczniki w haku E2E; 300 rzutów z animacją; sterta serwera przez `--inspect`; próba odtworzenia
-marszu Sowy; wagi wycieku (liniowy = błąd, B2 > ~200 MB albo spadek klatek, inaczej B3).
-
-**Zrobione:** hak `window.__vttE2E.counts()` (`MapRenderer.e2eCounts`, `diceE2ECounts` w `dice3d.ts`,
-DOM; tylko build `e2e` — umowa w `ui`), `startInstance(…, { inspect: true })`, w `fixtures/pomiary.ts`
-sterta i bufory klienta po GC, sterta serwera, zajętość wątku; `fixtures/wydajnosc.ts` (scena
-pomiarowa z gniazda MG, kamera). Nowe w `40-odpornosc`: `t7c-mapa`, `t7c-pamiec`,
-`t7c-diag-sterta`, `t7c-marsz-pod-figura` (16 testów); ślad nieudanego marszu
-i `E2E_T7B_BRAMA_SKALA` w `t7b-obciazenie`. Dziewięć pułapek w `testy`.
-
-**Błędy (do triażu MG, propozycja B3):** **#50** — przełączenie sceny zostawia u MG ~3 MB
-osieroconych buforów geometrii Pixi (520 `WebGLBuffer` na 12 przełączeń; drzewo i tekstury stoją).
-**#51** — kości 3D nie zwalniają geometrii three.js (+1,4 na rzut u każdego widza). **#52** — klik
-w środek pola tuż pod cudzą figurą trafia w jej podpis (`TokenNode.nameText`), marsz nie rusza;
-to był „marsz Sowy” z T7b (4 z 4 nieudanych marszów z figurą nad celem).
-
-**Weryfikacja:** `t7c-mapa` 9/9, `t7c-pamiec` 4/4 (43,7 min), `t7c-marsz-pod-figura` 3 × 2/2,
-`t7b-obciazenie` z krótką „Bramą” 4 × 3/3, `00-baseline` 5/5 (hak poza paczką produkcyjną),
-klient 314; `tsc`, ESLint, Prettier czyste w kliencie i suicie. Domyślny przebieg dalej 196,
-odporność 42. Oglądane automatem: MG w Chromium i Firefoksie, Marek w Chromium, Ola w Firefoksie,
-headless 1920 × 1080. `dev.db` i punkty kontrolne nietknięte. **Następny krok:** triaż #50–#52,
-potem refaktoryzacja.
 

@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci (T7 zamknięty)
+
+**Zlecenie MG:** T7c z `testy.md`. Pytania na starcie: scena 4096 w obu trybach (Dynamiczna
++ ciemność + pamięć terenu i ręczna mgła), MG i gracz w obu silnikach, headless Full HD; zgoda na
+liczniki w haku E2E; 300 rzutów z animacją; sterta serwera przez `--inspect`; próba odtworzenia
+marszu Sowy; wagi wycieku (liniowy = błąd, B2 > ~200 MB albo spadek klatek, inaczej B3).
+
+**Zrobione:** hak `window.__vttE2E.counts()` (`MapRenderer.e2eCounts`, `diceE2ECounts` w `dice3d.ts`,
+DOM; tylko build `e2e` — umowa w `ui`), `startInstance(…, { inspect: true })`, w `fixtures/pomiary.ts`
+sterta i bufory klienta po GC, sterta serwera, zajętość wątku; `fixtures/wydajnosc.ts` (scena
+pomiarowa z gniazda MG, kamera). Nowe w `40-odpornosc`: `t7c-mapa`, `t7c-pamiec`,
+`t7c-diag-sterta`, `t7c-marsz-pod-figura` (16 testów); ślad nieudanego marszu
+i `E2E_T7B_BRAMA_SKALA` w `t7b-obciazenie`. Dziewięć pułapek w `testy`.
+
+**Błędy (do triażu MG, propozycja B3):** **#50** — przełączenie sceny zostawia u MG ~3 MB
+osieroconych buforów geometrii Pixi (520 `WebGLBuffer` na 12 przełączeń; drzewo i tekstury stoją).
+**#51** — kości 3D nie zwalniają geometrii three.js (+1,4 na rzut u każdego widza). **#52** — klik
+w środek pola tuż pod cudzą figurą trafia w jej podpis (`TokenNode.nameText`), marsz nie rusza;
+to był „marsz Sowy” z T7b (4 z 4 nieudanych marszów z figurą nad celem).
+
+**Weryfikacja:** `t7c-mapa` 9/9, `t7c-pamiec` 4/4 (43,7 min), `t7c-marsz-pod-figura` 3 × 2/2,
+`t7b-obciazenie` z krótką „Bramą” 4 × 3/3, `00-baseline` 5/5 (hak poza paczką produkcyjną),
+klient 314; `tsc`, ESLint, Prettier czyste w kliencie i suicie. Domyślny przebieg dalej 196,
+odporność 42. Oglądane automatem: MG w Chromium i Firefoksie, Marek w Chromium, Ola w Firefoksie,
+headless 1920 × 1080. `dev.db` i punkty kontrolne nietknięte. **Następny krok:** triaż #50–#52,
+potem refaktoryzacja.
+
 ### Sesja 02.10 — poprawki #48 i #49 z T7b, rejestr bez otwartych błędów
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (otwarte #48 B2, #49 B0). Pytania na starcie:

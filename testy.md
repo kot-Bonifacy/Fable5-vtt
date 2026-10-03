@@ -30,7 +30,9 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T7a  | Odporność 1/3: sieć, restart, dwie karty, degradacja AI   | ✅     | 01.10.2026 |
 | T7b  | Odporność 2/3: obciążenie stołu, długi czat, rozmiar bazy | ✅     | 02.10.2026 |
 | T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ✅     | 02.10.2026 |
-| T8   | Przeglądarki, ekrany, pierwszy kontakt, pobieżna regresja | ⬜     |            |
+| T8a  | Przeglądarki 1/3: macierz silników, ekrany, motyw, konsola | ✅     | 03.10.2026 |
+| T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ⬜     |            |
+| T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ⬜     |            |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
@@ -44,7 +46,8 @@ jednym kontem MG, jak dziś. T10 po wszystkich od T1 do T9. T11 po etapie 28.
 → **refaktoryzacja całości** pod osłoną suity → **etap „Konta MG”** (przepisuje krok 3.1 i część
 T2, suitę poprawia się raz) → T9 → T7, T8 → T10 → etap 28 → T11. **Korekta 01.10 (MG):** T7
 idzie teraz, przed refaktoryzacją, w trzech częściach a/b/c — pomiary T7b/T7c staną się linią
-bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
+bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”. **Korekta 03.10 (MG):** T8 też
+idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po „Kontach MG”.
 
 ## 2. Decyzje MG z 26.09.2026 (podstawa planu)
 
@@ -110,6 +113,10 @@ bazową refaktoryzacji, a T10 powtarza restart i sesje po „Kontach MG”.
 | T7c: wydajność mapy    | scena `test-map-4096.png` (40 figur, 200 odcinków ścian, 10 świateł) w **dwóch trybach** — Dynamiczna + ciemność + pamięć terenu oraz ręczna mgła; oczami **MG i gracza w obu silnikach**; **headless Full HD (1920 × 1080)**; liczby klatek bez progów (decyzja MG z 02.10, sesja T7c) |
 | T7c: wyciek pamięci    | **hak E2E rozszerzony o liczniki** (drzewo i tekstury Pixi, kości 3D, DOM — tylko odczyt, tylko build `e2e`), sterta JS w Chromium przez CDP; **300 rzutów, każdy z animacją 3D** (rzuca Ola w Firefoksie, MG w Chromium patrzy); **sterta serwera po GC przez `--inspect`** instancji E2E, także po 5 min spoczynku; liniowy wzrost = błąd w rejestrze, **B2 przy przyroście > ~200 MB albo spadku klatek, mniejszy B3** (decyzja MG z 02.10, sesja T7c) |
 | T7c: marsz Sowy        | **próba odtworzenia**: walka „Knajpa” z `t7b-obciazenie` 3–4 razy z pełnym śladem nieudanego marszu; nieodtworzony = notka, nie wpis (decyzja MG z 02.10, sesja T7c) |
+| T8: kolejność i podział | **T8 teraz, przed refaktoryzacją**; automat T8a wchodzi do osłony refaktoryzacji i T10 puszcza go ponownie po „Kontach MG” (pierwszego kontaktu się nie powtarza). Podział: **T8a** = macierz silników, ekrany, motyw dzień/noc, konsola (automat w `specs/50-przegladarki`), **T8b** = pierwszy kontakt, **T8c** = pobieżna regresja (decyzja MG z 03.10, sesja T8a) |
+| T8: ekrany i skrót     | ekrany **1920 × 1080 i 2560 × 1440 przy 100 %**, oba z wagą; 1366 × 768 i powiększenia 125/150 % wypadają z macierzy. Skrót scenariusza **z `po-T3`**, ok. 5 min na układ: MG + Marek + Ola, a w drugim układzie silniki zamienione (decyzja MG z 03.10, sesja T8a) |
+| T8: pierwszy kontakt   | gra go **świeży subagent bez kontekstu** (Playwright MCP Firefox, zakaz czytania repo), Claude jest MG w Chromium i robi triaż notatek; postać powstaje metodą **Krawędziarz (Na skróty)** (decyzja MG z 03.10, sesja T8a) |
+| T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -215,6 +222,8 @@ packages/e2e/
                            z rozróżnieniem liter (`chatCards`, `freshCard`), kamera bliżej (`zoomAt`)
     brama.ts               T5: lista scen MG, statysta z kartą, bot, mgła prostokątem, strefy bronione,
                            architektura i run z bazy (`architecture`, `runOf`)
+    uklad.ts               T8a: przegląd układu w karcie — kontrolki poza oknem i przycięte (B2), ucięte napisy,
+                           nachodzące obszary, kontrast (B3); zrzut i raport do `.e2e/pomiary/t8a`
     vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
   specs/
     00-baseline/           build, start, /health, pusta baza, 66 umiejętności, hak poza buildem produkcyjnym
@@ -223,7 +232,9 @@ packages/e2e/
     35-bezpieczenstwo/     T2: trasy HTTP, gniazdo (role, własność, śmieci, zalew), kanarki na zimno —
                            każdy plik odtwarza `po-T3` sam, więc w pełnym przebiegu idzie po T3–T6
     40-odpornosc/          T7, poza domyślnym przebiegiem: `pnpm test:e2e 40-odpornosc` (albo `--grep @odpornosc`)
-    50-przegladarki/       T8
+    50-przegladarki/       T8a: `t8a-macierz` (@szybkie, skrót z `po-T3` w dwóch układach silników),
+                           `t8a-ekrany` (z `po-T4a`: 1920 × 1080 i 2560 × 1440 × dwa układy, panel, karta, kreator,
+                           noc i dzień), `t8a-uklad` (@szybkie, sprawdzian sprawdzacza na stronie zepsutej celowo)
 ```
 
 Uruchamianie: `pnpm test:e2e` (całość), `pnpm test:e2e --grep @szybkie` (bez LLM i bez długich
@@ -593,6 +604,15 @@ obok klatek stoi zajętość wątku głównego (CDP, odsetek czasu ściany):
 - Konsola bez nowych błędów w obu silnikach przez cały skrót (znane: dwa 401 przed zalogowaniem,
   404 `favicon.ico`).
 
+**T8a zamknięty 03.10** (podział i ekrany — decyzje MG w sekcji 2): `pnpm test:e2e t8a-` 42 testy
+w ~5,3 min, z czego 30 w `@szybkie` razem z linią bazową i dymem (2,9 min). Macierz: oba układy
+(MG Chromium / gracze Firefox i odwrotnie) przechodzą skrót od czatu do końca walki, konsola czysta.
+Ekrany: na 1920 × 1080 i 2560 × 1440, w obu silnikach, żadna kontrolka widoku walki MG, tury
+gracza, 15 zakładek panelu, czterech stron karty (gracz i statysta) ani siedmiu kroków kreatora
+Na skróty nie jest poza oknem ani przycięta, w nocy i w dzień; strona nigdzie się nie przewija.
+Przy 2560 panele zostają w pikselach z 1920, a resztę zabiera mapa. Ucięte napisy: #54, #55,
+kreska w pamięci terenu: #53 (wszystkie B3 do triażu). T8b i T8c — osobne sesje.
+
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 
 Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
@@ -736,6 +756,9 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - gracz w Firefoksie na scenie Dynamicznej traci w marszu ~8 klatek na sekundę (52/s, p95 33 ms; Chromium 60/s) — przy stole niewidoczne, do pilnowania przy refaktoryzacji `MapRenderer.ts` — T7c, 02.10;
 - mapa 4096 px rysuje się u gracza w Firefoksie po 3–4 s od wejścia (Chromium ~1 s) — czy ktoś zauważy czarną planszę przy przełączeniu sceny — T7c, 02.10.
 
+- przy 2560 × 1440 panel boczny, lewa szyna i okna (karta, kreator) mają te same piksele co przy 1920 — czcionki są wyraźnie mniejsze, mapa zabiera całą resztę; czy gracz z monitorem 2k nie będzie mrużył oczu (powiększenie przeglądarki 125 % to 2048 × 1152, poza macierzą) — T8a, 03.10;
+- gracz bez figury (nowy, w kreatorze) widzi na mapie przyciemnioną pamięć terenu drużyny i napis „Nie masz tokenu na tej scenie — MG musi go wystawić”, który chowa się za oknem kreatora — T8a, 03.10.
+
 ## 9. Rejestr błędów i raportowanie
 
 T1 zakłada `testy-rejestr.md` obok tego pliku. Jeden wiersz na błąd:
@@ -776,6 +799,34 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
+
+**Rozstrzygnięcia MG na starcie:** T8 teraz, przed refaktoryzacją (automat T8a wchodzi do jej
+osłony, T10 puszcza go ponownie); podział T8a/T8b/T8c; ekrany 1920 × 1080 i 2560 × 1440 przy 100 %
+(2k też w 100 %), 1366 × 768 i powiększenia odpadają; skrót z `po-T3`; pierwszy kontakt gra świeży
+subagent bez kontekstu, metodą Na skróty; wagi układu i konsoli. Wiersze w sekcji 2.
+
+**Zrobione:** `fixtures/uklad.ts` (przegląd DOM-u bez wiedzy o komponentach: kontrolki poza oknem
+i przycięte przez nieprzewijanego przodka, ucięte napisy, nachodzące obszary, kontrast WCAG; zrzut
+i JSON do `.e2e/pomiary/t8a`), `specs/50-przegladarki/`: `t8a-macierz` (16 testów, `@szybkie`),
+`t8a-ekrany` (24), `t8a-uklad` (2, `@szybkie` — sprawdzian sprawdzacza w obu silnikach). Trzy pułapki
+w `testy`, poprawiona wartość papieru dziennego w `ogledziny` (`#f4e2c8` od 20.09).
+
+**Błędy (B3 do triażu MG):** **#53** — gracz bez figury widzi w pamięci terenu „Knajpy” ukośną czarną
+szczelinę (oba silniki, 1920 × 1080; nie ściana i nic nie zdradza — sprawdzone współrzędnymi świata
+i listą ścian). **#54** — filtr czatu „Rozmowy” ucięty do „ROZMO…” na obu ekranach. **#55** — 11–12
+długich nazw umiejętności na stronie „Karta” z wielokropkiem, także przy 2560 (pełna nazwa tylko
+w podpowiedzi). Nic nieosiągalnego (B2), konsola bez nowych błędów w obu silnikach.
+
+**Wynik:** `t8a-` 42/42 dwa razy (3,0 + 2,4 min osobno, 5,3 min razem), `--grep @szybkie` 30/30
+(2,9 min). Pełnego przebiegu od zera nie puszczano (wymaga okna konsoli i gatewaya MG, nadpisuje
+punkty) — w domyślnym przebiegu `50-przegladarki` idzie ostatni i dokłada ~5,5 min. Oglądane
+automatem w Chromium i Firefoksie (headless, oba ekrany); zrzuty kreatora, karty i tury przejrzane
+ręcznie. `dev.db` nietknięta; punkty kontrolne tylko odczytywane.
+
+**Następny krok:** T8b (pierwszy kontakt: subagent w Firefoksie przez Playwright MCP, Claude jako MG
+w Chromium na instancji z `hold.ts`) albo triaż #53–#55.
+
 ### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci
 
 **Rozstrzygnięcia MG na starcie:** scena 4096 w dwóch trybach (Dynamiczna + ciemność + pamięć terenu
@@ -808,38 +859,3 @@ Klient 314/314. Oglądane automatem: MG w Chromium i Firefoksie, Marek w Chromiu
 
 **Następny krok:** triaż MG #50–#52, potem refaktoryzacja całości pod osłoną suity (T7 zamknięty).
 
-### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
-
-**Rozstrzygnięcia MG na starcie:** obciążenie w obu trybach po kolei („Brama” swobodnie z odsłoniętą
-mgłą, potem walka w „Knajpie”), tempo mieszane (8 min stołu + 2 min szczytu), Kuba i Ewa z pustymi
-kartami od MG, obserwator = spóźniona Zosia, silniki pół na pół; 3000 wierszy przez gniazdo; liczby
-bez progów; rozmiar bazy pełnym obrazem. Wiersze w sekcji 2.
-
-**Zrobione:** `fixtures/pomiary.ts`, `serverPid()` w `instance.ts`, trzy pliki w `40-odpornosc`
-(9 testów): `t7b-obciazenie` (MG + 4 graczy + Zosia, UI: marsz, kubek, czat, szepty, notatki;
-porównanie magazynów klienta ze świeżym `state:sync` tego konta i z bazą, czekanie na zbieżność do
-20 min, każdy znacznik czatu w bazie raz, rzuty ≤ gesty; `E2E_T7B_SKALA=0.1` do prób),
-`t7b-czat-baza` (rozmiar `po-T6`, wejście dwóch nowych graczy, 3000 wierszy, rozmiar po, wejście
-i przewijanie całej historii w obu silnikach), `t7b-zapis-karty` (#49, `test.fail`). Liczby
-w 6.3. Pułapki w `testy` (cztery nowe).
-
-**Błędy:** **#48** (B2, triaż MG 02.10) — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały
-ruch gniazda; przy pięciu osobach rzucających stół jest kilka do kilkunastu minut za serwerem, w walce
-przekazanie tury dochodzi po ~1,5 min. Stan się zbiega; obejście — wyłączenie animacji kości.
-**#49** (B0, triaż MG 02.10) — spóźnione echo zapisu karty cofa kartę gracza, a następny zapis kasuje
-to, co było pomiędzy (zgubione notatki w obu pełnych przebiegach, odtworzenie deterministyczne).
-Obserwacje w sekcji 8 (czat bez wirtualizacji, spóźniony gracz widzi więcej niż reszta).
-
-**Wynik:** `t7b-obciazenie` pełny 3/3 (34,4 min; pierwszy pełny przebieg czerwony na notatkach — #49,
-potem kontrola zamieniona na adnotację „znany #49”), trzy próby w skali 0,1; `t7b-czat-baza` 5/5
-(5,5 min); `t7b-zapis-karty` 1/1 (`test.fail` — „·B” ginie). `40-odpornosc --list` 26 testów,
-domyślny przebieg dalej 196. Kod aplikacji bez zmian. Oglądane automatem: MG, Marek, Ewa, Adam,
-Celina w Chromium; Ola, Kuba, Zosia, Basia, Darek w Firefoksie, headless. `dev.db` i punkty
-kontrolne nietknięte (T7b ich nie nagrywa).
-
-**Następny krok:** MG przyjął wagi (#48 B2, #49 B0 — blokuje betę); poprawki, potem T7c — wydajność mapy
-i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod obciążeniem).
-
-**02.10 (sesja poprawek):** #48 i #49 naprawione i retestowane (`715df2b`, opis w rejestrze);
-w T7c obejrzeć też jeden nieudany marsz Sowy w walce w „Knajpie” (pierwszy raz, gdy Sowa w ogóle
-chodzi w walce — przed poprawką walka miała 3 tury).

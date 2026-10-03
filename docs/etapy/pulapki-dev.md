@@ -1109,7 +1109,8 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
   (`--cp-paper`, `--cp-ink`) zostają na nocnych — okno karty postaci i kreatora stoi wtedy
   na czarnym kartonie obok jasnego interfejsu i wygląda jak zepsuta skórka. Rozstrzyga jedno
   wywołanie: `getComputedStyle(document.documentElement).getPropertyValue('--cp-paper')` daje
-  `#171514` w nocy i `#f6eddb` w dzień.
+  `#171514` w nocy i `#f6eddb` w dzień (**od skórki z 20.09 dzień to `#f4e2c8`** — T8a 03.10 sprawdza
+  już tylko „jasny w dzień, ciemny w nocy”, bez wartości na sztywno).
 
 - **Karta automatyki jest schowana — pełnego ekranu w niej nie obejrzysz** — `requestFullscreen` przy aktywnym geście odpowiada „not granted", bo `document.visibilityState === 'hidden'` (okno automatyki leży za innym). Sprawdź to **przed** szukaniem błędu; pełny ekran i Keyboard Lock ogląda MG ręcznie.
 - **Moduł `/src/socket.ts` wczytany z konsoli ma WŁASNE, puste gniazdo** — `activateCampaign` i reszta odpowiadają `NOT_CONNECTED`, choć pasek mówi „Połączony", także przy adresie z `?t=`. Działa **osobne** połączenie: `io()` z `/node_modules/.vite/deps/socket__io-client.js?v=…` (adres z `performance.getEntriesByType('resource')`) — ciasteczko MG idzie samo. **26.09 (43a) dokładny adres `?t=` z listy zasobów zadziałał** (`updateToken`, `startCombat`, `endCombat` → `ok`) — próbuj go najpierw, osobne `io()` dopiero, gdy odpowie `NOT_CONNECTED`.
@@ -1679,6 +1680,9 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Przegląd układu T8a zawęża kontrolki do `scope` — sprawdzian sprawdzacza musi brać całą stronę (03.10, T8a)** — `inspectLayout(page, '#okno')` liczy osiągalność tylko kontrolek w tym oknie, a kontrast w ogóle tylko przy `scope`. Pierwsza wersja `t8a-uklad` zawęziła przegląd do okna z szarym napisem i „nie widziała” przyciętego przycisku obok — błąd sprawdzianu, nie `uklad.ts`. Zielone `t8a-ekrany` znaczy coś tylko przy zielonym `t8a-uklad` (celowe usterki w obu silnikach).
+- **Klik w mapę zaraz po „Start” walki nic nie robi — klient gracza dostaje start dopiero po animacji ostatniej kości inicjatywy (03.10, T8a)** — pas „Przed walką” ma już właściwą kolejność, więc `queueOf` przechodzi, zanim tura dotrze; marsz Kowala w drugim układzie macierzy nie wysłał ani jednego `token:move`. Po „Start” najpierw `clientsSeeTurn(...)`, potem klik.
+- **Bez Zmysłu Walki z T4a Kowal na 16 m nie trafia nawet dziewiątką (03.10, T8a)** — `po-T3`: modyfikator 11, PT 20, a trafienie musi PT przebić; 9 + 11 = 20 to pudło w obu układach. Skrypt kości daje wtedy `[10, reszta]` (dziesiątka wybucha), a karta strzału przychodzi po dwóch animacjach — czekaj na nią 30 s, nie 10.
 - **Klik w środek pola tuż pod cudzą figurą to klik w jej podpis, nie w mapę (02.10, T7c, #52)** — marsz „pole w prawo” w walce T7b nie ruszał, gdy nad celem stał sąsiad (Sowa pod Lisem, Iskra pod Kowalem); serwer nic nie dostaje. Do poprawki #52 testy z marszem w ciasnym szyku klikają w dolną część pola albo wybierają pole bez figury nad nim. Ślad nieudanego marszu: `nieudane[].diag` w pomiarach `t7b-obciazenie`.
 - **`E2E_T7B_BRAMA_SKALA` skraca samą „Bramę” w `t7b-obciazenie` (02.10, T7c)** — walka „Knajpa” zostaje w pełnej długości (3 min); przebieg ~5 min. Pomiary idą pod klucz z godziną (`knajpa-proba-1-brama-0.05-HH:MM:SS`), więc linia bazowa `brama`/`knajpa` zostaje nietknięta.
 - **Headless Chromium i Firefox trzymają `requestAnimationFrame` na 60 Hz — klatki nie pokażą zapasu karty graficznej (02.10, T7c)** — na RTX 5070 Ti scena 4096 z 40 figurami, 200 ścianami i 10 światłami daje wszędzie 60 kl./s, p95 17 ms, więc licznik klatek rozróżnia tylko „zacina się” i „nie”. Do porównań przed/po refaktoryzacji w Chromium jest `mainThreadLoad` z `fixtures/pomiary.ts` (CDP `TaskDuration`/`ScriptDuration` w oknie pomiaru — odsetek czasu, w którym wątek główny pracował).

@@ -63,6 +63,9 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 50  | T7c  | B3 | mapa | Każde przełączenie sceny zostawia u MG ~3 MB osieroconych buforów geometrii Pixi — pamięć karty rośnie liniowo i nie wraca | `po-T6` + scena „Wydajność 4096” (`fixtures/wydajnosc.ts`: 40 figur, 200 ścian, 10 świateł), MG (Chromium) i Ola (Firefox) przy stole, 1920 × 1080 → MG przełącza „Knajpa” → „Brama” → „Wydajność 4096” przez UI (Aktywuj + Pokaż) 30 razy → po wymuszonym GC sterta JS MG 25 → 61 MB (+1,34 MB na przełączenie), pamięć `ArrayBuffer` poza stertą 16 → 62 MB (+1,72 MB na przełączenie). Zrzuty sterty (12 przełączeń po rozgrzewce): **+520 `JSArrayBufferData` (21,7 MB), +520 `WebGLBuffer`, +260 `WebGLVertexArrayObject`** — zostają po 150 s spokoju (GC zasobów Pixi włączony, 60 s) i po zamknięciu panelu „Sceny”. Liczniki haka E2E stoją w miejscu: węzły drzewa Pixi (657), tekstury (90 / 110 MB), `Assets` (18) — więc to geometrie (`Graphics`/meshe) odpięte od drzewa bez `destroy()`, a nie figury ani obrazy map. U gracza (Marek, Chromium) to samo w mniejszej skali: +142 bufory (2,2 MB) na 12 przełączeń. Bufory WebGL to też pamięć karty graficznej. Przy stole: 10–15 przełączeń na sesję = ~30–45 MB u MG — waga B3 według skali MG z 02.10 (< ~200 MB, klatki bez zmian) | `t7c-pamiec.spec.ts` › „30 przełączeń scen…” (`.e2e/pomiary/t7c-pamiec.json` › `przelaczenia.trendy`: `mgStertaMb`, `mgBuforyMb`); `t7c-diag-sterta.spec.ts` (zrzuty sterty przed, po, po spoczynku i po zamknięciu panelu — różnica na konstruktor w `.e2e/pomiary/t7c-diag-sterta.json`). Uwaga do pomiaru: `JSHeapUsedSize` (CDP `Performance`) nie liczy `ArrayBuffer` — stąd w pierwszym przebiegu „spadek” sterty po przejściu na czat; trwały wzrost widać w `buffersMb` (`Runtime.getHeapUsage` › `backingStorageSize`) | retest OK | `17f42a4` |
 | 51  | T7c  | B3 | kosci | Kości 3D nie zwalniają geometrii po rzucie — liczba geometrii three.js rośnie o ~1,4 na rzut u każdego, kto ogląda | `po-T6`, scena „Wydajność 4096”, Ola (Firefox) rzuca kubkiem 300 razy (`/r 1d10`, `2d6`, `1d10+3`, `3d6`, `1d6` na zmianę), każdy rzut z animacją u Oli i u MG (Chromium) → `renderer.info.memory.geometries` biblioteki `@3d-dice/dice-box-threejs`: MG 44 → 428, Ola 47 → 442 (+1,43 / +1,48 na rzut, liniowo, bez spadku po 5 min spoczynku); tekstury 56 → 77 i stoją, siatek na stole 0, ciał fizyki 5–7 (sprzątanie stołu działa). Sterta JS MG rośnie przy tym o 0,015 MB na rzut (28,6 → 32,7 MB po 300 rzutach) — geometrie są małe, ale to też bufory karty graficznej. Przy stole: kilkaset rzutów na sesję = kilka MB; waga B3 według skali MG z 02.10. Prawdopodobnie biblioteka (`clearDice` usuwa siatki ze sceny bez `geometry.dispose()`), więc poprawka po stronie `dice3d.ts` | `t7c-pamiec.spec.ts` › „300 rzutów kubkiem Oli…” (`.e2e/pomiary/t7c-pamiec.json` › `rzuty.trendy`: `mgKosciGeometrie`, `olaKosciGeometrie`; licznik `diceE2ECounts()` w haku E2E) | retest OK | `17f42a4` |
 | 52  | T7c  | B3 | mapa | Klik w środek pola tuż pod cudzą figurą nie rusza marszu — łapie go podpis tamtej figury | `po-T6`, „Knajpa” aktywna, Ola (Firefox) → Kowal stoi na (9, 8), Iskra na (8, 9) → Ola klika Iskrę, potem środek pola (9, 9) → nic: figura stoi, serwer nie dostał ruchu, żadnej notki. Z Kowalem z boku (12, 8) ten sam klik rusza Iskrę. Podpis figury (`TokenNode.nameText`, od 12.09 pod obrączką PW) wisi pod żetonem, w górnej połowie pola niżej, i — inaczej niż grot (#25) i aureola tury (#36) — dalej przyjmuje zdarzenia wskaźnika, więc klik w środek tego pola jest klikiem w figurę nad nim. W walce T7b: „marsz Sowy nie doszedł do pola” z 02.10 to ten błąd — w czterech przebiegach walki „Knajpa” cztery nieudane marsze (Sowa ×2, Iskra ×2), każdy z figurą tuż nad polem docelowym (`moveUsed 0`, `metresWalked 0` w `turnState`); przebieg bez takiego układu — zero. Przy stole: drużyna stoi ciasno, gracz klika „obok kolegi” i nic się nie dzieje — klik niżej w polu działa | `t7c-marsz-pod-figura.spec.ts` › „#52 Kowal tuż nad celem…” (`test.fail`, deterministyczny 3/3, kontrola zielona); ślady nieudanych marszów w `.e2e/pomiary/t7b-obciazenie.json` › `knajpa-proba-1-brama-0.05-*` › `nieudane[].diag` (nowy ślad marszu w `t7b-obciazenie`, `E2E_T7B_BRAMA_SKALA=0.05`) | retest OK | `17f42a4` |
+| 53  | T8a  | B3 (do triażu MG) | mapa | Gracz bez figury widzi w pamięci terenu „Knajpy” ukośną czarną szczelinę | `po-T4a` („Knajpa”: Dynamiczna, ciemność, pamięć terenu), nowy gracz Kuba bez postaci i bez figury wchodzi z zaproszenia, okno 1920 × 1080, kamera domyślna → na przyciemnionej pamięci terenu (kuchnia, prawa część sceny) leży czarna, cienka, ukośna kreska od punktu świata ok. (812, 593) do (992, 718), czyli 18–22 × 13–16 pola. Wszystkie ściany „Knajpy” są poziome albo pionowe, więc to nie ściana, tylko szczelina nieodkrytego między dwoma wielokątami pamięci, wzdłuż promienia cienia. Ta sama w Chromium i Firefoksie, na każdym zrzucie Kuby przy 1920 × 1080. Przy 2560 × 1440 kamera kadruje inaczej i kreski nie widać. Niczego nie zdradza (w szczelinie jest ciemność), więc to wygląd | `t8a-ekrany.spec.ts` › „kreator Kuby…”: zrzuty `.e2e/pomiary/t8a/1920x1080-*-Kuba-*-kreator-*.png`; jednorazowy spec diagnostyczny z 03.10 (współrzędne z `worldToClient`, lista ścian z bazy) | nowy | |
+| 54  | T8a  | B3 (do triażu MG) | czat | Napis filtra „Rozmowy” jest ucięty do „ROZMO…” na obu wspieranych ekranach | `po-T4a`, dowolny gracz albo MG, 1920 × 1080 i 2560 × 1440, oba silniki → zakładka „Czat”, pasek filtrów: „Rozmo…”, „Rzuty”, „Walka”, „Stół”. Panel boczny ma stałą szerokość w pikselach, więc przy 2560 jest tak samo. Napis ma `text-overflow: ellipsis` z założenia, a pełna nazwa jest w `aria-label` i podpowiedzi, ale przy żadnym ekranie z bety nie mieści się w całości | `t8a-ekrany.spec.ts` (adnotacja `truncated` w każdym przeglądzie panelu „Czat”), zrzuty `*-panel-Czat.png` | nowy | |
+| 55  | T8a  | B3 (do triażu MG) | karta | Długie nazwy umiejętności na stronie „Karta” są ucięte wielokropkiem, także na 2560 × 1440 | `po-T4a`, karta Kowala u Marka albo Zbira u MG, strona „Karta”, oba ekrany i oba silniki → 11–12 nazw z wielokropkiem: „Odporność na tortury/nark…”, „Naprawa pojazdów lądowych (…”, „Ukrycie/Znalezienie przedmio…”, „Ratownictwo medyczne (×2) (…”, „Wiedza loka…” (z dziedziną), „Sztuki walki …”, „Gra na instru…”. Okno karty ma tę samą szerokość na obu ekranach. Pełna nazwa jest tylko w podpowiedzi przycisku („Rzut: …”) | `t8a-ekrany.spec.ts` › „karta Kowala…” (adnotacja `truncated`), zrzuty `*-karta-Kowal-Karta-*.png`, `*-karta-Zbir-Karta-*.png` | nowy | |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -230,6 +233,42 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 | Z11 | poprawki 01.10 | 28        | `TRUST_PROXY=1` za Caddy                                  | Limit złych haseł i zaproszeń (#12) liczy się per `request.ip`. Za Caddy bez `TRUST_PROXY=1` każdy klient ma adres Caddy'ego — dziesięć cudzych pomyłek zablokuje logowanie wszystkim. Z `TRUST_PROXY=1` bez pośrednika adres podaje klient (`X-Forwarded-For`) i limit da się obejść — więc tylko za Caddy, a port serwera nie może być wystawiony obok niego. |
 
 ## Starsze notatki sesji testowych
+
+### Sesja 02.10 — T7b: obciążenie stołu, długi czat, rozmiar bazy
+
+**Rozstrzygnięcia MG na starcie:** obciążenie w obu trybach po kolei („Brama” swobodnie z odsłoniętą
+mgłą, potem walka w „Knajpie”), tempo mieszane (8 min stołu + 2 min szczytu), Kuba i Ewa z pustymi
+kartami od MG, obserwator = spóźniona Zosia, silniki pół na pół; 3000 wierszy przez gniazdo; liczby
+bez progów; rozmiar bazy pełnym obrazem. Wiersze w sekcji 2.
+
+**Zrobione:** `fixtures/pomiary.ts`, `serverPid()` w `instance.ts`, trzy pliki w `40-odpornosc`
+(9 testów): `t7b-obciazenie` (MG + 4 graczy + Zosia, UI: marsz, kubek, czat, szepty, notatki;
+porównanie magazynów klienta ze świeżym `state:sync` tego konta i z bazą, czekanie na zbieżność do
+20 min, każdy znacznik czatu w bazie raz, rzuty ≤ gesty; `E2E_T7B_SKALA=0.1` do prób),
+`t7b-czat-baza` (rozmiar `po-T6`, wejście dwóch nowych graczy, 3000 wierszy, rozmiar po, wejście
+i przewijanie całej historii w obu silnikach), `t7b-zapis-karty` (#49, `test.fail`). Liczby
+w 6.3. Pułapki w `testy` (cztery nowe).
+
+**Błędy:** **#48** (B2, triaż MG 02.10) — klient odtwarza rzuty po jednym (~6 s) i trzyma za nimi cały
+ruch gniazda; przy pięciu osobach rzucających stół jest kilka do kilkunastu minut za serwerem, w walce
+przekazanie tury dochodzi po ~1,5 min. Stan się zbiega; obejście — wyłączenie animacji kości.
+**#49** (B0, triaż MG 02.10) — spóźnione echo zapisu karty cofa kartę gracza, a następny zapis kasuje
+to, co było pomiędzy (zgubione notatki w obu pełnych przebiegach, odtworzenie deterministyczne).
+Obserwacje w sekcji 8 (czat bez wirtualizacji, spóźniony gracz widzi więcej niż reszta).
+
+**Wynik:** `t7b-obciazenie` pełny 3/3 (34,4 min; pierwszy pełny przebieg czerwony na notatkach — #49,
+potem kontrola zamieniona na adnotację „znany #49”), trzy próby w skali 0,1; `t7b-czat-baza` 5/5
+(5,5 min); `t7b-zapis-karty` 1/1 (`test.fail` — „·B” ginie). `40-odpornosc --list` 26 testów,
+domyślny przebieg dalej 196. Kod aplikacji bez zmian. Oglądane automatem: MG, Marek, Ewa, Adam,
+Celina w Chromium; Ola, Kuba, Zosia, Basia, Darek w Firefoksie, headless. `dev.db` i punkty
+kontrolne nietknięte (T7b ich nie nagrywa).
+
+**Następny krok:** MG przyjął wagi (#48 B2, #49 B0 — blokuje betę); poprawki, potem T7c — wydajność mapy
+i wyciek pamięci (sprawdzić też wzrost pamięci serwera 149 → 430 MB pod obciążeniem).
+
+**02.10 (sesja poprawek):** #48 i #49 naprawione i retestowane (`715df2b`, opis w rejestrze);
+w T7c obejrzeć też jeden nieudany marsz Sowy w walce w „Knajpie” (pierwszy raz, gdy Sowa w ogóle
+chodzi w walce — przed poprawką walka miała 3 tury).
 
 _Notatki wyparte z sekcji 12 `testy.md` — w całości, najnowsze na górze._
 
