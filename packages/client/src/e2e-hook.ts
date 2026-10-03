@@ -6,12 +6,19 @@ import { useBotStore } from './stores/botStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
 import { useCombatStore } from './stores/combatStore.js';
+import { useCoverStore } from './stores/coverStore.js';
+import { useDrawingStore } from './stores/drawingStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useHandoutStore } from './stores/handoutStore.js';
+import { useLightStore } from './stores/lightStore.js';
+import { useMusicStore } from './stores/musicStore.js';
 import { useNetRunStore } from './stores/netRunStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
+import { useSelectionStore } from './stores/selectionStore.js';
+import { useSettingsStore } from './stores/settingsStore.js';
+import { useTableStore } from './stores/tableStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { useTradeStore } from './stores/tradeStore.js';
 import { useWallStore } from './stores/wallStore.js';
@@ -73,12 +80,19 @@ export function installE2EHook(): void {
         character: useCharacterStore,
         chat: useChatStore,
         combat: useCombatStore,
+        cover: useCoverStore,
+        drawing: useDrawingStore,
         exploration: useExplorationStore,
         fog: useFogStore,
         handout: useHandoutStore,
+        light: useLightStore,
+        music: useMusicStore,
         netRun: useNetRunStore,
         roll: useRollStore,
         scene: useSceneStore,
+        selection: useSelectionStore,
+        settings: useSettingsStore,
+        table: useTableStore,
         token: useTokenStore,
         trade: useTradeStore,
         wall: useWallStore,
