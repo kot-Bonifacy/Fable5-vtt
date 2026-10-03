@@ -82,6 +82,13 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 69  | T8b  | B3 | mapa | Podgląd trasy pod kursorem nowy gracz wziął za ruch cudzej, ukrytej figury | Kruk zaznaczony klikiem w panelu (bez wiedzy gracza) → kursor nad drugim końcem knajpy → niebieskie odciski od kursora do żetonu, bez podpisu i legendy; gracz zapytał MG, „czyj to ruch”, i zanotował „wygląda na błąd albo wyciek ruchu ukrytej figury”. **Sprawdzone: to nie wyciek** — ślad marszu rysuje tylko klient, który maszeruje (`drawTrail`), a przeciąg Zbira przez MG nie zostawił u gracza ani odcisku (80 klatek drugiej sesji Kuby, `.e2e/pomiary/t8b/obserwator`) | notatka 21 | naprawiony 03.10 (triaż MG: B3) — linijka-legenda nad mapą do pierwszego marszu (trasa bez podpisu — MG, 23.08) | `120646b` |
 | 70  | T8b  | B3 | mapa | Kamera gracza stawia jego żeton przy dolnej krawędzi, a pas inicjatywy spycha go za nią | po przyjęciu postaci żeton Kruka stoi u dołu widoku, podpis prawie poza mapą; po „Rozpocznij walkę” pojawia się czarny pas i mapa zjeżdża w dół — żeton z podpisem wypada za krawędź. Dwa żetony obok siebie zlewają podpisy w „Zbir Ochroniarz” | zrzuty `t8b-18`, `t8b-21` | naprawiony 03.10 (triaż MG: B3) — obraz trzyma się strony przy zmianie krawędzi mapy, kadr na pierwszą własną figurę | `120646b` |
 | 71  | T8b  | B3 | ui | Drobiazgi kreatora i wejścia (zbiorczo) | wejście: pole „Twoje imię” to samo podkreślenie bez ramki, na tapecie „ALWAYS A ANOTHER STORY”; Rola: wybrana karta tylko cienką ramką, „Zmysł Walki 4” zawija „4” do nowej linii (Solo, Fixer), wyłączone radio „Kompletny Pakiet” wygląda na aktywne, licznik braków skacze 17 → 4 po wyborze Roli; Ścieżka Życia: „17 bez odpowiedzi”, choć wymagany jest tylko język; Wyposażenie: filtry kategorii broni to ikony bez podpisów; Opis: placeholder „Zgrzyt” w polu ksywy wygląda jak wpisana wartość; wróg i sojusznik mają tę samą zieloną obrączkę PW, wrogość mówi tylko mały grot | zrzuty `t8b-01`, `t8b-07`, `t8b-08`, `t8b-21` | potwierdzony (triaż MG 03.10: B3, poza sesją poprawek) | |
+| 72  | T8c  | B3 | kosci | „Dodaj tabelę” nie reaguje na pierwszy klik zaraz po wpisaniu treści wiersza; kolumna treści ma ~55 px | Tabele → „+ Nowa tabela” → wiersze wypełnione, kursor w polu treści ostatniego wiersza → klik „Dodaj tabelę”: nic się nie dzieje, bez komunikatu, `table:upsert` nie wychodzi; drugi klik zapisuje. Przyczyna: `.table-row-text:focus { min-height: 7rem }` — przy mousedown pole traci fokus, kurczy się o ~5rem i przycisk ucieka spod kursora (mouseup trafia w inny element). Przy okazji: w panelu 320 px pole treści wiersza ma ~55 px szerokości („Samurai,”, „przeryw”) — dwa pola liczb i lista podrzutu zabierają resztę | test `#72 „Dodaj tabelę” zaraz po wpisaniu treści wiersza…` (`test.fail`) w `t8c-narracja`; odtworzone ręcznie w Chromium MCP (podsłuch: `submit` dopiero przy drugim kliku) | nowy (do triażu MG) |  |
+| 73  | T8c  | B3 | czat | Gracz po `/tab` dostaje „Tylko MG może mówić w imieniu NPC-a.” | gracz wpisuje `/tab Co leci w radiu` → serwer `FORBIDDEN` na `chat:send` → `chatErrorText` mapuje każde `FORBIDDEN` na zdanie o `/jako`; zdanie o tabelach („Tabele losowe są narzędziem MG.”) istnieje w `randomTableErrorText`, ale tu nie dochodzi. Losowania nie ma (odmowa działa) | test `#73 gracz po /tab dostaje zdanie o tabelach…` (`test.fail`) w `t8c-narracja`; zrzut gracza w raporcie przebiegu | nowy (do triażu MG) |  |
+| 74  | T8c  | B3 | postac | Korpo nie widzi imienia własnego pracownika — panel pisze „Pracownik” | Praca Zespołowa → „Poproś HR o pracownika” → imię „Jan Wiśniewski” → „Zatrudnij”: karta pracownika powstaje jako NPC MG (`ownerId: null`, „członków zespołu kontroluje MG”, s. 154), więc nie dochodzi do gracza, a `TeamPanel` pisze `sheet?.name ?? 'Pracownik'`. MG widzi imię | test `#74 Kuba widzi imię pracownika…` (`test.fail`) w `t8c-zdolnosci`; oględziny Firefox (Kuba) i Chromium (MG) | nowy (do triażu MG) |  |
+| 75  | T8c  | B3 | postac | Przyciski Lojalności („Test”, „+”) stoją u gracza, a klik daje „To nie jest twoja tura.” | `character:team-loyalty` ma `role: ROLE_GM`, ale `TeamPanel` pokazuje graczowi „Test” i rozwijaną listę zmian Lojalności; klik → `FORBIDDEN` → `teamErrorText` → `combatErrorText` → „To nie jest twoja tura.” poza walką | test `#75 gracz nie dostaje przycisków Lojalności…` (`test.fail`) i adnotacja „Test Lojalności z ręki gracza” w `t8c-zdolnosci` | nowy (do triażu MG) |  |
+| 76  | T8c  | B3 | karta | Firefox: ✕ „Usuń z Taboru” wychodzi poza prawą krawędź karty Moto | karta z Moto i dwoma wpisami Taboru, 1920 × 1080: w Firefoksie przycisk zaczyna się dokładnie na prawej krawędzi karty (1256–1269 px przy krawędzi 1256) i wystaje na ramkę arkusza; w Chromium mieści się (1219–1231 przy 1241) | oględziny Playwright MCP (Firefox gracza, Chromium MG), pomiar `getBoundingClientRect` | nowy (do triażu MG) |  |
+| 77  | T8c  | B3 | karta | Siatka Zdolności Specjalnych: puste pola ostatniego wiersza świecą czerwonym tłem | karta z ≥4 panelami Zdolności (wieloklasowość): siatka 3 kolumn ma tło `rgb(224, 48, 31)` (czerwone linie między kartami), więc niepełny ostatni wiersz to duży czerwony prostokąt; oba silniki. Karta z jednym panelem (Iskra) wygląda dobrze — dotyczy tylko postaci z wieloma Rolami | oględziny Firefox i Chromium (MCP) | nowy (do triażu MG) |  |
+| 78  | T8c  | B3 | dane | Cytaty asystenta zasad: nagłówki rozdziałów bez pierwszych liter | pytanie o pancerz → cytaty „Strzelanina piątkowej nocy › Gdy pancerz zawiedzie › ANY I ŚMIERĆ O TRZYMYWANIE OBRAŻEŃ, s. 186”, „… › ZYLI NIE TYLKO SPLUWY…”, czyli inicjały nagłówków (RANY, OTRZYMYWANIE, CZYLI) zgubione przy indeksowaniu podręcznika; odpowiedź merytorycznie poprawna (OB −1 przy przebiciu) | adnotacje `@llm asystent zasad` w `t8c-narracja` (przebieg 03.10) | nowy (do triażu MG) |  |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -773,3 +780,30 @@ w Firefoksie, headless. Porty po przebiegu wolne.
 **Następny krok:** T3 (rozgrywka 1/4) — pierwsza sesja z modelem (bot „Paser” i „Rzeźnik”, 3.12,
 3.14): przed nią `pwsh ai-gateway/scripts/start-gateway.ps1`. T2 może iść wcześniej albo później.
 
+### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
+
+**Rozstrzygnięcia MG na starcie:** T8 teraz, przed refaktoryzacją (automat T8a wchodzi do jej
+osłony, T10 puszcza go ponownie); podział T8a/T8b/T8c; ekrany 1920 × 1080 i 2560 × 1440 przy 100 %
+(2k też w 100 %), 1366 × 768 i powiększenia odpadają; skrót z `po-T3`; pierwszy kontakt gra świeży
+subagent bez kontekstu, metodą Na skróty; wagi układu i konsoli. Wiersze w sekcji 2.
+
+**Zrobione:** `fixtures/uklad.ts` (przegląd DOM-u bez wiedzy o komponentach: kontrolki poza oknem
+i przycięte przez nieprzewijanego przodka, ucięte napisy, nachodzące obszary, kontrast WCAG; zrzut
+i JSON do `.e2e/pomiary/t8a`), `specs/50-przegladarki/`: `t8a-macierz` (16 testów, `@szybkie`),
+`t8a-ekrany` (24), `t8a-uklad` (2, `@szybkie` — sprawdzian sprawdzacza w obu silnikach). Trzy pułapki
+w `testy`, poprawiona wartość papieru dziennego w `ogledziny` (`#f4e2c8` od 20.09).
+
+**Błędy (B3 do triażu MG):** **#53** — gracz bez figury widzi w pamięci terenu „Knajpy” ukośną czarną
+szczelinę (oba silniki, 1920 × 1080; nie ściana i nic nie zdradza — sprawdzone współrzędnymi świata
+i listą ścian). **#54** — filtr czatu „Rozmowy” ucięty do „ROZMO…” na obu ekranach. **#55** — 11–12
+długich nazw umiejętności na stronie „Karta” z wielokropkiem, także przy 2560 (pełna nazwa tylko
+w podpowiedzi). Nic nieosiągalnego (B2), konsola bez nowych błędów w obu silnikach.
+
+**Wynik:** `t8a-` 42/42 dwa razy (3,0 + 2,4 min osobno, 5,3 min razem), `--grep @szybkie` 30/30
+(2,9 min). Pełnego przebiegu od zera nie puszczano (wymaga okna konsoli i gatewaya MG, nadpisuje
+punkty) — w domyślnym przebiegu `50-przegladarki` idzie ostatni i dokłada ~5,5 min. Oglądane
+automatem w Chromium i Firefoksie (headless, oba ekrany); zrzuty kreatora, karty i tury przejrzane
+ręcznie. `dev.db` nietknięta; punkty kontrolne tylko odczytywane.
+
+**Następny krok:** T8b (pierwszy kontakt: subagent w Firefoksie przez Playwright MCP, Claude jako MG
+w Chromium na instancji z `hold.ts`) albo triaż #53–#55.

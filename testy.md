@@ -32,7 +32,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T7c  | Odporność 3/3: wydajność mapy, wyciek pamięci             | ✅     | 02.10.2026 |
 | T8a  | Przeglądarki 1/3: macierz silników, ekrany, motyw, konsola | ✅     | 03.10.2026 |
 | T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ✅     | 03.10.2026 |
-| T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ⬜     |            |
+| T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ✅     | 03.10.2026 |
 | T9   | Konta MG: rejestracja i izolacja (po etapie „Konta MG”)   | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
@@ -118,6 +118,7 @@ idzie przed refaktoryzacją (T8a/T8b/T8c); T10 puszcza ponownie automat T8a po �
 | T8: pierwszy kontakt   | gra go **świeży subagent bez kontekstu** (Playwright MCP Firefox, zakaz czytania repo), Claude jest MG w Chromium i robi triaż notatek; postać powstaje metodą **Krawędziarz (Na skróty)** (decyzja MG z 03.10, sesja T8a) |
 | T8b: obsada i start    | nowy gracz „Kuba” **zna CP RED i z grubsza inne VTT, tego stołu nie widział**; subagent na **Opusie 5.5**; z MG rozmawia „na Discordzie” — przerywa raportem, MG odpowiada jak przy stole, bez podpowiedzi UI, chyba że gracz utknie (każda podpowiedź UI = notatka); start **z `po-T3`**, trzeci gracz dołącza nowym linkiem, figura w „Knajpie”, krótka walka z **jednym statystą** (decyzja MG z 03.10, sesja T8b) |
 | obrażenia i Unik       | obrażenia rzucone za kartę ataku **rozliczają się same** (cel, osłona, każdy dosięgnięty z obszaru), **Unik przed obrażeniami** — rzut czeka na każdego, kto może się uchylić, aż rzuci Unik albo kliknie „Bez uniku” (cel albo MG), **jeden rzut obrażeń na trafienie** (#56), **grot strzelca idzie za celownikiem** (decyzja MG z 03.10, sesja T8b) |
+| T8c: forma i zakres    | **hybryda**: spec `specs/50-przegladarki/t8c-*` (jeden test na obszar — szczęśliwa ścieżka i jedna odmowa; wchodzi do osłony refaktoryzacji) plus ręczne oględziny Playwright MCP w Firefoksie tam, gdzie automat nie oceni (dźwięk, pełny ekran, kości 3D, wygląd okien); **wszystkie cztery grupy**: mapa i sceny, UI i ustawienia, narracja i AI (asystent zasad i baza wiedzy z gatewayem, `@llm`), Zdolności Ról spoza scenariusza z Facedown, Reputacją i stylem życia; start **z `po-T6`**, **jeden układ** — MG Chromium, gracze Firefox (decyzja MG z 03.10, sesja T8c) |
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
@@ -629,6 +630,43 @@ obrażeń za to samo trafienie, **#62 (B2)** broń szarzeje przy wolnym drugim a
 trasy (#69, sprawdzone drugą sesją). Zrzuty i klatki w `.e2e/pomiary/t8b` (poza repo). Pierwszego
 kontaktu się nie powtarza; T8c — osobna sesja.
 
+**T8c zamknięty 03.10** (forma i zakres — decyzja MG w sekcji 2): `pnpm test:e2e t8c-` — cztery pliki
+w `specs/50-przegladarki`, **31 testów w ~2,7 min**, każdy plik z `po-T6`, MG Chromium, gracze Firefox,
+1920 × 1080 (wspólny start w `fixtures/regresja.ts`; hak E2E czyta od T8c także magazyny `drawing`,
+`selection`, `music`, `settings`, `cover`, `light`, `table`). Lista kontrolna — jedna szczęśliwa
+ścieżka i jedna odmowa na obszar:
+
+| obszar | szczęśliwa ścieżka | odmowa | wynik |
+| ------ | ------------------ | ------ | ----- |
+| trzecia scena „Lombard” | MG zakłada scenę z mapy (Pełna), podgląd tylko u MG, aktywacja przenosi stół, ⊕ figur, powrót do „Knajpy” | gracz `scene:activate`; podgląd nie wysyła graczowi id sceny ani adresu mapy | ✅ |
+| rysowanie | podpis na warstwie MG (domyślnej) z kanarkiem, prostokąt dla stołu, ołówek gracza i „Cofnij mój ostatni rysunek” | gracz kasuje rysunek MG → `FORBIDDEN` | ✅ |
+| ping | Alt+klik gracza dochodzi do MG (`pull: false`), Alt+Shift+klik MG przyciąga kamerę gracza | ping na nieoglądanej scenie → `SCENE_NOT_VIEWED` | ✅ |
+| wiele figur | ramka Shift MG bierze dwie figury, przeciągnięcie niesie obie o (3, 2) pola | Ctrl+A gracza zaznacza tylko jego figurę | ✅ |
+| obiekty sceny i Ctrl+Z | karta osłony (rodzaj z katalogu), karta światła (jasny 8 m), Delete i Ctrl+Z osłony z notką „Przywrócono osłonę.” | Ctrl+Z gracza oddaje tylko jego kreskę, osłony MG nie; gracz nie dostaje listy świateł | ✅ |
+| pomoc i skróty | „?” otwiera listę, szukanie „ping” zawęża, Esc zamyka | gracz nie widzi skrótu MG „przenieś tam widok” | ✅ |
+| ustawienia kości | skórka „Kwas” zapisana na koncie i niesiona z rzutem do MG, bez animacji karta po ~0,5 s, wybór i głośność przeżywają F5 | `dice:skin` spoza listy | ✅ |
+| muzyka i otoczenie | MG wgrywa WAV, „Odtwórz” / „Pauza” / „Zatrzymaj” widać u gracza (Firefox odtwarza, `blocked: false`), „Deszcz” na scenie — gracz pobiera `rain.wav` | gracz `music:control` → `FORBIDDEN`, upload → 403 | ✅ |
+| pełny ekran (Firefox) | włączenie z ustawień, Esc wychodzi, „⛶ Wróć do pełnego ekranu” wraca | — | ✅ |
+| pływające okna | belka przesuwa, położenie przeżywa F5 | okna nie da się wypchnąć za ekran (belka zostaje do złapania) | ✅ |
+| tabele losowe | formularz MG, losowanie ukryte z kanarkiem, „Pokaż stołowi”, 🔊 jawne, `/tab` | gracz `table:roll` → `FORBIDDEN`, `/tab` gracza bez losowania | ✅, **#72**, **#73** |
+| asystent zasad (`@llm`) | pytanie o pancerz: odpowiedź po polsku z 5 cytatami w ~2 s, nic na czacie | gracz `rules:ask` → `FORBIDDEN` | ✅, **#78** |
+| baza wiedzy (`@llm`) | wpis „dla botów” w prompcie Pasera (podgląd „Sprawdź prompt”), Paser w rozmowie sięga po zeszyt spod lady | wpis „tylko MG” nigdy w prompcie ani u gracza; gracz `knowledge:list` → `FORBIDDEN` | ✅ |
+| Efekt Charyzmy (Rocker 2) | fani z kubka, karta „Efekt Charyzmy: nowi fani” | prośba do dużej grupy wyszarzona | ✅ |
+| Wiarygodność (Media 4) | „Publikuj” z kubka | „Pogłoski” tylko u MG | ✅ |
+| Moto (Nomada 2) | dwa wpisy Taboru | trzeci wyszarzony i odrzucony przez serwer | ✅, **#76** |
+| Znajomości (Fixer 4) | targ „Dziesięć procent” dobity (20 vs 2) | nieznany targ odrzucony | ✅ |
+| Wsparcie (Stróż Prawa 4) | wezwanie odebrane, karta „Wezwanie Wsparcia” | poziom 9 → `BACKUP_LEVEL_TOO_HIGH` | ✅ |
+| Praca Zespołowa (Korpo 4) | HR zatrudnia pracownika z własną kartą, Test Lojalności MG | obcy gracz nie zatrudni na cudzej karcie | ✅, **#74**, **#75** |
+| Twórca (Technik 4) | punkty do limitu Specjalizacji (Naprawa 4) | 99 pkt odrzucone przez serwer | ✅ |
+| Reputacja i Konfrontacja | „+ Wyczyn” MG, gracz widzi Reputację 1 tylko do odczytu, Konfrontacja ze Zbirem, odpowiedź MG kubkiem, „Wycofaj się” | rozstrzygniętej nie da się odpierać drugi raz | ✅ |
+| styl życia | Kuba z kontenera do studia, „Rozlicz miesiąc” MG: −1600 ed (100 + 1500) w księdze | gracz `economy:settle` odmówiony | ✅ |
+
+Kartę wieloklasową „Wielorak” (Rocker 2 + Media, Nomada, Fixer, Stróż Prawa, Korpo, Technik) dostaje
+od MG nowy gracz Kuba — przygotowanie gniazdem, nie przedmiot testu. Ręcznie (Playwright MCP): Kuba
+w Firefoksie (panele Zdolności, rangi tylko do odczytu, ustawienia ze skórką, pełny ekran, okna muzyki
+i skrótów, rysunek), MG w Chromium (formularz tabeli, siatka Zdolności) — z tego **#76** i **#77**.
+Nowe błędy #72–#78, wszystkie B3 do triażu; żadnego B0–B2, wycieku ani nowego błędu konsoli.
+
 ### 6.5. T9 — Konta MG: rejestracja i izolacja
 
 Warunek bety z decyzji MG z 26.09. Wymaga **nowego etapu „Konta MG”** (do zaprojektowania, pozycja 1
@@ -777,6 +815,9 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - nowy gracz od linku do pierwszego strzału: ~20 min z kreatorem Krawędziarza; najdłużej trwa rozdawanie 86 punktów umiejętności samym „+” (pomysł w `POMYSLY.md`) — czy przy stole nie zje to sesji zero — T8b, 03.10;
 - gracz czeka na MG trzy razy (zgoda, przyjęcie, start walki) i za każdym razem dowiaduje się o zmianie tylko patrząc na ekran (#57); przy stole MG powie to na Discordzie — czy to wystarczy — T8b, 03.10;
 - obrażenia gracza czekają na „Zastosuj” MG, więc gracz nie wie, czy trafienie „weszło” (karta rozliczenia przychodzi po kilkudziesięciu sekundach) — **decyzja MG 03.10: rozliczanie automatyczne**, poprawka razem z #56 — T8b, 03.10.
+- asystent zasad odpowiada w ~2 s i trafnie, ale wśród pięciu cytatów bywa fragment nie na temat („Wieloklasowość › Wykrycie słabości” przy pytaniu o pancerz), a nagłówki mają zgubione inicjały (#78) — czy MG zaufa cytatom — T8c, 03.10;
+- Paser z wpisem bazy wiedzy „kody w zeszycie pod ladą” mówi graczowi „Kody leżą w zeszycie pod ladą, ale to nie jest informacja na sprzedaż” — bot zdradza to, co sam nazywa tajemnicą; czy MG chce wpisów „dla botów”, których bot ma nie wyjawiać — T8c, 03.10;
+- muzyka i otoczenie u gracza w Firefoksie grały bez dodatkowego kliknięcia (`blocked: false`) — automat nie słucha, głośność i przenikanie ocenia stół — T8c, 03.10.
 
 ## 9. Rejestr błędów i raportowanie
 
@@ -818,6 +859,34 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 03.10 — T8c: pobieżna regresja obszarów
+
+**Rozstrzygnięcia MG na starcie:** hybryda (spec w suicie + ręczne oględziny w Firefoksie), wszystkie
+cztery grupy obszarów (mapa i sceny, UI i ustawienia, narracja i AI, Zdolności spoza scenariusza), start
+z `po-T6`, jeden układ (MG Chromium, gracze Firefox), gateway uruchomiony przez MG. Wiersz w sekcji 2.
+
+**Zrobione:** `specs/50-przegladarki/t8c-mapa` (7 testów), `t8c-ui` (6), `t8c-narracja` (6, w tym 2
+`@llm` i 2 `test.fail`), `t8c-zdolnosci` (12, w tym 2 `test.fail`); wspólny start w
+`fixtures/regresja.ts`; hak E2E (`e2e-hook.ts`, tylko build `e2e`, tylko odczyt) czyta dodatkowo
+magazyny `drawing`, `selection`, `music`, `settings`, `cover`, `light`, `table`. Lista kontrolna
+i wyniki — akapit T8c w 6.4. Pułapki dopisane w `testy` i `ogledziny`.
+
+**Błędy (B3, do triażu MG):** **#72** „Dodaj tabelę” gubi pierwszy klik po wpisaniu treści wiersza
+(pole z fokusem kurczy się spod kursora) i wąska kolumna treści; **#73** `/tab` gracza odpowiada
+zdaniem o `/jako`; **#74** Korpo nie widzi imienia własnego pracownika; **#75** przyciski Lojalności
+u gracza kończą się „To nie jest twoja tura.”; **#76** ✕ Taboru poza kartą Moto w Firefoksie; **#77**
+czerwone puste pola siatki Zdolności przy ≥4 panelach; **#78** cytaty asystenta zasad bez inicjałów
+nagłówków. Odpadły po sprawdzeniu: pola rang Ról u gracza (tylko do odczytu), „brak” paska i panelu
+w pełnym ekranie (zrzut MCP pokazuje tylko emulowane 1920 × 1080 z okna 3072 × 1728), dwa
+`closest is not a function` w konsoli (mój syntetyczny `keydown` na `window`).
+
+**Wynik:** `t8c-` 31/31 (2,7 min; 4 `test.fail` zgodnie z rejestrem), po formatowaniu z pełnym buildem
+razem z `00-baseline` 36/36 (2,9 min). Oglądane: automat — MG Chromium, gracze Firefox (headless, 1920 × 1080);
+ręcznie — Kuba w Firefoksie i MG w Chromium (Playwright MCP, instancja z `hold.ts`). `dev.db`
+nietknięta; punkty kontrolne tylko odczytywane.
+
+**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity (T8a–T8c to jej część).
+
 ### Sesja 03.10 — T8b: pierwszy kontakt nowego gracza
 
 **Rozstrzygnięcia MG na starcie:** gracz „zna CP RED, nie zna tego stołu”, subagent na Opusie,
@@ -853,31 +922,3 @@ miały — pułapka w `ogledziny`). Poprawkę oglądano: Marek w Firefoksie, MG 
 
 **Następny krok:** przebieg T5b → T6c od `po-T5a` z gatewayem w terminalu MG (retest #56 w Sieci
 i na wieżyczkach), triaż MG #57–#71, potem T8c.
-
-### Sesja 03.10 — T8a: macierz silników, ekrany, motyw, konsola
-
-**Rozstrzygnięcia MG na starcie:** T8 teraz, przed refaktoryzacją (automat T8a wchodzi do jej
-osłony, T10 puszcza go ponownie); podział T8a/T8b/T8c; ekrany 1920 × 1080 i 2560 × 1440 przy 100 %
-(2k też w 100 %), 1366 × 768 i powiększenia odpadają; skrót z `po-T3`; pierwszy kontakt gra świeży
-subagent bez kontekstu, metodą Na skróty; wagi układu i konsoli. Wiersze w sekcji 2.
-
-**Zrobione:** `fixtures/uklad.ts` (przegląd DOM-u bez wiedzy o komponentach: kontrolki poza oknem
-i przycięte przez nieprzewijanego przodka, ucięte napisy, nachodzące obszary, kontrast WCAG; zrzut
-i JSON do `.e2e/pomiary/t8a`), `specs/50-przegladarki/`: `t8a-macierz` (16 testów, `@szybkie`),
-`t8a-ekrany` (24), `t8a-uklad` (2, `@szybkie` — sprawdzian sprawdzacza w obu silnikach). Trzy pułapki
-w `testy`, poprawiona wartość papieru dziennego w `ogledziny` (`#f4e2c8` od 20.09).
-
-**Błędy (B3 do triażu MG):** **#53** — gracz bez figury widzi w pamięci terenu „Knajpy” ukośną czarną
-szczelinę (oba silniki, 1920 × 1080; nie ściana i nic nie zdradza — sprawdzone współrzędnymi świata
-i listą ścian). **#54** — filtr czatu „Rozmowy” ucięty do „ROZMO…” na obu ekranach. **#55** — 11–12
-długich nazw umiejętności na stronie „Karta” z wielokropkiem, także przy 2560 (pełna nazwa tylko
-w podpowiedzi). Nic nieosiągalnego (B2), konsola bez nowych błędów w obu silnikach.
-
-**Wynik:** `t8a-` 42/42 dwa razy (3,0 + 2,4 min osobno, 5,3 min razem), `--grep @szybkie` 30/30
-(2,9 min). Pełnego przebiegu od zera nie puszczano (wymaga okna konsoli i gatewaya MG, nadpisuje
-punkty) — w domyślnym przebiegu `50-przegladarki` idzie ostatni i dokłada ~5,5 min. Oglądane
-automatem w Chromium i Firefoksie (headless, oba ekrany); zrzuty kreatora, karty i tury przejrzane
-ręcznie. `dev.db` nietknięta; punkty kontrolne tylko odczytywane.
-
-**Następny krok:** T8b (pierwszy kontakt: subagent w Firefoksie przez Playwright MCP, Claude jako MG
-w Chromium na instancji z `hold.ts`) albo triaż #53–#55.

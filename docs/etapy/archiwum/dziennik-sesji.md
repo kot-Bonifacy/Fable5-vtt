@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 — T8b (pierwszy kontakt) i obrażenia bez „Zastosuj”
+
+**Zlecenie MG:** T8b z `testy.md`. Pytania na starcie (wiersz w sekcji 2 `testy.md`): gracz zna CP RED,
+nie zna tego stołu; subagent na Opusie; kontakt z MG „na Discordzie” przez raport; start z `po-T3`,
+walka z jednym statystą. W trakcie MG zlecił poprawkę: obrażenia po strzale mają wchodzić bez
+akceptacji MG — pytania: zakres (każdy rzut z celem, także obszar), Unik przed obrażeniami (też
+odskok z obszaru), serwer odmawia drugiego rzutu (#56), grot idzie za celownikiem, kolejność: najpierw
+domknąć T8b.
+
+**Zrobione:** T8b — subagent „Kuba” w Firefoksie (MCP) przeszedł od linku do dwóch strzałów i „Kończę
+turę” w ~20 min, bez ani jednej podpowiedzi UI; MG w Chromium. Rejestr **#56–#71** (#56 B2, #62 B2,
+reszta B3; „wyciek ruchu” sprawdzony drugą sesją — to podgląd trasy, #69), pomysł w `POMYSLY.md`,
+dwie pułapki w `ogledziny` (`7c90b36`). Poprawka (`029cd36`): `settleDamageRoll` rozlicza rzut z
+`attackMessageId` drogą „Zastosuj” (efekty mapy czekają na kości), `damageRollId` + `DAMAGE_ALREADY_ROLLED`
+(przerzut po „Cofnij” wszystkich rozliczeń), `evasionPending` + `attack:no-evade` („Bez uniku” u celu
+i MG), panel „Zastosuj” znika po rozliczeniu, `turnShooterToAim` w `MapRenderer`. Umowy w `atak`
+i `mapa`; suita E2E: `noDodge`, `settledWithoutApply` w `fixtures/walka.ts`.
+
+**Weryfikacja:** `shared` 2248, serwer 1291 (5 nowych w `attacks.test.ts`, 1 w `areas.test.ts`,
+sześć plików przestawionych z „Zastosuj” na rozliczenie samo), klient 315; ESLint, Prettier i `tsc`
+czyste. E2E: T4a → T5a od `po-T3` 55/55, `t8a-` 44/44, `35-bezpieczenstwo` 41/41; **T5b pada na
+starcie bez gatewaya** (MG ma widzieć boty) — T5b → T6c nieprzetestowane z nową zasadą. Oglądane:
+Marek w Firefoksie, MG w Chromium (czekanie na Unik, „Bez uniku”, rozliczenie bez „Zastosuj”, grot).
+`dev.db` nietknięta; `po-T4a`, `po-T4`, `po-T5a` zapisane od nowa.
+
+**Następny krok:** gateway w terminalu MG i `E2E_FROM=po-T5a pnpm test:e2e t5b- t6` we własnym oknie
+konsoli; potem triaż #57–#71 i T8c.
+
 ### Sesja 03.10 — triaż #53–#55: szew zasłony naprawiony, dwa napisy odrzucone
 
 **Zlecenie MG:** naprawić błędy z `testy-rejestr.md` (#53–#55, B3 do triażu). Pytania po diagnozie:

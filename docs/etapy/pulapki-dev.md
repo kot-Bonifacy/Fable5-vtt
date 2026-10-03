@@ -1011,6 +1011,9 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Pełny ekran w Playwright MCP wygląda, jakby zniknął pasek i panel boczny — to kadr zrzutu (03.10, T8c)** — okno Firefoksa rośnie do rozmiaru monitora (`innerWidth` 3072 × 1728), a zrzut pokazuje dalej emulowane 1920 × 1080 z lewego górnego rogu. Sprawdź `innerWidth`, zanim zgłosisz układ pełnego ekranu.
+- **Syntetyczny `keydown` wysłany na `window` daje w konsoli `TypeError: … closest is not a function` (03.10, T8c)** — obsługa skrótów woła `event.target.closest`, a `window` go nie ma. Klawisz wysyłaj na `document.body` albo przez `browser_press_key`.
+
 - **Zrzut MCP z nazwą pliku ląduje w katalogu głównym repo, nie w `.playwright-mcp/output`** (03.10, T8b) — `browser_take_screenshot` z `filename: 't8b-01.png'` liczy ścieżkę od korzenia workspace'u; subagent zostawił cztery PNG obok `package.json`. Podawaj `.playwright-mcp/output/<nazwa>.png` (gitignore) i przed commitem sprawdź `git status`. Zrzut z nazwą nie wraca też jako obraz w odpowiedzi narzędzia.
 - **`ERR_CACHE_OPERATION_NOT_SUPPORTED` na `sfx/*.wav|ogg` w konsoli Chromium MCP to nie błąd aplikacji** (03.10, T8b) — osiem wpisów zaraz po wejściu MG na instancję E2E; stały profil `.playwright-mcp/profile-chromium` trzyma pamięć podręczną, a dźwięki idą żądaniami zakresowymi. Czyste konteksty suity (T8a, konsola w obu silnikach) ich nie mają — błąd konsoli oceniaj w czystym kontekście.
 - **`await import('/src/stores/…ts')` z konsoli po HMR daje drugą, pustą kopię magazynu** — aplikacja trzyma moduł pod adresem z `?t=<czas>`, a F5 tego nie zeruje. Adres weź z `performance.getEntriesByType('resource')` i importuj dokładnie ten.
@@ -1682,6 +1685,14 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 
 ## testy — Testy i środowisko dev
+
+- **Nowa scena otwiera się MG sama jako „podgląd” — przycisku „Pokaż” przy niej nie ma (03.10, T8c)** — po „Utwórz” MG już ją ogląda (`sceneListRow` z plakietką „podgląd”), a klik w „Pokaż” czeka do limitu testu. Sprawdzaj `store('scene')` MG, zanim klikniesz.
+- **MG rysuje domyślnie na warstwie MG (`drawGmOnly: true`, 17b) (03.10, T8c)** — prostokąt „dla stołu” bez kliknięcia oka wychodzi z `gmOnly: 1` i gracz go nie dostaje. Przełącznik: `button[title^="Rysujesz na warstwie MG"]` ↔ `^="Rysujesz dla wszystkich"`; `title="Prostokąt"` dokładnie (pędzel mgły ma „Prostokąt — przeciągnij…”).
+- **Notki klienta (`.chat-note`: „Przywrócono osłonę.”, odmowy) widać tylko na zakładce „Czat” (03.10, T8c)** — MG po ⊕ „Postaw na scenie” stoi na „Postaciach” i `chatLine(...)` czeka do limitu. Klik „Czat” przed asercją.
+- **Klawisze w liście skrótów to osobne `kbd` — `hasText: 'Alt + klik w mapę'` nie trafia (03.10, T8c)** — tekst wiersza to „Altklik w mapę…”. Szukaj wiersza po opisie („Wskaż miejsce wszystkim”).
+- **`restoreCheckpoint` w `beforeAll` zabija instancję trzymaną przez `hold.ts` (03.10, T8c)** — `stopInstance` czyta PID-y z `.e2e/instance.json`. Oględziny MCP i przebieg suity nie idą naraz; po przebiegu `hold.ts` od nowa (stan bazy zostaje po ostatnim teście).
+- **Gdzie co stoi na karcie (03.10, T8c)** — panele Zdolności Specjalnych na „Karta”, Reputacja (z „😠 Postaw się…”) na „Ścieżka Życia” (u gracza dopiero od pierwszego wyczynu), Zakwaterowanie i Poziom życia na „Ekwipunek”. „+” Twórcy gaśnie na limicie Specjalizacji (poziom ≤ ranga), nie na końcu puli.
+- **`pendingDice()` tuż po `shakeCup` jeszcze nie jest pusty (03.10, T8c)** — rzut przetwarza serwer po puszczeniu kubka; `expect.poll(pendingDice).toBe('')`.
 
 - **Okno, które otwiera się samo albo przyciskiem, czeka się na jedno z dwojga — nie `isVisible()` (03.10, retest T6a)** — „6.2 handel z Paserem” zapytał `tradeWindow(mg).isVisible()` ułamek sekundy przed tym, jak okno MG wyskoczyło samo, i kliknął „Otwórz”, którego już nie było (3 min do limitu testu; na zrzutach obie strony mają okno). Wzór: `openTradeWindow` w `t6a-handel-rozwoj.spec.ts` — `expect(okno.or(przycisk).first()).toBeVisible()`, klik z krótkim limitem i `catch`, potem `expect(okno)`.
 - **Python na Windowsie zapisuje pliki z CRLF, jeśli `open(..., 'w')` nie dostanie `newline=''` (03.10)** — edycja skryptem przerobiła końce wierszy w czterech plikach TS, a Prettier zgłosił je jako „Code style issues” (cały plik w diffie, gdyby nie `sed -i 's/\r$//'`). Edytując skryptem: `open(p, encoding='utf-8', newline='')` przy odczycie i zapisie; w zwykłym napisie Pythona `'\b'` to znak cofania, nie granica słowa w wyrażeniu regularnym — pisz `r'…'`.

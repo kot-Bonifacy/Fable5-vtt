@@ -53,7 +53,7 @@ mapa 60 kl./s wszędzie poza Firefoksem gracza w marszu na Dynamicznej, serwer b
 **#50** bufory Pixi po przełączeniu sceny, **#51** geometrie kości 3D, **#52** klik pod cudzą figurą
 łapie jej podpis — to był „marsz Sowy”); **T8a zamknięty 03.10** (decyzja MG: T8 przed refaktoryzacją, podział T8a/T8b/T8c — `specs/50-przegladarki`,
 macierz silników, ekrany 1920 × 1080 i 2560 × 1440, motyw, konsola; nowe #53–#55 — **03.10 triaż MG: #53 naprawiony** (szew sprite'a zasłony, `isRenderGroup`, umowa w `mapa`), **#54 i #55 odrzucone** — rejestr znów bez otwartych błędów);
-**T8b zamknięty 03.10** (pierwszy kontakt: nowy gracz od linku do strzału w ~20 min bez pytań o UI; #56–#71 w rejestrze) i **tego samego dnia nowa zasada stołu (decyzja MG): obrażenia za kartę ataku rozliczają się same, Unik przed obrażeniami, jeden rzut na trafienie, grot za celownikiem** (`029cd36`, umowy w `atak` i `mapa`) — **03.10 (druga sesja): retest T5b → T6b z gatewayem zielony, triaż #57–#71 zrobiony (12 naprawionych w `120646b`, #66/#68/#71 B3 czekają), grot celowania widzi cały stół (`token:aim`, umowa w `mapa`), pełny przebieg 240/240**; **następny: T8c (osobna sesja, decyzja MG), potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
+**T8b zamknięty 03.10** (pierwszy kontakt: nowy gracz od linku do strzału w ~20 min bez pytań o UI; #56–#71 w rejestrze) i **tego samego dnia nowa zasada stołu (decyzja MG): obrażenia za kartę ataku rozliczają się same, Unik przed obrażeniami, jeden rzut na trafienie, grot za celownikiem** (`029cd36`, umowy w `atak` i `mapa`) — **03.10 (druga sesja): retest T5b → T6b z gatewayem zielony, triaż #57–#71 zrobiony (12 naprawionych w `120646b`, #66/#68/#71 B3 czekają), grot celowania widzi cały stół (`token:aim`, umowa w `mapa`), pełny przebieg 240/240**; **T8c zamknięty 03.10 (trzecia sesja)** — pobieżna regresja obszarów spoza scenariusza: `pnpm test:e2e t8c-` 31 testów z `po-T6` (mapa i „Lombard”, UI i ustawienia, tabele, asystent zasad, baza wiedzy, siedem Zdolności Ról, Reputacja, styl życia; lista w `testy.md` 6.4), nowe **#72–#78 — wszystkie B3, do triażu MG**; **następny: triaż #72–#78, potem refaktoryzacja pod osłoną suity** (pomiary T7b/T7c i T8a to jej linia bazowa). **Pełny przebieg puszczaj we własnym oknie konsoli, a gateway — w terminalu MG** (pułapka w `testy`).
 Kolejność (decyzja MG z 26.09, korekta 01.10):
 **T3–T6 → T7a–T7c → T8a–T8c (korekta 03.10) → refaktoryzacja całości pod osłoną suity → etap „Konta MG” → T9, T10 (z powtórką automatu T8a) → 28 → T11**.
 Refaktoryzację odłożono 05.09 — od tamtej pory doszło sześć etapów i naprawa kreatora.
@@ -83,7 +83,7 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Zaległości: od 03.10 na górze T8c i trzy potwierdzone B3 (#66, #68, #71); cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9) (RAM llama-server i wyścig `token:sync` zamknięte 03.10 — archiwum). Co ocenia się tylko przy stole (kafel papieru,
+**Zaległości: od 03.10 na górze triaż #72–#78 (T8c) i trzy potwierdzone B3 (#66, #68, #71); cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9) (RAM llama-server i wyścig `token:sync` zamknięte 03.10 — archiwum). Co ocenia się tylko przy stole (kafel papieru,
 sesja zero w kreatorze, pełny ekran, polszczyzna Qwen, Wsparcie 10) — pierwszy wpis `POMYSLY.md`.
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
 `await import('/src/socket.ts')` — pułapki w `ogledziny`). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
@@ -117,7 +117,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2254** w `shared`, **1294** na serwerze, **319** u klienta, **63** w gatewayu (03.10, druga sesja; E2E: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** **2254** w `shared`, **1294** na serwerze, **319** u klienta, **63** w gatewayu (03.10, druga sesja; trzecia — T8c — dołożyła tylko E2E: **`t8c-` 31/31** z gatewayem, razem z `00-baseline` po pełnym buildzie, więc domyślny przebieg ma teraz **271** testów — pełnego od zera z T8c jeszcze nie puszczano; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -156,13 +156,38 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 6    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 4    | 9       |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 106     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 106     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 108     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 113     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 03.10 (trzecia) — T8c: pobieżna regresja obszarów
+
+**Zlecenie MG:** T8c z `testy.md`. Pytania: forma — **hybryda** (spec w suicie + ręczne oględziny
+w Firefoksie), zakres — **wszystkie cztery grupy** (mapa i sceny, UI i ustawienia, narracja i AI,
+Zdolności spoza scenariusza), start **z `po-T6`**, **jeden układ** (MG Chromium, gracze Firefox),
+gateway uruchamia MG.
+
+**Zrobione:** `specs/50-przegladarki/t8c-mapa|ui|narracja|zdolnosci` (31 testów, start
+`fixtures/regresja.ts`), hak E2E czyta też `drawing`, `selection`, `music`, `settings`, `cover`, `light`,
+`table` (umowa w `ui`). Zdolności Ról na jednej karcie wieloklasowej „Wielorak” nowego gracza Kuby.
+Lista kontrolna z wynikami w `testy.md` 6.4; pułapki w `testy` (7) i `ogledziny` (2).
+
+**Błędy (B3, do triażu MG):** #72 formularz tabeli gubi pierwszy klik (pole z fokusem kurczy się spod
+kursora) i ma wąską kolumnę treści; #73 `/tab` gracza → zdanie o `/jako`; #74 pracownik Korpo bez
+imienia u gracza; #75 przyciski Lojalności u gracza → „To nie jest twoja tura.”; #76 ✕ Taboru poza
+kartą Moto w Firefoksie; #77 czerwone puste pola siatki Zdolności; #78 cytaty asystenta zasad bez
+inicjałów nagłówków. Cztery z nich mają testy `test.fail` (#72–#75).
+
+**Weryfikacja:** `t8c-` 31/31 (2,7 min) i po formatowaniu `00-baseline` + `t8c-` 36/36 (2,9 min) z pełnym buildem;
+klient 319, `tsc` i ESLint czyste w `client` i `e2e`. Oglądane: automat — MG Chromium, gracze
+Firefox (headless, 1920 × 1080); ręcznie Playwright MCP — Kuba w **Firefoksie**, MG w Chromium
+(`hold.ts`). `dev.db` nietknięta.
+
+**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity.
 
 ### Sesja 03.10 (druga) — zaległości po T8b, grot dla całego stołu, RAM llama-server
 
@@ -192,32 +217,3 @@ oknie — logowanie drugiego okna zablokował klasyfikator uprawnień; pokrywaj�
 serwerowe i pełny E2E. `dev.db`: sesja MG w Firefoksie, nic poza tym.
 
 **Następny krok:** T8c (`testy.md` 6.4), potem refaktoryzacja.
-
-### Sesja 03.10 — T8b (pierwszy kontakt) i obrażenia bez „Zastosuj”
-
-**Zlecenie MG:** T8b z `testy.md`. Pytania na starcie (wiersz w sekcji 2 `testy.md`): gracz zna CP RED,
-nie zna tego stołu; subagent na Opusie; kontakt z MG „na Discordzie” przez raport; start z `po-T3`,
-walka z jednym statystą. W trakcie MG zlecił poprawkę: obrażenia po strzale mają wchodzić bez
-akceptacji MG — pytania: zakres (każdy rzut z celem, także obszar), Unik przed obrażeniami (też
-odskok z obszaru), serwer odmawia drugiego rzutu (#56), grot idzie za celownikiem, kolejność: najpierw
-domknąć T8b.
-
-**Zrobione:** T8b — subagent „Kuba” w Firefoksie (MCP) przeszedł od linku do dwóch strzałów i „Kończę
-turę” w ~20 min, bez ani jednej podpowiedzi UI; MG w Chromium. Rejestr **#56–#71** (#56 B2, #62 B2,
-reszta B3; „wyciek ruchu” sprawdzony drugą sesją — to podgląd trasy, #69), pomysł w `POMYSLY.md`,
-dwie pułapki w `ogledziny` (`7c90b36`). Poprawka (`029cd36`): `settleDamageRoll` rozlicza rzut z
-`attackMessageId` drogą „Zastosuj” (efekty mapy czekają na kości), `damageRollId` + `DAMAGE_ALREADY_ROLLED`
-(przerzut po „Cofnij” wszystkich rozliczeń), `evasionPending` + `attack:no-evade` („Bez uniku” u celu
-i MG), panel „Zastosuj” znika po rozliczeniu, `turnShooterToAim` w `MapRenderer`. Umowy w `atak`
-i `mapa`; suita E2E: `noDodge`, `settledWithoutApply` w `fixtures/walka.ts`.
-
-**Weryfikacja:** `shared` 2248, serwer 1291 (5 nowych w `attacks.test.ts`, 1 w `areas.test.ts`,
-sześć plików przestawionych z „Zastosuj” na rozliczenie samo), klient 315; ESLint, Prettier i `tsc`
-czyste. E2E: T4a → T5a od `po-T3` 55/55, `t8a-` 44/44, `35-bezpieczenstwo` 41/41; **T5b pada na
-starcie bez gatewaya** (MG ma widzieć boty) — T5b → T6c nieprzetestowane z nową zasadą. Oglądane:
-Marek w Firefoksie, MG w Chromium (czekanie na Unik, „Bez uniku”, rozliczenie bez „Zastosuj”, grot).
-`dev.db` nietknięta; `po-T4a`, `po-T4`, `po-T5a` zapisane od nowa.
-
-**Następny krok:** gateway w terminalu MG i `E2E_FROM=po-T5a pnpm test:e2e t5b- t6` we własnym oknie
-konsoli; potem triaż #57–#71 i T8c.
-
