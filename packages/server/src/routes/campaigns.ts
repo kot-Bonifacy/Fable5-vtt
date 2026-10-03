@@ -5,6 +5,7 @@ import { GAME_TIME_DEFAULT, gameMonthKey } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import type { Invitation } from '../generated/prisma/client.js';
+import { campaignRunBy } from './helpers.js';
 
 // Rok (decyzja MG z 01.10) — tyle co sesja; MG i tak może link unieważnić.
 const DEFAULT_INVITATION_TTL_HOURS = 365 * 24;
@@ -56,8 +57,19 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     return payload;
   });
 
-  app.get('/api/campaigns', gmOnly, async () => {
+  /**
+   * Kampania tego MG albo null (etap 44a) — cudza wygląda dokładnie jak
+   * nieistniejąca, żeby id nie zdradzało, że po drugiej stronie coś jest.
+   */
+  async function ownCampaign(id: string, userId: string) {
+    const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
+    return campaign && campaignRunBy(campaign, userId) ? campaign : null;
+  }
+
+  app.get('/api/campaigns', gmOnly, async (request) => {
+    // Każdy MG widzi tylko swoje kampanie (etap 44a).
     const campaigns = await ctx.prisma.campaign.findMany({
+      where: { OR: [{ gmId: request.user!.id }, { gmId: null }] },
       orderBy: { createdAt: 'desc' },
       include: {
         members: { include: { user: true }, orderBy: { joinedAt: 'asc' } },
@@ -81,6 +93,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
   });
 
   app.post('/api/campaigns', gmOnly, async (request, reply) => {
+    const gmId = request.user!.id;
     const { name } = (request.body ?? {}) as { name?: unknown };
     const trimmed = typeof name === 'string' ? name.trim() : '';
     if (trimmed.length === 0 || trimmed.length > MAX_CAMPAIGN_NAME_LENGTH) {
@@ -93,6 +106,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       return tx.campaign.create({
         data: {
           name: trimmed,
+          gmId,
           active: true,
           // Zegar świata rusza od miesiąca, który uznajemy za rozliczony
           // (etap 37): świeży stół nie zaczyna od zaległego czynszu, ale
@@ -118,7 +132,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     const { id } = request.params as { id: string };
     const { sandbox } = (request.body ?? {}) as { sandbox?: unknown };
     if (typeof sandbox !== 'boolean') return reply.code(400).send({ error: 'BAD_REQUEST' });
-    const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
+    const campaign = await ownCampaign(id, request.user!.id);
     if (!campaign) return reply.code(404).send({ error: 'CAMPAIGN_NOT_FOUND' });
     const updated = await ctx.prisma.campaign.update({ where: { id }, data: { sandbox } });
     return { id: updated.id, name: updated.name, sandbox: updated.sandbox };
@@ -126,7 +140,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
 
   app.post('/api/campaigns/:id/invitations', gmOnly, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
+    const campaign = await ownCampaign(id, request.user!.id);
     if (!campaign) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
@@ -150,7 +164,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
   app.post('/api/invitations/:id/revoke', gmOnly, async (request, reply) => {
     const { id } = request.params as { id: string };
     const invitation = await ctx.prisma.invitation.findUnique({ where: { id } });
-    if (!invitation) {
+    if (!invitation || !(await ownCampaign(invitation.campaignId, request.user!.id))) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
     const revoked = invitation.revokedAt

@@ -1,3 +1,4 @@
+import { campaignGmUser } from './campaign-gm.js';
 import type {
   BotActionProposal,
   BotActionTraceBroadcast,
@@ -981,7 +982,7 @@ async function loadTurnContext(
     actor: token,
     ctx: {
       campaignId,
-      user: await botActorUser(deps, await gmAuthorId(deps)),
+      user: await botActorUser(deps, await gmAuthorId(deps, campaignId)),
       bot: { id: stored.id, name: stored.name, data },
       character,
       sheet: parseCharacterData(character.data, deps.ctx.cpred),
@@ -994,12 +995,8 @@ async function loadTurnContext(
 }
 
 /** Konto MG, na które zapisują się karty bota (jak linie NPC od etapu 11). */
-async function gmAuthorId(deps: RealtimeDeps): Promise<string> {
-  const gm = await deps.ctx.prisma.user.findFirst({
-    where: { role: ROLE_GM },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  });
+async function gmAuthorId(deps: RealtimeDeps, campaignId: string): Promise<string> {
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   if (!gm) throw new RealtimeError('INTERNAL');
   return gm.id;
 }

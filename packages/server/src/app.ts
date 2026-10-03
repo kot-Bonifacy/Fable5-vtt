@@ -14,6 +14,7 @@ import { ensureGmUser } from './auth/seed.js';
 import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
+import { registerOwnerRoutes } from './routes/owner.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
@@ -27,7 +28,7 @@ import { loadCompendium } from './compendium.js';
 import { loadShopRules } from './shop-rules.js';
 import { loadCpredRegistry } from './cpred.js';
 import { loadCoverCatalogue } from './covers.js';
-import { LoginAttemptLimiter } from './rate-limit.js';
+import { LoginAttemptLimiter, REGISTRATION_WINDOW_MS, REGISTRATIONS_MAX } from './rate-limit.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -138,13 +139,19 @@ export async function buildApp(
     shopRules,
     covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
-    ...(config.rateLimits ? { loginLimiter: new LoginAttemptLimiter() } : {}),
+    ...(config.rateLimits
+      ? {
+          loginLimiter: new LoginAttemptLimiter(),
+          registrationLimiter: new LoginAttemptLimiter(REGISTRATIONS_MAX, REGISTRATION_WINDOW_MS),
+        }
+      : {}),
   };
   // Gniazda przed trasami: wylogowanie rozłącza gniazda swojej sesji (#11).
   const io = new SocketIOServer(app.server, {
     cors: { origin: config.clientOrigin, credentials: true },
   });
   registerAuthRoutes(app, ctx, io);
+  registerOwnerRoutes(app, ctx, io);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);

@@ -20,6 +20,7 @@ import {
   importSceneFile,
   takeSnapshotNow,
 } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { plural } from '../plural.js';
@@ -354,9 +355,11 @@ function CampaignSection() {
 }
 
 export function ArchivePanel() {
+  // Kopie całej bazy niosą kampanie wszystkich MG — tylko właściciel (44a).
+  const owner = useAuthStore((s) => s.user?.owner ?? false);
   return (
     <div className="archive-panel">
-      <SnapshotSection />
+      {owner && <SnapshotSection />}
       <CampaignSection />
       <CharacterSection />
       <SceneSection />

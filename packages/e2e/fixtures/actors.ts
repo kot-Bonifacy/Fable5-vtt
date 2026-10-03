@@ -9,7 +9,7 @@ import {
 } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { io, type Socket } from 'socket.io-client';
-import { BASE_URL, SERVER_URL } from '../instance/paths.ts';
+import { BASE_URL, GM_LOGIN, SERVER_URL } from '../instance/paths.ts';
 import { Sniffer } from './sniffer.ts';
 
 export type Engine = 'chromium' | 'firefox';
@@ -140,12 +140,13 @@ export class Cast {
     return actor;
   }
 
-  /** MG loguje się przez formularz hasłem instancji (losowym na przebieg). */
+  /** MG loguje się przez formularz loginem i hasłem instancji (losowym na przebieg). */
   async mg(engine: Engine = 'chromium', prepare?: Prepare): Promise<Actor> {
     const password = process.env.E2E_GM_PASSWORD;
     if (!password) throw new Error('E2E: no E2E_GM_PASSWORD — run through playwright test');
     const actor = await this.open('MG', engine, prepare);
     await actor.page.goto('/');
+    await actor.page.locator('#gm-login').fill(GM_LOGIN);
     await actor.page.locator('#gm-password').fill(password);
     await actor.page.getByRole('button', { name: 'Zaloguj się' }).click();
     await waitSignedIn(actor);

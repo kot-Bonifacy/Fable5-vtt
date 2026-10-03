@@ -22,7 +22,7 @@ import {
 } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { startServer, stopServer } from '../../instance/instance.ts';
-import { E2E_DIR, SERVER_PORT, SERVER_URL, UPLOADS_DIR } from '../../instance/paths.ts';
+import { E2E_DIR, GM_LOGIN, SERVER_PORT, SERVER_URL, UPLOADS_DIR } from '../../instance/paths.ts';
 
 /**
  * T2, trasy HTTP (`testy.md` 6.2, punkty 5–8, 10, 11): uploady, import muzyki,
@@ -303,7 +303,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
 
   test('6.2.8 ciasteczko sesji: httpOnly, SameSite, ważność SESSION_TTL_DAYS (rok)', async () => {
     const password = process.env.E2E_GM_PASSWORD!;
-    const response = await anon.post('/api/auth/login', { data: { password } });
+    const response = await anon.post('/api/auth/login', { data: { login: GM_LOGIN, password } });
     expect(response.status()).toBe(200);
     const header = response.headersArray().find((h) => h.name.toLowerCase() === 'set-cookie');
     const cookie = header?.value ?? '';
@@ -492,7 +492,7 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       statuses.push(
         (
           await anon.post('/api/auth/login', {
-            data: { password: `zgaduje-${i}` },
+            data: { login: GM_LOGIN, password: `zgaduje-${i}` },
             headers: attacker,
           })
         ).status(),
@@ -506,14 +506,14 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     // Z zablokowanego adresu nawet prawdziwe hasło dostaje 429 — inaczej
     // zgadujący dowiedziałby się o trafieniu mimo limitu.
     const fromAttacker = await anon.post('/api/auth/login', {
-      data: { password: process.env.E2E_GM_PASSWORD },
+      data: { login: GM_LOGIN, password: process.env.E2E_GM_PASSWORD },
       headers: attacker,
     });
     expect(fromAttacker.status()).toBe(429);
     expect(Number(fromAttacker.headers()['retry-after'])).toBeGreaterThan(0);
     // MG z innego adresu wchodzi (brak blokady konta = brak DoS na MG).
     const ok = await anon.post('/api/auth/login', {
-      data: { password: process.env.E2E_GM_PASSWORD },
+      data: { login: GM_LOGIN, password: process.env.E2E_GM_PASSWORD },
     });
     expect(ok.status()).toBe(200);
     await anon.post('/api/auth/logout');

@@ -214,6 +214,45 @@
   font-size: 0.8rem;
 }
 
+/* Panel właściciela (44a): wiersz konta to login, plakietki, metryka i dwa
+   guziki; zawija się, zamiast ściskać metrykę do kolumny jednej litery. */
+.owner-account-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.owner-account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.owner-account:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.owner-account-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.owner-account-login {
+  font-size: 0.95rem;
+}
+
+.owner-account-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
 /* --- Side panel tabs --- */
 
 .side-tab-rows {

@@ -41,6 +41,7 @@ import { exposeMapToE2E } from '../e2e-hook.js';
 import { partyStart } from '../map/camera.js';
 import { walkFloorFor } from '../map/walk-sight.js';
 import { isTokenDrag, readTokenDrag } from '../map/token-drag.js';
+import { CreateCampaignForm } from './CreateCampaignForm.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -2094,14 +2095,23 @@ export function MapArea() {
       {/* Gracz pod mapą powitalną nie dostaje żadnego napisu (decyzja MG,
           11.09) — to ma być świat, a nie komunikat. Zdanie wraca, gdy tła nie
           ma czym zastąpić pustki: na świeżym klonie bez pliku w `uploads/`. */}
-      {!scene && (isGm || welcome === null) && (
+      {/* MG bez kampanii (świeże konto z rejestracji, 44a) zakłada ją od razu
+          tutaj, a nie szuka drogi do Panelu MG. */}
+      {!scene && isGm && noCampaign && (
+        <div className="map-overlay map-overlay--form">
+          <p className="placeholder-text">
+            Nie masz aktywnej kampanii — załóż nową albo aktywuj którąś w „Panel MG” (u góry po
+            prawej).
+          </p>
+          <CreateCampaignForm />
+        </div>
+      )}
+      {!scene && (isGm || welcome === null) && !(isGm && noCampaign) && (
         <div className="map-overlay">
           <p className="placeholder-text">
             {!isGm
               ? 'Brak aktywnej sceny — MG musi ją aktywować.'
-              : noCampaign
-                ? 'Brak kampanii — załóż ją i aktywuj w „Panel MG” (u góry po prawej), potem utwórz scenę w zakładce „Sceny”.'
-                : 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.'}
+              : 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.'}
           </p>
         </div>
       )}

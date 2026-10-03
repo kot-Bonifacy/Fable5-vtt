@@ -1,5 +1,5 @@
 import { request, type APIRequestContext } from '@playwright/test';
-import { SERVER_URL } from '../instance/paths.ts';
+import { GM_LOGIN, SERVER_URL } from '../instance/paths.ts';
 import { restoreCheckpoint, startInstance } from '../instance/instance.ts';
 import { query, queryOne, tableNames } from './db.ts';
 import { DEAD_GATEWAY } from './security.ts';
@@ -41,7 +41,7 @@ export async function apiGm(): Promise<APIRequestContext> {
   const password = process.env.E2E_GM_PASSWORD;
   if (!password) throw new Error('E2E: no E2E_GM_PASSWORD — run through playwright test');
   const api = await request.newContext({ baseURL: SERVER_URL });
-  const response = await api.post('/api/auth/login', { data: { password } });
+  const response = await api.post('/api/auth/login', { data: { login: GM_LOGIN, password } });
   if (response.status() !== 200) throw new Error(`E2E: GM login ${response.status()}`);
   return api;
 }

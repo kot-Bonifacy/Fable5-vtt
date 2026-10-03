@@ -19,7 +19,7 @@ import {
   toPortraitAssetView,
   usedPortraitUrls,
 } from '../portraits.js';
-import { getActiveCampaign, getUserActiveCampaign } from './helpers.js';
+import { getUserActiveCampaign } from './helpers.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
@@ -83,7 +83,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
   });
 
   app.post('/api/uploads/tokens', { preHandler: requireGm }, async (request, reply) => {
-    const campaign = await getActiveCampaign(ctx.prisma);
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
     if (!campaign) {
       return reply.code(409).send({ error: 'NO_CAMPAIGN' });
     }
@@ -193,7 +193,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
    * w puli i da się go skadrować (decyzja MG z 12.09).
    */
   app.post('/api/uploads/portrait-assets', { preHandler: requireGm }, async (request, reply) => {
-    const campaign = await getActiveCampaign(ctx.prisma);
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
     if (!campaign) {
       return reply.code(409).send({ error: 'NO_CAMPAIGN' });
     }
@@ -292,7 +292,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
   app.delete('/api/portrait-assets/:id', { preHandler: requireGm }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const asset = await ctx.prisma.portraitAsset.findUnique({ where: { id } });
-    const campaign = await getActiveCampaign(ctx.prisma);
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
     if (!asset || asset.campaignId !== campaign?.id) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
@@ -300,8 +300,8 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     return reply.code(204).send();
   });
 
-  app.get('/api/token-assets', { preHandler: requireGm }, async (_request, reply) => {
-    const campaign = await getActiveCampaign(ctx.prisma);
+  app.get('/api/token-assets', { preHandler: requireGm }, async (request, reply) => {
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
     if (!campaign) {
       return reply.send([]);
     }

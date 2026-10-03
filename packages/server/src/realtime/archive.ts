@@ -47,9 +47,11 @@ async function snapshotList(deps: RealtimeDeps): Promise<SnapshotListView> {
   };
 }
 
+/** Kopie całej bazy niosą kampanie wszystkich MG — widzi je tylko właściciel (44a). */
 export const archiveListEvent = defineEvent<void, SnapshotListView>({
   name: 'archive:list',
   role: ROLE_GM,
+  ownerOnly: true,
   handler: async ({ deps }) => snapshotList(deps),
 });
 
@@ -60,6 +62,7 @@ export const archiveListEvent = defineEvent<void, SnapshotListView>({
 export const archiveSnapshotEvent = defineEvent<void, SnapshotListView>({
   name: 'archive:snapshot',
   role: ROLE_GM,
+  ownerOnly: true,
   handler: async ({ deps }) => {
     const paths = snapshotPathsFor(deps.ctx.config);
     if (!paths || !deps.ctx.config.backups) throw new RealtimeError('BACKUP_DISABLED');

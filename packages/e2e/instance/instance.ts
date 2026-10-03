@@ -74,7 +74,7 @@ function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     HOST: '127.0.0.1',
     CLIENT_ORIGIN: P.BASE_URL,
     DATABASE_URL: P.DATABASE_URL,
-    GM_NAME: 'MG',
+    GM_NAME: P.GM_LOGIN,
     GM_PASSWORD: gmPassword,
     COOKIE_SECRET: cookieSecret,
     UPLOADS_DIR: P.UPLOADS_DIR,

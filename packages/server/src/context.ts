@@ -31,4 +31,6 @@ export interface AppContext {
   ai: AiGateway;
   /** Złe hasła i zaproszenia per IP (#12); brak = bez limitu (`config.rateLimits`). */
   loginLimiter?: LoginAttemptLimiter;
+  /** Nowe konta MG per IP (44a, 5 na godzinę); liczy udane rejestracje, nie porażki. */
+  registrationLimiter?: LoginAttemptLimiter;
 }

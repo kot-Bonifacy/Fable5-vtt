@@ -1,7 +1,9 @@
-import type { Role, SessionUser } from '@vtt/shared';
+import type { Server as SocketIOServer } from 'socket.io';
+import type { AuthEndedReason, Role, SessionUser } from '@vtt/shared';
 import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { User } from '../generated/prisma/client.js';
+import { endSessionSockets } from '../realtime/session-guard.js';
 
 export const SESSION_COOKIE = 'vtt_sid';
 
@@ -15,6 +17,7 @@ export function toSessionUser(user: User): SessionUser {
     // A skin the client does not know about (downgraded build, hand-edited
     // row) falls back to the default rather than breaking the session.
     diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
+    owner: user.owner,
   };
 }
 
@@ -40,6 +43,8 @@ export async function resolveSession(
     include: { user: true },
   });
   if (!session) return null;
+  // Blokada (44a) kasuje sesje konta; to tylko druga linia obrony.
+  if (session.user.blockedAt) return null;
   if (session.expiresAt.getTime() <= Date.now()) {
     await prisma.session.deleteMany({ where: { id: sessionId } });
     return null;
@@ -57,4 +62,25 @@ export async function resolveSessionUser(
 
 export async function deleteSession(prisma: PrismaClient, sessionId: string): Promise<void> {
   await prisma.session.deleteMany({ where: { id: sessionId } });
+}
+
+/**
+ * Kończy sesje konta (etap 44a): wiersze z bazy i otwarte gniazda każdej z nich.
+ * Zmiana hasła zostawia sesję, z której ją zrobiono (`keepSessionId`), reset
+ * hasła i blokada nie zostawiają żadnej.
+ */
+export async function endUserSessions(
+  prisma: PrismaClient,
+  io: SocketIOServer,
+  userId: string,
+  reason: AuthEndedReason,
+  keepSessionId: string | null = null,
+): Promise<void> {
+  const sessions = await prisma.session.findMany({
+    where: { userId, ...(keepSessionId ? { id: { not: keepSessionId } } : {}) },
+    select: { id: true },
+  });
+  if (sessions.length === 0) return;
+  await prisma.session.deleteMany({ where: { id: { in: sessions.map((s) => s.id) } } });
+  for (const session of sessions) endSessionSockets(io, session.id, reason);
 }

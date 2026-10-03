@@ -52,6 +52,13 @@ export interface ServerConfig {
    * logowania, więc domyślnie wyłączone (`TRUST_PROXY=1` włącza).
    */
   trustProxy?: boolean;
+  /**
+   * Rejestracja nowych kont MG (etap 44a, `VTT_REGISTRATION=open|closed`).
+   * Brak pola znaczy „otwarta” — tak jak domyślna wartość z env (decyzja MG
+   * z 03.10), więc testy dymne nie muszą go podawać. `closed` to wyłącznik na
+   * wypadek zalewu kont na publicznym VPS.
+   */
+  registrationOpen?: boolean;
 }
 
 export interface BackupConfig {
@@ -96,6 +103,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
         : resolve(env.BOT_DECISION_LOG ?? '../../data/private/bot-decisions.jsonl'),
     rateLimits: env.RATE_LIMITS !== '0',
     trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
+    registrationOpen: (env.VTT_REGISTRATION ?? 'open').trim().toLowerCase() !== 'closed',
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),

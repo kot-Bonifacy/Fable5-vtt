@@ -317,6 +317,17 @@ body {
   pointer-events: none;
 }
 
+/* Nakładka z formularzem (44a: „Nowa kampania” na pustym stole MG) musi
+   łapać kliknięcia — zwykła nakładka przepuszcza je do mapy. */
+.map-overlay--form {
+  pointer-events: auto;
+  padding: 1rem;
+}
+
+.map-overlay--form .panel-card {
+  width: min(28rem, 100%);
+}
+
 .map-spinner {
   width: 28px;
   height: 28px;

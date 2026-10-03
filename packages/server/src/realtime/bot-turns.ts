@@ -1,3 +1,4 @@
+import { campaignGmUser } from './campaign-gm.js';
 import { randomUUID } from 'node:crypto';
 import type {
   BotActivityBroadcast,
@@ -111,13 +112,8 @@ export async function listChatBots(prisma: PrismaClient, campaignId: string): Pr
 }
 
 /** The account NPC lines are stored under — see `ChatMessage.authorId`. */
-async function gmUserId(prisma: PrismaClient): Promise<string | null> {
-  const gm = await prisma.user.findFirst({
-    where: { role: ROLE_GM },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  });
-  return gm?.id ?? null;
+async function gmUserId(prisma: PrismaClient, campaignId: string): Promise<string | null> {
+  return (await campaignGmUser(prisma, campaignId))?.id ?? null;
 }
 
 function notice(
@@ -447,7 +443,7 @@ async function runQueuedTurn(
   const [scene, participants, authorId] = await Promise.all([
     request.sceneId ? getSceneById(deps.ctx.prisma, request.sceneId) : Promise.resolve(null),
     campaignParticipants(deps.ctx.prisma, request.campaignId),
-    gmUserId(deps.ctx.prisma),
+    gmUserId(deps.ctx.prisma, request.campaignId),
   ]);
   if (!authorId) {
     deps.log.error('no GM account to attribute a bot line to');

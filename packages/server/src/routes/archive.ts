@@ -8,7 +8,7 @@ import {
   exportCharacter,
   exportScene,
 } from '../archive.js';
-import { getActiveCampaign } from './helpers.js';
+import { getUserActiveCampaign } from './helpers.js';
 
 /**
  * Pobieranie plików wymiany (etap 33) — trasy REST, nie zdarzenia gniazda.
@@ -69,7 +69,7 @@ export function registerArchiveRoutes(app: FastifyInstance, ctx: AppContext): vo
     '/api/archive/campaign',
     gmOnly,
     async (request, reply) => {
-      const campaign = await getActiveCampaign(ctx.prisma);
+      const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
       if (!campaign) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
       const includeChat = request.query.chat !== '0';
       const file = await exportCampaign(ctx.prisma, campaign.id, { includeChat });

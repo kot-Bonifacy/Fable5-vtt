@@ -18,6 +18,7 @@
  * każdym odczycie karty i zmieniałby ją sam, ilekroć ktoś na nią spojrzy.
  */
 
+import { campaignGmUser } from './campaign-gm.js';
 import type { Character } from '../generated/prisma/client.js';
 import type {
   CharacterStatEffectPayload,
@@ -269,7 +270,7 @@ async function logStatEffects(
   title: string,
   rows: readonly SweptSheet[],
 ): Promise<void> {
-  const gm = await deps.ctx.prisma.user.findFirst({ where: { role: ROLE_GM } });
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   if (!gm) return;
   const entry: CombatActionLogEntry = {
     combatantId: '',

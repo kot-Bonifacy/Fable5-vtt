@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import type { CampaignDetail, CampaignSummary, InvitationSummary } from '@vtt/shared';
+import type { CampaignDetail, InvitationSummary } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
 import { activateCampaign } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { CreateCampaignForm } from '../components/CreateCampaignForm.js';
+import { OwnerAccounts } from '../components/OwnerAccounts.js';
 
 function inviteUrl(token: string): string {
   return `${window.location.origin}/join/${token}`;
@@ -153,8 +155,6 @@ function CampaignCard({
 export function GmPanel() {
   const user = useAuthStore((s) => s.user);
   const [campaigns, setCampaigns] = useState<CampaignDetail[] | null>(null);
-  const [newName, setNewName] = useState('');
-  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setCampaigns(await apiGet<CampaignDetail[]>('/api/campaigns'));
@@ -170,23 +170,6 @@ export function GmPanel() {
     return <Navigate to="/" replace />;
   }
 
-  async function createCampaign(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = newName.trim();
-    if (trimmed.length === 0 || busy) return;
-    setBusy(true);
-    try {
-      const created = await apiPost<CampaignSummary>('/api/campaigns', { name: trimmed });
-      // Trasa REST zapisała już `active`, ale o przeniesieniu ekranów wie
-      // wyłącznie warstwa gniazd — jedna droga dla „utwórz" i „aktywuj".
-      if (created?.id) await activateCampaign(created.id);
-      setNewName('');
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="gm-panel">
       <header className="gm-panel-header">
@@ -196,29 +179,10 @@ export function GmPanel() {
         </Link>
       </header>
 
-      <form className="panel-card new-campaign-form" onSubmit={createCampaign}>
-        <label className="auth-label" htmlFor="campaign-name">
-          Nowa kampania
-        </label>
-        <div className="form-row">
-          <input
-            id="campaign-name"
-            type="text"
-            maxLength={64}
-            placeholder="np. Ulice Night City"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={busy || newName.trim().length === 0}
-          >
-            Utwórz
-          </button>
-        </div>
-        <p className="auth-hint">Nowa kampania staje się aktywna — poprzednie są dezaktywowane.</p>
-      </form>
+      <CreateCampaignForm
+        onCreated={refresh}
+        hint="Nowa kampania staje się aktywna — poprzednie są dezaktywowane."
+      />
 
       {campaigns === null ? (
         <p className="placeholder-text">Ładowanie…</p>
@@ -229,6 +193,8 @@ export function GmPanel() {
           <CampaignCard key={campaign.id} campaign={campaign} onChanged={() => void refresh()} />
         ))
       )}
+
+      {user.owner && <OwnerAccounts />}
     </div>
   );
 }

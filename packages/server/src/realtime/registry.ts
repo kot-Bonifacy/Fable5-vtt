@@ -43,6 +43,11 @@ export interface RealtimeEvent<TPayload = unknown, TResult = unknown> {
   name: string;
   /** Role required to invoke the event; omit to allow any authenticated user. */
   role?: Role;
+  /**
+   * Tylko konto właściciela serwera (etap 44a) — kopie całej bazy. Stoi obok
+   * `role: ROLE_GM`, nie zamiast niej: macierz ról E2E czyta samą rolę.
+   */
+  ownerOnly?: boolean;
   handler: (args: EventArgs<TPayload>) => Promise<TResult> | TResult;
 }
 
@@ -94,7 +99,7 @@ export function registerEvents(
         ack?.({ ok: false, error: 'RATE_LIMITED' });
         return;
       }
-      if (event.role && user.role !== event.role) {
+      if ((event.role && user.role !== event.role) || (event.ownerOnly && !user.owner)) {
         ack?.({ ok: false, error: 'FORBIDDEN' });
         return;
       }

@@ -232,6 +232,42 @@
   opacity: 0.45;
 }
 
+/* Rejestracja i nowe hasło (44a) mają trzy pola zamiast dwóch — bez
+   plakietki nad tytułem i z ciaśniejszym rytmem, żeby formularz dalej mieścił
+   się w ramce celownika plakatu, a nie wchodził na jej kreski. */
+.auth-card--compact {
+  gap: 0.35rem;
+}
+
+.auth-screen .auth-card--compact .auth-label {
+  margin-top: 0.2rem;
+}
+
+.auth-screen .auth-card--compact .primary-button {
+  margin-top: 0.5rem;
+}
+
+/* Przełącznik logowanie ↔ rejestracja (44a): odnośnik w tuszu plakatu, a nie
+   drugi czerwony przycisk — czerwony jest jeden i znaczy „wejdź”. */
+.auth-screen .auth-switch {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.auth-screen .auth-switch:hover {
+  color: var(--login-red-deep);
+}
+
 /* Ekran dołączania: imiona graczy jako kafle wycięte z papieru. */
 .auth-screen .player-choices {
   gap: 0.4rem;

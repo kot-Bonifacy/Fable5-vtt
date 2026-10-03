@@ -409,7 +409,7 @@ export async function runZonesAfterMove(
     // `move` selects.
     if (trigger === 'enter' && isPointInRect(row, before)) continue;
 
-    hand ??= await systemHand(deps, user);
+    hand ??= await systemHand(deps, campaignId, user);
     const fired = await fireZone(deps, {
       campaignId,
       user: hand,
@@ -462,7 +462,7 @@ export async function runZonesAtTurnEnd(
 
     const fired = await fireZone(deps, {
       campaignId,
-      user: await systemHand(deps, user),
+      user: await systemHand(deps, campaignId, user),
       scene,
       zone: row,
       profile,

@@ -208,7 +208,7 @@ beforeAll(async () => {
   const login = await built.app.inject({
     method: 'POST',
     url: '/api/auth/login',
-    payload: { password: GM_PASSWORD },
+    payload: { login: 'MG', password: GM_PASSWORD },
   });
   gmCookie = cookieOf(login.headers['set-cookie']);
 

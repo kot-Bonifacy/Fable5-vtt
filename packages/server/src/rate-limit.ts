@@ -69,6 +69,13 @@ export const LOGIN_FAILURES_MAX = 10;
 export const LOGIN_FAILURE_WINDOW_MS = 15 * 60_000;
 
 /**
+ * Rejestracje kont MG z jednego adresu (etap 44a): 5 na godzinę. Ta sama klasa
+ * co złe hasła — okno przesuwne — tylko `fail` znaczy tu „założono konto”.
+ */
+export const REGISTRATIONS_MAX = 5;
+export const REGISTRATION_WINDOW_MS = 60 * 60_000;
+
+/**
  * Złe hasła MG i złe zaproszenia per adres IP (#12).
  *
  * Okno przesuwne: liczą się porażki z ostatnich 15 minut. Po dziesiątej adres

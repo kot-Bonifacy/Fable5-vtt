@@ -1,3 +1,4 @@
+import { campaignGmUser } from './campaign-gm.js';
 import type {
   CombatActionLogEntry,
   CpredTimedEffect,
@@ -169,7 +170,7 @@ async function logExpired(
   campaignId: string,
   expired: readonly ExpiredEffect[],
 ): Promise<void> {
-  const gm = await deps.ctx.prisma.user.findFirst({ where: { role: ROLE_GM } });
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   if (!gm) return;
   const entry: CombatActionLogEntry = {
     combatantId: '',

@@ -48,7 +48,7 @@ export async function logBotDecision(
 export async function botActorUser(deps: RealtimeDeps, authorId: string): Promise<SessionUser> {
   const user = await deps.ctx.prisma.user.findUnique({
     where: { id: authorId },
-    select: { id: true, name: true, role: true, diceSkin: true },
+    select: { id: true, name: true, role: true, diceSkin: true, owner: true },
   });
   if (!user) throw new RealtimeError('INTERNAL');
   return {
@@ -58,6 +58,7 @@ export async function botActorUser(deps: RealtimeDeps, authorId: string): Promis
     // A bot rolls on the GM's account, so it rolls with the GM's dice — the
     // same reason its chat line is indistinguishable from a GM speaking as it.
     diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
+    owner: user.owner,
   };
 }
 

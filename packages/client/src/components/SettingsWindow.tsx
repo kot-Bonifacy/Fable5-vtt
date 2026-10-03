@@ -8,9 +8,11 @@ import {
 } from '../fullscreen.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
 import { useWindowPlacement } from '../window-placement.js';
+import { PasswordChange } from './PasswordChange.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
@@ -38,6 +40,8 @@ export function SettingsWindow() {
   const fullscreenActive = useFullscreenActive();
   const canFullscreen = fullscreenSupported();
 
+  // Hasło zmienia tu zwykłe konto MG (44a); właściciel ma je w `.env`, gracz nie ma go wcale.
+  const changesPassword = useAuthStore((s) => s.user?.role === 'GM' && !s.user.owner);
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
 
@@ -191,6 +195,13 @@ export function SettingsWindow() {
             </span>
           </label>
         </section>
+
+        {changesPassword && (
+          <section className="settings-group settings-group--account">
+            <h3 className="settings-group-title">Konto</h3>
+            <PasswordChange />
+          </section>
+        )}
       </div>
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>

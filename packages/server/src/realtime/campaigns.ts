@@ -2,7 +2,7 @@ import type { Socket } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import { getUserActiveCampaign } from '../routes/helpers.js';
+import { campaignRunBy, getUserActiveCampaign } from '../routes/helpers.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
@@ -69,9 +69,14 @@ async function rehomeSocket(deps: RealtimeDeps, socket: Socket): Promise<string 
  * The GM could act on a scene whose campaign the header no longer named — bug
  * #1 of the 08.08 combat session.
  */
-export async function activateCampaign(deps: RealtimeDeps, campaignId: string): Promise<void> {
+export async function activateCampaign(
+  deps: RealtimeDeps,
+  campaignId: string,
+  gmId: string,
+): Promise<void> {
   const campaign = await deps.ctx.prisma.campaign.findUnique({ where: { id: campaignId } });
-  if (!campaign) throw new RealtimeError('NOT_FOUND');
+  // Cudza kampania wygląda jak nieistniejąca (etap 44a).
+  if (!campaign || !campaignRunBy(campaign, gmId)) throw new RealtimeError('NOT_FOUND');
 
   // Single active campaign at a time (stage 02) — the same transaction the
   // creation route runs, so „create" and „activate" cannot disagree.
@@ -97,9 +102,9 @@ export async function activateCampaign(deps: RealtimeDeps, campaignId: string): 
 export const campaignActivateEvent = defineEvent<CampaignActivatePayload>({
   name: 'campaign:activate',
   role: ROLE_GM,
-  handler: async ({ deps, payload }) => {
+  handler: async ({ deps, user, payload }) => {
     const campaignId = typeof payload?.campaignId === 'string' ? payload.campaignId.trim() : '';
     if (campaignId.length === 0) throw new RealtimeError('BAD_REQUEST');
-    await activateCampaign(deps, campaignId);
+    await activateCampaign(deps, campaignId, user.id);
   },
 });

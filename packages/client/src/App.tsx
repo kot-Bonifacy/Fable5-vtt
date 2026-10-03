@@ -26,6 +26,7 @@ import { useMusicPlayer } from './music-player.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
+import { ResetPasswordPage } from './pages/ResetPasswordPage.js';
 import { GmPanel } from './pages/GmPanel.js';
 import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
@@ -167,6 +168,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/join/:token" element={<JoinPage />} />
+      <Route path="/reset/:token" element={<ResetPasswordPage />} />
       {status === 'anonymous' ? (
         <Route path="*" element={<LoginPage />} />
       ) : (

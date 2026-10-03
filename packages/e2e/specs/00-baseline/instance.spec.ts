@@ -3,7 +3,13 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { CLIENT_BUILD_DIR, CLIENT_DIR, LOG_DIR, SERVER_URL } from '../../instance/paths.ts';
+import {
+  CLIENT_BUILD_DIR,
+  CLIENT_DIR,
+  GM_LOGIN,
+  LOG_DIR,
+  SERVER_URL,
+} from '../../instance/paths.ts';
 import { query, tableNames } from '../../fixtures/db.ts';
 
 /**
@@ -25,7 +31,7 @@ test.describe('@szybkie linia bazowa instancji', () => {
 
   test('kompendium z data/private: 66 umiejętności, nie 42 z próbki', async ({ request }) => {
     const login = await request.post('/api/auth/login', {
-      data: { password: process.env.E2E_GM_PASSWORD },
+      data: { login: GM_LOGIN, password: process.env.E2E_GM_PASSWORD },
     });
     expect(login.ok()).toBe(true);
     const data = (await (await request.get('/api/cpred/data')).json()) as { skills: unknown[] };

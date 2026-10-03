@@ -31,6 +31,9 @@ export const MG_ART_DIR = join(REPO_DIR, 'uploads/art');
 export const DATA_PRIVATE_DIR = join(REPO_DIR, 'data/private');
 
 /** 3001 i 5173 zostają dla `pnpm dev` MG. */
+/** Login konta właściciela na instancji (`GM_NAME`, etap 44a); hasło — `E2E_GM_PASSWORD`. */
+export const GM_LOGIN = 'MG';
+
 export const SERVER_PORT = 3101;
 /** Pośrednik TCP do AI Gatewaya (T5b: pad gatewaya w trakcie tury bota). */
 export const GATEWAY_PROXY_PORT = 3108;

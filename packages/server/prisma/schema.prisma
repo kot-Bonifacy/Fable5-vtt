@@ -9,10 +9,23 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid())
-  name         String   @unique
+  /// Name shown at the table. Unique per campaign, not per server (stage 44):
+  /// every GM account registered since 44a sits at its table as „MG".
+  name         String
   role         String // "GM" | "PLAYER" (SQLite: no enum support in Prisma)
+  /// GM accounts only (stage 44a): what the GM logs in with, stored lowercase so
+  /// that „Bartek" and „bartek" are one account. Players have none — they come
+  /// in through an invitation link.
+  login        String?  @unique
   passwordHash String?
   createdAt    DateTime @default(now())
+  /// The server's owner (stage 44a) — the account from `.env` (`GM_NAME`). A flag
+  /// rather than a role: it may stand on several accounts (decision of 03.10).
+  owner        Boolean  @default(false)
+  /// Blocked by the owner (stage 44a): login refused, sessions gone, campaigns kept.
+  blockedAt    DateTime?
+  /// Last login or socket connection — the owner's panel lists it.
+  lastSeenAt   DateTime?
   /// Cosmetic dice skin this user rolls with (stage 27d), e.g. "neon".
   /// Kept server-side rather than in the browser because the skin has to
   /// reach OTHER tables: the roller's dice are what everyone sees tumbling.
@@ -27,6 +40,22 @@ model User {
   drawings         MapDrawing[]
   handoutsReceived HandoutShare[]
   characterDrafts  CharacterDraft[]
+  campaignsRun     Campaign[]       @relation("CampaignGm")
+  passwordResets   PasswordReset[]
+}
+
+/// One-time link the owner hands a GM who forgot their password (stage 44a).
+/// Only the SHA-256 of the token is kept, so a copy of the database does not
+/// carry working links.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -42,6 +71,11 @@ model Campaign {
   music String @default("{}")
   id        String   @id @default(cuid())
   name      String
+  /// The GM running this campaign (stage 44a). Only they see it in the campaign
+  /// list and may activate it. Optional for rows created around the API (tests);
+  /// the creation route always sets it.
+  gmId      String?
+  gm        User?    @relation("CampaignGm", fields: [gmId], references: [id], onDelete: SetNull)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   /// Highest shop availability tier unlocked in this campaign (stage 25c, 1–4).

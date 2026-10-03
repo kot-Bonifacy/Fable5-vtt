@@ -7,31 +7,39 @@ import type { PrismaClient } from '../db.js';
 import type { Session } from '../generated/prisma/client.js';
 import { SESSION_COOKIE } from '../auth/sessions.js';
 
-export async function getActiveCampaign(prisma: PrismaClient): Promise<CampaignSummary | null> {
-  const campaign = await prisma.campaign.findFirst({
-    where: { active: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  return campaign ? { id: campaign.id, name: campaign.name, sandbox: campaign.sandbox } : null;
-}
-
 /**
- * Aktywna kampania **dla tego konta** (#10, 01.10): MG zawsze, gracz tylko
- * wtedy, gdy jest jej członkiem. Gracz innej kampanii dostawał z REST nazwę
- * cudzej aktywnej kampanii i jej pulę portretów — gniazdo pilnowało tego od
- * początku (`resolveSocketCampaign`), trasy HTTP nie.
+ * Aktywna kampania **dla tego konta** (#10, 01.10): MG — tylko własna (etap
+ * 44a, `Campaign.gmId`), gracz — tylko wtedy, gdy jest jej członkiem. Gracz
+ * innej kampanii dostawał z REST nazwę cudzej aktywnej kampanii i jej pulę
+ * portretów — gniazdo pilnowało tego od początku (`resolveSocketCampaign`),
+ * trasy HTTP nie.
+ *
+ * Kampania aktywna jest jeszcze jedna na serwer (aktywna per MG to 44c), więc
+ * MG, którego kampania nie jest tą jedną, siedzi przy pustym stole.
  */
 export async function getUserActiveCampaign(
   prisma: PrismaClient,
   user: SessionUser,
 ): Promise<CampaignSummary | null> {
-  const campaign = await getActiveCampaign(prisma);
+  const campaign = await prisma.campaign.findFirst({
+    where: { active: true },
+    orderBy: { createdAt: 'desc' },
+  });
   if (!campaign) return null;
-  if (user.role === ROLE_GM) return campaign;
+  const summary = { id: campaign.id, name: campaign.name, sandbox: campaign.sandbox };
+  if (user.role === ROLE_GM) return campaignRunBy(campaign, user.id) ? summary : null;
   const membership = await prisma.campaignMember.findUnique({
     where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } },
   });
-  return membership ? campaign : null;
+  return membership ? summary : null;
+}
+
+/**
+ * Czy kampanię prowadzi ten MG (etap 44a). Kampania bez `gmId` — założona
+ * z pominięciem trasy, w testach — należy do każdego MG, jak przed 44a.
+ */
+export function campaignRunBy(campaign: { gmId: string | null }, userId: string): boolean {
+  return campaign.gmId === null || campaign.gmId === userId;
 }
 
 export function setSessionCookie(reply: FastifyReply, session: Session): void {

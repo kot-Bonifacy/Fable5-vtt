@@ -1,3 +1,4 @@
+import { campaignGmUser } from './campaign-gm.js';
 import type {
   CpredNetDefenseEffects,
   CpredRegistry,
@@ -77,15 +78,16 @@ import { readZoneExempt, readZoneSightings } from './zones-io.js';
  * Wieżyczka w strefie strzela, bo ktoś w nią wszedł — ale nie jego ręką: karta
  * strzału, kości, karta obrażeń i wiersz dziennika podpisane kontem gracza
  * („Wieżyczka (Marek)") szły mu też do historii rzutów. System należy do MG,
- * więc odpala się kontem MG — pierwszym, jak NPC-e botów (`gmUserId`
- * w `bot-turns.ts`). Ruch MG zostaje przy jego własnym koncie.
+ * więc odpala się kontem MG tej kampanii, jak NPC-e botów (`campaignGmUser`,
+ * etap 44a). Ruch MG zostaje przy jego własnym koncie.
  */
-export async function systemHand(deps: RealtimeDeps, mover: SessionUser): Promise<SessionUser> {
+export async function systemHand(
+  deps: RealtimeDeps,
+  campaignId: string,
+  mover: SessionUser,
+): Promise<SessionUser> {
   if (mover.role === ROLE_GM) return mover;
-  const gm = await deps.ctx.prisma.user.findFirst({
-    where: { role: ROLE_GM },
-    orderBy: { createdAt: 'asc' },
-  });
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   return gm ? toSessionUser(gm) : mover;
 }
 

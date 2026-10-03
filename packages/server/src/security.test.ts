@@ -175,7 +175,7 @@ beforeAll(async () => {
   const login = await built.app.inject({
     method: 'POST',
     url: '/api/auth/login',
-    payload: { password: GM_PASSWORD },
+    payload: { login: 'MG', password: GM_PASSWORD },
   });
   gmCookie = cookieOf(login.headers['set-cookie']);
   homeCampaignId = await createCampaign('Nocna zmiana');
@@ -320,7 +320,7 @@ describe('#12 — limit złych haseł i zaproszeń per adres', () => {
       const res = await built.app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { password: `zgaduje-${i}` },
+        payload: { login: 'MG', password: `zgaduje-${i}` },
         remoteAddress: '203.0.113.7',
       });
       statuses.push(res.statusCode);
@@ -331,7 +331,7 @@ describe('#12 — limit złych haseł i zaproszeń per adres', () => {
     const blocked = await built.app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { password: GM_PASSWORD },
+      payload: { login: 'MG', password: GM_PASSWORD },
       remoteAddress: '203.0.113.7',
     });
     expect(blocked.statusCode).toBe(429);
@@ -340,7 +340,7 @@ describe('#12 — limit złych haseł i zaproszeń per adres', () => {
     const elsewhere = await built.app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { password: GM_PASSWORD },
+      payload: { login: 'MG', password: GM_PASSWORD },
       remoteAddress: '198.51.100.2',
     });
     expect(elsewhere.statusCode).toBe(200);

@@ -590,6 +590,29 @@
   margin: 0 0 0.35rem 1.45rem;
 }
 
+/* Konto MG (44a): zmiana hasła zwinięta do guzika, rozwinięta — trzy pola
+   w wierszach ustawień. Guzik stoi przy lewej krawędzi, bo nad nim nie ma
+   przełącznika, pod którego nazwą miałby się wyrównać. */
+.settings-group--account .settings-action {
+  margin-left: 0;
+}
+
+.password-change {
+  display: flex;
+  flex-direction: column;
+}
+
+.password-change .settings-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.password-change-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
 /* --- markdown ------------------------------------------------------------ */
 
 .markdown {

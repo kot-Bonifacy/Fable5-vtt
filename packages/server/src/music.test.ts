@@ -85,7 +85,7 @@ beforeAll(async () => {
   const login = await built.app.inject({
     method: 'POST',
     url: '/api/auth/login',
-    payload: { password: 'test-password' },
+    payload: { login: 'MG', password: 'test-password' },
   });
   gmCookie = cookie(login.headers['set-cookie']);
   const campaign = await built.app.inject({

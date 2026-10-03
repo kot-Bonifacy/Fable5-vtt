@@ -28,7 +28,11 @@ interface AuthStoreState {
    */
   endedNote: string | null;
   initialize: () => Promise<void>;
-  loginGm: (password: string) => Promise<void>;
+  loginGm: (login: string, password: string) => Promise<void>;
+  /** Nowe konto MG (44a) — serwer od razu loguje. */
+  registerGm: (login: string, password: string, repeat: string) => Promise<void>;
+  /** Hasło z linku od właściciela (44a) — też od razu loguje. */
+  resetPassword: (token: string, password: string, repeat: string) => Promise<void>;
   joinCampaign: (token: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Serwer zakończył sesję tego gniazda (`auth:ended`) albo odbił ponowne połączenie. */
@@ -38,7 +42,26 @@ interface AuthStoreState {
 function endedNoteFor(reason: AuthEndedReason, user: SessionUser | null): string {
   const again =
     user?.role === ROLE_GM ? 'zaloguj się ponownie.' : 'wejdź ponownie linkiem zaproszenia od MG.';
-  return reason === 'logout' ? `Wylogowano w innej karcie — ${again}` : `Sesja wygasła — ${again}`;
+  switch (reason) {
+    case 'logout':
+      return `Wylogowano w innej karcie — ${again}`;
+    case 'password':
+      return 'Hasło tego konta zmieniono — zaloguj się nowym hasłem.';
+    case 'blocked':
+      return 'To konto zostało zablokowane przez właściciela serwera.';
+    default:
+      return `Sesja wygasła — ${again}`;
+  }
+}
+
+function signedIn(state: AuthState) {
+  adoptSession(state);
+  return {
+    status: 'authenticated' as const,
+    user: state.user,
+    activeCampaign: state.activeCampaign,
+    endedNote: null,
+  };
 }
 
 export const useAuthStore = create<AuthStoreState>((set) => ({
@@ -57,26 +80,21 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     }
   },
 
-  loginGm: async (password) => {
-    const state = await apiPost<AuthState>('/api/auth/login', { password });
-    adoptSession(state);
-    set({
-      status: 'authenticated',
-      user: state.user,
-      activeCampaign: state.activeCampaign,
-      endedNote: null,
-    });
+  loginGm: async (login, password) => {
+    set(signedIn(await apiPost<AuthState>('/api/auth/login', { login, password })));
+  },
+
+  registerGm: async (login, password, repeat) => {
+    set(signedIn(await apiPost<AuthState>('/api/auth/register', { login, password, repeat })));
+  },
+
+  resetPassword: async (token, password, repeat) => {
+    const url = `/api/auth/reset/${encodeURIComponent(token)}`;
+    set(signedIn(await apiPost<AuthState>(url, { password, repeat })));
   },
 
   joinCampaign: async (token, name) => {
-    const state = await apiPost<AuthState>(`/api/join/${encodeURIComponent(token)}`, { name });
-    adoptSession(state);
-    set({
-      status: 'authenticated',
-      user: state.user,
-      activeCampaign: state.activeCampaign,
-      endedNote: null,
-    });
+    set(signedIn(await apiPost<AuthState>(`/api/join/${encodeURIComponent(token)}`, { name })));
   },
 
   logout: async () => {

@@ -24,3 +24,13 @@ export async function requireGm(request: FastifyRequest, reply: FastifyReply) {
     return reply.code(403).send({ error: 'FORBIDDEN' });
   }
 }
+
+/** Konto MG właściciela serwera (etap 44a): panel kont i kopie całej bazy. */
+export async function requireOwner(request: FastifyRequest, reply: FastifyReply) {
+  if (!request.user) {
+    return reply.code(401).send({ error: 'UNAUTHORIZED' });
+  }
+  if (request.user.role !== ROLE_GM || !request.user.owner) {
+    return reply.code(403).send({ error: 'FORBIDDEN' });
+  }
+}

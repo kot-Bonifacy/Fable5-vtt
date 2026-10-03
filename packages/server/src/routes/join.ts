@@ -58,8 +58,14 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
     }
 
     // Same name = same player returning (trusted friends group, no password).
-    const existing = await ctx.prisma.user.findUnique({ where: { name: trimmed } });
-    if (existing && existing.role !== ROLE_PLAYER) {
+    // Imię nie jest już unikalne na serwerze (44a: każde konto MG z rejestracji
+    // nazywa się „MG”), więc szukamy gracza, a imię konta MG zostaje zajęte.
+    // Imienne linki i imię unikalne w kampanii przychodzą w 44b.
+    const existing = await ctx.prisma.user.findFirst({
+      where: { name: trimmed, role: ROLE_PLAYER },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!existing && (await ctx.prisma.user.findFirst({ where: { name: trimmed } }))) {
       return reply.code(400).send({ error: 'NAME_TAKEN' });
     }
     const user =

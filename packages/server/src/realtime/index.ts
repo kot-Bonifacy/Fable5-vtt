@@ -577,6 +577,11 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
   io.on('connection', (socket) => {
     const user = socket.data.user;
     app.log.info({ socketId: socket.id, userId: user.id, role: user.role }, 'socket connected');
+    // „Ostatnie wejście” w panelu właściciela (44a) — sesja żyje rok, więc samo
+    // logowanie mówiłoby o tym niewiele.
+    void ctx.prisma.user
+      .update({ where: { id: user.id }, data: { lastSeenAt: new Date() } })
+      .catch(() => undefined);
 
     socket.emit('server:hello', createServerHello());
     // #11: gniazdo żyje tyle, co jego sesja — wylogowanie rozłącza pokój sesji,

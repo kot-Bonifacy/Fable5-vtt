@@ -114,7 +114,7 @@ describe('GM login', () => {
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { password: 'zle-haslo' },
+      payload: { login: 'MG', password: 'zle-haslo' },
     });
     expect(res.statusCode).toBe(401);
   });
@@ -123,7 +123,7 @@ describe('GM login', () => {
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { password: GM_PASSWORD },
+      payload: { login: 'MG', password: GM_PASSWORD },
     });
     expect(res.statusCode).toBe(200);
     const state = res.json() as AuthState;
