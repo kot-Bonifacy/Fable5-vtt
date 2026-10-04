@@ -8,6 +8,8 @@ import { formatSessionClock } from '../session-view.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { CreateCampaignForm } from '../components/CreateCampaignForm.js';
 import { OwnerAccounts } from '../components/OwnerAccounts.js';
+import { OwnerAiPanel } from '../components/OwnerAi.js';
+import { AiAccessRequest } from '../components/AiAccessRequest.js';
 import { CampaignPlayers } from '../components/CampaignPlayers.js';
 
 function CampaignCard({
@@ -139,7 +141,19 @@ export function GmPanel() {
         ))
       )}
 
-      {user.owner && <OwnerAccounts />}
+      {user.owner ? (
+        <>
+          <section className="panel-card">
+            <header className="panel-card-header">
+              <h2>AI właściciela</h2>
+            </header>
+            <OwnerAiPanel />
+          </section>
+          <OwnerAccounts />
+        </>
+      ) : (
+        <AiAccessRequest />
+      )}
     </div>
   );
 }

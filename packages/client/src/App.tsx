@@ -20,6 +20,7 @@ import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
+import { OwnerAiWindow } from './components/OwnerAi.js';
 import { MusicWindow } from './components/MusicWindow.js';
 import { useSceneAmbience } from './components/SceneAmbience.js';
 import { useMusicPlayer } from './music-player.js';
@@ -139,6 +140,7 @@ function GameView() {
       <PortraitCropEditor />
       <CheckRequestDialog />
       <SettingsWindow />
+      <OwnerAiWindow />
       <MusicWindow />
       <ClockWindow />
       <ShortcutsWindow />

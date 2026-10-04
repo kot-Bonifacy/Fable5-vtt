@@ -4,7 +4,7 @@ import type {
   CpredRegistry,
   CpredShopRules,
 } from '@vtt/shared';
-import type { AiGateway } from './ai/gateway.js';
+import type { AiAccess } from './ai/access.js';
 import type { ServerConfig } from './config.js';
 import type { PrismaClient } from './db.js';
 import type { StatusRegistry } from './statuses.js';
@@ -27,8 +27,12 @@ export interface AppContext {
    * decides a cover's body points — a client only ever names a preset.
    */
   covers: CpredCoverCatalogue;
-  /** Bots and the GM assistant; always optional at runtime — may be offline. */
-  ai: AiGateway;
+  /**
+   * Bots and the GM assistant; always optional at runtime — may be offline.
+   * Since stage 44d the gateway sits behind the owner's AI gate: game code
+   * asks `ai.forCampaign(id)`, never the gateway itself.
+   */
+  ai: AiAccess;
   /** Złe hasła i zaproszenia per IP (#12); brak = bez limitu (`config.rateLimits`). */
   loginLimiter?: LoginAttemptLimiter;
   /** Nowe konta MG per IP (44a, 5 na godzinę); liczy udane rejestracje, nie porażki. */

@@ -20,6 +20,7 @@ import { useAiStore } from '../stores/aiStore.js';
 import { ensureBotTemplatesLoaded, useBotStore } from '../stores/botStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { aiBadgeText, aiReasonLine, aiUnavailableMessage } from '../ai-status.js';
 
 function ackErrorText(code: string): string {
   switch (code) {
@@ -36,7 +37,7 @@ function ackErrorText(code: string): string {
     case 'BOT_EMPTY_MESSAGE':
       return 'Wpisz treść wypowiedzi.';
     case 'AI_UNAVAILABLE':
-      return 'AI Gateway nie odpowiada — bot nie wykona akcji.';
+      return aiUnavailableMessage('AI Gateway nie odpowiada — bot nie wykona akcji.');
     case 'TARGET_NOT_FOUND':
       return 'Wskazany gracz nie należy do tej kampanii.';
     case 'NO_CAMPAIGN':
@@ -57,7 +58,9 @@ export function BotPanel() {
   const order = useBotStore((s) => s.order);
   const templates = useBotStore((s) => s.templates);
   const openEditor = useBotStore((s) => s.openEditor);
-  const available = useAiStore((s) => s.status.available);
+  const aiStatus = useAiStore((s) => s.status);
+  const available = aiStatus.available;
+  const reasonLine = aiReasonLine(aiStatus);
 
   const scenes = useSceneStore((s) => s.scenes);
   const botActivity = useChatStore((s) => s.botActivity);
@@ -163,7 +166,7 @@ export function BotPanel() {
     <div className="bot-panel">
       <div className="bot-panel-head">
         <span className={`badge ${available ? 'badge--ok' : 'badge--off'}`}>
-          {available ? 'model gotowy' : 'boty offline'}
+          {available ? 'model gotowy' : aiBadgeText(aiStatus)}
         </span>
         <span className="bot-panel-count">
           aktywne w sesji: {activeCount}/{order.length}
@@ -171,7 +174,9 @@ export function BotPanel() {
       </div>
       {!available && (
         <p className="ai-form-hint">
-          Profile edytujesz normalnie — rozmowa testowa wymaga uruchomionego AI Gateway.
+          {reasonLine
+            ? `${reasonLine} Profile edytujesz normalnie, a stół gra dalej bez botów.`
+            : 'Profile edytujesz normalnie — rozmowa testowa wymaga uruchomionego AI Gateway.'}
         </p>
       )}
 

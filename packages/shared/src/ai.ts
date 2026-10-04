@@ -27,6 +27,64 @@ export interface AiGpuInfo {
 }
 
 /**
+ * Why AI is off for a campaign (stage 44d). `offline` is the gateway itself;
+ * the rest come from the owner's AI being shared with other GMs.
+ */
+export type AiAccessReason = 'offline' | 'busy' | 'no-consent' | 'sharing-off' | 'owner-absent';
+
+/** Polish sentence for the GM — bot panel, AI panel, refused requests. */
+export function aiAccessReasonText(reason: AiAccessReason): string {
+  switch (reason) {
+    case 'offline':
+      return 'AI Gateway nie odpowiada.';
+    case 'busy':
+      return 'AI zajęte przez inną sesję.';
+    case 'no-consent':
+      return 'Brak zgody właściciela na AI — poproś o dostęp w Panelu MG.';
+    case 'sharing-off':
+      return 'Właściciel nie udostępnia teraz AI.';
+    case 'owner-absent':
+      return 'Właściciela serwera nie ma przy komputerze — AI wróci, gdy wejdzie i je udostępni.';
+  }
+}
+
+/**
+ * Powód odmowy z gotowego zdania — brama AI wysyła w zdarzeniu błędu sam tekst
+ * (`detail`), a zdanie o nieudanej turze bota chce wiedzieć, że to nie awaria.
+ */
+export function aiAccessReasonOfText(text: string | undefined): AiAccessReason | null {
+  if (!text) return null;
+  const reasons: AiAccessReason[] = [
+    'offline',
+    'busy',
+    'no-consent',
+    'sharing-off',
+    'owner-absent',
+  ];
+  return reasons.find((reason) => aiAccessReasonText(reason) === text) ?? null;
+}
+
+/**
+ * Dlaczego AI nie działa, w jednym zdaniu bez kropki — do komunikatów paneli
+ * (dziennik, baza wiedzy). Bez powodu albo przy martwym gatewayu: brak połączenia.
+ */
+export function aiUnavailableText(status: AiStatus): string {
+  const reason = status.reason;
+  if (!reason || reason === 'offline') return 'brak połączenia z AI Gateway';
+  return aiAccessReasonText(reason).replace(/\.$/, '');
+}
+
+export function isAiAccessReason(value: unknown): value is AiAccessReason {
+  return (
+    value === 'offline' ||
+    value === 'busy' ||
+    value === 'no-consent' ||
+    value === 'sharing-off' ||
+    value === 'owner-absent'
+  );
+}
+
+/**
  * Bot availability pushed to clients. Players receive only the fields they need
  * to see features greyed out; model name, GPU and error details are GM-only.
  */
@@ -44,6 +102,12 @@ export interface AiStatus {
   restarts?: number;
   gpu?: AiGpuInfo | null;
   error?: string | null;
+  /**
+   * Why bots are off for THIS campaign although the gateway may be fine
+   * (stage 44d: the owner's consent, switch, presence and the AI lease).
+   * GM only — a player learns just „boty niedostępne”.
+   */
+  reason?: AiAccessReason | null;
 }
 
 export function offlineAiStatus(now: Date = new Date()): AiStatus {

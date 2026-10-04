@@ -41,6 +41,7 @@ import { useJournalStore } from '../stores/journalStore.js';
 import { plural } from '../plural.js';
 import { Markdown } from './Markdown.js';
 import { EmptyState } from './EmptyState.js';
+import { aiUnavailableMessage } from '../ai-status.js';
 
 /**
  * Dziennik kampanii — zakładka MG (19c) i kronika stołu (24b).
@@ -120,7 +121,7 @@ function SummarySection() {
         .getState()
         .fail(
           ack.error === 'AI_UNAVAILABLE'
-            ? 'Brak połączenia z AI Gateway — streszczanie wymaga modelu.'
+            ? aiUnavailableMessage('Brak połączenia z AI Gateway — streszczanie wymaga modelu.')
             : `Nie udało się zacząć streszczania: ${ack.error}`,
           ack.error,
         );

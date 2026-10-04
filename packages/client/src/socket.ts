@@ -18,6 +18,8 @@ import type {
   AiQueueBroadcast,
   AiStatus,
   AiStatusBroadcast,
+  AiAccessView,
+  OwnerAiState,
   AttackEvadePayload,
   AttackNoEvadePayload,
   AttackSmartPayload,
@@ -338,6 +340,8 @@ import { useSettingsStore } from './stores/settingsStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useHudStore } from './stores/hudStore.js';
 import { useTradeStore } from './stores/tradeStore.js';
+import { freshAiRequests, useOwnerAiStore } from './stores/ownerAiStore.js';
+import { aiAccessSentence, aiUnavailableMessage } from './ai-status.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -409,8 +413,12 @@ function botNoticeText(notice: BotNoticeBroadcast): string {
   switch (notice.code) {
     // 503: gateway żyje, ale model jest zajęty albo się ładuje — inna rada niż
     // martwy gateway (#21).
-    case 'AI_UNAVAILABLE':
+    case 'AI_UNAVAILABLE': {
+      // AI właściciela (44d): „zajęte przez inną sesję” to nie „model się ładuje”.
+      const access = aiAccessSentence(notice.detail);
+      if (access) return `${notice.botName} nie odpowiada — ${access}`;
       return `${notice.botName} nie odpowiada — model jest zajęty albo jeszcze niegotowy; spróbuj za chwilę.`;
+    }
     case 'AI_UNREACHABLE':
       return `${notice.botName} nie odpowiada — model jest niedostępny (AI Gateway offline).`;
     case 'BOT_STOPPED':
@@ -480,7 +488,10 @@ function aiErrorText(code: string, detail?: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'AI_UNAVAILABLE':
-      return 'Model jest niedostępny — sprawdź, czy AI Gateway i llama-server działają.';
+      return aiUnavailableMessage(
+        'Model jest niedostępny — sprawdź, czy AI Gateway i llama-server działają.',
+        detail,
+      );
     case 'AI_UNREACHABLE':
       return 'Brak połączenia z AI Gateway. Reszta VTT działa normalnie.';
     case 'AI_EMPTY_PROMPT':
@@ -830,6 +841,19 @@ export function connectSocket(userId: string): Socket {
     // tego „Brak połączenia z AI Gateway" wisiał w panelu do następnej akcji MG.
     if (broadcast.status.available) useJournalStore.getState().clearAiError();
   });
+  // AI właściciela (44d): panel właściciela i prośba MG — poza `seq`, jak status AI.
+  socket.on('ai-access:owner', (state: OwnerAiState) => {
+    const store = useOwnerAiStore.getState();
+    const fresh = freshAiRequests(store.state, state);
+    store.setState(state);
+    for (const request of fresh) {
+      chat().addNote(`MG „${request.login}” prosi o dostęp do Twojego AI.`, [
+        { label: 'Otwórz AI właściciela', run: () => useOwnerAiStore.getState().setOpen(true) },
+      ]);
+    }
+    if (fresh.length > 0) notifyGame('request');
+  });
+  socket.on('ai-access:mine', (mine: AiAccessView) => useOwnerAiStore.getState().setMine(mine));
   onPresented('ai:queue', (broadcast: AiQueueBroadcast) =>
     ai().setQueuePosition(broadcast.requestId, broadcast.position),
   );
@@ -1371,6 +1395,7 @@ export function connectSocket(userId: string): Socket {
 export function disconnectSocket(): void {
   rollPresentation.clear();
   cancelDiceAnimations();
+  useOwnerAiStore.getState().reset();
   socket?.disconnect();
   socket = undefined;
   connectedUserId = null;
@@ -2727,7 +2752,10 @@ export function journalErrorText(code: string, detail?: string): string {
     case 'JOURNAL_EMPTY_LOG':
       return 'Nie ma czego streścić — od ostatniego wpisu dziennika nikt nic nie powiedział na czacie.';
     case 'AI_UNAVAILABLE':
-      return 'Brak połączenia z AI Gateway — streszczanie wymaga modelu.';
+      return aiUnavailableMessage(
+        'Brak połączenia z AI Gateway — streszczanie wymaga modelu.',
+        detail,
+      );
     default:
       return detail ? `Streszczanie nie poszło: ${detail}` : 'Streszczanie nie poszło.';
   }
@@ -2889,8 +2917,12 @@ export const playBotTurn = (tokenId: string) =>
  */
 export function botTurnErrorText(code: string): string {
   switch (code) {
-    case 'AI_UNAVAILABLE':
+    case 'AI_UNAVAILABLE': {
+      const access = aiAccessSentence();
+      if (access)
+        return `${access.charAt(0).toLowerCase()}${access.slice(1, -1)} — zagraj tę turę ręką.`;
       return 'model jest niedostępny (AI Gateway nie odpowiada albo model się ładuje) — zagraj tę turę ręką.';
+    }
     case 'AI_UNREACHABLE':
       return 'brak połączenia z AI Gateway — zagraj tę turę ręką.';
     case 'TOKEN_NOT_FOUND':

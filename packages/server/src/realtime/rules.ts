@@ -19,6 +19,7 @@ import {
 } from '@vtt/shared';
 import type { AiChatRequest } from '../ai/gateway.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
+import { socketAi } from './ai.js';
 
 /**
  * Asystent zasad (etap 19a).
@@ -58,7 +59,7 @@ export function sendRulesStatus(status: RulesIndexStatus, socket: Socket): void 
 export const rulesStatusEvent = defineEvent<undefined, RulesIndexStatus>({
   name: 'rules:status',
   role: ROLE_GM,
-  handler: async ({ deps }) => deps.ctx.ai.rulesStatus(),
+  handler: async ({ deps, socket }) => socketAi(deps, socket).rulesStatus(),
 });
 
 /**
@@ -68,9 +69,13 @@ export const rulesStatusEvent = defineEvent<undefined, RulesIndexStatus>({
 export const rulesIndexEvent = defineEvent<undefined, RulesIndexStatus>({
   name: 'rules:index',
   role: ROLE_GM,
-  handler: async ({ deps }) => {
-    const started = await deps.ctx.ai.indexRulebook();
-    const status = await deps.ctx.ai.rulesStatus();
+  // Podręcznik jest wspólny dla wszystkich kampanii, a indeks liczy się
+  // minutami na PC właściciela — przebudowuje go tylko on (etap 44d).
+  ownerOnly: true,
+  handler: async ({ deps, socket }) => {
+    const ai = socketAi(deps, socket);
+    const started = await ai.indexRulebook();
+    const status = await ai.rulesStatus();
     // Odmowa gatewaya wraca jako status z powodem, nie jako kod błędu: „nie
     // znaleziono katalogu podręcznika" mówi MG, co zrobić, a `RAG_UNAVAILABLE`
     // nie mówi nic. Ack niesie tylko kod, więc powód musi jechać w danych.
@@ -88,7 +93,7 @@ export const rulesAskEvent = defineEvent<RulesAskPayload, { requestId: string }>
     if (question.length > MAX_RULES_QUESTION_LENGTH) {
       throw new RealtimeError('RULES_QUESTION_TOO_LONG');
     }
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    if (!socketAi(deps, socket).getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
 
     const requestId = randomUUID();
     // Odczepione jak `ai:ask`: ack wraca natychmiast, żeby panel mógł pokazać
@@ -112,7 +117,7 @@ async function answerRulesQuestion(
   const started = Date.now();
 
   try {
-    const found = await deps.ctx.ai.searchRules(question, RULES_TOP_K);
+    const found = await socketAi(deps, socket).searchRules(question, RULES_TOP_K);
     if (socket.disconnected) return;
     if (!found.ok) {
       emitError(socket, requestId, found.error.code, found.error.detail);
@@ -191,7 +196,7 @@ async function generate(
 
   let answer = '';
   let completionTokens: number | null = null;
-  for await (const event of deps.ctx.ai.streamChat(request, signal)) {
+  for await (const event of socketAi(deps, socket).streamChat(request, signal)) {
     if (socket.disconnected) return null;
     switch (event.type) {
       case 'think':

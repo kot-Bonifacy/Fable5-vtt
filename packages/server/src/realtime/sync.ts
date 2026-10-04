@@ -35,7 +35,7 @@ import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCombatFor } from './combat.js';
 import { fetchCharactersFor } from './character-io.js';
 import { fetchBotsFor } from './bots.js';
-import { aiStatusFor } from './ai.js';
+import { syncedAiStatus } from './ai.js';
 import { buildCompendiumSync } from './compendium.js';
 import { campaignShopTier, campaignShopTierOverrides } from './shop.js';
 import { campaignGameTime } from './gametime.js';
@@ -76,7 +76,7 @@ export async function buildStateSync(
       exploration: null,
       characters: [],
       bots: [],
-      ai: aiStatusFor(deps, user.role === ROLE_GM),
+      ai: syncedAiStatus(deps, socket, user, null),
       compendium: await buildCompendiumSync(deps, null),
       shopTier: SHOP_TIER_MIN,
       shopTierOverrides: {},
@@ -249,7 +249,7 @@ export async function buildStateSync(
     exploration,
     characters,
     bots,
-    ai: aiStatusFor(deps, user.role === ROLE_GM),
+    ai: syncedAiStatus(deps, socket, user, campaign.id),
     compendium,
     shopTier,
     shopTierOverrides,

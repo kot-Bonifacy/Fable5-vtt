@@ -1,7 +1,7 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { SessionUser } from '@vtt/shared';
-import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
+import { aiAccessReasonOfText, DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 
 /**
@@ -74,6 +74,8 @@ export function botFailureText(code: string, detail?: string): string {
     case 'AI_UNREACHABLE':
       return 'Brak połączenia z AI Gateway.';
     case 'AI_UNAVAILABLE':
+      // Brama AI właściciela (44d): powód to gotowe zdanie, a nie stan modelu.
+      if (aiAccessReasonOfText(detail)) return `${detail} Zagraj tę turę ręką.`;
       return `Model jest zajęty albo jeszcze niegotowy${detail ? ` (${detail})` : ''} — AI Gateway działa, spróbuj za chwilę.`;
     // Gateway żyje, ale generacja nie zmieściła się w `AI_REQUEST_TIMEOUT_MS`
     // (#46) — to nie awaria serwera, a tura i tak idzie dalej ręką MG.

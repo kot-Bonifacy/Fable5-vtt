@@ -93,7 +93,7 @@ export interface RulesSearchResult {
 
 /** Failure of a RAG call, already worded for the GM. */
 export interface RulesFailure {
-  code: 'AI_UNREACHABLE' | 'RAG_UNAVAILABLE' | 'AI_ERROR';
+  code: 'AI_UNREACHABLE' | 'RAG_UNAVAILABLE' | 'AI_ERROR' | 'AI_UNAVAILABLE';
   detail: string;
 }
 

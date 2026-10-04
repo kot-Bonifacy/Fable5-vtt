@@ -28,12 +28,14 @@ import {
   parseBotData,
   trimKnowledgePassage,
   validateKnowledgeEntry,
+  aiUnavailableText,
 } from '@vtt/shared';
 import type { RagDocumentInput } from '../ai/gateway.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignBot } from './bots.js';
 import { gmRoom } from './state.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Baza wiedzy kampanii (etap 19b).
@@ -131,10 +133,13 @@ async function indexStatus(
   entries?: KnowledgeEntryView[],
 ): Promise<KnowledgeIndexStatus> {
   const known = entries ?? (await fetchKnowledgeEntries(deps.ctx.prisma, campaignId));
-  if (!deps.ctx.ai.getStatus().available && known.length === 0) {
-    return { ...emptyKnowledgeIndexStatus(), reason: 'brak połączenia z AI Gateway' };
+  const status = campaignAi(deps, campaignId).getStatus();
+  if (!status.available && known.length === 0) {
+    return { ...emptyKnowledgeIndexStatus(), reason: aiUnavailableText(status) };
   }
-  const stats = await deps.ctx.ai.collectionStatus(knowledgeCollection(campaignId));
+  const stats = await campaignAi(deps, campaignId).collectionStatus(
+    knowledgeCollection(campaignId),
+  );
   return {
     ready: stats.ready,
     chunks: stats.chunks,
@@ -223,9 +228,10 @@ export const knowledgeUpsertEvent = defineEvent<KnowledgeUpsertPayload, Knowledg
     // bota bez restartu gatewaya". Nieudane indeksowanie nie cofa zapisu —
     // zostaje widoczny w UI stan „nieaktualny".
     const entry = toEntryView(stored);
-    const indexed = await deps.ctx.ai.indexDocuments(knowledgeCollection(campaignId), [
-      toDocument(entry),
-    ]);
+    const indexed = await campaignAi(deps, campaignId).indexDocuments(
+      knowledgeCollection(campaignId),
+      [toDocument(entry)],
+    );
     if (!indexed.ok) {
       deps.log.warn({ entryId: entry.id, err: indexed.error }, 'knowledge entry not indexed');
     }
@@ -254,9 +260,10 @@ export const knowledgeDeleteEvent = defineEvent<KnowledgeIdPayload, void>({
 
     // Wpis skasowany w edytorze musi natychmiast zniknąć z indeksu — inaczej bot
     // dalej pamiętałby miejsce, którego już nie ma.
-    const forgotten = await deps.ctx.ai.forgetDocuments(knowledgeCollection(campaignId), [
-      knowledgeSource(id),
-    ]);
+    const forgotten = await campaignAi(deps, campaignId).forgetDocuments(
+      knowledgeCollection(campaignId),
+      [knowledgeSource(id)],
+    );
     if (!forgotten.ok) {
       deps.log.warn({ entryId: id, err: forgotten.error }, 'knowledge entry left in the index');
     }
@@ -282,7 +289,10 @@ export const knowledgeReindexEvent = defineEvent<undefined, KnowledgeIndexStatus
     const collection = knowledgeCollection(campaignId);
     const entries = await fetchKnowledgeEntries(deps.ctx.prisma, campaignId);
 
-    const indexed = await deps.ctx.ai.indexDocuments(collection, entries.map(toDocument));
+    const indexed = await campaignAi(deps, campaignId).indexDocuments(
+      collection,
+      entries.map(toDocument),
+    );
     if (!indexed.ok) {
       return {
         ...(await indexStatus(deps, campaignId, entries)),
@@ -292,7 +302,7 @@ export const knowledgeReindexEvent = defineEvent<undefined, KnowledgeIndexStatus
     await Promise.all(entries.map((entry) => markIndexed(deps.ctx.prisma, entry, true)));
 
     const alive = new Set(entries.map((entry) => knowledgeSource(entry.id)));
-    const orphans = (await deps.ctx.ai.forgetOrphans(collection, alive)) ?? 0;
+    const orphans = (await campaignAi(deps, campaignId).forgetOrphans(collection, alive)) ?? 0;
     if (orphans > 0) deps.log.info({ campaignId, orphans }, 'knowledge index pruned');
 
     // Wiersze u MG niosą własny chip „nieaktualny", więc sam status indeksu ich
@@ -359,11 +369,11 @@ export async function collectBotKnowledge(
 
   const query = options.query.trim();
   if (query.length === 0) return NO_KNOWLEDGE;
-  if (!deps.ctx.ai.getStatus().available) {
-    return { ...NO_KNOWLEDGE, reason: 'brak połączenia z AI Gateway' };
-  }
+  const ai = campaignAi(deps, options.campaignId);
+  const status = ai.getStatus();
+  if (!status.available) return { ...NO_KNOWLEDGE, reason: aiUnavailableText(status) };
 
-  const found = await deps.ctx.ai.searchRules(
+  const found = await ai.searchRules(
     query,
     Math.min(context.topK, BOT_SEARCH_HARD_CAP),
     collections,

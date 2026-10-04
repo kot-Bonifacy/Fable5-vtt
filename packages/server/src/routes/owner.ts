@@ -74,6 +74,8 @@ export function registerOwnerRoutes(
       data: { blockedAt: blocked ? (found.user.blockedAt ?? new Date()) : null },
     });
     if (blocked) await endUserSessions(ctx.prisma, io, found.user.id, 'blocked');
+    // Zablokowany MG traci też zgodę na AI właściciela (44d) — od razu.
+    await ctx.ai.refresh();
     request.log.info({ userId: found.user.id, blocked }, 'GM account block changed');
     return { ok: true };
   });

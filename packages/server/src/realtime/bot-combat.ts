@@ -76,6 +76,7 @@ import {
   tokenSightFor,
   type SceneVisionContext,
 } from './vision.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Tura bota w walce (etap 20b).
@@ -431,7 +432,7 @@ async function runCombatDecision(
       jsonSchema: schema,
     };
     let raw = '';
-    for await (const event of deps.ctx.ai.streamChat(request, ctx.signal)) {
+    for await (const event of campaignAi(deps, ctx.campaignId).streamChat(request, ctx.signal)) {
       if (event.type === 'delta') raw += event.text;
       if (event.type === 'error') {
         return {
@@ -972,7 +973,9 @@ async function loadTurnContext(
   if (!character || character.campaignId !== campaignId) {
     return { refusal: 'Bot nie ma przypisanej karty postaci.' };
   }
-  if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+  if (!campaignAi(deps, campaignId).getStatus().available) {
+    throw new RealtimeError('AI_UNAVAILABLE');
+  }
 
   const [vision, catalogue] = await Promise.all([
     loadVisionContext(deps.ctx.prisma, scene),

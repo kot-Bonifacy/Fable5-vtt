@@ -35,6 +35,7 @@ import { performCharacterRoll } from './character-rolls.js';
 import { INCLUDE_CHAT_NAMES, insertChatMessage, deliverChatMessageTo } from './chat-io.js';
 import { toChatMessageView } from './chat-io.js';
 import { gmRoom } from './state.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Akcje botów w mechanice (etap 20a).
@@ -164,7 +165,13 @@ async function runDecision(
   deps: RealtimeDeps,
   bot: { id: string; name: string; data: BotProfileData },
   options: BotActionOption[],
-  ctx: { characterName: string | null; request: string; speaker: string; signal?: AbortSignal },
+  ctx: {
+    campaignId: string;
+    characterName: string | null;
+    request: string;
+    speaker: string;
+    signal?: AbortSignal;
+  },
 ): Promise<DecisionRun> {
   const started = Date.now();
   const prompt = buildBotDecisionPrompt({
@@ -194,7 +201,7 @@ async function runDecision(
       jsonSchema: schema,
     };
     let raw = '';
-    for await (const event of deps.ctx.ai.streamChat(request, ctx.signal)) {
+    for await (const event of campaignAi(deps, ctx.campaignId).streamChat(request, ctx.signal)) {
       if (event.type === 'delta') raw += event.text;
       if (event.type === 'error') {
         return {
@@ -282,6 +289,7 @@ export async function runBotAction(
   const options = sheet ? botSkillOptions(deps, sheet, request.request) : [];
 
   const run = await runDecision(deps, { id: stored.id, name: stored.name, data }, options, {
+    campaignId: request.campaignId,
     characterName: character?.name ?? null,
     request: request.request,
     speaker: request.speaker,
@@ -564,7 +572,9 @@ export const botActEvent = defineEvent<BotActPayload, { outcome: BotActionOutcom
     const bot = await requireCampaignBot(deps.ctx.prisma, campaignId, payload?.botId);
     const request = typeof payload?.request === 'string' ? payload.request.trim() : '';
     if (request.length === 0) throw new RealtimeError('BOT_EMPTY_MESSAGE');
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    if (!campaignAi(deps, campaignId).getStatus().available) {
+      throw new RealtimeError('AI_UNAVAILABLE');
+    }
 
     const outcome = await runBotAction(deps, {
       campaignId,

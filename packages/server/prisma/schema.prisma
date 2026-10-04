@@ -36,6 +36,13 @@ model User {
   /// Kept server-side rather than in the browser because the skin has to
   /// reach OTHER tables: the roller's dice are what everyone sees tumbling.
   diceSkin     String   @default("neon")
+  /// GM accounts only (stage 44d): the request for the owner's AI —
+  /// null (never asked) | "requested" | "granted" | "rejected" | "revoked".
+  /// Per account, so it covers every campaign of this GM, future ones too.
+  /// The owner's „Udostępniam AI” switch and the AI lease live in memory.
+  aiAccess      String?
+  aiRequestedAt DateTime?
+  aiDecidedAt   DateTime?
 
   sessions         Session[]
   memberships      CampaignMember[]

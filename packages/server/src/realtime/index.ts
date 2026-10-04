@@ -217,6 +217,7 @@ import { botSayEvent, botStopEvent } from './bot-turns.js';
 import { botActEvent, botProposalResolveEvent } from './bot-actions.js';
 import { botPlayTurnEvent } from './bot-combat.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
+import { pushOwnerAiState } from './ai-access.js';
 import { rulesAskEvent, rulesIndexEvent, rulesStatusEvent } from './rules.js';
 import {
   knowledgeDeleteEvent,
@@ -602,9 +603,15 @@ export function setupRealtime(
     app.addHook('onClose', async () => clearInterval(timer));
   }
 
-  // Gateway coming back or going down flips bot availability for everyone.
-  ctx.ai.onStatusChange((status) => {
-    broadcastAiStatus(deps, status);
+  // Gateway coming back or going down flips bot availability for everyone;
+  // so does the owner's AI changing hands (stage 44d: consent, switch,
+  // presence, lease) — each socket gets the status of its own campaign.
+  ctx.ai.gateway.onStatusChange(() => broadcastAiStatus(deps));
+  ctx.ai.onChange(() => {
+    broadcastAiStatus(deps);
+    void pushOwnerAiState(deps).catch((error: unknown) => {
+      app.log.error({ err: error }, 'owner AI state push failed');
+    });
   });
 
   io.use((socket, next) => {
@@ -638,6 +645,8 @@ export function setupRealtime(
     armSessionExpiry(socket);
     registerEvents(deps, socket, EVENTS);
     sendAiStatus(deps, socket);
+    // Obecność właściciela (44d) — gniazdo któregokolwiek konta z flagą.
+    if (user.owner) ctx.ai.ownerConnected(socket.id);
 
     void (async () => {
       try {
@@ -656,6 +665,7 @@ export function setupRealtime(
       app.log.info({ socketId: socket.id, reason }, 'socket disconnected');
       // Grot zostałby u reszty stołu obrócony na zawsze (`token:aim`).
       releaseSocketAim(deps, socket.id);
+      ctx.ai.ownerDisconnected(socket.id);
       const campaign = socket.data.campaign;
       if (campaign) {
         // The socket already left its rooms — recompute presence for the rest.

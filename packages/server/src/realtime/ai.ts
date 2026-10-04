@@ -9,41 +9,82 @@ import type {
   AiStatus,
   AiStatusBroadcast,
 } from '@vtt/shared';
-import { MAX_AI_PROMPT_LENGTH, ROLE_GM, publicAiStatus } from '@vtt/shared';
+import type { SessionUser } from '@vtt/shared';
+import { MAX_AI_PROMPT_LENGTH, ROLE_GM } from '@vtt/shared';
 import type { AiChatRequest } from '../ai/gateway.js';
+import type { CampaignAi } from '../ai/access.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 
 /**
  * Bot availability is not game state: it carries no seq and is never persisted.
- * A player only learns whether AI features work at all; the model name, GPU
- * usage and gateway errors stay with the GM — hence a per-socket emit instead
- * of a room broadcast.
+ * Since stage 44d it is per campaign — the owner's AI may be shared with one
+ * table and busy for another — so every socket gets its own computed status:
+ * the GM learns why bots are off (`reason`), a player only that they are.
  */
-export function broadcastAiStatus(deps: RealtimeDeps, status: AiStatus): void {
-  const forGm: AiStatusBroadcast = { status };
-  const forPlayer: AiStatusBroadcast = { status: publicAiStatus(status) };
-  for (const socket of deps.io.sockets.sockets.values()) {
-    socket.emit('ai:status', socket.data.user?.role === ROLE_GM ? forGm : forPlayer);
-  }
+export function broadcastAiStatus(deps: RealtimeDeps): void {
+  for (const socket of deps.io.sockets.sockets.values()) sendAiStatus(deps, socket, true);
 }
 
-/** Status for one socket, filtered by role — used on connect and in `state:sync`. */
-export function aiStatusFor(deps: RealtimeDeps, isGm: boolean): AiStatus {
-  const status = deps.ctx.ai.getStatus();
-  return isGm ? status : publicAiStatus(status);
+/** Status for one socket's campaign, filtered by role — on connect and in `state:sync`. */
+export function aiStatusFor(
+  deps: RealtimeDeps,
+  user: SessionUser,
+  campaignId: string | null,
+): AiStatus {
+  return deps.ctx.ai.statusFor(campaignId, { gm: user.role === ROLE_GM, owner: user.owner });
 }
 
-export function sendAiStatus(deps: RealtimeDeps, socket: Socket): void {
-  const payload: AiStatusBroadcast = {
-    status: aiStatusFor(deps, socket.data.user.role === ROLE_GM),
-  };
+/** Co gniazdo już wie — bez znacznika czasu sprawdzenia. */
+function aiStatusKey(status: AiStatus): string {
+  const { checkedAt: _checkedAt, ...meaningful } = status;
+  return JSON.stringify(meaningful);
+}
+
+/** Status jedzie w `state:sync` — zapamiętaj go jak wysłany osobno. */
+export function syncedAiStatus(
+  deps: RealtimeDeps,
+  socket: Socket,
+  user: SessionUser,
+  campaignId: string | null,
+): AiStatus {
+  const status = aiStatusFor(deps, user, campaignId);
+  socket.data.aiStatusKey = aiStatusKey(status);
+  return status;
+}
+
+/**
+ * `onlyChanged` — rozgłoszenie po zmianie dzierżawy czy zgody: gniazdo, któremu
+ * nic się nie zmieniło, nie dostaje nic. Inaczej start sesji jednej grupy
+ * stukałby `ai:status` u wszystkich stołów serwera.
+ */
+export function sendAiStatus(deps: RealtimeDeps, socket: Socket, onlyChanged = false): void {
+  const user = socket.data.user as SessionUser | undefined;
+  if (!user) return;
+  const campaignId = (socket.data.campaign as { id: string } | null | undefined)?.id ?? null;
+  const status = aiStatusFor(deps, user, campaignId);
+  const key = aiStatusKey(status);
+  if (onlyChanged && socket.data.aiStatusKey === key) return;
+  socket.data.aiStatusKey = key;
+  const payload: AiStatusBroadcast = { status };
   socket.emit('ai:status', payload);
+}
+
+/** Brama AI kampanii (44d) — jedyna droga z kodu gry do gatewaya. */
+export function campaignAi(deps: RealtimeDeps, campaignId: string): CampaignAi {
+  return deps.ctx.ai.forCampaign(campaignId);
+}
+
+/** Brama AI kampanii gniazda — zdarzenie bez kampanii dostaje `NO_ACTIVE_CAMPAIGN`. */
+export function socketAi(deps: RealtimeDeps, socket: Socket): CampaignAi {
+  const campaign = socket.data.campaign as { id: string } | null | undefined;
+  if (!campaign) throw new RealtimeError('NO_ACTIVE_CAMPAIGN');
+  return deps.ctx.ai.forCampaign(campaign.id);
 }
 
 /**
  * GM test screen: sends one question to the model and streams the answer back
- * to the asking socket only. Stage 11 will reuse `ctx.ai.streamChat` to post
- * bot answers into the chat instead.
+ * to the asking socket only — through the campaign's AI gate, like every
+ * other AI request (stage 44d).
  */
 export const aiAskEvent = defineEvent<AiAskPayload, { requestId: string }>({
   name: 'ai:ask',
@@ -54,7 +95,8 @@ export const aiAskEvent = defineEvent<AiAskPayload, { requestId: string }>({
     const system = typeof payload?.system === 'string' ? payload.system.trim() : '';
     if (!prompt) throw new RealtimeError('AI_EMPTY_PROMPT');
     if (prompt.length > MAX_AI_PROMPT_LENGTH) throw new RealtimeError('AI_PROMPT_TOO_LONG');
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    const ai = socketAi(deps, socket);
+    if (!ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
 
     const requestId = randomUUID();
     const purpose = payload.purpose ?? 'test';
@@ -71,12 +113,13 @@ export const aiAskEvent = defineEvent<AiAskPayload, { requestId: string }>({
 
     // Streaming runs detached: the ack returns immediately so the client can
     // render a placeholder while tokens arrive.
-    void streamToSocket(deps, socket, requestId, request);
+    void streamToSocket(ai, deps, socket, requestId, request);
     return { requestId };
   },
 });
 
 async function streamToSocket(
+  ai: CampaignAi,
   deps: RealtimeDeps,
   socket: Socket,
   requestId: string,
@@ -88,7 +131,7 @@ async function streamToSocket(
   socket.once('ai:cancel', abort);
 
   try {
-    for await (const event of deps.ctx.ai.streamChat(request, controller.signal)) {
+    for await (const event of ai.streamChat(request, controller.signal)) {
       if (socket.disconnected) return;
       switch (event.type) {
         case 'queue': {
@@ -128,9 +171,17 @@ async function streamToSocket(
   }
 }
 
-/** Forces a health check now — the test screen's „sprawdź ponownie" button. */
+/**
+ * Forces a health check now — the test screen's „sprawdź ponownie" button.
+ * Health is the gateway's, not a campaign's, so it is no AI request; the
+ * answer goes through the gate like any status.
+ */
 export const aiRefreshEvent = defineEvent<undefined, AiStatus>({
   name: 'ai:refresh',
   role: ROLE_GM,
-  handler: async ({ deps }) => deps.ctx.ai.checkHealth(),
+  handler: async ({ deps, socket, user }) => {
+    await deps.ctx.ai.gateway.checkHealth();
+    const campaignId = (socket.data.campaign as { id: string } | null | undefined)?.id ?? null;
+    return aiStatusFor(deps, user, campaignId);
+  },
 });

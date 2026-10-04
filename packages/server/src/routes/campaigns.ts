@@ -130,6 +130,8 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       }
       return created;
     });
+    // Brama AI (44d) zna kampanie z pamięci — nowa musi do niej trafić.
+    await ctx.ai.refresh();
     return reply.code(201).send(toCampaignSummary(campaign));
   });
 

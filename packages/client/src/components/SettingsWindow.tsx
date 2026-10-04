@@ -13,6 +13,7 @@ import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { PasswordChange } from './PasswordChange.js';
+import { OwnerLink } from './AiAccessRequest.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
@@ -42,6 +43,8 @@ export function SettingsWindow() {
 
   // Hasło zmienia tu zwykłe konto MG (44a); właściciel ma je w `.env`, gracz nie ma go wcale.
   const changesPassword = useAuthStore((s) => s.user?.role === 'GM' && !s.user.owner);
+  // Gracz może tu połączyć konto z właścicielem serwera (44d).
+  const isPlayer = useAuthStore((s) => s.user?.role === 'PLAYER');
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
 
@@ -196,10 +199,10 @@ export function SettingsWindow() {
           </label>
         </section>
 
-        {changesPassword && (
+        {(changesPassword || isPlayer) && (
           <section className="settings-group settings-group--account">
             <h3 className="settings-group-title">Konto</h3>
-            <PasswordChange />
+            {changesPassword ? <PasswordChange /> : <OwnerLink />}
           </section>
         )}
       </div>

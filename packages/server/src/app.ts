@@ -9,12 +9,14 @@ import type { ServerConfig } from './config.js';
 import type { AppContext } from './context.js';
 import { createPrisma, type PrismaClient } from './db.js';
 import { AiGateway } from './ai/gateway.js';
+import { AiAccess } from './ai/access.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { ensureGmUser } from './auth/seed.js';
 import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerOwnerRoutes } from './routes/owner.js';
+import { registerAiAccessRoutes } from './routes/ai-access.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
@@ -135,12 +137,16 @@ export async function buildApp(
 
   app.get('/health', () => ({ status: 'ok', uptime: process.uptime() }));
 
-  const ai = new AiGateway({
+  const gateway = new AiGateway({
     url: config.aiGatewayUrl,
     apiKey: config.aiGatewayApiKey,
     healthIntervalMs: config.aiHealthIntervalMs,
     requestTimeoutMs: config.aiRequestTimeoutMs,
     fetchImpl: options.aiFetch,
+  });
+  const ai = new AiAccess(prisma, gateway, {
+    ownerGraceMs: config.aiOwnerGraceMs ?? 120_000,
+    requestTimeoutMs: config.aiRequestTimeoutMs,
   });
 
   const shopRules = await loadShopRules(config.dataPublicDir, config.dataPrivateDir, app.log);
@@ -169,6 +175,7 @@ export async function buildApp(
   });
   registerAuthRoutes(app, ctx, io);
   registerOwnerRoutes(app, ctx, io);
+  registerAiAccessRoutes(app, ctx, io);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);
@@ -176,7 +183,7 @@ export async function buildApp(
 
   const realtime = setupRealtime(io, app, ctx, options.clock);
   registerMusicRoutes(app, ctx, io);
-  ai.start();
+  gateway.start();
 
   // Kopie zapasowe (etap 33): jedna przy starcie, potem co godzinę. Brak
   // sekcji `backups` w konfiguracji znaczy „ten proces kopii nie robi" — tak
@@ -195,11 +202,15 @@ export async function buildApp(
   app.addHook('onClose', async () => {
     stopSnapshots();
     ai.stop();
+    gateway.stop();
     io.close();
     await prisma.$disconnect();
   });
 
   await ensureGmUser(prisma, config, app.log);
+  // Kampanie, sesje i zgody do bramy AI (44d) — po fladze właściciela, przed
+  // pierwszym żądaniem.
+  await ai.refresh();
   // Płaskie `uploads/<katalog>/` sprzed 44b do katalogów kampanii — przed
   // pierwszym żądaniem, bo strażnik płaskich adresów już nie wydaje.
   await migrateFlatUploads(prisma, config.uploadsDir, app.log);

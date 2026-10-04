@@ -49,6 +49,7 @@ import {
   splitSummaryDraft,
   transcriptBudget,
   validateJournalEntry,
+  aiUnavailableText,
 } from '@vtt/shared';
 import type { AiChatRequest, RagDocumentInput } from '../ai/gateway.js';
 import type { PrismaClient } from '../db.js';
@@ -57,6 +58,7 @@ import { fetchBotRelations } from './relations.js';
 import { broadcastChatMessage, insertChatMessage } from './chat-io.js';
 import { campaignMemberSockets, gmRoom } from './state.js';
 import { campaignGameTime } from './gametime.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Dziennik kampanii i streszczanie sesji (etap 19c).
@@ -327,10 +329,11 @@ async function indexStatus(
   entries?: JournalEntryView[],
 ): Promise<JournalIndexStatus> {
   const known = entries ?? (await fetchJournalEntries(deps.ctx.prisma, campaignId));
-  if (!deps.ctx.ai.getStatus().available && known.length === 0) {
-    return { ...emptyJournalIndexStatus(), reason: 'brak połączenia z AI Gateway' };
+  const status = campaignAi(deps, campaignId).getStatus();
+  if (!status.available && known.length === 0) {
+    return { ...emptyJournalIndexStatus(), reason: aiUnavailableText(status) };
   }
-  const stats = await deps.ctx.ai.collectionStatus(journalCollection(campaignId));
+  const stats = await campaignAi(deps, campaignId).collectionStatus(journalCollection(campaignId));
   return {
     ready: stats.ready,
     chunks: stats.chunks,
@@ -541,9 +544,10 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
     // następnej wypowiedzi NPC-a, bez restartu gatewaya. Nieudane indeksowanie
     // nie cofa zapisu — zostaje widoczny stan „nieaktualny".
     const entry = toEntryView(fresh);
-    const indexed = await deps.ctx.ai.indexDocuments(journalCollection(campaignId), [
-      toDocument(entry),
-    ]);
+    const indexed = await campaignAi(deps, campaignId).indexDocuments(
+      journalCollection(campaignId),
+      [toDocument(entry)],
+    );
     if (!indexed.ok) {
       deps.log.warn({ entryId: entry.id, err: indexed.error }, 'journal entry not indexed');
     }
@@ -637,9 +641,10 @@ export const journalDeleteEvent = defineEvent<JournalIdPayload, void>({
     const removed = await deps.ctx.prisma.journalEntry.deleteMany({ where: { campaignId, id } });
     if (removed.count === 0) throw new RealtimeError('ENTRY_NOT_FOUND');
 
-    const forgotten = await deps.ctx.ai.forgetDocuments(journalCollection(campaignId), [
-      journalSource(id),
-    ]);
+    const forgotten = await campaignAi(deps, campaignId).forgetDocuments(
+      journalCollection(campaignId),
+      [journalSource(id)],
+    );
     if (!forgotten.ok) {
       deps.log.warn({ entryId: id, err: forgotten.error }, 'journal entry left in the index');
     }
@@ -662,7 +667,10 @@ export const journalReindexEvent = defineEvent<undefined, JournalIndexStatus>({
     const collection = journalCollection(campaignId);
     const entries = await fetchJournalEntries(deps.ctx.prisma, campaignId);
 
-    const indexed = await deps.ctx.ai.indexDocuments(collection, entries.map(toDocument));
+    const indexed = await campaignAi(deps, campaignId).indexDocuments(
+      collection,
+      entries.map(toDocument),
+    );
     if (!indexed.ok) {
       return {
         ...(await indexStatus(deps, campaignId, entries)),
@@ -672,7 +680,7 @@ export const journalReindexEvent = defineEvent<undefined, JournalIndexStatus>({
     await Promise.all(entries.map((entry) => markIndexed(deps.ctx.prisma, entry, true)));
 
     const alive = new Set(entries.map((entry) => journalSource(entry.id)));
-    const orphans = (await deps.ctx.ai.forgetOrphans(collection, alive)) ?? 0;
+    const orphans = (await campaignAi(deps, campaignId).forgetOrphans(collection, alive)) ?? 0;
     if (orphans > 0) deps.log.info({ campaignId, orphans }, 'journal index pruned');
 
     // To samo, co w knowledge.ts: bez rozesłania wpisów chip „nieaktualny" wisi
@@ -698,7 +706,8 @@ export const journalSummarizeEvent = defineEvent<JournalSummarizePayload, { requ
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    if (!campaignAi(deps, campaignId).getStatus().available)
+      throw new RealtimeError('AI_UNAVAILABLE');
     const hint =
       typeof payload?.hint === 'string'
         ? payload.hint.trim().slice(0, JOURNAL_HINT_MAX_LENGTH)
@@ -742,7 +751,8 @@ async function summarizeSession(
       where: { id: campaignId },
       select: { name: true },
     });
-    const contextSize = deps.ctx.ai.getStatus().contextSize ?? BOT_CONTEXT_FALLBACK_TOKENS;
+    const contextSize =
+      campaignAi(deps, campaignId).getStatus().contextSize ?? BOT_CONTEXT_FALLBACK_TOKENS;
     const budget = transcriptBudget(contextSize, JOURNAL_MAP_MAX_TOKENS);
     const batches = planBatches(lines, budget).slice(0, MAX_BATCHES);
 
@@ -756,7 +766,14 @@ async function summarizeSession(
         total: batches.length,
         campaignName: campaign?.name ?? null,
       });
-      const note = await generate(deps, system, user, JOURNAL_MAP_MAX_TOKENS, controller.signal);
+      const note = await generate(
+        deps,
+        campaignId,
+        system,
+        user,
+        JOURNAL_MAP_MAX_TOKENS,
+        controller.signal,
+      );
       if (note === null) {
         emitError(socket, requestId, 'AI_ERROR', `nie udało się streścić porcji ${index + 1}`);
         return;
@@ -781,6 +798,7 @@ async function summarizeSession(
         });
         const part = await generate(
           deps,
+          campaignId,
           system,
           user,
           JOURNAL_REDUCE_MAX_TOKENS,
@@ -804,6 +822,7 @@ async function summarizeSession(
     });
     const raw = await generate(
       deps,
+      campaignId,
       reduce.system,
       reduce.user,
       JOURNAL_REDUCE_MAX_TOKENS,
@@ -857,6 +876,7 @@ async function summarizeSession(
  */
 async function generate(
   deps: RealtimeDeps,
+  campaignId: string,
   system: string,
   user: string,
   maxTokens: number,
@@ -877,7 +897,7 @@ async function generate(
 
   let text = '';
   try {
-    for await (const event of deps.ctx.ai.streamChat(request, deadline)) {
+    for await (const event of campaignAi(deps, campaignId).streamChat(request, deadline)) {
       if (event.type === 'delta') text += event.text;
       if (event.type === 'error') {
         deps.log.warn({ code: event.code, detail: event.detail }, 'journal generation failed');
@@ -935,7 +955,7 @@ async function proposeRelations(
     bots: roster,
     characters: characters.map((character) => character.name),
   });
-  const raw = await generate(deps, system, user, 400, signal);
+  const raw = await generate(deps, campaignId, system, user, 400, signal);
   if (raw === null) return [];
 
   const proposals: RelationProposal[] = [];

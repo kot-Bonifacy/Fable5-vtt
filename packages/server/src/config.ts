@@ -27,6 +27,12 @@ export interface ServerConfig {
   /** Hard cap on a single generation before the server gives up. */
   aiRequestTimeoutMs: number;
   /**
+   * Karencja AI właściciela (etap 44d): ile po zamknięciu ostatniej karty
+   * właściciela „Udostępniam AI” gaśnie samo (`VTT_AI_OWNER_GRACE_SECONDS`,
+   * decyzja MG: 2 min). Brak = 2 min (testy dymne).
+   */
+  aiOwnerGraceMs?: number;
+  /**
    * Where the bots' decision log lands (stage 20a): one JSON line per decision,
    * prompt and raw answer included. Empty (or absent, as in tests) disables it —
    * the log carries GM notes and campaign secrets, so it stays a dev knob.
@@ -119,6 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     aiGatewayApiKey: env.AI_GATEWAY_API_KEY ?? '',
     aiHealthIntervalMs: Number(env.AI_HEALTH_INTERVAL_MS ?? 10_000),
     aiRequestTimeoutMs: Number(env.AI_REQUEST_TIMEOUT_MS ?? 120_000),
+    aiOwnerGraceMs: positive(env.VTT_AI_OWNER_GRACE_SECONDS, 120) * 1000,
     // Domyślnie w `data/private` (gitignore) — dziennik decyzji cytuje prompt,
     // a w prompcie stoją sekrety NPC-ów. Pusta wartość wyłącza zapis.
     botDecisionLogPath:

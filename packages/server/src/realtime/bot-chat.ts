@@ -38,6 +38,7 @@ import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitBotUpsert, requireCampaignBot, toBotView } from './bots.js';
 import { collectBotKnowledge } from './knowledge.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Running one bot turn — the piece stage 11 reuses to put bots on the session
@@ -55,6 +56,8 @@ export interface BotRuntime {
   id: string;
   name: string;
   data: BotProfileData;
+  /** Kampania bota — jej brama AI decyduje, czy model w ogóle odpowie (44d). */
+  campaignId: string;
 }
 
 export interface BotTurnOptions {
@@ -182,7 +185,7 @@ async function generateOnce(
 
   let raw = '';
   let usage: AiUsage | null = null;
-  for await (const event of deps.ctx.ai.streamChat(request, options.signal)) {
+  for await (const event of campaignAi(deps, bot.campaignId).streamChat(request, options.signal)) {
     switch (event.type) {
       case 'delta':
         raw += event.text;
@@ -332,9 +335,16 @@ export const botChatEvent = defineEvent<BotChatPayload, { requestId: string }>({
     if (!message) throw new RealtimeError('BOT_EMPTY_MESSAGE');
     if (message.length > BOT_TEST_MESSAGE_MAX_LENGTH)
       throw new RealtimeError('BOT_MESSAGE_TOO_LONG');
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    if (!campaignAi(deps, campaignId).getStatus().available) {
+      throw new RealtimeError('AI_UNAVAILABLE');
+    }
 
-    const runtime: BotRuntime = { id: bot.id, name: bot.name, data: parseBotData(bot.data) };
+    const runtime: BotRuntime = {
+      id: bot.id,
+      name: bot.name,
+      data: parseBotData(bot.data),
+      campaignId,
+    };
     const requestId = randomUUID();
     const speaker = payload?.speaker?.trim() || DEFAULT_SPEAKER;
     const turns: BotChatTurn[] = [
@@ -449,7 +459,7 @@ export const botTeachEvent = defineEvent<BotTeachPayload, { lesson: BotLesson; b
     }
 
     const quote = payload?.quote?.trim().slice(0, BOT_TEST_MESSAGE_MAX_LENGTH);
-    const text = await phraseLesson(deps, bot.name, correction, quote);
+    const text = await phraseLesson(deps, campaignId, bot.name, correction, quote);
     const data = appendLesson(parseBotData(bot.data), createLesson(text, 'gm', correction));
 
     const updated = await deps.ctx.prisma.botProfile.update({
@@ -467,15 +477,17 @@ export const botTeachEvent = defineEvent<BotTeachPayload, { lesson: BotLesson; b
 /** Asks the model to compress the correction; falls back to the raw wording. */
 async function phraseLesson(
   deps: RealtimeDeps,
+  campaignId: string,
   botName: string,
   correction: string,
   quote: string | undefined,
 ): Promise<string> {
-  if (!deps.ctx.ai.getStatus().available) return normalizeLesson(correction);
+  const ai = campaignAi(deps, campaignId);
+  if (!ai.getStatus().available) return normalizeLesson(correction);
   const { system, user } = buildLessonPrompt(botName, correction, quote);
   let raw = '';
   try {
-    for await (const event of deps.ctx.ai.streamChat({
+    for await (const event of ai.streamChat({
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },

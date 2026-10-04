@@ -1,6 +1,7 @@
 import type { ScenePoint } from '@vtt/shared';
 import { diceE2ECounts } from './dice3d.js';
 import { useAiStore } from './stores/aiStore.js';
+import { useOwnerAiStore } from './stores/ownerAiStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
@@ -88,6 +89,7 @@ export function installE2EHook(): void {
         light: useLightStore,
         music: useMusicStore,
         netRun: useNetRunStore,
+        ownerAi: useOwnerAiStore,
         roll: useRollStore,
         scene: useSceneStore,
         selection: useSelectionStore,

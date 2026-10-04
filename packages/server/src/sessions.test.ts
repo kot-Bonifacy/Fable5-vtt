@@ -537,6 +537,10 @@ describe('otwarcie innej kampanii', () => {
     expect((await emitAck(gm.socket, 'session:end', { campaignId: alfa.campaignId })).ok).toBe(
       true,
     );
+    // Gracz wraca do poczekalni innym połączeniem niż ack MG — jego
+    // `state:sync` potrafi przyjść w tej samej chwili, co ack. Liczy się to,
+    // co usłyszy dopiero po przejściu MG do innej kampanii.
+    await settle();
     const playerHeard = recordAll(player.socket);
     const gmSwitch = nextEvent<CampaignSwitchBroadcast>(gm.socket, 'campaign:switch');
     const gmSync = nextEvent<StateSyncPayload>(gm.socket, 'state:sync');

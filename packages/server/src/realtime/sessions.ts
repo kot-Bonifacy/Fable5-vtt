@@ -241,6 +241,8 @@ export async function startSession(
     throw new RealtimeError('SESSION_SLOTS_FULL');
   }
   deps.sessions.track(campaignId);
+  // Dzierżawa AI (44d): nowa sesja może dostać AI, jeśli nikt go nie trzyma.
+  await deps.ctx.ai.refresh();
   const started = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
   const summary = toCampaignSummary(started);
 
@@ -276,6 +278,8 @@ export async function endSession(
   });
   deps.sessions.forget(campaignId);
   if (ended.count !== 1) return false;
+  // Koniec sesji przekazuje AI następnej uprawnionej (44d).
+  await deps.ctx.ai.refresh();
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
   const summary = toCampaignSummary(campaign);
 

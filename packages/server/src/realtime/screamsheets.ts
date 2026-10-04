@@ -17,6 +17,7 @@ import {
   parseScreamsheetDraft,
 } from '@vtt/shared';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Generator screamsheetów (etap 24c).
@@ -46,7 +47,8 @@ export const screamsheetGenerateEvent = defineEvent<
     const campaignId = socket.data.campaign.id;
     // Degradacja z CLAUDE.md: bez gatewaya generator odmawia po polsku, a MG
     // wypełnia szablon ręcznie — reszta zakładki działa normalnie.
-    if (!deps.ctx.ai.getStatus().available) throw new RealtimeError('AI_UNAVAILABLE');
+    if (!campaignAi(deps, campaignId).getStatus().available)
+      throw new RealtimeError('AI_UNAVAILABLE');
 
     const topic =
       typeof payload?.topic === 'string'
@@ -108,7 +110,7 @@ async function writeScreamsheet(
     ]);
 
     let text = '';
-    for await (const event of deps.ctx.ai.streamChat(request, deadline)) {
+    for await (const event of campaignAi(deps, campaignId).streamChat(request, deadline)) {
       if (event.type === 'delta') text += event.text;
       if (event.type === 'error') {
         deps.log.warn({ code: event.code, detail: event.detail }, 'screamsheet generation failed');

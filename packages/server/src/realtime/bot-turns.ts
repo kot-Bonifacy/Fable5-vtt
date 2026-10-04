@@ -15,6 +15,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  aiAccessReasonText,
   BOT_CONTEXT_FALLBACK_TOKENS,
   BOT_CONTEXT_SAFETY_TOKENS,
   BOT_SESSION_HISTORY_MAX_TURNS,
@@ -38,6 +39,7 @@ import { relationForSpeaker, speakingCharacter } from './relations.js';
 import { emitJournalPending } from './journal.js';
 import { getSceneById } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
+import { campaignAi } from './ai.js';
 
 /**
  * Bots as participants of the session chat (stage 11).
@@ -185,7 +187,8 @@ export async function requestBotTurns(
   requests: BotTurnRequest[],
 ): Promise<void> {
   if (requests.length === 0) return;
-  const available = deps.ctx.ai.getStatus().available;
+  const status = campaignAi(deps, requests[0]!.campaignId).getStatus();
+  const available = status.available;
   const queue = getQueue(requests[0]!.campaignId);
   let queued = 0;
 
@@ -204,10 +207,13 @@ export async function requestBotTurns(
     if (!bot || bot.campaignId !== request.campaignId || bot.archived || !bot.active) continue;
 
     if (!available) {
+      // Powód bramy AI (44d) — „zajęte przez inną sesję” to nie „model się ładuje”.
+      const reason = status.reason && status.reason !== 'offline' ? status.reason : null;
       notice(deps, request.campaignId, request.calledByUserId, {
         botId: bot.id,
         botName: bot.name,
         code: 'AI_UNAVAILABLE',
+        ...(reason ? { detail: aiAccessReasonText(reason) } : {}),
       });
       continue;
     }
@@ -384,13 +390,14 @@ async function buildBotContext(
     knowledgePassages: knowledge.passages,
     relation,
   });
-  const trimmed = await trimToBudget(deps, systemPrompt, turns, budget);
+  const trimmed = await trimToBudget(deps, bot.campaignId, systemPrompt, turns, budget);
   return { ...trimmed, knowledge, relation };
 }
 
 /** Tokens left for the prompt after reserving room for the answer. */
 function contextBudget(deps: RealtimeDeps, bot: BotRuntime): number {
-  const contextSize = deps.ctx.ai.getStatus().contextSize ?? BOT_CONTEXT_FALLBACK_TOKENS;
+  const contextSize =
+    campaignAi(deps, bot.campaignId).getStatus().contextSize ?? BOT_CONTEXT_FALLBACK_TOKENS;
   const reserved = bot.data.generation.maxTokens + BOT_CONTEXT_SAFETY_TOKENS;
   return Math.max(512, contextSize - reserved);
 }
@@ -402,6 +409,7 @@ function contextBudget(deps: RealtimeDeps, bot: BotRuntime): number {
  */
 async function trimToBudget(
   deps: RealtimeDeps,
+  campaignId: string,
   systemPrompt: string,
   turns: BotChatTurn[],
   budget: number,
@@ -411,7 +419,7 @@ async function trimToBudget(
       systemPrompt,
       ...candidate.map((turn) => `${turn.speaker ?? ''}: ${turn.text}`),
     ].join('\n');
-    const counted = await deps.ctx.ai.countTokens(text);
+    const counted = await campaignAi(deps, campaignId).countTokens(text);
     return counted ?? estimatePromptTokens(text);
   };
 
@@ -439,6 +447,7 @@ async function runQueuedTurn(
     id: stored.id,
     name: stored.name,
     data: parseBotData(stored.data),
+    campaignId: request.campaignId,
   };
   const [scene, participants, authorId] = await Promise.all([
     request.sceneId ? getSceneById(deps.ctx.prisma, request.sceneId) : Promise.resolve(null),

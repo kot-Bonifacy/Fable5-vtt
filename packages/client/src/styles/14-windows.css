@@ -700,3 +700,47 @@
   font-size: 0.75rem;
   color: var(--text-dim);
 }
+
+/* ---------------------------------------------------------------------------
+   AI właściciela (etap 44d)
+
+   Okno dzieli chrom z ustawieniami i zegarem, jak każde okno z górnego paska;
+   w Panelu MG ta sama treść stoi w karcie panelu. Wiersz prośby bierze wygląd
+   wiersza konta z panelu właściciela (`.owner-account`).
+   --------------------------------------------------------------------------- */
+
+.owner-ai-window {
+  width: min(440px, calc(100vw - 24px));
+}
+
+.owner-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.owner-ai-sharing {
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.owner-ai-lease {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Znaczek „AI” w górnym pasku: licznik czekających próśb przy literach. */
+.owner-ai-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.owner-ai-count {
+  padding: 0 0.35rem;
+  line-height: 1.3;
+}

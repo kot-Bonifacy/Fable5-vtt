@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { AiStatus } from '@vtt/shared';
 import { askAi, refreshAiStatus } from '../socket.js';
 import { useAiStore, type AiExchange } from '../stores/aiStore.js';
+import { aiBadgeText, aiReasonLine } from '../ai-status.js';
 
 /** Human-readable llama-server state for the GM diagnostics line. */
 function llamaLabel(status: AiStatus): string {
@@ -34,7 +35,7 @@ function StatusLine({ status }: { status: AiStatus }) {
     <div className="ai-status">
       <div className="ai-status-main">
         <span className={`badge ${status.available ? 'badge--ok' : 'badge--off'}`}>
-          {status.available ? 'boty dostępne' : 'boty offline'}
+          {aiBadgeText(status)}
         </span>
         <span className="ai-status-text">{llamaLabel(status)}</span>
         <button type="button" className="small-button" onClick={() => void recheck()}>
@@ -79,6 +80,7 @@ function StatusLine({ status }: { status: AiStatus }) {
           </>
         )}
       </dl>
+      {aiReasonLine(status) && <p className="ai-status-error">{aiReasonLine(status)}</p>}
       {status.error && <p className="ai-status-error">{status.error}</p>}
     </div>
   );
@@ -180,7 +182,9 @@ export function AiPanel() {
             rows={3}
             value={prompt}
             placeholder={
-              status.available ? 'Zadaj pytanie modelowi…' : 'Boty offline — uruchom AI Gateway'
+              status.available
+                ? 'Zadaj pytanie modelowi…'
+                : (aiReasonLine(status) ?? 'Boty offline — uruchom AI Gateway')
             }
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={(event) => {
