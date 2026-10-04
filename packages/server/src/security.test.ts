@@ -223,19 +223,25 @@ describe('#10 — aktywna kampania i jej pliki tylko dla członków', () => {
     const other = await createCampaign('Obca kampania');
     const stranger = await joinAs(await invite(other, 'Obcy'));
     expect(stranger.state.activeCampaign?.id).toBe(other);
+    // Etap 44c: MG kończy sesję obcej kampanii i wraca do stołu „Nocnej zmiany”.
     const gm = createSocket(gmCookie);
     await gm.firstSync;
-    expect((await emitAck(gm.socket, 'campaign:activate', { campaignId: homeCampaignId })).ok).toBe(
+    expect((await emitAck(gm.socket, 'session:end', { campaignId: other })).ok).toBe(true);
+    expect((await emitAck(gm.socket, 'campaign:open', { campaignId: homeCampaignId })).ok).toBe(
+      true,
+    );
+    expect((await emitAck(gm.socket, 'session:start', { campaignId: homeCampaignId })).ok).toBe(
       true,
     );
     gm.socket.disconnect();
 
+    // Gracz obcej kampanii dostaje swoją kampanię — nigdy tę drugą.
     const me = await built.app.inject({
       method: 'GET',
       url: '/api/auth/me',
       headers: { cookie: stranger.cookie },
     });
-    expect((me.json() as AuthState).activeCampaign).toBeNull();
+    expect((me.json() as AuthState).activeCampaign?.id).toBe(other);
     const pool = await built.app.inject({
       method: 'GET',
       url: '/api/portrait-assets',

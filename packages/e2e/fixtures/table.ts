@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { Actor } from './actors.ts';
 import { playerLink } from './links.ts';
+import { emitAck } from './socket.ts';
 
 /**
  * Drobne czynności przy stole, wspólne dla wielu plików — przez UI, jak u ludzi.
@@ -46,11 +47,32 @@ export async function rollTotals(page: Page): Promise<string[]> {
   return page.locator('.chat-roll .chat-roll-total').allTextContents();
 }
 
-/** Kampania przez API kontem MG (zakłada i aktywuje) — krok UI tego samego to T3. */
-export async function createCampaign(mg: Actor, name: string): Promise<string> {
+/**
+ * Kampania przez API kontem MG: zakłada (otwiera się u MG) i — chyba że
+ * `session: false` — od razu rozpoczyna sesję, żeby gracze siedli przy stole
+ * (etap 44c). Krok UI tego samego to T3a („Utwórz”, „Rozpocznij sesję”).
+ */
+export async function createCampaign(
+  mg: Actor,
+  name: string,
+  { session = true }: { session?: boolean } = {},
+): Promise<string> {
   const response = await mg.page.request.post('/api/campaigns', { data: { name } });
   if (response.status() !== 201) throw new Error(`E2E: campaign ${response.status()}`);
-  return ((await response.json()) as { id: string }).id;
+  const id = ((await response.json()) as { id: string }).id;
+  if (session) await startSession(mg, id);
+  return id;
+}
+
+/** „Rozpocznij sesję” gniazdem MG (etap 44c) — bez UI, dla fixture'ów. */
+export async function startSession(mg: Actor, campaignId: string): Promise<void> {
+  const socket = await mg.socket();
+  try {
+    const ack = await emitAck(socket, 'session:start', { campaignId });
+    if (!ack.ok) throw new Error(`E2E: session:start ${ack.error}`);
+  } finally {
+    socket.disconnect();
+  }
 }
 
 /** Imienny link dla gracza (etap 44b): nowy gracz albo odnowienie — `playerLink`. */

@@ -7,6 +7,7 @@ import type { RoomSequences } from './state.js';
 import type { SocketRateLimiter } from '../rate-limit.js';
 import { withPresentation } from './presentation.js';
 import { endSocketSession, socketSessionExpired } from './session-guard.js';
+import { BETWEEN_SESSIONS_EVENTS, type SessionClock } from './session-clock.js';
 
 /** Shared dependencies passed to every realtime event handler. */
 export interface RealtimeDeps {
@@ -17,6 +18,8 @@ export interface RealtimeDeps {
   presentation?: (() => Promise<void> | void)[];
   /** Limit tempa zdarzeń per konto (#13); brak = bez limitu (`config.rateLimits`). */
   rateLimiter?: SocketRateLimiter;
+  /** Liczniki trwających sesji i ich progi (etap 44c, `realtime/sessions.ts`). */
+  sessions: SessionClock;
 }
 
 /** Thrown by handlers to reject an event with a machine-readable code. */
@@ -103,10 +106,25 @@ export function registerEvents(
         ack?.({ ok: false, error: 'FORBIDDEN' });
         return;
       }
+      // Etap 44c: gracz między sesjami nie siedzi przy stole — wolno mu tylko
+      // to, co stoi na białej liście (karta, dziennik, handouty, czytanie
+      // czatu). Odmowa przed bazą, także dla zdarzenia wysłanego z konsoli.
+      if (
+        socket.data.campaign &&
+        socket.data.atTable !== true &&
+        !BETWEEN_SESSIONS_EVENTS.has(event.name)
+      ) {
+        ack?.({ ok: false, error: 'SESSION_NOT_RUNNING' });
+        return;
+      }
 
       void (async () => {
         try {
           const result = await event.handler({ deps, socket, user, payload: payload as never });
+          // Zegar bezczynności (44c) liczy zdarzenia gry przy stole.
+          const campaignId = (socket.data.campaign as { id: string } | null | undefined)?.id;
+          if (campaignId && socket.data.atTable === true)
+            deps.sessions.touch(campaignId, event.name);
           ack?.(result === undefined ? { ok: true } : { ok: true, data: result });
         } catch (error) {
           if (error instanceof RealtimeError) {

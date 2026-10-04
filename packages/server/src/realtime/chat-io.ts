@@ -22,7 +22,7 @@ import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
 import type { RollResult } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
-import { campaignRoom } from './state.js';
+import { campaignMemberSockets, campaignRoom, lobbyRoom } from './state.js';
 import { deferView } from './presentation.js';
 import { campaignGmUser } from './campaign-gm.js';
 
@@ -329,7 +329,14 @@ export function visibleTo(user: SessionUser) {
       // różnica między nimi: cicha karta losowania nie ma prawa wejść graczowi
       // do historii nawet wtedy, gdy MG pokaże stołowi ten sam wynik osobnym
       // wierszem.
+      //
+      // `prep: false` (etap 44c): wiersz napisany bez trwającej sesji to
+      // przygotowanie MG — rzut próbny, rozmowa z botem, „minęła noc” przy
+      // przesuwaniu zegara. Gracz go nie dostaje nigdy, także po starcie
+      // następnej sesji; zostają mu wyłącznie własne i adresowane do niego
+      // (dwie klauzule niżej).
       {
+        prep: false,
         kind: {
           in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery', 'rolltable'],
         },
@@ -411,6 +418,31 @@ export function broadcastChatMessage(
   const room = campaignRoom(campaignId);
   const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message };
   deps.io.to(room).emit('chat:message', payload);
+  void deliverToLobbyParties(deps, campaignId, message, 'chat:message');
+}
+
+/**
+ * Etap 44c: rozgłoszenie wiersza idzie do stołu, a gracz między sesjami przy
+ * nim nie siedzi. Własny wiersz (rzut kreatora, karta zakupu) i adresowany do
+ * niego dostaje jednak na żywo, jak w historii (`visibleTo`) — inaczej kubek
+ * kreatora nie zobaczyłby swoich kości. Bez `seq`: gracz poza stołem nie
+ * śledzi numeracji pokoju, do którego nie należy.
+ */
+async function deliverToLobbyParties(
+  deps: RealtimeDeps,
+  campaignId: string,
+  message: ChatMessageView,
+  event: 'chat:message' | 'chat:update',
+): Promise<void> {
+  const parties = new Set([message.authorId, message.recipientId].filter(Boolean));
+  if (parties.size === 0) return;
+  const sockets = await deps.io.in(lobbyRoom(campaignId)).fetchSockets();
+  for (const socket of sockets) {
+    const socketUser = (socket.data as { user: SessionUser }).user;
+    if (!parties.has(socketUser.id)) continue;
+    const payload: ChatMessageBroadcast = { message: redactChatMessage(message, socketUser) };
+    socket.emit(event, payload);
+  }
 }
 
 /**
@@ -435,7 +467,8 @@ export async function deliverChatMessageTo(
   )
     return;
   const targets = new Set(userIds.filter((id): id is string => typeof id === 'string'));
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  // Także gracze między sesjami (44c): wiersz jest adresowany do nich z imienia.
+  const sockets = await campaignMemberSockets(deps.io, campaignId);
   for (const socket of sockets) {
     const socketUser = (socket.data as { user: SessionUser }).user;
     if (targets.has(socketUser.id) || (includeGm && socketUser.role === ROLE_GM)) {
@@ -472,6 +505,7 @@ export async function broadcastRedactedChatMessage(
     const payload: ChatMessageBroadcast = { seq, message: redactChatMessage(message, socketUser) };
     socket.emit(event, payload);
   }
+  await deliverToLobbyParties(deps, campaignId, message, event);
 }
 
 /**

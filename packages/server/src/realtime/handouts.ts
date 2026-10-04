@@ -23,7 +23,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 import { journalEntriesWithHandout, refreshJournalEntries } from './journal.js';
-import { campaignRoom, gmRoom } from './state.js';
+import { campaignMemberSockets, gmRoom } from './state.js';
 
 /**
  * Handouty — materiały MG podawane graczom do ręki (etap 24a).
@@ -175,7 +175,7 @@ async function emitToUsers(
 ): Promise<void> {
   const targets = new Set(userIds);
   if (targets.size === 0) return;
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  const sockets = await campaignMemberSockets(deps.io, campaignId);
   for (const socket of sockets) {
     const user = (socket.data as { user: SessionUser }).user;
     if (targets.has(user.id)) socket.emit(event, payload);

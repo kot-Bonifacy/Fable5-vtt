@@ -25,6 +25,7 @@ import type {
   SmokeClearPayload,
   AttackRollPayload,
   AttackRollResult,
+  CampaignSummary,
   CampaignSwitchBroadcast,
   CharacterInjuryPayload,
   CoverSyncBroadcast,
@@ -225,6 +226,7 @@ import type {
   ScreamsheetDraftBroadcast,
   ScreamsheetErrorBroadcast,
   ServerHello,
+  SessionChangedPush,
   SocketAck,
   StateSyncPayload,
   TokenAssetDeleteResult,
@@ -672,9 +674,12 @@ export function connectSocket(userId: string): Socket {
     // Another campaign, or the same one after a gap: old cards are history.
     useGmAttentionStore.getState().clear();
     chat().applySync(payload);
-    if (useMusicStore.getState().state?.campaignId !== payload.campaign?.id)
+    // Gracz między sesjami (44c) nie słyszy stołu — ani podkładu MG z przygotowań.
+    const seated =
+      payload.campaign !== null && (payload.campaign.sessionStartedAt !== null || viewer().isGm);
+    if (useMusicStore.getState().state?.campaignId !== payload.campaign?.id || !seated)
       useMusicStore.setState({ state: null, error: null, blocked: false });
-    void fetchMusic();
+    if (seated) void fetchMusic();
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
     useCharacterStore.getState().applySync(payload, !syncedSinceConnect);
@@ -749,6 +754,32 @@ export function connectSocket(userId: string): Socket {
    * (mieszka w sklepie logowania, karmionym RESTem) i wskaźniki tego widza,
    * które pokazują na figury z poprzedniej kampanii.
    */
+  /**
+   * Sesja kampanii ruszyła albo się skończyła (etap 44c). Gracza przesadzonego
+   * na stół albo z niego niesie już `state:sync` sprzed tego zdarzenia — tu
+   * zostaje nagłówek, stan sesji w obu magazynach i jedno zdanie na czacie.
+   */
+  onPresented('session:changed', (push: SessionChangedPush) => {
+    useAuthStore.setState({ activeCampaign: push.campaign });
+    useChatStore.setState({ campaign: push.campaign });
+    const isGm = useAuthStore.getState().user?.role === ROLE_GM;
+    if (push.campaign.sessionStartedAt) {
+      chat().addNote(isGm ? 'Sesja rozpoczęta — gracze są przy stole.' : 'MG rozpoczął sesję.');
+    } else if (push.reason === 'gm') {
+      chat().addNote(
+        isGm
+          ? 'Sesja zakończona — miejsce na sesję jest wolne, a Ty przygotowujesz dalej.'
+          : 'MG zakończył sesję. Do zobaczenia przy następnej.',
+      );
+    } else if (!isGm) {
+      chat().addNote('Sesja zakończyła się sama — przy stole długo nic się nie działo.');
+    }
+    // Podkład grany przy stole milknie u gracza, który od niego odchodzi.
+    if (!isGm && !push.campaign.sessionStartedAt) {
+      useMusicStore.setState({ state: null, error: null, blocked: false });
+    }
+  });
+
   onPresented('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
     useAuthStore.setState({ activeCampaign: broadcast.campaign });
     usePortraitStore.getState().reset();
@@ -759,8 +790,8 @@ export function connectSocket(userId: string): Socket {
     useHudStore.getState().setForm(null);
     chat().addNote(
       broadcast.campaign
-        ? `Aktywna kampania: ${broadcast.campaign.name}.`
-        : 'Ta kampania nie jest już aktywna — MG przełączył stół.',
+        ? `Otwarta kampania: ${broadcast.campaign.name}.`
+        : 'Twoje konto nie należy już do żadnej kampanii.',
     );
   });
 
@@ -2929,8 +2960,15 @@ export async function sendDiceSkin(skin: DiceSkinId): Promise<void> {
  * zdarzenie gniazda, a nie kolejna trasa REST: panel MG nie ma jak przestawić
  * cudzego ekranu, a serwer ma.
  */
-export const activateCampaign = (campaignId: string) =>
-  emitSceneAck('campaign:activate', { campaignId });
+export const openCampaign = (campaignId: string) =>
+  emitSceneAck<CampaignSummary>('campaign:open', { campaignId });
+
+/** „Rozpocznij sesję” (etap 44c): slot i gracze tej kampanii na stół. */
+export const startSession = (campaignId: string) =>
+  emitSceneAck<CampaignSummary>('session:start', { campaignId });
+
+/** „Zakończ sesję” (etap 44c): slot wolny, gracze wracają do widoku między sesjami. */
+export const endSession = (campaignId: string) => emitSceneAck('session:end', { campaignId });
 
 export const createScene = (name: string) => emitSceneAck<SceneView>('scene:create', { name });
 

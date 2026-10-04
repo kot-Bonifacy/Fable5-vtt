@@ -7,31 +7,61 @@ import type { PrismaClient } from '../db.js';
 import type { Session } from '../generated/prisma/client.js';
 import { SESSION_COOKIE } from '../auth/sessions.js';
 
+/** Kampania w kształcie, który jedzie do klienta (nagłówek, `state:sync`). */
+export function toCampaignSummary(campaign: {
+  id: string;
+  name: string;
+  sandbox: boolean;
+  sessionStartedAt: Date | null;
+  lastSessionEndedAt: Date | null;
+}): CampaignSummary {
+  return {
+    id: campaign.id,
+    name: campaign.name,
+    sandbox: campaign.sandbox,
+    sessionStartedAt: campaign.sessionStartedAt?.toISOString() ?? null,
+    lastSessionEndedAt: campaign.lastSessionEndedAt?.toISOString() ?? null,
+  };
+}
+
 /**
- * Aktywna kampania **dla tego konta** (#10, 01.10): MG — tylko własna (etap
- * 44a, `Campaign.gmId`), gracz — tylko wtedy, gdy jest jej członkiem. Gracz
- * innej kampanii dostawał z REST nazwę cudzej aktywnej kampanii i jej pulę
- * portretów — gniazdo pilnowało tego od początku (`resolveSocketCampaign`),
- * trasy HTTP nie.
+ * Kampania **tego konta** (od etapu 44c nie ma już jednej aktywnej na serwer).
  *
- * Kampania aktywna jest jeszcze jedna na serwer (aktywna per MG to 44c), więc
- * MG, którego kampania nie jest tą jedną, siedzi przy pustym stole.
+ * - **MG** — kampania otwarta u niego (`User.openCampaignId`), przy której
+ *   przygotowuje albo prowadzi sesję. Bez wpisu: własna z trwającą sesją,
+ *   a gdy takiej nie ma — najnowsza własna. Cudza nigdy (etap 44a).
+ * - **Gracz** — kampania, do której należy jego konto (44b). Stare konta
+ *   z kilku kampanii (sprzed 44b) dostają tę z trwającą sesją, potem najnowszą.
+ *
+ * Kampania gracza nie zależy od tego, czy sesja trwa — o stole decyduje
+ * `sessionStartedAt` (widok „Między sesjami”), nie brak kampanii.
  */
 export async function getUserActiveCampaign(
   prisma: PrismaClient,
   user: SessionUser,
 ): Promise<CampaignSummary | null> {
-  const campaign = await prisma.campaign.findFirst({
-    where: { active: true },
-    orderBy: { createdAt: 'desc' },
+  if (user.role === ROLE_GM) {
+    const account = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { openCampaign: true },
+    });
+    const open = account?.openCampaign;
+    if (open && campaignRunBy(open, user.id)) return toCampaignSummary(open);
+    const own = await prisma.campaign.findFirst({
+      where: { OR: [{ gmId: user.id }, { gmId: null }] },
+      orderBy: [{ sessionStartedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+    return own ? toCampaignSummary(own) : null;
+  }
+  const membership = await prisma.campaignMember.findFirst({
+    where: { userId: user.id },
+    include: { campaign: true },
+    orderBy: [
+      { campaign: { sessionStartedAt: { sort: 'desc', nulls: 'last' } } },
+      { joinedAt: 'desc' },
+    ],
   });
-  if (!campaign) return null;
-  const summary = { id: campaign.id, name: campaign.name, sandbox: campaign.sandbox };
-  if (user.role === ROLE_GM) return campaignRunBy(campaign, user.id) ? summary : null;
-  const membership = await prisma.campaignMember.findUnique({
-    where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } },
-  });
-  return membership ? summary : null;
+  return membership ? toCampaignSummary(membership.campaign) : null;
 }
 
 /**

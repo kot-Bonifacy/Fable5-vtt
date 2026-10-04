@@ -57,6 +57,7 @@ import { useChatStore, type ChatItem } from '../stores/chatStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
+import { useBetweenSessions } from '../session-view.js';
 
 const LOAD_MORE_THRESHOLD_PX = 48;
 const STICK_TO_BOTTOM_PX = 64;
@@ -876,6 +877,8 @@ export function ChatPanel() {
   const botTraces = useChatStore((s) => s.botTraces);
   const isGm = user?.role === ROLE_GM;
   const myUserId = user?.id ?? '';
+  // Etap 44c: między sesjami gracz czyta historię, ale nie pisze.
+  const betweenSessions = useBetweenSessions();
 
   const categories = useChatFilterStore((s) => s.categories);
   const toggleCategory = useChatFilterStore((s) => s.toggleCategory);
@@ -996,6 +999,12 @@ export function ChatPanel() {
         {synced && !campaign && (
           <p className="placeholder-text">Brak aktywnej kampanii — czat jest niedostępny.</p>
         )}
+        {/* Między sesjami (44c) gracz nigdy nie patrzy w pustą czerń. */}
+        {synced && betweenSessions && feed.length === 0 && (
+          <p className="placeholder-text">
+            Między sesjami czat jest tylko do czytania — historia z sesji pojawi się tutaj.
+          </p>
+        )}
         {loadingHistory && <p className="chat-note">Wczytywanie historii…</p>}
         {feed.map((entry) =>
           entry.kind === 'item' ? (
@@ -1044,19 +1053,21 @@ export function ChatPanel() {
           // people to type what they should be throwing. The command still
           // works for anyone who wants it.
           placeholder={
-            campaign
-              ? isGm
-                ? 'Wiadomość… (/w szept, /jako NPC)'
-                : 'Wiadomość… (/w <imię> — szept)'
-              : 'Czat niedostępny'
+            betweenSessions
+              ? 'Czat tylko do czytania'
+              : campaign
+                ? isGm
+                  ? 'Wiadomość… (/w szept, /jako NPC)'
+                  : 'Wiadomość… (/w <imię> — szept)'
+                : 'Czat niedostępny'
           }
-          disabled={!synced || !campaign}
+          disabled={!synced || !campaign || betweenSessions}
           aria-label="Wiadomość czatu"
         />
         <button
           className="primary-button"
           type="submit"
-          disabled={!synced || !campaign || draft.trim().length === 0}
+          disabled={!synced || !campaign || betweenSessions || draft.trim().length === 0}
         >
           Wyślij
         </button>

@@ -313,7 +313,7 @@ describe('rejestracja', () => {
 });
 
 describe('kampanie są własnością MG', () => {
-  it('każdy widzi tylko swoje, a cudzej nie aktywuje ani nie zaprasza do niej', async () => {
+  it('każdy widzi tylko swoje, a cudzej nie otwiera ani nie zaprasza do niej', async () => {
     const ownerCampaign = await createCampaign(ownerCookie, 'Kampania właściciela');
     const kasia = await registerGm('kasia');
     const kasiaCampaign = await createCampaign(kasia.cookie, 'Kampania Kasi');
@@ -350,7 +350,7 @@ describe('kampanie są własnością MG', () => {
 
     const { socket, firstSync } = createSocket(kasia.cookie);
     await firstSync;
-    const ack = await emitAck(socket, 'campaign:activate', { campaignId: ownerCampaign });
+    const ack = await emitAck(socket, 'campaign:open', { campaignId: ownerCampaign });
     expect(ack).toEqual({ ok: false, error: 'NOT_FOUND' });
   });
 
@@ -358,9 +358,7 @@ describe('kampanie są własnością MG', () => {
     const ownerCampaign = await createCampaign(ownerCookie, 'Aktywna u właściciela');
     const { socket, firstSync } = createSocket(ownerCookie);
     await firstSync;
-    expect((await emitAck(socket, 'campaign:activate', { campaignId: ownerCampaign })).ok).toBe(
-      true,
-    );
+    expect((await emitAck(socket, 'campaign:open', { campaignId: ownerCampaign })).ok).toBe(true);
 
     const tomek = await registerGm('tomek');
     expect(tomek.state.activeCampaign).toBeNull();

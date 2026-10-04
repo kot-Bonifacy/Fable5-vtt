@@ -56,7 +56,7 @@ function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (
-      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY)/.test(
+      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY|VTT_SESSION|VTT_MAX_SESSIONS)/.test(
         key,
       )
     ) {
@@ -92,6 +92,12 @@ function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     // limitu logowania (6.2.11, #12) zgaduje hasło z „obcego” adresu w nagłówku —
     // inaczej zablokowałby na 15 minut logowanie MG całej reszcie suity.
     TRUST_PROXY: '1',
+    // Etap 44c: zegar bezczynności sesji ma progi produkcyjne 15 min / 3 h,
+    // a pełny przebieg trwa ~40 min i potrafi zostawić kampanię bez gniazda na
+    // dłużej niż kwadrans (np. A czeka, gdy T9a gra przy B). Progi sprawdza
+    // `sessions.test.ts` na sztucznym zegarze; tu tylko nie mają przeszkadzać.
+    VTT_SESSION_EMPTY_MINUTES: '600',
+    VTT_SESSION_IDLE_MINUTES: '600',
     ...extra,
   };
 }

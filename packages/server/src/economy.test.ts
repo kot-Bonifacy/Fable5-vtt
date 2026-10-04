@@ -186,7 +186,7 @@ beforeAll(async () => {
   // way to be sure is to have one. Written straight to the DB — creating a
   // second campaign over HTTP would deactivate the one the sockets join.
   const outsideCampaign = await built.prisma.campaign.create({
-    data: { name: 'Inna kampania', active: false },
+    data: { name: 'Inna kampania' },
   });
   outsideCharacterId = (
     await built.prisma.character.create({

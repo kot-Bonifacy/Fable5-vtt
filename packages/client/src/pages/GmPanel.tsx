@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import type { CampaignDetail } from '@vtt/shared';
+import { sessionErrorText } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
-import { activateCampaign } from '../socket.js';
+import { openCampaign } from '../socket.js';
+import { formatSessionClock } from '../session-view.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { CreateCampaignForm } from '../components/CreateCampaignForm.js';
 import { OwnerAccounts } from '../components/OwnerAccounts.js';
@@ -10,20 +12,26 @@ import { CampaignPlayers } from '../components/CampaignPlayers.js';
 
 function CampaignCard({
   campaign,
+  runningElsewhere,
   onChanged,
 }: {
   campaign: CampaignDetail;
+  /** Nazwa innej kampanii tego MG z trwającą sesją — wtedy „Otwórz” czeka. */
+  runningElsewhere: string | null;
   onChanged: () => void;
 }) {
+  const [error, setError] = useState<string | null>(null);
+
   /**
-   * Przełączenie stołu. Idzie gniazdem, nie RESTem, bo serwer musi przy okazji
-   * przenieść **wszystkie** podpięte ekrany — do 22.08 zmieniała się sama nazwa
-   * w nagłówku, a mapa, czat i kolejka inicjatywy zostawały przy poprzedniej
-   * kampanii do przeładowania karty.
+   * Przejście do innej kampanii (etap 44c; do 44b „Aktywuj”, które przenosiło
+   * cały serwer). Idzie gniazdem, nie RESTem, bo serwer przenosi przy okazji
+   * wszystkie ekrany **tego MG** — gracze nie zauważają niczego.
    */
-  async function activate() {
-    const ack = await activateCampaign(campaign.id);
+  async function open() {
+    setError(null);
+    const ack = await openCampaign(campaign.id);
     if (ack.ok) onChanged();
+    else setError(sessionErrorText(ack.error) ?? 'Nie udało się otworzyć kampanii.');
   }
 
   /**
@@ -39,11 +47,26 @@ function CampaignCard({
     <section className="panel-card">
       <header className="panel-card-header">
         <h2>{campaign.name}</h2>
-        {campaign.active ? (
-          <span className="badge badge--ok">aktywna</span>
+        {campaign.sessionStartedAt && (
+          <span className="badge badge--live" title="Gracze tej kampanii są przy stole">
+            sesja od {formatSessionClock(campaign.sessionStartedAt)}
+          </span>
+        )}
+        {campaign.open ? (
+          <span className="badge badge--ok">otwarta</span>
         ) : (
-          <button type="button" className="small-button" onClick={() => void activate()}>
-            Aktywuj
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => void open()}
+            disabled={runningElsewhere !== null}
+            title={
+              runningElsewhere
+                ? `Najpierw zakończ sesję w kampanii „${runningElsewhere}”`
+                : 'Przejdź do tej kampanii — przygotowanie nie zajmuje miejsca na sesję'
+            }
+          >
+            Otwórz
           </button>
         )}
         <button
@@ -60,6 +83,7 @@ function CampaignCard({
         </button>
       </header>
 
+      {error && <p className="auth-error">{error}</p>}
       <CampaignPlayers campaign={campaign} onChanged={onChanged} />
     </section>
   );
@@ -94,7 +118,7 @@ export function GmPanel() {
 
       <CreateCampaignForm
         onCreated={refresh}
-        hint="Nowa kampania staje się aktywna — poprzednie są dezaktywowane."
+        hint="Nowa kampania otwiera się u Ciebie do przygotowania — gracze zobaczą stół dopiero po „Rozpocznij sesję”."
       />
 
       {campaigns === null ? (
@@ -103,7 +127,15 @@ export function GmPanel() {
         <p className="placeholder-text">Nie masz jeszcze żadnej kampanii — utwórz pierwszą.</p>
       ) : (
         campaigns.map((campaign) => (
-          <CampaignCard key={campaign.id} campaign={campaign} onChanged={() => void refresh()} />
+          <CampaignCard
+            key={campaign.id}
+            campaign={campaign}
+            runningElsewhere={
+              campaigns.find((other) => other.id !== campaign.id && other.sessionStartedAt)?.name ??
+              null
+            }
+            onChanged={() => void refresh()}
+          />
         ))
       )}
 

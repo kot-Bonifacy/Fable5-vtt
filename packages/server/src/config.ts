@@ -59,6 +59,30 @@ export interface ServerConfig {
    * wypadek zalewu kont na publicznym VPS.
    */
   registrationOpen?: boolean;
+  /**
+   * Sloty sesji (etap 44c). **Opcjonalne, i brak sekcji ma znaczenie**: tak
+   * stoją testy dymne (~80 literałów konfiguracji), w których kampania gra od
+   * chwili założenia — `POST /api/campaigns` od razu rozpoczyna jej sesję
+   * (i kończy pozostałe sesje tego MG, jak dawne „nowa kampania przejmuje
+   * stół”), bez limitu i bez zegara bezczynności. `loadConfig` daje sekcję
+   * zawsze, więc dev, E2E i produkcja mają przygotowanie, limit i zegar.
+   */
+  sessions?: SessionConfig;
+}
+
+export interface SessionConfig {
+  /** Ile sesji naraz (`VTT_MAX_SESSIONS`, domyślnie 2 — decyzja MG z 26.09). */
+  maxSessions: number;
+  /** Zwolnienie slotu, gdy przy stole nie ma żadnego gniazda (`VTT_SESSION_EMPTY_MINUTES`, 15). */
+  emptyMinutes: number;
+  /** Zwolnienie slotu po tylu minutach bez zdarzenia gry (`VTT_SESSION_IDLE_MINUTES`, 180). */
+  idleMinutes: number;
+}
+
+/** Dodatnia liczba z env albo wartość domyślna — `0` i śmieci nie wyłączają limitu. */
+function positive(raw: string | undefined, fallback: number): number {
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 export interface BackupConfig {
@@ -104,6 +128,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     rateLimits: env.RATE_LIMITS !== '0',
     trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
     registrationOpen: (env.VTT_REGISTRATION ?? 'open').trim().toLowerCase() !== 'closed',
+    sessions: {
+      maxSessions: Math.floor(positive(env.VTT_MAX_SESSIONS, 2)),
+      emptyMinutes: positive(env.VTT_SESSION_EMPTY_MINUTES, 15),
+      idleMinutes: positive(env.VTT_SESSION_IDLE_MINUTES, 180),
+    },
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),

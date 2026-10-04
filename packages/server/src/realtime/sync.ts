@@ -191,8 +191,9 @@ export async function buildStateSync(
       ? fetchAccessPointsFor(deps.ctx.prisma, viewedSceneId, user)
       : Promise.resolve<NetAccessPointView[]>([]),
     // Runs are campaign-wide rather than scene-wide: „a run survives a scene
-    // change" was the reason 26a put the architecture on the campaign.
-    fetchRunsFor(deps, campaign.id, user),
+    // change" was the reason 26a put the architecture on the campaign. A player
+    // between sessions (44c) sits at no table, so no run either.
+    socket.data.atTable === true ? fetchRunsFor(deps, campaign.id, user) : Promise.resolve([]),
     // Zegar świata (etap 37) — publiczny jak `shopTier`: data i pora dnia są
     // wspólne dla stołu, a monit rozliczenia liczy się z `settledMonth` po
     // stronie klienta, więc przeżywa przeładowanie strony.

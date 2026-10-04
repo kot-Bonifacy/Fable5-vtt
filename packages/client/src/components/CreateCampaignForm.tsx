@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { CampaignSummary } from '@vtt/shared';
 import { apiPost } from '../api.js';
-import { activateCampaign } from '../socket.js';
+import { openCampaign } from '../socket.js';
 
 /**
  * „Nowa kampania” — w Panelu MG i na pustym stole MG, który jeszcze żadnej
@@ -17,6 +17,7 @@ export function CreateCampaignForm({
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function createCampaign(event: FormEvent) {
     event.preventDefault();
@@ -24,11 +25,20 @@ export function CreateCampaignForm({
     if (trimmed.length === 0 || busy) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const created = await apiPost<CampaignSummary>('/api/campaigns', { name: trimmed });
-      // Trasa REST zapisała już `active`, ale o przeniesieniu ekranów wie
-      // wyłącznie warstwa gniazd — jedna droga dla „utwórz" i „aktywuj".
-      if (created?.id) await activateCampaign(created.id);
+      // Trasa REST otworzyła już kampanię u MG (etap 44c), ale o przeniesieniu
+      // jego ekranów wie wyłącznie warstwa gniazd — jedna droga dla „utwórz"
+      // i „Otwórz". Z trwającą sesją kampania czeka na liście.
+      if (created?.id) {
+        const ack = await openCampaign(created.id);
+        if (!ack.ok && ack.error === 'SESSION_RUNNING') {
+          setNotice(
+            `Kampania „${created.name}” czeka na liście — otworzysz ją po zakończeniu sesji.`,
+          );
+        }
+      }
       setName('');
       await onCreated?.();
     } catch {
@@ -61,6 +71,7 @@ export function CreateCampaignForm({
         </button>
       </div>
       {error && <p className="auth-error">{error}</p>}
+      {notice && <p className="auth-hint">{notice}</p>}
       {hint && <p className="auth-hint">{hint}</p>}
     </form>
   );

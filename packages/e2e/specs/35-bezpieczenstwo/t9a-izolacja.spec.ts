@@ -269,30 +269,24 @@ test.describe
     await page.getByLabel('Nowa kampania').fill(CAMPAIGN_B);
     await page.getByRole('button', { name: 'Utwórz', exact: true }).click();
     await expect
-      .poll(
-        () =>
-          queryOne<{ active: number }>('SELECT active FROM Campaign WHERE name = ?', CAMPAIGN_B)
-            ?.active,
-      )
-      .toBe(1);
-    const row = queryOne<{ id: string; gmId: string }>(
-      'SELECT id, gmId FROM Campaign WHERE name = ?',
+      .poll(() => queryOne<{ id: string }>('SELECT id FROM Campaign WHERE name = ?', CAMPAIGN_B))
+      .not.toBeUndefined();
+    const row = queryOne<{ id: string; gmId: string; sessionStartedAt: string | null }>(
+      'SELECT id, gmId, sessionStartedAt FROM Campaign WHERE name = ?',
       CAMPAIGN_B,
     )!;
+    // Etap 44c: nowa kampania to przygotowanie, bez slotu.
+    expect(row.sessionStartedAt).toBeNull();
     campaignB = row.id;
     bartekUserId = (await authOf(bartek)).user!.id;
     expect(row.gmId).toBe(bartekUserId);
     await expect.poll(async () => (await authOf(bartek))?.activeCampaign?.name).toBe(CAMPAIGN_B);
-    // Znany stan sprzed 44c: grupa A traci stół, MG-A siedzi przy pustym.
+    // Od 44c kampania MG-B nie zdejmuje stołu grupie A (do 44b zdejmowała).
     for (const actor of aActors()) {
       await expect
-        .poll(async () => (await authOf(actor))?.activeCampaign ?? null, { message: actor.name })
-        .toBeNull();
+        .poll(async () => (await authOf(actor))?.activeCampaign?.name, { message: actor.name })
+        .toBe(CAMPAIGN_A);
     }
-    test.info().annotations.push({
-      type: 'znany stan przed 44c',
-      description: 'kampania MG-B zdjęła stół MG-A, Markowi i Oli (T9b, punkt 4)',
-    });
   });
 
   test('9.2 MG-B buduje przez UI: scena z mapą, portrety, statysta z kartą, handout, notatka, bot', async () => {
@@ -408,6 +402,15 @@ test.describe
     kubaToken = await issue('Kuba');
     const marekToken = await issue('Marek');
     await page.goto('/');
+    // Etap 44c: MG-B rozpoczyna sesję z górnego paska (Firefox) — dopiero wtedy
+    // gracze B siadają przy stole. Dwie sesje naraz: A i B.
+    await page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await expect(page.locator('.session-state--live')).toContainText('sesja');
+    expect(
+      queryOne<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM Campaign WHERE sessionStartedAt IS NOT NULL',
+      )!.n,
+    ).toBe(2);
 
     kuba = await cast.gracz('Kuba', 'chromium', kubaToken);
     marekB = await cast.gracz('Marek', 'firefox', marekToken);
@@ -775,45 +778,47 @@ test.describe
     });
   });
 
-  test('9.2 MG-A wraca do „Nocnej zmiany”: grupa A przy stole, grupa B bez stołu, nic nie przecieka w obie strony', async () => {
+  test('9.2 dwie sesje naraz, koniec sesji B nie rusza A; nic nie przecieka w obie strony', async () => {
     const bMarks = await Promise.all(bActors().map((actor) => actor.sniffer.mark()));
-    const page = mg.page;
-    await page.goto('/gm');
-    await page
-      .locator('.panel-card', { has: page.getByRole('heading', { name: CAMPAIGN_A }) })
-      .getByRole('button', { name: 'Aktywuj' })
-      .click();
-    await expect
-      .poll(
-        () =>
-          queryOne<{ active: number }>('SELECT active FROM Campaign WHERE id = ?', campaignA)
-            ?.active,
-      )
-      .toBe(1);
-    await page.goto('/');
-    for (const actor of aActors()) {
-      await expect
-        .poll(async () => (await authOf(actor))?.activeCampaign?.name, { message: actor.name })
-        .toBe(CAMPAIGN_A);
-      await expect
-        .poll(
-          async () =>
-            (await actor.store<{ scene: { name: string } | null }>('scene'))?.scene?.name ?? null,
-          {
-            message: actor.name,
-          },
-        )
-        .not.toBeNull();
+    // Grupa A przez cały czas przy stole — kampania B niczego jej nie zdjęła.
+    const atTable = async () => {
+      for (const actor of aActors()) {
+        await expect
+          .poll(async () => (await authOf(actor))?.activeCampaign?.name, { message: actor.name })
+          .toBe(CAMPAIGN_A);
+        await expect
+          .poll(
+            async () =>
+              (await actor.store<{ scene: { name: string } | null }>('scene'))?.scene?.name ?? null,
+            { message: actor.name },
+          )
+          .not.toBeNull();
+      }
+    };
+    await atTable();
+
+    // MG-B kończy sesję (Firefox, dwa kliknięcia): gracze B wracają do widoku
+    // między sesjami, MG-B zostaje w przygotowaniu.
+    const page = bartek.page;
+    await page.getByRole('button', { name: 'Zakończ sesję' }).click();
+    await page.getByRole('button', { name: 'Na pewno? Zakończ' }).click();
+    await expect(page.locator('.session-state--prep')).toHaveText('przygotowanie');
+    for (const actor of [kuba, marekB]) {
+      await expect(actor.page.locator('.between-sessions')).toBeVisible();
+      await expect(actor.page.getByLabel('Wiadomość czatu')).toBeDisabled();
+      expect((await authOf(actor))?.activeCampaign?.name).toBe(CAMPAIGN_B);
     }
-    for (const actor of bActors()) {
-      await expect
-        .poll(async () => (await authOf(actor))?.activeCampaign ?? null, { message: actor.name })
-        .toBeNull();
-    }
+    await atTable();
+    expect(
+      queryOne<{ sessionStartedAt: string | null }>(
+        'SELECT sessionStartedAt FROM Campaign WHERE id = ?',
+        campaignA,
+      )?.sessionStartedAt,
+    ).not.toBeNull();
     for (const [index, actor] of bActors().entries()) {
       expect(
         await actor.sniffer.found(aSecrets, bMarks[index]),
-        `${actor.name} po powrocie A`,
+        `${actor.name} po końcu sesji B`,
       ).toEqual([]);
       expect(await actor.sniffer.found(aSecrets), `${actor.name} cały przebieg`).toEqual([]);
     }

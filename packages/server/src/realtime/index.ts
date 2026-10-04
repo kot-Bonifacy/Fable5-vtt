@@ -1,20 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
-import { ROLE_GM, createServerHello } from '@vtt/shared';
+import { createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { SESSION_COOKIE, resolveSession } from '../auth/sessions.js';
 import { SocketRateLimiter } from '../rate-limit.js';
 import { armSessionExpiry, sessionRoom } from './session-guard.js';
 import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
-import { RoomSequences, campaignRoom, gmRoom } from './state.js';
+import { RoomSequences } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { releaseSocketAim, tokenAimEvent } from './aim.js';
-import { campaignActivateEvent, resolveSocketCampaign } from './campaigns.js';
+import { resolveSocketCampaign } from './campaigns.js';
+import {
+  campaignOpenEvent,
+  resumeSessions,
+  seatSocket,
+  sessionEndEvent,
+  sessionStartEvent,
+  sweepSessions,
+} from './sessions.js';
+import { SessionClock } from './session-clock.js';
 import { chatHistoryEvent, chatSendEvent } from './chat.js';
 import { diceSkinEvent } from './dice-skins.js';
 import {
-  joinInitialScene,
   sceneActivateEvent,
   sceneCreateEvent,
   sceneDeleteEvent,
@@ -277,8 +285,13 @@ declare module 'socket.io' {
     sessionId: string;
     /** Epoch ms after which the session (and this socket) is over (#11). */
     sessionExpiresAt: number;
-    /** Active campaign this socket belongs to (room joined); null when none. */
+    /** Campaign of this socket's account (GM: the open one); null when none. */
     campaign: CampaignSummary | null;
+    /**
+     * Seated at the campaign's table (stage 44c): the GM always, a player only
+     * while a session runs. False — a player between sessions (`lobbyRoom`).
+     */
+    atTable: boolean;
     /** Scene this socket currently views (scene room joined); null when none. */
     viewedSceneId: string | null;
   }
@@ -296,7 +309,9 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   archiveSnapshotEvent,
   archiveCharacterImportEvent,
   archiveSceneImportEvent,
-  campaignActivateEvent,
+  campaignOpenEvent,
+  sessionStartEvent,
+  sessionEndEvent,
   stateRequestEvent,
   chatSendEvent,
   chatHistoryEvent,
@@ -545,14 +560,47 @@ async function authenticateHandshake(
   return session ? { ...session, sessionId: unsigned.value } : null;
 }
 
-export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: AppContext): void {
+export interface RealtimeHandle {
+  deps: RealtimeDeps;
+  /** Sesje zastane w bazie już wczytane do zegara (test restartu na to czeka). */
+  ready: Promise<void>;
+  /** Jeden obrót zegara sesji (44c) — testy wołają go po przesunięciu zegara. */
+  sweepSessions: () => Promise<string[]>;
+}
+
+/** Co ile zegar sesji sprawdza progi bezczynności (rozpiska 44c: co minutę). */
+const SESSION_SWEEP_MS = 60_000;
+
+export function setupRealtime(
+  io: SocketIOServer,
+  app: FastifyInstance,
+  ctx: AppContext,
+  clock: () => number = Date.now,
+): RealtimeHandle {
   const deps: RealtimeDeps = {
     io,
     log: app.log,
     ctx,
     seqs: new RoomSequences(),
     ...(ctx.config.rateLimits ? { rateLimiter: new SocketRateLimiter() } : {}),
+    sessions: new SessionClock(ctx.config.sessions, clock),
   };
+
+  // Etap 44c: sesje zastane w bazie przeżywają restart, ich liczniki ruszają
+  // od teraz. Zegar tylko tam, gdzie są progi — testy dymne (bez sekcji
+  // `sessions`) obracają go same.
+  const ready = resumeSessions(deps).catch((error: unknown) => {
+    app.log.error({ err: error }, 'resuming sessions failed');
+  });
+  if (ctx.config.sessions) {
+    const timer = setInterval(() => {
+      void sweepSessions(deps).catch((error: unknown) => {
+        app.log.error({ err: error }, 'session sweep failed');
+      });
+    }, SESSION_SWEEP_MS);
+    timer.unref();
+    app.addHook('onClose', async () => clearInterval(timer));
+  }
 
   // Gateway coming back or going down flips bot availability for everyone.
   ctx.ai.onStatusChange((status) => {
@@ -594,14 +642,10 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
     void (async () => {
       try {
         const campaign = await resolveSocketCampaign(ctx.prisma, user);
-        socket.data.campaign = campaign;
         socket.data.viewedSceneId = null;
-        if (campaign) {
-          await socket.join(campaignRoom(campaign.id));
-          if (user.role === ROLE_GM) await socket.join(gmRoom(campaign.id));
-          await joinInitialScene(deps, socket, campaign.id);
-          await broadcastPresence(deps, campaign.id);
-        }
+        // Stół albo — gracz między sesjami — poczekalnia (etap 44c).
+        await seatSocket(deps, socket, campaign);
+        if (campaign) await broadcastPresence(deps, campaign.id);
         await sendStateSync(deps, socket, user);
       } catch (error) {
         app.log.error({ err: error, socketId: socket.id }, 'socket room setup failed');
@@ -621,4 +665,6 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
       }
     });
   });
+
+  return { deps, ready, sweepSessions: () => sweepSessions(deps) };
 }

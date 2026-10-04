@@ -988,7 +988,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await startInstance();
     mg = await cast.mg('chromium');
     const fresh = await createCampaign(mg, 'Nocna zmiana — import');
-    // Nowa kampania jest aktywna od razu; stół MG wczytuje ją po odświeżeniu.
+    // Nowa kampania otwiera się u MG z sesją (fixture); stół MG wczytuje ją po odświeżeniu.
     await mg.page.reload();
     await expect
       .poll(async () => (await mg.store<{ status: string } | null>('auth'))?.status)

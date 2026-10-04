@@ -32,7 +32,8 @@ import type { Segment, VisionSyncBroadcast } from './vision.js';
 import type { WallView } from './walls.js';
 
 /**
- * The active campaign changed under a connected client (`campaign:activate`).
+ * The campaign changed under a connected client: the GM opened another one of
+ * theirs (`campaign:open`, stage 44c), or a player's account lost its campaign.
  *
  * Arrives right after the `state:sync` that carries the new world, and says
  * only what that payload cannot: which campaign it was, so the client can
@@ -55,6 +56,11 @@ export interface PresenceEntry {
   userId: string;
   name: string;
   role: Role;
+  /**
+   * Etap 44c: false — gracz jest online, ale między sesjami (bez stołu).
+   * MG widzi go na liście, zanim kliknie „Rozpocznij sesję”.
+   */
+  atTable: boolean;
 }
 
 /**

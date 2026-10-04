@@ -475,7 +475,9 @@ const CASES: Record<string, Case> = {
   'bot:update': foreign((a) => ({ botId: a.botId, patch: { name: 'x' } })),
   'bot:delete': foreign((a) => ({ botId: a.botId })),
   'bot:duplicate': foreign((a) => ({ botId: a.botId })),
-  'campaign:activate': foreign((a) => ({ campaignId: a.campaignId })),
+  'campaign:open': foreign((a) => ({ campaignId: a.campaignId })),
+  'session:start': foreign((a) => ({ campaignId: a.campaignId })),
+  'session:end': foreign((a) => ({ campaignId: a.campaignId })),
   'character:roll': foreign((a) => ({
     characterId: a.characterId,
     request: { kind: 'stat', statId: 'ref' },

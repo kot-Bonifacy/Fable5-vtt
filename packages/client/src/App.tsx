@@ -32,6 +32,8 @@ import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
 import { useHelpStore } from './stores/helpStore.js';
 import { useFullscreen } from './fullscreen.js';
+import { BetweenSessions } from './components/BetweenSessions.js';
+import { useBetweenSessions } from './session-view.js';
 
 /**
  * At the table the right button belongs to the game — it opens the token menu
@@ -92,21 +94,32 @@ function GameView() {
   useSceneAmbience();
   useGameContextMenu();
   useShortcutsKey();
+  // Etap 44c: gracz bez trwającej sesji nie siedzi przy stole — zamiast mapy,
+  // walki i kolejki dostaje planszę „Między sesjami”.
+  const betweenSessions = useBetweenSessions();
   return (
     <div className="app-layout">
       <TopBar />
       <main className="app-main">
-        {/* Stage 16f: the combat HUD is a rail of its own rather than an
-            overlay, so the panel and the action bar never sit on top of the
-            ground somebody is trying to click. */}
-        <CombatHud />
-        {/* The initiative strip (25.09) stands above the map, not over it:
-            the column gets shorter and Pixi re-measures its host. Both side
-            panels keep their full height. */}
-        <div className="map-column">
-          <CombatBar />
-          <MapArea />
-        </div>
+        {betweenSessions ? (
+          <div className="map-column">
+            <BetweenSessions />
+          </div>
+        ) : (
+          <>
+            {/* Stage 16f: the combat HUD is a rail of its own rather than an
+                overlay, so the panel and the action bar never sit on top of
+                the ground somebody is trying to click. */}
+            <CombatHud />
+            {/* The initiative strip (25.09) stands above the map, not over it:
+                the column gets shorter and Pixi re-measures its host. Both
+                side panels keep their full height. */}
+            <div className="map-column">
+              <CombatBar />
+              <MapArea />
+            </div>
+          </>
+        )}
         <SidePanel />
       </main>
       <CharacterSheets />

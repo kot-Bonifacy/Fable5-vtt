@@ -26,6 +26,12 @@ model User {
   blockedAt    DateTime?
   /// Last login or socket connection — the owner's panel lists it.
   lastSeenAt   DateTime?
+  /// GM accounts only (stage 44c): the campaign this GM is working in —
+  /// preparing it or running its session. Not a slot: opening a campaign costs
+  /// nothing, `Campaign.sessionStartedAt` is what holds one. Null = the newest
+  /// of the GM's own campaigns.
+  openCampaignId String?
+  openCampaign   Campaign? @relation("GmOpenCampaign", fields: [openCampaignId], references: [id], onDelete: SetNull)
   /// Cosmetic dice skin this user rolls with (stage 27d), e.g. "neon".
   /// Kept server-side rather than in the browser because the skin has to
   /// reach OTHER tables: the roller's dice are what everyone sees tumbling.
@@ -77,7 +83,15 @@ model Campaign {
   /// the creation route always sets it.
   gmId      String?
   gm        User?    @relation("CampaignGm", fields: [gmId], references: [id], onDelete: SetNull)
-  active    Boolean  @default(true)
+  /// A running session (stage 44c): when the GM pressed „Rozpocznij sesję",
+  /// null between sessions. A running session holds one of
+  /// `VTT_MAX_SESSIONS` slots and is the only time players sit at the table.
+  /// Survives a restart; the idle clocks (in memory) start over.
+  sessionStartedAt   DateTime?
+  /// When the last session ended — the players' „Między sesjami" screen says it.
+  lastSessionEndedAt DateTime?
+  /// GM accounts that have this campaign open (stage 44c) — one in practice.
+  openedBy  User[]   @relation("GmOpenCampaign")
   createdAt DateTime @default(now())
   /// Highest shop availability tier unlocked in this campaign (stage 25c, 1–4).
   /// Not a rule of Cyberpunk RED — a GM's dial: a starting party shops at 1,
@@ -501,6 +515,14 @@ model ChatMessage {
   speakerName String?
   /** Scene the line was spoken in — the bot's short-term memory is per scene. */
   sceneId     String?
+  /**
+   * Written while no session was running (stage 44c): the GM's preparation —
+   * test rolls, talks with bots, notes. A player never sees such a line, not
+   * even in the history after the next session starts, unless it is theirs or
+   * addressed to them. Set in one place, the `chatMessage.create` extension in
+   * `db.ts`, so none of the ~40 writers has to remember it.
+   */
+  prep        Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   campaign     Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)

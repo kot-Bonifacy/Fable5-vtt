@@ -270,12 +270,8 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     expect(other.status()).toBe(201);
     const otherId = ((await other.json()) as { id: string }).id;
     const otherToken = await invite(gm, 'Obcy', otherId);
-    // Nowa kampania przejmuje aktywność — MG wraca do „Nocnej zmiany” gniazdem.
-    const gmSocket = (await rawSocket(await cookieHeader(gm))).socket!;
-    expect(await emitAck(gmSocket, 'campaign:activate', { campaignId: campaign })).toEqual({
-      ok: true,
-    });
-    gmSocket.disconnect();
+    // Etap 44c: nowa kampania nie zabiera MG stołu — sesja „Nocnej zmiany”
+    // trwa, a „Obca kampania” czeka na liście bez sesji.
 
     obcy = await apiPlayer('Obcy', otherToken);
     const me = (await (await obcy.get('/api/auth/me')).json()) as {
@@ -296,10 +292,12 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
       [],
     );
 
-    if (me.activeCampaign) {
+    // Od 44c gracz dostaje swoją kampanię (tu: „Obca kampania” między sesjami),
+    // nigdy cudzą.
+    if (me.activeCampaign && me.activeCampaign.name !== 'Obca kampania') {
       note(
         'obserwacja',
-        `/api/auth/me gracza spoza kampanii podaje nazwę aktywnej kampanii („${me.activeCampaign.name}”).`,
+        `/api/auth/me gracza spoza kampanii podaje nazwę cudzej kampanii („${me.activeCampaign.name}”).`,
       );
     }
   });

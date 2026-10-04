@@ -430,3 +430,99 @@ button:disabled {
   color: var(--text);
   font-weight: 500;
 }
+
+/* --- Między sesjami (etap 44c) -------------------------------------------------
+
+   Plansza gracza w miejscu mapy, gdy żadna sesja nie trwa. Ten sam plakat co
+   logowanie i ta sama kotwica do czerwonej ramki celownika (punkt 1 na górze
+   pliku), tylko liczona od **kontenera** (`cqw`/`cqh`), bo plansza zajmuje
+   kolumnę mapy, a nie całe okno. Bez pudełka — napisy leżą na papierze
+   plakatu, wolno tak wyłącznie dzięki kotwicy (punkt 2). Decyzja MG z 04.10:
+   gracz nigdy nie dostaje pustego ekranu. */
+.between-sessions {
+  container-type: size;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  padding: 1rem;
+  background:
+    url('/art/login-poster.webp') center / cover no-repeat,
+    var(--login-paper);
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+}
+
+.between-sessions-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: min(88cqw, clamp(15rem, max(100cqw, 100cqh * 1672 / 941) * 0.28, 28rem));
+  translate: 0 calc(-1 * clamp(0px, max(100cqh, 100cqw * 941 / 1672) * 0.1116, 50cqh - 11rem));
+}
+
+.between-sessions-eyebrow {
+  color: var(--login-red-deep);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+}
+
+.between-sessions-title {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-size: clamp(1.3rem, 3.2cqw, 2rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--login-ink);
+  overflow-wrap: anywhere;
+}
+
+.between-sessions-text {
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.between-sessions-hint {
+  color: var(--login-ink-dim);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.between-sessions-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* Czerwony przycisk ze ściętym rogiem — ten sam co „Wejdź” na logowaniu. */
+.between-sessions-button {
+  padding: 0.5rem 1rem;
+  background: var(--login-red);
+  border: none;
+  border-radius: 0;
+  color: var(--login-on-red);
+  font-family: var(--font-cp-cond);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+  filter: drop-shadow(var(--login-shadow));
+}
+
+.between-sessions-button:hover {
+  background: var(--login-red-bright);
+}
+
+.between-sessions-button:active {
+  background: var(--login-red-deep);
+}

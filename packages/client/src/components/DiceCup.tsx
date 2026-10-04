@@ -36,6 +36,7 @@ import {
   type PendingInitiative,
   type PendingRoll,
 } from '../stores/rollStore.js';
+import { useBetweenSessions } from '../session-view.js';
 
 interface ShakeSample {
   x: number;
@@ -259,6 +260,7 @@ export function DiceCup() {
   /** 0–1 wobble amplitude fed by motion, decaying when the cursor stops. */
   const energyRef = useRef(0);
   const modeRef = useRef<CupMode>({ kind: 'fun' });
+  const betweenSessions = useBetweenSessions();
 
   const mode = useMemo<CupMode>(() => {
     // A check loaded from a sheet wins over whatever sits in the chat draft.
@@ -530,6 +532,9 @@ export function DiceCup() {
   }, [shaking]);
 
   if (!synced || !campaign) return null;
+  // Między sesjami (44c) kubek jest tylko kubkiem kreatora — rzuty stołu i tak
+  // odrzuci serwer, więc nie ma czego zapowiadać.
+  if (betweenSessions && mode.kind !== 'creation') return null;
 
   const startShake = (e: React.PointerEvent) => {
     e.preventDefault();

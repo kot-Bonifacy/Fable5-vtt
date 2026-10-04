@@ -122,6 +122,11 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     )!.id;
 
     await mg.page.getByText('← Wróć do gry').click();
+    // Etap 44c: nowa kampania to przygotowanie — gracze siądą przy stole
+    // dopiero po „Rozpocznij sesję”.
+    await expect(mg.page.locator('.session-state--prep')).toHaveText('przygotowanie');
+    await mg.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await expect(mg.page.locator('.session-state--live')).toContainText('sesja');
     await mg.page.getByRole('button', { name: 'Kompendium', exact: true }).click();
     await mg.page.locator('.shop-tier-step', { hasText: '2' }).click();
     await expect(mg.page.locator('.shop-tier-step--active')).toHaveText('2');

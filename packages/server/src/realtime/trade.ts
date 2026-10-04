@@ -58,7 +58,7 @@ import {
   type PlacedToken,
 } from './inventory.js';
 import { deferView } from './presentation.js';
-import { campaignRoom } from './state.js';
+import { campaignMemberSockets } from './state.js';
 import { emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 
 /**
@@ -150,7 +150,7 @@ async function requireReach(prisma: PrismaClient, aId: string, bId: string): Pro
  */
 async function emitTrade(deps: RealtimeDeps, trade: TradeState): Promise<void> {
   if (deferView(deps, (ready) => emitTrade(ready, trade))) return;
-  const sockets = await deps.io.in(campaignRoom(trade.campaignId)).fetchSockets();
+  const sockets = await campaignMemberSockets(deps.io, trade.campaignId);
   for (const socket of sockets) {
     const viewer = (socket.data as { user: SessionUser }).user;
     const isGm = isGmUser(viewer);

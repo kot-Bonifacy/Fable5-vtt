@@ -108,7 +108,7 @@ test.describe.serial('@szybkie T2d konta MG (44a)', () => {
     const owner = await mg.socket();
     expect((await emitAck(owner, 'archive:list', {})).ok).toBe(true);
     // Cudza kampania jak nieistniejąca.
-    expect(await emitAck(socket, 'campaign:activate', { campaignId: campaignId() })).toEqual({
+    expect(await emitAck(socket, 'campaign:open', { campaignId: campaignId() })).toEqual({
       ok: false,
       error: 'NOT_FOUND',
     });

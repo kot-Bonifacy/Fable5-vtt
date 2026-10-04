@@ -26,7 +26,7 @@ export async function updateMusic(
 ): Promise<MusicState> {
   return prisma.$transaction(async (tx) => {
     const campaign = await tx.campaign.findUnique({ where: { id: campaignId } });
-    if (!campaign?.active) throw new RealtimeError('NO_CAMPAIGN');
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const state = readMusic(campaignId, campaign.music);
     change(state);
     state.revision++;

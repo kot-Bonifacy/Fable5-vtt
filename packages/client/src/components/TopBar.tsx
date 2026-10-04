@@ -5,6 +5,7 @@ import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
 import { MusicButton } from './MusicWindow.js';
 import { ShortcutsButton } from './ShortcutsWindow.js';
+import { SessionControl } from './SessionControl.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 export function TopBar() {
@@ -20,6 +21,8 @@ export function TopBar() {
       <TurnModeSlot />
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
+        {/* Przygotowanie albo sesja (etap 44c) — tylko u MG. */}
+        <SessionControl />
         {/* Zegar świata (etap 37). Data i pora dnia są wspólne dla stołu, więc
             napis widzi każdy; guzikiem — czyli wejściem do okna z przesuwaniem
             czasu — jest wyłącznie u MG. `flex: none` jak każdy element prawej

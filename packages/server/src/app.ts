@@ -19,7 +19,7 @@ import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
-import { setupRealtime } from './realtime/index.js';
+import { setupRealtime, type RealtimeHandle } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
@@ -35,6 +35,8 @@ export interface BuiltApp {
   app: FastifyInstance;
   io: SocketIOServer;
   prisma: PrismaClient;
+  /** Gniazda i zegar sesji (44c) — testy obracają zegar sami (`sweepSessions`). */
+  realtime: RealtimeHandle;
 }
 
 export interface BuildAppOptions {
@@ -47,6 +49,8 @@ export interface BuildAppOptions {
    * które test dopiero kładzie.
    */
   sweepUploads?: boolean;
+  /** Zegar sesji (etap 44c) — test progów bezczynności podaje sztuczny. */
+  clock?: () => number;
 }
 
 export async function buildApp(
@@ -170,7 +174,7 @@ export async function buildApp(
   registerUploadRoutes(app, ctx);
   registerArchiveRoutes(app, ctx);
 
-  setupRealtime(io, app, ctx);
+  const realtime = setupRealtime(io, app, ctx, options.clock);
   registerMusicRoutes(app, ctx, io);
   ai.start();
 
@@ -208,5 +212,5 @@ export async function buildApp(
     backfillPortraitAssetsInBackground(prisma, config.uploadsDir, app.log);
   }
 
-  return { app, io, prisma };
+  return { app, io, prisma, realtime };
 }

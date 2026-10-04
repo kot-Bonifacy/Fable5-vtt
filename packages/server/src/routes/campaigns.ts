@@ -5,7 +5,11 @@ import { GAME_TIME_DEFAULT, INVITATION_TTL_HOURS, ROLE_PLAYER, gameMonthKey } fr
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { playerNameTaken, sanitizePlayerName, toInvitationSummary } from '../invitations.js';
-import { ownCampaign as ownCampaignOf } from './helpers.js';
+import {
+  getUserActiveCampaign,
+  ownCampaign as ownCampaignOf,
+  toCampaignSummary,
+} from './helpers.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CAMPAIGN_NAME_LENGTH = 64;
@@ -63,6 +67,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
 
   app.get('/api/campaigns', gmOnly, async (request) => {
     // Każdy MG widzi tylko swoje kampanie (etap 44a).
+    const open = await getUserActiveCampaign(ctx.prisma, request.user!);
     const campaigns = await ctx.prisma.campaign.findMany({
       where: { OR: [{ gmId: request.user!.id }, { gmId: null }] },
       orderBy: { createdAt: 'desc' },
@@ -72,10 +77,8 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       },
     });
     const detail: CampaignDetail[] = campaigns.map((c) => ({
-      id: c.id,
-      name: c.name,
-      sandbox: c.sandbox,
-      active: c.active,
+      ...toCampaignSummary(c),
+      open: c.id === open?.id,
       createdAt: c.createdAt.toISOString(),
       players: c.members.map((m) => ({
         id: m.user.id,
@@ -95,24 +98,39 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       return reply.code(400).send({ error: 'INVALID_NAME' });
     }
 
-    // Single active campaign at a time (see stage notes) — new one takes over.
+    // Etap 44c: nowa kampania otwiera się u MG do przygotowania — bez slotu.
+    // Z trwającą sesją MG zostaje przy niej (przejść wolno dopiero po „Zakończ
+    // sesję”), a nowa czeka na liście w Panelu MG.
+    const legacy = !ctx.config.sessions;
     const campaign = await ctx.prisma.$transaction(async (tx) => {
-      await tx.campaign.updateMany({ data: { active: false } });
-      return tx.campaign.create({
+      if (legacy) {
+        // Testy dymne bez sekcji `sessions`: kampania gra od założenia, a nowa
+        // przejmuje stół tego MG, jak przed 44c.
+        await tx.campaign.updateMany({
+          where: { OR: [{ gmId }, { gmId: null }], sessionStartedAt: { not: null } },
+          data: { sessionStartedAt: null, lastSessionEndedAt: new Date() },
+        });
+      }
+      const created = await tx.campaign.create({
         data: {
           name: trimmed,
           gmId,
-          active: true,
+          ...(legacy ? { sessionStartedAt: new Date() } : {}),
           // Zegar świata rusza od miesiąca, który uznajemy za rozliczony
           // (etap 37): świeży stół nie zaczyna od zaległego czynszu, ale
           // pierwsze przekroczenie granicy miesiąca ma już z czym porównać.
           settledMonth: gameMonthKey(GAME_TIME_DEFAULT),
         },
       });
+      const running = await tx.campaign.count({
+        where: { gmId, sessionStartedAt: { not: null }, id: { not: created.id } },
+      });
+      if (running === 0) {
+        await tx.user.update({ where: { id: gmId }, data: { openCampaignId: created.id } });
+      }
+      return created;
     });
-    return reply
-      .code(201)
-      .send({ id: campaign.id, name: campaign.name, sandbox: campaign.sandbox });
+    return reply.code(201).send(toCampaignSummary(campaign));
   });
 
   /**
@@ -130,7 +148,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     const campaign = await ownCampaign(id, request.user!.id);
     if (!campaign) return reply.code(404).send({ error: 'CAMPAIGN_NOT_FOUND' });
     const updated = await ctx.prisma.campaign.update({ where: { id }, data: { sandbox } });
-    return { id: updated.id, name: updated.name, sandbox: updated.sandbox };
+    return toCampaignSummary(updated);
   });
 
   /**

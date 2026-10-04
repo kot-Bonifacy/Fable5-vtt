@@ -199,7 +199,7 @@ function CreatorWindow() {
     if (!isGm) return;
     apiGet<CampaignDetail[]>('/api/campaigns')
       .then((campaigns) => {
-        const active = campaigns.find((c) => c.active);
+        const active = campaigns.find((c) => c.open);
         setPlayers(active?.players.map((p) => ({ id: p.id, name: p.name })) ?? []);
       })
       .catch(() => setPlayers([]));

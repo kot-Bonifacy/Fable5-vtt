@@ -26,10 +26,17 @@ export function PresenceList() {
             return (
               <li
                 key={entry.userId}
-                className={`presence-entry${gm ? ' presence-entry--gm' : ''}`}
-                title={`${entry.name} — ${gm ? 'MG' : 'gracz'}, online`}
+                className={`presence-entry${gm ? ' presence-entry--gm' : ''}${
+                  entry.atTable ? '' : ' presence-entry--away'
+                }`}
+                title={`${entry.name} — ${gm ? 'MG' : 'gracz'}, ${
+                  entry.atTable ? 'online' : 'online, czeka na start sesji'
+                }`}
               >
-                <span className="status-dot status-dot--connected" />
+                {/* Etap 44c: gracz poza stołem (między sesjami) ma kropkę bez wypełnienia. */}
+                <span
+                  className={`status-dot ${entry.atTable ? 'status-dot--connected' : 'status-dot--waiting'}`}
+                />
                 <span className="presence-name">{entry.name}</span>
                 {gm && entry.name.trim().toUpperCase() !== 'MG' && (
                   <span className="presence-role">MG</span>

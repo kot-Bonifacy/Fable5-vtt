@@ -2,6 +2,7 @@ export * from './protocol.js';
 export * from './ai.js';
 export * from './archive.js';
 export * from './auth.js';
+export * from './sessions.js';
 export * from './bots/index.js';
 export * from './chat.js';
 export * from './checks.js';

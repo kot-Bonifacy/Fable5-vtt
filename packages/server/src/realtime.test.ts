@@ -180,7 +180,9 @@ describe('state sync and presence', () => {
     const { socket, firstSync } = createSocket(gmCookie);
     const sync = await firstSync;
     expect(sync.campaign?.name).toBe('Kampania realtime');
-    expect(sync.presence).toEqual([{ userId: expect.any(String), name: 'MG', role: 'GM' }]);
+    expect(sync.presence).toEqual([
+      { userId: expect.any(String), name: 'MG', role: 'GM', atTable: true },
+    ]);
     expect(sync.messages).toEqual([]);
     socket.disconnect();
   });

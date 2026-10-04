@@ -241,6 +241,12 @@ body {
   box-shadow: 0 0 6px var(--ok);
 }
 
+/* Online, ale między sesjami (etap 44c) — pusty pierścień w kolorze „online”. */
+.status-dot--waiting {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ok);
+}
+
 .status-dot--disconnected {
   background: var(--err);
   box-shadow: 0 0 6px var(--err);

@@ -55,7 +55,7 @@ import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchBotRelations } from './relations.js';
 import { broadcastChatMessage, insertChatMessage } from './chat-io.js';
-import { campaignRoom, gmRoom } from './state.js';
+import { campaignMemberSockets, gmRoom } from './state.js';
 import { campaignGameTime } from './gametime.js';
 
 /**
@@ -256,7 +256,7 @@ async function fetchPinnableHandouts(
  * jak przy cofniętym udostępnieniu handoutu w 24a.
  */
 async function emitToPlayers(deps: RealtimeDeps, campaignId: string, entryId: string) {
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  const sockets = await campaignMemberSockets(deps.io, campaignId);
   const computed = new Map<string, JournalPlayerEntry | null>();
   for (const socket of sockets) {
     const user = (socket.data as { user: SessionUser }).user;
@@ -279,9 +279,9 @@ async function emitToPlayers(deps: RealtimeDeps, campaignId: string, entryId: st
   }
 }
 
-/** „Tego wpisu już nie ma" — do wszystkich graczy przy stole. */
+/** „Tego wpisu już nie ma" — do wszystkich graczy kampanii, przy stole i między sesjami. */
 async function emitDeleteToPlayers(deps: RealtimeDeps, campaignId: string, id: string) {
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  const sockets = await campaignMemberSockets(deps.io, campaignId);
   const broadcast: JournalDeleteBroadcast = { id };
   for (const socket of sockets) {
     const user = (socket.data as { user: SessionUser }).user;

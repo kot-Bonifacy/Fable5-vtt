@@ -37,6 +37,13 @@ export interface CampaignSummary {
    * gdzie się stoi.
    */
   sandbox: boolean;
+  /**
+   * Trwająca sesja (etap 44c): od kiedy (ISO), albo null — u MG przygotowanie,
+   * u gracza widok „Między sesjami” bez stołu.
+   */
+  sessionStartedAt: string | null;
+  /** Kiedy skończyła się ostatnia sesja (ISO), null — jeszcze żadnej nie było. */
+  lastSessionEndedAt: string | null;
 }
 
 /** Response of /api/auth/me, /api/auth/login and POST /api/join/:token. */
@@ -88,7 +95,8 @@ export interface PlayerSummary {
 }
 
 export interface CampaignDetail extends CampaignSummary {
-  active: boolean;
+  /** Otwarta u tego MG (etap 44c) — przy niej pracuje, gdy wraca do stołu. */
+  open: boolean;
   createdAt: string;
   players: PlayerSummary[];
   invitations: InvitationSummary[];

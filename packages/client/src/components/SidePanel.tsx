@@ -22,6 +22,7 @@ import { useChatStore } from '../stores/chatStore.js';
 import { useCreationRankStore, waitingRankCount } from '../stores/creationRankStore.js';
 import { useGmAttentionStore } from '../stores/gmAttentionStore.js';
 import { useWaitingCharacters } from './CharacterReadyPanel.js';
+import { useBetweenSessions } from '../session-view.js';
 import { useJournalStore } from '../stores/journalStore.js';
 
 type Tab =
@@ -126,7 +127,8 @@ export function SidePanel() {
   const waitingReady = useWaitingCharacters(isGm).length;
   const waitingCharacters = waitingRanks + waitingReady;
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
-  const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
+  const betweenSessions = useBetweenSessions();
+  const activeTab: Tab = (!isGm && gmOnly) || (betweenSessions && tab === 'combat') ? 'chat' : tab;
 
   // „Otwórz" przy linii dziennika na czacie przełącza zakładkę; sam wpis
   // rozwija już panel, który wtedy dostaje ognisko w store.
@@ -186,7 +188,10 @@ export function SidePanel() {
       <SidePanelResizer width={width} />
       <PresenceList />
       <div className="side-tab-rows">
-        <nav className="side-tabs">{TABLE_TABS.map(renderTab)}</nav>
+        <nav className="side-tabs">
+          {/* Między sesjami (44c) nie ma walki — reszta rzędu stołu zostaje. */}
+          {TABLE_TABS.filter((entry) => !betweenSessions || entry.id !== 'combat').map(renderTab)}
+        </nav>
         {isGm ? (
           <nav className="side-tabs side-tabs--gm">
             <span className="side-tabs-label">MG</span>

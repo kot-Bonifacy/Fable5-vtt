@@ -42,6 +42,40 @@
   color: var(--warn);
 }
 
+/* Stan sesji MG (etap 44c): napis i jeden przycisk. `flex: none` jak każdy
+   element prawej grupy — kurczą się tylko tytuł i nazwa kampanii. */
+.session-control {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.session-state {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid;
+  border-radius: 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.session-state--prep {
+  color: var(--text-dim);
+  border-color: var(--text-dim);
+}
+
+.session-state--live {
+  color: var(--cp-red);
+  border-color: var(--cp-red);
+}
+
+.session-end--confirm {
+  color: var(--cp-red);
+  border-color: var(--cp-red);
+}
+
 /* ---------------------------------------------------------------------------
    Zegar świata w górnym pasku (etap 37)
 
@@ -170,6 +204,11 @@
 .badge--ok {
   color: var(--ok);
   border-color: var(--ok);
+}
+
+.badge--live {
+  color: var(--cp-red);
+  border-color: var(--cp-red);
 }
 
 .badge--off {

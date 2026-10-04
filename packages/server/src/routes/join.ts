@@ -5,7 +5,7 @@ import type { AppContext } from '../context.js';
 import type { Campaign, Invitation } from '../generated/prisma/client.js';
 import { createSession, toSessionUser } from '../auth/sessions.js';
 import { invitationState, playerNameTaken } from '../invitations.js';
-import { refuseRateLimited, setSessionCookie } from './helpers.js';
+import { refuseRateLimited, setSessionCookie, toCampaignSummary } from './helpers.js';
 
 type LoadedInvitation = Invitation & { campaign: Campaign };
 
@@ -109,11 +109,7 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
     setSessionCookie(reply, session);
     const state: AuthState = {
       user: toSessionUser(outcome),
-      activeCampaign: {
-        id: invitation.campaign.id,
-        name: invitation.campaign.name,
-        sandbox: invitation.campaign.sandbox,
-      },
+      activeCampaign: toCampaignSummary(invitation.campaign),
     };
     return state;
   });
