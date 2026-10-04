@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
@@ -39,7 +39,7 @@ import {
   startInstance,
   stopInstance,
 } from '../../instance/instance.ts';
-import { BACKUP_DIR, CHECKPOINT_DIR, E2E_DIR, UPLOADS_DIR } from '../../instance/paths.ts';
+import { BACKUP_DIR, E2E_DIR } from '../../instance/paths.ts';
 
 /**
  * T6b (`testy.md` 5.4, kroki 6.6–6.9): od punktu `po-T6a` — czas, kronika i kopie.
@@ -967,7 +967,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     expect(stateFingerprint()).toEqual(state);
   });
 
-  test('6.8b import na pustej instancji: bez plików, potem z plikami z manifestu (Z10)', async ({
+  test('6.8b import na pustej instancji: karty i scena bez grafiki z innej instancji (44b, Z10)', async ({
     cast,
   }) => {
     test.setTimeout(5 * 60_000);
@@ -1053,35 +1053,12 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     );
     const bound = tokens.filter((t) => t.characterId !== null).length;
 
-    // Droga pierwsza: bez plików. Obrazy z pliku wymiany wskazują w próżnię.
-    const images = [scene.backgroundUrl, ...tokens.map((t) => t.imageUrl)].filter(
-      (url): url is string => typeof url === 'string' && url.startsWith('/'),
-    );
-    const status = async () =>
-      Object.fromEntries(
-        await Promise.all(
-          images.map(async (url) => [url, (await mg.page.request.get(url)).status()] as const),
-        ),
-      );
-    const withoutFiles = await status();
-
-    // Droga druga: pliki z `manifest.files` przeniesione z kopii `po-T6` (jak przy VPS).
+    // Od 44b (decyzja MG z 03.10) import zeruje adresy plików, których importujący
+    // nie może przeczytać albo których nie ma na dysku — na pustej instancji grafika
+    // nie jedzie wcale, a pliki z `manifest.files` skopiowane potem niczego nie wskrzeszą
+    // (dawna „droga druga”: 5 plików ręką i wszystko 200). Dopisek do Z10.
+    const images = [scene.backgroundUrl, ...tokens.map((t) => t.imageUrl)];
     const manifest = readArchive('scena-Brama.json').manifest;
-    const source = join(CHECKPOINT_DIR, 'po-T6', 'uploads');
-    let copied = 0;
-    for (const url of new Set([
-      ...manifest.files,
-      ...readArchive('karta-Kowal.json').manifest.files,
-      ...readArchive('karta-Iskra.json').manifest.files,
-    ])) {
-      const relative = url.replace(/^\/(api\/)?uploads\//, '');
-      const from = join(source, relative);
-      if (!existsSync(from)) continue;
-      mkdirSync(join(UPLOADS_DIR, relative, '..'), { recursive: true });
-      cpSync(from, join(UPLOADS_DIR, relative));
-      copied += 1;
-    }
-    const withFiles = await status();
     test.info().annotations.push({
       type: 'import na pustej instancji',
       description: JSON.stringify({
@@ -1089,14 +1066,16 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
         figury: tokens.length,
         powiazane: bound,
         oryginalnie: originals.brama.tokens.filter((t) => t.characterId).length,
-        pliki: { manifest: manifest.files, copied },
-        withoutFiles,
-        withFiles,
+        pliki: manifest.files,
+        images,
       }),
     });
     expect(bound, 'karty z pliku dostały nowe id — figury tracą powiązanie (etap 33, Z10)').toBe(0);
-    expect(Object.values(withoutFiles).some((code) => code === 404)).toBe(true);
-    expect(Object.values(withFiles).every((code) => code === 200)).toBe(true);
+    expect(manifest.files.length, 'plik wymiany dalej wylicza pliki').toBeGreaterThan(0);
+    expect(
+      images.filter((url) => typeof url === 'string' && url.length > 0),
+      'grafika z innej instancji odpada przy imporcie (44b)',
+    ).toEqual([]);
   });
 
   test('#44 zdanie po imporcie sceny odmienia liczbę figur po polsku', async () => {

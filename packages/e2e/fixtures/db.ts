@@ -46,8 +46,12 @@ export interface TableFingerprint {
  * tabel bez całkowitego klucza. Porównanie przed kopią i po odtworzeniu = 3.15.
  *
  * `Session` pomijana domyślnie: logowanie w trakcie testu dokłada wiersze,
- * które nie są stanem gry.
+ * które nie są stanem gry. Z tego samego powodu bez `User.lastSeenAt` (etap 44a):
+ * każde połączenie gniazda je odświeża, także klient wracający sam po
+ * odtworzeniu kopii, zanim test zdąży policzyć odcisk.
  */
+const VOLATILE_COLUMNS: Record<string, readonly string[]> = { User: ['lastSeenAt'] };
+
 export function stateFingerprint(
   skip: readonly string[] = ['Session'],
 ): Record<string, TableFingerprint> {
@@ -62,7 +66,14 @@ export function stateFingerprint(
     for (const { name } of names) {
       if (skip.includes(name)) continue;
       const rows = db.prepare(`SELECT * FROM "${name}"`).all();
-      const lines = rows.map((row) => JSON.stringify(row)).sort();
+      const volatile = VOLATILE_COLUMNS[name] ?? [];
+      const lines = rows
+        .map((row) => {
+          const copy: Record<string, unknown> = { ...row };
+          for (const column of volatile) delete copy[column];
+          return JSON.stringify(copy);
+        })
+        .sort();
       result[name] = {
         rows: rows.length,
         hash: createHash('sha256').update(lines.join('\n')).digest('hex').slice(0, 16),
