@@ -1692,6 +1692,12 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **`stateFingerprint` bez `User.lastSeenAt` (04.10, T9a)** — od 44a każde połączenie gniazda odświeża `lastSeenAt`, więc klient wracający sam po odtworzeniu kopii zmieniał odcisk `User` i `4.10 punkt kontrolny po-T4` padał losowo (pełny przebieg 04.10: 196 zielonych, reszta kaskadą od `po-T4`). `fixtures/db.ts` pomija tę kolumnę jak tabelę `Session`. Nowa kolumna „kiedy ostatnio” w bazie = dopisz ją do `VOLATILE_COLUMNS`.
+- **Liczbowe id (czat) nie nadają się na kanarki „obiekt istnieje” (04.10, T9a)** — `"178"` siedzi w co drugiej ramce (współrzędne, kolejne id). Kanarkiem są tylko napisowe cuid (`stringIds` w `fixtures/izolacja.ts`, ≥ 20 znaków).
+- **Właściciel widzi id kont MG z „Konta MG” (04.10, T9a)** — `/api/owner/accounts` niesie `id` każdego konta MG, więc id konta MG-B w podsłuchu właściciela to nie wyciek; w ramkach gniazda go nie ma.
+- **Daty Prismy w SQLite to tekst ISO, nie liczby (04.10, T9a)** — `node:sqlite` oddaje `expiresAt` jako `'2026-10-05T07:28:56.883+00:00'`; porównuj przez `Date.parse`. Nowy link resetu hasła **kasuje** poprzedni wiersz `PasswordReset`, a nie oznacza go.
+- **Login właściciela `MG` ma 2 znaki — rejestracja odpada na długości, nie na „zajęty” (04.10, T9a)** — test zajętego loginu w UI rób na loginie z rejestracji (`BARTEK-MG` z drugiej przeglądarki).
+- **Sztuczki ze ścieżką (`/%75ploads/…`) puszczaj prosto na serwer `:3101` (04.10, T9a)** — podgląd Vite na `:4173` nie przekazuje nieznanej ścieżki i oddaje `index.html` z 200, więc test „nie 200” padłby na kliencie, nie na strażniku.
 - **Nowa scena otwiera się MG sama jako „podgląd” — przycisku „Pokaż” przy niej nie ma (03.10, T8c)** — po „Utwórz” MG już ją ogląda (`sceneListRow` z plakietką „podgląd”), a klik w „Pokaż” czeka do limitu testu. Sprawdzaj `store('scene')` MG, zanim klikniesz.
 - **MG rysuje domyślnie na warstwie MG (`drawGmOnly: true`, 17b) (03.10, T8c)** — prostokąt „dla stołu” bez kliknięcia oka wychodzi z `gmOnly: 1` i gracz go nie dostaje. Przełącznik: `button[title^="Rysujesz na warstwie MG"]` ↔ `^="Rysujesz dla wszystkich"`; `title="Prostokąt"` dokładnie (pędzel mgły ma „Prostokąt — przeciągnij…”).
 - **Notki klienta (`.chat-note`: „Przywrócono osłonę.”, odmowy) widać tylko na zakładce „Czat” (03.10, T8c)** — MG po ⊕ „Postaw na scenie” stoi na „Postaciach” i `chatLine(...)` czeka do limitu. Klik „Czat” przed asercją.

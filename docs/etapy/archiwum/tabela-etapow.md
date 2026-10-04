@@ -106,7 +106,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 43b    | Animacja trafienia: portret, figura, iskry    | ⬜     |                     |
 | 43c    | Plamy krwi do końca walki                     | ⬜     |                     |
 | 44     | ~~Konta MG~~ (rozpisany 03.10 na 44a–44d)     | —      | projekt 2026-10-03  |
-| 44a    | Konta MG: rejestracja, logowanie, właściciel  | 🟨     | kod 2026-10-03      |
-| 44b    | Izolacja kampanii i imienne linki graczy      | 🟨     | kod 2026-10-04      |
+| 44a    | Konta MG: rejestracja, logowanie, właściciel  | ✅     | 2026-10-04 (E2E)    |
+| 44b    | Izolacja kampanii i imienne linki graczy      | ✅     | 2026-10-04          |
 | 44c    | Sesje i sloty, widok między sesjami           | ⬜     |                     |
 | 44d    | AI właściciela: prośba, obecność, dzierżawa   | ⬜     |                     |

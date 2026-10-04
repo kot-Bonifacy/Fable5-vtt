@@ -33,7 +33,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T8a  | Przeglądarki 1/3: macierz silników, ekrany, motyw, konsola | ✅     | 03.10.2026 |
 | T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ✅     | 03.10.2026 |
 | T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ✅     | 03.10.2026 |
-| T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ⬜     |            |
+| T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ✅     | 04.10.2026 |
 | T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ⬜     |            |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
@@ -124,6 +124,7 @@ idą **przed** refaktoryzacją, jako etap 44 w czterech częściach (`docs/etapy
 | T8c: forma i zakres    | **hybryda**: spec `specs/50-przegladarki/t8c-*` (jeden test na obszar — szczęśliwa ścieżka i jedna odmowa; wchodzi do osłony refaktoryzacji) plus ręczne oględziny Playwright MCP w Firefoksie tam, gdzie automat nie oceni (dźwięk, pełny ekran, kości 3D, wygląd okien); **wszystkie cztery grupy**: mapa i sceny, UI i ustawienia, narracja i AI (asystent zasad i baza wiedzy z gatewayem, `@llm`), Zdolności Ról spoza scenariusza z Facedown, Reputacją i stylem życia; start **z `po-T6`**, **jeden układ** — MG Chromium, gracze Firefox (decyzja MG z 03.10, sesja T8c) |
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | Konta MG: projekt      | etap 44 (44a–44d) zamiast „nowego etapu do zaprojektowania”; **osobne konta MG i gracza** (rola globalna), **imienny link = klucz** gracza (konto w jednej kampanii, link odnowienia), reset hasła MG przez właściciela, **kopie całej bazy tylko dla właściciela**, przygotowanie ≠ sesja, **gracz między sesjami widzi kartę bez stołu**, slot zwalnia **15 min bez gniazd albo 3 h bez zdarzeń**, zgoda na AI **per konto MG**, AI dla innych tylko przy **obecności właściciela i przełączniku „Udostępniam AI”**, zajętość AI „pierwszy + Przejmij” (decyzje MG z 03.10, sesja projektowa; pełna lista w `etap-44-konta-mg.md`) |
+| T9a: forma i wagi      | najpierw **pełny przebieg po 44b z gatewayem**, potem T9a; **automat w suicie** (`35-bezpieczenstwo/t9a-*`, w domyślnym przebiegu) plus krótkie oględziny w Firefoksie; **każdy przeciek między kampaniami** (odczyt, zapis, plik, wpis kompendium MG, sama informacja, że obiekt istnieje, link wpuszczający po użyciu albo wygaśnięciu) = **B1**, brak limitu rejestracji = B2; MG-B buduje kampanię **średnią** (scena z mapą, portrety, statysta z kartą, handout, notatka, bot, dwóch graczy imiennymi linkami) (decyzja MG z 04.10, sesja T9a) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -229,6 +230,8 @@ packages/e2e/
                            z rozróżnieniem liter (`chatCards`, `freshCard`), kamera bliżej (`zoomAt`)
     brama.ts               T5: lista scen MG, statysta z kartą, bot, mgła prostokątem, strefy bronione,
                            architektura i run z bazy (`architecture`, `runOf`)
+    izolacja.ts            T9a: migawka wierszy kampanii A, id i pliki kampanii, ładunki z id A na każde
+                           zdarzenie, surowe gniazdo z podsłuchem (`TappedSocket`)
     uklad.ts               T8a: przegląd układu w karcie — kontrolki poza oknem i przycięte (B2), ucięte napisy,
                            nachodzące obszary, kontrast (B3); zrzut i raport do `.e2e/pomiary/t8a`
     vtt-e2e.d.ts           kształt haka window.__vttE2E (kopia z klienta)
@@ -237,7 +240,9 @@ packages/e2e/
     01-dym/                test dymny T1: MG Chromium + Ola Firefox, czat, kubek, WebGL, punkt kontrolny
     30-rozgrywka/          T3–T6, `test.describe.serial`, każdy plik startuje z punktu kontrolnego
     35-bezpieczenstwo/     T2: trasy HTTP, gniazdo (role, własność, śmieci, zalew), kanarki na zimno —
-                           każdy plik odtwarza `po-T3` sam, więc w pełnym przebiegu idzie po T3–T6
+                           każdy plik odtwarza `po-T3` sam, więc w pełnym przebiegu idzie po T3–T6;
+                           T9a: `t9a-konta` (@szybkie, z `po-T3`), `t9a-izolacja` (z `po-T6`, MG-B z UI,
+                           macierz zapisu na obiektach A, punkt `po-T9a`)
     40-odpornosc/          T7, poza domyślnym przebiegiem: `pnpm test:e2e 40-odpornosc` (albo `--grep @odpornosc`)
     50-przegladarki/       T8a: `t8a-macierz` (@szybkie, skrót z `po-T3` w dwóch układach silników),
                            `t8a-ekrany` (z `po-T4a`: 1920 × 1080 i 2560 × 1440 × dwa układy, panel, karta, kreator,
@@ -734,6 +739,39 @@ gra jako gracz u MG-A” jednym kontem) zmienia się tak:
     kończy sesję → MG-C startuje. Porzucona sesja zwalnia slot po **15 min bez gniazd albo 3 h
     bez zdarzeń** (decyzja z 03.10; w suicie progi skrócone przez env).
 
+**Wynik T9a (04.10):** `specs/35-bezpieczenstwo/t9a-konta` (7 testów, `@szybkie`, z `po-T3`) i
+`t9a-izolacja` (14, z `po-T6`), oba w domyślnym przebiegu; **zero nowych błędów**. Co sprawdzono:
+
+- **1:** walidacja rejestracji po polsku w Chromium i na serwerze, zajęty login bez względu na
+  wielkość liter, wylogowanie kasuje sesję i rozłącza gniazdo, zmiana hasła w „Konto” wylogowuje
+  drugą przeglądarkę, właściciel bez zmiany hasła i bez resetu/blokady samego siebie, link resetu
+  24 h (nowy kasuje stary), **szóste konto z adresu w godzinie — 429**, dziesięć złych haseł — 429
+  także na dobre (inny adres wchodzi), zwykły MG bez kopii całej bazy (UI, gniazdo) i bez panelu
+  właściciela (403).
+- **2, 5, 9:** MG-B (Firefox) buduje przez UI scenę z mapą, portrety (w tym portret NPC — kanarek),
+  statystę z kartą, notatkę, handout i bota, wpuszcza Kubę (Chromium) i Marka (Firefox) imiennymi
+  linkami. Kanarki, **każde napisowe id wiersza A**, slugi kompendium MG-A i tokeny linków A nie
+  trafiają do podsłuchu, magazynów klienta ani eksportu MG-B, Kuby i Marka B; listy portretów
+  i żetonów, sceny i boty tylko swoje. Pliki A po dokładnym adresie: 404 dla całej grupy B,
+  401 bez logowania, sztuczki ze ścieżką (`%2e%2e`, `..%2f`, `%75ploads`, wielkie litery) nie
+  przechodzą; w drugą stronę tak samo. Kompendium: 66 umiejętności u B, katalog MG-A = katalog B
+  + wpisy własne A.
+- **3:** macierz z gniazda MG-B i Kuby — 238 zdarzeń × 3 ładunki z id obiektów A (id według
+  przedrostka zdarzenia), wyrocznie: wiersze A nietknięte, żaden nowy wiersz nie wskazuje A,
+  pliki A bez zmian, w ramkach B nic z A, zero `INTERNAL`. MG-B dostaje `*_NOT_FOUND`, a
+  `FORBIDDEN` tylko na zdarzeniach nie dla MG (kopie właściciela, prośby gracza) — niezależnie od
+  obiektu. Trasy REST: 404 (muzyka: 409 „nie twoja aktywna”, dla każdej obcej kampanii tak samo).
+  W `po-T6` nie ma dymu, runu Sieci, uczestnika walki ani szkicu postaci — te rodzaje pokrywa tylko
+  serwerowa macierz 44b. Liczby: `.e2e/pomiary/t9a-macierz.json`.
+- **6:** link użyty — 410 i ekran „Link już wykorzystany”, odnowienie — to samo konto, pierwsza
+  przeglądarka zostaje, unieważniony — 404 i „Zaproszenie nieważne”, wygasły — 410 i „Link
+  wygasł”, imię zajęte w kampanii, Marek u MG-B to inne konto, MG-B nie wystawi linku do A
+  (i odwrotnie) — 404.
+- **7:** eksport MG-B bez niczego z A; kopia całej bazy właściciela odtworzona na czystym katalogu
+  zachowuje `gmId` obu kampanii, a po niej każdy MG widzi tylko swoją. Punkt `po-T9a` (A + B).
+- **Znany stan sprzed 44c (nie błąd T9a):** kampania MG-B zdejmuje stół grupie A, powrót MG-A —
+  grupie B; T9b, punkt 4. **Sprzed 44d:** MG-B widzi „model gotowy” i może używać AI właściciela.
+
 ### 6.6. T11 — VPS (po etapie 28)
 
 Produkcja startuje z **pustej bazy** (decyzja MG z 26.09) — `dev.db` nie jedzie na VPS.
@@ -881,6 +919,32 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 04.10 — T9a: konta MG, izolacja dwóch MG
+
+**Rozstrzygnięcia MG na starcie:** najpierw pełny przebieg po 44b z gatewayem, potem T9a; automat
+w suicie plus krótkie oględziny w Firefoksie; każdy przeciek między kampaniami = B1; MG-B buduje
+kampanię średnią. Wiersz w sekcji 2.
+
+**Pełne przebiegi po 44b (gateway w terminalu MG):** #1 — 196 zielonych, 5 czerwonych, 77
+niepuszczonych: `4.10 punkt kontrolny po-T4` padł na odcisku `User`, bo `lastSeenAt` (44a) zmienia
+każde połączenie gniazda, a reszta to kaskada; poprawka w suicie (`stateFingerprint` pomija
+kolumnę, pułapka w `testy`). #2 — 297/299: `6.8b import na pustej instancji` oczekiwał 404 grafik,
+a od 44b import celowo zeruje adresy plików spoza zasięgu importującego (decyzja MG z 03.10) —
+oczekiwanie poprawione, dopisek do Z10; T6b od `po-T6a` + `t9a-izolacja` potem 32/32. #3 — **299/299 w 41,5 min** (domyślny przebieg od zera, z T9a i gatewayem) — zamyka 44a i 44b.
+
+**Zrobione:** `t9a-konta` (7) i `t9a-izolacja` (14), `fixtures/izolacja.ts` (migawka wierszy,
+ładunki z id A, `TappedSocket`), punkt `po-T9a`; wynik w 6.5. Odpadły po sprawdzeniu (fałszywe
+alarmy wyroczni): liczbowe id czatu jako kanarek, id konta MG-B u właściciela („Konta MG”), login
+`MG` za krótki na „zajęty”. **Błędów aplikacji: zero.**
+
+**Oglądane:** automat — MG-A i Marek w Chromium, Ola, MG-B i Marek B w Firefoksie, Kuba w
+Chromium (headless, 1600 × 900); ręcznie (Playwright MCP, Firefox, instancja z `po-T9a`): MG-B —
+pusty stół przy aktywnej kampanii A, Panel MG z linkami w pięciu stanach, scena B, boty, „Kopie”
+bez kopii całej bazy, listy kart i właścicieli tylko z B; Kuba — ekran „Wracasz do gry” i stół B.
+Konsola: 0 błędów, trzy znane ostrzeżenia WebGL. `dev.db` nietknięta.
+
+**Następny krok:** etap 44c (sesje i sloty), potem 44d i T9b.
+
 ### Sesja 03.10 — T8c: pobieżna regresja obszarów
 
 **Rozstrzygnięcia MG na starcie:** hybryda (spec w suicie + ręczne oględziny w Firefoksie), wszystkie
@@ -908,39 +972,3 @@ ręcznie — Kuba w Firefoksie i MG w Chromium (Playwright MCP, instancja z `hol
 nietknięta; punkty kontrolne tylko odczytywane.
 
 **Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity (T8a–T8c to jej część).
-
-### Sesja 03.10 — T8b: pierwszy kontakt nowego gracza
-
-**Rozstrzygnięcia MG na starcie:** gracz „zna CP RED, nie zna tego stołu”, subagent na Opusie,
-kontakt z MG „na Discordzie” przez raport (podpowiedź UI tylko przy zacięciu — nie była potrzebna
-ani razu), start z `po-T3`, walka w „Knajpie” z jednym statystą. Wiersz w sekcji 2.
-
-**Przebieg:** instancja E2E z `po-T3` trzymana `hold.ts` (hasło MG z env), profil Firefoksa MCP
-wyczyszczony dla `localhost:4173`, zaproszenie z „Panelu MG”. MG w Chromium MCP: zgoda
-(Krawędziarz, 86 pkt), „Przyjmij do gry” (żeton stanął sam przy miejscu startu), Zbir przeciągnięty
-do ogródka, walka Kruk + Zbir, inicjatywa Zbira z „Rzuć wszystkim”, start rundy, potem „Zastosuj”
-obu kart obrażeń (OB 11 → 10, PW 25 → 23, drugi cios zatrzymany). Przebieg i notatki gracza —
-akapit T8b w 6.4. Zgłoszenie „wycieku ruchu” sprawdzone drugą sesją Kuby (skrypt `playwright`,
-80 klatek przy przeciąganiu Zbira przez MG): bez śladu, więc #69 jest podglądem trasy.
-
-**Błędy:** #56 (B2, potwierdzony — drugi rzut obrażeń przyjęty w turze Zbira), #62 (B2 do triażu),
-#57–#61, #63–#71 (B3 do triażu). Odpadły po sprawdzeniu: „Nie wtrącam się” ×2 (tak w podręczniku),
-19 umiejętności zamiast 20 (dwudziesta to darmowy język), lista „Rola” na karcie (płatna zmiana
-Roli z bramką, umowa w `postac`), ucięte „Rozmo…” i nazwy umiejętności (odrzucone jako #54, #55).
-Pomysł: wpisywanie poziomu umiejętności w kreatorze (`POMYSLY.md`).
-
-**Decyzja MG w trakcie (03.10):** obrażenia z rzutu z nazwanym celem (także obszar) rozliczają się
-same, bez „Zastosuj”; Unik obrońcy przed obrażeniami (także odskok z obszaru — czeka się na każdego);
-serwer odmawia drugiego rzutu obrażeń (#56); grot strzelca idzie za celownikiem (strzelec obracał
-się już przy strzale). Zrobione po zamknięciu T8b (`029cd36`), retest w akapicie pod tabelą rejestru:
-serwer, E2E T4a → T5a, `t8a-`, `35-bezpieczenstwo` zielone; **T5b → T6 czekają na gateway MG**.
-Przy okazji `po-T4a`, `po-T4` i `po-T5a` zapisane od nowa z nową zasadą (`po-T5`, `po-T6*` stare).
-
-**Oglądane:** gracz w Firefoksie (Playwright MCP, okno na wierzchu), MG w Chromium (MCP), druga
-sesja gracza w Chromium (biblioteka, headless). Konsola MG: tylko `ERR_CACHE_OPERATION_NOT_SUPPORTED`
-na plikach `sfx/` (stały profil Chromium MCP z pamięcią podręczną; czyste konteksty T8a jej nie
-miały — pułapka w `ogledziny`). Poprawkę oglądano: Marek w Firefoksie, MG w Chromium (MCP).
-`dev.db` nietknięta.
-
-**Następny krok:** przebieg T5b → T6c od `po-T5a` z gatewayem w terminalu MG (retest #56 w Sieci
-i na wieżyczkach), triaż MG #57–#71, potem T8c.

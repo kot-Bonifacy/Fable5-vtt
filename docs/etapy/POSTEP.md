@@ -21,22 +21,25 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **44a**, **44b** (zrobione, czekają na pełne E2E), **44c–44d** Konta MG (następny: T9a); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a (ostatni zamknięty: 43a, 2026-09-26) |
+| ⬜ otwarty   | **44c–44d** Konta MG (następny: **44c**); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a, 44b (ostatni zamknięty: 44b, 2026-10-04) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etapy 44a i 44b zrobione (03/04.10, `ed9b811` i `87c43ef`) — zamyka je pełny przebieg E2E
-z gatewayem, który puszcza MG.** MG loguje się **loginem** (`MG`) i hasłem, inni MG zakładają konta
-sami, właściciel ma „Konta MG”. **Od 44b** każdy MG widzi i steruje tylko swoją kampanią (macierz
-`campaign-isolation.test.ts` na wszystkich 238 zdarzeniach), pliki leżą w
-`uploads/campaigns/<id>/` i wydaje je tylko MG i gracze tej kampanii, a **gracz wchodzi imiennym
-linkiem z Panelu MG** („Nowy gracz”, przy powrocie z innego komputera — „Link odnowienia”; link
-działa raz, 7 dni). Aktywna kampania jest **dalej jedna na serwer** (per MG — 44c). Rozpiska:
-`etap-44-konta-mg.md`, wynik 44b: `etap-44b` („Jak wyszło”).
+**Etapy 44a i 44b zamknięte 04.10, T9a zamknięty 04.10 bez ani jednego błędu — następny jest 44c
+(sesje i sloty).** Pełny domyślny przebieg z gatewayem: **299/299** (41,5 min). MG loguje się
+**loginem** (`MG`) i hasłem, inni MG zakładają konta sami, właściciel ma „Konta MG”. Każdy MG widzi
+i steruje tylko swoją kampanią (macierz serwera `campaign-isolation.test.ts` i macierz E2E
+`t9a-izolacja` na rozegranym `po-T6`), pliki leżą w `uploads/campaigns/<id>/` i wydaje je tylko MG
+i gracze tej kampanii, a **gracz wchodzi imiennym linkiem z Panelu MG** („Nowy gracz”, przy powrocie
+z innego komputera — „Link odnowienia”; link działa raz, 7 dni). Aktywna kampania jest **dalej jedna
+na serwer** — kampania MG-B zdejmuje stół grupie MG-A (44c), a MG-B ma dostęp do AI właściciela bez
+zgody (44d). Rozpiska: `etap-44-konta-mg.md`, wynik T9a: `testy.md` 6.5; punkt `po-T9a` (A + B) to
+start T9b.
+
 **Kolejność (MG 03.10): 44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
@@ -127,7 +130,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -167,12 +170,36 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 113     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 119     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 04.10 (ósma) — T9a „Konta MG 1/2: rejestracja, izolacja, uploady, linki”
+
+**Zlecenie MG:** „teraz kolej na T9a”, pytać o niejasności. **Decyzje MG:** najpierw pełny przebieg
+po 44b z gatewayem, potem T9a; automat w suicie plus krótkie oględziny w Firefoksie; **każdy
+przeciek między kampaniami = B1**; MG-B buduje kampanię średnią (wiersz w `testy.md`, sekcja 2).
+
+**Pełne przebiegi:** #1 padł na `4.10 punkt kontrolny po-T4` — `User.lastSeenAt` (44a) zmienia każde
+połączenie gniazda, więc odcisk stanu się rozjeżdżał (poprawka w suicie: `stateFingerprint` pomija
+kolumnę). #2 297/299 — `6.8b` oczekiwał 404 grafik po imporcie, a od 44b import celowo zeruje adresy
+plików spoza zasięgu importującego (oczekiwanie poprawione, dopisek do Z10). **#3 299/299.**
+Oba problemy były w suicie, nie w aplikacji; 44a i 44b zamknięte.
+
+**Zrobione:** `specs/35-bezpieczenstwo/t9a-konta` (7, `@szybkie`) i `t9a-izolacja` (14),
+`fixtures/izolacja.ts`, punkt `po-T9a`. Macierz zapisu: 238 zdarzeń × 3 ładunki z id obiektów A
+z gniazda MG-B i Kuby — wiersze i pliki A nietknięte, nic z A w ramkach B, zero `INTERNAL`
+(`.e2e/pomiary/t9a-macierz.json`). Wynik punkt po punkcie w `testy.md` 6.5. **Błędów aplikacji:
+zero.** Pułapki (6) w `testy`.
+
+**Oglądane:** automat w obu silnikach (MG-B i Marek B w Firefoksie); ręcznie w **Firefoksie**
+(Playwright MCP, `po-T9a`): MG-B — pusty stół, Panel MG z linkami w pięciu stanach, scena, boty,
+„Kopie”, listy kart; Kuba — „Wracasz do gry” i stół B. `dev.db` nietknięta.
+
+**Następny krok:** etap 44c (sesje i sloty) — `etap-44c-sesje-sloty.md`; start T9b potem z `po-T9a`.
 
 ### Sesja 03/04.10 (siódma) — etap 44b „Izolacja kampanii i imienne linki”
 
@@ -207,32 +234,3 @@ starcie serwera dev pliki z `uploads/<katalog>/` przejdą do `uploads/campaigns/
 wchodzą linkami odnowienia z Panelu MG (stare linki nie działają).
 
 **Następny krok:** pełny `pnpm test:e2e` z gatewayem (MG), potem **T9a**.
-
-### Sesja 03.10 (szósta) — etap 44a „Konta MG: rejestracja, logowanie, właściciel”
-
-**Zlecenie MG:** „kontynuuj projekt (etap 44a)”, pytać o niejasności. **Decyzje MG:** blokada
-„Zablokuj” + „Odblokuj”; `VTT_REGISTRATION` domyślnie `open`; imię przy stole konta z rejestracji
-to „MG”; nowe konto zaczyna od pustego stołu z „Nowa kampania” (szczegóły w `etap-44a`).
-
-**Zrobione (`ed9b811`):** migracja `gm_accounts` (`User.login` małymi literami, `owner`,
-`blockedAt`, `lastSeenAt`, `name` bez unikalności, `Campaign.gmId`, `PasswordReset` ze skrótem
-SHA-256; backfill: dotychczasowy MG → login `mg`, właściciel, wszystkie kampanie); trasy
-`/api/auth/register|login|password|reset/:token|config` i `/api/owner/accounts*`; `ensureGmUser`
-szuka po loginie; kampanie tylko swoje (lista, poligon, zaproszenia, `campaign:activate`), MG
-dostaje aktywną kampanię tylko swoją; konto systemu = `campaignGmUser`; kopie całej bazy
-`ownerOnly`. Klient: ekrany logowania/rejestracji/resetu, nakładka „Nowa kampania”, „Konto” w
-ustawieniach, „Konta MG” w Panelu MG. Umowa w `serwer`, pułapki w `ogledziny` (2).
-`dev.db` zmigrowana (kopia sprzed migracji w scratchpadzie sesji) — **MG loguje się teraz loginem
-`MG` i swoim hasłem; działający serwer dev trzeba zrestartować.**
-
-**Weryfikacja:** `shared` 2261, serwer 1317 (nowy `gm-accounts.test.ts`, 21), klient 319; ESLint,
-Prettier, `tsc` czyste w czterech pakietach. E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo`
-58/59 → po zawężeniu filtra konsoli (gniazdo zerwane przez serwer w Firefoksie, pułapka
-`ogledziny`) nowe `t2d-konta-mg` 6/6 (start z `po-T3`, czyli też migracja starej bazy).
-**Pełny domyślny przebieg z gatewayem — puszcza MG (wynik niżej, gdy będzie).** Oglądane w
-**Firefoksie** (Playwright MCP) na instancji E2E z `po-T3`: logowanie, rejestracja z odmowami
-(formularz rejestracji zagęszczony, bo wchodził na kreski ramki plakatu), pusty stół z „Nowa
-kampania”, zakładka „Kopie” bez kopii całej bazy, zmiana hasła, panel właściciela, link resetu,
-ekran „Nowe hasło”.
-
-**Następny krok:** 44b (izolacja kampanii, imienne linki) — zacząć od „Do decyzji MG” w `etap-44b`.

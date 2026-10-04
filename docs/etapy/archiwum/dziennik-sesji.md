@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03.10 (szósta) — etap 44a „Konta MG: rejestracja, logowanie, właściciel”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44a)”, pytać o niejasności. **Decyzje MG:** blokada
+„Zablokuj” + „Odblokuj”; `VTT_REGISTRATION` domyślnie `open`; imię przy stole konta z rejestracji
+to „MG”; nowe konto zaczyna od pustego stołu z „Nowa kampania” (szczegóły w `etap-44a`).
+
+**Zrobione (`ed9b811`):** migracja `gm_accounts` (`User.login` małymi literami, `owner`,
+`blockedAt`, `lastSeenAt`, `name` bez unikalności, `Campaign.gmId`, `PasswordReset` ze skrótem
+SHA-256; backfill: dotychczasowy MG → login `mg`, właściciel, wszystkie kampanie); trasy
+`/api/auth/register|login|password|reset/:token|config` i `/api/owner/accounts*`; `ensureGmUser`
+szuka po loginie; kampanie tylko swoje (lista, poligon, zaproszenia, `campaign:activate`), MG
+dostaje aktywną kampanię tylko swoją; konto systemu = `campaignGmUser`; kopie całej bazy
+`ownerOnly`. Klient: ekrany logowania/rejestracji/resetu, nakładka „Nowa kampania”, „Konto” w
+ustawieniach, „Konta MG” w Panelu MG. Umowa w `serwer`, pułapki w `ogledziny` (2).
+`dev.db` zmigrowana (kopia sprzed migracji w scratchpadzie sesji) — **MG loguje się teraz loginem
+`MG` i swoim hasłem; działający serwer dev trzeba zrestartować.**
+
+**Weryfikacja:** `shared` 2261, serwer 1317 (nowy `gm-accounts.test.ts`, 21), klient 319; ESLint,
+Prettier, `tsc` czyste w czterech pakietach. E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo`
+58/59 → po zawężeniu filtra konsoli (gniazdo zerwane przez serwer w Firefoksie, pułapka
+`ogledziny`) nowe `t2d-konta-mg` 6/6 (start z `po-T3`, czyli też migracja starej bazy).
+**Pełny domyślny przebieg z gatewayem — puszcza MG (wynik niżej, gdy będzie).** Oglądane w
+**Firefoksie** (Playwright MCP) na instancji E2E z `po-T3`: logowanie, rejestracja z odmowami
+(formularz rejestracji zagęszczony, bo wchodził na kreski ramki plakatu), pusty stół z „Nowa
+kampania”, zakładka „Kopie” bez kopii całej bazy, zmiana hasła, panel właściciela, link resetu,
+ekran „Nowe hasło”.
+
+**Następny krok:** 44b (izolacja kampanii, imienne linki) — zacząć od „Do decyzji MG” w `etap-44b`.
+
 ### Sesja 03.10 (piąta) — projekt etapu 44 „Konta MG”
 
 **Zlecenie MG:** „teraz kolej na T9” (podzielić, jeśli za duży; pytać o niejasności). T9 jest

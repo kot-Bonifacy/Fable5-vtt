@@ -295,10 +295,46 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 | Z7  | T2   | „Konta MG” | Pliki `/uploads/` bez logowania (z #10)                  | Każdy, kto zna adres (16 losowych znaków), pobiera mapę, portret, handout bez logowania — także handout nieudostępniony. Rozstrzygnięte w `testy.md` 11.3: uploady kampanii za logowaniem, tylko dla jej członków. **Częściowo 01.10 (`a551f3a`, z #10, decyzja MG):** `/uploads/` tylko dla zalogowanych. Zostaje na „Konta MG”: plik tylko dla członków jego kampanii i handout tylko dla tych, którym go udostępniono. **Zamknięte 04.10 (etap 44b):** plik leży pod `/uploads/campaigns/<id>/…` i strażnik wydaje go tylko MG i graczom tej kampanii (obcy — 404), grafikę handoutu graczowi tylko po udostępnieniu; test `6.2.7 … ani plików (#10, 44b)` i `campaign-isolation.test.ts`. |
 | Z8  | T2   | „Konta MG” | Gniazdo po wylogowaniu i wygaśnięciu sesji (z #11)       | Wylogowanie i usunięcie sesji rozłącza jej gniazda (lista gniazd per sesja albo sprawdzenie sesji przy zdarzeniu). Decyzja MG z 26.09: B2 + zadanie. **Zrobione 01.10 (`a551f3a`, z #11):** wylogowanie rozłącza gniazda sesji, wygaśnięcie — zegar i odmowa `SESSION_ENDED`. |
 | Z9  | T2   | 28        | Gniazdo nie sprawdza nagłówka `Origin`                    | Handshake WebSocket z `Origin: http://zly.example` i ważnym ciasteczkiem przechodzi (CORS dotyczy tylko long-pollingu). Dziś chroni tylko `SameSite=Lax`; `allowRequest` w Socket.IO z listą pochodzeń. |
-| Z10 | T6a  | 28        | Brak importu całej kampanii                               | Krok 6.8 planu („eksport kampanii i import do świeżej instancji”) zakładał import zrzutu kampanii, a etap 33 dał świadomie tylko eksport kampanii (`GET /api/archive/campaign`) oraz import pojedynczej karty i sceny (`archive:character`, `archive:scene`); całość odtwarza się snapshotem i skryptem `restore`. **Decyzja MG z 29.09 (sesja T6a):** T6b testuje to, co jest (eksport z czatem i bez, import kart Kowala i Iskry oraz sceny „Brama” z uploadami do nowej kampanii na świeżej instancji), a brak importu kampanii to zadanie, nie błąd. Przy etapie 28 rozstrzygnąć, czy przenosiny kampanii między instancjami (np. `dev.db` → VPS) idą snapshotem, czy trzeba importu. **T6b (30.09) — co pęka przy przenosinach plikami wymiany:** karty wchodzą jako NPC (właściciela nadaje się ręką), figury sceny tracą powiązanie z kartami i graczami (nowe id kart — 4 z 4 figur „Bramy”, zgodnie z etapem 33), a obrazy z `manifest.files` (mapa, żetony, portrety) dają 404, dopóki ktoś nie przeniesie ich do `uploads/` ręką — po skopiowaniu 5 plików wszystko 200. UI nie mówi, skąd wziąć pliki. |
+| Z10 | T6a  | 28        | Brak importu całej kampanii                               | Krok 6.8 planu („eksport kampanii i import do świeżej instancji”) zakładał import zrzutu kampanii, a etap 33 dał świadomie tylko eksport kampanii (`GET /api/archive/campaign`) oraz import pojedynczej karty i sceny (`archive:character`, `archive:scene`); całość odtwarza się snapshotem i skryptem `restore`. **Decyzja MG z 29.09 (sesja T6a):** T6b testuje to, co jest (eksport z czatem i bez, import kart Kowala i Iskry oraz sceny „Brama” z uploadami do nowej kampanii na świeżej instancji), a brak importu kampanii to zadanie, nie błąd. Przy etapie 28 rozstrzygnąć, czy przenosiny kampanii między instancjami (np. `dev.db` → VPS) idą snapshotem, czy trzeba importu. **T6b (30.09) — co pęka przy przenosinach plikami wymiany:** karty wchodzą jako NPC (właściciela nadaje się ręką), figury sceny tracą powiązanie z kartami i graczami (nowe id kart — 4 z 4 figur „Bramy”, zgodnie z etapem 33), a obrazy z `manifest.files` (mapa, żetony, portrety) dają 404, dopóki ktoś nie przeniesie ich do `uploads/` ręką — po skopiowaniu 5 plików wszystko 200. UI nie mówi, skąd wziąć pliki. **Od 44b (decyzja MG z 03.10, T9a 04.10):** import zeruje adresy plików, których importujący nie może przeczytać albo których nie ma na dysku — na innej instancji karta i scena wchodzą **bez grafiki** (`null`), a pliki skopiowane potem ręką już niczego nie wskrzeszą; MG wgrywa mapę i żetony od nowa (test `6.8b`). Przy etapie 28: przenosiny `dev.db` → VPS tylko kopią całej bazy. |
 | Z11 | poprawki 01.10 | 28        | `TRUST_PROXY=1` za Caddy                                  | Limit złych haseł i zaproszeń (#12) liczy się per `request.ip`. Za Caddy bez `TRUST_PROXY=1` każdy klient ma adres Caddy'ego — dziesięć cudzych pomyłek zablokuje logowanie wszystkim. Z `TRUST_PROXY=1` bez pośrednika adres podaje klient (`X-Forwarded-For`) i limit da się obejść — więc tylko za Caddy, a port serwera nie może być wystawiony obok niego. |
 
 ## Starsze notatki sesji testowych
+
+### Sesja 03.10 — T8b: pierwszy kontakt nowego gracza
+
+**Rozstrzygnięcia MG na starcie:** gracz „zna CP RED, nie zna tego stołu”, subagent na Opusie,
+kontakt z MG „na Discordzie” przez raport (podpowiedź UI tylko przy zacięciu — nie była potrzebna
+ani razu), start z `po-T3`, walka w „Knajpie” z jednym statystą. Wiersz w sekcji 2.
+
+**Przebieg:** instancja E2E z `po-T3` trzymana `hold.ts` (hasło MG z env), profil Firefoksa MCP
+wyczyszczony dla `localhost:4173`, zaproszenie z „Panelu MG”. MG w Chromium MCP: zgoda
+(Krawędziarz, 86 pkt), „Przyjmij do gry” (żeton stanął sam przy miejscu startu), Zbir przeciągnięty
+do ogródka, walka Kruk + Zbir, inicjatywa Zbira z „Rzuć wszystkim”, start rundy, potem „Zastosuj”
+obu kart obrażeń (OB 11 → 10, PW 25 → 23, drugi cios zatrzymany). Przebieg i notatki gracza —
+akapit T8b w 6.4. Zgłoszenie „wycieku ruchu” sprawdzone drugą sesją Kuby (skrypt `playwright`,
+80 klatek przy przeciąganiu Zbira przez MG): bez śladu, więc #69 jest podglądem trasy.
+
+**Błędy:** #56 (B2, potwierdzony — drugi rzut obrażeń przyjęty w turze Zbira), #62 (B2 do triażu),
+#57–#61, #63–#71 (B3 do triażu). Odpadły po sprawdzeniu: „Nie wtrącam się” ×2 (tak w podręczniku),
+19 umiejętności zamiast 20 (dwudziesta to darmowy język), lista „Rola” na karcie (płatna zmiana
+Roli z bramką, umowa w `postac`), ucięte „Rozmo…” i nazwy umiejętności (odrzucone jako #54, #55).
+Pomysł: wpisywanie poziomu umiejętności w kreatorze (`POMYSLY.md`).
+
+**Decyzja MG w trakcie (03.10):** obrażenia z rzutu z nazwanym celem (także obszar) rozliczają się
+same, bez „Zastosuj”; Unik obrońcy przed obrażeniami (także odskok z obszaru — czeka się na każdego);
+serwer odmawia drugiego rzutu obrażeń (#56); grot strzelca idzie za celownikiem (strzelec obracał
+się już przy strzale). Zrobione po zamknięciu T8b (`029cd36`), retest w akapicie pod tabelą rejestru:
+serwer, E2E T4a → T5a, `t8a-`, `35-bezpieczenstwo` zielone; **T5b → T6 czekają na gateway MG**.
+Przy okazji `po-T4a`, `po-T4` i `po-T5a` zapisane od nowa z nową zasadą (`po-T5`, `po-T6*` stare).
+
+**Oglądane:** gracz w Firefoksie (Playwright MCP, okno na wierzchu), MG w Chromium (MCP), druga
+sesja gracza w Chromium (biblioteka, headless). Konsola MG: tylko `ERR_CACHE_OPERATION_NOT_SUPPORTED`
+na plikach `sfx/` (stały profil Chromium MCP z pamięcią podręczną; czyste konteksty T8a jej nie
+miały — pułapka w `ogledziny`). Poprawkę oglądano: Marek w Firefoksie, MG w Chromium (MCP).
+`dev.db` nietknięta.
+
+**Następny krok:** przebieg T5b → T6c od `po-T5a` z gatewayem w terminalu MG (retest #56 w Sieci
+i na wieżyczkach), triaż MG #57–#71, potem T8c.
 
 ### Sesja 02.10 — T7c: wydajność mapy, wyciek pamięci
 
