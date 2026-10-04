@@ -89,6 +89,9 @@ naprawiony · retest OK · odrzucony (z powodem).
 | 76  | T8c  | B3 | karta | Firefox: ✕ „Usuń z Taboru” wychodzi poza prawą krawędź karty Moto | karta z Moto i dwoma wpisami Taboru, 1920 × 1080: w Firefoksie przycisk zaczyna się dokładnie na prawej krawędzi karty (1256–1269 px przy krawędzi 1256) i wystaje na ramkę arkusza; w Chromium mieści się (1219–1231 przy 1241) | oględziny Playwright MCP (Firefox gracza, Chromium MG), pomiar `getBoundingClientRect` | retest OK (triaż MG 03.10: B3) — `.fleet-row` z `minmax(0, 1fr)`; nowy test `#76 … #77` w `t8c-zdolnosci` (Kuba w Firefoksie) | `b9873e8` |
 | 77  | T8c  | B3 | karta | Siatka Zdolności Specjalnych: puste pola ostatniego wiersza świecą czerwonym tłem | karta z ≥4 panelami Zdolności (wieloklasowość): siatka 3 kolumn ma tło `rgb(224, 48, 31)` (czerwone linie między kartami), więc niepełny ostatni wiersz to duży czerwony prostokąt; oba silniki. Karta z jednym panelem (Iskra) wygląda dobrze — dotyczy tylko postaci z wieloma Rolami | oględziny Firefox i Chromium (MCP) | retest OK (triaż MG 03.10: B3) — `.cp-role-cards` to flex z zawijaniem, ostatni rząd wypełnia szerokość; ten sam nowy test | `b9873e8` |
 | 78  | T8c  | B3 | dane | Cytaty asystenta zasad: nagłówki rozdziałów bez pierwszych liter | pytanie o pancerz → cytaty „Strzelanina piątkowej nocy › Gdy pancerz zawiedzie › ANY I ŚMIERĆ O TRZYMYWANIE OBRAŻEŃ, s. 186”, „… › ZYLI NIE TYLKO SPLUWY…”, czyli inicjały nagłówków (RANY, OTRZYMYWANIE, CZYLI) zgubione przy indeksowaniu podręcznika; odpowiedź merytorycznie poprawna (OB −1 przy przebiciu) | adnotacje `@llm asystent zasad` w `t8c-narracja` (przebieg 03.10) | retest OK (triaż MG 03.10: B3) — `build-manual.mjs` zostawia inicjały (≈40 nagłówków wróciło do pełnych wyrazów), zrzut przebudowany, parsery bez różnic w danych, RAG przeindeksowany; cytat: „RANY I ŚMIERĆ OTRZYMYWANIE OBRAŻEŃ, s. 186” | `b9873e8` |
+| 79  | T9b  | B3 | boty | Gracz, który zawołał bota bez AI, dostaje radę dla MG: „…— Brak zgody właściciela na AI — poproś o dostęp w Panelu MG.”; notka staje nad jego wierszem | MG-B bez zgody właściciela, Wykidajło „w sesji”; Kuba pisze „Wykidajło, wpuścisz mnie?” → u Kuby notka „Wykidajło nie odpowiada — Brak zgody właściciela na AI — poproś o dostęp w Panelu MG.”, **nad** jego wierszem (notka lokalna, wiersz wraca echem serwera). Tak samo z „AI zajęte przez inną sesję” i „Właściciela serwera nie ma przy komputerze…”. Serwer (`requestBotTurns`, `bot-turns.ts`) dokłada powód bramy do `bot:notice` także dla wołającego gracza, a `ai-status.ts` zakłada „Gracz powodu nie dostaje — dla niego to po prostu »niedostępne«”. Powód nie zdradza, czyja sesja trzyma AI | zrzut `.e2e/pomiary/t9b/02-wolanie-bota-bez-zgody-Kuba-chromium.png`; adnotacja „notka Kuby” w teście `8. bez zgody…` (`t9b-dwie-grupy`) | nowy | |
+| 80  | T9b  | B3 | ui | Okno „AI właściciela”: uchwyt zmiany rozmiaru zasłania róg przycisku „Cofnij” | konto z flagą, zatwierdzona prośba → okno „AI właściciela” w Firefoksie 1600 × 900: „Cofnij” spada do drugiej linii wiersza, a ukośne kreski uchwytu w prawym dolnym rogu okna leżą na jego rogu | zrzut `.e2e/pomiary/t9b/09-przejmij-ai-Właściciel-firefox.png` | nowy | |
+| 81  | T9b  | B3 | czat | Po ponownym połączeniu lokalne notki czatu przeskakują pod nowsze wiadomości | MG-B: „Sesja rozpoczęta — gracze są przy stole.” (21:01) i „Wykidajło nie odpowiada — …” (21:02) stoją po restarcie serwera **pod** wierszami z 21:03 (odpowiedź Wykidajły) — historia czatu wraca z serwera, a notki lokalne (bez `seq`) doklejają się na koniec. Widać tylko po zerwaniu gniazda (restart, sieć) | zrzut `.e2e/pomiary/t9b/11-koniec-bezczynnosc-Bartek-firefox.png` (krok `10. porzucona sesja…`, po `stopServer`/`startServer`) | nowy | |
 
 Poprawkę #1 zrobiono w sesji T1 **za zgodą MG** (wyjątek od zasady „sesja testowa tylko notuje”:
 błąd blokował samą infrastrukturę, bo instancja E2E startuje z `dist/`). Retest: `00-baseline`
@@ -299,6 +302,34 @@ Rzeczy, które test wykazał, ale plan każe je zapisać jako zadanie, a nie bł
 | Z11 | poprawki 01.10 | 28        | `TRUST_PROXY=1` za Caddy                                  | Limit złych haseł i zaproszeń (#12) liczy się per `request.ip`. Za Caddy bez `TRUST_PROXY=1` każdy klient ma adres Caddy'ego — dziesięć cudzych pomyłek zablokuje logowanie wszystkim. Z `TRUST_PROXY=1` bez pośrednika adres podaje klient (`X-Forwarded-For`) i limit da się obejść — więc tylko za Caddy, a port serwera nie może być wystawiony obok niego. |
 
 ## Starsze notatki sesji testowych
+
+### Sesja 03.10 — T8c: pobieżna regresja obszarów
+
+**Rozstrzygnięcia MG na starcie:** hybryda (spec w suicie + ręczne oględziny w Firefoksie), wszystkie
+cztery grupy obszarów (mapa i sceny, UI i ustawienia, narracja i AI, Zdolności spoza scenariusza), start
+z `po-T6`, jeden układ (MG Chromium, gracze Firefox), gateway uruchomiony przez MG. Wiersz w sekcji 2.
+
+**Zrobione:** `specs/50-przegladarki/t8c-mapa` (7 testów), `t8c-ui` (6), `t8c-narracja` (6, w tym 2
+`@llm` i 2 `test.fail`), `t8c-zdolnosci` (12, w tym 2 `test.fail`); wspólny start w
+`fixtures/regresja.ts`; hak E2E (`e2e-hook.ts`, tylko build `e2e`, tylko odczyt) czyta dodatkowo
+magazyny `drawing`, `selection`, `music`, `settings`, `cover`, `light`, `table`. Lista kontrolna
+i wyniki — akapit T8c w 6.4. Pułapki dopisane w `testy` i `ogledziny`.
+
+**Błędy (B3, do triażu MG):** **#72** „Dodaj tabelę” gubi pierwszy klik po wpisaniu treści wiersza
+(pole z fokusem kurczy się spod kursora) i wąska kolumna treści; **#73** `/tab` gracza odpowiada
+zdaniem o `/jako`; **#74** Korpo nie widzi imienia własnego pracownika; **#75** przyciski Lojalności
+u gracza kończą się „To nie jest twoja tura.”; **#76** ✕ Taboru poza kartą Moto w Firefoksie; **#77**
+czerwone puste pola siatki Zdolności przy ≥4 panelach; **#78** cytaty asystenta zasad bez inicjałów
+nagłówków. Odpadły po sprawdzeniu: pola rang Ról u gracza (tylko do odczytu), „brak” paska i panelu
+w pełnym ekranie (zrzut MCP pokazuje tylko emulowane 1920 × 1080 z okna 3072 × 1728), dwa
+`closest is not a function` w konsoli (mój syntetyczny `keydown` na `window`).
+
+**Wynik:** `t8c-` 31/31 (2,7 min; 4 `test.fail` zgodnie z rejestrem), po formatowaniu z pełnym buildem
+razem z `00-baseline` 36/36 (2,9 min). Oglądane: automat — MG Chromium, gracze Firefox (headless, 1920 × 1080);
+ręcznie — Kuba w Firefoksie i MG w Chromium (Playwright MCP, instancja z `hold.ts`). `dev.db`
+nietknięta; punkty kontrolne tylko odczytywane.
+
+**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity (T8a–T8c to jej część).
 
 ### Sesja 03.10 — T8b: pierwszy kontakt nowego gracza
 

@@ -1,7 +1,7 @@
 # Etap 44 — Konta MG: wielu MG, izolacja kampanii, dwie sesje naraz, AI właściciela
 
 **Faza:** przed betą (warunek bety, `testy.md` 7.2 pkt 7) · **Wymaga etapów:** 02, 03, 33 (wszystkie
-ukończone) · **Części:** 44a → 44b → 44c → 44d · **Odbiór:** T9a (po 44b) i T9b (po 44d)
+ukończone) · **Części:** 44a → 44b → 44c → 44d · **Odbiór:** T9a (po 44b) i T9b (po 44d) — **oba zaliczone 04.10.2026** (`testy.md` 6.5)
 
 > **Pochodzenie:** decyzje MG z 26.09.2026 przy projekcie testów (`zaleglosci.md`, pozycje 1, 2
 > i 4; `testy.md` sekcje 2 i 11) i sesja projektowa 03.10.2026 (piąta tego dnia). Zlecenie MG:

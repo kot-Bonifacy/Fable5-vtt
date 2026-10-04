@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); następny: test **T9b** (odbiór etapu 44)  |
+| ⬜ otwarty   | **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); następne: triaż #79–#81, **refaktoryzacja**, T10 |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d (ostatni zamknięty: 44d, 2026-10-04) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,8 +29,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 44d zamknięty 04.10 — cały etap 44 „Konta MG” zrobiony, następny jest T9b** (odbiór 44c
-i 44d: dwie grupy naraz, AI właściciela, limit sesji — start z `po-T9a`). Kampanie i sesje jak w 44c
+**Etap 44 „Konta MG” zrobiony i odebrany — T9b zamknięty 04.10** (`t9b-dwie-grupy` 15/15 dwa razy
+— środkowy z trzech przebiegów padł tylko na filtrze konsoli, zero B0–B2, trzy B3 #79–#81 czekają na triaż MG; wynik w `testy.md` 6.5). **Następna jest
+refaktoryzacja całości pod osłoną suity, potem T10.** T9b gra AI na atrapie gatewaya z dziennikiem
+żądań (`fixtures/fake-gateway.ts`, tryb `reply`), a progi slotów i karencji skraca env. Kampanie i sesje jak w 44c
 (kampania **otwarta** u MG, sesja zajmuje jeden z dwóch slotów, gracz bez sesji ma „Między
 sesjami”). **AI właściciela:** zwykły MG prosi w Panelu MG, właściciel decyduje z **każdego**
 swojego konta — znaczek „AI” w górnym pasku z licznikiem próśb (konto gracza dostaje flagę
@@ -99,7 +101,7 @@ i `zaleglosci.md`. Co obowiązuje w kodzie — sekcja `postac` w umowach; kontek
 ~50 tok/s, VRAM 15,5 / 16,3 GB przy 32k — na GPU nic nie dokładamy). Qwythos-9B jest skasowany
 z dysku; pomiary obu w `ai-gateway/README.md`. Zaległości „na żywy model” zamknięte 24.09.
 
-**Zaległości: cztery od 26.09 — wiele grup i wielu MG** (osobne konta MG to warunek bety; od trzeciej tury 26.09 do etapu „Konta MG” wchodzą też **limit dwóch sesji naraz** i **prośba MG o dostęp do AI właściciela**; plan testów bety w `testy.md`, T9) (RAM llama-server i wyścig `token:sync` zamknięte 03.10 — archiwum). Co ocenia się tylko przy stole (kafel papieru,
+**Zaległości: z „wiele grup i wielu MG” (26.09) została tylko paczka AI dla innych MG (po becie)** — konta MG, limit dwóch sesji i AI właściciela zamknięte odbiorem T9b 04.10 (archiwum) (RAM llama-server i wyścig `token:sync` zamknięte 03.10 — archiwum). Co ocenia się tylko przy stole (kafel papieru,
 sesja zero w kreatorze, pełny ekran, polszczyzna Qwen, Wsparcie 10) — pierwszy wpis `POMYSLY.md`.
 **Playwright MCP jest włączony** (MG w Chromium, gracz w Firefoksie, stan sceny z konsoli przez
 `await import('/src/socket.ts')` — pułapki w `ogledziny`). Kampania-śmieć „Oględziny 12.09” ma członka `Tester`;
@@ -133,7 +135,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** 04.10 (jedenasta — T9b): E2E `t9b-` **15/15 dwa razy** (~5,5 min, atrapa gatewaya; przebieg pomiędzy padł tylko na filtrze konsoli — 500 pośrednika przy restarcie, poprawione); kodu aplikacji nie ruszano, więc jednostkowych i pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **322** testy. Wcześniej 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -173,12 +175,39 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 124     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 130     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 04.10 (jedenasta) — T9b „Konta MG 2/2: dwie grupy naraz, AI właściciela, limit”
+
+**Zlecenie MG:** „kontynuuj projekt (T9b)”, pytać o niejasności. **Decyzje MG:** AI na atrapie
+gatewaya (dziennik żądań jako „log gatewaya”), progi skrócone env (karencja 20 s, slot 1 min /
+3 min), wagi z propozycji, automat plus krótkie oględziny w Firefoksie (wiersz „T9b” w `testy.md`, sekcja 2).
+
+**Zrobione:** `specs/35-bezpieczenstwo/t9b-dwie-grupy` (15 testów z `po-T9a`, w domyślnym
+przebiegu): dwie grupy grają naraz bez przecieku (ruch, czat, szept do imiennika, rzut), koniec
+sesji odcina graczy także z konsoli, boty B bez zgody nie wysyłają do gatewaya nic, prośba
+widoczna tylko dla kont właściciela (konto gracza z flagą), „Udostępniam AI”, dzierżawa
+i przekazanie po końcu sesji, cofnięcie w trakcie odpowiedzi, odrzucenie, karencja, „Przejmij
+AI”, odmowa trzeciej sesji, samoczynne zwolnienie slotu `empty` i `idle` po restarcie. Atrapa
+gatewaya z trybem `reply` i dziennikiem żądań, `campaignSecrets` w `fixtures/izolacja.ts`.
+Sześć pułapek suity w `testy` (karta rzutu u obserwatora 7–13 s, `bot:chat` a rozłączone gniazdo,
+surowe gniazdo właściciela jako obecność, paczka JS w podsłuchu, figura na dwóch scenach, 500
+pośrednika przy restarcie).
+
+**Wynik:** zero B0–B2; nowe B3 — **#79** gracz przy milczącym bocie dostaje powód bramy z radą dla
+MG, **#80** uchwyt okna „AI właściciela” na „Cofnij”, **#81** notki czatu po ponownym połączeniu
+pod nowszymi wierszami. Zaległość „wiele grup” — pozycje 1, 2 i 4 zamknięte (archiwum).
+
+**Weryfikacja:** `t9b-` 15/15 dwa razy (przebieg pomiędzy: 14/15, sam filtr konsoli — 500 pośrednika `vite preview` przy restarcie, filtr poszerzony); `tsc` i ESLint suity czyste. Oglądane: Chromium
+(MG-A, Marek, Kuba) i **Firefox** (Ola, MG-B, właściciel jako gracz, MG-C) — 12 zrzutów
+w `.e2e/pomiary/t9b`. Kodu aplikacji nie zmieniano.
+
+**Następny krok:** triaż MG #79–#81, potem refaktoryzacja całości pod osłoną suity, T10.
 
 ### Sesja 04.10 (dziesiąta) — etap 44d „AI właściciela”
 
@@ -210,38 +239,3 @@ z właścicielem i znaczek. Przy pełnym przebiegu system zabił z braku RAM-u c
 przebieg we własnym oknie przeżył; wolne ~1 GB przy llama-server + E2E + przeglądarkach MCP).
 
 **Następny krok:** T9b (odbiór 44c i 44d, `testy.md` sekcja 6.5 punkty 4, 8, 10) z `po-T9a`.
-
-### Sesja 04.10 (dziewiąta) — etap 44c „Sesje i sloty”
-
-**Zlecenie MG:** „kontynuuj projekt (etap 44c)”, pytać o niejasności. **Decyzje MG:** MG z trwającą
-sesją nie przechodzi do innej kampanii; czat przygotowania tylko dla MG, na zawsze; gracz między
-sesjami może też wydawać PD, kupować i przelewać, tworzyć postać kreatorem, przekazywać i handlować;
-widok między sesjami to ekran stołu bez mapy na plakacie logowania — **gracz nigdy nie dostaje
-pustego ekranu** (szczegóły na końcu `etap-44c-sesje-sloty.md`).
-
-**Zrobione:** migracja `session_slots` (`Campaign.active` → `sessionStartedAt`, `lastSessionEndedAt`,
-`User.openCampaignId`, `ChatMessage.prep`; dawna aktywna kampania dostaje trwającą sesję, MG — otwartą
-kampanię). `realtime/sessions.ts`: `campaign:open` (tylko gniazda tego MG), `session:start` (slot
-jednym warunkowym `UPDATE`), `session:end`, `seatSocket` (stół albo `lobbyRoom`), zegar
-`SessionClock` + `sweepSessions` co minutę, sesje zastane po restarcie. Bramka `SESSION_NOT_RUNNING`
-w `registerEvents` z białą listą `BETWEEN_SESSIONS_EVENTS`; dostarczenia do jednego gracza przez
-`campaignMemberSockets`; `prep` ustawia rozszerzenie Prismy. Klient: `SessionControl` w pasku MG,
-`BetweenSessions`, „Otwórz” w Panelu MG, obecność z `atTable`. `CLAUDE.md` „Skala”, `.env.example`.
-Testy: `sessions.test.ts` (13: limit, wyścig trzech startów, dwie karty MG, bezczynność oba progi na
-sztucznym zegarze, restart, biała lista na wszystkich zdarzeniach gracza, przeniesienie tylko
-własnych gniazd, czat przygotowania), `campaign-switch.test.ts` usunięty (zastąpiony), E2E
-`01-dym/sesje.spec.ts` (`@szybkie`), T3a klika „Rozpocznij sesję”, T9a przerobiony (dwie sesje
-naraz, koniec B nie rusza A), progi bezczynności w instancji E2E — 600 min.
-
-**Weryfikacja:** `shared` 2267, serwer 1347, klient 321; ESLint, Prettier, `tsc` czyste w czterech
-pakietach. **Pełny domyślny przebieg E2E z gatewayem: 300 zielonych, 1 migotanie (T8c #72 — powtórka
-pliku 6/6, zaległość do triażu), 2 niepuszczone za nim — w powtórce zielone** (41,6 min). Wcześniej `35-bezpieczenstwo`
-68/68, `01-dym` 11/11. Oglądane: automat MG w Chromium + gracz w **Firefoksie** (start, koniec, widok
-między sesjami, F5) oraz tymczasowy skrypt Playwright z zrzutami — plakat 1920×1080, 1280×720,
-900×700, 1500×460 (przy 1500×460 ostatni wiersz wchodzi na budynek — jak logowanie), pasek MG
-w trzech stanach, Panel MG, **kreator gracza z rzutem Cechy kubkiem poza stołem**. Po oględzinach
-krótszy placeholder czatu i zdanie w pustym czacie między sesjami. `dev.db` zmigrowana (kopia
-sprzed sesji w scratchpadzie).
-
-**Następny krok:** etap 44d (AI właściciela) — `etap-44d-ai-wlasciciela.md`; potem T9b z `po-T9a`.
-

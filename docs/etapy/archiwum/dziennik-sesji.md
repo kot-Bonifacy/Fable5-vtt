@@ -1,5 +1,39 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.10 (dziewiąta) — etap 44c „Sesje i sloty”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44c)”, pytać o niejasności. **Decyzje MG:** MG z trwającą
+sesją nie przechodzi do innej kampanii; czat przygotowania tylko dla MG, na zawsze; gracz między
+sesjami może też wydawać PD, kupować i przelewać, tworzyć postać kreatorem, przekazywać i handlować;
+widok między sesjami to ekran stołu bez mapy na plakacie logowania — **gracz nigdy nie dostaje
+pustego ekranu** (szczegóły na końcu `etap-44c-sesje-sloty.md`).
+
+**Zrobione:** migracja `session_slots` (`Campaign.active` → `sessionStartedAt`, `lastSessionEndedAt`,
+`User.openCampaignId`, `ChatMessage.prep`; dawna aktywna kampania dostaje trwającą sesję, MG — otwartą
+kampanię). `realtime/sessions.ts`: `campaign:open` (tylko gniazda tego MG), `session:start` (slot
+jednym warunkowym `UPDATE`), `session:end`, `seatSocket` (stół albo `lobbyRoom`), zegar
+`SessionClock` + `sweepSessions` co minutę, sesje zastane po restarcie. Bramka `SESSION_NOT_RUNNING`
+w `registerEvents` z białą listą `BETWEEN_SESSIONS_EVENTS`; dostarczenia do jednego gracza przez
+`campaignMemberSockets`; `prep` ustawia rozszerzenie Prismy. Klient: `SessionControl` w pasku MG,
+`BetweenSessions`, „Otwórz” w Panelu MG, obecność z `atTable`. `CLAUDE.md` „Skala”, `.env.example`.
+Testy: `sessions.test.ts` (13: limit, wyścig trzech startów, dwie karty MG, bezczynność oba progi na
+sztucznym zegarze, restart, biała lista na wszystkich zdarzeniach gracza, przeniesienie tylko
+własnych gniazd, czat przygotowania), `campaign-switch.test.ts` usunięty (zastąpiony), E2E
+`01-dym/sesje.spec.ts` (`@szybkie`), T3a klika „Rozpocznij sesję”, T9a przerobiony (dwie sesje
+naraz, koniec B nie rusza A), progi bezczynności w instancji E2E — 600 min.
+
+**Weryfikacja:** `shared` 2267, serwer 1347, klient 321; ESLint, Prettier, `tsc` czyste w czterech
+pakietach. **Pełny domyślny przebieg E2E z gatewayem: 300 zielonych, 1 migotanie (T8c #72 — powtórka
+pliku 6/6, zaległość do triażu), 2 niepuszczone za nim — w powtórce zielone** (41,6 min). Wcześniej `35-bezpieczenstwo`
+68/68, `01-dym` 11/11. Oglądane: automat MG w Chromium + gracz w **Firefoksie** (start, koniec, widok
+między sesjami, F5) oraz tymczasowy skrypt Playwright z zrzutami — plakat 1920×1080, 1280×720,
+900×700, 1500×460 (przy 1500×460 ostatni wiersz wchodzi na budynek — jak logowanie), pasek MG
+w trzech stanach, Panel MG, **kreator gracza z rzutem Cechy kubkiem poza stołem**. Po oględzinach
+krótszy placeholder czatu i zdanie w pustym czacie między sesjami. `dev.db` zmigrowana (kopia
+sprzed sesji w scratchpadzie).
+
+**Następny krok:** etap 44d (AI właściciela) — `etap-44d-ai-wlasciciela.md`; potem T9b z `po-T9a`.
+
 ### Sesja 04.10 (ósma) — T9a „Konta MG 1/2: rejestracja, izolacja, uploady, linki”
 
 **Zlecenie MG:** „teraz kolej na T9a”, pytać o niejasności. **Decyzje MG:** najpierw pełny przebieg

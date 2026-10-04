@@ -34,7 +34,7 @@ Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · 🔁 do powtórk
 | T8b  | Przeglądarki 2/3: pierwszy kontakt nowego gracza          | ✅     | 03.10.2026 |
 | T8c  | Przeglądarki 3/3: pobieżna regresja obszarów              | ✅     | 03.10.2026 |
 | T9a  | Konta MG 1/2: rejestracja, izolacja, uploady, linki (po 44b) | ✅     | 04.10.2026 |
-| T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ⬜     |            |
+| T9b  | Konta MG 2/2: dwie grupy naraz, AI właściciela, limit (po 44d) | ✅     | 04.10.2026 |
 | T10  | Werdykt lokalny (triaż, retest poprawek)                  | ⬜     |            |
 | T11  | Smoke test na VPS (po etapie 28), werdykt końcowy         | ⬜     |            |
 
@@ -125,6 +125,7 @@ idą **przed** refaktoryzacją, jako etap 44 w czterech częściach (`docs/etapy
 | T8: wagi               | przycisk tury, rzutu albo kreatora nieosiągalny nawet po przewinięciu: **B2**, a B1, gdy blokuje grę bez obejścia; ucięty lub nachodzący element i zły motyw: **B3**; nowy błąd konsoli: **B3**, chyba że ma skutek w grze; komunikat po angielsku albo kod zamiast zdania: **B3** (decyzja MG z 03.10, sesja T8a) |
 | Konta MG: projekt      | etap 44 (44a–44d) zamiast „nowego etapu do zaprojektowania”; **osobne konta MG i gracza** (rola globalna), **imienny link = klucz** gracza (konto w jednej kampanii, link odnowienia), reset hasła MG przez właściciela, **kopie całej bazy tylko dla właściciela**, przygotowanie ≠ sesja, **gracz między sesjami widzi kartę bez stołu**, slot zwalnia **15 min bez gniazd albo 3 h bez zdarzeń**, zgoda na AI **per konto MG**, AI dla innych tylko przy **obecności właściciela i przełączniku „Udostępniam AI”**, zajętość AI „pierwszy + Przejmij” (decyzje MG z 03.10, sesja projektowa; pełna lista w `etap-44-konta-mg.md`) |
 | T9a: forma i wagi      | najpierw **pełny przebieg po 44b z gatewayem**, potem T9a; **automat w suicie** (`35-bezpieczenstwo/t9a-*`, w domyślnym przebiegu) plus krótkie oględziny w Firefoksie; **każdy przeciek między kampaniami** (odczyt, zapis, plik, wpis kompendium MG, sama informacja, że obiekt istnieje, link wpuszczający po użyciu albo wygaśnięciu) = **B1**, brak limitu rejestracji = B2; MG-B buduje kampanię **średnią** (scena z mapą, portrety, statysta z kartą, handout, notatka, bot, dwóch graczy imiennymi linkami) (decyzja MG z 04.10, sesja T9a) |
+| T9b: forma i wagi      | **atrapa gatewaya** w trybie „odpowiada” (`fixtures/fake-gateway.ts`) — jej dziennik żądań to „log gatewaya”, T9b idzie w domyślnym przebiegu bez GPU; **progi skrócone przez env** (karencja właściciela 20 s, a w ostatnim kroku pusty slot 1 min i bezczynność 3 min — sprawdzamy mechanizm, dokładne progi pilnują testy serwera); **automat w suicie** (`35-bezpieczenstwo/t9b-dwie-grupy`) plus oględziny zrzutów w Firefoksie; wagi: **B1** — przeciek ruchu, rzutu, czatu albo kanarka między grupami, żądanie AI bez prawa, które dociera do gatewaya, prośba o AI widoczna poza kontami właściciela, gracz po końcu sesji wykonuje zdarzenie stołu, trzecia sesja ponad limit, slot, który nie zwalnia się sam; **B2** — AI nie przechodzi albo nie gaśnie, a ręka właściciela to naprawia; **B3** — mylący powód w panelu botów (decyzje MG z 04.10, sesja T9b) |
 | poza betą              | równoległa gra kilku grup naraz i paczka instalacyjna AI dla innych MG (RAG z własnego PDF-a MG) — zaległości w `docs/etapy/zaleglosci.md`, poza tymi testami             |
 
 ## 3. Strategia: co testujemy głęboko, a co pobieżnie
@@ -774,6 +775,41 @@ gra jako gracz u MG-A” jednym kontem) zmienia się tak:
   grupy A, MG-B rozpoczyna sesję z paska, dwie sesje trwają naraz, a koniec sesji B sadza graczy B
   w widoku „Między sesjami”, nie ruszając A. **Sprzed 44d:** MG-B widzi „model gotowy” i może używać AI właściciela.
 
+**Wynik T9b (04.10):** `specs/35-bezpieczenstwo/t9b-dwie-grupy` (15 testów, z `po-T9a`, ~5,5 min,
+w domyślnym przebiegu); AI to atrapa gatewaya w trybie „odpowiada” z dziennikiem żądań. **Żadnego
+błędu B0–B2**; trzy nowe B3 (#79–#81). Co sprawdzono:
+
+- **4:** MG-B (Firefox) pisze w przygotowaniu i rozpoczyna sesję, gdy grupa A gra: Marek i Ola
+  zostają na „Knajpie”, nie dostają ani jednego `session:changed`, Kuba siada przy stole bez F5.
+  Dwie grupy naraz: ruch (Kowal i Ochroniarz), czat, szept i rzut kubkiem — każda rzecz dochodzi
+  do swojej grupy (czat w ≤ 5 s), a do drugiej nie dochodzi nic (kanarki, id wierszy, id figur).
+  Szept MG-B „/w Marek” trafia do Marka B, nie do Marka A. Po „Zakończ sesję” MG-A Marek i Ola
+  widzą plakat „Między sesjami” i swoją kartę w „Postaciach”, a z konsoli `chat:send`, rzut,
+  `token:move`, `map:ping` i `character:roll` dostają `SESSION_NOT_RUNNING`, bez wiersza w bazie.
+- **8:** bez zgody boty B są „AI niedostępne” z powodem, Wykidajło milczy, a stół B gra; do atrapy
+  nie dociera **żadne** żądanie z markerem B (id kampanii, nazwa bota, statysty, kanarki), za to
+  kampania A pyta normalnie (kontrola wyroczni). Prośba MG-B przy wylogowanym właścicielu; konto
+  gracza właściciela (imienny link u MG-B, flaga hasłem MG w „Ustawienia → Konto”) widzi znaczek
+  „AI 1”, notatkę i prośbę; ramek panelu właściciela nie dostał nikt inny (Marek, Ola, Kuba,
+  MG-B), a konto właściciela je dostało. Zgoda bez przełącznika → „nie udostępnia”, z przełącznikiem
+  → „AI zajęte przez inną sesję” (bez nazwy cudzej kampanii u MG-B), stół B gra dalej. Koniec sesji
+  A przekazuje AI sesji B: odpowiedź bota w edytorze i na czacie sesji Kuby. Cofnięcie zgody
+  **w trakcie** odpowiedzi przerywa ją `AI_UNAVAILABLE` w < 5 s; odrzucona i cofnięta prośba nie
+  przepuszczają nic, druga zgoda przywraca AI. Karencja: po zamknięciu obu kart właściciela boty B
+  działają jeszcze w karencji, gasną po ~20 s (`owner-absent`), a po powrocie przełącznik jest
+  wyłączony. „Przejmij AI” (sesja A wznowiona po B) odbiera AI sesji B bez cofania zgody.
+- **10:** MG-C (Firefox, z rejestracji) przy dwóch trwających sesjach dostaje notkę „Wszystkie
+  miejsca na sesje są zajęte — serwer nie obsłuży więcej sesji naraz.”, a `session:start`
+  z konsoli — `SESSION_SLOTS_FULL`; gracze A i B bez `session:changed`. MG-A kończy → MG-C startuje,
+  a AI wraca do B. Po restarcie z progami 1 min / 3 min porzucony stół C (bez gniazd) zwalnia
+  slot po ~2 min (`empty`), a stół B z trzema gniazdami, przy którym nikt nic nie robi — po ~4 min
+  (`idle`; sprzątanie co minutę). MG dostaje notkę o samoczynnym końcu, gracz nie.
+- **Kanarki przez cały przebieg:** nic z A u MG-B, Kuby i właściciela jako gracza (on legalnie zna
+  nazwę i id swojej kampanii z panelu AI), nic z B u Marka i Oli, nic z A ani B u MG-C.
+
+Oglądane: automat — MG-A, Marek i Kuba w Chromium, Ola, MG-B, właściciel jako gracz i MG-C
+w Firefoksie (headless, 1600 × 900); zrzuty kluczowych widoków w `.e2e/pomiary/t9b` (poza repo).
+
 ### 6.6. T11 — VPS (po etapie 28)
 
 Produkcja startuje z **pustej bazy** (decyzja MG z 26.09) — `dev.db` nie jedzie na VPS.
@@ -921,6 +957,31 @@ gracza) w sekcji 2; druga tura, pod etap „Konta MG”:
 
 ## 12. Notatki z sesji testowych
 
+### Sesja 04.10 — T9b: dwie grupy naraz, AI właściciela, limit sesji
+
+**Rozstrzygnięcia MG na starcie:** atrapa gatewaya zamiast prawdziwego modelu; progi skrócone przez
+env; wagi z propozycji (B1 dla przecieku, żądania AI bez prawa, prośby poza kontami właściciela,
+zdarzenia stołu po końcu sesji, trzeciej sesji i niezwalnianego slotu); automat plus krótkie
+oględziny w Firefoksie. Wiersz w sekcji 2. Pełnego przebiegu na starcie nie puszczano — 307/307
+z sesji 44d było po ostatniej zmianie kodu aplikacji.
+
+**Zrobione:** `t9b-dwie-grupy` (15 testów), atrapa gatewaya z trybem `reply` i dziennikiem żądań
+(`fake-gateway.ts`), `campaignSecrets` w `fixtures/izolacja.ts` (id i kanarki jednej kampanii na
+bazie z dwiema); wynik w 6.5. Siedem czerwonych przebiegów przed pierwszym zielonym, potem 15/15, 14/15 (sam filtr konsoli:
+500 pośrednika przy restarcie) i 15/15 — wszystkie porażki z winy suity, nie aplikacji: Kowal na dwóch scenach, gracz pod mgłą jako świadek ruchu MG, karta rzutu
+z fumble po ~11 s przy limicie 10 s (pomiar osobnym testem: zwykły 7–9 s, krytyk i fumble 9–13 s),
+rozłączone gniazdo przerywało `bot:chat` przed gatewayem, nazwa zdarzenia jako kanarek łapała
+paczkę JS (pułapki w `testy`). **Błędy aplikacji: trzy B3** — #79 gracz dostaje radę dla MG przy
+milczącym bocie, #80 uchwyt okna „AI właściciela” na „Cofnij”, #81 notki czatu po ponownym
+połączeniu pod nowszymi wierszami.
+
+**Oglądane:** automat — MG-A, Marek i Kuba w Chromium, Ola, MG-B, właściciel jako gracz i MG-C
+w Firefoksie; zrzuty w `.e2e/pomiary/t9b` (12 widoków: boty bez zgody, notka u gracza, znaczek
+i okno właściciela, „AI zajęte”, plakat między sesjami, odpowiedź bota, przełącznik po powrocie,
+„Przejmij AI”, odmowa slotu, notki o samoczynnym końcu). `dev.db` nietknięta.
+
+**Następny krok:** triaż MG #79–#81, potem refaktoryzacja całości pod osłoną suity, T10.
+
 ### Sesja 04.10 — T9a: konta MG, izolacja dwóch MG
 
 **Rozstrzygnięcia MG na starcie:** najpierw pełny przebieg po 44b z gatewayem, potem T9a; automat
@@ -946,31 +1007,3 @@ bez kopii całej bazy, listy kart i właścicieli tylko z B; Kuba — ekran „W
 Konsola: 0 błędów, trzy znane ostrzeżenia WebGL. `dev.db` nietknięta.
 
 **Następny krok:** etap 44c (sesje i sloty), potem 44d i T9b.
-
-### Sesja 03.10 — T8c: pobieżna regresja obszarów
-
-**Rozstrzygnięcia MG na starcie:** hybryda (spec w suicie + ręczne oględziny w Firefoksie), wszystkie
-cztery grupy obszarów (mapa i sceny, UI i ustawienia, narracja i AI, Zdolności spoza scenariusza), start
-z `po-T6`, jeden układ (MG Chromium, gracze Firefox), gateway uruchomiony przez MG. Wiersz w sekcji 2.
-
-**Zrobione:** `specs/50-przegladarki/t8c-mapa` (7 testów), `t8c-ui` (6), `t8c-narracja` (6, w tym 2
-`@llm` i 2 `test.fail`), `t8c-zdolnosci` (12, w tym 2 `test.fail`); wspólny start w
-`fixtures/regresja.ts`; hak E2E (`e2e-hook.ts`, tylko build `e2e`, tylko odczyt) czyta dodatkowo
-magazyny `drawing`, `selection`, `music`, `settings`, `cover`, `light`, `table`. Lista kontrolna
-i wyniki — akapit T8c w 6.4. Pułapki dopisane w `testy` i `ogledziny`.
-
-**Błędy (B3, do triażu MG):** **#72** „Dodaj tabelę” gubi pierwszy klik po wpisaniu treści wiersza
-(pole z fokusem kurczy się spod kursora) i wąska kolumna treści; **#73** `/tab` gracza odpowiada
-zdaniem o `/jako`; **#74** Korpo nie widzi imienia własnego pracownika; **#75** przyciski Lojalności
-u gracza kończą się „To nie jest twoja tura.”; **#76** ✕ Taboru poza kartą Moto w Firefoksie; **#77**
-czerwone puste pola siatki Zdolności przy ≥4 panelach; **#78** cytaty asystenta zasad bez inicjałów
-nagłówków. Odpadły po sprawdzeniu: pola rang Ról u gracza (tylko do odczytu), „brak” paska i panelu
-w pełnym ekranie (zrzut MCP pokazuje tylko emulowane 1920 × 1080 z okna 3072 × 1728), dwa
-`closest is not a function` w konsoli (mój syntetyczny `keydown` na `window`).
-
-**Wynik:** `t8c-` 31/31 (2,7 min; 4 `test.fail` zgodnie z rejestrem), po formatowaniu z pełnym buildem
-razem z `00-baseline` 36/36 (2,9 min). Oglądane: automat — MG Chromium, gracze Firefox (headless, 1920 × 1080);
-ręcznie — Kuba w Firefoksie i MG w Chromium (Playwright MCP, instancja z `hold.ts`). `dev.db`
-nietknięta; punkty kontrolne tylko odczytywane.
-
-**Następny krok:** triaż MG #72–#78, potem refaktoryzacja pod osłoną suity (T8a–T8c to jej część).
