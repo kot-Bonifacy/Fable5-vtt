@@ -345,3 +345,55 @@ export class TappedSocket {
     this.socket?.disconnect();
   }
 }
+
+/** Wiersze jednej kampanii: ona sama, wiersze z jej `campaignId` i wiersze jej scen (`sceneId`). */
+function campaignRows(campaignId: string): Record<string, unknown>[] {
+  const rows = query('SELECT * FROM Campaign WHERE id = ?', campaignId);
+  const scenes = query<{ id: string }>('SELECT id FROM Scene WHERE campaignId = ?', campaignId).map(
+    (row) => row.id,
+  );
+  for (const table of tableNames()) {
+    if (table === 'Campaign') continue;
+    const columns = query<{ name: string }>(`PRAGMA table_info("${table}")`).map((c) => c.name);
+    if (columns.includes('campaignId')) {
+      rows.push(...query(`SELECT * FROM "${table}" WHERE campaignId = ?`, campaignId));
+    } else if (columns.includes('sceneId') && scenes.length > 0) {
+      rows.push(
+        ...query(
+          `SELECT * FROM "${table}" WHERE sceneId IN (${scenes.map(() => '?').join(', ')})`,
+          ...scenes,
+        ),
+      );
+    }
+  }
+  return rows;
+}
+
+const CANARY = /KANAREK-[\w-]+?-[0-9A-F]{4}/g;
+
+/**
+ * Tajne jednej kampanii (T9b) na bazie z dwiema kampaniami: napisowe id jej
+ * wierszy, konta, które są członkami **tylko** jej, i kanarki z treści jej
+ * wierszy. Dla drugiej grupy to kanarki „obiekt istnieje” — jak `stringIds`
+ * w T9a, gdzie cała baza była kampanią A.
+ */
+export function campaignSecrets(campaignId: string): { ids: string[]; canaries: string[] } {
+  const ids = new Set<string>();
+  const canaries = new Set<string>();
+  for (const row of campaignRows(campaignId)) {
+    if (typeof row.id === 'string' && /^[a-z0-9]{20,}$/i.test(row.id)) ids.add(row.id);
+    for (const value of Object.values(row)) {
+      if (typeof value !== 'string' || !value.includes('KANAREK-')) continue;
+      for (const match of value.matchAll(CANARY)) canaries.add(match[0]);
+    }
+  }
+  for (const { userId } of query<{ userId: string }>(
+    `SELECT userId FROM CampaignMember WHERE campaignId = ?
+       AND userId NOT IN (SELECT userId FROM CampaignMember WHERE campaignId <> ?)`,
+    campaignId,
+    campaignId,
+  )) {
+    ids.add(userId);
+  }
+  return { ids: [...ids], canaries: [...canaries] };
+}
