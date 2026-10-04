@@ -27,6 +27,9 @@ zostaje aktywna kampania per MG (44c), z pozycji 2 — 44c, z pozycji 4 — 44d.
 **04.10.2026 — 44c zrobione** (kampania otwarta per MG, sesje i sloty, limit dwóch, bezczynność,
 widok między sesjami; `CLAUDE.md` „Skala” poprawione): pozycje 1 i 2 czekają już tylko na odbiór
 w T9b, z pozycji 4 zostaje 44d.
+**04.10.2026 — 44d zrobione** (prośba o AI, zgoda per konto MG, „Udostępniam AI” z obecnością
+i karencją 2 min, dzierżawa jednej sesji, „Przejmij AI”, brama przed gatewayem): pozycje 1, 2 i 4
+czekają już tylko na odbiór w T9b; pozycja 3 dalej po becie.
 
 1. **Osobne konta MG z otwartą rejestracją — WARUNEK BETY.** Każdy MG zakłada konto sam (otwarta
    rejestracja, własne hasło), widzi i steruje tylko swoimi kampaniami, botami, architekturami Sieci

@@ -8,6 +8,21 @@ po co to powstało, co było przed, czego świadomie nie zrobiono.
 
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
+## Wyprowadzone 04.10.2026 — etap 44c
+
+**Etap 44c zamknięty 04.10 — następny jest 44d (AI właściciela), potem T9b.** Nie ma już jednej
+aktywnej kampanii na serwer: MG ma kampanię **otwartą** (Panel MG „Otwórz”, przygotowanie bez
+slotu), a gracze siedzą przy stole tylko w **trwającej sesji** — „Rozpocznij sesję” / „Zakończ
+sesję” w górnym pasku MG, najwyżej **dwie sesje naraz** (`VTT_MAX_SESSIONS`), porzucona zwalnia
+się sama po 15 min bez nikogo albo 3 h bez gry. Gracz bez sesji ma **widok „Między sesjami”**
+(plakat logowania w miejscu mapy, karta, dziennik, handouty, czat do czytania, kreator, PD, sklep,
+handel); resztę zdarzeń serwer odrzuca `SESSION_NOT_RUNNING` (biała lista `BETWEEN_SESSIONS_EVENTS`).
+Czat napisany bez sesji widzi tylko MG. MG z trwającą sesją nie otworzy innej kampanii. Umowy:
+`serwer` i `ui`; decyzje MG z 04.10 na końcu `etap-44c-sesje-sloty.md`. **W `dev.db` migracja
+zamieniła „Test2” (dawniej aktywna) w trwającą sesję** — po 15 min bez gniazda zwolni się sama.
+**Zostało sprzed 44d:** każdy MG ma dostęp do AI właściciela bez zgody. Punkt `po-T9a` (A w sesji,
+B po sesji) to start T9b.
+
 ## Wyprowadzone 04.10.2026 — etapy 44a i 44b
 
 **Etapy 44a i 44b zamknięte 04.10, T9a zamknięty 04.10 bez ani jednego błędu — następny jest 44c

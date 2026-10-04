@@ -1694,6 +1694,9 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Zdarzenia innego gniazda potrafią przyjść w tej samej milisekundzie co ack MG (04.10, 44d)** — test „po `session:end` gracz nic nie słyszy” zaczynał podsłuch zaraz po ack i łapał spóźnione `state:sync`/`session:changed` gracza, gdy handler dostał jedno `await` więcej (`ai.refresh()`). Gniazda to osobne połączenia, kolejności między nimi nie ma; przed podsłuchem „ciszy” `await settle()`.
+- **`locator.check()` na polu sterowanym odpowiedzią serwera pada „did not change its state” (04.10, 44d)** — Playwright sprawdza stan zaraz po kliknięciu. Przełącznik, który ma się zaznaczyć, zaznacza się w UI od razu (optymistycznie, z powrotem przy błędzie) — tak stoi „Udostępniam AI”.
+- **Ciasteczko z `context.request.post(SERVER_URL…)` nie trafia do karty na `BASE_URL` (04.10, 44d)** — `127.0.0.1:3101` i `localhost:4173` to inne hosty; rejestrację czy zakładanie kampanii z kontekstu aktora rób ścieżką względną (`/api/…` przez podgląd Vite). Nagłówek `x-forwarded-for` przechodzi przez pośrednika, więc limit rejestracji z jednego adresu da się ominąć tak jak w T9a.
 - **Python na Windows zapisuje pliki z CRLF (04.10, 44c)** — `open(p, 'w')` w trybie tekstowym zamienia `
 ` na `
 `, a repo trzyma LF: Prettier zgłosił 36 plików, choć zmiany były w kilku wierszach. Skrypt edycji czyta i pisze z `newline=''` (albo po wszystkim `sed -i 's/$//'` na zmienionych plikach). Sprawdzenie: `file <plik>` mówi „with CRLF line terminators”.

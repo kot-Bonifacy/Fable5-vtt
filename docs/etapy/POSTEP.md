@@ -21,26 +21,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **44d** Konta MG — AI właściciela (następny: **44d**); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki)     |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44c (ostatni zamknięty: 44c, 2026-10-04) |
+| ⬜ otwarty   | **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); następny: test **T9b** (odbiór etapu 44)  |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d (ostatni zamknięty: 44d, 2026-10-04) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 44c zamknięty 04.10 — następny jest 44d (AI właściciela), potem T9b.** Nie ma już jednej
-aktywnej kampanii na serwer: MG ma kampanię **otwartą** (Panel MG „Otwórz”, przygotowanie bez
-slotu), a gracze siedzą przy stole tylko w **trwającej sesji** — „Rozpocznij sesję” / „Zakończ
-sesję” w górnym pasku MG, najwyżej **dwie sesje naraz** (`VTT_MAX_SESSIONS`), porzucona zwalnia
-się sama po 15 min bez nikogo albo 3 h bez gry. Gracz bez sesji ma **widok „Między sesjami”**
-(plakat logowania w miejscu mapy, karta, dziennik, handouty, czat do czytania, kreator, PD, sklep,
-handel); resztę zdarzeń serwer odrzuca `SESSION_NOT_RUNNING` (biała lista `BETWEEN_SESSIONS_EVENTS`).
-Czat napisany bez sesji widzi tylko MG. MG z trwającą sesją nie otworzy innej kampanii. Umowy:
-`serwer` i `ui`; decyzje MG z 04.10 na końcu `etap-44c-sesje-sloty.md`. **W `dev.db` migracja
-zamieniła „Test2” (dawniej aktywna) w trwającą sesję** — po 15 min bez gniazda zwolni się sama.
-**Zostało sprzed 44d:** każdy MG ma dostęp do AI właściciela bez zgody. Punkt `po-T9a` (A w sesji,
-B po sesji) to start T9b.
+**Etap 44d zamknięty 04.10 — cały etap 44 „Konta MG” zrobiony, następny jest T9b** (odbiór 44c
+i 44d: dwie grupy naraz, AI właściciela, limit sesji — start z `po-T9a`). Kampanie i sesje jak w 44c
+(kampania **otwarta** u MG, sesja zajmuje jeden z dwóch slotów, gracz bez sesji ma „Między
+sesjami”). **AI właściciela:** zwykły MG prosi w Panelu MG, właściciel decyduje z **każdego**
+swojego konta — znaczek „AI” w górnym pasku z licznikiem próśb (konto gracza dostaje flagę
+w „Ustawienia → Konto” hasłem właściciela). AI dostaje kampania właściciela zawsze, a kampania MG
+ze zgodą — gdy właściciel jest obecny i ma włączone „Udostępniam AI” (gaśnie samo 2 min po jego
+ostatniej karcie i po restarcie). **AI trzyma jedna trwająca sesja** (pierwsza uprawniona; koniec
+przekazuje dalej; „Przejmij AI” tylko dla własnej sesji właściciela), przygotowanie dostaje AI, gdy
+nikt go nie trzyma. Każde żądanie AI idzie przez bramę kampanii (`campaignAi`, umowa w `boty`),
+odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-wlasciciela.md`.
+**W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
+(MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
 **Kolejność (MG 03.10): 44a → 44b → T9a → 44c → 44d → T9b → refaktoryzacja → T10 → 28 → T11.**
 
@@ -132,7 +133,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -157,8 +158,8 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 61   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 21   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 27   | 14      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 22   | 21      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 28   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 20   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 12   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 40   | 8       |
@@ -168,16 +169,47 @@ a nie do tego pliku.
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, zasięg, oględziny | 18   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            | 6    | 8       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 121     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 124     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 04.10 (dziesiąta) — etap 44d „AI właściciela”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44d)”, pytać o niejasności. **Decyzje MG:** konto gracza
+dostaje flagę właściciela hasłem właściciela („Ustawienia → Konto”); AI w przygotowaniu tylko
+wtedy, gdy żadna sesja go nie trzyma (także dla kampanii właściciela); „Przejmij AI” tylko przy
+własnej sesji właściciela; panel z konta gracza — znaczek „AI” w górnym pasku z licznikiem
+i notatka na czacie (szczegóły na końcu `etap-44d-ai-wlasciciela.md`).
+
+**Zrobione:** migracja `ai_access` (`User.aiAccess`, `aiRequestedAt`, `aiDecidedAt`). `ai/access.ts`:
+`AiAccess` (kampanie w pamięci, `refresh()`, prawo `aiEntitlement`, dzierżawa `pickLeaseHolder`,
+obecność właściciela z karencją `VTT_AI_OWNER_GRACE_SECONDS` = 120, `takeOver`) i `CampaignAi` —
+jedyna droga do gatewaya (strumień, RAG tylko z kolekcji kampanii, liczenie tokenów, podręcznik);
+`ctx.ai` to od teraz brama, ~40 miejsc wołania przepiętych na `campaignAi`/`socketAi`. `ai:status`
+per gniazdo z `reason`, tylko gdy się zmienił. Trasy `routes/ai-access.ts` (prośba, panel
+właściciela z każdego konta z flagą, `owner-link`), push `ai-access:owner`/`ai-access:mine`.
+`rules:index` tylko dla właściciela. Klient: `OwnerAiButton`/`OwnerAiWindow`/`OwnerAiPanel`,
+`AiAccessRequest` w Panelu MG, `OwnerLink` w ustawieniach gracza, powody w panelach botów i AI
+(`ai-status.ts`). Testy: `ai-access.test.ts` (11: wszystkie kombinacje prawa, dzierżawa, „Przejmij”,
+karencja z F5, cofnięcie w trakcie strumienia, kanarek prośby, licznik żądań na atrapie = 0,
+kolekcje RAG, strażnik „jedna brama”), E2E `01-dym/t44d-ai-wlasciciela` (`@szybkie`). Poprawka
+wyścigu w `sessions.test.ts` (pułapka w `testy`).
+
+**Weryfikacja:** `shared` 2267, serwer 1358, klient 321; ESLint, Prettier, `tsc` czyste. **Pełny
+domyślny przebieg E2E z gatewayem: 307/307 (42,5 min).** Oglądane: MG-B w **Firefoksie** (Panel
+MG z prośbą, zakładki „Boty” i „AI” z „AI zajęte przez inną sesję”), właściciel w Chromium
+(znaczek „AI 1”, notatka, okno, zgoda, przełącznik), konto gracza w Chromium (`[::1]`) — połączenie
+z właścicielem i znaczek. Przy pełnym przebiegu system zabił z braku RAM-u czujniki w tle (sam
+przebieg we własnym oknie przeżył; wolne ~1 GB przy llama-server + E2E + przeglądarkach MCP).
+
+**Następny krok:** T9b (odbiór 44c i 44d, `testy.md` sekcja 6.5 punkty 4, 8, 10) z `po-T9a`.
 
 ### Sesja 04.10 (dziewiąta) — etap 44c „Sesje i sloty”
 
@@ -212,28 +244,4 @@ krótszy placeholder czatu i zdanie w pustym czacie między sesjami. `dev.db` zm
 sprzed sesji w scratchpadzie).
 
 **Następny krok:** etap 44d (AI właściciela) — `etap-44d-ai-wlasciciela.md`; potem T9b z `po-T9a`.
-
-### Sesja 04.10 (ósma) — T9a „Konta MG 1/2: rejestracja, izolacja, uploady, linki”
-
-**Zlecenie MG:** „teraz kolej na T9a”, pytać o niejasności. **Decyzje MG:** najpierw pełny przebieg
-po 44b z gatewayem, potem T9a; automat w suicie plus krótkie oględziny w Firefoksie; **każdy
-przeciek między kampaniami = B1**; MG-B buduje kampanię średnią (wiersz w `testy.md`, sekcja 2).
-
-**Pełne przebiegi:** #1 padł na `4.10 punkt kontrolny po-T4` — `User.lastSeenAt` (44a) zmienia każde
-połączenie gniazda, więc odcisk stanu się rozjeżdżał (poprawka w suicie: `stateFingerprint` pomija
-kolumnę). #2 297/299 — `6.8b` oczekiwał 404 grafik po imporcie, a od 44b import celowo zeruje adresy
-plików spoza zasięgu importującego (oczekiwanie poprawione, dopisek do Z10). **#3 299/299.**
-Oba problemy były w suicie, nie w aplikacji; 44a i 44b zamknięte.
-
-**Zrobione:** `specs/35-bezpieczenstwo/t9a-konta` (7, `@szybkie`) i `t9a-izolacja` (14),
-`fixtures/izolacja.ts`, punkt `po-T9a`. Macierz zapisu: 238 zdarzeń × 3 ładunki z id obiektów A
-z gniazda MG-B i Kuby — wiersze i pliki A nietknięte, nic z A w ramkach B, zero `INTERNAL`
-(`.e2e/pomiary/t9a-macierz.json`). Wynik punkt po punkcie w `testy.md` 6.5. **Błędów aplikacji:
-zero.** Pułapki (6) w `testy`.
-
-**Oglądane:** automat w obu silnikach (MG-B i Marek B w Firefoksie); ręcznie w **Firefoksie**
-(Playwright MCP, `po-T9a`): MG-B — pusty stół, Panel MG z linkami w pięciu stanach, scena, boty,
-„Kopie”, listy kart; Kuba — „Wracasz do gry” i stół B. `dev.db` nietknięta.
-
-**Następny krok:** etap 44c (sesje i sloty) — `etap-44c-sesje-sloty.md`; start T9b potem z `po-T9a`.
 

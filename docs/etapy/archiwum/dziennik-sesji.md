@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.10 (ósma) — T9a „Konta MG 1/2: rejestracja, izolacja, uploady, linki”
+
+**Zlecenie MG:** „teraz kolej na T9a”, pytać o niejasności. **Decyzje MG:** najpierw pełny przebieg
+po 44b z gatewayem, potem T9a; automat w suicie plus krótkie oględziny w Firefoksie; **każdy
+przeciek między kampaniami = B1**; MG-B buduje kampanię średnią (wiersz w `testy.md`, sekcja 2).
+
+**Pełne przebiegi:** #1 padł na `4.10 punkt kontrolny po-T4` — `User.lastSeenAt` (44a) zmienia każde
+połączenie gniazda, więc odcisk stanu się rozjeżdżał (poprawka w suicie: `stateFingerprint` pomija
+kolumnę). #2 297/299 — `6.8b` oczekiwał 404 grafik po imporcie, a od 44b import celowo zeruje adresy
+plików spoza zasięgu importującego (oczekiwanie poprawione, dopisek do Z10). **#3 299/299.**
+Oba problemy były w suicie, nie w aplikacji; 44a i 44b zamknięte.
+
+**Zrobione:** `specs/35-bezpieczenstwo/t9a-konta` (7, `@szybkie`) i `t9a-izolacja` (14),
+`fixtures/izolacja.ts`, punkt `po-T9a`. Macierz zapisu: 238 zdarzeń × 3 ładunki z id obiektów A
+z gniazda MG-B i Kuby — wiersze i pliki A nietknięte, nic z A w ramkach B, zero `INTERNAL`
+(`.e2e/pomiary/t9a-macierz.json`). Wynik punkt po punkcie w `testy.md` 6.5. **Błędów aplikacji:
+zero.** Pułapki (6) w `testy`.
+
+**Oglądane:** automat w obu silnikach (MG-B i Marek B w Firefoksie); ręcznie w **Firefoksie**
+(Playwright MCP, `po-T9a`): MG-B — pusty stół, Panel MG z linkami w pięciu stanach, scena, boty,
+„Kopie”, listy kart; Kuba — „Wracasz do gry” i stół B. `dev.db` nietknięta.
+
+**Następny krok:** etap 44c (sesje i sloty) — `etap-44c-sesje-sloty.md`; start T9b potem z `po-T9a`.
+
 ### Sesja 03/04.10 (siódma) — etap 44b „Izolacja kampanii i imienne linki”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 44b)”, pytać o niejasności. **Decyzje MG:** uploady
