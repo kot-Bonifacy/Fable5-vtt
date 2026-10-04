@@ -108,5 +108,5 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 44     | ~~Konta MG~~ (rozpisany 03.10 na 44a–44d)     | —      | projekt 2026-10-03  |
 | 44a    | Konta MG: rejestracja, logowanie, właściciel  | ✅     | 2026-10-04 (E2E)    |
 | 44b    | Izolacja kampanii i imienne linki graczy      | ✅     | 2026-10-04          |
-| 44c    | Sesje i sloty, widok między sesjami           | ⬜     |                     |
+| 44c    | Sesje i sloty, widok między sesjami           | ✅     | 2026-10-04          |
 | 44d    | AI właściciela: prośba, obecność, dzierżawa   | ⬜     |                     |

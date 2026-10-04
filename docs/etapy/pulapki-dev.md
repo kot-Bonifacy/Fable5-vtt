@@ -208,6 +208,8 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **`prisma migrate dev` w powłoce agenta odmawia („non-interactive”), a kasowanie kolumny chce potwierdzenia (04.10, 44c)** — migrację z przeniesieniem danych pisz ręcznie: `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` daje SQL przebudowy tabel, do którego dopisujesz `UPDATE`/`CASE` przed `DROP` starej tabeli (wzór: `20261004120000_session_slots`), potem `migrate deploy` i `generate`. Ten sam `migrate diff` po wszystkim musi dać „This is an empty migration”.
+- **Gracz bez trwającej sesji nie siedzi w `campaignRoom` (04.10, 44c)** — rozgłoszenie do pokoju kampanii go nie znajdzie. Do konkretnego użytkownika (karta, szept, handout, dziennik, handel) zbieraj gniazda przez `campaignMemberSockets`; `io.in(campaignRoom(id)).fetchSockets()` z filtrem po użytkowniku zgubi gracza między sesjami bez żadnego błędu.
 - **Płaski adres pliku w fiksturach testów odbija się od strażnika (04.10, 44b)** — test, który wstawia do bazy `/uploads/portraits/x.png`, dostaje `UPLOAD_NOT_FOUND` z `creation:patch`/`token:create`, a przy pobraniu 404. Od 44b plik ma adres kampanii: `/uploads/campaigns/<id>/<katalog>/<plik>` (wzór: `portraitDir` w `creation.test.ts`). Płaskie adresy zna już tylko migracja przy starcie (`migrateFlatUploads`).
 - **Nowe wymagane pole `ServerConfig` wywraca ~78 plików testów (01.10)** — każdy test dymny ma **własny literał konfiguracji**. Nowy przełącznik rób opcjonalnym (`rateLimits?`, `trustProxy?`, wzór `backups?`): `loadConfig` ustawia wartość produkcyjną, a brak pola w teście znaczy „wyłączone”.
 - **`tsup` zdejmuje `node:` z importów — `node:sqlite` zamienia się w pakiet `sqlite` i `dist/` pada na starcie** — od etapu 33 do 26.09 (T1 testów) build produkcyjny serwera nie wstawał, a nikt go nie uruchamiał. Lek: `removeNodeProtocol: false` w `tsup.config.ts`; strażnikiem jest instancja E2E, która startuje z `dist/`.
@@ -221,7 +223,7 @@ nietrafioną — sprawdzaj obie.
 - **Zdarzenie bez potwierdzenia** (`socket.emit('x', payload)`) dochodziło z pustym payloadem — nowe zdarzenie bez acku sprawdź testem serwera.
 - **Po `prisma migrate dev` zrób `prisma generate`** — stary klient daje `Unknown argument`.
 - **Mechanika bez danych wygląda jak zepsuty kod** — zanim uznasz „nie działa", sprawdź, czy pole (np. `explosive`) jest w `data/private/.../weapon-types.json`; testy jadą na publicznej próbce, która je ma.
-- **`Campaign.sandbox` nie rozchodzi się sama** — jedzie w stanie logowania, więc chip „poligon" u innego klienta czeka na przeładowanie albo `campaign:activate`.
+- **`Campaign.sandbox` nie rozchodzi się sama** — jedzie w stanie logowania, więc chip „poligon" u innego klienta czeka na przeładowanie albo `campaign:open`/`session:changed`.
 - **Prisma 7 nie zna `migrate dev --skip-generate`** — wypisuje pomoc polecenia zamiast błędu, co wygląda na złą nazwę migracji.
 - **Migracji danych nie dopisuje się do zastosowanej migracji** (suma kontrolna) — backfill idzie osobnym katalogiem z samym `UPDATE`.
 - **Zmiana `schema.prisma` bez `prisma generate` wywraca CAŁY zestaw testów serwera** — 57 plików na timeoutach `state:sync`, jakby zerwał się protokół. Generuj klienta, zanim zaczniesz szukać błędu gdzie indziej.
@@ -324,7 +326,7 @@ więc każdy przebieg suity sprawdza, że build żyje. Rejestr testów: #1 (B0, 
 **Flaga kampanii nie rozchodzi się sama po podpiętych ekranach.** `Campaign.sandbox` jedzie
 w `CampaignSummary`, czyli w stanie logowania — trasa REST ją zapisuje, ale **nie** broadcastuje,
 więc chip „poligon" u innego klienta pojawi się dopiero po przeładowaniu albo po
-`campaign:activate`. Dla dialu MG to akceptowalne; gdyby kiedyś zaczęło przeszkadzać, drogą jest
+`campaign:open` (do 44b `campaign:activate`). Dla dialu MG to akceptowalne; gdyby kiedyś zaczęło przeszkadzać, drogą jest
 `campaign:switch` (to on przenosi wszystkie ekrany), a nie drugie źródło prawdy u klienta.
 
 **Prisma 7 nie zna `migrate dev --skip-generate`** — wypisuje wtedy całą pomoc polecenia zamiast
@@ -1692,6 +1694,10 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **Python na Windows zapisuje pliki z CRLF (04.10, 44c)** — `open(p, 'w')` w trybie tekstowym zamienia `
+` na `
+`, a repo trzyma LF: Prettier zgłosił 36 plików, choć zmiany były w kilku wierszach. Skrypt edycji czyta i pisze z `newline=''` (albo po wszystkim `sed -i 's/$//'` na zmienionych plikach). Sprawdzenie: `file <plik>` mówi „with CRLF line terminators”.
+- **Filtr czatu ma przycisk „Walka” — `getByRole('button', { name: 'Walka' })` łapie go zamiast zakładki (04.10, 44c)** — zakładki panelu bocznego to `.side-tab`; liczbę i kolejność zakładek sprawdzaj `page.locator('.side-tab')`.
 - **`stateFingerprint` bez `User.lastSeenAt` (04.10, T9a)** — od 44a każde połączenie gniazda odświeża `lastSeenAt`, więc klient wracający sam po odtworzeniu kopii zmieniał odcisk `User` i `4.10 punkt kontrolny po-T4` padał losowo (pełny przebieg 04.10: 196 zielonych, reszta kaskadą od `po-T4`). `fixtures/db.ts` pomija tę kolumnę jak tabelę `Session`. Nowa kolumna „kiedy ostatnio” w bazie = dopisz ją do `VOLATILE_COLUMNS`.
 - **Liczbowe id (czat) nie nadają się na kanarki „obiekt istnieje” (04.10, T9a)** — `"178"` siedzi w co drugiej ramce (współrzędne, kolejne id). Kanarkiem są tylko napisowe cuid (`stringIds` w `fixtures/izolacja.ts`, ≥ 20 znaków).
 - **Właściciel widzi id kont MG z „Konta MG” (04.10, T9a)** — `/api/owner/accounts` niesie `id` każdego konta MG, więc id konta MG-B w podsłuchu właściciela to nie wyciek; w ramkach gniazda go nie ma.

@@ -8,6 +8,19 @@ po co to powstało, co było przed, czego świadomie nie zrobiono.
 
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
+## Wyprowadzone 04.10.2026 — etapy 44a i 44b
+
+**Etapy 44a i 44b zamknięte 04.10, T9a zamknięty 04.10 bez ani jednego błędu — następny jest 44c
+(sesje i sloty).** Pełny domyślny przebieg z gatewayem: **299/299** (41,5 min). MG loguje się
+**loginem** (`MG`) i hasłem, inni MG zakładają konta sami, właściciel ma „Konta MG”. Każdy MG widzi
+i steruje tylko swoją kampanią (macierz serwera `campaign-isolation.test.ts` i macierz E2E
+`t9a-izolacja` na rozegranym `po-T6`), pliki leżą w `uploads/campaigns/<id>/` i wydaje je tylko MG
+i gracze tej kampanii, a **gracz wchodzi imiennym linkiem z Panelu MG** („Nowy gracz”, przy powrocie
+z innego komputera — „Link odnowienia”; link działa raz, 7 dni). Aktywna kampania jest **dalej jedna
+na serwer** — kampania MG-B zdejmuje stół grupie MG-A (44c), a MG-B ma dostęp do AI właściciela bez
+zgody (44d). Rozpiska: `etap-44-konta-mg.md`, wynik T9a: `testy.md` 6.5; punkt `po-T9a` (A + B) to
+start T9b.
+
 ## Wyprowadzone 18.09.2026 — cała sekcja sprzed skrócenia
 
 Sekcja „Od czego zacząć" urosła do 15 KB i opisywała historię etapów 41–42c, sesji 12–14.09

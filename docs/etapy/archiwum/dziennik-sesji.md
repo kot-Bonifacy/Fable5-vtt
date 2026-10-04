@@ -1,5 +1,39 @@
 # Dziennik sesji — archiwum
 
+### Sesja 03/04.10 (siódma) — etap 44b „Izolacja kampanii i imienne linki”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44b)”, pytać o niejasności. **Decyzje MG:** uploady
+w katalogu kampanii (wariant A); stare anonimowe linki unieważnione, gracze zostają (`Tester`
+w pięciu kampaniach też); link odnowienia nie wylogowuje innych urządzeń; nieużyty link żyje 7 dni.
+
+**Zrobione (`87c43ef`):** macierz `campaign-isolation.test.ts`: wpis dla każdego z 238 zdarzeń, gniazdo MG-B
+i gracza B z obiektami kampanii A, trzy wyrocznie (baza A nietknięta, A nic nie słyszy, brak
+id/kanarka A w ackach i emisjach B), 28 przypadków „własny obiekt + obcy odnośnik”, trasy REST,
+pliki, kompendium; próba mutacyjna wywraca ją. Znalezione i naprawione: import karty i sceny
+z właścicielem spoza kampanii, `exportCampaign` z relacjami botów całego serwera, `getRoster`
+z każdym MG serwera (`/w MG`), eksport karty/sceny i trasy muzyki bez sprawdzenia kampanii.
+Uploady per kampania (`campaign-uploads.ts`, strażnik po ścieżce w `app.ts`, handout tylko
+udostępniony — Z7 zamknięte, `requireOwnUploadUrl` w zdarzeniach, import kopiuje pliki, migracja
+płaskich katalogów przy starcie serwera, zbieracz w katalogach kampanii). Imienne linki: migracja
+`named_invitations`, `/api/join/:token` bierze imię z linku (410 użyty/wygasły), link odnowienia,
+Panel MG („Nowy gracz”, „Link odnowienia”, lista linków ze stanem), nowy ekran wejścia. Testy
+dymne (63 pliki) przez `test-join.ts`, E2E przez `fixtures/links.ts`. Umowy (3) i pułapka w `serwer`;
+`poligon.md` — wejście linkiem odnowienia.
+
+**Weryfikacja:** `shared` 2264, serwer 1337, klient 319; ESLint, Prettier, `tsc` czyste w czterech
+pakietach. E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15 (nowy
+`po-T3a`). **Pełnego przebiegu z gatewayem nie puszczano — puszcza MG.** Oglądane skryptem
+biblioteki `playwright` (Firefox MCP nie wstał — pułapka `ogledziny`) na instancji E2E z `po-T3a`:
+Panel MG w **Firefoksie** (nowy gracz, imię zajęte, link odnowienia, rozwinięte zużyte), wejście
+Kuby w Firefoksie, ekran „Link już wykorzystany”, odnowienie Marka w Chromium i w Firefoksie
+(to samo konto, historia czatu), „Zaproszenie nieważne”.
+
+**`dev.db` zmigrowana** (kopia bazy i `uploads/` sprzed sesji w scratchpadzie). **Przy następnym
+starcie serwera dev pliki z `uploads/<katalog>/` przejdą do `uploads/campaigns/<id>/`**, a gracze
+wchodzą linkami odnowienia z Panelu MG (stare linki nie działają).
+
+**Następny krok:** pełny `pnpm test:e2e` z gatewayem (MG), potem **T9a**.
+
 ### Sesja 03.10 (szósta) — etap 44a „Konta MG: rejestracja, logowanie, właściciel”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 44a)”, pytać o niejasności. **Decyzje MG:** blokada

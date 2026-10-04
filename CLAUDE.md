@@ -39,7 +39,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 - **Mechanika CP RED tylko w `packages/shared`** — czyste funkcje, deterministyczny RNG wstrzykiwany z zewnątrz, obowiązkowe testy jednostkowe. Serwer i boty wywołują ten sam kod.
 - **Separacja rdzeń/system:** rdzeń VTT (mapa, tokeny, czat, sceny) nie importuje niczego z modułów CP RED (`shared/systems/cpred`). W przyszłości dojdą inne systemy RPG.
 - **Boty degradują się łagodnie:** AI Gateway offline ⇒ boty oznaczone jako niedostępne, cała reszta VTT działa normalnie. Każda funkcja AI musi mieć ścieżkę degradacji.
-- **Skala: jedna aktywna sesja, kilku graczy.** Nie optymalizuj pod multi-tenant ani tysiące użytkowników — prostota > skalowalność.
+- **Skala: kilku MG, najwyżej dwie sesje naraz (`VTT_MAX_SESSIONS`), po kilku graczy.** Przygotowanie kampanii nie zajmuje slotu, sesja tak (etap 44c). Nie optymalizuj pod multi-tenant ani tysiące użytkowników — prostota > skalowalność.
 
 ## Licencja i dane (KRYTYCZNE)
 

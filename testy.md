@@ -770,7 +770,9 @@ gra jako gracz u MG-A” jednym kontem) zmienia się tak:
 - **7:** eksport MG-B bez niczego z A; kopia całej bazy właściciela odtworzona na czystym katalogu
   zachowuje `gmId` obu kampanii, a po niej każdy MG widzi tylko swoją. Punkt `po-T9a` (A + B).
 - **Znany stan sprzed 44c (nie błąd T9a):** kampania MG-B zdejmuje stół grupie A, powrót MG-A —
-  grupie B; T9b, punkt 4. **Sprzed 44d:** MG-B widzi „model gotowy” i może używać AI właściciela.
+  grupie B; T9b, punkt 4. **Od 44c (04.10) już nie:** T9a sprawdza, że kampania MG-B nie rusza
+  grupy A, MG-B rozpoczyna sesję z paska, dwie sesje trwają naraz, a koniec sesji B sadza graczy B
+  w widoku „Między sesjami”, nie ruszając A. **Sprzed 44d:** MG-B widzi „model gotowy” i może używać AI właściciela.
 
 ### 6.6. T11 — VPS (po etapie 28)
 

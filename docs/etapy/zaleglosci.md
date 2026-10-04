@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**04.10.2026 — migotanie T8c „#72 Dodaj tabelę” (pełny przebieg po 44c).** Serwer potwierdził
+`table:upsert` po 13 ms, a formularz nie zamknął się w 3 s; chwilę wcześniej leciały kości 3D
+jawnego losowania tabeli. Prawdopodobnie potwierdzenie czeka w `rollPresentation.deliver` na koniec
+animacji (`emitSceneAck` w `socket.ts`) — nie sprawdzone. Powtórka pliku: 6/6. Do triażu MG: czy
+formularz MG ma czekać na kości, czy test ma dłuższy limit.
+
 **26.09.2026 — Wiele grup i wielu MG (decyzje MG przy projekcie testów, `testy.md`).** Kontekst:
 VTT ma być serwerem dla kilku grup, każda z własnym MG. Dziś jest jedno konto MG (`User.role`
 globalne) i jedna aktywna kampania dla wszystkich (`campaign:activate` przenosi każdego
@@ -18,6 +24,9 @@ decyzje MG i podział w `etap-44-konta-mg.md` rozstrzygają wszystkie „do usta
 ukończenia etapu; pozycja 3 dalej po becie.
 **04.10.2026 — 44b zrobione** (izolacja kampanii, uploady per kampania, imienne linki): z pozycji 1
 zostaje aktywna kampania per MG (44c), z pozycji 2 — 44c, z pozycji 4 — 44d.
+**04.10.2026 — 44c zrobione** (kampania otwarta per MG, sesje i sloty, limit dwóch, bezczynność,
+widok między sesjami; `CLAUDE.md` „Skala” poprawione): pozycje 1 i 2 czekają już tylko na odbiór
+w T9b, z pozycji 4 zostaje 44d.
 
 1. **Osobne konta MG z otwartą rejestracją — WARUNEK BETY.** Każdy MG zakłada konto sam (otwarta
    rejestracja, własne hasło), widzi i steruje tylko swoimi kampaniami, botami, architekturami Sieci
