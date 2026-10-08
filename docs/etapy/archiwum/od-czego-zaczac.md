@@ -8,6 +8,20 @@ po co to powstało, co było przed, czego świadomie nie zrobiono.
 
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
+## Wyprowadzone 08.10.2026 — etap 46a1
+
+**Następna jest 46a2 (okno „Wymiana”), potem 46c i 46b — przed refaktoryzacją.** Projekt całości
+w `etap-46-wymiana-sklepy.md`; **46a podzielona 08.10 (decyzja MG) na 46a1 i 46a2**, zakres
+każdej w sekcji „Zakres 46a”. **46a1 zamknięta 08.10:** handlarz to karta NPC-a z wierszem
+`Merchant` (uchwyt `Merchant.id`, towar = ekwipunek karty, odkupiona rzecz od razu na półce),
+zdarzenia `merchant:list/view/deal/config/row`, `exchange:counterparts` (jedna lista drugich stron
+obok starych `inventory:sources` i `trade:partners`, które 46a2 usuwa razem ze starymi oknami),
+`campaign:catalog-shopping` (dźwignia „Kup: wszędzie / u handlarzy” w Kompendium MG,
+`CATALOG_CLOSED` w `economy:buy`), zapraszający kładzie rzeczy w pole handlu już w `invited`.
+**Do sklepu nie ma jeszcze UI** — MG ustawia go dziś tylko z konsoli/testów; okno, dok, sekcja
+„Sklep” w karcie NPC-a i E2E `t46a-` to 46a2. Umowy w `ekwipunek` i `serwer`. **Granat rzucany
+przeładowuje się bez końca (#82)** — naprawia 46c.
+
 ## Wyprowadzone 04.10.2026 — etap 44c
 
 **Etap 44c zamknięty 04.10 — następny jest 44d (AI właściciela), potem T9b.** Nie ma już jednej

@@ -935,6 +935,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Jedno okno „Wymiana” (08.10, etap 46a2)** — `components/exchange/`: `ExchangeWindow` (nagłówek: moja karta ⇄ druga strona) i panele `TradePane` / `LootPane` / `MerchantPane` / `GmPane`, dok `ExchangeDock`, sekcja MG `MerchantSection` w zakładce Ekwipunek karty NPC-a. Stan: `exchangeStore` (handle, okno, sklepy, półki). Tryb wynika z klucza `selected`: `live:<id>` handel, `merchant:<id>` sklep, `loot:<token>` łup, `gm:any` / `gm:<token>` tryb MG; wybór `trade:*` od razu zaprasza (`startTrade`). **Nowe drzwi do okna dopisuje się w `exchange/open.ts`**, nie własnym `openWindow`. Przeciąganie — `useExchangeDrag` + `data-exchange-drop`. Stopkę sklepu liczy `merchantQuote` (`exchange-quote.ts`) wyłącznie z `cpredMerchantQuote`.
 - **AI właściciela w UI (04.10, etap 44d)** — konto z flagą `owner` (MG albo gracz) ma w górnym pasku `OwnerAiButton` (licznik czekających próśb) i okno `OwnerAiWindow` z chromem okna ustawień (`settings-window owner-ai-window`); ta sama treść (`OwnerAiPanel`) stoi w Panelu MG właściciela, a zwykły MG ma tam `AiAccessRequest`. Stan: `ownerAiStore` (REST na wejściu, push `ai-access:owner` / `ai-access:mine`), nowa prośba to notatka czatu z akcją „Otwórz AI właściciela”. Plakietka i zdanie o stanie botów w panelach MG — `aiBadgeText` / `aiReasonLine` (`ai-status.ts`), nie gołe `status.available`. Gracz łączy konto z właścicielem w „Ustawienia → Konto” (`OwnerLink`).
 - **Widok gracza między sesjami i stan sesji MG (04.10, etap 44c)** — o tym, czy gracz siedzi przy stole, decyduje `useBetweenSessions()` (`session-view.ts`, z `chatStore.campaign` — `state:sync` i `session:changed`), nie REST. `GameView` podmienia wtedy `CombatHud` + mapę na `BetweenSessions` (plakat logowania z napisami w ramce celownika — kotwica jak `.auth-screen`, ale w jednostkach kontenera `cqw`/`cqh`), `SidePanel` chowa „Walkę”, `ChatPanel` wyłącza pole, `DiceCup` pokazuje się tylko z rzutem kreatora. Nowy element stołu, którego gracz nie ma widzieć bez sesji, sprawdza ten sam hak. Gracz **nigdy** nie dostaje pustej planszy (decyzja MG z 04.10). Stan sesji MG to `SessionControl` w górnym pasku („przygotowanie” / „sesja · od …”, „Zakończ sesję” pyta drugim kliknięciem, nie `window.confirm`); kody odmów obszaru tłumaczy `sessionErrorText` (`shared/sessions.ts`). Obecność ma `atTable` — gracz poza stołem to pusty pierścień (`status-dot--waiting`).
 - **„Czeka na MG” ma piąte źródło: `portrait` (03.10, #68)** — `portraitStore.wanted` → `gmAttentionItems`, klucz `portrait:<userId>`, wiersz z `data-attention` stoi nad „Portrety — biblioteka MG” (`PortraitPicker manage`). Gracz przy wyczerpanej puli dostaje w oknie zdanie i „Poproś MG o portret”, okno `portrait-gallery--exhausted` rośnie z treścią; nazw plików portretów gracz nie widzi (zostają w `aria-label`).
@@ -971,6 +972,31 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a środek (`.top-bar-turn`) ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
+
+
+**Jedno okno „Wymiana” (08.10.2026, etap 46a2).** Trzy okna z 38b/38c (`InventoryWindow`,
+`TradeWindow` z wyborem partnera, `TradeDock`) i ich magazyny (`inventoryStore`, `tradeStore`)
+są usunięte. Wejście jest jedno — „🤝 Wymiana…” w menu figury (gracz i MG), „Wymiana…” na
+zakładce Ekwipunek, dok w rogu mapy („Sklepy (N)” u gracza), przyciski sklepów na ekranie
+„Między sesjami” i podwójny klik gracza w handlarza albo ciało — a każde idzie przez
+`exchange/open.ts`: tam mieszka odpowiedź na „którą kartą gracz podchodzi” (`anchorNear`:
+najbliższa figura) i „co znaczy wybór kolegi” (`startTrade`: zaproszenie od razu, decyzja MG
+z 08.10). MG z menu figury dostaje okno na karcie tej figury w trybie MG (`gm:any`), jak dawne
+„Przeszukaj”; handel jako NPC wybiera w nagłówku. Lista drugich stron przychodzi z serwera
+(`exchange:counterparts`) i odświeża się przy zapisie mojej karty i przy fokusie listy.
+
+Handel w oknie to ten sam stan serwera co w 38c, z jedną różnicą: strona drużyny niesie
+`team`, więc gracz zna id karty kolegi i „Wyślij bez czekania” wysyła pole zapraszającego
+propozycją z 38b (`inventory:give`), po czym wycofuje zaproszenie. Handel, który ruszył,
+otwiera okno sam wyłącznie temu, kto okna nie ma — kto przegląda półkę, dostaje „Otwórz”
+w doku (decyzja MG z 08.10). Koniec handlu zamyka okno, które go pokazywało (jak w 38c — okno
+zostawione bez strony stało nad kartą postaci); okno patrzące gdzie indziej zostaje.
+
+Półka żyje w `exchangeStore.shelves` i przychodzi wyłącznie z serwera (`merchant:view`,
+`merchant:update`, `merchant:gone`). Serwer zapomina oglądających przy rozłączeniu, więc
+`refreshMerchants` po `state:sync` ogląda je jeszcze raz — nowy magazyn trzymający cudzy stan
+serwera potrzebuje tego samego. Odmowa „Zapłać” (`QUOTE_CHANGED`, `MERCHANT_CLOSED`,
+`OUT_OF_STOCK`) zawsze pobiera półkę od nowa.
 
 ---
 
@@ -2608,6 +2634,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Strona handlu drużyny niesie `team` (08.10, etap 46a2)** — `TradeSideState.team` ustawia `trade:invite` przez `isTeamCard` (`team-cards.ts`, ta sama definicja co `teamCardsWhere`), a `tradeViewFor` daje wtedy `characterId` także graczowi po drugiej stronie. Karta NPC-a — dalej bez id (#40). Dok sklepów odświeża też zapis karty handlarza (`emitMerchantShops` w odświeżaczu półki), a `MerchantListItem.open` dostaje tylko MG.
 - **Sklep = karta NPC-a + wiersz `Merchant` (08.10, etap 46a)** — ustawienia w tabeli (nie w arkuszu), uchwytem jest `Merchant.id`, towarem ekwipunek karty. Półkę dla widza składa **wyłącznie** `merchantViewFor` (`realtime/merchant.ts`, pole po polu: gracz bez ukrytych wierszy, bez wierszy bez ceny, bez `priceOverride` i bez id karty). Cenę i przenoszenie liczy **jedna** para funkcji: `cpredMerchantQuote` (stopka okna i suma serwera) i `cpredMerchantDeal` (woła quote sama; obie strony zdejmują, potem kładą). Nakładka MG kluczem `lista:id` (`merchantRowKey`), przycinana `pruneMerchantRows` przy każdej transakcji i zmianie wiersza.
 - **Transakcja sklepu: `withCampaignLock` + `$transaction`, suma z klienta (08.10, 46a)** — karty czyta się w transakcji, a transakcje sklepów kampanii idą jedna po drugiej (wyścig o ostatnią sztukę = jedna sprzedaż i `OUT_OF_STOCK`, nie `SQLITE_BUSY`). Klient wysyła `expectTotal`; inna suma serwera to `QUOTE_CHANGED`. Gotówka przez `applyBalance({ tx, emit: false })`: `purchase`/`sale` u kupującego, lustro u handlarza (nic przy `cashInfinite`), emisje po transakcji.
 - **Rodzaj drugiej strony to `exchangeOptionsFor` (08.10, 46a)** — `exchange:counterparts` buduje listę (`realtime/exchange.ts`) i woła tę jedną regułę: drużyna → `trade`, leżący NPC → `loot` (także martwy handlarz), handlarz → `merchant`, żywy NPC → `trade`; MG — `gm` zawsze, plus handel jako NPC z graczem i otwarty sklep. Sklep przy figurze widać z daleka wyszarzony (`OUT_OF_REACH`), handel i łup gracza poza zasięgiem — nie.

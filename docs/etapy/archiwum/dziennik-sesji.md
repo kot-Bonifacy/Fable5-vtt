@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 08.10 — etap 45 „Ruch i widzenie drużyny”
+
+**Zlecenie MG:** „nie wiem, co mam zrobić, żeby gracze mogli poruszać swoimi tokenami i widzieć się
+nawzajem, a jednocześnie żeby nie mogli przejść w kilka sekund całej mapy”. Diagnoza na `dev.db`
+i decyzje MG (pula zamiast limitu, przełącznik w górnym pasku, „zrób jak w Foundry”) — w pliku
+etapu. Etap rozpisano i zaczęto (model, migracja, pula, serwer) w sesji bez notatki; ta sesja
+(„resume”) dokończyła serwer, testy, klienta, E2E i dokumentację.
+
+**Zrobione:** migracja `party_move_vision` (`Scene.playerMove`, `Token.sharedVision`, nowa scena
+w Dynamicznej). `shared/pace.ts` (pula jako dług + czas) z testami. Serwer: Stop w
+`performTokenMove`, pula w `validateTokenMove` → `realtime/pace.ts` (`token:pace`, `MOVE_PACE`,
+`forgetPace` przy kasowaniu), „oczy drużyny” (`sharesVision`) w `concealedFrom`, `emitTokenUpsert`,
+gałęzi mgły ruchu, `emitDynamicMove` i `fetchVisionTokens`; właściciel karty przy `token:create`,
+`token:update` i zmianie właściciela karty; archiwum czyta stare `playerMoveLocked`.
+`party-move.test.ts` (11). Klient: `PlayerMoveSwitch` z diagnozą w `TurnModeSlot`, baner Stop,
+`paceStore` + budżet marszu z puli i „Złap oddech” (`map/player-move.ts`), okienko w mgle wokół
+„oczu drużyny”, „Oczy drużyny” w karcie figury, checkbox z edytora sceny usunięty. E2E:
+`specs/45-druzyna/t45-ruch-druzyny` (8, z `po-T6`), T3b/T5a przełącznikiem zamiast checkboxa,
+T9a 9.2 z jawną ręczną mgłą, `setPlayerMove` w `fixtures/scene.ts`, `pace` w haku E2E.
+
+**Weryfikacja:** `shared` 2276, serwer 1369, klient 321; ESLint, Prettier, `tsc` czyste. E2E
+`00-baseline` + `01-dym` + `45-druzyna` 27/27, `45-druzyna` drugi raz 8/8. Oglądane: **Firefox**
+(Ola w czerni ręcznej mgły widzi Kowala i siebie z okienkami, baner Stop; Marek w Swobodnym)
+i Chromium (MG: przełącznik, „⚠ 2”, lista z oboma przyciskami) — zrzuty z przebiegu T45.
+**Nie przebiegnięte:** T3b, T5a i T9a po zmianie (pełny domyślny przebieg).
+
+**Następny krok:** pełny domyślny przebieg E2E (we własnym oknie konsoli), triaż MG #79–#81,
+refaktoryzacja całości pod osłoną suity, T10.
+
 ### Sesja 04.10 (jedenasta) — T9b „Konta MG 2/2: dwie grupy naraz, AI właściciela, limit”
 
 **Zlecenie MG:** „kontynuuj projekt (T9b)”, pytać o niejasności. **Decyzje MG:** AI na atrapie

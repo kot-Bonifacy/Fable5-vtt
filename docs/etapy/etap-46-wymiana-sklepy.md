@@ -328,17 +328,25 @@ działają bez zmian.
 
 **46a2 (następna sesja):**
 
-- [ ] Klient: `ExchangeWindow`, `exchangeStore`, `ExchangeDock` („Sklepy (N)”), sekcja „Sklep”
+- [x] Klient: `ExchangeWindow`, `exchangeStore`, `ExchangeDock` („Sklepy (N)”), sekcja „Sklep”
       w karcie NPC-a, pozycje menu figury, podwójny klik gracza, przyciski na „Między sesjami”;
       **usunięte** `InventoryWindow`, `TradeWindow`, `TradeDock` i ich magazyny. Po
       `MERCHANT_CLOSED` / `QUOTE_CHANGED` okno pobiera półkę na nowo (`merchant:view`) — stan
       figury handlarza (powalony) nie odświeża półki sam, robi to dopiero zapis jego karty
-- [ ] Serwer: usunąć `inventory:sources` i `trade:partners` razem ze starymi oknami (dziś obie
+- [x] Serwer: usunąć `inventory:sources` i `trade:partners` razem ze starymi oknami (dziś obie
       listy stoją obok `exchange:counterparts`), wpisy w `BETWEEN_SESSIONS_EVENTS`, `isPassiveEvent`
       i macierzy izolacji
-- [ ] Przepięcie E2E na nowe okno: T4b (łup), T6a 6.1 i 6.2, `t7a-handel-kreator`, T2c (kanarek
+- [x] Przepięcie E2E na nowe okno: T4b (łup), T6a 6.1 i 6.2, `t7a-handel-kreator`, T2c (kanarek
       ukrytego towaru); T2b i T9a czytają zdarzenia z rejestru serwera same
-- [ ] Dokumentacja: umowy `ui` (okno), pułapki z sesji, `POSTEP.md`
+- [x] Dokumentacja: umowy `ui` (okno), pułapki z sesji, `POSTEP.md`
+
+**46a2 zrobiona 08.10 (trzecia sesja).** Odstępstwa od szkicu: E2E 46a.1–46a.16 idzie na
+ekwipunku, który `po-T6` naprawdę ma (latarki, lina, radio, kurtki z katalogu zamiast stimpaków
+i fiolek; ukryty towar to broń-kanarek), a 46a.16 (F5, restart) stoi przed 46a.15 (śmierć
+Pasera). „Wyślij bez czekania” wymagało id karty kolegi w widoku handlu — strona drużyny niesie
+`team` (`isTeamCard`). Koniec handlu zamyka okno, które go pokazywało (jak w 38c), a dok sklepów
+odświeża też zapis karty handlarza. Kanarek ukrytego towaru siedzi w `t46a` (podsłuch Marka
+i Oli), T2c dostał tylko nowe zdarzenia listy.
 
 ### Testy jednostkowe 46a
 
@@ -394,6 +402,18 @@ działają bez zmian.
 - Trzy pytania niżej — **domyślne odpowiedzi przyjęte**.
 - Ryzyko 1 (granat) wpisane do `testy-rejestr.md` jako **#82**, naprawia 46c.
 
+**Decyzje MG na starcie 46a2 (08.10.2026, trzecia sesja)** — wszystkie cztery zgodne
+z rekomendacją:
+
+- **Zaproszenie przy wyborze strony.** „Wymiana…” z menu figury kolegi albo wybór kolegi/NPC-a
+  w nagłówku okna od razu wysyła zaproszenie; okno pokazuje „czeka na …”. Z karty postaci okno
+  otwiera się bez wybranej strony, więc samo otwarcie nikogo nie zaprasza.
+- **Handel zostaje w doku**, gdy gracz przełączy stronę albo zamknie okno ✕ (jak w 38c). Okna,
+  w którym ktoś przegląda półkę, przyjęte zaproszenie nie przełącza samo — czeka „Otwórz”.
+- **Podwójny klik gracza tylko u handlarza i przy ciele.** Kolega i żywy NPC — bez zmian (notka
+  z podpowiedzią), żeby przypadkowy klik nie wysłał zaproszenia. U MG — karta, jak dotąd.
+- **Całość 46a2 w jednej sesji**, bez dalszego dzielenia.
+
 **Do potwierdzenia na starcie 46a** (domyślna odpowiedź w nawiasie; przyjęte 08.10):
 
 - Czy ukryty towar martwego handlarza widać przy przeszukaniu? (**tak** — ukrycie dotyczy półki,
@@ -405,16 +425,16 @@ działają bez zmian.
 
 ### Kryteria ukończenia 46a
 
-- [ ] Jedno wejście „Wymiana…” prowadzi do handlu, prezentu, łupu, sklepu i trybu MG; stare okna
+- [x] Jedno wejście „Wymiana…” prowadzi do handlu, prezentu, łupu, sklepu i trybu MG; stare okna
       i ich magazyny są usunięte
-- [ ] Gracz kupuje i sprzedaje u otwartego handlarza przy figurze, u zdalnego z doku i między
+- [x] Gracz kupuje i sprzedaje u otwartego handlarza przy figurze, u zdalnego z doku i między
       sesjami u oznaczonego; ceny w oknie = ceny w bazie
-- [ ] Ukryty towar nie opuszcza serwera (kanarek T2c), id karty handlarza nie dociera do gracza
-- [ ] Wyścig o ostatnią sztukę daje jedną sprzedaż; nic nie ginie ani się nie dubluje
-- [ ] Przełącznik katalogu egzekwuje serwer
-- [ ] Testy jednostkowe, lint, `tsc` czyste; `t46a-` zielony dwa razy; `00-baseline` + `01-dym`
+- [x] Ukryty towar nie opuszcza serwera (kanarek T2c), id karty handlarza nie dociera do gracza
+- [x] Wyścig o ostatnią sztukę daje jedną sprzedaż; nic nie ginie ani się nie dubluje
+- [x] Przełącznik katalogu egzekwuje serwer
+- [x] Testy jednostkowe, lint, `tsc` czyste; `t46a-` zielony dwa razy; `00-baseline` + `01-dym`
       + przepięte T4b, T6a, `t7a-handel-kreator`, T2b, T2c, T9a zielone
-- [ ] Oględziny: Ola w **Firefoksie**, MG w Chromium (okno we wszystkich trybach, dok, karta NPC-a
+- [x] Oględziny: Ola w **Firefoksie**, MG w Chromium (okno we wszystkich trybach, dok, karta NPC-a
       z sekcją „Sklep”, ekran „Między sesjami”)
 
 ---

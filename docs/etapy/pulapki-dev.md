@@ -355,6 +355,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Rozgłoszenie wyprzedza odpowiedź na żądanie — stan lokalny okna musi to przeżyć w tym samym renderze (08.10, etap 46a2)** — po „Zapłać” `merchant:update` (półka bez kupionej kurtki) przychodzi przed ackiem, a koszyk jeszcze trzyma kurtkę: `rowByKey.get(key)!` dał `undefined` i cała strona gracza zgasła (czarny ekran w zrzucie). Sprzątanie w `useEffect` przychodzi o render za późno — linie liczone z mapy filtruj w miejscu (`flatMap`).
 - **`offsetLeft` liczy od najbliższego pozycjonowanego przodka, nie od rodzica** — pas kolejki (niepozycjonowany `<ol>`) dostawał od kafla 341 px lewego brzegu strony i przewijał się za daleko, ucinając aktywnego na pierwszym miejscu. Mierz `getBoundingClientRect()` kafla względem pojemnika + `scrollLeft`.
 - **Przeciąganie na zdarzeniach wskaźnika trzymaj w `ref`, nie w stanie Reacta** — szybki ruch daje jeden `pointermove` i od razu `pointerup`, zanim React przerysuje; `pointerup` sprawdzający stan widzi „nie przeciągam” i upuszczenie ginie jak kliknięcie (okno handlu 38c, 23.09).
 - **`Tab` w oknie „nie działa”, a na mapie przeskakuje zaznaczenie figury** — nasłuch mapy na `window` łapie klawisze z przycisków okna (pola tekstowe omija). Rozpoznanie: fokus na przycisku, nie w polu; lekarstwo: `data-owns-keys` na oknie.
@@ -1694,6 +1695,10 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **`toBeDisabled()` / `toBeEnabled()` Playwrighta nie widzi `disabled` na `<option>` (08.10, etap 46a2)** — opcja z atrybutem `disabled` przechodzi jako „enabled”, więc `toBeEnabled()` niczego nie sprawdza, a `toBeDisabled()` pada. Pytaj o atrybut: `toHaveAttribute('disabled', '')`. Wybór opcji po fragmencie etykiety — przez `getAttribute('value')` i `selectOption(value)`; `selectOption({ label })` nie przyjmuje wyrażenia regularnego.
+- **Skrypt Pythona na Windows zapisuje plik z CRLF (08.10, etap 46a2)** — `open(p, 'w')` w trybie tekstowym zamienia `
+` na `
+` (a heredoc w Git Bash czyta stdin w cp1250 — `python -X utf8`). Prettier zgłasza wtedy kilkadziesiąt „zmienionych” plików. Pisz z `newline=''`; dokumenty w `docs/etapy` mają na dysku CRLF i tak mają zostać.
 - **Restart serwera instancji E2E daje w konsoli Chromium 500 na `socket.io/?…transport=polling` (04.10, T9b)** — to pośrednik `vite preview`, kiedy serwer leży, nie aplikacja; Firefox pisze w tym czasie „can’t establish a connection”. Filtr konsoli po restarcie (`socketDropped` w `t9b-dwie-grupy`) bierze 500–503, nie tylko 502/503 — w drugim przebiegu przyszło właśnie 500.
 - **Karta rzutu dochodzi do obserwatora dopiero po kościach 3D: zwykły rzut ~7–9 s, krytyk i fumble ~9–13 s (04.10, T9b)** — karta czeka na koniec animacji i 3,2 s leżenia kości, a naturalne 1 i 10 dorzucają drugą falę. Domyślne 10 s `expect.poll` migocze raz na kilka przebiegów na „losowym” fumble'u. Rzut, który ma tylko dojść, dostaje wymuszone ścianki (`scriptDice([5, 6])`) i 30 s (`ROLL_CARD_MS` w `t9b-dwie-grupy`).
 - **`bot:chat` odpowiada tylko gniazdu, które pytało, a jego rozłączenie przerywa strumień, zanim dojdzie do gatewaya (04.10, T9b)** — `streamBotAnswer` słucha `disconnect`. Surowe gniazdo z `actor.socket()` rozłączaj dopiero po `bot:reply`/`bot:error`; inaczej atrapa nie dostaje żadnego `/chat` i test wygląda jak odmowa bramy.
