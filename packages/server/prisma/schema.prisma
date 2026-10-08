@@ -614,6 +614,12 @@ model Token {
   lightFlicker Boolean @default(false)
   /// Lit right now. The one light field a player may write, on a token they control.
   lightOn      Boolean @default(true)
+  /**
+   * Czy ta figura jest „oczami drużyny” (etap 45, wzór: Observer z Foundry):
+   * null — samo (figura gracza tak, figura MG nie), true/false — ręka MG.
+   * Rozstrzyga `tokenSharesVision` w `shared/tokens.ts`.
+   */
+  sharedVision Boolean?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -731,23 +737,29 @@ model Scene {
    * would be an unanswerable „why is this black?" at the table. Painted fog
    * shapes survive a trip through the other modes, so switching back restores
    * the exploration the group had already done.
+   *
+   * Od etapu 45 nowa scena startuje w "dynamic" z pamięcią odkrytego (jak
+   * Token Vision + Fog Exploration w Foundry, decyzja MG z 08.10.2026): drużyna
+   * od razu widzi się nawzajem i okolicę swoich figur. Do 45 domyślna była
+   * całkiem czarna ręczna mgła — gracze nie widzieli kolegi stojącego obok
+   * i nie mieli gdzie zrobić kroku. Stare sceny zostały, jak były.
    */
-  visibility String @default("fog")
+  visibility String @default("dynamic")
 
   /**
-   * Czy gracze mają ręce związane na tej mapie (zlecenie MG, 12.09.2026)?
+   * Jak gracze chodzą po tej mapie (etap 45, decyzja MG z 08.10.2026):
+   * "stop" — nikt z graczy nie rusza figury, także w walce (Pauza z Foundry);
+   * "explore" — poza walką krok płaci z puli metrów, która się odnawia
+   * (`shared/pace.ts`); "free" — bez limitu.
    *
-   * Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed
-   * rozpoczęciem gry, obejdzie ją własną figurą i pozna ją zanim MG cokolwiek
-   * powie — a przy widoczności dynamicznej zdejmie przy okazji mgłę. Blokada
-   * dotyczy **wyłącznie graczy**; MG nie jest nią nigdy związany, tak samo jak
-   * budżetem Tury (14b).
-   *
-   * Domyślnie **zamknięta**, bo nowa scena to zwykle mapa dopiero budowana —
-   * ale migracja odblokowuje wszystkie sceny, które już istniały: zmiana
-   * nawyków przy stole z dnia na dzień nie jest tym, o co MG prosił.
+   * Zastąpiła `playerMoveLocked` (12.09): blokada schowana w edytorze sceny
+   * była jedną z pięciu bramek, o których MG nie wiedział, a poza walką nic
+   * nie hamowało drużyny przed przebiegnięciem mapy w kilka sekund. Dotyczy
+   * **wyłącznie graczy** — MG nie jest tym związany nigdy, tak samo jak
+   * budżetem Tury (14b). Domyślnie "stop": mapa dopiero budowana nie jest
+   * mapą, po której drużyna ma chodzić.
    */
-  playerMoveLocked Boolean @default(true)
+  playerMove String @default("stop")
   ambience String @default("none")
 
   /**

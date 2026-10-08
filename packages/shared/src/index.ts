@@ -26,6 +26,7 @@ export * from './lights.js';
 export * from './markdown.js';
 export * from './measure.js';
 export * from './notes.js';
+export * from './pace.js';
 export * from './pathfinding.js';
 export * from './ping.js';
 export * from './plural.js';

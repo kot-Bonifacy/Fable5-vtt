@@ -271,7 +271,7 @@ describe('movement budget', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     // Gridless: the fixture measures exact metres, and snapping to a 2 m grid
     // would round every drag to the nearest even number.

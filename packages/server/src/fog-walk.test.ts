@@ -238,7 +238,7 @@ describe('a player under painted fog walks on revealed floor alone', () => {
       'scene:create',
     ).id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi zamknięta.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 2000, height: 2000, grid: { sizePx: 100 }, metersPerSquare: 2 },

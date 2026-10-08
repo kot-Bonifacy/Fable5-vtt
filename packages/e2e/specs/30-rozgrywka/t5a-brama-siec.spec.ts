@@ -6,7 +6,6 @@ import {
   createBot,
   drawZone,
   figureOf,
-  openSceneEditor,
   openZoneCard,
   placeStatist,
   revealFog,
@@ -20,7 +19,7 @@ import {
 } from '../../fixtures/brama.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, setPlayerMove, tokenCentre } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation } from '../../fixtures/table.ts';
@@ -510,14 +509,9 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     expect(knajpaState()).toBe(knajpaBefore);
     expect(sceneByName('Knajpa').active).toBe(0);
 
-    // Nowa scena startuje zamknięta; MG zdejmuje blokadę ruchu.
-    const editor = await openSceneEditor(page, 'Brama');
-    await editor.getByLabel('Ruch graczy po tej mapie').click();
-    await expect.poll(() => sceneByName('Brama').playerMoveLocked).toBe(0);
-    await editor
-      .getByRole('button', { name: /Zamknij|Anuluj zmiany/ })
-      .last()
-      .click();
+    // Nowa scena startuje w „Ruch graczy: Stop” (etap 45); MG puszcza drużynę.
+    await setPlayerMove(page, 'Swobodny');
+    await expect.poll(() => sceneByName('Brama').playerMove).toBe('free');
 
     // Ręczna mgła: MG odsłania drogę od miejsca startu pod bramę.
     await fitCamera(page, BRAMA.width, BRAMA.height);

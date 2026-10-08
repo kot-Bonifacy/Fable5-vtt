@@ -110,6 +110,7 @@ import {
 import { gridLinePositions, gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
+import { PLAYER_MOVE_STOP_NOTE } from './player-move.js';
 
 /**
  * A template the pointer drags around (stages 16d, 16g): the square a charge
@@ -538,13 +539,13 @@ const WALK_COLOR_UNKNOWN = 0x38bdf8;
  */
 const TRAIL_COLOR = 0x9ca3af;
 /**
- * Co gracz słyszy, gdy MG jeszcze nie otworzył mapy (12.09).
+ * Co gracz słyszy przy „Ruch graczy: Stop" (12.09, etap 45).
  *
  * To samo zdanie pada z trzech miejsc — kursor „nie wolno" nad mapą, klik
- * w podłogę i chwyt za figurę — więc mieszka w jednej stałej; klient trzyma
- * jego bliźniaka pod kodem `MOVE_LOCKED`, którym odmawia serwer.
+ * w podłogę i chwyt za figurę — i z odmowy serwera `MOVE_LOCKED`, więc mieszka
+ * w jednej stałej w `player-move.ts`.
  */
-const MOVE_LOCKED_NOTE = 'MG nie otworzył jeszcze tej mapy do ruchu.';
+const MOVE_LOCKED_NOTE = PLAYER_MOVE_STOP_NOTE;
 /**
  * The same trail, past what the turn can pay for.
  *
@@ -1201,14 +1202,15 @@ export class MapRenderer {
   private readonly movableTokens = new Map<string, boolean>();
   private drag: DragState | null = null;
   /**
-   * Czy ten widz ma na tej mapie związane ręce (zlecenie MG, 12.09).
+   * Czy ten widz ma na tej mapie związane ręce („Ruch graczy: Stop", 12.09,
+   * etap 45).
    *
    * Prawdę rozstrzyga serwer przy `token:move` (`MOVE_LOCKED`) — tutaj chodzi
    * o to, żeby figura nie ruszyła się nawet na chwilę i nie wracała skokiem
-   * z odmowy. MG nie jest blokadą związany nigdy.
+   * z odmowy. MG nie jest tym związany nigdy.
    */
   private get moveLocked(): boolean {
-    return !this.viewerIsGm && this.scene?.playerMoveLocked === true;
+    return !this.viewerIsGm && this.scene?.playerMove === 'stop';
   }
   /**
    * Kiedy ostatnio powiedziano temu graczowi, że mapa jest zamknięta.
@@ -5441,7 +5443,8 @@ export class MapRenderer {
   }
 
   /**
-   * Wycina w mgle okienko wokół każdej figury, którą steruje ten widz (12.09).
+   * Wycina w mgle okienko wokół każdej figury, którą steruje ten widz (12.09),
+   * i wokół „oczu drużyny" (etap 45).
    *
    * Rysuje się tym samym `erase`, co odsłonięcie pędzlem MG, więc nie jest to
    * nowa warstwa ani nowy rodzaj mgły — jest to ten sam kompozyt, tylko ostatni
@@ -5458,7 +5461,7 @@ export class MapRenderer {
     if (scene && !this.viewerIsGm && this.viewerId !== null) {
       const grid = scene.grid.sizePx;
       for (const node of this.tokenNodes.values()) {
-        if (node.token.ownerId !== this.viewerId) continue;
+        if (!this.cutsFogPeephole(node.token)) continue;
         // Pozycja węzła, nie figury ze store: w trakcie marszu albo przeciągania
         // żeton wie o sobie więcej niż serwer, a okienko ma iść *z nim*.
         const extent = node.token.size * grid;
@@ -5541,11 +5544,19 @@ export class MapRenderer {
    * robi to mniej więcej co drugą i nikt tego nie widzi. Promień oprawy siedzi
    * w podpisie razem z pozycją, bo zmienia się z punktami wytrzymałości.
    */
+  /**
+   * Czy wokół tej figury gracz ma okienko w mgle: własna albo „oczy drużyny"
+   * (etap 45) — drużyna widzi kolegę zawsze, więc i skrawek ziemi pod nim.
+   */
+  private cutsFogPeephole(token: TokenView): boolean {
+    return token.ownerId === this.viewerId || token.partyVision === true;
+  }
+
   private fogPeepSignature(): string {
     if (this.viewerIsGm || this.viewerId === null) return '';
     const parts: string[] = [];
     for (const node of this.tokenNodes.values()) {
-      if (node.token.ownerId !== this.viewerId) continue;
+      if (!this.cutsFogPeephole(node.token)) continue;
       const x = Math.round(node.x / FOG_PEEP_STEP_PX);
       const y = Math.round(node.y / FOG_PEEP_STEP_PX);
       parts.push(`${node.tokenId}:${x}:${y}:${Math.round(node.outerRadius)}`);

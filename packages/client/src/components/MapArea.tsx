@@ -26,6 +26,7 @@ import {
   type SceneObjectRef,
   type SceneObjectShape,
   type ScenePoint,
+  type PaceState,
   type SceneView,
   type TokenView,
 } from '@vtt/shared';
@@ -135,6 +136,13 @@ import { netErrorText } from '../netErrors.js';
 import { useCoverStore } from '../stores/coverStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
+import { usePaceStore } from '../stores/paceStore.js';
+import {
+  PLAYER_MOVE_PACE_NOTE,
+  PLAYER_MOVE_STOP_NOTE,
+  paceFor,
+  paceRefusal,
+} from '../map/player-move.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
   currentDrawingStyle,
@@ -208,7 +216,9 @@ function moveErrorText(code: string | undefined): string {
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
     case 'MOVE_LOCKED':
-      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
+      return PLAYER_MOVE_STOP_NOTE;
+    case 'MOVE_PACE':
+      return PLAYER_MOVE_PACE_NOTE;
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:
@@ -418,17 +428,45 @@ function walkRefusalFor(
   token: TokenView | undefined,
   isGm: boolean,
   scene: SceneView | null,
+  pace: PaceState | undefined,
 ): string | null {
   if (!tokenId || isGm) return null;
-  // Mapa zamknięta przez MG (12.09) wyprzedza wszystko inne: dopóki jej nie
-  // otworzy, ani Tura, ani stan figury nie mają nic do rzeczy.
-  if (scene?.playerMoveLocked) return 'MG nie otworzył jeszcze tej mapy do ruchu.';
+  // „Ruch graczy: Stop" (etap 45; mapa zamknięta od 12.09) wyprzedza wszystko
+  // inne: dopóki MG nie puści drużyny, ani Tura, ani stan figury nie mają nic
+  // do rzeczy.
+  if (scene?.playerMove === 'stop') return PLAYER_MOVE_STOP_NOTE;
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
   // „Not your turn" is asked in exactly one place (stage 16f): the action bar
   // greys itself out with the same sentence, and two answers to „may this
   // figure act" would eventually disagree.
-  return hudTurnRefusal(combat, tokenId, isGm);
+  const turn = hudTurnRefusal(combat, tokenId, isGm);
+  if (turn) return turn;
+  // Pusta pula Eksploracji (etap 45): kursor mówi, za ile figura ruszy.
+  return paceRefusal(paceFor(scene, combat, token, isGm, pace, Date.now()));
+}
+
+/**
+ * Pula Eksploracji jako budżet marszu (etap 45) — ta sama maszyna, co Tura:
+ * okrąg zasięgu, ślady butów czerwone za pulą i trasa przycięta tam, gdzie
+ * serwer by ją zatrzymał. Tylko dla figury, którą gracz właśnie prowadzi.
+ */
+function paceAllowanceOf(
+  tokenId: string | null,
+  combat: CombatView | null,
+  isGm: boolean,
+): MoveAllowance | null {
+  if (!tokenId) return null;
+  const pace = paceFor(
+    useSceneStore.getState().scene,
+    combat,
+    useTokenStore.getState().tokens[tokenId],
+    isGm,
+    usePaceStore.getState().pace[tokenId],
+    Date.now(),
+  );
+  if (!pace) return null;
+  return { tokenId, metresLeft: pace.availableM, costFactor: 1, enforced: true };
 }
 
 const WALK_LEARNED_KEY = 'vtt.walkPreviewLearned';
@@ -1286,6 +1324,7 @@ export function MapArea() {
         selected ? useTokenStore.getState().tokens[selected] : undefined,
         useAuthStore.getState().user?.role === ROLE_GM,
         useSceneStore.getState().scene,
+        selected ? usePaceStore.getState().pace[selected] : undefined,
       ),
     );
   }, []);
@@ -1300,11 +1339,13 @@ export function MapArea() {
     // musi dojść tą samą drogą, co powalenie figury — inaczej gracz miałby
     // kursor „nie wolno" jeszcze długo po otwarciu mapy.
     const unsubScene = useSceneStore.subscribe(pushWalkRefusal);
+    const unsubPace = usePaceStore.subscribe(pushWalkRefusal);
     return () => {
       unsubSelection();
       unsubCombat();
       unsubTokens();
       unsubScene();
+      unsubPace();
     };
   }, [ready, pushWalkRefusal]);
 
@@ -1416,16 +1457,39 @@ export function MapArea() {
   const pushMoveAllowance = useCallback(() => {
     const state = useCombatStore.getState();
     const user = useAuthStore.getState().user;
+    const isGm = user?.role === ROLE_GM;
     rendererRef.current?.setMoveAllowance(
-      moveAllowanceOf(state.combat, user?.id ?? null, user?.role === ROLE_GM),
+      moveAllowanceOf(state.combat, user?.id ?? null, isGm) ??
+        paceAllowanceOf(useSelectionStore.getState().tokenId, state.combat, isGm),
     );
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     pushMoveAllowance();
-    return useCombatStore.subscribe(pushMoveAllowance);
-  }, [ready, pushMoveAllowance]);
+    const unsubCombat = useCombatStore.subscribe(pushMoveAllowance);
+    // Pula Eksploracji (etap 45) zależy od prowadzonej figury, jej karty, trybu
+    // sceny i stanu puli — i od zegara: odnawia się sama, więc póki nie jest
+    // pełna, okrąg i kursor odświeżają się dwa razy na sekundę.
+    const unsubPace = usePaceStore.subscribe(pushMoveAllowance);
+    const unsubSelection = useSelectionStore.subscribe(pushMoveAllowance);
+    const unsubScene = useSceneStore.subscribe(pushMoveAllowance);
+    const timer = window.setInterval(() => {
+      if (useSceneStore.getState().scene?.playerMove !== 'explore') return;
+      if (useAuthStore.getState().user?.role === ROLE_GM) return;
+      const selected = useSelectionStore.getState().tokenId;
+      if (!selected || !usePaceStore.getState().pace[selected]) return;
+      pushMoveAllowance();
+      pushWalkRefusal();
+    }, 500);
+    return () => {
+      unsubCombat();
+      unsubPace();
+      unsubSelection();
+      unsubScene();
+      window.clearInterval(timer);
+    };
+  }, [ready, pushMoveAllowance, pushWalkRefusal]);
 
   useEffect(() => {
     if (!placement) return;
@@ -2119,6 +2183,13 @@ export function MapArea() {
         <div className="map-overlay">
           <span className="map-spinner" aria-hidden />
           <p className="placeholder-text">Wczytywanie mapy…</p>
+        </div>
+      )}
+      {/* „Ruch graczy: Stop" (etap 45) — gracz widzi, czemu nie może iść, zanim
+          spróbuje. Jak Pauza w Foundry: baner na środku nad mapą. */}
+      {!isGm && scene?.playerMove === 'stop' && !placement && !targeting && (
+        <div className="map-placement-hint map-placement-hint--stop" role="status">
+          {PLAYER_MOVE_STOP_NOTE}
         </div>
       )}
       {placement && (

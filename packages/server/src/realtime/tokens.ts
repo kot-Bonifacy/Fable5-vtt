@@ -37,6 +37,7 @@ import {
   sanitizeFacing,
   tokenCentre,
   tokenHpShareOf,
+  tokenSharesVision,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
@@ -79,6 +80,7 @@ import { requireCampaignScene } from './scenes.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
+import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
 import { runZonesAfterMove } from './zones.js';
 import { createMixedRng } from './dice-rng.js';
@@ -125,6 +127,9 @@ export function toTokenView(
     // Public on purpose (stage 27j): a sentry looking the wrong way is
     // information the table is meant to be able to use.
     facing: token.facing,
+    // „Oczy drużyny" (etap 45) jadą do wszystkich: każdy gracz ma tę figurę
+    // widzieć zawsze i rysować wokół niej okienko w mgle.
+    partyVision: sharesVision(token, linked),
   };
   // Rany figury prowadzonej przez MG jadą **publicznie** (31.08): przy stole
   // widać, że ktoś ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a
@@ -154,6 +159,9 @@ export function toTokenView(
     // it); what everybody else gets is the lit corridor it produces.
     view.light = tokenLightOf(token);
     view.hp = hp;
+    view.sharedVision = token.sharedVision;
+    // Pula Eksploracji (etap 45) — prywatna jak PW: ile mieści, gdy pełna.
+    view.paceCapM = linked ? linked.moveM : null;
   } else {
     // Etap 43a, decyzja MG z 26.09: ile figurze zostało, widzi cały stół —
     // ułamek i szczebel, nigdy same liczby.
@@ -175,11 +183,29 @@ async function loadLinkedSheets(
 }
 
 /** Who controls a token: its owner, or the owner of the sheet it is bound to. */
-function controllerIds(token: Token, linked: LinkedSheet | undefined | null): Set<string> {
+function controllerIds(
+  token: Pick<Token, 'ownerId'>,
+  linked: LinkedSheet | undefined | null,
+): Set<string> {
   const ids = new Set<string>();
   if (token.ownerId) ids.add(token.ownerId);
   if (linked?.ownerId) ids.add(linked.ownerId);
   return ids;
+}
+
+/**
+ * Czy figura jest „oczami drużyny" (etap 45, Observer z Foundry) — jedno
+ * pytanie dla widoku, zasłony i klatek ruchu. Reguła w `tokenSharesVision`.
+ */
+export function sharesVision(
+  token: Pick<Token, 'ownerId' | 'hidden' | 'sharedVision'>,
+  linked: LinkedSheet | undefined | null,
+): boolean {
+  return tokenSharesVision({
+    sharedVision: token.sharedVision,
+    hidden: token.hidden,
+    playerControlled: controllerIds(token, linked).size > 0,
+  });
 }
 
 /**
@@ -270,13 +296,17 @@ export async function concealmentFor(
  * suspense — and the position is hardly a secret from the person moving it.
  */
 export function concealedFrom(
-  token: Pick<Token, 'x' | 'y' | 'size' | 'ownerId'>,
+  token: Pick<Token, 'x' | 'y' | 'size' | 'ownerId' | 'hidden' | 'sharedVision'>,
   scene: Scene,
   concealment: Concealment,
   linked: LinkedSheet | undefined | null,
   userId: string,
 ): boolean {
-  if (controllerIds(token as Token, linked).has(userId)) return false;
+  if (controllerIds(token, linked).has(userId)) return false;
+  // „Oczy drużyny" (etap 45): figurę kolegi gracz widzi zawsze — w czerni mgły,
+  // za ścianą, w ciemności i za zasłoną, tak jak własną. Pozycja kolegi nie
+  // jest tajemnicą przed drużyną, a zniknięcie go z mapy czytało się jak błąd.
+  if (sharesVision(token, linked)) return false;
   if (
     concealment.figurePolygons &&
     !isPointVisible(tokenCentre(token, toGridScene(scene)), concealment.figurePolygons)
@@ -610,9 +640,10 @@ export async function emitTokenUpsert(
   }
 
   // Standing in unrevealed fog is the same kind of secret as `hidden`, except
-  // the people controlling the token keep it (stage 17).
+  // the people controlling the token keep it (stage 17). „Oczy drużyny" (etap
+  // 45) zostają przy całej drużynie — jak w `concealedFrom`.
   const fog = await fetchFogState(deps.ctx.prisma, scene);
-  if (fog.enabled && isTokenInFog(token, toGridScene(scene), fog)) {
+  if (fog.enabled && isTokenInFog(token, toGridScene(scene), fog) && !sharesVision(token, linked)) {
     deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
     for (const userId of privateUserIds) {
       await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
@@ -630,6 +661,44 @@ export async function emitTokenUpsert(
   deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
   for (const userId of privateUserIds) {
     await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
+  }
+}
+
+/**
+ * Figury karty idą za jej nowym właścicielem (etap 45, błąd z diagnozy 08.10).
+ *
+ * `token:move` pyta `Token.ownerId`, a widok i wzrok pytają także właściciela
+ * karty — więc figura postawiona przed przypisaniem karty graczowi (albo karta
+ * przekazana innemu) była „jego" do patrzenia, a nie do chodzenia. Przepisuje
+ * tylko figury bez właściciela albo z poprzednim właścicielem karty: figura,
+ * którą MG ręcznie dał komuś trzeciemu, zostaje przy nim. Potem listy figur
+ * i wzrok graczy na scenach tych figur.
+ */
+export async function moveCharacterTokensToOwner(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  previousOwnerId: string | null,
+  nextOwnerId: string | null,
+): Promise<void> {
+  if (previousOwnerId === nextOwnerId) return;
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: {
+      characterId,
+      scene: { campaignId },
+      OR: [{ ownerId: null }, ...(previousOwnerId ? [{ ownerId: previousOwnerId }] : [])],
+    },
+    include: { scene: true },
+  });
+  if (tokens.length === 0) return;
+  await deps.ctx.prisma.token.updateMany({
+    where: { id: { in: tokens.map((token) => token.id) } },
+    data: { ownerId: nextOwnerId },
+  });
+  const scenes = new Map(tokens.map((token) => [token.scene.id, token.scene]));
+  for (const scene of scenes.values()) {
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    await emitVisionToPlayers(deps, campaignId, scene);
   }
 }
 
@@ -786,8 +855,6 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     if (typeof payload?.x !== 'number' || typeof payload?.y !== 'number') {
       throw new RealtimeError('BAD_REQUEST');
     }
-    const ownerId = payload.ownerId ?? null;
-    await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
     if (payload.characterId !== undefined && payload.characterId !== null) {
       if (typeof payload.characterId !== 'string') throw new RealtimeError('BAD_REQUEST');
     }
@@ -796,6 +863,10 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
       campaignId,
       payload.characterId,
     );
+    // Figura karty gracza bez wskazanego właściciela bierze rękę właściciela
+    // karty (etap 45): inaczej gracz patrzył jej oczami, a ruszyć nie mógł.
+    const ownerId = payload.ownerId ?? character?.ownerId ?? null;
+    await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
 
     const { x, y } = snapTokenPosition(payload.x, payload.y, size, toSnapScene(scene));
     const token = await deps.ctx.prisma.token.create({
@@ -993,6 +1064,18 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       }
     }
     if (patch.characterId !== undefined) data.characterId = patch.characterId;
+    // Figura bez właściciela podpięta pod kartę gracza bierze jego rękę (etap 45):
+    // inaczej gracz patrzył jej oczami i widział ją jako swoją, a ruszyć jej nie
+    // mógł (`token:move` pyta `ownerId`). Jawny `ownerId` w łacie wygrywa.
+    if (
+      patch.characterId &&
+      character?.ownerId &&
+      patch.ownerId === undefined &&
+      token.ownerId === null
+    ) {
+      data.ownerId = character.ownerId;
+    }
+    if (patch.sharedVision !== undefined) data.sharedVision = patch.sharedVision;
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
     let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
@@ -1052,6 +1135,16 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     // push it across the fog boundary — reconcile the players' lists.
     if (patch.size !== undefined && patch.size !== token.size) {
       await emitSceneTokensToPlayers(deps, campaignId, scene);
+    }
+    // Kto patrzy tą figurą i komu ona znika z oczu (etap 45): „oczy drużyny",
+    // właściciel i karta zmieniają listy figur i wzrok wszystkich graczy.
+    if (
+      updated.sharedVision !== token.sharedVision ||
+      updated.ownerId !== token.ownerId ||
+      updated.characterId !== token.characterId
+    ) {
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+      await emitVisionToPlayers(deps, campaignId, scene);
     }
     // The tracker mirrors the token: a rename shows up in the initiative list,
     // and hiding a token must pull its row from the players' tracker too.
@@ -1159,6 +1252,7 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     }
 
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
+    forgetPace(token.id);
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
     if (orphanCharacterId) {
       await deps.ctx.prisma.character.delete({ where: { id: orphanCharacterId } });
@@ -1379,6 +1473,10 @@ async function emitDynamicMove(
 ): Promise<void> {
   const linked = await loadLinkedSheet(deps, token);
   const controllers = controllerIds(token, linked);
+  // Czyj wzrok ten ruch zmienia: „oczy drużyny" (etap 45) patrzą za wszystkich
+  // graczy, więc ich krok przelicza widok całej drużyny, nie tylko prowadzącego.
+  const party = sharesVision(token, linked);
+  const sightOwners = new Set(controllers);
   deps.io.to(gmRoom(campaignId)).emit('token:move', move);
 
   const context = await loadVisionContext(deps.ctx.prisma, scene);
@@ -1388,6 +1486,7 @@ async function emitDynamicMove(
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
+    if (party) sightOwners.add(data.user.id);
     if (!final && hasFigureBarriers) {
       member.emit('token:sync', {
         sceneId: scene.id,
@@ -1422,10 +1521,10 @@ async function emitDynamicMove(
     // The drop is the moment everything is re-derived from the database: who
     // may see which token, and what the mover's own tokens now light up.
     await emitSceneTokensToPlayers(deps, campaignId, scene);
-    await emitVisionToPlayers(deps, campaignId, scene, { onlyUserIds: controllers });
+    await emitVisionToPlayers(deps, campaignId, scene, { onlyUserIds: sightOwners });
     return;
   }
-  for (const userId of controllers) {
+  for (const userId of sightOwners) {
     await emitDragVision(
       deps,
       campaignId,
@@ -1508,14 +1607,14 @@ export async function performTokenMove(
     // tokens (existence must not leak); owning a visible token is required.
     if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
-    // Mapa zamknięta przez MG (zlecenie MG, 12.09): drużyna, która dostanie
-    // planszę przed rozpoczęciem gry, obejdzie ją własną figurą i pozna zanim
-    // MG cokolwiek powie — a przy widoczności dynamicznej zdejmie przy okazji
-    // mgłę. Sprawdzane **tu**, a nie w `validateTokenMove`: tamto pyta o Turę
-    // i o ściany, więc odpowiada dopiero na upuszczeniu (`final`), a blokada ma
-    // odrzucić także pojedynczą klatkę ciągnięcia. MG nie jest nią związany
-    // nigdy — tak samo, jak nie jest związany budżetem Tury (14b).
-    if (!isGm && scene.playerMoveLocked) throw new RealtimeError('MOVE_LOCKED');
+    // „Ruch graczy: Stop" (etap 45; blokada mapy z 12.09): drużyna, która
+    // dostanie planszę przed rozpoczęciem gry, obejdzie ją własną figurą i pozna
+    // zanim MG cokolwiek powie. Stop to Pauza z Foundry — zatrzymuje także
+    // uczestnika walki w jego turze. Sprawdzane **tu**, a nie
+    // w `validateTokenMove`: tamto pyta o Turę, pulę i ściany, więc odpowiada
+    // dopiero na upuszczeniu (`final`), a Stop ma odrzucić także pojedynczą
+    // klatkę ciągnięcia. MG nie jest nim związany nigdy (jak budżetem Tury, 14b).
+    if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     if (typeof payload?.x !== 'number' || typeof payload?.y !== 'number') {
       throw new RealtimeError('BAD_REQUEST');
     }
@@ -1562,6 +1661,7 @@ export async function performTokenMove(
       const fogMatters =
         fog.enabled &&
         (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, ...position }, grid, fog));
+      const fogLinked = fogMatters ? await loadLinkedSheet(deps, token) : null;
 
       if (
         scene.active &&
@@ -1579,10 +1679,11 @@ export async function performTokenMove(
         deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
       } else if (token.hidden) {
         deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-      } else if (fogMatters) {
+      } else if (fogMatters && !sharesVision(token, fogLinked)) {
+        // „Oczy drużyny" (etap 45) idą gałęzią niżej: drużyna widzi je zawsze,
+        // więc granica mgły nie zmienia, dla kogo figura istnieje.
         deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-        const linked = await loadLinkedSheet(deps, token);
-        for (const userId of controllerIds(token, linked)) {
+        for (const userId of controllerIds(token, fogLinked)) {
           await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
         }
         if (isFinal) await emitSceneTokensToPlayers(deps, campaignId, scene);

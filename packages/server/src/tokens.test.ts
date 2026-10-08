@@ -690,7 +690,7 @@ describe('tokens', () => {
     sceneId = created.data.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     // Stage 17: a fresh scene starts under fog, which would hide these
     // tokens from the player. This suite is not about fog — light it up.
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
@@ -819,7 +819,7 @@ describe('tokens', () => {
    * a scena tworzona od zera wchodzi **zamknięta**.
    */
   it('nie pozwala graczowi ruszyć figurą na mapie zamkniętej przez MG', async () => {
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: true } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'stop' } });
 
     expect(
       await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 600, y: 600, final: true }),
@@ -840,7 +840,7 @@ describe('tokens', () => {
 
     // Powrót na (300, 500) nie jest kosmetyką: kolejne testy w tym zestawie
     // liczą kierunek marszu od tego pola.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     const opened = await emitAck<{ x: number; y: number }>(player, 'token:move', {
       tokenId: ownTokenId,
       x: 300,
@@ -850,16 +850,20 @@ describe('tokens', () => {
     expect(opened.ok && opened.data).toEqual({ x: 300, y: 500 });
   });
 
-  it('zakłada nową scenę zamkniętą, a gracz widzi ten stan w widoku sceny', async () => {
+  // Etap 45: nowa scena startuje w Stop i — jak Token Vision w Foundry —
+  // w widoczności Dynamicznej z pamięcią odkrytego.
+  it('zakłada nową scenę w Stop i Dynamicznej, a gracz widzi tryb ruchu w widoku sceny', async () => {
     const fresh = await emitAck<SceneView>(gm, 'scene:create', { name: 'Świeża mapa' });
     if (!fresh.ok || !fresh.data) throw new Error('scene:create failed');
-    expect(fresh.data.playerMoveLocked).toBe(true);
+    expect(fresh.data.playerMove).toBe('stop');
+    expect(fresh.data.visibility).toBe('dynamic');
+    expect(fresh.data.explore).toBe(true);
 
     const opened = await emitAck<SceneView>(gm, 'scene:update', {
       sceneId: fresh.data.id,
-      patch: { playerMoveLocked: false },
+      patch: { playerMove: 'explore' },
     });
-    expect(opened.ok && opened.data?.playerMoveLocked).toBe(false);
+    expect(opened.ok && opened.data?.playerMove).toBe('explore');
   });
 
   it('rejects a player moving a foreign or hidden token', async () => {
@@ -1249,7 +1253,7 @@ describe('ping i kopia figury (etap 35)', () => {
     const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek 35' });
     if (!created.ok || !created.data) throw new Error('scene:create failed');
     sceneId = created.data.id;
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);

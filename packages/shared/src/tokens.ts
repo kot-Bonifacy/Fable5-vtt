@@ -124,6 +124,24 @@ export interface TokenView {
    * systemu (CP RED: `CpredCriticalInjuryRow`).
    */
   injuries?: TokenInjuryRow[];
+  /**
+   * Czy ta figura jest „oczami drużyny” (etap 45, wzór: uprawnienie Observer
+   * z Foundry VTT) — **publicznie**, bo każdy gracz musi wiedzieć, że ma ją
+   * widzieć zawsze i rysować wokół niej okienko w mgle. Wartość już
+   * rozstrzygnięta (`tokenSharesVision`), nie surowa kolumna.
+   */
+  partyVision?: boolean;
+  /**
+   * Surowa kolumna `Token.sharedVision` dla edytora MG: `null` — samo (figura
+   * gracza dzieli wzrok, figura MG nie), `true`/`false` — ręka MG. Prywatne.
+   */
+  sharedVision?: boolean | null;
+  /**
+   * Pula metrów Eksploracji tej figury (etap 45): ile mieści, gdy jest pełna —
+   * ruch z jednej tury walki według karty. Prywatne, jak PW; `null` — figura
+   * bez karty, której pula bierze `PACE_FALLBACK_CAP_M`.
+   */
+  paceCapM?: number | null;
 }
 
 /**
@@ -231,6 +249,11 @@ export interface TokenPatch {
   light?: TokenLight | null;
   /** Which way the figure looks; null puts it back to „turned nowhere". */
   facing?: number | null;
+  /**
+   * „Oczy drużyny” (etap 45): `null` — samo, `true`/`false` — ręka MG.
+   * Patrz `TokenView.sharedVision`.
+   */
+  sharedVision?: boolean | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -557,6 +580,10 @@ export function sanitizeTokenPatch(
     if (input.characterId !== null && typeof input.characterId !== 'string') return null;
     patch.characterId = input.characterId;
   }
+  if ('sharedVision' in input) {
+    if (input.sharedVision !== null && typeof input.sharedVision !== 'boolean') return null;
+    patch.sharedVision = input.sharedVision;
+  }
   if ('visionRange' in input) {
     const range = sanitizeVisionRange(input.visionRange);
     if (range === undefined) return null;
@@ -688,4 +715,23 @@ export function nextTokenCopyName(name: string, taken: readonly string[]): strin
     const candidate = `${stem}${suffix}`;
     if (!used.has(candidate.toLowerCase())) return candidate;
   }
+}
+
+/**
+ * Czy figura jest „oczami drużyny” (etap 45, wzór: Observer z Foundry VTT):
+ * każdy gracz kampanii widzi ją zawsze — mgła, ściany, ciemność i zasłona jej
+ * nie zabierają — a w widoczności Dynamicznej patrzy także jej oczami.
+ *
+ * `sharedVision` `null` znaczy „samo”: figura prowadzona przez gracza dzieli
+ * wzrok, figura MG nie. MG może wyłączyć to na figurze gracza (drużyna ma się
+ * rozdzielić) albo włączyć sojuszniczemu NPC-owi. Figura ukryta nie jest
+ * niczyimi oczami — jej w ogóle nie ma dla graczy.
+ */
+export function tokenSharesVision(token: {
+  sharedVision: boolean | null;
+  hidden: boolean;
+  playerControlled: boolean;
+}): boolean {
+  if (token.hidden) return false;
+  return token.sharedVision ?? token.playerControlled;
 }

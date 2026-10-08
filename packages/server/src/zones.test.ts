@@ -271,7 +271,7 @@ describe('defended zones on a scene', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:update', { sceneId, patch: { width: 4000 } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');

@@ -4,11 +4,13 @@ import type {
   ArchiveManifest,
   ArchiveRefusalCode,
   CpredRegistry,
+  PlayerMoveMode,
 } from '@vtt/shared';
 import {
   ARCHIVE_APP,
   ARCHIVE_VERSION,
   archiveRefusal,
+  isPlayerMoveMode,
   parseCharacterData,
   sanitizeWallArmor,
   sanitizeConcealPenalty,
@@ -277,7 +279,7 @@ const SCENE_COLUMNS = {
   explore: true,
   spawnX: true,
   spawnY: true,
-  playerMoveLocked: true,
+  playerMove: true,
   ambience: true,
 } as const;
 
@@ -312,6 +314,7 @@ export async function exportScene(
           statusData: true,
           facing: true,
           visionRange: true,
+          sharedVision: true,
           lightBrightM: true,
           lightDimM: true,
           lightColor: true,
@@ -479,6 +482,15 @@ const maybeStr = (value: unknown): string | null => (typeof value === 'string' ?
 const maybeNum = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
+/**
+ * Ruch graczy sceny z archiwum (etap 45). Plik sprzed etapu niesie logiczne
+ * `playerMoveLocked` — otwarta mapa była wtedy „Swobodnym", zamknięta „Stop".
+ */
+function importedPlayerMove(columns: Record<string, unknown>): PlayerMoveMode {
+  if (isPlayerMoveMode(columns.playerMove)) return columns.playerMove;
+  return columns.playerMoveLocked === false ? 'free' : 'stop';
+}
+
 export async function importScene(
   prisma: PrismaClient,
   file: unknown,
@@ -527,9 +539,10 @@ export async function importScene(
       explore: bool(sceneColumns.explore, true),
       spawnX: maybeNum(sceneColumns.spawnX),
       spawnY: maybeNum(sceneColumns.spawnY),
-      // Domyślnie **zamknięta**, jak przy nowej scenie (12.09): mapa wjeżdżająca
-      // z pliku jest dla stołu tak samo nieznana, jak dopiero co narysowana.
-      playerMoveLocked: bool(sceneColumns.playerMoveLocked, true),
+      // Domyślnie **Stop**, jak przy nowej scenie (12.09, etap 45): mapa
+      // wjeżdżająca z pliku jest dla stołu tak samo nieznana, jak dopiero co
+      // narysowana. Archiwum sprzed etapu 45 niesie jeszcze `playerMoveLocked`.
+      playerMove: importedPlayerMove(sceneColumns),
       ambience: str(sceneColumns.ambience, 'none'),
     },
     select: { id: true },
@@ -561,6 +574,7 @@ export async function importScene(
           statusData: stringifyJsonColumn(row.statusData, '{}'),
           facing: maybeNum(row.facing),
           visionRange: maybeNum(row.visionRange),
+          sharedVision: typeof row.sharedVision === 'boolean' ? row.sharedVision : null,
           lightBrightM: num(row.lightBrightM),
           lightDimM: num(row.lightDimM),
           lightColor: str(row.lightColor, '#ffd9a0'),

@@ -14,6 +14,7 @@ import type {
 import {
   ROLE_GM,
   isAmbiencePreset,
+  isPlayerMoveMode,
   isSceneVisibility,
   normalizeGridOffset,
   sanitizeSceneName,
@@ -59,9 +60,10 @@ export function toSceneView(scene: Scene): SceneView {
     dark: scene.dark,
     darkSightM: scene.darkSightM,
     explore: scene.explore,
-    // Blokada ruchu graczy (12.09) — jedzie też do graczy, bo to ich klient ma
-    // nie podnosić figury i ma umieć powiedzieć, dlaczego.
-    playerMoveLocked: scene.playerMoveLocked,
+    // Ruch graczy (etap 45) — jedzie też do graczy, bo to ich klient ma nie
+    // podnosić figury, liczyć pulę i umieć powiedzieć, dlaczego. Nieczytelna
+    // wartość to „stop": zatrzymuje, zamiast puszczać.
+    playerMove: isPlayerMoveMode(scene.playerMove) ? scene.playerMove : 'stop',
     ambience: isAmbiencePreset(scene.ambience) ? scene.ambience : 'none',
     // Miejsce startu drużyny (11.09): para kolumn albo nic. Jedzie też do
     // graczy — to ich kamera je czyta, gdy nie mają jeszcze figury na mapie.
@@ -190,7 +192,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
     }
     if (patch.width !== undefined) data.width = patch.width;
     if (patch.height !== undefined) data.height = patch.height;
-    if (patch.playerMoveLocked !== undefined) data.playerMoveLocked = patch.playerMoveLocked;
+    if (patch.playerMove !== undefined) data.playerMove = patch.playerMove;
     if (patch.ambience !== undefined) data.ambience = patch.ambience;
     if (patch.spawn !== undefined) {
       data.spawnX = patch.spawn === null ? null : patch.spawn.x;

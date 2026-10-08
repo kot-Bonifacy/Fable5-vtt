@@ -28,6 +28,7 @@ import { toLightScene } from './lights-io.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchFogState } from './fog-io.js';
+import { chargePace } from './pace.js';
 
 /**
  * The one place a move is judged (stage 14c).
@@ -162,7 +163,15 @@ export async function validateTokenMove(
   await refuseWalkThroughSolid(deps, campaignId, user, intent, walked);
 
   const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
-  if (!found) return { metres: 0, enforced: false };
+  if (!found) {
+    // Poza walką na scenie w Eksploracji krok gracza płaci z puli (etap 45).
+    // W walce rachunek prowadzi Tura i pula milczy — dwa liczniki naraz
+    // odmawiałyby temu samemu krokowi z dwóch różnych powodów.
+    if (user.role !== ROLE_GM) {
+      await chargePace(deps, campaignId, scene, token, movementMetres(scene, token, walked));
+    }
+    return { metres: 0, enforced: false };
+  }
 
   const path = walked;
   const metres = movementMetres(scene, token, path);

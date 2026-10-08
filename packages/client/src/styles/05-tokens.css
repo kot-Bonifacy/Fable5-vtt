@@ -30,6 +30,13 @@
   z-index: 20;
 }
 
+/* „Ruch graczy: Stop" (etap 45) — baner gracza; ten sam panel, mocniejszy akcent. */
+.map-placement-hint--stop {
+  border-color: var(--cp-red);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .context-menu-backdrop {
   position: fixed;
   inset: 0;

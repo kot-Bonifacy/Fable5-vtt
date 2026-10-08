@@ -236,6 +236,7 @@ import type {
   TokenCreatePayload,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
+  TokenPaceBroadcast,
   TokenPatch,
   TokenSyncBroadcast,
   RollParseError,
@@ -335,6 +336,8 @@ import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
+import { usePaceStore } from './stores/paceStore.js';
+import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
 import { useZoneStore } from './stores/zoneStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
@@ -1229,6 +1232,11 @@ export function connectSocket(userId: string): Socket {
       tokens().applyMove(broadcast.tokenId, broadcast.x, broadcast.y, broadcast.facing);
     }
   });
+
+  // Pula Eksploracji (etap 45) — prywatna, bez seq: stan chwili, nie historia.
+  onPresented('token:pace', (broadcast: TokenPaceBroadcast) =>
+    usePaceStore.getState().receive(broadcast),
+  );
 
   // Rulers are ephemeral like intermediate drags: no seq, never resynced.
   // Map effects (stage 27i) — never sequenced and never replayed on a resync,
@@ -3336,9 +3344,11 @@ export function combatErrorText(code: string): string {
     // refusal card; the tracker only needs to say that it was stopped.
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — szczegóły na karcie odmowy.';
-    // Zlecenie MG 12.09: mapa zamknięta, dopóki MG jej nie otworzy.
+    // Etap 45: „Ruch graczy: Stop” w górnym pasku MG.
     case 'MOVE_LOCKED':
-      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
+      return PLAYER_MOVE_STOP_NOTE;
+    case 'MOVE_PACE':
+      return PLAYER_MOVE_PACE_NOTE;
     // Stage 14d: the refusal already carries its own sentence on the card.
     case 'STATUS_BLOCKED':
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';

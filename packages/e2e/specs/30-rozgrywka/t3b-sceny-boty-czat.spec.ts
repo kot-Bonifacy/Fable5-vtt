@@ -14,6 +14,7 @@ import {
   openObjectCard,
   openTokenEditor,
   placeTokenFromFile,
+  setPlayerMove,
   setStepper,
   tokenCentre,
 } from '../../fixtures/scene.ts';
@@ -48,7 +49,7 @@ type SceneRow = {
   dark: number;
   darkSightM: number;
   gridSizePx: number;
-  playerMoveLocked: number;
+  playerMove: string;
   spawnX: number | null;
   spawnY: number | null;
 };
@@ -571,7 +572,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
       ).toBe(owner);
     }
 
-    // Nowa scena startuje zamknięta: własną figurą gracz nie rusza.
+    // Nowa scena startuje w „Ruch graczy: Stop” (etap 45): własną figurą gracz nie rusza.
     const socket = await marek.socket();
     expect(
       await emitAck(socket, 'token:move', {
@@ -582,13 +583,8 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
       }),
     ).toEqual({ ok: false, error: 'MOVE_LOCKED' });
 
-    const editor = await openSceneEditor(page, 'Knajpa');
-    await editor.getByLabel('Ruch graczy po tej mapie').click();
-    await expect.poll(() => scene('Knajpa').playerMoveLocked).toBe(0);
-    await editor
-      .getByRole('button', { name: /Zamknij|Anuluj zmiany/ })
-      .last()
-      .click();
+    await setPlayerMove(page, 'Swobodny');
+    await expect.poll(() => scene('Knajpa').playerMove).toBe('free');
   });
 
   test('3.13 Marek otwiera drzwi na taras i idzie do baru; Ola patrzy przez okno', async () => {

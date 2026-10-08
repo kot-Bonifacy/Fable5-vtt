@@ -203,6 +203,9 @@ describe('fog of war', () => {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 } },
     });
+    // Od etapu 45 nowa scena startuje w Dynamicznej — ten zestaw sprawdza
+    // ręczną mgłę, więc ją włącza.
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'fog' });
     await emitAck(gm, 'scene:activate', { sceneId });
 
     npcTokenId = data(

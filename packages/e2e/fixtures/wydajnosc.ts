@@ -128,7 +128,7 @@ export async function buildPerfScene(gm: Socket): Promise<{ sceneId: string; npc
     patch: {
       background: map,
       grid: { sizePx: PERF_CELL },
-      playerMoveLocked: false,
+      playerMove: 'free',
     },
   });
   for (const points of perfWalls()) {

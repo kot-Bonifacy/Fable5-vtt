@@ -225,7 +225,7 @@ describe('walls and dynamic vision', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -814,7 +814,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Plac' }),
       'scene:create',
     ).id;
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -1045,7 +1045,7 @@ describe('a window is a net curtain on a lit scene', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },

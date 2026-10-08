@@ -26,6 +26,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 import { BotTurnButton } from './BotTurnButton.js';
+import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
 
 /**
  * The turn tracker's always-visible face — a black strip over the map column,
@@ -94,14 +95,22 @@ function TurnModeButton() {
 
 /**
  * What turn mode leaves in the red top bar: with no queue, the GM's button that
- * starts one; with a queue, nothing (the strip over the map took it). The slot
+ * starts one; with a queue, nothing (the strip over the map took it). Beside
+ * it, always, the GM's „Ruch graczy" switch (etap 45). The slot
  * itself stays either way — it is the flexible middle that keeps the right-hand
  * group at the right edge.
  */
 export function TurnModeSlot() {
   const running = useCombatStore((s) => s.combat !== null);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  return <div className="top-bar-turn">{isGm && !running && <TurnModeButton />}</div>;
+  // „Ruch graczy" (etap 45) stoi obok zawsze, także w walce: Stop zatrzymuje
+  // również uczestnika w jego turze.
+  return (
+    <div className="top-bar-turn">
+      {isGm && <PlayerMoveSwitch />}
+      {isGm && !running && <TurnModeButton />}
+    </div>
+  );
 }
 
 /**

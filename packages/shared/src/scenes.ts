@@ -75,19 +75,22 @@ export interface SceneView {
    */
   explore: boolean;
   /**
-   * Czy gracze mają na tej mapie związane ręce (zlecenie MG, 12.09.2026)?
+   * Jak gracze chodzą po tej mapie (etap 45, decyzja MG z 08.10.2026) — jeden
+   * przełącznik w górnym pasku zamiast dawnej blokady `playerMoveLocked`
+   * (12.09) schowanej w edytorze sceny.
    *
-   * `true` znaczy „figurą tu nie ruszasz", i dotyczy **wyłącznie graczy** — MG
-   * nie jest tym związany nigdy, tak samo jak nie jest związany budżetem Tury.
-   * Powód jest z sesji: drużyna, która dostanie mapę przed rozpoczęciem gry,
-   * obejdzie ją własną figurą i pozna zanim MG cokolwiek powie.
+   * - `stop` — żaden gracz nie rusza figury, także w swojej turze (Pauza
+   *   z Foundry). Nowa scena startuje tak: mapa w budowie nie jest do chodzenia.
+   * - `explore` — poza walką każdy krok płaci z puli metrów, która się odnawia
+   *   (`shared/pace.ts`), więc drużyna nie przebiegnie mapy w kilka sekund.
+   * - `free` — bez limitu, jak przed etapem 45.
    *
-   * Pole jedzie **do graczy**, bo to ich klient ma nie podnosić figury i ma
-   * umieć powiedzieć, dlaczego. Tajemnicy w nim nie ma: prawdę i tak rozstrzyga
-   * serwer przy `token:move`, a wiedza „MG jeszcze nie otworzył mapy" nie jest
-   * niczym, czego gracz nie zobaczyłby przy pierwszej próbie.
+   * Dotyczy **wyłącznie graczy** — MG nie jest tym związany nigdy, tak samo jak
+   * budżetem Tury. Pole jedzie do graczy, bo to ich klient ma nie podnosić
+   * figury i umieć powiedzieć dlaczego; prawdę rozstrzyga serwer przy
+   * `token:move`.
    */
-  playerMoveLocked: boolean;
+  playerMove: PlayerMoveMode;
   ambience?: AmbiencePreset;
   /**
    * Gdzie na tej mapie zaczyna patrzeć gracz, który nie ma tu jeszcze figury
@@ -99,6 +102,13 @@ export interface SceneView {
    * znacznik na mapie widzi i tak wyłącznie MG.
    */
   spawn: ScenePoint | null;
+}
+
+/** Jak gracze chodzą po scenie (etap 45) — patrz `SceneView.playerMove`. */
+export type PlayerMoveMode = 'stop' | 'explore' | 'free';
+
+export function isPlayerMoveMode(value: unknown): value is PlayerMoveMode {
+  return value === 'stop' || value === 'explore' || value === 'free';
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -133,15 +143,15 @@ export interface ScenePatch {
   /** Miejsce startu drużyny; `null` kasuje wyznaczony punkt (11.09.2026). */
   spawn?: ScenePoint | null;
   /**
-   * Blokada ruchu graczy po tej mapie (12.09.2026).
+   * Ruch graczy po tej mapie (etap 45; wcześniej blokada z 12.09.2026).
    *
    * Zwykłe pole łaty, a nie własne zdarzenie jak `visibility`, `dark` czy
    * `explore` — i to jest cała różnica między nimi: tamte trzy **odbierają
    * graczom figury** w chwili przełączenia, więc muszą przefiltrować listy
    * tokenów. Ta niczego nie zabiera i nie pokazuje; zmienia tylko odpowiedź na
-   * pytanie „wolno mi tę figurę podnieść".
+   * pytanie „wolno mi tę figurę podnieść i jak daleko".
    */
-  playerMoveLocked?: boolean;
+  playerMove?: PlayerMoveMode;
   ambience?: AmbiencePreset;
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
@@ -321,8 +331,8 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
     );
   }
 
-  if (typeof input.playerMoveLocked === 'boolean') {
-    patch.playerMoveLocked = input.playerMoveLocked;
+  if (isPlayerMoveMode(input.playerMove)) {
+    patch.playerMove = input.playerMove;
   }
 
   if ('spawn' in input) {

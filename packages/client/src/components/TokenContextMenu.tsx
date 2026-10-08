@@ -435,6 +435,10 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [visionRange, setVisionRange] = useState(
     token.visionRange == null ? '' : String(token.visionRange),
   );
+  // „Oczy drużyny" (etap 45): '' — samo (figura gracza tak, figura MG nie).
+  const [sharedVision, setSharedVision] = useState<'' | 'yes' | 'no'>(
+    token.sharedVision == null ? '' : token.sharedVision ? 'yes' : 'no',
+  );
   const [hasLight, setHasLight] = useState(token.light != null);
   const [lightBrightM, setLightBrightM] = useState(
     token.light?.brightM ?? TOKEN_LIGHT_DEFAULT_BRIGHT_M,
@@ -495,6 +499,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       ownerId: ownerId === '' ? null : ownerId,
       characterId: characterId === '' ? null : characterId,
       visionRange: parsedRange,
+      sharedVision: sharedVision === '' ? null : sharedVision === 'yes',
       // Taking the lamp away is `null`, not a lamp of radius zero — see
       // `sanitizeTokenLight`. The switch keeps whatever state it was in, so
       // retuning a lit torch does not put it out.
@@ -617,6 +622,22 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
         <p className="auth-hint">
           Puste pole = ograniczają tylko ściany. Ma znaczenie na scenach z trybem „Dynamiczna”.
         </p>
+
+        {/* „Oczy drużyny" (etap 45, wzór: Observer z Foundry). */}
+        <label className="auth-label" htmlFor="token-party-vision">
+          Oczy drużyny
+        </label>
+        <select
+          id="token-party-vision"
+          className="text-input"
+          value={sharedVision}
+          onChange={(e) => setSharedVision(e.target.value as '' | 'yes' | 'no')}
+          title="Figurę „oczu drużyny” każdy gracz widzi zawsze — w mgle, za ścianą, w ciemności — a w trybie „Dynamiczna” patrzy także jej oczami. Ukryta figura nie jest niczyimi oczami."
+        >
+          <option value="">Samo — figura gracza tak, figura MG nie</option>
+          <option value="yes">Tak — drużyna widzi ją i patrzy jej oczami</option>
+          <option value="no">Nie — tylko jej gracz</option>
+        </select>
 
         <label className="auth-label">
           <input

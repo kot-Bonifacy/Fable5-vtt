@@ -315,6 +315,11 @@ export function lightSourcesOf(
  * Hidden tokens count. A player who was given a hidden token can still see with
  * it — hiding is about what *others* may see, and the alternative would blind a
  * player for a reason they cannot observe.
+ *
+ * Od etapu 45 także „oczy drużyny" (Observer z Foundry): figury graczy, chyba
+ * że MG to wyłączył, i te, którym MG to włączył. Ukryta figura nie patrzy
+ * niczyimi oczami poza własnymi. Warunek w zapytaniu jest kopią
+ * `tokenSharesVision` — `party-move.test.ts` pilnuje, że mówią to samo.
  */
 async function fetchVisionTokens(
   prisma: PrismaClient,
@@ -324,7 +329,16 @@ async function fetchVisionTokens(
   return prisma.token.findMany({
     where: {
       sceneId,
-      OR: [{ ownerId: userId }, { character: { ownerId: userId } }],
+      OR: [
+        { ownerId: userId },
+        { character: { ownerId: userId } },
+        { hidden: false, sharedVision: true },
+        {
+          hidden: false,
+          sharedVision: null,
+          OR: [{ ownerId: { not: null } }, { character: { ownerId: { not: null } } }],
+        },
+      ],
     },
   });
 }

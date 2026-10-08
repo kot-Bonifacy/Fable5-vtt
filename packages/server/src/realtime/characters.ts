@@ -51,7 +51,12 @@ import {
   refuseAwaitingGm,
 } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
-import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
+import {
+  emitTokensById,
+  emitTokensOfCharacter,
+  moveCharacterTokensToOwner,
+  requireCampaignToken,
+} from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { scheduleBackup } from './backup.js';
 import { dropFromTeams, syncTeamMemberName } from './team.js';
@@ -335,6 +340,15 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     // only place their player can read the name from.
     if ('name' in patch && updated.name !== character.name && updated.ownerId === null) {
       await syncTeamMemberName(deps, campaignId, updated.id, updated.name);
+    }
+    if ('ownerId' in patch) {
+      await moveCharacterTokensToOwner(
+        deps,
+        campaignId,
+        character.id,
+        character.ownerId,
+        updated.ownerId,
+      );
     }
     // HP and stats drive the bars of every token bound to this sheet.
     if ('data' in patch || 'ownerId' in patch || 'name' in patch || portraitMoved) {

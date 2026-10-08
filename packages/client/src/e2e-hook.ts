@@ -15,6 +15,7 @@ import { useHandoutStore } from './stores/handoutStore.js';
 import { useLightStore } from './stores/lightStore.js';
 import { useMusicStore } from './stores/musicStore.js';
 import { useNetRunStore } from './stores/netRunStore.js';
+import { usePaceStore } from './stores/paceStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
@@ -90,6 +91,7 @@ export function installE2EHook(): void {
         music: useMusicStore,
         netRun: useNetRunStore,
         ownerAi: useOwnerAiStore,
+        pace: usePaceStore,
         roll: useRollStore,
         scene: useSceneStore,
         selection: useSelectionStore,

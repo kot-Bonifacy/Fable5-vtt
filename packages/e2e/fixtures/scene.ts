@@ -82,6 +82,21 @@ export async function clickOnMap(
   await clickWorld(page, point, button);
 }
 
+/**
+ * „Ruch graczy” w górnym pasku MG (etap 45) — działa na scenie, którą MG
+ * ogląda. Nowa scena startuje w Stop.
+ */
+export async function setPlayerMove(
+  page: Page,
+  label: 'Stop' | 'Eksploracja' | 'Swobodny',
+): Promise<void> {
+  const option = page
+    .getByRole('radiogroup', { name: 'Ruch graczy' })
+    .getByRole('radio', { name: label });
+  await option.click();
+  await expect(option).toHaveAttribute('aria-checked', 'true');
+}
+
 /** Narzędzie z paska mapy po początku `title` („Ściany (W)”, „Światła (L)”…). */
 export async function pickTool(page: Page, title: string): Promise<void> {
   const button = page.locator(`.map-tools button[title^="${title}"]`);

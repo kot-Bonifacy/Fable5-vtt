@@ -189,7 +189,7 @@ describe.each(['open', 'fog', 'dynamic'] as const)('figure barriers in %s scenes
     ).id;
     await emitAck(gm, 'scene:update', {
       sceneId,
-      patch: { width: 1000, height: 1000, playerMoveLocked: false },
+      patch: { width: 1000, height: 1000, playerMove: 'free' },
     });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility });
     await emitAck(gm, 'scene:activate', { sceneId });

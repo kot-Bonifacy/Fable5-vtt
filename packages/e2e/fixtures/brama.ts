@@ -25,7 +25,7 @@ export type SceneRow = {
   active: number;
   visibility: string;
   gridSizePx: number;
-  playerMoveLocked: number;
+  playerMove: string;
 };
 export type BramaTokenRow = {
   id: string;

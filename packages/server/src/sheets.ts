@@ -163,6 +163,13 @@ export interface LinkedSheet {
    * musiały skądś przyjechać po tym, jak zniknął profil bojowy.
    */
   injuries: TokenInjuryRow[];
+  /**
+   * Metry jednej Akcji Ruchu tej karty (etap 45) — wielkość puli Eksploracji.
+   * Tu, bo `toTokenView` i tak trzyma kartę w ręku, a pula jedzie graczowi
+   * w prywatnej części figury. Bez kar przyklejonych do żetonu (Maź z 26f):
+   * pula to orientacja tempa poza walką, nie budżet tury.
+   */
+  moveM: number;
 }
 
 /**
@@ -1566,6 +1573,7 @@ export function toLinkedSheet(character: Character, registry: SheetRegistry): Li
     hp: readSheetHp(character, registry),
     ownerId: character.ownerId,
     injuries: readSheetInjuries(character, registry) as unknown as TokenInjuryRow[],
+    moveM: readSheetMoveBudget(character, registry).metresPerMove,
   };
 }
 

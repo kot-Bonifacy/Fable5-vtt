@@ -782,3 +782,94 @@
 .combat-bar-death-save:hover {
   background: var(--cp-red-deep);
 }
+
+/* „Ruch graczy" w górnym pasku MG (etap 45): trzy stany sceny jak przełącznik
+   segmentowy, obok „Włącz tryb turowy" i w tym samym kroju. Znaczek „⚠ N"
+   otwiera listę spraw, przez które drużyna i tak nie pójdzie. */
+.player-move {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.6rem;
+}
+
+.player-move-switch {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--cp-on-red-faint);
+}
+
+.player-move-label {
+  align-self: center;
+  padding: 0 0.5rem;
+  color: var(--cp-on-red);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.player-move-option {
+  padding: 0.3rem 0.6rem;
+  border: 0;
+  border-left: 1px solid var(--cp-on-red-faint);
+  border-radius: 0;
+  background: transparent;
+  color: var(--cp-on-red);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.player-move-option:hover:not(.is-active) {
+  background: var(--cp-bar);
+}
+
+.player-move-option.is-active {
+  background: var(--cp-on-red);
+  color: var(--cp-red-deep);
+  font-weight: 600;
+}
+
+.player-move-issues {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--cp-on-red);
+  border-radius: 0;
+  background: var(--cp-red-deep);
+  color: var(--cp-on-red);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.player-move-popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 600;
+  width: max-content;
+  max-width: 26rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
+  color: var(--map-ink);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-md);
+}
+
+.player-move-popover ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.player-move-popover li + li {
+  margin-top: 0.3rem;
+}
+
+.player-move-popover-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
