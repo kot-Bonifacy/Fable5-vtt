@@ -735,6 +735,11 @@ export interface CampaignArchive {
   architectures: Record<string, unknown>[];
   tokenAssets: Record<string, unknown>[];
   portraitAssets: Record<string, unknown>[];
+  /**
+   * Sklepy (etap 46a) — ustawienia handlarzy z nakładką MG; towar jedzie
+   * w kartach. Archiwum sprzed etapu nie ma pola, czyli „brak sklepów”.
+   */
+  merchants?: Record<string, unknown>[];
   /** Log czatu — pomijany, gdy MG tak każe (to 4/5 objętości bazy). */
   chat: Record<string, unknown>[] | null;
 }
@@ -764,6 +769,8 @@ export async function exportCampaign(
       // kopią tej kampanii, tylko jej wersją sprzed pierwszej nocy.
       gameTime: true,
       settledMonth: true,
+      // Etap 46a: „Zakupy z katalogu” — kopia kampanii sprzedaje tak, jak stół.
+      catalogShopping: true,
     },
   });
   if (!campaign) return null;
@@ -800,9 +807,10 @@ export async function exportCampaign(
       prisma.botRelation.findMany({ where: { bot: { campaignId } } }),
       prisma.netArchitecture.findMany({ where: { campaignId } }),
     ]);
-  const [tokenAssets, portraitAssets] = await Promise.all([
+  const [tokenAssets, portraitAssets, merchants] = await Promise.all([
     prisma.tokenAsset.findMany({ where: { campaignId } }),
     prisma.portraitAsset.findMany({ where: { campaignId } }),
+    prisma.merchant.findMany({ where: { campaignId } }),
   ]);
 
   const chat = options.includeChat
@@ -834,6 +842,7 @@ export async function exportCampaign(
     architectures: plain(architectures),
     tokenAssets: plain(tokenAssets),
     portraitAssets: plain(portraitAssets),
+    merchants: plain(merchants),
     chat: chat ? plain(chat) : null,
   };
 
@@ -860,6 +869,7 @@ export async function exportCampaign(
       journal: payload.journal.length,
       handouts: payload.handouts.length,
       architectures: payload.architectures.length,
+      merchants: merchants.length,
       chat: payload.chat?.length ?? 0,
     },
     omitted,

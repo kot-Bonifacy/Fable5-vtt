@@ -21,7 +21,7 @@
  * to z ciała" — nie czeka na nic, bo nie ma kto potwierdzić, a warunki, na
  * jakich w ogóle wolno je wykonać, sprawdził serwer, zanim cokolwiek pojechało.
  */
-export type InventoryMoveKind = 'give' | 'take' | 'trade';
+export type InventoryMoveKind = 'give' | 'take' | 'trade' | 'shop';
 
 export const INVENTORY_MOVE_TITLES: Record<InventoryMoveKind, string> = {
   give: 'Przekazanie',
@@ -29,6 +29,8 @@ export const INVENTORY_MOVE_TITLES: Record<InventoryMoveKind, string> = {
   // Etap 38c: handel ma kartę dopiero po wykonaniu — negocjacje żyją w oknie
   // handlu, a na czat trafia jedno zdanie o tym, co w obie strony pojechało.
   trade: 'Handel',
+  // Etap 46a: zakup i sprzedaż u handlarza — od ręki, bez propozycji.
+  shop: 'Sklep',
 };
 
 /** Jak skończyła się propozycja przekazania. */
@@ -71,7 +73,8 @@ export interface InventoryMoveEntry {
   eddies?: number;
   /**
    * Handel (etap 38c): co pojechało **z powrotem**, od `to` do `from`. Tylko
-   * przy `kind: 'trade'`; `lines` mówi wtedy, co dała strona `from`.
+   * przy `kind: 'trade'` i `'shop'` (46a: co kupujący dostał od handlarza);
+   * `lines` mówi wtedy, co dała strona `from`.
    */
   returnLines?: string[];
   /** Zdanie od wysyłającego („za opatrunek"). */
@@ -136,10 +139,12 @@ export function inventoryResolutionLabel(entry: InventoryMoveView): string {
   if (!resolution) return '';
   if (resolution.kind === 'accepted' && entry.kind === 'take') return 'Zabrane';
   if (resolution.kind === 'accepted' && entry.kind === 'trade') return 'Wymienione';
+  if (resolution.kind === 'accepted' && entry.kind === 'shop') return 'Zapłacone';
   return INVENTORY_RESOLUTION_LABELS[resolution.kind];
 }
 
 /** „Vex → Rico" — nagłówek karty czatu; handel idzie w obie strony: „Vex ⇄ Rico". */
 export function inventoryMoveHeadline(entry: InventoryMoveView): string {
-  return `${entry.fromName} ${entry.kind === 'trade' ? '⇄' : '→'} ${entry.toName}`;
+  const both = entry.kind === 'trade' || entry.kind === 'shop';
+  return `${entry.fromName} ${both ? '⇄' : '→'} ${entry.toName}`;
 }

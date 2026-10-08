@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isTradeReady,
+  mayEditTradeOffer,
   mayCancelTrade,
   setTradeAccept,
   setTradeOffer,
@@ -121,5 +122,27 @@ describe('stan handlu', () => {
     const forGm = tradeViewFor(trade(), 'u-gm', true);
     expect(forGm.sides.map((s) => s.characterId)).toEqual(['c-vex', 'c-fixer']);
     expect(forGm.sides.map((s) => s.mine)).toEqual([false, true]);
+  });
+});
+
+describe('pole wymiany przed przyjęciem zaproszenia (etap 46a)', () => {
+  it('zapraszający kładzie rzeczy w swoje pole, zaproszony jeszcze nie', () => {
+    expect(mayEditTradeOffer(trade({ status: 'invited' }), 0)).toBe(true);
+    expect(mayEditTradeOffer(trade({ status: 'invited' }), 1)).toBe(false);
+    expect(mayEditTradeOffer(trade({ status: 'open' }), 1)).toBe(true);
+    expect(mayEditTradeOffer(trade({ status: 'done' }), 0)).toBe(false);
+  });
+
+  it('zgody w stanie zaproszenia nie ma — pole zapraszającego zostaje przy przyjęciu', () => {
+    const invited = setTradeOffer(trade({ status: 'invited', version: 1 }), 0, {
+      items: [{ list: 'gear', rowId: 'g1', qty: 1 }],
+      views: [],
+      eddies: 0,
+    });
+    expect(setTradeAccept(invited, 0, true, invited.version)).toEqual({
+      ok: false,
+      error: 'TRADE_NOT_OPEN',
+    });
+    expect(invited.sides[0].items).toHaveLength(1);
   });
 });

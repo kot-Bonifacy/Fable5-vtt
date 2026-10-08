@@ -28,6 +28,7 @@ import {
   isTradeActive,
   isTradeReady,
   mayCancelTrade,
+  mayEditTradeOffer,
   mayOperateTradeSide,
   mayViewTrade,
   mergeCharacterData,
@@ -336,9 +337,11 @@ export const tradeOfferEvent = defineEvent<TradeOfferPayload, void>({
     const campaignId = requireCampaignId(socket.data);
     const isGm = isGmUser(user);
     const trade = requireTrade(campaignId, user, payload?.tradeId);
-    if (trade.status !== 'open') throw new RealtimeError('TRADE_NOT_OPEN');
     const sideIndex = tradeSideOf(trade, user.id, isGm);
     if (sideIndex === null) throw new RealtimeError('NOT_YOURS');
+    // Etap 46a: zapraszający kładzie rzeczy w swoje pole od razu, zaproszony —
+    // po „Przyjmij” (rozstrzygnięcie 1 w `shared/trade.ts`).
+    if (!mayEditTradeOffer(trade, sideIndex)) throw new RealtimeError('TRADE_NOT_OPEN');
     if (executing.has(trade.id)) throw new RealtimeError('TRADE_BUSY');
 
     const items = readItemRefs(payload?.items, true);
@@ -356,7 +359,9 @@ export const tradeOfferEvent = defineEvent<TradeOfferPayload, void>({
     if (!offer.ok) throw new RealtimeError(offer.error);
 
     const current = trades.get(trade.id);
-    if (!current || current.status !== 'open') throw new RealtimeError('TRADE_NOT_OPEN');
+    if (!current || !mayEditTradeOffer(current, sideIndex)) {
+      throw new RealtimeError('TRADE_NOT_OPEN');
+    }
     if (executing.has(trade.id)) throw new RealtimeError('TRADE_BUSY');
     await emitTrade(
       deps,

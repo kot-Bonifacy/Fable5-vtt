@@ -196,7 +196,7 @@ function stacksWith(a: CpredGearRow, b: CpredGearRow): boolean {
  * nigdy (#27, 27.09): po nim karta ataku szukała strzelca, a gracz z pistoletem
  * zdobytym na Zbirze stawał się strzelcem ataków wszystkich statystów.
  */
-function landedRow<T extends CpredItemRow>(
+export function cpredLandedRow<T extends CpredItemRow>(
   row: T,
   taken: ReadonlySet<string>,
   makeId: () => string,
@@ -212,17 +212,20 @@ export interface CpredMoveOptions {
   makeId?: () => string;
 }
 
-function defaultMakeId(): string {
+export function cpredRowId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-type ItemLists = Record<CpredItemList, CpredItemRow[]>;
+export type CpredItemLists = Record<CpredItemList, CpredItemRow[]>;
 
-function listsOf(data: CpredCharacterData): ItemLists {
+export function cpredItemLists(data: CpredCharacterData): CpredItemLists {
   return { weapons: [...data.weapons], armor: [...data.armor], gear: [...data.gear] };
 }
 
-function withLists(data: CpredCharacterData, lists: ItemLists): CpredCharacterData {
+export function cpredWithItemLists(
+  data: CpredCharacterData,
+  lists: CpredItemLists,
+): CpredCharacterData {
   return {
     ...data,
     weapons: lists.weapons as CpredWeaponRow[],
@@ -232,23 +235,23 @@ function withLists(data: CpredCharacterData, lists: ItemLists): CpredCharacterDa
 }
 
 /** Wiersz zdjęty z karty źródłowej — w drodze, jeszcze nigdzie nie wylądował. */
-interface TakenRow {
+export interface CpredTakenRow {
   list: CpredItemList;
   row: CpredItemRow;
   view: CpredItemView;
 }
 
 /**
- * Zdejmuje wskazane wiersze z list (mutuje je — to kopie z `listsOf`).
+ * Zdejmuje wskazane wiersze z list (mutuje je — to kopie z `cpredItemLists`).
  *
  * Wiersz wyposażenia rozbija się przy `qty` mniejszym niż stos; reszta zostaje
  * na miejscu z tym samym id.
  */
-function takeRows(
-  source: ItemLists,
+export function cpredTakeRows(
+  source: CpredItemLists,
   refs: readonly CpredItemRef[],
-): { ok: true; taken: TakenRow[] } | { ok: false; error: CpredItemMoveError } {
-  const taken: TakenRow[] = [];
+): { ok: true; taken: CpredTakenRow[] } | { ok: false; error: CpredItemMoveError } {
+  const taken: CpredTakenRow[] = [];
   for (const ref of refs) {
     const rows = source[ref.list];
     const index = rows.findIndex((row) => row.id === ref.rowId);
@@ -280,7 +283,11 @@ function takeRows(
 }
 
 /** Kładzie zdjęte wiersze na liście odbiorcy: sklejanie, zdjęty pancerz, świeże id. */
-function landRows(target: ItemLists, taken: readonly TakenRow[], makeId: () => string): void {
+export function cpredLandRows(
+  target: CpredItemLists,
+  taken: readonly CpredTakenRow[],
+  makeId: () => string,
+): void {
   for (const { list, row } of taken) {
     if (list === 'gear') {
       const gear = row as CpredGearRow;
@@ -288,7 +295,7 @@ function landRows(target: ItemLists, taken: readonly TakenRow[], makeId: () => s
       const stack = gearTarget.findIndex((candidate) => stacksWith(gear, candidate));
       if (stack === -1) {
         const ids = new Set(gearTarget.map((candidate) => candidate.id));
-        gearTarget.push(landedRow(gear, ids, makeId));
+        gearTarget.push(cpredLandedRow(gear, ids, makeId));
       } else {
         const existing = gearTarget[stack]!;
         gearTarget[stack] = { ...existing, qty: existing.qty + gear.qty };
@@ -299,11 +306,11 @@ function landRows(target: ItemLists, taken: readonly TakenRow[], makeId: () => s
     // Zdjęty pancerz: patrz nagłówek pliku. Broń nie ma odpowiednika tej
     // decyzji, bo samo trzymanie broni nie zmienia na karcie żadnej liczby.
     const landing = list === 'armor' ? { ...(row as CpredArmorRow), equipped: false } : row;
-    target[list].push(landedRow(landing, ids, makeId));
+    target[list].push(cpredLandedRow(landing, ids, makeId));
   }
 }
 
-function overflows(lists: ItemLists): boolean {
+export function cpredItemListsOverflow(lists: CpredItemLists): boolean {
   return CPRED_ITEM_LISTS.some((list) => lists[list].length > ITEM_ROWS_MAX);
 }
 
@@ -322,20 +329,20 @@ export function cpredMoveItems(
   options: CpredMoveOptions = {},
 ): { ok: true; result: CpredItemMoveResult } | { ok: false; error: CpredItemMoveError } {
   if (refs.length === 0) return { ok: false, error: 'NO_ITEMS' };
-  const makeId = options.makeId ?? defaultMakeId;
+  const makeId = options.makeId ?? cpredRowId;
 
-  const source = listsOf(from);
-  const target = listsOf(to);
-  const took = takeRows(source, refs);
+  const source = cpredItemLists(from);
+  const target = cpredItemLists(to);
+  const took = cpredTakeRows(source, refs);
   if (!took.ok) return took;
-  landRows(target, took.taken, makeId);
-  if (overflows(target)) return { ok: false, error: 'TOO_MANY_ROWS' };
+  cpredLandRows(target, took.taken, makeId);
+  if (cpredItemListsOverflow(target)) return { ok: false, error: 'TOO_MANY_ROWS' };
 
   return {
     ok: true,
     result: {
-      from: withLists(from, source),
-      to: withLists(to, target),
+      from: cpredWithItemLists(from, source),
+      to: cpredWithItemLists(to, target),
       moved: took.taken.map((entry) => entry.view),
     },
   };
@@ -371,21 +378,22 @@ export function cpredSwapItems(
   bRefs: readonly CpredItemRef[],
   options: CpredMoveOptions = {},
 ): { ok: true; result: CpredItemSwapResult } | { ok: false; error: CpredItemMoveError } {
-  const makeId = options.makeId ?? defaultMakeId;
-  const aLists = listsOf(a);
-  const bLists = listsOf(b);
-  const fromA = takeRows(aLists, aRefs);
+  const makeId = options.makeId ?? cpredRowId;
+  const aLists = cpredItemLists(a);
+  const bLists = cpredItemLists(b);
+  const fromA = cpredTakeRows(aLists, aRefs);
   if (!fromA.ok) return fromA;
-  const fromB = takeRows(bLists, bRefs);
+  const fromB = cpredTakeRows(bLists, bRefs);
   if (!fromB.ok) return fromB;
-  landRows(bLists, fromA.taken, makeId);
-  landRows(aLists, fromB.taken, makeId);
-  if (overflows(aLists) || overflows(bLists)) return { ok: false, error: 'TOO_MANY_ROWS' };
+  cpredLandRows(bLists, fromA.taken, makeId);
+  cpredLandRows(aLists, fromB.taken, makeId);
+  if (cpredItemListsOverflow(aLists) || cpredItemListsOverflow(bLists))
+    return { ok: false, error: 'TOO_MANY_ROWS' };
   return {
     ok: true,
     result: {
-      a: withLists(a, aLists),
-      b: withLists(b, bLists),
+      a: cpredWithItemLists(a, aLists),
+      b: cpredWithItemLists(b, bLists),
       fromA: fromA.taken.map((entry) => entry.view),
       fromB: fromB.taken.map((entry) => entry.view),
     },
@@ -411,7 +419,7 @@ export function cpredOfferViews(
     if (seen.has(key)) return { ok: false, error: 'BAD_QTY' };
     seen.add(key);
   }
-  const took = takeRows(listsOf(data), refs);
+  const took = cpredTakeRows(cpredItemLists(data), refs);
   if (!took.ok) return took;
   return {
     ok: true,

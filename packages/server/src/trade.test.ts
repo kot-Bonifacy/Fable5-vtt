@@ -331,7 +331,7 @@ describe('handel', () => {
     expect(paser?.characterId).toBeUndefined();
   });
 
-  it('zaproszenie widzą zaproszony i MG; pola ruszają dopiero po „Przyjmij"', async () => {
+  it('zaproszenie widzą zaproszony i MG; zapraszający kładzie rzeczy od razu, zaproszony po „Przyjmij"', async () => {
     const ricoSees = nextTrade(rico, 'invited');
     const gmSees = nextTrade(gm, 'invited');
     const invited = data(
@@ -350,10 +350,14 @@ describe('handel', () => {
     // MG widzi, ale żadnej strony handlu dwóch graczy nie prowadzi.
     expect((await gmSees).sides.map((side) => side.mine)).toEqual([false, false]);
 
-    expect(await emitAck(vex, 'trade:offer', { tradeId, items: [], eddies: 10 })).toEqual({
+    // Etap 46a: jedno okno — zapraszający ma pole od razu („Wyślij bez
+    // czekania” musi mieć co wysłać), zaproszony dostaje je po „Przyjmij”.
+    expect((await emitAck(vex, 'trade:offer', { tradeId, items: [], eddies: 10 })).ok).toBe(true);
+    expect(await emitAck(rico, 'trade:offer', { tradeId, items: [], eddies: 10 })).toEqual({
       ok: false,
       error: 'TRADE_NOT_OPEN',
     });
+    expect((await emitAck(vex, 'trade:offer', { tradeId, items: [], eddies: 0 })).ok).toBe(true);
     // Vex nie przyjmie zaproszenia za Rico.
     expect(await emitAck(vex, 'trade:respond', { tradeId, accept: true })).toEqual({
       ok: false,

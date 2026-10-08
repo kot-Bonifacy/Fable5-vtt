@@ -277,6 +277,16 @@ import {
   archiveSnapshotEvent,
 } from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
+import { exchangeCounterpartsEvent } from './exchange.js';
+import {
+  catalogShoppingEvent,
+  merchantConfigEvent,
+  merchantDealEvent,
+  merchantListEvent,
+  merchantRowEvent,
+  merchantViewEvent,
+} from './merchant.js';
+import { forgetMerchantWatcher } from './merchant-watch.js';
 import { musicControlEvent, musicStateEvent } from './music.js';
 
 declare module 'socket.io' {
@@ -411,6 +421,13 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   checkRequestEvent,
   checkRequestCancelEvent,
   checkRequestResolveEvent,
+  exchangeCounterpartsEvent,
+  merchantListEvent,
+  merchantViewEvent,
+  merchantDealEvent,
+  merchantConfigEvent,
+  merchantRowEvent,
+  catalogShoppingEvent,
   inventorySourcesEvent,
   inventoryGiveEvent,
   inventoryTakeEvent,
@@ -665,6 +682,8 @@ export function setupRealtime(
       app.log.info({ socketId: socket.id, reason }, 'socket disconnected');
       // Grot zostałby u reszty stołu obrócony na zawsze (`token:aim`).
       releaseSocketAim(deps, socket.id);
+      // Półki oglądane przez to gniazdo (etap 46a) — nie ma już komu ich odświeżać.
+      forgetMerchantWatcher(socket.id);
       ctx.ai.ownerDisconnected(socket.id);
       const campaign = socket.data.campaign;
       if (campaign) {

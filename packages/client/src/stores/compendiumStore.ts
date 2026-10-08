@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  CatalogShopping,
   CompendiumCategory,
   CompendiumEntry,
   CpredShopRoleTools,
@@ -36,6 +37,11 @@ interface CompendiumStoreState {
    * server will disagree about what is locked.
    */
   shopTierOverrides: Record<string, ShopTier>;
+  /**
+   * „Zakupy z katalogu” (etap 46a): `merchants` chowa graczowi „Kup” — kupuje
+   * się wtedy u handlarzy. Serwer i tak odmawia (`CATALOG_CLOSED`).
+   */
+  catalogShopping: CatalogShopping;
   /** What each Role may buy above street level in the creator (naprawa 3b). */
   roleTools: Record<string, CpredShopRoleTools>;
 
@@ -49,6 +55,7 @@ interface CompendiumStoreState {
 
   applySync: (payload: StateSyncPayload) => void;
   applyShopTier: (tier: ShopTier) => void;
+  applyCatalogShopping: (mode: CatalogShopping) => void;
   applyShopEntryTier: (entryId: string, tier: ShopTier | null) => void;
   applyUpsert: (entry: CompendiumEntry) => void;
   applyDelete: (id: string) => void;
@@ -75,6 +82,7 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
   weaponTypeById: {},
   shopTier: SHOP_TIER_MIN,
   shopTierOverrides: {},
+  catalogShopping: 'everywhere',
   roleTools: {},
   category: 'weapon',
   query: '',
@@ -91,6 +99,7 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
         weaponTypeById: Object.fromEntries(weaponTypes.map((type) => [type.id, type])),
         shopTier: payload.shopTier ?? SHOP_TIER_MIN,
         shopTierOverrides: payload.shopTierOverrides ?? {},
+        catalogShopping: payload.catalogShopping ?? 'everywhere',
         roleTools: payload.compendium.roleTools ?? {},
         // A selected entry that vanished falls back to the list.
         selectedId:
@@ -99,6 +108,7 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
     }),
 
   applyShopTier: (shopTier) => set({ shopTier }),
+  applyCatalogShopping: (catalogShopping) => set({ catalogShopping }),
 
   applyShopEntryTier: (entryId, tier) =>
     set((state) => {

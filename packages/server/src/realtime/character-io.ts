@@ -11,6 +11,7 @@ import type { PrismaClient } from '../db.js';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 import { emitToCampaignUser, gmRoom } from './state.js';
+import { notifyMerchantCard } from './merchant-watch.js';
 
 /**
  * Reading and delivering characters, split out of the event handlers so the
@@ -70,6 +71,9 @@ export async function emitCharacterUpsert(
   for (const userId of await characterAudience(deps, view.id, view.ownerId)) {
     await emitToCampaignUser(deps.io, campaignId, userId, 'character:upsert', payload);
   }
+  // Etap 46a: towar handlarza to ekwipunek jego karty — każdy zapis karty
+  // odświeża półkę u tych, którzy ją oglądają.
+  await notifyMerchantCard(deps, campaignId, view.id);
 }
 
 /**

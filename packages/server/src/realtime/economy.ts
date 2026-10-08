@@ -39,6 +39,7 @@ import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './c
 import { markMonthSettled } from './gametime.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignShopTier, campaignShopTierOverrides, requireUnlockedTier } from './shop.js';
+import { campaignCatalogShopping } from './merchant.js';
 import { requireTeamCard, teamCardsWhere } from './team-cards.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
@@ -237,6 +238,11 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     // built: a bot buys on the GM's account (stage 20a) and the GM is exempt,
     // which is the same conclusion movement reached in `movement.ts:216`.
     if (user.role !== ROLE_GM) {
+      // Etap 46a: „Zakupy z katalogu: tylko u handlarzy” — gracz kupuje przy
+      // ladzie, nie z Kompendium. MG i boty (konto MG, 20a) kupują dalej.
+      if ((await campaignCatalogShopping(deps.ctx.prisma, campaign.id)) === 'merchants') {
+        throw new RealtimeError('CATALOG_CLOSED');
+      }
       const overrides = await campaignShopTierOverrides(deps.ctx.prisma, campaign.id);
       requireUnlockedTier(
         shopTierOf(entry, { overrides }),

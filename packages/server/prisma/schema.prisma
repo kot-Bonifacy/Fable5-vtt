@@ -133,6 +133,11 @@ model Campaign {
   /// „czy ten miesiąc jest już rozliczony", a nie „kiedy ostatnio klikano".
   /// Zegar cofnięty o pół roku nie zapala monitu drugi raz.
   settledMonth String?
+  /// „Zakupy z katalogu” (etap 46a): `everywhere` | `merchants`. Przy
+  /// `merchants` gracz kupuje wyłącznie u handlarzy — `economy:buy` gracza
+  /// odmawia `CATALOG_CLOSED`. Domyślnie „wszędzie”, żeby stare kampanie grały
+  /// jak dotąd.
+  catalogShopping String @default("everywhere")
 
   invitations  Invitation[]
   members      CampaignMember[]
@@ -150,6 +155,7 @@ model Campaign {
   architectures NetArchitecture[]
   netRuns       NetRun[]
   randomTables  RandomTable[]
+  merchants     Merchant[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -426,6 +432,7 @@ model Character {
   relations BotRelation[]
   ledger    LedgerEntry[]
   advancement AdvancementEntry[]
+  merchant  Merchant?
 
   @@index([campaignId])
 }
@@ -1362,7 +1369,7 @@ model LedgerEntry {
   id          Int    @id @default(autoincrement())
   campaignId  String
   characterId String
-  /// purchase | transfer | lifestyle | adjust | cyberware | therapy
+  /// purchase | transfer | lifestyle | adjust | cyberware | therapy | starting | sale
   kind String
   /// Signed: negative is money leaving this character.
   amount Int
@@ -1380,6 +1387,40 @@ model LedgerEntry {
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId, id])
+  @@index([campaignId])
+}
+
+/// Sklep (etap 46a, wzór: *Merchant* z Item Piles): ustawienia handlarza.
+///
+/// Towarem jest ekwipunek karty `characterId` — przekazanie, łup i limit 40
+/// wierszy działają na nim od ręki. Osobna tabela, a nie pole arkusza, bo to
+/// decyzja MG, która nie ma jechać autozapisem karty (umowa `eddies`
+/// i `playReady`), a publicznym uchwytem sklepu jest `id`, nie id karty —
+/// gracz kupuje i w sklepie zdalnym, bez figury, i nie poznaje karty NPC-a.
+model Merchant {
+  id              String   @id @default(cuid())
+  campaignId      String
+  characterId     String   @unique
+  /// Szyld przy stole: „Spod lady”. Pusty = alias figury handlarza.
+  sign            String   @default("")
+  open            Boolean  @default(false)
+  /// `reach` — przy figurze, na wyciągnięcie ręki; `remote` — z doku, bez figury.
+  access          String   @default("reach")
+  betweenSessions Boolean  @default(false)
+  /// Procent ceny katalogowej przy sprzedaży graczowi (100 = katalog).
+  priceMul        Int      @default(100)
+  /// Procent ceny katalogowej przy odkupie od gracza (0 = nie skupuje).
+  buyBackPct      Int      @default(50)
+  cashInfinite    Boolean  @default(false)
+  /// JSON `{ "lista:id wiersza": { infinite?, hidden?, price? } }` — nakładka MG
+  /// na wiersze karty (`readMerchantRows`).
+  rows            String   @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
   @@index([campaignId])
 }
 

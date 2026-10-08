@@ -38,6 +38,7 @@ import { fetchBotsFor } from './bots.js';
 import { syncedAiStatus } from './ai.js';
 import { buildCompendiumSync } from './compendium.js';
 import { campaignShopTier, campaignShopTierOverrides } from './shop.js';
+import { campaignCatalogShopping } from './merchant.js';
 import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 
@@ -80,6 +81,7 @@ export async function buildStateSync(
       compendium: await buildCompendiumSync(deps, null),
       shopTier: SHOP_TIER_MIN,
       shopTierOverrides: {},
+      catalogShopping: 'everywhere',
       accessPoints: [],
       netRuns: [],
       combat: null,
@@ -114,6 +116,7 @@ export async function buildStateSync(
     accessPoints,
     netRuns,
     gameTime,
+    catalogShopping,
   ] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
@@ -198,6 +201,9 @@ export async function buildStateSync(
     // wspólne dla stołu, a monit rozliczenia liczy się z `settledMonth` po
     // stronie klienta, więc przeżywa przeładowanie strony.
     campaignGameTime(deps.ctx.prisma, campaign.id),
+    // „Zakupy z katalogu” (etap 46a) — publiczne jak `shopTier`: gracz ma
+    // wiedzieć, czemu w Kompendium nie ma „Kup”.
+    campaignCatalogShopping(deps.ctx.prisma, campaign.id),
   ]);
   // What the player's route planner walks round (stage 42a). A dynamic scene has
   // it measured from the very sight `vision` came from; anywhere else it is one
@@ -253,6 +259,7 @@ export async function buildStateSync(
     compendium,
     shopTier,
     shopTierOverrides,
+    catalogShopping,
     accessPoints,
     netRuns,
     combat,

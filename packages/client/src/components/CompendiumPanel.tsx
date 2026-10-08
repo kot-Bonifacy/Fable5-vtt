@@ -53,6 +53,7 @@ import {
   sendCyberwareAction,
   surgeryErrorText,
   setShopEntryTier,
+  setCatalogShopping,
   setShopTier,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -237,10 +238,18 @@ export function CompendiumPanel() {
  */
 function ShopTierBar({ isGm }: { isGm: boolean }) {
   const shopTier = useCompendiumStore((s) => s.shopTier);
+  const catalogShopping = useCompendiumStore((s) => s.catalogShopping);
   const [note, setNote] = useState<string | null>(null);
 
   async function move(tier: number) {
     const ack = await setShopTier(tier);
+    setNote(ack.ok ? null : economyErrorText(ack.error));
+  }
+
+  async function toggleCatalog() {
+    const ack = await setCatalogShopping(
+      catalogShopping === 'merchants' ? 'everywhere' : 'merchants',
+    );
     setNote(ack.ok ? null : economyErrorText(ack.error));
   }
 
@@ -250,6 +259,26 @@ function ShopTierBar({ isGm }: { isGm: boolean }) {
         Sklep: <strong>{SHOP_TIER_LABELS[shopTier]}</strong>
         <span className="shop-tier-note"> {SHOP_TIER_NOTES[shopTier]}</span>
       </span>
+      {isGm ? (
+        // Etap 46a: jedna dźwignia z dymkiem zamiast sekcji ustawień — tu MG
+        // i tak patrzy na katalog, a gracz widzi skutek w tej samej chwili.
+        <button
+          type="button"
+          className={`shop-tier-step shop-tier-catalog${catalogShopping === 'merchants' ? ' shop-tier-step--active' : ''}`}
+          title={
+            catalogShopping === 'merchants'
+              ? 'Zakupy z katalogu: tylko u handlarzy. Gracze nie mają „Kup” w Kompendium. Kliknij, żeby kupowali wszędzie.'
+              : 'Zakupy z katalogu: wszędzie. Kliknij, żeby gracze kupowali wyłącznie u handlarzy na mapie i w sklepach zdalnych.'
+          }
+          onClick={() => void toggleCatalog()}
+        >
+          {catalogShopping === 'merchants' ? 'Kup: u handlarzy' : 'Kup: wszędzie'}
+        </button>
+      ) : catalogShopping === 'merchants' ? (
+        <span className="shop-tier-note" title="MG ustawił „Zakupy z katalogu: tylko u handlarzy”.">
+          Kupujesz u handlarzy
+        </span>
+      ) : null}
       {isGm ? (
         <span className="shop-tier-steps">
           {SHOP_TIERS.map((tier) => (
@@ -335,6 +364,9 @@ function EntryCard({
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const edit = useCompendiumStore((s) => s.edit);
+  // Etap 46a: „Zakupy z katalogu: tylko u handlarzy” — gracz kupuje przy
+  // ladzie. „Zainstaluj” i „Dodaj za darmo” MG działają bez zmian.
+  const catalogClosed = useCompendiumStore((s) => s.catalogShopping === 'merchants') && !isGm;
   const [note, setNote] = useState<string | null>(null);
   const [targetId, setTargetId] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -1016,6 +1048,13 @@ function EntryCard({
                 Znaleziony — montaż {fitting} ed
               </button>
             </>
+          ) : catalogClosed ? (
+            <span
+              className="compendium-note"
+              title="MG ustawił „Zakupy z katalogu: tylko u handlarzy” — podejdź do handlarza albo otwórz sklep z doku w rogu mapy."
+            >
+              Kupisz u handlarza
+            </span>
           ) : (
             <button
               type="button"

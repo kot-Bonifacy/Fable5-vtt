@@ -118,6 +118,7 @@ interface World {
   draftId: string;
   tokenAssetId: string;
   portraitAssetId: string;
+  merchantId: string;
 }
 
 let A: World;
@@ -288,6 +289,11 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
   const portraitAsset = await p.portraitAsset.create({
     data: { campaignId, name, url: '/uploads/portraits/kanarek.webp', width: 10, height: 10 },
   });
+  // Sklep (etap 46a): NPC kampanii jest handlarzem — otwartym i zdalnym, żeby
+  // odmowa przy obcym `merchantId` nie zasłaniała się zamknięciem ani zasięgiem.
+  const merchant = await p.merchant.create({
+    data: { campaignId, characterId: npc.id, sign: name, open: true, access: 'remote' },
+  });
   return {
     campaignId,
     gmId,
@@ -320,6 +326,7 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
     draftId: draft.id,
     tokenAssetId: tokenAsset.id,
     portraitAssetId: portraitAsset.id,
+    merchantId: merchant.id,
   };
 }
 
@@ -639,6 +646,27 @@ const CASES: Record<string, Case> = {
   'handout:share': foreign((a) => ({ id: a.handoutId, userIds: [a.playerId] })),
   // inventory
   'inventory:sources': foreign((a) => ({ characterId: a.characterId })),
+  // Jedno okno „Wymiana” i sklepy (etap 46a).
+  'exchange:counterparts': foreign((a) => ({ characterId: a.characterId })),
+  'merchant:list': own('sklepy kampanii gniazda'),
+  'merchant:view': foreign((a) => ({ merchantId: a.merchantId })),
+  'merchant:deal': foreign((a) => ({
+    merchantId: a.merchantId,
+    characterId: a.characterId,
+    buy: [],
+    sell: [],
+    expectTotal: 0,
+  })),
+  'merchant:config': foreign((a) => ({ characterId: a.npcId, merchant: { open: false } })),
+  'merchant:row': foreign((a) => ({
+    merchantId: a.merchantId,
+    list: 'gear',
+    rowId: 'x',
+    overlay: null,
+  })),
+  'campaign:catalog-shopping': own('przełącznik kampanii gniazda', () => ({
+    mode: 'everywhere',
+  })),
   'inventory:give': foreign((a) => ({
     fromCharacterId: a.characterId,
     toCharacterId: a.npcId,
@@ -924,6 +952,21 @@ const MIXED: MixedCase[] = [
     payload: (a, b) => ({ fromCharacterId: b.characterId, toCharacterId: a.characterId }),
     expect: /^NOT_YOURS$/,
     player: NOT_FOUND,
+  },
+  // Etap 46a: własna karta, cudzy sklep albo cudza figura.
+  {
+    event: 'merchant:deal',
+    payload: (a, b) => ({
+      merchantId: a.merchantId,
+      characterId: b.characterId,
+      buy: [],
+      sell: [],
+      expectTotal: 0,
+    }),
+  },
+  {
+    event: 'exchange:counterparts',
+    payload: (a, b) => ({ characterId: b.characterId, tokenId: a.npcTokenId }),
   },
   {
     event: 'economy:transfer',

@@ -217,7 +217,7 @@ export async function closestMetres(
  * Stan figury, którą się przeszukuje
  * ------------------------------------------------------------------ */
 
-function conditionsOf(statuses: StatusDefinition[]): ReadonlyMap<string, TokenCondition> {
+export function conditionsOf(statuses: StatusDefinition[]): ReadonlyMap<string, TokenCondition> {
   return conditionRegistry(statuses);
 }
 
@@ -228,7 +228,7 @@ function conditionsOf(statuses: StatusDefinition[]): ReadonlyMap<string, TokenCo
  * z tego, co mówią naklejki, i z tego, co mówią punkty. Dzięki temu „ten
  * ganger leży" znaczy przy stole i w tym pliku dokładnie to samo.
  */
-function searchableCondition(
+export function searchableCondition(
   token: Token,
   data: CpredCharacterData,
   conditions: ReadonlyMap<string, TokenCondition>,

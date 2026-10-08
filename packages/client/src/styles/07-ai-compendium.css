@@ -792,6 +792,12 @@
   color: var(--text);
 }
 
+/* Etap 46a: dźwignia „Zakupy z katalogu” — ten sam przycisk co stopnie, tylko na słowo. */
+.shop-tier-catalog {
+  width: auto;
+  padding: 0.1rem 0.4rem;
+}
+
 .compendium-card {
   display: flex;
   flex-direction: column;

@@ -28,6 +28,14 @@ import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
+import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
+import type {
+  CatalogShopping,
+  MerchantAccess,
+  MerchantClosedReason,
+  MerchantRowOverlay,
+  MerchantSettings,
+} from './merchants.js';
 import type { Segment, VisionSyncBroadcast } from './vision.js';
 import type { WallView } from './walls.js';
 
@@ -174,6 +182,12 @@ export interface StateSyncPayload {
    * `shop:entry-tier` broadcasts.
    */
   shopTierOverrides: Record<string, ShopTier>;
+  /**
+   * „Zakupy z katalogu” (etap 46a): `merchants` chowa graczowi „Kup”
+   * w Kompendium. Publiczne z tego samego powodu co `shopTier`; zmiany jadą
+   * rozgłoszeniem `campaign:catalog-shopping`.
+   */
+  catalogShopping: CatalogShopping;
   /**
    * Net access points on the viewed scene (stage 26b), already cut for this
    * viewer: a hidden socket is **absent** from a player's list rather than
@@ -715,6 +729,178 @@ export interface TradeUpdateBroadcast {
 
 export interface TradeListResult {
   trades: TradeView[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Jedno okno „Wymiana” i sklepy (etap 46a)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Client → server payload of `exchange:counterparts` — „z kim mogę teraz coś
+ * wymienić”. Zastępuje `inventory:sources` i `trade:partners`: listę buduje
+ * serwer tą samą umową (gracz nie zna `characterId` cudzej figury).
+ */
+export interface ExchangeCounterpartsPayload {
+  /** Karta, dla której otwarto okno („moja strona” wymiany). */
+  characterId: string;
+  /** Figura wskazana wprost z menu żetonu — trafia na listę także poza zasięgiem u MG. */
+  tokenId?: string;
+}
+
+/** Jedna pozycja listy drugich stron. */
+export interface ExchangeCounterpartView {
+  kind: ExchangeCounterpartKind;
+  /** Klucz pozycji na liście: rodzaj + uchwyt; MG ma dla jednej figury dwie pozycje. */
+  key: string;
+  /** Nazwa, którą patrzący ma prawo wymówić (alias figury, szyld sklepu). */
+  name: string;
+  /** Odległość od najbliższej własnej figury; brak — poza sceną albo sklep zdalny. */
+  metres?: number;
+  /** Uchwyt figury (handel, łup, tryb MG). */
+  tokenId?: string;
+  /** Uchwyt sklepu — publiczny, nie jest id karty handlarza. */
+  merchantId?: string;
+  /** Id karty — wyłącznie karta drużyny i wszystko u MG (#40). */
+  characterId?: string;
+  /** Wyszarzone: widać, ale kliknąć się nie da. */
+  unavailable?: ExchangeUnavailable;
+  /** Łup: ekwipunek ciała i gotówka (jak `InventorySourceView`). */
+  items?: CpredItemViewWire[];
+  eddies?: number;
+}
+
+export interface ExchangeCounterpartsResult {
+  counterparts: ExchangeCounterpartView[];
+  /** „Dokąd” trybu MG i „Wyślij bez czekania”: drużyna u gracza, każda karta u MG. */
+  targets: { id: string; name: string }[];
+}
+
+/** Wiersz półki handlarza — rzecz, jej cena i stan zapasu. */
+export interface MerchantShelfRowView extends CpredItemViewWire {
+  /** Cena za sztukę po mnożniku sklepu; `null` — bez ceny (tylko MG to widzi). */
+  price: number | null;
+  /** „∞” — wiersz sprzedaje kopie bez końca. */
+  infinite: boolean;
+  /** Tylko u MG: wiersz ukryty przed graczami. */
+  hidden?: boolean;
+  /** Tylko u MG: cena wpisana ręką przy wierszu (bez mnożnika). */
+  priceOverride?: number;
+}
+
+/** Sklep tak, jak widzi go jeden patrzący (`merchant:view`, `merchant:update`). */
+export interface MerchantView {
+  id: string;
+  /** Szyld albo nazwa figury handlarza przy stole. */
+  name: string;
+  access: MerchantAccess;
+  /** Powód, dla którego sklep teraz nie sprzedaje; brak — otwarty. */
+  closed?: MerchantClosedReason;
+  betweenSessions: boolean;
+  priceMul: number;
+  buyBackPct: number;
+  /** Kasa handlarza; `null` — „bez dna”. */
+  cash: number | null;
+  rows: MerchantShelfRowView[];
+  /** Tylko u MG: karta handlarza i surowe ustawienia. */
+  characterId?: string;
+  settings?: MerchantSettings;
+}
+
+/** Pozycja doku „Sklepy (N)” i ekranu „Między sesjami”. */
+export interface MerchantListItem {
+  id: string;
+  name: string;
+  access: MerchantAccess;
+  closed?: MerchantClosedReason;
+  betweenSessions: boolean;
+  /** Tylko u MG. */
+  characterId?: string;
+}
+
+export interface MerchantListResult {
+  merchants: MerchantListItem[];
+}
+
+export interface MerchantViewPayload {
+  merchantId: string;
+}
+
+export interface MerchantViewResult {
+  merchant: MerchantView;
+}
+
+/** Jedna pozycja koszyka: wiersz półki i ile sztuk (kopii przy „∞”). */
+export interface MerchantBuyLineWire {
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  qty: number;
+}
+
+/**
+ * Client → server payload of `merchant:deal` — koszyk i pole sprzedaży w jednej
+ * transakcji. `expectTotal` to suma, którą klient pokazał (dodatnia — kupujący
+ * płaci); inna suma po stronie serwera daje `QUOTE_CHANGED`.
+ */
+export interface MerchantDealPayload {
+  merchantId: string;
+  characterId: string;
+  buy: MerchantBuyLineWire[];
+  sell: InventoryItemRefWire[];
+  expectTotal: number;
+}
+
+export interface MerchantDealResult {
+  /** Ile kupujący zapłacił netto (ujemne — dostał). */
+  total: number;
+  /** Saldo kupującego po transakcji. */
+  balance: number;
+}
+
+/**
+ * MG: `merchant:config` — karta NPC-a staje się handlarzem, zmienia ustawienia
+ * albo przestaje nim być (`merchant: null`).
+ */
+export interface MerchantConfigPayload {
+  characterId: string;
+  merchant: Partial<MerchantSettings> | null;
+}
+
+export interface MerchantConfigResult {
+  /** Uchwyt sklepu; brak po usunięciu. */
+  merchantId?: string;
+}
+
+/** MG: `merchant:row` — nakładka na jeden wiersz towaru; `null` zdejmuje ją. */
+export interface MerchantRowPayload {
+  merchantId: string;
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  overlay: MerchantRowOverlay | null;
+}
+
+/** Server → client `merchant:update` — półka po zmianie, u tych, którzy ją oglądają. */
+export interface MerchantUpdateBroadcast {
+  merchant: MerchantView;
+}
+
+/** Server → client `merchant:gone` — sklep zamknięty na dobre albo niewidoczny dla odbiorcy. */
+export interface MerchantGoneBroadcast {
+  merchantId: string;
+}
+
+/** Server → client `merchant:shops` — lista sklepów dla doku po każdej zmianie ustawień. */
+export interface MerchantShopsBroadcast {
+  merchants: MerchantListItem[];
+}
+
+/** MG: `campaign:catalog-shopping`. Rozgłoszenie niesie ten sam kształt plus `seq`. */
+export interface CatalogShoppingPayload {
+  mode: CatalogShopping;
+}
+
+export interface CatalogShoppingBroadcast {
+  seq: number;
+  mode: CatalogShopping;
 }
 
 /**

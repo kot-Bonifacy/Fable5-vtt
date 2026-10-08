@@ -47,6 +47,13 @@ export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   'trade:offer',
   'trade:accept',
   'trade:cancel',
+  // Jedno okno „Wymiana” i sklepy oznaczone przez MG (etap 46a, decyzja 9).
+  // Bez `merchant:config`, `merchant:row` i przełącznika katalogu — to
+  // zdarzenia MG, który siedzi przy stole zawsze.
+  'exchange:counterparts',
+  'merchant:list',
+  'merchant:view',
+  'merchant:deal',
   // Kreator postaci z rzutami kreatora (04.10) — zgoda MG obowiązuje dalej.
   'creation:permit-state',
   'creation:request',
@@ -74,6 +81,8 @@ function isPassiveEvent(name: string): boolean {
     name.endsWith(':status') ||
     name === 'trade:partners' ||
     name === 'inventory:sources' ||
+    name === 'exchange:counterparts' ||
+    name === 'merchant:view' ||
     name === 'creation:permit-state'
   );
 }

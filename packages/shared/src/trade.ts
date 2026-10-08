@@ -8,8 +8,10 @@
  *
  * Rozstrzygnięcia MG z 23.09.2026, których pilnuje ten plik:
  *
- *  1. **Handel zaczyna się zaproszeniem**, a okno otwiera się obu stronom
- *     dopiero po „Przyjmij" drugiej strony.
+ *  1. **Handel zaczyna się zaproszeniem.** Zaproszony dostaje okno po
+ *     „Przyjmij"; zapraszający ma je od razu, w stanie „czeka na…", i może już
+ *     kłaść rzeczy w swoje pole (etap 46a, jedno okno „Wymiana") — inaczej
+ *     „Wyślij bez czekania" nie miałoby czego wysłać. Zgód w tym stanie nie ma.
  *  2. **Każda zmiana w którymkolwiek polu wymiany kasuje OBIE zgody.** Nikt
  *     nie podmieni przedmiotu w chwili, gdy druga strona już kliknęła. Zgoda
  *     niesie numer wersji, którą widział klikający — zgoda na starszą wersję
@@ -116,6 +118,18 @@ export function isTradeActive(trade: Pick<TradeState, 'status'>): boolean {
 /** Oba pola puste — nie ma czego wymieniać, więc nie ma czego zatwierdzać. */
 export function isTradeEmpty(trade: Pick<TradeState, 'sides'>): boolean {
   return trade.sides.every((side) => side.items.length === 0 && side.eddies === 0);
+}
+
+/**
+ * Czy ta strona może teraz zmieniać swoje pole wymiany (rozstrzygnięcie 1):
+ * w negocjacjach obie, przed przyjęciem zaproszenia — wyłącznie zapraszający.
+ */
+export function mayEditTradeOffer(
+  trade: Pick<TradeState, 'status'>,
+  side: TradeSideIndex,
+): boolean {
+  if (trade.status === 'open') return true;
+  return trade.status === 'invited' && side === 0;
 }
 
 /**

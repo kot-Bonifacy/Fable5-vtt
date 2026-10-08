@@ -247,6 +247,7 @@ export const LEDGER_KINDS = [
   'cyberware',
   'therapy',
   'starting',
+  'sale',
 ] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
@@ -261,6 +262,9 @@ export const LEDGER_KIND_LABELS: Record<LedgerKind, string> = {
   // kind rather than a correction, because the audit's first line should say
   // where the money came from, not that somebody edited it.
   starting: 'Gotówka startowa',
+  // Etap 46a: rzecz sprzedana handlarzowi (odkup). U handlarza ten sam rodzaj
+  // znaczy towar, który sprzedał graczowi — lustro wpisu `purchase` kupującego.
+  sale: 'Sprzedaż',
 };
 
 export function isLedgerKind(value: unknown): value is LedgerKind {

@@ -59,9 +59,10 @@ export function InventoryMoveRow({
       <div className="chat-action-body">
         <span className="chat-action-name">{inventoryMoveHeadline(entry)}</span>
       </div>
-      {entry.kind === 'trade' ? (
+      {entry.kind === 'trade' || entry.kind === 'shop' ? (
         // Etap 38c: handel idzie w obie strony, więc karta mówi dwa razy,
         // kto co dał — jedna lista „A → B" skłamałaby o połowie wymiany.
+        // Zakup u handlarza (46a) ma te same dwie strony.
         <>
           <p className="chat-inventory-side">{entry.fromName} daje:</p>
           <ul className="chat-inventory-lines">
