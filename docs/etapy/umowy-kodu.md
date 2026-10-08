@@ -724,6 +724,7 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Sklepy w eksporcie i na białej liście (08.10, etap 46a1)** — `Merchant` jedzie w eksporcie kampanii (`CampaignArchive.merchants`, archiwum bez pola = brak sklepów), `Campaign.catalogShopping` w kolumnach kampanii i w `state:sync`. Między sesjami gracz ma `exchange:counterparts`, `merchant:list`, `merchant:view`, `merchant:deal` (zdarzenia MG sklepu tam nie trafiają — MG siedzi przy stole zawsze); handler sam odmawia `SESSION_NOT_RUNNING` sklepowi bez znacznika. `economy:buy` gracza przy „tylko u handlarzy” — `CATALOG_CLOSED` przed portfelem i progiem.
 - **AI właściciela — trasy, nie zdarzenia (04.10, etap 44d)** — prośba MG (`GET`/`POST /api/ai-access…`, `requireGm`), panel właściciela (`/api/owner/ai…`, `requireAnyOwner` — **każde** konto z flagą, także gracz) i flaga gracza (`/api/auth/owner-link`) są w `routes/ai-access.ts`. Zgoda to `User.aiAccess` + daty; przełącznik, obecność i dzierżawa — w pamięci `AiAccess`. Gniazdo właściciela zgłasza się `ctx.ai.ownerConnected/Disconnected` w `realtime/index.ts`; zmiana flagi na żywym koncie przestawia `socket.data.user.owner` od razu. `ai:status` liczy się **per gniazdo** (`sendAiStatus`, z kampanii gniazda) i po zmianie bramy idzie tylko tam, gdzie status się zmienił (`aiStatusKey`) — rozgłoszenie do wszystkich stukałoby u obcych stołów.
 - **Sesje i sloty (04.10, etap 44c)** — nie ma globalnej „aktywnej kampanii”: MG ma kampanię **otwartą** (`User.openCampaignId`, zdarzenie `campaign:open` — przenosi wyłącznie gniazda tego MG, odmowa `SESSION_RUNNING`, gdy ma trwającą sesję gdzie indziej), a sesja to `Campaign.sessionStartedAt` (`session:start` / `session:end`, `realtime/sessions.ts`). Slot zajmuje **jedno** warunkowe `UPDATE` w `claimSlot` (limit `VTT_MAX_SESSIONS` i „jeden MG — jedna sesja” w tym samym zapytaniu), odmowa `SESSION_SLOTS_FULL`. Gniazdo sadza wyłącznie `seatSocket`: MG zawsze przy stole (`campaignRoom` + `gmRoom`), gracz przy stole tylko w sesji, inaczej w `lobbyRoom` z `socket.data.atTable = false`. Rozgłoszenie stołu idzie do `campaignRoom`; dostarczenie **do konkretnego użytkownika** (karta, szept, handout, dziennik, handel) — przez `campaignMemberSockets` (stół + poczekalnia). Gracz między sesjami może tylko to, co stoi w `BETWEEN_SESSIONS_EVENTS` (`realtime/session-clock.ts`) — nowe zdarzenie gracza jest tam zamknięte, dopóki go świadomie nie dopiszesz (`sessions.test.ts` sprawdza wszystkie z `EVENTS`). Wiersz czatu bez trwającej sesji dostaje `prep = true` w rozszerzeniu Prismy (`db.ts`) i gracz go nie widzi (`visibleTo`), chyba że jest jego albo do niego. Zegar bezczynności (`SessionClock`, co minutę `sweepSessions`) liczy w pamięci; zdarzenie gry to każde udane zdarzenie przy stole poza odczytami (`isPassiveEvent`). Testy dymne bez sekcji `config.sessions` mają kampanię grającą od `POST /api/campaigns`; test sesji podaje sekcję i sztuczny zegar (`buildApp(config, { clock })`, `built.realtime.sweepSessions()`), E2E — `createCampaign(mg, nazwa)` z sesją albo `{ session: false }`.
 - **Izolacja kampanii — macierz zdarzeń (04.10, etap 44b)** — nowe zdarzenie gniazda dostaje wpis w `CASES` w `campaign-isolation.test.ts` (`foreign` z ładunkiem z obiektami kampanii A albo `own` z powodem), inaczej wywraca test „każde zdarzenie ma przypadek”. Obiekt z ładunku szuka się **w kampanii gniazda** (`requireCampaign…`), obcy daje ten sam kod co nieistniejący (`*_NOT_FOUND`); drugi identyfikator w ładunku (karta na figurze, adresat, figury walki) też tylko z tej kampanii — przypadek do `MIXED`. Właściciel karty/figury to **członek kampanii** (`requireValidOwner`), adresaci `/w` — gracze i MG **tej** kampanii (`getRoster` → `campaignGmUser`). Kwerenda bez warunku kampanii (`findMany({})`) w eksporcie czy stanie to przeciek do innego MG.
@@ -2607,6 +2608,11 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Sklep = karta NPC-a + wiersz `Merchant` (08.10, etap 46a)** — ustawienia w tabeli (nie w arkuszu), uchwytem jest `Merchant.id`, towarem ekwipunek karty. Półkę dla widza składa **wyłącznie** `merchantViewFor` (`realtime/merchant.ts`, pole po polu: gracz bez ukrytych wierszy, bez wierszy bez ceny, bez `priceOverride` i bez id karty). Cenę i przenoszenie liczy **jedna** para funkcji: `cpredMerchantQuote` (stopka okna i suma serwera) i `cpredMerchantDeal` (woła quote sama; obie strony zdejmują, potem kładą). Nakładka MG kluczem `lista:id` (`merchantRowKey`), przycinana `pruneMerchantRows` przy każdej transakcji i zmianie wiersza.
+- **Transakcja sklepu: `withCampaignLock` + `$transaction`, suma z klienta (08.10, 46a)** — karty czyta się w transakcji, a transakcje sklepów kampanii idą jedna po drugiej (wyścig o ostatnią sztukę = jedna sprzedaż i `OUT_OF_STOCK`, nie `SQLITE_BUSY`). Klient wysyła `expectTotal`; inna suma serwera to `QUOTE_CHANGED`. Gotówka przez `applyBalance({ tx, emit: false })`: `purchase`/`sale` u kupującego, lustro u handlarza (nic przy `cashInfinite`), emisje po transakcji.
+- **Rodzaj drugiej strony to `exchangeOptionsFor` (08.10, 46a)** — `exchange:counterparts` buduje listę (`realtime/exchange.ts`) i woła tę jedną regułę: drużyna → `trade`, leżący NPC → `loot` (także martwy handlarz), handlarz → `merchant`, żywy NPC → `trade`; MG — `gm` zawsze, plus handel jako NPC z graczem i otwarty sklep. Sklep przy figurze widać z daleka wyszarzony (`OUT_OF_REACH`), handel i łup gracza poza zasięgiem — nie.
+- **Półka odświeża się z `emitCharacterUpsert` (08.10, 46a)** — `notifyMerchantCard` (`merchant-watch.ts`, osobny plik przeciw cyklowi importów) woła odświeżenie u gniazd, które ją oglądają (`merchant:view` zapisuje widza, `disconnect` sprząta). Nowa droga zapisu karty handlarza nie potrzebuje własnej emisji półki, o ile kończy się `emitCharacterUpsert`.
+- **Zapraszający kładzie rzeczy w pole od razu (08.10, 46a)** — `mayEditTradeOffer` (`shared/trade.ts`): w `invited` tylko strona 0, w `open` obie; zgód w `invited` nie ma. Pod „Wyślij bez czekania” z 46a2.
 - **Gracz wskazuje po id wyłącznie drużynę (30.09, #40)** — karty graczy i towarzyszy-botów (profil `companion`, nie w archiwum). Listę buduje `teamCardsWhere`, odbiorcę sprawdza `requireTeamCard` (`realtime/team-cards.ts`) — przelew, przekazanie i każda nowa lista „komu” gracza idą przez nie. NPC-a spoza drużyny gracz wskazuje **figurą**; id karty ciała przy łupie (`InventorySourceView.characterId`) i id kart w karcie czatu przekazania (`InventoryMoveView`) dostaje tylko MG.
 - **Id `statist-weapon` nie jedzie z łupem (27.09, #27)** — `landedRow` nadaje wierszowi z `STATIST_WEAPON_ROW_ID` nowe id zawsze, także bez kolizji; inaczej gracz z pistoletem zdobytym na statyście „był” strzelcem ataków wszystkich statystów.
 - **Miniatura rodzaju przedmiotu na liście to `cpredEntryIcon` / `cpredItemRowIcon` (`systems/cpred/itemicons.ts`)**, a w kliencie `ItemIcon` / `useEntryIcon` / `useRowIcon` z `ItemIcons.tsx` — nowe miejsce z listą przedmiotów nie składa sylwetki samo. Rodzaj czyta się z pól maszyny (typ broni, `patterns`, efekt dodatku, lokacja pancerza), nigdy z nazwy ani id; model, któremu typ kłamie (rewolwer), dostaje `WeaponEntry.icon` z `cpred/weapon-icons.json` albo z edytora MG. Listy broni sortuje `cpredSortWeapons`, filtruje `WeaponTypeFilter`.
@@ -2729,6 +2735,32 @@ fiolki". Nowy rodzaj środka dopisuje się **wyłącznie** do `CPRED_PHARMACEUTI
 z podręcznika, `applies`, ewentualne „raz dziennie") i do jednej gałęzi `applyDose`
 w `realtime/recovery.ts`. `pharma.ts` **nie importuje niczego** — to warunek, nie przypadek:
 walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bierze z karty typy.
+
+
+**Handlarze: karta NPC-a, tabela ustawień i jedna arytmetyka (08.10.2026, etap 46a1).** Sklep to
+NPC z wierszem `Merchant` (szyld, „Otwarte”, przy figurze / zdalny, „między sesjami”, mnożnik ceny,
+odkup, kasa „bez dna”, nakładka MG na wiersze). Ustawienia nie siedzą w arkuszu, bo to decyzja MG,
+która nie ma jechać autozapisem karty (umowa `eddies`, `playReady`), a publicznym uchwytem jest
+`Merchant.id` — gracz kupuje też w sklepie zdalnym bez figury i nie może poznać id karty NPC-a
+(#40). Towarem jest ekwipunek karty, więc łup, handel, przekazanie i limit 40 wierszy działają na
+nim bez nowej gałęzi; odkupiona rzecz ląduje na półce od razu (decyzja MG z 08.10).
+
+**Cena ma jedno miejsce.** `cpredRowCatalogPrice` (katalog z `entryPrice`, broń z dodatkami,
+pancerz proporcjonalnie do OB — także na półce, nie tylko przy odkupie), `cpredShelfPrice`
+(nakładka MG wygrywa i **nie** mnoży się przez `priceMul`), `cpredBuyBackPiece` (w dół).
+`cpredMerchantQuote` liczy koszyk, pole sprzedaży, targ Fixera (tylko od zakupów, raz na
+transakcję) i listę powodów odmowy — klient rysuje nią stopkę, serwer porównuje z `expectTotal`.
+`cpredMerchantDeal` woła quote sama i nie ma drugiej arytmetyki. Wiersz „∞” daje kopię z nowym
+id (broń i pancerz — osobne kopie, wyposażenie — jeden stos), zwykły ubywa, a jego nakładka znika
+razem z nim (przycinanie **po** zdjęciu i **przed** położeniem, inaczej odkupiona rzecz z tym samym
+id odziedziczyłaby cudze „ukryty”).
+
+**Kto widzi półkę (`mayOpenMerchant`, `requireMerchantAccess`).** MG — każdą. Gracz przy stole:
+zdalną zawsze (zamknięta pokazuje „Zamknięte”), przy figurze — gdy handlarz stoi jawnie na scenie
+którejś z jego figur. Między sesjami — tylko oznaczoną; nieoznaczona daje `SESSION_NOT_RUNNING`,
+reszta braku dostępu — `MERCHANT_NOT_FOUND`. Zakup przy figurze mierzy zasięg ramienia **bez**
+furtki „brak wspólnej sceny”; między sesjami zasięgu nie ma (nie ma mapy). Handlarz leżący albo
+martwy zamyka sklep (`merchantClosedReason`) w tej samej chwili, w której staje się łupem.
 
 ## czas — Czas świata, kalendarz, efekty czasowe
 

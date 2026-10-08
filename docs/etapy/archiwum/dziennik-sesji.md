@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.10 (jedenasta) — T9b „Konta MG 2/2: dwie grupy naraz, AI właściciela, limit”
+
+**Zlecenie MG:** „kontynuuj projekt (T9b)”, pytać o niejasności. **Decyzje MG:** AI na atrapie
+gatewaya (dziennik żądań jako „log gatewaya”), progi skrócone env (karencja 20 s, slot 1 min /
+3 min), wagi z propozycji, automat plus krótkie oględziny w Firefoksie (wiersz „T9b” w `testy.md`, sekcja 2).
+
+**Zrobione:** `specs/35-bezpieczenstwo/t9b-dwie-grupy` (15 testów z `po-T9a`, w domyślnym
+przebiegu): dwie grupy grają naraz bez przecieku (ruch, czat, szept do imiennika, rzut), koniec
+sesji odcina graczy także z konsoli, boty B bez zgody nie wysyłają do gatewaya nic, prośba
+widoczna tylko dla kont właściciela (konto gracza z flagą), „Udostępniam AI”, dzierżawa
+i przekazanie po końcu sesji, cofnięcie w trakcie odpowiedzi, odrzucenie, karencja, „Przejmij
+AI”, odmowa trzeciej sesji, samoczynne zwolnienie slotu `empty` i `idle` po restarcie. Atrapa
+gatewaya z trybem `reply` i dziennikiem żądań, `campaignSecrets` w `fixtures/izolacja.ts`.
+Sześć pułapek suity w `testy` (karta rzutu u obserwatora 7–13 s, `bot:chat` a rozłączone gniazdo,
+surowe gniazdo właściciela jako obecność, paczka JS w podsłuchu, figura na dwóch scenach, 500
+pośrednika przy restarcie).
+
+**Wynik:** zero B0–B2; nowe B3 — **#79** gracz przy milczącym bocie dostaje powód bramy z radą dla
+MG, **#80** uchwyt okna „AI właściciela” na „Cofnij”, **#81** notki czatu po ponownym połączeniu
+pod nowszymi wierszami. Zaległość „wiele grup” — pozycje 1, 2 i 4 zamknięte (archiwum).
+
+**Weryfikacja:** `t9b-` 15/15 dwa razy (przebieg pomiędzy: 14/15, sam filtr konsoli — 500 pośrednika `vite preview` przy restarcie, filtr poszerzony); `tsc` i ESLint suity czyste. Oglądane: Chromium
+(MG-A, Marek, Kuba) i **Firefox** (Ola, MG-B, właściciel jako gracz, MG-C) — 12 zrzutów
+w `.e2e/pomiary/t9b`. Kodu aplikacji nie zmieniano.
+
+**Następny krok:** triaż MG #79–#81, potem refaktoryzacja całości pod osłoną suity, T10.
+
 ### Sesja 04.10 (dziesiąta) — etap 44d „AI właściciela”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 44d)”, pytać o niejasności. **Decyzje MG:** konto gracza

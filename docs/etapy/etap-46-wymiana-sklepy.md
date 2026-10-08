@@ -152,7 +152,8 @@ zmienia łańcuch „Nocnej zmiany” i punkty kontrolne `po-T3`…`po-T6`
 
 | część   | treść                                                                                   | E2E                                       |
 | ------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
-| **46a** | jedno okno „Wymiana” (handel, prezent, łup, tryb MG) + handlarze + przełącznik katalogu | `specs/46-wymiana/t46a-wymiana-sklepy`    |
+| **46a1** | model, `shared` (`exchange.ts`, `merchant.ts`), serwer sklepu i `exchange:counterparts` z testami, przełącznik katalogu (serwer + dźwignia MG w Kompendium) — bez nowego okna | testy jednostkowe i dymne serwera |
+| **46a2** | jedno okno „Wymiana” (handel, prezent, łup, sklep, tryb MG), dok „Sklepy (N)”, sekcja „Sklep” w karcie NPC-a, menu figury, „Między sesjami”, usunięcie starych okien | `specs/46-wymiana/t46a-wymiana-sklepy` + przepięte T4b, T6a, `t7a-handel-kreator`, T2b, T2c, T9a |
 | **46c** | zapas amunicji: pudełka w ekwipunku, przeładowanie z zapasu, granaty, kreator, sklep    | `specs/46-wymiana/t46c-amunicja` + łańcuch |
 | **46b** | pojemniki: skrzynia, bagażnik, stos z upuszczenia, zamek Testem i kluczem               | `specs/46-wymiana/t46b-pojemniki`         |
 
@@ -307,22 +308,37 @@ działają bez zmian.
 
 ### Zakres 46a
 
-- [ ] Migracja: `Merchant`, `Campaign.catalogShopping`, `LedgerKind` `sale`. Eksport i import
-      kampanii (etap 33) zabierają `Merchant` i kolumnę. Archiwum starszego formatu czyta brak
-      jako „brak sklepów”.
-- [ ] `shared`: `exchange.ts` (rdzeń: rodzaje drugiej strony, kto co może; stan `invited` z polem
-      strony 0 w `trade.ts`), `systems/cpred/merchant.ts` (półka, ceny, odkup, targ, quote,
-      `cpredMerchantDeal`) z testami
-- [ ] Serwer: `realtime/merchant.ts` (zdarzenia z tabeli), `exchange:counterparts`, zmiana
-      `trade:offer` w stanie `invited`, „Wyślij bez czekania” → istniejące `inventory:give`
-      z pola wymiany, przełącznik katalogu w `economy:buy`, biała lista między sesjami
+**46a1 (08.10, zrobione):**
+
+- [x] Migracja `20261008200000_merchants`: `Merchant`, `Campaign.catalogShopping`; `LedgerKind`
+      `sale` (kolumna jest tekstem). Eksport kampanii zabiera `Merchant` i kolumnę; importu całej
+      kampanii w kodzie nie ma (zaległość Z10), archiwum bez pola = „brak sklepów”
+- [x] `shared`: `exchange.ts` (rodzaje drugiej strony, `exchangeOptionsFor`, kolejność listy),
+      `merchants.ts` (ustawienia, nakładki, otwartość, przełącznik katalogu), `mayEditTradeOffer`
+      w `trade.ts`, `systems/cpred/merchant.ts` (ceny, półka, odkup, targ, quote,
+      `cpredMerchantDeal`), rodzaj `shop` karty czatu przenoszenia — z testami
+- [x] Serwer: `realtime/merchant.ts` (`merchant:list`, `merchant:view`, `merchant:deal`,
+      `merchant:config`, `merchant:row`, `campaign:catalog-shopping`, rozgłoszenia
+      `merchant:update` / `merchant:gone` / `merchant:shops`), `realtime/exchange.ts`
+      (`exchange:counterparts`), `trade:offer` w stanie `invited` dla zapraszającego,
+      `CATALOG_CLOSED` w `economy:buy`, biała lista między sesjami, `state:sync`, macierz izolacji
+- [x] Klient (tylko przełącznik katalogu): dźwignia „wszędzie / u handlarzy” obok progu sklepu
+      w Kompendium (MG), „Kupisz u handlarza” zamiast „Kup” u gracza, karta czatu `shop` w dwie
+      strony
+
+**46a2 (następna sesja):**
+
 - [ ] Klient: `ExchangeWindow`, `exchangeStore`, `ExchangeDock` („Sklepy (N)”), sekcja „Sklep”
       w karcie NPC-a, pozycje menu figury, podwójny klik gracza, przyciski na „Między sesjami”;
-      **usunięte** `InventoryWindow`, `TradeWindow`, `TradeDock` i ich magazyny
-- [ ] Przepięcie E2E na nowe okno: T4b (łup), T6a 6.1 i 6.2, `t7a-handel-kreator`, T2b
-      (`EVENTS`), T2c (kanarek ukrytego towaru), T9a (nowe zdarzenia w macierzy izolacji)
-- [ ] Dokumentacja: umowy `ekwipunek` (okno, handlarz, quote, transakcja) i `serwer`
-      (`Merchant`, biała lista), pułapki z sesji, `POSTEP.md`
+      **usunięte** `InventoryWindow`, `TradeWindow`, `TradeDock` i ich magazyny. Po
+      `MERCHANT_CLOSED` / `QUOTE_CHANGED` okno pobiera półkę na nowo (`merchant:view`) — stan
+      figury handlarza (powalony) nie odświeża półki sam, robi to dopiero zapis jego karty
+- [ ] Serwer: usunąć `inventory:sources` i `trade:partners` razem ze starymi oknami (dziś obie
+      listy stoją obok `exchange:counterparts`), wpisy w `BETWEEN_SESSIONS_EVENTS`, `isPassiveEvent`
+      i macierzy izolacji
+- [ ] Przepięcie E2E na nowe okno: T4b (łup), T6a 6.1 i 6.2, `t7a-handel-kreator`, T2c (kanarek
+      ukrytego towaru); T2b i T9a czytają zdarzenia z rejestru serwera same
+- [ ] Dokumentacja: umowy `ui` (okno), pułapki z sesji, `POSTEP.md`
 
 ### Testy jednostkowe 46a
 
@@ -369,7 +385,16 @@ działają bez zmian.
 | 46a.15 | Paser ginie (MG 0 PW, martwy)                                                                          | sklep „Zamknięte” u graczy; Marek przeszukuje ciało i widzi cały towar, z ukrytym (domyślna odpowiedź niżej)     |
 | 46a.16 | F5 u Oli w trakcie handlu i z otwartą półką; restart serwera                                           | handel wraca do doku, półka się odświeża; po restarcie sklep stoi (baza), otwarty handel znika (38c) |
 
-**Do potwierdzenia na starcie 46a** (domyślna odpowiedź w nawiasie):
+**Decyzje MG na starcie 46a (08.10.2026, druga sesja):**
+
+- **46a dzielona na 46a1 i 46a2** (tabela „Podział i kolejność”). 46a1 kończy się na serwerze
+  i dźwigni katalogu, 46a2 robi całe UI wymiany i E2E. Kolejność: **46a1 → 46a2 → 46c → 46b**.
+- **Odkupiona rzecz trafia od razu na półkę** (jak w Item Piles), w cenie katalog × mnożnik
+  sklepu. MG może ją potem ukryć albo przecenić.
+- Trzy pytania niżej — **domyślne odpowiedzi przyjęte**.
+- Ryzyko 1 (granat) wpisane do `testy-rejestr.md` jako **#82**, naprawia 46c.
+
+**Do potwierdzenia na starcie 46a** (domyślna odpowiedź w nawiasie; przyjęte 08.10):
 
 - Czy ukryty towar martwego handlarza widać przy przeszukaniu? (**tak** — ukrycie dotyczy półki,
   nie kieszeni; ciało przeszukuje się w całości, nakładka przestaje działać, gdy handlarz nie żyje)
