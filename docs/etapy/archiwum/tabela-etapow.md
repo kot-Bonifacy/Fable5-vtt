@@ -110,3 +110,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 44b    | Izolacja kampanii i imienne linki graczy      | ✅     | 2026-10-04          |
 | 44c    | Sesje i sloty, widok między sesjami           | ✅     | 2026-10-04          |
 | 44d    | AI właściciela: prośba, obecność, dzierżawa   | ✅     | 2026-10-04          |
+| 45     | Ruch i widzenie drużyny (Stop/Eksploracja)    | ✅     | 2026-10-08          |

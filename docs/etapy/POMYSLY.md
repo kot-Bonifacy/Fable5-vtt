@@ -1,5 +1,17 @@
 # Pomysły poza zakresem etapów
 
+**08.10.2026 (etap 45) — wzrok zaznaczonej figury jak w Foundry.** Foundry zawęża widok gracza
+do figury, którą zaznaczył; tu gracz zawsze widzi sumę swoich figur i „oczu drużyny”. Przydałoby się
+przy rozdzielonej drużynie (zwiad), gdy MG chce, żeby gracz patrzył tylko jednym okiem.
+
+**08.10.2026 (etap 45) — pula Eksploracji a kary z żetonu.** Pula bierze ruch z karty, bez kar
+przyklejonych do figury (Maź z 26f) i bez trudnego terenu. Gdyby MG chciał, by Maź spowalniała też
+poza walką — `paceCapFor` w `realtime/pace.ts` i `paceAllowanceOf` w `MapArea`.
+
+**08.10.2026 (etap 45) — figury drużyny same na nowej scenie.** Diagnoza w górnym pasku tylko mówi
+„„Kowal” nie ma figury na tej scenie”; przycisk „Postaw figury drużyny w miejscu startu” zdjąłby
+z MG ręczne stawianie.
+
 **03.10.2026 (projekt etapu 44) — kwota miejsca na uploady per konto MG.** Przy otwartej rejestracji
 na VPS (8 GB RAM, dysk home.pl) jeden MG może zapełnić dysk mapami i muzyką. Dziś są tylko limity
 rozmiaru jednego pliku. Do rozważenia po becie: suma bajtów per MG w panelu właściciela i próg

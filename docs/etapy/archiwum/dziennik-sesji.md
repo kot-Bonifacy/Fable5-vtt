@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 04.10 (dziesiąta) — etap 44d „AI właściciela”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 44d)”, pytać o niejasności. **Decyzje MG:** konto gracza
+dostaje flagę właściciela hasłem właściciela („Ustawienia → Konto”); AI w przygotowaniu tylko
+wtedy, gdy żadna sesja go nie trzyma (także dla kampanii właściciela); „Przejmij AI” tylko przy
+własnej sesji właściciela; panel z konta gracza — znaczek „AI” w górnym pasku z licznikiem
+i notatka na czacie (szczegóły na końcu `etap-44d-ai-wlasciciela.md`).
+
+**Zrobione:** migracja `ai_access` (`User.aiAccess`, `aiRequestedAt`, `aiDecidedAt`). `ai/access.ts`:
+`AiAccess` (kampanie w pamięci, `refresh()`, prawo `aiEntitlement`, dzierżawa `pickLeaseHolder`,
+obecność właściciela z karencją `VTT_AI_OWNER_GRACE_SECONDS` = 120, `takeOver`) i `CampaignAi` —
+jedyna droga do gatewaya (strumień, RAG tylko z kolekcji kampanii, liczenie tokenów, podręcznik);
+`ctx.ai` to od teraz brama, ~40 miejsc wołania przepiętych na `campaignAi`/`socketAi`. `ai:status`
+per gniazdo z `reason`, tylko gdy się zmienił. Trasy `routes/ai-access.ts` (prośba, panel
+właściciela z każdego konta z flagą, `owner-link`), push `ai-access:owner`/`ai-access:mine`.
+`rules:index` tylko dla właściciela. Klient: `OwnerAiButton`/`OwnerAiWindow`/`OwnerAiPanel`,
+`AiAccessRequest` w Panelu MG, `OwnerLink` w ustawieniach gracza, powody w panelach botów i AI
+(`ai-status.ts`). Testy: `ai-access.test.ts` (11: wszystkie kombinacje prawa, dzierżawa, „Przejmij”,
+karencja z F5, cofnięcie w trakcie strumienia, kanarek prośby, licznik żądań na atrapie = 0,
+kolekcje RAG, strażnik „jedna brama”), E2E `01-dym/t44d-ai-wlasciciela` (`@szybkie`). Poprawka
+wyścigu w `sessions.test.ts` (pułapka w `testy`).
+
+**Weryfikacja:** `shared` 2267, serwer 1358, klient 321; ESLint, Prettier, `tsc` czyste. **Pełny
+domyślny przebieg E2E z gatewayem: 307/307 (42,5 min).** Oglądane: MG-B w **Firefoksie** (Panel
+MG z prośbą, zakładki „Boty” i „AI” z „AI zajęte przez inną sesję”), właściciel w Chromium
+(znaczek „AI 1”, notatka, okno, zgoda, przełącznik), konto gracza w Chromium (`[::1]`) — połączenie
+z właścicielem i znaczek. Przy pełnym przebiegu system zabił z braku RAM-u czujniki w tle (sam
+przebieg we własnym oknie przeżył; wolne ~1 GB przy llama-server + E2E + przeglądarkach MCP).
+
+**Następny krok:** T9b (odbiór 44c i 44d, `testy.md` sekcja 6.5 punkty 4, 8, 10) z `po-T9a`.
+
 ### Sesja 04.10 (dziewiąta) — etap 44c „Sesje i sloty”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 44c)”, pytać o niejasności. **Decyzje MG:** MG z trwającą

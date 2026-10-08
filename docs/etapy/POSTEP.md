@@ -22,12 +22,26 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
 | ⬜ otwarty   | **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); następne: triaż #79–#81, **refaktoryzacja**, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d (ostatni zamknięty: 44d, 2026-10-04) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45 (ostatni zamknięty: 45, 2026-10-08) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 45 „Ruch i widzenie drużyny” zamknięty 08.10 (zlecenie MG spoza planu, przed refaktoryzacją).**
+O ruchu graczy decyduje **przełącznik „Ruch graczy: Stop / Eksploracja / Swobodny” w górnym pasku
+MG** (`Scene.playerMove`, stan oglądanej sceny; zastąpił checkbox `playerMoveLocked` z edytora
+sceny). Stop zatrzymuje każdego gracza, także w walce, a gracz widzi baner; Eksploracja poza walką
+płaci z puli metrów (ruch z jednej tury według karty, pełna odnowa w 10 s, `MOVE_PACE`, kursor
+„Złap oddech”); w walce zawsze rachunek Tury. **Nowa scena startuje w Stop i w Dynamicznej**
+(stare zostały, migracja: zamknięta → Stop, otwarta → Swobodny). **Figura gracza to domyślnie
+„oczy drużyny”** (`Token.sharedVision`, Observer z Foundry): koledzy widzą ją zawsze — w czerni
+mgły, za ścianą, w ciemności — i w Dynamicznej patrzą jej oczami; MG przełącza to w karcie figury
+(„Oczy drużyny”). Znaczek „⚠ N” obok przełącznika mówi, czemu drużyna i tak nie pójdzie (karta
+bez figury na scenie, figura w czerni ręcznej mgły — z „Odsłoń całą mapę” i „Przełącz na
+Dynamiczną”). Figura karty gracza bierze właściciela karty (było: gracz patrzył, a ruszyć nie mógł).
+Umowy w `mapa` i `tura`, E2E `specs/45-druzyna`.
 
 **Etap 44 „Konta MG” zrobiony i odebrany — T9b zamknięty 04.10** (`t9b-dwie-grupy` 15/15 dwa razy
 — środkowy z trzech przebiegów padł tylko na filtrze konsoli, zero B0–B2, trzy B3 #79–#81 czekają na triaż MG; wynik w `testy.md` 6.5). **Następna jest
@@ -115,9 +129,9 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 
 **Pułapki, które wracają przy stole:**
 
-- „Gracz nie może chodzić” — najpierw `Scene.playerMoveLocked` (nowa scena startuje zamknięta,
-  MG nie dotyczy), potem ręczna mgła: od 14.09 gracz chodzi tylko po odsłoniętym
-  (`refuseWalkIntoFog`, umowa w `mapa`).
+- „Gracz nie może chodzić” — najpierw znaczek „⚠” i przełącznik „Ruch graczy” w górnym pasku MG
+  (`Scene.playerMove`; nowa scena startuje w Stop, MG nie dotyczy), potem ręczna mgła: od 14.09
+  gracz chodzi tylko po odsłoniętym (`refuseWalkIntoFog`, umowa w `mapa`), potem `Token.ownerId`.
 - `>=` przy PT jest błędem, nie wariantem (decyzja z 28.08 cofnięta; wyjątek: Test Lojalności,
   s. 154) — przeczytaj `decyzje-i-uproszczenia.md`, **zanim** to ruszysz.
 - Kara za rany ma jedno miejsce: `cpredWoundPenaltyRows(cpredSheetWoundCondition(sheet))`; nowe
@@ -135,7 +149,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 04.10 (jedenasta — T9b): E2E `t9b-` **15/15 dwa razy** (~5,5 min, atrapa gatewaya; przebieg pomiędzy padł tylko na filtrze konsoli — 500 pośrednika przy restarcie, poprawione); kodu aplikacji nie ruszano, więc jednostkowych i pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **322** testy. Wcześniej 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** 08.10 (etap 45): **2276** `shared`, **1369** serwer, **321** klient; E2E `00-baseline` + `01-dym` + `45-druzyna` 27/27 (jeden pominięty bez gatewaya), potem `45-druzyna` 8/8 drugi raz; pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **330** testów (T3b, T5a i T9a ruszone tylko w miejscu blokady mapy, nieprzebiegnięte). Wcześniej 04.10 (jedenasta — T9b): E2E `t9b-` **15/15 dwa razy** (~5,5 min, atrapa gatewaya; przebieg pomiędzy padł tylko na filtrze konsoli — 500 pośrednika przy restarcie, poprawione); kodu aplikacji nie ruszano, więc jednostkowych i pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **322** testy. Wcześniej 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -158,12 +172,12 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 61   | 26      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 63   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 22   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 28   | 14      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 20   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 12   | 5       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 40   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
@@ -181,6 +195,35 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 08.10 — etap 45 „Ruch i widzenie drużyny”
+
+**Zlecenie MG:** „nie wiem, co mam zrobić, żeby gracze mogli poruszać swoimi tokenami i widzieć się
+nawzajem, a jednocześnie żeby nie mogli przejść w kilka sekund całej mapy”. Diagnoza na `dev.db`
+i decyzje MG (pula zamiast limitu, przełącznik w górnym pasku, „zrób jak w Foundry”) — w pliku
+etapu. Etap rozpisano i zaczęto (model, migracja, pula, serwer) w sesji bez notatki; ta sesja
+(„resume”) dokończyła serwer, testy, klienta, E2E i dokumentację.
+
+**Zrobione:** migracja `party_move_vision` (`Scene.playerMove`, `Token.sharedVision`, nowa scena
+w Dynamicznej). `shared/pace.ts` (pula jako dług + czas) z testami. Serwer: Stop w
+`performTokenMove`, pula w `validateTokenMove` → `realtime/pace.ts` (`token:pace`, `MOVE_PACE`,
+`forgetPace` przy kasowaniu), „oczy drużyny” (`sharesVision`) w `concealedFrom`, `emitTokenUpsert`,
+gałęzi mgły ruchu, `emitDynamicMove` i `fetchVisionTokens`; właściciel karty przy `token:create`,
+`token:update` i zmianie właściciela karty; archiwum czyta stare `playerMoveLocked`.
+`party-move.test.ts` (11). Klient: `PlayerMoveSwitch` z diagnozą w `TurnModeSlot`, baner Stop,
+`paceStore` + budżet marszu z puli i „Złap oddech” (`map/player-move.ts`), okienko w mgle wokół
+„oczu drużyny”, „Oczy drużyny” w karcie figury, checkbox z edytora sceny usunięty. E2E:
+`specs/45-druzyna/t45-ruch-druzyny` (8, z `po-T6`), T3b/T5a przełącznikiem zamiast checkboxa,
+T9a 9.2 z jawną ręczną mgłą, `setPlayerMove` w `fixtures/scene.ts`, `pace` w haku E2E.
+
+**Weryfikacja:** `shared` 2276, serwer 1369, klient 321; ESLint, Prettier, `tsc` czyste. E2E
+`00-baseline` + `01-dym` + `45-druzyna` 27/27, `45-druzyna` drugi raz 8/8. Oglądane: **Firefox**
+(Ola w czerni ręcznej mgły widzi Kowala i siebie z okienkami, baner Stop; Marek w Swobodnym)
+i Chromium (MG: przełącznik, „⚠ 2”, lista z oboma przyciskami) — zrzuty z przebiegu T45.
+**Nie przebiegnięte:** T3b, T5a i T9a po zmianie (pełny domyślny przebieg).
+
+**Następny krok:** pełny domyślny przebieg E2E (we własnym oknie konsoli), triaż MG #79–#81,
+refaktoryzacja całości pod osłoną suity, T10.
 
 ### Sesja 04.10 (jedenasta) — T9b „Konta MG 2/2: dwie grupy naraz, AI właściciela, limit”
 
@@ -208,34 +251,3 @@ pod nowszymi wierszami. Zaległość „wiele grup” — pozycje 1, 2 i 4 zamkn
 w `.e2e/pomiary/t9b`. Kodu aplikacji nie zmieniano.
 
 **Następny krok:** triaż MG #79–#81, potem refaktoryzacja całości pod osłoną suity, T10.
-
-### Sesja 04.10 (dziesiąta) — etap 44d „AI właściciela”
-
-**Zlecenie MG:** „kontynuuj projekt (etap 44d)”, pytać o niejasności. **Decyzje MG:** konto gracza
-dostaje flagę właściciela hasłem właściciela („Ustawienia → Konto”); AI w przygotowaniu tylko
-wtedy, gdy żadna sesja go nie trzyma (także dla kampanii właściciela); „Przejmij AI” tylko przy
-własnej sesji właściciela; panel z konta gracza — znaczek „AI” w górnym pasku z licznikiem
-i notatka na czacie (szczegóły na końcu `etap-44d-ai-wlasciciela.md`).
-
-**Zrobione:** migracja `ai_access` (`User.aiAccess`, `aiRequestedAt`, `aiDecidedAt`). `ai/access.ts`:
-`AiAccess` (kampanie w pamięci, `refresh()`, prawo `aiEntitlement`, dzierżawa `pickLeaseHolder`,
-obecność właściciela z karencją `VTT_AI_OWNER_GRACE_SECONDS` = 120, `takeOver`) i `CampaignAi` —
-jedyna droga do gatewaya (strumień, RAG tylko z kolekcji kampanii, liczenie tokenów, podręcznik);
-`ctx.ai` to od teraz brama, ~40 miejsc wołania przepiętych na `campaignAi`/`socketAi`. `ai:status`
-per gniazdo z `reason`, tylko gdy się zmienił. Trasy `routes/ai-access.ts` (prośba, panel
-właściciela z każdego konta z flagą, `owner-link`), push `ai-access:owner`/`ai-access:mine`.
-`rules:index` tylko dla właściciela. Klient: `OwnerAiButton`/`OwnerAiWindow`/`OwnerAiPanel`,
-`AiAccessRequest` w Panelu MG, `OwnerLink` w ustawieniach gracza, powody w panelach botów i AI
-(`ai-status.ts`). Testy: `ai-access.test.ts` (11: wszystkie kombinacje prawa, dzierżawa, „Przejmij”,
-karencja z F5, cofnięcie w trakcie strumienia, kanarek prośby, licznik żądań na atrapie = 0,
-kolekcje RAG, strażnik „jedna brama”), E2E `01-dym/t44d-ai-wlasciciela` (`@szybkie`). Poprawka
-wyścigu w `sessions.test.ts` (pułapka w `testy`).
-
-**Weryfikacja:** `shared` 2267, serwer 1358, klient 321; ESLint, Prettier, `tsc` czyste. **Pełny
-domyślny przebieg E2E z gatewayem: 307/307 (42,5 min).** Oglądane: MG-B w **Firefoksie** (Panel
-MG z prośbą, zakładki „Boty” i „AI” z „AI zajęte przez inną sesję”), właściciel w Chromium
-(znaczek „AI 1”, notatka, okno, zgoda, przełącznik), konto gracza w Chromium (`[::1]`) — połączenie
-z właścicielem i znaczek. Przy pełnym przebiegu system zabił z braku RAM-u czujniki w tle (sam
-przebieg we własnym oknie przeżył; wolne ~1 GB przy llama-server + E2E + przeglądarkach MCP).
-
-**Następny krok:** T9b (odbiór 44c i 44d, `testy.md` sekcja 6.5 punkty 4, 8, 10) z `po-T9a`.
