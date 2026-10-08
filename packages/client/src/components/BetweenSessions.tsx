@@ -1,7 +1,10 @@
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useExchangeStore } from '../stores/exchangeStore.js';
 import { formatSessionClock } from '../session-view.js';
+import { ExchangeDock } from './exchange/ExchangeDock.js';
+import { openShop } from './exchange/open.js';
 
 /** Ile kart naraz wypisujemy w ramce — więcej się w niej nie zmieści. */
 const MAX_SHEET_BUTTONS = 3;
@@ -15,6 +18,10 @@ const MAX_SHEET_BUTTONS = 3;
  * kotwicą co formularz wejścia (tylko liczoną od kontenera, nie od okna).
  * Karty, dziennik, handouty i historia czatu są w panelu po prawej; stół
  * otworzy się sam, gdy MG kliknie „Rozpocznij sesję”.
+ *
+ * Etap 46a (decyzja MG 9): sklepy oznaczone przez MG „między sesjami” stoją
+ * tu przyciskami — bez mapy i bez zasięgu — a dok w rogu niesie zaproszenia
+ * do handlu z drużyną, który też działa bez sesji.
  */
 export function BetweenSessions() {
   const campaign = useChatStore((s) => s.campaign);
@@ -22,6 +29,7 @@ export function BetweenSessions() {
   const order = useCharacterStore((s) => s.order);
   const characters = useCharacterStore((s) => s.characters);
   const openSheet = useCharacterStore((s) => s.openSheet);
+  const shops = useExchangeStore((s) => s.shops);
   if (!campaign) return null;
 
   const mine = order
@@ -59,6 +67,24 @@ export function BetweenSessions() {
             ))}
           </div>
         )}
+        {mine.length > 0 && shops.length > 0 && (
+          <div className="between-sessions-actions" aria-label="Sklepy">
+            {shops.map((shop) => (
+              <button
+                key={shop.id}
+                type="button"
+                className="between-sessions-button between-sessions-button--shop"
+                title="Sklep czynny między sesjami — kupujesz i sprzedajesz bez mapy"
+                onClick={() => openShop(shop.id)}
+              >
+                🛒 {shop.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="map-corner">
+        <ExchangeDock withShops={false} />
       </div>
     </section>
   );

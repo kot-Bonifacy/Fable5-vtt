@@ -1898,6 +1898,98 @@
   flex: 1;
 }
 
+/* --- sklep NPC-a (etap 46a, tylko MG): ustawienia i oznaczenia towaru --- */
+
+.cp-shop-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cp-shop-head .cp-add {
+  margin-left: auto;
+}
+
+.cp-shop-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.75rem;
+}
+
+.cp-shop-sign,
+.cp-shop-access,
+.cp-shop-number,
+.cp-shop-toggle,
+.cp-shop-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cp-shop-sign input {
+  width: 11rem;
+}
+
+.cp-shop-number input {
+  width: 4rem;
+}
+
+.cp-shop-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cp-shop-rows li {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.78rem;
+}
+
+.cp-shop-row--hidden .cp-shop-name {
+  color: var(--cp-ink-dim);
+  text-decoration: line-through;
+}
+
+.cp-shop-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-shop-qty,
+.cp-shop-price {
+  font-variant-numeric: tabular-nums;
+  color: var(--cp-ink-dim);
+}
+
+.cp-shop-override {
+  width: 4.5rem;
+}
+
+.cp-shop-hint,
+.cp-shop-message {
+  margin: 0.25rem 0.35rem;
+  font-size: 0.72rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-shop-message {
+  color: var(--cp-ink);
+}
+
 /* --- ekwipunek: plakietki i pola z dołu strony drugiej --- */
 
 .cp-plaques {

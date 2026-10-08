@@ -8,9 +8,6 @@ import type {
   InventoryItemRefWire,
   InventoryMoveEntry,
   InventoryRespondPayload,
-  InventorySourcesPayload,
-  InventorySourcesResult,
-  InventorySourceView,
   InventoryTakePayload,
   SessionUser,
   StatusDefinition,
@@ -23,7 +20,6 @@ import {
   INVENTORY_NOTE_MAX,
   ROLE_GM,
   conditionRegistry,
-  cpredInventoryView,
   cpredItemLine,
   cpredMoveItems,
   cpredSheetHpMax,
@@ -47,7 +43,7 @@ import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './charac
 import { applyBalance } from './economy.js';
 import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
 import { toSceneView } from './scenes.js';
-import { requireTeamCard, teamCardsWhere } from './team-cards.js';
+import { requireTeamCard } from './team-cards.js';
 import {
   INCLUDE_CHAT_NAMES,
   deliverChatMessageTo,
@@ -79,9 +75,6 @@ import {
  *     **bez właściciela**, i wyłącznie gdy jej figura leży albo nie żyje;
  *     z karty innego gracza przenosi tylko MG.
  */
-
-/** Ile figur naraz pokazuje okno wymiany jako możliwe źródła. */
-const SOURCES_MAX = 12;
 
 /* ------------------------------------------------------------------ *
  * Wspólne pytania
@@ -420,97 +413,6 @@ async function emitInventoryUpdate(
     'chat:update',
   );
 }
-
-/* ------------------------------------------------------------------ *
- * inventory:sources — co mogę przeszukać i komu mogę dać
- * ------------------------------------------------------------------ */
-
-export const inventorySourcesEvent = defineEvent<InventorySourcesPayload, InventorySourcesResult>({
-  name: 'inventory:sources',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const prisma = deps.ctx.prisma;
-    const mine = await requireOwnCharacter(prisma, campaignId, user, payload?.characterId);
-    const isGm = user.role === ROLE_GM;
-    const conditions = conditionsOf(deps.ctx.statuses.list);
-
-    // Nazwy kart drużyny — bez tej listy „oddaj Kai stimpak" nie ma w co
-    // wycelować, bo klient gracza trzyma wyłącznie własne karty. Ta sama umowa,
-    // co `payees` przy przelewie z etapu 23b; NPC-a spoza drużyny gracz tu nie
-    // dostaje (#40, `teamCardsWhere`) — wskazuje go figurą.
-    const targets = await prisma.character.findMany({
-      where: {
-        AND: [{ campaignId, id: { not: mine.id } }, await teamCardsWhere(prisma, campaignId, user)],
-      },
-      select: { id: true, name: true },
-      orderBy: { name: 'asc' },
-    });
-
-    const myTokens = await tokensOf(prisma, mine.id);
-    const candidates = new Map<string, PlacedToken>();
-    if (typeof payload?.tokenId === 'string' && payload.tokenId.length > 0) {
-      const { token, scene } = await requireCampaignToken(prisma, campaignId, payload.tokenId);
-      candidates.set(token.id, { token, scene });
-    } else {
-      for (const stand of myTokens) {
-        const neighbours = await prisma.token.findMany({
-          where: {
-            sceneId: stand.scene.id,
-            characterId: { not: null },
-            id: { not: stand.token.id },
-          },
-          include: { scene: true },
-        });
-        for (const row of neighbours) {
-          const { scene, ...token } = row;
-          candidates.set(token.id, { token: token as Token, scene });
-        }
-      }
-    }
-
-    const sources: InventorySourceView[] = [];
-    for (const placed of candidates.values()) {
-      if (placed.token.characterId === null || placed.token.characterId === mine.id) continue;
-      if (!isGm && placed.token.hidden) continue;
-      const card = await prisma.character.findUnique({ where: { id: placed.token.characterId } });
-      if (!card || card.campaignId !== campaignId) continue;
-      const data = parseCharacterData(card.data, deps.ctx.cpred);
-
-      // Najbliższa z MOICH figur na tej scenie, nie pierwsza z brzegu: karta
-      // potrafi stać dwiema figurami naraz (kopia z 35), a serwer i tak
-      // egzekwuje zasięg po najbliższej parze — dwie różne liczby na to samo
-      // pytanie byłyby po prostu kłamstwem w rozwijanej liście.
-      const distances = myTokens
-        .filter((mineToken) => mineToken.scene.id === placed.scene.id)
-        .map((mineToken) => metresBetweenPlaced(mineToken, placed));
-      const metres = distances.length > 0 ? Math.min(...distances) : null;
-      if (!isGm) {
-        // Trzy warunki gracza — patrz rozstrzygnięcie 3 w nagłówku pliku.
-        if (card.ownerId !== null) continue;
-        const condition = searchableCondition(placed.token, data, conditions);
-        if (condition !== 'down' && condition !== 'dead') continue;
-        if (metres === null || metres > CPRED_MELEE_REACH_M) continue;
-      }
-      sources.push({
-        // Gracz przeszukuje figurę (`inventory:take` bierze `fromTokenId`), więc
-        // id karty ciała nie jest mu do niczego potrzebne (#40).
-        ...(isGm ? { characterId: card.id } : {}),
-        tokenId: placed.token.id,
-        // Okno przeszukania to droga figury do gracza, więc filtruje nazwę u siebie
-        // (umowa `mapa` o `publicName`) — do 13.09 pisało graczowi prawdziwą.
-        name: isGm ? placed.token.name : tokenTableName(placed.token, placed.token.name),
-        ownerId: card.ownerId,
-        ...(metres === null ? {} : { metres }),
-        items: cpredInventoryView(data),
-        eddies: data.eddies,
-      });
-      if (sources.length >= SOURCES_MAX) break;
-    }
-
-    sources.sort((a, b) => (a.metres ?? 999) - (b.metres ?? 999));
-    return { sources, targets };
-  },
-});
 
 /* ------------------------------------------------------------------ *
  * inventory:give — „masz, weź to"

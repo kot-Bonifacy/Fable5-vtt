@@ -645,7 +645,6 @@ const CASES: Record<string, Case> = {
   'handout:delete': foreign((a) => ({ id: a.handoutId })),
   'handout:share': foreign((a) => ({ id: a.handoutId, userIds: [a.playerId] })),
   // inventory
-  'inventory:sources': foreign((a) => ({ characterId: a.characterId })),
   // Jedno okno „Wymiana” i sklepy (etap 46a).
   'exchange:counterparts': foreign((a) => ({ characterId: a.characterId })),
   'merchant:list': own('sklepy kampanii gniazda'),
@@ -827,7 +826,6 @@ const CASES: Record<string, Case> = {
   'token:feared': foreign((a) => ({ tokenId: a.tokenId, fearedTokenIds: [a.npcTokenId] })),
   'token:move': foreign((a) => ({ tokenId: a.tokenId, x: 101, y: 101, final: true })),
   // trade
-  'trade:partners': foreign((a) => ({ characterId: a.characterId })),
   'trade:invite': foreign((a) => ({ fromCharacterId: a.characterId, toTokenId: a.npcTokenId })),
   'trade:respond': foreign(() => ({ tradeId: 'x', accept: true })),
   'trade:offer': foreign(() => ({ tradeId: 'x', items: [], eddies: 0 })),

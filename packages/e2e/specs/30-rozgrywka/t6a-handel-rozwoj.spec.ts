@@ -94,7 +94,9 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
       characterRow(name).id,
     );
   const at = (name: string) => [Math.round(token(name).x / cell), Math.round(token(name).y / cell)];
-  const tradeWindow = (actor: Actor) => actor.page.locator('section.trade-window');
+  // Etap 46a: jedno okno „Wymiana” — handel to jego tryb `trade`.
+  const tradeWindow = (actor: Actor) =>
+    actor.page.locator('section[aria-label="Wymiana"][data-exchange-mode="trade"]');
   const dock = (actor: Actor) => actor.page.locator('.trade-dock');
 
   /**
@@ -244,17 +246,16 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const ledgerMark = lastLedgerId();
     const chip = 'Chip z kodem do chłodni';
 
-    // Marek: „Handel…” z karty Kowala → Iskra na wyciągnięcie ręki → „Zaproś”.
+    // Marek: „Wymiana…” z karty Kowala → Iskra na wyciągnięcie ręki — wybór
+    // drugiej strony od razu zaprasza (etap 46a, decyzja MG z 08.10).
     await openSheet(marek, 'Kowal');
     await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    await marek.page.getByRole('button', { name: 'Handel…' }).click();
-    const picker = marek.page.getByRole('region', { name: 'Z kim handlować' });
-    await expect(picker.locator('.inventory-row', { hasText: 'Iskra' })).toBeVisible();
-    await picker
-      .locator('.inventory-row', { hasText: 'Iskra' })
-      .getByRole('button', { name: 'Zaproś' })
-      .click();
+    await marek.page.getByRole('button', { name: 'Wymiana…' }).click();
     await closeSheet(marek.page);
+    const partner = marek.page.getByLabel('Druga strona');
+    const iskra = partner.locator('option', { hasText: '🤝 Iskra' });
+    await expect(iskra).not.toHaveAttribute('disabled');
+    await partner.selectOption((await iskra.getAttribute('value'))!);
 
     // Ola przyjmuje z doku; okno otwiera się u obojga (albo „Otwórz” w doku).
     await dock(ola).getByRole('button', { name: 'Przyjmij' }).click();
@@ -270,10 +271,12 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await expect(tradeWindow(ola)).toContainText(chip);
 
     // Odmowa: oferta ponad portfel z surowego gniazda Oli (UI przycina pole do salda).
-    const trades = await ola.store<{ openId: string | null; trades: Record<string, unknown> }>(
-      'trade',
-    );
-    const tradeId = trades?.openId ?? Object.keys(trades?.trades ?? {})[0];
+    const trades = await ola.store<{
+      window: { selected: string | null } | null;
+      trades: Record<string, unknown>;
+    }>('exchange');
+    const tradeId =
+      trades?.window?.selected?.replace(/^live:/, '') ?? Object.keys(trades?.trades ?? {})[0];
     expect(tradeId).toBeTruthy();
     const refused = await emitAck(await ola.socket(), 'trade:offer', {
       tradeId,
@@ -447,7 +450,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const eddies = card('Kowal').eddies;
 
     await clickOnMap(marek.page, tokenCentre(token('Paser'), cell), 'right');
-    await marek.page.getByRole('button', { name: '🤝 Handluj…' }).click();
+    await marek.page.getByRole('button', { name: '🤝 Wymiana…' }).click();
     const invite = dock(mg).locator('.trade-dock-row--invite', { hasText: 'Kowal' });
     await expect(invite).toContainText('(Paser)');
     await invite.getByRole('button', { name: 'Przyjmij' }).click();
@@ -472,7 +475,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
   });
 
   test('#40 id karty NPC-a nie dociera do gracza — ani w karcie czatu handlu, ani na listach', async () => {
-    // Umowa handlu (`trade:partners`): NPC-a gracz wskazuje figurą, id jego karty
+    // Umowa handlu (`exchange:counterparts`, dawniej `trade:partners`): NPC-a gracz wskazuje figurą, id jego karty
     // nie poznaje. Do 30.09 niosła je karta czatu „Kowal ⇄ Paser” (`toCharacterId`),
     // a lista odbiorców przelewu miała wszystkie karty kampanii z prawdziwymi nazwami.
     const history = await emitAck<{ payees: { name: string }[] }>(

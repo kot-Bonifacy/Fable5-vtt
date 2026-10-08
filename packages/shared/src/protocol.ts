@@ -500,36 +500,6 @@ export interface CheckRequestResolvePayload {
  * ------------------------------------------------------------------ */
 
 /**
- * Client → server payload of `inventory:sources` — „co mogę teraz przeszukać".
- *
- * Odpowiedź buduje **serwer**, bo gracz nie zna `characterId` cudzej figury:
- * `TokenView.characterId` jest częścią prywatną żetonu od etapu 05 i takie
- * zostaje. Klient podaje adres na mapie, dostaje z powrotem to, co wolno mu
- * zobaczyć — i nic ponad to.
- */
-export interface InventorySourcesPayload {
-  /** Karta, dla której otwarto okno („moja strona" wymiany). */
-  characterId: string;
-  /** Figura wskazana wprost z menu żetonu; MG otwiera tak „Przeszukaj". */
-  tokenId?: string;
-}
-
-/** Jedna karta, z której ten użytkownik może w tej chwili brać. */
-export interface InventorySourceView {
-  /** Tylko u MG — gracz przeszukuje figurę i id karty NPC-a nie poznaje (#40). */
-  characterId?: string;
-  /** Figura, przy której stoi ta karta; brak znaczy „poza sceną". */
-  tokenId?: string;
-  name: string;
-  /** `null` znaczy NPC — kartę bez właściciela wolno przeszukać graczowi. */
-  ownerId: string | null;
-  /** Odległość od figury pytającego; brak, gdy warunku zasięgu nie było. */
-  metres?: number;
-  items: CpredItemViewWire[];
-  eddies: number;
-}
-
-/**
  * Wiersz ekwipunku na drucie. Kształtem jest to `CpredItemView`, ale protokół
  * rdzenia nie importuje typów systemu — tak samo jak `RollOpposedMeta.system`.
  */
@@ -546,13 +516,6 @@ export interface CpredItemViewWire {
   armorLocation?: 'head' | 'body' | 'shield';
 }
 
-export interface InventorySourcesResult {
-  /** Karty, z których wolno brać — bez własnej, tę klient już ma. */
-  sources: InventorySourceView[];
-  /** Komu wolno dać: nazwy wszystkich kart kampanii poza wskazaną. */
-  targets: { id: string; name: string }[];
-}
-
 /* ------------------------------------------------------------------ *
  * Oględziny figury (etap 41)
  * ------------------------------------------------------------------ */
@@ -567,7 +530,7 @@ export interface InventorySourcesResult {
  * na co nikt w tej chwili nie patrzy.
  *
  * Odpowiedź buduje **serwer** i wyłącznie serwer — tą samą umową, co
- * `inventory:sources`: klient podaje adres na mapie i dostaje to, co wolno mu
+ * `exchange:counterparts`: klient podaje adres na mapie i dostaje to, co wolno mu
  * zobaczyć. Karta cudzej figury nie jedzie do gracza ani tędy, ani żadną inną
  * drogą (`characterAudience`).
  */
@@ -662,30 +625,6 @@ export interface InventoryRespondPayload {
  * ------------------------------------------------------------------ */
 
 /**
- * Client → server payload of `trade:partners` — „z kim mogę teraz handlować".
- *
- * Tą samą umową, co `inventory:sources`: listę buduje serwer, bo o zasięgu
- * i o tym, czyja karta stoi za figurą, klient gracza nie wie.
- */
-export interface TradePartnersPayload {
-  /** Karta, która handluje — własna gracza albo NPC prowadzony przez MG. */
-  characterId: string;
-}
-
-/** Możliwy partner handlu. Adresem jest figura albo — poza sceną — karta gracza. */
-export interface TradePartnerView {
-  tokenId?: string;
-  characterId?: string;
-  name: string;
-  /** Odległość w metrach; brak znaczy „nie stoicie na wspólnej scenie". */
-  metres?: number;
-}
-
-export interface TradePartnersResult {
-  partners: TradePartnerView[];
-}
-
-/**
  * Client → server payload of `trade:invite`. Adresem drugiej strony jest
  * figura (NPC i gracz na scenie) albo karta gracza, gdy wspólnej sceny nie ma.
  */
@@ -737,7 +676,7 @@ export interface TradeListResult {
 
 /**
  * Client → server payload of `exchange:counterparts` — „z kim mogę teraz coś
- * wymienić”. Zastępuje `inventory:sources` i `trade:partners`: listę buduje
+ * wymienić” (zastąpiło `inventory:sources` z 38b i `trade:partners` z 38c): listę buduje
  * serwer tą samą umową (gracz nie zna `characterId` cudzej figury).
  */
 export interface ExchangeCounterpartsPayload {
@@ -764,7 +703,7 @@ export interface ExchangeCounterpartView {
   characterId?: string;
   /** Wyszarzone: widać, ale kliknąć się nie da. */
   unavailable?: ExchangeUnavailable;
-  /** Łup: ekwipunek ciała i gotówka (jak `InventorySourceView`). */
+  /** Łup: ekwipunek ciała i gotówka. */
   items?: CpredItemViewWire[];
   eddies?: number;
 }
@@ -813,6 +752,8 @@ export interface MerchantListItem {
   access: MerchantAccess;
   closed?: MerchantClosedReason;
   betweenSessions: boolean;
+  /** Tylko u MG: przełącznik „Otwarte” (menu figury „Otwórz / Zamknij sklep”). */
+  open?: boolean;
   /** Tylko u MG. */
   characterId?: string;
 }

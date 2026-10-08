@@ -526,3 +526,16 @@ button:disabled {
 .between-sessions-button:active {
   background: var(--login-red-deep);
 }
+
+/* Sklep czynny między sesjami (etap 46a) — ten sam przycisk, ale konturem:
+   czerwony pełny zostaje dla „Otwórz kartę”, sklep jest drugą sprawą. */
+.between-sessions-button--shop {
+  background: transparent;
+  color: var(--login-ink);
+  box-shadow: inset 0 0 0 1px var(--login-red);
+}
+
+.between-sessions-button--shop:hover {
+  background: var(--login-red);
+  color: var(--login-on-red);
+}

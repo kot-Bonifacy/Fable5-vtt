@@ -167,8 +167,8 @@ test.describe.serial('T2 kanarki na zimno: pełny stan po zalogowaniu', () => {
         ['creation:permit-state', {}],
         ['economy:history', { characterId: mine }],
         ['character:xp-history', { characterId: mine }],
-        ['inventory:sources', { characterId: mine }],
-        ['trade:partners', { characterId: mine }],
+        ['exchange:counterparts', { characterId: mine }],
+        ['merchant:list', undefined],
         ['state:request', {}],
       ] as const) {
         bucket.push(`${event} ${JSON.stringify(await emitAck(socket!, event, payload))}`);

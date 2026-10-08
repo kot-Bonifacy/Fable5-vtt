@@ -58,3 +58,21 @@ export async function requireTeamCard(
   if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
   return character;
 }
+
+/**
+ * Czy karta należy do drużyny (gracz albo towarzysz-bot) — ta sama definicja
+ * co `teamCardsWhere`, dla jednej karty. Handel (46a) niesie to w stronie,
+ * żeby widok mógł podać graczowi id karty kolegi, a nie NPC-a.
+ */
+export async function isTeamCard(
+  prisma: PrismaClient,
+  campaignId: string,
+  card: Pick<Character, 'id' | 'ownerId'>,
+): Promise<boolean> {
+  if (card.ownerId !== null) return true;
+  const bot = await prisma.botProfile.findFirst({
+    where: { campaignId, archived: false, characterId: card.id },
+    select: { data: true },
+  });
+  return bot !== null && parseBotData(bot.data).type === 'companion';
+}

@@ -123,6 +123,15 @@ describe('stan handlu', () => {
     expect(forGm.sides.map((s) => s.characterId)).toEqual(['c-vex', 'c-fixer']);
     expect(forGm.sides.map((s) => s.mine)).toEqual([false, true]);
   });
+
+  it('karta drużyny niesie id także graczowi po drugiej stronie (46a, „Wyślij bez czekania”)', () => {
+    const withRico = trade({
+      sides: [side(), side({ characterId: 'c-rico', name: 'Rico', ownerId: 'u-rico', team: true })],
+    });
+    expect(tradeViewFor(withRico, 'u-vex', false).sides[1].characterId).toBe('c-rico');
+    // NPC bez flagi — dalej bez id (#40).
+    expect(tradeViewFor(trade(), 'u-vex', false).sides[1].characterId).toBeUndefined();
+  });
 });
 
 describe('pole wymiany przed przyjęciem zaproszenia (etap 46a)', () => {

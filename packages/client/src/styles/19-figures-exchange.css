@@ -344,41 +344,99 @@
   color: var(--text-dim);
 }
 
-/* --- Handel (etap 38c) ------------------------------------------------- */
+/* --- Jedno okno „Wymiana” (38b → 38c → 46a) --------------------------- */
 
 /* Skórę, belkę i cień okno bierze z `.inventory-window` (chrome.css) — to ta
-   sama rodzina okien, więc nie dopisuje się do list chromu osobno. Szersze,
-   bo stoją w nim obok siebie ekwipunek i dwa pola wymiany. */
-.trade-window {
-  width: min(720px, calc(100vw - 24px));
+   sama rodzina okien, więc nie dopisuje się do list chromu osobno. Handel
+   i sklep stawiają obok siebie trzy kolumny (mój ekwipunek, moje pola, druga
+   strona), łup i tryb MG — dwie. */
+.exchange-window {
+  width: min(640px, calc(100vw - 24px));
 }
 
-.trade-picker {
-  width: min(360px, calc(100vw - 24px));
+.exchange-window--wide {
+  width: min(940px, calc(100vw - 24px));
 }
 
-.trade-body {
+.exchange-ends {
+  align-items: center;
+}
+
+.exchange-anchor {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exchange-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.7rem;
   align-items: start;
 }
 
-/* Podgląd MG: bez własnego ekwipunku, dwa pola obok siebie. */
-.trade-body--spectator {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.trade-body--spectator .trade-offers {
-  display: grid;
+.exchange-columns--two {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-@media (width <= 560px) {
-  .trade-body,
-  .trade-body--spectator .trade-offers {
+.exchange-columns--three {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@media (width <= 720px) {
+  .exchange-columns--two,
+  .exchange-columns--three {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Cena przy wierszu: odkup u mnie, cena na półce, suma w polu. */
+.exchange-price {
+  flex: none;
+  min-width: 3.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Wiersz, którego handlarz nie wyceni — widać go, przeciągnąć się nie da. */
+.exchange-row--blocked {
+  opacity: 0.55;
+}
+
+.exchange-closed {
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--warn);
+}
+
+.exchange-total {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* „Sklepy (N)” w doku: przycisk, pod nim lista szyldów. */
+.exchange-shops {
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.exchange-shop-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .trade-column {

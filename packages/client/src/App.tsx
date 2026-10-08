@@ -9,8 +9,7 @@ import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
 import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
-import { InventoryWindow } from './components/InventoryWindow.js';
-import { TradePartnerPicker, TradeWindow } from './components/TradeWindow.js';
+import { ExchangeWindow } from './components/exchange/ExchangeWindow.js';
 import { BotEditors } from './components/BotEditor.js';
 import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
@@ -126,9 +125,7 @@ function GameView() {
       <CharacterSheets />
       <CharacterCreator />
       <HandoutWindows />
-      <InventoryWindow />
-      <TradeWindow />
-      <TradePartnerPicker />
+      <ExchangeWindow />
       <BotEditors />
       <NetArchitectureEditor />
       <NetRunWindow />

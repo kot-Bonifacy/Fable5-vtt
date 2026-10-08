@@ -295,7 +295,7 @@ function listItemFor(viewer: Viewer, merchant: LoadedMerchant): MerchantListItem
     access: merchant.settings.access,
     ...(merchant.closed ? { closed: merchant.closed } : {}),
     betweenSessions: merchant.settings.betweenSessions,
-    ...(viewer.isGm ? { characterId: merchant.card.id } : {}),
+    ...(viewer.isGm ? { open: merchant.settings.open, characterId: merchant.card.id } : {}),
   };
 }
 
@@ -403,10 +403,14 @@ export async function emitMerchantShops(deps: RealtimeDeps, campaignId: string):
   }
 }
 
-// Zapis karty handlarza (towar dopisany przez MG, handel, łup) odświeża półkę.
+// Zapis karty handlarza (towar dopisany przez MG, handel, łup) odświeża półkę,
+// a dok sklepów — bo handlarz, który właśnie padł (PW na karcie), zamyka sklep
+// zdalny i ten ma zniknąć z „Sklepy (N)” bez czekania na zmianę ustawień (46a2).
 setMerchantCardRefresher(async (deps, campaignId, characterId) => {
   const row = await deps.ctx.prisma.merchant.findUnique({ where: { characterId } });
-  if (row && row.campaignId === campaignId) await emitMerchantUpdate(deps, campaignId, row.id);
+  if (!row || row.campaignId !== campaignId) return;
+  await emitMerchantUpdate(deps, campaignId, row.id);
+  await emitMerchantShops(deps, campaignId);
 });
 
 /* ------------------------------------------------------------------ *

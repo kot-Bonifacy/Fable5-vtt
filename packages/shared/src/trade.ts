@@ -37,6 +37,12 @@ export interface TradeSideState {
   name: string;
   /** Właściciel karty; `null` znaczy NPC, którego prowadzi MG. */
   ownerId: string | null;
+  /**
+   * Karta drużyny (gracz albo towarzysz-bot, umowa #40) — jej id gracz i tak
+   * zna, więc widok je niesie. Po nim okno „Wymiana” (46a) wysyła pole
+   * zapraszającego „bez czekania” jako propozycję z 38b.
+   */
+  team?: boolean;
   /** Adresy w polu wymiany — zawsze z jawną ilością przy wyposażeniu. */
   items: InventoryItemRefWire[];
   /** Te same pozycje, gotowe do narysowania: „Zgrzyt 9 (12/30)". */
@@ -62,8 +68,9 @@ export interface TradeState {
 /** Strona handlu tak, jak widzi ją konkretny użytkownik. */
 export interface TradeSideView {
   /**
-   * Id karty — wyłącznie dla tego, kto tę stronę prowadzi, i dla MG. Gracz nie
-   * poznaje `characterId` cudzej figury żadną drogą (umowa z etapu 05).
+   * Id karty — dla tego, kto tę stronę prowadzi, dla MG i dla karty drużyny
+   * (46a). Gracz nie poznaje `characterId` karty NPC-a żadną drogą (umowa
+   * z etapu 05, #40).
    */
   characterId?: string;
   name: string;
@@ -190,12 +197,12 @@ export function withTradeNotice(trade: TradeState, notice: string): TradeState {
   return { ...trade, sides, version: trade.version + 1, notice };
 }
 
-/** Widok dla jednego patrzącego — bez cudzych `characterId`. */
+/** Widok dla jednego patrzącego — bez `characterId` kart spoza drużyny. */
 export function tradeViewFor(trade: TradeState, userId: string, isGm: boolean): TradeView {
   const sides = trade.sides.map((side) => {
     const mine = mayOperateTradeSide(side, userId, isGm);
     return {
-      ...(mine || isGm ? { characterId: side.characterId } : {}),
+      ...(mine || isGm || side.team === true ? { characterId: side.characterId } : {}),
       name: side.name,
       mine,
       items: side.views,

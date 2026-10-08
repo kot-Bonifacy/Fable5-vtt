@@ -113,19 +113,13 @@ import {
   checkRequestEvent,
   checkRequestResolveEvent,
 } from './checks.js';
-import {
-  inventoryGiveEvent,
-  inventoryRespondEvent,
-  inventorySourcesEvent,
-  inventoryTakeEvent,
-} from './inventory.js';
+import { inventoryGiveEvent, inventoryRespondEvent, inventoryTakeEvent } from './inventory.js';
 import {
   tradeAcceptEvent,
   tradeCancelEvent,
   tradeInviteEvent,
   tradeListEvent,
   tradeOfferEvent,
-  tradePartnersEvent,
   tradeRespondEvent,
 } from './trade.js';
 import { characterCyberwareEvent } from './cyberware.js';
@@ -428,11 +422,9 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   merchantConfigEvent,
   merchantRowEvent,
   catalogShoppingEvent,
-  inventorySourcesEvent,
   inventoryGiveEvent,
   inventoryTakeEvent,
   inventoryRespondEvent,
-  tradePartnersEvent,
   tradeInviteEvent,
   tradeRespondEvent,
   tradeOfferEvent,

@@ -9,9 +9,6 @@ import type {
   TradeInvitePayload,
   TradeListResult,
   TradeOfferPayload,
-  TradePartnersPayload,
-  TradePartnersResult,
-  TradePartnerView,
   TradeRespondPayload,
   TradeSideState,
   TradeState,
@@ -50,16 +47,15 @@ import {
   closestMetres,
   entryLines,
   findCampaignCharacter,
-  metresBetweenPlaced,
   postInventoryCard,
   readEddies,
   readItemRefs,
   requireOwnCharacter,
   tokensOf,
-  type PlacedToken,
 } from './inventory.js';
 import { deferView } from './presentation.js';
 import { campaignMemberSockets } from './state.js';
+import { isTeamCard } from './team-cards.js';
 import { emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 
 /**
@@ -86,9 +82,6 @@ import { emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 const trades = new Map<string, TradeState>();
 /** Handle w trakcie zapisu — drugi klik „Zgoda" nie może wykonać wymiany drugi raz. */
 const executing = new Set<string>();
-
-/** Ile możliwych partnerów pokazuje lista — tyle co źródeł łupu w 38b. */
-const PARTNERS_MAX = 12;
 
 /* ------------------------------------------------------------------ *
  * Wspólne pytania
@@ -168,74 +161,6 @@ function store(trade: TradeState): TradeState {
 }
 
 /* ------------------------------------------------------------------ *
- * trade:partners — z kim mogę teraz handlować
- * ------------------------------------------------------------------ */
-
-export const tradePartnersEvent = defineEvent<TradePartnersPayload, TradePartnersResult>({
-  name: 'trade:partners',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const prisma = deps.ctx.prisma;
-    const isGm = isGmUser(user);
-    const anchor = await requireOwnCharacter(prisma, campaignId, user, payload?.characterId);
-    // MG handluje za NPC-a, nigdy za gracza — rozstrzygnięcie 3 w `shared/trade.ts`.
-    if (anchor.ownerId !== null && anchor.ownerId !== user.id) throw new RealtimeError('NOT_YOURS');
-    const operates = (card: Character) => (card.ownerId === null ? isGm : card.ownerId === user.id);
-
-    const found = new Map<string, TradePartnerView & { metres?: number }>();
-    const mine = await tokensOf(prisma, anchor.id);
-    for (const stand of mine) {
-      const neighbours = await prisma.token.findMany({
-        where: {
-          sceneId: stand.scene.id,
-          characterId: { not: null },
-          id: { not: stand.token.id },
-        },
-      });
-      for (const token of neighbours) {
-        if (!token.characterId || token.characterId === anchor.id) continue;
-        if (!isGm && token.hidden) continue;
-        const placed: PlacedToken = { token, scene: stand.scene };
-        const metres = metresBetweenPlaced(stand, placed);
-        if (metres > CPRED_MELEE_REACH_M) continue;
-        const known = found.get(token.characterId);
-        if (known && (known.metres ?? Infinity) <= metres) continue;
-        const card = await prisma.character.findUnique({ where: { id: token.characterId } });
-        if (!card || card.campaignId !== campaignId || operates(card)) continue;
-        found.set(card.id, {
-          tokenId: token.id,
-          // Id karty NPC-a gracz poznawać nie ma; kartę gracza zna z listy celów 38b.
-          ...(isGm || card.ownerId !== null ? { characterId: card.id } : {}),
-          name: card.ownerId !== null ? card.name : tokenTableName(token, token.name),
-          metres,
-        });
-      }
-    }
-
-    // Poza sceną: karty graczy, z którymi nie ma wspólnej sceny — warunku
-    // zasięgu wtedy nie ma (tak jak przy przekazaniu z 38b). NPC-a poza sceną
-    // gracz nie zobaczy; MG handluje NPC-em wyłącznie z graczami.
-    const players = await prisma.character.findMany({
-      where: { campaignId, ownerId: { not: null }, id: { not: anchor.id } },
-      orderBy: { name: 'asc' },
-    });
-    for (const card of players) {
-      if (found.has(card.id) || operates(card)) continue;
-      if ((await closestMetres(prisma, anchor.id, card.id)) !== null) continue;
-      found.set(card.id, { characterId: card.id, name: card.name });
-    }
-
-    const partners = [...found.values()]
-      .sort(
-        (a, b) =>
-          (a.metres ?? Infinity) - (b.metres ?? Infinity) || a.name.localeCompare(b.name, 'pl'),
-      )
-      .slice(0, PARTNERS_MAX);
-    return { partners };
-  },
-});
-
-/* ------------------------------------------------------------------ *
  * trade:invite — „pohandlujmy"
  * ------------------------------------------------------------------ */
 
@@ -274,15 +199,18 @@ export const tradeInviteEvent = defineEvent<TradeInvitePayload, { trade: TradeVi
     const toScenes = new Set((await tokensOf(prisma, to.id)).map((entry) => entry.scene.id));
     const fromName = await tableNameOf(prisma, from, null, toScenes);
     const toName = await tableNameOf(prisma, to, toToken, fromScenes);
+    const fromTeam = await isTeamCard(prisma, campaignId, from);
+    const toTeam = await isTeamCard(prisma, campaignId, to);
 
     // Sprawdzane PO ostatnim `await` — inaczej dwa zaproszenia w tej samej
     // chwili przeszłyby oba i jedna karta handlowałaby na dwa fronty.
     if (busy()) throw new RealtimeError('CHARACTER_BUSY');
 
-    const side = (card: Character, name: string): TradeSideState => ({
+    const side = (card: Character, name: string, team: boolean): TradeSideState => ({
       characterId: card.id,
       name,
       ownerId: card.ownerId,
+      ...(team ? { team: true } : {}),
       items: [],
       views: [],
       eddies: 0,
@@ -293,7 +221,7 @@ export const tradeInviteEvent = defineEvent<TradeInvitePayload, { trade: TradeVi
       campaignId,
       status: 'invited',
       version: 1,
-      sides: [side(from, fromName), side(to, toName)],
+      sides: [side(from, fromName, fromTeam), side(to, toName, toTeam)],
     });
     await emitTrade(deps, trade);
     return { trade: tradeViewFor(trade, user.id, isGm) };

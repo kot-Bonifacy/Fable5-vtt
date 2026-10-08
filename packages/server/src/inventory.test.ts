@@ -11,7 +11,7 @@ import type {
   CharacterView,
   ChatMessageBroadcast,
   CpredCharacterData,
-  InventorySourcesResult,
+  ExchangeCounterpartsResult,
   SceneView,
   SocketAck,
   StateSyncPayload,
@@ -326,24 +326,25 @@ describe('przedmioty między kartami', () => {
     expect(vexTokenId && gangerTokenId && ricoTokenId).toBeTruthy();
   });
 
-  it('gracz widzi leżącego gangera na liście źródeł, razem z jego ekwipunkiem', async () => {
+  it('gracz widzi leżącego gangera na liście drugich stron jako łup, razem z jego ekwipunkiem', async () => {
     const result = data(
-      await emitAck<InventorySourcesResult>(vex, 'inventory:sources', {
+      await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
         characterId: vexCharacterId,
       }),
-      'inventory:sources',
+      'exchange:counterparts',
     );
-    const ganger = result.sources.find((row) => row.name === 'Ganger');
+    const ganger = result.counterparts.find((row) => row.name === 'Ganger');
+    expect(ganger?.kind).toBe('loot');
     expect(ganger).toBeDefined();
     expect(ganger?.metres).toBe(2);
     expect(ganger?.eddies).toBe(350);
-    expect(ganger?.items.map((item) => item.name).sort()).toEqual([
+    expect(ganger?.items?.map((item) => item.name).sort()).toEqual([
       'Kurtka Kevlarowa',
       'Stimpak',
       'Zgrzyt 9',
     ]);
-    // Kartę Rico — gracza — ma widzieć jako **cel**, nie jako źródło.
-    expect(result.sources.some((row) => row.name === 'Rico')).toBe(false);
+    // Kartę Rico — gracza — widzi jako handel, nie jako łup.
+    expect(result.counterparts.find((row) => row.name === 'Rico')?.kind).toBe('trade');
     // Celem jest drużyna: karty NPC-ów spoza niej gracz nie dostaje ani po
     // nazwie, ani po id — ciało przeszukuje figurą (#40).
     expect(result.targets.map((row) => row.name)).toEqual(['Rico']);
@@ -352,13 +353,13 @@ describe('przedmioty między kartami', () => {
 
   it('MG dostaje wszystkie karty kampanii i id karty ciała (#40)', async () => {
     const result = data(
-      await emitAck<InventorySourcesResult>(gm, 'inventory:sources', {
+      await emitAck<ExchangeCounterpartsResult>(gm, 'exchange:counterparts', {
         characterId: vexCharacterId,
       }),
-      'inventory:sources',
+      'exchange:counterparts',
     );
     expect(result.targets.map((row) => row.name).sort()).toEqual(['Ganger', 'Rico']);
-    expect(result.sources.find((row) => row.name === 'Ganger')?.characterId).toBe(
+    expect(result.counterparts.find((row) => row.name === 'Ganger')?.characterId).toBe(
       gangerCharacterId,
     );
   });
@@ -465,14 +466,16 @@ describe('przedmioty między kartami', () => {
         items: [{ list: 'gear', rowId: 'g-guard' }],
       }),
     ).toEqual({ ok: false, error: 'STILL_STANDING' });
-    // …i nie widzi go na liście źródeł, choć stoi tuż obok.
-    const sources = data(
-      await emitAck<InventorySourcesResult>(vex, 'inventory:sources', {
+    // …i nie ma go na liście jako łupu, choć stoi tuż obok — żywy NPC to handel.
+    const listed = data(
+      await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
         characterId: vexCharacterId,
       }),
-      'inventory:sources',
+      'exchange:counterparts',
     );
-    expect(sources.sources.some((row) => row.name === 'Wartownik')).toBe(false);
+    const guard = listed.counterparts.filter((row) => row.name === 'Wartownik');
+    expect(guard.map((row) => row.kind)).toEqual(['trade']);
+    expect(guard[0]).not.toHaveProperty('items');
   });
 
   it('odejście od ciała odcina łup — zasięg to długość ramienia', async () => {
@@ -639,10 +642,10 @@ describe('przedmioty między kartami', () => {
       ).ok,
     ).toBe(true);
     const listed = data(
-      await emitAck<InventorySourcesResult>(vex, 'inventory:sources', {
+      await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
         characterId: vexCharacterId,
       }),
-      'inventory:sources',
+      'exchange:counterparts',
     );
     expect(listed.targets.map((row) => row.name).sort()).toEqual(['Rico', 'Szczur']);
 

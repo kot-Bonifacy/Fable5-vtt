@@ -37,7 +37,9 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
   let cell: number;
   let campaignId: string;
   const net = new Map<Actor, Network>();
-  const tradeWindow = (actor: Actor) => actor.page.locator('section.trade-window');
+  // Etap 46a: jedno okno „Wymiana” — handel to jego tryb `trade`.
+  const tradeWindow = (actor: Actor) =>
+    actor.page.locator('section[aria-label="Wymiana"][data-exchange-mode="trade"]');
   const dock = (actor: Actor) => actor.page.locator('.trade-dock');
   const at = (name: string) => [Math.round(token(name).x / cell), Math.round(token(name).y / cell)];
   const rolledStats = () =>
@@ -111,17 +113,17 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     const picks = 'Zestaw wytrychów';
     expect(before.kowal.gear.map((g) => g.name)).toContain(picks);
 
-    // Zaproszenie z karty Kowala, przyjęcie z doku Oli — jak 6.1 w T6a.
+    // Zaproszenie z karty Kowala („Wymiana…”), przyjęcie z doku Oli — jak 6.1 w T6a.
     await marek.page.getByRole('button', { name: 'Postacie', exact: true }).click();
     await marek.page.locator('.side-panel').getByText('Kowal', { exact: true }).first().click();
     await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    await marek.page.getByRole('button', { name: 'Handel…' }).click();
-    await marek.page
-      .getByRole('region', { name: 'Z kim handlować' })
-      .locator('.inventory-row', { hasText: 'Iskra' })
-      .getByRole('button', { name: 'Zaproś' })
-      .click();
+    await marek.page.getByRole('button', { name: 'Wymiana…' }).click();
     await marek.page.getByRole('button', { name: 'Zamknij kartę' }).click();
+    // Wybór drugiej strony od razu zaprasza (etap 46a).
+    const partner = marek.page.getByLabel('Druga strona');
+    const iskra = partner.locator('option', { hasText: '🤝 Iskra' });
+    await expect(iskra).not.toHaveAttribute('disabled');
+    await partner.selectOption((await iskra.getAttribute('value'))!);
     await dock(ola).getByRole('button', { name: 'Przyjmij' }).click();
     for (const actor of [marek, ola]) {
       // Okno otwiera się samo chwilę po „Przyjmij” albo czeka na „Otwórz” w doku —

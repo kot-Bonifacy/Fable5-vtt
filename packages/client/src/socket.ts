@@ -134,11 +134,21 @@ import type {
   HandoutUpsertBroadcast,
   HandoutUpsertPayload,
   HandoutView,
+  ExchangeCounterpartsPayload,
+  ExchangeCounterpartsResult,
   InventoryGivePayload,
   InventoryGiveResult,
+  MerchantConfigPayload,
+  MerchantConfigResult,
+  MerchantDealPayload,
+  MerchantDealResult,
+  MerchantGoneBroadcast,
+  MerchantListResult,
+  MerchantRowPayload,
+  MerchantShopsBroadcast,
+  MerchantUpdateBroadcast,
+  MerchantViewResult,
   InventoryRespondPayload,
-  InventorySourcesPayload,
-  InventorySourcesResult,
   InventoryTakePayload,
   JournalDeleteBroadcast,
   JournalDraftBroadcast,
@@ -256,7 +266,6 @@ import type {
   TradeInvitePayload,
   TradeListResult,
   TradeOfferPayload,
-  TradePartnersResult,
   TradeUpdateBroadcast,
   TradeView,
   VisionSyncBroadcast,
@@ -282,6 +291,7 @@ import {
   CPRED_ROLES_PROBLEMS,
   CPRED_SPECIALTY_PROBLEMS,
   CPRED_HAGGLE_PROBLEMS,
+  CPRED_MERCHANT_PROBLEM_TEXTS,
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
@@ -345,7 +355,7 @@ import { useZoneStore } from './stores/zoneStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useHudStore } from './stores/hudStore.js';
-import { useTradeStore } from './stores/tradeStore.js';
+import { useExchangeStore } from './stores/exchangeStore.js';
 import { freshAiRequests, useOwnerAiStore } from './stores/ownerAiStore.js';
 import { aiAccessSentence, aiUnavailableMessage } from './ai-status.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
@@ -750,17 +760,30 @@ export function connectSocket(userId: string): Socket {
     // Etap 38c: otwarte handle żyją w pamięci serwera, nie w `state:sync` —
     // po przeładowaniu i po przełączeniu kampanii dociąga się je osobno.
     void listTrades().then((ack) =>
-      useTradeStore.getState().replace(ack.ok ? (ack.data?.trades ?? []) : []),
+      useExchangeStore.getState().replaceTrades(ack.ok ? (ack.data?.trades ?? []) : []),
     );
+    refreshMerchants();
   });
 
   // Etap 38c: każdy widz dostaje własny, przycięty widok handlu. Zaproszenie
   // do handlu dzwoni tym samym dźwiękiem, co przedmiot czekający na przyjęcie.
   onPresented('trade:update', (broadcast: TradeUpdateBroadcast) => {
     const trade = broadcast.trade;
-    const known = useTradeStore.getState().trades[trade.id];
+    const known = useExchangeStore.getState().trades[trade.id];
     if (trade.status === 'invited' && !known && trade.sides[1].mine) notifyGame('inventory');
-    useTradeStore.getState().apply(trade);
+    useExchangeStore.getState().applyTrade(trade);
+  });
+
+  // Etap 46a: sklepy. Półkę dostaje tylko ten, kto ją ogląda (`merchant:view`
+  // zapisuje widza), każdy w swoim przycięciu; dok — każdy swoją listę.
+  onPresented('merchant:update', (broadcast: MerchantUpdateBroadcast) => {
+    useExchangeStore.getState().applyShelf(broadcast.merchant);
+  });
+  onPresented('merchant:gone', (broadcast: MerchantGoneBroadcast) => {
+    useExchangeStore.getState().dropShelf(broadcast.merchantId);
+  });
+  onPresented('merchant:shops', (broadcast: MerchantShopsBroadcast) => {
+    useExchangeStore.getState().setShops(broadcast.merchants);
   });
 
   /**
@@ -795,6 +818,8 @@ export function connectSocket(userId: string): Socket {
     if (!isGm && !push.campaign.sessionStartedAt) {
       useMusicStore.setState({ state: null, error: null, blocked: false });
     }
+    // Etap 46a: przy stole dok ma sklepy zdalne, między sesjami — oznaczone.
+    refreshMerchants();
   });
 
   onPresented('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
@@ -1586,9 +1611,9 @@ export const resolveCheckRequest = (payload: CheckRequestResolvePayload) =>
  * Przedmioty między kartami (etap 38b)
  * ------------------------------------------------------------------ */
 
-/** Co da się teraz przeszukać i komu da się dać — pyta okno wymiany. */
-export const fetchInventorySources = (payload: InventorySourcesPayload) =>
-  emitSceneAck<InventorySourcesResult>('inventory:sources', payload);
+/** Z kim mogę teraz coś wymienić — jedna lista okna „Wymiana” (etap 46a). */
+export const fetchExchangeCounterparts = (payload: ExchangeCounterpartsPayload) =>
+  emitSceneAck<ExchangeCounterpartsResult>('exchange:counterparts', payload);
 
 /** „Oddaj" — na kartę z właścicielem wchodzi jako propozycja do przyjęcia. */
 export const giveInventory = (payload: InventoryGivePayload) =>
@@ -1604,9 +1629,6 @@ export const respondInventory = (messageId: number, accept: boolean) =>
 
 /* ----- Handel (etap 38c) ----- */
 
-export const fetchTradePartners = (characterId: string) =>
-  emitSceneAck<TradePartnersResult>('trade:partners', { characterId });
-
 export const inviteTrade = (payload: TradeInvitePayload) =>
   emitSceneAck<{ trade: TradeView }>('trade:invite', payload);
 
@@ -1620,6 +1642,66 @@ export const acceptTrade = (payload: TradeAcceptPayload) => emitSceneAck('trade:
 export const cancelTrade = (tradeId: string) => emitSceneAck('trade:cancel', { tradeId });
 
 export const listTrades = () => emitSceneAck<TradeListResult>('trade:list', undefined);
+
+/* ----- Sklepy (etap 46a) ----- */
+
+export const listMerchants = () => emitSceneAck<MerchantListResult>('merchant:list', undefined);
+
+/** Półka dla tego widza — serwer zapisuje go jako oglądającego (`merchant:update`). */
+export const viewMerchant = (merchantId: string) =>
+  emitSceneAck<MerchantViewResult>('merchant:view', { merchantId });
+
+/** „Zapłać” — koszyk i pole sprzedaży w jednej transakcji, z sumą pokazaną w oknie. */
+export const dealMerchant = (payload: MerchantDealPayload) =>
+  emitSceneAck<MerchantDealResult>('merchant:deal', payload);
+
+/** MG: karta NPC-a staje się handlarzem, zmienia ustawienia albo przestaje nim być (`null`). */
+export const configMerchant = (payload: MerchantConfigPayload) =>
+  emitSceneAck<MerchantConfigResult>('merchant:config', payload);
+
+/** MG: „∞”, „ukryty” i cena przy jednym wierszu towaru; `overlay: null` zdejmuje nakładkę. */
+export const setMerchantRow = (payload: MerchantRowPayload) =>
+  emitSceneAck('merchant:row', payload);
+
+/**
+ * Lista sklepów dla doku i ekranu „Między sesjami” oraz ponowne obejrzenie
+ * półek, które klient trzyma — serwer zapomina oglądających przy rozłączeniu,
+ * więc po `state:sync` bez tego okno zostałoby z półką, która się nie odświeża.
+ */
+export function refreshMerchants(): void {
+  void listMerchants().then((ack) =>
+    useExchangeStore.getState().setShops(ack.ok ? (ack.data?.merchants ?? []) : []),
+  );
+  for (const merchantId of Object.keys(useExchangeStore.getState().shelves)) {
+    void viewMerchant(merchantId).then((ack) => {
+      if (ack.ok && ack.data) useExchangeStore.getState().applyShelf(ack.data.merchant);
+      else useExchangeStore.getState().dropShelf(merchantId);
+    });
+  }
+}
+
+/** Polskie komunikaty odmowy sklepu; kody wyceny mówią zdaniami z `shared`. */
+export function merchantErrorText(code: string): string {
+  if (code in CPRED_MERCHANT_PROBLEM_TEXTS) {
+    return CPRED_MERCHANT_PROBLEM_TEXTS[code as keyof typeof CPRED_MERCHANT_PROBLEM_TEXTS];
+  }
+  switch (code) {
+    case 'MERCHANT_NOT_FOUND':
+      return 'Tego sklepu tu nie ma.';
+    case 'MERCHANT_CLOSED':
+      return 'Sklep jest zamknięty — handlarz teraz nie obsługuje.';
+    case 'QUOTE_CHANGED':
+      return 'Ceny albo towar zmieniły się, zanim zapłaciłeś — sprawdź nową sumę i zapłać jeszcze raz.';
+    case 'OUT_OF_REACH':
+      return 'Za daleko — do handlarza trzeba podejść na wyciągnięcie ręki.';
+    case 'SESSION_NOT_RUNNING':
+      return 'Ten sklep działa tylko w trakcie sesji.';
+    case 'NOT_NPC':
+      return 'Sklepem może być wyłącznie karta NPC-a.';
+    default:
+      return inventoryErrorText(code);
+  }
+}
 
 /** Polskie komunikaty odmowy przy handlu — wspólne kody z 38b idą przez `inventoryErrorText`. */
 export function tradeErrorText(code: string): string {

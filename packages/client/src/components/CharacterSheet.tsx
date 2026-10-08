@@ -202,9 +202,8 @@ import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
-import { useInventoryStore } from '../stores/inventoryStore.js';
-import { useTradeStore } from '../stores/tradeStore.js';
-import { activeTradeFor } from './TradeWindow.js';
+import { MerchantSection } from './exchange/MerchantSection.js';
+import { openExchangeForCard } from './exchange/open.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
@@ -3427,43 +3426,27 @@ function CyberdeckSection({ data, saveData }: TabProps) {
  * zostają na dole do etapu 27c — tam dostaną własną stronę z sylwetką.
  */
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
-  const user = useAuthStore((s) => s.user);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
-  const operatesCard =
-    character.ownerId === null ? user?.role === ROLE_GM : character.ownerId === user?.id;
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
           nagłówek kolumny „Wyposażenie", a dwa te same słowa nad sobą to szum. */}
-      {/* Etap 38b: jedyne wejście gracza do przekazywania i do przeszukiwania
-          ciał. Guzik stoi nad ekwipunkiem, bo o przenoszeniu myśli się patrząc
-          na listę rzeczy, a nie szukając narzędzia gdzie indziej. */}
+      {/* Etap 46a: jedno wejście do okna „Wymiana” — handel z kolegą, łup,
+          sklep i (u MG) tryb MG. Guzik stoi nad ekwipunkiem, bo o przenoszeniu
+          myśli się patrząc na listę rzeczy. */}
       <div className="sheet-gear-actions">
         <button
           type="button"
           className="cp-add"
-          title="Przekaż coś komuś albo przeszukaj leżącą figurę obok"
-          onClick={() => useInventoryStore.getState().open(character.id)}
+          title="Handel z kimś obok, przeszukanie ciała, zakupy u handlarza"
+          onClick={() => openExchangeForCard(character.id)}
         >
           Wymiana…
         </button>
-        {/* Etap 38c: handel — dwa pola wymiany i dwie zgody. Tylko temu, kto
-            tę kartę prowadzi: MG za gracza nie handluje. */}
-        {operatesCard && (
-          <button
-            type="button"
-            className="cp-add"
-            title="Zaproponuj handel komuś obok — rzeczy i gotówka w obie strony, za zgodą obu stron"
-            onClick={() => {
-              const running = activeTradeFor(character.id);
-              if (running) useTradeStore.getState().open(running.id);
-              else useTradeStore.getState().openPicker(character.id);
-            }}
-          >
-            Handel…
-          </button>
-        )}
       </div>
+      {/* Etap 46a: karta NPC-a bywa sklepem — ustawienia ma wyłącznie MG. */}
+      {isGm && character.ownerId === null && <MerchantSection characterId={character.id} />}
       <RowTable<CpredGearRow>
         rows={data.gear}
         columns={[

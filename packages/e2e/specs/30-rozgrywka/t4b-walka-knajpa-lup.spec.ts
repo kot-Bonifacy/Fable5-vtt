@@ -776,10 +776,18 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     const page = marek.page;
     await page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await page.getByRole('button', { name: 'Wymiana…' }).click();
-    const exchange = page.locator('[aria-label="Wymiana przedmiotów"]');
-    const from = exchange.locator('select').first();
-    const zbirOption = await from.locator('option', { hasText: 'Zbir' }).getAttribute('value');
-    await from.selectOption(zbirOption!);
+    await closeSheet(page);
+    // Etap 46a: jedno okno „Wymiana” — ciało to druga strona w trybie łupu.
+    const exchange = page.locator('section[aria-label="Wymiana"]');
+    const partner = exchange.getByLabel('Druga strona');
+    const pick = async (text: string) => {
+      await partner.focus();
+      const option = partner.locator('option', { hasText: text }).first();
+      await expect(option).not.toHaveAttribute('disabled');
+      await partner.selectOption((await option.getAttribute('value'))!);
+    };
+    await pick('🎒 Zbir');
+    await expect(exchange).toHaveAttribute('data-exchange-mode', 'loot');
     await expect(exchange).toContainText('Chip z kodem do chłodni');
     // Marek zobaczył łup — dla Oli zostaje tajny (leży teraz na karcie Kowala).
     fromPlayers.reveal(lootCode);
@@ -794,16 +802,23 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     expect(sheet<Sheet>('Zbir').gear).toEqual([]);
     expect(sheet<Sheet>('Zbir').weapons).toEqual([]);
 
-    // Iskra podchodzi pod Kowala, Kowal proponuje jej pistolet, Ola przyjmuje.
+    // Iskra podchodzi pod Kowala, Kowal proponuje jej pistolet: wybór Iskry
+    // zaprasza do handlu, a „Wyślij bez czekania” wysyła pole jako propozycję
+    // z „Przyjmij” (46a, decyzja MG 6) — Ola przyjmuje z czatu.
     await fitCamera(ola.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
     await walk(ola, 'Iskra', floorOf(8, 9));
     await waitAt('Iskra', 8, 9);
-    await from.selectOption('@anchor');
-    const to = exchange.locator('select').nth(1);
-    const iskraOption = await to.locator('option', { hasText: 'Iskra' }).getAttribute('value');
-    await to.selectOption(iskraOption!);
-    await exchange.getByRole('button', { name: 'Przekaż: Ciężki pistolet', exact: true }).click();
-    await ola.page.getByRole('button', { name: 'Przyjmij', exact: true }).last().click();
+    await pick('🤝 Iskra');
+    await expect(exchange).toHaveAttribute('data-exchange-mode', 'trade');
+    await exchange
+      .getByRole('button', { name: 'Połóż w polu wymiany: Ciężki pistolet', exact: true })
+      .click();
+    await exchange.getByRole('button', { name: 'Wyślij bez czekania' }).click();
+    await ola.page
+      .locator('[data-testid="inventory-move"]', { hasText: 'Ciężki pistolet' })
+      .last()
+      .getByRole('button', { name: 'Przyjmij', exact: true })
+      .click();
     await expect
       .poll(() => sheet<Sheet>('Iskra').weapons.map((w) => w.name))
       .toContain('Ciężki pistolet');
@@ -816,7 +831,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
         ),
       ),
     });
-    await closeSheet(page);
+    // Zaproszenie wycofane razem z wysłanym polem — okno handlu zamknęło się samo.
+    await expect(exchange).toHaveCount(0);
   });
 
   test('#27 zdobyczny pistolet statysty nie robi z Iskry strzelca cudzych ataków', async () => {

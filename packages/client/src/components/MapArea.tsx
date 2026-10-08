@@ -154,7 +154,8 @@ import {
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { SightingWindow } from './SightingWindow.js';
-import { TradeDock } from './TradeDock.js';
+import { ExchangeDock } from './exchange/ExchangeDock.js';
+import { openExchangeAtToken } from './exchange/open.js';
 import { GmAttention } from './GmAttention.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
@@ -185,15 +186,25 @@ function openSheetOfToken(tokenId: string): void {
   const token = useTokenStore.getState().tokens[tokenId];
   if (!token) return;
   const characterStore = useCharacterStore.getState();
-  if (!token.characterId) {
+  if (token.characterId && token.characterId in characterStore.characters) {
+    characterStore.openSheet(token.characterId);
+    return;
+  }
+  // Etap 46a: gracz nie ma cudzej karty, więc podwójny klik w handlarza albo
+  // ciało otwiera „Wymianę” (decyzja MG z 08.10 — tylko te dwa, żeby klik
+  // w kolegę nie wysłał zaproszenia). U MG karta jest zawsze, więc tu nie dochodzi.
+  if (useAuthStore.getState().user?.role === ROLE_GM) {
     useChatStore.getState().addNote(`Token „${token.name}” nie ma przypisanej karty postaci.`);
     return;
   }
-  if (!(token.characterId in characterStore.characters)) {
-    useChatStore.getState().addNote(`Nie masz dostępu do karty postaci „${token.name}”.`);
-    return;
-  }
-  characterStore.openSheet(token.characterId);
+  void openExchangeAtToken(token, 'activate').then((opened) => {
+    if (opened) return;
+    useChatStore
+      .getState()
+      .addNote(
+        `„${token.name}” — podwójny klik otwiera sklep handlarza i przeszukanie ciała obok ciebie. Wymianę z kimś innym zaczniesz z menu figury (prawy przycisk).`,
+      );
+  });
 }
 
 /**
@@ -2225,10 +2236,11 @@ export function MapArea() {
       <MapTools />
       <TokenGroupBar />
       {/* Prawy górny róg to jedna kolumna (25.09): „Czeka na MG” nad dokiem
-          handli, żeby dwie nakładki nie malowały się jedna na drugiej. */}
+          wymiany (46a: handle i „Sklepy (N)”), żeby dwie nakładki nie malowały
+          się jedna na drugiej. */}
       <div className="map-corner">
         <GmAttention />
-        <TradeDock />
+        <ExchangeDock />
       </div>
       <TargetTooltip hover={aimHover} />
       <AimMenu />

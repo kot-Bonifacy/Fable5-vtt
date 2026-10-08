@@ -36,11 +36,9 @@ export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   'economy:buy',
   'economy:transfer',
   // Przekazanie i handel między graczami tej kampanii (04.10).
-  'inventory:sources',
   'inventory:give',
   'inventory:take',
   'inventory:respond',
-  'trade:partners',
   'trade:list',
   'trade:invite',
   'trade:respond',
@@ -79,8 +77,6 @@ function isPassiveEvent(name: string): boolean {
     name.endsWith(':list') ||
     name.endsWith(':history') ||
     name.endsWith(':status') ||
-    name === 'trade:partners' ||
-    name === 'inventory:sources' ||
     name === 'exchange:counterparts' ||
     name === 'merchant:view' ||
     name === 'creation:permit-state'

@@ -22,7 +22,7 @@ import { useSelectionStore } from './stores/selectionStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
 import { useTableStore } from './stores/tableStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
-import { useTradeStore } from './stores/tradeStore.js';
+import { useExchangeStore } from './stores/exchangeStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { useZoneStore } from './stores/zoneStore.js';
 
@@ -84,6 +84,7 @@ export function installE2EHook(): void {
         combat: useCombatStore,
         cover: useCoverStore,
         drawing: useDrawingStore,
+        exchange: useExchangeStore,
         exploration: useExplorationStore,
         fog: useFogStore,
         handout: useHandoutStore,
@@ -98,7 +99,6 @@ export function installE2EHook(): void {
         settings: useSettingsStore,
         table: useTableStore,
         token: useTokenStore,
-        trade: useTradeStore,
         wall: useWallStore,
         zone: useZoneStore,
       },

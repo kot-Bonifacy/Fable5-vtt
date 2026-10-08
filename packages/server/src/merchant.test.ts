@@ -737,9 +737,41 @@ describe('handlarze', () => {
     );
   });
 
+  it('handlarz zdalny, który padł, znika z doku sklepów od razu (46a2)', async () => {
+    const budkaId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Budka z kebabem' }),
+      'character:create',
+    ).id;
+    const opened = waitFor<{ merchants: { name: string }[] }>(vex, 'merchant:shops');
+    const budka = data(
+      await emitAck<MerchantConfigResult>(gm, 'merchant:config', {
+        characterId: budkaId,
+        merchant: { sign: 'Budka', access: 'remote', open: true },
+      }),
+      'merchant:config',
+    ).merchantId!;
+    expect((await opened).merchants.map((row) => row.name)).toContain('Budka');
+    // MG widzi przełącznik „Otwarte” na liście — menu figury pisze z niego
+    // „Otwórz / Zamknij sklep”.
+    const forGm = data(await emitAck<MerchantListResult>(gm, 'merchant:list'), 'list');
+    expect(forGm.merchants.find((row) => row.id === budka)).toMatchObject({
+      open: true,
+      characterId: budkaId,
+    });
+    const forVex = data(await emitAck<MerchantListResult>(vex, 'merchant:list'), 'list');
+    expect(forVex.merchants.find((row) => row.id === budka)).not.toHaveProperty('open');
+
+    const closed = waitFor<{ merchants: { name: string }[] }>(vex, 'merchant:shops');
+    await emitAck(gm, 'character:update', {
+      characterId: budkaId,
+      patch: { data: { hpCurrent: 0 } },
+    });
+    expect((await closed).merchants.map((row) => row.name)).not.toContain('Budka');
+  });
+
   it('eksport kampanii zabiera sklepy i przełącznik katalogu', async () => {
     const file = await exportCampaign(built.prisma, campaignId, { includeChat: false });
-    expect(file?.payload.merchants).toHaveLength(2);
+    expect(file?.payload.merchants).toHaveLength(3);
     expect(file?.payload.campaign.catalogShopping).toBe('merchants');
   });
 

@@ -10,7 +10,7 @@ import type {
   CharacterView,
   ChatMessageBroadcast,
   CpredCharacterData,
-  TradePartnersResult,
+  ExchangeCounterpartsResult,
   TradeUpdateBroadcast,
   TradeView,
   SceneView,
@@ -320,13 +320,16 @@ describe('handel', () => {
     expect(vexTokenId && ricoTokenId && paserTokenId).toBeTruthy();
   });
 
-  it('lista partnerów: gracz obok i NPC, bez id karty NPC-a', async () => {
+  it('lista drugich stron: gracz obok i NPC do handlu, bez id karty NPC-a', async () => {
     const result = data(
-      await emitAck<TradePartnersResult>(vex, 'trade:partners', { characterId: vexCharacterId }),
-      'trade:partners',
+      await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
+        characterId: vexCharacterId,
+      }),
+      'exchange:counterparts',
     );
-    expect(result.partners.map((row) => row.name).sort()).toEqual(['Paser Mirek', 'Rico']);
-    const paser = result.partners.find((row) => row.name === 'Paser Mirek');
+    const trades = result.counterparts.filter((row) => row.kind === 'trade');
+    expect(trades.map((row) => row.name).sort()).toEqual(['Paser Mirek', 'Rico']);
+    const paser = trades.find((row) => row.name === 'Paser Mirek');
     expect(paser?.tokenId).toBe(paserTokenId);
     expect(paser?.characterId).toBeUndefined();
   });
@@ -346,7 +349,9 @@ describe('handel', () => {
     expect(invited.sides[0]).toMatchObject({ name: 'Vex', mine: true });
     const forRico = await ricoSees;
     expect(forRico.sides[1]).toMatchObject({ name: 'Rico', mine: true });
-    expect(forRico.sides[0].characterId).toBeUndefined();
+    // Etap 46a: karta kolegi z drużyny niesie id (umowa #40 i tak je daje) —
+    // po nim „Wyślij bez czekania” wysyła pole jako propozycję z 38b.
+    expect(forRico.sides[0].characterId).toBe(vexCharacterId);
     // MG widzi, ale żadnej strony handlu dwóch graczy nie prowadzi.
     expect((await gmSees).sides.map((side) => side.mine)).toEqual([false, false]);
 
@@ -496,6 +501,8 @@ describe('handel', () => {
       }),
       'trade:invite',
     ).trade;
+    // Karta NPC-a nie jest drużyną — id zostaje u MG (#40).
+    expect(invited.sides[1].characterId).toBeUndefined();
     expect((await gmSees).sides[1].mine).toBe(true);
     expect((await emitAck(gm, 'trade:respond', { tradeId: invited.id, accept: true })).ok).toBe(
       true,
