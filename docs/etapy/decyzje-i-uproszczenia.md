@@ -11,6 +11,20 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Zapas amunicji: co VTT liczy, a czego nie (09.10, etap 46c, decyzje MG).** Przeładowanie
+  zużywa naboje z pudełek w ekwipunku na kartach drużyny (gracz, towarzysz-bot); NPC i statysta
+  MG są „bez dna”, dopóki MG nie zaznaczy „Licz amunicję”, a figura bez karty zawsze. **Zmiana
+  rodzaju naboju oddaje naboje z magazynka do zapasu** (podręcznik o tym milczy — nikt przy stole
+  nie wyrzuca pół magazynka). **Łuk i kusza dalej nie liczą strzał** (nie mają magazynka na karcie);
+  strzały da się kupić i nosić. Granat ręczny **bez** magazynka bierze sztukę z zapasu przy rzucie,
+  wpis z magazynkiem przeładowuje się z zapasu. Kaliber to rodzina z pola „Amunicja” typu broni,
+  więc granat pasuje i do ręki, i do granatnika (s. 344). Paczka: 10 sztuk kul, śrutu i strzał,
+  1 sztuka granatów i rakiet (s. 344); cena wpisu jest ceną paczki. **Zwykły granat i zwykła
+  rakieta kosztują 100 ed za sztukę na poziomie 3** — jak przeciwpancerna, którą podręcznik nazywa
+  ich standardem — z osobnego wpisu bez efektów (`ammo.standard-explosive` w danych prywatnych).
+  Każdy wpis amunicji bez efektów jest „zwykłą” i skleja się z nią (`cpredStockAmmoId`).
+  Migracja „nic”: stary tekst „Amunicja (zapas)” zostaje notatką do przepisania.
+
 - **Zastrzyk siłą: serwer rzuca za obie strony, a pudło zostawia dawkę (25.09, decyzje MG).**
   „Jeśli cel nie chce przyjąć środka, w ramach Akcji wykonujesz jeden Atak bronią białą i jeśli
   trafisz, zamiast zadać obrażenia, wstrzykujesz” (strzykawka bezigłowa, s. 150). VTT robi to

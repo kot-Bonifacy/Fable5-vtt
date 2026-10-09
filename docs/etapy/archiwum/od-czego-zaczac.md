@@ -8,6 +8,21 @@ po co to powstało, co było przed, czego świadomie nie zrobiono.
 
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
+## Wyprowadzone 09.10.2026 — etap 46a (46a1 + 46a2)
+
+**Etap 46a zamknięty 08.10 (46a1 + 46a2) — następna jest 46c (zapas amunicji), potem 46b
+(pojemniki), wszystko przed refaktoryzacją.** Projekt całości w `etap-46-wymiana-sklepy.md`.
+Jest **jedno okno „Wymiana”** (`components/exchange/`): wejście „🤝 Wymiana…” w menu figury
+(gracz i MG), „Wymiana…” na zakładce Ekwipunek, dok w rogu mapy („Sklepy (N)” — sklepy zdalne),
+przyciski sklepów na ekranie „Między sesjami” i podwójny klik gracza w handlarza albo ciało.
+Tryb wynika z drugiej strony: kolega/NPC — handel 38c (wybór od razu zaprasza, „Wyślij bez
+czekania” do drużyny), ciało — łup, handlarz — półka, koszyk, sprzedaż i jedno „Zapłać”, MG —
+„Dokąd” na dowolną kartę. Stare okna (`InventoryWindow`, `TradeWindow`, `TradeDock`) i zdarzenia
+`inventory:sources` / `trade:partners` są usunięte. Handlarza MG robi w karcie NPC-a (sekcja
+„Sklep” w Ekwipunku), otwiera i zamyka z menu figury. Decyzje MG z 08.10 na końcu „Zakres 46a”
+w pliku etapu; umowy w `ui` i `ekwipunek`, E2E `specs/46-wymiana/t46a-wymiana-sklepy` (17,
+z `po-T6`). **Granat rzucany przeładowuje się bez końca (#82)** — naprawia 46c.
+
 ## Wyprowadzone 08.10.2026 — etap 46a1
 
 **Następna jest 46a2 (okno „Wymiana”), potem 46c i 46b — przed refaktoryzacją.** Projekt całości

@@ -441,6 +441,33 @@ z rekomendacją:
 
 ## 46c — Zapas amunicji
 
+### Decyzje MG z 09.10.2026 (start 46c)
+
+1. **Podział na dwie sesje.** **46c1:** model, `shared`, serwer, klient, testy jednostkowe,
+   `t46c-` i oględziny. **46c2:** przepięcie łańcucha T3a–T5b, odbudowa punktów kontrolnych pełnym
+   przebiegiem od zera, retest #82. Między nimi łańcuch T4a–T5b może być czerwony (brak zapasu),
+   a `POSTEP.md` to mówi.
+2. **Kaliber to rodzina z pola „Amunicja” typu broni** (`WeaponType.ammunition` →
+   `ResolvedWeapon.ammoType`: „C. Pistolet”, „Karabinowa”, „Granaty”…), a nie `weaponTypeId`.
+   Pudełko „C. Pistolet” pasuje do ciężkiego pistoletu i ciężkiego PM, „Granaty” — do granatu
+   ręcznego i do granatnika (s. 344: „Granatami można rzucać lub wykorzystać jako amunicję
+   Granatnika”). Porównanie bez wielkości liter i białych znaków.
+3. **Paczka z podręcznika (s. 344):** cena wpisu jest za 10 sztuk kul, śrutu i strzał, a za
+   1 sztukę granatów i rakiet. Jeden zakup = jedna paczka (z liczbą paczek w wyborze kalibru).
+   Odkup i półka liczą cenę **za nabój** (cena wpisu / paczka).
+4. **Zwykły granat i zwykła rakieta: 100 ed za sztukę, poziom 3** — jak amunicja przeciwpancerna,
+   którą podręcznik nazywa „podstawowym standardem dla granatów i rakiet”. Mechanika zwykłego
+   granatu bez zmian. W danych: nowy wpis bez efektów do granatów i rakiet (plik prywatny
+   i wymyślony odpowiednik w `data/public`), poziom w `shop-tiers.json`, bez gałęzi po id w kodzie.
+5. **Łuk i kusza dalej nie liczą strzał** (domyślna odpowiedź z planu) — zapis
+   w `decyzje-i-uproszczenia.md`.
+6. **Gracz tylko zmniejsza, MG dowolnie.** Na karcie z zapasem serwer odmawia graczowi
+   podniesienia magazynka (także broni podwieszanej), ilości w pudełku i dopisania pudełka ręką.
+   Amunicja przybywa z zakupu, wymiany, łupu i od MG.
+7. **Granat ręczny bez magazynka bierze sztukę z zapasu przy rzucie** (bez granatów danego rodzaju
+   — `NO_AMMO`), bo granatem się rzuca, a nie przeładowuje. Wpis z magazynkiem (T4a: „Granat
+   odłamkowy” 2/2) przeładowuje się z zapasu jak każda broń.
+
 ### Model
 
 **Amunicja to wiersz wyposażenia, nie nowa lista.** Dzięki temu przekazanie, łup, handel, półka
@@ -491,18 +518,23 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 
 ### Zakres 46c
 
-- [ ] `shared`: `ammo` na wierszu wyposażenia z walidacją, `stacksWith`, `cpredTracksAmmo`,
+- [x] `shared`: `ammo` na wierszu wyposażenia z walidacją, `stacksWith`, `cpredTracksAmmo`,
       `cpredReloadFromStock` (czysta: wiersz broni + zapas → nowy wiersz broni + nowy zapas),
-      `purchasedSheetRow` dla amunicji, kreator (`creationShopVerdict`, `creationOutcome`)
-- [ ] Serwer: przeładowanie (broń, dodatek, granat), `NO_AMMO`, zakup amunicji (`economy:buy`,
-      `creation:buy`, `merchant:deal`), tura bota-towarzysza, przełącznik `ammoTracked` u MG
-- [ ] Klient: karta (pudełka w Wyposażeniu, „Licz amunicję” u MG, notatka starego pola),
-      pasek broni z zapasem, menu przeładowania, kreator (kaliber przy amunicji)
-- [ ] Łańcuch E2E: T3a kupuje amunicję w kreatorze; T4a/T4b — granaty z zapasu; T5a — MG daje
+      `purchasedSheetRow` dla amunicji, kreator (`creationShopVerdict`, `creationOutcome`) —
+      **46c1** (09.10): moduł `ammostock.ts`; pudełko z zakupu buduje `cpredPurchasedAmmoRow`
+      (osobno od `purchasedSheetRow`, bo potrzebuje typu broni i liczby paczek), koszyk kreatora
+      trzyma amunicję pod kluczem `wpis@typ broni`
+- [x] Serwer: przeładowanie (broń, dodatek, granat), `NO_AMMO`, zakup amunicji (`economy:buy`,
+      `creation:buy`, `merchant:deal`), tura bota-towarzysza, przełącznik `ammoTracked` u MG —
+      **46c1**, plus bramka łaty karty `AMMO_LOCKED` (decyzja 6) i rzut granatem z zapasu
+- [x] Klient: karta (pudełka w Wyposażeniu, „Licz amunicję” u MG, notatka starego pola),
+      pasek broni z zapasem, menu przeładowania, kreator (kaliber przy amunicji) — **46c1**,
+      plus kaliber i paczki w Kompendium („Kup” i „Dodaj za darmo”)
+- [ ] Łańcuch E2E (**46c2**): T3a kupuje amunicję w kreatorze; T4a/T4b — granaty z zapasu; T5a — MG daje
       pudełko przeciwpancernej zamiast tekstu; T5b — przeładowanie z zapasu; **odbudowa punktów
       kontrolnych pełnym przebiegiem od zera**
-- [ ] Dokumentacja: umowy `atak` (przeładowanie z zapasu) i `ekwipunek` (amunicja jako wiersz),
-      `decyzje-i-uproszczenia.md` (powrót naboi do zapasu, łuki, NPC „bez dna”)
+- [x] Dokumentacja: umowy `atak` (przeładowanie z zapasu) i `ekwipunek` (amunicja jako wiersz),
+      `decyzje-i-uproszczenia.md` (powrót naboi do zapasu, łuki, NPC „bez dna”) — **46c1**
 
 ### Testy jednostkowe 46c
 

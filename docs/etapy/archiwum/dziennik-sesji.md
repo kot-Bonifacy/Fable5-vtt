@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 08.10 (druga) — etap 46a1 „Handlarze: model, serwer, przełącznik katalogu”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 46a)”, pytać o niejasności. **Decyzje MG (start 46a):**
+podział na **46a1** (model, `shared`, serwer sklepu, przełącznik katalogu) i **46a2** (okno, dok,
+UI MG, E2E); odkupiona rzecz od razu na półce; trzy domyślne odpowiedzi z pliku etapu przyjęte;
+granat bez końca wpisany jako **#82** (B2 do triażu, naprawia 46c).
+
+**Zrobione:** migracja `merchants` (`Merchant`, `Campaign.catalogShopping`), `LedgerKind` `sale`.
+`shared`: `merchants.ts` (ustawienia, nakładki `lista:id`, otwartość, katalog), `exchange.ts`
+(`exchangeOptionsFor`), `mayEditTradeOffer`, `systems/cpred/merchant.ts` (ceny z dodatkami
+i zużyciem OB, półka, quote z targiem Fixera, `cpredMerchantDeal`), rodzaj `shop` karty czatu;
+pomocnicze funkcje przenoszenia z `inventory.ts` wyeksportowane (`cpredTakeRows`…). Serwer:
+`realtime/merchant.ts` (półka per widz, kolejka transakcji kampanii + `$transaction`,
+`QUOTE_CHANGED`, `SESSION_NOT_RUNNING` dla sklepu bez znacznika), `merchant-watch.ts` (odświeżenie
+półki z `emitCharacterUpsert`), `realtime/exchange.ts`, `trade:offer` w `invited`, `CATALOG_CLOSED`,
+biała lista, `state:sync`, eksport. Klient: dźwignia „Kup: wszędzie / u handlarzy”, „Kupisz
+u handlarza”, karta czatu `shop`. Testy: `merchant.test.ts` w `shared` (24) i na serwerze (16, z
+wyścigiem `Promise.all`), `exchange.test.ts`, `merchants.test.ts`, macierz izolacji z `Merchant`.
+
+**Weryfikacja:** `shared` 2317, serwer 1385, klient 321; ESLint, Prettier, `tsc` czyste. E2E
+`00-baseline` + `01-dym` 19/19 (1 pominięty), T2b + T9a 38/38. Oglądane skryptem
+`playwright` na kampanii-śmieciu „Oględziny 44d (MG-B)”: MG-B w **Chromium** (dźwignia), nowy
+gracz w **Firefoksie** („Kupujesz u handlarzy”, „Kupisz u handlarza”, po powrocie dźwigni od razu
+„Kup — 20 ed”); zrzuty w `.e2e/pomiary/46a1`. **W MG-B zostały dwa konta graczy „Kupiec…” z kartami
+„Kupiec z katalogu”** — śmieci, wolno skasować. Na :5173 MG stoi inna aplikacja („Tetro-Starcie”),
+więc klient VTT do oględzin chodził na :5174 z backendem `CLIENT_ORIGIN=http://localhost:5174`.
+
+**Następny krok:** 46a2 — `ExchangeWindow` i reszta UI z pliku etapu, potem E2E `t46a-`.
+
 ### Sesja 08.10 — etap 45 „Ruch i widzenie drużyny”
 
 **Zlecenie MG:** „nie wiem, co mam zrobić, żeby gracze mogli poruszać swoimi tokenami i widzieć się

@@ -21,26 +21,26 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **46c → 46b** (amunicja, pojemniki — następne); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); potem: triaż #79–#81, **refaktoryzacja**, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2 (ostatni zamknięty: 46a2, 2026-10-08) |
+| ⬜ otwarty   | **46c2 → 46b** (łańcuch E2E amunicji, pojemniki — następne); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); potem: triaż #79–#81, **refaktoryzacja**, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1 (ostatni zamknięty: 46c1, 2026-10-09) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 46a zamknięty 08.10 (46a1 + 46a2) — następna jest 46c (zapas amunicji), potem 46b
-(pojemniki), wszystko przed refaktoryzacją.** Projekt całości w `etap-46-wymiana-sklepy.md`.
-Jest **jedno okno „Wymiana”** (`components/exchange/`): wejście „🤝 Wymiana…” w menu figury
-(gracz i MG), „Wymiana…” na zakładce Ekwipunek, dok w rogu mapy („Sklepy (N)” — sklepy zdalne),
-przyciski sklepów na ekranie „Między sesjami” i podwójny klik gracza w handlarza albo ciało.
-Tryb wynika z drugiej strony: kolega/NPC — handel 38c (wybór od razu zaprasza, „Wyślij bez
-czekania” do drużyny), ciało — łup, handlarz — półka, koszyk, sprzedaż i jedno „Zapłać”, MG —
-„Dokąd” na dowolną kartę. Stare okna (`InventoryWindow`, `TradeWindow`, `TradeDock`) i zdarzenia
-`inventory:sources` / `trade:partners` są usunięte. Handlarza MG robi w karcie NPC-a (sekcja
-„Sklep” w Ekwipunku), otwiera i zamyka z menu figury. Decyzje MG z 08.10 na końcu „Zakres 46a”
-w pliku etapu; umowy w `ui` i `ekwipunek`, E2E `specs/46-wymiana/t46a-wymiana-sklepy` (17,
-z `po-T6`). **Granat rzucany przeładowuje się bez końca (#82)** — naprawia 46c.
+**Etap 46c1 zamknięty 09.10 — następna jest 46c2 (łańcuch E2E pod zapas amunicji), potem 46b
+(pojemniki), wszystko przed refaktoryzacją.** **Przeładowanie zużywa naboje z pudełek w ekwipunku**
+na kartach drużyny (gracz, towarzysz-bot); NPC i statysta MG są „bez dna”, dopóki MG nie zaznaczy
+„Licz amunicję” (Ekwipunek karty). Pudełko to wiersz wyposażenia z `ammo` (kaliber = pole
+„Amunicja” typu broni, więc granat pasuje do ręki i granatnika), kupuje się je paczkami (10 kul /
+1 granat) w Kompendium i w kreatorze z wyborem kalibru, handluje i łupi jak każdą rzecz. Granat
+ręczny bez magazynka bierze sztukę przy rzucie, zmiana rodzaju oddaje magazynek do zapasu, gracz
+naboi ręką tylko odejmuje (`AMMO_LOCKED`). **#82 naprawiony.** Decyzje MG z 09.10 w pliku etapu
+(sekcja 46c), umowy w `atak` i `ekwipunek`, odstępstwa w `decyzje-i-uproszczenia.md`. **Uwaga:
+łańcuch T4a–T5b (i pełny przebieg) jest do 46c2 czerwony** — karty z `po-T3` nie mają pudełek,
+więc przeładowania kończą się `NO_AMMO`. Jedno okno „Wymiana” z 46a (handel, łup, sklep, tryb MG,
+dok „Sklepy (N)”) — kontekst w `archiwum/od-czego-zaczac.md`, umowy w `ui` i `ekwipunek`.
 
 **Etap 45 „Ruch i widzenie drużyny” zamknięty 08.10 (zlecenie MG spoza planu, przed refaktoryzacją).**
 O ruchu graczy decyduje **przełącznik „Ruch graczy: Stop / Eksploracja / Swobodny” w górnym pasku
@@ -72,7 +72,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekta 08.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c → 46b → refaktoryzacja → T10 → 28 → T11.**
+**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -162,7 +162,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 08.10 (46a2): **2318** `shared`, **1386** serwer, **331** klient; E2E `t46a-` **17/17 trzy razy z rzędu** (plus kolejne zielone po poprawkach z oględzin), T4b od `po-T4a` 19/19 (zapisał na nowo `po-T4` — stan równoważny), T6a od `po-T5` 12/12 (1 `@llm` pominięty, bez bramki), `t7a-handel-kreator` 3/3, `00-baseline` + `01-dym` + `35-bezpieczenstwo` 89 zielonych + T9b krok 4 (szept między grupami — migotanie, powtórka T9b 15/15); pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **347** testów (+17 `t46a`). Wcześniej 08.10 (46a1): **2317** `shared`, **1385** serwer, **321** klient; E2E `00-baseline` + `01-dym` 19/19 (jeden pominięty bez gatewaya), T2b + T9a **38/38** (12,5 min, macierz ról, śmieci i izolacja z nowymi zdarzeniami); domyślny przebieg ma tyle testów co po 45 (46a1 nie dodała E2E). Wcześniej 08.10 (etap 45): **2276** `shared`, **1369** serwer, **321** klient; E2E `00-baseline` + `01-dym` + `45-druzyna` 27/27 (jeden pominięty bez gatewaya), potem `45-druzyna` 8/8 drugi raz; pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **330** testów (T3b, T5a i T9a ruszone tylko w miejscu blokady mapy, nieprzebiegnięte). Wcześniej 04.10 (jedenasta — T9b): E2E `t9b-` **15/15 dwa razy** (~5,5 min, atrapa gatewaya; przebieg pomiędzy padł tylko na filtrze konsoli — 500 pośrednika przy restarcie, poprawione); kodu aplikacji nie ruszano, więc jednostkowych i pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **322** testy. Wcześniej 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
+**Testy na koniec ostatniej sesji:** 09.10 (46c1): **2349** `shared`, **1395** serwer, **331** klient; E2E `t46c-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46c-amunicja`), `00-baseline` + `01-dym` + `t46a-` 36 zielonych (1 pominięty bez gatewaya); **łańcucha T4a–T5b i pełnego przebiegu nie puszczano — do 46c2 są czerwone z założenia**; domyślny przebieg ma teraz **356** testów (+9 `t46c`). Wcześniej 08.10 (46a2): **2318** `shared`, **1386** serwer, **331** klient; E2E `t46a-` **17/17 trzy razy z rzędu** (plus kolejne zielone po poprawkach z oględzin), T4b od `po-T4a` 19/19 (zapisał na nowo `po-T4` — stan równoważny), T6a od `po-T5` 12/12 (1 `@llm` pominięty, bez bramki), `t7a-handel-kreator` 3/3, `00-baseline` + `01-dym` + `35-bezpieczenstwo` 89 zielonych + T9b krok 4 (szept między grupami — migotanie, powtórka T9b 15/15); pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **347** testów (+17 `t46a`). Wcześniej 08.10 (46a1): **2317** `shared`, **1385** serwer, **321** klient; E2E `00-baseline` + `01-dym` 19/19 (jeden pominięty bez gatewaya), T2b + T9a **38/38** (12,5 min, macierz ról, śmieci i izolacja z nowymi zdarzeniami); domyślny przebieg ma tyle testów co po 45 (46a1 nie dodała E2E). Wcześniej 08.10 (etap 45): **2276** `shared`, **1369** serwer, **321** klient; E2E `00-baseline` + `01-dym` + `45-druzyna` 27/27 (jeden pominięty bez gatewaya), potem `45-druzyna` 8/8 drugi raz; pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **330** testów (T3b, T5a i T9a ruszone tylko w miejscu blokady mapy, nieprzebiegnięte). Wcześniej 04.10 (jedenasta — T9b): E2E `t9b-` **15/15 dwa razy** (~5,5 min, atrapa gatewaya; przebieg pomiędzy padł tylko na filtrze konsoli — 500 pośrednika przy restarcie, poprawione); kodu aplikacji nie ruszano, więc jednostkowych i pełnego przebiegu nie puszczano — domyślny przebieg ma teraz **322** testy. Wcześniej 04.10 (dziesiąta — 44d): **2267** `shared`, **1358** serwer, **321** klient; **pełny domyślny przebieg E2E 307/307** z gatewayem (42,5 min, nowy `01-dym/t44d-ai-wlasciciela` 4). Wcześniej 04.10 (dziewiąta — 44c): **2267** `shared`, **1347** serwer, **321** klient; pełny przebieg E2E **303 testy** (300 zielonych + migotanie T8c #72, powtórka zielona). Wcześniej 04.10 (ósma sesja — T9a): **pełny domyślny przebieg E2E 299/299** z gatewayem w 41,5 min (nowe `t9a-konta` 7 i `t9a-izolacja` 14), kodu aplikacji nie ruszano. Wcześniej **2264** w `shared`, **1337** na serwerze, **319** u klienta (04.10, siódma sesja — 44b; E2E `00-baseline` + `01-dym` + `35-bezpieczenstwo` 59/59, `t3a-` 15/15; wcześniej 03.10, szósta sesja — 44a; E2E: `00-baseline` + `01-dym` + `35-bezpieczenstwo` z nowym `t2d-konta-mg`, domyślny przebieg ma teraz **278** testów); **63** w gatewayu (03.10, czwarta sesja: `00-baseline` + `t8c-` 36/36 z gatewayem po poprawkach #66–#78; domyślny przebieg ma teraz **272** testy — pełnego od zera z T8c jeszcze nie puszczano; trzecia — T8c — `t8c-` 31/31; E2E drugiej sesji: **pełny domyślny przebieg 240/240 w 36,4 min** z gatewayem, wcześniej T5b 27/27 i T6a + T6b 31/31; dalej stan starszy:)
 **61** w gatewayu (01.10, `--cache-ram`), **240** E2E w domyślnym przebiegu (196 + 44 T8a z 03.10: `t8a-` 44/44 po poprawce #53; wcześniej 42/42 dwa razy, `@szybkie` 30/30) + **42** odporności T7a–T7c poza nim (02/03.10 po poprawkach #50–#52: `t7c-` 16/16 w 53,7 min z progami wycieku, `00-baseline` 5/5; 02.10 T7c: `t7c-mapa` 9/9, `t7c-pamiec` 4/4 w 43,7 min, `t7c-marsz-pod-figura` 2/2 z jednym `test.fail` #52, `00-baseline` 5/5; wcześniej 26 bez `test.fail`; po poprawkach #48/#49 `40-odpornosc` 26/26 w pełnej skali, 24,1 min) (02.10 T7b — `t7b-obciazenie` 3/3 w pełnej skali, `t7b-czat-baza` 5/5; 02.10 — `40-odpornosc` 17/17 dwa razy, T4a → T4b od `po-T3` 34/34; 01.10 T6c — pełny przebieg od zera 196/196 dwa razy z rzędu, 31,5 i 31,6 min; 01.10 — T2 od `po-T3` 41/41, T6b od `po-T6a` 18/18; 30.09 — T6b od `po-T6a` trzy razy, T6a → T6b od `po-T5` 30/30, T6a od `po-T5` 13/13 cztery razy, T2 od `po-T3` 41/41; 29.09 — T4a → T5b od `po-T3` 84/84; 27.09 system zabił procesy w tle z braku pamięci — przyczyną był bufor promptów llama-server) — sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół. ESLint, Prettier
 i `tsc --noEmit` czyste w trzech pakietach. **Nie puszczaj `pnpm format` na `POSTEP.md`,
 `POMYSLY.md` ani `00-przeglad.md`** — Prettier przelałby kilkaset wierszy szumu do commita.
@@ -191,11 +191,11 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 29   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 20   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 40   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 41   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 48   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 24   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 25   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
@@ -208,6 +208,45 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 09.10 — etap 46c1 „Zapas amunicji: model, serwer, klient”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. Plan z 08.10 stawiał 46c
+przed 46b — MG potwierdził. **Decyzje MG (start 46c, wszystkie zgodne z rekomendacją):** podział
+na **46c1** (kod, testy, `t46c-`) i **46c2** (łańcuch T3a–T5b, pełny przebieg); kaliber = rodzina
+z pola „Amunicja” typu broni; zwykły granat/rakieta 100 ed za sztukę, poziom 3; łuki nie liczą
+strzał; gracz naboi ręką tylko odejmuje; granat bez magazynka bierze sztukę z zapasu przy rzucie.
+Paczka z podręcznika (s. 344): 10 kul/śrutu/strzał, 1 granat/rakieta. Zapisane w pliku etapu.
+
+**Zrobione:** `shared/ammostock.ts` (tracking, kaliber, pudełko z zakupu, `cpredPutAmmo` /
+`cpredTakeAmmo`, `cpredReloadFromStock`, `cpredThrowsFromStock`, `cpredAmmoPatchRaises`,
+`cpredWeaponsWithoutStock`), `CpredGearRow.ammo`, `ammoTracked`, sklejanie w `stacksWith`, cena
+za nabój w `cpredRowCatalogPrice`, pasek ze `stockGear`, koszyk kreatora `wpis@typ broni`,
+menu bota bez „przeładuj” przy zerowym zapasie. Serwer: `realtime/ammo-stock.ts`, przeładowanie
+broni i dodatku z zapasu (`NO_AMMO` przed Akcją, jeden zapis broni + ekwipunku), rzut granatem
+z zapasu, `economy:buy` / `creation:buy` z kalibrem i paczkami (`AMMO_CALIBRE_REQUIRED`,
+`AMMO_MISMATCH`), bramka `AMMO_LOCKED` w `character:update`. Klient: karta („zapas N”, wybór
+naboju z liczbami i wyszarzeniem, „Licz amunicję” u MG, stara notatka „Amunicja (stary zapis)”),
+pasek („zapas N”), Kompendium (kaliber + paczki przy „Kup” i „Dodaj za darmo”), kreator (półka
+„Amunicja”, ostrzeżenie „Broń bez zapasu amunicji”). Dane: wpis `ammo.standard-explosive`
+(prywatny) i `ammo.sample-blast` (próbka), kalibry pistoletu, karabinu i ładunku w próbce.
+
+**Znalezione przy E2E:** karta wpisu amunicji w Kompendium nie miała sekcji zakupu (warunek
+z 16g „amunicji nie nosi się”) — zdjęty.
+
+**Weryfikacja:** `shared` 2349, serwer 1395 (nowy `ammo-stock.test.ts` 9, sześć starych plików
+przestawionych na `ammoTracked: false`, bo ich tematem nie jest zapas), klient 331; ESLint,
+Prettier, `tsc` czyste w czterech pakietach. E2E jak w „Testy na koniec ostatniej sesji”.
+Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w Firefoksie** (karta Iskry „zapas 16”,
+pasek „7/8 · zapas 16”), Marek w Chromium (pas broni, wybór naboju, Kompendium), MG w Chromium
+(„Licz amunicję”, podsumowanie kreatora).
+
+**Następny krok — 46c2:** T3a kupuje amunicję w kreatorze (Kowal: B.C. Pistolet, „Karabinowa”
+do Ronina — półka poziomu 1), T4a/T4b — granaty z zapasu (MG daje pudełko „Granaty”), T5a — MG
+daje pudełko przeciwpancernej zamiast tekstu w „Amunicja (zapas)”, T5b — przeładowanie z zapasu;
+potem pełny przebieg od zera z odbudową `po-T3`…`po-T6` (własne okno konsoli, gateway u MG),
+E2E 46c.9 (`@llm`, towarzysz bez amunicji) i retest #82. `t7a-handel-kreator` (poza domyślnym
+przebiegiem) nie był puszczany.
 
 ### Sesja 08.10 (trzecia) — etap 46a2 „Jedno okno »Wymiana«, dok sklepów, UI MG”
 
@@ -240,33 +279,3 @@ handlarzu).
 
 **Następny krok:** 46c (zapas amunicji) — przed kodem sprawdzić w kompendium, jak wpis amunicji
 niesie cenę i ilość w paczce; po 46c pełny przebieg od zera z odbudową punktów kontrolnych.
-
-### Sesja 08.10 (druga) — etap 46a1 „Handlarze: model, serwer, przełącznik katalogu”
-
-**Zlecenie MG:** „kontynuuj projekt (etap 46a)”, pytać o niejasności. **Decyzje MG (start 46a):**
-podział na **46a1** (model, `shared`, serwer sklepu, przełącznik katalogu) i **46a2** (okno, dok,
-UI MG, E2E); odkupiona rzecz od razu na półce; trzy domyślne odpowiedzi z pliku etapu przyjęte;
-granat bez końca wpisany jako **#82** (B2 do triażu, naprawia 46c).
-
-**Zrobione:** migracja `merchants` (`Merchant`, `Campaign.catalogShopping`), `LedgerKind` `sale`.
-`shared`: `merchants.ts` (ustawienia, nakładki `lista:id`, otwartość, katalog), `exchange.ts`
-(`exchangeOptionsFor`), `mayEditTradeOffer`, `systems/cpred/merchant.ts` (ceny z dodatkami
-i zużyciem OB, półka, quote z targiem Fixera, `cpredMerchantDeal`), rodzaj `shop` karty czatu;
-pomocnicze funkcje przenoszenia z `inventory.ts` wyeksportowane (`cpredTakeRows`…). Serwer:
-`realtime/merchant.ts` (półka per widz, kolejka transakcji kampanii + `$transaction`,
-`QUOTE_CHANGED`, `SESSION_NOT_RUNNING` dla sklepu bez znacznika), `merchant-watch.ts` (odświeżenie
-półki z `emitCharacterUpsert`), `realtime/exchange.ts`, `trade:offer` w `invited`, `CATALOG_CLOSED`,
-biała lista, `state:sync`, eksport. Klient: dźwignia „Kup: wszędzie / u handlarzy”, „Kupisz
-u handlarza”, karta czatu `shop`. Testy: `merchant.test.ts` w `shared` (24) i na serwerze (16, z
-wyścigiem `Promise.all`), `exchange.test.ts`, `merchants.test.ts`, macierz izolacji z `Merchant`.
-
-**Weryfikacja:** `shared` 2317, serwer 1385, klient 321; ESLint, Prettier, `tsc` czyste. E2E
-`00-baseline` + `01-dym` 19/19 (1 pominięty), T2b + T9a 38/38. Oglądane skryptem
-`playwright` na kampanii-śmieciu „Oględziny 44d (MG-B)”: MG-B w **Chromium** (dźwignia), nowy
-gracz w **Firefoksie** („Kupujesz u handlarzy”, „Kupisz u handlarza”, po powrocie dźwigni od razu
-„Kup — 20 ed”); zrzuty w `.e2e/pomiary/46a1`. **W MG-B zostały dwa konta graczy „Kupiec…” z kartami
-„Kupiec z katalogu”** — śmieci, wolno skasować. Na :5173 MG stoi inna aplikacja („Tetro-Starcie”),
-więc klient VTT do oględzin chodził na :5174 z backendem `CLIENT_ORIGIN=http://localhost:5174`.
-
-**Następny krok:** 46a2 — `ExchangeWindow` i reszta UI z pliku etapu, potem E2E `t46a-`.
-
