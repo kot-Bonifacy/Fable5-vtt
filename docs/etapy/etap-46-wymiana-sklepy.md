@@ -468,6 +468,19 @@ z rekomendacją:
    — `NO_AMMO`), bo granatem się rzuca, a nie przeładowuje. Wpis z magazynkiem (T4a: „Granat
    odłamkowy” 2/2) przeładowuje się z zapasu jak każda broń.
 
+### Decyzje MG z 09.10.2026 (start 46c2)
+
+1. **T3a: Kowal kupuje w kreatorze 2 paczki zwykłej do B.C. Pistoletu** (20 szt., 20 ed →
+   230 ed na karcie). Bez karabinowej „na zapas” pod Ronina.
+2. **Retest #82 w T4b po walce:** przeładowanie granatu (1/2) bez zapasu → `NO_AMMO`; MG daje
+   pudełko 1 granatu z Kompendium („Dodaj za darmo”), drugie przeładowanie → 2/2, pudełko znika.
+3. **Gateway na wezwanie:** łańcuch najpierw kawałkami bez modelu, pełny przebieg od zera
+   z gatewayem uruchomionym przez MG w jego terminalu.
+
+Wynikowe przepięcia (bez osobnej decyzji): T5a — MG daje 2 paczki przeciwpancernej (20 szt.)
+z Kompendium zamiast tekstu w „Amunicja (zapas)”; T5b 5.9 — zmiana na przeciwpancerną oddaje
+7 zwykłych do zapasu i bierze 8 z pudełka; 46c.9 — towarzysz-bot „Kumpel” w `t46c-amunicja`.
+
 ### Model
 
 **Amunicja to wiersz wyposażenia, nie nowa lista.** Dzięki temu przekazanie, łup, handel, półka
@@ -530,9 +543,11 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 - [x] Klient: karta (pudełka w Wyposażeniu, „Licz amunicję” u MG, notatka starego pola),
       pasek broni z zapasem, menu przeładowania, kreator (kaliber przy amunicji) — **46c1**,
       plus kaliber i paczki w Kompendium („Kup” i „Dodaj za darmo”)
-- [ ] Łańcuch E2E (**46c2**): T3a kupuje amunicję w kreatorze; T4a/T4b — granaty z zapasu; T5a — MG daje
+- [x] Łańcuch E2E (**46c2**): T3a kupuje amunicję w kreatorze; T4a/T4b — granaty z zapasu; T5a — MG daje
       pudełko przeciwpancernej zamiast tekstu; T5b — przeładowanie z zapasu; **odbudowa punktów
-      kontrolnych pełnym przebiegiem od zera**
+      kontrolnych pełnym przebiegiem od zera** — **46c2** (09.10): retest #82 w T4b po walce,
+      46c.9 (`@llm`, towarzysz „Kumpel”) w `t46c-amunicja`, wspólny `fixtures/kompendium.ts`;
+      przy okazji T3b i T5b przepięte na „oczy drużyny” z etapu 45
 - [x] Dokumentacja: umowy `atak` (przeładowanie z zapasu) i `ekwipunek` (amunicja jako wiersz),
       `decyzje-i-uproszczenia.md` (powrót naboi do zapasu, łuki, NPC „bez dna”) — **46c1**
 
@@ -563,12 +578,14 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 
 ### Kryteria ukończenia 46c
 
-- [ ] Przeładowanie zużywa zapas na kartach drużyny; NPC „bez dna”, dopóki MG nie włączy
-- [ ] Granatów nie ma nieskończenie wiele
-- [ ] Amunicję kupuje się w kreatorze, w Kompendium i u handlarza, przekazuje i łupi
-- [ ] Testy jednostkowe, lint, `tsc` czyste; `t46c-` zielony; **pełny domyślny przebieg od zera
-      zielony** z odbudowanymi punktami kontrolnymi
-- [ ] Oględziny: Firefox (gracz: pasek broni, menu przeładowania, karta), Chromium (MG)
+- [x] Przeładowanie zużywa zapas na kartach drużyny; NPC „bez dna”, dopóki MG nie włączy
+- [x] Granatów nie ma nieskończenie wiele
+- [x] Amunicję kupuje się w kreatorze, w Kompendium i u handlarza, przekazuje i łupi
+- [x] Testy jednostkowe, lint, `tsc` czyste; `t46c-` zielony; **pełny domyślny przebieg od zera
+      zielony** z odbudowanymi punktami kontrolnymi (09.10: 354/358 — 46c.9 ze starą asercją
+      i znane migotanie T8c #72, oba zielone w powtórce od nowego `po-T6`)
+- [x] Oględziny: Firefox (gracz: pasek broni, menu przeładowania, karta), Chromium (MG) — zrzuty
+      z przebiegów 46c1 i 46c2 (`.e2e/pomiary/46c1`)
 
 ---
 

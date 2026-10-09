@@ -8,6 +8,21 @@ po co to powstało, co było przed, czego świadomie nie zrobiono.
 
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
+## Wyprowadzone 09.10.2026 — etap 46c1
+
+**Etap 46c1 zamknięty 09.10 — następna jest 46c2 (łańcuch E2E pod zapas amunicji), potem 46b
+(pojemniki), wszystko przed refaktoryzacją.** **Przeładowanie zużywa naboje z pudełek w ekwipunku**
+na kartach drużyny (gracz, towarzysz-bot); NPC i statysta MG są „bez dna”, dopóki MG nie zaznaczy
+„Licz amunicję” (Ekwipunek karty). Pudełko to wiersz wyposażenia z `ammo` (kaliber = pole
+„Amunicja” typu broni, więc granat pasuje do ręki i granatnika), kupuje się je paczkami (10 kul /
+1 granat) w Kompendium i w kreatorze z wyborem kalibru, handluje i łupi jak każdą rzecz. Granat
+ręczny bez magazynka bierze sztukę przy rzucie, zmiana rodzaju oddaje magazynek do zapasu, gracz
+naboi ręką tylko odejmuje (`AMMO_LOCKED`). **#82 naprawiony.** Decyzje MG z 09.10 w pliku etapu
+(sekcja 46c), umowy w `atak` i `ekwipunek`, odstępstwa w `decyzje-i-uproszczenia.md`. **Uwaga:
+łańcuch T4a–T5b (i pełny przebieg) jest do 46c2 czerwony** — karty z `po-T3` nie mają pudełek,
+więc przeładowania kończą się `NO_AMMO`. Jedno okno „Wymiana” z 46a (handel, łup, sklep, tryb MG,
+dok „Sklepy (N)”) — kontekst w `archiwum/od-czego-zaczac.md`, umowy w `ui` i `ekwipunek`.
+
 ## Wyprowadzone 09.10.2026 — etap 46a (46a1 + 46a2)
 
 **Etap 46a zamknięty 08.10 (46a1 + 46a2) — następna jest 46c (zapas amunicji), potem 46b

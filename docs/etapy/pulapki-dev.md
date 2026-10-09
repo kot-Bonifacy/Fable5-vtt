@@ -1695,6 +1695,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **`Start-Process cmd -ArgumentList '/c','"C:\…\run.cmd"',…` nie uruchamia niczego i nie zostawia śladu (09.10, etap 46c2)** — `cmd /c` z cudzysłowem na początku i kolejnymi cudzysłowami w argumentach zdejmuje pierwszy i ostatni cudzysłów całej linii, więc ścieżka skryptu się rozjeżdża, okno znika, a log nie powstaje. Ścieżka scratchpadu nie ma spacji — podawaj ją **bez** cudzysłowu, cudzysłów tylko wokół listy speców (`start.ps1` w scratchpadzie: `-ArgumentList @('/c', "$dir\run.cmd", $Name, "`"$Specs`"")`). Sprawdź `head` logu po 10 s, zanim uzbroisz monitor.
 - **`toBeDisabled()` / `toBeEnabled()` Playwrighta nie widzi `disabled` na `<option>` (08.10, etap 46a2)** — opcja z atrybutem `disabled` przechodzi jako „enabled”, więc `toBeEnabled()` niczego nie sprawdza, a `toBeDisabled()` pada. Pytaj o atrybut: `toHaveAttribute('disabled', '')`. Wybór opcji po fragmencie etykiety — przez `getAttribute('value')` i `selectOption(value)`; `selectOption({ label })` nie przyjmuje wyrażenia regularnego.
 - **Skrypt Pythona na Windows zapisuje plik z CRLF (08.10, etap 46a2)** — `open(p, 'w')` w trybie tekstowym zamienia `
 ` na `

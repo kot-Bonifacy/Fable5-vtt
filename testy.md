@@ -90,6 +90,7 @@ idą **przed** refaktoryzacją, jako etap 44 w czterech częściach (`docs/etapy
 | T5: Kowal i amunicja   | Kowal wchodzi **ranny, jak skończył T4b** — 6k6 strefy dobiera skrypt kości, żeby przeżył; MG daje mu z katalogu **amunicję przeciwpancerną** do B.C. pistoletu (przeładowanie w 5.9); Iskra strzela zdobycznym pistoletem (decyzja MG z 27.09, sesja T5a) |
 | T5: Strażnik i wieżyczka | **nowy statysta „Strażnik” z nowym botem** (Propozycja); wieżyczka strzela sama na wejście w strefę, a po przejęciu węzła Ola **strzela nią w Strażnika, potem ją wyłącza** (decyzja MG z 27.09, sesja T5a) |
 | przebieg T5b           | Ola **derezuje Kruka Mieczem** (Kruk atakuje ją raz — darmowym atakiem przy wykryciu); walka kończy się, gdy **Strażnik pada od strzału przeciwpancernego Kowala** — Test Przeżywalności na pasie MG, potem ✕ (decyzje MG z 27.09, sesja T5b) |
+| T3–T5: zapas amunicji  | od etapu 46c2 łańcuch liczy naboje z pudełek: **Kowal kupuje w kreatorze 2 paczki zwykłej do B.C. Pistoletu** (20 szt., 230 ed na karcie), **retest #82 po walce T4b** (przeładowanie granatu bez zapasu → `NO_AMMO`, MG daje pudełko 1 granatu z Kompendium, przeładowanie → 2/2), **T5a: MG daje 2 paczki przeciwpancernej z Kompendium** zamiast tekstu w „Amunicja (zapas)”, T5b 5.9: zmiana rodzaju oddaje 7 zwykłych do zapasu i bierze 8 przeciwpancernych (decyzje MG z 09.10, sesja 46c2) |
 | triaż #14              | gracz usuwający własną postać przyjętą do gry = **B1** (decyzja MG z 26.09, sesja T2) |
 | gniazdo po wylogowaniu | otwarte gniazdo żyje po wylogowaniu i wygaśnięciu sesji = **B2 + zadanie Z** dla „Kont MG” (decyzja MG z 26.09, sesja T2) |
 | unieważnienie zaproszenia | zamyka **tylko nowe wejścia** — nie wyrzuca graczy, którzy już weszli; odcięcie gracza to osobna funkcja (decyzja MG z 26.09, sesja T2) |
@@ -403,8 +404,8 @@ bez Uniku) pod narożnikiem magazynu oraz „Strażnika” (30 PW, C. pistolet) 
 buduje w edytorze architekturę „Ochrona bramy” (Hasło PT 8 → Plik PT 6 → Czarny LOD „Kruk” →
 Węzeł kontrolny PT 10 z urządzeniem „Wieżyczka nad placem” → Demon „Diablik”), wiąże z nią ukryte
 gniazdo, rysuje dwie ukryte strefy (ostrzał wieżyczki ze stanowiskiem i podłogę elektryczną
-między bramą a budką), zakłada bota „Strażnik” (Propozycja, w scenie „Brama”) i dopisuje
-Kowalowi amunicję przeciwpancerną. Po aktywacji **MG stawia figury graczy ręką** (⊕ „Postaw na
+między bramą a budką), zakłada bota „Strażnik” (Propozycja, w scenie „Brama”) i daje
+Kowalowi amunicję przeciwpancerną (od 46c2 — pudełko 2 × 10 z Kompendium). Po aktywacji **MG stawia figury graczy ręką** (⊕ „Postaw na
 scenie” — Kowal i Iskra mają figury w „Knajpie”, więc #9 ich nie przenosi), odsłania drogę z linią
 bramy i pas placu; **Marek otwiera bramę swoją klamką** (od poprawki #30; wcześniej robił to MG)
 i wchodzi na plac, Ola Skanerem znajduje gniazdo, podłącza się, łamie hasło i rozpoznaje Plik.

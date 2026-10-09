@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 08.10 (trzecia) — etap 46a2 „Jedno okno »Wymiana«, dok sklepów, UI MG”
+
+**Zlecenie MG:** „kontynuuj projekt (etap 46a2)”, pytać o niejasności. **Decyzje MG (start
+46a2, wszystkie zgodne z rekomendacją):** wybór drugiej strony od razu zaprasza; handel zostaje
+w doku, gdy okno patrzy gdzie indziej; podwójny klik gracza tylko u handlarza i przy ciele;
+całość w jednej sesji. Zapisane w pliku etapu.
+
+**Zrobione:** klient `components/exchange/` — `ExchangeWindow` (nagłówek „moja karta ⇄ druga
+strona”, wybór karty przy kilku własnych), panele `TradePane` (z „Wyślij bez czekania”),
+`LootPane`, `MerchantPane` (odkup przy wierszu, sprzedaż + koszyk, stopka z `cpredMerchantQuote`
+przez `exchange-quote.ts`), `GmPane`; `ExchangeDock` („Sklepy (N)”), `MerchantSection` w karcie
+NPC-a, wejścia w `open.ts`, `exchangeStore` (zastąpił `inventoryStore` i `tradeStore`), menu
+figury „🤝 Wymiana…” i „🛒 Otwórz / Zamknij sklep”, podwójny klik gracza, przyciski sklepów
+i dok na „Między sesjami”, `refreshMerchants` po `state:sync` i `session:changed`. Serwer:
+usunięte `inventory:sources` i `trade:partners` (testy przepięte na `exchange:counterparts`),
+`team` na stronie handlu (`isTeamCard`), `open` w liście sklepów MG, dok odświeża zapis karty
+handlarza. E2E: nowy `specs/46-wymiana/t46a-wymiana-sklepy` (17 kroków, scenariusz dopasowany
+do ekwipunku `po-T6`), przepięte T4b 4.9, T6a 6.1/6.2, `t7a-handel-kreator`, T2c.
+
+**Znalezione i naprawione przy E2E/oględzinach:** biała strona gracza po zakupie ostatniej sztuki
+(`merchant:update` przed ackiem — pułapka w `ui`); okno zostawione po handlu zasłaniało kartę
+(koniec handlu zamyka okno); półka zabrana przez koniec sesji wisiała na „Wczytuję półkę…”.
+
+**Weryfikacja:** `shared` 2318, serwer 1386, klient 331; ESLint, Prettier, `tsc` czyste w czterech
+pakietach. E2E jak w „Testy na koniec ostatniej sesji”. Oglądane zrzutami z przebiegu
+(`.e2e/pomiary/46a2`): **Ola w Firefoksie** (handel, sklep z koszykiem, „Między sesjami”),
+MG w Chromium (tryb MG, sekcja „Sklep”), Marek w Chromium (zaproszenie, łup, sklep, dok, łup po
+handlarzu).
+
+**Następny krok:** 46c (zapas amunicji) — przed kodem sprawdzić w kompendium, jak wpis amunicji
+niesie cenę i ilość w paczce; po 46c pełny przebieg od zera z odbudową punktów kontrolnych.
+
 ### Sesja 08.10 (druga) — etap 46a1 „Handlarze: model, serwer, przełącznik katalogu”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 46a)”, pytać o niejasności. **Decyzje MG (start 46a):**

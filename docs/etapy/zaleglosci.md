@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**09.10.2026 — menu tury bota proponuje „podejście” do figury, przy której bot już stoi (46c2, E2E 46c.9).**
+Towarzysz „Kumpel” stał obok Pasera z pustym pistoletem; model wybrał „Podejście do: Paser”, serwer odmówił
+`ALREADY_IN_PLACE` („Już tam stoisz…”), a w poprawce bot spasował — tura stracona, choć mógł ciąć bronią białą.
+`availableBotCombatActions` (`shared/bots/combat.ts`) wpuszcza „podejście”, gdy tylko są figury i metry; nie
+odsiewa celów w zasięgu ręki. Do triażu MG: przyciąć menu celów podejścia (figury dalej niż sąsiednie pole).
+Przy okazji: `runStep` zgłasza `outcome: refused` także wtedy, gdy druga decyzja po odmowie to pas.
+
 **04.10.2026 — migotanie T8c „#72 Dodaj tabelę” (pełny przebieg po 44c).** Serwer potwierdził
 `table:upsert` po 13 ms, a formularz nie zamknął się w 3 s; chwilę wcześniej leciały kości 3D
 jawnego losowania tabeli. Prawdopodobnie potwierdzenie czeka w `rollPresentation.deliver` na koniec
