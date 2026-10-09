@@ -116,4 +116,5 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 46a2   | Jedno okno „Wymiana”, dok sklepów, UI MG, E2E 46a | ✅     | 2026-10-08          |
 | 46c1   | Zapas amunicji: model, serwer, klient, E2E 46c | ✅     | 2026-10-09          |
 | 46c2   | Zapas amunicji: łańcuch T3a–T5b, pełny przebieg | ✅     | 2026-10-09          |
-| 46b    | Pojemniki na scenie i stos z upuszczenia      | ⬜     |                     |
+| 46b1   | Pojemniki: model, serwer, testy jednostkowe   | ✅     | 2026-10-09          |
+| 46b2   | Pojemniki: klient, E2E t46b, oględziny        | ⬜     |                     |

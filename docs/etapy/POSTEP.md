@@ -21,16 +21,29 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **46b** (pojemniki — następny); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); potem: triaż #79–#81, **refaktoryzacja**, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2 (ostatni zamknięty: 46c2, 2026-10-09) |
+| ⬜ otwarty   | **46b2** (pojemniki: klient, E2E — następny); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); potem: triaż #79–#81, **refaktoryzacja**, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1 (ostatni zamknięty: 46b1, 2026-10-09) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 46c „Zapas amunicji” zamknięty 09.10 (46c1 + 46c2) — następny jest 46b (pojemniki),
-potem refaktoryzacja.** **Przeładowanie zużywa naboje z pudełek w ekwipunku** na kartach drużyny
+**Etap 46b „Pojemniki” — 46b1 zrobiona 09.10, następna 46b2 (klient, E2E `t46b-`, oględziny),
+potem refaktoryzacja.** Serwer już umie: skrzynia, bagażnik i schowek to karty NPC z polem
+`container` i figurą (`container:create` MG, żeton `/public/tokens/containers/*.svg` — **plików
+jeszcze nie ma**, robi je 46b2 z game-icons), zamek „otwarty / zamknięty / na zamek” z PT
+i Umiejętnością (`container:config`), „Otwórz” kliknięciem, kluczem (wiersz z `key`) albo
+**wezwaniem do Testu** (`container:open` → karta wezwania → rzut rozlicza `settleLockTest`; jedna
+próba na postać, „Pozwól spróbować znowu” = `resetTries`), wkładanie (`container:put`),
+wyjmowanie (`inventory:take`), stos z upuszczenia (`inventory:drop`), który znika pusty.
+Zawartość jedzie graczowi tylko otwartego pojemnika (`exchange:counterparts`); stan zamka
+publicznie na `TokenView.container`, bez paska PW. Pojemnik wypada z walki, celów, wybuchów, tury
+bota, oględzin, rozliczenia miesiąca i listy przelewów (`containerTokenIds` / `sheetIsContainer`).
+Decyzje MG ze startu 46b (narzędzie w pasku mapy, grupa „Pojemniki” w „Postaciach”, jedna próba
+na postać, sylwetki game-icons) i odstępstwa 46b1 — w pliku etapu; umowy w `ekwipunek` i `kosci`.
+
+**Etap 46c „Zapas amunicji” zamknięty 09.10 (46c1 + 46c2).** **Przeładowanie zużywa naboje z pudełek w ekwipunku** na kartach drużyny
 (gracz, towarzysz-bot); NPC i statysta MG są „bez dna”, dopóki MG nie zaznaczy „Licz amunicję”.
 Pudełko to wiersz wyposażenia z `ammo` (kaliber = pole „Amunicja” typu broni), kupowany paczkami
 (10 kul / 1 granat) w Kompendium, w kreatorze i u handlarza; granat ręczny bez magazynka bierze
@@ -73,7 +86,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b → refaktoryzacja → T10 → 28 → T11.**
+**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -163,7 +176,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -195,13 +208,13 @@ a nie do tego pliku.
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 29   | 15      |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 20   | 2       |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 21   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 41   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 48   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 25   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 26   | 2       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
@@ -214,6 +227,43 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 09.10 (trzecia) — etap 46b1 „Pojemniki: model, serwer, testy jednostkowe”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. **Decyzje MG (start 46b,
+wszystkie zgodne z rekomendacją):** podział na 46b1 (`shared`, serwer, testy jednostkowe) i 46b2
+(klient, E2E, oględziny); pojemnik stawia **narzędzie w pasku mapy** (menu sceny pod prawym
+klikiem nie istnieje), karty pojemników w „Postaciach” MG w osobnej grupie „Pojemniki”; Test
+zamka — **jedna próba na postać**, MG zeruje; żetony — sylwetki game-icons na papierowym krążku.
+Zapisane w pliku etapu.
+
+**Zrobione:** `shared/containers.ts` (rdzeń: `ContainerLock`, rodzaje i ich domyślne nazwy oraz
+żetony, `TokenView.container`), `ExchangeFacts.container` → tryb `container` (u MG też `gm`),
+typy zdarzeń w `protocol.ts`; `systems/cpred/container.ts` (`CpredContainer`, walidacja,
+`isContainerCard`, `isContainerCardJson`, `cpredContainerOpening`, `cpredLockTestSettled`)
+i `containercard.ts` (karta, klucz, pusty stos); `CpredGearRow.key`; pole `container` na karcie.
+Serwer: `realtime/containers.ts` (`container:create`, `container:config` z „Wydaj klucz”
+i `resetTries`, `container:open` z wezwaniem do Testu, `container:put`, `inventory:drop`,
+`sweepEmptyPile`, `containerTokenIds`), `inventory:take` z otwartego pojemnika, sprzątanie stosu
+po łupie, przekazaniu MG i przyjętej propozycji, `settleLockTest` w rzucie na wezwanie,
+`createCheckCall` z `containerTokenId` po białej liście, `character:update` odmawia `container`
+wszystkim, `exchange:counterparts` (zawartość tylko otwartego, stan zamka, próba, klucz, mgła),
+pomijanie pojemników w walce, celu ataku i Zwarcia, wybuchu, ogniu zaporowym, turze bota,
+oględzinach, rozliczeniu miesiąca, przelewach, `trade:invite` i `merchant:config`;
+`removeCardWithFigures` w `tokens.ts`; macierz izolacji kampanii z nowymi zdarzeniami.
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Bez klienta i bez oględzin
+w przeglądarce (to 46b2). Testem jednostkowym nie objęte: wybuch, ogień zaporowy i tura bota
+z pojemnikiem na scenie (jedno pytanie `containerTokenIds`, sprawdzone w walce i celu ataku).
+
+**Następny krok — 46b2:** pliki żetonów (`data/public/tokens/containers/`, game-icons
+z `ATTRIBUTION.md`), tryb `container` w `ExchangeWindow` (zamek, „Otwórz”, „Otwórz zamek”
+z wyborem Umiejętności, „Weź”, „Zabierz wszystko”, „→”), narzędzie „📦 Pojemnik” w pasku mapy,
+karta pojemnika u MG (zawartość, zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować
+znowu”), grupa „Pojemniki” w „Postaciach”, podwójny klik gracza, przeciągnięcie wiersza z karty
+na mapę (`inventory:drop`), teksty nowych kodów odmowy w kliencie, pomijanie pojemników
+w klienckich listach (inicjatywa „wszystkie na scenie”, celowanie), E2E `t46b-` 46b.1–46b.7
+(kanarek zawartości) i oględziny Firefox + Chromium.
 
 ### Sesja 09.10 (druga) — etap 46c2 „Zapas amunicji: łańcuch T3a–T5b, pełny przebieg”
 
@@ -249,41 +299,3 @@ w `packages/e2e`. Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w 
 **Następny krok — 46b (pojemniki).** Przed kodem przeczytać sekcję 46b w pliku etapu i umowy
 `ekwipunek`; zaległość z menu bota czeka na triaż MG.
 
-### Sesja 09.10 — etap 46c1 „Zapas amunicji: model, serwer, klient”
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. Plan z 08.10 stawiał 46c
-przed 46b — MG potwierdził. **Decyzje MG (start 46c, wszystkie zgodne z rekomendacją):** podział
-na **46c1** (kod, testy, `t46c-`) i **46c2** (łańcuch T3a–T5b, pełny przebieg); kaliber = rodzina
-z pola „Amunicja” typu broni; zwykły granat/rakieta 100 ed za sztukę, poziom 3; łuki nie liczą
-strzał; gracz naboi ręką tylko odejmuje; granat bez magazynka bierze sztukę z zapasu przy rzucie.
-Paczka z podręcznika (s. 344): 10 kul/śrutu/strzał, 1 granat/rakieta. Zapisane w pliku etapu.
-
-**Zrobione:** `shared/ammostock.ts` (tracking, kaliber, pudełko z zakupu, `cpredPutAmmo` /
-`cpredTakeAmmo`, `cpredReloadFromStock`, `cpredThrowsFromStock`, `cpredAmmoPatchRaises`,
-`cpredWeaponsWithoutStock`), `CpredGearRow.ammo`, `ammoTracked`, sklejanie w `stacksWith`, cena
-za nabój w `cpredRowCatalogPrice`, pasek ze `stockGear`, koszyk kreatora `wpis@typ broni`,
-menu bota bez „przeładuj” przy zerowym zapasie. Serwer: `realtime/ammo-stock.ts`, przeładowanie
-broni i dodatku z zapasu (`NO_AMMO` przed Akcją, jeden zapis broni + ekwipunku), rzut granatem
-z zapasu, `economy:buy` / `creation:buy` z kalibrem i paczkami (`AMMO_CALIBRE_REQUIRED`,
-`AMMO_MISMATCH`), bramka `AMMO_LOCKED` w `character:update`. Klient: karta („zapas N”, wybór
-naboju z liczbami i wyszarzeniem, „Licz amunicję” u MG, stara notatka „Amunicja (stary zapis)”),
-pasek („zapas N”), Kompendium (kaliber + paczki przy „Kup” i „Dodaj za darmo”), kreator (półka
-„Amunicja”, ostrzeżenie „Broń bez zapasu amunicji”). Dane: wpis `ammo.standard-explosive`
-(prywatny) i `ammo.sample-blast` (próbka), kalibry pistoletu, karabinu i ładunku w próbce.
-
-**Znalezione przy E2E:** karta wpisu amunicji w Kompendium nie miała sekcji zakupu (warunek
-z 16g „amunicji nie nosi się”) — zdjęty.
-
-**Weryfikacja:** `shared` 2349, serwer 1395 (nowy `ammo-stock.test.ts` 9, sześć starych plików
-przestawionych na `ammoTracked: false`, bo ich tematem nie jest zapas), klient 331; ESLint,
-Prettier, `tsc` czyste w czterech pakietach. E2E jak w „Testy na koniec ostatniej sesji”.
-Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w Firefoksie** (karta Iskry „zapas 16”,
-pasek „7/8 · zapas 16”), Marek w Chromium (pas broni, wybór naboju, Kompendium), MG w Chromium
-(„Licz amunicję”, podsumowanie kreatora).
-
-**Następny krok — 46c2:** T3a kupuje amunicję w kreatorze (Kowal: B.C. Pistolet, „Karabinowa”
-do Ronina — półka poziomu 1), T4a/T4b — granaty z zapasu (MG daje pudełko „Granaty”), T5a — MG
-daje pudełko przeciwpancernej zamiast tekstu w „Amunicja (zapas)”, T5b — przeładowanie z zapasu;
-potem pełny przebieg od zera z odbudową `po-T3`…`po-T6` (własne okno konsoli, gateway u MG),
-E2E 46c.9 (`@llm`, towarzysz bez amunicji) i retest #82. `t7a-handel-kreator` (poza domyślnym
-przebiegiem) nie był puszczany.

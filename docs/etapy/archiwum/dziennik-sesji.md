@@ -1,5 +1,44 @@
 # Dziennik sesji — archiwum
 
+### Sesja 09.10 — etap 46c1 „Zapas amunicji: model, serwer, klient”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. Plan z 08.10 stawiał 46c
+przed 46b — MG potwierdził. **Decyzje MG (start 46c, wszystkie zgodne z rekomendacją):** podział
+na **46c1** (kod, testy, `t46c-`) i **46c2** (łańcuch T3a–T5b, pełny przebieg); kaliber = rodzina
+z pola „Amunicja” typu broni; zwykły granat/rakieta 100 ed za sztukę, poziom 3; łuki nie liczą
+strzał; gracz naboi ręką tylko odejmuje; granat bez magazynka bierze sztukę z zapasu przy rzucie.
+Paczka z podręcznika (s. 344): 10 kul/śrutu/strzał, 1 granat/rakieta. Zapisane w pliku etapu.
+
+**Zrobione:** `shared/ammostock.ts` (tracking, kaliber, pudełko z zakupu, `cpredPutAmmo` /
+`cpredTakeAmmo`, `cpredReloadFromStock`, `cpredThrowsFromStock`, `cpredAmmoPatchRaises`,
+`cpredWeaponsWithoutStock`), `CpredGearRow.ammo`, `ammoTracked`, sklejanie w `stacksWith`, cena
+za nabój w `cpredRowCatalogPrice`, pasek ze `stockGear`, koszyk kreatora `wpis@typ broni`,
+menu bota bez „przeładuj” przy zerowym zapasie. Serwer: `realtime/ammo-stock.ts`, przeładowanie
+broni i dodatku z zapasu (`NO_AMMO` przed Akcją, jeden zapis broni + ekwipunku), rzut granatem
+z zapasu, `economy:buy` / `creation:buy` z kalibrem i paczkami (`AMMO_CALIBRE_REQUIRED`,
+`AMMO_MISMATCH`), bramka `AMMO_LOCKED` w `character:update`. Klient: karta („zapas N”, wybór
+naboju z liczbami i wyszarzeniem, „Licz amunicję” u MG, stara notatka „Amunicja (stary zapis)”),
+pasek („zapas N”), Kompendium (kaliber + paczki przy „Kup” i „Dodaj za darmo”), kreator (półka
+„Amunicja”, ostrzeżenie „Broń bez zapasu amunicji”). Dane: wpis `ammo.standard-explosive`
+(prywatny) i `ammo.sample-blast` (próbka), kalibry pistoletu, karabinu i ładunku w próbce.
+
+**Znalezione przy E2E:** karta wpisu amunicji w Kompendium nie miała sekcji zakupu (warunek
+z 16g „amunicji nie nosi się”) — zdjęty.
+
+**Weryfikacja:** `shared` 2349, serwer 1395 (nowy `ammo-stock.test.ts` 9, sześć starych plików
+przestawionych na `ammoTracked: false`, bo ich tematem nie jest zapas), klient 331; ESLint,
+Prettier, `tsc` czyste w czterech pakietach. E2E jak w „Testy na koniec ostatniej sesji”.
+Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w Firefoksie** (karta Iskry „zapas 16”,
+pasek „7/8 · zapas 16”), Marek w Chromium (pas broni, wybór naboju, Kompendium), MG w Chromium
+(„Licz amunicję”, podsumowanie kreatora).
+
+**Następny krok — 46c2:** T3a kupuje amunicję w kreatorze (Kowal: B.C. Pistolet, „Karabinowa”
+do Ronina — półka poziomu 1), T4a/T4b — granaty z zapasu (MG daje pudełko „Granaty”), T5a — MG
+daje pudełko przeciwpancernej zamiast tekstu w „Amunicja (zapas)”, T5b — przeładowanie z zapasu;
+potem pełny przebieg od zera z odbudową `po-T3`…`po-T6` (własne okno konsoli, gateway u MG),
+E2E 46c.9 (`@llm`, towarzysz bez amunicji) i retest #82. `t7a-handel-kreator` (poza domyślnym
+przebiegiem) nie był puszczany.
+
 ### Sesja 08.10 (trzecia) — etap 46a2 „Jedno okno »Wymiana«, dok sklepów, UI MG”
 
 **Zlecenie MG:** „kontynuuj projekt (etap 46a2)”, pytać o niejasności. **Decyzje MG (start

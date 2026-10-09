@@ -591,6 +591,20 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 
 ## 46b — Pojemniki na scenie
 
+### Decyzje MG z 09.10.2026 (start 46b)
+
+- **Podział na 46b1 i 46b2.** 46b1: model w `shared`, serwer (`container:*`, `inventory:drop`,
+  Test zamka, pomijanie pojemników na listach figur) i testy jednostkowe. 46b2: klient (tryb
+  okna, narzędzie MG, karta pojemnika, przeciągnięcie na mapę, żetony), E2E `t46b-` i oględziny.
+- **Pojemnik stawia narzędzie MG w pasku mapy** (menu sceny pod prawym klikiem nie istnieje):
+  wybór rodzaju (Skrzynia / Bagażnik / Schowek), klik na mapie stawia figurę z kartą. Karty
+  pojemników w zakładce „Postacie” MG idą do osobnej, zwiniętej grupy „Pojemniki”.
+- **Test zamka: jedna próba na postać** (podręcznik nie pozwala powtarzać nieudanego Testu, dopóki
+  nic się nie zmieni). MG w karcie pojemnika ma „Pozwól spróbować znowu”. Klucz działa zawsze.
+- **Żetony: sylwetki z game-icons.net** (CC BY 3.0, jak reszta ikon) na papierowym krążku —
+  worek, skrzynia, bagażnik, schowek. MG podmienia obrazek jak każdej figurze.
+
+
 ### Model
 
 - **Pojemnik to karta rodzaju „pojemnik” z figurą** (decyzja 13). `CpredCharacterData.container?:
@@ -638,13 +652,25 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 
 ### Zakres 46b
 
-- [ ] `shared`: `container` na karcie z walidacją, `isContainerCard`, reguły zamka, stos
-      (tworzenie, dokładanie, znikanie)
-- [ ] Serwer: zdarzenia z tabeli, Test zamka przez prośbę o Test, przycięcie zawartości per widz,
-      pomijanie pojemników w miejscach z ryzyka 8
+- [x] `shared`: `container` na karcie z walidacją, `isContainerCard`, reguły zamka, stos
+      (tworzenie, dokładanie, znikanie) — **46b1, 09.10**
+- [x] Serwer: zdarzenia z tabeli, Test zamka przez wezwanie do Testu, przycięcie zawartości per
+      widz, pomijanie pojemników w miejscach z ryzyka 8 — **46b1, 09.10**
 - [ ] Klient: tryb `container` okna, przeciągnięcie wiersza na płótno (zdarzenia wskaźnika,
       `fixtures/canvas.ts` w E2E), menu sceny MG „📦 Pojemnik”, karta pojemnika, żeton stosu
 - [ ] Dokumentacja: umowy `ekwipunek` i `mapa`, `POMYSLY.md` (wpisy o kontenerze → „zrobione w 46b”)
+
+**46b1 zrobiona 09.10.** Odstępstwa od szkicu: Test zamka idzie **wezwaniem do Testu**
+(`createCheckCall`), nie prośbą z etapu 40 — próg ustalił MG z góry, więc nie ma na co czekać;
+`container:open` wystawia wezwanie, a gracz rzuca z jego karty jak na każde wezwanie. Zamek nowej
+skrzyni to „zamknięty” (MG przestawia go w karcie). Klucz nie jest id karty, tylko losowym
+uchwytem (`keyId`). Stos powstaje na polu pod kursorem (także pod własną figurą) i dokłada się
+do stosu stojącego na tym samym polu. Wiersze bez wpisu katalogu nie sklejają się w stosie
+(umowa `stacksWith`). Na liście ryzyka 8 zostały bez zmian „oczy drużyny” i diagnoza ruchu z 45
+(dotyczą kart z właścicielem, a pojemnik go nie ma) oraz Wartość bojowa (pojemnik nie ma
+`statBlock`). Dodatkowo pojemnik nie wchodzi do `trade:invite` ani `merchant:config`. Kod
+odmowy celu to `NOT_A_TARGET`; nowe kody dla klienta (46b2): `NOT_A_CONTAINER`,
+`CONTAINER_LOCKED`, `LOCK_TRIED`, `LOCK_SKILL`, `TOO_MANY_PILES`, `NOT_A_TARGET`.
 
 ### Testy jednostkowe 46b
 

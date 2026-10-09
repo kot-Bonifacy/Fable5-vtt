@@ -1229,6 +1229,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Wezwanie wystawione przez serwer niesie adres skutku po białej liście (09.10, 46b1)** — `createCheckCall({ containerTokenId, calledByName })`: pole dopisuje się **po** `requireCallableRequest`, a rzut czyta je z `call.entry.system`, nigdy z żądania. Tak samo każdy przyszły „Test, który coś otwiera”.
 - **Notacja kości na ekranie to „k” — `displayDiceNotation` (03.10, #65)** — `shared/src/dice.ts`; karty czatu (`ChatPanel`), etykiety kubka (`DiceCup`), okno rzutu, tabele losowe. Parser i kości 3D dalej mówią „d”; nowe miejsce, które pokazuje `roll.notation` albo formułę, przepuszcza ją przez tę funkcję. Wpis rozbicia z `lookup: true` (Cecha z tabeli Roli w kreatorze) rysuje się „SW: rzut 8 → 6”, nie „+6”.
 - **Modyfikator inicjatywy z karty to `cpredSheetInitiative` (03.10, #61)** — `shared/systems/cpred/initiative.ts`: REF z efektami i karą pancerza + Błyskawiczna reakcja (remis tylko REF). Czyta go `readSheetInitiative` (serwer, `combat:roll`) i kubek gracza (`CombatBar` → `initiativeModifierOf`); figura bez karty rzuca gołe 1k10.
 - **Klon geometrii z wymuszonej ścianki zwalnia `installGeometryRelease` (02.10, #51)** — `dice3d.ts` owija na instancji kubka `swapDiceFace` (zwalnia klon wyparty drugą podmianą tej samej kości) i `clearDice` (zwalnia klony kości zdejmowanych ze stołu); geometrie `DiceFactory.geometries` są wspólne dla typu kości i zostają. Nowa łatka biblioteki, która podmienia kości `geometry` albo `material`, zwalnia to, co wypiera. Strażnik: `dice3d.test.ts` › „#51”, próg w `t7c-pamiec` (`ROLL_LEAK_GEOMETRIES`).
@@ -2635,6 +2636,7 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Pojemnik = karta z polem `container` i figura (09.10, etap 46b1)** — skrzynia, bagażnik, schowek i stos to NPC-e z `CpredCharacterData.container` (`systems/cpred/container.ts`: zamek, PT, Umiejętności, uchwyt klucza, lista prób). „Czy to pojemnik” pyta **jedno** `isContainerCard` (arkusz) / `isContainerCardJson` → `sheetIsContainer` (serwer, bez parsowania) / `containerTokenIds` (`realtime/containers.ts`, lista figur) — wołają je walka (`combat:start`/`add` pomijają), cel ataku i Zwarcia (`NOT_A_TARGET`), wybuch i ogień zaporowy, tura bota, oględziny (`sighting: null`), rozliczenie miesiąca, odbiorcy przelewu, `trade:invite`, `merchant:config`. Nowa lista figur pyta tą samą funkcją. Stan zamka pisze **wyłącznie serwer** (`container:*`, `settleLockTest`); `character:update` z `container` → `FORBIDDEN` dla wszystkich. Zawartość jedzie graczowi tylko otwartego (`exchange:counterparts`), stan zamka publicznie na `TokenView.container`. Pusty stos zdejmuje `sweepEmptyPile` — woła je każda droga, która coś z karty wyjmuje.
 - **Amunicja to pudełko — wiersz wyposażenia z `ammo: { ammoId, calibre, pattern }` (09.10, etap 46c)** — `qty` liczy naboje, kaliber to pole „Amunicja” typu broni (`ResolvedWeapon.ammoType`, porównanie `cpredCalibreKey`), `ammoId: null` to zwykła (wpis bez efektów też — `cpredStockAmmoId`). Skleja się po rodzaju i kalibrze (`cpredSameAmmo` w `stacksWith`), nie po wpisie. Zakup buduje je **tylko** `cpredPurchasedAmmoRow` (paczka z `CPRED_AMMO_PACK_SIZE`, kaliber z `weaponTypeId`), dokładanie — `cpredPutAmmo`. Cena sztuki na półce i w odkupie: `cpredRowCatalogPrice` dzieli cenę wpisu przez paczkę. Koszyk kreatora trzyma amunicję pod kluczem `wpis@typ broni` (`creationBasketKey` / `creationBasketEntry`). Gracz na karcie z zapasem naboi łatą karty tylko ubywa (`cpredAmmoPatchRaises` → `AMMO_LOCKED`), `ammoTracked` pisze tylko MG.
 - **Strona handlu drużyny niesie `team` (08.10, etap 46a2)** — `TradeSideState.team` ustawia `trade:invite` przez `isTeamCard` (`team-cards.ts`, ta sama definicja co `teamCardsWhere`), a `tradeViewFor` daje wtedy `characterId` także graczowi po drugiej stronie. Karta NPC-a — dalej bez id (#40). Dok sklepów odświeża też zapis karty handlarza (`emitMerchantShops` w odświeżaczu półki), a `MerchantListItem.open` dostaje tylko MG.
 - **Sklep = karta NPC-a + wiersz `Merchant` (08.10, etap 46a)** — ustawienia w tabeli (nie w arkuszu), uchwytem jest `Merchant.id`, towarem ekwipunek karty. Półkę dla widza składa **wyłącznie** `merchantViewFor` (`realtime/merchant.ts`, pole po polu: gracz bez ukrytych wierszy, bez wierszy bez ceny, bez `priceOverride` i bez id karty). Cenę i przenoszenie liczy **jedna** para funkcji: `cpredMerchantQuote` (stopka okna i suma serwera) i `cpredMerchantDeal` (woła quote sama; obie strony zdejmują, potem kładą). Nakładka MG kluczem `lista:id` (`merchantRowKey`), przycinana `pruneMerchantRows` przy każdej transakcji i zmianie wiersza.
@@ -2790,6 +2792,21 @@ którejś z jego figur. Między sesjami — tylko oznaczoną; nieoznaczona daje 
 reszta braku dostępu — `MERCHANT_NOT_FOUND`. Zakup przy figurze mierzy zasięg ramienia **bez**
 furtki „brak wspólnej sceny”; między sesjami zasięgu nie ma (nie ma mapy). Handlarz leżący albo
 martwy zamyka sklep (`merchantClosedReason`) w tej samej chwili, w której staje się łupem.
+
+**Pojemniki: karta z zamkiem, a nie nowy rodzaj obiektu sceny (09.10.2026, etap 46b1).** Decyzja
+MG 13 z 08.10: pojemnik dziedziczy po figurze z kartą mgłę, ukrycie przez MG, zasięg ręki, łup
+i limit 40 wierszy, więc zawartość przenosi `moveBetweenCards` z 38b — `inventory:take`
+(z otwartego), `container:put` (do otwartego), `inventory:drop` (stos na polu w zasięgu ręki,
+dokładanie do stosu na tym samym polu). Karta pojemnika nie ma właściciela, więc
+`character:upsert` jedzie tylko do MG; graczowi zostaje `TokenView.container` (`lock`, `pile`)
+bez paska PW. **Test zamka to wezwanie do Testu** (`createCheckCall` z `containerTokenId`
+dopisanym **po** `requireCallableRequest`, więc prośba gracza z etapu 40 go nie przeniesie);
+rzut na takie wezwanie rozlicza `settleLockTest` w `character-rolls.ts`, czytając adres
+z zapisanego wezwania. Jedna próba na postać (`tried`, decyzja MG z 09.10), „Pozwól spróbować
+znowu” to `container:config { resetTries }`. Klucz to wiersz wyposażenia z `key` = losowy
+`keyId` pojemnika (nie id karty, #40), wydaje go `container:config { issueKeyTo }`. Żetony
+domyślne: `/public/tokens/containers/*.svg` (adres figury musi przejść `sanitizeTokenImageUrl`
+— `/icons/` by nie przeszedł).
 
 ## czas — Czas świata, kalendarz, efekty czasowe
 
