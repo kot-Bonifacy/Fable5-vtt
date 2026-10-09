@@ -4,7 +4,9 @@
 inflacją. Decyzje: sprzęt trwały (broń, dodatki, pancerze, chrom, sprzęt i programy Netrunnera,
 obrona Sieci) ×10; amunicja i sprzęt ogólny z pasm Tanie–Kosztowne ×3 (oprócz Komputera ×10);
 montaż chromu ×10, terapia ×2; czynsz, poziom życia, zakup mieszkania, wypłaty i gotówka startowa
-×1; Kompletny Pakiet dostaje gratis podstawowe wyposażenie Roli. **Pasma cen zostają przy przedmiocie**
+×1; Kompletny Pakiet dostaje gratis podstawowe wyposażenie Roli (lista w cenniku — nierówna
+wartościowo, celowo: ma działać Rola, nie równać się kwota; granat = wiersz broni + sztuka
+amunicji, jak dotąd — wszystko zaakceptowane przez MG 09.10). **Pasma cen zostają przy przedmiocie**
 (od nich zależą PT/czas Wytwarzania, zasięg Fixera, poziom sklepu); progi `shop.ts` porównują cenę
 bazową. Pełny cennik z pozycjami: `data/private/cpred/cennik-x10.md` (prywatny). Wdrożenie jako
 osobny etap: mnożnik w jednym miejscu (`entryPrice` + osobny wariant „bazowy” dla poziomów
