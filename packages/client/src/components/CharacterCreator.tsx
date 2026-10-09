@@ -57,6 +57,13 @@ import {
   creationLeftOutside,
   creationMissingSkillMinima,
   creationOutcome,
+  creationBasketEntry,
+  cpredWeaponsWithoutStock,
+  cpredCalibreKey,
+  cpredCalibreOptions,
+  CPRED_AMMO_PACK_SIZE,
+  isAmmoEntry,
+  toAmmoProfile,
   cpredRoleChores,
   creationPreview,
   creationPurchases,
@@ -2169,7 +2176,33 @@ const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
   { id: 'weapon', label: 'Broń' },
   { id: 'armor', label: 'Pancerz' },
   { id: 'gear', label: 'Sprzęt' },
+  // Etap 46c: przeładowanie bierze naboje z ekwipunku, więc sklep startowy
+  // sprzedaje amunicję (poziom 1 — zwykła i śrut) do kalibru wybranej broni.
+  { id: 'ammo', label: 'Amunicja' },
 ];
+
+/**
+ * „Broń bez zapasu amunicji: …” (etap 46c) — kupiona broń przychodzi
+ * załadowana, ale bez naboi w ekwipunku przeładowanie odmówi.
+ */
+function CreatorNoStockWarning({ sheet }: { sheet: CpredCharacterData }) {
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const weaponTypes = useCompendiumStore((s) => s.weaponTypeById);
+  const names = useMemo(() => {
+    const types = new Map(Object.entries(weaponTypes));
+    return cpredWeaponsWithoutStock(sheet, (compendiumId) => {
+      const entry = compendiumId ? entriesById[compendiumId] : undefined;
+      return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById: types }) : null;
+    });
+  }, [sheet, entriesById, weaponTypes]);
+  if (names.length === 0) return null;
+  return (
+    <p className="creator-no-stock" role="note">
+      Broń bez zapasu amunicji: {names.join(', ')}. Magazynek jest pełny, ale przeładować się nie da
+      — dokup amunicję na półce „Amunicja”.
+    </p>
+  );
+}
 
 /**
  * Starting purchases (stage 25c, shelf reworked in naprawa 3b).
@@ -2199,8 +2232,21 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
     ? registry.roles.find((role) => role.id === draft.roleId)?.name
     : undefined;
 
+  const weaponTypes = useCompendiumStore((s) => s.weaponTypeById);
+  const weaponTypeMap = useMemo(() => new Map(Object.entries(weaponTypes)), [weaponTypes]);
   const lookup = useMemo(() => (entryId: string) => entriesById[entryId], [entriesById]);
-  const lines = useMemo(() => creationPurchases(draft, lookup), [draft, lookup]);
+  const lines = useMemo(
+    () => creationPurchases(draft, lookup, weaponTypeMap),
+    [draft, lookup, weaponTypeMap],
+  );
+  // Etap 46c: ostrzeżenie o broni bez naboi czyta kartę, którą zapisze „Utwórz”.
+  const outcomeSheet = useMemo(
+    () =>
+      creationOutcome(draft, data, registry, lookup, { weaponTypeById: weaponTypeMap }, true).sheet,
+    [draft, data, registry, lookup, weaponTypeMap],
+  );
+  /** Kaliber wybrany przy wpisie amunicji na półce (typ broni). */
+  const [calibreOf, setCalibreOf] = useState<Record<string, string>>({});
   const unavailable = Object.entries(draft.purchases).filter(
     ([id]) => !lines.some((line) => line.entryId === id),
   );
@@ -2249,14 +2295,16 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
         Kliknij nazwę, żeby zobaczyć, co kupujesz.
       </p>
       <CreatorLeftOutside draft={draft} data={data} collapsed />
+      <CreatorNoStockWarning sheet={outcomeSheet} />
 
       {unavailable.length > 0 && (
         <ul className="creator-basket">
           {unavailable.map(([id, qty]) => (
             <li key={id}>
               <span>
-                {entriesById[id]?.name ?? 'Niedostępna pozycja koszyka'} ×{qty} — brak wpisu lub
-                ceny. Usuń przed zakończeniem.
+                {entriesById[creationBasketEntry(id).entryId]?.name ??
+                  'Niedostępna pozycja koszyka'}{' '}
+                ×{qty} — brak wpisu lub ceny. Usuń przed zakończeniem.
               </span>
               <button
                 type="button"
@@ -2273,7 +2321,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
       {lines.length > 0 ? (
         <ul className="creator-basket">
           {lines.map((line) => {
-            const entry = entriesById[line.entryId];
+            const entry = entriesById[creationBasketEntry(line.entryId).entryId];
             // A row the shelf no longer carries (the GM moved it, or it was
             // bought under the old price ladder) says so where it can be fixed.
             const onShelf = entry ? creationShopVerdict(entry, draft.roleId, shopRules) : null;
@@ -2346,7 +2394,24 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
         ) : null}
         {shelfEntries.map(({ entry, verdict }) => {
           const price = entryPrice(entry) ?? 0;
-          const held = draft.purchases[entry.id] ?? 0;
+          // Etap 46c: amunicja leży w koszyku pod kluczem z kalibrem — „×N”
+          // przy nazwie liczy paczki wszystkich kalibrów tego wpisu.
+          const held = Object.entries(draft.purchases)
+            .filter(([key]) => creationBasketEntry(key).entryId === entry.id)
+            .reduce((sum, [, qty]) => sum + qty, 0);
+          const calibres = isAmmoEntry(entry)
+            ? cpredCalibreOptions(toAmmoProfile(entry), Object.values(weaponTypes))
+            : [];
+          const ownCalibre = calibres.find((option) =>
+            outcomeSheet.weapons.some(
+              (row) => cpredCalibreKey(row.ammoType) === cpredCalibreKey(option.calibre),
+            ),
+          );
+          const calibre =
+            calibres.find((option) => option.weaponTypeId === calibreOf[entry.id]) ??
+            ownCalibre ??
+            calibres[0];
+          if (isAmmoEntry(entry) && !calibre) return null;
           const open = openId === entry.id;
           const detailsId = `creator-shop-details-${entry.id}`;
           return (
@@ -2369,14 +2434,34 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
                     <span className="creator-tag creator-tag--hint">narzędzie Roli</span>
                   ) : null}
                 </button>
-                <span className="creator-shop-price">{formatEddies(price)} ed</span>
+                {calibre ? (
+                  <select
+                    className="creator-shop-calibre"
+                    value={calibre.weaponTypeId}
+                    title={`Kaliber — do jakiej broni. Paczka to ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt. (s. 344).`}
+                    aria-label={`Kaliber: ${entry.name}`}
+                    onChange={(event) =>
+                      setCalibreOf((current) => ({ ...current, [entry.id]: event.target.value }))
+                    }
+                  >
+                    {calibres.map((option) => (
+                      <option key={option.weaponTypeId} value={option.weaponTypeId}>
+                        {option.calibre}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <span className="creator-shop-price">
+                  {formatEddies(price)} ed
+                  {calibre ? ` / ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt.` : ''}
+                </span>
                 <button
                   type="button"
                   className="small-button"
                   disabled={busy || price > left}
                   title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
                   aria-label={`Dołóż do koszyka: ${entry.name}`}
-                  onClick={() => void buyCreationEntry(entry.id, 1)}
+                  onClick={() => void buyCreationEntry(entry.id, 1, calibre?.weaponTypeId)}
                 >
                   + Dołóż
                 </button>
@@ -2767,6 +2852,7 @@ function SummaryStep({
       <SummarySkills sheet={sheet} data={data} />
 
       <SummaryGear sheet={sheet} budget={outcome.budget} spent={outcome.spent} npc={!owned} />
+      <CreatorNoStockWarning sheet={sheet} />
 
       <section className="creator-summary-section" aria-label="Czego kreator nie wydaje">
         <h4>Czego kreator nie wydaje</h4>
@@ -2851,7 +2937,9 @@ function SummaryGear({
           ))}
           {sheet.gear.map((row) => (
             <li key={row.id}>
-              <span className="creator-summary-kind">Sprzęt</span> {row.name}
+              <span className="creator-summary-kind">{row.ammo ? 'Amunicja' : 'Sprzęt'}</span>{' '}
+              {row.name}
+              {row.qty > 1 ? <span className="creator-hint">{` × ${row.qty}`}</span> : null}
             </li>
           ))}
         </ul>

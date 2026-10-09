@@ -107,6 +107,11 @@ export interface BotCombatWeapon {
   /** Naboje w magazynku; brak = broń, która ich nie liczy. */
   ammo?: { current: number; max: number };
   /**
+   * Etap 46c: naboje tego rodzaju w ekwipunku; brak = „bez dna” (NPC). Zero
+   * znaczy, że przeładować się nie da — akcja „przeładuj” znika z menu.
+   */
+  stock?: number;
+  /**
    * Dlaczego nie zadziała teraz („Pusty magazynek — przeładuj"). Broń zostaje
    * w menu: to jest właśnie ta, którą warto przeładować.
    */
@@ -211,7 +216,10 @@ export function availableBotCombatActions(state: BotCombatState): BotCombatActio
   }
 
   const reloadable = weapons.some(
-    (weapon) => weapon.ammo !== undefined && weapon.ammo.current < weapon.ammo.max,
+    (weapon) =>
+      weapon.ammo !== undefined &&
+      weapon.ammo.current < weapon.ammo.max &&
+      (weapon.stock === undefined || weapon.stock > 0),
   );
   if (!state.self.actionSpent && reloadable) actions.push('reload');
 
@@ -405,6 +413,13 @@ export function buildBotCombatPrompt(
           const parts: string[] = [];
           if (weapon.detail) parts.push(weapon.detail);
           if (weapon.ammo) parts.push(`amunicja ${weapon.ammo.current}/${weapon.ammo.max}`);
+          if (weapon.stock !== undefined) {
+            parts.push(
+              weapon.stock > 0
+                ? `zapas ${weapon.stock}`
+                : 'zapasu brak — tej broni nie przeładujesz',
+            );
+          }
           if (weapon.melee) parts.push('broń biała — tylko z bliska');
           if (weapon.disabled) parts.push(`NIEDOSTĘPNA: ${weapon.disabled}`);
           return `- ${weapon.label}${parts.length > 0 ? ` — ${parts.join(' · ')}` : ''}`;

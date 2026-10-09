@@ -307,6 +307,8 @@ describe('action economy', () => {
         data: {
           stats: { ...(vex.data as CpredCharacterData).stats, ref: 6, dex: 5, tech: 6 },
           skills: { handgun: 5, 'shoulder-arms': 4, 'melee-weapon': 4, paramedic: 6 },
+          // Budżet tury, nie zapas amunicji (46c) — magazynki „bez dna”.
+          ammoTracked: false,
           weapons: weapons(),
         },
       },

@@ -1022,18 +1022,78 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
     expect(outcome.sheet.lifestyle).toEqual({ level: 'kibble', housing: 'container' });
   });
 
+  it('etap 46c: amunicja w koszyku to pudełko z kalibrem, sklejone po rodzaju', () => {
+    const ammo: CompendiumEntry[] = [
+      ...CATALOGUE,
+      {
+        id: 'ammo.zwykla',
+        category: 'ammo',
+        name: 'Amunicja zwykła',
+        cost: 10,
+        patterns: ['bullet'],
+      } as CompendiumEntry,
+    ];
+    const pistol = {
+      id: 'weapon-type.pistolet',
+      name: 'Pistolet',
+      skillId: null,
+      damage: '2k6',
+      magazine: 12,
+      rof: 2,
+      hands: 1 as const,
+      concealable: true,
+      melee: false,
+      ammunition: 'Ś. Pistolet',
+      ammoPatterns: ['bullet' as const],
+    };
+    const smg = { ...pistol, id: 'weapon-type.pm', name: 'Pistolet maszynowy', magazine: 30 };
+    const outcome = creationOutcome(
+      finished({
+        purchases: { 'ammo.zwykla@weapon-type.pistolet': 2, 'ammo.zwykla@weapon-type.pm': 1 },
+      }),
+      data(),
+      registry(),
+      (entryId) => ammo.find((entry) => entry.id === entryId),
+      { weaponTypeById: new Map([pistol, smg].map((type) => [type.id, type])) },
+      true,
+    );
+    // Jedna paczka = 10 naboi (s. 344); ten sam kaliber skleja się w jedno pudełko.
+    expect(outcome.spent).toBe(30);
+    expect(outcome.sheet.gear).toMatchObject([
+      {
+        name: 'Amunicja zwykła · Ś. Pistolet',
+        qty: 30,
+        ammo: { ammoId: null, calibre: 'Ś. Pistolet', pattern: 'bullet' },
+      },
+    ]);
+    expect(outcome.purchases.map((line) => line.name)).toEqual([
+      'Amunicja zwykła · Ś. Pistolet',
+      'Amunicja zwykła · Ś. Pistolet',
+    ]);
+    // Amunicja bez kalibru nie jest towarem — koszyk jej nie liczy.
+    const bare = creationOutcome(
+      finished({ purchases: { 'ammo.zwykla': 1 } }),
+      data(),
+      registry(),
+      (entryId) => ammo.find((entry) => entry.id === entryId),
+      { weaponTypeById: new Map() },
+      true,
+    );
+    expect(bare.spent).toBe(0);
+  });
+
   it('names what the book gives and the wizard does not, per method', () => {
     const edgerunner = creationLeftOutside({ method: 'edgerunner' }, data());
-    expect(edgerunner.map((line) => line.id)).toEqual(['package', 'cyberware', 'ammo']);
+    expect(edgerunner.map((line) => line.id)).toEqual(['package', 'cyberware']);
     const complete = creationLeftOutside({ method: 'complete' }, data());
-    expect(complete.map((line) => line.id)).toEqual(['fashion', 'cyberware', 'ammo']);
+    expect(complete.map((line) => line.id)).toEqual(['fashion', 'cyberware']);
     expect(complete[0]!.text).toContain('800 ed');
     // A table that zeroed the fashion money gets no line about it.
     const noFashion = creationLeftOutside(
       { method: 'complete' },
       { budgets: { edgerunner: 500, complete: 2550, fashion: 0 } },
     );
-    expect(noFashion.map((line) => line.id)).toEqual(['cyberware', 'ammo']);
+    expect(noFashion.map((line) => line.id)).toEqual(['cyberware']);
   });
 });
 

@@ -1569,6 +1569,21 @@
   font-size: 0.68rem;
 }
 
+/* Etap 46c: „zapas 40” pod licznikiem — własny wiersz komórki, żeby wąska
+   kolumna „Amunicja” nie łamała licznika magazynka. */
+.cp-table .weapon-ammo-stock {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cp-table .weapon-ammo-stock--empty {
+  color: var(--err);
+  font-weight: 600;
+}
+
 /* --- pancerz: trzy wiersze wydruku --- */
 
 /* Lokacja i nazwa sztuki w jednym wierszu — układem inline, nie flexem na

@@ -5,6 +5,7 @@
   "tiers": {
     "gear.apteczka-polowa": 2,
     "ammo.sample-emp": 3,
+    "ammo.sample-blast": 3,
     "ammo.sample-sleeper": 2
   },
   "roleTools": {

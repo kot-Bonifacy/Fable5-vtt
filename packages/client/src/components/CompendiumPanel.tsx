@@ -21,6 +21,12 @@ import {
   CPRED_AMMO_PATTERN_LABELS,
   CYBERWARE_INSTALL_COST,
   cpredHaggledPrice,
+  isAmmoEntry,
+  toAmmoProfile,
+  CPRED_AMMO_PACK_SIZE,
+  CPRED_AMMO_PACKS_MAX,
+  cpredCalibreKey,
+  cpredCalibreOptions,
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
   CYBERWARE_SURGEON_SKILL_DEFAULT,
@@ -448,15 +454,39 @@ function EntryCard({
   }, [asksOthers, target]);
   const askable = asksOthers ? remoteSurgeons : [];
 
+  // Etap 46c: amunicja — kaliber (rodzina z pola „Amunicja” typu broni)
+  // i liczba paczek (s. 344: 10 naboi albo 1 granat). Domyślny kaliber to
+  // pierwszy, do którego postać ma broń.
+  const calibres = useMemo(
+    () =>
+      isAmmoEntry(entry)
+        ? cpredCalibreOptions(toAmmoProfile(entry), Object.values(weaponTypeById))
+        : [],
+    [entry, weaponTypeById],
+  );
+  const [calibreTypeId, setCalibreTypeId] = useState('');
+  const [packs, setPacks] = useState(1);
+  const targetWeapons = characters[target]?.data.weapons;
+  const ownCalibre = calibres.find((option) =>
+    (targetWeapons ?? []).some(
+      (row) => cpredCalibreKey(row.ammoType) === cpredCalibreKey(option.calibre),
+    ),
+  );
+  const calibre =
+    calibres.find((option) => option.weaponTypeId === calibreTypeId) ?? ownCalibre ?? calibres[0];
+  const ammoChoice = calibre ? { weaponTypeId: calibre.weaponTypeId, packs } : undefined;
+  const packSize = calibre ? CPRED_AMMO_PACK_SIZE[calibre.pattern] : 1;
+  const ammoPayable = payable === null ? null : payable * (isAmmoEntry(entry) ? packs : 1);
+
   async function addToSheet() {
     if (!target) return;
-    const result = await addCompendiumItemToCharacter(target, entry, resolved);
+    const result = await addCompendiumItemToCharacter(target, entry, resolved, ammoChoice);
     setNote(result);
   }
 
   async function buy() {
     if (!target) return;
-    setNote(await buyCompendiumItemForCharacter(target, entry));
+    setNote(await buyCompendiumItemForCharacter(target, entry, undefined, ammoChoice));
   }
 
   /** Prośba do Medyka innego gracza (#41) — pieniądze i Test dopiero po jego „Operuję”. */
@@ -948,12 +978,10 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
-      {/* Ammunition is loaded into a weapon row (stage 16g), not carried as an
-          item, so the sheet has nowhere to put it — the picker in the weapon
-          table is where it belongs. */}
+      {/* Od etapu 46c amunicja to pudełko w wyposażeniu — kupuje się ją
+          i dodaje z kalibrem, jak każdą rzecz na kartę. */}
       {targets.length > 0 &&
       entry.category !== 'criticalInjury' &&
-      entry.category !== 'ammo' &&
       entry.category !== 'program' &&
       entry.category !== 'netDefense' ? (
         <div className="compendium-assign">
@@ -1048,7 +1076,39 @@ function EntryCard({
                 Znaleziony — montaż {fitting} ed
               </button>
             </>
-          ) : catalogClosed ? (
+          ) : null}
+          {isAmmoEntry(entry) && calibres.length > 0 ? (
+            <>
+              <select
+                value={calibre?.weaponTypeId ?? ''}
+                title="Kaliber — do jakiej broni ta amunicja. Pudełko pasuje do każdej broni tej rodziny."
+                aria-label="Kaliber"
+                onChange={(event) => setCalibreTypeId(event.target.value)}
+              >
+                {calibres.map((option) => (
+                  <option key={option.weaponTypeId} value={option.weaponTypeId}>
+                    {option.calibre} — {option.typeNames.join(', ')}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                className="compendium-ammo-packs"
+                min={1}
+                max={CPRED_AMMO_PACKS_MAX}
+                value={packs}
+                title={`Liczba paczek — paczka to ${packSize} szt. (s. 344).`}
+                aria-label="Liczba paczek"
+                onChange={(event) =>
+                  setPacks(
+                    Math.max(1, Math.min(CPRED_AMMO_PACKS_MAX, Number(event.target.value) || 1)),
+                  )
+                }
+              />
+              <span className="compendium-ammo-pack">× {packSize} szt.</span>
+            </>
+          ) : null}
+          {entry.category === 'cyberware' ? null : catalogClosed ? (
             <span
               className="compendium-note"
               title="MG ustawił „Zakupy z katalogu: tylko u handlarzy” — podejdź do handlarza albo otwórz sklep z doku w rogu mapy."
@@ -1073,7 +1133,7 @@ function EntryCard({
               disabled={price === null || (locked && !isGm)}
               onClick={() => void buy()}
             >
-              Kup{payable === null ? '' : ` — ${payable} ed`}
+              Kup{ammoPayable === null ? '' : ` — ${ammoPayable} ed`}
             </button>
           )}
           {isGm ? (

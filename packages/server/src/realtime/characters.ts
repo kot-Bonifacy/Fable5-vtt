@@ -20,6 +20,7 @@ import {
   cpredBackupTier,
   cpredBackupTierAt,
   cpredCombatAwarenessProblem,
+  cpredAmmoPatchRaises,
   cpredDropOrphanedRolePurses,
   cpredFieldRepairMinutes,
   cpredSheetFabrication,
@@ -42,6 +43,7 @@ import type { Character, Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent } from './registry.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { applyBalance } from './economy.js';
+import { characterTracksAmmo } from './ammo-stock.js';
 import { applyImprovementPoints } from './advancement.js';
 import { emitToCampaignUser } from './state.js';
 import {
@@ -244,6 +246,18 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // zdarzeniem, którym robi to gracz, więc niczego mu to nie odbiera.
       if (sheet.drawnWeaponRowIds !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
+      // Etap 46c (decyzja MG 6 z 09.10): „Licz amunicję” przestawia MG, a na
+      // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,
+      // wymiany, łupu i od MG. Inaczej przeładowanie z zapasu byłoby ozdobą.
+      if (!isGm && 'ammoTracked' in sheet) throw new RealtimeError('FORBIDDEN');
+      if (
+        !isGm &&
+        (sheet.weapons !== undefined || sheet.gear !== undefined) &&
+        cpredAmmoPatchRaises(current, sheet) &&
+        (await characterTracksAmmo(deps, campaignId, character, current))
+      ) {
+        throw new RealtimeError('AMMO_LOCKED');
+      }
       // A patch that changes `roleId` — the GM's plain field since 29a — can
       // take an Ability off the sheet and leave its purse behind. Emptied here,
       // before the three checks below, because otherwise the first of them

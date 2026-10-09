@@ -985,6 +985,20 @@
   color: var(--text-dim);
 }
 
+/* Etap 46c: zapas w ekwipunku obok licznika magazynka — „12/30 · zapas 40”.
+   Pusty dostaje kolor pustego magazynka: to ta sama odmowa, tylko o krok dalej. */
+.hud-stock {
+  margin-left: 0.35rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.hud-stock--empty {
+  color: var(--err);
+  font-weight: 600;
+}
+
 /* The ammunition dropdown sits under the magazine counter in the weapon row. */
 .weapon-ammo-type {
   width: 100%;

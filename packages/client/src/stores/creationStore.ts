@@ -458,8 +458,13 @@ export async function rollLifepathTablesPlain(tableIds: string[]): Promise<void>
  * patches, for the same reason: holding „+" down fires two calls, and each one
  * is a read-modify-write of the same stored draft.
  */
-export async function buyCreationEntry(entryId: string, delta: 1 | -1): Promise<void> {
-  await runCreationCall(() => buyCreationItem(entryId, delta));
+export async function buyCreationEntry(
+  entryId: string,
+  delta: 1 | -1,
+  /** Etap 46c: kaliber kupowanej amunicji — typ broni. */
+  weaponTypeId?: string,
+): Promise<void> {
+  await runCreationCall(() => buyCreationItem(entryId, delta, weaponTypeId));
 }
 
 async function runCreationCall(

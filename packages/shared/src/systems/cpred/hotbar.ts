@@ -15,7 +15,8 @@
  */
 
 import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
-import type { CpredCharacterData, CpredWeaponRow } from './character.js';
+import { cpredAmmoStockCount, cpredStockAmmoId, cpredThrowsFromStock } from './ammostock.js';
+import type { CpredCharacterData, CpredGearRow, CpredWeaponRow } from './character.js';
 import {
   cpredDrawFits,
   cpredHandsAreDeclared,
@@ -87,6 +88,13 @@ export interface CpredWeaponOption {
    * gasić slotów na pasku (decyzja MG z 10.09.2026).
    */
   notDrawn?: 'holstered' | 'handsFull';
+  /**
+   * Etap 46c: naboje rodzaju z magazynka leżące w ekwipunku — `null`, gdy
+   * karta nie liczy amunicji („bez dna”) albo broń nie ma kalibru.
+   */
+  stock?: number | null;
+  /** Granat ręczny bez magazynka: rzut bierze sztukę prosto z zapasu. */
+  throwsFromStock?: boolean;
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
@@ -120,6 +128,34 @@ export interface CpredAttachmentLookup {
  * broni (`STATIST_WEAPON_ROW_ID`). Pusto = tej figury nikt nie ostatystykował.
  */
 export function cpredWeaponOptions(
+  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null,
+  resolve: CpredWeaponResolver,
+  resolveAmmo?: CpredAmmoResolver,
+  attachments?: CpredAttachmentLookup,
+  /**
+   * Etap 46c: ekwipunek karty, która liczy amunicję — wtedy opcja niesie
+   * `stock`. Brak = „bez dna” (NPC, statysta, tura bota sprzed 46c).
+   */
+  stockGear?: readonly CpredGearRow[] | null,
+): CpredWeaponOption[] {
+  const options = weaponOptionsOf(sheet, resolve, resolveAmmo, attachments);
+  if (!stockGear) return options;
+  return options.map((option) => {
+    const calibre = option.resolved?.ammoType;
+    if (!calibre || option.resolved?.melee) return option;
+    const throwsFromStock =
+      option.attachmentId === null &&
+      cpredThrowsFromStock({ ammoMax: option.ammo?.max ?? 0 }, option.resolved);
+    if (!option.ammo && !throwsFromStock) return option;
+    const stock = cpredAmmoStockCount(stockGear, {
+      calibre,
+      ammoId: cpredStockAmmoId(option.ammoProfile),
+    });
+    return { ...option, stock, ...(throwsFromStock ? { throwsFromStock: true } : {}) };
+  });
+}
+
+function weaponOptionsOf(
   sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
@@ -410,6 +446,8 @@ export interface CpredHotbarWeaponSlot {
   thrown: boolean;
   /** Rounds left / magazine size, for the badge; null when none are counted. */
   ammo: { current: number; max: number } | null;
+  /** Etap 46c: zapas w ekwipunku („zapas 40”); null — karta „bez dna”. */
+  stock: number | null;
   /**
    * Name of the round loaded, when it is not ordinary ammunition (stage 16g).
    * On the slot rather than in the tooltip: „Strzelba · Śrut" and „Strzelba ·
@@ -465,6 +503,8 @@ export interface CpredHotbarReloadSlot {
   /** Magazine of the bolted-on weapon, when that is what this refills. */
   attachmentId: string | null;
   ammo: { current: number; max: number };
+  /** Etap 46c: zapas rodzaju z magazynka; null — karta „bez dna”. */
+  stock: number | null;
   disabled: string | null;
   key: string | null;
 }
@@ -491,6 +531,11 @@ export interface CpredHotbarInput {
   /** Karta zaznaczonej figury; null = figura, której nikt nie ostatystykował. */
   sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null;
   resolve: CpredWeaponResolver;
+  /**
+   * Etap 46c: ekwipunek, z którego karta przeładowuje — podaje go wołający
+   * tylko dla karty liczącej amunicję (`cpredTracksAmmo`).
+   */
+  stockGear?: readonly CpredGearRow[] | null;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
   resolveAmmo?: CpredAmmoResolver;
   /**
@@ -552,6 +597,12 @@ export interface CpredHotbarInput {
   backup?: boolean;
 }
 
+/** Etap 46c: granat ręczny bez sztuk w ekwipunku. */
+export const CPRED_NO_THROWABLE_REFUSAL = 'Nie masz już czym rzucić — zapas jest pusty.';
+
+/** Etap 46c: przeładowanie bez naboi w ekwipunku. */
+export const CPRED_NO_AMMO_REFUSAL = 'Nie masz amunicji do tej broni.';
+
 /** Reason a weapon cannot fire right now, or null. */
 function weaponRefusal(
   option: CpredWeaponOption,
@@ -567,6 +618,7 @@ function weaponRefusal(
   // byłoby Akcją wydaną nie na to, co blokuje strzał.
   if (option.notDrawn === 'holstered') return CPRED_HOLSTERED_REFUSAL;
   if (option.notDrawn === 'handsFull') return CPRED_NOT_DRAWN_REFUSAL;
+  if (option.throwsFromStock && (option.stock ?? 0) < 1) return CPRED_NO_THROWABLE_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;
   const cost = mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;
@@ -616,6 +668,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     input.resolve,
     input.resolveAmmo,
     input.attachments,
+    input.stockGear,
   );
   const statusActionBlock = cpredActionBlock(input.statuses);
   const statusMoveBlock = cpredMovementBlock(input.statuses);
@@ -662,6 +715,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         pointTarget,
         thrown,
         ammo: option.ammo,
+        stock: option.stock ?? null,
         ammoLabel: option.ammoProfile?.name ?? null,
         coneRangeM: spread && mode === 'single' ? spread.coneRangeM : null,
         outOfHand: option.notDrawn !== undefined,
@@ -703,11 +757,19 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
       icon: 'reload',
       id: `reload:${weaponOptionKey(option.rowId, option.attachmentId)}`,
       label: `Przeładuj: ${option.name}`,
-      hint: `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}). Kosztuje Akcję.`,
+      hint:
+        `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}` +
+        `${typeof option.stock === 'number' ? ` · zapas ${option.stock}` : ''}). Kosztuje Akcję.`,
       weaponRowId: option.rowId,
       attachmentId: option.attachmentId,
       ammo: option.ammo,
-      disabled: option.ammo.current >= option.ammo.max ? 'Magazynek jest pełny.' : actionRefusal,
+      stock: option.stock ?? null,
+      disabled:
+        option.ammo.current >= option.ammo.max
+          ? 'Magazynek jest pełny.'
+          : option.stock === 0
+            ? CPRED_NO_AMMO_REFUSAL
+            : actionRefusal,
       key: null,
     });
   }

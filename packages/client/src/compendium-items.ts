@@ -1,5 +1,14 @@
 import type { CompendiumEntry, CpredCharacterData, ResolvedWeapon } from '@vtt/shared';
-import { ITEM_ROWS_MAX, formatEddies, purchasedSheetRow } from '@vtt/shared';
+import {
+  ITEM_ROWS_MAX,
+  cpredPurchasedAmmoRow,
+  cpredPutAmmo,
+  formatEddies,
+  isAmmoEntry,
+  purchasedSheetRow,
+  toAmmoProfile,
+} from '@vtt/shared';
+import { useCompendiumStore } from './stores/compendiumStore.js';
 import {
   buyCompendiumEntry,
   economyErrorText,
@@ -24,15 +33,34 @@ function nextRowId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/** Etap 46c: amunicję kupuje się paczkami do kalibru wybranego typem broni. */
+export interface AmmoPurchaseChoice {
+  weaponTypeId: string;
+  packs: number;
+}
+
 /** Adds the entry to the right list of the sheet for free; returns a Polish note. */
 export async function addCompendiumItemToCharacter(
   characterId: string,
   entry: CompendiumEntry,
   resolved: ResolvedWeapon | null,
+  ammo?: AmmoPurchaseChoice,
 ): Promise<string> {
   const character = useCharacterStore.getState().characters[characterId];
   if (!character) return 'Nie znaleziono postaci.';
   const data: CpredCharacterData = character.data;
+
+  // Etap 46c: pudełko amunicji — paczki do kalibru, sklejone z takim samym.
+  if (isAmmoEntry(entry)) {
+    const type = ammo ? useCompendiumStore.getState().weaponTypeById[ammo.weaponTypeId] : undefined;
+    if (!ammo || !type) return 'Wybierz kaliber — amunicję dodaje się do konkretnej broni.';
+    const box = cpredPurchasedAmmoRow(toAmmoProfile(entry), type, ammo.packs, nextRowId());
+    if (!box?.ammo) return 'Ten nabój nie pasuje do wybranego kalibru.';
+    const gear = cpredPutAmmo(data.gear, { ...box, ammo: box.ammo }, box.qty, nextRowId);
+    if (gear.length > ITEM_ROWS_MAX) return 'Lista wyposażenia jest pełna.';
+    queueCharacterSave(characterId, { data: { gear } });
+    return `Dodano „${box.name}” × ${box.qty}.`;
+  }
 
   if (entry.category === 'criticalInjury') {
     // Injuries are drawn by the damage flow, never bought.
@@ -81,13 +109,16 @@ export async function buyCompendiumItemForCharacter(
   characterId: string,
   entry: CompendiumEntry,
   price?: number,
+  ammo?: AmmoPurchaseChoice,
 ): Promise<string> {
   const ack = await buyCompendiumEntry({
     characterId,
     entryId: entry.id,
     ...(price !== undefined ? { price } : {}),
+    ...(ammo ? { weaponTypeId: ammo.weaponTypeId, packs: ammo.packs } : {}),
   });
   if (!ack.ok) return economyErrorText(ack.error);
   const balance = ack.data ? formatEddies(ack.data.balance) : '?';
-  return `Kupiono „${entry.name}”. Zostało ${balance} ed.`;
+  const packs = ammo ? ` — paczek: ${ammo.packs}` : '';
+  return `Kupiono „${entry.name}”${packs}. Zostało ${balance} ed.`;
 }

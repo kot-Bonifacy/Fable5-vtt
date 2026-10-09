@@ -58,6 +58,7 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
+import { characterTracksAmmo } from './ammo-stock.js';
 
 /**
  * The wiring behind the combat HUD (stage 16f).
@@ -296,6 +297,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
 
   const slots = hotbarSlotsFor({
     sheet: character ? character.data : null,
+    // Etap 46c: karta drużyny przeładowuje z ekwipunku — pasek liczy zapas.
+    ...(character && characterTracksAmmo(character) ? { stockGear: character.data.gear } : {}),
     resolve: (compendiumId) => {
       const entry = compendiumId ? compendium.entries[compendiumId] : undefined;
       return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
@@ -492,6 +495,8 @@ export function hudSignature(context: HudContext): string {
       slot.key,
       slot.kind === 'weapon' ? slot.ammoLabel : null,
       slot.kind === 'weapon' || slot.kind === 'reload' ? (slot.ammo ?? null) : null,
+      // Etap 46c: zapas w ekwipunku stoi przy liczniku magazynka.
+      slot.kind === 'weapon' || slot.kind === 'reload' ? slot.stock : null,
       slot.kind === 'weapon' ? slot.coneRangeM : null,
       // Schowanie broni przy wydanej Akcji nie zmienia zdania odmowy, a zmienia
       // to, co kursor ma trzymać (25.09).

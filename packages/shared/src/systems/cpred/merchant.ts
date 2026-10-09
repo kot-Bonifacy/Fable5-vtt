@@ -42,6 +42,7 @@ import {
   type CpredItemView,
   type CpredTakenRow,
 } from './inventory.js';
+import { cpredAmmoPiecePrice } from './ammostock.js';
 import { cpredHaggledPrice } from './roleability.js';
 
 /** Cena wpisu katalogu po id — serwer i klient podają ją z własnego kompendium. */
@@ -81,6 +82,9 @@ export function cpredRowCatalogPrice(
     if (armor.sp <= 0) return base;
     return (base * Math.max(0, Math.min(armor.spCurrent, armor.sp))) / armor.sp;
   }
+  // Etap 46c: cena wpisu amunicji jest ceną paczki (s. 344), a wiersz liczy naboje.
+  const ammo = (row as CpredGearRow).ammo;
+  if (ammo) return cpredAmmoPiecePrice(base, ammo.pattern);
   return base;
 }
 

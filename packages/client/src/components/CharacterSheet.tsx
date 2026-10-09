@@ -102,6 +102,12 @@ import {
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   ammoOptionsFor,
+  cpredAmmoHasEffects,
+  cpredAmmoStockByKind,
+  cpredAmmoStockCount,
+  cpredStockAmmoId,
+  cpredThrowsFromStock,
+  loadedAmmoFor,
   bodySlotsForType,
   cpredReputation,
   cyberpsychosisFor,
@@ -158,6 +164,7 @@ import {
   CPRED_TEAMWORK_ABILITY,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
+import { characterTracksAmmo } from '../ammo-stock.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
@@ -1421,6 +1428,8 @@ function RowTable<T extends CpredItemRow>({
     label: string;
     numeric?: boolean;
     max?: number;
+    /** Sufit pola dla jednego wiersza — pudełko amunicji gracza (46c). */
+    maxFor?: (row: T) => number | undefined;
     maxLength?: number;
     width?: string;
   }[];
@@ -1455,7 +1464,7 @@ function RowTable<T extends CpredItemRow>({
                   <input
                     type="number"
                     min={0}
-                    max={c.max ?? 999}
+                    max={c.maxFor?.(row) ?? c.max ?? 999}
                     value={row[c.key] as number}
                     aria-label={c.label}
                     onChange={(e) => {
@@ -1524,6 +1533,7 @@ function AmmoPicker({
   row,
   resolved,
   attachment,
+  stockGear,
 }: {
   characterId: string;
   row: CpredWeaponRow;
@@ -1534,6 +1544,12 @@ function AmmoPicker({
    * still addresses the sheet, because that is where both magazines live.
    */
   attachment?: { id: string; name: string };
+  /**
+   * Etap 46c: ekwipunek karty, która liczy amunicję — przy rodzaju staje
+   * liczba naboi w zapasie, a rodzaj bez zapasu jest wyszarzony. Brak = karta
+   * „bez dna” (NPC, statysta): wybór jak przed 46c.
+   */
+  stockGear?: readonly CpredGearRow[] | null;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -1543,8 +1559,17 @@ function AmmoPicker({
       .filter((entry): entry is CompendiumEntry => !!entry)
       .filter(isAmmoEntry)
       .map(toAmmoProfile);
-    return ammoOptionsFor(catalogue, resolved);
+    // Wpis bez efektów to „Zwykła” (46c) — drugi wiersz o tej samej treści
+    // byłby drugim zapasem tej samej amunicji.
+    return ammoOptionsFor(catalogue, resolved).filter(cpredAmmoHasEffects);
   }, [entries, order, resolved]);
+  const calibre = resolved?.ammoType ?? '';
+  const counts = stockGear && calibre ? cpredAmmoStockByKind(stockGear, calibre) : null;
+  const countOf = (ammoId: string | null) => (counts ? (counts.get(ammoId) ?? 0) : null);
+  const withCount = (label: string, ammoId: string | null) => {
+    const count = countOf(ammoId);
+    return count === null ? label : `${label} — ${count}`;
+  };
 
   // A weapon the catalogue has told nothing about — a hand-typed row, a melee
   // weapon — has no rounds to choose between, and an empty dropdown next to it
@@ -1569,13 +1594,31 @@ function AmmoPicker({
         reloadWeapon(characterId, row.id, e.target.value || null, undefined, attachment?.id)
       }
     >
-      <option value="">Zwykła</option>
+      <option value="" disabled={loaded !== '' && countOf(null) === 0}>
+        {withCount('Zwykła', null)}
+      </option>
       {options.map((ammo) => (
-        <option key={ammo.id} value={ammo.id}>
-          {ammo.name}
+        <option
+          key={ammo.id}
+          value={ammo.id}
+          disabled={loaded !== ammo.id && countOf(ammo.id) === 0}
+        >
+          {withCount(ammo.name, ammo.id)}
         </option>
       ))}
     </select>
+  );
+}
+
+/** „zapas 40” pod licznikiem magazynka (etap 46c); zero świeci jak pusty magazynek. */
+function AmmoStockNote({ stock }: { stock: number }) {
+  return (
+    <span
+      className={`weapon-ammo-stock${stock === 0 ? ' weapon-ammo-stock--empty' : ''}`}
+      title="Naboje tego rodzaju w ekwipunku — z nich przeładowujesz."
+    >
+      zapas {stock}
+    </span>
   );
 }
 
@@ -1712,7 +1755,30 @@ function WeaponStrip({
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const tokens = useTokenStore((s) => s.tokens);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
+  /**
+   * Etap 46c: ekwipunek, z którego ta karta przeładowuje — `null` u karty
+   * „bez dna”. Gracz na karcie z zapasem naboi ręką tylko odejmuje (decyzja
+   * MG z 09.10), więc jego licznik magazynka nie idzie w górę.
+   */
+  const stockGear = characterTracksAmmo(character) ? data.gear : null;
+  const handLocked = stockGear !== null && !isGm;
+
+  /** Naboje rodzaju z magazynka w zapasie; null — karta „bez dna” albo broń bez kalibru. */
+  function stockOf(
+    row: { ammoId?: string },
+    weapon: ResolvedWeapon | null,
+    printedCalibre = '',
+  ): number | null {
+    const calibre = weapon?.ammoType ?? printedCalibre;
+    if (!stockGear || !calibre) return null;
+    const loaded = loadedAmmoFor(row, weapon, (id) => {
+      const entry = entries[id];
+      return entry && isAmmoEntry(entry) ? toAmmoProfile(entry) : null;
+    });
+    return cpredAmmoStockCount(stockGear, { calibre, ammoId: cpredStockAmmoId(loaded) });
+  }
   /**
    * Otwarty wybór broni z katalogu (naprawa 31.08): `null` — zamknięty,
    * `{ rowId: null }` — dopisuje nowy wiersz, `{ rowId }` — wiąże istniejący.
@@ -1863,6 +1929,8 @@ function WeaponStrip({
             const resolved = resolvedOf(row);
             const tracksAmmo = row.ammoMax > 0;
             const empty = tracksAmmo && row.ammoCurrent <= 0;
+            const stock = stockOf(row, resolved, row.ammoType);
+            const throwsFromStock = cpredThrowsFromStock(row, resolved);
             return [
               <tr key={row.id}>
                 <td>
@@ -1959,7 +2027,7 @@ function WeaponStrip({
                       <NumberStepper
                         className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
                         min={0}
-                        max={row.ammoMax}
+                        max={handLocked ? Math.min(row.ammoCurrent, row.ammoMax) : row.ammoMax}
                         value={Math.min(row.ammoCurrent, row.ammoMax)}
                         label={`Stan magazynka: ${row.name}`}
                         onChange={(value) => updateRow(row.id, { ammoCurrent: value })}
@@ -1968,20 +2036,32 @@ function WeaponStrip({
                       <button
                         type="button"
                         className="small-button"
-                        disabled={row.ammoCurrent >= row.ammoMax}
-                        title={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
+                        disabled={row.ammoCurrent >= row.ammoMax || stock === 0}
+                        title={
+                          stock === 0
+                            ? 'Brak zapasu tej amunicji w ekwipunku.'
+                            : `Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`
+                        }
                         aria-label={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
                         onClick={() => reloadWeapon(character.id, row.id)}
                       >
                         ⟳
                       </button>
+                      {stock !== null && <AmmoStockNote stock={stock} />}
                     </>
+                  ) : throwsFromStock && stock !== null ? (
+                    <AmmoStockNote stock={stock} />
                   ) : (
                     <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
                       —
                     </span>
                   )}
-                  <AmmoPicker characterId={character.id} row={row} resolved={resolved} />
+                  <AmmoPicker
+                    characterId={character.id}
+                    row={row}
+                    resolved={resolved}
+                    stockGear={stockGear}
+                  />
                 </td>
                 <td>
                   <input
@@ -2102,7 +2182,13 @@ function WeaponStrip({
                           className="small-button"
                           disabled={
                             (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
-                            (weapon.magazine ?? 0)
+                              (weapon.magazine ?? 0) ||
+                            stockOf(
+                              row.attachmentAmmoId?.[attachment.id]
+                                ? { ammoId: row.attachmentAmmoId[attachment.id] }
+                                : {},
+                              weapon,
+                            ) === 0
                           }
                           title="Przeładuj podwieszaną broń — własny magazynek, ta sama Akcja"
                           aria-label={`Przeładuj: ${attachment.name}`}
@@ -2126,6 +2212,7 @@ function WeaponStrip({
                       row={row}
                       resolved={weapon}
                       attachment={{ id: attachment.id, name: attachment.name }}
+                      stockGear={stockGear}
                     />
                   </td>
                   <td>{weapon.rof}</td>
@@ -3428,6 +3515,9 @@ function CyberdeckSection({ data, saveData }: TabProps) {
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
+  // Etap 46c: na karcie z zapasem gracz naboi ręką tylko odejmuje.
+  const tracksAmmo = characterTracksAmmo(character);
+  const handLocked = tracksAmmo && !isGm;
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
@@ -3444,6 +3534,21 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         >
           Wymiana…
         </button>
+        {/* Etap 46c: karta drużyny przeładowuje z ekwipunku, NPC jest „bez
+            dna” — MG przestawia to jednym polem (np. bossowi). */}
+        {isGm && (
+          <label
+            className="sheet-ammo-tracked"
+            title="Zaznaczone: przeładowanie i rzut granatem biorą naboje z pudełek w ekwipunku. Niezaznaczone: amunicja „bez dna”. Domyślnie liczą karty graczy i towarzyszy-botów."
+          >
+            <input
+              type="checkbox"
+              checked={tracksAmmo}
+              onChange={(e) => saveData({ ammoTracked: e.target.checked }, 'ammoTracked')}
+            />
+            Licz amunicję
+          </label>
+        )}
       </div>
       {/* Etap 46a: karta NPC-a bywa sklepem — ustawienia ma wyłącznie MG. */}
       {isGm && character.ownerId === null && <MerchantSection characterId={character.id} />}
@@ -3451,7 +3556,13 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         rows={data.gear}
         columns={[
           { key: 'name', label: 'Wyposażenie' },
-          { key: 'qty', label: 'Ilość', numeric: true, width: '4rem' },
+          {
+            key: 'qty',
+            label: 'Ilość',
+            numeric: true,
+            width: '4rem',
+            maxFor: (row) => (handLocked && row.ammo ? row.qty : undefined),
+          },
           { key: 'notes', label: 'Uwagi', maxLength: 200 },
         ]}
         addLabel="+ Wyposażenie"
@@ -3468,20 +3579,27 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       <DosesSection character={character} data={data} />
 
       <div className="cp-panel cp-plaques">
-        <div
-          className="cp-field cp-plaque"
-          title="Zapas noszony poza magazynkami. Magazynki liczą się osobno, przy każdej broni."
-        >
-          <span className="cp-label">Amunicja</span>
-          <input
-            type="text"
-            maxLength={SHEET_LINE_MAX_LENGTH}
-            value={data.ammoStock}
-            placeholder="np. 9 mm × 60, śrut × 12"
-            onChange={(e) => saveData({ ammoStock: e.target.value }, 'ammoStock')}
-            aria-label="Amunicja (zapas)"
-          />
-        </div>
+        {/* Etap 46c: zapas to pudełka w wyposażeniu. Stary tekst zostaje jako
+            notatka do przepisania, dopóki ktoś go nie usunie — inaczej „×16”
+            wyglądałoby na zapas, którego serwer nie widzi. Nowe karty go nie mają. */}
+        {data.ammoStock.trim() !== '' && (
+          <div
+            className="cp-field cp-plaque"
+            title="Stary zapis zapasu. Przeładowanie bierze naboje z pudełek w wyposażeniu — przepisz go na pudełka (MG: Kompendium → wpis amunicji → Dodaj postaci) i usuń notatkę."
+          >
+            <span className="cp-label">Amunicja (stary zapis)</span>
+            <span className="sheet-ammo-note">{data.ammoStock}</span>
+            <button
+              type="button"
+              className="cp-mini-button cp-mini-button--danger"
+              title="Usuń notatkę"
+              aria-label="Usuń notatkę o amunicji"
+              onClick={() => saveData({ ammoStock: '' }, 'ammoStock')}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <WalletSection character={character} data={data} saveData={saveData} />
       </div>
 

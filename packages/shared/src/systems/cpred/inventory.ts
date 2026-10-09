@@ -20,10 +20,13 @@
  *    zdejmuje go `character:cyberware` z etapu 23a, z Testem i ceną.
  */
 
+import { cpredSameAmmo } from './ammostock.js';
 import {
+  ITEM_QTY_MAX,
   ITEM_ROWS_MAX,
   type CpredArmorRow,
   type CpredCharacterData,
+  type CpredGearAmmo,
   type CpredGearRow,
   type CpredItemRow,
   type CpredWeaponRow,
@@ -79,6 +82,8 @@ export interface CpredItemView {
   compendiumId?: string;
   /** Gdzie siedzi pancerz — tarcza ma inną miniaturę niż kurtka. */
   armorLocation?: ArmorLocation;
+  /** Etap 46c: kształt naboju w pudełku — miniatura pudełka bez wpisu. */
+  ammo?: Pick<CpredGearAmmo, 'pattern'>;
 }
 
 export type CpredItemMoveError = 'ITEM_NOT_FOUND' | 'BAD_QTY' | 'TOO_MANY_ROWS' | 'NO_ITEMS';
@@ -146,6 +151,7 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
         qty: gear.qty,
         stackable: true,
         ...source,
+        ...(gear.ammo ? { ammo: { pattern: gear.ammo.pattern } } : {}),
       };
     }
   }
@@ -175,6 +181,10 @@ export function cpredItemLine(view: CpredItemView): string {
  * konkretny egzemplarz ma szczególnego.
  */
 function stacksWith(a: CpredGearRow, b: CpredGearRow): boolean {
+  // Etap 46c: pudełko amunicji skleja się po rodzaju i kalibrze — naboje
+  // wyjęte z magazynka i kupione u handlarza to ta sama amunicja, choć jedno
+  // pudełko powstało z wpisu, a drugie z magazynka.
+  if (a.ammo || b.ammo) return !!a.ammo && !!b.ammo && cpredSameAmmo(a.ammo, b.ammo);
   if (!a.compendiumId || a.compendiumId !== b.compendiumId) return false;
   return (
     a.name === b.name &&
@@ -292,7 +302,11 @@ export function cpredLandRows(
     if (list === 'gear') {
       const gear = row as CpredGearRow;
       const gearTarget = target.gear as CpredGearRow[];
-      const stack = gearTarget.findIndex((candidate) => stacksWith(gear, candidate));
+      // Stos ponad `ITEM_QTY_MAX` nie przeszedłby walidacji karty — wtedy
+      // nowy wiersz (40 naboi do pudełka z 980 to dwa pudełka, nie zguba).
+      const stack = gearTarget.findIndex(
+        (candidate) => stacksWith(gear, candidate) && candidate.qty + gear.qty <= ITEM_QTY_MAX,
+      );
       if (stack === -1) {
         const ids = new Set(gearTarget.map((candidate) => candidate.id));
         gearTarget.push(cpredLandedRow(gear, ids, makeId));

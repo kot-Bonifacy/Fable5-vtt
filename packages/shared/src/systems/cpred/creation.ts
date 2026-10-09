@@ -29,7 +29,13 @@ import {
   validateLifepath,
   type CpredLifepath,
 } from './lifepath.js';
-import { resolveWeapon, type CompendiumEntry, type CompendiumRegistry } from './compendium.js';
+import { cpredPurchasedAmmoRow, cpredPutAmmo } from './ammostock.js';
+import {
+  resolveWeapon,
+  toAmmoProfile,
+  type CompendiumEntry,
+  type CompendiumRegistry,
+} from './compendium.js';
 import { entryPrice, formatEddies, type CpredLifestyle } from './economy.js';
 import { CPRED_TEAMWORK_ABILITY } from './roleability.js';
 import { purchasedSheetRow } from './shopping.js';
@@ -708,12 +714,31 @@ export function creationTemplateStat(
 
 /** One line of the basket, priced from the catalogue the server holds. */
 export interface CpredCreationPurchase {
+  /** Klucz koszyka — id wpisu, a dla amunicji `id@typ broni` (`creationBasketKey`). */
   entryId: string;
   name: string;
+  /** Sztuki — a dla amunicji paczki (s. 344: 10 naboi albo 1 granat). */
   qty: number;
   /** Price of one copy. */
   price: number;
   total: number;
+}
+
+/**
+ * Klucz koszyka (etap 46c). Zwykły towar to id wpisu, a amunicja — id wpisu
+ * i typu broni, który wyznacza kaliber: „przeciwpancerna do pistoletu”
+ * i „przeciwpancerna do karabinu” to dwa wiersze koszyka i dwa pudełka.
+ */
+export function creationBasketKey(entryId: string, weaponTypeId?: string | null): string {
+  return weaponTypeId ? `${entryId}@${weaponTypeId}` : entryId;
+}
+
+/** Odwrotność `creationBasketKey`. */
+export function creationBasketEntry(key: string): { entryId: string; weaponTypeId: string | null } {
+  const at = key.indexOf('@');
+  return at === -1
+    ? { entryId: key, weaponTypeId: null }
+    : { entryId: key.slice(0, at), weaponTypeId: key.slice(at + 1) || null };
 }
 
 /** Eddies this method starts with — the shopping money, without the fashion half. */
@@ -729,15 +754,22 @@ export function creationBudget(data: CpredCreationData, draft: CpredCreationDraf
 export function creationPurchases(
   draft: CpredCreationDraft,
   lookup: (entryId: string) => CompendiumEntry | undefined,
+  /** Typy broni — wtedy wiersz amunicji mówi kaliber („… · C. Pistolet”). */
+  weaponTypeById?: CompendiumRegistry['weaponTypeById'],
 ): CpredCreationPurchase[] {
   const lines: CpredCreationPurchase[] = [];
-  for (const [entryId, qty] of Object.entries(draft.purchases)) {
+  for (const [key, qty] of Object.entries(draft.purchases)) {
     if (!isInteger(qty) || qty <= 0) continue;
+    const { entryId, weaponTypeId } = creationBasketEntry(key);
     const entry = lookup(entryId);
     if (!entry) continue;
+    // Amunicja bez kalibru nie jest towarem (`AMMO_CALIBRE_REQUIRED`).
+    if ((entry.category === 'ammo') !== (weaponTypeId !== null)) continue;
     const price = entryPrice(entry);
     if (price === null) continue;
-    lines.push({ entryId, name: entry.name, qty, price, total: price * qty });
+    const calibre = weaponTypeId ? weaponTypeById?.get(weaponTypeId)?.ammunition : undefined;
+    const name = calibre ? `${entry.name} · ${calibre}` : entry.name;
+    lines.push({ entryId: key, name, qty, price, total: price * qty });
   }
   return lines;
 }
@@ -912,8 +944,8 @@ export function creationIssues(
   }
 
   if (lookup) {
-    for (const entryId of Object.keys(draft.purchases)) {
-      const entry = lookup(entryId);
+    for (const key of Object.keys(draft.purchases)) {
+      const entry = lookup(creationBasketEntry(key).entryId);
       if (!entry || entryPrice(entry) === null) {
         issues.push(
           issue(
@@ -1125,8 +1157,8 @@ export function creationBasketForRole(
   shop: CreationShopContext,
 ): Record<string, number> {
   return Object.fromEntries(
-    Object.entries(purchases).filter(([entryId]) => {
-      const entry = shop.lookup(entryId);
+    Object.entries(purchases).filter(([key]) => {
+      const entry = shop.lookup(creationBasketEntry(key).entryId);
       return !entry || creationShopVerdict(entry, roleId, shop.rules).allowed;
     }),
   );
@@ -1598,7 +1630,7 @@ export function creationOutcome(
   compendium: Pick<CompendiumRegistry, 'weaponTypeById'>,
   owned: boolean,
 ): CpredCreationOutcome {
-  const purchases = creationPurchases(draft, lookup);
+  const purchases = creationPurchases(draft, lookup, compendium.weaponTypeById);
   const budget = creationBudget(data, draft);
   const spent = creationSpentEddies(purchases);
   const base = creationToCharacterData(
@@ -1609,10 +1641,28 @@ export function creationOutcome(
   const weapons: CpredWeaponRow[] = [...base.weapons];
   const armor: CpredArmorRow[] = [...base.armor];
   const gear: CpredGearRow[] = [...base.gear];
+  let gearWithAmmo: CpredGearRow[] = gear;
   let rows = 0;
   for (const line of purchases) {
-    const entry = lookup(line.entryId);
+    const { entryId, weaponTypeId } = creationBasketEntry(line.entryId);
+    const entry = lookup(entryId);
     if (!entry) continue;
+    // Etap 46c: amunicja to pudełko — `qty` paczek jednym wierszem, sklejone
+    // z pudełkiem tego samego rodzaju i kalibru.
+    if (entry.category === 'ammo') {
+      const type = weaponTypeId ? compendium.weaponTypeById.get(weaponTypeId) : undefined;
+      rows += 1;
+      const box = type
+        ? cpredPurchasedAmmoRow(toAmmoProfile(entry), type, line.qty, `creation-${rows}`)
+        : null;
+      if (box?.ammo) {
+        gearWithAmmo = cpredPutAmmo(gearWithAmmo, { ...box, ammo: box.ammo }, box.qty, () => {
+          rows += 1;
+          return `creation-${rows}`;
+        });
+      }
+      continue;
+    }
     const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
     for (let copy = 0; copy < line.qty; copy += 1) {
       rows += 1;
@@ -1620,11 +1670,11 @@ export function creationOutcome(
       if (!purchased) continue;
       if (purchased.list === 'weapons') weapons.push(purchased.row);
       else if (purchased.list === 'armor') armor.push(purchased.row);
-      else gear.push(purchased.row);
+      else gearWithAmmo = [...gearWithAmmo, purchased.row];
     }
   }
   return {
-    sheet: mergeCharacterData(base, { weapons, armor, gear, eddies: budget - spent }),
+    sheet: mergeCharacterData(base, { weapons, armor, gear: gearWithAmmo, eddies: budget - spent }),
     purchases,
     budget,
     spent,
@@ -1633,7 +1683,7 @@ export function creationOutcome(
 
 /** One thing the book hands a new character that the wizard does not. */
 export interface CpredCreationOutside {
-  id: 'package' | 'fashion' | 'cyberware' | 'ammo';
+  id: 'package' | 'fashion' | 'cyberware';
   title: string;
   text: string;
 }
@@ -1676,13 +1726,6 @@ export function creationLeftOutside(
         : 'Te z pakietu Roli dokłada MG, a własne kupuje się za eurodolce z karty. ') +
       'W VTT instaluje się je dopiero na gotowej postaci, w Kompendium — Utrata Człowieczeństwa ' +
       'jest wtedy losowana, choć przy tworzeniu postaci podręcznik liczy stałą wartość.',
-  });
-  lines.push({
-    id: 'ammo',
-    title: 'Amunicja',
-    text:
-      'Kupiona broń ma pełny magazynek, a przeładowanie w VTT nie zużywa zapasów — naboi nie ' +
-      'kupuje się ani tutaj, ani później.',
   });
   return lines;
 }

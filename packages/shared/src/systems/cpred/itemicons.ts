@@ -123,6 +123,11 @@ export interface CpredItemIconSource {
   compendiumId?: string | undefined;
   /** Pancerz wpisany ręcznie nie ma wpisu, ale wie, gdzie siedzi. */
   armorLocation?: ArmorLocation | undefined;
+  /**
+   * Etap 46c: pudełko amunicji rysuje kształt **swojego** naboju — wpis
+   * „Amunicja zwykła” pasuje do kul, śrutu i strzał, a pudełko ma jedno.
+   */
+  ammo?: { pattern: CpredAmmoPattern } | undefined;
 }
 
 /**
@@ -139,6 +144,7 @@ export function cpredItemRowIcon(
   lookup: (entryId: string) => CompendiumEntry | undefined,
   registry: Pick<CompendiumRegistry, 'weaponTypeById'>,
 ): CpredItemIcon | null {
+  if (list === 'gear' && row.ammo) return cpredAmmoIcon([row.ammo.pattern]);
   const entry = row.compendiumId ? lookup(row.compendiumId) : undefined;
   const byEntry = entry ? cpredEntryIcon(entry, registry) : null;
   if (byEntry) return byEntry;

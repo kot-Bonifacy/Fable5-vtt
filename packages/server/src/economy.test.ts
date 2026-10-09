@@ -328,10 +328,11 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect(ledger.entries[0]).toMatchObject({ kind: 'purchase', amount: -5 });
   });
 
-  it('amunicji i cyborgizacji nie kupuje się tą drogą', async () => {
+  it('cyborgizacji nie kupuje się tą drogą, a amunicji — bez kalibru', async () => {
+    // Etap 46c: amunicja to pudełko do kalibru (zakup z kalibrem: `ammo-stock.test.ts`).
     expect(
       await emitAck(gm, 'economy:buy', { characterId: ricoId, entryId: 'ammo.sample-standard' }),
-    ).toEqual({ ok: false, error: 'NOT_PURCHASABLE' });
+    ).toEqual({ ok: false, error: 'AMMO_CALIBRE_REQUIRED' });
     expect(
       await emitAck(gm, 'economy:buy', {
         characterId: ricoId,

@@ -295,6 +295,8 @@ describe('ammunition that deals no damage', () => {
         data: {
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5, will: 6 },
           skills: { athletics: 4, handgun: 4, 'resist-torture-drugs': 2 },
+          // Skutki naboju, nie zapas (46c): granat rzuca się „bez dna”.
+          ammoTracked: false,
           // Etap 31: „Jeśli próbuje jej użyć osoba bez tej cyborgizacji …
           // amunicja inteligentna nie wystrzeli" (s. 347). Od tej sesji to
           // odmowa, nie proza — więc strzelec musi mieć czym celować.

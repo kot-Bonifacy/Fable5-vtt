@@ -95,6 +95,23 @@ describe('availableBotCombatActions', () => {
     expect(availableBotCombatActions(empty)).toContain('reload');
   });
 
+  it('etap 46c: bez zapasu nie proponuje przeładowania — tura kończy się wyborem', () => {
+    const dry = state({
+      weapons: [
+        {
+          id: 'weapon:row-1:single',
+          label: 'Ciężki pistolet',
+          ammo: { current: 0, max: 8 },
+          stock: 0,
+          disabled: 'Pusty magazynek — przeładuj.',
+        },
+      ],
+    });
+    expect(availableBotCombatActions(dry)).not.toContain('reload');
+    expect(availableBotCombatActions(dry)).toContain('pass');
+    expect(buildBotCombatPrompt(dry, { botName: 'Rico' }).system).toContain('zapasu brak');
+  });
+
   it('never offers a reload of a full magazine', () => {
     const full = state({
       weapons: [{ id: 'weapon:row-1:single', label: 'Pistolet', ammo: { current: 8, max: 8 } }],

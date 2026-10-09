@@ -77,6 +77,7 @@ import {
   type SceneVisionContext,
 } from './vision.js';
 import { campaignAi } from './ai.js';
+import { characterTracksAmmo } from './ammo-stock.js';
 
 /**
  * Tura bota w walce (etap 20b).
@@ -328,8 +329,12 @@ async function buildTacticalStep(
   // Pasek akcji budowany tak, jak widzi go GRACZ (`isGm: false`) — celowo: slot
   // wyszarzony brakiem Akcji ma być wyszarzony także dla bota, mimo że konto,
   // którym bot działa, jest z tej blokady zwolnione.
+  // Etap 46c: towarzysz-bot liczy amunicję jak gracz, więc jego pasek widzi
+  // zapas — „przeładuj” bez naboi znika z menu i tura nie kręci się w odmowach.
+  const tracked = await characterTracksAmmo(deps, ctx.campaignId, ctx.character, ctx.sheet);
   const slots = hotbarSlotsFor({
     sheet: ctx.sheet,
+    ...(tracked ? { stockGear: ctx.sheet.gear } : {}),
     resolve: ctx.resolveWeaponEntry,
     resolveAmmo: ctx.resolveAmmoEntry,
     statuses: tokenStatuses(actor),
@@ -353,6 +358,7 @@ async function buildTacticalStep(
       ...(slot.ammoLabel ? { detail: `nabój: ${slot.ammoLabel}` } : {}),
       ...(slot.melee ? { melee: true } : {}),
       ...(slot.ammo ? { ammo: slot.ammo } : {}),
+      ...(slot.stock !== null ? { stock: slot.stock } : {}),
       ...(slot.disabled ? { disabled: slot.disabled } : {}),
     });
   }
@@ -529,6 +535,7 @@ const REFUSAL_TEXTS: Record<string, string> = {
   TARGET_NOT_FOUND: 'Tej figury już tam nie ma.',
   UNKNOWN_WEAPON: 'Nie masz przy sobie tej broni.',
   WEAPON_HAS_NO_MAGAZINE: 'Ta broń nie ma magazynka do przeładowania.',
+  NO_AMMO: 'Nie masz amunicji do tej broni — weź inną broń, walcz wręcz albo spasuj.',
   GRAPPLE_TWO_HANDED: 'W zwarciu nie użyjesz broni oburęcznej.',
   SCENE_HAS_NO_SCALE: 'Na tej scenie nie da się zmierzyć odległości.',
 };

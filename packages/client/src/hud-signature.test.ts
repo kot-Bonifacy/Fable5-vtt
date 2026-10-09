@@ -29,6 +29,7 @@ function slot(patch: Partial<CpredHotbarWeaponSlot> = {}): CpredHotbarWeaponSlot
     pointTarget: true,
     thrown: true,
     ammo: null,
+    stock: null,
     ammoLabel: null,
     coneRangeM: null,
     outOfHand: false,

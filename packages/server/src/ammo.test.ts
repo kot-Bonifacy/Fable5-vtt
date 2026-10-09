@@ -325,6 +325,8 @@ describe('special ammunition', () => {
         data: {
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5, will: 6 },
           skills: { 'shoulder-arms': 4, handgun: 4, 'heavy-weapons': 4 },
+          // Ten plik bada skutki naboju, nie zapas (etap 46c) — magazynki „bez dna”.
+          ammoTracked: false,
           weapons: [
             {
               id: 'w-shotgun',

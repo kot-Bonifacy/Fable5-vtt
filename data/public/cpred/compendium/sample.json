@@ -40,6 +40,7 @@
         ]
       },
       "suppressive": true,
+      "ammunition": "Nabój karabinowy (przykład)",
       "ammoPatterns": [
         "bullet"
       ]
@@ -79,6 +80,7 @@
         null,
         null
       ],
+      "ammunition": "Nabój pistoletowy (przykład)",
       "ammoPatterns": [
         "bullet"
       ]
@@ -165,6 +167,7 @@
         null,
         null
       ],
+      "ammunition": "Ładunki przykładowe",
       "ammoPatterns": [
         "grenade"
       ]
@@ -331,7 +334,7 @@
       "id": "weapon.puszka-hukowa",
       "category": "weapon",
       "name": "Puszka hukowa",
-      "description": "Zlepek z warsztatu w Kotłowni — rzuca się, licząc do trzech. Liczbę sztuk wpisz w polu magazynka.",
+      "description": "Zlepek z warsztatu w Kotłowni — rzuca się, licząc do trzech. Ładunki do niej kupuje się osobno, na sztuki.",
       "weaponTypeId": "weapon-type.sample-grenade",
       "quality": "standard",
       "cost": 80,
@@ -349,6 +352,18 @@
         "arrow"
       ],
       "description": "Zwykły nabój bez cech specjalnych — kształt wpisu bez flag."
+    },
+    {
+      "id": "ammo.sample-blast",
+      "category": "ammo",
+      "name": "Ładunek zwykły (przykład)",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "grenade",
+        "rocket"
+      ],
+      "description": "Zwykły ładunek do granatów i rakiet, bez cech specjalnych — sprzedawany na sztuki (etap 46c)."
     },
     {
       "id": "ammo.sample-piercing",

@@ -2003,6 +2003,11 @@ function attackAckErrorText(code: string): string {
       return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_GROUP_TAKEN;
     case 'UNKNOWN_AMMO':
       return 'Nie ma takiego naboju w kompendium.';
+    // Etap 46c: przeładowanie i rzut biorą z zapasu w ekwipunku.
+    case 'NO_AMMO':
+      return 'Nie masz amunicji do tej broni — kup ją, weź od kogoś albo zmień rodzaj naboju.';
+    case 'AMMO_MISMATCH':
+      return 'Ten nabój nie pasuje do tej broni.';
     case 'TOKEN_HAS_NO_PROFILE':
       return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
     // Trzy powody, dla których Unik nie dochodzi do skutku. Wszystkie jadą
@@ -3558,8 +3563,13 @@ export const rerollCreationStats = (draftId: string, statId?: CpredStatId) =>
  * a quantity: two quick clicks on „+" must not race each other onto the same
  * total, and the server is the one holding the prices anyway.
  */
-export const buyCreationItem = (entryId: string, delta: 1 | -1) =>
-  emitCreationAck<CreationDraft>('creation:buy', { entryId, delta });
+export const buyCreationItem = (entryId: string, delta: 1 | -1, weaponTypeId?: string) =>
+  emitCreationAck<CreationDraft>('creation:buy', {
+    entryId,
+    delta,
+    // Etap 46c: kaliber amunicji (typ broni); przy reszcie wpisów go nie ma.
+    ...(weaponTypeId ? { weaponTypeId } : {}),
+  });
 
 export const finishCreation = (payload: CreationFinishPayload = {}) =>
   emitCreationAck<CreationFinishResult>('creation:finish', payload);
@@ -3643,7 +3653,11 @@ export function creationErrorText(code: string | undefined): string {
     case 'CATALOG_CLOSED':
       return 'MG zamknął zakupy z katalogu — kupisz u handlarza.';
     case 'NOT_PURCHASABLE':
-      return 'Tego się w kreatorze nie kupuje: cyborgizacje instaluje się z karty wpisu, amunicję ładuje się do broni.';
+      return 'Tego się w kreatorze nie kupuje: cyborgizacje instaluje się z karty wpisu.';
+    case 'AMMO_CALIBRE_REQUIRED':
+      return 'Wybierz kaliber — amunicję kupuje się do konkretnej broni.';
+    case 'AMMO_MISMATCH':
+      return 'Ten nabój nie pasuje do wybranego kalibru.';
     case 'ENTRY_NOT_FOUND':
       return 'Nie znalazłem tego wpisu w kompendium.';
     case 'TOO_MANY_ROWS':
@@ -4011,6 +4025,9 @@ export function characterSaveErrorText(code: string): string {
       return 'Imię musi mieć od 1 do 64 znaków.';
     case 'INVALID_DATA':
       return 'Serwer nie przyjął tych danych karty — popraw ostatnią zmianę.';
+    // Etap 46c (decyzja MG z 09.10): na karcie z zapasem naboi ręką tylko ubywa.
+    case 'AMMO_LOCKED':
+      return 'Naboi przybywa z zakupu, wymiany, łupu albo od MG — ręką możesz je tylko odjąć.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie ma takiej postaci w tej kampanii — odśwież stronę.';
     case 'BAD_REQUEST':
@@ -4363,7 +4380,11 @@ export function economyErrorText(code: string | undefined): string {
     case 'NO_PRICE':
       return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo podaj własną.';
     case 'NOT_PURCHASABLE':
-      return 'Tego się tu nie kupuje: cyborgizacje instaluje się z karty wpisu, amunicję ładuje się do broni.';
+      return 'Tego się tu nie kupuje: cyborgizacje instaluje się z karty wpisu.';
+    case 'AMMO_CALIBRE_REQUIRED':
+      return 'Wybierz kaliber — amunicję kupuje się do konkretnej broni.';
+    case 'AMMO_MISMATCH':
+      return 'Ten nabój nie pasuje do wybranego kalibru.';
     case 'ENTRY_NOT_FOUND':
       return 'Nie znalazłem tego wpisu w kompendium.';
     case 'TOO_MANY_ROWS':

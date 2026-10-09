@@ -944,6 +944,13 @@ export interface EconomyBuyPayload {
    * only by the GM; a player's override is refused rather than ignored.
    */
   price?: number;
+  /**
+   * Etap 46c: typ broni wyznaczający kaliber amunicji — wymagany przy wpisie
+   * amunicji (`AMMO_CALIBRE_REQUIRED`). `price` MG to wtedy cena całego zakupu.
+   */
+  weaponTypeId?: string;
+  /** Etap 46c: ile paczek amunicji (s. 344: 10 naboi albo 1 granat); domyślnie 1. */
+  packs?: number;
 }
 
 /** Client → server payload of `economy:transfer` — eddies changing hands. */

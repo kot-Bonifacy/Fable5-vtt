@@ -12,6 +12,7 @@ import type {
   CpredAttackMeta,
   CpredAttackRequest,
   CpredCharacterData,
+  CpredGearRow,
   CpredRegistry,
   MapFxEffect,
   RangeDvTable,
@@ -32,6 +33,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredDrawFits,
+  cpredThrowsFromStock,
   cpredDrawnWeapons,
   cpredEffectiveStats,
   cpredWeaponInHands,
@@ -107,6 +109,7 @@ import {
   type BlastTarget,
 } from './areas.js';
 import { resolveAmmoChecks, type AmmoCheckTarget } from './ammo-effects.js';
+import { planStockReload, planThrowFromStock } from './ammo-stock.js';
 import { placeSmoke, smokeModifiersAt } from './smoke.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import { pinToken } from './turn-effects.js';
@@ -501,8 +504,10 @@ async function spendAttackCosts(
   source: AttackSource,
   meta: CpredAttackMeta,
   luckSpent: number,
+  /** Etap 46c: ekwipunek po rzucie granatem z zapasu, gdy rzut go zużył. */
+  thrownGear: CpredGearRow[] | null = null,
 ): Promise<void> {
-  if (luckSpent === 0 && meta.ammoCost === 0) return;
+  if (luckSpent === 0 && meta.ammoCost === 0 && !thrownGear) return;
 
   const { character, stored: data } = source;
   // Stage 31: a shot from a bolted-on weapon spends the *attachment's* rounds.
@@ -519,6 +524,7 @@ async function spendAttackCosts(
   });
   const updated = mergeCharacterData(data, {
     weapons,
+    ...(thrownGear ? { gear: thrownGear } : {}),
     ...(luckSpent > 0 ? { luckCurrent: data.luckCurrent - luckSpent } : {}),
   });
   const saved = await deps.ctx.prisma.character.update({
@@ -1208,6 +1214,19 @@ export async function performAttackRoll(
       if (!planned.ok) throw new RealtimeError(planned.error);
       const { plan } = planned;
       const meta = plan.attack;
+      // Etap 46c: granat ręczny bez magazynka bierze sztukę z zapasu. Odmowa
+      // `NO_AMMO` stoi przed budżetem tury, jak pusty magazynek w planerze.
+      const thrownGear =
+        !meta.attachmentId && cpredThrowsFromStock(weapon.row, weapon.resolved)
+          ? await planThrowFromStock(
+              deps,
+              campaignId,
+              source.character,
+              source.stored,
+              weapon.row,
+              weapon.resolved,
+            )
+          : null;
 
       // The turn budget is charged *before* anything is spent for real: an attack
       // that has no Action left must not eat ammunition or Luck on its way to the
@@ -1238,7 +1257,7 @@ export async function performAttackRoll(
         );
       }
 
-      await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent);
+      await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent, thrownGear);
 
       const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
       const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
@@ -2283,21 +2302,42 @@ export async function performWeaponReload(
     // Unless the round is changing — then the full magazine comes out.
     if (row.ammoCurrent >= row.ammoMax && !changing) return { ammo: row.ammoCurrent };
 
+    // Etap 46c: karta drużyny ładuje z zapasu — tyle, ile jest, a przy zmianie
+    // rodzaju stare naboje wracają do ekwipunku. Bez naboi `NO_AMMO` pada
+    // tutaj, przed Akcją. Karta „bez dna” dostaje `null` i pełny magazynek.
+    const { resolved } = await resolveWeaponRow(deps, campaignId, data, row.id);
+    const stock = await planStockReload(deps, campaignId, character, data, {
+      weapon: resolved,
+      printedCalibre: row.ammoType,
+      capacity: row.ammoMax,
+      loaded: { count: row.ammoCurrent, ...(row.ammoId ? { ammoId: row.ammoId } : {}) },
+      ...(nextAmmoId ? { nextAmmoId } : {}),
+    });
+    const loaded = stock ? stock.count : row.ammoMax;
+
     // „Przeładowanie — Załadowujesz magazynek do pełna" is an Action (s. 169).
     // Unlike an attack it produces no card of its own, so the chat line is the
     // only trace the table gets — hence not silent.
     await spendCharacterAction(deps, campaignId, sceneId, character, user);
 
-    await saveWeaponRow(deps, campaignId, character, data, row.id, {
-      ammoCurrent: row.ammoMax,
-      ...(changing ? (nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }) : {}),
-    });
+    await saveWeaponRow(
+      deps,
+      campaignId,
+      character,
+      data,
+      row.id,
+      {
+        ammoCurrent: loaded,
+        ...(changing ? (nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }) : {}),
+      },
+      stock ? { gear: stock.gear } : undefined,
+    );
     // A magazine going in is the one non-attack sound the map plays, and it
     // earns it: „he is reloading" is the whole reason the other side breaks
     // cover. No card to wait for — a reload writes a plain chat line, not a
     // roll — so it goes off at once.
     await emitReloadMapFx(deps, campaignId, sceneId, character, data, row.id);
-    return { ammo: row.ammoMax };
+    return { ammo: loaded };
   }
 }
 
@@ -2350,17 +2390,35 @@ async function reloadAttachment(
   // full magazine comes out, exactly as it does on the host row.
   if (loaded >= capacity && !changing) return { ammo: loaded };
 
+  // Etap 46c: granatnik podwieszany bierze granaty z tego samego zapasu, co
+  // granat rzucany i granatnik — kaliber jest broni doczepionej, nie nosiciela.
+  const stock = await planStockReload(deps, campaignId, character, data, {
+    weapon: weapon.secondary,
+    capacity,
+    loaded: { count: loaded, ...(current ? { ammoId: current } : {}) },
+    ...(nextAmmoId ? { nextAmmoId } : {}),
+  });
+  const filled = stock ? stock.count : capacity;
+
   const attachmentAmmoId = { ...(row.attachmentAmmoId ?? {}) };
   if (nextAmmoId) attachmentAmmoId[attachmentId] = nextAmmoId;
   else delete attachmentAmmoId[attachmentId];
 
   await spendCharacterAction(deps, campaignId, sceneId, character, user);
-  await saveWeaponRow(deps, campaignId, character, data, row.id, {
-    attachmentAmmo: { ...(row.attachmentAmmo ?? {}), [attachmentId]: capacity },
-    attachmentAmmoId,
-  });
+  await saveWeaponRow(
+    deps,
+    campaignId,
+    character,
+    data,
+    row.id,
+    {
+      attachmentAmmo: { ...(row.attachmentAmmo ?? {}), [attachmentId]: filled },
+      attachmentAmmoId,
+    },
+    stock ? { gear: stock.gear } : undefined,
+  );
   await emitReloadMapFx(deps, campaignId, sceneId, character, data, row.id);
-  return { ammo: capacity };
+  return { ammo: filled };
 }
 
 /**
@@ -2603,13 +2661,15 @@ async function saveWeaponRow(
   data: CpredCharacterData,
   rowId: string,
   patch: Partial<CpredCharacterData['weapons'][number]>,
+  /** Reszta karty zapisana tym samym zapisem — zapas z przeładowania (46c). */
+  extra?: Partial<CpredCharacterData>,
 ): Promise<void> {
   const weapons = data.weapons.map((weapon) =>
     weapon.id === rowId ? { ...weapon, ...patch } : weapon,
   );
   const saved = await deps.ctx.prisma.character.update({
     where: { id: character.id },
-    data: { data: JSON.stringify(mergeCharacterData(data, { weapons })) },
+    data: { data: JSON.stringify(mergeCharacterData(data, { ...extra, weapons })) },
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
 }

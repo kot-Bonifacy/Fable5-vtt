@@ -2,6 +2,8 @@ import type {
   ChatMessageView,
   CompendiumEntry,
   CpredCharacterData,
+  CpredGearAmmo,
+  CpredGearRow,
   EconomyAdjustPayload,
   EconomyBuyPayload,
   EconomyHistoryPayload,
@@ -13,15 +15,19 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CPRED_AMMO_PACKS_MAX,
   EDDIES_MAX,
   ITEM_ROWS_MAX,
   LEDGER_KIND_LABELS,
   ROLE_GM,
   cpredHaggleDeal,
+  cpredPurchasedAmmoRow,
+  cpredPutAmmo,
   cpredHaggledPrice,
   entryPrice,
   formatEddies,
   formatLedgerAmount,
+  isAmmoEntry,
   isLedgerKind,
   mergeCharacterData,
   monthlyCostOf,
@@ -30,6 +36,7 @@ import {
   resolveWeapon,
   settleMonth,
   shopTierOf,
+  toAmmoProfile,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import type { Prisma } from '../generated/prisma/client.js';
@@ -250,7 +257,14 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       );
     }
 
-    const listed = resolvePrice(entry, payload?.price, user);
+    // Etap 46c: amunicję kupuje się paczkami do kalibru (s. 344). Cena wpisu
+    // jest ceną paczki, więc zakup `packs` paczek kosztuje tyle razy więcej —
+    // a cena wpisana przez MG to cena całego zakupu.
+    const ammoBox = entry.category === 'ammo' ? requireAmmoBox(deps, entry, payload) : null;
+    const listed =
+      ammoBox && payload?.price === undefined
+        ? resolvePrice(entry, undefined, user) * ammoBox.packs
+        : resolvePrice(entry, payload?.price, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
     // Stage 30d: a bargain the Fixer already struck („kupujesz go o 10%
@@ -267,23 +281,28 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       entry.category === 'weapon'
         ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
         : null;
-    const purchased = purchasedSheetRow(entry, resolved, nextRowId());
-    // Cyberware is fitted by `character:cyberware`, a cartridge is loaded into a
-    // weapon and an injury is drawn by the damage flow — none of the three is
-    // bought here, and a wallet emptied for a row nobody can carry would be the
-    // worst possible way to find that out.
-    if (!purchased) throw new RealtimeError('NOT_PURCHASABLE');
-    if (data[purchased.list].length >= ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
+    // Cyberware is fitted by `character:cyberware` and an injury is drawn by
+    // the damage flow — neither is bought here, and a wallet emptied for a row
+    // nobody can carry would be the worst possible way to find that out.
+    // Ammunition lands as a box (stage 46c), glued onto one of its kind.
+    const purchased = ammoBox ? null : purchasedSheetRow(entry, resolved, nextRowId());
+    if (!ammoBox && !purchased) throw new RealtimeError('NOT_PURCHASABLE');
+    const goods: Partial<CpredCharacterData> = ammoBox
+      ? { gear: cpredPutAmmo(data.gear, ammoBox.row, ammoBox.row.qty, nextRowId) }
+      : purchased!.list === 'weapons'
+        ? { weapons: [...data.weapons, purchased!.row] }
+        : purchased!.list === 'armor'
+          ? { armor: [...data.armor, purchased!.row] }
+          : { gear: [...data.gear, purchased!.row] };
+    const list = ammoBox ? 'gear' : purchased!.list;
+    if ((goods[list]?.length ?? 0) > ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
     if (data.eddies < price) throw new RealtimeError('NOT_ENOUGH_EDDIES');
+    const label = ammoBox ? `${ammoBox.row.name} ×${ammoBox.row.qty}` : entry.name;
 
     // Goods first, in the same write as the money: `applyBalance` saves the
     // sheet it is handed, so the row and the payment cannot come apart.
     const patch: Partial<CpredCharacterData> = {
-      ...(purchased.list === 'weapons'
-        ? { weapons: [...data.weapons, purchased.row] }
-        : purchased.list === 'armor'
-          ? { armor: [...data.armor, purchased.row] }
-          : { gear: [...data.gear, purchased.row] }),
+      ...goods,
       // The bargain leaves the sheet in the same write that spends it, so a
       // second purchase cannot ride the same roll.
       ...(struck ? { haggle: null } : {}),
@@ -294,7 +313,7 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       campaign.id,
       character,
       withItem,
-      { kind: 'purchase', amount: -price, label: entry.name },
+      { kind: 'purchase', amount: -price, label },
       user.id,
     );
 
@@ -303,9 +322,9 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       campaign.id,
       user,
       {
-        title: `${LEDGER_KIND_LABELS.purchase} — ${entry.name}`,
+        title: `${LEDGER_KIND_LABELS.purchase} — ${label}`,
         lines: [
-          ledgerLine(character.name, entry.name, -price, updated.eddies),
+          ledgerLine(character.name, label, -price, updated.eddies),
           // The discount gets its own line rather than a quieter price: a Fixer
           // has to be able to see that the targ they rolled for was spent here.
           ...(struck
@@ -322,6 +341,30 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     return { balance: updated.eddies };
   },
 });
+
+/**
+ * Pudełko z zakupu amunicji (etap 46c): kaliber z typu broni i liczba paczek.
+ * Bez kalibru odmowa `AMMO_CALIBRE_REQUIRED` — „amunicja w ogóle” nie pasuje
+ * do niczego, a pudełko bez kalibru nie załadowałoby żadnej broni.
+ */
+function requireAmmoBox(
+  deps: RealtimeDeps,
+  entry: CompendiumEntry,
+  payload: EconomyBuyPayload | undefined,
+): { row: CpredGearRow & { ammo: CpredGearAmmo }; packs: number } {
+  if (!isAmmoEntry(entry)) throw new RealtimeError('NOT_PURCHASABLE');
+  const typeId = payload?.weaponTypeId;
+  const type =
+    typeof typeId === 'string' ? deps.ctx.compendium.weaponTypeById.get(typeId) : undefined;
+  if (!type) throw new RealtimeError('AMMO_CALIBRE_REQUIRED');
+  const packs = payload?.packs ?? 1;
+  if (!Number.isInteger(packs) || packs < 1 || packs > CPRED_AMMO_PACKS_MAX) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const row = cpredPurchasedAmmoRow(toAmmoProfile(entry), type, packs, nextRowId());
+  if (!row?.ammo) throw new RealtimeError('AMMO_MISMATCH');
+  return { row: { ...row, ammo: row.ammo }, packs };
+}
 
 /**
  * The price actually charged. The printed number, the band's price when the

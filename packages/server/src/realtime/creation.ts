@@ -41,6 +41,10 @@ import {
   applyRolledSpread,
   clearRolledStats,
   createDefaultCreationDraft,
+  cpredPurchasedAmmoRow,
+  cpredPutAmmo,
+  creationBasketEntry,
+  creationBasketKey,
   creationBudget,
   creationDataOf,
   creationIssues,
@@ -66,6 +70,8 @@ import {
   resolveWeapon,
   rollFormula,
   sanitizeCharacterName,
+  toAmmoProfile,
+  ITEM_ROWS_MAX,
   creationShopVerdict,
   type CreationShopRules,
 } from '@vtt/shared';
@@ -782,25 +788,47 @@ export const creationBuyEvent = defineCreationEvent<
     if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
     const current = toDraftView(existing, deps).draft;
 
-    const entryId = payload?.entryId;
-    if (typeof entryId !== 'string' || entryId.length === 0) throw new RealtimeError('BAD_REQUEST');
+    if (typeof payload?.entryId !== 'string' || payload.entryId.length === 0) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
     const delta = payload?.delta;
     if (delta !== 1 && delta !== -1) throw new RealtimeError('BAD_REQUEST');
+    // Etap 46c: amunicja leży w koszyku pod kluczem z kalibrem. Klient podaje
+    // klucz wprost (−1 przy wierszu koszyka) albo id wpisu i typ broni.
+    const parsed = creationBasketEntry(payload.entryId);
+    const weaponTypeId =
+      parsed.weaponTypeId ??
+      (typeof payload.weaponTypeId === 'string' && payload.weaponTypeId.length > 0
+        ? payload.weaponTypeId
+        : null);
+    const key = creationBasketKey(parsed.entryId, weaponTypeId);
 
     const purchases = { ...current.purchases };
-    const held = purchases[entryId] ?? 0;
+    const held = purchases[key] ?? 0;
     if (delta === -1) {
-      if (held <= 1) delete purchases[entryId];
-      else purchases[entryId] = held - 1;
+      if (held <= 1) delete purchases[key];
+      else purchases[key] = held - 1;
     } else {
-      const entry = await campaignEntry(deps, campaignId, entryId);
+      const entry = await campaignEntry(deps, campaignId, parsed.entryId);
       if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
       if (entryPrice(entry) === null) throw new RealtimeError('NO_PRICE');
+      if (entry.category === 'ammo') {
+        // Etap 46c: nabój kupuje się do kalibru, nie „w ogóle”.
+        const type = weaponTypeId ? deps.ctx.compendium.weaponTypeById.get(weaponTypeId) : null;
+        if (!type) throw new RealtimeError('AMMO_CALIBRE_REQUIRED');
+        if (!cpredPurchasedAmmoRow(toAmmoProfile(entry), type, 1, 'probe')) {
+          throw new RealtimeError('AMMO_MISMATCH');
+        }
+      } else if (weaponTypeId !== null) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
       // „Tego się tu nie kupuje" comes before „nie na tym poziomie": cyberware
-      // is fitted by its own event (the Humanity is rolled), a cartridge is
-      // loaded into a weapon and an injury is drawn by the damage flow — none
-      // of the three would become buyable if the GM opened the shop wider.
-      if (!purchasedSheetRow(entry, null, 'probe')) throw new RealtimeError('NOT_PURCHASABLE');
+      // is fitted by its own event (the Humanity is rolled) and an injury is
+      // drawn by the damage flow — neither would become buyable if the GM
+      // opened the shop wider. Ammunition is a box since stage 46c.
+      if (entry.category !== 'ammo' && !purchasedSheetRow(entry, null, 'probe')) {
+        throw new RealtimeError('NOT_PURCHASABLE');
+      }
       const shelf = creationShopVerdict(
         entry,
         current.roleId,
@@ -810,11 +838,12 @@ export const creationBuyEvent = defineCreationEvent<
         throw new RealtimeError(`CREATION_SHOP_LOCKED:${shelf.tier}:${shelf.roleTool ? 1 : 0}`);
       }
       if (held >= CREATION_PURCHASE_QTY_MAX) throw new RealtimeError('TOO_MANY_ROWS');
-      purchases[entryId] = held + 1;
+      purchases[key] = held + 1;
 
       const next: CpredCreationDraft = { ...current, purchases };
       const lookup = await purchaseLookup(deps, campaignId, Object.keys(purchases));
-      if (creationSpentEddies(creationPurchases(next, lookup)) > creationBudget(data, next)) {
+      const lines = creationPurchases(next, lookup, deps.ctx.compendium.weaponTypeById);
+      if (creationSpentEddies(lines) > creationBudget(data, next)) {
         throw new RealtimeError('NOT_ENOUGH_EDDIES');
       }
     }
@@ -832,10 +861,11 @@ export const creationBuyEvent = defineCreationEvent<
 async function purchaseLookup(
   deps: RealtimeDeps,
   campaignId: string,
-  entryIds: readonly string[],
+  keys: readonly string[],
 ): Promise<(entryId: string) => CompendiumEntry | undefined> {
   const byId = new Map<string, CompendiumEntry>();
-  for (const entryId of entryIds) {
+  // Klucz koszyka amunicji niesie kaliber (`creationBasketKey`) — wpis jest jeden.
+  for (const entryId of new Set(keys.map((key) => creationBasketEntry(key).entryId))) {
     const entry = await campaignEntry(deps, campaignId, entryId);
     if (entry) byId.set(entryId, entry);
   }
@@ -1252,9 +1282,30 @@ async function payStartingKit(
     { emit: false, tx },
   );
 
-  for (const line of creationPurchases(draft, lookup)) {
-    const entry = lookup(line.entryId);
+  for (const line of creationPurchases(draft, lookup, deps.ctx.compendium.weaponTypeById)) {
+    const { entryId, weaponTypeId } = creationBasketEntry(line.entryId);
+    const entry = lookup(entryId);
     if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
+    if (entry.category === 'ammo') {
+      // Etap 46c: `qty` paczek to jedno pudełko, sklejone z takim samym.
+      const type = weaponTypeId ? deps.ctx.compendium.weaponTypeById.get(weaponTypeId) : null;
+      const box = type
+        ? cpredPurchasedAmmoRow(toAmmoProfile(entry), type, line.qty, nextRowId())
+        : null;
+      if (!box?.ammo) throw new RealtimeError('NOT_PURCHASABLE');
+      const gear = cpredPutAmmo(sheet.gear, { ...box, ammo: box.ammo }, box.qty, nextRowId);
+      if (gear.length > ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
+      sheet = await applyBalance(
+        deps,
+        campaignId,
+        character,
+        mergeCharacterData(sheet, { gear }),
+        { kind: 'purchase', amount: -line.total, label: `${line.name} ×${box.qty}` },
+        actorId,
+        { emit: false, tx },
+      );
+      continue;
+    }
     const resolved =
       entry.category === 'weapon'
         ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })

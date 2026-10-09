@@ -304,7 +304,27 @@
 .sheet-gear-actions {
   display: flex;
   justify-content: flex-start;
+  align-items: center;
   gap: 0.4rem;
+}
+
+/* Etap 46c: „Licz amunicję” (tylko MG) obok „Wymiana…”. */
+.sheet-ammo-tracked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--cp-ink, var(--text));
+  cursor: pointer;
+}
+
+/* Etap 46c: stary tekst „Amunicja (zapas)” — notatka do przepisania na pudełka. */
+.sheet-ammo-note {
+  flex: 1;
+  min-width: 0;
+  font-style: italic;
+  color: var(--cp-ink-dim, var(--text-dim));
+  overflow-wrap: anywhere;
 }
 
 /* Karta oględzin na czacie — jedno zdanie i droga do pełnej listy. */

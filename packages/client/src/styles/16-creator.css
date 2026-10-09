@@ -938,6 +938,22 @@
   color: var(--text-dim);
 }
 
+/* Etap 46c: kaliber przy wpisie amunicji — wąski, żeby nazwa miała miejsce. */
+.creator-shop-calibre {
+  flex: 0 1 9rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+/* Etap 46c: „Broń bez zapasu amunicji: …” — ostrzeżenie, nie odmowa. */
+.creator-no-stock {
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid var(--warn-bright);
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+
 .creator-shop-details {
   display: flex;
   flex-direction: column;

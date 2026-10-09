@@ -254,6 +254,8 @@ function HotbarSlot({
   onToggleDrawer?: () => void;
 }) {
   const ammo = slot.kind === 'weapon' || slot.kind === 'reload' ? slot.ammo : null;
+  // Etap 46c: zapas w ekwipunku — null u karty „bez dna” (NPC, statysta).
+  const stock = slot.kind === 'weapon' || slot.kind === 'reload' ? slot.stock : null;
   const hasDrawer = modeCount > 1 && onToggleDrawer !== undefined;
   return (
     <div
@@ -287,6 +289,14 @@ function HotbarSlot({
           </span>
           <span className="hud-slot-line hud-slot-line--sub">
             {ammo && <Magazine ammo={ammo} />}
+            {stock !== null && (
+              <span
+                className={`hud-stock${stock === 0 ? ' hud-stock--empty' : ''}`}
+                title={`Zapas w ekwipunku: ${stock}`}
+              >
+                zapas {stock}
+              </span>
+            )}
             {/* Only a weapon with a choice says which choice is live: on a
                 pistol „pojedynczy" is not information, it is noise. */}
             {hasDrawer && (

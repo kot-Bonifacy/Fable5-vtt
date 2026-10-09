@@ -17,6 +17,7 @@ import {
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
 import { isPharmaceuticalId } from './pharma.js';
+import { CPRED_AMMO_PATTERNS, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
@@ -404,6 +405,48 @@ export interface CpredGearRow extends CpredItemRow {
    * pierwszym „oddaję Rico dwie fiolki".
    */
   consumable?: string;
+  /**
+   * Pudełko amunicji (etap 46c) — wiersz wyposażenia, a nie osobna lista, żeby
+   * przekazanie, łup, handel i półka handlarza działały bez nowej gałęzi.
+   * `qty` liczy **naboje** (granaty, rakiety), nie paczki. Skleja się po
+   * rodzaju i kalibrze, nie po nazwie ani wpisie (`cpredAmmoStockKeyOf`).
+   */
+  ammo?: CpredGearAmmo;
+}
+
+/**
+ * Co siedzi w pudełku (etap 46c).
+ *
+ * `calibre` to rodzina z pola „Amunicja” typu broni („C. Pistolet”,
+ * „Granaty”), ta sama, którą wiersz broni drukuje w `ammoType` — decyzja MG
+ * z 09.10: granat pasuje i do ręki, i do granatnika. `ammoId` to wpis
+ * amunicji z efektami albo `null` dla zwykłej (wpis bez efektów też jest
+ * „zwykłą”). `pattern` mówi, w jakiej paczce się go kupuje (s. 344).
+ */
+export interface CpredGearAmmo {
+  ammoId: string | null;
+  calibre: string;
+  pattern: CpredAmmoPattern;
+}
+
+/** Najdłuższa nazwa kalibru, jaką przyjmuje walidacja wiersza. */
+export const CPRED_CALIBRE_MAX_LENGTH = 40;
+
+function readGearAmmo(raw: unknown): CpredGearAmmo | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const value = raw as Partial<Record<keyof CpredGearAmmo, unknown>>;
+  const ammoId =
+    value.ammoId === null || value.ammoId === undefined
+      ? null
+      : typeof value.ammoId === 'string' && isValidCompendiumId(value.ammoId)
+        ? value.ammoId
+        : undefined;
+  if (ammoId === undefined) return undefined;
+  if (typeof value.calibre !== 'string') return undefined;
+  const calibre = value.calibre.trim();
+  if (calibre.length === 0 || calibre.length > CPRED_CALIBRE_MAX_LENGTH) return undefined;
+  if (!(CPRED_AMMO_PATTERNS as readonly unknown[]).includes(value.pattern)) return undefined;
+  return { ammoId, calibre, pattern: value.pattern as CpredAmmoPattern };
 }
 
 /**
@@ -1110,6 +1153,12 @@ export interface CpredCharacterData {
    * so a counter here would be a second, disagreeing truth about reloading.
    */
   ammoStock: string;
+  /**
+   * Czy przeładowanie zużywa zapas z ekwipunku (etap 46c). Brak pola = zależnie
+   * od karty: liczy karta gracza i towarzysza-bota, NPC i statysta są „bez dna”.
+   * Pisze wyłącznie MG („Licz amunicję”). Czyta się przez `cpredTracksAmmo`.
+   */
+  ammoTracked?: boolean;
   /**
    * The Lifepath (stage 25b) — page two of the printed sheet: Culture of
    * Origin and its language, style, family, friends, enemies, tragic loves,
@@ -2115,7 +2164,9 @@ function collectCharacterDataPatch(
         typeof row.consumable === 'string' && isPharmaceuticalId(row.consumable)
           ? row.consumable
           : undefined;
-      return { ...base, qty, ...(consumable ? { consumable } : {}) };
+      // Pudełko z zepsutym opisem zostaje zwykłym wierszem — jak `consumable`.
+      const ammo = readGearAmmo(row.ammo);
+      return { ...base, qty, ...(consumable ? { consumable } : {}), ...(ammo ? { ammo } : {}) };
     });
     if (gear) patch.gear = gear;
   }
@@ -2214,6 +2265,15 @@ function collectCharacterDataPatch(
   if ('style' in input) {
     const value = validateText(input.style, 'style', 'Styl', SHEET_LINE_MAX_LENGTH, issues);
     if (value !== undefined) patch.style = value;
+  }
+  if ('ammoTracked' in input) {
+    if (input.ammoTracked === null || input.ammoTracked === undefined) {
+      patch.ammoTracked = undefined;
+    } else if (typeof input.ammoTracked !== 'boolean') {
+      issues.push(issue('ammoTracked', 'Nieprawidłowe ustawienie „Licz amunicję”.'));
+    } else {
+      patch.ammoTracked = input.ammoTracked;
+    }
   }
   if ('ammoStock' in input) {
     const value = validateText(

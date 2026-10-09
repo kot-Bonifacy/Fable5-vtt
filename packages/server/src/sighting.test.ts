@@ -315,6 +315,12 @@ describe('oględziny wyposażenia', () => {
         })
       ).ok,
     ).toBe(true);
+    // Ten plik bada ręce, nie zapas amunicji (46c): łata gracza niżej oddaje
+    // karabin z pełnym magazynkiem, a tego karta z zapasem by nie przyjęła.
+    await emitAck(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { ammoTracked: false } },
+    });
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek' }), 'scene');
     sceneId = scene.id;

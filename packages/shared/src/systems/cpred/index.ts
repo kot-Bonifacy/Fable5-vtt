@@ -15,6 +15,7 @@ export * from './stateffects.js';
 export * from './woundsuspension.js';
 export * from './environment.js';
 export * from './ammo.js';
+export * from './ammostock.js';
 export * from './attachments.js';
 export * from './netrunning.js';
 export * from './netrun.js';

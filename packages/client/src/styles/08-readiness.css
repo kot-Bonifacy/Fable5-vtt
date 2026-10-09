@@ -236,6 +236,19 @@
   color: var(--text-dim);
 }
 
+/* Etap 46c: liczba paczek amunicji obok wyboru kalibru — jak poziom ripperdoca. */
+.compendium-ammo-packs {
+  flex: 0 0 3rem;
+  width: 3rem;
+  text-align: center;
+}
+
+.compendium-ammo-pack {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 /* Naprawa 3b: MG przesuwa jeden wpis na inny poziom w tej kampanii. */
 .compendium-tier-choice {
   display: flex;

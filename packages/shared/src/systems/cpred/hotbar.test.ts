@@ -922,3 +922,56 @@ describe('cpredTurnRefusalInput — jedno czytanie budżetu tury', () => {
     expect(cpredTurnRefusalInput(budget(1, 1))?.attackOpen).toBe(false);
   });
 });
+
+describe('etap 46c — zapas amunicji na pasku', () => {
+  const heavy: ResolvedWeapon = { ...pistol, ammoType: 'C. Pistolet', ammoPatterns: ['bullet'] };
+  const grenade: ResolvedWeapon = {
+    ...pistol,
+    magazine: null,
+    thrown: true,
+    explosive: true,
+    ammoType: 'Granaty',
+    ammoPatterns: ['grenade'],
+  };
+  const box = (qty: number, calibre: string, pattern: 'bullet' | 'grenade' = 'bullet') => ({
+    id: `b-${calibre}`,
+    name: calibre,
+    notes: '',
+    qty,
+    ammo: { ammoId: null, calibre, pattern },
+  });
+
+  it('karta bez dna nie ma liczby zapasu, karta z zapasem ma', () => {
+    const bare = hotbarSlotsFor(input({ resolve: () => heavy }));
+    expect(weaponSlots(bare)[0]!.stock).toBeNull();
+    const counted = hotbarSlotsFor(
+      input({ resolve: () => heavy, stockGear: [box(40, 'c. pistolet')] }),
+    );
+    expect(weaponSlots(counted)[0]!.stock).toBe(40);
+    const reload = counted.find((slot) => slot.kind === 'reload');
+    expect(reload).toMatchObject({ stock: 40, disabled: null });
+    expect(reload?.hint).toContain('zapas 40');
+  });
+
+  it('przeładowanie bez zapasu jest wyszarzone, zanim gracz wyda Akcję', () => {
+    const slots = hotbarSlotsFor(
+      input({ resolve: () => heavy, stockGear: [box(40, 'Karabinowa')] }),
+    );
+    expect(slots.find((slot) => slot.kind === 'reload')?.disabled).toBe(
+      'Nie masz amunicji do tej broni.',
+    );
+  });
+
+  it('granat ręczny bez magazynka rzuca z zapasu — pusty zapas odmawia rzutu', () => {
+    const sheet = { weapons: [weaponRow({ name: 'Granat', ammoCurrent: 0, ammoMax: 0 })] };
+    const none = hotbarSlotsFor(input({ sheet, resolve: () => grenade, stockGear: [] }));
+    expect(weaponSlots(none)[0]!.disabled).toBe('Nie masz już czym rzucić — zapas jest pusty.');
+    const two = hotbarSlotsFor(
+      input({ sheet, resolve: () => grenade, stockGear: [box(2, 'Granaty', 'grenade')] }),
+    );
+    expect(weaponSlots(two)[0]).toMatchObject({ stock: 2, disabled: null });
+    // NPC „bez dna” rzuca jak dotąd.
+    const npc = hotbarSlotsFor(input({ sheet, resolve: () => grenade }));
+    expect(weaponSlots(npc)[0]!.disabled).toBeNull();
+  });
+});

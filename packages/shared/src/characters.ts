@@ -416,9 +416,15 @@ export interface CreationRerolledPush {
  * and writes it back, exactly as the skill „+" does with a patch.
  */
 export interface CreationBuyPayload {
+  /** Id wpisu albo klucz koszyka z kalibrem (`ammo.x@weapon-type.y`, etap 46c). */
   entryId: string;
   /** +1 adds a copy, −1 removes one; nothing else is accepted. */
   delta: number;
+  /**
+   * Etap 46c: typ broni, który wyznacza kaliber kupowanej amunicji. Wymagany
+   * przy amunicji (`AMMO_CALIBRE_REQUIRED`), przy reszcie odmowa `BAD_REQUEST`.
+   */
+  weaponTypeId?: string;
 }
 
 /** Client → server `creation:finish` — turns the draft into a real character. */
