@@ -53,6 +53,7 @@ import {
 import type { Character, Merchant, Prisma } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { sheetIsContainer } from '../sheets.js';
 import { requireCampaignId } from './combat.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { fetchCustomEntries } from './compendium.js';
@@ -698,6 +699,8 @@ export const merchantConfigEvent = defineEvent<MerchantConfigPayload, MerchantCo
     // Sklepem jest karta NPC-a: karta gracza ma właściciela, który o swoim
     // ekwipunku decyduje sam.
     if (card.ownerId !== null) throw new RealtimeError('NOT_NPC');
+    // Skrzynia nie zostaje sklepem (46b): towar wykłada handlarz, nie bagażnik.
+    if (sheetIsContainer(card)) throw new RealtimeError('NOT_NPC');
     const patch = readMerchantSettingsPatch(payload?.merchant);
     if (!patch) throw new RealtimeError('BAD_REQUEST');
     const saved = existing

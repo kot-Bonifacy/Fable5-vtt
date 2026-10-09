@@ -44,6 +44,7 @@ import { applyBalance } from './economy.js';
 import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
 import { toSceneView } from './scenes.js';
 import { requireTeamCard } from './team-cards.js';
+import { sweepEmptyPile } from './containers.js';
 import {
   INCLUDE_CHAT_NAMES,
   deliverChatMessageTo,
@@ -287,7 +288,7 @@ async function writeSide(
  * widzenia obu kart to jest jedna i ta sama czynność. Rozdzielenie jej dałoby
  * trzy miejsca, w których trzeba pamiętać o `emitTokensOfCharacter`.
  */
-async function moveBetweenCards(
+export async function moveBetweenCards(
   deps: RealtimeDeps,
   campaignId: string,
   from: Character,
@@ -470,6 +471,8 @@ export const inventoryGiveEvent = defineEvent<InventoryGivePayload, InventoryGiv
     if (direct) {
       await moveBetweenCards(deps, campaignId, from, to, refs, eddies, user.id);
     }
+    // MG opróżnia stos trybem MG („Skąd: Stos”) — pusty znika tak samo jak po łupie.
+    if (direct) await sweepEmptyPile(deps, campaignId, from.id);
     const message = await postInventoryCard(
       deps,
       campaignId,
@@ -503,7 +506,11 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
     const refs = readItemRefs(payload?.items, eddies > 0);
     const fromData = parseCharacterData(from.data, deps.ctx.cpred);
 
-    if (!isGm) {
+    // Pojemnik (46b): bierze każdy, kto stoi obok, ale tylko z otwartego —
+    // zawartość zamkniętego nie opuszcza serwera, więc i wyjąć jej nie ma jak.
+    if (fromData.container) {
+      if (fromData.container.lock !== 'open' && !isGm) throw new RealtimeError('CONTAINER_LOCKED');
+    } else if (!isGm) {
       if (from.ownerId !== null) throw new RealtimeError('NOT_YOURS');
       const condition = searchableCondition(token, fromData, conditionsOf(deps.ctx.statuses.list));
       if (condition !== 'down' && condition !== 'dead') throw new RealtimeError('STILL_STANDING');
@@ -540,6 +547,7 @@ export const inventoryTakeEvent = defineEvent<InventoryTakePayload, { messageId:
       [from.ownerId, to.ownerId],
       from.ownerId,
     );
+    await sweepEmptyPile(deps, campaignId, from.id);
     return { messageId: message.id };
   },
 });
@@ -607,5 +615,6 @@ export const inventoryRespondEvent = defineEvent<InventoryRespondPayload, void>(
     entry.lines = entryLines(result.moved, result.eddies);
     entry.resolution = { kind: 'accepted', byName: user.name };
     await emitInventoryUpdate(deps, campaignId, messageId, entry, audience);
+    await sweepEmptyPile(deps, campaignId, from.id);
   },
 });

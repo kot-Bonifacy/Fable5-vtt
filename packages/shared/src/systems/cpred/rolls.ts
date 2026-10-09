@@ -417,6 +417,13 @@ export interface CpredRollRequest {
    * czy tę figurę w ogóle widać, zanim cokolwiek pokaże.
    */
   sightingTokenId?: string;
+  /**
+   * Etap 46b — pojemnik, którego zamek ten Test otwiera. Wpisuje je wyłącznie
+   * serwer, wystawiając wezwanie w `container:open`; rzut czyta je z zapisanego
+   * wezwania, nigdy z żądania klienta. Zdany otwiera zamek, niezdany zapisuje
+   * postać na liście prób (jedna próba na postać, decyzja MG z 09.10).
+   */
+  containerTokenId?: string;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

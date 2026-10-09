@@ -245,6 +245,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // wszystkich, także dla MG**: MG przestawia ręce figury tym samym
       // zdarzeniem, którym robi to gracz, więc niczego mu to nie odbiera.
       if (sheet.drawnWeaponRowIds !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 46b: stan pojemnika (zamek, PT, klucz, lista prób) pisze wyłącznie
+      // serwer — `container:*` i rozliczenie Testu zamka. Dla wszystkich, także
+      // dla MG: jego autozapis karty skrzyni zamknąłby zamek, który gracz właśnie
+      // otworzył, a MG ma na to `container:config`.
+      if (sheet.container !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       // Etap 46c (decyzja MG 6 z 09.10): „Licz amunicję” przestawia MG, a na
       // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,

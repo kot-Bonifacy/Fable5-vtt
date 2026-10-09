@@ -28,6 +28,7 @@ import {
   formatEddies,
   formatLedgerAmount,
   isAmmoEntry,
+  isContainerCard,
   isLedgerKind,
   mergeCharacterData,
   monthlyCostOf,
@@ -38,6 +39,7 @@ import {
   shopTierOf,
   toAmmoProfile,
 } from '@vtt/shared';
+import { sheetIsContainer } from '../sheets.js';
 import type { Character } from '../generated/prisma/client.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
@@ -530,8 +532,9 @@ export const economySettleEvent = defineEvent<
     for (const character of characters) {
       const data = parseCharacterData(character.data, deps.ctx.cpred);
       // No lifestyle on the sheet means „ta postać nie prowadzi rachunków".
-      // Mannequins and one-scene gangers must not grow a rent line.
-      if (!data.lifestyle) {
+      // Mannequins and one-scene gangers must not grow a rent line — and
+      // neither does a crate (46b), whatever its sheet says.
+      if (!data.lifestyle || isContainerCard(data)) {
         skipped += 1;
         continue;
       }
@@ -620,7 +623,7 @@ export const economyHistoryEvent = defineEvent<EconomyHistoryPayload, EconomyHis
           await teamCardsWhere(deps.ctx.prisma, campaign.id, user),
         ],
       },
-      select: { id: true, name: true, ownerId: true },
+      select: { id: true, name: true, ownerId: true, data: true },
       orderBy: { name: 'asc' },
     });
     return {
@@ -628,11 +631,15 @@ export const economyHistoryEvent = defineEvent<EconomyHistoryPayload, EconomyHis
       // od 38a jest w kampanii tyle, ile statystów (12.09). Lista dzieli się na
       // dwie, a porządkuje ją klient; u gracza druga to już tylko towarzysze-boty
       // (#40, 30.09 — decyzja MG zmienia „nie kurczy się o nikogo" z 12.09).
-      payees: payees.map((row) => ({
-        id: row.id,
-        name: row.name,
-        player: row.ownerId !== null,
-      })),
+      // Skrzynia (46b) ma kartę, ale nie portfel — pieniądze wkłada się do niej
+      // oknem „Wymiana”, nie przelewem.
+      payees: payees
+        .filter((row) => !sheetIsContainer(row))
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          player: row.ownerId !== null,
+        })),
       entries: rows.map((row) => ({
         id: row.id,
         // A row written by a future stage under a kind this build does not know

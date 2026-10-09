@@ -32,6 +32,8 @@ export * from './attacks.js';
 export * from './statblock.js';
 export * from './inventory.js';
 export * from './merchant.js';
+export * from './container.js';
+export * from './containercard.js';
 export * from './sighting.js';
 export * from './statist.js';
 export * from './grapple.js';

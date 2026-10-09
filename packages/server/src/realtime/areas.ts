@@ -27,6 +27,7 @@ import {
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
+import { containerTokenIds } from './containers.js';
 import { toSceneView } from './scenes.js';
 import { toTokenView } from './tokens.js';
 import { hasLineOfFire, type SceneVisionContext } from './vision.js';
@@ -149,10 +150,12 @@ export async function areaTargets(
   const view = toSceneView(scene);
   const area = resolveArea(shape, view);
   const tokens = await deps.ctx.prisma.token.findMany({ where: { sceneId: scene.id } });
+  // Pojemnik (46b) nie jest ofiarą wybuchu ani serii — nie ma czym oberwać.
+  const containers = await containerTokenIds(deps.ctx.prisma, tokens);
 
   const found: BlastTarget[] = [];
   for (const token of tokens) {
-    if (token.id === options.excludeTokenId) continue;
+    if (token.id === options.excludeTokenId || containers.has(token.id)) continue;
     const point = tokenCentre(toTokenView(token, true), view);
     if (!area.contains(point)) continue;
 

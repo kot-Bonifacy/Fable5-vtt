@@ -114,6 +114,7 @@ import { placeSmoke, smokeModifiersAt } from './smoke.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { containerTokenIds, isContainerToken } from './containers.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
 import { claimRoundOnce } from './round-once.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -627,10 +628,11 @@ async function suppressionTargets(
   fire: FireContext,
 ): Promise<{ token: Token; metres: number }[]> {
   const tokens = await deps.ctx.prisma.token.findMany({ where: { sceneId: scene.id } });
+  const containers = await containerTokenIds(deps.ctx.prisma, tokens);
   const view = toSceneView(scene);
   const found: { token: Token; metres: number }[] = [];
   for (const token of tokens) {
-    if (token.id === attacker.id) continue;
+    if (token.id === attacker.id || containers.has(token.id)) continue;
     const metres = metresForRules(
       metresBetweenTokens(toTokenView(attacker, true), toTokenView(token, true), view),
     );
@@ -1000,6 +1002,11 @@ export async function performAttackRoll(
           ? null
           : await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.targetTokenId);
       const target = tokenTarget?.token ?? null;
+      // Skrzynia nie jest celem (46b): nie ma PW, pancerza ani uniku. Ta sama
+      // odpowiedź dla MG i gracza — to pytanie o rodzaj figury, nie o widok.
+      if (target && (await isContainerToken(deps.ctx.prisma, target))) {
+        throw new RealtimeError('NOT_A_TARGET');
+      }
       const scene = coverTarget
         ? coverTarget.scene
         : tokenTarget

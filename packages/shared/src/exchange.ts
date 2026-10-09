@@ -19,6 +19,7 @@
  * miejscach.
  */
 
+import type { ContainerLock } from './containers.js';
 import type { TokenCondition } from './figures.js';
 import type { MerchantClosedReason } from './merchants.js';
 
@@ -53,6 +54,8 @@ export interface ExchangeFacts {
   condition: TokenCondition | null;
   /** Sklep tej karty, jeśli jest handlarzem: `null` w `closed` znaczy „sprzedaje”. */
   merchant: { closed: MerchantClosedReason | null } | null;
+  /** Pojemnik (46b) — wtedy nic poza trybem pojemnika (i trybem MG) nie wchodzi w grę. */
+  container?: { lock: ContainerLock } | null;
 }
 
 export interface ExchangeOption {
@@ -76,12 +79,19 @@ function lying(condition: TokenCondition | null): boolean {
  *  - NPC-handlarz → sklep, wyszarzony, gdy MG go zamknął;
  *  - żywy NPC → handel (jego stronę prowadzi MG).
  *
+ * Pojemnik (46b) — tryb pojemnika, u MG także tryb MG; nic więcej.
+ *
  * MG: tryb MG zawsze, a do tego handel jako NPC z kartą gracza (rozstrzygnięcie
  * 38c — MG prowadzi stronę NPC-a, nigdy gracza) i sklep, gdy jest otwarty.
  * Zamknięty sklep MG widzi jako zwykłego NPC-a.
  */
 export function exchangeOptionsFor(facts: ExchangeFacts): ExchangeOption[] {
-  const { isGm, anchorOwnerId, ownerId, condition, merchant } = facts;
+  const { isGm, anchorOwnerId, ownerId, condition, merchant, container } = facts;
+  // Pojemnik nie handluje, nie leży i nie sprzedaje — ma jeden tryb, a MG
+  // dokłada swój („Skąd / Dokąd” bez zgód, jak przy każdej karcie).
+  if (container) {
+    return isGm ? [{ kind: 'container' }, { kind: 'gm' }] : [{ kind: 'container' }];
+  }
   if (isGm) {
     const options: ExchangeOption[] = [];
     if (merchant && merchant.closed === null) options.push({ kind: 'merchant' });

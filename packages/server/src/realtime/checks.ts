@@ -78,7 +78,7 @@ function requireInteger(value: unknown, min: number, max: number): number {
  * dokładnie ten sam zestaw decyzji MG i ta sama walidacja. Rozdzielenie jej na
  * dwie kopie rozjechałoby widełki przy pierwszej zmianie drabinki.
  */
-interface CheckFrame {
+export interface CheckFrame {
   dv?: number;
   opponentBonus?: number;
   modifier: number;
@@ -213,6 +213,15 @@ export async function createCheckCall(
     request: unknown;
     frame: CheckFrame;
     prompt?: string;
+    /**
+     * Test zamka pojemnika (etap 46b) — dopisywany **po** białej liście, bo
+     * tylko serwer (`container:open`) wystawia takie wezwanie; prośba gracza
+     * z etapu 40 przechodzi przez `requireCallableRequest` i tego pola nie
+     * przeniesie, więc zgoda MG na dowolny Test nie otwiera skrzyni.
+     */
+    containerTokenId?: string;
+    /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
+    calledByName?: string;
   },
 ): Promise<{ messageId: number; entry: CheckCallEntry }> {
   const { campaignId, user, frame } = input;
@@ -228,7 +237,10 @@ export async function createCheckCall(
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
 
-  const request = requireCallableRequest(input.request, frame.modifier);
+  const request: CpredRollRequest = {
+    ...requireCallableRequest(input.request, frame.modifier),
+    ...(input.containerTokenId ? { containerTokenId: input.containerTokenId } : {}),
+  };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');
 
@@ -251,7 +263,7 @@ export async function createCheckCall(
     ...(frame.modifier !== 0 ? { modifier: frame.modifier } : {}),
     visibility: frame.visibility,
     system: request as unknown as Record<string, unknown>,
-    calledByName: user.name,
+    calledByName: input.calledByName ?? user.name,
   };
 
   const message = await insertChatMessage(deps.ctx.prisma, {

@@ -19,7 +19,7 @@ import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignId } from './combat.js';
 import { requireCampaignToken, concealedFrom, concealmentFor } from './tokens.js';
-import { toLinkedSheet } from '../sheets.js';
+import { sheetIsContainer, toLinkedSheet } from '../sheets.js';
 import { buildCompendiumSync } from './compendium.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 
@@ -136,7 +136,9 @@ export const sightingLookEvent = defineEvent<SightingLookPayload, SightingLookRe
     const character = await deps.ctx.prisma.character.findUnique({
       where: { id: token.characterId },
     });
-    if (!character || character.campaignId !== campaignId) {
+    // Skrzynia (46b) nie ma chromu, broni w ręku ani ran — rzut oka mówi
+    // tylko nazwę, a o zawartości decyduje zamek, nie wzrok.
+    if (!character || character.campaignId !== campaignId || sheetIsContainer(character)) {
       return { tokenId: token.id, name, sighting: null };
     }
     return {
@@ -176,7 +178,7 @@ export async function revealSighting(
   const character = await deps.ctx.prisma.character.findUnique({
     where: { id: token.characterId },
   });
-  if (!character || character.campaignId !== campaignId) return;
+  if (!character || character.campaignId !== campaignId || sheetIsContainer(character)) return;
   const isGm = user.role === ROLE_GM;
   const target = isGm ? token.name : (token.publicName ?? token.name);
   const entry: SightingLogEntry = {

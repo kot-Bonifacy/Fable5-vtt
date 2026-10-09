@@ -677,6 +677,16 @@ const CASES: Record<string, Case> = {
     items: [],
   })),
   'inventory:respond': foreign((a) => ({ messageId: a.messageId, accept: true })),
+  // Pojemniki (etap 46b).
+  'container:create': foreign((a) => ({ sceneId: a.sceneId, x: 1, y: 1, preset: 'chest' })),
+  'container:config': foreign((a) => ({ characterId: a.npcId, lock: 'open' })),
+  'container:open': foreign((a) => ({ tokenId: a.npcTokenId, characterId: a.characterId })),
+  'container:put': foreign((a) => ({
+    fromCharacterId: a.characterId,
+    tokenId: a.npcTokenId,
+    items: [],
+  })),
+  'inventory:drop': foreign((a) => ({ fromCharacterId: a.characterId, x: 1, y: 1, items: [] })),
   // journal
   'journal:list': own('dziennik kampanii gniazda'),
   'journal:upsert': foreign((a) => ({ id: a.journalId, title: 'x', body: 'x' })),
@@ -965,6 +975,21 @@ const MIXED: MixedCase[] = [
   {
     event: 'exchange:counterparts',
     payload: (a, b) => ({ characterId: b.characterId, tokenId: a.npcTokenId }),
+  },
+  // Etap 46b: własna karta, cudza figura (pojemnik innej kampanii).
+  {
+    event: 'container:open',
+    payload: (a, b) => ({ characterId: b.characterId, tokenId: a.npcTokenId }),
+  },
+  {
+    event: 'container:put',
+    payload: (a, b) => ({ fromCharacterId: b.characterId, tokenId: a.npcTokenId, items: [] }),
+  },
+  {
+    event: 'container:config',
+    payload: (a, b) => ({ characterId: b.npcId, issueKeyTo: a.characterId }),
+    // Karta B nie jest pojemnikiem — odmowa pada, zanim dojdzie do obcego id.
+    expect: /NOT_FOUND$|^NOT_A_CONTAINER$/,
   },
   {
     event: 'economy:transfer',

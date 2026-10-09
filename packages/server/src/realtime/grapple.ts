@@ -52,6 +52,7 @@ import {
   type SheetGrappleDamage,
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { isContainerToken } from './containers.js';
 import {
   emitReloaded,
   emitReloadedFor,
@@ -209,6 +210,7 @@ export const grappleAttemptEvent = defineEvent<
       campaignId,
       payload?.targetTokenId,
     );
+    if (await isContainerToken(deps.ctx.prisma, target)) throw new RealtimeError('NOT_A_TARGET');
     // Same concealment rules as an attack (stage 16): a hidden or fogged token
     // must not even be confirmable by a player poking at its id.
     if (user.role !== ROLE_GM) {

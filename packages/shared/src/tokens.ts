@@ -1,3 +1,4 @@
+import type { TokenContainerView } from './containers.js';
 import type { TokenCondition, TokenHpShare } from './figures.js';
 import { sanitizeFacing } from './figures.js';
 import { sanitizeTokenLight, type TokenLight } from './lights.js';
@@ -131,6 +132,12 @@ export interface TokenView {
    * rozstrzygnięta (`tokenSharesVision`), nie surowa kolumna.
    */
   partyVision?: boolean;
+  /**
+   * Pojemnik (etap 46b) — **publicznie** stan zamka i to, czy to stos. Figura
+   * z tym polem nie ma PW, inicjatywy ani oględzin; zawartość jedzie wyłącznie
+   * listą `exchange:counterparts`, i to dopiero otwartego pojemnika.
+   */
+  container?: TokenContainerView;
   /**
    * Surowa kolumna `Token.sharedVision` dla edytora MG: `null` — samo (figura
    * gracza dzieli wzrok, figura MG nie), `true`/`false` — ręka MG. Prywatne.

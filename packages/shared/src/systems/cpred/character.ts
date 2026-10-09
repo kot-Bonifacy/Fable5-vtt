@@ -73,6 +73,7 @@ import {
   type NetProgramTarget,
 } from './netrunning.js';
 import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
+import { isCpredKeyId, readCpredContainer, type CpredContainer } from './container.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
@@ -412,6 +413,12 @@ export interface CpredGearRow extends CpredItemRow {
    * rodzaju i kalibrze, nie po nazwie ani wpisie (`cpredAmmoStockKeyOf`).
    */
   ammo?: CpredGearAmmo;
+  /**
+   * Klucz do pojemnika (etap 46b) — uchwyt `CpredContainer.keyId`, losowy, nie
+   * id karty pojemnika (#40). Wydaje go MG („Wydaj klucz”); klucz na karcie
+   * otwierającego otwiera zamek bez Testu.
+   */
+  key?: string;
 }
 
 /**
@@ -1215,6 +1222,14 @@ export interface CpredCharacterData {
    */
   statBlock: CpredStatBlock | null;
   cyberdeck: CpredCyberdeck | null;
+  /**
+   * Pojemnik (etap 46b) — `null` na każdej karcie postaci. Karta z tym polem
+   * jest skrzynią, bagażnikiem, schowkiem albo stosem: jej ekwipunek to
+   * zawartość, a Cechy, PW i inicjatywa nie istnieją dla stołu
+   * (`isContainerCard`). Pisze je wyłącznie serwer (`container:*`), nigdy łata
+   * karty — inaczej autozapis MG zamknąłby zamek, który gracz właśnie otworzył.
+   */
+  container: CpredContainer | null;
 }
 
 /** Slots a deck may offer — the rulebook's best is 9, plus room for upgrades. */
@@ -1308,6 +1323,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     improvementPoints: 0,
     statBlock: null,
     cyberdeck: null,
+    container: null,
   };
 }
 
@@ -2166,7 +2182,15 @@ function collectCharacterDataPatch(
           : undefined;
       // Pudełko z zepsutym opisem zostaje zwykłym wierszem — jak `consumable`.
       const ammo = readGearAmmo(row.ammo);
-      return { ...base, qty, ...(consumable ? { consumable } : {}), ...(ammo ? { ammo } : {}) };
+      // Klucz z zepsutym uchwytem też: wiersz zostaje, tylko niczego nie otwiera.
+      const key = isCpredKeyId(row.key) ? row.key : undefined;
+      return {
+        ...base,
+        qty,
+        ...(consumable ? { consumable } : {}),
+        ...(ammo ? { ammo } : {}),
+        ...(key ? { key } : {}),
+      };
     });
     if (gear) patch.gear = gear;
   }
@@ -2323,6 +2347,13 @@ function collectCharacterDataPatch(
   if ('cyberdeck' in input) {
     const deck = validateCyberdeck(input.cyberdeck, issues);
     if (deck !== undefined) patch.cyberdeck = deck;
+  }
+  // Etap 46b — pojemnik. Łata karty z tym polem i tak pada w `character:update`
+  // (pisze je serwer), ale zapis z bazy musi się dać przeczytać.
+  if ('container' in input) {
+    const container = readCpredContainer(input.container);
+    if (container === undefined) issues.push(issue('container', 'Nieprawidłowy zapis pojemnika.'));
+    else patch.container = container;
   }
 
   return { patch, issues };

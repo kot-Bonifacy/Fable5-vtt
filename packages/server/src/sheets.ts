@@ -27,6 +27,7 @@ import type {
   RollBreakdownEntry,
   ReinforcementView,
   TokenHp,
+  TokenContainerView,
   TokenInjuryRow,
   TurnBudgetView,
   CpredWoundSuspension,
@@ -133,6 +134,7 @@ import {
   namedCriticalInjuryRow,
   toCriticalInjuryRow,
   woundTransitionLabel,
+  isContainerCardJson,
 } from '@vtt/shared';
 import type { Character, Token } from './generated/prisma/client.js';
 
@@ -170,6 +172,12 @@ export interface LinkedSheet {
    * pula to orientacja tempa poza walką, nie budżet tury.
    */
   moveM: number;
+  /**
+   * Pojemnik (etap 46b): stan zamka i „stos”, które jadą publicznie na
+   * żetonie; `null` na każdej karcie postaci. Figura z pojemnikiem nie ma
+   * paska PW — skrzynia nie jest ranna.
+   */
+  container: TokenContainerView | null;
 }
 
 /**
@@ -1574,7 +1582,26 @@ export function toLinkedSheet(character: Character, registry: SheetRegistry): Li
     ownerId: character.ownerId,
     injuries: readSheetInjuries(character, registry) as unknown as TokenInjuryRow[],
     moveM: readSheetMoveBudget(character, registry).metresPerMove,
+    container: readSheetContainer(character, registry),
   };
+}
+
+/**
+ * Pojemnik tej karty tak, jak widzi go stół (etap 46b), albo `null`. Rdzeń
+ * pyta wyłącznie o to — jakim Testem otwiera się zamek, wie system.
+ */
+export function readSheetContainer(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): TokenContainerView | null {
+  if (!isContainerCardJson(character.data)) return null;
+  const container = parseCharacterData(character.data, registry).container;
+  return container ? { lock: container.lock, pile: container.pile } : null;
+}
+
+/** Czy karta jest pojemnikiem — szybko, bez parsowania arkusza (ryzyko 8 w etapie 46). */
+export function sheetIsContainer(character: Pick<Character, 'data'>): boolean {
+  return isContainerCardJson(character.data);
 }
 
 /**

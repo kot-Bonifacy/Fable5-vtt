@@ -8,6 +8,7 @@ import {
   CPRED_MELEE_REACH_M,
   ROLE_GM,
   compareExchangeCounterparts,
+  cpredHasKey,
   cpredInventoryView,
   exchangeOptionsFor,
   parseCharacterData,
@@ -26,7 +27,7 @@ import {
   type PlacedToken,
 } from './inventory.js';
 import { merchantsOfCampaign } from './merchant.js';
-import { requireCampaignToken } from './tokens.js';
+import { concealedFrom, concealmentFor, requireCampaignToken } from './tokens.js';
 import { teamCardsWhere } from './team-cards.js';
 
 /**
@@ -90,6 +91,16 @@ export const exchangeCounterpartsEvent = defineEvent<
     /* ----- Figury na scenach, na których stoję ----- */
 
     const listedCards = new Set<string>();
+    const anchorData = parseCharacterData(anchor.data, deps.ctx.cpred);
+    const concealments = new Map<string, Awaited<ReturnType<typeof concealmentFor>>>();
+    const concealedFor = async (placed: PlacedToken): Promise<boolean> => {
+      let concealment = concealments.get(placed.scene.id);
+      if (!concealment) {
+        concealment = await concealmentFor(prisma, placed.scene, user);
+        concealments.set(placed.scene.id, concealment);
+      }
+      return concealedFrom(placed.token, placed.scene, concealment, null, user.id);
+    };
     if (atTable) {
       const mine = await tokensOf(prisma, anchor.id);
       const candidates = new Map<string, PlacedToken>();
@@ -131,12 +142,17 @@ export const exchangeCounterpartsEvent = defineEvent<
         const data = parseCharacterData(card.data, deps.ctx.cpred);
         const merchant = merchants.get(card.id) ?? null;
         const token = placed.token;
+        const container = data.container;
+        // Pojemnik pod mgłą albo za ścianą gracz omija tak samo jak każdą figurę
+        // (`concealedFrom`) — stoi obok, ale go nie widzi, więc go nie ma.
+        if (container && !isGm && (await concealedFor(placed))) continue;
         const options = exchangeOptionsFor({
           isGm,
           anchorOwnerId: anchor.ownerId,
           ownerId: card.ownerId,
           condition: searchableCondition(token, data, conditions),
           merchant: merchant ? { closed: merchant.closed } : null,
+          container: container ? { lock: container.lock } : null,
         });
         const far = metres === null || metres > CPRED_MELEE_REACH_M;
         const tableName =
@@ -145,7 +161,12 @@ export const exchangeCounterpartsEvent = defineEvent<
           if (option.kind === 'trade' && operates(card)) continue;
           // Gracz nie dostaje handlu ani łupu poza zasięgiem — jak w starych
           // listach; sklep przy figurze widać wyszarzony.
-          if (!isGm && far && (option.kind === 'trade' || option.kind === 'loot')) continue;
+          if (
+            !isGm &&
+            far &&
+            (option.kind === 'trade' || option.kind === 'loot' || option.kind === 'container')
+          )
+            continue;
           const shop = option.kind === 'merchant' && merchant;
           const unavailable =
             option.unavailable ??
@@ -163,6 +184,23 @@ export const exchangeCounterpartsEvent = defineEvent<
             ...(unavailable ? { unavailable } : {}),
             ...(option.kind === 'loot'
               ? { items: cpredInventoryView(data), eddies: data.eddies }
+              : {}),
+            // Zawartość pojemnika jedzie wyłącznie otwartego (decyzja MG 14);
+            // MG widzi ją zawsze — to jego skrzynia.
+            ...(option.kind === 'container' && container
+              ? {
+                  lock: container.lock,
+                  ...(container.lock === 'open' || isGm
+                    ? { items: cpredInventoryView(data), eddies: data.eddies }
+                    : {}),
+                  ...(container.lock === 'locked'
+                    ? {
+                        lockSkills: [...container.skills],
+                        ...(container.tried.includes(anchor.id) ? { lockTried: true } : {}),
+                        ...(cpredHasKey(anchorData, container.keyId) ? { hasKey: true } : {}),
+                      }
+                    : {}),
+                }
               : {}),
           });
         }

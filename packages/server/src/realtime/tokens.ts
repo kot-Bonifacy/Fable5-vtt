@@ -139,9 +139,14 @@ export function toTokenView(
   if (linked && linked.ownerId === null && linked.injuries.length > 0) {
     view.injuries = linked.injuries;
   }
+  // Pojemnik (46b): stan zamka jedzie do wszystkich, a pasek PW nie jedzie
+  // nikomu — skrzynia nie jest ranna, a jej domyślne Cechy nic nie znaczą.
+  if (linked?.container) view.container = linked.container;
   // A link to a deleted/unreadable sheet falls back to the token's own HP.
   const hp: TokenHp | null = linked
-    ? linked.hp
+    ? linked.container
+      ? null
+      : linked.hp
     : token.hpMax === null
       ? null
       : { current: token.hpCurrent ?? 0, max: token.hpMax };
@@ -393,7 +398,7 @@ export async function emitSceneTokensToPlayers(
   }
 }
 
-function toSnapScene(scene: Scene): TokenSnapScene {
+export function toSnapScene(scene: Scene): TokenSnapScene {
   return {
     width: scene.width,
     height: scene.height,
@@ -795,6 +800,34 @@ function emitTokenDelete(
     const payload: TokenDeleteBroadcast = { sceneId: scene.id, tokenId };
     deps.io.to(gmRoom(campaignId)).emit('token:delete', payload);
   }
+}
+
+/**
+ * Zdejmuje kartę bez właściciela razem ze wszystkimi jej figurami — pusty stos
+ * z etapu 46b („Pusty stos sam znika”, Item Piles). Ta sama para emisji co
+ * `token:delete` z „Skasuj też kartę”, tylko bez pytania: stos nie jest
+ * niczyją postacią, a pusta skrzynia stałaby na mapie bez powodu.
+ */
+export async function removeCardWithFigures(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+): Promise<void> {
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId },
+    include: { scene: true },
+  });
+  for (const row of tokens) {
+    const { scene, ...token } = row;
+    if (scene.campaignId !== campaignId) continue;
+    await deps.ctx.prisma.token.delete({ where: { id: token.id } });
+    forgetPace(token.id);
+    emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+  }
+  await deps.ctx.prisma.character.deleteMany({
+    where: { id: characterId, campaignId, ownerId: null },
+  });
+  await emitCharacterDelete(deps, campaignId, characterId, null);
 }
 
 export async function requireCampaignToken(

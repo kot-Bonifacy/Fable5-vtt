@@ -281,6 +281,13 @@ import {
   merchantViewEvent,
 } from './merchant.js';
 import { forgetMerchantWatcher } from './merchant-watch.js';
+import {
+  containerConfigEvent,
+  containerCreateEvent,
+  containerOpenEvent,
+  containerPutEvent,
+  inventoryDropEvent,
+} from './containers.js';
 import { musicControlEvent, musicStateEvent } from './music.js';
 
 declare module 'socket.io' {
@@ -425,6 +432,11 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   inventoryGiveEvent,
   inventoryTakeEvent,
   inventoryRespondEvent,
+  containerCreateEvent,
+  containerConfigEvent,
+  containerOpenEvent,
+  containerPutEvent,
+  inventoryDropEvent,
   tradeInviteEvent,
   tradeRespondEvent,
   tradeOfferEvent,

@@ -29,6 +29,7 @@ import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
+import type { ContainerLock, ContainerPreset } from './containers.js';
 import type {
   CatalogShopping,
   MerchantAccess,
@@ -703,15 +704,97 @@ export interface ExchangeCounterpartView {
   characterId?: string;
   /** Wyszarzone: widać, ale kliknąć się nie da. */
   unavailable?: ExchangeUnavailable;
-  /** Łup: ekwipunek ciała i gotówka. */
+  /** Łup i otwarty pojemnik: ekwipunek i gotówka. Nieotwarty pojemnik — nic. */
   items?: CpredItemViewWire[];
   eddies?: number;
+  /** Pojemnik (46b): stan zamka — jawny, jak na żetonie. */
+  lock?: ContainerLock;
+  /** Pojemnik na zamek: Umiejętności, którymi da się go otworzyć (id z katalogu). */
+  lockSkills?: string[];
+  /** Pojemnik na zamek: ta postać już próbowała i nie zdała — MG musi pozwolić znowu. */
+  lockTried?: boolean;
+  /** Pojemnik na zamek: na karcie patrzącego jest klucz do niego. */
+  hasKey?: boolean;
 }
 
 export interface ExchangeCounterpartsResult {
   counterparts: ExchangeCounterpartView[];
   /** „Dokąd” trybu MG i „Wyślij bez czekania”: drużyna u gracza, każda karta u MG. */
   targets: { id: string; name: string }[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Pojemniki (etap 46b)
+ * ------------------------------------------------------------------ */
+
+/** MG → `container:create`: nowa karta-pojemnik z figurą w punkcie sceny. */
+export interface ContainerCreatePayload {
+  /** Scena; brak — ta, którą MG ogląda. */
+  sceneId?: string;
+  /** Punkt mapy (piksele świata) — figura staje na polu pod nim. */
+  x: number;
+  y: number;
+  preset: ContainerPreset;
+  name?: string;
+}
+
+export interface ContainerCreateResult {
+  tokenId: string;
+  characterId: string;
+}
+
+/**
+ * MG → `container:config`: zamek, PT, Umiejętności, klucz. Każde pole osobno —
+ * brak znaczy „bez zmian”.
+ */
+export interface ContainerConfigPayload {
+  characterId: string;
+  lock?: ContainerLock;
+  dv?: number;
+  skills?: string[];
+  /** „Pozwól spróbować znowu” — zeruje listę postaci po nieudanym Teście. */
+  resetTries?: boolean;
+  /** „Wydaj klucz” — wiersz klucza ląduje na tej karcie. */
+  issueKeyTo?: string;
+}
+
+/** `container:open` — otwarcie zamkniętego, klucz albo start Testu zamka. */
+export interface ContainerOpenPayload {
+  tokenId: string;
+  /** Kto otwiera — karta, którą prowadzę; jej figura musi stać w zasięgu ręki. */
+  characterId: string;
+  /** Umiejętność Testu zamka, gdy pojemnik zna ich kilka. */
+  skillId?: string;
+}
+
+export interface ContainerOpenResult {
+  /** `open` — otwarty (kliknięciem, kluczem albo przez MG); `test` — czeka wezwanie do Testu. */
+  outcome: 'open' | 'test';
+  /** Wezwanie do Testu zamka (karta czatu z kubkiem), gdy `outcome: 'test'`. */
+  callMessageId?: number;
+}
+
+/** `container:put` — z mojej karty do otwartego pojemnika w zasięgu. */
+export interface ContainerPutPayload {
+  fromCharacterId: string;
+  tokenId: string;
+  items: InventoryItemRefWire[];
+  eddies?: number;
+}
+
+/** `inventory:drop` — wiersze z karty na mapę: nowy stos albo dołożenie do stosu na tym polu. */
+export interface InventoryDropPayload {
+  fromCharacterId: string;
+  /** Punkt mapy (piksele świata) na scenie, którą się ogląda. */
+  x: number;
+  y: number;
+  items: InventoryItemRefWire[];
+  eddies?: number;
+}
+
+export interface InventoryDropResult {
+  tokenId: string;
+  messageId: number;
 }
 
 /** Wiersz półki handlarza — rzecz, jej cena i stan zapasu. */

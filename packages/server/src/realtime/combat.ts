@@ -51,6 +51,7 @@ import {
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { containerTokenIds } from './containers.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
@@ -832,6 +833,10 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
       where: { id: { in: tokenIds }, sceneId: scene.id },
     });
     if (tokens.length !== tokenIds.length) throw new RealtimeError('TOKEN_NOT_FOUND');
+    // Pojemnik (46b) nie ma inicjatywy — „wszystkie figury na scenie” MG
+    // zaznacza razem ze skrzyniami, więc tu się je po cichu pomija.
+    const containers = await containerTokenIds(deps.ctx.prisma, tokens);
+    const fighters = tokenIds.filter((id) => !containers.has(id));
 
     // Starting a fight replaces whatever was running on that scene.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
@@ -839,7 +844,7 @@ export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
       data: {
         sceneId: scene.id,
         combatants: {
-          create: tokenIds.map((tokenId, index) => ({ tokenId, order: index })),
+          create: fighters.map((tokenId, index) => ({ tokenId, order: index })),
         },
       },
     });
@@ -856,7 +861,14 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
     const { combat, scene } = await requireCombatOfTokens(deps.ctx.prisma, campaignId, tokenIds);
 
     const known = new Set(combat.combatants.map((c) => c.tokenId));
-    const fresh = tokenIds.filter((id) => !known.has(id));
+    const containers = await containerTokenIds(
+      deps.ctx.prisma,
+      await deps.ctx.prisma.token.findMany({
+        where: { id: { in: tokenIds } },
+        select: { id: true, characterId: true },
+      }),
+    );
+    const fresh = tokenIds.filter((id) => !known.has(id) && !containers.has(id));
     if (combat.combatants.length + fresh.length > MAX_COMBATANTS) {
       throw new RealtimeError('TOO_MANY_COMBATANTS');
     }

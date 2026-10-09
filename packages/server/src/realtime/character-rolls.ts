@@ -75,6 +75,7 @@ import {
 } from './chat-io.js';
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
+import { settleLockTest } from './containers.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
@@ -1294,6 +1295,21 @@ async function performScopedRoll(
     // więc rzut bez wezwania nie ma czego zdać i nie ma prawa niczego odsłonić.
     if (call && result.outcome?.success && typeof request.sightingTokenId === 'string') {
       await revealSighting(deps, campaignId, user, request.sightingTokenId, rollSourceName(source));
+    }
+    // Etap 46b: Test zamka. Adres pojemnika czyta się z **zapisanego wezwania**
+    // (wystawia je tylko `container:open`), nigdy z żądania — rzut bez takiego
+    // wezwania nie ma czego otworzyć.
+    const lockTokenId = call
+      ? (call.entry.system as { containerTokenId?: unknown }).containerTokenId
+      : undefined;
+    if (call && result.outcome && typeof lockTokenId === 'string') {
+      await settleLockTest(
+        deps,
+        campaignId,
+        lockTokenId,
+        call.entry.characterId,
+        result.outcome.success,
+      );
     }
     // Somebody coming off the floor is the one green number the map draws
     // (stage 27i). It waits for the card exactly as an attack's does — the

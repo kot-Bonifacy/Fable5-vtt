@@ -54,6 +54,7 @@ import type { AiChatRequest } from '../ai/gateway.js';
 import type { BotProfile, Character, Scene, Token } from '../generated/prisma/client.js';
 import { statusName } from '../statuses.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { containerTokenIds } from './containers.js';
 import { performAttackRoll, performWeaponReload } from './attacks.js';
 import { botActorUser, botFailureText, logBotDecision } from './bot-runtime.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
@@ -281,12 +282,14 @@ async function buildTacticalStep(
     }),
   ]);
   const playerCharacterIds = new Set(playerCharacters.map((row) => row.id));
+  // Pojemnik (46b) nie jest ani celem, ani sojusznikiem — bot go nie widzi.
+  const containers = await containerTokenIds(deps.ctx.prisma, others);
 
   const figures: BotCombatFigure[] = [];
   const targets = new Map<string, Token>();
   const usedLabels = new Set<string>();
   for (const other of others) {
-    if (other.id === actor.id) continue;
+    if (other.id === actor.id || containers.has(other.id)) continue;
     const centre = tokenCentre(toTokenView(other, true), sceneView);
     // Widoczność figury bota, nie konta MG. Bez tego NPC strzelałby przez mur.
     if (

@@ -40,6 +40,7 @@ import {
 import type { Character, Token } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { sheetIsContainer } from '../sheets.js';
 import { requireCampaignId } from './combat.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { applyBalance } from './economy.js';
@@ -186,6 +187,8 @@ export const tradeInviteEvent = defineEvent<TradeInvitePayload, { trade: TradeVi
       // NPC-a gracz wskazuje wyłącznie figurą — id jego karty nie zna i nie ma znać.
       if (!isGm && to.ownerId === null) throw new RealtimeError('CHARACTER_NOT_FOUND');
     }
+    // Pojemnik (46b) nie handluje — bierze się z niego i wkłada oknem „Wymiana”.
+    if (sheetIsContainer(to) || sheetIsContainer(from)) throw new RealtimeError('BAD_REQUEST');
     if (to.id === from.id) throw new RealtimeError('BAD_REQUEST');
 
     const toOperatedByMe = to.ownerId === null ? isGm : to.ownerId === user.id;
