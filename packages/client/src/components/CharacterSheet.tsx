@@ -211,6 +211,8 @@ import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { MerchantSection } from './exchange/MerchantSection.js';
 import { openExchangeForCard } from './exchange/open.js';
+import { MapDropHandle } from './exchange/map-drop-item.js';
+import { ContainerSheet } from './exchange/ContainerSheet.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
@@ -382,7 +384,7 @@ function CharacterSheetWindow({
   return (
     <section
       ref={placement.ref}
-      className="sheet-window sheet-window--paper"
+      className={`sheet-window sheet-window--paper${data.container ? ' sheet-window--container' : ''}`}
       style={{ ...placement.style, zIndex: 300 + stackIndex }}
       onPointerDown={() => focusSheet(characterId)}
       aria-label={`Karta postaci: ${character.name}`}
@@ -416,45 +418,62 @@ function CharacterSheetWindow({
         </button>
       </div>
 
-      <nav className="sheet-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`sheet-tab ${tab === t.id ? 'sheet-tab--active' : ''}`}
-            onClick={() => {
-              flushCharacterSave(characterId);
-              setTab(t.id);
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      {/* Etap 46b2: pojemnik nie ma Cech, PW ani Umiejętności — zamiast czterech
+          stron jedna kompaktowa karta: zamek i zawartość (decyzja MG z 09.10). */}
+      {data.container ? (
+        <div className="sheet-body" ref={bodyRef}>
+          <ContainerSheet
+            character={character}
+            container={data.container}
+            saveData={saveData}
+            saveName={saveName}
+          />
+        </div>
+      ) : (
+        <>
+          <nav className="sheet-tabs">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`sheet-tab ${tab === t.id ? 'sheet-tab--active' : ''}`}
+                onClick={() => {
+                  flushCharacterSave(characterId);
+                  setTab(t.id);
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
 
-      <div className="sheet-body" ref={bodyRef}>
-        {/* Karta czekająca na MG jest u właściciela tylko do podglądu (25.09):
-            serwer i tak odmawia (`refuseAwaitingGm`), a wyłączony `fieldset`
-            gasi naraz każdy przycisk i pole wszystkich czterech stron, zamiast
-            nieść flagę przez kilkadziesiąt komponentów. Zakładki i ✕ leżą
-            poza nim, więc kartę da się dalej przeglądać. */}
-        <fieldset className="sheet-lock" disabled={awaitingGm}>
-          {tab === 'stats' && (
-            <FrontPage
-              character={character}
-              data={data}
-              saveData={saveData}
-              saveName={saveName}
-              setIssues={setIssues}
-            />
-          )}
-          {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-          {tab === 'bio' && <LifepathPage character={character} data={data} saveData={saveData} />}
-          {tab === 'chrome' && (
-            <ChromePage characterId={character.id} data={data} saveData={saveData} />
-          )}
-        </fieldset>
-      </div>
+          <div className="sheet-body" ref={bodyRef}>
+            {/* Karta czekająca na MG jest u właściciela tylko do podglądu (25.09):
+              serwer i tak odmawia (`refuseAwaitingGm`), a wyłączony `fieldset`
+              gasi naraz każdy przycisk i pole wszystkich czterech stron, zamiast
+              nieść flagę przez kilkadziesiąt komponentów. Zakładki i ✕ leżą
+              poza nim, więc kartę da się dalej przeglądać. */}
+            <fieldset className="sheet-lock" disabled={awaitingGm}>
+              {tab === 'stats' && (
+                <FrontPage
+                  character={character}
+                  data={data}
+                  saveData={saveData}
+                  saveName={saveName}
+                  setIssues={setIssues}
+                />
+              )}
+              {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
+              {tab === 'bio' && (
+                <LifepathPage character={character} data={data} saveData={saveData} />
+              )}
+              {tab === 'chrome' && (
+                <ChromePage characterId={character.id} data={data} saveData={saveData} />
+              )}
+            </fieldset>
+          </div>
+        </>
+      )}
 
       {issueList.length > 0 && (
         <div className="sheet-issues">
@@ -1935,7 +1954,12 @@ function WeaponStrip({
               <tr key={row.id}>
                 <td>
                   <span className="item-name-cell">
-                    <ItemIcon icon={rowIcon('weapons', row)} />
+                    <MapDropHandle
+                      characterId={character.id}
+                      source={{ ref: { list: 'weapons', rowId: row.id }, name: row.name }}
+                    >
+                      <ItemIcon icon={rowIcon('weapons', row)} />
+                    </MapDropHandle>
                     <input
                       type="text"
                       maxLength={64}
@@ -2478,7 +2502,12 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                 <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
                 {row ? (
                   <span className="item-name-cell">
-                    <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
+                    <MapDropHandle
+                      characterId={character.id}
+                      source={{ ref: { list: 'armor', rowId: row.id }, name: row.name }}
+                    >
+                      <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
+                    </MapDropHandle>
                     <input
                       type="text"
                       maxLength={64}
@@ -2607,7 +2636,14 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                       ))}
                     </select>
                     <span className="item-name-cell">
-                      <ItemIcon icon={rowIcon('armor', { ...row, armorLocation: row.location })} />
+                      <MapDropHandle
+                        characterId={character.id}
+                        source={{ ref: { list: 'armor', rowId: row.id }, name: row.name }}
+                      >
+                        <ItemIcon
+                          icon={rowIcon('armor', { ...row, armorLocation: row.location })}
+                        />
+                      </MapDropHandle>
                       <input
                         type="text"
                         maxLength={64}
@@ -3569,10 +3605,17 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         makeRow={() => ({ id: newRowId(), name: '', qty: 1, notes: '' })}
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
         lead={(row) => {
-          // Sprzęt bez rodzaju zostaje bez miniatury i bez pustego miejsca —
-          // kolumna nazw nie przesuwa się dla garstki naboi.
+          // Sprzęt bez rodzaju nie ma miniatury — uchwytem do przeciągnięcia
+          // na mapę (46b2) jest wtedy sam „⠿”.
           const icon = rowIcon('gear', row);
-          return icon ? <ItemIcon icon={icon} /> : null;
+          return (
+            <MapDropHandle
+              characterId={character.id}
+              source={{ ref: { list: 'gear', rowId: row.id }, name: row.name }}
+            >
+              {icon ? <ItemIcon icon={icon} /> : undefined}
+            </MapDropHandle>
+          );
         }}
       />
 

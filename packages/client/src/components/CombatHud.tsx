@@ -5,11 +5,13 @@ import type {
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
   CpredHotbarWeaponSlot,
+  TokenContainerView,
 } from '@vtt/shared';
 import {
   describeCpredStatEffect,
   describeCpredStatEffectTimer,
   describeCpredStatEffectValue,
+  CONTAINER_LOCK_LABELS,
   CPRED_ATTACK_MODE_LABELS,
   CPRED_BURST_AMMO_COST,
   CPRED_WOUND_LABELS,
@@ -382,11 +384,14 @@ function IdentityCard({
   imageUrl,
   hp,
   vitals,
+  container,
 }: {
   name: string;
   imageUrl: string | null;
   hp: { current: number; max: number } | null | undefined;
   vitals: HudVitals | null;
+  /** Pojemnik (46b2) nie ma PW — pod nazwą stoi stan zamka. */
+  container?: TokenContainerView | undefined;
 }) {
   // Baner, nie miniatura (zlecenie MG, 25.09): portret na całą szerokość
   // karty, a imię, Rola i PW leżą na nim, na czarnym przejściu u dołu kadru.
@@ -417,7 +422,13 @@ function IdentityCard({
           {/* HP is redacted by the server (stage 05): a token whose points this
               viewer may not see arrives without them, so „no bar" is the honest
               rendering rather than a hidden one. */}
-          {hp ? <HealthBar hp={hp} /> : <span className="hud-hp-none">PW ukryte</span>}
+          {hp ? (
+            <HealthBar hp={hp} />
+          ) : (
+            <span className="hud-hp-none">
+              {container ? CONTAINER_LOCK_LABELS[container.lock] : 'PW ukryte'}
+            </span>
+          )}
         </span>
       </span>
       {vitals && <Vitals vitals={vitals} />}
@@ -695,6 +706,7 @@ export function CombatHud() {
             imageUrl={token.imageUrl}
             hp={token.hp}
             vitals={context.vitals}
+            container={token.container}
           />
 
           <StatusChips statuses={token.statuses} />

@@ -105,7 +105,7 @@ export function openShop(merchantId: string): void {
  *
  * Gracz: kartą, która stoi najbliżej; serwer mówi, czym jest figura (handel,
  * łup, sklep — gracz nie zna karty cudzego żetonu). Podwójny klik otwiera
- * okno **tylko** dla sklepu i ciała (decyzja MG z 08.10), żeby przypadkowy
+ * okno **tylko** dla sklepu, ciała i pojemnika (decyzje MG z 08.10 i 46b), żeby przypadkowy
  * klik w kolegę nie wysłał mu zaproszenia; zwraca wtedy `false` i wołający
  * robi to, co robił dotąd.
  */
@@ -132,7 +132,11 @@ export async function openExchangeAtToken(
   const entry = entries.find((row) => row.tokenId === token.id);
 
   if (via === 'activate') {
-    if (!entry || (entry.kind !== 'merchant' && entry.kind !== 'loot')) return false;
+    if (
+      !entry ||
+      (entry.kind !== 'merchant' && entry.kind !== 'loot' && entry.kind !== 'container')
+    )
+      return false;
     useExchangeStore.getState().openWindow(anchorId, { tokenId: token.id, selected: entry.key });
     return true;
   }

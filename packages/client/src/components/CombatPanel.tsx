@@ -426,7 +426,11 @@ export function CombatPanel() {
   const characters = useCharacterStore((s) => s.characters);
   const minutes = useGameTimeStore((s) => s.minutes);
 
-  const tokens = useMemo(() => Object.values(tokenMap), [tokenMap]);
+  // Pojemniki (46b) nie walczą — serwer i tak pomija je w `combat:start`/`add`.
+  const tokens = useMemo(
+    () => Object.values(tokenMap).filter((token) => token.container === undefined),
+    [tokenMap],
+  );
   const registry = useMemo(() => new Map(statusRows.map((row) => [row.id, row])), [statusRows]);
   const conditions = useMemo(() => conditionRegistry(statusRows), [statusRows]);
   const outsiders = useMemo(() => {

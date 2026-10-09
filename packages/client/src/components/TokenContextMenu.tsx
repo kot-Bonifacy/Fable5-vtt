@@ -9,6 +9,7 @@ import type {
 } from '@vtt/shared';
 import {
   ARMOR_SP_MAX,
+  CONTAINER_LOCK_LABELS,
   CPRED_INTIMIDATED_STATUS_ID,
   CPRED_COMBAT_VALUE_MAX,
   CPRED_STAT_MAX,
@@ -932,6 +933,9 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
    * ma na pasku akcji i nie kosztuje budżetu tury, więc to jest jej jedyne
    * wejście z mapy, a nie drugie. Własnej figurze wymiany się nie proponuje.
    */
+  // Etap 46b2: pojemnik nie jest kimś — nie ma czego oglądać, nie walczy,
+  // nie dostaje naklejek ani kopii. Zostaje okno „Wymiana” i warsztat MG.
+  const isContainer = token.container !== undefined;
   if (!isGm) {
     const own = token.ownerId === userId;
     return (
@@ -939,13 +943,21 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         <MenuBackdrop onClose={onClose} />
         <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
           <p className="context-menu-title">{token.name}</p>
-          <button type="button" className="context-menu-item" onClick={inspect}>
-            🔍 Przyjrzyj się…
-          </button>
-          {!own && (
-            <button type="button" className="context-menu-item" onClick={openExchange}>
-              🤝 Wymiana…
+          {!isContainer && (
+            <button type="button" className="context-menu-item" onClick={inspect}>
+              🔍 Przyjrzyj się…
             </button>
+          )}
+          {isContainer ? (
+            <button type="button" className="context-menu-item" onClick={openExchange}>
+              📦 Otwórz… — {CONTAINER_LOCK_LABELS[token.container!.lock].toLowerCase()}
+            </button>
+          ) : (
+            !own && (
+              <button type="button" className="context-menu-item" onClick={openExchange}>
+                🤝 Wymiana…
+              </button>
+            )
           )}
         </div>
       </>
@@ -1031,7 +1043,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         )}
         {token.characterId && (
           <button type="button" className="context-menu-item" onClick={openSheet}>
-            📄 Otwórz kartę postaci
+            {isContainer ? '📄 Otwórz kartę pojemnika' : '📄 Otwórz kartę postaci'}
           </button>
         )}
         {/* Etap 46a: jedno okno „Wymiana” zamiast „Przeszukaj” i „Handluj jako
@@ -1039,7 +1051,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             w trybie MG; handel jako NPC i sklep wybiera się w nagłówku. */}
         {token.characterId && (
           <button type="button" className="context-menu-item" onClick={openExchange}>
-            🤝 Wymiana…
+            {isContainer ? '📦 Wymiana…' : '🤝 Wymiana…'}
           </button>
         )}
         {shop && (
@@ -1047,31 +1059,35 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             🛒 {shop.open ? 'Zamknij sklep' : 'Otwórz sklep'}
           </button>
         )}
-        {/* Etap 41: to samo okno, które widzi gracz — MG zagląda w nie, żeby
-            sprawdzić, co druga strona jest w stanie o tej figurze zobaczyć. */}
-        <button type="button" className="context-menu-item" onClick={inspect}>
-          🔍 Przyjrzyj się…
-        </button>
-        {/* Stage 16b: the map's own way into the attack. Before it, firing meant
-            opening somebody's sheet — and an NPC without one could not fire. */}
-        <button
-          type="button"
-          className="context-menu-item"
-          onClick={() => setAiming((open) => !open)}
-        >
-          🎯 Atak…
-        </button>
-        {aiming && <AttackLauncher token={token} onArmed={onClose} />}
-        {/* Stage 23c: „pojedynek spojrzeń" — the other way a conflict on the
-            Street gets settled, and the only one that costs no Action. */}
-        <button
-          type="button"
-          className="context-menu-item"
-          onClick={() => setStaring((open) => !open)}
-        >
-          😠 Konfrontacja…
-        </button>
-        {staring && <FacedownLauncher target={token} onArmed={onClose} />}
+        {!isContainer && (
+          <>
+            {/* Etap 41: to samo okno, które widzi gracz — MG zagląda w nie, żeby
+                sprawdzić, co druga strona jest w stanie o tej figurze zobaczyć. */}
+            <button type="button" className="context-menu-item" onClick={inspect}>
+              🔍 Przyjrzyj się…
+            </button>
+            {/* Stage 16b: the map's own way into the attack. Before it, firing meant
+                opening somebody's sheet — and an NPC without one could not fire. */}
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => setAiming((open) => !open)}
+            >
+              🎯 Atak…
+            </button>
+            {aiming && <AttackLauncher token={token} onArmed={onClose} />}
+            {/* Stage 23c: „pojedynek spojrzeń" — the other way a conflict on the
+                Street gets settled, and the only one that costs no Action. */}
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => setStaring((open) => !open)}
+            >
+              😠 Konfrontacja…
+            </button>
+            {staring && <FacedownLauncher target={token} onArmed={onClose} />}
+          </>
+        )}
         <button
           type="button"
           className="context-menu-item"
@@ -1090,6 +1106,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         )}
         {/* Reinforcements arriving mid-fight — and whoever just fled it. */}
         {combat &&
+          !isContainer &&
           (combatant ? (
             <button
               type="button"
@@ -1113,14 +1130,16 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         {/* Kopia figury (etap 35). Gestem robi to Alt+przeciągnięcie, ale gest
             trzeba znać — a menu jest miejscem, w którym MG szuka wszystkiego,
             co da się zrobić z tą jedną figurą. */}
-        <button
-          type="button"
-          className="context-menu-item"
-          title="Postaw obok kopię tej figury (Alt+przeciągnięcie robi to gestem)"
-          onClick={() => void duplicate()}
-        >
-          ⧉ Duplikuj
-        </button>
+        {!isContainer && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Postaw obok kopię tej figury (Alt+przeciągnięcie robi to gestem)"
+            onClick={() => void duplicate()}
+          >
+            ⧉ Duplikuj
+          </button>
+        )}
         <button
           type="button"
           className="context-menu-item context-menu-item--danger"
@@ -1128,7 +1147,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         >
           🗑 Usuń
         </button>
-        {statuses.length > 0 && (
+        {statuses.length > 0 && !isContainer && (
           <>
             <p className="context-menu-section">Statusy</p>
             <div className="context-menu-statuses">

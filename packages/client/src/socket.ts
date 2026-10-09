@@ -134,8 +134,16 @@ import type {
   HandoutUpsertBroadcast,
   HandoutUpsertPayload,
   HandoutView,
+  ContainerConfigPayload,
+  ContainerCreatePayload,
+  ContainerCreateResult,
+  ContainerOpenPayload,
+  ContainerOpenResult,
+  ContainerPutPayload,
   ExchangeCounterpartsPayload,
   ExchangeCounterpartsResult,
+  InventoryDropPayload,
+  InventoryDropResult,
   InventoryGivePayload,
   InventoryGiveResult,
   MerchantConfigPayload,
@@ -1623,6 +1631,28 @@ export const giveInventory = (payload: InventoryGivePayload) =>
 export const takeInventory = (payload: InventoryTakePayload) =>
   emitSceneAck<{ messageId: number }>('inventory:take', payload);
 
+/* ----- Pojemniki (etap 46b) ----- */
+
+/** MG: skrzynia, bagażnik albo schowek w punkcie mapy — karta z figurą. */
+export const createContainer = (payload: ContainerCreatePayload) =>
+  emitSceneAck<ContainerCreateResult>('container:create', payload);
+
+/** MG: zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować znowu”. */
+export const configContainer = (payload: ContainerConfigPayload) =>
+  emitSceneAck('container:config', payload);
+
+/** „Otwórz” / „Otwórz zamek” — kliknięcie, klucz albo wezwanie do Testu zamka. */
+export const openContainer = (payload: ContainerOpenPayload) =>
+  emitSceneAck<ContainerOpenResult>('container:open', payload);
+
+/** „→” — z mojej karty do otwartego pojemnika w zasięgu ręki. */
+export const putIntoContainer = (payload: ContainerPutPayload) =>
+  emitSceneAck<{ messageId: number }>('container:put', payload);
+
+/** Wiersz z karty na mapę — nowy „Stos” albo dołożenie do stosu na tym polu. */
+export const dropInventory = (payload: InventoryDropPayload) =>
+  emitSceneAck<InventoryDropResult>('inventory:drop', payload);
+
 /** „Przyjmij" / „Odrzuć" / „Wycofaj" na karcie przekazania. */
 export const respondInventory = (messageId: number, accept: boolean) =>
   emitSceneAck('inventory:respond', { messageId, accept } satisfies InventoryRespondPayload);
@@ -1768,6 +1798,19 @@ export function inventoryErrorText(code: string): string {
       return 'Ta propozycja jest już zamknięta.';
     case 'OFFER_NOT_YOURS':
       return 'To nie jest twoja decyzja.';
+    // Etap 46b — pojemniki i stos.
+    case 'NOT_A_CONTAINER':
+      return 'Ta figura nie jest pojemnikiem.';
+    case 'CONTAINER_LOCKED':
+      return 'Pojemnik jest zamknięty — najpierw go otwórz.';
+    case 'LOCK_TRIED':
+      return 'Ta postać już próbowała otworzyć ten zamek i się nie udało. Spróbować znowu pozwala MG.';
+    case 'LOCK_SKILL':
+      return 'Tego zamka nie otworzysz tą Umiejętnością.';
+    case 'TOO_MANY_PILES':
+      return 'Na tej scenie leży już za dużo stosów i pojemników — pozbierajcie coś najpierw.';
+    case 'BAD_REQUEST':
+      return 'Tego nie da się tak zrobić.';
     default:
       return `Błąd przenoszenia: ${code}`;
   }
@@ -1966,6 +2009,8 @@ function attackAckErrorText(code: string): string {
   switch (code) {
     case 'TOKEN_NOT_FOUND':
       return 'Nie ma takiego celu na scenie.';
+    case 'NOT_A_TARGET':
+      return 'To pojemnik, a nie cel — w skrzynię się nie strzela.';
     case 'ATTACKER_NOT_ON_SCENE':
       return 'Ta postać nie ma tokenu na tej scenie.';
     case 'ATTACKER_NOT_LINKED':
@@ -3406,6 +3451,8 @@ function grappleAckErrorText(code: string): string {
 export function combatErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
+    case 'NOT_A_TARGET':
+      return 'To pojemnik, a nie przeciwnik — nie walczy i nie da się go pochwycić.';
     case 'COMBAT_NOT_FOUND':
       return 'Nie ma trwającej walki na tej scenie.';
     case 'COMBATANT_NOT_FOUND':

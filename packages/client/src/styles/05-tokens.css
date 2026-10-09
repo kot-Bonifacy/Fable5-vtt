@@ -274,6 +274,17 @@
   gap: 0.35rem;
 }
 
+/* Zwinięta grupa „Pojemniki” pod drużyną (46b2). */
+.character-group > summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.character-group[open] > summary {
+  margin-bottom: 0.35rem;
+}
+
 .character-row {
   display: flex;
   align-items: center;

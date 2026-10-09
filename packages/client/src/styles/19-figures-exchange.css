@@ -564,6 +564,91 @@
   pointer-events: none;
 }
 
+/* Etap 46b2: „— połóż tutaj”, gdy duch wisi nad mapą, a nie nad oknem. */
+.drag-ghost-hint {
+  color: var(--text-dim);
+}
+
+/* Uchwyt na karcie postaci — ikonka wiersza, którą niesie się na mapę. */
+.map-drop-handle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.map-drop-handle--live {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Pojemnik w oknie „Wymiana”: stan zamka obok nazwy, przyciski otwarcia. */
+.container-lock-state {
+  color: var(--text-dim);
+  font-weight: normal;
+}
+
+.container-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.container-lock .inventory-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.container-skill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+/* Karta pojemnika u MG — jedna strona: zamek i zawartość, w idiomie arkusza
+   (czerwona ramka `cp-panel`, czarna belka, papierowe pola `cp-field`). */
+.container-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Jedna strona bez kolumn cech — okno nie potrzebuje szerokości arkusza. */
+.sheet-window.sheet-window--container {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.container-sheet-name input {
+  flex: 1 1 auto;
+}
+
+.container-sheet-row {
+  flex-wrap: wrap;
+}
+
+.container-sheet-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.container-sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.container-sheet-list {
+  display: block;
+}
+
+.container-sheet-note {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
 /* Dok handli w prawym górnym rogu mapy: zaproszenia, zwinięte handle, ślad
    po zakończonym. Tła i tuszu mapy (`--map-panel`, `--map-ink`), jak pasek
    operacji na figurach — to nakładka na mapę, nie okno. */

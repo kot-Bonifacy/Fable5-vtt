@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   cpredCoverPresetDetail,
   netDefenseSystemEntries,
@@ -12,6 +12,8 @@ import {
   LIGHT_COLORS,
   ROLE_GM,
   WALL_ARMOR_MAX,
+  CONTAINER_PRESETS,
+  CONTAINER_PRESET_LOOKS,
   sceneObjectNominative,
 } from '@vtt/shared';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -48,6 +50,7 @@ import {
 } from '../socket.js';
 import {
   IconBrush,
+  IconCrate,
   IconCloud,
   IconCover,
   IconCoverAll,
@@ -172,6 +175,12 @@ export function MapTools() {
   const myUserId = useAuthStore((s) => s.user?.id ?? null);
   const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
   const spawn = useSceneStore((s) => s.effectiveScene?.spawn ?? null);
+  // Etap 46b2: pojemnik stawia się „żetonem w ręku” z rodzajem — kolejny klik
+  // w mapę woła `container:create`. Rząd z rodzajami otwiera przycisk „📦”.
+  const placement = useMapToolStore((s) => s.tokenPlacement);
+  const setTokenPlacement = useMapToolStore((s) => s.setTokenPlacement);
+  const [containerMenu, setContainerMenu] = useState(false);
+  const armedContainer = placement?.container ?? null;
   const fogEnabled = useFogStore((s) => s.fog?.enabled ?? false);
   const overrideCount = useFogStore((s) => s.fog?.overrides.length ?? 0);
   const hasShapes = useFogStore(
@@ -438,6 +447,24 @@ export function MapTools() {
             onClick={() => toggleTool('spawn')}
           >
             <IconFlag />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${containerMenu || armedContainer ? ' map-tool--active' : ''}`}
+            title={
+              sceneId
+                ? 'Pojemnik — skrzynia, bagażnik albo schowek; wybierz rodzaj i kliknij mapę'
+                : 'Pojemnik — dopiero na aktywnej scenie'
+            }
+            aria-label="Pojemnik"
+            aria-pressed={containerMenu || armedContainer !== null}
+            disabled={!sceneId}
+            onClick={() => {
+              if (armedContainer) setTokenPlacement(null);
+              setContainerMenu((open) => !open);
+            }}
+          >
+            <IconCrate />
           </button>
         </>
       )}
@@ -943,6 +970,33 @@ export function MapTools() {
           >
             <IconTrashAll />
           </button>
+        </div>
+      )}
+
+      {isGm && (containerMenu || armedContainer) && (
+        <div className="map-tool-options" role="group" aria-label="Rodzaj pojemnika">
+          {CONTAINER_PRESETS.map((preset) => {
+            const look = CONTAINER_PRESET_LOOKS[preset];
+            return (
+              <button
+                key={preset}
+                type="button"
+                className={`map-tool map-tool--text${armedContainer === preset ? ' map-tool--active' : ''}`}
+                aria-pressed={armedContainer === preset}
+                title={`${look.name} — kliknij mapę, żeby postawić (Esc anuluje)`}
+                onClick={() =>
+                  setTokenPlacement(
+                    armedContainer === preset
+                      ? null
+                      : { name: look.name, imageUrl: look.imageUrl, container: preset },
+                  )
+                }
+              >
+                {look.name}
+              </button>
+            );
+          })}
+          <span className="map-tool-hint">zamek i zawartość — w karcie pojemnika</span>
         </div>
       )}
 

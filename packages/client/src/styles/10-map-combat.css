@@ -228,6 +228,14 @@
 }
 
 /* Inline hint inside a tool's options row (the eraser has no settings). */
+/* Rodzaj pojemnika (46b2) — słowo zamiast ikony, więc przycisk rośnie z napisem. */
+.map-tool--text {
+  width: auto;
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+  text-shadow: var(--map-shadow-text);
+}
+
 .map-tool-hint {
   align-self: center;
   color: var(--map-ink-bright);

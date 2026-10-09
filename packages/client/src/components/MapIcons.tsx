@@ -487,3 +487,15 @@ export function IconFlag(props: IconProps) {
     </Svg>
   );
 }
+
+/** Pojemnik (etap 46b2) — skrzynka z wiekiem i zamkiem. */
+export function IconCrate(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 9h18v11H3z" />
+      <path d="M4 9l2-4h12l2 4" />
+      <path d="M3 13h18" />
+      <path d="M11 12h2v3h-2z" />
+    </Svg>
+  );
+}

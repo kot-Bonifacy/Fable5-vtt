@@ -15,6 +15,7 @@ import {
   WALL_ARMOR_MAX,
   isBarrier,
   buildCoverCatalogue,
+  type ContainerPreset,
   type CpredCoverCatalogue,
   type DrawingStyle,
   type FogMode,
@@ -67,6 +68,11 @@ export interface TokenPlacement {
   characterId?: string | null;
   /** Właściciel przepisany z karty — żeton postaci gracza ma być jego. */
   ownerId?: string | null;
+  /**
+   * Pojemnik z narzędzia „📦” w pasku mapy (etap 46b2): klik stawia go przez
+   * `container:create` (karta + figura), a nie przez `token:create`.
+   */
+  container?: ContainerPreset;
 }
 
 /*

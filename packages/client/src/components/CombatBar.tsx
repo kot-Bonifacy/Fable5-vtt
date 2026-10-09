@@ -64,7 +64,7 @@ function TurnModeButton() {
   // it. Turn order is not only for fights: a chase or a heist needs the same
   // queue, and there the participants are as often the GM's own figures.
   const starters = useMemo(() => {
-    const all = Object.values(tokens);
+    const all = Object.values(tokens).filter((token) => token.container === undefined);
     const owned = all.filter((token) => token.ownerId !== null);
     return (owned.length > 0 ? owned : all).map((token) => token.id);
   }, [tokens]);

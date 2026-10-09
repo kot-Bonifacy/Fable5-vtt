@@ -25,7 +25,7 @@ export function isCpredLockSkill(value: unknown): value is CpredLockSkill {
   return (CPRED_LOCK_SKILLS as readonly unknown[]).includes(value);
 }
 
-/** PT zamka, gdy MG go nie ustawił — „Trudne” z drabinki s. 129. */
+/** PT zamka, gdy MG go nie ustawił — „Codzienny” z drabinki s. 129. */
 export const CPRED_LOCK_DV_DEFAULT = 13;
 
 /** Ile postaci po nieudanej próbie pamięta jeden zamek — zabezpieczenie zapisu. */

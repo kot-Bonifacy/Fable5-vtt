@@ -18,9 +18,11 @@ import {
 } from '../../stores/exchangeStore.js';
 import { useWindowPlacement } from '../../window-placement.js';
 import { WindowResizeGrip } from '../WindowResizeGrip.js';
+import { ContainerPane } from './ContainerPane.js';
 import { GmPane } from './GmPane.js';
 import { LootPane } from './LootPane.js';
 import { MerchantPane } from './MerchantPane.js';
+import { OwnInventoryColumn } from './OwnInventoryColumn.js';
 import { TradePane } from './TradePane.js';
 import { ownCards, startTrade } from './open.js';
 
@@ -34,7 +36,11 @@ import { ownCards, startTrade } from './open.js';
  *  - kolega, towarzysz, żywy NPC — handel z dwoma polami i dwiema zgodami;
  *  - ciało — łup od ręki;
  *  - handlarz — półka, koszyk i pole sprzedaży;
+ *  - pojemnik (46b) — zamek, potem bierze i wkłada się od ręki;
  *  - tryb MG — „Dokąd” na dowolną kartę.
+ *
+ * Bez wybranej drugiej strony okno pokazuje mój ekwipunek, z którego wiersz
+ * da się przeciągnąć na mapę — powstaje „Stos” (46b2).
  *
  * Listę drugich stron buduje serwer (`exchange:counterparts`), bo o zasięgu
  * i o tym, czyja karta stoi za figurą, gracz nie wie. Zmiana strony nie
@@ -91,6 +97,12 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
       ...(win.tokenId ? { tokenId: win.tokenId } : {}),
     });
     if (!ack.ok) {
+      // Figura, od której okno otwarto, zniknęła (pusty stos, skasowane ciało,
+      // ukryta przez MG) — okno zostaje na mojej karcie bez drugiej strony.
+      if (ack.error === 'TOKEN_NOT_FOUND' && win.tokenId) {
+        useExchangeStore.getState().openWindow(anchorId);
+        return;
+      }
       setMessage(inventoryErrorText(ack.error));
       return;
     }
@@ -142,13 +154,16 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
   const merchantId = win.selected?.startsWith('merchant:')
     ? win.selected.slice('merchant:'.length)
     : null;
-  const kind: 'trade' | 'loot' | 'merchant' | 'gm' | null = live
+  const kind: 'trade' | 'loot' | 'merchant' | 'gm' | 'container' | null = live
     ? 'trade'
     : win.selected === GM_ANY_KEY
       ? 'gm'
       : merchantId
         ? 'merchant'
-        : selectedRow && (selectedRow.kind === 'loot' || selectedRow.kind === 'gm')
+        : selectedRow &&
+            (selectedRow.kind === 'loot' ||
+              selectedRow.kind === 'gm' ||
+              selectedRow.kind === 'container')
           ? selectedRow.kind
           : null;
   const wide = kind === 'trade' || kind === 'merchant';
@@ -245,17 +260,35 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
         {message && <p className="inventory-message">{message}</p>}
 
         {kind === null && anchorId && (
-          <p className="inventory-hint">
-            {inviting
-              ? 'Wysyłam zaproszenie…'
-              : counterparts.length === 0 && !running
-                ? 'W zasięgu ręki nie ma nikogo, z kim dałoby się wymienić. Podejdź bliżej albo otwórz sklep z doku w rogu mapy.'
-                : 'Wybierz, z kim wymieniasz: z kolegą i NPC-em handlujesz za zgodą obu stron, ciało przeszukujesz od ręki, u handlarza kupujesz i sprzedajesz.'}
-          </p>
+          <>
+            <p className="inventory-hint">
+              {inviting
+                ? 'Wysyłam zaproszenie…'
+                : counterparts.length === 0 && !running
+                  ? 'W zasięgu ręki nie ma nikogo, z kim dałoby się wymienić. Podejdź bliżej albo otwórz sklep z doku w rogu mapy.'
+                  : 'Wybierz, z kim wymieniasz: z kolegą i NPC-em handlujesz za zgodą obu stron, ciało i otwarty pojemnik przeszukujesz od ręki, u handlarza kupujesz i sprzedajesz.'}
+            </p>
+            {!inviting && (
+              <div className="exchange-columns">
+                <OwnInventoryColumn anchorId={anchorId} />
+              </div>
+            )}
+            <p className="inventory-hint">
+              Wiersz przeciągnięty na mapę kładzie się na ziemi obok ciebie jako „Stos”.
+            </p>
+          </>
         )}
         {live && <TradePane key={live.id} trade={live} />}
         {kind === 'loot' && selectedRow && anchorId && (
           <LootPane anchorId={anchorId} body={selectedRow} onChanged={() => void refresh()} />
+        )}
+        {kind === 'container' && selectedRow && anchorId && (
+          <ContainerPane
+            key={selectedRow.key}
+            anchorId={anchorId}
+            container={selectedRow}
+            onChanged={() => void refresh()}
+          />
         )}
         {kind === 'merchant' && merchantId && anchorId && (
           <MerchantPane key={merchantId} anchorId={anchorId} merchantId={merchantId} />

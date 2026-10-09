@@ -23,7 +23,7 @@ import { BASE_URL } from '../../instance/paths.ts';
  * listy na żądanie, trasy HTTP). Stan z kopii `po-T3` plus kanarki dołożone tu
  * przez MG w miejscach, których scenariusz jeszcze nie dotknął (rzut ukryty,
  * tabela losowa MG, dziennik MG, handout nieudostępniony, wiedza i relacja bota,
- * architektura Sieci, notatka karty statysty).
+ * architektura Sieci, notatka karty statysty, zawartość zamkniętej skrzyni z 46b).
  *
  * Kanarki z T3 czyta się z bazy (napisy `KANAREK-<etykieta>-NNNN`), więc lista
  * nie jest kopią z plików T3 — nowy kanarek w scenariuszu trafia tu sam.
@@ -128,6 +128,27 @@ test.describe.serial('T2 kanarki na zimno: pełny stan po zalogowaniu', () => {
       x: 100,
       y: 100,
       text: `Kamera nad wejściem. ${code('pinezka-MG')}`,
+    });
+    // Etap 46b: skrzynia zamknięta tuż obok Kowala — jej zawartość nie opuszcza
+    // serwera, choć gracz widzi figurę, a `exchange:counterparts` niżej ją wymienia.
+    const kowal = query<{ x: number; y: number; gridSizePx: number }>(
+      `SELECT t.x, t.y, s.gridSizePx FROM Token t JOIN Scene s ON s.id = t.sceneId
+         WHERE t.characterId = ? AND s.name = 'Knajpa'`,
+      characterId('Kowal'),
+    )[0]!;
+    const chest = (await ok('container:create', {
+      sceneId: sceneId('Knajpa'),
+      x: kowal.x + kowal.gridSizePx,
+      y: kowal.y,
+      preset: 'chest',
+    })) as { characterId: string };
+    await ok('character:update', {
+      characterId: chest.characterId,
+      patch: {
+        data: {
+          gear: [{ id: 't2-skrzynia', name: code('pojemnik-zawartosc'), qty: 1, notes: '' }],
+        },
+      },
     });
     // Wszystkie dołożone kanarki są w bazie — inaczej sprawdzalibyśmy powietrze.
     const inDb = canariesInDatabase();

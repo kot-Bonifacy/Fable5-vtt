@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { CpredItemViewWire, ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
-import { CPRED_ITEM_LIST_LABELS, cpredInventoryView } from '@vtt/shared';
+import { CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
 import { inventoryErrorText, takeInventory } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { clampQty, itemDetail, itemKey, refOf } from './items.js';
+import { OwnInventoryColumn } from './OwnInventoryColumn.js';
 
 /**
  * Tryb `loot` okna „Wymiana” (38b, w jednym oknie od 46a) — ciało, które leży
@@ -33,7 +34,6 @@ export function LootPane({
 
   const items = body.items ?? [];
   const purse = body.eddies ?? 0;
-  const mine = anchor ? cpredInventoryView(anchor.data) : [];
 
   async function take(refs: InventoryItemRefWire[], eddies: number) {
     if (!body.tokenId) return;
@@ -62,23 +62,8 @@ export function LootPane({
   return (
     <>
       <div className="exchange-columns exchange-columns--two">
-        <div className="trade-column">
-          <p className="trade-column-title">Mój ekwipunek — {anchor?.name}</p>
-          {mine.length === 0 && <p className="inventory-empty">Na razie nic.</p>}
-          <ul className="inventory-list">
-            {mine.map((item) => (
-              <li key={itemKey(item)} className="inventory-row">
-                <ItemViewIcon item={item} />
-                <span className="inventory-row-name">{item.name}</span>
-                <span className="inventory-row-detail">{itemDetail(item)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="inventory-money">
-            <span className="inventory-row-name">Portfel</span>
-            <span className="inventory-row-detail">{anchor?.data.eddies ?? 0} ed</span>
-          </div>
-        </div>
+        {/* 46b2: mój ekwipunek z przeciąganiem na mapę („Stos”). */}
+        <OwnInventoryColumn anchorId={anchorId} busy={busy} />
 
         <div className="trade-zone">
           <p className="trade-column-title">Przy ciele: {body.name}</p>

@@ -42,6 +42,7 @@ import { exposeMapToE2E } from '../e2e-hook.js';
 import { partyStart } from '../map/camera.js';
 import { walkFloorFor } from '../map/walk-sight.js';
 import { isTokenDrag, readTokenDrag } from '../map/token-drag.js';
+import { setMapDropTarget } from '../map/map-drop.js';
 import { CreateCampaignForm } from './CreateCampaignForm.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -58,6 +59,7 @@ import {
 import { usePortraitStore } from '../stores/portraitStore.js';
 import {
   clearRuler,
+  createContainer,
   createCover,
   createZone,
   createDrawing,
@@ -90,6 +92,7 @@ import {
   updateNote,
   updateWall,
   updateZone,
+  inventoryErrorText,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
@@ -546,6 +549,22 @@ function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: numb
   const current = useSceneStore.getState().effectiveScene;
   if (!current) return false;
   const extent = current.grid.sizePx;
+  // Etap 46b2: skrzynia z paska mapy to karta z figurą — stawia ją serwer
+  // jednym zdarzeniem, a MG od razu dostaje kartę, żeby ustawić zamek.
+  if (pending.container) {
+    void createContainer({
+      sceneId: current.id,
+      preset: pending.container,
+      name: pending.name,
+      x: worldX - extent / 2,
+      y: worldY - extent / 2,
+    }).then((ack) => {
+      if (!ack.ok) useChatStore.getState().addNote(inventoryErrorText(ack.error));
+      else if (ack.data) useCharacterStore.getState().openSheet(ack.data.characterId);
+    });
+    useMapToolStore.getState().setTokenPlacement(null);
+    return true;
+  }
   void createToken({
     sceneId: current.id,
     name: pending.name,
@@ -982,6 +1001,8 @@ export function MapArea() {
     };
     rendererRef.current = renderer;
     exposeMapToE2E(renderer);
+    // Etap 46b2: wiersz ekwipunku upuszczony na płótno pyta tędy o punkt sceny.
+    setMapDropTarget(renderer);
     let cancelled = false;
     void renderer.init(host).then(() => {
       if (!cancelled) setReady(true);
@@ -991,6 +1012,7 @@ export function MapArea() {
       setReady(false);
       setSteerHandler(null);
       exposeMapToE2E(null);
+      setMapDropTarget(null);
       renderer.destroy();
       rendererRef.current = null;
     };

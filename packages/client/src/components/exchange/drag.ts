@@ -1,4 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import type { ScenePoint } from '@vtt/shared';
+import { mapPointUnder, showMapDropGhost } from '../../map/map-drop.js';
 
 /**
  * Przeciąganie w oknie „Wymiana” (38c, od 46a wspólne dla handlu i sklepu).
@@ -11,7 +13,16 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
  * jeden `pointermove` i od razu `pointerup`, zanim React przerysuje — puszczenie
  * sprawdzane stanem wyglądałoby jak kliknięcie (pułapka `ui` z 23.09). Stan
  * Reacta służy wyłącznie do rysowania ducha i podświetlenia strefy.
+ *
+ * Etap 46b2: z `onMapDrop` wiersz da się też puścić na płótno mapy („Stos”).
+ * Mapa jest strefą `map` wtedy, gdy pod kursorem nie ma żadnej strefy okna —
+ * okno leży nad mapą, więc wygrywa to, co widać na wierzchu. Ducha takiego
+ * przeciągania trzeba rysować przez `DragGhost` (portal): okno ma `clip-path`
+ * i obcięłoby go na swojej krawędzi.
  */
+
+/** Strefa „płótno mapy” — `hoverZone` i podświetlenie wiersza. */
+export const MAP_DROP_ZONE = 'map';
 
 /** Ile pikseli wskaźnik musi przejechać, żeby naciśnięcie było przeciąganiem, a nie kliknięciem. */
 const DRAG_THRESHOLD_PX = 5;
@@ -38,6 +49,7 @@ function zoneAt(x: number, y: number): string | null {
 export function useExchangeDrag<S>(
   onDrop: (source: S, zone: string) => void,
   disabled = false,
+  onMapDrop?: (source: S, point: ScenePoint) => void,
 ): ExchangeDrag<S> {
   const [drag, setDrag] = useState<{ source: S; x: number; y: number } | null>(null);
   const [hoverZone, setHoverZone] = useState<string | null>(null);
@@ -56,6 +68,16 @@ export function useExchangeDrag<S>(
     pending.current = null;
     setDrag(null);
     setHoverZone(null);
+    if (onMapDrop) showMapDropGhost(null);
+  };
+
+  /** Strefa okna pod kursorem, a bez niej — płótno mapy, gdy wolno na nie upuszczać. */
+  const target = (x: number, y: number): { zone: string; point?: ScenePoint } | null => {
+    const zone = zoneAt(x, y);
+    if (zone) return { zone };
+    if (!onMapDrop) return null;
+    const point = mapPointUnder(x, y);
+    return point ? { zone: MAP_DROP_ZONE, point } : null;
   };
 
   const handlers = (source: S) => ({
@@ -78,15 +100,19 @@ export function useExchangeDrag<S>(
       if (!start.moving && !isFar(start, event)) return;
       start.moving = true;
       setDrag({ source: start.source, x: event.clientX, y: event.clientY });
-      setHoverZone(zoneAt(event.clientX, event.clientY));
+      const under = target(event.clientX, event.clientY);
+      setHoverZone(under?.zone ?? null);
+      if (onMapDrop) showMapDropGhost(under?.point ?? null);
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
       const start = pending.current;
       reset();
       if (!start || start.id !== event.pointerId) return;
       if (!start.moving && !isFar(start, event)) return;
-      const zone = zoneAt(event.clientX, event.clientY);
-      if (zone) onDrop(start.source, zone);
+      const under = target(event.clientX, event.clientY);
+      if (!under) return;
+      if (under.point) onMapDrop?.(start.source, under.point);
+      else onDrop(start.source, under.zone);
     },
     onPointerCancel: reset,
   });

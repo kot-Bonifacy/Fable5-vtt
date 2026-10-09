@@ -7,6 +7,7 @@ import {
   ROLE_GM,
   cyberpsychosisFor,
   formatEddies,
+  isContainerCard,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { confirmDestructive } from '../confirm.js';
@@ -177,7 +178,12 @@ export function CharacterPanel() {
     const store = useCharacterStore.getState();
     const stale = store.order
       .map((id) => store.characters[id])
-      .filter((character) => character && character.data.luckCurrent < character.data.stats.luck);
+      .filter(
+        (character) =>
+          character &&
+          !isContainerCard(character.data) &&
+          character.data.luckCurrent < character.data.stats.luck,
+      );
     if (stale.length === 0) return;
     const who = plural(stale.length, 'postaci', 'postaciom', 'postaciom');
     if (!window.confirm(`Odnowić pulę Szczęścia ${who} (nowa sesja)?`)) return;
@@ -255,6 +261,116 @@ export function CharacterPanel() {
     registry.roles.find((r) => r.id === roleId)?.name ?? '';
   const ownerName = (ownerId: string | null) =>
     ownerId === null ? 'NPC' : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
+
+  // Pojemniki (46b) mają karty bez Cech i PW — osobna grupa na dole listy.
+  const people = order.filter((id) => {
+    const card = characters[id];
+    return card !== undefined && !isContainerCard(card.data);
+  });
+  const containers = order.filter((id) => {
+    const card = characters[id];
+    return card !== undefined && isContainerCard(card.data);
+  });
+
+  const renderRow = (id: string) => {
+    const character = characters[id];
+    if (!character) return null;
+    return (
+      // Etap 43a: dwa wiersze na postać, portret przez oba (zlecenie MG
+      // z 26.09) — imię u góry w całości, niżej Rola, a po prawej
+      // właściciel i przyciski MG.
+      <li key={id} className="character-row character-row--card">
+        <button
+          type="button"
+          className="character-open"
+          onClick={() => openSheet(id)}
+          // MG wyciąga postać prosto na mapę (26.09) — ten sam żeton
+          // co „⊕", z kartą i właścicielem.
+          draggable={isGm}
+          onDragStart={
+            isGm
+              ? (event) =>
+                  startTokenDrag(event, {
+                    name: character.name,
+                    imageUrl: character.portraitUrl,
+                    characterId: id,
+                    ownerId: character.ownerId,
+                  })
+              : undefined
+          }
+          title={isGm ? 'Otwórz kartę — albo przeciągnij postać na mapę' : 'Otwórz kartę'}
+        >
+          {character.portraitUrl ? (
+            <img className="character-thumb" src={character.portraitUrl} alt="" />
+          ) : (
+            <span className="character-thumb character-thumb--empty" aria-hidden>
+              ◇
+            </span>
+          )}
+          <span className="character-row-text">
+            <span className="character-row-name">
+              {character.name}
+              <CyberpsychosisChip data={character.data} />
+            </span>
+            <span className="character-row-meta">
+              {roleName(character.data.roleId) || '—'}
+              {/* #58 (T8b): gracz po „Utwórz postać” nie był pewien, czy
+                          w ogóle ją oddał — lista nie mówiła, że czeka na MG. */}
+              {!character.playReady && (
+                <span className="character-row-pending"> · czeka na przyjęcie przez MG</span>
+              )}
+            </span>
+          </span>
+        </button>
+        {isGm && (
+          <span className="character-row-actions">
+            {/* Pojemnik (46b2) nie ma właściciela, nie rzuca i stoi już na mapie. */}
+            {!isContainerCard(character.data) && (
+              <>
+                <OwnerPicker
+                  ownerId={character.ownerId}
+                  label={ownerName(character.ownerId)}
+                  players={players}
+                  onChange={(ownerId) => void changeOwner(id, ownerId)}
+                />
+                {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
+                        żetonie — nietypowe wydarzenie trafia też kogoś, kto
+                        akurat nie stoi na aktywnej scenie. */}
+                <button
+                  type="button"
+                  className="small-button"
+                  onClick={() =>
+                    useCheckStore
+                      .getState()
+                      .openCall({ characterId: id, characterName: character.name })
+                  }
+                  title="Wezwij do Testu"
+                  aria-label="Wezwij do Testu"
+                >
+                  ⚄
+                </button>
+                <PlaceOnSceneButton
+                  characterId={id}
+                  name={character.name}
+                  portraitUrl={character.portraitUrl}
+                  ownerId={character.ownerId}
+                />
+              </>
+            )}
+            <button
+              type="button"
+              className="small-button character-delete"
+              onClick={() => void removeCharacter(id, character.name)}
+              title="Usuń postać"
+              aria-label="Usuń postać"
+            >
+              ✕
+            </button>
+          </span>
+        )}
+      </li>
+    );
+  };
 
   return (
     <div className="character-panel">
@@ -341,105 +457,17 @@ export function CharacterPanel() {
           {isGm ? 'Brak postaci — utwórz pierwszą poniżej.' : 'Nie masz jeszcze żadnej postaci.'}
         </p>
       ) : (
-        <ul className="character-list">
-          {order.map((id) => {
-            const character = characters[id];
-            if (!character) return null;
-            return (
-              // Etap 43a: dwa wiersze na postać, portret przez oba (zlecenie MG
-              // z 26.09) — imię u góry w całości, niżej Rola, a po prawej
-              // właściciel i przyciski MG.
-              <li key={id} className="character-row character-row--card">
-                <button
-                  type="button"
-                  className="character-open"
-                  onClick={() => openSheet(id)}
-                  // MG wyciąga postać prosto na mapę (26.09) — ten sam żeton
-                  // co „⊕", z kartą i właścicielem.
-                  draggable={isGm}
-                  onDragStart={
-                    isGm
-                      ? (event) =>
-                          startTokenDrag(event, {
-                            name: character.name,
-                            imageUrl: character.portraitUrl,
-                            characterId: id,
-                            ownerId: character.ownerId,
-                          })
-                      : undefined
-                  }
-                  title={isGm ? 'Otwórz kartę — albo przeciągnij postać na mapę' : 'Otwórz kartę'}
-                >
-                  {character.portraitUrl ? (
-                    <img className="character-thumb" src={character.portraitUrl} alt="" />
-                  ) : (
-                    <span className="character-thumb character-thumb--empty" aria-hidden>
-                      ◇
-                    </span>
-                  )}
-                  <span className="character-row-text">
-                    <span className="character-row-name">
-                      {character.name}
-                      <CyberpsychosisChip data={character.data} />
-                    </span>
-                    <span className="character-row-meta">
-                      {roleName(character.data.roleId) || '—'}
-                      {/* #58 (T8b): gracz po „Utwórz postać” nie był pewien, czy
-                          w ogóle ją oddał — lista nie mówiła, że czeka na MG. */}
-                      {!character.playReady && (
-                        <span className="character-row-pending">
-                          {' '}
-                          · czeka na przyjęcie przez MG
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                </button>
-                {isGm && (
-                  <span className="character-row-actions">
-                    <OwnerPicker
-                      ownerId={character.ownerId}
-                      label={ownerName(character.ownerId)}
-                      players={players}
-                      onChange={(ownerId) => void changeOwner(id, ownerId)}
-                    />
-                    {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
-                        żetonie — nietypowe wydarzenie trafia też kogoś, kto
-                        akurat nie stoi na aktywnej scenie. */}
-                    <button
-                      type="button"
-                      className="small-button"
-                      onClick={() =>
-                        useCheckStore
-                          .getState()
-                          .openCall({ characterId: id, characterName: character.name })
-                      }
-                      title="Wezwij do Testu"
-                      aria-label="Wezwij do Testu"
-                    >
-                      ⚄
-                    </button>
-                    <PlaceOnSceneButton
-                      characterId={id}
-                      name={character.name}
-                      portraitUrl={character.portraitUrl}
-                      ownerId={character.ownerId}
-                    />
-                    <button
-                      type="button"
-                      className="small-button character-delete"
-                      onClick={() => void removeCharacter(id, character.name)}
-                      title="Usuń postać"
-                      aria-label="Usuń postać"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <ul className="character-list">{people.map(renderRow)}</ul>
+          {/* Etap 46b2 (decyzja MG z 09.10): karty skrzyń i stosów to nie postacie —
+              zwinięta grupa, żeby nie spychały drużyny w dół listy. */}
+          {containers.length > 0 && (
+            <details className="character-group" data-character-group="containers">
+              <summary>Pojemniki ({containers.length})</summary>
+              <ul className="character-list">{containers.map(renderRow)}</ul>
+            </details>
+          )}
+        </>
       )}
 
       {/* Stage 25a. Two doors on purpose: the wizard for a character somebody
