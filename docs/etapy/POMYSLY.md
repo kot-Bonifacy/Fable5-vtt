@@ -1,5 +1,19 @@
 # Pomysły poza zakresem etapów
 
+**09.10.2026 (zlecenie MG) — cennik ×10, globalnie dla instancji.** MG chce ed ≈ euro z lekką
+inflacją. Decyzje: sprzęt trwały (broń, dodatki, pancerze, chrom, sprzęt i programy Netrunnera,
+obrona Sieci) ×10; amunicja i sprzęt ogólny z pasm Tanie–Kosztowne ×3 (oprócz Komputera ×10);
+montaż chromu ×10, terapia ×2; czynsz, poziom życia, zakup mieszkania, wypłaty i gotówka startowa
+×1; Kompletny Pakiet dostaje gratis podstawowe wyposażenie Roli. **Pasma cen zostają przy przedmiocie**
+(od nich zależą PT/czas Wytwarzania, zasięg Fixera, poziom sklepu); progi `shop.ts` porównują cenę
+bazową. Pełny cennik z pozycjami: `data/private/cpred/cennik-x10.md` (prywatny). Wdrożenie jako
+osobny etap: mnożnik w jednym miejscu (`entryPrice` + osobny wariant „bazowy” dla poziomów
+sklepu), nie edycja JSON-ów z importera (`tools/import/parse-compendium.py` by je nadpisał);
+stałe w kodzie (`CYBERWARE_INSTALL_COST`, `HUMANITY_THERAPY_DEFINITIONS`); gratis Roli w kreatorze;
+ceny wpisane ręcznie u handlarzy (`MerchantRowOverlay.price`) nie skalują się same; salda kart
+w istniejących kampaniach; łańcuch E2E (230 ed Kowala, stany `po-T3`…`po-T6`); boty i asystent
+MG dostają stare ceny z RAG podręcznika — potrzebna notka w prompcie.
+
 **08.10.2026 (etap 45) — wzrok zaznaczonej figury jak w Foundry.** Foundry zawęża widok gracza
 do figury, którą zaznaczył; tu gracz zawsze widzi sumę swoich figur i „oczu drużyny”. Przydałoby się
 przy rozdzielonej drużynie (zwiad), gdy MG chce, żeby gracz patrzył tylko jednym okiem.
