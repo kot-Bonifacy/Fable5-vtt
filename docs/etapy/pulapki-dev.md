@@ -781,10 +781,17 @@ i `roles30d.test.ts`. Kartę stawia się gniazdem MG; gracz kupuje poziom przez
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Okno otwarte od figury pyta o listę z jej `tokenId` — gdy figura znika, odpowiedź to `TOKEN_NOT_FOUND`, nie pusta lista (09.10, etap 46b2)** — pusty stos, skasowane ciało, figura ukryta przez MG.
 - **Odległość „ode mnie" to NAJBLIŻSZA własna figura, nie pierwsza z listy** — karta potrafi stać dwiema figurami (kopia z 35), a serwer egzekwuje zasięg po najbliższej parze.
 - **Komunikat „czeka na X" wolno napisać dopiero wtedy, gdy serwer powie, że coś czeka** (`InventoryGiveResult.pending`); zdanie warunkowe w komunikacie o skutku to znak brakującego pola w ack.
 
 ---
+
+- **Okno „Wymiana” otwarte od figury pyta `exchange:counterparts` z jej `tokenId`.** Gdy figura
+  zniknie (Marek opróżnił stos, który sam się skasował), serwer odpowiada `TOKEN_NOT_FOUND`, a nie
+  listą bez tej pozycji — i okno do 46b2 zostawało ze starą listą w trybie `container`, z przyciskami
+  do stosu, którego już nie ma. Wyszło w E2E 46b.4b. Teraz `ExchangeWindow.refresh` na tę odmowę
+  otwiera okno od nowa na tej samej karcie, bez figury i bez drugiej strony.
 
 - **Odległość „ode mnie" liczy się od NAJBLIŻSZEJ własnej figury, nie od pierwszej z listy.**
   Karta potrafi stać dwiema figurami naraz (kopia z etapu 35, drugi żeton tej samej postaci na tej
@@ -1695,6 +1702,7 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 
 ## testy — Testy i środowisko dev
 
+- **E2E przesuwa okno karty za środek belki i w bok, nie w dół; asercja po rzucie kubkiem czeka dłużej niż 10 s (09.10, etap 46b2)** — portret w rogu belki Firefox ciągnie jak obrazek, okno nie wyjedzie poza ekran, a figura po rzucie przychodzi po animacji kości.
 - **`Start-Process cmd -ArgumentList '/c','"C:\…\run.cmd"',…` nie uruchamia niczego i nie zostawia śladu (09.10, etap 46c2)** — `cmd /c` z cudzysłowem na początku i kolejnymi cudzysłowami w argumentach zdejmuje pierwszy i ostatni cudzysłów całej linii, więc ścieżka skryptu się rozjeżdża, okno znika, a log nie powstaje. Ścieżka scratchpadu nie ma spacji — podawaj ją **bez** cudzysłowu, cudzysłów tylko wokół listy speców (`start.ps1` w scratchpadzie: `-ArgumentList @('/c', "$dir\run.cmd", $Name, "`"$Specs`"")`). Sprawdź `head` logu po 10 s, zanim uzbroisz monitor.
 - **`toBeDisabled()` / `toBeEnabled()` Playwrighta nie widzi `disabled` na `<option>` (08.10, etap 46a2)** — opcja z atrybutem `disabled` przechodzi jako „enabled”, więc `toBeEnabled()` niczego nie sprawdza, a `toBeDisabled()` pada. Pytaj o atrybut: `toHaveAttribute('disabled', '')`. Wybór opcji po fragmencie etykiety — przez `getAttribute('value')` i `selectOption(value)`; `selectOption({ label })` nie przyjmuje wyrażenia regularnego.
 - **Skrypt Pythona na Windows zapisuje plik z CRLF (08.10, etap 46a2)** — `open(p, 'w')` w trybie tekstowym zamienia `
@@ -1835,6 +1843,15 @@ w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano"
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 
 ---
+
+- **Odsłanianie mapy spod okna karty w E2E (46b2).** Trzy przebiegi `t46b-` padły na tym samym
+  kroku: (1) chwyt belki karty w lewym rogu trafia w portret, który Firefox zaczyna ciągnąć
+  natywnie jak obrazek — okno stoi; chwytaj w środku belki; (2) `useWindowPlacement` trzyma okno
+  w ekranie, więc zsunięcie 1180-pikselowej karty w dół nie odsłania stolika — przesuwaj ją
+  w prawo, do krawędzi; (3) po przesunięciu dopasuj kamerę jeszcze raz (`fitCamera`). Osobno:
+  **zmiana figury po rzucie kubkiem dochodzi do klienta dopiero po animacji kości** (umowa
+  „rzuty doganiają stół”, `token:sync` w ramkach jest od razu, w magazynie po ~7 s), a krytyk to
+  dwie kości — asercja na oknie, które czeka na tę figurę, potrzebuje limitu ~30 s.
 
 **Limity z 01.10 w suicie E2E (#11–#13).** Instancja E2E startuje z `loadConfig`, więc limity
 są włączone jak na produkcji. Trzy skutki: (1) wiadro jest per **konto** — `actor.socket()`

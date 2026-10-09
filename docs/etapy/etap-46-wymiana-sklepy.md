@@ -604,6 +604,17 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
 - **Żetony: sylwetki z game-icons.net** (CC BY 3.0, jak reszta ikon) na papierowym krążku —
   worek, skrzynia, bagażnik, schowek. MG podmienia obrazek jak każdej figurze.
 
+### Decyzje MG z 09.10.2026 (start 46b2)
+
+- **Stos przeciąga się z karty i z okna „Wymiana”.** Na karcie uchwytem jest ikonka wiersza
+  (Wyposażenie, Broń, Pancerz) i leci cały wiersz; w oknie „Wymiana” — wiersz kolumny „Mój
+  ekwipunek” z ilością z pola przy wierszu. Oba na zdarzeniach wskaźnika (działa w Firefoksie).
+- **Bez znaczka zamka na mapie.** Stan zamka widać w oknie „Wymiana” i w menu figury;
+  `MapRenderer.ts` zostaje nietknięty przed refaktoryzacją.
+- **Karta pojemnika u MG jest kompaktowa:** nazwa, zamek (stan, PT, Umiejętności, „Wydaj klucz”
+  z wyborem karty, „Pozwól spróbować znowu”), lista zawartości z „✕” i eurodolce. Rzeczy dokłada
+  się z Kompendium („Dodaj za darmo”) albo oknem „Wymiana” w trybie MG.
+
 
 ### Model
 
@@ -656,9 +667,11 @@ handlarza, sklejanie i limit 40 wierszy działają od razu, bez nowej gałęzi w
       (tworzenie, dokładanie, znikanie) — **46b1, 09.10**
 - [x] Serwer: zdarzenia z tabeli, Test zamka przez wezwanie do Testu, przycięcie zawartości per
       widz, pomijanie pojemników w miejscach z ryzyka 8 — **46b1, 09.10**
-- [ ] Klient: tryb `container` okna, przeciągnięcie wiersza na płótno (zdarzenia wskaźnika,
+- [x] Klient: tryb `container` okna, przeciągnięcie wiersza na płótno (zdarzenia wskaźnika,
       `fixtures/canvas.ts` w E2E), menu sceny MG „📦 Pojemnik”, karta pojemnika, żeton stosu
-- [ ] Dokumentacja: umowy `ekwipunek` i `mapa`, `POMYSLY.md` (wpisy o kontenerze → „zrobione w 46b”)
+      — **46b2, 09.10**
+- [x] Dokumentacja: umowy `ekwipunek` i `mapa`, `POMYSLY.md` (wpisy o kontenerze → „zrobione w 46b”)
+      — **46b2, 09.10**
 
 **46b1 zrobiona 09.10.** Odstępstwa od szkicu: Test zamka idzie **wezwaniem do Testu**
 (`createCheckCall`), nie prośbą z etapu 40 — próg ustalił MG z góry, więc nie ma na co czekać;
@@ -696,11 +709,24 @@ odmowy celu to `NOT_A_TARGET`; nowe kody dla klienta (46b2): `NOT_A_CONTAINER`,
 
 ### Kryteria ukończenia 46b
 
-- [ ] Skrzynia, bagażnik i stos działają z jednego okna; zamek Testem i kluczem
-- [ ] Zawartość nieotwartego pojemnika nie opuszcza serwera (kanarek w T2c)
-- [ ] Pojemnik nie wchodzi do walki ani na listy figur
-- [ ] Testy jednostkowe, lint, `tsc` czyste; `t46b-` zielony, `00-baseline` + `01-dym` zielone
-- [ ] Oględziny: Firefox (gracz: przeciągnięcie na mapę, okno pojemnika), Chromium (MG)
+- [x] Skrzynia, bagażnik i stos działają z jednego okna; zamek Testem i kluczem
+- [x] Zawartość nieotwartego pojemnika nie opuszcza serwera (kanarek w T2c)
+- [x] Pojemnik nie wchodzi do walki ani na listy figur
+- [x] Testy jednostkowe, lint, `tsc` czyste; `t46b-` zielony, `00-baseline` + `01-dym` zielone
+- [x] Oględziny: Firefox (gracz: przeciągnięcie na mapę, okno pojemnika), Chromium (MG)
+
+**Etap 46b zamknięty 09.10 (46b1 + 46b2).** Odstępstwa 46b2 od szkicu: narzędzie „📦 Pojemnik”
+to nie nowy `MapTool`, tylko „żeton w ręku” z rodzajem (`TokenPlacement.container`) — klik stawia
+skrzynię przez `container:create` i otwiera MG jej kartę; renderer mapy bez zmian. Przeciągnięcie
+na mapę idzie zdarzeniami wskaźnika (jak okno „Wymiana”), a nie HTML5 drag-and-drop panelu
+żetonów. Okno „Wymiana” bez wybranej drugiej strony pokazuje „Mój ekwipunek” — stamtąd też
+powstaje stos; łup („Przy ciele”) dostał tę samą kolumnę. „Otwórz zamek” sam otwiera kubek
+wezwania. Lewy panel gracza pokazuje przy pojemniku stan zamka zamiast „PW ukryte”; menu figury
+gracza ma „📦 Otwórz… — stan zamka” bez „Przyjrzyj się”, a menu MG chowa przy pojemniku atak,
+Konfrontację, walkę, kopię i naklejki. Żetony: Wooden crate, City car, Strongbox, Swap bag
+(game-icons, `data/public/tokens/containers/ATTRIBUTION.md`). E2E: Ola wkłada latarkę zamiast
+stimpaka (`po-T6` go nie ma), 46b.4b dokłada stos z okna „Wymiana”, a 46b.7 sprawdza figurę
+ukrytą przez MG („Knajpa” ma widzenie Dynamiczne, nie ręczną mgłę).
 
 ---
 

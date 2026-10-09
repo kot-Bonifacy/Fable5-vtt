@@ -1,5 +1,39 @@
 # Dziennik sesji — archiwum
 
+### Sesja 09.10 (druga) — etap 46c2 „Zapas amunicji: łańcuch T3a–T5b, pełny przebieg”
+
+**Zlecenie MG:** „kontynuuj projekt (46c2)”, pytać o niejasności. **Decyzje MG (start 46c2,
+wszystkie zgodne z rekomendacją):** Kowal kupuje w kreatorze 2 paczki zwykłej do B.C. Pistoletu;
+retest #82 po walce T4b — najpierw odmowa bez zapasu, potem pudełko od MG; gateway uruchamia MG
+na wezwanie. Zapisane w pliku etapu.
+
+**Zrobione (tylko E2E i dokumenty, kod aplikacji bez zmian):** T3a — zakup amunicji na półce
+„Amunicja” (kaliber podpowiada się z pistoletu, ostrzeżenie o broni bez zapasu znika, 230 ed);
+T4b — nowy krok `#82` (⟳ szary, `NO_AMMO`, `giveAmmo` 1 granat, przeładowanie 2/2); T5a — MG daje
+2 paczki przeciwpancernej z Kompendium zamiast tekstu; T5b 5.9 — wybór „Amunicja przeciwpancerna
+— 20”, 7 zwykłych wraca do zapasu; `t46c-` — 46c.0 sprawdza stan zostawiony przez łańcuch (27
+zwykłej, 12 przeciwpancernej, granat 2/2), 46c.1/46c.5 ustawiają się same, nowy **46c.9 `@llm`**
+(towarzysz „Kumpel” z pustym pistoletem i bronią białą, bez pudełek: w decyzjach nie ma
+„przeładuj”, magazynek zostaje 0, tura ≤ 2 kroki), plik bez martwego gatewaya. Nowy
+`fixtures/kompendium.ts` (`compendiumEntry`, `pickCalibre`, `giveAmmo`) zamiast kopii w T6a i t46c.
+
+**Znalezione i naprawione przy przebiegach:** wpis powyżej poziomu sklepu kampanii ma przy nazwie
+znaczek „Wojskowe”, więc dokładne dopasowanie nazwy w Kompendium nie trafiało (pomocnik dopuszcza
+znaczki); **T3b nie był przebiegany po etapie 45** — Ola widzi Pasera oczami Kowala (3.13), a marsz
+„do kuchni” obchodzi salę tarasem odkrytym przez Olę i kończy się po kilkunastu sekundach (test
+czekał 8 s, więc w pełnym przebiegu Kowal dochodził na taras i T4a 4.2 nie miał skąd iść) — test
+czeka na koniec marszu i odprowadza Kowala pod drzwi kuchni (14, 15), jak w starym `po-T3`; T5b 5.4
+— Ola widzi Wieżyczkę oczami Kowala. Pułapka z uruchamianiem przebiegu w osobnym oknie (`cmd /c`
+z cudzysłowem) w `testy`. **Nowa zaległość:** menu tury bota proponuje „podejście” do figury, przy
+której bot już stoi (46c.9: Kumpel stracił turę na odmowie, potem spasował).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”; ESLint, Prettier i `tsc` czyste
+w `packages/e2e`. Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w Firefoksie**
+(pasek „7/8 · zapas 16”, „Przeładuj” z zapasem), reszta jak w 46c1.
+
+**Następny krok — 46b (pojemniki).** Przed kodem przeczytać sekcję 46b w pliku etapu i umowy
+`ekwipunek`; zaległość z menu bota czeka na triaż MG.
+
 ### Sesja 09.10 — etap 46c1 „Zapas amunicji: model, serwer, klient”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. Plan z 08.10 stawiał 46c

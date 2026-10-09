@@ -21,27 +21,25 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **46b2** (pojemniki: klient, E2E — następny); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); potem: triaż #79–#81, **refaktoryzacja**, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1 (ostatni zamknięty: 46b1, 2026-10-09) |
+| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (następna); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2 (ostatni zamknięty: 46b2, 2026-10-09) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 46b „Pojemniki” — 46b1 zrobiona 09.10, następna 46b2 (klient, E2E `t46b-`, oględziny),
-potem refaktoryzacja.** Serwer już umie: skrzynia, bagażnik i schowek to karty NPC z polem
-`container` i figurą (`container:create` MG, żeton `/public/tokens/containers/*.svg` — **plików
-jeszcze nie ma**, robi je 46b2 z game-icons), zamek „otwarty / zamknięty / na zamek” z PT
-i Umiejętnością (`container:config`), „Otwórz” kliknięciem, kluczem (wiersz z `key`) albo
-**wezwaniem do Testu** (`container:open` → karta wezwania → rzut rozlicza `settleLockTest`; jedna
-próba na postać, „Pozwól spróbować znowu” = `resetTries`), wkładanie (`container:put`),
-wyjmowanie (`inventory:take`), stos z upuszczenia (`inventory:drop`), który znika pusty.
-Zawartość jedzie graczowi tylko otwartego pojemnika (`exchange:counterparts`); stan zamka
-publicznie na `TokenView.container`, bez paska PW. Pojemnik wypada z walki, celów, wybuchów, tury
-bota, oględzin, rozliczenia miesiąca i listy przelewów (`containerTokenIds` / `sheetIsContainer`).
-Decyzje MG ze startu 46b (narzędzie w pasku mapy, grupa „Pojemniki” w „Postaciach”, jedna próba
-na postać, sylwetki game-icons) i odstępstwa 46b1 — w pliku etapu; umowy w `ekwipunek` i `kosci`.
+**Etap 46 „Wymiana, sklepy, amunicja, pojemniki” zamknięty 09.10 (46b2 ostatnia) — następna jest
+refaktoryzacja całości pod osłoną suity, potem T10.** Pojemnik to karta NPC-a z polem `container`
+i figurą: MG stawia skrzynię, bagażnik albo schowek narzędziem „📦” w pasku mapy (rodzaj, klik —
+otwiera się kompaktowa karta: zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować znowu”,
+zawartość); karty pojemników siedzą w „Postaciach” w zwiniętej grupie „Pojemniki”. Gracz podwójnym
+klikiem albo „📦 Otwórz…” z menu figury dostaje okno „Wymiana” w trybie `container`: „Otwórz”,
+„🔑 Otwórz kluczem” albo „Otwórz zamek” (wezwanie do Testu, kubek otwiera się sam, jedna próba na
+postać), po otwarciu „←”, „Zabierz wszystko”, „→”. **„Stos”** powstaje z wiersza przeciągniętego
+na mapę — z ikonki wiersza na karcie (cały wiersz) albo z „Mój ekwipunek” w oknie (ilość z pola)
+— i znika pusty. Zawartość nieotwartego nie opuszcza serwera (kanarek w T2c i `t46b-`). Decyzje MG
+i odstępstwa — w pliku etapu (sekcje 46b), umowy w `ekwipunek` i `mapa`.
 
 **Etap 46c „Zapas amunicji” zamknięty 09.10 (46c1 + 46c2).** **Przeładowanie zużywa naboje z pudełek w ekwipunku** na kartach drużyny
 (gracz, towarzysz-bot); NPC i statysta MG są „bez dna”, dopóki MG nie zaznaczy „Licz amunicję”.
@@ -176,7 +174,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -204,7 +202,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 63   | 26      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 64   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 29   | 15      |
@@ -214,19 +212,51 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 48   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 26   | 2       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 27   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 133     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 134     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 09.10 (czwarta) — etap 46b2 „Pojemniki: klient, E2E, oględziny”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b2)”, pytać o niejasności. **Decyzje MG (start 46b2,
+wszystkie zgodne z rekomendacją):** stos przeciąga się z karty (ikonka wiersza, cały wiersz)
+i z okna „Wymiana” (ilość z pola); bez znaczka zamka na mapie (`MapRenderer.ts` nietknięty);
+kompaktowa karta pojemnika u MG. Zapisane w pliku etapu.
+
+**Zrobione:** `exchange/ContainerPane` (tryb `container`: zamek, kubek Testu od razu, „←”, „→”,
+„Zabierz wszystko”, odświeżenie po każdej zmianie figury pojemnika), `OwnInventoryColumn` (mój
+ekwipunek z przeciąganiem na mapę — pojemnik, łup, okno bez drugiej strony), `ContainerSheet`
+(karta MG zamiast stron arkusza, węższe okno), `map-drop-item.tsx` (`dropOnMap`, `DragGhost`
+w portalu, `MapDropHandle` na ikonkach wierszy karty: Wyposażenie, Broń, Pancerz), `map/map-drop.ts`
+(renderer zgłasza się z `MapArea`), `useExchangeDrag` z `onMapDrop`; narzędzie „📦 Pojemnik”
+(`IconCrate`, rząd rodzajów, `TokenPlacement.container` → `container:create`); grupa „Pojemniki”
+w „Postaciach”; menu figury (gracz: „📦 Otwórz…”, MG bez ataku i walki przy pojemniku); lewy panel
+ze stanem zamka; walka i „Włącz tryb turowy” pomijają pojemniki; teksty nowych odmów; żetony
+z game-icons (`data/public/tokens/containers/`). E2E `t46b-pojemniki` 46b.0–46b.7 (+46b.4b),
+kanarek zamkniętej skrzyni w T2c.
+
+**Znalezione i naprawione:** okno otwarte od figury zostawało ze starą listą, gdy figura znikała
+(pusty stos → `TOKEN_NOT_FOUND`, pułapka w `ekwipunek`); komunikat o Teście zostawał po otwarciu;
+PT 13 to „Codzienny”, nie „Trudne” (komentarz 46b1). Pułapka E2E z oknem karty i opóźnieniem figury
+za kośćmi w `testy`. **Nowa zaległość:** listy kart bota, zegara i archiwum nie pomijają
+pojemników; „Pięści” da się włożyć do skrzyni.
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane zrzutami z przebiegów
+(`.e2e/pomiary/46b2`): **Ola w Firefoksie** (okno skrzyni, przeciągnięcie z karty, stos z workiem,
+klucz), MG i Marek w Chromium (karta skrzyni, zamek, otwarta skrzynia, stos z okna).
+
+**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
+bazowa); przed nią warto puścić pełny domyślny przebieg (367 testów) z gatewayem.
 
 ### Sesja 09.10 (trzecia) — etap 46b1 „Pojemniki: model, serwer, testy jednostkowe”
 
@@ -264,38 +294,4 @@ znowu”), grupa „Pojemniki” w „Postaciach”, podwójny klik gracza, prze
 na mapę (`inventory:drop`), teksty nowych kodów odmowy w kliencie, pomijanie pojemników
 w klienckich listach (inicjatywa „wszystkie na scenie”, celowanie), E2E `t46b-` 46b.1–46b.7
 (kanarek zawartości) i oględziny Firefox + Chromium.
-
-### Sesja 09.10 (druga) — etap 46c2 „Zapas amunicji: łańcuch T3a–T5b, pełny przebieg”
-
-**Zlecenie MG:** „kontynuuj projekt (46c2)”, pytać o niejasności. **Decyzje MG (start 46c2,
-wszystkie zgodne z rekomendacją):** Kowal kupuje w kreatorze 2 paczki zwykłej do B.C. Pistoletu;
-retest #82 po walce T4b — najpierw odmowa bez zapasu, potem pudełko od MG; gateway uruchamia MG
-na wezwanie. Zapisane w pliku etapu.
-
-**Zrobione (tylko E2E i dokumenty, kod aplikacji bez zmian):** T3a — zakup amunicji na półce
-„Amunicja” (kaliber podpowiada się z pistoletu, ostrzeżenie o broni bez zapasu znika, 230 ed);
-T4b — nowy krok `#82` (⟳ szary, `NO_AMMO`, `giveAmmo` 1 granat, przeładowanie 2/2); T5a — MG daje
-2 paczki przeciwpancernej z Kompendium zamiast tekstu; T5b 5.9 — wybór „Amunicja przeciwpancerna
-— 20”, 7 zwykłych wraca do zapasu; `t46c-` — 46c.0 sprawdza stan zostawiony przez łańcuch (27
-zwykłej, 12 przeciwpancernej, granat 2/2), 46c.1/46c.5 ustawiają się same, nowy **46c.9 `@llm`**
-(towarzysz „Kumpel” z pustym pistoletem i bronią białą, bez pudełek: w decyzjach nie ma
-„przeładuj”, magazynek zostaje 0, tura ≤ 2 kroki), plik bez martwego gatewaya. Nowy
-`fixtures/kompendium.ts` (`compendiumEntry`, `pickCalibre`, `giveAmmo`) zamiast kopii w T6a i t46c.
-
-**Znalezione i naprawione przy przebiegach:** wpis powyżej poziomu sklepu kampanii ma przy nazwie
-znaczek „Wojskowe”, więc dokładne dopasowanie nazwy w Kompendium nie trafiało (pomocnik dopuszcza
-znaczki); **T3b nie był przebiegany po etapie 45** — Ola widzi Pasera oczami Kowala (3.13), a marsz
-„do kuchni” obchodzi salę tarasem odkrytym przez Olę i kończy się po kilkunastu sekundach (test
-czekał 8 s, więc w pełnym przebiegu Kowal dochodził na taras i T4a 4.2 nie miał skąd iść) — test
-czeka na koniec marszu i odprowadza Kowala pod drzwi kuchni (14, 15), jak w starym `po-T3`; T5b 5.4
-— Ola widzi Wieżyczkę oczami Kowala. Pułapka z uruchamianiem przebiegu w osobnym oknie (`cmd /c`
-z cudzysłowem) w `testy`. **Nowa zaległość:** menu tury bota proponuje „podejście” do figury, przy
-której bot już stoi (46c.9: Kumpel stracił turę na odmowie, potem spasował).
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”; ESLint, Prettier i `tsc` czyste
-w `packages/e2e`. Oglądane zrzutami z przebiegu (`.e2e/pomiary/46c1`): **Ola w Firefoksie**
-(pasek „7/8 · zapas 16”, „Przeładuj” z zapasem), reszta jak w 46c1.
-
-**Następny krok — 46b (pojemniki).** Przed kodem przeczytać sekcję 46b w pliku etapu i umowy
-`ekwipunek`; zaległość z menu bota czeka na triaż MG.
 

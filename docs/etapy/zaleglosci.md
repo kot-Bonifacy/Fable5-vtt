@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**09.10.2026 — listy kart, które jeszcze nie pomijają pojemników (46b2, do triażu MG).** Karty skrzyń
+i stosów to karty NPC-ów, więc wpadają na listy, gdzie są szumem: wybór karty bota (`BotEditor`),
+okno zegara z efektami czasowymi (`ClockWindow`) i archiwum (`ArchivePanel`). „Postacie”, walka,
+Szczęście i rozliczenie miesiąca już je pomijają. Przy okazji: w „Mój ekwipunek” okna „Wymiana” stoi
+wiersz broni „Pięści” — da się go włożyć do skrzyni albo położyć na mapie jak każdą broń.
+
 **09.10.2026 — menu tury bota proponuje „podejście” do figury, przy której bot już stoi (46c2, E2E 46c.9).**
 Towarzysz „Kumpel” stał obok Pasera z pustym pistoletem; model wybrał „Podejście do: Paser”, serwer odmówił
 `ALREADY_IN_PLACE` („Już tam stoisz…”), a w poprawce bot spasował — tura stracona, choć mógł ciąć bronią białą.
