@@ -1,31 +1,31 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Locator } from '@playwright/test';
 import type { Socket } from 'socket.io-client';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { creatorWindow, goToStep, openCreator } from '../../fixtures/creator.ts';
+import { compendiumEntry, pickCalibre } from '../../fixtures/kompendium.ts';
+import { LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { MEASUREMENTS_DIR } from '../../fixtures/pomiary.ts';
 import { campaignId, characterId } from '../../fixtures/nocna-zmiana.ts';
 import { queryOne, startFromPoT6, viewedScene } from '../../fixtures/regresja.ts';
 import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
-import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck, type Ack } from '../../fixtures/socket.ts';
 import { createInvitation } from '../../fixtures/table.ts';
 import { cellCentre, closeSheet, openSheet, sheet, token } from '../../fixtures/walka.ts';
 
 /**
- * Etap 46c1 — zapas amunicji (`etap-46-wymiana-sklepy.md`, tabela „E2E 46c”).
+ * Etap 46c — zapas amunicji (`etap-46-wymiana-sklepy.md`, tabela „E2E 46c”).
  * Start z `po-T6` („Nocna zmiana”, „Knajpa”): Marek gra Kowalem, Ola Iskrą,
  * Paser stoi przy barze. MG i Marek w Chromium, **Ola w Firefoksie**.
  *
- * Łańcuch T3a–T5b jeszcze nie kupuje amunicji (to 46c2), więc `po-T6` ma stan
- * sprzed 46c: Kowal ma tylko to, co w magazynkach, i stary tekst „Amunicja
- * (zapas)”. Ten plik sam rozdaje pudełka ręką MG. Odstępstwa od tabeli:
+ * Od 46c2 łańcuch T3a–T5b kupuje i zużywa amunicję (zwykła z kreatora,
+ * przeciwpancerna od MG, granat z pudełka), więc 46c.0 sprawdza stan, który
+ * zostawił; kolejne kroki ustawiają pudełka ręką MG. Odstępstwa od tabeli:
  * 46c.1–46c.3 idą poza walką (Akcję i `NO_AMMO` bez Akcji sprawdza
  * `ammo-stock.test.ts` na serwerze), 46c.8 kończy się na podsumowaniu kreatora
  * (karta, którą zapisze „Utwórz”, to `creationOutcome` — test serwera trzyma
- * oba wyniki równo), a 46c.9 (`@llm`, bot bez amunicji) przechodzi do 46c2.
+ * oba wyniki równo). 46c.9 (`@llm`) pomija się bez gatewaya.
  */
 
 type Ammo = { ammoId: string | null; calibre: string; pattern: string };
@@ -42,7 +42,7 @@ type Card = {
   eddies: number;
   gear: Row[];
   weapons: Row[];
-  ammoStock: string;
+  ammoStock?: string;
   ammoTracked?: boolean;
 };
 
@@ -126,43 +126,9 @@ test.describe.serial('T46c zapas amunicji', () => {
       .toEqual([column, row]);
   }
 
-  /** Karta z Kompendium: szukanie po nazwie, po kategoriach, klik w wiersz. */
-  async function compendiumEntry(actor: Actor, name: string) {
-    const page = actor.page;
-    await page.getByRole('button', { name: 'Kompendium', exact: true }).click();
-    const panel = page.locator('.compendium-panel');
-    const back = panel.getByRole('button', { name: '← Lista' });
-    if (await back.isVisible().catch(() => false)) await back.click();
-    await panel.getByPlaceholder('Szukaj przedmiotu…').fill(name);
-    const row = panel.locator('.compendium-row', {
-      has: page.locator('.compendium-row-name', { hasText: new RegExp(`^${name}$`) }),
-    });
-    for (const category of await panel.locator('.compendium-category').all()) {
-      if (
-        await row
-          .first()
-          .isVisible()
-          .catch(() => false)
-      )
-        break;
-      await category.click();
-    }
-    await row.first().click();
-    const entry = panel.locator('.compendium-card');
-    await expect(entry).toBeVisible();
-    return entry;
-  }
-
-  /** Wybór kalibru po fragmencie etykiety („B.C. Pistolet — …”). */
-  async function pickCalibre(select: Locator, calibre: string) {
-    const option = select.locator('option', {
-      hasText: new RegExp(`^${calibre.replace(/\./g, '\\.')}`),
-    });
-    await select.selectOption((await option.first().getAttribute('value'))!);
-  }
-
   test.beforeAll(async () => {
-    await startFromPoT6(DEAD_GATEWAY);
+    // Gateway żywy (o ile stoi) — 46c.9 gra turę bota; reszta pliku modelu nie woła.
+    await startFromPoT6();
   });
 
   test.afterAll(async ({ cast }) => {
@@ -170,7 +136,9 @@ test.describe.serial('T46c zapas amunicji', () => {
     await cast.closeAll();
   });
 
-  test('46c.0 stół: stary tekst „Amunicja (zapas)” to notatka, nie zapas', async ({ cast }) => {
+  test('46c.0 stół: zapas z łańcucha; stary tekst „Amunicja (zapas)” to notatka', async ({
+    cast,
+  }) => {
     test.setTimeout(4 * 60_000);
     cast.viewport = { width: 1920, height: 1080 };
     mg = await cast.mg('chromium');
@@ -192,10 +160,16 @@ test.describe.serial('T46c zapas amunicji', () => {
     )!.gridSizePx;
     okData(await gm('economy:adjust', { characterId: characterId('Kowal'), balance: 1000 }));
 
-    // Migracja „nic” (decyzja MG 12): Kowal ma tylko magazynki, a tekst T5a
-    // zostaje notatką do przepisania — bez pola do wpisywania.
-    expect(card('Kowal').ammoStock).toContain('× 16');
-    expect(card('Kowal').gear.some((row) => row.ammo)).toBe(false);
+    // Łańcuch od 46c2: zwykła z kreatora (T3a, 20) + 7 oddanych przy zmianie rodzaju
+    // (T5b 5.9), przeciwpancerna od MG (T5a, 20) − 8 do magazynka; granat 2/2 (#82, T4b).
+    expect(stock('Kowal', VHP)).toBe(27);
+    expect(stock('Kowal', VHP, 'ammo.armour-piercing')).toBe(12);
+    expect(weapon('Kowal', 'Granat odłamkowy')).toMatchObject({ ammoCurrent: 2, ammoMax: 2 });
+    expect(card('Kowal').ammoStock ?? '').toBe('');
+
+    // Migracja „nic” (decyzja MG 12): stary tekst z kart sprzed 46c zostaje
+    // notatką do przepisania — bez pola do wpisywania.
+    await setCard('Kowal', { ammoStock: 'Przeciwpancerna do B.C. pistoletu × 16' });
     await openSheet(marek, 'Kowal');
     await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await expect(marek.page.getByText('Amunicja (stary zapis)')).toBeVisible();
@@ -207,7 +181,9 @@ test.describe.serial('T46c zapas amunicji', () => {
 
   test('46c.1 przeładowanie ze zwykłego zapasu: magazynek pełny, zapas mniejszy o tyle, ile weszło', async () => {
     await setVhp(0);
-    await setCard('Kowal', { gear: [...card('Kowal').gear, box(20, VHP)] });
+    await setCard('Kowal', {
+      gear: [...card('Kowal').gear.filter((row) => !row.ammo), box(20, VHP)],
+    });
     await openSheet(marek, 'Kowal');
     const reload = marek.page.getByRole('button', { name: `Przeładuj do pełna (${VHP})` });
     await expect(marek.page.locator('.weapon-ammo-stock').first()).toHaveText('zapas 20');
@@ -274,6 +250,12 @@ test.describe.serial('T46c zapas amunicji', () => {
   });
 
   test('46c.5 granat: rzut, przeładowanie bez granatów — NO_AMMO; gracz nie dopisze naboi ręką', async () => {
+    // Po T4b granat jest pełny (2/2) — MG zostawia jedną sztukę, żeby rzut go opróżnił.
+    await setCard('Kowal', {
+      weapons: card('Kowal').weapons.map((row) =>
+        row.name === 'Granat odłamkowy' ? { ...row, ammoCurrent: 1 } : row,
+      ),
+    });
     const grenade = weapon('Kowal', 'Granat odłamkowy');
     expect(grenade).toMatchObject({ ammoCurrent: 1, ammoMax: 2 });
     const from = tokenCentre(token('Kowal'), cell);
@@ -446,5 +428,97 @@ test.describe.serial('T46c zapas amunicji', () => {
       .getByRole('button', { name: /Odłóż jedną sztukę/ })
       .click();
     await expect(window.locator('.creator-no-stock')).toContainText('Średni pistolet');
+  });
+
+  test('46c.9 @llm towarzysz-bot bez amunicji kończy turę wyborem, nie pętlą odmów', async () => {
+    await requireGateway();
+    // Kumpel: karta bez właściciela z profilem towarzysza — drużyna, więc liczy
+    // amunicję (`cpredTracksAmmo`). Pistolet pusty, pudełek brak, w drugiej ręce
+    // broń biała; Paser przy barze to drugi uczestnik walki.
+    const kumpel = okData(await gm('character:create', { name: 'Kumpel' })) as { id: string };
+    const pistol = weapon('Kowal', 'Bardzo ciężki pistolet');
+    const { ammoId: _loaded, ...unloaded } = pistol;
+    void _loaded;
+    await setCard('Kumpel', {
+      weapons: [
+        { ...unloaded, id: 'kumpel-vhp', ammoCurrent: 0 },
+        { ...weapon('Kowal', 'Średnia broń biała'), id: 'kumpel-noz' },
+      ],
+      gear: [],
+    });
+    const scene = queryOne<{ id: string }>(`SELECT id FROM Scene WHERE name = 'Knajpa'`)!;
+    const near = token('Paser');
+    const placed = okData(
+      await gm('token:create', {
+        sceneId: scene.id,
+        name: 'Kumpel',
+        x: near.x - cell,
+        y: near.y + cell,
+        characterId: kumpel.id,
+      }),
+    ) as { id: string };
+    const bot = okData(
+      await gm('bot:create', {
+        name: 'Kumpel',
+        data: {
+          type: 'companion',
+          autonomy: 'auto',
+          persona: {
+            personality: 'Małomówny ochroniarz, który trzyma się Kowala.',
+            motivations: 'Wyjść z Knajpy w jednym kawałku.',
+            secrets: '',
+            speechStyle: 'Krótko, po ulicznemu.',
+            catchphrases: [],
+          },
+        },
+      }),
+    ) as { id: string };
+    okData(
+      await gm('bot:update', { botId: bot.id, patch: { characterId: kumpel.id, active: true } }),
+    );
+    const started = okData(
+      await gm('combat:start', { sceneId: scene.id, tokenIds: [placed.id, near.id] }),
+    ) as { combatants: { id: string; tokenId: string }[] };
+    for (const row of started.combatants) {
+      okData(
+        await gm('combat:set-initiative', {
+          combatantId: row.id,
+          initiative: row.tokenId === placed.id ? 20 : 5,
+        }),
+      );
+    }
+    okData(await gm('combat:next', {}));
+
+    const traces: {
+      decision: string | null;
+      outcome: string;
+      refusal?: string;
+      optionLabel?: string;
+    }[] = [];
+    gmSocket.on('bot:action-trace', (trace: (typeof traces)[number]) => traces.push(trace));
+    try {
+      const played = okData(
+        await emitAck(gmSocket, 'bot:play-turn', { tokenId: placed.id }, LLM_TIMEOUT_MS),
+      ) as { outcome: string; steps: number; refusal?: string };
+      test
+        .info()
+        .annotations.push(
+          { type: 'tura Kumpla', description: JSON.stringify(played) },
+          { type: 'ślad decyzji', description: JSON.stringify(traces) },
+        );
+      // Menu bez „przeładuj” (zapas 0): bot wybiera wręcz, ruch albo pas. Odmowa
+      // z poprawką kończy turę (serwer zgłasza wtedy `refused`, nawet gdy druga
+      // decyzja to pas) — pętli nie ma, bo tura ma najwyżej dwa kroki.
+      expect(played.steps).toBeGreaterThan(0);
+      expect(played.steps).toBeLessThanOrEqual(2);
+      expect(traces.map((trace) => trace.decision)).not.toContain('reload');
+      expect(traces.filter((trace) => /amunicji/.test(trace.refusal ?? ''))).toEqual([]);
+      expect(card('Kumpel').weapons[0]!.ammoCurrent, 'magazynek nie napełnił się z niczego').toBe(
+        0,
+      );
+    } finally {
+      gmSocket.off('bot:action-trace');
+      await gm('combat:end', {});
+    }
   });
 });

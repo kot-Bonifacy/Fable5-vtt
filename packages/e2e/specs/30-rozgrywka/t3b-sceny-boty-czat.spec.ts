@@ -635,10 +635,13 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     await walk(cellCentre(cell, 5, 16));
     await walk(cellCentre(cell, 12, 13));
 
-    // Paser stoi w ciemności za barem: widzi go tylko ten, kto podszedł (4 m).
+    // Paser stoi w ciemności za barem: widzi go tylko ten, kto podszedł (4 m) —
+    // i od etapu 45 cała drużyna, bo figura Kowala to „oczy drużyny” (Ola patrzy
+    // jego oczami). Cień w ciemnej kuchni zostaje niewidoczny dla obojga.
     await expect.poll(() => visibleTokenIds(marek)).toContain(paser.id);
     expect(await visibleTokenIds(marek)).not.toContain(cien.id);
-    expect(await visibleTokenIds(ola)).not.toContain(paser.id);
+    await expect.poll(() => visibleTokenIds(ola)).toContain(paser.id);
+    expect(await visibleTokenIds(ola)).not.toContain(cien.id);
   });
 
   test('3.13 pamięć terenu po F5; marsz do kuchni staje przed zamkniętymi drzwiami', async () => {
@@ -651,13 +654,34 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     await expect.poll(() => exploredCells(marek)).toBe(before);
 
     // Kuchnia za zamkniętymi drzwiami wahadłowymi (x = 666): planer prowadzi figurę
-    // najdalej pod drzwi, ale nie przez nie — figura zostaje po stronie sali.
+    // najbliżej celu, ale nie przez drzwi. Od etapu 45 teren odkryty przez Olę
+    // (taras) jest wspólny dla drużyny, więc marsz obchodzi salę przez taras i staje
+    // pod ścianą kuchni od zewnątrz — czekamy na koniec marszu, nie na stoper.
     const kowal = () => tokensOn(knajpaId).find((t) => t.characterId === characterId('Kowal'))!;
+    const at = () => [Math.round(kowal().x), Math.round(kowal().y)];
+    const settled = async () => {
+      let last = '';
+      await expect
+        .poll(
+          async () => {
+            const before = JSON.stringify(at());
+            await marek.page.waitForTimeout(1_500);
+            const still = before === JSON.stringify(at()) && before === last;
+            last = before;
+            return still;
+          },
+          { timeout: 90_000, intervals: [0] },
+        )
+        .toBe(true);
+    };
     await fitCamera(marek.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
     await clickOnMap(marek.page, tokenCentre(kowal(), cell));
     await clickOnMap(marek.page, cellCentre(cell, 20, 15));
-    await marek.page.waitForTimeout(8_000);
-    expect(tokenCentre(kowal(), cell).x).toBeLessThan(666);
+    await settled();
+    const stop = tokenCentre(kowal(), cell);
+    test.info().annotations.push({ type: 'koniec marszu do kuchni', description: `${at()}` });
+    // Kuchnia: na wschód od drzwi wahadłowych i nad ścianą tarasu (y = 801).
+    expect(stop.x > 666 && stop.y < 801, 'figura nie weszła do kuchni').toBe(false);
     expect(
       queryOne<{ open: number }>(
         'SELECT open FROM Wall WHERE sceneId = ? AND kind = ? AND x1 = 666 AND y1 = 753',
@@ -665,6 +689,15 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
         'door',
       )?.open,
     ).toBe(0);
+
+    // Marek wraca pod drzwi kuchni od strony sali (14, 15) — tam stał Kowal w `po-T3`,
+    // na którym skalibrowano T4a (4.2: „dwie kratki na zachód, pod przewrócony stół”).
+    await clickOnMap(marek.page, tokenCentre(kowal(), cell));
+    await clickOnMap(marek.page, cellCentre(cell, 14, 15));
+    await expect
+      .poll(at, { timeout: 90_000 })
+      .toEqual([Math.round(14 * cell), Math.round(15 * cell)]);
+    await settled();
   });
 
   test('3.14 @llm Marek pyta Pasera o towar — bot odpowiada po polsku', async () => {

@@ -4,6 +4,7 @@ import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { sceneByName, sceneListRow, visibleTokenIds } from '../../fixtures/brama.ts';
 import { GATEWAY_URL, LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.ts';
+import { compendiumEntry } from '../../fixtures/kompendium.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
@@ -125,34 +126,6 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
       .poll(() => at(name), { timeout: 30_000, message: `${name} → ${column},${row}` })
       .toEqual([column, row]);
     await page.keyboard.press('Escape');
-  }
-
-  /** Karta z Kompendium: szukanie po nazwie i klik w wiersz. */
-  async function compendiumEntry(actor: Actor, name: string) {
-    const page = actor.page;
-    await page.getByRole('button', { name: 'Kompendium', exact: true }).click();
-    const panel = page.locator('.compendium-panel');
-    const back = panel.getByRole('button', { name: '← Lista' });
-    if (await back.isVisible().catch(() => false)) await back.click();
-    await panel.getByPlaceholder('Szukaj przedmiotu…').fill(name);
-    // Wyszukiwanie działa w obrębie kategorii — przechodzi się po nich, aż wpis wyskoczy.
-    const row = panel.locator('.compendium-row', {
-      has: page.locator('.compendium-row-name', { hasText: new RegExp(`^${name}`) }),
-    });
-    for (const category of await panel.locator('.compendium-category').all()) {
-      if (
-        await row
-          .first()
-          .isVisible()
-          .catch(() => false)
-      )
-        break;
-      await category.click();
-    }
-    await row.first().click();
-    const entry = panel.locator('.compendium-card');
-    await expect(entry).toBeVisible();
-    return entry;
   }
 
   test.beforeAll(async () => {
@@ -335,7 +308,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
   test('6.2 sklep kampanii: Marek kupuje wytrychy, broni wojskowej sklep mu nie sprzeda', async () => {
     const ledgerMark = lastLedgerId();
     const eddies = card('Kowal').eddies;
-    const entry = await compendiumEntry(marek, 'Zestaw wytrychów');
+    const entry = await compendiumEntry(marek, 'Zestaw wytrychów', { prefix: true });
     await expect(entry.locator('select').first()).toHaveValue(characterRow('Kowal').id);
     await entry.getByRole('button', { name: /^Kup — 20 ed/ }).click();
     await expect
@@ -348,7 +321,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
 
     // Karabin szturmowy: poziom wyżej niż sklep kampanii (2) — guzik wyszarzony,
     // a surowe gniazdo dostaje odmowę z oboma poziomami.
-    const rifle = await compendiumEntry(marek, 'Militech Ronin');
+    const rifle = await compendiumEntry(marek, 'Militech Ronin', { prefix: true });
     const buy = rifle.getByRole('button', { name: /^Kup/ });
     await expect(buy).toBeDisabled();
     const title = await buy.getAttribute('title');
@@ -372,7 +345,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await walk(marek, 'Kowal', 12, 13);
     await expect.poll(() => visibleTokenIds(marek)).toContain(token('Paser').id);
     // Pierwszy `select` karty wpisu u MG to poziom sklepu — odbiorca stoi w `.compendium-assign`.
-    const entry = await compendiumEntry(mg, 'Militech Ronin');
+    const entry = await compendiumEntry(mg, 'Militech Ronin', { prefix: true });
     const recipient = entry.locator('.compendium-assign select').first();
     await recipient.selectOption({ label: 'Paser' });
     await entry.getByRole('button', { name: 'Dodaj za darmo' }).click();
@@ -610,7 +583,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const mark = lastMessageId();
 
     // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 100 ed”.
-    const entry = await compendiumEntry(marek, 'Cyberoko');
+    const entry = await compendiumEntry(marek, 'Cyberoko', { prefix: true });
     const selects = entry.locator('.compendium-assign select');
     await selects.first().selectOption({ label: 'Kowal' });
     await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2 · poproś' });

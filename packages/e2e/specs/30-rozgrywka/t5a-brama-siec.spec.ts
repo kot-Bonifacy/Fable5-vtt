@@ -17,19 +17,14 @@ import {
   visibleTokenIds,
   zonesOn,
 } from '../../fixtures/brama.ts';
+import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, setPlayerMove, tokenCentre } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation } from '../../fixtures/table.ts';
-import {
-  closeSheet,
-  expectClean,
-  lastMessageId,
-  messageAfter,
-  openSheet,
-} from '../../fixtures/walka.ts';
+import { expectClean, lastMessageId, messageAfter } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
   pendingDice,
@@ -49,12 +44,16 @@ import {
  * Decyzje MG z 27.09 (sesja T5a): architektura Hasło → Plik → Czarny LOD →
  * Węzeł kontrolny wieżyczki, na dnie Demon, który trzyma węzeł; nowy statysta
  * „Strażnik” z nowym botem; wieżyczka strzela sama na wejście w swoją strefę;
- * Kowal wchodzi ranny, MG daje mu amunicję przeciwpancerną.
+ * Kowal wchodzi ranny, MG daje mu amunicję przeciwpancerną (od 46c — pudełko
+ * w ekwipunku z Kompendium, nie tekst w „Amunicja (zapas)”).
  *
  * Kości: skrypt tam, gdzie wynik wybiera drogę (Skaner, Backdoor, Ajdi).
  */
 
-type Sheet = { ammoStock: string };
+type Sheet = {
+  ammoStock?: string;
+  gear: { qty?: number; ammo?: { ammoId: string | null; calibre: string } }[];
+};
 
 const ARCHITECTURE = 'Ochrona bramy';
 
@@ -463,22 +462,34 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       .toEqual([1, bramaId, 'proposal']);
   });
 
-  test('przygotowanie: MG dopisuje Kowalowi amunicję przeciwpancerną', async () => {
-    const sheet = await openSheet(mg, 'Kowal');
-    await sheet.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    await sheet.getByLabel('Amunicja (zapas)').fill('Przeciwpancerna do B.C. pistoletu × 16');
-    await expect
-      .poll(
-        () =>
-          (
-            JSON.parse(
-              queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!
-                .data,
-            ) as Sheet
-          ).ammoStock,
-      )
-      .toBe('Przeciwpancerna do B.C. pistoletu × 16');
-    await closeSheet(mg.page);
+  test('przygotowanie: MG daje Kowalowi pudełko amunicji przeciwpancernej', async () => {
+    // Etap 46c: amunicja to pudełko w ekwipunku (wcześniej tekst w „Amunicja (zapas)”).
+    // Dwie paczki po 10 do B.C. Pistoletu „Dodaj za darmo”; zwykła z kreatora czeka obok.
+    await giveAmmo(mg, 'Kowal', {
+      entry: 'Amunicja przeciwpancerna',
+      calibre: 'B.C. Pistolet',
+      packs: 2,
+    });
+    const boxes = () =>
+      (
+        JSON.parse(
+          queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!.data,
+        ) as Sheet
+      ).gear
+        .filter((row) => row.ammo)
+        .map((row) => [row.ammo!.ammoId, row.ammo!.calibre, row.qty]);
+    await expect.poll(boxes).toEqual([
+      [null, 'B.C. Pistolet', 20],
+      ['ammo.armour-piercing', 'B.C. Pistolet', 20],
+    ]);
+    expect(
+      (
+        JSON.parse(
+          queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!.data,
+        ) as Sheet
+      ).ammoStock ?? '',
+      'nowa karta nie ma starego pola',
+    ).toBe('');
   });
 
   test('przygotowanie: kanarki przed aktywacją — nic z „Bramy” u graczy', async () => {

@@ -323,7 +323,22 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await goToStep(page, /Wyposażenie/);
     await buy(page, 'Broń', ['Bardzo ciężki pistolet', 'Średnia broń biała']);
     await buy(page, 'Pancerz', ['Średnia kurtka kuloodporna']);
-    await expect(window.getByText(/wydane 250 ed/)).toBeVisible();
+    // Etap 46c: przeładowanie bierze naboje z pudełek, więc Kowal kupuje dwie paczki
+    // zwykłej (2 × 10 szt. po 10 ed, s. 344) — kaliber podpowiada się z pistoletu.
+    await expect(window.locator('.creator-no-stock')).toContainText('Bardzo ciężki pistolet');
+    await window.getByRole('button', { name: 'Amunicja', exact: true }).click();
+    const ammo = window.locator('.creator-shop-item', {
+      has: page.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła', exact: true }),
+    });
+    await expect(ammo.getByLabel('Kaliber: Amunicja zwykła').locator('option:checked')).toHaveText(
+      'B.C. Pistolet',
+    );
+    for (const held of ['×1', '×2']) {
+      await ammo.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła' }).click();
+      await expect(ammo.getByText(held)).toBeVisible();
+    }
+    await expect(window.locator('.creator-no-stock')).toHaveCount(0);
+    await expect(window.getByText(/wydane 270 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);
     await window
@@ -342,7 +357,12 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     expect(kowal.playReady).toBe(0);
     const sheet = sheetOf('Kowal');
     expect(sheet.stats).toEqual(KOWAL_STATS);
-    expect(sheet.eddies).toBe(250);
+    expect(sheet.eddies).toBe(230);
+    expect(
+      (sheet.gear as { name: string; qty?: number; ammo?: { calibre: string } }[])
+        .filter((row) => row.ammo)
+        .map((row) => [row.ammo!.calibre, row.qty]),
+    ).toEqual([['B.C. Pistolet', 20]]);
     expect(Object.keys(sheet.skills as object)).toHaveLength(20);
     expect(
       queryOne('SELECT cropZoom, bannerZoom FROM PortraitAsset WHERE name = ?', 'avatar11'),

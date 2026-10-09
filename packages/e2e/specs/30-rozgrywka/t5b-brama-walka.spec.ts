@@ -347,10 +347,12 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await expect
       .poll(() => visibleTokenIds(marek))
       .toEqual(expect.arrayContaining([token('Strażnik').id, token('Wieżyczka').id]));
-    // Iskra stoi przy skrzynce za wschodnim odcinkiem bariery (zasłania figury, 42b):
-    // Strażnika widzi przez otwartą bramę, Wieżyczki pod magazynem — nie.
-    await expect.poll(() => visibleTokenIds(ola)).toContain(token('Strażnik').id);
-    expect(await visibleTokenIds(ola)).not.toContain(token('Wieżyczka').id);
+    // Iskra stoi przy skrzynce za wschodnim odcinkiem bariery (zasłania figury, 42b),
+    // więc sama Wieżyczki pod magazynem nie widzi — ale od etapu 45 figura Kowala to
+    // „oczy drużyny”, a Kowal na placu widzi obie figury.
+    await expect
+      .poll(() => visibleTokenIds(ola))
+      .toEqual(expect.arrayContaining([token('Strażnik').id, token('Wieżyczka').id]));
   });
 
   test('5.4 Kowal wchodzi w strefę wieżyczki — wieżyczka strzela sama, obrażenia nie przebijają kurtki', async () => {
@@ -833,12 +835,26 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         'Kowal',
       ).weapons.find((w) => w.name === 'Bardzo ciężki pistolet')!;
     expect(sheetOf().ammoCurrent).toBe(7);
+    // Etap 46c: naboje z pudełek. Zmiana rodzaju oddaje 7 zwykłych do zapasu,
+    // a magazynek (8) ładuje się z 20 przeciwpancernych od MG (T5a).
+    const stock = (ammoId: string | null) =>
+      sheet<{ gear: { qty?: number; ammo?: { ammoId: string | null; calibre: string } }[] }>(
+        'Kowal',
+      )
+        .gear.filter((row) => row.ammo?.calibre === 'B.C. Pistolet' && row.ammo.ammoId === ammoId)
+        .reduce((sum, row) => sum + (row.qty ?? 0), 0);
+    const ordinary = stock(null);
+    expect(stock('ammo.armour-piercing')).toBe(20);
     const card = await openSheet(marek, 'Kowal');
-    await card
-      .getByLabel('Rodzaj naboju: Bardzo ciężki pistolet')
-      .selectOption({ label: 'Amunicja przeciwpancerna' });
+    const picker = card.getByLabel('Rodzaj naboju: Bardzo ciężki pistolet');
+    await expect(
+      picker.locator('option', { hasText: 'Amunicja przeciwpancerna — 20' }),
+    ).toHaveCount(1);
+    await picker.selectOption('ammo.armour-piercing');
     await expect.poll(() => sheetOf().ammoId).toBe('ammo.armour-piercing');
     expect(sheetOf().ammoCurrent).toBe(sheetOf().ammoMax);
+    expect(stock('ammo.armour-piercing')).toBe(20 - sheetOf().ammoMax);
+    expect(stock(null)).toBe(ordinary + 7);
     await closeSheet(marek.page);
     const turn = JSON.parse(combatantOf('Kowal').turnState!) as {
       action: { id: string } | null;

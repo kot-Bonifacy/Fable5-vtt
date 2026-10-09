@@ -1,6 +1,7 @@
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import type { WorldPoint } from '../../fixtures/canvas.ts';
 import { queryOne, stateFingerprint } from '../../fixtures/db.ts';
+import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
@@ -72,7 +73,7 @@ type Sheet = {
   hpCurrent: number;
   armor: { location: string; spCurrent: number }[];
   weapons: { id: string; name: string; ammoCurrent: number }[];
-  gear: { name: string; notes?: string }[];
+  gear: { name: string; notes?: string; qty?: number; ammo?: { calibre: string } }[];
   criticalInjuries: { name: string }[];
 };
 
@@ -833,6 +834,41 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     });
     // Zaproszenie wycofane razem z wysłanym polem — okno handlu zamknęło się samo.
     await expect(exchange).toHaveCount(0);
+  });
+
+  test('#82 granat nie przeładowuje się z niczego: bez zapasu NO_AMMO, pudełko od MG ładuje', async () => {
+    // Do 46c przeładowanie napełniało magazynek granatu „bez dna” (#82). Teraz
+    // bierze sztukę z pudełek „Granaty” w ekwipunku — po walce, więc bez Akcji.
+    const grenade = () => sheet<Sheet>('Kowal').weapons.find((w) => w.name === 'Granat odłamkowy')!;
+    const grenadeBoxes = () =>
+      sheet<Sheet>('Kowal').gear.filter((row) => row.ammo?.calibre === 'Granaty');
+    expect(grenade().ammoCurrent).toBe(1);
+    expect(grenadeBoxes()).toEqual([]);
+    const page = marek.page;
+    await openSheet(marek, 'Kowal');
+    const reload = page.getByRole('button', { name: 'Przeładuj do pełna (Granaty)' });
+    await expect(reload).toBeDisabled();
+    expect(
+      await emitAck(await marek.socket(), 'weapon:reload', {
+        characterId: token('Kowal').characterId,
+        weaponRowId: grenade().id,
+      }),
+    ).toEqual({ ok: false, error: 'NO_AMMO' });
+    expect(grenade().ammoCurrent).toBe(1);
+    await closeSheet(page);
+
+    await giveAmmo(mg, 'Kowal', {
+      entry: 'Amunicja zwykła (granaty i rakiety)',
+      calibre: 'Granaty',
+      packs: 1,
+    });
+    await expect.poll(() => grenadeBoxes().map((row) => row.qty)).toEqual([1]);
+    await openSheet(marek, 'Kowal');
+    await reload.click();
+    await expect.poll(() => grenade().ammoCurrent).toBe(2);
+    expect(grenadeBoxes()).toEqual([]);
+    await expect(reload).toBeDisabled();
+    await closeSheet(page);
   });
 
   test('#27 zdobyczny pistolet statysty nie robi z Iskry strzelca cudzych ataków', async () => {
