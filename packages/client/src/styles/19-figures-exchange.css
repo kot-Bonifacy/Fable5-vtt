@@ -215,7 +215,7 @@
    którymi się go zmienia. */
 .weapon-hands-badge {
   padding: 0.05rem 0.3rem;
-  font-size: 0.66rem;
+  font-size: 0.8rem;
   color: var(--ok);
   border: 1px solid currentColor;
   border-radius: 3px;
@@ -230,7 +230,7 @@
 }
 
 .weapon-innate-note {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
 }
 

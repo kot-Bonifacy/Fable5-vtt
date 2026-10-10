@@ -86,7 +86,7 @@
 }
 
 .sheet-title-role {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
   color: var(--cp-on-red-dim);
@@ -248,12 +248,14 @@
 }
 
 /* Etykieta pola — kapitaliki, jak na wydruku. Jost nie ma prawdziwych
-   kapitalików, więc przeglądarka je syntetyzuje; wygląda to jak w oryginale. */
+   kapitalików, więc przeglądarka je syntetyzuje; wygląda to jak w oryginale.
+   Syntetyczne kapitaliki rysują wersaliki w ~70% kroju, więc 0,82 rem
+   czytało się jak 9 px („KSYWA", „UZALEŻNIENIA" — zlecenie MG z 10.10). */
 .cp-label {
   font-variant-caps: all-small-caps;
   font-weight: 700;
   letter-spacing: 0.04em;
-  font-size: 0.82rem;
+  font-size: 1rem;
   line-height: 1.1;
   color: var(--cp-ink);
   flex: none;
@@ -304,7 +306,7 @@
   color: var(--cp-on-red);
   font-variant-caps: all-small-caps;
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 1rem;
   letter-spacing: 0.03em;
   line-height: 1.2;
   padding: 0.2rem 0.4rem;
@@ -655,10 +657,92 @@
   width: 100%;
 }
 
+/* Panele Zdolności i Awansu mają na karcie całą szerokość strony, a ich
+   wiersze to „nazwa … wartość ± " — rozciągnięte na 1500 px stawiały liczbę
+   i guziki metr od nazwy, a pod spodem zostawał pusty papier (zlecenie MG
+   z 10.10). Na karcie wiersze idą więc w kolumny po ~30 rem, a pismo rośnie
+   do kroju reszty karty. Pasek akcji (`.hud-form`) zostaje przy swoim
+   układzie. */
+.cp-ability-card .awareness,
+.cp-advance .awareness {
+  font-size: 0.95rem;
+}
+
+.cp-ability-card .awareness-head,
+.cp-advance .awareness-head {
+  justify-content: flex-start;
+  gap: 1.5rem;
+}
+
+.cp-ability-card .awareness-head h4,
+.cp-advance .awareness-head h4 {
+  font-size: 1.1rem;
+}
+
+.cp-ability-card .awareness-list,
+.cp-advance .awareness > .awareness-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
+  column-gap: 2rem;
+}
+
+/* Kolumna ma ~30 rem, a nazwa Specjalizacji bywa zdaniem („Technologia
+   Medyczna (Obsługa kriosystemów)") — lepiej druga linia niż wielokropek. */
+.cp-ability-card .awareness-name,
+.cp-advance .awareness-name {
+  white-space: normal;
+}
+
+/* W kolumnach ostatni wiersz listy nie jest ostatnim w swojej kolumnie —
+   kreska zostaje pod każdym, inaczej jedna kolumna kończyłaby się bez niej. */
+.cp-ability-card .awareness-row:last-child,
+.cp-advance .awareness-row:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.cp-ability-card .awareness-hint,
+.cp-ability-card .awareness-extras,
+.cp-ability-card .backup-stats,
+.cp-advance .awareness-hint,
+.cp-advance .awareness-extras {
+  font-size: 0.86rem;
+}
+
+/* Sześćdziesiąt sześć Umiejętności Awansu: w szerokim oknie łamią się na
+   kolumny gazety i stoją całe, zamiast przewijać się w okienku 16 rem
+   (10.10). Kolumny wielołamowe, nie siatka — grupy mają od 2 do 13 wierszy
+   i siatka zostawiałaby dziury pod krótkimi. `max-height` musi zniknąć:
+   ograniczona wysokość wypycha w kolumnach nadmiar w bok, nie w dół. */
+/* Wybór nowej Roli i „Zmień" to jedna decyzja — nie na dwóch końcach okna. */
+.cp-advance .advance-role {
+  max-width: 40rem;
+}
+
+@container (min-width: 1100px) {
+  .cp-advance .advance-scroll {
+    max-height: none;
+    overflow: visible;
+    columns: 22rem;
+    column-gap: 2rem;
+  }
+
+  .cp-advance .advance-scroll .awareness-row {
+    break-inside: avoid;
+  }
+
+  .cp-advance .advance-group {
+    break-after: avoid;
+  }
+
+  .cp-advance .awareness-value {
+    min-width: 3.4rem;
+  }
+}
+
 .cp-ability-name {
   flex: 1;
   align-self: center;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--cp-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -825,6 +909,16 @@
    PW, ale i tak w polu wysokim na 36 px stały do 12.09 w 1 rem. */
 .cp-pool--flat .cp-pool-value {
   font-size: 1.35rem;
+}
+
+/* Pole ma pół kolumny 15 rem — „Poważnie Ranny" w pełnym kroju etykiety
+   (10.10) łamało się na dwie linie i podnosiło cały rząd. Firefox syntetyzuje
+   kapitaliki większe niż Chromium (116 px wobec 105 px miejsca przy 0,94 rem),
+   więc krój jest liczony pod Firefoksa. */
+.cp-pool--flat .cp-label {
+  font-size: 0.84rem;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .cp-pools {
@@ -1068,6 +1162,14 @@
   padding: 0.1rem;
 }
 
+/* Na karcie ikony-guziki (✕ ⤓ ⊕ ⚒ ↻) stoją przy piśmie 15 px i w 11 px
+   ginęły (zlecenie MG z 10.10). Pasek akcji i okienka figury zostają przy
+   swoim kroju — tam brakuje miejsca. */
+.sheet-window .cp-mini-button {
+  font-size: 1rem;
+  padding: 0.1rem 0.15rem;
+}
+
 .cp-mini-button:hover:not(:disabled) {
   color: var(--cp-red);
 }
@@ -1105,7 +1207,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 300;
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   line-height: 1.15;
   text-align: left;
   padding: 0;
@@ -1129,7 +1231,7 @@
 .cp-skill-stat-abbr {
   font-weight: 600;
   color: var(--cp-ink-dim);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
 }
 
 .cp-skill-cell {
@@ -1138,10 +1240,10 @@
   min-height: 1.3rem;
 }
 
-/* Trzy kolumny liczb obok nazwy umiejętności. Nazwa zostaje przy 0,8 rem —
-   wypełnia swoje pole na szerokość i większy krój kończyłby ją wielokropkiem
-   („Odporność na tortury/narkotyki") — ale liczby mają całe 34 px na 26 px
-   i stały w nich mniejsze niż nazwa obok. */
+/* Trzy kolumny liczb obok nazwy umiejętności. Nazwa została przy 0,86 rem
+   (10.10, z 0,8) — wypełnia swoje pole na szerokość i większy krój kończyłby
+   ją wielokropkiem („Odporność na tortury/narkotyki") — ale liczby mają całe
+   34 px na 26 px i stały w nich mniejsze niż nazwa obok. */
 .cp-skill-cell input {
   width: 100%;
   font-size: 0.95rem;
@@ -1178,10 +1280,42 @@
    wydruku, gdzie leży pod trzema kolumnami. */
 .cp-arsenal {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.4rem;
+  align-items: start;
   min-width: 0;
+}
+
+/* Szerokie okno: pancerz obok broni, nie pod nią (zlecenie MG z 10.10). Pod
+   sobą obie tabele ciągnęły się na pełne 1500 px, a trzy wiersze pancerza
+   z krótką nazwą („Skóry") zostawiały w kolumnie nazwy kilkaset pikseli
+   pustego papieru. Próg trzyma tabelę broni przy ~54 rem — mniej i kolumna
+   „Uwagi" broni schodzi do kilku znaków. */
+@container (min-width: 1350px) {
+  .cp-arsenal {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+
+  .cp-arsenal > .cp-section {
+    grid-column: 1 / -1;
+  }
+
+  .cp-arsenal .armor-name-head {
+    width: 52%;
+  }
+}
+
+/* Kolumny bez sztywnej szerokości dzielą między siebie resztę tabeli, więc
+   „Atak" (kilka guzików) i „Pancerz" (krótka nazwa) dostawały jej tyle samo co
+   „Uwagi". Procent, nie rem: sztywne rem byłoby w wąskim oknie minimum
+   kolumny i wypchnęłoby tabelę poza kartę. */
+.weapon-actions-head {
+  width: 14%;
+}
+
+.armor-name-head {
+  width: 30%;
 }
 
 /* Tytuł bloku („Broń i pancerz", „Wyposażenie") — czerwona belka wydruku. */
@@ -1229,7 +1363,7 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
@@ -1257,7 +1391,7 @@
   border-radius: 0;
   color: var(--cp-ink);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   width: 100%;
   min-width: 0;
   padding: 0.08rem 0.1rem;
@@ -1291,7 +1425,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   padding: 0.2rem 0.6rem;
@@ -1319,11 +1453,19 @@
   border-radius: 0;
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   cursor: pointer;
+}
+
+/* Guzik-znak (⟳ przeładowania, ◎ pierścieni zasięgu) — w kroju napisów
+   guzików znak był kropką (10.10). */
+.cp-table .small-button--icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0.05rem 0.3rem;
 }
 
 .cp-table .small-button:hover:not(:disabled) {
@@ -1424,7 +1566,15 @@
 }
 
 .cp-table .item-icon {
+  width: 1.6rem;
+  height: 1.6rem;
   color: var(--cp-ink-dim);
+}
+
+/* Sprzęt bez miniatury niesie się na mapę za „⠿” — w kroju wiersza był
+   kreską nie do złapania. */
+.cp-table .map-drop-handle {
+  font-size: 1.25rem;
 }
 
 /* Filtr typów w okienku wyboru broni — ten sam rząd co w Kompendium, ale
@@ -1471,8 +1621,8 @@
 }
 
 .weapon-slot {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.7rem;
+  height: 0.7rem;
   border: 1px solid var(--cp-ink-dim);
 }
 
@@ -1513,7 +1663,7 @@
   padding-top: 0.05rem;
   padding-bottom: 0.05rem;
   color: var(--cp-ink-dim);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
 }
 
 .weapon-secondary-name {
@@ -1566,14 +1716,14 @@
 
 .cp-table .weapon-ammo-type {
   margin-top: 0.15rem;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
 }
 
 /* Etap 46c: „zapas 40” pod licznikiem — własny wiersz komórki, żeby wąska
    kolumna „Amunicja” nie łamała licznika magazynka. */
 .cp-table .weapon-ammo-stock {
   display: block;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   color: var(--cp-ink-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1593,9 +1743,18 @@
 }
 
 /* Nazwa sztuki bierze resztę komórki — bez tego pole tekstowe kurczy się do
-   swojej domyślnej szerokości i zostawia pół kolumny pustej. */
-.armor-slot-cell input[type='text'] {
-  width: calc(100% - 4rem);
+   swojej domyślnej szerokości i zostawia pół kolumny pustej. Opakowanie
+   nazwy (`.item-name-cell`, ikonka + pole) jest flexem blokowym, więc do 10.10
+   spadało pod etykietę lokacji i wiersz „Korpus" miał dwie linie zamiast
+   jednej. W wierszu stoi jako `inline-flex`. */
+.armor-slot-cell .item-name-cell {
+  display: inline-flex;
+  vertical-align: middle;
+  width: calc(100% - 5.2rem);
+}
+
+.armor-table--rest .armor-slot-cell .item-name-cell {
+  width: calc(100% - 6rem);
 }
 
 /* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem.
@@ -1608,11 +1767,11 @@
 .cp-armor-slot {
   display: inline-block;
   margin-right: 0.35rem;
-  min-width: 3.4rem;
+  min-width: 4.6rem;
   font-variant-caps: all-small-caps;
   font-weight: 700;
   letter-spacing: 0.04em;
-  font-size: 0.8rem;
+  font-size: 1.02rem;
   line-height: 1.1;
 }
 
@@ -1637,10 +1796,9 @@
   font-weight: 700;
 }
 
-.armor-empty {
+/* Zdanie, nie etykieta — zwykłym pismem jak „bez ran krytycznych". */
+.cp-table .armor-empty {
   color: var(--cp-ink-dim);
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.06em;
 }
 
 .armor-actions {
@@ -1654,7 +1812,7 @@
 
 .armor-weaker {
   color: var(--cp-ink-dim);
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.05em;
 }
@@ -1674,7 +1832,7 @@
 /* Belka pomocnicza („Reszta pancerza") — cieńsza od kategorii umiejętności. */
 .cp-bar--sub {
   align-self: stretch;
-  font-size: 0.66rem;
+  font-size: 0.76rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   min-height: 1.1rem;
@@ -1807,11 +1965,11 @@
   font-size: 0.72rem;
 }
 
+/* Zdanie, nie etykieta — zwykłym pismem; w kapitalikach czytało się jak
+   9 px (10.10). */
 .cp-injuries-empty {
   color: var(--cp-ink-dim);
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.06em;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
 }
 
 .cp-addictions textarea {
@@ -2336,7 +2494,7 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.66rem;
+  font-size: 0.78rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 0.1rem 0.35rem;
@@ -2345,7 +2503,7 @@
 .cp-slot-empty {
   background: var(--cp-paper);
   color: var(--cp-ink-dim);
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   font-style: italic;
   padding: 0.12rem 0.35rem;
 }
@@ -2367,7 +2525,7 @@
   color: var(--cp-ink);
   cursor: pointer;
   font-family: inherit;
-  font-size: 0.76rem;
+  font-size: 0.86rem;
   line-height: 1.25;
   padding: 0.12rem 0.35rem;
   text-align: left;

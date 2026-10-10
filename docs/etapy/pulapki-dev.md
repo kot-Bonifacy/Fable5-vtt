@@ -639,6 +639,7 @@ sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Firefox rysuje syntetyczne kapitaliki większe niż Chromium** — „POWAŻNIE RANNY” przy 0,94 rem: 105 px w Chromium, 116 px w Firefoksie, przy 105 px miejsca. Ciasną etykietę `.cp-label` mierz w Firefoksie (`scrollWidth`), nie w Chrome.
 - **`font-size` na polu karty nic nie robi, jeśli w środku stoi przełącznik liczbowy** — `.sheet-window .cp-step { font: inherit }` (0-2-0) bije gołe `.cp-stat-value` (0-1-0), więc liczba zostaje przy 16 px, choćbyś wpisał 2,6 rem. Rozpoznanie: `getComputedStyle(el).fontSize` w konsoli, nie oko — pudełko rośnie, liczba nie.
 - **Ujemne `hpCurrent` wpisane wprost do bazy znika przy pierwszym odczycie karty** — `collectCharacterDataPatch` odrzuca `hpCurrent < 0`, a `parseCharacterData` podstawia wtedy PW **domyślnej** karty (35), nie maksimum tej postaci ani zera. Konający NPC przygotowany na −5 wraca jako 35/40 i pierwszy Test idzie na PT z innego progu ran. Obrażenia i tak mają podłogę na zerze (`damage.ts`, „HP floor at 0”), więc **poligon przygotowuje się przez 0**.
 - **„Panel sam się zresetował po zmianie z zewnątrz" to zwykle przełączona zakładka karty, nie rozgłoszenie** — filtr i otwarty rejestr w „Awansie" giną przy KARTA ↔ ŚCIEŻKA ŻYCIA, bo to stan lokalny, a `setTab` odmontowuje stronę. Rozpoznanie: zapamiętaj węzeł (`window.__probe = el`) i sprawdź `isConnected` po zdarzeniu — węzeł nadal podłączony znaczy, że winowajcą jest co innego.
@@ -652,6 +653,14 @@ sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
 - **`validateSkills` i `validateStats` odrzucają CAŁĄ mapę przez jeden wiersz spoza zakresu** — nie ścinają go i nie wyrzucają. Objaw jest cichy: figura jest po prostu słabsza, niż ją wpisano.
 
 ---
+
+- **Kapitaliki `all-small-caps` mają w Firefoksie inną szerokość niż w Chromium (10.10).**
+  Jost nie ma prawdziwych kapitalików, więc obie przeglądarki je syntetyzują — każda po swojemu.
+  Po powiększeniu etykiet karty „Poważnie Ranny” w połówce kolumny 15 rem mieścił się w Chromium
+  (105 px), a w Firefoksie wystawał poza pole z obu stron (116 px, tekst wyśrodkowany). Ciasne
+  etykiety (`.cp-pool--flat .cp-label` — 0,84 rem, bez odstępu liter) mierzy się w Firefoksie:
+  `el.scrollWidth` wobec szerokości treści rodzica. Przy okazji: syntetyczne kapitaliki rysują
+  wersaliki w ~70% kroju, więc etykieta 0,82 rem czyta się jak 9 px — stąd 1 rem od 10.10.
 
 - **Wpisany `font-size` nie działa, bo skóra przełącznika liczbowego niesie `font: inherit` (12.09).**
   Trzecia odsłona tej samej kaskady, co `.advance-buy` z 29b i `.cp-slot` z 06.09 — i najbardziej

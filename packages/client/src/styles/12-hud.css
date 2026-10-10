@@ -1302,7 +1302,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -1312,14 +1312,14 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   letter-spacing: normal;
   text-transform: none;
 }
 
 .advance-group {
   margin: 0.3rem 0 0.1rem;
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   color: var(--text-dim);
 }
 
@@ -1343,7 +1343,7 @@
 .advance-buy {
   padding: 0.05rem 0.4rem;
   line-height: 1.3;
-  font-size: 0.74rem;
+  font-size: 0.84rem;
 }
 
 /* Zmiana Roli (etap 29b) — wybór i guzik w jednym wierszu, bo to jedna

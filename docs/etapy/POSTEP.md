@@ -220,7 +220,7 @@ a nie do tego pliku.
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 42   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 32   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
@@ -235,6 +235,28 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (po `c7646b1`) — poprawka spoza etapów: czytelność i kolumny karty postaci
+
+**Zlecenie MG (ze zrzutem):** poprawić rozmieszczenie elementów karty, zwłaszcza zbyt małe czcionki,
+i zlikwidować puste przestrzenie; w trakcie: „rozbij niektóre rzeczy na większą ilość kolumn”
+i „ikony powinny być większe”.
+
+**Zrobione (CSS + klasy w `CharacterSheet.tsx`, bez logiki):** etykiety pól i czerwone przypisy
+1 rem (syntetyczne kapitaliki rysują wersaliki w ~70% kroju), zdania stanu („bez ran
+krytycznych”, „nic tu nie chroni”) zwykłym pismem, guziki i opisy w tabeli broni ~0,8 rem,
+nazwy Umiejętności 0,86 rem, pola tabel 0,9 rem, sloty cyborgizacji większe. **Kolumny:** pancerz
+obok broni od 1350 px kontenera, Specjalizacje Zdolności i Awans w kolumnach ~30 rem, lista
+Umiejętności Awansu w kolumnach gazety bez okienka przewijania (od 1100 px), szerokości kolumn
+„Atak”, „Pancerz” i nazwy w Wyposażeniu w `%`, lokacja pancerza i nazwa w jednym wierszu.
+**Ikony:** miniatury w tabelach 1,6 rem, `✕ ⤓ ⊕ ⚒ ↻` na karcie 1 rem, `⟳`/`◎` klasą
+`small-button--icon`. Umowa i pułapka (kapitaliki w Firefoksie) w `karta`.
+
+**Weryfikacja:** klient 329/330 — pada `theme.test.ts` (`--top-bar-control` niezdefiniowany
+w `theme.css`), **padał już przed tą sesją** (commit `c0b5fc1`, górny pasek; sprawdzone na czystym
+`HEAD`) — do poprawy osobno. `tsc`, ESLint i Prettier czyste w zmienionych plikach. E2E nie
+puszczane. Oglądane w **Chromium** (gracz Ewa, karta Efki: 1600, 1285 i 680 px, wszystkie cztery
+zakładki) i **Firefoksie** (MG, karta Oleny 1600 px). **Ślady w `dev.db`:** brak.
 
 ### Sesja 10.10 (dziesiąta) — poprawka spoza etapów: półka „Elektronika” w kreatorze
 
@@ -256,28 +278,3 @@ Kompendium bez zmian (dalej jedna kategoria „Sprzęt”). Umowa w `dane`.
 `tsc` klienta, eslint zmienionych plików. E2E nie puszczane. Serwer dev przeładowany (`touch`).
 Oglądane w **Firefoksie** (Playwright MCP, MG): obie półki w szkicu Solo. **Ślady w `dev.db`:** brak
 (szkic MG odstawiony na „Ścieżkę Życia”, jak był).
-
-### Sesja 10.10 (dziewiąta) — poprawka spoza etapów: opisy w kompendium
-
-**Zlecenie MG:** „Czip pamięci” w kroku „Wyposażenie” pokazywał „Kompendium nie ma opisu tego
-przedmiotu” — sprawdzić import kompendium, brakujące opisy uzupełnić (z internetu tylko w razie
-braku w podręczniku).
-
-**Diagnoza:** bez opisu były Czip pamięci, Radioodtwarzacz, cztery typy broni białej i Granat
-(podstawowe wpisy z `weapons-base.json`), a demony Sieci mają tylko ikonę (podręcznik nic więcej
-nie daje). Wszystkie teksty są w podręczniku — **internet niepotrzebny**. Przy okazji wyszły błędy
-importu: akapity „Czipy pamięci:” i „Radio/odtwarzacz muzyki:” doklejone do Cyberdeku i Racji MRE,
-zdanie o wirtualu z Gogli w Fiolce biotoksyny, „: NOWA EKONOMIA ULICZNA” w środku Technarzędzia,
-„###” na końcu sześciu dodatków do broni, a Kombinezon Bodyweight i Złącze smartguna ucięte
-w pół zdania na limicie 1000 znaków (zginęła zasada o +1 smartguna).
-
-**Zrobione:** `parse-gear.py` — `PROSE_ALIASES`, `MISPLACED_SENTENCES`, `RUNNING_HEAD_RE`;
-`parse-manual.py` — podstawowy wpis broni dziedziczy opis typu, dodatki bez „###”; limit opisu
-**2000** (`COMPENDIUM_DESCRIPTION_MAX_LENGTH`, `DESCRIPTION_MAX` w trzech importerach, pole
-w edytorze kompendium). Prywatnie: `manual-overrides.json` — „nabijana kolcami pała” jak w druku.
-Import puszczony, diff opisów przejrzany (zmieniły się tylko wpisy wyżej). Pułapka w `dane`.
-
-**Weryfikacja:** `validate-compendium.ts` (413 wpisów, wszystkie przechodzą), vitest shared
-2431/2431 i server 1430/1430, `tsc` klienta, eslint zmienionych plików TS. Serwer dev
-przeładowany (`touch`). Oglądane w **Firefoksie** (Playwright MCP, MG): Kompendium → Sprzęt →
-Czip pamięci z opisem. **Ślady w `dev.db`:** brak.

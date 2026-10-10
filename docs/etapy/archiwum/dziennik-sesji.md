@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (dziewiąta) — poprawka spoza etapów: opisy w kompendium
+
+**Zlecenie MG:** „Czip pamięci” w kroku „Wyposażenie” pokazywał „Kompendium nie ma opisu tego
+przedmiotu” — sprawdzić import kompendium, brakujące opisy uzupełnić (z internetu tylko w razie
+braku w podręczniku).
+
+**Diagnoza:** bez opisu były Czip pamięci, Radioodtwarzacz, cztery typy broni białej i Granat
+(podstawowe wpisy z `weapons-base.json`), a demony Sieci mają tylko ikonę (podręcznik nic więcej
+nie daje). Wszystkie teksty są w podręczniku — **internet niepotrzebny**. Przy okazji wyszły błędy
+importu: akapity „Czipy pamięci:” i „Radio/odtwarzacz muzyki:” doklejone do Cyberdeku i Racji MRE,
+zdanie o wirtualu z Gogli w Fiolce biotoksyny, „: NOWA EKONOMIA ULICZNA” w środku Technarzędzia,
+„###” na końcu sześciu dodatków do broni, a Kombinezon Bodyweight i Złącze smartguna ucięte
+w pół zdania na limicie 1000 znaków (zginęła zasada o +1 smartguna).
+
+**Zrobione:** `parse-gear.py` — `PROSE_ALIASES`, `MISPLACED_SENTENCES`, `RUNNING_HEAD_RE`;
+`parse-manual.py` — podstawowy wpis broni dziedziczy opis typu, dodatki bez „###”; limit opisu
+**2000** (`COMPENDIUM_DESCRIPTION_MAX_LENGTH`, `DESCRIPTION_MAX` w trzech importerach, pole
+w edytorze kompendium). Prywatnie: `manual-overrides.json` — „nabijana kolcami pała” jak w druku.
+Import puszczony, diff opisów przejrzany (zmieniły się tylko wpisy wyżej). Pułapka w `dane`.
+
+**Weryfikacja:** `validate-compendium.ts` (413 wpisów, wszystkie przechodzą), vitest shared
+2431/2431 i server 1430/1430, `tsc` klienta, eslint zmienionych plików TS. Serwer dev
+przeładowany (`touch`). Oglądane w **Firefoksie** (Playwright MCP, MG): Kompendium → Sprzęt →
+Czip pamięci z opisem. **Ślady w `dev.db`:** brak.
+
 ### Sesja 10.10 (ósma) — poprawka spoza etapów: krok „Wyposażenie” w kreatorze
 
 **Zlecenie MG:** „zorganizuj lepiej wygląd zakładki Wyposażenie” w kreatorze i usuń komunikaty,

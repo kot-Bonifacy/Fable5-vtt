@@ -2002,6 +2002,7 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Szeroka karta rozkłada się w kolumny, a szerokość kolumn tabel to procenty (10.10)** — pas „Broń i pancerz” (`.cp-arsenal`) to siatka: od 1350 px kontenera pancerz stoi obok broni; wiersze paneli Zdolności (`.cp-ability-card`) i Awansu (`.cp-advance`) idą w kolumny ~30 rem, lista Umiejętności Awansu od 1100 px łamie się kolumnami wielołamowymi bez `max-height`. Kolumna „Atak”, „Pancerz” i nazwa w Wyposażeniu mają szerokość w `%`, nigdy w `rem` (rem w tabeli `auto` to minimum kolumny i wypycha tabelę poza wąskie okno).
 - **Widok karty niesie `revision`; starszy od posiadanego klient odrzuca (02.10, #49)** — kolumnę `Character.revision` podbija **rozszerzenie klienta Prismy w `db.ts`** przy każdym `update`/`updateMany`/`upsert`, więc handler nic nie dopisuje (i nie może zapomnieć). `characterStore` sprawdza numer w `applyUpsert`, w acku (`endSave` bierze nowszy z acku i cienia) i w `applySync` — poza pierwszą synchronizacją po połączeniu, która bierze bazę w całości (kopia przywrócona przy zatrzymanym serwerze ma mniejsze numery). Nowy sposób zapisu karty z pominięciem klienta Prismy (surowy SQL) musi podbić numer sam.
 - **Karta czekająca na MG jest u właściciela wyłączona jednym `<fieldset disabled>` (`.sheet-lock`, 25.09)** — owija treść wszystkich czterech stron wewnątrz `.sheet-body`; zakładki i ✕ są poza nim. Nowa kontrolka karty musi być `<button>`/`<input>`/`<select>`, żeby blokada ją objęła — `onClick` na `<span>` przeszedłby obok. Warunek (`!isGm && !playReady && właściciel`) jest lustrem `refuseAwaitingGm` na serwerze.
 - **Panel karty, do którego da się skoczyć z zewnątrz, nosi `data-sheet-panel`** — `characterStore.focusPanel(id, zakładka, panel)` otwiera kartę, przełącza zakładkę i podświetla go; okno kasuje żądanie po obsłużeniu, inaczej wracałoby przy każdym otwarciu karty. Pas „Po kreatorze zostało” (`.cp-readiness`) stoi pierwszy w siatce strony pierwszej i znika, gdy nie ma czego powiedzieć.
@@ -2014,6 +2015,27 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 
 ---
+
+**Szeroka karta: kolumny zamiast pustego papieru (10.10, zlecenie MG spoza etapów).** Zgłoszenie:
+„zbyt małe czcionki” i „dużo wolnych przestrzeni”, potem „rozbij niektóre rzeczy na większą ilość
+kolumn” i „ikony powinny być większe”. Przy oknie 1600 px wiersz Specjalizacji Medycyny stawiał
+„— ± ” 1400 px od nazwy, Awans miał tak samo 66 wierszy w okienku 16 rem, a tabela pancerza
+dawała pół szerokości na „Skóry”. Co obowiązuje:
+
+- **`.cp-arsenal` to siatka**, nie flex: jedna kolumna, a w `@container (min-width: 1350px)`
+  `1.5fr 1fr` — broń po lewej, pancerz (z „Kara dotyczy…” i „Resztą pancerza”) po prawej. Belka
+  „Broń i pancerz” idzie przez obie (`grid-column: 1 / -1`). Klasy pasów: `cp-weapons`, `cp-armor`.
+- **Szerokość kolumny tabeli karty w `%`** (`.weapon-actions-head` 14%, `.armor-name-head` 30%,
+  w dwóch kolumnach 52%, nazwa w Wyposażeniu `width: '35%'`). Kolumny bez szerokości dzielą
+  resztę po równo, a `rem` w tabeli `table-layout: auto` jest minimum kolumny.
+- **Panele Zdolności i Awansu na karcie** mają własne reguły pod `.cp-ability-card` i `.cp-advance`
+  w `sheet.css` (krój 0,95 rem, lista w siatce `minmax(min(100%, 28rem), 1fr)`, nazwa się łamie,
+  kreska pod każdym wierszem). **Pasek akcji (`.hud-form`) ich nie dostaje** — tam jest 254 px.
+- **Lokacja pancerza i nazwa w jednym wierszu:** `.armor-slot-cell .item-name-cell` jest
+  `inline-flex` (blokowy flex spychał nazwę pod „Korpus”).
+- **Zdania stanu piszą się zwykłym pismem** („bez ran krytycznych”, „nic tu nie chroni”) —
+  kapitaliki zostają etykietom pól. Ikony-guziki na karcie: `.sheet-window .cp-mini-button` 1 rem,
+  znak w guziku tabeli (`⟳`, `◎`) klasą `small-button--icon`, miniatury w tabelach 1,6 rem.
 
 **Numer zapisu karty: `revision` (02.10, poprawka #49 z T7b).** Rozgłoszenia czekają za animacją
 rzutu (`rollPresentation`), a acki nie — echo zapisu A przychodziło po acku zapisu B, gdy nic nie

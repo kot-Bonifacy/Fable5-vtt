@@ -1944,7 +1944,7 @@ function WeaponStrip({
   }
 
   return (
-    <div className="cp-strip">
+    <div className="cp-strip cp-weapons">
       <table className="cp-table weapon-table">
         <thead>
           {/* Nagłówki dokładnie z wydruku; „Atak" i kosz to nasze dwie kolumny
@@ -1955,7 +1955,7 @@ function WeaponStrip({
             <th style={{ width: '7rem' }}>Amunicja</th>
             <th style={{ width: '3.5rem' }}>LA</th>
             <th>Uwagi</th>
-            <th>Atak</th>
+            <th className="weapon-actions-head">Atak</th>
             <th style={{ width: '2rem' }} />
           </tr>
         </thead>
@@ -2121,7 +2121,7 @@ function WeaponStrip({
                       <span className="weapon-ammo-max">/{row.ammoMax}</span>
                       <button
                         type="button"
-                        className="small-button"
+                        className="small-button small-button--icon"
                         disabled={row.ammoCurrent >= row.ammoMax || stock === 0}
                         title={
                           stock === 0
@@ -2219,7 +2219,7 @@ function WeaponStrip({
                     {resolved?.rangeDv && (
                       <button
                         type="button"
-                        className="small-button"
+                        className="small-button small-button--icon"
                         title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
                         aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
                         onClick={() => showRangeRings(row, resolved)}
@@ -2280,7 +2280,7 @@ function WeaponStrip({
                         </span>
                         <button
                           type="button"
-                          className="small-button"
+                          className="small-button small-button--icon"
                           disabled={
                             (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
                               (weapon.magazine ?? 0) ||
@@ -2550,11 +2550,11 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
   const rest = data.armor.filter((row) => !printedIds.has(row.id));
 
   return (
-    <div className="cp-strip">
+    <div className="cp-strip cp-armor">
       <table className="cp-table armor-table">
         <thead>
           <tr>
-            <th>Pancerz</th>
+            <th className="armor-name-head">Pancerz</th>
             <th style={{ width: '5rem' }}>OB</th>
             <th style={{ width: '3.5rem' }}>Kara</th>
             <th>Uwagi</th>
@@ -3646,6 +3646,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
           {
             key: 'name',
             label: 'Wyposażenie',
+            // Bez szerokości nazwa dzieliła tabelę po równo z „Uwagami”.
+            width: '35%',
             readOnly: !isGm,
             ...(isGm
               ? {}
