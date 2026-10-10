@@ -33,11 +33,18 @@ export const CPRED_PRICE_SCALE_CONSUMABLE = 3;
 const CONSUMABLE_GEAR_BANDS: ReadonlySet<CostCategory> = new Set(['cheap', 'everyday', 'costly']);
 
 /**
- * Sprzęt z tanich pasm, który mimo to jest elektroniką za realne pieniądze —
- * id z importera (stabilne, jak id umiejętności w `roleability.ts`).
- * Komputer za 150 ed byłby tańszy od agenta dziesięciokrotnie.
+ * Wpisy, którym mnożnik ich rodzaju daje cenę z innego świata — id z importera
+ * (stabilne, jak id umiejętności w `roleability.ts`). Wyjątek jest mnożnikiem,
+ * a nie kwotą, bo poziom sklepu czyta cenę podzieloną przez mnożnik.
+ *
+ *  - Komputer z tanich pasm: 150 ed byłoby dziesięć razy taniej od agenta.
+ *  - Słuchawki wygłuszające (decyzja MG z 10.10.2026): ×10 dawało 10 000 ed
+ *    za ochronniki słuchu, drożej od smartkularów.
  */
-const DURABLE_GEAR_IDS: ReadonlySet<string> = new Set(['gear.komputer']);
+const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
+  ['gear.komputer', CPRED_PRICE_SCALE_DURABLE],
+  ['gear.automatyczne-sluchawki-wygluszajace', 2],
+]);
 
 /**
  * Groups thousands: „15 000" reads, „15000" does not. The separator is a narrow
@@ -52,12 +59,13 @@ export function formatEddies(amount: number): string {
 export function cpredCatalogPriceScale(
   entry: Partial<Pick<CompendiumEntry, 'id' | 'category' | 'costCategory'>>,
 ): number {
+  const exception = entry.id === undefined ? undefined : PRICE_SCALE_BY_ID.get(entry.id);
+  if (exception !== undefined) return exception;
   if (entry.category === 'ammo') return CPRED_PRICE_SCALE_CONSUMABLE;
   if (
     entry.category === 'gear' &&
     entry.costCategory !== undefined &&
-    CONSUMABLE_GEAR_BANDS.has(entry.costCategory) &&
-    !(entry.id !== undefined && DURABLE_GEAR_IDS.has(entry.id))
+    CONSUMABLE_GEAR_BANDS.has(entry.costCategory)
   ) {
     return CPRED_PRICE_SCALE_CONSUMABLE;
   }

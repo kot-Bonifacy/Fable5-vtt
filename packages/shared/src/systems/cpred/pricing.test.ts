@@ -38,6 +38,17 @@ describe('cennik domowy (etap 47a)', () => {
         entry({ id: 'gear.komputer', category: 'gear', costCategory: 'costly' }),
       ),
     ).toBe(10);
+    // Słuchawki wygłuszające ×2: 2000 ed zamiast 10 000 (decyzja MG z 10.10.2026).
+    const earProtectors = cpredScaledEntry(
+      entry({
+        id: 'gear.automatyczne-sluchawki-wygluszajace',
+        category: 'gear',
+        cost: 1000,
+        costCategory: 'veryExpensive',
+      }),
+    );
+    expect(earProtectors.cost).toBe(2000);
+    expect(shopTierOf(earProtectors)).toBe(shopTierForPrice(1000));
   });
 
   it('zmienia kwotę, a pasmo zostawia', () => {
