@@ -113,6 +113,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
+import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { shopTierContextOf, useCompendiumStore } from '../stores/compendiumStore.js';
@@ -2675,6 +2676,10 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Miniatura idzie za kadrem właściciela, tak jak lista postaci i pasek
+  // walki — bez tego kreator pokazywał środek obrazu, choć portret był już
+  // skadrowany.
+  const portraitCrop = usePortraitFrameStyle(draft.portraitUrl ?? null, 1);
   // Local while typed; follows the server after a reload (see useDraftFieldText).
   const nameField = useDraftFieldText(draft.name, draft, 'name');
   const [uploading, setUploading] = useState(false);
@@ -2734,7 +2739,14 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
 
       <div className="creator-portrait">
         {draft.portraitUrl ? (
-          <img src={draft.portraitUrl} alt="Portret postaci" />
+          <span className="creator-portrait-frame">
+            <img
+              src={draft.portraitUrl}
+              alt="Portret postaci"
+              className={portraitCrop ? 'creator-portrait-img--cropped' : undefined}
+              {...(portraitCrop ? { style: portraitCrop } : {})}
+            />
+          </span>
         ) : (
           <span className="creator-portrait-empty">brak portretu</span>
         )}

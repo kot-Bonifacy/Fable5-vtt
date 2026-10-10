@@ -1125,12 +1125,33 @@
   flex-wrap: wrap;
 }
 
-.creator-portrait img {
+.creator-portrait-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex: none;
   width: 6.5rem;
   height: 6.5rem;
-  object-fit: cover;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.creator-portrait-frame img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 0%;
+}
+
+/* Kadr właściciela (`usePortraitFrameStyle`) podaje rozmiar i położenie. */
+.creator-portrait-frame .creator-portrait-img--cropped {
+  right: auto;
+  bottom: auto;
+  max-width: none;
+  object-fit: fill;
 }
 
 .creator-portrait-empty {
