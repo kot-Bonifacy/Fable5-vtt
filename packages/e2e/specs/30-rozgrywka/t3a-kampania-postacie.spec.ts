@@ -14,6 +14,7 @@ import {
   rollStatsWithCup,
   setSkillLevels,
 } from '../../fixtures/creator.ts';
+import { giveEntry } from '../../fixtures/kompendium.ts';
 import { material, materialAs } from '../../fixtures/materials.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
@@ -321,24 +322,21 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await language.selectOption({ label: languages.includes('Polski') ? 'Polski' : languages[0]! });
 
     await goToStep(page, /Wyposażenie/);
-    await buy(page, 'Broń', ['Bardzo ciężki pistolet', 'Średnia broń biała']);
-    await buy(page, 'Pancerz', ['Średnia kurtka kuloodporna']);
-    // Etap 46c: przeładowanie bierze naboje z pudełek, więc Kowal kupuje dwie paczki
-    // zwykłej (2 × 10 szt. po 10 ed, s. 344) — kaliber podpowiada się z pistoletu.
-    await expect(window.locator('.creator-no-stock')).toContainText('Bardzo ciężki pistolet');
+    // Etap 47b (cennik domowy, decyzja MG z 10.10): B.C. Pistolet, broń biała i kurtka
+    // kosztują razem 2500 ed — pakiet Roli Krawędziarza daje MG po przyjęciu (3.8).
+    // Kowal kupuje za swoje 500 ed tylko dwie paczki zwykłej (2 × 10 szt. po 30 ed);
+    // bez broni na karcie kaliber wybiera się ręką.
+    await expect(window.getByText(/500 ed startowych/)).toBeVisible();
     await window.getByRole('button', { name: 'Amunicja', exact: true }).click();
     const ammo = window.locator('.creator-shop-item', {
       has: page.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła', exact: true }),
     });
-    await expect(ammo.getByLabel('Kaliber: Amunicja zwykła').locator('option:checked')).toHaveText(
-      'B.C. Pistolet',
-    );
+    await ammo.getByLabel('Kaliber: Amunicja zwykła').selectOption({ label: 'B.C. Pistolet' });
     for (const held of ['×1', '×2']) {
       await ammo.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła' }).click();
       await expect(ammo.getByText(held)).toBeVisible();
     }
-    await expect(window.locator('.creator-no-stock')).toHaveCount(0);
-    await expect(window.getByText(/wydane 270 ed/)).toBeVisible();
+    await expect(window.getByText(/wydane 60 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);
     await window
@@ -357,7 +355,9 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     expect(kowal.playReady).toBe(0);
     const sheet = sheetOf('Kowal');
     expect(sheet.stats).toEqual(KOWAL_STATS);
-    expect(sheet.eddies).toBe(230);
+    expect(sheet.eddies).toBe(440);
+    // Gołe ręce z urzędu (47b) — jedyna „broń” przed pakietem Roli od MG.
+    expect((sheet.weapons as { name: string }[]).map((w) => w.name)).toEqual(['Bijatyka']);
     expect(
       (sheet.gear as { name: string; qty?: number; ammo?: { calibre: string } }[])
         .filter((row) => row.ammo)
@@ -455,8 +455,14 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await rollLifepathWithCup(page);
     await goToStep(page, /Wyposażenie/);
     await expect(window.getByText(/2\s550 ed startowych/)).toBeVisible();
-    // Dek ze sklepu to zwykły wiersz sprzętu (decyzje, 17.09) — gracz i tak go kupuje.
-    await buy(page, 'Sprzęt', ['Cyberdek (zwykłej jakości)', 'Agent', 'Radiokomunikator']);
+    // Etap 47a: dek, sprzęg i złącza to wyposażenie Roli gratis (chrom wszczepia MG
+    // w 3.8); za gotówkę Ola kupuje Agenta i Radiokomunikator (2 × 1000 ed).
+    const kit = window.getByRole('region', { name: 'Wyposażenie Roli gratis' });
+    for (const item of ['Cyberdek (zwykłej jakości)', 'Sprzęg neuralny', 'Złącza interfejsu']) {
+      await expect(kit).toContainText(item);
+    }
+    await buy(page, 'Sprzęt', ['Agent', 'Radiokomunikator']);
+    await expect(window.getByText(/wydane 2\s000 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);
     await window
@@ -469,7 +475,10 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await expect(window.getByText(/Postać „Iskra” utworzona/)).toBeVisible();
     await expect(window.getByText(/Teraz czeka na zatwierdzenie MG/)).toBeVisible();
     // Ekran końcowy zostaje otwarty do „Przyjmij do gry” w 3.8 (#8).
-    expect(sheetOf('Iskra').eddies).toBe(1_850);
+    expect(sheetOf('Iskra').eddies).toBe(550);
+    expect(
+      (sheetOf('Iskra').gear as { compendiumId?: string }[]).map((g) => g.compendiumId),
+    ).toContain('gear.cyberdek-zwyklej-jakosci');
   });
 
   test('3.8 MG przyjmuje obie karty; 66 umiejętności; pola z ceną zablokowane', async () => {
@@ -525,6 +534,49 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
         JSON.stringify(data),
       ).toEqual({ ok: false, error: 'FORBIDDEN' });
     }
+  });
+
+  test('3.8 MG daje pakiet Roli: Kowalowi broń i kurtkę, Iskrze chrom z wyposażenia (47b)', async () => {
+    test.setTimeout(3 * 60_000);
+    // Krawędziarz: pakiet Roli dokłada MG w całości (umowa 47a) — przy cenniku
+    // domowym 500 ed Kowala nie starcza nawet na pistolet.
+    for (const item of ['Bardzo ciężki pistolet', 'Średnia broń biała']) {
+      await giveEntry(mg, 'Kowal', item);
+      await expect
+        .poll(() => (sheetOf('Kowal').weapons as { name: string }[]).map((w) => w.name))
+        .toContain(item);
+    }
+    await giveEntry(mg, 'Kowal', 'Średnia kurtka kuloodporna');
+    await expect
+      .poll(() => (sheetOf('Kowal').armor as { name: string }[]).map((a) => a.name))
+      .toEqual(['Średnia kurtka kuloodporna']);
+    const kowal = sheetOf('Kowal') as {
+      eddies: number;
+      weapons: { name: string }[];
+      armor: { equipped?: boolean }[];
+    };
+    // Broń z pakietu przed pięścią z urzędu, kurtka założona, gotówka nietknięta.
+    expect(kowal.weapons.map((w) => w.name)).toEqual([
+      'Bardzo ciężki pistolet',
+      'Średnia broń biała',
+      'Bijatyka',
+    ]);
+    expect(kowal.armor[0]!.equipped).not.toBe(false);
+    expect(kowal.eddies).toBe(440);
+
+    // Netrunner: sprzęg i złącza z wyposażenia Roli wszczepia MG „Dodaj za darmo”
+    // — bez Testu montażu, z rzutem 2k6 na Utratę Człowieczeństwa (skrypt: 1 + 1).
+    const humanity = sheetOf('Iskra').humanityCurrent as number;
+    scriptDice([1, 1, 1, 1]);
+    for (const item of ['Sprzęg neuralny', 'Złącza interfejsu']) {
+      await giveEntry(mg, 'Iskra', item);
+      await expect
+        .poll(() => (sheetOf('Iskra').cyberware as { name: string }[]).map((c) => c.name))
+        .toContain(item);
+    }
+    await expect.poll(() => sheetOf('Iskra').humanityCurrent).toBe(humanity - 4);
+    expect(pendingDice()).toBe('');
+    expect(sheetOf('Iskra').eddies).toBe(550);
   });
 
   test('3.8 gracz nie podnosi sobie Cechy po przyjęciu (#2)', async () => {

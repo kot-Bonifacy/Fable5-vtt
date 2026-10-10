@@ -254,7 +254,8 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
         },
       ] as unknown as Row[],
     });
-    okData(await gm('economy:adjust', { characterId: characterId('Kowal'), balance: 1000 }));
+    // Cennik domowy (47a): kurtka 1200 ed na półce, Agent 1000 ed — Kowal dostaje 5000 ed.
+    okData(await gm('economy:adjust', { characterId: characterId('Kowal'), balance: 5000 }));
     okData(await gm('economy:adjust', { characterId: characterId('Zbir'), balance: 50 }));
     okData(await gm('economy:adjust', { characterId: characterId('Paser'), balance: 500 }));
     expect(card('Paser').weapons.map((row) => row.name)).toContain(hiddenName);
@@ -420,22 +421,23 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
     await expect(window.locator('.exchange-closed')).toHaveCount(0);
     const shelf = window.locator('.trade-zone', { hasText: 'Towar: Spod lady' });
-    await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('24 ed');
+    // Latarka 20 ed z podręcznika × 3 (cennik domowy) × 120% Pasera = 72 ed; kurtka 1000 × 1,2.
+    await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('72 ed');
     await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('∞');
     await expect(
       shelf.locator('.inventory-row', { hasText: 'Lekka kurtka kuloodporna' }),
-    ).toContainText('120 ed');
+    ).toContainText('1200 ed');
     await expect(shelf).not.toContainText(hiddenName);
     await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
     await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
     await window.getByRole('button', { name: 'Do koszyka: Lekka kurtka kuloodporna' }).click();
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 168 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1344 ed');
     await shot(marek, '7-sklep-koszyk');
     const eddies = card('Kowal').eddies;
     await window.getByRole('button', { name: 'Zapłać' }).click();
-    await expect.poll(() => card('Kowal').eddies).toBe(eddies - 168);
-    expect(ledger('Kowal', mark)).toEqual([['purchase', -168]]);
-    expect(ledger('Paser', mark)).toEqual([['sale', 168]]);
+    await expect.poll(() => card('Kowal').eddies).toBe(eddies - 1344);
+    expect(ledger('Kowal', mark)).toEqual([['purchase', -1344]]);
+    expect(ledger('Paser', mark)).toEqual([['sale', 1344]]);
     // „∞” zostaje na półce, kurtka zeszła; kupiona przychodzi zdjęta.
     expect(gear('Paser', 'Latarka')).toBe(3);
     expect(card('Paser').armor.map((row) => row.name)).not.toContain('Lekka kurtka kuloodporna');
@@ -458,10 +460,10 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     expect(sold).toBeGreaterThan(0);
     const before = { kowal: card('Kowal').eddies, paser: card('Paser').eddies };
     await window.getByRole('button', { name: 'Zapłać' }).click();
-    await expect.poll(() => card('Kowal').eddies).toBe(before.kowal - 24 + sold);
-    expect(card('Paser').eddies).toBe(before.paser + 24 - sold);
+    await expect.poll(() => card('Kowal').eddies).toBe(before.kowal - 72 + sold);
+    expect(card('Paser').eddies).toBe(before.paser + 72 - sold);
     expect(ledger('Kowal', mark)).toEqual([
-      ['purchase', -24],
+      ['purchase', -72],
       ['sale', sold],
     ]);
     expect(card('Kowal').weapons.map((row) => row.name)).not.toContain('Bardzo ciężki pistolet');
@@ -483,7 +485,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
         characterId: characterId('Iskra'),
         buy: [{ list: 'gear', rowId: 'paser-latarka', qty: 1 }],
         sell: [],
-        expectTotal: 24,
+        expectTotal: 72,
       }),
     ).toEqual({ ok: false, error: 'OUT_OF_REACH' });
     expect(card('Iskra')).toEqual(before);
@@ -498,7 +500,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
         characterId: characterId(name),
         buy: [{ list: 'armor', rowId: 'paser-kevlar', qty: 1 }],
         sell: [],
-        expectTotal: 60,
+        expectTotal: 600,
       });
     const results = await Promise.all([order(marekSocket, 'Kowal'), order(olaSocket, 'Iskra')]);
     expect(results.filter((ack) => ack.ok)).toHaveLength(1);
@@ -516,7 +518,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     const window = exchange(ola);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
     await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 24 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 72 ed');
     okData(
       await gm('merchant:config', {
         characterId: characterId('Paser'),
@@ -524,7 +526,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
       }),
     );
     // Półka przychodzi sama (`merchant:update`), stopka liczy nową cenę.
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 30 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 90 ed');
     await shot(ola, '11-sklep');
     expect(
       await emitAck(olaSocket, 'merchant:deal', {
@@ -532,12 +534,12 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
         characterId: characterId('Iskra'),
         buy: [{ list: 'gear', rowId: 'paser-latarka', qty: 1 }],
         sell: [],
-        expectTotal: 24,
+        expectTotal: 72,
       }),
     ).toEqual({ ok: false, error: 'QUOTE_CHANGED' });
     const eddies = card('Iskra').eddies;
     await window.getByRole('button', { name: 'Zapłać' }).click();
-    await expect.poll(() => card('Iskra').eddies).toBe(eddies - 30);
+    await expect.poll(() => card('Iskra').eddies).toBe(eddies - 90);
     expect(gear('Iskra', 'Latarka')).toBe(2);
   });
 
@@ -581,10 +583,10 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     const window = exchange(marek);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
     await window.getByRole('button', { name: 'Do koszyka: Agent' }).click();
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 100 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1000 ed');
     await window.getByRole('button', { name: 'Zapłać' }).click();
     await expect.poll(() => gear('Kowal', 'Agent')).toBe(1);
-    expect(ledger('Kowal', mark)).toEqual([['purchase', -100]]);
+    expect(ledger('Kowal', mark)).toEqual([['purchase', -1000]]);
     await window.getByRole('button', { name: 'Zamknij okno wymiany' }).click();
   });
 
@@ -608,7 +610,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
         characterId: characterId('Kowal'),
         buy: [{ list: 'gear', rowId: 'paser-latarka', qty: 1 }],
         sell: [],
-        expectTotal: 30,
+        expectTotal: 90,
       }),
     ).toEqual({ ok: false, error: 'SESSION_NOT_RUNNING' });
     await window.getByRole('button', { name: 'Zamknij okno wymiany' }).click();
@@ -651,7 +653,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await chooseCounterpart(ola, 'Spod lady');
     await expect(
       exchange(ola).locator('.inventory-row', { hasText: 'Latarka' }).last(),
-    ).toContainText('30 ed');
+    ).toContainText('90 ed');
 
     await stopServer();
     await startServer(DEAD_GATEWAY);
@@ -672,7 +674,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     );
     await expect(
       exchange(ola).locator('.inventory-row', { hasText: 'Latarka' }).last(),
-    ).toContainText('20 ed', { timeout: 30_000 });
+    ).toContainText('60 ed', { timeout: 30_000 });
     await expect(dock(marek).getByRole('button', { name: '🛒 Sklepy (1)' })).toBeVisible();
     gmSocket = await mg.socket();
     marekSocket = await marek.socket();

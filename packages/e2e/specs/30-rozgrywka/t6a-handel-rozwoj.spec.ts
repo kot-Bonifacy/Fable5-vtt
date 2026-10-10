@@ -213,6 +213,21 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     expect(at('Iskra')).toEqual([8, 9]);
   });
 
+  test('wypłata za „Knajpę”: MG dopisuje Kowalowi 1000 ed korektą na karcie (47b)', async () => {
+    // Cennik domowy (etap 47): sprzęt ×10, wypłaty bez zmian — bez zapłaty za
+    // zlecenie Kowala nie stać na Cyberoko (1000 ed) w 6.3.
+    const ledgerMark = lastLedgerId();
+    const eddies = card('Kowal').eddies;
+    await openSheet(mg, 'Kowal');
+    await mg.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
+    const adjust = mg.page.locator('.wallet-adjust input');
+    await expect(adjust).toHaveValue(String(eddies));
+    await adjust.fill(String(eddies + 1000));
+    await expect.poll(() => card('Kowal').eddies).toBe(eddies + 1000);
+    await closeSheet(mg.page);
+    expect(ledger('Kowal', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([['adjust', 1000]]);
+  });
+
   test('6.1 handel Marek ↔ Ola: pola wymiany, zgoda zdjęta zmianą oferty, wymiana atomowa', async () => {
     test.setTimeout(3 * 60_000);
     const before = { kowal: card('Kowal'), iskra: card('Iskra'), money: money() };
@@ -310,13 +325,14 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const eddies = card('Kowal').eddies;
     const entry = await compendiumEntry(marek, 'Zestaw wytrychów', { prefix: true });
     await expect(entry.locator('select').first()).toHaveValue(characterRow('Kowal').id);
-    await entry.getByRole('button', { name: /^Kup — 20 ed/ }).click();
+    await entry.getByRole('button', { name: /^Kup — 60 ed/ }).click();
     await expect
       .poll(() => card('Kowal').gear.map((g) => g.compendiumId))
       .toContain('gear.zestaw-wytrychow');
-    expect(card('Kowal').eddies).toBe(eddies - 20);
+    // Cennik domowy (47a): drobny sprzęt ×3 — 20 ed z podręcznika to 60 ed.
+    expect(card('Kowal').eddies).toBe(eddies - 60);
     expect(ledger('Kowal', ledgerMark).map((r) => [r.kind, r.amount, r.label])).toEqual([
-      ['purchase', -20, 'Zestaw wytrychów'],
+      ['purchase', -60, 'Zestaw wytrychów'],
     ]);
 
     // Karabin szturmowy: poziom wyżej niż sklep kampanii (2) — guzik wyszarzony,
@@ -337,7 +353,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
       );
     expect(refused.ok).toBe(false);
     expect(refused.ok ? '' : refused.error).toMatch(/^SHOP_TIER_LOCKED:[34]:2$/);
-    expect(card('Kowal').eddies).toBe(eddies - 20);
+    expect(card('Kowal').eddies).toBe(eddies - 60);
     expect(card('Kowal').weapons.map((w) => w.name)).not.toContain('Militech Ronin');
   });
 
@@ -582,26 +598,27 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const ledgerMark = lastLedgerId();
     const mark = lastMessageId();
 
-    // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 100 ed”.
+    // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 1000 ed”
+    // (cennik domowy, 47a: chrom ×10).
     const entry = await compendiumEntry(marek, 'Cyberoko', { prefix: true });
     const selects = entry.locator('.compendium-assign select');
     await selects.first().selectOption({ label: 'Kowal' });
     await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2 · poproś' });
-    await entry.getByRole('button', { name: 'Zainstaluj — 100 ed' }).click();
+    await entry.getByRole('button', { name: 'Zainstaluj — 1000 ed' }).click();
     await expect(entry.locator('.compendium-note')).toContainText('Prośba do: Iskra');
     // Prośba to nie operacja — nikt jeszcze nie zapłacił.
     expect(card('Kowal').eddies).toBe(before.eddies);
 
-    // Ola (Firefox): karta prośby na czacie, pole ceny startuje od domyślnej 100 ed.
+    // Ola (Firefox): karta prośby na czacie, pole ceny startuje od domyślnej 1000 ed.
     await ola.page.getByRole('button', { name: 'Czat', exact: true }).click();
     const olaCard = ola.page.getByTestId('surgery-request').last();
     await expect(olaCard).toContainText('Kowal → Iskra: Cyberoko');
-    await expect(olaCard).toContainText('Cena domyślna: 100 ed');
+    await expect(olaCard).toContainText('Cena domyślna: 1000 ed');
     const price = olaCard.getByLabel('Cena operacji w eurodolcach');
-    await expect(price).toHaveValue('100');
-    await price.fill('150');
-    await olaCard.getByRole('button', { name: 'Wyceń na 150 ed' }).click();
-    await expect(olaCard).toContainText('Wycena Medyka: 150 ed');
+    await expect(price).toHaveValue('1000');
+    await price.fill('1100');
+    await olaCard.getByRole('button', { name: 'Wyceń na 1100 ed' }).click();
+    await expect(olaCard).toContainText('Wycena Medyka: 1100 ed');
     expect(card('Kowal').eddies, 'wycena to jeszcze nie operacja').toBe(before.eddies);
 
     // Marek zatwierdza wyższą cenę. Test montażu (1k10) musi przejść — porażka niszczy
@@ -609,22 +626,24 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     scriptDice([9, 3, 4]);
     await marek.page.getByRole('button', { name: 'Czat', exact: true }).click();
     const marekCard = marek.page.getByTestId('surgery-request').last();
-    await marekCard.getByRole('button', { name: 'Zgadzam się na 150 ed' }).click();
+    await marekCard.getByRole('button', { name: 'Zgadzam się na 1100 ed' }).click();
     await expect.poll(() => card('Kowal').cyberware.map((c) => c.name)).toContain('Cyberoko');
     expect(pendingDice()).toBe('');
     // Zamknięcie karty dochodzi po animacji obu rzutów (klient trzyma widoki do jej końca).
     for (const cardOf of [olaCard, marekCard]) {
-      await expect(cardOf).toContainText('Zoperowane — 150 ed', { timeout: 20_000 });
+      await expect(cardOf).toContainText('Zoperowane — 1100 ed', { timeout: 20_000 });
     }
 
     const after = card('Kowal');
-    expect(after.eddies).toBe(before.eddies - 150);
+    expect(after.eddies).toBe(before.eddies - 1100);
     expect(after.humanityCurrent).toBe(before.humanityCurrent - 7);
     expect(ledger('Kowal', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([
-      ['cyberware', -150],
+      ['cyberware', -1100],
     ]);
-    expect(ledger('Iskra', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([['transfer', 150]]);
-    expect(card('Iskra').eddies, 'cała kwota trafia do Medyka').toBe(surgeonEddies + 150);
+    expect(ledger('Iskra', ledgerMark).map((r) => [r.kind, r.amount])).toEqual([
+      ['transfer', 1100],
+    ]);
+    expect(card('Iskra').eddies, 'cała kwota trafia do Medyka').toBe(surgeonEddies + 1100);
 
     const cards = query<{ id: number; kind: string; text: string; payload: string }>(
       'SELECT id, kind, text, payload FROM ChatMessage WHERE id > ? ORDER BY id',

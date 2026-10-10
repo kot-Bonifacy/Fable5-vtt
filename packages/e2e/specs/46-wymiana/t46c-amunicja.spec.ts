@@ -327,9 +327,10 @@ test.describe.serial('T46c zapas amunicji', () => {
     const entry = await compendiumEntry(marek, 'Amunicja zwykła');
     await pickCalibre(entry.getByLabel('Kaliber'), VHP);
     await entry.getByLabel('Liczba paczek').fill('2');
-    await entry.getByRole('button', { name: 'Kup — 20 ed' }).click();
+    // Cennik domowy (47a): paczka zwykłej 10 → 30 ed (×3).
+    await entry.getByRole('button', { name: 'Kup — 60 ed' }).click();
     await expect.poll(() => stock('Kowal', VHP)).toBe(15 + 20);
-    expect(card('Kowal').eddies).toBe(eddies - 20);
+    expect(card('Kowal').eddies).toBe(eddies - 60);
     expect(boxes('Kowal', VHP).filter((row) => row.ammo?.ammoId === null)).toHaveLength(1);
     await shot(marek, '7-kompendium');
     expect(
@@ -354,7 +355,7 @@ test.describe.serial('T46c zapas amunicji', () => {
     await expect.poll(() => stock('Kowal', VHP)).toBe(45);
     expect(boxes('Kowal', VHP).filter((row) => row.ammo?.ammoId === null)).toHaveLength(1);
 
-    // MG wykłada pudełko u Pasera „Dodaj za darmo”, Marek kupuje pięć naboi po 1 ed.
+    // MG wykłada pudełko u Pasera „Dodaj za darmo”, Marek kupuje pięć naboi po 3 ed.
     const gmEntry = await compendiumEntry(mg, 'Amunicja zwykła');
     await gmEntry
       .locator('select', { has: mg.page.locator('option', { hasText: /^Paser$/ }) })
@@ -377,7 +378,7 @@ test.describe.serial('T46c zapas amunicji', () => {
         characterId: characterId('Kowal'),
         buy: [{ list: 'gear', rowId: paserBox.id, qty: 5 }],
         sell: [],
-        expectTotal: 5,
+        expectTotal: 15,
       }),
     );
     await expect.poll(() => stock('Kowal', VHP)).toBe(50);
@@ -401,7 +402,14 @@ test.describe.serial('T46c zapas amunicji', () => {
     const page = mg.page;
     await openCreator(page);
     const window = creatorWindow(page);
+    // Cennik domowy (47a): Średni pistolet to 500 ed — cały budżet Krawędziarza,
+    // więc MG bierze Kompletny Pakiet (2550 ed), żeby starczyło na paczkę naboi.
+    await goToStep(page, /Rola/);
+    // Radio odbija stan szkicu z serwera — `check()` nie doczekałby się zmiany.
+    await window.getByRole('radio', { name: /Kompletny Pakiet/ }).click();
+    await expect(window.getByRole('radio', { name: /Kompletny Pakiet/ })).toBeChecked();
     await goToStep(page, /Wyposażenie/);
+    await expect(window.getByText(/2\s550 ed startowych/)).toBeVisible();
     await window.getByRole('button', { name: 'Broń', exact: true }).click();
     await window
       .getByRole('button', { name: 'Dołóż do koszyka: Średni pistolet', exact: true })

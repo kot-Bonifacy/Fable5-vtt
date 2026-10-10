@@ -51,8 +51,8 @@ import type { WorldPoint } from '../../fixtures/canvas.ts';
  * na końcu punkt kontrolny `po-T4a`.
  *
  * Decyzje MG z 26.09 (sesja T4): T4 dzielony na T4a (4.1–4.5) i T4b (4.6–4.10);
- * granat i pięści z własnych wpisów Kompendium (katalog z podręcznika ich nie ma,
- * #17 i #18); Zmysł Walki: Błyskawiczna reakcja 1 + Precyzyjny atak 3; Cień
+ * granat z własnego wpisu Kompendium (#18), Bijatyka Iskry z urzędu (od 47b;
+ * do 10.10 własny wpis „Pięści”, #17); Zmysł Walki: Błyskawiczna reakcja 1 + Precyzyjny atak 3; Cień
  * w kolejce od startu, ukryty; tura bota — nielegalna akcja przepuszczona przez
  * serwer = B1, zawieszona tura = B2, głupia, ale legalna = obserwacja.
  *
@@ -208,13 +208,16 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     });
   });
 
-  test('przed walką: MG — pięści i granaty z własnych wpisów, przewrócony stół, łup Zbira', async () => {
+  test('przed walką: MG — granaty z własnego wpisu, przewrócony stół, łup Zbira', async () => {
     test.setTimeout(4 * 60_000);
     const page = mg.page;
-    // Obejście #17 i #18: własne wpisy Kompendium i broń z katalogu na kartach.
-    await customWeapon(page, 'Pięści', 'weapon-type.brawling');
+    // Etap 47b: Bijatykę ma każda karta z urzędu — Iskra nie potrzebuje już
+    // własnego wpisu „Pięści” od MG (obejście #17 z 27.09).
+    expect(sheet<{ weapons: { name: string }[] }>('Iskra').weapons.map((w) => w.name)).toEqual([
+      'Bijatyka',
+    ]);
+    // Obejście #18: własny wpis Kompendium i broń z katalogu na karcie.
     await customWeapon(page, 'Granat odłamkowy', 'weapon-type.grenade', { magazine: 2, cost: 50 });
-    await weaponFromCatalogue(mg, 'Iskra', 'Pięści');
     await weaponFromCatalogue(mg, 'Kowal', 'Granat odłamkowy');
     const grenade = sheet<{ weapons: { name: string; ammoCurrent: number; ammoMax: number }[] }>(
       'Kowal',
@@ -522,7 +525,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     await expect(refused).not.toContainText('Czeka na MG');
     await expectClean(marek, secretsFor(marek));
 
-    // Pięść w Zbira (widać go z tarasu przez okno, T3b): odmowa „za daleko” notatką
+    // Bijatyka w Zbira (widać go z tarasu przez okno, T3b): odmowa „za daleko” notatką
     // przy stole, bez rzutu. Klik w figurę, której gracz nie widzi, byłby rozkazem marszu.
     const iskra = token('Iskra');
     const zbir = token('Zbir');
@@ -532,7 +535,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     await clickOnMap(page, tokenCentre(iskra, cell));
     // Pasek sam bierze jedyną broń do ręki — klik w slot by ją odłożył.
     await expect(page.getByRole('complementary', { name: 'Panel aktywnej postaci' })).toContainText(
-      'W ręku: Pięści',
+      'W ręku: Bijatyka',
     );
     const after = lastMessageId();
     await clickOnMap(page, tokenCentre(zbir, cell));

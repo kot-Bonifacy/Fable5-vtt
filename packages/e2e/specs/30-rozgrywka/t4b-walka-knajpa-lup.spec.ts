@@ -431,33 +431,33 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     expect(turn.overspent).toBe(0);
 
     await expect(page.getByRole('complementary', { name: 'Panel aktywnej postaci' })).toContainText(
-      'W ręku: Pięści',
+      'W ręku: Bijatyka',
     );
     scriptDice([8]);
     const before = lastMessageId();
     await clickOnMap(page, tokenCentre(token('Rzeźnik'), cell));
-    const punchId = await rollAndWait(ola, before, 'Pięści → Rzeźnik');
+    const punchId = await rollAndWait(ola, before, 'Bijatyka → Rzeźnik');
     const punch = rollById(punchId);
     test.info().annotations.push({ type: 'pięść Iskry', description: JSON.stringify(punch) });
     expect(punch.total).toBe(8 + sumOf(punch));
     expect(punch.attack?.hit).toBe(true);
-    await sameCardEverywhere('Pięści → Rzeźnik', punch.total);
+    await sameCardEverywhere('Bijatyka → Rzeźnik', punch.total);
 
     // Pięść (Bijatyka 2k6 przy BC 6) przeciw pełnemu OB 11 — Bijatyka nie połowi
     // pancerza (s. 177). Dwie szóstki: rana krytyczna (2k6 = 4 + 5 = 9, bez „Złamanej
     // ręki”, która wytrąciłaby Rzeźnikowi pistolet) i +5 prosto w PW.
     const hpBefore = sheet<Sheet>('Rzeźnik').hpCurrent;
-    await noDodge(mg, punchId, 'Pięści → Rzeźnik');
+    await noDodge(mg, punchId, 'Bijatyka → Rzeźnik');
     scriptDice([6, 6, 4, 5]);
     const damageBefore = lastMessageId();
-    const seenPunch = await chatCards(mg.page, 'Pięści — obrażenia').count();
-    await chatCards(page, 'Pięści → Rzeźnik')
+    const seenPunch = await chatCards(mg.page, 'Bijatyka — obrażenia').count();
+    await chatCards(page, 'Bijatyka → Rzeźnik')
       .last()
       .getByRole('button', { name: /^Obrażenia/ })
       .click();
-    const damageId = await rollAndWait(ola, damageBefore, 'Pięści — obrażenia');
+    const damageId = await rollAndWait(ola, damageBefore, 'Bijatyka — obrażenia');
     const rolled = rollById(damageId).total;
-    await freshCard(mg.page, 'Pięści — obrażenia', seenPunch);
+    await freshCard(mg.page, 'Bijatyka — obrażenia', seenPunch);
     await expect
       .poll(() => sheet<Sheet>('Rzeźnik').hpCurrent)
       .toBe(hpBefore - (Math.max(0, rolled - 11) + 5));
@@ -471,7 +471,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   });
 
   test('#26 tej samej karty obrażeń nie stosuje się drugi raz do tego samego celu', async () => {
-    const punchDamage = messageAfter(0, 'Pięści — obrażenia')!;
+    const punchDamage = messageAfter(0, 'Bijatyka — obrażenia')!;
     const socket = await mg.socket();
     // Dwie szóstki na karcie: gdyby przeszło, tabela ran rzuca od nowa — 2k6 = 9.
     scriptDice([4, 5]);
@@ -801,7 +801,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       .poll(() => sheet<Sheet>('Kowal').weapons.map((w) => w.name))
       .toContain('Ciężki pistolet');
     expect(sheet<Sheet>('Zbir').gear).toEqual([]);
-    expect(sheet<Sheet>('Zbir').weapons).toEqual([]);
+    // Bijatyka z urzędu (47b) zostaje przy ciele — gołych rąk się nie zabiera.
+    expect(sheet<Sheet>('Zbir').weapons.map((w) => w.id)).toEqual(['bare-hands.brawling']);
 
     // Iskra podchodzi pod Kowala, Kowal proponuje jej pistolet: wybór Iskry
     // zaprasza do handlu, a „Wyślij bez czekania” wysyła pole jako propozycję

@@ -82,3 +82,15 @@ export async function giveAmmo(
   await entry.getByLabel('Liczba paczek').fill(String(ammo.packs));
   await entry.getByRole('button', { name: 'Dodaj za darmo' }).click();
 }
+
+/**
+ * MG daje postaci wpis „Dodaj za darmo” — broń, pancerz, sprzęt albo chrom (ten
+ * ostatni z rzutem na Utratę Człowieczeństwa na serwerze). Pakiet Roli
+ * Krawędziarza i chrom z wyposażenia Roli (etap 47b) idą tą drogą.
+ */
+export async function giveEntry(gm: Actor, character: string, name: string): Promise<void> {
+  const entry = await compendiumEntry(gm, name);
+  // Pierwszy `select` karty wpisu u MG to poziom sklepu — odbiorca stoi w `.compendium-assign`.
+  await entry.locator('.compendium-assign select').first().selectOption({ label: character });
+  await entry.getByRole('button', { name: 'Dodaj za darmo' }).click();
+}
