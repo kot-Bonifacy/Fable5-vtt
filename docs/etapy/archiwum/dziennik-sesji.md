@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (dziesiąta) — poprawka spoza etapów: półka „Elektronika” w kreatorze
+
+**Zlecenie MG:** na półce „Sprzęt” w kroku „Wyposażenie” jest za dużo rzeczy — podzielić na drugą
+zakładkę, np. z elementami cybernetycznymi, „chyba że masz lepszy pomysł”.
+
+**Decyzja:** cyborgizacji na tej półce nie ma (kreator ich nie sprzedaje — `creationLeftOutside`),
+więc podział to **„Sprzęt” / „Elektronika”**. Elektronika: Agent, telefony, komputer, kamera,
+rejestrator, radio, gogle, smartkulary, BD, czip, słuchawki, skanery, wykrywacze, koder, odbiornik,
+wzmacniacz i każdy dek. U Solo na półce Ulicznej było ~30 pozycji, teraz 17 + 13.
+
+**Zrobione:** `GearEntry.electronics` + `isElectronicsGear` (`compendium.ts`, dek z `deckSlots`/
+`deckSlotCost` liczy się sam), lista `ELECTRONICS` w `parse-gear.py` (ostrzega o nazwie spoza
+tabeli), import puszczony (diff: tylko 20 flag), półka `electronics` w `GearStep`, checkbox
+„Elektronika” w edytorze kompendium (sprzęt). E2E T3a kupuje Agenta na „Elektronice”. Okno
+Kompendium bez zmian (dalej jedna kategoria „Sprzęt”). Umowa w `dane`.
+
+**Weryfikacja:** vitest shared 2432/2432 i server 1430/1430, `validate-compendium.ts` (413 wpisów),
+`tsc` klienta, eslint zmienionych plików. E2E nie puszczane. Serwer dev przeładowany (`touch`).
+Oglądane w **Firefoksie** (Playwright MCP, MG): obie półki w szkicu Solo. **Ślady w `dev.db`:** brak
+(szkic MG odstawiony na „Ścieżkę Życia”, jak był).
+
 ### Sesja 10.10 (dziewiąta) — poprawka spoza etapów: opisy w kompendium
 
 **Zlecenie MG:** „Czip pamięci” w kroku „Wyposażenie” pokazywał „Kompendium nie ma opisu tego

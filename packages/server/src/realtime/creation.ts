@@ -594,7 +594,7 @@ export const creationRollEvent = defineCreationEvent<
 
     const next = applyRolledSpread(current, role, data, rolls);
     const saved = await saveDraft(deps, campaignId, user.id, next);
-    await publishSpread(deps, campaignId, user.id, deps.ctx.cpred, role, next, rolls, result);
+    await publishSpread(deps, campaignId, user, deps.ctx.cpred, role, next, rolls, result);
     if (!isGm) await broadcastCreationRanks(deps, campaignId);
     return toDraftView(saved, deps);
   },
@@ -710,7 +710,7 @@ export const creationRerollEvent = defineCreationEvent<CreationRerollPayload, vo
 async function publishSpread(
   deps: RealtimeDeps,
   campaignId: string,
-  userId: string,
+  author: RollAuthor,
   registry: RealtimeDeps['ctx']['cpred'],
   role: CpredCreationRole,
   draft: CpredCreationDraft,
@@ -743,28 +743,36 @@ async function publishSpread(
     ? `${CPRED_STAT_LABELS[only].name} (${CPRED_STAT_LABELS[only].abbr}) — ${roleName}`
     : `Rozkład Cech — ${roleName} · ${CPRED_CREATION_METHOD_LABELS.edgerunner}`;
   if (draft.name.trim().length > 0) result.actor = draft.name.trim();
-  await publishRoll(deps, campaignId, userId, result);
+  await publishRoll(deps, campaignId, author, result);
 }
 
-/** Puts a finished roll on the chat, where the whole table can check it. */
+/** Who threw the die — the role decides who gets to see the card. */
+type RollAuthor = { id: string; role: string };
+
+/**
+ * Puts a finished roll on the chat. A player's throw lands where the whole
+ * table can check it; the GM's throw is the GM's alone (`gmroll`, etap 49a,
+ * decyzja MG z 10.10) — a GM rolling up an NPC must not show the players
+ * the ganger's stats before the fight.
+ */
 async function publishRoll(
   deps: RealtimeDeps,
   campaignId: string,
-  userId: string,
+  author: RollAuthor,
   result: RollResult,
 ): Promise<void> {
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {
       campaignId,
-      authorId: userId,
-      kind: 'roll',
+      authorId: author.id,
+      kind: author.role === ROLE_GM ? 'gmroll' : 'roll',
       text: result.title ?? 'Rzut',
       payload: JSON.stringify(result),
     },
     include: INCLUDE_CHAT_NAMES,
   });
   const view: ChatMessageView = toChatMessageView(stored);
-  await deliverRollMessage(deps, campaignId, userId, view);
+  await deliverRollMessage(deps, campaignId, author.id, view);
 }
 
 /**
@@ -1481,7 +1489,7 @@ export const creationLifepathRollEvent = defineCreationEvent<
         ? `Ścieżka Życia — ${tables[0]?.label ?? ''}`
         : `Ścieżka Życia — ${breakdown.length} pytań`;
     if (next.name.trim().length > 0) result.actor = next.name.trim();
-    await publishRoll(deps, campaignId, user.id, result);
+    await publishRoll(deps, campaignId, user, result);
     return toDraftView(saved, deps);
   },
 });
@@ -1533,7 +1541,7 @@ export const creationLifepathCountEvent = defineCreationEvent<
     // print „−4" next to a list of nobody.
     result.total = count;
     if (next.name.trim().length > 0) result.actor = next.name.trim();
-    await publishRoll(deps, campaignId, user.id, result);
+    await publishRoll(deps, campaignId, user, result);
     return toDraftView(saved, deps);
   },
 });

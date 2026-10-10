@@ -40,6 +40,7 @@ export * from './container.js';
 export * from './containercard.js';
 export * from './sighting.js';
 export * from './statist.js';
+export * from './npc.js';
 export * from './grapple.js';
 export * from './reputation.js';
 export * from './turn.js';

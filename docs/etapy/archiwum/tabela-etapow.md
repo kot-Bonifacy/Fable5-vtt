@@ -125,3 +125,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 48a    | Przypomnienie o zakupach, kadr portretów w pasie inicjatywy, Zakwaterowanie Korpo | ✅     | 2026-10-10          |
 | 48b    | Cyberdek i Programy jako towar                | ✅     | 2026-10-10          |
 | 48c    | Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG | ✅     | 2026-10-10          |
+| 49     | Szybkie tworzenie NPC-ów i wrogów przez MG (49a–49b) | 🟨     |                     |
+| 49a    | Ukryte rzuty kreatora MG, okno „Nowa postać”, wzorce statystów i kopie, mały portret przy przeciąganiu | ✅     | 2026-10-10          |
+| 49b    | Losowy NPC z Roli (Krawędziarz automatem) | ⬜     |                     |

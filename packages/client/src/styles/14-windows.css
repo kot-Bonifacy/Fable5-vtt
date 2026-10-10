@@ -744,3 +744,115 @@
   padding: 0 0.35rem;
   line-height: 1.3;
 }
+
+/* ---------------------------------------------------------------------------
+   Okno „Nowa postać” MG (etap 49a)
+
+   Chrom okna ustawień; w środku statblok z podręcznika — typ na górze, dziesięć
+   Cech w jednym rzędzie kafelków, pancerz i broń jako listy z Kompendium.
+   --------------------------------------------------------------------------- */
+
+.npc-create-window {
+  width: min(560px, calc(100vw - 24px));
+}
+
+.npc-create-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.npc-create-hint,
+.npc-create-note {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.npc-create-hint {
+  margin: 0.45rem 0 0.7rem;
+}
+
+.npc-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.npc-create-form fieldset {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem 0.55rem;
+  margin: 0;
+}
+
+.npc-create-form legend {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  padding: 0 0.25rem;
+}
+
+.npc-create-name,
+.npc-create-role,
+.npc-create-gear label {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.npc-create-gear {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.npc-create-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.6rem, 1fr));
+  gap: 0.35rem;
+}
+
+.npc-create-stats label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.npc-create-stats input {
+  width: 3.2rem;
+  text-align: center;
+}
+
+.npc-create-skills {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.3rem 0.8rem;
+}
+
+.npc-create-skill {
+  display: grid;
+  grid-template-columns: 1fr 3.2rem auto;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.npc-create-skill-add {
+  grid-column: 1 / -1;
+}
+
+.npc-create-portrait > summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.npc-create-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* „＋ Nowa postać…” na górze panelu „Postacie” (etap 49a). */
+.character-new {
+  margin-bottom: 0.4rem;
+}

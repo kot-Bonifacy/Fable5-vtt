@@ -17,6 +17,7 @@ import { RollDialog } from './components/RollDialog.js';
 import { CheckCallDialog } from './components/CheckCallDialog.js';
 import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
+import { NpcCreateWindow } from './components/NpcCreateWindow.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { OwnerAiWindow } from './components/OwnerAi.js';
@@ -140,6 +141,7 @@ function GameView() {
       <OwnerAiWindow />
       <MusicWindow />
       <ClockWindow />
+      <NpcCreateWindow />
       <ShortcutsWindow />
       <DiceCup />
     </div>

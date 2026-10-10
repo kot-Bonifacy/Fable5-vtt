@@ -881,16 +881,25 @@ describe('kreator postaci', () => {
         );
       }
 
-      // The GM's plain „Rzuć brakujące" for NPCs: one throw, one card.
+      // The GM's plain „Rzuć brakujące" for NPCs: one throw, one card —
+      // the GM's alone (etap 49a): players must not read an NPC's rolls.
       data(await emitAck<Draft>(gm, 'creation:start'), 'creation:start');
       await patch(gm, { roleId: 'solo' });
-      const card = waitFor<ChatMessageBroadcast>(vex, 'chat:message');
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const leaked: ChatMessageBroadcast[] = [];
+      const spy = (payload: ChatMessageBroadcast) => leaked.push(payload);
+      vex.on('chat:message', spy);
       const npc = data(
         await emitAck<Draft>(gm, 'creation:lifepath-roll', { tableIds: ids }),
         'creation:lifepath-roll',
       );
       expect(npc.draft.lifepath.hair).not.toBe('');
-      const npcCard = (await card).message.roll;
+      const gmCard = await card;
+      expect(gmCard.message.kind).toBe('gmroll');
+      await new Promise((settle) => setTimeout(settle, 200));
+      vex.off('chat:message', spy);
+      expect(leaked).toEqual([]);
+      const npcCard = gmCard.message.roll;
       expect(npcCard?.breakdown).toHaveLength(ids.length);
       // Many tables: the sum of row numbers means nothing, so it counts answers.
       expect(npcCard?.total).toBe(ids.length);

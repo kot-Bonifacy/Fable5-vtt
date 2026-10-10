@@ -44,5 +44,8 @@ export function figureCardName(token: Pick<TokenView, 'id' | 'characterId'>): st
 export function askAboutFigureCard(token: Pick<TokenView, 'id' | 'characterId'>): boolean {
   const name = figureCardName(token);
   if (name === null) return false;
+  // Etap 49a: kopia wzorca statysty żyje tylko dla tej figury (niepowiązany
+  // aktor w Foundry) — pytanie o nią byłoby pytaniem bez drugiej odpowiedzi.
+  if (useCharacterStore.getState().characters[token.characterId!]?.templateId) return true;
   return window.confirm(`Usunąć też kartę „${name}”? Zostanie w kampanii, jeśli odmówisz.`);
 }

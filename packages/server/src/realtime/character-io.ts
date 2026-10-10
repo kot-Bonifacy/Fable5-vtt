@@ -36,6 +36,8 @@ export function toCharacterView(character: Character, registry: CpredRegistry): 
     portraitUrl: character.portraitUrl,
     data: parseCharacterData(character.data, registry),
     playReady: character.playReady,
+    template: character.template,
+    templateId: character.templateId,
     revision: character.revision,
     updatedAt: character.updatedAt.toISOString(),
   };

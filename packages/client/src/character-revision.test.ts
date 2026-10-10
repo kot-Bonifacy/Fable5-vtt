@@ -21,6 +21,8 @@ function view(revision: number, notes: string): CharacterView {
     ownerId: 'u1',
     portraitUrl: null,
     playReady: true,
+    template: false,
+    templateId: null,
     data: { ...base, notes },
     revision,
     updatedAt: new Date(revision * 1000).toISOString(),

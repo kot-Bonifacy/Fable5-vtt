@@ -8,6 +8,8 @@ import type {
   CharacterPlayReadyPayload,
   CharacterUpdatePayload,
   CharacterView,
+  CompendiumEntry,
+  CpredCharacterData,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_BACKUP,
@@ -31,20 +33,23 @@ import {
   cpredPlayerItemPatchProblem,
   cpredSpecialtiesProblem,
   createDefaultCharacterData,
+  cpredNpcSheet,
   describeCombatAwareness,
   mergeCharacterData,
   parseCharacterData,
   readCpredCombatAwareness,
   sanitizeCharacterName,
+  sanitizeNpcInput,
   rollFormula,
   sanitizeTokenImageUrl,
   validateCharacterDataPatch,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene } from '../generated/prisma/client.js';
-import { RealtimeError, defineEvent } from './registry.js';
+import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
-import { applyBalance } from './economy.js';
+import { applyBalance, nextRowId } from './economy.js';
+import { campaignEntry } from './compendium.js';
 import { characterTracksAmmo } from './ammo-stock.js';
 import { applyImprovementPoints } from './advancement.js';
 import { emitToCampaignUser } from './state.js';
@@ -121,13 +126,26 @@ export const characterCreateEvent = defineEvent<CharacterCreatePayload, Characte
     if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     const ownerId = payload?.ownerId ?? null;
     await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
+    const portraitUrl = sanitizeTokenImageUrl(payload?.portraitUrl ?? null);
+    if (portraitUrl === undefined) throw new RealtimeError('BAD_REQUEST');
+    requireOwnUploadUrl(portraitUrl, campaignId);
+
+    // Etap 49a: okno „Nowa postać” przysyła statblok — karta powstaje z niego
+    // od razu, a broń i pancerz to te same wiersze co z „Dodaj za darmo”.
+    const sheet =
+      payload?.npc === undefined || payload.npc === null
+        ? createDefaultCharacterData()
+        : await npcSheetFrom(deps, campaignId, payload.npc);
 
     const character = await deps.ctx.prisma.character.create({
       data: {
         campaignId,
         name,
         ownerId,
-        data: JSON.stringify(createDefaultCharacterData()),
+        portraitUrl,
+        // Wzorzec ma sens tylko bez właściciela: kopie stawia MG.
+        template: payload?.template === true && ownerId === null,
+        data: JSON.stringify(sheet),
       },
     });
     const view = toCharacterView(character, deps.ctx.cpred);
@@ -135,6 +153,34 @@ export const characterCreateEvent = defineEvent<CharacterCreatePayload, Characte
     return view;
   },
 });
+
+/** Statblok z okna „Nowa postać” → karta (etap 49a); wpisy kampanii wygrywają z plikiem. */
+async function npcSheetFrom(
+  deps: RealtimeDeps,
+  campaignId: string,
+  raw: unknown,
+): Promise<CpredCharacterData> {
+  const input = sanitizeNpcInput(raw, {
+    skillIds: deps.ctx.cpred.skillIds,
+    roleIds: deps.ctx.cpred.roleIds,
+  });
+  const ids = [...input.weaponIds, input.armorHeadId, input.armorBodyId].filter(
+    (id): id is string => id !== null,
+  );
+  const entryById = new Map<string, CompendiumEntry>();
+  for (const id of ids) {
+    const entry = await campaignEntry(deps, campaignId, id);
+    if (entry) entryById.set(id, entry);
+  }
+  const built = cpredNpcSheet(
+    input,
+    { entryById, weaponTypeById: deps.ctx.compendium.weaponTypeById },
+    nextRowId,
+  );
+  // Przez ten sam odczyt co każda zapisana karta — dokłada gołe ręce i ścina,
+  // czego karta by nie przyjęła.
+  return parseCharacterData(built, deps.ctx.cpred);
+}
 
 export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, CharacterView>({
   name: 'character:update',
@@ -165,6 +211,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       if (!isGm && portraitUrl !== character.portraitUrl) throw new RealtimeError('FORBIDDEN');
       requireOwnUploadUrl(portraitUrl, campaignId);
       data.portraitUrl = portraitUrl;
+    }
+    if ('template' in patch) {
+      if (!isGm) throw new RealtimeError('FORBIDDEN');
+      if (typeof patch.template !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+      data.template = patch.template;
     }
     if ('ownerId' in patch) {
       if (!isGm) throw new RealtimeError('FORBIDDEN');

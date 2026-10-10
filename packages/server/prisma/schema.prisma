@@ -407,6 +407,14 @@ model Character {
    * czynności Roli (`cpredRoleChores`), ale nie zamyka nikomu stołu.
    */
   playReady  Boolean  @default(true)
+  /**
+   * Etap 49a: karta-wzorzec statysty (Foundry: aktor niepowiązany). Figura
+   * postawiona z wzorca bez właściciela dostaje **własną kopię karty**
+   * („Ganger 1", „Ganger 2"…), a wzorzec nigdy nie staje na mapie.
+   */
+  template   Boolean  @default(false)
+  /** Etap 49a: wzorzec, z którego zrobiono tę kartę; kopia ginie z figurą. */
+  templateId String?
   name       String
   campaignId String
   /** Owning player; null = GM-controlled (NPC). */
@@ -427,6 +435,8 @@ model Character {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  templateOf Character? @relation("CharacterTemplate", fields: [templateId], references: [id], onDelete: SetNull)
+  copies   Character[] @relation("CharacterTemplate")
   tokens   Token[]
   bots     BotProfile[]
   relations BotRelation[]

@@ -105,6 +105,8 @@ export interface CharacterLedgerRow {
 export interface CharacterArchive {
   name: string;
   portraitUrl: string | null;
+  /** Etap 49a: karta-wzorzec statysty (brak w starszych plikach = `false`). */
+  template?: boolean;
   /** `CpredCharacterData` jako obiekt — wersja schematu siedzi w środku. */
   data: unknown;
   /** Historia eurodolców (23b) i Punktów Doświadczenia (29a) — bez id. */
@@ -121,6 +123,7 @@ export async function exportCharacter(
     select: {
       name: true,
       portraitUrl: true,
+      template: true,
       data: true,
       campaign: { select: { name: true } },
     },
@@ -157,6 +160,7 @@ export async function exportCharacter(
   const payload: CharacterArchive = {
     name: row.name,
     portraitUrl: row.portraitUrl,
+    template: row.template,
     data: parseJsonColumn(row.data),
     ledger: ledger.map(toRow),
     advancement: advancement.map(toRow),
@@ -217,6 +221,7 @@ export async function importCharacter(
       name,
       ownerId: options.ownerId,
       portraitUrl: typeof payload.portraitUrl === 'string' ? payload.portraitUrl : null,
+      template: payload.template === true && options.ownerId === null,
       data: JSON.stringify(data),
     },
     select: { id: true },
@@ -724,7 +729,12 @@ export interface CampaignArchive {
   /** Kto tu jest kim — sama nazwa i rola; **nigdy** skrót hasła. */
   users: { id: string; name: string; role: string }[];
   members: { userId: string; joinedAt: string }[];
-  characters: (CharacterArchive & { id: string; ownerId: string | null })[];
+  characters: (CharacterArchive & {
+    id: string;
+    ownerId: string | null;
+    /** Etap 49a: wzorzec, z którego zrobiono kartę. */
+    templateId?: string | null;
+  })[];
   scenes: (SceneArchive & { active: boolean })[];
   bots: Record<string, unknown>[];
   compendium: Record<string, unknown>[];
@@ -776,7 +786,10 @@ export async function exportCampaign(
   if (!campaign) return null;
 
   const [characterRows, sceneRows, members] = await Promise.all([
-    prisma.character.findMany({ where: { campaignId }, select: { id: true, ownerId: true } }),
+    prisma.character.findMany({
+      where: { campaignId },
+      select: { id: true, ownerId: true, templateId: true },
+    }),
     prisma.scene.findMany({ where: { campaignId }, select: { id: true, active: true } }),
     prisma.campaignMember.findMany({
       where: { campaignId },
@@ -787,7 +800,14 @@ export async function exportCampaign(
   const characters: CampaignArchive['characters'] = [];
   for (const row of characterRows) {
     const file = await exportCharacter(prisma, row.id);
-    if (file) characters.push({ ...file.payload, id: row.id, ownerId: row.ownerId });
+    if (file) {
+      characters.push({
+        ...file.payload,
+        id: row.id,
+        ownerId: row.ownerId,
+        templateId: row.templateId,
+      });
+    }
   }
   const scenes: CampaignArchive['scenes'] = [];
   for (const row of sceneRows) {

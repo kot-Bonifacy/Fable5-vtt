@@ -36,6 +36,13 @@ export interface CharacterView<TData = unknown> {
    */
   playReady: boolean;
   /**
+   * Etap 49a: karta-wzorzec statysty (Foundry: aktor niepowiązany). Figura
+   * postawiona z wzorca dostaje własną kopię karty; wzorzec na mapę nie wchodzi.
+   */
+  template: boolean;
+  /** Etap 49a: wzorzec, z którego zrobiono tę kartę (kopia ginie z figurą). */
+  templateId: string | null;
+  /**
    * #49 (02.10): numer zapisu wiersza — rośnie przy każdym. Widok z mniejszym
    * numerem niż ten, który klient już ma, jest echem starszego zapisu
    * (przyszedł za animacją rzutu) i nie może cofnąć karty.
@@ -71,6 +78,15 @@ export interface CharacterCreatePayload {
   name: string;
   /** `null` or absent: an NPC. */
   ownerId?: string | null;
+  /** Etap 49a: portret od razu przy zakładaniu karty (okno „Nowa postać”). */
+  portraitUrl?: string | null;
+  /** Etap 49a: karta-wzorzec statysty — kopia przy każdym postawieniu na mapie. */
+  template?: boolean;
+  /**
+   * Etap 49a: statblok z okna „Nowa postać”. Kształt należy do modułu systemu
+   * (CP RED: `CpredNpcInput`), rdzeń niesie go nieprzejrzanego; brak = pusta karta.
+   */
+  npc?: unknown;
 }
 
 /** Mutable character fields; a patch carries any subset. */
@@ -79,6 +95,8 @@ export interface CharacterPatch {
   /** GM only. */
   ownerId?: string | null;
   portraitUrl?: string | null;
+  /** GM only (etap 49a): karta-wzorzec statysty. */
+  template?: boolean;
   /** Partial system data — top-level keys replace the stored ones. */
   data?: Record<string, unknown>;
 }

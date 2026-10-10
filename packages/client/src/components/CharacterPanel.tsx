@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
 import {
   CPRED_CREATION_STEP_LABELS,
@@ -14,7 +14,6 @@ import { confirmDestructive } from '../confirm.js';
 import {
   advanceErrorText,
   awardImprovementPoints,
-  createCharacter,
   deleteCharacter,
   economyErrorText,
   settleMonth,
@@ -25,6 +24,7 @@ import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterSto
 import { useCheckStore } from '../stores/checkStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
+import { useNpcCreateStore } from '../stores/npcCreateStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
 import { CreationGate } from './CreationGate.js';
@@ -127,14 +127,11 @@ export function CharacterPanel() {
   const order = useCharacterStore((s) => s.order);
   const registry = useCharacterStore((s) => s.registry);
   const openSheet = useCharacterStore((s) => s.openSheet);
-  const openCreator = useCreationStore((s) => s.openCreator);
   const creationDraft = useCreationStore((s) => s.draft);
   const creationPeek = useCreationStore((s) => s.peek);
   const waiting = useWaitingCharacters(isGm);
 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
-  const [newName, setNewName] = useState('');
-  const [newOwnerId, setNewOwnerId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [settlement, setSettlement] = useState<string | null>(null);
   const [xpAmount, setXpAmount] = useState('');
@@ -154,22 +151,13 @@ export function CharacterPanel() {
       .catch(() => setPlayers([]));
   }, [isGm]);
 
-  async function submitCreate(event: FormEvent) {
-    event.preventDefault();
-    const name = newName.trim();
-    if (name.length === 0) return;
-    setError(null);
-    const ack = await createCharacter({ name, ownerId: newOwnerId === '' ? null : newOwnerId });
-    if (!ack.ok) {
-      setError(ackErrorText(ack.error));
-      return;
-    }
-    setNewName('');
-    if (ack.data) openSheet(ack.data.id);
-  }
-
   async function changeOwner(characterId: string, ownerId: string) {
     const ack = await updateCharacter(characterId, { ownerId: ownerId === '' ? null : ownerId });
+    if (!ack.ok) setError(ackErrorText(ack.error));
+  }
+
+  async function toggleTemplate(characterId: string, template: boolean) {
+    const ack = await updateCharacter(characterId, { template });
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
 
@@ -263,9 +251,16 @@ export function CharacterPanel() {
     ownerId === null ? 'NPC' : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
 
   // Pojemniki (46b) mają karty bez Cech i PW — osobna grupa na dole listy.
+  // Etap 49a: wzorce statystów i ich kopie też mają własne grupy — pięciu
+  // gangerów z jednej walki nie może spychać drużyny pod krawędź panelu.
   const people = order.filter((id) => {
     const card = characters[id];
-    return card !== undefined && !isContainerCard(card.data);
+    return card !== undefined && !isContainerCard(card.data) && !card.template && !card.templateId;
+  });
+  const templates = order.filter((id) => characters[id]?.template === true);
+  const copies = order.filter((id) => {
+    const card = characters[id];
+    return card !== undefined && !card.template && !!card.templateId;
   });
   const containers = order.filter((id) => {
     const card = characters[id];
@@ -298,7 +293,13 @@ export function CharacterPanel() {
                   })
               : undefined
           }
-          title={isGm ? 'Otwórz kartę — albo przeciągnij postać na mapę' : 'Otwórz kartę'}
+          title={
+            !isGm
+              ? 'Otwórz kartę'
+              : character.template
+                ? 'Otwórz wzorzec — albo przeciągnij na mapę: każda figura dostanie własną kopię karty'
+                : 'Otwórz kartę — albo przeciągnij postać na mapę'
+          }
         >
           {character.portraitUrl ? (
             <img className="character-thumb" src={character.portraitUrl} alt="" />
@@ -319,6 +320,7 @@ export function CharacterPanel() {
               {!character.playReady && (
                 <span className="character-row-pending"> · czeka na przyjęcie przez MG</span>
               )}
+              {character.template && ' · wzorzec — przeciągnij na mapę'}
             </span>
           </span>
         </button>
@@ -327,12 +329,32 @@ export function CharacterPanel() {
             {/* Pojemnik (46b2) nie ma właściciela, nie rzuca i stoi już na mapie. */}
             {!isContainerCard(character.data) && (
               <>
-                <OwnerPicker
-                  ownerId={character.ownerId}
-                  label={ownerName(character.ownerId)}
-                  players={players}
-                  onChange={(ownerId) => void changeOwner(id, ownerId)}
-                />
+                {!character.template && (
+                  <OwnerPicker
+                    ownerId={character.ownerId}
+                    label={ownerName(character.ownerId)}
+                    players={players}
+                    onChange={(ownerId) => void changeOwner(id, ownerId)}
+                  />
+                )}
+                {/* Etap 49a: wzorzec statysty — każda figura z niego to kopia.
+                    Karta gracza i kopia wzorca wzorcem nie zostają. */}
+                {character.ownerId === null && !character.templateId && (
+                  <button
+                    type="button"
+                    className={`small-button ${character.template ? 'small-button--on' : ''}`}
+                    aria-pressed={character.template}
+                    onClick={() => void toggleTemplate(id, !character.template)}
+                    title={
+                      character.template
+                        ? 'Wzorzec statysty: każda figura postawiona z tej karty dostaje własną kopię karty. Kliknij, żeby zrobić z niego zwykłego NPC-a.'
+                        : 'Zrób z tej karty wzorzec statysty: każda figura postawiona na mapie dostanie własną kopię karty z numerem.'
+                    }
+                    aria-label="Wzorzec statysty"
+                  >
+                    ⧉
+                  </button>
+                )}
                 {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
                         żetonie — nietypowe wydarzenie trafia też kogoś, kto
                         akurat nie stoi na aktywnej scenie. */}
@@ -372,12 +394,27 @@ export function CharacterPanel() {
     );
   };
 
+  // Naprawa 3d: a draft on the server shows up here by name, so a player
+  // back from F5 (or from another day) resumes instead of wondering
+  // whether the wizard forgot. The open window's draft wins over the
+  // header learnt at `state:sync`; finishing and discarding clear both.
+  const resume = creationDraft
+    ? creationResumeLabel(
+        creationDraft.name,
+        roleName(creationDraft.roleId) || null,
+        creationDraft.step,
+      )
+    : creationPeek
+      ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
+      : null;
+
   return (
     <div className="character-panel">
       {/* Naprawa 2b: a player waiting for a pool comes first. */}
       {isGm ? <CreationRankPanel /> : null}
       {/* Naprawa 3c: karty prosto z kreatora, z tym, co po Roli zostało. */}
       {isGm ? <CharacterReadyPanel rows={waiting} /> : null}
+      {isGm ? <NewCharacterButton resume={resume} /> : null}
       {isGm ? <PortraitPicker manage /> : null}
       {isGm && order.length > 0 && (
         <div className="character-panel-actions">
@@ -454,11 +491,27 @@ export function CharacterPanel() {
       {settlement ? <p className="character-panel-note">{settlement}</p> : null}
       {order.length === 0 ? (
         <p className="placeholder-text">
-          {isGm ? 'Brak postaci — utwórz pierwszą poniżej.' : 'Nie masz jeszcze żadnej postaci.'}
+          {isGm ? 'Brak postaci — „＋ Nowa postać…” powyżej.' : 'Nie masz jeszcze żadnej postaci.'}
         </p>
       ) : (
         <>
           <ul className="character-list">{people.map(renderRow)}</ul>
+          {templates.length > 0 && (
+            <details className="character-group" data-character-group="templates" open>
+              <summary title="Przeciągnij wzorzec na mapę — każda figura dostaje własną kopię karty z numerem">
+                Wzorce statystów ({templates.length})
+              </summary>
+              <ul className="character-list">{templates.map(renderRow)}</ul>
+            </details>
+          )}
+          {copies.length > 0 && (
+            <details className="character-group" data-character-group="copies">
+              <summary title="Karty figur postawionych z wzorców — giną razem ze swoją figurą">
+                Statyści z wzorców ({copies.length})
+              </summary>
+              <ul className="character-list">{copies.map(renderRow)}</ul>
+            </details>
+          )}
           {/* Etap 46b2 (decyzja MG z 09.10): karty skrzyń i stosów to nie postacie —
               zwinięta grupa, żeby nie spychały drużyny w dół listy. */}
           {containers.length > 0 && (
@@ -470,72 +523,46 @@ export function CharacterPanel() {
         </>
       )}
 
-      {/* Stage 25a. Two doors on purpose: the wizard for a character somebody
-          will play, and the one-line form below for the mannequin a GM needs
-          on the map in five seconds. The form is the GM's alone: for a player
-          it was only a way round the wizard's point budgets, and the server
-          refuses `character:create` from players as well. */}
-      {(() => {
-        // Naprawa 3d: a draft on the server shows up here by name, so a player
-        // back from F5 (or from another day) resumes instead of wondering
-        // whether the wizard forgot. The open window's draft wins over the
-        // header learnt at `state:sync`; finishing and discarding clear both.
-        const resume = creationDraft
-          ? creationResumeLabel(
-              creationDraft.name,
-              roleName(creationDraft.roleId) || null,
-              creationDraft.step,
-            )
-          : creationPeek
-            ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
-            : null;
-        // 24.09: a player's new character starts with the GM's consent and
-        // the rules; the GM opens the wizard as before.
-        if (!isGm) return <CreationGate resume={resume} another={order.length > 0} />;
-        return (
-          <button
-            type="button"
-            className="small-button character-creator-open"
-            onClick={() => void openCreator()}
-            title={
-              resume
-                ? 'Wznów szkic postaci — kreator otworzy się tam, gdzie skończono'
-                : 'Kreator: Rola, Cechy i Umiejętności wg zasad podręcznika'
-            }
-          >
-            {resume ? `🧬 Wznów szkic: ${resume}` : '🧬 Kreator postaci…'}
-          </button>
-        );
-      })()}
-
-      {isGm && (
-        <form className="scene-editor-row character-create" onSubmit={(e) => void submitCreate(e)}>
-          <input
-            type="text"
-            maxLength={64}
-            placeholder="Imię nowej postaci"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <select
-            value={newOwnerId}
-            onChange={(e) => setNewOwnerId(e.target.value)}
-            title="Właściciel nowej postaci"
-          >
-            <option value="">NPC (MG)</option>
-            {players.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="small-button" disabled={newName.trim().length === 0}>
-            Utwórz
-          </button>
-        </form>
-      )}
+      {/* 24.09: a player's new character starts with the GM's consent and the
+          rules. The GM's door is „＋ Nowa postać…” at the top (etap 49a). */}
+      {!isGm && <CreationGate resume={resume} another={order.length > 0} />}
 
       {error && <p className="auth-error">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * Drzwi MG do nowej postaci (etap 49a, zlecenie MG z 10.10).
+ *
+ * Do 49a były trzy: „🧬 Kreator postaci…”, jednowierszowy formularz pustej
+ * karty i szybkie liczby w menu figury — i stały **pod** listą, którą pięciu
+ * gangerów spychało poza ekran. Teraz jest jedno okno z typem na górze panelu
+ * (wzór: „Utwórz aktora” w Foundry VTT), a szkic z kreatora wznawia się obok.
+ */
+function NewCharacterButton({ resume }: { resume: string | null }) {
+  const setOpen = useNpcCreateStore((s) => s.setOpen);
+  const openCreator = useCreationStore((s) => s.openCreator);
+  return (
+    <div className="character-panel-actions character-new">
+      <button
+        type="button"
+        className="small-button small-button--primary"
+        onClick={() => setOpen(true)}
+        title="Statysta (wzorzec do kopiowania na mapę), nazwany NPC albo postać gracza z kreatora"
+      >
+        ＋ Nowa postać…
+      </button>
+      {resume && (
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => void openCreator()}
+          title="Wznów szkic postaci — kreator otworzy się tam, gdzie skończono"
+        >
+          🧬 Wznów szkic: {resume}
+        </button>
+      )}
     </div>
   );
 }

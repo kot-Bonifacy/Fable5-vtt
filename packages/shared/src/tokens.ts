@@ -711,10 +711,10 @@ export interface TokenDuplicatePayload {
  * Zaczyna od dwójki, bo oryginał zostaje przy swojej nazwie (decyzja MG
  * z 05.09): na mapie stoi „Ganger", nie „Ganger 1".
  */
-export function nextTokenCopyName(name: string, taken: readonly string[]): string {
+export function nextTokenCopyName(name: string, taken: readonly string[], first = 2): string {
   const base = name.replace(/\s+\d+$/, '').trim() || name.trim();
   const used = new Set(taken.map((entry) => entry.trim().toLowerCase()));
-  for (let index = 2; ; index++) {
+  for (let index = first; ; index++) {
     const suffix = ` ${index}`;
     // Przycinamy rdzeń, nie numer: „…ki 12" niesie informację, „…ki 1" kłamie.
     const room = TOKEN_NAME_MAX_LENGTH - suffix.length;

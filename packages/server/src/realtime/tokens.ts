@@ -891,11 +891,13 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     if (payload.characterId !== undefined && payload.characterId !== null) {
       if (typeof payload.characterId !== 'string') throw new RealtimeError('BAD_REQUEST');
     }
-    const character = await requireCampaignCharacter(
-      deps.ctx.prisma,
-      campaignId,
-      payload.characterId,
-    );
+    const picked = await requireCampaignCharacter(deps.ctx.prisma, campaignId, payload.characterId);
+    // Etap 49a: wzorzec statysty nie staje na mapie — figura dostaje własną
+    // kopię karty („Ganger 1”, „Ganger 2”…), jak niepowiązany aktor w Foundry.
+    const character =
+      picked && picked.template && picked.ownerId === null
+        ? await createTemplateCopy(deps, campaignId, picked)
+        : picked;
     // Figura karty gracza bez wskazanego właściciela bierze rękę właściciela
     // karty (etap 45): inaczej gracz patrzył jej oczami, a ruszyć nie mógł.
     const ownerId = payload.ownerId ?? character?.ownerId ?? null;
@@ -905,7 +907,7 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     const token = await deps.ctx.prisma.token.create({
       data: {
         sceneId: scene.id,
-        name,
+        name: character !== picked && character ? character.name : name,
         imageUrl,
         x,
         y,
@@ -930,6 +932,42 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     return toTokenView(token, true, linked);
   },
 });
+
+/**
+ * Kopia karty-wzorca dla nowej figury (etap 49a, decyzja MG z 10.10).
+ *
+ * Numer liczy się z kart całej kampanii, nie ze sceny: kopie wzorca żyją
+ * w rosterze obok siebie, a dwa „Ganger 1” na dwóch scenach byłyby nie do
+ * odróżnienia na liście. Karta jak u kopii figury z etapu 35 — pełne PW.
+ */
+async function createTemplateCopy(
+  deps: RealtimeDeps,
+  campaignId: string,
+  template: Character,
+): Promise<Character> {
+  const names = await deps.ctx.prisma.character.findMany({
+    where: { campaignId },
+    select: { name: true },
+  });
+  const name = nextTokenCopyName(
+    template.name,
+    names.map((row) => row.name),
+    1,
+  );
+  const hpMax = toLinkedSheet(template, deps.ctx.cpred).hp.max;
+  const copy = await deps.ctx.prisma.character.create({
+    data: {
+      campaignId,
+      name,
+      ownerId: null,
+      portraitUrl: template.portraitUrl,
+      templateId: template.id,
+      data: writeSheetHp(template, hpMax ?? 0, deps.ctx.cpred).data,
+    },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(copy, deps.ctx.cpred));
+  return copy;
+}
 
 /**
  * Kopia figury obok oryginału (etap 35, `token:duplicate`).
@@ -1014,6 +1052,9 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
               campaignId,
               name,
               ownerId: null,
+              portraitUrl: origin.portraitUrl,
+              // Etap 49a: kopia kopii należy do tego samego wzorca.
+              templateId: origin.templateId,
               // Świeża figura (decyzja MG przy etapie 35): pełne PW. Reszta
               // karty jedzie jak stała — łącznie z ranami, bo tak samo
               // kopiował się profil bojowy do 38a.

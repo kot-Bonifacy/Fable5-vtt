@@ -17,7 +17,21 @@ export function creatorWindow(page: Page): Locator {
 /** Otwiera kreator z zakładki „Postacie” i przechodzi okno zasad, jeśli się pokaże. */
 export async function openCreator(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Postacie', exact: true }).click();
-  await page.getByRole('button', { name: /Kreator postaci|Wznów szkic/ }).click();
+  // Etap 49a: MG wchodzi przez okno „Nowa postać” → „Postać gracza”; szkic
+  // wznawia się obok. Gracz ma dalej „Kreator postaci…” z bramki zgody.
+  const door = page.getByRole('button', { name: /Kreator postaci|Wznów szkic|Nowa postać/ });
+  const label = (await door.first().textContent()) ?? '';
+  const resume = page.getByRole('button', { name: /Wznów szkic/ });
+  if (/Nowa postać/.test(label) && !(await resume.isVisible())) {
+    await door.first().click();
+    const npc = page.getByRole('region', { name: 'Nowa postać' });
+    await npc.getByRole('radio', { name: 'Postać gracza' }).click();
+    await npc.getByRole('button', { name: /Otwórz kreator postaci/ }).click();
+  } else if (await resume.isVisible()) {
+    await resume.click();
+  } else {
+    await door.first().click();
+  }
   const rules = page.getByRole('button', { name: 'Rozumiem, zaczynam' });
   const window = creatorWindow(page);
   await expect(rules.or(window)).toBeVisible();
