@@ -111,21 +111,20 @@
 }
 
 .top-bar-user {
-  font-size: 0.88rem;
-  color: var(--text-dim);
+  font-size: 0.9rem;
+  color: var(--text);
+  white-space: nowrap;
 }
 
+/* Link „← Wróć do gry” w Panelu MG; w samym pasku „Panel MG” jest kaflem. */
 .top-bar-link {
   font-size: 0.88rem;
   color: var(--accent);
   text-decoration: none;
 }
 
-/* „Wyloguj", „Panel MG" i ustawienia — ta sama rodzina co małe
-   przyciski paneli, o stopień większe, żeby wiersz miał jeden dystans czytania. */
-.top-bar .small-button {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.85rem;
+.top-bar-link:hover {
+  text-decoration: underline;
 }
 
 .top-bar .status-dot {
@@ -133,8 +132,103 @@
   height: 11px;
 }
 
-.top-bar-link:hover {
-  text-decoration: underline;
+/* ---------------------------------------------------------------------------
+   Jeden krój kontrolek na czerwonej belce (10.10). Wcześniej obok siebie stały
+   zaokrąglone pigułki, czarne kafle trzech wysokości, obrysowany przełącznik
+   i goły link. Teraz trzy rodzaje, każdy w jednym wydaniu:
+   - przycisk = czarny kafel o kanciastych rogach i wspólnej wysokości
+     (także zegar MG, „⚠ N”, „Włącz tryb turowy” i link „Panel MG”);
+   - stan (przygotowanie, sesja, poligon) = obrysowany chip w wersalikach;
+   - zwykły napis (kampania, połączenie, nick) — bez ramki.
+   Ikony narzędzi (?, ⚙, ♫) są kwadratami i stoją ciaśniej, jak jedna grupa.
+   --------------------------------------------------------------------------- */
+
+.top-bar {
+  --top-bar-control: 2rem;
+}
+
+.top-bar .small-button,
+.top-bar .top-bar-clock--gm,
+.top-bar .player-move-issues,
+.top-bar .combat-bar-start {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: var(--top-bar-control);
+  padding: 0 0.75rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.top-bar .small-button:hover:not(:disabled),
+.top-bar .top-bar-clock--gm:hover,
+.top-bar .player-move-issues:hover,
+.top-bar .combat-bar-start:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-inset);
+}
+
+.top-bar .small-button--on {
+  border-color: var(--ok-line);
+  color: var(--ok-ink);
+}
+
+.top-bar .session-end--confirm {
+  color: var(--cp-red);
+  border-color: var(--cp-red);
+}
+
+.top-bar .top-bar-clock--due {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.top-bar-tools,
+.top-bar-account {
+  display: flex;
+  align-items: center;
+}
+
+.top-bar-tools {
+  gap: 0.3rem;
+}
+
+.top-bar-account {
+  gap: 0.5rem;
+}
+
+.top-bar-tools .small-button {
+  min-width: var(--top-bar-control);
+  padding: 0 0.45rem;
+  font-size: 1rem;
+}
+
+.top-bar-tools .small-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Stany: jeden chip, kanciasty jak kafle obok. */
+.top-bar .session-state,
+.top-bar .top-bar-sandbox {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 1.4rem;
+  padding: 0 0.45rem;
+  border-radius: 0;
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 /* --- GM panel --- */

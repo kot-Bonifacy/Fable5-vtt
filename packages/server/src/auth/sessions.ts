@@ -18,6 +18,7 @@ export function toSessionUser(user: User): SessionUser {
     // row) falls back to the default rather than breaking the session.
     diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
     owner: user.owner,
+    login: user.login,
   };
 }
 

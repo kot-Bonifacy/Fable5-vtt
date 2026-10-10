@@ -23,6 +23,12 @@ export interface SessionUser {
    * panel (GM accounts, password resets) and the whole-database backups.
    */
   owner: boolean;
+  /**
+   * GM accounts only: the login, which the top bar shows as the GM's nick —
+   * every GM sits at the table as „MG", so `name` says nothing there.
+   * Optional because bot actors are built without it.
+   */
+  login?: string | null;
 }
 
 export interface CampaignSummary {

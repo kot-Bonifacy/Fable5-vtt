@@ -817,8 +817,10 @@
 }
 
 .player-move-switch {
+  box-sizing: border-box;
   display: flex;
   align-items: stretch;
+  height: var(--top-bar-control, 2rem);
   border: 1px solid var(--cp-on-red-faint);
 }
 
@@ -834,13 +836,13 @@
 }
 
 .player-move-option {
-  padding: 0.3rem 0.6rem;
+  padding: 0 0.65rem;
   border: 0;
   border-left: 1px solid var(--cp-on-red-faint);
   border-radius: 0;
   background: transparent;
   color: var(--cp-on-red);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -855,15 +857,9 @@
   font-weight: 600;
 }
 
+/* Wygląd „⚠ N” — kafel jak reszta przycisków belki (04-panels.css). */
 .player-move-issues {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--cp-on-red);
-  border-radius: 0;
-  background: var(--cp-red-deep);
-  color: var(--cp-on-red);
-  font-size: 0.8rem;
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .player-move-popover {

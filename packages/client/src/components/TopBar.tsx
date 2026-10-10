@@ -46,23 +46,30 @@ export function TopBar() {
         {/* Etap 27d: ☀/☾ i ⌨ przeniosły się do okna ustawień — pasek nosi
             stan gry, a nie listę preferencji jednego użytkownika. */}
         {/* AI właściciela (44d): prośby i „Udostępniam AI” z każdego konta z flagą. */}
-        <OwnerAiButton />
-        <ShortcutsButton />
-        <SettingsButton />
-        <MusicButton />
-        {user && (
-          <span className="top-bar-user">
-            {user.name} ({user.role === 'GM' ? 'MG' : 'Gracz'})
-          </span>
-        )}
-        {user?.role === 'GM' && (
-          <Link className="top-bar-link" to="/gm">
-            Panel MG
-          </Link>
-        )}
-        <button type="button" className="small-button" onClick={() => void logout()}>
-          Wyloguj
-        </button>
+        <div className="top-bar-tools">
+          <OwnerAiButton />
+          <ShortcutsButton />
+          <SettingsButton />
+          <MusicButton />
+        </div>
+        {/* Konto: MG podpisany loginem (każde konto MG siedzi przy stole jako
+            „MG”, więc samo imię nic tu nie mówi), gracz imieniem. Rolę niesie
+            „Panel MG” obok, nie dopisek w nawiasie. */}
+        <div className="top-bar-account">
+          {user && (
+            <span className="top-bar-user" title={user.role === 'GM' ? 'Prowadzący grę' : 'Gracz'}>
+              {user.role === 'GM' ? (user.login ?? user.name) : user.name}
+            </span>
+          )}
+          {user?.role === 'GM' && (
+            <Link className="small-button" to="/gm">
+              Panel MG
+            </Link>
+          )}
+          <button type="button" className="small-button" onClick={() => void logout()}>
+            Wyloguj
+          </button>
+        </div>
       </div>
     </header>
   );
