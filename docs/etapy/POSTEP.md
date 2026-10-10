@@ -236,6 +236,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 10.10 (ósma) — poprawka spoza etapów: krok „Wyposażenie” w kreatorze
+
+**Zlecenie MG:** „zorganizuj lepiej wygląd zakładki Wyposażenie” w kreatorze i usuń komunikaty,
+które nowemu graczowi mówią, czego VTT nie ma (przykład: 800 ed na Modę).
+
+**Zrobione:** krok to **dwie kolumny** — sklep po lewej (półki, szukaj, podpowiedź o poziomie,
+filtr typów, lista bez własnego przewijania), po prawej przyklejone „Twoje wyposażenie”: kwota,
+Wyposażenie Roli gratis, **Koszyk** z sumą, „Ruszam bez zakupów”, ostrzeżenie o amunicji (bez
+powtórzeń nazw), „Po utworzeniu postaci”. Przy oknie węższym niż 52rem (`@container` na
+`.creator-body`) jedna kolumna, koszyk na górze. **`creationLeftOutside` mówi, co dojdzie, a nie
+czego brak:** wiersza o Modzie nie ma wcale (decyzja w `decyzje-i-uproszczenia.md`, „Kreator
+postaci — naprawa”), reszta przepisana; parametr `data` usunięty. Nagłówki w podsumowaniu i na
+ekranie końcowym: „Po utworzeniu postaci” / „Co jeszcze dojdzie”.
+
+**Weryfikacja:** vitest `creation.test.ts` 88/88, `tsc` client/shared/server, eslint i prettier
+zmienionych plików; E2E nieuruchamiane (napis „… ed startowych”, na który patrzą `t3a` i `t46c`,
+zostawiony). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”): 1600, 900
+i 700 px, koszyk pusty i z bronią + wybór gratisu Solo, podsumowanie. **Ślady w `dev.db`:** szkic
+kreatora MG (był pusty „bez Roli”) ma teraz Kompletny Pakiet, Solo, dwie bronie w koszyku i Ciężki
+pistolet z gratisu.
+
 ### Sesja 10.10 (siódma) — zaległości spoza etapów: testy leczenia MG, kwoty, pojemniki, „podejście” bota
 
 **Zlecenie MG:** „napraw kilka zapisanych zaległości”, pytać o niejasności. **Decyzje MG (pytania na
@@ -264,25 +285,3 @@ kroju (okno „Wymiana”: „Gotówka”, „Kasa handlarza”).
 `46a.11` — kwoty, odczyt DOM z U+202F) i Chromium (Marek, koszyk bez „Bijatyki”). Listy kart bez
 pojemników nieoglądane w przeglądarce — zmiana to filtr `isContainerCard`, `tsc` czysty. **Ślady
 w `dev.db`:** brak (wszystko na instancji E2E i w bazach testów).
-
-### Sesja 10.10 (szósta) — poprawka spoza etapów: zakładka tabel losowych czytelniejsza
-
-**Zlecenie MG:** „zakładka Tabela jest mało intuicyjna” — ocena i wyjaśnienie, potem „wprowadź
-sugerowane zmiany”.
-
-**Zrobione:** zakładka nazywa się **„Losowe”**, nad listą jedno zdanie, do czego służy (i `/tab`).
-Lista: nagłówek rozwija podgląd wierszy (zakres · treść · ↳ tabela dalej), edycja pod ✎, dwa
-przyciski z napisem **„🔒 Losuj dla MG”** i **„📢 Losuj jawnie”** zamiast „Losuj” i gołego 🔊
-(domyślny pogrubiony — tak losuje `/tab`). Edytor: zakres to **jedno pole** („7”, „4–6”;
-`parseRandomTableRange` w `shared/tables.ts` + testy), każdy wiersz w ramce, treść obok zakresu;
-„podrzut” to przycisk ↳ rozwijający „…i losuj dalej z:”. **„Rozpisz zakres” → „Wiersz na każdą
-liczbę” i działa tylko na pustych wierszach** — wcześniej jedno kliknięcie w gotowej tabeli
-kasowało jej treść bez pytania. Etykiety „Formuła” i „Widoczność” w jednej linii.
-**Nie zrobione z propozycji:** „Próbne losowanie” w edytorze — wymagałoby rzutu u klienta, a rzuty
-idą wyłącznie przez serwer (`CLAUDE.md`).
-
-**Weryfikacja:** vitest shared `tables.test.ts` (24), client 330, `tsc` client, eslint/prettier
-zmienionych plików; E2E `t8c-narracja` (tabele, #72, #73) 6/6 — spec i `t8a` przepisane na nowe
-nazwy (`t8a` nieuruchamiane). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”):
-lista z podglądem, edytor szeroki i przy panelu 320 px, odmowa zakresu „2-x”, blokada
-„Wiersz na każdą liczbę” po wpisaniu treści. **Ślady w `dev.db`:** brak (nowa tabela anulowana).

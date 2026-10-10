@@ -2206,10 +2206,17 @@ function CreatorNoStockWarning({ sheet }: { sheet: CpredCharacterData }) {
   const weaponTypes = useCompendiumStore((s) => s.weaponTypeById);
   const names = useMemo(() => {
     const types = new Map(Object.entries(weaponTypes));
-    return cpredWeaponsWithoutStock(sheet, (compendiumId) => {
-      const entry = compendiumId ? entriesById[compendiumId] : undefined;
-      return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById: types }) : null;
-    });
+    // Dwie sztuki tej samej broni (gratis Roli i koszyk) to jedna nazwa.
+    return [
+      ...new Set(
+        cpredWeaponsWithoutStock(sheet, (compendiumId) => {
+          const entry = compendiumId ? entriesById[compendiumId] : undefined;
+          return entry && isWeaponEntry(entry)
+            ? resolveWeapon(entry, { weaponTypeById: types })
+            : null;
+        }),
+      ),
+    ];
   }, [sheet, entriesById, weaponTypes]);
   if (names.length === 0) return null;
   return (
@@ -2300,220 +2307,227 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
 
   return (
     <div className="creator-step creator-gear">
-      <div className="creator-budget" data-creation-field="purchases">
-        <strong>{formatEddies(left)} ed</strong>
-        <span className="creator-hint">
-          zostaje z {formatEddies(budget)} ed startowych · wydane {formatEddies(spent)} ed · reszta
-          zostaje na karcie
-        </span>
-      </div>
-      <p className="creator-hint">
-        Na półce: poziom {CREATION_SHOP_TIER} ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]}) dla
-        wszystkich
-        {roleName
-          ? ` i narzędzia Roli ${roleName} do poziomu ${CREATION_ROLE_TOOL_TIER} (${SHOP_TIER_LABELS[CREATION_ROLE_TOOL_TIER]}).`
-          : '. Narzędzia Roli pojawią się po jej wyborze.'}{' '}
-        Kliknij nazwę, żeby zobaczyć, co kupujesz.
-      </p>
-      <CreatorRoleKit draft={draft} data={data} />
-      <CreatorLeftOutside draft={draft} data={data} collapsed />
-      <CreatorNoStockWarning sheet={outcomeSheet} />
-
-      {unavailable.length > 0 && (
-        <ul className="creator-basket">
-          {unavailable.map(([id, qty]) => (
-            <li key={id}>
-              <span>
-                {entriesById[creationBasketEntry(id).entryId]?.name ??
-                  'Niedostępna pozycja koszyka'}{' '}
-                ×{qty} — brak wpisu lub ceny. Usuń przed zakończeniem.
-              </span>
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                onClick={() => void buyCreationEntry(id, -1)}
-              >
-                Odłóż jedną sztukę
-              </button>
-            </li>
+      <section className="creator-gear-shop" aria-label="Sklep">
+        <div className="creator-shop-head">
+          {CREATOR_SHELVES.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={`compendium-category ${shelf === entry.id ? 'compendium-category--active' : ''}`}
+              onClick={() => setShelf(entry.id)}
+            >
+              {entry.label}
+            </button>
           ))}
-        </ul>
-      )}
-      {lines.length > 0 ? (
-        <ul className="creator-basket">
-          {lines.map((line) => {
-            const entry = entriesById[creationBasketEntry(line.entryId).entryId];
-            // A row the shelf no longer carries (the GM moved it, or it was
-            // bought under the old price ladder) says so where it can be fixed.
-            const onShelf = entry ? creationShopVerdict(entry, draft.roleId, shopRules) : null;
+          <input
+            className="compendium-search"
+            type="search"
+            value={query}
+            placeholder="Szukaj…"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+
+        <p className="creator-hint">
+          Na półce: {SHOP_TIER_LABELS[CREATION_SHOP_TIER]} dla wszystkich
+          {roleName
+            ? ` i narzędzia Roli ${roleName} do poziomu ${SHOP_TIER_LABELS[CREATION_ROLE_TOOL_TIER]}.`
+            : '; narzędzia Roli pojawią się po jej wyborze.'}{' '}
+          Kliknij nazwę, żeby obejrzeć rzecz.
+        </p>
+
+        {shelf === 'weapon' ? (
+          <WeaponTypeFilter weapons={shelfWeapons} value={weaponType} onChange={setWeaponType} />
+        ) : null}
+
+        <ul className="creator-shop">
+          {shelfEntries.length === 0 ? (
+            <li className="placeholder-text">
+              Nic na poziomie 1 ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]})
+              {roleName ? ' ani wśród narzędzi Roli' : ''} w tej kategorii.
+            </li>
+          ) : null}
+          {shelfEntries.map(({ entry, verdict }) => {
+            const price = entryPrice(entry) ?? 0;
+            // Etap 46c: amunicja leży w koszyku pod kluczem z kalibrem — „×N”
+            // przy nazwie liczy paczki wszystkich kalibrów tego wpisu.
+            const held = Object.entries(draft.purchases)
+              .filter(([key]) => creationBasketEntry(key).entryId === entry.id)
+              .reduce((sum, [, qty]) => sum + qty, 0);
+            const calibres = isAmmoEntry(entry)
+              ? cpredCalibreOptions(toAmmoProfile(entry), Object.values(weaponTypes))
+              : [];
+            const ownCalibre = calibres.find((option) =>
+              outcomeSheet.weapons.some(
+                (row) => cpredCalibreKey(row.ammoType) === cpredCalibreKey(option.calibre),
+              ),
+            );
+            const calibre =
+              calibres.find((option) => option.weaponTypeId === calibreOf[entry.id]) ??
+              ownCalibre ??
+              calibres[0];
+            if (isAmmoEntry(entry) && !calibre) return null;
+            const open = openId === entry.id;
+            const detailsId = `creator-shop-details-${entry.id}`;
             return (
-              <li key={line.entryId}>
-                <span className="creator-basket-name">
-                  {entry && shelfIcons(entry.category) ? (
-                    <ItemIcon icon={entryIcon(entry)} />
-                  ) : null}
-                  {line.name}
-                  {line.qty > 1 ? <span className="creator-basket-qty">×{line.qty}</span> : null}
-                  {onShelf && !onShelf.allowed ? (
-                    <span className="creator-basket-locked">
-                      {' '}
-                      — {creationShopRefusalText(onShelf.tier, onShelf.roleTool)}
+              <li key={entry.id} className="creator-shop-item">
+                <div className="creator-shop-row">
+                  <button
+                    type="button"
+                    className="creator-shop-name"
+                    aria-expanded={open}
+                    aria-controls={detailsId}
+                    onClick={() => setOpenId(open ? null : entry.id)}
+                  >
+                    <span className="creator-shop-caret" aria-hidden="true">
+                      {open ? '▾' : '▸'}
                     </span>
+                    {shelfIcons(entry.category) ? <ItemIcon icon={entryIcon(entry)} /> : null}
+                    {entry.name}
+                    {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
+                    {verdict.roleTool ? (
+                      <span className="creator-tag creator-tag--hint">narzędzie Roli</span>
+                    ) : null}
+                  </button>
+                  {calibre ? (
+                    <select
+                      className="creator-shop-calibre"
+                      value={calibre.weaponTypeId}
+                      title={`Kaliber — do jakiej broni. Paczka to ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt. (s. 344).`}
+                      aria-label={`Kaliber: ${entry.name}`}
+                      onChange={(event) =>
+                        setCalibreOf((current) => ({ ...current, [entry.id]: event.target.value }))
+                      }
+                    >
+                      {calibres.map((option) => (
+                        <option key={option.weaponTypeId} value={option.weaponTypeId}>
+                          {option.calibre}
+                        </option>
+                      ))}
+                    </select>
                   ) : null}
-                </span>
-                <span className="creator-basket-price">{formatEddies(line.total)} ed</span>
-                <button
-                  type="button"
-                  className="small-button"
-                  disabled={busy}
-                  title="Odłóż jedną sztukę"
-                  aria-label={`Odłóż jedną sztukę: ${line.name}`}
-                  onClick={() => void buyCreationEntry(line.entryId, -1)}
-                >
-                  −
-                </button>
+                  <span className="creator-shop-price">
+                    {formatEddies(price)} ed
+                    {calibre ? ` / ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt.` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="small-button"
+                    disabled={busy || price > left}
+                    title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
+                    aria-label={`Dołóż do koszyka: ${entry.name}`}
+                    onClick={() => void buyCreationEntry(entry.id, 1, calibre?.weaponTypeId)}
+                  >
+                    + Dołóż
+                  </button>
+                </div>
+                {open ? (
+                  <CreatorShopDetails id={detailsId} entry={entry} roleTool={verdict.roleTool} />
+                ) : null}
               </li>
             );
           })}
         </ul>
-      ) : unavailable.length === 0 ? (
-        <p className="creator-hint">
-          Koszyk jest pusty. Wszystko można też dokupić później — eurodolce zostają na karcie.
-        </p>
-      ) : null}
-      {/* Etap 48a (decyzja MG z 10.10): pusty koszyk gracza jest brakiem, dopóki
-          gracz nie powie wprost, że rusza bez zakupów — żeby nikt nie wyszedł
-          z kreatora z gołymi rękami tylko dlatego, że zapomniał o tym kroku. */}
-      {!isGm && lines.length === 0 && (
-        <label className="creator-checkbox">
-          <input
-            type="checkbox"
-            checked={draft.skipPurchases}
-            disabled={busy}
-            onChange={(event) => void patch({ skipPurchases: event.target.checked })}
-          />
-          <span>
-            Ruszam bez zakupów
-            <span className="creator-hint">
-              Cała gotówka zostanie na karcie — wyposażenie kupisz później u handlarza.
-            </span>
+      </section>
+
+      <aside className="creator-gear-cart" aria-label="Twoje wyposażenie">
+        <div className="creator-budget" data-creation-field="purchases">
+          <strong>{formatEddies(left)} ed</strong>
+          <span className="creator-hint">
+            z {formatEddies(budget)} ed startowych · reszta zostaje na karcie
           </span>
-        </label>
-      )}
-
-      <div className="creator-shop-head">
-        {CREATOR_SHELVES.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            className={`compendium-category ${shelf === entry.id ? 'compendium-category--active' : ''}`}
-            onClick={() => setShelf(entry.id)}
-          >
-            {entry.label}
-          </button>
-        ))}
-        <input
-          className="compendium-search"
-          type="search"
-          value={query}
-          placeholder="Szukaj…"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </div>
-
-      {shelf === 'weapon' ? (
-        <WeaponTypeFilter weapons={shelfWeapons} value={weaponType} onChange={setWeaponType} />
-      ) : null}
-
-      <ul className="creator-shop">
-        {shelfEntries.length === 0 ? (
-          <li className="placeholder-text">
-            Nic na poziomie 1 ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]})
-            {roleName ? ' ani wśród narzędzi Roli' : ''} w tej kategorii.
-          </li>
-        ) : null}
-        {shelfEntries.map(({ entry, verdict }) => {
-          const price = entryPrice(entry) ?? 0;
-          // Etap 46c: amunicja leży w koszyku pod kluczem z kalibrem — „×N”
-          // przy nazwie liczy paczki wszystkich kalibrów tego wpisu.
-          const held = Object.entries(draft.purchases)
-            .filter(([key]) => creationBasketEntry(key).entryId === entry.id)
-            .reduce((sum, [, qty]) => sum + qty, 0);
-          const calibres = isAmmoEntry(entry)
-            ? cpredCalibreOptions(toAmmoProfile(entry), Object.values(weaponTypes))
-            : [];
-          const ownCalibre = calibres.find((option) =>
-            outcomeSheet.weapons.some(
-              (row) => cpredCalibreKey(row.ammoType) === cpredCalibreKey(option.calibre),
-            ),
-          );
-          const calibre =
-            calibres.find((option) => option.weaponTypeId === calibreOf[entry.id]) ??
-            ownCalibre ??
-            calibres[0];
-          if (isAmmoEntry(entry) && !calibre) return null;
-          const open = openId === entry.id;
-          const detailsId = `creator-shop-details-${entry.id}`;
-          return (
-            <li key={entry.id} className="creator-shop-item">
-              <div className="creator-shop-row">
-                <button
-                  type="button"
-                  className="creator-shop-name"
-                  aria-expanded={open}
-                  aria-controls={detailsId}
-                  onClick={() => setOpenId(open ? null : entry.id)}
-                >
-                  <span className="creator-shop-caret" aria-hidden="true">
-                    {open ? '▾' : '▸'}
+        </div>
+        <CreatorRoleKit draft={draft} data={data} />
+        <section className="creator-summary-section" aria-label="Koszyk">
+          <h4>Koszyk{spent > 0 ? ` — ${formatEddies(spent)} ed` : ''}</h4>
+          {unavailable.length > 0 && (
+            <ul className="creator-basket">
+              {unavailable.map(([id, qty]) => (
+                <li key={id}>
+                  <span>
+                    {entriesById[creationBasketEntry(id).entryId]?.name ??
+                      'Niedostępna pozycja koszyka'}{' '}
+                    ×{qty} — brak wpisu lub ceny. Usuń przed zakończeniem.
                   </span>
-                  {shelfIcons(entry.category) ? <ItemIcon icon={entryIcon(entry)} /> : null}
-                  {entry.name}
-                  {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
-                  {verdict.roleTool ? (
-                    <span className="creator-tag creator-tag--hint">narzędzie Roli</span>
-                  ) : null}
-                </button>
-                {calibre ? (
-                  <select
-                    className="creator-shop-calibre"
-                    value={calibre.weaponTypeId}
-                    title={`Kaliber — do jakiej broni. Paczka to ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt. (s. 344).`}
-                    aria-label={`Kaliber: ${entry.name}`}
-                    onChange={(event) =>
-                      setCalibreOf((current) => ({ ...current, [entry.id]: event.target.value }))
-                    }
+                  <button
+                    type="button"
+                    className="small-button"
+                    disabled={busy}
+                    onClick={() => void buyCreationEntry(id, -1)}
                   >
-                    {calibres.map((option) => (
-                      <option key={option.weaponTypeId} value={option.weaponTypeId}>
-                        {option.calibre}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                <span className="creator-shop-price">
-                  {formatEddies(price)} ed
-                  {calibre ? ` / ${CPRED_AMMO_PACK_SIZE[calibre.pattern]} szt.` : ''}
+                    Odłóż jedną sztukę
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {lines.length > 0 ? (
+            <ul className="creator-basket">
+              {lines.map((line) => {
+                const entry = entriesById[creationBasketEntry(line.entryId).entryId];
+                // A row the shelf no longer carries (the GM moved it, or it was
+                // bought under the old price ladder) says so where it can be fixed.
+                const onShelf = entry ? creationShopVerdict(entry, draft.roleId, shopRules) : null;
+                return (
+                  <li key={line.entryId}>
+                    <span className="creator-basket-name">
+                      {entry && shelfIcons(entry.category) ? (
+                        <ItemIcon icon={entryIcon(entry)} />
+                      ) : null}
+                      {line.name}
+                      {line.qty > 1 ? (
+                        <span className="creator-basket-qty">×{line.qty}</span>
+                      ) : null}
+                      {onShelf && !onShelf.allowed ? (
+                        <span className="creator-basket-locked">
+                          {' '}
+                          — {creationShopRefusalText(onShelf.tier, onShelf.roleTool)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="creator-basket-price">{formatEddies(line.total)} ed</span>
+                    <button
+                      type="button"
+                      className="small-button"
+                      disabled={busy}
+                      title="Odłóż jedną sztukę"
+                      aria-label={`Odłóż jedną sztukę: ${line.name}`}
+                      onClick={() => void buyCreationEntry(line.entryId, -1)}
+                    >
+                      −
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : unavailable.length === 0 ? (
+            <p className="creator-hint">
+              Pusty — wybierz rzecz z półki i kliknij „+ Dołóż”. Resztę dokupisz w grze.
+            </p>
+          ) : null}
+          {/* Etap 48a (decyzja MG z 10.10): pusty koszyk gracza jest brakiem, dopóki
+              gracz nie powie wprost, że rusza bez zakupów — żeby nikt nie wyszedł
+              z kreatora z gołymi rękami tylko dlatego, że zapomniał o tym kroku. */}
+          {!isGm && lines.length === 0 && (
+            <label className="creator-checkbox">
+              <input
+                type="checkbox"
+                checked={draft.skipPurchases}
+                disabled={busy}
+                onChange={(event) => void patch({ skipPurchases: event.target.checked })}
+              />
+              <span>
+                Ruszam bez zakupów
+                <span className="creator-hint">
+                  Cała gotówka zostanie na karcie — wyposażenie kupisz później u handlarza.
                 </span>
-                <button
-                  type="button"
-                  className="small-button"
-                  disabled={busy || price > left}
-                  title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
-                  aria-label={`Dołóż do koszyka: ${entry.name}`}
-                  onClick={() => void buyCreationEntry(entry.id, 1, calibre?.weaponTypeId)}
-                >
-                  + Dołóż
-                </button>
-              </div>
-              {open ? (
-                <CreatorShopDetails id={detailsId} entry={entry} roleTool={verdict.roleTool} />
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+              </span>
+            </label>
+          )}
+        </section>
+        <CreatorNoStockWarning sheet={outcomeSheet} />
+        <CreatorLeftOutside draft={draft} data={data} compact />
+      </aside>
     </div>
   );
 }
@@ -2904,8 +2918,8 @@ function SummaryStep({
       <SummaryGear sheet={sheet} budget={outcome.budget} spent={outcome.spent} npc={!owned} />
       <CreatorNoStockWarning sheet={sheet} />
 
-      <section className="creator-summary-section" aria-label="Czego kreator nie wydaje">
-        <h4>Czego kreator nie wydaje</h4>
+      <section className="creator-summary-section" aria-label="Po utworzeniu postaci">
+        <h4>Po utworzeniu postaci</h4>
         <CreatorLeftOutside draft={draft} data={data} />
       </section>
 
@@ -3039,28 +3053,28 @@ function SummaryGear({
 }
 
 /**
- * „Czego kreator nie wydaje" (naprawa 3a) — the deliberate gaps of 25c from
- * one shared list, so the gear step, the summary and the last screen cannot
- * say three different things. Folded in the gear step, where the shop is the
- * point; open everywhere else.
+ * „Po utworzeniu postaci" (naprawa 3a, przepisane 10.10) — the deliberate gaps
+ * of 25c from one shared list, said as what comes next, so the gear step, the
+ * summary and the last screen cannot say three different things. In the gear
+ * step (`compact`) it sits small under the basket and skips the Role's chrome,
+ * which the gratis list right above already names.
  */
 function CreatorLeftOutside({
   draft,
   data,
-  collapsed = false,
+  compact = false,
 }: {
   draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice'>;
   data: CpredCreationData;
-  collapsed?: boolean;
+  compact?: boolean;
 }) {
   const entriesById = useCompendiumStore((s) => s.entries);
   const lines = creationLeftOutside(
     draft,
-    data,
     creationRoleKit(draft, data, (entryId) => entriesById[entryId]),
-  );
+  ).filter((line) => !compact || line.id !== 'kit');
   const list = (
-    <ul className="creator-outside-list">
+    <ul className={`creator-outside-list${compact ? ' creator-hint' : ''}`}>
       {lines.map((line) => (
         <li key={line.id}>
           <strong>{line.title}.</strong> {line.text}
@@ -3068,12 +3082,12 @@ function CreatorLeftOutside({
       ))}
     </ul>
   );
-  if (!collapsed) return list;
+  if (!compact) return list;
   return (
-    <details className="creator-outside">
-      <summary>Poza sklepem kreatora: {lines.map((line) => line.title).join(', ')}</summary>
+    <section className="creator-summary-section" aria-label="Po utworzeniu postaci">
+      <h4>Po utworzeniu postaci</h4>
       {list}
-    </details>
+    </section>
   );
 }
 
@@ -3225,8 +3239,8 @@ function CreatorFinishedScreen({
           </div>
         ) : null}
 
-        <section className="creator-summary-section" aria-label="Czego kreator nie wydał">
-          <h4>Czego kreator nie wydał</h4>
+        <section className="creator-summary-section" aria-label="Co jeszcze dojdzie">
+          <h4>Co jeszcze dojdzie</h4>
           <CreatorLeftOutside draft={draft} data={data} />
         </section>
 

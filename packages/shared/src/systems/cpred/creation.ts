@@ -1907,21 +1907,22 @@ export function creationOutcome(
   };
 }
 
-/** One thing the book hands a new character that the wizard does not. */
+/** One thing a new character still gets after the wizard — told as what comes next. */
 export interface CpredCreationOutside {
-  id: 'package' | 'fashion' | 'cyberware' | 'kit';
+  id: 'package' | 'cyberware' | 'kit';
   title: string;
   text: string;
 }
 
 /**
- * The deliberate gaps of stage 25c, said where the player decides (the gear
- * step), before „Utwórz postać" and after it — so „gotowe" never stands for
- * the rulebook's whole starting kit (naprawa 3a).
+ * What arrives after „Utwórz postać" (naprawa 3a, przepisane 10.10): the
+ * wizard's deliberate gaps of 25c, said as the next step and not as a missing
+ * feature. The book's fashion money (800 ed, Kompletny Pakiet) is not named at
+ * all — a new player read „VTT nie ma katalogu Mody" as something taken away
+ * (decyzja MG z 10.10, `decyzje-i-uproszczenia.md`).
  */
 export function creationLeftOutside(
   draft: Pick<CpredCreationDraft, 'method'>,
-  data: Pick<CpredCreationData, 'budgets'>,
   /** Wyposażenie Roli gratis (`creationRoleKit`) — jego chrom kreator zostawia MG. */
   kit: readonly CpredCreationKitLine[] = [],
 ): CpredCreationOutside[] {
@@ -1930,41 +1931,23 @@ export function creationLeftOutside(
   if (kitChrome.length > 0) {
     lines.push({
       id: 'kit',
-      title: 'Chrom z wyposażenia Roli',
-      text:
-        `${kitChrome.map((line) => line.name).join(', ')} — chrom należny za darmo, ale kreator ` +
-        'nie montuje cyborgizacji. MG wszczepia go na gotowej postaci w Kompendium przyciskiem ' +
-        '„Dodaj za darmo”; Utrata Człowieczeństwa liczy się jak zwykle.',
+      title: 'Chrom Roli',
+      text: `${kitChrome.map((line) => line.name).join(', ')} — gratis; MG wszczepi go na gotowej postaci.`,
     });
   }
   if (draft.method === 'edgerunner') {
     lines.push({
       id: 'package',
       title: 'Pakiet Roli',
-      text:
-        'Krawędziarz dostaje w podręczniku gotowy zestaw broni, pancerza, sprzętu i cyborgizacji ' +
-        'swojej Roli. Kreator go nie wydaje — dokłada go MG przyciskiem „Dodaj za darmo” w Kompendium.',
-    });
-  }
-  if (draft.method === 'complete' && data.budgets.fashion > 0) {
-    lines.push({
-      id: 'fashion',
-      title: 'Moda',
-      text:
-        `Podręcznik daje jeszcze ${formatEddies(data.budgets.fashion)} ed wyłącznie na ubrania ` +
-        'i cybermodę, a niewydane przepadają. VTT nie ma katalogu Mody, więc tych pieniędzy nie ma ' +
-        'na karcie — wygląd opisuje pole „Styl”.',
+      text: 'Broń, pancerz, sprzęt i chrom swojej Roli dostaniesz od MG zaraz po utworzeniu postaci — gratis.',
     });
   }
   lines.push({
     id: 'cyberware',
     title: 'Cyborgizacje',
     text:
-      (draft.method === 'complete'
-        ? 'W podręczniku kupuje się je z tej samej puli, co wyposażenie. '
-        : 'Te z pakietu Roli dokłada MG, a własne kupuje się za eurodolce z karty. ') +
-      'W VTT instaluje się je dopiero na gotowej postaci, w Kompendium — Utrata Człowieczeństwa ' +
-      'jest wtedy losowana, choć przy tworzeniu postaci podręcznik liczy stałą wartość.',
+      'Własny chrom kupisz za eurodolce z karty i wszczepisz na gotowej postaci, w Kompendium ' +
+      '(Utrata Człowieczeństwa losuje się przy montażu).',
   });
   return lines;
 }

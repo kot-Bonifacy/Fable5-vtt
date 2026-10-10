@@ -369,10 +369,16 @@ to jest ten akapit do przeczytania na nowo.
   Korporacyjny konap” (s. 105); NPC MG zostaje bez rachunków. Podręcznikowego darmowego (u Korpo
   opłaconego) pierwszego miesiąca VTT nie liczy — rozliczenie miesiąca uruchamia MG i to on pomija
   świeżą postać. Opcje Zakwaterowania Nomady z Moto (s. 165) ustawia się na karcie.
+- **Kreator nie wspomina o pieniądzach na Modę (10.10, decyzja MG).** Kompletny Pakiet dostaje
+  w podręczniku jeszcze 800 ed wyłącznie na ubrania i cybermodę (niewydane przepadają). VTT nie
+  ma katalogu Mody, więc tych pieniędzy nie ma na karcie, a wygląd opisuje pole „Styl”. Do 10.10
+  kreator mówił o tym w kroku „Wyposażenie” — MG uznał, że nowy gracz czyta to jako brak, więc
+  wiersz zniknął (`creationLeftOutside` mówi tylko, co dojdzie po utworzeniu postaci).
+  `budgets.fashion` zostaje w danych.
 - **Wszczepy świeżej postaci mają losowaną Utratę Człowieczeństwa (17.09, naprawa 3a).** Podręcznik
   przy tworzeniu postaci każe liczyć stałą wartość sprzed nawiasu, ale kreator nie instaluje
   cyborgizacji (25c), a Kompendium zawsze rzuca kośćmi — także przy „Dodaj za darmo” z pakietu
-  Krawędziarza. Kreator mówi o tym na liście „czego kreator nie wydaje”; stała UC dla postaci przed
+  Krawędziarza. Kreator mówi o tym na liście „Po utworzeniu postaci”; stała UC dla postaci przed
   zatwierdzeniem gotowości przez MG czeka w `POMYSLY.md`.
 
 - **Dostępność liczy się z rodzaju rzeczy, nie z ceny (17.09, decyzja MG, naprawa 3b).** Do 17.09

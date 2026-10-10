@@ -1117,18 +1117,12 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
     expect(bare.spent).toBe(0);
   });
 
-  it('names what the book gives and the wizard does not, per method', () => {
-    const edgerunner = creationLeftOutside({ method: 'edgerunner' }, data());
+  it('names what comes after the wizard, per method — never the fashion money', () => {
+    const edgerunner = creationLeftOutside({ method: 'edgerunner' });
     expect(edgerunner.map((line) => line.id)).toEqual(['package', 'cyberware']);
-    const complete = creationLeftOutside({ method: 'complete' }, data());
-    expect(complete.map((line) => line.id)).toEqual(['fashion', 'cyberware']);
-    expect(complete[0]!.text).toContain('800 ed');
-    // A table that zeroed the fashion money gets no line about it.
-    const noFashion = creationLeftOutside(
-      { method: 'complete' },
-      { budgets: { edgerunner: 500, complete: 2550, fashion: 0 } },
-    );
-    expect(noFashion.map((line) => line.id)).toEqual(['cyberware']);
+    const complete = creationLeftOutside({ method: 'complete' });
+    expect(complete.map((line) => line.id)).toEqual(['cyberware']);
+    expect(complete.map((line) => line.text).join(' ')).not.toMatch(/Mod|nie ma/);
   });
 });
 
@@ -1246,15 +1240,12 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
       { entryId: 'cyberware.sprzeg', name: 'Sprzęg', value: 5000, onSheet: false },
     ]);
     expect(creationRoleKit({ ...netrunner, method: 'edgerunner' }, kitData, kitLookup)).toEqual([]);
-    // Chrom z wyposażenia ląduje w „Czego kreator nie wydaje”.
+    // Chrom z wyposażenia ląduje w „Po utworzeniu postaci”.
     const outside = creationLeftOutside(
       { method: 'complete' },
-      kitData,
       creationRoleKit(netrunner, kitData, kitLookup),
     );
-    expect(outside.find((line) => line.id === 'kit')?.text).toMatch(
-      /^Sprzęg — chrom należny za darmo/,
-    );
+    expect(outside.find((line) => line.id === 'kit')?.text).toMatch(/^Sprzęg — gratis/);
   });
 
   it('Solo wybiera z listy; wybór spoza niej i u Krawędziarza odpada', () => {

@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (szósta) — poprawka spoza etapów: zakładka tabel losowych czytelniejsza
+
+**Zlecenie MG:** „zakładka Tabela jest mało intuicyjna” — ocena i wyjaśnienie, potem „wprowadź
+sugerowane zmiany”.
+
+**Zrobione:** zakładka nazywa się **„Losowe”**, nad listą jedno zdanie, do czego służy (i `/tab`).
+Lista: nagłówek rozwija podgląd wierszy (zakres · treść · ↳ tabela dalej), edycja pod ✎, dwa
+przyciski z napisem **„🔒 Losuj dla MG”** i **„📢 Losuj jawnie”** zamiast „Losuj” i gołego 🔊
+(domyślny pogrubiony — tak losuje `/tab`). Edytor: zakres to **jedno pole** („7”, „4–6”;
+`parseRandomTableRange` w `shared/tables.ts` + testy), każdy wiersz w ramce, treść obok zakresu;
+„podrzut” to przycisk ↳ rozwijający „…i losuj dalej z:”. **„Rozpisz zakres” → „Wiersz na każdą
+liczbę” i działa tylko na pustych wierszach** — wcześniej jedno kliknięcie w gotowej tabeli
+kasowało jej treść bez pytania. Etykiety „Formuła” i „Widoczność” w jednej linii.
+**Nie zrobione z propozycji:** „Próbne losowanie” w edytorze — wymagałoby rzutu u klienta, a rzuty
+idą wyłącznie przez serwer (`CLAUDE.md`).
+
+**Weryfikacja:** vitest shared `tables.test.ts` (24), client 330, `tsc` client, eslint/prettier
+zmienionych plików; E2E `t8c-narracja` (tabele, #72, #73) 6/6 — spec i `t8a` przepisane na nowe
+nazwy (`t8a` nieuruchamiane). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”):
+lista z podglądem, edytor szeroki i przy panelu 320 px, odmowa zakresu „2-x”, blokada
+„Wiersz na każdą liczbę” po wpisaniu treści. **Ślady w `dev.db`:** brak (nowa tabela anulowana).
+
 ### Sesja 10.10 (piąta) — poprawki spoza etapów: czat w poczekalni, półka Kompendium, „Animacja 3D”
 
 **Zlecenie MG:** (1) między sesjami gracze mają móc pisać na czacie, a Kompendium ma być
