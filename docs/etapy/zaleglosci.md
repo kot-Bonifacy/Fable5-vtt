@@ -6,11 +6,17 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**10.10.2026 — okno handlarza pisze kwoty bez grupowania tysięcy (47b, drobiazg).** Kompendium
+i kreator pokazują „1 200 ed” (`formatEddies`, 47a), a `MerchantPane` (półka, koszyk, stopka
+„Płacisz … ed”, kasa handlarza) i karty czatu operacji — surowe „1200 ed”. Przy cenniku domowym
+czterocyfrowe kwoty są na porządku dziennym. Przy zmianie poprawić asercje `t46a` („1200 ed”,
+„Płacisz 1344 ed”).
+
 **09.10.2026 — listy kart, które jeszcze nie pomijają pojemników (46b2, do triażu MG).** Karty skrzyń
 i stosów to karty NPC-ów, więc wpadają na listy, gdzie są szumem: wybór karty bota (`BotEditor`),
 okno zegara z efektami czasowymi (`ClockWindow`) i archiwum (`ArchivePanel`). „Postacie”, walka,
-Szczęście i rozliczenie miesiąca już je pomijają. Przy okazji: w „Mój ekwipunek” okna „Wymiana” stoi
-wiersz broni „Pięści” — da się go włożyć do skrzyni albo położyć na mapie jak każdą broń.
+Szczęście i rozliczenie miesiąca już je pomijają. Wiersz „Pięści” z okna „Wymiana” zniknął 10.10 (47b): Bijatyka jest teraz stałym wierszem
+z urzędu, którego nie ma w oknach wymiany (własny wpis MG „Pięści” z T4a wypadł z łańcucha).
 
 **09.10.2026 — menu tury bota proponuje „podejście” do figury, przy której bot już stoi (46c2, E2E 46c.9).**
 Towarzysz „Kumpel” stał obok Pasera z pustym pistoletem; model wybrał „Podejście do: Paser”, serwer odmówił
@@ -18,12 +24,6 @@ Towarzysz „Kumpel” stał obok Pasera z pustym pistoletem; model wybrał „P
 `availableBotCombatActions` (`shared/bots/combat.ts`) wpuszcza „podejście”, gdy tylko są figury i metry; nie
 odsiewa celów w zasięgu ręki. Do triażu MG: przyciąć menu celów podejścia (figury dalej niż sąsiednie pole).
 Przy okazji: `runStep` zgłasza `outcome: refused` także wtedy, gdy druga decyzja po odmowie to pas.
-
-**04.10.2026 — migotanie T8c „#72 Dodaj tabelę” (pełny przebieg po 44c).** Serwer potwierdził
-`table:upsert` po 13 ms, a formularz nie zamknął się w 3 s; chwilę wcześniej leciały kości 3D
-jawnego losowania tabeli. Prawdopodobnie potwierdzenie czeka w `rollPresentation.deliver` na koniec
-animacji (`emitSceneAck` w `socket.ts`) — nie sprawdzone. Powtórka pliku: 6/6. Do triażu MG: czy
-formularz MG ma czekać na kości, czy test ma dłuższy limit.
 
 **26.09.2026 (pozostałość „Wiele grup i wielu MG”, po T9b 04.10) — paczka AI dla innych MG.**
 Pozycje 1, 2 i 4 (konta MG, dwie sesje naraz, AI właściciela) zamknięte odbiorem T9b 04.10 —

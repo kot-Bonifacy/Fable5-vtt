@@ -37,7 +37,7 @@ na 60 punktów, a klawisz End przewija okno zamiast ustawić maksimum. Kierunek:
 z wpisaniem liczby (z tą samą walidacją co „+”: od 2 przy podstawowych, do 6, ×2) albo przycisk
 „do 6”. Do decyzji MG.
 
-**27.09.2026 (poprawki po T4b) — pięść bez wiersza na karcie (dalszy ciąg #17).** Od poprawki #17
+**~~27.09.2026 (poprawki po T4b) — pięść bez wiersza na karcie (dalszy ciąg #17).~~ ZROBIONE 10.10 (etap 47b, decyzja MG): stały wiersz „Bijatyka” (i „Sztuki walki” od Umiejętności 1) na każdej karcie poza pojemnikiem, `systems/cpred/barehands.ts` — nie syntetyczny slot.** Od poprawki #17
 kompendium ma „Bijatykę” i „Sztuki walki” za 0 ed, ale postać bez broni dalej potrzebuje wiersza
 na karcie (gracz bierze go sam ze sklepu, MG „+ Broń z katalogu”). Podręcznik daje pięść każdemu,
 więc pełne domknięcie to syntetyczny slot „Pięści” na pasku (Bijatyka, a przy Sztukach walki

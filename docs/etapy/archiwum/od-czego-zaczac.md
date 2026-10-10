@@ -6,6 +6,19 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 47a (wyprowadzone 10.10.2026)
+
+**Etap 47a „Cennik domowy” zamknięty 10.10 — następny jest 47b (łańcuch E2E pod nowe ceny), potem
+refaktoryzacja całości pod osłoną suity i T10.** Ed to mniej więcej euro: katalog z plików mnoży się
+**przy wczytaniu** (`systems/cpred/pricing.ts`) — broń, pancerz, chrom, sprzęt Netrunnera i droższy
+sprzęt ×10, amunicja i drobny sprzęt ogólny (10–50 ed) ×3, Komputer ×10; montaż znalezionego chromu
+×10, terapia ×2, Farmaceutyki ×3, ulepszenie Moto ×10; czynsz, Poziom życia, wypłaty i gotówka
+startowa bez zmian. **Pasma i poziomy sklepu się nie ruszają.** Kompletny Pakiet dostaje **gratis
+wyposażenie Roli** (`roleKits` w `creation.json`, Solo wybiera broń, chrom wszczepia MG „Dodaj za
+darmo”). Asystent zasad przelicza ceny z podręcznika. **Łańcuch E2E i specyfikacje z jego stanów
+(`t46a`, `t46b`, `t46c`, `t7a`, `t6a`) mają jeszcze stare kwoty — to 47b.** Cennik z pozycjami:
+`data/private/cpred/cennik-x10.md`; decyzje w `etap-47-cennik.md`, umowy w `postac`, `ekwipunek`, `dane`.
+
 ## Etap 45 (wyprowadzone 10.10.2026)
 
 **Etap 45 „Ruch i widzenie drużyny” zamknięty 08.10 (zlecenie MG spoza planu, przed refaktoryzacją).**

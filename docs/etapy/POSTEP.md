@@ -21,24 +21,25 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **47b** cennik: łańcuch E2E (następny); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a (ostatni zamknięty: 47a, 2026-10-10) |
+| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (następna); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b (ostatni zamknięty: 47b, 2026-10-10) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 47a „Cennik domowy” zamknięty 10.10 — następny jest 47b (łańcuch E2E pod nowe ceny), potem
-refaktoryzacja całości pod osłoną suity i T10.** Ed to mniej więcej euro: katalog z plików mnoży się
-**przy wczytaniu** (`systems/cpred/pricing.ts`) — broń, pancerz, chrom, sprzęt Netrunnera i droższy
-sprzęt ×10, amunicja i drobny sprzęt ogólny (10–50 ed) ×3, Komputer ×10; montaż znalezionego chromu
-×10, terapia ×2, Farmaceutyki ×3, ulepszenie Moto ×10; czynsz, Poziom życia, wypłaty i gotówka
-startowa bez zmian. **Pasma i poziomy sklepu się nie ruszają.** Kompletny Pakiet dostaje **gratis
-wyposażenie Roli** (`roleKits` w `creation.json`, Solo wybiera broń, chrom wszczepia MG „Dodaj za
-darmo”). Asystent zasad przelicza ceny z podręcznika. **Łańcuch E2E i specyfikacje z jego stanów
-(`t46a`, `t46b`, `t46c`, `t7a`, `t6a`) mają jeszcze stare kwoty — to 47b.** Cennik z pozycjami:
-`data/private/cpred/cennik-x10.md`; decyzje w `etap-47-cennik.md`, umowy w `postac`, `ekwipunek`, `dane`.
+**Etap 47 „Cennik domowy” zamknięty 10.10 (47a + 47b) — następna jest refaktoryzacja całości pod
+osłoną suity, potem T10.** Ed to mniej więcej euro: katalog z plików mnoży się **przy wczytaniu**
+(`systems/cpred/pricing.ts`: sprzęt trwały ×10, amunicja i drobny sprzęt ×3; czynsz, Poziom
+życia, wypłaty i gotówka startowa bez zmian; pasma i poziomy sklepu bez zmian). Kompletny Pakiet
+dostaje **gratis wyposażenie Roli**, a Krawędziarzowi pakiet Roli daje MG „Dodaj za darmo”.
+**Od 47b każda karta poza pojemnikiem ma stały wiersz „Bijatyka”** (i „Sztuki walki” od
+Umiejętności 1) na końcu broni — nie da się go usunąć ani oddać (`barehands.ts`, umowy w `atak`
+i `ekwipunek`). **Łańcuch E2E liczy w nowych cenach** (Kowal z pakietem Roli od MG, wypłata
+1000 ed w T6a), `po-T3`…`po-T6` odbudowane 10.10; stare punkty w `.e2e/checkpoints-bak-47a`.
+Zapis tabeli losowej nie czeka już na kości (#72). Decyzje w `etap-47-cennik.md`, cennik
+z pozycjami: `data/private/cpred/cennik-x10.md`.
 
 **Etap 46 „Wymiana, sklepy, amunicja, pojemniki” zamknięty 09.10 (46b2 ostatnia).** Pojemnik to karta NPC-a z polem `container`
 i figurą: MG stawia skrzynię, bagażnik albo schowek narzędziem „📦” w pasku mapy (rodzaj, klik —
@@ -170,7 +171,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -202,25 +203,52 @@ a nie do tego pliku.
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 29   | 15      |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 21   | 2       |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 41   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 42   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 49   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 28   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 29   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 135     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 137     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 — etap 47b „Cennik: łańcuch E2E” + gołe ręce z urzędu
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 47b)”, pytać o niejasności; w trakcie: Bijatyka
+i walka na pięści dostępne graczom z urzędu, bez kupowania. **Decyzje MG (wszystkie zgodne
+z rekomendacją):** Kowal kupuje tylko amunicję, pakiet Roli daje MG; Iskra kupuje Agenta i radio,
+MG wszczepia jej chrom z pakietu; wypłata 1000 ed za „Knajpę” na starcie T6a; Bijatyka każdemu,
+Sztuki walki od Umiejętności 1, stały wiersz, wszystkie karty poza pojemnikami; #72 — zapis
+tabeli bez czekania na kości. Zapisane w `etap-47-cennik.md`.
+
+**Zrobione:** `systems/cpred/barehands.ts` (`unarmedDamage` przeniesione z `attacks.ts`,
+`cpredWithBareHands` w `normalizeCharacterData`, łata zdejmuje stałe wiersze, `cpredTakeRows`
+i `cpredInventoryView` je pomijają, `cpredDrawnWeapons` i `statistQuick` też), wiersz na karcie
+bez pól i kosza (`weapon-innate`), Kompendium i półka kreatora bez „Kup” dla gołych rąk
+(`50b62c6`). E2E: T3a (nowy krok 3.8 — pakiet Roli Kowala i chrom Iskry przez `giveEntry`
+w `fixtures/kompendium.ts`), T4a/T4b (Bijatyka zamiast „Pięści”), T6a (wypłata korektą na
+karcie, nowe kwoty), `t46a`, `t46c`. #72: `emitTableAck` w `socket.ts`.
+
+**Znalezione:** okno handlarza pisze kwoty bez grupowania tysięcy (nowa zaległość); pułapki
+w `testy` (Bijatyka w asercjach list broni, radio metody w kreatorze, przerwany obrazek w T6b).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, `dev.db`): wiersz Bijatyki na karcie NPC (bez pól i kosza, „Dobądź”, obrażenia z BC); pasek
+Kowala z Bijatyką jako slotem 5 — zrzut Chromium z przebiegu.
+
+**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
+bazowa; suita zielona 10.10). Zaległości do triażu MG: #79–#81, kwoty w oknie handlarza.
 
 ### Sesja 09–10.10 — etap 47a „Cennik domowy: ed jak euro”
 
@@ -255,35 +283,3 @@ testowy w „Oględziny 44d” wyrzucony.
 
 **Następny krok — 47b:** łańcuch T3a–T6b pod nowe ceny i odbudowa `po-T3`…`po-T6` pełnym
 przebiegiem z gatewayem, potem `t46a`, `t46b`, `t46c`, `t7a`, `t6a` i pełny domyślny przebieg.
-
-### Sesja 09.10 (czwarta) — etap 46b2 „Pojemniki: klient, E2E, oględziny”
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 46b2)”, pytać o niejasności. **Decyzje MG (start 46b2,
-wszystkie zgodne z rekomendacją):** stos przeciąga się z karty (ikonka wiersza, cały wiersz)
-i z okna „Wymiana” (ilość z pola); bez znaczka zamka na mapie (`MapRenderer.ts` nietknięty);
-kompaktowa karta pojemnika u MG. Zapisane w pliku etapu.
-
-**Zrobione:** `exchange/ContainerPane` (tryb `container`: zamek, kubek Testu od razu, „←”, „→”,
-„Zabierz wszystko”, odświeżenie po każdej zmianie figury pojemnika), `OwnInventoryColumn` (mój
-ekwipunek z przeciąganiem na mapę — pojemnik, łup, okno bez drugiej strony), `ContainerSheet`
-(karta MG zamiast stron arkusza, węższe okno), `map-drop-item.tsx` (`dropOnMap`, `DragGhost`
-w portalu, `MapDropHandle` na ikonkach wierszy karty: Wyposażenie, Broń, Pancerz), `map/map-drop.ts`
-(renderer zgłasza się z `MapArea`), `useExchangeDrag` z `onMapDrop`; narzędzie „📦 Pojemnik”
-(`IconCrate`, rząd rodzajów, `TokenPlacement.container` → `container:create`); grupa „Pojemniki”
-w „Postaciach”; menu figury (gracz: „📦 Otwórz…”, MG bez ataku i walki przy pojemniku); lewy panel
-ze stanem zamka; walka i „Włącz tryb turowy” pomijają pojemniki; teksty nowych odmów; żetony
-z game-icons (`data/public/tokens/containers/`). E2E `t46b-pojemniki` 46b.0–46b.7 (+46b.4b),
-kanarek zamkniętej skrzyni w T2c.
-
-**Znalezione i naprawione:** okno otwarte od figury zostawało ze starą listą, gdy figura znikała
-(pusty stos → `TOKEN_NOT_FOUND`, pułapka w `ekwipunek`); komunikat o Teście zostawał po otwarciu;
-PT 13 to „Codzienny”, nie „Trudne” (komentarz 46b1). Pułapka E2E z oknem karty i opóźnieniem figury
-za kośćmi w `testy`. **Nowa zaległość:** listy kart bota, zegara i archiwum nie pomijają
-pojemników; „Pięści” da się włożyć do skrzyni.
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane zrzutami z przebiegów
-(`.e2e/pomiary/46b2`): **Ola w Firefoksie** (okno skrzyni, przeciągnięcie z karty, stos z workiem,
-klucz), MG i Marek w Chromium (karta skrzyni, zamek, otwarta skrzynia, stos z okna).
-
-**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
-bazowa); przed nią warto puścić pełny domyślny przebieg (367 testów) z gatewayem.

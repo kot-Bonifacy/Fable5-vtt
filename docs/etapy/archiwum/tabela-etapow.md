@@ -118,6 +118,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 46c2   | Zapas amunicji: łańcuch T3a–T5b, pełny przebieg | ✅     | 2026-10-09          |
 | 46b1   | Pojemniki: model, serwer, testy jednostkowe   | ✅     | 2026-10-09          |
 | 46b2   | Pojemniki: klient, E2E `t46b-`, oględziny     | ✅     | 2026-10-09          |
-| 47     | Cennik domowy: ed jak euro (projekt; rozpisany na 47a–47b) | —      | projekt 2026-10-09  |
+| 47     | Cennik domowy: ed jak euro (47a–47b)         | ✅     | 2026-10-10          |
 | 47a    | Cennik w kodzie, wyposażenie Roli gratis, testy | ✅     | 2026-10-10          |
-| 47b    | Cennik: łańcuch E2E T3a–T6b, pełny przebieg   | ⬜     |                     |
+| 47b    | Cennik: łańcuch E2E T3a–T6b, pełny przebieg; gołe ręce z urzędu | ✅     | 2026-10-10          |

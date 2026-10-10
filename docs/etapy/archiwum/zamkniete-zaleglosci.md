@@ -9,6 +9,23 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-10 (etap 47b)
+
+**#72 „Dodaj tabelę” (T8c).** Diagnoza potwierdzona w kodzie: `saveRandomTable` i
+`deleteRandomTable` szły przez `emitSceneAck`, więc potwierdzenie czekało w
+`rollPresentation.deliver` na koniec animacji kości z wcześniejszego jawnego losowania. 10.10
+padało już stale (3 razy z rzędu na nowym `po-T6`). Decyzja MG: zapis tabeli bez czekania —
+`emitTableAck` w `socket.ts`, a rozgłoszenia `table:upsert` / `table:delete` idą `socket.on`, nie
+`onPresented` (tabele widzi tylko MG, więc kolejność względem kości nie ma znaczenia; samo
+losowanie zostaje w kolejce). Retest: `t8c-narracja` 6/6, `00-baseline` + `t8c-` 37/37. Wpis
+w brzmieniu sprzed zamknięcia:
+
+**04.10.2026 — migotanie T8c „#72 Dodaj tabelę” (pełny przebieg po 44c).** Serwer potwierdził
+`table:upsert` po 13 ms, a formularz nie zamknął się w 3 s; chwilę wcześniej leciały kości 3D
+jawnego losowania tabeli. Prawdopodobnie potwierdzenie czeka w `rollPresentation.deliver` na koniec
+animacji (`emitSceneAck` w `socket.ts`) — nie sprawdzone. Powtórka pliku: 6/6. Do triażu MG: czy
+formularz MG ma czekać na kości, czy test ma dłuższy limit.
+
 ## Zamknięte 2026-10-04 (T9b: odbiór etapu 44 „Konta MG”)
 
 Pozycje 1, 2 i 4 zrobione w etapach 44a–44d i odebrane testem T9b (`testy.md` 6.5:

@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 09.10 (czwarta) — etap 46b2 „Pojemniki: klient, E2E, oględziny”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b2)”, pytać o niejasności. **Decyzje MG (start 46b2,
+wszystkie zgodne z rekomendacją):** stos przeciąga się z karty (ikonka wiersza, cały wiersz)
+i z okna „Wymiana” (ilość z pola); bez znaczka zamka na mapie (`MapRenderer.ts` nietknięty);
+kompaktowa karta pojemnika u MG. Zapisane w pliku etapu.
+
+**Zrobione:** `exchange/ContainerPane` (tryb `container`: zamek, kubek Testu od razu, „←”, „→”,
+„Zabierz wszystko”, odświeżenie po każdej zmianie figury pojemnika), `OwnInventoryColumn` (mój
+ekwipunek z przeciąganiem na mapę — pojemnik, łup, okno bez drugiej strony), `ContainerSheet`
+(karta MG zamiast stron arkusza, węższe okno), `map-drop-item.tsx` (`dropOnMap`, `DragGhost`
+w portalu, `MapDropHandle` na ikonkach wierszy karty: Wyposażenie, Broń, Pancerz), `map/map-drop.ts`
+(renderer zgłasza się z `MapArea`), `useExchangeDrag` z `onMapDrop`; narzędzie „📦 Pojemnik”
+(`IconCrate`, rząd rodzajów, `TokenPlacement.container` → `container:create`); grupa „Pojemniki”
+w „Postaciach”; menu figury (gracz: „📦 Otwórz…”, MG bez ataku i walki przy pojemniku); lewy panel
+ze stanem zamka; walka i „Włącz tryb turowy” pomijają pojemniki; teksty nowych odmów; żetony
+z game-icons (`data/public/tokens/containers/`). E2E `t46b-pojemniki` 46b.0–46b.7 (+46b.4b),
+kanarek zamkniętej skrzyni w T2c.
+
+**Znalezione i naprawione:** okno otwarte od figury zostawało ze starą listą, gdy figura znikała
+(pusty stos → `TOKEN_NOT_FOUND`, pułapka w `ekwipunek`); komunikat o Teście zostawał po otwarciu;
+PT 13 to „Codzienny”, nie „Trudne” (komentarz 46b1). Pułapka E2E z oknem karty i opóźnieniem figury
+za kośćmi w `testy`. **Nowa zaległość:** listy kart bota, zegara i archiwum nie pomijają
+pojemników; „Pięści” da się włożyć do skrzyni.
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane zrzutami z przebiegów
+(`.e2e/pomiary/46b2`): **Ola w Firefoksie** (okno skrzyni, przeciągnięcie z karty, stos z workiem,
+klucz), MG i Marek w Chromium (karta skrzyni, zamek, otwarta skrzynia, stos z okna).
+
+**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
+bazowa); przed nią warto puścić pełny domyślny przebieg (367 testów) z gatewayem.
+
 ### Sesja 09.10 (trzecia) — etap 46b1 „Pojemniki: model, serwer, testy jednostkowe”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. **Decyzje MG (start 46b,
