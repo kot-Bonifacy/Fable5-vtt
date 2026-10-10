@@ -27,7 +27,12 @@ import { unarmedDamage } from './barehands.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import { CPRED_OBSCUREMENT_KIND } from './environment.js';
-import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
+import {
+  buildCpredRegistry,
+  cpredHandsHeld,
+  createDefaultCharacterData,
+  type CpredRegistry,
+} from './character.js';
 import { hasCyberarm } from './cyberware.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
 
@@ -1585,6 +1590,67 @@ describe('broń spoza rąk — dwa zdania odmowy (etap 41, poprawka 13.09)', () 
     expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_HOLSTERED).toBe(CPRED_HOLSTERED_REFUSAL);
     expect(CPRED_HOLSTERED_REFUSAL).toContain('bez Akcji');
     expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_NOT_DRAWN).toBe(CPRED_NOT_DRAWN_REFUSAL);
+  });
+});
+
+describe('tarcza w ręce zajmuje rękę (s. 183, 10.10.2026)', () => {
+  const shield = (equipped?: boolean) => ({
+    id: 's1',
+    name: 'Tarcza kuloodporna',
+    notes: '',
+    sp: 10,
+    spCurrent: 10,
+    location: 'shield' as const,
+    ...(equipped === undefined ? {} : { equipped }),
+  });
+  const gun = weaponRow({ id: 'w1', name: 'Karabin' });
+  const twoHanded: ResolvedWeapon = { ...rifle, hands: 2 };
+
+  it('odmawia broni dwuręcznej przy tarczy — także przy niezadeklarowanych rękach', () => {
+    const data = sheet({ weapons: [gun], skills: { handgun: 6 }, armor: [shield()] });
+    expect(plan({}, { data, row: gun, resolved: twoHanded })).toEqual({
+      ok: false,
+      error: 'SHIELD_TWO_HANDED',
+    });
+    const drawn = sheet({ ...data, drawnWeaponRowIds: ['w1'] });
+    expect(plan({}, { data: drawn, row: gun, resolved: twoHanded })).toEqual({
+      ok: false,
+      error: 'SHIELD_TWO_HANDED',
+    });
+  });
+
+  it('zniszczona tarcza dalej zajmuje rękę, odłożona już nie', () => {
+    const broken = { ...shield(), spCurrent: 0 };
+    const withBroken = sheet({ weapons: [gun], skills: { handgun: 6 }, armor: [broken] });
+    expect(plan({}, { data: withBroken, row: gun, resolved: twoHanded }).ok).toBe(false);
+    const stowed = sheet({ weapons: [gun], skills: { handgun: 6 }, armor: [shield(false)] });
+    expect(plan({}, { data: stowed, row: gun, resolved: twoHanded }).ok).toBe(true);
+  });
+
+  it('broń jednoręczna obok tarczy działa normalnie', () => {
+    const data = sheet({ weapons: [gun], skills: { handgun: 6 }, armor: [shield()] });
+    expect(plan({}, { data, row: gun }).ok).toBe(true);
+  });
+
+  it('przy pustych rękach poza tarczą jednoręczną broń wystarczy dobyć', () => {
+    const data = sheet({
+      weapons: [gun],
+      skills: { handgun: 6 },
+      armor: [shield()],
+      drawnWeaponRowIds: [],
+    });
+    expect(plan({}, { data, row: gun })).toEqual({ ok: false, error: 'WEAPON_HOLSTERED' });
+  });
+
+  it('liczy tarczę do zajętych rąk', () => {
+    const pistolRow = weaponRow({ id: 'w2' });
+    const data = sheet({ weapons: [pistolRow], armor: [shield()], drawnWeaponRowIds: ['w2'] });
+    expect(cpredHandsHeld(data, () => 1)).toBe(2);
+    expect(cpredHandsHeld({ ...data, armor: [shield(false)] }, () => 1)).toBe(1);
+  });
+
+  it('ma zdanie, które gracz zobaczy', () => {
+    expect(CPRED_ATTACK_PROBLEM_MESSAGES.SHIELD_TWO_HANDED).toContain('Tarcza');
   });
 });
 

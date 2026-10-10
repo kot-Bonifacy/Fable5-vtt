@@ -11,6 +11,11 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Tarcza: tylko ręka, bez kary do ruchu (10.10, decyzja MG).** „Gdy wykorzystujesz rękę do
+  niesienia tarczy, nie możesz tej ręki używać do innych celów” (s. 183) — trzymana tarcza (pancerz
+  „Tarcza” założony na karcie) zajmuje jedną rękę, więc broń dwuręczna odpada. Podręcznik nie daje
+  tarczy kary do RUCHU i MG nie chce reguły domowej: ruch z tarczą jest zwykły. Akcji za
+  założenie tarczy na karcie VTT nie pobiera (jak dotąd — „Przygotuj/upuść tarczę” księguje MG).
 - **Zapas amunicji: co VTT liczy, a czego nie (09.10, etap 46c, decyzje MG).** Przeładowanie
   zużywa naboje z pudełek w ekwipunku na kartach drużyny (gracz, towarzysz-bot); NPC i statysta
   MG są „bez dna”, dopóki MG nie zaznaczy „Licz amunicję”, a figura bez karty zawsze. **Zmiana

@@ -556,6 +556,61 @@ describe('ręce: co postać trzyma', () => {
     if (!asGm.ok) expect(asGm.error).toBe('FORBIDDEN');
   });
 
+  it('tarcza w ręce zajmuje rękę: karabin się nie mieści, pistolet tak (10.10)', async () => {
+    const shield = {
+      id: 'v-shield',
+      name: 'Tarcza kuloodporna',
+      notes: '',
+      sp: 10,
+      spCurrent: 10,
+      location: 'shield',
+    };
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: vexCharacterId,
+          patch: { data: { armor: [shield] } },
+        })
+      ).ok,
+    ).toBe(true);
+    for (const weaponRowId of ['v-pistol', 'v-blade']) {
+      await emitAck(vex, 'weapon:draw', { characterId: vexCharacterId, weaponRowId, mode: 'drop' });
+    }
+
+    const rifleDraw = await emitAck(vex, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'v-rifle',
+    });
+    expect(rifleDraw.ok).toBe(false);
+    if (!rifleDraw.ok) expect(rifleDraw.error).toBe('HANDS_FULL');
+
+    const rifleShot = await emitAck(vex, 'attack:roll', {
+      characterId: vexCharacterId,
+      attackerTokenId: vexTokenId,
+      targetTokenId: gangerTokenId,
+      request: { weaponRowId: 'v-rifle', mode: 'single' },
+    });
+    expect(rifleShot.ok).toBe(false);
+    if (!rifleShot.ok) expect(rifleShot.error).toBe('SHIELD_TWO_HANDED');
+
+    const pistolDraw = await emitAck<{ hands: string[] }>(vex, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'v-pistol',
+    });
+    expect(data(pistolDraw, 'weapon:draw').hands).toEqual(['v-pistol']);
+    const blade = await emitAck(vex, 'weapon:draw', {
+      characterId: vexCharacterId,
+      weaponRowId: 'v-blade',
+    });
+    expect(blade.ok).toBe(false);
+    if (!blade.ok) expect(blade.error).toBe('HANDS_FULL');
+
+    await emitAck(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { armor: [] } },
+    });
+  });
+
   it('broń zabrana z karty zostawia puste ręce, a nie inną broń', async () => {
     expect(
       (

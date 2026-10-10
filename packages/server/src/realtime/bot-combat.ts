@@ -548,6 +548,7 @@ const REFUSAL_TEXTS: Record<string, string> = {
   WEAPON_HAS_NO_MAGAZINE: 'Ta broń nie ma magazynka do przeładowania.',
   NO_AMMO: 'Nie masz amunicji do tej broni — weź inną broń, walcz wręcz albo spasuj.',
   GRAPPLE_TWO_HANDED: 'W zwarciu nie użyjesz broni oburęcznej.',
+  SHIELD_TWO_HANDED: 'Trzymasz tarczę — broni oburęcznej nie użyjesz.',
   SCENE_HAS_NO_SCALE: 'Na tej scenie nie da się zmierzyć odległości.',
 };
 

@@ -16,7 +16,7 @@ import {
 import { CPRED_HOLSTERED_REFUSAL, CPRED_JAM_REFUSAL } from './attacks.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
-import type { CpredWeaponRow } from './character.js';
+import { CPRED_SHIELD_TWO_HANDED_REFUSAL, type CpredWeaponRow } from './character.js';
 import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ACTION_COMBAT_AWARENESS,
@@ -194,6 +194,42 @@ describe('broń spoza rąk na pasku akcji (etap 41, zdania z 13.09)', () => {
     );
     expect(empty[0]!.disabled).not.toBeNull();
     expect(empty.every((slot) => !slot.outOfHand)).toBe(true);
+  });
+});
+
+describe('broń dwuręczna przy tarczy na pasku akcji (10.10.2026)', () => {
+  const shield = {
+    id: 's1',
+    name: 'Tarcza kuloodporna',
+    notes: '',
+    sp: 10,
+    spCurrent: 10,
+    location: 'shield' as const,
+  };
+
+  it('gasi broń dwuręczną, jednoręczną zostawia', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [weaponRow({ compendiumId: 'weapon.rifle' }), weaponRow({ id: 'row-2' })],
+        armor: [shield],
+      },
+      (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
+    );
+    expect(options[0]!.notDrawn).toBe('shield');
+    expect(options[1]!.notDrawn).toBeUndefined();
+  });
+
+  it('mówi, że to tarcza blokuje', () => {
+    const slots = weaponSlots(
+      hotbarSlotsFor(
+        input({
+          sheet: { weapons: [weaponRow({ compendiumId: 'weapon.rifle' })], armor: [shield] },
+          resolve: (id) => (id === 'weapon.rifle' ? { ...smg, hands: 2 } : pistol),
+        }),
+      ),
+    );
+    expect(slots.length).toBeGreaterThan(0);
+    for (const slot of slots) expect(slot.disabled).toBe(CPRED_SHIELD_TWO_HANDED_REFUSAL);
   });
 });
 

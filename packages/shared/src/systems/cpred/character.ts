@@ -844,11 +844,35 @@ export function cpredDrawnWeapons(
  * katalog siedzi w bazie; porównanie z liczbą rąk jest jedno: `cpredDrawFits`.
  */
 export function cpredHandsHeld(
-  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
+  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> & {
+    armor?: readonly CpredArmorRow[];
+  },
   handsOf: (row: CpredWeaponRow) => number,
 ): number {
-  return cpredDrawnWeapons(data).reduce((used, row) => used + handsOf(row), 0);
+  return cpredDrawnWeapons(data).reduce((used, row) => used + handsOf(row), cpredShieldHands(data));
 }
+
+/**
+ * Czy postać trzyma tarczę (10.10.2026): założony wiersz pancerza w miejscu
+ * „Tarcza”. „Gdy wykorzystujesz rękę do niesienia tarczy, nie możesz tej ręki
+ * używać do innych celów” (s. 183) — także zniszczona tarcza zajmuje rękę,
+ * „dopóki nie upuścisz jej w ramach swojej Akcji”, więc PW tu nie pytamy.
+ *
+ * Ruchu tarcza nie spowalnia — podręcznik o tym milczy, a MG nie chce kary
+ * domowej (decyzja z 10.10.2026).
+ */
+export function cpredShieldInHand(data: { armor?: readonly CpredArmorRow[] }): boolean {
+  return (data.armor ?? []).some((row) => row.location === 'shield' && row.equipped !== false);
+}
+
+/** Ile rąk zajmuje tarcza — jedna albo żadna. */
+export function cpredShieldHands(data: { armor?: readonly CpredArmorRow[] }): number {
+  return cpredShieldInHand(data) ? 1 : 0;
+}
+
+/** Odmowa broni dwuręcznej przy tarczy — jedno zdanie dla planera i paska akcji. */
+export const CPRED_SHIELD_TWO_HANDED_REFUSAL =
+  'Tarcza zajmuje ci rękę — broni dwuręcznej nie użyjesz, dopóki jej nie odłożysz (Akcja).';
 
 /**
  * Czy broń zajmująca `handsNeeded` rąk zmieści się obok tego, co figura trzyma.

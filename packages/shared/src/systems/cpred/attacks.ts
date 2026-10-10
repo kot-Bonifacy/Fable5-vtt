@@ -37,9 +37,12 @@ import {
   cpredArmorStatPenalty,
   cpredDrawFits,
   cpredDrawnWeapons,
+  cpredShieldHands,
+  cpredShieldInHand,
   cpredWeaponInHands,
   CPRED_ARMOR_PENALTY_LABEL,
   CPRED_HANDS,
+  CPRED_SHIELD_TWO_HANDED_REFUSAL,
   type CpredCharacterData,
   type CpredRegistry,
   type CpredWeaponRow,
@@ -322,6 +325,7 @@ export type CpredAttackProblem =
   | 'RANGED_WEAPON_IN_MELEE'
   | 'NOT_ENOUGH_AMMO'
   | 'GRAPPLE_TWO_HANDED'
+  | 'SHIELD_TWO_HANDED'
   | 'NO_LINE_OF_FIRE'
   | 'TARGET_BEHIND_COVER'
   | 'COVER_NOT_SUPPRESSIBLE'
@@ -756,8 +760,19 @@ export function planCpredAttack(
    * dobyć tę broń, gdy mieści się w wolnych rękach (za darmo, s. 168), a inaczej
    * najpierw schować tamtą (Akcja) albo ją upuścić (za darmo).
    */
+  // Tarcza zajmuje rękę (s. 183), więc broń dwuręczna odpada — niezależnie od
+  // tego, czy ręce są zadeklarowane: tarczę ktoś świadomie założył na karcie.
+  // Przed odmową „dobądź / schowaj tamto”, bo mówi, co naprawdę blokuje.
+  // Pytamy nosiciela, jak przy zacięciu: granatnik podwieszany pod karabinem
+  // trzyma się razem z karabinem.
+  if (weapon.resolved?.hands === 2 && cpredShieldInHand(data)) {
+    return { ok: false, error: 'SHIELD_TWO_HANDED' };
+  }
+
   if (!cpredWeaponInHands(data, hostRow.id)) {
-    const handsHeld = weapon.handsHeld ?? (cpredDrawnWeapons(data).length === 0 ? 0 : CPRED_HANDS);
+    const handsHeld =
+      weapon.handsHeld ??
+      (cpredDrawnWeapons(data).length === 0 ? cpredShieldHands(data) : CPRED_HANDS);
     return {
       ok: false,
       error: cpredDrawFits(handsHeld, weapon.resolved?.hands ?? 1)
@@ -1255,6 +1270,7 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   RANGED_WEAPON_IN_MELEE: 'Tej broni nie użyjesz w zwarciu.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',
+  SHIELD_TWO_HANDED: CPRED_SHIELD_TWO_HANDED_REFUSAL,
   NO_LINE_OF_FIRE: 'Cel za przeszkodą — nie masz linii strzału.',
   TARGET_BEHIND_COVER: 'Cel jest za osłoną — ostrzelaj osłonę albo strzelaj mimo niej.',
   COVER_NOT_SUPPRESSIBLE: 'Ogniem zaporowym nie zmusisz przedmiotu, żeby się schował.',

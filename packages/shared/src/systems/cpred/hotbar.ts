@@ -16,12 +16,19 @@
 
 import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
 import { cpredAmmoStockCount, cpredStockAmmoId, cpredThrowsFromStock } from './ammostock.js';
-import type { CpredCharacterData, CpredGearRow, CpredWeaponRow } from './character.js';
+import type {
+  CpredArmorRow,
+  CpredCharacterData,
+  CpredGearRow,
+  CpredWeaponRow,
+} from './character.js';
 import {
   cpredDrawFits,
   cpredHandsAreDeclared,
   cpredHandsHeld,
+  cpredShieldInHand,
   cpredWeaponInHands,
+  CPRED_SHIELD_TWO_HANDED_REFUSAL,
 } from './character.js';
 import {
   fittedAttachmentsFor,
@@ -86,8 +93,11 @@ export interface CpredWeaponOption {
    * Nieobecne przy figurze, której rąk **nikt nie zadeklarował** — a takich jest
    * większość. Domysł „pierwsza broń z karty" służy oględzinom i nie ma prawa
    * gasić slotów na pasku (decyzja MG z 10.09.2026).
+   *
+   * `shield` (10.10.2026): broń dwuręczna przy tarczy w ręce — także przy
+   * niezadeklarowanych rękach, bo tarczę ktoś świadomie założył na karcie.
    */
-  notDrawn?: 'holstered' | 'handsFull';
+  notDrawn?: 'holstered' | 'handsFull' | 'shield';
   /**
    * Etap 46c: naboje rodzaju z magazynka leżące w ekwipunku — `null`, gdy
    * karta nie liczy amunicji („bez dna”) albo broń nie ma kalibru.
@@ -119,6 +129,11 @@ export interface CpredAttachmentLookup {
   weaponTypeById: CompendiumRegistry['weaponTypeById'];
 }
 
+/** Tyle karty, ile pasek akcji czyta — pancerz tylko po to, by wiedzieć o tarczy w ręce. */
+export type CpredHotbarSheet = Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> & {
+  armor?: readonly CpredArmorRow[];
+};
+
 /**
  * The weapons a token can fire: the rows of its sheet.
  *
@@ -128,7 +143,7 @@ export interface CpredAttachmentLookup {
  * broni (`STATIST_WEAPON_ROW_ID`). Pusto = tej figury nikt nie ostatystykował.
  */
 export function cpredWeaponOptions(
-  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null,
+  sheet: CpredHotbarSheet | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
   attachments?: CpredAttachmentLookup,
@@ -156,7 +171,7 @@ export function cpredWeaponOptions(
 }
 
 function weaponOptionsOf(
-  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null,
+  sheet: CpredHotbarSheet | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
   attachments?: CpredAttachmentLookup,
@@ -172,14 +187,17 @@ function weaponOptionsOf(
     const handsHeld = handsDeclared
       ? cpredHandsHeld(sheet, (held) => resolve(held.compendiumId)?.hands ?? 1)
       : 0;
+    const shieldInHand = cpredShieldInHand(sheet);
     return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
       const notDrawn: CpredWeaponOption['notDrawn'] =
-        !handsDeclared || cpredWeaponInHands(sheet, row.id)
-          ? undefined
-          : cpredDrawFits(handsHeld, resolved?.hands ?? 1)
-            ? 'holstered'
-            : 'handsFull';
+        resolved?.hands === 2 && shieldInHand
+          ? 'shield'
+          : !handsDeclared || cpredWeaponInHands(sheet, row.id)
+            ? undefined
+            : cpredDrawFits(handsHeld, resolved?.hands ?? 1)
+              ? 'holstered'
+              : 'handsFull';
       const primary: CpredWeaponOption = {
         rowId: row.id,
         attachmentId: null,
@@ -529,7 +547,7 @@ export type CpredHotbarSlot =
 /** Everything the bar reads. All of it is state somebody else already owns. */
 export interface CpredHotbarInput {
   /** Karta zaznaczonej figury; null = figura, której nikt nie ostatystykował. */
-  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null;
+  sheet: CpredHotbarSheet | null;
   resolve: CpredWeaponResolver;
   /**
    * Etap 46c: ekwipunek, z którego karta przeładowuje — podaje go wołający
@@ -618,6 +636,7 @@ function weaponRefusal(
   // byłoby Akcją wydaną nie na to, co blokuje strzał.
   if (option.notDrawn === 'holstered') return CPRED_HOLSTERED_REFUSAL;
   if (option.notDrawn === 'handsFull') return CPRED_NOT_DRAWN_REFUSAL;
+  if (option.notDrawn === 'shield') return CPRED_SHIELD_TWO_HANDED_REFUSAL;
   if (option.throwsFromStock && (option.stock ?? 0) < 1) return CPRED_NO_THROWABLE_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;

@@ -33,6 +33,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredDrawFits,
+  cpredShieldHands,
   cpredThrowsFromStock,
   cpredDrawnWeapons,
   cpredEffectiveStats,
@@ -2235,14 +2236,15 @@ export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] 
   },
 });
 
-/** Ile rąk zajmuje to, co figura już trzyma — po katalogu, broń po broni. */
+/** Ile rąk zajmuje to, co figura już trzyma — tarcza i broń po broni, po katalogu. */
 async function handsInUse(
   deps: RealtimeDeps,
   campaignId: string,
   data: CpredCharacterData,
   rowIds: readonly string[],
 ): Promise<number> {
-  let used = 0;
+  // Tarcza w ręce zajmuje rękę jak broń (s. 183).
+  let used = cpredShieldHands(data);
   for (const rowId of rowIds) {
     const resolved = await resolveWeaponRow(deps, campaignId, data, rowId);
     used += resolved.resolved?.hands ?? 1;
