@@ -1,5 +1,42 @@
 # Dziennik sesji — archiwum
 
+### Sesja 09.10 (trzecia) — etap 46b1 „Pojemniki: model, serwer, testy jednostkowe”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. **Decyzje MG (start 46b,
+wszystkie zgodne z rekomendacją):** podział na 46b1 (`shared`, serwer, testy jednostkowe) i 46b2
+(klient, E2E, oględziny); pojemnik stawia **narzędzie w pasku mapy** (menu sceny pod prawym
+klikiem nie istnieje), karty pojemników w „Postaciach” MG w osobnej grupie „Pojemniki”; Test
+zamka — **jedna próba na postać**, MG zeruje; żetony — sylwetki game-icons na papierowym krążku.
+Zapisane w pliku etapu.
+
+**Zrobione:** `shared/containers.ts` (rdzeń: `ContainerLock`, rodzaje i ich domyślne nazwy oraz
+żetony, `TokenView.container`), `ExchangeFacts.container` → tryb `container` (u MG też `gm`),
+typy zdarzeń w `protocol.ts`; `systems/cpred/container.ts` (`CpredContainer`, walidacja,
+`isContainerCard`, `isContainerCardJson`, `cpredContainerOpening`, `cpredLockTestSettled`)
+i `containercard.ts` (karta, klucz, pusty stos); `CpredGearRow.key`; pole `container` na karcie.
+Serwer: `realtime/containers.ts` (`container:create`, `container:config` z „Wydaj klucz”
+i `resetTries`, `container:open` z wezwaniem do Testu, `container:put`, `inventory:drop`,
+`sweepEmptyPile`, `containerTokenIds`), `inventory:take` z otwartego pojemnika, sprzątanie stosu
+po łupie, przekazaniu MG i przyjętej propozycji, `settleLockTest` w rzucie na wezwanie,
+`createCheckCall` z `containerTokenId` po białej liście, `character:update` odmawia `container`
+wszystkim, `exchange:counterparts` (zawartość tylko otwartego, stan zamka, próba, klucz, mgła),
+pomijanie pojemników w walce, celu ataku i Zwarcia, wybuchu, ogniu zaporowym, turze bota,
+oględzinach, rozliczeniu miesiąca, przelewach, `trade:invite` i `merchant:config`;
+`removeCardWithFigures` w `tokens.ts`; macierz izolacji kampanii z nowymi zdarzeniami.
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Bez klienta i bez oględzin
+w przeglądarce (to 46b2). Testem jednostkowym nie objęte: wybuch, ogień zaporowy i tura bota
+z pojemnikiem na scenie (jedno pytanie `containerTokenIds`, sprawdzone w walce i celu ataku).
+
+**Następny krok — 46b2:** pliki żetonów (`data/public/tokens/containers/`, game-icons
+z `ATTRIBUTION.md`), tryb `container` w `ExchangeWindow` (zamek, „Otwórz”, „Otwórz zamek”
+z wyborem Umiejętności, „Weź”, „Zabierz wszystko”, „→”), narzędzie „📦 Pojemnik” w pasku mapy,
+karta pojemnika u MG (zawartość, zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować
+znowu”), grupa „Pojemniki” w „Postaciach”, podwójny klik gracza, przeciągnięcie wiersza z karty
+na mapę (`inventory:drop`), teksty nowych kodów odmowy w kliencie, pomijanie pojemników
+w klienckich listach (inicjatywa „wszystkie na scenie”, celowanie), E2E `t46b-` 46b.1–46b.7
+(kanarek zawartości) i oględziny Firefox + Chromium.
+
 ### Sesja 09.10 (druga) — etap 46c2 „Zapas amunicji: łańcuch T3a–T5b, pełny przebieg”
 
 **Zlecenie MG:** „kontynuuj projekt (46c2)”, pytać o niejasności. **Decyzje MG (start 46c2,

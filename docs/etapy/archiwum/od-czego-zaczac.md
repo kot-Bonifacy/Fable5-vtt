@@ -6,6 +6,22 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 45 (wyprowadzone 10.10.2026)
+
+**Etap 45 „Ruch i widzenie drużyny” zamknięty 08.10 (zlecenie MG spoza planu, przed refaktoryzacją).**
+O ruchu graczy decyduje **przełącznik „Ruch graczy: Stop / Eksploracja / Swobodny” w górnym pasku
+MG** (`Scene.playerMove`, stan oglądanej sceny; zastąpił checkbox `playerMoveLocked` z edytora
+sceny). Stop zatrzymuje każdego gracza, także w walce, a gracz widzi baner; Eksploracja poza walką
+płaci z puli metrów (ruch z jednej tury według karty, pełna odnowa w 10 s, `MOVE_PACE`, kursor
+„Złap oddech”); w walce zawsze rachunek Tury. **Nowa scena startuje w Stop i w Dynamicznej**
+(stare zostały, migracja: zamknięta → Stop, otwarta → Swobodny). **Figura gracza to domyślnie
+„oczy drużyny”** (`Token.sharedVision`, Observer z Foundry): koledzy widzą ją zawsze — w czerni
+mgły, za ścianą, w ciemności — i w Dynamicznej patrzą jej oczami; MG przełącza to w karcie figury
+(„Oczy drużyny”). Znaczek „⚠ N” obok przełącznika mówi, czemu drużyna i tak nie pójdzie (karta
+bez figury na scenie, figura w czerni ręcznej mgły — z „Odsłoń całą mapę” i „Przełącz na
+Dynamiczną”). Figura karty gracza bierze właściciela karty (było: gracz patrzył, a ruszyć nie mógł).
+Umowy w `mapa` i `tura`, E2E `specs/45-druzyna`.
+
 Kolejność jest ta sama, w jakiej stały w `POSTEP.md` (najnowsze pierwsze). Treść bez zmian.
 
 ## Wyprowadzone 09.10.2026 — etap 46c1

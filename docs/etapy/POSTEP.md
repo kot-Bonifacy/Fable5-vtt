@@ -21,16 +21,26 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (następna); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2 (ostatni zamknięty: 46b2, 2026-10-09) |
+| ⬜ otwarty   | **47b** cennik: łańcuch E2E (następny); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a (ostatni zamknięty: 47a, 2026-10-10) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 46 „Wymiana, sklepy, amunicja, pojemniki” zamknięty 09.10 (46b2 ostatnia) — następna jest
-refaktoryzacja całości pod osłoną suity, potem T10.** Pojemnik to karta NPC-a z polem `container`
+**Etap 47a „Cennik domowy” zamknięty 10.10 — następny jest 47b (łańcuch E2E pod nowe ceny), potem
+refaktoryzacja całości pod osłoną suity i T10.** Ed to mniej więcej euro: katalog z plików mnoży się
+**przy wczytaniu** (`systems/cpred/pricing.ts`) — broń, pancerz, chrom, sprzęt Netrunnera i droższy
+sprzęt ×10, amunicja i drobny sprzęt ogólny (10–50 ed) ×3, Komputer ×10; montaż znalezionego chromu
+×10, terapia ×2, Farmaceutyki ×3, ulepszenie Moto ×10; czynsz, Poziom życia, wypłaty i gotówka
+startowa bez zmian. **Pasma i poziomy sklepu się nie ruszają.** Kompletny Pakiet dostaje **gratis
+wyposażenie Roli** (`roleKits` w `creation.json`, Solo wybiera broń, chrom wszczepia MG „Dodaj za
+darmo”). Asystent zasad przelicza ceny z podręcznika. **Łańcuch E2E i specyfikacje z jego stanów
+(`t46a`, `t46b`, `t46c`, `t7a`, `t6a`) mają jeszcze stare kwoty — to 47b.** Cennik z pozycjami:
+`data/private/cpred/cennik-x10.md`; decyzje w `etap-47-cennik.md`, umowy w `postac`, `ekwipunek`, `dane`.
+
+**Etap 46 „Wymiana, sklepy, amunicja, pojemniki” zamknięty 09.10 (46b2 ostatnia).** Pojemnik to karta NPC-a z polem `container`
 i figurą: MG stawia skrzynię, bagażnik albo schowek narzędziem „📦” w pasku mapy (rodzaj, klik —
 otwiera się kompaktowa karta: zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować znowu”,
 zawartość); karty pojemników siedzą w „Postaciach” w zwiniętej grupie „Pojemniki”. Gracz podwójnym
@@ -54,20 +64,6 @@ zakładają już „oczy drużyny” z etapu 45** (Ola widzi oczami Kowala; mars
 tarasem). Decyzje MG w pliku etapu (sekcja 46c), umowy w `atak` i `ekwipunek`. Jedno okno
 „Wymiana” z 46a — kontekst w `archiwum/od-czego-zaczac.md`.
 
-**Etap 45 „Ruch i widzenie drużyny” zamknięty 08.10 (zlecenie MG spoza planu, przed refaktoryzacją).**
-O ruchu graczy decyduje **przełącznik „Ruch graczy: Stop / Eksploracja / Swobodny” w górnym pasku
-MG** (`Scene.playerMove`, stan oglądanej sceny; zastąpił checkbox `playerMoveLocked` z edytora
-sceny). Stop zatrzymuje każdego gracza, także w walce, a gracz widzi baner; Eksploracja poza walką
-płaci z puli metrów (ruch z jednej tury według karty, pełna odnowa w 10 s, `MOVE_PACE`, kursor
-„Złap oddech”); w walce zawsze rachunek Tury. **Nowa scena startuje w Stop i w Dynamicznej**
-(stare zostały, migracja: zamknięta → Stop, otwarta → Swobodny). **Figura gracza to domyślnie
-„oczy drużyny”** (`Token.sharedVision`, Observer z Foundry): koledzy widzą ją zawsze — w czerni
-mgły, za ścianą, w ciemności — i w Dynamicznej patrzą jej oczami; MG przełącza to w karcie figury
-(„Oczy drużyny”). Znaczek „⚠ N” obok przełącznika mówi, czemu drużyna i tak nie pójdzie (karta
-bez figury na scenie, figura w czerni ręcznej mgły — z „Odsłoń całą mapę” i „Przełącz na
-Dynamiczną”). Figura karty gracza bierze właściciela karty (było: gracz patrzył, a ruszyć nie mógł).
-Umowy w `mapa` i `tura`, E2E `specs/45-druzyna`.
-
 **Etap 44 „Konta MG” zrobiony i odebrany — T9b zamknięty 04.10** (`t9b-dwie-grupy` 15/15 dwa razy
 — środkowy z trzech przebiegów padł tylko na filtrze konsoli, zero B0–B2, trzy B3 #79–#81 czekają na triaż MG; wynik w `testy.md` 6.5). **Następna jest
 refaktoryzacja całości pod osłoną suity, potem T10.** T9b gra AI na atrapie gatewaya z dziennikiem
@@ -84,7 +80,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → refaktoryzacja → T10 → 28 → T11.**
+**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -174,7 +170,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -211,20 +207,54 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 41   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 48   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 27   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 49   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 28   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 5    | 11      |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 134     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 135     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 09–10.10 — etap 47a „Cennik domowy: ed jak euro”
+
+**Zlecenie MG:** ceny ~10× wyższe przy tej samej gotówce startowej, ed ≈ euro z lekką inflacją;
+ocenić, przygotować cennik, pytać o niejasności i mówić o błędach. **Decyzje MG (wszystkie
+zgodne z rekomendacją):** cennik zróżnicowany zamiast płaskiego ×10 (sprzęt trwały ×10, amunicja
+i drobiazgi ×3, życie ×1), pasma bez zmian, gotówka startowa bez zmian + wyposażenie Roli gratis
+w Kompletnym Pakiecie, wypłaty bez zmian, globalnie dla instancji, stałe wg zasady
+trwałe/eksploatacja, salda zostają, podział 47a/47b. Szczegóły w `etap-47-cennik.md`.
+
+**Zrobione:** `systems/cpred/pricing.ts` (reguła mnożników, `cpredScaleCatalogPrices` w
+`loadCompendium`, `formatEddies` przeniesione z `economy.ts`), `entryPrice` z ceną pasma × mnożnik,
+poziomy sklepu po cenie podręcznika, stałe (montaż, terapia, Farmaceutyki, Moto, czas
+Wytwarzania), `formatCost` i „Kup — X ed” z grupowaniem tysięcy; `roleKits` + `kitChoice` +
+`creationRoleKit`/`creationKitSheetRows` + sekcja „Wyposażenie Roli — gratis” w kreatorze,
+chrom w „Czego kreator nie wydaje”, `parse-creation.py` przenosi `roleKits`; 7. żelazna zasada
+asystenta zasad (`buildRulesSystemPrompt(houseRules)`). Cennik z pozycjami (337) w
+`data/private/cpred/cennik-x10.md`. Próbka: Grzechotnik 500 → 50 ed w danych.
+
+**Znalezione:** w pierwszym cenniku zamienione nazwy pasm 50/500 ed („Drogie”/„Kosztowne”) —
+poprawione; zdublowany wiersz 46b2 ⬜ w `archiwum/tabela-etapow.md` — usunięty. Pułapka
+o kwotach w testach w `testy`.
+
+**Weryfikacja:** `shared` **2377**, serwer **1409**, klient **331**; lint i `tsc` czyste; E2E
+`@szybkie` 51/52 + 1 pominięty — padł T9a „konsola” na zerwanym gnieździe Firefoksa (znana
+pułapka, przebieg szedł równolegle ze startem `pnpm dev`), powtórka `t9a-konta` 7/7. **Łańcucha
+i specyfikacji z jego stanów nie puszczano — do 47b są czerwone z założenia.** Oglądane w
+**Firefoksie** (Playwright MCP, `dev.db`, prawdziwe dane): krok „Wyposażenie” Solo (wybór broni,
+braki 6 → 5, ostrzeżenie o broni bez zapasu), okno zmiany Roli („Wybór z wyposażenia Roli:
+Strzelba”), Netrunner (dek, sprzęg i złącza, notka o chromie), ceny na półce przeliczone. Szkic
+testowy w „Oględziny 44d” wyrzucony.
+
+**Następny krok — 47b:** łańcuch T3a–T6b pod nowe ceny i odbudowa `po-T3`…`po-T6` pełnym
+przebiegiem z gatewayem, potem `t46a`, `t46b`, `t46c`, `t7a`, `t6a` i pełny domyślny przebieg.
 
 ### Sesja 09.10 (czwarta) — etap 46b2 „Pojemniki: klient, E2E, oględziny”
 
@@ -257,41 +287,3 @@ klucz), MG i Marek w Chromium (karta skrzyni, zamek, otwarta skrzynia, stos z ok
 
 **Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
 bazowa); przed nią warto puścić pełny domyślny przebieg (367 testów) z gatewayem.
-
-### Sesja 09.10 (trzecia) — etap 46b1 „Pojemniki: model, serwer, testy jednostkowe”
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 46b)”, pytać o niejasności. **Decyzje MG (start 46b,
-wszystkie zgodne z rekomendacją):** podział na 46b1 (`shared`, serwer, testy jednostkowe) i 46b2
-(klient, E2E, oględziny); pojemnik stawia **narzędzie w pasku mapy** (menu sceny pod prawym
-klikiem nie istnieje), karty pojemników w „Postaciach” MG w osobnej grupie „Pojemniki”; Test
-zamka — **jedna próba na postać**, MG zeruje; żetony — sylwetki game-icons na papierowym krążku.
-Zapisane w pliku etapu.
-
-**Zrobione:** `shared/containers.ts` (rdzeń: `ContainerLock`, rodzaje i ich domyślne nazwy oraz
-żetony, `TokenView.container`), `ExchangeFacts.container` → tryb `container` (u MG też `gm`),
-typy zdarzeń w `protocol.ts`; `systems/cpred/container.ts` (`CpredContainer`, walidacja,
-`isContainerCard`, `isContainerCardJson`, `cpredContainerOpening`, `cpredLockTestSettled`)
-i `containercard.ts` (karta, klucz, pusty stos); `CpredGearRow.key`; pole `container` na karcie.
-Serwer: `realtime/containers.ts` (`container:create`, `container:config` z „Wydaj klucz”
-i `resetTries`, `container:open` z wezwaniem do Testu, `container:put`, `inventory:drop`,
-`sweepEmptyPile`, `containerTokenIds`), `inventory:take` z otwartego pojemnika, sprzątanie stosu
-po łupie, przekazaniu MG i przyjętej propozycji, `settleLockTest` w rzucie na wezwanie,
-`createCheckCall` z `containerTokenId` po białej liście, `character:update` odmawia `container`
-wszystkim, `exchange:counterparts` (zawartość tylko otwartego, stan zamka, próba, klucz, mgła),
-pomijanie pojemników w walce, celu ataku i Zwarcia, wybuchu, ogniu zaporowym, turze bota,
-oględzinach, rozliczeniu miesiąca, przelewach, `trade:invite` i `merchant:config`;
-`removeCardWithFigures` w `tokens.ts`; macierz izolacji kampanii z nowymi zdarzeniami.
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Bez klienta i bez oględzin
-w przeglądarce (to 46b2). Testem jednostkowym nie objęte: wybuch, ogień zaporowy i tura bota
-z pojemnikiem na scenie (jedno pytanie `containerTokenIds`, sprawdzone w walce i celu ataku).
-
-**Następny krok — 46b2:** pliki żetonów (`data/public/tokens/containers/`, game-icons
-z `ATTRIBUTION.md`), tryb `container` w `ExchangeWindow` (zamek, „Otwórz”, „Otwórz zamek”
-z wyborem Umiejętności, „Weź”, „Zabierz wszystko”, „→”), narzędzie „📦 Pojemnik” w pasku mapy,
-karta pojemnika u MG (zawartość, zamek, PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować
-znowu”), grupa „Pojemniki” w „Postaciach”, podwójny klik gracza, przeciągnięcie wiersza z karty
-na mapę (`inventory:drop`), teksty nowych kodów odmowy w kliencie, pomijanie pojemników
-w klienckich listach (inicjatywa „wszystkie na scenie”, celowanie), E2E `t46b-` 46b.1–46b.7
-(kanarek zawartości) i oględziny Firefox + Chromium.
-
