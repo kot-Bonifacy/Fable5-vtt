@@ -10,6 +10,7 @@ import { confirmDestructive } from '../../confirm.js';
 import { configMerchant, merchantErrorText, setMerchantRow, viewMerchant } from '../../socket.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
+import { formatEd } from './items.js';
 
 /**
  * Sekcja „Sklep” w karcie NPC-a (etap 46a, tylko MG).
@@ -286,7 +287,7 @@ function ShopRows({
           <span className="cp-shop-name">{row.name}</span>
           <span className="cp-shop-qty">{row.stackable ? `× ${row.qty}` : row.detail}</span>
           <span className="cp-shop-price">
-            {row.price === null ? '⚠ bez ceny' : `${row.price} ed`}
+            {row.price === null ? '⚠ bez ceny' : formatEd(row.price)}
           </span>
           <label className="cp-shop-flag" title="Sprzedaje kopie bez końca — wiersz nie ubywa">
             <input

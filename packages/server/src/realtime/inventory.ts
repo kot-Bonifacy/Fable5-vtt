@@ -23,6 +23,7 @@ import {
   cpredItemLine,
   cpredMoveItems,
   cpredSheetHpMax,
+  formatEddies,
   isCpredItemList,
   inventoryMoveHeadline,
   isInventoryMoveOpen,
@@ -347,7 +348,7 @@ export async function moveBetweenCards(
 
 export function entryLines(moved: CpredItemView[], eddies: number): string[] {
   const lines = moved.map((view) => cpredItemLine(view));
-  if (eddies > 0) lines.push(`Gotówka: ${eddies} ed`);
+  if (eddies > 0) lines.push(`Gotówka: ${formatEddies(eddies)} ed`);
   return lines;
 }
 

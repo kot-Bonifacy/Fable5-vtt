@@ -4,7 +4,7 @@ import { CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
 import { inventoryErrorText, takeInventory } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
-import { clampQty, itemDetail, itemKey, refOf } from './items.js';
+import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
 import { OwnInventoryColumn } from './OwnInventoryColumn.js';
 
 /**
@@ -118,7 +118,7 @@ export function LootPane({
                 ←
               </button>
               <span className="inventory-row-name">Gotówka</span>
-              <span className="inventory-row-detail">{purse} ed</span>
+              <span className="inventory-row-detail">{formatEd(purse)}</span>
               <input
                 type="number"
                 className="inventory-row-qty"

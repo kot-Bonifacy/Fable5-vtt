@@ -10,6 +10,7 @@ import {
   ARCHIVE_REFUSAL_MESSAGES,
   archiveRefusalText,
   formatArchiveBytes,
+  isContainerCard,
   snapshotDateOf,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
@@ -201,7 +202,12 @@ function CharacterSection() {
       .catch(() => setPlayers([]));
   }, []);
 
-  const chosen = selected || order[0] || '';
+  // Skrzynia i stos (46b) żyją na scenie — eksport ich karty do pliku nic nie daje.
+  const cards = order.filter((id) => {
+    const card = characters[id];
+    return card !== undefined && !isContainerCard(card.data);
+  });
+  const chosen = selected || cards[0] || '';
 
   return (
     <section className="archive-section">
@@ -213,7 +219,7 @@ function CharacterSection() {
           onChange={(event) => setSelected(event.target.value)}
           aria-label="Karta do pobrania"
         >
-          {order.map((id) => (
+          {cards.map((id) => (
             <option key={id} value={id}>
               {characters[id]?.name ?? id}
             </option>

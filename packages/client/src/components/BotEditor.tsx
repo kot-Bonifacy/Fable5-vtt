@@ -36,6 +36,7 @@ import {
   compileBotPrompt,
   defaultBotGeneration,
   estimatePromptTokens,
+  isContainerCard,
   normalizeKnowledgeTags,
   relationBadge,
 } from '@vtt/shared';
@@ -498,11 +499,17 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
           onChange={(e) => queueBotSave(bot.id, { characterId: e.target.value || null })}
         >
           <option value="">— brak —</option>
-          {order.map((id) => (
-            <option key={id} value={id}>
-              {characters[id]?.name ?? id}
-            </option>
-          ))}
+          {order
+            .filter((id) => {
+              // Pojemnik (46b) to karta bez Cech — bot nie ma nią czym rzucać.
+              const card = characters[id];
+              return id === bot.characterId || (card !== undefined && !isContainerCard(card.data));
+            })
+            .map((id) => (
+              <option key={id} value={id}>
+                {characters[id]?.name ?? id}
+              </option>
+            ))}
         </select>
         <span className="bot-hint">
           Bez niej bot nie ma czym rzucać — testy wykonuje wyłącznie tą kartą.
@@ -636,7 +643,10 @@ function RelationsSection({ bot }: { bot: BotView }) {
 
   const rows = order
     .map((id) => characters[id])
-    .filter((character): character is NonNullable<typeof character> => !!character);
+    .filter(
+      (character): character is NonNullable<typeof character> =>
+        !!character && !isContainerCard(character.data),
+    );
 
   return (
     <>

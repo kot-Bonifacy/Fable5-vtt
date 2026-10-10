@@ -43,6 +43,7 @@ import {
   type CpredTakenRow,
 } from './inventory.js';
 import { cpredAmmoPiecePrice } from './ammostock.js';
+import { cpredIsBareHandsRow } from './barehands.js';
 import { cpredHaggledPrice } from './roleability.js';
 
 /** Cena wpisu katalogu po id — serwer i klient podają ją z własnego kompendium. */
@@ -139,6 +140,8 @@ export function cpredMerchantShelf(
   const rows: CpredShelfRow[] = [];
   for (const list of CPRED_ITEM_LISTS) {
     for (const row of merchant[list] as CpredItemRow[]) {
+      // Gołe ręce handlarza nie są towarem (47b) — ani dla gracza, ani dla MG.
+      if (cpredIsBareHandsRow(row)) continue;
       const overlay = overlays[merchantRowKey(list, row.id)];
       const price = cpredShelfPrice(cpredRowCatalogPrice(list, row, ctx), overlay, priceMul);
       const hidden = overlay?.hidden === true;

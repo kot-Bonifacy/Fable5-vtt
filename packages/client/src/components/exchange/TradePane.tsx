@@ -25,7 +25,7 @@ import {
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { useExchangeDrag } from './drag.js';
-import { itemDetail, itemKey, refOf } from './items.js';
+import { formatEd, itemDetail, itemKey, refOf } from './items.js';
 
 /**
  * Tryb `trade` okna „Wymiana” (38c, w jednym oknie od 46a) — dwa pola, dwie zgody.
@@ -265,7 +265,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
                   ⠿
                 </span>
                 <span className="inventory-row-name">Portfel</span>
-                <span className="inventory-row-detail">{wallet} ed</span>
+                <span className="inventory-row-detail">{formatEd(wallet)}</span>
               </div>
             )}
           </div>
@@ -341,7 +341,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
                     if (e.key === 'Enter') commitMoney();
                   }}
                 />
-                <span className="inventory-row-detail">z {wallet} ed</span>
+                <span className="inventory-row-detail">z {formatEd(wallet)}</span>
               </li>
             </OfferZone>
           ) : (
@@ -363,7 +363,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
               {side.eddies > 0 && (
                 <li className="inventory-money">
                   <span className="inventory-row-name">Gotówka</span>
-                  <span className="inventory-row-detail">{side.eddies} ed</span>
+                  <span className="inventory-row-detail">{formatEd(side.eddies)}</span>
                 </li>
               )}
             </OfferZone>

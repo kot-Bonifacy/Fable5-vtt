@@ -4,7 +4,7 @@ import { CPRED_ITEM_LIST_LABELS, cpredInventoryView } from '@vtt/shared';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { MAP_DROP_ZONE, useExchangeDrag } from './drag.js';
-import { clampQty, itemDetail, itemKey, refOf } from './items.js';
+import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
 import { DragGhost, dropOnMap } from './map-drop-item.js';
 
 /**
@@ -112,7 +112,7 @@ export function OwnInventoryColumn({
       </ul>
       <div className="inventory-money">
         <span className="inventory-row-name">Portfel</span>
-        <span className="inventory-row-detail">{wallet} ed</span>
+        <span className="inventory-row-detail">{formatEd(wallet)}</span>
         {onPut && wallet > 0 && (
           <>
             <input

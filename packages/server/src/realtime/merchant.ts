@@ -35,6 +35,7 @@ import {
   cpredMerchantShelf,
   cpredSheetHpMax,
   entryPrice,
+  formatEddies,
   isCatalogShopping,
   isCpredItemList,
   isMerchantAccess,
@@ -507,7 +508,7 @@ function closestBetween(a: PlacedToken[], b: PlacedToken[]): number | null {
 /** Linijki jednej strony transakcji; pusta strona mówi to wprost. */
 function dealLines(items: string[], eddies: number): string[] {
   const lines = [...items];
-  if (eddies > 0) lines.push(`Gotówka: ${eddies} ed`);
+  if (eddies > 0) lines.push(`Gotówka: ${formatEddies(eddies)} ed`);
   return lines.length > 0 ? lines : ['nic'];
 }
 

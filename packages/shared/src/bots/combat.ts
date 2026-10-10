@@ -92,6 +92,11 @@ export interface BotCombatFigure {
    * Figura zostaje w menu — jest wciąż celem podejścia i odwrotu.
    */
   noShot?: string;
+  /**
+   * Stoi w zasięgu ręki (sąsiednie pole) — podejście do niej niczego nie
+   * zmieni, więc nie jest celem „podejścia” (zaległość z 46c2, E2E 46c.9).
+   */
+  adjacent?: boolean;
 }
 
 /** Jedna broń w jednym trybie ognia — dokładnie jeden slot paska z 16f. */
@@ -211,7 +216,9 @@ export function availableBotCombatActions(state: BotCombatState): BotCombatActio
   const canWalk =
     figures.length > 0 && (state.self.metresLeft === null || state.self.metresLeft > 0);
   if (canWalk && !state.self.moveSpent) {
-    actions.push('approach');
+    // Gdy wszyscy stoją obok, podejść nie ma do kogo — serwer odmówiłby
+    // `ALREADY_IN_PLACE`, a bot straciłby krok na poprawkę.
+    if (figures.some((figure) => !figure.adjacent)) actions.push('approach');
     actions.push('retreat');
   }
 
@@ -402,6 +409,7 @@ export function buildBotCombatPrompt(
             metresLabel(figure.metres),
             `statusy: ${statusesLabel(figure.statuses)}`,
           ];
+          if (figure.adjacent) parts.push('tuż obok ciebie — podchodzić nie trzeba');
           if (figure.noShot) parts.push(`NIE DA SIĘ STRZELIĆ: ${figure.noShot}`);
           return `- ${figure.label} — ${parts.join(' · ')}`;
         })

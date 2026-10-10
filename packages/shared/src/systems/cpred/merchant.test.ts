@@ -17,6 +17,7 @@ import {
   type CpredWeaponRow,
 } from './character.js';
 import type { MerchantRowOverlays } from '../../merchants.js';
+import { cpredBareHandsRows } from './barehands.js';
 
 /**
  * Etap 46a: handlarz. Testy pilnują trzech rzeczy, które przy sklepie najłatwiej
@@ -147,6 +148,15 @@ describe('półka', () => {
       price: 600,
     });
     expect(shelf.find((row) => row.name === 'Chip z kodem')).toMatchObject({ price: null });
+  });
+
+  it('gołe ręce handlarza nie trafiają na półkę — ani graczowi, ani MG (47b)', () => {
+    const data = paser();
+    const armed = { ...data, weapons: [...data.weapons, ...cpredBareHandsRows(data)] };
+    for (const forGm of [false, true]) {
+      const names = cpredMerchantShelf(armed, overlays, 120, ctx, { forGm }).map((row) => row.name);
+      expect(names).not.toContain('Bijatyka');
+    }
   });
 });
 

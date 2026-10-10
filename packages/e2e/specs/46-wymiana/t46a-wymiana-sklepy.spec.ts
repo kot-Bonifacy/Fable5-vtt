@@ -426,12 +426,12 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await expect(shelf.locator('.inventory-row', { hasText: 'Latarka' })).toContainText('∞');
     await expect(
       shelf.locator('.inventory-row', { hasText: 'Lekka kurtka kuloodporna' }),
-    ).toContainText('1200 ed');
+    ).toContainText('1 200 ed');
     await expect(shelf).not.toContainText(hiddenName);
     await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
     await window.getByRole('button', { name: 'Do koszyka: Latarka' }).click();
     await window.getByRole('button', { name: 'Do koszyka: Lekka kurtka kuloodporna' }).click();
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1344 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1 344 ed');
     await shot(marek, '7-sklep-koszyk');
     const eddies = card('Kowal').eddies;
     await window.getByRole('button', { name: 'Zapłać' }).click();
@@ -583,7 +583,7 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     const window = exchange(marek);
     await expect(window).toHaveAttribute('data-exchange-mode', 'merchant');
     await window.getByRole('button', { name: 'Do koszyka: Agent' }).click();
-    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1000 ed');
+    await expect(window.getByTestId('exchange-total')).toContainText('Płacisz 1 000 ed');
     await window.getByRole('button', { name: 'Zapłać' }).click();
     await expect.poll(() => gear('Kowal', 'Agent')).toBe(1);
     expect(ledger('Kowal', mark)).toEqual([['purchase', -1000]]);

@@ -1,4 +1,5 @@
 import type { CpredItemViewWire, InventoryItemRefWire } from '@vtt/shared';
+import { formatEddies } from '@vtt/shared';
 
 /** Wspólne drobiazgi okna „Wymiana” — adres wiersza, klucz, podpis ilości. */
 
@@ -6,6 +7,11 @@ export function refOf(item: CpredItemViewWire, qty = item.qty): InventoryItemRef
   return item.stackable
     ? { list: item.list, rowId: item.rowId, qty }
     : { list: item.list, rowId: item.rowId };
+}
+
+/** Kwota z grupowaniem tysięcy, jak w Kompendium i kreatorze („1 200 ed”). */
+export function formatEd(value: number): string {
+  return `${formatEddies(value)} ed`;
 }
 
 export function itemKey(item: Pick<CpredItemViewWire, 'list' | 'rowId'>): string {

@@ -17,7 +17,7 @@ import { useChatStore } from '../../stores/chatStore.js';
 import { useTokenStore } from '../../stores/tokenStore.js';
 import { openCallDialog } from '../DiceCup.js';
 import { ItemViewIcon } from '../ItemIcons.js';
-import { clampQty, itemDetail, itemKey, refOf } from './items.js';
+import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
 import { OwnInventoryColumn } from './OwnInventoryColumn.js';
 
 /**
@@ -274,7 +274,7 @@ export function ContainerPane({
                 ←
               </button>
               <span className="inventory-row-name">Gotówka</span>
-              <span className="inventory-row-detail">{purse} ed</span>
+              <span className="inventory-row-detail">{formatEd(purse)}</span>
               <input
                 type="number"
                 className="inventory-row-qty"

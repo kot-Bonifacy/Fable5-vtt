@@ -27,6 +27,7 @@ import {
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
   createDefaultStatistQuick,
+  isContainerCard,
   isWeaponEntry,
   resolveWeapon,
   statistQuick,
@@ -731,6 +732,8 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           {characterOrder.map((id) => {
             const character = characters[id];
             if (!character) return null;
+            // Kartę pojemnika (46b) wiąże z figurą narzędzie „📦”, nie ta lista.
+            if (isContainerCard(character.data) && id !== characterId) return null;
             return (
               <option key={id} value={id}>
                 {character.name}

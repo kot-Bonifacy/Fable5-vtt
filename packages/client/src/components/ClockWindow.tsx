@@ -10,6 +10,7 @@ import {
   gameTimeFromInput,
   gameTimeToInput,
   cpredSheetHpMax,
+  isContainerCard,
   settleDue,
   settleMonthsDue,
   type GameTimeStepId,
@@ -69,6 +70,8 @@ export function ClockWindow() {
     () =>
       order
         .map((id) => charactersById[id]!)
+        // Skrzynia i stos (46b) nie mają czego leczyć.
+        .filter((character) => !isContainerCard(character.data))
         .map((character) => ({
           id: character.id,
           name: character.name,

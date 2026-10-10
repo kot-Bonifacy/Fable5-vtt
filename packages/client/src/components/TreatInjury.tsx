@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { CpredCareMode, CpredCriticalInjuryRow } from '@vtt/shared';
-import { CPRED_CARE_MODE_LABELS, ROLE_GM, cpredCareOptions, cpredCareRefusal } from '@vtt/shared';
+import {
+  CPRED_CARE_MODE_LABELS,
+  ROLE_GM,
+  cpredCareOptions,
+  cpredCareRefusal,
+  isContainerCard,
+} from '@vtt/shared';
 import { loadTreatInjuryCup } from '../stores/rollStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -56,6 +62,7 @@ export function TreatInjury({
         .filter(
           (entry): entry is NonNullable<typeof entry> =>
             entry !== undefined &&
+            !isContainerCard(entry.data) &&
             (user?.role === ROLE_GM || entry.ownerId === user?.id) &&
             // „Nie można leczyć samego siebie" (s. 223) — a łatać można, więc
             // pacjent wypada z listy tylko w jednym z dwóch trybów. Serwer i tak

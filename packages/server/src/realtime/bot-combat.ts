@@ -21,6 +21,7 @@ import {
   BOT_COMBAT_MAX_TOKENS,
   BOT_COMBAT_STEPS_MAX,
   BOT_COMBAT_TEMPERATURE,
+  CPRED_MELEE_REACH_M,
   CPRED_WOUND_LABELS,
   ROLE_GM,
   TOKEN_PATH_MAX_POINTS,
@@ -38,6 +39,7 @@ import {
   metresPerPixel,
   movementSegments,
   parseBotCombatAction,
+  reachMetresBetweenTokens,
   parseBotData,
   parseCharacterData,
   planWalk,
@@ -317,13 +319,19 @@ async function buildTacticalStep(
       : cover
         ? `osłona: ${cover.name}`
         : undefined;
+    const otherView = toTokenView(other, true);
+    // Zasięg ręki liczony jak przy Pochwyceniu i łupie: pole po skosie też jest obok.
+    const adjacent =
+      metresForRules(reachMetresBetweenTokens(actorView, otherView, sceneView)) <=
+      CPRED_MELEE_REACH_M;
     figures.push({
       id: other.id,
       label,
       side: sideOf(ctx.bot.data.type, other, playerCharacterIds),
-      metres: metresForRules(metresBetweenTokens(actorView, toTokenView(other, true), sceneView)),
+      metres: metresForRules(metresBetweenTokens(actorView, otherView, sceneView)),
       statuses: statusLabels(deps, tokenStatuses(other)),
       ...(noShot ? { noShot } : {}),
+      ...(adjacent ? { adjacent } : {}),
     });
   }
   figures.sort((a, b) => a.metres - b.metres);
@@ -904,7 +912,23 @@ async function runStep(
     // decyduje jeszcze raz na ODŚWIEŻONYM stanie — odmowa mogła coś zmienić.
     const retryStep = await buildTacticalStep(deps, ctx, actor, step.state.step);
     const retry = await runCombatDecision(deps, ctx, retryStep.state, refusal);
-    if (!retry.decision || retry.decision.kind === 'pass') {
+    if (retry.decision?.kind === 'pass') {
+      // Poprawka to świadomy pas, nie druga odmowa — ślad mówi „pasuje”
+      // i podaje, czego serwer nie przyjął (zaległość z 46c2).
+      const passed = describeBotCombatDecision(retry.decision);
+      trace(deps, ctx.campaignId, {
+        ...base,
+        decision: 'pass',
+        outcome: 'pass',
+        optionLabel: summary,
+        refusal,
+        retried: true,
+        ...(retry.decision.reason ? { reason: retry.decision.reason } : {}),
+        combat: { ...base.combat, summary: passed },
+      });
+      return { kind: 'pass', summary: passed };
+    }
+    if (!retry.decision) {
       trace(deps, ctx.campaignId, {
         ...base,
         decision: decision.kind,

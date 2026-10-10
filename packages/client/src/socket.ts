@@ -487,7 +487,10 @@ function botActionTraceText(trace: BotActionTraceBroadcast): string {
     case 'talk':
       return `🎲 ${trace.botName} uznał to za rozmowę, nie prośbę o test · ${took}${why}`;
     case 'pass':
-      return `🎲 ${trace.botName} pasuje · ${took}${where}${why}`;
+      // Pas po odmowie (poprawka) niesie powód, którego serwer nie przyjął.
+      return trace.refusal
+        ? `🎲 ${trace.botName} pasuje po odmowie („${trace.optionLabel ?? '?'}” — ${trace.refusal}) · ${took}${where}${why}`
+        : `🎲 ${trace.botName} pasuje · ${took}${where}${why}`;
     default:
       return `🎲 ${trace.botName}: akcja odrzucona — ${trace.refusal ?? 'nieznany powód'} · ${took}${where}`;
   }

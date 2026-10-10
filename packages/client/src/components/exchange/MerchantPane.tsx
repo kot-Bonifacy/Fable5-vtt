@@ -18,7 +18,7 @@ import { useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { useExchangeDrag } from './drag.js';
-import { itemDetail, itemKey } from './items.js';
+import { formatEd, itemDetail, itemKey } from './items.js';
 
 /**
  * Tryb `merchant` okna „Wymiana” (etap 46a, wzór: *Merchant* z Item Piles).
@@ -49,8 +49,8 @@ function maxBuy(row: MerchantShelfRowView): number {
 }
 
 function signed(value: number): string {
-  if (value === 0) return '0 ed';
-  return value > 0 ? `−${value} ed` : `+${-value} ed`;
+  if (value === 0) return formatEd(0);
+  return value > 0 ? `−${formatEd(value)}` : `+${formatEd(-value)}`;
 }
 
 export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merchantId: string }) {
@@ -213,7 +213,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     setSelling({});
     const total = ack.data?.total ?? quote.total;
     setMessage(
-      `${total >= 0 ? `Zapłacone: ${total} ed` : `Dostajesz: ${-total} ed`}. Zostało ${ack.data?.balance ?? '?'} ed.`,
+      `${total >= 0 ? `Zapłacone: ${formatEd(total)}` : `Dostajesz: ${formatEd(-total)}`}. Zostało ${ack.data ? formatEd(ack.data.balance) : '? ed'}.`,
     );
   }
 
@@ -277,7 +277,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
                   <ItemViewIcon item={item} />
                   <span className="inventory-row-name">{item.name}</span>
                   <span className="inventory-row-detail">{itemDetail(item)}</span>
-                  <span className="exchange-price">{sellable ? `${piece} ed` : '—'}</span>
+                  <span className="exchange-price">{sellable ? formatEd(piece) : '—'}</span>
                   <button
                     type="button"
                     className="small-button"
@@ -294,7 +294,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           </ul>
           <div className="inventory-money">
             <span className="inventory-row-name">Gotówka</span>
-            <span className="inventory-row-detail">{wallet} ed</span>
+            <span className="inventory-row-detail">{formatEd(wallet)}</span>
           </div>
         </div>
 
@@ -336,7 +336,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
                     ) : (
                       <span className="inventory-row-detail">{item.detail}</span>
                     )}
-                    <span className="exchange-price">+{(buyBack(item) ?? 0) * qty} ed</span>
+                    <span className="exchange-price">+{formatEd((buyBack(item) ?? 0) * qty)}</span>
                     <button
                       type="button"
                       className="small-button"
@@ -385,7 +385,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
                     ) : (
                       <span className="inventory-row-detail">{row.detail}</span>
                     )}
-                    <span className="exchange-price">−{(row.price ?? 0) * qty} ed</span>
+                    <span className="exchange-price">−{formatEd((row.price ?? 0) * qty)}</span>
                     <button
                       type="button"
                       className="small-button"
@@ -438,7 +438,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
                     {row.infinite ? '∞' : row.stackable ? `× ${row.qty}` : row.detail}
                   </span>
                   <span className="exchange-price">
-                    {row.price === null ? '⚠ bez ceny' : `${row.price} ed`}
+                    {row.price === null ? '⚠ bez ceny' : formatEd(row.price)}
                   </span>
                 </li>
               );
@@ -447,7 +447,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           <div className="inventory-money">
             <span className="inventory-row-name">Kasa handlarza</span>
             <span className="inventory-row-detail">
-              {view.cash === null ? 'bez dna' : `${view.cash} ed`}
+              {view.cash === null ? 'bez dna' : formatEd(view.cash)}
             </span>
           </div>
         </div>
@@ -456,9 +456,9 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
       <div className="trade-footer">
         {quote && !empty && (
           <p className="exchange-total" data-testid="exchange-total">
-            Płacisz {paid} ed · dostajesz {quote.sell} ed · razem {signed(quote.total)} · zostanie{' '}
-            {wallet - quote.total} ed
-            {quote.haggleOff > 0 ? ` (targ Fixera: −${quote.haggleOff} ed)` : ''}
+            Płacisz {formatEd(paid)} · dostajesz {formatEd(quote.sell)} · razem{' '}
+            {signed(quote.total)} · zostanie {formatEd(wallet - quote.total)}
+            {quote.haggleOff > 0 ? ` (targ Fixera: −${formatEd(quote.haggleOff)})` : ''}
           </p>
         )}
         {problemTexts.map((text) => (

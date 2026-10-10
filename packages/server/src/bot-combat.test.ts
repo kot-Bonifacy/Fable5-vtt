@@ -826,11 +826,47 @@ describe('bezpieczniki', () => {
       decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' }),
     ];
 
-    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+    const ack = data(
+      await emitAck<BotPlayTurnResult>(gm.socket, 'bot:play-turn', { tokenId: botTokenId }),
+      'bot:play-turn',
+    );
 
     const refused = await until(() => seen.traces.find((t) => t.refusal));
     expect(refused.refusal).toContain('Już tam stoisz');
     expect(refused.refusal).not.toContain('zablokowana');
+    // Poprawka to pas — ślad i wynik tury mówią „pas”, a powód odmowy zostaje
+    // w śladzie (zaległość z 46c2: wcześniej szło to jako druga odmowa).
+    expect(refused.outcome).toBe('pass');
+    expect(refused.retried).toBe(true);
+    expect(ack.outcome).toBe('pass');
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  });
+
+  // Zaległość z 46c2 (E2E 46c.9): przy samych sąsiadach „podejście” wypada
+  // z menu, zanim model zdąży je wybrać.
+  it('leaves the approach out when every figure in view stands next to the bot', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await place(gm.socket, enemyTokenId, 2);
+    await emitAck(gm.socket, 'token:move', {
+      tokenId: allyTokenId,
+      x: 0,
+      y: 2 * PX_PER_M,
+      final: true,
+    });
+    await startFight(gm.socket);
+    gateway.answers = [decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' })];
+
+    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+
+    const first = gateway.bodies[0]!.json_schema as {
+      properties: { akcja: { enum: string[] }; cel: { enum: string[] } };
+    };
+    expect(first.properties.cel.enum).toEqual(expect.arrayContaining(['Rico', 'Vex']));
+    expect(first.properties.akcja.enum).not.toContain('podejście');
+    expect(first.properties.akcja.enum).toContain('odwrót');
     await endFight(gm.socket);
     gm.socket.disconnect();
   });

@@ -4,7 +4,7 @@ import { CPRED_ITEM_LIST_LABELS, INVENTORY_NOTE_MAX, cpredInventoryView } from '
 import { giveInventory, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
-import { clampQty, itemKey, refOf } from './items.js';
+import { clampQty, formatEd, itemKey, refOf } from './items.js';
 
 /**
  * Tryb `gm` okna „Wymiana” (decyzja MG 8) — narzędzie MG z 38b w nowym oknie.
@@ -114,7 +114,7 @@ export function GmPane({
           {purse > 0 && (
             <div className="inventory-money">
               <span className="inventory-row-name">Gotówka</span>
-              <span className="inventory-row-detail">{purse} ed</span>
+              <span className="inventory-row-detail">{formatEd(purse)}</span>
               <input
                 type="number"
                 className="inventory-row-qty"

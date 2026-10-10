@@ -70,6 +70,26 @@ describe('availableBotCombatActions', () => {
     expect(availableBotCombatActions(walked)).not.toContain('retreat');
   });
 
+  // Zaległość z 46c2 (E2E 46c.9): bot przy jedynej figurze tracił krok na
+  // „podejście”, którego serwer i tak nie przyjmie.
+  it('drops the approach when every figure stands within arm’s reach', () => {
+    const crowded = state({
+      figures: state().figures.map((figure) => ({ ...figure, metres: 2, adjacent: true })),
+    });
+    expect(availableBotCombatActions(crowded)).not.toContain('approach');
+    expect(availableBotCombatActions(crowded)).toContain('retreat');
+  });
+
+  it('keeps the approach while anybody is still further than the next square', () => {
+    const mixed = state({
+      figures: [
+        { id: 'tok-rico', label: 'Rico', side: 'enemy', metres: 2, adjacent: true },
+        { id: 'tok-vex', label: 'Vex', side: 'ally', metres: 8 },
+      ],
+    });
+    expect(availableBotCombatActions(mixed)).toContain('approach');
+  });
+
   it('drops the attack when nothing can be shot at', () => {
     const blocked = state({
       figures: state().figures.map((figure) => ({ ...figure, noShot: 'ściana' })),
@@ -297,6 +317,15 @@ describe('buildBotCombatPrompt', () => {
     });
     expect(buildBotCombatPrompt(blocked, { botName: 'Kolec' }).system).toContain(
       'NIE DA SIĘ STRZELIĆ: osłona: Samochód',
+    );
+  });
+
+  it('tells the model who already stands next to the figure', () => {
+    const close = state({
+      figures: [{ id: 'tok-rico', label: 'Rico', side: 'enemy', metres: 2, adjacent: true }],
+    });
+    expect(buildBotCombatPrompt(close, { botName: 'Kolec' }).system).toContain(
+      '- Rico — przeciwnik · 2 m · statusy: brak · tuż obok ciebie — podchodzić nie trzeba',
     );
   });
 
