@@ -8,6 +8,7 @@ import {
   RANDOM_TABLE_ROW_TEXT_MAX_LENGTH,
   RANDOM_TABLE_VISIBILITIES,
   RANDOM_TABLE_VISIBILITY_LABELS,
+  parseRandomTableRange,
   parseRollNotation,
   randomTableCoverageIssues,
   randomTableRangeLabel,
@@ -38,25 +39,40 @@ import { EmptyState } from './EmptyState.js';
  * uda — mówi dokładnie to zdanie, które padnie przy zapisie.
  */
 
-/** Ile wierszy wolno wygenerować guzikiem „Rozpisz zakres" — dalej to już import. */
+/** Ile wierszy wolno wygenerować guzikiem „Wiersz na każdą liczbę" — dalej to już import. */
 const FILL_ROWS_MAX = 100;
 
-type DraftRow = { min: string; max: string; text: string; subTableId: string };
+/**
+ * Zakres jest jednym polem tekstowym („7", „4–6"), jak w drukowanej tabeli —
+ * dwa pola liczb ze strzałkami zjadały wiersz i odsuwały od siebie zakres
+ * i treść. `subOpen` trzyma rozwiniętą listę „losuj dalej" przy wierszu, który
+ * jeszcze jej nie ma; wiersz z wybraną tabelą pokazuje ją zawsze.
+ */
+type DraftRow = { range: string; text: string; subTableId: string; subOpen: boolean };
+
+function emptyRow(range: string): DraftRow {
+  return { range, text: '', subTableId: '', subOpen: false };
+}
 
 function toDraftRows(table: RandomTableView | null): DraftRow[] {
-  if (!table || table.rows.length === 0) return [{ min: '1', max: '1', text: '', subTableId: '' }];
+  if (!table || table.rows.length === 0) return [emptyRow('1')];
   return table.rows.map((row) => ({
-    min: String(row.min),
-    max: String(row.max),
+    range: randomTableRangeLabel(row),
     text: row.text,
     subTableId: row.subTableId ?? '',
+    subOpen: false,
   }));
 }
 
-function parsedRows(rows: DraftRow[]): { min: number; max: number }[] {
-  return rows
-    .map((row) => ({ min: Number(row.min), max: Number(row.max) }))
-    .filter((row) => Number.isFinite(row.min) && Number.isFinite(row.max));
+/** Wiersze z czytelnym zakresem; `null` w miejscu tych, których nie da się przeczytać. */
+function parsedRows(rows: DraftRow[]): ({ min: number; max: number } | null)[] {
+  return rows.map((row) => parseRandomTableRange(row.range));
+}
+
+function rangeIssue(index: number, raw: string): string {
+  return raw.trim().length === 0
+    ? `Wiersz ${index + 1} nie ma zakresu — wpisz „7” albo „4–6”.`
+    : `Wiersz ${index + 1}: nie rozumiem zakresu „${raw.trim()}” — wpisz „7” albo „4–6”.`;
 }
 
 /**
@@ -122,11 +138,18 @@ function TableForm({
     () => (parsedFormula.ok ? randomTableSpan(parsedFormula.formula) : null),
     [parsedFormula],
   );
-  const issues = useMemo(
-    () =>
-      parsedFormula.ok ? randomTableCoverageIssues(parsedFormula.formula, parsedRows(rows)) : [],
-    [parsedFormula, rows],
-  );
+  const ranges = useMemo(() => parsedRows(rows), [rows]);
+  const issues = useMemo(() => {
+    const unreadable = ranges.flatMap((range, index) =>
+      range ? [] : [rangeIssue(index, rows[index]?.range ?? '')],
+    );
+    if (unreadable.length > 0) return unreadable;
+    if (!parsedFormula.ok) return [];
+    return randomTableCoverageIssues(
+      parsedFormula.formula,
+      ranges.filter((range): range is { min: number; max: number } => range !== null),
+    ).map((issue) => issue.message);
+  }, [parsedFormula, ranges, rows]);
 
   function patchRow(index: number, patch: Partial<DraftRow>) {
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -135,30 +158,34 @@ function TableForm({
   function addRow() {
     setRows((current) => {
       const last = current[current.length - 1];
-      const next = last ? Number(last.max) + 1 : 1;
-      const value = Number.isFinite(next) ? String(next) : '1';
-      return [...current, { min: value, max: value, text: '', subTableId: '' }];
+      const lastRange = last ? parseRandomTableRange(last.range) : null;
+      const next = lastRange ? lastRange.max + 1 : (span?.min ?? 1);
+      return [...current, emptyRow(String(next))];
     });
   }
 
+  /*
+   * „Wiersz na każdą liczbę" zastępuje wszystkie wiersze, więc działa tylko na
+   * pustych: dawniej jedno kliknięcie w gotowej tabeli kasowało jej treść.
+   */
+  const rowsEmpty = rows.every((row) => row.text.trim() === '' && row.subTableId === '');
+  const fillCount = span ? span.max - span.min + 1 : 0;
+  const canFill = rowsEmpty && !!span && fillCount >= 1 && fillCount <= FILL_ROWS_MAX;
+
   /** Rozpisuje formułę na wiersz po liczbie — pierwszy krok przy nowej tabeli. */
   function fillRange() {
-    if (!span) return;
-    const count = span.max - span.min + 1;
-    if (count < 1 || count > FILL_ROWS_MAX) return;
-    setRows(
-      Array.from({ length: count }, (_, index) => ({
-        min: String(span.min + index),
-        max: String(span.min + index),
-        text: '',
-        subTableId: '',
-      })),
-    );
+    if (!canFill || !span) return;
+    setRows(Array.from({ length: fillCount }, (_, index) => emptyRow(String(span.min + index))));
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    const unreadable = ranges.findIndex((range) => range === null);
+    if (unreadable >= 0) {
+      setError(rangeIssue(unreadable, rows[unreadable]?.range ?? ''));
+      return;
+    }
     setBusy(true);
     setError(null);
     const payload: RandomTableUpsertPayload = {
@@ -167,9 +194,9 @@ function TableForm({
       formula,
       description,
       visibility,
-      rows: rows.map((row) => ({
-        min: Number(row.min),
-        max: Number(row.max),
+      rows: rows.map((row, index) => ({
+        min: ranges[index]!.min,
+        max: ranges[index]!.max,
         text: row.text,
         subTableId: row.subTableId.length > 0 ? row.subTableId : null,
       })),
@@ -182,8 +209,6 @@ function TableForm({
     }
     onClose();
   }
-
-  const fillCount = span ? span.max - span.min + 1 : 0;
 
   return (
     <form className="bot-form table-form" onSubmit={(event) => void submit(event)}>
@@ -200,7 +225,7 @@ function TableForm({
         <span className="bot-hint">Nazwa jest adresem: tak samo wpiszesz ją w „/tab".</span>
       </label>
 
-      <div className="bot-row-inline">
+      <div className="bot-row-inline table-form-top">
         <label className="bot-field bot-field--inline">
           <span className="auth-label">Formuła</span>
           <input
@@ -211,9 +236,10 @@ function TableForm({
           />
         </label>
         <label className="bot-field bot-field--inline">
-          <span className="auth-label">Domyślna widoczność</span>
+          <span className="auth-label">Widoczność</span>
           <select
             value={visibility}
+            title="Który przycisk losowania jest domyślny i jak losuje „/tab” na czacie"
             onChange={(event) => setVisibility(event.target.value as RandomTableVisibility)}
           >
             {RANDOM_TABLE_VISIBILITIES.map((entry) => (
@@ -247,73 +273,105 @@ function TableForm({
           type="button"
           className="small-button"
           onClick={fillRange}
-          disabled={!span || fillCount < 1 || fillCount > FILL_ROWS_MAX}
+          disabled={!canFill}
           title={
-            span && fillCount >= 1 && fillCount <= FILL_ROWS_MAX
-              ? `Rozpisze ${fillCount} pustych wierszy, po jednym na liczbę`
-              : `Rozpisanie działa do ${FILL_ROWS_MAX} wierszy`
+            !rowsEmpty
+              ? 'Działa tylko na pustej tabeli — zastąpiłoby wpisane wiersze'
+              : canFill
+                ? `Założy ${fillCount} pustych wierszy, po jednym na każdą liczbę z formuły`
+                : `Działa do ${FILL_ROWS_MAX} wierszy`
           }
         >
-          Rozpisz zakres
+          Wiersz na każdą liczbę
         </button>
       </div>
 
       <ol className="table-rows">
-        {rows.map((row, index) => (
-          <li key={index} className="table-row">
-            <input
-              className="table-row-num"
-              type="number"
-              value={row.min}
-              aria-label="Od"
-              onChange={(event) => patchRow(index, { min: event.target.value })}
-            />
-            <span className="table-row-dash">–</span>
-            <input
-              className="table-row-num"
-              type="number"
-              value={row.max}
-              aria-label="Do"
-              onChange={(event) => patchRow(index, { max: event.target.value })}
-            />
-            <textarea
-              className={
-                openText === index ? 'table-row-text table-row-text--open' : 'table-row-text'
-              }
-              rows={1}
-              maxLength={RANDOM_TABLE_ROW_TEXT_MAX_LENGTH}
-              value={row.text}
-              placeholder="Co się dzieje"
-              aria-label="Treść wiersza"
-              onFocus={() => setOpenText(index)}
-              onBlur={() => collapseAfterPointer(() => setOpenText(null))}
-              onChange={(event) => patchRow(index, { text: event.target.value })}
-            />
-            <select
-              className="table-row-sub"
-              value={row.subTableId}
-              aria-label="Podrzut"
-              title="Podrzut: po trafieniu w ten wiersz losuje się jeszcze z tej tabeli"
-              onChange={(event) => patchRow(index, { subTableId: event.target.value })}
-            >
-              <option value="">bez podrzutu</option>
-              {others.map((other) => (
-                <option key={other.id} value={other.id}>
-                  ↳ {other.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="small-button character-delete"
-              title={`Usuń wiersz ${randomTableRangeLabel({ min: Number(row.min), max: Number(row.max) })}`}
-              aria-label={`Usuń wiersz ${randomTableRangeLabel({ min: Number(row.min), max: Number(row.max) })}`}
-              onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
-            >
-              ✕
-            </button>
-          </li>
-        ))}
+        {rows.map((row, index) => {
+          const showSub = row.subOpen || row.subTableId !== '';
+          const label = row.range.trim() || `${index + 1}.`;
+          return (
+            <li key={index} className="table-row">
+              <input
+                className={
+                  ranges[index] ? 'table-row-range' : 'table-row-range table-row-range--bad'
+                }
+                type="text"
+                inputMode="numeric"
+                value={row.range}
+                placeholder="4–6"
+                aria-label="Zakres"
+                title="Liczba („7”) albo zakres („4–6”), na który wypada ten wiersz"
+                onChange={(event) => patchRow(index, { range: event.target.value })}
+              />
+              <textarea
+                className={
+                  openText === index ? 'table-row-text table-row-text--open' : 'table-row-text'
+                }
+                rows={1}
+                maxLength={RANDOM_TABLE_ROW_TEXT_MAX_LENGTH}
+                value={row.text}
+                placeholder="Co się dzieje"
+                aria-label="Treść wiersza"
+                onFocus={() => setOpenText(index)}
+                onBlur={() => collapseAfterPointer(() => setOpenText(null))}
+                onChange={(event) => patchRow(index, { text: event.target.value })}
+              />
+              <div className="table-row-tools">
+                <button
+                  type="button"
+                  className={
+                    showSub
+                      ? 'small-button table-row-link is-active'
+                      : 'small-button table-row-link'
+                  }
+                  aria-pressed={showSub}
+                  aria-label={`Losuj dalej z innej tabeli (wiersz ${label})`}
+                  title={
+                    others.length === 0
+                      ? 'Losuj dalej z innej tabeli — najpierw załóż drugą tabelę'
+                      : 'Losuj dalej z innej tabeli, gdy wypadnie ten wiersz (np. „Łup” → „Broń przy ciele”)'
+                  }
+                  disabled={others.length === 0 && !showSub}
+                  onClick={() =>
+                    patchRow(
+                      index,
+                      showSub ? { subOpen: false, subTableId: '' } : { subOpen: true },
+                    )
+                  }
+                >
+                  ↳
+                </button>
+                <button
+                  type="button"
+                  className="small-button character-delete"
+                  title={`Usuń wiersz ${label}`}
+                  aria-label={`Usuń wiersz ${label}`}
+                  onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
+                >
+                  ✕
+                </button>
+              </div>
+              {showSub && (
+                <label className="table-row-sub">
+                  <span>…i losuj dalej z:</span>
+                  <select
+                    value={row.subTableId}
+                    aria-label="Losuj dalej z"
+                    onChange={(event) => patchRow(index, { subTableId: event.target.value })}
+                  >
+                    <option value="">— wybierz tabelę —</option>
+                    {others.map((other) => (
+                      <option key={other.id} value={other.id}>
+                        {other.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </li>
+          );
+        })}
       </ol>
       <button
         type="button"
@@ -327,7 +385,7 @@ function TableForm({
       {issues.length > 0 && (
         <ul className="table-issues">
           {issues.map((issue, index) => (
-            <li key={index}>{issue.message}</li>
+            <li key={index}>{issue}</li>
           ))}
         </ul>
       )}
@@ -347,13 +405,10 @@ function TableForm({
 
 function TableRow({ table, onEdit }: { table: RandomTableView; onEdit: () => void }) {
   const [confirming, setConfirming] = useState(false);
-  const other: RandomTableVisibility = table.visibility === 'gm' ? 'public' : 'gm';
+  const [expanded, setExpanded] = useState(false);
 
-  async function roll(visibility?: RandomTableVisibility) {
-    const ack = await rollRandomTableNow({
-      id: table.id,
-      ...(visibility ? { visibility } : {}),
-    });
+  async function roll(visibility: RandomTableVisibility) {
+    const ack = await rollRandomTableNow({ id: table.id, visibility });
     if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
   }
 
@@ -362,46 +417,80 @@ function TableRow({ table, onEdit }: { table: RandomTableView; onEdit: () => voi
     if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
   }
 
-  const nested = table.rows.filter((row) => row.subTableId).length;
+  const linked = [
+    ...new Set(table.rows.flatMap((row) => (row.subTableName ? [row.subTableName] : []))),
+  ];
+
+  /*
+   * Dwa przyciski z napisem zamiast „Losuj" i samej ikonki odwrotnej
+   * widoczności — 🔊 czytało się jako dźwięk. Domyślny (ten, którym losuje
+   * „/tab") jest pogrubiony.
+   */
+  const rollButton = (visibility: RandomTableVisibility) => {
+    const isDefault = table.visibility === visibility;
+    return (
+      <button
+        type="button"
+        className={isDefault ? 'small-button table-roll' : 'small-button'}
+        onClick={() => void roll(visibility)}
+        title={`${
+          visibility === 'gm'
+            ? 'Wynik na czacie zobaczysz tylko ty — stołowi pokażesz go przyciskiem na karcie'
+            : 'Wynik na czacie zobaczy cały stół'
+        }. Kubka nie rusza.${isDefault ? ' Domyślne — tak losuje też „/tab”.' : ''}`}
+      >
+        {visibility === 'gm' ? '🔒 Losuj dla MG' : '📢 Losuj jawnie'}
+      </button>
+    );
+  };
 
   return (
     <li className="knowledge-entry table-entry">
-      <button type="button" className="knowledge-entry-head" onClick={onEdit}>
+      <button
+        type="button"
+        className="knowledge-entry-head"
+        aria-expanded={expanded}
+        title={expanded ? 'Zwiń wiersze' : 'Pokaż wiersze'}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className="table-entry-caret" aria-hidden>
+          {expanded ? '▾' : '▸'}
+        </span>
         <span className="knowledge-type">{displayDiceNotation(table.formula)}</span>
         <span className="knowledge-entry-title">{table.name}</span>
-        <span className="knowledge-flag">
-          {table.visibility === 'gm' ? '🔒 tylko MG' : '🔊 cały stół'}
-        </span>
       </button>
       {table.description && <p className="knowledge-entry-body">{table.description}</p>}
+      {expanded && (
+        <ol className="table-preview">
+          {table.rows.map((row) => (
+            <li key={row.id}>
+              <span className="table-preview-range">{randomTableRangeLabel(row)}</span>
+              <span className="table-preview-text">
+                {row.text}
+                {row.subTableName && (
+                  <span className="table-preview-link"> ↳ {row.subTableName}</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       <div className="knowledge-entry-foot">
         <span className="knowledge-tag">
           {plural(table.rows.length, 'wiersz', 'wiersze', 'wierszy')}
         </span>
-        {nested > 0 && (
-          <span className="knowledge-tag" title="Wiersze, które losują jeszcze inną tabelę">
-            ↳ {plural(nested, 'podrzut', 'podrzuty', 'podrzutów')}
+        {linked.length > 0 && (
+          <span className="knowledge-tag" title="Te tabele losują się dalej po trafieniu w wiersz">
+            ↳ {linked.join(', ')}
           </span>
         )}
-        <button
-          type="button"
-          className="small-button table-roll"
-          onClick={() => void roll()}
-          title={`Losuje na czat — ${RANDOM_TABLE_VISIBILITY_LABELS[table.visibility].toLowerCase()}. Kubka nie rusza.`}
-        >
-          🎲 Losuj
-        </button>
-        <button
-          type="button"
-          className="small-button"
-          onClick={() => void roll(other)}
-          title={`Ten sam rzut, ale ${RANDOM_TABLE_VISIBILITY_LABELS[other].toLowerCase()}`}
-        >
-          {other === 'gm' ? '🔒' : '🔊'}
-        </button>
+      </div>
+      <div className="knowledge-entry-foot">
+        {rollButton('gm')}
+        {rollButton('public')}
         {confirming ? (
           <>
-            <span className="knowledge-flag">Usunąć?</span>
+            <span className="knowledge-flag table-entry-end">Usunąć?</span>
             <button
               type="button"
               className="small-button character-delete"
@@ -414,15 +503,26 @@ function TableRow({ table, onEdit }: { table: RandomTableView; onEdit: () => voi
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            className="small-button character-delete"
-            title="Usuń tabelę (wiersze, które ją podrzucały, stracą podrzut)"
-            aria-label="Usuń tabelę"
-            onClick={() => setConfirming(true)}
-          >
-            ✕
-          </button>
+          <>
+            <button
+              type="button"
+              className="small-button table-entry-end"
+              title="Edytuj tabelę"
+              aria-label="Edytuj tabelę"
+              onClick={onEdit}
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              className="small-button character-delete"
+              title="Usuń tabelę (wiersze innych tabel, które ją losowały, stracą to powiązanie)"
+              aria-label="Usuń tabelę"
+              onClick={() => setConfirming(true)}
+            >
+              ✕
+            </button>
+          </>
         )}
       </div>
     </li>
@@ -483,6 +583,13 @@ export function TablePanel() {
           + Nowa tabela
         </button>
       </div>
+
+      {rows.length > 0 && (
+        <p className="bot-hint table-panel-intro">
+          Tabele losowe: rzut formułą wybiera wiersz, a wynik ląduje na czacie — kubka nie rusza. Na
+          czacie to samo robi <code>/tab nazwa</code>.
+        </p>
+      )}
 
       <ul className="knowledge-list">
         {visible.length === 0 ? (

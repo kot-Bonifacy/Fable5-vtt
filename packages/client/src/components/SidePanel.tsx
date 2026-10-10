@@ -67,7 +67,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },
-  { id: 'tables', label: 'Tabele' },
+  { id: 'tables', label: 'Losowe' },
   { id: 'net', label: 'Sieć' },
   { id: 'ai', label: 'AI' },
   { id: 'archive', label: 'Kopie' },

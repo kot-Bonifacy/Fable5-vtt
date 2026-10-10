@@ -39,21 +39,17 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
     test.setTimeout(3 * 60_000);
     const page = mg.page;
     const secret = fromMarek.secret('tabela');
-    await page.getByRole('button', { name: 'Tabele', exact: true }).click();
+    await page.getByRole('button', { name: 'Losowe', exact: true }).click();
     await page.getByRole('button', { name: '+ Nowa tabela' }).click();
     const form = page.locator('form.table-form');
     await form.locator('label', { hasText: 'Nazwa' }).locator('input').fill(TABLE);
     await form.locator('label', { hasText: 'Formuła' }).locator('input').fill('1d10');
-    await form
-      .locator('label', { hasText: 'Domyślna widoczność' })
-      .locator('select')
-      .selectOption('gm');
+    await form.locator('label', { hasText: 'Widoczność' }).locator('select').selectOption('gm');
     const rows = form.locator('.table-row');
     while ((await rows.count()) < 2) await form.getByRole('button', { name: '+ Wiersz' }).click();
     const fill = async (index: number, min: number, max: number, text: string) => {
       const row = rows.nth(index);
-      await row.getByLabel('Od', { exact: true }).fill(String(min));
-      await row.getByLabel('Do', { exact: true }).fill(String(max));
+      await row.getByLabel('Zakres', { exact: true }).fill(`${min}–${max}`);
       await row.locator('textarea').fill(text);
     };
     await fill(0, 1, 5, 'Stary kawałek Samuraia, ktoś podkręca głośność.');
@@ -71,7 +67,7 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
     // Ukryte losowanie (domyślna widoczność „Tylko MG”) — Marek nic nie dostaje.
     const mark = await marek.sniffer.mark();
     scriptDice([8]);
-    await entry.getByRole('button', { name: '🎲 Losuj' }).click();
+    await entry.getByRole('button', { name: '🔒 Losuj dla MG' }).click();
     await page.getByRole('button', { name: 'Czat', exact: true }).click();
     const hidden = page.locator('[data-testid="rolltable"].chat-table--secret', {
       hasText: 'Reklama Kiroshi',
@@ -91,10 +87,10 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
       marek.page.locator('[data-testid="rolltable"]', { hasText: 'Reklama Kiroshi' }),
     ).toBeVisible({ timeout: 20_000 });
 
-    // Jawne losowanie przyciskiem 🔊 i `/tab` na czacie (domyślna widoczność — u MG).
-    await page.getByRole('button', { name: 'Tabele', exact: true }).click();
+    // Jawne losowanie przyciskiem „Losuj jawnie” i `/tab` na czacie (domyślna widoczność — u MG).
+    await page.getByRole('button', { name: 'Losowe', exact: true }).click();
     scriptDice([2]);
-    await entry.getByRole('button', { name: '🔊' }).click();
+    await entry.getByRole('button', { name: '📢 Losuj jawnie' }).click();
     await expect(
       marek.page.locator('[data-testid="rolltable"]', { hasText: 'Stary kawałek Samuraia' }),
     ).toBeVisible({ timeout: 20_000 });
@@ -137,12 +133,12 @@ test.describe.serial('T8c narracja: tabele losowe, asystent zasad, baza wiedzy',
 
   test('#72 „Dodaj tabelę” zaraz po wpisaniu treści wiersza zapisuje tabelę za pierwszym klikiem', async () => {
     const page = mg.page;
-    await page.getByRole('button', { name: 'Tabele', exact: true }).click();
+    await page.getByRole('button', { name: 'Losowe', exact: true }).click();
     await page.getByRole('button', { name: '+ Nowa tabela' }).click();
     const form = page.locator('form.table-form');
     try {
       await form.locator('label', { hasText: 'Nazwa' }).locator('input').fill('Szum ulicy');
-      await form.getByRole('button', { name: 'Rozpisz zakres' }).click();
+      await form.getByRole('button', { name: 'Wiersz na każdą liczbę' }).click();
       const rows = form.locator('.table-row');
       for (let i = 0; i < 10; i += 1)
         await rows

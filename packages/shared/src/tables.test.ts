@@ -3,6 +3,7 @@ import type { DiceRng } from './dice.js';
 import { parseRollNotation } from './dice.js';
 import {
   RANDOM_TABLE_NESTING_MAX,
+  parseRandomTableRange,
   randomTableCoverageIssues,
   randomTableNestingIssue,
   randomTableSpan,
@@ -288,5 +289,28 @@ describe('rozstrzyganie wiersza', () => {
     ];
     expect(resolveRandomTableRow(rows, 6)).toEqual({ min: 6, max: 10 });
     expect(resolveRandomTableRow(rows, 11)).toBeNull();
+  });
+});
+
+describe('pole zakresu', () => {
+  it('czyta pojedynczą liczbę i zakres z każdym rodzajem kreski', () => {
+    expect(parseRandomTableRange('7')).toEqual({ min: 7, max: 7 });
+    expect(parseRandomTableRange('4-6')).toEqual({ min: 4, max: 6 });
+    expect(parseRandomTableRange(' 4 – 6 ')).toEqual({ min: 4, max: 6 });
+    expect(parseRandomTableRange('4—6')).toEqual({ min: 4, max: 6 });
+  });
+
+  it('minus przed liczbą jest znakiem, nie kreską', () => {
+    expect(parseRandomTableRange('-3--1')).toEqual({ min: -3, max: -1 });
+    expect(parseRandomTableRange('-2')).toEqual({ min: -2, max: -2 });
+  });
+
+  it('odwrócony zakres przepuszcza — odmawia go pokrycie, jednym zdaniem z serwerem', () => {
+    expect(parseRandomTableRange('6-4')).toEqual({ min: 6, max: 4 });
+  });
+
+  it('odrzuca to, co nie jest zakresem', () => {
+    for (const raw of ['', ' ', 'a', '1-', '1-2-3', '1,5', '1 2'])
+      expect(parseRandomTableRange(raw)).toBeNull();
   });
 });

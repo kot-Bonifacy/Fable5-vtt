@@ -228,13 +228,35 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 112     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 138     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (szósta) — poprawka spoza etapów: zakładka tabel losowych czytelniejsza
+
+**Zlecenie MG:** „zakładka Tabela jest mało intuicyjna” — ocena i wyjaśnienie, potem „wprowadź
+sugerowane zmiany”.
+
+**Zrobione:** zakładka nazywa się **„Losowe”**, nad listą jedno zdanie, do czego służy (i `/tab`).
+Lista: nagłówek rozwija podgląd wierszy (zakres · treść · ↳ tabela dalej), edycja pod ✎, dwa
+przyciski z napisem **„🔒 Losuj dla MG”** i **„📢 Losuj jawnie”** zamiast „Losuj” i gołego 🔊
+(domyślny pogrubiony — tak losuje `/tab`). Edytor: zakres to **jedno pole** („7”, „4–6”;
+`parseRandomTableRange` w `shared/tables.ts` + testy), każdy wiersz w ramce, treść obok zakresu;
+„podrzut” to przycisk ↳ rozwijający „…i losuj dalej z:”. **„Rozpisz zakres” → „Wiersz na każdą
+liczbę” i działa tylko na pustych wierszach** — wcześniej jedno kliknięcie w gotowej tabeli
+kasowało jej treść bez pytania. Etykiety „Formuła” i „Widoczność” w jednej linii.
+**Nie zrobione z propozycji:** „Próbne losowanie” w edytorze — wymagałoby rzutu u klienta, a rzuty
+idą wyłącznie przez serwer (`CLAUDE.md`).
+
+**Weryfikacja:** vitest shared `tables.test.ts` (24), client 330, `tsc` client, eslint/prettier
+zmienionych plików; E2E `t8c-narracja` (tabele, #72, #73) 6/6 — spec i `t8a` przepisane na nowe
+nazwy (`t8a` nieuruchamiane). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”):
+lista z podglądem, edytor szeroki i przy panelu 320 px, odmowa zakresu „2-x”, blokada
+„Wiersz na każdą liczbę” po wpisaniu treści. **Ślady w `dev.db`:** brak (nowa tabela anulowana).
 
 ### Sesja 10.10 (piąta) — poprawki spoza etapów: czat w poczekalni, półka Kompendium, „Animacja 3D”
 
@@ -256,34 +278,3 @@ zawsze pulsuje. Test `sessions.test.ts` › „czat w poczekalni”, T8c bez prz
 eslint zmienionych plików. Oglądane w **Firefoksie** (MG, `dev.db`): okno ustawień bez
 przełącznika, skórki na miejscu. Widok gracza w poczekalni nieoglądany w przeglądarce — pokrywa
 go test serwera; E2E nieuruchamiane.
-
-### Sesja 10.10 (czwarta) — etap 48c „Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG”
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 48c)”, pytać o niejasności. Przegląd znalazł poza
-planem: Obrażenia/LA/OB edytowalne przez gracza (atak liczy z wiersza), „+ Dodatek” z całego
-katalogu za darmo, „Znaleziony — montaż” dowolnego wszczepu za robociznę, łata gracza dopisująca
-wszczep bez Człowieczeństwa, ⊕ Ulepszanie dla każdego. **Decyzje MG:** ostrzej niż rekomendacja —
-żadnych pustych wierszy, **także u MG** („relikt karty papierowej”); liczby, ↻ i ⊕ tylko MG;
-dodatki jak Programy (rekomendacja); „Znaleziony” z wiersza Wyposażenia (rekomendacja); wszystko
-w jednej sesji (podział 48c/48d odrzucony).
-
-**Zrobione:** `itemlocks.ts` + `ITEM_LOCKED` w `character:update`; `purchasedSheetRow` zna
-dodatki, montaż/zdjęcie przez Wyposażenie w `weapon:attachment` (`ATTACHMENT_NOT_IN_GEAR`),
-`requireFoundCyberware` i `performInstall({ fromGear })` (`CYBERWARE_NOT_IN_GEAR`), wspólne
-`cpredTakeOneGear`/`cpredLandInGear`/`cpredGearRowOfEntry` w `inventory.ts`. Karta: bez
-„+ Wyposażenie”, „+ Pancerz”, „+ Załóż”; u gracza pola `readOnly`, ilość i bieżące OB tylko w dół,
-bez ↻ i ⊕, „+ Broń z katalogu” i wiązanie tylko MG; „+ Dodatek” z Wyposażenia. Kompendium:
-„Znaleziony” wyszarzony bez wiersza, „Do Wyposażenia” MG. Kreator: półka „Dodatki”. E2E: T3a 3.8
-(blokady i luneta z Wyposażenia), T4a — chip Zbira z własnego wpisu Kompendium.
-
-**Znalezione:** wpis Kompendium „tylko dla MG”, wyjęty wszczep do Wyposażenia, Ulepszanie jako
-akcja Technika (`POMYSLY.md`).
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
-MCP, `dev.db`, „Test_1”): pas broni i pancerza Franca bez guzików dopisywania, „Wydłużony
-magazynek” — „Dodaj za darmo” → „+ Dodatek” → zdjęcie wraca do Wyposażenia, karta wszczepu
-(„Znaleziony” wyszarzony, „Do Wyposażenia”); w **Chromium** gracz `Tester` („Oględziny Stym”):
-nazwy i liczby tylko do odczytu, ilość z sufitem, bez „+ Wyposażenie”. **Ślady w `dev.db`:** brak
-(wiersz magazynka MG usunął). Dev :3001 i Vite :5173 działały już przed sesją.
-
-**Następny krok — refaktoryzacja całości pod osłoną suity**, potem T10.

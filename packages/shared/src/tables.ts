@@ -199,6 +199,21 @@ export function randomTableRangeLabel(row: { min: number; max: number }): string
 }
 
 /**
+ * Odwrotność `randomTableRangeLabel`: pole zakresu w edytorze przyjmuje „7",
+ * „4–6", „4-6" i „4 — 6". Minus przed liczbą jest znakiem (formuła z ujemnym
+ * modyfikatorem schodzi poniżej zera), więc „-3--1" to od −3 do −1.
+ * `null` = nie da się tego przeczytać jako zakresu.
+ */
+export function parseRandomTableRange(raw: string): { min: number; max: number } | null {
+  const match = /^\s*(-?\d+)\s*(?:[-–—]\s*(-?\d+))?\s*$/.exec(raw);
+  if (!match) return null;
+  const min = Number(match[1]);
+  const max = match[2] === undefined ? min : Number(match[2]);
+  if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max)) return null;
+  return { min, max };
+}
+
+/**
  * Co jest nie tak z pokryciem zakresów. Pusta lista = tabela da się wylosować
  * i każdy wiersz ma szansę wypaść.
  *

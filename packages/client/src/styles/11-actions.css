@@ -354,7 +354,20 @@
   color: var(--text-dim);
 }
 
-/* Zakładka „Tabele" — wiersze edytora są siatką „od–do · treść · podrzut". */
+/* Zakładka „Losowe" (tabele losowe, 34). Wiersz edytora czyta się jak wiersz
+   drukowanej tabeli: zakres po lewej, treść obok, narzędzia z boku, a „losuj
+   dalej" dopiero pod spodem i tylko wtedy, gdy jest. Każdy wiersz ma ramkę —
+   bez niej treść jednego wiersza wyglądała jak nagłówek następnego. */
+
+.table-form-top {
+  align-items: stretch;
+}
+
+/* Lista widoczności dorasta do pola formuły obok — inaczej etykiety stały
+   na różnych wysokościach. */
+.table-form-top select {
+  flex: 1 1 auto;
+}
 
 .table-rows-head {
   display: flex;
@@ -370,34 +383,36 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
 .table-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
 }
 
-.table-row-num {
-  width: 3.4rem;
-  flex: none;
+.table-row .table-row-range,
+.table-row .table-row-text {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
 }
 
-.table-row-dash {
-  align-self: center;
-  color: var(--text-dim);
-}
-
-/* #72 (03.10.2026): treść ma własny wiersz pod „od–do · podrzut · ✕". W panelu
-   320 px dzieliła linię z dwoma polami liczb i listą podrzutu i zostawało jej
-   ~55 px. */
-.table-row-text {
-  order: 1;
-  flex: 1 1 100%;
+.table-row .table-row-range {
+  width: 100%;
   min-width: 0;
-  resize: vertical;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-row-range--bad {
+  border-color: var(--warn);
 }
 
 /* Wiersz podręcznikowej tabeli bywa akapitem na 1 400 znaków, a lista dwustu
@@ -405,13 +420,90 @@
    pełne okno pod kursorem. Klasę, nie `:focus`, zdejmuje `TablePanel` dopiero
    po puszczeniu przycisku myszy (#72): pole kurczyło się o ~5rem między
    mousedown a mouseup, więc „Dodaj tabelę" uciekało spod kursora. */
+.table-row-text {
+  min-width: 0;
+  resize: vertical;
+}
+
 .table-row-text--open {
   min-height: 7rem;
 }
 
+.table-row-tools {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.table-row-link.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .table-row-sub {
-  flex: 1 1 8rem;
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.table-row-sub select {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Lista: rozwijany podgląd wierszy, żeby nie otwierać edytora tylko po to,
+   by przypomnieć sobie, co w tabeli siedzi. */
+
+.table-panel-intro {
+  margin: 0 0 0.4rem;
+}
+
+.table-entry-caret {
+  color: var(--text-dim);
+  width: 0.8rem;
+}
+
+.table-preview {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+}
+
+.table-preview li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.table-preview-range {
+  color: var(--accent);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-preview-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.table-preview-link {
+  color: var(--text-dim);
+}
+
+.knowledge-entry-foot .table-entry-end {
+  margin-left: auto;
+}
+
+.knowledge-entry-foot .table-entry-end ~ .character-delete {
+  margin-left: 0;
 }
 
 .table-issues {

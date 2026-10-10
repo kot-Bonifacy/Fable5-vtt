@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (czwarta) — etap 48c „Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 48c)”, pytać o niejasności. Przegląd znalazł poza
+planem: Obrażenia/LA/OB edytowalne przez gracza (atak liczy z wiersza), „+ Dodatek” z całego
+katalogu za darmo, „Znaleziony — montaż” dowolnego wszczepu za robociznę, łata gracza dopisująca
+wszczep bez Człowieczeństwa, ⊕ Ulepszanie dla każdego. **Decyzje MG:** ostrzej niż rekomendacja —
+żadnych pustych wierszy, **także u MG** („relikt karty papierowej”); liczby, ↻ i ⊕ tylko MG;
+dodatki jak Programy (rekomendacja); „Znaleziony” z wiersza Wyposażenia (rekomendacja); wszystko
+w jednej sesji (podział 48c/48d odrzucony).
+
+**Zrobione:** `itemlocks.ts` + `ITEM_LOCKED` w `character:update`; `purchasedSheetRow` zna
+dodatki, montaż/zdjęcie przez Wyposażenie w `weapon:attachment` (`ATTACHMENT_NOT_IN_GEAR`),
+`requireFoundCyberware` i `performInstall({ fromGear })` (`CYBERWARE_NOT_IN_GEAR`), wspólne
+`cpredTakeOneGear`/`cpredLandInGear`/`cpredGearRowOfEntry` w `inventory.ts`. Karta: bez
+„+ Wyposażenie”, „+ Pancerz”, „+ Załóż”; u gracza pola `readOnly`, ilość i bieżące OB tylko w dół,
+bez ↻ i ⊕, „+ Broń z katalogu” i wiązanie tylko MG; „+ Dodatek” z Wyposażenia. Kompendium:
+„Znaleziony” wyszarzony bez wiersza, „Do Wyposażenia” MG. Kreator: półka „Dodatki”. E2E: T3a 3.8
+(blokady i luneta z Wyposażenia), T4a — chip Zbira z własnego wpisu Kompendium.
+
+**Znalezione:** wpis Kompendium „tylko dla MG”, wyjęty wszczep do Wyposażenia, Ulepszanie jako
+akcja Technika (`POMYSLY.md`).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
+MCP, `dev.db`, „Test_1”): pas broni i pancerza Franca bez guzików dopisywania, „Wydłużony
+magazynek” — „Dodaj za darmo” → „+ Dodatek” → zdjęcie wraca do Wyposażenia, karta wszczepu
+(„Znaleziony” wyszarzony, „Do Wyposażenia”); w **Chromium** gracz `Tester` („Oględziny Stym”):
+nazwy i liczby tylko do odczytu, ilość z sufitem, bez „+ Wyposażenie”. **Ślady w `dev.db`:** brak
+(wiersz magazynka MG usunął). Dev :3001 i Vite :5173 działały już przed sesją.
+
+**Następny krok — refaktoryzacja całości pod osłoną suity**, potem T10.
+
 ### Sesja 10.10 (trzecia) — etap 48b „Cyberdek i Programy jako towar”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 48b)”, pytać o niejasności. Przy przeglądzie wyszło, że
