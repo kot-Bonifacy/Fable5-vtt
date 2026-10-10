@@ -711,6 +711,17 @@ export function CompendiumEditor() {
                   onChange={(event) => patch({ deckSlotCost: event.target.value })}
                 />
               </label>
+              <label
+                className="bot-checkbox"
+                title="W sklepie kreatora leży na półce „Elektronika”, nie „Sprzęt”. Cyberdek trafia tam sam."
+              >
+                <input
+                  type="checkbox"
+                  checked={form.electronics}
+                  onChange={(event) => patch({ electronics: event.target.checked })}
+                />
+                Elektronika
+              </label>
             </div>
           ) : null}
 
@@ -1628,6 +1639,7 @@ interface EditorForm {
   fxOncePerEntry: boolean;
   deckSlots: string;
   deckSlotCost: string;
+  electronics: boolean;
   defenseKind: string;
   demonInterface: string;
   demonActions: string;
@@ -1763,6 +1775,7 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
       entry?.category === 'gear' && entry.deckSlotCost !== undefined
         ? String(entry.deckSlotCost)
         : '',
+    electronics: entry?.category === 'gear' && entry.electronics === true,
     defenseKind: entry?.category === 'netDefense' ? entry.defenseKind : 'demon',
     demonInterface: numberField(entry?.category === 'netDefense' ? entry.interfaceRank : undefined),
     demonActions: numberField(entry?.category === 'netDefense' ? entry.netActions : undefined),
@@ -2112,6 +2125,7 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       ...base,
       deckSlots: numberOrUndefined(form.deckSlots),
       deckSlotCost: numberOrUndefined(form.deckSlotCost),
+      electronics: form.electronics || undefined,
     };
   }
   if (form.category === 'criticalInjury') {

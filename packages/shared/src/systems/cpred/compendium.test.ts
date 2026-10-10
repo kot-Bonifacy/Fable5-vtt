@@ -4,6 +4,7 @@ import {
   buildCompendium,
   dvForRange,
   formatCost,
+  isElectronicsGear,
   resolveWeapon,
   searchCompendium,
   validateCompendiumEntry,
@@ -584,6 +585,18 @@ describe('program entries', () => {
     expect(
       validateCompendiumEntry({ category: 'gear', name: 'Zły dek', cost: 0, deckSlots: 0 }).ok,
     ).toBe(false);
+  });
+
+  it('marks electronics — by the flag, and a deck without one', () => {
+    const gear = (input: Record<string, unknown>) => {
+      const result = validateCompendiumEntry({ category: 'gear', cost: 10, ...input });
+      if (!result.ok || result.entry.category !== 'gear') throw new Error('gear refused');
+      return result.entry;
+    };
+    expect(isElectronicsGear(gear({ name: 'Telefon', electronics: true }))).toBe(true);
+    expect(gear({ name: 'Lina', electronics: 'tak' }).electronics).toBeUndefined();
+    expect(isElectronicsGear(gear({ name: 'Lina' }))).toBe(false);
+    expect(isElectronicsGear(gear({ name: 'Dek', deckSlots: 4 }))).toBe(true);
   });
 });
 

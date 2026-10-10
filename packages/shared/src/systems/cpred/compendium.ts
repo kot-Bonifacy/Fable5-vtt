@@ -417,6 +417,17 @@ export interface GearEntry extends CompendiumEntryBase {
   deckSlots?: number;
   /** Slots this piece *takes* in a deck — the hardware upgrades of s. 208. */
   deckSlotCost?: number;
+  /**
+   * Electronics — Agent, phones, scanners, recorders (10.10). Only the
+   * creator's shop reads it, to split one long „Sprzęt” shelf in two; the
+   * rulebook prints a single list, so the importer marks the rows by name.
+   */
+  electronics?: boolean;
+}
+
+/** „Elektronika” or „Sprzęt” on the creator's shelf — a deck is electronics by itself. */
+export function isElectronicsGear(entry: GearEntry): boolean {
+  return entry.electronics === true || !!entry.deckSlots || !!entry.deckSlotCost;
 }
 
 /**
@@ -1469,6 +1480,7 @@ function validateGear(
     category: 'gear',
     ...(deckSlots !== undefined ? { deckSlots } : {}),
     ...(deckSlotCost !== undefined ? { deckSlotCost } : {}),
+    ...(input.electronics === true ? { electronics: true } : {}),
   };
 }
 

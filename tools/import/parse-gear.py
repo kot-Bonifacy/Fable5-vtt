@@ -86,6 +86,33 @@ FASHION_TABLE_RE = re.compile(r"\bMODA\s+Nogi")
 # too rather than patched in from `parse-netrunning.py`: one owner per entry.
 DECK_SLOTS_RE = re.compile(r"(\d+)\s+gniazd\w*\s+na\s+Programy")
 
+# The rulebook prints one list; the creator's shop splits it into „Sprzęt" and
+# „Elektronika" (10.10), so the devices are named here. Cyberdecks need no row:
+# `isElectronicsGear` counts every entry with deck slots. A name the table no
+# longer carries is reported, so a renamed item does not drop out silently.
+ELECTRONICS = {
+    "Agent",
+    "Analizator biochemiczny",
+    "Automatyczne słuchawki wygłuszające",
+    "Czip pamięci",
+    "Gogle wirtualowe",
+    "Jednorazowy telefon komórkowy",
+    "Kamera wideo",
+    "Koder/dekoder",
+    "Komputer",
+    "Odbiornik lokalizatora",
+    "Przeglądarka braindance’u",
+    "Radiokomunikator",
+    "Radioodtwarzacz",
+    "Rejestrator dźwięku",
+    "Skaner medyczny",
+    "Smartkulary",
+    "Techskaner",
+    "Wykrywacz podsłuchu",
+    "Wykrywacz radaru",
+    "Wzmacniacz kieszonkowy",
+}
+
 # Bands as the Polish edition inflects them; the longer prefixes must be tested
 # first, or „B. kosztowny" reads as „Kosztowny" and the item gets the wrong rung.
 BAND_PREFIXES: list[tuple[str, str]] = [
@@ -264,9 +291,13 @@ def main() -> int:
                 "cost": price,
                 "costCategory": band,
                 **({"deckSlots": int(slots.group(1))} if slots else {}),
+                **({"electronics": True} if name in ELECTRONICS else {}),
                 **({"description": description} if description else {}),
             }
         )
+
+    for name in sorted(ELECTRONICS - {name for name, _, _ in rows}):
+        warn(f"{name}: na liście ELECTRONICS, ale nie ma go w tabeli cen")
 
     payload = {"source": SOURCE, "entries": entries}
     OUT_DIR.mkdir(parents=True, exist_ok=True)

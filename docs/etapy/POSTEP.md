@@ -226,7 +226,7 @@ a nie do tego pliku.
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar     | 8    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 7    | 12      |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 112     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 138     |
@@ -235,6 +235,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (dziesiąta) — poprawka spoza etapów: półka „Elektronika” w kreatorze
+
+**Zlecenie MG:** na półce „Sprzęt” w kroku „Wyposażenie” jest za dużo rzeczy — podzielić na drugą
+zakładkę, np. z elementami cybernetycznymi, „chyba że masz lepszy pomysł”.
+
+**Decyzja:** cyborgizacji na tej półce nie ma (kreator ich nie sprzedaje — `creationLeftOutside`),
+więc podział to **„Sprzęt” / „Elektronika”**. Elektronika: Agent, telefony, komputer, kamera,
+rejestrator, radio, gogle, smartkulary, BD, czip, słuchawki, skanery, wykrywacze, koder, odbiornik,
+wzmacniacz i każdy dek. U Solo na półce Ulicznej było ~30 pozycji, teraz 17 + 13.
+
+**Zrobione:** `GearEntry.electronics` + `isElectronicsGear` (`compendium.ts`, dek z `deckSlots`/
+`deckSlotCost` liczy się sam), lista `ELECTRONICS` w `parse-gear.py` (ostrzega o nazwie spoza
+tabeli), import puszczony (diff: tylko 20 flag), półka `electronics` w `GearStep`, checkbox
+„Elektronika” w edytorze kompendium (sprzęt). E2E T3a kupuje Agenta na „Elektronice”. Okno
+Kompendium bez zmian (dalej jedna kategoria „Sprzęt”). Umowa w `dane`.
+
+**Weryfikacja:** vitest shared 2432/2432 i server 1430/1430, `validate-compendium.ts` (413 wpisów),
+`tsc` klienta, eslint zmienionych plików. E2E nie puszczane. Serwer dev przeładowany (`touch`).
+Oglądane w **Firefoksie** (Playwright MCP, MG): obie półki w szkicu Solo. **Ślady w `dev.db`:** brak
+(szkic MG odstawiony na „Ścieżkę Życia”, jak był).
 
 ### Sesja 10.10 (dziewiąta) — poprawka spoza etapów: opisy w kompendium
 
@@ -260,32 +281,3 @@ Import puszczony, diff opisów przejrzany (zmieniły się tylko wpisy wyżej). P
 2431/2431 i server 1430/1430, `tsc` klienta, eslint zmienionych plików TS. Serwer dev
 przeładowany (`touch`). Oglądane w **Firefoksie** (Playwright MCP, MG): Kompendium → Sprzęt →
 Czip pamięci z opisem. **Ślady w `dev.db`:** brak.
-
-### Sesja 10.10 (ósma) — poprawka spoza etapów: krok „Wyposażenie” w kreatorze
-
-**Zlecenie MG:** „zorganizuj lepiej wygląd zakładki Wyposażenie” w kreatorze i usuń komunikaty,
-które nowemu graczowi mówią, czego VTT nie ma (przykład: 800 ed na Modę).
-
-**Zrobione:** krok to **dwie kolumny** — sklep po lewej (półki, szukaj, podpowiedź o poziomie,
-filtr typów, lista bez własnego przewijania), po prawej przyklejone „Twoje wyposażenie”: kwota,
-Wyposażenie Roli gratis, **Koszyk** z sumą, „Ruszam bez zakupów”, ostrzeżenie o amunicji (bez
-powtórzeń nazw), „Po utworzeniu postaci”. Przy oknie węższym niż 52rem (`@container` na
-`.creator-body`) jedna kolumna, koszyk na górze. **`creationLeftOutside` mówi, co dojdzie, a nie
-czego brak:** wiersza o Modzie nie ma wcale (decyzja w `decyzje-i-uproszczenia.md`, „Kreator
-postaci — naprawa”), reszta przepisana; parametr `data` usunięty. Nagłówki w podsumowaniu i na
-ekranie końcowym: „Po utworzeniu postaci” / „Co jeszcze dojdzie”.
-**Druga runda (MG):** szukajki nie ma; w jej miejscu, na końcu rzędu półek, stoi checkbox „Ruszam
-bez zakupów” (tylko gracz, wyszarzony przy pełnym koszyku). Wiersz półki nie rozwija się — klik
-podświetla go i pokazuje opis rzeczy (`CreatorShopDetails`) na górze prawej kolumny, z ✕. Obie
-kolumny przewijają się osobno; **pułapka:** `sheet.css` daje dzieciom `.sheet-body` w papierowym
-oknie `flex: 1 0 auto`, więc krok potrzebuje `.sheet-body.creator-body > .creator-gear`. `t3a`
-czeka teraz na „Koszyk — 60 ed” zamiast „wydane 60 ed” (napis zniknął w pierwszej rundzie).
-
-**Weryfikacja:** vitest `creation.test.ts` 88/88, `tsc` client/shared/server, eslint i prettier
-zmienionych plików; E2E nieuruchamiane (napis „… ed startowych”, na który patrzą `t3a` i `t46c`,
-zostawiony; `t3a` poprawiony, nieuruchamiany). Oglądane w **Firefoksie** (MG, Playwright MCP,
-`dev.db`, „Test_1”): 1600, 900 i 700 px, koszyk pusty i z bronią + wybór gratisu Solo,
-podsumowanie, opis w prawej kolumnie; w **Chromium** jako gracz Ewa („Ulice NewLublin”, jej
-istniejący szkic Medyka): checkbox i opis. **Ślady w `dev.db`:** szkic
-kreatora MG (był pusty „bez Roli”) ma teraz Kompletny Pakiet, Solo, dwie bronie w koszyku i Ciężki
-pistolet z gratisu.

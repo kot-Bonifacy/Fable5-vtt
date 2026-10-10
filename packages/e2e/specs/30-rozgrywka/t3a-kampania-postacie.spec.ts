@@ -465,7 +465,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       await expect(kit).toContainText(item);
     }
     for (const item of ISKRA_KIT_PROGRAMS) await expect(kit).toContainText(item);
-    await buy(page, 'Sprzęt', ['Agent', 'Radiokomunikator']);
+    await buy(page, 'Elektronika', ['Agent', 'Radiokomunikator']);
     await expect(window.getByText(/wydane 2\s000 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);

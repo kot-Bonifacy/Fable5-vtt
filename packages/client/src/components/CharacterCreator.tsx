@@ -99,6 +99,8 @@ import {
   lifepathRoleTables,
   lifepathRollLabel,
   resolveWeapon,
+  isElectronicsGear,
+  isGearEntry,
   isWeaponEntry,
   searchCompendium,
   shopTierVerdict,
@@ -2177,16 +2179,22 @@ function LifepathPeople({
 
 // ───────────────────────── krok 5: Wyposażenie ─────────────────────────
 
-/** The three catalogue shelves a starting character can carry off. */
 /** Półki z miniaturą rodzaju — na „Sprzęcie” stałaby przy garstce pozycji. */
 function shelfIcons(category: CompendiumCategory): boolean {
   return category === 'weapon' || category === 'armor' || category === 'ammo';
 }
 
-const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
+/**
+ * Półka sklepu kreatora: kategoria Kompendium, a Sprzęt w dwóch częściach
+ * (10.10) — jedna lista ciągnęła się przez trzy ekrany.
+ */
+type CreatorShelf = CompendiumCategory | 'electronics';
+
+const CREATOR_SHELVES: { id: CreatorShelf; label: string }[] = [
   { id: 'weapon', label: 'Broń' },
   { id: 'armor', label: 'Pancerz' },
   { id: 'gear', label: 'Sprzęt' },
+  { id: 'electronics', label: 'Elektronika' },
   // Etap 48b: Program jest towarem — kupiony ląduje w gniazdach deku.
   { id: 'program', label: 'Programy' },
   // Etap 48c: dodatek do broni też — kupiony leży w Wyposażeniu, na broń
@@ -2249,7 +2257,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   const shopRules = useCreationShopRules();
-  const [shelf, setShelf] = useState<CompendiumCategory>('weapon');
+  const [shelf, setShelf] = useState<CreatorShelf>('weapon');
   /** Rzecz oglądana w prawej kolumnie (10.10: zamiast rozwijania wiersza). */
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const data = creationDataOf(registry);
@@ -2285,7 +2293,10 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const onShelf = useMemo(() => {
     const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
     return (
-      searchCompendium(all, '', shelf)
+      searchCompendium(all, '', shelf === 'electronics' ? 'gear' : shelf)
+        .filter(
+          (entry) => !isGearEntry(entry) || isElectronicsGear(entry) === (shelf === 'electronics'),
+        )
         // Gołe ręce (47b) każda karta dostaje z urzędu — na półce byłyby za 0 ed.
         .filter((entry) => entryPrice(entry) !== null && !cpredIsBareHandsEntry(entry.id))
         .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
