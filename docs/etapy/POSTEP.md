@@ -21,18 +21,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **48b**, **48c** (Ekwipunek gracza — następne); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a (ostatni zamknięty: 48a, 2026-10-10) |
+| ⬜ otwarty   | **48c** (Ekwipunek gracza — następna); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b (ostatni zamknięty: 48b, 2026-10-10) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 48 „Ekwipunek gracza: skąd przybywają rzeczy” (zlecenie MG z 10.10) — 48a zamknięta 10.10,
-następna 48b (cyberdek i Programy jako towar), potem 48c (rzeczy z mechaniką tylko z zakupu,
-wymiany, łupu, kreatora i od MG — decyzja MG na starcie 48c), potem refaktoryzacja.** Przegląd
-zakładki „Ekwipunek” z tabelą luk i decyzje MG — w `etap-48-ekwipunek-gracza.md`. Od 48a: pusty
+**Etap 48 „Ekwipunek gracza: skąd przybywają rzeczy” (zlecenie MG z 10.10) — 48a i 48b zamknięte
+10.10, następna 48c (rzeczy z mechaniką tylko z zakupu, wymiany, łupu, kreatora i od MG — decyzja
+MG na starcie 48c), potem refaktoryzacja.** Przegląd zakładki „Ekwipunek” z tabelą luk i decyzje
+MG — w `etap-48-ekwipunek-gracza.md`. **Od 48b cyberdek i Programy to towar:** Program kupuje się
+jak sprzęt (wiersz Wyposażenia), dek podłącza się z Wyposażenia, Programy i Ulepszenia wkłada się
+z niego i wyjmuje do niego (`character:deck`, `systems/cpred/cyberdeck.ts`) — także MG, bez list
+z kompendium na karcie; gniazda zmienia tylko MG. Kreator podpina dek i wkłada Programy, ile
+wejdzie; pakiet Roli Netrunnera ma pięć Programów (Iskra w E2E gra od teraz Mózgoklepem zamiast
+Piekielnego Pocisku). Umowa w `siec`. Od 48a: pusty
 koszyk szkicu **gracza** jest brakiem kreatora, dopóki nie zaznaczy „Ruszam bez zakupów”;
 Zakwaterowanie korporacyjne (konap 2, dom 7, McPosiadłość albo apartament 10) tylko od rangi Pracy
 Zespołowej, „— nie rozliczam —” tylko u MG (serwer: `HOUSING_LOCKED`, `FORBIDDEN`); portrety
@@ -180,7 +185,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -220,17 +225,43 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 29   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar     | 8    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 111     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 137     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 138     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (trzecia) — etap 48b „Cyberdek i Programy jako towar”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 48b)”, pytać o niejasności. Przy przeglądzie wyszło, że
+po cenniku ×10 sześć Programów Iskry z T3a kosztuje 2900 ed (zostaje jej 550). **Decyzje MG:**
+pakiet Roli Netrunnera dostaje stały zestaw pięciu Programów (Pancerz, Miecz, Mam cię!, Mózgoklep,
+Robak); odpięty dek wraca do Wyposażenia razem z zawartością; **MG też przez Wyposażenie** (wbrew
+rekomendacji — bez list z kompendium na karcie); kreator wkłada Programy, ile wejdzie.
+
+**Zrobione:** `systems/cpred/cyberdeck.ts` (podpięcie, odpięcie, wkładanie, wyjmowanie, gniazda,
+`cpredFitDeckFromGear` dla kreatora), Program w `purchasedSheetRow` i `COMPENDIUM_ITEM_CATEGORIES`,
+`character:deck` w `realtime/deck.ts`, odmowa łaty `cyberdeck` gracza, kreator (`creationOutcome`
+i `payStartingKit`), sekcja „Cyberdek” na karcie od nowa, „Kup”/„Dodaj za darmo” przy Programach
+w Kompendium, półka „Programy” w kreatorze i dek w podsumowaniu. Dane poza repo: Programy
+w pakiecie Netrunnera (`creation.json`) i boostery/defensory jako jego narzędzia Roli
+(`shop-tiers.json`); próbka w `data/public` tak samo. E2E T3a: krok 3.8 z Tarczą od MG.
+
+**Znalezione:** podpięty dek nie jest w łupie ani w handlu (`POMYSLY.md`).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
+MCP, `dev.db`, kampania „Test_1”): NPC z dekiem, Kruk i Miecz z „Dodaj za darmo”, podłączenie,
+wkładanie (Czarny LOD 2 gniazda), ▲ gniazd u MG, odłączenie do Wyposażenia; widok gracza (bez
+▲▼, wkładanie Tarczy) — Ola w Firefoksie w T3a. **Ślady w `dev.db`:** brak (NPC z oględzin
+skasowany). Vite na :5173 uruchomiony w tej sesji obok działającego już serwera :3001.
+
+**Następny krok — 48c** (decyzja MG na starcie: co gracz dopisuje ręką).
 
 ### Sesja 10.10 (druga) — etap 48a „Przypomnienie o zakupach, kadr portretów, Zakwaterowanie”
 
@@ -258,31 +289,3 @@ zaznaczenie zdejmuje brak (7 → 6). **Ślady w `dev.db`:** „Oględziny Stym�
 „Test_1”; Firefox Playwrighta zalogowany jako MG (wcześniej `ogledziny-b`).
 
 **Następny krok — 48b** (cyberdek i Programy jako towar; zakres w pliku etapu).
-
-### Sesja 10.10 — etap 47b „Cennik: łańcuch E2E” + gołe ręce z urzędu
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 47b)”, pytać o niejasności; w trakcie: Bijatyka
-i walka na pięści dostępne graczom z urzędu, bez kupowania. **Decyzje MG (wszystkie zgodne
-z rekomendacją):** Kowal kupuje tylko amunicję, pakiet Roli daje MG; Iskra kupuje Agenta i radio,
-MG wszczepia jej chrom z pakietu; wypłata 1000 ed za „Knajpę” na starcie T6a; Bijatyka każdemu,
-Sztuki walki od Umiejętności 1, stały wiersz, wszystkie karty poza pojemnikami; #72 — zapis
-tabeli bez czekania na kości. Zapisane w `etap-47-cennik.md`.
-
-**Zrobione:** `systems/cpred/barehands.ts` (`unarmedDamage` przeniesione z `attacks.ts`,
-`cpredWithBareHands` w `normalizeCharacterData`, łata zdejmuje stałe wiersze, `cpredTakeRows`
-i `cpredInventoryView` je pomijają, `cpredDrawnWeapons` i `statistQuick` też), wiersz na karcie
-bez pól i kosza (`weapon-innate`), Kompendium i półka kreatora bez „Kup” dla gołych rąk
-(`50b62c6`). E2E: T3a (nowy krok 3.8 — pakiet Roli Kowala i chrom Iskry przez `giveEntry`
-w `fixtures/kompendium.ts`), T4a/T4b (Bijatyka zamiast „Pięści”), T6a (wypłata korektą na
-karcie, nowe kwoty), `t46a`, `t46c`. #72: `emitTableAck` w `socket.ts`.
-
-**Znalezione:** okno handlarza pisze kwoty bez grupowania tysięcy (nowa zaległość); pułapki
-w `testy` (Bijatyka w asercjach list broni, radio metody w kreatorze, przerwany obrazek w T6b).
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
-MCP, `dev.db`): wiersz Bijatyki na karcie NPC (bez pól i kosza, „Dobądź”, obrażenia z BC); pasek
-Kowala z Bijatyką jako slotem 5 — zrzut Chromium z przebiegu.
-
-**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
-bazowa; suita zielona 10.10). Zaległości do triażu MG: #79–#81, kwoty w oknie handlarza.
-

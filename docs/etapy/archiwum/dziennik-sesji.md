@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 — etap 47b „Cennik: łańcuch E2E” + gołe ręce z urzędu
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 47b)”, pytać o niejasności; w trakcie: Bijatyka
+i walka na pięści dostępne graczom z urzędu, bez kupowania. **Decyzje MG (wszystkie zgodne
+z rekomendacją):** Kowal kupuje tylko amunicję, pakiet Roli daje MG; Iskra kupuje Agenta i radio,
+MG wszczepia jej chrom z pakietu; wypłata 1000 ed za „Knajpę” na starcie T6a; Bijatyka każdemu,
+Sztuki walki od Umiejętności 1, stały wiersz, wszystkie karty poza pojemnikami; #72 — zapis
+tabeli bez czekania na kości. Zapisane w `etap-47-cennik.md`.
+
+**Zrobione:** `systems/cpred/barehands.ts` (`unarmedDamage` przeniesione z `attacks.ts`,
+`cpredWithBareHands` w `normalizeCharacterData`, łata zdejmuje stałe wiersze, `cpredTakeRows`
+i `cpredInventoryView` je pomijają, `cpredDrawnWeapons` i `statistQuick` też), wiersz na karcie
+bez pól i kosza (`weapon-innate`), Kompendium i półka kreatora bez „Kup” dla gołych rąk
+(`50b62c6`). E2E: T3a (nowy krok 3.8 — pakiet Roli Kowala i chrom Iskry przez `giveEntry`
+w `fixtures/kompendium.ts`), T4a/T4b (Bijatyka zamiast „Pięści”), T6a (wypłata korektą na
+karcie, nowe kwoty), `t46a`, `t46c`. #72: `emitTableAck` w `socket.ts`.
+
+**Znalezione:** okno handlarza pisze kwoty bez grupowania tysięcy (nowa zaległość); pułapki
+w `testy` (Bijatyka w asercjach list broni, radio metody w kreatorze, przerwany obrazek w T6b).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, `dev.db`): wiersz Bijatyki na karcie NPC (bez pól i kosza, „Dobądź”, obrażenia z BC); pasek
+Kowala z Bijatyką jako slotem 5 — zrzut Chromium z przebiegu.
+
+**Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
+bazowa; suita zielona 10.10). Zaległości do triażu MG: #79–#81, kwoty w oknie handlarza.
+
 ### Sesja 09–10.10 — etap 47a „Cennik domowy: ed jak euro”
 
 **Zlecenie MG:** ceny ~10× wyższe przy tej samej gotówce startowej, ed ≈ euro z lekką inflacją;

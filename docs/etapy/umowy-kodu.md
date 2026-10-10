@@ -2978,6 +2978,7 @@ bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mecha
 
 ## siec — Sieć (netrunning)
 
+- **Cyberdek i Programy to towar — `character:deck`, nie łata karty (10.10, etap 48b)** — dek podpina się z wiersza Wyposażenia (wpis z `deckSlots`), Program i Ulepszenie (`deckSlotCost`) wkłada się z niego po sztuce, a wyjęte i odpięte wracają do Wyposażenia (`systems/cpred/cyberdeck.ts`: `cpredPlugDeck`, `cpredUnplugDeck`, `cpredInstallFromGear`, `cpredUninstallToGear`, `cpredSetDeckSlots`). Serwer: `realtime/deck.ts`; gniazda tylko MG (`FORBIDDEN`), przepięcie deku w runie — `NET_RUN_ACTIVE`; łata `cyberdeck` gracza → `FORBIDDEN` (MG zostaje furtka sędziego, jego UI też idzie przez Wyposażenie). Zakup Programu to wiersz `gear` z `purchasedSheetRow`. Kreator woła `cpredFitDeckFromGear` w `creationOutcome` **i** na końcu `payStartingKit` — nowa droga tworząca kartę z ekwipunkiem woła to samo.
 - **Wiersz dziennika Sieci z zawartością Architektury idzie przez `logNetLineWithSecret` (29.09, #37)** — `netrun-io.ts`: stół dostaje skrót (`logNetLine`, „węzeł kontrolny”, urządzenie jako `publicDeviceName` — nazwa figury z mapy albo rodzaj), MG i netrunner dodatkowo pełny wiersz `gmaction` z `recipientId` = `runnerOwnerOf(row)` (znaczek „poufne” w czacie). Etykieta piętra, nazwa urządzenia z edytora i nazwa Pliku nigdy nie idą przez gołe `logNetLine`.
 - **Obrażenia za strzał z urządzenia rzuca operator z karty (29.09, #38)** — `performAttackRoll` z `device.operator` stempluje `operatorUserId` w `attack.system`; `resolveRollSource` (`operatedThisShot`) wpuszcza to konto tylko do rzutu `damage` za tę kartę i tę figurę, klient pokazuje „Obrażenia” w `AttackControls` (`operatedTurret`: adres wprost z karty, bo netrunner zwykle nie widzi figury wieżyczki). Strzał Demona i strefy go nie ma — rzuca MG.
 - **System strefy odpala się kontem MG, nie konta, które ruszyło figurą (29.09, #39)** — `systemHand` (`zone-effects.ts`) w `runZonesAfterMove` i `runZonesAtTurnEnd`: strzał, karta obrażeń i wiersz strefy idą pierwszym kontem MG. Percepcja na ukrytą strefę zostaje rzutem gracza.
@@ -2987,6 +2988,19 @@ bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mecha
 - **Hak Programu, którego silnik nie rozlicza, idzie do `NET_PROGRAM_HOOKS_MANUAL`** — lista jest od 39 **pusta**, ale ani jej, ani gałęzi `netHookIsManual` nie kasuj.
 
 ---
+
+**Cyberdek jako towar (10.10.2026, etap 48b, decyzje MG).** Od 26a pole `cyberdeck` wypełniała
+lista z całego kompendium, a Programy wkładało się za darmo — gracz miał w ten sposób Czarny LOD za
+0 ed. Teraz plecak jest jedynym źródłem: dek i każdy Program **przychodzą z Wyposażenia i do niego
+wracają**, więc zakup, łup, handel, sklep, skrzynie, stos na mapie i limit 40 wierszy działają na
+nich bez jednej nowej gałęzi. Odpięcie oddaje dek i każdą rzecz z gniazd osobnym wierszem (decyzja
+MG — dek w plecaku nie pamięta zawartości), sklejonym z takimi samymi (`cpredLandRows`). Liczby
+Programu kopiuje `netProgramProfileOf` przy włożeniu, jak w 26a; REZ w runie i tak żyje w stanie
+runu, więc wyjęcie i włożenie niczego nie gubi (poza ręcznymi poprawkami MG na wierszu gniazda).
+**MG nie ma na karcie listy z kompendium** (decyzja z 10.10) — daje dek i Programy „Dodaj za
+darmo” i podpina je jak gracz; testy serwera zakładają deki łatą MG, bo to furtka sędziego, nie UI.
+Sekcję „Cyberdek” karta pokazuje, gdy dek jest podpięty, leży w Wyposażeniu albo postać ma
+Interfejs (lista „Do zrobienia” prowadzi tam Netrunnera bez deku).
 
 **Hak Programu, którego silnik nie umie rozliczyć, idzie do `NET_PROGRAM_HOOKS_MANUAL` (05.09).**
 Lista jest od etapu 39 **pusta** — `statDrain` i `moveDrain` przeszły na automat — i pusta ma

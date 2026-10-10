@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**10.10.2026 (etap 48b) — podpięty dek w łupie i w handlu.** Od 48b dek i Programy są towarem,
+ale **podpięty** dek nie jest wierszem Wyposażenia, więc `cpredInventoryView` go nie widzi: ciała
+NPC-netrunnera nie da się obszukać z deku, a gracz, żeby go sprzedać albo oddać, najpierw go odpina
+(✕ w sekcji „Cyberdek” — dek i Programy wracają do Wyposażenia). Do rozważenia: łup z karty
+leżącej/martwej odpina dek sam (`cpredUnplugDeck` przed `cpredTakeRows`). Gniazda dołożone przez
+MG (Bodyweight, cyberręka) giną przy odpięciu — po ponownym podłączeniu dek ma liczbę z katalogu.
+
 **10.10.2026 (etap 48a) — kupno mieszkania.** `HousingDefinition.purchase` (kontener 15 000 ed,
 kawalerka 25 000 ed…) nie jest nigdzie używane: karta zna tylko czynsz. Kupione mieszkanie
 znosiłoby czynsz na stałe — zakup jak przedmiot (`applyBalance`, rodzaj `purchase`) i znacznik
@@ -97,7 +104,7 @@ jako „ozdobnik”, także gdy należy do tekstu: nagłówek „…STRZELANINA 
 zamknięcia. (2) „Przerwij” loguje na serwerze błąd poziomu `error` („This operation was aborted”)
 i wysyła `AI_ERROR`, który klient i tak ignoruje — przerwanie przez MG to nie awaria.
 
-**17.09.2026 (naprawa kreatora 3b) — Programy jako towar i cyberdek z zakupu.** `purchasedSheetRow`
+**✅ Zrobione 10.10.2026 w etapie 48b.** **17.09.2026 (naprawa kreatora 3b) — Programy jako towar i cyberdek z zakupu.** `purchasedSheetRow`
 zna tylko broń, pancerz i sprzęt, więc Programu nie kupi ani gracz w Kompendium, ani kreator;
 cyberdek i Programy (łącznie z Czarnym LOD-em) wybiera się na karcie postaci za darmo, a kupiony
 „Cyberdek” zostaje zwykłym wierszem sprzętu. Do rozważenia: zakup Programu, który ląduje w gniazdach

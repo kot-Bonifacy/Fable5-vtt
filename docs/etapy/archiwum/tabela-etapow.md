@@ -123,5 +123,5 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 47b    | Cennik: łańcuch E2E T3a–T6b, pełny przebieg; gołe ręce z urzędu | ✅     | 2026-10-10          |
 | 48     | Ekwipunek gracza: skąd przybywają rzeczy (48a–48c) | 🟨     | 2026-10-10 —        |
 | 48a    | Przypomnienie o zakupach, kadr portretów w pasie inicjatywy, Zakwaterowanie Korpo | ✅     | 2026-10-10          |
-| 48b    | Cyberdek i Programy jako towar                | ⬜     |                     |
+| 48b    | Cyberdek i Programy jako towar                | ✅     | 2026-10-10          |
 | 48c    | Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG | ⬜     |                     |

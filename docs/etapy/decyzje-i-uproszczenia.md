@@ -382,11 +382,13 @@ to jest ten akapit do przeczytania na nowo.
   poziomu 2 — bez tego Netrunner nie kupiłby cyberdeku, Medyk torby medyka, a Technik przybornika,
   bo wszystkie są droższe niż 50 ed. Listy narzędzi zatwierdził MG; Solo i Stróż Prawa mają na nich
   także broń krótką, strzelby i lekkie kurtki kuloodporne.
-- **Programów i cyberdeku nie kupuje się w VTT (17.09, naprawa 3b).** `purchasedSheetRow` zna trzy
-  listy karty (broń, pancerz, sprzęt), a cyberdek i Programy wybiera się na karcie postaci wprost
-  z kompendium, za darmo — także Czarny LOD. Kupiony w sklepie „Cyberdek” jest zwykłym wierszem
-  sprzętu i nie wchodzi do pola `cyberdeck`. Dlatego narzędzia Netrunnera w kreatorze to deki
-  i ulepszenia sprzętowe; pomysły na domknięcie obu spraw są w `POMYSLY.md`.
+- ~~**Programów i cyberdeku nie kupuje się w VTT (17.09, naprawa 3b).**~~ **Nieaktualne od 10.10
+  (etap 48b, decyzja MG):** Program kupuje się jak sprzęt (ląduje w Wyposażeniu), dek podłącza się
+  z wiersza Wyposażenia, a Programy i Ulepszenia wkłada się z niego i do niego wyjmuje — także MG,
+  bez listy z kompendium na karcie. Kreator podpina dek z pakietu Roli albo koszyka i wkłada
+  Programy, ile wejdzie; pakiet Roli Netrunnera dostaje pięć Programów z pakietu Krawędziarza
+  (Pancerz, Miecz, Mam cię!, Mózgoklep, Robak — s. 103, z każdego „lub” opcja inna niż Miecz),
+  a boostery i defensory są jego narzędziami Roli w kreatorze. Umowa w `siec`.
 
 ## Interfejs
 
