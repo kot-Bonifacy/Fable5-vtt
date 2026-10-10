@@ -830,14 +830,28 @@
 
 /* ── Etap 25c: wyposażenie startowe i dane opisowe ───────────────────────── */
 
-/* 10.10: sklep po lewej, „Twoje wyposażenie” po prawej i przyklejone przy
-   przewijaniu — do 10.10 wszystko stało w jednym słupie, a półka lądowała
-   pod koszykiem i podpowiedziami, z miejscem na pięć pozycji. */
+/* 10.10: sklep po lewej, „Twoje wyposażenie” po prawej — każda kolumna
+   przewija się sama, więc opis klikniętej rzeczy i koszyk stoją zawsze obok
+   półki. Do 10.10 wszystko stało w jednym słupie, a półka lądowała pod
+   koszykiem z miejscem na pięć pozycji, i rozwijała opis pod wierszem. */
+/* Rodzic jest `.sheet-body`, a papierowe okno (`sheet.css`) daje jego dzieciom
+   `flex: 1 0 auto` — krok musi się kurczyć do wysokości okna. */
+.sheet-body.creator-body > .creator-gear {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .creator-gear {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(17rem, 23rem);
-  align-items: start;
+  grid-template-rows: minmax(0, 1fr);
   gap: 1rem 1.2rem;
+}
+
+.creator-gear-shop,
+.creator-gear-cart {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .creator-gear-shop {
@@ -845,6 +859,7 @@
   flex-direction: column;
   gap: 0.6rem;
   min-width: 0;
+  padding-right: 0.2rem;
 }
 
 .creator-gear-shop .creator-shop-head {
@@ -857,9 +872,23 @@
   overflow: visible;
 }
 
+/* „Ruszam bez zakupów” w miejscu dawnej szukajki, na końcu rzędu półek. */
+.creator-shop-head .creator-skip-purchases {
+  margin-left: auto;
+  align-items: center;
+  font-size: 0.9375rem;
+}
+
+.creator-skip-purchases:has(input:disabled) {
+  color: var(--text-dim);
+}
+
+.creator-shop-item--selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .creator-gear-cart {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
@@ -873,21 +902,50 @@
   padding-top: 0;
 }
 
-.creator-gear-cart .creator-outside-list {
-  font-size: 0.875rem;
-}
-
 .creator-gear-cart .creator-budget strong {
   font-size: 1.6rem;
 }
 
+.creator-gear-cart .creator-outside-list {
+  font-size: 0.875rem;
+}
+
+.creator-gear-cart .creator-shop-selected h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 1.125rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.creator-shop-selected h4 span {
+  flex: 1;
+  min-width: 0;
+}
+
+.creator-shop-selected .creator-shop-details {
+  padding: 0;
+  border-top: none;
+}
+
 @container (max-width: 52rem) {
+  .sheet-body.creator-body > .creator-gear {
+    flex: none;
+  }
+
   .creator-gear {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .creator-gear-shop,
+  .creator-gear-cart {
+    overflow: visible;
   }
 
   .creator-gear-cart {
-    position: static;
     order: -1;
   }
 }
@@ -988,12 +1046,6 @@
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-}
-
-.creator-shop-caret {
-  flex: none;
-  width: 0.9rem;
-  color: var(--text-dim);
 }
 
 .creator-shop-price {

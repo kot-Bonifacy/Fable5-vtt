@@ -338,7 +338,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       await ammo.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła' }).click();
       await expect(ammo.getByText(held)).toBeVisible();
     }
-    await expect(window.getByText(/wydane 60 ed/)).toBeVisible();
+    await expect(window.getByText(/Koszyk — 60 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);
     await window

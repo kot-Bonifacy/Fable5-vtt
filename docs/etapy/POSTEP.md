@@ -249,11 +249,19 @@ powtórzeń nazw), „Po utworzeniu postaci”. Przy oknie węższym niż 52rem 
 czego brak:** wiersza o Modzie nie ma wcale (decyzja w `decyzje-i-uproszczenia.md`, „Kreator
 postaci — naprawa”), reszta przepisana; parametr `data` usunięty. Nagłówki w podsumowaniu i na
 ekranie końcowym: „Po utworzeniu postaci” / „Co jeszcze dojdzie”.
+**Druga runda (MG):** szukajki nie ma; w jej miejscu, na końcu rzędu półek, stoi checkbox „Ruszam
+bez zakupów” (tylko gracz, wyszarzony przy pełnym koszyku). Wiersz półki nie rozwija się — klik
+podświetla go i pokazuje opis rzeczy (`CreatorShopDetails`) na górze prawej kolumny, z ✕. Obie
+kolumny przewijają się osobno; **pułapka:** `sheet.css` daje dzieciom `.sheet-body` w papierowym
+oknie `flex: 1 0 auto`, więc krok potrzebuje `.sheet-body.creator-body > .creator-gear`. `t3a`
+czeka teraz na „Koszyk — 60 ed” zamiast „wydane 60 ed” (napis zniknął w pierwszej rundzie).
 
 **Weryfikacja:** vitest `creation.test.ts` 88/88, `tsc` client/shared/server, eslint i prettier
 zmienionych plików; E2E nieuruchamiane (napis „… ed startowych”, na który patrzą `t3a` i `t46c`,
-zostawiony). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”): 1600, 900
-i 700 px, koszyk pusty i z bronią + wybór gratisu Solo, podsumowanie. **Ślady w `dev.db`:** szkic
+zostawiony; `t3a` poprawiony, nieuruchamiany). Oglądane w **Firefoksie** (MG, Playwright MCP,
+`dev.db`, „Test_1”): 1600, 900 i 700 px, koszyk pusty i z bronią + wybór gratisu Solo,
+podsumowanie, opis w prawej kolumnie; w **Chromium** jako gracz Ewa („Ulice NewLublin”, jej
+istniejący szkic Medyka): checkbox i opis. **Ślady w `dev.db`:** szkic
 kreatora MG (był pusty „bez Roli”) ma teraz Kompletny Pakiet, Solo, dwie bronie w koszyku i Ciężki
 pistolet z gratisu.
 

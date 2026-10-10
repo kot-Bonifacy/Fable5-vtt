@@ -2250,8 +2250,8 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const order = useCompendiumStore((s) => s.order);
   const shopRules = useCreationShopRules();
   const [shelf, setShelf] = useState<CompendiumCategory>('weapon');
-  const [query, setQuery] = useState('');
-  const [openId, setOpenId] = useState<string | null>(null);
+  /** Rzecz oglądana w prawej kolumnie (10.10: zamiast rozwijania wiersza). */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const data = creationDataOf(registry);
   const roleName = creationRole(data, draft.roleId)
     ? registry.roles.find((role) => role.id === draft.roleId)?.name
@@ -2285,13 +2285,13 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const onShelf = useMemo(() => {
     const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
     return (
-      searchCompendium(all, query, shelf)
+      searchCompendium(all, '', shelf)
         // Gołe ręce (47b) każda karta dostaje z urzędu — na półce byłyby za 0 ed.
         .filter((entry) => entryPrice(entry) !== null && !cpredIsBareHandsEntry(entry.id))
         .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
         .filter((row) => row.verdict.allowed)
     );
-  }, [entriesById, order, query, shelf, draft.roleId, shopRules]);
+  }, [entriesById, order, shelf, draft.roleId, shopRules]);
   const shelfWeapons = useMemo(
     () => onShelf.map((row) => row.entry).filter(isWeaponEntry),
     [onShelf],
@@ -2304,6 +2304,8 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
       verdict: verdicts.get(entry.id)!,
     }));
   }, [shelf, onShelf, shelfWeapons, weaponType]);
+
+  const selectedEntry = selectedId ? entriesById[selectedId] : undefined;
 
   return (
     <div className="creator-step creator-gear">
@@ -2319,13 +2321,27 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
               {entry.label}
             </button>
           ))}
-          <input
-            className="compendium-search"
-            type="search"
-            value={query}
-            placeholder="Szukaj…"
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {/* Etap 48a (decyzja MG z 10.10): pusty koszyk gracza jest brakiem, dopóki
+              gracz nie powie wprost, że rusza bez zakupów — żeby nikt nie wyszedł
+              z kreatora z gołymi rękami tylko dlatego, że zapomniał o tym kroku. */}
+          {!isGm ? (
+            <label
+              className="creator-checkbox creator-skip-purchases"
+              title={
+                lines.length > 0
+                  ? 'Koszyk nie jest pusty.'
+                  : 'Cała gotówka zostanie na karcie — wyposażenie kupisz później u handlarza.'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={draft.skipPurchases && lines.length === 0}
+                disabled={busy || lines.length > 0}
+                onChange={(event) => void patch({ skipPurchases: event.target.checked })}
+              />
+              <span>Ruszam bez zakupów</span>
+            </label>
+          ) : null}
         </div>
 
         <p className="creator-hint">
@@ -2333,7 +2349,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
           {roleName
             ? ` i narzędzia Roli ${roleName} do poziomu ${SHOP_TIER_LABELS[CREATION_ROLE_TOOL_TIER]}.`
             : '; narzędzia Roli pojawią się po jej wyborze.'}{' '}
-          Kliknij nazwę, żeby obejrzeć rzecz.
+          Kliknij rzecz, żeby zobaczyć jej opis obok.
         </p>
 
         {shelf === 'weapon' ? (
@@ -2367,21 +2383,20 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
               ownCalibre ??
               calibres[0];
             if (isAmmoEntry(entry) && !calibre) return null;
-            const open = openId === entry.id;
-            const detailsId = `creator-shop-details-${entry.id}`;
+            const selected = selectedId === entry.id;
             return (
-              <li key={entry.id} className="creator-shop-item">
+              <li
+                key={entry.id}
+                className={`creator-shop-item${selected ? ' creator-shop-item--selected' : ''}`}
+              >
                 <div className="creator-shop-row">
                   <button
                     type="button"
                     className="creator-shop-name"
-                    aria-expanded={open}
-                    aria-controls={detailsId}
-                    onClick={() => setOpenId(open ? null : entry.id)}
+                    aria-pressed={selected}
+                    aria-controls="creator-shop-details"
+                    onClick={() => setSelectedId(entry.id)}
                   >
-                    <span className="creator-shop-caret" aria-hidden="true">
-                      {open ? '▾' : '▸'}
-                    </span>
                     {shelfIcons(entry.category) ? <ItemIcon icon={entryIcon(entry)} /> : null}
                     {entry.name}
                     {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
@@ -2421,9 +2436,6 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
                     + Dołóż
                   </button>
                 </div>
-                {open ? (
-                  <CreatorShopDetails id={detailsId} entry={entry} roleTool={verdict.roleTool} />
-                ) : null}
               </li>
             );
           })}
@@ -2437,6 +2449,30 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
             z {formatEddies(budget)} ed startowych · reszta zostaje na karcie
           </span>
         </div>
+        {selectedEntry ? (
+          <section
+            className="creator-summary-section creator-shop-selected"
+            aria-label="Wybrana rzecz"
+          >
+            <h4>
+              <span>{selectedEntry.name}</span>
+              <button
+                type="button"
+                className="small-button"
+                title="Zamknij opis"
+                aria-label="Zamknij opis"
+                onClick={() => setSelectedId(null)}
+              >
+                ✕
+              </button>
+            </h4>
+            <CreatorShopDetails
+              id="creator-shop-details"
+              entry={selectedEntry}
+              roleTool={creationShopVerdict(selectedEntry, draft.roleId, shopRules).roleTool}
+            />
+          </section>
+        ) : null}
         <CreatorRoleKit draft={draft} data={data} />
         <section className="creator-summary-section" aria-label="Koszyk">
           <h4>Koszyk{spent > 0 ? ` — ${formatEddies(spent)} ed` : ''}</h4>
@@ -2505,25 +2541,6 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
               Pusty — wybierz rzecz z półki i kliknij „+ Dołóż”. Resztę dokupisz w grze.
             </p>
           ) : null}
-          {/* Etap 48a (decyzja MG z 10.10): pusty koszyk gracza jest brakiem, dopóki
-              gracz nie powie wprost, że rusza bez zakupów — żeby nikt nie wyszedł
-              z kreatora z gołymi rękami tylko dlatego, że zapomniał o tym kroku. */}
-          {!isGm && lines.length === 0 && (
-            <label className="creator-checkbox">
-              <input
-                type="checkbox"
-                checked={draft.skipPurchases}
-                disabled={busy}
-                onChange={(event) => void patch({ skipPurchases: event.target.checked })}
-              />
-              <span>
-                Ruszam bez zakupów
-                <span className="creator-hint">
-                  Cała gotówka zostanie na karcie — wyposażenie kupisz później u handlarza.
-                </span>
-              </span>
-            </label>
-          )}
         </section>
         <CreatorNoStockWarning sheet={outcomeSheet} />
         <CreatorLeftOutside draft={draft} data={data} compact />
