@@ -467,9 +467,12 @@
   gap: 0.4rem;
 }
 
+/* Portret wypełnia całą szerokość kolumny w 4:5 (zlecenie MG z 10.10 — przy
+   13 rem obraz miał ~150 px szerokości w kolumnie na 240). Limit wysokości
+   zostaje dla wąskiego okna, gdzie kolumna idzie na całą szerokość karty. */
 .cp-portrait {
   aspect-ratio: 4 / 5;
-  max-height: 13rem;
+  max-height: 20rem;
   padding: 0.25rem;
   position: relative;
   align-items: stretch;
@@ -821,6 +824,12 @@
   color: var(--cp-ink);
   border-color: var(--cp-red-deep);
   border-radius: 0;
+}
+
+.cp-identity .cp-portrait-actions .small-button:hover:not(:disabled),
+.cp-identity .portrait-pool-pick:hover:not(:disabled) {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
 }
 
 .cp-identity .portrait-pool-pick {
@@ -2772,4 +2781,17 @@
 
 .cp-table input[readonly]:focus {
   background: transparent;
+}
+
+/* Każda kontrolka karty reaguje na najechanie (zlecenie MG z 10.10: część
+   guzików zmieniała tylko kursor). Ten sam gest co `.cp-mini-button` i rzut
+   z Umiejętności — czerwony napis i czerwona krawędź. Waga 0-1-0, więc guzik
+   z własnym `:hover` albo własnym kolorem w regule klasy (kafle tabel, zakładki,
+   przycisk główny) zostaje przy swoim; ta reguła łata tylko te bez niczego. */
+.sheet-window
+  :where(button, select, summary, a[href]):where(
+    :not(:disabled, .primary-button, .small-button--danger)
+  ):hover {
+  border-color: var(--cp-red);
+  color: var(--cp-red);
 }

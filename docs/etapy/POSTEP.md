@@ -215,7 +215,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 64   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 30   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 31   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 42   | 8       |

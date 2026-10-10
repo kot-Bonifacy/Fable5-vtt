@@ -174,8 +174,11 @@
 .top-bar .top-bar-clock--gm:hover,
 .top-bar .player-move-issues:hover,
 .top-bar .combat-bar-start:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: var(--bg-inset);
+  /* Kafel się odwraca: czarny na czerwieni zmieniał się przy najechaniu o kilka
+     odcieni szarości i nikt tego nie widział (zlecenie MG z 10.10). */
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg-panel);
 }
 
 .top-bar .small-button--on {
