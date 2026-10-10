@@ -31,6 +31,7 @@ import {
   statusesOf,
   token,
   type RollJson,
+  beginFight,
 } from '../../fixtures/walka.ts';
 import { GatewayProxy } from '../../instance/gateway-proxy.ts';
 import {
@@ -428,7 +429,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await page.getByRole('button', { name: 'Walka', exact: true }).first().click();
     await page.getByRole('checkbox', { name: /^Strażnik$/ }).check();
     await expect(page.getByRole('checkbox', { name: /^Wieżyczka$/ })).not.toBeChecked();
-    await page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
+    await page.getByRole('button', { name: /Załóż starcie/ }).click();
     await expect.poll(() => combatants().length).toBe(3);
 
     async function rollInitiative(actor: Actor, face: number): Promise<RollJson> {
@@ -454,7 +455,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     // Demon czuwa od podłączenia; MG klika „wykrywa” — bez testu, Demon staje na czele.
     await runWindow(mg).getByRole('button', { name: 'Demon wykrywa intruza' }).click();
     await expect.poll(() => combatants().length).toBe(4);
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await beginFight(page);
     await expect.poll(activeLabel).toBe('Diablik');
     const queues: Record<string, string[]> = {};
     for (const actor of [mg, marek, ola]) {

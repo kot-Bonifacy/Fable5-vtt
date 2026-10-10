@@ -35,10 +35,8 @@ import {
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import {
-  addToCombat,
   deleteToken,
   duplicateToken,
-  removeFromCombat,
   toggleTokenLight,
   setTokenFeared,
   statToken,
@@ -56,6 +54,8 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useExchangeStore } from '../stores/exchangeStore.js';
 import { openExchangeAtToken } from './exchange/open.js';
 import { useCombatStore } from '../stores/combatStore.js';
+import { useSelectionStore } from '../stores/selectionStore.js';
+import { encounterState, toggleEncounter } from '../combat-encounter.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
@@ -887,7 +887,10 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
-  const combatant = combat?.combatants.find((c) => c.tokenId === menu.tokenId) ?? null;
+  const groupIds = useSelectionStore((s) => s.groupIds);
+  const encounterIds =
+    groupIds.length > 1 && groupIds.includes(menu.tokenId) ? groupIds : [menu.tokenId];
+  const encounterAllIn = encounterState(encounterIds, combat).allIn;
 
   // The token can vanish under the open menu (deleted in another tab).
   useEffect(() => {
@@ -1107,26 +1110,20 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             {token.light.on ? '🌑 Zgaś latarkę' : '🔆 Zapal latarkę'}
           </button>
         )}
-        {/* Reinforcements arriving mid-fight — and whoever just fled it. */}
-        {combat &&
-          !isContainer &&
-          (combatant ? (
-            <button
-              type="button"
-              className="context-menu-item"
-              onClick={() => void removeFromCombat(combatant.id).then(onClose)}
-            >
-              ⚔ Usuń z walki
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="context-menu-item"
-              onClick={() => void addToCombat([menu.tokenId]).then(onClose)}
-            >
-              ⚔ Dodaj do walki
-            </button>
-          ))}
+        {/* „⚔ Do starcia” (etap 50a, wzór Foundry): także bez walki — pierwsze
+            przełączenie zakłada starcie „Przed walką” z drużyną w środku.
+            Figura z zaznaczonej grupy przełącza całą grupę, jak w Foundry. */}
+        {!isContainer && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Wpisuje figurę do kolejki inicjatywy albo ją z niej zdejmuje. Bez walki zakłada starcie „Przed walką” z figurami graczy."
+            onClick={() => void toggleEncounter(encounterIds).then(onClose)}
+          >
+            {encounterAllIn ? '⚔ Usuń ze starcia' : '⚔ Do starcia'}
+            {encounterIds.length > 1 && ` (${encounterIds.length})`}
+          </button>
+        )}
         <button type="button" className="context-menu-item" onClick={() => setEditing(true)}>
           ✏️ Edytuj…
         </button>

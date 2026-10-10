@@ -27,6 +27,7 @@ import {
   sheet,
   sumOf,
   token,
+  beginFight,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -142,7 +143,7 @@ for (const layout of LAYOUTS) {
       test.setTimeout(3 * 60_000);
       await mg.page.getByRole('button', { name: 'Walka', exact: true }).first().click();
       await mg.page.getByRole('checkbox', { name: /^Zbir$/ }).check();
-      await mg.page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
+      await mg.page.getByRole('button', { name: /Załóż starcie/ }).click();
       await expect.poll(() => combatants().length).toBe(3);
 
       async function rollInitiative(actor: Actor, face: number) {
@@ -165,7 +166,7 @@ for (const layout of LAYOUTS) {
       await mg.page.getByRole('button', { name: 'Rzuć wszystkim', exact: true }).click();
       await expect.poll(() => combatants().every((c) => c.initiative !== null)).toBe(true);
       expect(combatantOf('Zbir').initiative).toBeLessThan(iskra.total);
-      await mg.page.getByRole('button', { name: 'Start', exact: true }).click();
+      await beginFight(mg.page);
       await expect.poll(activeName).toBe('Kowal');
       // Pas „Przed walką” ma już tę kolejność — start dochodzi do klienta dopiero
       // po animacji ostatniej kości inicjatywy, a wcześniejszy klik w mapę nic nie robi.

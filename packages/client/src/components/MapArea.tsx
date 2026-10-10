@@ -502,6 +502,14 @@ function rememberWalkLearned(): void {
   }
 }
 
+const NO_COMBAT_TOKENS: ReadonlySet<string> = new Set();
+
+/** Figury w kolejce inicjatywy, które dostają znaczek „⚔” — wyłącznie u MG (etap 50a). */
+function combatTokenIdsFor(combat: CombatView | null, isGm: boolean): ReadonlySet<string> {
+  if (!isGm || !combat) return NO_COMBAT_TOKENS;
+  return new Set(combat.combatants.flatMap((c) => (c.tokenId ? [c.tokenId] : [])));
+}
+
 /** Runda i czyja tura — zmiana któregokolwiek to nowa tura przy stole. */
 function turnKeyOf(combat: CombatView | null): string {
   return combat ? `${combat.round}:${combat.activeCombatantId ?? ''}` : '';
@@ -1036,6 +1044,8 @@ export function MapArea() {
       // icon does (stage 27j) — the map never learns what „unconscious" means.
       conditions: conditionRegistry(tokenState.statuses),
       activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
+      // Znaczek „⚔ W starciu” (etap 50a) — tylko u MG.
+      combatTokenIds: combatTokenIdsFor(useCombatStore.getState().combat, user?.role === ROLE_GM),
       // Kadr portretu (12.09) jest cechą obrazka, więc jedzie tu jako
       // odwzorowanie adres → ujęcie, a nie polem figury: ten sam plik na dwóch
       // żetonach ma być ujęty tak samo.

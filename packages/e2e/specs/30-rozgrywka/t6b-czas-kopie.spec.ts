@@ -27,6 +27,7 @@ import {
   rollById,
   sheet,
   token,
+  beginFight,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -370,7 +371,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await page.getByRole('button', { name: 'Tylko postacie graczy' }).click();
     await expect(page.getByRole('checkbox', { name: 'Kowal', exact: true })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Iskra', exact: true })).toBeChecked();
-    await page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
+    await page.getByRole('button', { name: /Załóż starcie/ }).click();
     await expect.poll(() => combatants().length).toBe(2);
 
     async function rollInitiative(actor: Actor, face: number) {
@@ -384,7 +385,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     }
     await rollInitiative(ola, 9);
     await rollInitiative(marek, 1);
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await beginFight(page);
     await expect.poll(() => combatRow()?.activeCombatantId ?? null).not.toBeNull();
     if (activeName() !== 'Iskra') await nextTurn(mg);
     expect(activeName()).toBe('Iskra');

@@ -572,4 +572,41 @@ describe('combat tracker', () => {
     expect((await roundTrip(gm)).combat).toBeNull();
     expect((await roundTrip(player)).combat).toBeNull();
   });
+
+  // Etap 50a (wzór Foundry): „Do starcia” bez walki zakłada starcie z drużyną.
+  it('opens an encounter from „Do starcia” with the party already in it', async () => {
+    const state = data(
+      await emitAck<CombatView>(gm, 'combat:add', { tokenIds: [npcTokenId] }),
+      'combat:add',
+    );
+    expect(state.round).toBe(0);
+    expect(state.combatants.map((c) => c.name).sort()).toEqual(['Bandzior', 'Ziti']);
+    // Gracz nie zakłada starcia — to dalej narzędzie MG.
+    const ack = await emitAck(player, 'combat:add', { tokenIds: [playerTokenId] });
+    expect(ack.ok).toBe(false);
+  });
+
+  it('rolls the NPCs initiative when round 1 starts, never the players', async () => {
+    let state = data(
+      await emitAck<CombatView>(gm, 'combat:add', { tokenIds: [hiddenTokenId] }),
+      'combat:add',
+    );
+    const sniper = state.combatants.find((c) => c.name === 'Snajper')!;
+    state = data(
+      await emitAck<CombatView>(gm, 'combat:set-initiative', {
+        combatantId: sniper.id,
+        initiative: 20,
+      }),
+      'combat:set-initiative',
+    );
+    state = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
+    expect(state.round).toBe(1);
+    const byName = new Map(state.combatants.map((c) => [c.name, c]));
+    expect(byName.get('Bandzior')?.initiative).toEqual(expect.any(Number));
+    expect(byName.get('Ziti')?.initiative).toBeNull();
+    // Wpisanej ręką liczby serwer nie przerzuca.
+    expect(byName.get('Snajper')?.initiative).toBe(20);
+    expect(state.activeCombatantId).toBe(sniper.id);
+    expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+  });
 });

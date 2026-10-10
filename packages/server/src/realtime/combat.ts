@@ -364,12 +364,16 @@ export async function requireCombatant(
   return { combat, combatant: row, scene };
 }
 
-/** The running combat of the scene these tokens sit on (all must share it). */
-async function requireCombatOfTokens(
+/**
+ * The scene these tokens sit on (all must share it) and its combat, if any.
+ * `combat:add` creates the combat when there is none (etap 50a), so the
+ * missing combat is the caller's to judge.
+ */
+async function requireSceneOfTokens(
   prisma: PrismaClient,
   campaignId: string,
   tokenIds: string[],
-): Promise<{ combat: CombatRow; scene: Scene; tokens: Token[] }> {
+): Promise<{ combat: CombatRow | null; scene: Scene; tokens: Token[] }> {
   const tokens = await prisma.token.findMany({
     where: { id: { in: tokenIds } },
     include: { scene: true },
@@ -379,7 +383,6 @@ async function requireCombatOfTokens(
   if (!scene || scene.campaignId !== campaignId) throw new RealtimeError('TOKEN_NOT_FOUND');
   if (tokens.some((token) => token.sceneId !== scene.id)) throw new RealtimeError('BAD_REQUEST');
   const combat = await loadCombat(prisma, scene.id);
-  if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
   return {
     combat,
     scene,
@@ -459,6 +462,23 @@ async function rollFor(deps: RealtimeDeps, targets: CombatantRow[]): Promise<voi
       data: { initiative: result.total, tieBreak: inputs.tieBreak },
     });
   }
+}
+
+/**
+ * „Rozpocznij walkę" (etap 50a, decyzja MG z 10.10): every participant nobody
+ * owns — the GM's NPCs, statists and bots — gets their initiative rolled by
+ * the server the moment round 1 starts, unless the GM already rolled or typed
+ * it. Players keep rolling their own with the cup; a figure the GM forgot to
+ * roll for used to sit at the bottom of the queue with „—" and act last.
+ */
+export async function rollNpcInitiative(deps: RealtimeDeps, combat: CombatRow): Promise<boolean> {
+  const targets = combat.combatants.filter(
+    (row) => hasFigure(row) && row.initiative === null && combatantOwnerId(row) === null,
+  );
+  if (targets.length === 0) return false;
+  await rollFor(deps, targets);
+  await renumberOrder(deps.ctx.prisma, await loadCombatById(deps.ctx.prisma, combat.id));
+  return true;
 }
 
 /**
@@ -858,9 +878,8 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const tokenIds = requireIdList(payload?.tokenIds);
-    const { combat, scene } = await requireCombatOfTokens(deps.ctx.prisma, campaignId, tokenIds);
+    const { combat, scene } = await requireSceneOfTokens(deps.ctx.prisma, campaignId, tokenIds);
 
-    const known = new Set(combat.combatants.map((c) => c.tokenId));
     const containers = await containerTokenIds(
       deps.ctx.prisma,
       await deps.ctx.prisma.token.findMany({
@@ -868,6 +887,31 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
         select: { id: true, characterId: true },
       }),
     );
+    if (!combat) {
+      // Etap 50a (wzór Foundry): pierwsze „Do starcia” zakłada starcie „Przed
+      // walką” (runda 0) — i figury graczy są w nim od razu (decyzja MG z
+      // 10.10), bo to NPC-ów MG zapominał, a drużyna walczy zawsze.
+      const party = await deps.ctx.prisma.token.findMany({
+        where: { sceneId: scene.id, ownerId: { not: null }, id: { notIn: tokenIds } },
+        select: { id: true, characterId: true },
+      });
+      const partyContainers = await containerTokenIds(deps.ctx.prisma, party);
+      const starters = [
+        ...party.map((token) => token.id).filter((id) => !partyContainers.has(id)),
+        ...tokenIds.filter((id) => !containers.has(id)),
+      ];
+      if (starters.length === 0) throw new RealtimeError('BAD_REQUEST');
+      if (starters.length > MAX_COMBATANTS) throw new RealtimeError('TOO_MANY_COMBATANTS');
+      const created = await deps.ctx.prisma.combat.create({
+        data: {
+          sceneId: scene.id,
+          combatants: { create: starters.map((tokenId, index) => ({ tokenId, order: index })) },
+        },
+      });
+      return emitReloadedFor(deps, campaignId, scene, created.id, user);
+    }
+
+    const known = new Set(combat.combatants.map((c) => c.tokenId));
     const fresh = tokenIds.filter((id) => !known.has(id) && !containers.has(id));
     if (combat.combatants.length + fresh.length > MAX_COMBATANTS) {
       throw new RealtimeError('TOO_MANY_COMBATANTS');

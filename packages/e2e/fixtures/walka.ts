@@ -308,3 +308,17 @@ export async function clientsSeeTurn(...actors: Actor[]): Promise<void> {
       .toBe(now);
   }
 }
+
+/**
+ * „⚔ Rozpocznij walkę” na pasie inicjatywy (etap 50a, dawniej ▶ „Start”). Bez NPC-a
+ * w kolejce pierwszy klik tylko ostrzega — wtedy drugi zaczyna rundę 1.
+ */
+export async function beginFight(page: Page) {
+  await page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
+  const warned = page.getByRole('button', { name: /Brak NPC-ów/ });
+  const armed = await warned
+    .waitFor({ timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  if (armed) await warned.click();
+}

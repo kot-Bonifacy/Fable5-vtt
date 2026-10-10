@@ -22,6 +22,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useCombatStore, activeCombatantOf } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
@@ -55,20 +56,32 @@ import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
  * still lives in the „Walka" tab.
  */
 
+/** Jak długo „Rozpocznij walkę” czeka na drugi klik po ostrzeżeniu. */
+const START_ARM_MS = 6000;
+
 /** The GM's one-click way into turn order when no fight is running. */
 function TurnModeButton() {
   const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
   const tokens = useTokenStore((s) => s.tokens);
+  const groupIds = useSelectionStore((s) => s.groupIds);
+  const steered = useSelectionStore((s) => s.tokenId);
   const [busy, setBusy] = useState(false);
 
   // The players' figures, or — on a scene without any — everything standing on
   // it. Turn order is not only for fights: a chase or a heist needs the same
   // queue, and there the participants are as often the GM's own figures.
+  // Od etapu 50a do drużyny dochodzi to, co MG ma zaznaczone (grupa albo jedna
+  // figura) — wzór Foundry: zaznacz przeciwników, włącz starcie.
   const starters = useMemo(() => {
     const all = Object.values(tokens).filter((token) => token.container === undefined);
     const owned = all.filter((token) => token.ownerId !== null);
-    return (owned.length > 0 ? owned : all).map((token) => token.id);
-  }, [tokens]);
+    const picked = (groupIds.length > 0 ? groupIds : steered ? [steered] : []).filter((id) =>
+      all.some((token) => token.id === id),
+    );
+    const ids = [...new Set([...owned.map((token) => token.id), ...picked])];
+    return ids.length > 0 ? ids : all.map((token) => token.id);
+  }, [tokens, groupIds, steered]);
+  const npcCount = starters.filter((id) => tokens[id]?.ownerId === null).length;
 
   async function begin() {
     if (!sceneId || starters.length === 0) return;
@@ -85,7 +98,9 @@ function TurnModeButton() {
       title={
         starters.length === 0
           ? 'Na scenie nie ma tokenów, które mogłyby wejść do kolejki'
-          : `Zakłada kolejkę inicjatywy (${starters.length}). Kolejnych uczestników dodasz w zakładce „Walka" albo z menu tokenu.`
+          : `Zakłada starcie „Przed walką” (${starters.length}: figury graczy${
+              npcCount > 0 ? ` i ${npcCount} zaznaczonych NPC` : ''
+            }). Przeciwników dołożysz przez „⚔ Do starcia” w menu figury albo zaznaczając ich przed kliknięciem.`
       }
       onClick={() => void begin()}
     >
@@ -270,6 +285,17 @@ export function CombatBar() {
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.
   const deathSave = useDeathSavePrompt();
 
+  // „Rozpocznij walkę” bez NPC-a w kolejce (etap 50a): pierwszy klik tylko
+  // ostrzega, drugi zaczyna. Ostrzeżenie gaśnie samo po chwili i przy każdej
+  // zmianie kolejki — dopisany NPC robi je nieaktualnym.
+  const [startArmed, setStartArmed] = useState(false);
+  useEffect(() => {
+    if (!startArmed) return;
+    const timer = window.setTimeout(() => setStartArmed(false), START_ARM_MS);
+    return () => window.clearTimeout(timer);
+  }, [startArmed]);
+  useEffect(() => setStartArmed(false), [combat]);
+
   const queueRef = useRef<HTMLOListElement | null>(null);
   const activeId = combat?.activeCombatantId ?? null;
   const combatantCount = combat?.combatants.length ?? 0;
@@ -323,6 +349,17 @@ export function CombatBar() {
 
   // No queue, no strip: the map gets its full height back.
   if (!combat) return null;
+
+  // NPC to uczestnik bez właściciela (także Czarny LOD i bot MG).
+  const hasNpc = combat.combatants.some((c) => c.ownerId === null);
+  function beginFight() {
+    if (!hasNpc && !startArmed) {
+      setStartArmed(true);
+      return;
+    }
+    setStartArmed(false);
+    void nextCombatTurn();
+  }
 
   /** Uczestnik bez figury (Czarny LOD, 26c) inicjatywy nie rzuca. */
   const mayRoll = (combatant: CombatantView): boolean =>
@@ -468,13 +505,29 @@ export function CombatBar() {
           );
         })}
       </ol>
-      {isGm && (
+      {/* Etap 50a: przed walką słowo zamiast ▶ — start to inny gest niż
+          „następna tura”, a serwer rzuca wtedy inicjatywę NPC-om. */}
+      {isGm && combat.round === 0 && (
+        <button
+          type="button"
+          className={`combat-bar-begin${startArmed ? ' combat-bar-begin--armed' : ''}`}
+          onClick={beginFight}
+          title={
+            hasNpc
+              ? 'Zaczyna rundę 1. NPC-om bez inicjatywy rzuca ją serwer; gracze rzucają sami kubkiem.'
+              : 'W kolejce nie ma żadnego NPC-a — dodaj ich przez „⚔ Do starcia” w menu figury albo zaznacz grupę.'
+          }
+        >
+          {startArmed ? '⚠ Brak NPC-ów — zacznij mimo to' : '⚔ Rozpocznij walkę'}
+        </button>
+      )}
+      {isGm && combat.round > 0 && (
         <button
           type="button"
           className="combat-bar-step"
           onClick={() => void nextCombatTurn()}
-          title={combat.round === 0 ? 'Rozpocznij rundę 1' : 'Następna tura'}
-          aria-label={combat.round === 0 ? 'Start' : 'Następna tura'}
+          title="Następna tura"
+          aria-label="Następna tura"
         >
           ▶
         </button>

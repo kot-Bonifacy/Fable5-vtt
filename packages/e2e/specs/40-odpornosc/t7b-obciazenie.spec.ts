@@ -29,6 +29,7 @@ import {
   lastMessageId,
   nextTurn,
   token,
+  beginFight,
 } from '../../fixtures/walka.ts';
 import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
 
@@ -967,7 +968,7 @@ test.describe
       )
       .toBe(seats.length);
     await page.getByRole('button', { name: 'Rzuć wszystkim', exact: true }).click();
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await beginFight(page);
     await expect.poll(() => combatRow()?.activeCombatantId ?? null).not.toBeNull();
 
     phase = 'knajpa-walka';

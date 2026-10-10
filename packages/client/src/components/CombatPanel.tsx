@@ -67,14 +67,14 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
     setError(null);
     const ack = await startCombat(sceneId, selection);
     setStarting(false);
-    if (!ack.ok) setError('Nie udało się rozpocząć walki.');
+    if (!ack.ok) setError('Nie udało się założyć starcia.');
   }
 
   return (
     <div className="combat-panel">
       <p className="combat-hint">
-        Zaznacz uczestników i rozpocznij walkę. Posiłki dodasz w trakcie — z tej listy albo z menu
-        kontekstowego tokenu.
+        Zaznacz uczestników i załóż starcie — walkę zaczyna „⚔ Rozpocznij walkę” na pasie
+        inicjatywy. Posiłki dodasz w trakcie — z tej listy albo przez „⚔ Do starcia” w menu figury.
       </p>
       {tokens.length === 0 ? (
         <EmptyState
@@ -107,7 +107,7 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
           onClick={() => void begin()}
           disabled={starting || selection.length === 0}
         >
-          {starting ? 'Rozpoczynanie…' : `Rozpocznij walkę (${selection.length})`}
+          {starting ? 'Zakładanie…' : `Załóż starcie (${selection.length})`}
         </button>
         <button
           type="button"

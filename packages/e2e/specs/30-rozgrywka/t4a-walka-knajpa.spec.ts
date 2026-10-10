@@ -32,6 +32,7 @@ import {
   sumOf,
   token,
   type RollJson,
+  beginFight,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -277,7 +278,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       await page.getByRole('checkbox', { name }).check();
     }
     await expect(page.getByRole('checkbox', { name: /^Paser$/ })).not.toBeChecked();
-    await page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
+    await page.getByRole('button', { name: /Załóż starcie/ }).click();
     await expect.poll(() => combatants().length).toBe(6);
     fromPlayers.track(combatantOf('Cień').id);
 
@@ -337,7 +338,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       Szrama: 7,
     });
 
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await beginFight(page);
     await expect.poll(activeName).toBe('Kowal');
 
     // Czarny pas: ta sama kolejność u MG i u graczy; Cień tylko u MG, klon pod aliasem.

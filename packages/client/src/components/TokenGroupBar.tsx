@@ -7,7 +7,8 @@ import { useChatStore } from '../stores/chatStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { addToCombat, deleteToken, duplicateToken, updateToken } from '../socket.js';
+import { deleteToken, duplicateToken, updateToken } from '../socket.js';
+import { encounterState, toggleEncounter } from '../combat-encounter.js';
 import { figureCardName } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { confirmDestructive } from '../confirm.js';
@@ -47,6 +48,10 @@ export function TokenGroupBar() {
   const count = picked.length;
   const label = plural(count, 'figurę', 'figury', 'figur');
   const allHidden = picked.every((token) => token.hidden);
+  const encounter = encounterState(
+    picked.map((token) => token.id),
+    combat,
+  );
 
   /** Puszcza tę samą zmianę na wszystkie i mówi jednym zdaniem, jeśli coś padło. */
   async function apply(
@@ -151,22 +156,23 @@ export function TokenGroupBar() {
           </button>
         </>
       )}
-      {combat && (
+      {/* Etap 50a: „Do starcia” także bez walki — zakłada starcie „Przed walką”. */}
+      {isGm && encounter.fighters.length > 0 && (
         <button
           type="button"
           className="small-button"
           disabled={busy}
-          title="Dopisz zaznaczone figury do trwającej walki"
+          title={
+            encounter.allIn
+              ? 'Zdejmij zaznaczone figury z kolejki inicjatywy'
+              : 'Wpisz zaznaczone figury do kolejki inicjatywy. Bez walki zakłada starcie „Przed walką” z figurami graczy.'
+          }
           onClick={() => {
-            // Jedno zdarzenie na całą paczkę, bo `combat:add` od etapu 14 bierze
-            // listę — kolejka inicjatywy jest jednym stanem i przepisanie jej
-            // sześć razy pod rząd byłoby sześcioma przetasowaniami.
-            void addToCombat(picked.map((token) => token.id)).then((ack) => {
-              if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
-            });
+            setBusy(true);
+            void toggleEncounter(picked.map((token) => token.id)).finally(() => setBusy(false));
           }}
         >
-          ⚔ Do walki
+          {encounter.allIn ? '⚔ Usuń ze starcia' : '⚔ Do starcia'}
         </button>
       )}
       {isGm && (

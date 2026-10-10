@@ -891,3 +891,30 @@
   gap: 0.5rem;
   margin-top: 0.6rem;
 }
+
+/* „Rozpocznij walkę” (etap 50a) — słowo w miejscu ▶, póki trwa runda 0.
+   Uzbrojone ostrzeżeniem (brak NPC-ów) świeci czerwienią błędu. */
+.combat-bar-begin {
+  flex: none;
+  height: 2rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--warn);
+  border-radius: 0;
+  background: rgb(var(--warn-rgb) / 18%);
+  color: var(--warn);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.45rem), calc(100% - 0.45rem) 100%, 0 100%);
+}
+
+.combat-bar-begin:hover {
+  background: rgb(var(--warn-rgb) / 32%);
+}
+
+.combat-bar-begin--armed {
+  border-color: var(--err);
+  background: rgb(var(--err-rgb) / 22%);
+  color: var(--err);
+}

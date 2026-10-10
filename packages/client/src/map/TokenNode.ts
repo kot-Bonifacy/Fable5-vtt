@@ -35,6 +35,12 @@ export interface TokenNodeCtx {
   /** Token acting right now in the initiative tracker (stage 14). */
   activeTokenId: string | null;
   /**
+   * Figury w kolejce inicjatywy, dla których rysuje się znaczek „⚔” (etap 50a).
+   * Wypełnia go tylko MG — to on zapominał dopisać NPC-a do starcia; gracz
+   * kolejkę widzi na pasie, a znaczek na każdej figurze byłby mu szumem.
+   */
+  combatTokenIds: ReadonlySet<string>;
+  /**
    * Kadr portretu na mapie (12.09), po adresie pliku.
    *
    * Kadr jest cechą **obrazka**, nie figury, więc pyta się o niego adresem:
@@ -235,6 +241,7 @@ export class TokenNode extends Container {
   private readonly downMark = new Graphics();
   private readonly nameText: Text;
   private readonly statusLayer = new Container();
+  private readonly combatMark = new Graphics();
   private imageUrl: string | null = null;
   /**
    * Kadr, którym jest ujęty aktualnie wczytany portret (12.09).
@@ -302,6 +309,7 @@ export class TokenNode extends Container {
     // figury łapała klik w środek sąsiedniego pola jako klik w figurę, więc
     // marsz o jedno pole nie ruszał. Też tylko rysunek.
     this.turnRing.eventMode = 'none';
+    this.combatMark.eventMode = 'none';
     this.addChild(
       this.shadow,
       this.base,
@@ -316,6 +324,7 @@ export class TokenNode extends Container {
       this.downMark,
       this.nameText,
       this.statusLayer,
+      this.combatMark,
     );
   }
 
@@ -350,6 +359,7 @@ export class TokenNode extends Container {
       ctx.myUserId,
       ctx.isGm,
       ctx.activeTokenId === token.id,
+      ctx.combatTokenIds.has(token.id),
       // Bez tego przestawienie kadru przez MG nie przerysowałoby figury:
       // podpis nie zmienia się, gdy zmienia się sam sposób ujęcia obrazka.
       cropFor(token.imageUrl, ctx),
@@ -442,6 +452,39 @@ export class TokenNode extends Container {
     );
 
     this.updateStatuses(token, ctx, extent, condition);
+    this.drawCombatMark(extent, ctx.combatTokenIds.has(token.id));
+  }
+
+  /**
+   * „⚔ W starciu” (etap 50a): skrzyżowane klingi na ciemnym krążku w prawym
+   * górnym rogu figury — naklejki statusów zajmują lewy. Rysunek, nie emoji:
+   * czcionka emoji różni się między systemami, a znaczek ma się czytać przy
+   * każdym przybliżeniu jak reszta oprawy.
+   */
+  private drawCombatMark(extent: number, inCombat: boolean): void {
+    this.combatMark.clear();
+    if (!inCombat) return;
+    const r = Math.max(7, extent * 0.12);
+    const cx = extent - r - 1;
+    const cy = r + 1;
+    const arm = r * 0.55;
+    const guard = r * 0.3;
+    const width = Math.max(1.5, r * 0.18);
+    this.combatMark
+      .circle(cx, cy, r)
+      .fill({ color: 0x0b1220, alpha: 0.85 })
+      .stroke({ color: TURN_RING_COLOR, width: Math.max(1, r * 0.12) })
+      // Dwie klingi na krzyż…
+      .moveTo(cx - arm, cy - arm)
+      .lineTo(cx + arm, cy + arm)
+      .moveTo(cx + arm, cy - arm)
+      .lineTo(cx - arm, cy + arm)
+      // …i jelce przy rękojeściach (dolne końce).
+      .moveTo(cx + arm * 0.45 - guard, cy + arm * 0.45 + guard)
+      .lineTo(cx + arm * 0.45 + guard, cy + arm * 0.45 - guard)
+      .moveTo(cx - arm * 0.45 - guard, cy + arm * 0.45 - guard)
+      .lineTo(cx - arm * 0.45 + guard, cy + arm * 0.45 + guard)
+      .stroke({ color: TURN_RING_COLOR, width, cap: 'round' });
   }
 
   /**

@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (po `e812d25`) — etap 49a: okno „Nowa postać”, wzorce statystów, ukryte rzuty MG
+
+**Zlecenie MG:** tworzenie przeciwników jest nieintuicyjne, a przy tworzeniu postaci z konta MG
+(Krawędziarz) gracze widzieli rzuty; poprawić szybkie tworzenie NPC-ów wzorem Foundry VTT.
+Ankieta: trzy drogi bez wskazówki, kreator za długi, brak gotowych wrogów, karta → mapa niejasne
+(wielki portret przy przeciąganiu). Decyzje MG w `etap-49-npc-mg.md` (nowy etap 49, dwie sesje).
+
+**Zrobione (49a):** `publishRoll` w kreatorze pisze `gmroll`, gdy rzuca MG. Migracja
+`20261010120000_character_templates` (`Character.template`, `templateId`), widok karty, eksport
+karty i kampanii. `cpredNpcSheet` + `sanitizeNpcInput` (`shared/systems/cpred/npc.ts`),
+`character:create` z `npc`, `template`, `portraitUrl`; `character:update` z `template` (tylko MG).
+`token:create` z wzorca → kopia karty z numerem; `token:duplicate` kopii trzyma `templateId`;
+figura kopii zabiera kartę bez pytania. Klient: `NpcCreateWindow` + `npcCreateStore`, „＋ Nowa
+postać…” i „🧬 Wznów szkic” na górze panelu, grupy „Wzorce statystów” / „Statyści z wzorców”,
+„⧉” w wierszu NPC-a, `figureDragImage` w `token-drag.ts`. Umowy w `statysta`.
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”): okno, wzorzec z Avengerem i Kevlarem, cztery figury z wzorca (dwie przez
+`dragstart`/`drop`, dwie „⊕” + klik) → „… 1–4” z własnymi kartami, grupy w panelu, obrazek
+przeciągania 56 px w kadrze żetonu. Mapa w Firefoksie Playwrighta tej sesji się nie rysowała
+(„WebGL context was lost”, pusta kratka już przed zmianą), więc figury sprawdzone w magazynach.
+W Chromium (gracz Ewa, inna kampania) widać na czacie stare jawne karty „Rozkład Cech — Solo ·
+Krawędziarz” MG z 21:30 — dowód zgłoszenia; zostają jawne. **Ślady w `dev.db`:** brak (wzorzec,
+kopie i figury skasowane); kopia bazy sprzed migracji w scratchpadzie sesji.
+
 ### Sesja 10.10 (po `c7646b1`) — poprawka spoza etapów: czytelność i kolumny karty postaci
 
 **Zlecenie MG (ze zrzutem):** poprawić rozmieszczenie elementów karty, zwłaszcza zbyt małe czcionki,

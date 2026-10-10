@@ -45,6 +45,7 @@ import {
   moveBudgetForCombatant,
   renumberOrder,
   requireCampaignId,
+  rollNpcInitiative,
   requireCombatant,
   spendTurnForCombatant,
   spendTurnForToken,
@@ -530,13 +531,19 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
       if (combatantOwnerId(active) !== user.id) throw new RealtimeError('FORBIDDEN');
     }
 
-    const pointer = nextTurn(toCombatView(combat));
+    // „Rozpocznij walkę” (etap 50a): NPC-e bez inicjatywy dostają ją od serwera,
+    // zanim wskaźnik pójdzie — kolejność rundy 1 liczy się już z ich wynikami.
+    const fight =
+      combat.round === 0 && (await rollNpcInitiative(deps, combat))
+        ? await loadCombatById(deps.ctx.prisma, combat.id)
+        : combat;
+    const pointer = nextTurn(toCombatView(fight));
     // A declaration tied to a value in the queue fires on the way past it,
     // before anybody else gets their turn. Nobody's turn *ended* in that case —
     // the queue merely stepped aside — so the hooks stay out of it.
-    const held = dueHold(combat, pointer);
-    if (held) await fireHeldAction(deps.ctx.prisma, combat, held);
-    else await advanceTurn(deps, campaignId, scene, combat, pointer, user);
+    const held = dueHold(fight, pointer);
+    if (held) await fireHeldAction(deps.ctx.prisma, fight, held);
+    else await advanceTurn(deps, campaignId, scene, fight, pointer, user);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
