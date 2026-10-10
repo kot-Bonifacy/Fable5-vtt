@@ -389,6 +389,13 @@ to jest ten akapit do przeczytania na nowo.
   Programy, ile wejdzie; pakiet Roli Netrunnera dostaje pięć Programów z pakietu Krawędziarza
   (Pancerz, Miecz, Mam cię!, Mózgoklep, Robak — s. 103, z każdego „lub” opcja inna niż Miecz),
   a boostery i defensory są jego narzędziami Roli w kreatorze. Umowa w `siec`.
+- **Karta nie ma pustych wierszy do dopisania (10.10, etap 48c, decyzje MG).** Rzeczy z mechaniką
+  przychodzą z zakupu, wymiany, łupu, kreatora i od MG; „+ Wyposażenie”, „+ Pancerz” i „+ Załóż”
+  zniknęły u wszystkich — rzecz fabularną spoza podręcznika MG zakłada własnym wpisem
+  w Kompendium. Gracz zmienia tylko uwagi, wyrzuca, zużywa, zakłada pancerz i umieszcza wszczep;
+  nazwę, liczby broni i pancerza, naprawę ↻ i Ulepszanie ⊕ (+1 OB) ma MG. Dodatek do broni jest
+  towarem jak Program (montaż z Wyposażenia, zdjęty wraca), a „Montaż znalezionej cyborgizacji”
+  (s. 375) wymaga wiersza z tym wszczepem w Wyposażeniu. Umowa w `ekwipunek`.
 
 ## Interfejs
 

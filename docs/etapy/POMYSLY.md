@@ -1,5 +1,18 @@
 # Pomysły poza zakresem etapów
 
+**10.10.2026 (etap 48c) — wpis Kompendium „tylko dla MG”.** Od 48c karta nie ma pustych wierszy,
+więc rzecz fabularną (chip z kodem, klucz, list) MG zakłada własnym wpisem — a ten widzi cały stół
+w Kompendium. Dziś sekret idzie w uwagi wiersza, a nazwa wpisu jest neutralna. Flaga „ukryty” na
+`CompendiumEntry` (filtr w synchronizacji kompendium jak przy wycofanych wpisach) i szybkie „+ Rzecz
+fabularna” w karcie wpisu MG skróciłyby to do jednego kroku.
+
+**10.10.2026 (etap 48c) — wyjęty wszczep do Wyposażenia.** „Usuń” cyborgizację dziś ją kasuje.
+Gdyby wyjęty chrom wracał do Wyposażenia (jak dek i dodatek), dałoby się go sprzedać albo wszczepić
+komuś „Znaleziony — montaż” — a łup z ciała z chromem (s. 375) miałby źródło bez ręki MG.
+
+**10.10.2026 (etap 48c) — Ulepszanie Technika jako akcja.** Od 48c ⊕ (+1 OB) klika tylko MG.
+Zdarzenie z Testem/kosztem Technika (wskazany przedmiot, karta czatu) oddałoby to graczowi.
+
 **10.10.2026 (etap 48b) — podpięty dek w łupie i w handlu.** Od 48b dek i Programy są towarem,
 ale **podpięty** dek nie jest wierszem Wyposażenia, więc `cpredInventoryView` go nie widzi: ciała
 NPC-netrunnera nie da się obszukać z deku, a gracz, żeby go sprzedać albo oddać, najpierw go odpina

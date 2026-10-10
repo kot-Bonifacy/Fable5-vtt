@@ -70,14 +70,20 @@ zabrania (`character:update` przepuszcza łatę):
 
 ### 48c — skąd przybywają rzeczy na karcie gracza
 
-Decyzja do podjęcia na starcie sesji (rekomendacja): rzeczy z mechaniką przybywają graczowi
-**tylko** z zakupu, wymiany, łupu, kreatora i od MG; gracz zmienia nazwę i uwagi, wyrzuca,
-zużywa. Wolne wiersze tekstowe w Wyposażeniu (bez wpisu z katalogu) zostają.
+Decyzje MG na starcie sesji — niżej, w „Decyzje MG z 10.10 (start 48c)”.
 
-- [ ] Ilość wiersza z wpisem z katalogu tylko maleje u gracza (uogólnienie `AMMO_LOCKED`)
-- [ ] „+ Broń z katalogu” i wiązanie wiersza z katalogiem, „+ Pancerz”, „+ Dodatek” — u gracza
-      wg decyzji; serwer pilnuje tego samego
-- [ ] Testy, łańcuch E2E tam, gdzie gracz dziś dopisuje rzeczy ręką, oględziny
+- [x] Ilość każdego wiersza Wyposażenia tylko maleje u gracza (uogólnienie `AMMO_LOCKED`
+      → `ITEM_LOCKED`)
+- [x] Brak pustych wierszy: „+ Wyposażenie”, „+ Pancerz” i „+ Załóż” znikają u wszystkich,
+      „+ Broń z katalogu” i „⚠ Wskaż broń z katalogu” zostają MG; serwer odmawia graczowi
+      nowego wiersza na każdej liście (`cpredPlayerItemPatchProblem`)
+- [x] Nazwa i liczby broni i pancerza (Obrażenia, LA, OB, kara), ↻ naprawa i ⊕ Ulepszanie —
+      u gracza do czytania; bieżące OB tylko w dół
+- [x] Dodatek do broni jako towar: kupno, półka „Dodatki” w kreatorze, montaż z Wyposażenia,
+      zdjęty wraca do Wyposażenia (także u MG)
+- [x] „Znaleziony — montaż” tylko z wiersza Wyposażenia (zdejmuje go); MG ma „Do Wyposażenia”
+      przy wszczepie; łata gracza nie dopisze ani nie wyjmie cyborgizacji
+- [x] Testy, E2E (T3a 3.8, T4a łup Zbira z wpisu kompendium), oględziny
 
 ## Kryteria ukończenia
 
@@ -136,3 +142,37 @@ Kryteria 48b spełnione. Ustalenia w trakcie:
   Mózgoklep zamiast Piekielnego Pocisku; T5a/T5b grają Mieczem, więc bez zmian.
 - Pomysł z oględzin: podpięty dek w łupie i w handlu (`POMYSLY.md`).
 
+## Decyzje MG z 10.10 (start 48c)
+
+1. **Ostrzej niż w rekomendacji:** gracz nie dopisuje żadnych wierszy, także wolnych tekstowych.
+   „Puste wiersze z możliwością dopisywania to pozostałość kopiowania karty z wersji papierowej
+   — ta karta nie potrzebuje tego typu wierszy”. **Dotyczy też MG:** rzecz fabularną spoza
+   podręcznika MG zakłada własnym wpisem w Kompendium i daje „Dodaj za darmo”.
+2. **Liczby broni i pancerza oraz ↻ naprawa — tylko MG.** Ablacja liczy się sama, gracz bieżące
+   OB może tylko obniżyć; naprawia MG albo Technik Prowizorką (30b).
+3. **Dodatki do broni to towar jak Programy (48b)** — kupione lądują w Wyposażeniu, montuje się
+   je stamtąd, zdjęte wracają. Zamontowane już dodatki zostają.
+4. **„Znaleziony — montaż” wymaga wiersza Wyposażenia** z tym wszczepem (łup, wymiana, od MG);
+   montaż go zużywa. Zwykły zakup „Zainstaluj — cena” bez zmian.
+5. **Wszystko w jednej sesji 48c** (propozycja podziału na 48c + 48d odrzucona).
+
+## Wykonanie 48c (10.10.2026)
+
+Kryteria 48c spełnione. Ustalenia w trakcie:
+
+- **Reguła w `shared/systems/cpred/itemlocks.ts`** (`cpredPlayerItemPatchProblem` → `ITEM_LOCKED`):
+  wiersz gracza może zmienić tylko pola swobodne — uwagi (każda lista), magazynek i nabój broni
+  (zostają przy umowie 46c, karta „bez dna” ma licznik ręczny), `equipped`/`location`/`spCurrent`
+  w dół u pancerza, `qty` w dół u wyposażenia, `bodySlot` u wszczepu. Nowy wiersz, inna liczba,
+  nazwa albo wyjęty wszczep → odmowa. MG — furtka sędziego, bez zmian.
+- **⊕ Ulepszanie (+1 OB) też przeszło do MG** — to zmiana OB, a łata gracza jej nie przepuści.
+  Technik rozgrywa Ulepszanie przy stole, MG klika ⊕ (zdanie w panelu Twórcy poprawione).
+- **Przezwisko broni** (umowa z 31.08: nazwa własnością gracza) — od teraz w uwagach; nazwę
+  zmienia MG.
+- **Pudełko amunicji** u gracza: ilość w dół na każdej karcie, także „bez dna” (dotąd tylko
+  na karcie z zapasem) — `ITEM_LOCKED`, nie `AMMO_LOCKED`.
+- **Wpis własny MG widzi cały stół** — rzecz fabularna z sekretem dostaje neutralną nazwę,
+  a sekret idzie w uwagi wiersza (T4a: „Chip z kodem do chłodni”, kanarek w uwagach). Wpis
+  „tylko dla MG” — `POMYSLY.md`.
+- **Kreator nie montuje dodatków** — kupione leżą w Wyposażeniu, gracz montuje je po „Przyjmij
+  do gry”.

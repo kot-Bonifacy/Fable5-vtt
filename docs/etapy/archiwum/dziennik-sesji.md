@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (druga) — etap 48a „Przypomnienie o zakupach, kadr portretów, Zakwaterowanie”
+
+**Zlecenie MG:** cztery uwagi (przypomnienie o zakupach w kreatorze, cyberdeki za darmo, przegląd
+zakładki „Ekwipunek”, kadr portretów w pasie inicjatywy), wolno rozpisać na 2–3 sesje. **Przegląd
+zakładki** znalazł poza zgłoszonym: „— nie rozliczam —” u gracza, darmowe Programy i liczbę gniazd
+deku u gracza, ilości podnoszone ręką i — poza zakładką — „+ Broń z katalogu”, „+ Pancerz”
+i „+ Dodatek” za darmo. **Decyzje MG (wszystkie zgodne z rekomendacją):** trzy sesje 48a–48c;
+przypomnienie jako brak z „Ruszam bez zakupów”; kwaterunek Korpo wg Pracy Zespołowej; dek
+i Programy jako towar. Nowy plik `etap-48-ekwipunek-gracza.md`.
+
+**Zrobione:** `skipPurchases` w szkicu + brak `purchases` w `creationIssues(…, { requirePurchases })`
+(klient i `creation:finish` tylko dla gracza), pole w kroku „Wyposażenie”; `teamworkRank`
+w `HOUSING_DEFINITIONS`, nowa opcja `corpoPenthouse`, `cpredHousingAllowed`, odmowy w
+`character:update`, lista na karcie gracza; `ChipPortrait` w `CombatBar.tsx`.
+
+**Znalezione:** cena kupna mieszkania nieużywana (`POMYSLY.md`).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
+MCP, `dev.db`): pas inicjatywy na „StrefaPrzemysłowa” (kadr Tony'ego: twarz zamiast piersi);
+w **Chromium** gracz `Tester`: lista Zakwaterowania bez opcji Korpo, „nie rozliczam” znika po
+wyborze Poziomu życia, odmowy serwera z konsoli, kreator — brak w podsumowaniu, „Przejdź”,
+zaznaczenie zdejmuje brak (7 → 6). **Ślady w `dev.db`:** „Oględziny Stym” ma od teraz „Na karmie ·
+Życie na Ulicy”; szkic Testera wyrzucony; na poligonie aktywna znów „RęcznyTest”, u MG otwarta
+„Test_1”; Firefox Playwrighta zalogowany jako MG (wcześniej `ogledziny-b`).
+
+**Następny krok — 48b** (cyberdek i Programy jako towar; zakres w pliku etapu).
+
 ### Sesja 10.10 — etap 47b „Cennik: łańcuch E2E” + gołe ręce z urzędu
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 47b)”, pytać o niejasności; w trakcie: Bijatyka
