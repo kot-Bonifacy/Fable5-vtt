@@ -63,7 +63,7 @@ CPRED_DIR = REPO_ROOT / "data" / "private" / "cpred"
 CHAPTER = "11-netrunner.md"
 SOURCE = "Cyberpunk RED — podręcznik główny (wydanie polskie), s. 195–218"
 
-DESCRIPTION_MAX = 1000
+DESCRIPTION_MAX = 2000
 
 PRICE_RE = re.compile(r"(\d[\d\s ]*)\s*ed\s*\(([^)]+)\)")
 

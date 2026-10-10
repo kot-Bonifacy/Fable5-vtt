@@ -70,7 +70,7 @@ CHAPTER_MARKET = "17-nowa-ekonomia-uliczna.md"
 SOURCE = "Cyberpunk RED — podręcznik główny (wydanie polskie)"
 
 SCHEMA_VERSION = 1
-DESCRIPTION_MAX = 1000  # COMPENDIUM_DESCRIPTION_MAX_LENGTH in compendium.ts
+DESCRIPTION_MAX = 2000  # COMPENDIUM_DESCRIPTION_MAX_LENGTH in compendium.ts
 RANGE_BANDS = 8  # CPRED_RANGE_BANDS in compendium.ts
 AUTOFIRE_BANDS = 5  # CPRED_AUTOFIRE_RANGE_BANDS in attacks.ts — the table stops at 100 m
 ROLL_MIN, ROLL_MAX = 2, 12
@@ -648,10 +648,16 @@ def base_weapon_entries(types: dict[str, dict], page: int | None) -> list[dict]:
             entry["costCategory"] = weapon_type["costCategory"]
         if weapon_type.get("features"):
             entry["features"] = weapon_type["features"]
+        # The shop and the compendium card show the entry's text only, so the
+        # type's own note (melee examples, how a grenade is thrown) travels
+        # with it — without it the plain „Lekka broń biała" had no text at all.
+        parts = [] if unarmed else [weapon_type.get("description")]
         # The ammunition type is printed under the magazine size and is what a
         # player actually has to buy, but it is not a weapon-type field.
         if weapon_type.get("ammunition") and not weapon_type.get("thrown"):
-            entry["description"] = f"Standardowa amunicja: {weapon_type['ammunition']}."
+            parts.append(f"Standardowa amunicja: {weapon_type['ammunition']}.")
+        if any(parts):
+            entry["description"] = " ".join(part for part in parts if part)
         entries.append({key: value for key, value in entry.items() if value is not None})
     return entries
 
@@ -891,6 +897,9 @@ def describe_attachment(prose: str, label: str) -> str | None:
     text = text.replace(label, "", 1).strip(" -–—•\n\t")
     text = re.sub(r"^Pasuje do:\s*", "Pasuje do: ", text)
     text = re.sub(r"\s+", " ", text).strip()
+    # The next item's „### NAZWA" heading: the chunk stops at the name, so the
+    # hashes in front of it stayed at the end of this description.
+    text = re.sub(r"[\s#]+$", "", text)
     return text[:DESCRIPTION_MAX] if text else None
 
 

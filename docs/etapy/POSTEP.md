@@ -226,7 +226,7 @@ a nie do tego pliku.
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar     | 8    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
-| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
+| `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 7    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 112     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 138     |
@@ -235,6 +235,31 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (dziewiąta) — poprawka spoza etapów: opisy w kompendium
+
+**Zlecenie MG:** „Czip pamięci” w kroku „Wyposażenie” pokazywał „Kompendium nie ma opisu tego
+przedmiotu” — sprawdzić import kompendium, brakujące opisy uzupełnić (z internetu tylko w razie
+braku w podręczniku).
+
+**Diagnoza:** bez opisu były Czip pamięci, Radioodtwarzacz, cztery typy broni białej i Granat
+(podstawowe wpisy z `weapons-base.json`), a demony Sieci mają tylko ikonę (podręcznik nic więcej
+nie daje). Wszystkie teksty są w podręczniku — **internet niepotrzebny**. Przy okazji wyszły błędy
+importu: akapity „Czipy pamięci:” i „Radio/odtwarzacz muzyki:” doklejone do Cyberdeku i Racji MRE,
+zdanie o wirtualu z Gogli w Fiolce biotoksyny, „: NOWA EKONOMIA ULICZNA” w środku Technarzędzia,
+„###” na końcu sześciu dodatków do broni, a Kombinezon Bodyweight i Złącze smartguna ucięte
+w pół zdania na limicie 1000 znaków (zginęła zasada o +1 smartguna).
+
+**Zrobione:** `parse-gear.py` — `PROSE_ALIASES`, `MISPLACED_SENTENCES`, `RUNNING_HEAD_RE`;
+`parse-manual.py` — podstawowy wpis broni dziedziczy opis typu, dodatki bez „###”; limit opisu
+**2000** (`COMPENDIUM_DESCRIPTION_MAX_LENGTH`, `DESCRIPTION_MAX` w trzech importerach, pole
+w edytorze kompendium). Prywatnie: `manual-overrides.json` — „nabijana kolcami pała” jak w druku.
+Import puszczony, diff opisów przejrzany (zmieniły się tylko wpisy wyżej). Pułapka w `dane`.
+
+**Weryfikacja:** `validate-compendium.ts` (413 wpisów, wszystkie przechodzą), vitest shared
+2431/2431 i server 1430/1430, `tsc` klienta, eslint zmienionych plików TS. Serwer dev
+przeładowany (`touch`). Oglądane w **Firefoksie** (Playwright MCP, MG): Kompendium → Sprzęt →
+Czip pamięci z opisem. **Ślady w `dev.db`:** brak.
 
 ### Sesja 10.10 (ósma) — poprawka spoza etapów: krok „Wyposażenie” w kreatorze
 
@@ -264,32 +289,3 @@ podsumowanie, opis w prawej kolumnie; w **Chromium** jako gracz Ewa („Ulice Ne
 istniejący szkic Medyka): checkbox i opis. **Ślady w `dev.db`:** szkic
 kreatora MG (był pusty „bez Roli”) ma teraz Kompletny Pakiet, Solo, dwie bronie w koszyku i Ciężki
 pistolet z gratisu.
-
-### Sesja 10.10 (siódma) — zaległości spoza etapów: testy leczenia MG, kwoty, pojemniki, „podejście” bota
-
-**Zlecenie MG:** „napraw kilka zapisanych zaległości”, pytać o niejasności. **Decyzje MG (pytania na
-starcie):** wszystkie cztery zaległości poza paczką AI (ta czeka do bety); pojemniki ukryć **wszędzie**,
-także w archiwum; sąsiad nie jest celem „podejścia” bota; ręczna zmiana PW **bez śladu** na czacie
-(`decyzje-i-uproszczenia.md`, „Leczenie”).
-
-**Zrobione:** (1) **testy leczenia i efektów MG** — `server/src/gm-care.test.ts` (PW cudzej karty
-i figury bez karty, naklejki ran, przycięcie, odpoczynek i dawka za postać gracza, stany żetonu,
-odmowy gracza) i E2E `specs/50-przegladarki/t8c-leczenie` (MG leczy strzałką PW, Marek w Firefoksie
-widzi kartę i pasek, efekt z „Efektów czasowych”). (2) **Kwoty w oknie „Wymiana”** przez `formatEd`
-(`exchange/items.ts`, wszystkie tryby i sekcja „Sklep”) i „Gotówka: …” w kartach czatu łupu
-i transakcji; asercje `t46a` na „1 200 ed”. (3) **Pojemniki znikają** z wyboru karty bota,
-„Nastawienia do postaci”, odpoczynku w oknie zegara, archiwum, a poza listą z zaległości także
-z leczących w „Lecz ranę” i z wyboru karty figury. (4) **Bot:** figura w zasięgu ręki jest `adjacent`,
-„podejście” znika, gdy wszyscy stoją obok, prompt mówi „tuż obok ciebie”; pas w poprawce po odmowie to
-`outcome: 'pass'` („pasuje po odmowie”), nie druga odmowa. **Poza zleceniem (błąd z oględzin):**
-„Bijatyka 0 ed” na półce handlarza — `cpredMerchantShelf` odsiewa gołe ręce (umowa 47b).
-Umowy w `ekwipunek` i `boty`, zamknięte wpisy w `archiwum/zamkniete-zaleglosci.md`.
-
-**Nowe zaległości (drobiazgi do triażu MG):** surowe kwoty w prośbie do Medyka i w przyciskach
-instalacji w Kompendium; separator tysięcy (U+202F) prawie niewidoczny w Firefoksie przy małym
-kroju (okno „Wymiana”: „Gotówka”, „Kasa handlarza”).
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane na zrzutach E2E: Firefox (Ola,
-`46a.11` — kwoty, odczyt DOM z U+202F) i Chromium (Marek, koszyk bez „Bijatyki”). Listy kart bez
-pojemników nieoglądane w przeglądarce — zmiana to filtr `isContainerCard`, `tsc` czysty. **Ślady
-w `dev.db`:** brak (wszystko na instancji E2E i w bazach testów).

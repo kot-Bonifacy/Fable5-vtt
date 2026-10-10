@@ -49,12 +49,32 @@ SECTION = "GŁÓWNA LISTA OSPRZĘTU"
 SOURCE = "Cyberpunk RED — podręcznik główny (wydanie polskie), s. 351–356"
 
 # The compendium refuses anything longer (COMPENDIUM_DESCRIPTION_MAX_LENGTH).
-DESCRIPTION_MAX = 1000
+DESCRIPTION_MAX = 2000
 
 # „100 ed (Premium)" — the price is the separator, and the name is whatever
 # stands between two of them. Matching the *name* instead would be a guess:
 # „Cyberdek (doskonałej jakości)" carries brackets of its own.
 PRICE_RE = re.compile(r"\s*(\d[\d\s ]*)\s*ed\s*\(([^)]+)\)\s*")
+
+# The prose names a few items differently than the price table does. Without
+# the alias the paragraph is not a split point, so it ends up glued to the
+# previous item's description („Cyberdek (zwykłej jakości)" carried the memory
+# chip, „Racje żywnościowe MRE" the radio) and its own item stays blank.
+PROSE_ALIASES = {
+    "Czipy pamięci": "Czip pamięci",
+    "Radio/odtwarzacz muzyki": "Radioodtwarzacz",
+}
+
+# A sentence the page layout dropped into the wrong paragraph:
+# (where it landed, where it belongs, how it starts). The goggles' note on
+# virtuality follows the poison vial in the dump.
+MISPLACED_SENTENCES = [
+    ("Fiolka biotoksyny", "Gogle wirtualowe", "Wirtual nie jest tylko dla Netrunnerów"),
+]
+
+# The running head of the chapter, left in the middle of a sentence where a
+# page breaks („w tym małe : NOWA EKONOMIA ULICZNA ostrze użytkowe").
+RUNNING_HEAD_RE = re.compile(r"\s*:\s*NOWA EKONOMIA ULICZNA\b")
 
 # „MODA NogiTułówKurtka…" — the header row of the clothing matrix that follows
 # the gear list without a heading of its own.
@@ -171,7 +191,7 @@ def price_table(section: str) -> list[tuple[str, int, str]]:
 
 def descriptions(section: str, names: list[str]) -> dict[str, str]:
     """Splits the prose under the table on the names the table just gave us."""
-    flat = clean(section)
+    flat = RUNNING_HEAD_RE.sub("", clean(section))
     # The fashion matrix (s. 356) starts inside this section with no heading of
     # its own, so without a stop marker the last item's description swallows
     # nine columns of clothing prices.
@@ -181,7 +201,8 @@ def descriptions(section: str, names: list[str]) -> dict[str, str]:
     else:
         flat = flat[: stop.start()]
     # Longest first: „Cyberdek (zwykłej jakości):" must win over „Cyberdek:".
-    ordered = sorted(names, key=len, reverse=True)
+    labels = names + [alias for alias, name in PROSE_ALIASES.items() if name in names]
+    ordered = sorted(labels, key=len, reverse=True)
     pattern = re.compile(
         r"(?:(?<=^)|(?<=[\s.:;!?]))(" + "|".join(re.escape(name) for name in ordered) + r")\s*:\s*"
     )
@@ -200,7 +221,15 @@ def descriptions(section: str, names: list[str]) -> dict[str, str]:
             cut = body.rfind(". ", 0, DESCRIPTION_MAX)
             body = body[: cut + 1] if cut > 200 else body[: DESCRIPTION_MAX - 1] + "…"
         # The table lists an item once; the prose may mention it again later.
-        found.setdefault(name, body)
+        found.setdefault(PROSE_ALIASES.get(name, name), body)
+
+    for source, target, opening in MISPLACED_SENTENCES:
+        cut = found.get(source, "").find(opening)
+        if cut == -1 or target not in found:
+            warn(f"{source}: nie znalazłem zdania „{opening}…” do przeniesienia — popraw MISPLACED_SENTENCES")
+            continue
+        found[target] = f"{found[target].rstrip(' .')}. {found[source][cut:]}"
+        found[source] = found[source][:cut].rstrip(" .")
     return found
 
 

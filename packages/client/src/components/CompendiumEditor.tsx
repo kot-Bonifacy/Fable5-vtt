@@ -33,6 +33,7 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
+  COMPENDIUM_DESCRIPTION_MAX_LENGTH,
   CPRED_AMMO_PATTERNS,
   CPRED_AMMO_PATTERN_LABELS,
   CPRED_CONE_RANGE_M,
@@ -143,7 +144,7 @@ export function CompendiumEditor() {
             <textarea
               value={form.description}
               rows={2}
-              maxLength={1000}
+              maxLength={COMPENDIUM_DESCRIPTION_MAX_LENGTH}
               onChange={(event) => patch({ description: event.target.value })}
             />
           </label>

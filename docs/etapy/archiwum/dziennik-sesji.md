@@ -1,5 +1,34 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (siódma) — zaległości spoza etapów: testy leczenia MG, kwoty, pojemniki, „podejście” bota
+
+**Zlecenie MG:** „napraw kilka zapisanych zaległości”, pytać o niejasności. **Decyzje MG (pytania na
+starcie):** wszystkie cztery zaległości poza paczką AI (ta czeka do bety); pojemniki ukryć **wszędzie**,
+także w archiwum; sąsiad nie jest celem „podejścia” bota; ręczna zmiana PW **bez śladu** na czacie
+(`decyzje-i-uproszczenia.md`, „Leczenie”).
+
+**Zrobione:** (1) **testy leczenia i efektów MG** — `server/src/gm-care.test.ts` (PW cudzej karty
+i figury bez karty, naklejki ran, przycięcie, odpoczynek i dawka za postać gracza, stany żetonu,
+odmowy gracza) i E2E `specs/50-przegladarki/t8c-leczenie` (MG leczy strzałką PW, Marek w Firefoksie
+widzi kartę i pasek, efekt z „Efektów czasowych”). (2) **Kwoty w oknie „Wymiana”** przez `formatEd`
+(`exchange/items.ts`, wszystkie tryby i sekcja „Sklep”) i „Gotówka: …” w kartach czatu łupu
+i transakcji; asercje `t46a` na „1 200 ed”. (3) **Pojemniki znikają** z wyboru karty bota,
+„Nastawienia do postaci”, odpoczynku w oknie zegara, archiwum, a poza listą z zaległości także
+z leczących w „Lecz ranę” i z wyboru karty figury. (4) **Bot:** figura w zasięgu ręki jest `adjacent`,
+„podejście” znika, gdy wszyscy stoją obok, prompt mówi „tuż obok ciebie”; pas w poprawce po odmowie to
+`outcome: 'pass'` („pasuje po odmowie”), nie druga odmowa. **Poza zleceniem (błąd z oględzin):**
+„Bijatyka 0 ed” na półce handlarza — `cpredMerchantShelf` odsiewa gołe ręce (umowa 47b).
+Umowy w `ekwipunek` i `boty`, zamknięte wpisy w `archiwum/zamkniete-zaleglosci.md`.
+
+**Nowe zaległości (drobiazgi do triażu MG):** surowe kwoty w prośbie do Medyka i w przyciskach
+instalacji w Kompendium; separator tysięcy (U+202F) prawie niewidoczny w Firefoksie przy małym
+kroju (okno „Wymiana”: „Gotówka”, „Kasa handlarza”).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane na zrzutach E2E: Firefox (Ola,
+`46a.11` — kwoty, odczyt DOM z U+202F) i Chromium (Marek, koszyk bez „Bijatyki”). Listy kart bez
+pojemników nieoglądane w przeglądarce — zmiana to filtr `isContainerCard`, `tsc` czysty. **Ślady
+w `dev.db`:** brak (wszystko na instancji E2E i w bazach testów).
+
 ### Sesja 10.10 (szósta) — poprawka spoza etapów: zakładka tabel losowych czytelniejsza
 
 **Zlecenie MG:** „zakładka Tabela jest mało intuicyjna” — ocena i wyjaśnienie, potem „wprowadź

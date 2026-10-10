@@ -616,7 +616,9 @@ export function isValidDamageNotation(value: string): boolean {
 export const COMPENDIUM_NAME_MAX_LENGTH = 80;
 /** Provenance notes are long by design: "Easy Mode PL — karta postaci…". */
 export const COMPENDIUM_SOURCE_MAX_LENGTH = 300;
-export const COMPENDIUM_DESCRIPTION_MAX_LENGTH = 1000;
+/** Two thousand, not one: the rulebook prose of the Bodyweight suit and the
+ * smartgun link runs past a thousand and lost its last rule (10.10). */
+export const COMPENDIUM_DESCRIPTION_MAX_LENGTH = 2000;
 export const COMPENDIUM_FEATURES_MAX = 12;
 export const COMPENDIUM_FEATURE_MAX_LENGTH = 80;
 export const COMPENDIUM_COST_MAX = 10_000_000;

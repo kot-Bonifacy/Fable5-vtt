@@ -915,6 +915,7 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## dane — Kompendium, parsery, dane podręcznika
 
+- **Opis przedmiotu „brakuje”, bo akapit nazywa go inaczej niż tabela cen (10.10)** — „Czipy pamięci:”, „Radio/odtwarzacz muzyki:” nie były punktem podziału, więc doklejały się do poprzedniego wpisu; `PROSE_ALIASES` w `parse-gear.py`. Szukaj brakującego opisu **w cudzym** opisie, zanim pójdziesz do internetu.
 - **Słownik korpusu `build-manual.mjs` zawiera ułamki rozbitych nagłówków (03.10, #78)** — „NSTRUKCJA”, „TRZYMYWANIE” są w `VOCAB`, bo ten liczy się z surowego zrzutu, więc reguła „reszta jest wyrazem → nie sklejaj” trzymała je rozdzielone. Pytaj `LOWER_VOCAB` (wyraz choć raz małymi literami). Pierwsza próba z `LOWER_VOCAB` także dla sklejonej formy zepsuła „ULEPSZANIE”, „AMERYKA”, „WITAJ” — reguła ma tylko **dokładać** sklejenia względem starej. Nagłówek z jednego wyrazu nigdy nie był nagłówkiem (próg dwóch wyrazów w `markHeadings`), więc „URAZÓWKA” i „AGRESORZY” po sklejeniu zostają w tekście.
 - **Python w heredocu: `\b` w zwykłym napisie to znak backspace (03.10)** — wzorzec `r"…\bŚrodowisko\b"` wpisany przez `python - <<'EOF'` w nie-surowym napisie z podwójnym ukośnikiem przed `b` dał w pliku znaki `\x08`; wzorzec nic nie łapał, a `grep` pokazywał „Środowisko” bez ukośników (ten wpis za pierwszym podejściem też się tak zepsuł). Sprawdzaj `grep -c $'\x08'` po takim zapisie, a kod z wyrażeniami regularnymi wpisuj narzędziem Edit.
 - **Regex na zrzucie podręcznika łapie każdą liczbę, także numer strony.** Pierwsza wersja `parse-encounters.py` zrobiła z „STR. 417” wiersz tabeli („dziura 101–417”). Zakres wiersza musi być zakotwiczony (nawias albo początek linii) **i** mieć po sobie krótką nazwę z dwukropkiem.
@@ -1001,6 +1002,15 @@ Do tego **nagłówek tabeli klei się z pierwszym wierszem** („TypZwykłyPrzed
 pistolet 121836"), więc ogólne wyrażenie na etykietę zjada nagłówek i gubi Średni pistolet —
 rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie jest.
 
+**Opis przedmiotu „brakuje”, bo akapit nazywa go inaczej niż tabela cen (10.10).** Czip pamięci
+i Radioodtwarzacz nie miały opisu, choć rozdział 17 je opisuje — jako „Czipy pamięci:” i „Radio/
+odtwarzacz muzyki:”. `descriptions` tnie prozę tylko na nazwach z tabeli cen, więc oba akapity
+doklejały się do poprzedniego wpisu (Cyberdek zwykłej jakości, Racje MRE). Nazwa z akapitu idzie
+do `PROSE_ALIASES`, zdanie wrzucone przez łamanie strony do cudzego akapitu — do
+`MISPLACED_SENTENCES` (w skrypcie, nie w JSON-ie). Ta sama sesja: limit opisu 1000 ucinał w pół
+zdania Kombinezon Bodyweight i Złącze smartguna — od 10.10 limit to 2000, a wpis kończący się
+dokładnie na limicie to sygnał ucięcia. Kontrola po imporcie: porównaj opisy starego i nowego
+pliku po `id`, nie `diff -q`.
 
 ## kopie — Kopie zapasowe, eksport i import
 
