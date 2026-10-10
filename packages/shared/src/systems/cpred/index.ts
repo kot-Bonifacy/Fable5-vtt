@@ -29,6 +29,7 @@ export * from './areas.js';
 export * from './damage.js';
 export * from './statuses.js';
 export * from './movement.js';
+export * from './barehands.js';
 export * from './attacks.js';
 export * from './statblock.js';
 export * from './inventory.js';

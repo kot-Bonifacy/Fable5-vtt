@@ -15,7 +15,7 @@ import type {
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
-import { ARCHIVE_VERSION } from '@vtt/shared';
+import { ARCHIVE_VERSION, cpredWithoutBareHands, type CpredCharacterData } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import type { CampaignArchive, CharacterArchive, SceneArchive } from './archive.js';
@@ -272,8 +272,12 @@ describe('import karty', () => {
     expect(result.name).toBe('Do powrotu (kopia)');
 
     const back = await download<CharacterArchive>(`/api/archive/character/${result.id}`, gmCookie);
-    // Ta sama zawartość karty — ekwipunek, notatki, eurodolce, PD.
-    expect(back.payload.data).toEqual(file.payload.data);
+    // Ta sama zawartość karty — ekwipunek, notatki, eurodolce, PD. Import czyta
+    // kartę przez `parseCharacterData`, więc dochodzi Bijatyka z urzędu (47b).
+    const { weapons: backWeapons, ...backRest } = back.payload.data as CpredCharacterData;
+    const { weapons: fileWeapons, ...fileRest } = file.payload.data as CpredCharacterData;
+    expect(backRest).toEqual(fileRest);
+    expect(cpredWithoutBareHands(backWeapons)).toEqual(fileWeapons);
     expect(original.name).toBe('Do powrotu');
   });
 

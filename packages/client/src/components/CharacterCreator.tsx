@@ -30,6 +30,7 @@ import type {
 } from '@vtt/shared';
 import {
   ARMOR_LOCATION_LABELS,
+  cpredIsBareHandsEntry,
   CPRED_CREATION_METHODS,
   CPRED_CREATION_METHOD_LABELS,
   CPRED_CREATION_STEPS,
@@ -2261,10 +2262,13 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const entryIcon = useEntryIcon();
   const onShelf = useMemo(() => {
     const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
-    return searchCompendium(all, query, shelf)
-      .filter((entry) => entryPrice(entry) !== null)
-      .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
-      .filter((row) => row.verdict.allowed);
+    return (
+      searchCompendium(all, query, shelf)
+        // Gołe ręce (47b) każda karta dostaje z urzędu — na półce byłyby za 0 ed.
+        .filter((entry) => entryPrice(entry) !== null && !cpredIsBareHandsEntry(entry.id))
+        .map((entry) => ({ entry, verdict: creationShopVerdict(entry, draft.roleId, shopRules) }))
+        .filter((row) => row.verdict.allowed)
+    );
   }, [entriesById, order, query, shelf, draft.roleId, shopRules]);
   const shelfWeapons = useMemo(
     () => onShelf.map((row) => row.entry).filter(isWeaponEntry),

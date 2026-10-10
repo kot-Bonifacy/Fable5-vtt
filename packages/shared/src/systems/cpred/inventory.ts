@@ -21,6 +21,7 @@
  */
 
 import { cpredSameAmmo } from './ammostock.js';
+import { cpredIsBareHandsRow, cpredWithoutBareHands } from './barehands.js';
 import {
   ITEM_QTY_MAX,
   ITEM_ROWS_MAX,
@@ -160,7 +161,8 @@ export function cpredItemView(list: CpredItemList, row: CpredItemRow): CpredItem
 /** Cały ekwipunek karty jednym ciągiem — lewa kolumna okna wymiany. */
 export function cpredInventoryView(data: CpredCharacterData): CpredItemView[] {
   return [
-    ...data.weapons.map((row) => cpredItemView('weapons', row)),
+    // Gołe ręce z urzędu (47b) nie są przedmiotem — nie ma ich w żadnym oknie wymiany.
+    ...cpredWithoutBareHands(data.weapons).map((row) => cpredItemView('weapons', row)),
     ...data.armor.map((row) => cpredItemView('armor', row)),
     ...data.gear.map((row) => cpredItemView('gear', row)),
   ];
@@ -264,7 +266,11 @@ export function cpredTakeRows(
   const taken: CpredTakenRow[] = [];
   for (const ref of refs) {
     const rows = source[ref.list];
-    const index = rows.findIndex((row) => row.id === ref.rowId);
+    // Gołych rąk (47b) nie da się oddać, sprzedać ani położyć na mapie.
+    const index =
+      ref.list === 'weapons' && cpredIsBareHandsRow(ref.rowId)
+        ? -1
+        : rows.findIndex((row) => row.id === ref.rowId);
     if (index === -1) return { ok: false, error: 'ITEM_NOT_FOUND' };
     const row = rows[index]!;
 

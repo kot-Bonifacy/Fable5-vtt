@@ -27,6 +27,7 @@
  * i tracił piętnaście PW przy pierwszym zapisie karty.
  */
 
+import { cpredIsBareHandsRow } from './barehands.js';
 import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import { ARMOR_SP_MAX } from './locations.js';
@@ -419,7 +420,9 @@ export function applyStatistQuick(
  * bierze całą kartę, a nie sam ten obiekt.
  */
 export function statistQuick(data: CpredCharacterData): CpredStatistQuick {
-  const weapon = data.weapons.find((row) => row.id === STATIST_WEAPON_ROW_ID) ?? data.weapons[0];
+  const weapon =
+    data.weapons.find((row) => row.id === STATIST_WEAPON_ROW_ID) ??
+    data.weapons.find((row) => !cpredIsBareHandsRow(row));
   const armor =
     data.armor.find((row) => row.id === STATIST_ARMOR_ROW_IDS.body) ??
     data.armor.find((row) => row.location === 'body') ??

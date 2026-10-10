@@ -1,3 +1,4 @@
+import { CPRED_BARE_HANDS_ROW_IDS, cpredWithoutBareHands } from '@vtt/shared';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -374,14 +375,14 @@ describe('przedmioty między kartami', () => {
     expect(ack.ok).toBe(true);
 
     const vexSheet = await sheetOf(vex, vexCharacterId);
-    expect(vexSheet.weapons).toHaveLength(1);
+    expect(cpredWithoutBareHands(vexSheet.weapons)).toHaveLength(1);
     expect(vexSheet.weapons[0]).toMatchObject({
       name: 'Zgrzyt 9',
       ammoCurrent: 12,
       ammoMax: 30,
       attachmentIds: ['attachment.celownik'],
     });
-    expect((await sheetOf(gm, gangerCharacterId)).weapons).toEqual([]);
+    expect(cpredWithoutBareHands((await sheetOf(gm, gangerCharacterId)).weapons)).toEqual([]);
 
     const message = (await card).message;
     expect(message.kind).toBe('inventory');
@@ -696,6 +697,34 @@ describe('przedmioty między kartami', () => {
         items: [{ list: 'weapons', rowId: 'nie-ma' }],
       }),
     ).toEqual({ ok: false, error: 'ITEM_NOT_FOUND' });
+  });
+
+  it('Bijatyki z urzędu nie da się oddać — i nie stoi w oknie wymiany (etap 47b)', async () => {
+    expect(
+      await emitAck(vex, 'inventory:give', {
+        fromCharacterId: vexCharacterId,
+        toCharacterId: ricoCharacterId,
+        items: [{ list: 'weapons', rowId: CPRED_BARE_HANDS_ROW_IDS.brawling }],
+      }),
+    ).toEqual({ ok: false, error: 'ITEM_NOT_FOUND' });
+    const sheet = await sheetOf(vex, vexCharacterId);
+    expect(sheet.weapons.at(-1)).toMatchObject({
+      id: CPRED_BARE_HANDS_ROW_IDS.brawling,
+      name: 'Bijatyka',
+    });
+    // Łata z przemianowaną pięścią przechodzi, ale pięści nie rusza.
+    const renamed = sheet.weapons.map((row) =>
+      row.id === CPRED_BARE_HANDS_ROW_IDS.brawling ? { ...row, name: 'Młot' } : row,
+    );
+    expect(
+      (
+        await emitAck(vex, 'character:update', {
+          characterId: vexCharacterId,
+          patch: { data: { weapons: renamed } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await sheetOf(vex, vexCharacterId)).weapons.at(-1)?.name).toBe('Bijatyka');
   });
 
   it('przekazuje same eurodolce — wiersz „Gotówka" w oknie wymiany (naprawa 23.09)', async () => {

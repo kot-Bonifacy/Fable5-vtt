@@ -20,10 +20,10 @@ import {
   planCpredAttack,
   rangeBandFor,
   resolveCpredAttack,
-  unarmedDamage,
   type CpredAttackContext,
   type CpredAttackRequest,
 } from './attacks.js';
+import { unarmedDamage } from './barehands.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import { CPRED_OBSCUREMENT_KIND } from './environment.js';

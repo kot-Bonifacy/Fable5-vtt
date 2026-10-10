@@ -1,3 +1,4 @@
+import { cpredWithoutBareHands } from '@vtt/shared';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -441,12 +442,16 @@ describe('handlarze', () => {
 
     const vexSheet = await sheetOf(gm, vexId);
     expect(vexSheet.eddies).toBe(890);
-    expect(vexSheet.weapons).toHaveLength(0);
+    expect(cpredWithoutBareHands(vexSheet.weapons)).toHaveLength(0);
     expect(vexSheet.gear.find((row) => row.compendiumId === 'gear.apteczka-polowa')?.qty).toBe(2);
     const paserSheet = await sheetOf(gm, paserId);
     // Wiersz „∞” nie ubywa; odkupiony Zgrzyt od razu leży na półce.
     expect(paserSheet.gear.find((row) => row.id === 'g-apt')?.qty).toBe(3);
-    expect(paserSheet.weapons.map((row) => row.name).sort()).toEqual(['Szpon', 'Zgrzyt 9']);
+    expect(
+      cpredWithoutBareHands(paserSheet.weapons)
+        .map((row) => row.name)
+        .sort(),
+    ).toEqual(['Szpon', 'Zgrzyt 9']);
     expect(paserSheet.eddies).toBe(610);
 
     const vexLedger = await ledgerOf(vex, vexId);

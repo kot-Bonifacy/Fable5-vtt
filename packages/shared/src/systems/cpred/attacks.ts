@@ -60,6 +60,7 @@ import {
   type CpredAttachmentProfile,
 } from './attachments.js';
 import { hasCyberarm } from './cyberware.js';
+import { unarmedDamage } from './barehands.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
 import { cpredSheetCombatAwareness } from './roleability.js';
 import {
@@ -171,18 +172,6 @@ export const CPRED_PASSIVE_DIE = 5;
 /** Aimed shots are single shots only (RAW: „Strzelając ogniem ciągłym, nie można Celować"). */
 export function canAimInMode(mode: CpredAttackMode): boolean {
   return mode === 'single';
-}
-
-/**
- * Brawling and martial arts damage, from the attacker's BODY (s. 176). A
- * cyberarm lifts a weak attacker to the 2d6 rung, which the caller passes in
- * as `cyberarm` because cyberware only arrives in stage 23.
- */
-export function unarmedDamage(body: number, cyberarm = false): string {
-  if (body >= 11) return '4k6';
-  if (body >= 7) return '3k6';
-  if (body >= 5 || cyberarm) return '2k6';
-  return '1k6';
 }
 
 /** The range band a distance falls into, or null when it is off the table. */

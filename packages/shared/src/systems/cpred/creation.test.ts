@@ -1015,10 +1015,15 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
     expect(outcome.budget).toBe(500);
     expect(outcome.spent).toBe(2 * 50 + 100 + 60);
     expect(outcome.sheet.eddies).toBe(240);
-    expect(outcome.sheet.weapons.map((row) => row.name)).toEqual(['Pistolet', 'Pistolet']);
+    // Bijatyka z urzędu (47b) stoi na końcu każdej karty.
+    expect(outcome.sheet.weapons.map((row) => row.name)).toEqual([
+      'Pistolet',
+      'Pistolet',
+      'Bijatyka',
+    ]);
     expect(outcome.sheet.armor).toMatchObject([{ name: 'Kurtka', sp: 7, location: 'body' }]);
     expect(outcome.sheet.gear).toMatchObject([{ name: 'Latarka', qty: 1 }]);
-    expect(new Set(outcome.sheet.weapons.map((row) => row.id)).size).toBe(2);
+    expect(new Set(outcome.sheet.weapons.map((row) => row.id)).size).toBe(3);
     // The free language rides along exactly as the finished sheet gets it.
     expect(outcome.sheet.skills.language).toBe(4);
     expect(outcome.sheet.lifestyle).toEqual({ level: 'kibble', housing: 'container' });
@@ -1219,7 +1224,9 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
       kitData,
       creationRoleKit(netrunner, kitData, kitLookup),
     );
-    expect(outside.find((line) => line.id === 'kit')?.text).toMatch(/^Sprzęg — chrom należny za darmo/);
+    expect(outside.find((line) => line.id === 'kit')?.text).toMatch(
+      /^Sprzęg — chrom należny za darmo/,
+    );
   });
 
   it('Solo wybiera z listy; wybór spoza niej i u Krawędziarza odpada', () => {
@@ -1273,7 +1280,10 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
       true,
     );
     expect(outcome.kit.map((line) => line.entryId)).toEqual(['weapon.pistolet']);
-    expect(outcome.sheet.weapons.map((row) => row.compendiumId)).toEqual(['weapon.pistolet']);
+    expect(outcome.sheet.weapons.map((row) => row.compendiumId)).toEqual([
+      'weapon.pistolet',
+      'weapon.brawling',
+    ]);
     expect(outcome.spent).toBe(0);
     expect(outcome.sheet.eddies).toBe(outcome.budget);
   });

@@ -1,3 +1,4 @@
+import { cpredWithoutBareHands } from '@vtt/shared';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -1063,7 +1064,7 @@ describe('kreator postaci', () => {
       );
       const sheet = character.data as CpredCharacterData;
       // Two pistols and one flashlight: 460 ed of a 500 ed budget.
-      expect(sheet.weapons).toHaveLength(2);
+      expect(cpredWithoutBareHands(sheet.weapons)).toHaveLength(2);
       expect(sheet.gear).toHaveLength(1);
       expect(sheet.eddies).toBe(40);
       expect(character.portraitUrl).toBe(`${portraitDir}test.png`);
@@ -1386,7 +1387,7 @@ describe('kreator postaci', () => {
       expect(data(two, 'retry').id).toBe(character.id);
       expect(await built.prisma.character.count()).toBe(before + 1);
       // Zgrzyt z wyposażenia Roli (gratis, etap 47a) i Zgrzyt z koszyka za 500 ed.
-      expect((character.data as CpredCharacterData).weapons).toHaveLength(2);
+      expect(cpredWithoutBareHands((character.data as CpredCharacterData).weapons)).toHaveLength(2);
       expect((character.data as CpredCharacterData).eddies).toBe(2050);
       expect(await built.prisma.ledgerEntry.count({ where: { characterId: character.id } })).toBe(
         2,
@@ -1701,7 +1702,7 @@ describe('kreator postaci', () => {
       // Cennik domowy (47a): Zgrzyt 50 → 500 ed (×10), latarka 20 → 60 ed (×3).
       expect(outcome.spent).toBe(2 * 500 + 60);
       expect(sheet.eddies).toBe(outcome.budget - outcome.spent);
-      expect(sheet.weapons).toHaveLength(2);
+      expect(cpredWithoutBareHands(sheet.weapons)).toHaveLength(2);
       // A Korpo starts in the company conapt on a good prepack (s. 105).
       expect(sheet.lifestyle).toEqual({ level: 'goodPrepack', housing: 'corpoConapt' });
     });
@@ -1753,7 +1754,10 @@ describe('kreator postaci', () => {
         'creation:finish',
       );
       const sheet = finished.data as CpredCharacterData;
-      expect(sheet.weapons.map((row) => row.compendiumId)).toEqual(['weapon.szpon']);
+      expect(sheet.weapons.map((row) => row.compendiumId)).toEqual([
+        'weapon.szpon',
+        'weapon.brawling',
+      ]);
       expect(sheet.eddies).toBe(2550);
       // Gratis nie zostawia wiersza zakupu — tylko gotówkę startową.
       expect(await historyKinds(finished.id)).toEqual(['starting']);

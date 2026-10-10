@@ -162,6 +162,7 @@ import {
   CPRED_MOTO_ABILITY,
   CPRED_OPERATOR_ABILITY,
   CPRED_TEAMWORK_ABILITY,
+  cpredIsBareHandsRow,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { characterTracksAmmo } from '../ammo-stock.js';
@@ -1950,27 +1951,44 @@ function WeaponStrip({
             const empty = tracksAmmo && row.ammoCurrent <= 0;
             const stock = stockOf(row, resolved, row.ammoType);
             const throwsFromStock = cpredThrowsFromStock(row, resolved);
+            // Etap 47b: Bijatyka (i Sztuki walki) z urzędu — nie przedmiot, więc
+            // bez pól do wpisania, uchwytu „na mapę”, dodatków i kosza.
+            const innate = cpredIsBareHandsRow(row);
             return [
-              <tr key={row.id}>
+              <tr key={row.id} className={innate ? 'weapon-innate' : undefined}>
                 <td>
                   <span className="item-name-cell">
-                    <MapDropHandle
-                      characterId={character.id}
-                      source={{ ref: { list: 'weapons', rowId: row.id }, name: row.name }}
-                    >
-                      <ItemIcon icon={rowIcon('weapons', row)} />
-                    </MapDropHandle>
-                    <input
-                      type="text"
-                      maxLength={64}
-                      value={row.name}
-                      onChange={(e) => updateRow(row.id, { name: e.target.value })}
-                    />
+                    {innate ? (
+                      <>
+                        <ItemIcon icon={rowIcon('weapons', row)} />
+                        <span
+                          className="weapon-innate-name"
+                          title="Gołe ręce ma każda postać — tego się nie kupuje, nie oddaje ani nie traci."
+                        >
+                          {row.name}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <MapDropHandle
+                          characterId={character.id}
+                          source={{ ref: { list: 'weapons', rowId: row.id }, name: row.name }}
+                        >
+                          <ItemIcon icon={rowIcon('weapons', row)} />
+                        </MapDropHandle>
+                        <input
+                          type="text"
+                          maxLength={64}
+                          value={row.name}
+                          onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                        />
+                      </>
+                    )}
                   </span>
                   {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
                       nie strzela. Do 31.08 mówił to dopiero planer, w chwili
                       gdy strzał już się nie udał — teraz mówi to karta. */}
-                  {!resolved && (
+                  {!resolved && !innate && (
                     <button
                       type="button"
                       className="small-button weapon-unbound"
@@ -2035,15 +2053,23 @@ function WeaponStrip({
                     </button>
                   )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
-                  <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
+                  {!innate && (
+                    <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
+                  )}
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    maxLength={32}
-                    value={row.damage}
-                    onChange={(e) => updateRow(row.id, { damage: e.target.value })}
-                  />
+                  {innate ? (
+                    <span title="Obrażenia gołych rąk zależą od Budowy Ciała (s. 176).">
+                      {row.damage}
+                    </span>
+                  ) : (
+                    <input
+                      type="text"
+                      maxLength={32}
+                      value={row.damage}
+                      onChange={(e) => updateRow(row.id, { damage: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td className="weapon-ammo-cell">
                   {tracksAmmo ? (
@@ -2088,20 +2114,28 @@ function WeaponStrip({
                   />
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    maxLength={32}
-                    value={row.rof}
-                    onChange={(e) => updateRow(row.id, { rof: e.target.value })}
-                  />
+                  {innate ? (
+                    row.rof
+                  ) : (
+                    <input
+                      type="text"
+                      maxLength={32}
+                      value={row.rof}
+                      onChange={(e) => updateRow(row.id, { rof: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    maxLength={200}
-                    value={row.notes}
-                    onChange={(e) => updateRow(row.id, { notes: e.target.value })}
-                  />
+                  {innate ? (
+                    <span className="weapon-innate-note">{row.notes}</span>
+                  ) : (
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={row.notes}
+                      onChange={(e) => updateRow(row.id, { notes: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td className="weapon-actions">
                   <div className="weapon-actions-row">
@@ -2173,17 +2207,22 @@ function WeaponStrip({
                   </div>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="small-button character-delete"
-                    onClick={() =>
-                      saveData({ weapons: data.weapons.filter((r) => r.id !== row.id) }, 'weapons')
-                    }
-                    title="Usuń wiersz"
-                    aria-label="Usuń wiersz"
-                  >
-                    ✕
-                  </button>
+                  {!innate && (
+                    <button
+                      type="button"
+                      className="small-button character-delete"
+                      onClick={() =>
+                        saveData(
+                          { weapons: data.weapons.filter((r) => r.id !== row.id) },
+                          'weapons',
+                        )
+                      }
+                      title="Usuń wiersz"
+                      aria-label="Usuń wiersz"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </td>
               </tr>,
               // Etap 31: bagnet i broń podwieszana to ta sama sztuka żelastwa,

@@ -74,6 +74,7 @@ import {
 } from './netrunning.js';
 import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
 import { isCpredKeyId, readCpredContainer, type CpredContainer } from './container.js';
+import { cpredIsBareHandsRow, cpredWithBareHands } from './barehands.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
@@ -825,7 +826,9 @@ export function cpredDrawnWeapons(
 ): CpredWeaponRow[] {
   const hands = data.drawnWeaponRowIds;
   if (hands === undefined) {
-    const first = data.weapons[0];
+    // Gołe ręce z urzędu (47b) nie są „pierwszą bronią” — karta bez broni
+    // nie pokazuje w oględzinach, że trzyma Bijatykę.
+    const first = data.weapons.find((row) => !cpredIsBareHandsRow(row));
     return first ? [first] : [];
   }
   return hands
@@ -2022,7 +2025,20 @@ function collectCharacterDataPatch(
     if (specialties) patch.skillSpecialties = specialties;
   }
   if ('weapons' in input) {
-    const weapons = validateRows<CpredWeaponRow>(input.weapons, 'weapons', issues, (base, row) => {
+    // Etap 47b: stałe wiersze gołych rąk nie jadą łatą — dokłada je
+    // `normalizeCharacterData`, więc klient nie przemianuje ich ani nie usunie.
+    const weaponsInput = Array.isArray(input.weapons)
+      ? (input.weapons as unknown[]).filter(
+          (row) =>
+            !(
+              typeof row === 'object' &&
+              row !== null &&
+              typeof (row as { id?: unknown }).id === 'string' &&
+              cpredIsBareHandsRow((row as { id: string }).id)
+            ),
+        )
+      : input.weapons;
+    const weapons = validateRows<CpredWeaponRow>(weaponsInput, 'weapons', issues, (base, row) => {
       const damage = validateText(
         row.damage ?? '',
         'weapons',
@@ -2507,6 +2523,8 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
       HUMANITY_MIN,
       Math.min(data.humanityCurrent, humanityMaxWith(data.stats, data.cyberware)),
     ),
+    // Etap 47b: Bijatyka (i Sztuki walki z Umiejętnością) z urzędu, na końcu listy.
+    ...cpredWithBareHands(data),
     // Ablation can never leave a piece of armor above its undamaged SP.
     armor: data.armor.map((row) => (row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row)),
     // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz

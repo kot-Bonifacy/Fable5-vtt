@@ -6,6 +6,8 @@ import type {
   WeaponTypeDefinition,
 } from '@vtt/shared';
 import {
+  CPRED_MARTIAL_ARTS_ENTRY_ID,
+  cpredIsBareHandsEntry,
   isWeaponEntry,
   NET_DEFENSE_KIND_LABELS,
   describeNetDefenseEffects,
@@ -979,9 +981,17 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
+      {/* Etap 47b: gołe ręce ma każda karta z urzędu — nie ma czego kupić. */}
+      {cpredIsBareHandsEntry(entry.id) ? (
+        <p className="compendium-note">
+          Każda postać ma to na liście broni z urzędu
+          {entry.id === CPRED_MARTIAL_ARTS_ENTRY_ID ? ' — od Umiejętności Sztuki walki 1' : ''}.
+        </p>
+      ) : null}
       {/* Od etapu 46c amunicja to pudełko w wyposażeniu — kupuje się ją
           i dodaje z kalibrem, jak każdą rzecz na kartę. */}
       {targets.length > 0 &&
+      !cpredIsBareHandsEntry(entry.id) &&
       entry.category !== 'criticalInjury' &&
       entry.category !== 'program' &&
       entry.category !== 'netDefense' ? (

@@ -1,3 +1,4 @@
+import { cpredWithoutBareHands } from '@vtt/shared';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -269,7 +270,8 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
 
     const sheet = await sheetOf(vex, kaiId);
     expect(sheet.eddies).toBe(500);
-    expect(sheet.weapons).toHaveLength(1);
+    // Bijatyka z urzędu (47b) stoi na końcu — kupiona broń jest pierwsza.
+    expect(cpredWithoutBareHands(sheet.weapons)).toHaveLength(1);
     // Broń przychodzi załadowana i z kopią liczb z katalogu (etap 13).
     expect(sheet.weapons[0]).toMatchObject({
       compendiumId: 'weapon.zgrzyt-9',
@@ -299,7 +301,7 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect(ack).toEqual({ ok: false, error: 'NOT_ENOUGH_EDDIES' });
     const sheet = await sheetOf(rogue, ricoId);
     expect(sheet.eddies).toBe(200);
-    expect(sheet.weapons).toHaveLength(0);
+    expect(cpredWithoutBareHands(sheet.weapons)).toHaveLength(0);
   });
 
   it('gracz nie kupuje z cudzego konta ani nie narzuca własnej ceny', async () => {

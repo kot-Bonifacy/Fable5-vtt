@@ -222,6 +222,18 @@
   white-space: nowrap;
 }
 
+/* Gołe ręce z urzędu (etap 47b): wiersz bez pól do wpisania — nazwa i liczby
+   jako zwykły druk karty, uwaga przygaszona. */
+.weapon-innate-name {
+  padding: 0 0.2rem;
+  font-weight: 600;
+}
+
+.weapon-innate-note {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
 /* --- Okno oględzin (etap 41) ------------------------------------------- */
 
 /* Węższe od okna wymiany: tu stoi jedna kolumna napisów, a nie dwie listy

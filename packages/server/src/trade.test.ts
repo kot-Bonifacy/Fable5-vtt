@@ -1,3 +1,4 @@
+import { cpredWithoutBareHands } from '@vtt/shared';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
@@ -460,7 +461,7 @@ describe('handel', () => {
 
     const vexSheet = await sheetOf(vex, vexCharacterId);
     const ricoSheet = await sheetOf(rico, ricoCharacterId);
-    expect(vexSheet.weapons).toEqual([]);
+    expect(cpredWithoutBareHands(vexSheet.weapons)).toEqual([]);
     expect(vexSheet.gear.map((row) => row.qty)).toEqual([3]);
     expect(vexSheet.eddies).toBe(400);
     expect(ricoSheet.weapons[0]).toMatchObject({ name: 'Zgrzyt 9', ammoCurrent: 12 });
