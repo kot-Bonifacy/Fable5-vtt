@@ -214,8 +214,8 @@
       "description": "Karabin składany na trzy części, popularny wśród kurierów z Pustkowi.",
       "weaponTypeId": "weapon-type.sample-rifle",
       "quality": "standard",
-      "cost": 500,
-      "costCategory": "expensive",
+      "cost": 50,
+      "costCategory": "costly",
       "features": [
         "Wydłużony magazynek"
       ]

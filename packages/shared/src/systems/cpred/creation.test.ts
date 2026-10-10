@@ -14,6 +14,8 @@ import {
   creationIssues,
   creationPreview,
   creationPurchases,
+  creationRoleKit,
+  creationRoleKitChoices,
   creationFreeLanguageCharge,
   creationIssueStep,
   creationLeftOutside,
@@ -495,10 +497,10 @@ describe('creationPurchases', () => {
     expect(lines).toEqual([
       { entryId: 'weapon.pistolet', name: 'Pistolet', qty: 1, price: 50, total: 50 },
       // „Codzienne" is 20 ed on the ladder — an entry priced only by its band
-      // is still buyable (stage 23b).
-      { entryId: 'gear.latarka', name: 'Latarka', qty: 3, price: 20, total: 60 },
+      // is still buyable (stage 23b); drobny sprzęt ogólny ×3 w cenniku domowym (47a).
+      { entryId: 'gear.latarka', name: 'Latarka', qty: 3, price: 60, total: 180 },
     ]);
-    expect(creationSpentEddies(lines)).toBe(110);
+    expect(creationSpentEddies(lines)).toBe(230);
   });
 
   it('drops a line the catalogue no longer sells rather than billing for it', () => {
@@ -938,7 +940,7 @@ describe('naprawa 2b — co zabiera zmiana Roli albo metody', () => {
     );
     expect(effect.lost).toEqual([
       'Umiejętności (3): Broń krótka 3 · Kryptografia 1 · Atletyka 2.',
-      'Koszyk (3 szt. za 90 ed): Pistolet · Latarka ×2.',
+      'Koszyk (3 szt. za 170 ed): Pistolet · Latarka ×2.',
     ]);
     // `formatEddies` groups thousands with a narrow no-break space.
     expect(effect.notes.at(-1)).toMatch(/^Pieniądze startowe: 2\s550 → 500 ed\.$/u);
@@ -1011,8 +1013,8 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
       true,
     );
     expect(outcome.budget).toBe(500);
-    expect(outcome.spent).toBe(2 * 50 + 100 + 20);
-    expect(outcome.sheet.eddies).toBe(280);
+    expect(outcome.spent).toBe(2 * 50 + 100 + 60);
+    expect(outcome.sheet.eddies).toBe(240);
     expect(outcome.sheet.weapons.map((row) => row.name)).toEqual(['Pistolet', 'Pistolet']);
     expect(outcome.sheet.armor).toMatchObject([{ name: 'Kurtka', sp: 7, location: 'body' }]);
     expect(outcome.sheet.gear).toMatchObject([{ name: 'Latarka', qty: 1 }]);
@@ -1170,5 +1172,109 @@ describe('warunki MG ze zgody (24.09)', () => {
     expect(reread.skillPool).toBe(90);
     expect(reread.methodFixed).toBe(true);
     expect(parseCreationDraft({ skillPool: 9999 }, data(reg), reg).skillPool).toBeNull();
+  });
+});
+
+describe('etap 47a — wyposażenie Roli gratis', () => {
+  const KIT_CATALOGUE: CompendiumEntry[] = [
+    ...CATALOGUE,
+    {
+      id: 'cyberware.sprzeg',
+      category: 'cyberware',
+      name: 'Sprzęg',
+      cost: 5000,
+      type: 'neuralware',
+    } as CompendiumEntry,
+  ];
+  const kitLookup = (entryId: string) => KIT_CATALOGUE.find((row) => row.id === entryId);
+  const kitRegistry = registry({
+    ...RAW_CREATION,
+    roleKits: {
+      $comment: 'pomijane — to nie Rola',
+      solo: { choose: ['weapon.pistolet', 'weapon.nie-ma'] },
+      netrunner: { entries: ['armor.kurtka', 'cyberware.sprzeg', 'gear.nie-ma'] },
+      wampir: { entries: ['armor.kurtka'] },
+    },
+  });
+  const kitData = data(kitRegistry);
+
+  it('czyta listy Ról, które zna, i pomija resztę', () => {
+    expect(kitData.roleKits).toEqual({
+      solo: { entries: [], choose: ['weapon.pistolet', 'weapon.nie-ma'] },
+      netrunner: { entries: ['armor.kurtka', 'cyberware.sprzeg', 'gear.nie-ma'], choose: [] },
+    });
+    expect(data().roleKits).toEqual({});
+  });
+
+  it('daje wyposażenie tylko Kompletnemu Pakietowi; chromu nie kładzie na kartę', () => {
+    const netrunner = { method: 'complete' as const, roleId: 'netrunner', kitChoice: null };
+    expect(creationRoleKit(netrunner, kitData, kitLookup)).toEqual([
+      { entryId: 'armor.kurtka', name: 'Kurtka', value: 100, onSheet: true },
+      { entryId: 'cyberware.sprzeg', name: 'Sprzęg', value: 5000, onSheet: false },
+    ]);
+    expect(creationRoleKit({ ...netrunner, method: 'edgerunner' }, kitData, kitLookup)).toEqual([]);
+    // Chrom z wyposażenia ląduje w „Czego kreator nie wydaje”.
+    const outside = creationLeftOutside(
+      { method: 'complete' },
+      kitData,
+      creationRoleKit(netrunner, kitData, kitLookup),
+    );
+    expect(outside.find((line) => line.id === 'kit')?.text).toMatch(/^Sprzęg — chrom należny za darmo/);
+  });
+
+  it('Solo wybiera z listy; wybór spoza niej i u Krawędziarza odpada', () => {
+    const solo = mergeCreationDraft(
+      draft({ method: 'complete', roleId: 'solo' }),
+      {},
+      kitData,
+      kitRegistry,
+    )!;
+    expect(creationRoleKitChoices(solo, kitData, kitLookup).map((line) => line.entryId)).toEqual([
+      'weapon.pistolet',
+    ]);
+    expect(creationIssues(solo, kitData, kitRegistry).some((i) => i.field === 'kitChoice')).toBe(
+      true,
+    );
+    expect(
+      mergeCreationDraft(solo, { kitChoice: 'armor.kurtka' }, kitData, kitRegistry),
+    ).toBeNull();
+    const chosen = mergeCreationDraft(
+      solo,
+      { kitChoice: 'weapon.pistolet' },
+      kitData,
+      kitRegistry,
+    )!;
+    expect(chosen.kitChoice).toBe('weapon.pistolet');
+    expect(creationIssues(chosen, kitData, kitRegistry).some((i) => i.field === 'kitChoice')).toBe(
+      false,
+    );
+    expect(creationIssueStep('kitChoice')).toBe('gear');
+    // Zmiana metody zdejmuje wybór i mówi o tym w oknie zmiany.
+    expect(
+      mergeCreationDraft(chosen, { method: 'edgerunner' }, kitData, kitRegistry)!.kitChoice,
+    ).toBeNull();
+    expect(
+      creationChangeEffect(chosen, { method: 'edgerunner' }, kitData, kitRegistry, kitLookup).lost,
+    ).toContain('Wybór z wyposażenia Roli: Pistolet.');
+    // Zapisany szkic z wyborem spoza listy czyta się bez niego.
+    expect(
+      parseCreationDraft({ ...chosen, kitChoice: 'armor.kurtka' }, kitData, kitRegistry).kitChoice,
+    ).toBeNull();
+    expect(parseCreationDraft(chosen, kitData, kitRegistry).kitChoice).toBe('weapon.pistolet');
+  });
+
+  it('podsumowanie kładzie wyposażenie na kartę za darmo', () => {
+    const outcome = creationOutcome(
+      finished({ method: 'complete', roleId: 'solo', kitChoice: 'weapon.pistolet' }),
+      kitData,
+      kitRegistry,
+      kitLookup,
+      { weaponTypeById: new Map() },
+      true,
+    );
+    expect(outcome.kit.map((line) => line.entryId)).toEqual(['weapon.pistolet']);
+    expect(outcome.sheet.weapons.map((row) => row.compendiumId)).toEqual(['weapon.pistolet']);
+    expect(outcome.spent).toBe(0);
+    expect(outcome.sheet.eddies).toBe(outcome.budget);
   });
 });

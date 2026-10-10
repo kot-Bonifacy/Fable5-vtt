@@ -2,6 +2,7 @@ export * from './stats.js';
 export * from './derived.js';
 export * from './locations.js';
 export * from './cyberware.js';
+export * from './pricing.js';
 export * from './economy.js';
 export * from './character.js';
 export * from './lifepath.js';

@@ -406,7 +406,8 @@ describe('etap 46c — zapas amunicji', () => {
       weaponTypeId: 'weapon-type.sample-pistol',
       packs: 2,
     });
-    expect(bought).toEqual({ ok: true, data: { balance: before.eddies - 20 } });
+    // Etap 47a: amunicja ×3 — paczka zwykłej 30 ed zamiast 10.
+    expect(bought).toEqual({ ok: true, data: { balance: before.eddies - 60 } });
     const after = await sheetOf(vexId);
     expect(after.gear.find((row) => row.id === 'zw')?.qty).toBe(13 + 20);
     expect(after.gear).toHaveLength(before.gear.length);
@@ -432,7 +433,7 @@ describe('etap 46c — zapas amunicji', () => {
         request: { weaponRowId: 'w-can', mode: 'single' },
       });
     expect(await throwCan()).toEqual({ ok: false, error: 'NO_AMMO' });
-    // Zwykły ładunek: na sztuki, 100 ed i poziom 3 (decyzja MG 4 z 09.10) —
+    // Zwykły ładunek: na sztuki, 300 ed (×3, etap 47a) i poziom 3 (decyzja MG 4 z 09.10) —
     // gracz go nie kupi na starcie kampanii, więc kupuje MG na kartę Vex.
     expect(
       await emitAck(player, 'economy:buy', {
@@ -452,7 +453,7 @@ describe('etap 46c — zapas amunicji', () => {
       'economy:buy',
     );
     const stocked = await sheetOf(vexId);
-    expect(stocked.eddies).toBe(before - 100);
+    expect(stocked.eddies).toBe(before - 300);
     expect(stocked.gear.find((row) => row.ammo?.calibre === CHARGES)).toMatchObject({
       qty: 1,
       ammo: { ammoId: null, pattern: 'grenade' },

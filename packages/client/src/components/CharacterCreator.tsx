@@ -55,6 +55,8 @@ import {
   creationIssueStep,
   creationIssues,
   creationLeftOutside,
+  creationRoleKit,
+  creationRoleKitChoices,
   creationMissingSkillMinima,
   creationOutcome,
   creationBasketEntry,
@@ -2294,6 +2296,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
           : '. Narzędzia Roli pojawią się po jej wyborze.'}{' '}
         Kliknij nazwę, żeby zobaczyć, co kupujesz.
       </p>
+      <CreatorRoleKit draft={draft} data={data} />
       <CreatorLeftOutside draft={draft} data={data} collapsed />
       <CreatorNoStockWarning sheet={outcomeSheet} />
 
@@ -2985,11 +2988,16 @@ function CreatorLeftOutside({
   data,
   collapsed = false,
 }: {
-  draft: Pick<CpredCreationDraft, 'method'>;
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice'>;
   data: CpredCreationData;
   collapsed?: boolean;
 }) {
-  const lines = creationLeftOutside(draft, data);
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const lines = creationLeftOutside(
+    draft,
+    data,
+    creationRoleKit(draft, data, (entryId) => entriesById[entryId]),
+  );
   const list = (
     <ul className="creator-outside-list">
       {lines.map((line) => (
@@ -3289,5 +3297,67 @@ function LifepathSummary({ draft }: { draft: CpredCreationDraft }) {
         : [...said, ...people].join(' · ')}
       {lifepath.roleAnswers.length > 0 && ` · Rola: ${lifepath.roleAnswers.length} odpowiedzi`}
     </p>
+  );
+}
+
+/**
+ * Wyposażenie Roli gratis Kompletnego Pakietu (etap 47a): stałe rzeczy Roli
+ * i — u Solo — broń do wyboru. Na kartę trafia przy „Utwórz postać”, bez
+ * wiersza w historii eurodolców; chrom wszczepia potem MG.
+ */
+function CreatorRoleKit({ draft, data }: { draft: CpredCreationDraft; data: CpredCreationData }) {
+  const patch = useCreationStore((s) => s.patch);
+  const busy = useCreationStore((s) => s.busy);
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const lookup = (entryId: string) => entriesById[entryId];
+  const choices = creationRoleKitChoices(draft, data, lookup);
+  const lines = creationRoleKit(draft, data, lookup).filter(
+    (line) => line.entryId !== draft.kitChoice,
+  );
+  if (lines.length === 0 && choices.length === 0) return null;
+  const value = (amount: number | null) => (amount === null ? '—' : `${formatEddies(amount)} ed`);
+  return (
+    <section
+      className="creator-summary-section creator-kit"
+      aria-label="Wyposażenie Roli gratis"
+      data-creation-field="kitChoice"
+    >
+      <h4>Wyposażenie Roli — gratis</h4>
+      <p className="creator-hint">
+        Kompletny Pakiet dostaje podstawowe narzędzie Roli za darmo; gotówka zostaje na resztę.
+      </p>
+      {lines.length > 0 ? (
+        <ul className="creator-basket">
+          {lines.map((line) => (
+            <li key={line.entryId}>
+              <span className="creator-basket-name">
+                {line.name}
+                {line.onSheet ? null : (
+                  <span className="creator-hint"> — chrom, wszczepia MG po utworzeniu</span>
+                )}
+              </span>
+              <span className="creator-basket-price">{value(line.value)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {choices.length > 0 ? (
+        <label className="bot-field">
+          Do wyboru (jedna rzecz)
+          <select
+            value={draft.kitChoice ?? ''}
+            disabled={busy}
+            onChange={(event) => void patch({ kitChoice: event.target.value || null })}
+          >
+            <option value="">— wybierz —</option>
+            {choices.map((line) => (
+              <option key={line.entryId} value={line.entryId}>
+                {line.name} ({value(line.value)})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+    </section>
   );
 }

@@ -264,10 +264,11 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
       characterId: kaiId,
       entryId: 'weapon.zgrzyt-9',
     });
-    expect(ack).toEqual({ ok: true, data: { balance: 950 } });
+    // Etap 47a: Zgrzyt 9 z próbki kosztuje 50 ed w danych, 500 ed w cenniku domowym.
+    expect(ack).toEqual({ ok: true, data: { balance: 500 } });
 
     const sheet = await sheetOf(vex, kaiId);
-    expect(sheet.eddies).toBe(950);
+    expect(sheet.eddies).toBe(500);
     expect(sheet.weapons).toHaveLength(1);
     // Broń przychodzi załadowana i z kopią liczb z katalogu (etap 13).
     expect(sheet.weapons[0]).toMatchObject({
@@ -283,8 +284,8 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     const ledger = await ledgerOf(vex, kaiId);
     expect(ledger.entries[0]).toMatchObject({
       kind: 'purchase',
-      amount: -50,
-      balance: 950,
+      amount: -500,
+      balance: 500,
       label: 'Zgrzyt 9',
     });
   });
@@ -349,9 +350,9 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
       amount: 400,
       note: 'za naprawę',
     });
-    expect(ack).toEqual({ ok: true, data: { balance: 550 } });
+    expect(ack).toEqual({ ok: true, data: { balance: 100 } });
 
-    expect((await sheetOf(vex, kaiId)).eddies).toBe(550);
+    expect((await sheetOf(vex, kaiId)).eddies).toBe(100);
     expect((await sheetOf(rogue, ricoId)).eddies).toBe(595);
 
     // Jedna karta, choć konta są dwa — i widzi ją także odbiorca.
@@ -397,7 +398,7 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
       amount: 10,
     });
     expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
-    expect((await sheetOf(vex, kaiId)).eddies).toBe(550);
+    expect((await sheetOf(vex, kaiId)).eddies).toBe(100);
   });
 
   it('gracz nie płaci z cudzego konta', async () => {
@@ -410,8 +411,8 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
   });
 
   it('„Rozlicz miesiąc" pobiera jedzenie i czynsz wszystkim naraz', async () => {
-    // Kai: Na karmie (100) + Kontener (1000) = 1100 przy saldzie 550 →
-    // konto na zero i niedopłata 550 (decyzja MG: pobierz, ile jest).
+    // Kai: Na karmie (100) + Kontener (1000) = 1100 przy saldzie 100 →
+    // konto na zero i niedopłata 1000 (decyzja MG: pobierz, ile jest).
     await emitAck(vex, 'character:update', {
       characterId: kaiId,
       patch: { data: { lifestyle: { level: 'kibble', housing: 'container' } } },
@@ -433,7 +434,7 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
       skipped: number;
     }>(gm, 'economy:settle', {});
     if (!ack.ok) throw new Error(`economy:settle failed: ${ack.error}`);
-    expect(ack.data).toEqual({ charged: 650, shortfall: 550, settled: 2, skipped: 1 });
+    expect(ack.data).toEqual({ charged: 200, shortfall: 1000, settled: 2, skipped: 1 });
 
     expect((await sheetOf(vex, kaiId)).eddies).toBe(0);
     expect((await sheetOf(rogue, ricoId)).eddies).toBe(495);
@@ -444,7 +445,7 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect(economy?.lines.some((line) => line.includes('NIEDOPŁATA'))).toBe(true);
 
     const ledger = await ledgerOf(vex, kaiId);
-    expect(ledger.entries[0]).toMatchObject({ kind: 'lifestyle', amount: -550, balance: 0 });
+    expect(ledger.entries[0]).toMatchObject({ kind: 'lifestyle', amount: -100, balance: 0 });
     expect(ledger.entries[0]?.label).toContain('czynsz 1 000 ed');
     // Pominięta postać nie dostała ani wiersza w audycie.
     expect((await ledgerOf(gm, npc.data.id)).entries).toHaveLength(0);

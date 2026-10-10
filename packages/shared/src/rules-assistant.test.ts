@@ -78,6 +78,13 @@ describe('buildRulesSystemPrompt', () => {
     // „Nie wiem" musi być jawnie dozwolone — inaczej model 9B zmyśla zasadę.
     expect(prompt).toContain('Nie ma tego w podanych fragmentach');
   });
+
+  it('dopisuje zasady domowe systemu jako kolejne żelazne zasady (etap 47a)', () => {
+    expect(buildRulesSystemPrompt()).not.toContain('7. ');
+    const prompt = buildRulesSystemPrompt(['Ceny są dziesięć razy wyższe.', 'Druga.']).split('\n');
+    expect(prompt).toContain('7. Ceny są dziesięć razy wyższe.');
+    expect(prompt).toContain('8. Druga.');
+  });
 });
 
 describe('emptyRulesIndexStatus', () => {

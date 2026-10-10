@@ -49,7 +49,10 @@ import {
   creationDataOf,
   creationIssues,
   creationLifestyle,
+  creationKitSheetRows,
   creationPurchases,
+  creationRoleKit,
+  creationRoleKitOf,
   creationRole,
   creationSkillPool,
   creationSpentEddies,
@@ -1177,7 +1180,10 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         user.role !== ROLE_GM
       )
         throw new RealtimeError('CREATION_RANK_PENDING');
-      const lookup = await purchaseLookup(deps, campaignId, Object.keys(draft.purchases));
+      const lookup = await purchaseLookup(deps, campaignId, [
+        ...Object.keys(draft.purchases),
+        ...kitEntryIds(draft, data),
+      ]);
       const shopRules = await creationShopRules(deps, campaignId);
       if (creationIssues(draft, data, deps.ctx.cpred, lookup, shopRules).length > 0) {
         throw new RealtimeError('CREATION_INCOMPLETE');
@@ -1198,10 +1204,18 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
       }
 
       // Rent is for a character somebody plays; the GM's NPC stays off the bill.
-      const sheet = creationToCharacterData(
-        draft,
-        data,
-        creationLifestyle(deps.ctx.cpred, draft.roleId, ownerId !== null),
+      const sheet = withKitRows(
+        creationToCharacterData(
+          draft,
+          data,
+          creationLifestyle(deps.ctx.cpred, draft.roleId, ownerId !== null),
+        ),
+        creationKitSheetRows(
+          creationRoleKit(draft, data, lookup),
+          lookup,
+          deps.ctx.compendium,
+          nextRowId,
+        ),
       );
       const character = await deps.ctx.prisma.$transaction(async (tx) => {
         if (draft.portraitUrl && user.role !== ROLE_GM) {
@@ -1333,6 +1347,20 @@ async function payStartingKit(
       { emit: false, tx },
     );
   }
+}
+
+/**
+ * Wyposażenie Roli gratis (etap 47a) leży na karcie od początku — bez wiersza
+ * w historii eurodolców, bo nic nie kosztowało. Kolejność jak w `creationOutcome`.
+ */
+function withKitRows(sheet: CpredCharacterData, rows: readonly PurchasedRow[]): CpredCharacterData {
+  return rows.reduce((data, row) => mergeCharacterData(data, addPurchasedRow(data, row)), sheet);
+}
+
+/** Id wpisów wyposażenia Roli, które `purchaseLookup` musi pobrać (z wyborem). */
+function kitEntryIds(draft: CpredCreationDraft, data: ReturnType<typeof creationDataOf>): string[] {
+  const kit = creationRoleKitOf(draft, data);
+  return kit ? [...kit.entries, ...kit.choose] : [];
 }
 
 function addPurchasedRow(

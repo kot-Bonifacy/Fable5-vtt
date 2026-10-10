@@ -17,6 +17,8 @@
  * to samo rozstrzygnięcie co przy zdaniach leczenia w `treatment.ts`.
  */
 
+import { CPRED_PRICE_SCALE_CONSUMABLE } from './pricing.js';
+
 /** Id jednego z pięciu środków — to, co siedzi w `CpredGearRow.consumable`. */
 export type CpredPharmaceuticalId =
   | 'pharma.antybiotyk'
@@ -115,8 +117,11 @@ export function isPharmaceuticalId(id: string): id is CpredPharmaceuticalId {
 /** PT wytworzenia dawki — „udany Test Technologii Medycznej o PT 13" (s. 150). */
 export const CPRED_PHARMA_CRAFT_DV = 13;
 
-/** „Z surowców wartych 200 ed w ciągu godziny…" — cena jednej partii (s. 150). */
-export const CPRED_PHARMA_BATCH_COST = 200;
+/**
+ * „Z surowców wartych 200 ed w ciągu godziny…" — cena jednej partii (s. 150).
+ * Cennik domowy (etap 47a): surowce to eksploatacja, więc ×3 — 600 ed.
+ */
+export const CPRED_PHARMA_BATCH_COST = 200 * CPRED_PRICE_SCALE_CONSUMABLE;
 
 /** Ile godzin zajmuje partia — na kartę czatu, bo zegara świata nie ma. */
 export const CPRED_PHARMA_BATCH_HOURS = 1;

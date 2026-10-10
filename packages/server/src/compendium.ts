@@ -4,6 +4,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import {
   EMPTY_COMPENDIUM,
   buildCompendium,
+  cpredScaleCatalogPrices,
   parseWeaponIcons,
   withWeaponIcons,
   type CompendiumRegistry,
@@ -50,8 +51,10 @@ export async function loadCompendium(
     log.warn({ dirs }, 'compendium is empty');
     return EMPTY_COMPENDIUM;
   }
+  // Etap 47a: katalog z plików mówi cenami podręcznika, a stół płaci cennikiem
+  // domowym. Przelicza się tu, raz — wpisy MG z bazy są już w nowej walucie.
   const registry = withWeaponIcons(
-    buildCompendium(files),
+    cpredScaleCatalogPrices(buildCompendium(files)),
     await loadWeaponIcons(dataPublicDir, dataPrivateDir, log),
   );
   log.info(

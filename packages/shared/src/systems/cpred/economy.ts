@@ -1,5 +1,6 @@
 import type { CompendiumEntry, CostCategory } from './compendium.js';
 import { COST_CATEGORY_LABELS } from './compendium.js';
+import { cpredCatalogPriceScale, formatEddies } from './pricing.js';
 
 /**
  * The eddie half of a character sheet (stage 23b).
@@ -20,6 +21,10 @@ import { COST_CATEGORY_LABELS } from './compendium.js';
  * The price ladder behind the bands (s. 342). The comment on
  * `COST_CATEGORY_LABELS` names these numbers; here they are the numbers, so
  * that an entry priced only by its band can still be bought.
+ *
+ * Drabinka jest w cenach **podręcznika**; od etapu 47a `entryPrice` mnoży ją
+ * cennikiem domowym wpisu (`cpredCatalogPriceScale`), tak jak wczytanie mnoży
+ * ceny liczbowe katalogu.
  */
 export const COST_CATEGORY_PRICE: Record<CostCategory, number> = {
   cheap: 10,
@@ -37,22 +42,26 @@ export const COST_CATEGORY_PRICE: Record<CostCategory, number> = {
  * nothing about money at all. The printed number wins over the band — the
  * tables list both, and a weapon marked „550 ed (Drogie)" costs 550, not 50.
  */
-export function entryPrice(entry: Pick<CompendiumEntry, 'cost' | 'costCategory'>): number | null {
+export function entryPrice(entry: PricedEntry): number | null {
   if (entry.cost !== null && entry.cost !== undefined) return entry.cost;
-  if (entry.costCategory) return COST_CATEGORY_PRICE[entry.costCategory];
+  if (entry.costCategory) {
+    return COST_CATEGORY_PRICE[entry.costCategory] * cpredCatalogPriceScale(entry);
+  }
   return null;
 }
 
+/** Co cena musi wiedzieć o wpisie: liczbę, pasmo i — dla pasma — rodzaj (etap 47a). */
+export type PricedEntry = Pick<CompendiumEntry, 'cost' | 'costCategory'> &
+  Partial<Pick<CompendiumEntry, 'id' | 'category'>>;
+
 /** „550 ed" or „50 ed (cena pasma Drogie)" — what the Buy button says. */
-export function formatPurchasePrice(
-  entry: Pick<CompendiumEntry, 'cost' | 'costCategory'>,
-): string | null {
+export function formatPurchasePrice(entry: PricedEntry): string | null {
   const price = entryPrice(entry);
   if (price === null) return null;
   if (entry.cost === null && entry.costCategory) {
-    return `${price} ed (cena pasma ${COST_CATEGORY_LABELS[entry.costCategory]})`;
+    return `${formatEddies(price)} ed (cena pasma ${COST_CATEGORY_LABELS[entry.costCategory]})`;
   }
-  return `${price} ed`;
+  return `${formatEddies(price)} ed`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -288,13 +297,4 @@ export interface LedgerEntryView {
 export function formatLedgerAmount(amount: number): string {
   const sign = amount < 0 ? '−' : '+';
   return `${sign}${formatEddies(Math.abs(amount))} ed`;
-}
-
-/**
- * Groups thousands: „15 000" reads, „15000" does not. The separator is a narrow
- * no-break space, written as an escape so it is visible in the source — a plain
- * space would let a rent wrap in the middle of its own number.
- */
-export function formatEddies(amount: number): string {
-  return String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }

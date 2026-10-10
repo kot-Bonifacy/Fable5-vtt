@@ -1,4 +1,5 @@
 import { humanityMax } from './derived.js';
+import { CPRED_PRICE_SCALE_DURABLE } from './pricing.js';
 import type { CpredStats } from './stats.js';
 
 /**
@@ -72,11 +73,13 @@ export const CYBERWARE_INSTALL_DV: Record<CyberwareInstall, number | null> = {
  * „Montaż znalezionej cyborgizacji" (s. 226, cennik s. 375). Charged **only**
  * for chrome the character already holds: a new piece's price includes the
  * operation („Koszt operacji […] jest wliczony w cenę", s. 111).
+ *
+ * Cennik domowy (etap 47a): razy sprzęt trwały — 1000 / 5000 / 10 000 ed.
  */
 export const CYBERWARE_INSTALL_COST: Record<CyberwareInstall, number> = {
-  gallery: 100,
-  clinic: 500,
-  hospital: 1000,
+  gallery: 100 * CPRED_PRICE_SCALE_DURABLE,
+  clinic: 500 * CPRED_PRICE_SCALE_DURABLE,
+  hospital: 1000 * CPRED_PRICE_SCALE_DURABLE,
   none: 0,
 };
 
@@ -603,9 +606,22 @@ export interface HumanityTherapyDefinition {
   cost: number;
 }
 
+/** Cennik domowy (etap 47a): tydzień terapii kosztuje dwa razy tyle co w podręczniku. */
+const THERAPY_PRICE_SCALE = 2;
+
 export const HUMANITY_THERAPY_DEFINITIONS: Record<HumanityTherapy, HumanityTherapyDefinition> = {
-  ordinary: { label: 'Zwykła utrata Człowieczeństwa', notation: '2k6', dv: 15, cost: 500 },
-  extreme: { label: 'Ekstremalna utrata Człowieczeństwa', notation: '4k6', dv: 17, cost: 1000 },
+  ordinary: {
+    label: 'Zwykła utrata Człowieczeństwa',
+    notation: '2k6',
+    dv: 15,
+    cost: 500 * THERAPY_PRICE_SCALE,
+  },
+  extreme: {
+    label: 'Ekstremalna utrata Człowieczeństwa',
+    notation: '4k6',
+    dv: 17,
+    cost: 1000 * THERAPY_PRICE_SCALE,
+  },
 };
 
 export function isHumanityTherapy(value: unknown): value is HumanityTherapy {

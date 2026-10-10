@@ -36,9 +36,10 @@ import {
   type CompendiumEntry,
   type CompendiumRegistry,
 } from './compendium.js';
-import { entryPrice, formatEddies, type CpredLifestyle } from './economy.js';
+import { entryPrice, type CpredLifestyle } from './economy.js';
+import { formatEddies } from './pricing.js';
 import { CPRED_TEAMWORK_ABILITY } from './roleability.js';
-import { purchasedSheetRow } from './shopping.js';
+import { purchasedSheetRow, type PurchasedRow } from './shopping.js';
 import { creationShopRefusalText, creationShopVerdict, type CreationShopRules } from './shop.js';
 import { sanitizeTokenImageUrl } from '../../tokens.js';
 
@@ -150,6 +151,21 @@ export interface CpredCreationBudgets {
   fashion: number;
 }
 
+/**
+ * Wyposażenie Roli gratis dla Kompletnego Pakietu (etap 47a, decyzja MG
+ * z 09.10.2026). W cenniku domowym 2550 ed nie starcza na dek i sprzęg,
+ * a bez nich Netrunner nie gra swoją Rolą — więc podstawowe narzędzie Roli
+ * przychodzi za darmo, a gotówka zostaje na resztę. Wartości są celowo
+ * nierówne: ma działać Rola, nie równać się kwota. Krawędziarz tego nie
+ * dostaje — jego pakiet Roli dokłada MG w całości.
+ */
+export interface CpredRoleKit {
+  /** Wpisy katalogu, które Rola dostaje zawsze. */
+  entries: string[];
+  /** Jeden do wyboru (Solo: broń); pusta lista — bez wyboru. */
+  choose: string[];
+}
+
 /** Parsed `cpred/creation.json`. */
 export interface CpredCreationData {
   /** Stat ids in the order the Role templates print their columns. */
@@ -166,6 +182,8 @@ export interface CpredCreationData {
   freeLanguage: CpredCreationFreeLanguage | null;
   budgets: CpredCreationBudgets;
   roles: CpredCreationRole[];
+  /** Rola → wyposażenie gratis Kompletnego Pakietu (etap 47a); brak Roli — nic. */
+  roleKits: Record<string, CpredRoleKit>;
 }
 
 export const DEFAULT_CREATION_BUDGETS: CpredCreationBudgets = {
@@ -197,6 +215,7 @@ export const EMPTY_CPRED_CREATION_DATA: CpredCreationData = {
   freeLanguage: null,
   budgets: DEFAULT_CREATION_BUDGETS,
   roles: [],
+  roleKits: {},
 };
 
 export interface CpredCreationDraft {
@@ -235,6 +254,11 @@ export interface CpredCreationDraft {
    * client that could write this list would be shopping for free.
    */
   purchases: Record<string, number>;
+  /**
+   * Wybrany wpis z `CpredRoleKit.choose` (etap 47a, Solo: broń); null — jeszcze
+   * nie wybrano albo Rola nie ma wyboru. Znika ze zmianą Roli i metody.
+   */
+  kitChoice: string | null;
   /** Uploaded portrait (`/uploads/portraits/…`); copied onto the sheet. */
   portraitUrl: string | null;
   /** Whether finishing also puts a token on the scene. */
@@ -296,6 +320,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     lifepath: createDefaultLifepath(),
     name: '',
     purchases: {},
+    kitChoice: null,
     portraitUrl: null,
     // Session zero ends with a figure on the map, so the box starts ticked; a
     // GM building five gangers in an evening unticks it once.
@@ -410,7 +435,32 @@ export function buildCreationData(raw: unknown, registry: CpredRegistry): CpredC
     freeLanguage,
     budgets: readBudgets(input.budgets),
     roles,
+    roleKits: readRoleKits(input.roleKits, roles),
   };
+}
+
+/**
+ * `roleKits` z pliku danych. Id wpisów nie sprawdza się tu z katalogiem — ten
+ * jest osobnym rejestrem; `creationRoleKit` pomija to, czego katalog nie zna.
+ */
+function readRoleKits(
+  raw: unknown,
+  roles: readonly CpredCreationRole[],
+): Record<string, CpredRoleKit> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const ids = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? [...new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0))]
+      : [];
+  const kits: Record<string, CpredRoleKit> = {};
+  for (const [roleId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!roles.some((role) => role.id === roleId)) continue;
+    if (typeof value !== 'object' || value === null) continue;
+    const input = value as Record<string, unknown>;
+    const kit = { entries: ids(input.entries), choose: ids(input.choose) };
+    if (kit.entries.length > 0 || kit.choose.length > 0) kits[roleId] = kit;
+  }
+  return kits;
 }
 
 function readBudgets(raw: unknown): CpredCreationBudgets {
@@ -675,6 +725,7 @@ export function creationIssueStep(field: string): CpredCreationStep {
     case 'lifepath':
       return 'lifepath';
     case 'purchases':
+    case 'kitChoice':
       return 'gear';
     case 'name':
       return 'details';
@@ -776,6 +827,93 @@ export function creationPurchases(
 
 export function creationSpentEddies(lines: readonly CpredCreationPurchase[]): number {
   return lines.reduce((sum, line) => sum + line.total, 0);
+}
+
+/** Jedna rzecz z wyposażenia Roli gratis (etap 47a). */
+export interface CpredCreationKitLine {
+  entryId: string;
+  name: string;
+  /** Cena w sklepie — ile Rola dostaje za darmo; null, gdy wpis jej nie ma. */
+  value: number | null;
+  /**
+   * Czy „Utwórz postać” kładzie to na kartę. Chrom nie: kreator nie montuje
+   * cyborgizacji (Utratę Człowieczeństwa losuje montaż), więc wszczepia go MG
+   * w Kompendium („Dodaj za darmo”) — mówi o tym `creationLeftOutside`.
+   */
+  onSheet: boolean;
+}
+
+/** Wyposażenie gratis tej Roli, gdy szkic jest Kompletnym Pakietem; inaczej null. */
+export function creationRoleKitOf(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'roleKits'>,
+): CpredRoleKit | null {
+  if (draft.method !== 'complete' || draft.roleId === null) return null;
+  return data.roleKits[draft.roleId] ?? null;
+}
+
+function kitLine(entry: CompendiumEntry): CpredCreationKitLine {
+  return {
+    entryId: entry.id,
+    name: entry.name,
+    value: entryPrice(entry),
+    onSheet: entry.category !== 'cyberware' && purchasedSheetRow(entry, null, 'probe') !== null,
+  };
+}
+
+/** Lista „do wyboru” wyposażenia Roli — to, co katalog zna. */
+export function creationRoleKitChoices(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId'>,
+  data: Pick<CpredCreationData, 'roleKits'>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+): CpredCreationKitLine[] {
+  const kit = creationRoleKitOf(draft, data);
+  if (!kit) return [];
+  return kit.choose
+    .map((id) => lookup(id))
+    .filter((entry): entry is CompendiumEntry => entry !== undefined)
+    .map(kitLine);
+}
+
+/**
+ * Co Rola dostaje za darmo: stałe wpisy i wybrany z listy. Wpis, którego
+ * katalog nie zna, znika po cichu — jak wiersz koszyka w `creationPurchases`.
+ */
+export function creationRoleKit(
+  draft: Pick<CpredCreationDraft, 'method' | 'roleId' | 'kitChoice'>,
+  data: Pick<CpredCreationData, 'roleKits'>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+): CpredCreationKitLine[] {
+  const kit = creationRoleKitOf(draft, data);
+  if (!kit) return [];
+  const ids = [...kit.entries];
+  if (draft.kitChoice !== null && kit.choose.includes(draft.kitChoice)) ids.push(draft.kitChoice);
+  return ids
+    .map((id) => lookup(id))
+    .filter((entry): entry is CompendiumEntry => entry !== undefined)
+    .map(kitLine);
+}
+
+/**
+ * Wiersze karty z wyposażenia Roli — jedno źródło dla `creationOutcome`
+ * i `creation:finish`, tak jak `purchasedSheetRow` dla koszyka.
+ */
+export function creationKitSheetRows(
+  lines: readonly CpredCreationKitLine[],
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  compendium: Pick<CompendiumRegistry, 'weaponTypeById'>,
+  nextRowId: () => string,
+): PurchasedRow[] {
+  const rows: PurchasedRow[] = [];
+  for (const line of lines) {
+    if (!line.onSheet) continue;
+    const entry = lookup(line.entryId);
+    if (!entry) continue;
+    const resolved = entry.category === 'weapon' ? resolveWeapon(entry, compendium) : null;
+    const row = purchasedSheetRow(entry, resolved, nextRowId());
+    if (row) rows.push(row);
+  }
+  return rows;
 }
 
 /** Derived values the wizard shows while the stats are still moving. */
@@ -943,6 +1081,15 @@ export function creationIssues(
     );
   }
 
+  const kit = creationRoleKitOf(draft, data);
+  if (
+    kit &&
+    kit.choose.length > 0 &&
+    (draft.kitChoice === null || !kit.choose.includes(draft.kitChoice))
+  ) {
+    issues.push(issue('kitChoice', 'Wybierz broń z wyposażenia Roli — dostajesz ją za darmo.'));
+  }
+
   if (lookup) {
     for (const key of Object.keys(draft.purchases)) {
       const entry = lookup(creationBasketEntry(key).entryId);
@@ -1050,6 +1197,8 @@ export function mergeCreationDraft(
       // The two methods shop with different money (500 vs 2550 ed), so a basket
       // filled under one of them is not a bill the other agreed to.
       next.purchases = {};
+      // Wyposażenie Roli gratis ma tylko Kompletny Pakiet (etap 47a).
+      next.kitChoice = null;
     }
     next.method = method;
   }
@@ -1065,8 +1214,20 @@ export function mergeCreationDraft(
       next.lifepath = clearRoleAnswers(next.lifepath);
       // A Medyk's medbag is not a Solo's to buy at session zero (naprawa 3b).
       if (shop) next.purchases = creationBasketForRole(next.purchases, roleId, shop);
+      // Strzelba Solo nie jest wyborem Medyka (etap 47a).
+      next.kitChoice = null;
     }
     next.roleId = roleId;
+  }
+  if ('kitChoice' in patch) {
+    const choice = patch.kitChoice;
+    if (choice !== null) {
+      if (typeof choice !== 'string' || next.method !== 'complete' || next.roleId === null) {
+        return null;
+      }
+      if (!(data.roleKits[next.roleId]?.choose ?? []).includes(choice)) return null;
+    }
+    next.kitChoice = choice ?? null;
   }
   if ('statRankId' in patch) {
     const rankId = patch.statRankId;
@@ -1273,6 +1434,11 @@ export function creationChangeEffect(
     );
   }
 
+  if (current.kitChoice !== null && next.kitChoice === null) {
+    const name = lookup?.(current.kitChoice)?.name ?? current.kitChoice;
+    lost.push(`Wybór z wyposażenia Roli: ${name}.`);
+  }
+
   const answers = current.lifepath.roleAnswers.filter(
     (answer) =>
       answer.answer.trim() && !next.lifepath.roleAnswers.some((kept) => kept.id === answer.id),
@@ -1382,6 +1548,12 @@ export function parseCreationDraft(
     lifepath: validateLifepath(input.lifepath, []),
     name: typeof input.name === 'string' ? input.name.slice(0, CREATION_NAME_MAX_LENGTH) : '',
     purchases: readPurchases(input.purchases),
+    kitChoice:
+      typeof input.kitChoice === 'string' &&
+      roleId !== null &&
+      (data.roleKits[roleId]?.choose ?? []).includes(input.kitChoice)
+        ? input.kitChoice
+        : null,
     portraitUrl: sanitizeTokenImageUrl(input.portraitUrl ?? null) ?? null,
     placeToken: input.placeToken !== false,
     // Absent means a draft from before naprawa 2a: its levels stay as saved.
@@ -1609,6 +1781,8 @@ export interface CpredCreationOutcome {
   /** The sheet after the starting money came in and every basket line went out. */
   sheet: CpredCharacterData;
   purchases: CpredCreationPurchase[];
+  /** Wyposażenie Roli gratis (etap 47a) — także chrom, którego karta nie dostaje. */
+  kit: CpredCreationKitLine[];
   budget: number;
   spent: number;
 }
@@ -1643,6 +1817,16 @@ export function creationOutcome(
   const gear: CpredGearRow[] = [...base.gear];
   let gearWithAmmo: CpredGearRow[] = gear;
   let rows = 0;
+  // Etap 47a: wyposażenie Roli kładzie się przed koszykiem, tak jak w `creation:finish`.
+  const kit = creationRoleKit(draft, data, lookup);
+  for (const purchased of creationKitSheetRows(kit, lookup, compendium, () => {
+    rows += 1;
+    return `creation-${rows}`;
+  })) {
+    if (purchased.list === 'weapons') weapons.push(purchased.row);
+    else if (purchased.list === 'armor') armor.push(purchased.row);
+    else gearWithAmmo = [...gearWithAmmo, purchased.row];
+  }
   for (const line of purchases) {
     const { entryId, weaponTypeId } = creationBasketEntry(line.entryId);
     const entry = lookup(entryId);
@@ -1676,6 +1860,7 @@ export function creationOutcome(
   return {
     sheet: mergeCharacterData(base, { weapons, armor, gear: gearWithAmmo, eddies: budget - spent }),
     purchases,
+    kit,
     budget,
     spent,
   };
@@ -1683,7 +1868,7 @@ export function creationOutcome(
 
 /** One thing the book hands a new character that the wizard does not. */
 export interface CpredCreationOutside {
-  id: 'package' | 'fashion' | 'cyberware';
+  id: 'package' | 'fashion' | 'cyberware' | 'kit';
   title: string;
   text: string;
 }
@@ -1696,8 +1881,21 @@ export interface CpredCreationOutside {
 export function creationLeftOutside(
   draft: Pick<CpredCreationDraft, 'method'>,
   data: Pick<CpredCreationData, 'budgets'>,
+  /** Wyposażenie Roli gratis (`creationRoleKit`) — jego chrom kreator zostawia MG. */
+  kit: readonly CpredCreationKitLine[] = [],
 ): CpredCreationOutside[] {
   const lines: CpredCreationOutside[] = [];
+  const kitChrome = kit.filter((line) => !line.onSheet);
+  if (kitChrome.length > 0) {
+    lines.push({
+      id: 'kit',
+      title: 'Chrom z wyposażenia Roli',
+      text:
+        `${kitChrome.map((line) => line.name).join(', ')} — chrom należny za darmo, ale kreator ` +
+        'nie montuje cyborgizacji. MG wszczepia go na gotowej postaci w Kompendium przyciskiem ' +
+        '„Dodaj za darmo”; Utrata Człowieczeństwa liczy się jak zwykle.',
+    });
+  }
   if (draft.method === 'edgerunner') {
     lines.push({
       id: 'package',

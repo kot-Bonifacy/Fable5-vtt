@@ -4296,7 +4296,7 @@ function CyberwareSection({
               +{HUMANITY_THERAPY_DEFINITIONS[therapy].notation}
             </button>
           ))}
-          {/* Stage 23b: the week costs 500 / 1000 ed (s. 375) and comes off the
+          {/* Stage 23b: the week costs 500 / 1000 ed (s. 375; ×2 in the house price list since 47a) and comes off the
               sheet. „Bez opłaty" is the GM's waiver — a favour, a debt, a job. */}
           <label title="Nie pobieraj eurodolców za terapię">
             <input

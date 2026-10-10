@@ -44,6 +44,7 @@ import {
   WEAPON_QUALITY_LABELS,
   entryPrice,
   formatCost,
+  formatEddies,
   formatPurchasePrice,
   rangeBandLabel,
   resolveWeapon,
@@ -1133,7 +1134,7 @@ function EntryCard({
               disabled={price === null || (locked && !isGm)}
               onClick={() => void buy()}
             >
-              Kup{ammoPayable === null ? '' : ` — ${ammoPayable} ed`}
+              Kup{ammoPayable === null ? '' : ` — ${formatEddies(ammoPayable)} ed`}
             </button>
           )}
           {isGm ? (

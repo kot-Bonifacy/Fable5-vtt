@@ -1531,5 +1531,25 @@
     "edgerunner": 500,
     "complete": 2550,
     "fashion": 800
+  },
+  "roleKits": {
+    "$comment": "Etap 47a: wyposażenie Roli gratis dla Kompletnego Pakietu — wymyślone wpisy z próbki kompendium. Prawdziwa lista w data/private/cpred/creation.json.",
+    "netrunner": {
+      "entries": [
+        "gear.dek-przykladowy",
+        "cyberware.sprzeg-neuralny-przykladowy"
+      ]
+    },
+    "solo": {
+      "choose": [
+        "weapon.zgrzyt-9",
+        "weapon.szpon"
+      ]
+    },
+    "medtech": {
+      "entries": [
+        "gear.apteczka-polowa"
+      ]
+    }
   }
 }

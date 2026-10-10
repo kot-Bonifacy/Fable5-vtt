@@ -1020,20 +1020,21 @@ describe('kreator postaci', () => {
     });
 
     it('refuses a basket the budget cannot carry', async () => {
-      // A Krawędziarz has 500 ed; ten pistols at 50 ed each is exactly that,
-      // and the eleventh is one too many.
-      for (let bought = 0; bought < 9; bought += 1) {
+      // A Krawędziarz has 500 ed. In the house price list (stage 47a) the
+      // flashlight already in the basket is 60 ed (×3) and a Zardzewiak 200 ed
+      // (×10): two pistols fit, the third does not.
+      for (let bought = 0; bought < 2; bought += 1) {
         data(
-          await emitAck<Draft>(vex, 'creation:buy', { entryId: 'weapon.zgrzyt-9', delta: 1 }),
+          await emitAck<Draft>(vex, 'creation:buy', { entryId: 'weapon.zardzewiak', delta: 1 }),
           'creation:buy',
         );
       }
-      // 9 × 50 + the flashlight already in the basket = 470 ed.
-      const tenth = await emitAck<Draft>(vex, 'creation:buy', {
-        entryId: 'weapon.zgrzyt-9',
+      // 2 × 200 + 60 = 460 ed.
+      const third = await emitAck<Draft>(vex, 'creation:buy', {
+        entryId: 'weapon.zardzewiak',
         delta: 1,
       });
-      expect(refusal(tenth)).toBe('NOT_ENOUGH_EDDIES');
+      expect(refusal(third)).toBe('NOT_ENOUGH_EDDIES');
     });
 
     it('refuses what nobody can carry off a catalogue card', async () => {
@@ -1061,10 +1062,10 @@ describe('kreator postaci', () => {
         'creation:finish',
       );
       const sheet = character.data as CpredCharacterData;
-      // Nine pistols and one flashlight: 470 ed of a 500 ed budget.
-      expect(sheet.weapons).toHaveLength(9);
+      // Two pistols and one flashlight: 460 ed of a 500 ed budget.
+      expect(sheet.weapons).toHaveLength(2);
       expect(sheet.gear).toHaveLength(1);
-      expect(sheet.eddies).toBe(30);
+      expect(sheet.eddies).toBe(40);
       expect(character.portraitUrl).toBe(`${portraitDir}test.png`);
 
       const history = data(
@@ -1083,9 +1084,9 @@ describe('kreator postaci', () => {
       const cash = history.entries.find((entry) => entry.kind === 'starting');
       expect(cash?.amount).toBe(500);
       expect(cash?.label).toContain('Krawędziarz');
-      const guns = history.entries.find((entry) => entry.label.startsWith('Zgrzyt 9'));
-      expect(guns?.amount).toBe(-450);
-      expect(guns?.label).toBe('Zgrzyt 9 ×9');
+      const guns = history.entries.find((entry) => entry.label.startsWith('Zardzewiak'));
+      expect(guns?.amount).toBe(-400);
+      expect(guns?.label).toBe('Zardzewiak ×2');
     });
   });
 
@@ -1348,6 +1349,8 @@ describe('kreator postaci', () => {
       await patch(gm, {
         method: 'complete',
         roleId: 'solo',
+        // Etap 47a: Solo w Kompletnym Pakiecie wybiera broń z wyposażenia Roli.
+        kitChoice: 'weapon.zgrzyt-9',
         name: 'Awaria zakupu',
         placeToken: false,
         stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
@@ -1382,8 +1385,9 @@ describe('kreator postaci', () => {
       const character = data(one, 'finish');
       expect(data(two, 'retry').id).toBe(character.id);
       expect(await built.prisma.character.count()).toBe(before + 1);
-      expect((character.data as CpredCharacterData).weapons).toHaveLength(1);
-      expect((character.data as CpredCharacterData).eddies).toBe(2500);
+      // Zgrzyt z wyposażenia Roli (gratis, etap 47a) i Zgrzyt z koszyka za 500 ed.
+      expect((character.data as CpredCharacterData).weapons).toHaveLength(2);
+      expect((character.data as CpredCharacterData).eddies).toBe(2050);
       expect(await built.prisma.ledgerEntry.count({ where: { characterId: character.id } })).toBe(
         2,
       );
@@ -1408,6 +1412,8 @@ describe('kreator postaci', () => {
       await patch(gm, {
         method: 'complete',
         roleId: 'solo',
+        // Etap 47a: Solo w Kompletnym Pakiecie wybiera broń z wyposażenia Roli.
+        kitChoice: 'weapon.zgrzyt-9',
         name: 'Awaria żetonu',
         placeToken: true,
         stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
@@ -1472,6 +1478,8 @@ describe('kreator postaci', () => {
       await patch(gm, {
         method: 'complete',
         roleId: 'solo',
+        // Etap 47a: Solo w Kompletnym Pakiecie wybiera broń z wyposażenia Roli.
+        kitChoice: 'weapon.zgrzyt-9',
         name: 'Czeka na scenę',
         placeToken: true,
         stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])),
@@ -1690,7 +1698,8 @@ describe('kreator postaci', () => {
         gear: value.gear.map(({ id: _id, ...row }) => row),
       });
       expect(withoutRowIds(sheet)).toEqual(withoutRowIds(outcome.sheet));
-      expect(outcome.spent).toBe(2 * 50 + 20);
+      // Cennik domowy (47a): Zgrzyt 50 → 500 ed (×10), latarka 20 → 60 ed (×3).
+      expect(outcome.spent).toBe(2 * 500 + 60);
       expect(sheet.eddies).toBe(outcome.budget - outcome.spent);
       expect(sheet.weapons).toHaveLength(2);
       // A Korpo starts in the company conapt on a good prepack (s. 105).
@@ -1698,9 +1707,87 @@ describe('kreator postaci', () => {
     });
   });
 
+  describe('etap 47a — wyposażenie Roli gratis w Kompletnym Pakiecie', () => {
+    // data/public/cpred/creation.json: Solo wybiera Zgrzyt 9 albo Szpon,
+    // Netrunner dostaje dek i sprzęg (chrom — tego kreator nie montuje).
+    async function completeDraft(roleId: string, name: string): Promise<Draft> {
+      await dropDraft(vexId);
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      const started = await patch(vex, { method: 'complete', roleId, name, placeToken: false });
+      expect(
+        (
+          await emitAck(gm, 'creation:set-rank', {
+            draftId: started.id,
+            statRankId: started.draft.statRankId,
+          })
+        ).ok,
+      ).toBe(true);
+      await patch(vex, { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 6])) });
+      return allocateRemaining(vex);
+    }
+
+    async function historyKinds(characterId: string): Promise<string[]> {
+      const history = data(
+        await emitAck<{ entries: { kind: string }[] }>(vex, 'economy:history', { characterId }),
+        'economy:history',
+      );
+      return history.entries.map((entry) => entry.kind);
+    }
+
+    it('Solo bez wybranej broni nie kończy; wybrana leży na karcie, a gotówka zostaje cała', async () => {
+      const ready = await completeDraft('solo', 'Gratis');
+      expect(refusal(await emitAck(vex, 'creation:finish', { draftId: ready.id }))).toBe(
+        'CREATION_INCOMPLETE',
+      );
+      // Spoza listy Roli — odmowa, wybór zostaje pusty.
+      expect(
+        refusal(
+          await emitAck(vex, 'creation:patch', { patch: { kitChoice: 'weapon.grzechotnik' } }),
+        ),
+      ).toBe('INVALID_DATA');
+
+      const chosen = await patch(vex, { kitChoice: 'weapon.szpon' });
+      expect(chosen.draft.kitChoice).toBe('weapon.szpon');
+      const finished = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: chosen.id }),
+        'creation:finish',
+      );
+      const sheet = finished.data as CpredCharacterData;
+      expect(sheet.weapons.map((row) => row.compendiumId)).toEqual(['weapon.szpon']);
+      expect(sheet.eddies).toBe(2550);
+      // Gratis nie zostawia wiersza zakupu — tylko gotówkę startową.
+      expect(await historyKinds(finished.id)).toEqual(['starting']);
+    });
+
+    it('zmiana Roli albo metody zdejmuje wybór', async () => {
+      await completeDraft('solo', 'Zmiennik');
+      await patch(vex, { kitChoice: 'weapon.zgrzyt-9' });
+      expect((await patch(vex, { roleId: 'netrunner' })).draft.kitChoice).toBeNull();
+      await patch(vex, { roleId: 'solo', kitChoice: 'weapon.zgrzyt-9' });
+      expect((await patch(vex, { method: 'edgerunner' })).draft.kitChoice).toBeNull();
+      // Krawędziarz nie ma wyposażenia gratis, więc i wyboru.
+      expect(
+        refusal(await emitAck(vex, 'creation:patch', { patch: { kitChoice: 'weapon.zgrzyt-9' } })),
+      ).toBe('INVALID_DATA');
+    });
+
+    it('Netrunner dostaje dek na kartę, a chrom zostawia MG', async () => {
+      const ready = await completeDraft('netrunner', 'Dekarz');
+      const finished = data(
+        await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: ready.id }),
+        'creation:finish',
+      );
+      const sheet = finished.data as CpredCharacterData;
+      expect(sheet.gear.map((row) => row.compendiumId)).toContain('gear.dek-przykladowy');
+      expect(sheet.cyberware).toHaveLength(0);
+      expect(sheet.eddies).toBe(2550);
+    });
+  });
+
   describe('naprawa 3b — narzędzia Ról i wyjątki MG', () => {
     // data/public/cpred/shop-tiers.json: the field medkit is a Medyk's tool on
-    // level 2, the sample rifle type is a Solo's (500 ed — level 2 by price).
+    // level 2, the sample rifle type is a Solo's (50 ed w próbce = 500 ed po
+    // cenniku domowym z 47a — tyle, ile ma Krawędziarz).
     it('sells a Role its own tools and takes them off when the Role changes', async () => {
       await dropDraft(vexId);
       data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
@@ -1817,6 +1904,8 @@ describe('kreator postaci', () => {
       const started = await patch(vex, {
         method: 'complete',
         roleId,
+        // Etap 47a: Solo wybiera broń z wyposażenia Roli, inaczej szkic nie jest gotowy.
+        ...(roleId === 'solo' ? { kitChoice: 'weapon.zgrzyt-9' } : {}),
         name,
         placeToken: false,
       });
@@ -1847,6 +1936,7 @@ describe('kreator postaci', () => {
       const npcDraft = await patch(gm, {
         method: 'complete',
         roleId: 'solo',
+        kitChoice: 'weapon.zgrzyt-9',
         name: 'Statysta 3c',
         placeToken: false,
       });

@@ -14,6 +14,7 @@ import {
   MAX_RULES_QUESTION_LENGTH,
   RULES_TOP_K,
   ROLE_GM,
+  CPRED_PRICE_HOUSE_RULE_NOTE,
   buildRulesSystemPrompt,
   buildRulesUserPrompt,
 } from '@vtt/shared';
@@ -133,7 +134,7 @@ async function answerRulesQuestion(
     socket.emit('rules:sources', sources);
 
     const messages = [
-      { role: 'system' as const, content: buildRulesSystemPrompt() },
+      { role: 'system' as const, content: buildRulesSystemPrompt([CPRED_PRICE_HOUSE_RULE_NOTE]) },
       { role: 'user' as const, content: buildRulesUserPrompt(question, passages) },
     ];
 

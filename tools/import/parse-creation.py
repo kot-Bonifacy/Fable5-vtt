@@ -89,6 +89,19 @@ def write(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
+def existing_role_kits(path: Path) -> dict:
+    """Wyposażenie Roli gratis (etap 47a) to decyzja MG, nie tekst podręcznika.
+
+    Import go nie zna, więc przenosi go z pliku, który nadpisuje — inaczej każdy
+    ponowny przebieg po cichu zabierałby Kompletnemu Pakietowi dek Netrunnera.
+    """
+    try:
+        kits = json.loads(path.read_text(encoding="utf8")).get("roleKits", {})
+    except (OSError, ValueError):
+        return {}
+    return kits if isinstance(kits, dict) else {}
+
+
 def load_overrides() -> dict:
     if not OVERRIDES_PATH.exists():
         return {}
@@ -576,6 +589,7 @@ def main() -> int:
         "basicSkills": basic,
         "freeLanguage": free_language(roles_chapter),
         "budgets": parse_budgets(roles_chapter),
+        "roleKits": existing_role_kits(CPRED_DIR / "creation.json"),
         "roles": roles,
     }
     write(CPRED_DIR / "creation.json", payload)

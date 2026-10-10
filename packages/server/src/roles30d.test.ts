@@ -322,8 +322,8 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       }),
       'economy:buy',
     );
-    // Zgrzyt 9 kosztuje 50 ed; z targiem 45.
-    expect(before.eddies - ack.balance).toBe(45);
+    // Zgrzyt 9 kosztuje 500 ed (cennik domowy, etap 47a); z targiem 450.
+    expect(before.eddies - ack.balance).toBe(450);
     const economy = (await card).message.economy;
     expect(economy?.lines.some((line) => line.includes('−10%'))).toBe(true);
 
@@ -337,7 +337,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       }),
       'economy:buy',
     );
-    expect(ack.balance - second.balance).toBe(50);
+    expect(ack.balance - second.balance).toBe(500);
   });
 
   it('targu nie da się dopisać łatą karty — nawet z konta MG', async () => {

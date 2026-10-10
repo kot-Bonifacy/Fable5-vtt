@@ -5,7 +5,6 @@ import {
   HOUSING_DEFINITIONS,
   LIFESTYLE_DEFINITIONS,
   entryPrice,
-  formatEddies,
   formatLedgerAmount,
   formatLifestyle,
   formatPurchasePrice,
@@ -15,6 +14,7 @@ import {
   monthlyCostOf,
   settleMonth,
 } from './economy.js';
+import { formatEddies } from './pricing.js';
 import { purchasedSheetRow } from './shopping.js';
 
 describe('entryPrice', () => {
@@ -25,9 +25,15 @@ describe('entryPrice', () => {
   it('falls back to the band price when the material gives only a band', () => {
     // The rulebook's ladder: Drogie = 50, Kosztowne = 500 (s. 342). The Polish
     // names are the trap — „Drogie" sits *below* „Kosztowne".
-    expect(entryPrice({ cost: null, costCategory: 'costly' })).toBe(50);
-    expect(entryPrice({ cost: null, costCategory: 'expensive' })).toBe(500);
+    expect(COST_CATEGORY_PRICE.costly).toBe(50);
+    expect(COST_CATEGORY_PRICE.expensive).toBe(500);
     expect(COST_CATEGORY_PRICE.superLuxury).toBe(10_000);
+    // Etap 47a: cena pasma idzie przez cennik domowy wpisu — sprzęt trwały ×10…
+    expect(entryPrice({ cost: null, costCategory: 'costly' })).toBe(500);
+    expect(entryPrice({ cost: null, costCategory: 'expensive', category: 'weapon' })).toBe(5000);
+    // …a amunicja i drobny sprzęt ogólny ×3.
+    expect(entryPrice({ cost: null, costCategory: 'costly', category: 'gear' })).toBe(150);
+    expect(entryPrice({ cost: null, costCategory: 'premium', category: 'ammo' })).toBe(300);
   });
 
   it('returns null for an entry that says nothing about money', () => {
@@ -36,7 +42,7 @@ describe('entryPrice', () => {
 
   it('names the band when the price came from it', () => {
     expect(formatPurchasePrice({ cost: null, costCategory: 'premium' })).toBe(
-      '100 ed (cena pasma Premium)',
+      '1 000 ed (cena pasma Premium)',
     );
     expect(formatPurchasePrice({ cost: 550, costCategory: 'costly' })).toBe('550 ed');
     expect(formatPurchasePrice({ cost: null })).toBeNull();

@@ -261,11 +261,12 @@ describe('cyborgizacje i człowieczeństwo', () => {
     });
     // Sufit spadł o 2, a pula o tyle, ile padło na kościach.
     expect(data.humanityCurrent).toBe(Math.min(60 - rolled, 58));
-    // 100 ed za oko i nic za klinikę: „Koszt operacji […] jest wliczony
-    // w cenę" (s. 111). Opłata z s. 375 dotyczy wyłącznie znalezionego wszczepu
-    // — do 17.09 pełny montaż pobierał obie i oko kosztowało 600 ed.
-    expect(data.eddies).toBe(20_000 - 100);
-    expect(roll?.outcome?.detail).toContain('100 ed');
+    // 1000 ed za oko (100 w danych próbki, ×10 w cenniku domowym z etapu 47a)
+    // i nic za klinikę: „Koszt operacji […] jest wliczony w cenę" (s. 111).
+    // Opłata z s. 375 dotyczy wyłącznie znalezionego wszczepu — do 17.09 pełny
+    // montaż pobierał obie.
+    expect(data.eddies).toBe(20_000 - 1000);
+    expect(roll?.outcome?.detail).toMatch(/1\s000 ed/u);
   });
 
   it('nie pozwala instalować cudzego chromu', async () => {
@@ -383,8 +384,8 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
     const after = await sheetOf(vex, characterId);
     expect(after.humanityCurrent).toBe(10 + (roll?.total ?? 0));
-    // Etap 23b: tydzień u Medyka to 500 ed (s. 375).
-    expect(before.eddies - after.eddies).toBe(500);
+    // Etap 23b: tydzień u Medyka to 500 ed (s. 375) — ×2 w cenniku domowym (47a).
+    expect(before.eddies - after.eddies).toBe(1000);
 
     // Druga tura terapii z poziomu tuż pod sufitem — nadwyżka przepada.
     const ceiling = 60 - after.cyberware.reduce((s, r) => s + (r.humanityMaxPenalty ?? 0), 0);
@@ -579,7 +580,7 @@ describe('montaż: gniazda i Test operacji', () => {
       expect(roll?.outcome?.label).toBe('Wszczep zniszczony');
       expect(after.cyberware.length).toBe(before.cyberware.length);
       expect(after.humanityCurrent).toBe(before.humanityCurrent);
-      expect(after.eddies).toBe(before.eddies - 500);
+      expect(after.eddies).toBe(before.eddies - 5000);
     }
   });
 

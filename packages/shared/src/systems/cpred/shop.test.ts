@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompendiumEntry } from './compendium.js';
 import { SHOP_TIERS, buildCompendium, isShopTier, validateCompendiumEntry } from './compendium.js';
+import { cpredScaledEntry } from './pricing.js';
 import {
   CREATION_ROLE_TOOL_TIER,
   CREATION_SHOP_TIER,
@@ -22,18 +23,19 @@ import {
   type CreationShopRules,
 } from './shop.js';
 
+// Etap 47a: wpisy jak w rejestrze — ceny podręcznika przeliczone cennikiem domowym.
 function gear(overrides: Record<string, unknown> = {}): CompendiumEntry {
-  return {
+  return cpredScaledEntry({
     id: 'gear.test',
     category: 'gear',
     name: 'Przedmiot testowy',
     cost: null,
     ...overrides,
-  } as CompendiumEntry;
+  } as CompendiumEntry);
 }
 
 function weapon(overrides: Record<string, unknown> = {}): CompendiumEntry {
-  return {
+  return cpredScaledEntry({
     id: 'weapon.test',
     category: 'weapon',
     name: 'Broń testowa',
@@ -41,11 +43,16 @@ function weapon(overrides: Record<string, unknown> = {}): CompendiumEntry {
     quality: 'standard',
     cost: 100,
     ...overrides,
-  } as CompendiumEntry;
+  } as CompendiumEntry);
 }
 
 function entry(fields: Record<string, unknown>): CompendiumEntry {
-  return { id: 'entry.test', name: 'Wpis testowy', cost: 100, ...fields } as CompendiumEntry;
+  return cpredScaledEntry({
+    id: 'entry.test',
+    name: 'Wpis testowy',
+    cost: 100,
+    ...fields,
+  } as CompendiumEntry);
 }
 
 describe('shopTierForPrice', () => {
@@ -166,7 +173,7 @@ describe('tier on a catalogue entry', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.entry.tier).toBeUndefined();
-      expect(shopTierOf(result.entry)).toBe(4);
+      expect(shopTierOf(cpredScaledEntry(result.entry))).toBe(4);
     }
   });
 });
@@ -197,7 +204,7 @@ describe('shopTierVerdict — rule by kind (naprawa 3b)', () => {
     // A 5000 ed branded shotgun is black market; a 20 ed rifle is still military.
     const luxury = shopTierVerdict(weapon({ weaponTypeId: 'weapon-type.shotgun', cost: 5000 }));
     expect(luxury.tier).toBe(4);
-    expect(luxury.reason).toMatch(/cena 5\s000 ed podnosi poziom$/);
+    expect(luxury.reason).toMatch(/cena 50\s000 ed podnosi poziom$/);
     expect(shopTierOf(weapon({ weaponTypeId: 'weapon-type.assault-rifle', cost: 20 }))).toBe(3);
     // „Bardzo kosztowne" lifts street kinds to at least Zawodowe.
     expect(shopTierOf(entry({ category: 'armor', sp: 7, locations: ['body'], cost: 1000 }))).toBe(
@@ -235,7 +242,7 @@ describe('shopTierVerdict — rule by kind (naprawa 3b)', () => {
     expect(shopTierVerdict(gear({ cost: 500 }))).toEqual({
       tier: 2,
       source: 'price',
-      reason: 'cena 500 ed — brak reguły dla tego rodzaju',
+      reason: 'cena 5 000 ed — brak reguły dla tego rodzaju',
     });
     expect(shopTierVerdict(weapon({ weaponTypeId: null, cost: 20 })).source).toBe('price');
   });

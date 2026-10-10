@@ -57,6 +57,7 @@ import {
   type NetProgramClass,
   type NetProgramTarget,
 } from './netrunning.js';
+import { formatEddies } from './pricing.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
 
 /**
@@ -2127,7 +2128,8 @@ export function searchCompendium(
 export function formatCost(entry: Pick<CompendiumEntryBase, 'cost' | 'costCategory'>): string {
   const band = entry.costCategory ? COST_CATEGORY_LABELS[entry.costCategory] : undefined;
   if (entry.cost === null) return band ?? '—';
-  return band ? `${entry.cost} ed (${band})` : `${entry.cost} ed`;
+  const cost = formatEddies(entry.cost);
+  return band ? `${cost} ed (${band})` : `${cost} ed`;
 }
 
 /** Guard used by the sheet code before touching weapon-only fields. */

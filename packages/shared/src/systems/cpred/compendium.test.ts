@@ -12,6 +12,7 @@ import {
   type WeaponEntry,
 } from './compendium.js';
 import { slugify } from './ids.js';
+import { formatEddies } from './pricing.js';
 
 const weaponType = {
   id: 'weapon-type.heavy-pistol',
@@ -314,7 +315,7 @@ describe('formatCost', () => {
     ];
     expect(ladder.map(([, band]) => band)).toEqual([...COST_CATEGORIES]);
     for (const [cost, band, label] of ladder) {
-      expect(formatCost({ cost, costCategory: band })).toBe(`${cost} ed (${label})`);
+      expect(formatCost({ cost, costCategory: band })).toBe(`${formatEddies(cost)} ed (${label})`);
     }
   });
 });

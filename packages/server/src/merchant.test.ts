@@ -294,7 +294,7 @@ describe('handlarze', () => {
       },
     });
     await emitAck(gm, 'economy:adjust', { characterId: vexId, balance: 1000 });
-    await emitAck(gm, 'economy:adjust', { characterId: ricoId, balance: 1000 });
+    await emitAck(gm, 'economy:adjust', { characterId: ricoId, balance: 5000 });
     await emitAck(gm, 'economy:adjust', { characterId: paserId, balance: 500 });
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Bar' }), 'scene');
@@ -349,7 +349,7 @@ describe('handlarze', () => {
     expect(view.closed).toBe('closed');
     expect(view.name).toBe('Spod lady');
     expect(
-      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 60 }),
+      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 180 }),
     ).toEqual({ ok: false, error: 'MERCHANT_CLOSED' });
   });
 
@@ -401,7 +401,7 @@ describe('handlarze', () => {
     expect(raw).not.toContain('hidden');
     const forVex = data(JSON.parse(raw) as SocketAck<MerchantViewResult>, 'merchant:view').merchant;
     expect(forVex.rows).toEqual([
-      expect.objectContaining({ rowId: 'g-apt', price: 60, infinite: true }),
+      expect.objectContaining({ rowId: 'g-apt', price: 180, infinite: true }),
     ]);
     expect(forVex.cash).toBe(500);
 
@@ -412,7 +412,7 @@ describe('handlarze', () => {
     expect(forGm.characterId).toBe(paserId);
     expect(forGm.rows.find((row) => row.rowId === 'w-szpon')).toMatchObject({
       hidden: true,
-      price: 120,
+      price: 1200,
     });
   });
 
@@ -424,40 +424,40 @@ describe('handlarze', () => {
       buy: [{ list: 'gear', rowId: 'g-apt', qty: 2 }],
       sell: [{ list: 'weapons', rowId: 'w-zgrzyt' }],
     };
-    // Apteczki: 2 × 50 × 120% = 120; Zgrzyt: 50 × 50% = 25 → płaci 95.
-    expect(await deal(vex, vexId, { ...body, expectTotal: 90 })).toEqual({
+    // Apteczki: 2 × 150 × 120% = 360; Zgrzyt: 500 × 50% = 250 → płaci 110 (ceny próbki w cenniku domowym, etap 47a).
+    expect(await deal(vex, vexId, { ...body, expectTotal: 100 })).toEqual({
       ok: false,
       error: 'QUOTE_CHANGED',
     });
     const ricoHeard = collect<ChatMessageBroadcast>(rico, 'chat:message');
     const vexCard = waitFor<ChatMessageBroadcast>(vex, 'chat:message');
-    expect(data(await deal(vex, vexId, { ...body, expectTotal: 95 }), 'deal')).toEqual({
-      total: 95,
-      balance: 905,
+    expect(data(await deal(vex, vexId, { ...body, expectTotal: 110 }), 'deal')).toEqual({
+      total: 110,
+      balance: 890,
     });
     const card = (await vexCard).message;
     expect(card.kind).toBe('inventory');
     expect(JSON.stringify(card)).not.toContain(paserId);
 
     const vexSheet = await sheetOf(gm, vexId);
-    expect(vexSheet.eddies).toBe(905);
+    expect(vexSheet.eddies).toBe(890);
     expect(vexSheet.weapons).toHaveLength(0);
     expect(vexSheet.gear.find((row) => row.compendiumId === 'gear.apteczka-polowa')?.qty).toBe(2);
     const paserSheet = await sheetOf(gm, paserId);
     // Wiersz „∞” nie ubywa; odkupiony Zgrzyt od razu leży na półce.
     expect(paserSheet.gear.find((row) => row.id === 'g-apt')?.qty).toBe(3);
     expect(paserSheet.weapons.map((row) => row.name).sort()).toEqual(['Szpon', 'Zgrzyt 9']);
-    expect(paserSheet.eddies).toBe(595);
+    expect(paserSheet.eddies).toBe(610);
 
     const vexLedger = await ledgerOf(vex, vexId);
     expect(vexLedger.slice(0, 2).map((row) => [row.kind, row.amount])).toEqual([
-      ['sale', 25],
-      ['purchase', -120],
+      ['sale', 250],
+      ['purchase', -360],
     ]);
     const paserLedger = await ledgerOf(gm, paserId);
     expect(paserLedger.slice(0, 2).map((row) => [row.kind, row.amount])).toEqual([
-      ['purchase', -25],
-      ['sale', 120],
+      ['purchase', -250],
+      ['sale', 360],
     ]);
     // Karta zakupu: kupujący i MG, nie cały stół.
     await new Promise((settle) => setTimeout(settle, 100));
@@ -475,7 +475,7 @@ describe('handlarze', () => {
     expect(
       await deal(vex, vexId, {
         sell: [{ list: 'gear', rowId: apteczka.id, qty: 1 }],
-        expectTotal: -25,
+        expectTotal: -75,
       }),
     ).toEqual({ ok: false, error: 'NOT_BUYING' });
     await emitAck(gm, 'merchant:config', { characterId: paserId, merchant: { buyBackPct: 50 } });
@@ -485,7 +485,7 @@ describe('handlarze', () => {
     expect(
       await deal(vex, vexId, {
         buy: [{ list: 'weapons', rowId: 'w-szpon', qty: 1 }],
-        expectTotal: 120,
+        expectTotal: 1200,
       }),
     ).toEqual({ ok: false, error: 'ROW_NOT_FOUND' });
   });
@@ -506,10 +506,10 @@ describe('handlarze', () => {
     expect(
       await deal(rico, ricoId, {
         buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }],
-        expectTotal: 60,
+        expectTotal: 180,
       }),
     ).toEqual({ ok: false, error: 'OUT_OF_REACH' });
-    expect((await sheetOf(gm, ricoId)).eddies).toBe(1000);
+    expect((await sheetOf(gm, ricoId)).eddies).toBe(5000);
 
     const forVex = data(
       await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {
@@ -528,7 +528,7 @@ describe('handlarze', () => {
     const before = await Promise.all([vexId, ricoId, paserId].map((id) => sheetOf(gm, id)));
     const sum = (sheets: CpredCharacterData[]) => sheets.reduce((acc, s) => acc + s.eddies, 0);
 
-    const buyTwo = { buy: [{ list: 'gear', rowId: 'g-apt', qty: 2 }], expectTotal: 120 };
+    const buyTwo = { buy: [{ list: 'gear', rowId: 'g-apt', qty: 2 }], expectTotal: 360 };
     const results = await Promise.all([deal(vex, vexId, buyTwo), deal(rico, ricoId, buyTwo)]);
     expect(results.filter((ack) => ack.ok)).toHaveLength(1);
     expect(results.find((ack) => !ack.ok)).toEqual({ ok: false, error: 'OUT_OF_STOCK' });
@@ -560,7 +560,7 @@ describe('handlarze', () => {
       },
     });
     await emitAck(gm, 'economy:adjust', { characterId: paserId, balance: 100 });
-    const sell = { sell: [{ list: 'weapons', rowId: 'w-iglica' }], expectTotal: -250 };
+    const sell = { sell: [{ list: 'weapons', rowId: 'w-iglica' }], expectTotal: -2500 };
     expect(await deal(vex, vexId, sell)).toEqual({ ok: false, error: 'MERCHANT_NO_CASH' });
 
     await emitAck(gm, 'merchant:config', {
@@ -568,7 +568,7 @@ describe('handlarze', () => {
       merchant: { cashInfinite: true },
     });
     const paserBefore = (await ledgerOf(gm, paserId)).length;
-    expect(data(await deal(vex, vexId, sell), 'deal').total).toBe(-250);
+    expect(data(await deal(vex, vexId, sell), 'deal').total).toBe(-2500);
     expect(await ledgerOf(gm, paserId)).toHaveLength(paserBefore);
     expect((await sheetOf(gm, paserId)).eddies).toBe(100);
     const view = data(
@@ -610,7 +610,7 @@ describe('handlarze', () => {
       },
     });
     const rows = (await update).merchant.rows;
-    expect(rows.find((row) => row.rowId === 'g-lat')).toMatchObject({ price: 24 });
+    expect(rows.find((row) => row.rowId === 'g-lat')).toMatchObject({ price: 72 });
   });
 
   it('sklep zdalny „między sesjami”: działa bez figury i bez sesji, Paser — nie', async () => {
@@ -657,12 +657,12 @@ describe('handlarze', () => {
         await deal(
           rico,
           ricoId,
-          { buy: [{ list: 'gear', rowId: 'g-agent', qty: 1 }], expectTotal: 100 },
+          { buy: [{ list: 'gear', rowId: 'g-agent', qty: 1 }], expectTotal: 1000 },
           siec,
         ),
         'deal',
       ).total,
-    ).toBe(100);
+    ).toBe(1000);
 
     const vexMoved = waitFor(vex, 'session:changed');
     expect((await emitAck(gm, 'session:end', { campaignId })).ok).toBe(true);
@@ -674,14 +674,14 @@ describe('handlarze', () => {
         await deal(
           vex,
           vexId,
-          { buy: [{ list: 'gear', rowId: 'g-agent', qty: 1 }], expectTotal: 100 },
+          { buy: [{ list: 'gear', rowId: 'g-agent', qty: 1 }], expectTotal: 1000 },
           siec,
         ),
         'deal',
       ).total,
-    ).toBe(100);
+    ).toBe(1000);
     expect(
-      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 60 }),
+      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 180 }),
     ).toEqual({ ok: false, error: 'SESSION_NOT_RUNNING' });
     expect(await emitAck(vex, 'merchant:view', { merchantId })).toEqual({
       ok: false,
@@ -720,7 +720,7 @@ describe('handlarze', () => {
       patch: { data: { hpCurrent: 0 } },
     });
     expect(
-      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 60 }),
+      await deal(vex, vexId, { buy: [{ list: 'gear', rowId: 'g-apt', qty: 1 }], expectTotal: 180 }),
     ).toEqual({ ok: false, error: 'MERCHANT_CLOSED' });
     const list = data(
       await emitAck<ExchangeCounterpartsResult>(vex, 'exchange:counterparts', {

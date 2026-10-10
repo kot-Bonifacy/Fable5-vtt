@@ -145,8 +145,11 @@ function trimPassage(text: string): string {
  * 09–11: numbered rules beat prose, and the model invents rules unless told —
  * explicitly and with a way out — that saying „nie ma tego w podręczniku" is the
  * expected answer, not a failure.
+ *
+ * `houseRules` (etap 47a) to zasady domowe systemu gry, dopisywane jako kolejne
+ * żelazne zasady — rdzeń nie wie, czego dotyczą (dziś: cennik CP RED).
  */
-export function buildRulesSystemPrompt(): string {
+export function buildRulesSystemPrompt(houseRules: readonly string[] = []): string {
   return [
     'Jesteś asystentem Mistrza Gry. Odpowiadasz na pytania o zasady gry WYŁĄCZNIE na podstawie' +
       ' fragmentów podręcznika, które dostajesz razem z pytaniem.',
@@ -161,6 +164,7 @@ export function buildRulesSystemPrompt(): string {
     '5. Liczby (PT, obrażenia, zasięgi, modyfikatory) przepisujesz dokładnie tak, jak stoją w tekście.' +
       ' Nie przeliczasz ich i nie zaokrąglasz.',
     '6. Nie wcielasz się w postać, nie opisujesz scen i nie proponujesz fabuły — na to jest osobny bot.',
+    ...houseRules.map((rule, index) => `${index + 7}. ${rule}`),
   ].join('\n');
 }
 

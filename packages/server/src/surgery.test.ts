@@ -249,7 +249,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     iskraId = await create('Iskra', userIds.ola);
     await emitAck(gm, 'character:update', {
       characterId: kowalId,
-      patch: { data: { eddies: 1000, humanityCurrent: 60 } },
+      patch: { data: { eddies: 10_000, humanityCurrent: 60 } },
     });
     await emitAck(gm, 'character:update', {
       characterId: iskraId,
@@ -293,7 +293,7 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     expect(card.surgery).toMatchObject({
       patientName: 'Kowal',
       surgeonName: 'Iskra',
-      defaultPrice: 100,
+      defaultPrice: 1000, // 100 ed w próbce, ×10 w cenniku domowym (etap 47a)
       dv: 13,
     });
     expect((await gmCard).message.id).toBe(messageId);
@@ -356,18 +356,18 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
       await emitAck<{ pending: boolean }>(ola, 'cyberware:respond', {
         messageId,
         action: 'operate',
-        price: 60,
+        price: 600,
       }),
       'cyberware:respond',
     );
     expect(ack.pending).toBe(false);
-    expect((await sheetOf(gm, kowalId)).eddies).toBe(940);
-    expect((await sheetOf(gm, iskraId)).eddies).toBe(60);
+    expect((await sheetOf(gm, kowalId)).eddies).toBe(9400);
+    expect((await sheetOf(gm, iskraId)).eddies).toBe(600);
     const ledger = data(
       await emitAck<EconomyHistoryResult>(ola, 'economy:history', { characterId: iskraId }),
       'economy:history',
     );
-    expect(ledger.entries[0]).toMatchObject({ kind: 'transfer', amount: 60 });
+    expect(ledger.entries[0]).toMatchObject({ kind: 'transfer', amount: 600 });
     expect(ledger.entries[0]?.label).toContain('Kowal');
   });
 
@@ -378,14 +378,14 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
       await emitAck<{ pending: boolean }>(ola, 'cyberware:respond', {
         messageId,
         action: 'operate',
-        price: 300,
+        price: 3000,
       }),
       'cyberware:respond',
     );
     expect(ack.pending).toBe(true);
-    expect((await quoted).message.surgery?.quote).toBe(300);
+    expect((await quoted).message.surgery?.quote).toBe(3000);
     // Nic się jeszcze nie stało — wycena to nie operacja.
-    expect((await sheetOf(gm, kowalId)).eddies).toBe(940);
+    expect((await sheetOf(gm, kowalId)).eddies).toBe(9400);
     // Medyk nie przebije własnej wyceny drugim „Operuję”.
     expect(
       await emitAck(ola, 'cyberware:respond', { messageId, action: 'operate', price: 0 }),
@@ -400,8 +400,8 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     expect((await emitAck(marek, 'cyberware:respond', { messageId, action: 'approve' })).ok).toBe(
       true,
     );
-    expect((await sheetOf(gm, kowalId)).eddies).toBe(640);
-    expect((await sheetOf(gm, iskraId)).eddies).toBe(360);
+    expect((await sheetOf(gm, kowalId)).eddies).toBe(6400);
+    expect((await sheetOf(gm, iskraId)).eddies).toBe(3600);
   });
 
   it('pacjent wycofuje prośbę albo odrzuca wycenę', async () => {
@@ -411,25 +411,29 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     ).toBe(true);
 
     const second = await request();
-    await emitAck(ola, 'cyberware:respond', { messageId: second, action: 'operate', price: 5000 });
+    await emitAck(ola, 'cyberware:respond', {
+      messageId: second,
+      action: 'operate',
+      price: 50_000,
+    });
     expect(
       (await emitAck(marek, 'cyberware:respond', { messageId: second, action: 'cancel' })).ok,
     ).toBe(true);
     expect(
       await emitAck(marek, 'cyberware:respond', { messageId: second, action: 'approve' }),
     ).toEqual({ ok: false, error: 'SURGERY_CLOSED' });
-    expect((await sheetOf(gm, kowalId)).eddies).toBe(640);
+    expect((await sheetOf(gm, kowalId)).eddies).toBe(6400);
   });
 
   it('pacjenta nie stać — prośba zostaje otwarta, Medyk może zejść z ceny', async () => {
     const messageId = await request();
-    await emitAck(gm, 'economy:adjust', { characterId: kowalId, balance: 50 });
+    await emitAck(gm, 'economy:adjust', { characterId: kowalId, balance: 500 });
     expect(
-      await emitAck(ola, 'cyberware:respond', { messageId, action: 'operate', price: 100 }),
+      await emitAck(ola, 'cyberware:respond', { messageId, action: 'operate', price: 1000 }),
     ).toEqual({ ok: false, error: 'NOT_ENOUGH_EDDIES' });
     scriptDice([9]);
     expect(
-      (await emitAck(ola, 'cyberware:respond', { messageId, action: 'operate', price: 50 })).ok,
+      (await emitAck(ola, 'cyberware:respond', { messageId, action: 'operate', price: 500 })).ok,
     ).toBe(true);
     expect((await sheetOf(gm, kowalId)).eddies).toBe(0);
   });

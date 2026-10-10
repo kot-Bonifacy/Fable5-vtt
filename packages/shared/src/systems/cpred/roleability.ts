@@ -31,6 +31,7 @@ import type { CompendiumEntry, CostCategory, ProgramEntry } from './compendium.j
 // A value import, and a safe one: `netrunning.ts` takes nothing from this module.
 // The team's deck copies Programs with the very function the sheet uses.
 import { netProgramProfileOf, netProgramSlots } from './netrunning.js';
+import { CPRED_PRICE_SCALE_DURABLE } from './pricing.js';
 
 /**
  * The Solo's Special Ability, matched by name for the reason described above.
@@ -722,7 +723,8 @@ export const CPRED_REPAIR_SKILL_IDS: readonly string[] = [
 /**
  * PT and time of Ulepszanie / Wytwarzanie / Wynajdywanie, by the price band of
  * the thing being made (s. 148). Superluksusowe shares Luksusowe's PT and pays
- * in time instead — „1 miesiąc na każde 10 000 ed ceny".
+ * in time instead — „1 miesiąc na każde 10 000 ed ceny" (w cenniku domowym
+ * z etapu 47a: na każde 100 000 ed — pasmo zostało, cena urosła dziesięć razy).
  */
 export const CPRED_FABRICATION_TASK: Record<CostCategory, { dv: number; time: string }> = {
   cheap: { dv: 9, time: '1 godzina' },
@@ -732,7 +734,7 @@ export const CPRED_FABRICATION_TASK: Record<CostCategory, { dv: number; time: st
   expensive: { dv: 21, time: '1 tydzień' },
   veryExpensive: { dv: 24, time: '2 tygodnie' },
   luxury: { dv: 29, time: '1 miesiąc' },
-  superLuxury: { dv: 29, time: '1 miesiąc na każde 10 000 ed ceny' },
+  superLuxury: { dv: 29, time: '1 miesiąc na każde 100 000 ed ceny' },
 };
 
 export interface CpredFabricationEffects {
@@ -2915,8 +2917,12 @@ export function cpredFleetProblem(
 /** „Oczekuje się też, że Nomada zapłaci 500 ed za tę usługę" (s. 162). */
 export const CPRED_MOTO_REPAIR_FEE = 500;
 
-/** Na poziomie 10: „ulepszać je, płacąc 1000 ed za każde ulepszenie" (s. 162). */
-export const CPRED_MOTO_UPGRADE_FEE = 1000;
+/**
+ * Na poziomie 10: „ulepszać je, płacąc 1000 ed za każde ulepszenie" (s. 162).
+ * Cennik domowy (etap 47a): ulepszenie to sprzęt, więc ×10; naprawa wyżej to
+ * usługa i zostaje jak w podręczniku.
+ */
+export const CPRED_MOTO_UPGRADE_FEE = 1000 * CPRED_PRICE_SCALE_DURABLE;
 
 /** Poziom, na którym Nomada wchodzi do władz Rodziny i bierze cały Tabor. */
 export const CPRED_MOTO_ELDER_LEVEL = 10;

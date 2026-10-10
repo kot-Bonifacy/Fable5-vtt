@@ -8,7 +8,8 @@ import {
   type ShopTier,
 } from './compendium.js';
 import { CYBERWARE_TYPE_LABELS } from './cyberware.js';
-import { entryPrice, formatEddies } from './economy.js';
+import { entryPrice } from './economy.js';
+import { cpredCatalogPriceScale, formatEddies } from './pricing.js';
 import { NET_PROGRAM_CLASS_LABELS } from './netrunning.js';
 
 /**
@@ -104,10 +105,22 @@ function armorTier(sp: number): ShopTier {
   return 4;
 }
 
-/** Price that lifts anything to at least Zawodowe — „Bardzo kosztowne". */
+/**
+ * Price that lifts anything to at least Zawodowe — „Bardzo kosztowne". Progi
+ * i drabina niżej są **w cenach podręcznika**: od etapu 47a cena wpisu jest
+ * w cenniku domowym, więc porównuje się ją podzieloną przez mnożnik wpisu
+ * (`rulebookPrice`) — pistolet za 1000 ed i nabój za 30 ed lądują na tych
+ * samych poziomach co przed przelicznikiem.
+ */
 const PRICE_FLOOR_PROFESSIONAL = 1000;
 /** Price that makes anything black market — „Luksusowe" and above. */
 const PRICE_FLOOR_BLACK_MARKET = 5000;
+
+/** Cena wpisu cofnięta do podręcznika — to ją mierzą progi poziomów. */
+function rulebookPrice(entry: CompendiumEntry): number | null {
+  const price = entryPrice(entry);
+  return price === null ? null : price / cpredCatalogPriceScale(entry);
+}
 
 export interface ShopTierContext {
   /** Name of a weapon type for the reason line; the tier never needs it. */
@@ -187,12 +200,13 @@ export function shopTierVerdict(
     return { tier: entry.tier, source: 'entry', reason: 'przypisane w danych kompendium' };
   }
   const price = entryPrice(entry);
+  const bookPrice = rulebookPrice(entry);
   const kind = kindTier(entry, context);
   if (kind) {
     const floor: ShopTier =
-      price !== null && price >= PRICE_FLOOR_BLACK_MARKET
+      bookPrice !== null && bookPrice >= PRICE_FLOOR_BLACK_MARKET
         ? 4
-        : price !== null && price >= PRICE_FLOOR_PROFESSIONAL
+        : bookPrice !== null && bookPrice >= PRICE_FLOOR_PROFESSIONAL
           ? 2
           : SHOP_TIER_MIN;
     if (floor > kind.tier && price !== null) {
@@ -205,7 +219,7 @@ export function shopTierVerdict(
     return { tier: kind.tier, source: 'kind', reason: kind.reason };
   }
   return {
-    tier: shopTierForPrice(price),
+    tier: shopTierForPrice(bookPrice),
     source: 'price',
     reason:
       price === null
@@ -221,7 +235,7 @@ export function shopTierOf(entry: CompendiumEntry, context: ShopTierContext = {}
 
 /**
  * Highest price each tier still carries under the old ladder, kept for kinds
- * the rules cannot read. An entry with no price at all („Cena: —") lands on tier
+ * the rules cannot read — in rulebook eddies (`rulebookPrice`). An entry with no price at all („Cena: —") lands on tier
  * 1 and is refused later for having no price — a row nobody finished typing
  * must not become a black-market rarity by accident.
  */
