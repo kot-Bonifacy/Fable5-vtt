@@ -6,6 +6,18 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**10.10.2026 — brak testów leczenia i efektów nakładanych ręcznie przez MG (do dopisania).**
+Przegląd kodu potwierdził, że MG może to wszystko robić, ale testy pokrywają tylko część. Pokryte są
+`character:stat-effect` (`stat-effects.test.ts`) i `token:effect` (`turn-effects.test.ts`). Brakuje:
+(1) MG zmienia `hpCurrent` cudzej karty przez `character:update`: przycięcie do 0–max, naklejki ran
+zdjęte po przejściu przez próg, nowy pasek PW figury u gracza bez przeładowania;
+(2) MG zmienia PW figury bez karty z menu kontekstowego (`token:update`);
+(3) MG wywołuje `character:rest` i `character:use-dose` za postać gracza (`requireOwnCharacter`
+wpuszcza MG);
+(4) MG włącza i wyłącza stany żetonu (`token:update { statuses }`), a gracz tego nie może zrobić;
+(5) E2E: MG leczy z karty i nakłada efekt z panelu „Efekty czasowe”, a gracz widzi oba skutki.
+Przy okazji do triażu MG: ręczna zmiana PW nie zostawia śladu na czacie.
+
 **10.10.2026 — okno handlarza pisze kwoty bez grupowania tysięcy (47b, drobiazg).** Kompendium
 i kreator pokazują „1 200 ed” (`formatEddies`, 47a), a `MerchantPane` (półka, koszyk, stopka
 „Płacisz … ed”, kasa handlarza) i karty czatu operacji — surowe „1200 ed”. Przy cenniku domowym
