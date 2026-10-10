@@ -16,9 +16,11 @@ elektronika i chrom są od nich ~10× tańsze. Płaskie ×10 dałoby kawalerkę 
 
 1. **Zróżnicowanie:** sprzęt trwały ×10 (broń, dodatki, pancerze, cyborgizacja, sprzęt i programy
    Netrunnera, obrona Sieci, sprzęt ogólny od pasma Premium); amunicja i sprzęt ogólny z pasm
-   Tanie / Codzienne / Drogie (10–50 ed) ×3, **Komputer** wyjątkiem ×10 (od 10.10 także
-   automatyczne słuchawki wygłuszające wyjątkiem ×2 — 2000 ed); montaż znalezionej cyborgizacji ×10
-   (1000 / 5000 / 10 000); terapia ×2 (1000 / 2000); czynsz, Poziom życia, zakup mieszkania ×1.
+   Tanie / Codzienne / Drogie (10–50 ed) ×3, **Komputer** wyjątkiem ×10 (od 10.10 wyjątki w dół:
+   słuchawki wygłuszające, wykrywacze podsłuchu i radaru, odbiornik lokalizatora ×2; rejestrator
+   dźwięku, przeglądarka braindance’u ×3; przybornik technika, magazynek bębnowy ×4); montaż
+   znalezionej cyborgizacji ×10 (1000 / 5000 / 10 000); terapia ×2 (1000 / 2000); czynsz, Poziom
+   życia, zakup mieszkania ×1.
 2. **Pasmo zostaje przy przedmiocie** — od niego zależą PT i czas Wytwarzania, zasięg Fixera
    i poziom sklepu. Zmienia się tylko kwota w ed.
 3. **Gotówka startowa bez zmian** (2550 / 500 ed), ale **Kompletny Pakiet dostaje gratis podstawowe

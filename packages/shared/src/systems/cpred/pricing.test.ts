@@ -49,6 +49,11 @@ describe('cennik domowy (etap 47a)', () => {
     );
     expect(earProtectors.cost).toBe(2000);
     expect(shopTierOf(earProtectors)).toBe(shopTierForPrice(1000));
+    // Magazynek bębnowy ×4: 2000 ed, dalej tańszy od broni z dodatkami, a nie droższy od pistoletu.
+    const drum = cpredScaledEntry(
+      entry({ id: 'attachment.drum-magazine', category: 'attachment', cost: 500 }),
+    );
+    expect(drum.cost).toBe(2000);
   });
 
   it('zmienia kwotę, a pasmo zostawia', () => {

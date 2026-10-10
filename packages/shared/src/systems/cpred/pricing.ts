@@ -38,12 +38,22 @@ const CONSUMABLE_GEAR_BANDS: ReadonlySet<CostCategory> = new Set(['cheap', 'ever
  * a nie kwotą, bo poziom sklepu czyta cenę podzieloną przez mnożnik.
  *
  *  - Komputer z tanich pasm: 150 ed byłoby dziesięć razy taniej od agenta.
- *  - Słuchawki wygłuszające (decyzja MG z 10.10.2026): ×10 dawało 10 000 ed
- *    za ochronniki słuchu, drożej od smartkularów.
+ *  - Decyzje MG z 10.10.2026 — ×10 dawało ceny bez związku z tym, co rzecz
+ *    robi: ochronniki słuchu za 10 000 ed (drożej od smartkularów), wykrywacze
+ *    i lokalizator po 5000 ed, dyktafon w cenie agenta, torba z narzędziami za
+ *    pięć technarzędzi, magazynek bębnowy droższy od pistoletu. Wersje
+ *    wszczepiane zostają przy ×10 — ich cena zawiera montaż.
  */
 const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
   ['gear.komputer', CPRED_PRICE_SCALE_DURABLE],
-  ['gear.automatyczne-sluchawki-wygluszajace', 2],
+  ['gear.automatyczne-sluchawki-wygluszajace', 2], // 2000 ed
+  ['gear.wykrywacz-podsluchu', 2], // 1000 ed
+  ['gear.wykrywacz-radaru', 2], // 1000 ed
+  ['gear.odbiornik-lokalizatora', 2], // 1000 ed
+  ['gear.rejestrator-dzwieku', 3], // 300 ed
+  ['gear.przegladarka-braindance-u', 3], // 3000 ed
+  ['gear.przybornik-technika', 4], // 2000 ed
+  ['attachment.drum-magazine', 4], // 2000 ed
 ]);
 
 /**
