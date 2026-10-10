@@ -389,6 +389,11 @@ export interface NewChatMessage {
   speakerName?: string | null;
   /** Scene the line belongs to — the bots' short-term memory is per scene. */
   sceneId?: string | null;
+  /**
+   * Set only to override the `db.ts` default (no session ⇒ the GM's private
+   * preparation): a player talking in the waiting room is not preparation.
+   */
+  prep?: boolean;
 }
 
 /** Persists one message and returns it in client shape. */
@@ -403,22 +408,35 @@ export async function insertChatMessage(
   return toChatMessageView(stored);
 }
 
-/** Room-wide broadcast — carries a seq, so clients can detect a missed event. */
+/**
+ * Room-wide broadcast — carries a seq, so clients can detect a missed event.
+ *
+ * `lobby` (10.10): the line is also for the players between sessions — a
+ * player's `say` written in the waiting room (`persistAndEmitSay`), so the crew
+ * can talk with each other and with the GM. Everything else of the table —
+ * the GM's preparation included — stays at the table.
+ */
 export function broadcastChatMessage(
   deps: RealtimeDeps,
   campaignId: string,
   message: ChatMessageView,
+  lobby = false,
 ): void {
   if (
     !message.roll &&
     !message.rolltable &&
-    deferView(deps, (ready) => broadcastChatMessage(ready, campaignId, message))
+    deferView(deps, (ready) => broadcastChatMessage(ready, campaignId, message, lobby))
   )
     return;
   const room = campaignRoom(campaignId);
   const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message };
   deps.io.to(room).emit('chat:message', payload);
-  void deliverToLobbyParties(deps, campaignId, message, 'chat:message');
+  if (lobby) {
+    // Bez `seq`, jak każde dostarczenie poza stołem.
+    deps.io.to(lobbyRoom(campaignId)).emit('chat:message', { message } as ChatMessageBroadcast);
+  } else {
+    void deliverToLobbyParties(deps, campaignId, message, 'chat:message');
+  }
 }
 
 /**

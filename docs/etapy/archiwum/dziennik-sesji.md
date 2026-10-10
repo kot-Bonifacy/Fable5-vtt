@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (trzecia) — etap 48b „Cyberdek i Programy jako towar”
+
+**Zlecenie MG:** „kontynuuj projekt (chyba 48b)”, pytać o niejasności. Przy przeglądzie wyszło, że
+po cenniku ×10 sześć Programów Iskry z T3a kosztuje 2900 ed (zostaje jej 550). **Decyzje MG:**
+pakiet Roli Netrunnera dostaje stały zestaw pięciu Programów (Pancerz, Miecz, Mam cię!, Mózgoklep,
+Robak); odpięty dek wraca do Wyposażenia razem z zawartością; **MG też przez Wyposażenie** (wbrew
+rekomendacji — bez list z kompendium na karcie); kreator wkłada Programy, ile wejdzie.
+
+**Zrobione:** `systems/cpred/cyberdeck.ts` (podpięcie, odpięcie, wkładanie, wyjmowanie, gniazda,
+`cpredFitDeckFromGear` dla kreatora), Program w `purchasedSheetRow` i `COMPENDIUM_ITEM_CATEGORIES`,
+`character:deck` w `realtime/deck.ts`, odmowa łaty `cyberdeck` gracza, kreator (`creationOutcome`
+i `payStartingKit`), sekcja „Cyberdek” na karcie od nowa, „Kup”/„Dodaj za darmo” przy Programach
+w Kompendium, półka „Programy” w kreatorze i dek w podsumowaniu. Dane poza repo: Programy
+w pakiecie Netrunnera (`creation.json`) i boostery/defensory jako jego narzędzia Roli
+(`shop-tiers.json`); próbka w `data/public` tak samo. E2E T3a: krok 3.8 z Tarczą od MG.
+
+**Znalezione:** podpięty dek nie jest w łupie ani w handlu (`POMYSLY.md`).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
+MCP, `dev.db`, kampania „Test_1”): NPC z dekiem, Kruk i Miecz z „Dodaj za darmo”, podłączenie,
+wkładanie (Czarny LOD 2 gniazda), ▲ gniazd u MG, odłączenie do Wyposażenia; widok gracza (bez
+▲▼, wkładanie Tarczy) — Ola w Firefoksie w T3a. **Ślady w `dev.db`:** brak (NPC z oględzin
+skasowany). Vite na :5173 uruchomiony w tej sesji obok działającego już serwera :3001.
+
+**Następny krok — 48c** (decyzja MG na starcie: co gracz dopisuje ręką) — zrobione w sesji czwartej.
+
 ### Sesja 10.10 (druga) — etap 48a „Przypomnienie o zakupach, kadr portretów, Zakwaterowanie”
 
 **Zlecenie MG:** cztery uwagi (przypomnienie o zakupach w kreatorze, cyberdeki za darmo, przegląd

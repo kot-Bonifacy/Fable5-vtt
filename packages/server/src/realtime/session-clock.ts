@@ -12,12 +12,15 @@ import type { SessionConfig } from '../config.js';
  * zanim dotknie bazy. Biała lista, nie czarna: nowe zdarzenie stołu jest
  * zamknięte, dopóki ktoś świadomie go tu nie dopisze.
  *
- * Bez mapy, ruchu, rzutów stołu, walki, Sieci, botów i pisania na czacie.
+ * Bez mapy, ruchu, rzutów stołu, walki, Sieci i botów. Pisanie na czacie
+ * wróciło 10.10 (decyzja MG): `chat:send` sam odmawia między sesjami rzutów,
+ * tabel i botów — zostaje rozmowa i szepty między ludźmi.
  */
 export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   // Odczyt: stan, historia czatu, dziennik, handouty, historie karty.
   'state:request',
   'chat:history',
+  'chat:send',
   'journal:list',
   'handout:list',
   'character:xp-history',

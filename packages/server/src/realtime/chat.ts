@@ -84,6 +84,7 @@ async function persistAndEmitSay(
   user: SessionUser,
   sceneId: string | null,
   text: string,
+  lobby: boolean,
 ): Promise<ChatMessageView> {
   const message = await insertChatMessage(deps.ctx.prisma, {
     campaignId,
@@ -92,8 +93,11 @@ async function persistAndEmitSay(
     text,
     sceneId,
     speakerName: await playerSpeakerName(deps, campaignId, user, sceneId),
+    // Rozmowa w poczekalni (10.10) należy do drużyny, nie do przygotowania MG:
+    // pozostali gracze widzą ją także w historii.
+    ...(lobby ? { prep: false } : {}),
   });
-  broadcastChatMessage(deps, campaignId, message);
+  broadcastChatMessage(deps, campaignId, message, lobby);
   emitJournalPending(deps, campaignId);
   return message;
 }
@@ -272,6 +276,9 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
     const sceneId = messageSceneId(socket.data);
     const text = typeof payload?.text === 'string' ? payload.text : '';
     if (text.length > MAX_CHAT_MESSAGE_LENGTH) throw new RealtimeError('MESSAGE_TOO_LONG');
+    // Gracz między sesjami (10.10): rozmowa i szepty do ludzi tak, rzuty,
+    // tabele i boty — dopiero przy stole.
+    const inLobby = socket.data.atTable !== true;
 
     const [roster, bots] = await Promise.all([
       getRoster(deps.ctx.prisma, campaignId),
@@ -304,7 +311,15 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
       case 'invalid-rolltable':
         throw new RealtimeError('TABLE_MISSING_NAME');
       case 'say': {
-        const message = await persistAndEmitSay(deps, campaignId, user, sceneId, parsed.text);
+        const message = await persistAndEmitSay(
+          deps,
+          campaignId,
+          user,
+          sceneId,
+          parsed.text,
+          inLobby,
+        );
+        if (inLobby) return;
         await triggerBotsForLine(deps, {
           campaignId,
           sceneId,
@@ -326,7 +341,7 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           sceneId,
           parsed.targetName,
           parsed.text,
-          bots,
+          inLobby ? [] : bots,
         );
         return;
       case 'as-bot':
@@ -344,6 +359,7 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
         );
         return;
       case 'rolltable': {
+        if (inLobby) throw new RealtimeError('SESSION_NOT_RUNNING');
         // Tabela jest narzędziem MG (etap 34, „Poza zakresem"), więc `/tab`
         // u gracza ma się kończyć odmową, a nie listą nazw do zgadywania.
         if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
@@ -361,6 +377,7 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
         return;
       }
       case 'roll':
+        if (inLobby) throw new RealtimeError('SESSION_NOT_RUNNING');
         await persistAndEmitRoll(
           deps,
           campaignId,

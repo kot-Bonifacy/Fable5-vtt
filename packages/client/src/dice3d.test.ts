@@ -5,14 +5,13 @@ const mock = vi.hoisted(() => ({
   roll: vi.fn(),
   add: vi.fn(),
   clearDice: vi.fn(),
-  animate: true,
   /** The factory's d10 geometry — every die of the type is born with it. */
   shared: { dispose: vi.fn() },
   clones: [] as { dispose: ReturnType<typeof vi.fn> }[],
 }));
 vi.mock('./stores/settingsStore.js', () => ({
   useSettingsStore: {
-    getState: () => ({ animate: mock.animate, skin: 'classic', soundVolume: 0 }),
+    getState: () => ({ skin: 'classic', soundVolume: 0 }),
   },
 }));
 vi.mock('@3d-dice/dice-box-threejs', () => ({
@@ -49,7 +48,6 @@ function deferred() {
 beforeEach(() => {
   vi.resetModules();
   vi.useFakeTimers();
-  mock.animate = true;
   mock.roll.mockReset();
   mock.add.mockReset();
   mock.clearDice.mockReset();
@@ -129,13 +127,6 @@ describe('dice completion', () => {
     await vi.advanceTimersByTimeAsync(5_000);
     await result;
     expect(finished).toHaveBeenCalledWith(false);
-  });
-
-  it('needs no animation when it is disabled', async () => {
-    const dice = await import('./dice3d.js');
-    mock.animate = false;
-    expect(await dice.playRollAnimation(roll)).toBe(false);
-    expect(mock.roll).not.toHaveBeenCalled();
   });
 });
 

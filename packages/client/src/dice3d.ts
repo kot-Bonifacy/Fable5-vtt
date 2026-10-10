@@ -384,13 +384,8 @@ export function cancelDiceAnimations(): void {
  * Plays the 3D animation of a server roll. Call for live `chat:message`
  * broadcasts only — history and resyncs must not replay old rolls. Resolves
  * (true = animation actually played) once the dice have settled.
- *
- * Answers `false` at once when this viewer turned the animation off — that is
- * what makes the chat card appear immediately instead of waiting for dice
- * that will never roll.
  */
 export function playRollAnimation(roll: RollResult): Promise<boolean> {
-  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   const notation = toAnimationNotation(roll);
   if (!notation) return Promise.resolve(false);
   const extra = extraNotation(roll);
@@ -411,7 +406,6 @@ export function playRollAnimation(roll: RollResult): Promise<boolean> {
  * nothing is sent to the server and no chat card appears.
  */
 export function playFunRoll(notation: string, strength: number, toss?: RollToss): Promise<boolean> {
-  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   const boost = '!'.repeat(Math.min(Math.max(strength, 0), 3));
   return enqueue({
     notation: `${boost}${notation}`,
@@ -426,12 +420,9 @@ export function playFunRoll(notation: string, strength: number, toss?: RollToss)
 
 /**
  * Preview throw for the settings window (stage 27d): two dice in the chosen
- * skin, physics only, nothing sent anywhere. Returns false when the viewer
- * has animations turned off — there is then nothing to show and the window
- * says so rather than pretending the click did something.
+ * skin, physics only, nothing sent anywhere.
  */
 export function previewSkin(skin: DiceSkinId): Promise<boolean> {
-  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   return enqueue({ notation: '!1d10+1d6', fun: true, toss: undefined, strength: 1, skin });
 }
 

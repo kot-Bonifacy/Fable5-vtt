@@ -109,7 +109,6 @@ import {
 } from './token-ring.js';
 import { gridLinePositions, gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
-import { useSettingsStore } from '../stores/settingsStore.js';
 import { PLAYER_MOVE_STOP_NOTE } from './player-move.js';
 
 /**
@@ -4851,19 +4850,12 @@ export class MapRenderer {
    * three; a halo that breathes is the only thing on the map that moves while
    * nothing is happening, and the eye finds it without being told. Slow — one
    * beat every two seconds — because the point is to be findable, not urgent.
-   *
-   * Obeys „Animacja 3D" off, like every other moving thing (27d, 27i): that
-   * switch means „nie chcę przedstawienia", and this is a small one.
    */
   private readonly tickTurn = (): void => {
     const id = this.activeTokenId;
     if (!id) return;
     const node = this.tokenNodes.get(id);
     if (!node || node.destroyed) return;
-    if (!useSettingsStore.getState().animate) {
-      node.pulseTurn(1);
-      return;
-    }
     const phase = 0.5 + 0.5 * Math.sin((performance.now() / 1000) * Math.PI);
     node.pulseTurn(Math.round(phase * 20) / 20);
   };

@@ -15,10 +15,11 @@ import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
  * opcji"): kości, kubek, mapa i powiadomienia. Proporcje między nimi siedzą
  * w kodzie (`SFX_GAIN`, wzmocnienie sygnału w `cup-notification.ts`), nie
  * u gracza. Muzyka i otoczenie sceny mają własne suwaki w oknie muzyki.
+ *
+ * Kości toczą się zawsze (10.10, decyzja MG): rzut i patrzenie, co wypadnie,
+ * to sedno gry, więc przełącznik „Animacja 3D” zniknął z ustawień.
  */
 export interface SettingsState {
-  /** Wyłączone = rzut nie toczy kości, karta czatu pojawia się natychmiast. */
-  animate: boolean;
   /** 0–100, wszystkie efekty: kości, kubek, mapa, powiadomienia. Zero wycisza. */
   soundVolume: number;
   ambientVolume: number;
@@ -36,7 +37,6 @@ export interface SettingsState {
   /** Czy okno ustawień jest otwarte. */
   open: boolean;
 
-  setAnimate: (animate: boolean) => void;
   setSoundVolume: (volume: number) => void;
   /** Sam zapis — wejście i wyjście woła `setFullscreenPreference` z `fullscreen.ts`. */
   setFullscreen: (on: boolean) => void;
@@ -46,7 +46,6 @@ export interface SettingsState {
   toggleOpen: () => void;
 }
 
-const ANIMATE_KEY = 'vtt.dice.animate';
 const SOUND_VOLUME_KEY = 'vtt.sound.volume';
 const FULLSCREEN_KEY = 'vtt.view.fullscreen';
 const SKIN_KEY = 'vtt.dice.skin';
@@ -91,7 +90,6 @@ function write(key: string, value: string): void {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  animate: readFlag(ANIMATE_KEY, true),
   soundVolume: readVolume(SOUND_VOLUME_KEY, 50),
   ambientVolume: readVolume('vtt.ambience.volume', 35),
   setAmbientVolume: (volume) => {
@@ -108,11 +106,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   fullscreen: readFlag(FULLSCREEN_KEY, false),
   skin: readSkin(),
   open: false,
-
-  setAnimate: (animate) => {
-    write(ANIMATE_KEY, animate ? '1' : '0');
-    set({ animate });
-  },
 
   setSoundVolume: (volume) => {
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));

@@ -269,7 +269,9 @@ describe('przygotowanie i widok między sesjami', () => {
   it('gracz między sesjami nie wykona zdarzenia stołu, także z konsoli', async () => {
     const player = await seated(alfa.playerCookie);
     for (const [event, payload] of [
-      ['chat:send', { text: 'hej' }],
+      // Czat w poczekalni (10.10): rozmowa tak, rzut i tabela nie.
+      ['chat:send', { text: '/r 1d10' }],
+      ['chat:send', { text: '/tab Ulica' }],
       ['token:move', { tokenId: 'x', x: 1, y: 1 }],
       ['character:roll', { characterId: 'x', request: { kind: 'stat', statId: 'ref' } }],
       ['map:ping', { x: 1, y: 1 }],
@@ -382,7 +384,7 @@ describe('start i koniec sesji', () => {
     expect(away.campaign?.sessionStartedAt).toBeNull();
     expect(away.campaign?.lastSessionEndedAt).toBe(new Date(now).toISOString());
     expect((await ended).reason).toBe('gm');
-    expect(await emitAck(player.socket, 'chat:send', { text: 'jeszcze' })).toEqual({
+    expect(await emitAck(player.socket, 'chat:send', { text: '/r 1d10' })).toEqual({
       ok: false,
       error: 'SESSION_NOT_RUNNING',
     });
@@ -682,6 +684,46 @@ describe('biała lista zdarzeń między sesjami', () => {
     }
     expect(leaked).toEqual([]);
     expect(blocked).toEqual([]);
+    disconnectAll();
+  });
+});
+
+describe('czat w poczekalni (10.10)', () => {
+  it('gracze między sesjami rozmawiają ze sobą i z MG; przygotowanie MG dalej do nich nie dociera', async () => {
+    const zuzaCookie = await joinPlayer(gamma.campaignId, 'Zuza');
+    const gm = await seated(gamma.cookie);
+    const igor = await seated(gamma.playerCookie);
+    const zuza = await seated(zuzaCookie);
+    const gmHeard: string[] = [];
+    const zuzaHeard: string[] = [];
+    gm.socket.on('chat:message', (payload: ChatMessageBroadcast) =>
+      gmHeard.push(payload.message.text),
+    );
+    zuza.socket.on('chat:message', (payload: ChatMessageBroadcast) =>
+      zuzaHeard.push(payload.message.text),
+    );
+
+    expect((await emitAck(igor.socket, 'chat:send', { text: 'kiedy gramy?' })).ok).toBe(true);
+    expect((await emitAck(gm.socket, 'chat:send', { text: 'notatka MG o zasadzce' })).ok).toBe(
+      true,
+    );
+    expect((await emitAck(gm.socket, 'chat:send', { text: '/w Zuza w piątek o 19' })).ok).toBe(
+      true,
+    );
+    // Bot nie odpowie w poczekalni — szept do nieznanego imienia to odmowa.
+    expect(await emitAck(igor.socket, 'chat:send', { text: '/w Vex hej' })).toEqual({
+      ok: false,
+      error: 'TARGET_NOT_FOUND',
+    });
+    await settle();
+    expect(zuzaHeard).toEqual(['kiedy gramy?', 'w piątek o 19']);
+    expect(gmHeard).toContain('kiedy gramy?');
+
+    // Historia Zuzy: rozmowa drużyny i szept, bez przygotowania MG.
+    const texts = (await emitAckSync(zuza.socket)).messages.map((message) => message.text);
+    expect(texts).toContain('kiedy gramy?');
+    expect(texts).toContain('w piątek o 19');
+    expect(texts).not.toContain('notatka MG o zasadzce');
     disconnectAll();
   });
 });

@@ -3,6 +3,7 @@ import type {
   CompendiumEntry,
   CyberwareSurgeon,
   CyberwareSurgeonView,
+  ShopTier,
   WeaponTypeDefinition,
 } from '@vtt/shared';
 import {
@@ -89,6 +90,11 @@ import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from '.
  * data — picking gear is a player activity — while adding, editing and
  * deleting the campaign's own entries stays with the GM.
  *
+ * A player sees the shelf only up to the shop tier the GM has unlocked
+ * (10.10, the GM's call): a crew starting out reads the street catalogue, not
+ * the black market. The GM's own entries (story items) and critical injuries
+ * stay visible whatever their tier; the GM sees everything.
+ *
  * Labels follow the Polish edition: OBR. (damage), OB (armor), LA (rate of
  * fire), PT (difficulty value).
  */
@@ -113,9 +119,19 @@ export function CompendiumPanel() {
     () => shopTierContextOf(shopTierOverrides, weaponTypeById),
     [shopTierOverrides, weaponTypeById],
   );
+  const shelf = useMemo(
+    () =>
+      isGm
+        ? order
+        : order.filter((id) => {
+            const entry = entriesById[id];
+            return entry !== undefined && onPlayerShelf(entry, tierContext, shopTier);
+          }),
+    [isGm, order, entriesById, tierContext, shopTier],
+  );
   const found = useMemo(
-    () => visibleEntries(entriesById, order, query, category),
-    [entriesById, order, query, category],
+    () => visibleEntries(entriesById, shelf, query, category),
+    [entriesById, shelf, query, category],
   );
   // Broń: filtr typem i kolejność typami (24.09) — reszta kategorii bez zmian.
   const [weaponType, setWeaponType] = useState<string | null>(null);
@@ -125,7 +141,7 @@ export function CompendiumPanel() {
     [category, found, foundWeapons, weaponType],
   );
   const entryIcon = useEntryIcon();
-  const counts = useMemo(() => countByCategory(entriesById, order), [entriesById, order]);
+  const counts = useMemo(() => countByCategory(entriesById, shelf), [entriesById, shelf]);
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
 
@@ -237,6 +253,16 @@ export function CompendiumPanel() {
       {editing ? <CompendiumEditor /> : null}
     </section>
   );
+}
+
+/** Is the entry on a player's shelf: unlocked tier, a GM's own entry, or an injury. */
+function onPlayerShelf(
+  entry: CompendiumEntry,
+  context: ReturnType<typeof shopTierContextOf>,
+  unlocked: ShopTier,
+): boolean {
+  if (entry.custom || entry.category === 'criticalInjury') return true;
+  return shopTierOf(entry, context) <= unlocked;
 }
 
 /**

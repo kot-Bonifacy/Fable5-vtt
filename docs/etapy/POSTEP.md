@@ -236,6 +236,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 10.10 (piąta) — poprawki spoza etapów: czat w poczekalni, półka Kompendium, „Animacja 3D”
+
+**Zlecenie MG:** (1) między sesjami gracze mają móc pisać na czacie, a Kompendium ma być
+ograniczone do tego, co pasuje początkującym; (2) skasować z ustawień przełącznik „Animacja 3D”
+(rzut i patrzenie na kości to sedno gry) — **skórki kości zostają** (doprecyzowanie MG).
+
+**Zrobione:** `chat:send` na białej liście poczekalni (`session-clock.ts`); w poczekalni zwykła
+wypowiedź i szept do ludzi, `/r` i `/tab` — `SESSION_NOT_RUNNING`, boty nie słyszą ani nie
+odbierają szeptów. Wypowiedź gracza z poczekalni zapisuje się z `prep: false` i idzie do stołu
+(MG) i do całej poczekalni (`broadcastChatMessage(…, lobby)`); **przygotowanie MG dalej nie
+dociera do graczy** — MG odpowiada poczekalni szeptem. Kompendium gracza (przy stole i w
+poczekalni) pokazuje tylko wpisy do odblokowanego poziomu sklepu; własne wpisy MG i Krytyczne
+rany zawsze; MG widzi wszystko (`onPlayerShelf` w `CompendiumPanel`, filtr widoku, nie danych).
+„Animacja 3D” usunięta razem z `settingsStore.animate` — kości toczą się zawsze, aureola tury
+zawsze pulsuje. Test `sessions.test.ts` › „czat w poczekalni”, T8c bez przełącznika.
+
+**Weryfikacja:** `pnpm test` (shared 2423, client 330, server 1418), `tsc` client/server/e2e,
+eslint zmienionych plików. Oglądane w **Firefoksie** (MG, `dev.db`): okno ustawień bez
+przełącznika, skórki na miejscu. Widok gracza w poczekalni nieoglądany w przeglądarce — pokrywa
+go test serwera; E2E nieuruchamiane.
+
 ### Sesja 10.10 (czwarta) — etap 48c „Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 48c)”, pytać o niejasności. Przegląd znalazł poza
@@ -266,29 +287,3 @@ nazwy i liczby tylko do odczytu, ilość z sufitem, bez „+ Wyposażenie”. **
 (wiersz magazynka MG usunął). Dev :3001 i Vite :5173 działały już przed sesją.
 
 **Następny krok — refaktoryzacja całości pod osłoną suity**, potem T10.
-
-### Sesja 10.10 (trzecia) — etap 48b „Cyberdek i Programy jako towar”
-
-**Zlecenie MG:** „kontynuuj projekt (chyba 48b)”, pytać o niejasności. Przy przeglądzie wyszło, że
-po cenniku ×10 sześć Programów Iskry z T3a kosztuje 2900 ed (zostaje jej 550). **Decyzje MG:**
-pakiet Roli Netrunnera dostaje stały zestaw pięciu Programów (Pancerz, Miecz, Mam cię!, Mózgoklep,
-Robak); odpięty dek wraca do Wyposażenia razem z zawartością; **MG też przez Wyposażenie** (wbrew
-rekomendacji — bez list z kompendium na karcie); kreator wkłada Programy, ile wejdzie.
-
-**Zrobione:** `systems/cpred/cyberdeck.ts` (podpięcie, odpięcie, wkładanie, wyjmowanie, gniazda,
-`cpredFitDeckFromGear` dla kreatora), Program w `purchasedSheetRow` i `COMPENDIUM_ITEM_CATEGORIES`,
-`character:deck` w `realtime/deck.ts`, odmowa łaty `cyberdeck` gracza, kreator (`creationOutcome`
-i `payStartingKit`), sekcja „Cyberdek” na karcie od nowa, „Kup”/„Dodaj za darmo” przy Programach
-w Kompendium, półka „Programy” w kreatorze i dek w podsumowaniu. Dane poza repo: Programy
-w pakiecie Netrunnera (`creation.json`) i boostery/defensory jako jego narzędzia Roli
-(`shop-tiers.json`); próbka w `data/public` tak samo. E2E T3a: krok 3.8 z Tarczą od MG.
-
-**Znalezione:** podpięty dek nie jest w łupie ani w handlu (`POMYSLY.md`).
-
-**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
-MCP, `dev.db`, kampania „Test_1”): NPC z dekiem, Kruk i Miecz z „Dodaj za darmo”, podłączenie,
-wkładanie (Czarny LOD 2 gniazda), ▲ gniazd u MG, odłączenie do Wyposażenia; widok gracza (bez
-▲▼, wkładanie Tarczy) — Ola w Firefoksie w T3a. **Ślady w `dev.db`:** brak (NPC z oględzin
-skasowany). Vite na :5173 uruchomiony w tej sesji obok działającego już serwera :3001.
-
-**Następny krok — 48c** (decyzja MG na starcie: co gracz dopisuje ręką) — zrobione w sesji czwartej.

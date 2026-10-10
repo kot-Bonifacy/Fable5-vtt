@@ -1002,7 +1002,7 @@ export function ChatPanel() {
         {/* Między sesjami (44c) gracz nigdy nie patrzy w pustą czerń. */}
         {synced && betweenSessions && feed.length === 0 && (
           <p className="placeholder-text">
-            Między sesjami czat jest tylko do czytania — historia z sesji pojawi się tutaj.
+            Między sesjami możesz tu pisać z drużyną i z MG — rzuty i boty wrócą przy stole.
           </p>
         )}
         {loadingHistory && <p className="chat-note">Wczytywanie historii…</p>}
@@ -1053,21 +1053,19 @@ export function ChatPanel() {
           // people to type what they should be throwing. The command still
           // works for anyone who wants it.
           placeholder={
-            betweenSessions
-              ? 'Czat tylko do czytania'
-              : campaign
-                ? isGm
-                  ? 'Wiadomość… (/w szept, /jako NPC)'
-                  : 'Wiadomość… (/w <imię> — szept)'
-                : 'Czat niedostępny'
+            campaign
+              ? isGm
+                ? 'Wiadomość… (/w szept, /jako NPC)'
+                : 'Wiadomość… (/w <imię> — szept)'
+              : 'Czat niedostępny'
           }
-          disabled={!synced || !campaign || betweenSessions}
+          disabled={!synced || !campaign}
           aria-label="Wiadomość czatu"
         />
         <button
           className="primary-button"
           type="submit"
-          disabled={!synced || !campaign || betweenSessions || draft.trim().length === 0}
+          disabled={!synced || !campaign || draft.trim().length === 0}
         >
           Wyślij
         </button>

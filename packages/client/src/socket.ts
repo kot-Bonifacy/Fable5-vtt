@@ -409,6 +409,8 @@ function chatErrorText(code: string): string {
       return 'Nie znaleziono odbiorcy o tym imieniu.';
     case 'TARGET_IS_SELF':
       return 'Nie możesz szeptać do samego siebie.';
+    case 'SESSION_NOT_RUNNING':
+      return 'Między sesjami czat służy do rozmowy — rzuty i tabele wrócą przy stole.';
     case 'MESSAGE_TOO_LONG':
       return 'Wiadomość jest za długa (limit 2000 znaków).';
     case 'ROLL_MISSING_NOTATION':

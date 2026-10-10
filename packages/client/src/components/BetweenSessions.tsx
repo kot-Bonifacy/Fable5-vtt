@@ -16,7 +16,7 @@ const MAX_SHEET_BUTTONS = 3;
  * powinien mieć pustego ekranu”) — stoi na tym samym plakacie Night City co
  * logowanie, a napisy siedzą w jego czerwonej ramce celownika, tą samą
  * kotwicą co formularz wejścia (tylko liczoną od kontenera, nie od okna).
- * Karty, dziennik, handouty i historia czatu są w panelu po prawej; stół
+ * Karty, dziennik, handouty i czat (od 10.10 także pisanie) są w panelu po prawej; stół
  * otworzy się sam, gdy MG kliknie „Rozpocznij sesję”.
  *
  * Etap 46a (decyzja MG 9): sklepy oznaczone przez MG „między sesjami” stoją
@@ -51,7 +51,7 @@ export function BetweenSessions() {
           Stół otworzy się sam, gdy MG ją rozpocznie.
         </p>
         <p className="between-sessions-hint">
-          Do tego czasu masz swoją kartę, dziennik, handouty i historię czatu w panelu obok.
+          Do tego czasu masz swoją kartę, dziennik, handouty i czat z drużyną w panelu obok.
         </p>
         {mine.length > 0 && (
           <div className="between-sessions-actions">

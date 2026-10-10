@@ -32,8 +32,6 @@ export function SettingsWindow() {
   const open = useSettingsStore((s) => s.open);
   const setOpen = useSettingsStore((s) => s.setOpen);
 
-  const animate = useSettingsStore((s) => s.animate);
-  const setAnimate = useSettingsStore((s) => s.setAnimate);
   const soundVolume = useSettingsStore((s) => s.soundVolume);
   const setSoundVolume = useSettingsStore((s) => s.setSoundVolume);
   const skin = useSettingsStore((s) => s.skin);
@@ -104,20 +102,6 @@ export function SettingsWindow() {
 
         <section className="settings-group">
           <h3 className="settings-group-title">Kości</h3>
-
-          <label className="settings-row settings-row--switch">
-            <input
-              type="checkbox"
-              checked={animate}
-              onChange={(event) => setAnimate(event.target.checked)}
-            />
-            <span>
-              Animacja 3D
-              <span className="settings-hint">
-                Wyłączona — karta rzutu na czacie pojawia się od razu, bez czekania na kości.
-              </span>
-            </span>
-          </label>
 
           <p className="settings-note">
             Skórka jedzie z rzutem: przy Twoim rzucie cały stół widzi te kości. Kliknięcie od razu

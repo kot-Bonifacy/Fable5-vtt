@@ -112,7 +112,7 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
     }
   });
 
-  test('ustawienia kości: skórka jedzie z rzutem do MG, bez animacji karta od razu, wybór przeżywa F5', async () => {
+  test('ustawienia kości: skórka jedzie z rzutem do MG, wybór przeżywa F5', async () => {
     test.setTimeout(3 * 60_000);
     const page = marek.page;
     let settings = await openSettings(page);
@@ -124,8 +124,8 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
             ?.diceSkin,
       )
       .toBe('acid');
-    const animate = settings.locator('label', { hasText: 'Animacja 3D' }).locator('input');
-    await animate.uncheck();
+    // Kości toczą się zawsze — przełącznik „Animacja 3D” zniknął 10.10.
+    await expect(settings.locator('label', { hasText: 'Animacja 3D' })).toHaveCount(0);
     const volume = settings.locator('label', { hasText: 'Głośność' }).locator('input');
     await volume.fill('35');
     await closeSettings(page);
@@ -140,19 +140,12 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
     const mark = await mg.sniffer.mark();
     const before = (await rollTotals(page)).length;
     scriptDice([7]);
-    const started = Date.now();
     await rollWithCup(page, '/r 1d10');
     await expect
-      .poll(async () => (await rollTotals(page)).slice(before), { timeout: 10_000 })
+      .poll(async () => (await rollTotals(page)).slice(before), { timeout: 30_000 })
       .toEqual(['7']);
-    const marekWait = Date.now() - started;
     expect(pendingDice()).toBe('');
     await expect.poll(() => mg.sniffer.found(['"skin":"acid"'], mark)).toEqual(['"skin":"acid"']);
-    test.info().annotations.push({
-      type: 'karta rzutu bez animacji',
-      description: `${marekWait} ms od puszczenia kubka`,
-    });
-    expect(marekWait).toBeLessThan(5_000);
 
     await page.reload();
     await expect
@@ -163,13 +156,9 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
       'aria-pressed',
       'true',
     );
-    await expect(
-      settings.locator('label', { hasText: 'Animacja 3D' }).locator('input'),
-    ).not.toBeChecked();
     await expect(settings.locator('label', { hasText: 'Głośność' }).locator('input')).toHaveValue(
       '35',
     );
-    await settings.locator('label', { hasText: 'Animacja 3D' }).locator('input').check();
     await closeSettings(page);
   });
 
