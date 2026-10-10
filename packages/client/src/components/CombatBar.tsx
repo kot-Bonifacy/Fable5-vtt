@@ -25,6 +25,7 @@ import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
+import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
 
@@ -213,6 +214,35 @@ function ChipInitiative({
  * pierwszym rzutem nie ma, i pokazywał „Inicjatywa +0” przy rzucie za +8.
  * Figura bez karty rzuca gołe 1k10, więc zero jest wtedy prawdą.
  */
+/**
+ * Portret w pasie inicjatywy (etap 48a, zlecenie MG z 10.10): ten sam kadr co
+ * baner lewej belki (`usePortraitFrameStyle`), tylko w kwadracie — przy tej
+ * samej twarzy kwadrat pokazuje więcej dolnej części portretu niż baner 4:3.
+ * Do 10.10 było tu `object-fit: cover` ze środka grafiki, więc pas pokazywał
+ * pierś zamiast twarzy. Portret spoza puli zostaje przy `object-position`.
+ */
+function ChipPortrait({ name, imageUrl }: { name: string; imageUrl: string | null }) {
+  const crop = usePortraitFrameStyle(imageUrl, 1);
+  if (!imageUrl) {
+    return (
+      <span className="combat-chip-portrait combat-chip-portrait--empty">
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </span>
+    );
+  }
+  return (
+    <span className="combat-chip-portrait">
+      <img
+        className={`combat-chip-portrait-img${crop ? ' combat-chip-portrait-img--cropped' : ''}`}
+        src={imageUrl}
+        alt=""
+        draggable={false}
+        {...(crop ? { style: crop } : {})}
+      />
+    </span>
+  );
+}
+
 function initiativeModifierOf(combatant: CombatantView): number {
   const token = combatant.tokenId ? useTokenStore.getState().tokens[combatant.tokenId] : undefined;
   const characters = useCharacterStore.getState();
@@ -424,13 +454,7 @@ export function CombatBar() {
               }}
             >
               <span className="combat-chip-figure">
-                {combatant.imageUrl ? (
-                  <img className="combat-chip-portrait" src={combatant.imageUrl} alt="" />
-                ) : (
-                  <span className="combat-chip-portrait combat-chip-portrait--empty">
-                    {combatant.name.trim().charAt(0).toUpperCase() || '?'}
-                  </span>
-                )}
+                <ChipPortrait name={combatant.name} imageUrl={combatant.imageUrl} />
                 {/* A held Action or a hold on somebody's throat changes what
                     the turn may do — small enough for a corner, too important
                     to leave to the tooltip. */}

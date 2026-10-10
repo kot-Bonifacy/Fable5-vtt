@@ -4096,6 +4096,9 @@ export function characterSaveErrorText(code: string): string {
     // Etap 46c (decyzja MG z 09.10): na karcie z zapasem naboi ręką tylko ubywa.
     case 'AMMO_LOCKED':
       return 'Naboi przybywa z zakupu, wymiany, łupu albo od MG — ręką możesz je tylko odjąć.';
+    // Etap 48a (decyzja MG z 10.10): kwaterunek od Korporacji wg Pracy Zespołowej.
+    case 'HOUSING_LOCKED':
+      return 'To zakwaterowanie daje Korporacja od odpowiedniej rangi Pracy Zespołowej — ustawia je MG.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie ma takiej postaci w tej kampanii — odśwież stronę.';
     case 'BAD_REQUEST':

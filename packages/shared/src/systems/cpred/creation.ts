@@ -259,6 +259,12 @@ export interface CpredCreationDraft {
    * nie wybrano albo Rola nie ma wyboru. Znika ze zmianą Roli i metody.
    */
   kitChoice: string | null;
+  /**
+   * „Ruszam bez zakupów” (etap 48a, decyzja MG z 10.10): gracz świadomie nie
+   * kupuje nic. Bez tego pusty koszyk szkicu gracza jest brakiem — żeby nikt
+   * nie wyszedł z kreatora z całą gotówką i gołymi rękami, bo zapomniał.
+   */
+  skipPurchases: boolean;
   /** Uploaded portrait (`/uploads/portraits/…`); copied onto the sheet. */
   portraitUrl: string | null;
   /** Whether finishing also puts a token on the scene. */
@@ -321,6 +327,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     name: '',
     purchases: {},
     kitChoice: null,
+    skipPurchases: false,
     portraitUrl: null,
     // Session zero ends with a figure on the map, so the box starts ticked; a
     // GM building five gangers in an evening unticks it once.
@@ -967,6 +974,11 @@ export function creationIssues(
    * price ladder — is an issue; without them only a missing entry is.
    */
   shopRules?: CreationShopRules,
+  /**
+   * Etap 48a: przypomnienie o zakupach dotyczy szkicu **gracza** — MG robiący
+   * pięciu NPC-ów w jeden wieczór nie odhacza „Ruszam bez zakupów” pięć razy.
+   */
+  options: { requirePurchases?: boolean } = {},
 ): CpredValidationIssue[] {
   const issues: CpredValidationIssue[] = [];
   const role = creationRole(data, draft.roleId);
@@ -1115,6 +1127,18 @@ export function creationIssues(
     }
     const budget = creationBudget(data, draft);
     const spentEddies = creationSpentEddies(creationPurchases(draft, lookup));
+    if (
+      options.requirePurchases &&
+      !draft.skipPurchases &&
+      Object.keys(draft.purchases).length === 0
+    ) {
+      issues.push(
+        issue(
+          'purchases',
+          `Nic nie kupiono — cała gotówka (${formatEddies(budget)} ed) zostaje w kieszeni. Zrób zakupy albo zaznacz „Ruszam bez zakupów”.`,
+        ),
+      );
+    }
     if (spentEddies > budget) {
       issues.push(
         issue(
@@ -1273,6 +1297,10 @@ export function mergeCreationDraft(
   if ('placeToken' in patch) {
     if (typeof patch.placeToken !== 'boolean') return null;
     next.placeToken = patch.placeToken;
+  }
+  if ('skipPurchases' in patch) {
+    if (typeof patch.skipPurchases !== 'boolean') return null;
+    next.skipPurchases = patch.skipPurchases;
   }
   if ('skillMinimaAuto' in patch) {
     // An older draft accepts the balance once; switching it back off would
@@ -1554,6 +1582,7 @@ export function parseCreationDraft(
       (data.roleKits[roleId]?.choose ?? []).includes(input.kitChoice)
         ? input.kitChoice
         : null,
+    skipPurchases: input.skipPurchases === true,
     portraitUrl: sanitizeTokenImageUrl(input.portraitUrl ?? null) ?? null,
     placeToken: input.placeToken !== false,
     // Absent means a draft from before naprawa 2a: its levels stay as saved.

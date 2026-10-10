@@ -463,6 +463,58 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     expect((await sheetOf(vex, kaiId)).eddies).toBe(5000);
   });
 
+  it('etap 48a: kwaterunek od Korporacji wg Pracy Zespołowej, wypisanie z rachunku — MG', async () => {
+    const lifestyle = (housing: string) =>
+      emitAck(vex, 'character:update', {
+        characterId: kaiId,
+        patch: { data: { lifestyle: { level: 'kibble', housing } } },
+      });
+    // Kai nie ma Roli — darmowy konap i apartament od Korporacji są nie dla niego.
+    expect(await lifestyle('corpoConapt')).toEqual({ ok: false, error: 'HOUSING_LOCKED' });
+    expect(await lifestyle('corpoPenthouse')).toEqual({ ok: false, error: 'HOUSING_LOCKED' });
+    expect(
+      await emitAck(vex, 'character:update', {
+        characterId: kaiId,
+        patch: { data: { lifestyle: null } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect((await sheetOf(vex, kaiId)).lifestyle).toEqual({
+      level: 'kibble',
+      housing: 'container',
+    });
+
+    // Korpo z Pracą Zespołową 2 dostaje konap, ale dom w Bobrowisku dopiero od 7.
+    const promote = (rank: number) =>
+      emitAck(gm, 'character:update', {
+        characterId: kaiId,
+        patch: { data: { roleId: 'exec', roleAbilityRank: rank } },
+      });
+    expect((await promote(2)).ok).toBe(true);
+    expect((await lifestyle('corpoConapt')).ok).toBe(true);
+    expect(await lifestyle('corpoHouse')).toEqual({ ok: false, error: 'HOUSING_LOCKED' });
+
+    // MG ustawia wszystko, a raz dany kwaterunek zostaje przy zmianie jedzenia.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: kaiId,
+          patch: { data: { lifestyle: { level: 'kibble', housing: 'corpoMansion' } } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await emitAck(vex, 'character:update', {
+          characterId: kaiId,
+          patch: { data: { lifestyle: { level: 'prepack', housing: 'corpoMansion' } } },
+        })
+      ).ok,
+    ).toBe(true);
+
+    // Przeprowadzka do zwykłego mieszkania zawsze wolna.
+    expect((await lifestyle('container')).ok).toBe(true);
+  });
+
   it('rozliczenie i korekta są zarezerwowane dla MG', async () => {
     expect(await emitAck(vex, 'economy:settle', {})).toEqual({ ok: false, error: 'FORBIDDEN' });
     expect(

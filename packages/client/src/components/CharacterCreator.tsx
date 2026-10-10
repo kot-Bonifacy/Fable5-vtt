@@ -255,7 +255,9 @@ function CreatorWindow() {
   const entriesById = useCompendiumStore((s) => s.entries);
   const shopRules = useCreationShopRules();
   const issues = draft
-    ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId], shopRules)
+    ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId], shopRules, {
+        requirePurchases: !isGm,
+      })
     : [];
   if (draft?.method === 'complete' && !isGm && !rankApproved)
     issues.push({ field: 'statRankId', message: 'MG musi ustalić Rangę Postaci dla tego szkicu.' });
@@ -2224,6 +2226,8 @@ function CreatorNoStockWarning({ sheet }: { sheet: CpredCharacterData }) {
 function GearStep({ draft }: { draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
   const busy = useCreationStore((s) => s.busy);
+  const patch = useCreationStore((s) => s.patch);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   const shopRules = useCreationShopRules();
@@ -2367,6 +2371,25 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
           Koszyk jest pusty. Wszystko można też dokupić później — eurodolce zostają na karcie.
         </p>
       ) : null}
+      {/* Etap 48a (decyzja MG z 10.10): pusty koszyk gracza jest brakiem, dopóki
+          gracz nie powie wprost, że rusza bez zakupów — żeby nikt nie wyszedł
+          z kreatora z gołymi rękami tylko dlatego, że zapomniał o tym kroku. */}
+      {!isGm && lines.length === 0 && (
+        <label className="creator-checkbox">
+          <input
+            type="checkbox"
+            checked={draft.skipPurchases}
+            disabled={busy}
+            onChange={(event) => void patch({ skipPurchases: event.target.checked })}
+          />
+          <span>
+            Ruszam bez zakupów
+            <span className="creator-hint">
+              Cała gotówka zostanie na karcie — wyposażenie kupisz później u handlarza.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div className="creator-shop-head">
         {CREATOR_SHELVES.map((entry) => (

@@ -335,6 +335,34 @@ describe('creationIssues', () => {
     expect(creationIssues(finished(), data(reg), reg)).toEqual([]);
   });
 
+  // Etap 48a (decyzja MG z 10.10): gracz nie wyjdzie z kreatora z całą gotówką
+  // tylko dlatego, że zapomniał o zakupach.
+  it('reminds a player about an empty basket until they skip shopping', () => {
+    const reg = registry();
+    const none = () => undefined;
+    const player = { requirePurchases: true };
+    const empty = creationIssues(finished(), data(reg), reg, none, undefined, player);
+    expect(empty).toHaveLength(1);
+    expect(empty[0]?.field).toBe('purchases');
+    expect(empty[0]?.message).toContain('Ruszam bez zakupów');
+    expect(creationIssueStep('purchases')).toBe('gear');
+    expect(
+      creationIssues(finished({ skipPurchases: true }), data(reg), reg, none, undefined, player),
+    ).toEqual([]);
+    // MG i wywołanie bez katalogu — bez przypomnienia.
+    expect(creationIssues(finished(), data(reg), reg, none)).toEqual([]);
+    expect(creationIssues(finished(), data(reg), reg, undefined, undefined, player)).toEqual([]);
+  });
+
+  it('takes „Ruszam bez zakupów” from a patch and reads it back', () => {
+    const reg = registry();
+    const merged = mergeCreationDraft(draft(), { skipPurchases: true }, data(reg), reg);
+    expect(merged?.skipPurchases).toBe(true);
+    expect(mergeCreationDraft(draft(), { skipPurchases: 'tak' }, data(reg), reg)).toBeNull();
+    expect(parseCreationDraft({ skipPurchases: true }, data(reg), reg).skipPurchases).toBe(true);
+    expect(parseCreationDraft({}, data(reg), reg).skipPurchases).toBe(false);
+  });
+
   it('asks for a Role, for stats and for a name on a fresh draft', () => {
     const reg = registry();
     const fields = creationIssues(draft(), data(reg), reg).map((entry) => entry.field);

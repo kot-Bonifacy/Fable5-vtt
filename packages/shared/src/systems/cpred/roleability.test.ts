@@ -8,6 +8,7 @@ import {
   cpredCombatAwarenessSpent,
   cpredCombatAwarenessValue,
   cpredHasRole,
+  cpredHousingAllowed,
   cpredRoleAbilityName,
   cpredRoleAbilityRank,
   cpredRoleRanks,
@@ -299,3 +300,41 @@ function multiSheet(roleId: string | null, rank: number, former: [string, number
     formerRoles: former.map(([id, value]) => ({ roleId: id, rank: value })),
   };
 }
+
+describe('Zakwaterowanie od Korporacji (etap 48a, s. 153)', () => {
+  const withExec = buildCpredRegistry(
+    { skills: [] },
+    { roles: [{ id: 'exec', name: 'Korpo', ability: 'Praca Zespołowa' }] },
+  );
+  const exec = (rank: number) => ({
+    ...createDefaultCharacterData(),
+    roleId: 'exec',
+    roleAbilityRank: rank,
+  });
+
+  it('zwykłe Zakwaterowanie wolno każdemu', () => {
+    expect(cpredHousingAllowed('penthouse', createDefaultCharacterData(), withExec)).toBe(true);
+    expect(cpredHousingAllowed('container', exec(1), withExec)).toBe(true);
+  });
+
+  it('konap od 2, dom od 7, McPosiadłość i apartament od 10', () => {
+    expect(cpredHousingAllowed('corpoConapt', createDefaultCharacterData(), withExec)).toBe(false);
+    expect(cpredHousingAllowed('corpoConapt', exec(1), withExec)).toBe(false);
+    expect(cpredHousingAllowed('corpoConapt', exec(2), withExec)).toBe(true);
+    expect(cpredHousingAllowed('corpoHouse', exec(6), withExec)).toBe(false);
+    expect(cpredHousingAllowed('corpoHouse', exec(7), withExec)).toBe(true);
+    expect(cpredHousingAllowed('corpoMansion', exec(9), withExec)).toBe(false);
+    expect(cpredHousingAllowed('corpoMansion', exec(10), withExec)).toBe(true);
+    expect(cpredHousingAllowed('corpoPenthouse', exec(10), withExec)).toBe(true);
+  });
+
+  it('ranga z dawnej Roli Korpo też się liczy', () => {
+    const former = {
+      ...createDefaultCharacterData(),
+      roleId: 'solo',
+      roleAbilityRank: 1,
+      formerRoles: [{ roleId: 'exec', rank: 4 }],
+    };
+    expect(cpredHousingAllowed('corpoConapt', former, withExec)).toBe(true);
+  });
+});

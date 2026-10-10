@@ -32,6 +32,7 @@ import type { CompendiumEntry, CostCategory, ProgramEntry } from './compendium.j
 // The team's deck copies Programs with the very function the sheet uses.
 import { netProgramProfileOf, netProgramSlots } from './netrunning.js';
 import { CPRED_PRICE_SCALE_DURABLE } from './pricing.js';
+import { HOUSING_DEFINITIONS, type HousingOption } from './economy.js';
 
 /**
  * The Solo's Special Ability, matched by name for the reason described above.
@@ -1587,6 +1588,22 @@ export const CPRED_TEAMWORK_PERKS: readonly CpredTeamworkPerk[] = [
       'Korporacyjnej.',
   },
 ];
+
+/**
+ * Czy ta karta może mieszkać w `option` (etap 48a, decyzja MG z 10.10).
+ * Zwykłe Zakwaterowanie — zawsze (czynsz zapłaci rozliczenie miesiąca);
+ * korporacyjne — od rangi Pracy Zespołowej z `HousingDefinition.teamworkRank`,
+ * liczonej z każdej Roli na karcie, jak każda Zdolność.
+ */
+export function cpredHousingAllowed(
+  option: HousingOption,
+  data: CpredRoleSheet,
+  registry: CpredRegistry,
+): boolean {
+  const need = HOUSING_DEFINITIONS[option].teamworkRank;
+  if (need === undefined) return true;
+  return (cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) ?? 0) >= need;
+}
 
 /** Perks this rank has already unlocked, lowest first. */
 export function cpredTeamworkPerks(rank: number): CpredTeamworkPerk[] {

@@ -1185,7 +1185,11 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
         ...kitEntryIds(draft, data),
       ]);
       const shopRules = await creationShopRules(deps, campaignId);
-      if (creationIssues(draft, data, deps.ctx.cpred, lookup, shopRules).length > 0) {
+      if (
+        creationIssues(draft, data, deps.ctx.cpred, lookup, shopRules, {
+          requirePurchases: user.role !== ROLE_GM,
+        }).length > 0
+      ) {
         throw new RealtimeError('CREATION_INCOMPLETE');
       }
       const name = sanitizeCharacterName(draft.name);

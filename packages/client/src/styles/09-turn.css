@@ -219,12 +219,34 @@
   flex: none;
 }
 
+/* Ramka portretu; obraz leży w niej jak w banerze lewej belki (48a). */
 .combat-chip-portrait {
+  position: relative;
+  display: block;
+  overflow: hidden;
   width: 2.05rem;
   height: 2.05rem;
-  object-fit: cover;
   flex: none;
+  background: var(--bg-inset);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.4rem), calc(100% - 0.4rem) 100%, 0 100%);
+}
+
+.combat-chip-portrait-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 0%;
+}
+
+/* Kadr właściciela (`usePortraitFrameStyle`) podaje rozmiar i położenie. */
+.combat-chip-portrait-img--cropped {
+  right: auto;
+  bottom: auto;
+  max-width: none;
+  object-fit: fill;
 }
 
 .combat-chip--active .combat-chip-portrait {

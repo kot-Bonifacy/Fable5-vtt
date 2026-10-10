@@ -79,6 +79,7 @@ import {
   CYBERWARE_TYPE_LABELS,
   HOUSING_DEFINITIONS,
   HOUSING_OPTIONS,
+  cpredHousingAllowed,
   HUMANITY_MIN,
   HUMANITY_THERAPIES,
   HUMANITY_THERAPY_DEFINITIONS,
@@ -3786,8 +3787,18 @@ function DosesSection({
  * saldo, którego karta też nie pozwala pisać.
  */
 function LifestyleFields({ data, saveData }: TabProps) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const registry = useCharacterStore((s) => s.registry);
   const lifestyle = data.lifestyle;
   const monthly = lifestyle ? monthlyCostOf(lifestyle) : null;
+  // Etap 48a (decyzja MG z 10.10): kwaterunek od Korporacji gracz widzi od
+  // rangi Pracy Zespołowej (bieżący zostaje na liście, żeby pole go pokazało),
+  // a „— nie rozliczam —” to wybór MG — serwer odmawia tego samego.
+  const housingOptions = HOUSING_OPTIONS.filter(
+    (option) =>
+      isGm || option === lifestyle?.housing || cpredHousingAllowed(option, data, registry),
+  );
+  const mayStopBilling = isGm || lifestyle === null;
 
   return (
     <>
@@ -3820,7 +3831,7 @@ function LifestyleFields({ data, saveData }: TabProps) {
               saveData({ lifestyle: { ...lifestyle, housing } }, 'lifestyle');
             }}
           >
-            {HOUSING_OPTIONS.map((option) => (
+            {housingOptions.map((option) => (
               <option key={option} value={option} title={HOUSING_DEFINITIONS[option].note}>
                 {HOUSING_DEFINITIONS[option].label}
               </option>
@@ -3850,7 +3861,7 @@ function LifestyleFields({ data, saveData }: TabProps) {
               );
             }}
           >
-            <option value="">— nie rozliczam —</option>
+            {mayStopBilling && <option value="">— nie rozliczam —</option>}
             {LIFESTYLE_LEVELS.map((level) => (
               <option key={level} value={level} title={LIFESTYLE_DEFINITIONS[level].note}>
                 {LIFESTYLE_DEFINITIONS[level].label} —{' '}

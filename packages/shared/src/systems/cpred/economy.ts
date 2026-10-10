@@ -118,6 +118,7 @@ export const HOUSING_OPTIONS = [
   'penthouse',
   'corpoHouse',
   'corpoMansion',
+  'corpoPenthouse',
 ] as const;
 export type HousingOption = (typeof HOUSING_OPTIONS)[number];
 
@@ -133,6 +134,13 @@ export interface HousingDefinition {
   purchase: number | null;
   /** Shown as a hint under the picker. */
   note?: string;
+  /**
+   * Kwaterunek od Korporacji (etap 48a, decyzja MG z 10.10): ranga Pracy
+   * Zespołowej, od której Korpo go dostaje (s. 153). Gracz bez niej tej opcji
+   * nie wybierze — czynsz 0 ed był darmowym konapem dla każdego. Sprawdza
+   * `cpredHousingAllowed`; MG ustawia wszystko.
+   */
+  teamworkRank?: number;
 }
 
 export const HOUSING_DEFINITIONS: Record<HousingOption, HousingDefinition> = {
@@ -157,6 +165,7 @@ export const HOUSING_DEFINITIONS: Record<HousingOption, HousingDefinition> = {
     rent: 0,
     purchase: null,
     note: 'Podarunek od twojej Korporacji — czynszu nie płacisz.',
+    teamworkRank: 2,
   },
   wealthyConapt: { label: 'Konap dla zamożnych', rent: 7500, purchase: 85_000 },
   penthouse: {
@@ -169,12 +178,24 @@ export const HOUSING_DEFINITIONS: Record<HousingOption, HousingDefinition> = {
     rent: 0,
     purchase: 200_000,
     note: 'Podarunek od twojej Korporacji — czynszu nie płacisz.',
+    teamworkRank: 7,
   },
   corpoMansion: {
     label: 'Korporacyjna McPosiadłość w Bobrowisku',
     rent: 0,
     purchase: 500_000,
     note: 'Podarunek od twojej Korporacji — czynszu nie płacisz.',
+    teamworkRank: 10,
+  },
+  // Praca Zespołowa 10 daje McPosiadłość **albo** Luksusowy apartament (s. 153).
+  // Zwykły apartament kosztuje 15 000 ed czynszu, więc wariant od Korporacji
+  // jest osobną opcją — inaczej Korpo 10 płaciłby za swój przywilej.
+  corpoPenthouse: {
+    label: 'Luksusowy apartament od Korporacji',
+    rent: 0,
+    purchase: null,
+    note: 'Podarunek od twojej Korporacji — czynszu nie płacisz.',
+    teamworkRank: 10,
   },
 };
 

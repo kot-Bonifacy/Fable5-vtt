@@ -27,6 +27,7 @@ import {
   cpredRoleAbilityRank,
   cpredFleetSheetProblem,
   cpredRolesProblem,
+  cpredHousingAllowed,
   cpredSpecialtiesProblem,
   createDefaultCharacterData,
   describeCombatAwareness,
@@ -289,6 +290,24 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // `cpredRoleAbilityRank` pick one of them for reasons nobody can see.
       const roles = cpredRolesProblem(merged, deps.ctx.cpred);
       if (roles !== null) throw new RealtimeError(roles);
+      // Etap 48a (decyzja MG z 10.10): rachunek miesiąca to cena, więc gracz
+      // nie wypisze się z niego sam („— nie rozliczam —” zostaje MG), a do
+      // kwaterunku od Korporacji (czynsz 0 ed) potrzebuje rangi Pracy
+      // Zespołowej. Zakwaterowanie, które karta już ma, zostaje — odmowa
+      // dotyczy wyłącznie przeprowadzki.
+      if (!isGm && sheet.lifestyle !== undefined) {
+        if (sheet.lifestyle === null && current.lifestyle !== null) {
+          throw new RealtimeError('FORBIDDEN');
+        }
+        const housing = sheet.lifestyle?.housing;
+        if (
+          housing !== undefined &&
+          housing !== current.lifestyle?.housing &&
+          !cpredHousingAllowed(housing, merged, deps.ctx.cpred)
+        ) {
+          throw new RealtimeError('HOUSING_LOCKED');
+        }
+      }
       data.data = JSON.stringify(merged);
     }
 

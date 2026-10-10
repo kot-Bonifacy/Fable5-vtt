@@ -417,6 +417,8 @@ describe('kreator postaci', () => {
           .map((id) => [id, 'Testowa dziedzina']),
       ),
       lifepath: { ...draft.lifepath, language: draft.lifepath.language || 'Testowy' },
+      // Etap 48a: pusty koszyk gracza jest brakiem — te szkice o zakupy nie pytają.
+      skipPurchases: true,
     });
   }
 
@@ -613,6 +615,21 @@ describe('kreator postaci', () => {
   it('refuses to finish a draft the rules are still unhappy about', async () => {
     const ack = await emitAck<CharacterView>(vex, 'creation:finish');
     expect(refusal(ack)).toBe('CREATION_INCOMPLETE');
+  });
+
+  it('etap 48a: gracz z pustym koszykiem nie kończy, dopóki nie ruszy bez zakupów', async () => {
+    await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Goły' });
+    await rollMissingStats(vex);
+    await patch(vex, { skills: Object.fromEntries(roleSkills.map((id) => [id, 4])) });
+    await allocateRemaining(vex);
+    const forgot = await patch(vex, { skipPurchases: false });
+    expect(forgot.draft.purchases).toEqual({});
+    expect(refusal(await emitAck(vex, 'creation:finish'))).toBe('CREATION_INCOMPLETE');
+    expect(refusal(await emitAck(vex, 'creation:patch', { patch: { skipPurchases: 'tak' } }))).toBe(
+      'INVALID_DATA',
+    );
+    const skipped = await patch(vex, { skipPurchases: true });
+    expect(skipped.draft.skipPurchases).toBe(true);
   });
 
   it('finishes into a real sheet the player owns, and the draft is gone', async () => {
