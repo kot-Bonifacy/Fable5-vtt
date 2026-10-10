@@ -671,6 +671,7 @@ w `specs/50-przegladarki`, **31 testów w ~2,7 min**, każdy plik z `po-T6`, MG 
 | Twórca (Technik 4) | punkty do limitu Specjalizacji (Naprawa 4) | 99 pkt odrzucone przez serwer | ✅ |
 | Reputacja i Konfrontacja | „+ Wyczyn” MG, gracz widzi Reputację 1 tylko do odczytu, Konfrontacja ze Zbirem, odpowiedź MG kubkiem, „Wycofaj się” | rozstrzygniętej nie da się odpierać drugi raz | ✅ |
 | styl życia | Kuba z kontenera do studia, „Rozlicz miesiąc” MG: −1600 ed (100 + 1500) w księdze | gracz `economy:settle` odmówiony | ✅ |
+| leczenie i efekty ręką MG (dopisane 10.10, `t8c-leczenie`) | MG leczy Kowala strzałką PW na karcie (10 → 13), Marek widzi liczbę na karcie i pasek figury; „BC +1 na 10 min” z „Efektów czasowych” na karcie Marka | gracz nie ma „Nałóż”; odmowy gniazda w `server/src/gm-care.test.ts` | ✅ |
 
 Kartę wieloklasową „Wielorak” (Rocker 2 + Media, Nomada, Fixer, Stróż Prawa, Korpo, Technik) dostaje
 od MG nowy gracz Kuba — przygotowanie gniazdem, nie przedmiot testu. Ręcznie (Playwright MCP): Kuba

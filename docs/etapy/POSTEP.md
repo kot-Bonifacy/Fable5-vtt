@@ -184,7 +184,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (siódma — zaległości): **2431** `shared` (+4: `combat.test.ts` 3, `merchant.test.ts` 1), **1430** serwer (+12: nowy `gm-care.test.ts` 11, `bot-combat.test.ts` +1), **330** klient; ESLint, Prettier i `tsc` czyste w zmienionych plikach; E2E: nowy `t8c-leczenie` 3/3, `t46a-` + `t46b-` + `t46c-` + `00-baseline` **41/41** z gatewayem (46c.9 na żywym modelu), po poprawce Bijatyki `t46a-` 17/17; domyślny przebieg ma teraz **+3** testy (`t8c-leczenie`), pełnego nie puszczano. Wcześniej 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -222,10 +222,10 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 31   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 32   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar     | 8    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 7    | 8       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 6    | 11      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 112     |
@@ -235,6 +235,35 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (siódma) — zaległości spoza etapów: testy leczenia MG, kwoty, pojemniki, „podejście” bota
+
+**Zlecenie MG:** „napraw kilka zapisanych zaległości”, pytać o niejasności. **Decyzje MG (pytania na
+starcie):** wszystkie cztery zaległości poza paczką AI (ta czeka do bety); pojemniki ukryć **wszędzie**,
+także w archiwum; sąsiad nie jest celem „podejścia” bota; ręczna zmiana PW **bez śladu** na czacie
+(`decyzje-i-uproszczenia.md`, „Leczenie”).
+
+**Zrobione:** (1) **testy leczenia i efektów MG** — `server/src/gm-care.test.ts` (PW cudzej karty
+i figury bez karty, naklejki ran, przycięcie, odpoczynek i dawka za postać gracza, stany żetonu,
+odmowy gracza) i E2E `specs/50-przegladarki/t8c-leczenie` (MG leczy strzałką PW, Marek w Firefoksie
+widzi kartę i pasek, efekt z „Efektów czasowych”). (2) **Kwoty w oknie „Wymiana”** przez `formatEd`
+(`exchange/items.ts`, wszystkie tryby i sekcja „Sklep”) i „Gotówka: …” w kartach czatu łupu
+i transakcji; asercje `t46a` na „1 200 ed”. (3) **Pojemniki znikają** z wyboru karty bota,
+„Nastawienia do postaci”, odpoczynku w oknie zegara, archiwum, a poza listą z zaległości także
+z leczących w „Lecz ranę” i z wyboru karty figury. (4) **Bot:** figura w zasięgu ręki jest `adjacent`,
+„podejście” znika, gdy wszyscy stoją obok, prompt mówi „tuż obok ciebie”; pas w poprawce po odmowie to
+`outcome: 'pass'` („pasuje po odmowie”), nie druga odmowa. **Poza zleceniem (błąd z oględzin):**
+„Bijatyka 0 ed” na półce handlarza — `cpredMerchantShelf` odsiewa gołe ręce (umowa 47b).
+Umowy w `ekwipunek` i `boty`, zamknięte wpisy w `archiwum/zamkniete-zaleglosci.md`.
+
+**Nowe zaległości (drobiazgi do triażu MG):** surowe kwoty w prośbie do Medyka i w przyciskach
+instalacji w Kompendium; separator tysięcy (U+202F) prawie niewidoczny w Firefoksie przy małym
+kroju (okno „Wymiana”: „Gotówka”, „Kasa handlarza”).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane na zrzutach E2E: Firefox (Ola,
+`46a.11` — kwoty, odczyt DOM z U+202F) i Chromium (Marek, koszyk bez „Bijatyki”). Listy kart bez
+pojemników nieoglądane w przeglądarce — zmiana to filtr `isContainerCard`, `tsc` czysty. **Ślady
+w `dev.db`:** brak (wszystko na instancji E2E i w bazach testów).
 
 ### Sesja 10.10 (szósta) — poprawka spoza etapów: zakładka tabel losowych czytelniejsza
 
@@ -257,24 +286,3 @@ zmienionych plików; E2E `t8c-narracja` (tabele, #72, #73) 6/6 — spec i `t8a` 
 nazwy (`t8a` nieuruchamiane). Oglądane w **Firefoksie** (MG, Playwright MCP, `dev.db`, „Test_1”):
 lista z podglądem, edytor szeroki i przy panelu 320 px, odmowa zakresu „2-x”, blokada
 „Wiersz na każdą liczbę” po wpisaniu treści. **Ślady w `dev.db`:** brak (nowa tabela anulowana).
-
-### Sesja 10.10 (piąta) — poprawki spoza etapów: czat w poczekalni, półka Kompendium, „Animacja 3D”
-
-**Zlecenie MG:** (1) między sesjami gracze mają móc pisać na czacie, a Kompendium ma być
-ograniczone do tego, co pasuje początkującym; (2) skasować z ustawień przełącznik „Animacja 3D”
-(rzut i patrzenie na kości to sedno gry) — **skórki kości zostają** (doprecyzowanie MG).
-
-**Zrobione:** `chat:send` na białej liście poczekalni (`session-clock.ts`); w poczekalni zwykła
-wypowiedź i szept do ludzi, `/r` i `/tab` — `SESSION_NOT_RUNNING`, boty nie słyszą ani nie
-odbierają szeptów. Wypowiedź gracza z poczekalni zapisuje się z `prep: false` i idzie do stołu
-(MG) i do całej poczekalni (`broadcastChatMessage(…, lobby)`); **przygotowanie MG dalej nie
-dociera do graczy** — MG odpowiada poczekalni szeptem. Kompendium gracza (przy stole i w
-poczekalni) pokazuje tylko wpisy do odblokowanego poziomu sklepu; własne wpisy MG i Krytyczne
-rany zawsze; MG widzi wszystko (`onPlayerShelf` w `CompendiumPanel`, filtr widoku, nie danych).
-„Animacja 3D” usunięta razem z `settingsStore.animate` — kości toczą się zawsze, aureola tury
-zawsze pulsuje. Test `sessions.test.ts` › „czat w poczekalni”, T8c bez przełącznika.
-
-**Weryfikacja:** `pnpm test` (shared 2423, client 330, server 1418), `tsc` client/server/e2e,
-eslint zmienionych plików. Oglądane w **Firefoksie** (MG, `dev.db`): okno ustawień bez
-przełącznika, skórki na miejscu. Widok gracza w poczekalni nieoglądany w przeglądarce — pokrywa
-go test serwera; E2E nieuruchamiane.

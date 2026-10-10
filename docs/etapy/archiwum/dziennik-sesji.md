@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (piąta) — poprawki spoza etapów: czat w poczekalni, półka Kompendium, „Animacja 3D”
+
+**Zlecenie MG:** (1) między sesjami gracze mają móc pisać na czacie, a Kompendium ma być
+ograniczone do tego, co pasuje początkującym; (2) skasować z ustawień przełącznik „Animacja 3D”
+(rzut i patrzenie na kości to sedno gry) — **skórki kości zostają** (doprecyzowanie MG).
+
+**Zrobione:** `chat:send` na białej liście poczekalni (`session-clock.ts`); w poczekalni zwykła
+wypowiedź i szept do ludzi, `/r` i `/tab` — `SESSION_NOT_RUNNING`, boty nie słyszą ani nie
+odbierają szeptów. Wypowiedź gracza z poczekalni zapisuje się z `prep: false` i idzie do stołu
+(MG) i do całej poczekalni (`broadcastChatMessage(…, lobby)`); **przygotowanie MG dalej nie
+dociera do graczy** — MG odpowiada poczekalni szeptem. Kompendium gracza (przy stole i w
+poczekalni) pokazuje tylko wpisy do odblokowanego poziomu sklepu; własne wpisy MG i Krytyczne
+rany zawsze; MG widzi wszystko (`onPlayerShelf` w `CompendiumPanel`, filtr widoku, nie danych).
+„Animacja 3D” usunięta razem z `settingsStore.animate` — kości toczą się zawsze, aureola tury
+zawsze pulsuje. Test `sessions.test.ts` › „czat w poczekalni”, T8c bez przełącznika.
+
+**Weryfikacja:** `pnpm test` (shared 2423, client 330, server 1418), `tsc` client/server/e2e,
+eslint zmienionych plików. Oglądane w **Firefoksie** (MG, `dev.db`): okno ustawień bez
+przełącznika, skórki na miejscu. Widok gracza w poczekalni nieoglądany w przeglądarce — pokrywa
+go test serwera; E2E nieuruchamiane.
+
 ### Sesja 10.10 (czwarta) — etap 48c „Rzeczy z mechaniką tylko z zakupu, wymiany, łupu i od MG”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 48c)”, pytać o niejasności. Przegląd znalazł poza

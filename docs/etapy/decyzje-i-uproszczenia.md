@@ -287,6 +287,14 @@ to jest ten akapit do przeczytania na nowo.
 
 ## Leczenie i farmaceutyki (03.09)
 
+- **Ręczna zmiana PW przez MG nie zostawia śladu na czacie (10.10, decyzja MG).** MG poprawia
+  liczby po cichu — strzałką PW na karcie, w menu figury albo wpisem w pole. Gracz widzi skutek
+  na swojej karcie i na pasku figury, a reszta stołu tylko odsetek PW (`hpShare`). Śladu nie ma
+  ani dla MG, ani dla stołu. Ślad zostawiają tylko obrażenia, leczenie, odpoczynek i dawki
+  rozliczane przez serwer. Gdyby wróciła potrzeba odtworzenia przebiegu walki, rekomendacja
+  z triażu to wiersz tylko dla MG („Kowal: PW 30 → 25 (ręcznie)”), nie dla całego stołu, bo PW
+  NPC-ów widzi wyłącznie MG.
+
 - **„Opieki jako mnożnika tempa" w podręczniku nie ma — i nie będzie.** Zaległość opisywała
   „opiekę (Ratownictwo medyczne / klinika / szpital) jako mnożnik tempa", ale to była parafraza,
   nie cytat: s. 225 wycenia **cenę** ustabilizowania i leczenia Ran Krytycznych („Gdy trafiasz do

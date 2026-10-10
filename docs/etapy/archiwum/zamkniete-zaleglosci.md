@@ -9,6 +9,80 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-10 (sesja siódma, zaległości spoza etapów)
+
+**Testy leczenia i efektów nakładanych ręcznie przez MG.** Nowy `server/src/gm-care.test.ts`
+(11 testów, MG i gracz na żywych gniazdach): (1) `character:update` z `hpCurrent` na karcie
+gracza — echo karty i paska figury u gracza bez przeładowania, naklejki „Poważnie / Śmiertelnie
+ranny” zakładane i zdejmowane na progach, PW ponad maksimum przycięte, ujemne → `INVALID_DATA`;
+(2) `token:update { hp }` figury bez karty — przycięcie do 0–max, naklejki, gracz dostaje tylko
+`hpShare`, gracz nie wpisze PW żadnej figurze (`FORBIDDEN`); (3) `character:rest` i
+`character:use-dose` przez MG za postać gracza; (4) MG zakłada i zdejmuje stan na figurze
+gracza, gracz nie (`FORBIDDEN`). (5) E2E `specs/50-przegladarki/t8c-leczenie` (3 testy z
+`po-T6`): MG leczy strzałką PW na karcie, Marek (Firefox) widzi liczbę i pasek, efekt z „Efektów
+czasowych” na karcie Marka. **Diagnoza przy okazji:** właściciel figury dostaje dwie paczki
+`token:upsert` — publiczną (odsetek) i zaraz prywatną (liczby); test musi czekać na prywatną.
+Triaż MG: ręczna zmiana PW **bez śladu** na czacie (`decyzje-i-uproszczenia.md`).
+
+**Kwoty bez grupowania tysięcy w oknie handlarza (47b).** `formatEd` w
+`components/exchange/items.ts` dla wszystkich trybów okna „Wymiana” i sekcji „Sklep” karty
+NPC-a; „Gotówka: …” w kartach czatu łupu (`entryLines`) i transakcji (`dealLines`) przez
+`formatEddies`. Asercje `t46a` poprawione („1 200 ed”, „Płacisz 1 344 ed”, „Płacisz 1 000 ed”).
+Prośba do Medyka i przyciski instalacji w Kompendium zostały — nowa, węższa zaległość.
+
+**Listy kart, które nie pomijały pojemników (46b2).** Decyzja MG: ukryć wszędzie, także w
+archiwum. `isContainerCard` dopisane w wyborze karty bota i „Nastawieniu do postaci”
+(`BotEditor`), w liście odpoczynku okna zegara (`ClockWindow`), w archiwum (`ArchivePanel`), a
+poza listą z zaległości także w leczących „Lecz ranę” (`TreatInjury`) i w wyborze karty
+w ustawieniach figury (`TokenContextMenu`; karta już podpięta zostaje widoczna).
+
+**„Bijatyka 0 ed” na półce handlarza (znalezione 10.10 na zrzucie `t46a` 7-sklep-koszyk).**
+Umowa 47b mówi, że gołe ręce nie jadą do sklepu, ale `cpredMerchantShelf` czytało listę broni
+handlarza wprost, więc stały wiersz „Bijatyka” Pasera stał na półce za 0 ed (kupno i tak by nie
+przeszło — `cpredTakeRows` odmawia). Poprawka: `cpredIsBareHandsRow` → `continue` dla gracza i dla
+MG; test w `shared/systems/cpred/merchant.test.ts`, retest `t46a-` 17/17 i zrzut bez wiersza.
+
+**Bot „podchodzi” do figury, przy której stoi (46c2, E2E 46c.9).** Decyzja MG: sąsiad nie jest
+celem podejścia. `BotCombatFigure.adjacent` (zasięg ręki jak Pochwycenie), „podejście” znika
+z menu, gdy każda widoczna figura jest obok, prompt dopisuje „tuż obok ciebie”. Sąsiada nadal
+da się wybrać, gdy ktoś inny stoi dalej (enum celu wspólny), a wtedy serwer odmawia
+`ALREADY_IN_PLACE` i bot ma poprawkę, jak dotąd. **„Przy okazji”:** pas w poprawce to teraz
+`outcome: 'pass'` ze śladem odmowy („pasuje po odmowie”), nie druga odmowa. Testy: 3 w
+`shared/bots/combat.test.ts`, 1 nowy i 1 poprawiony w `server/src/bot-combat.test.ts`.
+
+Wpisy w brzmieniu sprzed zamknięcia:
+
+**10.10.2026 — brak testów leczenia i efektów nakładanych ręcznie przez MG (do dopisania).**
+Przegląd kodu potwierdził, że MG może to wszystko robić, ale testy pokrywają tylko część. Pokryte są
+`character:stat-effect` (`stat-effects.test.ts`) i `token:effect` (`turn-effects.test.ts`). Brakuje:
+(1) MG zmienia `hpCurrent` cudzej karty przez `character:update`: przycięcie do 0–max, naklejki ran
+zdjęte po przejściu przez próg, nowy pasek PW figury u gracza bez przeładowania;
+(2) MG zmienia PW figury bez karty z menu kontekstowego (`token:update`);
+(3) MG wywołuje `character:rest` i `character:use-dose` za postać gracza (`requireOwnCharacter`
+wpuszcza MG);
+(4) MG włącza i wyłącza stany żetonu (`token:update { statuses }`), a gracz tego nie może zrobić;
+(5) E2E: MG leczy z karty i nakłada efekt z panelu „Efekty czasowe”, a gracz widzi oba skutki.
+Przy okazji do triażu MG: ręczna zmiana PW nie zostawia śladu na czacie.
+
+**10.10.2026 — okno handlarza pisze kwoty bez grupowania tysięcy (47b, drobiazg).** Kompendium
+i kreator pokazują „1 200 ed” (`formatEddies`, 47a), a `MerchantPane` (półka, koszyk, stopka
+„Płacisz … ed”, kasa handlarza) i karty czatu operacji — surowe „1200 ed”. Przy cenniku domowym
+czterocyfrowe kwoty są na porządku dziennym. Przy zmianie poprawić asercje `t46a` („1200 ed”,
+„Płacisz 1344 ed”).
+
+**09.10.2026 — listy kart, które jeszcze nie pomijają pojemników (46b2, do triażu MG).** Karty skrzyń
+i stosów to karty NPC-ów, więc wpadają na listy, gdzie są szumem: wybór karty bota (`BotEditor`),
+okno zegara z efektami czasowymi (`ClockWindow`) i archiwum (`ArchivePanel`). „Postacie”, walka,
+Szczęście i rozliczenie miesiąca już je pomijają. Wiersz „Pięści” z okna „Wymiana” zniknął 10.10 (47b): Bijatyka jest teraz stałym wierszem
+z urzędu, którego nie ma w oknach wymiany (własny wpis MG „Pięści” z T4a wypadł z łańcucha).
+
+**09.10.2026 — menu tury bota proponuje „podejście” do figury, przy której bot już stoi (46c2, E2E 46c.9).**
+Towarzysz „Kumpel” stał obok Pasera z pustym pistoletem; model wybrał „Podejście do: Paser”, serwer odmówił
+`ALREADY_IN_PLACE` („Już tam stoisz…”), a w poprawce bot spasował — tura stracona, choć mógł ciąć bronią białą.
+`availableBotCombatActions` (`shared/bots/combat.ts`) wpuszcza „podejście”, gdy tylko są figury i metry; nie
+odsiewa celów w zasięgu ręki. Do triażu MG: przyciąć menu celów podejścia (figury dalej niż sąsiednie pole).
+Przy okazji: `runStep` zgłasza `outcome: refused` także wtedy, gdy druga decyzja po odmowie to pas.
+
 ## Zamknięte 2026-10-10 (etap 47b)
 
 **#72 „Dodaj tabelę” (T8c).** Diagnoza potwierdzona w kodzie: `saveRandomTable` i
