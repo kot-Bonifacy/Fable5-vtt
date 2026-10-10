@@ -1,5 +1,11 @@
 # Pomysły poza zakresem etapów
 
+**10.10.2026 (etap 48a) — kupno mieszkania.** `HousingDefinition.purchase` (kontener 15 000 ed,
+kawalerka 25 000 ed…) nie jest nigdzie używane: karta zna tylko czynsz. Kupione mieszkanie
+znosiłoby czynsz na stałe — zakup jak przedmiot (`applyBalance`, rodzaj `purchase`) i znacznik
+„własne” przy Zakwaterowaniu, który `monthlyCostOf` czyta jako czynsz 0. Do decyzji MG: czy ceny
+mieszkań idą za cennikiem domowym (47a mówi „zakup mieszkania ×1”).
+
 **08.10.2026 (etap 45) — wzrok zaznaczonej figury jak w Foundry.** Foundry zawęża widok gracza
 do figury, którą zaznaczył; tu gracz zawsze widzi sumę swoich figur i „oczu drużyny”. Przydałoby się
 przy rozdzielonej drużynie (zwiad), gdy MG chce, żeby gracz patrzył tylko jednym okiem.

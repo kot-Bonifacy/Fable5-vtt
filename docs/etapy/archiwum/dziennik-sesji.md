@@ -1,5 +1,39 @@
 # Dziennik sesji — archiwum
 
+### Sesja 09–10.10 — etap 47a „Cennik domowy: ed jak euro”
+
+**Zlecenie MG:** ceny ~10× wyższe przy tej samej gotówce startowej, ed ≈ euro z lekką inflacją;
+ocenić, przygotować cennik, pytać o niejasności i mówić o błędach. **Decyzje MG (wszystkie
+zgodne z rekomendacją):** cennik zróżnicowany zamiast płaskiego ×10 (sprzęt trwały ×10, amunicja
+i drobiazgi ×3, życie ×1), pasma bez zmian, gotówka startowa bez zmian + wyposażenie Roli gratis
+w Kompletnym Pakiecie, wypłaty bez zmian, globalnie dla instancji, stałe wg zasady
+trwałe/eksploatacja, salda zostają, podział 47a/47b. Szczegóły w `etap-47-cennik.md`.
+
+**Zrobione:** `systems/cpred/pricing.ts` (reguła mnożników, `cpredScaleCatalogPrices` w
+`loadCompendium`, `formatEddies` przeniesione z `economy.ts`), `entryPrice` z ceną pasma × mnożnik,
+poziomy sklepu po cenie podręcznika, stałe (montaż, terapia, Farmaceutyki, Moto, czas
+Wytwarzania), `formatCost` i „Kup — X ed” z grupowaniem tysięcy; `roleKits` + `kitChoice` +
+`creationRoleKit`/`creationKitSheetRows` + sekcja „Wyposażenie Roli — gratis” w kreatorze,
+chrom w „Czego kreator nie wydaje”, `parse-creation.py` przenosi `roleKits`; 7. żelazna zasada
+asystenta zasad (`buildRulesSystemPrompt(houseRules)`). Cennik z pozycjami (337) w
+`data/private/cpred/cennik-x10.md`. Próbka: Grzechotnik 500 → 50 ed w danych.
+
+**Znalezione:** w pierwszym cenniku zamienione nazwy pasm 50/500 ed („Drogie”/„Kosztowne”) —
+poprawione; zdublowany wiersz 46b2 ⬜ w `archiwum/tabela-etapow.md` — usunięty. Pułapka
+o kwotach w testach w `testy`.
+
+**Weryfikacja:** `shared` **2377**, serwer **1409**, klient **331**; lint i `tsc` czyste; E2E
+`@szybkie` 51/52 + 1 pominięty — padł T9a „konsola” na zerwanym gnieździe Firefoksa (znana
+pułapka, przebieg szedł równolegle ze startem `pnpm dev`), powtórka `t9a-konta` 7/7. **Łańcucha
+i specyfikacji z jego stanów nie puszczano — do 47b są czerwone z założenia.** Oglądane w
+**Firefoksie** (Playwright MCP, `dev.db`, prawdziwe dane): krok „Wyposażenie” Solo (wybór broni,
+braki 6 → 5, ostrzeżenie o broni bez zapasu), okno zmiany Roli („Wybór z wyposażenia Roli:
+Strzelba”), Netrunner (dek, sprzęg i złącza, notka o chromie), ceny na półce przeliczone. Szkic
+testowy w „Oględziny 44d” wyrzucony.
+
+**Następny krok — 47b:** łańcuch T3a–T6b pod nowe ceny i odbudowa `po-T3`…`po-T6` pełnym
+przebiegiem z gatewayem, potem `t46a`, `t46b`, `t46c`, `t7a`, `t6a` i pełny domyślny przebieg.
+
 ### Sesja 09.10 (czwarta) — etap 46b2 „Pojemniki: klient, E2E, oględziny”
 
 **Zlecenie MG:** „kontynuuj projekt (chyba 46b2)”, pytać o niejasności. **Decyzje MG (start 46b2,

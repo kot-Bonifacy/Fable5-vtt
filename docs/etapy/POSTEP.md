@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (następna); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b (ostatni zamknięty: 47b, 2026-10-10) |
+| ⬜ otwarty   | **48b**, **48c** (Ekwipunek gracza — następne); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a (ostatni zamknięty: 48a, 2026-10-10) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 48 „Ekwipunek gracza: skąd przybywają rzeczy” (zlecenie MG z 10.10) — 48a zamknięta 10.10,
+następna 48b (cyberdek i Programy jako towar), potem 48c (rzeczy z mechaniką tylko z zakupu,
+wymiany, łupu, kreatora i od MG — decyzja MG na starcie 48c), potem refaktoryzacja.** Przegląd
+zakładki „Ekwipunek” z tabelą luk i decyzje MG — w `etap-48-ekwipunek-gracza.md`. Od 48a: pusty
+koszyk szkicu **gracza** jest brakiem kreatora, dopóki nie zaznaczy „Ruszam bez zakupów”;
+Zakwaterowanie korporacyjne (konap 2, dom 7, McPosiadłość albo apartament 10) tylko od rangi Pracy
+Zespołowej, „— nie rozliczam —” tylko u MG (serwer: `HOUSING_LOCKED`, `FORBIDDEN`); portrety
+w pasie inicjatywy mają kadr banera. Umowy w `postac` i `ui`.
 
 **Etap 47 „Cennik domowy” zamknięty 10.10 (47a + 47b) — następna jest refaktoryzacja całości pod
 osłoną suity, potem T10.** Ed to mniej więcej euro: katalog z plików mnoży się **przy wczytaniu**
@@ -81,7 +90,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → refaktoryzacja → T10 → 28 → T11.**
+**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → refaktoryzacja → T10 → 28 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -171,7 +180,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -202,13 +211,13 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 64   | 26      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 29   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 30   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 42   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      | 13   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 9    | 11      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 49   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 29   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury                     | 7    | 3       |
@@ -222,6 +231,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (druga) — etap 48a „Przypomnienie o zakupach, kadr portretów, Zakwaterowanie”
+
+**Zlecenie MG:** cztery uwagi (przypomnienie o zakupach w kreatorze, cyberdeki za darmo, przegląd
+zakładki „Ekwipunek”, kadr portretów w pasie inicjatywy), wolno rozpisać na 2–3 sesje. **Przegląd
+zakładki** znalazł poza zgłoszonym: „— nie rozliczam —” u gracza, darmowe Programy i liczbę gniazd
+deku u gracza, ilości podnoszone ręką i — poza zakładką — „+ Broń z katalogu”, „+ Pancerz”
+i „+ Dodatek” za darmo. **Decyzje MG (wszystkie zgodne z rekomendacją):** trzy sesje 48a–48c;
+przypomnienie jako brak z „Ruszam bez zakupów”; kwaterunek Korpo wg Pracy Zespołowej; dek
+i Programy jako towar. Nowy plik `etap-48-ekwipunek-gracza.md`.
+
+**Zrobione:** `skipPurchases` w szkicu + brak `purchases` w `creationIssues(…, { requirePurchases })`
+(klient i `creation:finish` tylko dla gracza), pole w kroku „Wyposażenie”; `teamworkRank`
+w `HOUSING_DEFINITIONS`, nowa opcja `corpoPenthouse`, `cpredHousingAllowed`, odmowy w
+`character:update`, lista na karcie gracza; `ChipPortrait` w `CombatBar.tsx`.
+
+**Znalezione:** cena kupna mieszkania nieużywana (`POMYSLY.md`).
+
+**Weryfikacja:** jak w „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (MG, Playwright
+MCP, `dev.db`): pas inicjatywy na „StrefaPrzemysłowa” (kadr Tony'ego: twarz zamiast piersi);
+w **Chromium** gracz `Tester`: lista Zakwaterowania bez opcji Korpo, „nie rozliczam” znika po
+wyborze Poziomu życia, odmowy serwera z konsoli, kreator — brak w podsumowaniu, „Przejdź”,
+zaznaczenie zdejmuje brak (7 → 6). **Ślady w `dev.db`:** „Oględziny Stym” ma od teraz „Na karmie ·
+Życie na Ulicy”; szkic Testera wyrzucony; na poligonie aktywna znów „RęcznyTest”, u MG otwarta
+„Test_1”; Firefox Playwrighta zalogowany jako MG (wcześniej `ogledziny-b`).
+
+**Następny krok — 48b** (cyberdek i Programy jako towar; zakres w pliku etapu).
 
 ### Sesja 10.10 — etap 47b „Cennik: łańcuch E2E” + gołe ręce z urzędu
 
@@ -250,36 +286,3 @@ Kowala z Bijatyką jako slotem 5 — zrzut Chromium z przebiegu.
 **Następny krok — refaktoryzacja całości pod osłoną suity** (pomiary T7b/T7c i T8a to linia
 bazowa; suita zielona 10.10). Zaległości do triażu MG: #79–#81, kwoty w oknie handlarza.
 
-### Sesja 09–10.10 — etap 47a „Cennik domowy: ed jak euro”
-
-**Zlecenie MG:** ceny ~10× wyższe przy tej samej gotówce startowej, ed ≈ euro z lekką inflacją;
-ocenić, przygotować cennik, pytać o niejasności i mówić o błędach. **Decyzje MG (wszystkie
-zgodne z rekomendacją):** cennik zróżnicowany zamiast płaskiego ×10 (sprzęt trwały ×10, amunicja
-i drobiazgi ×3, życie ×1), pasma bez zmian, gotówka startowa bez zmian + wyposażenie Roli gratis
-w Kompletnym Pakiecie, wypłaty bez zmian, globalnie dla instancji, stałe wg zasady
-trwałe/eksploatacja, salda zostają, podział 47a/47b. Szczegóły w `etap-47-cennik.md`.
-
-**Zrobione:** `systems/cpred/pricing.ts` (reguła mnożników, `cpredScaleCatalogPrices` w
-`loadCompendium`, `formatEddies` przeniesione z `economy.ts`), `entryPrice` z ceną pasma × mnożnik,
-poziomy sklepu po cenie podręcznika, stałe (montaż, terapia, Farmaceutyki, Moto, czas
-Wytwarzania), `formatCost` i „Kup — X ed” z grupowaniem tysięcy; `roleKits` + `kitChoice` +
-`creationRoleKit`/`creationKitSheetRows` + sekcja „Wyposażenie Roli — gratis” w kreatorze,
-chrom w „Czego kreator nie wydaje”, `parse-creation.py` przenosi `roleKits`; 7. żelazna zasada
-asystenta zasad (`buildRulesSystemPrompt(houseRules)`). Cennik z pozycjami (337) w
-`data/private/cpred/cennik-x10.md`. Próbka: Grzechotnik 500 → 50 ed w danych.
-
-**Znalezione:** w pierwszym cenniku zamienione nazwy pasm 50/500 ed („Drogie”/„Kosztowne”) —
-poprawione; zdublowany wiersz 46b2 ⬜ w `archiwum/tabela-etapow.md` — usunięty. Pułapka
-o kwotach w testach w `testy`.
-
-**Weryfikacja:** `shared` **2377**, serwer **1409**, klient **331**; lint i `tsc` czyste; E2E
-`@szybkie` 51/52 + 1 pominięty — padł T9a „konsola” na zerwanym gnieździe Firefoksa (znana
-pułapka, przebieg szedł równolegle ze startem `pnpm dev`), powtórka `t9a-konta` 7/7. **Łańcucha
-i specyfikacji z jego stanów nie puszczano — do 47b są czerwone z założenia.** Oglądane w
-**Firefoksie** (Playwright MCP, `dev.db`, prawdziwe dane): krok „Wyposażenie” Solo (wybór broni,
-braki 6 → 5, ostrzeżenie o broni bez zapasu), okno zmiany Roli („Wybór z wyposażenia Roli:
-Strzelba”), Netrunner (dek, sprzęg i złącza, notka o chromie), ceny na półce przeliczone. Szkic
-testowy w „Oględziny 44d” wyrzucony.
-
-**Następny krok — 47b:** łańcuch T3a–T6b pod nowe ceny i odbudowa `po-T3`…`po-T6` pełnym
-przebiegiem z gatewayem, potem `t46a`, `t46b`, `t46c`, `t7a`, `t6a` i pełny domyślny przebieg.
