@@ -35,6 +35,7 @@ import {
   withCreationData,
   type CpredCreationDraft,
 } from './creation.js';
+import { cpredRandomNpc } from './npc.js';
 import { buildCpredRegistry, type CpredRegistry } from './character.js';
 import type { CompendiumEntry } from './compendium.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
@@ -1354,5 +1355,100 @@ describe('etap 48b — kreator podpina dek i wkłada Programy', () => {
     expect(outcome.sheet.gear.map((row) => [row.compendiumId, row.qty])).toEqual([
       ['program.tarcza', 1],
     ]);
+  });
+});
+
+describe('etap 49b — losowy NPC z Roli', () => {
+  const SHIELD = {
+    id: 'armor.tarcza',
+    category: 'armor',
+    name: 'Tarcza',
+    cost: 100,
+    sp: 10,
+    locations: ['shield'],
+  } as CompendiumEntry;
+  const npcLookup = (entryId: string) =>
+    [...CATALOGUE, SHIELD].find((entry) => entry.id === entryId);
+  const npcRegistry = registry({
+    ...RAW_CREATION,
+    streetrat: {
+      $comment: 'pomijane — to nie Rola',
+      solo: {
+        skills: { athletics: 2, handgun: 6, autofire: 6, language: 2, juggling: 4, science: 9 },
+        items: [['weapon.pistolet'], ['weapon.pistolet', 'armor.tarcza'], [null, 'weapon.nie-ma']],
+        armor: { head: 'armor.kurtka', body: 'armor.kurtka' },
+      },
+      netrunner: { skills: {}, items: [] },
+      wampir: { skills: { athletics: 2 } },
+    },
+  });
+  const npcData = data(npcRegistry);
+  const multipliers = new Map(npcRegistry.skills.map((skill) => [skill.id, skill.multiplier ?? 1]));
+  /** Kości po kolei z listy; gdy się skończą — jedynki. */
+  function dice(...faces: number[]) {
+    return (sides: number) => Math.min(sides, faces.shift() ?? 1);
+  }
+
+  it('czyta pakiety Ról, które zna; zła Umiejętność i poziom spoza widełek wypadają', () => {
+    expect(npcData.streetrat).toEqual({
+      solo: {
+        skills: { athletics: 2, handgun: 6, autofire: 6, language: 2 },
+        items: [['weapon.pistolet'], ['weapon.pistolet', 'armor.tarcza'], [null, 'weapon.nie-ma']],
+        armor: { head: 'armor.kurtka', body: 'armor.kurtka' },
+      },
+    });
+    expect(data().streetrat).toEqual({});
+  });
+
+  it('bierze wiersz Cech z 1k10, pancerz i alternatywy „lub” z pakietu', () => {
+    // 1k10 = 7, potem rozrzut, potem slot „pistolet lub tarcza” (2) i „granat lub…” (1).
+    const rolled = cpredRandomNpc('solo', npcData, multipliers, npcLookup, dice(7));
+    expect(rolled).not.toBeNull();
+    const { input, row, picks } = rolled!;
+    expect(row).toBe(7);
+    expect(input.stats.int).toBe(7);
+    expect(input.stats.ref).toBe(8);
+    expect(input.roleId).toBe('solo');
+    expect(input.roleRank).toBe(4);
+    expect(input.armorHeadId).toBe('armor.kurtka');
+    expect(input.armorBodyId).toBe('armor.kurtka');
+    expect(input.hpMax).toBeNull();
+    expect(picks.map((pick) => pick.chosen)).toEqual(['weapon.pistolet', 'weapon.pistolet', null]);
+    expect(input.weaponIds).toEqual(['weapon.pistolet', 'weapon.pistolet']);
+    expect(input.armorShieldId).toBeNull();
+
+    const shielded = cpredRandomNpc('solo', npcData, multipliers, npcLookup, () => 2);
+    expect(shielded!.input.armorShieldId).toBe('armor.tarcza');
+    // „Granat lub…” z wpisem, którego katalog nie zna — slot zostaje pusty.
+    expect(shielded!.input.weaponIds).toEqual(['weapon.pistolet']);
+  });
+
+  it('rozrzut trzyma koszt, widełki i cenę (×2), a Język ojczysty dostaje swoje 4', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      let state = seed;
+      const rng = (sides: number) => {
+        state = (state * 7 + 3) % 101;
+        return (state % sides) + 1;
+      };
+      const { input, shifted } = cpredRandomNpc('solo', npcData, multipliers, npcLookup, rng)!;
+      const cost = (skills: Record<string, number>) =>
+        Object.entries(skills)
+          .filter(([id]) => id !== 'language')
+          .reduce((sum, [id, level]) => sum + level * (multipliers.get(id) ?? 1), 0);
+      expect(cost(input.skills)).toBe(cost(npcData.streetrat.solo!.skills));
+      for (const [id, level] of Object.entries(input.skills)) {
+        expect(level, id).toBeGreaterThanOrEqual(2);
+        expect(level, id).toBeLessThanOrEqual(6);
+      }
+      expect(input.skills.autofire).toBe(6);
+      expect(input.skills.language).toBe(4);
+      expect(shifted.language).toBeUndefined();
+      expect(input.skills.athletics! - 2).toBe(shifted.athletics ?? 0);
+    }
+  });
+
+  it('odmawia Roli bez pakietu albo bez tabeli Cech', () => {
+    expect(cpredRandomNpc('netrunner', npcData, multipliers, npcLookup, dice())).toBeNull();
+    expect(cpredRandomNpc('wampir', npcData, multipliers, npcLookup, dice())).toBeNull();
   });
 });

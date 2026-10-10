@@ -89,17 +89,19 @@ def write(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
-def existing_role_kits(path: Path) -> dict:
-    """Wyposażenie Roli gratis (etap 47a) to decyzja MG, nie tekst podręcznika.
+def existing_section(path: Path, key: str) -> dict:
+    """Sekcje, których import nie czyta z podręcznika, przechodzą z pliku bez zmian.
 
-    Import go nie zna, więc przenosi go z pliku, który nadpisuje — inaczej każdy
-    ponowny przebieg po cichu zabierałby Kompletnemu Pakietowi dek Netrunnera.
+    `roleKits` (etap 47a) to decyzja MG, a `streetrat` (etap 49b) — pakiety
+    Ulicznika przepisane ręką z tabel s. 86–87 i 98, których zrzut PDF nie
+    oddaje (komórki sklejone i zgubione). Bez tego każdy ponowny przebieg po
+    cichu zabierałby Kompletnemu Pakietowi dek Netrunnera, a MG — losowego NPC-a.
     """
     try:
-        kits = json.loads(path.read_text(encoding="utf8")).get("roleKits", {})
+        section = json.loads(path.read_text(encoding="utf8")).get(key, {})
     except (OSError, ValueError):
         return {}
-    return kits if isinstance(kits, dict) else {}
+    return section if isinstance(section, dict) else {}
 
 
 def load_overrides() -> dict:
@@ -589,7 +591,8 @@ def main() -> int:
         "basicSkills": basic,
         "freeLanguage": free_language(roles_chapter),
         "budgets": parse_budgets(roles_chapter),
-        "roleKits": existing_role_kits(CPRED_DIR / "creation.json"),
+        "roleKits": existing_section(CPRED_DIR / "creation.json", "roleKits"),
+        "streetrat": existing_section(CPRED_DIR / "creation.json", "streetrat"),
         "roles": roles,
     }
     write(CPRED_DIR / "creation.json", payload)

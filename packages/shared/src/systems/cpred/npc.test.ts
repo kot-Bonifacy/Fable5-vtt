@@ -33,6 +33,14 @@ const entries = [
   },
   { id: 'armor.kevlar', name: 'Kevlar', category: 'armor', cost: 50, sp: 7, locations: ['body'] },
   { id: 'armor.kask', name: 'Kask', category: 'armor', cost: 50, sp: 11, locations: ['body'] },
+  {
+    id: 'armor.tarcza',
+    name: 'Tarcza',
+    category: 'armor',
+    cost: 100,
+    sp: 10,
+    locations: ['shield'],
+  },
   { id: 'gear.agent', name: 'Agent', category: 'gear', cost: 100 },
 ] as unknown as CompendiumEntry[];
 
@@ -122,5 +130,34 @@ describe('cpredNpcSheet', () => {
     expect(sheet.statBlock?.hpMax).toBe(35);
     expect(cpredSheetHpMax(sheet)).toBe(35);
     expect(sheet.hpCurrent).toBe(35);
+  });
+});
+
+describe('etap 49b — tarcza i Ranga Roli', () => {
+  it('sanitizes the shield and the rank', () => {
+    const input = sanitizeNpcInput({ armorShieldId: 'armor.tarcza', roleRank: 42 });
+    expect(input.armorShieldId).toBe('armor.tarcza');
+    expect(input.roleRank).toBe(10);
+    expect(sanitizeNpcInput({ roleRank: 'x' }).roleRank).toBeNull();
+  });
+
+  it('puts a shield in the hand and only a shield; the rank needs a Role', () => {
+    const sheet = cpredNpcSheet(
+      { ...createDefaultNpcInput(), roleId: 'solo', roleRank: 4, armorShieldId: 'armor.tarcza' },
+      compendium,
+      rowIds(),
+    );
+    expect(sheet.armor.map((row) => [row.name, row.location, row.sp])).toEqual([
+      ['Tarcza', 'shield', 10],
+    ]);
+    expect(sheet.roleAbilityRank).toBe(4);
+
+    const wrong = cpredNpcSheet(
+      { ...createDefaultNpcInput(), roleRank: 4, armorShieldId: 'armor.kevlar' },
+      compendium,
+      rowIds(),
+    );
+    expect(wrong.armor).toEqual([]);
+    expect(wrong.roleAbilityRank).toBe(createDefaultNpcInput().roleRank ?? 1);
   });
 });

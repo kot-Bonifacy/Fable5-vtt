@@ -60,12 +60,27 @@ Co MG wskazał jako nieintuicyjne (ankieta z 10.10):
 karcie. Formularz „Imię + Utwórz” usunięty; pusta karta to „Nazwany NPC” bez zmian w polach.
 Lista broni w oknie pomija „Bijatykę” i „Sztuki walki” (karta dostaje je sama, 47b).
 
-### 49b — losowy NPC z Roli
+### 49b — losowy NPC z Roli (✅ 10.10)
 
-- [ ] „🎲 Losuj z Roli” w oknie „Nowa postać”: wiersz Cech z tabeli Roli, Umiejętności
+**Decyzje MG z 10.10 (druga sesja):** Umiejętności = **tabela Ulicznika + rozrzut** (kilka
+punktów przesuniętych losowo, suma 86 zostaje); z pakietu Roli **tylko broń i pancerz**
+(bez amunicji, sprzętu, mody i cyborgizacji); przycisk **wymaga wybranej Roli**.
+
+- [x] „🎲 Losuj z Roli” w oknie „Nowa postać”: wiersz Cech z tabeli Roli, Umiejętności
       i ekwipunek z pakietu Roli (dane kreatora), rzut jako `gmroll`; wynik wypełnia formularz,
       MG może poprawić i „Utwórz”
-- [ ] Testy `shared` i serwera; oględziny
+- [x] Pakiety Ulicznika w `data/private/cpred/creation.json` (`streetrat`, przepisane z PDF-a:
+      Umiejętności s. 86–87, broń i pancerz s. 98), wymyślona próbka w `data/public`
+- [x] Pole „Tarcza” i „Ranga” Roli w oknie (`armorShieldId`, `roleRank`)
+- [x] Testy `shared` i serwera; oględziny w Firefoksie
+
+**Odstępstwa 49b:** granaty z pakietu (błyskowy, łzawiący, dymny) pominięte — w VTT to amunicja,
+a statysta strzela „bez dna”; alternatywa „granat lub X” daje pół na pół X albo nic. Rozrzut
+przesuwa poziom tylko między Umiejętnościami tej samej ceny, więc (×2) zostaje z tabeli. U Rockera
+i Medyka Broń długa / Broń biała jak na listach Ról wydania polskiego (angielska tabela ma je
+odwrotnie). Fixer dostaje dwa pistolety (C. lub B.C.) jak w tabeli angielskiej. Statblok
+z losowania nie ma imienia — pole „Nazwa” dostaje nazwę Roli, gdy było puste. Solo z Rangą 4
+pokazuje na karcie „Po kreatorze zostało: Zmysł Walki” — MG rozdziela punkty jak u każdej karty.
 
 ## Kryteria ukończenia
 

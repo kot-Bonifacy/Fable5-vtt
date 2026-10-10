@@ -791,12 +791,35 @@
 }
 
 .npc-create-name,
-.npc-create-role,
+.npc-create-role > label:first-child,
 .npc-create-gear label {
   display: grid;
   grid-template-columns: 5.5rem 1fr;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Rola, Ranga i „🎲 Losuj z Roli” w jednym wierszu (etap 49b); wąskie okno łamie. */
+.npc-create-role {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.npc-create-role > label:first-child {
+  flex: 1 1 16rem;
+}
+
+.npc-create-rank {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.npc-create-rank input {
+  width: 3.2rem;
+  text-align: center;
 }
 
 .npc-create-gear {

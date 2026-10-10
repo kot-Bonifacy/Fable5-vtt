@@ -13,6 +13,7 @@
  * „ten ganger ma domyślny REF”.
  */
 
+import type { DiceRng } from '../../dice.js';
 import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import {
@@ -24,6 +25,8 @@ import {
   type CpredStats,
 } from './stats.js';
 import {
+  ROLE_RANK_MAX,
+  ROLE_RANK_MIN,
   createDefaultCharacterData,
   type CpredArmorRow,
   type CpredCharacterData,
@@ -36,6 +39,7 @@ import {
   type CompendiumEntry,
   type CompendiumRegistry,
 } from './compendium.js';
+import { creationTemplateStat, type CpredCreationData } from './creation.js';
 import { purchasedSheetRow } from './shopping.js';
 import { CPRED_STATBLOCK_HP_MAX, cpredSheetHpMax, sanitizeStatBlock } from './statblock.js';
 import { STATIST_DEFAULT_STAT, STATIST_SKILL_MAX } from './statist.js';
@@ -43,8 +47,12 @@ import { STATIST_DEFAULT_STAT, STATIST_SKILL_MAX } from './statist.js';
 /** Najwięcej broni w statbloku — podręcznik drukuje dwie, trzy; cztery to zapas. */
 export const CPRED_NPC_WEAPONS_MAX = 4;
 
-/** Najwięcej Umiejętności w statbloku — ten sam limit co szybki edytor figury. */
-export const CPRED_NPC_SKILLS_MAX = STATIST_SKILL_MAX;
+/**
+ * Najwięcej Umiejętności w statbloku. Szybki edytor figury trzyma 20, a pakiet
+ * Ulicznika ma ich dokładnie tyle (etap 49b) — zapas, żeby MG mógł dopisać
+ * losowemu NPC-owi coś spoza listy Roli.
+ */
+export const CPRED_NPC_SKILLS_MAX = STATIST_SKILL_MAX + 4;
 
 /** Statblok NPC-a tak, jak go wypełnia okno „Nowa postać”. */
 export interface CpredNpcInput {
@@ -63,6 +71,10 @@ export interface CpredNpcInput {
   /** Pancerz na głowie i na tułowiu (s. 186) — wpis z Kompendium albo brak. */
   armorHeadId: string | null;
   armorBodyId: string | null;
+  /** Tarcza kuloodporna (etap 49b — Solo, Medyk i Stróż Prawa mają ją w pakiecie). */
+  armorShieldId: string | null;
+  /** Ranga Zdolności Roli; `null` = najniższa. Losowy NPC dostaje startową (4). */
+  roleRank: number | null;
 }
 
 /** Przeciętny człowiek z podręcznika: wszystko po 5, Unik 2. */
@@ -77,6 +89,8 @@ export function createDefaultNpcInput(): CpredNpcInput {
     weaponIds: [],
     armorHeadId: null,
     armorBodyId: null,
+    armorShieldId: null,
+    roleRank: null,
   };
 }
 
@@ -140,6 +154,11 @@ export function sanitizeNpcInput(
     weaponIds,
     armorHeadId: compendiumIdOrNull(input.armorHeadId),
     armorBodyId: compendiumIdOrNull(input.armorBodyId),
+    armorShieldId: compendiumIdOrNull(input.armorShieldId),
+    roleRank:
+      typeof input.roleRank === 'number' && Number.isFinite(input.roleRank)
+        ? clampInt(input.roleRank, ROLE_RANK_MIN, ROLE_RANK_MAX, ROLE_RANK_MIN)
+        : null,
   };
 }
 
@@ -149,7 +168,8 @@ export function sanitizeNpcInput(
  * Broń i pancerz to te same wiersze co z zakupu i „Dodaj za darmo”
  * (`purchasedSheetRow`) — ganger z pistoletem i gracz z pistoletem trzymają
  * jeden rodzaj przedmiotu, więc łup z ciała działa bez tłumaczenia. Pancerz
- * leży tam, gdzie wskazał MG, bez względu na to, co wpis mówi o miejscu.
+ * leży tam, gdzie wskazał MG, bez względu na to, co wpis mówi o miejscu —
+ * poza tarczą: w jej polu staje tylko wpis, który jest tarczą (etap 49b).
  * Wpis, którego nie ma albo który nie jest bronią/pancerzem, wypada po cichu.
  */
 export function cpredNpcSheet(
@@ -173,9 +193,11 @@ export function cpredNpcSheet(
   for (const [location, id] of [
     ['head', input.armorHeadId],
     ['body', input.armorBodyId],
+    ['shield', input.armorShieldId],
   ] as const) {
     const found = entry(id);
     if (!found || !isArmorEntry(found)) continue;
+    if (location === 'shield' && !found.locations.includes('shield')) continue;
     const built = purchasedSheetRow(found, null, nextRowId());
     if (built?.list === 'armor') armor.push({ ...built.row, location });
   }
@@ -183,6 +205,9 @@ export function cpredNpcSheet(
   const data: CpredCharacterData = {
     ...base,
     roleId: input.roleId,
+    ...(input.roleId !== null && input.roleRank !== null
+      ? { roleAbilityRank: input.roleRank }
+      : {}),
     stats: { ...input.stats },
     statBlock: input.hpMax === null ? null : sanitizeStatBlock({ hpMax: input.hpMax }),
     skills: { ...input.skills },
@@ -192,4 +217,107 @@ export function cpredNpcSheet(
     humanityCurrent: humanityMax(input.stats),
   };
   return { ...data, hpCurrent: cpredSheetHpMax(data) };
+}
+
+/* ───────────────────────── losowy NPC z Roli (etap 49b) ───────────────────────── */
+
+/**
+ * Ile razy rozrzut przesuwa poziom z jednej Umiejętności Roli na drugą.
+ * MG (10.10): „Ulicznik + rozrzut” — tabela podręcznika jako baza, a kilka
+ * punktów rozrzuconych, żeby pięciu gangerów z jednej Roli nie było klonami.
+ */
+export const CPRED_NPC_RANDOM_SHIFTS = 6;
+
+/** Wynik losowania — formularz okna dostaje `input`, karta czatu MG resztę. */
+export interface CpredRandomNpc {
+  input: CpredNpcInput;
+  /** Wiersz tabeli Cech Roli (1k10). */
+  row: number;
+  /** Co rozrzut zmienił względem tabeli Ulicznika: id → różnica poziomów. */
+  shifted: Record<string, number>;
+  /** Każdy slot pakietu: alternatywy i to, co wypadło (`null` — slot pusty). */
+  picks: { options: (string | null)[]; chosen: string | null }[];
+}
+
+/**
+ * Losowy NPC z Roli (etap 49b, decyzje MG z 10.10): 1k10 wybiera wiersz Cech
+ * z tabeli Roli (metoda Ulicznika, s. 73–77), Umiejętności to tabela Ulicznika
+ * z rozrzutem, a broń, pancerz i tarcza — pakiet Roli z s. 98 z losowanymi
+ * alternatywami „lub”. Rzuca wstrzyknięty RNG, więc serwer losuje, a testy
+ * podstawiają kości.
+ *
+ * Rozrzut zostawia koszt Krawędziarza (86 punktów) i widełki kreatora (2–6):
+ * poziom przechodzi tylko między Umiejętnościami tej samej ceny, więc (×2)
+ * wymienia się wyłącznie z (×2). Darmowy Język ojczysty stoi poza rozrzutem
+ * i wchodzi na koniec na swoim poziomie (s. 45), jak w kreatorze.
+ *
+ * `null`, gdy Rola nie ma pełnej tabeli Cech albo pakietu — serwer wtedy
+ * odmawia, zamiast budować pół NPC-a.
+ */
+export function cpredRandomNpc(
+  roleId: string,
+  data: Pick<
+    CpredCreationData,
+    'roles' | 'statOrder' | 'streetrat' | 'limits' | 'freeLanguage' | 'roleAbilityStart'
+  >,
+  skillMultipliers: ReadonlyMap<string, number>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  rng: DiceRng,
+): CpredRandomNpc | null {
+  const role = data.roles.find((entry) => entry.id === roleId);
+  const kit = data.streetrat[roleId];
+  if (!role || !kit || role.statTemplates.length === 0) return null;
+
+  const row = rng(role.statTemplates.length);
+  const stats = { ...createDefaultNpcInput().stats };
+  for (const id of CPRED_STAT_IDS) {
+    const value = creationTemplateStat(role, data, id, row);
+    if (value !== null) stats[id] = value;
+  }
+
+  const free = data.freeLanguage;
+  const skills: Record<string, number> = { ...kit.skills };
+  const cost = (id: string) => skillMultipliers.get(id) ?? 1;
+  const movable = Object.keys(skills).filter((id) => id !== free?.skillId);
+  for (let shift = 0; shift < CPRED_NPC_RANDOM_SHIFTS; shift++) {
+    const donors = movable.filter((id) => skills[id]! > data.limits.skillMin);
+    if (donors.length === 0) break;
+    const donor = donors[rng(donors.length) - 1]!;
+    const takers = movable.filter(
+      (id) => id !== donor && cost(id) === cost(donor) && skills[id]! < data.limits.skillMax,
+    );
+    if (takers.length === 0) continue;
+    const taker = takers[rng(takers.length) - 1]!;
+    skills[donor] = skills[donor]! - 1;
+    skills[taker] = skills[taker]! + 1;
+  }
+  const shifted: Record<string, number> = {};
+  for (const [id, level] of Object.entries(skills)) {
+    const delta = level - (kit.skills[id] ?? 0);
+    if (delta !== 0) shifted[id] = delta;
+  }
+  if (free) skills[free.skillId] = Math.max(skills[free.skillId] ?? 0, free.level);
+
+  const input: CpredNpcInput = {
+    ...createDefaultNpcInput(),
+    roleId,
+    stats,
+    skills,
+    armorHeadId: kit.armor.head,
+    armorBodyId: kit.armor.body,
+    roleRank: data.roleAbilityStart,
+  };
+  const picks: CpredRandomNpc['picks'] = [];
+  for (const options of kit.items) {
+    const chosen = options.length === 1 ? options[0]! : options[rng(options.length) - 1]!;
+    picks.push({ options, chosen });
+    const found = chosen === null ? undefined : lookup(chosen);
+    if (!found) continue;
+    if (isArmorEntry(found) && found.locations.includes('shield')) {
+      input.armorShieldId ??= found.id;
+    } else if (isWeaponEntry(found) && input.weaponIds.length < CPRED_NPC_WEAPONS_MAX) {
+      input.weaponIds.push(found.id);
+    }
+  }
+  return { input, row, shifted, picks };
 }

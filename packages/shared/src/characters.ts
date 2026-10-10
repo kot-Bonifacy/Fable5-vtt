@@ -441,6 +441,23 @@ export interface CreationRerollPayload {
   statId?: string;
 }
 
+/**
+ * Client → server `creation:random-npc` (GM only, etap 49b) — losowy NPC
+ * z Roli do okna „Nowa postać”. Serwer rzuca i kładzie kartę `gmroll` na czat.
+ */
+export interface CreationRandomNpcPayload {
+  roleId: string;
+  gesture?: RollGesture;
+}
+
+/**
+ * Odpowiedź `creation:random-npc`: statblok do formularza. Kształt należy do
+ * modułu systemu (CP RED: `CpredNpcInput`) — jak `CharacterCreatePayload.npc`.
+ */
+export interface CreationRandomNpcResult {
+  npc: unknown;
+}
+
 /** Server → the draft's owner `creation:rerolled` — which stats lost their dice. */
 export interface CreationRerolledPush {
   draftId: string;

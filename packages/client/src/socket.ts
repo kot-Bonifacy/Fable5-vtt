@@ -96,6 +96,7 @@ import type {
   CreationPermitRow,
   CreationPermitState,
   CreationRankDraft,
+  CreationRandomNpcResult,
   CreationRerolledPush,
   CreationTerms,
   CyberwareRequestPayload,
@@ -3748,6 +3749,13 @@ export function creationErrorText(code: string | undefined): string {
 
 export const createCharacter = (payload: CharacterCreatePayload) =>
   emitSceneAck<CharacterView>('character:create', payload);
+
+/**
+ * „🎲 Losuj z Roli” w oknie „Nowa postać” (etap 49b): serwer rzuca 1k10 na
+ * wiersz Cech i oddaje statblok; formularz wypełnia się po animacji kości.
+ */
+export const rollRandomNpc = (roleId: string) =>
+  emitCreationAck<CreationRandomNpcResult>('creation:random-npc', { roleId });
 
 export const deleteCharacter = (characterId: string) =>
   emitSceneAck('character:delete', { characterId });

@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (po `c7646b1`) — poprawka spoza etapów: czytelność i kolumny karty postaci
+
+**Zlecenie MG (ze zrzutem):** poprawić rozmieszczenie elementów karty, zwłaszcza zbyt małe czcionki,
+i zlikwidować puste przestrzenie; w trakcie: „rozbij niektóre rzeczy na większą ilość kolumn”
+i „ikony powinny być większe”.
+
+**Zrobione (CSS + klasy w `CharacterSheet.tsx`, bez logiki):** etykiety pól i czerwone przypisy
+1 rem (syntetyczne kapitaliki rysują wersaliki w ~70% kroju), zdania stanu („bez ran
+krytycznych”, „nic tu nie chroni”) zwykłym pismem, guziki i opisy w tabeli broni ~0,8 rem,
+nazwy Umiejętności 0,86 rem, pola tabel 0,9 rem, sloty cyborgizacji większe. **Kolumny:** pancerz
+obok broni od 1350 px kontenera, Specjalizacje Zdolności i Awans w kolumnach ~30 rem, lista
+Umiejętności Awansu w kolumnach gazety bez okienka przewijania (od 1100 px), szerokości kolumn
+„Atak”, „Pancerz” i nazwy w Wyposażeniu w `%`, lokacja pancerza i nazwa w jednym wierszu.
+**Ikony:** miniatury w tabelach 1,6 rem, `✕ ⤓ ⊕ ⚒ ↻` na karcie 1 rem, `⟳`/`◎` klasą
+`small-button--icon`. Umowa i pułapka (kapitaliki w Firefoksie) w `karta`.
+
+**Weryfikacja:** klient 329/330 — pada `theme.test.ts` (`--top-bar-control` niezdefiniowany
+w `theme.css`), **padał już przed tą sesją** (commit `c0b5fc1`, górny pasek; sprawdzone na czystym
+`HEAD`) — do poprawy osobno. `tsc`, ESLint i Prettier czyste w zmienionych plikach. E2E nie
+puszczane. Oglądane w **Chromium** (gracz Ewa, karta Efki: 1600, 1285 i 680 px, wszystkie cztery
+zakładki) i **Firefoksie** (MG, karta Oleny 1600 px). **Ślady w `dev.db`:** brak.
+
 ### Sesja 10.10 (dziesiąta) — poprawka spoza etapów: półka „Elektronika” w kreatorze
 
 **Zlecenie MG:** na półce „Sprzęt” w kroku „Wyposażenie” jest za dużo rzeczy — podzielić na drugą

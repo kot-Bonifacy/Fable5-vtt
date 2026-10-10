@@ -1553,5 +1553,77 @@
         "gear.apteczka-polowa"
       ]
     }
+  },
+  "streetrat": {
+    "$comment": "Etap 49b: pakiety do losowego NPC-a — wymyślone poziomy i wpisy z próbki kompendium. Prawdziwe pakiety Ulicznika (s. 86–87 i 98) w data/private/cpred/creation.json.",
+    "solo": {
+      "skills": {
+        "athletics": 4,
+        "brawling": 4,
+        "concentration": 2,
+        "conversation": 2,
+        "education": 2,
+        "evasion": 6,
+        "first-aid": 3,
+        "human-perception": 2,
+        "local-expert": 2,
+        "perception": 5,
+        "persuasion": 2,
+        "stealth": 3,
+        "autofire": 3,
+        "handgun": 6,
+        "shoulder-arms": 5,
+        "melee-weapon": 4,
+        "resist-torture-drugs": 3,
+        "tactics": 4,
+        "interrogation": 2
+      },
+      "items": [
+        [
+          "weapon.zgrzyt-9"
+        ],
+        [
+          "weapon.szpon",
+          null
+        ]
+      ],
+      "armor": {
+        "head": "armor.helm-kurierski",
+        "body": "armor.kurtka-warsztatowa"
+      }
+    },
+    "netrunner": {
+      "skills": {
+        "athletics": 2,
+        "brawling": 2,
+        "concentration": 4,
+        "conversation": 2,
+        "education": 5,
+        "evasion": 4,
+        "first-aid": 2,
+        "human-perception": 2,
+        "local-expert": 3,
+        "perception": 3,
+        "persuasion": 2,
+        "stealth": 5,
+        "electronics-security": 4,
+        "cryptography": 5,
+        "library-search": 5,
+        "conceal-reveal-object": 4,
+        "handgun": 4,
+        "deduction": 3,
+        "forgery": 2
+      },
+      "items": [
+        [
+          "weapon.zgrzyt-9",
+          "weapon.iglica-tw"
+        ]
+      ],
+      "armor": {
+        "head": null,
+        "body": "armor.kurtka-warsztatowa"
+      }
+    }
   }
 }

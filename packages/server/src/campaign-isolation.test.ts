@@ -571,6 +571,10 @@ const CASES: Record<string, Case> = {
   'creation:reroll': foreign((a) => ({ draftId: a.draftId, statIds: ['ref'] })),
   'creation:buy': own(SELF_DRAFT),
   'creation:permits': own('lista zgód kampanii gniazda'),
+  'creation:random-npc': own(
+    'losuje statblok z danych Roli, kartę rzutu kładzie w kampanii gniazda',
+    () => ({ roleId: 'solo' }),
+  ),
   'creation:peek': own(SELF_DRAFT),
   'creation:ranks': own('rangi szkiców kampanii gniazda'),
   'creation:set-rank': foreign((a) => ({ draftId: a.draftId, statRankId: 'starting' })),

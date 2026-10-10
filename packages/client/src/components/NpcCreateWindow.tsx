@@ -10,13 +10,16 @@ import {
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
   CPRED_STATBLOCK_HP_MAX,
+  ROLE_RANK_MAX,
+  ROLE_RANK_MIN,
   SKILL_LEVEL_MAX,
   createDefaultNpcInput,
   isArmorEntry,
   isWeaponEntry,
+  sanitizeNpcInput,
   statBlockHpMax,
 } from '@vtt/shared';
-import { createCharacter } from '../socket.js';
+import { createCharacter, rollRandomNpc } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
@@ -60,6 +63,18 @@ function createErrorText(code: string): string {
   }
 }
 
+function randomErrorText(code: string): string {
+  switch (code) {
+    case 'ROLE_HAS_NO_TEMPLATE':
+      return 'Dla tej Roli brak w danych tabeli Cech albo pakietu Ulicznika — losowanie niemożliwe.';
+    case 'NOT_CONNECTED':
+    case 'CREATION_TIMEOUT':
+      return 'Brak połączenia z serwerem — spróbuj jeszcze raz.';
+    default:
+      return `Nie udało się wylosować NPC-a (${code}).`;
+  }
+}
+
 /**
  * Okno „Nowa postać” MG (etap 49a, zlecenie MG z 10.10).
  *
@@ -91,6 +106,7 @@ function NpcCreateWindowBody() {
   const [input, setInput] = useState<CpredNpcInput>(createDefaultNpcInput);
   const [hpText, setHpText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [rolling, setRolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const placement = useWindowPlacement('npc-create', () => ({
@@ -98,7 +114,7 @@ function NpcCreateWindowBody() {
     y: 64,
   }));
 
-  const { weapons, armor } = useMemo(() => {
+  const { weapons, armor, shields } = useMemo(() => {
     const all = order.map((id) => entries[id]).filter((entry) => entry !== undefined);
     const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name, 'pl');
     return {
@@ -110,7 +126,15 @@ function NpcCreateWindowBody() {
             entry.id !== CPRED_BRAWLING_ENTRY_ID && entry.id !== CPRED_MARTIAL_ARTS_ENTRY_ID,
         )
         .sort(byName),
-      armor: all.filter((entry): entry is ArmorEntry => isArmorEntry(entry)).sort(byName),
+      // Tarcza ma własne pole (etap 49b) — na głowie albo tułowiu byłaby pancerzem.
+      armor: all
+        .filter((entry): entry is ArmorEntry => isArmorEntry(entry))
+        .filter((entry) => !entry.locations.includes('shield'))
+        .sort(byName),
+      shields: all
+        .filter((entry): entry is ArmorEntry => isArmorEntry(entry))
+        .filter((entry) => entry.locations.includes('shield'))
+        .sort(byName),
     };
   }, [entries, order]);
 
@@ -154,6 +178,29 @@ function NpcCreateWindowBody() {
       else next[index] = id;
       return { ...current, weaponIds: next };
     });
+  }
+
+  /**
+   * „🎲 Losuj z Roli” (etap 49b): serwer rzuca wiersz Cech i składa pakiet Roli,
+   * a formularz przyjmuje wynik w całości — MG poprawia go jak własny wpis.
+   * Imię zostaje, jeśli MG już je wpisał.
+   */
+  async function randomize() {
+    const roleId = input.roleId;
+    if (roleId === null) return;
+    setRolling(true);
+    setError(null);
+    const ack = await rollRandomNpc(roleId);
+    setRolling(false);
+    if (!ack.ok || !ack.data) {
+      setError(randomErrorText(ack.ok ? 'EMPTY' : ack.error));
+      return;
+    }
+    setInput(sanitizeNpcInput(ack.data.npc));
+    setHpText('');
+    if (name.trim().length === 0) {
+      setName(registry.roles.find((role) => role.id === roleId)?.name ?? '');
+    }
   }
 
   async function submit() {
@@ -263,22 +310,61 @@ function NpcCreateWindowBody() {
               />
             </label>
 
-            <label className="npc-create-role">
-              <span>Rola</span>
-              <select
-                value={input.roleId ?? ''}
-                onChange={(event) =>
-                  setInput((current) => ({ ...current, roleId: event.target.value || null }))
+            <div className="npc-create-role">
+              <label>
+                <span>Rola</span>
+                <select
+                  value={input.roleId ?? ''}
+                  onChange={(event) =>
+                    setInput((current) => ({ ...current, roleId: event.target.value || null }))
+                  }
+                >
+                  <option value="">— bez Roli —</option>
+                  {registry.roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {input.roleId !== null && (
+                <label
+                  className="npc-create-rank"
+                  title="Ranga Zdolności Roli. Puste = 1; losowanie daje startową 4."
+                >
+                  <span>Ranga</span>
+                  <input
+                    type="number"
+                    min={ROLE_RANK_MIN}
+                    max={ROLE_RANK_MAX}
+                    value={input.roleRank ?? ''}
+                    placeholder={String(ROLE_RANK_MIN)}
+                    onChange={(event) => {
+                      const value = Number.parseInt(event.target.value, 10);
+                      setInput((current) => ({
+                        ...current,
+                        roleRank: Number.isFinite(value)
+                          ? Math.min(ROLE_RANK_MAX, Math.max(ROLE_RANK_MIN, value))
+                          : null,
+                      }));
+                    }}
+                  />
+                </label>
+              )}
+              <button
+                type="button"
+                className="small-button"
+                disabled={input.roleId === null || rolling || busy}
+                onClick={() => void randomize()}
+                title={
+                  input.roleId === null
+                    ? 'Najpierw wybierz Rolę.'
+                    : 'Rzut 1k10 na wiersz Cech Roli, Umiejętności z tabeli Ulicznika z lekkim rozrzutem, broń i pancerz z pakietu Roli. Wynik wypełnia formularz — popraw i „Utwórz”. Rzut widzisz tylko ty.'
                 }
               >
-                <option value="">— bez Roli —</option>
-                {registry.roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                {rolling ? '🎲 Losuję…' : '🎲 Losuj z Roli'}
+              </button>
+            </div>
 
             <fieldset className="npc-create-stats">
               <legend>Cechy</legend>
@@ -333,6 +419,27 @@ function NpcCreateWindowBody() {
                   </label>
                 );
               })}
+              {shields.length > 0 && (
+                <label>
+                  <span>Tarcza</span>
+                  <select
+                    value={input.armorShieldId ?? ''}
+                    onChange={(event) =>
+                      setInput((current) => ({
+                        ...current,
+                        armorShieldId: event.target.value || null,
+                      }))
+                    }
+                  >
+                    <option value="">— bez tarczy —</option>
+                    {shields.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name} (OB {entry.sp})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {[...input.weaponIds, ''].slice(0, CPRED_NPC_WEAPONS_MAX).map((id, index) => (
                 <label key={`${index}-${id}`}>
                   <span>Broń {index + 1}</span>

@@ -164,9 +164,12 @@ async function npcSheetFrom(
     skillIds: deps.ctx.cpred.skillIds,
     roleIds: deps.ctx.cpred.roleIds,
   });
-  const ids = [...input.weaponIds, input.armorHeadId, input.armorBodyId].filter(
-    (id): id is string => id !== null,
-  );
+  const ids = [
+    ...input.weaponIds,
+    input.armorHeadId,
+    input.armorBodyId,
+    input.armorShieldId,
+  ].filter((id): id is string => id !== null);
   const entryById = new Map<string, CompendiumEntry>();
   for (const id of ids) {
     const entry = await campaignEntry(deps, campaignId, id);

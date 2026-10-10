@@ -19,6 +19,8 @@ import type {
   CreationPermitPayload,
   CreationPermitRow,
   CreationPermitState,
+  CreationRandomNpcPayload,
+  CreationRandomNpcResult,
   CreationTerms,
   CreationTermsPayload,
   CreationRerolledPush,
@@ -33,6 +35,7 @@ import {
   CPRED_CREATION_METHOD_LABELS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CPRED_TEMPLATE_ROLLS,
   CREATION_PURCHASE_QTY_MAX,
   LIFEPATH_GROUP_LABELS,
   LIFEPATH_ROLL_TABLES_MAX,
@@ -40,6 +43,7 @@ import {
   applyLifepathEntry,
   applyRolledSpread,
   clearRolledStats,
+  cpredRandomNpc,
   createDefaultCreationDraft,
   cpredPurchasedAmmoRow,
   cpredFitDeckFromGear,
@@ -774,6 +778,90 @@ async function publishRoll(
   const view: ChatMessageView = toChatMessageView(stored);
   await deliverRollMessage(deps, campaignId, author.id, view);
 }
+
+/**
+ * „🎲 Losuj z Roli” w oknie „Nowa postać” (etap 49b, decyzje MG z 10.10).
+ *
+ * Krawędziarz automatem bez szkicu: 1k10 wybiera wiersz Cech z tabeli Roli,
+ * Umiejętności to tabela Ulicznika z rozrzutem, broń i pancerz — pakiet Roli
+ * (`cpredRandomNpc`). Serwer tylko rzuca i oddaje statblok; kartę zakłada
+ * dopiero „Utwórz” (`character:create`), więc MG może wynik poprawić albo
+ * losować dalej. Kartę rzutu widzi wyłącznie MG (`gmroll` przez `publishRoll`).
+ */
+export const creationRandomNpcEvent = defineEvent<
+  CreationRandomNpcPayload,
+  CreationRandomNpcResult
+>({
+  name: 'creation:random-npc',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    const roleId = payload?.roleId;
+    if (typeof roleId !== 'string' || roleId.length === 0) throw new RealtimeError('BAD_REQUEST');
+    const data = creationDataOf(deps.ctx.cpred);
+    const kit = data.streetrat[roleId];
+    if (!kit) throw new RealtimeError('ROLE_HAS_NO_TEMPLATE');
+    const lookup = await purchaseLookup(
+      deps,
+      campaignId,
+      kit.items.flat().filter((id): id is string => id !== null),
+    );
+
+    // Jedna kość na karcie to wiersz Cech; wybory „lub” i rozrzut biorą
+    // z tego samego generatora, ale nie są rzutem, który MG ma oglądać.
+    const gesture = sanitizeGesture(payload?.gesture);
+    const rng = createMixedRng(gesture?.entropy);
+    const result: RollResult = rollFormula(
+      { terms: [{ kind: 'dice', sign: 1, count: 1, sides: CPRED_TEMPLATE_ROLLS }] },
+      rng,
+      { checkRule: false, plain: true },
+    );
+    if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+    if (gesture?.toss) result.toss = gesture.toss;
+    const term = result.terms[0];
+    const face = term && term.kind === 'dice' ? (term.rolls[0] ?? 1) : 1;
+    let rowRolled = false;
+    const npcRng = (sides: number): number => {
+      if (rowRolled) return rng(sides);
+      rowRolled = true;
+      return face;
+    };
+    const multipliers = new Map(
+      deps.ctx.cpred.skills.map((skill) => [skill.id, skill.multiplier ?? 1]),
+    );
+    const rolled = cpredRandomNpc(roleId, data, multipliers, lookup, npcRng);
+    if (!rolled) throw new RealtimeError('ROLE_HAS_NO_TEMPLATE');
+
+    const skillName = (id: string) =>
+      deps.ctx.cpred.skills.find((skill) => skill.id === id)?.name ?? id;
+    const breakdown: RollBreakdownEntry[] = CPRED_STAT_IDS.map((id) => ({
+      label: CPRED_STAT_LABELS[id].abbr,
+      value: rolled.input.stats[id],
+      kind: 'stat',
+      lookup: true as const,
+    }));
+    for (const [id, delta] of Object.entries(rolled.shifted)) {
+      breakdown.push({ label: `${skillName(id)} (rozrzut)`, value: delta, kind: 'skill' });
+    }
+    for (const pick of rolled.picks) {
+      if (pick.options.length < 2) continue;
+      const names = pick.options.map((id) => (id === null ? 'granat' : (lookup(id)?.name ?? id)));
+      breakdown.push({
+        label: names.join(' / '),
+        value: pick.options.indexOf(pick.chosen) + 1,
+        kind: 'pick',
+        lookup: true,
+      });
+    }
+    const roleName = deps.ctx.cpred.roles.find((entry) => entry.id === roleId)?.name ?? roleId;
+    result.title = `Losowy NPC — ${roleName} · wiersz Cech ${rolled.row}`;
+    result.notation = `1k${CPRED_TEMPLATE_ROLLS}`;
+    result.total = rolled.row;
+    result.breakdown = breakdown;
+    await publishRoll(deps, campaignId, user, result);
+    return { npc: rolled.input };
+  },
+});
 
 /**
  * The starting shop (stage 25c) — one item into or out of the basket.

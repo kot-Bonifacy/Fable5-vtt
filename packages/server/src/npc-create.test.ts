@@ -8,7 +8,10 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CharacterUpsertBroadcast,
   CharacterView,
+  ChatMessageBroadcast,
   CpredCharacterData,
+  CpredNpcInput,
+  CreationRandomNpcResult,
   SceneView,
   SocketAck,
   StateSyncPayload,
@@ -310,5 +313,67 @@ describe('okno „Nowa postać” i wzorce statystów (etap 49a)', () => {
       (await emitAck(gm, 'character:update', { characterId: templateId, patch: { template: 1 } }))
         .ok,
     ).toBe(false);
+  });
+});
+
+describe('losowy NPC z Roli (etap 49b)', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+
+  it('MG losuje statblok z pakietu Roli, a kartę rzutu widzi tylko on', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const leaked: ChatMessageBroadcast[] = [];
+    player.on('chat:message', (payload: ChatMessageBroadcast) => leaked.push(payload));
+
+    const { npc } = data(
+      await emitAck<CreationRandomNpcResult>(gm, 'creation:random-npc', {
+        roleId: 'solo',
+        gesture: { entropy: 'a1b2c3d4', strength: 1 },
+      }),
+      'creation:random-npc',
+    );
+    const input = npc as CpredNpcInput;
+    expect(input.roleId).toBe('solo');
+    expect(input.roleRank).toBe(4);
+    expect(input.weaponIds[0]).toBe('weapon.zgrzyt-9');
+    expect(input.armorHeadId).toBe('armor.helm-kurierski');
+    expect(input.armorBodyId).toBe('armor.kurtka-warsztatowa');
+    expect(Object.keys(input.skills)).toHaveLength(19);
+    for (const level of Object.values(input.skills)) {
+      expect(level).toBeGreaterThanOrEqual(2);
+      expect(level).toBeLessThanOrEqual(6);
+    }
+
+    const message = (await card).message;
+    expect(message.kind).toBe('gmroll');
+    expect(message.roll?.title).toMatch(/^Losowy NPC — Solo · wiersz Cech \d+$/);
+    // Dziesięć Cech jako odczyt z tabeli, potem rozrzut i wybory „lub”.
+    expect(message.roll?.breakdown?.slice(0, 10).every((entry) => entry.lookup)).toBe(true);
+    await new Promise((settle) => setTimeout(settle, 200));
+    expect(leaked).toEqual([]);
+
+    // Wynik przechodzi przez zwykłe „Utwórz”.
+    const sheet = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Solo', npc: input }),
+      'character:create',
+    ).data as CpredCharacterData;
+    expect(sheet.roleAbilityRank).toBe(4);
+    expect(sheet.stats).toEqual(input.stats);
+    expect(sheet.weapons.map((row) => row.compendiumId)).toContain('weapon.zgrzyt-9');
+  });
+
+  it('gracz nie losuje, a Rola bez pakietu odmawia', async () => {
+    const refused = await emitAck(player, 'creation:random-npc', { roleId: 'solo' });
+    expect(refused).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+    const noKit = await emitAck(gm, 'creation:random-npc', { roleId: 'medtech' });
+    expect(noKit).toMatchObject({ ok: false, error: 'ROLE_HAS_NO_TEMPLATE' });
+    const bad = await emitAck(gm, 'creation:random-npc', {});
+    expect(bad).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
   });
 });

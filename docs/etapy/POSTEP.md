@@ -21,17 +21,19 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **49b** losowy NPC z Roli (następna); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a (ostatni zamknięty: 49a, 2026-10-10) |
+| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (następna); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b (ostatni zamknięty: 49b, 2026-10-10) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 49 „Szybkie tworzenie NPC-ów i wrogów przez MG” (zlecenie MG z 10.10) — 49a zamknięta,
-następna jest 49b (losowy NPC z Roli: wiersz Cech z tabeli Roli, Umiejętności i ekwipunek
-z pakietu Roli, rzut `gmroll`, wynik wypełnia okno), potem refaktoryzacja.** Od 49a **rzuty
+**Etap 49 „Szybkie tworzenie NPC-ów i wrogów przez MG” (zlecenie MG z 10.10) zamknięty 10.10
+(49a + 49b) — następna jest refaktoryzacja całości pod osłoną suity, potem T10.** Od 49b okno ma
+„🎲 Losuj z Roli” (wymaga Roli): 1k10 na wiersz Cech, Umiejętności z tabeli Ulicznika z rozrzutem,
+broń, pancerz i tarcza z pakietu Roli (`creation:random-npc`, karta `gmroll`; dane `streetrat`
+w `creation.json` — przepisane z PDF-a, `parse-creation.py` ich nie nadpisuje). Od 49a **rzuty
 kreatora MG widzi tylko MG** (`gmroll`), a MG ma na górze „Postaci” jedno okno „＋ Nowa postać…”
 (`NpcCreateWindow`) z typem: **Statysta** (karta-wzorzec — każda figura postawiona z niej
 dostaje własną kopię karty „Nazwa 1, 2…”), **Nazwany NPC** (jedna karta) i **Postać gracza**
@@ -104,7 +106,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → refaktoryzacja → T10 → 28 → T11.** (49a zamknięta 10.10.)
+**Kolejność (MG 03.10, korekty 08.10 i 09.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → refaktoryzacja → T10 → 28 → T11.** (49b zamknięta 10.10.)
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -194,7 +196,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10.10 (49a): **2445** `shared` (+5 `npc.test.ts`), **1435** serwer (+4 nowy `npc-create.test.ts`; `creation.test.ts` — rzut Ścieżki Życia MG jest `gmroll` i nie dochodzi do gracza), **329/330** klient (pada tylko znany `theme.test.ts` — `--top-bar-control`, sprzed sesji); `tsc` w trzech pakietach i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: `t46c-amunicja` **10/10** (46c.8 otwiera kreator kontem MG — fikstura `openCreator` idzie przez „Nowa postać” → „Postać gracza”); łańcucha i pełnego przebiegu nie puszczano. Wcześniej 10.10 (siódma — zaległości): **2431** `shared` (+4: `combat.test.ts` 3, `merchant.test.ts` 1), **1430** serwer (+12: nowy `gm-care.test.ts` 11, `bot-combat.test.ts` +1), **330** klient; ESLint, Prettier i `tsc` czyste w zmienionych plikach; E2E: nowy `t8c-leczenie` 3/3, `t46a-` + `t46b-` + `t46c-` + `00-baseline` **41/41** z gatewayem (46c.9 na żywym modelu), po poprawce Bijatyki `t46a-` 17/17; domyślny przebieg ma teraz **+3** testy (`t8c-leczenie`), pełnego nie puszczano. Wcześniej 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 10.10 (49b): **2451** `shared` (+6: `creation.test.ts` 4 — pakiety i losowanie, `npc.test.ts` 2 — tarcza i Ranga), **1437** serwer (+2 `npc-create.test.ts`; macierz izolacji z `creation:random-npc`), **329/330** klient (dalej tylko znany `theme.test.ts`); `tsc` w trzech pakietach, ESLint i Prettier czyste w zmienionych plikach; E2E nie puszczane (49b nie rusza ścieżek suity). Wcześniej 10.10 (49a): **2445** `shared` (+5 `npc.test.ts`), **1435** serwer (+4 nowy `npc-create.test.ts`; `creation.test.ts` — rzut Ścieżki Życia MG jest `gmroll` i nie dochodzi do gracza), **329/330** klient (pada tylko znany `theme.test.ts` — `--top-bar-control`, sprzed sesji); `tsc` w trzech pakietach i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: `t46c-amunicja` **10/10** (46c.8 otwiera kreator kontem MG — fikstura `openCreator` idzie przez „Nowa postać” → „Postać gracza”); łańcucha i pełnego przebiegu nie puszczano. Wcześniej 10.10 (siódma — zaległości): **2431** `shared` (+4: `combat.test.ts` 3, `merchant.test.ts` 1), **1430** serwer (+12: nowy `gm-care.test.ts` 11, `bot-combat.test.ts` +1), **330** klient; ESLint, Prettier i `tsc` czyste w zmienionych plikach; E2E: nowy `t8c-leczenie` 3/3, `t46a-` + `t46b-` + `t46c-` + `00-baseline` **41/41** z gatewayem (46c.9 na żywym modelu), po poprawce Bijatyki `t46a-` 17/17; domyślny przebieg ma teraz **+3** testy (`t8c-leczenie`), pełnego nie puszczano. Wcześniej 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -229,7 +231,7 @@ a nie do tego pliku.
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 13   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 42   | 8       |
-| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 16   | 3       |
+| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 32   | 3       |
@@ -245,6 +247,28 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.10 (po `bde6fd0`) — etap 49b: losowy NPC z Roli
+
+**Decyzje MG (pytania na starcie):** Umiejętności = tabela Ulicznika + rozrzut; z pakietu Roli
+tylko broń i pancerz; „Losuj z Roli” wymaga wybranej Roli. Zapisane w `etap-49-npc-mg.md`.
+
+**Zrobione:** tabela Umiejętności Ulicznika i broń/pancerz Ról przepisane z angielskiego PDF-a
+(`C:/AI/materialy/Cyberpunk Red.pdf`, s. 86–87 i 98 — polski zrzut skleja komórki) do
+`data/private/cpred/creation.json` → `streetrat`; skrypt sprawdził, że każda Rola ma dokładnie
+listę z polskiego wydania i koszt 86. `parse-creation.py` przenosi `streetrat` i `roleKits`
+(`existing_section`). Shared: `CpredStreetratKit` + `readStreetrat`, `cpredRandomNpc`,
+`CpredNpcInput.armorShieldId` i `roleRank`, `CPRED_NPC_SKILLS_MAX` 24. Serwer:
+`creation:random-npc` (MG, karta `gmroll` „Losowy NPC — Solo · wiersz Cech N” z Cechami,
+rozrzutem i wyborami „lub”). Klient: `rollRandomNpc`, w oknie „🎲 Losuj z Roli”, „Ranga”, „Tarcza”
+(tarcze zniknęły z list Głowa/Tułów). Umowa w `statysta`.
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”, żywe dane): Solo z wiersza 1, rozrzut 5 Umiejętności (suma 0), Karabin
+szturmowy + B.C. pistolet + Duża broń biała, Lekka kurtka ×2, Ranga 4; karta „rzut do MG” na
+czacie; wzorzec utworzony — karta z bronią, pancerzem, Zmysłem Walki 4 i PW 40 — i skasowany.
+Druga sesja gracza nie oglądana na żywo (przeciek `gmroll` sprawdza test serwera).
+**Ślady w `dev.db`:** jedna karta rzutu „Losowy NPC — Solo” na czacie MG kampanii „Test_1”.
 
 ### Sesja 10.10 (po `e812d25`) — etap 49a: okno „Nowa postać”, wzorce statystów, ukryte rzuty MG
 
@@ -270,26 +294,4 @@ przeciągania 56 px w kadrze żetonu. Mapa w Firefoksie Playwrighta tej sesji si
 W Chromium (gracz Ewa, inna kampania) widać na czacie stare jawne karty „Rozkład Cech — Solo ·
 Krawędziarz” MG z 21:30 — dowód zgłoszenia; zostają jawne. **Ślady w `dev.db`:** brak (wzorzec,
 kopie i figury skasowane); kopia bazy sprzed migracji w scratchpadzie sesji.
-
-### Sesja 10.10 (po `c7646b1`) — poprawka spoza etapów: czytelność i kolumny karty postaci
-
-**Zlecenie MG (ze zrzutem):** poprawić rozmieszczenie elementów karty, zwłaszcza zbyt małe czcionki,
-i zlikwidować puste przestrzenie; w trakcie: „rozbij niektóre rzeczy na większą ilość kolumn”
-i „ikony powinny być większe”.
-
-**Zrobione (CSS + klasy w `CharacterSheet.tsx`, bez logiki):** etykiety pól i czerwone przypisy
-1 rem (syntetyczne kapitaliki rysują wersaliki w ~70% kroju), zdania stanu („bez ran
-krytycznych”, „nic tu nie chroni”) zwykłym pismem, guziki i opisy w tabeli broni ~0,8 rem,
-nazwy Umiejętności 0,86 rem, pola tabel 0,9 rem, sloty cyborgizacji większe. **Kolumny:** pancerz
-obok broni od 1350 px kontenera, Specjalizacje Zdolności i Awans w kolumnach ~30 rem, lista
-Umiejętności Awansu w kolumnach gazety bez okienka przewijania (od 1100 px), szerokości kolumn
-„Atak”, „Pancerz” i nazwy w Wyposażeniu w `%`, lokacja pancerza i nazwa w jednym wierszu.
-**Ikony:** miniatury w tabelach 1,6 rem, `✕ ⤓ ⊕ ⚒ ↻` na karcie 1 rem, `⟳`/`◎` klasą
-`small-button--icon`. Umowa i pułapka (kapitaliki w Firefoksie) w `karta`.
-
-**Weryfikacja:** klient 329/330 — pada `theme.test.ts` (`--top-bar-control` niezdefiniowany
-w `theme.css`), **padał już przed tą sesją** (commit `c0b5fc1`, górny pasek; sprawdzone na czystym
-`HEAD`) — do poprawy osobno. `tsc`, ESLint i Prettier czyste w zmienionych plikach. E2E nie
-puszczane. Oglądane w **Chromium** (gracz Ewa, karta Efki: 1600, 1285 i 680 px, wszystkie cztery
-zakładki) i **Firefoksie** (MG, karta Oleny 1600 px). **Ślady w `dev.db`:** brak.
 

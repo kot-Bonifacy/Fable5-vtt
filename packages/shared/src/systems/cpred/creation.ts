@@ -167,6 +167,22 @@ export interface CpredRoleKit {
   choose: string[];
 }
 
+/**
+ * Pakiet Ulicznika jednej Roli (etap 49b, s. 86–87 i 98) — z niego losuje się
+ * NPC-a jednym klikiem (`cpredRandomNpc`). Umiejętności to tabela Ulicznika
+ * (suma 86 punktów po cenie Krawędziarza), a `items` to sloty broni i tarczy:
+ * w slocie alternatywy „lub”, z których przychodzi jedna. `null` w slocie to
+ * rzecz, której NPC z okna nie dostaje (granat — w VTT amunicja), więc ten
+ * wybór zostawia slot pusty. Amunicji, sprzętu i cyborgizacji tu nie ma
+ * (decyzja MG z 10.10: losowy NPC bierze z pakietu tylko broń i pancerz).
+ */
+export interface CpredStreetratKit {
+  /** Id Umiejętności → poziom z tabeli Ulicznika. */
+  skills: Record<string, number>;
+  items: (string | null)[][];
+  armor: { head: string | null; body: string | null };
+}
+
 /** Parsed `cpred/creation.json`. */
 export interface CpredCreationData {
   /** Stat ids in the order the Role templates print their columns. */
@@ -185,6 +201,8 @@ export interface CpredCreationData {
   roles: CpredCreationRole[];
   /** Rola → wyposażenie gratis Kompletnego Pakietu (etap 47a); brak Roli — nic. */
   roleKits: Record<string, CpredRoleKit>;
+  /** Rola → pakiet Ulicznika dla losowego NPC-a (etap 49b); brak Roli — nie da się losować. */
+  streetrat: Record<string, CpredStreetratKit>;
 }
 
 export const DEFAULT_CREATION_BUDGETS: CpredCreationBudgets = {
@@ -217,6 +235,7 @@ export const EMPTY_CPRED_CREATION_DATA: CpredCreationData = {
   budgets: DEFAULT_CREATION_BUDGETS,
   roles: [],
   roleKits: {},
+  streetrat: {},
 };
 
 export interface CpredCreationDraft {
@@ -444,7 +463,45 @@ export function buildCreationData(raw: unknown, registry: CpredRegistry): CpredC
     budgets: readBudgets(input.budgets),
     roles,
     roleKits: readRoleKits(input.roleKits, roles),
+    streetrat: readStreetrat(input.streetrat, roles, registry, limits),
   };
+}
+
+/**
+ * `streetrat` z pliku danych (etap 49b). Umiejętność, której rejestr nie zna,
+ * wypada (jak z listy Roli), poziom spoza widełek kreatora też. Id wpisów
+ * katalogu sprawdza dopiero serwer przy zakładaniu karty — jak w `roleKits`.
+ */
+function readStreetrat(
+  raw: unknown,
+  roles: readonly CpredCreationRole[],
+  registry: CpredRegistry,
+  limits: CpredCreationLimits,
+): Record<string, CpredStreetratKit> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const id = (value: unknown): string | null =>
+    typeof value === 'string' && value.length > 0 ? value : null;
+  const kits: Record<string, CpredStreetratKit> = {};
+  for (const [roleId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!roles.some((role) => role.id === roleId)) continue;
+    if (typeof value !== 'object' || value === null) continue;
+    const input = value as Record<string, unknown>;
+    const skills: Record<string, number> = {};
+    if (typeof input.skills === 'object' && input.skills !== null) {
+      for (const [skillId, level] of Object.entries(input.skills as Record<string, unknown>)) {
+        if (!registry.skillIds.has(skillId)) continue;
+        if (!isInteger(level) || level < limits.skillMin || level > limits.skillMax) continue;
+        skills[skillId] = level;
+      }
+    }
+    if (Object.keys(skills).length === 0) continue;
+    const items = (Array.isArray(input.items) ? input.items : [])
+      .filter((slot): slot is unknown[] => Array.isArray(slot) && slot.length > 0)
+      .map((slot) => slot.map(id));
+    const armor = (input.armor ?? {}) as Record<string, unknown>;
+    kits[roleId] = { skills, items, armor: { head: id(armor.head), body: id(armor.body) } };
+  }
+  return kits;
 }
 
 /**
@@ -759,7 +816,7 @@ export function creationAvailableSkills(
 /** The stat a 1d10 reads out of the Role's template column. */
 export function creationTemplateStat(
   role: CpredCreationRole,
-  data: CpredCreationData,
+  data: Pick<CpredCreationData, 'statOrder'>,
   statId: CpredStatId,
   roll: number,
 ): number | null {
