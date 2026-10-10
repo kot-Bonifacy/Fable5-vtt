@@ -938,10 +938,12 @@ export function connectSocket(userId: string): Socket {
 
   // Tabele losowe (34) — jak wyżej, wyłącznie do pokoju MG: tabela jest
   // narzędziem MG, a jej wiersze zdradzają, co jeszcze może się wydarzyć.
-  onPresented('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
+  // Bez kolejki kości (#72, 10.10): lista tabel nie zdradza żadnego wyniku,
+  // więc nie ma po co czekać, aż stół dokręci jawne losowanie.
+  socket.on('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
     useTableStore.getState().upsert(broadcast.table),
   );
-  onPresented('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
+  socket.on('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
     useTableStore.getState().remove(broadcast.id),
   );
 
@@ -2630,10 +2632,29 @@ export function fetchRandomTables(): Promise<RandomTableListPayload | null> {
   });
 }
 
-export const saveRandomTable = (payload: RandomTableUpsertPayload) =>
-  emitSceneAck<RandomTableView>('table:upsert', payload);
+/**
+ * Zapis i usunięcie tabeli potwierdzają się od razu (#72, decyzja MG z 10.10):
+ * do 10.10 szły przez `emitSceneAck`, więc formularz MG stał otwarty, dopóki
+ * kości wcześniejszego jawnego losowania się nie dokręciły, i drugi klik
+ * „Dodaj tabelę” trafiał w próżnię. Samo losowanie zostaje w kolejce kości.
+ */
+function emitTableAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'NOT_CONNECTED' });
+      return;
+    }
+    socket.emit(event, payload, (ack: SocketAck<T>) => {
+      if (!ack.ok && ack.error === 'RATE_LIMITED') noteRateLimited();
+      resolve(ack);
+    });
+  });
+}
 
-export const deleteRandomTable = (id: string) => emitSceneAck('table:delete', { id });
+export const saveRandomTable = (payload: RandomTableUpsertPayload) =>
+  emitTableAck<RandomTableView>('table:upsert', payload);
+
+export const deleteRandomTable = (id: string) => emitTableAck('table:delete', { id });
 
 /**
  * Losowanie z tabeli. **Nie dotyka `rollStore`** — i to jest cała treść tego
