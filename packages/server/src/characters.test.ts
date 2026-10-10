@@ -363,16 +363,29 @@ describe('characters', () => {
   // Stage 27c — page two and page three of the printed sheet.
   it('the player writes their own page two and places their own chrome', async () => {
     // Wiersz należy teraz do gracza `rogue` — poprzedni przypadek przeniósł
-    // właściciela; ważne jest, że pisze go **gracz**, a nie MG.
+    // właściciela; ważne jest, że pisze go **gracz**, a nie MG. Wszczep wstawia
+    // MG (etap 48c: gracz łatą nie dopisze cyborgizacji), gracz go umieszcza.
+    const eye = { id: 'eye1', name: 'Cyberoko', notes: '', type: 'cyberoptics' };
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: vexCharacterId,
+          patch: { data: { cyberware: [eye] } },
+        })
+      ).ok,
+    ).toBe(true);
+    const forged = await emitAck(rogue, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { cyberware: [eye, { ...eye, id: 'eye2' }] } },
+    });
+    expect(forged).toEqual({ ok: false, error: 'ITEM_LOCKED' });
     const ack = await emitAck<CharacterView>(rogue, 'character:update', {
       characterId: vexCharacterId,
       patch: {
         data: {
           aliases: 'Kolec',
           lifepath: { culture: 'Europa Środkowa', language: 'Czeski', enemies: [{ name: 'Vex' }] },
-          cyberware: [
-            { id: 'eye1', name: 'Cyberoko', notes: '', type: 'cyberoptics', bodySlot: 'eyeLeft' },
-          ],
+          cyberware: [{ ...eye, bodySlot: 'eyeLeft' }],
         },
       },
     });

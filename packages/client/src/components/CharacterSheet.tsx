@@ -122,6 +122,7 @@ import {
   humanityMaxWith,
   isAmmoEntry,
   attachmentOptionsFor,
+  cpredAttachmentGearRow,
   attachmentProfilesOf,
   attachmentSlotsFree,
   attachmentSlotsUsed,
@@ -1433,12 +1434,16 @@ function layoutSkillColumns(
   return columns;
 }
 
-/** Generic editable row-list table, in the sheet's own paper-on-red style. */
+/**
+ * Generic editable row-list table, in the sheet's own paper-on-red style.
+ *
+ * Bez guzika „+ wiersz” od etapu 48c (decyzja MG z 10.10): puste wiersze do
+ * dopisania to relikt papierowej karty — rzeczy przychodzą z zakupu, wymiany,
+ * łupu, kreatora i od MG („Dodaj za darmo” w Kompendium).
+ */
 function RowTable<T extends CpredItemRow>({
   rows,
   columns,
-  addLabel,
-  makeRow,
   onChange,
   lead,
 }: {
@@ -1448,13 +1453,14 @@ function RowTable<T extends CpredItemRow>({
     label: string;
     numeric?: boolean;
     max?: number;
-    /** Sufit pola dla jednego wiersza — pudełko amunicji gracza (46c). */
+    /** Sufit pola dla jednego wiersza — gracz ilości tylko ubywa (46c, 48c). */
     maxFor?: (row: T) => number | undefined;
     maxLength?: number;
     width?: string;
+    /** Pole do czytania — u gracza nazwa przedmiotu (etap 48c). */
+    readOnly?: boolean;
+    title?: string;
   }[];
-  addLabel: string;
-  makeRow: () => T;
   onChange: (rows: T[]) => void;
   /** Co stoi przed polem pierwszej kolumny — miniatura rodzaju (24.09). */
   lead?: (row: T) => ReactNode;
@@ -1487,6 +1493,8 @@ function RowTable<T extends CpredItemRow>({
                     max={c.maxFor?.(row) ?? c.max ?? 999}
                     value={row[c.key] as number}
                     aria-label={c.label}
+                    readOnly={c.readOnly}
+                    {...(c.title ? { title: c.title } : {})}
                     onChange={(e) => {
                       const value = parseNumberInput(e);
                       if (value !== undefined) updateRow(row.id, c.key, value);
@@ -1498,6 +1506,8 @@ function RowTable<T extends CpredItemRow>({
                     maxLength={c.maxLength ?? 64}
                     value={row[c.key] as string}
                     aria-label={c.label}
+                    readOnly={c.readOnly}
+                    {...(c.title ? { title: c.title } : {})}
                     onChange={(e) => updateRow(row.id, c.key, e.target.value)}
                   />
                 );
@@ -1529,9 +1539,6 @@ function RowTable<T extends CpredItemRow>({
           ))}
         </tbody>
       </table>
-      <button type="button" className="cp-add" onClick={() => onChange([...rows, makeRow()])}>
-        {addLabel}
-      </button>
     </div>
   );
 }
@@ -1658,10 +1665,13 @@ function WeaponAttachments({
   characterId,
   row,
   resolved,
+  gear,
 }: {
   characterId: string;
   row: CpredWeaponRow;
   resolved: ResolvedWeapon | null;
+  /** Wyposażenie karty — od etapu 48c dodatek montuje się wyłącznie stąd. */
+  gear: readonly CpredGearRow[];
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -1678,9 +1688,14 @@ function WeaponAttachments({
     () => fittedAttachmentsFor(row.attachmentIds, catalogue, resolved),
     [row.attachmentIds, catalogue, resolved],
   );
+  // Etap 48c (decyzja MG z 10.10): dodatek jest towarem — na liście tylko te,
+  // które pasują do broni **i** leżą w Wyposażeniu.
   const options = useMemo(
-    () => attachmentOptionsFor(catalogue, resolved, fitted),
-    [catalogue, resolved, fitted],
+    () =>
+      attachmentOptionsFor(catalogue, resolved, fitted).filter((attachment) =>
+        cpredAttachmentGearRow(gear, attachment.id),
+      ),
+    [catalogue, resolved, fitted, gear],
   );
 
   const slots = resolved?.attachmentSlots ?? 0;
@@ -1708,7 +1723,7 @@ function WeaponAttachments({
           key={attachment.id}
           type="button"
           className="weapon-slot-chip"
-          title={`${describeAttachment(attachment)} — kliknij, żeby zdjąć`}
+          title={`${describeAttachment(attachment)} — kliknij, żeby zdjąć (wraca do Wyposażenia)`}
           onClick={() => setWeaponAttachment(characterId, row.id, attachment.id, 'unmount')}
         >
           {attachment.name} <span aria-hidden>✕</span>
@@ -1718,7 +1733,7 @@ function WeaponAttachments({
         <button
           type="button"
           className="small-button"
-          title="Dołóż dodatek z katalogu — pasują tylko te, które podręcznik dopuszcza do tej broni"
+          title="Zamontuj dodatek z Wyposażenia — na liście te, które podręcznik dopuszcza do tej broni"
           onClick={() => setPicking(true)}
         >
           + Dodatek
@@ -1980,6 +1995,10 @@ function WeaponStrip({
                           type="text"
                           maxLength={64}
                           value={row.name}
+                          readOnly={!isGm}
+                          {...(isGm
+                            ? {}
+                            : { title: 'Nazwę broni zmienia MG — przezwisko daj w uwagach.' })}
                           onChange={(e) => updateRow(row.id, { name: e.target.value })}
                         />
                       </>
@@ -1988,15 +2007,25 @@ function WeaponStrip({
                   {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
                       nie strzela. Do 31.08 mówił to dopiero planer, w chwili
                       gdy strzał już się nie udał — teraz mówi to karta. */}
-                  {!resolved && !innate && (
+                  {/* Etap 48c: wiązanie z katalogiem zmienia liczby broni, więc
+                      robi je MG; gracz widzi tylko, czemu broń nie strzeli. */}
+                  {!resolved && !innate && isGm && (
                     <button
                       type="button"
                       className="small-button weapon-unbound"
-                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Wskaż model — obrażenia, magazynek i szybkostrzelność uzupełnią się z kompendium, nazwa i uwagi zostaną Twoje."
+                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Wskaż model — obrażenia, magazynek i szybkostrzelność uzupełnią się z kompendium, nazwa i uwagi zostaną."
                       onClick={() => setPicking({ rowId: row.id })}
                     >
                       ⚠ Wskaż broń z katalogu
                     </button>
+                  )}
+                  {!resolved && !innate && !isGm && (
+                    <span
+                      className="small-button weapon-unbound"
+                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Model wskazuje MG."
+                    >
+                      ⚠ Bez wpisu z katalogu
+                    </span>
                   )}
                   {/* „Broń niskiej jakości … nie nadaje się do użytku"
                       (s. 244). Guzik, a nie sam chip: usterkę usuwa się Akcją
@@ -2054,7 +2083,12 @@ function WeaponStrip({
                   )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
                   {!innate && (
-                    <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
+                    <WeaponAttachments
+                      characterId={character.id}
+                      row={row}
+                      resolved={resolved}
+                      gear={data.gear}
+                    />
                   )}
                 </td>
                 <td>
@@ -2067,6 +2101,8 @@ function WeaponStrip({
                       type="text"
                       maxLength={32}
                       value={row.damage}
+                      readOnly={!isGm}
+                      {...(isGm ? {} : { title: 'Obrażenia broni zmienia MG.' })}
                       onChange={(e) => updateRow(row.id, { damage: e.target.value })}
                     />
                   )}
@@ -2121,6 +2157,8 @@ function WeaponStrip({
                       type="text"
                       maxLength={32}
                       value={row.rof}
+                      readOnly={!isGm}
+                      {...(isGm ? {} : { title: 'Szybkostrzelność broni zmienia MG.' })}
                       onChange={(e) => updateRow(row.id, { rof: e.target.value })}
                     />
                   )}
@@ -2311,14 +2349,19 @@ function WeaponStrip({
           })}
         </tbody>
       </table>
-      <button
-        type="button"
-        className="cp-add"
-        title="Broń bierze się z katalogu — stamtąd przychodzi tabela zasięgów, bez której nic nie wystrzeli. Nazwę można potem zmienić na własną."
-        onClick={() => setPicking({ rowId: null })}
-      >
-        + Broń z katalogu
-      </button>
+      {/* Etap 48c (decyzja MG z 10.10): broń przychodzi graczowi z zakupu,
+          wymiany, łupu, kreatora i od MG — „+ Broń z katalogu” to skrót MG
+          (to samo co „Dodaj za darmo” w Kompendium). */}
+      {isGm && (
+        <button
+          type="button"
+          className="cp-add"
+          title="Broń bierze się z katalogu — stamtąd przychodzi tabela zasięgów, bez której nic nie wystrzeli. Za darmo, jak „Dodaj za darmo” w Kompendium."
+          onClick={() => setPicking({ rowId: null })}
+        >
+          + Broń z katalogu
+        </button>
+      )}
       {picking && (
         <WeaponCatalogPicker
           binding={picking.rowId !== null}
@@ -2445,9 +2488,6 @@ function WeaponCatalogPicker({
   );
 }
 
-/** OB, jakie ma świeżo kupiona kurtka — tyle, ile najczęstszy pancerz z tabeli. */
-const ARMOR_DEFAULT_SP = 11;
-
 /**
  * Pancerz jak na wydruku: trzy wiersze — Głowa, Ciało, Tarcza (etap 27b).
  *
@@ -2465,6 +2505,7 @@ const ARMOR_DEFAULT_SP = 11;
  * kończą się w tym samym miejscu.
  */
 function ArmorStrip({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const registry = useCharacterStore((s) => s.registry);
   const rowIcon = useRowIcon();
   const tokens = useTokenStore((s) => s.tokens);
@@ -2499,20 +2540,6 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
 
   function update(rowId: string, patch: Partial<CpredArmorRow>) {
     write(data.armor.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
-  }
-
-  function addAt(location: ArmorLocation) {
-    write([
-      ...data.armor,
-      {
-        id: newRowId(),
-        name: '',
-        sp: ARMOR_DEFAULT_SP,
-        spCurrent: ARMOR_DEFAULT_SP,
-        location,
-        notes: '',
-      },
-    ]);
   }
 
   const printed = ARMOR_LOCATIONS.map((location) => ({
@@ -2551,20 +2578,13 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                       type="text"
                       maxLength={64}
                       value={row.name}
+                      readOnly={!isGm}
+                      {...(isGm ? {} : { title: 'Nazwę pancerza zmienia MG.' })}
                       onChange={(e) => update(row.id, { name: e.target.value })}
                       aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
                     />
                   </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="cp-add"
-                    onClick={() => addAt(location)}
-                    title={`Załóż pancerz w lokacji: ${ARMOR_LOCATION_LABELS[location]}`}
-                  >
-                    + Załóż
-                  </button>
-                )}
+                ) : null}
               </td>
               {row ? (
                 <>
@@ -2608,7 +2628,8 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         ⚒
                       </button>
                     ) : null}
-                    {!row.upgrade && (
+                    {/* Etap 48c: OB zmienia MG — także po Ulepszaniu Technika. */}
+                    {!row.upgrade && isGm && (
                       <button
                         type="button"
                         className="cp-mini-button"
@@ -2687,6 +2708,8 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
                         type="text"
                         maxLength={64}
                         value={row.name}
+                        readOnly={!isGm}
+                        {...(isGm ? {} : { title: 'Nazwę pancerza zmienia MG.' })}
                         onChange={(e) => update(row.id, { name: e.target.value })}
                         aria-label="Nazwa pancerza"
                       />
@@ -2742,10 +2765,6 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
           </table>
         </>
       )}
-
-      <button type="button" className="cp-add" onClick={() => addAt('body')}>
-        + Pancerz
-      </button>
     </div>
   );
 }
@@ -2761,28 +2780,38 @@ function ArmorSp({
   row: CpredArmorRow;
   update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
 }) {
+  // Etap 48c (decyzja MG z 10.10): OB i naprawa należą do MG — gracz bieżące
+  // OB tylko obniża (ablacja liczy się sama przy trafieniu).
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const ablated = row.spCurrent < row.sp;
+  const current = Math.min(row.spCurrent, row.sp);
   return (
     <span className={`armor-sp${ablated ? ' armor-ablated' : ''}`}>
       <NumberStepper
         min={0}
-        max={row.sp}
-        value={Math.min(row.spCurrent, row.sp)}
+        max={isGm ? row.sp : current}
+        value={current}
         onChange={(value) => update(row.id, { spCurrent: value })}
         label="Bieżące OB (po ablacji)"
-        title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
+        title={
+          isGm
+            ? 'Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość.'
+            : 'Ablacja: każde przebicie obniża OB o 1. Naprawia MG albo Technik (Prowizorka).'
+        }
       />
       <span className="cp-of">z</span>
       <NumberStepper
         min={0}
         max={ARMOR_SP_MAX}
         value={row.sp}
+        readOnly={!isGm}
         onChange={(value) =>
           update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) })
         }
         label="OB pancerza (nieuszkodzonego)"
+        {...(isGm ? {} : { title: 'OB pancerza zmienia MG.' })}
       />
-      {ablated && (
+      {ablated && isGm && (
         <button
           type="button"
           className="cp-mini-button"
@@ -2809,10 +2838,12 @@ function ArmorPenalty({
   row: CpredArmorRow;
   update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
 }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   return (
     <NumberStepper
       min={ARMOR_PENALTY_MIN}
       max={0}
+      readOnly={!isGm}
       value={row.penalty ?? 0}
       onChange={(value) => update(row.id, { penalty: value === 0 ? undefined : value })}
       format={(value) => (value === 0 ? '0' : `−${Math.abs(value)}`)}
@@ -3571,9 +3602,7 @@ function CyberdeckSection({
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
-  // Etap 46c: na karcie z zapasem gracz naboi ręką tylko odejmuje.
   const tracksAmmo = characterTracksAmmo(character);
-  const handLocked = tracksAmmo && !isGm;
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
@@ -3611,18 +3640,26 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       <RowTable<CpredGearRow>
         rows={data.gear}
         columns={[
-          { key: 'name', label: 'Wyposażenie' },
+          // Etap 48c (decyzje MG z 10.10): gracz nie przemianowuje przedmiotów
+          // i ilości mu tylko ubywa (zużycie) — przybywa z zakupu, wymiany,
+          // łupu i od MG. Uwagi są jego.
+          {
+            key: 'name',
+            label: 'Wyposażenie',
+            readOnly: !isGm,
+            ...(isGm
+              ? {}
+              : { title: 'Nazwę przedmiotu zmienia MG — własny dopisek daj w uwagach.' }),
+          },
           {
             key: 'qty',
             label: 'Ilość',
             numeric: true,
             width: '4rem',
-            maxFor: (row) => (handLocked && row.ammo ? row.qty : undefined),
+            maxFor: (row) => (isGm ? undefined : row.qty),
           },
           { key: 'notes', label: 'Uwagi', maxLength: 200 },
         ]}
-        addLabel="+ Wyposażenie"
-        makeRow={() => ({ id: newRowId(), name: '', qty: 1, notes: '' })}
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
         lead={(row) => {
           // Sprzęt bez rodzaju nie ma miniatury — uchwytem do przeciągnięcia

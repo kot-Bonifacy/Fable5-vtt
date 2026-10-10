@@ -34,7 +34,12 @@ import {
   toChatMessageView,
 } from './chat-io.js';
 import { requireCampaignId } from './combat.js';
-import { performInstall, requireCyberwareEntry, surgeonRollFor } from './cyberware.js';
+import {
+  performInstall,
+  requireCyberwareEntry,
+  requireFoundCyberware,
+  surgeonRollFor,
+} from './cyberware.js';
 import { findCampaignCharacter } from './inventory.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 
@@ -128,6 +133,7 @@ export const cyberwareRequestEvent = defineEvent<CyberwareRequestPayload, { mess
     if (data.cyberware.length >= ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
     const refusal = cyberwareInstallRefusal(data.cyberware, entry);
     if (refusal) throw new RealtimeError(refusal);
+    if (payment === 'installOnly') requireFoundCyberware(data, entry);
     // Te same odmowy, co przy operacji, tylko wcześniej — Medyk nie ma dostać
     // prośby, której i tak nie mógłby spełnić.
     const surgeonRoll = surgeonRollFor(deps, surgeon, patient, entry);
@@ -214,6 +220,8 @@ async function operate(
   // Pieniądze przed kośćmi, jak w `installCyberware`: karta prośby zostaje
   // otwarta, pacjent może dozbierać albo Medyk zejść z ceny.
   if (data.eddies < price) throw new RealtimeError('NOT_ENOUGH_EDDIES');
+  const fromGear = entry.payment === 'installOnly';
+  if (fromGear) requireFoundCyberware(data, cyberware);
 
   await performInstall(deps, campaignId, user, patient, data, {
     entry: cyberware,
@@ -225,6 +233,7 @@ async function operate(
     },
     gesture: undefined,
     refusal,
+    fromGear,
   });
 }
 

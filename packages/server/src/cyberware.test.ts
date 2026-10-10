@@ -325,6 +325,50 @@ describe('cyborgizacje i człowieczeństwo', () => {
     expect(after.cyberware.at(-1)?.humanityMaxPenalty).toBeUndefined();
   });
 
+  it('etap 48c: „Znaleziony” montuje tylko wszczep z Wyposażenia i go zdejmuje', async () => {
+    const install = () =>
+      emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+        characterId,
+        action: 'install',
+        entryId: 'cyberware.tatuaz-przykladowy',
+        payment: 'installOnly',
+      });
+    expect(await install()).toEqual({ ok: false, error: 'CYBERWARE_NOT_IN_GEAR' });
+    // Gracz łatą karty go sobie nie dopisze — daje go MG („Do Wyposażenia”).
+    const before = await sheetOf(gm, characterId);
+    const found = {
+      id: 'found-tattoo',
+      name: 'Tatuaż',
+      notes: '',
+      compendiumId: 'cyberware.tatuaz-przykladowy',
+      qty: 1,
+    };
+    expect(
+      await emitAck(vex, 'character:update', {
+        characterId,
+        patch: { data: { gear: [...before.gear, found] } },
+      }),
+    ).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId,
+          patch: { data: { gear: [...before.gear, found] } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await install()).ok).toBe(true);
+    const after = await sheetOf(gm, characterId);
+    expect(after.cyberware).toHaveLength(before.cyberware.length + 1);
+    expect(after.gear.some((row) => row.id === 'found-tattoo')).toBe(false);
+    // Robocizna zeszła z konta; dalsze testy liczą na stare saldo.
+    expect(after.eddies).toBeLessThan(before.eddies);
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: { data: { eddies: before.eddies } },
+    });
+  });
+
   it('borgizacja kosztuje sufit podwójnie', async () => {
     const before = await sheetOf(vex, characterId);
     const beforeCeiling =

@@ -283,8 +283,14 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await jump('+10 min');
     expect(gameTime() - appliedAt).toBe(60);
     await expect.poll(() => card('Kowal').statEffects).toEqual([]);
+    // Karta zapisuje się przed wierszem czatu — wiersz trzeba doczekać, nie złapać
+    // jednym odczytem (padło 10.10 w łańcuchu 48c).
+    await expect
+      .poll(() => messageAfter(before, 'Efekty wygasły', 'action'), {
+        message: 'wiersz „Efekty wygasły” na czacie',
+      })
+      .toBeDefined();
     const expired = messageAfter(before, 'Efekty wygasły', 'action');
-    expect(expired, 'wiersz „Efekty wygasły” na czacie').toBeDefined();
     test.info().annotations.push({ type: 'wygaśnięcie', description: expired!.text });
     for (const player of [marek, ola]) {
       await player.page.getByRole('button', { name: 'Czat', exact: true }).click();

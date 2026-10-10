@@ -2049,6 +2049,9 @@ function attackAckErrorText(code: string): string {
       return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_ALREADY_FITTED;
     case 'ATTACHMENT_GROUP_TAKEN':
       return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_GROUP_TAKEN;
+    // Etap 48c: dodatek jest towarem — montuje się go z Wyposażenia.
+    case 'ATTACHMENT_NOT_IN_GEAR':
+      return 'Tego dodatku nie masz w Wyposażeniu — kup go, weź od kogoś albo poproś MG.';
     case 'UNKNOWN_AMMO':
       return 'Nie ma takiego naboju w kompendium.';
     // Etap 46c: przeładowanie i rzut biorą z zapasu w ekwipunku.
@@ -4097,6 +4100,9 @@ export function characterSaveErrorText(code: string): string {
     // Etap 46c (decyzja MG z 09.10): na karcie z zapasem naboi ręką tylko ubywa.
     case 'AMMO_LOCKED':
       return 'Naboi przybywa z zakupu, wymiany, łupu albo od MG — ręką możesz je tylko odjąć.';
+    // Etap 48c (decyzje MG z 10.10): rzeczy z mechaniką nie przybywają z ręki.
+    case 'ITEM_LOCKED':
+      return 'Przedmioty i ich liczby przychodzą z zakupu, wymiany, łupu albo od MG — na karcie piszesz uwagi, wyrzucasz i zużywasz.';
     // Etap 48a (decyzja MG z 10.10): kwaterunek od Korporacji wg Pracy Zespołowej.
     case 'HOUSING_LOCKED':
       return 'To zakwaterowanie daje Korporacja od odpowiedniej rangi Pracy Zespołowej — ustawia je MG.';
@@ -4312,6 +4318,9 @@ function cyberwareErrorText(code: string | undefined): string {
       return 'Za mało eurodolców na wszczep i montaż.';
     case 'NO_PRICE':
       return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo wybierz „Znaleziony”.';
+    // Etap 48c: znaleziony wszczep to wiersz Wyposażenia.
+    case 'CYBERWARE_NOT_IN_GEAR':
+      return 'Znalezionego wszczepu nie ma w Wyposażeniu — za samą robociznę montuje się tylko to, co postać przyniosła.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz zmieniać tej karty.';
     // 04.09.2026: trzy odmowy z s. 111 i dwie z s. 226 — do tej pory

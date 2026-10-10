@@ -8,6 +8,7 @@ import { emitAck } from '../../fixtures/socket.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { createInvitation } from '../../fixtures/table.ts';
+import { giveEntry } from '../../fixtures/kompendium.ts';
 import {
   activeName,
   aim,
@@ -84,6 +85,18 @@ async function customWeapon(
   if (extra.magazine !== undefined)
     await panelField(page, 'Magazynek').fill(String(extra.magazine));
   if (extra.cost !== undefined) await panelField(page, 'Cena \\(ed\\)').fill(String(extra.cost));
+  await page.locator('.side-panel').getByRole('button', { name: 'Zapisz', exact: true }).click();
+  await expect
+    .poll(() => query('SELECT id FROM CompendiumEntry WHERE data LIKE ?', `%"name":"${name}"%`))
+    .toHaveLength(1);
+}
+
+/** Własny wpis sprzętu w Kompendium MG — rzecz fabularna spoza podręcznika (48c). */
+async function customGear(page: Page, name: string) {
+  await page.getByRole('button', { name: 'Kompendium', exact: true }).click();
+  await page.getByRole('button', { name: '+ Własny wpis' }).click();
+  await panelField(page, 'Kategoria').selectOption('gear');
+  await panelField(page, 'Nazwa').fill(name);
   await page.locator('.side-panel').getByRole('button', { name: 'Zapisz', exact: true }).click();
   await expect
     .poll(() => query('SELECT id FROM CompendiumEntry WHERE data LIKE ?', `%"name":"${name}"%`))
@@ -236,12 +249,18 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
       .toBe(1);
 
     // Łup w kieszeni Zbira — tajny, dopóki nikt go nie przeszuka (T4b, 4.9).
+    // Od etapu 48c karta nie ma pustych wierszy: rzecz fabularną MG zakłada
+    // własnym wpisem w Kompendium, daje „Dodaj za darmo”, a sekret dopisuje
+    // w uwagach wiersza (wpis widzi cały stół, uwagi — tylko karta).
     const loot = fromPlayers.secret('lup-Zbira');
+    await customGear(page, 'Chip z kodem do chłodni');
+    await giveEntry(mg, 'Zbir', 'Chip z kodem do chłodni');
+    await expect
+      .poll(() => sheet<{ gear: { name: string }[] }>('Zbir').gear.map((row) => row.name))
+      .toContain('Chip z kodem do chłodni');
     await openSheet(mg, 'Zbir');
     await page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
-    await page.getByRole('button', { name: '+ Wyposażenie' }).click();
     const card = page.getByRole('region', { name: 'Karta postaci: Zbir' });
-    await card.getByLabel('Wyposażenie', { exact: true }).last().fill('Chip z kodem do chłodni');
     await card.getByLabel('Uwagi', { exact: true }).last().fill(`Klucz Rzeźnika. ${loot}`);
     await card.getByLabel('Uwagi', { exact: true }).last().press('Tab');
     await expect

@@ -69,6 +69,9 @@ import {
   cpredCalibreOptions,
   CPRED_AMMO_PACK_SIZE,
   isAmmoEntry,
+  isAttachmentEntry,
+  describeAttachment,
+  toAttachmentProfile,
   toAmmoProfile,
   cpredRoleChores,
   creationPreview,
@@ -2186,6 +2189,9 @@ const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
   { id: 'gear', label: 'Sprzęt' },
   // Etap 48b: Program jest towarem — kupiony ląduje w gniazdach deku.
   { id: 'program', label: 'Programy' },
+  // Etap 48c: dodatek do broni też — kupiony leży w Wyposażeniu, na broń
+  // montuje się go z karty („+ Dodatek”) po „Przyjmij do gry”.
+  { id: 'attachment', label: 'Dodatki' },
   // Etap 46c: przeładowanie bierze naboje z ekwipunku, więc sklep startowy
   // sprzedaje amunicję (poziom 1 — zwykła i śrut) do kalibru wybranej broni.
   { id: 'ammo', label: 'Amunicja' },
@@ -2580,6 +2586,8 @@ function CreatorShopDetails({
     });
     facts.push({ label: 'ATK / OBR / REZ', value: `${entry.atk} / ${entry.def} / ${entry.rez}` });
     facts.push({ label: 'Zajmuje gniazd deku', value: String(netProgramSlots(entry)) });
+  } else if (isAttachmentEntry(entry)) {
+    facts.push({ label: 'Działanie', value: describeAttachment(toAttachmentProfile(entry)) });
   } else if (entry.category === 'gear') {
     if (entry.deckSlots) facts.push({ label: 'Gniazda deku', value: String(entry.deckSlots) });
     if (entry.deckSlotCost) {

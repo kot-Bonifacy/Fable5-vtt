@@ -33,13 +33,7 @@ import {
   type CpredNetInstallRow,
 } from './character.js';
 import { isGearEntry, isProgramEntry, type CompendiumEntry } from './compendium.js';
-import {
-  cpredItemLists,
-  cpredItemListsOverflow,
-  cpredItemView,
-  cpredLandRows,
-  cpredTakeRows,
-} from './inventory.js';
+import { cpredLandInGear as landInGear, cpredTakeOneGear as takeOne } from './inventory.js';
 import { netProgramProfileOf, netProgramSlots } from './netrunning.js';
 
 export type CpredDeckLookup = (compendiumId: string) => CompendiumEntry | undefined;
@@ -95,36 +89,6 @@ export function cpredGearInstallRows(
     const install = cpredDeckInstallOf(entryOfRow(row, lookup));
     return install ? [{ row, ...install }] : [];
   });
-}
-
-/** Zdejmuje jedną sztukę wiersza Wyposażenia; reszta stosu zostaje z tym samym id. */
-function takeOne(
-  data: CpredCharacterData,
-  rowId: string,
-): { data: CpredCharacterData; row: CpredGearRow } | null {
-  const lists = cpredItemLists(data);
-  const taken = cpredTakeRows(lists, [{ list: 'gear', rowId, qty: 1 }]);
-  if (!taken.ok) return null;
-  return {
-    data: { ...data, gear: lists.gear as CpredGearRow[] },
-    row: taken.taken[0]!.row as CpredGearRow,
-  };
-}
-
-/** Kładzie wiersze w Wyposażeniu, sklejając je z takimi samymi; null — lista pełna. */
-function landInGear(
-  data: CpredCharacterData,
-  rows: readonly CpredGearRow[],
-  makeId: () => string,
-): CpredCharacterData | null {
-  const lists = cpredItemLists(data);
-  cpredLandRows(
-    lists,
-    rows.map((row) => ({ list: 'gear' as const, row, view: cpredItemView('gear', row) })),
-    makeId,
-  );
-  if (cpredItemListsOverflow(lists)) return null;
-  return { ...data, gear: lists.gear as CpredGearRow[] };
 }
 
 /** Wiersz Wyposażenia, którym rzecz z gniazda wraca do plecaka. */

@@ -14,6 +14,8 @@ import type {
 } from '@vtt/shared';
 import {
   cpredEffectiveStats,
+  cpredGearRowOfEntry,
+  cpredTakeOneGear,
   CYBERWARE_INSTALL_COST,
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
@@ -405,6 +407,16 @@ async function rollSurgery(
   return messageId;
 }
 
+/**
+ * „Montaż znalezionej cyborgizacji” (s. 375) — od etapu 48c (decyzja MG
+ * z 10.10) znaleziony wszczep to wiersz Wyposażenia: z łupu, z wymiany albo
+ * od MG („Do Wyposażenia” w Kompendium). Bez niego za samą robociznę nie
+ * wszczepia się niczego.
+ */
+export function requireFoundCyberware(data: CpredCharacterData, entry: CyberwareEntry): void {
+  if (!cpredGearRowOfEntry(data.gear, entry.id)) throw new RealtimeError('CYBERWARE_NOT_IN_GEAR');
+}
+
 async function installCyberware(
   deps: RealtimeDeps,
   campaignId: string,
@@ -431,6 +443,8 @@ async function installCyberware(
   // table watched somebody lose Humanity to an operation that never happened.
   const bill = installBill(entry, payload.payment, user);
   if (data.eddies < bill.cost) throw new RealtimeError('NOT_ENOUGH_EDDIES');
+  const fromGear = payload.payment === 'installOnly';
+  if (fromGear) requireFoundCyberware(data, entry);
 
   return performInstall(deps, campaignId, user, character, data, {
     entry,
@@ -438,6 +452,7 @@ async function installCyberware(
     bill,
     gesture,
     refusal,
+    fromGear,
   });
 }
 
@@ -458,9 +473,20 @@ export async function performInstall(
     bill: CyberwareBill;
     gesture: RollGesture | undefined;
     refusal: ReturnType<typeof cyberwareInstallRefusal>;
+    /**
+     * Znaleziony wszczep (etap 48c) schodzi z Wyposażenia — także przy
+     * nieudanym Teście montażu, bo „cyborgizacja ulega zniszczeniu” (s. 226).
+     */
+    fromGear?: boolean;
   },
 ): Promise<{ messageId: number }> {
   const { entry, surgeon, bill, gesture, refusal } = input;
+  if (input.fromGear) {
+    const found = cpredGearRowOfEntry(data.gear, entry.id);
+    const taken = found ? cpredTakeOneGear(data, found.id) : null;
+    if (!taken) throw new RealtimeError('CYBERWARE_NOT_IN_GEAR');
+    data = taken.data;
+  }
   if (surgeon) {
     const failed = await rollSurgery(deps, campaignId, user, character, data, {
       entry,
@@ -468,7 +494,12 @@ export async function performInstall(
       bill,
       gesture,
     });
-    if (failed !== null) return { messageId: failed };
+    if (failed !== null) {
+      // Bez rachunku `rollSurgery` niczego nie zapisuje — a zniszczony wszczep
+      // i tak musi zejść z plecaka.
+      if (input.fromGear && bill.cost <= 0) await saveSheet(deps, campaignId, character, data);
+      return { messageId: failed };
+    }
   }
 
   const { loss, result, notation } = rollHumanityLoss(entry, gesture?.entropy);

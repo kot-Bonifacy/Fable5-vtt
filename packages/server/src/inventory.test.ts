@@ -248,7 +248,7 @@ describe('przedmioty między kartami', () => {
 
     expect(
       (
-        await emitAck(vex, 'character:update', {
+        await emitAck(gm, 'character:update', {
           characterId: vexCharacterId,
           patch: { data: { gear: [gearRow('g-vex', 3)] } },
         })

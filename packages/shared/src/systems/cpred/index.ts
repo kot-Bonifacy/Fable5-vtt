@@ -34,6 +34,7 @@ export * from './attacks.js';
 export * from './statblock.js';
 export * from './inventory.js';
 export * from './cyberdeck.js';
+export * from './itemlocks.js';
 export * from './merchant.js';
 export * from './container.js';
 export * from './containercard.js';

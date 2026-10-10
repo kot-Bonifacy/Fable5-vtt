@@ -23,6 +23,7 @@ import {
   CPRED_AMMO_PATTERN_LABELS,
   CYBERWARE_INSTALL_COST,
   cpredHaggledPrice,
+  cpredGearRowOfEntry,
   isAmmoEntry,
   toAmmoProfile,
   CPRED_AMMO_PACK_SIZE,
@@ -76,6 +77,7 @@ import {
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   addCompendiumItemToCharacter,
+  addFoundCyberwareToCharacter,
   buyCompendiumItemForCharacter,
 } from '../compendium-items.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
@@ -394,6 +396,10 @@ function EntryCard({
 
   const targets = order.map((id) => characters[id]).filter((c) => c !== undefined);
   const target = targetId || targets[0]?.id || '';
+  // Etap 48c: „Znaleziony — montaż” tylko z wiersza Wyposażenia wybranej postaci.
+  const foundInGear =
+    entry.category === 'cyberware' &&
+    cpredGearRowOfEntry(characters[target]?.data.gear ?? [], entry.id) !== undefined;
 
   // Stage 23b: a band is a price („50 ed (Drogie)" and „(Drogie)" cost the
   // same), so an entry priced only by its band is still buyable.
@@ -1077,11 +1083,17 @@ function EntryCard({
                 Zainstaluj{price === null ? '' : ` — ${price} ed`}
               </button>
               {/* „Montaż znalezionej cyborgizacji" (s. 375): chrome pulled off
-                  a corpse costs the ripperdoc's time and nothing else. */}
+                  a corpse costs the ripperdoc's time and nothing else. Od etapu
+                  48c znaleziony wszczep musi leżeć w Wyposażeniu postaci. */}
               <button
                 type="button"
                 className="small-button"
-                title="Wszczep już masz — płacisz tylko za montaż (s. 375)."
+                title={
+                  foundInGear
+                    ? 'Wszczep leży w Wyposażeniu — płacisz tylko za montaż (s. 375), a wiersz schodzi z plecaka.'
+                    : 'Znaleziony wszczep musi leżeć w Wyposażeniu postaci (łup, wymiana albo od MG).'
+                }
+                disabled={!foundInGear}
                 onClick={() => void install('installOnly')}
               >
                 Znaleziony — montaż {fitting} ed
@@ -1147,6 +1159,16 @@ function EntryCard({
               Kup{ammoPayable === null ? '' : ` — ${formatEddies(ammoPayable)} ed`}
             </button>
           )}
+          {isGm && entry.category === 'cyberware' ? (
+            <button
+              type="button"
+              className="small-button"
+              title="Znaleziony wszczep do Wyposażenia — łup z ciała, nagroda w naturze. Wszczepia się go potem „Znaleziony — montaż” za samą robociznę."
+              onClick={() => setNote(addFoundCyberwareToCharacter(target, entry))}
+            >
+              Do Wyposażenia
+            </button>
+          ) : null}
           {isGm ? (
             <button
               type="button"

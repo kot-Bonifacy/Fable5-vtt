@@ -309,7 +309,7 @@ describe('oględziny wyposażenia', () => {
     // Vex też potrzebuje broni — to jego karta odmawia strzału w dalszych testach.
     expect(
       (
-        await emitAck(vex, 'character:update', {
+        await emitAck(gm, 'character:update', {
           characterId: vexCharacterId,
           patch: { data: { weapons: [pistol('v-pistol'), rifle('v-rifle'), blade('v-blade')] } },
         })

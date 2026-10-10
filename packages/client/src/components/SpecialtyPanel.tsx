@@ -273,7 +273,7 @@ function FabricationExtras() {
           {CPRED_ITEM_UPGRADES.map((upgrade) => (
             <li key={upgrade.id}>
               <b>{upgrade.name}</b> — {upgrade.text}
-              {upgrade.effect ? ' (VTT liczy to samo: guzik ⊕ przy pancerzu)' : ''}
+              {upgrade.effect ? ' (VTT liczy to samo: MG klika ⊕ przy pancerzu)' : ''}
             </li>
           ))}
         </ul>

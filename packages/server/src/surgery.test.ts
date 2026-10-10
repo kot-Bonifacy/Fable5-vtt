@@ -349,7 +349,35 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     ).toEqual({ ok: false, error: 'SURGERY_CLOSED' });
   });
 
+  it('etap 48c: „Znaleziony” bez wszczepu w Wyposażeniu — prośby nie ma', async () => {
+    expect(
+      await emitAck(marek, 'cyberware:request', {
+        patientId: kowalId,
+        surgeonId: iskraId,
+        entryId: TATTOO,
+        payment: 'installOnly',
+      }),
+    ).toEqual({ ok: false, error: 'CYBERWARE_NOT_IN_GEAR' });
+  });
+
   it('cena poniżej domyślnej operuje od razu, a pieniądze jadą na kartę Medyka', async () => {
+    // Etap 48c: znaleziony wszczep leży w Wyposażeniu pacjenta (od MG).
+    const gear = (await sheetOf(gm, kowalId)).gear;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: kowalId,
+          patch: {
+            data: {
+              gear: [
+                ...gear,
+                { id: 'found', name: 'Tatuaż', notes: '', compendiumId: TATTOO, qty: 1 },
+              ],
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
     const messageId = await request('installOnly');
     scriptDice([9]);
     const ack = data(
@@ -363,6 +391,10 @@ describe('prośba o operację u Medyka innego gracza (#41)', () => {
     expect(ack.pending).toBe(false);
     expect((await sheetOf(gm, kowalId)).eddies).toBe(9400);
     expect((await sheetOf(gm, iskraId)).eddies).toBe(600);
+    // Wszczep zszedł z plecaka — za robociznę montuje się go raz.
+    expect((await sheetOf(gm, kowalId)).gear.some((row) => row.compendiumId === TATTOO)).toBe(
+      false,
+    );
     const ledger = data(
       await emitAck<EconomyHistoryResult>(ola, 'economy:history', { characterId: iskraId }),
       'economy:history',

@@ -2063,12 +2063,43 @@ describe('ranged combat from the map', () => {
       return (await sheetOf(characterId)).weapons.find((w) => w.id === 'w-rifle');
     }
 
+    async function gearQty(attachmentId: string) {
+      const row = (await sheetOf(characterId)).gear.find((g) => g.compendiumId === attachmentId);
+      return row?.qty ?? 0;
+    }
+
+    it('etap 48c: bez dodatku w Wyposażeniu montażu nie ma', async () => {
+      expect(await mount(DRUM)).toEqual({ ok: false, error: 'ATTACHMENT_NOT_IN_GEAR' });
+    });
+
+    it('etap 48c: MG daje dodatki „Dodaj za darmo” — lądują w Wyposażeniu', async () => {
+      const gear = (await sheetOf(characterId)).gear;
+      const given = [DRUM, EXTENDED, BAYONET, UNDERBARREL, LINK].map((id) => ({
+        id: `g-${id}`,
+        name: id,
+        notes: '',
+        compendiumId: id,
+        qty: 1,
+      }));
+      expect(
+        (
+          await emitAck(gm, 'character:update', {
+            characterId,
+            patch: { data: { gear: [...gear, ...given] } },
+          })
+        ).ok,
+      ).toBe(true);
+      expect(await gearQty(DRUM)).toBe(1);
+    });
+
     it('bęben przepisuje magazynek z tabeli i zajmuje jedno gniazdo', async () => {
       const result = data(await mount(DRUM), 'weapon:attachment');
       expect(result.attachmentIds).toEqual([DRUM]);
       // Karabin przykładowy: 25 → 45 w kolumnie „Bębnowy".
       expect(result.ammoMax).toBe(45);
       expect(result.slotsFree).toBe(2);
+      // Etap 48c: bęben zszedł z Wyposażenia tym samym zapisem.
+      expect(await gearQty(DRUM)).toBe(0);
       const row = await rifleRow();
       expect(row?.ammoMax).toBe(45);
       expect(row?.attachmentIds).toEqual([DRUM]);
@@ -2091,6 +2122,8 @@ describe('ranged combat from the map', () => {
       // Dwadzieścia naboi poszło razem z bębnem — nie zostają w karabinie.
       expect(result.ammoCurrent).toBe(25);
       expect((await rifleRow())?.attachmentIds).toBeUndefined();
+      // Etap 48c: zdjęty bęben wraca do Wyposażenia.
+      expect(await gearQty(DRUM)).toBe(1);
     });
 
     it('nie da się dokręcić dodatku do broni, której podręcznik nim nie obsługuje', async () => {

@@ -640,6 +640,60 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     ).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 
+  test('3.8 Kowal niczego nie dopisuje, a dodatek montuje z Wyposażenia (48c)', async () => {
+    // Etap 48c (decyzje MG z 10.10): rzeczy z mechaniką przychodzą z zakupu,
+    // wymiany, łupu, kreatora i od MG — na karcie gracza nie ma pustych wierszy,
+    // nazwy i liczby są do czytania, a dodatek do broni jest towarem.
+    const sheet = await openSheet(marek, 'Kowal');
+    await sheet.getByRole('button', { name: 'Karta', exact: true }).click();
+    await expect(sheet.getByRole('button', { name: '+ Broń z katalogu' })).toHaveCount(0);
+    await expect(sheet.getByRole('button', { name: '+ Pancerz' })).toHaveCount(0);
+    await expect(sheet.locator('.weapon-table input[type="text"]').first()).toHaveAttribute(
+      'readonly',
+      '',
+    );
+    const socket = await marek.socket();
+    const kowal = character('Kowal');
+    const weapons = sheetOf('Kowal').weapons as { id: string; damage: string }[];
+    expect(
+      await emitAck(socket, 'character:update', {
+        characterId: kowal.id,
+        patch: {
+          data: { weapons: weapons.map((row, i) => (i === 0 ? { ...row, damage: '9k6' } : row)) },
+        },
+      }),
+    ).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+
+    // Luneta od MG ląduje w Wyposażeniu; „+ Dodatek” bierze ją stamtąd i oddaje.
+    const SCOPE = 'Snajperska luneta celownicza';
+    const scopeRows = () =>
+      (sheetOf('Kowal').gear as { name: string; qty: number }[]).filter((g) => g.name === SCOPE);
+    await giveEntry(mg, 'Kowal', SCOPE);
+    await expect.poll(() => scopeRows().length).toBe(1);
+    const slots = sheet.locator('.weapon-slots').first();
+    await slots.getByRole('button', { name: '+ Dodatek' }).click();
+    await sheet
+      .locator('.weapon-slot-picker')
+      .getByRole('button', { name: new RegExp(SCOPE) })
+      .click();
+    await expect(slots.locator('.weapon-slot-chip')).toContainText(SCOPE);
+    await expect.poll(() => scopeRows().length).toBe(0);
+    await slots.locator('.weapon-slot-chip', { hasText: SCOPE }).click();
+    await expect(slots.locator('.weapon-slot-chip')).toHaveCount(0);
+    await expect.poll(() => scopeRows().length).toBe(1);
+    // Sprzątanie: luneta nie należy do łańcucha — MG ją zabiera, stan jak przed testem.
+    const gear = sheetOf('Kowal').gear as { name: string }[];
+    expect(
+      (
+        await emitAck(await mg.socket(), 'character:update', {
+          characterId: kowal.id,
+          patch: { data: { gear: gear.filter((g) => g.name !== SCOPE) } },
+        })
+      ).ok,
+    ).toBe(true);
+    await expect.poll(() => scopeRows().length).toBe(0);
+  });
+
   test('3.8 kanarki: portret NPC u nikogo, notatka Kowala nie u Oli', async () => {
     expect(await marek.sniffer.found(fromPlayers.secretNow)).toEqual([]);
     expect(await ola.sniffer.found([...fromPlayers.secretNow, ...fromOla.secretNow])).toEqual([]);

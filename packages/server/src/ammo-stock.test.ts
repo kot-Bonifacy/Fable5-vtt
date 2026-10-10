@@ -390,7 +390,9 @@ describe('etap 46c — zapas amunicji', () => {
       characterId: vexId,
       patch: { data: { gear: [box(99, PISTOL, null, 'zw')] } },
     });
-    expect(more).toEqual({ ok: false, error: 'AMMO_LOCKED' });
+    // Od 48c pudełko to zwykły wiersz wyposażenia: ilości gracz tylko ubywa
+    // na każdej karcie, więc odmawia ogólna blokada przedmiotów.
+    expect(more).toEqual({ ok: false, error: 'ITEM_LOCKED' });
     const untrack = await emitAck(player, 'character:update', {
       characterId: vexId,
       patch: { data: { ammoTracked: false } },

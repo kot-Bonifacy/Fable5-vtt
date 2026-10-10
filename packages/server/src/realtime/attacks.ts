@@ -59,6 +59,9 @@ import {
   barrierConcealPenaltyAlong,
   cpredBarrierModifiers,
   fittedAttachmentsFor,
+  cpredReturnAttachmentToGear,
+  cpredRowId,
+  cpredTakeAttachmentFromGear,
   resolveAttachmentWeapon,
   weaponMagazineWith,
   type CpredAttachmentProfile,
@@ -2462,17 +2465,26 @@ export const weaponAttachmentEvent = defineEvent<WeaponAttachmentPayload, Weapon
     const catalogue = attachmentProfilesOf(compendium.entries);
     const fitted = fittedAttachmentsFor(row.attachmentIds, catalogue, resolved);
 
+    // Etap 48c (decyzja MG z 10.10): dodatek jest towarem — montuje się go
+    // z wiersza Wyposażenia, a zdjęty wraca do Wyposażenia, tym samym zapisem
+    // co broń. Także u MG: on daje dodatek „Dodaj za darmo” i montuje jak gracz.
     let next: CpredAttachmentProfile[];
+    let gear: CpredCharacterData['gear'];
     if (mounting) {
       const attachment = catalogue.find((candidate) => candidate.id === payload.attachmentId);
       if (!attachment) throw new RealtimeError('UNKNOWN_ATTACHMENT');
       const problem = attachmentMountProblem(attachment, resolved, fitted);
       if (problem) throw new RealtimeError(problem);
+      const taken = cpredTakeAttachmentFromGear(data, attachment.id);
+      if (!taken) throw new RealtimeError('ATTACHMENT_NOT_IN_GEAR');
+      gear = taken.gear;
       next = [...fitted, attachment];
     } else {
-      if (!fitted.some((candidate) => candidate.id === payload.attachmentId)) {
-        throw new RealtimeError('UNKNOWN_ATTACHMENT');
-      }
+      const attachment = fitted.find((candidate) => candidate.id === payload.attachmentId);
+      if (!attachment) throw new RealtimeError('UNKNOWN_ATTACHMENT');
+      const returned = cpredReturnAttachmentToGear(data, attachment, cpredRowId);
+      if (!returned) throw new RealtimeError('TOO_MANY_ROWS');
+      gear = returned.gear;
       next = fitted.filter((candidate) => candidate.id !== payload.attachmentId);
     }
 
@@ -2508,13 +2520,21 @@ export const weaponAttachmentEvent = defineEvent<WeaponAttachmentPayload, Weapon
     }
 
     const attachmentIds = next.map((candidate) => candidate.id);
-    await saveWeaponRow(deps, campaignId, character, data, row.id, {
-      attachmentIds,
-      attachmentAmmo,
-      attachmentAmmoId,
-      ammoMax,
-      ammoCurrent,
-    });
+    await saveWeaponRow(
+      deps,
+      campaignId,
+      character,
+      data,
+      row.id,
+      {
+        attachmentIds,
+        attachmentAmmo,
+        attachmentAmmoId,
+        ammoMax,
+        ammoCurrent,
+      },
+      { gear },
+    );
     return {
       attachmentIds,
       slotsFree: attachmentSlotsFree(resolved, next),

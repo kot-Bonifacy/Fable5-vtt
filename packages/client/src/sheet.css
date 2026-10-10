@@ -2605,3 +2605,13 @@
 .sheet-window--paper :is(.cp-panel, .cp-table):nth-child(5n) {
   background-position: 89% 44%;
 }
+
+/* Etap 48c: pole do czytania (nazwa i liczby przedmiotu u gracza) wygląda jak
+   wydruk — bez podświetlenia przy kliknięciu i bez kursora tekstowego. */
+.cp-table input[readonly] {
+  cursor: default;
+}
+
+.cp-table input[readonly]:focus {
+  background: transparent;
+}

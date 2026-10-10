@@ -32,7 +32,9 @@
  */
 
 import type { RollBreakdownEntry } from '../../dice.js';
+import type { CpredCharacterData, CpredGearRow } from './character.js';
 import type { ResolvedWeapon } from './compendium.js';
+import { cpredGearRowOfEntry, cpredLandInGear, cpredTakeOneGear } from './inventory.js';
 
 /**
  * The three columns of the magazine table (s. 344).
@@ -463,4 +465,41 @@ export function describeAttachment(attachment: CpredAttachmentProfile): string {
   if (attachment.secondary) parts.push('druga broń');
   if (attachment.blocksConcealment) parts.push('broni nie da się ukryć');
   return parts.join(' · ');
+}
+
+// ───────────── Dodatek jako towar (etap 48c, decyzja MG z 10.10) ─────────────
+//
+// Do 48c „+ Dodatek” brał dodatek z całego katalogu za darmo. Teraz montuje się
+// go z wiersza Wyposażenia (kupiony, z łupu, z wymiany, od MG), a zdjęty wraca
+// do Wyposażenia — jak Program do deku w 48b. Zamontowany jedzie dalej razem
+// z bronią (`attachmentIds` na wierszu), więc łup i handel nic nie zmieniają.
+
+/** Wiersz Wyposażenia, z którego da się zamontować ten dodatek; undefined — brak. */
+export function cpredAttachmentGearRow(
+  gear: readonly CpredGearRow[],
+  attachmentId: string,
+): CpredGearRow | undefined {
+  return cpredGearRowOfEntry(gear, attachmentId);
+}
+
+/** Zdejmuje z Wyposażenia jedną sztukę dodatku do montażu; null — nie ma go w plecaku. */
+export function cpredTakeAttachmentFromGear(
+  data: CpredCharacterData,
+  attachmentId: string,
+): CpredCharacterData | null {
+  const row = cpredAttachmentGearRow(data.gear, attachmentId);
+  return row ? (cpredTakeOneGear(data, row.id)?.data ?? null) : null;
+}
+
+/** Kładzie zdjęty dodatek w Wyposażeniu; null — lista pełna. */
+export function cpredReturnAttachmentToGear(
+  data: CpredCharacterData,
+  attachment: Pick<CpredAttachmentProfile, 'id' | 'name'>,
+  makeId: () => string,
+): CpredCharacterData | null {
+  return cpredLandInGear(
+    data,
+    [{ id: makeId(), name: attachment.name, notes: '', compendiumId: attachment.id, qty: 1 }],
+    makeId,
+  );
 }

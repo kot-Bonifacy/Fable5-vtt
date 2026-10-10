@@ -335,6 +335,54 @@ export function cpredItemListsOverflow(lists: CpredItemLists): boolean {
 }
 
 /**
+ * Wiersz Wyposażenia z tym wpisem katalogu — pierwszy, jeśli jest ich kilka
+ * (etap 48c). Pudełko amunicji nosi `compendiumId` wpisu naboju i nie jest
+ * „tą rzeczą” nigdy.
+ */
+export function cpredGearRowOfEntry(
+  gear: readonly CpredGearRow[],
+  compendiumId: string,
+): CpredGearRow | undefined {
+  return gear.find((row) => row.compendiumId === compendiumId && !row.ammo);
+}
+
+/**
+ * Zdejmuje jedną sztukę wiersza Wyposażenia (etap 48b, wspólne od 48c); reszta
+ * stosu zostaje z tym samym id. Null — wiersza nie ma.
+ */
+export function cpredTakeOneGear(
+  data: CpredCharacterData,
+  rowId: string,
+): { data: CpredCharacterData; row: CpredGearRow } | null {
+  const lists = cpredItemLists(data);
+  const taken = cpredTakeRows(lists, [{ list: 'gear', rowId, qty: 1 }]);
+  if (!taken.ok) return null;
+  return {
+    data: { ...data, gear: lists.gear as CpredGearRow[] },
+    row: taken.taken[0]!.row as CpredGearRow,
+  };
+}
+
+/**
+ * Kładzie wiersze w Wyposażeniu, sklejając je z takimi samymi (etap 48b,
+ * wspólne od 48c); null — lista pełna.
+ */
+export function cpredLandInGear(
+  data: CpredCharacterData,
+  rows: readonly CpredGearRow[],
+  makeId: () => string,
+): CpredCharacterData | null {
+  const lists = cpredItemLists(data);
+  cpredLandRows(
+    lists,
+    rows.map((row) => ({ list: 'gear' as const, row, view: cpredItemView('gear', row) })),
+    makeId,
+  );
+  if (cpredItemListsOverflow(lists)) return null;
+  return { ...data, gear: lists.gear as CpredGearRow[] };
+}
+
+/**
  * Przenosi wskazane wiersze z jednej karty na drugą.
  *
  * Czysta funkcja: nic nie zapisuje i nie wie, kto ma prawo to zrobić — to

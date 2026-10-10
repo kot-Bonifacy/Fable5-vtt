@@ -104,6 +104,28 @@ export async function addCompendiumItemToCharacter(
   }
 }
 
+/**
+ * Znaleziony wszczep do Wyposażenia (etap 48c, decyzja MG z 10.10) — łup
+ * z ciała, nagroda w naturze. Leży w plecaku jak każdy przedmiot (handel, łup,
+ * sklep), a „Znaleziony — montaż” wszczepia go za samą robociznę i zdejmuje.
+ * Tylko MG — gracz dostaje go z łupu albo z wymiany.
+ */
+export function addFoundCyberwareToCharacter(characterId: string, entry: CompendiumEntry): string {
+  const character = useCharacterStore.getState().characters[characterId];
+  if (!character) return 'Nie znaleziono postaci.';
+  const gear = character.data.gear;
+  if (gear.length >= ITEM_ROWS_MAX) return 'Lista wyposażenia jest pełna.';
+  queueCharacterSave(characterId, {
+    data: {
+      gear: [
+        ...gear,
+        { id: nextRowId(), name: entry.name, notes: '', compendiumId: entry.id, qty: 1 },
+      ],
+    },
+  });
+  return `Dodano „${entry.name}” do Wyposażenia — montaż: „Znaleziony”.`;
+}
+
 /** Buys the entry for the character; the server decides whether it can afford it. */
 export async function buyCompendiumItemForCharacter(
   characterId: string,

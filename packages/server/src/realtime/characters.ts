@@ -28,6 +28,7 @@ import {
   cpredFleetSheetProblem,
   cpredRolesProblem,
   cpredHousingAllowed,
+  cpredPlayerItemPatchProblem,
   cpredSpecialtiesProblem,
   createDefaultCharacterData,
   describeCombatAwareness,
@@ -258,6 +259,15 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // furtka sędziego na naprawę karty (jego UI też idzie przez Wyposażenie).
       if (!isGm && sheet.cyberdeck !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
+      // Etap 48c (decyzje MG z 10.10): rzeczy z mechaniką przybywają graczowi
+      // tylko z zakupu, wymiany, łupu, kreatora i od MG — łatą karty nie
+      // dopisze wiersza, sztuki ani punktu OB, nie zmieni liczb broni
+      // i pancerza, nie wpisze ani nie wyjmie wszczepu. Uwagi, wyrzucenie,
+      // zużycie, zakładanie pancerza i miejsce na sylwetce zostają jego.
+      if (!isGm) {
+        const locked = cpredPlayerItemPatchProblem(current, sheet);
+        if (locked) throw new RealtimeError(locked);
+      }
       // Etap 46c (decyzja MG 6 z 09.10): „Licz amunicję” przestawia MG, a na
       // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,
       // wymiany, łupu i od MG. Inaczej przeładowanie z zapasu byłoby ozdobą.
