@@ -125,6 +125,28 @@ export interface CharacterFieldRepairPayload {
   undo?: boolean;
 }
 
+/** What `character:deck` does with the sheet's cyberdeck (stage 48b). */
+export type CharacterDeckAction = 'plug' | 'unplug' | 'install' | 'remove' | 'slots';
+
+/**
+ * Client → server payload of `character:deck` (stage 48b, GM's decision of
+ * 10.10.2026).
+ *
+ * The deck and its slots leave the sheet-patch path for the player: a deck is
+ * plugged from a Wyposażenie row and a Program goes in from one, so both have
+ * to be taken off the backpack in the same write — a patch that only filled
+ * `cyberdeck` would be the free catalogue of stage 26a again. `slots` is the
+ * GM's alone (Kombinezon Bodyweight, a deck in a cyberarm, s. 208).
+ */
+export interface CharacterDeckPayload {
+  characterId: string;
+  action: CharacterDeckAction;
+  /** `plug` / `install`: the Wyposażenie row; `remove`: the deck slot row. */
+  rowId?: string;
+  /** `slots`: the new slot count. */
+  slots?: number;
+}
+
 /**
  * Client → server payload of `character:backup-call` (stage 30c).
  *

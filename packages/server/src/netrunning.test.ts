@@ -7,6 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
+  CharacterView,
+  CpredCharacterData,
   NetArchitectureListPayload,
   NetArchitectureRollResult,
   NetArchitectureView,
@@ -51,6 +53,7 @@ let built: BuiltApp;
 let baseUrl: string;
 let gmCookie: string;
 let playerCookie: string;
+let playerId: string;
 const openSockets: ClientSocket[] = [];
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
@@ -168,6 +171,7 @@ beforeAll(async () => {
     url: await joinUrl(built, token, 'Vex'),
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
+  playerId = (join.json() as { user: { id: string } }).user.id;
 }, 60_000);
 
 afterAll(async () => {
@@ -370,5 +374,115 @@ describe('programs in the catalogue', () => {
       (entry) => entry.category === 'gear' && entry.deckSlots !== undefined,
     );
     expect(deck).toBeDefined();
+  });
+});
+
+describe('character:deck — cyberdek jako towar (etap 48b)', () => {
+  it('dek i Programy przychodzą z Wyposażenia i do niego wracają; gniazda zmienia MG', async () => {
+    const gm = createSocket(gmCookie);
+    const player = createSocket(playerCookie);
+    await Promise.all([gm.firstSync, player.firstSync]);
+    const created = await emitAck<CharacterView>(gm.socket, 'character:create', {
+      name: 'Kolec',
+      ownerId: playerId,
+    });
+    const characterId = created.data!.id;
+    const sheet = async () => {
+      const synced = await emitAck<CharacterView>(gm.socket, 'character:update', {
+        characterId,
+        patch: {},
+      });
+      return synced.data!.data as CpredCharacterData;
+    };
+
+    // MG daje dek „Dodaj za darmo” (wiersz Wyposażenia), Program kupuje za 0 ed.
+    expect(
+      (
+        await emitAck(gm.socket, 'character:update', {
+          characterId,
+          patch: {
+            data: {
+              gear: [
+                {
+                  id: 'dek',
+                  name: 'Dek przykładowy',
+                  notes: '',
+                  compendiumId: 'gear.dek-przykladowy',
+                  qty: 1,
+                },
+              ],
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+    const bought = await emitAck(gm.socket, 'economy:buy', {
+      characterId,
+      entryId: 'program.osa',
+      price: 0,
+    });
+    expect(bought.ok).toBe(true);
+    const osa = (await sheet()).gear.find((row) => row.compendiumId === 'program.osa');
+    expect(osa?.qty).toBe(1);
+
+    // Gracz nie wpisze sobie deku łatą karty.
+    expect(
+      await emitAck(player.socket, 'character:update', {
+        characterId,
+        patch: { data: { cyberdeck: { name: 'Darmowy', slots: 9, installed: [] } } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+
+    // Podpięcie i włożenie z Wyposażenia.
+    expect(
+      (
+        await emitAck(player.socket, 'character:deck', {
+          characterId,
+          action: 'plug',
+          rowId: 'dek',
+        })
+      ).ok,
+    ).toBe(true);
+    const installed = await emitAck<CharacterView>(player.socket, 'character:deck', {
+      characterId,
+      action: 'install',
+      rowId: osa!.id,
+    });
+    expect(installed.ok).toBe(true);
+    let data = installed.data!.data as CpredCharacterData;
+    expect(data.cyberdeck?.slots).toBe(6);
+    expect(data.cyberdeck?.installed.map((row) => [row.name, row.slotCost])).toEqual([['Osa', 2]]);
+    expect(data.gear).toEqual([]);
+
+    // Gniazda zmienia tylko MG; wiersza spoza Wyposażenia nie da się włożyć.
+    expect(
+      await emitAck(player.socket, 'character:deck', { characterId, action: 'slots', slots: 9 }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(
+      (await emitAck(gm.socket, 'character:deck', { characterId, action: 'slots', slots: 7 })).ok,
+    ).toBe(true);
+    expect(
+      await emitAck(player.socket, 'character:deck', {
+        characterId,
+        action: 'install',
+        rowId: 'nie-ma',
+      }),
+    ).toEqual({ ok: false, error: 'ITEM_NOT_FOUND' });
+
+    // Odpięcie: dek i Osa wracają do Wyposażenia osobnymi wierszami.
+    const unplugged = await emitAck<CharacterView>(player.socket, 'character:deck', {
+      characterId,
+      action: 'unplug',
+    });
+    expect(unplugged.ok).toBe(true);
+    data = unplugged.data!.data as CpredCharacterData;
+    expect(data.cyberdeck).toBeNull();
+    expect(data.gear.map((row) => row.compendiumId)).toEqual([
+      'gear.dek-przykladowy',
+      'program.osa',
+    ]);
+    expect(
+      await emitAck(player.socket, 'character:deck', { characterId, action: 'unplug' }),
+    ).toEqual({ ok: false, error: 'NO_DECK' });
   });
 });

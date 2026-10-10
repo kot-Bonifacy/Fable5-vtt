@@ -45,6 +45,7 @@ import type {
   CharacterAdvancePayload,
   CharacterCreatePayload,
   CharacterCyberwarePayload,
+  CharacterDeckPayload,
   CharacterDeleteBroadcast,
   CharacterInjuryPayload,
   CharacterPatch,
@@ -4346,6 +4347,63 @@ function cyberwareErrorText(code: string | undefined): string {
  * next to the button waits for it: until it could, a refused install left the
  * compendium card saying one thing and the chat another.
  */
+/**
+ * Cyberdek i jego gniazda (etap 48b) — podpięcie i odpięcie deku, włożenie
+ * i wyjęcie Programu albo Ulepszenia, liczba gniazd (MG). Wszystko z Wyposażenia
+ * i do niego, jednym zapisem serwera; odmowa idzie notką na czat i wraca.
+ */
+export function sendDeckAction(payload: CharacterDeckPayload): Promise<string | null> {
+  const current = socket;
+  if (!current) {
+    const text = deckErrorText('OFFLINE');
+    useChatStore.getState().addNote(text);
+    return Promise.resolve(text);
+  }
+  // Zbuforowany autozapis Wyposażenia przyszedłby po zapisie serwera i oddałby
+  // do plecaka rzecz, która właśnie weszła do gniazda.
+  flushCharacterSave(payload.characterId);
+  return new Promise((resolve) => {
+    current.emit('character:deck', payload, (ack: SocketAck<CharacterView>) => {
+      if (ack.ok) {
+        resolve(null);
+        return;
+      }
+      const text = deckErrorText(ack.error);
+      useChatStore.getState().addNote(text);
+      resolve(text);
+    });
+  });
+}
+
+/** Polskie zdania dla odmów `character:deck`. */
+export function deckErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
+  switch (code) {
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem — dek został bez zmian.';
+    case 'ITEM_NOT_FOUND':
+      return 'Tej rzeczy nie ma już w Wyposażeniu ani w deku — odśwież kartę.';
+    case 'NOT_A_DECK':
+      return 'To nie jest cyberdek — podłączyć można tylko dek z Wyposażenia.';
+    case 'NOT_INSTALLABLE':
+      return 'Do gniazda deku wkłada się tylko Programy i Ulepszenia Sprzętowe.';
+    case 'NO_DECK':
+      return 'Najpierw podłącz cyberdek z Wyposażenia.';
+    case 'NO_FREE_SLOTS':
+      return 'W deku nie ma tylu wolnych gniazd — najpierw coś wyjmij.';
+    case 'TOO_MANY_ROWS':
+      return 'Wyposażenie jest pełne — zrób miejsce, zanim coś z deku wyjmiesz.';
+    case 'BAD_SLOTS':
+      return 'Gniazd nie może być mniej niż zajętych ani więcej niż 16.';
+    case 'NET_RUN_ACTIVE':
+      return 'W trakcie runu nie przepina się deku — najpierw wyjdź z Sieci.';
+    case 'FORBIDDEN':
+      return 'Liczbę gniazd zmienia MG.';
+    default:
+      return `Serwer odmówił (${code}).`;
+  }
+}
+
 export function sendCyberwareAction(
   payload: Omit<CharacterCyberwarePayload, 'gesture'>,
   gesture?: RollGesture,

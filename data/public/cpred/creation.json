@@ -1537,7 +1537,9 @@
     "netrunner": {
       "entries": [
         "gear.dek-przykladowy",
-        "cyberware.sprzeg-neuralny-przykladowy"
+        "cyberware.sprzeg-neuralny-przykladowy",
+        "program.iskra",
+        "program.parasol"
       ]
     },
     "solo": {

@@ -66,6 +66,8 @@ const character = (name: string): CharacterRow => {
 };
 
 const sheetOf = (name: string) => JSON.parse(character(name).data) as Record<string, unknown>;
+/** Etap 48b: Programy z pakietu Roli Netrunnera, w kolejności `creation.json`. */
+const ISKRA_KIT_PROGRAMS = ['Pancerz', 'Miecz', 'Mam cię!', 'Mózgoklep', 'Robak'];
 
 /**
  * Karta własnej postaci. Po „Utwórz postać” kreator otwiera ją sam, a w oknie
@@ -456,11 +458,13 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await goToStep(page, /Wyposażenie/);
     await expect(window.getByText(/2\s550 ed startowych/)).toBeVisible();
     // Etap 47a: dek, sprzęg i złącza to wyposażenie Roli gratis (chrom wszczepia MG
-    // w 3.8); za gotówkę Ola kupuje Agenta i Radiokomunikator (2 × 1000 ed).
+    // w 3.8); od 48b także pięć Programów z pakietu Krawędziarza. Za gotówkę Ola
+    // kupuje Agenta i Radiokomunikator (2 × 1000 ed).
     const kit = window.getByRole('region', { name: 'Wyposażenie Roli gratis' });
     for (const item of ['Cyberdek (zwykłej jakości)', 'Sprzęg neuralny', 'Złącza interfejsu']) {
       await expect(kit).toContainText(item);
     }
+    for (const item of ISKRA_KIT_PROGRAMS) await expect(kit).toContainText(item);
     await buy(page, 'Sprzęt', ['Agent', 'Radiokomunikator']);
     await expect(window.getByText(/wydane 2\s000 ed/)).toBeVisible();
 
@@ -476,9 +480,16 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await expect(window.getByText(/Teraz czeka na zatwierdzenie MG/)).toBeVisible();
     // Ekran końcowy zostaje otwarty do „Przyjmij do gry” w 3.8 (#8).
     expect(sheetOf('Iskra').eddies).toBe(550);
+    // Etap 48b: kreator podpina dek z pakietu i wkłada do niego Programy.
+    const deck = sheetOf('Iskra').cyberdeck as {
+      compendiumId: string;
+      installed: { name: string }[];
+    } | null;
+    expect(deck?.compendiumId).toBe('gear.cyberdek-zwyklej-jakosci');
+    expect(deck?.installed.map((row) => row.name)).toEqual(ISKRA_KIT_PROGRAMS);
     expect(
       (sheetOf('Iskra').gear as { compendiumId?: string }[]).map((g) => g.compendiumId),
-    ).toContain('gear.cyberdek-zwyklej-jakosci');
+    ).not.toContain('gear.cyberdek-zwyklej-jakosci');
   });
 
   test('3.8 MG przyjmuje obie karty; 66 umiejętności; pola z ceną zablokowane', async () => {
@@ -597,28 +608,36 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     expect(ack).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 
-  test('3.8 Iskra wskazuje cyberdek i wkłada Programy na karcie', async () => {
+  test('3.8 Iskra wkłada do deku Tarczę od MG z Wyposażenia (48b)', async () => {
+    // Etap 48b: Program jest towarem — MG daje Tarczę „Dodaj za darmo”, ląduje
+    // w Wyposażeniu, a Iskra wkłada ją do gniazda na karcie. Liczby gniazd gracz
+    // nie zmienia, a łatą karty deku sobie nie wpisze.
+    await giveEntry(mg, 'Iskra', 'Tarcza');
+    await expect
+      .poll(() => (sheetOf('Iskra').gear as { name: string }[]).map((g) => g.name))
+      .toContain('Tarcza');
     const page = ola.page;
     const sheet = await openSheet(ola, 'Iskra');
-    await sheet.getByRole('button', { name: 'Przejdź' }).first().click();
+    await sheet.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const deck = page.locator('[data-sheet-panel="cyberdeck"]');
-    await deck.locator('select').selectOption('gear.cyberdek-zwyklej-jakosci');
-    const programs = [
-      'program.miecz',
-      'program.robak',
-      'program.pancerz',
-      'program.tarcza',
-      'program.piekielny-pocisk',
-      'program.mam-cie',
-    ];
-    for (const [index, id] of programs.entries()) {
-      await deck.locator('.cp-deck-install select').selectOption(id);
-      await expect(deck.locator('tbody tr')).toHaveCount(index + 1);
-    }
+    await expect(deck.locator('.cp-deck-slots')).toHaveText('gniazda 5 / 7');
+    await expect(deck.getByLabel('Gniazda cyberdeka')).toHaveCount(0);
+    await deck.locator('.cp-deck-install select').selectOption({ label: 'Tarcza — 1 gn.' });
+    await expect(deck.locator('tbody tr')).toHaveCount(6);
     await expect(deck.locator('.cp-deck-slots')).toHaveText('gniazda 6 / 7');
     await expect
       .poll(() => (sheetOf('Iskra').cyberdeck as { installed: unknown[] } | null)?.installed.length)
       .toBe(6);
+    expect((sheetOf('Iskra').gear as { name: string }[]).map((g) => g.name)).not.toContain(
+      'Tarcza',
+    );
+    const socket = await ola.socket();
+    expect(
+      await emitAck(socket, 'character:update', {
+        characterId: character('Iskra').id,
+        patch: { data: { cyberdeck: { name: 'Darmowy', slots: 9, installed: [] } } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 
   test('3.8 kanarki: portret NPC u nikogo, notatka Kowala nie u Oli', async () => {

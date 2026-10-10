@@ -30,6 +30,9 @@ import type {
 } from '@vtt/shared';
 import {
   ARMOR_LOCATION_LABELS,
+  NET_PROGRAM_CLASS_LABELS,
+  cyberdeckSlotsUsed,
+  netProgramSlots,
   cpredIsBareHandsEntry,
   CPRED_CREATION_METHODS,
   CPRED_CREATION_METHOD_LABELS,
@@ -2181,6 +2184,8 @@ const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
   { id: 'weapon', label: 'Broń' },
   { id: 'armor', label: 'Pancerz' },
   { id: 'gear', label: 'Sprzęt' },
+  // Etap 48b: Program jest towarem — kupiony ląduje w gniazdach deku.
+  { id: 'program', label: 'Programy' },
   // Etap 46c: przeładowanie bierze naboje z ekwipunku, więc sklep startowy
   // sprzedaje amunicję (poziom 1 — zwykła i śrut) do kalibru wybranej broni.
   { id: 'ammo', label: 'Amunicja' },
@@ -2568,6 +2573,13 @@ function CreatorShopDetails({
       label: 'Kara',
       value: entry.penalty ? `−${Math.abs(entry.penalty)} do REF, ZW i RUCH` : 'brak',
     });
+  } else if (entry.category === 'program') {
+    facts.push({
+      label: 'Klasa',
+      value: entry.blackIce ? 'Czarny LOD' : NET_PROGRAM_CLASS_LABELS[entry.programClass],
+    });
+    facts.push({ label: 'ATK / OBR / REZ', value: `${entry.atk} / ${entry.def} / ${entry.rez}` });
+    facts.push({ label: 'Zajmuje gniazd deku', value: String(netProgramSlots(entry)) });
   } else if (entry.category === 'gear') {
     if (entry.deckSlots) facts.push({ label: 'Gniazda deku', value: String(entry.deckSlots) });
     if (entry.deckSlotCost) {
@@ -2939,7 +2951,8 @@ function SummaryGear({
   spent: number;
   npc: boolean;
 }) {
-  const empty = sheet.weapons.length + sheet.armor.length + sheet.gear.length === 0;
+  const empty =
+    sheet.weapons.length + sheet.armor.length + sheet.gear.length === 0 && !sheet.cyberdeck;
   return (
     <section className="creator-summary-section" aria-label="Wyposażenie i pieniądze">
       <h4>Wyposażenie i pieniądze</h4>
@@ -2965,6 +2978,19 @@ function SummaryGear({
               </span>
             </li>
           ))}
+          {/* Etap 48b: dek z pakietu albo koszyka kreator podpina sam, a Programy
+              wkłada do gniazd, ile wejdzie — w Wyposażeniu ich już nie ma. */}
+          {sheet.cyberdeck ? (
+            <li>
+              <span className="creator-summary-kind">Cyberdek</span> {sheet.cyberdeck.name}
+              <span className="creator-hint">
+                {` · gniazda ${cyberdeckSlotsUsed(sheet.cyberdeck)} / ${sheet.cyberdeck.slots}`}
+                {sheet.cyberdeck.installed.length > 0
+                  ? ` · ${sheet.cyberdeck.installed.map((row) => row.name).join(', ')}`
+                  : ''}
+              </span>
+            </li>
+          ) : null}
           {sheet.gear.map((row) => (
             <li key={row.id}>
               <span className="creator-summary-kind">{row.ammo ? 'Amunicja' : 'Sprzęt'}</span>{' '}

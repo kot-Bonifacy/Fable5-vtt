@@ -1316,3 +1316,52 @@ describe('etap 47a — wyposażenie Roli gratis', () => {
     expect(outcome.sheet.eddies).toBe(outcome.budget);
   });
 });
+
+describe('etap 48b — kreator podpina dek i wkłada Programy', () => {
+  const program = (id: string, name: string): CompendiumEntry =>
+    ({
+      id,
+      name,
+      category: 'program',
+      cost: 50,
+      programClass: 'defender',
+      atk: 0,
+      def: 0,
+      rez: 7,
+    }) as CompendiumEntry;
+  const DECK_CATALOGUE: CompendiumEntry[] = [
+    ...CATALOGUE,
+    { id: 'gear.dek', category: 'gear', name: 'Dek', cost: 500, deckSlots: 2 } as CompendiumEntry,
+    program('program.pancerz', 'Pancerz'),
+    program('program.tarcza', 'Tarcza'),
+  ];
+  const deckLookup = (entryId: string) => DECK_CATALOGUE.find((row) => row.id === entryId);
+  const deckRegistry = registry({
+    ...RAW_CREATION,
+    roleKits: { netrunner: { entries: ['gear.dek', 'program.pancerz'] } },
+  });
+
+  it('dek z pakietu w polu `cyberdeck`, Programy z pakietu i koszyka w gniazdach, ile wejdzie', () => {
+    const outcome = creationOutcome(
+      finished({
+        method: 'complete',
+        roleId: 'netrunner',
+        purchases: { 'program.tarcza': 2 },
+      }),
+      data(deckRegistry),
+      deckRegistry,
+      deckLookup,
+      { weaponTypeById: new Map() },
+      true,
+    );
+    expect(outcome.sheet.cyberdeck?.compendiumId).toBe('gear.dek');
+    expect(outcome.sheet.cyberdeck?.installed.map((row) => row.name)).toEqual([
+      'Pancerz',
+      'Tarcza',
+    ]);
+    // Druga Tarcza się nie zmieściła — leży w Wyposażeniu, dek z niego zniknął.
+    expect(outcome.sheet.gear.map((row) => [row.compendiumId, row.qty])).toEqual([
+      ['program.tarcza', 1],
+    ]);
+  });
+});

@@ -191,7 +191,7 @@ export function cpredRoleChores(
     chores.push({
       id: 'cyberdeck',
       title: 'Cyberdek',
-      text: 'Netrunner bez deku nie wejdzie do Sieci. Dek kupiony w kreatorze leży w Wyposażeniu jako zwykły wiersz — wskaż go w sekcji „Cyberdek" i włóż Programy (w VTT za Programy się nie płaci).',
+      text: 'Netrunner bez deku nie wejdzie do Sieci. Dek kupuje się jak sprzęt (albo dostaje od MG) — z Wyposażenia podłączasz go w sekcji „Cyberdek" i tam wkładasz Programy, też z Wyposażenia.',
       tab: 'gear',
       panel: 'cyberdeck',
       page: 199,

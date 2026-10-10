@@ -989,11 +989,11 @@ function EntryCard({
         </p>
       ) : null}
       {/* Od etapu 46c amunicja to pudełko w wyposażeniu — kupuje się ją
-          i dodaje z kalibrem, jak każdą rzecz na kartę. */}
+          i dodaje z kalibrem, jak każdą rzecz na kartę. Od 48b tak samo
+          Program: ląduje w Wyposażeniu, do deku wkłada się go na karcie. */}
       {targets.length > 0 &&
       !cpredIsBareHandsEntry(entry.id) &&
       entry.category !== 'criticalInjury' &&
-      entry.category !== 'program' &&
       entry.category !== 'netDefense' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>

@@ -42,6 +42,7 @@ import {
   clearRolledStats,
   createDefaultCreationDraft,
   cpredPurchasedAmmoRow,
+  cpredFitDeckFromGear,
   cpredPutAmmo,
   creationBasketEntry,
   creationBasketKey,
@@ -1350,6 +1351,16 @@ async function payStartingKit(
       actorId,
       { emit: false, tx },
     );
+  }
+  // Etap 48b (decyzja MG z 10.10): dek z pakietu Roli albo z koszyka podpina
+  // się sam, a Programy i Ulepszenia wchodzą do gniazd, ile wejdzie — to samo
+  // `cpredFitDeckFromGear`, którym podsumowanie liczy `creationOutcome`.
+  const fitted = cpredFitDeckFromGear(sheet, lookup, nextRowId);
+  if (fitted !== sheet) {
+    await tx.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(fitted) },
+    });
   }
 }
 

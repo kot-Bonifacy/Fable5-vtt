@@ -17,7 +17,12 @@
       "entries": ["gear.apteczka-polowa"]
     },
     "netrunner": {
-      "entries": ["gear.dek-przykladowy", "gear.zwora-przykladowa"]
+      "entries": [
+        "gear.dek-przykladowy",
+        "gear.zwora-przykladowa",
+        "program.iskra",
+        "program.parasol"
+      ]
     }
   }
 }

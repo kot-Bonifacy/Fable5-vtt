@@ -39,6 +39,7 @@ import {
 import { entryPrice, type CpredLifestyle } from './economy.js';
 import { formatEddies } from './pricing.js';
 import { CPRED_TEAMWORK_ABILITY } from './roleability.js';
+import { cpredFitDeckFromGear } from './cyberdeck.js';
 import { purchasedSheetRow, type PurchasedRow } from './shopping.js';
 import { creationShopRefusalText, creationShopVerdict, type CreationShopRules } from './shop.js';
 import { sanitizeTokenImageUrl } from '../../tokens.js';
@@ -1886,8 +1887,19 @@ export function creationOutcome(
       else gearWithAmmo = [...gearWithAmmo, purchased.row];
     }
   }
+  // Etap 48b (decyzja MG z 10.10): dek z pakietu Roli albo z koszyka
+  // podpina się sam, a Programy i Ulepszenia wchodzą do gniazd, ile wejdzie —
+  // to samo `cpredFitDeckFromGear`, które woła `creation:finish`.
+  const sheet = cpredFitDeckFromGear(
+    mergeCharacterData(base, { weapons, armor, gear: gearWithAmmo, eddies: budget - spent }),
+    lookup,
+    () => {
+      rows += 1;
+      return `creation-${rows}`;
+    },
+  );
   return {
-    sheet: mergeCharacterData(base, { weapons, armor, gear: gearWithAmmo, eddies: budget - spent }),
+    sheet,
     purchases,
     kit,
     budget,

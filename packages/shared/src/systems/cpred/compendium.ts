@@ -104,19 +104,18 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
 
 /**
  * Categories that can be added to a character sheet as a row of their own.
- * Five are excluded, each for its own reason: nobody buys a Critical Injury
+ * Four are excluded, each for its own reason: nobody buys a Critical Injury
  * (the damage engine draws them, stage 15); ammunition is not carried as a row
  * but *loaded* into a weapon (stage 16g); an attachment is likewise not carried
- * but *bolted on* (stage 31); a Program goes into a cyberdeck slot rather than
- * the backpack (stage 26a); and Net defenders belong to an architecture, never
- * to a person.
+ * but *bolted on* (stage 31); and Net defenders belong to an architecture,
+ * never to a person. A Program is a backpack row since stage 48b — it goes
+ * into a deck slot from there.
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
   (category) =>
     category !== 'criticalInjury' &&
     category !== 'ammo' &&
     category !== 'attachment' &&
-    category !== 'program' &&
     category !== 'netDefense',
 );
 

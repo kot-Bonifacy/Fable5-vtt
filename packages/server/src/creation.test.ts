@@ -1792,16 +1792,27 @@ describe('kreator postaci', () => {
       ).toBe('INVALID_DATA');
     });
 
-    it('Netrunner dostaje dek na kartę, a chrom zostawia MG', async () => {
-      const ready = await completeDraft('netrunner', 'Dekarz');
+    it('Netrunner dostaje dek podpięty z Programami, a chrom zostawia MG (48b)', async () => {
+      await completeDraft('netrunner', 'Dekarz');
+      // Program z koszyka (narzędzie Roli, 20 ed × 10) też wchodzi do gniazda.
+      const ready = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'program.parasol', delta: 1 }),
+        'creation:buy',
+      );
       const finished = data(
         await emitAck<CreationFinishResult>(vex, 'creation:finish', { draftId: ready.id }),
         'creation:finish',
       );
       const sheet = finished.data as CpredCharacterData;
-      expect(sheet.gear.map((row) => row.compendiumId)).toContain('gear.dek-przykladowy');
+      expect(sheet.cyberdeck?.compendiumId).toBe('gear.dek-przykladowy');
+      expect(sheet.cyberdeck?.installed.map((row) => row.name)).toEqual([
+        'Iskra',
+        'Parasol',
+        'Parasol',
+      ]);
+      expect(sheet.gear.map((row) => row.compendiumId)).not.toContain('gear.dek-przykladowy');
       expect(sheet.cyberware).toHaveLength(0);
-      expect(sheet.eddies).toBe(2550);
+      expect(sheet.eddies).toBe(2350);
     });
   });
 

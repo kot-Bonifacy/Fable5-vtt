@@ -281,6 +281,7 @@ import {
   merchantViewEvent,
 } from './merchant.js';
 import { forgetMerchantWatcher } from './merchant-watch.js';
+import { characterDeckEvent } from './deck.js';
 import {
   containerConfigEvent,
   containerCreateEvent,
@@ -437,6 +438,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   containerOpenEvent,
   containerPutEvent,
   inventoryDropEvent,
+  characterDeckEvent,
   tradeInviteEvent,
   tradeRespondEvent,
   tradeOfferEvent,

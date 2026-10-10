@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import type {
+  CharacterDeckPayload,
   CpredStatId,
   ArmorLocation,
   CompendiumEntry,
@@ -21,9 +23,7 @@ import type {
   CpredCareMode,
   CpredCharacterData,
   CpredCriticalInjuryRow,
-  CpredCyberdeck,
   CpredCyberwareRow,
-  CpredNetInstallRow,
   CpredItemRow,
   CpredLifepath,
   CpredLifepathEnemy,
@@ -54,14 +54,12 @@ import {
   cpredSkillNeedsSpecialty,
   cpredSkillSpecialty,
   isCriticalInjuryEntry,
-  cyberdeckEntries,
+  cpredDeckSlotsOf,
+  cpredGearDeckRows,
+  cpredGearInstallRows,
+  cpredInterfaceRank,
   cyberdeckSlotsFree,
   cyberdeckSlotsUsed,
-  isGearEntry,
-  isProgramEntry,
-  netProgramProfileOf,
-  netProgramSlots,
-  programEntries,
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   describeCpredTimer,
@@ -195,6 +193,7 @@ import {
   drawWeapon,
   reloadWeapon,
   sendCyberwareAction,
+  sendDeckAction,
   setCharacterPlayReady,
   setStatEffect,
   setWeaponAttachment,
@@ -3373,32 +3372,45 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
 }
 
 /**
- * Cyberdek i jego gniazda (etap 26a) — dół zakładki „Ekwipunek".
+ * Cyberdek i jego gniazda (etap 26a, jako towar od 48b) — dół zakładki „Ekwipunek".
  *
  * Dek stoi tutaj, a nie na stronie z cyborgizacjami, bo w podręczniku jest
  * sprzętem, nie wszczepem: kupuje się go, wozi w plecaku i wymienia jedną Akcją
- * w Somie. Sekcja pojawia się dopiero, gdy postać dek **ma** — większość ludzi
- * przy stole nie sieciuje, a puste okienko na każdej karcie byłoby szumem.
+ * w Somie. Od etapu 48b (decyzja MG z 10.10) **nic nie bierze się tu
+ * z kompendium** — także u MG: dek podłącza się z wiersza Wyposażenia,
+ * Program i Ulepszenie wkłada się z Wyposażenia, a wyjęte do niego wracają.
+ * Każda zmiana to `character:deck`, bo plecak i gniazda zmieniają się razem.
  *
- * Liczby Programu kopiują się z kompendium w chwili włożenia, tak jak obrażenia
- * broni z etapu 13: zmiana katalogu nie przepisuje wstecz cudzego deku.
+ * Sekcja pojawia się, gdy postać dek ma, nosi go w plecaku albo jest
+ * Netrunnerem (lista „Do zrobienia" prowadzi tu Netrunnera bez deku).
  */
-function CyberdeckSection({ data, saveData }: TabProps) {
+function CyberdeckSection({
+  character,
+  data,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+}) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const registry = useCharacterStore((s) => s.registry);
   const entriesById = useCompendiumStore((s) => s.entries);
-  const order = useCompendiumStore((s) => s.order);
-  const entries = useMemo(
-    () => order.map((id) => entriesById[id]).filter((entry): entry is CompendiumEntry => !!entry),
-    [entriesById, order],
-  );
-  const decks = useMemo(() => cyberdeckEntries(entries), [entries]);
-  const programs = useMemo(() => programEntries(entries), [entries]);
-  const hardware = useMemo(
-    () => entries.filter((entry) => isGearEntry(entry) && !!entry.deckSlotCost),
-    [entries],
-  );
+  const lookup = useCallback((id: string) => entriesById[id], [entriesById]);
+  const deckRows = useMemo(() => cpredGearDeckRows(data, lookup), [data, lookup]);
+  const installRows = useMemo(() => cpredGearInstallRows(data, lookup), [data, lookup]);
+  const [busy, setBusy] = useState(false);
+
+  async function act(payload: Omit<CharacterDeckPayload, 'characterId'>) {
+    setBusy(true);
+    try {
+      await sendDeckAction({ characterId: character.id, ...payload });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const deck = data.cyberdeck;
   if (!deck) {
+    if (deckRows.length === 0 && cpredInterfaceRank(data, registry) === null) return null;
     return (
       <div className="cp-panel cp-deck" data-sheet-panel="cyberdeck">
         {/* Wiersz „bez deku" jest polem karty jak każde inne — do 06.09 lista
@@ -3406,31 +3418,30 @@ function CyberdeckSection({ data, saveData }: TabProps) {
             sobą, i był to jedyny taki wiersz w całym arkuszu. */}
         <div className="cp-field cp-row cp-deck--empty">
           <span className="cp-label">Cyberdek</span>
-          <select
-            value=""
-            onChange={(event) => {
-              const entry = decks.find((row) => row.id === event.target.value);
-              if (!entry) return;
-              saveData(
-                {
-                  cyberdeck: {
-                    compendiumId: entry.id,
-                    name: entry.name,
-                    slots: entry.deckSlots ?? 1,
-                    installed: [],
-                  },
-                },
-                'cyberdeck',
-              );
-            }}
-          >
-            <option value="">Bez deku — wybierz z kompendium…</option>
-            {decks.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name} ({entry.deckSlots} gniazd)
-              </option>
-            ))}
-          </select>
+          {deckRows.length === 0 ? (
+            <span
+              className="placeholder-text"
+              title="Dek kupuje się jak sprzęt: w Kompendium, u handlarza albo dostaje od MG."
+            >
+              Brak deku w Wyposażeniu
+            </span>
+          ) : (
+            <select
+              value=""
+              disabled={busy}
+              title="Dek z Wyposażenia — podłączony znika z listy wyposażenia, odłączony do niej wraca."
+              onChange={(event) => {
+                if (event.target.value) void act({ action: 'plug', rowId: event.target.value });
+              }}
+            >
+              <option value="">Bez deku — podłącz z Wyposażenia…</option>
+              {deckRows.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.name} ({cpredDeckSlotsOf(lookup(row.compendiumId ?? ''))} gniazd)
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
     );
@@ -3439,34 +3450,6 @@ function CyberdeckSection({ data, saveData }: TabProps) {
   const used = cyberdeckSlotsUsed(deck);
   const free = cyberdeckSlotsFree(deck);
 
-  function patchDeck(next: Partial<CpredCyberdeck>) {
-    if (!deck) return;
-    saveData({ cyberdeck: { ...deck, ...next } }, 'cyberdeck');
-  }
-
-  function install(entry: CompendiumEntry) {
-    if (!deck) return;
-    const isProgram = isProgramEntry(entry);
-    const cost = isProgram
-      ? netProgramSlots(entry)
-      : isGearEntry(entry)
-        ? (entry.deckSlotCost ?? 1)
-        : 1;
-    if (cost > free) return;
-    const row: CpredNetInstallRow = {
-      id: newRowId(),
-      compendiumId: entry.id,
-      name: entry.name,
-      notes: '',
-      kind: isProgram ? 'program' : 'hardware',
-      slotCost: cost,
-      // Cała mechanika wpisu razem z „Efektem" (etap 26c) — kopiowana jedną
-      // funkcją z `shared`, żeby gniazdo deku nie mogło zapomnieć pola.
-      ...(isProgram ? { program: netProgramProfileOf(entry) } : {}),
-    };
-    patchDeck({ installed: [...deck.installed, row] });
-  }
-
   return (
     <div className="cp-panel cp-deck" data-sheet-panel="cyberdeck">
       <div className="cp-bar cp-bar--plain">
@@ -3474,25 +3457,28 @@ function CyberdeckSection({ data, saveData }: TabProps) {
         <span className={`cp-deck-slots ${free === 0 ? 'cp-deck-slots--full' : ''}`}>
           gniazda {used} / {deck.slots}
         </span>
-        <label
-          className="cp-deck-capacity"
-          title="Kombinezon Bodyweight i cyberręka z dekiem dokładają gniazdo (s. 208)"
-        >
-          <span>Gniazd</span>
-          <NumberStepper
-            min={1}
-            max={CYBERDECK_SLOTS_MAX}
-            value={deck.slots}
-            onChange={(value) => patchDeck({ slots: value })}
-            label="Gniazda cyberdeka"
-          />
-        </label>
+        {isGm && (
+          <label
+            className="cp-deck-capacity"
+            title="Kombinezon Bodyweight i cyberręka z dekiem dokładają gniazdo (s. 208). Zmienia tylko MG."
+          >
+            <span>Gniazd</span>
+            <NumberStepper
+              min={Math.max(1, used)}
+              max={CYBERDECK_SLOTS_MAX}
+              value={deck.slots}
+              onChange={(value) => void act({ action: 'slots', slots: value })}
+              label="Gniazda cyberdeka"
+            />
+          </label>
+        )}
         <button
           type="button"
           className="cp-mini-button cp-mini-button--danger"
-          title="Odłącz cyberdek od tej postaci"
-          aria-label="Odłącz cyberdek od tej postaci"
-          onClick={() => saveData({ cyberdeck: null }, 'cyberdeck')}
+          title="Odłącz cyberdek — dek i zawartość gniazd wracają do Wyposażenia"
+          aria-label="Odłącz cyberdek"
+          disabled={busy}
+          onClick={() => void act({ action: 'unplug' })}
         >
           ✕
         </button>
@@ -3506,14 +3492,14 @@ function CyberdeckSection({ data, saveData }: TabProps) {
             <th className="cp-num">OBR</th>
             <th className="cp-num">REZ</th>
             <th className="cp-num">Gniazd</th>
-            <th aria-label="Usuń" />
+            <th aria-label="Wyjmij" />
           </tr>
         </thead>
         <tbody>
           {deck.installed.length === 0 ? (
             <tr>
               <td colSpan={6} className="placeholder-text">
-                Dek jest pusty — Programy i Ulepszenia Sprzętowe wkłada się poniżej.
+                Dek jest pusty — Programy i Ulepszenia Sprzętowe wkłada się poniżej z Wyposażenia.
               </td>
             </tr>
           ) : (
@@ -3532,13 +3518,10 @@ function CyberdeckSection({ data, saveData }: TabProps) {
                   <button
                     type="button"
                     className="cp-mini-button cp-mini-button--danger"
-                    title="Wyjmij z gniazda"
-                    aria-label="Wyjmij z gniazda"
-                    onClick={() =>
-                      patchDeck({
-                        installed: deck.installed.filter((entry) => entry.id !== row.id),
-                      })
-                    }
+                    title="Wyjmij z gniazda do Wyposażenia"
+                    aria-label="Wyjmij z gniazda do Wyposażenia"
+                    disabled={busy}
+                    onClick={() => void act({ action: 'remove', rowId: row.id })}
                   >
                     ✕
                   </button>
@@ -3552,27 +3535,24 @@ function CyberdeckSection({ data, saveData }: TabProps) {
       <div className="cp-deck-install">
         <select
           value=""
-          disabled={free === 0}
+          disabled={busy || free === 0 || installRows.length === 0}
+          title="Programy i Ulepszenia z Wyposażenia — kupuje się je jak sprzęt."
           onChange={(event) => {
-            const entry = entries.find((row) => row.id === event.target.value);
-            if (entry) install(entry);
+            if (event.target.value) void act({ action: 'install', rowId: event.target.value });
           }}
         >
           <option value="">
-            {free === 0 ? 'Brak wolnych gniazd' : `+ Program albo ulepszenie (wolne: ${free})…`}
+            {free === 0
+              ? 'Brak wolnych gniazd'
+              : installRows.length === 0
+                ? 'Brak Programów w Wyposażeniu'
+                : `+ Program albo ulepszenie z Wyposażenia (wolne: ${free})…`}
           </option>
-          {programs.map((entry) => (
-            <option key={entry.id} value={entry.id} disabled={netProgramSlots(entry) > free}>
-              {entry.name} — {netProgramSlots(entry)} gn.
-            </option>
-          ))}
-          {hardware.map((entry) => (
-            <option
-              key={entry.id}
-              value={entry.id}
-              disabled={(isGearEntry(entry) ? (entry.deckSlotCost ?? 1) : 1) > free}
-            >
-              {entry.name} — {isGearEntry(entry) ? (entry.deckSlotCost ?? 1) : 1} gn. (sprzęt)
+          {installRows.map(({ row, kind, slotCost }) => (
+            <option key={row.id} value={row.id} disabled={slotCost > free}>
+              {row.name}
+              {row.qty > 1 ? ` ×${row.qty}` : ''} — {slotCost} gn.
+              {kind === 'hardware' ? ' (sprzęt)' : ''}
             </option>
           ))}
         </select>
@@ -3688,7 +3668,7 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
 
       <LifestyleFields data={data} saveData={saveData} />
 
-      <CyberdeckSection data={data} saveData={saveData} />
+      <CyberdeckSection character={character} data={data} />
     </div>
   );
 }

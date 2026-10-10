@@ -27,7 +27,8 @@ export type PurchasedRow =
  *
  * Returns null for the categories nobody puts on a sheet this way: injuries are
  * drawn by the damage flow (stage 15), cyberware is fitted by its own event
- * (23a) and a cartridge is loaded into a weapon (16g).
+ * (23a) and a cartridge is boxed by `cpredPurchasedAmmoRow` (46c). A Program
+ * lands in the backpack since stage 48b and goes into a deck from there.
  */
 export function purchasedSheetRow(
   entry: CompendiumEntry,
@@ -68,6 +69,10 @@ export function purchasedSheetRow(
         },
       };
     case 'gear':
+      return { list: 'gear', row: { ...base, notes: '', qty: 1 } };
+    // Etap 48b (decyzja MG z 10.10): Program jest towarem jak sprzęt — w plecaku
+    // to zwykły wiersz wyposażenia, do gniazda deku wkłada go `cpredInstallFromGear`.
+    case 'program':
       return { list: 'gear', row: { ...base, notes: '', qty: 1 } };
     default:
       return null;

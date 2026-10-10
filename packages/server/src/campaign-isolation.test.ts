@@ -499,6 +499,7 @@ const CASES: Record<string, Case> = {
   'character:combat-awareness': foreign((a) => ({ characterId: a.characterId })),
   'character:field-repair': foreign((a) => ({ characterId: a.characterId, armorRowId: 'x' })),
   'character:backup-call': foreign((a) => ({ characterId: a.characterId, tokenId: a.tokenId })),
+  'character:deck': foreign((a) => ({ characterId: a.characterId, action: 'unplug' })),
   // chat
   'chat:send': own('pisze w kampanii gniazda', () => ({ text: 'hej' })),
   'chat:history': own('kartkuje czat kampanii gniazda', (a) => ({ beforeId: a.messageId + 1 })),

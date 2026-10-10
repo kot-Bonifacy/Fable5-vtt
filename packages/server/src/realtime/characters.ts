@@ -251,6 +251,12 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // dla MG: jego autozapis karty skrzyni zamknąłby zamek, który gracz właśnie
       // otworzył, a MG ma na to `container:config`.
       if (sheet.container !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 48b (decyzja MG z 10.10): dek i jego gniazda zmienia
+      // `character:deck` — dek podpina się z Wyposażenia, Program wkłada się
+      // z niego, więc plecak i gniazda muszą się zmienić jednym zapisem. Łata
+      // gracza z `cyberdeck` byłaby darmowym katalogiem z 26a. MG zostaje
+      // furtka sędziego na naprawę karty (jego UI też idzie przez Wyposażenie).
+      if (!isGm && sheet.cyberdeck !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       // Etap 46c (decyzja MG 6 z 09.10): „Licz amunicję” przestawia MG, a na
       // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,
