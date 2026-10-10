@@ -72,6 +72,19 @@ MISPLACED_SENTENCES = [
     ("Fiolka biotoksyny", "Gogle wirtualowe", "Wirtual nie jest tylko dla Netrunnerów"),
 ]
 
+# Descriptions the table rewrites in its own words (house text, safe for the
+# public repo). The binoculars magnify in the book; on a VTT the zoom is the
+# map's own, so they became the night-sight aid scenes actually ask for (10.10).
+# Not a weapon attachment, so no `ignoresObscurement` — the text says as much.
+HOUSE_DESCRIPTIONS = {
+    "Lornetka": (
+        "Lornetka ze wzmacniaczem obrazu: w nocy, w półmroku i w ciemnych"
+        " zaułkach widzisz przez nią daleko i wyraźnie, choć w szarozielonych"
+        " barwach. Służy do obserwacji, nie do strzelania — kar za ciemność"
+        " w walce nie znosi (od tego jest celownik noktowizyjny)"
+    ),
+}
+
 # The running head of the chapter, left in the middle of a sentence where a
 # page breaks („w tym małe : NOWA EKONOMIA ULICZNA ostrze użytkowe").
 RUNNING_HEAD_RE = re.compile(r"\s*:\s*NOWA EKONOMIA ULICZNA\b")
@@ -279,7 +292,7 @@ def main() -> int:
             warn(f"{name}: powtórzony identyfikator {entry_id} — drugi wpis pominięty")
             continue
         seen.add(entry_id)
-        description = texts.get(name)
+        description = HOUSE_DESCRIPTIONS.get(name, texts.get(name))
         if description is None:
             warn(f"{name}: brak akapitu z opisem")
         slots = DECK_SLOTS_RE.search(description or "")
