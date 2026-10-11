@@ -90,13 +90,23 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         keys: 'klik w cel',
         what: 'Przy wybranej broni przygotuj atak. Dla strzału pojedynczego wybierz korpus, głowę, przedmiot lub nogę; celowanie poza korpus: −8 i cała Akcja',
       },
+      {
+        keys: 'klik w figurę (MG)',
+        what: 'W trwającej walce MG prowadzi figurę NPC-a w turze. Klik w inną figurę celuje z broni w ręku albo pokazuje ją w pasku, nie zaznacza. Przeciągnąć można każdą',
+        gmOnly: true,
+      },
+      {
+        keys: 'klik w portret na pasie',
+        what: 'Prowadź tę figurę i pokaż ją na mapie (też „Prowadź tę figurę” w menu figury)',
+        gmOnly: true,
+      },
       { keys: 'Tab', what: 'Następna figura, którą możesz sterować' },
       { keys: 'E', what: 'Zakończ Turę (swoją; MG — czyjąkolwiek)' },
     ],
   },
   {
     title: 'Figury i ping',
-    note: 'Zaznaczyć da się wyłącznie figury, którymi możesz sterować — u gracza własne, u MG wszystkie.',
+    note: 'Zaznaczyć da się wyłącznie figury, którymi możesz sterować — u gracza własne, u MG wszystkie (w trwającej walce klikiem tylko z pasa inicjatywy lub menu figury).',
     items: [
       {
         keys: 'Alt + klik w mapę',

@@ -32,6 +32,7 @@ import { IconEye } from './MapIcons.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
+import { gmSteerLocked } from '../combat-steer.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { activeWeaponOf, fireModeKey, useHudStore } from '../stores/hudStore.js';
 import { useRollStore } from '../stores/rollStore.js';
@@ -716,13 +717,22 @@ export function CombatHud() {
               figure, but the map still belongs to nobody until the user says
               so. Without this line an unmoving token after a click on the floor
               reads as a broken map rather than as „you have not picked me up". */}
+          {/* Etap 50b: MG w trwającej walce nie bierze figury klikiem na mapie. */}
           {!context.steering && (
             <p
               className="hud-preview"
-              title="Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot."
+              title={
+                gmSteerLocked(isGm, combat)
+                  ? 'Panel pokazuje figurę, ale nią nie sterujesz — w walce weź ją z portretu na pasie inicjatywy, z menu figury albo naciśnij slot.'
+                  : 'Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot.'
+              }
             >
               <IconEye size={14} />
-              <span>Podgląd — kliknij figurę albo slot, żeby sterować</span>
+              <span>
+                {gmSteerLocked(isGm, combat)
+                  ? 'Podgląd — weź figurę z pasa albo slotem'
+                  : 'Podgląd — kliknij figurę albo slot, żeby sterować'}
+              </span>
             </p>
           )}
 
@@ -850,7 +860,10 @@ export function CombatHud() {
                     pod „to nie jest tura tej postaci” to dwie sprzeczne rady. */}
                 W ręku: <strong>{armed.name}</strong>
                 {context.refusal ? '.' : ' — kliknij cel na mapie.'}
-                {isGm && <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>}
+                {/* W walce MG celuje zwykłym klikiem w każdą inną figurę (etap 50b). */}
+                {isGm && !gmSteerLocked(isGm, combat) && (
+                  <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>
+                )}
               </span>
             </p>
           )}

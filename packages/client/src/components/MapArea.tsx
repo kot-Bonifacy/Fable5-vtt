@@ -120,6 +120,7 @@ import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
+import { gmSteerLocked, gmTurnSteer, isTurnChangeInFight } from '../combat-steer.js';
 import { useAimMenuStore } from '../stores/aimMenuStore.js';
 import { AimMenu } from './AimMenu.js';
 import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
@@ -516,6 +517,26 @@ function turnKeyOf(combat: CombatView | null): string {
 }
 
 /**
+ * Zmiana tury u MG (etap 50b): w turze NPC-a MG dostaje jego figurę —
+ * zaznaczenie, pasek akcji i kadr kamery (zawsze środek, decyzja MG z 10.10);
+ * w turze gracza nie prowadzi nic, a pasek pokazuje figurę gracza
+ * w podglądzie. Regułę rozstrzyga `gmTurnSteer`.
+ */
+function steerTurnForGm(combat: CombatView | null, renderer: MapRenderer): void {
+  const steer = gmTurnSteer(combat, useTokenStore.getState().tokens);
+  if (!steer) return;
+  if (steer.kind === 'steer') {
+    renderer.setSelection(steer.tokenId);
+    renderer.frameToken(steer.tokenId);
+    return;
+  }
+  const selection = useSelectionStore.getState();
+  selection.clearGroup();
+  renderer.setSelection(null);
+  if (steer.tokenId) selection.focus(steer.tokenId);
+}
+
+/**
  * Which other tokens the marching figure can see from a given spot — the GM's
  * half of „ktoś nowy w polu widzenia".
  *
@@ -768,7 +789,10 @@ export function MapArea() {
     };
     // The rail's buttons take control of the figure they belong to; the ring
     // and the walk preview live in the renderer, so the request goes there.
-    setSteerHandler((tokenId) => renderer.setSelection(tokenId));
+    setSteerHandler((tokenId, frame) => {
+      renderer.setSelection(tokenId);
+      if (frame) renderer.frameToken(tokenId);
+    });
     // Turning a figure by hand (stage 27j). Reported on release, not on every
     // degree: the nose already followed the knob locally, and the server's job
     // is to remember the angle, not to animate it.
@@ -1634,17 +1658,32 @@ export function MapArea() {
   }, []);
 
   // Nowa tura zdejmuje celownik (#64): stary dymek nad celem mówiłby o turze,
-  // która już minęła.
+  // która już minęła. U MG (etap 50b) zmienia też prowadzoną figurę.
   useEffect(() => {
     if (!ready) return;
-    let turn = turnKeyOf(useCombatStore.getState().combat);
+    let previous = useCombatStore.getState().combat;
     return useCombatStore.subscribe((state) => {
-      const next = turnKeyOf(state.combat);
-      if (next === turn) return;
-      turn = next;
-      rendererRef.current?.dropAim();
+      if (turnKeyOf(state.combat) === turnKeyOf(previous)) return;
+      const turnPassed = isTurnChangeInFight(previous, state.combat);
+      previous = state.combat;
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      renderer.dropAim();
+      if (turnPassed && useAuthStore.getState().user?.role === ROLE_GM) {
+        steerTurnForGm(state.combat, renderer);
+      }
     });
   }, [ready]);
+
+  // MG w trwającej walce prowadzi jedną figurę (etap 50b) — od rundy 1, bo
+  // w „Przed walką” MG układa starcie i zaznacza klikiem jak zawsze.
+  useEffect(() => {
+    if (!ready) return;
+    const push = () =>
+      rendererRef.current?.setSteerLock(gmSteerLocked(isGm, useCombatStore.getState().combat));
+    push();
+    return useCombatStore.subscribe(push);
+  }, [ready, isGm]);
 
   useEffect(() => {
     if (!ready) return;

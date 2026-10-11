@@ -73,6 +73,15 @@ describe('kolejność znaczeń kliknięcia w mapę (błąd #8)', () => {
     expect(clicked.indexOf('this.walkTo(')).toBeGreaterThan(guard);
   });
 
+  it('klik w mapę to tylko lewy przycisk (oględziny 50b)', () => {
+    // Prawy klik w figurę otwiera menu na `pointerdown`, a puszczenie na tle
+    // menu przechodziło jako `clicked` i prowadzona figura szła na tamto pole.
+    const button = clicked.indexOf('.button !== 0) return;');
+    expect(button, 'strażnik przycisku zniknął').toBeGreaterThan(0);
+    expect(clicked.indexOf('this.walkTo(')).toBeGreaterThan(button);
+    expect(clicked.indexOf('this.onMapClick?.(')).toBeGreaterThan(button);
+  });
+
   it('pozostałe strażniki pytają o narzędzia jednym getterem', () => {
     // Cztery miejsca pytały „czy narzędzie jest w ręku" czterema listami
     // pisanymi ręcznie i trzy z nich się rozjechały. Po poprawce lista jest
@@ -84,5 +93,37 @@ describe('kolejność znaczeń kliknięcia w mapę (błąd #8)', () => {
     ]) {
       expect(blockAfter(SOURCE, header), header).toContain('this.mapToolArmed');
     }
+  });
+});
+
+describe('MG w walce prowadzi jedną figurę (etap 50b)', () => {
+  it('celownik traktuje każdą inną figurę jak cudzą, gdy blokada jest włączona', () => {
+    const aim = blockAfter(
+      SOURCE,
+      'private aimTargetFor(node: TokenNode | null, altKey: boolean): TokenNode | null {',
+    );
+    // Wyjątek: NPC, którego jest tura — tego MG prowadzi z urzędu.
+    expect(aim).toMatch(/const steerable =[^;]*\(!this\.steerLock \|\| this\.isTurnNpc\(node\)\);/);
+  });
+
+  it('klik bez przeciągnięcia w inną figurę tylko ją pokazuje', () => {
+    const end = blockAfter(SOURCE, 'private endDrag(commit: boolean): void {');
+    const preview = end.indexOf('this.onTokenPreview?.(drag.node.tokenId)');
+    const select = end.indexOf('this.setSelection(drag.node.tokenId)');
+    expect(preview, 'klik pod blokadą znów zaznacza').toBeGreaterThan(0);
+    expect(end.indexOf('this.steerLock')).toBeLessThan(preview);
+    // Podgląd musi wyprzedzić zaznaczenie — inaczej klik zaznacza i dopiero
+    // potem (albo wcale) pokazuje.
+    expect(select).toBeGreaterThan(preview);
+  });
+
+  it('z bronią w ręku klik w miejscu celuje, a chwyt dalej przeciąga', () => {
+    // `pointerdown` celował od razu, więc MG z bronią NPC-a w ręku nie mógł
+    // przesunąć figury gracza — cel rozstrzyga się dopiero przy puszczeniu.
+    const end = blockAfter(SOURCE, 'private endDrag(commit: boolean): void {');
+    expect(end).toContain('this.onTokenTarget?.(');
+    expect(SOURCE).toMatch(
+      /this\.aimTargetFor\(node, event\.altKey === true\) &&\s*!this\.aimsOnRelease\(/,
+    );
   });
 });

@@ -65,15 +65,33 @@ pasek grupy), bez osobnego klawisza. Inicjatywę NPC-ów przy starcie serwer rzu
 a ▶ w rundzie 0 zastąpiło słowo „⚔ Rozpocznij walkę”. „Włącz tryb turowy” dokłada do drużyny
 zaznaczoną grupę albo zaznaczoną figurę.
 
-### 50b — MG prowadzi figurę w turze; klik w walce celuje; marsz tylko prowadzoną
+### 50b — MG prowadzi figurę w turze; klik w walce celuje; marsz tylko prowadzoną (✅ 10.10)
 
-- [ ] Zmiana tury: MG dostaje zaznaczenie i kadr figury NPC-a w turze; w turze gracza
+**Decyzje MG z 10.10 (pytania na starcie 50b):** blokada klikania działa **od rundy 1**
+(w „Przed walką” MG zaznacza klikiem jak zawsze); kamera na NPC-u w turze **zawsze się
+centruje** (także gdy figura jest w kadrze); w turze gracza pasek MG pokazuje **figurę gracza
+w podglądzie**; klik w portret na pasie inicjatywy bierze figurę **tylko u MG**.
+
+- [x] Zmiana tury: MG dostaje zaznaczenie i kadr figury NPC-a w turze; w turze gracza
       zaznaczenie MG schodzi
-- [ ] W walce u MG figury inne niż prowadzona zachowują się jak cudze u gracza: klik
+- [x] W walce u MG figury inne niż prowadzona zachowują się jak cudze u gracza: klik
       z bronią w ręku = cel (bez `Alt`), bez broni = podgląd; przeciąganie zostaje
-- [ ] Marsz klikiem w walce tylko prowadzoną figurą
-- [ ] Świadome wzięcie innej figury: klik w portret w pasie inicjatywy / pozycja menu
-- [ ] Skróty i podpowiedzi (`shortcuts.ts`) zaktualizowane; testy klienta, oględziny
+- [x] Marsz klikiem w walce tylko prowadzoną figurą
+- [x] Świadome wzięcie innej figury: klik w portret w pasie inicjatywy / pozycja menu
+- [x] Skróty i podpowiedzi (`shortcuts.ts`) zaktualizowane; testy klienta, oględziny
+
+**Odstępstwa 50b:** przejęcie z pasa to klik w cały kafel (poza polem inicjatywy), z przejazdem
+kamery; pozycja menu „🕹 Prowadź tę figurę” kamery nie rusza (figura jest pod kursorem).
+Zmiana tury przejmuje figurę tylko przy przejściu tury **w tej samej walce** — wejście na
+scenę z trwającą walką i F5 zostawiają MG to, co miał. Z bronią w ręku cel rozstrzyga się
+u MG dopiero przy puszczeniu przycisku (klik w miejscu = cel, przeciągnięcie = ruch figury),
+bo inaczej figury z bronią w ręku nie dałoby się przesunąć. Świadome wzięcie to także `Shift`,
+ramka, `Tab` i slot paska przy figurze w podglądzie. **Wyjątek od blokady:** figurę NPC-a w turze
+klik dalej bierze — inaczej po `Esc` (zdejmuje zaznaczenie) MG nie miałby jej jak wziąć z mapy
+(wyszło w E2E T4b). **Poza planem, znalezione na oględzinach:**
+prawy klik w figurę (menu) wysyłał prowadzoną figurę marszem na jej pole — `clicked`
+z `pixi-viewport` przychodził też dla prawego przycisku, a puszczenie lądowało na tle menu;
+teraz klik w mapę to wyłącznie lewy przycisk (także poza walką).
 
 ### 50c — trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel
 

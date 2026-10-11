@@ -56,6 +56,7 @@ import { openExchangeAtToken } from './exchange/open.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { encounterState, toggleEncounter } from '../combat-encounter.js';
+import { takeFigure } from '../hud.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
@@ -888,6 +889,8 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
   const groupIds = useSelectionStore((s) => s.groupIds);
+  const steered = useSelectionStore((s) => s.tokenId);
+  const fightOn = (combat?.round ?? 0) >= 1;
   const encounterIds =
     groupIds.length > 1 && groupIds.includes(menu.tokenId) ? groupIds : [menu.tokenId];
   const encounterAllIn = encounterState(encounterIds, combat).allIn;
@@ -1046,6 +1049,21 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
               ))}
             </span>
           </div>
+        )}
+        {/* Etap 50b: w trwającej walce klik na mapie nie zaznacza innej figury
+            — MG bierze ją stąd albo z portretu na pasie inicjatywy. */}
+        {fightOn && !isContainer && steered !== token.id && (
+          <button
+            type="button"
+            className="context-menu-item"
+            title="Zaznacza figurę: klik w podłogę prowadzi ją, a broń z paska strzela z niej."
+            onClick={() => {
+              takeFigure(token.id, false);
+              onClose();
+            }}
+          >
+            🕹 Prowadź tę figurę
+          </button>
         )}
         {token.characterId && (
           <button type="button" className="context-menu-item" onClick={openSheet}>

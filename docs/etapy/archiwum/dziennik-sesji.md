@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (po `bde6fd0`) — etap 49b: losowy NPC z Roli
+
+**Decyzje MG (pytania na starcie):** Umiejętności = tabela Ulicznika + rozrzut; z pakietu Roli
+tylko broń i pancerz; „Losuj z Roli” wymaga wybranej Roli. Zapisane w `etap-49-npc-mg.md`.
+
+**Zrobione:** tabela Umiejętności Ulicznika i broń/pancerz Ról przepisane z angielskiego PDF-a
+(`C:/AI/materialy/Cyberpunk Red.pdf`, s. 86–87 i 98 — polski zrzut skleja komórki) do
+`data/private/cpred/creation.json` → `streetrat`; skrypt sprawdził, że każda Rola ma dokładnie
+listę z polskiego wydania i koszt 86. `parse-creation.py` przenosi `streetrat` i `roleKits`
+(`existing_section`). Shared: `CpredStreetratKit` + `readStreetrat`, `cpredRandomNpc`,
+`CpredNpcInput.armorShieldId` i `roleRank`, `CPRED_NPC_SKILLS_MAX` 24. Serwer:
+`creation:random-npc` (MG, karta `gmroll` „Losowy NPC — Solo · wiersz Cech N” z Cechami,
+rozrzutem i wyborami „lub”). Klient: `rollRandomNpc`, w oknie „🎲 Losuj z Roli”, „Ranga”, „Tarcza”
+(tarcze zniknęły z list Głowa/Tułów). Umowa w `statysta`.
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”, żywe dane): Solo z wiersza 1, rozrzut 5 Umiejętności (suma 0), Karabin
+szturmowy + B.C. pistolet + Duża broń biała, Lekka kurtka ×2, Ranga 4; karta „rzut do MG” na
+czacie; wzorzec utworzony — karta z bronią, pancerzem, Zmysłem Walki 4 i PW 40 — i skasowany.
+Druga sesja gracza nie oglądana na żywo (przeciek `gmroll` sprawdza test serwera).
+**Ślady w `dev.db`:** jedna karta rzutu „Losowy NPC — Solo” na czacie MG kampanii „Test_1”.
+
 ### Sesja 10.10 (po `e812d25`) — etap 49a: okno „Nowa postać”, wzorce statystów, ukryte rzuty MG
 
 **Zlecenie MG:** tworzenie przeciwników jest nieintuicyjne, a przy tworzeniu postaci z konta MG

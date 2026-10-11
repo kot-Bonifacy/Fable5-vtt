@@ -201,6 +201,15 @@
   background-size: var(--cp-cracks-size);
 }
 
+/* Etap 50b: MG bierze figurę klikiem w kafel (z kadrem kamery). */
+.combat-chip--takeable {
+  cursor: pointer;
+}
+
+.combat-chip--takeable:not(.combat-chip--active):hover {
+  border-color: var(--warn);
+}
+
 /* Already acted this round — still there, one step back. */
 .combat-chip--done {
   opacity: 0.5;

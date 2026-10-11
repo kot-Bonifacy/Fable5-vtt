@@ -335,22 +335,22 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
       ['purchase', -60, 'Zestaw wytrychów'],
     ]);
 
-    // Karabin szturmowy: poziom wyżej niż sklep kampanii (2) — guzik wyszarzony,
-    // a surowe gniazdo dostaje odmowę z oboma poziomami.
-    const rifle = await compendiumEntry(marek, 'Militech Ronin', { prefix: true });
-    const buy = rifle.getByRole('button', { name: /^Kup/ });
-    await expect(buy).toBeDisabled();
-    const title = await buy.getAttribute('title');
+    // Karabin szturmowy: poziom wyżej niż sklep kampanii (2) — od 10.10 (`bcc3716`) gracz
+    // nie widzi go na półce Kompendium, a surowe gniazdo dostaje odmowę z oboma poziomami.
+    const panel = marek.page.locator('.compendium-panel');
+    await panel.getByRole('button', { name: '← Lista' }).click();
+    await panel.getByPlaceholder('Szukaj przedmiotu…').fill('Militech Ronin');
+    await panel.locator('.compendium-category', { hasText: /^Broń/ }).click();
+    await expect(panel.locator('.compendium-row-name', { hasText: /^Militech Ronin/ })).toHaveCount(
+      0,
+    );
     const refused = await emitAck(await marek.socket(), 'economy:buy', {
       characterId: characterRow('Kowal').id,
       entryId: 'weapon.militech-ronin',
     });
     test
       .info()
-      .annotations.push(
-        { type: 'dymek „Kup” Ronina u Marka', description: String(title) },
-        { type: 'odmowa economy:buy', description: JSON.stringify(refused) },
-      );
+      .annotations.push({ type: 'odmowa economy:buy', description: JSON.stringify(refused) });
     expect(refused.ok).toBe(false);
     expect(refused.ok ? '' : refused.error).toMatch(/^SHOP_TIER_LOCKED:[34]:2$/);
     expect(card('Kowal').eddies).toBe(eddies - 60);

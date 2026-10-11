@@ -129,11 +129,54 @@ export async function closeSheet(page: Page) {
   await expect(page.getByRole('button', { name: 'Zamknij kartę' })).toHaveCount(0);
 }
 
+/**
+ * MG bierze figurę z punktu sceny (etap 50b). W trwającej walce klik w figurę
+ * inną niż prowadzona już jej nie zaznacza, więc idzie przez menu figury
+ * („Prowadź tę figurę”). Pozycji nie ma przed walką i przy figurze już
+ * prowadzonej — wtedy menu zamyka klik w tło, a zaznacza zwykły klik.
+ */
+export async function takeFigure(mg: Actor, point: WorldPoint) {
+  const page = mg.page;
+  await clickOnMap(page, point, 'right');
+  await expect(page.locator('.context-menu')).toBeVisible();
+  const item = page.getByRole('button', { name: /Prowadź tę figurę/ });
+  if (await item.isVisible()) await item.click();
+  else await page.locator('.context-menu-backdrop').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('.context-menu')).toHaveCount(0);
+}
+
+const activePanel = (page: Page) =>
+  page.getByRole('complementary', { name: 'Panel aktywnej postaci' });
+
+/**
+ * Pierwsza broń paska do ręki — klawiszem slotu (`1…9`, z podpowiedzi slotu),
+ * jak przy stole. Klawisz, nie klik: okno „Sieć” MG leży w T5b nad lewym panelem.
+ */
+export async function armFirstWeapon(page: Page) {
+  const panel = activePanel(page);
+  const slot = panel.locator('.hud-slot').first();
+  const key = /\((\d)\)$/.exec((await slot.getAttribute('title')) ?? '')?.[1];
+  if (key) await page.keyboard.press(key);
+  else await slot.click();
+  await expect(panel.getByText(/^W ręku:/)).toBeVisible();
+}
+
 /** Zaznacza własną figurę i celuje w punkt sceny (MG celuje z Alt), klik ładuje kubek. */
 export async function aim(actor: Actor, from: WorldPoint, target: WorldPoint, alt = false) {
   const page = actor.page;
+  if (alt) await takeFigure(actor, from);
   await clickOnMap(page, from);
   await page.waitForTimeout(300);
+  // Etap 50b: NPC w turze jest u MG zaznaczony z urzędu, więc klik w niego już
+  // nie uzbraja na nowo — broń opuszczoną `Esc` bierze się slotem, jak przy stole.
+  if (
+    alt &&
+    !(await activePanel(page)
+      .getByText(/^W ręku:/)
+      .isVisible())
+  ) {
+    await armFirstWeapon(page);
+  }
   if (alt) await page.keyboard.down('Alt');
   await clickOnMap(page, target);
   if (alt) await page.keyboard.up('Alt');

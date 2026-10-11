@@ -512,11 +512,26 @@ export function hudSignature(context: HudContext): string {
  * store: the dashed ring, the walk preview and the reticle all live there, and
  * a store write nobody drew would leave the map disagreeing with the panel.
  */
-let steerHandler: ((tokenId: string) => void) | null = null;
+let steerHandler: ((tokenId: string, frame: boolean) => void) | null = null;
 
-/** `MapArea` hands in the renderer's selection door; null on unmount. */
-export function setSteerHandler(handler: ((tokenId: string) => void) | null): void {
+/**
+ * `MapArea` hands in the renderer's selection door; null on unmount. `frame`
+ * prosi dodatkowo o kadr kamery na figurze (etap 50b).
+ */
+export function setSteerHandler(handler: ((tokenId: string, frame: boolean) => void) | null): void {
   steerHandler = handler;
+}
+
+/**
+ * MG świadomie bierze figurę w walce (etap 50b): portret na pasie inicjatywy
+ * albo „Prowadź tę figurę” w menu. W trwającej walce klik na mapie innej
+ * figury już jej nie zaznacza, więc to są drzwi, którymi się ją przejmuje.
+ * Pas prosi o kadr (z pasa nie widać, gdzie figura stoi), menu nie — jego
+ * figura jest pod kursorem.
+ */
+export function takeFigure(tokenId: string, frame: boolean): void {
+  if (steerHandler) steerHandler(tokenId, frame);
+  else useSelectionStore.getState().select(tokenId);
 }
 
 /**
@@ -530,7 +545,7 @@ export function setSteerHandler(handler: ((tokenId: string) => void) | null): vo
  */
 function steerToken(tokenId: string): void {
   if (useSelectionStore.getState().tokenId === tokenId) return;
-  if (steerHandler) steerHandler(tokenId);
+  if (steerHandler) steerHandler(tokenId, false);
   else useSelectionStore.getState().select(tokenId);
 }
 

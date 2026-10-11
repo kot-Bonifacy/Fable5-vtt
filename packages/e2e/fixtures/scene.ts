@@ -42,6 +42,9 @@ export async function fitCamera(page: Page, width: number, height: number): Prom
   if (!box) throw new Error('E2E: no map area');
   const fits = (w: number, h: number) =>
     w <= box.width - 40 && h <= box.height - 2 * TOOLBAR_MARGIN_PX;
+  // Kółko trzyma punkt pod kursorem, więc najpierw środek sceny na środek widoku —
+  // od etapu 50b kamera MG jeździ za NPC-em w turze i bywa daleko od środka.
+  await panSceneCentre(page, box, { x: width / 2, y: height / 2 });
   for (let step = 0; step < 16; step += 1) {
     const a = await worldToClient(page, { x: 0, y: 0 });
     const b = await worldToClient(page, { x: width, y: height });
@@ -60,6 +63,40 @@ export async function fitCamera(page: Page, width: number, height: number): Prom
   expect(b.y, 'scene bottom on screen').toBeLessThanOrEqual(box.y + box.height);
   expect(a.x).toBeGreaterThanOrEqual(box.x);
   expect(b.x).toBeLessThanOrEqual(box.x + box.width);
+}
+
+/**
+ * Przesuwa widok tak, żeby punkt sceny stanął na środku mapy — przeciągnięcie
+ * środkowym przyciskiem, jak ręką przy stole (lewy chwyciłby figurę). Pauza
+ * przed puszczeniem gasi bezwładność (`decelerate`). Punkt poza ekranem
+ * przesuwa się w kilku chwytach.
+ */
+async function panSceneCentre(
+  page: Page,
+  box: { x: number; y: number; width: number; height: number },
+  point: WorldPoint,
+): Promise<void> {
+  const target = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
+  for (let grab = 0; grab < 6; grab += 1) {
+    const at = await worldToClient(page, point);
+    const dx = target.x - at.x;
+    const dy = target.y - at.y;
+    if (Math.hypot(dx, dy) < 20) return;
+    // Chwyt w środku mapy, ruch najwyżej do brzegu — reszta w następnym chwycie.
+    const reachX = box.width / 2 - 30;
+    const reachY = box.height / 2 - TOOLBAR_MARGIN_PX;
+    await page.mouse.move(target.x, target.y);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(
+      target.x + clamp(dx, -reachX, reachX),
+      target.y + clamp(dy, -reachY, reachY),
+      { steps: 8 },
+    );
+    await page.waitForTimeout(200);
+    await page.mouse.up({ button: 'middle' });
+    await page.waitForTimeout(150);
+  }
 }
 
 /** Klik w punkt sceny, który musi być na mapie (nie pod panelem ani paskiem). */

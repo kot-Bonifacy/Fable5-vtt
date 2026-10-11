@@ -27,6 +27,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
+import { takeFigure } from '../hud.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
 
@@ -448,6 +449,10 @@ export function CombatBar() {
       >
         {combat.combatants.map((combatant, index) => {
           const isActive = combatant.id === activeId;
+          // Etap 50b: w walce klik na mapie nie zaznacza innej figury, więc MG
+          // bierze ją stąd — z kadrem kamery, bo z pasa nie widać, gdzie stoi.
+          const takeable =
+            isGm && combatant.tokenId !== null && tokens[combatant.tokenId] !== undefined;
           const done = combat.round > 0 && activeIndex >= 0 && index < activeIndex;
           const held = combatant.held ? 'Akcja wstrzymana' : null;
           const grapple = combatant.grapple
@@ -463,6 +468,7 @@ export function CombatBar() {
             tiedIds.has(combatant.id) ? 'remis' : null,
             held,
             grapple,
+            takeable ? 'kliknij, żeby prowadzić tę figurę' : null,
             isGm ? 'przeciągnij, żeby zmienić kolejność' : null,
           ]
             .filter(Boolean)
@@ -475,8 +481,15 @@ export function CombatBar() {
                 done ? ' combat-chip--done' : ''
               }${combatant.hidden ? ' combat-chip--hidden' : ''}${
                 tiedIds.has(combatant.id) ? ' combat-chip--tie' : ''
-              }${dragged === combatant.id ? ' combat-chip--dragged' : ''}`}
+              }${dragged === combatant.id ? ' combat-chip--dragged' : ''}${
+                takeable ? ' combat-chip--takeable' : ''
+              }`}
               title={label}
+              onClick={(e) => {
+                // Inicjatywa ma własny guzik i pole — klik w nie to nie wybór figury.
+                if (!takeable || (e.target as HTMLElement).closest('button, input')) return;
+                takeFigure(combatant.tokenId!, true);
+              }}
               // Kolejność w remisie ustala MG przeciągnięciem (dawniej w
               // zakładce „Walka"); następny rzut inicjatywy porządkuje od nowa.
               draggable={isGm}

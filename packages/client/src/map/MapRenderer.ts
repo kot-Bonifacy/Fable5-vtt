@@ -438,6 +438,8 @@ function sameRef(a: SceneObjectRef | null, b: SceneObjectRef | null): boolean {
 }
 /** How long after a drop a map click is still the drop's own pointer release. */
 const DRAG_CLICK_GRACE_MS = 250;
+/** Przejazd kamery na figurę w turze NPC-a i z portretu pasa (etap 50b). */
+const FRAME_TOKEN_MS = 350;
 /**
  * Longest gap between two march frames that counts as real time, in ms. Beyond
  * it the renderer is assumed to have stalled and the march simply resumes.
@@ -1212,6 +1214,16 @@ export class MapRenderer {
     return !this.viewerIsGm && this.scene?.playerMove === 'stop';
   }
   /**
+   * MG w trwającej walce (runda 1+) prowadzi jedną figurę (etap 50b, decyzja
+   * MG z 10.10 wzorem Foundry).
+   *
+   * Każda inna figura zachowuje się wtedy jak cudza u gracza: klik z bronią
+   * w ręku to cel (bez `Alt`), bez broni — podgląd w pasku. Przeciągnąć dalej
+   * można każdą, a zaznaczenie zmienia się tylko świadomie: tura NPC-a, portret
+   * na pasie inicjatywy, menu figury, `Shift`, ramka, `Tab`. Ustawia `MapArea`.
+   */
+  private steerLock = false;
+  /**
    * Kiedy ostatnio powiedziano temu graczowi, że mapa jest zamknięta.
    *
    * Zdanie pada raz na chwyt, nie raz na klatkę: `onDragMove` leci
@@ -1837,6 +1849,12 @@ export class MapRenderer {
       // puszcza się tutaj, bo `trackWalkHover` przy trwającym obrocie nie
       // planuje trasy — resztę sprząta `onRotateEnd`.
       if (this.rotating && !this.rotating.moved) this.rotating = null;
+      // `pixi-viewport` woła `clicked` dla każdego przycisku. Prawy na figurze
+      // otwiera menu już na `pointerdown`, więc puszczenie ląduje na tle menu,
+      // a nie na figurze — i strażnik „klik w figurę” niżej go nie łapał:
+      // prowadzona figura szła marszem na pole tej, której menu MG otwierał
+      // (oględziny 50b). Klik w mapę to wyłącznie lewy przycisk.
+      if ((event.event as FederatedPointerEvent).button !== 0) return;
       // The tools that finish their gesture on pointerdown have already spent
       // this click; letting it through here would also drop a token in the
       // middle of a floor plan or send a figure marching (see the getter).
@@ -3113,6 +3131,27 @@ export class MapRenderer {
   }
 
   /**
+   * Kadr na figurze — tura NPC-a i portret z pasa inicjatywy u MG (etap 50b).
+   *
+   * Zawsze środek, także gdy figura już jest w widoku (decyzja MG z 10.10,
+   * wzór Foundry), krótkim przejazdem zamiast skoku, żeby było widać, skąd
+   * kamera przyszła. Zoom zostaje. Ręka na mapie przerywa przejazd.
+   */
+  frameToken(tokenId: string): void {
+    const viewport = this.viewport;
+    const node = this.tokenNodes.get(tokenId);
+    const scene = this.scene;
+    if (this.destroyed || !viewport || !node || node.destroyed || !scene) return;
+    const half = (node.token.size * scene.grid.sizePx) / 2;
+    viewport.animate({
+      position: { x: node.x + half, y: node.y + half },
+      time: FRAME_TOKEN_MS,
+      ease: 'easeInOutSine',
+      removeOnInterrupt: true,
+    });
+  }
+
+  /**
    * Punkt sceny we współrzędnych okna przeglądarki (`clientX`/`clientY`) —
    * albo `null`, gdy płótna jeszcze nie ma. Czyta to wyłącznie hak testów E2E
    * (`e2e-hook.ts`): automat klika w płótno z kamery, a nie z pikseli zrzutu.
@@ -3958,6 +3997,15 @@ export class MapRenderer {
     if (!active) this.clearAim();
   }
 
+  /** Blokada zaznaczania MG w walce (etap 50b) — patrz `steerLock`. */
+  setSteerLock(locked: boolean): void {
+    if (this.destroyed || this.steerLock === locked) return;
+    this.steerLock = locked;
+    // Celownik nad figurą wisiał według starej reguły („z `Alt`"); następne
+    // najechanie postawi go według nowej.
+    this.clearAim();
+  }
+
   /**
    * Arms — or puts away — the area template (stages 16d, 16g).
    *
@@ -4054,9 +4102,13 @@ export class MapRenderer {
    * The rule is the one every top-down RPG uses: a figure I steer is somebody I
    * **select**, anybody else is somebody I can **shoot**. Which leaves the GM,
    * who steers the whole map and would otherwise never be able to switch
-   * figures — so for them the plain click keeps selecting and `Alt` is how they
-   * say „this one is a target, not my next pawn". A player holding `Alt` gets
-   * the same escape hatch for the rare shot at their own side.
+   * figures — so out of combat the plain click keeps selecting and `Alt` is how
+   * they say „this one is a target, not my next pawn". A player holding `Alt`
+   * gets the same escape hatch for the rare shot at their own side.
+   *
+   * W walce (etap 50b) MG prowadzi jedną figurę i dla niego każda inna jest
+   * „cudza” (`steerLock`) — przy stole najczęstszą pomyłką był właśnie klik,
+   * który zaznaczał gracza zamiast do niego strzelić.
    *
    * The crosshair armed from a sheet (stages 16 and 16b) overrides all of it:
    * that gesture already said „the next token I click is a target".
@@ -4069,9 +4121,37 @@ export class MapRenderer {
     if (this.targeting) return node;
     if (!this.aimReady || !this.selectedTokenId) return null;
     if (node.tokenId === this.selectedTokenId) return null;
-    const steerable = this.movableTokens.get(node.tokenId) !== false;
+    const steerable =
+      this.movableTokens.get(node.tokenId) !== false && (!this.steerLock || this.isTurnNpc(node));
     if (steerable && !altKey) return null;
     return node;
+  }
+
+  /**
+   * Czy cel z broni w ręku rozstrzyga się dopiero przy puszczeniu (etap 50b).
+   *
+   * MG w walce celuje w figurę, którą może też przeciągnąć — `pointerdown`
+   * nie wie jeszcze, który to gest, więc chwyt zaczyna się jak przeciąganie,
+   * a klik w miejscu kończy się celem w `endDrag`. Celownik z karty (16b)
+   * i `Alt` zostają przy natychmiastowym celu, jak u gracza.
+   */
+  private aimsOnRelease(node: TokenNode, altKey: boolean): boolean {
+    return (
+      this.steerLock && !this.targeting && !altKey && this.movableTokens.get(node.tokenId) !== false
+    );
+  }
+
+  /**
+   * Figura NPC-a, którego jest tura (etap 50b) — tę MG prowadzi z urzędu, więc
+   * pod blokadą klik dalej ją bierze. Bez tego `Esc` (ostatni szczebel zdejmuje
+   * zaznaczenie) zostawiał MG bez drogi powrotu poza pasem i menu.
+   */
+  private isTurnNpc(node: TokenNode): boolean {
+    return (
+      node.tokenId === this.activeTokenId &&
+      node.token.ownerId === null &&
+      node.token.container === undefined
+    );
   }
 
   /** Puts the reticle on a token, or takes it off; reports both to the caller. */
@@ -6942,7 +7022,12 @@ export class MapRenderer {
       // A token under the crosshair is a target, not something to pick up —
       // whether the crosshair came from a sheet (16b) or from the weapon in the
       // action bar (16f). The caller decides which of the two is firing.
-      if (this.aimTargetFor(node, event.altKey === true)) {
+      // MG w walce (etap 50b) celuje dopiero puszczeniem w miejscu: figurę,
+      // której nie prowadzi, dalej może przeciągnąć (`endDrag`).
+      if (
+        this.aimTargetFor(node, event.altKey === true) &&
+        !this.aimsOnRelease(node, event.altKey === true)
+      ) {
         event.stopPropagation();
         const rect = this.app.canvas.getBoundingClientRect();
         this.onTokenTarget?.(node.tokenId, rect.left + event.global.x, rect.top + event.global.y);
@@ -7259,6 +7344,25 @@ export class MapRenderer {
     // drag already uses is what keeps the two gestures from competing: below it
     // nothing moved, above it nothing was selected.
     if (!drag.moved && !drag.node.destroyed) {
+      // MG w walce (etap 50b): klik w figurę inną niż prowadzona tylko ją
+      // pokazuje — prowadzenie zmienia się świadomie, nie przy okazji.
+      if (
+        this.steerLock &&
+        drag.node.tokenId !== this.selectedTokenId &&
+        !this.isTurnNpc(drag.node)
+      ) {
+        if (this.aimTargetFor(drag.node, false)) {
+          const rect = this.app.canvas.getBoundingClientRect();
+          this.onTokenTarget?.(
+            drag.node.tokenId,
+            rect.left + drag.startGlobalX,
+            rect.top + drag.startGlobalY,
+          );
+        } else {
+          this.onTokenPreview?.(drag.node.tokenId);
+        }
+        return;
+      }
       this.setSelection(drag.node.tokenId);
       return;
     }

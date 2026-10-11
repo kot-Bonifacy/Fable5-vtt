@@ -130,5 +130,5 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 49b    | Losowy NPC z Roli (Krawędziarz automatem) | ✅     | 2026-10-10          |
 | 50     | Start walki, prowadzenie figury i celowanie wzorem Foundry (50a–50c) | 🟨     | projekt 2026-10-10  |
 | 50a    | Starcie: „⚔ Do starcia”, inicjatywa NPC-ów przy starcie, ostrzeżenie bez NPC-a | ✅     | 2026-10-10          |
-| 50b    | MG prowadzi figurę w turze, klik w walce celuje, marsz tylko prowadzoną | ⬜     |                     |
+| 50b    | MG prowadzi figurę w turze, klik w walce celuje, przejęcie z pasa i menu | ✅     | 2026-10-10          |
 | 50c    | Trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel | ⬜     |                     |

@@ -32,6 +32,8 @@ import {
   token,
   type RollJson,
   beginFight,
+  takeFigure,
+  armFirstWeapon,
 } from '../../fixtures/walka.ts';
 import { GatewayProxy } from '../../instance/gateway-proxy.ts';
 import {
@@ -190,6 +192,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const page = actor.page;
     const panel = page.getByRole('complementary', { name: 'Panel aktywnej postaci' });
     await page.keyboard.press('Escape');
+    // Etap 50b: MG w walce bierze figurę z menu, klik tylko by ją pokazał.
+    if (actor === mg) await takeFigure(mg, tokenCentre(token(name), cell));
     await clickOnMap(page, tokenCentre(token(name), cell));
     await page.waitForTimeout(400);
     if (
@@ -202,8 +206,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         type: `${name}: broń z paska`,
         description: 'bez „W ręku” po zaznaczeniu',
       });
-      await panel.locator('.hud-slot').first().click();
-      await expect(panel.getByText(/^W ręku:/)).toBeVisible();
+      await armFirstWeapon(page);
     }
     if (alt) await page.keyboard.down('Alt');
     await clickOnMap(page, target);
@@ -227,6 +230,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const page = actor.page;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       await page.keyboard.press('Escape');
+      if (actor === mg) await takeFigure(mg, tokenCentre(token(name), cell));
       await clickOnMap(page, tokenCentre(token(name), cell));
       await page.waitForTimeout(300);
       // Środek pola — także tego, na który zachodzi grot zaznaczonej figury:
