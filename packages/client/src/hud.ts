@@ -46,8 +46,12 @@ import {
   combatErrorText,
   reloadWeapon,
   runNetScan,
+  setTokenTarget,
   spendCombatAction,
 } from './socket.js';
+import { tokenErrorText } from './mapErrors.js';
+import { useAimMenuStore } from './stores/aimMenuStore.js';
+import { nextTarget, targetOf, useTargetStore } from './stores/targetStore.js';
 import { netErrorText } from './netErrors.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
@@ -535,6 +539,71 @@ export function takeFigure(tokenId: string, frame: boolean): void {
 }
 
 /**
+ * Gdzie stoi figura (etap 50c) — środek w świecie sceny i ten sam punkt na
+ * ekranie. Strzał w trwały cel nie ma kliknięcia, przy którym stanęłoby okno
+ * Celowania, ani punktu, w który poleci granat; zna je mapa. Rejestruje
+ * `MapArea`, null przy odmontowaniu.
+ */
+export type TokenLocator = (
+  tokenId: string,
+) => { world: { x: number; y: number }; client: { x: number; y: number } | null } | null;
+
+let tokenLocator: TokenLocator | null = null;
+
+export function setTokenLocator(locator: TokenLocator | null): void {
+  tokenLocator = locator;
+}
+
+/**
+ * Trwały cel wzorem Foundry (etap 50c): `T` nad figurą albo podwójny prawy
+ * klik — prowadzona figura mierzy w tamtą, drugi raz to samo zdejmuje cel.
+ * Cel należy do figury, nie do konta (decyzja MG z 11.10); `T` na samej
+ * prowadzonej figurze zdejmuje jej cel.
+ */
+export function toggleTarget(tokenId: string): void {
+  const shooter = useSelectionStore.getState().tokenId;
+  const chat = useChatStore.getState();
+  if (!shooter) {
+    chat.addNote('Najpierw wybierz figurę, która ma mierzyć — potem T nad celem.');
+    return;
+  }
+  const next = nextTarget(shooter, useTargetStore.getState().targets[shooter] ?? null, tokenId);
+  if (next === undefined) return;
+  void setTokenTarget(shooter, next).then((ack) => {
+    if (!ack.ok) chat.addNote(targetErrorText(ack.error));
+  });
+}
+
+function targetErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'TOKEN_NOT_FOUND':
+      return 'Tej figury nie widać — nie da się w nią mierzyć.';
+    case 'FORBIDDEN':
+      return 'Mierzyć może tylko figura, którą prowadzisz.';
+    case 'SCENE_NOT_VIEWED':
+      return 'Cel wskazuje się na scenie, którą oglądasz.';
+    default:
+      return tokenErrorText(code);
+  }
+}
+
+/**
+ * Broń z paska przy trwałym celu (etap 50c, decyzja MG 5): od razu ładuje
+ * kubek na cel, z oknem Celowania przy celu jak po kliknięciu. Granat leci
+ * na pole, na którym cel stoi. False — figura nie ma celu na tej mapie.
+ */
+function fireAtStandingTarget(tokenId: string): boolean {
+  const targetId = targetOf(tokenId);
+  if (!targetId) return false;
+  const place = tokenLocator?.(targetId) ?? null;
+  if (place?.client) useAimMenuStore.getState().placeAt(place.client.x, place.client.y);
+  if (useHudStore.getState().activeWeapon?.pointTarget) {
+    return place ? throwAtPoint(place.world.x, place.world.y) : false;
+  }
+  return attackWithActiveWeapon(targetId);
+}
+
+/**
  * Takes control of the figure the rail is describing.
  *
  * Pressing a slot is the one unambiguous „I am playing this one" there is, so
@@ -571,8 +640,10 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   if (slot.kind === 'weapon') {
     const active = hud.activeWeapon;
     // Pressing the armed slot again puts the weapon away — the same „never
-    // mind" Escape gives, on the key that armed it.
+    // mind" Escape gives, on the key that armed it. Przy trwałym celu (etap
+    // 50c) to kolejny strzał w cel; broń odkłada wtedy `Esc`.
     if (active && active.tokenId === tokenId && active.slotId === slot.id) {
+      if (fireAtStandingTarget(tokenId)) return;
       hud.setActiveWeapon(null);
       return;
     }
@@ -598,6 +669,7 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     // The crosshair armed from a sheet and the bar's own weapon would both
     // want the next click; the bar wins, because it is the one just pressed.
     useAttackStore.getState().disarm();
+    fireAtStandingTarget(tokenId);
     return;
   }
 

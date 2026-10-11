@@ -63,6 +63,7 @@ import { emitTokenUpsert } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
 import { advanceTurn } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
+import { releaseSceneTargets } from './target.js';
 
 /**
  * The action economy (stage 14b).
@@ -587,6 +588,8 @@ export const combatEndEvent = defineEvent({
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     await emitCombatOfScene(deps, campaignId, scene);
+    // Trwałe cele (etap 50c) kończą się z walką — decyzja MG z 10.10.
+    releaseSceneTargets(deps, scene.id);
   },
 });
 

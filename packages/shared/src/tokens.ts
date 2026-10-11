@@ -417,6 +417,36 @@ export interface TokenAimBroadcast {
 }
 
 /**
+ * Client → server `token:target` (etap 50c): figura trwale mierzy w inną albo
+ * przestaje. Cel należy do **figury-strzelca**, nie do konta (decyzja MG
+ * z 11.10) — każdy NPC prowadzony przez MG trzyma swój. Wzorem `token:aim`
+ * nie trafia do bazy: żyje w pamięci serwera do zmiany aktywnej sceny, końca
+ * walki albo zniknięcia którejś z figur.
+ */
+export interface TokenTargetPayload {
+  tokenId: string;
+  /** Figura-cel na tej samej scenie; null zdejmuje cel. */
+  targetId: string | null;
+}
+
+/** Jeden trwały cel: kto w kogo mierzy. */
+export interface TokenTargetView {
+  tokenId: string;
+  targetId: string;
+}
+
+/**
+ * Server → client `token:target` — trwały cel ustawiony albo zdjęty. Dochodzi
+ * tylko do tych, którzy widzą **obie** figury; zdjęcie — do tych, którzy
+ * dostali cel.
+ */
+export interface TokenTargetBroadcast {
+  sceneId: string;
+  tokenId: string;
+  targetId: string | null;
+}
+
+/**
  * Client → server `token:feared`: whom this figure backed down from (stage 23c).
  *
  * The −2 of a lost Konfrontacja needs **two** things — the „Onieśmielony"

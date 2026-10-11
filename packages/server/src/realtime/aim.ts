@@ -4,6 +4,7 @@ import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import {
+  type Concealment,
   concealedFrom,
   concealmentFor,
   requireCampaignToken,
@@ -50,36 +51,75 @@ async function aimAudience(
   token: Token,
   senderId: string,
 ): Promise<AimSocket[]> {
+  return (await sceneAudience(deps, campaignId, scene, [token], senderId)) as AimSocket[];
+}
+
+/** Gniazdo widza z tym, czego potrzebuje rachunek widowni. */
+export type AudienceSocket = {
+  id: string;
+  data: { user: SessionUser; viewedSceneId: string | null };
+};
+
+/**
+ * Gniazda oglądające scenę, które widzą **każdą** z podanych figur — ta sama
+ * miara co przy `token:upsert` (ukryta tylko MG, mgła i pole widzenia po swojemu
+ * dla każdego gracza, kontrolerzy figury zawsze). Grot (`token:aim`) pyta o
+ * jedną figurę, trwały cel (`token:target`, etap 50c) o strzelca i cel naraz.
+ * `senderId` pomija nadawcę; null — nikogo.
+ */
+export async function sceneAudience(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  tokens: readonly Token[],
+  senderId: string | null,
+): Promise<AudienceSocket[]> {
   const sockets = (await deps.io
     .in(campaignRoom(campaignId))
-    .fetchSockets()) as unknown as AimSocket[];
+    .fetchSockets()) as unknown as AudienceSocket[];
   const viewers = sockets.filter(
     (member) => member.id !== senderId && member.data.viewedSceneId === scene.id,
   );
   if (viewers.every((member) => member.data.user.role === ROLE_GM)) return viewers;
 
-  const controllers = new Set<string>();
-  if (token.ownerId) controllers.add(token.ownerId);
-  if (token.characterId) {
-    const character = await deps.ctx.prisma.character.findUnique({
-      where: { id: token.characterId },
-      select: { ownerId: true },
-    });
-    if (character?.ownerId) controllers.add(character.ownerId);
+  const controllers = new Map<string, Set<string>>();
+  for (const token of tokens) {
+    const ids = new Set<string>();
+    if (token.ownerId) ids.add(token.ownerId);
+    if (token.characterId) {
+      const character = await deps.ctx.prisma.character.findUnique({
+        where: { id: token.characterId },
+        select: { ownerId: true },
+      });
+      if (character?.ownerId) ids.add(character.ownerId);
+    }
+    controllers.set(token.id, ids);
   }
   // Ściany są te same dla każdego — liczone raz, jak w `emitSceneTokensToPlayers`.
   let context: SceneVisionContext | undefined;
-  const audience: AimSocket[] = [];
+  const audience: AudienceSocket[] = [];
   for (const member of viewers) {
     const user = member.data.user;
-    if (user.role === ROLE_GM || controllers.has(user.id)) {
+    if (user.role === ROLE_GM) {
       audience.push(member);
       continue;
     }
-    if (token.hidden) continue;
-    context ??= await loadVisionContext(deps.ctx.prisma, scene);
-    const concealment = await concealmentFor(deps.ctx.prisma, scene, user, context);
-    if (!concealedFrom(token, scene, concealment, null, user.id)) audience.push(member);
+    let concealment: Concealment | undefined;
+    let seesAll = true;
+    for (const token of tokens) {
+      if (controllers.get(token.id)?.has(user.id)) continue;
+      if (token.hidden) {
+        seesAll = false;
+        break;
+      }
+      context ??= await loadVisionContext(deps.ctx.prisma, scene);
+      concealment ??= await concealmentFor(deps.ctx.prisma, scene, user, context);
+      if (concealedFrom(token, scene, concealment, null, user.id)) {
+        seesAll = false;
+        break;
+      }
+    }
+    if (seesAll) audience.push(member);
   }
   return audience;
 }

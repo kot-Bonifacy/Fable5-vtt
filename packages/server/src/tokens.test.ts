@@ -16,6 +16,7 @@ import type {
   PortraitCropBroadcast,
   PortraitWantedRow,
   TokenAimBroadcast,
+  TokenTargetBroadcast,
   TokenAssetView,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -1136,11 +1137,100 @@ describe('tokens', () => {
     expect(await gone).toEqual({ sceneId, tokenId: ownTokenId, facing: null });
   });
 
+  /**
+   * Trwały cel (etap 50c): należy do figury-strzelca, żyje w pamięci serwera,
+   * dochodzi do tych, którzy widzą obie figury, i wraca w `state:sync`.
+   */
+  it('keeps a standing target for everybody who sees both figures, through a resync', async () => {
+    const gmSees = waitFor<TokenTargetBroadcast>(gm, 'token:target');
+    const set = await emitAck<TokenTargetBroadcast>(player, 'token:target', {
+      tokenId: ownTokenId,
+      targetId: npcTokenId,
+    });
+    expect(set.ok && set.data).toEqual({ sceneId, tokenId: ownTokenId, targetId: npcTokenId });
+    expect(await gmSees).toEqual({ sceneId, tokenId: ownTokenId, targetId: npcTokenId });
+
+    expect((await roundTrip(gm)).targets).toEqual([{ tokenId: ownTokenId, targetId: npcTokenId }]);
+    expect((await roundTrip(player)).targets).toEqual([
+      { tokenId: ownTokenId, targetId: npcTokenId },
+    ]);
+
+    const released = waitFor<TokenTargetBroadcast>(gm, 'token:target');
+    expect(
+      (await emitAck(player, 'token:target', { tokenId: ownTokenId, targetId: null })).ok,
+    ).toBe(true);
+    expect(await released).toEqual({ sceneId, tokenId: ownTokenId, targetId: null });
+    expect((await roundTrip(player)).targets).toEqual([]);
+  });
+
+  it('keeps a target on a hidden figure from players and refuses what they may not aim', async () => {
+    const leaks: unknown[] = [];
+    const onLeak = (broadcast: unknown) => leaks.push(broadcast);
+    player.on('token:target', onLeak);
+    expect(
+      (await emitAck(gm, 'token:target', { tokenId: npcTokenId, targetId: hiddenTokenId })).ok,
+    ).toBe(true);
+    expect(
+      (await emitAck(gm, 'token:target', { tokenId: hiddenTokenId, targetId: ownTokenId })).ok,
+    ).toBe(true);
+    const playerSync = await roundTrip(player);
+    expect(playerSync.targets).toEqual([]);
+    expect(JSON.stringify(playerSync)).not.toContain(hiddenTokenId);
+    expect((await roundTrip(gm)).targets).toHaveLength(2);
+    // Zdjęcie też nie dochodzi — gracz nie dostał tych celów.
+    expect((await emitAck(gm, 'token:target', { tokenId: npcTokenId, targetId: null })).ok).toBe(
+      true,
+    );
+    expect((await emitAck(gm, 'token:target', { tokenId: hiddenTokenId, targetId: null })).ok).toBe(
+      true,
+    );
+    await roundTrip(player);
+    player.off('token:target', onLeak);
+    expect(leaks).toEqual([]);
+
+    const hidden = await emitAck(player, 'token:target', {
+      tokenId: ownTokenId,
+      targetId: hiddenTokenId,
+    });
+    expect(!hidden.ok && hidden.error).toBe('TOKEN_NOT_FOUND');
+    const foreign = await emitAck(player, 'token:target', {
+      tokenId: npcTokenId,
+      targetId: ownTokenId,
+    });
+    expect(!foreign.ok && foreign.error).toBe('FORBIDDEN');
+    const self = await emitAck(player, 'token:target', {
+      tokenId: ownTokenId,
+      targetId: ownTokenId,
+    });
+    expect(!self.ok && self.error).toBe('BAD_REQUEST');
+    const broken = await emitAck(player, 'token:target', { tokenId: ownTokenId, targetId: 7 });
+    expect(!broken.ok && broken.error).toBe('BAD_REQUEST');
+  });
+
+  it('takes the targets of a scene down with the end of the fight', async () => {
+    const seen = waitFor<TokenTargetBroadcast>(player, 'token:target');
+    expect(
+      (await emitAck(gm, 'token:target', { tokenId: npcTokenId, targetId: ownTokenId })).ok,
+    ).toBe(true);
+    expect(await seen).toEqual({ sceneId, tokenId: npcTokenId, targetId: ownTokenId });
+
+    const ended = waitFor<TokenTargetBroadcast>(player, 'token:target');
+    expect((await emitAck(gm, 'combat:end', {})).ok).toBe(true);
+    expect(await ended).toEqual({ sceneId, tokenId: npcTokenId, targetId: null });
+    expect((await roundTrip(gm)).targets).toEqual([]);
+  });
+
   it('deletes tokens campaign-wide', async () => {
+    // Skasowana figura przestaje być celem (etap 50c).
+    expect(
+      (await emitAck(player, 'token:target', { tokenId: ownTokenId, targetId: npcTokenId })).ok,
+    ).toBe(true);
+    const untargeted = waitFor<TokenTargetBroadcast>(player, 'token:target');
     const gone = waitFor<TokenDeleteBroadcast>(player, 'token:delete');
     const ack = await emitAck(gm, 'token:delete', { tokenId: npcTokenId });
     expect(ack.ok).toBe(true);
     expect(await gone).toMatchObject({ tokenId: npcTokenId });
+    expect(await untargeted).toEqual({ sceneId, tokenId: ownTokenId, targetId: null });
   });
 });
 

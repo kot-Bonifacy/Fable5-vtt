@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10.10 (po `3bd49b3`) — etap 50a: starcie wzorem Foundry
+
+**Zlecenie MG:** zmienić rozpoczynanie walki wzorem Foundry VTT, bo MG myli się, sterując
+postacią atakującą gracza; przerobić celowanie i chodzenie myszką. Ankieta: najczęstsze pomyłki
+to „klik zaznacza zamiast atakować” i „NPC poza kolejką”. Decyzje MG i podział 50a → 50b → 50c
+w nowym `etap-50-walka-wzorem-foundry.md`.
+
+**Zrobione (50a):** serwer — `combat:add` bez walki zakłada rundę 0 z figurami graczy
+(`requireSceneOfTokens`), `combat:next` z rundy 0 rzuca inicjatywę NPC-om bez wyniku
+(`rollNpcInitiative`). Klient — `combat-encounter.ts` (`toggleEncounter`), „⚔ Do starcia” /
+„Usuń ze starcia” w menu figury (cała zaznaczona grupa) i w pasku grupy także bez walki;
+„Włącz tryb turowy” dokłada zaznaczone; pas w rundzie 0: „⚔ Rozpocznij walkę” z ostrzeżeniem
+„⚠ Brak NPC-ów — zacznij mimo to”; zakładka „Walka”: „Załóż starcie (N)”; znaczek „⚔” na figurach
+w kolejce u MG (`drawCombatMark`). E2E: `beginFight` w `fixtures/walka.ts`, pięć specyfikacji
+przepięte. Umowa w `tura`.
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”, scena „Test_2”, trzy figury tymczasowe): menu „⚔ Do starcia” bez walki →
+kolejka „Przed walką” z figurą gracza i Bandziorem, znaczki „⚔”; „Usuń ze starcia” → przycisk
+ostrzega i nie startuje; Shift+zaznaczenie dwóch NPC-ów → pasek grupy „⚔ Do starcia” →
+„Rozpocznij walkę” → runda 1, Snajper 8, Bandzior 5 od serwera, gracz „—”. **Ślady w `dev.db`:**
+brak (walka zakończona, figury skasowane). Druga przeglądarka gracza nie oglądana (50a nie zmienia
+widoku gracza poza pasem, który już był).
+
 ### Sesja 10.10 (po `bde6fd0`) — etap 49b: losowy NPC z Roli
 
 **Decyzje MG (pytania na starcie):** Umiejętności = tabela Ulicznika + rozrzut; z pakietu Roli

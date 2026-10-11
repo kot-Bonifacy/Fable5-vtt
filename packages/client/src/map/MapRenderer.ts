@@ -627,6 +627,12 @@ const BLAST_COLOR = 0xfb923c;
 const AIM_COLOR = 0xf87171;
 /** Corner brackets of the target reticle, as a fraction of its radius. */
 const AIM_BRACKET = 0.45;
+/**
+ * Trwały cel prowadzonej figury (etap 50c) — te same narożniki co celownik,
+ * tylko cieńsze i bledsze: celownik pod kursorem to „teraz”, trwały cel to
+ * „ten, w którego mierzę”, i oba muszą dać się przeczytać naraz.
+ */
+const TARGET_MARK_ALPHA = 0.85;
 
 /** Paints one fog shape: a round-capped band for a stroke, a box for a rect. */
 function drawFogShape(graphics: Graphics, shape: FogShape): void {
@@ -1590,6 +1596,14 @@ export class MapRenderer {
   private aimTokenId: string | null = null;
   /** Figura, której grot celownik odwrócił na cel (03.10) — do oddania przy zejściu. */
   private aimTurnedTokenId: string | null = null;
+  /** Figura pod kursorem — `T` (etap 50c) wskazuje ją jako cel. */
+  private hoveredTokenId: string | null = null;
+  /** Trwałe cele (etap 50c): id celu po id figury-strzelca — lustro `targetStore`. */
+  private targets: Readonly<Record<string, string>> = {};
+  /** Figury, których grot obrócił trwały cel — do oddania kąta z serwera, gdy cel zejdzie. */
+  private readonly targetTurned = new Set<string>();
+  /** Figury z cudzym grotem z `token:aim` — żywy gest przy stole wygrywa z trwałym celem. */
+  private readonly remoteAimed = new Set<string>();
   private readonly aimGraphics = new Graphics();
   /**
    * The area template that follows the pointer (stages 16d, 16g).
@@ -2100,6 +2114,9 @@ export class MapRenderer {
           this.groupTokenIds = this.groupTokenIds.filter((entry) => entry !== id);
         }
         if (this.aimTokenId === id) this.clearAim();
+        if (this.hoveredTokenId === id) this.hoveredTokenId = null;
+        this.remoteAimed.delete(id);
+        this.targetTurned.delete(id);
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
         node.destroy(DESTROY_TREE);
@@ -2112,6 +2129,7 @@ export class MapRenderer {
     // Obrys zaznaczonej scenerii ma stałą grubość na ekranie, jak pierścień
     // figury nad nim (27k).
     this.drawSceneSelectOutline();
+    this.applyTargetFacings();
     this.drawAimReticle();
     this.updateReach();
     // Figura ruszyła się, przybyła albo zniknęła — okienko w mgle idzie za nią.
@@ -2566,7 +2584,9 @@ export class MapRenderer {
       // token the selected figure can aim at gets the reticle and suppresses
       // the route, while empty ground keeps behaving exactly as in 16e — that
       // is what „bez wchodzenia w tryb" means in code.
-      this.updateAim(tokenNodeOf(event.target), event);
+      const hovered = tokenNodeOf(event.target);
+      this.hoveredTokenId = hovered && !hovered.destroyed ? hovered.tokenId : null;
+      this.updateAim(hovered, event);
 
       // The route follows the cursor before any tool gets a say: it is not a
       // gesture, it is what the map looks like while a figure is selected, and
@@ -2984,6 +3004,8 @@ export class MapRenderer {
     // not raised a weapon yet.
     this.clearAim();
     this.drawSelectionRing();
+    // Narożniki trwałego celu idą za prowadzoną figurą (etap 50c).
+    this.drawAimReticle();
     this.drawWalkPreview();
     this.updateReach();
     this.applyMapCursor();
@@ -4220,6 +4242,8 @@ export class MapRenderer {
     if (this.destroyed) return;
     const node = this.tokenNodes.get(tokenId);
     if (!node || node.destroyed) return;
+    if (facing === null) this.remoteAimed.delete(tokenId);
+    else this.remoteAimed.add(tokenId);
     if (
       this.aimTurnedTokenId === tokenId ||
       this.march?.node === node ||
@@ -4227,8 +4251,96 @@ export class MapRenderer {
       this.rotating?.tokenId === tokenId
     )
       return;
-    node.showFacing(facing ?? node.token.facing ?? null);
+    node.showFacing(facing ?? this.restFacingOf(node));
     this.drawSelectionRing();
+  }
+
+  /** Figura pod kursorem albo null — `T` (etap 50c) pyta, kogo wskazać. */
+  tokenUnderPointer(): string | null {
+    const id = this.hoveredTokenId;
+    const node = id ? this.tokenNodes.get(id) : undefined;
+    return node && !node.destroyed ? id : null;
+  }
+
+  /** Środek figury w świecie sceny — strzał w trwały cel ładuje tam kubek (etap 50c). */
+  tokenCentre(tokenId: string): ScenePoint | null {
+    const node = this.tokenNodes.get(tokenId);
+    const scene = this.scene;
+    if (!node || node.destroyed || !scene) return null;
+    const half = (node.token.size * scene.grid.sizePx) / 2;
+    return { x: node.x + half, y: node.y + half };
+  }
+
+  /**
+   * Trwałe cele figur (etap 50c) — z `targetStore`. Grot strzelca patrzy na
+   * cel, dopóki cel trwa; narożniki dostaje tylko cel figury, którą ten widz
+   * prowadzi.
+   */
+  setTargets(targets: Readonly<Record<string, string>>): void {
+    if (this.destroyed || this.targets === targets) return;
+    this.targets = targets;
+    this.applyTargetFacings();
+    this.drawAimReticle();
+    this.drawSelectionRing();
+  }
+
+  /** Trwały cel figury, o ile oba żetony stoją na mapie tego widza. */
+  private standingTargetOf(node: TokenNode): TokenNode | null {
+    const targetId = this.targets[node.tokenId];
+    const target = targetId ? this.tokenNodes.get(targetId) : undefined;
+    return target && !target.destroyed && target !== node ? target : null;
+  }
+
+  /** Kąt od środka jednej figury do środka drugiej; null, gdy stoją na sobie. */
+  private facingBetween(from: TokenNode, to: TokenNode): number | null {
+    const scene = this.scene;
+    if (!scene) return null;
+    const half = (node: TokenNode) => (node.token.size * scene.grid.sizePx) / 2;
+    return facingFromDelta(
+      to.x + half(to) - (from.x + half(from)),
+      to.y + half(to) - (from.y + half(from)),
+    );
+  }
+
+  /**
+   * Dokąd patrzy figura, gdy nic jej właśnie nie obraca: na trwały cel (etap
+   * 50c), a bez celu — w kąt zapisany na serwerze. Tu wraca grot po zejściu
+   * celownika, cudzego grotu i przeciągnięcia.
+   */
+  private restFacingOf(node: TokenNode): number | null {
+    const target = this.standingTargetOf(node);
+    const facing = target ? this.facingBetween(node, target) : null;
+    return facing ?? node.token.facing ?? null;
+  }
+
+  /**
+   * Obraca groty strzelców na ich trwałe cele (etap 50c) — po każdej zmianie
+   * celów i po każdym przyjściu figur, bo cel albo strzelec mogli się
+   * przesunąć. Ustępuje wszystkiemu, co obraca figurę w tej chwili: własnemu
+   * celownikowi, marszowi, przeciągnięciu, gałce i cudzemu grotowi.
+   */
+  private applyTargetFacings(): void {
+    const busy = (node: TokenNode) =>
+      this.aimTurnedTokenId === node.tokenId ||
+      this.march?.node === node ||
+      this.drag?.node === node ||
+      this.rotating?.tokenId === node.tokenId ||
+      this.remoteAimed.has(node.tokenId);
+    for (const tokenId of [...this.targetTurned]) {
+      const node = this.tokenNodes.get(tokenId);
+      if (node && !node.destroyed && this.standingTargetOf(node)) continue;
+      this.targetTurned.delete(tokenId);
+      if (node && !node.destroyed && !busy(node)) node.showFacing(node.token.facing ?? null);
+    }
+    for (const tokenId of Object.keys(this.targets)) {
+      const node = this.tokenNodes.get(tokenId);
+      if (!node || node.destroyed || busy(node)) continue;
+      const target = this.standingTargetOf(node);
+      const facing = target ? this.facingBetween(node, target) : null;
+      if (facing === null) continue;
+      node.showFacing(facing);
+      this.targetTurned.add(tokenId);
+    }
   }
 
   private applyShooterAim(): void {
@@ -4237,12 +4349,12 @@ export class MapRenderer {
     const target = this.aimTokenId ? this.tokenNodes.get(this.aimTokenId) : undefined;
     const turned = this.aimTurnedTokenId ? this.tokenNodes.get(this.aimTurnedTokenId) : undefined;
     if (turned && !turned.destroyed && turned !== shooter && !this.march) {
-      turned.showFacing(turned.token.facing ?? null);
+      turned.showFacing(this.restFacingOf(turned));
     }
     this.aimTurnedTokenId = null;
     if (!scene || !shooter || shooter.destroyed) return;
     if (!target || target.destroyed || target === shooter) {
-      if (turned === shooter && !this.march) shooter.showFacing(shooter.token.facing ?? null);
+      if (turned === shooter && !this.march) shooter.showFacing(this.restFacingOf(shooter));
       return;
     }
     const half = (node: TokenNode) => (node.token.size * scene.grid.sizePx) / 2;
@@ -4265,16 +4377,30 @@ export class MapRenderer {
    */
   private drawAimReticle(): void {
     this.aimGraphics.clear();
-    const scene = this.scene;
+    // Trwały cel prowadzonej figury (etap 50c) pod celownikiem — gdy kursor
+    // stoi na tym samym celu, oba rysunki się nakrywają i to jest w porządku.
+    const shooter = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    const standing = shooter && !shooter.destroyed ? this.standingTargetOf(shooter) : null;
+    if (standing) this.strokeBrackets(standing, 2.25, TARGET_MARK_ALPHA);
     const node = this.aimTokenId ? this.tokenNodes.get(this.aimTokenId) : undefined;
-    if (!scene || !node || node.destroyed) return;
-    const extent = node.token.size * scene.grid.sizePx;
+    if (node && !node.destroyed) this.strokeBrackets(node, 2.5, 0.95);
+  }
+
+  /** Narożniki wokół figury — kształt celownika i trwałego celu. */
+  private strokeBrackets(node: TokenNode, width: number, alpha: number): void {
+    const scene = this.scene;
+    if (!scene) return;
+    const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
-    const pad = 6 * k;
-    const left = node.x - pad;
-    const top = node.y - pad;
-    const right = node.x + extent + pad;
-    const bottom = node.y + extent + pad;
+    // Od 12.09 brzegiem figury bywa obrączka PW, która wystaje poza pole —
+    // narożniki liczone od pola siadały na niej i znikały (oględziny 50c).
+    const reach = Math.max(half, node.outerRadius) + 6 * k;
+    const cx = node.x + half;
+    const cy = node.y + half;
+    const left = cx - reach;
+    const top = cy - reach;
+    const right = cx + reach;
+    const bottom = cy + reach;
     const arm = (right - left) * AIM_BRACKET;
     const corners: [number, number, number, number][] = [
       [left, top, 1, 1],
@@ -4288,7 +4414,7 @@ export class MapRenderer {
         .lineTo(x, y)
         .lineTo(x, y + dy * arm);
     }
-    this.aimGraphics.stroke({ color: AIM_COLOR, width: 2.5 * k, alpha: 0.95, cap: 'square' });
+    this.aimGraphics.stroke({ color: AIM_COLOR, width: width * k, alpha, cap: 'square' });
   }
 
   /**
@@ -7012,6 +7138,10 @@ export class MapRenderer {
   private wireInteraction(node: TokenNode): void {
     // Pixi has no dblclick: count two quick clicks on the same token.
     let lastClickAt = 0;
+    // Kursor zszedł z figury (także z płótna) — `T` nie ma już kogo wskazać.
+    node.on('pointerout', () => {
+      if (this.hoveredTokenId === node.tokenId) this.hoveredTokenId = null;
+    });
     node.on('pointerdown', (event: FederatedPointerEvent) => {
       if (event.button === 2) {
         const rect = this.app.canvas.getBoundingClientRect();

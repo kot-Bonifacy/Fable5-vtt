@@ -10,6 +10,7 @@ import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registr
 import { RoomSequences } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { releaseSocketAim, tokenAimEvent } from './aim.js';
+import { tokenTargetEvent } from './target.js';
 import { resolveSocketCampaign } from './campaigns.js';
 import {
   campaignOpenEvent,
@@ -344,6 +345,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenMoveEvent,
   tokenFacingEvent,
   tokenAimEvent,
+  tokenTargetEvent,
   tokenFearedEvent,
   combatStartEvent,
   combatAddEvent,

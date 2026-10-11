@@ -26,7 +26,7 @@ import type { PortraitCrop } from './portrait-crop.js';
 import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
-import type { TokenView } from './tokens.js';
+import type { TokenTargetView, TokenView } from './tokens.js';
 import type { TradeView } from './trade.js';
 import type { ExchangeCounterpartKind, ExchangeUnavailable } from './exchange.js';
 import type { ContainerLock, ContainerPreset } from './containers.js';
@@ -91,6 +91,11 @@ export interface StateSyncPayload {
   scenes: SceneSummary[];
   /** Tokens of the viewed scene, already filtered for this viewer. */
   tokens: TokenView[];
+  /**
+   * Trwałe cele figur oglądanej sceny (etap 50c) — tylko pary, z których
+   * widz widzi **obie** figury, czyli obie stoją w `tokens` wyżej.
+   */
+  targets: TokenTargetView[];
   /**
    * Fog of the viewed scene (stage 17). The mask itself is public — it is the
    * shape of what players may see — while the tokens it conceals are already

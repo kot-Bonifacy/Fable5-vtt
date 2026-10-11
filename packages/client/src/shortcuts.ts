@@ -91,6 +91,14 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         what: 'Przy wybranej broni przygotuj atak. Dla strzału pojedynczego wybierz korpus, głowę, przedmiot lub nogę; celowanie poza korpus: −8 i cała Akcja',
       },
       {
+        keys: 'T nad figurą',
+        what: 'Trwały cel prowadzonej figury: jej grot wskazuje cel całemu stołowi, a broń z paska od razu strzela w cel. T jeszcze raz (albo T na własnej figurze) zdejmuje cel',
+      },
+      {
+        keys: 'podwójny prawy klik',
+        what: 'Na figurze — to samo co T: wskazuje ją jako trwały cel albo zdejmuje cel',
+      },
+      {
         keys: 'klik w figurę (MG)',
         what: 'W trwającej walce MG prowadzi figurę NPC-a w turze. Klik w inną figurę celuje z broni w ręku albo pokazuje ją w pasku, nie zaznacza. Przeciągnąć można każdą',
         gmOnly: true,

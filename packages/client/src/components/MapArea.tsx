@@ -108,6 +108,8 @@ import {
   hudTurnRefusal,
   nextSteerableToken,
   setSteerHandler,
+  setTokenLocator,
+  toggleTarget,
   shootCoverAt,
   throwAtPoint,
 } from '../hud.js';
@@ -140,6 +142,7 @@ import { netErrorText } from '../netErrors.js';
 import { useCoverStore } from '../stores/coverStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
+import { useTargetStore } from '../stores/targetStore.js';
 import { usePaceStore } from '../stores/paceStore.js';
 import {
   PLAYER_MOVE_PACE_NOTE,
@@ -793,6 +796,11 @@ export function MapArea() {
       renderer.setSelection(tokenId);
       if (frame) renderer.frameToken(tokenId);
     });
+    // Strzał w trwały cel (etap 50c) pyta mapę, gdzie cel stoi.
+    setTokenLocator((tokenId) => {
+      const world = renderer.tokenCentre(tokenId);
+      return world ? { world, client: renderer.worldToClient(world) } : null;
+    });
     // Turning a figure by hand (stage 27j). Reported on release, not on every
     // degree: the nose already followed the knob locally, and the server's job
     // is to remember the angle, not to animate it.
@@ -1043,6 +1051,7 @@ export function MapArea() {
       cancelled = true;
       setReady(false);
       setSteerHandler(null);
+      setTokenLocator(null);
       exposeMapToE2E(null);
       setMapDropTarget(null);
       renderer.destroy();
@@ -1830,6 +1839,15 @@ export function MapArea() {
     rendererRef.current?.setSmoke(useSmokeStore.getState().smoke);
   }, []);
 
+  // Trwałe cele (etap 50c): grot strzelca na cel i narożniki na celu
+  // prowadzonej figury.
+  useEffect(() => {
+    if (!ready) return;
+    const pushTargets = () => rendererRef.current?.setTargets(useTargetStore.getState().targets);
+    pushTargets();
+    return useTargetStore.subscribe(pushTargets);
+  }, [ready]);
+
   useEffect(() => {
     if (!ready) return;
     pushSmoke();
@@ -2085,6 +2103,13 @@ export function MapArea() {
         // the list from its beginning.
         const next = nextSteerableToken(hudFocusTokenId());
         rendererRef.current?.setSelection(next);
+        return;
+      }
+      // `T` nad figurą — trwały cel prowadzonej figury (etap 50c, wzorem
+      // Foundry). Litera była wolna: żadne narzędzie mapy jej nie bierze.
+      if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey) {
+        const hovered = rendererRef.current?.tokenUnderPointer() ?? null;
+        if (hovered) toggleTarget(hovered);
         return;
       }
       if (event.key === 'e' || event.key === 'E') {

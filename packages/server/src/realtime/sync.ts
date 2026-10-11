@@ -41,6 +41,7 @@ import { campaignShopTier, campaignShopTierOverrides } from './shop.js';
 import { campaignCatalogShopping } from './merchant.js';
 import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
+import { targetsForSync } from './target.js';
 
 /**
  * Builds the full room state for one client: current seq, presence and the
@@ -63,6 +64,7 @@ export async function buildStateSync(
       scene: null,
       scenes: [],
       tokens: [],
+      targets: [],
       fog: null,
       drawings: [],
       notes: [],
@@ -233,6 +235,10 @@ export async function buildStateSync(
     scene,
     scenes,
     tokens,
+    // Trwałe cele (etap 50c) z tych figur, które ten widz właśnie dostał.
+    targets: viewedScene
+      ? targetsForSync(socket.id, viewedScene.id, new Set(tokens.map((token) => token.id)))
+      : [],
     fog,
     drawings,
     notes,

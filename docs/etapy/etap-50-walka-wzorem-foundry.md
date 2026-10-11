@@ -93,10 +93,27 @@ prawy klik w figurę (menu) wysyłał prowadzoną figurę marszem na jej pole �
 z `pixi-viewport` przychodził też dla prawego przycisku, a puszczenie lądowało na tle menu;
 teraz klik w mapę to wyłącznie lewy przycisk (także poza walką).
 
-### 50c — trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel
+### 50c — trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel (✅ 11.10)
 
-- [ ] `T` nad figurą i podwójny prawy klik przełączają cel (osobno dla każdego widza)
-- [ ] Ulotne zdarzenie celu rozsyłane tym, którzy widzą obie figury (wzór `token:aim`)
-- [ ] Znacznik celu na figurze w kolorze wskazującego; zejście przy zmianie sceny, końcu walki
-- [ ] Klik broni na pasku przy wskazanym celu ładuje kubek na ten cel
-- [ ] Testy serwera (izolacja: ukryta figura nie wycieka), oględziny w Firefoksie
+**Decyzje MG z 11.10 (pytania na starcie 50c):** cel należy do **figury-strzelca**, nie do konta
+(każdy NPC prowadzony przez MG trzyma swój); **jeden cel na figurę**; stół widzi cel
+**istniejącym grotem** strzelca — bez nowego znacznika na celu, kolor to obwódki, które już są;
+**strzał celu nie zużywa** (schodzi przy zmianie sceny, końcu walki, skasowaniu figury, `T`).
+
+- [x] `T` nad figurą i podwójny prawy klik przełączają cel prowadzonej figury
+- [x] Ulotne zdarzenie celu rozsyłane tym, którzy widzą obie figury (wzór `token:aim`)
+- [x] Grot strzelca stale na celu (u każdego, kto widzi obie figury); zejście przy zmianie
+      sceny, końcu walki, skasowaniu figury
+- [x] Klik broni na pasku przy wskazanym celu ładuje kubek na ten cel
+- [x] Testy serwera (izolacja: ukryta figura nie wycieka), oględziny w Firefoksie
+
+**Odstępstwa 50c:** zamiast „osobno dla każdego widza” — cel figury (decyzja MG 11.10), a zamiast
+znacznika „w kolorze wskazującego” — grot strzelca; tylko prowadzący widzi u siebie bledsze
+narożniki celownika na celu swojej figury. Cel żyje w pamięci serwera (nie w bazie): wraca
+w `state:sync` po F5, ginie z restartem. `T` na prowadzonej figurze zdejmuje jej cel. Przy celu
+**ponowny klik broni w ręku strzela znowu** zamiast ją odkładać (odkłada `Esc`); granat leci na
+pole celu. Podwójny prawy klik łapie menu figury (pierwszy klik je otwiera, drugi trafia w jego
+tło — `useDoubleRightTarget`, 400 ms). **Poza planem, z oględzin:** narożniki celownika liczone
+od pola siadały na obrączce PW (od 12.09 wystaje poza pole) i były prawie niewidoczne — teraz
+od `outerRadius`, także dla celownika pod kursorem. Gracz, który zobaczy obie figury dopiero po
+ustawieniu celu, dostaje cel przy następnym `state:sync` (nie od razu).

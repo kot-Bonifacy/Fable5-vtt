@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
@@ -56,7 +56,7 @@ import { openExchangeAtToken } from './exchange/open.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { encounterState, toggleEncounter } from '../combat-encounter.js';
-import { takeFigure } from '../hud.js';
+import { takeFigure, toggleTarget } from '../hud.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
@@ -76,14 +76,22 @@ const MENU_WIDTH = 240;
  * pokazało. `contextmenu` z gestu otwierającego nie ma tu poprzedzającego
  * `pointerdown`, więc tylko je połykamy.
  */
-function MenuBackdrop({ onClose }: { onClose: () => void }) {
+function MenuBackdrop({
+  onClose,
+  onRightDown,
+}: {
+  onClose: () => void;
+  onRightDown: (event: ReactPointerEvent) => void;
+}) {
   const rightPressed = useRef(false);
   return (
     <div
       className="context-menu-backdrop"
       onClick={onClose}
       onPointerDown={(e) => {
-        if (e.button === 2) rightPressed.current = true;
+        if (e.button !== 2) return;
+        rightPressed.current = true;
+        onRightDown(e);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -91,6 +99,27 @@ function MenuBackdrop({ onClose }: { onClose: () => void }) {
       }}
     />
   );
+}
+
+/** Ile po otwarciu menu drugi prawy klik liczy się jako podwójny (etap 50c). */
+const DOUBLE_RIGHT_MS = 400;
+
+/**
+ * Podwójny prawy klik w figurę — trwały cel wzorem Foundry (etap 50c).
+ *
+ * Pierwszy prawy klik otwiera to menu, więc drugi nie trafia już w mapę, tylko
+ * w tło menu albo w jego róg pod kursorem. Tu się go łapie: zamyka menu
+ * i przełącza figurę jako cel prowadzonej figury.
+ */
+function useDoubleRightTarget(tokenId: string, onClose: () => void) {
+  const openedAt = useRef(performance.now());
+  return (event: ReactPointerEvent) => {
+    if (event.button !== 2) return;
+    if (performance.now() - openedAt.current > DOUBLE_RIGHT_MS) return;
+    event.preventDefault();
+    onClose();
+    toggleTarget(tokenId);
+  };
 }
 
 interface PlayerOption {
@@ -894,6 +923,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const encounterIds =
     groupIds.length > 1 && groupIds.includes(menu.tokenId) ? groupIds : [menu.tokenId];
   const encounterAllIn = encounterState(encounterIds, combat).allIn;
+  const doubleRight = useDoubleRightTarget(menu.tokenId, onClose);
 
   // The token can vanish under the open menu (deleted in another tab).
   useEffect(() => {
@@ -949,8 +979,12 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     const own = token.ownerId === userId;
     return (
       <>
-        <MenuBackdrop onClose={onClose} />
-        <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
+        <MenuBackdrop onClose={onClose} onRightDown={doubleRight} />
+        <div
+          className="context-menu"
+          style={{ left, top, width: MENU_WIDTH }}
+          onPointerDown={doubleRight}
+        >
           <p className="context-menu-title">{token.name}</p>
           {!isContainer && (
             <button type="button" className="context-menu-item" onClick={inspect}>
@@ -1027,8 +1061,12 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
 
   return (
     <>
-      <MenuBackdrop onClose={onClose} />
-      <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
+      <MenuBackdrop onClose={onClose} onRightDown={doubleRight} />
+      <div
+        className="context-menu"
+        style={{ left, top, width: MENU_WIDTH }}
+        onPointerDown={doubleRight}
+      >
         <p className="context-menu-title">{token.name}</p>
         {token.hp && (
           <div className="context-menu-hp">

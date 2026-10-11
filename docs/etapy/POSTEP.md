@@ -21,9 +21,9 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| 🟨 w toku   | **50** Walka wzorem Foundry — **50c** (następna)                                             |
-| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity (po 50c); **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b (ostatni zamknięty: 50b, 2026-10-10) |
+| 🟨 w toku   | — (następna: **refaktoryzacja** całości pod osłoną suity)                                     |
+| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c (ostatni zamknięty: 50c, 2026-10-11) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
@@ -31,18 +31,16 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 ## Od czego zacząć
 
 **Etap 50 „Start walki, prowadzenie figury i celowanie wzorem Foundry” (zlecenie MG z 10.10)
-w toku — 50a i 50b zamknięte 10.10, następna jest 50c, dopiero potem refaktoryzacja.**
-Od 50a starcie zakłada „⚔ Do starcia” (menu figury, pasek grupy; także bez walki — serwer
-dokłada figury graczy), „⚔ Rozpocznij walkę” na pasie rzuca NPC-om inicjatywę i ostrzega, gdy
-w kolejce nie ma NPC-a; MG widzi znaczek „⚔” na figurach w kolejce. **Od 50b MG w walce (runda
-1+) prowadzi jedną figurę:** tura NPC-a daje mu zaznaczenie, broń w ręku i kadr kamery (zawsze
-środek), tura gracza — nic (pasek pokazuje gracza w podglądzie); klik w inną figurę celuje bez
-`Alt` (z broni) albo ją pokazuje, przeciąganie zostaje; inną figurę bierze się kaflem pasa
-inicjatywy albo „🕹 Prowadź tę figurę” w menu (`combat-steer.ts`, `takeFigure` w `hud.ts`).
-Prawy klik nie jest już klikiem w mapę (marsz na pole figury z menu). **50c:** trwały cel `T` /
-podwójny prawy klik, znacznik dla stołu, broń z paska strzela w cel. Decyzje MG —
-`etap-50-walka-wzorem-foundry.md`, umowa w `tura`; wejście do celowania:
-`MapRenderer.aimTargetFor` (u MG w walce cel przy puszczeniu — `endDrag`).
+zamknięty 11.10 (50a–50c) — następna jest refaktoryzacja całości pod osłoną suity, potem T10.**
+Od 50a starcie zakłada „⚔ Do starcia”, „⚔ Rozpocznij walkę” rzuca NPC-om inicjatywę; od 50b MG
+w walce prowadzi jedną figurę (tura NPC-a ją daje, klik w inną celuje albo pokazuje, inną bierze
+się z pasa albo „🕹 Prowadź tę figurę”). **Od 50c figura ma trwały cel:** `T` nad figurą albo
+podwójny prawy klik (menu figury łapie drugi klik) — prowadzona figura mierzy w tamtą, jej grot
+stale wskazuje cel każdemu, kto widzi obie figury, prowadzący ma bledsze narożniki na celu,
+a broń z paska od razu ładuje kubek na cel (ponowny klik — kolejny strzał, `Esc` odkłada).
+Cel należy do figury, nie do konta (decyzja MG 11.10), żyje w pamięci serwera
+(`realtime/target.ts`, `token:target`, `targets` w `state:sync`) i schodzi ze zmianą sceny,
+końcem walki i skasowaniem figury. Decyzje — `etap-50-walka-wzorem-foundry.md`, umowy w `tura`.
 
 **Etap 49 „Szybkie tworzenie NPC-ów i wrogów przez MG” (zlecenie MG z 10.10) zamknięty 10.10
 (49a + 49b) — następna jest refaktoryzacja całości pod osłoną suity, potem T10.** Od 49b okno ma
@@ -121,7 +119,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10, 09.10 i 10.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → 50a → 50b → 50c → refaktoryzacja → T10 → 28 → T11.** (50a i 50b zamknięte 10.10.)
+**Kolejność (MG 03.10, korekty 08.10, 09.10 i 10.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → 50a → 50b → 50c → refaktoryzacja → T10 → 28 → T11.** (50a i 50b zamknięte 10.10, 50c — 11.10.)
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
@@ -211,7 +209,7 @@ z widocznością Dynamiczną. Konta, współrzędne, procedura oględzin: `polig
 `git log --name-only --format= origin/main..HEAD` nie może pokazać `data/private/`, `uploads/`,
 `.env` ani baz.
 
-**Testy na koniec ostatniej sesji:** 10/11.10 (50b): **341/342** klient (+12: `combat-steer.test.ts` 8, `map-click.test.ts` 4; dalej tylko znany `theme.test.ts`); serwer i `shared` nie ruszane; `tsc` w kliencie i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: 10/11.10 łańcuch T4a → T5b przeszedł (punkty `po-T4a`…`po-T5` zapisane 11.10, 00:13–00:29; czy z gatewayem — nie zapisano), a T6a 6.2 padł dwa razy — **nie przez 50b**: od `bcc3716` (10.10) gracz nie widzi na półce Kompendium rzeczy ponad poziom sklepu, a krok szukał wyszarzonego „Kup” przy Roninie; krok sprawdza teraz brak wiersza i odmowę gniazda. Po poprawce 11.10 bez gatewaya: T6a od `po-T5` **13/13** (1 `@llm` pominięty), T6b od nowego `po-T6a` **15/15** (3 `@llm` pominięte) — **`po-T6a` i `po-T6` odbudowane 11.10 bez kroków `@llm`**; specyfikacje z `po-T6` (`t46*`, `t8c-`) i pełnego przebiegu nie puszczano. Wcześniej 10.10 (50a): **1439** serwer (+2 w `combat.test.ts`: starcie z „Do starcia” z drużyną, inicjatywa NPC-ów przy starcie rundy 1), **329/330** klient (dalej tylko znany `theme.test.ts`); `shared` nie ruszany; `tsc` w kliencie, serwerze i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E `t8a-macierz` **16/16** (oba układy silników, nowy `beginFight`); T4a, T5b, T6b i T7b przepięte na `beginFight`/„Załóż starcie”, ale nie puszczane. Wcześniej 10.10 (49b): **2451** `shared` (+6: `creation.test.ts` 4 — pakiety i losowanie, `npc.test.ts` 2 — tarcza i Ranga), **1437** serwer (+2 `npc-create.test.ts`; macierz izolacji z `creation:random-npc`), **329/330** klient (dalej tylko znany `theme.test.ts`); `tsc` w trzech pakietach, ESLint i Prettier czyste w zmienionych plikach; E2E nie puszczane (49b nie rusza ścieżek suity). Wcześniej 10.10 (49a): **2445** `shared` (+5 `npc.test.ts`), **1435** serwer (+4 nowy `npc-create.test.ts`; `creation.test.ts` — rzut Ścieżki Życia MG jest `gmroll` i nie dochodzi do gracza), **329/330** klient (pada tylko znany `theme.test.ts` — `--top-bar-control`, sprzed sesji); `tsc` w trzech pakietach i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: `t46c-amunicja` **10/10** (46c.8 otwiera kreator kontem MG — fikstura `openCreator` idzie przez „Nowa postać” → „Postać gracza”); łańcucha i pełnego przebiegu nie puszczano. Wcześniej 10.10 (siódma — zaległości): **2431** `shared` (+4: `combat.test.ts` 3, `merchant.test.ts` 1), **1430** serwer (+12: nowy `gm-care.test.ts` 11, `bot-combat.test.ts` +1), **330** klient; ESLint, Prettier i `tsc` czyste w zmienionych plikach; E2E: nowy `t8c-leczenie` 3/3, `t46a-` + `t46b-` + `t46c-` + `00-baseline` **41/41** z gatewayem (46c.9 na żywym modelu), po poprawce Bijatyki `t46a-` 17/17; domyślny przebieg ma teraz **+3** testy (`t8c-leczenie`), pełnego nie puszczano. Wcześniej 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
+**Testy na koniec ostatniej sesji:** 11.10 (50c): **1442** serwer (+3 w `tokens.test.ts`: cel dla widzących obie figury i w `state:sync`, ukryta figura nie wycieka i odmowy, zejście z końcem walki; skasowanie figury zdejmuje cel; macierz izolacji z `token:target`), **347/348** klient (+6 `target-store.test.ts`; dalej tylko znany `theme.test.ts`); `shared` bez nowych testów (same typy); `tsc` w czterech pakietach, ESLint i Prettier czyste w zmienionych plikach; E2E `00-baseline` + `t8a-macierz` **21/21** (oba układy silników); łańcucha i pełnego przebiegu nie puszczano (bez celu nic się nie zmienia poza rozmiarem narożników celownika). Wcześniej 10/11.10 (50b): **341/342** klient (+12: `combat-steer.test.ts` 8, `map-click.test.ts` 4; dalej tylko znany `theme.test.ts`); serwer i `shared` nie ruszane; `tsc` w kliencie i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: 10/11.10 łańcuch T4a → T5b przeszedł (punkty `po-T4a`…`po-T5` zapisane 11.10, 00:13–00:29; czy z gatewayem — nie zapisano), a T6a 6.2 padł dwa razy — **nie przez 50b**: od `bcc3716` (10.10) gracz nie widzi na półce Kompendium rzeczy ponad poziom sklepu, a krok szukał wyszarzonego „Kup” przy Roninie; krok sprawdza teraz brak wiersza i odmowę gniazda. Po poprawce 11.10 bez gatewaya: T6a od `po-T5` **13/13** (1 `@llm` pominięty), T6b od nowego `po-T6a` **15/15** (3 `@llm` pominięte) — **`po-T6a` i `po-T6` odbudowane 11.10 bez kroków `@llm`**; specyfikacje z `po-T6` (`t46*`, `t8c-`) i pełnego przebiegu nie puszczano. Wcześniej 10.10 (50a): **1439** serwer (+2 w `combat.test.ts`: starcie z „Do starcia” z drużyną, inicjatywa NPC-ów przy starcie rundy 1), **329/330** klient (dalej tylko znany `theme.test.ts`); `shared` nie ruszany; `tsc` w kliencie, serwerze i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E `t8a-macierz` **16/16** (oba układy silników, nowy `beginFight`); T4a, T5b, T6b i T7b przepięte na `beginFight`/„Załóż starcie”, ale nie puszczane. Wcześniej 10.10 (49b): **2451** `shared` (+6: `creation.test.ts` 4 — pakiety i losowanie, `npc.test.ts` 2 — tarcza i Ranga), **1437** serwer (+2 `npc-create.test.ts`; macierz izolacji z `creation:random-npc`), **329/330** klient (dalej tylko znany `theme.test.ts`); `tsc` w trzech pakietach, ESLint i Prettier czyste w zmienionych plikach; E2E nie puszczane (49b nie rusza ścieżek suity). Wcześniej 10.10 (49a): **2445** `shared` (+5 `npc.test.ts`), **1435** serwer (+4 nowy `npc-create.test.ts`; `creation.test.ts` — rzut Ścieżki Życia MG jest `gmroll` i nie dochodzi do gracza), **329/330** klient (pada tylko znany `theme.test.ts` — `--top-bar-control`, sprzed sesji); `tsc` w trzech pakietach i e2e, ESLint i Prettier czyste w zmienionych plikach; E2E: `t46c-amunicja` **10/10** (46c.8 otwiera kreator kontem MG — fikstura `openCreator` idzie przez „Nowa postać” → „Postać gracza”); łańcucha i pełnego przebiegu nie puszczano. Wcześniej 10.10 (siódma — zaległości): **2431** `shared` (+4: `combat.test.ts` 3, `merchant.test.ts` 1), **1430** serwer (+12: nowy `gm-care.test.ts` 11, `bot-combat.test.ts` +1), **330** klient; ESLint, Prettier i `tsc` czyste w zmienionych plikach; E2E: nowy `t8c-leczenie` 3/3, `t46a-` + `t46b-` + `t46c-` + `00-baseline` **41/41** z gatewayem (46c.9 na żywym modelu), po poprawce Bijatyki `t46a-` 17/17; domyślny przebieg ma teraz **+3** testy (`t8c-leczenie`), pełnego nie puszczano. Wcześniej 10.10 (48c): **2423** `shared` (+13 `itemlocks.test.ts`), **1417** serwer (+4: dodatek bez Wyposażenia i z niego, „Znaleziony” z Wyposażenia w montażu i w prośbie do Medyka; przygotowanie stanu łatą MG zamiast gracza w 5 plikach), **331** klient; ESLint, Prettier i `tsc` czyste; E2E z gatewayem: T3a **17/17** (nowy krok 3.8 — 48c), łańcuch od nowego `po-T3a`: T3b–T6a **112/112** + T6b **18/18** (pierwszy przebieg padł w T6b 6.6a — asercja czytała czat jednym odczytem przed wierszem „Efekty wygasły”; poprawiona na `expect.poll`, punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` **36/36**. Wcześniej 10.10 (48b): **2410** `shared` (+17: `cyberdeck.test.ts`, kreator z dekiem), **1413** serwer (+1 `character:deck` w `netrunning.test.ts`, kreator Netrunnera i macierz izolacji poprawione), **331** klient; ESLint (pakiety), Prettier i `tsc` czyste; E2E z gatewayem: T3a **16/16**, łańcuch T3b–T6b od nowego `po-T3a` **130/130** (punkty `po-T3a`…`po-T6` odbudowane 10.10), `t46a-` + `t46b-` + `t46c-` + `00-baseline` 40/41 (46a.15 — menu figury Pasera nie otworzyło się prawym klikiem, migotanie; powtórka `t46a-` 17/17, pułapka w `testy`). Wcześniej 10.10 (48a): **2393** `shared` (+5: przypomnienie o zakupach, Zakwaterowanie Korpo), **1412** serwer (+2: brak zakupów gracza, `HOUSING_LOCKED`; helper `allocateRemaining` zaznacza „Ruszam bez zakupów”), **331** klient; ESLint, Prettier i `tsc` czyste; E2E `@szybkie` 52/53 (T9a „konsola” — zerwane gniazdo Firefoksa, znana pułapka z 47a; powtórka `t9a-konta` 7/7); łańcucha i pełnego przebiegu nie puszczano (T3a kupuje w kreatorze, więc nowy brak go nie dotyczy). Wcześniej 10.10 (47b): **2388** `shared` (+11 `barehands.test.ts`), **1410** serwer (+1 gołe ręce w `inventory.test.ts`, asercje list broni w 6 plikach), **331** klient; ESLint, Prettier i `tsc` czyste w czterech pakietach (poza starymi ostrzeżeniami Prettiera w `e2e/fixtures/brama.ts` i `wydajnosc.ts`); łańcuch T3a–T6b zielony kawałkami z gatewayem (T3a 16/16, T3b–T4a, T4b–T5b, T6a + T6b 32/32), `t46a` + `t46b` + `t46c` 35/35 i `t46c` 10/10 po poprawce, `t7a-handel-kreator` 3/3; **pełny domyślny przebieg z gatewayem dwa razy** (369 testów): 365 + #72 + szew zasłony (migotanie), po poprawce #72 **366/369** (52,3 min; 6.9c — przerwany obrazek w Firefoksie, dwa testy za nim nie poszły), potem `t6b-` 18/18 i `00-baseline` + `t8c-` 37/37. Wcześniej 10.10 (47a): **2377** `shared` (+10: `pricing.test.ts`, wyposażenie Roli, zasady domowe asystenta), **1409** serwer (+3 wyposażenie Roli; kwoty w 8 plikach pod cennik domowy), **331** klient; ESLint i `tsc` czyste w czterech pakietach; E2E `@szybkie` 51/52 (T9a „konsola” — zerwane gniazdo Firefoksa, powtórka 7/7); **łańcuch T3a–T6b i specyfikacje z jego stanów czerwone do 47b**; domyślny przebieg bez nowych testów (**367**). Wcześniej 09.10 (46b2): **2367** `shared`, **1406** serwer, **331** klient (bez nowych testów jednostkowych — zmiany w kliencie i E2E); E2E `t46b-` **9/9 trzy razy z rzędu** (nowy `specs/46-wymiana/t46b-pojemniki`), `t46b-` + `t46a-` + `00-baseline` + `01-dym` + `t2c-` (nowy kanarek skrzyni) **50/50**; ESLint i `tsc` czyste w czterech pakietach; domyślny przebieg ma teraz **367** testów (+9 `t46b`), pełnego nie puszczano. Wcześniej 09.10 (46b1): **2367** `shared` (+18 `container.test.ts`), **1406** serwer (+11 `containers.test.ts`, macierz izolacji z pięcioma nowymi zdarzeniami), **331** klient; E2E `00-baseline` + `01-dym` **20/20**, `t46a-` **17/17**; ESLint, Prettier i `tsc` czyste; domyślny przebieg bez zmian (**358**). Wcześniej 09.10 (46c2): **pełny domyślny przebieg od zera z gatewayem
 354/358** (49,5 min; padły 46c.9 ze zbyt ostrą asercją — poprawiona — i znane migotanie T8c #72,
 dwa `@llm` T8c po nim nie poszły), potem od nowego `po-T6`: `t46c-` + `t8c-narracja` **16/16**
 i `t46c-` **10/10 trzy razy z rzędu** (z 46c.9 na żywym modelu); wcześniej łańcuch kawałkami
@@ -263,6 +261,31 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 11.10 (po `0b30823`) — etap 50c: trwały cel figury
+
+**Decyzje MG (pytania na starcie):** cel należy do figury-strzelca (nie do konta), jeden na
+figurę, zostaje po strzale; stół widzi go **istniejącym grotem** strzelca, bez nowego znacznika
+na celu (kolory obwódek wystarczą). Zapisane w `etap-50-walka-wzorem-foundry.md` (z odstępstwami).
+
+**Zrobione:** shared — `TokenTargetPayload`/`View`/`Broadcast`, `targets` w `StateSyncPayload`.
+Serwer — `realtime/target.ts` (`token:target`, pamięć `liveTargets`, widownia przez nowe
+`sceneAudience` wydzielone z `aim.ts`), zejście w `combat:end`, `scene:activate` i przy
+kasowaniu figury, `targets` w `state:sync`. Klient — `stores/targetStore.ts` (`nextTarget`,
+`targetOf`), `toggleTarget` i `fireAtStandingTarget` w `hud.ts`, `T` w `MapArea`
+(`tokenUnderPointer`), podwójny prawy klik w `TokenContextMenu` (`useDoubleRightTarget`),
+`MapRenderer.setTargets` / `applyTargetFacings` / `restFacingOf`, narożniki celu prowadzonej
+figury, wpisy w `shortcuts.ts`. **Poza planem (oględziny):** narożniki celownika od `outerRadius`
+(siadały na obrączce PW). Umowa w `tura`, pułapki w `mapa` i `testy` (Python i CRLF).
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”, scena „Test_2”, trzy figury tymczasowe): `T` nad celem → grot strzelca na
+celu, narożniki po zaznaczeniu strzelca, F5 przywraca cel z migawki; podwójny prawy klik
+(Korpogliniarz z kartą) → cel; klik „Ciężki pistolet” w ręku → kubek „→ Cel 50c · 17 m · PT 20”
+z oknem Celowania przy celu; przesunięcie celu → groty i narożniki za nim; `T` na własnej figurze
+zdejmuje cel; skasowanie figur czyści cele. Widoku gracza w drugiej przeglądarce nie oglądano
+(Chromium MCP siedzi w innej kampanii, między sesjami) — izolację pilnują testy serwera.
+**Ślady w `dev.db`:** brak (figury skasowane, kubek odłożony, karta Korpogliniarza 4 nietknięta).
+
 ### Sesja 10/11.10 (po `6b24ee1`) — etap 50b: MG prowadzi figurę w turze
 
 **Decyzje MG (pytania na starcie):** blokada klikania od rundy 1, kamera na NPC-u w turze zawsze
@@ -284,28 +307,4 @@ domknięciem (bez notatki i commitu, zdublowany wiersz 50b w tabeli etapów) —
 Oględziny 10.10 w Firefoksie (Playwright MCP) — z nich wyszedł błąd prawego kliku; szczegóły
 przebiegu oględzin nie zostały zapisane. **Ślady w `dev.db`:** nieznane (notatka urwana).
 **11.10 (domknięcie):** T6a 6.2 przepięty pod półkę Kompendium z `bcc3716` (gracz nie widzi Ronina; odmowa `SHOP_TIER_LOCKED` z gniazda zostaje).
-
-### Sesja 10.10 (po `3bd49b3`) — etap 50a: starcie wzorem Foundry
-
-**Zlecenie MG:** zmienić rozpoczynanie walki wzorem Foundry VTT, bo MG myli się, sterując
-postacią atakującą gracza; przerobić celowanie i chodzenie myszką. Ankieta: najczęstsze pomyłki
-to „klik zaznacza zamiast atakować” i „NPC poza kolejką”. Decyzje MG i podział 50a → 50b → 50c
-w nowym `etap-50-walka-wzorem-foundry.md`.
-
-**Zrobione (50a):** serwer — `combat:add` bez walki zakłada rundę 0 z figurami graczy
-(`requireSceneOfTokens`), `combat:next` z rundy 0 rzuca inicjatywę NPC-om bez wyniku
-(`rollNpcInitiative`). Klient — `combat-encounter.ts` (`toggleEncounter`), „⚔ Do starcia” /
-„Usuń ze starcia” w menu figury (cała zaznaczona grupa) i w pasku grupy także bez walki;
-„Włącz tryb turowy” dokłada zaznaczone; pas w rundzie 0: „⚔ Rozpocznij walkę” z ostrzeżeniem
-„⚠ Brak NPC-ów — zacznij mimo to”; zakładka „Walka”: „Załóż starcie (N)”; znaczek „⚔” na figurach
-w kolejce u MG (`drawCombatMark`). E2E: `beginFight` w `fixtures/walka.ts`, pięć specyfikacji
-przepięte. Umowa w `tura`.
-
-**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
-MCP, MG, „Test_1”, scena „Test_2”, trzy figury tymczasowe): menu „⚔ Do starcia” bez walki →
-kolejka „Przed walką” z figurą gracza i Bandziorem, znaczki „⚔”; „Usuń ze starcia” → przycisk
-ostrzega i nie startuje; Shift+zaznaczenie dwóch NPC-ów → pasek grupy „⚔ Do starcia” →
-„Rozpocznij walkę” → runda 1, Snajper 8, Bandzior 5 od serwera, gracz „—”. **Ślady w `dev.db`:**
-brak (walka zakończona, figury skasowane). Druga przeglądarka gracza nie oglądana (50a nie zmienia
-widoku gracza poza pasem, który już był).
 

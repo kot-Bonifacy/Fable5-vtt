@@ -441,6 +441,7 @@ const CASES: Record<string, Case> = {
   'ai:ask': own('pytanie testowe do modelu, bez obiektów kampanii', () => ({ prompt: 'hej' })),
   'ai:refresh': own('odświeża status gatewaya'),
   'token:aim': foreign((a) => ({ tokenId: a.tokenId, facing: 1 })),
+  'token:target': foreign((a) => ({ tokenId: a.tokenId, targetId: null })),
   // archive
   'archive:list': own('tylko właściciel serwera — MG-B dostaje FORBIDDEN'),
   'archive:snapshot': own('tylko właściciel serwera — MG-B dostaje FORBIDDEN'),

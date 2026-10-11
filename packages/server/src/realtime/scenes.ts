@@ -26,6 +26,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { forgetScene } from './undo-buffer.js';
 import { placeOwedCreationTokens } from './creation.js';
+import { releaseTargetsOffScene } from './target.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -286,6 +287,9 @@ export const sceneActivateEvent = defineEvent<SceneIdPayload>({
     const broadcast: SceneActivateBroadcast = { seq: deps.seqs.next(room), scene: view };
     deps.io.to(room).emit('scene:activate', broadcast);
     await emitSceneList(deps, campaignId);
+    // Trwałe cele (etap 50c) schodzą ze zmianą sceny — na nowej mapie stary
+    // cel nie ma znaczenia, a po powrocie wskazywałby zeszłą sytuację.
+    releaseTargetsOffScene(deps, campaignId, activated.id);
     // #9 (26.09): postać przyjęta do gry bez aktywnej sceny czekała na żeton.
     // Po rozgłoszeniu, żeby gracze stali już na tej scenie, gdy figura wejdzie.
     await placeOwedCreationTokens(deps, campaignId, activated);

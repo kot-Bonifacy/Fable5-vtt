@@ -80,6 +80,7 @@ import { requireCampaignScene } from './scenes.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
+import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
 import { runZonesAfterMove } from './zones.js';
@@ -822,6 +823,7 @@ export async function removeCardWithFigures(
     if (scene.campaignId !== campaignId) continue;
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     forgetPace(token.id);
+    releaseTokenTargets(deps, token.id);
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
   }
   await deps.ctx.prisma.character.deleteMany({
@@ -1327,6 +1329,7 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
 
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     forgetPace(token.id);
+    releaseTokenTargets(deps, token.id);
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
     if (orphanCharacterId) {
       await deps.ctx.prisma.character.delete({ where: { id: orphanCharacterId } });

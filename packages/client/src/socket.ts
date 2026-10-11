@@ -262,6 +262,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenAimBroadcast,
+  TokenTargetBroadcast,
   TokenAssetDeleteResult,
   TokenCombatProfile,
   TokenCreatePayload,
@@ -359,6 +360,7 @@ import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
+import { useTargetStore } from './stores/targetStore.js';
 import { usePaceStore } from './stores/paceStore.js';
 import { PLAYER_MOVE_PACE_NOTE, PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
 import { useZoneStore } from './stores/zoneStore.js';
@@ -735,6 +737,7 @@ export function connectSocket(userId: string): Socket {
     useWallStore.getState().applySync(payload);
     useCoverStore.getState().applySync(payload);
     useSmokeStore.getState().applySync(payload);
+    useTargetStore.getState().applySync(payload);
     useZoneStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
     useExplorationStore.getState().applySync(payload);
@@ -1254,7 +1257,10 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    if (viewingScene(broadcast.sceneId)) tokens().remove(broadcast.tokenId);
+    if (viewingScene(broadcast.sceneId)) {
+      tokens().remove(broadcast.tokenId);
+      useTargetStore.getState().forget(broadcast.tokenId);
+    }
   });
   // The tracker arrives as a whole: the public view campaign-wide (with a
   // seq), the GM's full view targeted right after it (no seq, like whispers).
@@ -1312,6 +1318,10 @@ export function connectSocket(userId: string): Socket {
   onPresented('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
   // Grot celowania (03.10) — ulotny jak ping: bez `seq`, bez zapisu, bez powtórki.
   onPresented('token:aim', (broadcast: TokenAimBroadcast) => receiveTokenAim(broadcast));
+  // Trwały cel (etap 50c) — już przefiltrowany do tych, którzy widzą obie figury.
+  onPresented('token:target', (broadcast: TokenTargetBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) useTargetStore.getState().apply(broadcast);
+  });
 
   // Fog of war (stage 17). The mask is campaign-wide state on the active
   // scene, so it is sequenced like tokens; a GM previewing another map gets
@@ -3227,6 +3237,20 @@ export const statToken = (tokenId: string, quick: TokenCombatProfile) =>
  */
 export const deleteToken = (tokenId: string, deleteCharacter = false) =>
   emitSceneAck('token:delete', { tokenId, deleteCharacter });
+
+/**
+ * Trwały cel figury (etap 50c): `targetId` — w kogo mierzy, null — zdejmuje.
+ * Odpowiedź od razu wpisuje się do magazynu; rozgłoszenie do reszty stołu
+ * przyniesie to samo.
+ */
+export async function setTokenTarget(
+  tokenId: string,
+  targetId: string | null,
+): Promise<SocketAck<TokenTargetBroadcast>> {
+  const ack = await emitSceneAck<TokenTargetBroadcast>('token:target', { tokenId, targetId });
+  if (ack.ok && ack.data) useTargetStore.getState().apply(ack.data);
+  return ack;
+}
 
 /**
  * Kopia figury obok oryginału (etap 35). Numer, profil bojowy statysty i pełne
