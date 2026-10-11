@@ -11,10 +11,12 @@ import type { ScenePoint } from '@vtt/shared';
  *     w mapie (`coverZoom`). Cena jest świadoma: na szerokim oknie mapy 40 × 30
  *     nie da się objąć w całości, bo góra i dół wyjdą poza ekran. MG ma dalej
  *     wolną kamerę — margines bywa potrzebny przy rysowaniu ścian na krawędzi.
- *  2. **Gracz zaczyna przybliżony na osiem kratek wokół siebie**, a nie nad
- *     całą mapą. Osiem to promień: w węższym wymiarze ekranu mieści się
- *     `2 × 8 + 1` kratek, w szerszym wychodzi więcej, i to jest w porządku —
- *     „niewiele więcej niż 8 kratek wokół siebie".
+ *  2. **Gracz zaczyna przybliżony na pięć kratek wokół siebie**, a nie nad
+ *     całą mapą. Pięć to promień: w węższym wymiarze ekranu mieści się
+ *     `2 × 5 + 1` kratek, w szerszym wychodzi więcej, i to jest w porządku.
+ *     Do 11.10.2026 było osiem — MG uznał, że za szeroki kadr psuje imersję.
+ *  3. **Gracz nie oddala się dalej niż na dwa kadry startowe** (11.10.2026,
+ *     `PLAYER_MAX_VIEW_SQUARES_AROUND`) — widzi okolicę, a nie plan całej mapy.
  */
 
 /** Skrajne zbliżenia mapy; dzieli je renderer i kadr startowy. */
@@ -22,7 +24,10 @@ export const MAP_MIN_ZOOM = 0.05;
 export const MAP_MAX_ZOOM = 8;
 
 /** Ile kratek wokół siebie widzi gracz na starcie (promień). */
-export const PLAYER_VIEW_SQUARES_AROUND = 8;
+export const PLAYER_VIEW_SQUARES_AROUND = 5;
+
+/** Najdalsze oddalenie gracza (promień w kratkach) — dwa kadry startowe. */
+export const PLAYER_MAX_VIEW_SQUARES_AROUND = PLAYER_VIEW_SQUARES_AROUND * 2;
 
 /** Tyle, ile kamera musi wiedzieć o scenie — bez reszty `SceneView`. */
 export interface CameraScene {
@@ -55,6 +60,24 @@ export function coverZoom(scene: CameraScene, screen: CameraScreen): number {
   return Math.max(screen.width / scene.width, screen.height / scene.height);
 }
 
+/** Zbliżenie, przy którym w węższym wymiarze ekranu mieści się `2r + 1` kratek. */
+function zoomForSquares(scene: CameraScene, screen: CameraScreen, squaresAround: number): number {
+  const span = (squaresAround * 2 + 1) * scene.grid.sizePx;
+  return span > 0 ? Math.min(screen.width, screen.height) / span : MAP_MAX_ZOOM;
+}
+
+/**
+ * Dolna granica zbliżenia gracza: nie dalej niż `PLAYER_MAX_VIEW_SQUARES_AROUND`
+ * kratek wokół — i nigdy poza mapę (`coverZoom`, decyzja 1).
+ */
+export function playerMinZoom(scene: CameraScene, screen: CameraScreen): number {
+  return Math.max(
+    zoomForSquares(scene, screen, PLAYER_MAX_VIEW_SQUARES_AROUND),
+    coverZoom(scene, screen),
+    MAP_MIN_ZOOM,
+  );
+}
+
 /** Środek kadru wpisany w mapę; gdy mapa jest węższa od ekranu — jej środek. */
 function centreWithin(value: number, half: number, size: number): number {
   if (half * 2 >= size) return size / 2;
@@ -74,8 +97,7 @@ export function startCamera(
   anchor: ScenePoint,
   squaresAround: number = PLAYER_VIEW_SQUARES_AROUND,
 ): CameraShot {
-  const span = (squaresAround * 2 + 1) * scene.grid.sizePx;
-  const wanted = span > 0 ? Math.min(screen.width, screen.height) / span : MAP_MAX_ZOOM;
+  const wanted = zoomForSquares(scene, screen, squaresAround);
   // `MAP_MIN_ZOOM` w tej samej klamrze nie jest ozdobą: płótno o zerowym
   // rozmiarze (kadr policzony, zanim układ strony usiadł) dałoby bez niego
   // zbliżenie **0**, czyli mapę zwiniętą do punktu i czarny ekran do

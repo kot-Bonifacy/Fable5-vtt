@@ -2216,7 +2216,8 @@ function WeaponStrip({
                         Zapora
                       </button>
                     )}
-                    {resolved?.rangeDv && (
+                    {/* Pierścienie PT to podpowiedź MG — gracz ich nie widzi (11.10.2026). */}
+                    {isGm && resolved?.rangeDv && (
                       <button
                         type="button"
                         className="small-button small-button--icon"

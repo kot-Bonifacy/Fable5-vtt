@@ -18,7 +18,7 @@ import {
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
   PLAYER_VIEW_SQUARES_AROUND,
-  coverZoom,
+  playerMinZoom,
   startCamera,
 } from './camera.js';
 import type {
@@ -855,6 +855,13 @@ export interface MoveAllowance {
    * does not have.
    */
   enforced?: boolean;
+  /**
+   * Draw the reach circle around the token? Since 11.10.2026 only the GM's
+   * view does (zlecenie MG): a ring of „how far you may go" around a player's
+   * own figure broke immersion. The player still gets red footprints and a
+   * route cut at the budget — they learn the limit while dragging.
+   */
+  showReach?: boolean;
   /**
    * Metres of budget the participant could still buy by taking the trade the
    * system offers — absent when that trade is gone.
@@ -2904,8 +2911,8 @@ export class MapRenderer {
 
     // The reach circle sits on the token that owns the budget — while it is
     // being dragged, on the position it is being dragged *from*, because that
-    // is where the metres are measured from.
-    if (allowance && allowance.metresLeft > 0) {
+    // is where the metres are measured from. Only when `showReach` says so.
+    if (allowance?.showReach && allowance.metresLeft > 0) {
       const node = this.tokenNodes.get(allowance.tokenId);
       if (node) {
         const origin =
@@ -3262,14 +3269,15 @@ export class MapRenderer {
       bottom: scene.height * (1 + margin),
       underflow: 'center',
     });
+    // Gracz: ani poza mapę, ani dalej niż dwa kadry startowe (11.10.2026).
     const floor = this.cameraLocked
-      ? coverZoom(scene, { width: viewport.screenWidth, height: viewport.screenHeight })
+      ? playerMinZoom(scene, { width: viewport.screenWidth, height: viewport.screenHeight })
       : MIN_ZOOM;
     viewport.clampZoom({ minScale: Math.min(floor, MAX_ZOOM), maxScale: MAX_ZOOM });
   }
 
   /**
-   * Kadr startowy gracza: przybliżenie na osiem kratek wokół punktu.
+   * Kadr startowy gracza: przybliżenie na `PLAYER_VIEW_SQUARES_AROUND` kratek wokół punktu.
    *
    * Osobne od `fitScene`, bo mówi co innego — `fitScene` odpowiada „gdzie jest
    * ta mapa", a to „gdzie jesteś ty". Wołane raz na wejście na scenę; dalej

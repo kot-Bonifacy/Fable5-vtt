@@ -15,6 +15,8 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Okręgi „ile zostało / jak daleko sięgasz” widzi tylko MG (11.10, zlecenie MG: imersja)** — okrąg zasięgu ruchu (Tura i pula Eksploracji) rysuje się, gdy `MoveAllowance.showReach` (`MapArea.pushMoveAllowance` daje `isGm`); gracz zachowuje czerwone ślady i trasę przyciętą na budżecie. Przycisk „◎” pierścieni PT przy broni (`WeaponStrip`) ma tylko MG. Nowa podpowiedź-obszar wokół figury gracza domyślnie idzie za tym samym wzorem: MG tak, gracz nie, chyba że MG zdecyduje inaczej.
+- **Kamera gracza: start 5 kratek promienia, oddalanie do 10 (11.10, zlecenie MG)** — `PLAYER_VIEW_SQUARES_AROUND = 5` (było 8), `PLAYER_MAX_VIEW_SQUARES_AROUND = 2 × start`; dolna granica zbliżenia gracza to `playerMinZoom` (większe z tego i `coverZoom`) w `applyCameraBounds`. MG bez zmian.
 - **Upuszczenie wiersza na płótno idzie zdarzeniami wskaźnika przez `map/map-drop.ts` (09.10, etap 46b2)** — `MapArea` zgłasza renderer `setMapDropTarget`, a strona przeciągająca pyta `mapPointUnder(clientX, clientY)` (punkt tylko, gdy pod kursorem leży `.map-canvas-host`) i rysuje obrys `showMapDropGhost`. Hook okna `useExchangeDrag(onDrop, disabled, onMapDrop)` traktuje mapę jako strefę `map` dopiero, gdy pod kursorem nie ma strefy okna; ducha takiego przeciągania rysuje `DragGhost` w portalu (okna mają `clip-path`). HTML5 `TOKEN_DRAG_MIME` zostaje żetonom z panelu MG. **Narzędzie „📦 Pojemnik” nie jest `MapTool`** — to „żeton w ręku” `TokenPlacement.container` (rodzaj), więc `createPlacedToken` woła `container:create` i otwiera MG kartę; renderer nic o nim nie wie.
 - **„Oczy drużyny” rozstrzyga `tokenSharesVision` (08.10, etap 45, wzór: Observer z Foundry)** — `shared/tokens.ts`: ukryta figura nigdy, `Token.sharedVision` `true`/`false` to ręka MG, `null` = „figura prowadzona przez gracza” (właściciel figury albo karty). Serwer pyta przez `sharesVision(token, linked)` (`realtime/tokens.ts`) w czterech miejscach: `concealedFrom` (figura nie znika koledze w mgle, za ścianą, w ciemności ani za zasłoną), `emitTokenUpsert` (gałąź mgły), gałąź mgły w `performTokenMove` i `emitDynamicMove` (ruch przelicza wzrok całej drużyny). Źródła wzroku gracza: `fetchVisionTokens` w `vision.ts` — warunek w zapytaniu jest **kopią** `tokenSharesVision`, zmiana reguły zmienia oba (pilnuje `party-move.test.ts`). Widok niesie `partyVision` (publicznie, wartość rozstrzygnięta) i `sharedVision` (surowa kolumna, prywatnie). Okienko w mgle klienta: `MapRenderer.cutsFogPeephole`. Nowe miejsce, które ukrywa figurę przed graczem, pyta `sharesVision` przed własnym warunkiem.
 - **Figura karty gracza ma właściciela karty (08.10, etap 45)** — `token:create` z `characterId` bez `ownerId` bierze `character.ownerId`; `token:update` podpinający kartę gracza pod figurę bez właściciela też; zmiana właściciela karty przepisuje figury bez właściciela albo z poprzednim właścicielem (`moveCharacterTokensToOwner`). `token:move` pyta wyłącznie `Token.ownerId` — nowa droga, która wiąże figurę z kartą, ustawia `ownerId`, inaczej gracz patrzy oczami figury, a ruszyć jej nie może (`FORBIDDEN`).
@@ -350,7 +352,8 @@ wierszy i ciągnie Pixi, więc arytmetyka kadru — `coverZoom`, `startCamera`, 
 `MAP_MIN_ZOOM` / `MAP_MAX_ZOOM` — siedzi obok, w pliku, który da się przetestować bez płótna
 (`camera.test.ts`). Renderer z tego korzysta w dwóch miejscach i oba są publiczne:
 `setCameraLocked(locked)` (gracz: ekran nigdy nie wychodzi poza mapę — `clamp` bez marginesu
-**plus** dolna granica zbliżenia równa `coverZoom`; MG: dawny `PAN_MARGIN`) oraz
+**plus** dolna granica zbliżenia `playerMinZoom` — od 11.10 większe z `coverZoom` i kadru
+na `PLAYER_MAX_VIEW_SQUARES_AROUND` kratek; MG: dawny `PAN_MARGIN`) oraz
 `frameAround(point, squares)` — kadr startowy gracza, świadomie **osobny od `fitScene`**, bo
 `fitScene` odpowiada „gdzie jest ta mapa", a `frameAround` „gdzie jesteś ty".
 **Granice przykłada się ponownie przy każdej zmianie rozmiaru płótna** (`applyCameraBounds`
@@ -659,7 +662,6 @@ jednocześnie autorem na czacie, podpisem w historii bota i w transkrypcie kroni
 (`whisperWith`). Nowe miejsce, które zapisuje wypowiedź `say`, woła `emitJournalPending` —
 inaczej licznik „Zakończ sesję i streść (N)” u MG stoi do wejścia w zakładkę.
 
-
 **Nazwa figury w karcie czatu idzie przez `tokenTableName`, nigdy wprost z `token.name` (13.09).**
 Alias `Token.publicName` (03.09) zasłaniał nazwę na mapie i w kolejce, a ponad pięćdziesiąt miejsc
 w `realtime/` wpisywało `token.name` w treść kart: atak, obrażenia, zwarcie, Konfrontacja, strefy,
@@ -796,7 +798,6 @@ po zmianie kampanii; klient czyści pulę i unieważnia starsze odczyty przy prz
   (`routes/helpers.ts`; `resolveSocketCampaign` woła to samo). Nowa trasa REST o kampanii gracza
   bierze kampanię stamtąd, nie z `getActiveCampaign`.
 
-
 **Portrety NPC są w tej samej puli, z flagą `gmOnly` (zlecenie MG z 23.09).** Twarz i nazwa
 portretu zdradzają, kogo drużyna dopiero spotka, a pula była publiczna dla każdego zalogowanego —
 razem z nazwami i wycofanymi wpisami. Osobna biblioteka zdublowałaby kadr, kosz i backfill, więc
@@ -828,7 +829,6 @@ zmieniało nic w UI — nowy portret NPC-a wymagał postawienia figury od nowa. 
 przestawia teraz `Token.imageUrl` figur tej karty, które nosiły **stary portret albo nie miały
 obrazu**, i odsyła je `emitTokensOfCharacter`. Grafika wybrana z biblioteki żetonów zostaje: to
 wybór MG dla tej jednej figury.
-
 
 **Blokada ruchu graczy po mapie jest polem sceny, nie własnym zdarzeniem (zlecenie MG, 12.09).**
 Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed rozpoczęciem gry, obejdzie ją
@@ -977,7 +977,6 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
-
 **Jedno okno „Wymiana” (08.10.2026, etap 46a2).** Trzy okna z 38b/38c (`InventoryWindow`,
 `TradeWindow` z wyborem partnera, `TradeDock`) i ich magazyny (`inventoryStore`, `tradeStore`)
 są usunięte. Wejście jest jedno — „🤝 Wymiana…” w menu figury (gracz i MG), „Wymiana…” na
@@ -1018,7 +1017,6 @@ Kształt powtórzony w `packages/e2e/fixtures/vtt-e2e.d.ts`: zmiana w jednym = z
 kolejka) i DOM. Obie funkcje istnieją w każdym buildzie, ale woła je wyłącznie blok `MODE === 'e2e'`;
 czytają pola bez typów (`_cache`, `renderer.info`), więc po aktualizacji `pixi.js` albo
 `@3d-dice/dice-box-threejs` licznik może dać `-1` — to sygnał do poprawki haka, nie aplikacji.
-
 
 **„Czeka na MG” — wyraźne powiadomienie o decyzjach MG (25.09, zlecenie MG poza etapami).** Dotąd
 każda sprawa miała własną cyfrę na własnej zakładce, a prośba o zgodę na nową postać nie dzwoniła
@@ -1270,7 +1268,6 @@ nic się nie zmienia; przy rzucie inicjatywy kubkiem naraz animuje się pierwszy
 reszta wychodzi kartami. Testy: `socket-roll-presentation.test.ts` › „#48”, E2E `t7b-obciazenie`
 (zgodność stołu po końcu obciążenia < 60 s).
 
-
 **Skrypt kości E2E tylko przez `createMixedRng` i nigdy w produkcji (26.09.2026, T1 testów bety).**
 Zgoda MG z 26.09 (`testy.md` 4.2). `VTT_DICE_SCRIPT` wskazuje plik z liczbami (spacje, przecinki,
 nowe wiersze, `#` komentarz); `takeScriptedDie` zdejmuje pierwszą przy każdej kości i zapisuje
@@ -1280,7 +1277,6 @@ większa od liczby ścian wysadza rzut — cichy powrót do losowania dałby tes
 inną gałąź. Start serwera loguje ostrzeżenie w obu przypadkach („dice are forced from …” albo
 „ignored in production”). Testy: `dice-script.test.ts`; losowanie z pominięciem `createMixedRng`
 byłoby jedynym miejscem, którego scenariusz nie wymusi.
-
 
 **Kara za rany składa się w JEDNYM miejscu: `cpredWoundPenaltyRows` (12.09).**
 Do 12.09 wiersz „Poważnie ranny −2" dopisywały osobno `finishCheck` i `planCpredAttack`, a trzy
@@ -1450,7 +1446,6 @@ tym samym, który mierzy `requireStabilizeReach`. Slot paska otwiera formularz j
 nie dotyczy tej akcji. Nowa akcja, która ma działać i w walce, i poza nią, idzie tym wzorem
 (formularz przed blokiem wymagającym `context.combatant`), jak Zmysł Walki i radio.
 
-
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
 poza walką**, i **odmowa nie nazywa przeszkody** (gracz nie może mapować budynku, wchodząc w nią).
@@ -1579,7 +1574,6 @@ kursor zostaje przy jego broni. Schowanie albo dobycie czegoś, co wypycha broń
 z kursora i efekt w `CombatHud.tsx` bierze pierwszą użyteczną. Przed poprawką pasek pisał „W ręku:
 Nóż testowy” pod wyszarzonym nożem, gdy w rękach był już karabin. Pole jest w `hudSignature`, bo
 przy wydanej Akcji schowanie broni nie zmienia zdania odmowy.
-
 
 **OB bariery jedzie kartą, a przestawione „Zastosuj" mierzy od nowa (13.09, etap 42b).** Zasada
 domowa MG (`decyzje-i-uproszczenia.md`): siatka odejmuje swoje OB od obrażeń, zanim dotrą do
@@ -2057,7 +2051,6 @@ samego zapisu). Wyjątek: pierwszy `state:sync` po (ponownym) połączeniu — `
 Licznik siedzi w `createPrisma` (rozszerzenie `query.character`), nie w handlerach — tych jest
 ponad dwadzieścia plików. Testy: `character-revision.test.ts` (klient), `characters.test.ts` › „#49”
 (serwer), E2E `t7b-zapis-karty`.
-
 
 **Okno na papierze: `sheet-window--paper` (16.09, naprawa kreatora 2c).** Karta postaci i kreator
 wyglądają jak wydruk na starej kartce. Trzy rzeczy obowiązują dalej:
@@ -2811,7 +2804,6 @@ fiolki". Nowy rodzaj środka dopisuje się **wyłącznie** do `CPRED_PHARMACEUTI
 z podręcznika, `applies`, ewentualne „raz dziennie") i do jednej gałęzi `applyDose`
 w `realtime/recovery.ts`. `pharma.ts` **nie importuje niczego** — to warunek, nie przypadek:
 walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bierze z karty typy.
-
 
 **Handlarze: karta NPC-a, tabela ustawień i jedna arytmetyka (08.10.2026, etap 46a1).** Sklep to
 NPC z wierszem `Merchant` (szyld, „Otwarte”, przy figurze / zdalny, „między sesjami”, mnożnik ceny,

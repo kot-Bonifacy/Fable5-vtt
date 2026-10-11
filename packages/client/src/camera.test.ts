@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAP_MAX_ZOOM,
+  PLAYER_MAX_VIEW_SQUARES_AROUND,
   PLAYER_VIEW_SQUARES_AROUND,
   coverZoom,
   partyStart,
+  playerMinZoom,
   startCamera,
 } from './map/camera.js';
 
@@ -14,7 +16,7 @@ import {
  *  1. **Ani piksela poza mapą.** Najmniejsze zbliżenie to takie, przy którym
  *     ekran w całości leży w mapie. `min` zamiast `max` w `coverZoom` daje
  *     kadr mieszczący całą mapę — i czarne pasy, których MG nie chce.
- *  2. **Osiem kratek wokół siebie**, licząc w węższym wymiarze ekranu. Przy
+ *  2. **Pięć kratek wokół siebie** (do 11.10.2026 osiem), licząc w węższym wymiarze ekranu. Przy
  *     liczeniu z szerokości gracz na szerokim oknie dostałby widok z lotu
  *     ptaka zamiast okolicy.
  */
@@ -38,21 +40,31 @@ describe('kamera gracza', () => {
     expect(dopasowane).toBe(true);
   });
 
-  it('startuje przybliżony na osiem kratek wokół punktu — w węższym wymiarze', () => {
+  it('startuje przybliżony na pięć kratek wokół punktu — w węższym wymiarze', () => {
     const shot = startCamera(MAPA, EKRAN, { x: 1448, y: 1088 });
     const widoczneKratkiWPionie = EKRAN.height / shot.zoom / MAPA.grid.sizePx;
     expect(widoczneKratkiWPionie).toBeCloseTo(PLAYER_VIEW_SQUARES_AROUND * 2 + 1, 6);
-    // W szerszym wymiarze wychodzi więcej i to jest w porządku: „niewiele
-    // więcej niż 8 kratek wokół siebie" mówi o promieniu, nie o kadrze.
+    // W szerszym wymiarze wychodzi więcej i to jest w porządku: promień
+    // kratek wokół siebie mówi o promieniu, nie o kadrze.
     expect(EKRAN.width / shot.zoom / MAPA.grid.sizePx).toBeGreaterThan(widoczneKratkiWPionie);
   });
 
   it('nie zbliża się mniej, niż wymaga pokrycie ekranu mapą', () => {
-    // Mapa mniejsza niż jeden kadr „8 kratek wokół": pokrycie wygrywa.
+    // Mapa mniejsza niż jeden kadr startowy: pokrycie wygrywa.
     const mala = { width: 400, height: 300, grid: { sizePx: 10 } };
     const shot = startCamera(mala, EKRAN, { x: 200, y: 150 });
     expect(shot.zoom).toBeGreaterThanOrEqual(coverZoom(mala, EKRAN));
     expect(shot.zoom).toBeLessThanOrEqual(MAP_MAX_ZOOM);
+  });
+
+  it('nie pozwala graczowi oddalić się dalej niż na dwa kadry startowe', () => {
+    const zoom = playerMinZoom(MAPA, EKRAN);
+    const widoczneKratkiWPionie = EKRAN.height / zoom / MAPA.grid.sizePx;
+    expect(widoczneKratkiWPionie).toBeCloseTo(PLAYER_MAX_VIEW_SQUARES_AROUND * 2 + 1, 6);
+    expect(zoom).toBeLessThan(startCamera(MAPA, EKRAN, { x: 1448, y: 1088 }).zoom);
+    // Na małej mapie granicą zostaje pokrycie ekranu — czerni dalej nie ma.
+    const mala = { width: 400, height: 300, grid: { sizePx: 10 } };
+    expect(playerMinZoom(mala, EKRAN)).toBeGreaterThanOrEqual(coverZoom(mala, EKRAN));
   });
 
   it('wpisuje kadr w mapę, więc punkt przy krawędzi nie odsłania czerni', () => {

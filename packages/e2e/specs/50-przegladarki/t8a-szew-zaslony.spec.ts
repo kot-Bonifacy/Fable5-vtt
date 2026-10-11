@@ -2,6 +2,7 @@ import { expect, test, type Actor, type Engine } from '../../fixtures/actors.ts'
 import { brightPixelsAlong } from '../../fixtures/canvas.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { campaignId } from '../../fixtures/nocna-zmiana.ts';
+import { fitCamera } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { createInvitation } from '../../fixtures/table.ts';
 import { hasCheckpoint, restoreCheckpoint, startInstance } from '../../instance/instance.ts';
@@ -10,8 +11,10 @@ import { hasCheckpoint, restoreCheckpoint, startInstance } from '../../instance/
  * #53 (T8a): gracz bez figury widział przez czarną zasłonę „Knajpy” cienką nitkę
  * mapy. Leżała na przekątnej sceny (0, 0) → (1470, 1070): czworokąt zasłony
  * rysowany na płótno z MSAA miał szew między swoimi trójkątami (tekstura zasłony
- * była szczelna). Kamera domyślna przy 1920 × 1080 pokazuje ten odcinek w ciemnej,
- * niezwiedzonej części sceny — tam przez zasłonę nie ma prawa przejść nic jasnego.
+ * była szczelna). Kamera wyśrodkowana na scenie i oddalona do granicy gracza
+ * pokazuje ten odcinek w ciemnej, niezwiedzonej części sceny — tam przez zasłonę
+ * nie ma prawa przejść nic jasnego. (Do 11.10 wystarczał kadr startowy; od kadru
+ * na 5 kratek odcinek wypadał pod panelami.)
  *
  * Kontrola: ten sam pomiar na zwiedzonej sali (pamięć terenu, mapa przyciemniona)
  * musi znaleźć jasne piksele — inaczej zero na przekątnej nic by nie znaczyło.
@@ -58,6 +61,9 @@ test.describe.serial('T8a: szew zasłony pola widzenia (#53) @szybkie', () => {
       await expect
         .poll(async () => (await gracz.store<{ mask: unknown }>('exploration'))?.mask ?? null)
         .not.toBeNull();
+      // Gracz nie obejmie całej sceny (granica oddalania), stąd `catch` — wystarczy
+      // środek sceny na środku widoku i najdalszy dozwolony kadr.
+      await fitCamera(gracz.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
       // Pamięć terenu i zasłona składają się po przyjściu stanu — dajemy im klatki.
       await gracz.page.waitForTimeout(1500);
 

@@ -1534,10 +1534,10 @@ export function MapArea() {
     const state = useCombatStore.getState();
     const user = useAuthStore.getState().user;
     const isGm = user?.role === ROLE_GM;
-    rendererRef.current?.setMoveAllowance(
+    const allowance =
       moveAllowanceOf(state.combat, user?.id ?? null, isGm) ??
-        paceAllowanceOf(useSelectionStore.getState().tokenId, state.combat, isGm),
-    );
+      paceAllowanceOf(useSelectionStore.getState().tokenId, state.combat, isGm);
+    rendererRef.current?.setMoveAllowance(allowance && { ...allowance, showReach: isGm });
   }, []);
 
   useEffect(() => {
