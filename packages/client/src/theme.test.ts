@@ -70,13 +70,15 @@ describe('motyw (etap 27e)', () => {
      * należą do motywu, bo ich wartość zależy od stanu elementu, a nie od pory
      * dnia. `--hud-icon` przychodzi wprost z Reacta (`HudIcon` podaje adres
      * pliku maski), `--hud-mag-color` zmienia się z zawartością magazynka, a `--wound`
-     * (43a) to odsetek ran na portrecie w zakładce „Walka”.
+     * (43a) to odsetek ran na portrecie w zakładce „Walka”. `--top-bar-control`
+     * to wysokość kafla górnego paska, ustawiana na `.top-bar` — wymiar, nie kolor.
      */
     const local = new Set([
       '--hud-hp-color',
       '--hud-icon',
       '--hud-mag-color',
       '--rattle',
+      '--top-bar-control',
       '--wound',
     ]);
     expect([...used].filter((t) => !defined.has(t) && !local.has(t))).toEqual([]);
