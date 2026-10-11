@@ -45,13 +45,15 @@ function toneWav(): string {
   return file;
 }
 
-const SETTINGS_BUTTON = 'Ustawienia — kości, dźwięk, pełny ekran, tryb dzienny';
+const SETTINGS_BUTTON = 'Ustawienia — kości, widok, dźwięki i muzyka';
 
-async function openSettings(page: Page): Promise<Locator> {
+/** Okno pamięta ostatnią zakładkę (11.10), więc test zawsze wybiera ją sam. */
+async function openSettings(page: Page, tab: 'Ogólne' | 'Dźwięki' = 'Ogólne'): Promise<Locator> {
   const window = page.getByRole('region', { name: 'Ustawienia' });
   if (!(await window.isVisible()))
     await page.getByRole('button', { name: SETTINGS_BUTTON }).click();
   await expect(window).toBeVisible();
+  await window.getByRole('tab', { name: tab }).click();
   return window;
 }
 
@@ -61,13 +63,9 @@ async function closeSettings(page: Page): Promise<void> {
   await expect(page.getByRole('region', { name: 'Ustawienia' })).toBeHidden();
 }
 
-async function openMusic(page: Page): Promise<Locator> {
-  const window = page.getByRole('region', { name: 'Podkłady muzyczne' });
-  if (!(await window.isVisible())) {
-    await page.getByRole('button', { name: 'Podkłady muzyczne' }).click();
-  }
-  await expect(window).toBeVisible();
-  return window;
+/** Muzyka mieszka w zakładce „Dźwięki” okna ustawień (11.10). */
+function openMusic(page: Page): Promise<Locator> {
+  return openSettings(page, 'Dźwięki');
 }
 
 test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', () => {
@@ -126,7 +124,8 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
       .toBe('acid');
     // Kości toczą się zawsze — przełącznik „Animacja 3D” zniknął 10.10.
     await expect(settings.locator('label', { hasText: 'Animacja 3D' })).toHaveCount(0);
-    const volume = settings.locator('label', { hasText: 'Głośność' }).locator('input');
+    settings = await openSettings(page, 'Dźwięki');
+    const volume = settings.locator('label', { hasText: 'Głośność efektów' }).locator('input');
     await volume.fill('35');
     await closeSettings(page);
 
@@ -156,9 +155,10 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
       'aria-pressed',
       'true',
     );
-    await expect(settings.locator('label', { hasText: 'Głośność' }).locator('input')).toHaveValue(
-      '35',
-    );
+    settings = await openSettings(page, 'Dźwięki');
+    await expect(
+      settings.locator('label', { hasText: 'Głośność efektów' }).locator('input'),
+    ).toHaveValue('35');
     await closeSettings(page);
   });
 
@@ -223,8 +223,8 @@ test.describe.serial('T8c UI: skróty, ustawienia, muzyka, pełny ekran, okna', 
       .locator('label', { hasText: 'Odgłos na oglądanej scenie' })
       .locator('select')
       .selectOption('none');
-    await page.getByRole('button', { name: 'Zamknij muzykę' }).click();
-    await marek.page.getByRole('button', { name: 'Zamknij muzykę' }).click();
+    await closeSettings(page);
+    await closeSettings(marek.page);
   });
 
   test('pełny ekran w Firefoksie: włączenie z ustawień, Esc wychodzi, „Wróć do pełnego ekranu”', async () => {

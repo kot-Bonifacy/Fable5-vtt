@@ -14,7 +14,8 @@ import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
  * Efekty dźwiękowe mają **jeden suwak** (24.09, decyzja MG: „wciąż za dużo
  * opcji"): kości, kubek, mapa i powiadomienia. Proporcje między nimi siedzą
  * w kodzie (`SFX_GAIN`, wzmocnienie sygnału w `cup-notification.ts`), nie
- * u gracza. Muzyka i otoczenie sceny mają własne suwaki w oknie muzyki.
+ * u gracza. Muzyka i otoczenie sceny mają własne suwaki obok, w zakładce
+ * „Dźwięki” (11.10 okno muzyki weszło do ustawień).
  *
  * Kości toczą się zawsze (10.10, decyzja MG): rzut i patrzenie, co wypadnie,
  * to sedno gry, więc przełącznik „Animacja 3D” zniknął z ustawień.
@@ -36,6 +37,8 @@ export interface SettingsState {
   skin: DiceSkinId;
   /** Czy okno ustawień jest otwarte. */
   open: boolean;
+  /** Zakładka okna, zapamiętana w przeglądarce — MG w sesji wraca prosto do muzyki. */
+  tab: SettingsTab;
 
   setSoundVolume: (volume: number) => void;
   /** Sam zapis — wejście i wyjście woła `setFullscreenPreference` z `fullscreen.ts`. */
@@ -44,11 +47,23 @@ export interface SettingsState {
   applySkin: (skin: DiceSkinId) => void;
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
+  setTab: (tab: SettingsTab) => void;
 }
+
+export type SettingsTab = 'general' | 'sound';
 
 const SOUND_VOLUME_KEY = 'vtt.sound.volume';
 const FULLSCREEN_KEY = 'vtt.view.fullscreen';
 const SKIN_KEY = 'vtt.dice.skin';
+const TAB_KEY = 'vtt.settings.tab';
+
+function readTab(): SettingsTab {
+  try {
+    return window.localStorage.getItem(TAB_KEY) === 'sound' ? 'sound' : 'general';
+  } catch {
+    return 'general';
+  }
+}
 
 function readFlag(key: string, fallback: boolean): boolean {
   try {
@@ -106,6 +121,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   fullscreen: readFlag(FULLSCREEN_KEY, false),
   skin: readSkin(),
   open: false,
+  tab: readTab(),
 
   setSoundVolume: (volume) => {
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
@@ -125,4 +141,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setOpen: (open) => set({ open }),
   toggleOpen: () => set({ open: !get().open }),
+  setTab: (tab) => {
+    write(TAB_KEY, tab);
+    set({ tab });
+  },
 }));

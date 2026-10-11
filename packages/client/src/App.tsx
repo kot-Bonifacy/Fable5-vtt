@@ -21,7 +21,6 @@ import { NpcCreateWindow } from './components/NpcCreateWindow.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { OwnerAiWindow } from './components/OwnerAi.js';
-import { MusicWindow } from './components/MusicWindow.js';
 import { useSceneAmbience } from './components/SceneAmbience.js';
 import { useMusicPlayer } from './music-player.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
@@ -139,7 +138,6 @@ function GameView() {
       <CheckRequestDialog />
       <SettingsWindow />
       <OwnerAiWindow />
-      <MusicWindow />
       <ClockWindow />
       <NpcCreateWindow />
       <ShortcutsWindow />

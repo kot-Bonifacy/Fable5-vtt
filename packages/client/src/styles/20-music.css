@@ -1,6 +1,3 @@
-.music-window {
-  width: min(460px, calc(100vw - 24px));
-}
 .music-youtube {
   display: grid;
   gap: 8px;
@@ -37,4 +34,42 @@
 }
 .music-tracks button {
   flex: none;
+}
+
+/* Przycisk ⚙ z przerywnikami stanu dźwięku (11.10): ⚙ co kilka sekund oddaje
+   miejsce nucie albo falom, „!” stoi na stałe. Każda zmiana ikony wjeżdża
+   łagodnie — `key` w komponencie restartuje animację. */
+.settings-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: settings-button-icon-in 0.35s ease-out;
+}
+
+.top-bar-tools .settings-button-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.top-bar .settings-button--alert {
+  border-color: var(--warn);
+  color: var(--warn);
+  font-weight: 700;
+}
+
+@keyframes settings-button-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-button-icon {
+    animation: none;
+  }
 }

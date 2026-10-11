@@ -5,7 +5,6 @@ import { useChatStore } from './chatStore.js';
 export const useMusicStore = create<{
   state: MusicState | null;
   receivedAt: number;
-  open: boolean;
   error: string | null;
   blocked: boolean;
   ended: boolean;
@@ -13,7 +12,6 @@ export const useMusicStore = create<{
 }>((set, get) => ({
   state: null,
   receivedAt: 0,
-  open: false,
   error: null,
   blocked: false,
   ended: false,

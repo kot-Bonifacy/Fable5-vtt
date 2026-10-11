@@ -3,7 +3,6 @@ import { ClockChip } from './ClockWindow.js';
 import { TurnModeSlot } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
-import { MusicButton } from './MusicWindow.js';
 import { ShortcutsButton } from './ShortcutsWindow.js';
 import { SessionControl } from './SessionControl.js';
 import { OwnerAiButton } from './OwnerAi.js';
@@ -50,7 +49,6 @@ export function TopBar() {
           <OwnerAiButton />
           <ShortcutsButton />
           <SettingsButton />
-          <MusicButton />
         </div>
         {/* Konto: MG podpisany loginem (każde konto MG siedzi przy stole jako
             „MG”, więc samo imię nic tu nie mówi), gracz imieniem. Rolę niesie

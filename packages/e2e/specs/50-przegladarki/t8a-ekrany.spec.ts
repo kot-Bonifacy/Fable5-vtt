@@ -61,6 +61,8 @@ async function setTheme(actor: Actor, theme: 'night' | 'day') {
   const now = await page.evaluate(() => document.documentElement.dataset.theme);
   if (now === theme) return;
   await page.getByRole('button', { name: /^Ustawienia — kości/ }).click();
+  // Okno pamięta ostatnią zakładkę (11.10) — tryb dzienny stoi w „Ogólnych”.
+  await page.getByRole('tab', { name: 'Ogólne' }).click();
   const box = page.getByRole('checkbox', { name: /Tryb dzienny/ });
   await (theme === 'day' ? box.check() : box.uncheck());
   await page.getByRole('button', { name: 'Zamknij ustawienia' }).click();

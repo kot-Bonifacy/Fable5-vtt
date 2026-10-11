@@ -142,7 +142,9 @@
 .settings-window {
   position: fixed;
   z-index: 340;
-  width: min(400px, calc(100vw - 24px));
+  /* 440, nie 400 (11.10): zakładka „Dźwięki” nosi bibliotekę podkładów
+     z dwoma guzikami w wierszu, która w oknie muzyki miała 460. */
+  width: min(440px, calc(100vw - 24px));
   max-height: min(80vh, 760px);
   display: flex;
   flex-direction: column;
@@ -178,6 +180,24 @@
 .settings-window-body {
   padding: 0.7rem 0.9rem 1rem;
   overflow-y: auto;
+}
+
+/* Zakładki „Ogólne” / „Dźwięki” (11.10). Podwójna klasa, bo `sheet.css`
+   przemalowuje gołe `.sheet-tabs` na czerwony pasek karty postaci. */
+.settings-window .settings-tabs {
+  flex: none;
+  padding: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-window .settings-tabs .sheet-tab {
+  padding: 0.45rem 0.3rem;
+  font-size: 0.85rem;
+}
+
+.settings-window .settings-tabs .sheet-tab:hover {
+  color: var(--text);
 }
 
 .settings-group + .settings-group {
