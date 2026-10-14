@@ -325,7 +325,7 @@ describe('resolveCpredDamage', () => {
     expect(outcome.hpLost).toBe(6);
     expect(outcome.woundBefore).toBe('serious');
     expect(outcome.woundAfter).toBe('mortal');
-    expect(woundTransitionLabel(outcome)).toBe('Poważnie ranny → Śmiertelnie ranny');
+    expect(woundTransitionLabel(outcome)).toBe('Teraz śmiertelnie ranny');
   });
 
   it('crosses the serious threshold at exactly half of max HP', () => {

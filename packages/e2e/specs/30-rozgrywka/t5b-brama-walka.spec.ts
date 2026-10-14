@@ -34,6 +34,8 @@ import {
   beginFight,
   takeFigure,
   armFirstWeapon,
+  damageToCup,
+  cupHoldsDamage,
 } from '../../fixtures/walka.ts';
 import { GatewayProxy } from '../../instance/gateway-proxy.ts';
 import {
@@ -88,7 +90,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   let zoneShotId = 0;
   /** Notatki MG po padzie gatewaya w turze bota (#35). */
   let botTurnNotes: string[] = [];
-  /** Czy Ola miała „Obrażenia” na karcie strzału swojej wieżyczki (#38). */
+  /** Czy kubek Oli wołał o obrażenia za strzał jej wieżyczki (#38). */
   let olaTurretDamageButton = 0;
   /** Etykieta kanarka → kod (np. `pietro-LOD` → `KANAREK-pietro-LOD-0004`). */
   const codes = new Map<string, string>();
@@ -383,19 +385,14 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
 
     // Obrażenia rzuca MG (wieżyczka nie ma właściciela); gracz nie ma przycisku.
     await expect(
-      chatCards(marek.page, title)
-        .last()
-        .getByRole('button', { name: /^Obrażenia/ }),
+      chatCards(marek.page, title).last().getByRole('button', { name: 'Na kubek' }),
     ).toHaveCount(0);
     await noDodge(mg, zoneShotId, title);
     scriptDice([1, 1, 1, 1]);
     const before = lastMessageId();
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
     const seen = await chatCards(mg.page, damageTitle).count();
-    await chatCards(mg.page, title)
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(mg.page, title);
     await rollAndWait(mg, before, damageTitle);
     // Obrażenia rozliczają się same na „Kowal” (decyzja MG z 03.10), bez „Zastosuj”.
     await freshCard(mg.page, damageTitle, seen);
@@ -549,10 +546,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await noDodge(mg, messageAfter(since, title)!.id, title);
     scriptDice([5, 5, 4, 4]);
     const beforeDamage = lastMessageId();
-    await chatCards(page, title)
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(page, title);
     await rollAndWait(mg, beforeDamage, damageTitle);
     // Obrażenia rozliczają się same na „Iskra” (decyzja MG z 03.10), bez „Zastosuj”.
     await freshCard(page, damageTitle, seen);
@@ -921,36 +915,30 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         { type: 'kości', description: pendingDice() },
       );
     expect(shot.attack?.hit).toBe(true);
-    // Kto rzuca obrażenia za wieżyczkę netrunnerki — przycisk u Oli czy u MG?
+    // Kto rzuca obrażenia za wieżyczkę netrunnerki — kubek Oli czy MG? Od 14.10 kubek
+    // prowadzącego strzelca woła sam, a MG ma na karcie „Na kubek”.
     await mg.page.getByRole('button', { name: 'Czat', exact: true }).click();
-    const buttonAt = async (actor: Actor) =>
-      chatCards(actor.page, title)
-        .last()
-        .getByRole('button', { name: /^Obrażenia/ })
-        .count();
-    await expect.poll(() => buttonAt(mg), { timeout: 30_000 }).toBeGreaterThan(0);
-    // Karta dochodzi do Oli po animacji jej własnych kości — czekamy jak na MG.
-    await expect
-      .poll(() => buttonAt(ola), { timeout: 30_000 })
-      .toBeGreaterThan(0)
-      .catch(() => undefined);
-    olaTurretDamageButton = await buttonAt(ola);
-    const olaHasButton = olaTurretDamageButton > 0;
-    test.info().annotations.push({
-      type: 'przycisk „Obrażenia” za wieżyczkę',
-      description: `MG: ${await buttonAt(mg)}, Ola: ${await buttonAt(ola)}, Marek: ${await buttonAt(marek)}`,
-    });
-    const roller = olaHasButton ? ola : mg;
     const damageTitle = 'Bardzo ciężki pistolet — obrażenia';
     const seen = await chatCards(mg.page, damageTitle).count();
     // 4k6 = 22 (dwie szóstki: rana krytyczna, 2k6 tabeli = 7), OB 11.
     await noDodge(mg, messageAfter(beforeShot, title)!.id, title);
+    const mgButton = () =>
+      chatCards(mg.page, title).last().getByRole('button', { name: 'Na kubek' }).count();
+    await expect.poll(mgButton, { timeout: 30_000 }).toBeGreaterThan(0);
+    // Karta dochodzi do Oli po animacji jej własnych kości — czekamy jak na MG.
+    await expect
+      .poll(() => cupHoldsDamage(ola.page), { timeout: 30_000 })
+      .toBe(true)
+      .catch(() => undefined);
+    olaTurretDamageButton = (await cupHoldsDamage(ola.page)) ? 1 : 0;
+    test.info().annotations.push({
+      type: 'kubek obrażeń za wieżyczkę',
+      description: `MG „Na kubek”: ${await mgButton()}, kubek Oli: ${olaTurretDamageButton}, kubek Marka: ${await cupHoldsDamage(marek.page)}`,
+    });
+    const roller = olaTurretDamageButton > 0 ? ola : mg;
     scriptDice([6, 6, 5, 5, 3, 4]);
     const beforeDamage = lastMessageId();
-    await chatCards(roller.page, title)
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(roller.page, title);
     await rollAndWait(roller, beforeDamage, damageTitle);
     // Obrażenia rozliczają się same na „Strażnik” (decyzja MG z 03.10), bez „Zastosuj”.
     await freshCard(mg.page, damageTitle, seen);
@@ -970,8 +958,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   });
 
   test('#38 netrunnerka rzuca obrażenia za strzał wieżyczki, którą prowadzi', async () => {
-    // Strzelec karty to żeton wieżyczki (bez właściciela, #23/#27), więc „Obrażenia”
-    // ma tylko MG — Ola strzela swoimi Umiejętnościami, a obrażeń nie rzuci.
+    // Strzelec karty to żeton wieżyczki (bez właściciela, #23/#27); prowadzi go Ola
+    // (`operatorUserId`), więc to jej kubek ma wołać o obrażenia, nie kubek MG.
     expect(olaTurretDamageButton).toBeGreaterThan(0);
   });
 
@@ -1015,10 +1003,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await noDodge(mg, shotId, title);
     scriptDice([6, 6, 6, 6, 3, 4]);
     const beforeDamage = lastMessageId();
-    await chatCards(marek.page, title)
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(marek.page, title);
     await rollAndWait(marek, beforeDamage, damageTitle);
     // Obrażenia rozliczają się same na „Strażnik” (decyzja MG z 03.10), bez „Zastosuj”.
     await freshCard(mg.page, damageTitle, seen);

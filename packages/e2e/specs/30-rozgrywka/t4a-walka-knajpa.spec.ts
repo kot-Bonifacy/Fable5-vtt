@@ -33,6 +33,7 @@ import {
   token,
   type RollJson,
   beginFight,
+  damageToCup,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -432,11 +433,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     await noDodge(mg, attackId, 'Bardzo ciężki pistolet → Zbir');
     scriptDice([5, 4, 3, 2]);
     before = lastMessageId();
-    await marek.page
-      .locator('.chat-message', { hasText: 'Bardzo ciężki pistolet → Zbir' })
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(marek.page, 'Bardzo ciężki pistolet → Zbir');
     await rollAndWait(marek, before, 'Bardzo ciężki pistolet — obrażenia');
 
     // Obrażenia rozliczają się same na celu z karty strzału (decyzja MG z 03.10):

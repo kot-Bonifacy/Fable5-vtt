@@ -62,7 +62,6 @@ import {
   CPRED_SUPPRESSED_STATUS_ID,
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
-  CPRED_WOUND_LABELS,
   NO_REPUTATION,
   STATIST_DEFAULT_STAT,
   STATIST_WEAPON_ROW_ID,
@@ -575,13 +574,7 @@ function grappleDamageLog(
     bonusDamage: 0,
     hpLost: outcome.hpLost,
     hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hpMaxValue },
-    ...(outcome.woundBefore !== outcome.woundAfter
-      ? {
-          woundLabel: `${CPRED_WOUND_LABELS[outcome.woundBefore]} → ${
-            CPRED_WOUND_LABELS[outcome.woundAfter]
-          }`,
-        }
-      : {}),
+    ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
   };
 }
 

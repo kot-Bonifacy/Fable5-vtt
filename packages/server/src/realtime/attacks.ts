@@ -1786,8 +1786,10 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
         evaded: true,
         // The defender has answered — the damage stops waiting (03.10).
         evasionPending: undefined,
-        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total} → ${
-          outcome.hit ? 'trafienie mimo uniku' : 'pudło'
+        // Obie liczby obok siebie (14.10): samo „Unik: 14 → pudło" nie mówiło,
+        // z czym 14 przegrało, a „pudło" brzmiało jak chybienie strzelca.
+        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total} vs ${roll.total} → ${
+          outcome.hit ? 'trafienie mimo uniku' : 'unik udany'
         }`,
         ...(outcome.hit
           ? {

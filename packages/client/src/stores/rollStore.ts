@@ -251,6 +251,11 @@ interface RollStoreState {
   lastVisibility: 'public' | 'gm';
   /** Last aimed location of a damage roll (stage 15). */
   lastLocation: CpredHitLocation;
+  /**
+   * Karty ataku, których obrażenia kubek przestał wołać (14.10): odłożone `Esc`
+   * albo już rzucone, zanim serwer oznaczył kartę. Tylko w tej karcie przeglądarki.
+   */
+  skippedDamageCalls: ReadonlySet<number>;
 
   openDialog: (target: RollTarget) => void;
   closeDialog: () => void;
@@ -264,6 +269,9 @@ interface RollStoreState {
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
   rememberLocation: (location: CpredHitLocation) => void;
+  skipDamageCall: (messageId: number) => void;
+  /** „Na kubek" z karty ataku — odłożone obrażenia znów czekają na kubku. */
+  restoreDamageCall: (messageId: number) => void;
 }
 
 /** Every slot of the cup, cleared. Spread it before setting the new one. */
@@ -289,6 +297,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   lastModifier: 0,
   lastVisibility: 'public',
   lastLocation: 'body',
+  skippedDamageCalls: new Set<number>(),
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
@@ -303,6 +312,14 @@ export const useRollStore = create<RollStoreState>((set) => ({
   clearCup: () => set({ ...EMPTY_CUP }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),
+  skipDamageCall: (messageId) =>
+    set((state) => ({ skippedDamageCalls: new Set(state.skippedDamageCalls).add(messageId) })),
+  restoreDamageCall: (messageId) =>
+    set((state) => {
+      const skippedDamageCalls = new Set(state.skippedDamageCalls);
+      skippedDamageCalls.delete(messageId);
+      return { skippedDamageCalls };
+    }),
 }));
 
 /**

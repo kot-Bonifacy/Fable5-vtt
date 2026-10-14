@@ -5,17 +5,18 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { declineEvasion } from '../socket.js';
+import { attackAwaitsDamage, attackShooterFor, damageRollFor } from '../attack-damage-call.js';
 
 /**
  * The attack card on the chat (stage 16).
  *
- * It shows the verdict the server reached and offers the two follow-ups:
- * „Obrażenia" chains into the damage roll that already knows its notation,
- * its multiplier and its target (stage 15 then applies it), and „Unik" lets
- * the defender replace the range DV with a real Evasion roll.
+ * It shows the verdict the server reached and offers „Unik", which lets the
+ * defender replace the range DV with a real Evasion roll (it only loads the
+ * dice cup — as everywhere else in this VTT, dice are thrown by hand).
  *
- * Both buttons only load the dice cup — as everywhere else in this VTT, dice
- * are thrown by hand.
+ * The damage roll has no button here since 14.10 (MG): once nobody is left to
+ * dodge, the shooter's cup calls for it by itself (`attack-damage-call.ts`).
+ * The card only says that, and offers „Na kubek" when the call was put away.
  */
 export function AttackRow({
   message,
@@ -29,75 +30,14 @@ export function AttackRow({
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
 
-  const system = attack.system as {
-    weaponRowId?: string;
-    weaponName?: string;
-    dvSource?: string;
-    attackerTokenId?: string;
-    operatorUserId?: string;
-  };
-
-  /**
-   * The sheet that fired — needed to roll its weapon's damage.
-   *
-   * Szukana po żetonie strzelca z karty ataku (#23, 27.09), a po id wiersza
-   * broni tylko na kartach sprzed 16b, które żetonu nie niosą. Id wiersza nie
-   * jest unikalne: każdy statysta ma broń `statist-weapon`, więc „Obrażenia"
-   * na strzale Cienia ładowały kubek pierwszej karty statysty w magazynie.
-   */
-  const attackerToken = system.attackerTokenId ? tokens[system.attackerTokenId] : undefined;
-  const attackerSheet =
-    system.attackerTokenId === undefined
-      ? Object.values(characters).find((character) =>
-          character.data.weapons.some((weapon) => weapon.id === system.weaponRowId),
-        )
-      : attackerToken?.characterId
-        ? characters[attackerToken.characterId]
-        : undefined;
-  /** Karta gracza rzuca sama; karta NPC-a — przez swój żeton (alias, `statBlock`). */
-  const playerSheet = attackerSheet?.ownerId != null ? attackerSheet : undefined;
-
-  /**
-   * Figura bez karty też zadaje obrażenia (zaległość z 23.08).
-   *
-   * Figura prowadzona przez żeton strzela od 16b, ale atakującego szukało się
-   * wyłącznie wśród **kart, które ten widz ma w ręku** — więc jej karta ataku
-   * pokazywała trafienie i nikogo nie raniła, a MG odejmował PW ręcznie
-   * skrótami ±5. To ta sama luka, którą 22.08 zamknięto po stronie obrony
-   * (`statistDefender` niżej). Od 38a rozstrzyga o tym adres: rzut jedzie
-   * `attackerTokenId`, a serwer bierze z niego kartę tej figury.
-   */
-  const statistAttacker =
-    !playerSheet && attackerToken?.characterId
-      ? isGm || (user?.id !== undefined && attackerToken.ownerId === user.id)
-        ? attackerToken
-        : undefined
-      : undefined;
-  /**
-   * Netrunner na spuście wieżyczki przejętego węzła rzuca jej obrażenia (#38).
-   * Figury wieżyczki zwykle nie widzi (stoi poza jego polem widzenia), więc
-   * adres idzie wprost z karty ataku, a imię — z karty rzutu.
-   */
-  const operatedTurret =
-    !playerSheet &&
-    !statistAttacker &&
-    system.attackerTokenId !== undefined &&
-    user?.id !== undefined &&
-    system.operatorUserId === user.id
-      ? {
-          name: attackerToken?.name ?? message.roll?.actor ?? 'Wieżyczka',
-          address: { attackerTokenId: system.attackerTokenId },
-        }
-      : undefined;
-
-  /** Whoever the damage roll is loaded for: a sheet, or a figure without one. */
-  const sheetShooter =
-    playerSheet ?? (system.attackerTokenId === undefined ? attackerSheet : undefined);
-  const shooter = sheetShooter
-    ? { name: sheetShooter.name, address: { characterId: sheetShooter.id } }
-    : statistAttacker
-      ? { name: statistAttacker.name, address: { attackerTokenId: statistAttacker.id } }
-      : operatedTurret;
+  const { attackerSheet, shooter, leads } = attackShooterFor(
+    message,
+    attack,
+    characters,
+    tokens,
+    user,
+  );
+  const skippedDamageCalls = useRollStore((s) => s.skippedDamageCalls);
 
   /**
    * The defender's sheet, if this viewer may act for it. A player sees only
@@ -122,26 +62,6 @@ export function AttackRow({
         ? targetToken
         : undefined
       : undefined;
-
-  function rollDamage() {
-    if (!shooter || !system.weaponRowId) return;
-    useRollStore.getState().loadCup({
-      ...shooter.address,
-      characterName: shooter.name,
-      kind: 'damage',
-      weaponRowId: system.weaponRowId,
-      // The server reads notation, multiplier, location and target off the
-      // stored attack — this id is the whole request.
-      request: {
-        kind: 'damage',
-        weaponRowId: system.weaponRowId,
-        attackMessageId: message.id,
-      },
-      visibility: 'public',
-      title: `${system.weaponName ?? 'Broń'} — obrażenia`,
-      modifierTotal: 0,
-    });
-  }
 
   /**
    * The sheet steering a figure caught in a blast, when this viewer may act for
@@ -212,11 +132,25 @@ export function AttackRow({
       tokens[tokenId]?.name ??
       'cel',
   );
-  const damageBlockedBy = damageRolled
-    ? 'Obrażenia za to trafienie już rzucone — ponownie dopiero po „Cofnij” MG'
-    : pending.length > 0
-      ? `Obrażenia czekają na decyzję o uniku: ${pendingNames.join(', ')}`
-      : undefined;
+  /** Ten widz może rzucić obrażenia za tę kartę i jeszcze nikt ich nie rzucił. */
+  const awaitsMyDamage = shooter !== undefined && attackAwaitsDamage(attack);
+  /** Kubek tego widza sam o nie woła — chyba że wezwanie odłożył `Esc`. */
+  const cupCalls = leads && !skippedDamageCalls.has(message.id);
+  /** „Na kubek": przywraca odłożone wezwanie albo — za cudzego strzelca — ładuje kubek. */
+  function damageToCup() {
+    if (!shooter) return;
+    const store = useRollStore.getState();
+    if (leads) {
+      store.restoreDamageCall(message.id);
+      return;
+    }
+    const pendingRoll = damageRollFor(message.id, attack, shooter);
+    if (pendingRoll) store.loadCup(pendingRoll);
+  }
+  const damageDice =
+    attack.damageMultiplier && attack.damageMultiplier > 1
+      ? `${attack.damageNotation} ×${attack.damageMultiplier}`
+      : attack.damageNotation;
   /** „Bez uniku" for a single target: whoever could have rolled the dodge. */
   const mayAnswerDodge =
     attack.targetTokenId !== undefined &&
@@ -228,7 +162,9 @@ export function AttackRow({
       ? { text: 'Ogień zaporowy', className: 'suppressive' }
       : attack.hit
         ? { text: 'Trafienie', className: 'success' }
-        : { text: 'Pudło', className: 'failure' };
+        : attack.evaded
+          ? { text: 'Uniknięty', className: 'failure' }
+          : { text: 'Pudło', className: 'failure' };
 
   return (
     <div className="chat-attack">
@@ -312,34 +248,6 @@ export function AttackRow({
       )}
 
       <div className="chat-attack-actions">
-        {/*
-          `damageNotation` — nie `hit`, nie `area` — jest tu jedynym warunkiem,
-          bo o tym, czy jest co rzucać, rozstrzyga serwer (`ammoDealsDamage`
-          w `realtime/attacks.ts`: „no button, no notation, nothing to apply").
-          Amunicja bez obrażeń z 16h — dym, gaz łzawiący, hukbłyskowa, EMP,
-          usypiająca — trafia i zasnuwa obszar, a rzutu na obrażenia nie ma;
-          przy warunku „trafił albo obszar" karta dymnego granatu wystawiała
-          guzik „Obrażenia" z pustą kością (oględziny 04.09).
-        */}
-        {attack.damageNotation !== undefined && shooter && (
-          <button
-            type="button"
-            className="small-button"
-            disabled={damageBlockedBy !== undefined}
-            title={
-              damageBlockedBy ??
-              (attack.damageMultiplier && attack.damageMultiplier > 1
-                ? `Rzut na obrażenia ${attack.damageNotation} ×${attack.damageMultiplier} — ładuje kubek`
-                : `Rzut na obrażenia ${attack.damageNotation} — ładuje kubek`)
-            }
-            onClick={rollDamage}
-          >
-            Obrażenia{' '}
-            {attack.damageMultiplier && attack.damageMultiplier > 1
-              ? `${attack.damageNotation} ×${attack.damageMultiplier}`
-              : attack.damageNotation}
-          </button>
-        )}
         {!attack.evaded &&
           !attack.noEvade &&
           !damageRolled &&
@@ -389,6 +297,34 @@ export function AttackRow({
       {attack.damageNotation !== undefined && pending.length > 0 && !damageRolled && (
         <p className="chat-attack-detail">
           Obrażenia czekają na decyzję o uniku: {pendingNames.join(', ')}.
+        </p>
+      )}
+      {/*
+        Rzut obrażeń woła kubek strzelca (14.10). Guzik `damageNotation` —
+        nie `hit`, nie `area` — bo o tym, czy jest co rzucać, rozstrzyga serwer
+        (`ammoDealsDamage`): dym czy gaz trafia, a obrażeń nie ma.
+      */}
+      {awaitsMyDamage && (
+        <p className="chat-attack-detail">
+          {cupCalls ? (
+            <>Obrażenia {damageDice} czekają na kubku.</>
+          ) : (
+            <>
+              Obrażenia {damageDice} do rzutu.{' '}
+              <button
+                type="button"
+                className="small-button"
+                title={
+                  leads
+                    ? 'Obrażenia znów czekają na kubku'
+                    : `Rzut za ${shooter?.name ?? 'strzelca'} — ładuje kubek`
+                }
+                onClick={damageToCup}
+              >
+                Na kubek
+              </button>
+            </>
+          )}
         </p>
       )}
       {attack.smart?.requires && (

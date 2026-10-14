@@ -37,6 +37,9 @@ import {
   type PendingRoll,
 } from '../stores/rollStore.js';
 import { useBetweenSessions } from '../session-view.js';
+import { openDamageCallFor } from '../attack-damage-call.js';
+import { useCharacterStore } from '../stores/characterStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 
 interface ShakeSample {
   x: number;
@@ -164,7 +167,14 @@ type CupMode =
    * deklaruje się przed rzutem, a nie po nim. Drugi chwyt — już z załadowanym
    * Testem — rzuca naprawdę.
    */
-  | { kind: 'call'; messageId: number; entry: CheckCallEntry };
+  | { kind: 'call'; messageId: number; entry: CheckCallEntry }
+  /**
+   * Trafienie czeka na rzut obrażeń (14.10, MG) — po rzucie na trafienie
+   * i decyzji o Uniku kubek strzelca sam woła. Bez okna: obrażenia nie mają
+   * Szczęścia ani modyfikatora, więc chwyt od razu potrząsa kubkiem, a `Esc`
+   * odkłada wezwanie (wraca guzikiem „Na kubek" na karcie ataku).
+   */
+  | { kind: 'damage'; messageId: number; pending: PendingRoll };
 
 /** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
 function sheetLabel(pending: PendingRoll): string {
@@ -247,7 +257,11 @@ export function DiceCup() {
   const facedown = useRollStore((s) => s.facedown);
   const creation = useRollStore((s) => s.creation);
   const items = useChatStore((s) => s.items);
-  const myUserId = useAuthStore((s) => s.user?.id ?? '');
+  const user = useAuthStore((s) => s.user);
+  const myUserId = user?.id ?? '';
+  const characters = useCharacterStore((s) => s.characters);
+  const tokens = useTokenStore((s) => s.tokens);
+  const skippedDamageCalls = useRollStore((s) => s.skippedDamageCalls);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   const [shaking, setShaking] = useState(false);
@@ -271,6 +285,10 @@ export function DiceCup() {
     if (grapple) return { kind: 'grapple', pending: grapple };
     if (facedown) return { kind: 'facedown', pending: facedown };
     if (creation) return { kind: 'creation', pending: creation };
+    // Obrażenia za własne trafienie: walka trwa, więc wygrywają z wezwaniem MG,
+    // ale nie z rzutem już wziętym do ręki (ten sam szczebel co wezwanie).
+    const damage = openDamageCallFor(items, user, characters, tokens, skippedDamageCalls);
+    if (damage) return { kind: 'damage', messageId: damage.messageId, pending: damage.pending };
     // Wezwanie wygrywa z formułą w polu czatu, ale przegrywa z każdym rzutem
     // już wziętym do ręki: kto trzyma załadowany kubek, ten go najpierw rzuci.
     const call = openCheckCallFor(items, myUserId);
@@ -301,23 +319,38 @@ export function DiceCup() {
     items,
     myUserId,
     isGm,
+    user,
+    characters,
+    tokens,
+    skippedDamageCalls,
   ]);
   modeRef.current = mode;
   const notificationKey =
     mode.kind === 'call'
       ? `call:${mode.messageId}`
-      : mode.kind === 'sheet' && mode.pending.call
-        ? `call:${mode.pending.call.messageId}`
-        : mode.kind === 'creation' && mode.pending.quiet
-          ? null
-          : 'pending' in mode
-            ? `${mode.kind}:${JSON.stringify(mode.pending)}`
-            : mode.kind === 'roll' || mode.kind === 'randtable'
-              ? mode.kind
-              : null;
+      : mode.kind === 'damage'
+        ? `call:damage:${mode.messageId}`
+        : mode.kind === 'sheet' && mode.pending.call
+          ? `call:${mode.pending.call.messageId}`
+          : mode.kind === 'creation' && mode.pending.quiet
+            ? null
+            : 'pending' in mode
+              ? `${mode.kind}:${JSON.stringify(mode.pending)}`
+              : mode.kind === 'roll' || mode.kind === 'randtable'
+                ? mode.kind
+                : null;
   useCupNotification(synced && campaign ? notificationKey : null, campaign?.id ?? null);
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
+  const damageCallId = mode.kind === 'damage' ? mode.messageId : null;
+  useEffect(() => {
+    if (damageCallId === null || shaking) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') useRollStore.getState().skipDamageCall(damageCallId);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [damageCallId, shaking]);
   useEffect(() => {
     if (
       (!pending && !initiative && !attack && !evasion && !grapple && !facedown && !creation) ||
@@ -373,7 +406,7 @@ export function DiceCup() {
       const toss = tossFromRecent(recent, now);
 
       const current = modeRef.current;
-      if (current.kind === 'sheet') {
+      if (current.kind === 'sheet' || current.kind === 'damage') {
         const { pending: loaded } = current;
         lastFunNotation = '1d10';
         useRollStore.getState().clearCup();
@@ -558,7 +591,7 @@ export function DiceCup() {
   const modeClass =
     mode.kind === 'call'
       ? ' dice-cup--call'
-      : mode.kind === 'attack'
+      : mode.kind === 'attack' || mode.kind === 'damage'
         ? ' dice-cup--attack'
         : mode.kind === 'creation'
           ? ' dice-cup--creation'
@@ -580,25 +613,27 @@ export function DiceCup() {
   const title =
     mode.kind === 'call'
       ? `Wezwanie od ${mode.entry.calledByName}: ${callLabel(mode.entry)} — kliknij, żeby wziąć kubek`
-      : mode.kind === 'creation'
-        ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada kubek`
-        : mode.kind === 'attack'
-          ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
-          : mode.kind === 'evasion'
-            ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-            : mode.kind === 'grapple' || mode.kind === 'facedown'
+      : mode.kind === 'damage'
+        ? `Trafienie! Potrząśnij i rzuć: ${mode.pending.characterName} — ${mode.pending.title} · Esc odkłada rzut`
+        : mode.kind === 'creation'
+          ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada kubek`
+          : mode.kind === 'attack'
+            ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
+            : mode.kind === 'evasion'
               ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-              : mode.kind === 'initiative'
-                ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
-                : mode.kind === 'sheet'
-                  ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
-                      mode.pending.visibility === 'gm' ? ' (do MG)' : ''
-                    } · Esc odkłada rzut`
-                  : mode.kind === 'roll'
-                    ? `Potrząśnij i rzuć: ${displayDiceNotation(mode.notation)}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
-                    : mode.kind === 'randtable'
-                      ? `Potrząśnij i losuj z tabeli: ${mode.tableName}`
-                      : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+              : mode.kind === 'grapple' || mode.kind === 'facedown'
+                ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
+                : mode.kind === 'initiative'
+                  ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
+                  : mode.kind === 'sheet'
+                    ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
+                        mode.pending.visibility === 'gm' ? ' (do MG)' : ''
+                      } · Esc odkłada rzut`
+                    : mode.kind === 'roll'
+                      ? `Potrząśnij i rzuć: ${displayDiceNotation(mode.notation)}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
+                      : mode.kind === 'randtable'
+                        ? `Potrząśnij i losuj z tabeli: ${mode.tableName}`
+                        : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
     <div
@@ -630,6 +665,7 @@ export function DiceCup() {
         <span className="dice-cup-label">{displayDiceNotation(mode.notation)}</span>
       )}
       {mode.kind === 'randtable' && <span className="dice-cup-label">🎲 {mode.tableName}</span>}
+      {mode.kind === 'damage' && <span className="dice-cup-label">{mode.pending.title}</span>}
       {(mode.kind === 'attack' ||
         mode.kind === 'evasion' ||
         mode.kind === 'grapple' ||

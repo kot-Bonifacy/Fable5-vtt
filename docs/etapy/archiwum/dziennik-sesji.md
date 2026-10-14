@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 10/11.10 (po `6b24ee1`) — etap 50b: MG prowadzi figurę w turze
+
+**Decyzje MG (pytania na starcie):** blokada klikania od rundy 1, kamera na NPC-u w turze zawsze
+centruje, w turze gracza pasek MG pokazuje figurę gracza w podglądzie, kafel pasa bierze figurę
+tylko u MG. Zapisane w `etap-50-walka-wzorem-foundry.md` (z odstępstwami).
+
+**Zrobione:** `combat-steer.ts` (reguła: `gmSteerLocked`, `isTurnNpc`, `gmTurnSteer`,
+`isTurnChangeInFight`) + `combat-steer.test.ts`; `MapRenderer.steerLock` — klik MG w inną figurę
+w walce to podgląd albo cel bez `Alt` rozstrzygany przy puszczeniu (`endDrag`), `frameToken`
+(kadr na środek); `MapArea` przejmuje NPC-a przy zmianie tury; `takeFigure` w `hud.ts` (kafel
+pasa w `CombatBar`, „🕹 Prowadź tę figurę” w `TokenContextMenu`); podpowiedzi w `shortcuts.ts`.
+**Poza planem:** `clicked` z `pixi-viewport` dla prawego przycisku wysyłał figurę marszem na pole
+figury z menu — klik w mapę to teraz tylko lewy przycisk (pułapka w `mapa`, test w
+`map-click.test.ts`). E2E: `takeFigure`, `armFirstWeapon` (`fixtures/walka.ts`), `fitCamera`
+najpierw centruje scenę (`panSceneCentre`), T5b przepięty. Umowa w `tura`, pułapka w `testy`.
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Sesja 10.10 urwała się przed
+domknięciem (bez notatki i commitu, zdublowany wiersz 50b w tabeli etapów) — domknięta 11.10.
+Oględziny 10.10 w Firefoksie (Playwright MCP) — z nich wyszedł błąd prawego kliku; szczegóły
+przebiegu oględzin nie zostały zapisane. **Ślady w `dev.db`:** nieznane (notatka urwana).
+**11.10 (domknięcie):** T6a 6.2 przepięty pod półkę Kompendium z `bcc3716` (gracz nie widzi Ronina; odmowa `SHOP_TIER_LOCKED` z gniazda zostaje).
+
 ### Sesja 10.10 (po `3bd49b3`) — etap 50a: starcie wzorem Foundry
 
 **Zlecenie MG:** zmienić rozpoczynanie walki wzorem Foundry VTT, bo MG myli się, sterując

@@ -514,10 +514,18 @@ export function namedCriticalInjuryRow(entry: CriticalInjuryEntry): CpredCritica
   return { ...row, assigned: true };
 }
 
-/** „Poważnie ranny → Śmiertelnie ranny" for the chat card. */
-export function woundTransitionLabel(outcome: CpredDamageOutcome): string | null {
+/**
+ * „Teraz śmiertelnie ranny" for the chat card — the state the hit left behind.
+ *
+ * Until 14.10 the badge read „Bez ran → Lekko ranny": two states glued by an
+ * arrow, which on a damage card reads as if the target had been healthy *after*
+ * the hit (MG). The card already says what happened; the badge names the result.
+ */
+export function woundTransitionLabel(
+  outcome: Pick<CpredDamageOutcome, 'woundBefore' | 'woundAfter'>,
+): string | null {
   if (outcome.woundBefore === outcome.woundAfter) return null;
-  return `${CPRED_WOUND_LABELS[outcome.woundBefore]} → ${CPRED_WOUND_LABELS[outcome.woundAfter]}`;
+  return `Teraz ${CPRED_WOUND_LABELS[outcome.woundAfter].toLowerCase()}`;
 }
 
 /** Hit-location label used on cards and buttons ("Głowa"). */

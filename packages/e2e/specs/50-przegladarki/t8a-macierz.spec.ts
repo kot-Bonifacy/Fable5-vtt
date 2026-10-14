@@ -28,6 +28,7 @@ import {
   sumOf,
   token,
   beginFight,
+  damageToCup,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -216,11 +217,7 @@ for (const layout of LAYOUTS) {
       const hpBefore = sheet<{ hpCurrent: number }>('Zbir').hpCurrent;
       scriptDice([5, 4, 3, 2]);
       before = lastMessageId();
-      await marek.page
-        .locator('.chat-message', { hasText: 'Bardzo ciężki pistolet → Zbir' })
-        .last()
-        .getByRole('button', { name: /^Obrażenia/ })
-        .click();
+      await damageToCup(marek.page, 'Bardzo ciężki pistolet → Zbir');
       await rollAndWait(marek, before, 'Bardzo ciężki pistolet — obrażenia');
       await expect.poll(() => sheet<{ hpCurrent: number }>('Zbir').hpCurrent).toBe(hpBefore - 3);
       await settledWithoutApply(mg, 'Bardzo ciężki pistolet — obrażenia');

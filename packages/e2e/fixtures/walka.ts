@@ -289,6 +289,33 @@ export function chatCards(page: Page, title: string) {
   return page.locator('.chat-message', { hasText: new RegExp(escaped) });
 }
 
+/** Czy kubek tej strony trzyma albo woła rzut obrażeń (tytuł kubka z „— obrażenia"). */
+export async function cupHoldsDamage(page: Page): Promise<boolean> {
+  return /— obrażenia/.test((await page.locator('.dice-cup').getAttribute('title')) ?? '');
+}
+
+/**
+ * Obrażenia za kartę ataku do kubka (14.10, MG): kubek tego, kto prowadzi
+ * strzelca, woła o nie sam; każdy inny uprawniony bierze je guzikiem „Na kubek”
+ * z karty. Zwraca drogę, którą poszły — po niej #38 sprawdza, kto prowadzi.
+ */
+export async function damageToCup(page: Page, attackTitle: string): Promise<'cup' | 'button'> {
+  const toCup = chatCards(page, attackTitle).last().getByRole('button', { name: 'Na kubek' });
+  let via: 'cup' | 'button' | null = null;
+  await expect
+    .poll(
+      async () => {
+        via = (await cupHoldsDamage(page)) ? 'cup' : (await toCup.count()) > 0 ? 'button' : null;
+        return via;
+      },
+      { timeout: 20_000, message: `obrażenia do kubka: ${attackTitle}` },
+    )
+    .not.toBeNull();
+  if (via === 'button') await toCup.click();
+  await expect.poll(() => cupHoldsDamage(page)).toBe(true);
+  return via!;
+}
+
 /**
  * Karta, która pojawiła się po `seen` kartach o tym tytule. Klient wstrzymuje nową
  * kartę do końca animacji kości, a do tej chwili „ostatnia” to stara karta — jej

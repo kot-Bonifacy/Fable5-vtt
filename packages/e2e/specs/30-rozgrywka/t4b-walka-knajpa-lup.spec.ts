@@ -38,6 +38,7 @@ import {
   token,
   tokens,
   zoomAt,
+  damageToCup,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -249,10 +250,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     scriptDice([6, 6, 1, 1, 3, 4]);
     before = lastMessageId();
     const seenHead = await chatCards(page, 'obrażenia (Głowa)').count();
-    await chatCards(page, 'Bardzo ciężki pistolet → Kowal')
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(page, 'Bardzo ciężki pistolet → Kowal');
     cienDamageId = await rollAndWait(mg, before, 'obrażenia (Głowa)');
     // Rozliczenie samo, bez „Zastosuj” (decyzja MG z 03.10).
     await freshCard(page, 'obrażenia (Głowa)', seenHead);
@@ -380,10 +378,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await noDodge(mg, throwId, 'Granat odłamkowy → wybrane pole');
     scriptDice([6, 6, 5, 5, 4, 2, 4, 5, 4, 5]);
     before = lastMessageId();
-    await chatCards(page, 'Granat odłamkowy → wybrane pole')
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(page, 'Granat odłamkowy → wybrane pole');
     await rollAndWait(marek, before, 'Granat odłamkowy — obrażenia');
     // Granat rozlicza się sam na każdym, kogo dosięgnął (03.10) — bez „Zastosuj wszystkim”.
     await expect.poll(() => sheet<Sheet>('Zbir 2').hpCurrent).toBe(3);
@@ -451,10 +446,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     scriptDice([6, 6, 4, 5]);
     const damageBefore = lastMessageId();
     const seenPunch = await chatCards(mg.page, 'Bijatyka — obrażenia').count();
-    await chatCards(page, 'Bijatyka → Rzeźnik')
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(page, 'Bijatyka → Rzeźnik');
     const damageId = await rollAndWait(ola, damageBefore, 'Bijatyka — obrażenia');
     const rolled = rollById(damageId).total;
     await freshCard(mg.page, 'Bijatyka — obrażenia', seenPunch);
@@ -512,10 +504,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     scriptDice([2, 2, 1]);
     before = lastMessageId();
     const seenBody = await chatCards(mg.page, 'Ciężki pistolet — obrażenia (Korpus)').count();
-    await chatCards(mg.page, 'Ciężki pistolet → Iskra')
-      .last()
-      .getByRole('button', { name: /^Obrażenia/ })
-      .click();
+    await damageToCup(mg.page, 'Ciężki pistolet → Iskra');
     await rollAndWait(mg, before, 'obrażenia');
     // Nowa karta, nie „ostatnia”: klient pokazuje ją dopiero po animacji kości. Rozlicza
     // się sama (03.10).
@@ -877,7 +866,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     const shot = messageAfter(0, 'Bardzo ciężki pistolet → Kowal')!;
     const onOlaScreen = await chatCards(ola.page, 'Bardzo ciężki pistolet → Kowal')
       .last()
-      .getByRole('button', { name: /^Obrażenia/ })
+      .getByRole('button', { name: 'Na kubek' })
       .count();
     const before = lastMessageId();
     const answer = await emitAck(await ola.socket(), 'character:roll', {
@@ -886,7 +875,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
       visibility: 'public',
     });
     test.info().annotations.push(
-      { type: '„Obrażenia” u Oli na strzale Cienia', description: String(onOlaScreen) },
+      { type: '„Na kubek” u Oli na strzale Cienia', description: String(onOlaScreen) },
       { type: 'rzut obrażeń Cienia z karty Iskry', description: JSON.stringify(answer) },
       {
         type: 'id wiersza pistoletu u Iskry',

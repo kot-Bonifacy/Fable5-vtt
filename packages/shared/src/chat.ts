@@ -231,7 +231,7 @@ export interface DamageLogEntry {
   hp?: { before: number; after: number; max: number };
   /** Ablated armor piece, when one was hit. */
   armor?: { rowId: string; name: string; before: number; after: number };
-  /** Wound state change, e.g. „Poważnie ranny → Śmiertelnie ranny". */
+  /** Wound state the hit left, e.g. „Teraz śmiertelnie ranny" (`woundTransitionLabel`). */
   woundLabel?: string;
   /** Critical injury drawn from the table (2d6). */
   injury?: { id: string; name: string; effect: string; rolled: number };
