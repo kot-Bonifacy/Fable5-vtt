@@ -71,6 +71,7 @@ export function toLightScene(scene: Scene): Pick<SceneView, 'grid' | 'metersPerS
       color: scene.gridColor,
       alpha: scene.gridAlpha,
       visible: scene.gridVisible,
+      players: scene.gridPlayers,
     },
     metersPerSquare: scene.metersPerSquare,
   };

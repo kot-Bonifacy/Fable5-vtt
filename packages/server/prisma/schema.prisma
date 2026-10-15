@@ -742,6 +742,8 @@ model Scene {
   gridColor       String  @default("#000000")
   gridAlpha       Float   @default(0.35)
   gridVisible     Boolean @default(true)
+  /** Players see the grid too (15.10.2026) — opt-in: by default only the GM does. */
+  gridPlayers     Boolean @default(false)
   /** CP RED default: one square = 2 m — basis for ruler and DV (stage 15). */
   metersPerSquare Float   @default(2)
 

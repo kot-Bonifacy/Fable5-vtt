@@ -235,6 +235,7 @@ function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
       color: scene.gridColor,
       alpha: scene.gridAlpha,
       visible: scene.gridVisible,
+      players: scene.gridPlayers,
     },
   };
 }

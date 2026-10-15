@@ -13,7 +13,15 @@ import { CPRED_OBSCUREMENT_KIND, cpredSmokeModifiers } from './systems/cpred/env
 
 /** 50 px squares, 2 m each — the project's default scale. */
 const scene: SmokeScene = {
-  grid: { sizePx: 50, offsetX: 0, offsetY: 0, color: '#fff', alpha: 1, visible: true },
+  grid: {
+    sizePx: 50,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#fff',
+    alpha: 1,
+    visible: true,
+    players: false,
+  },
   metersPerSquare: 2,
 };
 

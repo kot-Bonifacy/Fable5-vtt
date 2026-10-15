@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 11.10 (po `0b30823`) — etap 50c: trwały cel figury
+
+**Decyzje MG (pytania na starcie):** cel należy do figury-strzelca (nie do konta), jeden na
+figurę, zostaje po strzale; stół widzi go **istniejącym grotem** strzelca, bez nowego znacznika
+na celu (kolory obwódek wystarczą). Zapisane w `etap-50-walka-wzorem-foundry.md` (z odstępstwami).
+
+**Zrobione:** shared — `TokenTargetPayload`/`View`/`Broadcast`, `targets` w `StateSyncPayload`.
+Serwer — `realtime/target.ts` (`token:target`, pamięć `liveTargets`, widownia przez nowe
+`sceneAudience` wydzielone z `aim.ts`), zejście w `combat:end`, `scene:activate` i przy
+kasowaniu figury, `targets` w `state:sync`. Klient — `stores/targetStore.ts` (`nextTarget`,
+`targetOf`), `toggleTarget` i `fireAtStandingTarget` w `hud.ts`, `T` w `MapArea`
+(`tokenUnderPointer`), podwójny prawy klik w `TokenContextMenu` (`useDoubleRightTarget`),
+`MapRenderer.setTargets` / `applyTargetFacings` / `restFacingOf`, narożniki celu prowadzonej
+figury, wpisy w `shortcuts.ts`. **Poza planem (oględziny):** narożniki celownika od `outerRadius`
+(siadały na obrączce PW). Umowa w `tura`, pułapki w `mapa` i `testy` (Python i CRLF).
+
+**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
+MCP, MG, „Test_1”, scena „Test_2”, trzy figury tymczasowe): `T` nad celem → grot strzelca na
+celu, narożniki po zaznaczeniu strzelca, F5 przywraca cel z migawki; podwójny prawy klik
+(Korpogliniarz z kartą) → cel; klik „Ciężki pistolet” w ręku → kubek „→ Cel 50c · 17 m · PT 20”
+z oknem Celowania przy celu; przesunięcie celu → groty i narożniki za nim; `T` na własnej figurze
+zdejmuje cel; skasowanie figur czyści cele. Widoku gracza w drugiej przeglądarce nie oglądano
+(Chromium MCP siedzi w innej kampanii, między sesjami) — izolację pilnują testy serwera.
+**Ślady w `dev.db`:** brak (figury skasowane, kubek odłożony, karta Korpogliniarza 4 nietknięta).
+
 ### Sesja 10/11.10 (po `6b24ee1`) — etap 50b: MG prowadzi figurę w turze
 
 **Decyzje MG (pytania na starcie):** blokada klikania od rundy 1, kamera na NPC-u w turze zawsze

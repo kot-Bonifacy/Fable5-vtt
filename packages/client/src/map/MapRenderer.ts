@@ -107,7 +107,7 @@ import {
   noseLength,
   nosePolygon,
 } from './token-ring.js';
-import { gridLinePositions, gridStrokes } from './grid-style.js';
+import { gridLinePositions, gridShownTo, gridStrokes } from './grid-style.js';
 import { playStepSound } from '../sfx.js';
 import { PLAYER_MOVE_STOP_NOTE } from './player-move.js';
 
@@ -7674,7 +7674,9 @@ export class MapRenderer {
 
   private drawGrid(scene: SceneView): void {
     this.grid.clear();
-    if (!this.viewerIsGm || scene.gridMode === 'gridless' || !scene.grid.visible) return;
+    // Gracz widzi siatkę tylko wtedy, gdy MG ją dla niego włączy (15.10);
+    // kontrast edytora jest wyłącznie MG, bo edytor otwiera tylko MG.
+    if (!gridShownTo(scene, this.viewerIsGm)) return;
     const size = scene.grid.sizePx;
     if (size < 4) return;
 
@@ -7685,7 +7687,11 @@ export class MapRenderer {
     // Linie na brzegu mapy odpadają: to ramka, nie kratka (patrz `gridLinePositions`).
     const columns = gridLinePositions(offsetX, size, scene.width);
     const rows = gridLinePositions(offsetY, size, scene.height);
-    for (const stroke of gridStrokes(scene.grid, this.gridContrast, this.overlayScale())) {
+    for (const stroke of gridStrokes(
+      scene.grid,
+      this.gridContrast && this.viewerIsGm,
+      this.overlayScale(),
+    )) {
       for (const x of columns) this.grid.moveTo(x, 0).lineTo(x, scene.height);
       for (const y of rows) this.grid.moveTo(0, y).lineTo(scene.width, y);
       // pixelLine keeps the grid crisp at 1 device pixel across zoom levels;

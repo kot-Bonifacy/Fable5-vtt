@@ -71,6 +71,7 @@ function cellPxOf(scene: Scene): number {
       color: scene.gridColor,
       alpha: scene.gridAlpha,
       visible: scene.gridVisible,
+      players: scene.gridPlayers,
     },
   });
 }

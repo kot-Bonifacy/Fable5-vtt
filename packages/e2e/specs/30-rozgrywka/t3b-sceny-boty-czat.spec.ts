@@ -128,7 +128,9 @@ async function createScene(
   const editor = await openSceneEditor(page, name);
   await editor.locator('.scene-upload-button input[type=file]').setInputFiles(material(map.file));
   await expect(editor.getByText(new RegExp(`^${map.width}×\\d+ px$`))).toBeVisible();
+  await editor.getByRole('tab', { name: 'Siatka' }).click();
   await editor.locator('#grid-columns').fill(String(map.columns));
+  await editor.getByRole('tab', { name: 'Widoczność' }).click();
   await editor.locator('#scene-visibility').selectOption(visibility);
   await expect(editor.locator('#scene-visibility')).toHaveValue(visibility);
   return editor;

@@ -240,7 +240,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 64   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 31   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 32   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 15   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 43   | 8       |
@@ -260,6 +260,32 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.10 (po `7c9cbc7`) — okno „Edycja sceny” i siatka dla graczy
+
+**Zlecenie MG:** zdanie „Siatka wygląda teraz tak, jak zobaczą ją gracze.” myliło (gracze siatki
+nie widzą); siatka ma być domyślnie niewidoczna dla graczy, chyba że MG ją włączy; okno edycji
+sceny ma być bardziej intuicyjne i lepiej zorganizowane (wzór: Foundry).
+
+**Zrobione:** edytor spod listy scen zastąpiło pływające okno `SceneConfigWindow` z zakładkami
+**Mapa** (nazwa, podgląd obrazu, wgraj/usuń), **Siatka** (Skala: kratek w poziomie, rozmiar,
+„kratka to … m” — **widoczna też bez kratek**, bo linijka z niej liczy; Ruch figur: „Po kratkach
+/ Swobodnie”; Wyrównanie; „Kto widzi siatkę: Nikt / Tylko MG / MG i gracze”, kolor i krycie,
+kontrast na czas edycji) i **Widoczność** (tryb, ciemność, pamięć eksploracji — z napisem, że
+działa od razu, bez „Zapisz”). Kropka „•” na zakładce z niezapisanymi zmianami, stopka „Zapisz”
+nie odjeżdża, wyjaśnienia w `title`. Nowa kolumna `Scene.gridPlayers` (migracja
+`20261015120000_grid_players`, domyślnie `false`) → `GridConfig.players`, eksport/import
+w `archive.ts`; renderer pyta `gridShownTo` (`map/grid-style.ts`, testy). Umowy w `mapa`
+(zastępuje „Siatka wyłącznie dla MG”) i `ui`. E2E T3b, T9a, T8c klikają zakładkę przed polem.
+
+**Weryfikacja:** vitest shared 2452, client 358, server 1442 (pierwszy przebieg serwera zwrócił
+błąd przy zielonych testach, drugi czysty); `tsc` i ESLint zmienionych plików czyste. E2E:
+`t8c-mapa` + `t45` 15/15. **T3b i T9a (też przepięte) nieprzepuszczone** — długi łańcuch.
+Oglądane w **Firefoksie** (Playwright MCP, MG, Test_1 / Test_2: trzy zakładki, położenie okna
+przy prawym brzegu mapy) i jako gracz Bartek w **Chromium** (biblioteka `playwright`, czysty
+kontekst, link odnowienia): „MG i gracze” — siatka tylko w odsłoniętej części, „Tylko MG” — brak.
+**Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”); w Test_1 jedna krótka sesja
+(18:50–18:51) i zużyty link odnowienia Bartka (inne urządzenia Bartka zostają zalogowane).
 
 ### Sesja 14.10 (po `2f8350c`) — komunikaty walki i rzut obrażeń z kubka
 
@@ -283,28 +309,3 @@ i odwrotnie), T4a + T4b 33/33 (z `po-T3`; `po-T4a` i `po-T4` odbudowane). **T5b 
 startu — wymaga działającego AI Gateway**, którego nie było; przepięcie #38 i strzałów wieżyczki
 niesprawdzone przebiegiem. Wygląd kubka w trybie obrażeń oglądany tylko przez E2E (bez zrzutu).
 **Ślady w `dev.db`:** brak (tylko instancja E2E).
-
-### Sesja 11.10 (po `0b30823`) — etap 50c: trwały cel figury
-
-**Decyzje MG (pytania na starcie):** cel należy do figury-strzelca (nie do konta), jeden na
-figurę, zostaje po strzale; stół widzi go **istniejącym grotem** strzelca, bez nowego znacznika
-na celu (kolory obwódek wystarczą). Zapisane w `etap-50-walka-wzorem-foundry.md` (z odstępstwami).
-
-**Zrobione:** shared — `TokenTargetPayload`/`View`/`Broadcast`, `targets` w `StateSyncPayload`.
-Serwer — `realtime/target.ts` (`token:target`, pamięć `liveTargets`, widownia przez nowe
-`sceneAudience` wydzielone z `aim.ts`), zejście w `combat:end`, `scene:activate` i przy
-kasowaniu figury, `targets` w `state:sync`. Klient — `stores/targetStore.ts` (`nextTarget`,
-`targetOf`), `toggleTarget` i `fireAtStandingTarget` w `hud.ts`, `T` w `MapArea`
-(`tokenUnderPointer`), podwójny prawy klik w `TokenContextMenu` (`useDoubleRightTarget`),
-`MapRenderer.setTargets` / `applyTargetFacings` / `restFacingOf`, narożniki celu prowadzonej
-figury, wpisy w `shortcuts.ts`. **Poza planem (oględziny):** narożniki celownika od `outerRadius`
-(siadały na obrączce PW). Umowa w `tura`, pułapki w `mapa` i `testy` (Python i CRLF).
-
-**Weryfikacja:** patrz „Testy na koniec ostatniej sesji”. Oglądane w **Firefoksie** (Playwright
-MCP, MG, „Test_1”, scena „Test_2”, trzy figury tymczasowe): `T` nad celem → grot strzelca na
-celu, narożniki po zaznaczeniu strzelca, F5 przywraca cel z migawki; podwójny prawy klik
-(Korpogliniarz z kartą) → cel; klik „Ciężki pistolet” w ręku → kubek „→ Cel 50c · 17 m · PT 20”
-z oknem Celowania przy celu; przesunięcie celu → groty i narożniki za nim; `T` na własnej figurze
-zdejmuje cel; skasowanie figur czyści cele. Widoku gracza w drugiej przeglądarce nie oglądano
-(Chromium MCP siedzi w innej kampanii, między sesjami) — izolację pilnują testy serwera.
-**Ślady w `dev.db`:** brak (figury skasowane, kubek odłożony, karta Korpogliniarza 4 nietknięta).

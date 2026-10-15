@@ -5,8 +5,9 @@
  * rozjazd, zanim aktywuje scenę. Na ciemnej mapie domyślna czarna kreska
  * z kryciem 35% — do tego pod mgłą, którą MG widzi przyciemnioną — praktycznie
  * znika. Dlatego przy otwartym edytorze sceny siatka dostaje obwódkę w kolorze
- * przeciwnym do własnego i pełne krycie: czytelna na każdej mapie. Gracze
- * widzą ją zawsze taką, jaką MG zapisał — ten tryb nie wychodzi poza kartę MG.
+ * przeciwnym do własnego i pełne krycie: czytelna na każdej mapie. Gracze —
+ * jeśli MG w ogóle im ją pokazuje — widzą ją zawsze taką, jaką MG zapisał:
+ * ten tryb nie wychodzi poza kartę MG.
  *
  * Czysta funkcja, bo to ona rozstrzyga, jak siatka wygląda; renderer tylko
  * przekłada wynik na `Graphics.stroke`.
@@ -17,6 +18,19 @@ export interface GridStroke {
   alpha: number;
   /** Grubość w pikselach świata; brak = kreska jednego piksela ekranu. */
   width?: number;
+}
+
+/**
+ * Czy ten widz w ogóle dostaje siatkę (15.10.2026). Scena bez kratek nie ma
+ * czego rysować; „Nikt” (`visible: false`) gasi ją wszystkim; gracz widzi ją
+ * tylko wtedy, gdy MG wybrał „MG i gracze” (`players`) — domyślnie nie.
+ */
+export function gridShownTo(
+  scene: { gridMode: 'grid' | 'gridless'; grid: { visible: boolean; players: boolean } },
+  viewerIsGm: boolean,
+): boolean {
+  if (scene.gridMode === 'gridless' || !scene.grid.visible) return false;
+  return viewerIsGm || scene.grid.players;
 }
 
 /** Grubość obwódki kontrastowej, w pikselach EKRANU. */

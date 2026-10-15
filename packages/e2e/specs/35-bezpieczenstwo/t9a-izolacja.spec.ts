@@ -303,8 +303,10 @@ test.describe
       .locator('.scene-upload-button input[type=file]')
       .setInputFiles(material(MAP_B.file));
     await expect(editor.getByText(new RegExp(`^${MAP_B.width}×\\d+ px$`))).toBeVisible();
+    await editor.getByRole('tab', { name: 'Siatka' }).click();
     await editor.locator('#grid-columns').fill(String(MAP_B.columns));
     // Od etapu 45 nowa scena startuje w Dynamicznej; T9b liczy na ręczną mgłę.
+    await editor.getByRole('tab', { name: 'Widoczność' }).click();
     await editor.locator('#scene-visibility').selectOption('fog');
     await editor.getByRole('button', { name: 'Zapisz' }).click();
     await expect(editor).toBeHidden();

@@ -15,7 +15,15 @@ import {
 
 /** 50 px per square, 2 m per square — so 25 px per metre. */
 const SCENE: AreaScene = {
-  grid: { sizePx: 50, offsetX: 0, offsetY: 0, color: '#fff', alpha: 1, visible: true },
+  grid: {
+    sizePx: 50,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#fff',
+    alpha: 1,
+    visible: true,
+    players: false,
+  },
   metersPerSquare: 2,
 };
 

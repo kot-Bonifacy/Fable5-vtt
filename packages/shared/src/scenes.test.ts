@@ -95,6 +95,11 @@ describe('sanitizeScenePatch', () => {
     });
   });
 
+  it('keeps the players switch only as a boolean', () => {
+    expect(sanitizeScenePatch({ grid: { players: true } })).toEqual({ grid: { players: true } });
+    expect(sanitizeScenePatch({ grid: { players: 'yes' } })).toEqual({});
+  });
+
   it('drops an all-invalid grid patch entirely', () => {
     expect(sanitizeScenePatch({ grid: { color: 'red' } })).toEqual({});
   });

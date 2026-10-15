@@ -22,7 +22,15 @@ const GRID: WalkGrid = { cell: 100, originX: 0, originY: 0, cols: 10, rows: 10 }
 
 /** Scene numbers for the metre arithmetic: one 100 px square is 2 m (CP RED). */
 const SCENE = {
-  grid: { sizePx: 100, offsetX: 0, offsetY: 0, color: '#334155', alpha: 0.3, visible: true },
+  grid: {
+    sizePx: 100,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#334155',
+    alpha: 0.3,
+    visible: true,
+    players: false,
+  },
   metersPerSquare: 2,
 };
 

@@ -899,3 +899,138 @@
 .character-new {
   margin-bottom: 0.4rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Okno „Edycja sceny” (15.10.2026)
+
+   Chrom okna ustawień (belka, zakładki, ciało, ✕, uchwyt) plus stała stopka
+   z „Zapisz”, która nie odjeżdża przy przewijaniu długiej zakładki „Siatka”.
+   Wybór kilku wartości to `.scene-seg` — jeden rząd, aktywna wartość
+   w kolorze akcentu, podpowiedź w `title`.
+   --------------------------------------------------------------------------- */
+
+.scene-config-window {
+  width: min(420px, calc(100vw - 24px));
+}
+
+.settings-window-title.scene-config-title {
+  margin: 0;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-config-window .settings-window-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.scene-config-dirty {
+  margin-left: 0.25rem;
+  color: var(--accent);
+}
+
+.scene-config-grow {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+/* W rzędzie z guzikiem obok („Zapomnij”) pole rośnie, ale nie spycha guzika. */
+.scene-editor-row > .scene-config-grow {
+  width: auto;
+}
+
+.scene-config-window .settings-row input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.scene-config-unit {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.scene-config-value {
+  flex: 0 0 3.2rem;
+}
+
+.scene-config-warn {
+  color: var(--warn);
+}
+
+.scene-config-look {
+  margin-top: 0.4rem;
+}
+
+.scene-config-map {
+  margin: 0 0 0.5rem;
+}
+
+.scene-config-map img {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.scene-config-map figcaption {
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.scene-config-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.scene-config-footer .auth-error {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.scene-seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.scene-seg-option {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.38rem 0.4rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.scene-seg-option + .scene-seg-option {
+  border-left: 1px solid var(--border);
+}
+
+.scene-seg-option:hover:not(.is-active) {
+  color: var(--text);
+}
+
+.scene-seg-option.is-active {
+  background: rgb(var(--accent-rgb) / 14%);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}

@@ -41,7 +41,15 @@ const SCENE: SceneView = {
   width: 4000,
   height: 3000,
   gridMode: 'grid',
-  grid: { sizePx: 100, offsetX: 0, offsetY: 0, color: '#ffffff', alpha: 0.2, visible: true },
+  grid: {
+    sizePx: 100,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#ffffff',
+    alpha: 0.2,
+    visible: true,
+    players: false,
+  },
   playerMove: 'free',
   // Kratka 100 px = 2 m, czyli skala Poligonu.
   metersPerSquare: 2,

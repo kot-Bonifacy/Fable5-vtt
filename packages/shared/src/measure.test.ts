@@ -15,7 +15,15 @@ import {
 
 /** A 100 px grid at the CP RED default of 2 m per square: 1 px = 2 cm. */
 const scene = {
-  grid: { sizePx: 100, offsetX: 0, offsetY: 0, color: '#fff', alpha: 1, visible: true },
+  grid: {
+    sizePx: 100,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#fff',
+    alpha: 1,
+    visible: true,
+    players: false,
+  },
   metersPerSquare: 2,
 };
 

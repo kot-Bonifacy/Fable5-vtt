@@ -31,6 +31,12 @@ interface SceneStoreState {
    */
   gridContrast: boolean;
   setGridContrast: (on: boolean) => void;
+  /**
+   * Okno „Edycja sceny” (MG, 15.10) — pływa nad stołem, więc żyje w magazynie,
+   * a nie w panelu „Sceny”: zmiana zakładki bocznego panelu go nie zamyka.
+   */
+  editorOpen: boolean;
+  setEditorOpen: (open: boolean) => void;
 
   applySync: (payload: StateSyncPayload) => void;
   /** Replaces the viewed scene (activation for players, scene:view for GM). */
@@ -64,6 +70,7 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   draft: null,
   effectiveScene: null,
   gridContrast: false,
+  editorOpen: false,
 
   applySync: (payload) =>
     set((state) => ({
@@ -108,6 +115,8 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   setScenes: (scenes) => set({ scenes }),
 
   setGridContrast: (gridContrast) => set({ gridContrast }),
+
+  setEditorOpen: (editorOpen) => set({ editorOpen }),
 
   setDraft: (draft) => set((state) => withEffective({ scene: state.scene, draft })),
 

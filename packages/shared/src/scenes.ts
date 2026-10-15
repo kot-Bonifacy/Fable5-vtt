@@ -32,7 +32,14 @@ export interface GridConfig {
   color: string;
   /** Line opacity 0..1. */
   alpha: number;
+  /** The GM sees the grid. Off = nobody does (movement still snaps to it). */
   visible: boolean;
+  /**
+   * Players see it too (15.10.2026). Opt-in, because a grid over a painted map
+   * reads as a work tool — and only together with `visible`: a grid the GM
+   * cannot see is never drawn for the table.
+   */
+  players: boolean;
 }
 
 export interface SceneBackground {
@@ -253,6 +260,7 @@ export const DEFAULT_GRID: GridConfig = {
   color: '#000000',
   alpha: 0.35,
   visible: true,
+  players: false,
 };
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -368,6 +376,7 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
     }
     if (isFiniteNumber(grid.alpha)) gridPatch.alpha = clamp(grid.alpha, 0, 1);
     if (typeof grid.visible === 'boolean') gridPatch.visible = grid.visible;
+    if (typeof grid.players === 'boolean') gridPatch.players = grid.players;
     if (Object.keys(gridPatch).length > 0) patch.grid = gridPatch;
   }
 

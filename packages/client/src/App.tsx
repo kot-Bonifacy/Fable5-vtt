@@ -19,6 +19,7 @@ import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { NpcCreateWindow } from './components/NpcCreateWindow.js';
 import { ClockWindow } from './components/ClockWindow.js';
+import { SceneConfigWindow } from './components/SceneConfigWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { OwnerAiWindow } from './components/OwnerAi.js';
 import { useSceneAmbience } from './components/SceneAmbience.js';
@@ -139,6 +140,7 @@ function GameView() {
       <SettingsWindow />
       <OwnerAiWindow />
       <ClockWindow />
+      <SceneConfigWindow />
       <NpcCreateWindow />
       <ShortcutsWindow />
       <DiceCup />

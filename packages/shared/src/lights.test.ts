@@ -136,7 +136,15 @@ describe('lightMaskCellPx', () => {
 });
 
 function gridOf(sizePx: number) {
-  return { sizePx, offsetX: 0, offsetY: 0, color: '#000000', alpha: 0.35, visible: true };
+  return {
+    sizePx,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#000000',
+    alpha: 0.35,
+    visible: true,
+    players: false,
+  };
 }
 
 describe('buildLightMask', () => {

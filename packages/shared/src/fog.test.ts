@@ -15,7 +15,15 @@ import type { SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
 
 const scene: Pick<SceneView, 'grid' | 'width' | 'height'> = {
-  grid: { sizePx: 100, offsetX: 0, offsetY: 0, color: '#000000', alpha: 0.35, visible: true },
+  grid: {
+    sizePx: 100,
+    offsetX: 0,
+    offsetY: 0,
+    color: '#000000',
+    alpha: 0.35,
+    visible: true,
+    players: false,
+  },
   width: 2000,
   height: 1000,
 };

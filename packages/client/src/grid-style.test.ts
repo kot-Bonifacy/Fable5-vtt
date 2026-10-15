@@ -3,6 +3,7 @@ import {
   GRID_CONTRAST_CASING_PX,
   GRID_CONTRAST_MIN_ALPHA,
   gridLinePositions,
+  gridShownTo,
   gridStrokes,
   isLightColor,
   parseGridColor,
@@ -79,5 +80,33 @@ describe('gridLinePositions', () => {
 
   it('nie rysuje nic dla kratki bez rozmiaru', () => {
     expect(gridLinePositions(0, 0, 400)).toEqual([]);
+  });
+});
+
+/**
+ * Siatka u gracza (zlecenie MG, 15.10.2026): domyślnie jej nie widzi, dopóki
+ * MG nie wybierze w oknie sceny „MG i gracze”.
+ */
+describe('gridShownTo', () => {
+  const scene = (visible: boolean, players: boolean, gridMode: 'grid' | 'gridless' = 'grid') => ({
+    gridMode,
+    grid: { visible, players },
+  });
+
+  it('domyślnie („Tylko MG”) siatkę widzi MG, a gracz nie', () => {
+    expect(gridShownTo(scene(true, false), true)).toBe(true);
+    expect(gridShownTo(scene(true, false), false)).toBe(false);
+  });
+
+  it('„MG i gracze” pokazuje ją obu', () => {
+    expect(gridShownTo(scene(true, true), true)).toBe(true);
+    expect(gridShownTo(scene(true, true), false)).toBe(true);
+  });
+
+  it('„Nikt” i scena bez kratek gaszą ją wszystkim', () => {
+    expect(gridShownTo(scene(false, true), true)).toBe(false);
+    expect(gridShownTo(scene(false, true), false)).toBe(false);
+    expect(gridShownTo(scene(true, true, 'gridless'), true)).toBe(false);
+    expect(gridShownTo(scene(true, true, 'gridless'), false)).toBe(false);
   });
 });

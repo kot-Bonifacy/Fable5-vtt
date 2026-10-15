@@ -52,6 +52,7 @@ export function toSceneView(scene: Scene): SceneView {
       color: scene.gridColor,
       alpha: scene.gridAlpha,
       visible: scene.gridVisible,
+      players: scene.gridPlayers,
     },
     metersPerSquare: scene.metersPerSquare,
     // A row written before stage 18a, or edited by hand, must never fall
@@ -209,6 +210,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
       if (patch.grid.color !== undefined) data.gridColor = patch.grid.color;
       if (patch.grid.alpha !== undefined) data.gridAlpha = patch.grid.alpha;
       if (patch.grid.visible !== undefined) data.gridVisible = patch.grid.visible;
+      if (patch.grid.players !== undefined) data.gridPlayers = patch.grid.players;
     }
 
     const updated = await deps.ctx.prisma.scene.update({ where: { id: scene.id }, data });

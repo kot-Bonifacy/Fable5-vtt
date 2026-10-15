@@ -75,7 +75,9 @@ test.describe.serial('T8c mapa i sceny: Lombard, rysunki, ping, grupa, obiekty',
       .locator('.scene-upload-button input[type=file]')
       .setInputFiles(material(LOMBARD.file));
     await expect(editor.getByText(new RegExp(`^${LOMBARD.width}×\\d+ px$`))).toBeVisible();
+    await editor.getByRole('tab', { name: 'Siatka' }).click();
     await editor.locator('#grid-columns').fill(String(LOMBARD.columns));
+    await editor.getByRole('tab', { name: 'Widoczność' }).click();
     await editor.locator('#scene-visibility').selectOption('open');
     await editor.getByRole('button', { name: 'Zapisz' }).click();
     await expect(editor).toBeHidden();
