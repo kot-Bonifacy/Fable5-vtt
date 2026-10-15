@@ -133,3 +133,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 50b    | MG prowadzi figurę w turze, klik w walce celuje, przejęcie z pasa i menu | ✅     | 2026-10-10          |
 | 50c    | Trwały cel figury: `T` / podwójny prawy klik, grot na celu dla stołu, broń z paska strzela w cel | ✅     | 2026-10-11          |
 | 50c    | Trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel | ⬜     |                     |
+| 51     | Przegląd stref bronionych: ukryte widać u MG, gracz bez PW, efekt obszarowy, odsłonięcie po trafieniu, PW wieżyczki na figurze | ✅     | 2026-10-15          |

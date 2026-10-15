@@ -470,6 +470,21 @@ export interface CpredNetDefenseEffects {
    * so this flag says *that it shoots*, never what with.
    */
   fires?: boolean;
+  /**
+   * The system catches **everybody standing on the area**, not only the figure
+   * that set it off (stage 51) — „Wszystkie stworzenia biologiczne … na
+   * bronionym obszarze" (krwawy rój), „Osoby wystawione na działanie" (panele
+   * ogłuszające), „zgniatają cele" (dziurkacze). Without it a red mist that
+   * fills the room would choke only whoever opened the door.
+   */
+  area?: boolean;
+  /**
+   * The MOVE drain also comes off when the system itself is destroyed (stage
+   * 51): „dopóki cel nie zejdzie z dywanu lub ktoś nie zniszczy dywanu"
+   * (podłoga obalająca). Maź does not carry it — shooting the sprinklers does
+   * not wash the goo off anybody's boots.
+   */
+  drainEndsWithSystem?: boolean;
 }
 
 /** Largest MOVE drain or damage notation a defence row may carry. */
@@ -543,6 +558,8 @@ export function readNetDefenseEffects(raw: unknown): CpredNetDefenseEffects | un
     ...(moveDrain ? { moveDrain } : {}),
     ...(input.repeats === true ? { repeats: true } : {}),
     ...(input.fires === true ? { fires: true } : {}),
+    ...(input.area === true ? { area: true } : {}),
+    ...(moveDrain && input.drainEndsWithSystem === true ? { drainEndsWithSystem: true } : {}),
   };
   return Object.keys(effects).length > 0 ? effects : undefined;
 }
@@ -592,12 +609,19 @@ export function describeNetDefenseEffects(
     parts.push(effects.direct ? `${effects.damage} bezpośrednich` : `${effects.damage} w ciało`);
   }
   if (effects.fires) parts.push('stanowisko strzela Wartością bojową');
-  if (effects.moveDrain) parts.push(`RUCH −${effects.moveDrain}`);
+  if (effects.moveDrain) {
+    parts.push(
+      effects.drainEndsWithSystem
+        ? `RUCH −${effects.moveDrain} (do zejścia z obszaru albo zniszczenia systemu)`
+        : `RUCH −${effects.moveDrain}`,
+    );
+  }
   const statuses = labels.statuses ?? effects.statuses ?? [];
   if (statuses.length > 0) parts.push(statuses.join(', '));
   const injuries = labels.injuries ?? effects.injuries ?? [];
   if (injuries.length > 0) parts.push(injuries.join(', '));
   if (effects.repeats) parts.push('powtórnie na koniec każdej Tury');
+  if (effects.area) parts.push('wszyscy na obszarze');
   if (effects.durationS) parts.push(describeCpredDuration(effects.durationS));
   return parts.join(' · ');
 }

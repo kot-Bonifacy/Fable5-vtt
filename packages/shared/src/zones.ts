@@ -42,13 +42,27 @@ export interface DefenseZoneView {
   /**
    * Armed = it goes off by itself. The GM's switch and, when the zone hangs off
    * a control node, the netrunner's: turning the device off disarms it.
+   *
+   * **GM truth only** (stage 51): a player's copy always reads `true`, because
+   * a switched-off electric floor looks exactly like a live one, and the label
+   * „rozbrojona" told the table what the GM had decided about the guards.
    */
   armed: boolean;
-  /** GM-only flag; a hidden zone is simply absent from a player who has not spotted it. */
+  /**
+   * GM-only flag; a hidden zone is simply absent from a player who has not
+   * spotted it, and a player's copy of one they did spot reads `false` — from
+   * where they stand it is not hidden any more (`spotted` says how they got it).
+   */
   hidden: boolean;
   /**
-   * Body points of the system itself („PW 20"); 0/0 means a system the table
-   * cannot shoot at, which is what the catalogue prints for half of them.
+   * Body points of the device itself („PW 10" of the sliding floor are its
+   * sprinklers, not the floor); 0/0 means a system the table cannot shoot at,
+   * which is what the catalogue prints for half of them.
+   *
+   * **GM truth only** (stage 51): a player's copy carries 0/0 — the rulebook
+   * never shows the table an enemy's body points, and a trap is an enemy. An
+   * emplacement with a bound figure carries 0/0 for the GM too: its body points
+   * are the figure's.
    */
   hpMax: number;
   hpCurrent: number;
@@ -257,10 +271,16 @@ export function sanitizeZoneName(raw: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-/** „Podłoga elektryczna · 20/20 PW · uzbrojona" — the one-line description. */
-export function zoneLabel(zone: DefenseZoneView): string {
+/**
+ * „Podłoga elektryczna · 20/20 PW · uzbrojona · ukryta" — the GM's one-line
+ * description; a player reads the name alone (stage 51), because body points
+ * and the switch are the GM's business and the server sends neither.
+ */
+export function zoneLabel(zone: DefenseZoneView, gm = true): string {
+  if (!gm) return zone.name;
   const parts: string[] = [zone.name];
   if (zone.hpMax > 0) parts.push(`${zone.hpCurrent}/${zone.hpMax} PW`);
   parts.push(zoneStanding(zone) ? (zone.armed ? 'uzbrojona' : 'rozbrojona') : 'zniszczona');
+  if (zone.hidden) parts.push('ukryta');
   return parts.join(' · ');
 }

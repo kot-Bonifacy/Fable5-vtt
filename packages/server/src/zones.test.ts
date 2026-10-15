@@ -419,6 +419,26 @@ describe('defended zones on a scene', () => {
     expect(system).not.toContain(playerId);
   });
 
+  it('a hidden trap that caught a figure shows up for that player — without its PW or switch', async () => {
+    // Etap 51: Kolec nie zauważył podłogi (Percepcja 0), ale właśnie go
+    // poraziła, więc gracz już wie, gdzie ona leży.
+    const seen = (await roundTrip(player)).zones.find((zone) => zone.id === floorZoneId);
+    expect(seen?.spotted).toBe(true);
+    // Kopia gracza nie niesie PW ani stanu przełącznika.
+    expect(seen?.hpMax).toBe(0);
+    expect(seen?.hpCurrent).toBe(0);
+    expect(seen?.hidden).toBe(false);
+    await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { armed: false } });
+    const disarmed = (await roundTrip(player)).zones.find((zone) => zone.id === floorZoneId);
+    expect(disarmed?.armed).toBe(true);
+    // MG dalej widzi prawdę.
+    const truth = (await roundTrip(gm)).zones.find((zone) => zone.id === floorZoneId);
+    expect(truth?.hidden).toBe(true);
+    expect(truth?.armed).toBe(false);
+    expect(truth?.hpMax).toBe(20);
+    await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { armed: true } });
+  });
+
   it('does not go off a second time for a figure already standing on it', async () => {
     const before = await healUp();
     // Ruch wewnątrz obszaru: „cel WCHODZI na broniony obszar" już się zdarzyło.
@@ -779,6 +799,173 @@ describe('defended zones on a scene', () => {
     expect(disarmed.combat?.combatants.some((row) => row.name === 'Winda z gazem')).toBe(false);
 
     await emitAck(gm, 'combat:end', { sceneId });
+  });
+
+  it('an area system catches everybody on the area, not only whoever set it off', async () => {
+    // Etap 51: „Wszystkie stworzenia biologiczne … na bronionym obszarze".
+    data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'netDefense',
+          name: 'Krwawy rój',
+          cost: 10000,
+          defenseKind: 'emplacement',
+          disableDv: 21,
+          trigger: 'Cel bez przepustki wchodzi na strzeżony obszar.',
+          effects: { damage: '3k6', direct: true, area: true },
+        },
+      }),
+      'compendium:upsert (krwawy rój)',
+    );
+    const mist = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.krwawy-roj',
+        x: 50 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (krwawy rój)',
+    );
+    // Ochroniarz wchodzi przy rozbrojonym systemie i zostaje w środku.
+    await emitAck(gm, 'zone:update', { zoneId: mist.id, patch: { armed: false } });
+    await walk(gm, guardTokenId, 52 * PX_PER_M, 1250);
+    await emitAck(gm, 'zone:update', { zoneId: mist.id, patch: { armed: true } });
+    const guardBefore = (await roundTrip(gm)).tokens.find((token) => token.id === guardTokenId);
+
+    // Kolec wchodzi z boku — dwa ruchy, żeby droga nie przecięła innych stref.
+    await walk(player, runnerTokenId, 0, 1250);
+    const before = await healUp();
+    await walk(player, runnerTokenId, 53 * PX_PER_M, 1250);
+    expect(await hp()).toBeLessThan(before);
+    const guardAfter = (await roundTrip(gm)).tokens.find((token) => token.id === guardTokenId);
+    expect(guardAfter?.hp?.current).toBeLessThan(guardBefore?.hp?.current ?? 0);
+
+    await emitAck(gm, 'zone:delete', { zoneId: mist.id });
+    await walk(player, runnerTokenId, 0, 1250);
+    await walk(gm, guardTokenId, 0, 400);
+  });
+
+  it('a destroyed carpet lets go of its victims, destroyed sprinklers do not wash the goo off', async () => {
+    data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'netDefense',
+          name: 'Podłoga obalająca',
+          cost: 1000,
+          defenseKind: 'environment',
+          disableDv: 13,
+          hp: 20,
+          trigger: 'Cel wchodzi na dywan.',
+          effects: { moveDrain: '1k6', drainEndsWithSystem: true },
+        },
+      }),
+      'compendium:upsert (dywan)',
+    );
+    const carpet = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.podloga-obalajaca',
+        x: 50 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (dywan)',
+    );
+    await walk(player, runnerTokenId, 52 * PX_PER_M, 1250);
+    const caught = (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId);
+    expect(caught?.statuses).toContain('slowed');
+
+    // „…lub ktoś nie zniszczy dywanu" — zniszczenie zdejmuje karę od razu.
+    await emitAck(gm, 'zone:update', { zoneId: carpet.id, patch: { hpCurrent: 0 } });
+    const free = (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId);
+    expect(free?.statuses ?? []).not.toContain('slowed');
+    await emitAck(gm, 'zone:delete', { zoneId: carpet.id });
+    await walk(player, runnerTokenId, 0, 1250);
+
+    // Maź (wpis z testu wyżej, bez flagi): rozstrzelane spryskiwacze nie zmywają mazi.
+    const goo = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.maz',
+        x: 50 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (maź)',
+    );
+    await walk(player, runnerTokenId, 52 * PX_PER_M, 1250);
+    await emitAck(gm, 'zone:update', { zoneId: goo.id, patch: { hpCurrent: 0 } });
+    await walk(player, runnerTokenId, 53 * PX_PER_M, 1250);
+    const still = (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId);
+    expect(still?.statuses).toContain('slowed');
+    await emitAck(gm, 'zone:delete', { zoneId: goo.id });
+    await walk(player, runnerTokenId, 0, 1250);
+  });
+
+  it('an emplacement with a figure keeps its body points on the figure', async () => {
+    const turretTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Wieżyczka',
+        x: 60 * PX_PER_M,
+        y: 1600,
+        hp: { current: 25, max: 25 },
+      }),
+      'token:create (wieżyczka)',
+    ).id;
+    const post = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.automatyczna-wiezyczka',
+        x: 50 * PX_PER_M,
+        y: 1200,
+        width: 6 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (wieżyczka z figurą)',
+    );
+    expect(post.hpMax).toBe(25);
+    const bound = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:update', {
+        zoneId: post.id,
+        patch: { tokenId: turretTokenId },
+      }),
+      'zone:update (przypięcie)',
+    );
+    // Jeden licznik na jedną wieżyczkę — ten na figurze.
+    expect(bound.hpMax).toBe(0);
+    expect(bound.hpCurrent).toBe(0);
+
+    // Rozstrzelana figura: wejście w strefę jest ciche, a ręka MG słyszy dlaczego.
+    await emitAck(gm, 'token:update', {
+      tokenId: turretTokenId,
+      patch: { hp: { current: 0, max: 25 } },
+    });
+    await walk(player, runnerTokenId, 52 * PX_PER_M, 1250);
+    const fired = data(
+      await emitAck<{ summary: string }>(gm, 'zone:fire', { zoneId: post.id }),
+      'zone:fire (zniszczona wieżyczka)',
+    );
+    expect(fired.summary).toContain('stanowisko zniszczone');
+
+    const unbound = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:update', {
+        zoneId: post.id,
+        patch: { tokenId: null },
+      }),
+      'zone:update (odpięcie)',
+    );
+    expect(unbound.hpMax).toBe(25);
+    await emitAck(gm, 'zone:delete', { zoneId: post.id });
+    await walk(player, runnerTokenId, 0, 1250);
   });
 
   it('clearing the scene removes every zone at once', async () => {

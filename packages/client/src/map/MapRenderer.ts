@@ -2079,6 +2079,7 @@ export class MapRenderer {
     if (this.viewerIsGm !== ctx.isGm) {
       this.viewerIsGm = ctx.isGm;
       if (this.scene) this.drawGrid(this.scene);
+      this.drawZoneLayer();
     }
     this.viewerId = ctx.myUserId;
     const seen = new Set<string>();
@@ -5935,9 +5936,11 @@ export class MapRenderer {
    * „this makes things harder". So: hazard amber, a dashed edge, and no fill
    * heavy enough to hide the floor — plus two states worth telling apart at a
    * glance. A **disarmed** zone is drawn pale, because a switched-off trap is
-   * still a thing the GM has to see; a zone the viewer only has because somebody
-   * **spotted** it gets a dotted edge, so a player knows they are looking at
-   * something they found rather than at furniture.
+   * still a thing the GM has to see. Since stage 51 a zone still **hidden from
+   * the players** has a broken edge on the GM's screen and „ukryta" in its
+   * label — before that the only way to tell was to open each card. A player
+   * never gets that flag (the server sends `hidden: false`), and reads the name
+   * alone: body points and the switch are the GM's.
    */
   setZones(zones: DefenseZoneView[]): void {
     if (this.destroyed) return;
@@ -5956,14 +5959,19 @@ export class MapRenderer {
       seen.add(zone.id);
       const standing = zoneStanding(zone);
       const live = standing && zone.armed;
+      const edge = {
+        color: live ? ZONE_STROKE_COLOR : ZONE_IDLE_COLOR,
+        width: (live ? 3 : 2) * k,
+        alpha: live ? 0.9 : 0.5,
+      };
       this.zoneGraphics
         .rect(zone.x, zone.y, zone.width, zone.height)
-        .fill({ color: ZONE_FILL_COLOR, alpha: live ? 0.22 : 0.08 })
-        .stroke({
-          color: live ? ZONE_STROKE_COLOR : ZONE_IDLE_COLOR,
-          width: (live ? 3 : 2) * k,
-          alpha: live ? 0.9 : 0.5,
-        });
+        .fill({ color: ZONE_FILL_COLOR, alpha: live ? 0.22 : 0.08 });
+      if (this.viewerIsGm && zone.hidden) {
+        this.strokeDashedRect(this.zoneGraphics, zone, 14 * k, 9 * k, edge);
+      } else {
+        this.zoneGraphics.rect(zone.x, zone.y, zone.width, zone.height).stroke(edge);
+      }
 
       // Diagonal hatching, drawn only while the system is live: it is the one
       // mark that survives at table zoom without a legend, and it stops a
@@ -5998,7 +6006,12 @@ export class MapRenderer {
         this.zoneLabels.set(zone.id, label);
         this.zoneLayer.addChild(label);
       }
-      label.text = zoneLabel(zone);
+      label.text = zoneLabel(zone, this.viewerIsGm);
+      // Zawijany do szerokości prostokąta (etap 51): sąsiednie strefy nie
+      // zachodzą na siebie podpisami, a „ukryta" nie wypada za krawędź.
+      label.style.wordWrap = true;
+      label.style.wordWrapWidth = Math.max(60, zone.width / k);
+      label.style.align = 'center';
       label.scale.set(k);
       label.alpha = live ? 0.95 : 0.55;
       label.position.set(zone.x + zone.width / 2, zone.y + zone.height / 2);
@@ -6017,6 +6030,38 @@ export class MapRenderer {
         .fill({ color: ZONE_FILL_COLOR, alpha: 0.18 })
         .stroke({ color: ZONE_STROKE_COLOR, width: 2 * k, alpha: 0.8 });
     }
+  }
+
+  /**
+   * A rectangle's edge in dashes — the GM's mark for „the players do not see
+   * this" on a defended zone (stage 51). Pixi v8 has no dashed stroke, so each
+   * side is walked in `dash` + `gap` steps.
+   */
+  private strokeDashedRect(
+    graphics: Graphics,
+    rect: { x: number; y: number; width: number; height: number },
+    dash: number,
+    gap: number,
+    style: { color: number; width: number; alpha: number },
+  ): void {
+    const corners = [
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y + rect.height },
+      { x: rect.x, y: rect.y + rect.height },
+    ];
+    for (let side = 0; side < 4; side++) {
+      const a = corners[side]!;
+      const b = corners[(side + 1) % 4]!;
+      const length = Math.hypot(b.x - a.x, b.y - a.y);
+      const ux = (b.x - a.x) / length;
+      const uy = (b.y - a.y) / length;
+      for (let at = 0; at < length; at += dash + gap) {
+        const end = Math.min(at + dash, length);
+        graphics.moveTo(a.x + ux * at, a.y + uy * at).lineTo(a.x + ux * end, a.y + uy * end);
+      }
+    }
+    graphics.stroke(style);
   }
 
   /**

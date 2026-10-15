@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 14.10 (po `2f8350c`) — komunikaty walki i rzut obrażeń z kubka
+
+**Zlecenie MG:** komunikaty walki na czacie mają być logiczne („Bez ran → Lekko ranny”); Unik
+ma być dostępny przed rzutem obrażeń (sprawdzić); rzut obrażeń po trafieniu ma się pojawiać
+na kubku, nie na czacie.
+
+**Zrobione:** plakietka stanu ran na karcie obrażeń mówi stan **po** ciosie („Teraz lekko
+ranny”, `woundTransitionLabel` — także Duszenie/Rzut w `sheets.ts`). Unik na karcie ataku:
+„Unik X: 14 vs 18 → unik udany / trafienie mimo uniku”, werdykt „Uniknięty” zamiast „Pudło”.
+**Unik przed obrażeniami był już wymuszony** (`AWAITING_EVASION`, `evasionPending` od 03.10) —
+bez zmian. Nowy `attack-damage-call.ts`: kubek prowadzącego strzelca sam woła o obrażenia
+(tryb `damage` w `DiceCup`, chwyt od razu potrząsa, `Esc` odkłada); guzik „Obrażenia” zniknął
+z karty ataku, został napis i „Na kubek” (odłożone albo cudze — MG za gracza). Umowa w `atak`.
+E2E: `damageToCup` / `cupHoldsDamage`, przepięte T4a, T4b, T5b (#38: kubek Oli zamiast guzika)
+i T8a.
+
+**Weryfikacja:** vitest shared 2451, server 1442, client 355 (nowy `attack-damage-call.test.ts`);
+`tsc` i ESLint czyste. E2E: `t8a-macierz` 16/16 (oba układy: MG Chromium + gracze Firefox
+i odwrotnie), T4a + T4b 33/33 (z `po-T3`; `po-T4a` i `po-T4` odbudowane). **T5b nie przeszedł
+startu — wymaga działającego AI Gateway**, którego nie było; przepięcie #38 i strzałów wieżyczki
+niesprawdzone przebiegiem. Wygląd kubka w trybie obrażeń oglądany tylko przez E2E (bez zrzutu).
+**Ślady w `dev.db`:** brak (tylko instancja E2E).
+
 ### Sesja 11.10 (po `0b30823`) — etap 50c: trwały cel figury
 
 **Decyzje MG (pytania na starcie):** cel należy do figury-strzelca (nie do konta), jeden na

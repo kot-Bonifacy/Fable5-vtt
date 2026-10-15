@@ -605,6 +605,21 @@ def defense_effects(description: str, trigger: str) -> dict:
     drain = DEFENSE_MOVE_DRAIN_RE.search(text)
     if drain:
         out["moveDrain"] = drain.group(1)
+        # „…dopoki cel nie zejdzie z dywanu lub ktos nie zniszczy dywanu" (etap 51)
+        # - podloga obalajaca puszcza, gdy system pada. Maz tego zdania nie ma:
+        # rozstrzelane spryskiwacze nie zmywaja mazi.
+        if "nie zniszczy" in low:
+            out["drainEndsWithSystem"] = True
+
+    # Efekt obszarowy (etap 51): system lapie wszystkich na obszarze, nie tylko
+    # tego, kto go uruchomil - „Wszystkie stworzenia biologiczne", „Osoby
+    # wystawione", „zgniataja cele". Winda z gazem ma wlasna Ture i bije
+    # wszystkich w niej i tak; Slizgawka i Siatka pytaja kazdego z osobna.
+    if any(
+        phrase in low
+        for phrase in ("wszystkie stworzenia", "osoby wystawione", "zgniatają cele")
+    ):
+        out["area"] = True
 
     statuses: list[str] = []
     if "przewróci się" in low:

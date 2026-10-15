@@ -46,6 +46,7 @@ import { emitTokensById } from './tokens.js';
 import {
   checkPerceptionOf,
   controllerOf,
+  emplacementDown,
   fireZone,
   systemHand,
   type ZoneProfile,
@@ -213,7 +214,19 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
         .slice(0, ZONE_EXEMPT_MAX);
       data.exempt = JSON.stringify([...new Set(ids)]);
     }
-    if (patch.tokenId !== undefined) data.tokenId = patch.tokenId || null;
+    if (patch.tokenId !== undefined) {
+      data.tokenId = patch.tokenId || null;
+      // Stanowisko z figurą liczy PW na figurze (etap 51) — do niej się
+      // strzela, a dwa liczniki jednej wieżyczki rozjeżdżały się przy pierwszym
+      // trafieniu. Odpięcie oddaje strefie PW z wpisu.
+      const { entries } = await buildCompendiumSync(deps, campaignId);
+      const profile = zoneProfileOf(entries, row.entryId);
+      if (profile?.effects?.fires) {
+        const hp = data.tokenId ? 0 : (profile.hp ?? 0);
+        data.hpMax = hp;
+        data.hpCurrent = hp;
+      }
+    }
     if (patch.architectureId !== undefined) data.architectureId = patch.architectureId || null;
     if (patch.floorId !== undefined) data.floorId = patch.floorId || null;
     if (patch.deviceId !== undefined) data.deviceId = patch.deviceId || null;
@@ -228,6 +241,9 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     // Rozbrojona albo rozstrzelana pułapka nie ma już czym zająć swojej Tury.
     const dead = updated.hpMax > 0 && updated.hpCurrent <= 0;
     if (!updated.armed || dead) await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
+    if (dead && row.hpCurrent > 0) {
+      await releaseDrainOnDestroyed(deps, campaignId, row.sceneId, row.id);
+    }
     return toZoneView(updated, true, false);
   },
 });
@@ -364,10 +380,7 @@ export async function runZonesAfterMove(
   const live = rows.map((row) => ({ row, profile: zoneProfileOf(entries, row.entryId) }));
 
   // ── the drain lifts when the last sticky floor is behind you ──
-  const stillStuck = live.some(
-    ({ row, profile }) => profile?.effects?.moveDrain !== undefined && isPointInRect(row, now),
-  );
-  if (!stillStuck) await liftMoveDrain(deps, campaignId, token);
+  if (!stuckOnAny(live, now)) await liftMoveDrain(deps, campaignId, token);
 
   // ── Perception, once per character per zone ──
   const perPixel = metresPerPixel(view);
@@ -387,6 +400,9 @@ export async function runZonesAfterMove(
     if (row.hpMax > 0 && row.hpCurrent <= 0) continue;
     if (readZoneExempt(row.exempt).includes(token.id)) continue;
     if (await zoneDisarmedByNetrunner(deps, row)) continue;
+    // Rozstrzelana wieżyczka nie odzywa się na każdy krok — „Odpal system"
+    // u MG dalej powie wprost, że jest zniszczona (etap 51).
+    if (profile.effects?.fires && (await emplacementDown(deps, row))) continue;
 
     const trigger = netDefenseTrigger(profile.effects);
     // „W Turze pułapki" (s. 216) — a trap with its own place in the queue never
@@ -410,13 +426,18 @@ export async function runZonesAfterMove(
     if (trigger === 'enter' && isPointInRect(row, before)) continue;
 
     hand ??= await systemHand(deps, campaignId, user);
+    // Efekt obszarowy (etap 51) łapie każdego na obszarze — wchodzący odpala
+    // system, ale czerwona mgła nie wybiera, kogo dusi.
+    const targets = profile.effects?.area
+      ? [token, ...(await tokensInsideZone(deps, scene, row)).filter((t) => t.id !== token.id)]
+      : [token];
     const fired = await fireZone(deps, {
       campaignId,
       user: hand,
       scene,
       zone: row,
       profile,
-      targets: [token],
+      targets,
       cause: trigger === 'move' ? 'ruch na obszarze' : 'wejście na obszar',
     });
     if (fired.lines.length > 0) {
@@ -556,6 +577,52 @@ async function trySpotZone(
       ? `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv} — zauważa: ${row.name}`
       : `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv} — nic nie zauważa`,
   );
+}
+
+/**
+ * Is this point still on a floor that holds its victims?
+ *
+ * A destroyed system lets go only when its row says so (stage 51): „lub ktoś
+ * nie zniszczy dywanu" for the carpet, while the goo of „Maź" stays on the
+ * boots after the sprinklers are shot.
+ */
+function stuckOnAny(
+  live: readonly { row: ZoneRow; profile: ZoneProfile | null }[],
+  point: ScenePoint,
+): boolean {
+  return live.some(({ row, profile }) => {
+    const effects = profile?.effects;
+    if (effects?.moveDrain === undefined) return false;
+    if (!isPointInRect(row, point)) return false;
+    const destroyed = row.hpMax > 0 && row.hpCurrent <= 0;
+    return !(destroyed && effects.drainEndsWithSystem);
+  });
+}
+
+/**
+ * Somebody destroyed a carpet that holds people (stage 51) — everybody standing
+ * on it whom no other sticky floor still holds walks free at once, rather than
+ * at their next step.
+ */
+async function releaseDrainOnDestroyed(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string,
+  zoneId: number,
+): Promise<void> {
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene) return;
+  const rows = await fetchSceneZones(deps.ctx.prisma, sceneId);
+  const zone = rows.find((row) => row.id === zoneId);
+  if (!zone) return;
+  const { entries } = await buildCompendiumSync(deps, campaignId);
+  const live = rows.map((row) => ({ row, profile: zoneProfileOf(entries, row.entryId) }));
+  for (const token of await tokensInsideZone(deps, scene, zone)) {
+    const half = tokenHalfPx(token, scene);
+    if (!stuckOnAny(live, { x: token.x + half, y: token.y + half })) {
+      await liftMoveDrain(deps, campaignId, token);
+    }
+  }
 }
 
 /** The sticky floor lets go — the sticker and its number come off together. */

@@ -17,6 +17,23 @@ import { cpredMoveBudget } from './movement.js';
  * pękną, gdyby ktoś go „uprościł".
  */
 describe('readNetDefenseEffects', () => {
+  it('czyta efekt obszarowy — krwawy rój bije wszystkich na obszarze (etap 51)', () => {
+    const effects = readNetDefenseEffects({ damage: '3k6', direct: true, area: true });
+    expect(effects?.area).toBe(true);
+    expect(describeNetDefenseEffects(effects)).toContain('wszyscy na obszarze');
+  });
+
+  it('kara do RUCH-u kończy się ze zniszczeniem systemu tylko tam, gdzie wpis tak mówi', () => {
+    const carpet = readNetDefenseEffects({ moveDrain: '1k6', drainEndsWithSystem: true });
+    expect(carpet?.drainEndsWithSystem).toBe(true);
+    expect(describeNetDefenseEffects(carpet)).toContain('zniszczenia systemu');
+    // Bez kary do RUCH-u flaga nie ma czego kończyć — odpada przy odczycie.
+    expect(readNetDefenseEffects({ damage: '6k6', drainEndsWithSystem: true })).toEqual({
+      damage: '6k6',
+    });
+    expect(readNetDefenseEffects({ moveDrain: '2k6' })?.drainEndsWithSystem).toBeUndefined();
+  });
+
   it('czyta podłogę elektryczną: obrażenia przez pancerz, bez uszkodzenia, co Turę', () => {
     const effects = readNetDefenseEffects({
       damage: '6k6',

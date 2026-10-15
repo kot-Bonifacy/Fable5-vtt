@@ -91,11 +91,19 @@ describe('stan systemu', () => {
     expect(zoneLive(zone({ exempt: ['token-1'] }), 'token-2')).toBe(true);
   });
 
-  it('podpis mówi, co się z tą strefą dzieje', () => {
-    expect(zoneLabel(zone())).toBe('Podłoga elektryczna · 20/20 PW · uzbrojona');
+  it('podpis MG mówi, co się z tą strefą dzieje, i czy gracze ją widzą', () => {
+    expect(zoneLabel(zone())).toBe('Podłoga elektryczna · 20/20 PW · uzbrojona · ukryta');
+    expect(zoneLabel(zone({ hidden: false }))).toBe('Podłoga elektryczna · 20/20 PW · uzbrojona');
     expect(zoneLabel(zone({ armed: false }))).toContain('rozbrojona');
     expect(zoneLabel(zone({ hpCurrent: 0 }))).toContain('zniszczona');
-    expect(zoneLabel(zone({ hpMax: 0, hpCurrent: 0 }))).toBe('Podłoga elektryczna · uzbrojona');
+    expect(zoneLabel(zone({ hpMax: 0, hpCurrent: 0, hidden: false }))).toBe(
+      'Podłoga elektryczna · uzbrojona',
+    );
+  });
+
+  it('podpis gracza to sama nazwa — PW i przełącznik są sprawą MG (etap 51)', () => {
+    expect(zoneLabel(zone(), false)).toBe('Podłoga elektryczna');
+    expect(zoneLabel(zone({ armed: false, hpCurrent: 0 }), false)).toBe('Podłoga elektryczna');
   });
 });
 

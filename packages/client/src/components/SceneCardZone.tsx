@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ROLE_GM,
+  criticalInjuryNames,
   describeNetDefense,
   describeNetDefenseEffects,
   isNetDefenseEntry,
@@ -80,6 +81,7 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   const entries = useCompendiumStore((s) => s.entries);
   const scene = useSceneStore((s) => s.effectiveScene);
   const tokens = useTokenStore((s) => s.tokens);
+  const statusRegistry = useTokenStore((s) => s.statuses);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +162,15 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
       {profile ? (
         <p className="placeholder-text">
           {describeNetDefense(profile)}
-          {netDefenseActs(effects) ? ` · ${describeNetDefenseEffects(effects)}` : ''}
+          {netDefenseActs(effects)
+            ? ` · ${describeNetDefenseEffects(effects, {
+                // Nazwy, nie id — „Powalony", a nie „prone" (jak karta wpisu, #6).
+                statuses: (effects?.statuses ?? []).map(
+                  (id) => statusRegistry.find((status) => status.id === id)?.name ?? id,
+                ),
+                injuries: criticalInjuryNames(Object.values(entries), effects?.injuries ?? []),
+              })}`
+            : ''}
         </p>
       ) : (
         <p className="ai-status-error">
@@ -189,10 +199,19 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
         />
       </label>
 
+      {effects?.fires && zone.tokenId && (
+        <p className="placeholder-text">
+          PW stanowiska liczy figura „{tokens[zone.tokenId]?.name ?? 'stanowisko'}” — do niej się
+          strzela, a rozbita figura przestaje strzelać.
+        </p>
+      )}
       {zone.hpMax > 0 && (
-        <label className="bot-field">
+        <label
+          className="bot-field"
+          title="PW samego urządzenia (spryskiwaczy, dywanu, paneli, wieżyczki) z tabeli systemów obronnych — nie podłogi. Na 0 system jest zniszczony i przestaje działać. Gracze tych liczb nie widzą"
+        >
           <span className="auth-label">
-            PW systemu — {zone.hpCurrent} / {zone.hpMax}
+            PW urządzenia — {zone.hpCurrent} / {zone.hpMax}
           </span>
           <input
             type="range"
@@ -204,21 +223,25 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
         </label>
       )}
 
-      <label className="bot-field">
-        <span className="auth-label">Stanowisko (żeton, który strzela)</span>
-        <select
-          value={zone.tokenId ?? ''}
-          title="Wieżyczka albo dron stojący na mapie; jego broń i magazynek zostają jego"
-          onChange={(event) => void patch({ tokenId: event.target.value || null })}
-        >
-          <option value="">— brak żetonu —</option>
-          {figures.map((token) => (
-            <option key={token.id} value={token.id}>
-              {token.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Pole stanowiska tylko tam, gdzie coś strzela (etap 51) — ślizgawce
+          i podłodze nie ma kogo przypiąć. Stara wiązka zostaje widoczna. */}
+      {(effects?.fires || zone.tokenId) && (
+        <label className="bot-field">
+          <span className="auth-label">Stanowisko (żeton, który strzela)</span>
+          <select
+            value={zone.tokenId ?? ''}
+            title="Wieżyczka albo dron stojący na mapie; jego broń, magazynek i PW zostają jego"
+            onChange={(event) => void patch({ tokenId: event.target.value || null })}
+          >
+            <option value="">— brak żetonu —</option>
+            {figures.map((token) => (
+              <option key={token.id} value={token.id}>
+                {token.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label className="bot-field">
         <span className="auth-label">Węzeł kontrolny</span>

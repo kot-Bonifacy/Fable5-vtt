@@ -23,12 +23,19 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | ------------ | ---------------------------------------------------------------------------------------------- |
 | 🟨 w toku   | — (następna: **refaktoryzacja** całości pod osłoną suity)                                     |
 | ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c (ostatni zamknięty: 50c, 2026-10-11) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51 (ostatni zamknięty: 51, 2026-10-15) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 51 „Przegląd stref bronionych” (zlecenie MG z 15.10) zamknięty 15.10 — następna jest
+refaktoryzacja całości pod osłoną suity, potem T10.** U MG ukryta strefa ma przerywany obrys
+i „ukryta” w podpisie (kartę otwiera dwuklik przy narzędziu ⚠). Gracz dostaje strefę bez PW
+i przełącznika, a pułapka, która go złapała, staje mu się widoczna. Efekt `area` bije wszystkich
+na obszarze, zniszczony dywan puszcza, a wieżyczka z przypiętą figurą liczy PW na figurze.
+Plik etapu: `etap-51-strefy-bronione-przeglad.md`, umowa w `siec`, reszta przeglądu w `POMYSLY.md`.
 
 **Etap 50 „Start walki, prowadzenie figury i celowanie wzorem Foundry” (zlecenie MG z 10.10)
 zamknięty 11.10 (50a–50c) — następna jest refaktoryzacja całości pod osłoną suity, potem T10.**
@@ -249,7 +256,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 32   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar     | 8    | 3       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione | 9    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
@@ -260,6 +267,36 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.10 (po `d4c50d2`) — etap 51: przegląd stref bronionych
+
+**Zlecenie MG:** przeanalizować wszystkie strefy bronione („ślizgawka — dlaczego ma PW?”) i czy
+w jednej scenie część stref może być widoczna, a część nie. Analiza 18 systemów → MG wybrał
+pakiety A (widok) i B (mechanika) jako osobny etap 51; C–F poszły do `POMYSLY.md`.
+
+**Ustalenia:** PW ślizgawki są z podręcznika (spryskiwacze, PW 10). Widoczność pojedynczej strefy
+działała już wcześniej (karta strefy, „Ukryj / Odsłoń graczom”), tyle że **karta otwiera się
+dwuklikiem tylko przy wybranym narzędziu ⚠** — bez narzędzia dwuklik nic nie robi.
+
+**Zrobione:** u MG ukryta strefa ma przerywany obrys i „· ukryta” w podpisie, a podpisy
+zawijają się do szerokości prostokąta. Gracz dostaje strefę bez PW i bez stanu uzbrojenia
+(filtr w `toZoneView`) i widzi samą nazwę. Na karcie: „PW urządzenia” z podpowiedzią, nazwy
+statusów zamiast id, pole „Stanowisko” tylko przy systemach, które strzelają. Mechanika:
+flaga `area` (krwawy rój, panele, dziurkacze bijące wszystkich na obszarze),
+`drainEndsWithSystem` (zniszczony dywan zdejmuje „Spowolniony”, maź nie), odsłonięcie strefy
+trafionemu graczowi i PW wieżyczki z przypiętą figurą liczone na figurze (rozbita figura nie
+strzela). Parser ustawia nowe flagi (`data/private` przeliczone: zmieniły się dokładnie 4 wpisy),
+formularz kompendium ma oba pola. Umowa w `siec`.
+
+**Weryfikacja:** vitest shared 2455, server 1446 (5 nowych testów w `zones.test.ts`, trzy
+z nich sprawdzone mutacją), client 358; `tsc`, ESLint i Prettier zmienionych plików czyste
+(`ruff` parsera: 7 starych błędów, żaden w nowych wierszach). Oglądane w **Firefoksie**
+(Playwright MCP, konto `ogledziny-b`): obrys przerywany i ciągły, podpisy, karta ślizgawki,
+„Odsłoń graczom”. **Widoku gracza nie oglądano w przeglądarce** — sprawdza go test serwera.
+**E2E nie puszczone** — T5a/T5b (wieżyczka w strefie) to łańcuch z gatewayem.
+**Ślady w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma aktywną scenę „Strefy 51” z pięcioma
+strefami; strefa 7 na „Strzelnicy” (wieżyczka z figurą) ma PW 0/0 zgodnie z nową zasadą.
+Firefox Playwrighta zalogowany jako `ogledziny-b` (MG wylogowany).
 
 ### Sesja 15.10 (po `7c9cbc7`) — okno „Edycja sceny” i siatka dla graczy
 
@@ -293,26 +330,3 @@ E2E wybiera tryb `input[name=scene-visibility][value=…]` (`click`, nie `check`
 serwer). Oglądane w Firefoksie, `t8c-mapa` 7/7 po zmianie.
 **Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”, ręczna mgła); w Test_1 jedna krótka sesja
 (18:50–18:51) i zużyty link odnowienia Bartka (inne urządzenia Bartka zostają zalogowane).
-
-### Sesja 14.10 (po `2f8350c`) — komunikaty walki i rzut obrażeń z kubka
-
-**Zlecenie MG:** komunikaty walki na czacie mają być logiczne („Bez ran → Lekko ranny”); Unik
-ma być dostępny przed rzutem obrażeń (sprawdzić); rzut obrażeń po trafieniu ma się pojawiać
-na kubku, nie na czacie.
-
-**Zrobione:** plakietka stanu ran na karcie obrażeń mówi stan **po** ciosie („Teraz lekko
-ranny”, `woundTransitionLabel` — także Duszenie/Rzut w `sheets.ts`). Unik na karcie ataku:
-„Unik X: 14 vs 18 → unik udany / trafienie mimo uniku”, werdykt „Uniknięty” zamiast „Pudło”.
-**Unik przed obrażeniami był już wymuszony** (`AWAITING_EVASION`, `evasionPending` od 03.10) —
-bez zmian. Nowy `attack-damage-call.ts`: kubek prowadzącego strzelca sam woła o obrażenia
-(tryb `damage` w `DiceCup`, chwyt od razu potrząsa, `Esc` odkłada); guzik „Obrażenia” zniknął
-z karty ataku, został napis i „Na kubek” (odłożone albo cudze — MG za gracza). Umowa w `atak`.
-E2E: `damageToCup` / `cupHoldsDamage`, przepięte T4a, T4b, T5b (#38: kubek Oli zamiast guzika)
-i T8a.
-
-**Weryfikacja:** vitest shared 2451, server 1442, client 355 (nowy `attack-damage-call.test.ts`);
-`tsc` i ESLint czyste. E2E: `t8a-macierz` 16/16 (oba układy: MG Chromium + gracze Firefox
-i odwrotnie), T4a + T4b 33/33 (z `po-T3`; `po-T4a` i `po-T4` odbudowane). **T5b nie przeszedł
-startu — wymaga działającego AI Gateway**, którego nie było; przepięcie #38 i strzałów wieżyczki
-niesprawdzone przebiegiem. Wygląd kubka w trybie obrażeń oglądany tylko przez E2E (bez zrzutu).
-**Ślady w `dev.db`:** brak (tylko instancja E2E).

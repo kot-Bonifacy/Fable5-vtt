@@ -73,8 +73,11 @@ export function readZoneExempt(raw: string | null | undefined): string[] {
  * The GM's copy carries everything: the pass list, the control node, the note
  * and the figure that shoots for it — all of that is a *plan*, which is GM
  * data by the same rule that keeps a floor's note off a player's screen (26a).
- * A player gets the rectangle, the name and whether it is armed, because those
- * are what somebody standing in the room can see once they have noticed it.
+ * A player gets the rectangle and the name — what somebody standing in the room
+ * can see once they have noticed it. Since stage 51 **not** the switch and not
+ * the body points: a disarmed floor looks like a live one, and the table never
+ * reads an enemy's PW off the map. Their copy carries `armed: true`, `hidden:
+ * false` and 0/0, so a client that tried could not tell either.
  */
 export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): DefenseZoneView {
   return {
@@ -86,10 +89,10 @@ export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): Defense
     y: row.y,
     width: row.width,
     height: row.height,
-    armed: row.armed,
-    hidden: row.hidden,
-    hpMax: row.hpMax,
-    hpCurrent: row.hpCurrent,
+    armed: gm ? row.armed : true,
+    hidden: gm ? row.hidden : false,
+    hpMax: gm ? row.hpMax : 0,
+    hpCurrent: gm ? row.hpCurrent : 0,
     ...(gm ? { exempt: readZoneExempt(row.exempt) } : {}),
     ...(gm && row.tokenId ? { tokenId: row.tokenId } : {}),
     ...(gm ? { architectureId: row.architectureId } : {}),

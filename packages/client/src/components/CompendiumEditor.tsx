@@ -1319,6 +1319,22 @@ export function CompendiumEditor() {
                     />
                     Stanowisko strzela Wartością bojową do tego, kto je uruchomił
                   </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneArea}
+                      onChange={(event) => patch({ zoneArea: event.target.checked })}
+                    />
+                    Bije wszystkich na obszarze, nie tylko tego, kto go uruchomił
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneDrainEndsWithSystem}
+                      onChange={(event) => patch({ zoneDrainEndsWithSystem: event.target.checked })}
+                    />
+                    Kara do RUCH-u schodzi też po zniszczeniu systemu (dywan, nie maź)
+                  </label>
                 </>
               )}
               <label className="bot-field">
@@ -1603,6 +1619,10 @@ function buildDefenseEffects(form: EditorForm): CpredNetDefenseEffects | undefin
     ...(form.zoneMoveDrain.trim() ? { moveDrain: form.zoneMoveDrain.trim() } : {}),
     ...(form.zoneRepeats ? { repeats: true } : {}),
     ...(form.zoneFires ? { fires: true } : {}),
+    ...(form.zoneArea ? { area: true } : {}),
+    ...(form.zoneMoveDrain.trim() && form.zoneDrainEndsWithSystem
+      ? { drainEndsWithSystem: true }
+      : {}),
   };
   return Object.keys(effects).length > 0 ? effects : undefined;
 }
@@ -1668,6 +1688,8 @@ interface EditorForm {
   zoneMoveDrain: string;
   zoneRepeats: boolean;
   zoneFires: boolean;
+  zoneArea: boolean;
+  zoneDrainEndsWithSystem: boolean;
   name: string;
   description: string;
   cost: string;
@@ -1924,6 +1946,8 @@ function defenseEffectFields(
   | 'zoneMoveDrain'
   | 'zoneRepeats'
   | 'zoneFires'
+  | 'zoneArea'
+  | 'zoneDrainEndsWithSystem'
 > {
   return {
     zoneWhen: effects?.when ?? 'enter',
@@ -1943,6 +1967,8 @@ function defenseEffectFields(
     zoneMoveDrain: effects?.moveDrain ?? '',
     zoneRepeats: effects?.repeats === true,
     zoneFires: effects?.fires === true,
+    zoneArea: effects?.area === true,
+    zoneDrainEndsWithSystem: effects?.drainEndsWithSystem === true,
   };
 }
 

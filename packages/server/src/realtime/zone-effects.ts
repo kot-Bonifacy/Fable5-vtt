@@ -24,6 +24,7 @@ import {
   applyForcedFailureToSheet,
   applyForcedFailureToTokenHp,
   describeSheetTimer,
+  readSheetHp,
   readSheetStatusData,
   sheetExpiryRound,
   sheetWoundStatuses,
@@ -45,7 +46,13 @@ import { emitTokensById } from './tokens.js';
 import { oweCarryToToken } from './turn-effects.js';
 import { activeRoundOfScene } from './timed-effects.js';
 import { emitCombatOfScene } from './combat.js';
-import { readZoneExempt, readZoneSightings } from './zones-io.js';
+import {
+  emitZones,
+  readZoneExempt,
+  readZoneSightings,
+  writeZoneSightings,
+  type ZoneSightings,
+} from './zones-io.js';
 
 /**
  * A defence system going off by itself (stage 26f).
@@ -142,7 +149,14 @@ export async function fireZone(
   if (!effects) return { lines, tokenIds };
 
   const exempt = readZoneExempt(zone.exempt);
-  const spotters = readZoneSightings(zone.sightings).users;
+  // Świeżo z bazy, nie z wiersza, który przyniósł wołający: Percepcja rzucona
+  // w tym samym kroku (`trySpotZone`) zapisała już sightings, a `zone` jest
+  // sprzed niej — gracz, który właśnie zauważył siatkę, nie może dostać
+  // „nie widzi zagrożenia".
+  const sightings = await currentSightings(deps, zone);
+  const spotters = sightings.users;
+  /** Konta, którym ta strefa właśnie dała o sobie znać (etap 51). */
+  const caught = new Set<string>();
   const rng = createMixedRng();
   const round = await activeRoundOfScene(deps, scene.id);
   const needsCompendium = (effects.injuries ?? []).length > 0;
@@ -154,6 +168,10 @@ export async function fireZone(
       lines.push(`${tableName} — przepustka, system go przepuszcza.`);
       continue;
     }
+    // Kogo system złapał, ten już wie, gdzie jest — rzucił testem, oberwał
+    // albo wieżyczka do niego strzeliła. Przepustka przechodzi w ciszy.
+    const controller = await controllerOf(deps, token);
+    if (controller) caught.add(controller);
 
     // ── the emplacement's own trigger ──
     if (effects.fires) {
@@ -205,6 +223,8 @@ export async function fireZone(
     tokenIds.push(token.id);
   }
 
+  if (zone.hidden) await revealZoneTo(deps, campaignId, zone, sightings, caught);
+
   // The system itself flashes once, over the whole rectangle (stage 27i) —
   // never once per victim, because a floor going live is one event no matter
   // how many people are standing on it. Only a zone that *hurts* lights up: a
@@ -244,6 +264,9 @@ async function fireEmplacement(
   if (!zone.tokenId) {
     return `${zone.name} — nie ma żetonu na scenie, nie ma czym strzelić.`;
   }
+  if (await emplacementDown(deps, zone)) {
+    return `${zone.name} — stanowisko zniszczone, nie strzela.`;
+  }
   if (profile.combatValue === undefined) {
     return `${zone.name} — wpis nie ma Wartości bojowej, więc nie ma czym rzucić.`;
   }
@@ -258,6 +281,73 @@ async function fireEmplacement(
   return shot.blocked
     ? `${shot.blocked.text}.`
     : `${zone.name} strzela do: ${tokenTableName(target, target.name)} (Wartość bojowa ${profile.combatValue}).`;
+}
+
+/**
+ * Is the figure that shoots for this zone out of the fight (stage 51)?
+ *
+ * An emplacement with a bound figure keeps its body points **on the figure** —
+ * that is what the table shoots at, and the zone's own PW are zeroed when the
+ * figure is bound (`zone:update`). So „is the turret standing" is the figure's
+ * hit points: its sheet's when it has one (every statist since 38a), the
+ * token's own pair otherwise. A figure with no body points at all is a prop
+ * and never counts as destroyed.
+ */
+export async function emplacementDown(
+  deps: RealtimeDeps,
+  zone: Pick<ZoneRow, 'tokenId'>,
+): Promise<boolean> {
+  if (!zone.tokenId) return false;
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: zone.tokenId } });
+  if (!token) return false;
+  if (token.characterId) {
+    const character = await deps.ctx.prisma.character.findUnique({
+      where: { id: token.characterId },
+    });
+    if (character) {
+      const hp = readSheetHp(character, deps.ctx.cpred);
+      return hp.max > 0 && hp.current <= 0;
+    }
+  }
+  return token.hpMax !== null && token.hpMax > 0 && (token.hpCurrent ?? 0) <= 0;
+}
+
+/** Sightings as they stand in the database right now. */
+async function currentSightings(deps: RealtimeDeps, zone: ZoneRow): Promise<ZoneSightings> {
+  const fresh = await deps.ctx.prisma.defenseZone.findUnique({
+    where: { id: zone.id },
+    select: { sightings: true },
+  });
+  return readZoneSightings(fresh?.sightings ?? zone.sightings);
+}
+
+/**
+ * A hidden system that has just caught somebody stops being hidden **from
+ * them** (stage 51).
+ *
+ * Before this a player whose figure the electric floor had just burned for
+ * 6k6 still had no rectangle on the map — and the floor burns again at the end
+ * of every Turn „chyba że zejdzie z podłogi", which nobody can do without
+ * knowing where the floor ends. The same list Perception writes to: the zone
+ * shows up as spotted, for those accounts only, and the GM's „Ukryj" still
+ * hides it from everybody else.
+ */
+async function revealZoneTo(
+  deps: RealtimeDeps,
+  campaignId: string,
+  zone: ZoneRow,
+  sightings: ZoneSightings,
+  accounts: ReadonlySet<string>,
+): Promise<void> {
+  const fresh = [...accounts].filter((id) => !sightings.users.includes(id));
+  if (fresh.length === 0) return;
+  await deps.ctx.prisma.defenseZone.update({
+    where: { id: zone.id },
+    data: {
+      sightings: writeZoneSightings({ ...sightings, users: [...sightings.users, ...fresh] }),
+    },
+  });
+  await emitZones(deps, campaignId, zone.sceneId);
 }
 
 /**
