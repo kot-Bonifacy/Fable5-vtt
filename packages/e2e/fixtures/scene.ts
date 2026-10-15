@@ -99,6 +99,59 @@ async function panSceneCentre(
   }
 }
 
+/**
+ * Figura postaci z zakładki „Postacie” MG: wiersz przeciągnięty na mapę
+ * (od 15.10 jedyna droga — przycisk „⊕ Postaw na scenie” zniknął).
+ * Zakładka musi być otwarta, a wiersz w rozwiniętej grupie.
+ *
+ * Zdarzenia HTML5 (`dragstart` → `dragover` → `drop`) idą z jednym
+ * `DataTransfer` przez `dispatchEvent`, a nie myszą: natywne przeciąganie
+ * w Chromium zawiesza `page.mouse.move` Playwrighta (15.10, pułapka `testy`).
+ * Handlery Reacta — `startTokenDrag` i upuszczenie na `.map-area` — są te same.
+ */
+export async function dragCharacterToMap(
+  page: Page,
+  name: string,
+  point: WorldPoint,
+): Promise<void> {
+  const row = page
+    .locator('.character-row--card')
+    .filter({ has: page.locator('.character-row-name', { hasText: new RegExp(`^${name}`) }) });
+  const handle = row.locator('.character-open');
+  await expect(handle).toHaveAttribute('draggable', 'true');
+  const box = (await handle.boundingBox())!;
+  const target = await worldToClient(page, point);
+  await page.evaluate(
+    ({ from, to }) => {
+      const source = document.elementFromPoint(from.x, from.y)!.closest('.character-open')!;
+      const dataTransfer = new DataTransfer();
+      const fire = (element: Element, type: string, at: { x: number; y: number }) =>
+        element.dispatchEvent(
+          new DragEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+            clientX: at.x,
+            clientY: at.y,
+          }),
+        );
+      fire(source, 'dragstart', from);
+      const drop = document.elementFromPoint(to.x, to.y)!;
+      fire(drop, 'dragenter', to);
+      fire(drop, 'dragover', to);
+      fire(drop, 'drop', to);
+      fire(source, 'dragend', to);
+    },
+    { from: { x: box.x + 30, y: box.y + box.height / 2 }, to: target },
+  );
+}
+
+/** „Rytuały stołu” (Szczęście, PD, miesiąc) w zakładce „Postacie” — zwinięte od 15.10. */
+export async function openTableRituals(page: Page): Promise<void> {
+  const rituals = page.locator('.character-rituals');
+  if ((await rituals.getAttribute('open')) === null) await rituals.locator('summary').click();
+}
+
 /** Klik w punkt sceny, który musi być na mapie (nie pod panelem ani paskiem). */
 export async function clickOnMap(
   page: Page,

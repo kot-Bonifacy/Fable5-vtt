@@ -7,7 +7,7 @@ import { GATEWAY_URL, LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.
 import { compendiumEntry } from '../../fixtures/kompendium.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, openTableRituals, tokenCentre } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, say } from '../../fixtures/table.ts';
@@ -485,6 +485,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
   test('6.4 MG przyznaje PD po sesji; Marek podnosi Zmysł Walki i Broń krótką, blokady trzymają', async () => {
     const page = mg.page;
     await page.getByRole('button', { name: 'Postacie', exact: true }).click();
+    await openTableRituals(page);
     await page.getByLabel('Punkty Doświadczenia do przyznania').fill('500');
     await page.getByLabel('Powód przyznania PD').fill('Nocna zmiana — sesja pierwsza');
     await page.getByRole('button', { name: '✦ Przyznaj wszystkim' }).click();

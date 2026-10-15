@@ -405,8 +405,8 @@ buduje w edytorze architekturę „Ochrona bramy” (Hasło PT 8 → Plik PT 6 �
 Węzeł kontrolny PT 10 z urządzeniem „Wieżyczka nad placem” → Demon „Diablik”), wiąże z nią ukryte
 gniazdo, rysuje dwie ukryte strefy (ostrzał wieżyczki ze stanowiskiem i podłogę elektryczną
 między bramą a budką), zakłada bota „Strażnik” (Propozycja, w scenie „Brama”) i daje
-Kowalowi amunicję przeciwpancerną (od 46c2 — pudełko 2 × 10 z Kompendium). Po aktywacji **MG stawia figury graczy ręką** (⊕ „Postaw na
-scenie” — Kowal i Iskra mają figury w „Knajpie”, więc #9 ich nie przenosi), odsłania drogę z linią
+Kowalowi amunicję przeciwpancerną (od 46c2 — pudełko 2 × 10 z Kompendium). Po aktywacji **MG stawia figury graczy ręką** (przeciąga
+wiersz z „Postaci” na mapę, do 15.10 ⊕ „Postaw na scenie” — Kowal i Iskra mają figury w „Knajpie”, więc #9 ich nie przenosi), odsłania drogę z linią
 bramy i pas placu; **Marek otwiera bramę swoją klamką** (od poprawki #30; wcześniej robił to MG)
 i wchodzi na plac, Ola Skanerem znajduje gniazdo, podłącza się, łamie hasło i rozpoznaje Plik.
 MG wiąże strefę wieżyczki z węzłem **polem „Węzeł kontrolny” na karcie strefy** (od poprawki
@@ -649,7 +649,7 @@ w `specs/50-przegladarki`, **31 testów w ~2,7 min**, każdy plik z `po-T6`, MG 
 
 | obszar | szczęśliwa ścieżka | odmowa | wynik |
 | ------ | ------------------ | ------ | ----- |
-| trzecia scena „Lombard” | MG zakłada scenę z mapy (Pełna), podgląd tylko u MG, aktywacja przenosi stół, ⊕ figur, powrót do „Knajpy” | gracz `scene:activate`; podgląd nie wysyła graczowi id sceny ani adresu mapy | ✅ |
+| trzecia scena „Lombard” | MG zakłada scenę z mapy (Pełna), podgląd tylko u MG, aktywacja przenosi stół, figury przeciągnięte z „Postaci”, powrót do „Knajpy” | gracz `scene:activate`; podgląd nie wysyła graczowi id sceny ani adresu mapy | ✅ |
 | rysowanie | podpis na warstwie MG (domyślnej) z kanarkiem, prostokąt dla stołu, ołówek gracza i „Cofnij mój ostatni rysunek” | gracz kasuje rysunek MG → `FORBIDDEN` | ✅ |
 | ping | Alt+klik gracza dochodzi do MG (`pull: false`), Alt+Shift+klik MG przyciąga kamerę gracza | ping na nieoglądanej scenie → `SCENE_NOT_VIEWED` | ✅ |
 | wiele figur | ramka Shift MG bierze dwie figury, przeciągnięcie niesie obie o (3, 2) pola | Ctrl+A gracza zaznacza tylko jego figurę | ✅ |
@@ -879,7 +879,7 @@ Bez sesji próbnej z ludźmi (decyzja MG) te rzeczy ocenia pierwsza prawdziwa se
 - karta Pochwycenia: „Udane · PT 13 (ZW + Bijatyka celu) · Obrona Iskra: 10 → mimo wszystko
   udane” przy wyniku 12 — czy gracz zrozumie, dlaczego chwyt poniżej PT się udał — T4b, 27.09.
 - po aktywacji nowej sceny figury graczy, którzy mają figurę na innej scenie, nie przechodzą same —
-  MG stawia każdą ⊕ „Postaw na scenie” z listy postaci; czy MG o tym pamięta przy stole — T5a, 27.09;
+  MG stawia każdą, przeciągając wiersz z listy postaci (do 15.10 — ⊕ „Postaw na scenie”); czy MG o tym pamięta przy stole — T5a, 27.09;
 - na ręcznej mgle MG musi odsłonić **linię** drzwi i bramy, nie tylko podłogę przed nimi, bo
   inaczej gracz ich nie dostaje (a z #30 i tak nie ma klamki) — T5a, 27.09;
 - na otwartym placu marsz co chwilę staje („Ktoś pojawił się w polu widzenia — marsz przerwany”:

@@ -886,13 +886,6 @@
   font-size: 0.78rem;
 }
 
-.character-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-bottom: 0.4rem;
-}
-
 /* Miniatura rodzaju przedmiotu (24.09.2026) — sylwetka z `public/icons/hud`
    jako maska, więc bierze kolor tekstu wiersza, także przygaszonego
    w zablokowanym wierszu. Przedmiot bez miniatury trzyma puste miejsce tej

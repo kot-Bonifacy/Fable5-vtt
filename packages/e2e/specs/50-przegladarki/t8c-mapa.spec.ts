@@ -17,6 +17,7 @@ import {
 import {
   clickOnMap,
   clickTool,
+  dragCharacterToMap,
   drawCover,
   dropTool,
   fitCamera,
@@ -109,14 +110,13 @@ test.describe.serial('T8c mapa i sceny: Lombard, rysunki, ping, grupa, obiekty',
 
     await activateScene(mg, 'Lombard', [marek], LOMBARD);
     fromMarek.reveal(mapUrl!);
-    // Figury graczy stawia MG — ⊕ „Postaw na scenie” (pułapka `testy`, T5a).
+    // Figury graczy stawia MG — przeciąga wiersz z „Postaci” (pułapka `testy`, T5a).
     await page.getByRole('button', { name: 'Postacie', exact: true }).click();
     for (const [name, column] of [
       ['Kowal', 8],
       ['Iskra', 9],
     ] as const) {
-      await page.getByRole('button', { name: `Postaw na scenie: ${name}` }).click();
-      await clickOnMap(page, at(column, 12));
+      await dragCharacterToMap(page, name, at(column, 12));
       await expect.poll(() => figureOn('Lombard', name)?.ownerId ?? null).not.toBeNull();
     }
     await page.keyboard.press('Escape');

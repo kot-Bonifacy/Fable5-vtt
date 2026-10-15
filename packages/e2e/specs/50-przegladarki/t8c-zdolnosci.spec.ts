@@ -9,6 +9,7 @@ import {
   seat,
   startFromPoT6,
 } from '../../fixtures/regresja.ts';
+import { openTableRituals } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, shakeCup } from '../../fixtures/table.ts';
@@ -436,6 +437,7 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
     const before = sheet().eddies;
     await closeSheet(kuba.page);
     await mg.page.getByRole('button', { name: 'Postacie', exact: true }).click();
+    await openTableRituals(mg.page);
     await mg.page.getByRole('button', { name: /Rozlicz miesiąc/ }).click();
     await expect.poll(() => sheet().eddies, { timeout: 15_000 }).toBeLessThan(before);
     const ledger = query<{ kind: string; amount: number; label: string }>(

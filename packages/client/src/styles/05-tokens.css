@@ -288,11 +288,10 @@
   gap: 0.35rem;
 }
 
-/* Zwinięta grupa „Pojemniki” pod drużyną (46b2). */
+/* Grupy listy postaci (46b2, 15.10). */
 .character-group > summary {
   cursor: pointer;
   color: var(--text-dim);
-  font-size: 0.8rem;
 }
 
 .character-group[open] > summary {
@@ -379,20 +378,36 @@
   font-size: 0.75rem;
 }
 
-/* ---- Zakładka „Postacie": dwa wiersze na postać (etap 43a) ----
-   Portret na oba wiersze, imię w całości u góry, Rola pod nim; właściciel
-   i przyciski MG leżą w prawym dolnym rogu karty, na wysokości Roli. Klasy
-   bazowe dzieli panel botów, więc wszystko idzie przez modyfikator. */
+/* ---- Zakładka „Postacie": dwa wiersze na postać (etap 43a, przebudowa 15.10) ----
+   Kartą jest cały wiersz: po lewej przycisk z portretem na oba wiersze, imieniem
+   i Rolą (klik — karta, przeciągnięcie — figura u MG), po prawej kolumna MG:
+   akcje u góry, właściciel u dołu. Klasy bazowe dzieli panel botów, więc
+   wszystko idzie przez modyfikator. */
 .character-row--card {
-  position: relative;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.55rem), calc(100% - 0.55rem) 100%, 0 100%);
+}
+
+.character-row--card:hover,
+.character-row--card:focus-within {
+  border-color: var(--accent);
 }
 
 .character-row--card .character-open {
   align-items: stretch;
   gap: 0.6rem;
-  padding: 0.4rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
   border-radius: 0;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.55rem), calc(100% - 0.55rem) 100%, 0 100%);
+}
+
+.character-row--card .character-open[draggable='true']:active {
+  cursor: grabbing;
 }
 
 .character-row--card .character-thumb {
@@ -430,6 +445,7 @@
 
 .character-row--card .character-row-meta {
   font-size: 0.75rem;
+  white-space: normal;
 }
 
 /* #58: karta z kreatora przed „Przyjmij do gry” — ostrzeżenie, nie błąd. */
@@ -437,15 +453,115 @@
   color: var(--warn);
 }
 
-.character-row--card .character-row-actions {
-  position: absolute;
-  right: 0.4rem;
-  bottom: 0.35rem;
+.character-row-scene {
+  color: var(--ok);
 }
 
-/* Miejsce na właściciela i przyciski MG, które leżą na wierszu Roli. */
-.character-row--card:has(.character-row-actions) .character-row-meta {
-  padding-right: 9rem;
+/* Prawa kolumna MG: akcje u góry, właściciel u dołu. */
+.character-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.3rem;
+  flex: none;
+}
+
+/* „Usuń” jest rzadkie i nieodwracalne — pokazuje się dopiero przy wierszu
+   pod kursorem albo z fokusem, żeby nie stało w każdym wierszu na widoku. */
+.character-row--card .character-delete {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.character-row--card:hover .character-delete,
+.character-row--card:focus-within .character-delete {
+  opacity: 1;
+}
+
+/* Pasek na górze panelu MG: „＋ Nowa postać…”, szkic, biblioteka portretów. */
+.character-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Lista graczy czekających na portret (PortraitPicker) — nad przyciskami. */
+.character-toolbar > .creation-ready {
+  order: -1;
+  flex-basis: 100%;
+}
+
+/* Grupy listy MG: Drużyna, NPC, wzorce, statyści, pojemniki. */
+.character-group > summary {
+  font-family: var(--font-ui-head);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.character-drag-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Rytuały stołu — zwinięta sekcja z czynnościami raz na sesję / miesiąc. */
+.character-rituals {
+  border: 1px dashed var(--border);
+  padding: 0.3rem 0.5rem;
+}
+
+.character-rituals > summary {
+  cursor: pointer;
+  font-family: var(--font-ui-head);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.character-rituals[open] > summary {
+  margin-bottom: 0.4rem;
+}
+
+.character-rituals-sub {
+  margin-left: 0.5rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.character-ritual {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+}
+
+/* Pora nad przyciskami, nie obok — panel bywa wąski. */
+.character-ritual-when {
+  flex: 0 0 100%;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Oba pola tej samej wysokości co przyciski obok. */
+.character-ritual input {
+  height: 1.75rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.character-xp-amount {
+  width: 4rem;
+}
+
+.character-xp-label {
+  flex: 1;
+  min-width: 6rem;
 }
 
 /* Właściciel jako słowo — lista dopiero po kliknięciu. */

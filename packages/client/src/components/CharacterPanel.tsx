@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
 import {
   CPRED_CREATION_STEP_LABELS,
@@ -23,7 +23,6 @@ import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCheckStore } from '../stores/checkStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
-import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useNpcCreateStore } from '../stores/npcCreateStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
@@ -105,11 +104,6 @@ function ackErrorText(code: string): string {
 }
 
 /**
- * Side-panel tab with the campaign's characters. The GM sees all of them
- * (with owner assignment); a player sees only their own. Clicking a row opens
- * the floating sheet window.
- */
-/**
  * „Medyk „Igła” · Wyposażenie" — what a resumable draft looks like from the
  * „Postacie" tab. Whatever is known goes in; an unnamed draft without a Role
  * still says which step it stopped on.
@@ -120,6 +114,35 @@ export function creationResumeLabel(name: string, roleName: string | null, step:
   return `${who || 'bez Roli'} · ${stepLabel}`;
 }
 
+const DRAG_LEARNED_KEY = 'vtt.characterDragLearned';
+const RITUALS_OPEN_KEY = 'vtt.characterRitualsOpen';
+
+/** Wygoda jednego widza (podpowiedź, zwinięta sekcja) — nie stan gry. */
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string, on: boolean): void {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    // Prywatne okno albo zablokowana pamięć — wróci stan domyślny.
+  }
+}
+
+/**
+ * Zakładka „Postacie” (przebudowa z 15.10.2026, zlecenie MG).
+ *
+ * MG: na górze pasek („＋ Nowa postać…”, szkic, biblioteka portretów), pod nim
+ * zwinięte „Rytuały stołu”, a lista w grupach — Drużyna, NPC, Wzorce statystów,
+ * Statyści z wzorców, Pojemniki. Figurę stawia się **wyłącznie przeciągnięciem
+ * wiersza na mapę** — dawny przycisk „⊕ Postaw na scenie” (28.08) dublował to
+ * przeciąganie od 26.09 i zniknął. Gracz widzi tylko swoje postacie, bez grup.
+ */
 export function CharacterPanel() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
@@ -130,12 +153,24 @@ export function CharacterPanel() {
   const creationDraft = useCreationStore((s) => s.draft);
   const creationPeek = useCreationStore((s) => s.peek);
   const waiting = useWaitingCharacters(isGm);
+  // Postacie z figurą na oglądanej scenie — napis, żeby marsz figury (zmiana
+  // x/y) nie przerysowywał listy.
+  const onSceneKey = useTokenStore((s) =>
+    [
+      ...new Set(
+        Object.values(s.tokens)
+          .map((token) => token.characterId)
+          .filter((id): id is string => !!id),
+      ),
+    ]
+      .sort()
+      .join(' '),
+  );
+  const onScene = new Set(onSceneKey.split(' '));
 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [settlement, setSettlement] = useState<string | null>(null);
-  const [xpAmount, setXpAmount] = useState('');
-  const [xpLabel, setXpLabel] = useState('');
+  const [dragLearned, setDragLearned] = useState(() => readFlag(DRAG_LEARNED_KEY));
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -161,6 +196,298 @@ export function CharacterPanel() {
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
 
+  async function removeCharacter(characterId: string, name: string) {
+    if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
+    const ack = await deleteCharacter(characterId);
+    if (!ack.ok) setError(ackErrorText(ack.error));
+  }
+
+  const roleName = (roleId: string | null) =>
+    registry.roles.find((r) => r.id === roleId)?.name ?? '';
+  const ownerName = (ownerId: string | null) =>
+    ownerId === null ? 'NPC' : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
+
+  // Pojemniki (46b) mają karty bez Cech i PW, a wzorce statystów i ich kopie
+  // (49a) mnożą się w walce — każde w swojej grupie, żeby pięciu gangerów nie
+  // spychało drużyny pod krawędź panelu.
+  const live = order.filter((id) => characters[id] !== undefined);
+  const isPlain = (id: string) => {
+    const card = characters[id]!;
+    return !isContainerCard(card.data) && !card.template && !card.templateId;
+  };
+  const party = live.filter((id) => isPlain(id) && characters[id]!.ownerId !== null);
+  const npcs = live.filter((id) => isPlain(id) && characters[id]!.ownerId === null);
+  const templates = live.filter((id) => characters[id]!.template);
+  const copies = live.filter((id) => !characters[id]!.template && !!characters[id]!.templateId);
+  const containers = live.filter((id) => isContainerCard(characters[id]!.data));
+
+  const renderRow = (id: string) => {
+    const character = characters[id];
+    if (!character) return null;
+    const container = isContainerCard(character.data);
+    const role = roleName(character.data.roleId);
+    return (
+      // Etap 43a: portret przez dwa wiersze, imię w całości u góry, Rola pod
+      // nim. Od 15.10 akcje MG stoją w prawej kolumnie, a nie na wierszu Roli.
+      <li key={id} className="character-row character-row--card">
+        <button
+          type="button"
+          className="character-open"
+          onClick={() => openSheet(id)}
+          // MG wyciąga postać prosto na mapę (26.09) — żeton z kartą
+          // i właścicielem, tak samo jak z kreatora.
+          draggable={isGm}
+          onDragStart={
+            isGm
+              ? (event) => {
+                  startTokenDrag(event, {
+                    name: character.name,
+                    imageUrl: character.portraitUrl,
+                    characterId: id,
+                    ownerId: character.ownerId,
+                  });
+                  if (!dragLearned) {
+                    writeFlag(DRAG_LEARNED_KEY, true);
+                    setDragLearned(true);
+                  }
+                }
+              : undefined
+          }
+          title={
+            !isGm
+              ? 'Otwórz kartę'
+              : character.template
+                ? 'Kliknij — wzorzec. Przeciągnij na mapę — każda figura dostanie własną kopię karty.'
+                : 'Kliknij — karta. Przeciągnij na mapę — figura tej postaci.'
+          }
+        >
+          {character.portraitUrl ? (
+            <img className="character-thumb" src={character.portraitUrl} alt="" />
+          ) : (
+            <span className="character-thumb character-thumb--empty" aria-hidden>
+              ◇
+            </span>
+          )}
+          <span className="character-row-text">
+            <span className="character-row-name">
+              {character.name}
+              <CyberpsychosisChip data={character.data} />
+            </span>
+            <span className="character-row-meta">
+              {container ? 'pojemnik' : role || 'bez Roli'}
+              {/* #58 (T8b): gracz po „Utwórz postać” nie był pewien, czy
+                  w ogóle ją oddał — lista nie mówiła, że czeka na MG. */}
+              {!character.playReady && (
+                <span className="character-row-pending"> · czeka na przyjęcie przez MG</span>
+              )}
+              {!container && onScene.has(id) && (
+                <span className="character-row-scene" title="Ma figurę na oglądanej scenie">
+                  {' '}
+                  · na mapie
+                </span>
+              )}
+            </span>
+          </span>
+        </button>
+        {isGm && (
+          <span className="character-row-side">
+            <span className="character-row-actions">
+              {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
+                  żetonie — nietypowe wydarzenie trafia też kogoś, kto
+                  akurat nie stoi na aktywnej scenie. Pojemnik (46b2) nie rzuca. */}
+              {!container && (
+                <button
+                  type="button"
+                  className="small-button"
+                  onClick={() =>
+                    useCheckStore
+                      .getState()
+                      .openCall({ characterId: id, characterName: character.name })
+                  }
+                  title="Wezwij do Testu"
+                  aria-label="Wezwij do Testu"
+                >
+                  ⚄
+                </button>
+              )}
+              {/* Etap 49a: wzorzec statysty — każda figura z niego to kopia.
+                  Karta gracza, kopia wzorca i pojemnik wzorcem nie zostają. */}
+              {!container && character.ownerId === null && !character.templateId && (
+                <button
+                  type="button"
+                  className={`small-button ${character.template ? 'small-button--on' : ''}`}
+                  aria-pressed={character.template}
+                  onClick={() => void toggleTemplate(id, !character.template)}
+                  title={
+                    character.template
+                      ? 'Wzorzec statysty: każda figura postawiona z tej karty dostaje własną kopię karty. Kliknij, żeby zrobić z niego zwykłego NPC-a.'
+                      : 'Zrób z tej karty wzorzec statysty: każda figura postawiona na mapie dostanie własną kopię karty z numerem.'
+                  }
+                  aria-label="Wzorzec statysty"
+                >
+                  ⧉
+                </button>
+              )}
+              <button
+                type="button"
+                className="small-button character-delete"
+                onClick={() => void removeCharacter(id, character.name)}
+                title="Usuń postać"
+                aria-label="Usuń postać"
+              >
+                ✕
+              </button>
+            </span>
+            {/* Pojemnik nie ma właściciela; wzorzec należy zawsze do MG. */}
+            {!container && !character.template && (
+              <OwnerPicker
+                ownerId={character.ownerId}
+                label={ownerName(character.ownerId)}
+                players={players}
+                onChange={(ownerId) => void changeOwner(id, ownerId)}
+              />
+            )}
+          </span>
+        )}
+      </li>
+    );
+  };
+
+  // Naprawa 3d: a draft on the server shows up here by name, so a player
+  // back from F5 (or from another day) resumes instead of wondering
+  // whether the wizard forgot. The open window's draft wins over the
+  // header learnt at `state:sync`; finishing and discarding clear both.
+  const resume = creationDraft
+    ? creationResumeLabel(
+        creationDraft.name,
+        roleName(creationDraft.roleId) || null,
+        creationDraft.step,
+      )
+    : creationPeek
+      ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
+      : null;
+
+  if (!isGm) {
+    return (
+      <div className="character-panel">
+        {live.length === 0 ? (
+          <p className="placeholder-text">Nie masz jeszcze żadnej postaci.</p>
+        ) : (
+          <ul className="character-list">{live.map(renderRow)}</ul>
+        )}
+        {/* 24.09: a player's new character starts with the GM's consent and
+            the rules. */}
+        <CreationGate resume={resume} another={live.length > 0} />
+        {error && <p className="auth-error">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="character-panel">
+      {/* Naprawa 2b: a player waiting for a pool comes first. */}
+      <CreationRankPanel />
+      {/* Naprawa 3c: karty prosto z kreatora, z tym, co po Roli zostało. */}
+      <CharacterReadyPanel rows={waiting} />
+      <div className="character-toolbar">
+        <NewCharacterButton resume={resume} />
+        <PortraitPicker manage />
+      </div>
+      {live.length > 0 && <TableRituals />}
+      {live.length === 0 ? (
+        <p className="placeholder-text">Brak postaci — „＋ Nowa postać…” powyżej.</p>
+      ) : (
+        <>
+          {/* Podpowiedź znika po pierwszym przeciągnięciu z listy. */}
+          {!dragLearned && (
+            <p className="character-drag-hint">
+              Kliknij postać, żeby otworzyć kartę. Przeciągnij ją na mapę, żeby postawić figurę.
+            </p>
+          )}
+          <CharacterGroup
+            id="party"
+            label="Drużyna"
+            title="Postacie graczy (także bot-towarzysz z właścicielem)"
+            rows={party}
+            open
+            render={renderRow}
+          />
+          <CharacterGroup
+            id="npcs"
+            label="NPC"
+            title="Nazwani NPC-e — jedna karta, jedna figura"
+            rows={npcs}
+            open
+            render={renderRow}
+          />
+          <CharacterGroup
+            id="templates"
+            label="Wzorce statystów"
+            title="Przeciągnij wzorzec na mapę — każda figura dostaje własną kopię karty z numerem"
+            rows={templates}
+            open
+            render={renderRow}
+          />
+          <CharacterGroup
+            id="copies"
+            label="Statyści z wzorców"
+            title="Karty figur postawionych z wzorców — giną razem ze swoją figurą"
+            rows={copies}
+            render={renderRow}
+          />
+          {/* Etap 46b2 (decyzja MG z 09.10): karty skrzyń i stosów to nie
+              postacie — zwinięta grupa na dole. */}
+          <CharacterGroup
+            id="containers"
+            label="Pojemniki"
+            title="Skrzynie, bagażniki i stosy stojące na mapach"
+            rows={containers}
+            render={renderRow}
+          />
+        </>
+      )}
+      {error && <p className="auth-error">{error}</p>}
+    </div>
+  );
+}
+
+function CharacterGroup({
+  id,
+  label,
+  title,
+  rows,
+  open = false,
+  render,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  rows: string[];
+  open?: boolean;
+  render: (id: string) => ReactNode;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <details className="character-group" data-character-group={id} open={open}>
+      <summary title={title}>
+        {label} ({rows.length})
+      </summary>
+      <ul className="character-list">{rows.map(render)}</ul>
+    </details>
+  );
+}
+
+/**
+ * Rytuały całego stołu — start sesji (Szczęście), koniec sesji (PD, etap 29a)
+ * i pierwszy dzień miesiąca (etap 23b). Używa się ich raz na sesję, więc od
+ * 15.10 leżą w zwiniętej sekcji zamiast spychać listę postaci w dół panelu.
+ */
+function TableRituals() {
+  const [open, setOpen] = useState(() => readFlag(RITUALS_OPEN_KEY));
+  const [settlement, setSettlement] = useState<string | null>(null);
+  const [xpAmount, setXpAmount] = useState('');
+  const [xpLabel, setXpLabel] = useState('');
+
   /** Start-of-session ritual (RAW): every pool back to its maximum. */
   async function refreshAllLuck() {
     const store = useCharacterStore.getState();
@@ -172,7 +499,10 @@ export function CharacterPanel() {
           !isContainerCard(character.data) &&
           character.data.luckCurrent < character.data.stats.luck,
       );
-    if (stale.length === 0) return;
+    if (stale.length === 0) {
+      setSettlement('Wszyscy mają już pełną pulę Szczęścia.');
+      return;
+    }
     const who = plural(stale.length, 'postaci', 'postaciom', 'postaciom');
     if (!window.confirm(`Odnowić pulę Szczęścia ${who} (nowa sesja)?`)) return;
     for (const character of stale) {
@@ -181,10 +511,11 @@ export function CharacterPanel() {
         data: { luckCurrent: character.data.stats.luck },
       });
       if (!ack.ok) {
-        setError(ackErrorText(ack.error));
+        setSettlement(ackErrorText(ack.error));
         return;
       }
     }
+    setSettlement(`Odnowiono Szczęście — ${who}.`);
   }
 
   /** The first of the month (stage 23b) — preview first, then the real thing. */
@@ -239,296 +570,93 @@ export function CharacterPanel() {
     setXpLabel('');
   }
 
-  async function removeCharacter(characterId: string, name: string) {
-    if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
-    const ack = await deleteCharacter(characterId);
-    if (!ack.ok) setError(ackErrorText(ack.error));
-  }
-
-  const roleName = (roleId: string | null) =>
-    registry.roles.find((r) => r.id === roleId)?.name ?? '';
-  const ownerName = (ownerId: string | null) =>
-    ownerId === null ? 'NPC' : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
-
-  // Pojemniki (46b) mają karty bez Cech i PW — osobna grupa na dole listy.
-  // Etap 49a: wzorce statystów i ich kopie też mają własne grupy — pięciu
-  // gangerów z jednej walki nie może spychać drużyny pod krawędź panelu.
-  const people = order.filter((id) => {
-    const card = characters[id];
-    return card !== undefined && !isContainerCard(card.data) && !card.template && !card.templateId;
-  });
-  const templates = order.filter((id) => characters[id]?.template === true);
-  const copies = order.filter((id) => {
-    const card = characters[id];
-    return card !== undefined && !card.template && !!card.templateId;
-  });
-  const containers = order.filter((id) => {
-    const card = characters[id];
-    return card !== undefined && isContainerCard(card.data);
-  });
-
-  const renderRow = (id: string) => {
-    const character = characters[id];
-    if (!character) return null;
-    return (
-      // Etap 43a: dwa wiersze na postać, portret przez oba (zlecenie MG
-      // z 26.09) — imię u góry w całości, niżej Rola, a po prawej
-      // właściciel i przyciski MG.
-      <li key={id} className="character-row character-row--card">
+  return (
+    <details
+      className="character-rituals"
+      open={open}
+      onToggle={(event) => {
+        const next = event.currentTarget.open;
+        setOpen(next);
+        writeFlag(RITUALS_OPEN_KEY, next);
+      }}
+    >
+      <summary title="Czynności dla całego stołu naraz — raz na sesję albo raz na miesiąc">
+        Rytuały stołu
+        <span className="character-rituals-sub">Szczęście · PD · miesiąc</span>
+      </summary>
+      <div className="character-ritual">
+        <span className="character-ritual-when">Start sesji</span>
         <button
           type="button"
-          className="character-open"
-          onClick={() => openSheet(id)}
-          // MG wyciąga postać prosto na mapę (26.09) — ten sam żeton
-          // co „⊕", z kartą i właścicielem.
-          draggable={isGm}
-          onDragStart={
-            isGm
-              ? (event) =>
-                  startTokenDrag(event, {
-                    name: character.name,
-                    imageUrl: character.portraitUrl,
-                    characterId: id,
-                    ownerId: character.ownerId,
-                  })
-              : undefined
-          }
-          title={
-            !isGm
-              ? 'Otwórz kartę'
-              : character.template
-                ? 'Otwórz wzorzec — albo przeciągnij na mapę: każda figura dostanie własną kopię karty'
-                : 'Otwórz kartę — albo przeciągnij postać na mapę'
-          }
+          className="small-button"
+          onClick={() => void refreshAllLuck()}
+          title="Ustawia pulę Szczęścia wszystkich postaci na maksimum"
         >
-          {character.portraitUrl ? (
-            <img className="character-thumb" src={character.portraitUrl} alt="" />
-          ) : (
-            <span className="character-thumb character-thumb--empty" aria-hidden>
-              ◇
-            </span>
-          )}
-          <span className="character-row-text">
-            <span className="character-row-name">
-              {character.name}
-              <CyberpsychosisChip data={character.data} />
-            </span>
-            <span className="character-row-meta">
-              {roleName(character.data.roleId) || '—'}
-              {/* #58 (T8b): gracz po „Utwórz postać” nie był pewien, czy
-                          w ogóle ją oddał — lista nie mówiła, że czeka na MG. */}
-              {!character.playReady && (
-                <span className="character-row-pending"> · czeka na przyjęcie przez MG</span>
-              )}
-              {character.template && ' · wzorzec — przeciągnij na mapę'}
-            </span>
-          </span>
+          ↻ Odnów Szczęście wszystkim
         </button>
-        {isGm && (
-          <span className="character-row-actions">
-            {/* Pojemnik (46b2) nie ma właściciela, nie rzuca i stoi już na mapie. */}
-            {!isContainerCard(character.data) && (
-              <>
-                {!character.template && (
-                  <OwnerPicker
-                    ownerId={character.ownerId}
-                    label={ownerName(character.ownerId)}
-                    players={players}
-                    onChange={(ownerId) => void changeOwner(id, ownerId)}
-                  />
-                )}
-                {/* Etap 49a: wzorzec statysty — każda figura z niego to kopia.
-                    Karta gracza i kopia wzorca wzorcem nie zostają. */}
-                {character.ownerId === null && !character.templateId && (
-                  <button
-                    type="button"
-                    className={`small-button ${character.template ? 'small-button--on' : ''}`}
-                    aria-pressed={character.template}
-                    onClick={() => void toggleTemplate(id, !character.template)}
-                    title={
-                      character.template
-                        ? 'Wzorzec statysty: każda figura postawiona z tej karty dostaje własną kopię karty. Kliknij, żeby zrobić z niego zwykłego NPC-a.'
-                        : 'Zrób z tej karty wzorzec statysty: każda figura postawiona na mapie dostanie własną kopię karty z numerem.'
-                    }
-                    aria-label="Wzorzec statysty"
-                  >
-                    ⧉
-                  </button>
-                )}
-                {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
-                        żetonie — nietypowe wydarzenie trafia też kogoś, kto
-                        akurat nie stoi na aktywnej scenie. */}
-                <button
-                  type="button"
-                  className="small-button"
-                  onClick={() =>
-                    useCheckStore
-                      .getState()
-                      .openCall({ characterId: id, characterName: character.name })
-                  }
-                  title="Wezwij do Testu"
-                  aria-label="Wezwij do Testu"
-                >
-                  ⚄
-                </button>
-                <PlaceOnSceneButton
-                  characterId={id}
-                  name={character.name}
-                  portraitUrl={character.portraitUrl}
-                  ownerId={character.ownerId}
-                />
-              </>
-            )}
-            <button
-              type="button"
-              className="small-button character-delete"
-              onClick={() => void removeCharacter(id, character.name)}
-              title="Usuń postać"
-              aria-label="Usuń postać"
-            >
-              ✕
-            </button>
-          </span>
-        )}
-      </li>
-    );
-  };
-
-  // Naprawa 3d: a draft on the server shows up here by name, so a player
-  // back from F5 (or from another day) resumes instead of wondering
-  // whether the wizard forgot. The open window's draft wins over the
-  // header learnt at `state:sync`; finishing and discarding clear both.
-  const resume = creationDraft
-    ? creationResumeLabel(
-        creationDraft.name,
-        roleName(creationDraft.roleId) || null,
-        creationDraft.step,
-      )
-    : creationPeek
-      ? creationResumeLabel(creationPeek.name, creationPeek.roleName, creationPeek.step)
-      : null;
-
-  return (
-    <div className="character-panel">
-      {/* Naprawa 2b: a player waiting for a pool comes first. */}
-      {isGm ? <CreationRankPanel /> : null}
-      {/* Naprawa 3c: karty prosto z kreatora, z tym, co po Roli zostało. */}
-      {isGm ? <CharacterReadyPanel rows={waiting} /> : null}
-      {isGm ? <NewCharacterButton resume={resume} /> : null}
-      {isGm ? <PortraitPicker manage /> : null}
-      {isGm && order.length > 0 && (
-        <div className="character-panel-actions">
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => void refreshAllLuck()}
-            title="Ustawia pulę Szczęścia wszystkich postaci na maksimum (start sesji)"
-          >
-            ↻ Odnów Szczęście wszystkim
-          </button>
-          {/* Stage 23b. Two clicks on purpose: the preview lists the bill for
-              every sheet with a Lifestyle and touches nothing, and only the
-              second press moves money — a mis-click here empties wallets. */}
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => void runSettlement(true)}
-            title="Podgląd: ile zejdzie każdej postaci pierwszego dnia miesiąca (nic nie pobiera)"
-          >
-            Podgląd miesiąca
-          </button>
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => void runSettlement(false)}
-            title="Pobiera Poziom życia i czynsz wszystkim postaciom, które je mają ustawione"
-          >
-            💸 Rozlicz miesiąc
-          </button>
-        </div>
-      )}
+      </div>
       {/* Etap 29a, s. 410: „Po każdej sesji gry MG przyznaje wszystkim graczom
-          Punkty Doświadczenia". Rytuał całego stołu, więc stoi obok odnowienia
-          Szczęścia i rozliczenia miesiąca, a nie w jednej karcie. */}
-      {isGm && order.length > 0 && (
-        <form
-          className="character-panel-actions character-xp"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void awardPoints();
-          }}
+          Punkty Doświadczenia". */}
+      <form
+        className="character-ritual"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void awardPoints();
+        }}
+      >
+        <span className="character-ritual-when">Po sesji</span>
+        <input
+          type="number"
+          className="character-xp-amount"
+          min={-ADVANCEMENT_AWARD_MAX}
+          max={ADVANCEMENT_AWARD_MAX}
+          value={xpAmount}
+          placeholder="PD"
+          onChange={(e) => setXpAmount(e.target.value)}
+          aria-label="Punkty Doświadczenia do przyznania"
+          title="Tabela na s. 410–411 idzie od 10 do 80 na sesję; liczba ujemna zabiera."
+        />
+        <input
+          type="text"
+          className="character-xp-label"
+          maxLength={ADVANCEMENT_LABEL_MAX}
+          value={xpLabel}
+          placeholder="za co (trafia do rejestru)"
+          onChange={(e) => setXpLabel(e.target.value)}
+          aria-label="Powód przyznania PD"
+        />
+        <button
+          type="submit"
+          className="small-button"
+          title="Dopisuje tę pulę każdej postaci należącej do gracza"
         >
-          <label className="character-xp-field">
-            PD po sesji
-            <input
-              type="number"
-              min={-ADVANCEMENT_AWARD_MAX}
-              max={ADVANCEMENT_AWARD_MAX}
-              value={xpAmount}
-              onChange={(e) => setXpAmount(e.target.value)}
-              aria-label="Punkty Doświadczenia do przyznania"
-              title="Tabela na s. 410–411 idzie od 10 do 80 na sesję; liczba ujemna zabiera."
-            />
-          </label>
-          <input
-            type="text"
-            className="character-xp-label"
-            maxLength={ADVANCEMENT_LABEL_MAX}
-            value={xpLabel}
-            placeholder="za co (trafia do rejestru)"
-            onChange={(e) => setXpLabel(e.target.value)}
-            aria-label="Powód przyznania PD"
-          />
-          <button
-            type="submit"
-            className="small-button"
-            title="Dopisuje tę pulę każdej postaci należącej do gracza"
-          >
-            ✦ Przyznaj wszystkim
-          </button>
-        </form>
-      )}
+          ✦ Przyznaj wszystkim
+        </button>
+      </form>
+      {/* Stage 23b. Two clicks on purpose: the preview lists the bill for
+          every sheet with a Lifestyle and touches nothing, and only the
+          second press moves money — a mis-click here empties wallets. */}
+      <div className="character-ritual">
+        <span className="character-ritual-when">1. dzień miesiąca</span>
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => void runSettlement(true)}
+          title="Podgląd: ile zejdzie każdej postaci pierwszego dnia miesiąca (nic nie pobiera)"
+        >
+          Podgląd miesiąca
+        </button>
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => void runSettlement(false)}
+          title="Pobiera Poziom życia i czynsz wszystkim postaciom, które je mają ustawione"
+        >
+          💸 Rozlicz miesiąc
+        </button>
+      </div>
       {settlement ? <p className="character-panel-note">{settlement}</p> : null}
-      {order.length === 0 ? (
-        <p className="placeholder-text">
-          {isGm ? 'Brak postaci — „＋ Nowa postać…” powyżej.' : 'Nie masz jeszcze żadnej postaci.'}
-        </p>
-      ) : (
-        <>
-          <ul className="character-list">{people.map(renderRow)}</ul>
-          {templates.length > 0 && (
-            <details className="character-group" data-character-group="templates" open>
-              <summary title="Przeciągnij wzorzec na mapę — każda figura dostaje własną kopię karty z numerem">
-                Wzorce statystów ({templates.length})
-              </summary>
-              <ul className="character-list">{templates.map(renderRow)}</ul>
-            </details>
-          )}
-          {copies.length > 0 && (
-            <details className="character-group" data-character-group="copies">
-              <summary title="Karty figur postawionych z wzorców — giną razem ze swoją figurą">
-                Statyści z wzorców ({copies.length})
-              </summary>
-              <ul className="character-list">{copies.map(renderRow)}</ul>
-            </details>
-          )}
-          {/* Etap 46b2 (decyzja MG z 09.10): karty skrzyń i stosów to nie postacie —
-              zwinięta grupa, żeby nie spychały drużyny w dół listy. */}
-          {containers.length > 0 && (
-            <details className="character-group" data-character-group="containers">
-              <summary>Pojemniki ({containers.length})</summary>
-              <ul className="character-list">{containers.map(renderRow)}</ul>
-            </details>
-          )}
-        </>
-      )}
-
-      {/* 24.09: a player's new character starts with the GM's consent and the
-          rules. The GM's door is „＋ Nowa postać…” at the top (etap 49a). */}
-      {!isGm && <CreationGate resume={resume} another={order.length > 0} />}
-
-      {error && <p className="auth-error">{error}</p>}
-    </div>
+    </details>
   );
 }
 
@@ -544,7 +672,7 @@ function NewCharacterButton({ resume }: { resume: string | null }) {
   const setOpen = useNpcCreateStore((s) => s.setOpen);
   const openCreator = useCreationStore((s) => s.openCreator);
   return (
-    <div className="character-panel-actions character-new">
+    <>
       <button
         type="button"
         className="small-button small-button--primary"
@@ -563,7 +691,7 @@ function NewCharacterButton({ resume }: { resume: string | null }) {
           🧬 Wznów szkic: {resume}
         </button>
       )}
-    </div>
+    </>
   );
 }
 
@@ -580,65 +708,5 @@ function CyberpsychosisChip({ data }: { data: CpredCharacterData }) {
     <span className={`character-psychosis character-psychosis--${state.level}`} title={state.note}>
       EMP {state.emp} · {state.label}
     </span>
-  );
-}
-
-/**
- * „Postaw na scenie" — druga droga do żetonu postaci (28.08).
- *
- * Do tej pory żeton związany z kartą powstawał **wyłącznie** w kreatorze
- * (`creation.ts` woła `createCharacterToken`). Kto skasował żeton — albo dostał
- * kartę zaimportowaną, nie zbudowaną — nie miał jak dorobić drugiego: panel
- * „Grafiki" (dawniej „Tokeny") stawia same krążki z biblioteki, a `token:create` przyjmuje
- * `characterId` od zawsze, tylko nikt go z UI nie podawał. Wyszło przy
- * odtwarzaniu „Kolca" na Poligonie: karta stała nietknięta, figury nie było
- * i jedyną drogą była konsola.
- *
- * Portret idzie na żeton, a właściciel przepisuje się z karty — te same dwie
- * decyzje, które podejmuje kreator, żeby żeton dorobiony ręcznie niczym się nie
- * różnił od postawionego automatem.
- */
-function PlaceOnSceneButton({
-  characterId,
-  name,
-  portraitUrl,
-  ownerId,
-}: {
-  characterId: string;
-  name: string;
-  portraitUrl: string | null;
-  ownerId: string | null;
-}) {
-  const armed = useMapToolStore((s) => s.tokenPlacement?.characterId === characterId);
-  // Figura tej postaci już na scenie — przycisk nadal działa (dubler bywa
-  // potrzebny), ale mówi, że to będzie druga.
-  const onScene = useTokenStore((s) =>
-    Object.values(s.tokens).some((token) => token.characterId === characterId),
-  );
-
-  return (
-    <button
-      type="button"
-      className={`small-button ${armed ? 'small-button--armed' : ''}`}
-      draggable
-      onDragStart={(event) =>
-        startTokenDrag(event, { name, imageUrl: portraitUrl, characterId, ownerId })
-      }
-      onClick={() =>
-        useMapToolStore
-          .getState()
-          .setTokenPlacement(armed ? null : { name, imageUrl: portraitUrl, characterId, ownerId })
-      }
-      title={
-        armed
-          ? 'Kliknij na mapie, żeby postawić figurę (Esc anuluje)'
-          : onScene
-            ? `Ta postać ma już figurę na scenie — postawi się druga (kliknij albo przeciągnij na mapę)`
-            : 'Postaw figurę tej postaci na aktywnej scenie (kliknij albo przeciągnij na mapę)'
-      }
-      aria-label={`Postaw na scenie: ${name}`}
-    >
-      {armed ? '◎' : '⊕'}
-    </button>
   );
 }

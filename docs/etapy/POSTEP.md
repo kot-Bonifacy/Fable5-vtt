@@ -261,12 +261,43 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 112     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 139     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 140     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.10 (po `5350383`) — zakładka „Postacie” od nowa, bez „⊕ Postaw na scenie”
+
+**Zlecenie MG:** usunąć przycisk ⊕ „Postaw figurę tej postaci” (dubluje przeciąganie wiersza na
+mapę z 26.09) i zaprojektować zakładkę na nowo, żeby była czytelniejsza.
+
+**Zrobione (`CharacterPanel.tsx`, `05-tokens.css`):** ⊕ i `PlaceOnSceneButton` usunięte — figurę
+postaci stawia się wyłącznie przeciągnięciem wiersza. U MG na górze pasek („＋ Nowa postać…”,
+szkic, „Portrety — biblioteka MG”), pod nim **zwinięte „Rytuały stołu”** (start sesji:
+Szczęście; po sesji: PD; 1. dzień miesiąca: podgląd i rozliczenie — wcześniej zajmowały pół
+panelu nad listą; stan otwarcia w `localStorage` widza), dalej lista w grupach **Drużyna / NPC /
+Wzorce statystów / Statyści z wzorców / Pojemniki** (puste się nie rysują). Wiersz: kartą jest
+cały `<li>`, akcje MG w prawej kolumnie (⚄, ⧉ u NPC-a, ✕ widoczne dopiero pod kursorem),
+właściciel u dołu, w opisie „bez Roli” zamiast „—” i **„· na mapie”** przy postaci z figurą na
+oglądanej scenie. Jednozdaniowa podpowiedź „Kliknij… / Przeciągnij…” znika po pierwszym
+przeciągnięciu. „Odnów Szczęście” mówi teraz, ilu postaciom odnowiło (albo że wszyscy mają
+pełną pulę). Gracz: płaska lista swoich postaci, bez zmian w treści. Martwy CSS
+(`.character-panel-actions`, `.character-new`, `.character-xp*`) zdjęty. Umowa w `ui`
+(zastępuje wpis o kartach w dwa wiersze), pułapka w `testy`.
+
+**E2E:** nowe fikstury `dragCharacterToMap` i `openTableRituals` (`fixtures/scene.ts`); T5a
+i T8c-mapa przeciągają zamiast ⊕, T6a 6.4 i T8c-zdolności otwierają rytuały. **Natywne
+przeciąganie HTML5 myszą Playwrighta wiesza się w Chromium** (pierwszy przebieg `t8c-mapa` stał
+3 min na „Mouse move”) — fikstura wysyła `dragstart`/`dragover`/`drop` przez `dispatchEvent`.
+
+**Weryfikacja:** `tsc` klienta i e2e, ESLint i Prettier zmienionych plików czyste, vitest client
+358. E2E: `t8c-zdolnosci` 13/13 (z rytuałami), `t8c-mapa` 7/7 po poprawce fikstury. **T5a i T6a
+niepuszczone** (łańcuch; T5a wymaga gatewaya, przebieg T6a nadpisałby `po-T6a`). Oględziny:
+**Chromium** (Playwright MCP, MG, „Test_1”) — układ, rytuały, przeciągnięcie Franca na mapę
+prawdziwą myszą z krokami (figura z właścicielem, „· na mapie”, podpowiedź zgasła; figura potem
+skasowana), **Firefox** (konto `ogledziny-b`, motyw nocny) — układ listy i paska.
 
 ### Sesja 15.10 (po `f7f33b4`) — zakładka „Grafiki” i „🖼 Zmień grafikę…”
 
@@ -286,33 +317,3 @@ MCP) na „Oględziny 44d (MG-B)”: wgrane dwie grafiki, pusty żeton → solo-
 po teście figura i obie grafiki zdjęte. **E2E nie puszczone.** Uwaga z oględzin: menu figury
 u dołu ekranu wychodzi poza okno (stare — `top = innerHeight − 320`), rozwinięty wybierak
 wydłuża je o ~110 px.
-
-### Sesja 15.10 (po `d4c50d2`) — etap 51: przegląd stref bronionych
-
-**Zlecenie MG:** przeanalizować wszystkie strefy bronione („ślizgawka — dlaczego ma PW?”) i czy
-w jednej scenie część stref może być widoczna, a część nie. Analiza 18 systemów → MG wybrał
-pakiety A (widok) i B (mechanika) jako osobny etap 51; C–F poszły do `POMYSLY.md`.
-
-**Ustalenia:** PW ślizgawki są z podręcznika (spryskiwacze, PW 10). Widoczność pojedynczej strefy
-działała już wcześniej (karta strefy, „Ukryj / Odsłoń graczom”), tyle że **karta otwiera się
-dwuklikiem tylko przy wybranym narzędziu ⚠** — bez narzędzia dwuklik nic nie robi.
-
-**Zrobione:** u MG ukryta strefa ma przerywany obrys i „· ukryta” w podpisie, a podpisy
-zawijają się do szerokości prostokąta. Gracz dostaje strefę bez PW i bez stanu uzbrojenia
-(filtr w `toZoneView`) i widzi samą nazwę. Na karcie: „PW urządzenia” z podpowiedzią, nazwy
-statusów zamiast id, pole „Stanowisko” tylko przy systemach, które strzelają. Mechanika:
-flaga `area` (krwawy rój, panele, dziurkacze bijące wszystkich na obszarze),
-`drainEndsWithSystem` (zniszczony dywan zdejmuje „Spowolniony”, maź nie), odsłonięcie strefy
-trafionemu graczowi i PW wieżyczki z przypiętą figurą liczone na figurze (rozbita figura nie
-strzela). Parser ustawia nowe flagi (`data/private` przeliczone: zmieniły się dokładnie 4 wpisy),
-formularz kompendium ma oba pola. Umowa w `siec`.
-
-**Weryfikacja:** vitest shared 2455, server 1446 (5 nowych testów w `zones.test.ts`, trzy
-z nich sprawdzone mutacją), client 358; `tsc`, ESLint i Prettier zmienionych plików czyste
-(`ruff` parsera: 7 starych błędów, żaden w nowych wierszach). Oglądane w **Firefoksie**
-(Playwright MCP, konto `ogledziny-b`): obrys przerywany i ciągły, podpisy, karta ślizgawki,
-„Odsłoń graczom”. **Widoku gracza nie oglądano w przeglądarce** — sprawdza go test serwera.
-**E2E nie puszczone** — T5a/T5b (wieżyczka w strefie) to łańcuch z gatewayem.
-**Ślady w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma aktywną scenę „Strefy 51” z pięcioma
-strefami; strefa 7 na „Strzelnicy” (wieżyczka z figurą) ma PW 0/0 zgodnie z nową zasadą.
-Firefox Playwrighta zalogowany jako `ogledziny-b` (MG wylogowany).

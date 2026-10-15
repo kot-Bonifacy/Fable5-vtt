@@ -1,5 +1,35 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `d4c50d2`) — etap 51: przegląd stref bronionych
+
+**Zlecenie MG:** przeanalizować wszystkie strefy bronione („ślizgawka — dlaczego ma PW?”) i czy
+w jednej scenie część stref może być widoczna, a część nie. Analiza 18 systemów → MG wybrał
+pakiety A (widok) i B (mechanika) jako osobny etap 51; C–F poszły do `POMYSLY.md`.
+
+**Ustalenia:** PW ślizgawki są z podręcznika (spryskiwacze, PW 10). Widoczność pojedynczej strefy
+działała już wcześniej (karta strefy, „Ukryj / Odsłoń graczom”), tyle że **karta otwiera się
+dwuklikiem tylko przy wybranym narzędziu ⚠** — bez narzędzia dwuklik nic nie robi.
+
+**Zrobione:** u MG ukryta strefa ma przerywany obrys i „· ukryta” w podpisie, a podpisy
+zawijają się do szerokości prostokąta. Gracz dostaje strefę bez PW i bez stanu uzbrojenia
+(filtr w `toZoneView`) i widzi samą nazwę. Na karcie: „PW urządzenia” z podpowiedzią, nazwy
+statusów zamiast id, pole „Stanowisko” tylko przy systemach, które strzelają. Mechanika:
+flaga `area` (krwawy rój, panele, dziurkacze bijące wszystkich na obszarze),
+`drainEndsWithSystem` (zniszczony dywan zdejmuje „Spowolniony”, maź nie), odsłonięcie strefy
+trafionemu graczowi i PW wieżyczki z przypiętą figurą liczone na figurze (rozbita figura nie
+strzela). Parser ustawia nowe flagi (`data/private` przeliczone: zmieniły się dokładnie 4 wpisy),
+formularz kompendium ma oba pola. Umowa w `siec`.
+
+**Weryfikacja:** vitest shared 2455, server 1446 (5 nowych testów w `zones.test.ts`, trzy
+z nich sprawdzone mutacją), client 358; `tsc`, ESLint i Prettier zmienionych plików czyste
+(`ruff` parsera: 7 starych błędów, żaden w nowych wierszach). Oglądane w **Firefoksie**
+(Playwright MCP, konto `ogledziny-b`): obrys przerywany i ciągły, podpisy, karta ślizgawki,
+„Odsłoń graczom”. **Widoku gracza nie oglądano w przeglądarce** — sprawdza go test serwera.
+**E2E nie puszczone** — T5a/T5b (wieżyczka w strefie) to łańcuch z gatewayem.
+**Ślady w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma aktywną scenę „Strefy 51” z pięcioma
+strefami; strefa 7 na „Strzelnicy” (wieżyczka z figurą) ma PW 0/0 zgodnie z nową zasadą.
+Firefox Playwrighta zalogowany jako `ogledziny-b` (MG wylogowany).
+
 ### Sesja 15.10 (po `7c9cbc7`) — okno „Edycja sceny” i siatka dla graczy
 
 **Zlecenie MG:** zdanie „Siatka wygląda teraz tak, jak zobaczą ją gracze.” myliło (gracze siatki

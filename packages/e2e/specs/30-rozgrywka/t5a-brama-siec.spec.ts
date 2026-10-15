@@ -20,7 +20,13 @@ import {
 import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, setPlayerMove, tokenCentre } from '../../fixtures/scene.ts';
+import {
+  clickOnMap,
+  dragCharacterToMap,
+  fitCamera,
+  setPlayerMove,
+  tokenCentre,
+} from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation } from '../../fixtures/table.ts';
@@ -534,14 +540,13 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
             .length,
       )
       .toBeGreaterThan(0);
-    // Figury graczy przy miejscu startu: ⊕ „Postaw na scenie” z listy postaci.
+    // Figury graczy przy miejscu startu: wiersz z listy postaci przeciągnięty na mapę.
     await page.getByRole('button', { name: 'Postacie', exact: true }).click();
     for (const [name, column] of [
       ['Kowal', 19],
       ['Iskra', 21],
     ] as const) {
-      await page.getByRole('button', { name: `Postaw na scenie: ${name}` }).click();
-      await clickOnMap(page, point(column, 27));
+      await dragCharacterToMap(page, name, point(column, 27));
       await expect
         .poll(() => figureOf(bramaId, name)?.ownerId ?? null, { message: name })
         .not.toBeNull();

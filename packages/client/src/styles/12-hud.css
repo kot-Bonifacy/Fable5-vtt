@@ -1392,29 +1392,6 @@
   min-width: 3.5rem;
 }
 
-/* Pula po sesji w zakładce „Postacie" (etap 29a) — jeden wiersz obok rytuałów
-   startu i końca miesiąca, bo to ta sama pora dnia. */
-.character-xp {
-  align-items: center;
-}
-
-.character-xp-field {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
-.character-xp-field input {
-  width: 4.5rem;
-}
-
-.character-xp-label {
-  flex: 1;
-  min-width: 6rem;
-}
-
 /* Etap 30b: to, co Medycyna daje poza liczbami — dwie Umiejętności spoza
    tabeli Umiejętności i dwie listy z podręcznika, zwinięte w `details`, żeby
    panel nie urósł na wysokość strony. */
