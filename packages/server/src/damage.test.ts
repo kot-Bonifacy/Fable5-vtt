@@ -338,7 +338,7 @@ describe('damage, armor and Death Saves', () => {
     const { message } = await broadcast;
     expect(message.id).toBe(ack.messageId);
     expect(message.roll?.notation).toBe('3d6');
-    expect(message.roll?.title).toBe('Zgrzyt-9 — obrażenia (Głowa)');
+    expect(message.roll?.title).toBe('Zgrzyt-9 — sam rzut obrażeń, bez ataku (Głowa)');
     expect(message.roll?.damage).toMatchObject({ location: 'head', locationLabel: 'Głowa' });
     // Damage is never a Check: a natural 10 must not explode (there is no d10).
     expect(message.roll?.critical).toBeUndefined();

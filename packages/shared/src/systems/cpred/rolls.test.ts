@@ -234,7 +234,7 @@ describe('planCpredRoll — damage (stage 15)', () => {
     expect(result.plan.checkRule).toBe(false);
     expect(result.plan.breakdown).toEqual([]);
     expect(result.plan.damage).toEqual({ location: 'body', weaponName: 'Zgrzyt-9' });
-    expect(result.plan.title).toBe('Zgrzyt-9 — obrażenia (Korpus)');
+    expect(result.plan.title).toBe('Zgrzyt-9 — sam rzut obrażeń, bez ataku (Korpus)');
   });
 
   it('names the attack card it was rolled for (#56)', () => {
@@ -248,6 +248,8 @@ describe('planCpredRoll — damage (stage 15)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.damage).toMatchObject({ attackMessageId: 41, targetTokenId: 't1' });
+    // Damage for a hit keeps the plain title; only „OBR." with no attack says so.
+    expect(result.plan.title).toBe('Zgrzyt-9 — obrażenia (Korpus)');
   });
 
   it('carries the aimed location and the GM’s flat modifier', () => {

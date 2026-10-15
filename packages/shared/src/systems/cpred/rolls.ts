@@ -1176,10 +1176,19 @@ function planDamageRoll(
   }
 
   const suffix = multiplier > 1 ? ` ×${multiplier}` : '';
+  // „OBR." z karty (bez ataku, bez celu) to sam rzut kośćmi — jawny, ale nie
+  // może czytać się na czacie jak trafienie, na które MG się nie zgodził
+  // (zgłoszenie gracza z 15.10.2026). Obrażenia za trafienie zostają jak były.
+  const standalone =
+    request.attackMessageId === undefined &&
+    !request.targetTokenId &&
+    request.targetCoverId === undefined &&
+    !request.areaTargets?.length;
+  const what = standalone ? 'sam rzut obrażeń, bez ataku' : 'obrażenia';
   return {
     ok: true,
     plan: {
-      title: `${weapon.name} — obrażenia (${CPRED_HIT_LOCATION_LABELS[location]})${suffix}`,
+      title: `${weapon.name} — ${what} (${CPRED_HIT_LOCATION_LABELS[location]})${suffix}`,
       formula: { terms },
       breakdown,
       modifierTotal: modifier + weakSpot,
