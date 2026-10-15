@@ -1,5 +1,36 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `5350383`) — zakładka „Postacie” od nowa, bez „⊕ Postaw na scenie”
+
+**Zlecenie MG:** usunąć przycisk ⊕ „Postaw figurę tej postaci” (dubluje przeciąganie wiersza na
+mapę z 26.09) i zaprojektować zakładkę na nowo, żeby była czytelniejsza.
+
+**Zrobione (`CharacterPanel.tsx`, `05-tokens.css`):** ⊕ i `PlaceOnSceneButton` usunięte — figurę
+postaci stawia się wyłącznie przeciągnięciem wiersza. U MG na górze pasek („＋ Nowa postać…”,
+szkic, „Portrety — biblioteka MG”), pod nim **zwinięte „Rytuały stołu”** (start sesji:
+Szczęście; po sesji: PD; 1. dzień miesiąca: podgląd i rozliczenie — wcześniej zajmowały pół
+panelu nad listą; stan otwarcia w `localStorage` widza), dalej lista w grupach **Drużyna / NPC /
+Wzorce statystów / Statyści z wzorców / Pojemniki** (puste się nie rysują). Wiersz: kartą jest
+cały `<li>`, akcje MG w prawej kolumnie (⚄, ⧉ u NPC-a, ✕ widoczne dopiero pod kursorem),
+właściciel u dołu, w opisie „bez Roli” zamiast „—” i **„· na mapie”** przy postaci z figurą na
+oglądanej scenie. Jednozdaniowa podpowiedź „Kliknij… / Przeciągnij…” znika po pierwszym
+przeciągnięciu. „Odnów Szczęście” mówi teraz, ilu postaciom odnowiło (albo że wszyscy mają
+pełną pulę). Gracz: płaska lista swoich postaci, bez zmian w treści. Martwy CSS
+(`.character-panel-actions`, `.character-new`, `.character-xp*`) zdjęty. Umowa w `ui`
+(zastępuje wpis o kartach w dwa wiersze), pułapka w `testy`.
+
+**E2E:** nowe fikstury `dragCharacterToMap` i `openTableRituals` (`fixtures/scene.ts`); T5a
+i T8c-mapa przeciągają zamiast ⊕, T6a 6.4 i T8c-zdolności otwierają rytuały. **Natywne
+przeciąganie HTML5 myszą Playwrighta wiesza się w Chromium** (pierwszy przebieg `t8c-mapa` stał
+3 min na „Mouse move”) — fikstura wysyła `dragstart`/`dragover`/`drop` przez `dispatchEvent`.
+
+**Weryfikacja:** `tsc` klienta i e2e, ESLint i Prettier zmienionych plików czyste, vitest client
+358. E2E: `t8c-zdolnosci` 13/13 (z rytuałami), `t8c-mapa` 7/7 po poprawce fikstury. **T5a i T6a
+niepuszczone** (łańcuch; T5a wymaga gatewaya, przebieg T6a nadpisałby `po-T6a`). Oględziny:
+**Chromium** (Playwright MCP, MG, „Test_1”) — układ, rytuały, przeciągnięcie Franca na mapę
+prawdziwą myszą z krokami (figura z właścicielem, „· na mapie”, podpowiedź zgasła; figura potem
+skasowana), **Firefox** (konto `ogledziny-b`, motyw nocny) — układ listy i paska.
+
 ### Sesja 15.10 (po `f7f33b4`) — zakładka „Grafiki” i „🖼 Zmień grafikę…”
 
 **Zlecenie MG:** po wyjaśnieniu, do czego służy zakładka „Tokeny” (biblioteka obrazków figur bez

@@ -254,7 +254,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 32   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione | 9    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
@@ -267,6 +267,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.10 (po `e11ac32`) — przedmioty z katalogu do skrzyni
+
+**Zlecenie MG:** na karcie skrzyni widać tylko gotówkę — sprawdzić, czy MG może włożyć przedmiot,
+i dodać tę możliwość. **Diagnoza:** dało się wyłącznie okrężną drogą — Kompendium → wpis →
+skrzynia z listy kart → „Dodaj za darmo” (albo okno „Wymiana” z cudzej karty); karta pojemnika
+niczego takiego nie miała, a podpowiedź „Pusto…” pokazywała się tylko przy pustej skrzyni.
+
+**Zrobione:** w pasku „Zawartość” karty pojemnika guzik **„+ Z katalogu…”** otwiera pod listą
+`ContainerItemPicker` (`components/exchange/`): szukanie + rodzaj (broń, pancerz, sprzęt,
+amunicja, dodatki, Programy, cyborgizacje), klik wkłada za darmo, wybór zostaje otwarty na
+następne. Wiersze z tych samych funkcji co „Dodaj za darmo” (`addCompendiumItemToCharacter`);
+amunicja pyta o kaliber i paczki, wszczep idzie do Wyposażenia (`addFoundCyberwareToCharacter`
+— skrzyni nic się nie wszczepia). Serwer bez zmian (łata karty od MG). Umowa w `ekwipunek`.
+
+**Weryfikacja:** `tsc` klienta, ESLint, Prettier czyste; vitest client 366 (a11y złapał „✕” bez
+etykiety — poprawione). E2E niepuszczone (zmiana tylko w UI MG, `t46b-pojemniki` sprawdza
+„Pusto.” w oknie wymiany, nie na karcie). Oględziny: **Firefox** (MG `ogledziny-b`): pistolet,
+amunicja dumdum (kaliber + paczka) i Cyberoko włożone, zawartość przetrwała przeładowanie.
+**Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma testową „Skrzynię” z trzema rzeczami
+(usunięcie zablokował klasyfikator uprawnień).
 
 ### Sesja 15.10 (po `62589ee`) — przypomnienie o gotowości stołu przed sesją
 
@@ -295,34 +316,3 @@ specyfikacje padały od 10.10**.
 Ostrzeżenia „Aktywuj” w przeglądarce nie oglądano (kampania ma jedną scenę). **Ślad w `dev.db`:**
 kampania „Oględziny 44d (MG-B)” ma nowego gracza **„Plakat”** (bez postaci; serwer nie ma trasy
 usuwania gracza), miejsce startu „Strefy 51” wróciło na puste, sesja zakończona.
-
-### Sesja 15.10 (po `5350383`) — zakładka „Postacie” od nowa, bez „⊕ Postaw na scenie”
-
-**Zlecenie MG:** usunąć przycisk ⊕ „Postaw figurę tej postaci” (dubluje przeciąganie wiersza na
-mapę z 26.09) i zaprojektować zakładkę na nowo, żeby była czytelniejsza.
-
-**Zrobione (`CharacterPanel.tsx`, `05-tokens.css`):** ⊕ i `PlaceOnSceneButton` usunięte — figurę
-postaci stawia się wyłącznie przeciągnięciem wiersza. U MG na górze pasek („＋ Nowa postać…”,
-szkic, „Portrety — biblioteka MG”), pod nim **zwinięte „Rytuały stołu”** (start sesji:
-Szczęście; po sesji: PD; 1. dzień miesiąca: podgląd i rozliczenie — wcześniej zajmowały pół
-panelu nad listą; stan otwarcia w `localStorage` widza), dalej lista w grupach **Drużyna / NPC /
-Wzorce statystów / Statyści z wzorców / Pojemniki** (puste się nie rysują). Wiersz: kartą jest
-cały `<li>`, akcje MG w prawej kolumnie (⚄, ⧉ u NPC-a, ✕ widoczne dopiero pod kursorem),
-właściciel u dołu, w opisie „bez Roli” zamiast „—” i **„· na mapie”** przy postaci z figurą na
-oglądanej scenie. Jednozdaniowa podpowiedź „Kliknij… / Przeciągnij…” znika po pierwszym
-przeciągnięciu. „Odnów Szczęście” mówi teraz, ilu postaciom odnowiło (albo że wszyscy mają
-pełną pulę). Gracz: płaska lista swoich postaci, bez zmian w treści. Martwy CSS
-(`.character-panel-actions`, `.character-new`, `.character-xp*`) zdjęty. Umowa w `ui`
-(zastępuje wpis o kartach w dwa wiersze), pułapka w `testy`.
-
-**E2E:** nowe fikstury `dragCharacterToMap` i `openTableRituals` (`fixtures/scene.ts`); T5a
-i T8c-mapa przeciągają zamiast ⊕, T6a 6.4 i T8c-zdolności otwierają rytuały. **Natywne
-przeciąganie HTML5 myszą Playwrighta wiesza się w Chromium** (pierwszy przebieg `t8c-mapa` stał
-3 min na „Mouse move”) — fikstura wysyła `dragstart`/`dragover`/`drop` przez `dispatchEvent`.
-
-**Weryfikacja:** `tsc` klienta i e2e, ESLint i Prettier zmienionych plików czyste, vitest client
-358. E2E: `t8c-zdolnosci` 13/13 (z rytuałami), `t8c-mapa` 7/7 po poprawce fikstury. **T5a i T6a
-niepuszczone** (łańcuch; T5a wymaga gatewaya, przebieg T6a nadpisałby `po-T6a`). Oględziny:
-**Chromium** (Playwright MCP, MG, „Test_1”) — układ, rytuały, przeciągnięcie Franca na mapę
-prawdziwą myszą z krokami (figura z właścicielem, „· na mapie”, podpowiedź zgasła; figura potem
-skasowana), **Firefox** (konto `ogledziny-b`, motyw nocny) — układ listy i paska.

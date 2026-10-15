@@ -656,6 +656,26 @@
   display: block;
 }
 
+.container-sheet-actions {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+/* Wybór z katalogu pod zawartością — blok na całą szerokość karty. */
+.container-sheet-picker {
+  padding: 0 0.4rem;
+}
+
+.container-sheet-picker .container-picker-ammo {
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.container-sheet-picker .container-picker-ammo select {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
 .container-sheet-note {
   margin: 0;
   font-size: 0.8rem;

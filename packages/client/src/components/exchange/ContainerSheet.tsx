@@ -16,6 +16,7 @@ import { configContainer, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore, type CharacterSheetView } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { NumberStepper } from '../NumberStepper.js';
+import { ContainerItemPicker } from './ContainerItemPicker.js';
 import { itemDetail, itemKey } from './items.js';
 import { openExchangeForCard } from './open.js';
 
@@ -27,7 +28,8 @@ import { openExchangeForCard } from './open.js';
  * (`container:config`) — łata karty z polem `container` dostaje `FORBIDDEN`,
  * żeby autozapis MG nie zamknął skrzyni, którą gracz właśnie otworzył.
  * Zawartość to zwykły ekwipunek karty: „✕” zdejmuje wiersz, eurodolce zmienia
- * pole; rzeczy dokłada się z Kompendium albo oknem „Wymiana” w trybie MG.
+ * pole; rzeczy dokłada „+ Z katalogu…” (za darmo, jak „Dodaj za darmo”
+ * w Kompendium) albo okno „Wymiana” w trybie MG.
  */
 export function ContainerSheet({
   character,
@@ -45,6 +47,7 @@ export function ContainerSheet({
   const order = useCharacterStore((s) => s.order);
   const [message, setMessage] = useState<string | null>(null);
   const [keyHolder, setKeyHolder] = useState('');
+  const [picking, setPicking] = useState(false);
   const data = character.data;
   const items = cpredInventoryView(data);
 
@@ -218,20 +221,30 @@ export function ContainerSheet({
       <section className="cp-panel" aria-label="Zawartość">
         <div className="cp-bar cp-bar--plain container-sheet-bar">
           <span>Zawartość</span>
-          <button
-            type="button"
-            className="cp-mini-button"
-            title="Przenieś rzeczy między tym pojemnikiem a dowolną kartą"
-            onClick={() => openExchangeForCard(character.id)}
-          >
-            Wymiana…
-          </button>
+          <span className="container-sheet-actions">
+            <button
+              type="button"
+              className="cp-mini-button"
+              aria-pressed={picking}
+              title="Włóż do pojemnika rzecz z katalogu — za darmo, jak „Dodaj za darmo” w Kompendium"
+              onClick={() => setPicking((open) => !open)}
+            >
+              + Z katalogu…
+            </button>
+            <button
+              type="button"
+              className="cp-mini-button"
+              title="Przenieś rzeczy między tym pojemnikiem a dowolną kartą"
+              onClick={() => openExchangeForCard(character.id)}
+            >
+              Wymiana…
+            </button>
+          </span>
         </div>
         <div className="cp-field container-sheet-list">
           {items.length === 0 ? (
             <p className="container-sheet-note">
-              Pusto. Rzeczy dokładasz z Kompendium („Dodaj za darmo” na tę kartę) albo oknem
-              „Wymiana”.
+              Pusto. Rzeczy wkładasz przyciskiem „+ Z katalogu…” albo oknem „Wymiana”.
             </p>
           ) : (
             <ul className="inventory-list">
@@ -256,6 +269,11 @@ export function ContainerSheet({
             </ul>
           )}
         </div>
+        {picking && (
+          <div className="container-sheet-picker">
+            <ContainerItemPicker characterId={character.id} onClose={() => setPicking(false)} />
+          </div>
+        )}
         <div className="cp-field container-sheet-row">
           <span className="cp-label">Gotówka (ed)</span>
           <NumberStepper
