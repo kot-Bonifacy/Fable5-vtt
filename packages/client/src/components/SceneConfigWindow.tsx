@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import type { GridConfig, MapUploadResult, ScenePatch, SceneVisibility } from '@vtt/shared';
 import {
   GRID_SIZE_MAX,
@@ -22,6 +22,15 @@ import {
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import {
+  IconBrush,
+  IconCloud,
+  IconFog,
+  IconLamp,
+  IconRect,
+  IconSun,
+  IconWall,
+} from './MapIcons.js';
 
 type SceneTab = 'map' | 'grid' | 'vision';
 
@@ -99,12 +108,99 @@ const MOVE_MODES: { id: 'grid' | 'gridless'; label: string; hint: string }[] = [
   },
 ];
 
-const VISIBILITY_HINTS: Record<SceneVisibility, string> = {
-  open: 'Gracze widzą całą mapę.',
-  fog: 'Mapa zakryta — odsłaniasz ją pędzlem mgły z paska mapy. Namalowana mgła przeżywa zmianę trybu.',
-  dynamic:
-    'Gracz widzi to, co widzą figury drużyny. Ściany rysujesz narzędziem „Ściany” (W); bez ścian widać całą mapę.',
-};
+/**
+ * Trzy tryby jako karty z opisem (15.10, zlecenie MG: zakładka ma być jasna
+ * dla kogoś, kto pierwszy raz siada do VTT i nie wie, czym jest mgła wojny).
+ * Nazwy mówią, **kto odkrywa mapę**, a nie jak to działa w środku.
+ */
+const VISIBILITY_MODES: { id: SceneVisibility; label: string; summary: string }[] = [
+  {
+    id: 'open',
+    label: 'Cała mapa odkryta',
+    summary: 'Gracze od razu widzą całą mapę. Dobre dla miejsc bez tajemnic.',
+  },
+  {
+    id: 'fog',
+    label: 'Mgła wojny — odkrywasz Ty',
+    summary:
+      'Gracze zaczynają przy czarnej mapie, a Ty odsłaniasz ją kawałek po kawałku, gdy postacie tam docierają.',
+  },
+  {
+    id: 'dynamic',
+    label: 'Pole widzenia — odkrywa się samo',
+    summary:
+      'Gracz widzi to, co widzą figury drużyny, aż do najbliższej ściany. Mapa odsłania się sama, gdy figury idą.',
+  },
+];
+
+/** Ikona narzędzia z paska mapy wpleciona w zdanie instrukcji. */
+function ToolGlyph({ children }: { children: ReactNode }) {
+  return <span className="scene-guide-glyph">{children}</span>;
+}
+
+/** „Jak to zrobić” pod wybranym trybem — kroki z nazwami i ikonami z paska mapy. */
+function VisibilityGuide({ mode }: { mode: SceneVisibility }) {
+  if (mode === 'open') return null;
+  if (mode === 'fog') {
+    return (
+      <div className="scene-guide">
+        <p className="scene-guide-title">Jak odkrywać mapę</p>
+        <ol>
+          <li>
+            W pasku nad mapą kliknij <strong>Mgła wojny</strong>{' '}
+            <ToolGlyph>
+              <IconFog size={15} />
+            </ToolGlyph>{' '}
+            (albo naciśnij <kbd>F</kbd>).
+          </li>
+          <li>
+            Pod paskiem pojawią się opcje. Wybierz <strong>odsłanianie</strong>{' '}
+            <ToolGlyph>
+              <IconSun size={15} />
+            </ToolGlyph>{' '}
+            i kształt: <strong>pędzel</strong>{' '}
+            <ToolGlyph>
+              <IconBrush />
+            </ToolGlyph>{' '}
+            (malujesz z wciśniętym przyciskiem myszy) albo <strong>prostokąt</strong>{' '}
+            <ToolGlyph>
+              <IconRect size={15} />
+            </ToolGlyph>{' '}
+            (przeciągasz ramkę na całe pomieszczenie).
+          </li>
+          <li>
+            Przeciągnij po mapie tam, gdzie gracze mają widzieć. Żeby coś schować z powrotem,
+            wybierz <strong>zakrywanie</strong>{' '}
+            <ToolGlyph>
+              <IconCloud size={15} />
+            </ToolGlyph>
+            .
+          </li>
+        </ol>
+        <p className="settings-hint">
+          Ty zawsze widzisz całą mapę — to, co gracze mają zakryte, jest u Ciebie tylko
+          przyciemnione. Odsłonięte miejsca zostają zapamiętane, nawet gdy zmienisz tryb.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="scene-guide">
+      <p className="scene-guide-title">Co przygotować</p>
+      <ol>
+        <li>
+          Narysuj ściany narzędziem <strong>Ściany</strong>{' '}
+          <ToolGlyph>
+            <IconWall size={15} />
+          </ToolGlyph>{' '}
+          (klawisz <kbd>W</kbd>): klikaj kolejne narożniki, <kbd>Enter</kbd> kończy. Bez ścian
+          gracze widzą całą mapę.
+        </li>
+        <li>Postaw na mapie figury graczy — każdy widzi z miejsca, w którym stoi jego figura.</li>
+      </ol>
+    </div>
+  );
+}
 
 /** Liczba po polsku: przecinek i najwyżej `digits` miejsc, bez zer na końcu. */
 function formatDecimal(value: number, digits: number): string {
@@ -597,21 +693,28 @@ function SceneConfigBody() {
             <p className="settings-note">Zmiany na tej zakładce działają od razu, bez „Zapisz”.</p>
 
             <section className="settings-group">
-              <h3 className="settings-group-title">Co widzą gracze</h3>
-              <select
-                id="scene-visibility"
-                className="text-input scene-config-grow"
-                aria-label="Widoczność dla graczy"
-                value={scene.visibility}
-                onChange={(e) =>
-                  void setSceneVisibility(scene.id, e.target.value as SceneVisibility)
-                }
-              >
-                <option value="open">Pełna — cała mapa</option>
-                <option value="fog">Ręczna mgła — odsłaniasz pędzlem</option>
-                <option value="dynamic">Dynamiczna — ściany i pole widzenia</option>
-              </select>
-              <p className="settings-hint">{VISIBILITY_HINTS[scene.visibility]}</p>
+              <h3 className="settings-group-title">Ile mapy widzą gracze</h3>
+              <div className="scene-modes" role="radiogroup" aria-label="Ile mapy widzą gracze">
+                {VISIBILITY_MODES.map((mode) => (
+                  <label
+                    key={mode.id}
+                    className={`scene-mode${scene.visibility === mode.id ? ' is-active' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="scene-visibility"
+                      value={mode.id}
+                      checked={scene.visibility === mode.id}
+                      onChange={() => void setSceneVisibility(scene.id, mode.id)}
+                    />
+                    <span className="scene-mode-text">
+                      <span className="scene-mode-label">{mode.label}</span>
+                      <span className="scene-mode-summary">{mode.summary}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <VisibilityGuide mode={scene.visibility} />
             </section>
 
             {/* Darkness and the party's memory only mean something where sight
@@ -620,10 +723,7 @@ function SceneConfigBody() {
               <>
                 <section className="settings-group">
                   <h3 className="settings-group-title">Światło</h3>
-                  <label
-                    className="settings-row settings-row--switch"
-                    title="Lampy stawiasz narzędziem „Światła” (L), latarkę figury ustawisz w jej menu."
-                  >
+                  <label className="settings-row settings-row--switch">
                     <input
                       type="checkbox"
                       checked={scene.dark}
@@ -631,6 +731,13 @@ function SceneConfigBody() {
                     />
                     <span>Ciemna scena — widać tylko to, co oświetlone</span>
                   </label>
+                  <p className="settings-hint">
+                    Noc, piwnica, wyłączony prąd. Lampy stawiasz narzędziem <strong>Światła</strong>{' '}
+                    <ToolGlyph>
+                      <IconLamp size={14} />
+                    </ToolGlyph>{' '}
+                    (klawisz <kbd>L</kbd>), latarkę postaci włączasz w menu jej figury.
+                  </p>
                   {scene.dark && (
                     <div
                       className="settings-row"
@@ -669,7 +776,8 @@ function SceneConfigBody() {
                   )}
                   {scene.dark && (
                     <p className="settings-hint">
-                      Figura bez światła widzi na {formatMetres(scene.darkSightM)}.
+                      Bez żadnego światła figura widzi na {formatMetres(scene.darkSightM)} wokół
+                      siebie. Zero to całkowita ciemność.
                     </p>
                   )}
                 </section>
@@ -678,12 +786,9 @@ function SceneConfigBody() {
                     away from anybody — a remembered room never showed who was
                     in it — so it needs no token re-filter, only a repaint. */}
                 <section className="settings-group">
-                  <h3 className="settings-group-title">Pamięć drużyny</h3>
+                  <h3 className="settings-group-title">Zapamiętywanie mapy</h3>
                   <div className="scene-editor-row">
-                    <label
-                      className="settings-row settings-row--switch scene-config-grow"
-                      title="Obszar raz zobaczony zostaje narysowany przyciemniony — sama mapa, bez figur. W ciemnej scenie zapamiętuje się tylko to, co było oświetlone."
-                    >
+                    <label className="settings-row settings-row--switch scene-config-grow">
                       <input
                         type="checkbox"
                         checked={scene.explore}
@@ -701,6 +806,10 @@ function SceneConfigBody() {
                       Zapomnij
                     </button>
                   </div>
+                  <p className="settings-hint">
+                    Miejsca, które drużyna już widziała, zostają na mapie przyciemnione — jak plan
+                    narysowany z pamięci, bez figur, które tam teraz są. „Zapomnij” czyści ten plan.
+                  </p>
                 </section>
               </>
             )}

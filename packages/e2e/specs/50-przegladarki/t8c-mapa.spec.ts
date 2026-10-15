@@ -78,7 +78,8 @@ test.describe.serial('T8c mapa i sceny: Lombard, rysunki, ping, grupa, obiekty',
     await editor.getByRole('tab', { name: 'Siatka' }).click();
     await editor.locator('#grid-columns').fill(String(LOMBARD.columns));
     await editor.getByRole('tab', { name: 'Widoczność' }).click();
-    await editor.locator('#scene-visibility').selectOption('open');
+    await editor.locator('input[name=scene-visibility][value=open]').click();
+    await expect(editor.locator('input[name=scene-visibility][value=open]')).toBeChecked();
     await editor.getByRole('button', { name: 'Zapisz' }).click();
     await expect(editor).toBeHidden();
     await expect.poll(() => Math.round(sceneByName('Lombard').gridSizePx * 10)).toBe(603);

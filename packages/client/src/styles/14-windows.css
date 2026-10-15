@@ -1034,3 +1034,102 @@
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--accent);
 }
+
+/* Tryby widoczności jako karty z opisem (15.10) — wzór kart skórek kości:
+   ramka, aktywna w kolorze akcentu. Pod nimi „Jak to zrobić” z ikonami
+   narzędzi z paska mapy, żeby nowy MG wiedział, czego szukać nad mapą. */
+.scene-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.scene-mode {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.scene-mode:hover {
+  border-color: var(--text-dim);
+}
+
+.scene-mode.is-active {
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 8%);
+}
+
+.scene-mode input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.scene-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.scene-mode-label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.scene-mode-summary {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.scene-guide {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 2px solid var(--accent);
+  background: var(--bg);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.scene-guide-title {
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+}
+
+.scene-guide ol {
+  margin: 0 0 0.3rem;
+  padding-left: 1.2rem;
+}
+
+.scene-guide li + li {
+  margin-top: 0.25rem;
+}
+
+.scene-guide-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  vertical-align: middle;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+}
+
+.scene-guide-glyph .map-tool-emoji {
+  font-size: 0.8rem;
+}
+
+.scene-config-window kbd {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-panel);
+  font-family: inherit;
+  font-size: 0.74rem;
+}

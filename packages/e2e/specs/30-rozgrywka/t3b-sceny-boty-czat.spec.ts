@@ -131,8 +131,8 @@ async function createScene(
   await editor.getByRole('tab', { name: 'Siatka' }).click();
   await editor.locator('#grid-columns').fill(String(map.columns));
   await editor.getByRole('tab', { name: 'Widoczność' }).click();
-  await editor.locator('#scene-visibility').selectOption(visibility);
-  await expect(editor.locator('#scene-visibility')).toHaveValue(visibility);
+  await editor.locator(`input[name=scene-visibility][value=${visibility}]`).click();
+  await expect(editor.locator(`input[name=scene-visibility][value=${visibility}]`)).toBeChecked();
   return editor;
 }
 

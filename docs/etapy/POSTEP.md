@@ -284,7 +284,14 @@ błąd przy zielonych testach, drugi czysty); `tsc` i ESLint zmienionych plików
 Oglądane w **Firefoksie** (Playwright MCP, MG, Test_1 / Test_2: trzy zakładki, położenie okna
 przy prawym brzegu mapy) i jako gracz Bartek w **Chromium** (biblioteka `playwright`, czysty
 kontekst, link odnowienia): „MG i gracze” — siatka tylko w odsłoniętej części, „Tylko MG” — brak.
-**Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”); w Test_1 jedna krótka sesja
+**Druga prośba MG (ta sama sesja):** zakładka „Widoczność” ma być jasna dla kogoś, kto pierwszy
+raz używa VTT. Lista rozwijana → trzy karty trybów z opisem („Cała mapa odkryta”, „Mgła wojny
+— odkrywasz Ty”, „Pole widzenia — odkrywa się samo”) i pod wybranym krótkie kroki „jak to
+zrobić” z ikonami narzędzi z paska mapy (`VisibilityGuide`); objaśnienia ciemności i pamięci
+mapy widoczne pod polami. Podpowiedzi paska mapy odsyłają do okna sceny zamiast „zakładki Sceny”.
+E2E wybiera tryb `input[name=scene-visibility][value=…]` (`click`, nie `check` — radio czeka na
+serwer). Oglądane w Firefoksie, `t8c-mapa` 7/7 po zmianie.
+**Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”, ręczna mgła); w Test_1 jedna krótka sesja
 (18:50–18:51) i zużyty link odnowienia Bartka (inne urządzenia Bartka zostają zalogowane).
 
 ### Sesja 14.10 (po `2f8350c`) — komunikaty walki i rzut obrażeń z kubka

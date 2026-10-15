@@ -307,7 +307,8 @@ test.describe
     await editor.locator('#grid-columns').fill(String(MAP_B.columns));
     // Od etapu 45 nowa scena startuje w Dynamicznej; T9b liczy na ręczną mgłę.
     await editor.getByRole('tab', { name: 'Widoczność' }).click();
-    await editor.locator('#scene-visibility').selectOption('fog');
+    await editor.locator('input[name=scene-visibility][value=fog]').click();
+    await expect(editor.locator('input[name=scene-visibility][value=fog]')).toBeChecked();
     await editor.getByRole('button', { name: 'Zapisz' }).click();
     await expect(editor).toBeHidden();
     await sceneListRow(page, SCENE_B).getByRole('button', { name: 'Aktywuj' }).click();

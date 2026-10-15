@@ -364,7 +364,7 @@ export function MapTools() {
                 ? 'Nadpisanie widoczności (F) — przeciągnij, by zakryć mimo światła albo odsłonić mimo ścian'
                 : fogEnabled
                   ? 'Mgła wojny (F) — przeciągnij, by odsłonić lub zakryć'
-                  : 'Mgła wyłączona na tej scenie — włącz ją w zakładce „Sceny”'
+                  : 'Mgła wojny wyłączona na tej scenie — włącz ją w oknie edycji sceny (zakładka „Widoczność”)'
             }
             aria-pressed={tool === 'fog'}
             disabled={!brushAvailable}
@@ -409,7 +409,7 @@ export function MapTools() {
             title={
               sceneIsDark && visibility === 'dynamic'
                 ? 'Światła (L) — kliknij mapę, by postawić lampę; gracze nigdy nie dostają listy świateł'
-                : 'Światła (L) — działają dopiero na ciemnej scenie w trybie „Dynamiczna” (zakładka „Sceny”); można je stawiać już teraz'
+                : 'Światła (L) — działają dopiero na ciemnej scenie w trybie „Dynamiczna” (okno edycji sceny, zakładka „Widoczność”); można je stawiać już teraz'
             }
             aria-pressed={tool === 'light'}
             onClick={() => toggleTool('light')}
@@ -1117,7 +1117,8 @@ export function MapTools() {
           )}
           {!(sceneIsDark && visibility === 'dynamic') && (
             <span className="map-tool-hint">
-              Scena nie jest ciemna — światła nic jeszcze nie zmieniają (zakładka „Sceny”)
+              Scena nie jest ciemna — światła nic jeszcze nie zmieniają (okno edycji sceny, zakładka
+              „Widoczność”)
             </span>
           )}
         </div>
