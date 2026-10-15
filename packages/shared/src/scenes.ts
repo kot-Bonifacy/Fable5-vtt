@@ -124,6 +124,12 @@ export interface SceneSummary {
   name: string;
   active: boolean;
   hasBackground: boolean;
+  /**
+   * MG wyznaczył miejsce startu drużyny (15.10) — przypomnienie przed
+   * „Rozpocznij sesję” i przy aktywacji: bez niego figury graczy stają na
+   * środku mapy, a to bywa wnętrze pokoju, którego drużyna jeszcze nie zna.
+   */
+  hasSpawn: boolean;
 }
 
 /** Ack data of the map upload endpoint (`POST /api/uploads/maps`). */

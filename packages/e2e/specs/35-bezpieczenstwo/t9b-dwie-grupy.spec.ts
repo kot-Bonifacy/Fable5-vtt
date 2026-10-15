@@ -8,7 +8,7 @@ import { campaignSecrets } from '../../fixtures/izolacja.ts';
 import { expectReconnected } from '../../fixtures/network.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation, rollWithCup, say } from '../../fixtures/table.ts';
+import { clickStartSession, createInvitation, rollWithCup, say } from '../../fixtures/table.ts';
 import {
   hasCheckpoint,
   restoreCheckpoint,
@@ -315,7 +315,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await say(bartek, `Ochroniarz pilnuje bramy. ${prep}`);
     await expect(bartek.page.locator('.chat-message', { hasText: prep })).toBeVisible();
 
-    await bartek.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(bartek.page);
     await expect(bartek.page.locator('.session-state--live')).toContainText('sesja');
     await expect(kuba.page.locator('.between-sessions')).toHaveCount(0);
     await expect.poll(() => sceneOf(kuba)).toBe('Rezydencja');
@@ -603,7 +603,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
       const page = actor.page;
       await expect(page.locator('.between-sessions'), actor.name).toBeVisible();
       await expect(page.locator('.map-area')).toHaveCount(0);
-      await expect(page.getByLabel('Wiadomość czatu')).toBeDisabled();
+      await expect(page.getByLabel('Wiadomość czatu')).toBeEnabled(); // czat drużyny między sesjami (bcc3716, 10.10)
       await sideTab(actor, 'Postacie');
       await expect(page.getByText(sheet).first(), `${actor.name} widzi swoją kartę`).toBeVisible();
       await shot(actor, '06-miedzy-sesjami');
@@ -616,8 +616,8 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
         sheet,
       )!.id;
       for (const [event, payload] of [
-        ['chat:send', { text: 'z konsoli po końcu sesji' }],
-        ['chat:send', { text: '/r 1d10' }],
+        // Zwykła linijka to czat poczekalni (od 10.10) — odmowę dostaje rzut.
+        ['chat:send', { text: '/r 1d10 z konsoli po końcu sesji' }],
         ['token:move', { tokenId: token, x: 500, y: 500, final: true }],
         ['map:ping', { x: 1, y: 1 }],
         ['character:roll', {}],
@@ -629,7 +629,9 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
       }
       raw.disconnect();
     }
-    expect(query(`SELECT id FROM ChatMessage WHERE text = 'z konsoli po końcu sesji'`)).toEqual([]);
+    expect(
+      query(`SELECT id FROM ChatMessage WHERE text LIKE '%z konsoli po końcu sesji%'`),
+    ).toEqual([]);
 
     // AI przechodzi do trwającej, uprawnionej sesji MG-B.
     await expect.poll(() => aiReason(bartek)).toBe('available');
@@ -727,7 +729,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
   });
 
   test('8. „Przejmij AI”: sesja właściciela odbiera AI bez cofania zgody', async () => {
-    await mg.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mg.page);
     await expect(mg.page.locator('.session-state--live')).toContainText('sesja');
     for (const actor of [marek, ola]) {
       await expect(actor.page.locator('.between-sessions'), actor.name).toHaveCount(0);
@@ -772,7 +774,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await expect(mgC.page.locator('.top-bar-campaign')).toHaveText(CAMPAIGN_C);
     await expect(mgC.page.locator('.session-state--prep')).toHaveText('przygotowanie');
 
-    await mgC.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mgC.page);
     await expect(
       mgC.page.getByText(
         'Wszystkie miejsca na sesje są zajęte — serwer nie obsłuży więcej sesji naraz.',
@@ -800,7 +802,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await mg.page.getByRole('button', { name: 'Zakończ sesję' }).click();
     await mg.page.getByRole('button', { name: 'Na pewno? Zakończ' }).click();
     await expect(mg.page.locator('.session-state--prep')).toHaveText('przygotowanie');
-    await mgC.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mgC.page);
     await expect(mgC.page.locator('.session-state--live')).toContainText('sesja');
     expect(sessionStarted(campaignC) && sessionStarted(campaignB)).toBe(true);
     // Kampania C bez zgody właściciela, więc AI wraca do B (zgoda została po „Przejmij”).
@@ -864,7 +866,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await shot(mgC, '12-koniec-pusty');
     // Oba sloty wolne: MG-A rozpoczyna sesję.
     await expectReconnected(mg);
-    await mg.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mg.page);
     await expect(mg.page.locator('.session-state--live')).toContainText('sesja');
   });
 

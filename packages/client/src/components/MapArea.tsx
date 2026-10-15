@@ -164,6 +164,7 @@ import { SightingWindow } from './SightingWindow.js';
 import { ExchangeDock } from './exchange/ExchangeDock.js';
 import { openExchangeAtToken } from './exchange/open.js';
 import { GmAttention } from './GmAttention.js';
+import { NoFigurePoster } from './NoFigurePoster.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
@@ -661,6 +662,12 @@ export function MapArea() {
   const targeting = useAttackStore((s) => s.targeting);
   const hasVision = useWallStore((s) => s.hasVision);
   const seesNothing = useWallStore((s) => s.polygons.length === 0);
+  const selfId = useAuthStore((s) => s.user?.id);
+  const hasOwnFigure = useTokenStore((s) =>
+    Object.values(s.tokens).some(
+      (token) => token.sceneId === scene?.id && token.ownerId === selfId,
+    ),
+  );
 
   useEffect(() => {
     ensureStatusesLoaded();
@@ -2322,13 +2329,16 @@ export function MapArea() {
           tam (Esc puszcza figurę)
         </div>
       )}
-      {/* Visibility comes from tokens alone, so „no token" means „no map". The
-          hint is what keeps that from reading as a broken connection. */}
-      {!isGm && scene?.visibility === 'dynamic' && hasVision && seesNothing && (
-        <div className="map-placement-hint">
-          Nie masz tokenu na tej scenie — MG musi go wystawić, żebyś cokolwiek zobaczył
-        </div>
-      )}
+      {/* Visibility comes from tokens alone, so „no token" means „no map".
+          Zamiast czerni z napisem — plakat (15.10, zlecenie MG): gracz bez
+          figury nie ogląda pustki. Oczy drużyny (etap 45) dają wielokąty, więc
+          kto patrzy cudzymi oczami, plakatu nie dostaje. */}
+      {!isGm &&
+        scene?.visibility === 'dynamic' &&
+        hasVision &&
+        seesNothing &&
+        !hasOwnFigure &&
+        !loading && <NoFigurePoster />}
       <MapTools />
       <TokenGroupBar />
       {/* Prawy górny róg to jedna kolumna (25.09): „Czeka na MG” nad dokiem

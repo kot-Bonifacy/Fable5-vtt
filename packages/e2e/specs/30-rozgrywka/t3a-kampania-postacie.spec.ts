@@ -18,7 +18,7 @@ import { giveEntry } from '../../fixtures/kompendium.ts';
 import { material, materialAs } from '../../fixtures/materials.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { goToGmAttention } from '../../fixtures/table.ts';
+import { clickStartSession, goToGmAttention } from '../../fixtures/table.ts';
 import {
   hasCheckpoint,
   pendingDice,
@@ -128,7 +128,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     // Etap 44c: nowa kampania to przygotowanie — gracze siądą przy stole
     // dopiero po „Rozpocznij sesję”.
     await expect(mg.page.locator('.session-state--prep')).toHaveText('przygotowanie');
-    await mg.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mg.page);
     await expect(mg.page.locator('.session-state--live')).toContainText('sesja');
     await mg.page.getByRole('button', { name: 'Kompendium', exact: true }).click();
     await mg.page.locator('.shop-tier-step', { hasText: '2' }).click();

@@ -1,8 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { SceneSummary } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
+import { readinessKey } from '../session-readiness.js';
 import { activateScene, createScene, deleteScene, viewScene } from '../socket.js';
+import { useChatStore } from '../stores/chatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
+
+/** Ile sekund „Bez miejsca startu — aktywuj?” czeka na drugie kliknięcie. */
+const CONFIRM_MS = 5000;
 
 function SceneRow({
   scene,
@@ -14,6 +19,27 @@ function SceneRow({
   onEdit: (sceneId: string) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  // W trakcie sesji aktywacja przenosi graczy od razu (15.10): scena bez
+  // miejsca startu stawia ich figury na środku mapy, więc pytamy drugim
+  // kliknięciem, jak „Zakończ sesję”. W przygotowaniu brak stoi w „Czeka na MG”.
+  const live = useChatStore((s) => (s.campaign?.sessionStartedAt ?? null) !== null);
+  const warn = live && !scene.hasSpawn;
+
+  useEffect(() => {
+    if (!confirming) return;
+    const timer = window.setTimeout(() => setConfirming(false), CONFIRM_MS);
+    return () => window.clearTimeout(timer);
+  }, [confirming]);
+
+  function activate() {
+    if (warn && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
+    void activateScene(scene.id);
+  }
 
   async function remove() {
     if (!confirmDestructive(`Usunąć scenę „${scene.name}”?`)) return;
@@ -24,7 +50,10 @@ function SceneRow({
   }
 
   return (
-    <li className={`scene-row ${isViewed ? 'scene-row--viewed' : ''}`}>
+    <li
+      className={`scene-row ${isViewed ? 'scene-row--viewed' : ''}`}
+      data-attention={scene.active && !scene.hasSpawn ? readinessKey.spawn(scene.id) : undefined}
+    >
       <div className="scene-row-main">
         <span className="scene-row-name">{scene.name}</span>
         {scene.active && <span className="badge badge--ok">aktywna</span>}
@@ -43,10 +72,15 @@ function SceneRow({
           <>
             <button
               type="button"
-              className="small-button"
-              onClick={() => void activateScene(scene.id)}
+              className={`small-button${confirming ? ' session-end--confirm' : ''}`}
+              onClick={activate}
+              title={
+                warn
+                  ? 'Ta scena nie ma miejsca startu — figury graczy staną na środku mapy'
+                  : undefined
+              }
             >
-              Aktywuj
+              {confirming ? 'Bez startu — aktywuj?' : 'Aktywuj'}
             </button>
             <button
               type="button"

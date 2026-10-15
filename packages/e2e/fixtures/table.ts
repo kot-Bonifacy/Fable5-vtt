@@ -75,6 +75,18 @@ export async function startSession(mg: Actor, campaignId: string): Promise<void>
   }
 }
 
+/**
+ * „Rozpocznij sesję” z górnego paska MG. Od 15.10 start pyta o braki stołu
+ * (scena bez miejsca startu, gracz bez przyjętej postaci) — lista rozwija się
+ * pod przyciskiem, a sesję zaczyna „Rozpocznij mimo to”. Lista powstaje w tym
+ * samym renderze co kliknięcie, więc wystarczy jeden odczyt bez czekania.
+ */
+export async function clickStartSession(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+  const anyway = page.getByRole('button', { name: 'Rozpocznij mimo to' });
+  if (await anyway.isVisible()) await anyway.click();
+}
+
 /** Imienny link dla gracza (etap 44b): nowy gracz albo odnowienie — `playerLink`. */
 export async function createInvitation(
   mg: Actor,

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
+import type { CpredCharacterData } from '@vtt/shared';
 import {
   CPRED_CREATION_STEP_LABELS,
   ADVANCEMENT_AWARD_MAX,
@@ -9,7 +9,6 @@ import {
   formatEddies,
   isContainerCard,
 } from '@vtt/shared';
-import { apiGet } from '../api.js';
 import { confirmDestructive } from '../confirm.js';
 import {
   advanceErrorText,
@@ -20,6 +19,7 @@ import {
   updateCharacter,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useCampaignPlayersStore, type CampaignPlayer } from '../stores/campaignPlayersStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCheckStore } from '../stores/checkStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
@@ -31,11 +31,6 @@ import { CreationRankPanel } from './CreationRankPanel.js';
 import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { startTokenDrag } from '../map/token-drag.js';
-
-interface PlayerOption {
-  id: string;
-  name: string;
-}
 
 /**
  * Właściciel postaci jako słowo, a lista dopiero po kliknięciu (etap 43a):
@@ -49,7 +44,7 @@ function OwnerPicker({
 }: {
   ownerId: string | null;
   label: string;
-  players: PlayerOption[];
+  players: CampaignPlayer[];
   onChange: (ownerId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -168,7 +163,7 @@ export function CharacterPanel() {
   );
   const onScene = new Set(onSceneKey.split(' '));
 
-  const [players, setPlayers] = useState<PlayerOption[]>([]);
+  const players = useCampaignPlayersStore((s) => s.players);
   const [error, setError] = useState<string | null>(null);
   const [dragLearned, setDragLearned] = useState(() => readFlag(DRAG_LEARNED_KEY));
 
@@ -178,12 +173,7 @@ export function CharacterPanel() {
 
   useEffect(() => {
     if (!isGm) return;
-    apiGet<CampaignDetail[]>('/api/campaigns')
-      .then((campaigns) => {
-        const active = campaigns.find((c) => c.open);
-        setPlayers(active?.players.map((p) => ({ id: p.id, name: p.name })) ?? []);
-      })
-      .catch(() => setPlayers([]));
+    void useCampaignPlayersStore.getState().load();
   }, [isGm]);
 
   async function changeOwner(characterId: string, ownerId: string) {

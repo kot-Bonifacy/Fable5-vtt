@@ -1,6 +1,6 @@
 import { query } from '../../fixtures/db.ts';
 import { expect, test, type Actor } from '../../fixtures/actors.ts';
-import { createCampaign, createInvitation, say } from '../../fixtures/table.ts';
+import { clickStartSession, createCampaign, createInvitation, say } from '../../fixtures/table.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 
 /**
@@ -41,7 +41,7 @@ test.describe.serial('@szybkie dym 44c: przygotowanie, start, koniec, widok mię
     await expect(poster).toContainText('Pierwsza sesja jeszcze przed wami.');
     await expect(page.locator('.map-area')).toHaveCount(0);
     await expect(page.locator('.dice-cup')).toHaveCount(0);
-    await expect(page.getByLabel('Wiadomość czatu')).toBeDisabled();
+    await expect(page.getByLabel('Wiadomość czatu')).toBeEnabled(); // czat drużyny między sesjami (bcc3716, 10.10)
     // Zakładki panelu (nie filtr czatu, który też ma „Walka”).
     const tabs = page.locator('.side-tab');
     await expect(tabs).toHaveText(['Czat', 'Postacie', 'Kompendium', 'Handouty', 'Dziennik']);
@@ -51,10 +51,11 @@ test.describe.serial('@szybkie dym 44c: przygotowanie, start, koniec, widok mię
     // Czat przygotowania nie dociera do gracza.
     await say(mg, PREP_LINE);
     await expect(mg.page.locator('.chat-message', { hasText: PREP_LINE })).toBeVisible();
-    // Serwer odmawia zdarzeń stołu — także z konsoli.
+    // Serwer odmawia zdarzeń stołu — także z konsoli. Pisać na czacie drużyny
+    // wolno (poczekalnia od 10.10), ale rzut `/r` czeka na sesję.
     const raw = await kuba.socket();
     for (const [event, payload] of [
-      ['chat:send', { text: 'z konsoli' }],
+      ['chat:send', { text: '/r 1d10 z konsoli' }],
       ['token:move', { tokenId: 'x', x: 1, y: 1 }],
       ['map:ping', { x: 1, y: 1 }],
     ] as const) {
@@ -64,11 +65,11 @@ test.describe.serial('@szybkie dym 44c: przygotowanie, start, koniec, widok mię
       });
     }
     await expect(page.locator('.chat-message', { hasText: PREP_LINE })).toHaveCount(0);
-    expect(query(`SELECT id FROM ChatMessage WHERE text = 'z konsoli'`)).toEqual([]);
+    expect(query(`SELECT id FROM ChatMessage WHERE text LIKE '%z konsoli%'`)).toEqual([]);
   });
 
   test('start: Kuba siada przy stole bez F5, czat w obie strony, przygotowania nie widać', async () => {
-    await mg.page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(mg.page);
     await expect(mg.page.locator('.session-state--live')).toContainText('sesja');
     const page = kuba.page;
     await expect(page.locator('.between-sessions')).toHaveCount(0);
@@ -94,7 +95,7 @@ test.describe.serial('@szybkie dym 44c: przygotowanie, start, koniec, widok mię
     const poster = page.locator('.between-sessions');
     await expect(poster).toBeVisible();
     await expect(poster).toContainText('Ostatnia sesja skończyła się');
-    await expect(page.getByLabel('Wiadomość czatu')).toBeDisabled();
+    await expect(page.getByLabel('Wiadomość czatu')).toBeEnabled(); // czat drużyny między sesjami (bcc3716, 10.10)
     await expect(page.getByText('MG zakończył sesję. Do zobaczenia przy następnej.')).toBeVisible();
     await expect(
       page.locator('.chat-message', { hasText: 'Witaj przy stole, Kuba.' }),

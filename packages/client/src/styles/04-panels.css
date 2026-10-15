@@ -45,6 +45,7 @@
 /* Stan sesji MG (etap 44c): napis i jeden przycisk. `flex: none` jak każdy
    element prawej grupy — kurczą się tylko tytuł i nazwa kampanii. */
 .session-control {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
@@ -74,6 +75,49 @@
 .session-end--confirm {
   color: var(--cp-red);
   border-color: var(--cp-red);
+}
+
+/* Braki stołu przed „Rozpocznij sesję” (15.10) — rozwijane pod przyciskiem
+   jak „⚠ N” przy „Ruchu graczy” (09-turn.css). Przypomnienie, nie blokada. */
+.session-check {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 600;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0.6rem 0.8rem;
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
+  color: var(--map-ink);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-md);
+}
+
+.session-check-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.session-check-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.session-check-row + .session-check-row {
+  margin-top: 0.3rem;
+}
+
+.session-check-hint {
+  margin: 0.5rem 0 0;
+  opacity: 0.8;
+  font-size: 0.78rem;
+}
+
+.session-check-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
 }
 
 /* ---------------------------------------------------------------------------

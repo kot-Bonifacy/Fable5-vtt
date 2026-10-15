@@ -5,6 +5,7 @@ import {
   type CreationRankDraft,
   type PortraitWantedRow,
 } from '@vtt/shared';
+import { readinessForAttention, type ReadinessIssue } from './session-readiness.js';
 import type { ChatItem } from './stores/chatStore.js';
 
 /**
@@ -17,10 +18,11 @@ import type { ChatItem } from './stores/chatStore.js';
  * zgody i szkice kreatora, karty postaci), a nie prowadzona osobno: drugi tor
  * rozjechałby się przy pierwszej odpowiedzi udzielonej z innego miejsca.
  */
-export type GmAttentionKind = 'permit' | 'rank' | 'ready' | 'portrait' | 'request' | 'proposal';
+export type GmAttentionKind =
+  'permit' | 'rank' | 'ready' | 'portrait' | 'request' | 'proposal' | 'scene' | 'spawn' | 'player';
 
 /** Zakładka panelu bocznego, na której MG podejmuje decyzję. */
-export type GmAttentionTab = 'chat' | 'characters';
+export type GmAttentionTab = 'chat' | 'characters' | 'scenes';
 
 export interface GmAttentionItem {
   /** Stały klucz sprawy; ten sam stoi w `data-attention` wiersza, do którego prowadzi. */
@@ -28,6 +30,8 @@ export interface GmAttentionItem {
   kind: GmAttentionKind;
   text: string;
   tab: GmAttentionTab;
+  /** Brak miejsca startu: „Przejdź” pokazuje tę scenę i bierze narzędzie chorągiewki. */
+  sceneId?: string;
 }
 
 export interface GmAttentionSources {
@@ -38,6 +42,11 @@ export interface GmAttentionSources {
   characters: readonly Pick<CharacterView, 'id' | 'name' | 'playReady'>[];
   /** Gracze bez wolnego portretu w puli (#68); bez pola — żadnych. */
   portraitWanted?: readonly PortraitWantedRow[];
+  /**
+   * Braki stołu przed sesją (15.10) — tylko w przygotowaniu; bez pola żadnych.
+   * Prośba o zgodę i karta czekająca na przyjęcie mają już własne wiersze.
+   */
+  readiness?: readonly ReadinessIssue[];
 }
 
 export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[] {
@@ -106,6 +115,15 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
         tab: 'chat',
       });
     }
+  }
+  for (const issue of readinessForAttention(sources.readiness ?? [])) {
+    items.push({
+      key: issue.key,
+      kind: issue.kind === 'spawn' ? 'spawn' : issue.kind === 'scene' ? 'scene' : 'player',
+      text: issue.text,
+      tab: issue.kind === 'spawn' || issue.kind === 'scene' ? 'scenes' : 'characters',
+      ...(issue.sceneId ? { sceneId: issue.sceneId } : {}),
+    });
   }
   return items;
 }

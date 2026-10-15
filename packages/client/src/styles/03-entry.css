@@ -457,6 +457,14 @@ button:disabled {
   font-family: var(--font-cp-cond);
 }
 
+/* Ten sam plakat nad mapą gracza bez figury na scenie Dynamicznej (15.10) —
+   zakrywa czarne płótno; narzędzia i róg mapy stoją wyżej. */
+.between-sessions--map {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
 .between-sessions-card {
   display: flex;
   flex-direction: column;

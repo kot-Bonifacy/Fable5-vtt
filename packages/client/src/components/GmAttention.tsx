@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { gmAttentionTitle, type GmAttentionItem, type GmAttentionKind } from '../gm-attention.js';
+import { viewScene } from '../socket.js';
 import { useGmAttention, useGmAttentionStore } from '../stores/gmAttentionStore.js';
+import { useMapToolStore } from '../stores/mapToolStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
 
 /** Jak długo świeża sprawa wisi kaflem, zanim zostanie sam znacznik. */
 const TOAST_MS = 9000;
@@ -12,6 +15,9 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
   portrait: '🖼',
   request: '❓',
   proposal: '🤖',
+  scene: '🗺',
+  spawn: '🚩',
+  player: '👤',
 };
 
 /**
@@ -66,6 +72,12 @@ export function GmAttention() {
   const follow = (item: GmAttentionItem) => {
     setOpen(false);
     goTo(item);
+    // Brak miejsca startu (15.10): od razu ta scena na ekranie i chorągiewka
+    // w ręce — jeden klik w mapę zamyka sprawę.
+    if (item.sceneId) {
+      if (useSceneStore.getState().scene?.id !== item.sceneId) void viewScene(item.sceneId);
+      useMapToolStore.getState().setTool('spawn');
+    }
   };
 
   return (

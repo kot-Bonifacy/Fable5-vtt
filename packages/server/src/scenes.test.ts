@@ -326,12 +326,16 @@ describe('scene lifecycle', () => {
     const player = createSocket(playerCookie);
     await Promise.all([gm.firstSync, player.firstSync]);
 
+    // Lista scen MG niesie `hasSpawn` (15.10) — z niej przypomnienie przed
+    // „Rozpocznij sesję” wie, że aktywnej scenie brakuje chorągiewki.
+    const listed = waitFor<SceneListBroadcast>(gm.socket, 'scene:list');
     const set = await emitAck<SceneView>(gm.socket, 'scene:update', {
       sceneId: sceneAId,
       patch: { spawn: { x: 640, y: 1200 } },
     });
     if (!set.ok || !set.data) throw new Error('scene:update (spawn) failed');
     expect(set.data.spawn).toEqual({ x: 640, y: 1200 });
+    expect((await listed).scenes.find((s) => s.id === sceneAId)?.hasSpawn).toBe(true);
 
     expect(
       await emitAck(player.socket, 'scene:update', {
@@ -347,12 +351,14 @@ describe('scene lifecycle', () => {
     expect((await joining.firstSync).scene?.spawn).toEqual({ x: 640, y: 1200 });
     joining.socket.disconnect();
 
+    const clearedList = waitFor<SceneListBroadcast>(gm.socket, 'scene:list');
     const cleared = await emitAck<SceneView>(gm.socket, 'scene:update', {
       sceneId: sceneAId,
       patch: { spawn: null },
     });
     if (!cleared.ok || !cleared.data) throw new Error('scene:update (spawn null) failed');
     expect(cleared.data.spawn).toBeNull();
+    expect((await clearedList).scenes.find((s) => s.id === sceneAId)?.hasSpawn).toBe(false);
 
     gm.socket.disconnect();
     player.socket.disconnect();

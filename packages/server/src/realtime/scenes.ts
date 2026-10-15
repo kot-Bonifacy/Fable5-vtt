@@ -80,6 +80,7 @@ function toSummary(scene: Scene): SceneSummary {
     name: scene.name,
     active: scene.active,
     hasBackground: scene.backgroundUrl !== null,
+    hasSpawn: scene.spawnX !== null && scene.spawnY !== null,
   };
 }
 
@@ -226,7 +227,7 @@ export const sceneUpdateEvent = defineEvent<SceneUpdatePayload, SceneView>({
       const broadcast: SceneUpdateBroadcast = { scene: view };
       deps.io.to(sceneRoom(updated.id)).emit('scene:update', broadcast);
     }
-    if (patch.name !== undefined || patch.background !== undefined) {
+    if (patch.name !== undefined || patch.background !== undefined || patch.spawn !== undefined) {
       await emitSceneList(deps, campaignId);
     }
     return view;

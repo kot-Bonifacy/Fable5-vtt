@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `f7f33b4`) — zakładka „Grafiki” i „🖼 Zmień grafikę…”
+
+**Zlecenie MG:** po wyjaśnieniu, do czego służy zakładka „Tokeny” (biblioteka obrazków figur bez
+karty — postaci z kartą stawia się z „Postaci”, statystów z wzorców, pojemniki narzędziem 📦),
+wybrał wariant „zostawić i zawęzić”.
+
+**Zrobione:** zakładka MG nazywa się **„Grafiki”** (id `tokens` bez zmian), przycisk „Wgraj
+grafikę”, pusta biblioteka podpowiada „Postacie”. Menu figury MG ma **„🖼 Zmień grafikę…”**
+(`TokenImagePicker.tsx`): siatka biblioteki (bieżąca podświetlona), „Portret z karty”, gdy figura
+ma kartę z portretem, i „Bez grafiki” (krążek z nazwą). Zapis to istniejące `token:update
+{ imageUrl }` — serwer bez zmian. Teksty „Tokeny” w `CombatPanel` i komentarzach poprawione,
+E2E (`fixtures/scene.ts`, `t8a-ekrany`) klikają „Grafiki”. Umowa w `mapa`.
+
+**Weryfikacja:** `tsc` klienta czysty, vitest client 358. Oględziny w **Firefoksie** (Playwright
+MCP) na „Oględziny 44d (MG-B)”: wgrane dwie grafiki, pusty żeton → solo-red → „Bez grafiki”;
+po teście figura i obie grafiki zdjęte. **E2E nie puszczone.** Uwaga z oględzin: menu figury
+u dołu ekranu wychodzi poza okno (stare — `top = innerHeight − 320`), rozwinięty wybierak
+wydłuża je o ~110 px.
+
 ### Sesja 15.10 (po `d4c50d2`) — etap 51: przegląd stref bronionych
 
 **Zlecenie MG:** przeanalizować wszystkie strefy bronione („ślizgawka — dlaczego ma PW?”) i czy

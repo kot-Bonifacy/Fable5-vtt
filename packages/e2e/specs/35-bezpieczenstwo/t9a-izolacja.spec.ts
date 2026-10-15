@@ -29,7 +29,7 @@ import {
 } from '../../fixtures/security.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation } from '../../fixtures/table.ts';
+import { clickStartSession, createInvitation } from '../../fixtures/table.ts';
 import {
   restoreBackup,
   saveCheckpoint,
@@ -409,7 +409,7 @@ test.describe
     await page.goto('/');
     // Etap 44c: MG-B rozpoczyna sesję z górnego paska (Firefox) — dopiero wtedy
     // gracze B siadają przy stole. Dwie sesje naraz: A i B.
-    await page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
+    await clickStartSession(page);
     await expect(page.locator('.session-state--live')).toContainText('sesja');
     expect(
       queryOne<{ n: number }>(
@@ -810,7 +810,7 @@ test.describe
     await expect(page.locator('.session-state--prep')).toHaveText('przygotowanie');
     for (const actor of [kuba, marekB]) {
       await expect(actor.page.locator('.between-sessions')).toBeVisible();
-      await expect(actor.page.getByLabel('Wiadomość czatu')).toBeDisabled();
+      await expect(actor.page.getByLabel('Wiadomość czatu')).toBeEnabled(); // czat drużyny między sesjami (bcc3716, 10.10)
       expect((await authOf(actor))?.activeCampaign?.name).toBe(CAMPAIGN_B);
     }
     await atTable();

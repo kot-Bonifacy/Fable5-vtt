@@ -7,11 +7,14 @@ import {
   type GmAttentionSources,
   type GmAttentionTab,
 } from '../gm-attention.js';
+import { sessionReadinessIssues, type ReadinessIssue } from '../session-readiness.js';
 import { useAuthStore } from './authStore.js';
+import { useCampaignPlayersStore, type CampaignPlayer } from './campaignPlayersStore.js';
 import { useCharacterStore } from './characterStore.js';
 import { useChatStore } from './chatStore.js';
 import { useCreationRankStore } from './creationRankStore.js';
 import { usePortraitStore } from './portraitStore.js';
+import { useSceneStore } from './sceneStore.js';
 
 /**
  * „Czeka na MG” (25.09): co wyskoczyło jako kafel i dokąd MG właśnie idzie.
@@ -61,13 +64,57 @@ export const useGmAttentionStore = create<GmAttentionState>((set) => ({
 function sourcesNow(): GmAttentionSources {
   const characters = useCharacterStore.getState();
   const creation = useCreationRankStore.getState();
+  const chat = useChatStore.getState();
   return {
-    chat: useChatStore.getState().items,
+    chat: chat.items,
     permits: creation.permits,
     ranks: creation.rows,
     characters: characters.order.flatMap((id) => characters.characters[id] ?? []),
     portraitWanted: usePortraitStore.getState().wanted,
+    readiness: chat.campaign?.sessionStartedAt === null ? sessionReadinessNow() : [],
   };
+}
+
+/** Gracze kampanii bez konta MG przy tej karcie (MG bywa też członkiem własnej kampanii). */
+function playersOf(players: readonly CampaignPlayer[], selfId: string | undefined) {
+  return players.filter((player) => player.id !== selfId);
+}
+
+/**
+ * Braki stołu przed sesją (15.10) w tej chwili — dla „Rozpocznij sesję”,
+ * które pyta o nie w chwili kliknięcia, i dla `gmAttentionNow`.
+ */
+export function sessionReadinessNow(): ReadinessIssue[] {
+  const characters = useCharacterStore.getState();
+  return sessionReadinessIssues({
+    scenes: useSceneStore.getState().scenes,
+    players: playersOf(
+      useCampaignPlayersStore.getState().players,
+      useAuthStore.getState().user?.id,
+    ),
+    characters: characters.order.flatMap((id) => characters.characters[id] ?? []),
+    permits: useCreationRankStore.getState().permits,
+  });
+}
+
+/** To samo, co `sessionReadinessNow`, jako hook (MG; gracz nie ma listy scen ani graczy). */
+export function useSessionReadiness(): ReadinessIssue[] {
+  const selfId = useAuthStore((s) => s.user?.id);
+  const scenes = useSceneStore((s) => s.scenes);
+  const players = useCampaignPlayersStore((s) => s.players);
+  const characters = useCharacterStore((s) => s.characters);
+  const order = useCharacterStore((s) => s.order);
+  const permits = useCreationRankStore((s) => s.permits);
+  return useMemo(
+    () =>
+      sessionReadinessIssues({
+        scenes,
+        players: playersOf(players, selfId),
+        characters: order.flatMap((id) => characters[id] ?? []),
+        permits,
+      }),
+    [selfId, scenes, players, characters, order, permits],
+  );
 }
 
 /** Sprawy MG w tej chwili — dla gniazda, które porównuje stan przed i po zdarzeniu. */
@@ -84,6 +131,8 @@ export function useGmAttention(): GmAttentionItem[] {
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const portraitWanted = usePortraitStore((s) => s.wanted);
+  const preparing = useChatStore((s) => s.campaign?.sessionStartedAt === null);
+  const readiness = useSessionReadiness();
   return useMemo(
     () =>
       isGm
@@ -93,8 +142,9 @@ export function useGmAttention(): GmAttentionItem[] {
             ranks,
             characters: order.flatMap((id) => characters[id] ?? []),
             portraitWanted,
+            readiness: preparing ? readiness : [],
           })
         : [],
-    [isGm, chat, permits, ranks, characters, order, portraitWanted],
+    [isGm, chat, permits, ranks, characters, order, portraitWanted, preparing, readiness],
   );
 }
