@@ -2,7 +2,7 @@ import { expect, test, type Actor, type Engine } from '../../fixtures/actors.ts'
 import { query } from '../../fixtures/db.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { campaignId } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { createInvitation, rollTotals, rollWithCup, say } from '../../fixtures/table.ts';
 import {
@@ -183,7 +183,7 @@ for (const layout of LAYOUTS) {
       test.setTimeout(3 * 60_000);
       const spot = cellCentre(cell, 12, 14);
       await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
-      await clickOnMap(marek.page, spot);
+      await walkOnMap(marek.page, spot);
       await expect
         .poll(() => [Math.round(token('Kowal').x / cell), Math.round(token('Kowal').y / cell)], {
           timeout: 20_000,

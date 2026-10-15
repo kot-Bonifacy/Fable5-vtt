@@ -29,6 +29,11 @@ import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { backfillPortraitAssets } from './portrait-backfill.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -691,7 +696,7 @@ describe('tokens', () => {
     sceneId = created.data.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     // Stage 17: a fresh scene starts under fog, which would hide these
     // tokens from the player. This suite is not about fog — light it up.
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
@@ -801,6 +806,13 @@ describe('tokens', () => {
    * mover saw the figure stand still and then jump to where it landed.
    */
   it('broadcasts an ack-less intermediate frame — a walk must not arrive in one jump', async () => {
+    // Od etapu 52 klatka gracza idzie po zatwierdzonej trasie — (342, 528)
+    // leży w połowie odcinka (300, 500) → (384, 556).
+    const approved = await emitAck(player, 'token:walk', {
+      tokenId: ownTokenId,
+      route: [{ x: 384, y: 556 }],
+    });
+    expect(approved.ok).toBe(true);
     const gmSees = waitFor<TokenMoveBroadcast>(gm, 'token:move');
     player.emit('token:move', { tokenId: ownTokenId, x: 342, y: 528, final: false });
     const frame = await gmSees;
@@ -841,7 +853,7 @@ describe('tokens', () => {
 
     // Powrót na (300, 500) nie jest kosmetyką: kolejne testy w tym zestawie
     // liczą kierunek marszu od tego pola.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     const opened = await emitAck<{ x: number; y: number }>(player, 'token:move', {
       tokenId: ownTokenId,
       x: 300,
@@ -1343,7 +1355,7 @@ describe('ping i kopia figury (etap 35)', () => {
     const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek 35' });
     if (!created.ok || !created.data) throw new Error('scene:create failed');
     sceneId = created.data.id;
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);

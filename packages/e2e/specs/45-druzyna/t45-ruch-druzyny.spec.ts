@@ -9,7 +9,9 @@ import {
   seat,
   startFromPoT6,
 } from '../../fixtures/regresja.ts';
-import { setPlayerMove } from '../../fixtures/scene.ts';
+import { dragWorld } from '../../fixtures/canvas.ts';
+import { clickOnMap, setPlayerMove } from '../../fixtures/scene.ts';
+import { centreOn } from '../../fixtures/wydajnosc.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck, type Ack } from '../../fixtures/socket.ts';
 
@@ -20,6 +22,8 @@ import { emitAck, type Ack } from '../../fixtures/socket.ts';
  * odnawia się w ~10 s, Stop zatrzymuje też walkę, drużyna widzi się za ścianą
  * i w czerni ręcznej mgły, a znaczek diagnozy MG mówi, czemu drużyna nie
  * chodzi. Do tego przekazanie karty: figura idzie za nowym właścicielem.
+ * Od etapu 52 przełącznik ma dwa tryby (bez „Swobodnego”), a gracz nie
+ * przeciąga figury — wskazuje cel klikiem i potwierdza drugim.
  *
  * MG w Chromium, Marek i Ola w **Firefoksie**. Start z `po-T6` („Nocna
  * zmiana”: Marek prowadzi Kowala, Ola — Iskrę). Ruch przez gniazdo graczy —
@@ -155,12 +159,49 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     expect((await move(gmSocket, kowalId, 400, 400)).ok).toBe(true);
   });
 
-  test('Swobodny puszcza drużynę bez limitu', async () => {
-    await setPlayerMove(mg.page, 'Swobodny');
-    await expect.poll(() => playerMoveOf(sceneId)).toBe('free');
+  test('etap 52: dwa tryby; przeciągnięcie gracza nic nie robi, cel wskazany i potwierdzony idzie', async () => {
+    const radios = mg.page.getByRole('radiogroup', { name: 'Ruch graczy' }).getByRole('radio');
+    await expect(radios).toHaveText(['Stop', 'Eksploracja']);
+    await setPlayerMove(mg.page, 'Eksploracja');
+    await expect.poll(() => playerMoveOf(sceneId)).toBe('explore');
     await expect(marek.page.locator('.map-placement-hint--stop')).toHaveCount(0);
-    expect((await move(marekSocket, kowalId, 3000, 400)).ok).toBe(true);
-    expect((await move(marekSocket, kowalId, 400, 400)).ok).toBe(true);
+
+    const page = marek.page;
+    // Gracz nie oddali kamery na całą scenę (najwyżej 10 kratek wokół, 11.10) —
+    // kamera jedzie na Kowala chwytem za podłogę obok niego.
+    await centreOn(page, { x: 650, y: 650 });
+    const centre = { x: 450, y: 450 };
+    const target = { x: 650, y: 450 };
+    // Przeciągnięcie kilka pól dalej — figura stoi, gracz słyszy dlaczego.
+    await clickOnMap(page, { x: 650, y: 650 });
+    await page.keyboard.press('Escape');
+    await dragWorld(page, centre, { x: 850, y: 450 });
+    await page.waitForTimeout(800);
+    expect(tokenRow(kowalId)).toMatchObject({ x: 400, y: 400 });
+    await expect
+      .poll(async () =>
+        ((await marek.store<{ items: { type: string; text?: string }[] }>('chat'))?.items ?? [])
+          .filter((item) => item.type === 'note')
+          .map((item) => item.text ?? '')
+          .join(' '),
+      )
+      .toContain('Figury nie przeciągasz');
+
+    // Pierwszy klik w podłoże wskazuje cel — figura stoi; drugi w to samo pole rusza.
+    await page.keyboard.press('Escape');
+    await clickOnMap(page, centre);
+    await page.waitForTimeout(300);
+    await clickOnMap(page, target);
+    await page.waitForTimeout(1_500);
+    expect(tokenRow(kowalId)).toMatchObject({ x: 400, y: 400 });
+    await clickOnMap(page, target);
+    await expect
+      .poll(() => tokenRow(kowalId), { timeout: 10_000 })
+      .toMatchObject({ x: 600, y: 400 });
+    await page.keyboard.press('Escape');
+    expect((await move(gmSocket, kowalId, 400, 400)).ok).toBe(true);
+    // Pula odrasta przed następnym testem, który liczy ją od pełnej.
+    await mg.page.waitForTimeout(10_500);
   });
 
   test('Eksploracja: pula z karty, odmowa „Złap oddech” i odnowa po ~10 s', async () => {
@@ -197,8 +238,8 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
   });
 
   test('Stop zatrzymuje także uczestnika walki w jego turze', async () => {
-    await setPlayerMove(mg.page, 'Swobodny');
-    await expect.poll(() => playerMoveOf(sceneId)).toBe('free');
+    await setPlayerMove(mg.page, 'Eksploracja');
+    await expect.poll(() => playerMoveOf(sceneId)).toBe('explore');
     const started = okData(
       await emitAck<{ combatants: { id: string; tokenId: string }[] }>(gmSocket, 'combat:start', {
         sceneId,
@@ -267,8 +308,8 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
   });
 
   test('przekazana karta zabiera figurę: Marek prowadzi Iskrę, Ola już nie', async () => {
-    await setPlayerMove(mg.page, 'Swobodny');
-    await expect.poll(() => playerMoveOf(sceneId)).toBe('free');
+    await setPlayerMove(mg.page, 'Eksploracja');
+    await expect.poll(() => playerMoveOf(sceneId)).toBe('explore');
     const olaSocket = await ola.socket();
     const marekUserId = userIdOf('Marek');
     const olaUserId = userIdOf('Ola');
@@ -289,6 +330,6 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     await expect.poll(() => tokenRow(iskraId).ownerId).toBe(olaUserId);
     expect((await move(olaSocket, iskraId, 400, 800)).ok).toBe(true);
     olaSocket.disconnect();
-    await marek.page.screenshot({ path: test.info().outputPath('marek-swobodny.png') });
+    await marek.page.screenshot({ path: test.info().outputPath('marek-eksploracja.png') });
   });
 });

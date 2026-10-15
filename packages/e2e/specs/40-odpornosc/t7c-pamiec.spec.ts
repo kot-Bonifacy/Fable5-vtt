@@ -13,7 +13,7 @@ import {
   type ServerHeap,
 } from '../../fixtures/pomiary.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
-import { rollWithCup } from '../../fixtures/table.ts';
+import { clickActivate, rollWithCup } from '../../fixtures/table.ts';
 import { buildPerfScene, PERF_SCENE } from '../../fixtures/wydajnosc.ts';
 import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
 
@@ -158,7 +158,7 @@ test.describe.serial('T7c odporność: wyciek pamięci @odpornosc', () => {
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
     const switchTo = async (name: string) => {
       const row = sceneListRow(page, name);
-      await row.getByRole('button', { name: 'Aktywuj' }).click();
+      await clickActivate(row);
       await expect
         .poll(
           () =>

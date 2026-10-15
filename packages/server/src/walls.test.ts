@@ -19,6 +19,11 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 /**
  * Stage 18a smoke tests: walls, doors and the field of view, over live sockets.
@@ -225,7 +230,7 @@ describe('walls and dynamic vision', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -316,10 +321,11 @@ describe('walls and dynamic vision', () => {
   it('refuses a player dragged through a closed door, and allows it once open', async () => {
     await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     // Rogue stands at x = 450, the door is the gap at x = 1000 between
-    // y = 1400 and y = 1600, and the NPC waits inside at x = 1450.
+    // y = 1400 and y = 1600, and the NPC waits inside at x = 1450 — so the
+    // walk ends a square short of him: nobody stands on a Ganger (etap 52).
     const refused = await emitAck(player, 'token:move', {
       tokenId: ownTokenId,
-      x: 1450,
+      x: 1250,
       y: 1450,
       final: true,
     });
@@ -328,7 +334,7 @@ describe('walls and dynamic vision', () => {
     await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const allowed = await emitAck(player, 'token:move', {
       tokenId: ownTokenId,
-      x: 1450,
+      x: 1250,
       y: 1450,
       final: true,
     });
@@ -814,7 +820,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Plac' }),
       'scene:create',
     ).id;
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
@@ -888,14 +894,15 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
   });
 
   it('refuses the shut gate, and lets the figure through once it stands open', async () => {
-    expect(errorOf(await moveOwn(player, 1450, 1450))).toBe('MOVE_BLOCKED_BY_TERRAIN');
+    // Square short of the Strażnik at x = 1450 — his square is taken (etap 52).
+    expect(errorOf(await moveOwn(player, 1250, 1450))).toBe('MOVE_BLOCKED_BY_TERRAIN');
 
     // An open gate is nothing to walk round, so it leaves the planner's list.
     const opened = blockersWhere((segments) => !has(segments, GATE));
     await emitAck(gm, 'opening:toggle', { wallId: gateId, open: true });
     expect(await opened).toContainEqual(NORTH);
 
-    expect(errorOf(await moveOwn(player, 1450, 1450))).toBeUndefined();
+    expect(errorOf(await moveOwn(player, 1250, 1450))).toBeUndefined();
 
     await moveOwn(gm, 450, 1450);
     await emitAck(gm, 'opening:toggle', { wallId: gateId, open: false });
@@ -1045,7 +1052,7 @@ describe('a window is a net curtain on a lit scene', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },

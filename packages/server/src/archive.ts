@@ -491,10 +491,12 @@ const maybeNum = (value: unknown): number | null =>
 /**
  * Ruch graczy sceny z archiwum (etap 45). Plik sprzed etapu niesie logiczne
  * `playerMoveLocked` — otwarta mapa była wtedy „Swobodnym", zamknięta „Stop".
+ * „Swobodny” (`free`) zniknął w etapie 52 i wraca jako Eksploracja.
  */
 function importedPlayerMove(columns: Record<string, unknown>): PlayerMoveMode {
   if (isPlayerMoveMode(columns.playerMove)) return columns.playerMove;
-  return columns.playerMoveLocked === false ? 'free' : 'stop';
+  if (columns.playerMove === 'free') return 'explore';
+  return columns.playerMoveLocked === false ? 'explore' : 'stop';
 }
 
 export async function importScene(

@@ -4,7 +4,7 @@ import { sceneListRow } from './brama.ts';
 import { query, queryOne } from './db.ts';
 import { campaignId } from './nocna-zmiana.ts';
 import { fitCamera } from './scene.ts';
-import { createInvitation } from './table.ts';
+import { clickActivate, createInvitation } from './table.ts';
 import { hasCheckpoint, restoreCheckpoint, startInstance } from '../instance/instance.ts';
 import { test } from './actors.ts';
 
@@ -94,7 +94,7 @@ export async function activateScene(
 ): Promise<void> {
   const page = mg.page;
   await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-  await sceneListRow(page, name).getByRole('button', { name: 'Aktywuj' }).click();
+  await clickActivate(sceneListRow(page, name));
   await expect.poll(() => sceneByName(name).active).toBe(1);
   if ((await viewedScene(mg)) !== name) {
     await sceneListRow(page, name).getByRole('button', { name: 'Pokaż' }).click();

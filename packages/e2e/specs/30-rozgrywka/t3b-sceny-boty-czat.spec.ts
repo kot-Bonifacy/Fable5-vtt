@@ -17,10 +17,11 @@ import {
   setPlayerMove,
   setStepper,
   tokenCentre,
+  walkOnMap,
 } from '../../fixtures/scene.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { createInvitation, say } from '../../fixtures/table.ts';
+import { clickActivate, createInvitation, say } from '../../fixtures/table.ts';
 import {
   hasCheckpoint,
   restoreCheckpoint,
@@ -540,7 +541,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
   test('3.13 aktywacja „Knajpy”: gracze na tarasie bez F5, ruch zamknięty do zdjęcia blokady', async () => {
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-    await sceneRow(page, 'Knajpa').getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneRow(page, 'Knajpa'));
     await expect.poll(() => scene('Knajpa').active).toBe(1);
     fromPlayers.reveal(knajpaId);
 
@@ -585,8 +586,8 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
       }),
     ).toEqual({ ok: false, error: 'MOVE_LOCKED' });
 
-    await setPlayerMove(page, 'Swobodny');
-    await expect.poll(() => scene('Knajpa').playerMove).toBe('free');
+    await setPlayerMove(page, 'Eksploracja');
+    await expect.poll(() => scene('Knajpa').playerMove).toBe('explore');
   });
 
   test('3.13 Marek otwiera drzwi na taras i idzie do baru; Ola patrzy przez okno', async () => {
@@ -614,7 +615,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     await fitCamera(page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
     const walk = async (to: { x: number; y: number }) => {
       await clickOnMap(page, tokenCentre(kowal(), cell));
-      await clickOnMap(page, to);
+      await walkOnMap(page, to);
       const target = { x: Math.floor(to.x / cell) * cell, y: Math.floor(to.y / cell) * cell };
       await expect
         .poll(() => [Math.round(kowal().x), Math.round(kowal().y)], { timeout: 20_000 })
@@ -678,7 +679,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     };
     await fitCamera(marek.page, KNAJPA.width, KNAJPA.height).catch(() => undefined);
     await clickOnMap(marek.page, tokenCentre(kowal(), cell));
-    await clickOnMap(marek.page, cellCentre(cell, 20, 15));
+    await walkOnMap(marek.page, cellCentre(cell, 20, 15));
     await settled();
     const stop = tokenCentre(kowal(), cell);
     test.info().annotations.push({ type: 'koniec marszu do kuchni', description: `${at()}` });
@@ -695,7 +696,7 @@ test.describe.serial('T3b: sceny, figury, boty, aktywacja i czat', () => {
     // Marek wraca pod drzwi kuchni od strony sali (14, 15) — tam stał Kowal w `po-T3`,
     // na którym skalibrowano T4a (4.2: „dwie kratki na zachód, pod przewrócony stół”).
     await clickOnMap(marek.page, tokenCentre(kowal(), cell));
-    await clickOnMap(marek.page, cellCentre(cell, 14, 15));
+    await walkOnMap(marek.page, cellCentre(cell, 14, 15));
     await expect
       .poll(at, { timeout: 90_000 })
       .toEqual([Math.round(14 * cell), Math.round(15 * cell)]);

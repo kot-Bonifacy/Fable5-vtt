@@ -9,12 +9,13 @@ import { useCharacterStore, type CharacterSheetView } from '../stores/characterS
 import { PLAYER_MOVE_MODES } from '../map/player-move.js';
 
 /**
- * „Ruch graczy: Stop / Eksploracja / Swobodny” w górnym pasku MG (etap 45).
+ * „Ruch graczy: Stop / Eksploracja” w górnym pasku MG (etap 45; od 52 bez
+ * „Swobodnego”).
  *
  * Do etapu 45 o ruchu drużyny decydował checkbox schowany w edytorze sceny
  * i cztery inne bramki, o których MG nie wiedział. Teraz stan sceny, którą MG
  * ogląda, stoi na widoku obok „Włącz tryb turowy”, a znaczek obok mówi, czemu
- * drużyna mimo to nie pójdzie — bo przełącznik na „Swobodny” nic nie da, gdy
+ * drużyna mimo to nie pójdzie — bo przełącznik na „Eksploracja” nic nie da, gdy
  * figury gracza nie ma na tej scenie albo stoi w czerni ręcznej mgły.
  */
 

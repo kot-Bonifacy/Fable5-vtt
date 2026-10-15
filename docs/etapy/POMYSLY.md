@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**15.10.2026 (etap 52) — „podejdź i zaatakuj” klikiem we wroga.** Od 52 gracz prowadzi figurę
+dwoma kliknięciami w podłoże, a klik we wroga dalej celuje albo pokazuje figurę (50b–50c). MG
+wspomniał, że klik mógłby też znaczyć „idź tam i atakuj”: pierwszy klik we wroga — trasa na
+najbliższe wolne pole obok niego (planer już zna figury na drodze, `canStandAt`), drugi — marsz,
+a po dojściu kubek ataku wręcz bronią z ręki. Do decyzji MG: czy tylko z bronią białą w ręku i co
+z budżetem Tury, gdy marsz go wyczerpie.
+
 **10.10.2026 (etap 48c) — wpis Kompendium „tylko dla MG”.** Od 48c karta nie ma pustych wierszy,
 więc rzecz fabularną (chip z kodem, klucz, list) MG zakłada własnym wpisem — a ten widzi cały stół
 w Kompendium. Dziś sekret idzie w uwagi wiersza, a nazwa wpisu jest neutralna. Flaga „ukryty” na

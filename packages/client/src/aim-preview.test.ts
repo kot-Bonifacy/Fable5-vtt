@@ -50,7 +50,7 @@ const SCENE: SceneView = {
     visible: true,
     players: false,
   },
-  playerMove: 'free',
+  playerMove: 'explore',
   // Kratka 100 px = 2 m, czyli skala Poligonu.
   metersPerSquare: 2,
   visibility: 'open',

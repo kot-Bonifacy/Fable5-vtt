@@ -111,11 +111,17 @@ export interface SceneView {
   spawn: ScenePoint | null;
 }
 
-/** Jak gracze chodzą po scenie (etap 45) — patrz `SceneView.playerMove`. */
-export type PlayerMoveMode = 'stop' | 'explore' | 'free';
+/**
+ * Jak gracze chodzą po scenie (etap 45) — patrz `SceneView.playerMove`.
+ *
+ * Od etapu 52 dwa tryby: „Swobodny” (`free`) zniknął (decyzja MG z 15.10) —
+ * po zatwierdzaniu tras różnił się od Eksploracji tylko pulą metrów. Stare
+ * `free` z bazy przepisała migracja, a z archiwum — `importedPlayerMove`.
+ */
+export type PlayerMoveMode = 'stop' | 'explore';
 
 export function isPlayerMoveMode(value: unknown): value is PlayerMoveMode {
-  return value === 'stop' || value === 'explore' || value === 'free';
+  return value === 'stop' || value === 'explore';
 }
 
 /** List entry for the GM scene manager — never sent to players. */

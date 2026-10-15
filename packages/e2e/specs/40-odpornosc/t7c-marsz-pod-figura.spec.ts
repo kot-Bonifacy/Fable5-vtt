@@ -4,7 +4,7 @@ import { sceneByName } from '../../fixtures/brama.ts';
 import { queryOne } from '../../fixtures/db.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { apiGm, cookieHeader, invite, tokenOf } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
@@ -70,7 +70,7 @@ test.describe.serial('T7c: marsz na pole pod cudzą figurą (#52) @odpornosc', (
     await ola.page.waitForTimeout(500);
     await clickOnMap(ola.page, { x: 8.5 * cell, y: 9.5 * cell });
     await ola.page.waitForTimeout(250);
-    await clickOnMap(ola.page, { x: 9.5 * cell, y: 9.5 * cell });
+    await walkOnMap(ola.page, { x: 9.5 * cell, y: 9.5 * cell });
     await expect.poll(() => at('Iskra'), { timeout: 10_000 }).toEqual([9, 9]);
   }
 

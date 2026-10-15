@@ -29,7 +29,7 @@ import {
 } from '../../fixtures/security.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { clickStartSession, createInvitation } from '../../fixtures/table.ts';
+import { clickActivate, clickStartSession, createInvitation } from '../../fixtures/table.ts';
 import {
   restoreBackup,
   saveCheckpoint,
@@ -311,7 +311,7 @@ test.describe
     await expect(editor.locator('input[name=scene-visibility][value=fog]')).toBeChecked();
     await editor.getByRole('button', { name: 'Zapisz' }).click();
     await expect(editor).toBeHidden();
-    await sceneListRow(page, SCENE_B).getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneListRow(page, SCENE_B));
     await expect
       .poll(
         () =>

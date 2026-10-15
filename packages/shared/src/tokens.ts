@@ -304,6 +304,17 @@ export interface TokenMovePayload {
   path?: ScenePoint[];
 }
 
+/**
+ * Client → server `token:walk` (etap 52): trasa marszu gracza zgłoszona **przed**
+ * pierwszym krokiem. Serwer sprawdza ją całą i zapamiętuje; klatki `token:move`
+ * gracza są odtąd rzutowane na nią, a bez niej — odrzucane (`MOVE_NOT_PLANNED`).
+ */
+export interface TokenWalkPayload {
+  tokenId: string;
+  /** Punkty załamania od pozycji figury (bez niej) do celu — lewy górny róg, piksele sceny. */
+  route: ScenePoint[];
+}
+
 /** Waypoints one drag may report — a guard against runaway payloads. */
 export const TOKEN_PATH_MAX_POINTS = 64;
 

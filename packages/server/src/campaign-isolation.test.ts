@@ -841,6 +841,7 @@ const CASES: Record<string, Case> = {
   'token:facing': foreign((a) => ({ tokenId: a.tokenId, facing: 1 })),
   'token:feared': foreign((a) => ({ tokenId: a.tokenId, fearedTokenIds: [a.npcTokenId] })),
   'token:move': foreign((a) => ({ tokenId: a.tokenId, x: 101, y: 101, final: true })),
+  'token:walk': foreign((a) => ({ tokenId: a.tokenId, route: [{ x: 101, y: 101 }] })),
   // trade
   'trade:invite': foreign((a) => ({ fromCharacterId: a.characterId, toTokenId: a.npcTokenId })),
   'trade:respond': foreign(() => ({ tradeId: 'x', accept: true })),

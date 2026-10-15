@@ -291,10 +291,9 @@ describe('ruch graczy i widzenie drużyny (etap 45)', () => {
     expect((await move(gm, vexTokenId, 2, 2)).ok).toBe(true);
   });
 
-  it('w Swobodnym gracz idzie bez limitu', async () => {
-    expect((await setMode('free')).ok).toBe(true);
-    expect((await move(vex, vexTokenId, 40, 2)).ok).toBe(true);
-    expect((await move(vex, vexTokenId, 2, 2)).ok).toBe(true);
+  it('„Swobodnego” już nie ma (etap 52): łata z `free` niczego nie zmienia', async () => {
+    const patched = data(await setMode('free' as SceneView['playerMove']), 'scene:update');
+    expect(patched.playerMove).toBe('stop');
   });
 
   it('w Eksploracji pula z karty (RUCH 6 → 12 m) odmawia MOVE_PACE i odnawia się w ~10 s', async () => {
@@ -349,7 +348,7 @@ describe('ruch graczy i widzenie drużyny (etap 45)', () => {
 
     await emitAck(gm, 'combat:end', {});
     now += PACE_REFILL_MS;
-    expect((await setMode('free')).ok).toBe(true);
+    expect((await setMode('explore')).ok).toBe(true);
     expect((await move(gm, vexTokenId, 2, 2)).ok).toBe(true);
   });
 

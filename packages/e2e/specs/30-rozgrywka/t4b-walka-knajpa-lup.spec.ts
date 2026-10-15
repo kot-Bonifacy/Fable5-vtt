@@ -4,7 +4,7 @@ import { queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, shakeCup } from '../../fixtures/table.ts';
@@ -121,7 +121,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     // nie łapie kliknięć.
     await clickOnMap(actor.page, tokenCentre(token(name), cell));
     await actor.page.waitForTimeout(300);
-    await clickOnMap(actor.page, to);
+    await walkOnMap(actor.page, to);
   }
 
   async function waitAt(name: string, column: number, row: number) {

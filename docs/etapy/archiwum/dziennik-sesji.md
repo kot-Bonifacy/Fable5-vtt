@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `62589ee`) — przypomnienie o gotowości stołu przed sesją
+
+**Zlecenie MG:** przypomnieć MG przed startem sesji o miejscu startu graczy i o postaciach — inaczej
+figury lądują na środku mapy (bywa nim pokój, którego drużyna nie zna), a gracz bez postaci widzi
+czerń. Decyzje MG (pytania na starcie): **oba** miejsca (lista w „Czeka na MG” w przygotowaniu
++ pytanie przy „Rozpocznij sesję”, bez blokady), sceny — **aktywna przy starcie i każda aktywacja
+w trakcie sesji**, brak to **gracz bez postaci przyjętej do gry**, a gracz bez figury dostaje
+**plakat jak „Między sesjami”**.
+
+**Zrobione:** `session-readiness.ts` (braki + testy), `campaignPlayersStore` (wspólny z wyborem
+właściciela), `SceneSummary.hasSpawn` na serwerze; `SessionControl` — lista „Zanim wpuścisz
+graczy” z „Rozpocznij mimo to” / „Wróć do przygotowań”; „Czeka na MG” — 🚩 brak startu (Przejdź:
+scena + chorągiewka), 🗺 brak aktywnej sceny, 👤 gracz bez postaci (tylko w przygotowaniu);
+„Aktywuj” w sesji: „Bez startu — aktywuj?”; `NoFigurePoster` zamiast „Nie masz tokenu…”. Umowa
+w `ui`. **E2E:** fikstura `clickStartSession` w 8 miejscach (sesje, T3a, T9a, T9b); przy okazji
+asercje pola czatu między sesjami (`toBeDisabled` → `toBeEnabled`) i `chat:send` z poczekalni
+(odmowę dostaje `/r`) w `sesje`, T9a i T9b poprawione pod czat poczekalni z `bcc3716` — **te
+specyfikacje padały od 10.10**.
+
+**Weryfikacja:** vitest client 366 (+8), server 1446 (`scenes.test.ts`: `hasSpawn` w `scene:list`);
+`tsc` w czterech pakietach, ESLint i Prettier zmienionych plików czyste. E2E: `00-baseline` 5/5,
+`sesje` 4/4, `t9a-izolacja` 14/14, `t9b-` 15/15. **T3a niepuszczony** (łańcuch). Oględziny:
+**Firefox** (MG `ogledziny-b`): znacznik, lista, okienko startu, „Przejdź” → chorągiewka, sesja
+„mimo to”; **Chromium** (`[::1]`, gracz): plakat „Jeszcze bez postaci” na scenie Dynamicznej.
+Ostrzeżenia „Aktywuj” w przeglądarce nie oglądano (kampania ma jedną scenę). **Ślad w `dev.db`:**
+kampania „Oględziny 44d (MG-B)” ma nowego gracza **„Plakat”** (bez postaci; serwer nie ma trasy
+usuwania gracza), miejsce startu „Strefy 51” wróciło na puste, sesja zakończona.
+
 ### Sesja 15.10 (po `5350383`) — zakładka „Postacie” od nowa, bez „⊕ Postaw na scenie”
 
 **Zlecenie MG:** usunąć przycisk ⊕ „Postaw figurę tej postaci” (dubluje przeciąganie wiersza na

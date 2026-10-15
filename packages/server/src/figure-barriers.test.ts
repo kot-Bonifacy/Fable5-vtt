@@ -22,6 +22,11 @@ import type { CharacterView, CpredCharacterData, ChatMessageBroadcast } from '@v
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -189,7 +194,7 @@ describe.each(['open', 'fog', 'dynamic'] as const)('figure barriers in %s scenes
     ).id;
     await emitAck(gm, 'scene:update', {
       sceneId,
-      patch: { width: 1000, height: 1000, playerMove: 'free' },
+      patch: { width: 1000, height: 1000, playerMove: 'explore' },
     });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility });
     await emitAck(gm, 'scene:activate', { sceneId });

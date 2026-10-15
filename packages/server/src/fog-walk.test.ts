@@ -21,6 +21,11 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 /**
  * „Tylko po odsłoniętym" on real sockets (GM decision of 13.09.2026).
@@ -238,7 +243,7 @@ describe('a player under painted fog walks on revealed floor alone', () => {
       'scene:create',
     ).id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi zamknięta.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:update', {
       sceneId,
       patch: { width: 2000, height: 2000, grid: { sizePx: 100 }, metersPerSquare: 2 },

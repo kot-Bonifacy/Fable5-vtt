@@ -3,7 +3,7 @@ import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
-import { clickOnMap, drawCover, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, drawCover, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
@@ -381,7 +381,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     const kowalStats = sheet<{ stats: { move: number; ref: number } }>('Kowal').stats;
     const page = marek.page;
     await clickOnMap(page, tokenCentre(kowal, cell));
-    await clickOnMap(page, firingSpot);
+    await walkOnMap(page, firingSpot);
     await expect
       .poll(() => [Math.round(token('Kowal').x), Math.round(token('Kowal').y)], { timeout: 20_000 })
       .toEqual([Math.round(12 * cell), Math.round(14 * cell)]);

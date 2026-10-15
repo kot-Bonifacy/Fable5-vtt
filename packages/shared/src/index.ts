@@ -45,6 +45,7 @@ export * from './smoke.js';
 export * from './surgery.js';
 export * from './tables.js';
 export * from './tokens.js';
+export * from './walk-route.js';
 export * from './trade.js';
 export * from './uploads.js';
 export * from './vision.js';

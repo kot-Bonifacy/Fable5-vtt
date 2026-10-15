@@ -1,6 +1,6 @@
 import type { Socket } from 'socket.io-client';
 import { expect, test, type Actor, type Cast, type Engine } from '../../fixtures/actors.ts';
-import { clickWorld } from '../../fixtures/canvas.ts';
+import { clickWorld, walkWorld } from '../../fixtures/canvas.ts';
 import { queryOne } from '../../fixtures/db.ts';
 import { apiGm, cookieHeader, invite } from '../../fixtures/nocna-zmiana.ts';
 import {
@@ -151,7 +151,7 @@ test.describe.serial('T7c odporność: wydajność mapy @odpornosc', () => {
       stops += 1;
       await clickWorld(actor.page, { x: at!.x + PERF_CELL / 2, y: at!.y + PERF_CELL / 2 });
       await actor.page.waitForTimeout(250);
-      await clickWorld(actor.page, cellCentre(to));
+      await walkWorld(actor.page, cellCentre(to));
       // Czekamy, aż figura dojdzie albo stanie na dłużej niż 1,5 s.
       let last = JSON.stringify(await clientTokenAt(actor, tokenId));
       let still = Date.now();

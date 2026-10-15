@@ -9,6 +9,7 @@ import {
   computeVisionPolygon,
   conditionRegistry,
   coverMovementSegments,
+  cpredActionBlock,
   cpredMovementBlock,
   drawingBounds,
   isPointInPolygon,
@@ -81,6 +82,7 @@ import {
   sendPing,
   updateScene,
   sendRuler,
+  requestTokenWalk,
   sendTokenMove,
   setTokenFacing,
   reportTokenAim,
@@ -232,6 +234,11 @@ function moveErrorText(code: string | undefined): string {
       return 'Tam jeszcze nic nie widać — idź po odsłoniętym terenie albo poproś MG o jego odsłonięcie.';
     case 'MOVE_BLOCKED_BY_TERRAIN':
       return 'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
+    // Etap 52: figury na drodze i marsz bez zatwierdzonej trasy.
+    case 'MOVE_BLOCKED_BY_FIGURE':
+      return 'Ktoś stoi na drodze — przez wroga nie przejdziesz, a na zajętym polu nie staniesz.';
+    case 'MOVE_NOT_PLANNED':
+      return 'Marsz się rozjechał z trasą — kliknij cel jeszcze raz.';
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
     case 'MOVE_LOCKED':
@@ -485,7 +492,15 @@ function paceAllowanceOf(
     Date.now(),
   );
   if (!pace) return null;
-  return { tokenId, metresLeft: pace.availableM, costFactor: 1, enforced: true };
+  // Etap 52: pula odrasta — marsz przycięty na jej granicy pójdzie dalej sam.
+  return {
+    tokenId,
+    metresLeft: pace.availableM,
+    costFactor: 1,
+    enforced: true,
+    refills: true,
+    fullM: pace.capM,
+  };
 }
 
 const WALK_LEARNED_KEY = 'vtt.walkPreviewLearned';
@@ -825,6 +840,17 @@ export function MapArea() {
       });
     };
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
+    // Etap 52: przez wroga nie przejdziesz, przez kompana i leżącego bez
+    // przytomności tak — ta sama reguła co `refuseWalkThroughFigures`.
+    renderer.figureBlocksPassage = (token) =>
+      token.ownerId === null &&
+      token.partyVision !== true &&
+      cpredActionBlock(token.statuses) === null;
+    // Etap 52: trasa gracza idzie do serwera przed pierwszym krokiem.
+    renderer.onWalkApprove = async (tokenId, route) => {
+      const result = await requestTokenWalk(tokenId, route);
+      return result.ok ? null : moveErrorText(result.error);
+    };
     renderer.onWalkStateChange = (tokenId) => {
       setMarchingTokenId(tokenId);
       // Pierwszy marsz to dowód, że ślady stóp są już zrozumiane (#69).
@@ -2196,6 +2222,8 @@ export function MapArea() {
           renderer.interruptWalk('Marsz przerwany.');
           return;
         }
+        // Etap 52: wskazany, niepotwierdzony cel marszu schodzi pierwszy.
+        if (renderer?.cancelWalkTarget()) return;
         if (useAttackStore.getState().targeting) {
           useAttackStore.getState().disarm();
           return;
@@ -2325,8 +2353,8 @@ export function MapArea() {
           linijka znika po pierwszym marszu i nie wraca w tej przeglądarce. */}
       {!isGm && !walkLearned && walkPreviewFor && !targeting && !placement && (
         <div className="map-placement-hint">
-          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” — klik w podłoże prowadzi ją
-          tam (Esc puszcza figurę)
+          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” — klik w podłoże wskazuje cel,
+          drugi klik w to samo miejsce prowadzi ją tam (Esc odwołuje cel)
         </div>
       )}
       {/* Visibility comes from tokens alone, so „no token" means „no map".

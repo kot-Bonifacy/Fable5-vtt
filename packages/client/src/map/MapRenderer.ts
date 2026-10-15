@@ -44,6 +44,7 @@ import type {
   SceneView,
   TokenSnapScene,
   TokenView,
+  WalkFigure,
   WalkPassable,
   WalkStep,
   WallKind,
@@ -92,6 +93,9 @@ import {
   snapWallPoint,
   squaresForDistance,
   thinWalk,
+  laneHitsFigure,
+  overlapsFigure,
+  pointInFigure,
   walkGridForScene,
   wallEndpointNear,
   wallMidpoint,
@@ -547,6 +551,15 @@ const TRAIL_COLOR = 0x9ca3af;
  * w jednej stałej w `player-move.ts`.
  */
 const MOVE_LOCKED_NOTE = PLAYER_MOVE_STOP_NOTE;
+/** Gracz chwycił figurę i pociągnął (etap 52): figury się nie przeciąga. */
+const DRAG_REFUSED_NOTE =
+  'Figury nie przeciągasz — zaznacz ją i kliknij miejsce, do którego ma iść.';
+/** Pierwszy klik wskazał cel (etap 52): drugi w to samo pole rusza figurę. */
+const WALK_CONFIRM_NOTE = 'Kliknij cel jeszcze raz, żeby ruszyć. Esc — odwołaj.';
+/** Cel potwierdzony, gdy pula ma mniej niż pole — figura ruszy po odnowie (etap 52). */
+const WALK_WAIT_NOTE = 'Złap oddech — postać ruszy sama, gdy odpocznie. Esc — odwołaj.';
+/** Marsz Eksploracji stanął na granicy puli i pójdzie dalej sam (etap 52). */
+const WALK_RESUME_NOTE = 'Postać łapie oddech i sama pójdzie dalej. Esc albo klik — zostaje.';
 /**
  * The same trail, past what the turn can pay for.
  *
@@ -818,6 +831,11 @@ interface MarchState {
   lastFacingY: number;
   /** The plan was cut by the turn budget — say so when the figure stops. */
   clipped: boolean;
+  /**
+   * Cel, do którego marsz pójdzie dalej po odnowie puli (etap 52) — tylko gdy
+   * trasę przyciął budżet, który odrasta; inaczej `null`.
+   */
+  goal: ScenePoint | null;
   /** Budget as it stood when the march started, for the landing arithmetic. */
   budget: { metresLeft: number; costFactor: number } | null;
   /**
@@ -873,6 +891,14 @@ export interface MoveAllowance {
   extraMetres?: number;
   /** What the system calls that trade („Bieg"), for the label on the map. */
   extraLabel?: string;
+  /**
+   * Ten budżet odrasta sam (pula Eksploracji, etap 45): marsz, który stanął na
+   * jego granicy, czeka i idzie dalej do celu, gdy pula się odnowi (etap 52).
+   * Budżet Tury nie odrasta — tam granica jest końcem ruchu.
+   */
+  refills?: boolean;
+  /** Ile mieści pełny budżet, który odrasta — „pełna pula" (etap 52). */
+  fullM?: number;
 }
 
 /**
@@ -965,6 +991,18 @@ export class MapRenderer {
   onTokenDuplicate: ((tokenId: string, x: number, y: number) => void) | null = null;
   /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
   onWalkNote: ((text: string) => void) | null = null;
+  /**
+   * Zgoda serwera na trasę marszu gracza (etap 52, `token:walk`) — `null`, gdy
+   * wolno iść, albo zdanie odmowy. Pytana przed pierwszym krokiem, bo klatek
+   * marszu bez zatwierdzonej trasy serwer gracza nie przyjmuje. MG nie pyta.
+   */
+  onWalkApprove: ((tokenId: string, route: ScenePoint[]) => Promise<string | null>) | null = null;
+  /**
+   * Czy przez tę figurę nie da się przejść (etap 52) — rozstrzyga system gry
+   * (leżącego bez przytomności się przekracza). Bez niego: każda figura spoza
+   * drużyny. Na zajętym polu nie staje się nigdy. Ustawia `MapArea`.
+   */
+  figureBlocksPassage: ((token: TokenView) => boolean) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
   onWalkStateChange: ((tokenId: string | null) => void) | null = null;
   /**
@@ -1244,6 +1282,26 @@ export class MapRenderer {
    * samego zdania byłby gorszy niż brak wyjaśnienia.
    */
   private moveLockNotedAt = 0;
+  /** Kiedy ostatnio powiedziano graczowi, że figury się nie przeciąga (etap 52). */
+  private dragRefusedNotedAt = 0;
+  /** Trasa czeka na zgodę serwera — drugi klik nie zaczyna drugiego marszu. */
+  private walkPending = false;
+  /**
+   * Cel wskazany pierwszym kliknięciem (etap 52, decyzja MG z 15.10): podgląd
+   * trasy stoi na nim, a drugi klik w to samo pole rusza figurę. Klik gdzie
+   * indziej przestawia cel, `Esc` i zmiana figury go zdejmują.
+   */
+  private walkTarget: ScenePoint | null = null;
+  /** Podpowiedź „kliknij jeszcze raz” pada raz na wczytanie strony. */
+  private walkConfirmNoted = false;
+  /**
+   * Marsz Eksploracji, który stanął na granicy puli (etap 52, decyzja MG
+   * z 15.10): figura łapie oddech i sama idzie dalej, gdy pula się odnowi.
+   * Kasuje go każdy klik, `Esc`, zmiana figury, Stop i walka.
+   */
+  private walkResume: { tokenId: string; goal: ScenePoint } | null = null;
+  /** Zdanie „łapie oddech” pada raz na wczytanie strony. */
+  private walkResumeNoted = false;
   private scene: SceneView | null = null;
   private sceneId: string | null = null;
   private backgroundUrl: string | null = null;
@@ -2867,6 +2925,42 @@ export class MapRenderer {
     this.moveAllowance = allowance;
     this.drawMoveOverlay();
     this.updateReach();
+    this.tryResumeWalk();
+  }
+
+  /**
+   * Dalszy ciąg marszu, który stanął na granicy puli (etap 52). Pyta przy
+   * każdym nowym stanie puli (`MapArea` podaje go dwa razy na sekundę, póki
+   * pula się napełnia): rusza, gdy reszta drogi się mieści albo pula jest pełna.
+   */
+  private tryResumeWalk(): void {
+    const resume = this.walkResume;
+    if (!resume) return;
+    const allowance = this.moveAllowance;
+    // Stop, walka albo inna figura w ręku — ten postój już nic nie znaczy.
+    if (
+      !allowance?.refills ||
+      allowance.tokenId !== resume.tokenId ||
+      this.selectedTokenId !== resume.tokenId
+    ) {
+      this.walkResume = null;
+      return;
+    }
+    if (this.march || this.walkPending || this.walkRefusal || this.drag) return;
+    const node = this.tokenNodes.get(resume.tokenId);
+    if (!node || node.destroyed) {
+      this.walkResume = null;
+      return;
+    }
+    // Lądowanie poprzedniego odcinka musi być już po stronie serwera.
+    if (Math.abs(node.token.x - node.x) >= 1 || Math.abs(node.token.y - node.y) >= 1) return;
+    this.walkTarget = null;
+    this.trackWalkHover(resume.goal);
+    const hover = this.walkHover;
+    if (!hover) return;
+    const full = allowance.fullM !== undefined && allowance.metresLeft >= allowance.fullM - 0.05;
+    if (!hover.complete && !full) return;
+    this.startWalk(node, resume.goal, true);
   }
 
   /** Metres of the drag in progress, or null when nothing is being dragged. */
@@ -3007,6 +3101,8 @@ export class MapRenderer {
   private applySelection(tokenId: string | null): void {
     this.selectedTokenId = tokenId;
     this.walkWaypoints = [];
+    this.walkTarget = null;
+    this.walkResume = null;
     this.walkHover = null;
     // The reticle belongs to whoever was doing the aiming; a new figure has
     // not raised a weapon yet.
@@ -4478,6 +4574,16 @@ export class MapRenderer {
     return this.march !== null;
   }
 
+  /** Zdejmuje cel wskazany pierwszym kliknięciem (etap 52); `true`, gdy był. */
+  cancelWalkTarget(): boolean {
+    if (!this.walkTarget && !this.walkResume) return false;
+    this.walkTarget = null;
+    this.walkResume = null;
+    this.walkHover = null;
+    this.drawWalkPreview();
+    return true;
+  }
+
   /**
    * Stops a march where the figure stands (stage 16e) — the hand of the player,
    * or one of the three automatic reasons the caller watches for. The ground
@@ -4486,12 +4592,14 @@ export class MapRenderer {
    * `landing` is `ahead` only for a sighting: see `marchStopPoint`.
    */
   interruptWalk(note: string | null, landing: MarchLanding = 'nearest'): void {
+    this.walkResume = null;
     if (!this.march) return;
     this.finishMarch(note, true, landing);
   }
 
   /** The turn's remaining movement, but only when it belongs to the steered token. */
   private walkBudget(): {
+    refills: boolean;
     metresLeft: number;
     costFactor: number;
     enforced: boolean;
@@ -4502,6 +4610,7 @@ export class MapRenderer {
     if (!allowance || allowance.tokenId !== this.selectedTokenId) return null;
     const extra = allowance.extraMetres ?? 0;
     return {
+      refills: allowance.refills === true,
       metresLeft: allowance.metresLeft,
       costFactor: allowance.costFactor > 0 ? allowance.costFactor : 1,
       enforced: allowance.enforced !== false,
@@ -4551,21 +4660,32 @@ export class MapRenderer {
     // not allowed to walk into is still a band they have to be able to *see*,
     // and a route that stops at the green edge cannot show them where the amber
     // one ends.
-    const reachM = enforced
-      ? (enforced.metresLeft + enforced.extraMetres) / enforced.costFactor
-      : WALK_FREE_RANGE_M;
+    // Budżet, który odrasta (pula Eksploracji), nie zawęża szukania: trasę dalej
+    // niż pula figura i tak przejdzie na raty (etap 52), więc planer musi ją
+    // znaleźć całą — inaczej cel za pulą byłby „idź w tę stronę” bez dalszego ciągu.
+    const reachM =
+      enforced && !budget?.refills
+        ? (enforced.metresLeft + enforced.extraMetres) / enforced.costFactor
+        : WALK_FREE_RANGE_M;
     const radiusCells = Math.min(
       WALK_RADIUS_CELLS,
       Math.max(1, Math.ceil(reachM / (cell * perPixel)) + 1),
     );
     const extent = node.token.size * cell;
     const from = { x: node.x, y: node.y };
+    // Etap 52: figury na drodze. Cel na zajętym polu planuje się z figurami,
+    // na których nie wolno stanąć, jako przeszkodą — trasa kończy się obok.
+    const rules = this.walkRulesFor(node) ?? { isPassable };
     const options = {
       grid,
-      isPassable,
-      ...(this.walkCanStep ? { canStep: this.walkCanStep } : {}),
+      ...rules,
       size: node.token.size,
       radiusCells,
+    };
+    const snapScene = this.snapScene();
+    const landing = (leg: ScenePoint): ScenePoint => {
+      const corner = { x: leg.x - extent / 2, y: leg.y - extent / 2 };
+      return snapScene ? snapTokenPosition(corner.x, corner.y, node.token.size, snapScene) : corner;
     };
     // One leg per insisted-on corner, then the leg to the cursor. A leg that
     // could not be finished ends the route there: walking past a waypoint you
@@ -4573,9 +4693,13 @@ export class MapRenderer {
     const legs = [...this.walkWaypoints, goal];
     const points: ScenePoint[] = [from];
     let truncated = false;
-    for (const leg of legs) {
+    for (const [index, leg] of legs.entries()) {
       const start = points[points.length - 1]!;
-      const plan = planWalk(start, { x: leg.x - extent / 2, y: leg.y - extent / 2 }, options);
+      const occupied = index === legs.length - 1 && !this.canStandAt(node, landing(leg));
+      const legOptions = occupied
+        ? { ...options, ...(this.walkRulesFor(node, false) ?? rules) }
+        : options;
+      const plan = planWalk(start, { x: leg.x - extent / 2, y: leg.y - extent / 2 }, legOptions);
       if (!plan) return null;
       points.push(...plan.points.slice(1));
       if (plan.truncated) {
@@ -4583,7 +4707,9 @@ export class MapRenderer {
         break;
       }
     }
-    const clipped = this.clipToBudget(points, scene, node.token.size, enforced);
+    const clipped = this.clipToBudget(points, scene, node.token.size, enforced, (end) =>
+      this.canStandAt(node, end),
+    );
     return {
       points,
       walkable: clipped.points,
@@ -4618,6 +4744,7 @@ export class MapRenderer {
     scene: SceneView,
     size: number,
     budget: { metresLeft: number; costFactor: number } | null,
+    canStand: (landing: ScenePoint) => boolean = () => true,
   ): { points: ScenePoint[]; metres: number; spent: number; complete: boolean } {
     const first = points[0];
     const factor = budget && budget.costFactor > 0 ? budget.costFactor : 1;
@@ -4698,6 +4825,9 @@ export class MapRenderer {
       ) {
         continue;
       }
+      // …i nie na zajętym polu (etap 52): przez kompana się przechodzi, ale
+      // cięcie budżetu nie może postawić figury na nim.
+      if (!canStand(landing)) continue;
       return { points: candidate, metres, spent: metres * factor, complete: false };
     }
     return short();
@@ -4711,6 +4841,8 @@ export class MapRenderer {
    * that can change the answer, so it also serves as the invalidation.
    */
   private trackWalkHover(point: ScenePoint): void {
+    // Wskazany cel trzyma podgląd na sobie, póki ręka nie wskaże innego (etap 52).
+    if (this.walkTarget) point = this.walkTarget;
     const scene = this.scene;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     const blocked =
@@ -4761,6 +4893,7 @@ export class MapRenderer {
       budget ? budget.costFactor : 1,
       budget ? budget.extraMetres : 0,
       this.walkWaypoints.length,
+      this.walkFiguresFor(node)?.key ?? '',
     ].join(':');
     if (this.walkHover?.key === key) return;
 
@@ -4829,6 +4962,17 @@ export class MapRenderer {
         return { color: WALK_COLOR_BEYOND, alpha: 0.45 };
       };
       this.drawFootprints(this.routePrints, hover.points, scene, half, bandAt);
+
+      // Wskazany cel (etap 52): pole, na którym figura stanie, podświetlone,
+      // póki drugi klik go nie potwierdzi. Samo wypełnienie — kresek na trasie
+      // nie ma (MG, 23.08).
+      const landing = hover.walkable[hover.walkable.length - 1];
+      if (this.walkTarget && landing && hover.walkable.length > 1) {
+        const extent = node.token.size * scene.grid.sizePx;
+        this.walkGraphics
+          .rect(landing.x, landing.y, extent, extent)
+          .fill({ color: WALK_COLOR, alpha: 0.28 });
+      }
 
       // The corners the player insisted on, so „I asked for this route" is visible
       // while it is being built rather than only inferable from its shape.
@@ -4978,6 +5122,7 @@ export class MapRenderer {
     }
     const metresPerCell = cell * perPixel;
     const budgetCells = budget.metresLeft / budget.costFactor / metresPerCell;
+    const figures = this.walkFiguresFor(node);
     const key = [
       node.tokenId,
       Math.round(node.x),
@@ -4985,6 +5130,7 @@ export class MapRenderer {
       budget.metresLeft,
       budget.costFactor,
       node.token.size,
+      figures?.key ?? '',
     ].join(':');
     if (this.reach?.key === key) return;
 
@@ -4993,17 +5139,17 @@ export class MapRenderer {
       normalizeGridOffset(scene.grid.offsetX, cell),
       normalizeGridOffset(scene.grid.offsetY, cell),
     );
+    const rules = this.walkRulesFor(node) ?? { isPassable };
     const cells = reachableCells(
       { x: node.x, y: node.y },
       {
         grid,
-        isPassable,
-        ...(this.walkCanStep ? { canStep: this.walkCanStep } : {}),
+        ...rules,
         size: node.token.size,
         radiusCells: Math.min(WALK_RADIUS_CELLS, Math.max(1, Math.ceil(budgetCells) + 1)),
         budgetCells,
       },
-    );
+    ).filter((spot) => this.canStandAt(node, spot));
     this.reach = { key, cells };
     this.drawReach();
   }
@@ -5126,6 +5272,14 @@ export class MapRenderer {
     );
   }
 
+  /** Zdanie „figurę prowadzi się klikiem", najwyżej raz na kilka sekund (etap 52). */
+  private noteDragRefused(): void {
+    const now = performance.now();
+    if (now - this.dragRefusedNotedAt < 3000) return;
+    this.dragRefusedNotedAt = now;
+    this.onWalkNote?.(DRAG_REFUSED_NOTE);
+  }
+
   /** Zdanie „mapa zamknięta", najwyżej raz na kilka sekund. */
   private noteMoveLocked(): void {
     const now = performance.now();
@@ -5141,12 +5295,82 @@ export class MapRenderer {
    */
   private addWalkWaypoint(worldX: number, worldY: number): void {
     if (this.march || !this.selectedTokenId || this.walkRefusal) return;
+    this.walkTarget = null;
     if (this.walkWaypoints.length >= 8) return;
     const route = this.planWalkRoute({ x: worldX, y: worldY });
     if (!route || route.truncated || route.points.length < 2) return;
     this.walkWaypoints.push({ x: worldX, y: worldY });
     this.walkHover = null;
     this.trackWalkHover({ x: worldX, y: worldY });
+  }
+
+  /**
+   * Figury na drodze figury gracza (etap 52) — te same reguły co
+   * `refuseWalkThroughFigures` na serwerze: gracz widzi dokładnie te figury,
+   * które serwer bierze pod uwagę, bo dostaje tę samą listę. MG chodzi bez
+   * nich. Figura, na którą idący już nachodzi, nie liczy się (może z niej zejść).
+   */
+  private walkFiguresFor(
+    mover: TokenNode,
+  ): { pass: WalkFigure[]; land: WalkFigure[]; key: string } | null {
+    const scene = this.scene;
+    if (this.viewerIsGm || !scene) return null;
+    const cell = scene.grid.sizePx;
+    const start = { x: mover.x, y: mover.y };
+    const pass: WalkFigure[] = [];
+    const land: WalkFigure[] = [];
+    const parts: string[] = [];
+    for (const node of this.tokenNodes.values()) {
+      if (node === mover || node.destroyed) continue;
+      const token = node.token;
+      if (token.container) continue;
+      const figure = { x: node.x, y: node.y, size: token.size };
+      if (overlapsFigure(start, mover.token.size, cell, figure)) continue;
+      const blocks = this.figureBlocksPassage
+        ? this.figureBlocksPassage(token)
+        : token.ownerId === null && token.partyVision !== true;
+      land.push(figure);
+      if (blocks) pass.push(figure);
+      parts.push(
+        [Math.round(figure.x), Math.round(figure.y), figure.size, blocks ? 1 : 0].join(','),
+      );
+    }
+    return { pass, land, key: parts.join(';') };
+  }
+
+  /**
+   * Predykaty planera z figurami na drodze. `standOn: false` — figury, na
+   * których nie da się stanąć, też są przeszkodą (cel na zajętym polu: trasa
+   * kończy się obok).
+   */
+  private walkRulesFor(
+    mover: TokenNode,
+    standOn = true,
+  ): { isPassable: WalkPassable; canStep?: WalkStep } | null {
+    const isPassable = this.walkPassable;
+    const scene = this.scene;
+    if (!isPassable || !scene) return null;
+    const canStep = this.walkCanStep;
+    const figures = this.walkFiguresFor(mover);
+    const blocking = figures ? (standOn ? figures.pass : figures.land) : [];
+    if (blocking.length === 0) return { isPassable, ...(canStep ? { canStep } : {}) };
+    const cell = scene.grid.sizePx;
+    return {
+      isPassable: (point) =>
+        isPassable(point) && !blocking.some((figure) => pointInFigure(point, figure, cell)),
+      canStep: (a, b) =>
+        (!canStep || canStep(a, b)) &&
+        !blocking.some((figure) => laneHitsFigure(a, b, figure, cell)),
+    };
+  }
+
+  /** Czy figura gracza może stanąć w `landing` (etap 52: nie na zajętym polu). */
+  private canStandAt(mover: TokenNode, landing: ScenePoint): boolean {
+    const figures = this.walkFiguresFor(mover);
+    const scene = this.scene;
+    if (!figures || !scene) return true;
+    const cell = scene.grid.sizePx;
+    return !figures.land.some((figure) => overlapsFigure(landing, mover.token.size, cell, figure));
   }
 
   /**
@@ -5157,29 +5381,123 @@ export class MapRenderer {
    * event.
    */
   private walkTo(worldX: number, worldY: number): void {
+    // Klik to nowe polecenie — postój z „łapie oddech” już nie obowiązuje.
+    this.walkResume = null;
     if (this.march) {
       this.finishMarch('Marsz przerwany.');
       return;
     }
+    if (this.walkPending) return;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
     const scene = this.scene;
     if (!node || node.destroyed || !scene) return;
-    if (this.walkRefusal) {
+    // Etap 52: pusta pula Eksploracji to postój, nie zakaz — cel wskazany
+    // i potwierdzony teraz figura weźmie sama, gdy złapie oddech.
+    const resting =
+      this.walkRefusal !== null &&
+      this.moveAllowance?.refills === true &&
+      this.moveAllowance.tokenId === node.tokenId &&
+      this.moveAllowance.metresLeft < 1;
+    if (this.walkRefusal && !resting) {
       this.onWalkNote?.(this.walkRefusal);
       return;
     }
-    this.trackWalkHover({ x: worldX, y: worldY });
+    // Etap 52: pierwszy klik wskazuje cel, drugi w to samo pole go potwierdza.
+    const cell = scene.grid.sizePx || 1;
+    const target = this.walkTarget;
+    const confirmed =
+      target !== null &&
+      Math.floor(target.x / cell) === Math.floor(worldX / cell) &&
+      Math.floor(target.y / cell) === Math.floor(worldY / cell);
+    if (!confirmed) {
+      this.walkTarget = { x: worldX, y: worldY };
+      this.walkHover = null;
+      this.trackWalkHover(this.walkTarget);
+      if (!this.walkConfirmNoted && this.walkHover) {
+        this.walkConfirmNoted = true;
+        this.onWalkNote?.(WALK_CONFIRM_NOTE);
+      }
+      return;
+    }
+    this.walkTarget = null;
+    const goal = { x: worldX, y: worldY };
+    if (resting) {
+      this.walkResume = { tokenId: node.tokenId, goal };
+      if (this.walkRefusal) this.onWalkNote?.(this.walkRefusal);
+      return;
+    }
+    this.trackWalkHover(goal);
+    this.startWalk(node, goal, false);
+  }
+
+  /**
+   * Rusza figurę trasą z podglądu (`walkHover`) do `goal` — z klikiem albo,
+   * od etapu 52, sama po odnowie puli (`resumed`).
+   */
+  private startWalk(node: TokenNode, goal: ScenePoint, resumed: boolean): void {
     const hover = this.walkHover;
     const budget = this.walkBudget();
-    if (!hover || hover.points.length < 2) return;
+    if (!hover || hover.points.length < 2) {
+      if (resumed) this.walkResume = null;
+      return;
+    }
     if (hover.walkable.length < 2) {
-      this.onWalkNote?.('Nie starcza ruchu w tej turze — postać zostaje w miejscu.');
+      // Etap 52: resztka puli mniejsza niż pole to też postój — figura ruszy,
+      // gdy pula odrośnie. Budżet Tury nie odrasta, więc tam to koniec ruchu.
+      if (budget?.refills === true && !hover.truncated) {
+        if (!resumed) this.onWalkNote?.(WALK_WAIT_NOTE);
+        this.walkResume = { tokenId: node.tokenId, goal };
+        return;
+      }
+      if (!resumed) this.onWalkNote?.('Nie starcza ruchu w tej turze — postać zostaje w miejscu.');
       return;
     }
 
-    const perPixel = metresPerPixel(scene);
     const start = { x: node.x, y: node.y };
-    const route = hover.walkable.slice(1);
+    const route = thinWalk(hover.walkable.slice(1), TOKEN_PATH_MAX_POINTS);
+    const clipped = !hover.complete;
+    // Etap 52: trasę przyciętą pulą, która odrasta, figura dokończy sama.
+    // „Idź w tę stronę” (cel za horyzontem, `truncated`) nie ma czego dokańczać.
+    const carry = clipped && budget?.refills === true && !hover.truncated ? goal : null;
+    // Etap 52: gracz idzie dopiero, gdy serwer zatwierdzi całą trasę — klatek
+    // marszu bez niej nie przyjmie. MG nie pyta: jego ruchu nic nie pilnuje.
+    const approve = this.viewerIsGm ? null : this.onWalkApprove;
+    if (!approve) {
+      this.beginMarch(node, start, route, clipped, budget, carry);
+      return;
+    }
+    this.walkPending = true;
+    void approve(node.tokenId, route)
+      .then((refusal) => {
+        if (refusal) {
+          this.walkResume = null;
+          this.onWalkNote?.(refusal);
+          return;
+        }
+        // Przez czas pytania świat mógł się zmienić: figura zniknęła, ruszył ją
+        // MG, ktoś zaczął inny marsz. Wtedy ta trasa nie jest już tą trasą.
+        if (this.march || node.destroyed || this.selectedTokenId !== node.tokenId) return;
+        if (Math.abs(node.x - start.x) >= 1 || Math.abs(node.y - start.y) >= 1) return;
+        this.beginMarch(node, start, route, clipped, this.walkBudget(), carry);
+      })
+      .finally(() => {
+        this.walkPending = false;
+      });
+  }
+
+  /** Rusza marsz po trasie, którą już wolno przejść (etap 16e; od 52 po zgodzie serwera). */
+  private beginMarch(
+    node: TokenNode,
+    start: ScenePoint,
+    route: ScenePoint[],
+    clipped: boolean,
+    budget: ReturnType<MapRenderer['walkBudget']>,
+    goal: ScenePoint | null = null,
+  ): void {
+    const scene = this.scene;
+    if (!scene || route.length === 0) return;
+    this.walkResume = null;
+    const perPixel = metresPerPixel(scene);
     const distances: number[] = [];
     let running = 0;
     let previous = start;
@@ -5202,7 +5520,8 @@ export class MapRenderer {
       y: node.y,
       walked: [],
       speedPx: perPixel > 0 ? WALK_SPEED_M_PER_S / perPixel : node.token.size * scene.grid.sizePx,
-      clipped: !hover.complete,
+      clipped,
+      goal,
       // Only an enforced budget can refuse a landing, so only an enforced one
       // has any say in where an interrupted march is allowed to stop.
       budget: budget?.enforced ? budget : null,
@@ -5211,6 +5530,8 @@ export class MapRenderer {
     // The corners were an instruction for *this* walk; the next click starts
     // from the automatic route again.
     this.walkWaypoints = [];
+    this.walkTarget = null;
+    this.walkResume = null;
     this.walkHover = null;
     this.walkGraphics.clear();
     this.routePrints.hide();
@@ -5313,6 +5634,13 @@ export class MapRenderer {
     this.refreshFogPeepholes();
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
     if (done) {
+      if (march.clipped && march.goal) {
+        // Etap 52: granica puli to postój, nie koniec — reszta drogi po odnowie.
+        this.walkResume = { tokenId: march.node.tokenId, goal: march.goal };
+        this.finishMarch(this.walkResumeNoted ? null : WALK_RESUME_NOTE);
+        this.walkResumeNoted = true;
+        return;
+      }
       this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
     }
   };
@@ -5485,7 +5813,9 @@ export class MapRenderer {
         this.walkEnforcedFloor,
         march.node.token.size,
       );
-    const ahead = clearsEdges && clearsFloor ? probed : snapped;
+    // …i nie na zajętym polu (etap 52) — tam serwer lądowania nie przyjmie.
+    const ahead =
+      clearsEdges && clearsFloor && this.canStandAt(march.node, probed) ? probed : snapped;
     const budget = march.budget;
     if (!budget) return { point: ahead, walked: march.walked };
     const limit = budget.metresLeft / budget.costFactor + 0.05;
@@ -7134,6 +7464,7 @@ export class MapRenderer {
     this.finishMarch(null, false);
     this.clearAim();
     this.walkWaypoints = [];
+    this.walkTarget = null;
     this.walkHover = null;
     this.walkGraphics.clear();
     this.routePrints.hide();
@@ -7399,6 +7730,15 @@ export class MapRenderer {
     // ma nadal móc kliknąć własną figurę i zobaczyć ją w pasku.
     if (this.moveLocked) {
       this.noteMoveLocked();
+      return;
+    }
+    // Etap 52 (decyzja MG z 15.10): gracz nie przeciąga figur — prowadzi je
+    // klikiem, po trasie, którą serwer zatwierdza. Chwyt zostaje chwytem, więc
+    // puszczenie nadal zaznacza figurę (`endDrag`), jak przy zamkniętej mapie.
+    if (!this.viewerIsGm) {
+      const dx = event.global.x - drag.startGlobalX;
+      const dy = event.global.y - drag.startGlobalY;
+      if (Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) this.noteDragRefused();
       return;
     }
 

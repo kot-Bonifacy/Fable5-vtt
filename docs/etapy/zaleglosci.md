@@ -6,6 +6,14 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**15.10.2026 — etap 52: T5b i długie specyfikacje odporności niepuszczone (gateway AI wyłączony).**
+Łańcuch po etapie 52 zielony od `po-T3a` do T5a (T3b, T4a, T4b, T5a) i od starego `po-T5` T6a + T6b,
+ale **T5b nie ruszył** (start wymaga gatewaya), więc `po-T5` jest sprzed 52, a `po-T6a`/`po-T6`
+zbudowane na nim — **bez kroków `@llm`**, jak `po-T3`…`po-T5a`. Z odporności puszczone tylko
+`t7c-marsz-pod-figura` i `t7a-handel-kreator`; `t7a-walka-siec`, `t7b-`, `t7c-mapa` (marsze
+przepięte na dwa kliknięcia) czekają. Do zrobienia przy gatewayu: T5b → T6b od `po-T5a`, potem
+pełny przebieg i `40-odpornosc`.
+
 **15.10.2026 — menu figury MG wychodzi poza dół okna (oględziny „Zmień grafikę”, drobiazg).**
 `TokenContextMenu` przycina pozycję tylko `top = innerHeight − 320`, a menu MG z paskiem PW,
 statusami i rozwiniętym „🎯 Atak…” albo „🖼 Zmień grafikę…” bywa dwa razy wyższe — figura nisko

@@ -22,6 +22,11 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 /**
  * Smoke tests of the turn's automatic half (stage 14e) on real sockets.
@@ -281,7 +286,7 @@ describe('turn automation', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     await emitAck(gm, 'scene:update', { sceneId, patch: { gridMode: 'gridless' } });
     const activated = waitFor(player, 'scene:activate');

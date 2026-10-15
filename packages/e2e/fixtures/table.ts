@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 import type { Actor } from './actors.ts';
 import { playerLink } from './links.ts';
 import { emitAck } from './socket.ts';
@@ -85,6 +85,17 @@ export async function clickStartSession(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Rozpocznij sesję' }).click();
   const anyway = page.getByRole('button', { name: 'Rozpocznij mimo to' });
   if (await anyway.isVisible()) await anyway.click();
+}
+
+/**
+ * „Aktywuj” w wierszu sceny listy MG. Od 15.10 aktywacja w trwającej sesji
+ * sceny bez miejsca startu pyta „Bez startu — aktywuj?” (drugie kliknięcie tego
+ * samego przycisku) — potwierdzenie pojawia się w tym samym renderze co klik.
+ */
+export async function clickActivate(row: Locator): Promise<void> {
+  await row.getByRole('button', { name: 'Aktywuj', exact: true }).click();
+  const confirm = row.getByRole('button', { name: 'Bez startu — aktywuj?' });
+  if (await confirm.isVisible()) await confirm.click();
 }
 
 /** Imienny link dla gracza (etap 44b): nowy gracz albo odnowienie — `playerLink`. */

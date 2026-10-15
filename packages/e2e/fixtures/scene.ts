@@ -100,6 +100,16 @@ async function panSceneCentre(
 }
 
 /**
+ * Kamera na punkt sceny bez zmiany przybliżenia — dla gracza, który całej
+ * sceny w kadrze nie zmieści (najwyżej 10 kratek wokół, 11.10).
+ */
+export async function centreCamera(page: Page, point: WorldPoint): Promise<void> {
+  const box = await mapArea(page).boundingBox();
+  if (!box) throw new Error('E2E: no map area');
+  await panSceneCentre(page, box, point);
+}
+
+/**
  * Figura postaci z zakładki „Postacie” MG: wiersz przeciągnięty na mapę
  * (od 15.10 jedyna droga — przycisk „⊕ Postaw na scenie” zniknął).
  * Zakładka musi być otwarta, a wiersz w rozwiniętej grupie.
@@ -173,13 +183,21 @@ export async function clickOnMap(
 }
 
 /**
- * „Ruch graczy” w górnym pasku MG (etap 45) — działa na scenie, którą MG
- * ogląda. Nowa scena startuje w Stop.
+ * Marsz klikiem po sprawdzeniu, że punkt jest na ekranie (etap 52): pierwszy
+ * klik wskazuje cel, drugi w to samo pole rusza figurę.
  */
-export async function setPlayerMove(
-  page: Page,
-  label: 'Stop' | 'Eksploracja' | 'Swobodny',
-): Promise<void> {
+export async function walkOnMap(page: Page, point: WorldPoint): Promise<void> {
+  await clickOnMap(page, point);
+  await page.waitForTimeout(250);
+  await clickOnMap(page, point);
+}
+
+/**
+ * „Ruch graczy” w górnym pasku MG (etap 45) — działa na scenie, którą MG
+ * ogląda. Nowa scena startuje w Stop, a od etapu 52 także każda sesja;
+ * „Swobodny” zniknął.
+ */
+export async function setPlayerMove(page: Page, label: 'Stop' | 'Eksploracja'): Promise<void> {
   const option = page
     .getByRole('radiogroup', { name: 'Ruch graczy' })
     .getByRole('radio', { name: label });

@@ -7,10 +7,16 @@ import { GATEWAY_URL, LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.
 import { compendiumEntry } from '../../fixtures/kompendium.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, openTableRituals, tokenCentre } from '../../fixtures/scene.ts';
+import {
+  clickOnMap,
+  fitCamera,
+  openTableRituals,
+  tokenCentre,
+  walkOnMap,
+} from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation, say } from '../../fixtures/table.ts';
+import { clickActivate, createInvitation, say } from '../../fixtures/table.ts';
 import {
   cellCentre,
   characterRow,
@@ -121,7 +127,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const page = actor.page;
     await page.keyboard.press('Escape');
     await clickOnMap(page, tokenCentre(token(name), cell));
-    await clickOnMap(page, cellCentre(cell, column, row));
+    await walkOnMap(page, cellCentre(cell, column, row));
     await expect
       .poll(() => at(name), { timeout: 30_000, message: `${name} → ${column},${row}` })
       .toEqual([column, row]);
@@ -193,7 +199,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
 
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-    await sceneListRow(page, 'Knajpa').getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneListRow(page, 'Knajpa'));
     await expect.poll(() => sceneByName('Knajpa').active).toBe(1);
     cell = sceneByName('Knajpa').gridSizePx;
     // MG zostaje przy swoim podglądzie („Brama” — „podgląd”), gracze idą za aktywną

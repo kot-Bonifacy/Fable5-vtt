@@ -18,10 +18,16 @@ import {
   type Arrival,
   type FrameStats,
 } from '../../fixtures/pomiary.ts';
-import { clickOnMap, fitCamera } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation, rollWithCup, say, shakeCup } from '../../fixtures/table.ts';
+import {
+  clickActivate,
+  createInvitation,
+  rollWithCup,
+  say,
+  shakeCup,
+} from '../../fixtures/table.ts';
 import {
   activeName,
   cellCentre,
@@ -169,7 +175,7 @@ test.describe
     }
     await clickOnMap(actor.page, from);
     await actor.page.waitForTimeout(250);
-    await clickOnMap(actor.page, cellCentre(cell, to[0], to[1]));
+    await walkOnMap(actor.page, cellCentre(cell, to[0], to[1]));
   }
 
   async function sayMarked(actor: Actor, text: string) {
@@ -785,7 +791,7 @@ test.describe
 
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-    await sceneListRow(page, 'Brama').getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneListRow(page, 'Brama'));
     await expect.poll(() => sceneByName('Brama').active).toBe(1);
     await sceneListRow(page, 'Brama').getByRole('button', { name: 'Pokaż' }).click();
     for (const actor of everyone()) await onScene(actor, 'Brama', BRAMA);
@@ -924,7 +930,7 @@ test.describe
     test.setTimeout(KNAJPA_MS + 27 * 60_000);
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-    await sceneListRow(page, 'Knajpa').getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneListRow(page, 'Knajpa'));
     await expect.poll(() => sceneByName('Knajpa').active).toBe(1);
     await sceneListRow(page, 'Knajpa').getByRole('button', { name: 'Pokaż' }).click();
     for (const actor of everyone()) await onScene(actor, 'Knajpa', KNAJPA);

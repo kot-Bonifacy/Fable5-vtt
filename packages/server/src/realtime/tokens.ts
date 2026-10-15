@@ -23,10 +23,12 @@ import type {
   TokenUpsertBroadcast,
   TokenHp,
   TokenView,
+  TokenWalkPayload,
 } from '@vtt/shared';
 import {
   ROLE_GM,
   TOKEN_FEARED_MAX,
+  WALK_LANDING_SLACK_CELLS,
   clampTokenPosition,
   facingFromDelta,
   facingFromPath,
@@ -34,6 +36,8 @@ import {
   isPointVisible,
   figureBarriers,
   nextTokenCopyName,
+  projectOntoRoute,
+  routeWaypointsBefore,
   sanitizeFacing,
   tokenCentre,
   tokenHpShareOf,
@@ -79,7 +83,8 @@ import {
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
-import { validateTokenMove } from './movement.js';
+import { MOVE_NOT_PLANNED, validateTokenMove } from './movement.js';
+import { activeWalk, approveWalk, endWalk } from './walks.js';
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
@@ -1653,6 +1658,50 @@ async function dragGrappledToken(
   await emitTokensById(deps, campaignId, [held.id], { moved: true });
 }
 
+/**
+ * „Idę tędy” (etap 52) — trasa marszu gracza zgłoszona przed pierwszym krokiem.
+ *
+ * Sprawdzana w całości tak samo jak lądowanie (`validateTokenMove` na sucho:
+ * Stop, mgła, ściany, figury, statusy, Tura albo pula — z kartą odmowy w walce),
+ * ale bez płacenia: metry pobiera lądowanie, za przebyty kawałek. Przyjęta trasa
+ * czeka w `walks.ts` na klatki marszu, które `performTokenMove` na nią rzutuje.
+ *
+ * MG może ją zgłosić bez skutku — jego klatek nic nie pilnuje.
+ */
+export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>({
+  name: 'token:walk',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
+    const isGm = user.role === ROLE_GM;
+    if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+    if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
+    if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
+    const points = sanitizeTokenPath(payload?.route);
+    if (!points) throw new RealtimeError('BAD_REQUEST');
+
+    const snapScene = toSnapScene(scene);
+    const from = { x: token.x, y: token.y };
+    const legs = points.map((point) => clampTokenPosition(point.x, point.y, token.size, snapScene));
+    const to = legs[legs.length - 1]!;
+    if (!isGm) {
+      await validateTokenMove(
+        deps,
+        campaignId,
+        user,
+        { scene, token, from, to, path: legs },
+        { dryRun: true },
+      );
+    }
+    approveWalk(token.id, { userId: user.id, sceneId: scene.id, route: [from, ...legs] });
+    return { tokenId: token.id };
+  },
+});
+
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({
   name: 'token:move',
   handler: async ({ deps, socket, user, payload }) =>
@@ -1702,9 +1751,41 @@ export async function performTokenMove(
 
     const final = payload.final === true;
     const snapScene = toSnapScene(scene);
-    const { x, y } = final
+    let { x, y } = final
       ? snapTokenPosition(payload.x, payload.y, token.size, snapScene)
       : clampTokenPosition(payload.x, payload.y, token.size, snapScene);
+
+    /**
+     * Łamana, po której figura szła — do rachunku metrów, kierunku i stref.
+     * Z ręki klienta tylko u MG i przy lądowaniu bez zatwierdzonej trasy.
+     */
+    let reportedPath = sanitizeTokenPath(payload.path);
+    // Etap 52: klatka pośrednia gracza to krok marszu po trasie zatwierdzonej
+    // `token:walk`, a jej pozycja jest **rzutowana na tę trasę** — z niej
+    // liczy się widzenie i pamięć odkrytego, więc gracz nie zobaczy niczego
+    // poza drogą, którą wolno mu przejść. Bez trasy klatka pośrednia nie
+    // istnieje (przeciąganie przez mur odsłaniało pokój za nim). Lądowanie
+    // bez trasy zostaje: sprawdza je w całości `validateTokenMove`, a widzenie
+    // liczy się dopiero z pozycji, którą przyjęło.
+    const walk = isGm ? null : activeWalk(token.id, user.id, scene.id, token);
+    if (!isGm && !final && !walk) throw new RealtimeError(MOVE_NOT_PLANNED);
+    if (walk) {
+      const hit = projectOntoRoute(walk.route, { x, y });
+      if (!final) {
+        walk.reached = Math.max(walk.reached, hit.distance);
+        ({ x, y } = clampTokenPosition(hit.point.x, hit.point.y, token.size, snapScene));
+      } else {
+        // Przerwany marsz ląduje na polu, w które figura wchodziła — najwyżej
+        // kratkę od trasy. Dalej to już nie ten marsz: trasa przepada, a
+        // lądowanie ocenia się samo, jak każde bez trasy.
+        // Płaci się do najdalszego punktu, do którego doszły klatki — marsz
+        // pokazany stołowi do końca i „cofnięty” na start nie jest darmowy.
+        if (hit.offset > WALK_LANDING_SLACK_CELLS * scene.gridSizePx + 1) endWalk(token.id);
+        else {
+          reportedPath = routeWaypointsBefore(walk.route, Math.max(walk.reached, hit.distance));
+        }
+      }
+    }
 
     /**
      * Which way walking left the figure looking (stage 27j).
@@ -1786,9 +1867,10 @@ export async function performTokenMove(
           token,
           from: { x: token.x, y: token.y },
           to: { x, y },
-          path: sanitizeTokenPath(payload.path),
+          path: reportedPath,
         });
       } catch (error) {
+        if (walk) endWalk(token.id);
         // Everybody watching the drag has the figure standing where it was
         // dropped. The mover snaps it back off the ack; the audience needs to
         // be told, or a refused move would look like it happened to them.
@@ -1798,7 +1880,8 @@ export async function performTokenMove(
       // The route the hand actually took decides the facing, not the straight
       // line to the landing square: a figure that walked round a corner is
       // looking down the corridor it came out of, not back at where it started.
-      const walked = sanitizeTokenPath(payload.path);
+      if (walk) endWalk(token.id);
+      const walked = reportedPath;
       turnedTo =
         (walked ? facingFromPath([{ x: token.x, y: token.y }, ...walked]) : null) ??
         facingFromDelta(x - token.x, y - token.y);
@@ -1841,7 +1924,7 @@ export async function performTokenMove(
         token,
         from: { x: token.x, y: token.y },
         to: { x, y },
-        path: sanitizeTokenPath(payload.path) ?? [],
+        path: reportedPath ?? [],
       });
     }
 

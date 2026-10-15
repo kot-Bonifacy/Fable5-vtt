@@ -12,7 +12,7 @@ import { campaignRunBy, getUserActiveCampaign, toCampaignSummary } from '../rout
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { campaignMemberSockets, campaignRoom, gmRoom, lobbyRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
-import { joinInitialScene, switchViewedScene } from './scenes.js';
+import { joinInitialScene, switchViewedScene, toSceneView } from './scenes.js';
 import { sendStateSync } from './sync.js';
 import { releaseSocketAim } from './aim.js';
 import { campaignGmUser } from './campaign-gm.js';
@@ -241,6 +241,7 @@ export async function startSession(
     throw new RealtimeError('SESSION_SLOTS_FULL');
   }
   deps.sessions.track(campaignId);
+  await stopPlayerMoveOnStart(deps, campaignId);
   // Dzierżawa AI (44d): nowa sesja może dostać AI, jeśli nikt go nie trzyma.
   await deps.ctx.ai.refresh();
   const started = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -259,6 +260,24 @@ export async function startSession(
   await broadcastPresence(deps, campaignId);
   deps.log.info({ campaignId }, 'session started');
   return summary;
+}
+
+/**
+ * Sesja zaczyna się w „Ruch graczy: Stop” (etap 52, decyzja MG z 15.10):
+ * Eksploracja zostawiona na aktywnej scenie z poprzedniej sesji czekałaby
+ * otwarta na graczy, zanim MG cokolwiek powie. Przestawiane **przed**
+ * posadzeniem graczy, więc ich pierwszy `state:sync` już ma Stop; MG dostaje
+ * zwykłe `scene:update` i jednym kliknięciem puszcza drużynę.
+ */
+async function stopPlayerMoveOnStart(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  const active = await deps.ctx.prisma.scene.findFirst({ where: { campaignId, active: true } });
+  if (!active || active.playerMove === 'stop') return;
+  const stopped = await deps.ctx.prisma.scene.update({
+    where: { id: active.id },
+    data: { playerMove: 'stop' },
+  });
+  const room = campaignRoom(campaignId);
+  deps.io.to(room).emit('scene:update', { seq: deps.seqs.next(room), scene: toSceneView(stopped) });
 }
 
 /**

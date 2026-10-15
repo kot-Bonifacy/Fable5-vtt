@@ -243,6 +243,12 @@ describe('przygotowanie i widok między sesjami', () => {
     expect(scene.ok).toBe(true);
     const sceneId = scene.ok ? scene.data!.id : '';
     expect((await emitAck(gm.socket, 'scene:activate', { sceneId })).ok).toBe(true);
+    // MG puścił drużynę jeszcze w przygotowaniu — start sesji to cofnie (etap 52).
+    const opened = await emitAck(gm.socket, 'scene:update', {
+      sceneId,
+      patch: { playerMove: 'explore' },
+    });
+    expect(opened.ok).toBe(true);
 
     const player = await seated(alfa.playerCookie);
     expect(player.sync.campaign?.id).toBe(alfa.campaignId);
@@ -362,8 +368,10 @@ describe('start i koniec sesji', () => {
 
     const sync = await playerSync;
     expect(sync.campaign?.sessionStartedAt).not.toBeNull();
-    // Na stole jest aktywna scena przygotowana przez MG.
+    // Na stole jest aktywna scena przygotowana przez MG — w „Ruch graczy: Stop”,
+    // choć MG zostawił ją w Eksploracji (etap 52).
     expect(sync.scene?.name).toBe('Zaułek');
+    expect(sync.scene?.playerMove).toBe('stop');
     expect((await playerChanged).campaign.sessionStartedAt).not.toBeNull();
     expect((await gmChanged).campaign.id).toBe(alfa.campaignId);
 

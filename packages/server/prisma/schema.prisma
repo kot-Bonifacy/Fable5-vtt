@@ -769,7 +769,8 @@ model Scene {
    * Jak gracze chodzą po tej mapie (etap 45, decyzja MG z 08.10.2026):
    * "stop" — nikt z graczy nie rusza figury, także w walce (Pauza z Foundry);
    * "explore" — poza walką krok płaci z puli metrów, która się odnawia
-   * (`shared/pace.ts`); "free" — bez limitu.
+   * (`shared/pace.ts`). "free" („Swobodny”, bez limitu) zniknął w etapie 52 —
+   * migracja przepisała go na "explore".
    *
    * Zastąpiła `playerMoveLocked` (12.09): blokada schowana w edytorze sceny
    * była jedną z pięciu bramek, o których MG nie wiedział, a poza walką nic

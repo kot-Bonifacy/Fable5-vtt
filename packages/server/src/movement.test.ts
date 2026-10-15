@@ -22,6 +22,11 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 /**
  * Smoke tests of movement in a turn (stage 14c) on real sockets.
@@ -271,7 +276,7 @@ describe('movement budget', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     // Gridless: the fixture measures exact metres, and snapping to a 2 m grid
     // would round every drag to the nearest even number.
@@ -493,13 +498,15 @@ describe('movement budget', () => {
   });
 
   it('leaves a token that is not in the fight alone', async () => {
-    // The drag helper always walks along y = 0, and 60 m still fits the map.
-    expect((await drag(player, looseTokenId, 60)).ok).toBe(true);
-    expect(await positionOf(looseTokenId)).toEqual({ x: 60 * PX_PER_M, y: 0 });
+    // The drag helper always walks along y = 0, and 50 m still fits the map —
+    // short of the Bandzior the GM walked to 60 m, whom nobody may stand on (52).
+    expect((await drag(player, looseTokenId, 50)).ok).toBe(true);
+    expect(await positionOf(looseTokenId)).toEqual({ x: 50 * PX_PER_M, y: 0 });
   });
 
   it('stops enforcing anything once the fight is over', async () => {
     await emitAck(gm, 'combat:end');
-    expect((await drag(player, vexTokenId, 70)).ok).toBe(true);
+    // Past the Przechodzień (drużyna — wolno), short of the Bandzior (etap 52).
+    expect((await drag(player, vexTokenId, 55)).ok).toBe(true);
   });
 });

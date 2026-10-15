@@ -3,7 +3,7 @@ import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { architecture, revealFog, runOf, visibleTokenIds, zonesOn } from '../../fixtures/brama.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { createInvitation, say } from '../../fixtures/table.ts';
 import {
@@ -237,7 +237,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       await page.waitForTimeout(300);
       // Środek pola — także tego, na który zachodzi grot zaznaczonej figury:
       // klik bez przeciągnięcia to marsz, nie obrót (#36, poprawione 29.09).
-      await clickOnMap(page, point(column, row));
+      await walkOnMap(page, point(column, row));
       // Marsz rusza po chwili (planer, animacja) — dopiero potem czekamy, aż stanie.
       await page.waitForTimeout(1_500);
       let last = '';
@@ -1107,7 +1107,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await page.keyboard.press('Escape');
     await clickOnMap(page, centre);
     await page.waitForTimeout(400);
-    await clickOnMap(page, {
+    await walkOnMap(page, {
       x: centre.x + Math.cos(angle) * cell,
       y: centre.y + Math.sin(angle) * cell,
     });

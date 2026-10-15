@@ -27,17 +27,12 @@ export const PLAYER_MOVE_MODES: readonly {
   {
     mode: 'stop',
     label: 'Stop',
-    hint: 'Nikt z graczy nie rusza figury, także w walce. Gracze widzą baner. Ciebie to nie dotyczy.',
+    hint: 'Nikt z graczy nie rusza figury, także w walce. Gracze widzą baner. Ciebie to nie dotyczy. Każda sesja zaczyna się w Stop.',
   },
   {
     mode: 'explore',
     label: 'Eksploracja',
-    hint: 'Poza walką każdy krok płaci z puli metrów (ruch z jednej tury), która odnawia się w ~10 s — drużyna nie przebiegnie mapy w kilka sekund.',
-  },
-  {
-    mode: 'free',
-    label: 'Swobodny',
-    hint: 'Gracze chodzą bez limitu. W trwającej walce uczestnik dalej chodzi z budżetu tury.',
+    hint: 'Gracze prowadzą figury klikiem, omijając ściany, mgłę i wrogów. Poza walką każdy marsz płaci z puli metrów (ruch z jednej tury), która odnawia się w ~10 s; w walce — z budżetu tury.',
   },
 ];
 

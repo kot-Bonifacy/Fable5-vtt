@@ -29,6 +29,17 @@ export async function clickWorld(
   await page.mouse.click(x, y, { button });
 }
 
+/**
+ * Marsz klikiem (etap 52): pierwszy klik w podłoże wskazuje cel, drugi w to samo
+ * pole rusza figurę. Przerwa między nimi jak u człowieka — dwa kliknięcia, nie
+ * jeden gest.
+ */
+export async function walkWorld(page: Page, point: WorldPoint): Promise<void> {
+  await clickWorld(page, point);
+  await page.waitForTimeout(250);
+  await clickWorld(page, point);
+}
+
 export async function dragWorld(page: Page, from: WorldPoint, to: WorldPoint): Promise<void> {
   const start = await worldToClient(page, from);
   const end = await worldToClient(page, to);

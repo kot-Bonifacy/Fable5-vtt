@@ -21,15 +21,17 @@ import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import {
+  centreCamera,
   clickOnMap,
   dragCharacterToMap,
   fitCamera,
   setPlayerMove,
   tokenCentre,
+  walkOnMap,
 } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
-import { createInvitation } from '../../fixtures/table.ts';
+import { clickActivate, createInvitation } from '../../fixtures/table.ts';
 import { expectClean, lastMessageId, messageAfter } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -137,9 +139,13 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   ) {
     const page = actor.page;
     await page.keyboard.press('Escape');
+    // Gracz nie zmieści „Bramy” w kadrze — kamera między figurę a cel.
+    const from = tokenCentre(figure(), cell);
+    const to = point(column, row);
+    await centreCamera(page, { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
     await clickOnMap(page, tokenCentre(figure(), cell));
     await page.waitForTimeout(300);
-    await clickOnMap(page, point(column, row));
+    await walkOnMap(page, to);
     await expect
       .poll(() => [Math.round(figure().x / cell), Math.round(figure().y / cell)], {
         timeout: 30_000,
@@ -505,7 +511,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   test('5.1 aktywacja „Bramy”: gracze bez F5, „Knajpa” zachowana, MG stawia figury przy starcie', async () => {
     const page = mg.page;
     await page.getByRole('button', { name: 'Sceny', exact: true }).click();
-    await sceneListRow(page, 'Brama').getByRole('button', { name: 'Aktywuj' }).click();
+    await clickActivate(sceneListRow(page, 'Brama'));
     await expect.poll(() => sceneByName('Brama').active).toBe(1);
     fromPlayers.reveal(bramaId);
     for (const player of [marek, ola]) {
@@ -527,8 +533,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     expect(sceneByName('Knajpa').active).toBe(0);
 
     // Nowa scena startuje w „Ruch graczy: Stop” (etap 45); MG puszcza drużynę.
-    await setPlayerMove(page, 'Swobodny');
-    await expect.poll(() => sceneByName('Brama').playerMove).toBe('free');
+    await setPlayerMove(page, 'Eksploracja');
+    await expect.poll(() => sceneByName('Brama').playerMove).toBe('explore');
 
     // Ręczna mgła: MG odsłania drogę od miejsca startu pod bramę.
     await fitCamera(page, BRAMA.width, BRAMA.height);
@@ -584,12 +590,15 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
   test('#28 marsz klikiem w mgłę staje na skraju odsłoniętego, a nie wraca na start', async () => {
     const page = marek.page;
     await fitCamera(page, BRAMA.width, BRAMA.height).catch(() => undefined);
+    // Gracz nie zmieści „Bramy” w kadrze — kamera między Kowala a cel w mgle.
+    const from = tokenCentre(kowal(), cell);
+    await centreCamera(page, { x: (from.x + BRAMA.inFog.x) / 2, y: (from.y + BRAMA.inFog.y) / 2 });
     const start = { x: kowal().x, y: kowal().y };
     try {
       await page.keyboard.press('Escape');
       await clickOnMap(page, tokenCentre(kowal(), cell));
       await page.waitForTimeout(300);
-      await clickOnMap(page, BRAMA.inFog);
+      await walkOnMap(page, BRAMA.inFog);
       // Planer prowadzi figurę najdalej, jak się da po odsłoniętym — pod zachodni
       // skraj drogi (x = 560) — i ani kroku w mgłę. Przed poprawką #28 figura
       // przechodziła całą trasę, a serwer na końcu odmawiał i odsyłał ją na start.
@@ -606,7 +615,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     }
   });
 
-  test('#29 odmowa ruchu poza walką mówi graczowi dlaczego, a nie odsyła do karty', async () => {
+  test('#29 / etap 52: przeciągnięcie własnej figury nic nie robi i mówi graczowi dlaczego', async () => {
     const page = marek.page;
     const notesOf = async () =>
       ((await marek.store<{ items: { type: string; text?: string }[] }>('chat'))?.items ?? [])
@@ -615,7 +624,8 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     const seen = (await notesOf()).length;
     const since = lastMessageId();
     const before = { x: kowal().x, y: kowal().y };
-    // Przeciągnięcie własnej figury w mgłę — droga obok planera.
+    // Przeciągnięcie własnej figury w mgłę — droga obok planera. Od etapu 52
+    // gracz figury nie przeciąga: chwyt zostaje chwytem, a notka mówi, jak iść.
     await page.keyboard.press('Escape');
     await dragWorld(page, tokenCentre(kowal(), cell), BRAMA.inFog);
     await expect.poll(async () => (await notesOf()).length).toBeGreaterThan(seen);
@@ -626,7 +636,7 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
     // Karty odmowy nie ma — poza walką `logMovementRefusal` niczego nie pisze,
     // więc powód niesie sama notka (#29).
     expect(lastMessageId()).toBe(since);
-    expect(notes.join(' ')).toContain('odsłonięt');
+    expect(notes.join(' ')).toContain('Figury nie przeciągasz');
   });
 
   test('5.2 Marek podchodzi pod bramę', async () => {

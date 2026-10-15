@@ -3,7 +3,7 @@ import { Actor, expect, test, type Cast } from '../../fixtures/actors.ts';
 import { queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { connectionStatus, expectReconnected, Network } from '../../fixtures/network.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, say, shakeCup } from '../../fixtures/table.ts';
@@ -94,7 +94,7 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     await marek.page.keyboard.press('Escape');
     await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
     await marek.page.waitForTimeout(300);
-    await clickOnMap(marek.page, cellCentre(cell, to[0]!, to[1]!));
+    await walkOnMap(marek.page, cellCentre(cell, to[0]!, to[1]!));
     await during?.();
     await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual(to);
   }
@@ -388,7 +388,7 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     await ola.page.keyboard.press('Escape');
     await clickOnMap(ola.page, tokenCentre(token('Iskra'), cell));
     await ola.page.waitForTimeout(300);
-    await clickOnMap(ola.page, { x: 5.5 * cell, y: 19.85 * cell });
+    await walkOnMap(ola.page, { x: 5.5 * cell, y: 19.85 * cell });
     await expect.poll(() => at('Iskra'), { timeout: 20_000 }).toEqual([5, 19]);
     for (const actor of everyone()) {
       await expect.poll(() => seenAt(actor, 'Iskra'), { message: actor.name }).toEqual([5, 19]);
@@ -488,7 +488,7 @@ test.describe.serial('T7a odporność: walka pod złą siecią i restart serwera
     await ola.page.keyboard.press('Escape');
     await clickOnMap(ola.page, tokenCentre(token('Iskra'), cell));
     await ola.page.waitForTimeout(300);
-    await clickOnMap(ola.page, { x: 7.5 * cell, y: 19.85 * cell });
+    await walkOnMap(ola.page, { x: 7.5 * cell, y: 19.85 * cell });
     await ola.page.waitForTimeout(250);
     await stopServer();
     const saved = stateFingerprint();

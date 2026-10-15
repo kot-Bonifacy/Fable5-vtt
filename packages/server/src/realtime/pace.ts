@@ -19,6 +19,13 @@ const ledger = new Map<string, PaceState>();
 /** Zegar puli — testy podmieniają `now`, żeby nie czekać dziesięciu sekund. */
 export const paceClock = { now: (): number => Date.now() };
 
+/**
+ * Wyłącznik puli dla testów, które o pulę nie pytają (etap 52). Do 52 takie
+ * testy stawiały scenę w „Swobodnym”; ten tryb zniknął, a ściany, mgła czy
+ * Sieć nie mają powodu chodzić po 12 m na raz. Kod aplikacji go nie rusza.
+ */
+export const paceTesting = { off: false };
+
 /** Ile mieści pełna pula tej figury: ruch z jednej tury według karty. */
 export async function paceCapFor(
   deps: RealtimeDeps,
@@ -70,7 +77,7 @@ export async function chargePace(
   token: Pick<Token, 'id' | 'ownerId' | 'characterId'>,
   metres: number,
 ): Promise<void> {
-  if (scene.playerMove !== 'explore') return;
+  if (scene.playerMove !== 'explore' || paceTesting.off) return;
   const { capM, ownerId } = await paceCapFor(deps, token);
   const now = paceClock.now();
   const before = ledger.get(token.id);
@@ -81,6 +88,27 @@ export async function chargePace(
   }
   ledger.set(token.id, after);
   await emitPace(deps, campaignId, token, ownerId, after.owedM);
+}
+
+/**
+ * To samo pytanie co `chargePace`, bez płacenia (etap 52): czy trasa, którą
+ * gracz dopiero zgłasza (`token:walk`), zmieści się w puli. Zapłata przychodzi
+ * z lądowaniem, za przebyty kawałek — a do tej chwili pula tylko rośnie.
+ */
+export async function checkPace(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Pick<Scene, 'playerMove'>,
+  token: Pick<Token, 'id' | 'ownerId' | 'characterId'>,
+  metres: number,
+): Promise<void> {
+  if (scene.playerMove !== 'explore' || paceTesting.off) return;
+  const { capM, ownerId } = await paceCapFor(deps, token);
+  const now = paceClock.now();
+  const before = ledger.get(token.id);
+  if (paceSpend(before, capM, metres, now)) return;
+  await emitPace(deps, campaignId, token, ownerId, paceOwed(before, capM, now));
+  throw new RealtimeError('MOVE_PACE');
 }
 
 /** Zapomina figurę — skasowana nie ma czego pamiętać. */

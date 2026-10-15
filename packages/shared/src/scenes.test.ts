@@ -118,12 +118,13 @@ describe('sanitizeScenePatch', () => {
 
   /**
    * Ruch graczy (etap 45; blokada z 12.09.2026) — zwykłe pole łaty, ale tylko
-   * jedna z trzech nazw trybu. Dawne pole `playerMoveLocked` już nic nie znaczy.
+   * jedna z dwóch nazw trybu (od 52 bez „Swobodnego”). Dawne pole
+   * `playerMoveLocked` już nic nie znaczy.
    */
-  it('przyjmuje ruch graczy wyłącznie jako jeden z trzech trybów', () => {
+  it('przyjmuje ruch graczy wyłącznie jako jeden z dwóch trybów', () => {
     expect(sanitizeScenePatch({ playerMove: 'stop' })).toEqual({ playerMove: 'stop' });
     expect(sanitizeScenePatch({ playerMove: 'explore' })).toEqual({ playerMove: 'explore' });
-    expect(sanitizeScenePatch({ playerMove: 'free' })).toEqual({ playerMove: 'free' });
+    expect(sanitizeScenePatch({ playerMove: 'free' })).toEqual({});
     expect(sanitizeScenePatch({ playerMove: 'run' })).toEqual({});
     expect(sanitizeScenePatch({ playerMoveLocked: false })).toEqual({});
   });

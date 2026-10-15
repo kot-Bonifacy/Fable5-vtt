@@ -711,6 +711,7 @@ async function applySpend(
   combatant: CombatantRow,
   spend: SheetTurnSpend,
   user: SessionUser,
+  dryRun = false,
 ): Promise<TurnSpendOutcome> {
   const isGm = user.role === ROLE_GM;
   const bypassed = combatant.actionBypass;
@@ -761,6 +762,9 @@ async function applySpend(
       ...(result.message ? { message: result.message } : {}),
     };
   }
+
+  // Na sucho (etap 52): odpowiedź „starczy”, bez zapisu — marsz zapłaci na mecie.
+  if (dryRun) return { kind: 'spent', combatant, forced: result.forced, bypassed };
 
   // Firing a reserved Action ends the reservation — a hold is spent once.
   const releasesHold = combatant.held && spendUsesAction(spend);
@@ -835,8 +839,9 @@ export async function spendTurnForCombatant(
   combatant: CombatantRow,
   spend: SheetTurnSpend,
   user: SessionUser,
+  options: { dryRun?: boolean } = {},
 ): Promise<TurnSpendOutcome> {
-  return applySpend(deps, combat, combatant, spend, user);
+  return applySpend(deps, combat, combatant, spend, user, options.dryRun === true);
 }
 
 export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({

@@ -4,6 +4,7 @@ import {
   ROLE_GM,
   coverMovementSegments,
   firstBlockedStep,
+  firstFigureBlock,
   firstClosedFloorStep,
   fogFloorPassable,
   formatMetres,
@@ -14,11 +15,17 @@ import {
   tokenTableName,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
-import { sheetActionName, sheetMovementBlock, turnDistanceRefusal } from '../sheets.js';
+import {
+  sheetActionBlock,
+  sheetActionName,
+  sheetMovementBlock,
+  turnDistanceRefusal,
+} from '../sheets.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 import {
   emitReloaded,
   findCombatantForToken,
+  findGrapple,
   spendTurnForCombatant,
   type CombatantRow,
   type TurnSpendOutcome,
@@ -28,7 +35,8 @@ import { toLightScene } from './lights-io.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchFogState } from './fog-io.js';
-import { chargePace } from './pace.js';
+import { chargePace, checkPace } from './pace.js';
+import { fetchSceneTokensFor } from './tokens.js';
 
 /**
  * The one place a move is judged (stage 14c).
@@ -70,6 +78,20 @@ export const MOVE_REFUSED = 'MOVE_REFUSED';
 export const MOVE_BLOCKED_BY_TERRAIN = 'MOVE_BLOCKED_BY_TERRAIN';
 export const MOVE_BLOCKED_BY_TERRAIN_MESSAGE =
   'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
+
+/**
+ * A route through a figure the player can see, or ending on one (etap 52,
+ * decyzja MG z 15.10): przez wroga nie przejdziesz, na zajętym polu nie staniesz.
+ */
+export const MOVE_BLOCKED_BY_FIGURE = 'MOVE_BLOCKED_BY_FIGURE';
+export const MOVE_BLOCKED_BY_FIGURE_MESSAGE =
+  'Ktoś stoi na drodze — przez wroga nie przejdziesz, a na zajętym polu nie staniesz.';
+
+/**
+ * A player's step with no approved route under it (etap 52): an intermediate
+ * frame without `token:walk`, or a landing too far from the route it claims.
+ */
+export const MOVE_NOT_PLANNED = 'MOVE_NOT_PLANNED';
 
 /** A route that set foot on floor the GM has not revealed yet (13.09.2026). */
 export const MOVE_INTO_FOG = 'MOVE_INTO_FOG';
@@ -150,25 +172,35 @@ export interface MoveVerdict {
 /**
  * Judges one drop. Throws `MOVE_REFUSED` after posting the GM's card when the
  * move may not happen; returns quietly otherwise.
+ *
+ * `dryRun` (etap 52) judges a route a player is *about* to walk (`token:walk`):
+ * every refusal is the same, cards included, but nothing is spent — neither
+ * the turn nor the Exploration pool. The drop at the end of the march is
+ * judged again for real, so the metres are paid for once.
  */
 export async function validateTokenMove(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
   intent: MoveIntent,
+  options: { dryRun?: boolean } = {},
 ): Promise<MoveVerdict> {
   const { scene, token } = intent;
+  const dryRun = options.dryRun === true;
   const walked = movementPath(intent.from, intent.to, intent.path);
   await refuseWalkIntoFog(deps, campaignId, user, intent, walked);
   await refuseWalkThroughSolid(deps, campaignId, user, intent, walked);
 
   const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
   if (!found) {
+    await refuseWalkThroughFigures(deps, campaignId, user, intent, walked, null);
     // Poza walką na scenie w Eksploracji krok gracza płaci z puli (etap 45).
     // W walce rachunek prowadzi Tura i pula milczy — dwa liczniki naraz
     // odmawiałyby temu samemu krokowi z dwóch różnych powodów.
     if (user.role !== ROLE_GM) {
-      await chargePace(deps, campaignId, scene, token, movementMetres(scene, token, walked));
+      const metres = movementMetres(scene, token, walked);
+      if (dryRun) await checkPace(deps, campaignId, scene, token, metres);
+      else await chargePace(deps, campaignId, scene, token, metres);
     }
     return { metres: 0, enforced: false };
   }
@@ -185,6 +217,13 @@ export async function validateTokenMove(
     token,
   );
   if (blocked) throw new RealtimeError(MOVE_REFUSED);
+  // Po statusach: Pochwyconemu mówi się „jesteś Pochwycony”, nie „ktoś stoi
+  // na drodze” — bo to napastnik stoi obok. A trzymanego napastnik ciągnie ze
+  // sobą (14d), więc ten nie zagradza mu drogi.
+  const pair = findGrapple(found.combat, found.combatant);
+  const towed =
+    pair && pair.attacker.id === found.combatant.id ? (pair.defender.tokenId ?? null) : null;
+  await refuseWalkThroughFigures(deps, campaignId, user, intent, walked, towed);
 
   const outcome = await spendTurnForCombatant(
     deps,
@@ -192,8 +231,9 @@ export async function validateTokenMove(
     found.combatant,
     { kind: 'move', metres },
     user,
+    { dryRun },
   );
-  await settleMovementSpend(deps, campaignId, scene, user, outcome, metres);
+  await settleMovementSpend(deps, campaignId, scene, user, outcome, metres, dryRun);
   return { metres, enforced: true };
 }
 
@@ -228,6 +268,7 @@ async function settleMovementSpend(
   user: SessionUser,
   outcome: TurnSpendOutcome,
   metres: number,
+  dryRun = false,
 ): Promise<void> {
   if (outcome.kind === 'not-in-combat') return;
   const name = sheetActionName(CPRED_ACTION_MOVE);
@@ -248,6 +289,8 @@ async function settleMovementSpend(
     });
     throw new RealtimeError(MOVE_REFUSED);
   }
+  // Na sucho nic nie zostało wydane — tracker i czat czekają na lądowanie.
+  if (dryRun) return;
 
   await emitReloaded(deps, campaignId, scene, outcome.combatant.combatId);
   if (!outcome.forced && !outcome.bypassed) return;
@@ -352,6 +395,53 @@ async function refuseWalkThroughSolid(
     });
   }
   throw new RealtimeError(MOVE_BLOCKED_BY_TERRAIN);
+}
+
+/**
+ * „Przez wroga nie przejdziesz” (etap 52, decyzja MG z 15.10).
+ *
+ * Pyta wyłącznie o figury, które ten gracz **widzi** — tę samą listę, którą
+ * dostaje jego klient (`fetchSceneTokensFor`): ukryta albo schowana w mgle
+ * figura nie blokuje, bo odmowa zdradziłaby, gdzie stoi. Przez figurę drużyny
+ * (gracza albo „oczy drużyny”) i przez leżącą bez przytomności przejść wolno,
+ * stanąć na zajętym polu — nie. Pojemniki i stosy (46b) nie są przeszkodą.
+ *
+ * MG jest zwolniony, jak wszędzie w tym module.
+ */
+async function refuseWalkThroughFigures(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  intent: MoveIntent,
+  walked: readonly ScenePoint[],
+  towedTokenId: string | null,
+): Promise<void> {
+  if (user.role === ROLE_GM || walked.length < 2) return;
+  const { scene, token } = intent;
+  const seen = await fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, scene, user);
+  const figures = seen.filter(
+    (view) => view.id !== token.id && view.id !== towedTokenId && !view.container,
+  );
+  const pass = figures.filter(
+    (view) =>
+      view.ownerId === null &&
+      view.partyVision !== true &&
+      sheetActionBlock(view.statuses) === null,
+  );
+  const blocked = firstFigureBlock(walked, token.size, scene.gridSizePx, {
+    pass,
+    land: figures,
+  });
+  if (!blocked) return;
+
+  const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
+  if (found) {
+    await logMovementRefusal(deps, campaignId, user, {
+      ...actionEntry(found.combatant, CPRED_ACTION_MOVE, sheetActionName(CPRED_ACTION_MOVE), ''),
+      refusal: { code: MOVE_BLOCKED_BY_FIGURE, message: MOVE_BLOCKED_BY_FIGURE_MESSAGE },
+    });
+  }
+  throw new RealtimeError(MOVE_BLOCKED_BY_FIGURE);
 }
 
 /**

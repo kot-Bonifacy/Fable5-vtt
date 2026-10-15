@@ -5,7 +5,7 @@ import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { connectionStatus, expectReconnected, Network } from '../../fixtures/network.ts';
 import { userId } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { DEAD_GATEWAY } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createInvitation, shakeCup } from '../../fixtures/table.ts';
@@ -102,7 +102,7 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     await marek.page.keyboard.press('Escape');
     await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
     await marek.page.waitForTimeout(300);
-    await clickOnMap(marek.page, cellCentre(cell, 8, 8));
+    await walkOnMap(marek.page, cellCentre(cell, 8, 8));
     await expect.poll(() => at('Kowal'), { timeout: 30_000 }).toEqual([8, 8]);
     await marek.page.keyboard.press('Escape');
   });

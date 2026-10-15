@@ -10,6 +10,7 @@ import { MEASUREMENTS_DIR } from '../../fixtures/pomiary.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
 import { buildPerfScene, PERF_SCENE } from '../../fixtures/wydajnosc.ts';
 import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
+import { clickActivate } from '../../fixtures/table.ts';
 
 /**
  * Diagnoza #50 (T7c, 02.10): co zostaje na stercie MG i gracza w Chromium po
@@ -102,7 +103,7 @@ test.describe.serial('T7c diagnoza sterty @odpornosc', () => {
     let n = 0;
     const switchTo = async (name: string) => {
       const row = sceneListRow(page, name);
-      await row.getByRole('button', { name: 'Aktywuj' }).click();
+      await clickActivate(row);
       await expect
         .poll(
           () =>

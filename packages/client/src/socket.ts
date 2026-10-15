@@ -4300,6 +4300,16 @@ export function sendTokenMove(
 }
 
 /**
+ * „Idę tędy” (etap 52) — trasa marszu gracza do zatwierdzenia przed pierwszym
+ * krokiem. Bez niej serwer nie przyjmie klatek marszu (`MOVE_NOT_PLANNED`).
+ */
+export const requestTokenWalk = (tokenId: string, route: ScenePoint[]) =>
+  emitSceneAck<{ tokenId: string }>('token:walk', {
+    tokenId,
+    route: route.slice(0, TOKEN_PATH_MAX_POINTS),
+  });
+
+/**
  * Turns a figure by hand (stage 27j) — the rotation knob on the selection ring.
  *
  * Its own event rather than a `token:update` patch for the reason the light

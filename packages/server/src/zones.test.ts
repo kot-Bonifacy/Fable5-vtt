@@ -22,6 +22,11 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { paceTesting } from './realtime/pace.js';
+
+// Ten plik nie pyta o pulę Eksploracji — do etapu 52 chodził w „Swobodnym”,
+// który zniknął; ściany, mgła i reszta nie muszą iść po 12 m na raz.
+paceTesting.off = true;
 
 /**
  * Smoke tests of defended zones (stage 26f) on real sockets.
@@ -271,7 +276,7 @@ describe('defended zones on a scene', () => {
     sceneId = scene.id;
     // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
     // zestaw jest o ruchu figur, nie o blokadzie.
-    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'free' } });
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMove: 'explore' } });
     await emitAck(gm, 'scene:update', { sceneId, patch: { width: 4000 } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
@@ -838,7 +843,8 @@ describe('defended zones on a scene', () => {
     // Kolec wchodzi z boku — dwa ruchy, żeby droga nie przecięła innych stref.
     await walk(player, runnerTokenId, 0, 1250);
     const before = await healUp();
-    await walk(player, runnerTokenId, 53 * PX_PER_M, 1250);
+    // Na brzeg strefy, obok Ochroniarza — na jego polu stanąć nie wolno (etap 52).
+    await walk(player, runnerTokenId, 50 * PX_PER_M, 1250);
     expect(await hp()).toBeLessThan(before);
     const guardAfter = (await roundTrip(gm)).tokens.find((token) => token.id === guardTokenId);
     expect(guardAfter?.hp?.current).toBeLessThan(guardBefore?.hp?.current ?? 0);

@@ -5,7 +5,7 @@ import { query, queryOne, stateFingerprint } from '../../fixtures/db.ts';
 import { LLM_TIMEOUT_MS, requireGateway } from '../../fixtures/llm.ts';
 import { KNAJPA } from '../../fixtures/maps.ts';
 import { apiGm, canariesInDatabase, invite, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
-import { clickOnMap, fitCamera, tokenCentre } from '../../fixtures/scene.ts';
+import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
 import { createCampaign, createInvitation, say, shakeCup } from '../../fixtures/table.ts';
@@ -166,7 +166,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     const page = actor.page;
     await page.keyboard.press('Escape');
     await clickOnMap(page, tokenCentre(token(name), cell));
-    await clickOnMap(page, cellCentre(cell, column, row));
+    await walkOnMap(page, cellCentre(cell, column, row));
     await expect
       .poll(() => at(name), { timeout: 30_000, message: `${name} → ${column},${row}` })
       .toEqual([column, row]);

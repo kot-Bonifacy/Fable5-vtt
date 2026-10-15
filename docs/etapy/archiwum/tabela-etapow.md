@@ -134,3 +134,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 50c    | Trwały cel figury: `T` / podwójny prawy klik, grot na celu dla stołu, broń z paska strzela w cel | ✅     | 2026-10-11          |
 | 50c    | Trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel | ⬜     |                     |
 | 51     | Przegląd stref bronionych: ukryte widać u MG, gracz bez PW, efekt obszarowy, odsłonięcie po trafieniu, PW wieżyczki na figurze | ✅     | 2026-10-15          |
+| 52     | Ruch gracza wyłącznie klikiem: trasa zatwierdzana przez serwer, dwa kliknięcia, figury na drodze, Stop + Eksploracja z postojem | ✅     | 2026-10-15          |
