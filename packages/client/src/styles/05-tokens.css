@@ -255,6 +255,20 @@
   white-space: nowrap;
 }
 
+/* „🖼 Zmień grafikę…” w menu figury (15.10) — siatka biblioteki w wąskim
+   menu; menu nie przewija się samo, więc długą bibliotekę przewija siatka. */
+.token-image-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem 0.4rem;
+}
+
+.token-image-picker-grid {
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
 /* ===== Characters: side panel tab (stage 07) ===== */
 
 .character-panel {

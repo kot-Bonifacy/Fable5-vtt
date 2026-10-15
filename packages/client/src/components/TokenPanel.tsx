@@ -9,8 +9,10 @@ import { useMapToolStore } from '../stores/mapToolStore.js';
 import { startTokenDrag } from '../map/token-drag.js';
 
 /**
- * GM tab: the campaign's token image library. Selecting an entry arms
- * placement mode — the next click on the map creates the token there. Since
+ * GM tab „Grafiki” (until 15.10 „Tokeny”): the campaign's token image library.
+ * Figures with a sheet are placed from „Postacie”; this tab covers figures
+ * without one, and its images feed „🖼 Zmień grafikę…” in the figure menu.
+ * Selecting an entry arms placement mode — the next click on the map creates the token there. Since
  * 26.09 an entry can also be dragged straight onto the map (`token-drag.ts`).
  *
  * Kosz (27.08) jest dwustopniowy jak w puli portretów, ale mówi więcej:
@@ -33,7 +35,7 @@ export function TokenPanel() {
   useEffect(() => {
     apiGet<TokenAssetView[]>('/api/token-assets')
       .then(setAssets)
-      .catch(() => setError('Nie udało się pobrać biblioteki tokenów.'));
+      .catch(() => setError('Nie udało się pobrać biblioteki grafik.'));
   }, []);
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
@@ -92,7 +94,7 @@ export function TokenPanel() {
   return (
     <div className="token-panel">
       <label className="small-button scene-upload-button">
-        {uploading ? 'Wgrywanie…' : 'Wgraj grafikę tokenu'}
+        {uploading ? 'Wgrywanie…' : 'Wgraj grafikę'}
         <input
           type="file"
           accept={UPLOAD_ACCEPT_ATTRIBUTE}
@@ -104,7 +106,10 @@ export function TokenPanel() {
       </label>
 
       {assets.length === 0 ? (
-        <p className="placeholder-text">Biblioteka jest pusta — wgraj pierwszą grafikę.</p>
+        <p className="placeholder-text">
+          Biblioteka jest pusta — wgraj pierwszą grafikę. Postaci z kartą stawia się z zakładki
+          „Postacie”.
+        </p>
       ) : (
         <div className="token-asset-grid">
           {assets.map((asset) => (

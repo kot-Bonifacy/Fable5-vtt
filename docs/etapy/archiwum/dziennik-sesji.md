@@ -1,5 +1,38 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `7c9cbc7`) — okno „Edycja sceny” i siatka dla graczy
+
+**Zlecenie MG:** zdanie „Siatka wygląda teraz tak, jak zobaczą ją gracze.” myliło (gracze siatki
+nie widzą); siatka ma być domyślnie niewidoczna dla graczy, chyba że MG ją włączy; okno edycji
+sceny ma być bardziej intuicyjne i lepiej zorganizowane (wzór: Foundry).
+
+**Zrobione:** edytor spod listy scen zastąpiło pływające okno `SceneConfigWindow` z zakładkami
+**Mapa** (nazwa, podgląd obrazu, wgraj/usuń), **Siatka** (Skala: kratek w poziomie, rozmiar,
+„kratka to … m” — **widoczna też bez kratek**, bo linijka z niej liczy; Ruch figur: „Po kratkach
+/ Swobodnie”; Wyrównanie; „Kto widzi siatkę: Nikt / Tylko MG / MG i gracze”, kolor i krycie,
+kontrast na czas edycji) i **Widoczność** (tryb, ciemność, pamięć eksploracji — z napisem, że
+działa od razu, bez „Zapisz”). Kropka „•” na zakładce z niezapisanymi zmianami, stopka „Zapisz”
+nie odjeżdża, wyjaśnienia w `title`. Nowa kolumna `Scene.gridPlayers` (migracja
+`20261015120000_grid_players`, domyślnie `false`) → `GridConfig.players`, eksport/import
+w `archive.ts`; renderer pyta `gridShownTo` (`map/grid-style.ts`, testy). Umowy w `mapa`
+(zastępuje „Siatka wyłącznie dla MG”) i `ui`. E2E T3b, T9a, T8c klikają zakładkę przed polem.
+
+**Weryfikacja:** vitest shared 2452, client 358, server 1442 (pierwszy przebieg serwera zwrócił
+błąd przy zielonych testach, drugi czysty); `tsc` i ESLint zmienionych plików czyste. E2E:
+`t8c-mapa` + `t45` 15/15. **T3b i T9a (też przepięte) nieprzepuszczone** — długi łańcuch.
+Oglądane w **Firefoksie** (Playwright MCP, MG, Test_1 / Test_2: trzy zakładki, położenie okna
+przy prawym brzegu mapy) i jako gracz Bartek w **Chromium** (biblioteka `playwright`, czysty
+kontekst, link odnowienia): „MG i gracze” — siatka tylko w odsłoniętej części, „Tylko MG” — brak.
+**Druga prośba MG (ta sama sesja):** zakładka „Widoczność” ma być jasna dla kogoś, kto pierwszy
+raz używa VTT. Lista rozwijana → trzy karty trybów z opisem („Cała mapa odkryta”, „Mgła wojny
+— odkrywasz Ty”, „Pole widzenia — odkrywa się samo”) i pod wybranym krótkie kroki „jak to
+zrobić” z ikonami narzędzi z paska mapy (`VisibilityGuide`); objaśnienia ciemności i pamięci
+mapy widoczne pod polami. Podpowiedzi paska mapy odsyłają do okna sceny zamiast „zakładki Sceny”.
+E2E wybiera tryb `input[name=scene-visibility][value=…]` (`click`, nie `check` — radio czeka na
+serwer). Oglądane w Firefoksie, `t8c-mapa` 7/7 po zmianie.
+**Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”, ręczna mgła); w Test_1 jedna krótka sesja
+(18:50–18:51) i zużyty link odnowienia Bartka (inne urządzenia Bartka zostają zalogowane).
+
 ### Sesja 14.10 (po `2f8350c`) — komunikaty walki i rzut obrażeń z kubka
 
 **Zlecenie MG:** komunikaty walki na czacie mają być logiczne („Bez ran → Lekko ranny”); Unik

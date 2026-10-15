@@ -79,7 +79,7 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
       {tokens.length === 0 ? (
         <EmptyState
           text={
-            'Na scenie nie ma jeszcze żadnych figur — postaw je z zakładki „Tokeny”, zanim zaczniesz walkę.'
+            'Na scenie nie ma jeszcze żadnych figur — postaw je z zakładki „Postacie” albo „Grafiki”, zanim zaczniesz walkę.'
           }
         />
       ) : (

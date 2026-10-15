@@ -244,7 +244,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 64   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 65   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 32   | 15      |
@@ -267,6 +267,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 15.10 (po `f7f33b4`) — zakładka „Grafiki” i „🖼 Zmień grafikę…”
+
+**Zlecenie MG:** po wyjaśnieniu, do czego służy zakładka „Tokeny” (biblioteka obrazków figur bez
+karty — postaci z kartą stawia się z „Postaci”, statystów z wzorców, pojemniki narzędziem 📦),
+wybrał wariant „zostawić i zawęzić”.
+
+**Zrobione:** zakładka MG nazywa się **„Grafiki”** (id `tokens` bez zmian), przycisk „Wgraj
+grafikę”, pusta biblioteka podpowiada „Postacie”. Menu figury MG ma **„🖼 Zmień grafikę…”**
+(`TokenImagePicker.tsx`): siatka biblioteki (bieżąca podświetlona), „Portret z karty”, gdy figura
+ma kartę z portretem, i „Bez grafiki” (krążek z nazwą). Zapis to istniejące `token:update
+{ imageUrl }` — serwer bez zmian. Teksty „Tokeny” w `CombatPanel` i komentarzach poprawione,
+E2E (`fixtures/scene.ts`, `t8a-ekrany`) klikają „Grafiki”. Umowa w `mapa`.
+
+**Weryfikacja:** `tsc` klienta czysty, vitest client 358. Oględziny w **Firefoksie** (Playwright
+MCP) na „Oględziny 44d (MG-B)”: wgrane dwie grafiki, pusty żeton → solo-red → „Bez grafiki”;
+po teście figura i obie grafiki zdjęte. **E2E nie puszczone.** Uwaga z oględzin: menu figury
+u dołu ekranu wychodzi poza okno (stare — `top = innerHeight − 320`), rozwinięty wybierak
+wydłuża je o ~110 px.
 
 ### Sesja 15.10 (po `d4c50d2`) — etap 51: przegląd stref bronionych
 
@@ -297,36 +316,3 @@ z nich sprawdzone mutacją), client 358; `tsc`, ESLint i Prettier zmienionych pl
 **Ślady w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma aktywną scenę „Strefy 51” z pięcioma
 strefami; strefa 7 na „Strzelnicy” (wieżyczka z figurą) ma PW 0/0 zgodnie z nową zasadą.
 Firefox Playwrighta zalogowany jako `ogledziny-b` (MG wylogowany).
-
-### Sesja 15.10 (po `7c9cbc7`) — okno „Edycja sceny” i siatka dla graczy
-
-**Zlecenie MG:** zdanie „Siatka wygląda teraz tak, jak zobaczą ją gracze.” myliło (gracze siatki
-nie widzą); siatka ma być domyślnie niewidoczna dla graczy, chyba że MG ją włączy; okno edycji
-sceny ma być bardziej intuicyjne i lepiej zorganizowane (wzór: Foundry).
-
-**Zrobione:** edytor spod listy scen zastąpiło pływające okno `SceneConfigWindow` z zakładkami
-**Mapa** (nazwa, podgląd obrazu, wgraj/usuń), **Siatka** (Skala: kratek w poziomie, rozmiar,
-„kratka to … m” — **widoczna też bez kratek**, bo linijka z niej liczy; Ruch figur: „Po kratkach
-/ Swobodnie”; Wyrównanie; „Kto widzi siatkę: Nikt / Tylko MG / MG i gracze”, kolor i krycie,
-kontrast na czas edycji) i **Widoczność** (tryb, ciemność, pamięć eksploracji — z napisem, że
-działa od razu, bez „Zapisz”). Kropka „•” na zakładce z niezapisanymi zmianami, stopka „Zapisz”
-nie odjeżdża, wyjaśnienia w `title`. Nowa kolumna `Scene.gridPlayers` (migracja
-`20261015120000_grid_players`, domyślnie `false`) → `GridConfig.players`, eksport/import
-w `archive.ts`; renderer pyta `gridShownTo` (`map/grid-style.ts`, testy). Umowy w `mapa`
-(zastępuje „Siatka wyłącznie dla MG”) i `ui`. E2E T3b, T9a, T8c klikają zakładkę przed polem.
-
-**Weryfikacja:** vitest shared 2452, client 358, server 1442 (pierwszy przebieg serwera zwrócił
-błąd przy zielonych testach, drugi czysty); `tsc` i ESLint zmienionych plików czyste. E2E:
-`t8c-mapa` + `t45` 15/15. **T3b i T9a (też przepięte) nieprzepuszczone** — długi łańcuch.
-Oglądane w **Firefoksie** (Playwright MCP, MG, Test_1 / Test_2: trzy zakładki, położenie okna
-przy prawym brzegu mapy) i jako gracz Bartek w **Chromium** (biblioteka `playwright`, czysty
-kontekst, link odnowienia): „MG i gracze” — siatka tylko w odsłoniętej części, „Tylko MG” — brak.
-**Druga prośba MG (ta sama sesja):** zakładka „Widoczność” ma być jasna dla kogoś, kto pierwszy
-raz używa VTT. Lista rozwijana → trzy karty trybów z opisem („Cała mapa odkryta”, „Mgła wojny
-— odkrywasz Ty”, „Pole widzenia — odkrywa się samo”) i pod wybranym krótkie kroki „jak to
-zrobić” z ikonami narzędzi z paska mapy (`VisibilityGuide`); objaśnienia ciemności i pamięci
-mapy widoczne pod polami. Podpowiedzi paska mapy odsyłają do okna sceny zamiast „zakładki Sceny”.
-E2E wybiera tryb `input[name=scene-visibility][value=…]` (`click`, nie `check` — radio czeka na
-serwer). Oglądane w Firefoksie, `t8c-mapa` 7/7 po zmianie.
-**Ślady w `dev.db`:** Test_2 przywrócona (czarna, 5 %, „Tylko MG”, ręczna mgła); w Test_1 jedna krótka sesja
-(18:50–18:51) i zużyty link odnowienia Bartka (inne urządzenia Bartka zostają zalogowane).

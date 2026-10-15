@@ -589,7 +589,7 @@ function CyberpsychosisChip({ data }: { data: CpredCharacterData }) {
  * Do tej pory żeton związany z kartą powstawał **wyłącznie** w kreatorze
  * (`creation.ts` woła `createCharacterToken`). Kto skasował żeton — albo dostał
  * kartę zaimportowaną, nie zbudowaną — nie miał jak dorobić drugiego: panel
- * „Tokeny" stawia same krążki z biblioteki, a `token:create` przyjmuje
+ * „Grafiki" (dawniej „Tokeny") stawia same krążki z biblioteki, a `token:create` przyjmuje
  * `characterId` od zawsze, tylko nikt go z UI nie podawał. Wyszło przy
  * odtwarzaniu „Kolca" na Poligonie: karta stała nietknięta, figury nie było
  * i jedyną drogą była konsola.

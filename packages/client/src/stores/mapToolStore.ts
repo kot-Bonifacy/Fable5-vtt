@@ -46,7 +46,7 @@ export const MAP_TOOLS = [
 export type MapTool = (typeof MAP_TOOLS)[number];
 
 /**
- * Żeton czekający na postawienie — uzbrojony w zakładce „Tokeny" albo przy
+ * Żeton czekający na postawienie — uzbrojony w zakładce „Grafiki" albo przy
  * wierszu postaci; następny klik w mapę stawia go w tym miejscu.
  *
  * Mieszka **w tym samym store co `tool`** i to jest cała treść poprawki

@@ -36,7 +36,7 @@ const LAYOUTS: { mg: Engine; gracz: Engine }[] = [
   { mg: 'firefox', gracz: 'chromium' },
 ];
 const TABLE_TABS = ['Czat', 'Postacie', 'Walka', 'Kompendium', 'Handouty', 'Dziennik'];
-const GM_TABS = ['Sceny', 'Tokeny', 'Boty', 'Zasady', 'Wiedza', 'Losowe', 'Sieć', 'AI', 'Kopie'];
+const GM_TABS = ['Sceny', 'Grafiki', 'Boty', 'Zasady', 'Wiedza', 'Losowe', 'Sieć', 'AI', 'Kopie'];
 
 /** Zebrane problemy osiągalności jednego kroku — jedna miękka asercja na koniec. */
 class Problems {

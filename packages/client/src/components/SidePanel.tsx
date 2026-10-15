@@ -63,7 +63,10 @@ const TABLE_TABS: { id: Tab; label: string }[] = [
 
 const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'scenes', label: 'Sceny' },
-  { id: 'tokens', label: 'Tokeny' },
+  // „Grafiki”, dawniej „Tokeny” (15.10): sama biblioteka obrazków figur —
+  // postaci z kartą stawia się z „Postaci”, a obrazek stojącej figury zmienia
+  // „🖼 Zmień grafikę…” w jej menu.
+  { id: 'tokens', label: 'Grafiki' },
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },

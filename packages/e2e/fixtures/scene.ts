@@ -270,7 +270,7 @@ export async function placeTokenFromFile(
   assetName: string,
   point: WorldPoint,
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Tokeny', exact: true }).click();
+  await page.getByRole('button', { name: 'Grafiki', exact: true }).click();
   const asset = page.locator('.token-asset', { hasText: assetName });
   if ((await asset.count()) === 0) {
     await page.locator('.token-panel input[type=file]').setInputFiles(file);

@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**15.10.2026 — menu figury MG wychodzi poza dół okna (oględziny „Zmień grafikę”, drobiazg).**
+`TokenContextMenu` przycina pozycję tylko `top = innerHeight − 320`, a menu MG z paskiem PW,
+statusami i rozwiniętym „🎯 Atak…” albo „🖼 Zmień grafikę…” bywa dwa razy wyższe — figura nisko
+na mapie ma „🗑 Usuń” i statusy pod krawędzią. Do zrobienia: mierzyć menu po wyrenderowaniu
+(albo `max-height` + przewijanie) i podnosić je nad kursor.
+
 **10.10.2026 — kwoty bez grupowania tysięcy poza oknem „Wymiana” (drobiazg, reszta zaległości z 47b).**
 Okno „Wymiana” i karty czatu łupu i transakcji piszą od 10.10 „1 200 ed” (`formatEd`, umowa
 w `ekwipunek`). Surowe „1000 ed” zostały w prośbie do Medyka (`SurgeryRequest`: cena domyślna,

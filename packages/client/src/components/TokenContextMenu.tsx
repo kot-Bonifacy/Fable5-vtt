@@ -60,6 +60,7 @@ import { takeFigure, toggleTarget } from '../hud.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
+import { TokenImagePicker } from './TokenImagePicker.js';
 import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
 
@@ -917,6 +918,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
+  const [picturing, setPicturing] = useState(false);
   const groupIds = useSelectionStore((s) => s.groupIds);
   const steered = useSelectionStore((s) => s.tokenId);
   const fightOn = (combat?.round ?? 0) >= 1;
@@ -1183,6 +1185,15 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         <button type="button" className="context-menu-item" onClick={() => setEditing(true)}>
           ✏️ Edytuj…
         </button>
+        <button
+          type="button"
+          className="context-menu-item"
+          title="Obrazek figury z biblioteki zakładki „Grafiki”"
+          onClick={() => setPicturing((open) => !open)}
+        >
+          🖼 Zmień grafikę…
+        </button>
+        {picturing && <TokenImagePicker token={token} onDone={onClose} />}
         {/* Kopia figury (etap 35). Gestem robi to Alt+przeciągnięcie, ale gest
             trzeba znać — a menu jest miejscem, w którym MG szuka wszystkiego,
             co da się zrobić z tą jedną figurą. */}
