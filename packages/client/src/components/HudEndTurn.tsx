@@ -2,19 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { ROLE_GM } from '@vtt/shared';
 import { nextCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { myActiveCombatant, useCombatStore } from '../stores/combatStore.js';
+import { activeCombatantOf, myActiveCombatant, useCombatStore } from '../stores/combatStore.js';
 
 /**
- * „Kończę turę" — the player's end of the turn, at the top of the left rail
- * (owner's call, 25.09).
+ * The end of the turn, at the bottom of the left rail (owner's call, 16.10).
  *
- * It lived in the top bar as a small pill the same weight as a reminder; the
- * most important button a player has during a fight now sits beside the actions
- * the turn is played with. It shows whenever the turn is the player's,
- * whatever the rail happens to describe — also with nothing selected — so
- * the player never has to go looking for a figure to be allowed to finish.
+ * For a player it is „Kończę turę" and shows only while the turn is theirs,
+ * whatever the rail happens to describe — also with nothing selected — so the
+ * player never has to go looking for a figure to be allowed to finish.
  *
- * The GM steps the queue from the strip over the map and does not get this.
+ * The GM gets the same block as „Następna tura" through the whole fight, with
+ * the acting figure's name: the ▶ that used to step the queue from the strip
+ * over the map moved here, so ending a turn is one place for everybody. Starting
+ * the fight stays on the strip — that is a different gesture.
+ *
  * „E" on the map still does the same thing; the server re-checks whose turn
  * it is either way.
  */
@@ -23,6 +24,7 @@ function useEndTurn() {
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const mine = useMemo(() => myActiveCombatant(combat, userId), [combat, userId]);
+  const active = useMemo(() => activeCombatantOf(combat), [combat]);
   const activeId = combat?.activeCombatantId ?? null;
   const [pending, setPending] = useState(false);
 
@@ -31,8 +33,11 @@ function useEndTurn() {
   // too. The lock lifts when the queue actually moves, or when the server says no.
   useEffect(() => setPending(false), [activeId, combat?.round]);
 
+  const shown = isGm ? (combat?.round ?? 0) > 0 : mine !== null;
   return {
-    mine: isGm ? null : mine,
+    shown,
+    isGm,
+    name: (isGm ? active?.name : mine?.name) ?? '',
     pending,
     end: () => {
       if (pending) return;
@@ -46,22 +51,26 @@ function useEndTurn() {
 }
 
 export function HudEndTurn() {
-  const { mine, pending, end } = useEndTurn();
-  if (!mine) return null;
+  const { shown, isGm, name, pending, end } = useEndTurn();
+  if (!shown) return null;
   return (
-    <section className="hud-end-turn" aria-label="Twoja tura">
+    <section className="hud-end-turn" aria-label={isGm ? 'Tura' : 'Twoja tura'}>
       <span className="hud-end-turn-label">
-        Twoja tura
-        <span className="hud-end-turn-name">{mine.name}</span>
+        {isGm ? 'Tura' : 'Twoja tura'}
+        {name && <span className="hud-end-turn-name">{name}</span>}
       </span>
       <button
         type="button"
         className="hud-end-turn-button"
         disabled={pending}
-        title="Oddaj turę następnemu w kolejce (klawisz E na mapie)"
+        title={
+          isGm
+            ? 'Zamyka bieżącą turę i oddaje ją następnemu w kolejce (klawisz E na mapie)'
+            : 'Oddaj turę następnemu w kolejce (klawisz E na mapie)'
+        }
         onClick={end}
       >
-        Kończę turę
+        {isGm ? 'Następna tura' : 'Kończę turę'}
         <kbd className="hud-end-turn-key">E</kbd>
       </button>
     </section>
@@ -70,18 +79,19 @@ export function HudEndTurn() {
 
 /** The same button on the collapsed rail: a turn must be endable with the map at full width. */
 export function HudEndTurnCompact() {
-  const { mine, pending, end } = useEndTurn();
-  if (!mine) return null;
+  const { shown, isGm, name, pending, end } = useEndTurn();
+  if (!shown) return null;
+  const label = isGm ? 'Następna tura' : 'Kończę turę';
   return (
     <button
       type="button"
       className="hud-end-turn-compact"
       disabled={pending}
-      title={`Twoja tura (${mine.name}) — kończę turę (E)`}
-      aria-label="Kończę turę"
+      title={`${isGm ? 'Tura' : 'Twoja tura'}${name ? ` (${name})` : ''} — ${label.toLowerCase()} (E)`}
+      aria-label={label}
       onClick={end}
     >
-      ✓
+      {isGm ? '▶' : '✓'}
     </button>
   );
 }

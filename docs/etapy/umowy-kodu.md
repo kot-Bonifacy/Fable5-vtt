@@ -957,7 +957,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Pole bez własnej klasy dostaje papier z `:where(input[type='number'], select, textarea)` i `::file-selector-button` w `03-entry.css` (25.09)** — zerowa specyficzność, więc każda reguła klasy wygrywa; nowe pole z własnym wyglądem pisze go klasą, a nie zdejmuje bazowej. `search` stoi obok `text` w regule z paddingiem.
 - **`.dialog` ma wysokość przyciętą do okna i przewija się w środku (25.09)** — `max-height: calc(100dvh - 2rem)` + `overflow-y: auto` w `05-tokens.css` dla wszystkich dialogów naraz; `clip-path` ściętego rogu i tak obcinał wszystko poza ramką, więc przewijanie niczego nie chowa. Dialog, który ma własny limit (`.creator-dialog`, `.portrait-gallery`), nadpisuje go swoją regułą — nie zdejmuj bazowej.
 - **Główny ekran od 25.09: portret w lewym panelu to baner, filtry czatu — czarny pas pod zakładkami.** Imię, Rola i PW figury leżą **na** portrecie (`.hud-portrait-caption`, nocne tokeny z bloku „Belka”); nowa informacja o figurze idzie pod baner, nie na obraz. Filtry czatu to `.chat-filter-bar` na liście belek w `chrome.css` i w „Belce” — nowy filtr dostaje sylwetkę z `public/icons/hud/` przez `HudIcon`, nie emoji. Nad zakładkami stoi `PresenceList` w jednym wierszu; zakładki są szerokie według nazwy i zawijają się, zamiast ucinać.
-- **Kolejka inicjatywy to czarny pas nad mapą, a „Kończę turę” gracza — góra lewego panelu (25.09).** `CombatBar` stoi w `.map-column` nad `MapArea` i istnieje tylko w trybie turowym; czerwony pasek trzyma wyłącznie `TurnModeSlot` („Włącz tryb turowy” MG). Pas bierze nocne tokeny z bloku „Belka” w `theme.css` (`.combat-bar` na liście) i czarne tło z listy belek w `chrome.css`. Przycisk gracza to `HudEndTurn` / `HudEndTurnCompact` (`HudEndTurn.tsx`), niezależny od zaznaczenia; nowy element pasa dostaje `flex: none`, a ustępuje wyłącznie kolejka i przypomnienie.
+- **Kolejka inicjatywy to czarny pas nad mapą, a koniec tury — dół lewego panelu (25.09, od 16.10 dół i także dla MG).** `CombatBar` stoi w `.map-column` nad `MapArea` i istnieje tylko w trybie turowym; czerwony pasek trzyma wyłącznie `TurnModeSlot` („Włącz tryb turowy” MG). Pas bierze nocne tokeny z bloku „Belka” w `theme.css` (`.combat-bar` na liście) i czarne tło z listy belek w `chrome.css`. Przycisk to `HudEndTurn` / `HudEndTurnCompact` (`HudEndTurn.tsx`), niezależny od zaznaczenia — gracz ma „Kończę turę” w swojej turze, MG „Następna tura” przez całą walkę (runda > 0); na pasie MG ma tylko „⚔ Rozpocznij walkę”; nowy element pasa dostaje `flex: none`, a ustępuje wyłącznie kolejka i przypomnienie.
 - **Audio stołu (21.09):** `cup-notification.ts` sygnalizuje tożsamość aktywnego
   kubka; wezwanie i załadowany Test dzielą klucz. `music-player.ts` ma jeden
   odtwarzacz niezależny od otwarcia okna. Dźwięki nowe mają być naturalne;
@@ -1084,6 +1084,14 @@ zawierający dla `position: fixed` okienek z paneli. **Obecni w jednym wierszu**
 papierze z czarnym kaflem otwartej zakładki. **Pole i „Wyślij” to jedna listwa**; pusty szkic
 gasi przycisk do papieru (półprzezroczysta czerwień dawała róż). Belki BROŃ/AKCJE w lewym panelu
 mają ścięty róg jak belki karty, a kreska `::after` sprzed czarnego tła zniknęła.
+
+**Koniec tury na dole lewego panelu, także dla MG (16.10, zlecenie MG).** ▶ zniknął z pasa
+kolejki: `HudEndTurn` jest ostatnim dzieckiem `.hud-rail` (`margin-top: auto` + `position:
+sticky; bottom: 0`) i u MG pokazuje „Tura · <aktywna figura>” z „Następna tura”, u gracza jak
+dotąd „Kończę turę”. Przyklejenie liczy się od krawędzi treści panelu (Firefox i Chromium), więc
+blok sam staje nad dolną rezerwą na kubek — nie dawaj mu ujemnego marginesu w tę rezerwę.
+Zwinięty panel: ▶/✓ na dole paska. Pomocnik E2E `nextTurn` klika „Następna tura” w panelu.
+Poniższy wpis z 25.09 w części „MG prowadzi kolejkę ◀ ▶ z pasa” i „góra panelu” jest nieaktualny.
 
 **Pas kolejki inicjatywy i „Kończę turę” (25.09, zlecenie MG poza etapami).** Kolejka wyszła
 z czerwonego paska (tam od 01.08) do własnej czarnej belki między paskiem a mapą — **tylko nad

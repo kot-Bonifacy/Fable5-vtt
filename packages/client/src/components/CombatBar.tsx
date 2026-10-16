@@ -533,19 +533,9 @@ export function CombatBar() {
           {startArmed ? '⚠ Brak NPC-ów — zacznij mimo to' : '⚔ Rozpocznij walkę'}
         </button>
       )}
-      {isGm && combat.round > 0 && (
-        <button
-          type="button"
-          className="combat-bar-step"
-          onClick={() => void nextCombatTurn()}
-          title="Następna tura"
-          aria-label="Następna tura"
-        >
-          ▶
-        </button>
-      )}
-      {/* Etap 20b: przy figurze prowadzonej przez bota. Stoi obok ▶, bo należy
-          do tego samego gestu — „ta tura jest rozegrana, idziemy dalej". */}
+      {/* „Następna tura” MG mieszka od 16.10 na dole lewego panelu, obok
+          „Kończę turę” gracza (`HudEndTurn`). */}
+      {/* Etap 20b: przy figurze prowadzonej przez bota. */}
       <BotTurnButton tokenId={acting?.tokenId ?? null} className="combat-bar-bot" />
       {reminders.length > 0 && (
         <span className="combat-bar-reminder" title={reminders.join(' · ')}>

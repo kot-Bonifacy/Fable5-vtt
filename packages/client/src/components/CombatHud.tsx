@@ -633,7 +633,6 @@ export function CombatHud() {
         >
           ▸
         </button>
-        <HudEndTurnCompact />
         {token && (
           <span className="hud-collapsed-figure" title={token.name}>
             {token.imageUrl ? (
@@ -662,6 +661,7 @@ export function CombatHud() {
             )}
           </span>
         )}
+        <HudEndTurnCompact />
       </aside>
     );
   }
@@ -681,8 +681,6 @@ export function CombatHud() {
         </button>
       </div>
 
-      <HudEndTurn />
-
       {!token && (
         <p className="hud-empty">
           <HudIcon name="stand-up" className="hud-empty-icon" />
@@ -698,8 +696,8 @@ export function CombatHud() {
       {token && (
         <>
           {/* Whose turn it is, said where the hand already is — for the GM. The
-              player's „Twoja tura" is the end-turn block at the top of the rail
-              (25.09), which shows whatever the rail describes. */}
+              end-turn block at the bottom of the rail (16.10) says whose turn
+              the queue is on, whatever the rail describes. */}
           {context.acting && context.isGm && <p className="hud-turn-banner">Tura tej figury</p>}
 
           <IdentityCard
@@ -738,10 +736,6 @@ export function CombatHud() {
 
           {context.turn && <TurnBudget budget={context.turn} variant="rail" />}
           {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
-
-          {/* Stepping the queue is not here on purpose: it belongs to the strip
-              over the map, which owns the queue and works with nothing
-              selected. The player's own „Kończę turę" is at the top of the rail. */}
 
           {/* Karta jest, ale nie twoja (28.08) — i to **nie** jest przypadek
               pustego paska niżej. Akcje z katalogu (Ustabilizowanie, Bieg…)
@@ -938,6 +932,10 @@ export function CombatHud() {
               wraca do tego, czym jest, czyli do stanu figury. */}
         </>
       )}
+
+      {/* Last in the rail and pinned to its bottom (16.10): ending the turn is
+          one place for the GM and the players, and works with nothing selected. */}
+      <HudEndTurn />
     </aside>
   );
 }

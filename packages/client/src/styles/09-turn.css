@@ -77,8 +77,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ◀ ▶ ✕ — one square button for all three, cut like the sheet's corners. */
-.combat-bar-step,
+/* ✕ — a square button cut like the sheet's corners. */
 .combat-bar-stop {
   flex: none;
   display: grid;
@@ -96,13 +95,8 @@
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.45rem), calc(100% - 0.45rem) 100%, 0 100%);
 }
 
-.combat-bar-step:hover {
-  border-color: var(--warn);
-  color: var(--warn);
-}
-
 /* ✕ keeps to the far end of the strip: the one control that throws the queue
-   away should not sit where a hand reaching for ▶ lands. */
+   away should not sit where a hand reaching for anything else lands. */
 .combat-bar-stop {
   margin-left: auto;
   color: var(--text-dim);

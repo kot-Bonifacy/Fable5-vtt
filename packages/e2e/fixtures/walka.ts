@@ -200,11 +200,8 @@ export async function endPlayerTurn(actor: Actor) {
 
 export async function nextTurn(mg: Actor) {
   const before = combatRow()?.activeCombatantId;
-  await mg.page
-    .getByRole('group', { name: 'Kolejka inicjatywy' })
-    .getByRole('button', { name: /Następna tura/ })
-    .first()
-    .click();
+  // Od 16.10 na dole lewego panelu, nie na pasie inicjatywy.
+  await mg.page.getByRole('button', { name: 'Następna tura', exact: true }).click();
   await expect.poll(() => combatRow()?.activeCombatantId).not.toBe(before);
   // Marsz rozkazany, zanim klient MG dostanie nową turę, przerywa „Zmiana tury”.
   const now = combatRow()?.activeCombatantId;

@@ -174,12 +174,17 @@
   }
 }
 
-/* „Kończę turę" (25.09) — the player's end of the turn, first thing in the
-   rail whenever the turn is theirs. A black belt with the figure's name over
-   the sheet's red button: the one control of a fight that must never be
-   looked for. */
+/* Koniec tury (16.10) — „Kończę turę” gracza i „Następna tura” MG, ostatnie
+   w panelu. Czarny pas z nazwą figury nad czerwonym guzikiem z karty: jedyny
+   przycisk walki, którego nigdy nie wolno szukać. `margin-top: auto` dosuwa
+   go do dołu, a przy długim panelu `sticky` trzyma go w widoku — tuż nad
+   dolną rezerwą na kubek, bo przyklejenie liczy się od krawędzi treści. */
 .hud-end-turn {
   flex: none;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   background: var(--cp-bar);
@@ -259,9 +264,10 @@
   color: var(--cp-on-red-dim);
 }
 
-/* Collapsed rail: the same button, a square under ▸. */
+/* Collapsed rail: the same button, a square at the bottom of the strip. */
 .hud-end-turn-compact {
   flex: none;
+  margin-top: auto;
   width: 1.9rem;
   height: 1.9rem;
   padding: 0;
