@@ -199,14 +199,13 @@ function ChipInitiative({
       </button>
     );
   }
-  if (mayRoll) {
-    const unrolled = combatant.initiative === null;
+  // Inicjatywę rzuca się raz na walkę (s. 168, jak w Foundry): po rzucie gracz
+  // widzi już tylko liczbę — przerzut to decyzja MG.
+  if (mayRoll && combatant.initiative === null) {
     return (
       <button
         type="button"
-        className={`combat-chip-initiative combat-chip-initiative--button${
-          unrolled ? ' combat-chip-initiative--roll' : ''
-        }`}
+        className="combat-chip-initiative combat-chip-initiative--button combat-chip-initiative--roll"
         onClick={() =>
           useRollStore.getState().loadInitiativeCup({
             combatantId: combatant.id,
@@ -217,7 +216,7 @@ function ChipInitiative({
         title="Rzuć inicjatywę — załaduj kubek i potrząśnij nim"
         aria-label={`Rzuć inicjatywę: ${combatant.name}`}
       >
-        {unrolled ? '🎲' : shown}
+        🎲
       </button>
     );
   }

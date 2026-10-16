@@ -3512,6 +3512,8 @@ export function combatErrorText(code: string): string {
       return 'Nie ma trwającej walki na tej scenie.';
     case 'COMBATANT_NOT_FOUND':
       return 'Nie znaleziono uczestnika walki — odśwież stronę.';
+    case 'INITIATIVE_ALREADY_ROLLED':
+      return 'Inicjatywę rzuca się raz na całą walkę. Przerzut może zarządzić tylko MG.';
     case 'COMBATANT_HAS_NO_FIGURE':
       return 'Ten uczestnik nie ma figury na mapie — Czarny LOD działa tylko w Sieci.';
     case 'TOKEN_NOT_FOUND':

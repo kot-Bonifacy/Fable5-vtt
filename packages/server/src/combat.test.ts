@@ -182,6 +182,14 @@ describe('combat tracker', () => {
   /** Every combat payload the player socket ever receives — leak detector. */
   const playerCombatTraffic: CombatUpdateBroadcast[] = [];
 
+  /** The GM wipes a value — the only way a player gets to roll again mid-fight. */
+  const clearInitiative = async (combatantId: string): Promise<void> => {
+    data(
+      await emitAck(gm, 'combat:set-initiative', { combatantId, initiative: null }),
+      'combat:set-initiative',
+    );
+  };
+
   it('sets the table: a scene, a player character and three tokens', async () => {
     const gmConn = createSocket(gmCookie);
     const playerConn = createSocket(playerCookie);
@@ -322,10 +330,21 @@ describe('combat tracker', () => {
     expect([...values].sort((a, b) => b - a)).toEqual(values);
   });
 
-  it('lets a player roll their own initiative and puts the card on chat', async () => {
+  it('lets a player roll their own initiative once a fight, and the GM reopen it', async () => {
+    const ziti = combat.combatants.find((c) => c.name === 'Ziti')!;
+    // „Rzuć wszystkim" already gave Ziti a value: the queue holds for the whole
+    // fight (s. 168), so the player cannot fish for a better slot mid-combat.
+    const refused = await emitAck(player, 'combat:roll', { combatantId: ziti.id });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.error).toBe('INITIATIVE_ALREADY_ROLLED');
+    expect((await roundTrip(gm)).combat?.combatants.find((c) => c.id === ziti.id)?.initiative).toBe(
+      ziti.initiative,
+    );
+    await clearInitiative(ziti.id);
+
     const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     const ack = await emitAck<{ initiative: number }>(player, 'combat:roll', {
-      combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
+      combatantId: ziti.id,
     });
     const rolled = data(ack, 'combat:roll');
     const message = await card;
@@ -371,6 +390,7 @@ describe('combat tracker', () => {
       ).ok,
     ).toBe(true);
 
+    await clearInitiative(combat.combatants.find((c) => c.name === 'Ziti')!.id);
     const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     const rolled = data(
       await emitAck<{ initiative: number }>(player, 'combat:roll', {
@@ -387,6 +407,7 @@ describe('combat tracker', () => {
 
     // Zdjęty pancerz oddaje oba: to modyfikator, nie trwała strata Cechy.
     await emitAck(gm, 'character:update', { characterId, patch: { data: { armor: [] } } });
+    await clearInitiative(combat.combatants.find((c) => c.name === 'Ziti')!.id);
     await emitAck(player, 'combat:roll', {
       combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
     });
@@ -423,6 +444,10 @@ describe('combat tracker', () => {
     const nextRound = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
     expect(nextRound.round).toBe(2);
     expect(nextRound.activeCombatantId).toBe(nextRound.combatants[0]!.id);
+    // Initiative is rolled once a fight (s. 168): a new round keeps every value
+    // and the order they made — nothing is rerolled or cleared on the wrap.
+    const queueOf = (view: CombatView) => view.combatants.map((c) => [c.id, c.initiative]);
+    expect(queueOf(nextRound)).toEqual(queueOf(first));
 
     const back = data(await emitAck<CombatView>(gm, 'combat:previous'), 'combat:previous');
     expect(back.round).toBe(1);

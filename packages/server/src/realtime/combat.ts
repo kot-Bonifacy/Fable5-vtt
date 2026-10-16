@@ -993,6 +993,11 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
       // A hidden participant must not even be confirmable by a player.
       if (combatant.token.hidden) throw new RealtimeError('COMBATANT_NOT_FOUND');
       if (combatantOwnerId(combatant) !== user.id) throw new RealtimeError('FORBIDDEN');
+      // Initiative is rolled once per fight and the queue holds for every round
+      // (s. 168; Foundry hides the player's die once a value is there, too). A
+      // second throw would let a player fish for a better slot mid-combat — a
+      // reroll is the GM's call („⟳" or clearing the value), never the player's.
+      if (combatant.initiative !== null) throw new RealtimeError('INITIATIVE_ALREADY_ROLLED');
     }
 
     const sheets = await loadCombatSheets(deps.ctx.prisma, [combatant]);

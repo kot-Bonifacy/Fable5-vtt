@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `e11ac32`) — przedmioty z katalogu do skrzyni
+
+**Zlecenie MG:** na karcie skrzyni widać tylko gotówkę — sprawdzić, czy MG może włożyć przedmiot,
+i dodać tę możliwość. **Diagnoza:** dało się wyłącznie okrężną drogą — Kompendium → wpis →
+skrzynia z listy kart → „Dodaj za darmo” (albo okno „Wymiana” z cudzej karty); karta pojemnika
+niczego takiego nie miała, a podpowiedź „Pusto…” pokazywała się tylko przy pustej skrzyni.
+
+**Zrobione:** w pasku „Zawartość” karty pojemnika guzik **„+ Z katalogu…”** otwiera pod listą
+`ContainerItemPicker` (`components/exchange/`): szukanie + rodzaj (broń, pancerz, sprzęt,
+amunicja, dodatki, Programy, cyborgizacje), klik wkłada za darmo, wybór zostaje otwarty na
+następne. Wiersze z tych samych funkcji co „Dodaj za darmo” (`addCompendiumItemToCharacter`);
+amunicja pyta o kaliber i paczki, wszczep idzie do Wyposażenia (`addFoundCyberwareToCharacter`
+— skrzyni nic się nie wszczepia). Serwer bez zmian (łata karty od MG). Umowa w `ekwipunek`.
+
+**Weryfikacja:** `tsc` klienta, ESLint, Prettier czyste; vitest client 366 (a11y złapał „✕” bez
+etykiety — poprawione). E2E niepuszczone (zmiana tylko w UI MG, `t46b-pojemniki` sprawdza
+„Pusto.” w oknie wymiany, nie na karcie). Oględziny: **Firefox** (MG `ogledziny-b`): pistolet,
+amunicja dumdum (kaliber + paczka) i Cyberoko włożone, zawartość przetrwała przeładowanie.
+**Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma testową „Skrzynię” z trzema rzeczami
+(usunięcie zablokował klasyfikator uprawnień).
+
 ### Sesja 15.10 (po `62589ee`) — przypomnienie o gotowości stołu przed sesją
 
 **Zlecenie MG:** przypomnieć MG przed startem sesji o miejscu startu graczy i o postaciach — inaczej

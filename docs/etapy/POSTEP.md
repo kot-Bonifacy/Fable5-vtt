@@ -262,7 +262,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 23   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 33   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 16   | 5       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 17   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 43   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -280,6 +280,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 16.10 (po `2549eb6`) — inicjatywa raz na walkę
+
+**Zlecenie MG:** inicjatywa ma być rzucana raz na początku walki, a kolejność ma zostać na kolejne
+rundy — sprawdzić, poprawić, porównać z Foundry. **Diagnoza:** przejście do nowej rundy niczego
+nie przerzucało ani nie kasowało (`nextTurn` tylko przesuwa wskaźnik) — zgodnie z s. 168
+i z Foundry (rzut raz; przerzut co rundę jest tam opcją dodatków). **Dziura:** gracz po rzucie
+dalej miał w pasie klikalną wartość i mógł przerzucać inicjatywę w dowolnej rundzie, a
+`combat:roll` tego nie bronił. W Foundry kostka gracza znika, gdy wartość już jest.
+
+**Zrobione:** `combat:roll` gracza z wartością → `INITIATIVE_ALREADY_ROLLED` (komunikat
+w `socket.ts`); kafel pasa pokazuje graczowi 🎲 tylko bez wartości, potem samą liczbę. MG bez
+zmian: „⟳”, remis, wpisanie lub wyczyszczenie wartości (czyste pole = gracz rzuca znowu).
+`combat.test.ts`: odmowa przerzutu, MG czyści i gracz rzuca, kolejka bez zmian po zawinięciu
+rundy. Umowa na górze `tura`.
+
+**Weryfikacja:** serwer `combat`, `netcombat`, `combat-actions`, `bot-combat` **84/84**; `tsc`
+klienta i serwera, ESLint, Prettier czyste w zmienionych plikach. E2E `--grep T8a` **44/44**
+(macierz: MG Chromium + gracze Firefox i odwrotnie — gracze rzucają inicjatywę kubkiem z pasa).
+Ręcznych oględzin nie było (dev serwer wyłączony); pełnego przebiegu nie puszczano.
 
 ### Sesja 15.10 (po `e1e21c5`) — etap 52: ruch gracza wyłącznie klikiem
 
@@ -307,24 +327,3 @@ Gangera, długi marsz łapie oddech i dochodzi do celu w ~12 s; **Chromium** (MG
 Stop / Eksploracja. **Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma scenę „Oględziny 52 —
 marsz” (aktywna, Stop, mur, Ganger, Sejf, figura „Marsz”) i gracza „Marsz52-958”; sesja
 zakończona. `dev.db` dostał migrację `20261015180000_player_move_no_free`.
-
-### Sesja 15.10 (po `e11ac32`) — przedmioty z katalogu do skrzyni
-
-**Zlecenie MG:** na karcie skrzyni widać tylko gotówkę — sprawdzić, czy MG może włożyć przedmiot,
-i dodać tę możliwość. **Diagnoza:** dało się wyłącznie okrężną drogą — Kompendium → wpis →
-skrzynia z listy kart → „Dodaj za darmo” (albo okno „Wymiana” z cudzej karty); karta pojemnika
-niczego takiego nie miała, a podpowiedź „Pusto…” pokazywała się tylko przy pustej skrzyni.
-
-**Zrobione:** w pasku „Zawartość” karty pojemnika guzik **„+ Z katalogu…”** otwiera pod listą
-`ContainerItemPicker` (`components/exchange/`): szukanie + rodzaj (broń, pancerz, sprzęt,
-amunicja, dodatki, Programy, cyborgizacje), klik wkłada za darmo, wybór zostaje otwarty na
-następne. Wiersze z tych samych funkcji co „Dodaj za darmo” (`addCompendiumItemToCharacter`);
-amunicja pyta o kaliber i paczki, wszczep idzie do Wyposażenia (`addFoundCyberwareToCharacter`
-— skrzyni nic się nie wszczepia). Serwer bez zmian (łata karty od MG). Umowa w `ekwipunek`.
-
-**Weryfikacja:** `tsc` klienta, ESLint, Prettier czyste; vitest client 366 (a11y złapał „✕” bez
-etykiety — poprawione). E2E niepuszczone (zmiana tylko w UI MG, `t46b-pojemniki` sprawdza
-„Pusto.” w oknie wymiany, nie na karcie). Oględziny: **Firefox** (MG `ogledziny-b`): pistolet,
-amunicja dumdum (kaliber + paczka) i Cyberoko włożone, zawartość przetrwała przeładowanie.
-**Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma testową „Skrzynię” z trzema rzeczami
-(usunięcie zablokował klasyfikator uprawnień).
