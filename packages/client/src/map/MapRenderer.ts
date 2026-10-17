@@ -2181,6 +2181,7 @@ export class MapRenderer {
       this.viewerIsGm = ctx.isGm;
       if (this.scene) this.drawGrid(this.scene);
       this.drawZoneLayer();
+      this.updateReach();
     }
     this.viewerId = ctx.myUserId;
     const seen = new Set<string>();
@@ -5201,10 +5202,9 @@ export class MapRenderer {
    * „anywhere you can see", and flooding eighty metres of map to say so would
    * be a lot of work to draw a shrug.
    *
-   * Drawn for the GM too, whose budget is **not** enforced (14b: going over is
-   * logged, not refused). The shading says how far the turn pays for, which is
-   * as true for them as for a player — and it is the same bargain the reach
-   * circle already struck.
+   * Drawn for the GM only since 17.10 — players were never meant to see ranges
+   * of this kind. The GM's budget is **not** enforced (14b: going over is
+   * logged, not refused), so the shading is a reading, not a fence.
    *
    * Recomputed on the same three things that can change the answer — which
    * figure is steered, where it stands, how much of its turn is left — and
@@ -5218,7 +5218,11 @@ export class MapRenderer {
     const isPassable = this.walkPassable;
     const cell = scene?.grid.sizePx ?? 0;
     const perPixel = scene ? metresPerPixel(scene) : 0;
+    // Graczowi zasięgu się nie maluje (MG, 17.10: „nie chcę, żeby gracze
+    // widzieli tego typu zasięgi”) — tak jak siatki. Odpowiedź „tu już nie
+    // dojdziesz” daje mu podgląd trasy z pasami pod kursorem.
     if (
+      !this.viewerIsGm ||
       !scene ||
       !node ||
       node.destroyed ||
