@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { CombatView, CombatantView, TokenView } from '@vtt/shared';
-import { gmSteerLocked, gmTurnSteer, isTurnChangeInFight } from './combat-steer.js';
+import {
+  gmSteerLocked,
+  gmTurnSteer,
+  isTurnChangeInFight,
+  playerTurnSteer,
+} from './combat-steer.js';
 
 /**
  * Kogo MG prowadzi w walce (etap 50b). Reguła mieszka w czystych funkcjach;
@@ -78,5 +83,21 @@ describe('co MG dostaje na początku tury', () => {
   it('przed walką nic się nie zmienia', () => {
     expect(gmTurnSteer(fight(0, null), TOKENS)).toBeNull();
     expect(gmTurnSteer(null, TOKENS)).toBeNull();
+  });
+});
+
+describe('co gracz dostaje na początku tury', () => {
+  it('w turze swojej postaci — jej figurę', () => {
+    expect(playerTurnSteer(fight(1, 'pc'), TOKENS, 'u-player')).toBe('t-pc');
+  });
+
+  it('tura cudza, przed walką, bez figury albo bez konta — nic', () => {
+    expect(playerTurnSteer(fight(1, 'npc'), TOKENS, 'u-player')).toBeNull();
+    expect(playerTurnSteer(fight(1, 'pc'), TOKENS, 'u-other')).toBeNull();
+    expect(playerTurnSteer(fight(0, 'pc'), TOKENS, 'u-player')).toBeNull();
+    expect(playerTurnSteer(fight(1, 'ghost'), TOKENS, 'u-player')).toBeNull();
+    expect(playerTurnSteer(fight(1, 'pc'), {}, 'u-player')).toBeNull();
+    expect(playerTurnSteer(fight(1, 'pc'), TOKENS, null)).toBeNull();
+    expect(playerTurnSteer(null, TOKENS, 'u-player')).toBeNull();
   });
 });

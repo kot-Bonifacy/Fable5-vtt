@@ -71,7 +71,9 @@ export function HudEndTurn() {
         onClick={end}
       >
         {isGm ? 'Następna tura' : 'Kończę turę'}
-        <kbd className="hud-end-turn-key">E</kbd>
+        <kbd className="hud-end-turn-key" aria-hidden="true">
+          E
+        </kbd>
       </button>
     </section>
   );

@@ -55,3 +55,20 @@ export function gmTurnSteer(
   }
   return { kind: 'watch', tokenId: token.id };
 }
+
+/**
+ * Którą figurę gracz dostaje na początku tury (zlecenie MG z 17.10, wzorem
+ * Foundry): w turze jego postaci — jej figurę, zaznaczoną i w kadrze kamery,
+ * bez względu na to, co klikał ostatnio. Tura cudza, uczestnik bez figury
+ * albo figura, której gracz nie widzi — `null`, nic się nie zmienia.
+ */
+export function playerTurnSteer(
+  combat: CombatView | null,
+  tokens: Readonly<Record<string, TokenView>>,
+  userId: string | null,
+): string | null {
+  if (!combat || combat.round < 1 || !userId) return null;
+  const acting = combat.combatants.find((c) => c.id === combat.activeCombatantId) ?? null;
+  const token = acting?.tokenId ? tokens[acting.tokenId] : undefined;
+  return token && token.ownerId === userId ? token.id : null;
+}

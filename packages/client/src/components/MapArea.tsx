@@ -124,7 +124,12 @@ import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
-import { gmSteerLocked, gmTurnSteer, isTurnChangeInFight } from '../combat-steer.js';
+import {
+  gmSteerLocked,
+  gmTurnSteer,
+  isTurnChangeInFight,
+  playerTurnSteer,
+} from '../combat-steer.js';
 import { useAimMenuStore } from '../stores/aimMenuStore.js';
 import { AimMenu } from './AimMenu.js';
 import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
@@ -1700,7 +1705,8 @@ export function MapArea() {
   }, []);
 
   // Nowa tura zdejmuje celownik (#64): stary dymek nad celem mówiłby o turze,
-  // która już minęła. U MG (etap 50b) zmienia też prowadzoną figurę.
+  // która już minęła. U MG (etap 50b) zmienia też prowadzoną figurę, a gracz
+  // w turze swojej postaci dostaje ją zaznaczoną i w kadrze.
   useEffect(() => {
     if (!ready) return;
     let previous = useCombatStore.getState().combat;
@@ -1711,8 +1717,18 @@ export function MapArea() {
       const renderer = rendererRef.current;
       if (!renderer) return;
       renderer.dropAim();
-      if (turnPassed && useAuthStore.getState().user?.role === ROLE_GM) {
+      if (!turnPassed) return;
+      const user = useAuthStore.getState().user;
+      if (user?.role === ROLE_GM) {
         steerTurnForGm(state.combat, renderer);
+        return;
+      }
+      // Tura postaci gracza: jej figura w zaznaczeniu i w kadrze (17.10).
+      const own = playerTurnSteer(state.combat, useTokenStore.getState().tokens, user?.id ?? null);
+      if (own) {
+        useSelectionStore.getState().clearGroup();
+        renderer.setSelection(own);
+        renderer.frameToken(own);
       }
     });
   }, [ready]);

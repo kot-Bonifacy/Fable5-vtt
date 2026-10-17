@@ -72,6 +72,11 @@ function panelField(page: Page, label: string) {
     .first();
 }
 
+/** Figura zaznaczona u aktora (pierścień i pasek akcji). */
+async function selectedOf(actor: Actor): Promise<string | null> {
+  return (await actor.store<{ tokenId: string | null }>('selection'))?.tokenId ?? null;
+}
+
 /** Własny wpis broni w Kompendium MG („+ Własny wpis”). */
 async function customWeapon(
   page: Page,
@@ -341,6 +346,8 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
 
     await beginFight(page);
     await expect.poll(activeName).toBe('Kowal');
+    // Tura postaci gracza zaznacza mu jej figurę i bierze ją w kadr (17.10).
+    await expect.poll(() => selectedOf(marek), { message: 'Marek' }).toBe(token('Kowal').id);
 
     // Czarny pas: ta sama kolejność u MG i u graczy; Cień tylko u MG, klon pod aliasem.
     await expect
@@ -477,6 +484,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
 
     await endTurnMarked(marek);
     expect(activeName()).toBe('Iskra');
+    await expect.poll(() => selectedOf(ola), { message: 'Ola' }).toBe(token('Iskra').id);
   });
 
   test('4.3 tura Oli: prośba o Test przyciskiem i Alt+klikiem, pięść za daleko', async () => {
