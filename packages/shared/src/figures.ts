@@ -212,6 +212,31 @@ export function tokenCondition(
 }
 
 /**
+ * Czy cała drużyna na scenie nie żyje (17.10.2026, zlecenie MG) — warunek
+ * planszy „Wszyscy zginęli”.
+ *
+ * Drużyna to figury z właścicielem-graczem (`ownerId`); NPC-e i towarzysze-boty
+ * właściciela nie mają, więc się nie liczą. Scena bez ani jednej takiej figury
+ * nie jest pogromem. Martwy znaczy stan `dead` — Nieprzytomny i Śmiertelnie
+ * Ranny jeszcze żyją. Pytanie idzie wyłącznie o to, co widz dostał: figury
+ * drużyny dzielą wzrok, więc gracz ma je wszystkie, a stany są jawne.
+ */
+export function partyWiped(
+  tokens: Iterable<
+    Pick<TokenView, 'ownerId' | 'statuses'> & { hp?: TokenHp | null; hpShare?: TokenHpShare | null }
+  >,
+  conditions: ReadonlyMap<string, TokenCondition>,
+): boolean {
+  let party = 0;
+  for (const token of tokens) {
+    if (token.ownerId === null) continue;
+    if (tokenCondition(token, conditions) !== 'dead') return false;
+    party += 1;
+  }
+  return party > 0;
+}
+
+/**
  * Status, którego ikonę trzeba dorysować, żeby stan figury był widoczny — albo
  * `null`, gdy któraś z naklejek już go niesie.
  *

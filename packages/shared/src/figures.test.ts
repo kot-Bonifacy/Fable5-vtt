@@ -8,6 +8,7 @@ import {
   facingFromDelta,
   facingFromPath,
   normalizeFacing,
+  partyWiped,
   sanitizeFacing,
   tokenCondition,
   tokenHpRung,
@@ -121,6 +122,33 @@ describe('token condition (stage 27j)', () => {
 
   it('ignores statuses the data gave no condition', () => {
     expect(conditionRegistry(REGISTRY).has('stunned')).toBe(false);
+  });
+});
+
+describe('partyWiped — plansza „Wszyscy zginęli”', () => {
+  const conditions = conditionRegistry([
+    { id: 'unconscious', name: 'Nieprzytomny', icon: '/d.svg', condition: 'down' },
+    { id: 'dead', name: 'Martwy', icon: '/e.svg', condition: 'dead' },
+  ]);
+  const pc = (ownerId: string, statuses: string[]) => ({ ownerId, statuses });
+  const npc = (statuses: string[]) => ({ ownerId: null, statuses });
+
+  it('fires when every player figure is dead, whatever the NPCs do', () => {
+    expect(partyWiped([pc('a', ['dead']), pc('b', ['dead']), npc([])], conditions)).toBe(true);
+  });
+
+  it('holds while anyone of the party still breathes', () => {
+    expect(partyWiped([pc('a', ['dead']), pc('b', ['unconscious'])], conditions)).toBe(false);
+    expect(partyWiped([pc('a', ['dead']), pc('b', [])], conditions)).toBe(false);
+  });
+
+  it('is no wipe without a party on the scene', () => {
+    expect(partyWiped([], conditions)).toBe(false);
+    expect(partyWiped([npc(['dead'])], conditions)).toBe(false);
+  });
+
+  it('does not count zero hit points as death', () => {
+    expect(partyWiped([{ ...pc('a', []), hp: { current: 0, max: 40 } }], conditions)).toBe(false);
   });
 });
 

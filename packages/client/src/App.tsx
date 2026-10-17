@@ -8,6 +8,7 @@ import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { EvasionPrompt } from './components/EvasionPrompt.js';
 import { NoticeColumn } from './components/NoticeColumn.js';
+import { PartyWipe } from './components/PartyWipe.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
 import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
@@ -148,6 +149,7 @@ function GameView() {
       <ShortcutsWindow />
       <EvasionPrompt />
       <DiceCup />
+      {!betweenSessions && <PartyWipe />}
     </div>
   );
 }

@@ -266,6 +266,35 @@
   color: var(--login-red-deep);
 }
 
+/* Plansza „Wszyscy zginęli” (17.10): ten sam plakat i ta sama kotwica, tyle
+   że nad całym stołem — okna, kubek i kolumna komunikatów zostają pod nią. */
+.party-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  height: auto;
+  animation: party-wipe-in 1.6s ease-out;
+}
+
+@keyframes party-wipe-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.party-wipe .auth-title {
+  color: var(--login-red-deep);
+  font-size: clamp(1.9rem, 3.6vw, 2.8rem);
+}
+
+.party-wipe-slogan {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--login-ink);
+}
+
 /* Ekran dołączania: imiona graczy jako kafle wycięte z papieru. */
 .auth-screen .player-choices {
   gap: 0.4rem;
