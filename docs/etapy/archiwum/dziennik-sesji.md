@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `689c422`) — etap 53, konto administratora `pantosz`
+
+**Zlecenie MG:** osobne główne konto administratora `pantosz` do zarządzania sesjami i ich
+historią, uprawnieniami do AI i hasłami MG, z hasłem tymczasowym do zmiany. **Decyzje MG
+(pytania):** czyste konto `ADMIN` bez stołu; zarządza tylko ono (konto MG z `.env` zostaje do
+gry, AI zawsze); hasło tymczasowe dla MG z wymuszoną zmianą; historia = dziennik sesji od
+wdrożenia; wymuszona zmiana także dla `pantosz`; dodatki: „Zakończ sesję”, usuwanie kont MG,
+przełącznik rejestracji (bez zakładania kont przez admina); hasło startowe w `.env` tylko na start.
+
+**Zrobione:** całość w `etap-53-konto-administratora.md`, umowa na górze `serwer`. `pantosz`
+istnieje w `dev.db` (rola `ADMIN`, hasło tymczasowe z `packages/server/.env`, nietknięte —
+**nie logować się nim do oględzin**, pułapka na górze `ogledziny`). Migracja
+`20261017120000_admin_account` zastosowana na `dev.db` (kopia sprzed: scratchpad sesji).
+Instancja E2E zakłada `admin-e2e` i każdy start cofa mu hasło do tymczasowego (idempotentnie).
+
+**Weryfikacja:** vitest `shared` 2471, serwer **1469** (+10 `admin.test.ts`, +2 w `ai-access`),
+klient **384** (+2 `admin-format.test.ts`); `tsc` w czterech pakietach, ESLint, Prettier czyste.
+E2E: `00-baseline` + `01-dym` (z nowym `t53-admin` i przepiętym `t44d`) + `t2d-` zielone
+(1 pominięty bez gatewaya), potem `t53-` + `t9a-` + `t9b-` **42/42** (7,9 min; `po-T9a` odbudowany 17.10). **Niepuszczone:** `t6b-` (6.9a przepięty na panel
+administratora) i `t7b-` (kopia przez `adminApi()`) — długi łańcuch. Oględziny w **Firefoksie**
+(Playwright MCP) na instancji E2E: wymuszona zmiana hasła, panel z trwającą sesją i graczem
+przy stole, „Zakończ sesję” → dziennik „zakończył administrator”, hasło tymczasowe dla MG,
+usunięcie konta; wejście MG hasłem tymczasowym sprawdzone przez API.
+
 ### Sesja 17.10 (po `da0c1b5`) — trafienie na figurze, Unik bez dźwięku, obrączka po ranach
 
 **Zlecenie MG:** bez dźwięków Uniku, lepsza wizualizacja trafienia; w trakcie: wewnętrzny

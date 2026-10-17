@@ -28,6 +28,9 @@ Eksploracja nie ma nigdzie — to nasz pomysł z 08.10.
 
 ## Decyzje MG z 15.10
 
+> **17.10:** potwierdzanie drugim klikiem z decyzji 1 cofnięte przez etap 54 (ruch wzorem BG3) —
+> poza walką jeden klik, w walce drugi klik tylko przy koszcie. Reszta decyzji stoi.
+
 1. **Gracz nie przeciąga figur — nigdzie i nigdy.** Ruch gracza: zaznacz figurę → klik w cel
    (podgląd trasy i znacznik celu) → **drugi klik w to samo miejsce potwierdza** i figura rusza;
    klik gdzie indziej przestawia cel. Dotyczy także walki. MG zachowuje przeciąganie (stawianie

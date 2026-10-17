@@ -22,13 +22,19 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
 | 🟨 w toku   | — (następna: **refaktoryzacja** całości pod osłoną suity)                                     |
-| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
+| ⬜ otwarty   | **54** Ruch wzorem BG3 (plan); **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); triaż #79–#81, T10 |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53 (ostatni zamknięty: 53, 2026-10-17) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 54 „Ruch wzorem BG3” (zlecenie MG z 17.10) rozpisany 17.10, bez kodu — kolejność
+względem refaktoryzacji ustal z MG na starcie sesji.** Poza walką zaznaczenie nie rysuje trasy,
+a jeden klik w podłoże rusza figurę; w walce podgląd tylko w turze figury, bursztyn drugim klikiem
+wydaje Akcję na Bieg (serwer: `token:walk` z Biegiem); odznaczanie Esc / PPM. Cofa potwierdzanie
+drugim klikiem z 52.1. Plik etapu: `etap-54-ruch-wzorem-bg3.md`.
 
 **Śmiertelnie Ranny i Ustabilizowanie (zlecenie MG z 17.10) poprawione 17.10 — dalej
 refaktoryzacja całości pod osłoną suity, potem T10.** Śmiertelnie Ranny gra turę dopiero po
@@ -300,6 +306,19 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 17.10 (po `86b54be`) — plan etapu 54, ruch wzorem BG3
+
+**Zlecenie MG:** odciski butów pod kursorem po każdym zaznaczeniu figury przeszkadzają; jak to
+robi Foundry i czy zamiar ruchu nie powinien być jawny. **Rozpoznanie:** Foundry v13 rysuje trasę
+tylko w trakcie gestu (przeciąganie albo Ctrl + punkty), BG3 — poza walką klik od razu rusza
+bez podglądu, w walce podgląd pod kursorem i jeden klik. **Decyzje MG (pytania):** wzór BG3 dla
+MG i gracza; poza walką bez podglądu i jeden klik; w walce podgląd tylko w turze figury, zielony
+pas — jeden klik, bursztyn — drugi klik wydaje Akcję na Bieg i figura dochodzi do celu, szary
+i mgła — drugi klik; odznaczanie Esc / PPM w puste; „tylko zapisz plan”.
+
+**Zrobione:** plik `etap-54-ruch-wzorem-bg3.md` (54a klient, 54b serwer: `token:walk` z Biegiem),
+wiersz w `archiwum/tabela-etapow.md`, odnośnik w pliku etapu 52. Bez kodu — testy niepuszczane.
+
 ### Sesja 17.10 (po `7b6607a`) — Śmiertelnie Ranny i Ustabilizowanie według podręcznika
 
 **Zlecenie MG:** sprawdzić, czy Śmiertelnie Ranny słusznie atakuje i czy Ustabilizowanie działa
@@ -323,27 +342,3 @@ i `czas` (`CPRED_ROUND_SECONDS = 3`). Baner w pasku walki stoi tylko, dopóki Te
 w **Firefoksie** (gracz) i Chromium (MG) tymczasowym specem E2E — Firefox z MCP wisiał (pułapka
 na górze `ogledziny`): baner, wyszarzone sloty, odmowa „Kończę turę", rzut kubkiem zdejmuje baner,
 karta trafienia z „Śmiertelnie Ranny trafiony” i „+1 do Testu Przeżywalności”.
-
-### Sesja 17.10 (po `689c422`) — etap 53, konto administratora `pantosz`
-
-**Zlecenie MG:** osobne główne konto administratora `pantosz` do zarządzania sesjami i ich
-historią, uprawnieniami do AI i hasłami MG, z hasłem tymczasowym do zmiany. **Decyzje MG
-(pytania):** czyste konto `ADMIN` bez stołu; zarządza tylko ono (konto MG z `.env` zostaje do
-gry, AI zawsze); hasło tymczasowe dla MG z wymuszoną zmianą; historia = dziennik sesji od
-wdrożenia; wymuszona zmiana także dla `pantosz`; dodatki: „Zakończ sesję”, usuwanie kont MG,
-przełącznik rejestracji (bez zakładania kont przez admina); hasło startowe w `.env` tylko na start.
-
-**Zrobione:** całość w `etap-53-konto-administratora.md`, umowa na górze `serwer`. `pantosz`
-istnieje w `dev.db` (rola `ADMIN`, hasło tymczasowe z `packages/server/.env`, nietknięte —
-**nie logować się nim do oględzin**, pułapka na górze `ogledziny`). Migracja
-`20261017120000_admin_account` zastosowana na `dev.db` (kopia sprzed: scratchpad sesji).
-Instancja E2E zakłada `admin-e2e` i każdy start cofa mu hasło do tymczasowego (idempotentnie).
-
-**Weryfikacja:** vitest `shared` 2471, serwer **1469** (+10 `admin.test.ts`, +2 w `ai-access`),
-klient **384** (+2 `admin-format.test.ts`); `tsc` w czterech pakietach, ESLint, Prettier czyste.
-E2E: `00-baseline` + `01-dym` (z nowym `t53-admin` i przepiętym `t44d`) + `t2d-` zielone
-(1 pominięty bez gatewaya), potem `t53-` + `t9a-` + `t9b-` **42/42** (7,9 min; `po-T9a` odbudowany 17.10). **Niepuszczone:** `t6b-` (6.9a przepięty na panel
-administratora) i `t7b-` (kopia przez `adminApi()`) — długi łańcuch. Oględziny w **Firefoksie**
-(Playwright MCP) na instancji E2E: wymuszona zmiana hasła, panel z trwającą sesją i graczem
-przy stole, „Zakończ sesję” → dziennik „zakończył administrator”, hasło tymczasowe dla MG,
-usunięcie konta; wejście MG hasłem tymczasowym sprawdzone przez API.
