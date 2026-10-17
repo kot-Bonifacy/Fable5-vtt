@@ -366,7 +366,11 @@ body:has(.creator-window) .dice-overlay {
   }
 }
 
-.dice-cup--shaking {
+/* Dwie klasy, bo tryby kubka z późniejszych plików (`--dodge`, `--attack`
+   w `10-map-combat.css`) stoją dalej w kaskadzie: ich oddech podmieniał
+   grzechotanie, a `transform` animacji wezwania zabierał kubkowi
+   `translate(-50%, -50%)` — chwycony Unik uciekał spod kursora (17.10). */
+.dice-cup.dice-cup--shaking {
   cursor: grabbing;
   z-index: 80;
   animation: dice-cup-rattle 0.12s linear infinite;

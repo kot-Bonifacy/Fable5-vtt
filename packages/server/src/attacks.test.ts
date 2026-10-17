@@ -758,9 +758,13 @@ describe('ranged combat from the map', () => {
       }),
       'attack:evade',
     );
-    const rewritten = requireAttackCard(await update);
+    const broadcast = await update;
+    const rewritten = requireAttackCard(broadcast);
     expect(rewritten.detail).toContain('Unik Ganger');
     expect(rewritten.hit).toBe(evaded.hit);
+    // The dodge's own dice ride the update, so the table sees them fall (17.10).
+    expect(broadcast.dice?.total).toBe(evaded.total);
+    expect(broadcast.dice?.title).toMatch(/^Unik: /);
 
     // The dodge is a one-off: a second try must not re-roll it.
     const again = await emitAck(gm, 'attack:evade', {

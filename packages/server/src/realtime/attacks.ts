@@ -1675,6 +1675,28 @@ function checkTargetsIn(targets: readonly BlastTarget[]): AmmoCheckTarget[] {
  * for ranged attacks and always for melee; the check on REF is deliberately
  * left to the table, because a GM may rule that a target saw the shot coming.
  */
+/**
+ * The dice of a roll that rewrites an attack card in place (a dodge, a smart
+ * round's second go) dressed for the table to tumble (17.10): the card itself
+ * only changes its verdict, so these ride the `chat:update` as `dice`.
+ */
+function inPlaceDice(
+  rolled: RollResult,
+  title: string,
+  actor: string,
+  user: SessionUser,
+  gesture: RollGesture | undefined,
+): RollResult {
+  return {
+    ...rolled,
+    title,
+    actor,
+    skin: user.diceSkin,
+    ...(gesture && gesture.strength > 0 ? { tossStrength: gesture.strength } : {}),
+    ...(gesture?.toss ? { toss: gesture.toss } : {}),
+  };
+}
+
 export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number; hit: boolean }>({
   name: 'attack:evade',
   handler: async ({ deps, socket, user, payload }) => {
@@ -1806,7 +1828,13 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       data: { payload: JSON.stringify(updated) },
       include: INCLUDE_CHAT_NAMES,
     });
-    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+    await broadcastRedactedChatMessage(
+      deps,
+      campaignId,
+      toChatMessageView(saved),
+      'chat:update',
+      inPlaceDice(evasion, `Unik: ${defenderName}`, defenderName, user, gesture),
+    );
     return { total: evasion.total, hit: outcome.hit };
   },
 });
@@ -1921,7 +1949,13 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
       data: { payload: JSON.stringify(updated) },
       include: INCLUDE_CHAT_NAMES,
     });
-    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+    await broadcastRedactedChatMessage(
+      deps,
+      campaignId,
+      toChatMessageView(saved),
+      'chat:update',
+      inPlaceDice(second, 'Poprawka naboju', character.name, user, gesture),
+    );
     return { total: second.total, hit: outcome.hit };
   },
 });
@@ -2078,7 +2112,13 @@ async function evadeArea(
     data: { payload: JSON.stringify(updated) },
     include: INCLUDE_CHAT_NAMES,
   });
-  await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+  await broadcastRedactedChatMessage(
+    deps,
+    campaignId,
+    toChatMessageView(saved),
+    'chat:update',
+    inPlaceDice(evasion, `Odskok: ${dodgerName}`, dodgerName, user, gesture),
+  );
   return { total: evasion.total, hit: !cleared };
 }
 

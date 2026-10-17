@@ -15,7 +15,7 @@ import type {
 } from './systems/cpred/compendium.js';
 import type { LedgerEntryView } from './systems/cpred/economy.js';
 import type { CpredShopRoleTools } from './systems/cpred/shop.js';
-import type { RollToss } from './dice.js';
+import type { RollResult, RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
@@ -355,6 +355,13 @@ export interface CompendiumDeleteBroadcast {
 export interface ChatMessageBroadcast {
   seq?: number;
   message: ChatMessageView;
+  /**
+   * A roll thrown in place that rewrote this message (`chat:update` only): a
+   * dodge lands on the attack card instead of posting its own, so without this
+   * the table saw the verdict change with no dice ever falling. The client
+   * tumbles it first and only then swaps the card.
+   */
+  dice?: RollResult;
 }
 
 /** Payload of `presence:update`. */

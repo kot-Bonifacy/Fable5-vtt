@@ -1217,9 +1217,35 @@ export function connectSocket(userId: string): Socket {
   );
   // A message that changed after the fact (stage 15: the GM took an applied
   // damage entry back) — replaced in place, never appended again.
-  onPresented('chat:update', (broadcast: ChatMessageBroadcast) => {
-    if (chat().updateMessage(broadcast)) socket?.emit('state:request');
-  });
+  // A dodge (or a smart round's second go) rides one along as `dice` (17.10):
+  // the table watches it fall first, and only then the card changes its verdict.
+  onPresented(
+    'chat:update',
+    (broadcast: ChatMessageBroadcast) => {
+      const apply = () => {
+        if (chat().updateMessage(broadcast)) socket?.emit('state:request');
+      };
+      const dice = broadcast.dice;
+      if (
+        !dice ||
+        !chat().synced ||
+        toAnimationNotation(dice) === null ||
+        rollPresentation.lagMs() > CATCH_UP_LAG_MS
+      ) {
+        apply();
+        return;
+      }
+      const presentation = playRollAnimation(dice).then(async (played) => {
+        if (played)
+          await Promise.race([
+            new Promise((resolve) => window.setTimeout(resolve, CARD_REVEAL_DELAY_MS)),
+            rollPresentation.untilRollWaiting(),
+          ]);
+      });
+      rollPresentation.hold(presentation, apply);
+    },
+    (broadcast) => broadcast.dice !== undefined && toAnimationNotation(broadcast.dice) !== null,
+  );
   onPresented('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
   });

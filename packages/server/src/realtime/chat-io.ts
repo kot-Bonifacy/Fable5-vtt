@@ -509,10 +509,14 @@ export async function broadcastRedactedChatMessage(
   campaignId: string,
   message: ChatMessageView,
   event: 'chat:message' | 'chat:update' = 'chat:message',
+  /** A roll thrown in place for the table to tumble (`ChatMessageBroadcast.dice`). */
+  dice?: RollResult,
 ): Promise<void> {
   if (
     (event === 'chat:update' || (!message.roll && !message.rolltable)) &&
-    deferView(deps, (ready) => broadcastRedactedChatMessage(ready, campaignId, message, event))
+    deferView(deps, (ready) =>
+      broadcastRedactedChatMessage(ready, campaignId, message, event, dice),
+    )
   )
     return;
   const room = campaignRoom(campaignId);
@@ -520,7 +524,11 @@ export async function broadcastRedactedChatMessage(
   const sockets = await deps.io.in(room).fetchSockets();
   for (const socket of sockets) {
     const socketUser = (socket.data as { user: SessionUser }).user;
-    const payload: ChatMessageBroadcast = { seq, message: redactChatMessage(message, socketUser) };
+    const payload: ChatMessageBroadcast = {
+      seq,
+      message: redactChatMessage(message, socketUser),
+      ...(dice ? { dice } : {}),
+    };
     socket.emit(event, payload);
   }
   await deliverToLobbyParties(deps, campaignId, message, event);
