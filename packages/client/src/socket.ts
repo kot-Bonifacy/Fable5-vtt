@@ -295,6 +295,7 @@ import {
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_DEATH_SAVE_PENDING_MESSAGE,
   CPRED_FLEET_PROBLEMS,
@@ -2014,6 +2015,17 @@ function statEffectAckErrorText(code: string | undefined): string {
   }
 }
 
+/**
+ * Odmowa ataku albo przeładowania na czat. Odmowę z budżetu tury serwer już
+ * wpisał kartą „Odmowa” (`logRefusedAction` — dla MG i dla tego, kto próbował),
+ * więc notka obok mówiłaby to samo drugi raz, a do 17.10 mówiła to samym kodem
+ * („Błąd ataku: ROF_EXCEEDED”).
+ */
+function noteAttackRefusal(code: string): void {
+  if (code in CPRED_TURN_PROBLEM_MESSAGES) return;
+  useChatStore.getState().addNote(attackAckErrorText(code));
+}
+
 /** Polish hints for attack rejections (stage 16). */
 function attackAckErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
@@ -2113,7 +2125,7 @@ export function sendAttackRoll(
   };
   socket?.emit('attack:roll', payload, (ack: SocketAck<AttackRollResult>) => {
     if (!ack.ok) {
-      useChatStore.getState().addNote(attackAckErrorText(ack.error));
+      noteAttackRefusal(ack.error);
       return;
     }
     // Stage 16c: the shot did not happen because something was in the way, and
@@ -2160,7 +2172,7 @@ export function sendAttackEvade(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2170,7 +2182,7 @@ export function sendAttackEvade(
  */
 export function declineEvasion(payload: AttackNoEvadePayload): void {
   socket?.emit('attack:no-evade', payload, (ack: SocketAck<void>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2194,7 +2206,7 @@ export function sendAttackSmart(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:smart', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2247,7 +2259,7 @@ export function reloadWeapon(
     ...(attachmentId ? { attachmentId } : {}),
   };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2261,7 +2273,7 @@ export function reloadWeapon(
 export function clearWeaponJam(characterId: string, weaponRowId: string): void {
   const payload: WeaponClearJamPayload = { characterId, weaponRowId };
   socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2279,7 +2291,7 @@ export function drawWeapon(
 ): void {
   const payload: WeaponDrawPayload = { characterId, weaponRowId, mode };
   socket?.emit('weapon:draw', payload, (ack: SocketAck<{ hands: string[] }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 
@@ -2319,7 +2331,7 @@ export function setWeaponAttachment(
 ): void {
   const payload: WeaponAttachmentPayload = { characterId, weaponRowId, attachmentId, action };
   socket?.emit('weapon:attachment', payload, (ack: SocketAck<WeaponAttachmentResult>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+    if (!ack.ok) noteAttackRefusal(ack.error);
   });
 }
 

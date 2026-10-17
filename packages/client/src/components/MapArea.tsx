@@ -1708,13 +1708,9 @@ export function MapArea() {
     rendererRef.current?.setAimReady(weapon !== null);
     // A charge in hand asks for a square instead of a figure (stage 16d), so
     // the renderer draws the blast under the cursor rather than a crosshair.
-    // A shell keeps the crosshair and adds the cone it will sweep (stage 16g).
+    // A shell is an ordinary shot at a figure — no wedge under the cursor (17.10).
     rendererRef.current?.setAreaPreview(
-      weapon?.pointTarget
-        ? { kind: 'blast', sideM: CPRED_BLAST_SIDE_M }
-        : weapon?.coneRangeM
-          ? { kind: 'cone', rangeM: weapon.coneRangeM }
-          : null,
+      weapon?.pointTarget ? { kind: 'blast', sideM: CPRED_BLAST_SIDE_M } : null,
     );
   }, []);
 

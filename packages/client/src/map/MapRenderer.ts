@@ -53,7 +53,6 @@ import type {
 import {
   COVER_MIN_SIZE_PX,
   ZONE_MIN_SIZE_PX,
-  CPRED_CONE_HALF_ANGLE_DEG,
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
@@ -124,19 +123,16 @@ import {
 } from './walk-click.js';
 
 /**
- * A template the pointer drags around (stages 16d, 16g): the square a charge
- * covers, or the wedge a shotgun sprays. Two shapes, one drawing layer — and
- * one flag telling the map whether the next click still belongs to a figure.
+ * A template the pointer drags around (stage 16d): the square a charge covers.
+ * Klin śrutu (16g) zniknął spod kursora 17.10 (MG: „tego też nie powinno być”)
+ * — strzał śrutem to zwykły klik w figurę, a stożek pokazuje dopiero efekt.
  */
-export type AreaPreview = { kind: 'blast'; sideM: number } | { kind: 'cone'; rangeM: number };
+export type AreaPreview = { kind: 'blast'; sideM: number };
 
-/** Two previews are the same when their shape and their size are. */
+/** Two previews are the same when their size is. */
 function samePreview(a: AreaPreview | null, b: AreaPreview | null): boolean {
   if (a === null || b === null) return a === b;
-  if (a.kind !== b.kind) return false;
-  return a.kind === 'blast' && b.kind === 'blast'
-    ? a.sideM === b.sideM
-    : (a as { rangeM: number }).rangeM === (b as { rangeM: number }).rangeM;
+  return a.sideM === b.sideM;
 }
 
 /** One measurement drawn on the map: the line plus who is holding it. */
@@ -4209,9 +4205,8 @@ export class MapRenderer {
       }
       return;
     }
-    // A blast snaps to the square it will be centred on; a cone only needs a
-    // direction, so it follows the raw pointer.
-    const aim = this.areaPreview.kind === 'blast' ? snapToSquareCentre(point, scene) : { ...point };
+    // A blast snaps to the square it will be centred on.
+    const aim = snapToSquareCentre(point, scene);
     if (this.areaHover && this.areaHover.x === aim.x && this.areaHover.y === aim.y) return;
     this.areaHover = aim;
     this.drawAreaPreview();
@@ -4233,26 +4228,6 @@ export class MapRenderer {
     const perPixel = metresPerPixel(scene);
     if (perPixel <= 0) return;
     const k = this.overlayScale();
-
-    if (preview.kind === 'cone') {
-      // The wedge starts at the muzzle, so it needs the figure holding the gun;
-      // with none selected there is nothing to draw from.
-      const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
-      if (!node || node.destroyed) return;
-      const half = (node.token.size * scene.grid.sizePx) / 2;
-      const origin = { x: node.x + half, y: node.y + half };
-      const angle = Math.atan2(aim.y - origin.y, aim.x - origin.x);
-      const halfAngle = (CPRED_CONE_HALF_ANGLE_DEG * Math.PI) / 180;
-      const reach = preview.rangeM / perPixel;
-      this.blastGraphics
-        .moveTo(origin.x, origin.y)
-        .arc(origin.x, origin.y, reach, angle - halfAngle, angle + halfAngle)
-        .lineTo(origin.x, origin.y)
-        .fill({ color: BLAST_COLOR, alpha: 0.16 })
-        .stroke({ color: BLAST_COLOR, width: 2.5 * k, alpha: 0.85 });
-      return;
-    }
-
     const half = preview.sideM / perPixel / 2;
     this.blastGraphics
       .rect(aim.x - half, aim.y - half, half * 2, half * 2)
@@ -4967,10 +4942,8 @@ export class MapRenderer {
       // `Alt` w dłoni: ten klik jest pingiem, nie marszem (etap 35).
       this.pingArmed ||
       // A charge in hand owns the click: the next one says where it lands, not
-      // where the figure walks (stage 16d). A cone is *not* such a case — it is
-      // an ordinary shot at a figure that happens to spray (16g) — so only the
-      // shape that replaces the target blocks the route.
-      this.areaPreview?.kind === 'blast' ||
+      // where the figure walks (stage 16d).
+      this.areaPreview !== null ||
       // A weapon in hand no longer freezes the map (stage 16f): only the
       // pointer actually resting on a target does, because that click is
       // already spoken for.
