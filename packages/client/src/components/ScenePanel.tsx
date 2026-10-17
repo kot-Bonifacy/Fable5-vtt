@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { SceneSummary } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
+import { noteAck } from '../notices.js';
 import { readinessKey } from '../session-readiness.js';
 import { activateScene, createScene, deleteScene, viewScene } from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
@@ -18,7 +19,6 @@ function SceneRow({
   isViewed: boolean;
   onEdit: (sceneId: string) => void;
 }) {
-  const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   // W trakcie sesji aktywacja przenosi graczy od razu (15.10): scena bez
   // miejsca startu stawia ich figury na środku mapy, więc pytamy drugim
@@ -44,9 +44,9 @@ function SceneRow({
   async function remove() {
     if (!confirmDestructive(`Usunąć scenę „${scene.name}”?`)) return;
     const ack = await deleteScene(scene.id);
-    if (!ack.ok) {
-      setError(ack.error === 'SCENE_ACTIVE' ? 'Najpierw aktywuj inną scenę.' : 'Błąd usuwania.');
-    }
+    noteAck('scene', ack, (code) =>
+      code === 'SCENE_ACTIVE' ? 'Najpierw aktywuj inną scenę.' : 'Błąd usuwania.',
+    );
   }
 
   return (
@@ -92,7 +92,6 @@ function SceneRow({
           </>
         )}
       </div>
-      {error && <p className="auth-error">{error}</p>}
     </li>
   );
 }

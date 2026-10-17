@@ -32,7 +32,9 @@ export type NoticeTopic =
   | 'table'
   | 'clock'
   | 'session'
-  | 'character';
+  | 'character'
+  | 'handout'
+  | 'journal';
 
 export interface NoticeAction {
   label: string;

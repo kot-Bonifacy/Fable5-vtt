@@ -11,6 +11,7 @@ import {
 import { toggleOpening, updateWall } from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { wallErrorText } from '../mapErrors.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta ściany, drzwi i okna (etap 27l).
@@ -45,7 +46,6 @@ const KIND_HINTS: Record<WallKind, string> = {
 
 export function SceneCardWall({ wall }: { wall: WallView }) {
   const scene = useSceneStore((s) => s.effectiveScene);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const opening = isOpening(wall);
@@ -57,14 +57,14 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
     setBusy(true);
     const ack = await updateWall(wall.id, next);
     setBusy(false);
-    setError(ack.ok ? null : wallErrorText(ack.error));
+    noteAck('scene', ack, wallErrorText);
   }
 
   async function toggle() {
     setBusy(true);
     const ack = await toggleOpening(wall.id);
     setBusy(false);
-    setError(ack.ok ? null : wallErrorText(ack.error));
+    noteAck('scene', ack, wallErrorText);
   }
 
   return (
@@ -216,8 +216,6 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
           </div>
         </>
       )}
-
-      {error && <p className="ai-status-error">{error}</p>}
     </div>
   );
 }

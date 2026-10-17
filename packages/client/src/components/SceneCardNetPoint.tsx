@@ -12,6 +12,7 @@ import { useNetStore } from '../stores/netStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { netErrorText } from '../netErrors.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta punktu dostępu (etap 26b) — otwiera się klikiem w gniazdo na mapie.
@@ -37,7 +38,6 @@ export function SceneCardNetPoint({
   const tokens = useTokenStore((s) => s.tokens);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Biblioteka Architektur jedzie tylko na żądanie (26a), a selektor niżej jej
@@ -74,27 +74,24 @@ export function SceneCardNetPoint({
   async function jackIn() {
     if (!chosen) return;
     setBusy(true);
-    setError(null);
     const ack = await startNetRun(chosen.token.id, point.id);
     setBusy(false);
-    if (!ack.ok) setError(netErrorText(ack.error));
-    else onClose();
+    if (noteAck('net', ack, netErrorText)) onClose();
   }
 
   async function scan() {
     if (!chosen) return;
     setBusy(true);
-    setError(null);
     const ack = await runNetScan(chosen.token.id);
     setBusy(false);
-    if (!ack.ok) setError(netErrorText(ack.error));
+    noteAck('net', ack, netErrorText);
   }
 
   async function patch(next: Parameters<typeof updateNetAccessPoint>[0]) {
     setBusy(true);
     const ack = await updateNetAccessPoint(next);
     setBusy(false);
-    if (!ack.ok) setError(netErrorText(ack.error));
+    noteAck('net', ack, netErrorText);
   }
 
   const tooFar = chosen ? chosen.metres > NET_ACCESS_RANGE_M : false;
@@ -207,7 +204,6 @@ export function SceneCardNetPoint({
             )}
           </>
         )}
-        {error && <p className="ai-status-error">{error}</p>}
       </div>
     </>
   );

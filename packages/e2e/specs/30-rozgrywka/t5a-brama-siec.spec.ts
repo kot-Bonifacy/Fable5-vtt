@@ -771,13 +771,16 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       test.info().annotations.push({
         type: 'zjazd przez niezłamane hasło',
         description: `piętro ${(runOf('Iskra')?.state.position.floor ?? -1) + 1}; komunikat: ${JSON.stringify(
-          await window.locator('.net-run-notice').allTextContents(),
+          await ola.page.locator('.notice[data-notice-topic="net"]').allTextContents(),
         )}`,
       });
       expect(runOf('Iskra')?.state.position.floor).toBe(0);
-      await expect(window.locator('.net-run-notice')).toContainText('blokuje drogę', {
-        timeout: 2_000,
-      });
+      await expect(ola.page.locator('.notice[data-notice-topic="net"]')).toContainText(
+        'blokuje drogę',
+        {
+          timeout: 2_000,
+        },
+      );
     } finally {
       // Gdyby #31 wrócił, Ola stałaby już na Pliku — wraca na hasło (w górę
       // wolno zawsze), żeby dalszy przebieg był ten sam.

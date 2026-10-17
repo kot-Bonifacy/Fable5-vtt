@@ -437,8 +437,6 @@
   /* Panel MG nad LODem i strefa broniona — bursztyn właściciela systemu. */
   --net-gm-line: #7a3d18;
   --net-zone-line: #7a5312;
-  /* Superklej (etap 26c) — komunikat, który nie jest ani błędem, ani zgodą. */
-  --net-glue: #ffb38a;
 }
 
 /* ============================================================================

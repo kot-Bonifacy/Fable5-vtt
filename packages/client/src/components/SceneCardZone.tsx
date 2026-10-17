@@ -18,6 +18,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { netErrorText } from '../netErrors.js';
+import { noteAck } from '../notices.js';
 
 /** Jedno urządzenie na węźle kontrolnym — kandydat do wiązania strefy (#33). */
 interface NodeDevice {
@@ -84,7 +85,6 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   const statusRegistry = useTokenStore((s) => s.statuses);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [nodeDevices, setNodeDevices] = useState<NodeDevice[] | null>(null);
 
@@ -124,14 +124,14 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
     setBusy(true);
     const ack = await updateZone(zone.id, next);
     setBusy(false);
-    setError(ack.ok ? null : netErrorText(ack.error));
+    noteAck('net', ack, netErrorText);
   }
 
   async function fire() {
     setBusy(true);
     const ack = await fireZone(zone.id);
     setBusy(false);
-    setError(ack.ok ? null : netErrorText(ack.error));
+    noteAck('net', ack, netErrorText);
   }
 
   const exempt = zone.exempt ?? [];
@@ -346,7 +346,6 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
           Odpal system
         </button>
       </div>
-      {error && <p className="ai-status-error">{error}</p>}
     </div>
   );
 }

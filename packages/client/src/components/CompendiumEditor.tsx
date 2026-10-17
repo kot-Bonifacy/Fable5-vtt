@@ -1513,7 +1513,7 @@ export function CompendiumEditor() {
           ) : null}
 
           {issues.length > 0 ? (
-            <ul className="sheet-issues">
+            <ul className="auth-error">
               {issues.map((message) => (
                 <li key={message}>{message}</li>
               ))}

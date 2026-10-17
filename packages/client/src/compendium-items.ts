@@ -16,6 +16,7 @@ import {
   sendCyberwareAction,
 } from './socket.js';
 import { useCharacterStore } from './stores/characterStore.js';
+import { notifyInfo, notifyRefusal } from './notices.js';
 
 /**
  * Putting a compendium entry on a character sheet (stage 13).
@@ -33,6 +34,24 @@ function nextRowId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/**
+ * Zdanie po próbie: `ok` mówi, czy to wynik (informacja), czy odmowa —
+ * kanał komunikatów pokazuje je inaczej (etap 55b).
+ */
+export interface ItemNote {
+  ok: boolean;
+  text: string;
+}
+
+const done = (text: string): ItemNote => ({ ok: true, text });
+const refused = (text: string): ItemNote => ({ ok: false, text });
+
+/** Zdanie z Kompendium do kanału nad mapą: wynik sam znika, odmowa czeka na następną próbę. */
+export function showItemNote(note: ItemNote): void {
+  if (note.ok) notifyInfo(note.text, { topic: 'character' });
+  else notifyRefusal('character', note.text);
+}
+
 /** Etap 46c: amunicję kupuje się paczkami do kalibru wybranego typem broni. */
 export interface AmmoPurchaseChoice {
   weaponTypeId: string;
@@ -45,29 +64,30 @@ export async function addCompendiumItemToCharacter(
   entry: CompendiumEntry,
   resolved: ResolvedWeapon | null,
   ammo?: AmmoPurchaseChoice,
-): Promise<string> {
+): Promise<ItemNote> {
   const character = useCharacterStore.getState().characters[characterId];
-  if (!character) return 'Nie znaleziono postaci.';
+  if (!character) return refused('Nie znaleziono postaci.');
   const data: CpredCharacterData = character.data;
 
   // Etap 46c: pudełko amunicji — paczki do kalibru, sklejone z takim samym.
   if (isAmmoEntry(entry)) {
     const type = ammo ? useCompendiumStore.getState().weaponTypeById[ammo.weaponTypeId] : undefined;
-    if (!ammo || !type) return 'Wybierz kaliber — amunicję dodaje się do konkretnej broni.';
+    if (!ammo || !type)
+      return refused('Wybierz kaliber — amunicję dodaje się do konkretnej broni.');
     const box = cpredPurchasedAmmoRow(toAmmoProfile(entry), type, ammo.packs, nextRowId());
-    if (!box?.ammo) return 'Ten nabój nie pasuje do wybranego kalibru.';
+    if (!box?.ammo) return refused('Ten nabój nie pasuje do wybranego kalibru.');
     const gear = cpredPutAmmo(data.gear, { ...box, ammo: box.ammo }, box.qty, nextRowId);
-    if (gear.length > ITEM_ROWS_MAX) return 'Lista wyposażenia jest pełna.';
+    if (gear.length > ITEM_ROWS_MAX) return refused('Lista wyposażenia jest pełna.');
     queueCharacterSave(characterId, { data: { gear } });
-    return `Dodano „${box.name}” × ${box.qty}.`;
+    return done(`Dodano „${box.name}” × ${box.qty}.`);
   }
 
   if (entry.category === 'criticalInjury') {
     // Injuries are drawn by the damage flow, never bought.
-    return 'Rany krytyczne trafiają na kartę z rzutu na obrażenia.';
+    return refused('Rany krytyczne trafiają na kartę z rzutu na obrażenia.');
   }
   if (entry.category === 'cyberware') {
-    if (data.cyberware.length >= ITEM_ROWS_MAX) return 'Lista cyborgizacji jest pełna.';
+    if (data.cyberware.length >= ITEM_ROWS_MAX) return refused('Lista cyborgizacji jest pełna.');
     // Not a sheet edit like every other row here (stage 23a): the Humanity a
     // piece of chrome costs is rolled on the server, so the client sends the
     // intention and lets the card and the refreshed sheet come back. Free here
@@ -80,27 +100,30 @@ export async function addCompendiumItemToCharacter(
       entryId: entry.id,
       payment: 'none',
     });
-    if (refusal) return refusal;
+    if (refusal) return refused(refusal);
     const cost = entry.humanityLoss ?? entry.humanityLossFixed;
-    return cost
-      ? `Instaluję „${entry.name}” bez opłaty — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
-      : `Instaluję „${entry.name}” bez opłaty — bez utraty Człowieczeństwa.`;
+    return done(
+      cost
+        ? `Instaluję „${entry.name}” bez opłaty — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
+        : `Instaluję „${entry.name}” bez opłaty — bez utraty Człowieczeństwa.`,
+    );
   }
 
   const purchased = purchasedSheetRow(entry, resolved, nextRowId());
-  if (!purchased) return 'Tego wpisu nie dodaje się na kartę.';
-  if (data[purchased.list].length >= ITEM_ROWS_MAX) return 'Ta lista na karcie jest pełna.';
+  if (!purchased) return refused('Tego wpisu nie dodaje się na kartę.');
+  if (data[purchased.list].length >= ITEM_ROWS_MAX)
+    return refused('Ta lista na karcie jest pełna.');
 
   switch (purchased.list) {
     case 'weapons':
       queueCharacterSave(characterId, { data: { weapons: [...data.weapons, purchased.row] } });
-      return `Dodano „${entry.name}” do broni.`;
+      return done(`Dodano „${entry.name}” do broni.`);
     case 'armor':
       queueCharacterSave(characterId, { data: { armor: [...data.armor, purchased.row] } });
-      return `Dodano „${entry.name}” do pancerza.`;
+      return done(`Dodano „${entry.name}” do pancerza.`);
     default:
       queueCharacterSave(characterId, { data: { gear: [...data.gear, purchased.row] } });
-      return `Dodano „${entry.name}” do sprzętu.`;
+      return done(`Dodano „${entry.name}” do sprzętu.`);
   }
 }
 
@@ -110,11 +133,14 @@ export async function addCompendiumItemToCharacter(
  * sklep), a „Znaleziony — montaż” wszczepia go za samą robociznę i zdejmuje.
  * Tylko MG — gracz dostaje go z łupu albo z wymiany.
  */
-export function addFoundCyberwareToCharacter(characterId: string, entry: CompendiumEntry): string {
+export function addFoundCyberwareToCharacter(
+  characterId: string,
+  entry: CompendiumEntry,
+): ItemNote {
   const character = useCharacterStore.getState().characters[characterId];
-  if (!character) return 'Nie znaleziono postaci.';
+  if (!character) return refused('Nie znaleziono postaci.');
   const gear = character.data.gear;
-  if (gear.length >= ITEM_ROWS_MAX) return 'Lista wyposażenia jest pełna.';
+  if (gear.length >= ITEM_ROWS_MAX) return refused('Lista wyposażenia jest pełna.');
   queueCharacterSave(characterId, {
     data: {
       gear: [
@@ -123,7 +149,7 @@ export function addFoundCyberwareToCharacter(characterId: string, entry: Compend
       ],
     },
   });
-  return `Dodano „${entry.name}” do Wyposażenia — montaż: „Znaleziony”.`;
+  return done(`Dodano „${entry.name}” do Wyposażenia — montaż: „Znaleziony”.`);
 }
 
 /** Buys the entry for the character; the server decides whether it can afford it. */
@@ -132,15 +158,15 @@ export async function buyCompendiumItemForCharacter(
   entry: CompendiumEntry,
   price?: number,
   ammo?: AmmoPurchaseChoice,
-): Promise<string> {
+): Promise<ItemNote> {
   const ack = await buyCompendiumEntry({
     characterId,
     entryId: entry.id,
     ...(price !== undefined ? { price } : {}),
     ...(ammo ? { weaponTypeId: ammo.weaponTypeId, packs: ammo.packs } : {}),
   });
-  if (!ack.ok) return economyErrorText(ack.error);
+  if (!ack.ok) return refused(economyErrorText(ack.error));
   const balance = ack.data ? formatEddies(ack.data.balance) : '?';
   const packs = ammo ? ` — paczek: ${ammo.packs}` : '';
-  return `Kupiono „${entry.name}”${packs}. Zostało ${balance} ed.`;
+  return done(`Kupiono „${entry.name}”${packs}. Zostało ${balance} ed.`);
 }

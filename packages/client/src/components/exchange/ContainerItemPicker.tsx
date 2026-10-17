@@ -15,6 +15,7 @@ import {
 import {
   addCompendiumItemToCharacter,
   addFoundCyberwareToCharacter,
+  showItemNote,
 } from '../../compendium-items.js';
 import { useCompendiumStore } from '../../stores/compendiumStore.js';
 import { ItemIcon, useEntryIcon } from '../ItemIcons.js';
@@ -59,7 +60,6 @@ export function ContainerItemPicker({
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CompendiumCategory | ''>('');
   const [ammo, setAmmo] = useState<CompendiumEntry | null>(null);
-  const [note, setNote] = useState<string | null>(null);
 
   const types = useMemo(() => new Map(Object.entries(weaponTypeById)), [weaponTypeById]);
 
@@ -78,16 +78,15 @@ export function ContainerItemPicker({
   async function pick(entry: CompendiumEntry) {
     if (isAmmoEntry(entry)) {
       setAmmo(entry);
-      setNote(null);
       return;
     }
     if (entry.category === 'cyberware') {
-      setNote(addFoundCyberwareToCharacter(characterId, entry));
+      showItemNote(addFoundCyberwareToCharacter(characterId, entry));
       return;
     }
     const resolved =
       entry.category === 'weapon' ? resolveWeapon(entry, { weaponTypeById: types }) : null;
-    setNote(await addCompendiumItemToCharacter(characterId, entry, resolved));
+    showItemNote(await addCompendiumItemToCharacter(characterId, entry, resolved));
   }
 
   return (
@@ -129,7 +128,7 @@ export function ContainerItemPicker({
           key={ammo.id}
           entry={ammo}
           onAdd={async (choice) => {
-            setNote(await addCompendiumItemToCharacter(characterId, ammo, null, choice));
+            showItemNote(await addCompendiumItemToCharacter(characterId, ammo, null, choice));
             setAmmo(null);
           }}
           onCancel={() => setAmmo(null)}
@@ -164,7 +163,7 @@ export function ContainerItemPicker({
         </ul>
       )}
       <p className="weapon-picker-hint" aria-live="polite">
-        {note ?? 'Klik wkłada rzecz do pojemnika za darmo — wybór zostaje otwarty na następne.'}
+        Klik wkłada rzecz do pojemnika za darmo — wybór zostaje otwarty na następne.
       </p>
     </div>
   );

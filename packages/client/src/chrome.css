@@ -259,9 +259,15 @@ textarea {
 
 /* Czerwony baner „Tura tej figury" i belka HUD-u — pęknięcia tuszu. Z pasków
    kanału komunikatów (etap 55) tylko czerwona odmowa: na czerni jasne rysy
-   czytały się jak kurz, a nocne ciemne rysy brudziły bursztyn. */
+   czytały się jak kurz, a nocne ciemne rysy brudziły bursztyn. Od 55b także
+   czerwone komunikaty na miejscu (błąd pola, odmowa pod slotem HUD). */
 .hud-turn-banner,
-.notice--danger {
+.notice--danger,
+.auth-error,
+.creator-error,
+.awareness-error,
+.hud-refusal,
+.aim-tooltip-refusal {
   background-image: var(--cp-cracks);
   background-size: var(--cp-cracks-size);
 }

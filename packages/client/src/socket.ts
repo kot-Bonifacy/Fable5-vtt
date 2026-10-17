@@ -318,6 +318,7 @@ import {
   TOKEN_MOVE_RATE_HZ,
   TOKEN_AIM_INTERVAL_MS,
   TOKEN_PATH_MAX_POINTS,
+  isTradeActive,
   parseChatInput,
 } from '@vtt/shared';
 import { playRollAnimation, toAnimationNotation, cancelDiceAnimations } from './dice3d.js';
@@ -795,6 +796,9 @@ export function connectSocket(userId: string): Socket {
     const known = useExchangeStore.getState().trades[trade.id];
     if (trade.status === 'invited' && !known && trade.sides[1].mine) notifyGame('inventory');
     useExchangeStore.getState().applyTrade(trade);
+    // Ślad po handlu, który właśnie się skończył (etap 55b: z doku do kanału).
+    if (!isTradeActive(trade))
+      notifyInfo(tradeClosedText(trade), { title: 'Wymiana', topic: 'exchange' });
   });
 
   // Etap 46a: sklepy. Półkę dostaje tylko ten, kto ją ogląda (`merchant:view`
@@ -1764,6 +1768,15 @@ export function merchantErrorText(code: string): string {
 }
 
 /** Polskie komunikaty odmowy przy handlu — wspólne kody z 38b idą przez `inventoryErrorText`. */
+/** Ślad po zakończonym handlu: „Wymienione: A ⇄ B” albo „Handel przerwany — kto (dlaczego)”. */
+export function tradeClosedText(trade: TradeView): string {
+  if (trade.status === 'done') return `Wymienione: ${trade.sides[0].name} ⇄ ${trade.sides[1].name}`;
+  const by = trade.closedBy ? ` — ${trade.closedBy}` : '';
+  const why =
+    trade.status === 'cancelled' && trade.notice ? ` (${tradeErrorText(trade.notice)})` : '';
+  return `Handel przerwany${by}${why}`;
+}
+
 export function tradeErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {

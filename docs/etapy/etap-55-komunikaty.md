@@ -1,8 +1,7 @@
 # Etap 55 — Komunikaty wzorem Foundry: jeden kanał nad mapą, jedna skóra
 
-**Faza:** przed betą (zlecenie MG z 17.10 spoza planu) · **Wymaga etapów:** 54 · **Stan:** 🟨
-55a zrobiony 17.10, 55b do zrobienia (plan spisany tego samego dnia; MG zlecił etap przed
-refaktoryzacją, jak 53 i 54).
+**Faza:** przed betą (zlecenie MG z 17.10 spoza planu) · **Wymaga etapów:** 54 · **Stan:** ✅
+55a i 55b zrobione 17.10 (MG zlecił etap przed refaktoryzacją, jak 53 i 54).
 
 ## Skąd ten etap
 
@@ -64,12 +63,12 @@ MG (17.10): komunikaty wyskakujące graczom stoją w różnych miejscach ekranu 
 
 ## 55b — odmowy w oknach i skóra komunikatów na miejscu
 
-- [ ] Odmowy po kliknięciu w oknach do kanału: Sieć (`net-run-notice`), Wymiana / sklep
+- [x] Odmowy po kliknięciu w oknach do kanału: Sieć (`net-run-notice`), Wymiana / sklep
       (`trade-notice`, `inventory-message`, `cp-shop-message`), karty obiektów sceny, zegar,
       panele kart (`setError` po `ack`).
-- [ ] Nowa skóra (ten sam rodzaj, kolor i nagłówek) dla: `.hud-refusal`, `.evasion-prompt`,
+- [x] Nowa skóra (ten sam rodzaj, kolor i nagłówek) dla: `.hud-refusal`, `.evasion-prompt`,
       `.aim-tooltip-refusal`, `.gm-attention-toast`, błędów pól (`auth-error`, `creator-error`).
-- [ ] Umowa w `ui` i oględziny jak w 55a.
+- [x] Umowa w `ui` i oględziny jak w 55a.
 
 ## Rozstrzygnięcia przy implementacji 55a (17.10)
 
@@ -91,6 +90,37 @@ MG (17.10): komunikaty wyskakujące graczom stoją w różnych miejscach ekranu 
   (`noteMove` w `MapArea`).
 - Najwyżej 4 paski naraz (najpierw ustępuje najstarszy bez przycisków); to samo zdanie odświeża
   wiersz i liczy czas od nowa; zmiana kampanii czyści kanał.
+
+## Rozstrzygnięcia przy implementacji 55b (17.10)
+
+- **Granica „kanał / na miejscu”.** Do kanału: odmowa i wynik **kliknięcia** w oknie przy stole —
+  Wymiana (wszystkie panele, dok, ustawienia sklepu na karcie), okno Sieci, karty obiektów sceny,
+  panele karty (awanse, Zmysł Walki, Operator, Wsparcie, portfel, Kompendium: kup / dodaj /
+  zainstaluj / poproś Medyka), „Akcje” walki, start starcia, „Postacie” MG (właściciel, wzorzec,
+  usunięcie, gotowość, Rytuały stołu), usunięcie sceny, biblioteka grafik, Kopie (wczytanie
+  karty i sceny), udostępnienie notatki, „widzi stół” w dzienniku. **Na miejscu** (w nowej
+  skórze): błędy **formularzy z polami** (logowanie i hasła, Panel MG i administratora, kreator,
+  edytory botów, notatek, dziennika, wiedzy, tabel, sceny, NPC-a, Kompendium, „Wstrzymaj akcję”
+  i Pochwycenie w HUD-zie) oraz **dialogi** (portrety, kadr) — dialog zasłania mapę, a zdanie
+  dotyczy pola obok.
+- **Stany w oknach to `InlineNotice`** (`NoticeColumn.tsx`): handel „Oferta nieaktualna”
+  i powód z serwera, braki koszyka sklepu („Nie da się zapłacić”), sklep nieczynny, błąd
+  wczytania półki, klej i wirus w budowie w Sieci, braki karty (`sheet-issues`). Bez ✕ — znika
+  razem ze stanem.
+- **Błąd pola i zdanie pod slotem** to dalej jeden akapit (`.auth-error`, `.creator-error`,
+  `.awareness-error`, `.hud-refusal`, `.aim-tooltip-refusal`) — skórę i nagłówek („Błąd” /
+  „Odmowa”) daje CSS (`::before` w `21-notices.css`), bo klas jest kilkadziesiąt, a E2E czyta
+  ich tekst `toHaveText`. Pęknięcia tuszu jak na czerwonym pasku kanału.
+- **„Strzelaj mimo osłony” w Sieci** to pytanie w kanale (`notifyChoice` w temacie `net`), nie
+  przycisk pod szybem. Wynik akcji w Sieci („Hasło złamane…”) — informacja, sama znika.
+- **Ślad po handlu** („Wymienione: A ⇄ B”, „Handel przerwany — kto (dlaczego)”) wyszedł z doku
+  do kanału jako informacja (`tradeClosedText` w `socket.ts`); `exchangeStore.lastClosed` usunięty.
+- **Kompendium mówi `{ ok, text }`** (`ItemNote` w `compendium-items.ts`, `showItemNote`) — jedno
+  zdanie bywało i wynikiem, i odmową; kanał musi wiedzieć, którym kolorem je pokazać.
+- **Wezwanie do Uniku** to bursztynowy pasek „Wezwanie — Unik / Odskok” z przyciskami paska
+  (`notice-action`) i miarowym rozjaśnieniem; **„Czeka na MG”** — bursztynowy pasek z nagłówkiem
+  „Czeka na MG”, ✕ i „Przejdź”. Lista po kliknięciu znacznika zostaje listą.
+- **Nowe tematy:** `handout`, `journal`.
 
 ## Poza zakresem
 

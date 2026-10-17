@@ -444,46 +444,41 @@
   flex-direction: column;
   gap: 0.4rem;
   width: min(22rem, calc(100vw - 2rem));
+  /* Skóra paska kanału (etap 55b); cień przez `filter`, bo ścięty róg obcina
+     `box-shadow`. Wezwanie pulsuje, dopóki serwer czeka na decyzję. */
+  filter: var(--notice-shadow);
 }
 
-.evasion-prompt-row {
-  padding: 0.5rem 0.65rem;
-  background: var(--bg-panel);
-  border: 2px solid var(--err);
-  border-radius: 6px;
-  box-shadow: 0 0 14px rgb(var(--err-rgb) / 45%);
-  animation: dice-cup-pulse 1.6s ease-in-out infinite;
-  --cup-glow: var(--err-rgb);
+/* Dwie klasy: `.notice` z `21-notices.css` stoi później w kaskadzie. */
+.evasion-prompt .evasion-prompt-row {
+  animation:
+    notice-in 220ms ease-out,
+    notice-call 1.6s ease-in-out 220ms infinite;
 }
 
 .evasion-prompt-head {
-  margin: 0;
-  color: var(--err);
-  font-weight: 700;
-}
-
-.evasion-prompt-head strong {
-  color: var(--text);
+  font-weight: 600;
 }
 
 .evasion-prompt-detail,
 .evasion-prompt-more {
   margin: 0.2rem 0 0;
-  color: var(--text-dim);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+}
+
+.evasion-prompt-more {
+  padding: 0.25rem 0.6rem;
+  background-color: var(--notice-info);
+  color: var(--notice-on-dark);
 }
 
 .evasion-prompt-actions {
-  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
 }
 
 .evasion-prompt-ready {
-  color: var(--err);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 /* Weapon rows carry more controls than the generic row table. */

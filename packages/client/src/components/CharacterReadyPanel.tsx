@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cpredRoleChores } from '@vtt/shared';
 import { setCharacterPlayReady } from '../socket.js';
+import { noteAck } from '../notices.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useCharacterStore, type CharacterSheetView } from '../stores/characterStore.js';
 import { RoleChoresList } from './RoleChores.js';
@@ -54,16 +55,14 @@ function ReadyRow({ character }: { character: CharacterSheetView }) {
   const registry = useCharacterStore((s) => s.registry);
   const openSheet = useCharacterStore((s) => s.openSheet);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const chores = cpredRoleChores(character.data, registry);
   const role = registry.roles.find((entry) => entry.id === character.data.roleId)?.name;
 
   async function approve() {
     setBusy(true);
-    setError(null);
     const ack = await setCharacterPlayReady(character.id, true);
     setBusy(false);
-    if (!ack.ok) setError(`Nie udało się zapisać gotowości: ${ack.error}`);
+    noteAck('character', ack, (code) => `Nie udało się zapisać gotowości: ${code}`);
   }
 
   return (
@@ -92,11 +91,6 @@ function ReadyRow({ character }: { character: CharacterSheetView }) {
       <div className="creation-ready-chores">
         <RoleChoresList chores={chores} characterId={character.id} />
       </div>
-      {error && (
-        <p role="alert" className="auth-error creation-rank-error">
-          {error}
-        </p>
-      )}
     </li>
   );
 }

@@ -12,11 +12,13 @@ import {
   cpredInventoryView,
 } from '@vtt/shared';
 import { buyBackOf, clientPriceContext, merchantQuote } from '../../exchange-quote.js';
+import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { dealMerchant, merchantErrorText, viewMerchant } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
+import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
 import { formatEd, itemDetail, itemKey } from './items.js';
 
@@ -63,7 +65,6 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   const [basket, setBasket] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
@@ -79,7 +80,6 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   useEffect(() => {
     setBasket({});
     setSelling({});
-    setMessage(null);
     void load();
   }, [merchantId]);
 
@@ -203,7 +203,7 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     });
     setBusy(false);
     if (!ack.ok) {
-      setMessage(merchantErrorText(ack.error));
+      notifyRefusal('exchange', merchantErrorText(ack.error));
       // Półka mogła się zmienić (cena, ostatnia sztuka, handlarz padł) —
       // pokazujemy nową, zanim ktoś kliknie drugi raz.
       void load();
@@ -212,8 +212,10 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
     setBasket({});
     setSelling({});
     const total = ack.data?.total ?? quote.total;
-    setMessage(
+    clearNotices('exchange');
+    notifyInfo(
       `${total >= 0 ? `Zapłacone: ${formatEd(total)}` : `Dostajesz: ${formatEd(-total)}`}. Zostało ${ack.data ? formatEd(ack.data.balance) : '? ed'}.`,
+      { title: 'Sklep', topic: 'exchange' },
     );
   }
 
@@ -228,7 +230,13 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   if (!view) {
     return (
       <div className="trade-footer">
-        <p className="inventory-message">{loadError ?? 'Wczytuję półkę…'}</p>
+        {loadError ? (
+          <InlineNotice tone="danger" title="Sklep" role="status">
+            {loadError}
+          </InlineNotice>
+        ) : (
+          <p className="inventory-hint">Wczytuję półkę…</p>
+        )}
       </div>
     );
   }
@@ -247,9 +255,9 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   return (
     <>
       {closed && (
-        <p className="exchange-closed" role="status">
+        <InlineNotice tone="warn" title="Sklep nieczynny" className="exchange-closed" role="status">
           {MERCHANT_CLOSED_LABELS[closed]} — półkę widać, kupić się nie da.
-        </p>
+        </InlineNotice>
       )}
       <div className="exchange-columns exchange-columns--three">
         <div
@@ -461,12 +469,11 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
             {quote.haggleOff > 0 ? ` (targ Fixera: −${formatEd(quote.haggleOff)})` : ''}
           </p>
         )}
-        {problemTexts.map((text) => (
-          <p key={text} className="trade-notice">
-            {text}
-          </p>
-        ))}
-        {message && <p className="inventory-message">{message}</p>}
+        {problemTexts.length > 0 && (
+          <InlineNotice tone="warn" title="Nie da się zapłacić" role="status">
+            {problemTexts.join(' ')}
+          </InlineNotice>
+        )}
         <div className="inventory-actions">
           <button
             type="button"

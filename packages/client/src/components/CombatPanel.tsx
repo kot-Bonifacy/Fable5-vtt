@@ -37,6 +37,7 @@ import { useCombatStore } from '../stores/combatStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { noteAck } from '../notices.js';
 import { EmptyState } from './EmptyState.js';
 
 /** Tokens likely to fight: the players' characters come pre-ticked. */
@@ -51,7 +52,6 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
   const toggleSelection = useCombatStore((s) => s.toggleSelection);
   const setSelection = useCombatStore((s) => s.setSelection);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
 
   // Pre-tick the player tokens once, then leave the GM's choices alone.
@@ -64,10 +64,9 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
   async function begin() {
     if (!sceneId || selection.length === 0) return;
     setStarting(true);
-    setError(null);
     const ack = await startCombat(sceneId, selection);
     setStarting(false);
-    if (!ack.ok) setError('Nie udało się założyć starcia.');
+    noteAck('action', ack, () => 'Nie udało się założyć starcia.');
   }
 
   return (
@@ -99,7 +98,6 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
           ))}
         </ul>
       )}
-      {error && <p className="auth-error">{error}</p>}
       <div className="scene-editor-row">
         <button
           className="primary-button"

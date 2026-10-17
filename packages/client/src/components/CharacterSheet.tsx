@@ -202,6 +202,8 @@ import {
   transferEddies,
   updateCharacter,
 } from '../socket.js';
+import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
+import { InlineNotice } from './NoticeColumn.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { askForCheck } from '../stores/checkStore.js';
@@ -479,13 +481,11 @@ function CharacterSheetWindow({
       )}
 
       {issueList.length > 0 && (
-        <div className="sheet-issues">
+        <InlineNotice tone="danger" title="Błąd" className="sheet-issues" role="alert">
           {issueList.map((message) => (
-            <p key={message} className="auth-error">
-              {message}
-            </p>
+            <p key={message}>{message}</p>
           ))}
-        </div>
+        </InlineNotice>
       )}
       <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
@@ -3942,7 +3942,6 @@ function WalletSection({
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [entries, setEntries] = useState<LedgerEntryView[]>([]);
   const [payees, setPayees] = useState<EconomyPayee[]>([]);
-  const [note, setNote] = useState<string | null>(null);
   const [payeeId, setPayeeId] = useState('');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -3972,7 +3971,7 @@ function WalletSection({
   async function send() {
     const value = Number.parseInt(amount, 10);
     if (!payeeId || !Number.isInteger(value) || value <= 0) {
-      setNote('Podaj kwotę i odbiorcę.');
+      notifyRefusal('character', 'Podaj kwotę i odbiorcę.');
       return;
     }
     const ack = await transferEddies({
@@ -3981,14 +3980,11 @@ function WalletSection({
       amount: value,
       ...(reason.trim() ? { note: reason.trim() } : {}),
     });
-    if (!ack.ok) {
-      setNote(economyErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('character', ack, economyErrorText)) return;
     setAmount('');
     setReason('');
     const name = payees.find((p) => p.id === payeeId)?.name ?? 'odbiorcy';
-    setNote(`Przelano ${formatEddies(value)} ed do: ${name}.`);
+    notifyInfo(`Przelano ${formatEddies(value)} ed do: ${name}.`, { topic: 'character' });
   }
 
   return (
@@ -4091,7 +4087,6 @@ function WalletSection({
               ))}
             </ul>
           )}
-          {note ? <p className="compendium-note">{note}</p> : null}
         </div>
       ) : null}
     </section>

@@ -152,16 +152,6 @@
   container-type: inline-size;
 }
 
-.sheet-window .sheet-issues {
-  background: var(--cp-red-deep);
-  border-top: none;
-  color: var(--cp-on-red);
-}
-
-.sheet-window .sheet-issues .auth-error {
-  color: var(--cp-on-red);
-}
-
 /* ===== Papier (naprawa 2c) =====
 
    Karta i kreator są wydrukiem na starej, zużytej kartce. Dwie rzeczy, dwa
@@ -2161,15 +2151,10 @@
   width: 4.5rem;
 }
 
-.cp-shop-hint,
-.cp-shop-message {
+.cp-shop-hint {
   margin: 0.25rem 0.35rem;
   font-size: 0.72rem;
   color: var(--cp-ink-dim);
-}
-
-.cp-shop-message {
-  color: var(--cp-ink);
 }
 
 /* --- ekwipunek: plakietki i pola z dołu strony drugiej --- */

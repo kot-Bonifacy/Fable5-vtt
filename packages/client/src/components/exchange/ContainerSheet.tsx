@@ -12,6 +12,7 @@ import {
   isContainerCard,
   type ContainerLock,
 } from '@vtt/shared';
+import { noteAck, notifyInfo, notifyRefusal } from '../../notices.js';
 import { configContainer, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore, type CharacterSheetView } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
@@ -45,7 +46,6 @@ export function ContainerSheet({
   const registry = useCharacterStore((s) => s.registry);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
-  const [message, setMessage] = useState<string | null>(null);
   const [keyHolder, setKeyHolder] = useState('');
   const [picking, setPicking] = useState(false);
   const data = character.data;
@@ -64,10 +64,10 @@ export function ContainerSheet({
   const skillName = (id: string) => registry.skills.find((skill) => skill.id === id)?.name ?? id;
 
   async function config(patch: Parameters<typeof configContainer>[0], done?: string) {
-    setMessage(null);
     const ack = await configContainer(patch);
-    if (!ack.ok) setMessage(inventoryErrorText(ack.error));
-    else if (done) setMessage(done);
+    if (noteAck('character', ack, inventoryErrorText) && done) {
+      notifyInfo(done, { topic: 'character' });
+    }
   }
 
   function toggleSkill(id: string, on: boolean) {
@@ -75,7 +75,7 @@ export function ContainerSheet({
       ? [...new Set([...container.skills, id])]
       : container.skills.filter((skill) => skill !== id);
     if (next.length === 0) {
-      setMessage('Zamek musi dać się otworzyć przynajmniej jedną Umiejętnością.');
+      notifyRefusal('character', 'Zamek musi dać się otworzyć przynajmniej jedną Umiejętnością.');
       return;
     }
     void config({ characterId: character.id, skills: next });
@@ -285,7 +285,6 @@ export function ContainerSheet({
           />
         </div>
       </section>
-      {message && <p className="inventory-message">{message}</p>}
     </div>
   );
 }

@@ -32,6 +32,7 @@ import {
   saveHandout,
   shareHandout,
 } from '../socket.js';
+import { noteAck } from '../notices.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
@@ -121,16 +122,14 @@ function PlayerList() {
 function ShareControls({ handout }: { handout: HandoutView }) {
   const recipients = useHandoutStore((s) => s.recipients);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const shared = useMemo(() => new Set(handout.sharedWith ?? []), [handout.sharedWith]);
 
   async function setShare(userIds: string[]) {
     if (busy) return;
     setBusy(true);
-    setError(null);
     const ack = await shareHandout(handout.id, userIds);
     setBusy(false);
-    if (!ack.ok) setError(handoutErrorText(ack.error));
+    noteAck('handout', ack, handoutErrorText);
   }
 
   function toggle(userId: string) {
@@ -183,7 +182,6 @@ function ShareControls({ handout }: { handout: HandoutView }) {
           Nikomu
         </button>
       )}
-      {error && <span className="auth-error">{error}</span>}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { apiGet, apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { plural } from '../plural.js';
+import { noteAck, notifyInfo } from '../notices.js';
 import { deleteTokenAsset } from '../socket.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { startTokenDrag } from '../map/token-drag.js';
@@ -28,7 +29,6 @@ export function TokenPanel() {
   const [assets, setAssets] = useState<TokenAssetView[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [blankName, setBlankName] = useState('');
 
@@ -61,23 +61,20 @@ export function TokenPanel() {
 
   async function remove(asset: TokenAssetView) {
     setConfirmingId(null);
-    setError(null);
     const ack = await deleteTokenAsset(asset.id);
-    if (!ack.ok) {
-      setError(
-        ack.error === 'ASSET_NOT_FOUND'
-          ? 'Tej grafiki już nie ma w bibliotece.'
-          : 'Nie udało się zdjąć grafiki z biblioteki.',
-      );
-      return;
-    }
+    const refused = (code: string) =>
+      code === 'ASSET_NOT_FOUND'
+        ? 'Tej grafiki już nie ma w bibliotece.'
+        : 'Nie udało się zdjąć grafiki z biblioteki.';
+    if (!noteAck('token', ack, refused)) return;
     setAssets((current) => current.filter((entry) => entry.id !== asset.id));
     if (placement?.imageUrl === asset.url) setPlacement(null);
     const cleared = ack.data?.clearedTokens ?? 0;
-    setNotice(
+    notifyInfo(
       cleared === 0
         ? `Zdjęto „${asset.name}" z biblioteki.`
         : `Zdjęto „${asset.name}"; ${plural(cleared, 'żeton wrócił', 'żetony wróciły', 'żetonów wróciło')} do krążka.`,
+      { topic: 'token' },
     );
   }
 
@@ -150,10 +147,7 @@ export function TokenPanel() {
                   className="small-button character-delete token-asset-remove"
                   title="Zdejmij grafikę z biblioteki"
                   aria-label={`Zdejmij grafikę „${asset.name}” z biblioteki`}
-                  onClick={() => {
-                    setNotice(null);
-                    setConfirmingId(asset.id);
-                  }}
+                  onClick={() => setConfirmingId(asset.id)}
                 >
                   ✕
                 </button>
@@ -191,7 +185,6 @@ export function TokenPanel() {
           przeciągnąć prosto na mapę.
         </p>
       )}
-      {notice && <p className="auth-hint">{notice}</p>}
       {error && <p className="auth-error">{error}</p>}
     </div>
   );

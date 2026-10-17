@@ -1012,8 +1012,10 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
       await cards
         .getByLabel('Plik karty do wczytania')
         .setInputFiles(exported.get(`karta-${name}.json`)!);
-      await expect(cards.locator('.archive-ok')).toContainText(`Wczytano „${name}"`);
-      notes[name] = (await cards.locator('.archive-ok').textContent()) ?? '';
+      // Etap 55b: wynik wczytania to informacja w kanale nad mapą, nie zdanie w panelu.
+      const done = page.locator('.notice .notice-text', { hasText: `Wczytano „${name}"` });
+      await expect(done).toBeVisible();
+      notes[name] = (await done.textContent()) ?? '';
     }
     const scenes = page
       .locator('.archive-section')
@@ -1021,8 +1023,11 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await scenes
       .getByLabel('Plik sceny do wczytania')
       .setInputFiles(exported.get('scena-Brama.json')!);
-    await expect(scenes.locator('.archive-ok')).toContainText('Wczytano');
-    notes.Brama = (await scenes.locator('.archive-ok').textContent()) ?? '';
+    const sceneDone = page.locator('.notice[data-notice-topic="scene"] .notice-text', {
+      hasText: 'Wczytano',
+    });
+    await expect(sceneDone).toBeVisible();
+    notes.Brama = (await sceneDone.textContent()) ?? '';
     sceneImportNote = notes.Brama;
 
     // Karty: to samo, co w oryginale (import normalizuje, więc porównujemy pola gry).

@@ -322,7 +322,9 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await expect(tradeWindow(marek)).toHaveCount(0);
     await expect(tradeWindow(ola)).toHaveCount(0);
     for (const actor of [marek, ola]) {
-      await expect(dock(actor)).toContainText('Wymienione: Kowal ⇄ Iskra');
+      await expect(
+        actor.page.locator('.notice', { hasText: 'Wymienione: Kowal ⇄ Iskra' }),
+      ).toBeVisible();
     }
   });
 
@@ -495,7 +497,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await page.getByLabel('Punkty Doświadczenia do przyznania').fill('500');
     await page.getByLabel('Powód przyznania PD').fill('Nocna zmiana — sesja pierwsza');
     await page.getByRole('button', { name: '✦ Przyznaj wszystkim' }).click();
-    await expect(page.locator('.character-panel-note')).toContainText('Przyznano 500 PD — 2');
+    await expect(page.locator('.notice', { hasText: 'Przyznano 500 PD — 2' })).toBeVisible();
     for (const name of ['Kowal', 'Iskra']) {
       await expect.poll(() => card(name).improvementPoints).toBe(500);
       expect(advancements(name).map((r) => [r.kind, r.amount])).toEqual([['award', 500]]);
@@ -612,7 +614,7 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await selects.first().selectOption({ label: 'Kowal' });
     await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2 · poproś' });
     await entry.getByRole('button', { name: 'Zainstaluj — 1000 ed' }).click();
-    await expect(entry.locator('.compendium-note')).toContainText('Prośba do: Iskra');
+    await expect(marek.page.locator('.notice', { hasText: 'Prośba do: Iskra' })).toBeVisible();
     // Prośba to nie operacja — nikt jeszcze nie zapłacił.
     expect(card('Kowal').eddies).toBe(before.eddies);
 

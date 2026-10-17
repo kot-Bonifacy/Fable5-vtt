@@ -13,6 +13,7 @@ import {
   formatMetres,
 } from '@vtt/shared';
 import { combatErrorText, setCombatTerrain, setTokenEffect, spendCombatAction } from '../socket.js';
+import { noteAck } from '../notices.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useRollStore } from '../stores/rollStore.js';
@@ -73,7 +74,6 @@ const FREE_ACTIONS = CPRED_ACTIONS.filter((action) => action.cost === 'free');
 function PeriodicEffects({ combat }: { combat: CombatView }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const tokens = useTokenStore((s) => s.tokens);
 
   const chosen = target ?? combat.activeCombatantId ?? combat.combatants[0]?.id ?? null;
@@ -83,9 +83,8 @@ function PeriodicEffects({ combat }: { combat: CombatView }) {
 
   async function set(statusId: string, active: boolean, damage?: number | null) {
     if (!row?.tokenId) return;
-    setError(null);
     const ack = await setTokenEffect(row.tokenId, statusId, active, damage);
-    if (!ack.ok) setError(combatErrorText(ack.error));
+    noteAck('action', ack, combatErrorText);
   }
 
   return (
@@ -174,7 +173,6 @@ function PeriodicEffects({ combat }: { combat: CombatView }) {
               {statuses.includes(DROWNING) ? 'Wyciągnij' : 'Topi się (BC)'}
             </button>
           </div>
-          {error && <p className="auth-error">{error}</p>}
         </>
       )}
     </div>
@@ -197,21 +195,18 @@ export function CombatActions({
   const tokenMap = useTokenStore((s) => s.tokens);
   const cupBusy = useRollStore((s) => s.pending !== null);
 
-  const [error, setError] = useState<string | null>(null);
   const [holdOpen, setHoldOpen] = useState(false);
   const [stabilizeOpen, setStabilizeOpen] = useState(false);
   const [attackOpen, setAttackOpen] = useState(false);
 
   async function spend(actionId: string) {
-    setError(null);
     const ack = await spendCombatAction(actionId, undefined, combatant.id);
-    if (!ack.ok) setError(combatErrorText(ack.error));
+    noteAck('action', ack, combatErrorText);
   }
 
   async function toggleTerrain(hard: boolean) {
-    setError(null);
     const ack = await setCombatTerrain(hard, combatant.id);
-    if (!ack.ok) setError(combatErrorText(ack.error));
+    noteAck('action', ack, combatErrorText);
   }
 
   const budget = combatant.turn;
@@ -343,8 +338,6 @@ export function CombatActions({
           onDone={() => setStabilizeOpen(false)}
         />
       )}
-
-      {error && <p className="auth-error">{error}</p>}
       <p className="combat-hint">
         Za darmo, bez klikania:{' '}
         {FREE_ACTIONS.map((action) => action.name)

@@ -184,9 +184,7 @@
   margin-top: 0.3rem;
 }
 
-.sheet-issues {
-  border-top: 1px solid var(--border);
-  padding: 0.4rem 0.7rem;
+.sheet-issues .notice-text {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;

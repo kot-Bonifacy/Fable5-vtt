@@ -13,6 +13,7 @@ import {
   cpredRoleAbilityRank,
   readCpredHaggle,
 } from '@vtt/shared';
+import { clearNotices, notifyInfo } from '../notices.js';
 import { dropHaggle, strikeHaggle } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { NumberStepper } from './NumberStepper.js';
@@ -38,7 +39,6 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
   const registry = useCharacterStore((s) => s.registry);
   const [opponent, setOpponent] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
 
   const rank = character
     ? cpredRoleAbilityRank(character.data, registry, CPRED_OPERATOR_ABILITY)
@@ -53,14 +53,15 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
 
   async function haggle(dealId: string): Promise<void> {
     setBusy(dealId);
-    setNote(null);
+    clearNotices('character');
     const result = await strikeHaggle(characterId, dealId, opponent);
     setBusy(null);
     if (!result.ok) return;
-    setNote(
+    notifyInfo(
       result.won
         ? 'Targ dobity — zejdzie z ceny przy najbliższym zakupie.'
         : 'Druga strona nie ustąpiła. Remis też przegrywa.',
+      { title: 'Znajomości', topic: 'character' },
     );
   }
 
@@ -125,7 +126,6 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
           </li>
         ))}
       </ul>
-      {note && <p className="awareness-hint">{note}</p>}
 
       <div className="awareness-extras">
         {tier && (

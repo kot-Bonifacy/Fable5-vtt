@@ -6,6 +6,7 @@ import {
   ROLE_GM,
   isTradeActive,
 } from '@vtt/shared';
+import { clearNotices, notifyRefusal } from '../../notices.js';
 import { fetchExchangeCounterparts, inventoryErrorText } from '../../socket.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
@@ -86,7 +87,6 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
 
   const [counterparts, setCounterparts] = useState<ExchangeCounterpartView[]>([]);
   const [targets, setTargets] = useState<{ id: string; name: string }[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
 
   const savedAt = anchor?.updatedAt;
@@ -103,7 +103,7 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
         useExchangeStore.getState().openWindow(anchorId);
         return;
       }
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
     setCounterparts(ack.data?.counterparts ?? []);
@@ -131,7 +131,7 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
   const selectedRow = counterparts.find((row) => row.key === win.selected);
 
   async function choose(key: string) {
-    setMessage(null);
+    clearNotices('exchange');
     if (key === '') {
       useExchangeStore.getState().select(null);
       return;
@@ -145,7 +145,7 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
     setInviting(true);
     const refusal = await startTrade(anchorId, row);
     setInviting(false);
-    if (refusal) setMessage(refusal);
+    if (refusal) notifyRefusal('exchange', refusal);
   }
 
   const mine = ownCards();
@@ -256,8 +256,6 @@ function ExchangeWindowBody({ win }: { win: ExchangeWindowState }) {
             </label>
           </div>
         )}
-
-        {message && <p className="inventory-message">{message}</p>}
 
         {kind === null && anchorId && (
           <>

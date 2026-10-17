@@ -222,11 +222,11 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
       .getByRole('button', { name: /^Targuj się: / })
       .first()
       .click();
-    await expect(
-      strip.locator('.awareness-hint', { hasText: /Targ dobity|nie ustąpiła/ }),
-    ).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(kuba.page.locator('.notice', { hasText: /Targ dobity|nie ustąpiła/ })).toBeVisible(
+      {
+        timeout: 20_000,
+      },
+    );
     test
       .info()
       .annotations.push(
@@ -251,7 +251,7 @@ test.describe.serial('T8c Zdolności: siedem Ról poza scenariuszem, Reputacja, 
       .getByRole('button', { name: /^Wezwij: / })
       .first()
       .click();
-    await expect(strip.locator('.awareness-hint', { hasText: 'Odsiecz w drodze' })).toBeVisible({
+    await expect(kuba.page.locator('.notice', { hasText: 'Odsiecz w drodze' })).toBeVisible({
       timeout: 20_000,
     });
     expect(pendingDice()).toBe('');

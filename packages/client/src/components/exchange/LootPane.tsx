@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CpredItemViewWire, ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
 import { CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
+import { notifyInfo, notifyRefusal } from '../../notices.js';
 import { inventoryErrorText, takeInventory } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
@@ -30,7 +31,6 @@ export function LootPane({
   const [qty, setQty] = useState<Record<string, string>>({});
   const [money, setMoney] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const items = body.items ?? [];
   const purse = body.eddies ?? 0;
@@ -46,12 +46,12 @@ export function LootPane({
     });
     setBusy(false);
     if (!ack.ok) {
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
     setQty({});
     setMoney('');
-    setMessage(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`);
+    notifyInfo(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`, { topic: 'exchange' });
     onChanged();
   }
 
@@ -135,7 +135,6 @@ export function LootPane({
       </div>
 
       <div className="trade-footer">
-        {message && <p className="inventory-message">{message}</p>}
         <p className="inventory-hint">
           Ciało przeszukuje się od ręki — nikt nie musi się na to zgadzać.
         </p>

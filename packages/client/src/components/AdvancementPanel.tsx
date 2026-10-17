@@ -19,6 +19,7 @@ import {
   roleChangeErrorText,
 } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Zmiana Roli (etap 29b, s. 143).
@@ -36,7 +37,6 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
   const [picked, setPicked] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!character) return null;
@@ -52,13 +52,9 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
 
   async function change(): Promise<void> {
     setBusy(true);
-    setError(null);
     const ack = await changeCharacterRole({ characterId, roleId: picked });
     setBusy(false);
-    if (!ack.ok) {
-      setError(roleChangeErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('character', ack, roleChangeErrorText)) return;
     setPicked('');
   }
 
@@ -80,7 +76,6 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
           value={picked}
           onChange={(e) => {
             setPicked(e.target.value);
-            setError(null);
           }}
           disabled={gated || busy}
           aria-label="Nowa Rola"
@@ -126,7 +121,6 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
         </button>
       </div>
       {plan && !plan.ok && <p className="awareness-error">{roleChangeErrorText(plan.problem)}</p>}
-      {error && <p className="awareness-error">{error}</p>}
       <p className="awareness-hint">
         {gated
           ? `Rolę zmienia się dopiero przy Zdolności Specjalnej bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK} — dziś ${roleName(current.roleId)} ma ${current.rank} (s. 143).`
@@ -153,7 +147,6 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
 export function AdvancementPanel({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
-  const [error, setError] = useState<string | null>(null);
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [history, setHistory] = useState<AdvancementEntryView[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -196,7 +189,6 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
 
   async function buy(step: CpredAdvanceStep): Promise<void> {
     setBusy(true);
-    setError(null);
     const ack = await advanceCharacter({
       characterId,
       kind: step.kind,
@@ -205,10 +197,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
       to: step.to,
     });
     setBusy(false);
-    if (!ack.ok) {
-      setError(advanceErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('character', ack, advanceErrorText)) return;
     // Rejestru nie odświeża się tutaj: zakup rusza kartę, a `savedAt` wyżej
     // czyta go za każdym razem, gdy karta się ruszy — jedną drogą dla wiersza
     // własnego i dla tego, który dopisał MG.
@@ -323,8 +312,6 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
           ))
         )}
       </div>
-
-      {error && <p className="awareness-error">{error}</p>}
       <p className="awareness-hint">
         Poziomu nie da się przeskoczyć — kolejny zawsze jest o jeden wyżej (s. 411). Ile PD dostaje
         drużyna po sesji, ustala MG.

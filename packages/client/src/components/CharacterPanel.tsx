@@ -10,6 +10,7 @@ import {
   isContainerCard,
 } from '@vtt/shared';
 import { confirmDestructive } from '../confirm.js';
+import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import {
   advanceErrorText,
   awardImprovementPoints,
@@ -164,7 +165,6 @@ export function CharacterPanel() {
   const onScene = new Set(onSceneKey.split(' '));
 
   const players = useCampaignPlayersStore((s) => s.players);
-  const [error, setError] = useState<string | null>(null);
   const [dragLearned, setDragLearned] = useState(() => readFlag(DRAG_LEARNED_KEY));
 
   useEffect(() => {
@@ -178,18 +178,18 @@ export function CharacterPanel() {
 
   async function changeOwner(characterId: string, ownerId: string) {
     const ack = await updateCharacter(characterId, { ownerId: ownerId === '' ? null : ownerId });
-    if (!ack.ok) setError(ackErrorText(ack.error));
+    noteAck('character', ack, ackErrorText);
   }
 
   async function toggleTemplate(characterId: string, template: boolean) {
     const ack = await updateCharacter(characterId, { template });
-    if (!ack.ok) setError(ackErrorText(ack.error));
+    noteAck('character', ack, ackErrorText);
   }
 
   async function removeCharacter(characterId: string, name: string) {
     if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
     const ack = await deleteCharacter(characterId);
-    if (!ack.ok) setError(ackErrorText(ack.error));
+    noteAck('character', ack, ackErrorText);
   }
 
   const roleName = (roleId: string | null) =>
@@ -368,7 +368,6 @@ export function CharacterPanel() {
         {/* 24.09: a player's new character starts with the GM's consent and
             the rules. */}
         <CreationGate resume={resume} another={live.length > 0} />
-        {error && <p className="auth-error">{error}</p>}
       </div>
     );
   }
@@ -436,7 +435,6 @@ export function CharacterPanel() {
           />
         </>
       )}
-      {error && <p className="auth-error">{error}</p>}
     </div>
   );
 }
@@ -474,7 +472,6 @@ function CharacterGroup({
  */
 function TableRituals() {
   const [open, setOpen] = useState(() => readFlag(RITUALS_OPEN_KEY));
-  const [settlement, setSettlement] = useState<string | null>(null);
   const [xpAmount, setXpAmount] = useState('');
   const [xpLabel, setXpLabel] = useState('');
 
@@ -490,7 +487,7 @@ function TableRituals() {
           character.data.luckCurrent < character.data.stats.luck,
       );
     if (stale.length === 0) {
-      setSettlement('Wszyscy mają już pełną pulę Szczęścia.');
+      notifyInfo('Wszyscy mają już pełną pulę Szczęścia.', { topic: 'character' });
       return;
     }
     const who = plural(stale.length, 'postaci', 'postaciom', 'postaciom');
@@ -500,12 +497,9 @@ function TableRituals() {
       const ack = await updateCharacter(character.id, {
         data: { luckCurrent: character.data.stats.luck },
       });
-      if (!ack.ok) {
-        setSettlement(ackErrorText(ack.error));
-        return;
-      }
+      if (!noteAck('character', ack, ackErrorText)) return;
     }
-    setSettlement(`Odnowiono Szczęście — ${who}.`);
+    notifyInfo(`Odnowiono Szczęście — ${who}.`, { topic: 'character' });
   }
 
   /** The first of the month (stage 23b) — preview first, then the real thing. */
@@ -518,15 +512,16 @@ function TableRituals() {
     }
     const ack = await settleMonth({ preview });
     if (!ack.ok || !ack.data) {
-      setSettlement(economyErrorText(ack.ok ? undefined : ack.error));
+      notifyRefusal('character', economyErrorText(ack.ok ? undefined : ack.error));
       return;
     }
     const { charged, shortfall, settled, skipped } = ack.data;
-    setSettlement(
+    notifyInfo(
       `${preview ? 'Do pobrania' : 'Pobrano'} ${formatEddies(charged)} ed od ${settled} postaci` +
         (shortfall > 0 ? ` · niedopłata ${formatEddies(shortfall)} ed` : '') +
         (skipped > 0 ? ` · pominięto ${skipped} bez Poziomu życia` : '') +
         '. Szczegóły na czacie.',
+      { title: 'Miesiąc', topic: 'character' },
     );
   }
 
@@ -538,7 +533,7 @@ function TableRituals() {
   async function awardPoints() {
     const amount = Number.parseInt(xpAmount, 10);
     if (!Number.isInteger(amount) || amount === 0) {
-      setSettlement('Podaj liczbę PD — tabela na s. 410 idzie od 10 do 80 na sesję.');
+      notifyRefusal('character', 'Podaj liczbę PD — tabela na s. 410 idzie od 10 do 80 na sesję.');
       return;
     }
     const ack = await awardImprovementPoints({
@@ -547,14 +542,15 @@ function TableRituals() {
       label: xpLabel.trim(),
     });
     if (!ack.ok || !ack.data) {
-      setSettlement(advanceErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
+      notifyRefusal('character', advanceErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
       return;
     }
     // `pluralWord`, nie `plural`: liczba stoi w zdaniu obok, a `plural` dokleja
     // własną — tak powstało „Przyznano 20 PD — 5 5 postaci" (oględziny 02.09).
     const who = pluralWord(ack.data.awarded, 'postać', 'postaci', 'postaci');
-    setSettlement(
+    notifyInfo(
       `${amount > 0 ? 'Przyznano' : 'Zabrano'} ${Math.abs(amount)} PD — ${ack.data.awarded} ${who}.`,
+      { title: 'Punkty Doświadczenia', topic: 'character' },
     );
     setXpAmount('');
     setXpLabel('');
@@ -645,7 +641,6 @@ function TableRituals() {
           💸 Rozlicz miesiąc
         </button>
       </div>
-      {settlement ? <p className="character-panel-note">{settlement}</p> : null}
     </details>
   );
 }

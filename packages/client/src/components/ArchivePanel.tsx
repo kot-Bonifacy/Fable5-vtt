@@ -7,6 +7,7 @@ import {
   isContainerCard,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
+import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
 import { downloadArchive, importCharacterFile, importSceneFile } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -37,33 +38,33 @@ function importErrorText(code: string, kind: ArchiveKind): string {
 /** Wybór pliku + wczytanie; wspólny dla karty i sceny. */
 function useFileImport(kind: ArchiveKind) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  // Karta i scena mają osobne tematy: wynik jednego wczytania nie zdejmuje drugiego.
+  const topic = kind === 'character' ? 'character' : 'scene';
 
   async function pick(
     file: File,
     send: (parsed: unknown) => Promise<{ ok: boolean; error?: string; data?: ArchiveImportResult }>,
   ) {
-    setMessage(null);
+    clearNotices(topic);
     let parsed: unknown;
     try {
       parsed = JSON.parse(await file.text()) as unknown;
     } catch {
-      setFailed(true);
-      setMessage('To nie jest plik JSON.');
+      notifyRefusal(topic, 'To nie jest plik JSON.');
       return;
     }
     const ack = await send(parsed);
     if (!ack.ok) {
-      setFailed(true);
-      setMessage(importErrorText(ack.error ?? 'UNKNOWN', kind));
+      notifyRefusal(topic, importErrorText(ack.error ?? 'UNKNOWN', kind));
       return;
     }
-    setFailed(false);
-    setMessage([`Wczytano „${ack.data?.name ?? ''}".`, ack.data?.note].filter(Boolean).join(' '));
+    notifyInfo([`Wczytano „${ack.data?.name ?? ''}".`, ack.data?.note].filter(Boolean).join(' '), {
+      title: 'Kopie',
+      topic,
+    });
   }
 
-  return { inputRef, message, failed, pick, setMessage };
+  return { inputRef, pick };
 }
 
 function CharacterSection() {
@@ -72,7 +73,7 @@ function CharacterSection() {
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
   const [selected, setSelected] = useState('');
   const [ownerId, setOwnerId] = useState('');
-  const { inputRef, message, failed, pick } = useFileImport('character');
+  const { inputRef, pick } = useFileImport('character');
 
   useEffect(() => {
     apiGet<CampaignDetail[]>('/api/campaigns')
@@ -151,7 +152,6 @@ function CharacterSection() {
         Karta z pliku wchodzi zawsze jako <strong>nowa</strong> — obok tej, która już jest. Niczego
         nie nadpisuje.
       </p>
-      {message && <p className={failed ? 'ai-status-error' : 'archive-ok'}>{message}</p>}
     </section>
   );
 }
@@ -159,7 +159,7 @@ function CharacterSection() {
 function SceneSection() {
   const scenes = useSceneStore((s) => s.scenes);
   const [selected, setSelected] = useState('');
-  const { inputRef, message, failed, pick } = useFileImport('scene');
+  const { inputRef, pick } = useFileImport('scene');
 
   const chosen = selected || scenes[0]?.id || '';
 
@@ -204,7 +204,6 @@ function SceneSection() {
         Scena z pliku wjeżdża w podglądzie, nigdy jako aktywna. Figury zachowują powiązanie z kartą
         tylko wtedy, gdy ta karta jest w tej kampanii.
       </p>
-      {message && <p className={failed ? 'ai-status-error' : 'archive-ok'}>{message}</p>}
     </section>
   );
 }

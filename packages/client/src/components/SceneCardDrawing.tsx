@@ -11,6 +11,7 @@ import {
 import { updateDrawing } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { drawingErrorText } from '../mapErrors.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta rysunku (etap 27l).
@@ -34,7 +35,6 @@ const FONT_LABELS: Record<string, string> = {
 export function SceneCardDrawing({ drawing }: { drawing: DrawingView }) {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState(drawing.shape.kind === 'text' ? drawing.shape.text : '');
 
@@ -42,7 +42,7 @@ export function SceneCardDrawing({ drawing }: { drawing: DrawingView }) {
     setBusy(true);
     const ack = await updateDrawing(drawing.id, next);
     setBusy(false);
-    setError(ack.ok ? null : drawingErrorText(ack.error));
+    noteAck('scene', ack, drawingErrorText);
   }
 
   const fillable = drawing.shape.kind === 'rect' || drawing.shape.kind === 'ellipse';
@@ -173,8 +173,6 @@ export function SceneCardDrawing({ drawing }: { drawing: DrawingView }) {
           </p>
         </>
       )}
-
-      {error && <p className="ai-status-error">{error}</p>}
     </div>
   );
 }

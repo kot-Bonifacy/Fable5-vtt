@@ -672,16 +672,6 @@
   background: rgb(var(--err-rgb) / 14%);
 }
 
-.hud-refusal {
-  margin: 0;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.7rem;
-  line-height: 1.3;
-  color: var(--warn);
-  background: rgb(var(--warn-rgb) / 12%);
-  border-radius: 4px;
-}
-
 /* „This is a view, not a grip" — quieter than a refusal, which is a rule
    speaking; this one is only telling the user where the map's attention is. */
 /* Jedna linia z okiem (25.09): dawny dwuwierszowy akapit ważył tyle, co slot,
@@ -1285,15 +1275,10 @@
   cursor: not-allowed;
 }
 
-.awareness-hint,
-.awareness-error {
+.awareness-hint {
   margin: 0;
   color: var(--text-dim);
   font-size: 0.75rem;
-}
-
-.awareness-error {
-  color: var(--accent);
 }
 
 .awareness-buttons {
@@ -1764,9 +1749,7 @@
 }
 
 .aim-tooltip-refusal {
-  margin: 0;
-  color: var(--err);
-  line-height: 1.3;
+  margin: 0.15rem -0.25rem 0;
 }
 
 /* Dziennik kampanii i relacje NPC (etap 19c) --------------------------------

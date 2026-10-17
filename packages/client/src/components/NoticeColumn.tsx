@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNoticeStore, type Notice, type NoticeTone } from '../stores/noticeStore.js';
 
 /**
@@ -36,6 +36,36 @@ export function NoticeColumn({ pinned = [] }: { pinned?: PinnedNotice[] }) {
       {notices.map((n) => (
         <NoticeRow key={n.id} notice={n} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Komunikat na miejscu (etap 55b) — ta sama skóra co pasek kanału, ale stoi
+ * tam, gdzie żyje jego stan: zdanie pod slotem HUD, stan handlu w oknie, klej
+ * w Sieci. Znika razem ze stanem, więc bez ✕. Przejściowa odmowa po kliknięciu
+ * tu nie trafia — ta idzie do kanału (`notices.ts`).
+ */
+export function InlineNotice({
+  tone,
+  title,
+  className,
+  role,
+  children,
+}: {
+  tone: NoticeTone;
+  title: string;
+  className?: string;
+  role?: 'alert' | 'status';
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`notice notice--${tone} notice--inline${className ? ` ${className}` : ''}`}
+      {...(role ? { role } : {})}
+    >
+      <p className="notice-title">{title}</p>
+      <div className="notice-text">{children}</div>
     </div>
   );
 }

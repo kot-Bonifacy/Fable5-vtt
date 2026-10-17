@@ -137,4 +137,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 52     | Ruch gracza wyłącznie klikiem: trasa zatwierdzana przez serwer, dwa kliknięcia, figury na drodze, Stop + Eksploracja z postojem | ✅     | 2026-10-15          |
 | 53     | Konto administratora: rola ADMIN, hasło tymczasowe, panel kont MG, sesje i dziennik, AI, rejestracja, kopie całej bazy | ✅     | 2026-10-17          |
 | 54     | Ruch wzorem BG3: bez podglądu pod kursorem poza walką, jeden klik, potwierdzenie i Bieg w bursztynie, odznaczanie Esc / PPM | ✅     | 2026-10-17          |
-| 55     | Komunikaty wzorem Foundry: jeden kanał nad mapą, jedna skóra (55a kanał i notki z czatu, 55b okna i skóra komunikatów na miejscu) | 🟨     | 55a: 2026-10-17     |
+| 55     | Komunikaty wzorem Foundry: jeden kanał nad mapą, jedna skóra (55a kanał i notki z czatu, 55b okna i skóra komunikatów na miejscu) | ✅     | 2026-10-17          |

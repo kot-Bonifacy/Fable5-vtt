@@ -35,6 +35,7 @@ import {
   setRelation,
   summarizeSession,
 } from '../socket.js';
+import { noteAck } from '../notices.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
@@ -562,17 +563,15 @@ function entryPayload(
 function GmEntryActions({ entry }: { entry: JournalEntryView }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const setEditing = useJournalStore((s) => s.setEditing);
 
   async function toggleShared() {
     setBusy(true);
-    setError(null);
     const ack = await saveJournalEntry(
       entryPayload(entry, { sharedWithPlayers: !entry.sharedWithPlayers }),
     );
     setBusy(false);
-    if (!ack.ok) setError(journalErrorText(ack.error));
+    noteAck('journal', ack, journalErrorText);
   }
 
   return (
@@ -628,7 +627,6 @@ function GmEntryActions({ entry }: { entry: JournalEntryView }) {
           ✕
         </button>
       )}
-      {error && <span className="auth-error">{error}</span>}
     </div>
   );
 }

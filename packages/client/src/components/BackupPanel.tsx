@@ -5,6 +5,7 @@ import {
   cpredRoleAbilityRank,
   describeBackupTier,
 } from '@vtt/shared';
+import { clearNotices, notifyInfo } from '../notices.js';
 import { callBackup } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 
@@ -36,25 +37,28 @@ export function BackupPanel({
     ? cpredRoleAbilityRank(character.data, registry, CPRED_BACKUP_ABILITY)
     : null;
   const [calling, setCalling] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
 
   if (!character || rank === null) return null;
   const tiers = cpredBackupTiersFor(rank);
 
   async function call(level: number, tierId: string): Promise<void> {
     setCalling(tierId);
-    setNote(null);
+    clearNotices('action');
     const result = await callBackup(characterId, level, tokenId);
     setCalling(null);
     if (!result.ok) return;
     if (!result.answered) {
-      setNote('Nikt nie odpowiedział. W kolejnej Turze możesz spróbować znowu.');
+      notifyInfo('Nikt nie odpowiedział. W kolejnej Turze możesz spróbować znowu.', {
+        title: 'Wsparcie',
+        topic: 'action',
+      });
       return;
     }
-    setNote(
+    notifyInfo(
       result.secondGroup
         ? `Odsiecz w drodze — i to dwie grupy. MG wskaże drugą kategorię.`
         : `Odsiecz w drodze: ${result.rounds ?? '?'} Rund.`,
+      { title: 'Wsparcie', topic: 'action' },
     );
     onDone?.();
   }
@@ -93,7 +97,6 @@ export function BackupPanel({
           </li>
         ))}
       </ul>
-      {note && <p className="awareness-hint">{note}</p>}
       <p className="awareness-hint">
         Wezwanie kosztuje Akcję i udaje się na 1k10 ≤ {rank}. Potem 1k6 decyduje, ile Rund potrwa
         dojazd; szóstka przysyła kategorię wyżej. Nadużywanie kosztuje posadę (s. 158).

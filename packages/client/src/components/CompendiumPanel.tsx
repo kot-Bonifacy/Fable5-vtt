@@ -80,7 +80,9 @@ import {
   addCompendiumItemToCharacter,
   addFoundCyberwareToCharacter,
   buyCompendiumItemForCharacter,
+  showItemNote,
 } from '../compendium-items.js';
+import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
 import { EmptyState } from './EmptyState.js';
 import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
@@ -276,18 +278,17 @@ function onPlayerShelf(
 function ShopTierBar({ isGm }: { isGm: boolean }) {
   const shopTier = useCompendiumStore((s) => s.shopTier);
   const catalogShopping = useCompendiumStore((s) => s.catalogShopping);
-  const [note, setNote] = useState<string | null>(null);
 
   async function move(tier: number) {
     const ack = await setShopTier(tier);
-    setNote(ack.ok ? null : economyErrorText(ack.error));
+    noteAck('exchange', ack, economyErrorText);
   }
 
   async function toggleCatalog() {
     const ack = await setCatalogShopping(
       catalogShopping === 'merchants' ? 'everywhere' : 'merchants',
     );
-    setNote(ack.ok ? null : economyErrorText(ack.error));
+    noteAck('exchange', ack, economyErrorText);
   }
 
   return (
@@ -331,7 +332,6 @@ function ShopTierBar({ isGm }: { isGm: boolean }) {
           ))}
         </span>
       ) : null}
-      {note ? <span className="compendium-note">{note}</span> : null}
     </div>
   );
 }
@@ -404,7 +404,6 @@ function EntryCard({
   // Etap 46a: „Zakupy z katalogu: tylko u handlarzy” — gracz kupuje przy
   // ladzie. „Zainstaluj” i „Dodaj za darmo” MG działają bez zmian.
   const catalogClosed = useCompendiumStore((s) => s.catalogShopping === 'merchants') && !isGm;
-  const [note, setNote] = useState<string | null>(null);
   const [targetId, setTargetId] = useState('');
   const [confirming, setConfirming] = useState(false);
   // Kto operuje (s. 226). „—" zostaje domyślne: cena montażu jest wliczona
@@ -515,13 +514,12 @@ function EntryCard({
 
   async function addToSheet() {
     if (!target) return;
-    const result = await addCompendiumItemToCharacter(target, entry, resolved, ammoChoice);
-    setNote(result);
+    showItemNote(await addCompendiumItemToCharacter(target, entry, resolved, ammoChoice));
   }
 
   async function buy() {
     if (!target) return;
-    setNote(await buyCompendiumItemForCharacter(target, entry, undefined, ammoChoice));
+    showItemNote(await buyCompendiumItemForCharacter(target, entry, undefined, ammoChoice));
   }
 
   /** Prośba do Medyka innego gracza (#41) — pieniądze i Test dopiero po jego „Operuję”. */
@@ -532,14 +530,12 @@ function EntryCard({
       entryId: entry.id,
       payment,
     });
-    if (!ack.ok) {
-      setNote(surgeryErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('character', ack, surgeryErrorText)) return;
     const name = askable.find((row) => row.characterId === surgeonCardId)?.name ?? 'Medyk';
     const listed = payment === 'installOnly' ? fitting : (price ?? 0);
-    setNote(
+    notifyInfo(
       `Prośba do: ${name} — czeka na czacie. Medyk poda cenę (domyślnie ${listed} ed); wyższą zatwierdzasz ty.`,
+      { title: 'Prośba o operację', topic: 'character' },
     );
   }
 
@@ -570,17 +566,18 @@ function EntryCard({
       surgeon,
     });
     if (refusal) {
-      setNote(refusal);
+      notifyRefusal('character', refusal);
       return;
     }
     const money =
       payment === 'installOnly'
         ? `Montaż „${entry.name}” — ${fitting} ed.`
         : `Instaluję „${entry.name}” — ${price ?? 0} ed.`;
-    setNote(
+    notifyInfo(
       surgeon.kind === 'none'
         ? `${money} Rzut na Utratę Człowieczeństwa idzie na czat.`
         : `${money} Najpierw Test montażu (PT ${installDv}), potem Utrata Człowieczeństwa — obie karty idą na czat.`,
+      { topic: 'character' },
     );
   }
 
@@ -1190,7 +1187,7 @@ function EntryCard({
               type="button"
               className="small-button"
               title="Znaleziony wszczep do Wyposażenia — łup z ciała, nagroda w naturze. Wszczepia się go potem „Znaleziony — montaż” za samą robociznę."
-              onClick={() => setNote(addFoundCyberwareToCharacter(target, entry))}
+              onClick={() => showItemNote(addFoundCyberwareToCharacter(target, entry))}
             >
               Do Wyposażenia
             </button>
@@ -1211,7 +1208,6 @@ function EntryCard({
           ) : null}
         </div>
       ) : null}
-      {note ? <p className="compendium-note">{note}</p> : null}
     </div>
   );
 }
@@ -1229,13 +1225,12 @@ function ShopEntryTierChoice({
   entry: CompendiumEntry;
   tierContext: ReturnType<typeof shopTierContextOf>;
 }) {
-  const [note, setNote] = useState<string | null>(null);
   const chosen = tierContext.overrides?.[entry.id];
   const automatic = shopTierVerdict(entry, { ...tierContext, overrides: {} });
 
   async function choose(value: string) {
     const ack = await setShopEntryTier(entry.id, value === '' ? null : Number(value));
-    setNote(ack.ok ? null : economyErrorText(ack.error));
+    noteAck('exchange', ack, economyErrorText);
   }
 
   return (
@@ -1251,7 +1246,6 @@ function ShopEntryTierChoice({
           </option>
         ))}
       </select>
-      {note ? <span className="compendium-note">{note}</span> : null}
     </label>
   );
 }

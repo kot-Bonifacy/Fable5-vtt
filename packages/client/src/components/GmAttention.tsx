@@ -109,23 +109,28 @@ export function GmAttention() {
       ) : (
         <div className="gm-attention-toasts" aria-live="polite">
           {live.map((item) => (
-            <div key={item.key} className="gm-attention-row gm-attention-toast">
-              <span className="gm-attention-icon" aria-hidden>
-                {KIND_ICON[item.kind]}
-              </span>
-              <span className="gm-attention-text">{item.text}</span>
-              <button type="button" className="small-button" onClick={() => follow(item)}>
-                Przejdź
-              </button>
-              <button
-                type="button"
-                className="gm-attention-close"
-                title="Schowaj — sprawa zostaje na liście"
-                aria-label="Schowaj"
-                onClick={() => dismiss(item.key)}
-              >
-                ×
-              </button>
+            // Skóra paska kanału (etap 55b): sprawa do decyzji to bursztyn.
+            <div key={item.key} className="notice notice--warn gm-attention-toast">
+              <div className="notice-head">
+                <p className="notice-title">Czeka na MG</p>
+                <button
+                  type="button"
+                  className="notice-close"
+                  title="Schowaj — sprawa zostaje na liście"
+                  aria-label="Schowaj"
+                  onClick={() => dismiss(item.key)}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="notice-text">
+                <span aria-hidden>{KIND_ICON[item.kind]}</span> {item.text}
+              </p>
+              <div className="notice-actions">
+                <button type="button" className="notice-action" onClick={() => follow(item)}>
+                  Przejdź
+                </button>
+              </div>
             </div>
           ))}
         </div>

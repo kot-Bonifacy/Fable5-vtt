@@ -190,12 +190,6 @@
   flex: 0 0 auto;
 }
 
-.character-panel-note {
-  margin: 0 0 0.4rem;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
 .compendium-warning {
   font-size: 0.72rem;
   color: var(--warn-bright);

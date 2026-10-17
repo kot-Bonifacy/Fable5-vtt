@@ -12,6 +12,7 @@ import {
   putIntoContainer,
   takeInventory,
 } from '../../socket.js';
+import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { useChatStore } from '../../stores/chatStore.js';
 import { useTokenStore } from '../../stores/tokenStore.js';
@@ -53,7 +54,6 @@ export function ContainerPane({
   const [qty, setQty] = useState<Record<string, string>>({});
   const [money, setMoney] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [skillId, setSkillId] = useState<string>(container.lockSkills?.[0] ?? '');
   const [hover, setHover] = useState<string | null>(null);
 
@@ -68,9 +68,6 @@ export function ContainerPane({
   }, [token, onChanged]);
 
   const lock = container.lock ?? 'open';
-  // Zamek puścił, Test nie wyszedł albo MG coś przestawił — zdanie o Teście
-  // jest już nieaktualne.
-  useEffect(() => setMessage(null), [lock, container.lockTried]);
   const isOpen = lock === 'open';
   const items = container.items ?? [];
   const purse = container.eddies ?? 0;
@@ -80,7 +77,6 @@ export function ContainerPane({
   async function open() {
     if (!container.tokenId) return;
     setBusy(true);
-    setMessage(null);
     const ack = await openContainer({
       tokenId: container.tokenId,
       characterId: anchorId,
@@ -88,14 +84,18 @@ export function ContainerPane({
     });
     setBusy(false);
     if (!ack.ok || !ack.data) {
-      setMessage(inventoryErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
       return;
     }
+    clearNotices('exchange');
     if (ack.data.outcome === 'open') {
       onChanged();
       return;
     }
-    setMessage('Test zamka — rzuć kubkiem. Wezwanie czeka też na czacie.');
+    notifyInfo('Test zamka — rzuć kubkiem. Wezwanie czeka też na czacie.', {
+      title: 'Test zamka',
+      topic: 'exchange',
+    });
     if (ack.data.callMessageId !== undefined) takeLockCup(ack.data.callMessageId);
   }
 
@@ -110,12 +110,12 @@ export function ContainerPane({
     });
     setBusy(false);
     if (!ack.ok) {
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
     setQty({});
     setMoney('');
-    setMessage(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`);
+    notifyInfo(`Zabrane na kartę: ${anchor?.name ?? 'twoja karta'}.`, { topic: 'exchange' });
     onChanged();
   }
 
@@ -130,10 +130,10 @@ export function ContainerPane({
     });
     setBusy(false);
     if (!ack.ok) {
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
-    setMessage(`Włożone: ${container.name}.`);
+    notifyInfo(`Włożone: ${container.name}.`, { topic: 'exchange' });
     onChanged();
   }
 
@@ -291,7 +291,6 @@ export function ContainerPane({
       </div>
 
       <div className="trade-footer">
-        {message && <p className="inventory-message">{message}</p>}
         <p className="inventory-hint">
           {isOpen
             ? 'Otwarty pojemnik — bierze i wkłada każdy, kto stoi obok. Wiersz przeciągnięty na mapę kładzie się na ziemi.'

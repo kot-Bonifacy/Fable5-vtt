@@ -22,8 +22,10 @@ import {
   respondTrade,
   tradeErrorText,
 } from '../../socket.js';
+import { noteAck, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
+import { InlineNotice } from '../NoticeColumn.js';
 import { useExchangeDrag } from './drag.js';
 import { formatEd, itemDetail, itemKey, refOf } from './items.js';
 
@@ -73,7 +75,6 @@ export function TradePane({ trade }: { trade: TradeView }) {
   const editable = mine !== null && mayEditTradeOffer(trade, mineIndex as TradeSideIndex);
   const invited = trade.status === 'invited';
 
-  const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [money, setMoney] = useState(String(mine?.eddies ?? 0));
   const [qtyDraft, setQtyDraft] = useState<Record<string, string>>({});
@@ -106,7 +107,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
     setBusy(true);
     const ack = await offerTrade({ tradeId: trade.id, items, eddies });
     setBusy(false);
-    setMessage(ack.ok ? null : tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
   }
 
   function currentRefs(): InventoryItemRefWire[] {
@@ -167,17 +168,17 @@ export function TradePane({ trade }: { trade: TradeView }) {
       accepted: !mine.accepted,
     });
     setBusy(false);
-    setMessage(ack.ok ? null : tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
   }
 
   async function stop() {
     const ack = await cancelTrade(trade.id);
-    if (!ack.ok) setMessage(tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
   }
 
   async function answer(accept: boolean) {
     const ack = await respondTrade(trade.id, accept);
-    if (!ack.ok) setMessage(tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
   }
 
   /**
@@ -196,7 +197,7 @@ export function TradePane({ trade }: { trade: TradeView }) {
     });
     if (!ack.ok) {
       setBusy(false);
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
     await cancelTrade(trade.id);
@@ -372,8 +373,11 @@ export function TradePane({ trade }: { trade: TradeView }) {
       </div>
 
       <div className="trade-footer">
-        {trade.notice && <p className="trade-notice">{tradeErrorText(trade.notice)}</p>}
-        {message && <p className="inventory-message">{message}</p>}
+        {trade.notice && (
+          <InlineNotice tone="warn" title="Handel" role="status">
+            {tradeErrorText(trade.notice)}
+          </InlineNotice>
+        )}
         {spectator ? (
           <p className="inventory-hint">
             Podgląd MG — zgodę dają wyłącznie strony handlu. Możesz handel przerwać.
@@ -487,9 +491,9 @@ function OfferZone({
         )}
       </p>
       {stale && (
-        <p className="trade-notice">
+        <InlineNotice tone="warn" title="Oferta nieaktualna" role="status">
           Coś z tego pola zmieniło się na karcie — popraw ofertę, zanim się zgodzisz.
-        </p>
+        </InlineNotice>
       )}
       {invited && !side.mine && <p className="inventory-empty">Czeka na {side.name}…</p>}
       {empty && !side.mine && !invited && <p className="inventory-empty">Na razie pusto.</p>}

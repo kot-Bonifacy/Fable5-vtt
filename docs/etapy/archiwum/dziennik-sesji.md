@@ -1,5 +1,19 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `a31df84`) — Nieprzytomny i Martwy oddają turę sami
+
+**Zlecenie MG:** „nieprzytomna/martwa postać powinna oddawać turę automatycznie z informacją o tym
+na czacie”. **Zrobione:** `cpredTurnForfeit` w `shared` (nazwa najgorszego statusu z `noAction`),
+`sheetTurnForfeit` w `sheets.ts`; w `combat-actions.ts` krok kolejki wydzielony do `stepTurn`,
+a `passForfeitedTurns` po nim oddaje turę figurze Nieprzytomnej/Martwej bez zaległego Testu
+Przeżywalności (wiersz `turn-forfeit` „Tura oddana — <stan>”, ukryta figura tylko u MG; jedno
+okrążenie najwyżej). Rzut Testu z kubka woła `passForfeitedTurnOf`, więc nieprzytomny Śmiertelnie
+Ranny gracz rzuca, a tura przechodzi sama. **Rozstrzygnięcie bez pytania:** Test Przeżywalności
+nieprzytomnego gracza dalej rzuca gracz (priorytet kości), dopiero potem tura przechodzi.
+
+**Weryfikacja:** vitest i E2E — w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** brak —
+wiersz czatu to istniejąca karta akcji, bez nowego wyglądu.
+
 ### Sesja 17.10 (po `adc06aa`) — etap 54, ruch wzorem BG3
 
 **Zlecenie MG:** „wykonaj Etap 54” (przed refaktoryzacją). **Zrobione:** 54a i 54b według planu.

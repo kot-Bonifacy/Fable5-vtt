@@ -310,10 +310,10 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
           .last(),
       ).toContainText('Handel');
     }
-    // Wymiana skończona: okno handlu znika, ślad zostaje w doku.
+    // Wymiana skończona: okno handlu znika, ślad to informacja w kanale nad mapą (55b).
     await expect(exchange(marek)).toHaveCount(0);
     await expect(exchange(ola)).toHaveCount(0);
-    await expect(dock(marek)).toContainText('Wymienione');
+    await expect(marek.page.locator('.notice', { hasText: 'Wymienione' })).toBeVisible();
   });
 
   test('46a.3 „Wyślij bez czekania”: latarka idzie propozycją z „Przyjmij”', async () => {
@@ -335,9 +335,11 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await proposal.getByRole('button', { name: 'Przyjmij', exact: true }).click();
     await expect.poll(() => gear('Iskra', 'Latarka')).toBe(1);
     expect(gear('Kowal', 'Latarka')).toBe(1);
-    // Ślad po wycofanym zaproszeniu wisi w doku kilka sekund i znika sam.
+    // Ślad po wycofanym zaproszeniu to informacja w kanale — znika sama po kilku sekundach.
     for (const actor of [marek, ola]) {
-      await expect(dock(actor).getByText('Handel przerwany')).toHaveCount(0, { timeout: 15_000 });
+      await expect(actor.page.locator('.notice', { hasText: 'Handel przerwany' })).toHaveCount(0, {
+        timeout: 15_000,
+      });
     }
   });
 
@@ -368,13 +370,15 @@ test.describe.serial('T46a jedno okno „Wymiana” i handlarze', () => {
     await window.getByLabel('Dokąd').selectOption({ label: 'Kowal' });
     await window.getByLabel('Ile sztuk: Lina (60 m)').fill('1');
     await window.getByRole('button', { name: 'Przekaż: Lina (60 m)' }).click();
-    await expect(window).toContainText('Wysłane do: Kowal — czeka na przyjęcie.');
+    await expect(
+      mg.page.locator('.notice', { hasText: 'Wysłane do: Kowal — czeka na przyjęcie.' }),
+    ).toBeVisible();
     await shot(mg, '5-tryb-mg');
     expect(gear('Kowal', 'Lina (60 m)')).toBe(1);
     await window.getByLabel('Dokąd').selectOption({ label: 'Rzeźnik' });
     await window.getByLabel('Ile sztuk: Lina (60 m)').fill('1');
     await window.getByRole('button', { name: 'Przekaż: Lina (60 m)' }).click();
-    await expect(window).toContainText('Przekazane: Rzeźnik.');
+    await expect(mg.page.locator('.notice', { hasText: 'Przekazane: Rzeźnik.' })).toBeVisible();
     await expect.poll(() => gear('Rzeźnik', 'Lina (60 m)')).toBe(1);
     await window.getByRole('button', { name: 'Zamknij okno wymiany' }).click();
   });

@@ -7,6 +7,7 @@ import {
   MERCHANT_SIGN_MAX,
 } from '@vtt/shared';
 import { confirmDestructive } from '../../confirm.js';
+import { noteAck, notifyRefusal } from '../../notices.js';
 import { configMerchant, merchantErrorText, setMerchantRow, viewMerchant } from '../../socket.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
@@ -28,7 +29,6 @@ import { formatEd } from './items.js';
 export function MerchantSection({ characterId }: { characterId: string }) {
   const shop = useExchangeStore((s) => s.shops.find((row) => row.characterId === characterId));
   const view = useExchangeStore((s) => (shop ? s.shelves[shop.id] : undefined));
-  const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function MerchantSection({ characterId }: { characterId: string }) {
     void viewMerchant(shop.id).then((ack) => {
       if (!alive) return;
       if (ack.ok && ack.data) useExchangeStore.getState().applyShelf(ack.data.merchant);
-      else if (!ack.ok) setMessage(merchantErrorText(ack.error));
+      else if (!ack.ok) notifyRefusal('character', merchantErrorText(ack.error));
     });
     return () => {
       alive = false;
@@ -48,7 +48,7 @@ export function MerchantSection({ characterId }: { characterId: string }) {
     setBusy(true);
     const ack = await configMerchant({ characterId, merchant });
     setBusy(false);
-    setMessage(ack.ok ? null : merchantErrorText(ack.error));
+    noteAck('character', ack, merchantErrorText);
   }
 
   if (!shop) {
@@ -66,7 +66,6 @@ export function MerchantSection({ characterId }: { characterId: string }) {
             🛒 Zrób z niego handlarza
           </button>
         </div>
-        {message && <p className="cp-shop-message">{message}</p>}
       </div>
     );
   }
@@ -98,8 +97,7 @@ export function MerchantSection({ characterId }: { characterId: string }) {
         </button>
       </div>
       {settings && <SettingsFields settings={settings} busy={busy} onChange={config} />}
-      {message && <p className="cp-shop-message">{message}</p>}
-      {view && <ShopRows merchantId={shop.id} rows={view.rows} onError={setMessage} />}
+      {view && <ShopRows merchantId={shop.id} rows={view.rows} />}
       <p className="cp-shop-hint">
         Towar to ekwipunek tej karty — dopisujesz go w Broni, Pancerzu i Wyposażeniu. Broń i pancerz
         nie mają ilości: pięć pistoletów to pięć wierszy albo jeden wiersz „∞”. Karta mieści{' '}
@@ -253,15 +251,7 @@ function overlayOf(row: MerchantShelfRowView): MerchantRowOverlay {
   };
 }
 
-function ShopRows({
-  merchantId,
-  rows,
-  onError,
-}: {
-  merchantId: string;
-  rows: MerchantShelfRowView[];
-  onError: (message: string | null) => void;
-}) {
+function ShopRows({ merchantId, rows }: { merchantId: string; rows: MerchantShelfRowView[] }) {
   async function patch(row: MerchantShelfRowView, change: Partial<MerchantRowOverlay>) {
     const next: MerchantRowOverlay = { ...overlayOf(row), ...change };
     for (const key of Object.keys(change) as (keyof MerchantRowOverlay)[]) {
@@ -273,7 +263,7 @@ function ShopRows({
       rowId: row.rowId,
       overlay: Object.keys(next).length > 0 ? next : null,
     });
-    onError(ack.ok ? null : merchantErrorText(ack.error));
+    noteAck('character', ack, merchantErrorText);
   }
 
   if (rows.length === 0) {

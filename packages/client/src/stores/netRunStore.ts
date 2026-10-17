@@ -22,20 +22,16 @@ interface NetRunState {
   runs: NetRunPayload[];
   /** Run otwarty w oknie „Sieć"; null = okno zamknięte. */
   openRunId: string | null;
-  /** Ostatni komunikat pod szybem („Hasło złamane…"). */
-  notice: string | null;
 
   replacePoints: (points: NetAccessPointView[]) => void;
   replaceRuns: (runs: NetRunPayload[]) => void;
   openRun: (runId: string | null) => void;
-  setNotice: (notice: string | null) => void;
 }
 
 export const useNetRunStore = create<NetRunState>((set) => ({
   accessPoints: [],
   runs: [],
   openRunId: null,
-  notice: null,
 
   // Karta gniazda zdjętego ze sceny zamyka się sama — pilnuje tego
   // `SceneObjectCard`, bo obiekt znika spod niej tak samo w każdym z siedmiu
@@ -51,11 +47,9 @@ export const useNetRunStore = create<NetRunState>((set) => ({
       openRunId: runs.some((run) => run.runId === state.openRunId)
         ? state.openRunId
         : (runs[0]?.runId ?? null),
-      notice: runs.some((run) => run.runId === state.openRunId) ? state.notice : null,
     })),
 
-  openRun: (openRunId) => set({ openRunId, notice: null }),
-  setNotice: (notice) => set({ notice }),
+  openRun: (openRunId) => set({ openRunId }),
 }));
 
 /** Run tego widza otwarty w oknie — albo pierwszy, jaki ma. */

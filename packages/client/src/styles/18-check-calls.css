@@ -259,9 +259,3 @@
      w panelu wychodziło z tego „na zwa-kopii". */
   overflow-wrap: anywhere;
 }
-
-.archive-ok {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--ok-ink);
-}

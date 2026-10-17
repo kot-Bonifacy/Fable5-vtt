@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CpredItemViewWire, InventoryItemRefWire } from '@vtt/shared';
 import { CPRED_ITEM_LIST_LABELS, INVENTORY_NOTE_MAX, cpredInventoryView } from '@vtt/shared';
+import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { giveInventory, inventoryErrorText } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
@@ -29,7 +30,6 @@ export function GmPane({
   const [money, setMoney] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const items = anchor ? cpredInventoryView(anchor.data) : [];
   const purse = anchor?.data.eddies ?? 0;
@@ -37,7 +37,7 @@ export function GmPane({
 
   async function give(refs: InventoryItemRefWire[], eddies: number) {
     if (!targetId) {
-      setMessage('Wskaż, komu to ma trafić.');
+      notifyRefusal('exchange', 'Wskaż, komu to ma trafić.');
       return;
     }
     setBusy(true);
@@ -50,15 +50,16 @@ export function GmPane({
     });
     setBusy(false);
     if (!ack.ok) {
-      setMessage(inventoryErrorText(ack.error));
+      notifyRefusal('exchange', inventoryErrorText(ack.error));
       return;
     }
     setMoney('');
     setQty({});
-    setMessage(
+    notifyInfo(
       ack.data?.pending === true
         ? `Wysłane do: ${targetName} — czeka na przyjęcie.`
         : `Przekazane: ${targetName}.`,
+      { topic: 'exchange' },
     );
   }
 
@@ -147,7 +148,7 @@ export function GmPane({
               aria-label="Dokąd"
               onChange={(e) => {
                 setTargetId(e.target.value);
-                setMessage(null);
+                clearNotices('exchange');
               }}
             >
               <option value="">— wybierz kartę —</option>
@@ -176,7 +177,6 @@ export function GmPane({
       </div>
 
       <div className="trade-footer">
-        {message && <p className="inventory-message">{message}</p>}
         <div className="inventory-actions">
           <button
             type="button"

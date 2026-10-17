@@ -191,15 +191,10 @@
 }
 
 .inventory-hint,
-.inventory-empty,
-.inventory-message {
+.inventory-empty {
   margin: 0;
   font-size: 0.72rem;
   color: var(--text-dim);
-}
-
-.inventory-message {
-  color: var(--text);
 }
 
 /* --- Ręce przy wierszu broni (etap 41) --------------------------------- */
@@ -441,11 +436,6 @@
 
 .exchange-closed {
   margin: 0;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--warn);
-  border-radius: 4px;
-  font-size: 0.8rem;
-  color: var(--warn);
 }
 
 .exchange-total {
@@ -554,12 +544,6 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0 0.7rem 0.9rem;
-}
-
-.trade-notice {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--warn);
 }
 
 /* Duch przeciąganej rzeczy — nad wszystkim i przezroczysty dla trafień, bo
@@ -727,10 +711,6 @@
   border-color: var(--accent);
 }
 
-.trade-dock-row--closed {
-  opacity: 0.9;
-}
-
 .trade-dock-text {
   flex: 1;
   min-width: 0;
@@ -828,15 +808,8 @@
   font-size: 0.82rem;
 }
 
-.gm-attention-toast {
-  animation: gm-attention-in 0.25s ease-out;
-}
-
-@keyframes gm-attention-in {
-  from {
-    opacity: 0;
-    transform: translateY(-0.4rem);
-  }
+.gm-attention-toasts {
+  filter: var(--notice-shadow);
 }
 
 .gm-attention-icon {
@@ -846,17 +819,6 @@
 .gm-attention-text {
   flex: 1;
   min-width: 0;
-}
-
-.gm-attention-close {
-  flex: none;
-  padding: 0 0.2rem;
-  border: none;
-  background: none;
-  color: var(--map-ink);
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
 }
 
 /* Wiersz, do którego prowadzi „Przejdź”, błyska raz obwódką ostrzeżenia. */
@@ -875,8 +837,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gm-attention-badge,
-  .gm-attention-toast {
+  .gm-attention-badge {
     animation: none;
   }
 }

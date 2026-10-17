@@ -13,7 +13,7 @@ import {
 import { combatAwarenessErrorText, saveCombatAwareness } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { notifyInfo } from '../notices.js';
+import { noteAck, notifyInfo } from '../notices.js';
 
 const LOCKED_HINT = 'Punkty rozdzielisz, gdy MG przyjmie postać do gry.';
 
@@ -55,7 +55,6 @@ export function CombatAwarenessPanel({
     : null;
 
   const [draft, setDraft] = useState<CpredCombatAwareness>(stored);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Zapis cudzą ręką (MG poprawia kartę, gracz odkłada punkty w innym oknie)
   // ma wygrać z nietkniętym szkicem — ale nie z szkicem, przy którym ktoś stoi.
@@ -107,19 +106,14 @@ export function CombatAwarenessPanel({
     if (points === null) return;
     const next = withPoints(id, points);
     if (cpredCombatAwarenessProblem(next, rank) !== null) return;
-    setError(null);
     setDraft(next);
   }
 
   async function save(): Promise<void> {
     setSaving(true);
-    setError(null);
     const ack = await saveCombatAwareness(characterId, draft as Record<string, number>, tokenId);
     setSaving(false);
-    if (!ack.ok) {
-      setError(combatAwarenessErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('character', ack, combatAwarenessErrorText)) return;
     // #60: panel zwijał się po zapisie bez słowa — gracz nie wiedział, czy poszło.
     notifyInfo(`Zapisano przydział Zmysłu Walki: ${characterName}.`, { topic: 'character' });
     onDone?.();
@@ -184,7 +178,6 @@ export function CombatAwarenessPanel({
           );
         })}
       </ul>
-      {error && <p className="awareness-error">{error}</p>}
       <p className="awareness-hint">
         {locked
           ? LOCKED_HINT

@@ -456,12 +456,6 @@
   gap: 0.3rem;
 }
 
-.net-run-notice {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--net-ink);
-}
-
 /* Haki mechaniczne Programu w edytorze MG (etap 26c) — dziewięć pozycji,
    więc kolumny zamiast jednej długiej listy. */
 .compendium-hooks {
@@ -601,12 +595,11 @@
   color: var(--warn);
 }
 
-.net-run-notice--glue {
+.net-run-notice--glue .notice-text {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
-  color: var(--net-glue);
 }
 
 .net-virus-form,

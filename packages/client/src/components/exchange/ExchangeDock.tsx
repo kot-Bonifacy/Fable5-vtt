@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { TradeView } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
+import { noteAck } from '../../notices.js';
 import { cancelTrade, respondTrade, tradeErrorText } from '../../socket.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { liveTradeKey, useExchangeStore } from '../../stores/exchangeStore.js';
@@ -11,39 +12,27 @@ import { openShop } from './open.js';
  *
  * Wszystko, co jest pytaniem „co się dzieje z moimi wymianami”: zaproszenie do
  * przyjęcia, handel zwinięty do rogu (okno zamknięte albo patrzące gdzie
- * indziej — negocjacje trwają), ślad po handlu, który właśnie się skończył,
- * i **sklepy zdalne** („Sklepy (N)”, decyzja MG 9) — Fixer przez telefon albo
+ * indziej — negocjacje trwają) i **sklepy zdalne** („Sklepy (N)”, decyzja MG 9) — Fixer przez telefon albo
  * sklep sieciowy, bez figury na mapie. MG widzi tu każdy handel przy stole
  * (podgląd i przerwanie, bez zgody za gracza); sklepy prowadzi z karty NPC-a.
  *
  * Na ekranie „Między sesjami” dok stoi bez sklepów — tam są przyciskami.
  */
 
-/** Jak długo wisi informacja o zakończonym handlu. */
-const CLOSED_NOTE_MS = 6000;
-
 export function ExchangeDock({ withShops = true }: { withShops?: boolean }) {
   const trades = useExchangeStore((s) => s.trades);
   const selected = useExchangeStore((s) => s.window?.selected ?? null);
-  const lastClosed = useExchangeStore((s) => s.lastClosed);
   const shops = useExchangeStore((s) => s.shops);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  const [error, setError] = useState<string | null>(null);
   const [shopsOpen, setShopsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!lastClosed) return;
-    const timer = setTimeout(() => useExchangeStore.getState().dismissClosed(), CLOSED_NOTE_MS);
-    return () => clearTimeout(timer);
-  }, [lastClosed]);
 
   const rows = Object.values(trades).filter((trade) => liveTradeKey(trade.id) !== selected);
   const remote = withShops && !isGm ? shops.filter((shop) => shop.closed === undefined) : [];
-  if (rows.length === 0 && remote.length === 0 && !lastClosed && !error) return null;
+  if (rows.length === 0 && remote.length === 0) return null;
 
   async function answer(trade: TradeView, accept: boolean) {
     const ack = await respondTrade(trade.id, accept);
-    setError(ack.ok ? null : tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
     // Kliknięte „Przyjmij” otwiera okno handlu — także temu, kto właśnie
     // przeglądał półkę: tę decyzję podjął sam.
     if (ack.ok && accept) useExchangeStore.getState().openTrade(trade.id);
@@ -51,7 +40,7 @@ export function ExchangeDock({ withShops = true }: { withShops?: boolean }) {
 
   async function stop(trade: TradeView) {
     const ack = await cancelTrade(trade.id);
-    setError(ack.ok ? null : tradeErrorText(ack.error));
+    noteAck('exchange', ack, tradeErrorText);
   }
 
   return (
@@ -155,41 +144,6 @@ export function ExchangeDock({ withShops = true }: { withShops?: boolean }) {
               ))}
             </ul>
           )}
-        </div>
-      )}
-      {lastClosed && (
-        <div className="trade-dock-row trade-dock-row--closed">
-          <span className="trade-dock-text">
-            {lastClosed.status === 'done'
-              ? `Wymienione: ${lastClosed.sides[0].name} ⇄ ${lastClosed.sides[1].name}`
-              : `Handel przerwany${lastClosed.closedBy ? ` — ${lastClosed.closedBy}` : ''}`}
-            {lastClosed.status === 'cancelled' && lastClosed.notice
-              ? ` (${tradeErrorText(lastClosed.notice)})`
-              : ''}
-          </span>
-          <button
-            type="button"
-            className="sheet-close"
-            title="Zamknij"
-            aria-label="Zamknij informację o handlu"
-            onClick={() => useExchangeStore.getState().dismissClosed()}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      {error && (
-        <div className="trade-dock-row trade-dock-row--closed">
-          <span className="trade-dock-text">{error}</span>
-          <button
-            type="button"
-            className="sheet-close"
-            title="Zamknij"
-            aria-label="Zamknij komunikat"
-            onClick={() => setError(null)}
-          >
-            ✕
-          </button>
         </div>
       )}
     </div>

@@ -143,8 +143,102 @@
   }
 }
 
+/* Wezwanie, które czeka na decyzję (Unik): pasek jaśnieje w rytmie, jak kubek
+   z wezwaniem. */
+@keyframes notice-call {
+  50% {
+    filter: brightness(1.15);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .notice {
+  .notice,
+  .evasion-prompt .evasion-prompt-row {
     animation: none;
   }
+}
+
+/* --- Komunikaty na miejscu (etap 55b) ---------------------------------------
+   To, co jest stanem albo dotyczy pola, zostaje tam, gdzie żyje — ale w tej
+   samej skórze co kanał: pasek w kolorze rodzaju z nagłówkiem wersalikami.
+   `InlineNotice` (stan handlu, klej w Sieci, braki karty) rysuje nagłówek
+   w DOM. Błąd pola i zdanie pod slotem HUD stoją jako jeden akapit w kilkudziesięciu
+   miejscach, więc nagłówek daje im `::before` — tekst akapitu się nie zmienia
+   (E2E czyta go `toHaveText`). */
+
+.notice--inline {
+  margin: 0;
+  animation: none;
+}
+
+.notice--inline .notice-text {
+  margin-top: 0.2rem;
+}
+
+.notice--inline .notice-text > p {
+  margin: 0;
+}
+
+.auth-error,
+.creator-error,
+.awareness-error,
+.hud-refusal,
+.aim-tooltip-refusal {
+  margin: 0;
+  padding: 0.3rem 0.6rem 0.45rem;
+  background-color: var(--notice-danger);
+  color: var(--notice-on-dark);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.6rem), calc(100% - 0.6rem) 100%, 0 100%);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.auth-error::before,
+.creator-error::before,
+.awareness-error::before,
+.hud-refusal::before,
+.aim-tooltip-refusal::before {
+  content: 'Błąd';
+  display: block;
+  margin-bottom: 0.2rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--notice-rule-dark);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.hud-refusal::before,
+.aim-tooltip-refusal::before,
+.awareness-error::before {
+  content: 'Odmowa';
+}
+
+/* Wąskie miejsca: pasek HUD-u (17rem) i dymek przy kursorze. */
+.hud-refusal,
+.aim-tooltip-refusal {
+  font-size: 0.72rem;
+}
+
+/* Lista braków pod polem (portrety) — punkty w kolorze napisu. */
+ul.auth-error {
+  padding-left: 1.6rem;
+}
+
+ul.auth-error::before {
+  margin-left: -1rem;
+}
+
+/* Zdanie w wierszu przycisków (generator screamsheetu) zajmuje własną linię. */
+span.auth-error {
+  flex: 1 1 100%;
+}
+
+.notice--inline .small-button,
+.creator-error button {
+  margin-left: 0.3rem;
 }

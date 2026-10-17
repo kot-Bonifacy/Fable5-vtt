@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LIGHT_COLORS, type LightView } from '@vtt/shared';
 import { updateLight } from '../socket.js';
 import { lightErrorText } from '../mapErrors.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta światła (etap 27l).
@@ -16,14 +17,13 @@ import { lightErrorText } from '../mapErrors.js';
  * jedyna właściwość lampy, o którą klient może wyłącznie **poprosić**.
  */
 export function SceneCardLight({ light }: { light: LightView }) {
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function patch(next: Parameters<typeof updateLight>[1], fitRoom?: boolean) {
     setBusy(true);
     const ack = await updateLight(light.id, next, fitRoom);
     setBusy(false);
-    setError(ack.ok ? null : lightErrorText(ack.error));
+    noteAck('scene', ack, lightErrorText);
   }
 
   return (
@@ -110,8 +110,6 @@ export function SceneCardLight({ light }: { light: LightView }) {
           Dopasuj do pokoju
         </button>
       </div>
-
-      {error && <p className="ai-status-error">{error}</p>}
     </div>
   );
 }

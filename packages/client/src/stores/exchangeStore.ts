@@ -42,8 +42,6 @@ export interface ExchangeWindowState {
 
 interface ExchangeStoreState {
   trades: Record<string, TradeView>;
-  /** Ostatnie zamknięcie — dok pokazuje je chwilę, żeby „przerwane” nie znikało bez słowa. */
-  lastClosed: TradeView | null;
   window: ExchangeWindowState | null;
   /** Sklepy dla doku „Sklepy (N)” i ekranu „Między sesjami” (u MG — wszystkie). */
   shops: MerchantListItem[];
@@ -58,7 +56,6 @@ interface ExchangeStoreState {
 
   applyTrade: (trade: TradeView) => void;
   replaceTrades: (trades: TradeView[]) => void;
-  dismissClosed: () => void;
 
   setShops: (shops: MerchantListItem[]) => void;
   applyShelf: (shelf: MerchantView) => void;
@@ -76,7 +73,6 @@ function windowForTrade(trade: TradeView): ExchangeWindowState {
 
 export const useExchangeStore = create<ExchangeStoreState>((set) => ({
   trades: {},
-  lastClosed: null,
   window: null,
   shops: [],
   shelves: {},
@@ -123,7 +119,6 @@ export const useExchangeStore = create<ExchangeStoreState>((set) => ({
       // otwarte stało bez strony nad kartą postaci (oględziny 08.10).
       return {
         trades,
-        lastClosed: trade,
         window: state.window?.selected === key ? null : state.window,
       };
     }),
@@ -136,8 +131,6 @@ export const useExchangeStore = create<ExchangeStoreState>((set) => ({
       const lost = tradeId !== null && !trades[tradeId];
       return { trades, window: lost ? null : state.window };
     }),
-
-  dismissClosed: () => set({ lastClosed: null }),
 
   setShops: (shops) => set({ shops }),
 

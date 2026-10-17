@@ -41,6 +41,8 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
+import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
+import { InlineNotice } from './NoticeColumn.js';
 import { plural } from '../plural.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
@@ -730,8 +732,6 @@ function NetRunWindowBody() {
   const run = useNetRunStore(currentRun);
   const runs = useNetRunStore((s) => s.runs);
   const openRun = useNetRunStore((s) => s.openRun);
-  const notice = useNetRunStore((s) => s.notice);
-  const setNotice = useNetRunStore((s) => s.setNotice);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tokens = useTokenStore((s) => s.tokens);
   // Liczone raz, przy otwarciu: miejsce pierwszego otwarcia i zarazem granica
@@ -740,19 +740,6 @@ function NetRunWindowBody() {
   const placement = useWindowPlacement('net-run', () => fit);
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
-  /**
-   * Strzał odrzucony przez osłonę (16c/26d) — czym go powtórzyć.
-   *
-   * Strzelec przy mapie dostaje kartę wyboru **przed** zapłatą, bo osłonę widać
-   * już w podglądzie. Urządzenie strzela od razu, więc tutaj wybór może przyjść
-   * dopiero po odmowie — i musi mieć przycisk, inaczej `ignoreCover` jest polem
-   * w protokole, którego nikt nie ma jak ustawić (zaległość z 26d).
-   */
-  const [covered, setCovered] = useState<{
-    floorId: string;
-    deviceId: string;
-    targetTokenId?: string;
-  } | null>(null);
 
   if (!run) return null;
 
@@ -760,8 +747,14 @@ function NetRunWindowBody() {
     setBusy(true);
     const ack = await work;
     setBusy(false);
-    if (!ack.ok) setNotice(netErrorText(ack.error));
+    if (!ack.ok && ack.error !== 'NET_SHOT_COVERED') notifyRefusal('net', netErrorText(ack.error));
     return ack;
+  }
+
+  /** Wynik akcji w Sieci („Hasło złamane…”) — informacja w kanale nad mapą (etap 55b). */
+  function report(summary: string | undefined) {
+    if (summary) notifyInfo(summary, { title: 'Sieć', topic: 'net' });
+    else clearNotices('net');
   }
 
   /** Jedna obsługa urządzenia; `ignoreCover` wraca tu z przycisku powtórki. */
@@ -782,17 +775,33 @@ function NetRunWindowBody() {
         ...(ignoreCover ? { request: { ignoreCover: true } } : {}),
       }),
     );
-    if (ack.ok && ack.data) setNotice(ack.data.summary);
-    setCovered(
-      ack.error === 'NET_SHOT_COVERED'
-        ? { floorId, deviceId, ...(targetTokenId ? { targetTokenId } : {}) }
-        : null,
-    );
+    if (ack.ok) report(ack.data?.summary);
+    /*
+     * Strzał odrzucony przez osłonę (16c/26d) — pytanie z powtórką. Strzelec
+     * przy mapie dostaje kartę wyboru **przed** zapłatą, bo osłonę widać już
+     * w podglądzie. Urządzenie strzela od razu, więc tutaj wybór może przyjść
+     * dopiero po odmowie — i musi mieć przycisk, inaczej `ignoreCover` jest
+     * polem w protokole, którego nikt nie ma jak ustawić (zaległość z 26d).
+     */
+    if (ack.error === 'NET_SHOT_COVERED') {
+      notifyChoice(
+        'net',
+        netErrorText(ack.error),
+        [
+          {
+            label: 'Strzelaj mimo osłony',
+            title: 'Cel się wychylił — decyzja stołu, kosztuje drugą Akcję Sieciową',
+            run: () => void operate(floorId, deviceId, operation, targetTokenId, true),
+          },
+        ],
+        { title: 'Osłona' },
+      );
+    }
   }
 
   async function move(to: CpredNetPosition) {
     const ack = await guard(moveNetRun(run!.runId, to));
-    if (ack.ok) setNotice(null);
+    if (ack.ok) clearNotices('net');
   }
 
   async function ability(
@@ -802,7 +811,7 @@ function NetRunWindowBody() {
     const ack = await guard(
       useNetAbility({ runId: run!.runId, ability: id, ...(virus ? { virus } : {}) }),
     );
-    if (ack.ok && ack.data) setNotice(ack.data.summary);
+    if (ack.ok) report(ack.data?.summary);
     setVirusOpen(false);
   }
 
@@ -811,7 +820,7 @@ function NetRunWindowBody() {
     work: Promise<{ ok: boolean; error?: string; data?: T }>,
   ) {
     const ack = await guard(work);
-    if (ack.ok && ack.data) setNotice(ack.data.summary);
+    if (ack.ok) report(ack.data?.summary);
   }
 
   const floors = run.run.branches.flatMap((branch) => branch.floors);
@@ -911,7 +920,7 @@ function NetRunWindowBody() {
         </div>
 
         {fightState.glue && (
-          <p className="net-run-notice net-run-notice--glue">
+          <InlineNotice tone="warn" title="Klej" className="net-run-notice--glue" role="status">
             {fightState.glue.source}: ani niżej, ani bezpiecznego odłączenia
             {fightState.glue.untilRound !== null
               ? ` — do rundy ${fightState.glue.untilRound}`
@@ -927,7 +936,7 @@ function NetRunWindowBody() {
                 Zdejmij
               </button>
             )}
-          </p>
+          </InlineNotice>
         )}
 
         <div className="net-run-shaft">
@@ -947,10 +956,10 @@ function NetRunWindowBody() {
         </div>
 
         {virusPending && (
-          <p className="net-run-notice">
-            Wirus w budowie: {virusPending.actionsSpent} / {virusPending.actionsNeeded} Akcji
-            Sieciowych · PT {virusPending.dv} — {virusPending.description}
-          </p>
+          <InlineNotice tone="info" title="Wirus w budowie" role="status">
+            {virusPending.actionsSpent} / {virusPending.actionsNeeded} Akcji Sieciowych · PT{' '}
+            {virusPending.dv} — {virusPending.description}
+          </InlineNotice>
         )}
 
         {fightState.ice.length > 0 && (
@@ -1076,30 +1085,6 @@ function NetRunWindowBody() {
           </ul>
         )}
 
-        {notice && (
-          <p className="net-run-notice">
-            {notice}
-            {covered && (
-              <button
-                type="button"
-                className="small-button"
-                disabled={busy}
-                title="Cel się wychylił — decyzja stołu, kosztuje drugą Akcję Sieciową"
-                onClick={() =>
-                  void operate(
-                    covered.floorId,
-                    covered.deviceId,
-                    'fire',
-                    covered.targetTokenId,
-                    true,
-                  )
-                }
-              >
-                Strzelaj mimo osłony
-              </button>
-            )}
-          </p>
-        )}
         {fightState.ice.length === 0 && (
           <p className="placeholder-text">
             {netAbility('slide')?.name} i {netAbility('zap')?.name} czekają na Czarnego LOD-a — oba

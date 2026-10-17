@@ -3,6 +3,7 @@ import { COVER_HP_MAX, cpredCoverPresetDetail, type CoverView } from '@vtt/share
 import { updateCover } from '../socket.js';
 import { ensureCoverCatalogueLoaded, useMapToolStore } from '../stores/mapToolStore.js';
 import { coverErrorText } from '../mapErrors.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta osłony (etap 27l).
@@ -19,7 +20,6 @@ import { coverErrorText } from '../mapErrors.js';
  */
 export function SceneCardCover({ cover }: { cover: CoverView }) {
   const catalogue = useMapToolStore((s) => s.coverCatalogue);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Katalog jedzie z API na żądanie (16c). Karta bywa pierwszym miejscem, które
@@ -30,7 +30,7 @@ export function SceneCardCover({ cover }: { cover: CoverView }) {
     setBusy(true);
     const ack = await updateCover(cover.id, next);
     setBusy(false);
-    setError(ack.ok ? null : coverErrorText(ack.error));
+    noteAck('scene', ack, coverErrorText);
   }
 
   const wrecked = cover.hpCurrent <= 0;
@@ -127,7 +127,6 @@ export function SceneCardCover({ cover }: { cover: CoverView }) {
         Prostokąt przesuniesz i przeskalujesz na mapie — przeciągnij zaznaczoną osłonę albo jej
         narożnik.
       </p>
-      {error && <p className="ai-status-error">{error}</p>}
     </div>
   );
 }

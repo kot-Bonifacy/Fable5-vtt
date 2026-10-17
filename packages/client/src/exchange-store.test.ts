@@ -26,7 +26,7 @@ function trade(patch: Partial<TradeView> = {}): TradeView {
 const store = () => useExchangeStore.getState();
 
 beforeEach(() => {
-  useExchangeStore.setState({ trades: {}, lastClosed: null, window: null, shops: [], shelves: {} });
+  useExchangeStore.setState({ trades: {}, window: null, shops: [], shelves: {} });
 });
 
 describe('exchangeStore — handel', () => {
@@ -60,12 +60,11 @@ describe('exchangeStore — handel', () => {
     expect(store().window?.selected).toBe('live:t1');
   });
 
-  it('zakończony handel znika z listy i zamyka swoje okno, w doku zostaje ślad', () => {
+  it('zakończony handel znika z listy i zamyka swoje okno', () => {
     store().applyTrade(trade({ status: 'open' }));
     store().applyTrade(trade({ status: 'done', closedBy: 'Rico' }));
     expect(store().trades).toEqual({});
     expect(store().window).toBeNull();
-    expect(store().lastClosed?.status).toBe('done');
   });
 
   it('po F5 `trade:list` odtwarza handel, a okno zgubionego zamyka', () => {
