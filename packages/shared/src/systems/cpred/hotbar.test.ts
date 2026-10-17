@@ -16,6 +16,7 @@ import {
 import { CPRED_HOLSTERED_REFUSAL, CPRED_JAM_REFUSAL } from './attacks.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
+import type { CpredAmmoProfile } from './ammo.js';
 import { CPRED_SHIELD_TWO_HANDED_REFUSAL, type CpredWeaponRow } from './character.js';
 import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
@@ -996,6 +997,49 @@ describe('etap 46c — zapas amunicji na pasku', () => {
     expect(slots.find((slot) => slot.kind === 'reload')?.disabled).toBe(
       'Nie masz amunicji do tej broni.',
     );
+  });
+
+  it('bez naboi bieżącego rodzaju ładuje inny pasujący z ekwipunku (17.10)', () => {
+    const shotgun: ResolvedWeapon = {
+      ...pistol,
+      ammoType: 'Breneka',
+      ammoPatterns: ['bullet', 'shell'],
+    };
+    const shot: CpredAmmoProfile = { id: 'ammo.shot', name: 'Śrut', patterns: ['shell'] };
+    const shells = {
+      id: 'b-shot',
+      name: 'Amunicja śrutowa · Breneka',
+      notes: '',
+      qty: 10,
+      ammo: { ammoId: 'ammo.shot', calibre: 'Breneka', pattern: 'shell' as const },
+    };
+    const sheet = { weapons: [weaponRow({ name: 'Strzelba', ammoCurrent: 0, ammoMax: 4 })] };
+    const slots = hotbarSlotsFor(
+      input({
+        sheet,
+        resolve: () => shotgun,
+        resolveAmmo: (id) => (id === shot.id ? shot : null),
+        stockGear: [shells],
+      }),
+    );
+    // Strzał dalej mówi o pustym magazynku i zerowym zapasie zwykłej…
+    expect(weaponSlots(slots)[0]!.stock).toBe(0);
+    // …a przeładowanie ładuje śrut, zamiast odmawiać.
+    expect(slots.find((slot) => slot.kind === 'reload')).toMatchObject({
+      ammoId: 'ammo.shot',
+      stock: 10,
+      disabled: null,
+    });
+    // Pełny magazynek zwykłej też można przeładować na śrut.
+    const full = hotbarSlotsFor(
+      input({
+        sheet: { weapons: [weaponRow({ name: 'Strzelba', ammoCurrent: 4, ammoMax: 4 })] },
+        resolve: () => shotgun,
+        resolveAmmo: (id) => (id === shot.id ? shot : null),
+        stockGear: [shells],
+      }),
+    );
+    expect(full.find((slot) => slot.kind === 'reload')?.disabled).toBeNull();
   });
 
   it('granat ręczny bez magazynka rzuca z zapasu — pusty zapas odmawia rzutu', () => {

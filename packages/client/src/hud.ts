@@ -688,9 +688,11 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     // Magazynek broni podwieszanej jest jej własny (etap 31) — ten sam guzik,
     // to samo zdarzenie, tylko z `attachmentId`.
     const attachmentId = slot.attachmentId ?? undefined;
+    // Inny rodzaj naboju (17.10), gdy bieżącego nie ma w ekwipunku.
+    const ammoId = slot.ammoId;
     if (token?.characterId)
-      reloadWeapon(token.characterId, slot.weaponRowId, undefined, undefined, attachmentId);
-    else reloadWeapon(undefined, slot.weaponRowId, undefined, tokenId, attachmentId);
+      reloadWeapon(token.characterId, slot.weaponRowId, ammoId, undefined, attachmentId);
+    else reloadWeapon(undefined, slot.weaponRowId, ammoId, tokenId, attachmentId);
     return;
   }
 

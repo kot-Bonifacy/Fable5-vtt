@@ -14,8 +14,14 @@
  * rules questions. The UI's job is to draw nine boxes.
  */
 
-import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
-import { cpredAmmoStockCount, cpredStockAmmoId, cpredThrowsFromStock } from './ammostock.js';
+import { ammoFitsWeapon, loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
+import {
+  CPRED_ORDINARY_AMMO_LABEL,
+  cpredAmmoStockByKind,
+  cpredAmmoStockCount,
+  cpredStockAmmoId,
+  cpredThrowsFromStock,
+} from './ammostock.js';
 import type {
   CpredArmorRow,
   CpredCharacterData,
@@ -103,6 +109,12 @@ export interface CpredWeaponOption {
    * karta nie liczy amunicji („bez dna”) albo broń nie ma kalibru.
    */
   stock?: number | null;
+  /**
+   * Rodzaj naboju, który przeładowanie weźmie zamiast bieżącego, gdy bieżącego
+   * w ekwipunku nie ma, a inny pasujący leży (17.10). Strzelba ustawiona na
+   * zwykłą, a w plecaku dziesięć śrutowych, odmawiała „Nie masz amunicji”.
+   */
+  stockSwap?: { ammoId: string | null; name: string; count: number };
   /** Granat ręczny bez magazynka: rzut bierze sztukę prosto z zapasu. */
   throwsFromStock?: boolean;
 }
@@ -162,12 +174,42 @@ export function cpredWeaponOptions(
       option.attachmentId === null &&
       cpredThrowsFromStock({ ammoMax: option.ammo?.max ?? 0 }, option.resolved);
     if (!option.ammo && !throwsFromStock) return option;
-    const stock = cpredAmmoStockCount(stockGear, {
-      calibre,
-      ammoId: cpredStockAmmoId(option.ammoProfile),
-    });
-    return { ...option, stock, ...(throwsFromStock ? { throwsFromStock: true } : {}) };
+    const loadedId = cpredStockAmmoId(option.ammoProfile);
+    const stock = cpredAmmoStockCount(stockGear, { calibre, ammoId: loadedId });
+    const stockSwap =
+      stock === 0 && option.ammo ? stockSwapFor(stockGear, calibre, option, resolveAmmo) : null;
+    return {
+      ...option,
+      stock,
+      ...(stockSwap ? { stockSwap } : {}),
+      ...(throwsFromStock ? { throwsFromStock: true } : {}),
+    };
   });
+}
+
+/**
+ * Inny rodzaj naboju tego kalibru, który leży w ekwipunku i pasuje do broni —
+ * ten, którego jest najwięcej. Zmianę rodzaju i tak robi się przeładowaniem
+ * (16g), więc pasek nie odmawia, tylko ładuje to, co jest.
+ */
+function stockSwapFor(
+  gear: readonly CpredGearRow[],
+  calibre: string,
+  option: CpredWeaponOption,
+  resolveAmmo: CpredAmmoResolver | undefined,
+): CpredWeaponOption['stockSwap'] | null {
+  let best: NonNullable<CpredWeaponOption['stockSwap']> | null = null;
+  for (const [ammoId, count] of cpredAmmoStockByKind(gear, calibre)) {
+    if (count <= 0 || (best && best.count >= count)) continue;
+    if (ammoId === null) {
+      best = { ammoId, name: CPRED_ORDINARY_AMMO_LABEL, count };
+      continue;
+    }
+    const profile = resolveAmmo?.(ammoId) ?? null;
+    if (!profile || !ammoFitsWeapon(profile, option.resolved)) continue;
+    best = { ammoId, name: profile.name, count };
+  }
+  return best;
 }
 
 function weaponOptionsOf(
@@ -523,6 +565,11 @@ export interface CpredHotbarReloadSlot {
   ammo: { current: number; max: number };
   /** Etap 46c: zapas rodzaju z magazynka; null — karta „bez dna”. */
   stock: number | null;
+  /**
+   * Rodzaj do załadowania zamiast bieżącego (`null` — zwykła); brak pola —
+   * przeładowanie tym, co już jest w magazynku.
+   */
+  ammoId?: string | null;
   disabled: string | null;
   key: string | null;
 }
@@ -771,22 +818,28 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   // — i płaci tę samą Akcję.
   for (const option of options) {
     if (!option.ammo) continue;
+    const swap = option.stockSwap;
     slots.push({
       kind: 'reload',
       icon: 'reload',
       id: `reload:${weaponOptionKey(option.rowId, option.attachmentId)}`,
       label: `Przeładuj: ${option.name}`,
-      hint:
-        `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}` +
-        `${typeof option.stock === 'number' ? ` · zapas ${option.stock}` : ''}). Kosztuje Akcję.`,
+      hint: swap
+        ? `Ładuje ${swap.name} (zapas ${swap.count}) — tego, co jest w magazynku, ` +
+          `w ekwipunku nie ma. Kosztuje Akcję.`
+        : `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}` +
+          `${typeof option.stock === 'number' ? ` · zapas ${option.stock}` : ''}). Kosztuje Akcję.`,
       weaponRowId: option.rowId,
       attachmentId: option.attachmentId,
       ammo: option.ammo,
-      stock: option.stock ?? null,
+      stock: swap ? swap.count : (option.stock ?? null),
+      ...(swap ? { ammoId: swap.ammoId } : {}),
+      // Pełny magazynek przy zmianie rodzaju wychodzi z broni (16g), więc
+      // odmawia tylko wtedy, gdy nie ma czego zmieniać.
       disabled:
-        option.ammo.current >= option.ammo.max
+        option.ammo.current >= option.ammo.max && !swap
           ? 'Magazynek jest pełny.'
-          : option.stock === 0
+          : option.stock === 0 && !swap
             ? CPRED_NO_AMMO_REFUSAL
             : actionRefusal,
       key: null,
