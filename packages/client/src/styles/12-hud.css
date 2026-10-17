@@ -424,8 +424,10 @@
 
 /* ---- Punkty Wytrzymałości ---- */
 
-/* The wound state colours the bar, so „how bad is it" is answered by a glance
-   rather than by dividing two numbers (the same rungs stage 15 judges on). */
+/* How much is gone colours the bar, so „how bad is it" is answered by a glance
+   rather than by dividing two numbers. Since 17.10 (MG) the same thresholds as
+   the HP ring on the map (`hpRingTone`): orange past half the HP lost, red
+   past three quarters; the notch still marks the rung stage 15 judges on. */
 .hud-hp {
   position: relative;
   display: flex;
@@ -439,11 +441,11 @@
   --hud-hp-color: var(--hurt-light);
 }
 
-.hud-hp--serious {
-  --hud-hp-color: var(--warn);
+.hud-hp--orange {
+  --hud-hp-color: var(--hurt-heavy);
 }
 
-.hud-hp--mortal {
+.hud-hp--red {
   --hud-hp-color: var(--err);
 }
 

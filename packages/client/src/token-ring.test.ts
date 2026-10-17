@@ -202,6 +202,10 @@ describe('obrączka PW mówi kolorami panelu', () => {
   ])('szczebel „%s" ma kolor %s z nocnej palety', (rung, variable) => {
     expect(rungColor(rung)).toBe(nightVar(variable));
   });
+
+  it('pomarańcz ponad połowę ran (17.10) to `--hurt-heavy` z nocnej palety', () => {
+    expect(rungColor('orange')).toBe(nightVar('--hurt-heavy'));
+  });
 });
 
 /**

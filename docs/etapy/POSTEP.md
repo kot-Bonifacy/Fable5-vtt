@@ -288,13 +288,13 @@ pierścień figury (obrączka PW) pomarańczowy powyżej 50% ran, czerwony powy�
 
 **Zrobione:** kubek nie dzwoni przy wezwaniu do Uniku ani przy załadowanym Uniku (`DiceCup`,
 `dodge`/`evasion` → bez klucza sygnału; monit nad mapą zostaje). Nowy efekt mapy `hit`
-(`shared/fx.ts`), wysyłany przez `damageMapFx` zamiast `spark`: błysk na cały żeton, fala,
-rozprysk krwi (pancerz — niebieskie iskry, krytyk — druga, złota fala), wielkość rośnie z utraconymi
+(`shared/fx.ts`), wysyłany przez `damageMapFx` zamiast `spark`: błysk na cały żeton, rozprysk
+krwi (pancerz — niebieskie iskry, krytyk — złoty rdzeń błysku; fale MG odrzucił), wielkość rośnie z utraconymi
 PW ÷ max, dolna granica 30 px ekranu; figura drga przez `pivot` (`MapRenderer.shakeFigure`, figura
 szukana po punkcie, bez id żetonu w efekcie). Liczba obrażeń „wyskakuje”. `hpRingTone`
 (`token-ring.ts`): pomarańcz `0xff8a1f` ponad 50% ran, czerwień ponad 75%, niżej jak dotąd.
-**Odstępstwo:** pasek PW w panelu postaci zostaje przy szczeblach (umowa z 12.09 o wspólnych
-kolorach dotyczy teraz tylko zieleni i żółci) — do decyzji MG. Umowa na górze `atak`.
+Pasek PW w panelu (`CombatHud`) bierze te same progi (decyzja MG), nowy token motywu
+`--hurt-heavy`; podpis stanu ran w dymku dalej ze szczebla. Umowa na górze `atak`.
 
 **Weryfikacja:** vitest shared 2471, klient 381 (nowy test progów w `token-ring.test.ts`), serwer
 1457 — wszystko zielone; `tsc`, ESLint, Prettier. Oględziny w **Firefoksie** i **Chromium**

@@ -120,6 +120,8 @@
   --hurt-rgb: 245 158 11;
   /* Pierwszy szczebel drabinki PW: „lekko ranny" jeszcze nie jest bursztynem. */
   --hurt-light: #d4d94a;
+  /* Ponad połowa ran (17.10, MG): pomarańcz paska i obrączki PW, ponad 3/4 — `--err`. */
+  --hurt-heavy: #ff8a1f;
   /* Przypomnienie tury (etap 14e) — najcieplejszy z bursztynów. */
   --remind-rgb: 255 179 0;
 
@@ -241,6 +243,7 @@
   --fate: #0f6b68;
   --whisper-rgb: 107 63 160;
   --hurt-light: #6f7412;
+  --hurt-heavy: #b8520a;
 
   --shadow-md: 0 8px 24px rgb(60 40 15 / 22%);
   --shadow-lg: 0 12px 40px rgb(60 40 15 / 26%);
@@ -301,6 +304,7 @@
   --hurt: #f59e0b;
   --hurt-rgb: 245 158 11;
   --hurt-light: #d4d94a;
+  --hurt-heavy: #ff8a1f;
   --whisper: #b48be0;
   --npc: #e5a54b;
   --info: #8ab4f8;

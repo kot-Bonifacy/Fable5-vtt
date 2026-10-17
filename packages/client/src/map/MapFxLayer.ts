@@ -127,7 +127,6 @@ const ZAP_COLOR = 0x8fd8ff;
 const CLOUD_GAS = 0x9fe08a;
 const CLOUD_SMOKE = 0xb9c1c9;
 const HIT_FLASH = 0xff2d2d;
-const HIT_RING = 0xff5f52;
 const HIT_BLOOD = 0x9b0f1a;
 const HIT_BLOOD_CORE = 0xff3b30;
 const HIT_CRIT = 0xfacc15;
@@ -684,15 +683,15 @@ export class MapFxLayer {
   }
 
   /**
-   * A figure taking a hit (17.10): the whole token flashes, a shock ring runs
-   * off its edge, and — when Hit Points went — blood spatters outwards while
-   * the figure flinches. A vest that ate it all throws sparks instead and
+   * A figure taking a hit (17.10): the whole token flashes and — when Hit
+   * Points went — blood spatters outwards while the figure flinches. No shock
+   * rings: MG turned them down at the first look. A vest that ate it all throws sparks instead and
    * barely rocks the figure. Everything grows with `strength`, so a graze
    * and half a body's worth of HP do not look alike.
    *
    * Sized to the figure, with a floor **on screen** (`HIT_MIN_RADIUS_PX`):
-   * the first look at a table (17.10) had 45 px figures at 1:1, and a ring
-   * and spatter scaled off those were there and nobody saw them.
+   * the first look at a table (17.10) had 45 px figures at 1:1, and spatter
+   * scaled off those was there and nobody saw it.
    */
   private drawHit(item: Extract<FxItem, { kind: 'hit' }>, k: number): void {
     const { at, weight, strength } = item;
@@ -713,22 +712,16 @@ export class MapFxLayer {
         .circle(at.x, at.y, item.radius * 1.04)
         .fill({ color, alpha: strongest * (1 - flash) });
       if (flash < 0.3) {
+        // A Critical Injury burns gold at the core — the one mark it gets
+        // since the shock rings went (17.10, MG: „bez efektów fal").
         this.graphics
           .circle(at.x, at.y, item.radius * (0.5 + flash))
-          .fill({ color: 0xffffff, alpha: (crit ? 0.8 : 0.5) * (1 - flash / 0.3) });
+          .fill({
+            color: crit ? HIT_CRIT : 0xffffff,
+            alpha: (crit ? 0.85 : 0.5) * (1 - flash / 0.3),
+          });
       }
     }
-
-    // Shock ring off the figure's edge; a crit sends a second, golden one after it.
-    const delays = crit ? [0, 0.16] : [0];
-    delays.forEach((delay, index) => {
-      const q = (p - delay) / (1 - delay);
-      if (q <= 0) return;
-      const reach = r * (1 + 1.3 * easeOut(q) * grow);
-      const width = Math.max(r * 0.22 * (1 - q), 3 * k);
-      const color = index === 1 ? HIT_CRIT : armor ? HIT_ARMOR : HIT_RING;
-      this.graphics.circle(at.x, at.y, reach).stroke({ color, width, alpha: 0.95 * (1 - q) });
-    });
 
     // Fixed per hit, like the splinters of `drawImpact`: a fresh random star
     // every frame boils instead of flying.

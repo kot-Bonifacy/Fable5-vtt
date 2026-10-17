@@ -93,10 +93,10 @@ const HP_RUNG_COLORS: Readonly<Record<TokenHpRung, number>> = {
   mortal: 0xff3b30,
 };
 /**
- * …a od 17.10 obrączka mówi też progami ran (`hpRingTone`, zlecenie MG):
- * pomarańcz ponad połowę ran, czerwień ponad trzy czwarte. Pomarańcz jest
- * własny, nie `--warn` — bursztyn szczebla „poważnie ranny" na mapie czytał
- * się jak żółty i nie odróżniał się od draśnięcia.
+ * …a od 17.10 obrączka i pasek mówią progami ran (`hpRingTone`, zlecenie MG):
+ * pomarańcz (`--hurt-heavy`) ponad połowę ran, czerwień ponad trzy czwarte.
+ * Pomarańcz jest własny, nie `--warn` — bursztyn szczebla „poważnie ranny"
+ * na mapie czytał się jak żółty i nie odróżniał się od draśnięcia.
  */
 const HP_RING_COLORS: Readonly<Record<HpRingTone, number>> = {
   healthy: HP_RUNG_COLORS.healthy,

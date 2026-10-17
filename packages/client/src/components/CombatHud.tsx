@@ -18,8 +18,10 @@ import {
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
+  tokenHpShareOf,
   woundStateFromHp,
 } from '@vtt/shared';
+import { hpRingTone } from '../map/token-ring.js';
 import {
   activateGroup,
   activateSlot,
@@ -149,6 +151,8 @@ function StatEffectChips({ effects }: { effects: readonly CpredStatEffect[] }) {
  */
 function HealthBar({ hp }: { hp: { current: number; max: number } }) {
   const state = woundStateFromHp(hp.current, hp.max);
+  // Colour from the map ring's thresholds (17.10), the label from the rung.
+  const tone = hpRingTone(tokenHpShareOf(hp));
   const ratio = hp.max > 0 ? Math.max(0, Math.min(1, hp.current / hp.max)) : 0;
   const threshold = hp.max > 0 ? Math.ceil(hp.max / 2) / hp.max : 0;
   const [delta, setDelta] = useState<{ value: number; id: number } | null>(null);
@@ -171,7 +175,7 @@ function HealthBar({ hp }: { hp: { current: number; max: number } }) {
 
   return (
     <div
-      className={`hud-hp hud-hp--${state}`}
+      className={`hud-hp hud-hp--${tone}`}
       title={`Punkty Wytrzymałości: ${hp.current}/${hp.max} · ${CPRED_WOUND_LABELS[state]}`}
     >
       <span className="hud-hp-track">
@@ -644,7 +648,7 @@ export function CombatHud() {
             )}
             {token.hp && (
               <span
-                className={`hud-collapsed-hp hud-hp--${woundStateFromHp(token.hp.current, token.hp.max)}`}
+                className={`hud-collapsed-hp hud-hp--${hpRingTone(tokenHpShareOf(token.hp))}`}
                 title={`Punkty Wytrzymałości: ${token.hp.current}/${token.hp.max}`}
               >
                 <span
