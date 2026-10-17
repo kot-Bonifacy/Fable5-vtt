@@ -47,7 +47,7 @@ export function PartyWipe() {
           Wszyscy zginęli
         </h1>
         <div className="auth-rule" aria-hidden="true" />
-        <p className="party-wipe-slogan">W Night City nikt nie umiera ze starości.</p>
+        <p className="party-wipe-slogan">Night City nie wybacza.</p>
         <p className="auth-hint">
           {isGm
             ? 'Każda postać graczy na tej scenie ma stan Martwy. Zdejmij go komuś, a gra toczy się dalej.'

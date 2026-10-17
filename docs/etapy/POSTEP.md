@@ -31,7 +31,7 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 **Plansza „Wszyscy zginęli” (zlecenie MG z 17.10) — dalej refaktoryzacja całości pod osłoną suity,
 potem T10.** Gdy każda figura graczy na scenie ma stan Martwy, stół zasłania plakat logowania
-ze sloganem „W Night City nikt nie umiera ze starości.” i przyciskiem „Teraz możesz bezpiecznie
+ze sloganem „Night City nie wybacza.” i przyciskiem „Teraz możesz bezpiecznie
 wyłączyć komputer” (gracza wylogowuje, MG zamyka planszę). Umowa na górze `ui`.
 
 **Etap 55 „Komunikaty wzorem Foundry” (zlecenie MG z 17.10) zamknięty 17.10 (55a + 55b) — dalej
