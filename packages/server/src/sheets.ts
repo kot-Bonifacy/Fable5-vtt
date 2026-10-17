@@ -79,6 +79,7 @@ import {
   cpredAction,
   cpredActionBlock,
   cpredTurnForfeit,
+  cpredOutOfFight,
   cpredBackupDue,
   cpredBackupTier,
   describeBackupPending,
@@ -331,6 +332,11 @@ export function sheetActionBlock(statuses: readonly string[]): string | null {
 /** Name of the state that hands this token's turn on by itself, or null (17.10). */
 export function sheetTurnForfeit(statuses: readonly string[]): string | null {
   return cpredTurnForfeit(statuses);
+}
+
+/** Whether this token is out of the fight for good — Martwy (17.10). */
+export function sheetOutOfFight(statuses: readonly string[]): boolean {
+  return cpredOutOfFight(statuses);
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   cpredMovementBlock,
   cpredPeriodicDamage,
   cpredStatusSeverity,
+  cpredOutOfFight,
   cpredTurnForfeit,
   cpredTurnReminders,
 } from './statuses.js';
@@ -56,6 +57,12 @@ describe('statuses that stop a token from acting', () => {
     expect(cpredTurnForfeit(['prone', 'unconscious', 'dead'])).toBe('Martwy');
     expect(cpredTurnForfeit(['prone', 'grappled', 'immobilized'])).toBeNull();
     expect(cpredTurnForfeit([])).toBeNull();
+  });
+
+  it('takes only the dead out of the fight — the unconscious may still come round', () => {
+    expect(cpredOutOfFight(['prone', 'dead'])).toBe(true);
+    expect(cpredOutOfFight(['unconscious'])).toBe(false);
+    expect(cpredOutOfFight([])).toBe(false);
   });
 
   /**

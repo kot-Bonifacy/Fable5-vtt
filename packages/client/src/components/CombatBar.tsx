@@ -4,6 +4,7 @@ import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   ROLE_GM,
+  cpredOutOfFight,
   cpredSheetInitiative,
   cpredTurnReminders,
   findInitiativeTies,
@@ -271,10 +272,22 @@ export function CombatBar() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
   const [dragged, setDragged] = useState<string | null>(null);
-  const ties = useMemo(() => (combat ? findInitiativeTies(combat.combatants) : []), [combat]);
+  const tokens = useTokenStore((s) => s.tokens);
+  // The dead leave the strip (17.10.2026, decyzja MG) — they play no more
+  // turns, and the server's queue already steps over them. Read off the live
+  // statuses where the figure is on hand, so a sticker set or lifted shows at
+  // once; the server's flag covers the rest.
+  const queue = useMemo(
+    () =>
+      combat?.combatants.filter((combatant) => {
+        const token = combatant.tokenId ? tokens[combatant.tokenId] : undefined;
+        return !(token ? cpredOutOfFight(token.statuses) : combatant.out);
+      }) ?? [],
+    [combat, tokens],
+  );
+  const ties = useMemo(() => findInitiativeTies(queue), [queue]);
   const tiedIds = useMemo(() => new Set(ties.flat().map((c) => c.id)), [ties]);
   const acting = useMemo(() => activeCombatantOf(combat), [combat]);
-  const tokens = useTokenStore((s) => s.tokens);
   // What the acting participant's own statuses want them to remember (stage
   // 14e). „Przygwożdżony" cannot be enforced — the map has no cover — so the
   // honest form of the rule is a sentence in front of the person it concerns.
@@ -298,7 +311,7 @@ export function CombatBar() {
 
   const queueRef = useRef<HTMLOListElement | null>(null);
   const activeId = combat?.activeCombatantId ?? null;
-  const combatantCount = combat?.combatants.length ?? 0;
+  const combatantCount = queue.length;
   const [scrollable, setScrollable] = useState(false);
 
   // Whether the row runs past the bar — the faded edges say so, and they would
@@ -351,7 +364,7 @@ export function CombatBar() {
   if (!combat) return null;
 
   // NPC to uczestnik bez właściciela (także Czarny LOD i bot MG).
-  const hasNpc = combat.combatants.some((c) => c.ownerId === null);
+  const hasNpc = queue.some((c) => c.ownerId === null);
   function beginFight() {
     if (!hasNpc && !startArmed) {
       setStartArmed(true);
@@ -364,7 +377,7 @@ export function CombatBar() {
   /** Uczestnik bez figury (Czarny LOD, 26c) inicjatywy nie rzuca. */
   const mayRoll = (combatant: CombatantView): boolean =>
     combatant.tokenId !== null && user !== null && combatant.ownerId === user.id;
-  const unrolled = combat.combatants.some((c) => c.tokenId !== null && c.initiative === null);
+  const unrolled = queue.some((c) => c.tokenId !== null && c.initiative === null);
 
   function dropOn(targetId: string) {
     if (!isGm || !combat || dragged === null || dragged === targetId) return;
@@ -380,7 +393,7 @@ export function CombatBar() {
   // Participants before the running one have had their turn this round — they
   // fade, so „who is still to act" reads without counting. Round 0 has no such
   // thing, and neither does a queue whose runner is unknown.
-  const activeIndex = combat.combatants.findIndex((combatant) => combatant.id === activeId);
+  const activeIndex = queue.findIndex((combatant) => combatant.id === activeId);
 
   return (
     <div className="combat-bar" role="group" aria-label="Kolejka inicjatywy">
@@ -446,7 +459,7 @@ export function CombatBar() {
         ref={queueRef}
         onWheel={onWheel}
       >
-        {combat.combatants.map((combatant, index) => {
+        {queue.map((combatant, index) => {
           const isActive = combatant.id === activeId;
           // Etap 50b: w walce klik na mapie nie zaznacza innej figury, więc MG
           // bierze ją stąd — z kadrem kamery, bo z pasa nie widać, gdzie stoi.

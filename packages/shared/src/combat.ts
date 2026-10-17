@@ -186,6 +186,13 @@ export interface CombatantView {
    * counting on is about to lose their Action.
    */
   owes?: string[];
+  /**
+   * Out of the fight for good — the system says so (CP RED: „Martwy",
+   * 17.10.2026, decyzja MG). The row stays in the combat, initiative and all,
+   * so taking the status off brings it back where it stood; until then the
+   * queue steps over it and the initiative strip leaves it off.
+   */
+  out?: true;
 }
 
 /**
@@ -303,14 +310,16 @@ export function activeCombatant(combat: CombatView): CombatantView | null {
  */
 export function nextTurn(combat: CombatView): TurnPointer {
   const ordered = sortCombatants(combat.combatants);
-  const first = ordered[0];
+  const first = ordered.find(inPlay);
   if (!first) return { round: combat.round, activeCombatantId: null };
   if (combat.round === 0 || combat.activeCombatantId === null) {
     return { round: Math.max(1, combat.round), activeCombatantId: first.id };
   }
   const index = ordered.findIndex((c) => c.id === combat.activeCombatantId);
   if (index === -1) return { round: combat.round, activeCombatantId: first.id };
-  const next = ordered[index + 1];
+  // Counted from the active row's own seat, so one who has just dropped out on
+  // their turn still hands it to whoever sat after them.
+  const next = ordered.slice(index + 1).find(inPlay);
   if (next) return { round: combat.round, activeCombatantId: next.id };
   return { round: combat.round + 1, activeCombatantId: first.id };
 }
@@ -318,16 +327,23 @@ export function nextTurn(combat: CombatView): TurnPointer {
 /** Steps back one turn; never before round 1's first participant. */
 export function previousTurn(combat: CombatView): TurnPointer {
   const ordered = sortCombatants(combat.combatants);
-  const first = ordered[0];
-  const last = ordered[ordered.length - 1];
+  const playing = ordered.filter(inPlay);
+  const first = playing[0];
+  const last = playing[playing.length - 1];
   if (!first || !last) return { round: combat.round, activeCombatantId: null };
   if (combat.round === 0) return { round: combat.round, activeCombatantId: null };
   const index = ordered.findIndex((c) => c.id === combat.activeCombatantId);
   if (index === -1) return { round: combat.round, activeCombatantId: last.id };
-  const previous = ordered[index - 1];
+  const before = ordered.slice(0, index).filter(inPlay);
+  const previous = before[before.length - 1];
   if (previous) return { round: combat.round, activeCombatantId: previous.id };
   if (combat.round > 1) return { round: combat.round - 1, activeCombatantId: last.id };
   return { round: 1, activeCombatantId: first.id };
+}
+
+/** Whether the queue still hands this participant turns (`CombatantView.out`). */
+function inPlay(combatant: CombatantView): boolean {
+  return !combatant.out;
 }
 
 /**

@@ -619,23 +619,40 @@ describe('turn automation', () => {
   });
   /* --- turns nobody can play (17.10.2026) -------------------------- */
 
-  it('hands an unconscious or dead participant’s turn on by itself, with a line on chat', async () => {
-    for (const statusId of ['unconscious', 'dead']) {
-      await giveTurnTo(vexTokenId);
-      const before = (await tracker()).round;
-      await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: [statusId] } });
-      const linesBefore = chat.length;
-      const view = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
-      // The thug's turn came and went: Vex is up again, a round later.
-      expect(view.activeCombatantId).toBe(rowOf(view, vexTokenId).id);
-      expect(view.round).toBe(before + 1);
-      const line = chat
-        .slice(linesBefore)
-        .find((message) => message.action?.actionId === 'turn-forfeit');
-      expect(line?.action?.actorName).toBe('Bandzior');
-      expect(line?.action?.note).toBe(statusId === 'dead' ? 'Martwy' : 'Nieprzytomny');
-      await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: [] } });
-    }
+  it('hands an unconscious participant’s turn on by itself, with a line on chat', async () => {
+    await giveTurnTo(vexTokenId);
+    const before = (await tracker()).round;
+    await emitAck(gm, 'token:update', {
+      tokenId: thugTokenId,
+      patch: { statuses: ['unconscious'] },
+    });
+    const linesBefore = chat.length;
+    const view = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    // The thug's turn came and went: Vex is up again, a round later.
+    expect(view.activeCombatantId).toBe(rowOf(view, vexTokenId).id);
+    expect(view.round).toBe(before + 1);
+    const line = chat
+      .slice(linesBefore)
+      .find((message) => message.action?.actionId === 'turn-forfeit');
+    expect(line?.action?.actorName).toBe('Bandzior');
+    expect(line?.action?.note).toBe('Nieprzytomny');
+    await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: [] } });
+  });
+
+  it('steps over the dead without a turn or a line, and takes them back when revived', async () => {
+    await giveTurnTo(vexTokenId);
+    const before = (await tracker()).round;
+    await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: ['dead'] } });
+    expect(rowOf(await tracker(), thugTokenId).out).toBe(true);
+    const linesBefore = chat.length;
+    const view = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(view.activeCombatantId).toBe(rowOf(view, vexTokenId).id);
+    expect(view.round).toBe(before + 1);
+    expect(chat.slice(linesBefore).some((m) => m.action?.actionId === 'turn-forfeit')).toBe(false);
+    await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: [] } });
+    const revived = rowOf(await tracker(), thugTokenId);
+    expect(revived.out).toBeUndefined();
+    expect(revived.initiative).not.toBeNull();
   });
 
   it('stops after one lap when nobody in the queue can act', async () => {

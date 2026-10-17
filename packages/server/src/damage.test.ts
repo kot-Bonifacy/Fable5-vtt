@@ -966,8 +966,12 @@ describe('damage, armor and Death Saves', () => {
             })
           ).ok,
         ).toBe(true);
-        expect((await forfeit).message.action?.note).toMatch(/^(Nieprzytomny|Martwy)$/);
-        expect((await roundTrip(player)).combat?.round).toBe(2);
+        const note = (await forfeit).message.action?.note;
+        expect(note).toMatch(/^(Nieprzytomny|Martwy)$/);
+        const after = (await roundTrip(player)).combat;
+        // A failed save leaves nobody in play — the dead get no next turn.
+        if (note === 'Martwy') expect(after?.activeCombatantId).toBeNull();
+        else expect(after?.round).toBe(2);
       } finally {
         await emitAck(gm, 'combat:end', { sceneId });
         await emitAck(gm, 'token:update', { tokenId: playerTokenId, patch: { statuses: [] } });

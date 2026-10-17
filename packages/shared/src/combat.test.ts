@@ -156,6 +156,40 @@ describe('nextTurn', () => {
     const state = combat(withLatecomer, { round: 2, activeCombatantId: 'a' });
     expect(nextTurn(state)).toEqual({ round: 2, activeCombatantId: 'late' });
   });
+
+  it('steps over those out of the fight, wrapping included', () => {
+    const withDead = [
+      combatant({ id: 'dead-top', initiative: 20, out: true }),
+      ...roster,
+      combatant({ id: 'dead-last', initiative: 3, out: true }),
+    ];
+    expect(nextTurn(combat(withDead))).toEqual({ round: 1, activeCombatantId: 'a' });
+    const middle = withDead.map((c) => (c.id === 'b' ? { ...c, out: true as const } : c));
+    expect(nextTurn(combat(middle, { round: 1, activeCombatantId: 'a' }))).toEqual({
+      round: 1,
+      activeCombatantId: 'c',
+    });
+    expect(nextTurn(combat(withDead, { round: 1, activeCombatantId: 'c' }))).toEqual({
+      round: 2,
+      activeCombatantId: 'a',
+    });
+  });
+
+  it('hands on from the seat of one who dropped out on their own turn', () => {
+    const fallen = roster.map((c) => (c.id === 'b' ? { ...c, out: true as const } : c));
+    expect(nextTurn(combat(fallen, { round: 2, activeCombatantId: 'b' }))).toEqual({
+      round: 2,
+      activeCombatantId: 'c',
+    });
+  });
+
+  it('has nobody to hand the turn to when everyone is out', () => {
+    const allDead = roster.map((c) => ({ ...c, out: true as const }));
+    expect(nextTurn(combat(allDead, { round: 2, activeCombatantId: 'a' }))).toEqual({
+      round: 2,
+      activeCombatantId: null,
+    });
+  });
 });
 
 describe('previousTurn', () => {
@@ -178,6 +212,23 @@ describe('previousTurn', () => {
 
   it('stays put before the combat has started', () => {
     expect(previousTurn(combat(roster))).toEqual({ round: 0, activeCombatantId: null });
+  });
+
+  it('steps back over those out of the fight', () => {
+    const withDead = [
+      roster[0]!,
+      combatant({ id: 'dead', initiative: 16, out: true }),
+      roster[1]!,
+      combatant({ id: 'dead-last', initiative: 2, out: true }),
+    ];
+    expect(previousTurn(combat(withDead, { round: 2, activeCombatantId: 'b' }))).toEqual({
+      round: 2,
+      activeCombatantId: 'a',
+    });
+    expect(previousTurn(combat(withDead, { round: 2, activeCombatantId: 'a' }))).toEqual({
+      round: 1,
+      activeCombatantId: 'b',
+    });
   });
 });
 

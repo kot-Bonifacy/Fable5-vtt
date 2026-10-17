@@ -36,6 +36,7 @@ import {
   freshTurnState,
   readSheetCarry,
   sheetActionBlock,
+  sheetOutOfFight,
   readSheetInitiative,
   readSheetMoveBudget,
   sheetSlowedMoveModifier,
@@ -202,6 +203,9 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
     ownerId: combatantOwnerId(row),
   };
   if (row.token?.hidden) view.hidden = true;
+  // Read fresh with every load, so the queue skips the dead whichever path put
+  // the status on them — and a GM who takes it off gets the row back.
+  if (row.token && sheetOutOfFight(readTokenStatuses(row.token.statuses))) view.out = true;
   // The budget is the system's projection (stage 14b) — the tracker only paints
   // it. Absent until the participant's turn has actually begun.
   const budget = turnBudgetOf(row.turnState);

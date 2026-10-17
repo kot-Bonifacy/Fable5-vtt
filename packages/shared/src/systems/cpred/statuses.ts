@@ -62,6 +62,12 @@ export interface CpredStatusEffect {
   reminder?: string;
   /** The status comes off by itself at the end of its carrier's own turn. */
   expiresAtTurnEnd?: boolean;
+  /**
+   * Its carrier is out of the fight for good: the queue skips them and the
+   * initiative strip leaves them off (17.10.2026, decyzja MG). Unconscious is
+   * not — they still throw Death Saves and may come round.
+   */
+  outOfFight?: boolean;
 }
 
 /**
@@ -74,6 +80,7 @@ export const CPRED_STATUS_EFFECTS: Readonly<Record<string, CpredStatusEffect>> =
     noMove: 'Martwy token nie może się poruszać.',
     noAction: 'Martwy token nie wykonuje Akcji.',
     noDodge: 'Martwy token nie unika.',
+    outOfFight: true,
   },
   unconscious: {
     name: 'Nieprzytomny',
@@ -201,6 +208,11 @@ export function cpredTurnForfeit(statuses: readonly string[]): string | null {
     }
   }
   return null;
+}
+
+/** Whether a status takes this token out of the fight for good (`outOfFight`). */
+export function cpredOutOfFight(statuses: readonly string[]): boolean {
+  return statuses.some((id) => CPRED_STATUS_EFFECTS[id]?.outOfFight === true);
 }
 
 /** The first status refusing this token a dodge, or null. */
