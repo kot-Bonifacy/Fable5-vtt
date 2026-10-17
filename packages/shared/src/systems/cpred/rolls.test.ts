@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCpredRegistry,
   cpredArmorStatPenalty,
+  cpredDeathSaveModifier,
   createDefaultCharacterData,
+  mergeCharacterData,
   type CpredRegistry,
 } from './character.js';
 import {
@@ -301,8 +303,28 @@ describe('planCpredRoll — Death Save (stage 15)', () => {
       target: 5,
       modifier: 3,
       savesTaken: 2,
+      hitPenalty: 0,
       injuryPenalty: 1,
     });
+  });
+
+  it('adds +1 for every hit taken while Mortally Wounded (s. 187)', () => {
+    const data = sheet({ hpCurrent: 0, deathSaves: 1, deathSaveHits: 2 });
+    const result = planCpredRoll(data, registry, { kind: 'deathSave' });
+    expect(result.ok && result.plan.deathSave).toMatchObject({
+      modifier: 3,
+      savesTaken: 1,
+      hitPenalty: 2,
+    });
+    expect(cpredDeathSaveModifier(data)).toBe(3);
+  });
+
+  it('wipes both counters once a single HP comes back — „dopóki nie zostaniesz Ustabilizowany"', () => {
+    const data = mergeCharacterData(sheet({ hpCurrent: 0, deathSaves: 3, deathSaveHits: 2 }), {
+      hpCurrent: 1,
+    });
+    expect(data.deathSaves).toBe(0);
+    expect(data.deathSaveHits).toBe(0);
   });
 
   it('survives under BODY, dies on it, and always dies on a natural 10', () => {

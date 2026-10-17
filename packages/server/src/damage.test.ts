@@ -15,6 +15,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenView,
+  CombatView,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
@@ -823,6 +824,164 @@ describe('damage, armor and Death Saves', () => {
         characterId,
         patch: { data: { criticalInjuries: [] } },
       });
+    });
+  });
+
+  /**
+   * 17.10.2026 (decyzje MG): Śmiertelnie Ranny gra swoją turę, ale dopiero po
+   * Teście Przeżywalności (s. 187), a każde trafienie atakiem daje mu Ranę
+   * Krytyczną i +1 do kolejnych Testów.
+   */
+  describe('Śmiertelnie Ranny', () => {
+    async function dying(): Promise<void> {
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: { hpCurrent: 0, criticalInjuries: [], armor: [], deathSaves: 0, deathSaveHits: 0 },
+        },
+      });
+      // Earlier saves in this suite may have failed — nobody here is dead yet.
+      await emitAck(gm, 'token:update', {
+        tokenId: playerTokenId,
+        patch: { statuses: ['mortally-wounded'] },
+      });
+    }
+
+    it('takes a Critical Injury and +1 from an attack, and „Cofnij" takes both back', async () => {
+      await dying();
+      const rolled = data(
+        await emitAck<{ messageId: number }>(gm, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w1' },
+          visibility: 'public',
+        }),
+        'character:roll',
+      );
+      const logged = waitForMessage(
+        gm,
+        (payload) => payload.message.damage?.sourceMessageId === rolled.messageId,
+      );
+      const applied = data(
+        await emitAck<{ messageId: number }>(gm, 'damage:apply', {
+          messageId: rolled.messageId,
+          tokenId: playerTokenId,
+        }),
+        'damage:apply',
+      );
+      const entry = (await logged).message.damage;
+      expect(entry?.mortalHit).toBe(true);
+      const mortalInjury = entry?.injuryMortal;
+      expect(mortalInjury).toBeDefined();
+      const hurt = await sheetOf(characterId);
+      expect(hurt.deathSaveHits).toBe(1);
+      expect(hurt.criticalInjuries.map((row) => row.id)).toContain(mortalInjury!.id);
+
+      expect(await emitAck(gm, 'damage:undo', { messageId: applied.messageId })).toEqual({
+        ok: true,
+      });
+      const restored = await sheetOf(characterId);
+      expect(restored.deathSaveHits).toBe(0);
+      expect(restored.criticalInjuries.map((row) => row.id)).not.toContain(mortalInjury!.id);
+    });
+
+    it('refuses a Death Save to a character who is not dying', async () => {
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { hpCurrent: 30 } } });
+      expect(
+        await emitAck(player, 'character:roll', {
+          characterId,
+          request: { kind: 'deathSave' },
+          visibility: 'public',
+        }),
+      ).toMatchObject({ ok: false, error: 'NOT_MORTALLY_WOUNDED' });
+    });
+
+    it('opens the turn owing the save: no Action, no ending the turn, and one roll only', async () => {
+      await dying();
+      const sceneId = (await roundTrip(gm)).tokens.find((t) => t.id === playerTokenId)!.sceneId;
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [playerTokenId] }),
+        'combat:start',
+      );
+      try {
+        await emitAck(gm, 'combat:set-initiative', {
+          combatantId: combat.combatants[0]!.id,
+          initiative: 10,
+        });
+        await emitAck(gm, 'combat:next', {});
+        const owing = (await roundTrip(player)).combat?.combatants[0]?.turn;
+        expect(owing?.pendingRoll?.id).toBe('deathSave');
+
+        expect(await emitAck(player, 'combat:action', { actionId: 'move' })).toMatchObject({
+          ok: false,
+        });
+        expect(await emitAck(player, 'combat:next', {})).toMatchObject({
+          ok: false,
+          error: 'DEATH_SAVE_PENDING',
+        });
+
+        const save = {
+          characterId,
+          request: { kind: 'deathSave' },
+          visibility: 'public',
+        };
+        expect((await emitAck(player, 'character:roll', save)).ok).toBe(true);
+        expect((await sheetOf(characterId)).deathSaves).toBe(1);
+        const settled = (await roundTrip(player)).combat?.combatants[0]?.turn;
+        expect(settled?.pendingRoll).toBeUndefined();
+        expect(await emitAck(player, 'character:roll', save)).toMatchObject({
+          ok: false,
+          error: 'DEATH_SAVE_NOT_DUE',
+        });
+      } finally {
+        await emitAck(gm, 'combat:end', { sceneId });
+      }
+    });
+
+    it('throws the save itself for an NPC nobody owns, behind the GM screen', async () => {
+      const npc = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Gangus' }),
+        'character:create',
+      );
+      await emitAck(gm, 'character:update', {
+        characterId: npc.id,
+        patch: { data: { hpCurrent: 0 } },
+      });
+      const sceneId = (await roundTrip(gm)).tokens.find((t) => t.id === playerTokenId)!.sceneId;
+      const npcToken = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Gangus',
+          x: 400,
+          y: 0,
+          characterId: npc.id,
+        }),
+        'token:create',
+      );
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [npcToken.id] }),
+        'combat:start',
+      );
+      try {
+        await emitAck(gm, 'combat:set-initiative', {
+          combatantId: combat.combatants[0]!.id,
+          initiative: 10,
+        });
+        const before = playerChatTraffic.length;
+        const card = waitForMessage(gm, (p) => p.message.roll?.title === 'Test Przeżywalności');
+        await emitAck(gm, 'combat:next', {});
+        expect((await card).message.roll?.outcome).toBeDefined();
+        expect((await sheetOf(npc.id)).deathSaves).toBe(1);
+        const turn = (await roundTrip(gm)).combat?.combatants[0]?.turn;
+        expect(turn?.pendingRoll).toBeUndefined();
+        // The card prints the BODY it was judged against — the player never gets it.
+        expect(
+          playerChatTraffic
+            .slice(before)
+            .some((p) => p.message.roll?.title === 'Test Przeżywalności'),
+        ).toBe(false);
+      } finally {
+        await emitAck(gm, 'combat:end', { sceneId });
+      }
     });
   });
 });

@@ -23,6 +23,7 @@ import {
   sheetTurnReminders,
   sheetWoundStatuses,
   turnMetresWalked,
+  turnOwesDeathSave,
   turnPhaseAlreadyRan,
   writeSheetStatusData,
   type SheetPeriodicDamage,
@@ -31,6 +32,7 @@ import {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   applyTurnPointer,
+  combatantOwnerId,
   hasFigure,
   loadCombatById,
   readTokenStatuses,
@@ -40,6 +42,9 @@ import {
   type FiguredCombatantRow,
 } from './combat.js';
 import { removeTokenStatus } from './grapple-state.js';
+import { performCharacterRoll } from './character-rolls.js';
+import { campaignGmUser } from './campaign-gm.js';
+import { botActorUser } from './bot-runtime.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
   emitTokenUpsert,
@@ -117,7 +122,7 @@ export async function advanceTurn(
   const refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
   await applyTurnPointer(deps, refreshed, pointer, true);
 
-  // Stage 16h: a minute is six rounds, and this is where they are counted. Swept
+  // Stage 16h: a minute is twenty rounds, and this is where they are counted. Swept
   // over the whole scene rather than the queue — a bystander blinded by tear gas
   // has no turn to hang a hook on, and „the civilian never recovers" would be a
   // bug nobody would think to look for.
@@ -200,10 +205,11 @@ export async function runTurnEnd(
  * Start of one participant's turn: what is owed before they may do anything,
  * plus the nudges that are not rules.
  *
- * The Death Save prompt is deliberately *not* here — it has lived on the client
- * since stage 15, where it belongs: the roll goes through the dice cup like
- * every other roll at this table, and the client already knows whose turn it is
- * and what the sheet says. The banner is a reminder, not an event.
+ * The Death Save is half here (17.10.2026, decyzja MG). A player still throws
+ * it with the dice cup — the budget opened owing it (`sheetTurnOpening`), so
+ * nothing else in the turn is spendable until they do. Nobody holds the cup
+ * for a participant nobody owns (the GM's NPCs, statists with a card, bots),
+ * so the server throws it for them here, before the bot is asked what to do.
  */
 export async function runTurnStart(
   deps: RealtimeDeps,
@@ -234,6 +240,50 @@ export async function runTurnStart(
   const reminders = sheetTurnReminders(statuses);
   if (applied.length > 0 || reminders.length > 0) {
     await logTurnStart(deps, campaignId, user, combatant, applied, reminders);
+  }
+
+  await rollOwedDeathSave(deps, campaignId, scene, combatant);
+}
+
+/**
+ * The Death Save of an unowned participant, thrown by the server through the
+ * very path the dice cup uses — the counter, the verdict, „Martwy" and the
+ * settled budget all come from `performCharacterRoll`.
+ *
+ * A bot is a member of the party and rolls in front of everybody; any other
+ * NPC rolls behind the screen, because the card prints the BODY it was judged
+ * against. The map says the rest: a failed save puts „Martwy" on the figure.
+ */
+async function rollOwedDeathSave(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combatant: FiguredCombatantRow,
+): Promise<void> {
+  if (combatantOwnerId(combatant) !== null) return;
+  const characterId = combatant.token.character?.id;
+  if (!characterId || !turnOwesDeathSave(combatant.turnState)) return;
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
+  if (!gm) return;
+  const bot = await deps.ctx.prisma.botProfile.findFirst({
+    where: { campaignId, archived: false, characterId },
+    select: { id: true },
+  });
+  try {
+    await performCharacterRoll(deps, {
+      campaignId,
+      user: await botActorUser(deps, gm.id),
+      sceneId: scene.id,
+      payload: {
+        characterId,
+        request: { kind: 'deathSave' },
+        visibility: bot ? 'public' : 'gm',
+      },
+    });
+  } catch (error) {
+    // A refused roll must not stop the queue: the budget still owes the save,
+    // and the GM's banner offers the cup for it.
+    if (!(error instanceof RealtimeError)) throw error;
   }
 }
 

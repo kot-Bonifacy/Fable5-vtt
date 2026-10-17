@@ -39,6 +39,7 @@ import {
   readSheetInitiative,
   readSheetMoveBudget,
   sheetSlowedMoveModifier,
+  sheetTurnOpening,
   spendTurnState,
   spendUsesAction,
   reinforcementsOf,
@@ -543,7 +544,11 @@ export async function applyTurnPointer(
   // here, so it can never be paid twice.
   const starting = combat.combatants.find((row) => row.id === pointer.activeCombatantId);
   const move = starting ? await moveBudgetForCombatant(deps, starting) : null;
-  const carry = starting ? readTurnCarry(starting.nextTurnState) : null;
+  // What the system says the turn owes on opening (CP RED: a Death Save) rides
+  // in with the carry — both are debts the core hands over without reading.
+  const opening = starting ? await turnOpeningForCombatant(deps, starting, pointer.round) : null;
+  const owed = starting ? readTurnCarry(starting.nextTurnState) : null;
+  const carry = owed || opening ? { ...owed, ...opening } : null;
   await prisma.combatant.update({
     where: { id: pointer.activeCombatantId },
     // A participant who held an Action into somebody else's turn keeps it: the
@@ -799,6 +804,30 @@ export async function moveBudgetForCombatant(
   // the sheet — so the budget is asked for both and the note names both.
   const slowed = row.token ? sheetSlowedMoveModifier(row.token) : null;
   return readSheetMoveBudget(character, deps.ctx.cpred, slowed ? [slowed] : []);
+}
+
+/**
+ * What this participant's turn owes the moment it opens, read from the sheet
+ * they are bound to (17.10.2026) — null for a statist with none, and for a
+ * sheet that owes nothing.
+ */
+export async function turnOpeningForCombatant(
+  deps: RealtimeDeps,
+  row: CombatantRow,
+  round: number,
+): Promise<SheetTurnCarry | null> {
+  const characterId = row.token?.character?.id;
+  if (!characterId || !row.token) return null;
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: characterId },
+    select: { data: true },
+  });
+  if (!character) return null;
+  return sheetTurnOpening(character, deps.ctx.cpred, {
+    statuses: readTokenStatuses(row.token.statuses),
+    turnEffects: row.turnEffects,
+    round,
+  });
 }
 
 /** The participant a token is playing in the fight running on its scene. */

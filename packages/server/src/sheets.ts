@@ -62,6 +62,7 @@ import {
   CPRED_SUPPRESSED_STATUS_ID,
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
+  CPRED_DEAD_STATUS_ID,
   NO_REPUTATION,
   STATIST_DEFAULT_STAT,
   STATIST_WEAPON_ROW_ID,
@@ -118,6 +119,8 @@ import {
   freshCpredTurn,
   hitLocationLabel,
   cpredSheetHpMax,
+  cpredSheetWoundState,
+  settleCpredDeathSave,
   isCriticalInjuryEntry,
   markCpredTurnPhase,
   mergeCharacterData,
@@ -373,6 +376,9 @@ export const SHEET_GRAPPLED_STATUS_ID = CPRED_GRAPPLED_STATUS_ID;
 
 /** Status a choked-out participant gets. */
 export const SHEET_UNCONSCIOUS_STATUS_ID = CPRED_UNCONSCIOUS_STATUS_ID;
+
+/** Status a failed Death Save puts on every token of the character. */
+export const SHEET_DEAD_STATUS_ID = CPRED_DEAD_STATUS_ID;
 
 /** Flat modifier a Hold imposes on both sides — used to shift stand-in DVs. */
 export const SHEET_GRAPPLE_PENALTY = CPRED_GRAPPLE_PENALTY;
@@ -1419,6 +1425,47 @@ export function clearRoundOnce(stored: string | null, id: SheetRoundOnce): strin
   return JSON.stringify(clearCpredRoundOnce(readCpredTurnLedger(stored ?? undefined), id));
 }
 
+/**
+ * Does this character owe a Death Save right now (17.10.2026)? Mortally
+ * Wounded and not already dead — an unconscious one still rolls („Jeśli będąc
+ * Nieprzytomny, otrzymasz obrażenia, znów jesteś Śmiertelnie Ranny i musisz co
+ * Turę wykonywać Test Przeżywalności", s. 223).
+ */
+export function sheetOwesDeathSave(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  statuses: readonly string[],
+): boolean {
+  if (statuses.includes(SHEET_DEAD_STATUS_ID)) return false;
+  return cpredSheetWoundState(parseCharacterData(character.data, registry)) === 'mortal';
+}
+
+/**
+ * What a turn owes the moment it opens, read off the sheet as it is then — the
+ * twin of `readSheetMoveBudget`. Today that is only the Death Save, and only
+ * once a Round: the stamp in `turnEffects` survives the fresh budget a GM's
+ * „back and forward" hands out, so the same turn is never asked twice.
+ */
+export function sheetTurnOpening(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  input: { statuses: readonly string[]; turnEffects: string | null; round: number },
+): SheetTurnCarry | null {
+  if (roundOnceUsed(input.turnEffects, 'deathSave', input.round)) return null;
+  return sheetOwesDeathSave(character, registry, input.statuses) ? { deathSave: true } : null;
+}
+
+/** True while the stored budget still waits for its Death Save. */
+export function turnOwesDeathSave(stored: string | null): boolean {
+  return stored !== null && readCpredTurn(stored).deathSavePending;
+}
+
+/** The budget once its Death Save has been rolled, whatever the verdict. */
+export function settleTurnDeathSave(stored: string | null): string | null {
+  if (stored === null) return null;
+  return JSON.stringify(settleCpredDeathSave(readCpredTurn(stored)));
+}
+
 /** What a Solo's Combat Awareness is worth on this sheet — zero for everyone else. */
 export function readSheetCombatAwareness(
   character: Pick<Character, 'data'>,
@@ -1627,6 +1674,13 @@ export interface SheetDamageRequest {
   /** Two or more sixes came up — a Critical Injury was scored. */
   criticalInjury: boolean;
   location: string;
+  /**
+   * The hit came from a melee or ranged attack (17.10.2026) — what „obrażenia
+   * z ataku bronią białą lub dystansową" (s. 187) asks before a Mortally
+   * Wounded target takes a Critical Injury for it. A burning floor or a trap
+   * is not an attack, so only the damage card's own path sets it.
+   */
+  fromAttack?: boolean;
   /**
    * The Aimed Shot this hit came from (s. 170), when it came from one.
    *
@@ -1884,6 +1938,38 @@ export function applyDamageToSheet(
     }
   }
 
+  // „Gdy śmiertelnie ranna postać otrzyma obrażenia z ataku bronią białą lub
+  // dystansową, otrzymuje także Ranę Krytyczną oraz modyfikator +1 do Testów
+  // Przeżywalności" (s. 187). „Otrzyma obrażenia" is read the way the aimed
+  // shot reads it: at least one point through the armour. The HP cannot show
+  // it — they are already at the floor. „Także" makes it a wound of its own,
+  // on top of whatever two sixes drew; a round that causes no Critical
+  // Injuries keeps that promise here too, and only the +1 lands.
+  if (request.fromAttack && data.hpCurrent < 1 && outcome.damageThrough > 0) {
+    log.mortalHit = true;
+    patch.deathSaveHits = data.deathSaveHits + 1;
+    if (ammo?.noCriticalInjury !== true) {
+      const carried = patch.criticalInjuries ?? data.criticalInjuries;
+      const draw = drawCriticalInjury(
+        injuries.filter(isCriticalInjuryEntry),
+        location,
+        rng,
+        carried.map((injury) => injury.id),
+      );
+      const rolled = draw.rolls[draw.rolls.length - 1]?.total ?? 0;
+      if (draw.entry) {
+        const row = toCriticalInjuryRow(draw.entry, rolled);
+        log.injuryMortal = { id: row.id, name: row.name, effect: row.effect, rolled };
+        carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
+        patch.criticalInjuries = [...carried, row];
+      } else if (!log.injuryNote) {
+        log.injuryNote = draw.exhausted
+          ? 'Cel ma już wszystkie rany z tej tabeli.'
+          : `Brak wpisu na ${rolled} w tabeli ran (${hitLocationLabel(location)}) — uzupełnij kompendium.`;
+      }
+    }
+  }
+
   // The Aimed Shot's own consequence (s. 170). Both surviving aim points share
   // one condition — „Jeśli przez pancerz na ciele celu przejdzie choć jeden
   // punkt obrażeń" — so a vest that swallowed the whole burst costs the target
@@ -1992,8 +2078,10 @@ export function applyDamageToTokenHp(
       : {}),
   };
   // Rany krytycznej nie ma gdzie zapisać, więc zostaje zdanie — jedyna droga,
-  // którą stół dowiaduje się, że dwie szóstki padły (błąd #6 z 08.08).
-  if (outcome.criticalInjury) {
+  // którą stół dowiaduje się, że dwie szóstki padły (błąd #6 z 08.08) albo że
+  // dostał ją Śmiertelnie Ranny (s. 187).
+  const mortalHit = request.fromAttack === true && hp.current < 1 && outcome.damageThrough > 0;
+  if (outcome.criticalInjury || mortalHit) {
     log.injuryNote = 'Figura bez karty — ranę krytyczną rozstrzyga MG.';
   }
   if (request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0) {
@@ -2028,9 +2116,12 @@ export function undoDamageOnSheet(
   // Remove one instance of each wound this hit added, not every injury of that
   // id. Two of them when a dumdum round chewed its way in (stage 16g), and a
   // third when an aimed leg shot broke the leg on top of the draw (s. 170).
-  const drawn = [entry.injury?.id, entry.injuryExtra?.id, entry.injuryAimed?.id].filter(
-    (id): id is string => id !== undefined,
-  );
+  const drawn = [
+    entry.injury?.id,
+    entry.injuryExtra?.id,
+    entry.injuryAimed?.id,
+    entry.injuryMortal?.id,
+  ].filter((id): id is string => id !== undefined);
   if (drawn.length > 0) {
     let remaining = [...data.criticalInjuries];
     for (const injuryId of drawn) {
@@ -2039,6 +2130,8 @@ export function undoDamageOnSheet(
     }
     patch.criticalInjuries = remaining;
   }
+  // The +1 the hit cost a Mortally Wounded target (s. 187) goes with it.
+  if (entry.mortalHit) patch.deathSaveHits = Math.max(0, data.deathSaveHits - 1);
   const merged = mergeCharacterData(data, patch);
   return { data: JSON.stringify(merged), hp: { current: merged.hpCurrent, max } };
 }

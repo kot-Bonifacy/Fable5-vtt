@@ -1045,6 +1045,7 @@ pliku po `id`, nie `diff -q`.
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Gdy Firefox z Playwright MCP wisi na `browser_navigate`, oglądaj tymczasowym specem E2E (17.10)** — plik w `packages/e2e/specs/99-…` (nie commitować) z `cast.mg('chromium')`, `cast.gracz(…, 'firefox', …)`, przygotowaniem gniazdem MG (`emitAck`) i `page.screenshot({ path: <scratchpad> })`; `pnpm test:e2e 99-…` stawia instancję, hasła i budowę sam. Szybsze niż skrypt biblioteki, bo logowanie i zaproszenia są gotowe w fixture'ach. Spec skasuj, instancję zatrzymaj (`instance stop`).
 - **Nie loguj się do oględzin kontem `pantosz` w `dev.db` (17.10, etap 53)** — ma hasło tymczasowe MG z `.env`, a pierwsze wejście wymusza ustawienie własnego: oględziny zabrałyby MG hasło tymczasowe. Panel administratora ogląda się na instancji E2E: `E2E_ADMIN_TEMP_PASSWORD=… E2E_ADMIN_PASSWORD=… E2E_GM_PASSWORD=… node instance/hold.ts` (z `packages/e2e`), konto `admin-e2e`. Podgląd `vite preview` słucha na **`[::1]:4173`** (`127.0.0.1` odmawia), a ciasteczka nie rozróżniają portów — `[::1]` w Firefoksie Playwrighta nie nadpisuje sesji MG na `localhost:5173`. Instancja padnie razem z powłoką, jeśli wystartuje ją `instance start` w tle — trzymaj ją `hold.ts`.
 - **Zmiana w `styles/NN-*.css` nie dochodzi do Firefoksa nawet po F5 (10.10, zakładka „Losowe”)** — Vite serwuje już nowy plik (`curl :5173/src/styles/11-actions.css`), a `document.styleSheets` w Playwright MCP trzyma starą regułę: arkusze wchodzą przez `@import` w `styles.css` i to on zostaje w pamięci przeglądarki. `touch packages/client/src/styles.css` i przeładowanie karty — zanim uznasz, że selektor przegrywa specyficznością.
 - **Firefox, któremu serwer zakończył sesję (reset hasła, blokada, `auth:ended`), ma w konsoli dwa błędy WebSocketu** — „can’t establish a connection to ws://…/socket.io…” i „…was interrupted while the page was loading” (03.10, T2d). To zamierzone zerwanie gniazda, nie błąd aplikacji; w spisie konsoli wybaczaj je tylko temu aktorowi (`serverEndedSocket` w `t2d-konta-mg`; kolejność słów w obu komunikatach jest różna).
@@ -1292,6 +1293,13 @@ pliku po `id`, nie `diff -q`.
   **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
+
+- **Firefox z Playwright MCP wisiał na `browser_navigate` (17.10).** Dwie minuty, potem zadanie
+w tle; pułapka z 03.10 o niewstającym Firefoksie dalej aktualna. Przy oględzinach Śmiertelnie
+Rannego zadziałał tymczasowy spec w `packages/e2e/specs/99-ogledziny/`: MG w Chromium zakłada
+kampanię, gracz wchodzi linkiem w Firefoksie, resztę (karta, scena, walka, rzut obrażeń) robi gniazdo
+MG, a zrzuty idą do scratchpadu. `instance start` z powłoki nie nadaje się do tego: procesy instancji
+giną razem z poleceniem.
 
 - **Stan sceny z konsoli przez moduły Vite (25.09).** W dev `await import('/src/socket.ts')`
   w `browser_evaluate` daje **tę samą** instancję gniazda co aplikacja, więc MG ustawia kampanię,

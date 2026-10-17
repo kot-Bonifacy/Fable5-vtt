@@ -429,6 +429,8 @@ async function applyDamageCard(
     // read off the stored roll, never off the client's request.
     damage: damageTotal(roll),
     criticalInjury: roll.criticalDamage === true,
+    // Every damage card is a weapon's — a melee or ranged attack (s. 187).
+    fromAttack: true,
     location,
     ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),
     ...(payload?.ignoreArmor === true || roll.damage?.ignoreArmor ? { ignoreArmor: true } : {}),

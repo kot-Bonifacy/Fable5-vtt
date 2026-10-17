@@ -30,6 +30,7 @@ import {
   sheetActionName,
   sheetActionReserves,
   turnActionAvailable,
+  turnOwesDeathSave,
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
@@ -43,6 +44,7 @@ import {
   loadCombatById,
   loadCombat,
   moveBudgetForCombatant,
+  turnOpeningForCombatant,
   renumberOrder,
   requireCampaignId,
   rollNpcInitiative,
@@ -435,9 +437,12 @@ export const combatResetTurnEvent = defineEvent<CombatResetTurnPayload, CombatVi
       payload?.combatantId,
     );
     const move = await moveBudgetForCombatant(deps, combatant);
+    // The whole turn, not a turn without its price: a Death Save still owed
+    // this Round stays owed (17.10.2026), one already rolled is not asked again.
+    const opening = await turnOpeningForCombatant(deps, combatant, combat.round);
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },
-      data: { turnState: freshTurnState(move), actionBypass: false },
+      data: { turnState: freshTurnState(move, opening), actionBypass: false },
     });
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
@@ -530,6 +535,10 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
         throw new RealtimeError('FORBIDDEN');
       }
       if (combatantOwnerId(active) !== user.id) throw new RealtimeError('FORBIDDEN');
+      // Ending the turn is not a way out of the Death Save (17.10.2026): the
+      // rules ask for it before the turn is played, and skipping the turn would
+      // skip the only roll that can kill. The GM may still move the queue on.
+      if (turnOwesDeathSave(active.turnState)) throw new RealtimeError('DEATH_SAVE_PENDING');
     }
 
     // „Rozpocznij walkę” (etap 50a): NPC-e bez inicjatywy dostają ją od serwera,

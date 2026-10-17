@@ -17,6 +17,7 @@ import {
 import {
   cpredArmorStatPenalty,
   cpredSkillLabel,
+  cpredDeathSaveModifier,
   injuryDeathSavePenalty,
   CPRED_ARMOR_PENALTY_LABEL,
   CPRED_CARE_MODE_LABELS,
@@ -598,7 +599,8 @@ export interface CpredStabilizePlan {
 
 /**
  * Death Save inputs read off the sheet: roll 1d10 under BODY, with +1 per save
- * already taken and +1 per injury that raises the base difficulty. The modifier
+ * already taken, +1 per hit taken while Mortally Wounded and +1 per injury that
+ * raises the base difficulty. The modifier
  * deliberately stays out of the formula — the die stands alone on the chat card
  * and the verdict explains the arithmetic.
  */
@@ -608,6 +610,8 @@ export interface CpredDeathSavePlan {
   /** Added to the die before the comparison. */
   modifier: number;
   savesTaken: number;
+  /** Hits taken while Mortally Wounded (s. 187) — reset with `savesTaken`. */
+  hitPenalty: number;
   injuryPenalty: number;
 }
 
@@ -1228,6 +1232,7 @@ function planDeathSaveRoll(
   // nagłówek `stateffects.ts`.
   const target = deathSaveTarget(cpredEffectiveStats(data));
   const savesTaken = Math.max(0, Math.round(data.deathSaves));
+  const hitPenalty = Math.max(0, Math.round(data.deathSaveHits));
   const injuryPenalty = injuryDeathSavePenalty(data.criticalInjuries);
   return {
     ok: true,
@@ -1239,7 +1244,13 @@ function planDeathSaveRoll(
       woundState: state,
       luckSpent: 0,
       checkRule: false,
-      deathSave: { target, modifier: savesTaken + injuryPenalty, savesTaken, injuryPenalty },
+      deathSave: {
+        target,
+        modifier: cpredDeathSaveModifier(data),
+        savesTaken,
+        hitPenalty,
+        injuryPenalty,
+      },
     },
   };
 }

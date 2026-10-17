@@ -95,7 +95,7 @@ Cztery pytania, na które opis etapu nie dawał odpowiedzi — decyzje MG z 07.0
 - Uwaga na wyciek z 16d: karta wymieniająca cele z nazwiska idzie przez `redactChatMessage`,
   więc lista trafionych musi być filtrowana do figur widza. Ogień zaporowy ma ten sam błąd
   **niezałatany** (patrz `docs/etapy/zaleglosci.md`) — dobre miejsce, żeby domknąć oba
-- Rany „na minutę” to 6 rund po 10 s; licznik rund jest w trackerze walki, ale poza walką
+- Rany „na minutę” to 6 rund po 10 s (**poprawione 17.10.2026: runda trwa 3 s, s. 168 — minuta to 20 rund**); licznik rund jest w trackerze walki, ale poza walką
   minuta nie ma czym płynąć — rozstrzygnij to jawnie w sesji
 - **Licencja:** nazwy, ceny i treść wierszy amunicji to podręcznik → `data/private/`
 

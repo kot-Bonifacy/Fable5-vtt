@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `da0c1b5`) — trafienie na figurze, Unik bez dźwięku, obrączka po ranach
+
+**Zlecenie MG:** bez dźwięków Uniku, lepsza wizualizacja trafienia; w trakcie: wewnętrzny
+pierścień figury (obrączka PW) pomarańczowy powyżej 50% ran, czerwony powyżej 75%.
+
+**Zrobione:** kubek nie dzwoni przy wezwaniu do Uniku ani przy załadowanym Uniku (`DiceCup`,
+`dodge`/`evasion` → bez klucza sygnału; monit nad mapą zostaje). Nowy efekt mapy `hit`
+(`shared/fx.ts`), wysyłany przez `damageMapFx` zamiast `spark`: błysk na cały żeton, rozprysk
+krwi (pancerz — niebieskie iskry, krytyk — złoty rdzeń błysku; fale MG odrzucił), wielkość rośnie z utraconymi
+PW ÷ max, dolna granica 30 px ekranu; figura drga przez `pivot` (`MapRenderer.shakeFigure`, figura
+szukana po punkcie, bez id żetonu w efekcie). Liczba obrażeń „wyskakuje”. `hpRingTone`
+(`token-ring.ts`): pomarańcz `0xff8a1f` ponad 50% ran, czerwień ponad 75%, niżej jak dotąd.
+Pasek PW w panelu (`CombatHud`) bierze te same progi (decyzja MG), nowy token motywu
+`--hurt-heavy`; podpis stanu ran w dymku dalej ze szczebla. Umowa na górze `atak`.
+
+**Weryfikacja:** vitest shared 2471, klient 381 (nowy test progów w `token-ring.test.ts`), serwer
+1457 — wszystko zielone; `tsc`, ESLint, Prettier. Oględziny w **Firefoksie** i **Chromium**
+(Playwright MCP) na podstawionych lokalnie figurach z PW i efektach wstrzykniętych przez
+`receiveMapFx` — prawdziwego strzału przez serwer w UI nie było (pokrywa `server/src/fx.test.ts`).
+Firefox w tle dławi `requestAnimationFrame` do 1 fps — przed oględzinami `page.bringToFront()`.
+
 ### Sesja 17.10 (po `0196b00`) — Unik nie przepada przez przypadek
 
 **Zlecenie MG:** gracz, który nie zauważy na czas możliwości Uniku, traci ją, bo przeciwnik

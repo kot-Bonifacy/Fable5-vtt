@@ -1432,6 +1432,7 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Tura Śmiertelnie Rannego otwiera się z zaległym Testem Przeżywalności — `CpredTurnState.deathSavePending` (17.10, decyzje MG, s. 187)** — ustawia go `sheetTurnOpening` (`sheets.ts`) przez `turnOpeningForCombatant` w `applyTurnPointer` i w `combat:reset-turn` (rdzeń dokleja go do carry bez czytania). Do rzutu każdy wydatek odmawia `DEATH_SAVE_PENDING` (przed raną z `blockedAction`), budżet niesie `TurnBudgetView.pendingRoll` (z niego baner `death-save.ts`), a gracz nie zakończy tury (`combat:next`). Rzut gracza bramkuje `requireDeathSaveDue` (`character-rolls.ts`: `NOT_MORTALLY_WOUNDED`, w walce `DEATH_SAVE_NOT_DUE`), rozlicza `settleDeathSaveTurn` (flaga zdjęta + stempel `deathSave` w `turnEffects`, więc cofnięcie kolejki nie pyta drugi raz). Uczestnikowi bez właściciela rzuca serwer w `runTurnStart` (`rollOwedDeathSave`: bot jawnie, NPC dla MG). MG nie jest blokowany nigdy.
 - **Inicjatywę rzuca się raz na walkę — `combat:roll` gracza tylko przy `initiative === null` (16.10, zlecenie MG, wzorem Foundry i s. 168)** — nowa runda nie przerzuca ani nie kasuje wartości (`nextTurn` tylko przesuwa wskaźnik; test „walks the turn order…” pilnuje kolejki po zawinięciu). Gracz z wartością dostaje `INITIATIVE_ALREADY_ROLLED`, a kafel pasa pokazuje mu samą liczbę (🎲 tylko bez wartości). Przerzut to decyzja MG: „⟳” (`combat:roll-all { rerollAll }`), remis (`combat:reroll-tie`) albo wyczyszczenie pola (`combat:set-initiative null`) — wtedy gracz rzuca kubkiem znowu. Nowa droga rzutu inicjatywy przez gracza trzyma ten sam warunek.
 - **Ruch gracza idzie po trasie zatwierdzonej przez serwer — `token:walk`, `realtime/walks.ts` (15.10, etap 52, decyzje MG)** — gracz nie przeciąga figur (`onDragMove` u nie-MG zostawia chwyt chwytem i mówi „Figury nie przeciągasz…”); marsz klikiem najpierw woła `token:walk { tokenId, route }` (`MapRenderer.onWalkApprove` → `requestTokenWalk`), serwer sprawdza **całą** trasę `validateTokenMove(…, { dryRun: true })` (Stop, mgła, ściany, figury, statusy, Tura przez `spendTurnForCombatant(…, { dryRun })`, pula przez `checkPace`) i zapamiętuje ją (`approveWalk`). Klatka pośrednia gracza bez trasy to `MOVE_NOT_PLANNED`, z trasą — pozycja **rzutowana na trasę** (`projectOntoRoute`, `shared/walk-route.ts`), więc widzenie i pamięć odkrytego rosną tylko z legalnej drogi. Lądowanie: do kratki od trasy (`WALK_LANDING_SLACK_CELLS`) liczy się po punktach trasy (`routeWaypointsBefore`), dalej trasa przepada i lądowanie ocenia się samo; lądowanie bez trasy (gniazdo, testy) dalej przechodzi pełne `validateTokenMove`. MG i boty (konto MG) bez zmian. **Figury na drodze:** `refuseWalkThroughFigures` (po statusach, przed budżetem) pyta o listę, którą gracz **widzi** (`fetchSceneTokensFor`): przez figurę spoza drużyny (`ownerId === null`, bez `partyVision`, nie leżącą — `sheetActionBlock`) nie przejdziesz, na żadnej nie staniesz, pojemniki nie liczą się wcale, trzymany w Pochwyceniu nie blokuje napastnika; geometria `firstFigureBlock` (cała figura, bez ścinania rogu). Klient pyta o to samo: `figureBlocksPassage` (ustawia `MapArea`), `walkRulesFor` / `canStandAt` w planerze, zasięgu, cięciu budżetu i lądowaniu marszu (`pointInFigure`, `laneHitsFigure` — pole po polu, ta sama geometria). **Nowy powód, dla którego figura blokuje, dopisujesz w obu predykatach naraz.** **Dwa kliknięcia:** `walkTarget` w rendererze — pierwszy klik zamraża podgląd i podświetla pole lądowania (samo wypełnienie, bez kresek), drugi w to samo pole rusza, `Esc` (`cancelWalkTarget`) i zmiana figury zdejmują. **Postój na granicy puli:** marsz przycięty budżetem, który odrasta (`MoveAllowance.refills` / `fullM` z `paceAllowanceOf`), zapisuje `walkResume`; `tryResumeWalk` (z każdego `setMoveAllowance`) rusza dalej, gdy reszta drogi się mieści albo pula jest pełna — każdy klik, `Esc`, odmowa, Stop i walka go kasują. „Rozpocznij sesję” przestawia aktywną scenę na Stop (`stopPlayerMoveOnStart` w `realtime/sessions.ts`, przed posadzeniem graczy).
 - **Trwały cel figury — `token:target`, pamięć serwera w `realtime/target.ts` (11.10, etap 50c, decyzje MG wzorem Foundry)** — cel należy do figury-strzelca (`liveTargets` po id strzelca, jeden na figurę), nie trafia do bazy ani do `seq`. Rozgłoszenie idzie do gniazd, które widzą **obie** figury (`sceneAudience` z `aim.ts` — wspólna miara z grotem), zdjęcie do tych, którzy cel znali (`audience`); `state:sync` niesie `targets` (pary z figur w `tokens` widza, `targetsForSync` dopisuje gniazdo do widowni). Schodzi: `releaseSceneTargets` (`combat:end`), `releaseTargetsOffScene` (`scene:activate`), `releaseTokenTargets` (skasowanie figury, obok `forgetPace`) — nowe miejsce, które kończy walkę albo kasuje figurę, woła je tak samo. Klient: `targetStore` (`targetOf` sprawdza, czy cel stoi na mapie), `toggleTarget` w `hud.ts` (reguła `nextTarget`), `T` w `MapArea` z `renderer.tokenUnderPointer()`, podwójny prawy klik w menu figury (`useDoubleRightTarget`). Mapa: `setTargets` → `applyTargetFacings` obraca groty strzelców na cele, a `restFacingOf` jest kątem „spoczynkowym” (cel, inaczej kąt z serwera) — **każde oddanie grotu po celowniku, cudzym grocie czy gałce idzie przez `restFacingOf`, nie `token.facing`**. Broń z paska przy celu: `fireAtStandingTarget` w `activateSlot` (okno Celowania przy celu przez `setTokenLocator`).
@@ -1452,6 +1453,18 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 - **Stan gry dotyczący całej walki** (nie uczestnika) mieszka w `Combat.systemState` — nieprzezroczystej kolumnie jak `turnState`; tłumaczy ją `reinforcementsOf` na `ReinforcementView`. Umiera razem z walką i to jest jej sens.
 
 ---
+
+**Test Przeżywalności rządzi turą od 17.10 (decyzje MG).** Do tej pory baner w pasku walki był
+samym przypomnieniem: Śmiertelnie Ranny mógł strzelać bez rzutu, rzucać kilka razy na turę albo
+wcale, a boty nie rzucały nigdy. Podręcznik mówi „Jeśli rzucisz mniej niż wartość twojej Budowy
+Ciała, żyjesz i **możesz odbyć swoją Turę**" (s. 187) — więc Test jest bramą tury, nie zakazem
+działania. Gracz dalej rzuca kubkiem, ale budżet otwiera się z `deathSavePending`, który zamyka
+Akcję, Ruch i „Kończę turę". Flaga, a nie zdanie w `blockedAction`, bo Uraz kręgosłupa może zabrać
+tę samą Akcję i musi przeżyć zdany Test. Stempel `deathSave` w `CpredTurnLedger` (obok
+`damageReduction`) jest z tego samego powodu co stemple hooków: świeży budżet po „wstecz → dalej"
+wytarłby wszystko, co trzyma się w nim. Kto nie ma kubka (NPC MG, statysta z kartą, bot), dostaje
+rzut od serwera tą samą drogą (`performCharacterRoll`, kontem MG) — bot jawnie, NPC za zasłoną,
+bo karta drukuje BC.
 
 **Ustabilizowanie poza walką (01.10, #42, decyzja MG).** Bez kolejki nie ma listy uczestników,
 więc pacjentami są medyk („w tym siebie”, s. 222) i widoczne figury sceny w zasięgu ramienia —
@@ -1534,6 +1547,7 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Trafienie Śmiertelnie Rannego atakiem to Rana Krytyczna i +1 do Testu Przeżywalności — `SheetDamageRequest.fromAttack` (17.10, decyzje MG, s. 187)** — ustawia go **tylko** `applyDamageCard` (karta obrażeń to zawsze broń); strefy, ogień i trucizna go nie niosą. `applyDamageToSheet` przy PW < 1 i co najmniej 1 punkcie przez pancerz losuje osobną ranę (`DamageLogEntry.injuryMortal`, obok ewentualnej z dwóch szóstek), dokłada `deathSaveHits` (`mortalHit`), „Cofnij” zdejmuje oba. Nabój bez ran krytycznych zabiera ranę, +1 zostaje. Kara żyje w polu karty `deathSaveHits` i kasuje się z `deathSaves` przy PW ≥ 1 (`mergeCharacterData`); całość modyfikatora liczy **wyłącznie** `cpredDeathSaveModifier`.
 - **Trafienie rysuje się na figurze — `MapFxEffect` `hit` (17.10, zlecenie MG)** — `damageMapFx` (`realtime/damage.ts`) wysyła `hit` (środek figury, `size` w kratkach, `weight`: `armor` / `wound` / `crit`, `strength` = utracone PW ÷ max), nie `spark`; `MapFxLayer.drawHit` maluje błysk na cały żeton (krytyk — złoty rdzeń) i rozprysk (iskry przy pancerzu), **bez fal** (MG 17.10) i drga figurą przez `MapFxLayer.shake` → `MapRenderer.shakeFigure` (**`pivot`**, nie `position`; figura szukana po `at`, bo efekt nie niesie id żetonu — ukryta figura nie oddaje id graczowi). `spark` zostaje dla przeładowania. Unik (`dodge` / `evasion` w `DiceCup`) **nie dzwoni** (17.10, MG). Kolor obrączki PW **i** paska PW w panelu (`CombatHud`, klasy `hud-hp--healthy|light|orange|red`) daje jedna funkcja `hpRingTone` (`map/token-ring.ts`): ponad 50% ran `--hurt-heavy`, ponad 75% `--err`.
 - **Unik woła obrońcę sam — `attack-evasion-call.ts` + `EvasionPrompt` (17.10, decyzja MG)** — `openEvasionCallsFor` czyta feed czatu (karty z `evasionPending`, bez `damageRollId`, młodsze niż 2 h) i zwraca Uniki, na które odpowiada **ten** widz: właściciel karty albo żetonu celu, figury bez właściciela — MG (kubek MG za gracza nie woła). `DiceCup` ma tryb `dodge` przed `damage` (chwyt od razu potrząsa → `attack:evade`, `Esc` odkłada tylko kubek — `skippedEvasionCalls`), a `EvasionPrompt` (w `App` obok kubka) stoi, dopóki serwer czeka — bez limitu czasu. **„Bez uniku” (`attack:no-evade`) mówi wyłącznie MG** (`FORBIDDEN` dla gracza, decyzja MG z 17.10: Unik po znanym trafieniu nic nie kosztuje); gracz widzi „Unik” na karcie ataku tylko przy `evasionPending`, MG zawsze (orzeka, że cel widział strzał).
 - **Rzut obrażeń po trafieniu woła kubek, nie guzik na czacie — `attack-damage-call.ts` (14.10, decyzja MG)** — `openDamageCallFor` (najnowsza karta ataku z `attackAwaitsDamage`: jest `damageNotation`, nie ma `damageRollId`, pusty `evasionPending`; karty starsze niż 2 h milczą) daje `DiceCup` tryb `damage` na szczeblu przed wezwaniem MG; chwyt od razu potrząsa (bez okna — obrażenia nie mają Szczęścia), `Esc` odkłada (`skippedDamageCalls` w `rollStore`). Woła **tylko prowadzącego strzelca** (`attackShooterFor(...).leads`: operator wieżyczki, właściciel karty gracza albo figury, figura bez właściciela → MG) — nie autora karty, bo strzał bronionej strefy wystawia serwer. Karta ataku nie ma guzika „Obrażenia”: pisze „czekają na kubku”, a odłożone albo cudze (MG za gracza) bierze „Na kubek”. Kto może rzucić za strzelca, mówi **jedna** funkcja `attackShooterFor` — karta i kubek jej nie dublują. E2E: `damageToCup` / `cupHoldsDamage` w `fixtures/walka.ts`. Plakietka stanu ran na karcie obrażeń to stan **po** ciosie („Teraz lekko ranny”, `woundTransitionLabel`), nie para ze strzałką.
@@ -1583,6 +1597,16 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**Trafienie Śmiertelnie Rannego (17.10, decyzje MG).** Tabela progów ran (s. 187, 220) mówi:
+„Gdy śmiertelnie ranna postać otrzyma obrażenia z ataku bronią białą lub dystansową, otrzymuje
+także Ranę Krytyczną oraz modyfikator +1 do Testów Przeżywalności" — i do 17.10 kod tego nie
+robił. „Otrzyma obrażenia" czytamy jak przy celowanym strzale: co najmniej punkt przez pancerz,
+bo PW leżą już na podłodze i nie pokażą niczego. Kara trwa do Ustabilizowania (decyzja MG), więc
+mieszka obok `deathSaves` i kasuje się tym samym warunkiem. Statysta bez karty dostaje tylko zdanie
+„ranę krytyczną rozstrzyga MG". Nowe źródło modyfikatora Testu dopisujesz w
+`cpredDeathSaveModifier`, nie w planerze ani w banerze — te dwa rozjechały się już raz („+1" na
+banerze, „+2" na karcie).
 
 **Kursor paska trzyma tylko broń w rękach (25.09, zaległości).** Slot broni niesie `outOfHand`
 (`option.notDrawn !== undefined`) obok `disabled`. Rozróżnienie jest celowe: pusty magazynek,
@@ -2865,6 +2889,7 @@ domyślne: `/public/tokens/containers/*.svg` (adres figury musi przejść `sanit
 
 ## czas — Czas świata, kalendarz, efekty czasowe
 
+- **Runda to 3 s, minuta to 20 rund — `CPRED_ROUND_SECONDS = 3` (17.10, s. 168)** — do 17.10 stało 10 s (minuta = 6 rund), liczba, której podręcznik nie drukuje. Każdy efekt „na minutę” (gaz, EMP, nieprzytomność po Ustabilizowaniu) i każdy termin rundowy `statEffects` liczy się z tej stałej; testy podają rundy przez `cpredRoundsFor`, nie liczbą wpisaną z ręki.
 - **Data startu kampanii to `time:set` z `minutes` i `start: true` (26.09, #3)** — jedyna droga poza `economy:settle`, która przestawia `settledMonth` (na miesiąc startu, także wstecz); karta czatu „Początek kampanii”, `days: 0`, bez `backwards`. Z `step` → `BAD_REQUEST`. W oknie zegara to pole „Data startu kampanii” przy „Ustaw”.
 - **Stym to pole karty `woundSuspension`, nie wiersz `statEffects`** — terminy z `cpredStatEffectDeadlines`, nakłada `applyWoundSuspension` (z `character:use-dose`), zdejmuje `character:stat-effect` po `effectId`, wygasza `expireSheetStatEffects` obydwoma przemiataniami; `character:update` odmawia **u wszystkich**. Druga dawka nadpisuje termin.
 - **Cecha „jak teraz" to `cpredEffectiveStats(sheet)`** (`stateffects.ts`), nigdy `data.stats[...]` — tamto jest liczbą **wydrukowaną**. Wyjątkiem są **pule** (maks. PW, SZ, sufit Człowieczeństwa) i tempo leczenia: te czytają bazową.
@@ -2884,6 +2909,11 @@ domyślne: `/public/tokens/containers/*.svg` (adres figury musi przejść `sanit
 - **Zegar świata: gracz widzi dobę i porę dnia, MG godzinę** (`formatGameDayTime` / `formatGameClock`). To **nie filtr** — minuta jedzie do wszystkich; to szczerość etykiety, bo zegar rusza się tylko na kliknięcie MG. Karta czatu jest bez minut **dla wszystkich**.
 
 ---
+
+**Runda trwa 3 sekundy (17.10).** „Czas bitewny mierzy się w Turach, a każda z nich to około
+3 sekund … jedna Runda to także około 3 sekund" (s. 168). Etap 16h przyjął 10 s bez źródła i przez
+dwa miesiące nieprzytomność po Ustabilizowaniu („Ten stan zawsze trwa minutę", s. 223) schodziła po
+sześciu rundach zamiast dwudziestu. Opis etapu 16h dalej mówi o sześciu rundach — to historia.
 
 **Stym jest polem karty z terminami efektu, a nie efektem na Cesze (12.09).**
 `CpredCharacterData.woundSuspension` — jedno na kartę, `null` bez zastrzyku. Osobne pole, bo

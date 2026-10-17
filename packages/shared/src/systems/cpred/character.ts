@@ -963,6 +963,23 @@ export function injuryDeathSavePenalty(injuries: readonly CpredCriticalInjuryRow
   );
 }
 
+/**
+ * The whole modifier the next Death Save carries (17.10.2026): the saves
+ * already taken, the hits taken while Mortally Wounded, and the Critical
+ * Injuries that make dying easier. One function, because the planner, the
+ * sheet's button and the tracker's banner all print it — and the banner once
+ * promised „+1" while the card rolled „+2".
+ */
+export function cpredDeathSaveModifier(
+  data: Pick<CpredCharacterData, 'deathSaves' | 'deathSaveHits' | 'criticalInjuries'>,
+): number {
+  return (
+    Math.max(0, Math.round(data.deathSaves)) +
+    Math.max(0, Math.round(data.deathSaveHits)) +
+    injuryDeathSavePenalty(data.criticalInjuries)
+  );
+}
+
 export interface CpredCharacterData {
   schemaVersion: typeof CPRED_SCHEMA_VERSION;
   stats: CpredStats;
@@ -1136,6 +1153,14 @@ export interface CpredCharacterData {
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
    */
   deathSaves: number;
+  /**
+   * Trafienia atakiem przyjęte jako Śmiertelnie Ranny — każde to +1 do Testu
+   * Przeżywalności („Gdy śmiertelnie ranna postać otrzyma obrażenia z ataku …
+   * otrzymuje także Ranę Krytyczną oraz modyfikator +1", s. 187). Kasuje się
+   * razem z `deathSaves`, gdy postać odzyska PW (decyzja MG z 17.10.2026:
+   * „do Ustabilizowania").
+   */
+  deathSaveHits: number;
   /** Gdzie postać jest w procesie naturalnego leczenia (s. 222–223). */
   recovery: CpredRecovery;
   /**
@@ -1337,6 +1362,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     statEffects: [],
     woundSuspension: null,
     deathSaves: 0,
+    deathSaveHits: 0,
     recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
     lifestyle: null,
@@ -2206,6 +2232,19 @@ function collectCharacterDataPatch(
       patch.deathSaves = value;
     }
   }
+  if ('deathSaveHits' in input) {
+    const value = input.deathSaveHits;
+    if (!isInteger(value) || value < 0 || value > DEATH_SAVES_MAX) {
+      issues.push(
+        issue(
+          'deathSaveHits',
+          `Liczba trafień Śmiertelnie Rannego musi być od 0 do ${DEATH_SAVES_MAX}.`,
+        ),
+      );
+    } else {
+      patch.deathSaveHits = value;
+    }
+  }
   if ('gear' in input) {
     const gear = validateRows<CpredGearRow>(input.gear, 'gear', issues, (base, row) => {
       const qty = row.qty ?? 1;
@@ -2554,6 +2593,7 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz
     // ustabilizowany" — a single regained HP wipes the counter.
     deathSaves: hpCurrent >= 1 ? 0 : Math.min(data.deathSaves, DEATH_SAVES_MAX),
+    deathSaveHits: hpCurrent >= 1 ? 0 : Math.min(data.deathSaveHits, DEATH_SAVES_MAX),
   };
 }
 

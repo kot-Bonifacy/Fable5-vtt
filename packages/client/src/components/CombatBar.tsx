@@ -549,9 +549,9 @@ export function CombatBar() {
           onClick={deathSave.roll}
           title={`${deathSave.characterName} jest śmiertelnie ranny — rzut 1k10 pod BC${
             deathSave.modifier > 0
-              ? `, +${deathSave.modifier} za poprzednie testy i rany krytyczne`
+              ? `, +${deathSave.modifier} za poprzednie testy, trafienia i rany krytyczne`
               : ''
-          }`}
+          }. Do rzutu Akcja i Ruch są zablokowane.`}
         >
           Test Przeżywalności
           {deathSave.modifier > 0 ? ` +${deathSave.modifier}` : ''}

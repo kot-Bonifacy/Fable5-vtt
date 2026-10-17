@@ -296,6 +296,7 @@ import {
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
+  CPRED_DEATH_SAVE_PENDING_MESSAGE,
   CPRED_FLEET_PROBLEMS,
   CPRED_ROLES_PROBLEMS,
   CPRED_SPECIALTY_PROBLEMS,
@@ -1534,6 +1535,11 @@ function rollAckErrorText(code: string): string {
     // #56 — jedno trafienie, jeden rzut obrażeń (03.10).
     case 'DAMAGE_ALREADY_ROLLED':
       return 'Obrażenia za to trafienie już rzucono — ponownie dopiero po „Cofnij” MG.';
+    // Test Przeżywalności (17.10): raz, na początku tury, i tylko Śmiertelnie Ranny.
+    case 'NOT_MORTALLY_WOUNDED':
+      return 'Test Przeżywalności rzuca tylko Śmiertelnie Ranny.';
+    case 'DEATH_SAVE_NOT_DUE':
+      return 'W walce Test Przeżywalności rzucasz raz, na początku swojej tury.';
     // Unik przed obrażeniami (03.10, decyzja MG po T8b).
     case 'AWAITING_EVASION':
       return 'Obrażenia czekają, aż cel zdecyduje o uniku („Unik” albo „Bez uniku” na karcie ataku).';
@@ -3269,7 +3275,15 @@ export const setCombatInitiative = (combatantId: string, initiative: number | nu
 export const reorderCombat = (combatantIds: string[]) =>
   emitSceneAck<CombatView>('combat:order', { combatantIds });
 
-export const nextCombatTurn = () => emitSceneAck<CombatView>('combat:next', {});
+export const nextCombatTurn = () =>
+  emitSceneAck<CombatView>('combat:next', {}).then((ack) => {
+    // Kończę turę bez Testu Przeżywalności (17.10): powód musi dojść do gracza,
+    // bo przycisk sam z siebie tylko się odblokowuje.
+    if (!ack.ok && ack.error === 'DEATH_SAVE_PENDING') {
+      useChatStore.getState().addNote(combatErrorText(ack.error));
+    }
+    return ack;
+  });
 
 export const previousCombatTurn = () => emitSceneAck<CombatView>('combat:previous', {});
 
@@ -3552,6 +3566,9 @@ export function combatErrorText(code: string): string {
       return 'Rana krytyczna zabiera ci Akcję w tej turze — szczegóły na karcie odmowy.';
     case 'MOVE_BLOCKED':
       return 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze — szczegóły na karcie odmowy.';
+    // 17.10: Śmiertelnie Ranny najpierw rzuca Test Przeżywalności (s. 187).
+    case 'DEATH_SAVE_PENDING':
+      return CPRED_DEATH_SAVE_PENDING_MESSAGE;
     default:
       return `Błąd walki: ${code}`;
   }

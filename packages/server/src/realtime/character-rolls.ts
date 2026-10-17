@@ -52,10 +52,20 @@ import {
   sheetForRoll,
   sheetSituationModifiers,
   SHEET_UNCONSCIOUS_STATUS_ID,
+  SHEET_DEAD_STATUS_ID,
+  markRoundOnce,
+  settleTurnDeathSave,
+  turnOwesDeathSave,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { grappleStateForToken } from './combat.js';
+import {
+  emitCombatOfScene,
+  findCombatantForToken,
+  grappleStateForToken,
+  type CombatRow,
+  type CombatantRow,
+} from './combat.js';
 import { addTokenStatus } from './grapple-state.js';
 import { activeRoundOfScene } from './timed-effects.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -279,6 +289,84 @@ async function recordDeathSave(
   if (!survived) await markTokensDead(deps, campaignId, saved.id);
 }
 
+/** The fight a character's Death Save belongs to, when one is running. */
+interface DeathSaveTurn {
+  combat: CombatRow;
+  combatant: CombatantRow;
+}
+
+/**
+ * Where this character stands in a running fight (17.10.2026). A sheet may
+ * have tokens on several scenes; the one whose turn it is wins, then the one
+ * still owing a save, then any — a GM's roll on somebody else's turn still has
+ * to stamp the Round it was made in.
+ */
+async function deathSaveTurnOf(
+  deps: RealtimeDeps,
+  characterId: string,
+): Promise<DeathSaveTurn | null> {
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId },
+    select: { id: true, sceneId: true },
+  });
+  const found: DeathSaveTurn[] = [];
+  for (const token of tokens) {
+    const hit = await findCombatantForToken(deps.ctx.prisma, token.sceneId, token.id);
+    if (hit) found.push(hit);
+  }
+  return (
+    found.find((hit) => hit.combat.activeCombatantId === hit.combatant.id) ??
+    found.find((hit) => turnOwesDeathSave(hit.combatant.turnState)) ??
+    found[0] ??
+    null
+  );
+}
+
+/**
+ * „Gdy jesteś Śmiertelnie Ranny, na początku każdej swojej Tury musisz wykonać
+ * Test Przeżywalności" (s. 187) — once, at the start of the turn, and only
+ * while Mortally Wounded (17.10.2026, decyzja MG). Judged before the die is
+ * thrown, so a refused save never moves the counter.
+ *
+ * Outside a fight there is no turn to start, so a player may roll whenever the
+ * GM asks. The GM is never refused: an NPC's fate is theirs to rule on.
+ */
+async function requireDeathSaveDue(
+  deps: RealtimeDeps,
+  user: SessionUser,
+  character: Character,
+  data: CpredCharacterData,
+): Promise<DeathSaveTurn | null> {
+  const turn = await deathSaveTurnOf(deps, character.id);
+  if (user.role === ROLE_GM) return turn;
+  if (cpredSheetWoundState(data) !== 'mortal') throw new RealtimeError('NOT_MORTALLY_WOUNDED');
+  if (turn && !turnOwesDeathSave(turn.combatant.turnState)) {
+    throw new RealtimeError('DEATH_SAVE_NOT_DUE');
+  }
+  return turn;
+}
+
+/**
+ * The save is down: the turn is the participant's to play, and the Round is
+ * stamped so stepping the queue back and forward does not ask again.
+ */
+async function settleDeathSaveTurn(
+  deps: RealtimeDeps,
+  campaignId: string,
+  turn: DeathSaveTurn,
+): Promise<void> {
+  const { combat, combatant } = turn;
+  await deps.ctx.prisma.combatant.update({
+    where: { id: combatant.id },
+    data: {
+      turnState: settleTurnDeathSave(combatant.turnState),
+      turnEffects: markRoundOnce(combatant.turnEffects, 'deathSave', combat.round),
+    },
+  });
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: combat.sceneId } });
+  if (scene) await emitCombatOfScene(deps, campaignId, scene);
+}
+
 /** Puts the „Martwy" badge on every token bound to the character. */
 async function markTokensDead(
   deps: RealtimeDeps,
@@ -301,10 +389,10 @@ async function markTokensDead(
     } catch {
       statuses = [];
     }
-    if (statuses.includes(DEAD_STATUS_ID)) continue;
+    if (statuses.includes(SHEET_DEAD_STATUS_ID)) continue;
     await deps.ctx.prisma.token.update({
       where: { id: row.id },
-      data: { statuses: JSON.stringify([...statuses, DEAD_STATUS_ID]) },
+      data: { statuses: JSON.stringify([...statuses, SHEET_DEAD_STATUS_ID]) },
     });
     changed.push(row.id);
   }
@@ -312,7 +400,6 @@ async function markTokensDead(
 }
 
 /** Status id from `data/public/cpred/statuses.json`. */
-const DEAD_STATUS_ID = 'dead';
 
 /** Charges the Action „Ustabilizowanie" costs to the medic's own token. */
 async function spendStabilizeAction(
@@ -797,7 +884,7 @@ async function applyStabilization(
  * follows being lifted off the floor — a figure that was not Mortally Wounded
  * never gets here, and neither branch heals one that was not.
  *
- * A minute is six rounds (`timed.ts`), and outside a fight nothing counts them:
+ * A minute is twenty rounds (`timed.ts`), and outside a fight nothing counts them:
  * the sticker stays and the GM's card ends it, the same bargain every other
  * timed effect strikes.
  */
@@ -1012,6 +1099,10 @@ async function performScopedRoll(
       await requireStabilizeReach(deps, campaignId, source.character, plan.stabilize.targetTokenId);
       await spendStabilizeAction(deps, campaignId, sceneId, source.character, user);
     }
+    const deathSaveTurn =
+      plan.deathSave && source.kind === 'character'
+        ? await requireDeathSaveDue(deps, user, source.character, data)
+        : null;
 
     const visibility: 'public' | 'gm' = payload?.visibility === 'gm' ? 'gm' : 'public';
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
@@ -1095,6 +1186,7 @@ async function performScopedRoll(
             : `${outcome.natural} · próg BC ${outcome.target}`,
       };
       await recordDeathSave(deps, campaignId, source.character, data, outcome.survived);
+      if (deathSaveTurn) await settleDeathSaveTurn(deps, campaignId, deathSaveTurn);
     }
 
     // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 165) — the same

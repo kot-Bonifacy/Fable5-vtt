@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**17.10.2026 — figura postawiona dla rannej karty nie ma naklejki rany, dopóki karta się nie zmieni
+(drobiazg, znaleziony przy oględzinach Śmiertelnie Rannego).** `token:create` z `characterId` nie
+liczy `applyWoundStatuses` z PW karty: figura karty z PW 0 stoi bez „Śmiertelnie ranny” (chip
+w panelu i obrączka po statusach), aż pierwszy zapis karty (`emitTokensOfCharacter`) ją doklei.
+Mechaniki to nie rusza — Test Przeżywalności i kary czytają kartę. Do zrobienia: w `token:create`
+(i przy przepięciu karty na figurę) wyliczyć statusy ran z karty jak `emitTokensOfCharacter`.
+
 **15.10.2026 — etap 52: T5b i długie specyfikacje odporności niepuszczone (gateway AI wyłączony).**
 Łańcuch po etapie 52 zielony od `po-T3a` do T5a (T3b, T4a, T4b, T5a) i od starego `po-T5` T6a + T6b,
 ale **T5b nie ruszył** (start wymaga gatewaya), więc `po-T5` jest sprzed 52, a `po-T6a`/`po-T6`

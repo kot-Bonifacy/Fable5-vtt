@@ -30,6 +30,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Śmiertelnie Ranny i Ustabilizowanie (zlecenie MG z 17.10) poprawione 17.10 — dalej
+refaktoryzacja całości pod osłoną suity, potem T10.** Śmiertelnie Ranny gra turę dopiero po
+Teście Przeżywalności: gracz rzuca kubkiem (do tego czasu bez Akcji, Ruchu i „Kończę turę”),
+NPC i boty dostają rzut od serwera na starcie tury. Trafienie atakiem daje mu Ranę Krytyczną
+i +1 do Testów do Ustabilizowania. Runda trwa 3 s (minuta = 20 rund). Umowy na górze `tura`,
+`atak`, `czas`.
+
 **Etap 53 „Konto administratora” (zlecenie MG z 17.10) zamknięty 17.10 — następna jest
 refaktoryzacja całości pod osłoną suity, potem T10.** Serwer prowadzi konto roli `ADMIN`
 (**`pantosz`**, zakładane z `.env`: `VTT_ADMIN_LOGIN`/`VTT_ADMIN_PASSWORD`, hasło tymczasowe do
@@ -274,24 +281,48 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 33   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 17   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 46   | 8       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 18   | 5       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 47   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
-| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 17   | 2       |
+| `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione | 9    | 3       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 8    | 8       |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
-| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 113     |
+| `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 141     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.10 (po `7b6607a`) — Śmiertelnie Ranny i Ustabilizowanie według podręcznika
+
+**Zlecenie MG:** sprawdzić, czy Śmiertelnie Ranny słusznie atakuje i czy Ustabilizowanie działa
+jak w podręczniku. **Werdykt:** atakowanie jest zgodne z RAW („żyjesz i możesz odbyć swoją
+Turę", s. 187, kara −4). Błędy siedziały gdzie indziej: Test Przeżywalności był tylko banerem
+(można było działać bez rzutu, rzucać wiele razy albo wcale), boty i NPC nie rzucały go nigdy,
+trafienie Śmiertelnie Rannego nie dawało Rany Krytycznej ani +1, a runda trwała 10 s zamiast 3 s
+(nieprzytomność po Ustabilizowaniu schodziła po 6 rundach zamiast 20). Poza tym Ustabilizowanie
+było zgodne z RAW. **Decyzje MG (pytania):** zostaje RAW; Test wymuszony — gracz rzuca kubkiem
+i do tego czasu ma zablokowane Akcję i Ruch, boty i NPC rzucają automatycznie; +1 za trafienie
+trwa do Ustabilizowania; runda 3 s wszędzie.
+
+**Zrobione:** umowy na górze `tura` (bramka tury, `deathSavePending`, stempel `deathSave`),
+`atak` (`fromAttack`, `injuryMortal`, pole karty `deathSaveHits`, `cpredDeathSaveModifier`)
+i `czas` (`CPRED_ROUND_SECONDS = 3`). Baner w pasku walki stoi tylko, dopóki Test jest zaległy
+(`TurnBudgetView.pendingRoll`). Nowa zaległość: `token:create` nie nadaje naklejek ran z karty.
+
+**Weryfikacja:** vitest shared **2474** (+3), serwer **1473** (+4 w `damage.test.ts`; 3 testy
+`ammo-effects` przepięte na 20 rund), klient 384; `tsc` w czterech pakietach, ESLint, Prettier,
+`pnpm build` czyste. E2E nie puszczane (żaden spec nie dotyka Śmiertelnie Rannego). Oględziny
+w **Firefoksie** (gracz) i Chromium (MG) tymczasowym specem E2E — Firefox z MCP wisiał (pułapka
+na górze `ogledziny`): baner, wyszarzone sloty, odmowa „Kończę turę", rzut kubkiem zdejmuje baner,
+karta trafienia z „Śmiertelnie Ranny trafiony” i „+1 do Testu Przeżywalności”.
 
 ### Sesja 17.10 (po `689c422`) — etap 53, konto administratora `pantosz`
 
@@ -316,25 +347,3 @@ administratora) i `t7b-` (kopia przez `adminApi()`) — długi łańcuch. Oględ
 (Playwright MCP) na instancji E2E: wymuszona zmiana hasła, panel z trwającą sesją i graczem
 przy stole, „Zakończ sesję” → dziennik „zakończył administrator”, hasło tymczasowe dla MG,
 usunięcie konta; wejście MG hasłem tymczasowym sprawdzone przez API.
-
-### Sesja 17.10 (po `da0c1b5`) — trafienie na figurze, Unik bez dźwięku, obrączka po ranach
-
-**Zlecenie MG:** bez dźwięków Uniku, lepsza wizualizacja trafienia; w trakcie: wewnętrzny
-pierścień figury (obrączka PW) pomarańczowy powyżej 50% ran, czerwony powyżej 75%.
-
-**Zrobione:** kubek nie dzwoni przy wezwaniu do Uniku ani przy załadowanym Uniku (`DiceCup`,
-`dodge`/`evasion` → bez klucza sygnału; monit nad mapą zostaje). Nowy efekt mapy `hit`
-(`shared/fx.ts`), wysyłany przez `damageMapFx` zamiast `spark`: błysk na cały żeton, rozprysk
-krwi (pancerz — niebieskie iskry, krytyk — złoty rdzeń błysku; fale MG odrzucił), wielkość rośnie z utraconymi
-PW ÷ max, dolna granica 30 px ekranu; figura drga przez `pivot` (`MapRenderer.shakeFigure`, figura
-szukana po punkcie, bez id żetonu w efekcie). Liczba obrażeń „wyskakuje”. `hpRingTone`
-(`token-ring.ts`): pomarańcz `0xff8a1f` ponad 50% ran, czerwień ponad 75%, niżej jak dotąd.
-Pasek PW w panelu (`CombatHud`) bierze te same progi (decyzja MG), nowy token motywu
-`--hurt-heavy`; podpis stanu ran w dymku dalej ze szczebla. Umowa na górze `atak`.
-
-**Weryfikacja:** vitest shared 2471, klient 381 (nowy test progów w `token-ring.test.ts`), serwer
-1457 — wszystko zielone; `tsc`, ESLint, Prettier. Oględziny w **Firefoksie** i **Chromium**
-(Playwright MCP) na podstawionych lokalnie figurach z PW i efektach wstrzykniętych przez
-`receiveMapFx` — prawdziwego strzału przez serwer w UI nie było (pokrywa `server/src/fx.test.ts`).
-Firefox w tle dławi `requestAnimationFrame` do 1 fps — przed oględzinami `page.bringToFront()`.
-

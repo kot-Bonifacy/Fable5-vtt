@@ -70,6 +70,13 @@ export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
 export const CPRED_ACTION_STABILIZE = 'stabilize';
+
+/** `TurnBudgetView.pendingRoll.id` of the Death Save a turn opens owing. */
+export const CPRED_DEATH_SAVE_ROLL_ID = 'deathSave';
+
+/** What every refused spend says while that Death Save is owed (s. 187). */
+export const CPRED_DEATH_SAVE_PENDING_MESSAGE =
+  'Najpierw Test Przeżywalności — Śmiertelnie Ranny rzuca go na początku swojej tury.';
 /** Putting yourself out (stage 14e) — the answer to „Podpalony". */
 export const CPRED_ACTION_EXTINGUISH = 'extinguish';
 /** Grappling (stage 14d) — each of these is resolved by `grapple:*`. */
@@ -437,6 +444,14 @@ export interface CpredTurnState {
   blockedAction: string | null;
   /** The same for the Move Action — the ear injuries after a long walk. */
   blockedMove: string | null;
+  /**
+   * The turn began Mortally Wounded and its Death Save is still owed (17.10.2026).
+   * „Jeśli rzucisz mniej niż wartość twojej Budowy Ciała, żyjesz i możesz odbyć
+   * swoją Turę" (s. 187) — until the die is down, neither the Action nor the
+   * Move Action is free. A flag rather than a `blockedAction` sentence, because
+   * a spine injury may take the same Action and must outlive a passed save.
+   */
+  deathSavePending: boolean;
 }
 
 /**
@@ -470,8 +485,12 @@ export interface CpredTurnLedger {
   once?: Partial<Record<CpredRoundOnceId, number>>;
 }
 
-/** Abilities that happen at most once per Round, whoever's turn it is. */
-export const CPRED_ROUND_ONCE_IDS = ['damageReduction', 'weakSpot'] as const;
+/**
+ * Abilities that happen at most once per Round, whoever's turn it is — and,
+ * since 17.10.2026, the Death Save: stamped when it is rolled, so a GM stepping
+ * the pointer back and forward does not hand the same turn a second one.
+ */
+export const CPRED_ROUND_ONCE_IDS = ['damageReduction', 'weakSpot', 'deathSave'] as const;
 export type CpredRoundOnceId = (typeof CPRED_ROUND_ONCE_IDS)[number];
 
 /** Reads a stored ledger; anything unreadable means „nothing has fired yet". */
@@ -568,6 +587,8 @@ export interface CpredTurnCarryInput {
   noAction?: string | null;
   /** Ready sentence refusing the Move Action for one turn. */
   noMove?: string | null;
+  /** The turn opens owing a Death Save (see `CpredTurnState.deathSavePending`). */
+  deathSave?: boolean;
 }
 
 export function freshCpredTurn(
@@ -586,6 +607,7 @@ export function freshCpredTurn(
     overspent: 0,
     blockedAction: carry?.noAction ?? null,
     blockedMove: carry?.noMove ?? null,
+    deathSavePending: carry?.deathSave === true,
   };
 }
 
@@ -659,7 +681,9 @@ export type CpredTurnProblem =
   /** The same for the Move Action. */
   | 'MOVE_BLOCKED'
   /** The Interface rank's Net Actions are all spent (stage 26b). */
-  | 'NO_NET_ACTIONS_LEFT';
+  | 'NO_NET_ACTIONS_LEFT'
+  /** Mortally Wounded and the turn's Death Save is not rolled yet (17.10.2026). */
+  | 'DEATH_SAVE_PENDING';
 
 export type CpredTurnResult =
   { ok: true; state: CpredTurnState } | { ok: false; error: CpredTurnProblem };
@@ -706,6 +730,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
   const hardTerrain = raw.hardTerrain === true;
   const blockedAction = typeof raw.blockedAction === 'string' ? raw.blockedAction : null;
   const blockedMove = typeof raw.blockedMove === 'string' ? raw.blockedMove : null;
+  const deathSavePending = raw.deathSavePending === true;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -755,7 +780,13 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     overspent,
     blockedAction,
     blockedMove,
+    deathSavePending,
   };
+}
+
+/** The Death Save was rolled: the turn is the participant's to play (or not). */
+export function settleCpredDeathSave(state: CpredTurnState): CpredTurnState {
+  return state.deathSavePending ? { ...state, deathSavePending: false } : state;
 }
 
 /**
@@ -799,7 +830,9 @@ export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   if (definition.cost === 'move') return spendMove(state, { kind: 'move' });
 
   // A wound that took the turn's Action away is not an arithmetic problem, so
-  // it is answered before the budget is even consulted (stage 14e).
+  // it is answered before the budget is even consulted (stage 14e). An owed
+  // Death Save comes first of all: the turn has not been earned yet.
+  if (state.deathSavePending) return { ok: false, error: 'DEATH_SAVE_PENDING' };
   if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
   if (state.action !== null) return { ok: false, error: 'NO_ACTION_LEFT' };
   if (definition.requiresSpentMove && state.moveUsed === 0) {
@@ -841,6 +874,7 @@ function spendMove(
   // An ear that costs this turn's Move Action refuses before any measuring —
   // telling the player they ran out of metres would send them looking for a
   // shorter route that does not exist (stage 14e).
+  if (rebased.deathSavePending) return { ok: false, error: 'DEATH_SAVE_PENDING' };
   if (rebased.blockedMove !== null) return { ok: false, error: 'MOVE_BLOCKED' };
 
   if (spend.metres === undefined) {
@@ -912,6 +946,7 @@ function spendAttack(
   const rof = Number.isFinite(spend.rof) ? Math.max(1, Math.round(spend.rof)) : 1;
 
   // An attack is an Action, so a wound that took the Action away takes this too.
+  if (state.deathSavePending) return { ok: false, error: 'DEATH_SAVE_PENDING' };
   if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
 
   if (state.action === null) {
@@ -978,6 +1013,7 @@ function spendNet(
   state: CpredTurnState,
   spend: Extract<CpredTurnSpend, { kind: 'net' }>,
 ): CpredTurnResult {
+  if (state.deathSavePending) return { ok: false, error: 'DEATH_SAVE_PENDING' };
   if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
   const max = Number.isFinite(spend.max) ? Math.max(1, Math.round(spend.max)) : 1;
 
@@ -1110,6 +1146,12 @@ export function cpredTurnBudget(
   // and „Akcja 0/1" next to a button that always refuses would be a lie.
   if (state.blockedAction) notes.push(state.blockedAction);
   if (state.blockedMove) notes.push(state.blockedMove);
+  // Owed, not spent: the pips stay as they are — a passed save hands the whole
+  // turn over — but both buttons have to say why they refuse until then.
+  const pending = state.deathSavePending ? CPRED_DEATH_SAVE_PENDING_MESSAGE : null;
+  if (pending) notes.unshift(pending);
+  const moveBlocked = pending ?? state.blockedMove;
+  const actionBlocked = pending ?? state.blockedAction;
   return {
     resources: [
       {
@@ -1121,14 +1163,14 @@ export function cpredTurnBudget(
         // the action bar greys a button out and has to say why, and „Akcja w
         // tej turze już wykorzystana" is the wrong answer when the turn never
         // had one to spend (stage 14e; found in the player-side pass of 22.08).
-        ...(state.blockedMove ? { blocked: state.blockedMove } : {}),
+        ...(moveBlocked ? { blocked: moveBlocked } : {}),
       },
       {
         id: 'action',
         label: 'Akcja',
         used: state.action || state.blockedAction ? 1 : 0,
         max: 1,
-        ...(state.blockedAction ? { blocked: state.blockedAction } : {}),
+        ...(actionBlocked ? { blocked: actionBlocked } : {}),
       },
       {
         id: 'attacks',
@@ -1167,6 +1209,9 @@ export function cpredTurnBudget(
       : {}),
     ...(notes.length > 0 ? { note: notes.join(' · ') } : {}),
     ...(state.overspent > 0 ? { overspent: state.overspent } : {}),
+    ...(state.deathSavePending
+      ? { pendingRoll: { id: CPRED_DEATH_SAVE_ROLL_ID, label: 'Test Przeżywalności' } }
+      : {}),
   };
 }
 
@@ -1187,6 +1232,7 @@ export function cpredTurnBudget(
 export function cpredRunMetres(state: CpredTurnState): number {
   if (state.metresPerMove === null) return 0;
   if (state.action !== null || state.blockedAction !== null || state.blockedMove !== null) return 0;
+  if (state.deathSavePending) return 0;
   const definition = cpredAction(CPRED_ACTION_RUN);
   return roundMetres(state.metresPerMove * (definition?.grantsMove ?? 1));
 }
@@ -1229,6 +1275,7 @@ export const CPRED_TURN_PROBLEM_MESSAGES: Record<CpredTurnProblem, string> = {
   ACTION_BLOCKED: 'Rana krytyczna zabiera ci Akcję w tej turze.',
   MOVE_BLOCKED: 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze.',
   NO_NET_ACTIONS_LEFT: 'Nie masz już Akcji Sieciowych w tej turze.',
+  DEATH_SAVE_PENDING: CPRED_DEATH_SAVE_PENDING_MESSAGE,
 };
 
 /** The sentence behind a blocked spend, when the state carries one. */
@@ -1238,5 +1285,6 @@ export function cpredTurnBlockReason(
 ): string | null {
   if (problem === 'ACTION_BLOCKED') return state.blockedAction;
   if (problem === 'MOVE_BLOCKED') return state.blockedMove;
+  if (problem === 'DEATH_SAVE_PENDING') return CPRED_DEATH_SAVE_PENDING_MESSAGE;
   return null;
 }

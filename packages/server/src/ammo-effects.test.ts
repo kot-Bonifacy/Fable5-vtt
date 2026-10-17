@@ -37,7 +37,7 @@ import { joinUrl } from './test-join.js';
  *    damage roll at all;
  *  - failing it **costs what the catalogue says** — direct damage the armour
  *    does not stop, statuses that carry a timer;
- *  - the timer **runs on rounds**: six of them and the status is gone, whether
+ *  - the timer **runs on rounds**: twenty of them (3 s each, s. 168) and the status is gone, whether
  *    or not its carrier is in the initiative queue;
  *  - outside a fight nothing counts, so the card carries the GM's button and
  *    the button is the only way off;
@@ -714,9 +714,9 @@ describe('ammunition that deals no damage', () => {
         const marker = 'wyłączone: ';
         const disabled = effect.slice(effect.indexOf(marker) + marker.length);
 
-        // One participant, so every „next" is a round; eight clear the six.
+        // One participant, so every „next" is a round; twenty-two clear the twenty.
         const feed = collect(player);
-        for (let step = 0; step < 8; step += 1) await emitAck(gm, 'combat:next', {});
+        for (let step = 0; step < 22; step += 1) await emitAck(gm, 'combat:next', {});
         await settle();
         const notes = feed
           .stop()
@@ -801,8 +801,8 @@ describe('ammunition that deals no damage', () => {
       expect(ack.ok).toBe(false);
     }, 20_000);
 
-    it('drops the statuses by itself once six rounds have passed', async () => {
-      // A fight makes the clock run: „na minutę" is six rounds of ten seconds.
+    it('drops the statuses by itself once twenty rounds have passed', async () => {
+      // A fight makes the clock run: „na minutę" is twenty rounds of three seconds.
       //
       // Only the victims stand in the queue. The thrower deliberately does not:
       // a participant pays an Action per throw, and the helper above may need
@@ -845,8 +845,8 @@ describe('ammunition that deals no damage', () => {
           if ((await tokenOf(id)).statuses.includes('unconscious')) sleepers.push(id);
         }
 
-        // Two participants, so two „next" per round; fourteen of them clear six.
-        for (let step = 0; step < 14; step += 1) await emitAck(gm, 'combat:next', {});
+        // Two participants, so two „next" per round; forty-two of them clear twenty.
+        for (let step = 0; step < 42; step += 1) await emitAck(gm, 'combat:next', {});
         expect((await tokenOf(tokenId)).statuses).not.toContain('unconscious');
 
         // „Minęła minuta" oczami gracza — do 13.09 żaden test nie czytał tego zdania.
@@ -951,9 +951,9 @@ describe('ammunition that deals no damage', () => {
         const row = sheet.criticalInjuries.find((entry) => entry.id === injury.id);
         expect(row).toBeDefined();
         expect(row?.timed?.durationS).toBe(60);
-        expect(row?.timed?.expiresAtRound).toBe(7);
+        expect(row?.timed?.expiresAtRound).toBe(21);
         // Ten sam napis, który rysuje chip na karcie postaci.
-        expect(describeCpredTimer(row!.timed!)).toBe('na minutę — do rundy 7');
+        expect(describeCpredTimer(row!.timed!)).toBe('na minutę — do rundy 21');
       } finally {
         await emitAck(gm, 'combat:end', { sceneId });
         await emitAck(gm, 'token:delete', { tokenId: hurtTokenId });

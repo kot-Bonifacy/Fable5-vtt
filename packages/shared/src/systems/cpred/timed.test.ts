@@ -18,13 +18,13 @@ import {
  * that quietly lifts is worse than one somebody has to click away.
  */
 describe('cpredRoundsFor', () => {
-  it('turns a minute into six rounds', () => {
+  it('turns a minute into twenty rounds of three seconds (s. 168)', () => {
     expect(cpredRoundsFor(CPRED_MINUTE_S)).toBe(CPRED_MINUTE_S / CPRED_ROUND_SECONDS);
-    expect(cpredRoundsFor(CPRED_MINUTE_S)).toBe(6);
+    expect(cpredRoundsFor(CPRED_MINUTE_S)).toBe(20);
   });
 
   it('rounds up — half a round of blindness is a round', () => {
-    expect(cpredRoundsFor(15)).toBe(2);
+    expect(cpredRoundsFor(4)).toBe(2);
     expect(cpredRoundsFor(1)).toBe(1);
   });
 
@@ -37,7 +37,7 @@ describe('cpredRoundsFor', () => {
 
 describe('cpredExpiryRound', () => {
   it('adds the duration to the round it was applied in', () => {
-    expect(cpredExpiryRound(3, CPRED_MINUTE_S)).toBe(9);
+    expect(cpredExpiryRound(3, CPRED_MINUTE_S)).toBe(23);
   });
 
   it('gives no round outside a fight — nothing is counting', () => {

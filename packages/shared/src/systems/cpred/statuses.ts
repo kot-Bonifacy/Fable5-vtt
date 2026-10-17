@@ -235,6 +235,9 @@ export const CPRED_PRONE_STATUS_ID = 'prone';
 /** Status a Held participant carries while the relation lasts (stage 14d). */
 export const CPRED_GRAPPLED_STATUS_ID = 'grappled';
 
+/** A failed Death Save (stage 15) — the end of every turn-start question. */
+export const CPRED_DEAD_STATUS_ID = 'dead';
+
 /** Status a choked-out participant gets — and a thrown one never does. */
 export const CPRED_UNCONSCIOUS_STATUS_ID = 'unconscious';
 

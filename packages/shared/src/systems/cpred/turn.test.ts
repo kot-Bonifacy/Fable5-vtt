@@ -15,6 +15,7 @@ import {
   cpredTurnBudget,
   forceCpredTurn,
   freshCpredTurn,
+  settleCpredDeathSave,
   markCpredTurnPhase,
   markCpredRoundOnce,
   clearCpredRoundOnce,
@@ -583,5 +584,20 @@ describe('zdolności raz na Rundę', () => {
 
   it('odczyt wycina śmieci w stemplach', () => {
     expect(readCpredTurnLedger('{"once":{"weakSpot":"trzy","nieznane":2}}').once).toBeUndefined();
+  });
+});
+
+describe('Death Save owed at the start of the turn (17.10.2026, s. 187)', () => {
+  it('refuses the Action and the Move until the save is rolled, then hands the turn over', () => {
+    const owing = freshCpredTurn(null, { deathSave: true });
+    expect(spendCpredTurn(owing, { kind: 'move' })).toEqual({
+      ok: false,
+      error: 'DEATH_SAVE_PENDING',
+    });
+    expect(spendCpredTurn(owing, { kind: 'action', actionId: CPRED_ACTION_RUN })).toEqual({
+      ok: false,
+      error: 'DEATH_SAVE_PENDING',
+    });
+    expect(spendCpredTurn(settleCpredDeathSave(owing), { kind: 'move' }).ok).toBe(true);
   });
 });

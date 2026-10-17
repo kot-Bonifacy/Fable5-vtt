@@ -267,6 +267,15 @@ export interface DamageLogEntry {
    */
   injuryAimed?: { id: string; name: string; effect: string };
   /**
+   * The hit landed on somebody already Mortally Wounded (s. 187, 17.10.2026):
+   * „otrzymuje także Ranę Krytyczną oraz modyfikator +1 do Testów
+   * Przeżywalności". The flag is the +1 („Cofnij" takes it back); the wound is
+   * `injuryMortal`, its own field for the reason `injuryAimed` is one — the
+   * same hit may also have rolled two sixes.
+   */
+  mortalHit?: boolean;
+  injuryMortal?: { id: string; name: string; effect: string; rolled: number };
+  /**
    * The round that landed and what it changed (stage 16g) — „pancerz −2
    * (zamiast −1)", „cel zatrzymany na 1 PW". Named entries rather than a silent
    * correction, the treatment „Trzymanie −2" got in 14d.

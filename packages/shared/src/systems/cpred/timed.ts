@@ -6,8 +6,8 @@
  * its carrier's own turn and needs no clock at all — `expiresAtTurnEnd` is a
  * boolean. Tear gas is the first thing that lasts a *duration*: „przez minutę".
  *
- * A minute is six rounds, and that is the whole of the arithmetic. What it is
- * not is a wall clock: a round takes ten seconds of fiction and several minutes
+ * A minute is twenty rounds, and that is the whole of the arithmetic. What it is
+ * not is a wall clock: a round takes three seconds of fiction and several minutes
  * of table, so counting real seconds would take the blindness off the victim
  * before their next turn came round. So the timer runs on rounds — and outside
  * a fight, where no round ever ticks, it does not run at all: the effect stays
@@ -16,8 +16,13 @@
  * `damage:apply` makes with „Cofnij".
  */
 
-/** „Runda trwa 10 sekund" — the clock every duration is measured in. */
-export const CPRED_ROUND_SECONDS = 10;
+/**
+ * „Jedna Runda to także około 3 sekund" (s. 168) — the clock every duration is
+ * measured in. Until 17.10.2026 this said ten seconds, a number no page of the
+ * rulebook prints, and every „na minutę" lifted after six rounds instead of
+ * twenty.
+ */
+export const CPRED_ROUND_SECONDS = 3;
 
 /** The duration the ammunition table keeps reaching for: „na minutę". */
 export const CPRED_MINUTE_S = 60;

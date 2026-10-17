@@ -81,6 +81,12 @@ export interface TurnBudgetView {
   overspent?: number;
   /** A one-shot pass from the GM is waiting to be used („przepuść"). */
   bypass?: boolean;
+  /**
+   * A roll the system wants before this participant may spend anything (CP RED:
+   * the Death Save of a Mortally Wounded turn). The core only carries it — the
+   * id is the system's, and so is the button that answers it.
+   */
+  pendingRoll?: { id: string; label: string };
 }
 
 /**

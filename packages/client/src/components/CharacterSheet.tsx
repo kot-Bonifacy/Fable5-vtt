@@ -112,6 +112,7 @@ import {
   cyberpsychosisFor,
   cyberwareCapacity,
   deathSaveTarget,
+  cpredDeathSaveModifier,
   effectiveArmor,
   emptyLifepathEnemy,
   emptyLifepathPerson,
@@ -1077,11 +1078,11 @@ function IdentityColumn({
           {wound === 'mortal' && (
             <button
               type="button"
-              title={`Rzuć 1k10 pod BC ${deathSaveTarget(cpredEffectiveStats(data))}. Każdy kolejny test jest o 1 trudniejszy.`}
+              title={`Rzuć 1k10 pod BC ${deathSaveTarget(cpredEffectiveStats(data))}. Każdy kolejny test i każde trafienie atakiem są o 1 trudniejsze. W walce rzucasz raz, na początku swojej tury.`}
               onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
               Test Przeżywalności
-              {data.deathSaves > 0 ? ` (+${data.deathSaves})` : ''}
+              {cpredDeathSaveModifier(data) > 0 ? ` (+${cpredDeathSaveModifier(data)})` : ''}
             </button>
           )}
         </p>

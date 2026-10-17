@@ -290,6 +290,22 @@ export function DamageRow({
               {entry.injuryExtra.name}
             </span>
           )}
+          {/* Trafiony Śmiertelnie Ranny (s. 187): rana „także” i +1 do Testu. */}
+          {entry.injuryMortal && (
+            <span
+              className="chat-roll-badge chat-roll-badge--injury"
+              title={entry.injuryMortal.effect}
+            >
+              Śmiertelnie Ranny trafiony
+              {entry.injuryMortal.rolled > 0 ? ` (2k6 = ${entry.injuryMortal.rolled})` : ''}:{' '}
+              {entry.injuryMortal.name}
+            </span>
+          )}
+          {entry.mortalHit && (
+            <span className="chat-roll-badge chat-roll-badge--wound">
+              +1 do Testu Przeżywalności
+            </span>
+          )}
           {entry.injuryNote && (
             <span className="chat-roll-badge chat-roll-badge--note">{entry.injuryNote}</span>
           )}
@@ -355,6 +371,9 @@ export function DamageRow({
         )}
         {entry.injuryAimed && (
           <p className="chat-damage-injury-effect">{entry.injuryAimed.effect}</p>
+        )}
+        {entry.injuryMortal && (
+          <p className="chat-damage-injury-effect">{entry.injuryMortal.effect}</p>
         )}
       </div>
     </div>
