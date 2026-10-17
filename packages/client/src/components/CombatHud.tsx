@@ -178,14 +178,17 @@ function HealthBar({ hp }: { hp: { current: number; max: number } }) {
       className={`hud-hp hud-hp--${tone}`}
       title={`Punkty Wytrzymałości: ${hp.current}/${hp.max} · ${CPRED_WOUND_LABELS[state]}`}
     >
+      <span className="hud-hp-label">PW</span>
+      {/* The number sits inside the bar since 17.10 (MG): one shape to look
+          at, and the bar gets the whole width of the banner. */}
       <span className="hud-hp-track">
         <span className="hud-hp-fill" style={{ width: `${ratio * 100}%` }} />
         {/* The rung stage 15 judges on, drawn where it actually falls. */}
         <span className="hud-hp-notch" style={{ left: `${threshold * 100}%` }} />
-      </span>
-      <span className="hud-hp-value">
-        {hp.current}
-        <span className="hud-hp-max">/{hp.max}</span>
+        <span className="hud-hp-value">
+          {hp.current}
+          <span className="hud-hp-max">/{hp.max}</span>
+        </span>
       </span>
       {delta && (
         <span
@@ -704,7 +707,11 @@ export function CombatHud() {
               the queue is on, whatever the rail describes. */}
           {context.acting && context.isGm && <p className="hud-turn-banner">Tura tej figury</p>}
 
+          {/* Klucz figury (17.10): bez niego pasek PW pamiętał poprzednią
+              figurę i przełączenie panelu pokazywało jej różnicę („+5”)
+              jak leczenie. */}
           <IdentityCard
+            key={token.id}
             name={token.name}
             imageUrl={token.imageUrl}
             hp={token.hp}
@@ -729,12 +736,11 @@ export function CombatHud() {
                   : 'Panel pokazuje figurę, ale nią nie sterujesz — kliknij ją na mapie albo naciśnij slot.'
               }
             >
-              <IconEye size={14} />
-              <span>
-                {gmSteerLocked(isGm, combat)
-                  ? 'Podgląd — weź figurę z pasa albo slotem'
-                  : 'Podgląd — kliknij figurę albo slot, żeby sterować'}
-              </span>
+              {/* Plakietka zamiast zdania (17.10, MG): „jak przejąć” mówi
+                  podpowiedź wyżej, na pasku wystarczy, że to nie twoja ręka. */}
+              <IconEye size={15} />
+              <strong className="hud-preview-tag">Podgląd</strong>
+              <span>nie sterujesz</span>
             </p>
           )}
 

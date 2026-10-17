@@ -32,15 +32,20 @@
   gap: 0.15rem;
 }
 
+/* Świeci = masz (17.10, MG, wzorem BG3): pełny żeton to jednostka do wydania,
+   wydana gaśnie do samego konturu. Do tej pory było odwrotnie i pusty kółek
+   „do wydania” wyglądał jak brak. */
 .combat-budget-pip {
   width: 0.5rem;
   height: 0.5rem;
   border: 1px solid var(--warn);
   border-radius: 50%;
+  background: var(--warn);
 }
 
 .combat-budget-pip--spent {
-  background: var(--warn);
+  background: transparent;
+  border-color: var(--border-strong);
 }
 
 /* Past the budget: only the GM's own NPCs ever get here. */
@@ -82,28 +87,80 @@
 /* Budget in the left rail (stage 27h): the same numbers, sized for the panel a
    player looks at before every move. Stacked instead of strung along a strip,
    because here there is a column to use and no queue to sit beside. */
+/* Od 17.10 (MG) czarna belka jak podpis na portrecie — nocne tokeny daje jej
+   blok „Belka” w `theme.css`, więc złote żetony świecą tak samo w obu skórach.
+   Każdy zasób to kolumna: napis nad rzędem ściętych żetonów, które dzielą
+   szerokość kolumny, zamiast kropek wielkości przecinka. */
 .combat-budget--rail {
   flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-  padding: 0.35rem 0.45rem;
+  align-items: stretch;
+  gap: 0.45rem 0.6rem;
+  padding: 0.45rem 0.55rem 0.5rem;
   border-left: none;
-  background: var(--veil-faint);
+  background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 2px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--notch-sm)),
+    calc(100% - var(--notch-sm)) 100%,
+    0 100%
+  );
+}
+
+.combat-budget--rail .combat-budget-item {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem;
+}
+
+.combat-budget--rail .combat-budget-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.combat-budget--rail .combat-budget-pips {
+  gap: 0.2rem;
 }
 
 .combat-budget--rail .combat-budget-pip {
-  width: 0.62rem;
-  height: 0.62rem;
+  flex: 1;
+  width: auto;
+  height: 0.75rem;
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(to bottom, var(--warn-bright), var(--warn));
+  clip-path: polygon(0.25rem 0, 100% 0, calc(100% - 0.25rem) 100%, 0 100%);
+}
+
+/* Zgaszony żeton zostaje widoczny — ile było, czyta się dalej z kształtu. */
+.combat-budget--rail .combat-budget-pip--spent {
+  background: var(--veil);
+}
+
+.combat-budget--rail .combat-budget-pip--over {
+  background: var(--err);
+}
+
+/* Zablokowany (Uraz kręgosłupa, czekający Test Przeżywalności): napis
+   przekreślony, a powód w podpowiedzi — zgaszone żetony same by go nie podały. */
+.combat-budget--rail .combat-budget-item--blocked .combat-budget-label {
+  color: var(--err-ink);
+  text-decoration: line-through;
 }
 
 .combat-budget--rail .combat-budget-distance {
   flex: 1 0 100%;
-  gap: 0.35rem;
-  font-size: 0.68rem;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
 }
 
-/* Metres spent, as a shape. The fraction stays next to it — one is for the
+/* Metres left, as a shape. The fraction stays next to it — one is for the
    glance, the other for the sentence said out loud at the table. */
 .combat-budget-track {
   flex: 1;
@@ -114,6 +171,11 @@
   overflow: hidden;
 }
 
+.combat-budget--rail .combat-budget-track {
+  height: 0.5rem;
+  background: var(--veil);
+}
+
 .combat-budget-track-fill {
   display: block;
   height: 100%;
@@ -121,13 +183,24 @@
   transition: width 200ms ease-out;
 }
 
-.combat-budget-distance--over .combat-budget-track-fill {
+/* W panelu belka to zapas metrów — złota jak żetony, bo to ten sam „masz”. */
+.combat-budget--rail .combat-budget-track-fill {
+  background: linear-gradient(to bottom, var(--warn-bright), var(--warn));
+}
+
+.combat-budget-distance--over .combat-budget-track-fill,
+.combat-budget--rail .combat-budget-distance--over .combat-budget-track-fill {
   background: var(--err);
 }
 
 .combat-budget-metres {
   flex: none;
   font-variant-numeric: tabular-nums;
+}
+
+.combat-budget-metres strong {
+  font-weight: 700;
+  color: var(--text);
 }
 
 .combat-chip-held {

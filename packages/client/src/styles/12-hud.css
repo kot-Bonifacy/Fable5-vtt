@@ -432,9 +432,19 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.7rem;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   --hud-hp-color: var(--ok);
+}
+
+/* Skrót przed paskiem (17.10, MG): bez niego na banerze leżała goła belka
+   i liczba, a „33/35 czego” to pytanie, którego w walce nikt nie zadaje dwa razy. */
+.hud-hp-label {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
 }
 
 .hud-hp--light {
@@ -449,20 +459,28 @@
   --hud-hp-color: var(--err);
 }
 
+/* Dwa razy wyższy od 17.10 (MG) i z liczbą w środku — 0,6 rem z liczbą obok
+   ginęło na portrecie, a to najważniejsza belka panelu. */
 .hud-hp-track {
   position: relative;
   flex: 1;
-  height: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 1.15rem;
   border-radius: 2px;
   background: var(--bg-inset);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   overflow: hidden;
 }
 
 .hud-hp-fill {
-  display: block;
-  height: 100%;
-  background: var(--hud-hp-color);
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  /* Połysk u góry: pełna belka czyta się jak świecąca, nie jak plama farby. */
+  background: linear-gradient(to bottom, var(--veil), transparent 55%), var(--hud-hp-color);
   /* Damage is a jump, healing is a jump — but a *visible* one: without this the
      bar has already moved by the time anybody looks up from the dice. */
   transition: width 260ms ease-out;
@@ -478,29 +496,44 @@
   background: var(--scrim);
 }
 
+/* Liczba leży na wypełnieniu każdej barwy (zieleń, żółć, pomarańcz, czerwień)
+   — czarny obrys z belki trzyma biel czytelną na wszystkich czterech. */
 .hud-hp-value {
-  flex: none;
+  position: relative;
+  padding: 0 0.4rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
   color: var(--text);
+  text-shadow:
+    0 0 2px var(--cp-bar),
+    0 0 2px var(--cp-bar),
+    0 1px 1px var(--cp-bar);
 }
 
 .hud-hp-max {
-  font-weight: 400;
-  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 500;
 }
 
 /* The number that flies off the bar: a hit has to be visible in the panel at
    the moment it lands, not only in the chat log two seconds later. */
+/* Startuje z lewego końca paska (17.10): liczba PW stoi teraz po prawej w pasku,
+   a nad nim jest wiersz imienia z Rolą — tu nie przykrywa żadnej z nich.
+   Czarna plakietka, bo leży na wypełnieniu: czerwień rany na czerwonej
+   belce (i zieleń leczenia na zielonej) bez niej znikała. */
 .hud-hp-delta {
   position: absolute;
-  right: 0;
-  top: -0.1rem;
-  font-size: 0.78rem;
+  left: 2.1rem;
+  top: 0;
+  padding: 0 0.3rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
   color: var(--err);
-  text-shadow: 0 1px 2px var(--scrim);
+  background: var(--cp-bar);
+  border-radius: 2px;
   pointer-events: none;
   animation: hud-delta 1600ms ease-out forwards;
 }
@@ -548,36 +581,40 @@
 .hud-card .hud-vital {
   flex: 1;
   justify-content: center;
-  padding: 0.18rem 0.3rem;
+  padding: 0.3rem 0.35rem;
 }
 
+/* Większe od 17.10 (MG): ikona i liczba bez napisów, ale w ramce i na tle
+   wnęki, żeby trzy liczby pod portretem nie zlewały się z papierem karty. */
 .hud-vital {
   display: flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.1rem 0.3rem;
-  font-size: 0.68rem;
+  gap: 0.35rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
-  background: var(--veil-soft);
-  border-radius: 3px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 2px;
 }
 
 .hud-vital .hud-icon {
-  width: 0.85rem;
-  height: 0.85rem;
-  opacity: 0.8;
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0.85;
 }
 
 .hud-vital-value {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 
 /* „This number is not the printed one" — the tooltip says which penalty did
    it (Pancerz −2, Złamana noga −4), the same wording the tracker uses. */
 .hud-vital-flag {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--warn);
 }
@@ -676,20 +713,37 @@
    speaking; this one is only telling the user where the map's attention is. */
 /* Jedna linia z okiem (25.09): dawny dwuwierszowy akapit ważył tyle, co slot,
    a to tylko uwaga na marginesie. Pełne zdanie siedzi w podpowiedzi. */
+/* Plakietka od 17.10 (MG): szara linijka ginęła między kartą a budżetem,
+   a „nie sterujesz” tłumaczy figurę, która nie reaguje na klik w podłoże.
+   Przerywana ramka mówi „tymczasowe”, niebieska krawędź — że to informacja,
+   nie odmowa (ta jest czerwona). */
 .hud-preview {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   margin: 0;
-  padding: 0.05rem 0.2rem;
-  font-size: 0.66rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.72rem;
   line-height: 1.3;
   color: var(--text-dim);
+  background: var(--veil-soft);
+  border: 1px dashed var(--border-strong);
+  border-left: 3px solid var(--info);
+  border-radius: 2px;
 }
 
 .hud-preview svg {
   flex: none;
-  opacity: 0.8;
+  color: var(--info);
+}
+
+.hud-preview-tag {
+  flex: none;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text);
 }
 
 .hud-preview span {

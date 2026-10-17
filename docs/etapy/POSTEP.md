@@ -302,7 +302,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 65   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 7    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 35   | 15      |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 20   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 47   | 8       |
