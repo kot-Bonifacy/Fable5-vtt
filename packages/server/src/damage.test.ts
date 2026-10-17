@@ -937,6 +937,43 @@ describe('damage, armor and Death Saves', () => {
       }
     });
 
+    it('hands the turn on once an unconscious character has thrown the save', async () => {
+      await dying();
+      await emitAck(gm, 'token:update', {
+        tokenId: playerTokenId,
+        patch: { statuses: ['mortally-wounded', 'unconscious'] },
+      });
+      const sceneId = (await roundTrip(gm)).tokens.find((t) => t.id === playerTokenId)!.sceneId;
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [playerTokenId] }),
+        'combat:start',
+      );
+      try {
+        await emitAck(gm, 'combat:set-initiative', {
+          combatantId: combat.combatants[0]!.id,
+          initiative: 10,
+        });
+        await emitAck(gm, 'combat:next', {});
+        // Still owing the save, the unconscious turn waits for the cup.
+        expect((await roundTrip(player)).combat?.round).toBe(1);
+        const forfeit = waitForMessage(gm, (p) => p.message.action?.actionId === 'turn-forfeit');
+        expect(
+          (
+            await emitAck(player, 'character:roll', {
+              characterId,
+              request: { kind: 'deathSave' },
+              visibility: 'public',
+            })
+          ).ok,
+        ).toBe(true);
+        expect((await forfeit).message.action?.note).toMatch(/^(Nieprzytomny|Martwy)$/);
+        expect((await roundTrip(player)).combat?.round).toBe(2);
+      } finally {
+        await emitAck(gm, 'combat:end', { sceneId });
+        await emitAck(gm, 'token:update', { tokenId: playerTokenId, patch: { statuses: [] } });
+      }
+    });
+
     it('throws the save itself for an NPC nobody owns, behind the GM screen', async () => {
       const npc = data(
         await emitAck<CharacterView>(gm, 'character:create', { name: 'Gangus' }),

@@ -28,6 +28,7 @@ import {
   freshTurnState,
   setTurnHardTerrain,
   sheetActionName,
+  sheetTurnForfeit,
   sheetActionReserves,
   turnActionAvailable,
   turnOwesDeathSave,
@@ -47,6 +48,7 @@ import {
   turnOpeningForCombatant,
   renumberOrder,
   requireCampaignId,
+  readTokenStatuses,
   rollNpcInitiative,
   requireCombatant,
   spendTurnForCombatant,
@@ -541,22 +543,116 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
       if (turnOwesDeathSave(active.turnState)) throw new RealtimeError('DEATH_SAVE_PENDING');
     }
 
-    // „Rozpocznij walkę” (etap 50a): NPC-e bez inicjatywy dostają ją od serwera,
-    // zanim wskaźnik pójdzie — kolejność rundy 1 liczy się już z ich wynikami.
-    const fight =
-      combat.round === 0 && (await rollNpcInitiative(deps, combat))
-        ? await loadCombatById(deps.ctx.prisma, combat.id)
-        : combat;
-    const pointer = nextTurn(toCombatView(fight));
-    // A declaration tied to a value in the queue fires on the way past it,
-    // before anybody else gets their turn. Nobody's turn *ended* in that case —
-    // the queue merely stepped aside — so the hooks stay out of it.
-    const held = dueHold(fight, pointer);
-    if (held) await fireHeldAction(deps.ctx.prisma, fight, held);
-    else await advanceTurn(deps, campaignId, scene, fight, pointer, user);
+    await stepTurn(deps, campaignId, scene, combat, user);
+    await passForfeitedTurns(deps, campaignId, scene, user);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
+
+/** One step of the queue — what „następna tura" does, minus the permissions. */
+async function stepTurn(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combat: CombatRow,
+  user: SessionUser,
+): Promise<void> {
+  // „Rozpocznij walkę” (etap 50a): NPC-e bez inicjatywy dostają ją od serwera,
+  // zanim wskaźnik pójdzie — kolejność rundy 1 liczy się już z ich wynikami.
+  const fight =
+    combat.round === 0 && (await rollNpcInitiative(deps, combat))
+      ? await loadCombatById(deps.ctx.prisma, combat.id)
+      : combat;
+  const pointer = nextTurn(toCombatView(fight));
+  // A declaration tied to a value in the queue fires on the way past it,
+  // before anybody else gets their turn. Nobody's turn *ended* in that case —
+  // the queue merely stepped aside — so the hooks stay out of it.
+  const held = dueHold(fight, pointer);
+  if (held) await fireHeldAction(deps.ctx.prisma, fight, held);
+  else await advanceTurn(deps, campaignId, scene, fight, pointer, user);
+}
+
+/**
+ * A participant who is Unconscious or Dead has no turn to play, so the queue
+ * hands it on by itself and says so on chat (17.10.2026, decyzja MG). Runs
+ * after the turn-start hooks: the fire still burns and the Death Save is still
+ * thrown — a player owing one keeps the turn until the cup lands, and the roll
+ * calls this again (`passForfeitedTurnOf`).
+ *
+ * One lap at most: a queue in which nobody can act stops on the first of them
+ * and leaves the GM to end the fight.
+ */
+export async function passForfeitedTurns(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  user: SessionUser,
+): Promise<void> {
+  for (let lap = await loadCombat(deps.ctx.prisma, scene.id), steps = 0; lap; steps++) {
+    if (lap.round === 0 || steps >= lap.combatants.length) return;
+    const active = lap.combatants.find((row) => row.id === lap!.activeCombatantId);
+    if (!active || !hasFigure(active) || turnOwesDeathSave(active.turnState)) return;
+    const forfeit = sheetTurnForfeit(readTokenStatuses(active.token.statuses));
+    if (!forfeit) return;
+    await logForfeitedTurn(deps, campaignId, user, active, forfeit);
+    await stepTurn(deps, campaignId, scene, lap, user);
+    lap = await loadCombat(deps.ctx.prisma, scene.id);
+  }
+}
+
+/**
+ * The same, after a Death Save thrown with the cup: a failed one leaves „Martwy"
+ * on the figure, a passed one may still leave it Unconscious. Only the scene
+ * whose turn this character holds is touched.
+ */
+export async function passForfeitedTurnOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  user: SessionUser,
+): Promise<void> {
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId, scene: { campaignId } },
+    include: { scene: true },
+  });
+  for (const token of tokens) {
+    const combat = await loadCombat(deps.ctx.prisma, token.sceneId);
+    const active = combat?.combatants.find((row) => row.id === combat.activeCombatantId);
+    if (!combat || active?.tokenId !== token.id) continue;
+    await passForfeitedTurns(deps, campaignId, token.scene, user);
+    await emitCombatOfScene(deps, campaignId, token.scene);
+  }
+}
+
+/**
+ * „Vex — Tura oddana — Nieprzytomny". Public like every other action line; a
+ * hidden participant's goes to the GM only, because the players' tracker does
+ * not know it exists.
+ */
+async function logForfeitedTurn(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  combatant: FiguredCombatantRow,
+  forfeit: string,
+): Promise<void> {
+  const entry = actionEntry(combatant, 'turn-forfeit', 'Tura oddana', forfeit);
+  if (!combatant.token.hidden) {
+    await logSpentAction(deps, campaignId, user, entry);
+    return;
+  }
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: user.id,
+      kind: 'gmaction',
+      text: entry.actionName,
+      payload: JSON.stringify(entry),
+    },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await deliverChatMessageTo(deps, campaignId, toChatMessageView(stored), [], true);
+}
 
 /**
  * The GM steps the pointer back. Deliberately hookless: this is a correction,

@@ -533,12 +533,14 @@ describe('grappling', () => {
     expect(parsed.hpCurrent).toBe(1);
   });
 
-  it('refuses every Action to somebody choked unconscious', async () => {
-    await giveTurnTo(thugTokenId);
-    // The thug is the GM's, and the GM is never blocked — so the refusal is
-    // checked where it bites: the status table itself said „no Actions".
-    const view = await tracker();
-    expect(rowOf(view, thugTokenId).grapple?.role).toBe('defender');
+  it('hands the turn of somebody choked unconscious on by itself', async () => {
+    // „No Actions" from the status table means no turn at all (17.10.2026):
+    // the queue walks past the thug, and the Hold on him stays where it was.
+    for (let step = 0; step < 6; step += 1) {
+      const view = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+      expect(view.activeCombatantId).not.toBe(rowOf(view, thugTokenId).id);
+    }
+    expect(rowOf(await tracker(), thugTokenId).grapple?.role).toBe('defender');
   });
 
   it('ends the Hold and leaves the target Prone (Rzut)', async () => {
@@ -642,11 +644,14 @@ describe('grappling', () => {
       await giveTurnTo(vexTokenId);
       await emitAck(player, 'grapple:action', { kind: 'release' });
       // The thug has been choked out and thrown in the tests above; the GM
-      // helps them up, because an unconscious NPC has nobody to grab.
+      // helps them up, because an unconscious NPC has nobody to grab — and a
+      // dying one could fail the save that opens his turn and lose it (17.10).
       await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: [] } });
       await emitAck(gm, 'character:update', {
         characterId: thugCharacterId,
-        patch: { data: { stats: { ...THUG_STATS, dex: 10 }, skills: { brawling: 10 } } },
+        patch: {
+          data: { stats: { ...THUG_STATS, dex: 10 }, skills: { brawling: 10 }, hpCurrent: 5 },
+        },
       });
       await emitAck(gm, 'character:update', {
         characterId: vexCharacterId,

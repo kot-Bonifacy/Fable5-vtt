@@ -1,5 +1,18 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `86b54be`) — plan etapu 54, ruch wzorem BG3
+
+**Zlecenie MG:** odciski butów pod kursorem po każdym zaznaczeniu figury przeszkadzają; jak to
+robi Foundry i czy zamiar ruchu nie powinien być jawny. **Rozpoznanie:** Foundry v13 rysuje trasę
+tylko w trakcie gestu (przeciąganie albo Ctrl + punkty), BG3 — poza walką klik od razu rusza
+bez podglądu, w walce podgląd pod kursorem i jeden klik. **Decyzje MG (pytania):** wzór BG3 dla
+MG i gracza; poza walką bez podglądu i jeden klik; w walce podgląd tylko w turze figury, zielony
+pas — jeden klik, bursztyn — drugi klik wydaje Akcję na Bieg i figura dochodzi do celu, szary
+i mgła — drugi klik; odznaczanie Esc / PPM w puste; „tylko zapisz plan”.
+
+**Zrobione:** plik `etap-54-ruch-wzorem-bg3.md` (54a klient, 54b serwer: `token:walk` z Biegiem),
+wiersz w `archiwum/tabela-etapow.md`, odnośnik w pliku etapu 52. Bez kodu — testy niepuszczane.
+
 ### Sesja 17.10 (po `7b6607a`) — Śmiertelnie Ranny i Ustabilizowanie według podręcznika
 
 **Zlecenie MG:** sprawdzić, czy Śmiertelnie Ranny słusznie atakuje i czy Ustabilizowanie działa

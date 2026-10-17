@@ -68,7 +68,7 @@ import {
 } from './combat.js';
 import { addTokenStatus } from './grapple-state.js';
 import { activeRoundOfScene } from './timed-effects.js';
-import { requireTurnSpend } from './combat-actions.js';
+import { passForfeitedTurnOf, requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import {
   emitTokensById,
@@ -977,12 +977,17 @@ export const characterRollEvent = defineEvent<
   handler: async ({ deps, socket, user, payload }) => {
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
-    return performCharacterRoll(deps, {
+    const rolled = await performCharacterRoll(deps, {
       campaignId: campaign.id,
       user,
       sceneId: socket.data.viewedSceneId ?? null,
       payload,
     });
+    // Dead or still Unconscious after the save, the turn has nothing left to play.
+    if (payload?.request?.kind === 'deathSave' && payload.characterId) {
+      await passForfeitedTurnOf(deps, campaign.id, payload.characterId, user);
+    }
+    return rolled;
   },
 });
 

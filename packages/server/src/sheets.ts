@@ -78,6 +78,7 @@ import {
   CPRED_HEAD_DAMAGE_MULTIPLIER,
   cpredAction,
   cpredActionBlock,
+  cpredTurnForfeit,
   cpredBackupDue,
   cpredBackupTier,
   describeBackupPending,
@@ -325,6 +326,11 @@ export function sheetMovementBlock(statuses: readonly string[]): string | null {
 /** The same, for spending an Action at all — Nieprzytomny and Martwy (14d). */
 export function sheetActionBlock(statuses: readonly string[]): string | null {
   return cpredActionBlock(statuses);
+}
+
+/** Name of the state that hands this token's turn on by itself, or null (17.10). */
+export function sheetTurnForfeit(statuses: readonly string[]): string | null {
+  return cpredTurnForfeit(statuses);
 }
 
 /**

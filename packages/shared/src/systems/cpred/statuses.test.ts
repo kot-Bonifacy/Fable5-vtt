@@ -13,6 +13,7 @@ import {
   cpredMovementBlock,
   cpredPeriodicDamage,
   cpredStatusSeverity,
+  cpredTurnForfeit,
   cpredTurnReminders,
 } from './statuses.js';
 import {
@@ -48,6 +49,13 @@ describe('statuses that stop a token from acting', () => {
   it('refuses the unconscious and the dead', () => {
     expect(cpredActionBlock(['unconscious'])).not.toBeNull();
     expect(cpredActionBlock(['dead'])).not.toBeNull();
+  });
+
+  it('names the state that forfeits the turn, the worst one first', () => {
+    expect(cpredTurnForfeit(['unconscious'])).toBe('Nieprzytomny');
+    expect(cpredTurnForfeit(['prone', 'unconscious', 'dead'])).toBe('Martwy');
+    expect(cpredTurnForfeit(['prone', 'grappled', 'immobilized'])).toBeNull();
+    expect(cpredTurnForfeit([])).toBeNull();
   });
 
   /**

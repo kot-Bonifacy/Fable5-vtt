@@ -188,6 +188,21 @@ export function cpredActionBlock(statuses: readonly string[]): string | null {
   return firstBlock(statuses, 'noAction');
 }
 
+/**
+ * The status that costs its carrier the whole turn, by name — or null
+ * (17.10.2026, decyzja MG). A token that may take no Action at all has nothing
+ * to play, so the tracker hands the turn on by itself and says why on chat.
+ * Read off the same `noAction` column as the refusal, so the two never disagree.
+ */
+export function cpredTurnForfeit(statuses: readonly string[]): string | null {
+  for (const id of STATUS_ORDER) {
+    if (statuses.includes(id) && CPRED_STATUS_EFFECTS[id]!.noAction) {
+      return CPRED_STATUS_EFFECTS[id]!.name;
+    }
+  }
+  return null;
+}
+
 /** The first status refusing this token a dodge, or null. */
 export function cpredDodgeBlock(statuses: readonly string[]): string | null {
   return firstBlock(statuses, 'noDodge');

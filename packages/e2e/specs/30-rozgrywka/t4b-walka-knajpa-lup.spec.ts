@@ -525,10 +525,11 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     scriptDice([10]);
     beforeZbirTurn = lastMessageId();
     await nextTurn(mg);
-    expect(activeName()).toBe('Zbir');
+    // Zbir ginie w Teście na starcie swojej tury i oddaje ją sam (17.10) — dalej 4.7.
+    await expect.poll(() => activeName()).toMatch(/^Szrama/);
   });
 
-  test('4.7 tura Zbira: Test Przeżywalności rzuca serwer na starcie tury, naturalna 10 — śmierć', async () => {
+  test('4.7 tura Zbira: Test Przeżywalności rzuca serwer na starcie tury, naturalna 10 — śmierć i tura oddana', async () => {
     // Od 17.10 statysta i NPC nie czekają na MG: serwer rzuca za nich na starcie
     // tury (rzut dla MG), więc przycisku Testu nie ma nikt.
     for (const actor of [mg, marek, ola]) {
@@ -560,8 +561,9 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
         )
         .toContain('dead');
     }
-    await nextTurn(mg);
-    expect(activeName()).toMatch(/^Szrama/);
+    // Martwy nie ma tury (17.10): kolejka sama przechodzi dalej, wiersz na czacie mówi czemu.
+    await expect.poll(() => activeName()).toMatch(/^Szrama/);
+    expect(messageAfter(beforeZbirTurn, 'Tura oddana', 'action')?.payload).toContain('Martwy');
   });
 
   test('tura Ochroniarza: bieg pod drzwi tarasu (3 PW, bez rany od ruchu)', async () => {
