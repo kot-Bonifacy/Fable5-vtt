@@ -362,10 +362,12 @@ describe('map effects', () => {
       .stop()
       .find((seen) => seen.effects.some((effect) => effect.kind === 'float'));
     if (!batch) throw new Error('the hit drew nothing');
-    // The damage settles itself (decyzja MG z 03.10), so the spark and the
+    // The damage settles itself (decyzja MG z 03.10), so the hit and the
     // number wait for the dice that decided them — not a frame before.
     expect(batch.afterMessageId).toBe(damageMessageId);
-    expect(batch.effects.some((effect) => effect.kind === 'spark')).toBe(true);
+    const hit = batch.effects.find((effect) => effect.kind === 'hit');
+    if (hit?.kind !== 'hit') throw new Error('the figure did not flinch');
+    expect(hit.at).toEqual(MOOK_CENTRE);
     const float = batch.effects.find((effect) => effect.kind === 'float');
     if (float?.kind !== 'float') throw new Error('no number floated');
     expect(float.at).toEqual(MOOK_CENTRE);

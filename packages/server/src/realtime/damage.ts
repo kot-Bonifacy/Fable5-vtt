@@ -534,10 +534,22 @@ function damageMapFx(
   scene: Pick<Scene, 'gridSizePx'>,
 ): MapFxEffect[] {
   const at = fxCentre(token, scene);
-  const effects: MapFxEffect[] = [{ kind: 'spark', at, sound: 'impact' }];
   // A fence that ate the whole round gets the credit rather than a vest that
   // never felt it (stage 42b).
   const barrierAteIt = log.barrierSp !== undefined && log.barrierSp >= log.damageRolled;
+  // The picture on the figure (17.10) grows with what the hit cost — a graze
+  // and a round that took half the figure must not look the same.
+  const max = log.hp?.max ?? 0;
+  const effects: MapFxEffect[] = [
+    {
+      kind: 'hit',
+      at,
+      size: token.size,
+      weight: log.injury ? 'crit' : log.hpLost > 0 ? 'wound' : 'armor',
+      strength: max > 0 ? Math.min(1, log.hpLost / max) : 0,
+      sound: 'impact',
+    },
+  ];
   effects.push(
     log.hpLost > 0
       ? { kind: 'float', at, text: `−${log.hpLost}`, tone: 'damage' }

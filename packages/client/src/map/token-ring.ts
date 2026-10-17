@@ -197,3 +197,27 @@ export function nosePolygon(
     cy + dy * base - py * half,
   ];
 }
+
+/**
+ * Kolor obrączki PW po ranach (zlecenie MG, 17.10.2026): **powyżej 50% ran
+ * pomarańczowa, powyżej 75% czerwona.**
+ *
+ * Do 17.10 obrączka brała kolor wprost ze szczebla stanu (`tokenHpRung`), a ten
+ * czerwienieje dopiero przy zerze — figura z ćwiercią PW nosiła tę samą
+ * bursztynową obrączkę co ledwie „poważnie ranna". Progi liczą się
+ * z ułamka, który widzi każdy przy stole (`TokenHpShare.ratio`), więc gracz
+ * i MG widzą ten sam kolor; poniżej połowy ran obrączka mówi dalej szczeblem
+ * (zielona — cała, żółta — draśnięta).
+ */
+export const HP_RING_ORANGE_DAMAGE = 0.5;
+export const HP_RING_RED_DAMAGE = 0.75;
+
+export type HpRingTone = 'healthy' | 'light' | 'orange' | 'red';
+
+export function hpRingTone(share: { ratio: number; rung: string }): HpRingTone {
+  if (share.rung === 'mortal') return 'red';
+  const damage = 1 - share.ratio;
+  if (damage > HP_RING_RED_DAMAGE) return 'red';
+  if (damage > HP_RING_ORANGE_DAMAGE) return 'orange';
+  return share.rung === 'healthy' ? 'healthy' : 'light';
+}

@@ -71,6 +71,7 @@ describe('trimMapFxForViewer — everything with one place', () => {
     { kind: 'cloud', at: MUZZLE, sideM: 10, variant: 'gas', sound: 'gas' },
     { kind: 'float', at: MUZZLE, text: '−12', tone: 'damage' },
     { kind: 'spark', at: MUZZLE, sound: 'reload-pistol' },
+    { kind: 'hit', at: MUZZLE, size: 1, weight: 'wound', strength: 0.3, sound: 'impact' },
     {
       kind: 'cone',
       from: MUZZLE,

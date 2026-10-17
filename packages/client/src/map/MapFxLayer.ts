@@ -1,5 +1,5 @@
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
-import type { MapFxEffect, MapFxSound, SceneView, ScenePoint } from '@vtt/shared';
+import type { MapFxEffect, MapFxHitWeight, MapFxSound, SceneView, ScenePoint } from '@vtt/shared';
 import { mapFxTracerCount, metresPerPixel } from '@vtt/shared';
 import { playFxSound } from '../sfx.js';
 import { DESTROY_TREE } from './pixi-destroy.js';
@@ -78,6 +78,22 @@ const MAX_SOUNDS_PER_SHOT = 4;
  */
 const MAX_RICOCHETS_PER_SHOT = 2;
 
+/**
+ * How long a figure wears a hit (17.10, zlecenie MG: „lepsza wizualizacja
+ * trafienia"). The old 320 ms ring the size of a coin was over before anybody
+ * found which figure it was on; a hit now owns the whole token for over half
+ * a second, and a Critical Injury for longer.
+ */
+const HIT_MS: Readonly<Record<MapFxHitWeight, number>> = {
+  armor: 560,
+  wound: 820,
+  crit: 1100,
+};
+/** Part of a hit's life the flash over the token lasts. */
+const HIT_FLASH_SHARE = 0.32;
+/** Smallest a hit's ring and spatter are measured from, in screen px. */
+const HIT_MIN_RADIUS_PX = 30;
+
 /** A miss carries past the figure by this much, in metres. */
 const MISS_OVERSHOOT_M = 1.6;
 /** …and off to one side, so the line is visibly *not* the one that hit. */
@@ -110,6 +126,12 @@ const CONE_COLOR = 0xffc46b;
 const ZAP_COLOR = 0x8fd8ff;
 const CLOUD_GAS = 0x9fe08a;
 const CLOUD_SMOKE = 0xb9c1c9;
+const HIT_FLASH = 0xff2d2d;
+const HIT_RING = 0xff5f52;
+const HIT_BLOOD = 0x9b0f1a;
+const HIT_BLOOD_CORE = 0xff3b30;
+const HIT_CRIT = 0xfacc15;
+const HIT_ARMOR = 0x8fd8ff;
 
 const LABEL_COLORS: Record<string, number> = {
   damage: 0xff5f52,
@@ -147,8 +169,25 @@ type FxItem = Timed &
     | { kind: 'cone'; from: ScenePoint; angle: number; half: number; reach: number }
     | { kind: 'zap'; x: number; y: number; width: number; height: number; seed: number }
     | { kind: 'sprite'; sprite: Sprite; frames: Texture[]; fade: boolean }
-    | { kind: 'label'; text: Text; at: ScenePoint }
+    | { kind: 'label'; text: Text; at: ScenePoint; pop: boolean }
+    | {
+        kind: 'hit';
+        at: ScenePoint;
+        /** Half the figure's side, world px. */
+        radius: number;
+        weight: MapFxHitWeight;
+        strength: number;
+        seed: number;
+        sound: MapFxSound | null;
+        played: boolean;
+      }
   );
+
+/**
+ * Shakes the figure standing at `at` by `dx, dy` world px; (0, 0) puts it back.
+ * Set by `MapRenderer`, which owns the figures — this layer only draws.
+ */
+export type MapFxShake = (at: ScenePoint, dx: number, dy: number) => void;
 
 /** Sheet cut into frames, loaded once and shared by every effect using it. */
 async function loadFrames(url: string, cols: number, rows: number): Promise<Texture[]> {
@@ -179,6 +218,8 @@ export class MapFxLayer {
   private readonly items: FxItem[] = [];
 
   private scene: SceneView | null = null;
+  /** See `MapFxShake`; null draws the hit without moving anybody. */
+  shake: MapFxShake | null = null;
   /** 1 / zoom, so a stroke keeps its width on screen. Set by the renderer. */
   private overlayScale = 1;
 
@@ -213,6 +254,8 @@ export class MapFxLayer {
     for (const item of this.items) {
       if (item.kind === 'sprite' && !item.sprite.destroyed) item.sprite.destroy();
       if (item.kind === 'label' && !item.text.destroyed) item.text.destroy();
+      // A figure cut off mid-flinch would stay standing a few pixels askew.
+      if (item.kind === 'hit' && item.age >= 0) this.shake?.(item.at, 0, 0);
     }
     this.items.length = 0;
     // Every child here may already be gone: `destroy()` runs *after*
@@ -324,6 +367,20 @@ export class MapFxLayer {
             // muzzle slot above, so there is nothing left for the landing.
             landSound: null,
             landPlayed: true,
+          });
+          break;
+        case 'hit':
+          this.items.push({
+            kind: 'hit',
+            age: 0,
+            life: HIT_MS[effect.weight],
+            at: effect.at,
+            radius: (effect.size * (this.scene.grid.sizePx || 50)) / 2,
+            weight: effect.weight,
+            strength: Math.max(0, Math.min(1, effect.strength)),
+            seed: Math.random() * 1000,
+            sound: effect.sound,
+            played: false,
           });
           break;
         case 'float':
@@ -470,6 +527,8 @@ export class MapFxLayer {
       life: LABEL_MS,
       text,
       at: { x: effect.at.x, y: effect.at.y - grid * 0.4 },
+      // What a hit cost jumps out of the figure; a note merely floats off it.
+      pop: effect.tone === 'damage' || effect.tone === 'crit',
     });
   }
 
@@ -492,6 +551,7 @@ export class MapFxLayer {
       if (item.age > item.life) {
         if (item.kind === 'sprite') item.sprite.destroy();
         if (item.kind === 'label') item.text.destroy();
+        if (item.kind === 'hit') this.shake?.(item.at, 0, 0);
         this.items.splice(i, 1);
         continue;
       }
@@ -514,6 +574,13 @@ export class MapFxLayer {
           break;
         case 'label':
           this.drawLabel(item);
+          break;
+        case 'hit':
+          if (!item.played) {
+            item.played = true;
+            if (item.sound) playFxSound(item.sound);
+          }
+          this.drawHit(item, k);
           break;
       }
     }
@@ -616,6 +683,95 @@ export class MapFxLayer {
     }
   }
 
+  /**
+   * A figure taking a hit (17.10): the whole token flashes, a shock ring runs
+   * off its edge, and — when Hit Points went — blood spatters outwards while
+   * the figure flinches. A vest that ate it all throws sparks instead and
+   * barely rocks the figure. Everything grows with `strength`, so a graze
+   * and half a body's worth of HP do not look alike.
+   *
+   * Sized to the figure, with a floor **on screen** (`HIT_MIN_RADIUS_PX`):
+   * the first look at a table (17.10) had 45 px figures at 1:1, and a ring
+   * and spatter scaled off those were there and nobody saw them.
+   */
+  private drawHit(item: Extract<FxItem, { kind: 'hit' }>, k: number): void {
+    const { at, weight, strength } = item;
+    const r = Math.max(item.radius, HIT_MIN_RADIUS_PX * k);
+    const p = item.age / item.life;
+    const fade = 1 - p;
+    const crit = weight === 'crit';
+    const armor = weight === 'armor';
+    const grow = 1 + strength * 0.8 + (crit ? 0.4 : 0);
+
+    // Flash over the token — the „which one got it" part, read before anything
+    // else: a white-hot core for the first instant, then the colour of the hit.
+    const flash = p / HIT_FLASH_SHARE;
+    if (flash < 1) {
+      const color = armor ? HIT_ARMOR : HIT_FLASH;
+      const strongest = armor ? 0.45 : 0.6 + strength * 0.3;
+      this.graphics
+        .circle(at.x, at.y, item.radius * 1.04)
+        .fill({ color, alpha: strongest * (1 - flash) });
+      if (flash < 0.3) {
+        this.graphics
+          .circle(at.x, at.y, item.radius * (0.5 + flash))
+          .fill({ color: 0xffffff, alpha: (crit ? 0.8 : 0.5) * (1 - flash / 0.3) });
+      }
+    }
+
+    // Shock ring off the figure's edge; a crit sends a second, golden one after it.
+    const delays = crit ? [0, 0.16] : [0];
+    delays.forEach((delay, index) => {
+      const q = (p - delay) / (1 - delay);
+      if (q <= 0) return;
+      const reach = r * (1 + 1.3 * easeOut(q) * grow);
+      const width = Math.max(r * 0.22 * (1 - q), 3 * k);
+      const color = index === 1 ? HIT_CRIT : armor ? HIT_ARMOR : HIT_RING;
+      this.graphics.circle(at.x, at.y, reach).stroke({ color, width, alpha: 0.95 * (1 - q) });
+    });
+
+    // Fixed per hit, like the splinters of `drawImpact`: a fresh random star
+    // every frame boils instead of flying.
+    const rnd = pseudoRandom(item.seed);
+    if (armor) {
+      // Sparks glancing off the rim.
+      for (let i = 0; i < 10; i += 1) {
+        const angle = rnd(i) * Math.PI * 2;
+        const start = r * (0.9 + 1.1 * easeOut(p));
+        const end = start + r * (0.35 + 0.45 * rnd(i + 20)) * fade;
+        this.graphics
+          .moveTo(at.x + Math.cos(angle) * start, at.y + Math.sin(angle) * start)
+          .lineTo(at.x + Math.cos(angle) * end, at.y + Math.sin(angle) * end)
+          .stroke({ color: i % 2 ? HIT_ARMOR : TRACER_CORE, width: 2.4 * k, alpha: fade });
+      }
+    } else {
+      // Spatter flung outwards — more of it, and further, the more the hit cost.
+      const drops = 10 + Math.round(strength * 12) + (crit ? 6 : 0);
+      const alpha = Math.pow(fade, 0.6);
+      for (let i = 0; i < drops; i += 1) {
+        const angle = rnd(i) * Math.PI * 2;
+        const distance = r * (0.5 + (0.8 + 1.1 * rnd(i + 40)) * easeOut(p) * grow);
+        const size = Math.max(r * (0.08 + 0.1 * rnd(i + 80)) * (1 - p * 0.5), 2 * k);
+        const x = at.x + Math.cos(angle) * distance;
+        const y = at.y + Math.sin(angle) * distance;
+        this.graphics
+          .circle(x, y, size)
+          .fill({ color: HIT_BLOOD, alpha })
+          .circle(x, y, size * 0.5)
+          .fill({ color: HIT_BLOOD_CORE, alpha: alpha * 0.9 });
+      }
+    }
+
+    // The flinch: a quick, dying shudder of the figure itself.
+    const swing = r * (armor ? 0.04 : 0.09 + strength * 0.08 + (crit ? 0.05 : 0));
+    const decay = fade * fade;
+    this.shake?.(
+      at,
+      Math.sin(item.age * 0.085) * swing * decay,
+      Math.cos(item.age * 0.12) * swing * 0.45 * decay,
+    );
+  }
+
   private drawMelee(
     from: ScenePoint | null,
     to: ScenePoint,
@@ -711,7 +867,10 @@ export class MapFxLayer {
     // Re-applied every frame rather than once: the table pans and zooms while
     // the number is still in the air, and a scale set at birth would shrink
     // with the map under it.
-    item.text.scale.set(this.overlayScale);
+    // A hit's number pops — overshoots and settles in its first tenth of a
+    // second — so the eye that found the flash finds the number next.
+    const pop = item.pop ? 1 + 0.6 * Math.max(0, 1 - progress * 7) : 1;
+    item.text.scale.set(this.overlayScale * pop);
     item.text.position.set(
       item.at.x,
       item.at.y - LABEL_RISE_PX * this.overlayScale * easeOut(progress),

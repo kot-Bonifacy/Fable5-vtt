@@ -71,6 +71,13 @@ export type MapFxShotStyle = 'bullet' | 'arrow' | 'flame' | 'rocket' | 'melee';
 export type MapFxTone = 'damage' | 'heal' | 'miss' | 'crit' | 'note';
 
 /**
+ * What a hit did to the figure it landed on (17.10, zlecenie MG): `armor` —
+ * the vest or a barrier ate all of it, `wound` — Hit Points went, `crit` —
+ * a Critical Injury on top.
+ */
+export type MapFxHitWeight = 'armor' | 'wound' | 'crit';
+
+/**
  * Rounds drawn as separate tracers. A burst of ten looks like ten lines for
  * about a fifth of a second and then like a smear; the cap is where the eye
  * stops counting, not where the rules stop shooting.
@@ -121,7 +128,25 @@ export type MapFxEffect =
     }
   | { kind: 'zap'; rect: Rect; sound: MapFxSound | null }
   | { kind: 'float'; at: ScenePoint; text: string; tone: MapFxTone }
-  | { kind: 'spark'; at: ScenePoint; sound: MapFxSound | null };
+  | { kind: 'spark'; at: ScenePoint; sound: MapFxSound | null }
+  /**
+   * A figure taking a hit (17.10, zlecenie MG: „lepsza wizualizacja
+   * trafienia"). Drawn on the figure and sized to it — a flash over the token,
+   * a shock ring and a spatter — where `spark` is a point-sized flick. Carries
+   * no token id on purpose: a hidden figure must not hand its id to a player
+   * who merely sees the spot; the client finds the figure by `at`.
+   */
+  | {
+      kind: 'hit';
+      /** Centre of the figure. */
+      at: ScenePoint;
+      /** Figure's side in squares, so the picture fits a 2 × 2 drone too. */
+      size: number;
+      weight: MapFxHitWeight;
+      /** Share of the figure's maximum HP the hit took, 0–1 (0 when unknown). */
+      strength: number;
+      sound: MapFxSound | null;
+    };
 
 /** Server → client. Targeted per socket, never a room broadcast (see below). */
 export interface MapFxBroadcast {
@@ -188,6 +213,7 @@ export function trimMapFxForViewer(
       return seesMap(effect.at) ? effect : null;
     case 'float':
     case 'spark':
+    case 'hit':
       return sees(effect.at) ? effect : null;
     case 'zap': {
       const { x, y, width, height } = effect.rect;

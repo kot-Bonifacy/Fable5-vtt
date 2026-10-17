@@ -341,13 +341,15 @@ export function DiceCup() {
     skippedEvasionCalls,
   ]);
   modeRef.current = mode;
+  // A dodge rings nothing (17.10, MG): the call and the loaded dodge stay
+  // silent — the prompt over the map is what asks for it.
   const notificationKey =
     mode.kind === 'call'
       ? `call:${mode.messageId}`
       : mode.kind === 'damage'
         ? `call:damage:${mode.messageId}`
-        : mode.kind === 'dodge'
-          ? `call:dodge:${evasionCallKey(mode.call)}`
+        : mode.kind === 'dodge' || mode.kind === 'evasion'
+          ? null
           : mode.kind === 'sheet' && mode.pending.call
             ? `call:${mode.pending.call.messageId}`
             : mode.kind === 'creation' && mode.pending.quiet

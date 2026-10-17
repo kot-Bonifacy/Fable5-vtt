@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 16.10 (po `2549eb6`) — inicjatywa raz na walkę
+
+**Zlecenie MG:** inicjatywa ma być rzucana raz na początku walki, a kolejność ma zostać na kolejne
+rundy — sprawdzić, poprawić, porównać z Foundry. **Diagnoza:** przejście do nowej rundy niczego
+nie przerzucało ani nie kasowało (`nextTurn` tylko przesuwa wskaźnik) — zgodnie z s. 168
+i z Foundry (rzut raz; przerzut co rundę jest tam opcją dodatków). **Dziura:** gracz po rzucie
+dalej miał w pasie klikalną wartość i mógł przerzucać inicjatywę w dowolnej rundzie, a
+`combat:roll` tego nie bronił. W Foundry kostka gracza znika, gdy wartość już jest.
+
+**Zrobione:** `combat:roll` gracza z wartością → `INITIATIVE_ALREADY_ROLLED` (komunikat
+w `socket.ts`); kafel pasa pokazuje graczowi 🎲 tylko bez wartości, potem samą liczbę. MG bez
+zmian: „⟳”, remis, wpisanie lub wyczyszczenie wartości (czyste pole = gracz rzuca znowu).
+`combat.test.ts`: odmowa przerzutu, MG czyści i gracz rzuca, kolejka bez zmian po zawinięciu
+rundy. Umowa na górze `tura`.
+
+**Weryfikacja:** serwer `combat`, `netcombat`, `combat-actions`, `bot-combat` **84/84**; `tsc`
+klienta i serwera, ESLint, Prettier czyste w zmienionych plikach. E2E `--grep T8a` **44/44**
+(macierz: MG Chromium + gracze Firefox i odwrotnie — gracze rzucają inicjatywę kubkiem z pasa).
+Ręcznych oględzin nie było (dev serwer wyłączony); pełnego przebiegu nie puszczano.
+
 ### Sesja 15.10 (po `e1e21c5`) — etap 52: ruch gracza wyłącznie klikiem
 
 **Zlecenie MG:** gracz przeciąga figurę przez całą mapę (ściany, wrogowie, szybkość) w trybach

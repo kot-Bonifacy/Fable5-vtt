@@ -263,7 +263,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 33   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 17   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 44   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 46   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
@@ -280,6 +280,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.10 (po `da0c1b5`) — trafienie na figurze, Unik bez dźwięku, obrączka po ranach
+
+**Zlecenie MG:** bez dźwięków Uniku, lepsza wizualizacja trafienia; w trakcie: wewnętrzny
+pierścień figury (obrączka PW) pomarańczowy powyżej 50% ran, czerwony powyżej 75%.
+
+**Zrobione:** kubek nie dzwoni przy wezwaniu do Uniku ani przy załadowanym Uniku (`DiceCup`,
+`dodge`/`evasion` → bez klucza sygnału; monit nad mapą zostaje). Nowy efekt mapy `hit`
+(`shared/fx.ts`), wysyłany przez `damageMapFx` zamiast `spark`: błysk na cały żeton, fala,
+rozprysk krwi (pancerz — niebieskie iskry, krytyk — druga, złota fala), wielkość rośnie z utraconymi
+PW ÷ max, dolna granica 30 px ekranu; figura drga przez `pivot` (`MapRenderer.shakeFigure`, figura
+szukana po punkcie, bez id żetonu w efekcie). Liczba obrażeń „wyskakuje”. `hpRingTone`
+(`token-ring.ts`): pomarańcz `0xff8a1f` ponad 50% ran, czerwień ponad 75%, niżej jak dotąd.
+**Odstępstwo:** pasek PW w panelu postaci zostaje przy szczeblach (umowa z 12.09 o wspólnych
+kolorach dotyczy teraz tylko zieleni i żółci) — do decyzji MG. Umowa na górze `atak`.
+
+**Weryfikacja:** vitest shared 2471, klient 381 (nowy test progów w `token-ring.test.ts`), serwer
+1457 — wszystko zielone; `tsc`, ESLint, Prettier. Oględziny w **Firefoksie** i **Chromium**
+(Playwright MCP) na podstawionych lokalnie figurach z PW i efektach wstrzykniętych przez
+`receiveMapFx` — prawdziwego strzału przez serwer w UI nie było (pokrywa `server/src/fx.test.ts`).
+Firefox w tle dławi `requestAnimationFrame` do 1 fps — przed oględzinami `page.bringToFront()`.
 
 ### Sesja 17.10 (po `0196b00`) — Unik nie przepada przez przypadek
 
@@ -306,23 +327,3 @@ przeglądarce: dwa wezwania, kubek „Unik: Ganger!”, `Esc` przełącza kubek 
 monity zostają, „Unik” ładuje kubek („Kubek gotowy”). Prawdziwego rzutu przez serwer w UI nie
 było (pokrywają go testy serwera); E2E nie puszczano — `noDodge` w `fixtures/walka.ts` klika
 „Bez uniku” jako MG, więc powinien działać bez zmian.
-
-### Sesja 16.10 (po `2549eb6`) — inicjatywa raz na walkę
-
-**Zlecenie MG:** inicjatywa ma być rzucana raz na początku walki, a kolejność ma zostać na kolejne
-rundy — sprawdzić, poprawić, porównać z Foundry. **Diagnoza:** przejście do nowej rundy niczego
-nie przerzucało ani nie kasowało (`nextTurn` tylko przesuwa wskaźnik) — zgodnie z s. 168
-i z Foundry (rzut raz; przerzut co rundę jest tam opcją dodatków). **Dziura:** gracz po rzucie
-dalej miał w pasie klikalną wartość i mógł przerzucać inicjatywę w dowolnej rundzie, a
-`combat:roll` tego nie bronił. W Foundry kostka gracza znika, gdy wartość już jest.
-
-**Zrobione:** `combat:roll` gracza z wartością → `INITIATIVE_ALREADY_ROLLED` (komunikat
-w `socket.ts`); kafel pasa pokazuje graczowi 🎲 tylko bez wartości, potem samą liczbę. MG bez
-zmian: „⟳”, remis, wpisanie lub wyczyszczenie wartości (czyste pole = gracz rzuca znowu).
-`combat.test.ts`: odmowa przerzutu, MG czyści i gracz rzuca, kolejka bez zmian po zawinięciu
-rundy. Umowa na górze `tura`.
-
-**Weryfikacja:** serwer `combat`, `netcombat`, `combat-actions`, `bot-combat` **84/84**; `tsc`
-klienta i serwera, ESLint, Prettier czyste w zmienionych plikach. E2E `--grep T8a` **44/44**
-(macierz: MG Chromium + gracze Firefox i odwrotnie — gracze rzucają inicjatywę kubkiem z pasa).
-Ręcznych oględzin nie było (dev serwer wyłączony); pełnego przebiegu nie puszczano.

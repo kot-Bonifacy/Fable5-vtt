@@ -1916,6 +1916,7 @@ export class MapRenderer {
     this.app.ticker.add(this.tickTurn);
     this.app.ticker.add(this.tickFx);
     this.app.ticker.add(this.tickPing);
+    this.fx.shake = this.shakeFigure;
 
     /**
      * What one left click on the map means — the whole order of precedence in
@@ -7146,6 +7147,38 @@ export class MapRenderer {
     this.fx.setOverlayScale(this.overlayScale());
     this.fx.play(effects);
   }
+
+  /**
+   * Figures caught mid-flinch, by the point the hit named (17.10). Found once
+   * and remembered, so a figure that walks off during its shudder still gets
+   * put back straight instead of staying a few pixels askew.
+   */
+  private readonly flinching = new Map<string, TokenNode>();
+
+  /**
+   * `MapFxLayer.shake`: the hit carries a point, not a token id (a hidden
+   * figure's id must not reach a player), so the figure is the one centred
+   * there. `pivot`, not `position` — the march and the sync own the position,
+   * and a shudder written into it would fight them.
+   */
+  private readonly shakeFigure = (at: ScenePoint, dx: number, dy: number): void => {
+    const key = `${at.x}:${at.y}`;
+    let node = this.flinching.get(key);
+    if (!node || node.destroyed) {
+      node = undefined;
+      for (const candidate of this.tokenNodes.values()) {
+        const half = candidate.side / 2;
+        if (Math.abs(candidate.x + half - at.x) < 1 && Math.abs(candidate.y + half - at.y) < 1) {
+          node = candidate;
+          break;
+        }
+      }
+      if (!node) return;
+      this.flinching.set(key, node);
+    }
+    node.pivot.set(-dx, -dy);
+    if (dx === 0 && dy === 0) this.flinching.delete(key);
+  };
 
   private readonly tickFlicker = (): void => {
     // A scene with no flickering lamp costs one comparison per frame.

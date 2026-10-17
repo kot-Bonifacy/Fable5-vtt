@@ -9,6 +9,7 @@ import {
   furnitureRadius,
   hpRingCasing,
   hpRingRadius,
+  hpRingTone,
   hpRingWidth,
   noseLength,
   nosePolygon,
@@ -259,5 +260,24 @@ describe('nosePolygon', () => {
         expect(dist(2)).toBeLessThan(dist(0));
       }
     }
+  });
+});
+
+/**
+ * Progi koloru obrączki (zlecenie MG, 17.10.2026): powyżej 50% ran
+ * pomarańczowa, powyżej 75% czerwona — „powyżej", więc równo połowa i równo
+ * trzy czwarte zostają jeszcze o stopień niżej.
+ */
+describe('kolor obrączki PW po ranach', () => {
+  it.each([
+    [{ ratio: 1, rung: 'healthy' }, 'healthy'],
+    [{ ratio: 0.8, rung: 'light' }, 'light'],
+    [{ ratio: 0.5, rung: 'serious' }, 'light'],
+    [{ ratio: 0.49, rung: 'serious' }, 'orange'],
+    [{ ratio: 0.25, rung: 'serious' }, 'orange'],
+    [{ ratio: 0.24, rung: 'serious' }, 'red'],
+    [{ ratio: 0, rung: 'mortal' }, 'red'],
+  ])('%o → %s', (share, tone) => {
+    expect(hpRingTone(share)).toBe(tone);
   });
 });

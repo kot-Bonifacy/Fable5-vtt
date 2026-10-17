@@ -15,7 +15,9 @@ import {
   furnitureRadius,
   hpRingCasing,
   hpRingRadius,
+  hpRingTone,
   hpRingWidth,
+  type HpRingTone,
   NOSE_GAP,
   nosePolygon,
   ownerRingRadius,
@@ -89,6 +91,18 @@ const HP_RUNG_COLORS: Readonly<Record<TokenHpRung, number>> = {
   light: 0xd4d94a,
   serious: 0xd9a441,
   mortal: 0xff3b30,
+};
+/**
+ * …a od 17.10 obrączka mówi też progami ran (`hpRingTone`, zlecenie MG):
+ * pomarańcz ponad połowę ran, czerwień ponad trzy czwarte. Pomarańcz jest
+ * własny, nie `--warn` — bursztyn szczebla „poważnie ranny" na mapie czytał
+ * się jak żółty i nie odróżniał się od draśnięcia.
+ */
+const HP_RING_COLORS: Readonly<Record<HpRingTone, number>> = {
+  healthy: HP_RUNG_COLORS.healthy,
+  light: HP_RUNG_COLORS.light,
+  orange: 0xff8a1f,
+  red: HP_RUNG_COLORS.mortal,
 };
 /** The unfilled part of the arc — dark enough to read as „missing". */
 const HP_TRACK = 0x0b1220;
@@ -497,6 +511,11 @@ export class TokenNode extends Container {
     return this.shownFacing;
   }
 
+  /** Bok figury w pikselach świata — `MapRenderer` szuka po nim figury pod trafieniem. */
+  get side(): number {
+    return this.extentPx;
+  }
+
   /**
    * Dokąd sięga oprawa tej figury, licząc od jej środka (12.09).
    *
@@ -665,10 +684,10 @@ export class TokenNode extends Container {
     const share = tokenHpShare(token);
     if (!share) return;
     const ratio = Math.max(0, Math.min(1, share.ratio));
-    // Kolor bierze się ze szczebla, nie z ułamka — tego samego, na którym stoi
-    // pasek PW w panelu postaci. Długość łuku dalej z ułamka: szczebel mówi
-    // „jak źle", łuk „ile jeszcze".
-    const color = HP_RUNG_COLORS[share.rung];
+    // Kolor: progi ran (17.10, `hpRingTone`) — pomarańcz ponad 50%, czerwień
+    // ponad 75%, niżej szczebel jak w panelu postaci. Długość łuku z ułamka:
+    // kolor mówi „jak źle", łuk „ile jeszcze".
+    const color = HP_RING_COLORS[hpRingTone(share)];
     const width = hpRingWidth(extent);
     const centre = extent / 2;
     const radius = hpRingRadius(extent);
