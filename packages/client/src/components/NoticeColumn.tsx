@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useNoticeStore, type Notice, type NoticeTone } from '../stores/noticeStore.js';
+import {
+  useNoticeStore,
+  type Notice,
+  type NoticeAction,
+  type NoticeTone,
+} from '../stores/noticeStore.js';
 
 /**
  * Kolumna komunikatów na górze-środku nad mapą (etap 55, wzór: Foundry).
@@ -15,6 +20,8 @@ export interface PinnedNotice {
   tone: NoticeTone;
   title: string;
   text: string;
+  /** Wezwanie, które się zgłasza samo („Przeciwnicy pokonani”) — znika ze stanem, nie z wyborem. */
+  actions?: NoticeAction[];
 }
 
 export function NoticeColumn({ pinned = [] }: { pinned?: PinnedNotice[] }) {
@@ -31,6 +38,7 @@ export function NoticeColumn({ pinned = [] }: { pinned?: PinnedNotice[] }) {
         >
           <p className="notice-title">{p.title}</p>
           <p className="notice-text">{p.text}</p>
+          {p.actions && <NoticeActions actions={p.actions} />}
         </div>
       ))}
       {notices.map((n) => (
@@ -119,24 +127,31 @@ function NoticeRow({ notice }: { notice: Notice }) {
         </button>
       </div>
       <p className="notice-text">{notice.text}</p>
-      {notice.actions && notice.actions.length > 0 && (
-        <div className="notice-actions">
-          {notice.actions.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              className="notice-action"
-              {...(action.title ? { title: action.title } : {})}
-              onClick={() => {
-                dismiss(notice.id);
-                action.run();
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
+      {notice.actions && (
+        <NoticeActions actions={notice.actions} onPick={() => dismiss(notice.id)} />
       )}
+    </div>
+  );
+}
+
+function NoticeActions({ actions, onPick }: { actions: NoticeAction[]; onPick?: () => void }) {
+  if (actions.length === 0) return null;
+  return (
+    <div className="notice-actions">
+      {actions.map((action) => (
+        <button
+          key={action.label}
+          type="button"
+          className="notice-action"
+          {...(action.title ? { title: action.title } : {})}
+          onClick={() => {
+            onPick?.();
+            action.run();
+          }}
+        >
+          {action.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import {
   activeCombatant,
   filterCombatForPlayer,
   findInitiativeTies,
+  foesDefeated,
   nextTurn,
   previousTurn,
   resolveInitiativeOrder,
@@ -290,5 +291,30 @@ describe('filterCombatForPlayer', () => {
     const row = view.combatants.find((c) => c.id === 'ziti');
     expect(row?.grapple?.otherName).toBe('Zbir');
     expect(JSON.stringify(view)).not.toContain('Bosman Maelstromu');
+  });
+});
+
+describe('foesDefeated — „Przeciwnicy pokonani”', () => {
+  const vex = combatant({ id: 'vex', initiative: 15, ownerId: 'u1', party: true });
+  const bot = combatant({ id: 'bot', initiative: 12, party: true });
+  const thug = combatant({ id: 'thug', initiative: 10 });
+  const boss = combatant({ id: 'boss', initiative: 8 });
+  const dead = (c: CombatantView): CombatantView => ({ ...c, out: true });
+
+  it('asks once every participant of the GM side is dead', () => {
+    expect(foesDefeated(combat([vex, bot, dead(thug), dead(boss)], { round: 2 }))).toBe(true);
+  });
+
+  it('waits while one foe still stands — or merely lies unconscious', () => {
+    expect(foesDefeated(combat([vex, dead(thug), boss], { round: 2 }))).toBe(false);
+  });
+
+  it('does not count a dead companion as a foe', () => {
+    expect(foesDefeated(combat([vex, dead(bot), dead(thug)], { round: 1 }))).toBe(true);
+  });
+
+  it('stays quiet before the fight starts and in a fight without foes', () => {
+    expect(foesDefeated(combat([vex, dead(thug)], { round: 0 }))).toBe(false);
+    expect(foesDefeated(combat([vex, bot], { round: 3 }))).toBe(false);
   });
 });

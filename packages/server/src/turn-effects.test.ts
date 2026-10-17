@@ -19,6 +19,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { foesDefeated } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -644,6 +645,11 @@ describe('turn automation', () => {
     const before = (await tracker()).round;
     await emitAck(gm, 'token:update', { tokenId: thugTokenId, patch: { statuses: ['dead'] } });
     expect(rowOf(await tracker(), thugTokenId).out).toBe(true);
+    // Vex is the party, the thug the GM's side — with him dead, the GM is asked.
+    const wiped = await tracker();
+    expect(rowOf(wiped, vexTokenId).party).toBe(true);
+    expect(rowOf(wiped, thugTokenId).party).toBeUndefined();
+    expect(foesDefeated(wiped)).toBe(true);
     const linesBefore = chat.length;
     const view = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
     expect(view.activeCombatantId).toBe(rowOf(view, vexTokenId).id);

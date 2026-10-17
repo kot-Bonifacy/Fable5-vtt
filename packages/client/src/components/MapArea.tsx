@@ -152,6 +152,7 @@ import { useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
+import { useFoesDefeatedNotice } from '../foes-defeated.js';
 import { clearNotices, noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { usePaceStore } from '../stores/paceStore.js';
 import {
@@ -2384,6 +2385,7 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isGm]);
 
+  const foesDefeatedNotice = useFoesDefeatedNotice();
   const pinned = mapPinnedNotices({
     stop: !isGm && scene?.playerMove === 'stop',
     placement: placement?.name ?? null,
@@ -2391,6 +2393,7 @@ export function MapArea() {
     walkLegendFor:
       !isGm && !walkLearned && walkPreviewFor ? (walkPreviewName ?? 'twojej figury') : null,
   });
+  if (foesDefeatedNotice) pinned.unshift(foesDefeatedNotice);
 
   // Gracz nigdy nie widzi kratki stołu spod mapy (decyzja MG, 18.09): kamera
   // i tak nie wyjeżdża poza mapę, ale gdyby kiedyś wyjechała — pod spodem ma

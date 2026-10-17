@@ -24,6 +24,7 @@ import {
   MAX_COMBATANTS,
   ROLE_GM,
   filterCombatForPlayer,
+  parseBotData,
   resolveInitiativeOrder,
   rollFormula,
   sortCombatants,
@@ -81,14 +82,21 @@ import { sanitizeGesture } from './chat.js';
  * figure — moving, being shot at, catching fire, being held — simply skips a
  * row that has none. `combatantName` is what the tracker paints instead.
  */
+/**
+ * The sheet behind a participant's figure. `bots` are the live bot profiles
+ * on it — only `COMBAT_INCLUDE` loads them, and only to tell a companion from
+ * the GM's NPCs (`party` in the view).
+ */
+type CombatantCard = { id: string; ownerId: string | null; bots?: { data: string }[] };
+
 export type CombatantRow = Combatant & {
-  token: (Token & { character: { id: string; ownerId: string | null } | null }) | null;
+  token: (Token & { character: CombatantCard | null }) | null;
 };
 
 /** The same row, narrowed to the participants that have a figure on the map. */
 export type FiguredCombatantRow = CombatantRow & {
   tokenId: string;
-  token: Token & { character: { id: string; ownerId: string | null } | null };
+  token: Token & { character: CombatantCard | null };
 };
 
 export function hasFigure(row: CombatantRow): row is FiguredCombatantRow {
@@ -114,7 +122,17 @@ export type CombatRow = Combat & { combatants: CombatantRow[] };
 const COMBAT_INCLUDE = {
   combatants: {
     include: {
-      token: { include: { character: { select: { id: true, ownerId: true } } } },
+      token: {
+        include: {
+          character: {
+            select: {
+              id: true,
+              ownerId: true,
+              bots: { where: { archived: false }, select: { data: true } },
+            },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -125,6 +143,17 @@ const COMBAT_INCLUDE = {
  */
 export function combatantOwnerId(row: CombatantRow): string | null {
   return row.token?.ownerId ?? row.token?.character?.ownerId ?? null;
+}
+
+/**
+ * Whether the participant fights for the party — a player's or a companion
+ * bot's (the same team as `teamCardsWhere`). Everyone else is the GM's side.
+ */
+function combatantInParty(row: CombatantRow): boolean {
+  if (combatantOwnerId(row) !== null) return true;
+  return (row.token?.character?.bots ?? []).some(
+    (bot) => parseBotData(bot.data).type === 'companion',
+  );
 }
 
 /**
@@ -203,6 +232,7 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
     ownerId: combatantOwnerId(row),
   };
   if (row.token?.hidden) view.hidden = true;
+  if (combatantInParty(row)) view.party = true;
   // Read fresh with every load, so the queue skips the dead whichever path put
   // the status on them — and a GM who takes it off gets the row back.
   if (row.token && sheetOutOfFight(readTokenStatuses(row.token.statuses))) view.out = true;

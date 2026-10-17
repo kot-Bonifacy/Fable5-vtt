@@ -193,6 +193,12 @@ export interface CombatantView {
    * queue steps over it and the initiative strip leaves it off.
    */
   out?: true;
+  /**
+   * Fights for the party: a player's participant or a companion bot's
+   * (17.10.2026). The rest is the GM's side — what „Przeciwnicy pokonani"
+   * counts. Not an enemy/ally setting: nobody picks it, it follows the sheet.
+   */
+  party?: true;
 }
 
 /**
@@ -339,6 +345,18 @@ export function previousTurn(combat: CombatView): TurnPointer {
   if (previous) return { round: combat.round, activeCombatantId: previous.id };
   if (combat.round > 1) return { round: combat.round - 1, activeCombatantId: last.id };
   return { round: 1, activeCombatantId: first.id };
+}
+
+/**
+ * Everyone on the GM's side of a running fight is out of it (17.10.2026,
+ * zlecenie MG) — the GM is asked whether to end the fight. Only the dead count:
+ * an unconscious foe may still be finished off or questioned. A fight without
+ * any GM-side participant was never one against foes, so it does not ask.
+ */
+export function foesDefeated(combat: CombatView): boolean {
+  if (combat.round === 0) return false;
+  const foes = combat.combatants.filter((combatant) => combatant.party !== true);
+  return foes.length > 0 && foes.every((combatant) => !inPlay(combatant));
 }
 
 /** Whether the queue still hands this participant turns (`CombatantView.out`). */

@@ -51,6 +51,12 @@
   user-select: none;
 }
 
+/* …chyba że to wezwanie z przyciskami („Przeciwnicy pokonani”): wtedy łapie
+   klik jak każdy pasek z wyborem. */
+.notice--pinned:has(.notice-actions) {
+  pointer-events: auto;
+}
+
 .notice-head {
   display: flex;
   align-items: center;

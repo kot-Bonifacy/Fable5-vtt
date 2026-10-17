@@ -32,7 +32,9 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 **Plansza „Wszyscy zginęli” (zlecenie MG z 17.10) — dalej refaktoryzacja całości pod osłoną suity,
 potem T10.** Gdy każda figura graczy na scenie ma stan Martwy, stół zasłania plakat logowania
 ze sloganem „Night City nie wybacza.” i przyciskiem „Teraz możesz bezpiecznie
-wyłączyć komputer” (gracza wylogowuje, MG zamyka planszę). Umowa na górze `ui`.
+wyłączyć komputer” (gracza wylogowuje, MG zamyka planszę). Gdy w walce zginą wszyscy spoza
+drużyny, MG dostaje nad mapą pasek „Przeciwnicy pokonani” z „Zakończ walkę” / „Jeszcze nie”
+(walka sama się nie kończy). Umowy na górze `ui` i `tura`.
 
 **Etap 55 „Komunikaty wzorem Foundry” (zlecenie MG z 17.10) zamknięty 17.10 (55a + 55b) — dalej
 refaktoryzacja całości pod osłoną suity, potem T10.** Komunikat dla jednej osoby to pasek w jednej
