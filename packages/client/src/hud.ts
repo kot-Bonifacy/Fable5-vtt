@@ -56,7 +56,7 @@ import { netErrorText } from './netErrors.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
-import { useChatStore } from './stores/chatStore.js';
+import { noteAck, notifyRefusal } from './notices.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
@@ -562,15 +562,14 @@ export function setTokenLocator(locator: TokenLocator | null): void {
  */
 export function toggleTarget(tokenId: string): void {
   const shooter = useSelectionStore.getState().tokenId;
-  const chat = useChatStore.getState();
   if (!shooter) {
-    chat.addNote('Najpierw wybierz figurę, która ma mierzyć — potem T nad celem.');
+    notifyRefusal('target', 'Najpierw wybierz figurę, która ma mierzyć — potem T nad celem.');
     return;
   }
   const next = nextTarget(shooter, useTargetStore.getState().targets[shooter] ?? null, tokenId);
   if (next === undefined) return;
   void setTokenTarget(shooter, next).then((ack) => {
-    if (!ack.ok) chat.addNote(targetErrorText(ack.error));
+    noteAck('target', ack, targetErrorText);
   });
 }
 
@@ -627,9 +626,8 @@ function steerToken(tokenId: string): void {
  * struck in stages 14b and 14d.
  */
 export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
-  const chat = useChatStore.getState();
   if (slot.disabled) {
-    chat.addNote(slot.disabled);
+    notifyRefusal('action', slot.disabled);
     return;
   }
   // A refused slot is deliberately *not* worth taking control for — the button
@@ -728,7 +726,7 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   // would charge the turn twice.
   if (slot.actionId === CPRED_ACTION_SCANNER) {
     void runNetScan(tokenId).then((ack) => {
-      if (!ack.ok) chat.addNote(netErrorText(ack.error));
+      noteAck('action', ack, netErrorText);
     });
     return;
   }
@@ -737,7 +735,7 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     .getState()
     .combat?.combatants.find((row) => row.tokenId === tokenId)?.id;
   void spendCombatAction(slot.actionId, undefined, combatantId).then((ack) => {
-    if (!ack.ok) chat.addNote(combatErrorText(ack.error));
+    noteAck('action', ack, combatErrorText);
   });
 }
 

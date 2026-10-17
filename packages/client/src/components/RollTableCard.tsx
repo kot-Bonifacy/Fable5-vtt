@@ -2,7 +2,7 @@ import type { ChatMessageView, RandomTableRollEntry, RandomTableRollStep } from 
 import { ROLE_GM, displayDiceNotation } from '@vtt/shared';
 import { randomTableErrorText, rollRandomTableNow, showRandomTableRoll } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta losowania z tabeli (etap 34).
@@ -53,12 +53,12 @@ export function RollTableRow({
       id: entry.tableId,
       visibility: secret ? 'gm' : 'public',
     });
-    if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
+    noteAck('table', ack, randomTableErrorText);
   }
 
   async function show() {
     const ack = await showRandomTableRoll(message.id);
-    if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
+    noteAck('table', ack, randomTableErrorText);
   }
 
   return (

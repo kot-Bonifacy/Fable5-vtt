@@ -1024,8 +1024,12 @@ export class MapRenderer {
   onPing: ((x: number, y: number, pull: boolean) => void) | null = null;
   /** Alt+przeciągnięcie figury: postaw jej kopię tam, gdzie ją upuszczono. */
   onTokenDuplicate: ((tokenId: string, x: number, y: number) => void) | null = null;
-  /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
-  onWalkNote: ((text: string) => void) | null = null;
+  /**
+   * Zdanie o marszu do kanału komunikatów (etap 55; do 55 notka na czacie):
+   * odmowa bez `tone`, „kliknij jeszcze raz”, postój i przerwanie z `warn`,
+   * `null` — figura ruszyła albo cel odwołany, więc zdanie już nie obowiązuje.
+   */
+  onWalkNote: ((text: string | null, tone?: 'warn') => void) | null = null;
   /**
    * Zgoda serwera na trasę marszu gracza (etap 52, `token:walk`) — `null`, gdy
    * wolno iść, albo zdanie odmowy. Pytana przed pierwszym krokiem, bo klatek
@@ -4631,6 +4635,7 @@ export class MapRenderer {
     this.walkHover = null;
     this.setWalkCursor('');
     this.drawWalkPreview();
+    this.onWalkNote?.(null);
     return true;
   }
 
@@ -5542,12 +5547,12 @@ export class MapRenderer {
   /** Zdanie przy wskazanym celu: o koszcie za każdym razem, reszta raz na wczytanie. */
   private noteWalkConfirm(band: WalkClickBand): void {
     if (band === 'extra') {
-      this.onWalkNote?.(walkExtraConfirmNote(this.walkBudget()?.extraHint ?? null));
+      this.onWalkNote?.(walkExtraConfirmNote(this.walkBudget()?.extraHint ?? null), 'warn');
       return;
     }
     if (this.walkConfirmNoted) return;
     this.walkConfirmNoted = true;
-    this.onWalkNote?.(band === 'unknown' ? WALK_FOG_CONFIRM_NOTE : WALK_CONFIRM_NOTE);
+    this.onWalkNote?.(band === 'unknown' ? WALK_FOG_CONFIRM_NOTE : WALK_CONFIRM_NOTE, 'warn');
   }
 
   /**
@@ -5574,7 +5579,7 @@ export class MapRenderer {
       // Etap 52: resztka puli mniejsza niż pole to też postój — figura ruszy,
       // gdy pula odrośnie. Budżet Tury nie odrasta, więc tam to koniec ruchu.
       if (budget?.refills === true && !plan.truncated) {
-        if (!resumed) this.onWalkNote?.(WALK_WAIT_NOTE);
+        if (!resumed) this.onWalkNote?.(WALK_WAIT_NOTE, 'warn');
         this.walkResume = { tokenId: node.tokenId, goal };
         return;
       }
@@ -5636,6 +5641,8 @@ export class MapRenderer {
     const reach =
       budget && extra ? { ...budget, metresLeft: budget.metresLeft + budget.extraMetres } : budget;
     this.walkResume = null;
+    // Figura idzie: odmowa i „kliknij jeszcze raz” z poprzedniej próby nie obowiązują.
+    this.onWalkNote?.(null);
     const perPixel = metresPerPixel(scene);
     const distances: number[] = [];
     let running = 0;
@@ -6004,7 +6011,7 @@ export class MapRenderer {
       this.drawTrail();
     }
     this.onWalkStateChange?.(null);
-    if (note) this.onWalkNote?.(note);
+    if (note) this.onWalkNote?.(note, 'warn');
   }
 
   /** Draws the DV bands of a weapon as rings around a token (optional toggle). */

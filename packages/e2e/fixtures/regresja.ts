@@ -105,9 +105,26 @@ export async function activateScene(
   }
 }
 
-/** Wiersze czatu z tekstem (karta, notka, wiadomość) — po `textContent`, bez `text-transform`. */
+/**
+ * Wiersze czatu z tekstem (karta, notka, wiadomość) albo pasek kanału komunikatów nad mapą
+ * (etap 55: notki lokalne przeszły z czatu do kanału) — po `textContent`, bez `text-transform`.
+ */
 export function chatLine(page: Page, text: string | RegExp): Locator {
-  return page.locator('.chat-message, .chat-note', { hasText: text });
+  return page.locator('.chat-message, .chat-note, .notice', { hasText: text });
+}
+
+/**
+ * Komunikat z kanału nad mapą (etap 55) z tekstem w magazynie `notice` — `id` i `raised`
+ * pozwalają odróżnić świeże zdanie od tego samego, które stało tam wcześniej.
+ */
+export async function noticeWith(
+  actor: Actor,
+  text: string,
+): Promise<{ id: string; raised: number; text: string } | undefined> {
+  const state = await actor.store<{
+    notices: { id: string; raised: number; text: string }[];
+  } | null>('notice');
+  return state?.notices.find((n) => n.text.includes(text));
 }
 
 /** Odczyt wiersza bazy, który ma się pojawić — z czekaniem. */

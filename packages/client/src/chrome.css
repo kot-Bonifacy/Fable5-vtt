@@ -257,8 +257,11 @@ textarea {
   border-radius: 2px;
 }
 
-/* Czerwony baner „Tura tej figury" i belka HUD-u — pęknięcia tuszu. */
-.hud-turn-banner {
+/* Czerwony baner „Tura tej figury" i belka HUD-u — pęknięcia tuszu. Z pasków
+   kanału komunikatów (etap 55) tylko czerwona odmowa: na czerni jasne rysy
+   czytały się jak kurz, a nocne ciemne rysy brudziły bursztyn. */
+.hud-turn-banner,
+.notice--danger {
   background-image: var(--cp-cracks);
   background-size: var(--cp-cracks-size);
 }

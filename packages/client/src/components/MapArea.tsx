@@ -115,7 +115,7 @@ import {
   shootCoverAt,
   throwAtPoint,
 } from '../hud.js';
-import { useAttackStore } from '../stores/attackStore.js';
+import { useAttackStore, type AttackTargeting } from '../stores/attackStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
@@ -151,6 +151,8 @@ import { useCoverStore } from '../stores/coverStore.js';
 import { useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
+import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
+import { clearNotices, noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { usePaceStore } from '../stores/paceStore.js';
 import {
   PLAYER_MOVE_PACE_NOTE,
@@ -210,16 +212,15 @@ function openSheetOfToken(tokenId: string): void {
   // ciało otwiera „Wymianę” (decyzja MG z 08.10 — tylko te dwa, żeby klik
   // w kolegę nie wysłał zaproszenia). U MG karta jest zawsze, więc tu nie dochodzi.
   if (useAuthStore.getState().user?.role === ROLE_GM) {
-    useChatStore.getState().addNote(`Token „${token.name}” nie ma przypisanej karty postaci.`);
+    notifyInfo(`Token „${token.name}” nie ma przypisanej karty postaci.`, { topic: 'token' });
     return;
   }
   void openExchangeAtToken(token, 'activate').then((opened) => {
     if (opened) return;
-    useChatStore
-      .getState()
-      .addNote(
-        `„${token.name}” — podwójny klik otwiera sklep handlarza i przeszukanie ciała obok ciebie. Wymianę z kimś innym zaczniesz z menu figury (prawy przycisk).`,
-      );
+    notifyInfo(
+      `„${token.name}” — podwójny klik otwiera sklep handlarza i przeszukanie ciała obok ciebie. Wymianę z kimś innym zaczniesz z menu figury (prawy przycisk).`,
+      { topic: 'token', title: 'Podpowiedź' },
+    );
   });
 }
 
@@ -307,10 +308,10 @@ async function deleteSceneObject(ref: SceneObjectRef): Promise<boolean> {
   })();
   const ack = await request;
   if (ack.ok) {
-    useChatStore.getState().addNote(`Usunięto ${sceneObjectAccusative(ref.kind)} — Ctrl+Z cofa.`);
+    notifyInfo(`Usunięto ${sceneObjectAccusative(ref.kind)} — Ctrl+Z cofa.`, { topic: 'scene' });
     return true;
   }
-  useChatStore.getState().addNote(sceneDeleteErrorText(ref.kind, ack.error));
+  notifyRefusal('scene', sceneDeleteErrorText(ref.kind, ack.error));
   return false;
 }
 
@@ -374,7 +375,8 @@ async function moveSceneObject(ref: SceneObjectRef, shape: SceneObjectShape): Pr
   })();
   if (!request) return;
   const ack = await request;
-  if (!ack.ok) useChatStore.getState().addNote(sceneDeleteErrorText(ref.kind, ack.error));
+  if (ack.ok) clearNotices('scene');
+  else notifyRefusal('scene', sceneDeleteErrorText(ref.kind, ack.error));
 }
 
 /**
@@ -617,8 +619,9 @@ function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: numb
       x: worldX - extent / 2,
       y: worldY - extent / 2,
     }).then((ack) => {
-      if (!ack.ok) useChatStore.getState().addNote(inventoryErrorText(ack.error));
-      else if (ack.data) useCharacterStore.getState().openSheet(ack.data.characterId);
+      if (noteAck('exchange', ack, inventoryErrorText) && ack.data) {
+        useCharacterStore.getState().openSheet(ack.data.characterId);
+      }
     });
     useMapToolStore.getState().setTokenPlacement(null);
     return true;
@@ -638,10 +641,80 @@ function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: numb
       ? { characterId: pending.characterId, ownerId: pending.ownerId ?? null }
       : {}),
   }).then((ack) => {
-    if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+    noteAck('token', ack, tokenErrorText);
   });
   useMapToolStore.getState().setTokenPlacement(null);
   return true;
+}
+
+/**
+ * Zdanie o ruchu w kanale (etap 55). Przy „Ruch graczy: Stop” gracz ma już
+ * przypięty pasek z tym samym zdaniem — drugi, pod nim, nic by nie dodał.
+ */
+function noteMove(text: string, tone?: 'warn'): void {
+  const stopped =
+    useSceneStore.getState().effectiveScene?.playerMove === 'stop' &&
+    useAuthStore.getState().user?.role !== ROLE_GM;
+  if (stopped && text === PLAYER_MOVE_STOP_NOTE) return;
+  notifyRefusal('move', text, tone ? { tone } : {});
+}
+
+/**
+ * Stany nad mapą jako przypięte wiersze kanału komunikatów (etap 55; do 55
+ * osobne `.map-placement-hint`). Stawianie i celowanie zasłaniają resztę —
+ * gracz robi wtedy jedno i tylko o tym czyta.
+ */
+function mapPinnedNotices(state: {
+  stop: boolean;
+  placement: string | null;
+  targeting: Pick<AttackTargeting, 'characterName' | 'weaponName' | 'mode'> | null;
+  walkLegendFor: string | null;
+}): PinnedNotice[] {
+  const { stop, placement, targeting, walkLegendFor } = state;
+  if (placement) {
+    return [
+      {
+        key: 'placement',
+        tone: 'info',
+        title: 'Stawianie figury',
+        text: `Kliknij na mapie, aby postawić „${placement}” (Esc anuluje).`,
+      },
+    ];
+  }
+  if (targeting) {
+    const mode = CPRED_ATTACK_MODE_SHORT[targeting.mode];
+    return [
+      {
+        key: 'targeting',
+        tone: 'danger',
+        title: `${targeting.characterName} celuje`,
+        text: `„${targeting.weaponName}”${mode ? ` — ${mode}` : ''} — kliknij cel na mapie (Esc anuluje).`,
+      },
+    ];
+  }
+  const pinned: PinnedNotice[] = [];
+  // „Ruch graczy: Stop" (etap 45) — gracz widzi, czemu nie może iść, zanim
+  // spróbuje. Jak Pauza w Foundry: na środku nad mapą.
+  if (stop) {
+    pinned.push({
+      key: 'stop',
+      tone: 'warn',
+      title: 'Ruch graczy: Stop',
+      text: PLAYER_MOVE_STOP_NOTE,
+    });
+  }
+  // Legenda śladów stóp (#69, T8b): nowy gracz wziął podgląd własnej trasy
+  // za ruch cudzej figury. Same ślady zostają bez podpisu (MG, 23.08), a ta
+  // linijka znika po pierwszym marszu i nie wraca w tej przeglądarce.
+  if (walkLegendFor) {
+    pinned.push({
+      key: 'walk-legend',
+      tone: 'info',
+      title: 'Ślady stóp',
+      text: `To trasa „${walkLegendFor}” w tej turze — klik w zielone rusza, w bursztyn (Bieg) i dalej trzeba kliknąć drugi raz w to samo miejsce (Esc odwołuje cel).`,
+    });
+  }
+  return pinned;
 }
 
 export function MapArea() {
@@ -806,7 +879,7 @@ export function MapArea() {
         // already put the true position in the store.
         const settled = useTokenStore.getState().tokens[tokenId];
         if (settled) renderer.snapTokenBack(tokenId, settled.x, settled.y);
-        useChatStore.getState().addNote(moveErrorText(result.error));
+        noteMove(moveErrorText(result.error));
       });
     };
     // Steering and „what the left rail is describing" are two pointers, and the
@@ -846,10 +919,15 @@ export function MapArea() {
         // rejection has to be said out loud rather than waited out.
         const settled = useTokenStore.getState().tokens[tokenId];
         renderer.showTokenFacing(tokenId, settled?.facing ?? null);
-        useChatStore.getState().addNote('Nie udało się obrócić figury.');
+        notifyRefusal('move', 'Nie udało się obrócić figury.');
       });
     };
-    renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
+    // Etap 55: zdania marszu to temat `move` w kanale — nowe podmienia stare,
+    // `null` (figura ruszyła, cel odwołany) zamyka.
+    renderer.onWalkNote = (text, tone) => {
+      if (text === null) clearNotices('move');
+      else noteMove(text, tone);
+    };
     // Etap 52: przez wroga nie przejdziesz, przez kompana i leżącego bez
     // przytomności tak — ta sama reguła co `refuseWalkThroughFigures`.
     renderer.figureBlocksPassage = (token) =>
@@ -917,7 +995,7 @@ export function MapArea() {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
       void updateScene(current.id, { spawn: { x, y } }).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(sceneErrorText(ack.error));
+        noteAck('scene', ack, sceneErrorText);
       });
     };
     renderer.onNoteActivate = (noteId) =>
@@ -938,7 +1016,7 @@ export function MapArea() {
         // drawing has arrived by broadcast, or the attempt failed and the
         // sketch must not linger as if it had worked.
         renderer.clearDrawingPreview();
-        if (!ack.ok) useChatStore.getState().addNote(drawingErrorText(ack.error));
+        noteAck('scene', ack, drawingErrorText);
       });
     };
     renderer.onDrawingTextPlace = (x, y) => useDrawingStore.getState().setTextDraft({ x, y });
@@ -955,14 +1033,14 @@ export function MapArea() {
         tools.wallHidesFigures,
         tools.wallConcealPenalty,
       ).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
+        noteAck('scene', ack, wallErrorText);
       });
     };
     renderer.onOpeningToggle = (wallId) => {
       const state = useWallStore.getState();
       const kind = [...state.walls, ...state.openings].find((wall) => wall.id === wallId)?.kind;
       void toggleOpening(wallId).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(openingErrorText(ack.error, kind));
+        noteAck('scene', ack, (code) => openingErrorText(code, kind));
       });
     };
     // Cover (stage 16c). The rectangle is the whole gesture: the preset the GM
@@ -974,11 +1052,11 @@ export function MapArea() {
       if (!current) return;
       const typeId = useMapToolStore.getState().coverTypeId;
       if (!typeId) {
-        useChatStore.getState().addNote('Wybierz rodzaj osłony w pasku narzędzi.');
+        notifyRefusal('scene', 'Wybierz rodzaj osłony w pasku narzędzi.', { tone: 'warn' });
         return;
       }
       void createCover(current.id, typeId, rect).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
+        noteAck('scene', ack, coverErrorText);
       });
     };
     // Strefa broniona (26f) — jak osłona: klient wysyła sam prostokąt i wpis,
@@ -988,12 +1066,12 @@ export function MapArea() {
       if (!current) return;
       const tools = useMapToolStore.getState();
       if (!tools.zoneEntryId) {
-        useChatStore.getState().addNote('Wybierz system obronny w pasku narzędzi.');
+        notifyRefusal('scene', 'Wybierz system obronny w pasku narzędzi.', { tone: 'warn' });
         return;
       }
       void createZone(current.id, tools.zoneEntryId, rect, { hidden: tools.zoneHidden }).then(
         (ack) => {
-          if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
+          noteAck('scene', ack, netErrorText);
         },
       );
     };
@@ -1016,14 +1094,14 @@ export function MapArea() {
       // przestrojenie do ustawień z paska przeszło na dwuklik
       // (`onSceneActivate`).
       void createLight(current.id, x, y, { ...spec, fitRoom: tools.lightFitRoom }).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
+        noteAck('scene', ack, lightErrorText);
       });
     };
     renderer.onLightToggle = (lightId) => {
       const light = useLightStore.getState().lights.find((entry) => entry.id === lightId);
       if (!light) return;
       void updateLight(lightId, { enabled: !light.enabled }).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
+        noteAck('scene', ack, lightErrorText);
       });
     };
     // Punkty dostępu do Sieci (26b). Stawia i kasuje wyłącznie MG; klik bez
@@ -1040,7 +1118,7 @@ export function MapArea() {
         hidden: tools.netPointHidden,
         architectureId: tools.netPointArchitectureId || null,
       }).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
+        noteAck('scene', ack, netErrorText);
       });
     };
     renderer.onAccessPointOpen = (id) => {
@@ -1074,7 +1152,7 @@ export function MapArea() {
     };
     renderer.onTokenDuplicate = (tokenId, x, y) => {
       void duplicateToken(tokenId, x, y).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+        noteAck('token', ack, tokenErrorText);
       });
     };
     renderer.onRulerChange = (points) => {
@@ -2189,11 +2267,8 @@ export function MapArea() {
         if (!current) return;
         event.preventDefault();
         void undoSceneDelete(current.id).then((ack) => {
-          useChatStore
-            .getState()
-            .addNote(
-              ack.ok && ack.data ? ack.data.note : undoErrorText(ack.ok ? undefined : ack.error),
-            );
+          if (ack.ok && ack.data) notifyInfo(ack.data.note, { topic: 'scene' });
+          else notifyRefusal('scene', undoErrorText(ack.ok ? undefined : ack.error));
         });
         return;
       }
@@ -2309,6 +2384,14 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isGm]);
 
+  const pinned = mapPinnedNotices({
+    stop: !isGm && scene?.playerMove === 'stop',
+    placement: placement?.name ?? null,
+    targeting,
+    walkLegendFor:
+      !isGm && !walkLearned && walkPreviewFor ? (walkPreviewName ?? 'twojej figury') : null,
+  });
+
   // Gracz nigdy nie widzi kratki stołu spod mapy (decyzja MG, 18.09): kamera
   // i tak nie wyjeżdża poza mapę, ale gdyby kiedyś wyjechała — pod spodem ma
   // być sam ciemny stół, tak jak pod mapą powitalną.
@@ -2355,35 +2438,9 @@ export function MapArea() {
       )}
       {/* „Ruch graczy: Stop" (etap 45) — gracz widzi, czemu nie może iść, zanim
           spróbuje. Jak Pauza w Foundry: baner na środku nad mapą. */}
-      {!isGm && scene?.playerMove === 'stop' && !placement && !targeting && (
-        <div className="map-placement-hint map-placement-hint--stop" role="status">
-          {PLAYER_MOVE_STOP_NOTE}
-        </div>
-      )}
-      {placement && (
-        <div className="map-placement-hint">
-          Kliknij na mapie, aby postawić „{placement.name}” (Esc anuluje)
-        </div>
-      )}
-      {targeting && (
-        <div className="map-placement-hint map-placement-hint--attack">
-          {targeting.characterName} celuje: „{targeting.weaponName}”
-          {CPRED_ATTACK_MODE_SHORT[targeting.mode]
-            ? ` — ${CPRED_ATTACK_MODE_SHORT[targeting.mode]}`
-            : ''}
-          {' — kliknij cel na mapie (Esc anuluje)'}
-        </div>
-      )}
-      {/* Legenda śladów stóp (#69, T8b): nowy gracz wziął podgląd własnej trasy
-          za ruch cudzej figury. Same ślady zostają bez podpisu (MG, 23.08), a ta
-          linijka znika po pierwszym marszu i nie wraca w tej przeglądarce. */}
-      {!isGm && !walkLearned && walkPreviewFor && !targeting && !placement && (
-        <div className="map-placement-hint">
-          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” w tej turze — klik w zielone
-          rusza, w bursztyn (Bieg) i dalej trzeba kliknąć drugi raz w to samo miejsce (Esc odwołuje
-          cel)
-        </div>
-      )}
+      {/* Etap 55: stany nad mapą to przypięte wiersze kanału komunikatów,
+          a pod nimi stoją komunikaty z `noticeStore`. */}
+      <NoticeColumn pinned={pinned} />
       {/* Visibility comes from tokens alone, so „no token" means „no map".
           Zamiast czerni z napisem — plakat (15.10, zlecenie MG): gracz bez
           figury nie ogląda pustki. Oczy drużyny (etap 45) dają wielokąty, więc

@@ -271,6 +271,9 @@ body {
    Pixi mierzy `.map-area` obserwatorem, więc pojawienie się pasa po prostu
    skraca płótno; panele boczne zostają pełnej wysokości. */
 .map-column {
+  /* Plakat „Między sesjami” nie ma `.map-area` — kolumna komunikatów (etap 55)
+     staje wtedy względem `.map-column`. */
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;

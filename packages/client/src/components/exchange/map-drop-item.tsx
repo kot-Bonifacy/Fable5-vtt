@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { InventoryItemRefWire, ScenePoint } from '@vtt/shared';
 import { dropInventory, inventoryErrorText } from '../../socket.js';
-import { useChatStore } from '../../stores/chatStore.js';
+import { noteAck } from '../../notices.js';
 import { useSceneStore } from '../../stores/sceneStore.js';
 import { MAP_DROP_ZONE, useExchangeDrag } from './drag.js';
 
@@ -35,7 +35,7 @@ export async function dropOnMap(
     items,
     ...(eddies > 0 ? { eddies } : {}),
   });
-  if (!ack.ok) useChatStore.getState().addNote(inventoryErrorText(ack.error));
+  noteAck('exchange', ack, inventoryErrorText);
   return ack.ok;
 }
 

@@ -604,7 +604,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     const after = lastMessageId();
     await clickOnMap(page, tokenCentre(token('Rzeźnik'), cell));
     await page.waitForTimeout(800);
-    const note = page.locator('.chat-note', {
+    const note = page.locator('.notice', {
       hasText: 'Do ataku wręcz cel musi być nie dalej niż 2 m.',
     });
     test.info().annotations.push({

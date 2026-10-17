@@ -9,34 +9,6 @@
   cursor: crosshair !important;
 }
 
-.map-placement-hint {
-  position: absolute;
-  top: 0.75rem;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.4rem 0.9rem;
-  background: var(--map-panel);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  /* `--map-ink`, nie `--text`: panel nad mapą jest ciemny w obu motywach
-     (`--map-panel` nie ma pary dziennej i mieć nie ma), więc tekst w kolorze
-     pisma aplikacji znikał w dzień — czarne na czarnym. Znalezione 23.08 przy
-     oględzinach 27k; dotyczyło wszystkich podpowiedzi nad mapą, nie tylko
-     nowej. */
-  color: var(--map-ink);
-  font-size: 0.85rem;
-  pointer-events: none;
-  user-select: none;
-  z-index: 20;
-}
-
-/* „Ruch graczy: Stop" (etap 45) — baner gracza; ten sam panel, mocniejszy akcent. */
-.map-placement-hint--stop {
-  border-color: var(--cp-red);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
 .context-menu-backdrop {
   position: fixed;
   inset: 0;

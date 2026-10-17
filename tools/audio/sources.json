@@ -18,6 +18,13 @@
     "license": "CC0-1.0"
   },
   {
+    "name": "doorlock",
+    "url": "https://opengameart.org/content/door-lock-sounds",
+    "preview": "https://opengameart.org/sites/default/files/DoorLockSounds.zip",
+    "file": "DoorLockSounds/LockedDoorHandleJiggle.wav",
+    "license": "CC0-1.0"
+  },
+  {
     "name": "rain",
     "url": "https://freesound.org/people/Rvgerxini/sounds/527658/",
     "preview": "https://cdn.freesound.org/previews/527/527658_9453283-hq.mp3",

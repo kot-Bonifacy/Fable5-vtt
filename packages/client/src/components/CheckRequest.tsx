@@ -11,7 +11,7 @@ import {
 import { cancelCheckRequest, checkRequestErrorText, resolveCheckRequest } from '../socket.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useCheckStore } from '../stores/checkStore.js';
 
 /**
@@ -49,7 +49,7 @@ export function CheckRequestRow({
     setBusy(true);
     const ack = await action();
     setBusy(false);
-    if (!ack.ok) useChatStore.getState().addNote(checkRequestErrorText(ack.error));
+    noteAck('check', ack, checkRequestErrorText);
   }
 
   function approveAt(dv: number) {

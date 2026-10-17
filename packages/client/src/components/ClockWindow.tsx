@@ -17,7 +17,7 @@ import {
 } from '@vtt/shared';
 import { restForADay, setGameTime, settleMonth } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck, notifyRefusal } from '../notices.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
@@ -48,7 +48,6 @@ export function ClockWindow() {
   // każdej zmianie dowolnego store'a.
   const charactersById = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
-  const addNote = useChatStore((s) => s.addNote);
 
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<{ date: string; time: string } | null>(null);
@@ -93,23 +92,20 @@ export function ClockWindow() {
     setBusy(true);
     const ack = await setGameTime({ step });
     setBusy(false);
-    if (!ack.ok) addNote('Nie udało się przesunąć zegara.');
+    noteAck('clock', ack, () => 'Nie udało się przesunąć zegara.');
   }
 
   async function setExact() {
     const wanted = gameTimeFromInput(input.date, input.time);
     if (wanted === null) {
-      addNote('Taka data nie istnieje — sprawdź dzień i godzinę.');
+      notifyRefusal('clock', 'Taka data nie istnieje — sprawdź dzień i godzinę.');
       return;
     }
     setBusy(true);
     const ack = await setGameTime(start ? { minutes: wanted, start } : { minutes: wanted });
     setBusy(false);
     setDraft(null);
-    if (!ack.ok) {
-      addNote('Nie udało się ustawić zegara.');
-      return;
-    }
+    if (!noteAck('clock', ack, () => 'Nie udało się ustawić zegara.')) return;
     // Start kampanii niczego nie proponuje — także odpoczynku z dawnych skoków.
     if (start) {
       clearRestDays();
@@ -121,7 +117,7 @@ export function ClockWindow() {
     setBusy(true);
     const ack = await settleMonth(preview ? { preview: true } : {});
     setBusy(false);
-    if (!ack.ok) addNote('Rozliczenie się nie udało.');
+    noteAck('clock', ack, () => 'Rozliczenie się nie udało.');
   }
 
   /** Doba odpoczynku dla jednej postaci, powtórzona tyle razy, ile dób minęło. */

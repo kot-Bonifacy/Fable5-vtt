@@ -20,6 +20,7 @@ import {
 import { giveAmmo } from '../../fixtures/kompendium.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
+import { noticeWith } from '../../fixtures/regresja.ts';
 import {
   centreCamera,
   clickOnMap,
@@ -617,26 +618,28 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
 
   test('#29 / etap 52: przeciągnięcie własnej figury nic nie robi i mówi graczowi dlaczego', async () => {
     const page = marek.page;
-    const notesOf = async () =>
-      ((await marek.store<{ items: { type: string; text?: string }[] }>('chat'))?.items ?? [])
-        .filter((item) => item.type === 'note')
-        .map((item) => item.text ?? '');
-    const seen = (await notesOf()).length;
+    // Etap 55: zdanie stoi w kanale komunikatów nad mapą; świeże poznać po `id` albo `raised`.
+    const was = await noticeWith(marek, 'Figury nie przeciągasz');
     const since = lastMessageId();
     const before = { x: kowal().x, y: kowal().y };
     // Przeciągnięcie własnej figury w mgłę — droga obok planera. Od etapu 52
     // gracz figury nie przeciąga: chwyt zostaje chwytem, a notka mówi, jak iść.
     await page.keyboard.press('Escape');
     await dragWorld(page, tokenCentre(kowal(), cell), BRAMA.inFog);
-    await expect.poll(async () => (await notesOf()).length).toBeGreaterThan(seen);
+    await expect
+      .poll(async () => {
+        const now = await noticeWith(marek, 'Figury nie przeciągasz');
+        return now !== undefined && (now.id !== was?.id || now.raised > (was?.raised ?? -1));
+      })
+      .toBe(true);
     await page.waitForTimeout(1_000);
     expect({ x: kowal().x, y: kowal().y }).toEqual(before);
-    const notes = (await notesOf()).slice(seen);
-    test.info().annotations.push({ type: 'notatka Marka', description: JSON.stringify(notes) });
+    const note = await noticeWith(marek, 'Figury nie przeciągasz');
+    test.info().annotations.push({ type: 'komunikat Marka', description: note?.text ?? '' });
     // Karty odmowy nie ma — poza walką `logMovementRefusal` niczego nie pisze,
     // więc powód niesie sama notka (#29).
     expect(lastMessageId()).toBe(since);
-    expect(notes.join(' ')).toContain('Figury nie przeciągasz');
+    expect(note?.text).toContain('Figury nie przeciągasz');
   });
 
   test('5.2 Marek podchodzi pod bramę', async () => {

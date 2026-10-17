@@ -21,7 +21,7 @@ import {
   rollRandomTableNow,
   saveRandomTable,
 } from '../socket.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useTableStore } from '../stores/tableStore.js';
 import { plural } from '../plural.js';
 import { EmptyState } from './EmptyState.js';
@@ -409,12 +409,12 @@ function TableRow({ table, onEdit }: { table: RandomTableView; onEdit: () => voi
 
   async function roll(visibility: RandomTableVisibility) {
     const ack = await rollRandomTableNow({ id: table.id, visibility });
-    if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
+    noteAck('table', ack, randomTableErrorText);
   }
 
   async function remove() {
     const ack = await deleteRandomTable(table.id);
-    if (!ack.ok) useChatStore.getState().addNote(randomTableErrorText(ack.error));
+    noteAck('table', ack, randomTableErrorText);
   }
 
   const linked = [

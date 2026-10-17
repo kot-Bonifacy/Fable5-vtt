@@ -5,6 +5,7 @@ import { endSession, startSession } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCampaignPlayersStore } from '../stores/campaignPlayersStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useSessionReadiness } from '../stores/gmAttentionStore.js';
 import { formatSessionClock } from '../session-view.js';
 
@@ -76,11 +77,11 @@ export function SessionControl() {
     setBusy(true);
     try {
       const ack = await action();
-      if (!ack.ok) {
-        useChatStore
-          .getState()
-          .addNote(sessionErrorText(ack.error) ?? 'Nie udało się zmienić stanu sesji.');
-      }
+      noteAck(
+        'session',
+        ack,
+        (code) => sessionErrorText(code) ?? 'Nie udało się zmienić stanu sesji.',
+      );
     } finally {
       setBusy(false);
       setConfirming(false);

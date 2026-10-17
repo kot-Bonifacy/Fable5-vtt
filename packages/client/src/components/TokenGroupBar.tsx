@@ -3,7 +3,7 @@ import { StatusIcon } from './HudIcon.js';
 import type { SocketAck } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { notifyRefusal } from '../notices.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -64,11 +64,10 @@ export function TokenGroupBar() {
     const failed = results.filter((ack) => !ack.ok);
     const first = failed[0];
     if (!first || first.ok) return;
-    useChatStore
-      .getState()
-      .addNote(
-        `${what}: nie udało się przy ${failed.length} z ${count}. ${tokenErrorText(first.error)}`,
-      );
+    notifyRefusal(
+      'token',
+      `${what}: nie udało się przy ${failed.length} z ${count}. ${tokenErrorText(first.error)}`,
+    );
   }
 
   function toggleStatus(statusId: string): void {

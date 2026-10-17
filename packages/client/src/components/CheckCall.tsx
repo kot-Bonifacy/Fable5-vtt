@@ -2,7 +2,7 @@ import type { ChatMessageView, CheckCallEntry } from '@vtt/shared';
 import { ROLE_GM, checkCallTargetText, isCheckCallOpen, mayAnswerCheckCall } from '@vtt/shared';
 import { cancelCheck, checkCallErrorText } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { openCallDialog } from './DiceCup.js';
 
@@ -37,7 +37,7 @@ export function CheckCallRow({
 
   async function withdraw() {
     const ack = await cancelCheck(message.id);
-    if (!ack.ok) useChatStore.getState().addNote(checkCallErrorText(ack.error));
+    noteAck('check', ack, checkCallErrorText);
   }
 
   return (

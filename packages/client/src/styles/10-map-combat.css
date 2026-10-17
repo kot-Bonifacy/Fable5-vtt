@@ -370,13 +370,6 @@
   font-size: 0.85rem;
 }
 
-/* „X celuje…" — same banner as token placement, in the attack colour. It has
-   to sit above the floating sheets: the click that armed it came from one. */
-.map-placement-hint--attack {
-  border-color: var(--err);
-  z-index: 400;
-}
-
 /* Celowanie (s. 170) przy kursorze — wyskakuje samo, gdy kubek dostanie
    pojedynczy strzał w figurę. Pozycjonowane współrzędnymi klienta jak menu
    kontekstowe żetonu, więc `fixed`, a nie `absolute` względem mapy. */

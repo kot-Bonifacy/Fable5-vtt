@@ -7,6 +7,7 @@ import { CombatHud } from './components/CombatHud.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { EvasionPrompt } from './components/EvasionPrompt.js';
+import { NoticeColumn } from './components/NoticeColumn.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
 import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
@@ -107,6 +108,7 @@ function GameView() {
         {betweenSessions ? (
           <div className="map-column">
             <BetweenSessions />
+            <NoticeColumn />
           </div>
         ) : (
           <>

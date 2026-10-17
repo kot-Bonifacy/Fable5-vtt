@@ -1,0 +1,150 @@
+/* styles/21-notices.css — kanał komunikatów nad mapą (etap 55, 17.10.2026).
+   Jedna kolumna na górze-środku i jedna skóra: pasek w kolorze rodzaju
+   z nagłówkiem wersalikami i ściętym rogiem — ta sama mowa co „Tura tej
+   figury” w lewym panelu. Kolory w bloku „MAPA — zawsze noc” w `theme.css`. */
+
+.notice-column {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Nad pływającymi kartami (300) i dialogami nad kartą (400), jak dawny baner
+     celowania — klik, który wywołał komunikat, często przyszedł z karty. Pod
+     paskiem celowania przy kursorze (500). */
+  z-index: 450;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: min(30rem, calc(100% - 2rem));
+  /* Kolumna nie łapie kliknięć — tylko same paski. Cień przez `filter`, bo
+     `clip-path` ściętego rogu obcina `box-shadow`. */
+  pointer-events: none;
+  filter: var(--notice-shadow);
+}
+
+.notice {
+  pointer-events: auto;
+  padding: 0.3rem 0.6rem 0.45rem;
+  background-color: var(--notice-info);
+  color: var(--notice-on-dark);
+  border-left: 3px solid var(--notice-info-edge);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.7rem), calc(100% - 0.7rem) 100%, 0 100%);
+  animation: notice-in 220ms ease-out;
+}
+
+.notice--danger {
+  background-color: var(--notice-danger);
+  border-left-color: var(--notice-danger);
+}
+
+.notice--warn {
+  background-color: var(--notice-warn);
+  color: var(--notice-on-warn);
+  border-left-color: var(--notice-warn);
+}
+
+/* Stan przypięty nie łapie kliknięć: leży nad mapą, a klik ma iść w płótno
+   (dawny `.map-placement-hint` też był przezroczysty dla myszy). */
+.notice--pinned {
+  pointer-events: none;
+  user-select: none;
+}
+
+.notice-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.notice-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding-bottom: 0.15rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  border-bottom: 1px solid var(--notice-rule-dark);
+}
+
+.notice--warn .notice-title {
+  border-bottom-color: var(--notice-rule-warn);
+}
+
+.notice-text {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.notice-close {
+  flex: none;
+  padding: 0 0.15rem;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.notice-close:hover,
+.notice-close:focus-visible {
+  opacity: 1;
+}
+
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+/* Przycisk na pasku: obrys w kolorze napisu, wersaliki jak nagłówek. Najechanie
+   odwraca kafel — ta sama mowa co przyciski belki. */
+.notice-action {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid currentcolor;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.notice-action:hover,
+.notice-action:focus-visible {
+  background-color: var(--notice-on-dark);
+  color: var(--notice-danger);
+}
+
+.notice--info .notice-action:hover,
+.notice--info .notice-action:focus-visible {
+  color: var(--notice-info);
+}
+
+.notice--warn .notice-action:hover,
+.notice--warn .notice-action:focus-visible {
+  background-color: var(--notice-on-warn);
+  color: var(--notice-warn);
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.3rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice {
+    animation: none;
+  }
+}

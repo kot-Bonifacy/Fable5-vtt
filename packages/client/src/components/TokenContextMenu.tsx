@@ -45,7 +45,7 @@ import {
   updateToken,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useSightingStore } from '../stores/sightingStore.js';
 import { askAboutFigureCard } from '../figure-cards.js';
@@ -1042,14 +1042,14 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
       characterId: token.characterId,
       merchant: { open: shop.open !== true },
     });
-    if (!ack.ok) useChatStore.getState().addNote(merchantErrorText(ack.error));
+    noteAck('exchange', ack, merchantErrorText);
     onClose();
   }
 
   async function duplicate() {
     if (!token) return;
     const ack = await duplicateToken(token.id);
-    if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+    noteAck('token', ack, tokenErrorText);
     onClose();
   }
 

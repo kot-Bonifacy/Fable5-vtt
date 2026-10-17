@@ -10,7 +10,7 @@ import {
 } from '@vtt/shared';
 import { inventoryErrorText, respondInventory } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta przekazania i łupu (etap 38b).
@@ -42,7 +42,7 @@ export function InventoryMoveRow({
 
   async function respond(accept: boolean) {
     const ack = await respondInventory(message.id, accept);
-    if (!ack.ok) useChatStore.getState().addNote(inventoryErrorText(ack.error));
+    noteAck('exchange', ack, inventoryErrorText);
   }
 
   return (

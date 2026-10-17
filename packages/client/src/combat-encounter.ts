@@ -1,6 +1,6 @@
 import type { CombatView, SocketAck } from '@vtt/shared';
 import { addToCombat, combatErrorText, removeFromCombat } from './socket.js';
-import { useChatStore } from './stores/chatStore.js';
+import { notifyRefusal } from './notices.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 
@@ -42,5 +42,5 @@ export async function toggleEncounter(tokenIds: readonly string[]): Promise<void
     const ack = await addToCombat(fighters.filter((id) => !inQueue.has(id)));
     if (!ack.ok) failed = ack;
   }
-  if (failed && !failed.ok) useChatStore.getState().addNote(combatErrorText(failed.error));
+  if (failed && !failed.ok) notifyRefusal('action', combatErrorText(failed.error));
 }

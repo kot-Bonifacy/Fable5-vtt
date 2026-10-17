@@ -566,7 +566,7 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     await clickOnMap(page, tokenCentre(zbir, cell));
     await page.getByRole('button', { name: /^Czat/ }).first().click();
     await expect(
-      page.locator('.chat-note', { hasText: 'Do ataku wręcz cel musi być nie dalej niż 2 m.' }),
+      page.locator('.notice', { hasText: 'Do ataku wręcz cel musi być nie dalej niż 2 m.' }),
     ).toBeVisible();
     await page.waitForTimeout(500);
     expect(lastMessageId(), 'odmowa bez rzutu i bez wiersza w bazie').toBe(after);

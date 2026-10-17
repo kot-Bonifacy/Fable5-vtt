@@ -13,7 +13,7 @@ import {
 } from '@vtt/shared';
 import { respondSurgery, surgeryErrorText } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 
 /**
  * Karta prośby o operację u Medyka innego gracza (#41, 30.09.2026).
@@ -55,7 +55,7 @@ export function SurgeryRequestRow({
       ...(action === 'operate' ? { price: parsed } : {}),
     });
     setBusy(false);
-    if (!ack.ok) useChatStore.getState().addNote(surgeryErrorText(ack.error));
+    noteAck('character', ack, surgeryErrorText);
   }
 
   return (

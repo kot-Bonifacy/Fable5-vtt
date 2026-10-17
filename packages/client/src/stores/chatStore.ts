@@ -82,6 +82,11 @@ interface ChatStoreState {
   applySeq: (seq: number | undefined) => boolean;
   prependHistory: (page: ChatHistoryPage) => void;
   setLoadingHistory: (loading: boolean) => void;
+  /**
+   * Notka lokalna w czacie — od etapu 55 **tylko** dla botów i komend `/…`.
+   * Odmowa, podpowiedź czy informacja dla jednej osoby idzie do kanału
+   * komunikatów nad mapą (`notices.ts`).
+   */
   addNote: (text: string, actions?: ChatNoteAction[]) => void;
   setDesynced: () => void;
   setBotActivity: (entries: BotActivityEntry[]) => void;

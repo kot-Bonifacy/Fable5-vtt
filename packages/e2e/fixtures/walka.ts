@@ -204,16 +204,17 @@ export async function nextTurn(mg: Actor) {
   await mg.page.getByRole('button', { name: 'Następna tura', exact: true }).click();
   await expect.poll(() => combatRow()?.activeCombatantId).not.toBe(before);
   // Marsz rozkazany, zanim klient MG dostanie nową turę, przerywa „Zmiana tury”.
-  const now = combatRow()?.activeCombatantId;
+  // Baza czytana przy każdym odczycie, nie raz: martwy albo nieprzytomny oddaje turę
+  // sam zaraz po starcie (17.10), więc pierwszy odczyt bywał już nieaktualny.
   await expect
     .poll(
       async () =>
         (await mg.store<{ combat: { activeCombatantId: string | null } | null }>('combat'))?.combat
-          ?.activeCombatantId,
+          ?.activeCombatantId === combatRow()?.activeCombatantId,
       // Klient czeka z nową turą na koniec animacji kości (Tura Demona rzuca kilka razy).
       { timeout: 30_000 },
     )
-    .toBe(now);
+    .toBe(true);
 }
 
 /** Inicjatywy na czarnym pasie (od lewej). */

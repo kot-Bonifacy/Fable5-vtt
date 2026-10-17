@@ -371,6 +371,8 @@ import { useExchangeStore } from './stores/exchangeStore.js';
 import { useOwnerAiStore } from './stores/ownerAiStore.js';
 import { aiAccessSentence, aiUnavailableMessage } from './ai-status.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
+import { clearNotices, noteAck, notifyChoice, notifyInfo, notifyRefusal } from './notices.js';
+import { useNoticeStore } from './stores/noticeStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -658,9 +660,12 @@ export function connectSocket(userId: string): Socket {
     // #57 (T8b): zgoda przychodziła po cichu — w „Postaciach” pojawiał się
     // kreator, a gracz patrzący na czat nie wiedział, że może zaczynać.
     if (before === 'requested' && state.status === 'granted') {
-      chat().addNote('Masz zgodę MG na postać — kreator czeka w zakładce „Postacie”.', [
-        { label: 'Otwórz kreator', run: () => void useCreationStore.getState().openCreator() },
-      ]);
+      notifyChoice(
+        'character',
+        'Masz zgodę MG na postać — kreator czeka w zakładce „Postacie”.',
+        [{ label: 'Otwórz kreator', run: () => void useCreationStore.getState().openCreator() }],
+        { tone: 'info', title: 'Postać', silent: true },
+      );
       notifyGame('handout');
     }
   });
@@ -817,20 +822,26 @@ export function connectSocket(userId: string): Socket {
    * na stół albo z niego niesie już `state:sync` sprzed tego zdarzenia — tu
    * zostaje nagłówek, stan sesji w obu magazynach i jedno zdanie na czacie.
    */
+  /** Stan sesji mówi pasek z własnym nagłówkiem — to nie „informacja” byle jaka. */
+  const SESSION = { title: 'Sesja' };
   onPresented('session:changed', (push: SessionChangedPush) => {
     useAuthStore.setState({ activeCampaign: push.campaign });
     useChatStore.setState({ campaign: push.campaign });
     const isGm = useAuthStore.getState().user?.role === ROLE_GM;
     if (push.campaign.sessionStartedAt) {
-      chat().addNote(isGm ? 'Sesja rozpoczęta — gracze są przy stole.' : 'MG rozpoczął sesję.');
+      notifyInfo(
+        isGm ? 'Sesja rozpoczęta — gracze są przy stole.' : 'MG rozpoczął sesję.',
+        SESSION,
+      );
     } else if (push.reason === 'gm') {
-      chat().addNote(
+      notifyInfo(
         isGm
           ? 'Sesja zakończona — miejsce na sesję jest wolne, a Ty przygotowujesz dalej.'
           : 'MG zakończył sesję. Do zobaczenia przy następnej.',
+        SESSION,
       );
     } else if (!isGm) {
-      chat().addNote('Sesja zakończyła się sama — przy stole długo nic się nie działo.');
+      notifyInfo('Sesja zakończyła się sama — przy stole długo nic się nie działo.', SESSION);
     }
     // Podkład grany przy stole milknie u gracza, który od niego odchodzi.
     if (!isGm && !push.campaign.sessionStartedAt) {
@@ -848,10 +859,13 @@ export function connectSocket(userId: string): Socket {
     useSelectionStore.getState().resetFocus();
     useHudStore.getState().setActiveWeapon(null);
     useHudStore.getState().setForm(null);
-    chat().addNote(
+    // Komunikaty starej kampanii nie dotyczą nowej.
+    useNoticeStore.getState().reset();
+    notifyInfo(
       broadcast.campaign
         ? `Otwarta kampania: ${broadcast.campaign.name}.`
         : 'Twoje konto nie należy już do żadnej kampanii.',
+      { title: 'Kampania' },
     );
   });
 
@@ -1124,9 +1138,11 @@ export function connectSocket(userId: string): Socket {
       broadcast.character.ownerId === me.id
     ) {
       const id = broadcast.character.id;
-      chat().addNote(
+      notifyChoice(
+        'character',
         `Postać „${broadcast.character.name}” przyjęta do gry — karta jest odblokowana, a figura stoi na mapie.`,
         [{ label: 'Otwórz kartę', run: () => useCharacterStore.getState().openSheet(id) }],
+        { tone: 'info', title: 'Postać', silent: true },
       );
       notifyGame('handout');
     }
@@ -1598,7 +1614,7 @@ export function sendCharacterRoll(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
+    noteAck('check', ack, rollAckErrorText);
   });
 }
 
@@ -1943,7 +1959,7 @@ function damageAckErrorText(code: string): string {
 /** GM applies a rolled damage total to a token (server recomputes everything). */
 export function applyDamage(payload: DamageApplyPayload): void {
   socket?.emit('damage:apply', payload, (ack: SocketAck<{ messageId: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(damageAckErrorText(ack.error));
+    noteAck('attack', ack, damageAckErrorText);
   });
 }
 
@@ -1951,7 +1967,7 @@ export function applyDamage(payload: DamageApplyPayload): void {
 export function undoDamage(messageId: number): void {
   const payload: DamageUndoPayload = { messageId };
   socket?.emit('damage:undo', payload, (ack: SocketAck) => {
-    if (!ack.ok) useChatStore.getState().addNote(damageAckErrorText(ack.error));
+    noteAck('attack', ack, damageAckErrorText);
   });
 }
 
@@ -1965,15 +1981,14 @@ export function undoDamage(messageId: number): void {
 export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
   socket?.emit('character:injury', payload, (ack: SocketAck) => {
     if (ack.ok) return;
-    useChatStore
-      .getState()
-      .addNote(
-        ack.error === 'INJURY_ALREADY_THERE'
-          ? 'Ta figura już ma tę ranę.'
-          : ack.error === 'UNKNOWN_INJURY'
-            ? 'Nie znalazłem tej rany w kompendium.'
-            : damageAckErrorText(ack.error),
-      );
+    notifyRefusal(
+      'character',
+      ack.error === 'INJURY_ALREADY_THERE'
+        ? 'Ta figura już ma tę ranę.'
+        : ack.error === 'UNKNOWN_INJURY'
+          ? 'Nie znalazłem tej rany w kompendium.'
+          : damageAckErrorText(ack.error),
+    );
   });
 }
 
@@ -1986,8 +2001,7 @@ export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
  */
 export function setStatEffect(payload: CharacterStatEffectPayload): void {
   socket?.emit('character:stat-effect', payload, (ack: SocketAck) => {
-    if (ack.ok) return;
-    useChatStore.getState().addNote(statEffectAckErrorText(ack.error));
+    noteAck('character', ack, statEffectAckErrorText);
   });
 }
 
@@ -2016,14 +2030,18 @@ function statEffectAckErrorText(code: string | undefined): string {
 }
 
 /**
- * Odmowa ataku albo przeładowania na czat. Odmowę z budżetu tury serwer już
- * wpisał kartą „Odmowa” (`logRefusedAction` — dla MG i dla tego, kto próbował),
- * więc notka obok mówiłaby to samo drugi raz, a do 17.10 mówiła to samym kodem
- * („Błąd ataku: ROF_EXCEEDED”).
+ * Odpowiedź na atak albo przeładowanie w kanale komunikatów (etap 55): zgoda
+ * zamyka odmowy tematu `attack`, odmowa staje na pasku. Odmowę z budżetu tury
+ * serwer dodatkowo wpisuje na czat kartą „Odmowa” (`logRefusedAction` — zapis
+ * dla MG); pasek mówi ją zdaniem z `CPRED_TURN_PROBLEM_MESSAGES`, nie kodem
+ * (do 17.10 notka mówiła „Błąd ataku: ROF_EXCEEDED”).
  */
-function noteAttackRefusal(code: string): void {
-  if (code in CPRED_TURN_PROBLEM_MESSAGES) return;
-  useChatStore.getState().addNote(attackAckErrorText(code));
+function noteAttackAck(ack: SocketAck<unknown>): void {
+  noteAck('attack', ack, (code) =>
+    code in CPRED_TURN_PROBLEM_MESSAGES
+      ? CPRED_TURN_PROBLEM_MESSAGES[code as keyof typeof CPRED_TURN_PROBLEM_MESSAGES]
+      : attackAckErrorText(code),
+  );
 }
 
 /** Polish hints for attack rejections (stage 16). */
@@ -2124,10 +2142,8 @@ export function sendAttackRoll(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:roll', payload, (ack: SocketAck<AttackRollResult>) => {
-    if (!ack.ok) {
-      noteAttackRefusal(ack.error);
-      return;
-    }
+    noteAttackAck(ack);
+    if (!ack.ok) return;
     // Stage 16c: the shot did not happen because something was in the way, and
     // the server says *what*. Nothing was rolled and nothing was spent, so the
     // answer is a card with the two choices rather than an error — the same
@@ -2172,7 +2188,7 @@ export function sendAttackEvade(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2182,7 +2198,7 @@ export function sendAttackEvade(
  */
 export function declineEvasion(payload: AttackNoEvadePayload): void {
   socket?.emit('attack:no-evade', payload, (ack: SocketAck<void>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2206,7 +2222,7 @@ export function sendAttackSmart(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:smart', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2218,7 +2234,7 @@ export function sendAttackSmart(
  */
 export function expireTimedEffect(payload: EffectExpirePayload): void {
   socket?.emit('effect:expire', payload, (ack: SocketAck<{ removed: string[] }>) => {
-    if (!ack.ok) useChatStore.getState().addNote('Nie udało się zdjąć efektu.');
+    noteAck('character', ack, () => 'Nie udało się zdjąć efektu.');
   });
 }
 
@@ -2226,7 +2242,7 @@ export function expireTimedEffect(payload: EffectExpirePayload): void {
 export function clearSmoke(sceneId: string, smokeId?: number): void {
   const payload: SmokeClearPayload = { sceneId, ...(smokeId !== undefined ? { smokeId } : {}) };
   socket?.emit('smoke:clear', payload, (ack: SocketAck<{ cleared: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote('Nie udało się rozwiać dymu.');
+    noteAck('scene', ack, () => 'Nie udało się rozwiać dymu.');
   });
 }
 
@@ -2259,7 +2275,7 @@ export function reloadWeapon(
     ...(attachmentId ? { attachmentId } : {}),
   };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2273,7 +2289,7 @@ export function reloadWeapon(
 export function clearWeaponJam(characterId: string, weaponRowId: string): void {
   const payload: WeaponClearJamPayload = { characterId, weaponRowId };
   socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2291,7 +2307,7 @@ export function drawWeapon(
 ): void {
   const payload: WeaponDrawPayload = { characterId, weaponRowId, mode };
   socket?.emit('weapon:draw', payload, (ack: SocketAck<{ hands: string[] }>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -2331,7 +2347,7 @@ export function setWeaponAttachment(
 ): void {
   const payload: WeaponAttachmentPayload = { characterId, weaponRowId, attachmentId, action };
   socket?.emit('weapon:attachment', payload, (ack: SocketAck<WeaponAttachmentResult>) => {
-    if (!ack.ok) noteAttackRefusal(ack.error);
+    noteAttackAck(ack);
   });
 }
 
@@ -3160,7 +3176,7 @@ function noteRateLimited(): void {
   const now = Date.now();
   if (now - rateLimitedNotedAt < 5_000) return;
   rateLimitedNotedAt = now;
-  useChatStore.getState().addNote(RATE_LIMITED_TEXT);
+  notifyInfo(RATE_LIMITED_TEXT, { title: 'Za szybko' });
 }
 
 /**
@@ -3292,7 +3308,7 @@ export const nextCombatTurn = () =>
     // Kończę turę bez Testu Przeżywalności (17.10): powód musi dojść do gracza,
     // bo przycisk sam z siebie tylko się odblokowuje.
     if (!ack.ok && ack.error === 'DEATH_SAVE_PENDING') {
-      useChatStore.getState().addNote(combatErrorText(ack.error));
+      notifyRefusal('action', combatErrorText(ack.error));
     }
     return ack;
   });
@@ -3308,7 +3324,7 @@ export const endCombat = () => emitSceneAck('combat:end', {});
 export function sendInitiativeRoll(combatantId: string, gesture?: RollGesture): void {
   const payload = gesture ? { combatantId, gesture } : { combatantId };
   socket?.emit('combat:roll', payload, (ack: SocketAck<{ initiative: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(combatErrorText(ack.error));
+    noteAck('action', ack, combatErrorText);
   });
 }
 
@@ -3389,7 +3405,7 @@ export function sendGrappleAttempt(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('grapple:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(grappleAckErrorText(ack.error));
+    noteAck('action', ack, grappleAckErrorText);
   });
 }
 
@@ -3405,7 +3421,7 @@ export function sendGrappleResist(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('grapple:resist', payload, (ack: SocketAck<{ total: number; won: boolean }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(grappleAckErrorText(ack.error));
+    noteAck('action', ack, grappleAckErrorText);
   });
 }
 
@@ -3437,7 +3453,7 @@ export function sendFacedownAttempt(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('facedown:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+    noteAck('action', ack, facedownAckErrorText);
   });
 }
 
@@ -3453,7 +3469,7 @@ export function sendFacedownResist(
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('facedown:resist', payload, (ack: SocketAck<{ total: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+    noteAck('action', ack, facedownAckErrorText);
   });
 }
 
@@ -3461,7 +3477,7 @@ export function sendFacedownResist(
 export function sendFacedownConcede(messageId: number, choice: 'withdraw' | 'stand'): void {
   const payload: CombatFacedownConcedePayload = { messageId, choice };
   socket?.emit('facedown:concede', payload, (ack: SocketAck<{ choice: string }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+    noteAck('action', ack, facedownAckErrorText);
   });
 }
 
@@ -3469,7 +3485,7 @@ export function sendFacedownConcede(messageId: number, choice: 'withdraw' | 'sta
 export function sendReputationRecognise(characterId: string, targetTokenId: string): void {
   const payload: ReputationRecognisePayload = { characterId, targetTokenId };
   socket?.emit('reputation:recognise', payload, (ack: SocketAck<{ known: boolean }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+    noteAck('action', ack, facedownAckErrorText);
   });
 }
 
@@ -3844,7 +3860,7 @@ export async function makeFieldRepair(
     armorRowId,
     ...(tokenId ? { tokenId } : {}),
   });
-  if (!ack.ok) useChatStore.getState().addNote(fieldRepairErrorText(ack.error));
+  noteAck('character', ack, fieldRepairErrorText);
 }
 
 /** Koniec prowizorki — starte OB wraca na wiersz. Nie kosztuje nic. */
@@ -3854,7 +3870,7 @@ export async function endFieldRepair(characterId: string, armorRowId: string): P
     armorRowId,
     undo: true,
   });
-  if (!ack.ok) useChatStore.getState().addNote(fieldRepairErrorText(ack.error));
+  noteAck('character', ack, fieldRepairErrorText);
 }
 
 /** Polskie zdania dla odmów, którymi kończy się `character:field-repair`. */
@@ -3888,7 +3904,7 @@ export async function restForADay(characterId: string, strained = false): Promis
     'character:rest',
     { characterId, ...(strained ? { strained: true } : {}) },
   );
-  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+  noteAck('character', ack, recoveryErrorText);
 }
 
 /** Partia dawek farmaceutyku: Test PT 13 i 200 ed surowców (s. 150). */
@@ -3902,7 +3918,7 @@ export async function craftPharmaceutical(
     pharmaId,
     ...(gesture ? { gesture } : {}),
   });
-  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+  noteAck('character', ack, recoveryErrorText);
 }
 
 /**
@@ -3928,7 +3944,7 @@ export async function useDose(
       ...(hostile ? { hostile: true } : {}),
     },
   );
-  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+  noteAck('character', ack, recoveryErrorText);
 }
 
 /** Polskie zdania dla odmów z trzech zdarzeń powrotu do zdrowia. */
@@ -3984,8 +4000,7 @@ export async function callBackup(
     ...(tokenId ? { tokenId } : {}),
     ...(gesture ? { gesture } : {}),
   });
-  if (!ack.ok) {
-    useChatStore.getState().addNote(combatErrorText(ack.error));
+  if (!noteAck('action', ack, combatErrorText)) {
     return { ok: false };
   }
   return {
@@ -4007,7 +4022,7 @@ export async function resolveBackup(
     action,
     ...(tierId ? { tierId } : {}),
   });
-  if (!ack.ok) useChatStore.getState().addNote(combatErrorText(ack.error));
+  noteAck('action', ack, combatErrorText);
 }
 
 /** HR przysyła nowego pracownika: losuje wiersz Cech i Lojalność (etap 30c). */
@@ -4023,8 +4038,7 @@ export async function hireTeamMember(
     name,
     ...(replacement ? { replacement: true } : {}),
   });
-  if (!ack.ok) {
-    useChatStore.getState().addNote(teamErrorText(ack.error));
+  if (!noteAck('action', ack, teamErrorText)) {
     return false;
   }
   return true;
@@ -4041,7 +4055,7 @@ export async function changeTeamLoyalty(
     memberId,
     ...what,
   });
-  if (!ack.ok) useChatStore.getState().addNote(teamErrorText(ack.error));
+  noteAck('action', ack, teamErrorText);
 }
 
 /** Polskie zdania dla odmów zespołu — te same, którymi silnik wyszarza guziki. */
@@ -4082,8 +4096,7 @@ export async function strikeHaggle(
     opponentBonus,
     ...(gesture ? { gesture } : {}),
   });
-  if (!ack.ok) {
-    useChatStore.getState().addNote(haggleErrorText(ack.error));
+  if (!noteAck('exchange', ack, haggleErrorText)) {
     return { ok: false };
   }
   return { ok: true, won: ack.data?.won ?? false };
@@ -4092,7 +4105,7 @@ export async function strikeHaggle(
 /** Fixer zdejmuje dobity targ z karty — bez rzutu i bez karty na czacie. */
 export async function dropHaggle(characterId: string): Promise<void> {
   const ack = await emitSceneAck<unknown>('character:haggle', { characterId, clear: true });
-  if (!ack.ok) useChatStore.getState().addNote(haggleErrorText(ack.error));
+  noteAck('exchange', ack, haggleErrorText);
 }
 
 /** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */
@@ -4425,7 +4438,7 @@ export function sendDeckAction(payload: CharacterDeckPayload): Promise<string | 
   const current = socket;
   if (!current) {
     const text = deckErrorText('OFFLINE');
-    useChatStore.getState().addNote(text);
+    notifyRefusal('character', text);
     return Promise.resolve(text);
   }
   // Zbuforowany autozapis Wyposażenia przyszedłby po zapisie serwera i oddałby
@@ -4434,11 +4447,12 @@ export function sendDeckAction(payload: CharacterDeckPayload): Promise<string | 
   return new Promise((resolve) => {
     current.emit('character:deck', payload, (ack: SocketAck<CharacterView>) => {
       if (ack.ok) {
+        clearNotices('character');
         resolve(null);
         return;
       }
       const text = deckErrorText(ack.error);
-      useChatStore.getState().addNote(text);
+      notifyRefusal('character', text);
       resolve(text);
     });
   });
@@ -4480,7 +4494,7 @@ export function sendCyberwareAction(
   const current = socket;
   if (!current) {
     const text = cyberwareErrorText('OFFLINE');
-    useChatStore.getState().addNote(text);
+    notifyRefusal('character', text);
     return Promise.resolve(text);
   }
   // Anything buffered would otherwise land after the server's own write and
@@ -4490,11 +4504,12 @@ export function sendCyberwareAction(
   return new Promise((resolve) => {
     current.emit('character:cyberware', full, (ack: SocketAck<{ messageId: number | null }>) => {
       if (ack.ok) {
+        clearNotices('character');
         resolve(null);
         return;
       }
       const text = cyberwareErrorText(ack.error);
-      useChatStore.getState().addNote(text);
+      notifyRefusal('character', text);
       resolve(text);
     });
   });

@@ -4,6 +4,7 @@ import { sceneListRow } from '../../fixtures/brama.ts';
 import { characterId } from '../../fixtures/nocna-zmiana.ts';
 import {
   activateScene,
+  noticeWith,
   queryOne,
   sceneByName,
   seat,
@@ -126,7 +127,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
 
     // Gracz widzi, czemu nie pójdzie.
     for (const player of [marek, ola]) {
-      await expect(player.page.locator('.map-placement-hint--stop')).toHaveText(
+      await expect(player.page.locator('[data-notice="stop"] .notice-text')).toHaveText(
         'Ruch wstrzymany przez MG.',
       );
     }
@@ -164,7 +165,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     await expect(radios).toHaveText(['Stop', 'Eksploracja']);
     await setPlayerMove(mg.page, 'Eksploracja');
     await expect.poll(() => playerMoveOf(sceneId)).toBe('explore');
-    await expect(marek.page.locator('.map-placement-hint--stop')).toHaveCount(0);
+    await expect(marek.page.locator('[data-notice="stop"]')).toHaveCount(0);
 
     const page = marek.page;
     // Gracz nie oddali kamery na całą scenę (najwyżej 10 kratek wokół, 11.10) —
@@ -177,14 +178,10 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     await dragWorld(page, centre, { x: 850, y: 450 });
     await page.waitForTimeout(800);
     expect(tokenRow(kowalId)).toMatchObject({ x: 400, y: 400 });
+    // Etap 55: zdanie stoi w kanale komunikatów nad mapą, nie w czacie.
     await expect
-      .poll(async () =>
-        ((await marek.store<{ items: { type: string; text?: string }[] }>('chat'))?.items ?? [])
-          .filter((item) => item.type === 'note')
-          .map((item) => item.text ?? '')
-          .join(' '),
-      )
-      .toContain('Figury nie przeciągasz');
+      .poll(async () => (await noticeWith(marek, 'Figury nie przeciągasz')) !== undefined)
+      .toBe(true);
 
     // Etap 54 (wzór BG3): poza walką zaznaczenie nie rysuje trasy pod kursorem
     // (legenda śladów się nie pojawia), a jeden klik w podłoże rusza figurę.
@@ -194,7 +191,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     const { x, y } = await worldToClient(page, target);
     await page.mouse.move(x, y, { steps: 6 });
     await page.waitForTimeout(300);
-    await expect(page.locator('.map-placement-hint', { hasText: 'Ślady stóp' })).toHaveCount(0);
+    await expect(page.locator('[data-notice="walk-legend"]')).toHaveCount(0);
     await walkOnMap(page, target, 'one');
     await expect
       .poll(() => tokenRow(kowalId), { timeout: 10_000 })
@@ -258,7 +255,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
 
     await setPlayerMove(mg.page, 'Stop');
     await expect.poll(() => playerMoveOf(sceneId)).toBe('stop');
-    await expect(marek.page.locator('.map-placement-hint--stop')).toBeVisible();
+    await expect(marek.page.locator('[data-notice="stop"]')).toBeVisible();
     expect(await move(marekSocket, kowalId, 600, 400)).toEqual({ ok: false, error: 'MOVE_LOCKED' });
     expect((await emitAck(gmSocket, 'combat:end', {})).ok).toBe(true);
     expect((await move(gmSocket, kowalId, 400, 400)).ok).toBe(true);

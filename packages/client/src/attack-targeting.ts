@@ -41,7 +41,7 @@ import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { useAttackStore, type AttackTargeting } from './stores/attackStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
-import { useChatStore } from './stores/chatStore.js';
+import { clearNotices, notifyChoice, notifyRefusal } from './notices.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
@@ -390,7 +390,6 @@ function coverBlockingShot(
 export function loadAttackFor(intent: AttackIntent, target: string | AttackTargetRef): void {
   const ref: AttackTargetRef =
     typeof target === 'string' ? { kind: 'token', tokenId: target } : target;
-  const chat = useChatStore.getState();
   // Poprzedni wybór Celowania schodzi razem z poprzednim ładunkiem kubka —
   // także wtedy, gdy ten strzał odbije się od odmowy („cel za osłoną").
   useAimMenuStore.getState().close();
@@ -403,9 +402,11 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
       offerCoverChoice(intent, ref.tokenId, preview.cover);
       return;
     }
-    chat.addNote(preview.message);
+    notifyRefusal('attack', preview.message);
     return;
   }
+  // Kubek dostał strzał: odmowa i pytanie z poprzedniej próby nie obowiązują.
+  clearNotices('attack');
   const { attack } = preview;
   useAttackStore.getState().disarm();
   const scene = useSceneStore.getState().effectiveScene;
@@ -473,9 +474,10 @@ export function offerCoverChoice(
 ): void {
   const target = useTokenStore.getState().tokens[targetTokenId];
   const who = target?.name ?? 'Cel';
-  useChatStore
-    .getState()
-    .addNote(`${who} jest za osłoną: ${cover.name} (${cover.hpCurrent}/${cover.hpMax} PW).`, [
+  notifyChoice(
+    'attack',
+    `${who} jest za osłoną: ${cover.name} (${cover.hpCurrent}/${cover.hpMax} PW).`,
+    [
       {
         label: 'Ostrzelaj osłonę',
         title: 'Strzał w osłonę: obrażenia schodzą z jej PW, nadwyżka przepada',
@@ -486,7 +488,9 @@ export function offerCoverChoice(
         title: 'Cel się wychylił — decyzja stołu, zapisana na karcie rzutu',
         run: () => loadAttackFor({ ...intent, ignoreCover: true }, targetTokenId),
       },
-    ]);
+    ],
+    { title: 'Cel za osłoną' },
+  );
 }
 
 /** What the refusal card needs to know about the obstacle. */
@@ -512,9 +516,10 @@ export function offerShieldChoice(
   shield: { tokenId: string; name: string },
 ): void {
   const target = useTokenStore.getState().tokens[targetTokenId];
-  useChatStore
-    .getState()
-    .addNote(`${target?.name ?? 'Cel'} zasłania się Ludzką tarczą: ${shield.name}.`, [
+  notifyChoice(
+    'attack',
+    `${target?.name ?? 'Cel'} zasłania się Ludzką tarczą: ${shield.name}.`,
+    [
       {
         label: `Ostrzelaj tarczę (${shield.name})`,
         title: 'PW tarczy to PW trzymanego — strzał trafia w nią',
@@ -525,7 +530,9 @@ export function offerShieldChoice(
         title: 'Cel się wychylił — decyzja stołu, zapisana na karcie rzutu',
         run: () => loadAttackFor({ ...intent, ignoreCover: true }, targetTokenId),
       },
-    ]);
+    ],
+    { title: 'Ludzka tarcza' },
+  );
 }
 
 /**
@@ -538,7 +545,7 @@ export function loadAttackAtToken(targetTokenId: string): void {
   if (!targeting) return;
   const intent = intentFromTargeting(targeting, useTokenStore.getState().tokens);
   if (!intent) {
-    useChatStore.getState().addNote(`„${targeting.characterName}” nie ma tokenu na tej scenie.`);
+    notifyRefusal('attack', `„${targeting.characterName}” nie ma tokenu na tej scenie.`);
     return;
   }
   loadAttackFor(intent, targetTokenId);

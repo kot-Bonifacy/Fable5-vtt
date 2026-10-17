@@ -1,6 +1,7 @@
 """Prepare licensed recordings; pip install numpy soundfile, then pass the MP3 cache folder.
 
 Source files in cache: vtt-wood.mp3, vtt-paper.mp3, etc.; URLs in sources.json.
+A source shipped as a ZIP (doorlock) is the named `file` from it, saved as vtt-<name>.wav.
 No synthesized tones or pitch changes. Output PCM16 mono WAV for browser compatibility.
 """
 import json
@@ -16,7 +17,10 @@ public = root / "packages/client/public"
 
 
 def read(name, start, end):
-    data, rate = sf.read(cache / f"vtt-{name}.mp3", always_2d=True)
+    path = cache / f"vtt-{name}.mp3"
+    if not path.exists():
+        path = cache / f"vtt-{name}.wav"
+    data, rate = sf.read(path, always_2d=True)
     return data[int(start * rate):int(end * rate)].mean(axis=1), rate
 
 
@@ -43,6 +47,8 @@ for name, source, start, end, peak in [
     ("whisper", "paper", 1.0, 1.53, 0.55),
     ("handout", "paper", 1.67, 2.39, 0.55),
     ("inventory", "coins", 0.20, 1.65, 0.45),
+    # Odmowa w kanale komunikatów (etap 55): dwa szarpnięcia zamkniętej klamki.
+    ("refusal", "doorlock", 0.03, 0.42, 0.5),
 ]:
     data, rate = cue(source, start, end)
     save("notifications", name, data, rate, peak)

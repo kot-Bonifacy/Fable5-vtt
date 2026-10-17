@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CHECK_CALL_PROMPT_MAX } from '@vtt/shared';
 import { checkRequestErrorText, requestCheck } from '../socket.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useCheckStore } from '../stores/checkStore.js';
 
 /**
@@ -41,10 +41,7 @@ export function CheckRequestDialog() {
       ...(reason.trim().length > 0 ? { reason: reason.trim() } : {}),
     });
     setBusy(false);
-    if (!ack.ok) {
-      useChatStore.getState().addNote(checkRequestErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('check', ack, checkRequestErrorText)) return;
     close();
   }
 

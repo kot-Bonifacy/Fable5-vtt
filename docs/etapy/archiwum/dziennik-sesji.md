@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `adc06aa`) — etap 54, ruch wzorem BG3
+
+**Zlecenie MG:** „wykonaj Etap 54” (przed refaktoryzacją). **Zrobione:** 54a i 54b według planu.
+Klient: `walkPreviewShown()` (tura figury albo punkty z `Shift`) bramkuje podgląd i jego rysunek,
+`walkTo` sam planuje trasę i rozstrzyga pas celu (`map/walk-click.ts`: `walkClickBand`,
+`walkClickNeedsConfirm` tylko przy `walkInTurn()`), bursztyn idzie trasą `WalkPlan.extraWalk`, pole
+celu w bursztynie ma jego kolor, prawy klik w puste zdejmuje najpierw cel i punkty trasy, legenda
+śladów uczy się tylko z marszu z narysowanej trasy, podpowiedź pustego panelu bez „dwa razy”.
+Serwer i `shared`: `extra` w `token:walk` (na sucho) i w lądowaniu `token:move` → `MoveIntent.extra`
+→ `spendMove` bierze Bieg (`takeRunForMove`) dopiero, gdy metry wyjdą poza Ruch; wzięty Bieg pada na
+czacie (`tookExtra`). Zdanie o koszcie przychodzi z systemu (`TurnDistanceView.extra.hint`).
+**Rozstrzygnięcia** (szary pas do granicy zieleni, kursor poza walką zwykły, zdanie o Biegu za
+każdym razem) — na końcu pliku etapu. **Przy okazji:** `turn-effects.test.ts` migotał od 17.10
+(Śmiertelnie Ranny Vex), a T4b 4.7 był czerwony od `86b54be` (przycisk Testu MG zniknął, rzuca
+serwer) — oba poprawione. Pomysł „strzałki o pole” do `POMYSLY.md`.
+
+**Weryfikacja:** vitest `shared` 2477, serwer 1474, klient 392; `tsc` ×4, ESLint, Prettier czyste.
+E2E — w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** gracze w **Firefoksie**, MG
+w Chromium (tymczasowy spec z `po-T3`, skasowany): poza walką zaznaczony Kowal bez śladów pod
+kursorem, jeden klik — marsz; w turze Kowala zielone ślady i legenda, klik w bursztyn — pole
+podświetlone na bursztynowo i „Bieg zużyje Akcję — kliknij cel jeszcze raz…”, drugi klik — Kowal
+doszedł (11,7 m przy 10 m Ruchu), u MG „Akcja 1/1 · Dystans 11,7 m / 20 m”; Ola w cudzej turze
+bez śladów. Firefox z Playwright MCP niepotrzebny — spec dał zrzuty obu silników.
+
 ### Sesja 17.10 (po `86b54be`) — plan etapu 54, ruch wzorem BG3
 
 **Zlecenie MG:** odciski butów pod kursorem po każdym zaznaczeniu figury przeszkadzają; jak to

@@ -17,5 +17,7 @@ autor **2BACH**, Freesound, 24.04.2013.
 `turn.wav` i `request.wav`: naturalne stukanie w drewno (JohnsonBrandEditing).
 `whisper.wav` i `handout.wav`: szelest prawdziwego papieru (keweldog).
 `inventory.wav`: upuszczane monety (kbnevel).
+`refusal.wav`: szarpnięcie zamkniętej klamki — `LockedDoorHandleJiggle.wav` z zestawu
+„Door Lock Sounds” (Cough-E, OpenGameArt, CC0), wycinek 0,03–0,42 s (etap 55, 17.10.2026).
 Źródła CC0 i linki: [pełne uznania](../ambience/ATTRIBUTION.md).
 Dokładne wycinki, obwiednie i normalizacja: `tools/audio/prepare-natural.py`.

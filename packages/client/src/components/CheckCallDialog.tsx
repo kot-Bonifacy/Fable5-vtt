@@ -14,7 +14,7 @@ import {
 } from '@vtt/shared';
 import { callCheck, checkCallErrorText } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { noteAck } from '../notices.js';
 import { useCheckStore, type CheckCallDraft } from '../stores/checkStore.js';
 import { NumberStepper, signed } from './NumberStepper.js';
 
@@ -106,10 +106,7 @@ function CheckCallDialogBody({ draft }: { draft: CheckCallDraft }) {
     setBusy(true);
     const ack = await callCheck(payload);
     setBusy(false);
-    if (!ack.ok) {
-      useChatStore.getState().addNote(checkCallErrorText(ack.error));
-      return;
-    }
+    if (!noteAck('check', ack, checkCallErrorText)) return;
     onClose();
   }
 

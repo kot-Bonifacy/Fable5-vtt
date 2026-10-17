@@ -380,6 +380,22 @@
   --map-warn: #fbbf24;
   --map-night: #818cf8;
   --map-day: #fbbf24;
+
+  /* Kanał komunikatów nad mapą (etap 55): pasek w kolorze rodzaju, jak „Tura
+     tej figury”. Stoi nad cudzą grafiką, więc bez pary dziennej — czerwień,
+     bursztyn i czerń CP RED czytają się nad każdą mapą. */
+  --notice-danger: #e0301f;
+  --notice-warn: #f0b429;
+  --notice-info: #141211;
+  /* Napis na czerwieni i czerni — biel karty; na bursztynie — czerń. */
+  --notice-on-dark: #fff6ee;
+  --notice-on-warn: #141211;
+  /* Kreska pod nagłówkiem i obrys przycisku: kolor napisu przygaszony. */
+  --notice-rule-dark: rgb(255 246 238 / 35%);
+  --notice-rule-warn: rgb(20 18 17 / 35%);
+  /* Informacja na czerni dostaje czerwony brzeg, żeby nie wtopiła się w mapę nocą. */
+  --notice-info-edge: #e0301f;
+  --notice-shadow: drop-shadow(0 6px 14px rgb(0 0 0 / 55%));
 }
 
 /* ============================================================================

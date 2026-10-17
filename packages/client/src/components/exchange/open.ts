@@ -3,7 +3,7 @@ import { ROLE_GM } from '@vtt/shared';
 import { fetchExchangeCounterparts, inviteTrade, tradeErrorText } from '../../socket.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
-import { useChatStore } from '../../stores/chatStore.js';
+import { clearNotices, notifyRefusal } from '../../notices.js';
 import {
   GM_ANY_KEY,
   activeTradeOf,
@@ -91,7 +91,7 @@ export function openExchangeForCard(characterId: string): void {
 export function openShop(merchantId: string): void {
   const anchorId = anchorNear(null);
   if (!anchorId) {
-    useChatStore.getState().addNote('Nie prowadzisz żadnej postaci, którą dałoby się kupować.');
+    notifyRefusal('exchange', 'Nie prowadzisz żadnej postaci, którą dałoby się kupować.');
     return;
   }
   useExchangeStore.getState().openWindow(anchorId, { selected: `merchant:${merchantId}` });
@@ -123,7 +123,7 @@ export async function openExchangeAtToken(
   const anchorId = anchorNear(token);
   if (!anchorId) {
     if (via === 'menu') {
-      useChatStore.getState().addNote('Nie prowadzisz żadnej postaci, którą dałoby się wymieniać.');
+      notifyRefusal('exchange', 'Nie prowadzisz żadnej postaci, którą dałoby się wymieniać.');
     }
     return false;
   }
@@ -155,6 +155,7 @@ export async function openExchangeAtToken(
   // Kolega, żywy NPC — albo figura, której lista nie podała (za daleko, bez
   // karty): zaproszenie i tak rozstrzygnie serwer, a odmowa ma swoje zdanie.
   const refusal = await startTrade(anchorId, { tokenId: token.id });
-  if (refusal) useChatStore.getState().addNote(refusal);
+  if (refusal) notifyRefusal('exchange', refusal);
+  else clearNotices('exchange');
   return refusal === null;
 }

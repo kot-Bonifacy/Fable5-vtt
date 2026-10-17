@@ -13,7 +13,7 @@ import {
 import { combatAwarenessErrorText, saveCombatAwareness } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import { notifyInfo } from '../notices.js';
 
 const LOCKED_HINT = 'Punkty rozdzielisz, gdy MG przyjmie postać do gry.';
 
@@ -121,7 +121,7 @@ export function CombatAwarenessPanel({
       return;
     }
     // #60: panel zwijał się po zapisie bez słowa — gracz nie wiedział, czy poszło.
-    useChatStore.getState().addNote(`Zapisano przydział Zmysłu Walki: ${characterName}.`);
+    notifyInfo(`Zapisano przydział Zmysłu Walki: ${characterName}.`, { topic: 'character' });
     onDone?.();
   }
 

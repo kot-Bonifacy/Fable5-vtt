@@ -6,6 +6,7 @@ import { useAuthStore } from './stores/authStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
+import { useNoticeStore } from './stores/noticeStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useDrawingStore } from './stores/drawingStore.js';
@@ -93,6 +94,7 @@ export function installE2EHook(): void {
         fog: useFogStore,
         handout: useHandoutStore,
         light: useLightStore,
+        notice: useNoticeStore,
         music: useMusicStore,
         netRun: useNetRunStore,
         ownerAi: useOwnerAiStore,

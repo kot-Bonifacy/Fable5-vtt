@@ -1127,7 +1127,8 @@ export function MapTools() {
       {/*
         Podpowiedź kontekstowa warstwy (etap 27k) — **wewnątrz** paska, jako
         jego ostatni wiersz, a nie jako pływające pudełko nad mapą. Wypróbowane
-        było i to drugie: `.map-placement-hint` stoi wyśrodkowane u góry mapy,
+        było i to drugie: baner nad mapą (od etapu 55 kanał komunikatów) stoi
+        wyśrodkowany u góry mapy,
         a pasek jest szeroki na 38 rem, więc zdanie kładło się wprost na
         ikonach narzędzi. Tu układ zajmuje się tym sam.
       */}
