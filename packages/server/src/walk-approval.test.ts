@@ -379,4 +379,66 @@ describe('trasa marszu gracza (etap 52)', () => {
     await emitAck(gm, 'combat:end', {});
     await home();
   });
+
+  it('w walce marsz w drugi pas bierze Bieg dopiero, gdy metry go sięgają (etap 54)', async () => {
+    /** Tura Vexa tak, jak widzi ją MG. */
+    async function turnOf(): Promise<CombatantView['turn']> {
+      const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+      await emitAck(gm, 'state:request');
+      const row = (await sync).combat?.combatants.find((entry) => entry.tokenId === vexTokenId);
+      return row?.turn;
+    }
+    async function startFight(): Promise<void> {
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [vexTokenId] }),
+        'combat:start',
+      );
+      const row = combat.combatants.find((entry: CombatantView) => entry.tokenId === vexTokenId);
+      if (!row) throw new Error('Vex missing from the tracker');
+      await emitAck(gm, 'combat:set-initiative', { combatantId: row.id, initiative: 20 });
+      data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    }
+    const actionUsed = async (): Promise<number | undefined> =>
+      (await turnOf())?.resources.find((entry) => entry.id === 'action')?.used;
+
+    await startFight();
+    // ~36 m przy 20 m Ruchu (mur stoi na x = 1300, Gang pod Vexem): bez flagi
+    // odmowa, z flagą zgoda — i nic jeszcze nie wydane.
+    const far = [
+      { x: 1100, y: 300 },
+      { x: 1100, y: 1100 },
+    ];
+    expect(await walk(far)).toEqual({ ok: false, error: 'MOVE_REFUSED' });
+    const walkRun = (route: typeof far) =>
+      emitAck(vex, 'token:walk', { tokenId: vexTokenId, route, extra: true });
+    const landRun = (x: number, y: number) =>
+      emitAck(vex, 'token:move', { tokenId: vexTokenId, x, y, final: true, extra: true });
+    expect((await walkRun(far)).ok).toBe(true);
+    expect(await actionUsed()).toBe(0);
+    // Marsz przerwany przed bursztynem (~10 m) — Akcja zostaje.
+    for (let x = 200; x <= 600; x += 100) {
+      expect((await step(vex, x, 100 + (x - 100) * 0.2, false)).ok).toBe(true);
+    }
+    expect((await landRun(600, 200)).ok).toBe(true);
+    expect(await actionUsed()).toBe(0);
+    // Dalej, w bursztyn (razem ~36 m): Bieg zaksięgowany, pas rośnie do 40 m.
+    expect((await walkRun(far)).ok).toBe(true);
+    expect((await landRun(1100, 1100)).ok).toBe(true);
+    const turn = await turnOf();
+    expect(turn?.resources.find((entry) => entry.id === 'action')?.used).toBe(1);
+    expect(turn?.distance?.max).toBe(40);
+    expect(turn?.distance?.used).toBeGreaterThan(20);
+    expect(turn?.distance?.extra).toBeUndefined();
+    await emitAck(gm, 'combat:end', {});
+    await home();
+
+    // Akcja wydana wcześniej (Wstanie): bursztynu nie ma, flaga nic nie daje.
+    await startFight();
+    expect((await emitAck(vex, 'combat:action', { actionId: 'stand-up' })).ok).toBe(true);
+    expect(
+      await emitAck(vex, 'token:walk', { tokenId: vexTokenId, route: far, extra: true }),
+    ).toEqual({ ok: false, error: 'MOVE_REFUSED' });
+    await emitAck(gm, 'combat:end', {});
+    await home();
+  });
 });

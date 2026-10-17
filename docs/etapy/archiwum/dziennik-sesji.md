@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `7b6607a`) — Śmiertelnie Ranny i Ustabilizowanie według podręcznika
+
+**Zlecenie MG:** sprawdzić, czy Śmiertelnie Ranny słusznie atakuje i czy Ustabilizowanie działa
+jak w podręczniku. **Werdykt:** atakowanie jest zgodne z RAW („żyjesz i możesz odbyć swoją
+Turę", s. 187, kara −4). Błędy siedziały gdzie indziej: Test Przeżywalności był tylko banerem
+(można było działać bez rzutu, rzucać wiele razy albo wcale), boty i NPC nie rzucały go nigdy,
+trafienie Śmiertelnie Rannego nie dawało Rany Krytycznej ani +1, a runda trwała 10 s zamiast 3 s
+(nieprzytomność po Ustabilizowaniu schodziła po 6 rundach zamiast 20). Poza tym Ustabilizowanie
+było zgodne z RAW. **Decyzje MG (pytania):** zostaje RAW; Test wymuszony — gracz rzuca kubkiem
+i do tego czasu ma zablokowane Akcję i Ruch, boty i NPC rzucają automatycznie; +1 za trafienie
+trwa do Ustabilizowania; runda 3 s wszędzie.
+
+**Zrobione:** umowy na górze `tura` (bramka tury, `deathSavePending`, stempel `deathSave`),
+`atak` (`fromAttack`, `injuryMortal`, pole karty `deathSaveHits`, `cpredDeathSaveModifier`)
+i `czas` (`CPRED_ROUND_SECONDS = 3`). Baner w pasku walki stoi tylko, dopóki Test jest zaległy
+(`TurnBudgetView.pendingRoll`). Nowa zaległość: `token:create` nie nadaje naklejek ran z karty.
+
+**Weryfikacja:** vitest shared **2474** (+3), serwer **1473** (+4 w `damage.test.ts`; 3 testy
+`ammo-effects` przepięte na 20 rund), klient 384; `tsc` w czterech pakietach, ESLint, Prettier,
+`pnpm build` czyste. E2E nie puszczane (żaden spec nie dotyka Śmiertelnie Rannego). Oględziny
+w **Firefoksie** (gracz) i Chromium (MG) tymczasowym specem E2E — Firefox z MCP wisiał (pułapka
+na górze `ogledziny`): baner, wyszarzone sloty, odmowa „Kończę turę", rzut kubkiem zdejmuje baner,
+karta trafienia z „Śmiertelnie Ranny trafiony” i „+1 do Testu Przeżywalności”.
+
 ### Sesja 17.10 (po `689c422`) — etap 53, konto administratora `pantosz`
 
 **Zlecenie MG:** osobne główne konto administratora `pantosz` do zarządzania sesjami i ich

@@ -96,6 +96,7 @@ import {
   cpredMetresLeft,
   cpredMoveBudgetFromSheet,
   cpredMoveRefusal,
+  cpredMoveTookRun,
   cpredMovementBlock,
   cpredFacedownBase,
   cpredPassiveFacedownTotal,
@@ -1379,6 +1380,14 @@ export function sheetInjuryTurnEnd(
     carry: sheetCarryIsEmpty(result.carry) ? null : result.carry,
     damage: result.damage,
   };
+}
+
+/**
+ * Czy ten wydatek ruchu wziął handel z drugiego pasa (etap 54, CP RED — Bieg)?
+ * `before` to budżet, wobec którego go oceniano, `after` — zapisany po nim.
+ */
+export function turnSpendTookExtra(before: string | null, after: string): boolean {
+  return cpredMoveTookRun(readCpredTurn(before ?? undefined), readCpredTurn(after));
 }
 
 /** Ground this turn actually covered — what „ponad 4 m" is measured against. */

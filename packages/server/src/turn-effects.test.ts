@@ -562,13 +562,17 @@ describe('turn automation', () => {
       characterId: vexCharacterId,
       patch: {
         data: {
-          weapons: [{ id: 'w-big', name: 'Kowadło', damage: '10k6', compendiumId: null }],
+          weapons: [{ id: 'w-big', name: 'Kowadło', damage: '6k6', compendiumId: null }],
         },
       },
     });
 
+    // Krytyk, który Vexa nie powali: przy 40 PW 10k6 + 5 za Ranę Krytyczną robił
+    // z niego czasem Śmiertelnie Rannego — wtedy jego tura otwiera się Testem
+    // Przeżywalności (`DEATH_SAVE_PENDING`), nie odebraną Akcją (migotanie od 17.10).
+    // 6k6 daje krytyk co czwarty rzut, a suma poniżej 30 zostawia Vexa na nogach.
     let messageId: number | null = null;
-    for (let attempt = 0; attempt < 25 && messageId === null; attempt++) {
+    for (let attempt = 0; attempt < 80 && messageId === null; attempt++) {
       const broadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
       const ack = data(
         await emitAck<{ messageId: number }>(gm, 'character:roll', {
@@ -578,9 +582,10 @@ describe('turn automation', () => {
         }),
         'character:roll',
       );
-      if ((await broadcast).message.roll?.criticalDamage) messageId = ack.messageId;
+      const roll = (await broadcast).message.roll;
+      if (roll?.criticalDamage && roll.total < 30) messageId = ack.messageId;
     }
-    if (messageId === null) throw new Error('no critical damage in 25 rolls of 10k6');
+    if (messageId === null) throw new Error('no survivable critical damage in 80 rolls of 6k6');
 
     // Vex is the target, and the hit lands while somebody else is acting.
     await giveTurnTo(thugTokenId);

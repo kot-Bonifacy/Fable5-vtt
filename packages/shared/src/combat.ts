@@ -64,7 +64,15 @@ export interface TurnDistanceView {
    * Action, s. 168). The map draws it as a second reach band so a player can
    * see how far this turn goes *at most* before they commit to a route.
    */
-  extra?: { label: string; max: number };
+  extra?: {
+    label: string;
+    max: number;
+    /**
+     * Co ten handel kosztuje, zdaniem systemu (etap 54) — mapa mówi je przy
+     * pierwszym kliku w drugi pas, zanim drugi klik go weźmie.
+     */
+    hint?: string;
+  };
 }
 
 /** A participant's turn budget, filled in by the active game system. */

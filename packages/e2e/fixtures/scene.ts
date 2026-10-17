@@ -1,5 +1,13 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { clickWorld, dragWorld, worldToClient, type WorldPoint } from './canvas.ts';
+import {
+  clickWorld,
+  dragWorld,
+  stillWorldToClient,
+  walkTargetPending,
+  worldToClient,
+  type WalkClicks,
+  type WorldPoint,
+} from './canvas.ts';
 import { queryOne } from './db.ts';
 
 /**
@@ -169,7 +177,7 @@ export async function clickOnMap(
   button: 'left' | 'right' = 'left',
 ): Promise<void> {
   const box = await mapArea(page).boundingBox();
-  const at = await worldToClient(page, point);
+  const at = await stillWorldToClient(page, point);
   if (
     !box ||
     at.x < box.x ||
@@ -183,12 +191,26 @@ export async function clickOnMap(
 }
 
 /**
- * Marsz klikiem po sprawdzeniu, że punkt jest na ekranie (etap 52): pierwszy
- * klik wskazuje cel, drugi w to samo pole rusza figurę.
+ * Marsz klikiem po sprawdzeniu, że punkt jest na ekranie (etap 54, wzór BG3):
+ * jeden klik rusza; cel poza zielonym pasem w turze figury czeka na drugi klik
+ * w to samo pole (`clicks` jak w `walkWorld`).
  */
-export async function walkOnMap(page: Page, point: WorldPoint): Promise<void> {
+export async function walkOnMap(
+  page: Page,
+  point: WorldPoint,
+  clicks: WalkClicks = 'auto',
+): Promise<void> {
   await clickOnMap(page, point);
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(150);
+  const pending = await walkTargetPending(page);
+  if (clicks === 'one' && pending) {
+    throw new Error(`E2E: walk to ${point.x},${point.y} asked for a second click`);
+  }
+  if (clicks === 'confirm' && !pending) {
+    throw new Error(`E2E: walk to ${point.x},${point.y} did not wait for a second click`);
+  }
+  if (!pending) return;
+  await page.waitForTimeout(150);
   await clickOnMap(page, point);
 }
 

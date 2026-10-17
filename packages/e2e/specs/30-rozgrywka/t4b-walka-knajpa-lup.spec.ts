@@ -104,6 +104,8 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
   let cienDamageId = 0;
   /** PW Kowala na starcie — Cechy (a z nimi PW) losuje kreator T3a. */
   let kowalHp = 0;
+  /** Ostatnia wiadomość przed turą Zbira — jego Test Przeżywalności rzuca serwer (17.10). */
+  let beforeZbirTurn = 0;
 
   /**
    * Punkt podłogi w dolnej części pola — środek pola pod cudzą figurą zajmuje jej
@@ -518,22 +520,26 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     await fitCamera(mg.page, KNAJPA.width, KNAJPA.height);
     await nextTurn(mg);
     expect(activeName()).toBe('Cień');
+    // Od 17.10 Test Przeżywalności statysty rzuca serwer na starcie jego tury —
+    // kość skryptuje się przed przejściem tury, nie przed kliknięciem MG.
+    scriptDice([10]);
+    beforeZbirTurn = lastMessageId();
     await nextTurn(mg);
     expect(activeName()).toBe('Zbir');
   });
 
-  test('4.7 tura Zbira: Test Przeżywalności na pasie MG, naturalna 10 — śmierć', async () => {
-    const button = mg.page.locator('.combat-bar-death-save');
-    await expect(button).toBeVisible();
-    // Gracze nie mają tego przycisku — rzuca MG za statystę.
-    for (const player of [marek, ola]) {
-      await expect(player.page.locator('.combat-bar-death-save'), player.name).toHaveCount(0);
+  test('4.7 tura Zbira: Test Przeżywalności rzuca serwer na starcie tury, naturalna 10 — śmierć', async () => {
+    // Od 17.10 statysta i NPC nie czekają na MG: serwer rzuca za nich na starcie
+    // tury (rzut dla MG), więc przycisku Testu nie ma nikt.
+    for (const actor of [mg, marek, ola]) {
+      await expect(actor.page.locator('.combat-bar-death-save'), actor.name).toHaveCount(0);
     }
-    scriptDice([10]);
-    const before = lastMessageId();
-    await button.click();
-    const saveId = await rollAndWait(mg, before, 'Test Przeżywalności');
-    const save = rollById(saveId);
+    await expect
+      .poll(() => messageAfter(beforeZbirTurn, 'Test Przeżywalności', 'gmroll')?.id ?? 0, {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(0);
+    const save = rollById(messageAfter(beforeZbirTurn, 'Test Przeżywalności', 'gmroll')!.id);
     test.info().annotations.push({
       type: 'Test Przeżywalności Zbira',
       description: JSON.stringify(save.outcome),

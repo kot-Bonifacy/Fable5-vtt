@@ -650,6 +650,13 @@ export type CpredTurnSpend =
       metres?: number;
       /** Override of the stored hard-going declaration for this step. */
       hard?: boolean;
+      /**
+       * Take the trade the map drew as the second band (`distance.extra`) when
+       * the path needs it — CP RED: the Action spent on „Bieg" (etap 54). Booked
+       * only when the metres actually reach past this turn's Move Actions, so a
+       * march stopped short of the amber band keeps the Action.
+       */
+      extra?: boolean;
     }
   | { kind: 'action'; actionId: string }
   | {
@@ -917,9 +924,36 @@ function spendMove(
   }
 
   const max = roundMetres(rebased.moveMax * perMove);
-  if (metresUsed > max + METRE_EPSILON) return { ok: false, error: 'NO_MOVE_LEFT' };
+  if (metresUsed > max + METRE_EPSILON) {
+    // Etap 54: marsz w bursztynowy pas wydaje Akcję na Bieg jednym gestem.
+    // „Bieg wymaga wcześniejszej Akcji Ruchu" jest spełnione w tym samym
+    // kroku — metry ponad pulę znaczą, że pierwsza Akcja Ruchu już się zużyła.
+    const run = spend.extra === true ? takeRunForMove(rebased) : null;
+    if (!run) return { ok: false, error: 'NO_MOVE_LEFT' };
+    const runMax = roundMetres(run.moveMax * perMove);
+    if (metresUsed > runMax + METRE_EPSILON) return { ok: false, error: 'NO_MOVE_LEFT' };
+    const moveUsed = moveActionsFor(metresUsed, perMove, run);
+    return { ok: true, state: { ...run, metresUsed, metresWalked, moveUsed } };
+  }
   const moveUsed = moveActionsFor(metresUsed, perMove, rebased);
   return { ok: true, state: { ...rebased, metresUsed, metresWalked, moveUsed } };
+}
+
+/** The turn with Bieg taken, or null when the trade is gone (`cpredRunMetres`). */
+function takeRunForMove(state: CpredTurnState): CpredTurnState | null {
+  if (cpredRunMetres(state) <= 0) return null;
+  const definition = cpredAction(CPRED_ACTION_RUN);
+  if (!definition) return null;
+  return {
+    ...state,
+    moveMax: state.moveMax + (definition.grantsMove ?? 1),
+    action: { id: definition.id, label: definition.name },
+  };
+}
+
+/** Did this spend take the Bieg along with the metres (etap 54)? */
+export function cpredMoveTookRun(before: CpredTurnState, after: CpredTurnState): boolean {
+  return before.action === null && after.action?.id === CPRED_ACTION_RUN;
 }
 
 /**
@@ -1201,6 +1235,7 @@ export function cpredTurnBudget(
                   extra: {
                     label: cpredAction(CPRED_ACTION_RUN)?.name ?? 'Bieg',
                     max: cpredRunMetres(state),
+                    hint: 'Bieg zużyje Akcję',
                   },
                 }
               : {}),

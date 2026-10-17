@@ -9,6 +9,7 @@ import {
   cpredAction,
   cpredMetresLeft,
   cpredMoveRefusal,
+  cpredMoveTookRun,
   cpredRunMetres,
   cpredTurnBlockReason,
   cpredTurnPhaseRan,
@@ -302,6 +303,43 @@ describe('cpred movement budget', () => {
     expect(spendCpredTurn(stepped, { kind: 'action', actionId: CPRED_ACTION_RUN }).ok).toBe(true);
   });
 
+  it('takes the Bieg with a march into the second band (etap 54)', () => {
+    const before = walker();
+    const result = spendCpredTurn(before, { kind: 'move', metres: 18, extra: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.action?.id).toBe(CPRED_ACTION_RUN);
+    expect(result.state.metresUsed).toBe(18);
+    expect(result.state.moveUsed).toBe(2);
+    expect(cpredTurnBudget(result.state).distance?.max).toBe(24);
+    expect(cpredMoveTookRun(before, result.state)).toBe(true);
+  });
+
+  it('keeps the Action when the march with the flag stays in the first band', () => {
+    const before = walker();
+    const result = spendCpredTurn(before, { kind: 'move', metres: 9, extra: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.action).toBeNull();
+    expect(cpredMoveTookRun(before, result.state)).toBe(false);
+  });
+
+  it('refuses the second band without the flag, past it and with the Action spent', () => {
+    expect(spendCpredTurn(walker(), { kind: 'move', metres: 18 })).toEqual({
+      ok: false,
+      error: 'NO_MOVE_LEFT',
+    });
+    expect(spendCpredTurn(walker(), { kind: 'move', metres: 25, extra: true })).toEqual({
+      ok: false,
+      error: 'NO_MOVE_LEFT',
+    });
+    const attacked = spendAll(walker(), [slow()]);
+    expect(spendCpredTurn(attacked, { kind: 'move', metres: 18, extra: true })).toEqual({
+      ok: false,
+      error: 'NO_MOVE_LEFT',
+    });
+  });
+
   it('charges hard going double', () => {
     const after = walk(walker(), 6, true);
     expect(after.metresUsed).toBe(12);
@@ -348,7 +386,7 @@ describe('cpred movement budget', () => {
       max: 12,
       unit: 'm',
       // The Action is still unspent, so a Bieg is still on the table.
-      extra: { label: 'Bieg', max: 12 },
+      extra: { label: 'Bieg', max: 12, hint: 'Bieg zużyje Akcję' },
     });
     expect(budget.resources.find((r) => r.id === 'move')).toEqual({
       id: 'move',
@@ -399,7 +437,7 @@ describe('cpred movement budget', () => {
       used: 20,
       max: 12,
       unit: 'm',
-      extra: { label: 'Bieg', max: 12 },
+      extra: { label: 'Bieg', max: 12, hint: 'Bieg zużyje Akcję' },
     });
   });
 

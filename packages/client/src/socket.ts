@@ -4277,6 +4277,7 @@ export function sendTokenMove(
   y: number,
   final: boolean,
   path?: ScenePoint[],
+  extra?: boolean,
 ): Promise<SocketAck<{ x: number; y: number }>> | null {
   if (!final) {
     const now = Date.now();
@@ -4293,6 +4294,8 @@ export function sendTokenMove(
     y,
     final: true,
     ...(path && path.length > 0 ? { path: path.slice(0, TOKEN_PATH_MAX_POINTS) } : {}),
+    // Etap 54: marsz w drugi pas zasięgu prosi o handel (CP RED — Bieg).
+    ...(extra === true ? { extra: true } : {}),
   });
 }
 
@@ -4300,10 +4303,11 @@ export function sendTokenMove(
  * „Idę tędy” (etap 52) — trasa marszu gracza do zatwierdzenia przed pierwszym
  * krokiem. Bez niej serwer nie przyjmie klatek marszu (`MOVE_NOT_PLANNED`).
  */
-export const requestTokenWalk = (tokenId: string, route: ScenePoint[]) =>
+export const requestTokenWalk = (tokenId: string, route: ScenePoint[], extra = false) =>
   emitSceneAck<{ tokenId: string }>('token:walk', {
     tokenId,
     route: route.slice(0, TOKEN_PATH_MAX_POINTS),
+    ...(extra ? { extra: true } : {}),
   });
 
 /**

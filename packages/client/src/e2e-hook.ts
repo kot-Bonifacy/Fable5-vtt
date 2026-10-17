@@ -42,6 +42,8 @@ export interface VttE2EHook {
   /** Punkt sceny → `clientX`/`clientY`; `null`, gdy mapy nie ma na ekranie. */
   worldToClient(point: ScenePoint): ScenePoint | null;
   stores: Record<string, { getState(): unknown }>;
+  /** Klik w podłoże wskazał cel, który czeka na drugi klik (etap 54). */
+  walkTargetPending(): boolean;
   /**
    * Liczniki do szukania wycieku (T7c): drzewo i tekstury Pixi mapy, stół kości 3D
    * (three.js) i DOM. Działa w obu silnikach — sterty JS Firefox nie udostępnia.
@@ -61,12 +63,14 @@ declare global {
 
 let mapToClient: ((point: ScenePoint) => ScenePoint | null) | null = null;
 let mapCounts: (() => Record<string, number> | null) | null = null;
+let mapWalkTarget: (() => boolean) | null = null;
 
 /** Wołane raz ze startu aplikacji (`main.tsx`). */
 export function installE2EHook(): void {
   if (import.meta.env.MODE === 'e2e') {
     window.__vttE2E = {
       worldToClient: (point) => mapToClient?.(point) ?? null,
+      walkTargetPending: () => mapWalkTarget?.() ?? false,
       counts: () => ({
         pixi: mapCounts?.() ?? null,
         dice: diceE2ECounts(),
@@ -111,10 +115,12 @@ export function exposeMapToE2E(
   renderer: {
     worldToClient(point: ScenePoint): ScenePoint | null;
     e2eCounts(): Record<string, number> | null;
+    hasWalkTarget(): boolean;
   } | null,
 ): void {
   if (import.meta.env.MODE === 'e2e') {
     mapToClient = renderer ? (point) => renderer.worldToClient(point) : null;
     mapCounts = renderer ? () => renderer.e2eCounts() : null;
+    mapWalkTarget = renderer ? () => renderer.hasWalkTarget() : null;
   }
 }

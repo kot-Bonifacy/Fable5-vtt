@@ -1,7 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**17.10.2026 (etap 54) — ruch figury strzałkami o pole (Foundry).** Od 54 figurę prowadzi się
+jednym klikiem w podłoże (wzór BG3). Foundry pozwala też przesunąć zaznaczoną figurę strzałką o jedno
+pole (zajętość klawiszy strzałek sprawdzić w `MAP_TOOL_KEYS`). Ten sam `token:walk` z jednopolową trasą dałby krok
+precyzyjny przy drzwiach i za osłoną bez celowania myszą. Do decyzji MG: czy w walce i czy u gracza.
+
 **15.10.2026 (etap 52) — „podejdź i zaatakuj” klikiem we wroga.** Od 52 gracz prowadzi figurę
-dwoma kliknięciami w podłoże, a klik we wroga dalej celuje albo pokazuje figurę (50b–50c). MG
+kliknięciem w podłoże (od 54 jednym, wzór BG3), a klik we wroga dalej celuje albo pokazuje figurę (50b–50c). MG
 wspomniał, że klik mógłby też znaczyć „idź tam i atakuj”: pierwszy klik we wroga — trasa na
 najbliższe wolne pole obok niego (planer już zna figury na drodze, `canStandAt`), drugi — marsz,
 a po dojściu kubek ataku wręcz bronią z ręki. Do decyzji MG: czy tylko z bronią białą w ręku i co

@@ -1,8 +1,7 @@
 # Etap 54 — Ruch wzorem BG3: bez podglądu pod kursorem, jeden klik, potwierdzenie tylko przy koszcie
 
-**Faza:** przed betą (zlecenie MG z 17.10 spoza planu) · **Wymaga etapów:** 52 · **Stan:** plan
-spisany 17.10, implementacja w osobnej sesji (decyzja MG „tylko zapisz plan”). Kolejność względem
-refaktoryzacji ustal z MG na starcie sesji.
+**Faza:** przed betą (zlecenie MG z 17.10 spoza planu) · **Wymaga etapów:** 52 · **Stan:** ✅
+zrobiony 17.10 (plan spisany tego samego dnia; MG zlecił „wykonaj Etap 54” przed refaktoryzacją).
 
 ## Skąd ten etap
 
@@ -52,37 +51,37 @@ MG wybrał wzór BG3, nie Foundry: gracz dalej nie przeciąga figur (decyzja 52.
 
 ## 54a — klient: gest i rysowanie
 
-- [ ] **Podgląd pod kursorem tylko w walce, w turze tej figury** — warunek w `updateWalkHover`
+- [x] **Podgląd pod kursorem tylko w walce, w turze tej figury** — warunek w `updateWalkHover`
       (poza walką i w cudzej turze ani trasy, ani odcisków; kursor „pointer” / „not-allowed” może
       zostać jako jedyna podpowiedź — sprawdzić z MG na oględzinach).
-- [ ] **Klik planuje trasę sam**, gdy nie ma podglądu: `walkTo` → `planWalkRoute(goal)` zamiast
+- [x] **Klik planuje trasę sam**, gdy nie ma podglądu: `walkTo` → `planWalkRoute(goal)` zamiast
       czekać na `walkHover` (dziś `startWalk` bierze trasę z podglądu).
-- [ ] **Potwierdzenie tylko przy koszcie** — `walkTo` rozstrzyga pas celu: zielony = od razu
+- [x] **Potwierdzenie tylko przy koszcie** — `walkTo` rozstrzyga pas celu: zielony = od razu
       `startWalk`; bursztyn, szary, `truncated` = `walkTarget` + zdanie, drugi klik w to samo pole
       rusza. Zdania: bursztyn (np. „Kliknij jeszcze raz — Bieg zużyje Akcję. Esc — odwołaj.”),
       reszta jak `WALK_CONFIRM_NOTE`.
-- [ ] **Odznaczanie Esc / PPM w puste pole.** Kolejność Esc do ustalenia w kodzie i spisania:
+- [x] **Odznaczanie Esc / PPM w puste pole.** Kolejność Esc do ustalenia w kodzie i spisania:
       marsz / postój → cel marszu → broń w kubku (50c) → zaznaczenie. PPM w puste: najpierw zdejmuje
       cel marszu, a gdy go nie ma — zaznaczenie. Podwójny PPM na figurze (cel 50c) i menu figury bez
       zmian.
-- [ ] **Shift + klik (punkty pośrednie)** zostaje także poza walką: od pierwszego punktu trasa jest
+- [x] **Shift + klik (punkty pośrednie)** zostaje także poza walką: od pierwszego punktu trasa jest
       narysowana (to jawne planowanie), klik w cel rusza.
-- [ ] **Legenda śladów** (`map-placement-hint`, `vtt.walkPreviewLearned`, umowa #69 w `mapa`):
+- [x] **Legenda śladów** (`map-placement-hint`, `vtt.walkPreviewLearned`, umowa #69 w `mapa`):
       poza walką podglądu nie ma, więc legenda tylko przy pierwszym podglądzie w walce.
-- [ ] **Postój Eksploracji (52, decyzja 6)** działa z jednego kliku: cel dalej niż pula — figura
+- [x] **Postój Eksploracji (52, decyzja 6)** działa z jednego kliku: cel dalej niż pula — figura
       idzie, łapie oddech i sama idzie dalej.
 
 ## 54b — serwer: Bieg z marszu
 
-- [ ] **`token:walk` z Biegiem** — flaga w ładunku (np. `run: true`), gdy trasa sięga bursztynu.
+- [x] **`token:walk` z Biegiem** — flaga w ładunku (np. `run: true`), gdy trasa sięga bursztynu.
       Serwer w zatwierdzaniu sprawdza na sucho (`applySpend` z `dryRun`) Ruch **i** Bieg, a przy
       lądowaniu księguje oba. **RAW:** Bieg działa dopiero po wykonaniu Akcji Ruchu w tej Turze
       (`turn.ts`, `hotbar.ts`: „Bieg wymaga wcześniejszego wykonania Akcji Ruchu”) — marsz w bursztyn
       zużywa najpierw cały Ruch, potem Bieg, więc warunek jest spełniony w jednym geście. Akcja już
       wydana ⇒ bursztynu nie ma (`extraMetres` 0), więc ta ścieżka nie powstaje.
-- [ ] Odmowa (np. Akcja wydana w międzyczasie, pochwycenie) tymi samymi kodami co dziś, zdanie
+- [x] Odmowa (np. Akcja wydana w międzyczasie, pochwycenie) tymi samymi kodami co dziś, zdanie
       w `moveErrorText`; boty bez zmian (o ile nie chodzą tą ścieżką — sprawdzić `REFUSAL_TEXTS`).
-- [ ] **Testy serwera:** marsz w bursztyn księguje Ruch + Bieg, bez flagi staje na granicy zieleni,
+- [x] **Testy serwera:** marsz w bursztyn księguje Ruch + Bieg, bez flagi staje na granicy zieleni,
       flaga przy wydanej Akcji — odmowa, przerwany marsz w bursztynie (co z Akcją, gdy figura nie
       doszła do bursztynu? — rozstrzygnąć: proponuję Bieg księgowany dopiero po wejściu w bursztyn).
 
@@ -106,3 +105,20 @@ MG wybrał wzór BG3, nie Foundry: gracz dalej nie przeciąga figur (decyzja 52.
   zielone.
 - Oględziny: gracz w **Firefoksie** (Playwright MCP), MG w Chromium — poza walką, w walce w swojej
   i cudzej turze, bursztyn z Biegiem.
+
+## Rozstrzygnięcia przy implementacji (17.10)
+
+- **Szary pas** idzie do granicy **zieleni**, nie bursztynu: Akcję na Bieg wydaje tylko klik
+  w bursztyn, więc daleki klik nie zabiera jej po cichu. MG ma trasę nieprzyciętą jak dotąd.
+- **Bieg na lądowaniu, tylko gdy metry wyszły poza Ruch** (propozycja z 54b przyjęta): marsz
+  przerwany przed bursztynem Akcji nie wydaje. Flaga w rdzeniu nazywa się `extra` (handel z drugiego
+  pasa), nie `run` — mapa i protokół nie znają słowa „Bieg”; zdanie o koszcie przychodzi z systemu
+  (`TurnDistanceView.extra.hint`). Wzięty Bieg pada na czacie jak z paska.
+- **Punkty trasy (`Shift` + klik) poza walką** rysują trasę, ale klik w cel rusza od razu — pas puli
+  Eksploracji niczego nie kosztuje. Potwierdzenie zna tylko tura figury.
+- **Kursor** poza walką zostaje zwykły (bez „pointer”) — liczenie trasy na każdym ruchu myszy
+  wróciłoby tylnymi drzwiami; „not-allowed” przy odmowie zostaje.
+- **Zdanie o Biegu** pada przy każdym pierwszym kliku w bursztyn (koszt), zdania szarego pasa
+  i mgły — raz na wczytanie strony.
+- **E2E:** `walkOnMap` / `walkWorld(page, punkt, 'auto' | 'one' | 'confirm')`; drugi klik tylko
+  przy `__vttE2E.walkTargetPending()`.

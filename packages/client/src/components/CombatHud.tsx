@@ -692,7 +692,7 @@ export function CombatHud() {
             {/* #58: nowy gracz bez postaci dostawał radę o tokenie, którego nie ma. */}
             {noCharacter
               ? 'Nie masz jeszcze postaci — poproś o nią MG w zakładce „Postacie” po prawej.'
-              : 'Kliknij token, którym chcesz sterować. Potem kliknij podłoże dwa razy, żeby iść (pierwszy klik wskazuje cel), i przeciwnika, żeby wycelować.'}
+              : 'Kliknij token, którym chcesz sterować. Potem klik w podłoże prowadzi go tam (w walce cel poza zielonymi śladami kliknij drugi raz), a klik w przeciwnika celuje.'}
           </span>
         </p>
       )}

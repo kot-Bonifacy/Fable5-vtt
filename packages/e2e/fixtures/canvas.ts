@@ -17,26 +17,70 @@ export async function worldToClient(page: Page, point: WorldPoint): Promise<Worl
   return client;
 }
 
+/**
+ * Punkt sceny na ekranie, gdy kamera już stoi. Start tury gracza i NPC-a u MG
+ * przewozi kamerę na figurę (`frameToken`, ~0,5 s): klik policzony w trakcie
+ * przejazdu trafia obok — a od etapu 54 klik w podłoże przy zaznaczonej figurze
+ * od razu ją rusza, więc chybiony klik w żeton to marsz w przypadkowe miejsce.
+ */
+export async function stillWorldToClient(page: Page, point: WorldPoint): Promise<WorldPoint> {
+  let last = await worldToClient(page, point);
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    await page.waitForTimeout(120);
+    const now = await worldToClient(page, point);
+    if (Math.abs(now.x - last.x) < 0.5 && Math.abs(now.y - last.y) < 0.5) return now;
+    last = now;
+  }
+  return last;
+}
+
 /** Najazd kursorem po drodze (trasa liczy się na `pointermove`), potem klik. */
 export async function clickWorld(
   page: Page,
   point: WorldPoint,
   button: 'left' | 'right' = 'left',
 ): Promise<void> {
-  const { x, y } = await worldToClient(page, point);
+  const { x, y } = await stillWorldToClient(page, point);
   await page.mouse.move(x - 4, y - 4);
   await page.mouse.move(x, y, { steps: 4 });
   await page.mouse.click(x, y, { button });
 }
 
 /**
- * Marsz klikiem (etap 52): pierwszy klik w podłoże wskazuje cel, drugi w to samo
- * pole rusza figurę. Przerwa między nimi jak u człowieka — dwa kliknięcia, nie
- * jeden gest.
+ * Jak marsz klikiem ma pójść (etap 54): `auto` — drugi klik tylko wtedy, gdy
+ * mapa wskazała cel do potwierdzenia; `one` / `confirm` — test pilnuje, że
+ * potwierdzenia nie było (zielony pas, poza walką) albo że było (bursztyn,
+ * szary, mgła w turze figury).
  */
-export async function walkWorld(page: Page, point: WorldPoint): Promise<void> {
+export type WalkClicks = 'auto' | 'one' | 'confirm';
+
+/** Czy klik w podłoże czeka na drugi w to samo pole (hak E2E). */
+export async function walkTargetPending(page: Page): Promise<boolean> {
+  return page.evaluate(() => window.__vttE2E?.walkTargetPending() ?? false);
+}
+
+/**
+ * Marsz klikiem (etap 54, wzór BG3): jeden klik w podłoże rusza figurę; w turze
+ * figury cel poza zielonym pasem czeka na drugi klik w to samo pole. Przerwa
+ * między nimi jak u człowieka — dwa kliknięcia, nie jeden gest. Drugi klik
+ * w trakcie marszu by go **zatrzymał**, więc pada tylko przy wskazanym celu.
+ */
+export async function walkWorld(
+  page: Page,
+  point: WorldPoint,
+  clicks: WalkClicks = 'auto',
+): Promise<void> {
   await clickWorld(page, point);
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(150);
+  const pending = await walkTargetPending(page);
+  if (clicks === 'one' && pending) {
+    throw new Error(`E2E: walk to ${point.x},${point.y} asked for a second click`);
+  }
+  if (clicks === 'confirm' && !pending) {
+    throw new Error(`E2E: walk to ${point.x},${point.y} did not wait for a second click`);
+  }
+  if (!pending) return;
+  await page.waitForTimeout(150);
   await clickWorld(page, point);
 }
 

@@ -440,7 +440,11 @@ function moveAllowanceOf(
     // system offers is taken (CP RED: the Action spent on „Bieg"). The name
     // comes with the number, because the core has no business knowing it.
     ...(distance.extra && distance.extra.max > 0
-      ? { extraMetres: distance.extra.max, extraLabel: distance.extra.label }
+      ? {
+          extraMetres: distance.extra.max,
+          extraLabel: distance.extra.label,
+          ...(distance.extra.hint ? { extraHint: distance.extra.hint } : {}),
+        }
       : {}),
   };
 }
@@ -778,8 +782,8 @@ export function MapArea() {
     const renderer = new MapRenderer();
     renderer.onLoadingChange = setLoading;
     renderer.onMapClick = handleMapClick;
-    renderer.onTokenMove = (tokenId, x, y, final, path) => {
-      const ack = sendTokenMove(tokenId, x, y, final, path);
+    renderer.onTokenMove = (tokenId, x, y, final, path, extra) => {
+      const ack = sendTokenMove(tokenId, x, y, final, path, extra);
       void ack?.then((result) => {
         if (result.ok) {
           const landed = result.data;
@@ -853,14 +857,16 @@ export function MapArea() {
       token.partyVision !== true &&
       cpredActionBlock(token.statuses) === null;
     // Etap 52: trasa gracza idzie do serwera przed pierwszym krokiem.
-    renderer.onWalkApprove = async (tokenId, route) => {
-      const result = await requestTokenWalk(tokenId, route);
+    renderer.onWalkApprove = async (tokenId, route, extra) => {
+      const result = await requestTokenWalk(tokenId, route, extra);
       return result.ok ? null : moveErrorText(result.error);
     };
-    renderer.onWalkStateChange = (tokenId) => {
+    renderer.onWalkStateChange = (tokenId, previewed) => {
       setMarchingTokenId(tokenId);
-      // Pierwszy marsz to dowód, że ślady stóp są już zrozumiane (#69).
-      if (tokenId) {
+      // Pierwszy marsz z narysowanej trasy to dowód, że ślady stóp są już
+      // zrozumiane (#69). Od etapu 54 trasa jest tylko w turze figury, więc
+      // marsz poza walką legendy nie uczy.
+      if (tokenId && previewed) {
         rememberWalkLearned();
         setWalkLearned(true);
       }
@@ -2377,8 +2383,9 @@ export function MapArea() {
           linijka znika po pierwszym marszu i nie wraca w tej przeglądarce. */}
       {!isGm && !walkLearned && walkPreviewFor && !targeting && !placement && (
         <div className="map-placement-hint">
-          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” — klik w podłoże wskazuje cel,
-          drugi klik w to samo miejsce prowadzi ją tam (Esc odwołuje cel)
+          Ślady stóp to trasa „{walkPreviewName ?? 'twojej figury'}” w tej turze — klik w zielone
+          rusza, w bursztyn (Bieg) i dalej trzeba kliknąć drugi raz w to samo miejsce (Esc odwołuje
+          cel)
         </div>
       )}
       {/* Visibility comes from tokens alone, so „no token" means „no map".

@@ -43,6 +43,7 @@ import {
   spendTurnState,
   spendUsesAction,
   reinforcementsOf,
+  turnSpendTookExtra,
   turnBudgetOf,
   type SheetMoveBudget,
   type SheetRegistry,
@@ -679,6 +680,8 @@ export type TurnSpendOutcome =
       forced: boolean;
       /** A one-shot „przepuść" was burned to make this legal. */
       bypassed: boolean;
+      /** Etap 54: ruch wziął po drodze handel z drugiego pasa (CP RED — Bieg). */
+      tookExtra?: boolean;
     }
   | {
       kind: 'refused';
@@ -768,8 +771,10 @@ async function applySpend(
     };
   }
 
+  const tookExtra =
+    spend.kind === 'move' && spend.extra === true && turnSpendTookExtra(judged, result.state);
   // Na sucho (etap 52): odpowiedź „starczy”, bez zapisu — marsz zapłaci na mecie.
-  if (dryRun) return { kind: 'spent', combatant, forced: result.forced, bypassed };
+  if (dryRun) return { kind: 'spent', combatant, forced: result.forced, bypassed, tookExtra };
 
   // Firing a reserved Action ends the reservation — a hold is spent once.
   const releasesHold = combatant.held && spendUsesAction(spend);
@@ -781,7 +786,7 @@ async function applySpend(
       ...(releasesHold ? { held: false, heldTrigger: null, heldInitiative: null } : {}),
     },
   });
-  return { kind: 'spent', combatant, forced: result.forced, bypassed };
+  return { kind: 'spent', combatant, forced: result.forced, bypassed, tookExtra };
 }
 
 /**

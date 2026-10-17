@@ -302,6 +302,12 @@ export interface TokenMovePayload {
    * to report: the server measures it, and anchors both ends itself.
    */
   path?: ScenePoint[];
+  /**
+   * Etap 54: lądowanie może wziąć handel z drugiego pasa zasięgu tury
+   * (`TurnDistanceView.extra`; CP RED — Bieg), gdy przebyta droga go sięga.
+   * Tylko na lądowaniu, jak `path`; serwer i tak liczy, czy był potrzebny.
+   */
+  extra?: boolean;
 }
 
 /**
@@ -313,6 +319,11 @@ export interface TokenWalkPayload {
   tokenId: string;
   /** Punkty załamania od pozycji figury (bez niej) do celu — lewy górny róg, piksele sceny. */
   route: ScenePoint[];
+  /**
+   * Trasa sięga drugiego pasa zasięgu tury (etap 54, CP RED — Bieg): serwer
+   * sprawdza ją na sucho razem z handlem, a zapłaci lądowanie z tą samą flagą.
+   */
+  extra?: boolean;
 }
 
 /** Waypoints one drag may report — a guard against runaway payloads. */

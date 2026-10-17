@@ -1693,7 +1693,7 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
         deps,
         campaignId,
         user,
-        { scene, token, from, to, path: legs },
+        { scene, token, from, to, path: legs, ...(payload.extra === true ? { extra: true } : {}) },
         { dryRun: true },
       );
     }
@@ -1868,6 +1868,7 @@ export async function performTokenMove(
           from: { x: token.x, y: token.y },
           to: { x, y },
           path: reportedPath,
+          ...(payload.extra === true ? { extra: true } : {}),
         });
       } catch (error) {
         if (walk) endWalk(token.id);

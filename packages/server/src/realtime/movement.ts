@@ -1,6 +1,7 @@
 import type { CombatActionLogEntry, ScenePoint, SessionUser } from '@vtt/shared';
 import {
   CPRED_ACTION_MOVE,
+  CPRED_ACTION_RUN,
   ROLE_GM,
   coverMovementSegments,
   firstBlockedStep,
@@ -159,6 +160,11 @@ export interface MoveIntent {
   to: ScenePoint;
   /** Waypoints the client reported; null for a plain drag. */
   path: ScenePoint[] | null;
+  /**
+   * Etap 54: ruch może wziąć handel z drugiego pasa zasięgu (CP RED — Bieg),
+   * gdy metry go sięgają — marsz klikiem w bursztyn.
+   */
+  extra?: boolean;
 }
 
 /** What the validator decided; the caller only ever sees a pass or a throw. */
@@ -229,7 +235,7 @@ export async function validateTokenMove(
     deps,
     found.combat,
     found.combatant,
-    { kind: 'move', metres },
+    { kind: 'move', metres, ...(intent.extra === true ? { extra: true } : {}) },
     user,
     { dryRun },
   );
@@ -293,6 +299,15 @@ async function settleMovementSpend(
   if (dryRun) return;
 
   await emitReloaded(deps, campaignId, scene, outcome.combatant.combatId);
+  // Etap 54: Bieg wzięty marszem to Akcja, więc pada na czacie jak z paska.
+  if (outcome.tookExtra === true) {
+    await logSpentAction(
+      deps,
+      campaignId,
+      user,
+      actionEntry(outcome.combatant, CPRED_ACTION_RUN, sheetActionName(CPRED_ACTION_RUN), distance),
+    );
+  }
   if (!outcome.forced && !outcome.bypassed) return;
   await logSpentAction(deps, campaignId, user, {
     ...actionEntry(outcome.combatant, CPRED_ACTION_MOVE, name, distance),
