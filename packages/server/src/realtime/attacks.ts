@@ -1937,8 +1937,12 @@ function withoutPending(pending: string[] | undefined, tokenId: string): string[
  *
  * The other half of „Unik przed obrażeniami": the damage waits for whoever may
  * still dodge, so somebody who will not has to be able to say so, or the shooter
- * waits forever. The same people answer as could have dodged — the target's
- * owner or the GM — and for a blast it is one row, like a jump clear.
+ * waits forever. For a blast it is one row, like a jump clear.
+ *
+ * Only the GM says it (17.10, decyzja MG): a dodge after a known hit costs the
+ * defender nothing, so a player always rolls it — their prompt offers no way
+ * out, and the GM's „Bez uniku" stays for an NPC, a bot, or a player who has
+ * stepped away from the table.
  */
 export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
   name: 'attack:no-evade',
@@ -1964,16 +1968,9 @@ export const attackNoEvadeEvent = defineEvent<AttackNoEvadePayload, void>({
     if (!tokenId || !(roll.attack.evasionPending ?? []).includes(tokenId)) {
       throw new RealtimeError('NOT_THE_TARGET');
     }
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
     const target = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
     if (!target) throw new RealtimeError('NOT_THE_TARGET');
-    if (user.role !== ROLE_GM) {
-      const character = target.characterId
-        ? await deps.ctx.prisma.character.findUnique({ where: { id: target.characterId } })
-        : null;
-      if (target.ownerId !== user.id && character?.ownerId !== user.id) {
-        throw new RealtimeError('NOT_THE_TARGET');
-      }
-    }
     const name = tokenTableName(target, target.name);
     const attack: RollAttackMeta = roll.attack.area
       ? {

@@ -151,11 +151,12 @@ export function AttackRow({
     attack.damageMultiplier && attack.damageMultiplier > 1
       ? `${attack.damageNotation} ×${attack.damageMultiplier}`
       : attack.damageNotation;
-  /** „Bez uniku" for a single target: whoever could have rolled the dodge. */
+  /**
+   * „Bez uniku" for a single target — the GM's alone since 17.10: a dodge after
+   * a known hit costs nothing, so a player always rolls it.
+   */
   const mayAnswerDodge =
-    attack.targetTokenId !== undefined &&
-    pending.includes(attack.targetTokenId) &&
-    (defender ?? statistDefender) !== undefined;
+    isGm && attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId);
 
   const verdict =
     attack.hit === undefined
@@ -228,20 +229,19 @@ export function AttackRow({
                   {attack.area?.shape === 'cone' ? 'Unik' : 'Odskocz'}
                 </button>
               )}
-              {target.tokenId &&
-                pending.includes(target.tokenId) &&
-                (isGm || evadeableBy(target.tokenId)) && (
-                  <button
-                    type="button"
-                    className="small-button"
-                    title="Zostaje w obszarze — obrażenia przestają na niego czekać"
-                    onClick={() =>
-                      declineEvasion({ messageId: message.id, tokenId: target.tokenId! })
-                    }
-                  >
-                    Bez uniku
-                  </button>
-                )}
+              {/* „Bez uniku” mówi tylko MG (17.10): gracz zawsze rzuca. */}
+              {target.tokenId && pending.includes(target.tokenId) && isGm && (
+                <button
+                  type="button"
+                  className="small-button"
+                  title="Zostaje w obszarze — obrażenia przestają na niego czekać"
+                  onClick={() =>
+                    declineEvasion({ messageId: message.id, tokenId: target.tokenId! })
+                  }
+                >
+                  Bez uniku
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -252,7 +252,13 @@ export function AttackRow({
           !attack.noEvade &&
           !damageRolled &&
           attack.hit !== undefined &&
-          (defender ?? statistDefender) && (
+          (defender ?? statistDefender) &&
+          // Gracz dostaje Unik tylko tam, gdzie serwer na niego czeka (17.10):
+          // guzik bez wstrzymanych obrażeń (REF poniżej 8 przy strzale, pudło)
+          // znikał po rzucie strzelca i wyglądał na przegapioną szansę. MG
+          // zostaje przy swoim — to on orzeka, że cel widział strzał.
+          (isGm ||
+            (attack.targetTokenId !== undefined && pending.includes(attack.targetTokenId))) && (
             <button
               type="button"
               className="small-button"

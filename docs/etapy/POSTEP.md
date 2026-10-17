@@ -263,7 +263,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 33   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 17   | 5       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 43   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 44   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
@@ -280,6 +280,32 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 17.10 (po `0196b00`) — Unik nie przepada przez przypadek
+
+**Zlecenie MG:** gracz, który nie zauważy na czas możliwości Uniku, traci ją, bo przeciwnik
+działa dalej; poprawić wzorem Foundry. **Diagnoza:** serwer od 03.10 wstrzymuje obrażenia
+(`evasionPending`), ale gracz dowiadywał się o Uniku wyłącznie z guzika na karcie czatu. Kto
+patrzył na mapę, nie widział go, a MG czekał albo klikał za niego „Bez uniku”. Do tego guzik
+„Unik” wisiał też tam, gdzie serwer nie czekał (REF poniżej 8 przy strzale, pudło) i znikał po
+rzucie obrażeń. **Decyzja MG (pytanie):** „Bez uniku” u gracza usunięty całkiem — Unik po
+znanym trafieniu nic nie kosztuje (wyjątek: ogień ciągły, gdzie słaby rzut podbija mnożnik,
+też bez wyjątku dla gracza); zwalnia tylko MG.
+
+**Zrobione:** `attack-evasion-call.ts` (`openEvasionCallsFor` — kto odpowiada za figurę: właściciel
+karty albo żetonu, figury bez właściciela MG), kubek w trybie `dodge` (przed obrażeniami, czerwony
+oddech, dźwięk wezwania, `Esc` odkłada tylko kubek — `skippedEvasionCalls`), `EvasionPrompt`
+(monit na dole mapy za lewym panelem, do 3 naraz, bez limitu czasu — znika dopiero, gdy serwer
+przestanie czekać), `attack:no-evade` tylko MG (`FORBIDDEN`), guzik „Unik” gracza na karcie
+ataku tylko przy `evasionPending`. Umowa w `atak`.
+
+**Weryfikacja:** vitest klienta 372/372 (nowy `attack-evasion-call.test.ts`), serwer
+`attacks`/`areas`/`campaign-isolation` 114/114, `tsc` obu pakietów, ESLint. Oględziny w **Firefoksie**
+(Playwright MCP, konto `ogledziny-b`) na kartach ataku podstawionych do magazynu czatu w
+przeglądarce: dwa wezwania, kubek „Unik: Ganger!”, `Esc` przełącza kubek na następne wezwanie,
+monity zostają, „Unik” ładuje kubek („Kubek gotowy”). Prawdziwego rzutu przez serwer w UI nie
+było (pokrywają go testy serwera); E2E nie puszczano — `noDodge` w `fixtures/walka.ts` klika
+„Bez uniku” jako MG, więc powinien działać bez zmian.
 
 ### Sesja 16.10 (po `2549eb6`) — inicjatywa raz na walkę
 
@@ -300,30 +326,3 @@ rundy. Umowa na górze `tura`.
 klienta i serwera, ESLint, Prettier czyste w zmienionych plikach. E2E `--grep T8a` **44/44**
 (macierz: MG Chromium + gracze Firefox i odwrotnie — gracze rzucają inicjatywę kubkiem z pasa).
 Ręcznych oględzin nie było (dev serwer wyłączony); pełnego przebiegu nie puszczano.
-
-### Sesja 15.10 (po `e1e21c5`) — etap 52: ruch gracza wyłącznie klikiem
-
-**Zlecenie MG:** gracz przeciąga figurę przez całą mapę (ściany, wrogowie, szybkość) w trybach
-Eksploracja i Swobodny; ocenić tryby wzorem Foundry. **Diagnoza:** lądowanie było sprawdzane,
-ale klatki pośrednie nie — serwer liczył z nich widzenie i dopisywał pamięć odkrytego, więc
-przeciągnięcie przez mur odsłaniało pokój, choć figura wracała. Marsz klikiem jechał tym samym
-kanałem. **Decyzje MG (pytania):** Stop + Eksploracja (Swobodny znika), dwa kliknięcia wszędzie,
-klik we wroga jak dotąd, przez wroga nie przejdziesz; w trakcie — postój na granicy puli i dalszy
-ciąg sam.
-
-**Zrobione:** `shared/walk-route.ts` (rzut na trasę, kolizje figur), `token:walk` + `realtime/walks.ts`,
-rzutowanie klatek w `performTokenMove`, `refuseWalkThroughFigures`, `dryRun` w `validateTokenMove`
-/ `applySpend` / `checkPace`, Stop przy starcie sesji, migracja `free` → `explore`; klient: brak
-przeciągania u gracza, `onWalkApprove`, planer z figurami, `walkTarget` (dwa kliknięcia),
-`walkResume` (postój i dalszy ciąg, także cel wskazany w czasie postoju). E2E: `walkOnMap` /
-`walkWorld` w 17 marszach, t45 z testem UI etapu, `clickActivate` (błąd fikstur z `62589ee`:
-„Bez startu — aktywuj?”), `centreCamera` w T5a. Umowa w `tura`, pułapka w `testy`, pomysł
-„podejdź i zaatakuj” w `POMYSLY.md`.
-
-**Weryfikacja:** liczby w „Testy na koniec ostatniej sesji”. Oględziny skryptem `playwright`
-(scratchpad, Vite w trybie `e2e` na :5174): **Firefox** (gracz) — przeciągnięcie nic nie robi
-i mówi dlaczego, pierwszy klik wskazuje cel z podświetlonym polem, drugi rusza, marsz obchodzi
-Gangera, długi marsz łapie oddech i dochodzi do celu w ~12 s; **Chromium** (MG) — przełącznik
-Stop / Eksploracja. **Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma scenę „Oględziny 52 —
-marsz” (aktywna, Stop, mur, Ganger, Sejf, figura „Marsz”) i gracza „Marsz52-958”; sesja
-zakończona. `dev.db` dostał migrację `20261015180000_player_move_no_free`.

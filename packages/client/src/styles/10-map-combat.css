@@ -430,6 +430,69 @@
   animation: dice-cup-pulse 1.2s ease-in-out infinite;
 }
 
+/* Unik przed obrażeniami (17.10): kubek obrońcy woła mocniej niż strzelca —
+   ta sama czerwień, ale oddech wezwania, bo gracz patrzy wtedy gdzie indziej. */
+.dice-cup--dodge {
+  --cup-glow: var(--err-rgb);
+  color: var(--err);
+  border-color: var(--err);
+  animation: dice-cup-call 1s ease-in-out infinite;
+}
+
+/* Wezwanie do Uniku (17.10) — stoi, dopóki serwer czeka na decyzję. Na dole
+   mapy tuż za lewym panelem (17rem, `.hud-rail`), a nie nad kubkiem: tam,
+   nad rezerwą na kubek, stoi „Kończę turę” i wezwanie by je zasłaniało. */
+.evasion-prompt {
+  position: fixed;
+  left: 18rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(22rem, calc(100vw - 2rem));
+}
+
+.evasion-prompt-row {
+  padding: 0.5rem 0.65rem;
+  background: var(--bg-panel);
+  border: 2px solid var(--err);
+  border-radius: 6px;
+  box-shadow: 0 0 14px rgb(var(--err-rgb) / 45%);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+  --cup-glow: var(--err-rgb);
+}
+
+.evasion-prompt-head {
+  margin: 0;
+  color: var(--err);
+  font-weight: 700;
+}
+
+.evasion-prompt-head strong {
+  color: var(--text);
+}
+
+.evasion-prompt-detail,
+.evasion-prompt-more {
+  margin: 0.2rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.evasion-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.evasion-prompt-ready {
+  color: var(--err);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 /* Weapon rows carry more controls than the generic row table. */
 .weapon-ammo-cell {
   white-space: nowrap;

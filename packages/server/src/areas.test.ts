@@ -684,11 +684,15 @@ describe('cover, throwing objects and jumping clear', () => {
       });
     expect(errorOf(await damage())).toBe('AWAITING_EVASION');
 
-    // Zwinny is the player's, so the player answers for him — one row, not the grenade.
-    const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+    // Zwinny is the player's, and a player always rolls the dodge (17.10) —
+    // only the GM lets him stand in the square, and only his row.
     expect(
-      (await emitAck(player, 'attack:no-evade', { messageId, tokenId: nimbleTokenId })).ok,
-    ).toBe(true);
+      errorOf(await emitAck(player, 'attack:no-evade', { messageId, tokenId: nimbleTokenId })),
+    ).toBe('FORBIDDEN');
+    const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+    expect((await emitAck(gm, 'attack:no-evade', { messageId, tokenId: nimbleTokenId })).ok).toBe(
+      true,
+    );
     const rewritten = (await updated).message.roll?.attack as AttackCard | undefined;
     expect(rewritten?.evasionPending).toBeUndefined();
     const row = rewritten?.area?.targets.find((entry) => entry.tokenId === nimbleTokenId);

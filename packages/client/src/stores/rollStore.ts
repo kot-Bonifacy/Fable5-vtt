@@ -256,6 +256,12 @@ interface RollStoreState {
    * albo już rzucone, zanim serwer oznaczył kartę. Tylko w tej karcie przeglądarki.
    */
   skippedDamageCalls: ReadonlySet<number>;
+  /**
+   * Wezwania do Uniku odłożone `Esc` albo już rzucone (17.10), kluczem
+   * `evasionCallKey`. Odkłada się tylko kubek — wezwanie nad kubkiem zostaje,
+   * dopóki serwer czeka na decyzję.
+   */
+  skippedEvasionCalls: ReadonlySet<string>;
 
   openDialog: (target: RollTarget) => void;
   closeDialog: () => void;
@@ -272,6 +278,7 @@ interface RollStoreState {
   skipDamageCall: (messageId: number) => void;
   /** „Na kubek" z karty ataku — odłożone obrażenia znów czekają na kubku. */
   restoreDamageCall: (messageId: number) => void;
+  skipEvasionCall: (key: string) => void;
 }
 
 /** Every slot of the cup, cleared. Spread it before setting the new one. */
@@ -298,6 +305,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   lastVisibility: 'public',
   lastLocation: 'body',
   skippedDamageCalls: new Set<number>(),
+  skippedEvasionCalls: new Set<string>(),
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
@@ -320,6 +328,8 @@ export const useRollStore = create<RollStoreState>((set) => ({
       skippedDamageCalls.delete(messageId);
       return { skippedDamageCalls };
     }),
+  skipEvasionCall: (key) =>
+    set((state) => ({ skippedEvasionCalls: new Set(state.skippedEvasionCalls).add(key) })),
 }));
 
 /**

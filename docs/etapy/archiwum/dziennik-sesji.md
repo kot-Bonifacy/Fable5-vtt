@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 15.10 (po `e1e21c5`) — etap 52: ruch gracza wyłącznie klikiem
+
+**Zlecenie MG:** gracz przeciąga figurę przez całą mapę (ściany, wrogowie, szybkość) w trybach
+Eksploracja i Swobodny; ocenić tryby wzorem Foundry. **Diagnoza:** lądowanie było sprawdzane,
+ale klatki pośrednie nie — serwer liczył z nich widzenie i dopisywał pamięć odkrytego, więc
+przeciągnięcie przez mur odsłaniało pokój, choć figura wracała. Marsz klikiem jechał tym samym
+kanałem. **Decyzje MG (pytania):** Stop + Eksploracja (Swobodny znika), dwa kliknięcia wszędzie,
+klik we wroga jak dotąd, przez wroga nie przejdziesz; w trakcie — postój na granicy puli i dalszy
+ciąg sam.
+
+**Zrobione:** `shared/walk-route.ts` (rzut na trasę, kolizje figur), `token:walk` + `realtime/walks.ts`,
+rzutowanie klatek w `performTokenMove`, `refuseWalkThroughFigures`, `dryRun` w `validateTokenMove`
+/ `applySpend` / `checkPace`, Stop przy starcie sesji, migracja `free` → `explore`; klient: brak
+przeciągania u gracza, `onWalkApprove`, planer z figurami, `walkTarget` (dwa kliknięcia),
+`walkResume` (postój i dalszy ciąg, także cel wskazany w czasie postoju). E2E: `walkOnMap` /
+`walkWorld` w 17 marszach, t45 z testem UI etapu, `clickActivate` (błąd fikstur z `62589ee`:
+„Bez startu — aktywuj?”), `centreCamera` w T5a. Umowa w `tura`, pułapka w `testy`, pomysł
+„podejdź i zaatakuj” w `POMYSLY.md`.
+
+**Weryfikacja:** liczby w „Testy na koniec ostatniej sesji”. Oględziny skryptem `playwright`
+(scratchpad, Vite w trybie `e2e` na :5174): **Firefox** (gracz) — przeciągnięcie nic nie robi
+i mówi dlaczego, pierwszy klik wskazuje cel z podświetlonym polem, drugi rusza, marsz obchodzi
+Gangera, długi marsz łapie oddech i dochodzi do celu w ~12 s; **Chromium** (MG) — przełącznik
+Stop / Eksploracja. **Ślad w `dev.db`:** kampania „Oględziny 44d (MG-B)” ma scenę „Oględziny 52 —
+marsz” (aktywna, Stop, mur, Ganger, Sejf, figura „Marsz”) i gracza „Marsz52-958”; sesja
+zakończona. `dev.db` dostał migrację `20261015180000_player_move_no_free`.
+
 ### Sesja 15.10 (po `e11ac32`) — przedmioty z katalogu do skrzyni
 
 **Zlecenie MG:** na karcie skrzyni widać tylko gotówkę — sprawdzić, czy MG może włożyć przedmiot,

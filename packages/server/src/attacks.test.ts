@@ -2464,14 +2464,12 @@ describe('ranged combat from the map', () => {
       expect(quickTokenId).toBeTruthy();
     });
 
-    it('obrażenia czekają na Unik, a „Bez uniku” mówi tylko MG albo właściciel celu', async () => {
+    it('obrażenia czekają na Unik, a „Bez uniku” mówi tylko MG (17.10)', async () => {
       const { card, messageId } = await hitOn(quickTokenId);
       expect(card.evasionPending).toEqual([quickTokenId]);
       expect(errorOfAck(await rollDamageFor(messageId))).toBe('AWAITING_EVASION');
-      // Strzelec nie decyduje za cel.
-      expect(errorOfAck(await emitAck(player, 'attack:no-evade', { messageId }))).toBe(
-        'NOT_THE_TARGET',
-      );
+      // Gracz nie zwalnia obrażeń — ani strzelec, ani obrońca (Unik nic nie kosztuje).
+      expect(errorOfAck(await emitAck(player, 'attack:no-evade', { messageId }))).toBe('FORBIDDEN');
       const updated = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
       expect((await emitAck(gm, 'attack:no-evade', { messageId })).ok).toBe(true);
       const after = attackCard(await updated);
