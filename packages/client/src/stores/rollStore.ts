@@ -262,6 +262,11 @@ interface RollStoreState {
    * dopóki serwer czeka na decyzję.
    */
   skippedEvasionCalls: ReadonlySet<string>;
+  /**
+   * Ręka trzyma kubek i nim potrząsa (17.10). Mapa pod kursorem wtedy nie
+   * planuje marszu ani nie celuje: ten ruch wskaźnika należy do kubka.
+   */
+  cupHeld: boolean;
 
   openDialog: (target: RollTarget) => void;
   closeDialog: () => void;
@@ -279,6 +284,7 @@ interface RollStoreState {
   /** „Na kubek" z karty ataku — odłożone obrażenia znów czekają na kubku. */
   restoreDamageCall: (messageId: number) => void;
   skipEvasionCall: (key: string) => void;
+  setCupHeld: (held: boolean) => void;
 }
 
 /** Every slot of the cup, cleared. Spread it before setting the new one. */
@@ -306,6 +312,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   lastLocation: 'body',
   skippedDamageCalls: new Set<number>(),
   skippedEvasionCalls: new Set<string>(),
+  cupHeld: false,
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
@@ -318,6 +325,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadFacedownCup: (facedown) => set({ ...EMPTY_CUP, facedown, target: null }),
   loadCreationCup: (creation) => set({ ...EMPTY_CUP, creation, target: null }),
   clearCup: () => set({ ...EMPTY_CUP }),
+  setCupHeld: (cupHeld) => set({ cupHeld }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),
   skipDamageCall: (messageId) =>

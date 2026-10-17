@@ -391,6 +391,14 @@ export function DiceCup() {
     return () => window.removeEventListener('keydown', onKey);
   }, [pending, initiative, attack, evasion, grapple, facedown, creation, shaking]);
 
+  // Mapa słucha tego samego ruchu wskaźnika co kubek (Pixi łapie go na całym
+  // dokumencie), więc musi wiedzieć, że ręka jest zajęta — inaczej rysuje trasę
+  // marszu ku kubkowi.
+  useEffect(() => {
+    useRollStore.getState().setCupHeld(shaking);
+    return () => useRollStore.getState().setCupHeld(false);
+  }, [shaking]);
+
   useEffect(() => {
     if (!shaking) return;
 

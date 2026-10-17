@@ -116,6 +116,7 @@ import {
   throwAtPoint,
 } from '../hud.js';
 import { useAttackStore } from '../stores/attackStore.js';
+import { useRollStore } from '../stores/rollStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useExplorationStore } from '../stores/explorationStore.js';
@@ -1442,6 +1443,13 @@ export function MapArea() {
       ),
     );
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const pushCupHeld = () => rendererRef.current?.setCupHeld(useRollStore.getState().cupHeld);
+    pushCupHeld();
+    return useRollStore.subscribe(pushCupHeld);
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;

@@ -1492,7 +1492,9 @@ export class MapRenderer {
       this.spawnPlacing ||
       this.fogBrush.armed ||
       this.draw.armed ||
-      this.toolSpentThisClick
+      this.toolSpentThisClick ||
+      // Kubek w dłoni (17.10): ruch wskaźnika potrząsa kośćmi, nie wskazuje mapy.
+      this.cupHeld
     );
   }
   /**
@@ -1526,6 +1528,8 @@ export class MapRenderer {
   private walkEnforcedFloor: WalkPassable | undefined = undefined;
   /** Why this token may not walk at all („Powalony"), or null when it may. */
   private walkRefusal: string | null = null;
+  /** Ręka trzyma kubek z kośćmi — patrz `setCupHeld`. */
+  private cupHeld = false;
   /** The route under the cursor and the march, drawn above everything. */
   private readonly walkGraphics = new Graphics();
   /**
@@ -4566,6 +4570,24 @@ export class MapRenderer {
     this.walkHover = null;
     this.drawWalkPreview();
     this.updateReach();
+    this.applyMapCursor();
+  }
+
+  /**
+   * Ręka chwyciła kubek albo go puściła (17.10). Pixi słucha ruchu wskaźnika na
+   * całym dokumencie, więc bez tego potrząsanie kubkiem nad mapą rysowało ślady
+   * butów ku kubkowi i celownik na mijanych figurach.
+   */
+  setCupHeld(held: boolean): void {
+    if (this.destroyed || this.cupHeld === held) return;
+    this.cupHeld = held;
+    this.walkHover = null;
+    this.walkCursor = '';
+    this.drawWalkPreview();
+    if (held) this.clearAim();
+    // Cel wskazany pierwszym kliknięciem (etap 52) wraca od razu, bez czekania
+    // na ruch ręki.
+    else if (this.walkTarget) this.trackWalkHover(this.walkTarget);
     this.applyMapCursor();
   }
 
