@@ -828,7 +828,9 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   let sceneImportNote = '';
   let before: ReturnType<typeof stateFingerprint>;
 
-  test('6.9a kopia z harmonogramu: restart z kopią co minutę, zakładka „Kopie” ją pokazuje', async () => {
+  test('6.9a kopia z harmonogramu: restart z kopią co minutę, panel administratora ją pokazuje', async ({
+    cast,
+  }) => {
     test.setTimeout(5 * 60_000);
     await stopInstance();
     await startInstance({ BACKUP_INTERVAL_MINUTES: '1' });
@@ -881,11 +883,13 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     test.info().annotations.push({ type: 'kopie', description: JSON.stringify(timerCopies()) });
     expect(copy.manifest!.files).toBeGreaterThan(0);
 
-    const page = mg.page;
-    await page.getByRole('button', { name: 'Kopie', exact: true }).click();
-    const section = page.locator('.archive-section', { hasText: 'Kopie zapasowe' });
+    // Kopie całej bazy od etapu 53 są w panelu administratora, nie w „Kopiach” MG.
+    const admin = await cast.admin('chromium');
+    const section = admin.page.locator('.archive-section', { hasText: 'Kopie zapasowe' });
     await expect(section).toContainText('kopia co 1 min');
     await expect(section.locator('.archive-row', { hasText: backupName })).toBeVisible();
+    await admin.close();
+    cast.actors.splice(cast.actors.indexOf(admin), 1);
 
     // Po kopii: ten wiersz odtworzenie ma cofnąć.
     await say(marek, 'Jeszcze jedno piwo na drogę.');

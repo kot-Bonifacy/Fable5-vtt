@@ -14,8 +14,14 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { FastifyBaseLogger } from 'fastify';
 import type { ServerConfig } from './config.js';
-import type { SnapshotRules, SnapshotSummary } from '@vtt/shared';
-import { planSnapshotRotation, snapshotDateOf, snapshotDayOf, snapshotName } from '@vtt/shared';
+import type { SnapshotListView, SnapshotRules, SnapshotSummary } from '@vtt/shared';
+import {
+  SNAPSHOT_RULES_DEFAULT,
+  planSnapshotRotation,
+  snapshotDateOf,
+  snapshotDayOf,
+  snapshotName,
+} from '@vtt/shared';
 
 /**
  * Snapshoty bazy i plików (etap 33) — cała praca na dysku.
@@ -420,4 +426,21 @@ export function snapshotPathsFor(config: ServerConfig): SnapshotPaths | null {
 export function shortPath(path: string): string {
   const rel = relative(process.cwd(), path);
   return rel && !rel.startsWith('..') ? rel : path;
+}
+
+/**
+ * Stan katalogu kopii dla panelu administratora (etap 53; do 53 — zdarzenie
+ * `archive:list` konta właściciela). Pusty katalog znaczy „kopie wyłączone”.
+ */
+export async function snapshotListView(config: ServerConfig): Promise<SnapshotListView> {
+  const backups = config.backups;
+  if (!backups) {
+    return { directory: '', snapshots: [], rules: SNAPSHOT_RULES_DEFAULT, intervalMinutes: 0 };
+  }
+  return {
+    directory: backups.dir,
+    snapshots: await listSnapshots(backups.dir),
+    rules: { keepHourly: backups.keepHourly, keepDaily: backups.keepDaily },
+    intervalMinutes: backups.intervalMinutes,
+  };
 }

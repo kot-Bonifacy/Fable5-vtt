@@ -135,3 +135,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 50c    | Trwały cel (T, podwójny prawy klik), znacznik dla stołu, broń strzela w cel | ⬜     |                     |
 | 51     | Przegląd stref bronionych: ukryte widać u MG, gracz bez PW, efekt obszarowy, odsłonięcie po trafieniu, PW wieżyczki na figurze | ✅     | 2026-10-15          |
 | 52     | Ruch gracza wyłącznie klikiem: trasa zatwierdzana przez serwer, dwa kliknięcia, figury na drodze, Stop + Eksploracja z postojem | ✅     | 2026-10-15          |
+| 53     | Konto administratora: rola ADMIN, hasło tymczasowe, panel kont MG, sesje i dziennik, AI, rejestracja, kopie całej bazy | ✅     | 2026-10-17          |

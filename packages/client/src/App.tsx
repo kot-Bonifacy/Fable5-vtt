@@ -22,13 +22,14 @@ import { NpcCreateWindow } from './components/NpcCreateWindow.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SceneConfigWindow } from './components/SceneConfigWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
-import { OwnerAiWindow } from './components/OwnerAi.js';
 import { useSceneAmbience } from './components/SceneAmbience.js';
 import { useMusicPlayer } from './music-player.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
 import { ResetPasswordPage } from './pages/ResetPasswordPage.js';
+import { SetPasswordPage } from './pages/SetPasswordPage.js';
+import { AdminPage } from './pages/AdminPage.js';
 import { GmPanel } from './pages/GmPanel.js';
 import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
@@ -139,7 +140,6 @@ function GameView() {
       <PortraitCropEditor />
       <CheckRequestDialog />
       <SettingsWindow />
-      <OwnerAiWindow />
       <ClockWindow />
       <SceneConfigWindow />
       <NpcCreateWindow />
@@ -153,6 +153,10 @@ function GameView() {
 export function App() {
   const status = useAuthStore((s) => s.status);
   const userId = useAuthStore((s) => s.user?.id ?? null);
+  // Etap 53: administrator nie siada przy stole, a hasło tymczasowe zamyka
+  // wszystko poza swoją zmianą — w obu przypadkach bez gniazda stołu.
+  const admin = useAuthStore((s) => s.user?.role === 'ADMIN');
+  const mustChangePassword = useAuthStore((s) => s.user?.mustChangePassword === true);
   const initialize = useAuthStore((s) => s.initialize);
 
   useEffect(() => {
@@ -161,17 +165,19 @@ export function App() {
 
   // Pełny ekran (12.09): automat po odświeżeniu strony i Esc pod blokadą.
   // Tutaj, a nie w `GameView`, bo MG po odświeżeniu ląduje też w `/gm`.
-  useFullscreen(status === 'authenticated');
+  useFullscreen(status === 'authenticated' && !admin);
 
   // Keyed by user id: joining as somebody else in the same browser must not
   // keep the previous user's socket (and their state) alive.
   useEffect(() => {
-    if (status === 'authenticated' && userId) {
+    if (status === 'authenticated' && userId && !admin && !mustChangePassword) {
       connectSocket(userId);
     } else if (status === 'anonymous') {
+      // Tylko po wylogowaniu: administrator i hasło tymczasowe gniazda stołu
+      // nigdy nie otwierają, a `disconnectSocket` czyści też panel AI admina.
       disconnectSocket();
     }
-  }, [status, userId]);
+  }, [status, userId, admin, mustChangePassword]);
 
   if (status === 'loading') {
     return (
@@ -187,6 +193,10 @@ export function App() {
       <Route path="/reset/:token" element={<ResetPasswordPage />} />
       {status === 'anonymous' ? (
         <Route path="*" element={<LoginPage />} />
+      ) : mustChangePassword ? (
+        <Route path="*" element={<SetPasswordPage />} />
+      ) : admin ? (
+        <Route path="*" element={<AdminPage />} />
       ) : (
         <>
           <Route path="/" element={<GameView />} />

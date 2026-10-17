@@ -66,6 +66,21 @@ export interface ServerConfig {
    */
   registrationOpen?: boolean;
   /**
+   * Konto administratora (etap 53, `VTT_ADMIN_LOGIN` + `VTT_ADMIN_PASSWORD`).
+   * Hasło służy **wyłącznie do założenia konta**: serwer zakłada je, gdy go nie
+   * ma, z hasłem tymczasowym do zmiany przy pierwszym wejściu, i potem nigdy go
+   * nie nadpisuje — inaczej niż `GM_PASSWORD`. Brak pól: konta admina nie ma
+   * (tak stoją testy dymne, które go nie potrzebują).
+   */
+  adminLogin?: string;
+  adminPassword?: string;
+  /**
+   * `VTT_ADMIN_RESET_PASSWORD=1` — awaryjne wyjście z zapomnianego hasła
+   * administratora: przy starcie hasło wraca do `VTT_ADMIN_PASSWORD` (znów
+   * tymczasowe). Po użyciu zdejmij z `.env`, inaczej każdy restart je cofnie.
+   */
+  adminPasswordReset?: boolean;
+  /**
    * Sloty sesji (etap 44c). **Opcjonalne, i brak sekcji ma znaczenie**: tak
    * stoją testy dymne (~80 literałów konfiguracji), w których kampania gra od
    * chwili założenia — `POST /api/campaigns` od razu rozpoczyna jej sesję
@@ -135,6 +150,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     rateLimits: env.RATE_LIMITS !== '0',
     trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
     registrationOpen: (env.VTT_REGISTRATION ?? 'open').trim().toLowerCase() !== 'closed',
+    ...(env.VTT_ADMIN_LOGIN?.trim() ? { adminLogin: env.VTT_ADMIN_LOGIN.trim() } : {}),
+    ...(env.VTT_ADMIN_PASSWORD ? { adminPassword: env.VTT_ADMIN_PASSWORD } : {}),
+    adminPasswordReset: env.VTT_ADMIN_RESET_PASSWORD === '1',
     sessions: {
       maxSessions: Math.floor(positive(env.VTT_MAX_SESSIONS, 2)),
       emptyMinutes: positive(env.VTT_SESSION_EMPTY_MINUTES, 15),

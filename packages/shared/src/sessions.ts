@@ -9,8 +9,11 @@ import type { CampaignSummary } from './auth.js';
  * zwalnia, a gracze wracają do widoku „Między sesjami”.
  */
 
-/** Dlaczego sesja się skończyła: MG kliknął, nikogo przy stole, nic się nie działo. */
-export type SessionEndReason = 'gm' | 'empty' | 'idle';
+/**
+ * Dlaczego sesja się skończyła: MG kliknął, nikogo przy stole, nic się nie
+ * działo, a od etapu 53 także: zakończył ją administrator albo usunięto konto MG.
+ */
+export type SessionEndReason = 'gm' | 'empty' | 'idle' | 'admin' | 'deleted';
 
 /**
  * `session:changed` — sesja kampanii ruszyła albo się skończyła. Idzie do
@@ -57,3 +60,7 @@ function formatMinutes(minutes: number): string {
   }
   return `${minutes} min`;
 }
+
+/** Wpis dla MG, gdy sesję zakończył administrator serwera (etap 53). */
+export const SESSION_ADMIN_END_TEXT =
+  'Sesję zakończył administrator serwera. Miejsce na sesję jest wolne — możesz zacząć nową.';

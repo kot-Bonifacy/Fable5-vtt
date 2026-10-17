@@ -19,6 +19,7 @@ import { aiAccessReasonText } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { TEST_ADMIN, adminCookie } from './test-admin.js';
 import { AiAccess, aiEntitlement, pickLeaseHolder, type AiCampaignEntry } from './ai/access.js';
 import type { AiGateway } from './ai/gateway.js';
 import type { PrismaClient } from './db.js';
@@ -29,7 +30,7 @@ import { botFailureText } from './realtime/bot-runtime.js';
  * obecność), karencja 2 min (tu skrócona), dzierżawa jednej sesji naraz i jej
  * przekazanie, „Przejmij AI”, cofnięcie bez restartu, przerwanie strumienia po
  * utracie prawa i licznik żądań na atrapie gatewaya. Kanarek: prośby nie
- * słyszy nikt poza kontami właściciela.
+ * słyszy nikt poza administratorem (etap 53; do 53 — kontami właściciela).
  */
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
@@ -43,6 +44,7 @@ const config: ServerConfig = {
   databaseUrl: `file:${TEST_DB}`,
   gmName: 'MG',
   gmPassword: GM_PASSWORD,
+  ...TEST_ADMIN,
   cookieSecret: 'test-cookie-secret',
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
@@ -129,6 +131,8 @@ let campaignB: string;
 let kuba: string;
 /** Konto gracza właściciela w kampanii MG-B — flaga po „To konto właściciela”. */
 let ownerPlayer: string;
+/** Administrator (etap 53) — od niego są decyzje o AI, przełącznik i „Przejmij”. */
+let admin: string;
 
 function cookieOf(setCookieHeader: string | string[] | undefined): string {
   const raw = Array.isArray(setCookieHeader) ? setCookieHeader[0] : setCookieHeader;
@@ -144,6 +148,21 @@ function nextEvent<T>(socket: ClientSocket, event: string, timeoutMs = 4000): Pr
       resolvePromise(payload);
     });
   });
+}
+
+/** Gniazdo administratora — bez stołu, więc bez `state:sync`; czeka na samo połączenie. */
+async function adminSocket(): Promise<ClientSocket> {
+  const socket = ioClient(baseUrl, {
+    extraHeaders: { cookie: admin },
+    reconnection: false,
+    timeout: 3000,
+  });
+  openSockets.push(socket);
+  await new Promise<void>((resolvePromise, reject) => {
+    socket.once('connect', () => resolvePromise());
+    socket.once('connect_error', reject);
+  });
+  return socket;
 }
 
 async function seated(cookie: string): Promise<{ socket: ClientSocket; sync: StateSyncPayload }> {
@@ -234,13 +253,13 @@ async function joinPlayer(campaignId: string, name: string): Promise<string> {
 }
 
 async function setSharing(on: boolean): Promise<OwnerAiState> {
-  const res = await rest<OwnerAiState>(ownerGm, 'POST', '/api/owner/ai/sharing', { on });
+  const res = await rest<OwnerAiState>(admin, 'POST', '/api/admin/ai/sharing', { on });
   expect(res.status).toBe(200);
   return res.body;
 }
 
 async function decide(decision: 'grant' | 'reject' | 'revoke'): Promise<number> {
-  return (await rest(ownerGm, 'POST', `/api/owner/ai/requests/${mgBUserId}`, { decision })).status;
+  return (await rest(admin, 'POST', `/api/admin/ai/requests/${mgBUserId}`, { decision })).status;
 }
 
 async function sessionOf(cookie: string, campaignId: string, start: boolean): Promise<void> {
@@ -277,6 +296,7 @@ beforeAll(async () => {
     payload: { login: 'MG', password: GM_PASSWORD },
   });
   ownerGm = cookieOf(login.headers['set-cookie']);
+  admin = await adminCookie(built);
   campaignA = await createCampaign(ownerGm, 'Ulice Night City');
   marek = await joinPlayer(campaignA, 'Marek');
 
@@ -512,9 +532,10 @@ describe('bez prawa do AI nic nie wychodzi do gatewaya', () => {
   });
 });
 
-describe('prośba i panel właściciela', () => {
-  it('prośbę widzą wyłącznie konta właściciela — także jego konto gracza', async () => {
-    // Konto gracza właściciela w kampanii MG-B łączy się hasłem właściciela.
+describe('prośba i panel administratora', () => {
+  it('prośbę widzi wyłącznie administrator — konta właściciela już nie (etap 53)', async () => {
+    // Konto gracza właściciela w kampanii MG-B łączy się hasłem właściciela —
+    // od etapu 53 to już tylko obecność dla „Udostępniam AI”.
     expect(
       (await rest(ownerPlayer, 'POST', '/api/auth/owner-link', { login: 'mg', password: 'zle' }))
         .status,
@@ -527,46 +548,50 @@ describe('prośba i panel właściciela', () => {
         })
       ).status,
     ).toBe(200);
-    // Zwykły gracz i MG nie łączą się w ten sposób, a panelu nie dostają.
+    // Zwykły gracz i MG nie łączą się w ten sposób.
     expect(
       (await rest(mgB, 'POST', '/api/auth/owner-link', { login: 'MG', password: GM_PASSWORD }))
         .status,
     ).toBe(403);
-    expect((await rest(mgB, 'GET', '/api/owner/ai')).status).toBe(403);
-    expect((await rest(kuba, 'GET', '/api/owner/ai')).status).toBe(403);
-    expect((await rest(mgB, 'POST', '/api/owner/ai/sharing', { on: true })).status).toBe(403);
-    expect(
-      (await rest(kuba, 'POST', `/api/owner/ai/requests/${mgBUserId}`, { decision: 'grant' }))
-        .status,
-    ).toBe(403);
+    // Panelu AI nie dostaje nikt poza administratorem — także konto MG właściciela.
+    for (const cookie of [mgB, kuba, ownerGm, ownerPlayer]) {
+      expect((await rest(cookie, 'GET', '/api/admin/ai')).status).toBe(403);
+      expect((await rest(cookie, 'POST', '/api/admin/ai/sharing', { on: true })).status).toBe(403);
+      expect(
+        (await rest(cookie, 'POST', `/api/admin/ai/requests/${mgBUserId}`, { decision: 'grant' }))
+          .status,
+      ).toBe(403);
+    }
 
-    const owner = await seated(ownerGm);
-    const ownerAsPlayer = await seated(ownerPlayer);
+    const adminLive = await adminSocket();
     const b = await seated(mgB);
-    const others = [b, await seated(kuba), await seated(marek)];
+    const others = [
+      b,
+      await seated(kuba),
+      await seated(marek),
+      await seated(ownerGm),
+      await seated(ownerPlayer),
+    ];
     const heard = others.map((entry) => recordAll(entry.socket));
-    const ownerPush = nextEvent<OwnerAiState>(owner.socket, 'ai-access:owner');
-    const playerPush = nextEvent<OwnerAiState>(ownerAsPlayer.socket, 'ai-access:owner');
+    const adminPush = nextEvent<OwnerAiState>(adminLive, 'ai-access:owner');
     const mine = nextEvent<AiAccessView>(b.socket, 'ai-access:mine');
 
     const requested = await rest<AiAccessView>(mgB, 'POST', '/api/ai-access/request');
     expect(requested.body.status).toBe('requested');
-    for (const push of [await ownerPush, await playerPush]) {
-      expect(push.pending).toBe(1);
-      expect(push.requests[0]).toMatchObject({ login: 'bartek', status: 'requested' });
-    }
+    const push = await adminPush;
+    expect(push.pending).toBe(1);
+    expect(push.requests[0]).toMatchObject({ login: 'bartek', status: 'requested' });
     expect((await mine).status).toBe('requested');
     await settle();
-    // Kanarek: login proszącego nie trafia do nikogo poza właścicielem
+    // Kanarek: login proszącego nie trafia do nikogo poza administratorem
     // (MG-B dostaje tylko własny stan, bez cudzych loginów).
     for (const record of heard) {
       expect(record.filter((entry) => entry.event === 'ai-access:owner')).toEqual([]);
       expect(record.some((entry) => entry.payload.includes('"login":"bartek"'))).toBe(false);
     }
-    // Panel właściciela działa z konta gracza.
-    const fromPlayer = await rest<OwnerAiState>(ownerPlayer, 'GET', '/api/owner/ai');
-    expect(fromPlayer.status).toBe(200);
-    expect(fromPlayer.body.pending).toBe(1);
+    const fromAdmin = await rest<OwnerAiState>(admin, 'GET', '/api/admin/ai');
+    expect(fromAdmin.status).toBe(200);
+    expect(fromAdmin.body.pending).toBe(1);
 
     // Odrzucenie, ponowna prośba, zatwierdzenie; zła decyzja w złym stanie — 409.
     expect(await decide('reject')).toBe(200);
@@ -579,6 +604,30 @@ describe('prośba i panel właściciela', () => {
     expect((await rest<AiAccessView>(mgB, 'GET', '/api/ai-access')).body.status).toBe('granted');
     // Właściciel nie prosi sam siebie.
     expect((await rest(ownerGm, 'POST', '/api/ai-access/request')).status).toBe(409);
+  });
+
+  it('administrator nadaje AI także bez prośby MG (etap 53)', async () => {
+    expect((await rest<AiAccessView>(mgB, 'GET', '/api/ai-access')).body.status).toBe('none');
+    expect(await decide('reject')).toBe(409);
+    expect(await decide('grant')).toBe(200);
+    expect((await rest<AiAccessView>(mgB, 'GET', '/api/ai-access')).body.status).toBe('granted');
+  });
+
+  it('gniazdo administratora to obecność właściciela, ale nie siada przy stole', async () => {
+    expect(await decide('grant')).toBe(200);
+    const b = await seated(mgB);
+    const status = trackStatus(b.socket, b.sync.ai);
+    expect(status().reason).toBe('owner-absent');
+
+    const adminLive = await adminSocket();
+    const heard = recordAll(adminLive);
+    await until(() => status().reason === 'sharing-off');
+    await setSharing(true);
+    await until(() => status().available);
+    await settle();
+    // Żadnego stanu gry: ani `state:sync`, ani zdarzeń stołu.
+    expect(heard.map((entry) => entry.event)).not.toContain('state:sync');
+    expect(heard.some((entry) => entry.event.startsWith('chat:'))).toBe(false);
   });
 });
 
@@ -641,13 +690,13 @@ describe('dzierżawa AI', () => {
     const status = trackStatus(b.socket, b.sync.ai);
     // Nikt nie trzyma AI — przygotowanie MG-B może pytać.
     expect(b.sync.ai.available).toBe(true);
-    expect((await rest(ownerGm, 'POST', '/api/owner/ai/take')).body).toEqual({
+    expect((await rest(admin, 'POST', '/api/admin/ai/take')).body).toEqual({
       error: 'NO_OWN_SESSION',
     });
 
     await sessionOf(ownerGm, campaignA, true);
     await until(() => status().reason === 'busy');
-    let owner = await rest<OwnerAiState>(ownerGm, 'GET', '/api/owner/ai');
+    let owner = await rest<OwnerAiState>(admin, 'GET', '/api/admin/ai');
     expect(owner.body.lease).toMatchObject({ campaignId: campaignA, own: true });
     expect(owner.body.canTakeOver).toBe(false);
 
@@ -669,7 +718,7 @@ describe('dzierżawa AI', () => {
     await sessionOf(ownerGm, campaignA, true);
     await settle();
     expect(status().available).toBe(true);
-    owner = await rest<OwnerAiState>(ownerGm, 'GET', '/api/owner/ai');
+    owner = await rest<OwnerAiState>(admin, 'GET', '/api/admin/ai');
     expect(owner.body.lease).toMatchObject({
       campaignId: campaignB,
       gmLogin: 'bartek',
@@ -678,7 +727,7 @@ describe('dzierżawa AI', () => {
     expect(owner.body.canTakeOver).toBe(true);
 
     // „Przejmij AI”.
-    const taken = await rest<OwnerAiState>(ownerGm, 'POST', '/api/owner/ai/take');
+    const taken = await rest<OwnerAiState>(admin, 'POST', '/api/admin/ai/take');
     expect(taken.status).toBe(200);
     expect(taken.body.lease).toMatchObject({ campaignId: campaignA, own: true });
     await until(() => status().reason === 'busy');

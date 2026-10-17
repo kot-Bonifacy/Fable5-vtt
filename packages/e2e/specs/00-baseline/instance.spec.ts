@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
+  ADMIN_LOGIN,
   CLIENT_BUILD_DIR,
   CLIENT_DIR,
   GM_LOGIN,
@@ -23,9 +24,13 @@ test.describe('@szybkie linia bazowa instancji', () => {
     expect(await response.json()).toMatchObject({ status: 'ok' });
   });
 
-  test('pusta baza: jedno konto MG z env, zero kampanii', () => {
+  test('pusta baza: konto MG i administratora z env, zero kampanii', () => {
     expect(tableNames()).toEqual(expect.arrayContaining(['User', 'Campaign', 'ChatMessage']));
-    expect(query('SELECT name, role FROM User')).toEqual([{ name: 'MG', role: 'GM' }]);
+    // Etap 53: administrator powstaje z hasłem tymczasowym, obok konta MG właściciela.
+    expect(query('SELECT name, role, mustChangePassword FROM User ORDER BY role')).toEqual([
+      { name: ADMIN_LOGIN, role: 'ADMIN', mustChangePassword: 1 },
+      { name: 'MG', role: 'GM', mustChangePassword: 0 },
+    ]);
     expect(query('SELECT id FROM Campaign')).toEqual([]);
   });
 

@@ -443,8 +443,6 @@ const CASES: Record<string, Case> = {
   'token:aim': foreign((a) => ({ tokenId: a.tokenId, facing: 1 })),
   'token:target': foreign((a) => ({ tokenId: a.tokenId, targetId: null })),
   // archive
-  'archive:list': own('tylko właściciel serwera — MG-B dostaje FORBIDDEN'),
-  'archive:snapshot': own('tylko właściciel serwera — MG-B dostaje FORBIDDEN'),
   'archive:character': foreign((a) => ({ file: {}, ownerId: a.playerId })),
   'archive:scene': own('plik z dysku MG — obce id w pliku sprawdza osobny test niżej'),
   // attacks

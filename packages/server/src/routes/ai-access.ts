@@ -1,9 +1,9 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { AiAccessDecision, AiAccessStatus, SessionUser } from '@vtt/shared';
 import { isAiAccessStatus, normalizeGmLogin, ROLE_GM, ROLE_PLAYER } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import { requireAuth, requireGm } from '../auth/guards.js';
+import { requireAdmin, requireAuth, requireGm } from '../auth/guards.js';
 import { verifyPassword } from '../auth/passwords.js';
 import {
   aiAccessView,
@@ -12,26 +12,25 @@ import {
   pushOwnerAiState,
 } from '../realtime/ai-access.js';
 import { refuseRateLimited } from './helpers.js';
+import { notifyAdmins } from '../realtime/admin-room.js';
 
 /**
  * AI właściciela (etap 44d) — trasy.
  *
  * - MG bez własnego AI: `GET /api/ai-access`, `POST /api/ai-access/request`.
- * - Właściciel z **każdego** swojego konta (MG albo gracz z flagą):
- *   `GET /api/owner/ai`, decyzja o prośbie, „Udostępniam AI”, „Przejmij AI”.
+ * - Administrator (etap 53; do 53 — każde konto z flagą właściciela):
+ *   `GET /api/admin/ai`, decyzja o prośbie, „Udostępniam AI”, „Przejmij AI”.
  * - Gracz: `POST`/`DELETE /api/auth/owner-link` — „To konto właściciela”
- *   z loginem i hasłem właściciela (decyzja MG z 04.10).
+ *   z loginem i hasłem konta MG właściciela (decyzja MG z 04.10). Od etapu 53
+ *   flaga daje już tylko obecność właściciela — panel AI ma administrator.
  */
 
-/** Którekolwiek konto z flagą właściciela — także konto gracza w cudzej kampanii. */
-async function requireAnyOwner(request: FastifyRequest, reply: FastifyReply) {
-  if (!request.user) return reply.code(401).send({ error: 'UNAUTHORIZED' });
-  if (!request.user.owner) return reply.code(403).send({ error: 'FORBIDDEN' });
-}
-
-/** Skąd do czego wolno przejść decyzją właściciela. */
+/**
+ * Skąd do czego wolno przejść decyzją administratora. Zgoda także bez prośby
+ * (`none`, etap 53): administrator nadaje AI z listy kont MG.
+ */
 const DECISIONS: Record<AiAccessDecision, { from: AiAccessStatus[]; to: AiAccessStatus }> = {
-  grant: { from: ['requested', 'rejected', 'revoked'], to: 'granted' },
+  grant: { from: ['none', 'requested', 'rejected', 'revoked'], to: 'granted' },
   reject: { from: ['requested'], to: 'rejected' },
   revoke: { from: ['granted'], to: 'revoked' },
 };
@@ -75,15 +74,16 @@ export function registerAiAccessRoutes(
     });
     request.log.info({ userId: me.id }, 'AI access requested');
     await afterChange(me.id);
+    notifyAdmins(io);
     return aiAccessView(updated);
   });
 
-  app.get('/api/owner/ai', { preHandler: requireAnyOwner }, async () => buildOwnerAiState(ctx));
+  app.get('/api/admin/ai', { preHandler: requireAdmin }, async () => buildOwnerAiState(ctx));
 
   /** „Zatwierdź”, „Odrzuć”, „Cofnij” — cofnięcie działa od razu, bez restartu. */
   app.post(
-    '/api/owner/ai/requests/:userId',
-    { preHandler: requireAnyOwner },
+    '/api/admin/ai/requests/:userId',
+    { preHandler: requireAdmin },
     async (request, reply) => {
       const { userId } = request.params as { userId: string };
       const { decision } = (request.body ?? {}) as { decision?: unknown };
@@ -99,6 +99,7 @@ export function registerAiAccessRoutes(
         where: { id: userId },
         data: { aiAccess: rule.to, aiDecidedAt: new Date() },
       });
+      notifyAdmins(io);
       request.log.info({ userId, decision }, 'AI access decided');
       await afterChange(userId);
       return buildOwnerAiState(ctx);
@@ -106,7 +107,7 @@ export function registerAiAccessRoutes(
   );
 
   /** „Udostępniam AI” — w pamięci serwera; po restarcie i nowym wejściu wyłączony. */
-  app.post('/api/owner/ai/sharing', { preHandler: requireAnyOwner }, async (request, reply) => {
+  app.post('/api/admin/ai/sharing', { preHandler: requireAdmin }, async (request, reply) => {
     const { on } = (request.body ?? {}) as { on?: unknown };
     if (typeof on !== 'boolean') return reply.code(400).send({ error: 'BAD_REQUEST' });
     ctx.ai.setSharing(on);
@@ -115,7 +116,7 @@ export function registerAiAccessRoutes(
   });
 
   /** „Przejmij AI” — tylko dla trwającej sesji z konta MG właściciela. */
-  app.post('/api/owner/ai/take', { preHandler: requireAnyOwner }, async (request, reply) => {
+  app.post('/api/admin/ai/take', { preHandler: requireAdmin }, async (request, reply) => {
     const refused = ctx.ai.takeOver();
     if (refused) return reply.code(409).send({ error: refused });
     request.log.info('owner took the AI over');

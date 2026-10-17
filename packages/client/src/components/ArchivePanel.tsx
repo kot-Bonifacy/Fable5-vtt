@@ -1,40 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import type {
-  ArchiveImportResult,
-  ArchiveKind,
-  CampaignDetail,
-  SnapshotListView,
-} from '@vtt/shared';
+import type { ArchiveImportResult, ArchiveKind, CampaignDetail } from '@vtt/shared';
 import {
   ARCHIVE_DOWNLOAD_PATHS,
   ARCHIVE_REFUSAL_MESSAGES,
   archiveRefusalText,
-  formatArchiveBytes,
   isContainerCard,
-  snapshotDateOf,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import {
-  downloadArchive,
-  fetchSnapshots,
-  importCharacterFile,
-  importSceneFile,
-  takeSnapshotNow,
-} from '../socket.js';
-import { useAuthStore } from '../stores/authStore.js';
+import { downloadArchive, importCharacterFile, importSceneFile } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { plural } from '../plural.js';
-import { EmptyState } from './EmptyState.js';
 
 /**
- * Kopie zapasowe i pliki wymiany (etap 33) — zakładka MG.
- *
- * Panel odpowiada na trzy pytania i **świadomie nie odpowiada na czwarte**:
- * „czy kopia w ogóle powstaje", „gdzie ona leży" i „jak wyjąć stąd jedną
- * rzecz". Czwartego — „jak wrócić do kopii" — tu nie ma i nie będzie: przywrócenie
- * kasuje bieżący stan, więc robi się je skryptem przy zatrzymanym serwerze.
- * Zamiast guzika stoi w panelu polecenie do skopiowania.
+ * Pliki wymiany (etap 33) — zakładka MG: eksport kampanii, import kart i scen.
+ * Kopie zapasowe całej bazy od etapu 53 są w panelu administratora
+ * (`admin/AdminBackups.tsx`).
  */
 
 /** Zdanie dla kodu odmowy z serwera — importu albo samej kopii. */
@@ -45,8 +25,6 @@ function importErrorText(code: string, kind: ArchiveKind): string {
   switch (code) {
     case 'ARCHIVE_EMPTY':
       return 'Plik nie ma nazwy — nie ma czego wczytać.';
-    case 'BACKUP_DISABLED':
-      return 'Kopie są wyłączone w konfiguracji serwera (BACKUP_DIR).';
     case 'OWNER_NOT_FOUND':
       return 'Wybrany gracz już nie istnieje — odśwież listę.';
     case 'NO_CAMPAIGN':
@@ -54,103 +32,6 @@ function importErrorText(code: string, kind: ArchiveKind): string {
     default:
       return `Nie udało się: ${code}`;
   }
-}
-
-/** „5 września, 14:30" — z nazwy katalogu, nie z czasu pliku. */
-function snapshotWhen(name: string, takenAt: string | null): string {
-  const date = snapshotDateOf(name) ?? (takenAt ? new Date(takenAt) : null);
-  if (!date) return 'nazwa spoza schematu';
-  return date.toLocaleString('pl-PL', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function SnapshotSection() {
-  const [view, setView] = useState<SnapshotListView | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetchSnapshots().then((ack) => {
-      if (ack.ok && ack.data) setView(ack.data);
-    });
-  }, []);
-
-  async function snapshotNow() {
-    setBusy(true);
-    setError(null);
-    const ack = await takeSnapshotNow();
-    if (ack.ok && ack.data) setView(ack.data);
-    else if (!ack.ok) setError(importErrorText(ack.error, 'campaign'));
-    setBusy(false);
-  }
-
-  const enabled = view !== null && view.directory !== '';
-
-  return (
-    <section className="archive-section">
-      <h3 className="panel-section-title">Kopie zapasowe</h3>
-      <div className="ai-status">
-        <div className="ai-status-main">
-          <span className={`badge ${enabled ? 'badge--ok' : 'badge--off'}`}>
-            {enabled
-              ? view.intervalMinutes > 0
-                ? `kopia co ${view.intervalMinutes} min`
-                : 'tylko ręcznie'
-              : 'kopie wyłączone'}
-          </span>
-          {enabled && (
-            <span className="ai-status-text">
-              zostaje {view.rules.keepHourly} ostatnich i {view.rules.keepDaily} dób wstecz
-            </span>
-          )}
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => void snapshotNow()}
-            disabled={busy || !enabled}
-            title="Robi kopię teraz i od razu przycina katalog do ustawionej rotacji"
-          >
-            {busy ? 'Robię kopię…' : 'Zrób kopię teraz'}
-          </button>
-        </div>
-        {enabled && <p className="archive-path">{view.directory}</p>}
-        {error && <p className="ai-status-error">{error}</p>}
-      </div>
-
-      {view && view.snapshots.length > 0 ? (
-        <ul className="archive-list">
-          {view.snapshots.map((entry) => (
-            <li key={entry.name} className="archive-row">
-              <span className="archive-row-name">{entry.name}</span>
-              <span className="archive-row-meta">
-                {snapshotWhen(entry.name, entry.takenAt)} · {formatArchiveBytes(entry.dbBytes)} ·{' '}
-                {plural(entry.files, 'plik', 'pliki', 'plików')}
-              </span>
-              {!entry.rotated && (
-                <span className="archive-flag" title="Nazwa spoza schematu — rotacja jej nie ruszy">
-                  🔒 zachowana
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        enabled && (
-          <EmptyState text="Nie ma jeszcze żadnej kopii — pierwsza powstanie przy starcie serwera." />
-        )
-      )}
-
-      <p className="archive-hint">
-        Przywrócenie kopii kasuje bieżący stan, więc nie ma go w tym panelu. Zatrzymaj serwer i
-        uruchom: <code>pnpm --filter @vtt/server restore -- nazwa-kopii</code>. Skrypt zrobi
-        najpierw kopię stanu sprzed przywrócenia.
-      </p>
-    </section>
-  );
 }
 
 /** Wybór pliku + wczytanie; wspólny dla karty i sceny. */
@@ -361,11 +242,10 @@ function CampaignSection() {
 }
 
 export function ArchivePanel() {
-  // Kopie całej bazy niosą kampanie wszystkich MG — tylko właściciel (44a).
-  const owner = useAuthStore((s) => s.user?.owner ?? false);
+  // Kopie całej bazy niosą kampanie wszystkich MG — od etapu 53 są w panelu
+  // administratora (`AdminBackups`), nie tutaj.
   return (
     <div className="archive-panel">
-      {owner && <SnapshotSection />}
       <CampaignSection />
       <CharacterSection />
       <SceneSection />

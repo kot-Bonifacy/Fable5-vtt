@@ -43,6 +43,10 @@ model User {
   aiAccess      String?
   aiRequestedAt DateTime?
   aiDecidedAt   DateTime?
+  /// The password is temporary (stage 53): set by the admin for a GM, or the
+  /// admin's own first password from `.env`. Until it is changed the account
+  /// gets nothing but the „set your own password” screen.
+  mustChangePassword Boolean @default(false)
 
   sessions         Session[]
   memberships      CampaignMember[]
@@ -56,6 +60,51 @@ model User {
   characterDrafts  CharacterDraft[]
   campaignsRun     Campaign[]       @relation("CampaignGm")
   passwordResets   PasswordReset[]
+  gameSessions     GameSession[]    @relation("GameSessionGm")
+}
+
+/// The session log (stage 53): one row per „Rozpocznij sesję” … end. Names are
+/// copied in, so the row outlives a deleted campaign or GM account — the log
+/// is the admin's record of what ran on the server, not part of a campaign.
+model GameSession {
+  id           String    @id @default(cuid())
+  campaignId   String?
+  campaign     Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignName String
+  gmId         String?
+  gm           User?     @relation("GameSessionGm", fields: [gmId], references: [id], onDelete: SetNull)
+  gmLogin      String
+  startedAt    DateTime
+  /// null — the session is running.
+  endedAt      DateTime?
+  /// `SessionEndReason` from `shared`; null while running.
+  endReason    String?
+
+  players GameSessionPlayer[]
+
+  @@index([campaignId, endedAt])
+  @@index([startedAt])
+}
+
+/// A player who sat at the table during a logged session (stage 53). No
+/// relation to `User` on purpose: the log keeps the name after the account goes.
+model GameSessionPlayer {
+  id          String      @id @default(cuid())
+  sessionId   String
+  session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId      String
+  name        String
+  firstSeenAt DateTime    @default(now())
+
+  @@unique([sessionId, userId])
+}
+
+/// Server-wide switches the admin changes in the panel (stage 53), e.g.
+/// `registration` = "open" | "closed". A missing row falls back to `.env`.
+model ServerSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 /// One-time link the owner hands a GM who forgot their password (stage 44a).
@@ -156,6 +205,7 @@ model Campaign {
   netRuns       NetRun[]
   randomTables  RandomTable[]
   merchants     Merchant[]
+  gameSessions  GameSession[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).

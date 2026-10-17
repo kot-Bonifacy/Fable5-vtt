@@ -3,14 +3,13 @@ import { expect, test, type Actor } from '../../fixtures/actors.ts';
 import { query, queryOne } from '../../fixtures/db.ts';
 import { startFromPoT3 } from '../../fixtures/nocna-zmiana.ts';
 import { rawSocket } from '../../fixtures/security.ts';
-import { emitAck } from '../../fixtures/socket.ts';
 import { GM_LOGIN, SERVER_URL } from '../../instance/paths.ts';
 
 /**
  * T9a, punkt 1 (`testy.md` 6.5): konta MG z perspektywy bety — rejestracja
  * w Chromium (Firefox gra ją w `t2d`), walidacja po polsku i na serwerze,
  * zajęty login bez względu na wielkość liter, wylogowanie po stronie serwera,
- * zmiana hasła w „Konto”, reset przez właściciela (24 h, nowy unieważnia stary),
+ * zmiana hasła w „Konto”, reset przez administratora (24 h, nowy unieważnia stary),
  * limity rejestracji i złych haseł per adres, zwykły MG bez kopii całej bazy
  * i bez panelu właściciela. Start z `po-T3`, jak `t2d`.
  *
@@ -64,6 +63,7 @@ async function cookieOf(actor: Actor): Promise<string> {
 
 test.describe.serial('@szybkie T9a konta MG: rejestracja, hasła, limity', () => {
   let mg: Actor;
+  let admin: Actor;
   let bartek: Actor;
 
   test.beforeAll(async () => {
@@ -221,7 +221,7 @@ test.describe.serial('@szybkie T9a konta MG: rejestracja, hasła, limity', () =>
     await page.keyboard.press('Escape');
   });
 
-  test('9.1 właściciel: hasło tylko z .env, reset zwykłego MG na 24 h, nowy link unieważnia stary', async ({
+  test('9.1 właściciel: hasło tylko z .env; administrator: reset zwykłego MG na 24 h, nowy link unieważnia stary', async ({
     cast,
   }) => {
     mg = await cast.mg('chromium');
@@ -234,20 +234,23 @@ test.describe.serial('@szybkie T9a konta MG: rejestracja, hasła, limity', () =>
     });
     expect([refused.status(), (await refused.json()).error]).toEqual([409, 'PASSWORD_FROM_ENV']);
 
+    // Etap 53: konta MG prowadzi administrator, nie konto MG właściciela.
     await mg.page.goto('/gm');
-    const row = mg.page.locator('.owner-account', { hasText: BARTEK_LOGIN });
+    await expect(mg.page.locator('.owner-account')).toHaveCount(0);
+    admin = await cast.admin('chromium');
+    const row = admin.page.locator('.owner-account', { hasText: BARTEK_LOGIN });
     await expect(row).toBeVisible();
-    const ownerRow = mg.page.locator('.owner-account', {
-      has: mg.page.locator('.badge', { hasText: 'właściciel' }),
+    const ownerRow = admin.page.locator('.owner-account', {
+      has: admin.page.locator('.badge', { hasText: 'właściciel' }),
     });
     await expect(ownerRow).toBeVisible();
-    await expect(ownerRow.getByRole('button', { name: 'Zresetuj hasło' })).toHaveCount(0);
+    await expect(ownerRow.getByRole('button', { name: 'Link resetu' })).toHaveCount(0);
     await expect(ownerRow.getByRole('button', { name: 'Zablokuj' })).toHaveCount(0);
 
     const shown = row.locator('code.invite-url');
     const link = async () => {
       const before = (await shown.count()) > 0 ? await shown.textContent() : null;
-      await row.getByRole('button', { name: 'Zresetuj hasło' }).click();
+      await row.getByRole('button', { name: 'Link resetu' }).click();
       await expect(shown).toBeVisible();
       if (before) await expect(shown).not.toHaveText(before);
       return new URL((await shown.textContent()) ?? '').pathname;
@@ -273,17 +276,22 @@ test.describe.serial('@szybkie T9a konta MG: rejestracja, hasła, limity', () =>
     const hours = (Date.parse(reset!.expiresAt) - Date.parse(reset!.createdAt)) / 3_600_000;
     expect(Math.round(hours)).toBe(24);
 
-    // Właściciela nie zresetuje i nie zablokuje nawet on sam, z pominięciem UI.
+    // Konta właściciela nie zresetuje i nie zablokuje nawet administrator, z pominięciem UI.
     const ownerId = (await mg.store<AuthStore>('auth')).user!.id;
-    const resetOwner = await mg.page.request.post(`/api/owner/accounts/${ownerId}/reset`);
+    const resetOwner = await admin.page.request.post(`/api/admin/accounts/${ownerId}/reset`);
     expect(resetOwner.status()).toBeGreaterThanOrEqual(400);
-    const blockOwner = await mg.page.request.post(`/api/owner/accounts/${ownerId}/block`, {
+    const blockOwner = await admin.page.request.post(`/api/admin/accounts/${ownerId}/block`, {
       data: { blocked: true },
     });
     expect(blockOwner.status()).toBeGreaterThanOrEqual(400);
     expect(queryOne('SELECT blockedAt FROM User WHERE id = ?', ownerId)).toEqual({
       blockedAt: null,
     });
+    // Obsada żyje przez cały pracownik — administrator nie może przeżyć restartu
+    // instancji w następnym pliku z zerwanym gniazdem w konsoli.
+    expect(admin.unexpectedErrors()).toEqual([]);
+    await admin.close();
+    cast.actors.splice(cast.actors.indexOf(admin), 1);
   });
 
   test('9.1 limity: szóste konto z jednego adresu w godzinie — 429, inny adres dalej; 10 złych haseł konta z rejestracji — 429 także na dobre', async () => {
@@ -336,18 +344,15 @@ test.describe.serial('@szybkie T9a konta MG: rejestracja, hasła, limity', () =>
     expect((await bartek.store<AuthStore>('auth')).status).toBe('authenticated');
   });
 
-  test('9.1 zwykły MG: bez kopii całej bazy na serwerze i bez panelu właściciela', async () => {
-    const socket = await bartek.socket();
-    expect(await emitAck(socket, 'archive:list', {})).toEqual({ ok: false, error: 'FORBIDDEN' });
-    expect(await emitAck(socket, 'archive:snapshot', {})).toEqual({
-      ok: false,
-      error: 'FORBIDDEN',
-    });
-    const accounts = await bartek.page.request.get('/api/owner/accounts');
-    expect(accounts.status()).toBe(403);
+  test('9.1 MG (zwykły i właściciel): bez kopii całej bazy i bez panelu administratora', async () => {
     const ownerId = (await mg.store<AuthStore>('auth')).user!.id;
-    const resetOwner = await bartek.page.request.post(`/api/owner/accounts/${ownerId}/reset`);
-    expect(resetOwner.status()).toBe(403);
+    for (const gm of [bartek, mg]) {
+      expect((await gm.page.request.get('/api/admin/backups')).status()).toBe(403);
+      expect((await gm.page.request.post('/api/admin/backups')).status()).toBe(403);
+      expect((await gm.page.request.get('/api/admin/accounts')).status()).toBe(403);
+      const resetOwner = await gm.page.request.post(`/api/admin/accounts/${ownerId}/reset`);
+      expect(resetOwner.status()).toBe(403);
+    }
     await bartek.page.goto('/gm');
     await expect(bartek.page.getByRole('link', { name: '← Wróć do gry' })).toBeVisible();
     await expect(bartek.page.locator('.owner-account')).toHaveCount(0);

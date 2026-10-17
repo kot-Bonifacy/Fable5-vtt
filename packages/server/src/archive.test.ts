@@ -18,6 +18,7 @@ import type {
 import { ARCHIVE_VERSION, cpredWithoutBareHands, type CpredCharacterData } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
+import { TEST_ADMIN, adminCookie } from './test-admin.js';
 import type { CampaignArchive, CharacterArchive, SceneArchive } from './archive.js';
 import { joinUrl } from './test-join.js';
 
@@ -31,8 +32,8 @@ import { joinUrl } from './test-join.js';
  *
  * Kopie są w tym teście **wyłączone** (`backups` nieustawione) — dokładnie tak
  * jak we wszystkich pozostałych zestawach; sprawdzana jest za to odpowiedź
- * `archive:list` w tym stanie, bo to jest stan, w którym panel MG musi coś
- * powiedzieć zamiast pokazać pustkę.
+ * listy kopii (od etapu 53 `GET /api/admin/backups`) w tym stanie, bo to jest
+ * stan, w którym panel administratora musi coś powiedzieć zamiast pokazać pustkę.
  */
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
@@ -45,6 +46,7 @@ const config: ServerConfig = {
   databaseUrl: `file:${TEST_DB}`,
   gmName: 'MG',
   gmPassword: GM_PASSWORD,
+  ...TEST_ADMIN,
   cookieSecret: 'test-cookie-secret',
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
@@ -479,16 +481,27 @@ describe('zrzut kampanii', () => {
   });
 });
 
-describe('archive:list bez włączonych kopii', () => {
+describe('lista kopii bez włączonych kopii', () => {
   it('mówi „zero i co godzinę zero", zamiast się wywrócić', async () => {
-    const view = dataOf(await emitAck<SnapshotListView>(gmSocket, 'archive:list'));
-    expect(view).toMatchObject({ directory: '', snapshots: [], intervalMinutes: 0 });
+    const res = await built.app.inject({
+      method: 'GET',
+      url: '/api/admin/backups',
+      headers: { cookie: await adminCookie(built) },
+    });
+    expect(res.json() as SnapshotListView).toMatchObject({
+      directory: '',
+      snapshots: [],
+      intervalMinutes: 0,
+    });
   });
 
   it('odmawia ręcznej kopii, gdy kopie są wyłączone', async () => {
-    expect(await emitAck(gmSocket, 'archive:snapshot')).toEqual({
-      ok: false,
-      error: 'BACKUP_DISABLED',
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/admin/backups',
+      headers: { cookie: await adminCookie(built) },
     });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: 'BACKUP_DISABLED' });
   });
 });

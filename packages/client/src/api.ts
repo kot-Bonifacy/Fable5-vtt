@@ -22,7 +22,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function request<T>(method: 'GET' | 'POST', url: string, body?: unknown): Promise<T> {
+async function request<T>(
+  method: 'GET' | 'POST' | 'DELETE',
+  url: string,
+  body?: unknown,
+): Promise<T> {
   const response = await fetch(url, {
     method,
     headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
@@ -34,6 +38,9 @@ async function request<T>(method: 'GET' | 'POST', url: string, body?: unknown): 
 export const apiGet = <T>(url: string): Promise<T> => request<T>('GET', url);
 export const apiPost = <T>(url: string, body?: unknown): Promise<T> =>
   request<T>('POST', url, body);
+/** Kasowanie z ciałem i odpowiedzią JSON (etap 53: usunięcie konta MG z potwierdzeniem). */
+export const apiDeleteJson = <T>(url: string, body: unknown): Promise<T> =>
+  request<T>('DELETE', url, body);
 
 /** Uploads a single file as multipart/form-data (field name: `file`). */
 export async function apiUpload<T>(url: string, file: File): Promise<T> {

@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `0196b00`) — Unik nie przepada przez przypadek
+
+**Zlecenie MG:** gracz, który nie zauważy na czas możliwości Uniku, traci ją, bo przeciwnik
+działa dalej; poprawić wzorem Foundry. **Diagnoza:** serwer od 03.10 wstrzymuje obrażenia
+(`evasionPending`), ale gracz dowiadywał się o Uniku wyłącznie z guzika na karcie czatu. Kto
+patrzył na mapę, nie widział go, a MG czekał albo klikał za niego „Bez uniku”. Do tego guzik
+„Unik” wisiał też tam, gdzie serwer nie czekał (REF poniżej 8 przy strzale, pudło) i znikał po
+rzucie obrażeń. **Decyzja MG (pytanie):** „Bez uniku” u gracza usunięty całkiem — Unik po
+znanym trafieniu nic nie kosztuje (wyjątek: ogień ciągły, gdzie słaby rzut podbija mnożnik,
+też bez wyjątku dla gracza); zwalnia tylko MG.
+
+**Zrobione:** `attack-evasion-call.ts` (`openEvasionCallsFor` — kto odpowiada za figurę: właściciel
+karty albo żetonu, figury bez właściciela MG), kubek w trybie `dodge` (przed obrażeniami, czerwony
+oddech, dźwięk wezwania, `Esc` odkłada tylko kubek — `skippedEvasionCalls`), `EvasionPrompt`
+(monit na dole mapy za lewym panelem, do 3 naraz, bez limitu czasu — znika dopiero, gdy serwer
+przestanie czekać), `attack:no-evade` tylko MG (`FORBIDDEN`), guzik „Unik” gracza na karcie
+ataku tylko przy `evasionPending`. Umowa w `atak`.
+
+**Weryfikacja:** vitest klienta 372/372 (nowy `attack-evasion-call.test.ts`), serwer
+`attacks`/`areas`/`campaign-isolation` 114/114, `tsc` obu pakietów, ESLint. Oględziny w **Firefoksie**
+(Playwright MCP, konto `ogledziny-b`) na kartach ataku podstawionych do magazynu czatu w
+przeglądarce: dwa wezwania, kubek „Unik: Ganger!”, `Esc` przełącza kubek na następne wezwanie,
+monity zostają, „Unik” ładuje kubek („Kubek gotowy”). Prawdziwego rzutu przez serwer w UI nie
+było (pokrywają go testy serwera); E2E nie puszczano — `noDodge` w `fixtures/walka.ts` klika
+„Bez uniku” jako MG, więc powinien działać bez zmian.
+
 ### Sesja 16.10 (po `2549eb6`) — inicjatywa raz na walkę
 
 **Zlecenie MG:** inicjatywa ma być rzucana raz na początku walki, a kolejność ma zostać na kolejne

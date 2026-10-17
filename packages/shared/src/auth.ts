@@ -1,10 +1,16 @@
+import type { AiAccessStatus } from './ai-access.js';
 import type { DiceSkinId } from './dice.js';
 
-/** User roles. Exactly two by design — see the project survey. */
-export type Role = 'GM' | 'PLAYER';
+/**
+ * User roles. Two at the table by design (see the project survey); the third,
+ * `ADMIN` (stage 53), never sits at one — it runs the server: GM accounts,
+ * sessions, AI and whole-database backups.
+ */
+export type Role = 'GM' | 'PLAYER' | 'ADMIN';
 
 export const ROLE_GM: Role = 'GM';
 export const ROLE_PLAYER: Role = 'PLAYER';
+export const ROLE_ADMIN: Role = 'ADMIN';
 
 /** Public view of an authenticated user (safe to send to any client). */
 export interface SessionUser {
@@ -19,10 +25,19 @@ export interface SessionUser {
    */
   diceSkin: DiceSkinId;
   /**
-   * The server's owner (stage 44a): the account from `.env`. Opens the owner's
-   * panel (GM accounts, password resets) and the whole-database backups.
+   * The server's owner (stage 44a): the GM account from `.env`, the admin
+   * account (stage 53) and player accounts linked to them. Since stage 53 the
+   * flag means „the AI on the owner's PC is theirs”: the owner's campaigns
+   * always have AI and an open socket of any such account is the owner's
+   * presence. The panel itself belongs to the `ADMIN` role.
    */
   owner: boolean;
+  /**
+   * The password is temporary (stage 53): set by the admin, or the admin's own
+   * first password from `.env`. Until it is changed the server answers nothing
+   * but `/api/auth/me`, `/api/auth/password` and logout, and refuses sockets.
+   */
+  mustChangePassword?: boolean;
   /**
    * GM accounts only: the login, which the top bar shows as the GM's nick —
    * every GM sits at the table as „MG", so `name` says nothing there.
@@ -117,7 +132,7 @@ export type SocketAck<T = undefined> = { ok: true; data?: T } | { ok: false; err
  * changed elsewhere and an account blocked by the owner. Sent as `auth:ended`
  * right before the server disconnects the socket.
  */
-export type AuthEndedReason = 'logout' | 'expired' | 'password' | 'blocked';
+export type AuthEndedReason = 'logout' | 'expired' | 'password' | 'blocked' | 'deleted';
 
 export interface AuthEndedPush {
   reason: AuthEndedReason;
@@ -145,7 +160,8 @@ export type GmAccountError =
   | 'PASSWORD_TOO_SHORT'
   | 'PASSWORD_TOO_LONG'
   | 'PASSWORD_SAME_AS_LOGIN'
-  | 'PASSWORD_MISMATCH';
+  | 'PASSWORD_MISMATCH'
+  | 'PASSWORD_UNCHANGED';
 
 /** Login 3–32 znaki: litery łacińskie, cyfry, `-`, `_`, `.`. */
 export function gmLoginError(login: string): GmAccountError | null {
@@ -193,7 +209,11 @@ export function gmAccountErrorText(code: string): string | null {
     case 'WRONG_PASSWORD':
       return 'Obecne hasło jest nieprawidłowe.';
     case 'ACCOUNT_BLOCKED':
-      return 'To konto zostało zablokowane przez właściciela serwera.';
+      return 'To konto zostało zablokowane przez administratora serwera.';
+    case 'PASSWORD_UNCHANGED':
+      return 'Nowe hasło musi być inne niż obecne.';
+    case 'PASSWORD_CHANGE_REQUIRED':
+      return 'Najpierw ustaw własne hasło — obecne jest tymczasowe.';
     case 'REGISTRATION_CLOSED':
       return 'Rejestracja nowych kont MG jest teraz wyłączona.';
     case 'TOO_MANY_REGISTRATIONS':
@@ -201,7 +221,7 @@ export function gmAccountErrorText(code: string): string | null {
     case 'TOO_MANY_ATTEMPTS':
       return 'Za dużo nieudanych prób z tego adresu — spróbuj ponownie za kilkanaście minut.';
     case 'INVALID_RESET':
-      return 'Ten link do ustawienia hasła jest nieważny — wygasł albo już go użyto. Poproś właściciela serwera o nowy.';
+      return 'Ten link do ustawienia hasła jest nieważny — wygasł albo już go użyto. Poproś administratora serwera o nowy.';
     case 'PASSWORD_FROM_ENV':
       return 'Hasło konta właściciela ustawia się w pliku .env (GM_PASSWORD).';
     default:
@@ -214,15 +234,22 @@ export interface AuthConfig {
   registration: boolean;
 }
 
-/** Wiersz listy kont MG w panelu właściciela (etap 44a). */
+/** Wiersz listy kont MG w panelu administratora (etap 44a, od 53 w panelu admina). */
 export interface GmAccountView {
   id: string;
   login: string;
+  /** Konto MG właściciela z `.env` — bez resetu, blokady, usunięcia i hasła z panelu. */
   owner: boolean;
   blocked: boolean;
   createdAt: string;
   lastSeenAt: string | null;
   campaigns: number;
+  /** Zgoda na AI właściciela (44d); konto właściciela ma AI zawsze. */
+  ai: AiAccessStatus;
+  /** Hasło tymczasowe od administratora czeka na zmianę (etap 53). */
+  temporaryPassword: boolean;
+  /** Trwa sesja którejś kampanii tego MG. */
+  sessionRunning: boolean;
 }
 
 /** Jednorazowy link ustawienia hasła — token zna tylko ta odpowiedź. */

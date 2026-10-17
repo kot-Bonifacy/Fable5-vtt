@@ -19,6 +19,7 @@ export function toSessionUser(user: User): SessionUser {
     diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
     owner: user.owner,
     login: user.login,
+    ...(user.mustChangePassword ? { mustChangePassword: true } : {}),
   };
 }
 

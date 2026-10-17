@@ -33,6 +33,12 @@ export const DATA_PRIVATE_DIR = join(REPO_DIR, 'data/private');
 /** 3001 i 5173 zostają dla `pnpm dev` MG. */
 /** Login konta właściciela na instancji (`GM_NAME`, etap 44a); hasło — `E2E_GM_PASSWORD`. */
 export const GM_LOGIN = 'MG';
+/**
+ * Konto administratora na instancji (etap 53). Hasło tymczasowe —
+ * `E2E_ADMIN_TEMP_PASSWORD`, własne po pierwszym wejściu — `E2E_ADMIN_PASSWORD`;
+ * oba losowe na przebieg.
+ */
+export const ADMIN_LOGIN = 'admin-e2e';
 
 export const SERVER_PORT = 3101;
 /** Pośrednik TCP do AI Gatewaya (T5b: pad gatewaya w trakcie tury bota). */

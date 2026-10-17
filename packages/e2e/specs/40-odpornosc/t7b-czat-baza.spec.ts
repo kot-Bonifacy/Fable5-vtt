@@ -12,6 +12,7 @@ import {
 } from '../../fixtures/pomiary.ts';
 import { DEAD_GATEWAY, rawSocket } from '../../fixtures/security.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { adminApi } from '../../fixtures/admin.ts';
 import { lastMessageId } from '../../fixtures/walka.ts';
 import { restoreCheckpoint, startInstance } from '../../instance/instance.ts';
 
@@ -68,25 +69,23 @@ test.describe.serial('T7b odporność: długi czat i rozmiar bazy @odpornosc', (
     );
   }
 
-  /** „Zrób kopię teraz” z gniazda MG: czas i rozmiar nowej kopii. */
+  /** „Zrób kopię teraz” administratora (od etapu 53; wcześniej gniazdo MG): czas i rozmiar nowej kopii. */
   async function snapshot() {
     const before = storageSizes().backups;
+    const admin = await adminApi();
     const t0 = performance.now();
-    const ack = await emitAck<{ rules: unknown; snapshots: unknown[] }>(
-      gm,
-      'archive:snapshot',
-      undefined,
-      60_000,
-    );
+    const res = await admin.post('/api/admin/backups', { timeout: 60_000 });
     const ms = Math.round(performance.now() - t0);
-    expect(ack, JSON.stringify(ack).slice(0, 300)).toMatchObject({ ok: true });
+    expect(res.status(), (await res.text()).slice(0, 300)).toBe(200);
+    const view = (await res.json()) as { rules: unknown; snapshots: unknown[] };
+    await admin.dispose();
     const after = storageSizes().backups;
     return {
       ms,
       bajtowKopii: after.bytes - before.bytes,
       plikow: after.files - before.files,
-      rotacja: ack.ok ? ack.data?.rules : null,
-      kopiiWKatalogu: ack.ok ? ack.data?.snapshots.length : null,
+      rotacja: view.rules,
+      kopiiWKatalogu: view.snapshots.length,
     };
   }
 

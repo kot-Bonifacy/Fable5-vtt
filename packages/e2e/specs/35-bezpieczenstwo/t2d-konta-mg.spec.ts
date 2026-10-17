@@ -7,9 +7,9 @@ import { SERVER_URL } from '../../instance/paths.ts';
 
 /**
  * Konta MG (etap 44a), testy dymne: migracja starej bazy (`po-T3` sprzed 44a),
- * logowanie loginem, rejestracja w Firefoksie, kampanie tylko swoje, panel
- * właściciela z resetem hasła i blokadą, kopie całej bazy tylko dla właściciela.
- * Odbiór całości to T9a (po 44b).
+ * logowanie loginem, rejestracja w Firefoksie, kampanie tylko swoje, panel kont
+ * z resetem hasła i blokadą, kopie całej bazy — od etapu 53 u administratora,
+ * nie u konta MG właściciela. Odbiór całości to T9a (po 44b).
  */
 
 const KASIA = 'kasia-mg';
@@ -55,6 +55,7 @@ async function apiLogin(login: string, password: string): Promise<number> {
 test.describe.serial('@szybkie T2d konta MG (44a)', () => {
   let mg: Actor;
   let kasia: Actor;
+  let admin: Actor;
 
   test.beforeAll(async () => {
     await startFromPoT3();
@@ -102,26 +103,36 @@ test.describe.serial('@szybkie T2d konta MG (44a)', () => {
     expect(await campaignNames(kasia)).toEqual([]);
   });
 
-  test('zwykły MG nie widzi kopii całej bazy, właściciel widzi', async () => {
-    const socket = await kasia.socket();
-    expect(await emitAck(socket, 'archive:list', {})).toEqual({ ok: false, error: 'FORBIDDEN' });
-    const owner = await mg.socket();
-    expect((await emitAck(owner, 'archive:list', {})).ok).toBe(true);
+  test('kopie całej bazy widzi tylko administrator — MG, także właściciel, nie', async ({
+    cast,
+  }) => {
+    for (const gm of [kasia, mg]) {
+      expect((await gm.page.request.get('/api/admin/backups')).status()).toBe(403);
+    }
+    admin = await cast.admin('chromium');
+    expect((await admin.page.request.get('/api/admin/backups')).status()).toBe(200);
+    await expect(
+      admin.page.getByRole('heading', { name: 'Kopie zapasowe całej bazy' }),
+    ).toBeVisible();
     // Cudza kampania jak nieistniejąca.
+    const socket = await kasia.socket();
     expect(await emitAck(socket, 'campaign:open', { campaignId: campaignId() })).toEqual({
       ok: false,
       error: 'NOT_FOUND',
     });
   });
 
-  test('panel właściciela: reset hasła w Chromium, link działa raz, stare sesje wylogowane', async ({
+  test('panel administratora: link resetu w Chromium, działa raz, stare sesje wylogowane', async ({
     cast,
   }) => {
+    // Panel MG właściciela nie ma już kont MG (etap 53).
     await mg.page.goto('/gm');
-    const row = mg.page.locator('.owner-account', { hasText: KASIA });
+    await expect(mg.page.getByRole('heading', { name: 'Konta MG' })).toHaveCount(0);
+    await admin.page.reload();
+    const row = admin.page.locator('.owner-account', { hasText: KASIA });
     await expect(row).toBeVisible();
     await expect(row).toContainText('kampanie: 0');
-    await row.getByRole('button', { name: 'Zresetuj hasło' }).click();
+    await row.getByRole('button', { name: 'Link resetu' }).click();
     const link = (await row.locator('code.invite-url').textContent()) ?? '';
     expect(link).toMatch(/\/reset\/[\w-]+$/);
     const path = new URL(link).pathname;
@@ -157,20 +168,21 @@ test.describe.serial('@szybkie T2d konta MG (44a)', () => {
       .poll(async () => (await back.store<AuthStore>('auth'))?.status)
       .toBe('authenticated');
 
-    const row = mg.page.locator('.owner-account', { hasText: KASIA });
+    const row = admin.page.locator('.owner-account', { hasText: KASIA });
     await row.getByRole('button', { name: 'Zablokuj' }).click();
-    await expect(row.getByText('zablokowane')).toBeVisible();
-    await expect(back.page.getByText('zablokowane przez właściciela')).toBeVisible();
+    await expect(row.getByText('zablokowane', { exact: true })).toBeVisible();
+    await expect(back.page.getByText('zablokowane przez administratora')).toBeVisible();
     expect(await apiLogin(KASIA, KASIA_NEW_PASSWORD)).toBe(403);
 
     await row.getByRole('button', { name: 'Odblokuj' }).click();
-    await expect(row.getByText('zablokowane')).toHaveCount(0);
+    await expect(row.getByText('zablokowane', { exact: true })).toHaveCount(0);
     expect(await apiLogin(KASIA, KASIA_NEW_PASSWORD)).toBe(200);
   });
 
   test('konsola bez nowych błędów', async ({ cast }) => {
     for (const actor of cast.actors) {
-      const ended = actor === kasia;
+      // Kasia: reset hasła kończy jej sesję; Kasia-4: blokada kończy sesję.
+      const ended = actor === kasia || actor.name === 'Kasia-4';
       expect(
         actor
           .unexpectedErrors()

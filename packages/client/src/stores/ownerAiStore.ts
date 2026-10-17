@@ -5,16 +5,13 @@ import { apiGet } from '../api.js';
 /**
  * AI właściciela (etap 44d) po stronie klienta.
  *
- * - `state` — panel właściciela (prośby, „Udostępniam AI”, kto trzyma AI);
- *   tylko na kontach z flagą, odświeżany pushem `ai-access:owner`.
+ * - `state` — panel AI (prośby, „Udostępniam AI”, kto trzyma AI); od etapu 53
+ *   tylko w panelu administratora, odświeżany pushem `ai-access:owner`.
  * - `mine` — prośba zwykłego MG o dostęp (Panel MG), push `ai-access:mine`.
  */
 interface OwnerAiStore {
   state: OwnerAiState | null;
   mine: AiAccessView | null;
-  /** Pływające okno „AI właściciela” (znaczek w górnym pasku). */
-  open: boolean;
-  setOpen: (open: boolean) => void;
   setState: (state: OwnerAiState) => void;
   setMine: (mine: AiAccessView) => void;
   /** Pierwszy odczyt z REST — po wejściu i po otwarciu okna. */
@@ -26,13 +23,11 @@ interface OwnerAiStore {
 export const useOwnerAiStore = create<OwnerAiStore>((set) => ({
   state: null,
   mine: null,
-  open: false,
-  setOpen: (open) => set({ open }),
   setState: (state) => set({ state }),
   setMine: (mine) => set({ mine }),
   load: async () => {
     try {
-      set({ state: await apiGet<OwnerAiState>('/api/owner/ai') });
+      set({ state: await apiGet<OwnerAiState>('/api/admin/ai') });
     } catch {
       // Konto bez flagi albo serwer chwilowo niedostępny — panel zostaje pusty.
     }
@@ -44,7 +39,7 @@ export const useOwnerAiStore = create<OwnerAiStore>((set) => ({
       // jak wyżej
     }
   },
-  reset: () => set({ state: null, mine: null, open: false }),
+  reset: () => set({ state: null, mine: null }),
 }));
 
 /** Prośby, które przyszły od ostatniego stanu — do powiadomienia na czacie. */

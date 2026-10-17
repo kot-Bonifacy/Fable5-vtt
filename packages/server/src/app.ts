@@ -11,11 +11,12 @@ import { createPrisma, type PrismaClient } from './db.js';
 import { AiGateway } from './ai/gateway.js';
 import { AiAccess } from './ai/access.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
-import { ensureGmUser } from './auth/seed.js';
+import { TEMPORARY_PASSWORD_ROUTES } from './auth/guards.js';
+import { ensureAdminUser, ensureGmUser } from './auth/seed.js';
 import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
-import { registerOwnerRoutes } from './routes/owner.js';
+import { registerAdminRoutes } from './routes/admin.js';
 import { registerAiAccessRoutes } from './routes/ai-access.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
@@ -90,6 +91,18 @@ export async function buildApp(
       request.user = user;
       request.sessionId = unsigned.value;
     }
+  });
+
+  /**
+   * Hasło tymczasowe (etap 53): dopóki konto go nie zmieni, dostaje tylko
+   * `TEMPORARY_PASSWORD_ROUTES`. Trasa, a nie surowy adres — jak strażnik plików.
+   */
+  app.addHook('onRequest', async (request, reply) => {
+    if (!request.user?.mustChangePassword) return;
+    const route = request.routeOptions.url ?? '';
+    if (TEMPORARY_PASSWORD_ROUTES.has(route)) return;
+    if (!route.startsWith('/api/') && !route.startsWith('/uploads/')) return;
+    return reply.code(403).send({ error: 'PASSWORD_CHANGE_REQUIRED' });
   });
 
   /**
@@ -174,7 +187,6 @@ export async function buildApp(
     cors: { origin: config.clientOrigin, credentials: true },
   });
   registerAuthRoutes(app, ctx, io);
-  registerOwnerRoutes(app, ctx, io);
   registerAiAccessRoutes(app, ctx, io);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
@@ -182,6 +194,8 @@ export async function buildApp(
   registerArchiveRoutes(app, ctx);
 
   const realtime = setupRealtime(io, app, ctx, options.clock);
+  // Panel administratora (etap 53) kończy sesje tą samą drogą co MG — potrzebuje gniazd.
+  registerAdminRoutes(app, ctx, realtime.deps);
   registerMusicRoutes(app, ctx, io);
   gateway.start();
 
@@ -208,6 +222,7 @@ export async function buildApp(
   });
 
   await ensureGmUser(prisma, config, app.log);
+  await ensureAdminUser(prisma, config, app.log);
   // Kampanie, sesje i zgody do bramy AI (44d) — po fladze właściciela, przed
   // pierwszym żądaniem.
   await ai.refresh();

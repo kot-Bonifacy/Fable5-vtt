@@ -2,17 +2,12 @@ import { useEffect, useState } from 'react';
 import type { AiAccessDecision, OwnerAiRequest, OwnerAiState } from '@vtt/shared';
 import { aiAccessErrorText } from '@vtt/shared';
 import { ApiError, apiPost } from '../api.js';
-import { useAuthStore } from '../stores/authStore.js';
 import { useOwnerAiStore } from '../stores/ownerAiStore.js';
-import { useWindowPlacement } from '../window-placement.js';
-import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
- * AI właściciela (etap 44d) — panel konta z flagą właściciela.
- *
- * Ten sam panel stoi w Panelu MG (konto MG właściciela) i w pływającym oknie
- * ze znaczka w górnym pasku (każde konto z flagą, także konto gracza w cudzej
- * kampanii). Prośby, „Udostępniam AI”, kto trzyma AI i „Przejmij AI”.
+ * AI właściciela (etap 44d) — panel w panelu administratora (etap 53; do 53
+ * w Panelu MG właściciela i w oknie ze znaczka „AI” w górnym pasku). Prośby,
+ * „Udostępniam AI”, kto trzyma AI i „Przejmij AI”.
  */
 
 function when(iso: string | null): string {
@@ -32,9 +27,16 @@ const STATUS_LABEL: Record<OwnerAiRequest['status'], string> = {
   revoked: 'cofnięta',
 };
 
-function errorText(error: unknown): string {
+export function aiDecisionErrorText(error: unknown): string {
   const code = error instanceof ApiError ? error.code : '';
   return aiAccessErrorText(code) ?? 'Nie udało się — spróbuj jeszcze raz.';
+}
+
+/** Decyzja administratora o AI dla konta MG — z prośby albo z listy kont. */
+export async function decideAi(userId: string, decision: AiAccessDecision): Promise<void> {
+  useOwnerAiStore
+    .getState()
+    .setState(await apiPost<OwnerAiState>(`/api/admin/ai/requests/${userId}`, { decision }));
 }
 
 function RequestRow({
@@ -47,13 +49,9 @@ function RequestRow({
   async function decide(decision: AiAccessDecision) {
     onError(null);
     try {
-      useOwnerAiStore
-        .getState()
-        .setState(
-          await apiPost<OwnerAiState>(`/api/owner/ai/requests/${request.userId}`, { decision }),
-        );
+      await decideAi(request.userId, decision);
     } catch (error) {
-      onError(errorText(error));
+      onError(aiDecisionErrorText(error));
     }
   }
 
@@ -115,7 +113,7 @@ export function OwnerAiPanel() {
     try {
       useOwnerAiStore.getState().setState(await apiPost<OwnerAiState>(url, body));
     } catch (failure) {
-      setError(errorText(failure));
+      setError(aiDecisionErrorText(failure));
       // Przełącznik mógł się już przestawić w oknie — wraca do stanu serwera.
       void useOwnerAiStore.getState().load();
     }
@@ -128,7 +126,7 @@ export function OwnerAiPanel() {
     <div className="owner-ai">
       <label
         className="settings-row owner-ai-sharing"
-        title="Bez tego MG z Twoją zgodą nie dostaną AI. Wyłącza się samo 2 min po zamknięciu Twojej ostatniej karty i po restarcie serwera. Twoje kampanie mają AI zawsze."
+        title="Bez tego MG ze zgodą nie dostaną AI. Wyłącza się samo 2 min po zamknięciu ostatniej karty Twoich kont (ten panel, konto MG właściciela) i po restarcie serwera. Kampanie konta MG właściciela mają AI zawsze."
       >
         <input
           type="checkbox"
@@ -137,7 +135,7 @@ export function OwnerAiPanel() {
             // Od razu w oknie — odpowiedź serwera i tak przyjdzie za chwilę.
             const on = event.target.checked;
             useOwnerAiStore.getState().setState({ ...state, sharing: on });
-            void post('/api/owner/ai/sharing', { on });
+            void post('/api/admin/ai/sharing', { on });
           }}
         />
         <span className="settings-label">Udostępniam AI</span>
@@ -147,7 +145,7 @@ export function OwnerAiPanel() {
         {lease ? (
           <>
             AI trzyma sesja <strong>„{lease.campaignName}”</strong>
-            {lease.own ? ' (Twoja).' : ` MG „${lease.gmLogin}”.`}
+            {lease.own ? ' (konto MG właściciela).' : ` MG „${lease.gmLogin}”.`}
           </>
         ) : (
           'Żadna sesja nie trzyma teraz AI.'
@@ -156,8 +154,8 @@ export function OwnerAiPanel() {
           <button
             type="button"
             className="small-button small-button--primary"
-            onClick={() => void post('/api/owner/ai/take')}
-            title="AI przechodzi do Twojej sesji. Tamten stół gra dalej bez botów, a jego zgoda zostaje — dostanie AI z powrotem po końcu Twojej sesji."
+            onClick={() => void post('/api/admin/ai/take')}
+            title="AI przechodzi do sesji konta MG właściciela. Tamten stół gra dalej bez botów, a jego zgoda zostaje — dostanie AI z powrotem po końcu sesji właściciela."
           >
             Przejmij AI
           </button>
@@ -176,72 +174,5 @@ export function OwnerAiPanel() {
         </ul>
       )}
     </div>
-  );
-}
-
-/** Znaczek „AI” w górnym pasku kont z flagą właściciela, z licznikiem czekających próśb. */
-export function OwnerAiButton() {
-  const owner = useAuthStore((s) => s.user?.owner === true);
-  const open = useOwnerAiStore((s) => s.open);
-  const pending = useOwnerAiStore((s) => s.state?.pending ?? 0);
-
-  useEffect(() => {
-    if (owner) void useOwnerAiStore.getState().load();
-  }, [owner]);
-
-  if (!owner) return null;
-  const label =
-    pending > 0
-      ? `AI właściciela — czeka próśb: ${pending}`
-      : 'AI właściciela: prośby i udostępnianie';
-  return (
-    <button
-      type="button"
-      className={`small-button owner-ai-button${open ? ' small-button--on' : ''}`}
-      title={label}
-      aria-label={label}
-      aria-pressed={open}
-      onClick={() => useOwnerAiStore.getState().setOpen(!open)}
-    >
-      AI
-      {pending > 0 && <span className="badge badge--live owner-ai-count">{pending}</span>}
-    </button>
-  );
-}
-
-/** Pływające okno „AI właściciela” — z tej samej rodziny co ustawienia i zegar. */
-export function OwnerAiWindow() {
-  const open = useOwnerAiStore((s) => s.open);
-  const owner = useAuthStore((s) => s.user?.owner === true);
-  const placement = useWindowPlacement('owner-ai', () => ({
-    x: Math.max(12, window.innerWidth - 460),
-    y: 64,
-  }));
-
-  if (!open || !owner) return null;
-  return (
-    <section
-      ref={placement.ref}
-      className="settings-window owner-ai-window"
-      style={placement.style}
-      aria-label="AI właściciela"
-    >
-      <div className="settings-window-header" {...placement.dragProps}>
-        <span className="settings-window-title">AI właściciela</span>
-        <button
-          type="button"
-          className="sheet-close"
-          onClick={() => useOwnerAiStore.getState().setOpen(false)}
-          title="Zamknij AI właściciela"
-          aria-label="Zamknij AI właściciela"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="settings-window-body">
-        <OwnerAiPanel />
-      </div>
-      <WindowResizeGrip resizeProps={placement.resizeProps} />
-    </section>
   );
 }

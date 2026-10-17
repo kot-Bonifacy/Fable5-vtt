@@ -1,14 +1,16 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { AuthConfig, AuthState, PasswordResetInfo } from '@vtt/shared';
-import { ROLE_GM, gmLoginError, gmPasswordError, normalizeGmLogin } from '@vtt/shared';
+import { ROLE_ADMIN, ROLE_GM, gmLoginError, gmPasswordError, normalizeGmLogin } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { Prisma, type User } from '../generated/prisma/client.js';
 import { hashPassword, verifyPassword } from '../auth/passwords.js';
 import { createSession, deleteSession, endUserSessions, toSessionUser } from '../auth/sessions.js';
 import { consumePasswordReset, findValidPasswordReset } from '../auth/password-reset.js';
-import { requireAuth, requireGm } from '../auth/guards.js';
+import { requireAuth, requirePasswordAccount } from '../auth/guards.js';
+import { registrationOpen } from '../server-settings.js';
 import { endSessionSockets } from '../realtime/session-guard.js';
+import { notifyAdmins } from '../realtime/admin-room.js';
 import {
   clearSessionCookie,
   getUserActiveCampaign,
@@ -57,12 +59,12 @@ export function registerAuthRoutes(
 ): void {
   /** Co pokazać na ekranie logowania, zanim ktokolwiek się zaloguje. */
   app.get('/api/auth/config', async () => {
-    const config: AuthConfig = { registration: ctx.config.registrationOpen !== false };
+    const config: AuthConfig = { registration: await registrationOpen(ctx) };
     return config;
   });
 
   /**
-   * Logowanie MG loginem i hasłem (etap 44a). Zły login i złe hasło dają ten sam
+   * Logowanie MG i administratora (etap 53) loginem i hasłem (etap 44a). Zły login i złe hasło dają ten sam
    * kod — odpowiedź nie mówi, czy login istnieje. Blokada wychodzi dopiero po
    * dobrym haśle, więc nie zdradza niczego zgadującemu.
    */
@@ -78,7 +80,7 @@ export function registerAuthRoutes(
 
     const gm = await ctx.prisma.user.findUnique({ where: { login: normalizeGmLogin(login) } });
     const valid =
-      gm?.role === ROLE_GM &&
+      (gm?.role === ROLE_GM || gm?.role === ROLE_ADMIN) &&
       gm.passwordHash !== null &&
       (await verifyPassword(gm.passwordHash, password));
     if (!gm || !valid) {
@@ -100,7 +102,7 @@ export function registerAuthRoutes(
    * zalogowany. Konto siada przy stole jako „MG”; login służy tylko do wejścia.
    */
   app.post('/api/auth/register', async (request, reply) => {
-    if (ctx.config.registrationOpen === false) {
+    if (!(await registrationOpen(ctx))) {
       return reply.code(403).send({ error: 'REGISTRATION_CLOSED' });
     }
     const login = stringField(request.body, 'login');
@@ -116,7 +118,9 @@ export function registerAuthRoutes(
     const normalized = normalizeGmLogin(login);
     // Login właściciela jest zajęty także wtedy, gdy jego konta jeszcze nie ma
     // (`GM_PASSWORD` pusty) — inaczej pierwszy chętny zostałby właścicielem.
-    if (normalized === normalizeGmLogin(ctx.config.gmName)) {
+    // To samo z loginem administratora (etap 53), zanim serwer założy jego konto.
+    const reserved = [ctx.config.gmName, ctx.config.adminLogin ?? ''].map(normalizeGmLogin);
+    if (reserved.includes(normalized)) {
       return reply.code(409).send({ error: 'LOGIN_TAKEN' });
     }
     let user: User;
@@ -142,13 +146,17 @@ export function registerAuthRoutes(
   });
 
   /**
-   * Zmiana hasła MG (etap 44a): obecne i nowe dwa razy. Inne sesje konta są
-   * wylogowane, ta zostaje. Konto właściciela bierze hasło z `.env` — tu by się
-   * zmieniło do najbliższego restartu, więc odmowa.
+   * Zmiana hasła MG (etap 44a) i administratora (etap 53): obecne i nowe dwa
+   * razy. Inne sesje konta są wylogowane, ta zostaje. Konto MG właściciela
+   * bierze hasło z `.env` — tu by się zmieniło do najbliższego restartu, więc
+   * odmowa. Zmiana zdejmuje hasło tymczasowe (`mustChangePassword`), dlatego
+   * nowe musi być inne niż obecne.
    */
-  app.post('/api/auth/password', { preHandler: requireGm }, async (request, reply) => {
+  app.post('/api/auth/password', { preHandler: requirePasswordAccount }, async (request, reply) => {
     const user = request.user!;
-    if (user.owner) return reply.code(409).send({ error: 'PASSWORD_FROM_ENV' });
+    if (user.role === ROLE_GM && user.owner) {
+      return reply.code(409).send({ error: 'PASSWORD_FROM_ENV' });
+    }
     const current = stringField(request.body, 'current');
     const password = stringField(request.body, 'password');
     const repeat = stringField(request.body, 'repeat');
@@ -164,13 +172,17 @@ export function registerAuthRoutes(
     }
     const invalid = gmPasswordError(password, repeat, row.login);
     if (invalid) return reply.code(400).send({ error: invalid });
+    if (password === current) return reply.code(400).send({ error: 'PASSWORD_UNCHANGED' });
 
-    await ctx.prisma.user.update({
+    const updated = await ctx.prisma.user.update({
       where: { id: row.id },
-      data: { passwordHash: await hashPassword(password) },
+      data: { passwordHash: await hashPassword(password), mustChangePassword: false },
     });
     await endUserSessions(ctx.prisma, io, row.id, 'password', request.sessionId);
-    return { ok: true };
+    // Panel administratora zdejmuje plakietkę „hasło tymczasowe” od razu.
+    if (row.mustChangePassword) notifyAdmins(io);
+    request.log.info({ userId: row.id, wasTemporary: row.mustChangePassword }, 'password changed');
+    return { ok: true, user: toSessionUser(updated) };
   });
 
   /** Czyje hasło ustawia link — ekran pokazuje login, zanim MG wpisze nowe. */
@@ -213,7 +225,11 @@ export function registerAuthRoutes(
 
     const user = await ctx.prisma.user.update({
       where: { id: reset.userId },
-      data: { passwordHash: await hashPassword(password), lastSeenAt: new Date() },
+      data: {
+        passwordHash: await hashPassword(password),
+        mustChangePassword: false,
+        lastSeenAt: new Date(),
+      },
     });
     await endUserSessions(ctx.prisma, io, user.id, 'password');
     return signIn(ctx, reply, user);

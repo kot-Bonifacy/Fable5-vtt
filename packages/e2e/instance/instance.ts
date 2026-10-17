@@ -39,12 +39,20 @@ const TSUP_CLI = join(P.SERVER_DIR, 'node_modules/tsup/dist/cli-default.js');
  * Hasło MG i sekret ciasteczka — losowe na przebieg, tylko w pamięci procesów testów.
  * Ustawione w `process.env` runnera przechodzą do pracowników Playwrighta.
  */
-export function ensureSecrets(): { gmPassword: string; cookieSecret: string } {
+export function ensureSecrets(): {
+  gmPassword: string;
+  cookieSecret: string;
+  adminTemporaryPassword: string;
+} {
   process.env.E2E_GM_PASSWORD ||= randomBytes(18).toString('base64url');
   process.env.E2E_COOKIE_SECRET ||= randomBytes(32).toString('base64url');
+  // Etap 53: hasło tymczasowe administratora i to, które ustawia przy pierwszym wejściu.
+  process.env.E2E_ADMIN_TEMP_PASSWORD ||= randomBytes(18).toString('base64url');
+  process.env.E2E_ADMIN_PASSWORD ||= randomBytes(18).toString('base64url');
   return {
     gmPassword: process.env.E2E_GM_PASSWORD,
     cookieSecret: process.env.E2E_COOKIE_SECRET,
+    adminTemporaryPassword: process.env.E2E_ADMIN_TEMP_PASSWORD,
   };
 }
 
@@ -56,7 +64,7 @@ function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (
-      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY|VTT_SESSION|VTT_MAX_SESSIONS|VTT_AI_OWNER)/.test(
+      /^(DATABASE_URL|UPLOADS_DIR|BACKUP_|GM_|COOKIE_SECRET|DATA_P|AI_GATEWAY|BOT_DECISION_LOG|AUDIO_PYTHON|NODE_ENV|VTT_DICE_SCRIPT|PORT|HOST|CLIENT_ORIGIN|SESSION_TTL|RATE_LIMITS|TRUST_PROXY|VTT_SESSION|VTT_MAX_SESSIONS|VTT_AI_OWNER|VTT_ADMIN|VTT_REGISTRATION)/.test(
         key,
       )
     ) {
@@ -67,7 +75,7 @@ function cleanEnv(): NodeJS.ProcessEnv {
 }
 
 function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
-  const { gmPassword, cookieSecret } = ensureSecrets();
+  const { gmPassword, cookieSecret, adminTemporaryPassword } = ensureSecrets();
   return {
     ...cleanEnv(),
     PORT: String(P.SERVER_PORT),
@@ -76,6 +84,12 @@ function serverEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     DATABASE_URL: P.DATABASE_URL,
     GM_NAME: P.GM_LOGIN,
     GM_PASSWORD: gmPassword,
+    // Etap 53: administrator. Punkt kontrolny z innego przebiegu niesie konto
+    // z nieznanym już hasłem, więc każdy start cofa je do tymczasowego
+    // (`VTT_ADMIN_RESET_PASSWORD`) — `cast.admin()` ustawia własne od nowa.
+    VTT_ADMIN_LOGIN: P.ADMIN_LOGIN,
+    VTT_ADMIN_PASSWORD: adminTemporaryPassword,
+    VTT_ADMIN_RESET_PASSWORD: '1',
     COOKIE_SECRET: cookieSecret,
     UPLOADS_DIR: P.UPLOADS_DIR,
     DATA_PUBLIC_DIR: join(P.REPO_DIR, 'data/public'),

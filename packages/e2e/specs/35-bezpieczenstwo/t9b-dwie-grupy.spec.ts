@@ -27,7 +27,10 @@ import { E2E_DIR, GM_LOGIN } from '../../instance/paths.ts';
  *   „Knajpie” — sesja A trwa od punktu kontrolnego;
  * - **MG-B** = Bartek (Firefox) z Kubą (Chromium); kampania B w przygotowaniu;
  * - **Właściciel jako gracz** (Firefox) — nowe konto z imiennego linku u MG-B,
- *   flaga właściciela hasłem konta MG w „Ustawienia → Konto”;
+ *   flaga właściciela hasłem konta MG w „Ustawienia → Konto” (od etapu 53 to
+ *   już tylko obecność właściciela);
+ * - **Administrator** (Chromium, etap 53) — panel AI: prośba, zgoda,
+ *   „Udostępniam AI”, „Przejmij AI”;
  * - **MG-C** (Firefox) z rejestracji, tylko do limitu sesji.
  *
  * AI to **atrapa gatewaya** w trybie „odpowiada” — jej dziennik żądań jest
@@ -66,8 +69,8 @@ const ROLL_CARD_MS = 30_000;
 /** Kod w odpowiedzi atrapy — kanarek odpowiedzi bota B w podsłuchu grupy A. */
 const REPLY_CODE = 'Rezydencja-7731';
 /**
- * Kanarki prośby o AI: ramka gniazda panelu właściciela i pole jego stanu w JSON-ie.
- * Same nazwy (`ai-access:owner`, `/api/owner/ai`) siedzą w paczce JS klienta, którą
+ * Kanarki prośby o AI: ramka gniazda panelu AI i pole jego stanu w JSON-ie.
+ * Same nazwy (`ai-access:owner`, `/api/admin/ai`) siedzą w paczce JS klienta, którą
  * podsłuch też widzi — dlatego kształt ramki, a nie nazwa.
  */
 const OWNER_ONLY = ['["ai-access:owner"', '"canTakeOver":'];
@@ -153,6 +156,8 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
   let bartek: Actor;
   let kuba: Actor;
   let owner: Actor;
+  /** Administrator (etap 53) — od niego są decyzje o AI. */
+  let admin: Actor;
   let mgC: Actor;
   let campaignA: string;
   let campaignB: string;
@@ -228,9 +233,9 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     expect(bRequests(since), `${label}: żądania B w atrapie`).toEqual([]);
   }
 
-  async function ownerWindow(actor: Actor) {
-    const window = actor.page.locator('.owner-ai-window');
-    if (!(await window.isVisible())) await actor.page.locator('.owner-ai-button').click();
+  /** Karta „AI właściciela” w panelu administratora (do etapu 53 — okno ze znaczka „AI”). */
+  async function ownerWindow() {
+    const window = admin.page.locator('.panel-card', { hasText: 'Udostępniam AI' });
     await expect(window).toBeVisible();
     return window;
   }
@@ -501,9 +506,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     });
   });
 
-  test('8. prośba przy nieobecnym właścicielu; widzi ją dopiero konto gracza właściciela', async ({
-    cast,
-  }) => {
+  test('8. prośba przy nieobecnym właścicielu; widzi ją tylko administrator', async ({ cast }) => {
     // Właściciel wylogowuje się — sesja A gra dalej z Markiem i Olą.
     expect((await mg.page.request.post('/api/auth/logout')).status()).toBe(200);
     cast.actors.splice(cast.actors.indexOf(mg), 1);
@@ -540,23 +543,26 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await account.getByRole('button', { name: 'Połącz' }).click();
     await expect(account).toContainText('To konto należy do właściciela serwera.');
     await owner.page.getByRole('button', { name: 'Zamknij ustawienia' }).click();
-    await expect(owner.page.locator('.owner-ai-count')).toHaveText('1');
-    await shot(owner, '03-znaczek-ai');
-    const window = await ownerWindow(owner);
+    // Od etapu 53 konto gracza właściciela nie ma znaczka „AI” — prośbę widzi administrator.
+    await expect(owner.page.getByRole('button', { name: /AI właściciela/ })).toHaveCount(0);
+    admin = await cast.admin('chromium');
+    startMarks.set(admin, 0);
+    const window = await ownerWindow();
     await expect(window.locator('.owner-account', { hasText: BARTEK_LOGIN })).toContainText(
       'czeka',
     );
-    await shot(owner, '04-okno-prosba');
+    await shot(admin, '04-panel-prosba');
 
-    // Prośby nie dostał nikt poza kontem właściciela — a ono dostało (kontrola wyroczni).
-    expect((await owner.sniffer.found(OWNER_ONLY)).sort()).toEqual([...OWNER_ONLY].sort());
-    for (const actor of [marek, ola, kuba, bartek]) {
+    // Prośby nie dostał nikt poza administratorem — a on dostał (kontrola wyroczni).
+    // Wszedł po prośbie, więc stan przyszedł trasą (`canTakeOver`), ramki gniazda jeszcze nie.
+    expect(await admin.sniffer.found(OWNER_ONLY)).toContain('"canTakeOver":');
+    for (const actor of [marek, ola, kuba, bartek, owner]) {
       expect(await actor.sniffer.found(OWNER_ONLY), actor.name).toEqual([]);
     }
   });
 
   test('8. zgoda: bez „Udostępniam AI” boty B dalej gasną, po włączeniu „AI zajęte przez inną sesję”, stół B gra', async () => {
-    const window = await ownerWindow(owner);
+    const window = await ownerWindow();
     const row = window.locator('.owner-account', { hasText: BARTEK_LOGIN });
     await row.getByRole('button', { name: 'Zatwierdź' }).click();
     await expect(row).toContainText('zgoda');
@@ -565,7 +571,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
 
     await window.getByLabel('Udostępniam AI').check();
     await expect(window.locator('.owner-ai-lease')).toContainText(
-      `AI trzyma sesja „${CAMPAIGN_A}” (Twoja).`,
+      `AI trzyma sesja „${CAMPAIGN_A}” (konto MG właściciela).`,
     );
     await expect.poll(() => aiReason(bartek)).toBe('busy');
     await sideTab(bartek, 'Boty');
@@ -635,7 +641,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
 
     // AI przechodzi do trwającej, uprawnionej sesji MG-B.
     await expect.poll(() => aiReason(bartek)).toBe('available');
-    await expect((await ownerWindow(owner)).locator('.owner-ai-lease')).toContainText(
+    await expect((await ownerWindow()).locator('.owner-ai-lease')).toContainText(
       `AI trzyma sesja „${CAMPAIGN_B}” MG „${BARTEK_LOGIN}”.`,
     );
     const since = fake.requests.length;
@@ -655,7 +661,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
   });
 
   test('8. cofnięcie w trakcie odpowiedzi gasi boty B od razu; odrzucona prośba też nic nie przepuszcza', async () => {
-    const window = await ownerWindow(owner);
+    const window = await ownerWindow();
     const row = window.locator('.owner-account', { hasText: BARTEK_LOGIN });
 
     // Odpowiedź w toku (atrapa milczy), właściciel cofa zgodę.
@@ -681,7 +687,7 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     const request = async () =>
       expect((await bartek.page.request.post('/api/ai-access/request')).status()).toBe(200);
     await request();
-    await expect(owner.page.locator('.owner-ai-count')).toHaveText('1');
+    await expect(row).toContainText('czeka');
     await row.getByRole('button', { name: 'Odrzuć' }).click();
     await expect(row).toContainText('odrzucona');
     await expect.poll(() => aiReason(bartek)).toBe('no-consent');
@@ -691,15 +697,16 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     await request();
     await row.getByRole('button', { name: 'Zatwierdź' }).click();
     await expect.poll(() => aiReason(bartek)).toBe('available');
-    for (const actor of [marek, ola, kuba, bartek]) {
+    for (const actor of [marek, ola, kuba, bartek, owner]) {
       expect(await actor.sniffer.found(OWNER_ONLY), actor.name).toEqual([]);
     }
   });
 
   test(`8. karencja: właściciel zamyka ostatnią kartę → boty B działają jeszcze ${GRACE_SECONDS} s, potem gasną; po powrocie przełącznik wyłączony`, async () => {
-    // Obie karty właściciela (konto MG i konto gracza) znikają.
+    // Wszystkie karty właściciela (konto MG, konto gracza, panel administratora) znikają.
     await mg.page.goto('about:blank');
     await owner.page.goto('about:blank');
+    await admin.page.goto('about:blank');
     const closedAt = Date.now();
     const inGrace = await botChatB('Jeszcze tu jesteś?');
     expect(inGrace.outcome?.event, 'w karencji AI jeszcze działa').toBe('bot:reply');
@@ -713,12 +720,13 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     expect(after, 'nie przed końcem karencji').toBeGreaterThanOrEqual((GRACE_SECONDS - 2) * 1000);
     await expectBRefused('właściciel nieobecny');
 
-    // Powrót konta gracza: przełącznik wyłączony, powód „nie udostępnia”.
+    // Powrót konta gracza i panelu: przełącznik wyłączony, powód „nie udostępnia”.
     await owner.page.goto('/');
     await expect.poll(async () => (await authOf(owner))?.status).toBe('authenticated');
-    const window = await ownerWindow(owner);
+    await admin.page.goto('/');
+    const window = await ownerWindow();
     await expect(window.getByLabel('Udostępniam AI')).not.toBeChecked();
-    await shot(owner, '08-po-powrocie');
+    await shot(admin, '08-po-powrocie');
     await expect.poll(() => aiReason(bartek)).toBe('sharing-off');
     await expectBRefused('po powrocie bez przełącznika');
     await window.getByLabel('Udostępniam AI').check();
@@ -737,12 +745,12 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
     }
     // B rozpoczęła sesję wcześniej, więc trzyma AI dalej.
     expect(await aiReason(bartek)).toBe('available');
-    const window = await ownerWindow(owner);
+    const window = await ownerWindow();
     await expect(window.locator('.owner-ai-lease')).toContainText(`„${CAMPAIGN_B}”`);
-    await shot(owner, '09-przejmij-ai');
+    await shot(admin, '09-przejmij-ai');
     await window.getByRole('button', { name: 'Przejmij AI' }).click();
     await expect(window.locator('.owner-ai-lease')).toContainText(
-      `AI trzyma sesja „${CAMPAIGN_A}” (Twoja).`,
+      `AI trzyma sesja „${CAMPAIGN_A}” (konto MG właściciela).`,
     );
     await expect.poll(() => aiReason(bartek)).toBe('busy');
     await expectBRefused('po „Przejmij AI”');
@@ -879,10 +887,18 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
       expect(await actor.sniffer.found(bSecrets(), startMarks.get(actor)), actor.name).toEqual([]);
       expect(await actor.sniffer.found(OWNER_ONLY), actor.name).toEqual([]);
     }
-    // MG-A po zalogowaniu widzi swój panel AI (prośby, dzierżawa B) — ale nic z gry B.
+    // MG-A od etapu 53 nie ma panelu AI — ani prośby, ani nic z gry B.
     expect(
       await mg.sniffer.found([...bCanaries, ...fromB.secretNow, REPLY_CODE], startMarks.get(mg)),
       'MG-A',
+    ).toEqual([]);
+    expect(await mg.sniffer.found(OWNER_ONLY, startMarks.get(mg)), 'MG-A bez panelu AI').toEqual(
+      [],
+    );
+    // Administrator widzi konta, sesje i dzierżawę AI — ale nic z treści gry żadnej grupy.
+    expect(
+      await admin.sniffer.found([...bCanaries, ...fromB.secretNow, ...fromA.secretNow, REPLY_CODE]),
+      'administrator',
     ).toEqual([]);
     expect(await mgC.sniffer.found([...aSecrets(), ...bSecrets()]), 'MG-C').toEqual([]);
   });

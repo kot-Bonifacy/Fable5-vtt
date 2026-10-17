@@ -20,11 +20,12 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { REGISTRATIONS_MAX } from './rate-limit.js';
+import { TEST_ADMIN, adminCookie } from './test-admin.js';
 
 /**
  * Konta MG (etap 44a): rejestracja, logowanie loginem, zmiana i reset hasła,
- * blokada, panel właściciela, kampanie tylko swoje i kopie całej bazy tylko
- * dla właściciela.
+ * blokada, panel kont (od etapu 53 — administratora), kampanie tylko swoje
+ * i kopie całej bazy tylko dla administratora.
  */
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
@@ -37,6 +38,7 @@ const config: ServerConfig = {
   databaseUrl: `file:${TEST_DB}`,
   gmName: 'MG',
   gmPassword: GM_PASSWORD,
+  ...TEST_ADMIN,
   cookieSecret: 'test-cookie-secret',
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
@@ -59,6 +61,7 @@ const config: ServerConfig = {
 let built: BuiltApp;
 let baseUrl: string;
 let ownerCookie: string;
+let adminCookieValue: string;
 const openSockets: ClientSocket[] = [];
 /** Każdy test z innego adresu — limity per IP nie przeciekają między testami. */
 let addressCounter = 1;
@@ -165,8 +168,8 @@ async function createCampaign(cookie: string, name: string): Promise<string> {
 async function accounts(): Promise<GmAccountView[]> {
   const res = await built.app.inject({
     method: 'GET',
-    url: '/api/owner/accounts',
-    headers: { cookie: ownerCookie },
+    url: '/api/admin/accounts',
+    headers: { cookie: adminCookieValue },
   });
   expect(res.statusCode).toBe(200);
   return res.json() as GmAccountView[];
@@ -181,8 +184,8 @@ async function accountId(loginName: string): Promise<string> {
 async function resetLink(id: string): Promise<PasswordResetLink> {
   const res = await built.app.inject({
     method: 'POST',
-    url: `/api/owner/accounts/${id}/reset`,
-    headers: { cookie: ownerCookie },
+    url: `/api/admin/accounts/${id}/reset`,
+    headers: { cookie: adminCookieValue },
   });
   expect(res.statusCode).toBe(201);
   return res.json() as PasswordResetLink;
@@ -202,6 +205,7 @@ beforeAll(async () => {
   const res = await login('MG', GM_PASSWORD);
   expect(res.statusCode).toBe(200);
   ownerCookie = cookieOf(res.headers['set-cookie']);
+  adminCookieValue = await adminCookie(built);
 }, 60_000);
 
 afterAll(async () => {
@@ -427,21 +431,26 @@ describe('zmiana hasła', () => {
   });
 });
 
-describe('panel właściciela', () => {
-  it('jest tylko dla właściciela', async () => {
+describe('panel kont MG (od etapu 53 — administratora)', () => {
+  it('nie jest dla MG — ani zwykłego, ani właściciela z .env', async () => {
     const { cookie } = await registerGm('ciekawski');
-    for (const [method, url] of [
-      ['GET', '/api/owner/accounts'],
-      ['POST', `/api/owner/accounts/${await accountId('ciekawski')}/reset`],
-      ['POST', `/api/owner/accounts/${await accountId('ciekawski')}/block`],
-    ] as const) {
-      const res = await built.app.inject({
-        method,
-        url,
-        headers: { cookie },
-        payload: { blocked: true },
-      });
-      expect(res.statusCode, url).toBe(403);
+    const id = await accountId('ciekawski');
+    for (const who of [cookie, ownerCookie]) {
+      for (const [method, url] of [
+        ['GET', '/api/admin/accounts'],
+        ['POST', `/api/admin/accounts/${id}/reset`],
+        ['POST', `/api/admin/accounts/${id}/block`],
+        ['POST', `/api/admin/accounts/${id}/password`],
+        ['DELETE', `/api/admin/accounts/${id}`],
+      ] as const) {
+        const res = await built.app.inject({
+          method,
+          url,
+          headers: { cookie: who },
+          payload: { blocked: true, password: 'dlugie-haslo-x', confirm: 'ciekawski' },
+        });
+        expect(res.statusCode, url).toBe(403);
+      }
     }
   });
 
@@ -450,23 +459,31 @@ describe('panel właściciela', () => {
     await createCampaign(cookie, 'Pierwsza');
     await createCampaign(cookie, 'Druga');
     const row = (await accounts()).find((a) => a.login === 'liczony');
-    expect(row).toMatchObject({ owner: false, blocked: false, campaigns: 2 });
+    expect(row).toMatchObject({
+      owner: false,
+      blocked: false,
+      campaigns: 2,
+      ai: 'none',
+      temporaryPassword: false,
+    });
     expect(row?.lastSeenAt).not.toBeNull();
     expect((await accounts()).find((a) => a.login === 'mg')?.owner).toBe(true);
+    // Konto administratora nie jest kontem MG — nie stoi na liście.
+    expect((await accounts()).some((a) => a.login === TEST_ADMIN.adminLogin)).toBe(false);
   });
 
   it('nie resetuje ani nie blokuje konta właściciela', async () => {
     const id = await accountId('mg');
     const reset = await built.app.inject({
       method: 'POST',
-      url: `/api/owner/accounts/${id}/reset`,
-      headers: { cookie: ownerCookie },
+      url: `/api/admin/accounts/${id}/reset`,
+      headers: { cookie: adminCookieValue },
     });
     expect(reset.statusCode).toBe(409);
     const block = await built.app.inject({
       method: 'POST',
-      url: `/api/owner/accounts/${id}/block`,
-      headers: { cookie: ownerCookie },
+      url: `/api/admin/accounts/${id}/block`,
+      headers: { cookie: adminCookieValue },
       payload: { blocked: true },
     });
     expect(block.statusCode).toBe(409);
@@ -557,8 +574,8 @@ describe('blokada konta', () => {
 
     const block = await built.app.inject({
       method: 'POST',
-      url: `/api/owner/accounts/${id}/block`,
-      headers: { cookie: ownerCookie },
+      url: `/api/admin/accounts/${id}/block`,
+      headers: { cookie: adminCookieValue },
       payload: { blocked: true },
     });
     expect(block.statusCode).toBe(200);
@@ -577,29 +594,41 @@ describe('blokada konta', () => {
 
     await built.app.inject({
       method: 'POST',
-      url: `/api/owner/accounts/${id}/block`,
-      headers: { cookie: ownerCookie },
+      url: `/api/admin/accounts/${id}/block`,
+      headers: { cookie: adminCookieValue },
       payload: { blocked: false },
     });
     expect((await login('psotnik', 'haslo-psotnika')).statusCode).toBe(200);
   });
 });
 
-describe('kopie całej bazy tylko dla właściciela', () => {
-  it('zwykły MG dostaje FORBIDDEN, właściciel listę', async () => {
+describe('kopie całej bazy tylko dla administratora', () => {
+  it('MG — zwykły i właściciel — dostaje FORBIDDEN, administrator listę i kopię', async () => {
     const { cookie } = await registerGm('bez-kopii');
-    const gm = createSocket(cookie);
-    await gm.firstSync;
-    expect(await emitAck(gm.socket, 'archive:list')).toEqual({ ok: false, error: 'FORBIDDEN' });
-    expect(await emitAck(gm.socket, 'archive:snapshot')).toEqual({
-      ok: false,
-      error: 'FORBIDDEN',
+    for (const who of [cookie, ownerCookie]) {
+      for (const method of ['GET', 'POST'] as const) {
+        const res = await built.app.inject({
+          method,
+          url: '/api/admin/backups',
+          headers: { cookie: who },
+        });
+        expect(res.statusCode).toBe(403);
+      }
+    }
+    const list = await built.app.inject({
+      method: 'GET',
+      url: '/api/admin/backups',
+      headers: { cookie: adminCookieValue },
     });
-
-    const owner = createSocket(ownerCookie);
-    await owner.firstSync;
-    const list = await emitAck<{ directory: string }>(owner.socket, 'archive:list');
-    expect(list.ok).toBe(true);
+    expect(list.statusCode).toBe(200);
+    expect((list.json() as { directory: string }).directory).toBe(config.backups!.dir);
+    const snapshot = await built.app.inject({
+      method: 'POST',
+      url: '/api/admin/backups',
+      headers: { cookie: adminCookieValue },
+    });
+    expect(snapshot.statusCode).toBe(200);
+    expect((snapshot.json() as { snapshots: unknown[] }).snapshots).toHaveLength(1);
   });
 });
 

@@ -6,7 +6,7 @@ import type {
   SessionEndReason,
   SessionUser,
 } from '@vtt/shared';
-import { ROLE_GM, sessionAutoEndText } from '@vtt/shared';
+import { ROLE_GM, ROLE_PLAYER, SESSION_ADMIN_END_TEXT, sessionAutoEndText } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { campaignRunBy, getUserActiveCampaign, toCampaignSummary } from '../routes/helpers.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
@@ -17,6 +17,8 @@ import { sendStateSync } from './sync.js';
 import { releaseSocketAim } from './aim.js';
 import { campaignGmUser } from './campaign-gm.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
+import { recordSessionEnd, recordSessionPlayer, recordSessionStart } from '../session-log.js';
+import { notifyAdmins } from './admin-room.js';
 
 /**
  * Sesje i sloty (etap 44c).
@@ -63,6 +65,14 @@ export async function seatSocket(
   await socket.join(campaignRoom(campaign.id));
   if (user.role === ROLE_GM) await socket.join(gmRoom(campaign.id));
   await joinInitialScene(deps, socket, campaign.id);
+  // Dziennik sesji (etap 53): kto z graczy usiadł przy stole.
+  if (user.role === ROLE_PLAYER && campaign.sessionStartedAt !== null) {
+    void recordSessionPlayer(deps.ctx.prisma, campaign.id, user)
+      .then(() => notifyAdmins(deps.io))
+      .catch((error: unknown) => {
+        deps.log.warn({ err: error, campaignId: campaign.id }, 'session log: player not recorded');
+      });
+  }
 }
 
 /** Wyprowadza gniazdo z pokoi jego kampanii i sceny — przed ponownym posadzeniem. */
@@ -231,7 +241,8 @@ export async function startSession(
   if (open?.id !== campaignId) throw new RealtimeError('CAMPAIGN_NOT_OPEN');
   if (campaign.sessionStartedAt) return toCampaignSummary(campaign);
 
-  if (!(await claimSlot(deps, campaignId, user.id, deps.sessions.now()))) {
+  const startedAt = deps.sessions.now();
+  if (!(await claimSlot(deps, campaignId, user.id, startedAt))) {
     const fresh = await prisma.campaign.findUnique({ where: { id: campaignId } });
     // Druga karta tego samego MG była szybsza — sesja trwa, i o to chodziło.
     if (fresh?.sessionStartedAt) return toCampaignSummary(fresh);
@@ -241,6 +252,11 @@ export async function startSession(
     throw new RealtimeError('SESSION_SLOTS_FULL');
   }
   deps.sessions.track(campaignId);
+  try {
+    await recordSessionStart(prisma, campaignId, new Date(startedAt));
+  } catch (error) {
+    deps.log.warn({ err: error, campaignId }, 'session log: start not recorded');
+  }
   await stopPlayerMoveOnStart(deps, campaignId);
   // Dzierżawa AI (44d): nowa sesja może dostać AI, jeśli nikt go nie trzyma.
   await deps.ctx.ai.refresh();
@@ -258,6 +274,7 @@ export async function startSession(
   }
   await announceSession(deps, summary);
   await broadcastPresence(deps, campaignId);
+  notifyAdmins(deps.io);
   deps.log.info({ campaignId }, 'session started');
   return summary;
 }
@@ -291,12 +308,25 @@ export async function endSession(
   reason: SessionEndReason,
 ): Promise<boolean> {
   const prisma = deps.ctx.prisma;
+  // Start sesji przed jej zdjęciem — dziennik (etap 53) zamyka nim wpis bez otwarcia.
+  const before = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { id: true, name: true, gmId: true, sessionStartedAt: true },
+  });
+  const endedAt = new Date(deps.sessions.now());
   const ended = await prisma.campaign.updateMany({
     where: { id: campaignId, sessionStartedAt: { not: null } },
-    data: { sessionStartedAt: null, lastSessionEndedAt: new Date(deps.sessions.now()) },
+    data: { sessionStartedAt: null, lastSessionEndedAt: endedAt },
   });
   deps.sessions.forget(campaignId);
   if (ended.count !== 1) return false;
+  if (before) {
+    try {
+      await recordSessionEnd(prisma, before, endedAt, reason);
+    } catch (error) {
+      deps.log.warn({ err: error, campaignId }, 'session log: end not recorded');
+    }
+  }
   // Koniec sesji przekazuje AI następnej uprawnionej (44d).
   await deps.ctx.ai.refresh();
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -314,7 +344,9 @@ export async function endSession(
   }
   await announceSession(deps, summary, reason);
   await broadcastPresence(deps, campaignId);
-  if (reason !== 'gm') await noteAutoEnd(deps, campaignId, reason);
+  if (reason === 'empty' || reason === 'idle') await noteAutoEnd(deps, campaignId, reason);
+  if (reason === 'admin') await noteAdminEnd(deps, campaignId);
+  notifyAdmins(deps.io);
   deps.log.info({ campaignId, reason }, 'session ended');
   return true;
 }
@@ -334,6 +366,19 @@ async function noteAutoEnd(
     authorId: gm.id,
     kind: 'gmaction',
     text: sessionAutoEndText(reason, minutes),
+  });
+  await deliverChatMessageTo(deps, campaignId, message, [], true);
+}
+
+/** Wpis dla MG, że sesję zakończył administrator (etap 53) — gracze go nie widzą. */
+async function noteAdminEnd(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
+  if (!gm) return;
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: gm.id,
+    kind: 'gmaction',
+    text: SESSION_ADMIN_END_TEXT,
   });
   await deliverChatMessageTo(deps, campaignId, message, [], true);
 }

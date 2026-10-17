@@ -7,8 +7,6 @@ import { openCampaign } from '../socket.js';
 import { formatSessionClock } from '../session-view.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { CreateCampaignForm } from '../components/CreateCampaignForm.js';
-import { OwnerAccounts } from '../components/OwnerAccounts.js';
-import { OwnerAiPanel } from '../components/OwnerAi.js';
 import { AiAccessRequest } from '../components/AiAccessRequest.js';
 import { CampaignPlayers } from '../components/CampaignPlayers.js';
 
@@ -141,16 +139,13 @@ export function GmPanel() {
         ))
       )}
 
+      {/* Konto MG właściciela ma AI zawsze, a konta MG, prośby o AI i kopie
+          całej bazy prowadzi od etapu 53 konto administratora. */}
       {user.owner ? (
-        <>
-          <section className="panel-card">
-            <header className="panel-card-header">
-              <h2>AI właściciela</h2>
-            </header>
-            <OwnerAiPanel />
-          </section>
-          <OwnerAccounts />
-        </>
+        <p className="placeholder-text">
+          Twoje kampanie mają AI zawsze. Konta MG, prośby o AI, sesje i kopie całej bazy są w panelu
+          administratora.
+        </p>
       ) : (
         <AiAccessRequest />
       )}

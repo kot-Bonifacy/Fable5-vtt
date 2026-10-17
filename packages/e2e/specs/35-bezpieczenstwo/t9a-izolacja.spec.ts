@@ -29,6 +29,7 @@ import {
 } from '../../fixtures/security.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { adminApi } from '../../fixtures/admin.ts';
 import { clickActivate, clickStartSession, createInvitation } from '../../fixtures/table.ts';
 import {
   restoreBackup,
@@ -774,13 +775,10 @@ test.describe
     await expect.poll(async () => (await authOf(bartek))?.activeCampaign?.name).toBe(CAMPAIGN_B);
     await page.getByRole('button', { name: 'Kopie', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Zrzut całej kampanii' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Kopie zapasowe' })).toHaveCount(0);
-    const socket = await bartek.socket();
-    expect(await emitAck(socket, 'archive:list', {})).toEqual({ ok: false, error: 'FORBIDDEN' });
-    expect(await emitAck(socket, 'archive:snapshot', {})).toEqual({
-      ok: false,
-      error: 'FORBIDDEN',
-    });
+    await expect(page.getByRole('heading', { name: /Kopie zapasowe/ })).toHaveCount(0);
+    // Od etapu 53 kopie całej bazy są trasami administratora — MG dostaje 403.
+    expect((await page.request.get('/api/admin/backups')).status()).toBe(403);
+    expect((await page.request.post('/api/admin/backups')).status()).toBe(403);
   });
 
   test('9.2 dwie sesje naraz, koniec sesji B nie rusza A; nic nie przecieka w obie strony', async () => {
@@ -827,9 +825,10 @@ test.describe
       ).toEqual([]);
       expect(await actor.sniffer.found(aSecrets), `${actor.name} cały przebieg`).toEqual([]);
     }
-    // Właściciel widzi konta MG w „Konta MG” (44a) — id konta MG-B to u niego nie wyciek.
+    // Konta MG od etapu 53 widzi tylko administrator — konto MG właściciela
+    // nie dostaje już id konta MG-B (prośba o AI szła tylko do administratora).
     for (const actor of aActors()) {
-      const secrets = bSecrets().filter((code) => !(actor === mg && code === bartekUserId));
+      const secrets = bSecrets();
       expect(await actor.sniffer.found(secrets), `${actor.name}: tajne B`).toEqual([]);
     }
 
@@ -868,17 +867,18 @@ test.describe
     }
   });
 
-  test('9.7 kopia całej bazy właściciela: odtworzenie zachowuje właścicieli kampanii', async ({
+  test('9.7 kopia całej bazy administratora: odtworzenie zachowuje właścicieli kampanii', async ({
     cast,
   }) => {
     test.setTimeout(5 * 60_000);
     type SnapshotList = { snapshots: { name: string }[] };
-    const socket = await mg.socket();
-    const listed = await emitAck<SnapshotList>(socket, 'archive:list', {});
-    const known = new Set(listed.ok ? (listed.data?.snapshots ?? []).map((s) => s.name) : []);
-    const ack = await emitAck<SnapshotList>(socket, 'archive:snapshot', {}, 60_000);
-    expect(ack.ok).toBe(true);
-    const mine = (ack.ok ? (ack.data?.snapshots ?? []) : []).filter((s) => !known.has(s.name));
+    const admin = await adminApi();
+    const listed = (await (await admin.get('/api/admin/backups')).json()) as SnapshotList;
+    const known = new Set(listed.snapshots.map((s) => s.name));
+    const taken = await admin.post('/api/admin/backups', { timeout: 60_000 });
+    expect(taken.status()).toBe(200);
+    const mine = ((await taken.json()) as SnapshotList).snapshots.filter((s) => !known.has(s.name));
+    await admin.dispose();
     expect(mine).toHaveLength(1);
     const owners = query<{ id: string; name: string; gmId: string }>(
       'SELECT id, name, gmId FROM Campaign ORDER BY name',

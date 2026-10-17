@@ -2,11 +2,9 @@ import type {
   ArchiveCharacterImportPayload,
   ArchiveImportResult,
   ArchiveSceneImportPayload,
-  SnapshotListView,
 } from '@vtt/shared';
-import { ROLE_GM, SNAPSHOT_RULES_DEFAULT, polishPlural } from '@vtt/shared';
+import { ROLE_GM, polishPlural } from '@vtt/shared';
 import { importCharacter, importScene } from '../archive.js';
-import { listSnapshots, snapshotPathsFor, takeSnapshotAndRotate } from '../snapshots.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitSceneList } from './scenes.js';
@@ -30,6 +28,9 @@ function localizedFile(deps: RealtimeDeps, campaignId: string, gmId: string, fil
 /**
  * Kopie zapasowe i import (etap 33) — strona gniazda.
  *
+ * Kopie całej bazy („Zrób kopię teraz”, lista) od etapu 53 są trasami panelu
+ * administratora (`routes/admin.ts`) — niosą kampanie wszystkich MG.
+ *
  * Trzy rzeczy tu **nie** siedzą i to jest celowe:
  *  - **eksport** — pobranie pliku jest trasą REST (`routes/archive.ts`),
  *  - **przywracanie** — robi je skrypt przy zatrzymanym serwerze; przywrócenie
@@ -43,53 +44,6 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
 }
-
-/** Stan katalogu kopii — jedno miejsce, bo odsyłają go oba zdarzenia. */
-async function snapshotList(deps: RealtimeDeps): Promise<SnapshotListView> {
-  const backups = deps.ctx.config.backups;
-  if (!backups) {
-    return {
-      directory: '',
-      snapshots: [],
-      rules: SNAPSHOT_RULES_DEFAULT,
-      intervalMinutes: 0,
-    };
-  }
-  return {
-    directory: backups.dir,
-    snapshots: await listSnapshots(backups.dir),
-    rules: { keepHourly: backups.keepHourly, keepDaily: backups.keepDaily },
-    intervalMinutes: backups.intervalMinutes,
-  };
-}
-
-/** Kopie całej bazy niosą kampanie wszystkich MG — widzi je tylko właściciel (44a). */
-export const archiveListEvent = defineEvent<void, SnapshotListView>({
-  name: 'archive:list',
-  role: ROLE_GM,
-  ownerOnly: true,
-  handler: async ({ deps }) => snapshotList(deps),
-});
-
-/**
- * „Zrób kopię teraz". Rotacja idzie razem z kopią — nigdy nie robi się jednego
- * bez drugiego, bo katalog bez rotacji rośnie po cichu.
- */
-export const archiveSnapshotEvent = defineEvent<void, SnapshotListView>({
-  name: 'archive:snapshot',
-  role: ROLE_GM,
-  ownerOnly: true,
-  handler: async ({ deps }) => {
-    const paths = snapshotPathsFor(deps.ctx.config);
-    if (!paths || !deps.ctx.config.backups) throw new RealtimeError('BACKUP_DISABLED');
-    const rules = {
-      keepHourly: deps.ctx.config.backups.keepHourly,
-      keepDaily: deps.ctx.config.backups.keepDaily,
-    };
-    await takeSnapshotAndRotate(paths, rules, 'gm');
-    return snapshotList(deps);
-  },
-});
 
 export const archiveCharacterImportEvent = defineEvent<
   ArchiveCharacterImportPayload,

@@ -5,7 +5,6 @@ import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
 import { ShortcutsButton } from './ShortcutsWindow.js';
 import { SessionControl } from './SessionControl.js';
-import { OwnerAiButton } from './OwnerAi.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 export function TopBar() {
@@ -44,9 +43,7 @@ export function TopBar() {
         <ConnectionStatus />
         {/* Etap 27d: ☀/☾ i ⌨ przeniosły się do okna ustawień — pasek nosi
             stan gry, a nie listę preferencji jednego użytkownika. */}
-        {/* AI właściciela (44d): prośby i „Udostępniam AI” z każdego konta z flagą. */}
         <div className="top-bar-tools">
-          <OwnerAiButton />
           <ShortcutsButton />
           <SettingsButton />
         </div>

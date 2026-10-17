@@ -6,13 +6,13 @@ import type {
   OwnerAiState,
   SessionUser,
 } from '@vtt/shared';
-import { isAiAccessStatus, ROLE_GM } from '@vtt/shared';
+import { isAiAccessStatus, ROLE_ADMIN, ROLE_GM } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 
 /**
  * Widoki AI właściciela (etap 44d) i ich dostarczanie. Prośba i decyzje idą
  * trasami REST (`routes/ai-access.ts`), a gniazdo tylko donosi zmiany:
- * `ai-access:owner` — **wyłącznie** do gniazd kont z flagą właściciela (prośby
+ * `ai-access:owner` — **wyłącznie** do gniazd administratora (etap 53; prośby
  * nie widzi nikt inny, kanarek T9b), `ai-access:mine` — do gniazd MG, którego
  * prośba się zmieniła.
  */
@@ -80,10 +80,10 @@ export async function buildOwnerAiState(ctx: AppContext): Promise<OwnerAiState> 
   };
 }
 
-/** Wszystkie gniazda kont z flagą właściciela — konto MG i jego konta graczy. */
+/** Gniazda kont administratora (etap 53) — tylko one dostają panel AI. */
 function ownerSockets(io: SocketIOServer) {
   return [...io.sockets.sockets.values()].filter(
-    (socket) => (socket.data.user as SessionUser | undefined)?.owner === true,
+    (socket) => (socket.data.user as SessionUser | undefined)?.role === ROLE_ADMIN,
   );
 }
 

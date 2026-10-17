@@ -10,7 +10,7 @@ import type {
   AiStatusBroadcast,
 } from '@vtt/shared';
 import type { SessionUser } from '@vtt/shared';
-import { MAX_AI_PROMPT_LENGTH, ROLE_GM } from '@vtt/shared';
+import { MAX_AI_PROMPT_LENGTH, ROLE_ADMIN, ROLE_GM } from '@vtt/shared';
 import type { AiChatRequest } from '../ai/gateway.js';
 import type { CampaignAi } from '../ai/access.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
@@ -31,7 +31,9 @@ export function aiStatusFor(
   user: SessionUser,
   campaignId: string | null,
 ): AiStatus {
-  return deps.ctx.ai.statusFor(campaignId, { gm: user.role === ROLE_GM, owner: user.owner });
+  // Administrator (etap 53) widzi stan gatewaya jak MG — diagnostyka PC właściciela.
+  const gm = user.role === ROLE_GM || user.role === ROLE_ADMIN;
+  return deps.ctx.ai.statusFor(campaignId, { gm, owner: user.owner });
 }
 
 /** Co gniazdo już wie — bez znacznika czasu sprawdzenia. */

@@ -9,7 +9,7 @@ import {
 } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { io, type Socket } from 'socket.io-client';
-import { BASE_URL, GM_LOGIN, SERVER_URL } from '../instance/paths.ts';
+import { ADMIN_LOGIN, BASE_URL, GM_LOGIN, SERVER_URL } from '../instance/paths.ts';
 import { Sniffer } from './sniffer.ts';
 
 export type Engine = 'chromium' | 'firefox';
@@ -150,6 +150,41 @@ export class Cast {
     await actor.page.locator('#gm-password').fill(password);
     await actor.page.getByRole('button', { name: 'Zaloguj się' }).click();
     await waitSignedIn(actor);
+    return actor;
+  }
+
+  /**
+   * Administrator (etap 53) loguje się przez formularz. Po starcie instancji
+   * hasło jest tymczasowe — wtedy ekran „Ustaw własne hasło” dostaje
+   * `E2E_ADMIN_PASSWORD`; kolejne wejścia w przebiegu idą już nim.
+   */
+  async admin(engine: Engine = 'firefox', prepare?: Prepare): Promise<Actor> {
+    const temporary = process.env.E2E_ADMIN_TEMP_PASSWORD;
+    const own = process.env.E2E_ADMIN_PASSWORD;
+    if (!temporary || !own) throw new Error('E2E: no E2E_ADMIN_* — run through playwright test');
+    const actor = await this.open('Admin', engine, prepare);
+    const page = actor.page;
+    await page.goto('/');
+    const tryLogin = async (password: string) => {
+      await page.locator('#gm-login').fill(ADMIN_LOGIN);
+      await page.locator('#gm-password').fill(password);
+      await page.getByRole('button', { name: 'Zaloguj się' }).click();
+      const outcome = page
+        .getByRole('heading', { name: /Panel administratora|Ustaw własne hasło/ })
+        .or(page.locator('.auth-error'));
+      await expect(outcome.first()).toBeVisible();
+      return (await page.locator('.auth-error').count()) === 0;
+    };
+    if (!(await tryLogin(own))) {
+      expect(await tryLogin(temporary), 'admin logs in with the temporary password').toBe(true);
+    }
+    if (await page.getByRole('heading', { name: 'Ustaw własne hasło' }).isVisible()) {
+      await page.locator('#set-current').fill(temporary);
+      await page.locator('#set-password').fill(own);
+      await page.locator('#set-repeat').fill(own);
+      await page.getByRole('button', { name: 'Ustaw hasło i wejdź' }).click();
+    }
+    await expect(page.getByRole('heading', { name: 'Panel administratora' })).toBeVisible();
     return actor;
   }
 

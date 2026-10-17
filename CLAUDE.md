@@ -87,6 +87,7 @@ Masz **dwa** sposoby oglądania VTT i korzystasz z obu, a nie z jednego z przyzw
 
 - **Oględziny zmiany UI domyka co najmniej jedna przeglądarka inna niż Chrome MG** (Firefox z Playwright), chyba że zmiana nie dotyka wyglądu ani zachowania przeglądarki. W notatce sesji pisz, w czym oglądano.
 - **Logowanie MG (od etapu 44a login + hasło):** w pole loginu (`#gm-login`) wpisz zwykłym tekstem `GM_NAME` z `.env` (u MG: `MG`, wielkość liter bez znaczenia), a w pole hasła dosłownie `VTT_GM_PASSWORD` (`browser_type`). Serwer MCP podstawi wartość z `.playwright-mcp/secrets.env` (gitignore; wypełnia MG) i wytnie ją z odpowiedzi. Nie proś MG o hasło na czacie i nie czytaj tego pliku. Pusty plik = MG loguje się ręką w oknie Playwrighta; ciasteczko zostaje w profilu `.playwright-mcp/profile-*`.
+- **Konto administratora `pantosz` (etap 53) nie służy do oględzin** — pierwsze wejście wymusza zmianę hasła tymczasowego MG. Panel administratora oglądaj na instancji E2E kontem `admin-e2e` (pułapka na górze sekcji `ogledziny`).
 - Karty jednego serwera Playwright MCP dzielą ciasteczka, więc sztuczka `localhost` / `[::1]` z „Pułapek dev” dalej obowiązuje. Prościej: MG w jednym narzędziu, gracz w drugim.
 - Wersja `playwright` w `package.json` jest **przypięta do tej, której używa `@playwright/mcp`** (jeden komplet przeglądarek w `%LOCALAPPDATA%\ms-playwright`). Aktualizujesz jedną, aktualizujesz obie, potem `pnpm exec playwright install firefox chromium`.
 - Pułapki obu narzędzi: sekcja `ogledziny` w `docs/etapy/pulapki-dev.md`.

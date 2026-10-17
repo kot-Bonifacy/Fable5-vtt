@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AuthEndedReason, AuthState, CampaignSummary, SessionUser } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_ADMIN, ROLE_GM } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
 import { leaveFullscreenOnLogout } from '../fullscreen.js';
 import { disconnectSocket } from '../socket.js';
@@ -36,20 +36,29 @@ interface AuthStoreState {
   /** Wejście z imiennego linku (etap 44b) — imię jest na linku, nie w formularzu. */
   joinCampaign: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Nowy stan konta po zmianie hasła (etap 53) — zdjęte hasło tymczasowe
+   * wpuszcza dalej bez ponownego logowania.
+   */
+  adoptUser: (user: SessionUser) => void;
   /** Serwer zakończył sesję tego gniazda (`auth:ended`) albo odbił ponowne połączenie. */
   sessionEnded: (reason: AuthEndedReason) => void;
 }
 
 function endedNoteFor(reason: AuthEndedReason, user: SessionUser | null): string {
   const again =
-    user?.role === ROLE_GM ? 'zaloguj się ponownie.' : 'wejdź ponownie linkiem zaproszenia od MG.';
+    user?.role === ROLE_GM || user?.role === ROLE_ADMIN
+      ? 'zaloguj się ponownie.'
+      : 'wejdź ponownie linkiem zaproszenia od MG.';
   switch (reason) {
     case 'logout':
       return `Wylogowano w innej karcie — ${again}`;
     case 'password':
       return 'Hasło tego konta zmieniono — zaloguj się nowym hasłem.';
     case 'blocked':
-      return 'To konto zostało zablokowane przez właściciela serwera.';
+      return 'To konto zostało zablokowane przez administratora serwera.';
+    case 'deleted':
+      return 'To konto zostało usunięte przez administratora serwera.';
     default:
       return `Sesja wygasła — ${again}`;
   }
@@ -106,6 +115,8 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     leaveFullscreenOnLogout();
     set({ status: 'anonymous', user: null, activeCampaign: null, endedNote: null });
   },
+
+  adoptUser: (user) => set((state) => (state.status === 'authenticated' ? { user } : state)),
 
   sessionEnded: (reason) =>
     set((state) => {

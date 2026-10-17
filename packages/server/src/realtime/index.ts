@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
-import { createServerHello } from '@vtt/shared';
+import { ROLE_ADMIN, createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { SESSION_COOKIE, resolveSession } from '../auth/sessions.js';
 import { SocketRateLimiter } from '../rate-limit.js';
@@ -11,6 +11,7 @@ import { RoomSequences } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { releaseSocketAim, tokenAimEvent } from './aim.js';
 import { tokenTargetEvent } from './target.js';
+import { ADMIN_ROOM } from './admin-room.js';
 import { resolveSocketCampaign } from './campaigns.js';
 import {
   campaignOpenEvent,
@@ -267,12 +268,7 @@ import {
 } from './handouts.js';
 import { screamsheetGenerateEvent } from './screamsheets.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
-import {
-  archiveCharacterImportEvent,
-  archiveListEvent,
-  archiveSceneImportEvent,
-  archiveSnapshotEvent,
-} from './archive.js';
+import { archiveCharacterImportEvent, archiveSceneImportEvent } from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 import { exchangeCounterpartsEvent } from './exchange.js';
 import {
@@ -321,8 +317,6 @@ declare module 'socket.io' {
 export const EVENTS: RealtimeEvent<never, unknown>[] = [
   musicControlEvent,
   musicStateEvent,
-  archiveListEvent,
-  archiveSnapshotEvent,
   archiveCharacterImportEvent,
   archiveSceneImportEvent,
   campaignOpenEvent,
@@ -650,6 +644,11 @@ export function setupRealtime(
           next(new Error('UNAUTHORIZED'));
           return;
         }
+        // Hasło tymczasowe (etap 53): najpierw własne hasło, potem gniazdo.
+        if (session.user.mustChangePassword) {
+          next(new Error('PASSWORD_CHANGE_REQUIRED'));
+          return;
+        }
         socket.data.user = session.user;
         socket.data.sessionId = session.sessionId;
         socket.data.sessionExpiresAt = session.expiresAt.getTime();
@@ -672,6 +671,23 @@ export function setupRealtime(
     // a wygaśnięcie — zegar.
     void socket.join(sessionRoom(socket.data.sessionId));
     armSessionExpiry(socket);
+
+    // Administrator (etap 53) nie siada przy żadnym stole i nie woła zdarzeń
+    // gry: jego gniazdo to obecność właściciela dla „Udostępniam AI” (44d)
+    // i sygnały panelu (`admin:changed`, `ai-access:owner`).
+    if (user.role === ROLE_ADMIN) {
+      socket.data.campaign = null;
+      socket.data.atTable = false;
+      void socket.join(ADMIN_ROOM);
+      sendAiStatus(deps, socket);
+      if (user.owner) ctx.ai.ownerConnected(socket.id);
+      socket.on('disconnect', (reason) => {
+        app.log.info({ socketId: socket.id, reason }, 'admin socket disconnected');
+        ctx.ai.ownerDisconnected(socket.id);
+      });
+      return;
+    }
+
     registerEvents(deps, socket, EVENTS);
     sendAiStatus(deps, socket);
     // Obecność właściciela (44d) — gniazdo któregokolwiek konta z flagą.

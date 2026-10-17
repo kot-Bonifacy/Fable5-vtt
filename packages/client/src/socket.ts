@@ -210,7 +210,6 @@ import type {
   NotePatch,
   NoteUpsertBroadcast,
   OpeningSyncBroadcast,
-  OwnerAiState,
   PortraitAssetView,
   PortraitCrop,
   PortraitCropBroadcast,
@@ -258,7 +257,6 @@ import type {
   SightingLookResult,
   SmokeClearPayload,
   SmokeSyncBroadcast,
-  SnapshotListView,
   SocketAck,
   StateSyncPayload,
   TokenAimBroadcast,
@@ -368,7 +366,7 @@ import { useSettingsStore } from './stores/settingsStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useHudStore } from './stores/hudStore.js';
 import { useExchangeStore } from './stores/exchangeStore.js';
-import { freshAiRequests, useOwnerAiStore } from './stores/ownerAiStore.js';
+import { useOwnerAiStore } from './stores/ownerAiStore.js';
 import { aiAccessSentence, aiUnavailableMessage } from './ai-status.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
@@ -890,18 +888,8 @@ export function connectSocket(userId: string): Socket {
     // tego „Brak połączenia z AI Gateway" wisiał w panelu do następnej akcji MG.
     if (broadcast.status.available) useJournalStore.getState().clearAiError();
   });
-  // AI właściciela (44d): panel właściciela i prośba MG — poza `seq`, jak status AI.
-  socket.on('ai-access:owner', (state: OwnerAiState) => {
-    const store = useOwnerAiStore.getState();
-    const fresh = freshAiRequests(store.state, state);
-    store.setState(state);
-    for (const request of fresh) {
-      chat().addNote(`MG „${request.login}” prosi o dostęp do Twojego AI.`, [
-        { label: 'Otwórz AI właściciela', run: () => useOwnerAiStore.getState().setOpen(true) },
-      ]);
-    }
-    if (fresh.length > 0) notifyGame('request');
-  });
+  // Prośba MG o AI właściciela (44d) — poza `seq`, jak status AI. Panel AI
+  // (`ai-access:owner`) od etapu 53 słyszy tylko gniazdo administratora.
   socket.on('ai-access:mine', (mine: AiAccessView) => useOwnerAiStore.getState().setMine(mine));
   onPresented('ai:queue', (broadcast: AiQueueBroadcast) =>
     ai().setQueuePosition(broadcast.requestId, broadcast.position),
@@ -2719,16 +2707,6 @@ export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', 
 /* ------------------------------------------------------------------ */
 /* Kopie zapasowe i pliki wymiany (etap 33)                            */
 /* ------------------------------------------------------------------ */
-
-/**
- * Stan katalogu kopii. Wołane przy wejściu w zakładkę „Kopie", nie w
- * `state:sync` — u gracza ta lista nie istnieje w ogóle, a MG patrzy na nią
- * raz na sesję.
- */
-export const fetchSnapshots = () => emitSceneAck<SnapshotListView>('archive:list', undefined);
-
-/** „Zrób kopię teraz" — odsyła listę już po kopii i po rotacji. */
-export const takeSnapshotNow = () => emitSceneAck<SnapshotListView>('archive:snapshot', undefined);
 
 export const importCharacterFile = (payload: ArchiveCharacterImportPayload) =>
   emitSceneAck<ArchiveImportResult>('archive:character', payload);

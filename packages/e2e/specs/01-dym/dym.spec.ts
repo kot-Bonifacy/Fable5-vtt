@@ -46,7 +46,7 @@ test.describe.serial('@szybkie dym: MG w Chromium, Ola w Firefoksie', () => {
     await mg.page.reload();
     await expect(mg.page.getByLabel('Wiadomość czatu')).toBeEnabled();
     await expect(ola.page.getByLabel('Wiadomość czatu')).toBeEnabled();
-    expect(query('SELECT name, role FROM User ORDER BY role')).toEqual([
+    expect(query("SELECT name, role FROM User WHERE role <> 'ADMIN' ORDER BY role")).toEqual([
       { name: 'MG', role: 'GM' },
       { name: 'Ola', role: 'PLAYER' },
     ]);
