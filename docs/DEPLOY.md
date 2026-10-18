@@ -249,7 +249,7 @@ scp -r root@217.154.210.181:/opt/docker-apps/vtt-data/backups/snapshot-RRRR-MM-D
 
 - [x] Tailscale i boty (sekcja 9, 18.10)
 - [ ] kopia off-site z harmonogramu (rclone albo pobieranie na PC) i **test odtworzenia na VPS**
-- [ ] utwardzenie: SSH tylko po kluczu, fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
+- [ ] utwardzenie: ~~SSH tylko po kluczu~~ (18.10: `/etc/ssh/sshd_config.d/00-hardening.conf`, klucz `id_ed25519_vps` w agencie Windows, alias `ssh vps`), fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
       włączyć bez zmian w innych projektach**, bo NPM przekazuje im ruch na publiczne `217.154.210.181:808x`.
       VTT żadnego portu nie wystawia. Decyzja o pozostałych to sprawa całego VPS.
 - [ ] monitoring padu i miejsca na dysku; `nmap` z zewnątrz
