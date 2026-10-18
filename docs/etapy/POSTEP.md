@@ -34,7 +34,7 @@ Tailscale.** Kontenery `vtt-server` i `vtt-web` w `/opt/docker-apps/vtt`, dane w
 NPM → `vtt-web:80`. Gateway na PC słucha na `0.0.0.0:8100` z kluczem (zapora: tylko 100.64.0.0/10);
 klucz ma też lokalny serwer i E2E (pułapka na górze `boty`). **Źródłem prawdy jest VPS** — lokalny
 `pnpm dev` niczego nie synchronizuje. Wydanie: push z PC, na VPS `./deploy.sh`. Zostało z etapu 28
-(lista na końcu `docs/DEPLOY.md`): test odtworzenia na VPS, fail2ban i unattended-upgrades (VPS czeka
+(lista na końcu `docs/DEPLOY.md`): test odtworzenia na VPS (z MG, bez graczy), fail2ban i unattended-upgrades (VPS czeka
 też na restart po aktualizacji jądra), monitoring. Już jest: SSH tylko kluczem (`ssh vps`), kopia
 off-site na PC (`deploy/pull-backup.ps1`, zadanie „VTT pull backup”, `D:\kopie-vtt`). Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
@@ -361,6 +361,8 @@ klasyfikator:** zwolnienie loopbacku z klucza w `require_api_key` — stąd kluc
 **Potem:** SSH tylko kluczem (`id_ed25519_vps` w agencie Windows, alias `ssh vps`; zmianę `sshd`
 wpisał MG — klasyfikator nie dał agentowi) i kopia off-site: `deploy/pull-backup.ps1` + zadanie
 „VTT pull backup” (23:30, `D:\kopie-vtt`, 14 kopii, weryfikacja manifestu i `integrity_check`).
+Test odtworzenia z kopii off-site: obrazy z Docker Desktop na `snapshot-2026-10-18-1919`, liczby
+rekordów zgodne z VPS, stół MG z mapą w **Firefoksie** (Playwright). Kopia nie niesie `private/cpred`.
 **Znalezione:** VPS czeka na restart po aktualizacji jądra; kopie na VPS bez dowiązań (`zaleglosci.md`).
 
 **Weryfikacja:** z VPS `POST /chat 200` i `POST /rag/search 200` w logu gatewaya, bot odpowiada

@@ -253,11 +253,25 @@ Get-ScheduledTaskInfo "VTT pull backup"  # LastTaskResult 0 = ok
 
 Wymaga `ssh vps` kluczem z agenta Windows (Windows OpenSSH, nie `ssh` z Gita).
 
+**Odtworzenie z kopii off-site (VPS padł albo nowy serwer)** — sprawdzone 18.10 lokalnie w Docker Desktop
+na `snapshot-2026-10-18-1919` (te same obrazy, liczby rekordów zgodne z VPS, stół MG z mapą w Firefoksie).
+Kopia niesie **tylko bazę i `uploads/`**: `private/cpred/` (dane podręcznika) bierzesz z `data/private/cpred` na PC.
+
+```
+vtt-data/db/vtt.db      <- D:\kopie-vtt\snapshot-…\db.sqlite
+vtt-data/uploads/       <- D:\kopie-vtt\snapshot-…\uploads\
+vtt-data/private/cpred/ <- C:\AI\web\VTT\data\private\cpred\
+vtt-data/backups/       (pusty)
+```
+
+Dalej jak w sekcji 4 (`chown -R 1000:1000`) i 6 (`./deploy.sh --no-pull`).
+
 ## Czego próba jeszcze nie robi (reszta etapu 28)
 
 - [x] Tailscale i boty (sekcja 9, 18.10)
 - [x] kopia off-site z harmonogramu — pobieranie na PC (`deploy/pull-backup.ps1`, 18.10)
-- [ ] **test odtworzenia na VPS**
+- [x] test odtworzenia z kopii off-site (lokalnie, 18.10)
+- [ ] **test odtworzenia na VPS** (`restore.ts` przy zatrzymanym serwerze — razem z MG, bez graczy)
 - [ ] utwardzenie: ~~SSH tylko po kluczu~~ (18.10: `/etc/ssh/sshd_config.d/00-hardening.conf`, klucz `id_ed25519_vps` w agencie Windows, alias `ssh vps`), fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
       włączyć bez zmian w innych projektach**, bo NPM przekazuje im ruch na publiczne `217.154.210.181:808x`.
       VTT żadnego portu nie wystawia. Decyzja o pozostałych to sprawa całego VPS.
