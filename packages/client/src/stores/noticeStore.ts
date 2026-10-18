@@ -21,6 +21,8 @@ export type NoticeTone = 'info' | 'warn' | 'danger';
  */
 export type NoticeTopic =
   | 'move'
+  /** „Ruch graczy: Stop” — osobno od `move`, bo każdy krok marszu zamyka tamten temat. */
+  | 'player-move'
   | 'attack'
   | 'action'
   | 'target'

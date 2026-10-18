@@ -1015,7 +1015,7 @@ export class MapRenderer {
    * odmowa bez `tone`, „kliknij jeszcze raz”, postój i przerwanie z `warn`,
    * `null` — figura ruszyła albo cel odwołany, więc zdanie już nie obowiązuje.
    */
-  onWalkNote: ((text: string | null, tone?: 'warn') => void) | null = null;
+  onWalkNote: ((text: string | null, tone?: 'warn', fades?: boolean) => void) | null = null;
   /**
    * Zgoda serwera na trasę marszu gracza (etap 52, `token:walk`) — `null`, gdy
    * wolno iść, albo zdanie odmowy. Pytana przed pierwszym krokiem, bo klatek
@@ -5991,7 +5991,9 @@ export class MapRenderer {
       this.drawTrail();
     }
     this.onWalkStateChange?.(null);
-    if (note) this.onWalkNote?.(note, 'warn');
+    // Relacja z końca marszu znika sama; postój na granicy puli opisuje stan,
+    // który trwa, więc stoi, aż figura ruszy albo gracz go odwoła.
+    if (note) this.onWalkNote?.(note, 'warn', note !== WALK_RESUME_NOTE);
   }
 
   /** Draws the DV bands of a weapon as rings around a token (optional toggle). */

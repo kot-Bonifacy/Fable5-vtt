@@ -13,7 +13,8 @@ import {
  *
  * Trzy kształty, trzy sposoby znikania (decyzja MG z 17.10):
  * - `notifyInfo` — informacja bez wyboru, znika sama;
- * - `notifyRefusal` — odmowa w temacie, stoi do następnej próby w tym temacie;
+ * - `notifyRefusal` — odmowa w temacie, stoi do następnej próby w tym temacie
+ *   (z `fades` znika sama jak informacja — relacja „co się stało”, 18.10);
  * - `notifyChoice` — pytanie z przyciskami, stoi do wyboru.
  * Czat zostaje dla rozmowy, kart serwera, botów i komend `/…`.
  */
@@ -58,7 +59,7 @@ export function notifyInfo(text: string, options: NoticeOptions = {}): void {
 export function notifyRefusal(
   topic: NoticeTopic,
   text: string,
-  options: { title?: string; tone?: Exclude<NoticeTone, 'info'> } = {},
+  options: { title?: string; tone?: Exclude<NoticeTone, 'info'>; fades?: boolean } = {},
 ): void {
   const tone = options.tone ?? 'danger';
   useNoticeStore.getState().show({
@@ -66,7 +67,9 @@ export function notifyRefusal(
     title: options.title ?? TITLES[tone],
     text,
     topic,
-    lifetime: null,
+    // `fades` (MG, 18.10): „Marsz przerwany.” czy „Ruch wstrzymany przez MG.”
+    // nie czekają na żaden ruch gracza — wisiały bez końca nad mapą.
+    lifetime: options.fades ? infoLifetime(text) : null,
   });
   if (tone === 'danger') ring('refusal');
 }

@@ -35,6 +35,8 @@ const SCENE = 'Ulica 45';
 /** Domyślna nowa scena: 4000 × 3000 px, pole 100 px = 2 m. */
 const SIZE = { width: 4000, height: 3000 };
 const PX_PER_M = 50;
+/** „Ruch graczy: Stop” u gracza — zwykły pasek kanału we własnym temacie. */
+const STOP_NOTICE = '[data-notice-topic="player-move"]';
 
 function okData<T>(ack: Ack<T>): T {
   if (!ack.ok || ack.data === undefined) throw new Error(`E2E: ${JSON.stringify(ack)}`);
@@ -110,8 +112,16 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
       playerMove: 'stop',
       visibility: 'dynamic',
     });
-    await activateScene(mg, SCENE, [marek, ola], SIZE);
+    // Gracz widzi, czemu nie pójdzie — komunikat pada przy wejściu na scenę
+    // i schodzi sam po kilku sekundach (MG, 18.10), a samo `activateScene`
+    // (kamera u trzech osób) trwa dłużej, więc łapiemy go w trakcie.
+    const activated = activateScene(mg, SCENE, [marek, ola], SIZE);
+    for (const player of [marek, ola]) {
+      await expect.poll(() => noticeWith(player, 'Ruch wstrzymany przez MG.')).toBeDefined();
+    }
+    await activated;
     sceneId = sceneByName(SCENE).id;
+    await expect(marek.page.locator(STOP_NOTICE)).toHaveCount(0);
 
     const switcher = page.getByRole('radiogroup', { name: 'Ruch graczy' });
     await expect(switcher.getByRole('radio', { name: 'Stop' })).toHaveAttribute(
@@ -124,13 +134,6 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     await expect(popover).toContainText('„Kowal” nie ma figury na tej scenie.');
     await expect(popover).toContainText('„Iskra” nie ma figury na tej scenie.');
     await page.keyboard.press('Escape');
-
-    // Gracz widzi, czemu nie pójdzie.
-    for (const player of [marek, ola]) {
-      await expect(player.page.locator('[data-notice="stop"] .notice-text')).toHaveText(
-        'Ruch wstrzymany przez MG.',
-      );
-    }
   });
 
   test('figury kart graczy biorą właściciela karty; Stop odmawia graczowi, MG nie', async () => {
@@ -165,7 +168,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
     await expect(radios).toHaveText(['Stop', 'Eksploracja']);
     await setPlayerMove(mg.page, 'Eksploracja');
     await expect.poll(() => playerMoveOf(sceneId)).toBe('explore');
-    await expect(marek.page.locator('[data-notice="stop"]')).toHaveCount(0);
+    await expect(marek.page.locator(STOP_NOTICE)).toHaveCount(0);
 
     const page = marek.page;
     // Gracz nie oddali kamery na całą scenę (najwyżej 10 kratek wokół, 11.10) —
@@ -255,7 +258,7 @@ test.describe.serial('T45 ruch i widzenie drużyny', () => {
 
     await setPlayerMove(mg.page, 'Stop');
     await expect.poll(() => playerMoveOf(sceneId)).toBe('stop');
-    await expect(marek.page.locator('[data-notice="stop"]')).toBeVisible();
+    await expect(marek.page.locator(STOP_NOTICE)).toBeVisible();
     expect(await move(marekSocket, kowalId, 600, 400)).toEqual({ ok: false, error: 'MOVE_LOCKED' });
     expect((await emitAck(gmSocket, 'combat:end', {})).ok).toBe(true);
     expect((await move(gmSocket, kowalId, 400, 400)).ok).toBe(true);

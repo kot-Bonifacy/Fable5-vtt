@@ -649,15 +649,25 @@ function createPlacedToken(pending: TokenPlacement, worldX: number, worldY: numb
 }
 
 /**
- * Zdanie o ruchu w kanale (etap 55). Przy „Ruch graczy: Stop” gracz ma już
- * przypięty pasek z tym samym zdaniem — drugi, pod nim, nic by nie dodał.
+ * „Ruch graczy: Stop” (etap 45) jako komunikat, który znika sam (MG, 18.10):
+ * do 18.10 przypięty pasek stał nad mapą przez cały postój i nie dało się go
+ * zamknąć. Pada przy włączeniu Stopu i przy każdej próbie ruchu w czasie postoju.
  */
-function noteMove(text: string, tone?: 'warn'): void {
-  const stopped =
-    useSceneStore.getState().effectiveScene?.playerMove === 'stop' &&
-    useAuthStore.getState().user?.role !== ROLE_GM;
-  if (stopped && text === PLAYER_MOVE_STOP_NOTE) return;
-  notifyRefusal('move', text, tone ? { tone } : {});
+function notePlayerStop(): void {
+  notifyRefusal('player-move', PLAYER_MOVE_STOP_NOTE, {
+    tone: 'warn',
+    title: 'Ruch graczy: Stop',
+    fades: true,
+  });
+}
+
+/** Zdanie o ruchu w kanale (etap 55). */
+function noteMove(text: string, tone?: 'warn', fades?: boolean): void {
+  if (text === PLAYER_MOVE_STOP_NOTE) {
+    notePlayerStop();
+    return;
+  }
+  notifyRefusal('move', text, { ...(tone ? { tone } : {}), ...(fades ? { fades } : {}) });
 }
 
 /**
@@ -666,12 +676,11 @@ function noteMove(text: string, tone?: 'warn'): void {
  * gracz robi wtedy jedno i tylko o tym czyta.
  */
 function mapPinnedNotices(state: {
-  stop: boolean;
   placement: string | null;
   targeting: Pick<AttackTargeting, 'characterName' | 'weaponName' | 'mode'> | null;
   walkLegendFor: string | null;
 }): PinnedNotice[] {
-  const { stop, placement, targeting, walkLegendFor } = state;
+  const { placement, targeting, walkLegendFor } = state;
   if (placement) {
     return [
       {
@@ -694,16 +703,6 @@ function mapPinnedNotices(state: {
     ];
   }
   const pinned: PinnedNotice[] = [];
-  // „Ruch graczy: Stop" (etap 45) — gracz widzi, czemu nie może iść, zanim
-  // spróbuje. Jak Pauza w Foundry: na środku nad mapą.
-  if (stop) {
-    pinned.push({
-      key: 'stop',
-      tone: 'warn',
-      title: 'Ruch graczy: Stop',
-      text: PLAYER_MOVE_STOP_NOTE,
-    });
-  }
   // Legenda śladów stóp (#69, T8b): nowy gracz wziął podgląd własnej trasy
   // za ruch cudzej figury. Same ślady zostają bez podpisu (MG, 23.08), a ta
   // linijka znika po pierwszym marszu i nie wraca w tej przeglądarce.
@@ -925,9 +924,9 @@ export function MapArea() {
     };
     // Etap 55: zdania marszu to temat `move` w kanale — nowe podmienia stare,
     // `null` (figura ruszyła, cel odwołany) zamyka.
-    renderer.onWalkNote = (text, tone) => {
+    renderer.onWalkNote = (text, tone, fades) => {
       if (text === null) clearNotices('move');
-      else noteMove(text, tone);
+      else noteMove(text, tone, fades);
     };
     // Etap 52: przez wroga nie przejdziesz, przez kompana i leżącego bez
     // przytomności tak — ta sama reguła co `refuseWalkThroughFigures`.
@@ -2385,9 +2384,20 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isGm]);
 
+  // Stop mówi raz, przy włączeniu i przy wejściu na zatrzymaną scenę (także
+  // z innej zatrzymanej), a zdjęty zabiera swoje zdanie, jeśli jeszcze stoi.
+  const playerStopped = !isGm && scene?.playerMove === 'stop';
+  const stoppedSceneId = playerStopped ? scene.id : null;
+  useEffect(() => {
+    if (playerStopped) {
+      notePlayerStop();
+      return;
+    }
+    clearNotices('player-move');
+  }, [playerStopped, stoppedSceneId]);
+
   const foesDefeatedNotice = useFoesDefeatedNotice();
   const pinned = mapPinnedNotices({
-    stop: !isGm && scene?.playerMove === 'stop',
     placement: placement?.name ?? null,
     targeting,
     walkLegendFor:
@@ -2439,8 +2449,6 @@ export function MapArea() {
           <p className="placeholder-text">Wczytywanie mapy…</p>
         </div>
       )}
-      {/* „Ruch graczy: Stop" (etap 45) — gracz widzi, czemu nie może iść, zanim
-          spróbuje. Jak Pauza w Foundry: baner na środku nad mapą. */}
       {/* Etap 55: stany nad mapą to przypięte wiersze kanału komunikatów,
           a pod nimi stoją komunikaty z `noticeStore`. */}
       <NoticeColumn pinned={pinned} />

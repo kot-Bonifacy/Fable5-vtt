@@ -62,6 +62,14 @@ describe('kanał komunikatów (etap 55)', () => {
     ]);
   });
 
+  it('odmowa z `fades` znika sama jak informacja', () => {
+    notifyRefusal('move', 'Marsz przerwany.', { tone: 'warn', fades: true });
+    expect(notices()[0]).toMatchObject({
+      tone: 'warn',
+      lifetime: infoLifetime('Marsz przerwany.'),
+    });
+  });
+
   it('czas informacji rośnie z długością zdania, z sufitem', () => {
     expect(infoLifetime('krótko')).toBe(4_000);
     expect(infoLifetime('x'.repeat(100))).toBe(6_000);
