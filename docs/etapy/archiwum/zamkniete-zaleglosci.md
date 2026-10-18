@@ -9,6 +9,31 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-18, druga sesja (T6b 6.6b, T5b z gatewayem, #79–#81)
+
+**T6b 6.6b: dalszy ciąg marszu po „Złap oddech” dostawał `MOVE_PACE` (18.10).** Punkty trasy
+jadą po drucie zaokrąglone do piksela (`sanitizeTokenPath`), a `token:walk` nie przyciągał końca
+trasy do kratki (lądowanie przyciąga). Na kratce 490/11 px „Knajpy” przekątna z (400,9; 400,9)
+do zaokrąglonego (356, 356) miała 2,851 m, czyli po `polylineMetres` (0,1 m) „2,9 m” zamiast
+„2,8 m”, a pula Kowala miała w tej chwili 2,77 m (+0,05 luzu). Diagnoza logiem `[pace-debug]`
+w przebiegu T6b od `po-T6a`. Poprawka: `token:walk` stawia ostatni punkt przez
+`snapTokenPosition` — na sucho ocenia się trasę, za którą lądowanie zapłaci (`ffd9905`). Test:
+`walk-approval.test.ts` („koniec trasy przyciąga się jak lądowanie”; bez poprawki czerwony).
+T6b od `po-T6a` 18/18 z gatewayem. Umowa na górze `tura`.
+
+**T5b i łańcuch z gatewayem po etapie 52 (15.10).** T5b → T6a → T6b od `po-T5a` 59/59 z gatewayem
+(kroki `@llm` też), `po-T5`, `po-T6a`, `po-T6` zapisane na nowo. Po drodze dwa nieaktualne kroki
+T5b: wynik „Miecz trafia…” (etap 55b — wynik akcji w Sieci idzie do kanału) stał nad listą pięter
+okna Sieci i łapał klik (`closeNotices` w `fixtures/table.ts`; w aplikacji klik w pasek go zamyka,
+a najechanie w pierwszych 800 ms nie wstrzymuje zegara), a 5.9 szukał przycisku Testu
+Przeżywalności u MG, który od 17.10 rzuca serwer (rzut jawny — Strażnik to figura bota). Pułapki
+w `testy`. Pełny przebieg i `40-odpornosc` — notatka sesji 18.10 (druga) w `POSTEP.md`.
+
+**#79–#81 z T9b (triaż MG 18.10: naprawić).** #79: powód bramy AI tylko do MG, notka bota za
+wierszem, który ją wywołał (`notice()` w `bot-turns.ts`, `deferView`); #81: notka lokalna
+pamięta `afterId` i wraca na miejsce po ponownym połączeniu (`mergeNotes`); #80 nieaktualny od
+etapu 53. `748487e`, T9b 15/15. Szczegóły w `testy-rejestr.md`, umowy w `boty` i `czat`.
+
 ## Zamknięte 2026-10-18 (zaległości z 10.10, 15.10 i 17.10)
 
 **Bot przeładowuje tylko bieżący rodzaj naboju (17.10).** `buildTacticalStep`

@@ -983,6 +983,8 @@ i okno właściciela, „AI zajęte”, plakat między sesjami, odpowiedź bota,
 „Przejmij AI”, odmowa slotu, notki o samoczynnym końcu). `dev.db` nietknięta.
 
 **Następny krok:** triaż MG #79–#81, potem refaktoryzacja całości pod osłoną suity, T10.
+**18.10:** triaż MG — #79 i #81 naprawione i retestowane (T9b 15/15), #80 nieaktualny od etapu 53
+(rejestr).
 
 ### Sesja 04.10 — T9a: konta MG, izolacja dwóch MG
 

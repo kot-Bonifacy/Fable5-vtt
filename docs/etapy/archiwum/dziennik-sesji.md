@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `77453f9`) — etap 55b, komunikaty w oknach i skóra na miejscu
+
+**Zlecenie MG:** „wykonaj teraz etap 55b”. **Zrobione:** odmowy i wyniki kliknięć w oknach do
+kanału — Wymiana (wszystkie panele, dok, sklep na karcie; ślad po handlu `tradeClosedText`
+z `trade:update`, `lastClosed` usunięty), okno Sieci (wynik akcji — informacja, „Strzelaj mimo
+osłony” — pytanie w kanale, `netRunStore.notice` usunięty), karty obiektów sceny, panele karty
+(awanse, gotowość, Zmysł Walki, Operator, Wsparcie, portfel), Kompendium (`ItemNote { ok, text }`
++ `showItemNote`), Akcje walki, start starcia, „Postacie” i Rytuały stołu MG, usunięcie sceny,
+biblioteka grafik, Kopie, udostępnienie notatki, „widzi stół” w dzienniku (nowe tematy `handout`,
+`journal`). Stany w oknach to `InlineNotice`; błąd pola i zdanie pod slotem dostały skórę paska
+z nagłówkiem z `::before`; Unik i toasty „Czeka na MG” — bursztynowe paski z `notice-action`.
+**Rozstrzygnięcie bez pytania:** formularze z polami (logowanie, edytory, kreator, „Wstrzymaj
+akcję”) i dialogi zostawiają błąd pod polem — decyzja 7 MG mówi „błędy przy polach formularzy”.
+
+**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** tymczasowy spec
+z `po-T6` (skasowany) — MG w **Chromium** (odmowa Rytuałów, informacja, pytanie z przyciskiem,
+kafel „Czeka na MG”), gracz w **Firefoksie** (odmowa nad kartą, braki karty, zdanie pod slotem,
+Unik) i plakat logowania w **Firefoksie** (błąd pola). Dymek celowania pod kartą nie wyszedł na
+zrzucie — skóra ta sama co `.hud-refusal`.
+
 ### Sesja 17.10 (po `de06f2b`) — etap 55a, komunikaty wzorem Foundry
 
 **Zlecenie MG:** „ustandaryzuj wyskakujące graczom komunikaty w różnych miejscach ekranu i z różnym
