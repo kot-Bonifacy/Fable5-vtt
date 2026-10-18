@@ -2802,9 +2802,13 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
         />
         <span>
           Postaw żeton na aktywnej scenie
-          <span className="creator-hint">
-            Portret posłuży za obrazek żetonu, dopóki MG nie wybierze innego.
-          </span>
+          {/* Graczowi nie zapowiadamy, że MG może podmienić obrazek żetonu —
+              ma się przywiązać do swojego portretu (uwaga MG z 18.10). */}
+          {isGm ? (
+            <span className="creator-hint">
+              Portret posłuży za obrazek żetonu, dopóki nie wybierzesz innego.
+            </span>
+          ) : null}
         </span>
       </label>
     </div>
