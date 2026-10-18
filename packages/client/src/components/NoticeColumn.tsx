@@ -85,6 +85,13 @@ export function InlineNotice({
  */
 const HOVER_ARM_MS = 800;
 
+/**
+ * Najdłużej, ile najechanie trzyma informację (18.10, T3a): do przeczytania
+ * zdania wystarczy z zapasem, a pasek nad zakładką czy przyciskiem nie stoi
+ * tam bez końca tylko dlatego, że kursor celuje w to, co pod nim.
+ */
+const HOVER_HOLD_MAX_MS = 15_000;
+
 function NoticeRow({ notice }: { notice: Notice }) {
   const dismiss = useNoticeStore((s) => s.dismiss);
   const [held, setHeld] = useState(false);
@@ -101,7 +108,11 @@ function NoticeRow({ notice }: { notice: Notice }) {
       left.current = notice.lifetime;
       shownAt.current = Date.now();
     }
-    if (held || left.current === null) return;
+    if (left.current === null) return;
+    if (held) {
+      const cap = window.setTimeout(() => dismiss(notice.id), HOVER_HOLD_MAX_MS);
+      return () => window.clearTimeout(cap);
+    }
     const started = Date.now();
     const timer = window.setTimeout(() => dismiss(notice.id), left.current);
     return () => {
