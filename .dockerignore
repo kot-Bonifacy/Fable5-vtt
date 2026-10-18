@@ -1,0 +1,31 @@
+# Build context = the repo root (deploy/docker-compose.yml). Only sources and
+# committed data go in; everything private stays on the host and arrives through
+# volumes (stage 28).
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/src/generated
+.git
+.e2e
+.playwright-mcp
+.vscode
+.idea
+
+# Never in an image: rulebook data, uploads, databases, secrets.
+data/private
+uploads
+**/*.db
+**/*.db-*
+**/*.db.bak-*
+**/*.sqlite
+**/*.sqlite3
+**/.env
+**/.env.*
+!**/.env.example
+
+# Not part of the VTT containers.
+ai-gateway
+tools
+docs
+*.log
+/*.md

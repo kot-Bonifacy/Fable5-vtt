@@ -6,17 +6,25 @@
 
 Produkcyjne wdrożenie na VPS (home.pl, 8 GB / 4 vCPU / Ubuntu 24.04): Docker Compose, HTTPS, Tailscale do lokalnego PC z LLM, automatyczne backupy, podstawowe utwardzenie.
 
+## Rozstrzygnięcia 18.10.2026 (MG) — próba
+
+- **NPM zamiast Caddy:** na VPS porty 80/443 trzyma Nginx Proxy Manager (inne projekty MG), więc HTTPS i certyfikat robi NPM, a VTT stawia własny nginx (`vtt-web`: statyki + proxy) w sieci Dockera NPM. Port 8088 tylko na `127.0.0.1`.
+- **Bez `http://IP:8088` jako wariantu przejściowego:** `crypto.subtle`, `crypto.randomUUID` i `navigator.clipboard` wymagają bezpiecznego kontekstu — próba idzie od razu przez `https://vtt.tatanga.eu`.
+- **ufw „tylko 80/443” poza zasięgiem VTT:** NPM przekazuje ruch innym projektom na publiczne `217.154.210.181:808x`; VTT nie wystawia żadnego portu.
+- **Próba bez botów**, Tailscale w drugim kroku; na VPS jedzie kopia `dev.db` + `uploads/` + `data/private/cpred/` (`deploy/pack-data.ps1`); rejestracja otwarta.
+- Pliki: `deploy/` + `.dockerignore`; instrukcja: `docs/DEPLOY.md` (sprawdzona lokalnie w Docker Desktop: build, start na kopii bazy, Firefox, kopia i odtworzenie z kontenera).
+
 ## Zakres
 
-- [ ] Obrazy produkcyjne: multi-stage Dockerfile serwera (Node) i klienta (build → statyki), `docker-compose.prod.yml`: serwer VTT, Caddy (reverse proxy + statyki klienta), wolumeny (SQLite, uploads). **Bez coturn** — WebRTC wypadł z projektu 09.08.2026 razem z całą fazą G
-- [ ] Caddy: HTTPS automatyczny dla `vtt.tatanga.eu` (po delegacji DNS); do tego czasu wariant przejściowy `http://217.154.210.181:8088`
+- [x] Obrazy produkcyjne: multi-stage Dockerfile serwera (Node) i klienta (build → statyki), `deploy/docker-compose.yml`: serwer VTT, nginx `vtt-web` za NPM (zamiast Caddy, 18.10), wolumeny (SQLite, uploads). **Bez coturn** — WebRTC wypadł z projektu 09.08.2026 razem z całą fazą G
+- [ ] HTTPS dla `vtt.tatanga.eu` przez NPM (Let's Encrypt) — instrukcja gotowa, czeka na wykonanie na VPS; wariant `http://IP:8088` odpada (bezpieczny kontekst)
 - [ ] Tailscale: VPS i PC z GPU w jednym tailnecie; serwer VTT woła gateway po adresie tailnetowym (env); gateway nasłuchuje wyłącznie na interfejsie Tailscale; test degradacji — PC offline ⇒ boty offline, VTT działa
 - [ ] Firewall (ufw): tylko 80/443, SSH po kluczu (bez hasła), fail2ban dla SSH
-- [ ] **Przeniesienie `data/private/` na VPS jako krok deployu, nie ręczna czynność.** Cały pipeline z etapu 13 pisze do `data/private/` (gitignore), więc obraz zbudowany z repo **nie zawiera** ani 66 umiejętności, ani kompendium, ani danych kreatora, Ścieżek Życia i architektury Sieci. Katalog jedzie osobno (`rsync`/wolumen), a `deploy.sh` ma odmówić wdrożenia, jeśli go nie zastanie
+- [ ] **Przeniesienie `data/private/` na VPS jako krok deployu, nie ręczna czynność.** Cały pipeline z etapu 13 pisze do `data/private/` (gitignore), więc obraz zbudowany z repo **nie zawiera** ani 66 umiejętności, ani kompendium, ani danych kreatora, Ścieżek Życia i architektury Sieci. Katalog jedzie osobno (`rsync`/wolumen), a `deploy.sh` ma odmówić wdrożenia, jeśli go nie zastanie. **18.10:** odmawia `deploy.sh` i entrypoint serwera
 - [ ] **Mapa powitalna gracza jedzie razem z `uploads/`.** Tło, które widzi gracz przy pustym stole (`uploads/art/welcome-map.webp`, 11.09.2026), jest poza repozytorium — darmowa mapa do użytku prywatnego, a repo jest publiczne. Obraz zbudowany z repo **go nie zawiera**, a brak pliku nie jest awarią: ekran po cichu wraca do zdania „Brak aktywnej sceny", czyli funkcja zniknie i nikt tego nie zgłosi. Wolumen `uploads/` ma więc nieść **cały** katalog, nie tylko to, co wgrał MG przez UI. Opis: `docs/assety-mapy.md`
 - [ ] **Ostrzeżenie startowe „stoję na próbce".** `loadCpredRegistry` i `loadCompendium` (`packages/server/src/cpred.ts`, `compendium.ts`) celowo milczą, gdy plik prywatny nie istnieje — na dev to normalne, na produkcji oznacza cichy zjazd na dane przykładowe: **42 umiejętności z listy Easy Mode** zamiast 66 i wymyślone kompendium zamiast podręcznikowego. Serwer ma to powiedzieć raz, przy starcie (`log.warn` z listą plików, które wypadły), a panel MG — pokazać to MG. **Log zrobiony 26.09 (Z1 z `testy-rejestr.md`)** — `cpred rulebook data missing from data/private…` i `compendium missing from data/private…`; zostaje komunikat w panelu MG
 - [ ] Backupy automatyczne (cron/systemd timer): kopia SQLite przez `sqlite3 .backup` lub litestream, archiwum `uploads/` i `data/private/`; retencja (np. 7 dziennych + 4 tygodniowe); kopia off-site (rclone na dysk chmurowy lub pobieranie na PC domowy); **test odtworzenia** — obowiązkowy
-- [ ] Deploy powtarzalny: skrypt `deploy.sh` (pull → build → migracje → restart) + krótka instrukcja w `docs/DEPLOY.md`; zmienne środowiskowe prod w `.env.prod` poza repo
+- [x] Deploy powtarzalny (18.10, do potwierdzenia na VPS): skrypt `deploy.sh` (pull → build → migracje → restart) + krótka instrukcja w `docs/DEPLOY.md`; zmienne środowiskowe prod w `.env.prod` poza repo
 - [ ] Konto administratora na VPS (etap 53): `VTT_ADMIN_LOGIN=pantosz` i `VTT_ADMIN_PASSWORD` (hasło tymczasowe) w `.env.prod`; po pierwszym wejściu i zmianie hasła `VTT_ADMIN_PASSWORD` można usunąć. Kopia `dev.db` przeniesiona na VPS niesie już konto `pantosz` z jego hasłem
 - [ ] Monitoring minimalny: healthcheck kontenerów, powiadomienie o padzie (choćby uptime-kuma lub cron+mail), monitoring miejsca na dysku
 - [ ] Smoke test produkcji: pełna mini-sesja zdalna (mapa, tokeny, rzuty, karta, bot przez Tailscale)

@@ -30,7 +30,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 | AI Gateway        | Python 3.12 + FastAPI w `ai-gateway/` — spina llama-server i RAG                                          |
 | LLM               | Qwen3.8-27B GGUF UD-Q3_K_XL przez `llama-server` (llama.cpp build 10735), API zgodne z OpenAI, RTX 5070 Ti na lokalnym PC (od 24.09.2026; wcześniej Qwythos-9B-v2 Q8_0) |
 | Głos              | brak — TTS, STT i WebRTC wycofane 09.08.2026 (patrz akapit nad tabelą)                                    |
-| Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), Caddy (HTTPS), Tailscale dla kanału VPS↔PC                 |
+| Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), HTTPS przez Nginx Proxy Manager VPS (od 18.10.2026, wcześniej Caddy), Tailscale VPS↔PC; instrukcja `docs/DEPLOY.md` |
 
 ## Zasady architektury
 

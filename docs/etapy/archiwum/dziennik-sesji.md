@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.10 (po `e79982e`) — zaległości spoza refaktoryzacji i wdrożenia
+
+**Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
+(pytania):** separator tysięcy — zwykła twarda spacja U+00A0; T5b i odporność z gatewayem — na
+osobną sesję. **Zamknięte (diagnozy w `archiwum/zamkniete-zaleglosci.md`):** bot przeładowuje
+rodzaj z plecaka (`reloadAmmo`), figura rannej karty od razu z naklejką rany, menu figury MG
+w oknie (`useMenuTop`), kwoty „1 000 ed” u Medyka i w Kompendium, separator U+00A0. **Przy
+okazji:** „Wymienione: …” ginęło u tego, kto domknął handel — `noteAck` zdejmuje już tylko
+odmowy i pytania (`settleTopic`). **Nowa zaległość:** T6b 6.6b — dalszy ciąg marszu po „Złap
+oddech” dostaje `MOVE_PACE` (`zaleglosci.md`). Paczka AI dla innych MG zostaje (po becie).
+
+**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** tymczasowy spec
+z `po-T6` (skasowany) — MG w **Firefoksie** (menu Iskry w dolnym rzędzie „Knajpy” z rozwiniętym
+„Atak…” staje nad kursorem, całe w oknie), gracz w **Firefoksie** (Kompendium: „1 000 ed”,
+„Zainstaluj — 1 000 ed”, „5 000 ed” z widocznym odstępem).
+
 ### Sesja 17.10 (po `77453f9`) — etap 55b, komunikaty w oknach i skóra na miejscu
 
 **Zlecenie MG:** „wykonaj teraz etap 55b”. **Zrobione:** odmowy i wyniki kliknięć w oknach do

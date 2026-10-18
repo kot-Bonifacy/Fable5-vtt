@@ -1,0 +1,58 @@
+# VTT on the shared VPS (stage 28). Nginx Proxy Manager terminates TLS and
+# forwards vtt.tatanga.eu to vtt-web:80 over its Docker network — nothing is
+# published to the internet from here.
+#
+#   cd /opt/docker-apps/vtt/deploy && ./deploy.sh
+#
+# Host data lives outside the git clone, in VTT_DATA_DIR (default
+# /opt/docker-apps/vtt-data), owned by uid 1000 (`node` in the image).
+name: vtt
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    image: vtt-server
+    container_name: vtt-server
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3001'
+      DATABASE_URL: file:/data/db/vtt.db
+      UPLOADS_DIR: /data/uploads
+      DATA_PUBLIC_DIR: /app/data/public
+      DATA_PRIVATE_DIR: /data/private
+      BACKUP_DIR: /data/backups
+      TRUST_PROXY: '1'
+    volumes:
+      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/db:/data/db
+      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/uploads:/data/uploads
+      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/private:/data/private
+      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/backups:/data/backups
+    mem_limit: 1g
+    cpus: 1.5
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    image: vtt-web
+    container_name: vtt-web
+    depends_on:
+      server:
+        condition: service_healthy
+    # Local-only, for `curl` on the VPS itself; NPM goes over the network below.
+    ports:
+      - '127.0.0.1:8088:80'
+    networks: [default, proxy]
+    mem_limit: 128m
+    restart: unless-stopped
+
+networks:
+  default:
+  proxy:
+    external: true
+    name: ${NPM_NETWORK:-npm_default}

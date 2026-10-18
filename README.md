@@ -70,7 +70,7 @@ cd ai-gateway && uv run pytest              # testy gatewaya
 - **`@vtt/shared` konsumowany jako źródła TS** (`exports` wskazuje na `src/index.ts`): Vite (klient) i tsx (serwer dev) czytają TS bezpośrednio, bez osobnego kroku budowania; build produkcyjny serwera bundluje shared przez tsup. Prostsze niż project references — bez pilnowania kolejności budowania w dev.
 - Serwer jest autorytatywny; mechanika CP RED wyłącznie w `packages/shared` jako czyste funkcje z testami. Szczegóły architektury: [`CLAUDE.md`](CLAUDE.md).
 - **Prisma 7 + SQLite przez driver adapter `better-sqlite3`**: klient Prisma generowany do `packages/server/src/generated/` (gitignore), konfiguracja CLI w `prisma.config.ts`, migracje w repo (`prisma/migrations/`).
-- **Sesje w podpisanym cookie httpOnly** (`@fastify/cookie`), rekordy sesji w bazie; Socket.IO uwierzytelniany tym samym cookie przy handshake'u. W dev klient i serwer są same-origin dzięki proxy Vite (`/api`, `/socket.io`) — bez CORS; prod powtórzy to przez Caddy (etap 28).
+- **Sesje w podpisanym cookie httpOnly** (`@fastify/cookie`), rekordy sesji w bazie; Socket.IO uwierzytelniany tym samym cookie przy handshake'u. W dev klient i serwer są same-origin dzięki proxy Vite (`/api`, `/socket.io`) — bez CORS; prod powtarza to nginxem w `vtt-web` za Nginx Proxy Manager (etap 28, `docs/DEPLOY.md`).
 
 ## Licencja danych
 

@@ -6,6 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**18.10.2026 (etap 28) — jedno odtworzenie kopii padło w kontenerze.** W Docker Desktop na Windows
+`scripts/restore.ts` raz zakończył się stosem błędu po zrobieniu kopii `przed-przywroceniem-…`
+(stos nie zachowany; cztery powtórki udane). Serwer wstał potem na pustej bazie, a `uploads-gc`
+skasował 189 z 190 plików starszych niż godzina. Startowa kopia w tej samej minucie nadpisała kopię
+o tej samej nazwie (`takeSnapshot` celowo zastępuje kopię z tej samej minuty). Bezpiecznik
+w `deploy/server-entrypoint.sh` zatrzymuje ten łańcuch na VPS. Do zrobienia: odtworzyć awarię
+(prawdopodobnie bind mount Docker Desktop) i rozważyć, czy `uploads-gc` powinien w ogóle ruszać,
+gdy baza nie ma żadnej kampanii.
+
 **26.09.2026 (pozostałość „Wiele grup i wielu MG”, po T9b 04.10) — paczka AI dla innych MG.**
 Pozycje 1, 2 i 4 (konta MG, dwie sesje naraz, AI właściciela) zamknięte odbiorem T9b 04.10 —
 pełny wpis w `archiwum/zamkniete-zaleglosci.md`.

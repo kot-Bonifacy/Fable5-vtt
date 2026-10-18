@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (najpierw próbne — następna sesja); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 próba przygotowana 18.10 — wykonuje MG wg `docs/DEPLOY.md`); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55 (ostatni zamknięty: 55, 2026-10-17) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,12 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Następna sesja: próbne wdrożenie obecnej wersji na VPS MG (etap 28, `etap-28-wdrozenie-vps.md`)
-— decyzja MG z 18.10.** Refaktoryzacja całości **nie jest już warunkiem** dalszej pracy: MG zdjął ją
-z kolejki przed wdrożeniem (18.10). Wszystkie „dalej refaktoryzacja całości pod osłoną suity, potem
-T10” w akapitach niżej są nieaktualne — kolejność to: **próbne wdrożenie (28) → T10 → T11**,
-a refaktoryzacja wraca tylko na wyraźne zlecenie MG. Stan kodu do wdrożenia: `main` z 18.10,
-pełny przebieg E2E z gatewayem 370/379 (reszta zielona w powtórce), odporność zielona.
+**Etap 28 — próbne wdrożenie przygotowane 18.10 (trzecia sesja), czeka na wykonanie przez MG
+na VPS według `docs/DEPLOY.md`.** Decyzje MG: HTTPS przez Nginx Proxy Manager VPS (nie Caddy),
+NPM → `vtt-web:80` siecią Dockera, próba bez botów (Tailscale to krok 2), na VPS kopia `dev.db`
++ `uploads/` + `data/private/cpred/`, rejestracja otwarta. Pliki w `deploy/`, przetestowane lokalnie
+w Docker Desktop. Następna sesja: poprawki po próbie na VPS → Tailscale i boty → reszta etapu 28
+(off-site, utwardzenie, monitoring) → T10 → T11. Refaktoryzacja wraca tylko na zlecenie MG.
+Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
 T10.** Pełny domyślny przebieg z gatewayem 370/379 (3 wpisy konsoli przy restarcie instancji, powtórka
@@ -343,6 +344,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 18.10, trzecia (po `c229dc6`) — etap 28: pliki wdrożenia i instrukcja
+
+**Zlecenie MG:** „na podstawie `C:\AI\vps_home_pl_konfiguracja.md` przygotuj instrukcję wypchnięcia
+systemu na VPS”. **Decyzje MG (pytania):** NPM zamiast Caddy, próba bez botów, kopia `dev.db`,
+pliki + instrukcja, rekord DNS `vtt` dodaje MG, NPM → `vtt-web` siecią Dockera, rejestracja otwarta.
+**Zrobione:** `deploy/` (Dockerfile serwera i klienta, `docker-compose.yml`, `nginx.conf`,
+`server-entrypoint.sh`, `deploy.sh`, `pack-data.ps1`, `.env.prod.example`), `.dockerignore`,
+`docs/DEPLOY.md`, etap 28 z rozstrzygnięciami. **Znalezione:** klient potrzebuje bezpiecznego kontekstu
+(`crypto.subtle`, `randomUUID`, schowek), więc wariant `http://IP:8088` z planu odpada. Ponadto
+nieudane odtworzenie kopii + start na pustej bazie + `uploads-gc` kasuje uploady, a kopia z tej samej
+minuty nadpisuje poprzednią. Dlatego entrypoint odmawia startu bez bazy, gdy są pliki
+w `uploads/campaigns` (zaległość w `zaleglosci.md`).
+
+**Weryfikacja:** lokalnie w Docker Desktop: build obu obrazów (z `tsc` klienta), start na kopii
+`dev.db` (76 migracji, bez ostrzeżeń o próbce), logowanie MG, `/socket.io`, `/public` przez nginx,
+kopia z kontenera, odtworzenie przy zatrzymanym serwerze (4 z 5 udane), odmowa entrypointu bez bazy.
+Testów jednostkowych nie ruszano (zmian w kodzie aplikacji brak). **Oględziny:** stół MG
+w **Firefoksie** (Playwright) na `localhost:8088` z kontenerów — mapa z `uploads/`, czat, „Połączono”.
+Na VPS niewykonane.
+
 ### Sesja 18.10, druga (po `9c352e1`) — zaległości z gatewayem, triaż #79–#81
 
 **Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
@@ -362,19 +383,3 @@ w poczekalni), T7c (bezwładność kamery w `centreOn`, postoje puli w marszu gr
 Ola w **Firefoksie** (T5b: komunikat Sieci zamknięty klikiem w ✕, T3a: kreator bez pytania o zgodę),
 Bartek w **Firefoksie** (T9b: notka Wykidajły za wierszem Kuby po restarcie serwera — #81),
 administrator w Chromium (sekcja „AI właściciela” — #80).
-
-### Sesja 18.10 (po `e79982e`) — zaległości spoza refaktoryzacji i wdrożenia
-
-**Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
-(pytania):** separator tysięcy — zwykła twarda spacja U+00A0; T5b i odporność z gatewayem — na
-osobną sesję. **Zamknięte (diagnozy w `archiwum/zamkniete-zaleglosci.md`):** bot przeładowuje
-rodzaj z plecaka (`reloadAmmo`), figura rannej karty od razu z naklejką rany, menu figury MG
-w oknie (`useMenuTop`), kwoty „1 000 ed” u Medyka i w Kompendium, separator U+00A0. **Przy
-okazji:** „Wymienione: …” ginęło u tego, kto domknął handel — `noteAck` zdejmuje już tylko
-odmowy i pytania (`settleTopic`). **Nowa zaległość:** T6b 6.6b — dalszy ciąg marszu po „Złap
-oddech” dostaje `MOVE_PACE` (`zaleglosci.md`). Paczka AI dla innych MG zostaje (po becie).
-
-**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** tymczasowy spec
-z `po-T6` (skasowany) — MG w **Firefoksie** (menu Iskry w dolnym rzędzie „Knajpy” z rozwiniętym
-„Atak…” staje nad kursorem, całe w oknie), gracz w **Firefoksie** (Kompendium: „1 000 ed”,
-„Zainstaluj — 1 000 ed”, „5 000 ed” z widocznym odstępem).

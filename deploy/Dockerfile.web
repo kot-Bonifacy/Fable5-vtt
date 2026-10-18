@@ -1,0 +1,21 @@
+# VTT client (stage 28): Vite build served by nginx, which also proxies the
+# server routes. Build context = the repo root.
+FROM node:24-bookworm-slim AS build
+RUN corepack enable
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/client/package.json packages/client/
+RUN pnpm install --frozen-lockfile --filter "@vtt/client..."
+
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/client packages/client
+RUN pnpm --filter @vtt/client build
+
+FROM nginx:1.27-alpine
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/packages/client/dist /usr/share/nginx/html
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/ || exit 1

@@ -1,0 +1,44 @@
+# VTT server (stage 28). Build context = the repo root.
+#
+# The runtime keeps the whole workspace with dev dependencies on purpose: the
+# entrypoint runs `prisma migrate deploy`, and the console scripts (snapshot,
+# restore) run through `tsx` on TS sources — one group, one VPS, simplicity
+# over image size.
+FROM node:24-bookworm-slim AS build
+# better-sqlite3 falls back to node-gyp when no prebuilt binary matches.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/server/package.json packages/server/
+RUN pnpm install --frozen-lockfile --filter "@vtt/server..."
+
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/server packages/server
+COPY data/public data/public
+WORKDIR /app/packages/server
+# `prisma generate` reads prisma.config.ts, which wants a datasource URL.
+RUN DATABASE_URL=file:/tmp/build.db node node_modules/prisma/build/index.js generate \
+  && node node_modules/tsup/dist/cli-default.js
+
+FROM node:24-bookworm-slim
+# Prisma's CLI (migrations) probes libssl; snapshot names follow the GM's clock.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl tzdata \
+  && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production TZ=Europe/Warsaw
+COPY --from=build --chown=node:node /app /app
+COPY --chmod=755 deploy/server-entrypoint.sh /usr/local/bin/vtt-server
+RUN mkdir -p /data/db /data/uploads /data/private /data/backups \
+  && chown -R node:node /data
+USER node
+WORKDIR /app/packages/server
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+ENTRYPOINT ["vtt-server"]
