@@ -21,13 +21,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **refaktoryzacja** całości pod osłoną suity; **28** Wdrożenie na VPS; **43b**, **43c** (UI walki); T10 |
+| ⬜ otwarty   | **28** Wdrożenie na VPS (najpierw próbne — następna sesja); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55 (ostatni zamknięty: 55, 2026-10-17) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Następna sesja: próbne wdrożenie obecnej wersji na VPS MG (etap 28, `etap-28-wdrozenie-vps.md`)
+— decyzja MG z 18.10.** Refaktoryzacja całości **nie jest już warunkiem** dalszej pracy: MG zdjął ją
+z kolejki przed wdrożeniem (18.10). Wszystkie „dalej refaktoryzacja całości pod osłoną suity, potem
+T10” w akapitach niżej są nieaktualne — kolejność to: **próbne wdrożenie (28) → T10 → T11**,
+a refaktoryzacja wraca tylko na wyraźne zlecenie MG. Stan kodu do wdrożenia: `main` z 18.10,
+pełny przebieg E2E z gatewayem 370/379 (reszta zielona w powtórce), odporność zielona.
 
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
 T10.** Pełny domyślny przebieg z gatewayem 370/379 (3 wpisy konsoli przy restarcie instancji, powtórka
@@ -192,7 +199,7 @@ odmowa to `AI_UNAVAILABLE` z powodem. Decyzje MG z 04.10 na końcu `etap-44d-ai-
 **W `dev.db` zostało konto MG `ogledziny-b` (hasło `ogledziny-b-haslo`) z kampanią „Oględziny 44d
 (MG-B)”, zgodą na AI i graczem „Właściciel”** — śmieci z oględzin, wolno skasować.
 
-**Kolejność (MG 03.10, korekty 08.10, 09.10 i 10.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → 50a → 50b → 50c → refaktoryzacja → T10 → 28 → T11.** (50a i 50b zamknięte 10.10, 50c — 11.10.)
+**Kolejność (MG 03.10, korekty 08.10, 09.10 i 10.10): 44a → 44b → T9a → 44c → 44d → T9b → 45 → 46a1 → 46a2 → 46c1 → 46c2 → 46b1 → 46b2 → 47a → 47b → 48a → 48b → 48c → 49a → 49b → 50a → 50b → 50c → refaktoryzacja → T10 → 28 → T11.** (50a i 50b zamknięte 10.10, 50c — 11.10.) **Korekta MG 18.10: refaktoryzacja odłożona, najpierw próbne wdrożenie 28, potem T10 → T11.**
 
 **Etap 43a zamknięty 26.09 (zlecenie MG spoza planu):** zakładka „Walka” to portrety z ranami od
 dołu, ikonami efektów i akcjami grającego pod jego kartą; inicjatywa (rzut, remis, wpis, kubek
