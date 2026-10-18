@@ -280,17 +280,21 @@ test.describe.serial('T2 HTTP: uploady, zaproszenia, sesja, nagłówki, hasło M
     const { socket, sync } = await rawSocket(await cookieHeader(obcy));
     const frames: string[] = [JSON.stringify(sync)];
     socket!.onAny((event: string, ...args: unknown[]) => frames.push(event + JSON.stringify(args)));
+    // Od 10.10 (decyzja MG) gracz między sesjami pisze w poczekalni **swojej**
+    // kampanii — wiersz ma zostać w „Obcej kampanii”, nie wejść do aktywnej.
     expect(
       await emitAck(socket!, 'chat:send', { text: 'Dzień dobry, jestem obcy.' }),
-    ).toMatchObject({ ok: false });
+    ).toMatchObject({ ok: true });
     const history = await emitAck(socket!, 'chat:history', { beforeId: 1_000_000 });
     expect(history.ok ? JSON.stringify(history.data) : '').not.toContain('KANAREK');
     socket!.disconnect();
     const seen = frames.join('\n');
     for (const secret of ['Kowal', 'Knajpa', 'KANAREK']) expect(seen, secret).not.toContain(secret);
-    expect(query(`SELECT id FROM ChatMessage WHERE text = 'Dzień dobry, jestem obcy.'`)).toEqual(
-      [],
-    );
+    expect(
+      query<{ campaignId: string }>(
+        `SELECT campaignId FROM ChatMessage WHERE text = 'Dzień dobry, jestem obcy.'`,
+      ),
+    ).toEqual([{ campaignId: otherId }]);
 
     // Od 44c gracz dostaje swoją kampanię (tu: „Obca kampania” między sesjami),
     // nigdy cudzą.

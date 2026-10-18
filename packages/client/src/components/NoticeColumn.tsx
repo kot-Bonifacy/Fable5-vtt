@@ -137,7 +137,9 @@ function NoticeRow({ notice }: { notice: Notice }) {
           type="button"
           className="notice-close"
           title="Zamknij"
-          aria-label="Zamknij"
+          // Nie samo „Zamknij”: okna obok mają własne, a czytnik ekranu (i test)
+          // musi je odróżnić.
+          aria-label="Zamknij komunikat"
           onClick={() => dismiss(notice.id)}
         >
           ✕
