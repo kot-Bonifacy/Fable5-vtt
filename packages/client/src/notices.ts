@@ -99,6 +99,10 @@ export function clearNotices(topic: NoticeTopic): void {
 /**
  * Odpowiedź serwera na próbę w temacie: zgoda zamyka temat, odmowa staje
  * w kanale. Zwraca `ack.ok`, żeby wołający mógł iść dalej jednym `if`.
+ *
+ * Zgoda zdejmuje odmowy i pytania, ale nie informację (18.10): potwierdzenie
+ * ostatniej zgody w handlu przychodzi już po rozgłoszeniu „Wymienione: …”
+ * i gasiło je u tego, kto domknął wymianę.
  */
 export function noteAck<T>(
   topic: NoticeTopic,
@@ -106,7 +110,7 @@ export function noteAck<T>(
   text: (code: string) => string,
 ): ack is Extract<SocketAck<T>, { ok: true }> {
   if (ack.ok) {
-    clearNotices(topic);
+    useNoticeStore.getState().settleTopic(topic);
     return true;
   }
   notifyRefusal(topic, text(ack.error));

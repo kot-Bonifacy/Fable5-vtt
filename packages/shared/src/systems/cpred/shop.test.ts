@@ -242,7 +242,7 @@ describe('shopTierVerdict — rule by kind (naprawa 3b)', () => {
     expect(shopTierVerdict(gear({ cost: 500 }))).toEqual({
       tier: 2,
       source: 'price',
-      reason: 'cena 5 000 ed — brak reguły dla tego rodzaju',
+      reason: 'cena 5 000 ed — brak reguły dla tego rodzaju',
     });
     expect(shopTierVerdict(weapon({ weaponTypeId: null, cost: 20 })).source).toBe('price');
   });

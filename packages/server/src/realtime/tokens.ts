@@ -460,8 +460,10 @@ export async function createCharacterToken(
       await tx.character.update({ where: { id: character.id }, data: { creationTokenDone: true } });
     return created;
   });
-  await emitTokenUpsert(deps, campaignId, scene, token, toLinkedSheet(character, deps.ctx.cpred));
-  return token;
+  const linked = toLinkedSheet(character, deps.ctx.cpred);
+  const placed = await syncWoundStatuses(deps, token, linked.hp);
+  await emitTokenUpsert(deps, campaignId, scene, placed, linked);
+  return placed;
 }
 
 /**
@@ -936,8 +938,11 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
       });
     }
     const linked = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
-    await emitTokenUpsert(deps, campaignId, scene, token, linked);
-    return toTokenView(token, true, linked);
+    // Figura rannej karty staje z naklejką rany od razu, a nie dopiero przy
+    // pierwszym zapisie karty (zaległość z 17.10).
+    const placed = linked ? await syncWoundStatuses(deps, token, linked.hp) : token;
+    await emitTokenUpsert(deps, campaignId, scene, placed, linked);
+    return toTokenView(placed, true, linked);
   },
 });
 
@@ -1190,7 +1195,8 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     let updated = await deps.ctx.prisma.token.update({ where: { id: token.id }, data });
     // Crossing a wound threshold from the token menu (−5 PW) must move the
     // badges too — the same automation the damage flow relies on (stage 15).
-    if (patch.hp !== undefined) {
+    // Przepięcie na inną kartę też: figura bierze naklejki ran z PW tej karty.
+    if (patch.hp !== undefined || updated.characterId !== token.characterId) {
       const hp = linked
         ? linked.hp
         : updated.hpMax === null

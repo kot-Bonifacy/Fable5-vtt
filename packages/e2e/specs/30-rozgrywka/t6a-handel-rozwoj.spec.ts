@@ -301,6 +301,12 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
 
     await tradeWindow(marek).getByRole('button', { name: 'Zgadzam się' }).click();
     await tradeWindow(ola).getByRole('button', { name: 'Zgadzam się' }).click();
+    // Informacja żyje 4 s — sprawdzana od razu, zanim test zacznie czytać bazę.
+    for (const actor of [marek, ola]) {
+      await expect(
+        actor.page.locator('.notice', { hasText: 'Wymienione: Kowal ⇄ Iskra' }),
+      ).toBeVisible();
+    }
     await expect.poll(() => card('Iskra').gear.map((g) => g.name)).toContain(chip);
 
     const after = { kowal: card('Kowal'), iskra: card('Iskra') };
@@ -321,11 +327,6 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     ]);
     await expect(tradeWindow(marek)).toHaveCount(0);
     await expect(tradeWindow(ola)).toHaveCount(0);
-    for (const actor of [marek, ola]) {
-      await expect(
-        actor.page.locator('.notice', { hasText: 'Wymienione: Kowal ⇄ Iskra' }),
-      ).toBeVisible();
-    }
   });
 
   test('6.2 sklep kampanii: Marek kupuje wytrychy, broni wojskowej sklep mu nie sprzeda', async () => {
@@ -607,13 +608,13 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     const ledgerMark = lastLedgerId();
     const mark = lastMessageId();
 
-    // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 1000 ed”
+    // Marek: Kompendium → Cyberoko → „Iskra — Chirurgia 2 · poproś” → „Zainstaluj — 1 000 ed”
     // (cennik domowy, 47a: chrom ×10).
     const entry = await compendiumEntry(marek, 'Cyberoko', { prefix: true });
     const selects = entry.locator('.compendium-assign select');
     await selects.first().selectOption({ label: 'Kowal' });
     await selects.nth(1).selectOption({ label: 'Iskra — Chirurgia 2 · poproś' });
-    await entry.getByRole('button', { name: 'Zainstaluj — 1000 ed' }).click();
+    await entry.getByRole('button', { name: 'Zainstaluj — 1 000 ed' }).click();
     await expect(marek.page.locator('.notice', { hasText: 'Prośba do: Iskra' })).toBeVisible();
     // Prośba to nie operacja — nikt jeszcze nie zapłacił.
     expect(card('Kowal').eddies).toBe(before.eddies);
@@ -622,12 +623,12 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await ola.page.getByRole('button', { name: 'Czat', exact: true }).click();
     const olaCard = ola.page.getByTestId('surgery-request').last();
     await expect(olaCard).toContainText('Kowal → Iskra: Cyberoko');
-    await expect(olaCard).toContainText('Cena domyślna: 1000 ed');
+    await expect(olaCard).toContainText('Cena domyślna: 1 000 ed');
     const price = olaCard.getByLabel('Cena operacji w eurodolcach');
     await expect(price).toHaveValue('1000');
     await price.fill('1100');
-    await olaCard.getByRole('button', { name: 'Wyceń na 1100 ed' }).click();
-    await expect(olaCard).toContainText('Wycena Medyka: 1100 ed');
+    await olaCard.getByRole('button', { name: 'Wyceń na 1 100 ed' }).click();
+    await expect(olaCard).toContainText('Wycena Medyka: 1 100 ed');
     expect(card('Kowal').eddies, 'wycena to jeszcze nie operacja').toBe(before.eddies);
 
     // Marek zatwierdza wyższą cenę. Test montażu (1k10) musi przejść — porażka niszczy
@@ -635,12 +636,12 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     scriptDice([9, 3, 4]);
     await marek.page.getByRole('button', { name: 'Czat', exact: true }).click();
     const marekCard = marek.page.getByTestId('surgery-request').last();
-    await marekCard.getByRole('button', { name: 'Zgadzam się na 1100 ed' }).click();
+    await marekCard.getByRole('button', { name: 'Zgadzam się na 1 100 ed' }).click();
     await expect.poll(() => card('Kowal').cyberware.map((c) => c.name)).toContain('Cyberoko');
     expect(pendingDice()).toBe('');
     // Zamknięcie karty dochodzi po animacji obu rzutów (klient trzyma widoki do jej końca).
     for (const cardOf of [olaCard, marekCard]) {
-      await expect(cardOf).toContainText('Zoperowane — 1100 ed', { timeout: 20_000 });
+      await expect(cardOf).toContainText('Zoperowane — 1 100 ed', { timeout: 20_000 });
     }
 
     const after = card('Kowal');

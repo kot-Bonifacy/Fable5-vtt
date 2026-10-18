@@ -554,7 +554,7 @@ describe('the basket and the wizard', () => {
     // `formatEddies` groups thousands with a narrow no-break space, so the
     // number cannot wrap in the middle of itself.
     expect(issues.find((issue) => issue.field === 'purchases')?.message).toContain(
-      '1 000 z 500 ed',
+      '1 000 z 500 ed',
     );
   });
 

@@ -707,6 +707,68 @@ describe('automat', () => {
     await endFight(gm.socket);
     gm.socket.disconnect();
   });
+
+  it('reloads another kind of round when only that one is in the pack (17.10)', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const before = JSON.parse(
+      (await built.prisma.character.findUnique({ where: { id: characterId } }))!.data,
+    ) as CpredCharacterData;
+    const pistol = {
+      id: 'w-pistol',
+      name: 'Zgrzyt 9',
+      notes: '',
+      compendiumId: 'weapon.zgrzyt-9',
+      damage: '2k6',
+      ammoCurrent: 0,
+      ammoMax: 10,
+      ammoType: '',
+      rof: '2',
+    };
+    await built.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        data: JSON.stringify({
+          ...before,
+          ammoTracked: true,
+          weapons: [pistol],
+          gear: [
+            {
+              id: 'ap',
+              name: 'Przeciwpancerna',
+              notes: '',
+              qty: 15,
+              ammo: {
+                ammoId: 'ammo.sample-piercing',
+                calibre: 'Nabój pistoletowy (przykład)',
+                pattern: 'bullet',
+              },
+            },
+          ],
+        }),
+      },
+    });
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await startFight(gm.socket);
+    gateway.answers = [
+      decision({ akcja: 'przeładowanie', cel: 'Rico', bron: 'Zgrzyt 9', powod: 'Pusto.' }),
+      decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' }),
+    ];
+
+    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+
+    const sheet = JSON.parse(
+      (await built.prisma.character.findUnique({ where: { id: characterId } }))!.data,
+    ) as CpredCharacterData;
+    expect(sheet.weapons[0]).toMatchObject({ ammoCurrent: 10, ammoId: 'ammo.sample-piercing' });
+    expect(sheet.gear.map((row) => row.qty)).toEqual([5]);
+    await endFight(gm.socket);
+    await built.prisma.character.update({
+      where: { id: characterId },
+      data: { data: JSON.stringify({ ...before, weapons: [{ ...pistol, ammoCurrent: 10 }] }) },
+    });
+    gm.socket.disconnect();
+  });
 });
 
 describe('bezpieczniki', () => {

@@ -57,12 +57,14 @@ const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
 ]);
 
 /**
- * Groups thousands: „15 000" reads, „15000" does not. The separator is a narrow
+ * Groups thousands: „15 000" reads, „15000" does not. The separator is a
  * no-break space, written as an escape so it is visible in the source — a plain
- * space would let a rent wrap in the middle of its own number.
+ * space would let a rent wrap in the middle of its own number. Zwykła twarda
+ * spacja (U+00A0), nie wąska (U+202F): Firefox rysował wąską w Jost przy małym
+ * kroju prawie bez szerokości i „1 180 ed” czytało się jak „1180” (10.10).
  */
 export function formatEddies(amount: number): string {
-  return String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 }
 
 /** Ile razy cennik domowy mnoży cenę z podręcznika dla tego wpisu. */

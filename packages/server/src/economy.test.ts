@@ -448,7 +448,7 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
 
     const ledger = await ledgerOf(vex, kaiId);
     expect(ledger.entries[0]).toMatchObject({ kind: 'lifestyle', amount: -100, balance: 0 });
-    expect(ledger.entries[0]?.label).toContain('czynsz 1 000 ed');
+    expect(ledger.entries[0]?.label).toContain('czynsz 1 000 ed');
     // Pominięta postać nie dostała ani wiersza w audycie.
     expect((await ledgerOf(gm, npc.data.id)).entries).toHaveLength(0);
   });

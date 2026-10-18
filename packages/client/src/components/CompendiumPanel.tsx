@@ -85,6 +85,7 @@ import {
 import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
 import { EmptyState } from './EmptyState.js';
+import { formatEd } from './exchange/items.js';
 import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
 
 /**
@@ -534,7 +535,7 @@ function EntryCard({
     const name = askable.find((row) => row.characterId === surgeonCardId)?.name ?? 'Medyk';
     const listed = payment === 'installOnly' ? fitting : (price ?? 0);
     notifyInfo(
-      `Prośba do: ${name} — czeka na czacie. Medyk poda cenę (domyślnie ${listed} ed); wyższą zatwierdzasz ty.`,
+      `Prośba do: ${name} — czeka na czacie. Medyk poda cenę (domyślnie ${formatEd(listed)}); wyższą zatwierdzasz ty.`,
       { title: 'Prośba o operację', topic: 'character' },
     );
   }
@@ -571,8 +572,8 @@ function EntryCard({
     }
     const money =
       payment === 'installOnly'
-        ? `Montaż „${entry.name}” — ${fitting} ed.`
-        : `Instaluję „${entry.name}” — ${price ?? 0} ed.`;
+        ? `Montaż „${entry.name}” — ${formatEd(fitting)}.`
+        : `Instaluję „${entry.name}” — ${formatEd(price ?? 0)}.`;
     notifyInfo(
       surgeon.kind === 'none'
         ? `${money} Rzut na Utratę Człowieczeństwa idzie na czat.`
@@ -905,7 +906,7 @@ function EntryCard({
                   CYBERWARE_INSTALL_DV[entry.install] === null
                     ? 'Bez operacji — wystarczy gniazdo.'
                     : `PT montażu ${CYBERWARE_INSTALL_DV[entry.install]}, ` +
-                      `operacja wliczona w cenę; znaleziony wszczep — ${CYBERWARE_INSTALL_COST[entry.install]} ed (s. 375).`
+                      `operacja wliczona w cenę; znaleziony wszczep — ${formatEd(CYBERWARE_INSTALL_COST[entry.install])} (s. 375).`
                 }
               />
             ) : null}
@@ -1098,12 +1099,12 @@ function EntryCard({
                 title={
                   price === null
                     ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                    : `Wszczep ${price} ed — koszt operacji jest wliczony w cenę (s. 111).`
+                    : `Wszczep ${formatEd(price)} — koszt operacji jest wliczony w cenę (s. 111).`
                 }
                 disabled={price === null}
                 onClick={() => void install('full')}
               >
-                Zainstaluj{price === null ? '' : ` — ${price} ed`}
+                Zainstaluj{price === null ? '' : ` — ${formatEd(price)}`}
               </button>
               {/* „Montaż znalezionej cyborgizacji" (s. 375): chrome pulled off
                   a corpse costs the ripperdoc's time and nothing else. Od etapu
@@ -1119,7 +1120,7 @@ function EntryCard({
                 disabled={!foundInGear}
                 onClick={() => void install('installOnly')}
               >
-                Znaleziony — montaż {fitting} ed
+                Znaleziony — montaż {formatEd(fitting)}
               </button>
             </>
           ) : null}

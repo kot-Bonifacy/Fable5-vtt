@@ -25,6 +25,15 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow-md);
+  /* Menu MG z rozwiniętym podmenu bywa wyższe od okna (zaległość z 15.10):
+     pozycję liczy `useMenuTop`, a reszta się przewija. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+/* Kolumna z `max-height` ściskałaby wiersze zamiast je przewijać. */
+.context-menu > * {
+  flex-shrink: 0;
 }
 
 .context-menu-title {

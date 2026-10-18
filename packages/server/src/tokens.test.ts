@@ -999,6 +999,41 @@ describe('tokens', () => {
     expect(updated.ok && updated.data?.statuses).toEqual(['stunned', 'on-fire']);
   });
 
+  it('stawia figurę rannej karty z naklejką rany od razu (zaległość 17.10)', async () => {
+    const card = await emitAck<CharacterView>(gm, 'character:create', { name: 'Konający' });
+    if (!card.ok || !card.data) throw new Error('character:create failed');
+    await emitAck(gm, 'character:update', {
+      characterId: card.data.id,
+      patch: { data: { hpCurrent: 0 } },
+    });
+    const placed = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Konający',
+      x: 1500,
+      y: 1500,
+      characterId: card.data.id,
+    });
+    expect(placed.ok && placed.data?.statuses).toEqual(['mortally-wounded']);
+
+    // Przepięcie figury bez karty na ranną kartę też dokleja naklejkę.
+    const bare = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Bez karty',
+      x: 1700,
+      y: 1500,
+    });
+    if (!bare.ok || !bare.data) throw new Error('token:create failed');
+    const linked = await emitAck<TokenView>(gm, 'token:update', {
+      tokenId: bare.data.id,
+      patch: { characterId: card.data.id },
+    });
+    expect(linked.ok && linked.data?.statuses).toEqual(['mortally-wounded']);
+
+    for (const token of [placed.data, bare.data]) {
+      if (token) await emitAck(gm, 'token:delete', { tokenId: token.id });
+    }
+  });
+
   /**
    * Stage 27j. The angle a figure is turned to is server state like everything
    * else: walking writes it, a hand may overwrite it, and the next walk wins

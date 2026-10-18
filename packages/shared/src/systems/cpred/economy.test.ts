@@ -42,7 +42,7 @@ describe('entryPrice', () => {
 
   it('names the band when the price came from it', () => {
     expect(formatPurchasePrice({ cost: null, costCategory: 'premium' })).toBe(
-      '1 000 ed (cena pasma Premium)',
+      '1 000 ed (cena pasma Premium)',
     );
     expect(formatPurchasePrice({ cost: 550, costCategory: 'costly' })).toBe('550 ed');
     expect(formatPurchasePrice({ cost: null })).toBeNull();
@@ -113,14 +113,14 @@ describe('settleMonth', () => {
 
 describe('formatting', () => {
   it('groups thousands with a narrow no-break space, so a rent never wraps', () => {
-    expect(formatEddies(15_000)).toBe('15 000');
+    expect(formatEddies(15_000)).toBe('15 000');
     expect(formatEddies(500)).toBe('500');
-    expect(formatEddies(1_500_000)).toBe('1 500 000');
+    expect(formatEddies(1_500_000)).toBe('1 500 000');
   });
 
   it('signs the audit amounts', () => {
     expect(formatLedgerAmount(-100)).toBe('−100 ed');
-    expect(formatLedgerAmount(2500)).toBe('+2 500 ed');
+    expect(formatLedgerAmount(2500)).toBe('+2 500 ed');
   });
 
   it('guards ledger kinds', () => {

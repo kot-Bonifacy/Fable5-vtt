@@ -1,3 +1,5 @@
+import { formatEddies } from './systems/cpred/pricing.js';
+
 /**
  * Prośba o operację u Medyka innego gracza (#41, 30.09.2026).
  *
@@ -93,5 +95,5 @@ export function surgeryResolutionLabel(entry: SurgeryRequestEntry): string {
   const resolution = entry.resolution;
   if (!resolution) return '';
   const label = SURGERY_RESOLUTION_LABELS[resolution.kind];
-  return resolution.price === undefined ? label : `${label} — ${resolution.price} ed`;
+  return resolution.price === undefined ? label : `${label} — ${formatEddies(resolution.price)} ed`;
 }

@@ -2441,7 +2441,11 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
                     type="button"
                     className="small-button"
                     disabled={busy || price > left}
-                    title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
+                    title={
+                      price > left
+                        ? 'Za mało startowych eurodolców.'
+                        : `Dołóż — ${formatEddies(price)} ed`
+                    }
                     aria-label={`Dołóż do koszyka: ${entry.name}`}
                     onClick={() => void buyCreationEntry(entry.id, 1, calibre?.weaponTypeId)}
                   >

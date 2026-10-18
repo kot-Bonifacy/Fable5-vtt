@@ -45,6 +45,12 @@ describe('kanał komunikatów (etap 55)', () => {
     expect(notices()).toEqual([]);
   });
 
+  it('udana próba nie gasi informacji tematu, która przyszła przed potwierdzeniem', () => {
+    notifyInfo('Wymienione: Kowal ⇄ Iskra', { topic: 'exchange' });
+    expect(noteAck('exchange', { ok: true }, () => 'nic')).toBe(true);
+    expect(notices().map((n) => n.text)).toEqual(['Wymienione: Kowal ⇄ Iskra']);
+  });
+
   it('informacja ma czas życia, odmowa i pytanie czekają', () => {
     notifyInfo('MG rozpoczął sesję.');
     notifyRefusal('move', 'Za daleko.');

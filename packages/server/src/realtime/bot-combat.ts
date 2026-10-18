@@ -12,6 +12,8 @@ import type {
   CpredAmmoProfile,
   CpredAttackMode,
   CpredCharacterData,
+  CpredHotbarReloadSlot,
+  CpredHotbarWeaponSlot,
   ResolvedWeapon,
   ScenePoint,
   SessionUser,
@@ -218,6 +220,18 @@ function sideOf(
   return playerSide === botOnPlayerSide ? 'ally' : 'enemy';
 }
 
+/**
+ * Zapas, który bot widzi przy broni: ten z pola „Przeładuj”, bo ono liczy też
+ * inny rodzaj naboju z plecaka. Bez pola (broń bez magazynka) — zapas slotu.
+ */
+function stockOf(
+  slot: CpredHotbarWeaponSlot,
+  reloads: ReadonlyMap<string, CpredHotbarReloadSlot>,
+): number | null {
+  if (slot.attachmentId !== null) return slot.stock;
+  return reloads.get(slot.weaponRowId)?.stock ?? slot.stock;
+}
+
 interface TurnBudgetNumbers {
   actionSpent: boolean;
   moveSpent: boolean;
@@ -246,6 +260,11 @@ interface TacticalStep {
   state: BotCombatState;
   /** Id figury z menu → token na scenie. */
   targets: Map<string, Token>;
+  /**
+   * Wiersz broni → rodzaj naboju, który weźmie przeładowanie, gdy bieżącego
+   * w ekwipunku nie ma (`stockSwap` paska, 17.10). Brak wpisu — tym, co jest.
+   */
+  reloadAmmo: Map<string, string | null>;
   combatant: CombatantRow;
   budget: TurnBudgetNumbers;
 }
@@ -354,6 +373,17 @@ async function buildTacticalStep(
     grapple: toCombatantView(combatant, combat).grapple?.role ?? null,
   });
 
+  // Pole „Przeładuj” paska wie, czy przeładowanie weźmie inny rodzaj z plecaka
+  // (strzelba na zwykłej, a w ekwipunku sam śrut) — bot czyta ten sam zapas.
+  const reloads = new Map<string, CpredHotbarReloadSlot>();
+  for (const slot of slots) {
+    if (slot.kind === 'reload' && slot.attachmentId === null) reloads.set(slot.weaponRowId, slot);
+  }
+  const reloadAmmo = new Map<string, string | null>();
+  for (const [rowId, slot] of reloads) {
+    if (slot.ammoId !== undefined) reloadAmmo.set(rowId, slot.ammoId);
+  }
+
   const weapons: BotCombatWeapon[] = [];
   for (const slot of slots) {
     if (slot.kind !== 'weapon') continue;
@@ -363,13 +393,14 @@ async function buildTacticalStep(
     if (slot.pointTarget) continue;
     const label = slot.modeLabel ? `${slot.label} · ${slot.modeLabel}` : slot.label;
     if (weapons.some((weapon) => weapon.label === label)) continue;
+    const stock = stockOf(slot, reloads);
     weapons.push({
       id: slot.id,
       label,
       ...(slot.ammoLabel ? { detail: `nabój: ${slot.ammoLabel}` } : {}),
       ...(slot.melee ? { melee: true } : {}),
       ...(slot.ammo ? { ammo: slot.ammo } : {}),
-      ...(slot.stock !== null ? { stock: slot.stock } : {}),
+      ...(stock !== null ? { stock } : {}),
       ...(slot.disabled ? { disabled: slot.disabled } : {}),
     });
   }
@@ -380,6 +411,7 @@ async function buildTacticalStep(
     combatant,
     budget,
     targets,
+    reloadAmmo,
     state: {
       self: {
         name: ctx.character.name,
@@ -583,11 +615,16 @@ async function executeDecision(
   if (decision.kind === 'reload') {
     const slot = parseWeaponSlotId(decision.weaponId);
     if (!slot) throw new RealtimeError('UNKNOWN_WEAPON');
+    const swap = step.reloadAmmo.get(slot.rowId);
     await performWeaponReload(deps, {
       campaignId: ctx.campaignId,
       user: ctx.user,
       sceneId: ctx.scene.id,
-      payload: { characterId: ctx.character.id, weaponRowId: slot.rowId },
+      payload: {
+        characterId: ctx.character.id,
+        weaponRowId: slot.rowId,
+        ...(swap !== undefined ? { ammoId: swap } : {}),
+      },
     });
     return;
   }

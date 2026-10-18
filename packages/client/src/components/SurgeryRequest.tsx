@@ -14,6 +14,7 @@ import {
 import { respondSurgery, surgeryErrorText } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { noteAck } from '../notices.js';
+import { formatEd } from './exchange/items.js';
 
 /**
  * Karta prośby o operację u Medyka innego gracza (#41, 30.09.2026).
@@ -80,8 +81,8 @@ export function SurgeryRequestRow({
         <li>
           {entry.surgeonName}: Chirurgia {entry.surgery}
         </li>
-        <li>Cena domyślna: {entry.defaultPrice} ed</li>
-        {quoted && <li>Wycena Medyka: {entry.quote} ed — czeka na zgodę pacjenta</li>}
+        <li>Cena domyślna: {formatEd(entry.defaultPrice)}</li>
+        {quoted && <li>Wycena Medyka: {formatEd(entry.quote ?? 0)} — czeka na zgodę pacjenta</li>}
       </ul>
 
       {resolution && (
@@ -106,7 +107,7 @@ export function SurgeryRequestRow({
                 step={1}
                 value={price}
                 aria-label="Cena operacji w eurodolcach"
-                title={`Cena domyślna: ${entry.defaultPrice} ed. Zero — operujesz za darmo; wyższą zatwierdza pacjent.`}
+                title={`Cena domyślna: ${formatEd(entry.defaultPrice)}. Zero — operujesz za darmo; wyższą zatwierdza pacjent.`}
                 onChange={(event) => setPrice(event.target.value)}
               />
               <button
@@ -121,8 +122,8 @@ export function SurgeryRequestRow({
                 onClick={() => void respond('operate')}
               >
                 {needsApproval
-                  ? `Wyceń na ${parsed} ed`
-                  : `Operuję za ${validPrice ? parsed : '?'} ed`}
+                  ? `Wyceń na ${formatEd(parsed)}`
+                  : `Operuję za ${validPrice ? formatEd(parsed) : '? ed'}`}
               </button>
             </>
           )}
@@ -145,7 +146,7 @@ export function SurgeryRequestRow({
               title="Zgoda na wycenę — Medyk operuje od razu"
               onClick={() => void respond('approve')}
             >
-              Zgadzam się na {entry.quote} ed
+              Zgadzam się na {formatEd(entry.quote ?? 0)}
             </button>
           )}
           {patientSide && (

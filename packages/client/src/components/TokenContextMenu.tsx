@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
@@ -65,6 +71,36 @@ import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
 
 const MENU_WIDTH = 240;
+/** Odstęp menu od krawędzi okna. */
+const MENU_MARGIN = 8;
+
+/**
+ * Górna krawędź menu mierzona po wyrenderowaniu (zaległość z 15.10).
+ *
+ * Menu MG z paskiem PW, naklejkami i rozwiniętym „🎯 Atak…” bywa dwa razy
+ * wyższe niż stałe 320 px, które tu kiedyś odejmowano — figura nisko na mapie
+ * miała „🗑 Usuń” pod krawędzią okna. Wysokość czyta `ResizeObserver`, bo
+ * rozwinięcie podmenu zmienia ją bez zmiany pozycji kursora. Menu, które nie
+ * mieści się pod kursorem, staje nad nim; wyższe od okna przewija się samo
+ * (`max-height` w `05-tokens.css`).
+ */
+function useMenuTop(y: number): { ref: (element: HTMLDivElement | null) => void; top: number } {
+  const [height, setHeight] = useState(0);
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((element: HTMLDivElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!element) return;
+    setHeight(element.offsetHeight);
+    observer.current = new ResizeObserver(() => setHeight(element.offsetHeight));
+    observer.current.observe(element);
+  }, []);
+  useEffect(() => () => observer.current?.disconnect(), []);
+  const bottom = window.innerHeight - MENU_MARGIN;
+  const top =
+    y + height <= bottom ? y : Math.max(MENU_MARGIN, Math.min(y - height, bottom - height));
+  return { ref, top };
+}
 
 /**
  * Tło pod menu: klik gdziekolwiek obok je zamyka, prawy przycisk też.
@@ -926,6 +962,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     groupIds.length > 1 && groupIds.includes(menu.tokenId) ? groupIds : [menu.tokenId];
   const encounterAllIn = encounterState(encounterIds, combat).allIn;
   const doubleRight = useDoubleRightTarget(menu.tokenId, onClose);
+  const placement = useMenuTop(menu.y);
 
   // The token can vanish under the open menu (deleted in another tab).
   useEffect(() => {
@@ -945,8 +982,8 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     );
   }
 
-  const left = Math.min(menu.x, window.innerWidth - MENU_WIDTH - 8);
-  const top = Math.min(menu.y, window.innerHeight - 320);
+  const left = Math.min(menu.x, window.innerWidth - MENU_WIDTH - MENU_MARGIN);
+  const top = placement.top;
 
   function inspect() {
     if (!token) return;
@@ -983,6 +1020,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
       <>
         <MenuBackdrop onClose={onClose} onRightDown={doubleRight} />
         <div
+          ref={placement.ref}
           className="context-menu"
           style={{ left, top, width: MENU_WIDTH }}
           onPointerDown={doubleRight}
@@ -1065,6 +1103,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     <>
       <MenuBackdrop onClose={onClose} onRightDown={doubleRight} />
       <div
+        ref={placement.ref}
         className="context-menu"
         style={{ left, top, width: MENU_WIDTH }}
         onPointerDown={doubleRight}

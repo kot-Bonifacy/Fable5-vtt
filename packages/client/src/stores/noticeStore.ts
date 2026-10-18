@@ -97,6 +97,8 @@ interface NoticeStoreState {
   show: (input: NoticeInput) => string;
   dismiss: (id: string) => void;
   clearTopic: (topic: NoticeTopic) => void;
+  /** Zdejmuje odmowy i pytania tematu, a informacja dożywa swojego czasu. */
+  settleTopic: (topic: NoticeTopic) => void;
   reset: () => void;
 }
 
@@ -117,6 +119,12 @@ export const useNoticeStore = create<NoticeStoreState>((set, get) => ({
     set((state) =>
       state.notices.some((n) => n.topic === topic)
         ? { notices: state.notices.filter((n) => n.topic !== topic) }
+        : state,
+    ),
+  settleTopic: (topic) =>
+    set((state) =>
+      state.notices.some((n) => n.topic === topic && n.tone !== 'info')
+        ? { notices: state.notices.filter((n) => n.topic !== topic || n.tone === 'info') }
         : state,
     ),
   reset: () => set({ notices: [] }),
