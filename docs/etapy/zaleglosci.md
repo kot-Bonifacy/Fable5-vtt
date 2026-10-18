@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**18.10.2026 (etap 28) — kopie na VPS nie dowiązują `uploads/` (`"linked": false`).** `db`, `uploads`
+i `backups` są w `deploy/docker-compose.yml` osobnymi bind mountami, a twarde dowiązanie między
+montowaniami pada (EXDEV), więc `linkTree` kopiuje pliki: każda kopia godzinowa to pełne ~66 MB,
+przy rotacji 24 + 14 ok. 2,5 GB dysku VPS (wolne 185 GB — bez pośpiechu). Naprawa: jeden mount
+`vtt-data:/data` zamiast czterech (zmienia ścieżki w compose i entrypoincie, wymaga redeployu).
+
 **18.10.2026 (etap 28) — jedno odtworzenie kopii padło w kontenerze.** W Docker Desktop na Windows
 `scripts/restore.ts` raz zakończył się stosem błędu po zrobieniu kopii `przed-przywroceniem-…`
 (stos nie zachowany; cztery powtórki udane). Serwer wstał potem na pustej bazie, a `uploads-gc`

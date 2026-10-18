@@ -239,16 +239,25 @@ docker compose --env-file .env.prod up -d
 >   serwerze, `chown 1000:1000`);
 > - `VTT_ALLOW_EMPTY_DB=1` stosuj tylko świadomie (celowo czysta baza).
 
-Kopia off-site (na razie ręcznie, z PC):
+Kopia off-site — PC MG ściąga ją sam (od 18.10). Zadanie Harmonogramu „VTT pull backup” codziennie
+o 23:30 (wyłączony PC nadrabia przy najbliższej okazji) puszcza `deploy/pull-backup.ps1`: najnowsza
+kompletna kopia (z `manifest.json`, który serwer pisze na końcu) idzie przez `scp` do `D:\kopie-vtt\`,
+skrypt sprawdza rozmiar bazy i liczbę plików z manifestem oraz `PRAGMA integrity_check`, zapisuje
+`verified.txt` i trzyma 14 ostatnich. Dziennik: `D:\kopie-vtt\pull-backup.log`.
 
 ```powershell
-scp -r root@217.154.210.181:/opt/docker-apps/vtt-data/backups/snapshot-RRRR-MM-DD-GGMM D:\kopie-vtt\
+pwsh deploy/pull-backup.ps1              # teraz, ręcznie
+pwsh deploy/pull-backup.ps1 -Register    # (ponowna) rejestracja zadania
+Get-ScheduledTaskInfo "VTT pull backup"  # LastTaskResult 0 = ok
 ```
+
+Wymaga `ssh vps` kluczem z agenta Windows (Windows OpenSSH, nie `ssh` z Gita).
 
 ## Czego próba jeszcze nie robi (reszta etapu 28)
 
 - [x] Tailscale i boty (sekcja 9, 18.10)
-- [ ] kopia off-site z harmonogramu (rclone albo pobieranie na PC) i **test odtworzenia na VPS**
+- [x] kopia off-site z harmonogramu — pobieranie na PC (`deploy/pull-backup.ps1`, 18.10)
+- [ ] **test odtworzenia na VPS**
 - [ ] utwardzenie: ~~SSH tylko po kluczu~~ (18.10: `/etc/ssh/sshd_config.d/00-hardening.conf`, klucz `id_ed25519_vps` w agencie Windows, alias `ssh vps`), fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
       włączyć bez zmian w innych projektach**, bo NPM przekazuje im ruch na publiczne `217.154.210.181:808x`.
       VTT żadnego portu nie wystawia. Decyzja o pozostałych to sprawa całego VPS.

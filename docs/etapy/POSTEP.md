@@ -34,8 +34,9 @@ Tailscale.** Kontenery `vtt-server` i `vtt-web` w `/opt/docker-apps/vtt`, dane w
 NPM → `vtt-web:80`. Gateway na PC słucha na `0.0.0.0:8100` z kluczem (zapora: tylko 100.64.0.0/10);
 klucz ma też lokalny serwer i E2E (pułapka na górze `boty`). **Źródłem prawdy jest VPS** — lokalny
 `pnpm dev` niczego nie synchronizuje. Wydanie: push z PC, na VPS `./deploy.sh`. Zostało z etapu 28
-(lista na końcu `docs/DEPLOY.md`): kopia off-site i test odtworzenia na VPS, utwardzenie (SSH
-kluczem, fail2ban; VPS czeka też na restart po aktualizacji jądra), monitoring. Potem T10 → T11.
+(lista na końcu `docs/DEPLOY.md`): test odtworzenia na VPS, fail2ban i unattended-upgrades (VPS czeka
+też na restart po aktualizacji jądra), monitoring. Już jest: SSH tylko kluczem (`ssh vps`), kopia
+off-site na PC (`deploy/pull-backup.ps1`, zadanie „VTT pull backup”, `D:\kopie-vtt`). Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
@@ -357,7 +358,10 @@ na PC (winget) i VPS, klucz gatewaya w `ai-gateway/.env`, `packages/server/.env`
 przez czat). `C:\AI\vps_home_pl_konfiguracja.md` uzupełniony o VTT (port 8088 tylko localhost,
 następny wolny 8089). Krok 9 w `DEPLOY.md` przepisany na stan faktyczny. **Odrzucone przez
 klasyfikator:** zwolnienie loopbacku z klucza w `require_api_key` — stąd klucz w lokalnym `.env`.
-**Znalezione:** VPS bez logowania SSH kluczem (agent nie wejdzie), czeka na restart po aktualizacji jądra.
+**Potem:** SSH tylko kluczem (`id_ed25519_vps` w agencie Windows, alias `ssh vps`; zmianę `sshd`
+wpisał MG — klasyfikator nie dał agentowi) i kopia off-site: `deploy/pull-backup.ps1` + zadanie
+„VTT pull backup” (23:30, `D:\kopie-vtt`, 14 kopii, weryfikacja manifestu i `integrity_check`).
+**Znalezione:** VPS czeka na restart po aktualizacji jądra; kopie na VPS bez dowiązań (`zaleglosci.md`).
 
 **Weryfikacja:** z VPS `POST /chat 200` i `POST /rag/search 200` w logu gatewaya, bot odpowiada
 na `https://vtt.tatanga.eu`; test degradacji (gateway wyłączony → boty niedostępne, stół działa,
