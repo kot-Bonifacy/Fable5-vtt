@@ -15,6 +15,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  aiAccessReasonOfText,
   aiAccessReasonText,
   BOT_CONTEXT_FALLBACK_TOKENS,
   BOT_CONTEXT_SAFETY_TOKENS,
@@ -40,6 +41,7 @@ import { emitJournalPending } from './journal.js';
 import { getSceneById } from './scenes.js';
 import { campaignRoom, gmRoom } from './state.js';
 import { campaignAi } from './ai.js';
+import { deferView } from './presentation.js';
 
 /**
  * Bots as participants of the session chat (stage 11).
@@ -124,13 +126,22 @@ function notice(
   userId: string | null,
   payload: BotNoticeBroadcast,
 ): void {
+  // Wiersz, który zawołał bota, czeka na koniec obsługi zdarzenia
+  // (`deferView` w `broadcastChatMessage`) — notka idzie za nim, nie przed nim
+  // (#79, T9b).
+  if (deferView(deps, (ready) => notice(ready, campaignId, userId, payload))) return;
+  // Powód bramy AI („poproś o dostęp w Panelu MG”) to rada dla MG; gracz,
+  // który zawołał bota, dostaje samo „nie odpowiada” (#79, T9b).
+  const { detail, ...bare } = payload;
+  const forPlayer = aiAccessReasonOfText(detail) ? bare : payload;
   // Targeted, never stored: a bot failing to answer is an operational hiccup,
   // not part of the session transcript.
   void (async () => {
     const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
     for (const socket of sockets) {
       const user = (socket.data as { user: SessionUser }).user;
-      if (user.id === userId || user.role === ROLE_GM) socket.emit('bot:notice', payload);
+      if (user.role === ROLE_GM) socket.emit('bot:notice', payload);
+      else if (user.id === userId) socket.emit('bot:notice', forPlayer);
     }
   })().catch((error: unknown) => {
     deps.log.warn({ err: error }, 'bot notice delivery failed');

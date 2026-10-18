@@ -78,9 +78,17 @@ export function InlineNotice({
   );
 }
 
+/**
+ * Najechanie tuż po pojawieniu się nie wstrzymuje zegara (18.10, T5b): pasek
+ * wyskakuje pod kursorem, który już tam stał nad przyciskiem okna, i trzymałby
+ * się wtedy bez końca, zasłaniając to, w co gracz celował.
+ */
+const HOVER_ARM_MS = 800;
+
 function NoticeRow({ notice }: { notice: Notice }) {
   const dismiss = useNoticeStore((s) => s.dismiss);
   const [held, setHeld] = useState(false);
+  const shownAt = useRef(Date.now());
   // Pozostały czas żyje między renderami: najechanie zatrzymuje zegar, zejście
   // kursora liczy dalej od tego miejsca, a ponowne zdanie liczy od nowa.
   // (Reset w efekcie, nie w renderze: sprzątanie poprzedniego zegara biegnie
@@ -91,6 +99,7 @@ function NoticeRow({ notice }: { notice: Notice }) {
     if (raised.current !== notice.raised) {
       raised.current = notice.raised;
       left.current = notice.lifetime;
+      shownAt.current = Date.now();
     }
     if (held || left.current === null) return;
     const started = Date.now();
@@ -109,8 +118,16 @@ function NoticeRow({ notice }: { notice: Notice }) {
       className={`notice notice--${notice.tone}`}
       role={notice.tone === 'danger' ? 'alert' : 'status'}
       data-notice-topic={notice.topic ?? undefined}
-      onMouseEnter={() => setHeld(true)}
+      onMouseEnter={() => {
+        if (Date.now() - shownAt.current >= HOVER_ARM_MS) setHeld(true);
+      }}
       onMouseLeave={() => setHeld(false)}
+      // Klik w pasek bez przycisków go zamyka (wzór Foundry): komunikat, który
+      // stanął nad przyciskiem okna, schodzi pierwszym klikiem, drugi trafia.
+      onClick={(event) => {
+        if (notice.actions || (event.target as HTMLElement).closest('button')) return;
+        dismiss(notice.id);
+      }}
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
     >

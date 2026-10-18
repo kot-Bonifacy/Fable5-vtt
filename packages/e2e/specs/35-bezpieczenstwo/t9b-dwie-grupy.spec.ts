@@ -478,6 +478,22 @@ test.describe.serial('T9b dwie grupy naraz, AI właściciela, limit sesji', () =
       kuba.page.locator('.chat-note', { hasText: `${BOT_B} nie odpowiada` }),
     ).toBeVisible();
     await shot(kuba, '02-wolanie-bota-bez-zgody');
+    // #79: gracz dostaje samo „nie odpowiada”, radę bramy — tylko MG-B; notka
+    // stoi za wierszem Kuby, nie nad nim.
+    const kubaNote = kuba.page.locator('.chat-note', { hasText: `${BOT_B} nie odpowiada` });
+    await expect(kubaNote).not.toContainText('Panelu MG');
+    await expect(
+      bartek.page.locator('.chat-note', { hasText: 'Brak zgody właściciela na AI' }),
+    ).toBeVisible();
+    const order = await kuba.page.evaluate((secret) => {
+      const rows = Array.from(document.querySelectorAll('.chat-message, .chat-note'));
+      return {
+        line: rows.findIndex((row) => row.textContent?.includes(secret)),
+        note: rows.findIndex((row) => row.textContent?.includes('nie odpowiada')),
+      };
+    }, call);
+    expect(order.line, 'wiersz Kuby w czacie').toBeGreaterThanOrEqual(0);
+    expect(order.note, 'notka za wierszem Kuby').toBeGreaterThan(order.line);
     await new Promise((resolve) => setTimeout(resolve, 1_000));
     expect(bRequests(since), 'wołanie bota przez Kubę').toEqual([]);
     expect(

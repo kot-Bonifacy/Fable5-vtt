@@ -31,7 +31,18 @@ export interface ChatNoteAction {
 /** A chat feed entry: a server message or a local, ephemeral system note. */
 export type ChatItem =
   | { type: 'message'; message: ChatMessageView }
-  | { type: 'note'; id: string; text: string; actions?: ChatNoteAction[] };
+  | {
+      type: 'note';
+      id: string;
+      text: string;
+      actions?: ChatNoteAction[];
+      /**
+       * Id najnowszego wiersza serwera w chwili notki (`null` — pusty czat).
+       * Po ponownym połączeniu notka wraca za ten wiersz, a nie na koniec
+       * odbudowanej historii (#81, T9b).
+       */
+      afterId?: number | null;
+    };
 
 interface ChatStoreState {
   /** False until the first `state:sync` (and after a disconnect). */
@@ -158,6 +169,50 @@ function insertByIdOrder(items: ChatItem[], message: ChatMessageView): ChatItem[
   return [...items.slice(0, insertAt), { type: 'message', message }, ...items.slice(insertAt)];
 }
 
+/** Id najnowszego wiersza serwera w kanale — kotwica nowej notki. */
+function newestMessageId(items: readonly ChatItem[]): number | null {
+  let newest: number | null = null;
+  for (const item of items) {
+    if (item.type === 'message' && (newest === null || item.message.id > newest)) {
+      newest = item.message.id;
+    }
+  }
+  return newest;
+}
+
+/**
+ * Odbudowana historia z notkami lokalnymi na ich miejscach (#81, T9b): każda
+ * notka staje za ostatnim wierszem o id nie większym niż jej kotwica, więc
+ * „Sesja rozpoczęta” po restarcie serwera nie zjeżdża pod nowsze wiadomości.
+ * Notka bez kotwicy (sprzed etapu) zostaje na końcu, jak dawniej.
+ */
+export function mergeNotes(
+  messages: readonly ChatMessageView[],
+  previous: readonly ChatItem[],
+): ChatItem[] {
+  const notes = previous.filter(
+    (item): item is Extract<ChatItem, { type: 'note' }> => item.type === 'note',
+  );
+  const anchored = notes.filter((note) => note.afterId !== undefined);
+  const items: ChatItem[] = [];
+  let next = 0;
+  // Notki przed wierszem `id` (`null` — koniec historii, czyli cała reszta).
+  // Kotwice rosną razem z kanałem, więc wystarczy jeden wskaźnik.
+  const placeBefore = (id: number | null): void => {
+    while (next < anchored.length) {
+      const anchor = anchored[next]!.afterId ?? null;
+      if (id !== null && anchor !== null && anchor >= id) return;
+      items.push(anchored[next++]!);
+    }
+  };
+  for (const message of messages) {
+    placeBefore(message.id);
+    items.push({ type: 'message', message });
+  }
+  placeBefore(null);
+  return [...items, ...notes.filter((note) => note.afterId === undefined)];
+}
+
 export const useChatStore = create<ChatStoreState>((set, get) => ({
   synced: false,
   campaign: null,
@@ -177,13 +232,10 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       campaign: payload.campaign,
       seq: payload.seq,
       presence: payload.presence,
-      // Keep local notes (hints/errors) at the tail of the rebuilt feed. Held
+      // Local notes (hints/errors) go back where they stood in the feed. Held
       // rolls are part of the server history, so they show right away — a
       // resync must never lose messages.
-      items: [
-        ...payload.messages.map((message): ChatItem => ({ type: 'message', message })),
-        ...state.items.filter((item) => item.type === 'note'),
-      ],
+      items: mergeNotes(payload.messages, state.items),
       held: [],
       hasMoreHistory: payload.hasMoreHistory,
       loadingHistory: false,
@@ -285,6 +337,7 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
           type: 'note',
           id: `note-${++noteCounter}`,
           text,
+          afterId: newestMessageId(state.items),
           ...(actions && actions.length > 0 ? { actions } : {}),
         },
       ],

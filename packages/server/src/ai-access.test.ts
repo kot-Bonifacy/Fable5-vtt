@@ -508,6 +508,39 @@ describe('bez prawa do AI nic nie wychodzi do gatewaya', () => {
     expect(
       await emitAck(b.socket, 'bot:chat', { botId: bot.data.id, message: 'Masz coś dla mnie?' }),
     ).toEqual({ ok: false, error: 'AI_UNAVAILABLE' });
+    // Gracz woła bota na czacie (#79): MG dostaje powód bramy, gracz samo
+    // „nie odpowiada” — i to za swoim wierszem, nie przed nim.
+    const active = await emitAck(b.socket, 'bot:update', {
+      botId: bot.data.id,
+      patch: { active: true },
+    });
+    expect(active.ok).toBe(true);
+    // Bot odpowiada przy stole, nie między sesjami.
+    expect((await emitAck(b.socket, 'session:start', { campaignId: campaignB })).ok).toBe(true);
+    const atTable = await seated(kuba);
+    const heardB = recordAll(b.socket);
+    const heardKuba = recordAll(atTable.socket);
+    expect(
+      (await emitAck(atTable.socket, 'chat:send', { text: 'Paser, masz coś dla mnie?' })).ok,
+    ).toBe(true);
+    await until(() => heardKuba.some((entry) => entry.event === 'bot:notice'));
+    await until(() => heardB.some((entry) => entry.event === 'bot:notice'));
+    const noticeOf = (heard: { event: string; payload: string }[]) =>
+      (
+        JSON.parse(heard.find((entry) => entry.event === 'bot:notice')!.payload) as [
+          { code: string; detail?: string },
+        ]
+      )[0];
+    expect(noticeOf(heardB)).toMatchObject({
+      code: 'AI_UNAVAILABLE',
+      detail: aiAccessReasonText('no-consent'),
+    });
+    expect(noticeOf(heardKuba).code).toBe('AI_UNAVAILABLE');
+    expect(noticeOf(heardKuba)).not.toHaveProperty('detail');
+    const order = heardKuba.map((entry) => entry.event);
+    expect(order.indexOf('chat:message')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('chat:message')).toBeLessThan(order.indexOf('bot:notice'));
+    expect((await emitAck(b.socket, 'session:end', { campaignId: campaignB })).ok).toBe(true);
     // Baza wiedzy zapisuje się w bazie, ale do indeksu nie idzie nic.
     const knowledge = await emitAck(b.socket, 'knowledge:upsert', {
       title: 'Kanarek B',

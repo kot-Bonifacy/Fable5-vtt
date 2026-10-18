@@ -1,4 +1,4 @@
-import type { Page, Locator } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { Actor } from './actors.ts';
 import { playerLink } from './links.ts';
 import { emitAck } from './socket.ts';
@@ -120,4 +120,22 @@ export async function goToGmAttention(mg: Actor, text: string | RegExp): Promise
     .first()
     .getByRole('button', { name: 'Przejdź' })
     .click();
+}
+
+/**
+ * Zamyka komunikaty kanału nad mapą (etap 55) — tak, jak zrobiłby to człowiek:
+ * klik w pasek. Komunikat, który stoi nad przyciskiem okna (wynik akcji
+ * w Sieci nad listą pięter), łapie klik, a najechanie kursorem wstrzymuje mu
+ * zegar — Playwright w zasłonięty przycisk nie kliknie wcale (T5b, 18.10).
+ */
+export async function closeNotices(page: Page): Promise<void> {
+  const rows = page.locator('.notice-column .notice:not(.notice--pinned)');
+  for (let left = await rows.count(); left > 0; left--) {
+    await rows
+      .first()
+      .locator('.notice-close')
+      .click({ timeout: 2_000 })
+      .catch(() => undefined);
+  }
+  await expect(rows).toHaveCount(0);
 }

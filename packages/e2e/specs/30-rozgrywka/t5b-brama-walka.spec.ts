@@ -5,7 +5,7 @@ import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { createInvitation, say } from '../../fixtures/table.ts';
+import { closeNotices, createInvitation, say } from '../../fixtures/table.ts';
 import {
   cellCentre,
   chatCards,
@@ -92,6 +92,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
   let botTurnNotes: string[] = [];
   /** Czy kubek Oli wołał o obrażenia za strzał jej wieżyczki (#38). */
   let olaTurretDamageButton = 0;
+  /** Ostatnia wiadomość przed turą Strażnika — jego Test Przeżywalności rzuca serwer (17.10). */
+  let beforeGuardTurn = 0;
   /** Etykieta kanarka → kod (np. `pietro-LOD` → `KANAREK-pietro-LOD-0004`). */
   const codes = new Map<string, string>();
   /** Piętro, na które Ola weszła: jego opis jest odtąd jej, ale nie Marka. */
@@ -678,6 +680,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         .toEqual(['Diablik', 'Kowal', 'Iskra', 'Strażnik']);
     }
 
+    // „Miecz trafia…” (etap 55b) stoi w kanale nad listą pięter.
+    await closeNotices(ola.page);
     await floors.nth(3).locator('.net-run-floor-body').click();
     await expect.poll(() => runOf('Iskra')?.state.position.floor).toBe(3);
     olaEntered('pietro-wezla');
@@ -1047,22 +1051,27 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       })
       .toBe(false);
     await expect(devices).toContainText('wyłączone', { timeout: 30_000 });
+    // Od 17.10 Test Przeżywalności Strażnika rzuca serwer na starcie jego tury —
+    // kość skryptuje się przed przejściem tury. Rzut niski: przeżywa.
+    scriptDice([2]);
+    beforeGuardTurn = lastMessageId();
     await endPlayerTurn(ola);
   });
 
-  test('5.9 tura Strażnika: Test Przeżywalności na pasie MG, MG kończy walkę', async () => {
+  test('5.9 tura Strażnika: Test Przeżywalności rzuca serwer na starcie tury, MG kończy walkę', async () => {
     expect(activeLabel()).toBe('Strażnik');
-    const button = mg.page.locator('.combat-bar-death-save');
-    await expect(button).toBeVisible();
-    for (const player of [marek, ola]) {
-      await expect(player.page.locator('.combat-bar-death-save'), player.name).toHaveCount(0);
+    // Od 17.10 NPC nie czeka na MG: serwer rzuca za niego, więc przycisku Testu
+    // nie ma nikt. Strażnik to figura bota — rzut jawny, nie dla MG.
+    for (const actor of [mg, marek, ola]) {
+      await expect(actor.page.locator('.combat-bar-death-save'), actor.name).toHaveCount(0);
     }
-    // Rzut niski — Strażnik przeżywa, leży Śmiertelnie ranny.
-    scriptDice([2]);
-    const before = lastMessageId();
-    await button.click();
-    const saveId = await rollAndWait(mg, before, 'Test Przeżywalności');
-    const save = rollById(saveId);
+    await expect
+      .poll(() => messageAfter(beforeGuardTurn, 'Test Przeżywalności')?.id ?? 0, {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(0);
+    expect(pendingDice()).toBe('');
+    const save = rollById(messageAfter(beforeGuardTurn, 'Test Przeżywalności')!.id);
     test.info().annotations.push({
       type: 'Test Przeżywalności Strażnika',
       description: JSON.stringify(save.outcome),
