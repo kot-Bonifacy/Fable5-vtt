@@ -9,6 +9,45 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-18 (zaległości z 10.10, 15.10 i 17.10)
+
+**Bot przeładowuje tylko bieżący rodzaj naboju (17.10).** `buildTacticalStep`
+(`realtime/bot-combat.ts`) zbiera pola „Przeładuj” paska do `TacticalStep.reloadAmmo`
+(wiersz → `ammoId` ze `stockSwap`), a `executeDecision` dokłada je do `weapon:reload`. Zapas broni
+w menu modelu bierze się z pola przeładowania (`stockOf`) — wcześniej przy samym śrucie w plecaku
+broń miała `stock: 0`, więc „przeładowanie” znikało z menu, zanim w ogóle doszło do `NO_AMMO`.
+Test: `bot-combat.test.ts` („reloads another kind of round…”, przy pustym zwykłym ładuje
+przeciwpancerną z plecaka; bez poprawki czerwony).
+
+**Figura rannej karty bez naklejki rany do pierwszego zapisu karty (17.10).** `token:create`
+z `characterId`, `createCharacterToken` i przepięcie karty w `token:update` wołają teraz
+`syncWoundStatuses` z PW karty przed rozgłoszeniem. Test: `tokens.test.ts` („stawia figurę
+rannej karty…”, oba wejścia; bez poprawki czerwony). Umowa na górze `mapa`.
+
+**Menu figury MG wychodzi poza dół okna (15.10).** `TokenContextMenu` mierzy menu po
+wyrenderowaniu (`useMenuTop`: `ResizeObserver`, bo rozwinięte „🎯 Atak…” zmienia wysokość) —
+menu, które nie mieści się pod kursorem, staje nad nim; wyższe od okna przewija się
+(`max-height` + `flex-shrink: 0` w `05-tokens.css`). Oględziny: tymczasowy spec z `po-T6`,
+MG w **Firefoksie** 1920 × 1080, Iskra w dolnym rzędzie „Knajpy” — menu z rozwiniętym „Atak…”
+i statusami w całości w oknie, „🗑 Usuń” widoczne.
+
+**Kwoty bez grupowania tysięcy poza oknem „Wymiana” (10.10).** `formatEd` w `SurgeryRequest`
+(cena domyślna, wycena, „Wyceń na”, „Operuję za”, „Zgadzam się na”), `surgeryResolutionLabel`
+(`formatEddies`) i w Kompendium (prośba do Medyka, montaż, instalacja, „Zainstaluj — …”,
+„Znaleziony — montaż …”); „Dołóż — …” w kreatorze. Asercje T6a 6.3 poprawione („1 000 ed”,
+„1 100 ed”), T6a od `po-T5` 13/13.
+
+**Separator tysięcy w Firefoksie znika przy małym kroju (10.10).** Triaż MG 18.10: zwykła twarda
+spacja. `formatEddies` grupuje U+00A0 zamiast wąskiej U+202F (pięć testów jednostkowych
+przepiętych). Oględziny: Kompendium gracza w **Firefoksie** — „1 000 ed (Premium)”, „Zainstaluj —
+1 000 ed”, „Znaleziony — montaż 5 000 ed” z wyraźnym odstępem.
+
+**Przy okazji — „Wymienione: …” ginęło u tego, kto domknął handel (z etapu 55b, znalezione
+w T6a 6.1).** Potwierdzenie ostatniej zgody (`trade:accept`) przychodzi po rozgłoszeniu
+`trade:update` ze stanem `done`, a udane `noteAck('exchange')` zdejmowało cały temat razem ze
+świeżą informacją. `noteAck` woła teraz `settleTopic` (zdejmuje odmowy i pytania, informacja żyje
+swój czas), test w `notices.test.ts`; T6a 6.1 sprawdza komunikat od razu po zgodzie, bo żyje 4 s.
+
 ## Zamknięte 2026-10-10 (sesja siódma, zaległości spoza etapów)
 
 **Testy leczenia i efektów nakładanych ręcznie przez MG.** Nowy `server/src/gm-care.test.ts`

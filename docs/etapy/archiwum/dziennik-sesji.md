@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 17.10 (po `de06f2b`) — etap 55a, komunikaty wzorem Foundry
+
+**Zlecenie MG:** „ustandaryzuj wyskakujące graczom komunikaty w różnych miejscach ekranu i z różnym
+wyglądem”, z pytaniami uzupełniającymi. **Decyzje MG (pytania):** jeden kanał wzorem Foundry,
+góra-środek nad mapą, notki lokalne wychodzą z czatu, skóra paska HUD w kolorze rodzaju, znikanie
+„po wyborze” (odmowa — przy następnej próbie w temacie, informacja — sama), MG też, dźwięk tylko
+odmowa i wezwanie, zakres „wzorem Foundry” (rozstrzygnięty w pliku etapu), etap 55 w dwóch
+częściach. **Zrobione (55a):** `noticeStore` + `notices.ts` + `NoticeColumn`, ~90 wywołań
+`addNote` przeniesionych z tematem, banery `.map-placement-hint` zastąpione przypiętymi wierszami,
+`onWalkNote(text | null, 'warn')` w `MapRenderer`, dźwięk `refusal.wav` (szarpnięcie zamkniętej
+klamki, CC0 — `tools/audio`), odmowa z budżetu tury także na pasku gracza. **Przy okazji:**
+wyścig w fiksturze `nextTurn` (martwy oddaje turę, zanim fikstura doczyta bazę) — porównanie
+z bazą przy każdym odczycie.
+
+**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** MG w czystym
+**Chromium** (Playwright MCP, motyw dzienny) — cztery rodzaje pasków, informacja znika po ~4 s,
+klik w wybór zamyka pytanie; gracz w **Firefoksie** (tymczasowy spec z `po-T6`, skasowany) —
+przypięty „Ruch graczy: Stop”, odmowa przeciągnięcia, zamknięta po ruchu figury. Po oględzinach
+pęknięcia tuszu tylko na czerwieni (na czerni wyglądały jak kurz, nocą brudziły bursztyn).
+Firefox z Playwright MCP znów nie wstał (`initializeServer`).
+
 ### Sesja 17.10 (po `a31df84`) — Nieprzytomny i Martwy oddają turę sami
 
 **Zlecenie MG:** „nieprzytomna/martwa postać powinna oddawać turę automatycznie z informacją o tym

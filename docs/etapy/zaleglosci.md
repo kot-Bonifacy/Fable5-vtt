@@ -6,19 +6,15 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
-**17.10.2026 — bot przeładowuje tylko bieżący rodzaj naboju (drobiazg, przy poprawce paska).**
-Pasek gracza ładuje od 17.10 inny pasujący rodzaj z Wyposażenia, gdy bieżącego nie ma
-(`stockSwap` w `cpredWeaponOptions`, `ammoId` w polu „Przeładuj”). Bot w `executeDecision`
-(`bot-combat.ts`) wysyła `weapon:reload` bez `ammoId`, więc strzelba bota ustawiona na zwykłą
-z samym śrutem w plecaku dalej dostaje `NO_AMMO`. Do zrobienia: brać `ammoId` z pola przeładowania.
-Nieoglądane na żywo: Cwaniak („ulice Lublina”) to prawdziwa karta, więc przeładowania tam nie klikano.
-
-**17.10.2026 — figura postawiona dla rannej karty nie ma naklejki rany, dopóki karta się nie zmieni
-(drobiazg, znaleziony przy oględzinach Śmiertelnie Rannego).** `token:create` z `characterId` nie
-liczy `applyWoundStatuses` z PW karty: figura karty z PW 0 stoi bez „Śmiertelnie ranny” (chip
-w panelu i obrączka po statusach), aż pierwszy zapis karty (`emitTokensOfCharacter`) ją doklei.
-Mechaniki to nie rusza — Test Przeżywalności i kary czytają kartę. Do zrobienia: w `token:create`
-(i przy przepięciu karty na figurę) wyliczyć statusy ran z karty jak `emitTokensOfCharacter`.
+**18.10.2026 — T6b 6.6b: dalszy ciąg marszu po „Złap oddech” serwer odrzuca `MOVE_PACE`
+(znalezione przy przebiegu T6b od `po-T6a`, bez gatewaya).** Kowal (pula 10 m) idzie od baru do
+(8, 8); marsz staje na granicy puli w (9, 9) i ląduje (`token:pace` `owedM: 10`), a ~2,8 s później
+klient sam zgłasza resztę — jedno pole po przekątnej (2,8 m) — i dostaje `MOVE_PACE` przy długu
+7,163, czyli przy 2,84 m w puli (ramki w `.e2e/test-results/…-stabilizuje-Kowala`). Na papierze
+`checkPace` powinien przepuścić (luz 0,05 m), więc najpierw odtworzyć to testem serwera
+(`walk-approval.test.ts`, `paceClock`) — podejrzane miejsca: `from`/`legs` w `token:walk`
+i `tryResumeWalk` (klient rusza, gdy `plan.complete`). Do tego czasu T6b od 6.6b czerwony;
+6.6b to pierwszy krok T6b z marszem od etapu 54.
 
 **15.10.2026 — etap 52: T5b i długie specyfikacje odporności niepuszczone (gateway AI wyłączony).**
 Łańcuch po etapie 52 zielony od `po-T3a` do T5a (T3b, T4a, T4b, T5a) i od starego `po-T5` T6a + T6b,
@@ -26,29 +22,8 @@ ale **T5b nie ruszył** (start wymaga gatewaya), więc `po-T5` jest sprzed 52, a
 zbudowane na nim — **bez kroków `@llm`**, jak `po-T3`…`po-T5a`. Z odporności puszczone tylko
 `t7c-marsz-pod-figura` i `t7a-handel-kreator`; `t7a-walka-siec`, `t7b-`, `t7c-mapa` (marsze
 przepięte na dwa kliknięcia) czekają. Do zrobienia przy gatewayu: T5b → T6b od `po-T5a`, potem
-pełny przebieg i `40-odpornosc`.
-
-**15.10.2026 — menu figury MG wychodzi poza dół okna (oględziny „Zmień grafikę”, drobiazg).**
-`TokenContextMenu` przycina pozycję tylko `top = innerHeight − 320`, a menu MG z paskiem PW,
-statusami i rozwiniętym „🎯 Atak…” albo „🖼 Zmień grafikę…” bywa dwa razy wyższe — figura nisko
-na mapie ma „🗑 Usuń” i statusy pod krawędzią. Do zrobienia: mierzyć menu po wyrenderowaniu
-(albo `max-height` + przewijanie) i podnosić je nad kursor.
-
-**10.10.2026 — kwoty bez grupowania tysięcy poza oknem „Wymiana” (drobiazg, reszta zaległości z 47b).**
-Okno „Wymiana” i karty czatu łupu i transakcji piszą od 10.10 „1 200 ed” (`formatEd`, umowa
-w `ekwipunek`). Surowe „1000 ed” zostały w prośbie do Medyka (`SurgeryRequest`: cena domyślna,
-„Wyceń na”, „Operuję za”, „Zgadzam się na”, `shared/surgery.ts`) i w przyciskach instalacji
-wszczepu w Kompendium („Zainstaluj — 1000 ed”, „Znaleziony — montaż”). Przy zmianie poprawić
-asercje T6a 6.3 („Zainstaluj — 1000 ed”, „Wyceń na 1100 ed”, „Zoperowane — 1100 ed”), a to
-łańcuch z gatewayem.
-
-**10.10.2026 — w Firefoksie separator tysięcy znika przy małym kroju (oględziny zrzutu `t46a`, drobiazg).**
-`formatEddies` grupuje wąską twardą spacją U+202F (nie zwykłą). Chromium rysuje ją w Jost
-wyraźnie, Firefox przy `.inventory-row-detail` (0,72 rem) prawie wcale — „Gotówka 1 180 ed”
-i „Kasa handlarza 2 016 ed” wyglądają jak „1180” i „2016” (DOM ma 8239, sprawdzone w `46a.11`).
-W pogrubionej stopce („zostanie 1 090 ed”) i w cenach półki separator widać. Do triażu MG:
-zwykła twarda spacja U+00A0 w `formatEddies` (szersza; dotyczy też Kompendium i kreatora) albo
-zostawić.
+pełny przebieg i `40-odpornosc`. **18.10:** T6a od starego `po-T5` zielony 13/13 (po poprawce
+„Wymienione” z 55b, `po-T6a` zapisany na nowo), T6b pada na 6.6b — wpis wyżej.
 
 **26.09.2026 (pozostałość „Wiele grup i wielu MG”, po T9b 04.10) — paczka AI dla innych MG.**
 Pozycje 1, 2 i 4 (konta MG, dwie sesje naraz, AI właściciela) zamknięte odbiorem T9b 04.10 —
