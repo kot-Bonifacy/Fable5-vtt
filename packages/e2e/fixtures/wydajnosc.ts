@@ -209,13 +209,25 @@ export async function zoomAllOut(page: Page): Promise<void> {
 /** Przeciągnięcie gołym lewym przyciskiem (panorama, decyzja MG z 05.09) tak, żeby punkt sceny stanął na środku mapy. */
 export async function centreOn(page: Page, point: WorldPoint): Promise<void> {
   const box = await mapBox(page);
-  const from = await worldToClient(page, point);
   const to = { x: box.x + box.width / 2, y: box.y + box.height / 2 + 30 };
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(to.x, to.y, { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(150);
+  // Kamera ma bezwładność (`decelerate`): puszczenie w ruchu rzuca mapą dalej
+  // (18.10: 252 px przeciągnięcia = 568 px przesunięcia, a punkt wylatywał za
+  // ekran gracza). Mysz stoi chwilę przed puszczeniem, a krok się powtarza.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const from = await worldToClient(page, point);
+    if (Math.abs(from.x - to.x) < 24 && Math.abs(from.y - to.y) < 24) return;
+    const start = {
+      x: Math.min(Math.max(from.x, box.x + 20), box.x + box.width - 20),
+      y: Math.min(Math.max(from.y, box.y + 20), box.y + box.height - 20),
+    };
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x + start.x - from.x, to.y + start.y - from.y, { steps: 8 });
+    await page.waitForTimeout(250);
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    if (process.env.E2E_T7C_DEBUG) console.log('centreOn', from, await worldToClient(page, point));
+  }
 }
 
 /**
