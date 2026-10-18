@@ -1693,7 +1693,14 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     const snapScene = toSnapScene(scene);
     const from = { x: token.x, y: token.y };
     const legs = points.map((point) => clampTokenPosition(point.x, point.y, token.size, snapScene));
-    const to = legs[legs.length - 1]!;
+    // Koniec trasy przyciąga się tak, jak przyciągnie go lądowanie: punkty
+    // jadą po drucie zaokrąglone do piksela, a na kratce o ułamkowym boku
+    // przekątna do (356, 356) zamiast (356,36, 356,36) to „2,9 m” zamiast
+    // „2,8 m” — dość, żeby pula policzona u klienta co do metra odmówiła
+    // (T6b 6.6b, 18.10). Ocenia się trasę, za którą lądowanie zapłaci.
+    const last = legs[legs.length - 1]!;
+    const to = snapTokenPosition(last.x, last.y, token.size, snapScene);
+    legs[legs.length - 1] = to;
     if (!isGm) {
       await validateTokenMove(
         deps,

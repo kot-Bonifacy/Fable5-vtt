@@ -806,19 +806,20 @@ describe('tokens', () => {
    * mover saw the figure stand still and then jump to where it landed.
    */
   it('broadcasts an ack-less intermediate frame — a walk must not arrive in one jump', async () => {
-    // Od etapu 52 klatka gracza idzie po zatwierdzonej trasie — (342, 528)
-    // leży w połowie odcinka (300, 500) → (384, 556).
+    // Od etapu 52 klatka gracza idzie po zatwierdzonej trasie — (360, 560)
+    // leży na odcinku (300, 500) → (400, 600). Koniec trasy jest na kratce,
+    // bo serwer przyciąga go tak, jak przyciągnie lądowanie (18.10).
     const approved = await emitAck(player, 'token:walk', {
       tokenId: ownTokenId,
-      route: [{ x: 384, y: 556 }],
+      route: [{ x: 400, y: 600 }],
     });
     expect(approved.ok).toBe(true);
     const gmSees = waitFor<TokenMoveBroadcast>(gm, 'token:move');
-    player.emit('token:move', { tokenId: ownTokenId, x: 342, y: 528, final: false });
+    player.emit('token:move', { tokenId: ownTokenId, x: 360, y: 560, final: false });
     const frame = await gmSees;
     // Mid-stride positions are clamped, never snapped: the figure is between
     // two squares, which is the whole point of an intermediate frame.
-    expect(frame).toMatchObject({ tokenId: ownTokenId, x: 342, y: 528, final: false });
+    expect(frame).toMatchObject({ tokenId: ownTokenId, x: 360, y: 560, final: false });
   });
 
   /**
@@ -1029,7 +1030,7 @@ describe('tokens', () => {
     });
     expect(linked.ok && linked.data?.statuses).toEqual(['mortally-wounded']);
 
-    for (const token of [placed.data, bare.data]) {
+    for (const token of [placed.ok ? placed.data : undefined, bare.data]) {
       if (token) await emitAck(gm, 'token:delete', { tokenId: token.id });
     }
   });

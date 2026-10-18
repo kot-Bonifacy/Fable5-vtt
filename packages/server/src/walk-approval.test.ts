@@ -441,4 +441,27 @@ describe('trasa marszu gracza (etap 52)', () => {
     await emitAck(gm, 'combat:end', {});
     await home();
   });
+
+  it('koniec trasy przyciąga się jak lądowanie — zaokrąglony punkt nie dokłada metrów (18.10, T6b 6.6b)', async () => {
+    // Kratka 490/11 px jak w „Knajpie”: rogi pól są ułamkowe, a punkty trasy
+    // jadą po drucie zaokrąglone do piksela. Przekątna z (9, 9) na (8, 8)
+    // to 2,83 m, ale do zaokrąglonego (356, 356) — 2,85 m, czyli „2,9 m”.
+    const cell = 490 / 11;
+    await emitAck(gm, 'scene:update', {
+      sceneId,
+      patch: { gridMode: 'grid', grid: { sizePx: cell, offsetX: 0, offsetY: 0 } },
+    });
+    expect((await step(gm, 0, 9 * cell, true)).ok).toBe(true);
+    refill();
+    // 9 pól w prawo = 18 m z 20 m.
+    const corner = Math.round(9 * cell);
+    expect((await walk([{ x: corner, y: corner }])).ok).toBe(true);
+    expect((await step(vex, 9 * cell, 9 * cell, true)).ok).toBe(true);
+    expect(paceOwedNow(vexTokenId, CAP_M)).toBeCloseTo(18, 1);
+    // 0,42 s odnowy: w puli 2,84 m — na jedną przekątną z luzem, nie na 2,9 m.
+    now += 420;
+    const diagonal = [{ x: Math.round(8 * cell), y: Math.round(8 * cell) }];
+    expect((await walk(diagonal)).ok).toBe(true);
+    expect((await step(vex, 8 * cell, 8 * cell, true)).ok).toBe(true);
+  });
 });
