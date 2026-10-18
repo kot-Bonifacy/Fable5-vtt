@@ -661,13 +661,21 @@ export function connectSocket(userId: string): Socket {
     // #57 (T8b): zgoda przychodziła po cichu — w „Postaciach” pojawiał się
     // kreator, a gracz patrzący na czat nie wiedział, że może zaczynać.
     if (before === 'requested' && state.status === 'granted') {
-      notifyChoice(
+      notifyGame('handout');
+      // Pytanie traci sens, gdy kreator jest otwarty — a otwarty inną drogą
+      // (zakładka „Postacie”) zasłaniałby mu kroki (18.10, T3a).
+      if (useCreationStore.getState().open) return;
+      const noticeId = notifyChoice(
         'character',
         'Masz zgodę MG na postać — kreator czeka w zakładce „Postacie”.',
         [{ label: 'Otwórz kreator', run: () => void useCreationStore.getState().openCreator() }],
         { tone: 'info', title: 'Postać', silent: true },
       );
-      notifyGame('handout');
+      const stop = useCreationStore.subscribe((creation) => {
+        if (!creation.open) return;
+        useNoticeStore.getState().dismiss(noticeId);
+        stop();
+      });
     }
   });
   onPresented('creation:permits-sync', (rows: CreationPermitRow[]) =>

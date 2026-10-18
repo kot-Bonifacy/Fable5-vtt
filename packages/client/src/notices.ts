@@ -71,15 +71,19 @@ export function notifyRefusal(
   if (tone === 'danger') ring('refusal');
 }
 
-/** Pytanie z przyciskami: znika po wyborze, ✕ albo następnej próbie w temacie. */
+/**
+ * Pytanie z przyciskami: znika po wyborze, ✕ albo następnej próbie w temacie.
+ * Zwraca id paska — pytanie, które traci sens samo (kreator otwarty inną
+ * drogą), zdejmuje się `useNoticeStore.getState().dismiss(id)`.
+ */
 export function notifyChoice(
   topic: NoticeTopic,
   text: string,
   actions: NoticeAction[],
   options: { title?: string; tone?: NoticeTone; silent?: boolean } = {},
-): void {
+): string {
   const tone = options.tone ?? 'warn';
-  useNoticeStore.getState().show({
+  const id = useNoticeStore.getState().show({
     tone,
     title: options.title ?? 'Do decyzji',
     text,
@@ -89,6 +93,7 @@ export function notifyChoice(
   });
   // `silent`: zdarzenie ma już własny dźwięk (np. „handout” przy zgodzie MG).
   if (!options.silent) ring('request');
+  return id;
 }
 
 /** Udana próba w temacie zamyka jego odmowy i pytania. */
