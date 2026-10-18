@@ -50,7 +50,7 @@ export function PartyWipe() {
         <p className="party-wipe-slogan">Night City nie wybacza.</p>
         <p className="auth-hint">
           {isGm
-            ? 'Każda postać graczy na tej scenie ma stan Martwy. Zdejmij go komuś, a gra toczy się dalej.'
+            ? 'Wszystkie postacie graczy na tej scenie mają stan Martwy. Zdejmij go choć jednej, a plansza zniknie i gra potoczy się dalej.'
             : 'Chrom ostygł, a miasto już zapomniało wasze ksywki.'}
         </p>
         <button
