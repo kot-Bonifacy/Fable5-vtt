@@ -160,29 +160,40 @@ NPM → `vtt-web:80`, Websockets ON.
 
 Z PC w Firefoksie, a gracza z **innej sieci** (telefon na LTE albo znajomy):
 
-- [ ] `https://vtt.tatanga.eu` — kłódka, ekran logowania; MG loguje się `MG` + nowym `GM_PASSWORD`
-- [ ] kampanie, sceny i mapy są te same co lokalnie; „Połączono” w pasku
-- [ ] karta postaci: **66 umiejętności**
-- [ ] gracz wchodzi linkiem zaproszenia (stare ciasteczka z `localhost` nie działają na nowej domenie, więc link „Kopiuj” z panelu graczy wysyłasz od nowa)
-- [ ] ruch tokenu widoczny u drugiej osoby na żywo; rzut kubkiem (animacja 3D); czat i szept
-- [ ] wgranie mapy lub portretu (sprawdza `client_max_body_size` i zapis do wolumenu)
-- [ ] gracz przy pustym stole widzi mapę powitalną, a nie „Brak aktywnej sceny”
-- [ ] boty i asystent: oznaczone jako niedostępne, reszta działa (ścieżka degradacji)
-- [ ] panel administratora jako `pantosz` (jego dotychczasowe hasło); rejestracja otwarta
-- [ ] po godzinie: `ls /opt/docker-apps/vtt-data/backups` pokazuje nową kopię `snapshot-…`
+- [x] `https://vtt.tatanga.eu` — kłódka, ekran logowania; MG loguje się `MG` + nowym `GM_PASSWORD`
+- [x] kampanie, sceny i mapy są te same co lokalnie; „Połączono” w pasku
+- [x] karta postaci: **66 umiejętności**
+- [x] gracz wchodzi linkiem zaproszenia (stare ciasteczka z `localhost` nie działają na nowej domenie, więc link „Kopiuj” z panelu graczy wysyłasz od nowa)
+- [x] ruch tokenu widoczny u drugiej osoby na żywo; rzut kubkiem (animacja 3D); czat i szept
+- [x] wgranie mapy lub portretu (sprawdza `client_max_body_size` i zapis do wolumenu)
+- [x] gracz przy pustym stole widzi mapę powitalną, a nie „Brak aktywnej sceny”
+- [x] boty i asystent: oznaczone jako niedostępne, reszta działa (ścieżka degradacji)
+- [x] panel administratora jako `pantosz` (jego dotychczasowe hasło); rejestracja otwarta
+- [x] po godzinie: `ls /opt/docker-apps/vtt-data/backups` pokazuje nową kopię `snapshot-…`
 
 ## 9. Krok drugi: boty przez Tailscale
 
-1. Zainstaluj Tailscale na PC (Windows) i na VPS (`curl -fsSL https://tailscale.com/install.sh | sh && tailscale up`). Oba w tym samym tailnecie.
-   Adres PC: `tailscale ip -4` (np. `100.x.y.z`).
+Wykonane 18.10.2026: PC `komputer-pc` = `100.81.235.36`, VPS = `100.110.152.1` (ten sam tailnet).
+
+1. Tailscale na PC (`winget install Tailscale.Tailscale`, logowanie z ikony w zasobniku) i na VPS
+   (`curl -fsSL https://tailscale.com/install.sh | sh && tailscale up`). **Nie przerywaj `tailscale up`**
+   przed zalogowaniem przez link. Sprawdzenie z VPS: `tailscale ping -c 3 <adres PC>`.
 2. `ai-gateway/.env` na PC:
-   - `GATEWAY_HOST=<adres tailnetowy PC>`: gateway słucha wyłącznie na interfejsie Tailscale.
-   - `GATEWAY_API_KEY=<openssl rand -hex 32>`.
-     Zapora Windows: zezwól na TCP 8100 tylko z profilu sieci Tailscale. Restart gatewaya.
-3. W `deploy/.env.prod` na VPS ustaw `AI_GATEWAY_URL=http://<adres PC>:8100` i `AI_GATEWAY_API_KEY=<ten sam klucz>`, a potem `docker compose --env-file .env.prod up -d server`.
-4. Sprawdź z wnętrza kontenera, czy ruch z Dockera przechodzi przez `tailscale0` hosta:
+   - `GATEWAY_HOST=0.0.0.0`. Gateway startuje też bez Tailscale, a lokalny dev dalej chodzi na `127.0.0.1`.
+   - `GATEWAY_API_KEY=<openssl rand -hex 32>`. **Klucz obowiązuje każdego, także localhost**, więc ten
+     sam idzie do `packages/server/.env` (`AI_GATEWAY_API_KEY`) i do zmiennej użytkownika Windows
+     `E2E_AI_GATEWAY_API_KEY` (suita E2E nie czyta `.env` serwera).
+   - Zapora Windows (PowerShell jako administrator) wpuszcza 8100 tylko z puli Tailscale:
+     `New-NetFirewallRule -DisplayName 'VTT AI Gateway (Tailscale only)' -Direction Inbound -Protocol TCP -LocalPort 8100 -RemoteAddress 100.64.0.0/10 -Action Allow -Profile Any`.
+     Gdy Windows zapyta o dostęp dla `python.exe`, wybierz **Anuluj** — zgoda otworzyłaby port całej sieci lokalnej.
+   - Restart gatewaya. `/chat` bez klucza ma oddać 401, `/health` zostaje otwarty.
+3. W `deploy/.env.prod` na VPS: `AI_GATEWAY_URL=http://<adres PC>:8100` i `AI_GATEWAY_API_KEY=<ten sam klucz>`,
+   potem `docker compose --env-file .env.prod up -d server`. Sprawdzenie bez wypisywania klucza:
+   `awk -F= '/^AI_GATEWAY/{print $1, length($2)}' .env.prod` (oczekiwane 25 i 64).
+4. Ruch z Dockera idzie przez `tailscale0` hosta:
    `docker exec vtt-server node -e "fetch('http://<adres PC>:8100/health').then(r=>r.text()).then(console.log)"`.
-5. Test degradacji: wyłączasz gateway lub PC, boty gasną w ciągu ~10 s, a stół gra dalej.
+   W logu gatewaya na PC widać wtedy `GET /health` z adresu VPS co ~10 s.
+5. Test degradacji: wyłączasz gateway lub PC, boty gasną w ciągu ~10 s, a stół gra dalej; po starcie gatewaya wracają same.
 
 ## Aktualizacja i wycofanie
 
@@ -236,7 +247,7 @@ scp -r root@217.154.210.181:/opt/docker-apps/vtt-data/backups/snapshot-RRRR-MM-D
 
 ## Czego próba jeszcze nie robi (reszta etapu 28)
 
-- [ ] Tailscale i boty (sekcja 9)
+- [x] Tailscale i boty (sekcja 9, 18.10)
 - [ ] kopia off-site z harmonogramu (rclone albo pobieranie na PC) i **test odtworzenia na VPS**
 - [ ] utwardzenie: SSH tylko po kluczu, fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
       włączyć bez zmian w innych projektach**, bo NPM przekazuje im ruch na publiczne `217.154.210.181:808x`.

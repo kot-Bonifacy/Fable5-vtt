@@ -21,7 +21,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 próba przygotowana 18.10 — wykonuje MG wg `docs/DEPLOY.md`); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55 (ostatni zamknięty: 55, 2026-10-17) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
@@ -29,12 +29,13 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 28 — próbne wdrożenie przygotowane 18.10 (trzecia sesja), czeka na wykonanie przez MG
-na VPS według `docs/DEPLOY.md`.** Decyzje MG: HTTPS przez Nginx Proxy Manager VPS (nie Caddy),
-NPM → `vtt-web:80` siecią Dockera, próba bez botów (Tailscale to krok 2), na VPS kopia `dev.db`
-+ `uploads/` + `data/private/cpred/`, rejestracja otwarta. Pliki w `deploy/`, przetestowane lokalnie
-w Docker Desktop. Następna sesja: poprawki po próbie na VPS → Tailscale i boty → reszta etapu 28
-(off-site, utwardzenie, monitoring) → T10 → T11. Refaktoryzacja wraca tylko na zlecenie MG.
+**Etap 28 — VTT stoi na VPS od 18.10 (czwarta sesja): `https://vtt.tatanga.eu`, boty przez
+Tailscale.** Kontenery `vtt-server` i `vtt-web` w `/opt/docker-apps/vtt`, dane w `/opt/docker-apps/vtt-data`,
+NPM → `vtt-web:80`. Gateway na PC słucha na `0.0.0.0:8100` z kluczem (zapora: tylko 100.64.0.0/10);
+klucz ma też lokalny serwer i E2E (pułapka na górze `boty`). **Źródłem prawdy jest VPS** — lokalny
+`pnpm dev` niczego nie synchronizuje. Wydanie: push z PC, na VPS `./deploy.sh`. Zostało z etapu 28
+(lista na końcu `docs/DEPLOY.md`): kopia off-site i test odtworzenia na VPS, utwardzenie (SSH
+kluczem, fail2ban; VPS czeka też na restart po aktualizacji jądra), monitoring. Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
@@ -333,7 +334,7 @@ a nie do tego pliku.
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione | 9    | 3       |
-| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 8       |
+| `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               | 8    | 2       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
@@ -343,6 +344,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 18.10, czwarta (po `81a4516`) — etap 28: wdrożenie na VPS i boty przez Tailscale
+
+**Zlecenie MG:** „przeprowadź mnie przez wdrożenie na VPS” wg `docs/DEPLOY.md`, potem krok 9
+(„te elementy, które możesz zrobić sam, wykonaj”). **Decyzje MG (pytania):** gateway na `0.0.0.0`
++ zapora zamiast wiązania do adresu Tailscale; zatrzymać `rag-caddy-dev` (trzymał :8080 llamy).
+**Zrobione:** MG wykonał kroki 2–8 na VPS (sieć NPM `npm_default`, build 92 s bez swapu, 76 migracji
+bez zmian, smoke test z listy w całości zielony), `pack-data.ps1` puszczony przez agenta. Tailscale
+na PC (winget) i VPS, klucz gatewaya w `ai-gateway/.env`, `packages/server/.env` i zmiennej
+`E2E_AI_GATEWAY_API_KEY`, reguła zapory na 8100, wpisy w `.env.prod` przez schowek (klucz nie przeszedł
+przez czat). `C:\AI\vps_home_pl_konfiguracja.md` uzupełniony o VTT (port 8088 tylko localhost,
+następny wolny 8089). Krok 9 w `DEPLOY.md` przepisany na stan faktyczny. **Odrzucone przez
+klasyfikator:** zwolnienie loopbacku z klucza w `require_api_key` — stąd klucz w lokalnym `.env`.
+**Znalezione:** VPS bez logowania SSH kluczem (agent nie wejdzie), czeka na restart po aktualizacji jądra.
+
+**Weryfikacja:** z VPS `POST /chat 200` i `POST /rag/search 200` w logu gatewaya, bot odpowiada
+na `https://vtt.tatanga.eu`; test degradacji (gateway wyłączony → boty niedostępne, stół działa,
+po starcie wracają same) potwierdzony przez MG. Kodu aplikacji nie ruszano, testów nie puszczano.
+**Oględziny:** MG w swojej przeglądarce i gracz z innej sieci (smoke test kroku 8).
 
 ### Sesja 18.10, trzecia (po `c229dc6`) — etap 28: pliki wdrożenia i instrukcja
 
@@ -363,23 +383,3 @@ kopia z kontenera, odtworzenie przy zatrzymanym serwerze (4 z 5 udane), odmowa e
 Testów jednostkowych nie ruszano (zmian w kodzie aplikacji brak). **Oględziny:** stół MG
 w **Firefoksie** (Playwright) na `localhost:8088` z kontenerów — mapa z `uploads/`, czat, „Połączono”.
 Na VPS niewykonane.
-
-### Sesja 18.10, druga (po `9c352e1`) — zaległości z gatewayem, triaż #79–#81
-
-**Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
-(pytanie):** #79–#81 naprawić. **Zrobione:** `MOVE_PACE` po „Złap oddech” (T6b 6.6b) — `token:walk`
-przyciąga koniec trasy jak lądowanie (`ffd9905`); #79 powód bramy AI tylko do MG, notka bota za
-wierszem, #81 notki czatu wracają na miejsce po ponownym połączeniu, #80 nieaktualny od etapu 53
-(`748487e`). **Znalezione przy przebiegach z gatewayem (pierwszych od etapów 52–55):** pytanie „Masz
-zgodę MG na postać” stało nad zakładkami otwartego kreatora (`4585885` — znika z otwarciem kreatora),
-✕ komunikatu nazywało się „Zamknij” jak przyciski okien (teraz „Zamknij komunikat”), najechanie
-trzymało informację bez końca (teraz najwyżej 15 s, pierwsze 800 ms się nie liczy, klik w pasek bez
-przycisków zamyka). Testy nieaktualne po 52–55 i 10.10 przepięte: T5b (komunikat Sieci nad piętrami,
-Test Przeżywalności Strażnika rzuca serwer jawnie), T3a (koszyk kreatora), T2a 6.2.7 (czat
-w poczekalni), T7c (bezwładność kamery w `centreOn`, postoje puli w marszu gracza). Pułapki w `testy`
-(dwa przebiegi naraz na jednej instancji — `pkill` w Git Bash nie zabija procesów Windows).
-
-**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** zrzuty z przebiegów —
-Ola w **Firefoksie** (T5b: komunikat Sieci zamknięty klikiem w ✕, T3a: kreator bez pytania o zgodę),
-Bartek w **Firefoksie** (T9b: notka Wykidajły za wierszem Kuby po restarcie serwera — #81),
-administrator w Chromium (sekcja „AI właściciela” — #80).

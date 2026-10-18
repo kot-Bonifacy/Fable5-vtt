@@ -865,6 +865,8 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## boty — Boty, AI Gateway, RAG
 
+- **Klucz gatewaya (`GATEWAY_API_KEY`) obowiązuje też localhost (18.10, etap 28)** — od wdrożenia boty na VPS idą przez Tailscale z kluczem, więc lokalny serwer bierze go z `packages/server/.env` (`AI_GATEWAY_API_KEY`), a E2E ze zmiennej użytkownika `E2E_AI_GATEWAY_API_KEY`. Bez niego `/chat` oddaje 401, a `/health` dalej 200, więc boty wyglądają na dostępne i milczą.
+- **llama-server nie wstaje, bo :8080 trzyma kontener innego projektu MG (18.10)** — `rag-caddy-dev` z `restart: unless-stopped` wiąże `127.0.0.1:8080`. `netstat -ano | grep :8080` pokazuje wtedy `com.docker.backend.exe`; `docker stop rag-caddy-dev` przed startem gatewaya.
 - **„Brak pamięci” przy gatewayu z suitą E2E to bufor promptów llama-server w RAM-ie (01.10, T6c)** — build 10735 domyślnie `--cache-ram 8192`; po kilku przebiegach llama-server miał 21 GB pamięci prywatnej (15,5 GB tuż po starcie), PC 32 GB schodził poniżej 1 GB wolnego, a Claude Code zabijał procesy w tle (27.09, 30.09, 01.10). Gateway podaje `--cache-ram` z `GATEWAY_LLAMA_CACHE_RAM_MB` (2048). Pamięć prywatną procesu sprawdzisz `Get-Process llama-server | % PrivateMemorySize64`.
 - **Bot „nie chce rzucić” — zajrzyj do `data/private/bot-decisions.jsonl`** (jedna linia JSON na decyzję); pole `options` to pełne menu, które bot dostał. 20a: „rzuć na Wygadanie” wróciło jako rozmowa, bo takiej umiejętności w CP RED nie ma.
 - **Bot w walce rusza się kontem MG, a MG jest zwolniony z blokad ruchu** — jedynym bezpiecznikiem przed przejściem przez ścianę jest planer bota (`walkTowards`); `canStep` dostaje od `planWalk` już ŚRODKI pól.

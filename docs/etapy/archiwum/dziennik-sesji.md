@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.10, druga (po `9c352e1`) — zaległości z gatewayem, triaż #79–#81
+
+**Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
+(pytanie):** #79–#81 naprawić. **Zrobione:** `MOVE_PACE` po „Złap oddech” (T6b 6.6b) — `token:walk`
+przyciąga koniec trasy jak lądowanie (`ffd9905`); #79 powód bramy AI tylko do MG, notka bota za
+wierszem, #81 notki czatu wracają na miejsce po ponownym połączeniu, #80 nieaktualny od etapu 53
+(`748487e`). **Znalezione przy przebiegach z gatewayem (pierwszych od etapów 52–55):** pytanie „Masz
+zgodę MG na postać” stało nad zakładkami otwartego kreatora (`4585885` — znika z otwarciem kreatora),
+✕ komunikatu nazywało się „Zamknij” jak przyciski okien (teraz „Zamknij komunikat”), najechanie
+trzymało informację bez końca (teraz najwyżej 15 s, pierwsze 800 ms się nie liczy, klik w pasek bez
+przycisków zamyka). Testy nieaktualne po 52–55 i 10.10 przepięte: T5b (komunikat Sieci nad piętrami,
+Test Przeżywalności Strażnika rzuca serwer jawnie), T3a (koszyk kreatora), T2a 6.2.7 (czat
+w poczekalni), T7c (bezwładność kamery w `centreOn`, postoje puli w marszu gracza). Pułapki w `testy`
+(dwa przebiegi naraz na jednej instancji — `pkill` w Git Bash nie zabija procesów Windows).
+
+**Weryfikacja:** w wierszu „Testy na koniec ostatniej sesji”. **Oględziny:** zrzuty z przebiegów —
+Ola w **Firefoksie** (T5b: komunikat Sieci zamknięty klikiem w ✕, T3a: kreator bez pytania o zgodę),
+Bartek w **Firefoksie** (T9b: notka Wykidajły za wierszem Kuby po restarcie serwera — #81),
+administrator w Chromium (sekcja „AI właściciela” — #80).
+
 ### Sesja 18.10 (po `e79982e`) — zaległości spoza refaktoryzacji i wdrożenia
 
 **Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG
