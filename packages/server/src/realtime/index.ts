@@ -43,6 +43,7 @@ import {
   tokenStatEvent,
   tokenUpdateEvent,
 } from './tokens.js';
+import { tokenJumpEvent, tokenJumpOptionsEvent } from './jump.js';
 import {
   combatAddEvent,
   combatOrderEvent,
@@ -339,6 +340,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenAssetDeleteEvent,
   tokenMoveEvent,
   tokenWalkEvent,
+  tokenJumpOptionsEvent,
+  tokenJumpEvent,
   tokenFacingEvent,
   tokenAimEvent,
   tokenTargetEvent,

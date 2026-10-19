@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.10, czwarta (po `81a4516`) — etap 28: wdrożenie na VPS i boty przez Tailscale
+
+**Zlecenie MG:** „przeprowadź mnie przez wdrożenie na VPS” wg `docs/DEPLOY.md`, potem krok 9
+(„te elementy, które możesz zrobić sam, wykonaj”). **Decyzje MG (pytania):** gateway na `0.0.0.0`
++ zapora zamiast wiązania do adresu Tailscale; zatrzymać `rag-caddy-dev` (trzymał :8080 llamy).
+**Zrobione:** MG wykonał kroki 2–8 na VPS (sieć NPM `npm_default`, build 92 s bez swapu, 76 migracji
+bez zmian, smoke test z listy w całości zielony), `pack-data.ps1` puszczony przez agenta. Tailscale
+na PC (winget) i VPS, klucz gatewaya w `ai-gateway/.env`, `packages/server/.env` i zmiennej
+`E2E_AI_GATEWAY_API_KEY`, reguła zapory na 8100, wpisy w `.env.prod` przez schowek (klucz nie przeszedł
+przez czat). `C:\AI\vps_home_pl_konfiguracja.md` uzupełniony o VTT (port 8088 tylko localhost,
+następny wolny 8089). Krok 9 w `DEPLOY.md` przepisany na stan faktyczny. **Odrzucone przez
+klasyfikator:** zwolnienie loopbacku z klucza w `require_api_key` — stąd klucz w lokalnym `.env`.
+**Potem:** SSH tylko kluczem (`id_ed25519_vps` w agencie Windows, alias `ssh vps`; zmianę `sshd`
+wpisał MG — klasyfikator nie dał agentowi) i kopia off-site: `deploy/pull-backup.ps1` + zadanie
+„VTT pull backup” (23:30, `D:\kopie-vtt`, 14 kopii, weryfikacja manifestu i `integrity_check`).
+Test odtworzenia z kopii off-site: obrazy z Docker Desktop na `snapshot-2026-10-18-1919`, liczby
+rekordów zgodne z VPS, stół MG z mapą w **Firefoksie** (Playwright). Kopia nie niesie `private/cpred`.
+**Znalezione:** VPS czeka na restart po aktualizacji jądra; kopie na VPS bez dowiązań (`zaleglosci.md`).
+
+**Weryfikacja:** z VPS `POST /chat 200` i `POST /rag/search 200` w logu gatewaya, bot odpowiada
+na `https://vtt.tatanga.eu`; test degradacji (gateway wyłączony → boty niedostępne, stół działa,
+po starcie wracają same) potwierdzony przez MG. Kodu aplikacji nie ruszano, testów nie puszczano.
+**Oględziny:** MG w swojej przeglądarce i gracz z innej sieci (smoke test kroku 8).
+
 ### Sesja 18.10, trzecia (po `c229dc6`) — etap 28: pliki wdrożenia i instrukcja
 
 **Zlecenie MG:** „na podstawie `C:\AI\vps_home_pl_konfiguracja.md` przygotuj instrukcję wypchnięcia

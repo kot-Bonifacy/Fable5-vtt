@@ -22,6 +22,7 @@ import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_ACTION_HOLD,
+  CPRED_ACTION_JUMP,
   CPRED_ACTION_MOVE,
   CPRED_ACTION_RUN,
   CPRED_ACTION_SCANNER,
@@ -433,6 +434,45 @@ describe('hotbarSlotsFor — a wound says why, a spent Action says when', () => 
     );
     const run = slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_RUN);
     expect(run?.disabled).toBe(leg);
+  });
+});
+
+describe('hotbarSlotsFor — Skok (19.10.2026)', () => {
+  const jumpOf = (slots: ReturnType<typeof hotbarSlotsFor>) =>
+    slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_JUMP);
+  const turn = { actionSpent: false, moveSpent: false };
+
+  it('stoi na pasku każdego, z własną ikoną, i nie pyta o Akcję', () => {
+    const slot = jumpOf(hotbarSlotsFor(input({ turn: { actionSpent: true, moveSpent: true } })));
+    expect(slot?.icon).toBe('jump');
+    expect(slot?.disabled).toBeNull();
+  });
+
+  it('kto nie ma 8 m w zasobie, nie skacze', () => {
+    expect(jumpOf(hotbarSlotsFor(input({ turn, moveMetresLeft: 8 })))?.disabled).toBeNull();
+    expect(jumpOf(hotbarSlotsFor(input({ turn, moveMetresLeft: 7.95 })))?.disabled).toBeNull();
+    expect(jumpOf(hotbarSlotsFor(input({ turn, moveMetresLeft: 6 })))?.disabled).toBe(
+      'Skok kosztuje 8 m ruchu — zostało ci 6\u00A0m.',
+    );
+    // Nikt nie liczy metrów — figura bez RUCHU, scena bez puli.
+    expect(jumpOf(hotbarSlotsFor(input({ turn, moveMetresLeft: null })))?.disabled).toBeNull();
+    // MG budżet nie odmawia (14b).
+    expect(
+      jumpOf(hotbarSlotsFor(input({ turn, moveMetresLeft: 2, isGm: true })))?.disabled,
+    ).toBeNull();
+  });
+
+  it('odmawia mu to samo, co marszowi — stan i rana na Ruchu', () => {
+    expect(jumpOf(hotbarSlotsFor(input({ statuses: ['prone'] })))?.disabled).not.toBeNull();
+    const leg = 'Złamana noga: w tej Turze nie wykonasz Akcji Ruchu.';
+    expect(
+      jumpOf(hotbarSlotsFor(input({ turn: { ...turn, blockedMove: leg }, moveMetresLeft: 12 })))
+        ?.disabled,
+    ).toBe(leg);
+    // Zakładka „Walka” pyta tę samą funkcję.
+    expect(
+      cpredActionRefusal(CPRED_ACTION_JUMP, { statuses: [], turn, isGm: false, moveMetresLeft: 3 }),
+    ).toMatch(/Skok kosztuje 8 m/);
   });
 });
 

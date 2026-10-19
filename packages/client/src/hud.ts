@@ -13,6 +13,7 @@ import type {
 import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
+  CPRED_ACTION_JUMP,
   CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_COMBAT_AWARENESS,
@@ -23,6 +24,7 @@ import {
   CPRED_ACTION_BACKUP,
   CPRED_BACKUP_ABILITY,
   CPRED_COMBAT_AWARENESS_ABILITY,
+  PACE_FALLBACK_CAP_M,
   cpredInterfaceRank,
   cpredMoveBudgetFromSheet,
   cpredNextWeaponMode,
@@ -63,6 +65,8 @@ import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStor
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 import { characterTracksAmmo } from './ammo-stock.js';
+import { armJump, disarmJump } from './jump.js';
+import { useSceneStore } from './stores/sceneStore.js';
 
 /**
  * The wiring behind the combat HUD (stage 16f).
@@ -323,6 +327,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
     statuses: token.statuses,
     turn: cpredTurnRefusalInput(turn),
     isGm,
+    moveMetresLeft: jumpMetresLeft(token, combat, combatant, turn, isGm),
     grapple: combatant?.grapple?.role ?? null,
     netrunner: isNetrunnerSheet(character?.data ?? null),
     // Stage 30a: the box is on a Solo's bar and on nobody else's, the same way
@@ -354,6 +359,31 @@ export function hudContextFor(tokenId: string | null): HudContext {
     figureSkills: character ? [] : figureSkillsOf(token),
     statEffects: character?.data.statEffects ?? [],
   };
+}
+
+/**
+ * Metry ruchu, które Skok może teraz wydać (19.10.2026) — ta sama kasa, którą
+ * serwer obciąży: w trwającej rundzie reszta dystansu tury, poza walką (i przed
+ * pierwszą rundą, gdy walka niczego jeszcze nie pilnuje) **pełna** pula
+ * Eksploracji. Pełna, nie bieżąca: pula odrasta w sekundy, a pasek nie
+ * przerysowuje się z zegarem — chwilowy brak oddechu powie odmowa serwera.
+ * Null, gdy nikt metrów nie liczy (MG, figura bez RUCHU, scena bez puli).
+ */
+function jumpMetresLeft(
+  token: TokenView,
+  combat: CombatView | null,
+  combatant: CombatantView | null,
+  turn: TurnBudgetView | null,
+  isGm: boolean,
+): number | null {
+  if (isGm) return null;
+  if (combatant && combat && combat.round >= 1) {
+    const distance = turn?.distance;
+    return distance ? Math.max(0, distance.max - distance.used) : null;
+  }
+  if (useSceneStore.getState().scene?.playerMove !== 'explore') return null;
+  if (token.paceCapM === undefined) return null;
+  return token.paceCapM ?? PACE_FALLBACK_CAP_M;
 }
 
 /**
@@ -634,6 +664,14 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   // did nothing, so the map should not change under the user either.
   steerToken(tokenId);
   const hud = useHudStore.getState();
+
+  // Skok (19.10.2026) czeka na wybór pola — każdy inny slot go odkłada, a jego
+  // własny drugi raz też (`armJump`).
+  if (slot.kind === 'action' && slot.actionId === CPRED_ACTION_JUMP) {
+    void armJump(tokenId);
+    return;
+  }
+  disarmJump();
 
   if (slot.kind === 'weapon') {
     const active = hud.activeWeapon;

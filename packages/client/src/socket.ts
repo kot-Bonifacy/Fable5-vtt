@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import type { AuthEndedPush, MusicCommand, MusicState } from '@vtt/shared';
+import type { AuthEndedPush, MusicCommand, MusicState, TokenJumpOptionsView } from '@vtt/shared';
 import { useMusicStore } from './stores/musicStore.js';
 import { chatNotification, notifyGame, startsOwnTurn } from './game-notifications.js';
 import type {
@@ -4381,6 +4381,18 @@ export const requestTokenWalk = (tokenId: string, route: ScenePoint[], extra = f
     route: route.slice(0, TOKEN_PATH_MAX_POINTS),
     ...(extra ? { extra: true } : {}),
   });
+
+/**
+ * Skok (19.10.2026): pola, na które ta figura może teraz skoczyć — serwer zna
+ * rodzaj każdej ściany, klient gracza nie, więc to on rozstrzyga, co jest
+ * barierą do przeskoczenia.
+ */
+export const requestJumpOptions = (tokenId: string) =>
+  emitSceneAck<TokenJumpOptionsView>('token:jump-options', { tokenId });
+
+/** Skok tej figury w jednym z ośmiu kierunków — odpowiedź to pole lądowania. */
+export const sendTokenJump = (tokenId: string, dx: number, dy: number) =>
+  emitSceneAck<{ x: number; y: number }>('token:jump', { tokenId, dx, dy });
 
 /**
  * Turns a figure by hand (stage 27j) — the rotation knob on the selection ring.

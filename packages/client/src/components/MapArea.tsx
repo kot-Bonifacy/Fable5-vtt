@@ -117,7 +117,8 @@ import {
 } from '../hud.js';
 import { useAttackStore, type AttackTargeting } from '../stores/attackStore.js';
 import { useRollStore } from '../stores/rollStore.js';
-import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
+import { activeWeaponOf, useHudStore, type HudJump } from '../stores/hudStore.js';
+import { disarmJump, jumpAtPoint } from '../jump.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useExplorationStore } from '../stores/explorationStore.js';
 import { useFogStore } from '../stores/fogStore.js';
@@ -841,6 +842,9 @@ export function MapArea() {
   const handleMapClick = useCallback(
     (worldX: number, worldY: number): boolean => {
       if (placeToken(worldX, worldY)) return true;
+      // Skok w ręku (19.10.2026) bierze klik przed granatem: to on był ostatnim
+      // wyborem z paska, a klik obok pól go odkłada, zamiast rzucać.
+      if (jumpAtPoint(worldX, worldY)) return true;
       // A grenade in hand outranks the car: the charge is aimed at the square,
       // and that square may well be the one the car is standing on (stage 16d).
       if (throwAtPoint(worldX, worldY)) return true;
@@ -1805,6 +1809,8 @@ export function MapArea() {
       const renderer = rendererRef.current;
       if (!renderer) return;
       renderer.dropAim();
+      // Pola skoku liczono z budżetu tamtej tury.
+      disarmJump();
       if (!turnPassed) return;
       const user = useAuthStore.getState().user;
       if (user?.role === ROLE_GM) {
@@ -1819,6 +1825,50 @@ export function MapArea() {
         renderer.frameToken(own);
       }
     });
+  }, [ready]);
+
+  /**
+   * Skok w ręku (19.10.2026): pola lądowania na mapie, póki prowadzi się tę
+   * figurę i póki stoi tam, skąd o nie pytała — serwer liczył je z tamtego
+   * miejsca. Inna figura, jej ruch, zmiana sceny i marsz odkładają skok.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    let armed: { jump: HudJump; x: number; y: number } | null = null;
+    const push = () => {
+      const renderer = rendererRef.current;
+      const jump = useHudStore.getState().jump;
+      if (!jump) {
+        armed = null;
+        renderer?.setJumpTargets(null);
+        return;
+      }
+      const token = useTokenStore.getState().tokens[jump.tokenId];
+      if (!token || useSelectionStore.getState().tokenId !== jump.tokenId) {
+        disarmJump();
+        return;
+      }
+      if (renderer?.isMarching()) {
+        disarmJump();
+        notifyRefusal('action', 'Najpierw dokończ marsz — skacze się z miejsca.');
+        return;
+      }
+      if (armed?.jump !== jump) armed = { jump, x: token.x, y: token.y };
+      else if (armed.x !== token.x || armed.y !== token.y) {
+        disarmJump();
+        return;
+      }
+      renderer?.setJumpTargets({ tokenId: jump.tokenId, cells: jump.options });
+    };
+    push();
+    const stops = [
+      useHudStore.subscribe(push),
+      useSelectionStore.subscribe(push),
+      useTokenStore.subscribe(push),
+    ];
+    return () => {
+      for (const stop of stops) stop();
+    };
   }, [ready]);
 
   // MG w trwającej walce prowadzi jedną figurę (etap 50b) — od rundy 1, bo
@@ -2331,6 +2381,11 @@ export function MapArea() {
         }
         if (hud.form) {
           hud.setForm(null);
+          return;
+        }
+        // Skok w ręku schodzi przed bronią: wzięło się go później.
+        if (hud.jump) {
+          disarmJump();
           return;
         }
         if (hud.activeWeapon) {

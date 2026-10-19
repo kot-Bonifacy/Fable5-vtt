@@ -136,6 +136,21 @@ function samePreview(a: AreaPreview | null, b: AreaPreview | null): boolean {
   return a.sideM === b.sideM;
 }
 
+/** Skok z paska (19.10.2026): figura i lewe górne rogi pól, na które może skoczyć. */
+export interface JumpTargets {
+  tokenId: string;
+  cells: readonly ScenePoint[];
+}
+
+function sameJumpTargets(a: JumpTargets | null, b: JumpTargets | null): boolean {
+  if (a === null || b === null) return a === b;
+  return (
+    a.tokenId === b.tokenId &&
+    a.cells.length === b.cells.length &&
+    a.cells.every((cell, index) => cell.x === b.cells[index]!.x && cell.y === b.cells[index]!.y)
+  );
+}
+
 /** One measurement drawn on the map: the line plus who is holding it. */
 export interface RulerLine {
   points: ScenePoint[];
@@ -620,6 +635,9 @@ const FOOTPRINT_MAX = 160;
  * without a legend.
  */
 const BLAST_COLOR = 0xfb923c;
+
+/** Pola lądowania Skoku (19.10.2026) — inne niż zieleń marszu, bo to inny gest. */
+const JUMP_COLOR = 0x2dd4bf;
 /**
  * The target under the crosshair (stage 16f). Red, and solid: the three rings
  * of 16e are white, green/blue/red *ownership* and amber — a fourth mark that
@@ -1725,6 +1743,11 @@ export class MapRenderer {
   /** Centre of the square (snapped) or the point the cone is aimed at. */
   private areaHover: ScenePoint | null = null;
   private readonly blastGraphics = new Graphics();
+  /** Pola lądowania Skoku wziętego z paska. */
+  private readonly jumpGraphics = new Graphics();
+  private jumpTargets: JumpTargets | null = null;
+  /** Które z pól lądowania jest pod kursorem; -1 — żadne. */
+  private jumpHover = -1;
   /**
    * The rotation knob on the selection ring (stage 27j), while it is being
    * dragged. Null the rest of the time — the knob is drawn regardless, it is
@@ -1894,6 +1917,7 @@ export class MapRenderer {
     this.overlayLayer.addChild(this.trailPrints.layer);
     this.overlayLayer.addChild(this.routePrints.layer);
     this.overlayLayer.addChild(this.blastGraphics);
+    this.overlayLayer.addChild(this.jumpGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
     // Scratch container: the fog is rendered into a texture at reduced scale,
@@ -2304,6 +2328,11 @@ export class MapRenderer {
       canvas.style.cursor = 'crosshair';
       return;
     }
+    // Skok w ręku: dłoń nad polem, na które da się skoczyć, i nic poza nim.
+    if (this.jumpTargets) {
+      canvas.style.cursor = this.jumpHover >= 0 ? 'pointer' : '';
+      return;
+    }
     if (this.walkCursor && !this.targeting && !this.mapToolArmed) {
       canvas.style.cursor = this.walkCursor;
       return;
@@ -2700,6 +2729,7 @@ export class MapRenderer {
       // …and the explosion template follows it in the same breath, for the same
       // reason: with a grenade in hand it *is* what the map looks like.
       this.trackAreaHover(point);
+      this.trackJumpHover(point);
       // Przeciąganie uchwytu wyprzedza wszystko poniżej (27l): to jest gest,
       // a nie stan mapy, i trwa aż do puszczenia przycisku.
       if (this.sceneDrag) {
@@ -4179,6 +4209,87 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
+  /**
+   * Skok z paska (19.10.2026): pola, na które figura może skoczyć — te, które
+   * serwer przyjmie (`token:jump-options`), i tylko te. Null zdejmuje warstwę.
+   *
+   * Podgląd marszu stoi wtedy w miejscu (`trackWalkHover`): następny klik mówi,
+   * gdzie figura wyląduje, a ślady butów obiecywałyby marsz.
+   */
+  setJumpTargets(targets: JumpTargets | null): void {
+    if (this.destroyed) return;
+    if (sameJumpTargets(this.jumpTargets, targets)) return;
+    this.jumpTargets = targets;
+    this.jumpHover = -1;
+    if (targets) {
+      this.walkHover = null;
+      this.walkCursor = '';
+      this.drawWalkPreview();
+    }
+    this.drawJumpTargets();
+    this.applyMapCursor();
+  }
+
+  /** Które pole lądowania leży pod punktem — indeks w `JumpTargets.cells` albo -1. */
+  jumpCellAt(point: ScenePoint): number {
+    const targets = this.jumpTargets;
+    const scene = this.scene;
+    const node = targets ? this.tokenNodes.get(targets.tokenId) : undefined;
+    if (!targets || !scene || !node) return -1;
+    const extent = node.token.size * scene.grid.sizePx;
+    return targets.cells.findIndex(
+      (cell) =>
+        point.x >= cell.x &&
+        point.x < cell.x + extent &&
+        point.y >= cell.y &&
+        point.y < cell.y + extent,
+    );
+  }
+
+  private trackJumpHover(point: ScenePoint): void {
+    if (!this.jumpTargets) return;
+    const hover = this.jumpCellAt(point);
+    if (hover === this.jumpHover) return;
+    this.jumpHover = hover;
+    this.drawJumpTargets();
+    this.applyMapCursor();
+  }
+
+  /**
+   * Pola lądowania: wypełniony kwadrat z obwódką, pod kursorem mocniejszy,
+   * a od figury do niego kreska — skąd i dokąd figura przeleci.
+   */
+  private drawJumpTargets(): void {
+    this.jumpGraphics.clear();
+    const targets = this.jumpTargets;
+    const scene = this.scene;
+    const node = targets ? this.tokenNodes.get(targets.tokenId) : undefined;
+    if (!targets || !scene || !node || node.destroyed) return;
+    const k = this.overlayScale();
+    const extent = node.token.size * scene.grid.sizePx;
+    const inset = Math.min(extent * 0.08, 6 * k);
+    targets.cells.forEach((cell, index) => {
+      const hovered = index === this.jumpHover;
+      this.jumpGraphics
+        .roundRect(
+          cell.x + inset,
+          cell.y + inset,
+          extent - inset * 2,
+          extent - inset * 2,
+          Math.min(8 * k, extent / 6),
+        )
+        .fill({ color: JUMP_COLOR, alpha: hovered ? 0.34 : 0.14 })
+        .stroke({ color: JUMP_COLOR, width: (hovered ? 3 : 2) * k, alpha: hovered ? 1 : 0.7 });
+    });
+    const hovered = targets.cells[this.jumpHover];
+    if (!hovered) return;
+    const half = extent / 2;
+    this.jumpGraphics
+      .moveTo(node.x + half, node.y + half)
+      .lineTo(hovered.x + half, hovered.y + half)
+      .stroke({ color: JUMP_COLOR, width: 2.5 * k, alpha: 0.85 });
+  }
+
   /** Follows the pointer with the template; called from the move handler. */
   private trackAreaHover(point: ScenePoint): void {
     const scene = this.scene;
@@ -4929,6 +5040,8 @@ export class MapRenderer {
       // A charge in hand owns the click: the next one says where it lands, not
       // where the figure walks (stage 16d).
       this.areaPreview !== null ||
+      // Skok w ręku tak samo: następny klik mówi, gdzie figura wyląduje.
+      this.jumpTargets !== null ||
       // A weapon in hand no longer freezes the map (stage 16f): only the
       // pointer actually resting on a target does, because that click is
       // already spoken for.
@@ -7595,6 +7708,7 @@ export class MapRenderer {
     this.drawGroupRings();
     this.drawAimReticle();
     this.drawWalkPreview();
+    this.drawJumpTargets();
     this.drawReach();
     this.drawTrail();
     this.setRangeRings(this.lastRingCentre, this.lastRings);

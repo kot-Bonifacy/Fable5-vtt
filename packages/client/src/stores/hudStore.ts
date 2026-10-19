@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CpredAttackMode } from '@vtt/shared';
+import type { CpredAttackMode, TokenJumpOption } from '@vtt/shared';
 
 /**
  * What the combat HUD has in hand (stage 16f) — core-side UI memory, like
@@ -42,11 +42,23 @@ export interface HudActiveWeapon {
   coneRangeM?: number;
 }
 
+/**
+ * Skok wzięty z paska (19.10.2026): figura i pola lądowania, które serwer
+ * przyjmie (`token:jump-options`). Mapa rysuje tylko je, a klik w jedno skacze.
+ * Stemplowany figurą z tego samego powodu co broń w ręku.
+ */
+export interface HudJump {
+  tokenId: string;
+  options: TokenJumpOption[];
+}
+
 /** A slot whose action needs words or a target before it can be booked. */
 export type HudFormKind = 'hold' | 'grapple' | 'stabilize' | 'awareness' | 'backup';
 
 interface HudStoreState {
   activeWeapon: HudActiveWeapon | null;
+  /** Skok czekający na wybór pola; null, gdy nikt nie skacze. */
+  jump: HudJump | null;
   /** Form the bar has asked for, opened above it; null when none is. */
   form: HudFormKind | null;
   /** Is the left rail folded away? Remembered like the side panel's width. */
@@ -68,6 +80,7 @@ interface HudStoreState {
   fireModes: Record<string, CpredAttackMode>;
 
   setActiveWeapon: (weapon: HudActiveWeapon | null) => void;
+  setJump: (jump: HudJump | null) => void;
   setForm: (form: HudFormKind | null) => void;
   setCollapsed: (collapsed: boolean) => void;
   setFireMode: (tokenId: string, weaponKey: string, mode: CpredAttackMode) => void;
@@ -91,11 +104,13 @@ function readCollapsed(): boolean {
 
 export const useHudStore = create<HudStoreState>((set) => ({
   activeWeapon: null,
+  jump: null,
   form: null,
   collapsed: readCollapsed(),
   fireModes: {},
 
   setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
+  setJump: (jump) => set({ jump }),
   setFireMode: (tokenId, weaponKey, mode) =>
     set((state) => ({
       fireModes: { ...state.fireModes, [fireModeKey(tokenId, weaponKey)]: mode },

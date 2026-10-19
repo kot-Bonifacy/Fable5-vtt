@@ -52,6 +52,7 @@ Obowiązuje na nie ta sama licencja co na kod repozytorium, a nie CC BY 3.0; w t
 | `hud/hp.svg`                | Heart beats          | Delapouite    | rezerwa: znacznik PW                     |
 | `hud/knife.svg`             | Bowie knife          | Lorc          | slot broni: lekka broń biała             |
 | `hud/launcher.svg`          | rysunek własny       | projekt (VTT) | slot broni: granatnik, też podwieszany   |
+| `hud/jump.svg`              | Jump across          | Delapouite    | akcja „Skok” (19.10.2026)                |
 | `hud/martial-arts.svg`      | High kick            | Delapouite    | slot broni: sztuki walki                 |
 | `hud/move.svg`              | Running shoe         | Delapouite    | chip RUCH w panelu postaci               |
 | `hud/pistol.svg`            | Pistol gun           | John Colburn  | slot broni: średni pistolet              |

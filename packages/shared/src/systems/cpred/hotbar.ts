@@ -55,9 +55,12 @@ import {
 } from './attacks.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
 import type { TurnBudgetView } from '../../combat.js';
+import { JUMP_COST_M } from '../../jump.js';
+import { formatMetres } from '../../measure.js';
 import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
+  CPRED_ACTION_JUMP,
   CPRED_ACTION_RUN,
   CPRED_ACTION_BACKUP,
   CPRED_ACTION_COMBAT_AWARENESS,
@@ -323,6 +326,7 @@ export type CpredSlotIcon =
   | 'hourglass'
   | 'stand-up'
   | 'run'
+  | 'jump'
   | 'scanner'
   | 'combat-awareness'
   | 'backup';
@@ -424,6 +428,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_HOLD]: 'hourglass',
   [CPRED_ACTION_STAND_UP]: 'stand-up',
   [CPRED_ACTION_RUN]: 'run',
+  [CPRED_ACTION_JUMP]: 'jump',
   [CPRED_ACTION_SCANNER]: 'scanner',
   [CPRED_ACTION_COMBAT_AWARENESS]: 'combat-awareness',
   [CPRED_ACTION_BACKUP]: 'backup',
@@ -436,6 +441,7 @@ export const CPRED_HOTBAR_ACTION_IDS: readonly string[] = [
   CPRED_ACTION_HOLD,
   CPRED_ACTION_STAND_UP,
   CPRED_ACTION_RUN,
+  CPRED_ACTION_JUMP,
 ];
 
 /**
@@ -643,6 +649,12 @@ export interface CpredHotbarInput {
   isGm: boolean;
   /** Side of a Hold this participant is on, if any (stage 14d). */
   grapple?: 'attacker' | 'defender' | null;
+  /**
+   * Metry ruchu, które figura ma teraz do wydania (Skok, 19.10.2026): w walce
+   * reszta dystansu tury, poza nią pełna pula Eksploracji. `null` albo brak —
+   * nikt ich nie liczy (MG, figura bez RUCHU, scena bez puli).
+   */
+  moveMetresLeft?: number | null;
   /**
    * This sheet can run the Net (stage 26b): an Interface rank *and* a cyberdeck,
    * which is exactly what the server demands before it will scan. Adds the
@@ -877,7 +889,10 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         actionId !== CPRED_ACTION_STAND_UP &&
         actionId !== CPRED_ACTION_RUN &&
         actionId !== CPRED_ACTION_SCANNER,
-      disabled: actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
+      disabled:
+        actionId === CPRED_ACTION_JUMP
+          ? jumpRefusal(input, moveRefusal)
+          : actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
       key: null,
     });
   }
@@ -925,6 +940,8 @@ export interface CpredActionRefusalInput {
   statuses: readonly string[];
   turn: CpredHotbarInput['turn'];
   isGm: boolean;
+  /** Metry ruchu do wydania — tylko Skok o nie pyta (`CpredHotbarInput`). */
+  moveMetresLeft?: number | null;
 }
 
 /**
@@ -957,8 +974,29 @@ export function cpredActionRefusal(
   // mapie nie ma tego przycisku (ruch robi się ciągnięciem figury), zakładka
   // „Walka" ma — i bez tej gałęzi wspólna odmowa wyszarzałaby ruch zdaniem
   // o wykorzystanej Akcji, czyli o zasobie, którego ten przycisk nie dotyka.
+  if (actionId === CPRED_ACTION_JUMP) return jumpRefusal(input, moveRefusal);
   if (cpredAction(actionId)?.cost === 'move') return moveRefusal;
   return actionSlotRefusal(actionId, input, actionRefusal, moveRefusal);
+}
+
+/** Luz na zaokrąglenia metrów: „8 m z 8 m” nie może wrócić odmową. */
+const JUMP_METRE_SLACK = 0.05;
+
+/**
+ * Czemu Skok jest szary (19.10.2026). Płaci metrami ruchu, nie Akcją, więc
+ * odmawia mu to samo co marszowi — stan i rana na Ruchu — a do tego brak
+ * `JUMP_COST_M` metrów: kto tyle nie ma w zasobie, nie skacze wcale. MG nie
+ * odmawia budżet (14b), stan — tak.
+ */
+function jumpRefusal(
+  input: Pick<CpredActionRefusalInput, 'isGm' | 'moveMetresLeft'>,
+  moveRefusal: string | null,
+): string | null {
+  if (moveRefusal) return moveRefusal;
+  const left = input.moveMetresLeft;
+  if (input.isGm || left === null || left === undefined) return null;
+  if (left + JUMP_METRE_SLACK >= JUMP_COST_M) return null;
+  return `Skok kosztuje ${JUMP_COST_M} m ruchu — zostało ci ${formatMetres(Math.max(0, left))}.`;
 }
 
 function actionSlotRefusal(

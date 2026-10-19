@@ -1733,10 +1733,18 @@ export async function performTokenMove(
     /** Whose permissions apply; a bot borrows the GM account (stage 11). */
     user: SessionUser;
     payload: TokenMovePayload | undefined;
+    /**
+     * Lądowanie osądzone i opłacone już przez wołającego (Skok, `jump.ts`,
+     * 19.10.2026): bez trasy marszu i bez `validateTokenMove`, które
+     * odmówiłoby przeskoczonej bariery i policzyłoby metry drugi raz.
+     * Nigdy z drutu.
+     */
+    judged?: boolean;
   },
 ): Promise<{ x: number; y: number }> {
   {
     const { campaignId, user, payload } = options;
+    const judged = options.judged === true;
     const { token, scene } = await requireCampaignToken(
       deps.ctx.prisma,
       campaignId,
@@ -1780,7 +1788,7 @@ export async function performTokenMove(
     // istnieje (przeciąganie przez mur odsłaniało pokój za nim). Lądowanie
     // bez trasy zostaje: sprawdza je w całości `validateTokenMove`, a widzenie
     // liczy się dopiero z pozycji, którą przyjęło.
-    const walk = isGm ? null : activeWalk(token.id, user.id, scene.id, token);
+    const walk = isGm || judged ? null : activeWalk(token.id, user.id, scene.id, token);
     if (!isGm && !final && !walk) throw new RealtimeError(MOVE_NOT_PLANNED);
     if (walk) {
       const hit = projectOntoRoute(walk.route, { x, y });
@@ -1875,14 +1883,15 @@ export async function performTokenMove(
       // Only the drop is judged (stage 14c). Intermediate frames are a hand in
       // motion, not a decision — charging them would bill a player for hovering.
       try {
-        await validateTokenMove(deps, campaignId, user, {
-          scene,
-          token,
-          from: { x: token.x, y: token.y },
-          to: { x, y },
-          path: reportedPath,
-          ...(payload.extra === true ? { extra: true } : {}),
-        });
+        if (!judged)
+          await validateTokenMove(deps, campaignId, user, {
+            scene,
+            token,
+            from: { x: token.x, y: token.y },
+            to: { x, y },
+            path: reportedPath,
+            ...(payload.extra === true ? { extra: true } : {}),
+          });
       } catch (error) {
         if (walk) endWalk(token.id);
         // Everybody watching the drag has the figure standing where it was

@@ -23,6 +23,7 @@ export * from './gametime.js';
 export * from './handouts.js';
 export * from './inventory.js';
 export * from './journal.js';
+export * from './jump.js';
 export * from './knowledge.js';
 export * from './netrunning.js';
 export * from './lights.js';

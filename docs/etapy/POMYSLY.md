@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**19.10.2026 (Skok) — boty i animacja skoku.** Od 19.10 figura skacze z paska o dwie kratki
+ponad barierą i osłoną (`token:jump`, umowa na górze `tura`). Dwie rzeczy zostały poza zakresem:
+(1) **bot nie skacze** — `bot-combat.ts` bierze z paska tylko broń i przeładowanie, a jego marsz idzie
+`performTokenMove`; skok przez barierę do osłony to ruch, który bot mógłby wybierać sam, gdyby
+dostał listę z `token:jump-options`. (2) **Skok nie ma animacji** — figura staje na polu lądowania
+od razu (jak lądowanie przeciągnięcia u innych widzów); krótki łuk albo „przysiad” żetonu
+w `TokenNode` odróżniłby go od teleportu. Do decyzji MG: czy skok przez figurę (dziś przez wroga
+nie wolno, jak w marszu) i czy furtka w barierze ma się dać przeskoczyć jak bariera.
+
 **17.10.2026 (etap 54) — ruch figury strzałkami o pole (Foundry).** Od 54 figurę prowadzi się
 jednym klikiem w podłoże (wzór BG3). Foundry pozwala też przesunąć zaznaczoną figurę strzałką o jedno
 pole (zajętość klawiszy strzałek sprawdzić w `MAP_TOOL_KEYS`). Ten sam `token:walk` z jednopolową trasą dałby krok

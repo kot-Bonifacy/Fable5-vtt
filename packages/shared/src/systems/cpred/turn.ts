@@ -26,6 +26,7 @@
  */
 
 import type { TurnBudgetView } from '../../combat.js';
+import { JUMP_COST_M } from '../../jump.js';
 import { cpredTerrainFactor } from './movement.js';
 
 /** What a catalogue entry costs out of the turn's budget. */
@@ -70,6 +71,12 @@ export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
 export const CPRED_ACTION_STABILIZE = 'stabilize';
+/**
+ * Skok (zlecenie MG z 19.10.2026) — dwie kratki ponad barierą albo osłoną za
+ * `JUMP_COST_M` metrów ruchu, bez Akcji. Rozstrzyga go `token:jump`, nie
+ * przycisk katalogu: koszt idzie z dystansu tury jak marsz.
+ */
+export const CPRED_ACTION_JUMP = 'jump';
 
 /** `TurnBudgetView.pendingRoll.id` of the Death Save a turn opens owing. */
 export const CPRED_DEATH_SAVE_ROLL_ID = 'deathSave';
@@ -183,6 +190,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint: 'Druga Akcja Ruchu — tylko jeśli w tej Turze wykonałeś już Akcję Ruchu.',
     requiresSpentMove: true,
     grantsMove: 1,
+  },
+  {
+    id: CPRED_ACTION_JUMP,
+    name: 'Skok',
+    cost: 'move',
+    hint: `Przeskakujesz o dwie kratki — także ponad barierą i osłoną, nie przez ścianę, drzwi ani okno. Kosztuje ${JUMP_COST_M} m ruchu.`,
+    handledElsewhere: true,
   },
   {
     id: CPRED_ACTION_STAND_UP,

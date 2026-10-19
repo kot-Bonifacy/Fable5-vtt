@@ -39,6 +39,11 @@ też na restart po aktualizacji jądra), monitoring. Już jest: SSH tylko klucze
 off-site na PC (`deploy/pull-backup.ps1`, zadanie „VTT pull backup”, `D:\kopie-vtt`). Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
+**Skok (zlecenie MG z 19.10) — dalej etap 28, potem T10.** Slot „Skok” w lewym pasku: dwie kratki
+w jednym z ośmiu kierunków ponad barierą i osłoną za 8 m ruchu (w rundzie z dystansu tury, poza walką
+z puli Eksploracji), pola lądowania liczy serwer (`token:jump-options`). Rozstrzygnięcia przyjęte bez
+pytań (furtka blokuje, bez Akcji, przez wroga nie) czekają na słowo MG. Umowa na górze `tura`.
+
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
 T10.** Pełny domyślny przebieg z gatewayem 370/379 (3 wpisy konsoli przy restarcie instancji, powtórka
 zielona), `40-odpornosc` zielona, punkty `po-T3`…`po-T6` odbudowane **z krokami `@llm`**. Linia
@@ -327,7 +332,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 23   | 5       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok | 24   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 47   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -345,6 +350,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 19.10, druga (po `8d13a7f`) — zlecenie MG: Skok z lewego paska
+
+**Zlecenie MG:** akcja „Skok” w lewym pasku — figura przenosi się o dwie kratki w wybranym kierunku,
+także ponad barierą i osłoną (nie przez ściany, drzwi, okna), gracz musi widzieć miejsce lądowania,
+koszt 8 m, a kto tylu metrów nie ma w zasobie, nie skacze. **Rozstrzygnięte bez pytań (do potwierdzenia
+przez MG):** osiem kierunków (z ukosami); 8 m z puli Ruchu, **bez Akcji** i bez samoczynnego Biegu —
+w trwającej rundzie z dystansu tury, poza walką i w rundzie 0 z puli Eksploracji (Stop blokuje);
+**furtka (`gate`) blokuje jak drzwi**; lądowanie nie w stojącej osłonie i nie na figurze, przez wroga
+się nie skacze (reguła marszu); widzenie = mgła MG i pole widzenia gracza w widzeniu dynamicznym;
+MG zwolniony ze stanu, mgły, widzenia i budżetu, nie z geometrii; w walce wiersz „Skok — 8 m ruchu”
+na czacie. **Zrobione:** rdzeń `shared/jump.ts` (`judgeJumpGeometry`, `jumpBlockingSegments`),
+`CPRED_ACTION_JUMP` w katalogu i na pasku (`jumpRefusal`, ikona `hud/jump.svg` — „Jump across”,
+Delapouite, CC BY 3.0), serwer `realtime/jump.ts` (`token:jump-options`, `token:jump`,
+`performTokenMove(…, { judged })`), klient `jump.ts` + `hudStore.jump` + `MapRenderer.setJumpTargets`
+(turkusowe pola, kreska do pola pod kursorem, `Esc` i klik obok odkładają). Umowa na górze `tura`,
+boty i animacja skoku w `POMYSLY.md`.
+
+**Weryfikacja:** `shared` 2508/2508, `client` 413/413, `server` 1495/1495 (nowe: `jump.test.ts`
+10 przypadków na gniazdach, macierz izolacji kampanii z dwoma nowymi zdarzeniami), tsc i ESLint
+czyste. E2E suity nie puszczano (żadna nie dotyka skoku). **Oględziny:** tymczasowy spec E2E (usunięty)
+— gracz Marek w **Firefoksie**, MG w Chromium, z `po-T6`: pola ponad barierą i samochodem bez ściany,
+drzwi i skrzyni, najazd, skok, „Złap oddech” przy pustej puli, klik obok odkłada skok, w walce 8 m
+z 10 m i odmowa „zostało ci 2 m”.
 
 ### Sesja 19.10 (po `a60dec8`) — poprawka: Wstrzymanie Akcji dawało drugą turę
 
@@ -367,27 +396,3 @@ tury, wartość w kolejce bez stałej zmiany inicjatywy, Akcja na koniec Rundy, 
 przed wstrzymaną Akcją), tsc i ESLint pakietów czyste. E2E nie puszczano (żadna suita nie dotyka
 wstrzymania). **Oględziny:** **Firefox** (biblioteka `playwright`, instancja E2E): MG + gracz,
 pełny przebieg Vex 20 → Bandzior 10 → „Działam teraz” → Vex → Kurier 5 w tej samej Rundzie.
-
-### Sesja 18.10, czwarta (po `81a4516`) — etap 28: wdrożenie na VPS i boty przez Tailscale
-
-**Zlecenie MG:** „przeprowadź mnie przez wdrożenie na VPS” wg `docs/DEPLOY.md`, potem krok 9
-(„te elementy, które możesz zrobić sam, wykonaj”). **Decyzje MG (pytania):** gateway na `0.0.0.0`
-+ zapora zamiast wiązania do adresu Tailscale; zatrzymać `rag-caddy-dev` (trzymał :8080 llamy).
-**Zrobione:** MG wykonał kroki 2–8 na VPS (sieć NPM `npm_default`, build 92 s bez swapu, 76 migracji
-bez zmian, smoke test z listy w całości zielony), `pack-data.ps1` puszczony przez agenta. Tailscale
-na PC (winget) i VPS, klucz gatewaya w `ai-gateway/.env`, `packages/server/.env` i zmiennej
-`E2E_AI_GATEWAY_API_KEY`, reguła zapory na 8100, wpisy w `.env.prod` przez schowek (klucz nie przeszedł
-przez czat). `C:\AI\vps_home_pl_konfiguracja.md` uzupełniony o VTT (port 8088 tylko localhost,
-następny wolny 8089). Krok 9 w `DEPLOY.md` przepisany na stan faktyczny. **Odrzucone przez
-klasyfikator:** zwolnienie loopbacku z klucza w `require_api_key` — stąd klucz w lokalnym `.env`.
-**Potem:** SSH tylko kluczem (`id_ed25519_vps` w agencie Windows, alias `ssh vps`; zmianę `sshd`
-wpisał MG — klasyfikator nie dał agentowi) i kopia off-site: `deploy/pull-backup.ps1` + zadanie
-„VTT pull backup” (23:30, `D:\kopie-vtt`, 14 kopii, weryfikacja manifestu i `integrity_check`).
-Test odtworzenia z kopii off-site: obrazy z Docker Desktop na `snapshot-2026-10-18-1919`, liczby
-rekordów zgodne z VPS, stół MG z mapą w **Firefoksie** (Playwright). Kopia nie niesie `private/cpred`.
-**Znalezione:** VPS czeka na restart po aktualizacji jądra; kopie na VPS bez dowiązań (`zaleglosci.md`).
-
-**Weryfikacja:** z VPS `POST /chat 200` i `POST /rag/search 200` w logu gatewaya, bot odpowiada
-na `https://vtt.tatanga.eu`; test degradacji (gateway wyłączony → boty niedostępne, stół działa,
-po starcie wracają same) potwierdzony przez MG. Kodu aplikacji nie ruszano, testów nie puszczano.
-**Oględziny:** MG w swojej przeglądarce i gracz z innej sieci (smoke test kroku 8).

@@ -13,8 +13,10 @@ import {
   describeCpredStatEffectValue,
   CONTAINER_LOCK_LABELS,
   CPRED_ATTACK_MODE_LABELS,
+  CPRED_ACTION_JUMP,
   CPRED_BURST_AMMO_COST,
   CPRED_WOUND_LABELS,
+  JUMP_COST_M,
   ROLE_GM,
   cpredStatusSeverity,
   cpredWeaponModeSlot,
@@ -529,6 +531,7 @@ export function CombatHud() {
   const context = useHudContext();
   const focusId = context.token?.id ?? null;
   const activeWeapon = useHudStore((s) => s.activeWeapon);
+  const jump = useHudStore((s) => s.jump);
   const form = useHudStore((s) => s.form);
   const collapsed = useHudStore((s) => s.collapsed);
   const setCollapsed = useHudStore((s) => s.setCollapsed);
@@ -544,6 +547,8 @@ export function CombatHud() {
 
   const token = context.token;
   const armed = activeWeaponOf(activeWeapon, token?.id ?? null);
+  // Skok wzięty z paska (19.10.2026) — jego slot świeci jak broń w ręku.
+  const jumping = jump !== null && jump.tokenId === token?.id;
   const fireModes = useHudStore((s) => s.fireModes);
   const setFireMode = useHudStore((s) => s.setFireMode);
   // Which weapon has its fire modes open; one at a time, and never across a
@@ -846,7 +851,11 @@ export function CombatHud() {
                     key={group.id}
                     slot={group.slot}
                     keyLabel={group.key}
-                    armed={false}
+                    armed={
+                      jumping &&
+                      group.slot.kind === 'action' &&
+                      group.slot.actionId === CPRED_ACTION_JUMP
+                    }
                     modeCount={1}
                     drawerOpen={false}
                     onActivate={() => activateGroup(group, token.id)}
@@ -856,20 +865,30 @@ export function CombatHud() {
             </section>
           )}
 
-          {armed && (
+          {jumping ? (
             <p className="hud-armed">
               <span className="hud-armed-mark" aria-hidden />
               <span>
-                {/* Przy odmowie tury bez zachęty do celowania (#63, T8b): „kliknij cel”
-                    pod „to nie jest tura tej postaci” to dwie sprzeczne rady. */}
-                W ręku: <strong>{armed.name}</strong>
-                {context.refusal ? '.' : ' — kliknij cel na mapie.'}
-                {/* W walce MG celuje zwykłym klikiem w każdą inną figurę (etap 50b). */}
-                {isGm && !gmSteerLocked(isGm, combat) && (
-                  <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>
-                )}
+                <strong>Skok</strong> — kliknij podświetlone pole ({JUMP_COST_M} m ruchu).
+                <span className="hud-armed-hint"> Esc albo klik obok odkłada skok.</span>
               </span>
             </p>
+          ) : (
+            armed && (
+              <p className="hud-armed">
+                <span className="hud-armed-mark" aria-hidden />
+                <span>
+                  {/* Przy odmowie tury bez zachęty do celowania (#63, T8b): „kliknij cel”
+                    pod „to nie jest tura tej postaci” to dwie sprzeczne rady. */}
+                  W ręku: <strong>{armed.name}</strong>
+                  {context.refusal ? '.' : ' — kliknij cel na mapie.'}
+                  {/* W walce MG celuje zwykłym klikiem w każdą inną figurę (etap 50b). */}
+                  {isGm && !gmSteerLocked(isGm, combat) && (
+                    <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>
+                  )}
+                </span>
+              </p>
+            )
           )}
 
           {/* Etap 30a: jedyny formularz paska, który działa też poza walką —
