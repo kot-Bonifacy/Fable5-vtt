@@ -487,23 +487,23 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     await expect.poll(() => selectedOf(ola), { message: 'Ola' }).toBe(token('Iskra').id);
   });
 
-  test('4.3 tura Oli: prośba o Test przyciskiem i Alt+klikiem, pięść za daleko', async () => {
+  test('4.3 tura Oli: prośba o Test klikiem w wiersz karty, pięść za daleko', async () => {
     test.setTimeout(3 * 60_000);
     const page = ola.page;
-    // Droga pierwsza: klik w wiersz Umiejętności → okno rzutu → „Poproś MG”.
+    // Od 19.10 klik gracza w wiersz Umiejętności to zawsze prośba o Test —
+    // okna rzutu nie ma, a Shift + klik też go nie ominie.
     await openSheet(ola, 'Iskra');
     await page
       .getByRole('button', { name: /^Percepcja \(INT\)/ })
       .first()
-      .click();
-    await page.getByRole('button', { name: 'Poproś MG', exact: true }).click();
+      .click({ modifiers: ['Shift'] });
+    await expect(page.locator('.roll-dialog')).toHaveCount(0);
     await page.locator('#check-request-reason').fill('Czy widzę, skąd strzela Rzeźnik?');
     await page.getByRole('button', { name: 'Wyślij prośbę' }).click();
-    // Droga druga: Alt + klik w wiersz Umiejętności — od razu okno prośby.
     await page
       .getByRole('button', { name: /^Skradanie się \(ZW\)/ })
       .first()
-      .click({ modifiers: ['Alt'] });
+      .click();
     await expect(page.locator('.check-request-dialog')).toContainText('Iskra — Skradanie się (ZW)');
     await page
       .locator('#check-request-reason')

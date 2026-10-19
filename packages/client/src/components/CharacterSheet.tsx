@@ -539,26 +539,20 @@ function FrontPage({
 
   /**
    * Klik otwiera okno rzutu, Shift+klik ładuje kubek od razu z ostatnimi
-   * ustawieniami, **Alt+klik prosi MG o Test** (etap 40). Tak czy inaczej sam
-   * rzut dzieje się przy kubku — a przy prośbie dopiero po zgodzie MG.
+   * ustawieniami. Sam rzut dzieje się przy kubku.
    *
-   * Alt dopisał się do gotowej gramatyki modyfikatorów jedną gałęzią i niczego
-   * na karcie nie przesunął: wiersz Umiejętności to cztery komórki siatki,
-   * w których nie ma miejsca na piąty element.
+   * **Gracz na własnej karcie zawsze prosi MG o Test** (19.10.2026, decyzja
+   * MG): Poziom Trudności ustala MG, więc Test Cechy i Umiejętności pada
+   * dopiero na jego wezwanie — serwer bez wezwania go nie przyjmie
+   * (`CHECK_NEEDS_GM_DV`). Wiersz obrażeń dalej otwiera okno rzutu.
    */
-  function startRoll(
-    target: Omit<RollTarget, 'characterId' | 'characterName'>,
-    shift: boolean,
-    alt = false,
-  ) {
+  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
     const full: RollTarget = {
       characterId: character.id,
       characterName: character.name,
       ...target,
     };
-    // Prośba obejmuje wyłącznie Umiejętność i Cechę; Alt na wierszu obrażeń
-    // ma otworzyć zwykłe okno rzutu, a nie cicho nic nie zrobić.
-    if (alt && mayAsk && (full.kind === 'skill' || full.kind === 'stat')) {
+    if (mayAsk && (full.kind === 'skill' || full.kind === 'stat')) {
       askForCheck(full, data, registry);
       return;
     }
@@ -655,7 +649,7 @@ function ReadinessStrip({
  * ten widz naprawdę może poprosić.
  */
 function rollHintFor(mayAsk: boolean): string {
-  return mayAsk ? ' — Shift pomija okno, Alt prosi MG o Test' : ' — Shift pomija okno';
+  return mayAsk ? ' — klik prosi MG o Test, Poziom Trudności ustala MG' : ' — Shift pomija okno';
 }
 
 /**
@@ -1157,9 +1151,7 @@ function StatColumn({
           <button
             type="button"
             className="cp-stat-abbr"
-            onClick={(e: MouseEvent) =>
-              startRoll({ kind: 'stat', statId: id }, e.shiftKey, e.altKey)
-            }
+            onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
             title={`Rzut: ${CPRED_STAT_LABELS[id].name}${rollHint}`}
           >
             {CPRED_STAT_LABELS[id].abbr}
@@ -1316,7 +1308,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-roll"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
                         title={title}
                       >
@@ -1364,7 +1356,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-base"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
                         title={rollTitle}
                       >

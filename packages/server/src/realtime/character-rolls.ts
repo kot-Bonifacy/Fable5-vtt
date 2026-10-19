@@ -1052,6 +1052,21 @@ export async function performCharacterRoll(
   }
 }
 
+/**
+ * Test Umiejętności albo Cechy gracza pada wyłącznie na wezwanie MG (19.10.2026,
+ * decyzja MG): Poziom Trudności ustala MG, więc gracz nie ma jak go ominąć —
+ * rzut bez wezwania nie ma przeciw czemu paść. Droga gracza to prośba o Test
+ * (etap 40), którą MG zamienia w wezwanie z progiem.
+ *
+ * Reszta rodzajów ma próg z zasad albo nie jest Testem (obrażenia, Rzut na
+ * Śmierć, Ustabilizowanie, Leczenie, Charyzma, Rzetelność). MG i boty (rzucają
+ * kontem MG) przechodzą bez zmian.
+ */
+function requireGmFramedCheck(user: SessionUser, called: boolean, kind: unknown): void {
+  if (user.role === ROLE_GM || called) return;
+  if (kind === 'skill' || kind === 'stat') throw new RealtimeError('CHECK_NEEDS_GM_DV');
+}
+
 /** Attack cards whose damage roll is being made right now (#56). */
 const damageRollsInFlight = new Set<number>();
 
@@ -1073,6 +1088,9 @@ async function performScopedRoll(
 
     const request = await resolveRollRequest(deps, campaignId, user, payload);
     const source = await resolveRollSource(deps, campaignId, user, payload, request);
+    // Po prawie do karty, nie przed nim: cudza karta ma dalej odpowiadać
+    // „nie ma takiej", a nie zdradzać, że da się nią rzucić na wezwanie.
+    requireGmFramedCheck(user, call !== null, request.kind);
     await requireAttackShooter(deps, campaignId, user, request, source);
     const data = source.data;
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):

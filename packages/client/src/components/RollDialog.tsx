@@ -10,11 +10,8 @@ import {
   cpredInjuryModifiers,
   formatRollNotation,
   planCpredRoll,
-  ROLE_GM,
 } from '@vtt/shared';
-import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { askForCheck } from '../stores/checkStore.js';
 import { NumberStepper, signed } from './NumberStepper.js';
 import {
   useRollStore,
@@ -41,8 +38,6 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   const lastModifier = useRollStore((s) => s.lastModifier);
   const lastVisibility = useRollStore((s) => s.lastVisibility);
   const lastLocation = useRollStore((s) => s.lastLocation);
-  const userId = useAuthStore((s) => s.user?.id ?? '');
-  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const isDamage = target.kind === 'damage';
   // Wezwanie MG (etap 32): modyfikator i widoczność są **jego** decyzją, więc
   // okno przestaje o nie pytać i pokazuje je jako fakt. Gracz zachowuje jedyny
@@ -67,14 +62,6 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   }, [closeDialog]);
 
   if (!character) return null;
-
-  // Etap 40: prośbę składa się **własną** kartą i tylko jako gracz — MG ma na
-  // to wezwanie z 32. Przy otwartym wezwaniu przycisku nie ma: zgoda już jest.
-  const mayAsk =
-    !isGm &&
-    !call &&
-    character.ownerId === userId &&
-    (target.kind === 'skill' || target.kind === 'stat');
 
   const request: CpredRollRequest = {
     kind: target.kind,
@@ -220,11 +207,6 @@ function RollDialogBody({ target }: { target: RollTarget }) {
               onChange={setModifier}
               format={signed}
               label={isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
-              {...(mayAsk
-                ? {
-                    title: 'Do własnego rzutu. Z prośbą do MG nie jedzie — modyfikator ustala on.',
-                  }
-                : {})}
             />
           </>
         )}
@@ -280,27 +262,14 @@ function RollDialogBody({ target }: { target: RollTarget }) {
           <button className="primary-button" type="button" onClick={confirm} disabled={!planned.ok}>
             Weź kubek
           </button>
-          {/* Etap 40: odkrywalna droga do prośby o Test. Gracz, który otworzył
-              okno konkretnej Umiejętności, jest o jedno kliknięcie od pytania
-              „czy mogę tym rzucić" — a okno ma gdzie postawić pole „po co".
-              Przy wezwaniu MG przycisku nie ma: zgoda już padła. */}
-          {mayAsk && (
-            <button
-              type="button"
-              className="small-button"
-              title="Zapytaj MG, czy da się tym rzucić (Alt + klik w wiersz karty robi to samo)"
-              onClick={() => askForCheck(target, character.data, registry)}
-            >
-              Poproś MG
-            </button>
-          )}
           <button type="button" className="small-button" onClick={closeDialog}>
             Anuluj
           </button>
         </div>
         <p className="roll-dialog-hint">
-          Potrząśnij kubkiem nad stołem i puść, żeby rzucić. Shift + klik w umiejętność pomija to
-          okno{mayAsk ? ', Alt + klik prosi MG o Test' : ''}.
+          Potrząśnij kubkiem nad stołem i puść, żeby rzucić.
+          {/* Wezwanie przychodzi z czatu — skrót z wiersza karty go nie dotyczy. */}
+          {call ? '' : ' Shift + klik w wiersz karty pomija to okno.'}
         </p>
       </div>
     </div>

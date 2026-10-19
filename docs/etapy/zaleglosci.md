@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**19.10.2026 — E2E: okno „Załóż starcie” nie ma już pól wyboru figur, których szukają T4a i T6b.**
+`t4a-walka-knajpa` 4.1 (`getByRole('checkbox', { name: /^Zbir$/ })`) i `t6b-czas-kopie` 6.6d
+(„Tylko postacie graczy” → pole „Kowal”) czekają na pola, których nie ma. Na kodzie sprzed sesji
+z 19.10 (szósta) t6b pada identycznie, więc to nie skutek pilnowania PT. Prawdopodobnie panel
+„Walka” z etapu 56 („Dołącz do walki”, wrogie na górze) zmienił okno. Reszta T4a za 4.1 nie
+ruszyła — do przepięcia specyfikacji na nowe okno i powtórki T4a/T4b/T6b.
+
 **18.10.2026 (etap 28) — kopie na VPS nie dowiązują `uploads/` (`"linked": false`).** `db`, `uploads`
 i `backups` są w `deploy/docker-compose.yml` osobnymi bind mountami, a twarde dowiązanie między
 montowaniami pada (EXDEV), więc `linkTree` kopiuje pliki: każda kopia godzinowa to pełne ~66 MB,

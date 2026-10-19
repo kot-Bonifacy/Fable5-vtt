@@ -1249,6 +1249,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Test Umiejętności i Cechy gracza pada wyłącznie na wezwanie MG (19.10, decyzja MG)** — `requireGmFramedCheck` w `performScopedRoll` (`character-rolls.ts`): `character:roll` gracza z `kind` `skill`/`stat` bez `callMessageId` dostaje `CHECK_NEEDS_GM_DV`. Klik gracza w wiersz własnej karty (także z Shiftem) otwiera prośbę o Test, okno rzutu nie ma już „Poproś MG”. MG i boty (konto MG) rzucają swobodnie. Nowa droga, którą gracz rzuca Test, idzie przez wezwanie (`createCheckCall`), nie obok niego.
 - **Potwierdzenie przez `emitSceneAck` / `onPresented` czeka, aż stół dokręci kości (10.10, #72)** — tak ma być dla wszystkiego, co mogłoby zdradzić wynik przed animacją. Zapis, który wyniku nie niesie i dotyczy tylko MG (tabele losowe: `emitTableAck`, rozgłoszenia `table:upsert`/`table:delete` przez `socket.on`), idzie z pominięciem kolejki — inaczej formularz stoi otwarty kilka sekund po jawnym losowaniu. Losowanie z tabeli (`table:roll`, `table:show`) zostaje w kolejce.
 - **Wezwanie wystawione przez serwer niesie adres skutku po białej liście (09.10, 46b1)** — `createCheckCall({ containerTokenId, calledByName })`: pole dopisuje się **po** `requireCallableRequest`, a rzut czyta je z `call.entry.system`, nigdy z żądania. Tak samo każdy przyszły „Test, który coś otwiera”.
 - **Notacja kości na ekranie to „k” — `displayDiceNotation` (03.10, #65)** — `shared/src/dice.ts`; karty czatu (`ChatPanel`), etykiety kubka (`DiceCup`), okno rzutu, tabele losowe. Parser i kości 3D dalej mówią „d”; nowe miejsce, które pokazuje `roll.notation` albo formułę, przepuszcza ją przez tę funkcję. Wpis rozbicia z `lookup: true` (Cecha z tabeli Roli w kreatorze) rysuje się „SW: rzut 8 → 6”, nie „+6”.
@@ -1273,6 +1274,19 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
 
 ---
+
+**Test gracza tylko na wezwanie MG z progiem (19.10.2026, zlecenie MG).**
+Do 19.10 gracz mógł rzucić Test z karty sam (okno rzutu „bez progu”, Shift + klik), a prośba
+o Test (etap 40) była opcją pod Alt. MG chce, żeby gracz czekał, aż ustali Poziom Trudności,
+i żeby nie dało się tego ominąć. Serwer odmawia `character:roll` gracza z `kind` `skill` albo
+`stat` bez wezwania (`CHECK_NEEDS_GM_DV`, sprawdzane **po** prawie do karty, więc cudza karta
+dalej odpowiada `CHARACTER_NOT_FOUND`). Wezwanie zawsze niesie PT albo drugą stronę rzutu
+przeciwstawnego (`parseCheckFrame`), więc rzut na wezwanie jest rzutem z progiem MG. Poza
+regułą: obrażenia, Rzut na Śmierć, Ustabilizowanie, Leczenie, Efekt Charyzmy, Test Rzetelności
+(próg z zasad albo nie Test) oraz MG i boty — decyzja MG: boty bez zmian, bez przełącznika
+w ustawieniach. Klient: klik gracza w wiersz Cechy/Umiejętności własnej karty = `askForCheck`,
+Shift go nie omija. Testy: `character-rolls.test.ts` › „refuses a player Check without the GM’s
+call”, `check-request-dialogs.test.ts`, `shortcuts.test.ts`; E2E t4a 4.3 i t6b.
 
 **Dogonienie rzutów: najwyżej kilka sekund za serwerem (02.10, poprawka #48 z T7b, decyzja MG).**
 Klient odtwarza rzuty po jednym (lot ~3,5 s + 2,5 s pauzy przed kartą), a od 22.09 cały ruch

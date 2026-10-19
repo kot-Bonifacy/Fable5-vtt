@@ -206,6 +206,31 @@ describe('sheet rolls', () => {
   /** Every chat message Rogue's socket ever receives — leak detector. */
   const rogueChatTraffic: ChatMessageBroadcast[] = [];
 
+  /**
+   * A player's Check goes out only on the GM's call (19.10.2026), so Vex rolls
+   * the way the table does: the GM names the Test and its DV, Vex answers with
+   * the call's id and declares nothing but Luck.
+   */
+  async function vexRollsOnCall(
+    request: { kind: 'skill'; skillId: string } | { kind: 'stat'; statId: string },
+    options: { visibility?: 'public' | 'gm'; modifier?: number; luckSpent?: number } = {},
+  ) {
+    const called = await emitAck<{ messageId: number }>(gm, 'check:call', {
+      characterId,
+      request,
+      dv: 13,
+      ...(options.modifier !== undefined ? { modifier: options.modifier } : {}),
+      visibility: options.visibility ?? 'public',
+    });
+    if (!called.ok || !called.data) throw new Error('check:call failed');
+    return emitAck<{ messageId: number }>(vex, 'character:roll', {
+      characterId,
+      callMessageId: called.data.messageId,
+      visibility: 'public',
+      request: { ...request, luckSpent: options.luckSpent ?? 0 },
+    });
+  }
+
   it('sets up a character owned by Vex', async () => {
     const gmConn = createSocket(gmCookie);
     const vexConn = createSocket(vexCookie);
@@ -242,13 +267,11 @@ describe('sheet rolls', () => {
   });
 
   it('rolls a skill: 1d10 + stat + level, with the breakdown on the chat card', async () => {
-    const gmMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const rogueMessage = waitFor<ChatMessageBroadcast>(rogue, 'chat:message');
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:roll', {
-      characterId,
-      visibility: 'public',
-      request: { kind: 'skill', skillId: 'perception' },
-    });
+    // The GM also gets the call card first — wait for the roll itself.
+    const isRoll = (payload: ChatMessageBroadcast) => payload.message.roll !== undefined;
+    const gmMessage = waitForMatch<ChatMessageBroadcast>(gm, 'chat:message', isRoll);
+    const rogueMessage = waitForMatch<ChatMessageBroadcast>(rogue, 'chat:message', isRoll);
+    const ack = await vexRollsOnCall({ kind: 'skill', skillId: 'perception' });
     expect(ack.ok).toBe(true);
 
     const broadcast = await gmMessage;
@@ -256,7 +279,7 @@ describe('sheet rolls', () => {
     expect(roll).toBeDefined();
     if (!roll) return;
     expect(roll.actor).toBe('Forty');
-    expect(roll.title).toBe('Percepcja (INT)');
+    expect(roll.title).toBe('Wezwanie: Percepcja (INT)');
     expect(roll.notation).toBe('1d10+11'); // INT 7 + Percepcja 4
     expect(roll.breakdown).toEqual([
       { label: 'Inteligencja (INT)', value: 7, kind: 'stat' },
@@ -283,6 +306,27 @@ describe('sheet rolls', () => {
     expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
   });
 
+  it('refuses a player Check without the GM’s call — the DV is the GM’s (19.10)', async () => {
+    for (const request of [
+      { kind: 'skill', skillId: 'perception' },
+      { kind: 'stat', statId: 'cool' },
+    ]) {
+      const ack = await emitAck(vex, 'character:roll', {
+        characterId,
+        visibility: 'public',
+        request,
+      });
+      expect(ack).toEqual({ ok: false, error: 'CHECK_NEEDS_GM_DV' });
+    }
+    // The GM still rolls any sheet freely — an NPC's Test, or the table's call.
+    const gmRoll = await emitAck(gm, 'character:roll', {
+      characterId,
+      visibility: 'gm',
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    expect(gmRoll.ok).toBe(true);
+  });
+
   it('applies the wound penalty automatically and shows it in the breakdown', async () => {
     // 35 HP max → 17 left is at or below half: seriously wounded (−2).
     const wounded = await emitAck<CharacterView>(vex, 'character:update', {
@@ -291,12 +335,12 @@ describe('sheet rolls', () => {
     });
     expect(wounded.ok).toBe(true);
 
-    const gmMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    await emitAck(vex, 'character:roll', {
-      characterId,
-      visibility: 'public',
-      request: { kind: 'skill', skillId: 'perception' },
-    });
+    const gmMessage = waitForMatch<ChatMessageBroadcast>(
+      gm,
+      'chat:message',
+      (payload) => payload.message.roll !== undefined,
+    );
+    await vexRollsOnCall({ kind: 'skill', skillId: 'perception' });
     const roll = (await gmMessage).message.roll;
     expect(roll?.breakdown).toContainEqual({
       label: 'Poważnie ranny',
@@ -310,24 +354,21 @@ describe('sheet rolls', () => {
 
   it('spends Luck from the pool and rejects overspending', async () => {
     const upsert = waitFor<CharacterUpsertBroadcast>(gm, 'character:upsert');
-    const ack = await emitAck(vex, 'character:roll', {
-      characterId,
-      visibility: 'public',
-      request: { kind: 'stat', statId: 'cool', modifier: 2, luckSpent: 3 },
-    });
+    const ack = await vexRollsOnCall(
+      { kind: 'stat', statId: 'cool' },
+      { modifier: 2, luckSpent: 3 },
+    );
     expect(ack.ok).toBe(true);
 
     const data = (await upsert).character.data as CpredCharacterData;
     expect(data.luckCurrent).toBe(3); // 6 − 3
 
-    const tooMuch = await emitAck(vex, 'character:roll', {
-      characterId,
-      visibility: 'public',
-      request: { kind: 'stat', statId: 'cool', luckSpent: 99 },
-    });
+    const tooMuch = await vexRollsOnCall({ kind: 'stat', statId: 'cool' }, { luckSpent: 99 });
     expect(tooMuch).toEqual({ ok: false, error: 'NOT_ENOUGH_LUCK' });
 
-    const badModifier = await emitAck(vex, 'character:roll', {
+    // The situational modifier is the GM's to name, so the GM's own roll is
+    // where an out-of-range one can still be sent.
+    const badModifier = await emitAck(gm, 'character:roll', {
       characterId,
       visibility: 'public',
       request: { kind: 'stat', statId: 'cool', modifier: 999 },
@@ -338,12 +379,12 @@ describe('sheet rolls', () => {
   it('keeps a private sheet roll away from other players', async () => {
     await roundTrip(rogue); // flush anything still in flight
     const before = rogueChatTraffic.length;
-    const gmMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const ack = await emitAck(vex, 'character:roll', {
-      characterId,
-      visibility: 'gm',
-      request: { kind: 'stat', statId: 'ref' },
-    });
+    const gmMessage = waitForMatch<ChatMessageBroadcast>(
+      gm,
+      'chat:message',
+      (payload) => payload.message.kind === 'gmroll',
+    );
+    const ack = await vexRollsOnCall({ kind: 'stat', statId: 'ref' }, { visibility: 'gm' });
     expect(ack.ok).toBe(true);
     expect((await gmMessage).message.kind).toBe('gmroll');
 

@@ -72,8 +72,10 @@ describe('katalog skrótów (etap 27f)', () => {
     const forRole = (isGm: boolean) =>
       shortcutGroupsFor(isGm).find((group) => group.title === 'Karta postaci: rzut z wiersza')!
         .items;
-    expect(forRole(false).some((item) => item.keys === 'Alt + klik')).toBe(true);
-    expect(forRole(true).some((item) => item.keys === 'Alt + klik')).toBe(false);
+    // Od 19.10 gracz Testu sam nie rzuca — jego klik w wiersz to prośba.
+    expect(forRole(false).map((item) => item.keys)).toEqual(['klik']);
+    expect(forRole(false)[0]!.what).toContain('Poziom Trudności');
+    expect(forRole(true).map((item) => item.keys)).toEqual(['klik', 'Shift + klik']);
   });
 
   /**

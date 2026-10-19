@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10, czwarta (po `517b945`) — zlecenie MG: bariera i osłona w podglądzie strzału
+
+**Zlecenie MG:** sprawdzić, jak system liczy trafienie i obrażenia celu za barierą i osłoną oraz
+czy strzelający gdzieś się o tym dowiaduje. **Przegląd:** rachunek spójny — osłona (16c) odmawia
+strzału z wyborem „Ostrzelaj osłonę” / „Strzelaj mimo osłony”, bez kary (RAW s. 179), i gracz widzi
+ją już w dymku; bariera (42b/42c) odejmuje OB przed pancerzem i daje karę „zasłania figury”
+(najgorsza z przeciętych), ale do tej sesji podgląd jej nie znał — kara wychodziła dopiero na karcie
+wyniku, OB na karcie obrażeń. **Zrobione:** flaga `barrier` na odcinkach `blockers` gracza
+(`WalkBlocker`, `walkBlockerOf`), `AttackPreview.barrier` w `attack-targeting.ts` — MG dostaje liczby
+serwera (kara w modyfikatorze kubka, OB w tytule), gracz „OB i karę zna MG”; wiersz „Bariera”
+w dymku celownika, „· przez barierę” w tytule kubka. **Decyzja MG:** karta ataku na czacie dalej
+milczy o OB (decyzja 8 z 42b zostaje). Umowa na górze `atak`.
+
+**Weryfikacja:** `shared` 2515/2515 (+3: flaga przez cięcie mgły, `walkBlockerOf`), serwer 1507/1507
+(`walls.test.ts` przepięty na odcinki z flagą), klient 416/416; `tsc` w trzech pakietach, ESLint
+i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T5a` —
+Ola w **Firefoksie**: Iskra → Wieżyczka przez wschodni odcinek bariery „Bariera · OB i karę zna
+MG”, Iskra → Strażnik przez otwartą bramę bez wiersza; MG w Chromium tą samą linią „OB 20 · kara
+−4”, kubek „… · PT 20 · przez barierę OB 20”, modyfikator 7.
+
 ### Sesja 19.10, trzecia (po `a0186fd`) — etap 56: walka z zauważenia wroga wzorem Foundry
 
 **Zlecenie MG:** drużyna przechodzi z eksploracji w tryb turowy, gdy ktoś z graczy zobaczy figurę

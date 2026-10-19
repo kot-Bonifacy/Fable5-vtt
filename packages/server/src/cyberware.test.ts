@@ -461,8 +461,9 @@ describe('cyborgizacje i człowieczeństwo', () => {
       characterId,
       patch: { data: { humanityCurrent: 34 } },
     });
+    // Od 19.10 gracz rzuca Test tylko na wezwanie MG; liczy się rozbicie, więc rzuca MG.
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    const ack = await emitAck<{ messageId: number }>(vex, 'character:roll', {
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:roll', {
       characterId,
       visibility: 'public',
       request: { kind: 'stat', statId: 'emp' },

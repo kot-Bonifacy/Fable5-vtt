@@ -97,11 +97,19 @@ describe('prośba a okno rzutu (etap 40)', () => {
     expect(useCheckStore.getState().requestDraft).not.toBeNull();
   });
 
-  it('okno rzutu prosi WYŁĄCZNIE przez askForCheck', () => {
-    // Gdyby przycisk „Poproś MG" wołał `openRequest` wprost, minąłby zamknięcie
-    // okna rzutu i usterka wróciłaby tą samą drogą, którą przyszła.
-    const source = readFileSync(join(SRC, 'components/RollDialog.tsx'), 'utf8');
+  it('karta prosi WYŁĄCZNIE przez askForCheck', () => {
+    // Gdyby wiersz karty wołał `openRequest` wprost, minąłby zamknięcie okna
+    // rzutu i usterka wróciłaby tą samą drogą, którą przyszła.
+    const source = readFileSync(join(SRC, 'components/CharacterSheet.tsx'), 'utf8');
     expect(source).toMatch(/askForCheck\(/);
     expect(source).not.toMatch(/openRequest\(/);
+  });
+
+  it('okno rzutu nie prosi i nie rzuca Testu gracza bez wezwania (19.10)', () => {
+    // Test Cechy i Umiejętności gracz rzuca tylko na wezwanie z progiem MG,
+    // więc okno rzutu nie ma już guzika „Poproś MG" — klik w wiersz karty
+    // od razu otwiera prośbę.
+    const source = readFileSync(join(SRC, 'components/RollDialog.tsx'), 'utf8');
+    expect(source).not.toMatch(/askForCheck\(|openRequest\(/);
   });
 });

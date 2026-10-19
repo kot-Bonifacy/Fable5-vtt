@@ -258,17 +258,27 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await closeSheet(mg.page);
 
     // Marek: chip na karcie i wiersz w rozbiciu Testu z REF (Broń krótka).
+    // Od 19.10 gracz rzuca Test tylko na wezwanie MG z progiem.
     const own = await openSheet(marek, 'Kowal');
     await expect(own.locator('.cp-stat-effects')).toContainText(source);
+    await closeSheet(marek.page);
+    const called = await emitAck<{ messageId: number }>(await mg.socket(), 'check:call', {
+      characterId: characterRow('Kowal').id,
+      request: { kind: 'skill', skillId: 'handgun' },
+      dv: 13,
+      visibility: 'public',
+    });
+    expect(called.ok).toBe(true);
+    await marek.page.getByRole('button', { name: /^Czat/ }).first().click();
     await marek.page
-      .getByRole('button', { name: /^Broń krótka \(REF\)/ })
-      .first()
+      .locator('.chat-message.chat-check', { hasText: 'Broń krótka' })
+      .last()
+      .getByRole('button', { name: 'Rzuć' })
       .click();
     await marek.page.locator('.dialog').last().getByRole('button', { name: 'Weź kubek' }).click();
-    await closeSheet(marek.page);
     scriptDice([5]);
     const mark = lastMessageId();
-    const id = await rollAndWait(marek, mark, 'Broń krótka');
+    const id = await rollAndWait(marek, mark, 'Wezwanie: Broń krótka');
     const roll = rollById(id);
     test.info().annotations.push({ type: 'rozbicie Testu', description: JSON.stringify(roll) });
     expect(roll.breakdown).toContainEqual(

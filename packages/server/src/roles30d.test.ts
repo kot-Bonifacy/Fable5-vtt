@@ -490,10 +490,11 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
         })
       ).ok,
     ).toBe(true);
+    // Od 19.10 gracz rzuca Test tylko na wezwanie MG; liczy się rozbicie, więc rzuca MG.
     const card = waitForRoll(player, 'Prowadzenie pojazdów');
     expect(
       (
-        await emitAck(player, 'character:roll', {
+        await emitAck(gm, 'character:roll', {
           characterId: nomadId,
           request: { kind: 'skill', skillId: 'driving' },
           visibility: 'public',

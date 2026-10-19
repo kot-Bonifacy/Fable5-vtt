@@ -39,6 +39,11 @@ też na restart po aktualizacji jądra), monitoring. Już jest: SSH tylko klucze
 off-site na PC (`deploy/pull-backup.ps1`, zadanie „VTT pull backup”, `D:\kopie-vtt`). Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
+**Test gracza tylko na wezwanie MG (zlecenie MG z 19.10) — dalej etap 28, potem T10.** Gracz
+nie rzuci Testu Cechy ani Umiejętności, zanim MG nie ustali PT: klik w wiersz własnej karty to
+prośba o Test, serwer bez wezwania odpowiada `CHECK_NEEDS_GM_DV`. MG i boty bez zmian. Umowa na
+górze `kosci`. Otwarta zaległość: T4a 4.1 i T6b 6.6d szukają starych pól w „Załóż starcie”.
+
 **Etap 56 „Walka z zauważenia wroga” (zlecenie MG z 19.10) zamknięty 19.10 — dalej etap 28, potem
 T10.** Figura ma postawę wzorem Foundry (Przyjazna / Neutralna / Wroga; NPC startuje Neutralny,
 zna ją tylko MG — kolor obwódki, menu figury, pasek grupy, okno edycji). Gdy ktoś z drużyny
@@ -348,7 +353,7 @@ a nie do tego pliku.
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 8    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 23   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 26   | 6       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
@@ -368,6 +373,26 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 19.10, szósta (po `d004db6`) — zlecenie MG: gracz czeka na Poziom Trudności od MG
+
+**Zlecenie MG:** gracz ma czekać, aż MG ustali PT rzutu, i nie może tego pominąć. **Decyzje MG
+(pytania na starcie):** klik gracza w wiersz karty otwiera okno prośby (nie wysyła jej od razu);
+boty bez zmian; bez przełącznika w ustawieniach. **Zrobione:** serwer odmawia `character:roll`
+gracza z `kind` `skill`/`stat` bez wezwania (`CHECK_NEEDS_GM_DV`, po sprawdzeniu prawa do karty).
+Klient: klik i Shift + klik gracza w Cechę albo Umiejętność własnej karty = prośba o Test
+(`askForCheck`), okno rzutu bez „Poproś MG” i bez podpowiedzi o Shift przy wezwaniu, skróty
+(`?`) dla gracza „klik — prosi MG o Test”, MG bez zmian. Poza regułą: obrażenia, Rzut na Śmierć,
+Ustabilizowanie, Leczenie, Charyzma, Rzetelność, MG i boty (konto MG). Umowa na górze `kosci`.
+
+**Weryfikacja:** serwer 1526/1526 (nowy test odmowy; `character-rolls` rzuca na wezwanie, trzy
+testy rozbicia — EMP, Trzymanie, Moto — rzuca MG), klient 417/417; `tsc` serwera, klienta i E2E,
+ESLint i Prettier czyste. E2E: t4a 4.3 przepisany na klik (+ Shift), t6b 6.6a rzuca na wezwanie
+i przechodzi. **T4a 4.1 i T6b 6.6d padają na oknie „Załóż starcie”** — na kodzie sprzed sesji
+tak samo (zaległość z 19.10). **Oględziny:** tymczasowy spec z `po-T3` (usunięty), Ola
+w **Firefoksie**: Shift + klik w Percepcję → okno prośby, klik w Cechę → prośba, surowy rzut
+z gniazda → `CHECK_NEEDS_GM_DV`, MG zgoda z PT 13 → karta wezwania, okno „Wezwanie do Testu”,
+rzut „Wezwanie: Percepcja”.
+
 ### Sesja 19.10, piąta (po `9dc6d84`) — zlecenie MG: pytanie przed przekroczeniem budżetu tury
 
 **Zlecenie MG:** ostrzeżenie dla MG, który łatwo i przypadkiem przekracza budżet tury.
@@ -386,23 +411,3 @@ pakietach, ESLint i Prettier czyste w zmienionych plikach. **Oględziny:** tymcz
 „Wykonaj” daje Bieg z +1; marsz 24 m przy 16 m → figura wraca, pasek „Za daleko o 8 m…”, „Wykonaj”
 przenosi ją z +2 i plakietką na czacie. Nieużywany przez spec plik `grapple-turns.test.ts`
 (nieśledzony, sprzed sesji) przechodzi i nie wszedł do commita.
-
-### Sesja 19.10, czwarta (po `517b945`) — zlecenie MG: bariera i osłona w podglądzie strzału
-
-**Zlecenie MG:** sprawdzić, jak system liczy trafienie i obrażenia celu za barierą i osłoną oraz
-czy strzelający gdzieś się o tym dowiaduje. **Przegląd:** rachunek spójny — osłona (16c) odmawia
-strzału z wyborem „Ostrzelaj osłonę” / „Strzelaj mimo osłony”, bez kary (RAW s. 179), i gracz widzi
-ją już w dymku; bariera (42b/42c) odejmuje OB przed pancerzem i daje karę „zasłania figury”
-(najgorsza z przeciętych), ale do tej sesji podgląd jej nie znał — kara wychodziła dopiero na karcie
-wyniku, OB na karcie obrażeń. **Zrobione:** flaga `barrier` na odcinkach `blockers` gracza
-(`WalkBlocker`, `walkBlockerOf`), `AttackPreview.barrier` w `attack-targeting.ts` — MG dostaje liczby
-serwera (kara w modyfikatorze kubka, OB w tytule), gracz „OB i karę zna MG”; wiersz „Bariera”
-w dymku celownika, „· przez barierę” w tytule kubka. **Decyzja MG:** karta ataku na czacie dalej
-milczy o OB (decyzja 8 z 42b zostaje). Umowa na górze `atak`.
-
-**Weryfikacja:** `shared` 2515/2515 (+3: flaga przez cięcie mgły, `walkBlockerOf`), serwer 1507/1507
-(`walls.test.ts` przepięty na odcinki z flagą), klient 416/416; `tsc` w trzech pakietach, ESLint
-i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T5a` —
-Ola w **Firefoksie**: Iskra → Wieżyczka przez wschodni odcinek bariery „Bariera · OB i karę zna
-MG”, Iskra → Strażnik przez otwartą bramę bez wiersza; MG w Chromium tą samą linią „OB 20 · kara
-−4”, kubek „… · PT 20 · przez barierę OB 20”, modyfikator 7.

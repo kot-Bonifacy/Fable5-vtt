@@ -440,8 +440,9 @@ describe('grappling', () => {
   it('puts „Trzymanie −2" into the breakdown of the next roll', async () => {
     // RAW: „−2 do wszystkich Akcji". Named in the breakdown rather than folded
     // into the total, so the player can see where it came from.
+    // Od 19.10 gracz rzuca Test tylko na wezwanie MG; liczy się rozbicie, więc rzuca MG.
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
-    await emitAck(player, 'character:roll', {
+    await emitAck(gm, 'character:roll', {
       characterId: vexCharacterId,
       request: { kind: 'skill', skillId: 'evasion' },
     });

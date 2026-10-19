@@ -1651,6 +1651,9 @@ function rollAckErrorText(code: string): string {
       return 'To wezwanie jest już rozliczone albo odwołane.';
     case 'CALL_NOT_YOURS':
       return 'To wezwanie należy do kogoś innego.';
+    // 19.10 — Test gracza pada wyłącznie na wezwanie, z progiem od MG.
+    case 'CHECK_NEEDS_GM_DV':
+      return 'Test rzucasz dopiero, gdy MG ustali jego Poziom Trudności — kliknij Umiejętność na karcie, żeby go poprosić.';
     // Ustabilizowanie od 03.09 wymaga długości ramienia — to czynność przy
     // pacjencie, a nie na odległość.
     case 'STABILIZE_OUT_OF_REACH':

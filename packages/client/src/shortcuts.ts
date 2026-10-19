@@ -216,11 +216,19 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     title: 'Karta postaci: rzut z wiersza',
     note: 'Działa na wierszach Cech i Umiejętności na stronie pierwszej karty.',
     items: [
-      { keys: 'klik', what: 'Otwiera okno rzutu — modyfikator, Szczęście, widoczność' },
-      { keys: 'Shift + klik', what: 'Ładuje kubek od razu, z ostatnimi ustawieniami' },
       {
-        keys: 'Alt + klik',
-        what: 'Na własnej karcie poproś MG o Test Cechy lub Umiejętności. Rzut przygotujesz po jego zgodzie',
+        keys: 'klik',
+        what: 'Otwiera okno rzutu — modyfikator, Szczęście, widoczność',
+        gmOnly: true,
+      },
+      {
+        keys: 'Shift + klik',
+        what: 'Ładuje kubek od razu, z ostatnimi ustawieniami',
+        gmOnly: true,
+      },
+      {
+        keys: 'klik',
+        what: 'Prosi MG o Test Cechy lub Umiejętności. Rzucasz dopiero, gdy MG ustali Poziom Trudności',
         playerOnly: true,
       },
     ],
