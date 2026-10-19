@@ -9,6 +9,7 @@ import { StatusIcon } from './HudIcon.js';
 import type {
   CampaignDetail,
   CpredStatistQuick,
+  TokenDisposition,
   TokenPatch,
   TokenView,
   WeaponEntry,
@@ -62,6 +63,13 @@ import { openExchangeAtToken } from './exchange/open.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { encounterState, toggleEncounter } from '../combat-encounter.js';
+import {
+  DISPOSITION_HINTS,
+  TOKEN_DISPOSITIONS,
+  TOKEN_DISPOSITION_LABELS,
+  dispositionOf,
+  setDisposition,
+} from '../disposition.js';
 import { takeFigure, toggleTarget } from '../hud.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
@@ -507,6 +515,10 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [sharedVision, setSharedVision] = useState<'' | 'yes' | 'no'>(
     token.sharedVision == null ? '' : token.sharedVision ? 'yes' : 'no',
   );
+  // Postawa (etap 56): '' — samo (figura gracza Przyjazna, NPC Neutralny).
+  const [disposition, setDispositionField] = useState<TokenDisposition | ''>(
+    token.disposition ?? '',
+  );
   const [hasLight, setHasLight] = useState(token.light != null);
   const [lightBrightM, setLightBrightM] = useState(
     token.light?.brightM ?? TOKEN_LIGHT_DEFAULT_BRIGHT_M,
@@ -568,6 +580,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       characterId: characterId === '' ? null : characterId,
       visionRange: parsedRange,
       sharedVision: sharedVision === '' ? null : sharedVision === 'yes',
+      disposition: disposition === '' ? null : disposition,
       // Taking the lamp away is `null`, not a lamp of radius zero — see
       // `sanitizeTokenLight`. The switch keeps whatever state it was in, so
       // retuning a lit torch does not put it out.
@@ -705,6 +718,25 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           <option value="">Samo — figura gracza tak, figura MG nie</option>
           <option value="yes">Tak — drużyna widzi ją i patrzy jej oczami</option>
           <option value="no">Nie — tylko jej gracz</option>
+        </select>
+
+        {/* Postawa (etap 56, wzór: Disposition z Foundry). */}
+        <label className="auth-label" htmlFor="token-disposition">
+          Postawa
+        </label>
+        <select
+          id="token-disposition"
+          className="text-input"
+          value={disposition}
+          onChange={(e) => setDispositionField(e.target.value as TokenDisposition | '')}
+          title={DISPOSITION_HINTS.hostile}
+        >
+          <option value="">Samo — figura gracza Przyjazna, NPC Neutralna</option>
+          {TOKEN_DISPOSITIONS.map((value) => (
+            <option key={value} value={value}>
+              {TOKEN_DISPOSITION_LABELS[value]}
+            </option>
+          ))}
         </select>
 
         <label className="auth-label">
@@ -1206,6 +1238,24 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           >
             {token.light.on ? '🌑 Zgaś latarkę' : '🔆 Zapal latarkę'}
           </button>
+        )}
+        {/* Postawa (etap 56, Disposition z Foundry): wroga figura zauważona
+            przez drużynę zakłada starcie. Jak „Do starcia” — na całą grupę. */}
+        {!isContainer && (
+          <div className="context-menu-disposition" role="group" aria-label="Postawa figury">
+            {TOKEN_DISPOSITIONS.map((disposition) => (
+              <button
+                key={disposition}
+                type="button"
+                className={`disposition-chip disposition-chip--${disposition}`}
+                aria-pressed={dispositionOf(token) === disposition}
+                title={DISPOSITION_HINTS[disposition]}
+                onClick={() => void setDisposition(encounterIds, disposition).then(onClose)}
+              >
+                {TOKEN_DISPOSITION_LABELS[disposition]}
+              </button>
+            ))}
+          </div>
         )}
         {/* „⚔ Do starcia” (etap 50a, wzór Foundry): także bez walki — pierwsze
             przełączenie zakłada starcie „Przed walką” z drużyną w środku.

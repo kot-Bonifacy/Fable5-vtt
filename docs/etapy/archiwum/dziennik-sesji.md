@@ -1,5 +1,27 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10 (po `a60dec8`) — poprawka: Wstrzymanie Akcji dawało drugą turę
+
+**Zgłoszenie MG:** po wstrzymaniu Akcji statysta dostawał w tej samej Rundzie drugą turę, a gracz
+nr 2 czekał. **Diagnoza:** wstrzymanie z wyzwalaczem odpalał MG w cudzej turze, inicjatywa
+wstrzymującego zostawała stara, więc `nextTurn` liczył następnego od jego pierwotnego miejsca —
+każdy pomiędzy dostawał drugą świeżą turę. Przy okazji: tura zakończona tuż przed odpaleniem
+wstrzymanej Akcji gubiła hooki końca tury (ogień nie palił). **Decyzje MG (pytania):** wstrzymanie
+działa jak obniżona inicjatywa w tej Rundzie, bez udziału MG; od następnej Rundy stare miejsce;
+„Działam teraz” klika też gracz i wchodzi **po** bieżącej turze (bez przerywania); niewykorzystana
+Akcja gra ostatnia w Rundzie; drugi błąd naprawić tą samą poprawką. **Zrobione:** migracja
+`20261019120000_held_action_resume` (`Combat.resumeCombatantId`/`resumeRound`,
+`Combatant.heldReady`), `turnFrom` w `shared`, nowe `dueHold`/`fireHeldAction`/`upcomingTurn`,
+`combat:hold-release` dla gracza-właściciela, poza turą wstrzymanie nie pozwala już działać. UI:
+„Działam teraz” przy portrecie w zakładce „Walka” (gracz i MG), znacznik „wchodzi po tej turze”,
+nowa podpowiedź w formularzu wstrzymania. Umowa na górze `tura`.
+
+**Weryfikacja:** `shared` 2496/2496, `server` 1485/1485 (nowe testy: „Działam teraz” bez drugiej
+tury, wartość w kolejce bez stałej zmiany inicjatywy, Akcja na koniec Rundy, uprawnienia, ogień
+przed wstrzymaną Akcją), tsc i ESLint pakietów czyste. E2E nie puszczano (żadna suita nie dotyka
+wstrzymania). **Oględziny:** **Firefox** (biblioteka `playwright`, instancja E2E): MG + gracz,
+pełny przebieg Vex 20 → Bandzior 10 → „Działam teraz” → Vex → Kurier 5 w tej samej Rundzie.
+
 ### Sesja 18.10, czwarta (po `81a4516`) — etap 28: wdrożenie na VPS i boty przez Tailscale
 
 **Zlecenie MG:** „przeprowadź mnie przez wdrożenie na VPS” wg `docs/DEPLOY.md`, potem krok 9

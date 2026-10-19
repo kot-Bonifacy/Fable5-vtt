@@ -7,6 +7,7 @@ import type {
   CombatRerollTiePayload,
   CombatRollAllPayload,
   CombatRollPayload,
+  CombatSightingView,
   CombatStartPayload,
   CombatUpdateBroadcast,
   CombatView,
@@ -263,6 +264,7 @@ export function toCombatView(row: CombatRow): CombatView {
   // Who is still on their way (stage 30c). The system reads its own column and
   // hands back rows; the tracker paints them and counts the rounds down.
   const reinforcements = reinforcementsOf(row.systemState);
+  const sighting = readCombatSighting(row.sighting);
   return {
     id: row.id,
     sceneId: row.sceneId,
@@ -270,7 +272,84 @@ export function toCombatView(row: CombatRow): CombatView {
     activeCombatantId: row.activeCombatantId,
     combatants: sortCombatants(row.combatants.map((combatant) => toCombatantView(combatant, row))),
     ...(reinforcements.length > 0 ? { reinforcements } : {}),
+    ...(sighting ? { sighting } : {}),
   };
+}
+
+/** `Combat.sighting` (etap 56) — JSON, który pisze wyłącznie `sighting.ts`. */
+export function readCombatSighting(raw: string | null): CombatSightingView | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CombatSightingView>;
+    const ids = (value: unknown): string[] =>
+      Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+    return { spotterIds: ids(parsed.spotterIds), foeIds: ids(parsed.foeIds) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Zakłada starcie „Przed walką” (runda 0) z figurami graczy na scenie i podanymi
+ * figurami — jedna droga dla „⚔ Do starcia” (etap 50a: drużyna jest w starciu
+ * od razu) i dla zauważenia wroga (etap 56, z `sighting`). Pojemniki nie walczą.
+ */
+export async function foundEncounter(
+  prisma: PrismaClient,
+  sceneId: string,
+  tokenIds: readonly string[],
+  sighting: CombatSightingView | null = null,
+): Promise<string> {
+  const picked = await prisma.token.findMany({
+    where: { id: { in: [...tokenIds] } },
+    select: { id: true, characterId: true },
+  });
+  const containers = await containerTokenIds(prisma, picked);
+  const party = await prisma.token.findMany({
+    where: { sceneId, ownerId: { not: null }, id: { notIn: [...tokenIds] } },
+    select: { id: true, characterId: true },
+  });
+  const partyContainers = await containerTokenIds(prisma, party);
+  const starters = [
+    ...party.map((token) => token.id).filter((id) => !partyContainers.has(id)),
+    ...tokenIds.filter((id) => !containers.has(id)),
+  ];
+  if (starters.length === 0) throw new RealtimeError('BAD_REQUEST');
+  if (starters.length > MAX_COMBATANTS) throw new RealtimeError('TOO_MANY_COMBATANTS');
+  const created = await prisma.combat.create({
+    data: {
+      sceneId,
+      combatants: { create: starters.map((tokenId, index) => ({ tokenId, order: index })) },
+      ...(sighting ? { sighting: JSON.stringify(sighting) } : {}),
+    },
+  });
+  return created.id;
+}
+
+/**
+ * Posiłki w trwającej walce (etap 56, decyzja MG z 19.10): figurze bez
+ * właściciela, dołożonej ręką MG albo zauważonej przez drużynę, inicjatywę
+ * rzuca serwer od razu — jej miejsce w kolejce rozstrzyga, czy gra jeszcze
+ * w tej Rundzie (`nextTurn` liczy od miejsca aktywnego). Gracz rzuca kubkiem.
+ */
+export async function rollJoinedInitiative(
+  deps: RealtimeDeps,
+  combatId: string,
+  tokenIds: readonly string[],
+): Promise<void> {
+  const combat = await loadCombatById(deps.ctx.prisma, combatId);
+  if (combat.round < 1) return;
+  const wanted = new Set(tokenIds);
+  const targets = combat.combatants.filter(
+    (row) =>
+      hasFigure(row) &&
+      wanted.has(row.tokenId) &&
+      row.initiative === null &&
+      combatantOwnerId(row) === null,
+  );
+  if (targets.length === 0) return;
+  await rollFor(deps, targets);
+  await renumberOrder(deps.ctx.prisma, await loadCombatById(deps.ctx.prisma, combat.id));
 }
 
 /**
@@ -990,6 +1069,14 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
     const tokenIds = requireIdList(payload?.tokenIds);
     const { combat, scene } = await requireSceneOfTokens(deps.ctx.prisma, campaignId, tokenIds);
 
+    if (!combat) {
+      // Etap 50a (wzór Foundry): pierwsze „Do starcia” zakłada starcie „Przed
+      // walką” (runda 0) — i figury graczy są w nim od razu (decyzja MG z
+      // 10.10), bo to NPC-ów MG zapominał, a drużyna walczy zawsze.
+      const createdId = await foundEncounter(deps.ctx.prisma, scene.id, tokenIds);
+      return emitReloadedFor(deps, campaignId, scene, createdId, user);
+    }
+
     const containers = await containerTokenIds(
       deps.ctx.prisma,
       await deps.ctx.prisma.token.findMany({
@@ -997,29 +1084,6 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
         select: { id: true, characterId: true },
       }),
     );
-    if (!combat) {
-      // Etap 50a (wzór Foundry): pierwsze „Do starcia” zakłada starcie „Przed
-      // walką” (runda 0) — i figury graczy są w nim od razu (decyzja MG z
-      // 10.10), bo to NPC-ów MG zapominał, a drużyna walczy zawsze.
-      const party = await deps.ctx.prisma.token.findMany({
-        where: { sceneId: scene.id, ownerId: { not: null }, id: { notIn: tokenIds } },
-        select: { id: true, characterId: true },
-      });
-      const partyContainers = await containerTokenIds(deps.ctx.prisma, party);
-      const starters = [
-        ...party.map((token) => token.id).filter((id) => !partyContainers.has(id)),
-        ...tokenIds.filter((id) => !containers.has(id)),
-      ];
-      if (starters.length === 0) throw new RealtimeError('BAD_REQUEST');
-      if (starters.length > MAX_COMBATANTS) throw new RealtimeError('TOO_MANY_COMBATANTS');
-      const created = await deps.ctx.prisma.combat.create({
-        data: {
-          sceneId: scene.id,
-          combatants: { create: starters.map((tokenId, index) => ({ tokenId, order: index })) },
-        },
-      });
-      return emitReloadedFor(deps, campaignId, scene, created.id, user);
-    }
 
     const known = new Set(combat.combatants.map((c) => c.tokenId));
     const fresh = tokenIds.filter((id) => !known.has(id) && !containers.has(id));
@@ -1034,6 +1098,8 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
         data: { combatId: combat.id, tokenId, order: order++ },
       });
     }
+    // Etap 56: NPC dołożony w trwającej walce dostaje inicjatywę od serwera.
+    await rollJoinedInitiative(deps, combat.id, fresh);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });

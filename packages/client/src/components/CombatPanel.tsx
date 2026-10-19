@@ -29,6 +29,12 @@ import {
   startCombat,
 } from '../socket.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
+import {
+  DISPOSITION_HINTS,
+  DISPOSITION_RANK,
+  TOKEN_DISPOSITION_LABELS,
+  dispositionOf,
+} from '../disposition.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { CombatActions } from './CombatActions.js';
 import { HudIcon, StatusIcon } from './HudIcon.js';
@@ -84,7 +90,7 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
         />
       ) : (
         <ul className="combat-picker">
-          {tokens.map((token) => (
+          {byDisposition(tokens).map((token) => (
             <li key={token.id}>
               <label className="combat-picker-row">
                 <input
@@ -93,6 +99,7 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
                   onChange={() => toggleSelection(token.id)}
                 />
                 <span className="combat-picker-name">{token.name}</span>
+                <DispositionTag token={token} />
                 {token.hidden && <span className="combat-tag">ukryty</span>}
               </label>
             </li>
@@ -117,6 +124,94 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Znaczek postawy przy figurze na liście (etap 56) — widzi go tylko MG. */
+function DispositionTag({ token }: { token: TokenView }) {
+  const disposition = dispositionOf(token);
+  return (
+    <span
+      className={`combat-tag disposition-tag disposition-tag--${disposition}`}
+      title={DISPOSITION_HINTS[disposition]}
+    >
+      {TOKEN_DISPOSITION_LABELS[disposition]}
+    </span>
+  );
+}
+
+/** Wrogie na górze, potem neutralne i przyjazne; w grupie — kolejność sceny. */
+function byDisposition(tokens: TokenView[]): TokenView[] {
+  return [...tokens].sort(
+    (a, b) => DISPOSITION_RANK[dispositionOf(a)] - DISPOSITION_RANK[dispositionOf(b)],
+  );
+}
+
+/**
+ * „Dołącz do walki” (etap 56, wzór: Combat Tracker z Foundry): figury sceny
+ * spoza kolejki, wrogie na górze, z wyborem wielu naraz. NPC dołożony
+ * w trwającej walce dostaje inicjatywę od serwera, gracz rzuca kubkiem.
+ */
+function JoinFightPicker({ outsiders }: { outsiders: TokenView[] }) {
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const rows = useMemo(() => byDisposition(outsiders), [outsiders]);
+  // Figura, która w międzyczasie weszła do walki albo zeszła ze sceny, wypada z wyboru.
+  const chosen = picked.filter((id) => outsiders.some((token) => token.id === id));
+
+  async function add(ids: string[]) {
+    if (ids.length === 0) return;
+    setBusy(true);
+    const ack = await addToCombat(ids);
+    setBusy(false);
+    noteAck('action', ack, combatErrorText);
+    if (ack.ok) setPicked([]);
+  }
+
+  return (
+    <>
+      <p className="panel-section-title">Dołącz do walki</p>
+      <ul className="combat-picker">
+        {rows.map((token) => (
+          <li key={token.id} className="combat-picker-row">
+            <label className="combat-picker-pick">
+              <input
+                type="checkbox"
+                checked={chosen.includes(token.id)}
+                onChange={() =>
+                  setPicked((now) =>
+                    now.includes(token.id)
+                      ? now.filter((id) => id !== token.id)
+                      : [...now, token.id],
+                  )
+                }
+              />
+              <span className="combat-picker-name">{token.name}</span>
+            </label>
+            <DispositionTag token={token} />
+            {token.hidden && <span className="combat-tag">ukryty</span>}
+            <button
+              type="button"
+              className="small-button"
+              disabled={busy}
+              onClick={() => void add([token.id])}
+            >
+              Dodaj
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="scene-editor-row">
+        <button
+          type="button"
+          className="small-button"
+          disabled={busy || chosen.length === 0}
+          onClick={() => void add(chosen)}
+        >
+          {`Dodaj zaznaczone (${chosen.length})`}
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -566,26 +661,7 @@ export function CombatPanel() {
         </ul>
       )}
 
-      {isGm && outsiders.length > 0 && (
-        <>
-          <p className="panel-section-title">Dołącz do walki</p>
-          <ul className="combat-picker">
-            {outsiders.map((token) => (
-              <li key={token.id} className="combat-picker-row">
-                <span className="combat-picker-name">{token.name}</span>
-                {token.hidden && <span className="combat-tag">ukryty</span>}
-                <button
-                  type="button"
-                  className="small-button"
-                  onClick={() => void addToCombat([token.id])}
-                >
-                  Dodaj
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {isGm && outsiders.length > 0 && <JoinFightPicker outsiders={outsiders} />}
 
       {isGm && (
         <div className="scene-editor-row">

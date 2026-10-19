@@ -1,5 +1,21 @@
 # Pomysły poza zakresem etapów
 
+**19.10.2026 (etap 56) — postawa na wzorcu statysty, boty i uspokojenie po restarcie.** Od 56
+wroga figura zauważona przez drużynę zakłada starcie (`realtime/foe-sighting.ts`, umowa na górze
+`tura`). Poza zakresem zostało: (1) **postawa żyje na figurze, nie na karcie** — każdy statysta
+postawiony ze wzorca startuje jako Neutralny i MG oznacza bandę paskiem grupy; pole „Postawa” na
+wzorcu (`Character`), które dziedziczy nowa figura, oszczędziłoby klik przy każdej zasadzce.
+(2) **Pamięć uspokojonych wrogów jest w procesie** — po restarcie serwera wróg widoczny w chwili
+„Odwołaj” zaczyna walkę przy następnym kroku drużyny; kolumna na figurze przeżyłaby restart.
+(3) **Zatrzymany marsz nie płaci puli** — figura staje na polu zauważenia bez rachunku Eksploracji
+(walka i tak liczy od nowa). (4) **Boty-towarzysze nie mają postawy w promptach** — bot nie wie, kto
+jest wrogiem, dopóki MG mu nie powie; `disposition` w kontekście sceny dałoby mu tę wiedzę.
+(5) **MG oglądający inną scenę nie dostaje wezwania** — pasek i zakładka „Walka” idą za magazynem
+walki oglądanej sceny; wpis w znaczniku „Czeka na MG” („Drużyna widzi wroga na scenie X”) by to
+domknął. Do decyzji
+MG: czy starcie z zauważenia ma też ruszać samo, gdy wroga zobaczy figura MG z „oczami drużyny”, a nie
+tylko gracz (dziś liczy się wszystko, co gracze mają na ekranie — także oczami towarzysza).
+
 **19.10.2026 (Skok) — boty i animacja skoku.** Od 19.10 figura skacze z paska o dwie kratki
 ponad barierą i osłoną (`token:jump`, umowa na górze `tura`). Dwie rzeczy zostały poza zakresem:
 (1) **bot nie skacze** — `bot-combat.ts` bierze z paska tylko broń i przeładowanie, a jego marsz idzie

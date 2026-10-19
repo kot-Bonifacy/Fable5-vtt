@@ -99,6 +99,7 @@ import {
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
+import { COMBAT_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
@@ -154,6 +155,7 @@ import { useSmokeStore } from '../stores/smokeStore.js';
 import { useTargetStore } from '../stores/targetStore.js';
 import { NoticeColumn, type PinnedNotice } from './NoticeColumn.js';
 import { useFoesDefeatedNotice } from '../foes-defeated.js';
+import { useSightingNotice } from '../foe-sighting.js';
 import { clearNotices, noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { usePaceStore } from '../stores/paceStore.js';
 import {
@@ -254,6 +256,9 @@ function moveErrorText(code: string | undefined): string {
       return PLAYER_MOVE_STOP_NOTE;
     case 'MOVE_PACE':
       return PLAYER_MOVE_PACE_NOTE;
+    // Etap 56: drużyna zobaczyła wroga — do startu walki gracze stoją.
+    case 'COMBAT_PENDING':
+      return COMBAT_PENDING_NOTE;
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:
@@ -1333,6 +1338,25 @@ export function MapArea() {
       (x, y) => rendererRef.current?.pullViewTo(x, y),
     );
     return () => bindMapPing(null, null, null);
+  }, [ready, scene]);
+
+  // Etap 56: serwer zatrzymał marsz — drużyna zobaczyła wroga. Pole zatrzymania
+  // jest już w magazynie (upsert przyszedł przed zatrzymaniem).
+  useEffect(() => {
+    if (!ready || !scene) {
+      bindWalkHalt(null, null);
+      return;
+    }
+    bindWalkHalt(scene.id, (tokenIds) => {
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      renderer.haltWalk(tokenIds);
+      for (const tokenId of tokenIds) {
+        const settled = useTokenStore.getState().tokens[tokenId];
+        if (settled) renderer.snapTokenBack(tokenId, settled.x, settled.y);
+      }
+    });
+    return () => bindWalkHalt(null, null);
   }, [ready, scene]);
 
   // Cudze groty celowania (03.10) — tą samą drogą co pingi.
@@ -2452,6 +2476,7 @@ export function MapArea() {
   }, [playerStopped, stoppedSceneId]);
 
   const foesDefeatedNotice = useFoesDefeatedNotice();
+  const sightingNotice = useSightingNotice();
   const pinned = mapPinnedNotices({
     placement: placement?.name ?? null,
     targeting,
@@ -2459,6 +2484,7 @@ export function MapArea() {
       !isGm && !walkLearned && walkPreviewFor ? (walkPreviewName ?? 'twojej figury') : null,
   });
   if (foesDefeatedNotice) pinned.unshift(foesDefeatedNotice);
+  if (sightingNotice) pinned.unshift(sightingNotice);
 
   // Gracz nigdy nie widzi kratki stołu spod mapy (decyzja MG, 18.09): kamera
   // i tak nie wyjeżdża poza mapę, ale gdyby kiedyś wyjechała — pod spodem ma

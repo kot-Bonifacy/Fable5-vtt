@@ -541,7 +541,11 @@ describe('combat tracker', () => {
       'combat:add',
     );
     expect(state.combatants).toHaveLength(4);
-    expect(state.combatants.find((c) => c.name === 'Posiłki')?.initiative).toBeNull();
+    // Etap 56 (decyzja MG z 19.10): NPC dołożony w trwającej walce dostaje
+    // inicjatywę od serwera — wcześniej stał na dole kolejki z „—”.
+    expect(state.combatants.find((c) => c.name === 'Posiłki')?.initiative).toEqual(
+      expect.any(Number),
+    );
 
     // Deleting the token pulls it out of the fight (DB cascade + broadcast).
     const update = waitFor<CombatUpdateBroadcast>(gm, 'combat:update');

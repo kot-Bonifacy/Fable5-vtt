@@ -144,6 +144,12 @@ export interface TokenView {
    */
   sharedVision?: boolean | null;
   /**
+   * Surowa kolumna `Token.disposition` (etap 56, Disposition z Foundry):
+   * `null` — samo (`tokenDisposition`). Prywatne — postawę zna tylko MG
+   * (i właściciel własnej figury, który nic z niej nie wyczyta).
+   */
+  disposition?: TokenDisposition | null;
+  /**
    * Pula metrów Eksploracji tej figury (etap 45): ile mieści, gdy jest pełna —
    * ruch z jednej tury walki według karty. Prywatne, jak PW; `null` — figura
    * bez karty, której pula bierze `PACE_FALLBACK_CAP_M`.
@@ -261,6 +267,8 @@ export interface TokenPatch {
    * Patrz `TokenView.sharedVision`.
    */
   sharedVision?: boolean | null;
+  /** Postawa (etap 56): `null` — samo. Patrz `TokenView.disposition`. */
+  disposition?: TokenDisposition | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -383,6 +391,16 @@ export interface TokenDeleteBroadcast {
 export interface TokenSyncBroadcast {
   sceneId: string;
   tokens: TokenView[];
+}
+
+/**
+ * Server → kontrolujący figurę `token:halt` (etap 56): drużyna zobaczyła wroga,
+ * więc marsz tych figur staje na polu, które serwer już zapisał (`token:upsert`
+ * przyszedł przed tym zdarzeniem). Klient kończy marsz bez lądowania.
+ */
+export interface TokenHaltBroadcast {
+  sceneId: string;
+  tokenIds: string[];
 }
 
 /** Server → client `token:move`. `byUserId` lets the dragging client skip its own echo. */
@@ -643,6 +661,10 @@ export function sanitizeTokenPatch(
     if (input.sharedVision !== null && typeof input.sharedVision !== 'boolean') return null;
     patch.sharedVision = input.sharedVision;
   }
+  if ('disposition' in input) {
+    if (input.disposition !== null && !isTokenDisposition(input.disposition)) return null;
+    patch.disposition = input.disposition;
+  }
   if ('visionRange' in input) {
     const range = sanitizeVisionRange(input.visionRange);
     if (range === undefined) return null;
@@ -793,4 +815,35 @@ export function tokenSharesVision(token: {
 }): boolean {
   if (token.hidden) return false;
   return token.sharedVision ?? token.playerControlled;
+}
+
+/**
+ * Postawa figury wobec drużyny (etap 56) — Disposition z Foundry VTT.
+ * Wroga figura zauważona przez drużynę zakłada starcie; pozostałe niczego
+ * nie wyzwalają, a MG widzi je w kolorze na mapie i w zakładce „Walka”.
+ */
+export type TokenDisposition = 'friendly' | 'neutral' | 'hostile';
+
+export const TOKEN_DISPOSITIONS: readonly TokenDisposition[] = ['friendly', 'neutral', 'hostile'];
+
+export const TOKEN_DISPOSITION_LABELS: Readonly<Record<TokenDisposition, string>> = {
+  friendly: 'Przyjazna',
+  neutral: 'Neutralna',
+  hostile: 'Wroga',
+};
+
+export function isTokenDisposition(value: unknown): value is TokenDisposition {
+  return typeof value === 'string' && (TOKEN_DISPOSITIONS as readonly string[]).includes(value);
+}
+
+/**
+ * Postawa, którą figura ma naprawdę: `disposition` `null` znaczy „samo” —
+ * figura prowadzona przez gracza jest Przyjazna, figura MG Neutralna (decyzja
+ * MG z 19.10: walkę wyzwala tylko to, co MG świadomie oznaczy jako wrogie).
+ */
+export function tokenDisposition(token: {
+  disposition: TokenDisposition | null | undefined;
+  playerControlled: boolean;
+}): TokenDisposition {
+  return token.disposition ?? (token.playerControlled ? 'friendly' : 'neutral');
 }

@@ -8,6 +8,7 @@ import {
   sanitizeTokenImageUrl,
   sanitizeTokenPatch,
   snapTokenPosition,
+  tokenDisposition,
   tokenTableName,
   type TokenSnapScene,
 } from './tokens.js';
@@ -144,6 +145,20 @@ describe('sanitizeTokenPatch', () => {
     expect(sanitizeTokenPatch({ publicName: null })).toEqual({ publicName: null });
     expect(sanitizeTokenPatch({ publicName: 7 })).toBeNull();
     expect(sanitizeTokenPatch({ publicName: 'x'.repeat(65) })).toBeNull();
+  });
+});
+
+describe('postawa figury (etap 56)', () => {
+  it('przyjmuje trzy postawy i „samo”, nic więcej', () => {
+    expect(sanitizeTokenPatch({ disposition: 'hostile' })).toEqual({ disposition: 'hostile' });
+    expect(sanitizeTokenPatch({ disposition: null })).toEqual({ disposition: null });
+    expect(sanitizeTokenPatch({ disposition: 'wrogi' })).toBeNull();
+  });
+
+  it('„samo” daje graczowi Przyjazną, a NPC-owi Neutralną', () => {
+    expect(tokenDisposition({ disposition: null, playerControlled: true })).toBe('friendly');
+    expect(tokenDisposition({ disposition: null, playerControlled: false })).toBe('neutral');
+    expect(tokenDisposition({ disposition: 'hostile', playerControlled: false })).toBe('hostile');
   });
 });
 

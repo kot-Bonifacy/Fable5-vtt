@@ -687,6 +687,14 @@ model Token {
    * Rozstrzyga `tokenSharesVision` w `shared/tokens.ts`.
    */
   sharedVision Boolean?
+  /**
+   * Postawa figury wzorem Foundry (Disposition, etap 56): `friendly` |
+   * `neutral` | `hostile`; null — samo (figura gracza Przyjazna, NPC
+   * Neutralny). Wroga figura zauważona przez drużynę zakłada starcie
+   * (`realtime/sighting.ts`). Widzi ją tylko MG. Rozstrzyga `tokenDisposition`
+   * w `shared/tokens.ts`.
+   */
+  disposition String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1170,6 +1178,11 @@ model Combat {
   /// on, and it dies with the combat, which is precisely the lifetime this
   /// column has.
   systemState String?
+  /// Starcie założone przez zauważenie wroga (etap 56): JSON
+  /// `{ spotterIds, foeIds }` — figury drużyny, które zobaczyły, i zauważeni
+  /// wrogowie. Dopóki trwa runda 0, gracze stoją (`COMBAT_PENDING`), a MG ma
+  /// nad mapą wezwanie „Rozpocznij walkę / Odwołaj”. Null — starcie MG.
+  sighting String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

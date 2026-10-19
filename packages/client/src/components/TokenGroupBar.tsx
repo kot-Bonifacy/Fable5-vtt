@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StatusIcon } from './HudIcon.js';
-import type { SocketAck } from '@vtt/shared';
+import type { SocketAck, TokenDisposition } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { useAuthStore } from '../stores/authStore.js';
 import { notifyRefusal } from '../notices.js';
@@ -9,6 +9,12 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { deleteToken, duplicateToken, updateToken } from '../socket.js';
 import { encounterState, toggleEncounter } from '../combat-encounter.js';
+import {
+  DISPOSITION_HINTS,
+  TOKEN_DISPOSITIONS,
+  TOKEN_DISPOSITION_LABELS,
+  setDisposition,
+} from '../disposition.js';
 import { figureCardName } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { confirmDestructive } from '../confirm.js';
@@ -154,6 +160,33 @@ export function TokenGroupBar() {
             ⧉ Duplikuj
           </button>
         </>
+      )}
+      {/* Etap 56: postawa całej grupy (Disposition z Foundry) — wrogów zwykle
+          stawia się bandą, więc i oznacza się ich bandą. */}
+      {isGm && (
+        <select
+          className="small-button token-group-disposition"
+          value=""
+          disabled={busy}
+          aria-label="Postawa zaznaczonych figur"
+          title={DISPOSITION_HINTS.hostile}
+          onChange={(e) => {
+            const value = e.target.value as TokenDisposition;
+            if (!value) return;
+            setBusy(true);
+            void setDisposition(
+              picked.map((token) => token.id),
+              value,
+            ).finally(() => setBusy(false));
+          }}
+        >
+          <option value="">Postawa…</option>
+          {TOKEN_DISPOSITIONS.map((value) => (
+            <option key={value} value={value}>
+              {TOKEN_DISPOSITION_LABELS[value]}
+            </option>
+          ))}
+        </select>
       )}
       {/* Etap 50a: „Do starcia” także bez walki — zakłada starcie „Przed walką”. */}
       {isGm && encounter.fighters.length > 0 && (

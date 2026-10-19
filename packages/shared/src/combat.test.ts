@@ -287,6 +287,11 @@ describe('filterCombatForPlayer', () => {
     expect(activeCombatant(view)?.name).toBe('ziti');
   });
 
+  it('never carries who spotted whom — the GM-only sighting (etap 56)', () => {
+    const state = combat([visible], { sighting: { spotterIds: ['token-ziti'], foeIds: ['f'] } });
+    expect(filterCombatForPlayer(state)).not.toHaveProperty('sighting');
+  });
+
   it('strips the hidden flag from the remaining rows', () => {
     const view = filterCombatForPlayer(combat([visible], { round: 1 }));
     expect(view.combatants[0]).not.toHaveProperty('hidden');

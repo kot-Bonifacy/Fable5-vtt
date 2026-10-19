@@ -42,6 +42,7 @@ import {
   tokenCentre,
   tokenHpShareOf,
   tokenSharesVision,
+  isTokenDisposition,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
@@ -70,6 +71,12 @@ import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { fetchFogState } from './fog-io.js';
 import { tokenLightOf } from './lights-io.js';
+import {
+  COMBAT_PENDING,
+  checkSighting,
+  refuseMoveBeforeSightedFight,
+  sightedFightPending,
+} from './foe-sighting.js';
 import {
   emitDragVision,
   emitVisionToPlayers,
@@ -171,6 +178,8 @@ export function toTokenView(
     view.light = tokenLightOf(token);
     view.hp = hp;
     view.sharedVision = token.sharedVision;
+    // Postawa (etap 56) — tylko MG i właściciel; graczom zasadzka się nie zdradza.
+    view.disposition = isTokenDisposition(token.disposition) ? token.disposition : null;
     // Pula Eksploracji (etap 45) — prywatna jak PW: ile mieści, gdy pełna.
     view.paceCapM = linked ? linked.moveM : null;
   } else {
@@ -182,7 +191,7 @@ export function toTokenView(
 }
 
 /** Loads the sheets linked by the given tokens, keyed by character id. */
-async function loadLinkedSheets(
+export async function loadLinkedSheets(
   prisma: PrismaClient,
   registry: SheetRegistry,
   tokens: { characterId: string | null }[],
@@ -194,7 +203,7 @@ async function loadLinkedSheets(
 }
 
 /** Who controls a token: its owner, or the owner of the sheet it is bound to. */
-function controllerIds(
+export function controllerIds(
   token: Pick<Token, 'ownerId'>,
   linked: LinkedSheet | undefined | null,
 ): Set<string> {
@@ -403,6 +412,9 @@ export async function emitSceneTokensToPlayers(
     );
     member.emit('token:sync', { sceneId: scene.id, tokens } satisfies TokenSyncBroadcast);
   }
+  // Każda zmiana listy figur graczy (mgła, ściany, światła, lądowanie) może
+  // pokazać drużynie wroga (etap 56).
+  await checkSighting(deps, campaignId, scene);
 }
 
 export function toSnapScene(scene: Scene): TokenSnapScene {
@@ -1090,6 +1102,7 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
         size: token.size,
         ownerId: token.ownerId,
         hidden: token.hidden,
+        disposition: token.disposition,
         ...(copiedCharacter
           ? { characterId: copiedCharacter.id, hpCurrent: null, hpMax: null }
           : { hpCurrent: hpMax, hpMax }),
@@ -1104,6 +1117,8 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
     });
     const copyLinked = copiedCharacter ? toLinkedSheet(copiedCharacter, deps.ctx.cpred) : null;
     await emitTokenUpsert(deps, campaignId, scene, copy, copyLinked);
+    // Kopia wroga postawiona drużynie przed oczami (etap 56).
+    await checkSighting(deps, campaignId, scene);
     return toTokenView(copy, true, copyLinked);
   },
 });
@@ -1163,6 +1178,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       data.ownerId = character.ownerId;
     }
     if (patch.sharedVision !== undefined) data.sharedVision = patch.sharedVision;
+    if (patch.disposition !== undefined) data.disposition = patch.disposition;
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
     let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
@@ -1238,6 +1254,14 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     // and hiding a token must pull its row from the players' tracker too.
     if (patch.name !== undefined || patch.imageUrl !== undefined || patch.hidden !== undefined) {
       await emitCombatOfScene(deps, campaignId, scene);
+    }
+    // Etap 56: wróg odsłonięty albo oznaczony drużynie na oczach zaczyna walkę.
+    if (
+      patch.disposition !== undefined ||
+      patch.hidden !== undefined ||
+      patch.statuses !== undefined
+    ) {
+      await checkSighting(deps, campaignId, scene);
     }
     return toTokenView(updated, true, linked);
   },
@@ -1687,6 +1711,7 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
+    await refuseMoveBeforeSightedFight(deps, scene.id, user);
     const points = sanitizeTokenPath(payload?.route);
     if (!points) throw new RealtimeError('BAD_REQUEST');
 
@@ -1720,6 +1745,68 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
   handler: async ({ deps, socket, user, payload }) =>
     performTokenMove(deps, { campaignId: requireCampaignId(socket.data), user, payload }),
 });
+
+/**
+ * Rozsyła jedną klatkę ruchu figury wszystkim, którym się należy — mgła,
+ * widzenie dynamiczne, ukrycie. `token` to wiersz sprzed ruchu (granica mgły
+ * liczy się z obu pozycji). Poza `performTokenMove` woła ją zatrzymanie
+ * marszu z etapu 56: pole zatrzymania musi dojść do stołu jako lądowanie
+ * (`final`), bo lista figur nie przesuwa figury, która przed chwilą szła (#47).
+ */
+export async function emitTokenMoveFrame(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  move: Omit<TokenMoveBroadcast, 'seq'>,
+): Promise<void> {
+  const position = { x: move.x, y: move.y };
+  const isFinal = move.final;
+  // Crossing the fog boundary changes *who the token exists for*, which a
+  // move broadcast cannot express — so those frames go to the GM and the
+  // controllers only, and the players get a reconciling list on the drop.
+  const fog = await fetchFogState(deps.ctx.prisma, scene);
+  const grid = toGridScene(scene);
+  const fogMatters =
+    fog.enabled &&
+    (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, ...position }, grid, fog));
+  const fogLinked = fogMatters ? await loadLinkedSheet(deps, token) : null;
+
+  if (
+    scene.active &&
+    !token.hidden &&
+    (usesDynamicVision(scene) ||
+      (await deps.ctx.prisma.wall.count({
+        where: { sceneId: scene.id, hidesFigures: true, kind: { in: ['barrier', 'gate'] } },
+      })) > 0)
+  ) {
+    await emitDynamicMove(deps, campaignId, scene, token, move, position, isFinal);
+    return;
+  }
+
+  if (!scene.active) {
+    deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
+  } else if (token.hidden) {
+    deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+  } else if (fogMatters && !sharesVision(token, fogLinked)) {
+    // „Oczy drużyny" (etap 45) idą gałęzią niżej: drużyna widzi je zawsze,
+    // więc granica mgły nie zmienia, dla kogo figura istnieje.
+    deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+    for (const userId of controllerIds(token, fogLinked)) {
+      await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
+    }
+    if (isFinal) await emitSceneTokensToPlayers(deps, campaignId, scene);
+  } else {
+    const room = campaignRoom(campaignId);
+    // Only the persisted final position consumes a seq — intermediate drag
+    // frames are ephemeral and a missed one must not trigger a resync.
+    if (isFinal) {
+      deps.io.to(room).emit('token:move', { ...move, seq: deps.seqs.next(room) });
+    } else {
+      deps.io.to(room).emit('token:move', move);
+    }
+  }
+}
 
 /**
  * One move, socket-free (stage 20b) — the bot walking its figure goes through
@@ -1763,6 +1850,9 @@ export async function performTokenMove(
     // dopiero na upuszczeniu (`final`), a Stop ma odrzucić także pojedynczą
     // klatkę ciągnięcia. MG nie jest nim związany nigdy (jak budżetem Tury, 14b).
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
+    // Etap 56: drużyna zobaczyła wroga — do „Rozpocznij walkę” albo „Odwołaj”
+    // gracze stoją, także z klatkami marszu, które były już w drodze.
+    await refuseMoveBeforeSightedFight(deps, scene.id, user);
     if (typeof payload?.x !== 'number' || typeof payload?.y !== 'number') {
       throw new RealtimeError('BAD_REQUEST');
     }
@@ -1820,11 +1910,8 @@ export async function performTokenMove(
     let turnedTo: number | null = null;
 
     /** Sends one frame of this token's movement to everyone entitled to it. */
-    const broadcast = async (
-      position: { x: number; y: number },
-      isFinal: boolean,
-    ): Promise<void> => {
-      const move: Omit<TokenMoveBroadcast, 'seq'> = {
+    const broadcast = (position: { x: number; y: number }, isFinal: boolean): Promise<void> =>
+      emitTokenMoveFrame(deps, campaignId, scene, token, {
         sceneId: scene.id,
         tokenId: token.id,
         x: position.x,
@@ -1832,52 +1919,7 @@ export async function performTokenMove(
         final: isFinal,
         byUserId: user.id,
         ...(turnedTo === null ? {} : { facing: turnedTo }),
-      };
-      // Crossing the fog boundary changes *who the token exists for*, which a
-      // move broadcast cannot express — so those frames go to the GM and the
-      // controllers only, and the players get a reconciling list on the drop.
-      const fog = await fetchFogState(deps.ctx.prisma, scene);
-      const grid = toGridScene(scene);
-      const fogMatters =
-        fog.enabled &&
-        (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, ...position }, grid, fog));
-      const fogLinked = fogMatters ? await loadLinkedSheet(deps, token) : null;
-
-      if (
-        scene.active &&
-        !token.hidden &&
-        (usesDynamicVision(scene) ||
-          (await deps.ctx.prisma.wall.count({
-            where: { sceneId: scene.id, hidesFigures: true, kind: { in: ['barrier', 'gate'] } },
-          })) > 0)
-      ) {
-        await emitDynamicMove(deps, campaignId, scene, token, move, position, isFinal);
-        return;
-      }
-
-      if (!scene.active) {
-        deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
-      } else if (token.hidden) {
-        deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-      } else if (fogMatters && !sharesVision(token, fogLinked)) {
-        // „Oczy drużyny" (etap 45) idą gałęzią niżej: drużyna widzi je zawsze,
-        // więc granica mgły nie zmienia, dla kogo figura istnieje.
-        deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-        for (const userId of controllerIds(token, fogLinked)) {
-          await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
-        }
-        if (isFinal) await emitSceneTokensToPlayers(deps, campaignId, scene);
-      } else {
-        const room = campaignRoom(campaignId);
-        // Only the persisted final position consumes a seq — intermediate drag
-        // frames are ephemeral and a missed one must not trigger a resync.
-        if (isFinal) {
-          deps.io.to(room).emit('token:move', { ...move, seq: deps.seqs.next(room) });
-        } else {
-          deps.io.to(room).emit('token:move', move);
-        }
-      }
-    };
+      });
 
     if (final) {
       // Only the drop is judged (stage 14c). Intermediate frames are a hand in
@@ -1952,6 +1994,24 @@ export async function performTokenMove(
     }
 
     await broadcast({ x, y }, final);
+    // Etap 56: czy ten krok (albo ruch wroga) pokazał drużynie wroga. Klatka
+    // marszu jeszcze nie leży w bazie, więc jedzie jako pozycja na żywo.
+    const halted = await checkSighting(
+      deps,
+      campaignId,
+      scene,
+      final ? undefined : { tokenId: token.id, x, y },
+    );
+    const stopped = halted.get(token.id);
+    if (stopped) return stopped;
+    // Klatka gracza, która przeszła bramkę, zanim równoległa klatka zauważenia
+    // założyła starcie, rozesłała pozycję za polem zatrzymania — stół dostaje
+    // z powrotem pole z bazy, a gracz odmowę.
+    if (!isGm && !final && (await sightedFightPending(deps, scene.id))) {
+      const standing = await deps.ctx.prisma.token.findUnique({ where: { id: token.id } });
+      if (standing) await broadcast({ x: standing.x, y: standing.y }, true);
+      throw new RealtimeError(COMBAT_PENDING);
+    }
     return { x, y };
   }
 }

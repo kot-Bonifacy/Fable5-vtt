@@ -24,6 +24,7 @@ import {
   ownerRingWidth,
   portraitRadius,
 } from './token-ring.js';
+import { dispositionOf } from '../disposition.js';
 
 /** Everything a node needs to draw itself for the local viewer. */
 export interface TokenNodeCtx {
@@ -56,6 +57,14 @@ export interface TokenNodeCtx {
 const RING_OWN = 0x4ade80;
 const RING_OTHER_PLAYER = 0x38bdf8;
 const RING_NPC = 0xf87171;
+/**
+ * Postawa figury MG u MG (etap 56, Disposition z Foundry — kolor obramowania):
+ * Wroga zostaje czerwona jak każdy NPC u graczy, Neutralna szaroniebieska,
+ * Przyjazna morska. Gracze widzą każdego NPC-a na czerwono — postawa nie
+ * opuszcza serwera.
+ */
+const RING_NPC_NEUTRAL = 0xcbd5e1;
+const RING_NPC_FRIENDLY = 0x2dd4bf;
 
 /** Halo around whoever is taking their turn — amber, like the tracker. */
 const TURN_RING_COLOR = 0xfacc15;
@@ -226,7 +235,12 @@ function placeholderColor(name: string): number {
 }
 
 function ringColor(token: TokenView, ctx: TokenNodeCtx): number {
-  if (token.ownerId === null) return RING_NPC;
+  if (token.ownerId === null) {
+    if (!ctx.isGm) return RING_NPC;
+    const disposition = dispositionOf(token);
+    if (disposition === 'neutral') return RING_NPC_NEUTRAL;
+    return disposition === 'friendly' ? RING_NPC_FRIENDLY : RING_NPC;
+  }
   return token.ownerId === ctx.myUserId ? RING_OWN : RING_OTHER_PLAYER;
 }
 
@@ -364,6 +378,7 @@ export class TokenNode extends Container {
       token.size,
       token.ownerId,
       token.hidden,
+      token.disposition ?? null,
       token.statuses,
       token.hp ?? null,
       token.hpShare ?? null,

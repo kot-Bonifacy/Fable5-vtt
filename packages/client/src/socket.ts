@@ -260,6 +260,8 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenAimBroadcast,
+  TokenHaltBroadcast,
+  CombatJoinedBroadcast,
   TokenTargetBroadcast,
   TokenAssetDeleteResult,
   TokenCombatProfile,
@@ -352,6 +354,7 @@ import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
+import { COMBAT_PENDING_NOTE, receiveWalkHalt } from './walk-halt.js';
 import { receiveTokenAim } from './map-aim.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
@@ -1362,6 +1365,19 @@ export function connectSocket(userId: string): Socket {
   onPresented('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
   // Grot celowania (03.10) — ulotny jak ping: bez `seq`, bez zapisu, bez powtórki.
   onPresented('token:aim', (broadcast: TokenAimBroadcast) => receiveTokenAim(broadcast));
+  // Etap 56: drużyna zobaczyła wroga — marsz staje (tylko u prowadzącego).
+  onPresented('token:halt', (broadcast: TokenHaltBroadcast) => receiveWalkHalt(broadcast));
+  // Etap 56: wróg zauważony w trwającej walce dołączył sam (tylko MG).
+  onPresented('combat:joined', (broadcast: CombatJoinedBroadcast) => {
+    if (!viewingScene(broadcast.sceneId)) return;
+    const names = broadcast.tokenIds
+      .map((id) => tokens().tokens[id]?.name)
+      .filter((name): name is string => Boolean(name));
+    if (names.length === 0) return;
+    notifyInfo(`Do walki dołącza: ${names.join(', ')} — inicjatywę rzucił serwer.`, {
+      title: 'Drużyna widzi wroga',
+    });
+  });
   // Trwały cel (etap 50c) — już przefiltrowany do tych, którzy widzą obie figury.
   onPresented('token:target', (broadcast: TokenTargetBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useTargetStore.getState().apply(broadcast);
@@ -3619,6 +3635,8 @@ export function combatErrorText(code: string): string {
       return PLAYER_MOVE_STOP_NOTE;
     case 'MOVE_PACE':
       return PLAYER_MOVE_PACE_NOTE;
+    case 'COMBAT_PENDING':
+      return COMBAT_PENDING_NOTE;
     // Stage 14d: the refusal already carries its own sentence on the card.
     case 'STATUS_BLOCKED':
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';

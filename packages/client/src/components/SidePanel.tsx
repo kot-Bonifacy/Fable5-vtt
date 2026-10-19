@@ -24,6 +24,7 @@ import { useGmAttentionStore } from '../stores/gmAttentionStore.js';
 import { useWaitingCharacters } from './CharacterReadyPanel.js';
 import { useBetweenSessions } from '../session-view.js';
 import { useJournalStore } from '../stores/journalStore.js';
+import { useSightingTabSwitch } from '../foe-sighting.js';
 
 type Tab =
   | 'chat'
@@ -132,6 +133,9 @@ export function SidePanel() {
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const betweenSessions = useBetweenSessions();
   const activeTab: Tab = (!isGm && gmOnly) || (betweenSessions && tab === 'combat') ? 'chat' : tab;
+
+  // Etap 56: drużyna zobaczyła wroga — MG dobiera uczestników w „Walka”.
+  useSightingTabSwitch(isGm, () => setTab('combat'));
 
   // „Otwórz" przy linii dziennika na czacie przełącza zakładkę; sam wpis
   // rozwija już panel, który wtedy dostaje ognisko w store.

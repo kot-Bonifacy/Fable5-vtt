@@ -921,3 +921,64 @@
   background: rgb(var(--err-rgb) / 22%);
   color: var(--err);
 }
+
+/* --------------------------------------------------------------------------
+   Postawa figury (etap 56, Disposition z Foundry) — widzi ją tylko MG
+   -------------------------------------------------------------------------- */
+
+.disposition-tag--hostile {
+  color: var(--err-ink);
+  background: rgb(var(--err-rgb) / 0.14);
+}
+
+.disposition-tag--friendly {
+  color: var(--ok-ink);
+  background: rgb(var(--ok-rgb) / 0.14);
+}
+
+/* Pole wyboru i nazwa w „Dołącz do walki” — znaczki i „Dodaj” stoją obok. */
+.combat-picker-pick {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.context-menu-disposition {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.disposition-chip {
+  flex: 1;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.disposition-chip:hover {
+  background: var(--veil);
+}
+
+.disposition-chip[aria-pressed='true'] {
+  color: var(--text);
+  border-color: currentColor;
+  font-weight: 600;
+}
+
+.disposition-chip--hostile[aria-pressed='true'] {
+  color: var(--err-ink);
+  background: rgb(var(--err-rgb) / 0.12);
+}
+
+.disposition-chip--friendly[aria-pressed='true'] {
+  color: var(--ok-ink);
+  background: rgb(var(--ok-rgb) / 0.12);
+}

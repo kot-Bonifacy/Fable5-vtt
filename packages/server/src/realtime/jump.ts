@@ -49,6 +49,7 @@ import {
   requireCampaignToken,
   toSnapScene,
 } from './tokens.js';
+import { COMBAT_PENDING, sightedFightPending } from './foe-sighting.js';
 import { isPointObservable, usesDynamicVision } from './vision.js';
 import { endWalk } from './walks.js';
 import { fetchSceneWalls } from './walls-io.js';
@@ -92,6 +93,7 @@ export const JUMP_STATUS = 'JUMP_STATUS';
 export const JUMP_NO_METRES = 'JUMP_NO_METRES';
 
 const STOP_MESSAGE = 'Ruch wstrzymany przez MG.';
+const COMBAT_PENDING_MESSAGE = 'Wróg w zasięgu wzroku — czekaj, aż MG rozpocznie walkę.';
 
 /** Odmowa całego skoku: kod na drut i zdanie dla gracza. */
 interface JumpRefusal {
@@ -133,6 +135,10 @@ async function jumpRefusalFor(
 ): Promise<JumpRefusal | null> {
   const { scene, token, isGm, found } = jumper;
   if (!isGm && scene.playerMove === 'stop') return { code: 'MOVE_LOCKED', message: STOP_MESSAGE };
+  // Etap 56: drużyna zobaczyła wroga — przed walką nikt nie skacze.
+  if (!isGm && (await sightedFightPending(deps, scene.id))) {
+    return { code: COMBAT_PENDING, message: COMBAT_PENDING_MESSAGE };
+  }
   if (!isGm) {
     const statuses = readTokenStatuses(token.statuses);
     const blocked = sheetMovementBlock(statuses) ?? sheetActionBlock(statuses);

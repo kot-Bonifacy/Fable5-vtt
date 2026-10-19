@@ -1,6 +1,7 @@
 import type { ScenePoint, TokenJumpOption } from '@vtt/shared';
 import { CPRED_DEATH_SAVE_PENDING_MESSAGE } from '@vtt/shared';
 import { PLAYER_MOVE_STOP_NOTE } from './map/player-move.js';
+import { COMBAT_PENDING_NOTE } from './walk-halt.js';
 import { noteAck, notifyRefusal } from './notices.js';
 import { requestJumpOptions, sendTokenJump } from './socket.js';
 import { useHudStore, type HudJump } from './stores/hudStore.js';
@@ -120,6 +121,8 @@ export function jumpErrorText(code: string): string {
       return 'Złap oddech — na skok potrzeba więcej metrów z puli. Odnowi się w kilka sekund.';
     case 'MOVE_LOCKED':
       return PLAYER_MOVE_STOP_NOTE;
+    case 'COMBAT_PENDING':
+      return COMBAT_PENDING_NOTE;
     case 'NOT_YOUR_TURN':
       return 'To nie jest twoja tura.';
     case 'MOVE_BLOCKED':

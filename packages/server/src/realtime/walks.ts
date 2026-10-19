@@ -78,3 +78,14 @@ export function activeWalk(
 export function endWalk(tokenId: string): void {
   walks.delete(tokenId);
 }
+
+/**
+ * Marsze graczy w toku na scenie (etap 56) — zauważenie wroga zatrzymuje je
+ * wszystkie naraz, a nie tylko marsz figury, która zobaczyła.
+ */
+export function walksOnScene(sceneId: string): [string, ApprovedWalk][] {
+  const now = walkClock.now();
+  return [...walks.entries()].filter(
+    ([, walk]) => walk.sceneId === sceneId && now - walk.approvedAt <= WALK_TTL_MS,
+  );
+}

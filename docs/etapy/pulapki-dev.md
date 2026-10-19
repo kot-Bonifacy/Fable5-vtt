@@ -505,6 +505,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Pozycję, którą serwer narzuca figurze w marszu, wysyłaj jako lądowanie, nie upsertem (19.10, etap 56)** — na scenie dynamicznej albo z barierą zasłaniającą upsert idzie do graczy listą `token:sync`, a magazyn klienta przez 3 s po klatce marszu (i 2 s po lądowaniu) **nie przesuwa** figury z listy (`holdsPosition`, poprawka #47). Zatrzymanie drużyny po zauważeniu wroga zostawiało Kowala u gracza na 800,5 zamiast 800. Pole zatrzymania i korekta „klatki, która przemknęła” idą przez `emitTokenMoveFrame(…, { final: true })` (`realtime/tokens.ts`). Przy okazji: **`realtime/sighting.ts` to oględziny cudzej figury (etap 41)**, a walka z zauważenia wroga mieszka w `realtime/foe-sighting.ts` — nowy plik sprawdzaj `ls`, zanim go zapiszesz (Write nadpisał tamten moduł i trzeba go było odtworzyć z `HEAD`).
 - **Karta odmowy ruchu nie powstaje przed rundą 1** — `findCombatantForToken` zwraca `null`, dopóki MG ustawia walkę; test, który po samym `combat:start` czeka na kartę, dostaje timeout, choć `MOVE_REFUSED` przychodzi. Najpierw `combat:next` (14.09, `fog-walk.test.ts`).
 - **`refuseWalkThroughSolid` zwalnia MG** (`realtime/movement.ts:254`) — żeton MG przechodzi przez ścianę i to nie jest regres; kolizje ruchu ogląda się z konta gracza, jak odmowy statusowe.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).

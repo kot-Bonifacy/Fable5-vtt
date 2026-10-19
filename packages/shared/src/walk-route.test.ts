@@ -3,6 +3,7 @@ import {
   firstFigureBlock,
   laneHitsFigure,
   overlapsFigure,
+  pointAlongRoute,
   pointInFigure,
   projectOntoRoute,
   routeLengths,
@@ -41,6 +42,13 @@ describe('projectOntoRoute', () => {
     expect(routeWaypointsBefore(route, 120)).toEqual([]);
     expect(routeWaypointsBefore(route, 260)).toEqual([at(4, 0)]);
     expect(routeWaypointsBefore(route, 350)).toEqual([at(4, 0)]);
+  });
+
+  it('finds the point a given distance along — and clamps to both ends (etap 56)', () => {
+    expect(pointAlongRoute(route, 120)).toEqual({ x: 120, y: 0 });
+    expect(pointAlongRoute(route, 260)).toEqual({ x: 200, y: 60 });
+    expect(pointAlongRoute(route, 0)).toEqual(at(0, 0));
+    expect(pointAlongRoute(route, 9999)).toEqual(at(4, 3));
   });
 });
 

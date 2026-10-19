@@ -4743,6 +4743,20 @@ export class MapRenderer {
     this.finishMarch(note, true, landing);
   }
 
+  /**
+   * Serwer zatrzymał marsz tych figur (etap 56 — drużyna zobaczyła wroga).
+   * Pole zatrzymania już jest w magazynie, więc marsz kończy się **bez
+   * lądowania** — lądowanie przed walką i tak padłoby na `COMBAT_PENDING`.
+   */
+  haltWalk(tokenIds: readonly string[]): void {
+    const march = this.march;
+    if (march && tokenIds.includes(march.node.token.id)) {
+      this.walkResume = null;
+      this.finishMarch(null, false);
+    }
+    if (this.selectedTokenId && tokenIds.includes(this.selectedTokenId)) this.cancelWalkTarget();
+  }
+
   /** The turn's remaining movement, but only when it belongs to the steered token. */
   private walkBudget(): {
     refills: boolean;

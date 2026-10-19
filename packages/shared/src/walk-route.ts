@@ -76,6 +76,27 @@ export function projectOntoRoute(route: readonly ScenePoint[], point: ScenePoint
 }
 
 /**
+ * Punkt trasy `distance` pikseli od jej początku (przycięty do trasy) — gdzie
+ * marsz stoi, gdy serwer zna tylko „doszedł tak daleko” (etap 56: drużyna
+ * staje na polu, z którego zobaczyła wroga).
+ */
+export function pointAlongRoute(route: readonly ScenePoint[], distance: number): ScenePoint {
+  const first = route[0];
+  if (!first) return { x: 0, y: 0 };
+  const lengths = routeLengths(route);
+  for (let i = 1; i < route.length; i++) {
+    if (lengths[i]! < distance) continue;
+    const a = route[i - 1]!;
+    const b = route[i]!;
+    const span = lengths[i]! - lengths[i - 1]!;
+    const t = span > 0 ? Math.max(0, (distance - lengths[i - 1]!) / span) : 0;
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  }
+  const last = route[route.length - 1]!;
+  return { x: last.x, y: last.y };
+}
+
+/**
  * Punkty załamania trasy minięte przed `distance` (bez punktu startu) — ta sama
  * łamana, którą klient zgłasza na mecie przerwanego marszu: całe odcinki, a od
  * ostatniego prosto do lądowania.

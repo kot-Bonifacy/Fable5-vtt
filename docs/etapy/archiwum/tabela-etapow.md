@@ -138,3 +138,4 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 53     | Konto administratora: rola ADMIN, hasło tymczasowe, panel kont MG, sesje i dziennik, AI, rejestracja, kopie całej bazy | ✅     | 2026-10-17          |
 | 54     | Ruch wzorem BG3: bez podglądu pod kursorem poza walką, jeden klik, potwierdzenie i Bieg w bursztynie, odznaczanie Esc / PPM | ✅     | 2026-10-17          |
 | 55     | Komunikaty wzorem Foundry: jeden kanał nad mapą, jedna skóra (55a kanał i notki z czatu, 55b okna i skóra komunikatów na miejscu) | ✅     | 2026-10-17          |
+| 56     | Walka z zauważenia wroga wzorem Foundry: postawa figury, starcie „Przed walką” z zauważenia, zatrzymanie drużyny, dołączanie z inicjatywą | ✅     | 2026-10-19          |

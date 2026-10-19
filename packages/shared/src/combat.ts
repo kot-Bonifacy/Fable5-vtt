@@ -243,6 +243,26 @@ export interface CombatView {
   combatants: CombatantView[];
   /** On their way but not here yet (stage 30c); absent when nothing is coming. */
   reinforcements?: ReinforcementView[];
+  /**
+   * Starcie założone, bo drużyna zobaczyła wroga (etap 56). Tylko u MG —
+   * `filterCombatForPlayer` go zdejmuje. Dopóki trwa runda 0, gracze stoją.
+   */
+  sighting?: CombatSightingView;
+}
+
+/** Kto kogo zobaczył (etap 56): figury drużyny i zauważeni wrogowie. */
+export interface CombatSightingView {
+  spotterIds: string[];
+  foeIds: string[];
+}
+
+/**
+ * Server → GM `combat:joined` (etap 56): wrogowie zauważeni w trwającej walce
+ * dołączyli sami, z inicjatywą rzuconą przez serwer.
+ */
+export interface CombatJoinedBroadcast {
+  sceneId: string;
+  tokenIds: string[];
 }
 
 /** Where the turn pointer lands after a step. */

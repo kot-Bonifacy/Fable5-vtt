@@ -70,6 +70,7 @@ import { clearGrapplesOf } from './grapple-state.js';
 import { advanceTurn, runTurnEnd } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
+import { calmFoe, calmVisibleFoes } from './foe-sighting.js';
 
 /**
  * The action economy (stage 14b).
@@ -517,6 +518,9 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
     }
     await clearGrapplesOf(deps, campaignId, combat, combatant);
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
+    // Etap 56: wróg zdjęty przez MG ze starcia nie wraca przy następnym kroku
+    // drużyny — jest uspokojony, dopóki nie zniknie jej z oczu.
+    if (combatant.tokenId) calmFoe(scene.id, combatant.tokenId);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
@@ -701,6 +705,9 @@ export const combatEndEvent = defineEvent({
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
     const combat = await loadCombat(deps.ctx.prisma, scene.id);
     if (combat) await clearGrapplesOf(deps, campaignId, combat);
+    // Etap 56: „Odwołaj” i koniec walki uspokajają wrogów, których drużyna
+    // teraz widzi — inaczej następny krok założyłby starcie od nowa.
+    await calmVisibleFoes(deps, scene);
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     await emitCombatOfScene(deps, campaignId, scene);
