@@ -117,6 +117,23 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
                   becomes the DV everybody in the cone has to beat (stage 16). */}
               <dd>{preview.attack.dv === null ? 'twój wynik' : preview.attack.dv}</dd>
             </div>
+            {/* 19.10: bariera na linii strzału. MG widzi liczby serwera (kara
+                siedzi już w modyfikatorze, OB zejdzie z obrażeń), gracz tylko
+                to, że siatka stoi na drodze — jej OB i kara są wiedzą MG. */}
+            {preview.barrier && (
+              <div>
+                <dt>Bariera</dt>
+                <dd>
+                  {preview.barrier.known
+                    ? `OB ${preview.barrier.sp}${
+                        preview.barrier.penalty < 0
+                          ? ` · kara −${Math.abs(preview.barrier.penalty)}`
+                          : ''
+                      }`
+                    : 'OB i karę zna MG'}
+                </dd>
+              </div>
+            )}
             {preview.attack.ammoCost > 0 && (
               <div>
                 <dt>Naboje</dt>

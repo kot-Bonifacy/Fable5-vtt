@@ -344,7 +344,7 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia | 25   | 6       |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 47   | 8       |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
@@ -361,6 +361,26 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 19.10, czwarta (po `517b945`) — zlecenie MG: bariera i osłona w podglądzie strzału
+
+**Zlecenie MG:** sprawdzić, jak system liczy trafienie i obrażenia celu za barierą i osłoną oraz
+czy strzelający gdzieś się o tym dowiaduje. **Przegląd:** rachunek spójny — osłona (16c) odmawia
+strzału z wyborem „Ostrzelaj osłonę” / „Strzelaj mimo osłony”, bez kary (RAW s. 179), i gracz widzi
+ją już w dymku; bariera (42b/42c) odejmuje OB przed pancerzem i daje karę „zasłania figury”
+(najgorsza z przeciętych), ale do tej sesji podgląd jej nie znał — kara wychodziła dopiero na karcie
+wyniku, OB na karcie obrażeń. **Zrobione:** flaga `barrier` na odcinkach `blockers` gracza
+(`WalkBlocker`, `walkBlockerOf`), `AttackPreview.barrier` w `attack-targeting.ts` — MG dostaje liczby
+serwera (kara w modyfikatorze kubka, OB w tytule), gracz „OB i karę zna MG”; wiersz „Bariera”
+w dymku celownika, „· przez barierę” w tytule kubka. **Decyzja MG:** karta ataku na czacie dalej
+milczy o OB (decyzja 8 z 42b zostaje). Umowa na górze `atak`.
+
+**Weryfikacja:** `shared` 2515/2515 (+3: flaga przez cięcie mgły, `walkBlockerOf`), serwer 1507/1507
+(`walls.test.ts` przepięty na odcinki z flagą), klient 416/416; `tsc` w trzech pakietach, ESLint
+i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T5a` —
+Ola w **Firefoksie**: Iskra → Wieżyczka przez wschodni odcinek bariery „Bariera · OB i karę zna
+MG”, Iskra → Strażnik przez otwartą bramę bez wiersza; MG w Chromium tą samą linią „OB 20 · kara
+−4”, kubek „… · PT 20 · przez barierę OB 20”, modyfikator 7.
 
 ### Sesja 19.10, trzecia (po `a0186fd`) — etap 56: walka z zauważenia wroga wzorem Foundry
 
@@ -393,27 +413,3 @@ w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T6`
 Marek w **Firefoksie**: menu postawy, marsz Kowala staje na (800, 1400) u gracza i w bazie,
 wezwanie MG i „Walka” same, „Dołącz do walki” z wrogim na górze, odmowa ruchu przed walką.
 Kolorów obwódek z bliska nie oglądano (zrzut przy oddaleniu całej sceny).
-
-### Sesja 19.10, druga (po `8d13a7f`) — zlecenie MG: Skok z lewego paska
-
-**Zlecenie MG:** akcja „Skok” w lewym pasku — figura przenosi się o dwie kratki w wybranym kierunku,
-także ponad barierą i osłoną (nie przez ściany, drzwi, okna), gracz musi widzieć miejsce lądowania,
-koszt 8 m, a kto tylu metrów nie ma w zasobie, nie skacze. **Rozstrzygnięte bez pytań (do potwierdzenia
-przez MG):** osiem kierunków (z ukosami); 8 m z puli Ruchu, **bez Akcji** i bez samoczynnego Biegu —
-w trwającej rundzie z dystansu tury, poza walką i w rundzie 0 z puli Eksploracji (Stop blokuje);
-**furtka (`gate`) blokuje jak drzwi**; lądowanie nie w stojącej osłonie i nie na figurze, przez wroga
-się nie skacze (reguła marszu); widzenie = mgła MG i pole widzenia gracza w widzeniu dynamicznym;
-MG zwolniony ze stanu, mgły, widzenia i budżetu, nie z geometrii; w walce wiersz „Skok”
-na czacie (bez kosztu — poprawka MG tej samej sesji). **Zrobione:** rdzeń `shared/jump.ts` (`judgeJumpGeometry`, `jumpBlockingSegments`),
-`CPRED_ACTION_JUMP` w katalogu i na pasku (`jumpRefusal`, ikona `hud/jump.svg` — „Jump across”,
-Delapouite, CC BY 3.0), serwer `realtime/jump.ts` (`token:jump-options`, `token:jump`,
-`performTokenMove(…, { judged })`), klient `jump.ts` + `hudStore.jump` + `MapRenderer.setJumpTargets`
-(turkusowe pola, kreska do pola pod kursorem, `Esc` i klik obok odkładają). Umowa na górze `tura`,
-boty i animacja skoku w `POMYSLY.md`.
-
-**Weryfikacja:** `shared` 2508/2508, `client` 413/413, `server` 1495/1495 (nowe: `jump.test.ts`
-10 przypadków na gniazdach, macierz izolacji kampanii z dwoma nowymi zdarzeniami), tsc i ESLint
-czyste. E2E suity nie puszczano (żadna nie dotyka skoku). **Oględziny:** tymczasowy spec E2E (usunięty)
-— gracz Marek w **Firefoksie**, MG w Chromium, z `po-T6`: pola ponad barierą i samochodem bez ściany,
-drzwi i skrzyni, najazd, skok, „Złap oddech” przy pustej puli, klik obok odkłada skok, w walce 8 m
-z 10 m i odmowa „zostało ci 2 m”.

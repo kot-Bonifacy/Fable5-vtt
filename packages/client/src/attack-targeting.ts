@@ -13,8 +13,12 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  ROLE_GM,
   STATIST_WEAPON_ROW_ID,
   WALL_REACH_M,
+  barrierArmorAlong,
+  barrierConcealPenaltyAlong,
+  cpredBarrierModifiers,
   cpredHandsHeld,
   cpredSheetRollSheet,
   cpredWeaponInHands,
@@ -34,11 +38,14 @@ import {
   metresPerPixel,
   planCpredAttack,
   resolveWeapon,
+  segmentCrossingDistance,
   snapToSquareCentre,
+  standingBarriers,
   tokenCentre,
 } from '@vtt/shared';
 import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { useAttackStore, type AttackTargeting } from './stores/attackStore.js';
+import { useAuthStore } from './stores/authStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { clearNotices, notifyChoice, notifyRefusal } from './notices.js';
@@ -46,6 +53,7 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useRollStore } from './stores/rollStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
+import { useWallStore } from './stores/wallStore.js';
 
 /**
  * Turning a click on a token into an attack loaded in the cup (stage 16).
@@ -105,6 +113,16 @@ export type AttackTargetRef =
   | { kind: 'cover'; coverId: number }
   | { kind: 'point'; point: ScenePoint };
 
+/**
+ * A barrier on the line of fire, as far as this viewer may know (19.10.2026).
+ *
+ * The GM holds the walls, so the preview prices the shot with the server's own
+ * numbers: the penalty is already in the modifier, the SP comes off the damage.
+ * A player is only told the line crosses one — the fence is on the map in front
+ * of them, but its SP and its penalty are the GM's (`WalkBlocker`).
+ */
+export type AttackBarrier = { known: true; sp: number; penalty: number } | { known: false };
+
 /** A planned shot, or the sentence explaining why there is none. */
 export type AttackPreview =
   | {
@@ -115,6 +133,8 @@ export type AttackPreview =
       request: CpredAttackRequest;
       modifierTotal: number;
       metres: number;
+      /** Absent when the line crosses no barrier (or the target is a square). */
+      barrier?: AttackBarrier;
     }
   | {
       ok: false;
@@ -200,6 +220,8 @@ export function planAttackPreview(
     ref.kind === 'token' && !intent.ignoreCover
       ? coverBlockingShot(attackerToken, aim.point, scene)
       : null;
+  const barrier =
+    ref.kind === 'point' ? null : barrierOnLine(tokenCentre(attackerToken, scene), aim.point, ref);
 
   // Stage 16g: what is in the magazine changes the shot the bubble is pricing —
   // buckshot has a flat DV and a 6 m cone instead of the range table. Read here
@@ -269,6 +291,14 @@ export function planAttackPreview(
       ...(blocking
         ? { cover: { name: blocking.name, hpCurrent: blocking.hpCurrent, hpMax: blocking.hpMax } }
         : {}),
+      // The GM's preview carries what the server will add at the roll, so the
+      // cup and the card agree; a player's cannot, and says so instead.
+      ...(barrier?.known
+        ? {
+            modifiers: cpredBarrierModifiers(barrier.penalty),
+            ...(barrier.sp > 0 ? { barrierSp: barrier.sp } : {}),
+          }
+        : {}),
       // The Grenade Launcher line every throw is judged by (s. 177). Read from
       // the same catalogue the server reads, so the preview and the verdict
       // cannot disagree about how hard the throw was.
@@ -287,7 +317,44 @@ export function planAttackPreview(
     request,
     modifierTotal: planned.plan.modifierTotal,
     metres: aim.target.metres,
+    ...(barrier ? { barrier } : {}),
   };
+}
+
+/**
+ * Does the line of fire cross a barrier or a shut gate (19.10.2026)?
+ *
+ * Measured on the line the server measures — shooter's centre to the target's
+ * centre, or to the near edge of a cover — with the functions it uses, so the
+ * GM's numbers are the verdict's. The penalty is for a figure only, as on the
+ * server: a car behind a hedge is not hiding.
+ */
+function barrierOnLine(
+  from: ScenePoint,
+  to: ScenePoint,
+  ref: AttackTargetRef,
+): AttackBarrier | null {
+  const walls = useWallStore.getState();
+  if (useAuthStore.getState().user?.role === ROLE_GM) {
+    const crossed = standingBarriers(walls.walls).some(
+      (wall) => segmentCrossingDistance(from, to, wall) !== null,
+    );
+    if (!crossed) return null;
+    return {
+      known: true,
+      sp: barrierArmorAlong(walls.walls, from, to),
+      penalty: ref.kind === 'token' ? barrierConcealPenaltyAlong(walls.walls, from, to) : 0,
+    };
+  }
+  const crossed = walls.blockers.some(
+    (segment) => segment.barrier === true && segmentCrossingDistance(from, to, segment) !== null,
+  );
+  return crossed ? { known: false } : null;
+}
+
+/** „przez barierę OB 7" on the cup — the SP only the GM may read off it. */
+export function barrierLabel(barrier: AttackBarrier): string {
+  return barrier.known && barrier.sp > 0 ? `przez barierę OB ${barrier.sp}` : 'przez barierę';
 }
 
 /** The target's name, distance and defence — whichever kind of target it is. */
@@ -428,6 +495,7 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
       attack.dv,
       attack.modeLabel,
       attack.mode,
+      preview.barrier,
     ),
     modifierTotal: preview.modifierTotal,
   });
@@ -635,9 +703,11 @@ function cupTitle(
   dv: number | null,
   modeLabel: string,
   mode: string,
+  barrier?: AttackBarrier,
 ): string {
   const parts = [`${weaponName} → ${targetName}`, formatMetres(metres)];
   if (dv !== null) parts.push(`PT ${dv}`);
   if (mode !== 'single') parts.push(modeLabel.toLowerCase());
+  if (barrier) parts.push(barrierLabel(barrier));
   return parts.join(' · ');
 }

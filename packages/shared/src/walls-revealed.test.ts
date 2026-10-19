@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FogShapeView } from './fog.js';
-import { WALL_STRETCH_MAX, revealedStretches } from './walls.js';
+import { WALL_STRETCH_MAX, revealedStretches, walkBlockerOf, type WallView } from './walls.js';
 
 /**
  * What a player's route planner is told about on a map painted by hand
@@ -101,5 +101,41 @@ describe('revealedStretches', () => {
     expect(stretches[0]!.x1).toBe(0);
     expect(stretches[0]!.x2).toBeGreaterThanOrEqual(50_000);
     expect(stretches[0]!.x2).toBeLessThanOrEqual(50_000 + 100_000 / WALL_STRETCH_MAX);
+  });
+
+  // 19.10.2026: the attack preview tells a fence from a wall by this flag, so a
+  // cut must not lose it — with and without fog.
+  it('keeps the barrier flag on every stretch it cuts', () => {
+    const fence = { ...WALL, barrier: true as const };
+    expect(revealedStretches([fence], { enabled: false, shapes: [] }, STEP)).toEqual([fence]);
+    expect(revealedStretches([fence], fogOf(rect('reveal', -10, -10, 140, 20)), STEP)).toEqual([
+      { x1: 0, y1: 0, x2: 150, y2: 0, barrier: true },
+    ]);
+  });
+});
+
+describe('walkBlockerOf', () => {
+  const wall = (kind: WallView['kind']): WallView => ({
+    id: 1,
+    sceneId: 's',
+    kind,
+    open: false,
+    playerToggle: false,
+    locked: false,
+    armor: 7,
+    hidesFigures: true,
+    concealPenalty: -6,
+    ...WALL,
+  });
+
+  it('flags a barrier and a gate, and carries nothing of their numbers', () => {
+    expect(walkBlockerOf(wall('barrier'))).toEqual({ ...WALL, barrier: true });
+    expect(walkBlockerOf(wall('gate'))).toEqual({ ...WALL, barrier: true });
+  });
+
+  it('leaves a wall, a door and a window bare', () => {
+    for (const kind of ['wall', 'door', 'window'] as const) {
+      expect(walkBlockerOf(wall(kind))).toEqual(WALL);
+    }
   });
 });

@@ -1,16 +1,17 @@
 import type {
   BlockerSyncBroadcast,
   OpeningSyncBroadcast,
-  Segment,
   SessionUser,
+  WalkBlocker,
   WallView,
 } from '@vtt/shared';
 import {
   ROLE_GM,
   isOpening,
   isPointRevealed,
-  movementSegments,
   revealedStretches,
+  walkBlockerOf,
+  wallBlocksMovement,
   wallMidpoint,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -53,8 +54,10 @@ import {
  * has revealed (`revealedStretches`), because a wall running on under the fog is
  * a floor plan.
  */
-async function standingBlockersFor(prisma: PrismaClient, scene: Scene): Promise<Segment[]> {
-  const segments = movementSegments(await fetchSceneWalls(prisma, scene.id));
+async function standingBlockersFor(prisma: PrismaClient, scene: Scene): Promise<WalkBlocker[]> {
+  const segments = (await fetchSceneWalls(prisma, scene.id))
+    .filter(wallBlocksMovement)
+    .map(walkBlockerOf);
   if (segments.length === 0 || scene.visibility !== 'fog') return segments;
   // Half a square per piece: fog is painted with a brush, and a stroke narrower
   // than that is not a reveal anybody meant.
@@ -88,7 +91,7 @@ export async function walkBlockersFor(
   prisma: PrismaClient,
   scene: Scene,
   user: SessionUser,
-): Promise<Segment[]> {
+): Promise<WalkBlocker[]> {
   if (user.role === ROLE_GM) return [];
   if (!usesDynamicVision(scene)) return standingBlockersFor(prisma, scene);
   const context = await loadVisionContext(prisma, scene);

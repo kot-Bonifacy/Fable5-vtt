@@ -260,15 +260,39 @@ export interface OpeningSyncBroadcast {
  * walk through — barriers, shut gates, and the closed windows they stand close
  * enough to look through, only the ones in sight. On an open or fogged map
  * (13.09.2026): everything that stops a body, cut to the revealed floor
- * (`revealedStretches`). Always bare segments — the planner needs geometry, and a
+ * (`revealedStretches`). Bare segments — the planner needs geometry, and a
  * wall row would hand the client a kind, an id and a bolt it has no business
- * knowing.
+ * knowing. The one exception is the `barrier` flag (`WalkBlocker`).
  *
  * Targeted per socket without a seq, like `opening:sync`: every list differs.
  */
 export interface BlockerSyncBroadcast {
   sceneId: string;
-  segments: Segment[];
+  segments: WalkBlocker[];
+}
+
+/**
+ * One segment of a player's route-planner list, flagged when it is a barrier or
+ * a shut gate (19.10.2026).
+ *
+ * The flag is the one thing about a wall that list carries beyond geometry, and
+ * only because the player sees the fence anyway: it lets the attack preview say
+ * „strzał przez barierę" before the dice fly. The barrier's SP and its
+ * concealment penalty stay the GM's (`playerOpeningView`).
+ */
+export interface WalkBlocker extends Segment {
+  barrier?: true;
+}
+
+/** A wall as a player's route planner is told about it — see `WalkBlocker`. */
+export function walkBlockerOf(wall: WallView): WalkBlocker {
+  return {
+    x1: wall.x1,
+    y1: wall.y1,
+    x2: wall.x2,
+    y2: wall.y2,
+    ...(isBarrier(wall) ? { barrier: true as const } : {}),
+  };
 }
 
 function finiteNumber(value: unknown): value is number {
@@ -526,20 +550,21 @@ export const WALL_STRETCH_MAX = 256;
  * keeps the paint order, and with it „the last shape wins".
  */
 export function revealedStretches(
-  segments: readonly Segment[],
+  segments: readonly WalkBlocker[],
   fog: Pick<FogState, 'enabled' | 'shapes'>,
   stepPx: number,
-): Segment[] {
+): WalkBlocker[] {
   if (!fog.enabled) {
     return segments.map((segment) => ({
       x1: segment.x1,
       y1: segment.y1,
       x2: segment.x2,
       y2: segment.y2,
+      ...(segment.barrier ? { barrier: true as const } : {}),
     }));
   }
   const boxed = fog.shapes.map((shape) => ({ shape, box: fogShapeBounds(shape) }));
-  const stretches: Segment[] = [];
+  const stretches: WalkBlocker[] = [];
   for (const segment of segments) {
     const minX = Math.min(segment.x1, segment.x2);
     const maxX = Math.max(segment.x1, segment.x2);
@@ -579,10 +604,16 @@ function stretchPoint(segment: Segment, t: number): ScenePoint {
 }
 
 /** Pieces `from` (inclusive) to `to` (exclusive) of `count`, the segment's own ends kept exact. */
-function stretchOf(segment: Segment, from: number, to: number, count: number): Segment {
+function stretchOf(segment: WalkBlocker, from: number, to: number, count: number): WalkBlocker {
   const start = from === 0 ? { x: segment.x1, y: segment.y1 } : stretchPoint(segment, from / count);
   const end = to === count ? { x: segment.x2, y: segment.y2 } : stretchPoint(segment, to / count);
-  return { x1: start.x, y1: start.y, x2: end.x, y2: end.y };
+  return {
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    ...(segment.barrier ? { barrier: true as const } : {}),
+  };
 }
 
 /**

@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import {
   isOpening,
   type ScenePoint,
-  type Segment,
   type StateSyncPayload,
+  type WalkBlocker,
   type WallView,
 } from '@vtt/shared';
 
@@ -37,14 +37,15 @@ interface WallStoreState {
    * What a player's route planner walks round although they can see past it
    * (stage 42a) — barriers, shut gates, a closed window they stand at. Bare
    * segments, never walls; empty for the GM, whose planner reads `walls`.
+   * Barriers are flagged (`WalkBlocker.barrier`) for the attack preview.
    */
-  blockers: Segment[];
+  blockers: WalkBlocker[];
 
   applySync: (payload: StateSyncPayload) => void;
   setWalls: (sceneId: string, walls: WallView[]) => void;
   setVision: (polygons: ScenePoint[][], figurePolygons?: ScenePoint[][] | null) => void;
   setOpenings: (openings: WallView[]) => void;
-  setBlockers: (blockers: Segment[]) => void;
+  setBlockers: (blockers: WalkBlocker[]) => void;
 }
 
 export const useWallStore = create<WallStoreState>((set) => ({

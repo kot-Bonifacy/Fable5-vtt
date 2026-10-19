@@ -37,8 +37,8 @@ import type {
   MerchantRowOverlay,
   MerchantSettings,
 } from './merchants.js';
-import type { Segment, VisionSyncBroadcast } from './vision.js';
-import type { WallView } from './walls.js';
+import type { VisionSyncBroadcast } from './vision.js';
+import type { WalkBlocker, WallView } from './walls.js';
 
 /**
  * The campaign changed under a connected client: the GM opened another one of
@@ -159,8 +159,9 @@ export interface StateSyncPayload {
    * What this player's route planner has to walk round although they can see
    * past it (stage 42a): barriers and shut gates in sight, and on a dynamic scene
    * the closed windows they stand at. Empty for the GM, who has the walls.
+   * Barriers carry `barrier: true` for the attack preview (19.10.2026).
    */
-  blockers: Segment[];
+  blockers: WalkBlocker[];
   /**
    * Where the party has already been on the viewed scene (stage 18c); null when
    * the scene does not remember. Shared by the whole group and safe to hand

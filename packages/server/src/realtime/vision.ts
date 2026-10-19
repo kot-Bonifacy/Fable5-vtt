@@ -34,10 +34,12 @@ import {
   sightSegmentsFor,
   tokenCentre,
   tollingWindows,
+  walkBlockerOf,
   walkOnlyWallsFor,
   wallMidpoint,
   wallSamplePoints,
   type Segment,
+  type WalkBlocker,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene, Token } from '../generated/prisma/client.js';
@@ -685,13 +687,16 @@ export function playerOpeningView(door: WallView): WallView {
  * through by the token at the glass is not credited to the token across the
  * street — the same bookkeeping the curtain itself does.
  */
-export function visibleWalkBlockersFor(context: SceneVisionContext, sight: ViewerSight): Segment[] {
+export function visibleWalkBlockersFor(
+  context: SceneVisionContext,
+  sight: ViewerSight,
+): WalkBlocker[] {
   if (context.walls.length === 0) return [];
   // Half a metre between samples: a glimpse of a fence through a doorway counts,
   // and a forty-metre one still costs no more than a few dozen tests.
   const spacing = context.reachPx / (WALL_REACH_M * 2);
   const seen = new Set<number>();
-  const found: Segment[] = [];
+  const found: WalkBlocker[] = [];
   sight.sources.forEach((source, index) => {
     const polygon = sight.polygons[index];
     if (!polygon) return;
@@ -705,7 +710,7 @@ export function visibleWalkBlockersFor(context: SceneVisionContext, sight: Viewe
       );
       if (!inSight) continue;
       seen.add(wall.id);
-      found.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+      found.push(walkBlockerOf(wall));
     }
   });
   return found;
@@ -856,7 +861,7 @@ export interface ViewerVision {
   /** Doors and windows this viewer may work — see `visibleOpeningsFor`. */
   openings: WallView[];
   /** What their route planner walks round (stage 42a) — `visibleWalkBlockersFor`. */
-  blockers: Segment[];
+  blockers: WalkBlocker[];
   /** Light levels inside the polygons; null on a scene that is not dark. */
   light: LightMask | null;
   glows: LightGlow[];

@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10, druga (po `8d13a7f`) — zlecenie MG: Skok z lewego paska
+
+**Zlecenie MG:** akcja „Skok” w lewym pasku — figura przenosi się o dwie kratki w wybranym kierunku,
+także ponad barierą i osłoną (nie przez ściany, drzwi, okna), gracz musi widzieć miejsce lądowania,
+koszt 8 m, a kto tylu metrów nie ma w zasobie, nie skacze. **Rozstrzygnięte bez pytań (do potwierdzenia
+przez MG):** osiem kierunków (z ukosami); 8 m z puli Ruchu, **bez Akcji** i bez samoczynnego Biegu —
+w trwającej rundzie z dystansu tury, poza walką i w rundzie 0 z puli Eksploracji (Stop blokuje);
+**furtka (`gate`) blokuje jak drzwi**; lądowanie nie w stojącej osłonie i nie na figurze, przez wroga
+się nie skacze (reguła marszu); widzenie = mgła MG i pole widzenia gracza w widzeniu dynamicznym;
+MG zwolniony ze stanu, mgły, widzenia i budżetu, nie z geometrii; w walce wiersz „Skok”
+na czacie (bez kosztu — poprawka MG tej samej sesji). **Zrobione:** rdzeń `shared/jump.ts` (`judgeJumpGeometry`, `jumpBlockingSegments`),
+`CPRED_ACTION_JUMP` w katalogu i na pasku (`jumpRefusal`, ikona `hud/jump.svg` — „Jump across”,
+Delapouite, CC BY 3.0), serwer `realtime/jump.ts` (`token:jump-options`, `token:jump`,
+`performTokenMove(…, { judged })`), klient `jump.ts` + `hudStore.jump` + `MapRenderer.setJumpTargets`
+(turkusowe pola, kreska do pola pod kursorem, `Esc` i klik obok odkładają). Umowa na górze `tura`,
+boty i animacja skoku w `POMYSLY.md`.
+
+**Weryfikacja:** `shared` 2508/2508, `client` 413/413, `server` 1495/1495 (nowe: `jump.test.ts`
+10 przypadków na gniazdach, macierz izolacji kampanii z dwoma nowymi zdarzeniami), tsc i ESLint
+czyste. E2E suity nie puszczano (żadna nie dotyka skoku). **Oględziny:** tymczasowy spec E2E (usunięty)
+— gracz Marek w **Firefoksie**, MG w Chromium, z `po-T6`: pola ponad barierą i samochodem bez ściany,
+drzwi i skrzyni, najazd, skok, „Złap oddech” przy pustej puli, klik obok odkłada skok, w walce 8 m
+z 10 m i odmowa „zostało ci 2 m”.
+
 ### Sesja 19.10 (po `a60dec8`) — poprawka: Wstrzymanie Akcji dawało drugą turę
 
 **Zgłoszenie MG:** po wstrzymaniu Akcji statysta dostawał w tej samej Rundzie drugą turę, a gracz

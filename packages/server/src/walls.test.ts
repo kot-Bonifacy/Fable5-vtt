@@ -773,6 +773,9 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
   const LOCKED_IN = { x1: 3400, y1: 3100, x2: 3400, y2: 3700 };
 
   type Seg = { x1: number; y1: number; x2: number; y2: number };
+  // A barrier or a gate travels flagged (19.10.2026) — the attack preview's
+  // „strzał przez barierę"; a window does not.
+  const fenced = (segment: Seg) => ({ ...segment, barrier: true });
   const pointsOf = (segment: Seg) => [
     { x: segment.x1, y: segment.y1 },
     { x: segment.x2, y: segment.y2 },
@@ -878,12 +881,12 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
 
   it('hands the route planner what is in sight — never a fence in a sealed room', async () => {
     const { blockers } = await roundTrip(player);
-    expect(blockers).toContainEqual(NORTH);
-    expect(blockers).toContainEqual(GATE);
-    expect(blockers).toContainEqual(SOUTH);
+    expect(blockers).toContainEqual(fenced(NORTH));
+    expect(blockers).toContainEqual(fenced(GATE));
+    expect(blockers).toContainEqual(fenced(SOUTH));
     // The pane is 2 m away: the curtain is off, the floor beyond it is in view.
     expect(blockers).toContainEqual(PANE);
-    expect(blockers).not.toContainEqual(LOCKED_IN);
+    expect(blockers).not.toContainEqual(fenced(LOCKED_IN));
     expect(blockers).toHaveLength(4);
   });
 
@@ -900,7 +903,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     // An open gate is nothing to walk round, so it leaves the planner's list.
     const opened = blockersWhere((segments) => !has(segments, GATE));
     await emitAck(gm, 'opening:toggle', { wallId: gateId, open: true });
-    expect(await opened).toContainEqual(NORTH);
+    expect(await opened).toContainEqual(fenced(NORTH));
 
     expect(errorOf(await moveOwn(player, 1250, 1450))).toBeUndefined();
 
@@ -936,7 +939,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     // wall again from there.
     const stepped = blockersWhere((segments) => !has(segments, PANE));
     await moveOwn(gm, 450, 1650);
-    expect(await stepped).toContainEqual(NORTH);
+    expect(await stepped).toContainEqual(fenced(NORTH));
 
     const back = blockersWhere((segments) => has(segments, PANE));
     await moveOwn(gm, 450, 1450);
@@ -958,8 +961,8 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     // the reveal (half a square per piece): how far the fence runs on under the
     // fog is not handed over. No window — it stands on covered floor.
     const revealed = await uncovered;
-    expect(revealed).toContainEqual({ x1: 1000, y1: 1300, x2: 1000, y2: 1400 });
-    expect(revealed).toContainEqual({ x1: 1000, y1: 1400, x2: 1000, y2: 1500 });
+    expect(revealed).toContainEqual(fenced({ x1: 1000, y1: 1300, x2: 1000, y2: 1400 }));
+    expect(revealed).toContainEqual(fenced({ x1: 1000, y1: 1400, x2: 1000, y2: 1500 }));
     expect(revealed).toHaveLength(2);
 
     // A plain wall goes the same way (13.09.2026): the corner of the sealed room,
@@ -973,7 +976,7 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     expect(withCorner).toContainEqual({ x1: 3000, y1: 3000, x2: 3300, y2: 3000 });
     // The chain closes back up the western side, so that stretch runs north.
     expect(withCorner).toContainEqual({ x1: 3000, y1: 3100, x2: 3000, y2: 3000 });
-    expect(withCorner).not.toContainEqual(LOCKED_IN);
+    expect(withCorner).not.toContainEqual(fenced(LOCKED_IN));
     expect(withCorner).toHaveLength(4);
   });
 
@@ -981,7 +984,9 @@ describe('a barrier stops a body, not an eye (stage 42a)', () => {
     const everything = blockersWhere((segments) => has(segments, LOCKED_IN));
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const segments = await everything;
-    for (const wanted of [NORTH, GATE, SOUTH, PANE]) expect(segments).toContainEqual(wanted);
+    for (const wanted of [fenced(NORTH), fenced(GATE), fenced(SOUTH), PANE]) {
+      expect(segments).toContainEqual(wanted);
+    }
     expect(segments).toContainEqual({ x1: 3000, y1: 3000, x2: 3800, y2: 3000 });
     // Five partitions and the four walls of the sealed room.
     expect(segments).toHaveLength(9);
