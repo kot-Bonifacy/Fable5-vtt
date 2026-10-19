@@ -356,12 +356,8 @@ async function chargeJump(
     deps,
     campaignId,
     user,
-    actionEntry(
-      outcome.combatant,
-      CPRED_ACTION_JUMP,
-      sheetActionName(CPRED_ACTION_JUMP),
-      `${formatMetres(JUMP_COST_M)} ruchu`,
-    ),
+    // Samo „Skok” (MG, 19.10): koszt widać w budżecie tury, nie w czacie.
+    actionEntry(outcome.combatant, CPRED_ACTION_JUMP, sheetActionName(CPRED_ACTION_JUMP), null),
   );
 }
 

@@ -383,7 +383,10 @@ describe('skok (19.10.2026)', () => {
 
     const line = waitFor<{ message: ChatMessageView }>(vex, 'chat:message');
     expect(await jump(1, 0)).toEqual({ ok: true, data: { x: 700, y: 500 } });
-    expect((await line).message).toMatchObject({ kind: 'action', text: 'Skok' });
+    const said = (await line).message;
+    expect(said).toMatchObject({ kind: 'action', text: 'Skok' });
+    // Na czacie samo „Skok” — bez kosztu (MG, 19.10).
+    expect(JSON.stringify(said)).not.toContain('ruchu');
     // Pula Eksploracji w walce milczy.
     expect(paceOwedNow(vexTokenId, CAP_M)).toBe(0);
     expect((await jump(-1, 0)).ok).toBe(true);

@@ -360,8 +360,8 @@ przez MG):** osiem kierunków (z ukosami); 8 m z puli Ruchu, **bez Akcji** i bez
 w trwającej rundzie z dystansu tury, poza walką i w rundzie 0 z puli Eksploracji (Stop blokuje);
 **furtka (`gate`) blokuje jak drzwi**; lądowanie nie w stojącej osłonie i nie na figurze, przez wroga
 się nie skacze (reguła marszu); widzenie = mgła MG i pole widzenia gracza w widzeniu dynamicznym;
-MG zwolniony ze stanu, mgły, widzenia i budżetu, nie z geometrii; w walce wiersz „Skok — 8 m ruchu”
-na czacie. **Zrobione:** rdzeń `shared/jump.ts` (`judgeJumpGeometry`, `jumpBlockingSegments`),
+MG zwolniony ze stanu, mgły, widzenia i budżetu, nie z geometrii; w walce wiersz „Skok”
+na czacie (bez kosztu — poprawka MG tej samej sesji). **Zrobione:** rdzeń `shared/jump.ts` (`judgeJumpGeometry`, `jumpBlockingSegments`),
 `CPRED_ACTION_JUMP` w katalogu i na pasku (`jumpRefusal`, ikona `hud/jump.svg` — „Jump across”,
 Delapouite, CC BY 3.0), serwer `realtime/jump.ts` (`token:jump-options`, `token:jump`,
 `performTokenMove(…, { judged })`), klient `jump.ts` + `hudStore.jump` + `MapRenderer.setJumpTargets`
