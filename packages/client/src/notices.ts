@@ -1,4 +1,4 @@
-import type { SocketAck } from '@vtt/shared';
+import { GM_OVER_BUDGET, type SocketAck } from '@vtt/shared';
 import { playNaturalNotification } from './cup-notification.js';
 import {
   infoLifetime,
@@ -121,6 +121,8 @@ export function noteAck<T>(
     useNoticeStore.getState().settleTopic(topic);
     return true;
   }
+  // Wydatek MG poza budżetem: pytanie stoi już w temacie `overspend`.
+  if (ack.error === GM_OVER_BUDGET) return false;
   notifyRefusal(topic, text(ack.error));
   return false;
 }

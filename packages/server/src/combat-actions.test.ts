@@ -9,6 +9,7 @@ import type {
   CampaignSummary,
   ChatMessageBroadcast,
   CharacterView,
+  CombatOverspendAsk,
   CombatView,
   CombatantView,
   CpredCharacterData,
@@ -17,6 +18,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { CPRED_TURN_PROBLEM_MESSAGES, GM_OVER_BUDGET } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -520,15 +522,29 @@ describe('action economy', () => {
     expect(refusedAgain).toEqual({ ok: false, error: 'NOT_YOUR_TURN' });
   });
 
-  it('never blocks the GM, and counts the overspend', async () => {
+  it('asks the GM before going past the budget, then counts the overspend', async () => {
     await giveTurnTo(thugTokenId);
-    for (let shot = 0; shot < 3; shot += 1) {
+    for (let shot = 0; shot < 2; shot += 1) {
       const ack = await attack(gm, thugCharacterId, thugTokenId, { weaponRowId: 'w-pistol' });
       expect(ack.ok).toBe(true);
     }
+    // The third shot does not fit: nothing is spent until the GM says so.
+    const asked = waitFor<CombatOverspendAsk>(gm, 'combat:overspend-ask');
+    const third = await attack(gm, thugCharacterId, thugTokenId, { weaponRowId: 'w-pistol' });
+    expect(third).toEqual({ ok: false, error: GM_OVER_BUDGET });
+    const ask = await asked;
+    expect(ask.reason).toBe(CPRED_TURN_PROBLEM_MESSAGES.ROF_EXCEEDED);
+    expect(spent(rowOf(await tracker(), thugTokenId), 'attacks').used).toBe(2);
+
+    expect((await emitAck(gm, 'combat:overspend', { askId: ask.askId })).ok).toBe(true);
     const row = rowOf(await tracker(), thugTokenId);
     expect(spent(row, 'attacks').used).toBe(3);
     expect(row.turn?.overspent).toBe(1);
+    // One answer, one replay.
+    expect(await emitAck(gm, 'combat:overspend', { askId: ask.askId })).toEqual({
+      ok: false,
+      error: 'OVERSPEND_EXPIRED',
+    });
   });
 
   it('keeps the spent budget across a reconnect', async () => {

@@ -9,6 +9,7 @@ import type {
   CampaignSummary,
   ChatMessageBroadcast,
   CharacterView,
+  CombatOverspendAsk,
   CombatView,
   CombatantView,
   CpredCharacterData,
@@ -19,6 +20,7 @@ import type {
   TokenView,
   WallView,
 } from '@vtt/shared';
+import { GM_OVER_BUDGET } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -694,14 +696,20 @@ describe('grappling', () => {
       });
       expect(shield.ok).toBe(true);
 
+      // The shield took the thug's Action: the GM is asked and confirms.
+      const asked = waitFor<CombatOverspendAsk>(gm, 'combat:overspend-ask');
+      const refused = await emitAck(gm, 'attack:roll', {
+        characterId: thugCharacterId,
+        attackerTokenId: thugTokenId,
+        targetTokenId: vexTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(refused).toEqual({ ok: false, error: GM_OVER_BUDGET });
       const shot = data(
-        await emitAck<{ messageId: number }>(gm, 'attack:roll', {
-          characterId: thugCharacterId,
-          attackerTokenId: thugTokenId,
-          targetTokenId: vexTokenId,
-          request: { weaponRowId: 'w-pistol', mode: 'single' },
+        await emitAck<{ messageId: number }>(gm, 'combat:overspend', {
+          askId: (await asked).askId,
         }),
-        'attack:roll',
+        'combat:overspend',
       );
       // „Twoja Ludzka tarcza nie może unikać Ataków dystansowych" (s. 178).
       const evade = await emitAck(player, 'attack:evade', {

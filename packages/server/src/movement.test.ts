@@ -10,6 +10,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CombatActionLogEntry,
+  CombatOverspendAsk,
   CombatView,
   CombatantView,
   CpredCharacterData,
@@ -19,6 +20,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { GM_OVER_BUDGET } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -249,7 +251,14 @@ describe('movement budget', () => {
   /** Puts the token back at the origin without spending anybody's turn. */
   async function reset(tokenId: string): Promise<void> {
     await emitAck(gm, 'combat:reset-turn', { combatantId: rowOf(await tracker(), tokenId).id });
-    await drag(gm, tokenId, 0);
+    // A long way home is past the budget: the GM confirms the question.
+    const asked = waitFor<CombatOverspendAsk>(gm, 'combat:overspend-ask');
+    const moved = await drag(gm, tokenId, 0);
+    if (!moved.ok && moved.error === GM_OVER_BUDGET) {
+      await emitAck(gm, 'combat:overspend', { askId: (await asked).askId });
+    } else {
+      asked.catch(() => undefined);
+    }
     await emitAck(gm, 'combat:reset-turn', { combatantId: rowOf(await tracker(), tokenId).id });
   }
 
@@ -493,6 +502,8 @@ describe('movement budget', () => {
     // A statist has no sheet, so nothing measures them — the GM is unblocked
     // either way, which is the rule that matters here.
     expect(row.turn?.overspent ?? 0).toBeGreaterThanOrEqual(0);
+    // A player's figure in the GM's hand is refereeing, not the GM's own turn:
+    // no question, the overspend is just counted (19.10.2026).
     expect((await drag(gm, vexTokenId, 40)).ok).toBe(true);
     expect(rowOf(await tracker(), vexTokenId).turn?.overspent).toBe(1);
   });

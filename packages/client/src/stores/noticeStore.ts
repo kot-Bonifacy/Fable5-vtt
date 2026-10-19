@@ -25,6 +25,8 @@ export type NoticeTopic =
   | 'player-move'
   | 'attack'
   | 'action'
+  /** Pytanie MG o wydatek poza budżetem tury (19.10.2026). */
+  | 'overspend'
   | 'target'
   | 'token'
   | 'scene'

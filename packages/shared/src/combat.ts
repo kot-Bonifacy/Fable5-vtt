@@ -526,6 +526,28 @@ export interface CombatAllowPayload {
 }
 
 /**
+ * Kod odmowy wydatku MG poza budżetem tury (19.10.2026). Serwer nie przepuszcza
+ * go już po cichu: zapamiętuje intencję, wysyła MG `combat:overspend-ask`
+ * i odpowiada tym kodem. Klient nie pokazuje go jako odmowy — pytanie stoi
+ * w osobnym pasku.
+ */
+export const GM_OVER_BUDGET = 'GM_OVER_BUDGET';
+
+/** `combat:overspend-ask` — pytanie do MG, zanim jego figura wyjdzie poza budżet. */
+export interface CombatOverspendAsk {
+  askId: string;
+  /** Nazwa figury, jak ją podaje stół („Zbir 2”). */
+  actorName: string;
+  /** Zdanie odmowy, które dostałby gracz („Nie masz już Akcji w tej turze.”). */
+  reason: string;
+}
+
+/** `combat:overspend` — „Wykonaj poza budżetem”: serwer powtarza zapamiętaną intencję. */
+export interface CombatOverspendPayload {
+  askId: string;
+}
+
+/**
  * Declaring „Wstrzymanie Akcji": either a described trigger or a value in the
  * initiative queue (RAW allows both), plus the intended target of the action.
  */

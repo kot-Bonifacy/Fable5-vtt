@@ -55,6 +55,12 @@ w jednym z ośmiu kierunków ponad barierą i osłoną za 8 m ruchu (w rundzie z
 z puli Eksploracji), pola lądowania liczy serwer (`token:jump-options`). Rozstrzygnięcia przyjęte bez
 pytań (furtka blokuje, bez Akcji, przez wroga nie) czekają na słowo MG. Umowa na górze `tura`.
 
+**Pytanie MG przed przekroczeniem budżetu tury (zlecenie MG z 19.10) — dalej etap 28, potem T10.**
+Wydatek NPC-a MG, który nie mieści się w turze (Akcja, metry, LA, Bieg bez ruchu), staje: nad mapą
+pasek „Poza budżetem tury” z „Wykonaj poza budżetem” / „Anuluj”, a „Wykonaj” powtarza intencję na
+serwerze z licznikiem przekroczeń jak dawniej. Figura gracza w ręku MG i boty — bez pytania.
+Umowa na górze `tura`.
+
 **Zaległości zamknięte 18.10 (druga sesja) — dalej refaktoryzacja całości pod osłoną suity, potem
 T10.** Pełny domyślny przebieg z gatewayem 370/379 (3 wpisy konsoli przy restarcie instancji, powtórka
 zielona), `40-odpornosc` zielona, punkty `po-T3`…`po-T6` odbudowane **z krokami `@llm`**. Linia
@@ -343,7 +349,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia | 25   | 6       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 26   | 6       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -361,6 +367,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 19.10, piąta (po `9dc6d84`) — zlecenie MG: pytanie przed przekroczeniem budżetu tury
+
+**Zlecenie MG:** ostrzeżenie dla MG, który łatwo i przypadkiem przekracza budżet tury.
+**Decyzja MG (pytanie na starcie):** pytanie przed wydatkiem, nie informacja po fakcie i nie sam
+znak na slocie. **Zrobione:** `applySpend` rzuca `OverspendAsk` dla NPC-a MG, gdy wydatek się nie
+mieści; rejestr zapamiętuje zdarzenie i wysyła `combat:overspend-ask`, a `combat:overspend` je
+powtarza bez pytania (licznik i plakietka jak dawniej). Pytanie obejmuje każdą ścieżkę Tury (pasek
+akcji, atak, przeładowanie, zwarcie, Sieć, marsz, skok). **Rozstrzygnięte bez pytań (do słowa MG):**
+figura gracza w ręku MG i boty grające kontem MG — bez pytania; pytanie wygasa po 2 min, nowe
+zastępuje stare; „Anuluj” nic nie wysyła. Umowa na górze `tura`.
+
+**Weryfikacja:** `shared` 2515/2515, serwer 1525/1525 (`combat-actions`, `movement`, `grapple`
+przepięte na potwierdzenie, `campaign-isolation` z nowym zdarzeniem), klient 416/416; `tsc` w trzech
+pakietach, ESLint i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E
+(usunięty) z `po-T6`, MG w **Firefoksie**: „Bieg” bez ruchu → pasek, „Anuluj” nic nie wydaje,
+„Wykonaj” daje Bieg z +1; marsz 24 m przy 16 m → figura wraca, pasek „Za daleko o 8 m…”, „Wykonaj”
+przenosi ją z +2 i plakietką na czacie. Nieużywany przez spec plik `grapple-turns.test.ts`
+(nieśledzony, sprzed sesji) przechodzi i nie wszedł do commita.
 
 ### Sesja 19.10, czwarta (po `517b945`) — zlecenie MG: bariera i osłona w podglądzie strzału
 
@@ -381,35 +406,3 @@ i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (us
 Ola w **Firefoksie**: Iskra → Wieżyczka przez wschodni odcinek bariery „Bariera · OB i karę zna
 MG”, Iskra → Strażnik przez otwartą bramę bez wiersza; MG w Chromium tą samą linią „OB 20 · kara
 −4”, kubek „… · PT 20 · przez barierę OB 20”, modyfikator 7.
-
-### Sesja 19.10, trzecia (po `a0186fd`) — etap 56: walka z zauważenia wroga wzorem Foundry
-
-**Zlecenie MG:** drużyna przechodzi z eksploracji w tryb turowy, gdy ktoś z graczy zobaczy figurę
-oznaczoną przez MG jako wrogą; MG dostaje miejsce na wskazanie uczestników i dokładanie kolejnych
-później (wzór Foundry). **Decyzje MG (pytania na starcie, osiem — w pliku etapu):** trzy postawy,
-NPC domyślnie Neutralny; serwer zakłada starcie „Przed walką”, MG rozpoczyna albo odwołuje; marsz
-staje od razu, cała drużyna stoi; wróg zauważony w trwającej walce dołącza z inicjatywą od serwera
-(także ręczne „Dodaj” NPC-a); pasek nad mapą + zakładka „Walka” sama; „widzi” = ekran gracza;
-uspokojenie do zniknięcia z oczu; postawę widzi tylko MG. **Zrobione:** migracja
-`20261019180000_sighting_disposition` (`Token.disposition`, `Combat.sighting`), `shared`
-(`TokenDisposition`, `tokenDisposition`, `CombatSightingView`, `pointAlongRoute`), serwer
-`realtime/foe-sighting.ts` (umowa na górze `tura`), `foundEncounter` i `rollJoinedInitiative`
-w `combat.ts`, `emitTokenMoveFrame` wyciągnięte z `performTokenMove`; klient: `disposition.ts`
-(menu figury, pasek grupy, okno edycji, obwódka NPC-a u MG), `foe-sighting.ts` (wezwanie,
-przełączenie zakładki), `walk-halt.ts` (`token:halt`), `JoinFightPicker` w `CombatPanel`.
-**Znalezione na oględzinach i naprawione:** równoległa klatka marszu wyprowadzała figurę za pole
-zatrzymania (804 zamiast 800), a na scenie dynamicznej gracz nie dostawał pola zatrzymania
-(`holdsPosition` z #47 trzyma figurę w ruchu przed listą) — sprawdzenia sceny idą teraz po kolei,
-a pole zatrzymania leci jako lądowanie (pułapka na górze `tura`); pole przyciągnięte o pół kratki
-wstecz chowało wroga za róg, więc „Odwołaj” go nie uspokajał — idący staje teraz na polu, z którego
-wroga widać. Do decyzji MG: pięć rzeczy
-z `POMYSLY.md` (postawa na wzorcu statysty, pamięć po restarcie, pula przy zatrzymaniu, boty,
-MG na innej scenie).
-
-**Weryfikacja:** `shared` 2512/2512 (+4), serwer — nowy `foe-sighting.test.ts` 12 przypadków
-(w tym wyścig dwóch klatek, trzy razy z rzędu), `combat.test.ts` przepięty na inicjatywę posiłków;
-klient 416/416 (+3 `foe-sighting.test.ts`); `tsc` w trzech pakietach, ESLint i Prettier czyste
-w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T6` — MG w Chromium,
-Marek w **Firefoksie**: menu postawy, marsz Kowala staje na (800, 1400) u gracza i w bazie,
-wezwanie MG i „Walka” same, „Dołącz do walki” z wrogim na górze, odmowa ruchu przed walką.
-Kolorów obwódek z bliska nie oglądano (zrzut przy oddaleniu całej sceny).

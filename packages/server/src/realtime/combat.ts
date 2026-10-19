@@ -48,6 +48,8 @@ import {
   spendTurnState,
   spendUsesAction,
   reinforcementsOf,
+  turnDistanceRefusal,
+  turnProblemMessage,
   turnSpendTookExtra,
   turnBudgetOf,
   type SheetMoveBudget,
@@ -57,7 +59,13 @@ import {
   type SheetTurnSpend,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
-import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import {
+  OverspendAsk,
+  RealtimeError,
+  asksBeforeOverspend,
+  defineEvent,
+  type RealtimeDeps,
+} from './registry.js';
 import { containerTokenIds } from './containers.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
@@ -862,6 +870,8 @@ export type TurnSpendProblem = SheetTurnProblem | 'NOT_YOUR_TURN' | 'STATUS_BLOC
  *     is CP RED's business, not the tracker's.
  *  3. **The GM is never blocked.** Their own NPCs go past the budget with the
  *     overspend counted, so the tracker says so out loud (stage decision).
+ *     Since 19.10.2026 the GM at the table is asked first (`OverspendAsk`),
+ *     so a stray click does not go past the budget unnoticed.
  */
 async function applySpend(
   deps: RealtimeDeps,
@@ -908,6 +918,22 @@ async function applySpend(
       ? applyMoveBudget(combatant.turnState, await moveBudgetForCombatant(deps, combatant))
       : combatant.turnState;
 
+  // MG przy stole (nie bot jego kontem) najpierw słyszy, że jego NPC wychodzi
+  // poza budżet (19.10.2026): wydatek staje, rejestr pyta, a „Wykonaj poza
+  // budżetem” powtarza zdarzenie bez pytania. Figura gracza w ręku MG to
+  // sędziowanie (odłączenie netrunnera, odwołane wezwanie) — bez pytania,
+  // jak dotąd. Na sucho nie pyta nikt.
+  const gmFigure = !combatant.token?.ownerId;
+  if (isGm && gmFigure && !bypassed && !dryRun && asksBeforeOverspend(user)) {
+    const judgedSpend = spendTurnState(judged, spend, false);
+    if (!judgedSpend.ok) {
+      throw new OverspendAsk({
+        actorName: combatantTableName(combatant),
+        reason: overspendReason(judged, spend, judgedSpend),
+      });
+    }
+  }
+
   const result = spendTurnState(judged, spend, isGm || bypassed);
   if (!result.ok) {
     // A wound that took the turn's Action away answers with its own sentence
@@ -937,6 +963,19 @@ async function applySpend(
     },
   });
   return { kind: 'spent', combatant, forced: result.forced, bypassed, tookExtra };
+}
+
+/** Zdanie, które dostałby gracz — metry ruchu mówią, ile brakuje. */
+function overspendReason(
+  judged: string | null,
+  spend: SheetTurnSpend,
+  refusal: { error: SheetTurnProblem; message?: string },
+): string {
+  if (refusal.message) return refusal.message;
+  if (refusal.error === 'NO_MOVE_LEFT' && spend.kind === 'move' && spend.metres !== undefined) {
+    return turnDistanceRefusal(judged, spend.metres);
+  }
+  return turnProblemMessage(refusal.error);
 }
 
 /**

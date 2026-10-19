@@ -56,6 +56,7 @@ import {
 import {
   combatActionEvent,
   combatAllowEvent,
+  combatOverspendEvent,
   combatEndEvent,
   combatHoldEvent,
   combatHoldReleaseEvent,
@@ -359,6 +360,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   combatEndEvent,
   combatActionEvent,
   combatAllowEvent,
+  combatOverspendEvent,
   combatHoldEvent,
   combatHoldReleaseEvent,
   combatResetTurnEvent,

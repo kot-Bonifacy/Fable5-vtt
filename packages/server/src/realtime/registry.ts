@@ -1,6 +1,15 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Server as SocketIOServer, Socket } from 'socket.io';
-import type { Role, SessionUser, SocketAck } from '@vtt/shared';
+import {
+  GM_OVER_BUDGET,
+  ROLE_GM,
+  type CombatOverspendAsk,
+  type Role,
+  type SessionUser,
+  type SocketAck,
+} from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { RoomSequences } from './state.js';
@@ -28,6 +37,54 @@ export class RealtimeError extends Error {
     super(code);
     this.name = 'RealtimeError';
   }
+}
+
+/**
+ * Wydatek MG poza budżetem tury, zatrzymany do potwierdzenia (19.10.2026).
+ * Rzuca go `applySpend` (`combat.ts`); rejestr zapamiętuje zdarzenie, które
+ * go wywołało, i pyta MG paskiem (`combat:overspend-ask`).
+ */
+export class OverspendAsk extends RealtimeError {
+  constructor(public readonly ask: Omit<CombatOverspendAsk, 'askId'>) {
+    super(GM_OVER_BUDGET);
+  }
+}
+
+/**
+ * Konto MG obsługiwanego teraz zdarzenia z gniazda. Pyta się tylko jego: bot
+ * gra kontem MG, ale z własnym obiektem użytkownika (`botActorUser`), więc
+ * porównanie tożsamości go pomija — bot nie ma komu pokazać pytania.
+ */
+const overspendAsker = new AsyncLocalStorage<SessionUser>();
+
+/** Czy wydatek MG poza budżetem ma najpierw zapytać (zamiast przejść po cichu). */
+export function asksBeforeOverspend(user: SessionUser): boolean {
+  return overspendAsker.getStore() === user;
+}
+
+/** Pytanie żyje tyle, ile MG rozsądnie się namyśla; po tym runda mogła się zmienić. */
+const OVERSPEND_ASK_TTL_MS = 2 * 60_000;
+
+interface PendingOverspend {
+  askId: string;
+  at: number;
+  /** Powtórka zdarzenia już poza `overspendAsker` — wydatek przejdzie jak dawniej. */
+  replay: () => Promise<unknown>;
+}
+
+/** Jedno pytanie na gniazdo: nowe zastępuje stare (pasek u klienta też). */
+const pendingOverspend = new WeakMap<Socket, PendingOverspend>();
+
+/** Zabiera zapamiętaną intencję do powtórki; `null`, gdy pytanie wygasło albo zastąpiono je. */
+export function takeOverspendReplay(
+  socket: Socket,
+  askId: unknown,
+): (() => Promise<unknown>) | null {
+  const pending = pendingOverspend.get(socket);
+  if (!pending || pending.askId !== askId) return null;
+  pendingOverspend.delete(socket);
+  if (Date.now() - pending.at > OVERSPEND_ASK_TTL_MS) return null;
+  return pending.replay;
 }
 
 export interface EventArgs<TPayload> {
@@ -119,15 +176,28 @@ export function registerEvents(
       }
 
       void (async () => {
+        const run = () => event.handler({ deps, socket, user, payload: payload as never });
         try {
-          const result = await event.handler({ deps, socket, user, payload: payload as never });
+          const result = await (user.role === ROLE_GM ? overspendAsker.run(user, run) : run());
           // Zegar bezczynności (44c) liczy zdarzenia gry przy stole.
           const campaignId = (socket.data.campaign as { id: string } | null | undefined)?.id;
           if (campaignId && socket.data.atTable === true)
             deps.sessions.touch(campaignId, event.name);
           ack?.(result === undefined ? { ok: true } : { ok: true, data: result });
         } catch (error) {
-          if (error instanceof RealtimeError) {
+          if (error instanceof OverspendAsk) {
+            const askId = randomUUID();
+            pendingOverspend.set(socket, {
+              askId,
+              at: Date.now(),
+              replay: async () => overspendAsker.exit(run),
+            });
+            socket.emit('combat:overspend-ask', {
+              ...error.ask,
+              askId,
+            } satisfies CombatOverspendAsk);
+            ack?.({ ok: false, error: error.code });
+          } else if (error instanceof RealtimeError) {
             ack?.({ ok: false, error: error.code });
           } else if (error instanceof Prisma.PrismaClientValidationError) {
             // Ładunek, którego zapytanie nie przyjęło — id spoza zakresu Int

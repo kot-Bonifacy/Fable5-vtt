@@ -518,6 +518,9 @@ const CASES: Record<string, Case> = {
   // combat-actions
   'combat:action': foreign((a) => ({ combatantId: a.combatantId, actionId: 'dodge' })),
   'combat:allow': foreign((a) => ({ combatantId: a.combatantId })),
+  'combat:overspend': own('powtarza intencję zapamiętaną na własnym gnieździe MG', () => ({
+    askId: 'x',
+  })),
   'combat:hold': foreign((a) => ({ combatantId: a.combatantId, trigger: 'x' })),
   'combat:hold-release': foreign((a) => ({ combatantId: a.combatantId })),
   'combat:reset-turn': foreign((a) => ({ combatantId: a.combatantId })),

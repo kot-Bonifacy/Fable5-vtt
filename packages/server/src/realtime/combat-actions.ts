@@ -2,6 +2,7 @@ import type {
   CombatActionLogEntry,
   CombatActionPayload,
   CombatAllowPayload,
+  CombatOverspendPayload,
   CombatHoldPayload,
   CombatHoldReleasePayload,
   CombatResetTurnPayload,
@@ -33,7 +34,7 @@ import {
   turnActionAvailable,
   turnOwesDeathSave,
 } from '../sheets.js';
-import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { RealtimeError, defineEvent, takeOverspendReplay, type RealtimeDeps } from './registry.js';
 import {
   CLEARED_HOLD,
   applyTurnPointer,
@@ -360,6 +361,24 @@ export const combatAllowEvent = defineEvent<CombatAllowPayload, CombatView>({
       }
     }
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
+  },
+});
+
+/**
+ * „Wykonaj poza budżetem” (19.10.2026): MG potwierdza wydatek, o który zapytał
+ * go rejestr (`OverspendAsk`). Serwer powtarza zapamiętane zdarzenie bez
+ * pytania, więc przechodzi tak, jak przechodziło przed pytaniem — z licznikiem
+ * przekroczeń i plakietką „poza budżetem tury” na czacie. „Anuluj” nic nie
+ * wysyła: pytanie wygasa samo albo ustępuje następnemu.
+ */
+export const combatOverspendEvent = defineEvent<CombatOverspendPayload, unknown>({
+  name: 'combat:overspend',
+  role: ROLE_GM,
+  handler: async ({ socket, payload }) => {
+    const replay = takeOverspendReplay(socket, payload?.askId);
+    if (!replay) throw new RealtimeError('OVERSPEND_EXPIRED');
+    // Odpowiedź powtórzonego zdarzenia, gdyby wołający chciał ją przeczytać.
+    return replay();
   },
 });
 

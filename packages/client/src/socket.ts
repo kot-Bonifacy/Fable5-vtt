@@ -262,6 +262,7 @@ import type {
   TokenAimBroadcast,
   TokenHaltBroadcast,
   CombatJoinedBroadcast,
+  CombatOverspendAsk,
   TokenTargetBroadcast,
   TokenAssetDeleteResult,
   TokenCombatProfile,
@@ -312,6 +313,7 @@ import {
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
+  GM_OVER_BUDGET,
   ROLE_GM,
   clampShopTier,
   creationShopRefusalText,
@@ -1368,6 +1370,22 @@ export function connectSocket(userId: string): Socket {
   // Etap 56: drużyna zobaczyła wroga — marsz staje (tylko u prowadzącego).
   onPresented('token:halt', (broadcast: TokenHaltBroadcast) => receiveWalkHalt(broadcast));
   // Etap 56: wróg zauważony w trwającej walce dołączył sam (tylko MG).
+  // Wydatek MG poza budżetem tury czeka na potwierdzenie (19.10.2026).
+  onPresented('combat:overspend-ask', (ask: CombatOverspendAsk) => {
+    notifyChoice(
+      'overspend',
+      `${ask.actorName}: ${ask.reason} Wykonać mimo to?`,
+      [
+        {
+          label: 'Wykonaj poza budżetem',
+          title: 'Przekroczenie zostanie policzone w trackerze i oznaczone na czacie',
+          run: () => confirmOverspend(ask.askId),
+        },
+        { label: 'Anuluj', run: () => undefined },
+      ],
+      { title: 'Poza budżetem tury' },
+    );
+  });
   onPresented('combat:joined', (broadcast: CombatJoinedBroadcast) => {
     if (!viewingScene(broadcast.sceneId)) return;
     const names = broadcast.tokenIds
@@ -3401,6 +3419,13 @@ export const spendCombatAction = (actionId: string, note?: string, combatantId?:
     ...(combatantId ? { combatantId } : {}),
   });
 
+/** „Wykonaj poza budżetem” — serwer powtarza wstrzymaną intencję MG. */
+function confirmOverspend(askId: string): void {
+  void emitSceneAck('combat:overspend', { askId }).then((ack) => {
+    noteAck('overspend', ack, combatErrorText);
+  });
+}
+
 /** GM waves one refused action through — a single-use pass. */
 export const allowCombatAction = (combatantId: string, messageId?: number) =>
   emitSceneAck<CombatView>('combat:allow', {
@@ -3630,6 +3655,10 @@ export function combatErrorText(code: string): string {
     // refusal card; the tracker only needs to say that it was stopped.
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — szczegóły na karcie odmowy.';
+    case GM_OVER_BUDGET:
+      return 'Poza budżetem tury — zdecyduj na pasku nad mapą.';
+    case 'OVERSPEND_EXPIRED':
+      return 'To pytanie już wygasło — wykonaj akcję jeszcze raz.';
     // Etap 45: „Ruch graczy: Stop” w górnym pasku MG.
     case 'MOVE_LOCKED':
       return PLAYER_MOVE_STOP_NOTE;

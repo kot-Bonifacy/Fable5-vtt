@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10, trzecia (po `a0186fd`) — etap 56: walka z zauważenia wroga wzorem Foundry
+
+**Zlecenie MG:** drużyna przechodzi z eksploracji w tryb turowy, gdy ktoś z graczy zobaczy figurę
+oznaczoną przez MG jako wrogą; MG dostaje miejsce na wskazanie uczestników i dokładanie kolejnych
+później (wzór Foundry). **Decyzje MG (pytania na starcie, osiem — w pliku etapu):** trzy postawy,
+NPC domyślnie Neutralny; serwer zakłada starcie „Przed walką”, MG rozpoczyna albo odwołuje; marsz
+staje od razu, cała drużyna stoi; wróg zauważony w trwającej walce dołącza z inicjatywą od serwera
+(także ręczne „Dodaj” NPC-a); pasek nad mapą + zakładka „Walka” sama; „widzi” = ekran gracza;
+uspokojenie do zniknięcia z oczu; postawę widzi tylko MG. **Zrobione:** migracja
+`20261019180000_sighting_disposition` (`Token.disposition`, `Combat.sighting`), `shared`
+(`TokenDisposition`, `tokenDisposition`, `CombatSightingView`, `pointAlongRoute`), serwer
+`realtime/foe-sighting.ts` (umowa na górze `tura`), `foundEncounter` i `rollJoinedInitiative`
+w `combat.ts`, `emitTokenMoveFrame` wyciągnięte z `performTokenMove`; klient: `disposition.ts`
+(menu figury, pasek grupy, okno edycji, obwódka NPC-a u MG), `foe-sighting.ts` (wezwanie,
+przełączenie zakładki), `walk-halt.ts` (`token:halt`), `JoinFightPicker` w `CombatPanel`.
+**Znalezione na oględzinach i naprawione:** równoległa klatka marszu wyprowadzała figurę za pole
+zatrzymania (804 zamiast 800), a na scenie dynamicznej gracz nie dostawał pola zatrzymania
+(`holdsPosition` z #47 trzyma figurę w ruchu przed listą) — sprawdzenia sceny idą teraz po kolei,
+a pole zatrzymania leci jako lądowanie (pułapka na górze `tura`); pole przyciągnięte o pół kratki
+wstecz chowało wroga za róg, więc „Odwołaj” go nie uspokajał — idący staje teraz na polu, z którego
+wroga widać. Do decyzji MG: pięć rzeczy
+z `POMYSLY.md` (postawa na wzorcu statysty, pamięć po restarcie, pula przy zatrzymaniu, boty,
+MG na innej scenie).
+
+**Weryfikacja:** `shared` 2512/2512 (+4), serwer — nowy `foe-sighting.test.ts` 12 przypadków
+(w tym wyścig dwóch klatek, trzy razy z rzędu), `combat.test.ts` przepięty na inicjatywę posiłków;
+klient 416/416 (+3 `foe-sighting.test.ts`); `tsc` w trzech pakietach, ESLint i Prettier czyste
+w zmienionych plikach. **Oględziny:** tymczasowy spec E2E (usunięty) z `po-T6` — MG w Chromium,
+Marek w **Firefoksie**: menu postawy, marsz Kowala staje na (800, 1400) u gracza i w bazie,
+wezwanie MG i „Walka” same, „Dołącz do walki” z wrogim na górze, odmowa ruchu przed walką.
+Kolorów obwódek z bliska nie oglądano (zrzut przy oddaleniu całej sceny).
+
 ### Sesja 19.10, druga (po `8d13a7f`) — zlecenie MG: Skok z lewego paska
 
 **Zlecenie MG:** akcja „Skok” w lewym pasku — figura przenosi się o dwie kratki w wybranym kierunku,

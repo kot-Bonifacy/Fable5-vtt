@@ -3,6 +3,7 @@ import {
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BLAST_SIDE_M,
   CPRED_RANGE_BANDS,
+  GM_OVER_BUDGET,
   ROLE_GM,
   blockingSegments,
   figureBarriers,
@@ -443,7 +444,8 @@ function moveAllowanceOf(
     costFactor: distance.hard ? 2 : 1,
     // The GM is never refused a move — going past the budget is logged as
     // „poza budżetem" and happens (stage 14b) — so their route is drawn against
-    // the budget but never cut by it.
+    // the budget but never cut by it. Since 19.10.2026 the server asks before
+    // an NPC's drop goes past it (`combat:overspend-ask`).
     enforced: !isGm,
     // The second reach band: how much further this turn goes if the trade the
     // system offers is taken (CP RED: the Action spent on „Bieg"). The name
@@ -888,6 +890,9 @@ export function MapArea() {
         // already put the true position in the store.
         const settled = useTokenStore.getState().tokens[tokenId];
         if (settled) renderer.snapTokenBack(tokenId, settled.x, settled.y);
+        // MG poza budżetem: pytanie stoi już nad mapą (`overspend`), a „Wykonaj”
+        // powtórzy ten ruch na serwerze.
+        if (result.error === GM_OVER_BUDGET) return;
         noteMove(moveErrorText(result.error));
       });
     };
