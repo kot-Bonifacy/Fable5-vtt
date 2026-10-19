@@ -20,6 +20,7 @@ import {
 } from '@vtt/shared';
 import {
   addToCombat,
+  combatErrorText,
   endCombat,
   releaseCombatHold,
   removeFromCombat,
@@ -293,8 +294,9 @@ function portraitMarks(
   if (combatant.held) {
     marks.push({
       key: 'held',
-      title:
-        combatant.held.initiative !== null
+      title: combatant.held.ready
+        ? 'Akcja wstrzymana: wchodzi po tej turze'
+        : combatant.held.initiative !== null
           ? `Akcja wstrzymana przy ${combatant.held.initiative}`
           : `Akcja wstrzymana: ${combatant.held.trigger ?? 'wyzwalacz opisany'}`,
       tone: 'info',
@@ -314,6 +316,7 @@ function CombatantCard({
   isActive,
   isDone,
   isGm,
+  isMine,
   marks,
   dead,
 }: {
@@ -322,6 +325,8 @@ function CombatantCard({
   isActive: boolean;
   isDone: boolean;
   isGm: boolean;
+  /** The viewer plays this participant — they may say „Działam teraz”. */
+  isMine: boolean;
   marks: PortraitMark[];
   dead: boolean;
 }) {
@@ -365,15 +370,24 @@ function CombatantCard({
         {combatant.turn && (
           <span className="combat-card-budget">{budgetSummary(combatant.turn)}</span>
         )}
-        {isGm && combatant.held && (
+        {/* „Działam teraz” (19.10): wstrzymanie to obniżona inicjatywa na tę
+            Rundę — nikogo nie przerywa, wchodzi zaraz po bieżącej turze. */}
+        {(isGm || isMine) && combatant.held && !combatant.held.ready && !isActive && (
           <button
             type="button"
             className="small-button combat-card-release"
-            onClick={() => void releaseCombatHold(combatant.id)}
-            title="Odpal wstrzymaną Akcję teraz"
+            onClick={() =>
+              void releaseCombatHold(combatant.id).then((ack) =>
+                noteAck('action', ack, combatErrorText),
+              )
+            }
+            title="Wstrzymana Akcja wejdzie do kolejki zaraz po bieżącej turze"
           >
-            Odpal wstrzymaną
+            Działam teraz
           </button>
+        )}
+        {combatant.held?.ready && !isActive && (
+          <span className="combat-tag">wchodzi po tej turze</span>
         )}
       </span>
       {isGm && (
@@ -452,7 +466,7 @@ export function CombatPanel() {
   const actor = isGm
     ? active
     : (combat.combatants.find(
-        (c) => user !== null && c.ownerId === user.id && (c.id === active?.id || c.held),
+        (c) => user !== null && c.ownerId === user.id && c.id === active?.id,
       ) ?? null);
   // Ci przed grającym mieli już swoją turę w tej Rundzie — jak na pasie.
   const activeIndex = combat.combatants.findIndex((c) => c.id === combat.activeCombatantId);
@@ -473,13 +487,15 @@ export function CombatPanel() {
                 isActive={combatant.id === combat.activeCombatantId}
                 isDone={combat.round > 0 && activeIndex >= 0 && index < activeIndex}
                 isGm={isGm}
+                isMine={user !== null && combatant.ownerId === user.id}
                 marks={portraitMarks(combatant, token, registry, effects, clock)}
                 dead={token ? tokenCondition(token, conditions) === 'dead' : false}
               />
               {/* Akcje stoją pod kartą tego, kto je wydaje (uwaga MG z 26.09:
                   pod całą listą były za daleko od jego portretu). Należą do
-                  MG (zawsze, za grającego) i do gracza w jego turze — albo
-                  z Akcją wstrzymaną w cudzą. */}
+                  MG (zawsze, za grającego) i do gracza w jego turze — także
+                  tej, którą dała mu wstrzymana Akcja (od 19.10 poza turą
+                  wstrzymana Akcja nie działa; jest „Działam teraz”). */}
               {actor?.id === combatant.id && (
                 <li className="combat-card-turn">
                   <CombatActions combat={combat} combatant={actor} />

@@ -327,7 +327,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  | 22   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 22   | 5       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       | 23   | 5       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 47   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -345,6 +345,28 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 19.10 (po `a60dec8`) — poprawka: Wstrzymanie Akcji dawało drugą turę
+
+**Zgłoszenie MG:** po wstrzymaniu Akcji statysta dostawał w tej samej Rundzie drugą turę, a gracz
+nr 2 czekał. **Diagnoza:** wstrzymanie z wyzwalaczem odpalał MG w cudzej turze, inicjatywa
+wstrzymującego zostawała stara, więc `nextTurn` liczył następnego od jego pierwotnego miejsca —
+każdy pomiędzy dostawał drugą świeżą turę. Przy okazji: tura zakończona tuż przed odpaleniem
+wstrzymanej Akcji gubiła hooki końca tury (ogień nie palił). **Decyzje MG (pytania):** wstrzymanie
+działa jak obniżona inicjatywa w tej Rundzie, bez udziału MG; od następnej Rundy stare miejsce;
+„Działam teraz” klika też gracz i wchodzi **po** bieżącej turze (bez przerywania); niewykorzystana
+Akcja gra ostatnia w Rundzie; drugi błąd naprawić tą samą poprawką. **Zrobione:** migracja
+`20261019120000_held_action_resume` (`Combat.resumeCombatantId`/`resumeRound`,
+`Combatant.heldReady`), `turnFrom` w `shared`, nowe `dueHold`/`fireHeldAction`/`upcomingTurn`,
+`combat:hold-release` dla gracza-właściciela, poza turą wstrzymanie nie pozwala już działać. UI:
+„Działam teraz” przy portrecie w zakładce „Walka” (gracz i MG), znacznik „wchodzi po tej turze”,
+nowa podpowiedź w formularzu wstrzymania. Umowa na górze `tura`.
+
+**Weryfikacja:** `shared` 2496/2496, `server` 1485/1485 (nowe testy: „Działam teraz” bez drugiej
+tury, wartość w kolejce bez stałej zmiany inicjatywy, Akcja na koniec Rundy, uprawnienia, ogień
+przed wstrzymaną Akcją), tsc i ESLint pakietów czyste. E2E nie puszczano (żadna suita nie dotyka
+wstrzymania). **Oględziny:** **Firefox** (biblioteka `playwright`, instancja E2E): MG + gracz,
+pełny przebieg Vex 20 → Bandzior 10 → „Działam teraz” → Vex → Kurier 5 w tej samej Rundzie.
 
 ### Sesja 18.10, czwarta (po `81a4516`) — etap 28: wdrożenie na VPS i boty przez Tailscale
 
@@ -369,23 +391,3 @@ rekordów zgodne z VPS, stół MG z mapą w **Firefoksie** (Playwright). Kopia n
 na `https://vtt.tatanga.eu`; test degradacji (gateway wyłączony → boty niedostępne, stół działa,
 po starcie wracają same) potwierdzony przez MG. Kodu aplikacji nie ruszano, testów nie puszczano.
 **Oględziny:** MG w swojej przeglądarce i gracz z innej sieci (smoke test kroku 8).
-
-### Sesja 18.10, trzecia (po `c229dc6`) — etap 28: pliki wdrożenia i instrukcja
-
-**Zlecenie MG:** „na podstawie `C:\AI\vps_home_pl_konfiguracja.md` przygotuj instrukcję wypchnięcia
-systemu na VPS”. **Decyzje MG (pytania):** NPM zamiast Caddy, próba bez botów, kopia `dev.db`,
-pliki + instrukcja, rekord DNS `vtt` dodaje MG, NPM → `vtt-web` siecią Dockera, rejestracja otwarta.
-**Zrobione:** `deploy/` (Dockerfile serwera i klienta, `docker-compose.yml`, `nginx.conf`,
-`server-entrypoint.sh`, `deploy.sh`, `pack-data.ps1`, `.env.prod.example`), `.dockerignore`,
-`docs/DEPLOY.md`, etap 28 z rozstrzygnięciami. **Znalezione:** klient potrzebuje bezpiecznego kontekstu
-(`crypto.subtle`, `randomUUID`, schowek), więc wariant `http://IP:8088` z planu odpada. Ponadto
-nieudane odtworzenie kopii + start na pustej bazie + `uploads-gc` kasuje uploady, a kopia z tej samej
-minuty nadpisuje poprzednią. Dlatego entrypoint odmawia startu bez bazy, gdy są pliki
-w `uploads/campaigns` (zaległość w `zaleglosci.md`).
-
-**Weryfikacja:** lokalnie w Docker Desktop: build obu obrazów (z `tsc` klienta), start na kopii
-`dev.db` (76 migracji, bez ostrzeżeń o próbce), logowanie MG, `/socket.io`, `/public` przez nginx,
-kopia z kontenera, odtworzenie przy zatrzymanym serwerze (4 z 5 udane), odmowa entrypointu bez bazy.
-Testów jednostkowych nie ruszano (zmian w kodzie aplikacji brak). **Oględziny:** stół MG
-w **Firefoksie** (Playwright) na `localhost:8088` z kontenerów — mapa z `uploads/`, czat, „Połączono”.
-Na VPS niewykonane.

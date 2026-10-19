@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 18.10, trzecia (po `c229dc6`) — etap 28: pliki wdrożenia i instrukcja
+
+**Zlecenie MG:** „na podstawie `C:\AI\vps_home_pl_konfiguracja.md` przygotuj instrukcję wypchnięcia
+systemu na VPS”. **Decyzje MG (pytania):** NPM zamiast Caddy, próba bez botów, kopia `dev.db`,
+pliki + instrukcja, rekord DNS `vtt` dodaje MG, NPM → `vtt-web` siecią Dockera, rejestracja otwarta.
+**Zrobione:** `deploy/` (Dockerfile serwera i klienta, `docker-compose.yml`, `nginx.conf`,
+`server-entrypoint.sh`, `deploy.sh`, `pack-data.ps1`, `.env.prod.example`), `.dockerignore`,
+`docs/DEPLOY.md`, etap 28 z rozstrzygnięciami. **Znalezione:** klient potrzebuje bezpiecznego kontekstu
+(`crypto.subtle`, `randomUUID`, schowek), więc wariant `http://IP:8088` z planu odpada. Ponadto
+nieudane odtworzenie kopii + start na pustej bazie + `uploads-gc` kasuje uploady, a kopia z tej samej
+minuty nadpisuje poprzednią. Dlatego entrypoint odmawia startu bez bazy, gdy są pliki
+w `uploads/campaigns` (zaległość w `zaleglosci.md`).
+
+**Weryfikacja:** lokalnie w Docker Desktop: build obu obrazów (z `tsc` klienta), start na kopii
+`dev.db` (76 migracji, bez ostrzeżeń o próbce), logowanie MG, `/socket.io`, `/public` przez nginx,
+kopia z kontenera, odtworzenie przy zatrzymanym serwerze (4 z 5 udane), odmowa entrypointu bez bazy.
+Testów jednostkowych nie ruszano (zmian w kodzie aplikacji brak). **Oględziny:** stół MG
+w **Firefoksie** (Playwright) na `localhost:8088` z kontenerów — mapa z `uploads/`, czat, „Połączono”.
+Na VPS niewykonane.
+
 ### Sesja 18.10, druga (po `9c352e1`) — zaległości z gatewayem, triaż #79–#81
 
 **Zlecenie MG:** „wykonaj zaległości w projekcie (poza refaktoryzacją i wdrożeniem)”. **Decyzje MG

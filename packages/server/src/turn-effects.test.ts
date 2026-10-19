@@ -389,6 +389,23 @@ describe('turn automation', () => {
     expect((await tokenOf(thugTokenId)).hp?.current).toBe(before - 6);
   });
 
+  it('still burns him when a held Action goes in right after his turn (19.10)', async () => {
+    await giveTurnTo(vexTokenId);
+    expect((await emitAck(player, 'combat:hold', { trigger: 'gdy bandzior skończy' })).ok).toBe(
+      true,
+    );
+    const thugTurn = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(thugTurn.activeCombatantId).toBe(rowOf(thugTurn, thugTokenId).id);
+    const before = (await tokenOf(thugTokenId)).hp?.current ?? 0;
+
+    // His turn ends and Vex's held Action goes last in the round — the turn
+    // that ended still costs him its fire.
+    const held = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(held.round).toBe(thugTurn.round);
+    expect(held.activeCombatantId).toBe(rowOf(held, vexTokenId).id);
+    expect((await tokenOf(thugTokenId)).hp?.current).toBe(before - 6);
+  });
+
   it('lets the Action „Ugaszenie" end it, and the next turn costs nothing', async () => {
     await giveTurnTo(thugTokenId);
     const combatantId = rowOf(await tracker(), thugTokenId).id;

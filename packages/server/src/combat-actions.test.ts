@@ -561,13 +561,107 @@ describe('action economy', () => {
     const after = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
     const vex = rowOf(after, vexTokenId);
     expect(after.activeCombatantId).toBe(vex.id);
-    expect(vex.initiative).toBe(12);
     expect(vex.held).toBeUndefined();
+    // Lowered for this round only (19.10.2026): the seat stays 20.
+    expect(vex.initiative).toBe(20);
 
     // And the reserved Action is still there to be spent.
     expect((await attack(player, vexCharacterId, vexTokenId, { weaponRowId: 'w-rifle' })).ok).toBe(
       true,
     );
+
+    // The queue goes back to the thug the hold stepped in front of — once.
+    const round = after.round;
+    const thug = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
+    expect(thug.activeCombatantId).toBe(rowOf(thug, thugTokenId).id);
+    const courier = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(courier.activeCombatantId).toBe(rowOf(courier, targetTokenId).id);
+    const nextRound = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(nextRound.round).toBe(round + 1);
+    expect(nextRound.activeCombatantId).toBe(rowOf(nextRound, vexTokenId).id);
+  });
+
+  it('slots a held Action in after the running turn on „Działam teraz”, nobody twice', async () => {
+    // Round N: Vex (20) holds for a trigger, the thug (10) is up.
+    await giveTurnTo(vexTokenId);
+    expect(
+      (await emitAck(player, 'combat:hold', { trigger: 'gdy kurier sięgnie po broń' })).ok,
+    ).toBe(true);
+    const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
+    const round = thugTurn.round;
+    expect(thugTurn.activeCombatantId).toBe(rowOf(thugTurn, thugTokenId).id);
+
+    // Out of turn, a hold is no licence to shoot (19.10.2026).
+    expect(await attack(player, vexCharacterId, vexTokenId, { weaponRowId: 'w-rifle' })).toEqual({
+      ok: false,
+      error: 'NOT_YOUR_TURN',
+    });
+
+    // The trigger came: the thug is not interrupted…
+    const ready = data(
+      await emitAck<CombatView>(player, 'combat:hold-release', {}),
+      'combat:hold-release',
+    );
+    expect(ready.activeCombatantId).toBe(rowOf(ready, thugTokenId).id);
+    expect(rowOf(ready, vexTokenId).held?.ready).toBe(true);
+
+    // …Vex goes in the moment his turn ends, with the Action saved for it.
+    const fired = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(fired.round).toBe(round);
+    expect(fired.activeCombatantId).toBe(rowOf(fired, vexTokenId).id);
+    expect(spent(rowOf(fired, vexTokenId), 'action')).toEqual({ used: 0, max: 1 });
+    expect((await attack(player, vexCharacterId, vexTokenId, { weaponRowId: 'w-rifle' })).ok).toBe(
+      true,
+    );
+
+    // And the queue picks up after the thug — the courier, not the thug again.
+    const after = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
+    expect(after.round).toBe(round);
+    expect(after.activeCombatantId).toBe(rowOf(after, targetTokenId).id);
+    const nextRound = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(nextRound.round).toBe(round + 1);
+    expect(nextRound.activeCombatantId).toBe(rowOf(nextRound, vexTokenId).id);
+  });
+
+  it('plays a held Action nobody fired last in the round, rather than losing it', async () => {
+    await giveTurnTo(vexTokenId);
+    expect(
+      (await emitAck(player, 'combat:hold', { trigger: 'gdy ktoś wyjdzie zza rogu' })).ok,
+    ).toBe(true);
+    const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
+    const round = thugTurn.round;
+    await emitAck(gm, 'combat:next', {}); // the courier
+    const last = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+    expect(last.round).toBe(round);
+    expect(last.activeCombatantId).toBe(rowOf(last, vexTokenId).id);
+    expect(rowOf(last, vexTokenId).held).toBeUndefined();
+
+    const nextRound = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
+    expect(nextRound.round).toBe(round + 1);
+    expect(nextRound.activeCombatantId).toBe(rowOf(nextRound, vexTokenId).id);
+  });
+
+  it('lets „Działam teraz” only to the holder’s own player or the GM', async () => {
+    await giveTurnTo(vexTokenId);
+    // Said in the holder's own turn it just takes the hold back.
+    await emitAck(player, 'combat:hold', { initiative: 3 });
+    const back = data(
+      await emitAck<CombatView>(player, 'combat:hold-release', {}),
+      'combat:hold-release',
+    );
+    expect(rowOf(back, vexTokenId).held).toBeUndefined();
+    expect(await emitAck(player, 'combat:hold-release', {})).toEqual({
+      ok: false,
+      error: 'NOTHING_HELD',
+    });
+    // Somebody else's participant is not the player's to release.
+    expect(
+      (
+        await emitAck(player, 'combat:hold-release', {
+          combatantId: rowOf(back, thugTokenId).id,
+        })
+      ).ok,
+    ).toBe(false);
   });
 
   it('refuses a hold that declares neither a trigger nor a queue value', async () => {

@@ -35,6 +35,7 @@ import {
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
+  CLEARED_HOLD,
   applyTurnPointer,
   combatantOwnerId,
   dueHold,
@@ -55,6 +56,7 @@ import {
   spendTurnForToken,
   toCombatView,
   hasFigure,
+  upcomingTurn,
   type CombatRow,
   type CombatantRow,
   type FiguredCombatantRow,
@@ -65,7 +67,7 @@ import type { SheetTurnSpend } from '../sheets.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
 import { emitTokenUpsert } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
-import { advanceTurn } from './turn-effects.js';
+import { advanceTurn, runTurnEnd } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
 import { releaseSceneTargets } from './target.js';
 
@@ -396,7 +398,7 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
     }
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },
-      data: { held: true, heldTrigger: trigger, heldInitiative: initiative },
+      data: { held: true, heldTrigger: trigger, heldInitiative: initiative, heldReady: false },
     });
     await logSpentAction(deps, campaignId, user, {
       ...actionEntry(combatant, 'hold', sheetActionName('hold'), trigger),
@@ -407,22 +409,28 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
 });
 
 /**
- * The GM fires a held Action by hand — the path for a declaration whose trigger
- * is a sentence rather than a number („gdy ktoś wyjdzie zza rogu"). A hold tied
- * to a queue value fires by itself on the way past it (`dueHold`).
+ * „Działam teraz" — the trigger came (19.10.2026, decyzja MG). The holder's own
+ * player says it, or the GM; nobody is interrupted: the held Action goes in
+ * right after the turn being played, the way a lowered initiative would
+ * (`dueHold`). Said during the holder's own turn, it simply takes the hold
+ * back — the Action is still theirs to spend now.
  */
 export const combatHoldReleaseEvent = defineEvent<CombatHoldReleasePayload, CombatView>({
   name: 'combat:hold-release',
-  role: ROLE_GM,
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { combat, combatant, scene } = await requireCombatant(
-      deps.ctx.prisma,
+    const { combat, combatant, scene } = await myCombatant(
+      deps,
       campaignId,
+      user,
+      socket.data.viewedSceneId,
       payload?.combatantId,
     );
     if (!combatant.held) throw new RealtimeError('NOTHING_HELD');
-    await fireHeldAction(deps.ctx.prisma, combat, combatant);
+    await deps.ctx.prisma.combatant.update({
+      where: { id: combatant.id },
+      data: combat.activeCombatantId === combatant.id ? CLEARED_HOLD : { heldReady: true },
+    });
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
@@ -563,13 +571,16 @@ async function stepTurn(
     combat.round === 0 && (await rollNpcInitiative(deps, combat))
       ? await loadCombatById(deps.ctx.prisma, combat.id)
       : combat;
-  const pointer = nextTurn(toCombatView(fight));
-  // A declaration tied to a value in the queue fires on the way past it,
-  // before anybody else gets their turn. Nobody's turn *ended* in that case —
-  // the queue merely stepped aside — so the hooks stay out of it.
+  const pointer = upcomingTurn(fight);
+  // A held Action that is due goes in before the next participant. The turn
+  // being played did end, so its end-of-turn hooks run (fire burns whoever
+  // stood in it); no turn *begins* — the holder plays the Action they saved —
+  // so the start hooks stay out of it.
   const held = dueHold(fight, pointer);
-  if (held) await fireHeldAction(deps.ctx.prisma, fight, held);
-  else await advanceTurn(deps, campaignId, scene, fight, pointer, user);
+  if (!held) return advanceTurn(deps, campaignId, scene, fight, pointer, user);
+  const leaving = fight.combatants.find((row) => row.id === fight.activeCombatantId);
+  if (leaving) await runTurnEnd(deps, campaignId, scene, fight, leaving, user);
+  await fireHeldAction(deps.ctx.prisma, fight, held, pointer);
 }
 
 /**

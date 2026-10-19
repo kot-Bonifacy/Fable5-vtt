@@ -8,6 +8,7 @@ import {
   previousTurn,
   resolveInitiativeOrder,
   sortCombatants,
+  turnFrom,
   type CombatView,
   type CombatantView,
 } from './combat.js';
@@ -118,6 +119,37 @@ describe('findInitiativeTies', () => {
 
   it('ignores participants that have not rolled yet', () => {
     expect(findInitiativeTies([combatant({ id: 'a' }), combatant({ id: 'b' })])).toEqual([]);
+  });
+});
+
+describe('turnFrom', () => {
+  const roster = [
+    combatant({ id: 'a', initiative: 18 }),
+    combatant({ id: 'b', initiative: 14 }),
+    combatant({ id: 'c', initiative: 9 }),
+  ];
+
+  it('goes back to the seat the held Action stepped in front of, not past the holder', () => {
+    // „a" held, fired in front of „b" and has just acted: „b" is up, once.
+    const state = combat(roster, { round: 3, activeCombatantId: 'a' });
+    expect(turnFrom(state, 'b', 3)).toEqual({ round: 3, activeCombatantId: 'b' });
+  });
+
+  it('hands it on to the next seat when the resumed one dropped out meanwhile', () => {
+    const dropped = roster.map((c) => (c.id === 'b' ? { ...c, out: true as const } : c));
+    const state = combat(dropped, { round: 3, activeCombatantId: 'a' });
+    expect(turnFrom(state, 'b', 3)).toEqual({ round: 3, activeCombatantId: 'c' });
+  });
+
+  it('opens the next round when nobody after that seat can act', () => {
+    const dropped = roster.map((c) => (c.id === 'c' ? { ...c, out: true as const } : c));
+    const state = combat(dropped, { round: 3, activeCombatantId: 'b' });
+    expect(turnFrom(state, 'c', 3)).toEqual({ round: 4, activeCombatantId: 'a' });
+  });
+
+  it('falls back to the plain next step when the seat left the fight', () => {
+    const state = combat(roster, { round: 3, activeCombatantId: 'a' });
+    expect(turnFrom(state, 'removed', 3)).toEqual({ round: 3, activeCombatantId: 'b' });
   });
 });
 

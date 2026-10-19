@@ -108,6 +108,11 @@ export interface HeldActionView {
   trigger: string | null;
   /** Initiative value the participant will drop to; null when a trigger was described. */
   initiative: number | null;
+  /**
+   * „Działam teraz" was said (19.10.2026): the held Action goes in right after
+   * the turn being played. Absent while the hold still waits.
+   */
+  ready?: true;
 }
 
 /**
@@ -330,6 +335,23 @@ export function nextTurn(combat: CombatView): TurnPointer {
   return { round: combat.round + 1, activeCombatantId: first.id };
 }
 
+/**
+ * The turn that starts at `fromId`'s own seat — where the queue picks up after
+ * a fired held Action (19.10.2026). The holder acted out of their seat, so the
+ * queue does not count on from them: it goes back to whoever the hold stepped
+ * in front of. A row that has dropped out since hands it to whoever sat after
+ * it; one gone from the fight altogether leaves only the plain next step.
+ */
+export function turnFrom(combat: CombatView, fromId: string, round: number): TurnPointer {
+  const ordered = sortCombatants(combat.combatants);
+  const index = ordered.findIndex((c) => c.id === fromId);
+  if (index === -1) return nextTurn(combat);
+  const from = ordered.slice(index).find(inPlay);
+  if (from) return { round, activeCombatantId: from.id };
+  const first = ordered.find(inPlay);
+  return { round: round + 1, activeCombatantId: first ? first.id : null };
+}
+
 /** Steps back one turn; never before round 1's first participant. */
 export function previousTurn(combat: CombatView): TurnPointer {
   const ordered = sortCombatants(combat.combatants);
@@ -493,7 +515,10 @@ export interface CombatHoldPayload {
   initiative?: number | null;
 }
 
-/** The held Action fires: the participant drops to the declared queue value. */
+/**
+ * „Działam teraz" (19.10.2026): the held Action goes in as soon as the running
+ * turn ends. The holder's own player may say it, or the GM.
+ */
 export interface CombatHoldReleasePayload {
   combatantId: string;
 }

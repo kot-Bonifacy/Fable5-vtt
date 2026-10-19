@@ -1152,6 +1152,14 @@ model Combat {
   round   Int    @default(0)
   /// Whose turn it is; null before the first round starts.
   activeCombatantId String?
+  /// Where the queue goes back to once a fired „Wstrzymanie Akcji" is over
+  /// (19.10.2026): the participant whose turn the held Action stepped in front
+  /// of, and the round that turn belongs to. The holder acts out of their own
+  /// seat, so counting „next" from it would hand a second turn to everybody
+  /// between the seat and the moment the hold fired. Null when no fired hold
+  /// is running; any other move of the pointer clears both.
+  resumeCombatantId String?
+  resumeRound       Int?
   /// What the game system needs to remember about the fight **as a whole**
   /// (stage 30c), serialized the same opaque way `Combatant.turnState` is. The
   /// tracker stores the string and never reads a field of it.
@@ -1229,6 +1237,9 @@ model Combatant {
   /// Set while a hold is declared — the pair above may both be null (a trigger
   /// of "wtedy, gdy zobaczę" typed as empty text still reserves the Action).
   held           Boolean @default(false)
+  /// The holder (or the GM) said „Działam teraz" (19.10.2026): the held Action
+  /// goes in as soon as the turn being played ends. Cleared with `held`.
+  heldReady      Boolean @default(false)
   /// One-shot pass from the GM: the next refused spend goes through anyway.
   actionBypass   Boolean @default(false)
   /// The Hold this participant is *being held in* — id of the Attacker's

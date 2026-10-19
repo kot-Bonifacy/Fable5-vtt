@@ -119,8 +119,9 @@ export function HoldActionForm({
       </div>
       {error && <p className="auth-error">{error}</p>}
       <p className="combat-hint">
-        Deklaracja z wartością odpala się sama, gdy kolejka zejdzie do tej wartości. Opisany
-        wyzwalacz odpala MG przyciskiem przy wierszu.
+        Wstrzymanie obniża Twoją inicjatywę w tej Rundzie. Z wartością wchodzisz sam, gdy kolejka
+        zejdzie do tej wartości; z wyzwalaczem — po „Działam teraz” przy portrecie, zaraz po
+        bieżącej turze. Kto nie zdąży, działa na końcu Rundy. Od następnej wracasz na swoje miejsce.
       </p>
     </div>
   );

@@ -24,11 +24,13 @@ import {
   MAX_COMBATANTS,
   ROLE_GM,
   filterCombatForPlayer,
+  nextTurn,
   parseBotData,
   resolveInitiativeOrder,
   rollFormula,
   sortCombatants,
   tokenTableName,
+  turnFrom,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Combat, Combatant, Scene, Token } from '../generated/prisma/client.js';
@@ -240,7 +242,10 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
   // it. Absent until the participant's turn has actually begun.
   const budget = turnBudgetOf(row.turnState);
   if (budget) view.turn = row.actionBypass ? { ...budget, bypass: true } : budget;
-  if (row.held) view.held = { trigger: row.heldTrigger, initiative: row.heldInitiative };
+  if (row.held) {
+    view.held = { trigger: row.heldTrigger, initiative: row.heldInitiative };
+    if (row.heldReady) view.held.ready = true;
+  }
   const grapple = grappleViewFor(combat, row);
   if (grapple) view.grapple = grapple;
   // What their next turn already owes (stage 14e) — a wound that landed on
@@ -544,7 +549,10 @@ export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Pr
  *
  * A new round also wipes every „Wstrzymanie Akcji" nobody fired: RAW keeps a
  * held Action inside the Round it was declared in, and a declaration that
- * outlived its round would let a player act twice in the next one.
+ * outlived its round would let a player act twice in the next one. (`stepTurn`
+ * fires every one still waiting before the round wraps, so in practice only a
+ * pointer the GM moves by hand gets here with one.) Any move of the pointer
+ * also ends a fired hold's detour — there is nothing left to come back to.
  *
  * Stepping *back* deliberately leaves budgets alone — the GM is correcting the
  * pointer, not replaying the turn. „Zwróć turę" is the button for that.
@@ -558,12 +566,17 @@ export async function applyTurnPointer(
   const prisma = deps.ctx.prisma;
   await prisma.combat.update({
     where: { id: combat.id },
-    data: { round: pointer.round, activeCombatantId: pointer.activeCombatantId },
+    data: {
+      round: pointer.round,
+      activeCombatantId: pointer.activeCombatantId,
+      resumeCombatantId: null,
+      resumeRound: null,
+    },
   });
   if (pointer.round !== combat.round) {
     await prisma.combatant.updateMany({
       where: { combatId: combat.id, held: true },
-      data: { held: false, heldTrigger: null, heldInitiative: null },
+      data: CLEARED_HOLD,
     });
   }
   if (!startTurn) return;
@@ -591,68 +604,92 @@ export async function applyTurnPointer(
     data: {
       turnState: freshTurnState(move, carry),
       nextTurnState: null,
-      held: false,
-      heldTrigger: null,
-      heldInitiative: null,
+      ...CLEARED_HOLD,
     },
   });
+}
+
+/** What a combatant row looks like with no „Wstrzymanie Akcji" on it. */
+export const CLEARED_HOLD = {
+  held: false,
+  heldTrigger: null,
+  heldInitiative: null,
+  heldReady: false,
+} as const;
+
+/**
+ * Where the queue goes once the turn being played ends (19.10.2026). Normally
+ * the next seat; while a fired held Action is running, the turn it stepped in
+ * front of — counting on from the holder's own seat would hand everybody
+ * between that seat and the moment the hold fired a second turn.
+ */
+export function upcomingTurn(combat: CombatRow): TurnPointer {
+  const view = toCombatView(combat);
+  if (combat.resumeCombatantId !== null && combat.resumeRound !== null) {
+    return turnFrom(view, combat.resumeCombatantId, combat.resumeRound);
+  }
+  return nextTurn(view);
 }
 
 /**
  * The held Action that is due before the turn moves on (stage 14b).
  *
- * „Wstrzymanie Akcji" may name a value in the initiative queue instead of a
- * trigger, and the count descends through that value on its way to the next
- * participant — so the wait ends by itself, without the GM remembering. A hold
- * declared with a *described* trigger is never picked up here: judging whether
- * „gdy ktoś wyjdzie zza rogu" happened is the GM's job, and the tracker offers
- * them a button instead.
+ * Holding works like lowering one's own initiative for this round (19.10.2026,
+ * decyzja MG), and three things end the wait, none of them needing the GM:
+ *
+ *  - „Działam teraz" (`heldReady`) — the holder goes in right after the turn
+ *    being played, whatever they declared;
+ *  - a value in the initiative queue — the count descends through it on its
+ *    way to the next participant;
+ *  - the end of the round — a held Action nobody fired is still owed, so it
+ *    goes last rather than expiring unplayed.
+ *
+ * Ready ones go first; then the highest declared value.
  */
 export function dueHold(combat: CombatRow, pointer: TurnPointer): CombatantRow | null {
-  const waiting = combat.combatants.filter(
-    (row) => row.held && row.heldInitiative !== null && row.id !== pointer.activeCombatantId,
-  );
-  if (waiting.length === 0) return null;
-  // Wrapping into the next round is the last chance: an unfired declaration
-  // expires with the round, so anything still waiting is due now.
   const wrapping = pointer.round !== combat.round;
   const nextInitiative =
     combat.combatants.find((row) => row.id === pointer.activeCombatantId)?.initiative ?? null;
-  const due = waiting.filter(
-    (row) => wrapping || nextInitiative === null || row.heldInitiative! > nextInitiative,
+  const reached = (row: CombatantRow) =>
+    row.heldInitiative !== null && (nextInitiative === null || row.heldInitiative > nextInitiative);
+  const due = combat.combatants.filter(
+    (row) =>
+      row.held &&
+      // Up next anyway, unless „next" is already the next round's turn — the
+      // top of the queue holding into the end of the round is still owed it.
+      (wrapping || row.id !== pointer.activeCombatantId) &&
+      (row.heldReady || wrapping || reached(row)),
   );
   if (due.length === 0) return null;
-  return due.reduce((best, row) => (row.heldInitiative! > best.heldInitiative! ? row : best));
+  const rank = (row: CombatantRow) =>
+    row.heldReady ? Number.POSITIVE_INFINITY : (row.heldInitiative ?? Number.NEGATIVE_INFINITY);
+  return due.reduce((best, row) => (rank(row) > rank(best) ? row : best));
 }
 
 /**
- * Hands the turn to a participant whose held Action just came up. Their budget
- * is deliberately *not* refreshed — the reserved Action is the one they saved
- * during their own turn, and handing them a fresh turn would be a second one.
+ * Hands the turn to a participant whose held Action just came up, and notes
+ * where the queue picks up after them (`resume`, the turn they step in front
+ * of). Their budget is deliberately *not* refreshed — the reserved Action is
+ * the one they saved during their own turn, and a fresh turn would be a second.
+ *
+ * Their initiative is left alone too (19.10.2026, decyzja MG): the hold lowers
+ * it for this round only, and next round they act from their own seat again.
  */
 export async function fireHeldAction(
   prisma: PrismaClient,
   combat: CombatRow,
   row: CombatantRow,
+  resume: TurnPointer,
 ): Promise<void> {
-  await prisma.combatant.update({
-    where: { id: row.id },
-    data: {
-      held: false,
-      heldTrigger: null,
-      heldInitiative: null,
-      // „Przestawia uczestnika na zadeklarowaną wartość kolejki" — from here on
-      // they act at the value they waited for, this round and the next.
-      ...(row.heldInitiative !== null ? { initiative: row.heldInitiative } : {}),
-    },
-  });
+  await prisma.combatant.update({ where: { id: row.id }, data: CLEARED_HOLD });
   await prisma.combat.update({
     where: { id: combat.id },
-    data: { activeCombatantId: row.id },
+    data: {
+      activeCombatantId: row.id,
+      resumeCombatantId: resume.activeCombatantId,
+      resumeRound: resume.activeCombatantId === null ? null : resume.round,
+    },
   });
-  if (row.heldInitiative !== null) {
-    await renumberOrder(prisma, await loadCombatById(prisma, combat.id));
-  }
 }
 
 /** Reloads a combat and broadcasts it — each room gets the view it may see. */
@@ -759,10 +796,10 @@ async function applySpend(
   const bypassed = combatant.actionBypass;
   if (!isGm && !bypassed) {
     const mine = combat.activeCombatantId === combatant.id;
-    // A declared „Wstrzymanie Akcji" excuses acting out of turn — but only for
-    // the Action it reserved. Nobody reserves a walk (stage 14c).
-    const excused = combatant.held && spendUsesAction(spend);
-    if (!mine && !excused) {
+    // A declared „Wstrzymanie Akcji" no longer excuses acting out of turn
+    // (19.10.2026): the held Action is played in a turn of its own, slotted in
+    // by „Działam teraz", a queue value or the end of the round (`dueHold`).
+    if (!mine) {
       return { kind: 'refused', combatant, error: 'NOT_YOUR_TURN', judged: combatant.turnState };
     }
     // Some states are not an arithmetic problem: an unconscious participant has
@@ -817,7 +854,7 @@ async function applySpend(
     data: {
       turnState: result.state,
       ...(bypassed ? { actionBypass: false } : {}),
-      ...(releasesHold ? { held: false, heldTrigger: null, heldInitiative: null } : {}),
+      ...(releasesHold ? CLEARED_HOLD : {}),
     },
   });
   return { kind: 'spent', combatant, forced: result.forced, bypassed, tookExtra };
