@@ -184,6 +184,8 @@ import { NoFigurePoster } from './NoFigurePoster.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
+import { MapLoading } from './MapLoading.js';
+import type { BackgroundLoad } from '../map/background-load.js';
 import { SceneObjectCard } from './SceneObjectCard.js';
 import { TargetTooltip, type AimHover } from './TargetTooltip.js';
 
@@ -730,7 +732,7 @@ export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
   const [ready, setReady] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [backgroundLoad, setBackgroundLoad] = useState<BackgroundLoad | null>(null);
   const [menu, setMenu] = useState<TokenMenuState | null>(null);
   /** Token walking a planned route right now (stage 16e); null when none is. */
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
@@ -865,7 +867,7 @@ export function MapArea() {
     const host = hostRef.current;
     if (!host) return;
     const renderer = new MapRenderer();
-    renderer.onLoadingChange = setLoading;
+    renderer.onBackgroundLoad = setBackgroundLoad;
     renderer.onMapClick = handleMapClick;
     renderer.onTokenMove = (tokenId, x, y, final, path, extra) => {
       const ack = sendTokenMove(tokenId, x, y, final, path, extra);
@@ -2545,12 +2547,7 @@ export function MapArea() {
           </p>
         </div>
       )}
-      {loading && (
-        <div className="map-overlay">
-          <span className="map-spinner" aria-hidden />
-          <p className="placeholder-text">Wczytywanie mapy…</p>
-        </div>
-      )}
+      {backgroundLoad && <MapLoading load={backgroundLoad} />}
       {/* Etap 55: stany nad mapą to przypięte wiersze kanału komunikatów,
           a pod nimi stoją komunikaty z `noticeStore`. */}
       <NoticeColumn pinned={pinned} />
@@ -2563,7 +2560,7 @@ export function MapArea() {
         hasVision &&
         seesNothing &&
         !hasOwnFigure &&
-        !loading && <NoFigurePoster />}
+        !backgroundLoad && <NoFigurePoster />}
       <MapTools />
       <TokenGroupBar />
       {/* Prawy górny róg to jedna kolumna (25.09): „Czeka na MG” nad dokiem

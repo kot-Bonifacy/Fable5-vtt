@@ -26,6 +26,7 @@ import { setupRealtime, type RealtimeHandle } from './realtime/index.js';
 import { diceScriptPath } from './realtime/dice-script.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
+import { MapPreviews } from './map-preview.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
@@ -130,6 +131,24 @@ export async function buildApp(
     if (!ref || !(await campaignUploadReadable(prisma, request.user, ref, path))) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
+  });
+
+  /**
+   * Podgląd mapy (`mapPreviewUrl`, 20.10) — po strażniku wyżej, więc dostaje go
+   * tylko ten, kto może czytać sam plik. Gracz na słabym łączu widzi od razu
+   * mapę sceny w małej rozdzielczości, a pełny plik dochodzi pod nią.
+   */
+  const previews = new MapPreviews(config.uploadsDir);
+  app.addHook('onRequest', async (request, reply) => {
+    if (!request.url.startsWith('/uploads/') || !request.url.includes('?')) return;
+    const url = new URL(request.url, 'http://vtt');
+    if (!url.searchParams.has('preview')) return;
+    const preview = await previews.get(decodeURIComponent(url.pathname));
+    if (!preview) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return reply
+      .header('content-type', 'image/webp')
+      .header('cache-control', 'private, max-age=86400')
+      .send(preview);
   });
 
   await app.register(fastifyMultipart, {

@@ -186,6 +186,17 @@ export function campaignUploadUrl(
   return `/uploads/campaigns/${campaignId}/${dir}/${file}`;
 }
 
+/**
+ * Podgląd mapy (20.10): ten sam adres z `?preview` daje mały, stratny WebP
+ * (najwyżej tyle pikseli na dłuższym boku), który stół pokazuje od razu, zanim
+ * dojdzie pełny plik. Ten sam adres, więc i ten sam strażnik dostępu.
+ */
+export const MAP_PREVIEW_MAX_SIDE = 640;
+
+export function mapPreviewUrl(url: string): string {
+  return `${url}?preview`;
+}
+
 /** Adres pliku kampanii rozłożony na części albo null (plik wspólny, płaski, obcy). */
 export function parseCampaignUploadUrl(url: unknown): CampaignUploadRef | null {
   if (typeof url !== 'string') return null;

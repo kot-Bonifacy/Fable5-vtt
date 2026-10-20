@@ -487,6 +487,73 @@ button:disabled {
   z-index: 5;
 }
 
+/* Mapa sceny w drodze (20.10, `MapLoading`): na plakacie — pasek w czerwieni
+   plakatu, a po przyjściu podglądu — pigułka u dołu mapy w barwach komunikatów.
+   Pasek bez znanej wagi pliku jeździ w kółko. */
+.map-loading-bar {
+  position: relative;
+  height: 0.35rem;
+  margin: 0.4rem 0 0.2rem;
+  overflow: hidden;
+  background: var(--login-chip);
+}
+
+.map-loading-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--login-red);
+  transition: width 200ms linear;
+}
+
+.map-loading-bar[data-indeterminate] > span {
+  width: 35%;
+  animation: map-loading-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes map-loading-sweep {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 290% 0;
+  }
+}
+
+.map-loading-pill {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 5;
+  translate: -50% 0;
+  width: min(20rem, calc(100% - 2rem));
+  padding: 0.3rem 0.6rem 0.2rem;
+  background-color: var(--notice-info);
+  color: var(--notice-on-dark);
+  border-left: 3px solid var(--notice-info-edge);
+  filter: var(--notice-shadow);
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.map-loading-pill .map-loading-bar {
+  height: 0.2rem;
+  margin: 0.2rem 0 0;
+  background: var(--notice-rule-dark);
+}
+
+.map-loading-pill .map-loading-bar > span {
+  background: var(--notice-info-edge);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-loading-bar[data-indeterminate] > span {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 .between-sessions-card {
   display: flex;
   flex-direction: column;

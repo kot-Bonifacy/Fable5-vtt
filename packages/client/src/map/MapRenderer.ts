@@ -99,8 +99,10 @@ import {
   wallEndpointNear,
   wallMidpoint,
   TOKEN_PATH_MAX_POINTS,
+  mapPreviewUrl,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+import { fetchWithProgress, type BackgroundLoad } from './background-load.js';
 import { marchStopPoint, type MarchLanding } from './march-landing.js';
 import { placeFootprints, trailFadeStrength } from './footprints.js';
 import {
@@ -981,8 +983,8 @@ class FootprintPool {
  * drawings → tokens → lighting → fog → UI overlay.
  */
 export class MapRenderer {
-  /** Reports background loading, so the UI can show a spinner. */
-  onLoadingChange: ((loading: boolean) => void) | null = null;
+  /** Reports background loading (preview, bytes so far); null once it is over. */
+  onBackgroundLoad: ((load: BackgroundLoad | null) => void) | null = null;
   /** Streams drag positions; `final` marks the drop (authoritative snap). */
   onTokenMove:
     | ((
@@ -1355,6 +1357,8 @@ export class MapRenderer {
   private scene: SceneView | null = null;
   private sceneId: string | null = null;
   private backgroundUrl: string | null = null;
+  /** Stops the byte count of a map nobody waits for any more (scene changed). */
+  private backgroundFetch: AbortController | null = null;
   private destroyed = false;
   /** Ruler tool armed: the map measures instead of panning. */
   private rulerMode = false;
@@ -2116,6 +2120,8 @@ export class MapRenderer {
       this.sceneId = null;
       this.backgroundUrl = null;
       this.background.visible = false;
+      this.backgroundFetch?.abort();
+      this.onBackgroundLoad?.(null);
       this.grid.clear();
       this.setRulers([]);
       this.setMoveAllowance(null);
@@ -8280,6 +8286,7 @@ export class MapRenderer {
     // widziałaby figurę wpatrzoną w cel do następnego ruchu.
     if (this.aimTurnedTokenId) this.onAimFacing?.(this.aimTurnedTokenId, null);
     this.destroyed = true;
+    this.backgroundFetch?.abort();
     // Obserwator trzyma gospodarza, a ten trzyma płótno — rozłączany przed
     // `app.destroy`, żeby ostatnia notatka o rozmiarze nie trafiła w martwy
     // renderer (React w trybie ścisłym montuje mapę dwa razy pod rząd).
@@ -8336,25 +8343,72 @@ export class MapRenderer {
     }
     if (url === this.backgroundUrl) return;
     this.backgroundUrl = url;
+    this.backgroundFetch?.abort();
+    this.backgroundFetch = null;
 
+    // The old map goes at once. Left in place it took the new scene's size
+    // and stood, stretched, under the new scene's figures until the new file
+    // arrived — on a slow link for seconds (20.10).
+    this.background.texture = Texture.EMPTY;
+    this.background.visible = false;
     if (!url) {
-      this.background.texture = Texture.EMPTY;
-      this.background.visible = false;
+      this.onBackgroundLoad?.(null);
       return;
     }
-    this.onLoadingChange?.(true);
-    Assets.load<Texture>(url)
+    const show = (texture: Texture) => {
+      this.background.texture = texture;
+      this.background.visible = true;
+    };
+    // Back to a scene seen before: the texture is still in memory.
+    if (Assets.cache.has(url)) {
+      show(Assets.get<Texture>(url));
+      this.onBackgroundLoad?.(null);
+      return;
+    }
+
+    const current = () => !this.destroyed && this.backgroundUrl === url;
+    const load: BackgroundLoad = { preview: false, loaded: 0, total: null };
+    const report = () => {
+      if (current()) this.onBackgroundLoad?.({ ...load });
+    };
+    report();
+    let full = false;
+    const previewUrl = mapPreviewUrl(url);
+    Assets.load<Texture>(previewUrl)
       .then((texture) => {
-        // Ignore stale loads: the scene/background changed in the meantime.
-        if (this.destroyed || this.backgroundUrl !== url) return;
-        this.background.texture = texture;
-        this.background.visible = true;
+        if (full || !current()) return;
+        show(texture);
+        load.preview = true;
+        report();
       })
       .catch(() => {
-        if (this.backgroundUrl === url) this.background.visible = false;
+        // No preview (an old link, a file outside /uploads/) — the full map still comes.
+      });
+
+    const controller = new AbortController();
+    this.backgroundFetch = controller;
+    fetchWithProgress(url, controller.signal, (loaded, total) => {
+      load.loaded = loaded;
+      load.total = total;
+      report();
+    })
+      .catch(() => undefined)
+      .then(() => (current() ? Assets.load<Texture>(url) : null))
+      .then((texture) => {
+        if (!texture || !current()) return;
+        full = true;
+        show(texture);
+      })
+      .catch(() => {
+        // A preview on screen is better than nothing; without it the board stays empty.
+        if (current() && !load.preview) this.background.visible = false;
       })
       .finally(() => {
-        if (!this.destroyed) this.onLoadingChange?.(false);
+        if (this.backgroundFetch === controller) this.backgroundFetch = null;
+        // The preview has done its job (or its scene is gone); its few dozen kB
+        // go back. `unload` waits for a load still on its way.
+        if (full || !current()) void Assets.unload(previewUrl).catch(() => undefined);
+        if (current()) this.onBackgroundLoad?.(null);
       });
   }
 

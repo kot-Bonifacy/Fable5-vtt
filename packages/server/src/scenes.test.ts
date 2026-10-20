@@ -15,6 +15,7 @@ import type {
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
+import { MAP_PREVIEW_MAX_SIDE, mapPreviewUrl } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -250,6 +251,36 @@ describe('map upload', () => {
     expect(served.rawPayload.length).toBeLessThan(png.length);
     const pixels = (image: Buffer) => sharp(image).ensureAlpha().raw().toBuffer();
     expect((await pixels(served.rawPayload)).equals(await pixels(png))).toBe(true);
+  });
+
+  it('serves a small preview of the map under the same address, behind the same guard', async () => {
+    const { payload, headers } = multipartBody('mapa.png', await patternPng(1024));
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/maps',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    const { url } = res.json() as MapUploadResult;
+
+    const preview = await built.app.inject({
+      method: 'GET',
+      url: mapPreviewUrl(url),
+      headers: { cookie: gmCookie },
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.headers['content-type']).toBe('image/webp');
+    const meta = await sharp(preview.rawPayload).metadata();
+    expect([meta.width, meta.height]).toEqual([MAP_PREVIEW_MAX_SIDE, MAP_PREVIEW_MAX_SIDE]);
+
+    const anonymous = await built.app.inject({ method: 'GET', url: mapPreviewUrl(url) });
+    expect(anonymous.statusCode).toBe(401);
+    const missing = await built.app.inject({
+      method: 'GET',
+      url: mapPreviewUrl(url.replace(/[^/]+$/, 'nie-ma.webp')),
+      headers: { cookie: gmCookie },
+    });
+    expect(missing.statusCode).toBe(404);
   });
 
   it('rejects non-image content and player uploads', async () => {
