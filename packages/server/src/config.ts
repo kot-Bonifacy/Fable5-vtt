@@ -94,9 +94,9 @@ export interface ServerConfig {
 export interface SessionConfig {
   /** Ile sesji naraz (`VTT_MAX_SESSIONS`, domyślnie 2 — decyzja MG z 26.09). */
   maxSessions: number;
-  /** Zwolnienie slotu, gdy przy stole nie ma żadnego gniazda (`VTT_SESSION_EMPTY_MINUTES`, 15). */
+  /** Zwolnienie slotu, gdy przy stole nie ma żadnego gniazda (`VTT_SESSION_EMPTY_MINUTES`, 720 = 12 h). */
   emptyMinutes: number;
-  /** Zwolnienie slotu po tylu minutach bez zdarzenia gry (`VTT_SESSION_IDLE_MINUTES`, 180). */
+  /** Zwolnienie slotu po tylu minutach bez zdarzenia gry (`VTT_SESSION_IDLE_MINUTES`, 720 = 12 h). */
   idleMinutes: number;
 }
 
@@ -155,8 +155,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     adminPasswordReset: env.VTT_ADMIN_RESET_PASSWORD === '1',
     sessions: {
       maxSessions: Math.floor(positive(env.VTT_MAX_SESSIONS, 2)),
-      emptyMinutes: positive(env.VTT_SESSION_EMPTY_MINUTES, 15),
-      idleMinutes: positive(env.VTT_SESSION_IDLE_MINUTES, 180),
+      emptyMinutes: positive(env.VTT_SESSION_EMPTY_MINUTES, 720),
+      idleMinutes: positive(env.VTT_SESSION_IDLE_MINUTES, 720),
     },
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
