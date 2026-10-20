@@ -75,6 +75,14 @@ interface CreationStoreState {
    */
   permit: CreationPermitState | null;
   setPermit: (permit: CreationPermitState | null) => void;
+  /**
+   * The rules a player reads before the first draft (24.09) are on screen.
+   * They live here, not in the „Postacie" tab, so every way into the wizard —
+   * the tab, the consent notice — goes through them (20.10: the notice opened
+   * an empty window the server refused to fill).
+   */
+  rulesOpen: boolean;
+  setRulesOpen: (rulesOpen: boolean) => void;
   /** The GM threw this draft away: close the wizard and forget it. */
   dropDiscarded: (draftId: string) => void;
 
@@ -227,6 +235,8 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
   setPeek: (peek) => set({ peek }),
   permit: null,
   setPermit: (permit) => set({ permit }),
+  rulesOpen: false,
+  setRulesOpen: (rulesOpen) => set({ rulesOpen }),
   dropDiscarded: (draftId) => {
     const { draftId: mine, peek } = get();
     if (mine !== draftId && peek?.id !== draftId) return;
@@ -259,9 +269,21 @@ export const useCreationStore = create<CreationStoreState>((set, get) => ({
   clearFocusField: () => set({ focusField: null }),
 
   openCreator: async () => {
+    // A draft on the server is resumed without the rules; without one, a
+    // player who has not accepted them reads them first.
+    const { permit, peek, draft } = get();
+    if (!peek && !draft && permit?.status === 'granted' && !permit.rulesAccepted) {
+      set({ rulesOpen: true });
+      return;
+    }
     set({ open: true, busy: true, error: null });
     const ack = await enqueue(() => startCreation());
     if (!ack.ok || !ack.data) {
+      // A stale permit: the server knows the rules are still unread.
+      if (!ack.ok && ack.error === 'CREATION_RULES_PENDING') {
+        set({ open: false, busy: false, rulesOpen: true });
+        return;
+      }
       set({ busy: false, error: creationErrorText(ack.ok ? undefined : ack.error) });
       return;
     }

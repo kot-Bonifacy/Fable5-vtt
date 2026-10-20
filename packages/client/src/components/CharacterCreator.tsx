@@ -136,6 +136,7 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 import { RoleChoresList } from './RoleChores.js';
+import { CreationRulesDialog } from './CreationGate.js';
 import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from './ItemIcons.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
@@ -153,8 +154,12 @@ import { ItemIcon, WeaponTypeFilter, filterWeaponsByType, useEntryIcon } from '.
  */
 export function CharacterCreator() {
   const open = useCreationStore((s) => s.open);
-  if (!open) return null;
-  return <CreatorWindow />;
+  return (
+    <>
+      <CreationRulesDialog />
+      {open && <CreatorWindow />}
+    </>
+  );
 }
 
 function CreatorWindow() {
@@ -170,6 +175,7 @@ function CreatorWindow() {
   const setBusy = useCreationStore((s) => s.setBusy);
   const closeCreator = useCreationStore((s) => s.closeCreator);
   const discard = useCreationStore((s) => s.discard);
+  const reload = useCreationStore((s) => s.reload);
   const openSheet = useCharacterStore((s) => s.openSheet);
 
   const placement = useWindowPlacement('creator', () => ({ x: 120, y: 60 }));
@@ -355,7 +361,18 @@ function CreatorWindow() {
           <code> tools/import/parse-creation.py</code>.
         </p>
       ) : !draft ? (
-        <p className="creator-empty">Wczytuję szkic…</p>
+        // 20.10: a refused start used to leave „Wczytuję szkic…" here for good
+        // — the error line lives in the footer, which needs a draft.
+        error && !busy ? (
+          <div className="creator-empty" role="alert">
+            <p className="auth-error">{error}</p>
+            <button type="button" className="small-button" onClick={() => void reload()}>
+              Spróbuj ponownie
+            </button>
+          </div>
+        ) : (
+          <p className="creator-empty">Wczytuję szkic…</p>
+        )
       ) : (
         <>
           <nav className="sheet-tabs creator-steps" aria-label="Kroki kreatora">

@@ -189,7 +189,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
   test('3.4 Marek prosi o postać; MG zgadza się: Krawędziarz (Na skróty)', async () => {
     await marek.page.getByRole('button', { name: 'Postacie', exact: true }).click();
     await marek.page.getByRole('button', { name: /Poproś MG o stworzenie postaci/ }).click();
-    await expect(marek.page.getByText('Czekasz na zgodę MG na nową postać.')).toBeVisible();
+    await expect(marek.page.getByText(/Prośba wysłana — czekasz na zgodę MG/)).toBeVisible();
 
     await expect(mg.page).toHaveTitle(/^\(1\) /);
     await expect(mg.page.locator('.gm-attention-count')).toHaveText('1');
@@ -205,6 +205,12 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await expect(
       marek.page.getByText('Warunki od MG: Krawędziarz (Na skróty) · 86 pkt umiejętności.'),
     ).toBeVisible();
+    // 20.10: „Otwórz kreator” z powiadomienia o zgodzie otwierał puste okno
+    // „Wczytuję szkic…”, bo serwer odmawiał bez przeczytanych zasad.
+    await marek.page.getByRole('button', { name: 'Otwórz kreator' }).click();
+    await expect(marek.page.getByRole('dialog', { name: /Zanim zaczniesz/ })).toBeVisible();
+    await expect(creatorWindow(marek.page)).toHaveCount(0);
+    await marek.page.getByRole('button', { name: 'Jeszcze nie' }).click();
   });
 
   test('3.5 Ola prosi; MG: Kompletny Pakiet, Postać początkująca, 80 pkt umiejętności', async () => {

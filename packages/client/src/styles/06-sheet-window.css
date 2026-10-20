@@ -889,6 +889,8 @@
 /* Kadr portretu (12.09) wchodzi tą samą drogą: otwiera się z karty postaci
    i z kreatora, czyli **spod** okna o z-index 300+. */
 .dialog-backdrop:has(.portrait-crop),
+/* Zasady kreatora (20.10) wychodzą też z powiadomienia, nad otwartą kartą. */
+.dialog-backdrop:has(.creation-rules),
 .dialog-backdrop:has(.portrait-gallery) {
   z-index: 400;
 }

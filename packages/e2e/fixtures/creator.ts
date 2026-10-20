@@ -18,10 +18,10 @@ export function creatorWindow(page: Page): Locator {
 export async function openCreator(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Postacie', exact: true }).click();
   // Etap 49a: MG wchodzi przez okno „Nowa postać” → „Postać gracza”; szkic
-  // wznawia się obok. Gracz ma dalej „Kreator postaci…” z bramki zgody.
-  const door = page.getByRole('button', { name: /Kreator postaci|Wznów szkic|Nowa postać/ });
+  // wznawia się obok. Gracz ma „Stwórz postać” z karty zgody (20.10).
+  const door = page.getByRole('button', { name: /Stwórz postać|Wznów|Nowa postać/ });
   const label = (await door.first().textContent()) ?? '';
-  const resume = page.getByRole('button', { name: /Wznów szkic/ });
+  const resume = page.getByRole('button', { name: /Wznów szkic|Wznów tworzenie postaci/ });
   if (/Nowa postać/.test(label) && !(await resume.isVisible())) {
     await door.first().click();
     const npc = page.getByRole('region', { name: 'Nowa postać' });

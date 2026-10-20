@@ -205,7 +205,7 @@ test.describe.serial('T7a odporność: handel bez sieci i restart w kreatorze @o
     kuba = await cast.gracz('Kuba', 'firefox', await createInvitation(mg, campaignId, 'Kuba'));
     await kuba.page.getByRole('button', { name: 'Postacie', exact: true }).click();
     await kuba.page.getByRole('button', { name: /Poproś MG o stworzenie postaci/ }).click();
-    await expect(kuba.page.getByText('Czekasz na zgodę MG na nową postać.')).toBeVisible();
+    await expect(kuba.page.getByText(/Prośba wysłana — czekasz na zgodę MG/)).toBeVisible();
     expect(
       await emitAck(await mg.socket(), 'creation:permit', {
         userId: userId('Kuba'),
