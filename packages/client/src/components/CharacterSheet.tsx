@@ -208,7 +208,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { askForCheck } from '../stores/checkStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
-import { AdvancementPanel } from './AdvancementPanel.js';
+import { AdvancementPanel, XpAwardForm } from './AdvancementPanel.js';
 import { RoleChoresList } from './RoleChores.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
@@ -321,7 +321,11 @@ function CharacterSheetWindow({
       `[data-sheet-panel="${CSS.escape(wanted.panel)}"]`,
     );
     if (!target) return;
-    target.scrollIntoView({ block: 'center' });
+    // Panel wyższy niż okno (Awans, 20.10) staje górą — wyśrodkowany chował
+    // nagłówek z liczbą PD nad krawędzią.
+    target.scrollIntoView({
+      block: target.offsetHeight > root.clientHeight ? 'start' : 'center',
+    });
     // Krótki obrys mówi „tutaj" także tam, gdzie panel ogniska nie przyjmuje.
     target.classList.add('cp-panel--flash');
     window.setTimeout(() => target.classList.remove('cp-panel--flash'), 1600);
@@ -4384,6 +4388,7 @@ function CyberwareSection({
 function LifepathPage({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const lifepath = data.lifepath;
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const [awarding, setAwarding] = useState(false);
 
   function writeLifepath(patch: Partial<CpredLifepath>) {
     saveData({ lifepath: { ...lifepath, ...patch } }, 'lifepath');
@@ -4426,8 +4431,25 @@ function LifepathPage({ character, data, saveData }: TabProps & { character: Cha
             }}
             aria-label="Punkty Doświadczenia"
           />
+          {/* 20.10: przyznanie jednej postaci — z komunikatem dla gracza,
+              którego korekta liczby w polu obok nie daje. */}
+          {isGm && !awarding && (
+            <button
+              type="button"
+              className="small-button cp-xp-award-open"
+              onClick={() => setAwarding(true)}
+              title="Przyznaje PD tej postaci — gracz dostaje komunikat, a rejestr wiersz „Przyznane po sesji”"
+            >
+              ✦ Przyznaj…
+            </button>
+          )}
         </div>
-        <div className="cp-field cp-span2 cp-advance">
+        {isGm && awarding && (
+          <div className="cp-field cp-xp-award-row">
+            <XpAwardForm characterId={character.id} onDone={() => setAwarding(false)} />
+          </div>
+        )}
+        <div className="cp-field cp-span2 cp-advance" data-sheet-panel="advance">
           <AdvancementPanel characterId={character.id} />
         </div>
       </div>

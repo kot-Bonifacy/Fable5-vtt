@@ -2321,6 +2321,33 @@
   font-weight: 700;
 }
 
+/* Przyznanie PD jednej postaci (20.10): guzik przy liczniku, a formularz
+   w wierszu pod nim na całą szerokość — kwota wąsko, powód bierze resztę. */
+.cp-lifepath-head .cp-xp-award-open {
+  margin-left: 0.35rem;
+  white-space: nowrap;
+}
+
+.cp-lifepath-head .cp-xp-award-row {
+  grid-column: 1 / -1;
+}
+
+.cp-lifepath-head .cp-xp-award {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.cp-lifepath-head .cp-xp-award input[type='number'] {
+  margin-left: 0;
+}
+
+.cp-lifepath-head .cp-xp-award input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Dwie kolumny krótkich rubryk; „Tło rodzinne" i reszta dłuższych bierze
    całą szerokość (`wide` w LIFEPATH_SHEET_FIELDS). */
 .cp-lifepath {

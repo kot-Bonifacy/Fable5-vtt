@@ -3,12 +3,15 @@ import type {
   CharacterAdvancePayload,
   CharacterRoleChangePayload,
   CharacterView,
+  CharacterXpAwardedPush,
   CharacterXpAwardPayload,
   CharacterXpAwardResult,
   CharacterXpHistoryPayload,
   CharacterXpHistoryResult,
   CpredAdvanceStep,
   CpredCharacterData,
+  SessionUser,
+  XpAwardNotice,
 } from '@vtt/shared';
 import {
   ADVANCEMENT_AWARD_MAX,
@@ -30,6 +33,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
 import { emitTokensOfCharacter } from './tokens.js';
+import { campaignMemberSockets } from './state.js';
 
 /**
  * Punkty Doświadczenia (stage 29a, s. 408–411).
@@ -341,7 +345,128 @@ export const characterXpAwardEvent = defineEvent<CharacterXpAwardPayload, Charac
         user.id,
       );
     }
+    if (amount > 0) {
+      const owners = new Set(
+        characters.flatMap(({ ownerId }) => (ownerId && ownerId !== user.id ? [ownerId] : [])),
+      );
+      await deliverXpAwards(deps, campaign.id, owners);
+    }
     return { awarded: characters.length };
+  },
+});
+
+/**
+ * How long a pushed notice waits for the player's browser to say „got it".
+ * A tab whose Wi-Fi dropped stays „connected" until Socket.IO's ping gives up,
+ * and a notice marked shown on such a socket would be lost for good.
+ */
+const XP_NOTICE_ACK_MS = 10_000;
+
+/**
+ * Awards of one owner's characters not shown yet (decision of the GM,
+ * 20.10.2026), with the rows they came from — the caller marks those shown
+ * once the notice has reached a browser.
+ *
+ * Only positive `award` rows — „tylko przyznanie": a correction or points
+ * taken back are in the sheet's ledger and nowhere else.
+ */
+async function unseenAwards(
+  deps: RealtimeDeps,
+  campaignId: string,
+  ownerId: string,
+): Promise<{ rowIds: number[]; awards: XpAwardNotice[] }> {
+  const rows = await deps.ctx.prisma.advancementEntry.findMany({
+    where: {
+      campaignId,
+      kind: 'award',
+      amount: { gt: 0 },
+      seenAt: null,
+      character: { ownerId },
+    },
+    orderBy: { id: 'asc' },
+    include: { character: { select: { id: true, name: true, data: true } } },
+  });
+  const notices = new Map<string, XpAwardNotice>();
+  for (const row of rows) {
+    let notice = notices.get(row.characterId);
+    if (!notice) {
+      notice = {
+        characterId: row.characterId,
+        characterName: row.character.name,
+        amount: 0,
+        labels: [],
+        available: parseCharacterData(row.character.data, deps.ctx.cpred).improvementPoints,
+      };
+      notices.set(row.characterId, notice);
+    }
+    notice.amount += row.amount;
+    if (!notice.labels.includes(row.label)) notice.labels.push(row.label);
+  }
+  return { rowIds: rows.map((row) => row.id), awards: [...notices.values()] };
+}
+
+async function markAwardsSeen(deps: RealtimeDeps, rowIds: number[]): Promise<void> {
+  if (rowIds.length === 0) return;
+  await deps.ctx.prisma.advancementEntry.updateMany({
+    where: { id: { in: rowIds }, seenAt: null },
+    data: { seenAt: new Date() },
+  });
+}
+
+/**
+ * Pushes `character:xp-awarded` to every connected socket of each owner and
+ * marks the rows shown when at least one browser acknowledges it. The
+ * acknowledgement is not awaited: the GM's answer does not wait on a player's
+ * tab.
+ * Without an acknowledgement the rows stay unseen, and `character:xp-unseen`
+ * hands them over on the owner's next `state:sync`.
+ */
+async function deliverXpAwards(
+  deps: RealtimeDeps,
+  campaignId: string,
+  ownerIds: ReadonlySet<string>,
+): Promise<void> {
+  if (ownerIds.size === 0) return;
+  const sockets = await campaignMemberSockets(deps.io, campaignId);
+  for (const ownerId of ownerIds) {
+    const own = sockets
+      .filter((socket) => (socket.data as { user: SessionUser }).user.id === ownerId)
+      .map((socket) => socket.id);
+    if (own.length === 0) continue;
+    const { rowIds, awards } = await unseenAwards(deps, campaignId, ownerId);
+    if (awards.length === 0) continue;
+    const push: CharacterXpAwardedPush = { awards };
+    // One emit per socket, so the first tab to answer marks the rows — a
+    // broadcast would wait for the silent one until the timeout.
+    for (const socketId of own) {
+      deps.io
+        .to(socketId)
+        .timeout(XP_NOTICE_ACK_MS)
+        .emit('character:xp-awarded', push, (_err: Error | null, responses: unknown[]) => {
+          if (responses.length === 0) return;
+          markAwardsSeen(deps, rowIds).catch((error: unknown) =>
+            deps.log.warn({ err: error }, 'xp notice: could not mark awards seen'),
+          );
+        });
+    }
+  }
+}
+
+/**
+ * `character:xp-unseen` — a player's client asks after every `state:sync` for
+ * the awards handed out while it was away. The GM hands them out and is told
+ * nothing.
+ */
+export const characterXpUnseenEvent = defineEvent<undefined, CharacterXpAwardedPush>({
+  name: 'character:xp-unseen',
+  handler: async ({ deps, socket, user }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    if (user.role === ROLE_GM) return { awards: [] };
+    // The answer is the delivery: the client asked for these a moment ago.
+    const { rowIds, awards } = await unseenAwards(deps, campaign.id, user.id);
+    await markAwardsSeen(deps, rowIds);
+    return { awards };
   },
 });
 

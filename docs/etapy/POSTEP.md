@@ -39,6 +39,12 @@ też na restart po aktualizacji jądra), monitoring. Już jest: SSH tylko klucze
 off-site na PC (`deploy/pull-backup.ps1`, zadanie „VTT pull backup”, `D:\kopie-vtt`). Potem T10 → T11.
 Otwarta zaległość: jedno lokalne odtworzenie kopii padło (`zaleglosci.md`, 18.10).
 
+**PD dla jednej postaci i komunikat o przyznaniu (zlecenie MG z 20.10) — dalej etap 28, potem
+T10.** MG przyznaje PD całemu stołowi (Rytuały stołu) albo jednej postaci („✦ Przyznaj…” przy
+liczniku na „Ścieżce Życia”), gracz wydaje je sam w „Awansie”. Właściciel dostaje pasek „Punkty
+Doświadczenia” z „Rozwiń postać” — na żywo albo po wejściu (`seenAt` + potwierdzenie przeglądarki).
+Umowa na górze `postac`.
+
 **Test gracza tylko na wezwanie MG (zlecenie MG z 19.10) — dalej etap 28, potem T10.** Gracz
 nie rzuci Testu Cechy ani Umiejętności, zanim MG nie ustali PT: klik w wiersz własnej karty to
 prośba o Test, serwer bez wezwania odpowiada `CHECK_NEEDS_GM_DV`. MG i boty bez zmian. Umowa na
@@ -358,7 +364,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 51   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 52   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione | 9    | 3       |
@@ -372,6 +378,29 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 20.10 (po `d79020d`) — zlecenie MG: PD dla jednej postaci i komunikat dla gracza
+
+**Zlecenie MG:** MG przyznaje PD konkretnej postaci, gracz wydaje je sam, a o przyznaniu dowiaduje
+się standardowym komunikatem. **Decyzje MG (pytania na starcie):** przyznanie jednej postaci
+przyciskiem na jej karcie (nie w Rytuałach stołu); komunikat z „Rozwiń postać”, stoi do kliknięcia;
+nieobecny gracz widzi go po wejściu; tylko przyznanie (zabranie i korekta MG milczą).
+**Zrobione:** „✦ Przyznaj…” przy liczniku PD na stronie „Ścieżka Życia” (u MG) — kwota, powód,
+ten sam `character:xp-award` z `characterId`. Pasek „Punkty Doświadczenia”: „MG przyznał 50 PD
+postaci Iskra (sesja 20.10). Do wydania: 490 PD.” — także po „Przyznaj wszystkim”. Kolumna
+`AdvancementEntry.seenAt` (migracja `20261020120000_xp_award_seen` oznacza stare wiersze), nowe
+zdarzenie `character:xp-unseen`. **Poprawione po oględzinach:** komunikat oznaczany jako pokazany
+dopiero po potwierdzeniu przeglądarki — wcześniej zamykana karta (i tak samo laptop bez Wi-Fi do
+czasu pingu) zjadała go bez śladu. „Przejdź” do panelu wyższego niż okno staje górą, nie środkiem.
+Umowa na górze `postac`.
+
+**Weryfikacja:** `shared` advancement 35/35, serwer `advancement` 24/24 (5 nowych: na żywo raz,
+ujemna milczy, nieobecny dostaje sumę po powrocie, gniazdo bez potwierdzenia nie zjada
+komunikatu, MG nic), cała suita serwera 1532/1532 (`campaign-isolation` z nowym zdarzeniem),
+klient 417/417; `tsc` serwera i klienta, ESLint i Prettier czyste. Suity E2E nie puszczano.
+**Oględziny:** tymczasowy spec z `po-T6` (usunięty), MG w **Chromium**, Ola
+w **Firefoksie**: formularz na karcie, komunikat, „Rozwiń postać” → panel „Awans”, dwa przyznania
+pod nieobecność → jeden komunikat po powrocie, F5 → brak powtórki.
 
 ### Sesja 19.10, szósta (po `d004db6`) — zlecenie MG: gracz czeka na Poziom Trudności od MG
 
@@ -392,22 +421,3 @@ tak samo (zaległość z 19.10). **Oględziny:** tymczasowy spec z `po-T3` (usun
 w **Firefoksie**: Shift + klik w Percepcję → okno prośby, klik w Cechę → prośba, surowy rzut
 z gniazda → `CHECK_NEEDS_GM_DV`, MG zgoda z PT 13 → karta wezwania, okno „Wezwanie do Testu”,
 rzut „Wezwanie: Percepcja”.
-
-### Sesja 19.10, piąta (po `9dc6d84`) — zlecenie MG: pytanie przed przekroczeniem budżetu tury
-
-**Zlecenie MG:** ostrzeżenie dla MG, który łatwo i przypadkiem przekracza budżet tury.
-**Decyzja MG (pytanie na starcie):** pytanie przed wydatkiem, nie informacja po fakcie i nie sam
-znak na slocie. **Zrobione:** `applySpend` rzuca `OverspendAsk` dla NPC-a MG, gdy wydatek się nie
-mieści; rejestr zapamiętuje zdarzenie i wysyła `combat:overspend-ask`, a `combat:overspend` je
-powtarza bez pytania (licznik i plakietka jak dawniej). Pytanie obejmuje każdą ścieżkę Tury (pasek
-akcji, atak, przeładowanie, zwarcie, Sieć, marsz, skok). **Rozstrzygnięte bez pytań (do słowa MG):**
-figura gracza w ręku MG i boty grające kontem MG — bez pytania; pytanie wygasa po 2 min, nowe
-zastępuje stare; „Anuluj” nic nie wysyła. Umowa na górze `tura`.
-
-**Weryfikacja:** `shared` 2515/2515, serwer 1525/1525 (`combat-actions`, `movement`, `grapple`
-przepięte na potwierdzenie, `campaign-isolation` z nowym zdarzeniem), klient 416/416; `tsc` w trzech
-pakietach, ESLint i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E
-(usunięty) z `po-T6`, MG w **Firefoksie**: „Bieg” bez ruchu → pasek, „Anuluj” nic nie wydaje,
-„Wykonaj” daje Bieg z +1; marsz 24 m przy 16 m → figura wraca, pasek „Za daleko o 8 m…”, „Wykonaj”
-przenosi ją z +2 i plakietką na czacie. Nieużywany przez spec plik `grapple-turns.test.ts`
-(nieśledzony, sprzed sesji) przechodzi i nie wszedł do commita.

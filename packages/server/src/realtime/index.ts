@@ -177,6 +177,7 @@ import {
   characterRoleChangeEvent,
   characterXpAwardEvent,
   characterXpHistoryEvent,
+  characterXpUnseenEvent,
 } from './advancement.js';
 import {
   lightClearEvent,
@@ -463,6 +464,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterRoleChangeEvent,
   characterXpAwardEvent,
   characterXpHistoryEvent,
+  characterXpUnseenEvent,
   damageApplyEvent,
   damageUndoEvent,
   characterInjuryEvent,

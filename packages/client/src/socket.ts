@@ -54,6 +54,7 @@ import type {
   CharacterStatEffectPayload,
   CharacterUpsertBroadcast,
   CharacterView,
+  CharacterXpAwardedPush,
   CharacterXpAwardPayload,
   CharacterXpAwardResult,
   CharacterXpHistoryResult,
@@ -294,6 +295,7 @@ import type {
 import {
   CPRED_STAT_EFFECT_VALUE_MAX,
   CHAT_COMMANDS_HELP,
+  describeXpAwardNotice,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
@@ -776,6 +778,13 @@ export function connectSocket(userId: string): Socket {
     void peekCreation().then((ack) =>
       useCreationStore.getState().setPeek(ack.ok ? (ack.data ?? null) : null),
     );
+    // 20.10: PD, które MG przyznał pod nieobecność gracza. Serwer oddaje je
+    // raz — kolejny sync (F5, druga karta) dostaje pustą listę.
+    if (!viewer().isGm) {
+      void fetchUnseenXpAwards().then((ack) => {
+        if (ack.ok && ack.data) showXpAwards(ack.data);
+      });
+    }
     // 24.09: a player's next character starts with the GM's consent.
     void creationPermitState().then((ack) =>
       useCreationStore.getState().setPermit(ack.ok ? (ack.data ?? null) : null),
@@ -1385,6 +1394,13 @@ export function connectSocket(userId: string): Socket {
       ],
       { title: 'Poza budżetem tury' },
     );
+  });
+  // 20.10: MG przyznał PD postaci tego gracza, a gracz jest przy stole.
+  // Potwierdzenie od razu, przed kolejką prezentacji: serwer uznaje komunikat
+  // za pokazany dopiero po nim, a bez niego odda go po następnym `state:sync`.
+  socket.on('character:xp-awarded', (push: CharacterXpAwardedPush, ack?: () => void) => {
+    ack?.();
+    rollPresentation.deliver(() => showXpAwards(push));
   });
   onPresented('combat:joined', (broadcast: CombatJoinedBroadcast) => {
     if (!viewingScene(broadcast.sceneId)) return;
@@ -4797,6 +4813,36 @@ export function awardImprovementPoints(
 ): Promise<SocketAck<CharacterXpAwardResult>> {
   if (payload.characterId) flushCharacterSave(payload.characterId);
   return emitEconomy('character:xp-award', payload);
+}
+
+/** Gracz: PD przyznane jego postaciom, o których jeszcze nie słyszał. */
+function fetchUnseenXpAwards(): Promise<SocketAck<CharacterXpAwardedPush>> {
+  return emitEconomy('character:xp-unseen', undefined);
+}
+
+/**
+ * Komunikat o przyznanych PD (decyzja MG z 20.10) — jeden pasek na postać.
+ * Bez tematu, bo pasek w temacie wypiera poprzedni, a dwie postacie jednego
+ * gracza to dwa komunikaty; stoi do kliknięcia, bo bywa pierwszą rzeczą, jaką
+ * gracz widzi po wejściu. „Rozwiń postać” otwiera kartę na panelu „Awans”.
+ */
+function showXpAwards(push: CharacterXpAwardedPush): void {
+  for (const notice of push.awards) {
+    useNoticeStore.getState().show({
+      tone: 'info',
+      title: 'Punkty Doświadczenia',
+      text: describeXpAwardNotice(notice),
+      topic: null,
+      lifetime: null,
+      actions: [
+        {
+          label: 'Rozwiń postać',
+          title: 'Otwiera kartę postaci na panelu „Awans”, gdzie wydaje się PD',
+          run: () => useCharacterStore.getState().focusPanel(notice.characterId, 'bio', 'advance'),
+        },
+      ],
+    });
+  }
 }
 
 /** Rejestr awansów jednej karty — od najnowszego. */

@@ -241,7 +241,13 @@ export async function importCharacter(
   const ledger = history(payload.ledger);
   const advancement = history(payload.advancement);
   if (ledger.length) await prisma.ledgerEntry.createMany({ data: ledger });
-  if (advancement.length) await prisma.advancementEntry.createMany({ data: advancement });
+  // An imported award was told about in its own campaign — the player of the
+  // copy is not greeted with every session of it again (20.10.2026).
+  if (advancement.length) {
+    await prisma.advancementEntry.createMany({
+      data: advancement.map((row) => ({ ...row, seenAt: row.createdAt })),
+    });
+  }
 
   return { id: created.id };
 }

@@ -437,6 +437,7 @@ const CASES: Record<string, Case> = {
   'character:role-change': foreign((a) => ({ characterId: a.characterId, roleId: 'solo' })),
   'character:xp-award': foreign((a) => ({ characterId: a.characterId, amount: 10, label: 'x' })),
   'character:xp-history': foreign((a) => ({ characterId: a.characterId })),
+  'character:xp-unseen': own('przyznania postaci konta gniazda w kampanii gniazda'),
   // ai
   'ai:ask': own('pytanie testowe do modelu, bez obiektów kampanii', () => ({ prompt: 'hej' })),
   'ai:refresh': own('odświeża status gatewaya'),

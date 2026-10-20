@@ -8,6 +8,7 @@ import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
   CharacterView,
+  CharacterXpAwardedPush,
   CharacterXpAwardResult,
   CharacterXpHistoryResult,
   CpredCharacterData,
@@ -512,5 +513,151 @@ describe('etap 29b: wieloklasowość', () => {
         patch: { data: { formerRoles: [{ roleId: 'zjadacz-ognia', rank: 2 }] } },
       }),
     ).toEqual({ ok: false, error: 'UNKNOWN_ROLE' });
+  });
+});
+
+/**
+ * Komunikat o przyznanych PD (decyzja MG z 20.10.2026): właściciel karty
+ * dostaje `character:xp-awarded` od razu, a nieobecny — z `character:xp-unseen`
+ * po powrocie. Tylko przyznanie; zabranie punktów milczy.
+ */
+describe('komunikat o przyznanych PD', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let iskraId: string;
+
+  function nextAward(socket: ClientSocket): Promise<CharacterXpAwardedPush> {
+    return new Promise((resolvePush, reject) => {
+      const timer = setTimeout(() => reject(new Error('character:xp-awarded timeout')), 4000);
+      socket.once('character:xp-awarded', (push: CharacterXpAwardedPush, ack: () => void) => {
+        clearTimeout(timer);
+        ack();
+        resolvePush(push);
+      });
+    });
+  }
+
+  function silence(socket: ClientSocket, ms = 400): Promise<void> {
+    return new Promise((resolveQuiet, reject) => {
+      const heard = () => reject(new Error('character:xp-awarded should not arrive'));
+      socket.once('character:xp-awarded', heard);
+      setTimeout(() => {
+        socket.off('character:xp-awarded', heard);
+        resolveQuiet();
+      }, ms);
+    });
+  }
+
+  async function unseen(socket: ClientSocket): Promise<CharacterXpAwardedPush> {
+    return data(
+      await emitAck<CharacterXpAwardedPush>(socket, 'character:xp-unseen'),
+      'character:xp-unseen',
+    );
+  }
+
+  it('stawia stół: karta gracza bez PD', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    // Przyznania z wcześniejszych bloków tego pliku nie należą do tego testu.
+    await unseen(player);
+    iskraId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Iskra', ownerId: playerId }),
+      'character:create',
+    ).id;
+  });
+
+  it('obecny gracz dostaje komunikat od razu — raz', async () => {
+    const pushed = nextAward(player);
+    const gmQuiet = silence(gm);
+    expect(
+      (
+        await emitAck(gm, 'character:xp-award', {
+          characterId: iskraId,
+          amount: 50,
+          label: 'sesja 20.10',
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await pushed).awards).toEqual([
+      {
+        characterId: iskraId,
+        characterName: 'Iskra',
+        amount: 50,
+        labels: ['sesja 20.10'],
+        available: 50,
+      },
+    ]);
+    await gmQuiet;
+    // Potwierdzony komunikat nie wraca po odświeżeniu strony (serwer zapisuje
+    // potwierdzenie bez czekania — stąd chwila zwłoki).
+    await new Promise((settle) => setTimeout(settle, 200));
+    expect((await unseen(player)).awards).toEqual([]);
+  });
+
+  it('zabranie punktów nie mówi nic', async () => {
+    const quiet = silence(player);
+    expect(
+      (await emitAck(gm, 'character:xp-award', { characterId: iskraId, amount: -10 })).ok,
+    ).toBe(true);
+    await quiet;
+    expect((await unseen(player)).awards).toEqual([]);
+  });
+
+  it('nieobecny dostaje po powrocie jeden komunikat ze wszystkiego, co przegapił', async () => {
+    // Gracz z drugą kartą przeglądarki jest obecny — wychodzą wszystkie jego
+    // gniazda, także te z wcześniejszych bloków tego pliku.
+    for (const socket of openSockets) if (socket !== gm) socket.disconnect();
+    await new Promise((settle) => setTimeout(settle, 200));
+    for (const [amount, label] of [
+      [30, 'sesja 27.10'],
+      [20, 'sesja 03.11'],
+    ] as const) {
+      expect(
+        (await emitAck(gm, 'character:xp-award', { characterId: iskraId, amount, label })).ok,
+      ).toBe(true);
+    }
+    const back = createSocket(playerCookie);
+    player = back.socket;
+    await back.firstSync;
+    expect((await unseen(player)).awards).toEqual([
+      {
+        characterId: iskraId,
+        characterName: 'Iskra',
+        amount: 50,
+        labels: ['sesja 27.10', 'sesja 03.11'],
+        available: 90,
+      },
+    ]);
+    expect((await unseen(player)).awards).toEqual([]);
+  });
+
+  it('karta, która nie potwierdziła odbioru, nie zjada komunikatu', async () => {
+    // Gniazdo „połączone", które nic nie odpowiada — jak laptop, któremu padło
+    // Wi-Fi, zanim Socket.IO to zauważy.
+    const silent = createSocket(playerCookie);
+    await silent.firstSync;
+    const heard = new Promise<void>((resolveHeard) =>
+      silent.socket.once('character:xp-awarded', () => resolveHeard()),
+    );
+    expect(
+      (
+        await emitAck(gm, 'character:xp-award', {
+          characterId: iskraId,
+          amount: 15,
+          label: 'cisza',
+        })
+      ).ok,
+    ).toBe(true);
+    await heard;
+    expect((await unseen(silent.socket)).awards).toEqual([
+      expect.objectContaining({ amount: 15, labels: ['cisza'] }),
+    ]);
+  });
+
+  it('MG o nic nie pyta i nic nie dostaje', async () => {
+    expect((await unseen(gm)).awards).toEqual([]);
   });
 });

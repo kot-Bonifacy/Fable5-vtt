@@ -1527,7 +1527,7 @@ model AdvancementEntry {
   id          Int    @id @default(autoincrement())
   campaignId  String
   characterId String
-  /// award | spend | adjust
+  /// award | spend | adjust | role
   kind String
   /// Signed: negative is points leaving this character.
   amount Int
@@ -1538,6 +1538,9 @@ model AdvancementEntry {
   /// Account that ordered the operation; null after the account is gone.
   actorId   String?
   createdAt DateTime @default(now())
+  /// When the owner was told about this award (20.10.2026); null = not yet.
+  /// Read only on `award` rows with a positive amount — every other row stays null.
+  seenAt    DateTime?
 
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 

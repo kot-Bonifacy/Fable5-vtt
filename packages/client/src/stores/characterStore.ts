@@ -20,6 +20,12 @@ export type CharacterSheetView = CharacterView<CpredCharacterData>;
 
 export type SaveState = 'saving' | 'saved' | 'error';
 
+/**
+ * Zakładka, na którą „Przejdź" otwiera kartę: czynności Roli (naprawa 3c)
+ * i panel „Awans” na stronie Ścieżki Życia (komunikat o PD, 20.10).
+ */
+export type SheetFocusTab = CpredRoleChoreTab | 'bio';
+
 interface CharacterStoreState {
   /** Characters this user may see, keyed by id (server-filtered). */
   characters: Record<string, CharacterSheetView>;
@@ -60,7 +66,7 @@ interface CharacterStoreState {
    * wiersz musi zadziałać tak samo jak pierwsze: bez niego `useEffect` nie
    * widziałby żadnej zmiany.
    */
-  panelFocus: { characterId: string; tab: CpredRoleChoreTab; panel: string; seq: number } | null;
+  panelFocus: { characterId: string; tab: SheetFocusTab; panel: string; seq: number } | null;
 
   /**
    * `fresh` — the first sync on a new connection: taken whole, because the
@@ -84,7 +90,7 @@ interface CharacterStoreState {
   closeSheet: (characterId: string) => void;
   focusSheet: (characterId: string) => void;
   /** Otwiera kartę na właściwej zakładce i podświetla panel (naprawa 3c). */
-  focusPanel: (characterId: string, tab: CpredRoleChoreTab, panel: string) => void;
+  focusPanel: (characterId: string, tab: SheetFocusTab, panel: string) => void;
   /** Żądanie obsłużone — bez tego wracałoby przy każdym otwarciu karty. */
   clearPanelFocus: () => void;
   setRegistry: (registry: CpredRegistry) => void;

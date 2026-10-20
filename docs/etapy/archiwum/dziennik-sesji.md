@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10, piąta (po `9dc6d84`) — zlecenie MG: pytanie przed przekroczeniem budżetu tury
+
+**Zlecenie MG:** ostrzeżenie dla MG, który łatwo i przypadkiem przekracza budżet tury.
+**Decyzja MG (pytanie na starcie):** pytanie przed wydatkiem, nie informacja po fakcie i nie sam
+znak na slocie. **Zrobione:** `applySpend` rzuca `OverspendAsk` dla NPC-a MG, gdy wydatek się nie
+mieści; rejestr zapamiętuje zdarzenie i wysyła `combat:overspend-ask`, a `combat:overspend` je
+powtarza bez pytania (licznik i plakietka jak dawniej). Pytanie obejmuje każdą ścieżkę Tury (pasek
+akcji, atak, przeładowanie, zwarcie, Sieć, marsz, skok). **Rozstrzygnięte bez pytań (do słowa MG):**
+figura gracza w ręku MG i boty grające kontem MG — bez pytania; pytanie wygasa po 2 min, nowe
+zastępuje stare; „Anuluj” nic nie wysyła. Umowa na górze `tura`.
+
+**Weryfikacja:** `shared` 2515/2515, serwer 1525/1525 (`combat-actions`, `movement`, `grapple`
+przepięte na potwierdzenie, `campaign-isolation` z nowym zdarzeniem), klient 416/416; `tsc` w trzech
+pakietach, ESLint i Prettier czyste w zmienionych plikach. **Oględziny:** tymczasowy spec E2E
+(usunięty) z `po-T6`, MG w **Firefoksie**: „Bieg” bez ruchu → pasek, „Anuluj” nic nie wydaje,
+„Wykonaj” daje Bieg z +1; marsz 24 m przy 16 m → figura wraca, pasek „Za daleko o 8 m…”, „Wykonaj”
+przenosi ją z +2 i plakietką na czacie. Nieużywany przez spec plik `grapple-turns.test.ts`
+(nieśledzony, sprzed sesji) przechodzi i nie wszedł do commita.
+
 ### Sesja 19.10, czwarta (po `517b945`) — zlecenie MG: bariera i osłona w podglądzie strzału
 
 **Zlecenie MG:** sprawdzić, jak system liczy trafienie i obrażenia celu za barierą i osłoną oraz

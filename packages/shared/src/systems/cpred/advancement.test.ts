@@ -10,6 +10,7 @@ import {
   cpredSkillAdvanceStep,
   describeCpredAdvance,
   describeCpredRoleChange,
+  describeXpAwardNotice,
   formatAdvancementAmount,
   planCpredAdvance,
   planCpredRoleChange,
@@ -406,5 +407,27 @@ describe('awans Zdolności przy kilku Rolach', () => {
     expect(cpredAbilityAdvanceSteps(capped, registry).map((step) => step.name)).toEqual([
       'Interfejs',
     ]);
+  });
+});
+
+describe('komunikat o przyznanych PD (20.10)', () => {
+  const notice = {
+    characterId: 'c1',
+    characterName: 'Marek',
+    amount: 50,
+    labels: ['sesja 20.10'],
+    available: 120,
+  };
+
+  it('mówi, ile przyznano, komu, za co i ile jest do wydania', () => {
+    expect(describeXpAwardNotice(notice)).toBe(
+      'MG przyznał 50 PD postaci Marek (sesja 20.10). Do wydania: 120 PD.',
+    );
+  });
+
+  it('kilka przyznań pod nieobecność wymienia wszystkie powody', () => {
+    expect(
+      describeXpAwardNotice({ ...notice, amount: 90, labels: ['sesja 13.10', 'sesja 20.10'] }),
+    ).toBe('MG przyznał 90 PD postaci Marek (sesja 13.10; sesja 20.10). Do wydania: 120 PD.');
   });
 });

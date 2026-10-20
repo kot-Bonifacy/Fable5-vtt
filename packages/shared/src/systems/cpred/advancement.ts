@@ -489,6 +489,43 @@ export interface CharacterXpAwardResult {
 }
 
 /**
+ * PD the GM handed one character and its owner has not been told about yet
+ * (decision of the GM, 20.10.2026: „gracz dostaje komunikat o przydzieleniu").
+ *
+ * Only awards — a correction or points taken back say nothing. Several awards
+ * the owner missed while away add up into one notice per character.
+ */
+export interface XpAwardNotice {
+  characterId: string;
+  characterName: string;
+  /** Sum of the awards not shown yet. */
+  amount: number;
+  /** Their reasons, oldest first, each once. */
+  labels: string[];
+  /** Points in the pool now — what the player can spend. */
+  available: number;
+}
+
+/**
+ * Server → owner: `character:xp-awarded`, pushed when the award lands and the
+ * owner is connected. Also the answer to `character:xp-unseen`, which a
+ * player's client asks after every `state:sync` for what it missed.
+ */
+export interface CharacterXpAwardedPush {
+  awards: XpAwardNotice[];
+}
+
+/** „MG przyznał 50 PD postaci Marek (sesja 20.10). Do wydania: 120 PD." */
+export function describeXpAwardNotice(notice: XpAwardNotice): string {
+  // „postaci X", not „Markowi": a nickname has no declension the VTT knows.
+  const why = notice.labels.length > 0 ? ` (${notice.labels.join('; ')})` : '';
+  return (
+    `MG przyznał ${notice.amount} PD postaci ${notice.characterName}${why}. ` +
+    `Do wydania: ${notice.available} PD.`
+  );
+}
+
+/**
  * `character:role-change` — the sheet takes up another Role (stage 29b).
  *
  * Its own event rather than a field of `character:update` for the reason

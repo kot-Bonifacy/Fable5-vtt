@@ -24,6 +24,7 @@ export const BETWEEN_SESSIONS_EVENTS: ReadonlySet<string> = new Set([
   'journal:list',
   'handout:list',
   'character:xp-history',
+  'character:xp-unseen',
   'economy:history',
   // Karta tam, gdzie gracz zmienia ją dziś bez MG.
   'character:update',

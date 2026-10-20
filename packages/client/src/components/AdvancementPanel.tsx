@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
+  ADVANCEMENT_AWARD_MAX,
   ADVANCEMENT_KIND_LABELS,
+  ADVANCEMENT_LABEL_MAX,
   CPRED_MULTICLASS_MIN_RANK,
   cpredAbilityAdvanceSteps,
   cpredRoleRanks,
@@ -14,12 +16,81 @@ import {
 import {
   advanceCharacter,
   advanceErrorText,
+  awardImprovementPoints,
   changeCharacterRole,
   fetchAdvancementHistory,
   roleChangeErrorText,
 } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { noteAck } from '../notices.js';
+import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
+
+/**
+ * MG: PD dla jednej postaci, prosto z jej karty (decyzja MG z 20.10).
+ *
+ * Bliźniak „Po sesji” z Rytuałów stołu, tylko z `characterId` zamiast
+ * `everyone` — ten sam `character:xp-award`, więc wiersz rejestru mówi
+ * „Przyznane po sesji”, a właściciel dostaje komunikat, czego ręczna zmiana
+ * licznika („Korekta MG”) nie daje.
+ */
+export function XpAwardForm({ characterId, onDone }: { characterId: string; onDone: () => void }) {
+  const name = useCharacterStore((s) => s.characters[characterId]?.name ?? '');
+  const [amount, setAmount] = useState('');
+  const [label, setLabel] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function award(): Promise<void> {
+    const points = Number.parseInt(amount, 10);
+    if (!Number.isInteger(points) || points === 0) {
+      notifyRefusal('character', 'Podaj liczbę PD — tabela na s. 410 idzie od 10 do 80 na sesję.');
+      return;
+    }
+    setBusy(true);
+    const ack = await awardImprovementPoints({ characterId, amount: points, label: label.trim() });
+    setBusy(false);
+    if (!noteAck('character', ack, advanceErrorText)) return;
+    notifyInfo(`${points > 0 ? 'Przyznano' : 'Zabrano'} ${Math.abs(points)} PD — ${name}.`, {
+      title: 'Punkty Doświadczenia',
+      topic: 'character',
+    });
+    onDone();
+  }
+
+  return (
+    <form
+      className="cp-xp-award"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void award();
+      }}
+    >
+      <input
+        type="number"
+        min={-ADVANCEMENT_AWARD_MAX}
+        max={ADVANCEMENT_AWARD_MAX}
+        value={amount}
+        placeholder="PD"
+        autoFocus
+        onChange={(e) => setAmount(e.target.value)}
+        aria-label="PD do przyznania tej postaci"
+        title="Tabela na s. 410–411 idzie od 10 do 80 na sesję; liczba ujemna zabiera (bez komunikatu dla gracza)."
+      />
+      <input
+        type="text"
+        maxLength={ADVANCEMENT_LABEL_MAX}
+        value={label}
+        placeholder="za co (trafia do rejestru i do komunikatu)"
+        onChange={(e) => setLabel(e.target.value)}
+        aria-label="Powód przyznania PD tej postaci"
+      />
+      <button type="submit" className="small-button" disabled={busy}>
+        Przyznaj
+      </button>
+      <button type="button" className="small-button" onClick={onDone}>
+        Anuluj
+      </button>
+    </form>
+  );
+}
 
 /**
  * Zmiana Roli (etap 29b, s. 143).
