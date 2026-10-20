@@ -31,9 +31,9 @@ describe('entryPrice', () => {
     // Etap 47a: cena pasma idzie przez cennik domowy wpisu — sprzęt trwały ×10…
     expect(entryPrice({ cost: null, costCategory: 'costly' })).toBe(500);
     expect(entryPrice({ cost: null, costCategory: 'expensive', category: 'weapon' })).toBe(5000);
-    // …a amunicja i drobny sprzęt ogólny ×3.
+    // …drobny sprzęt ogólny ×3, a amunicja ×1.
     expect(entryPrice({ cost: null, costCategory: 'costly', category: 'gear' })).toBe(150);
-    expect(entryPrice({ cost: null, costCategory: 'premium', category: 'ammo' })).toBe(300);
+    expect(entryPrice({ cost: null, costCategory: 'premium', category: 'ammo' })).toBe(100);
   });
 
   it('returns null for an entry that says nothing about money', () => {

@@ -325,8 +325,8 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
 
     await goToStep(page, /Wyposażenie/);
     // Etap 47b (cennik domowy, decyzja MG z 10.10): B.C. Pistolet, broń biała i kurtka
-    // kosztują razem 2500 ed — pakiet Roli Krawędziarza daje MG po przyjęciu (3.8).
-    // Kowal kupuje za swoje 500 ed tylko dwie paczki zwykłej (2 × 10 szt. po 30 ed);
+    // kosztują razem 2050 ed (broń biała ×1 od 20.10) — pakiet Roli Krawędziarza daje MG po przyjęciu (3.8).
+    // Kowal kupuje za swoje 500 ed tylko dwie paczki zwykłej (2 × 10 szt. po 10 ed);
     // bez broni na karcie kaliber wybiera się ręką.
     await expect(window.getByText(/500 ed startowych/)).toBeVisible();
     await window.getByRole('button', { name: 'Amunicja', exact: true }).click();
@@ -338,7 +338,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       await ammo.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła' }).click();
       await expect(ammo.getByText(held)).toBeVisible();
     }
-    await expect(window.getByText(/Koszyk — 60 ed/)).toBeVisible();
+    await expect(window.getByText(/Koszyk — 20 ed/)).toBeVisible();
 
     await goToStep(page, /Opis/);
     await window
@@ -357,7 +357,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     expect(kowal.playReady).toBe(0);
     const sheet = sheetOf('Kowal');
     expect(sheet.stats).toEqual(KOWAL_STATS);
-    expect(sheet.eddies).toBe(440);
+    expect(sheet.eddies).toBe(480);
     // Gołe ręce z urzędu (47b) — jedyna „broń” przed pakietem Roli od MG.
     expect((sheet.weapons as { name: string }[]).map((w) => w.name)).toEqual(['Bijatyka']);
     expect(
@@ -573,7 +573,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       'Bijatyka',
     ]);
     expect(kowal.armor[0]!.equipped).not.toBe(false);
-    expect(kowal.eddies).toBe(440);
+    expect(kowal.eddies).toBe(480);
 
     // Netrunner: sprzęg i złącza z wyposażenia Roli wszczepia MG „Dodaj za darmo”
     // — bez Testu montażu, z rzutem 2k6 na Utratę Człowieczeństwa (skrypt: 1 + 1).

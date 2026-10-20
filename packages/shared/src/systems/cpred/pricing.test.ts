@@ -3,7 +3,7 @@ import type { CompendiumEntry } from './compendium.js';
 import { buildCompendium } from './compendium.js';
 import { entryPrice } from './economy.js';
 import {
-  CPRED_PRICE_SCALE_CONSUMABLE,
+  CPRED_PRICE_SCALE_AMMO,
   CPRED_PRICE_SCALE_DURABLE,
   cpredCatalogPriceScale,
   cpredScaleCatalogPrices,
@@ -16,7 +16,7 @@ function entry(fields: Record<string, unknown>): CompendiumEntry {
 }
 
 describe('cennik domowy (etap 47a)', () => {
-  it('mnoży sprzęt trwały ×10, a amunicję i drobny sprzęt ogólny ×3', () => {
+  it('mnoży sprzęt trwały ×10, drobny sprzęt ogólny ×3, a amunicję zostawia', () => {
     expect(cpredCatalogPriceScale(entry({ category: 'weapon' }))).toBe(CPRED_PRICE_SCALE_DURABLE);
     expect(cpredCatalogPriceScale(entry({ category: 'armor' }))).toBe(10);
     expect(cpredCatalogPriceScale(entry({ category: 'cyberware', costCategory: 'cheap' }))).toBe(
@@ -24,8 +24,9 @@ describe('cennik domowy (etap 47a)', () => {
     );
     expect(cpredCatalogPriceScale(entry({ category: 'program' }))).toBe(10);
     expect(cpredCatalogPriceScale(entry({ category: 'ammo', costCategory: 'expensive' }))).toBe(
-      CPRED_PRICE_SCALE_CONSUMABLE,
+      CPRED_PRICE_SCALE_AMMO,
     );
+    expect(cpredScaledEntry(entry({ category: 'ammo', cost: 10 })).cost).toBe(10);
     // Sprzęt ogólny: Tanie, Codzienne i Drogie (10–50 ed) to drobiazg…
     for (const band of ['cheap', 'everyday', 'costly']) {
       expect(cpredCatalogPriceScale(entry({ category: 'gear', costCategory: band }))).toBe(3);
@@ -54,6 +55,16 @@ describe('cennik domowy (etap 47a)', () => {
       entry({ id: 'attachment.drum-magazine', category: 'attachment', cost: 500 }),
     );
     expect(drum.cost).toBe(2000);
+    // Nóż z marketu nie kosztuje jak pistolet (decyzja MG z 20.10.2026).
+    const knife = cpredScaledEntry(
+      entry({ id: 'weapon.light-melee', category: 'weapon', cost: 50, costCategory: 'costly' }),
+    );
+    expect(knife.cost).toBe(50);
+    expect(shopTierOf(knife)).toBe(shopTierForPrice(50));
+    const pistol = cpredScaledEntry(
+      entry({ id: 'weapon.medium-pistol', category: 'weapon', cost: 50, costCategory: 'costly' }),
+    );
+    expect(pistol.cost).toBe(500);
   });
 
   it('zmienia kwotę, a pasmo zostawia', () => {

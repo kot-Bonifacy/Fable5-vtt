@@ -327,10 +327,10 @@ test.describe.serial('T46c zapas amunicji', () => {
     const entry = await compendiumEntry(marek, 'Amunicja zwykła');
     await pickCalibre(entry.getByLabel('Kaliber'), VHP);
     await entry.getByLabel('Liczba paczek').fill('2');
-    // Cennik domowy (47a): paczka zwykłej 10 → 30 ed (×3).
-    await entry.getByRole('button', { name: 'Kup — 60 ed' }).click();
+    // Cennik domowy: amunicja w cenach podręcznika — paczka zwykłej 10 ed.
+    await entry.getByRole('button', { name: 'Kup — 20 ed' }).click();
     await expect.poll(() => stock('Kowal', VHP)).toBe(15 + 20);
-    expect(card('Kowal').eddies).toBe(eddies - 60);
+    expect(card('Kowal').eddies).toBe(eddies - 20);
     expect(boxes('Kowal', VHP).filter((row) => row.ammo?.ammoId === null)).toHaveLength(1);
     await shot(marek, '7-kompendium');
     expect(

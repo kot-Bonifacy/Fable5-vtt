@@ -11,7 +11,9 @@ import type { CompendiumEntry, CompendiumRegistry, CostCategory } from './compen
  *
  *  - sprzęt trwały (broń, dodatki, pancerze, cyborgizacja, sprzęt i programy
  *    Netrunnera, obrona Sieci, droższy sprzęt ogólny) ×10,
- *  - amunicja i drobny sprzęt ogólny (pasma Tanie, Codzienne, Drogie — 10–50 ed) ×3,
+ *  - drobny sprzęt ogólny (pasma Tanie, Codzienne, Drogie — 10–50 ed) ×3,
+ *  - amunicja ×1 (decyzja MG z 20.10.2026 — dziesięć zwykłych naboi za 10 ed
+ *    to już cena z dzisiejszego sklepu, ×3 robiło z nich towar luksusowy),
  *  - czynsz, Poziom życia, zakup mieszkania, wypłaty i gotówka startowa ×1.
  *
  * **Pasmo zostaje przy przedmiocie.** Od pasma zależą PT i czas Wytwarzania
@@ -26,8 +28,10 @@ import type { CompendiumEntry, CompendiumRegistry, CostCategory } from './compen
 
 /** Sprzęt trwały — broń, pancerz, chrom, elektronika. */
 export const CPRED_PRICE_SCALE_DURABLE = 10;
-/** Amunicja i drobiazgi, które się zużywa albo kupuje garściami. */
+/** Drobiazgi, które się zużywa albo kupuje garściami. */
 export const CPRED_PRICE_SCALE_CONSUMABLE = 3;
+/** Amunicja — ceny podręcznika już wyglądają jak dzisiejsze euro. */
+export const CPRED_PRICE_SCALE_AMMO = 1;
 
 /** Pasma sprzętu ogólnego, które liczą się jak drobiazg. */
 const CONSUMABLE_GEAR_BANDS: ReadonlySet<CostCategory> = new Set(['cheap', 'everyday', 'costly']);
@@ -43,6 +47,10 @@ const CONSUMABLE_GEAR_BANDS: ReadonlySet<CostCategory> = new Set(['cheap', 'ever
  *    i lokalizator po 5000 ed, dyktafon w cenie agenta, torba z narzędziami za
  *    pięć technarzędzi, magazynek bębnowy droższy od pistoletu. Wersje
  *    wszczepiane zostają przy ×10 — ich cena zawiera montaż.
+ *  - Decyzja MG z 20.10.2026 — broń, którą dziś kupi się w markecie albo
+ *    sklepie myśliwskim bez pozwolenia, nie kosztuje jak pistolet: nóż, kij,
+ *    maczeta, piła łańcuchowa, łuk, kusza, pałka ogłuszająca. Markowe łuki
+ *    i kusze z DLC zostają przy ×10 — płaci się za markę i jakość.
  */
 const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
   ['gear.komputer', CPRED_PRICE_SCALE_DURABLE],
@@ -54,6 +62,13 @@ const PRICE_SCALE_BY_ID: ReadonlyMap<string, number> = new Map([
   ['gear.przegladarka-braindance-u', 3], // 3000 ed
   ['gear.przybornik-technika', 4], // 2000 ed
   ['attachment.drum-magazine', 4], // 2000 ed
+  ['weapon.light-melee', 1], // 50 ed
+  ['weapon.medium-melee', 1], // 50 ed
+  ['weapon.heavy-melee', 2], // 200 ed
+  ['weapon.very-heavy-melee', 1], // 500 ed
+  ['weapon.bow', 3], // 300 ed
+  ['weapon.crossbow', 4], // 400 ed
+  ['weapon.palka-ogluszajaca', 2], // 200 ed
 ]);
 
 /**
@@ -73,7 +88,7 @@ export function cpredCatalogPriceScale(
 ): number {
   const exception = entry.id === undefined ? undefined : PRICE_SCALE_BY_ID.get(entry.id);
   if (exception !== undefined) return exception;
-  if (entry.category === 'ammo') return CPRED_PRICE_SCALE_CONSUMABLE;
+  if (entry.category === 'ammo') return CPRED_PRICE_SCALE_AMMO;
   if (
     entry.category === 'gear' &&
     entry.costCategory !== undefined &&
@@ -106,7 +121,8 @@ export function cpredScaleCatalogPrices(registry: CompendiumRegistry): Compendiu
  */
 export const CPRED_PRICE_HOUSE_RULE_NOTE =
   'Ceny w eurodolcach przy tym stole różnią się od podręcznika (cennik domowy MG): broń, pancerze,' +
-  ' cyborgizacje, sprzęt Netrunnera i droższy sprzęt kosztują 10 razy tyle, amunicja i drobny sprzęt' +
-  ' 3 razy tyle, montaż znalezionej cyborgizacji 10 razy tyle, a terapia 2 razy tyle; czynsz, Poziom' +
+  ' cyborgizacje, sprzęt Netrunnera i droższy sprzęt kosztują 10 razy tyle, drobny sprzęt 3 razy' +
+  ' tyle, amunicja i zwykła broń biała (nóż, kij, piła łańcuchowa) tyle co w podręczniku, łuk 3 razy,' +
+  ' kusza 4 razy, a maczeta i pałka ogłuszająca 2 razy tyle, montaż znalezionej cyborgizacji 10 razy tyle, a terapia 2 razy tyle; czynsz, Poziom' +
   ' życia i wypłaty są jak w podręczniku. Gdy pytanie dotyczy ceny, podajesz cenę z fragmentu i' +
   ' dopisujesz, ile wynosi po przeliczniku.';

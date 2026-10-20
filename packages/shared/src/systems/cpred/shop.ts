@@ -109,7 +109,7 @@ function armorTier(sp: number): ShopTier {
  * Price that lifts anything to at least Zawodowe — „Bardzo kosztowne". Progi
  * i drabina niżej są **w cenach podręcznika**: od etapu 47a cena wpisu jest
  * w cenniku domowym, więc porównuje się ją podzieloną przez mnożnik wpisu
- * (`rulebookPrice`) — pistolet za 1000 ed i nabój za 30 ed lądują na tych
+ * (`rulebookPrice`) — pistolet za 1000 ed i nóż za 50 ed lądują na tych
  * samych poziomach co przed przelicznikiem.
  */
 const PRICE_FLOOR_PROFESSIONAL = 1000;
