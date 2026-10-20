@@ -199,6 +199,73 @@ export function computeVisionPolygon(
 }
 
 /**
+ * How many rays sample the open arc of a cone, besides the corners in it. One
+ * every few degrees of a 90° camera, so a cone with no wall in front of it still
+ * comes out with a round end rather than a triangle.
+ */
+const CONE_RAY_COUNT = 32;
+
+/**
+ * The part of the visibility polygon that lies inside a cone (20.10, kamery
+ * w Sieci): a figure that looks one way only, like a surveillance camera.
+ *
+ * Swept like `computeVisionPolygon`, but over the cone's angles alone and with
+ * the observer as the first vertex — the result is the same star-shaped region,
+ * cut along the two edges of the cone, so `isPointInPolygon` and the client's
+ * fog cut-out read it exactly as they read a full one.
+ *
+ * `facingDeg` is the map's facing (degrees clockwise from up, stage 27j) and
+ * `spreadDeg` the whole opening of the cone; anything from 360° up is the full
+ * polygon.
+ */
+export function computeVisionCone(
+  origin: ScenePoint,
+  segments: readonly Segment[],
+  radiusPx: number | null,
+  facingDeg: number,
+  spreadDeg: number,
+): ScenePoint[] {
+  if (!(spreadDeg < 360)) return computeVisionPolygon(origin, segments, radiusPx);
+  if (!(spreadDeg > 0)) return [];
+  const radius = radiusPx !== null && Number.isFinite(radiusPx) && radiusPx > 0 ? radiusPx : null;
+  // Facing 0 is up; `atan2` measures from the +x axis with y pointing down.
+  const centre = (facingDeg * Math.PI) / 180 - Math.PI / 2;
+  const half = (spreadDeg * Math.PI) / 360;
+  const offsets: number[] = [];
+  for (let i = 0; i <= CONE_RAY_COUNT; i++) offsets.push(-half + (2 * half * i) / CONE_RAY_COUNT);
+
+  /** Angle relative to the cone's axis, in (−π, π]. */
+  const relative = (angle: number) => {
+    let delta = angle - centre;
+    while (delta <= -Math.PI) delta += Math.PI * 2;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    return delta;
+  };
+  for (const segment of segments) {
+    if (radius !== null && !segmentWithinRadius(origin, segment, radius)) continue;
+    for (const [x, y] of [
+      [segment.x1, segment.y1],
+      [segment.x2, segment.y2],
+    ] as const) {
+      const delta = relative(Math.atan2(y - origin.y, x - origin.x));
+      for (const nudged of [delta - ANGLE_EPSILON, delta, delta + ANGLE_EPSILON]) {
+        if (nudged >= -half && nudged <= half) offsets.push(nudged);
+      }
+    }
+  }
+
+  offsets.sort((a, b) => a - b);
+  const polygon: ScenePoint[] = [{ x: origin.x, y: origin.y }];
+  let previous = Number.NaN;
+  for (const offset of offsets) {
+    if (Math.abs(offset - previous) < ANGLE_EPSILON / 2) continue;
+    previous = offset;
+    polygon.push(castRay(origin, centre + offset, segments, radius));
+  }
+  return polygon;
+}
+
+/**
  * Is any part of the segment within `radius` of the point?
  *
  * Exported for the light mask (stage 18b), which pre-filters the wall list per

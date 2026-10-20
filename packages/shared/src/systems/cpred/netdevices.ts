@@ -26,6 +26,7 @@
  * the turret and writing the chat card are the server's business.
  */
 
+import { normalizeFacing } from '../../figures.js';
 import type { CpredNetDevice, NetDeviceKind } from './netrunning.js';
 import { NET_DEVICE_KIND_LABELS } from './netrunning.js';
 
@@ -132,6 +133,57 @@ export function netDeviceStateAfter(
   return null;
 }
 
+// ──────────────────────────── kamera na mapie ────────────────────────────
+
+/**
+ * How wide a camera looks, in degrees (zlecenie MG z 20.10). The rulebook gives
+ * a camera no numbers at all; ninety is a wall-mounted lens covering a corridor
+ * or a corner of a room, and it is what makes „Obróć" a real decision.
+ */
+export const NET_CAMERA_CONE_DEG = 90;
+
+/**
+ * Where „Obróć" can point a camera — the eight directions of the map, in its
+ * facing (degrees clockwise from up, stage 27j). Eight rather than a free angle
+ * because the netrunner picks from a list, not with a knob on a map they may
+ * not even see.
+ */
+export const NET_CAMERA_DIRECTIONS: readonly { facing: number; label: string }[] = [
+  { facing: 0, label: 'północ' },
+  { facing: 45, label: 'północny wschód' },
+  { facing: 90, label: 'wschód' },
+  { facing: 135, label: 'południowy wschód' },
+  { facing: 180, label: 'południe' },
+  { facing: 225, label: 'południowy zachód' },
+  { facing: 270, label: 'zachód' },
+  { facing: 315, label: 'północny zachód' },
+];
+
+/** The nearest of the eight directions, for the chat line and the list. */
+export function netCameraDirectionLabel(facing: number): string {
+  const normalized = normalizeFacing(facing);
+  const index = Math.round(normalized / 45) % NET_CAMERA_DIRECTIONS.length;
+  return NET_CAMERA_DIRECTIONS[index]!.label;
+}
+
+/**
+ * Where „Obróć" leaves a camera that stands on the map: the direction asked
+ * for, or a quarter turn clockwise when nobody named one (a Demon, an old
+ * client). A camera nobody ever turned counts as looking north.
+ */
+export function netCameraFacingAfterTurn(current: number | null, asked: unknown): number {
+  if (typeof asked === 'number' && Number.isFinite(asked)) return normalizeFacing(asked);
+  return normalizeFacing((current ?? 0) + 90);
+}
+
+/**
+ * Does this camera lend its eyes to whoever holds its node? Switched on is the
+ * whole condition — a camera turned away still sees, just something else.
+ */
+export function netCameraSees(state: Pick<CpredNetDeviceState, 'on'>): boolean {
+  return state.on;
+}
+
 export function readNetDeviceStates(raw: unknown): CpredNetDeviceState[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -210,17 +262,22 @@ export function netControlDv(
 /**
  * One Polish line saying what happened, for the log and for the run window.
  *
- * The camera's sentence is the one that carries weight: the VTT has no cone of
- * vision, so „obrócona" is a fact the table reads and the GM rules on — exactly
- * like the two „na godzinę" hooks of 26c. Saying it plainly is the whole
- * mechanism, and pretending otherwise would be worse than admitting it.
+ * A camera with no figure on the map still has only this sentence: „obrócona"
+ * is a fact the table reads and the GM rules on, like the two „na godzinę" hooks
+ * of 26c. A camera that stands on the map (20.10) looks in a cone the netrunner
+ * sees through, and its sentence names the direction instead.
  */
 export function netDeviceLine(
   device: Pick<CpredNetDevice, 'name' | 'deviceKind'>,
   operation: NetDeviceOperation,
   state: CpredNetDeviceState,
+  /** Where a camera on the map now looks; the toggle sentence without it. */
+  facing?: number,
 ): string {
   const what = device.name || NET_DEVICE_KIND_LABELS[device.deviceKind];
+  if (operation === 'turn' && facing !== undefined) {
+    return `${what} — obrócona na ${netCameraDirectionLabel(facing)}.`;
+  }
   switch (operation) {
     case 'on':
       return `${what} — włączona.`;
@@ -291,6 +348,15 @@ export interface NetDeviceView {
   turned?: boolean;
   /** Set when the device has a figure on the map to shoot from. */
   tokenId?: string;
+  /**
+   * Where that figure stands — its centre in scene pixels and the scene it is
+   * on (zlecenie MG z 20.10). The netrunner's window frames the map on it, and
+   * a camera's figure is often one the player cannot see on the map at all.
+   * Sent with the device list, so only once the node has been taken.
+   */
+  at?: { sceneId: string; x: number; y: number };
+  /** Where the figure looks (stage 27j facing) — a camera's „Obróć" starts here. */
+  facing?: number;
   /** Set when the device opens a door or window of stage 18d. */
   wallId?: number;
   /** Effect line off the catalogue entry, when the GM picked one. */
@@ -301,7 +367,12 @@ export interface NetDeviceView {
 export function netDeviceView(
   device: CpredNetDevice,
   state: CpredNetDeviceState,
-  options: { detail?: string; gm: boolean },
+  options: {
+    detail?: string;
+    gm: boolean;
+    at?: { sceneId: string; x: number; y: number };
+    facing?: number | null;
+  },
 ): NetDeviceView {
   return {
     id: device.id,
@@ -312,6 +383,8 @@ export function netDeviceView(
     ...(state.turned ? { turned: true } : {}),
     ...(device.tokenId ? { tokenId: device.tokenId } : {}),
     ...(device.wallId !== undefined ? { wallId: device.wallId } : {}),
+    ...(device.tokenId && options.at ? { at: options.at } : {}),
+    ...(device.tokenId && typeof options.facing === 'number' ? { facing: options.facing } : {}),
     ...(options.detail ? { detail: options.detail } : {}),
     // The GM's own note on a device is the GM's, exactly like the note on a
     // floor: it says what the turret is *for*, which is a plan, not a fact.

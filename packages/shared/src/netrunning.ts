@@ -297,6 +297,11 @@ export interface NetRunDevicePayload {
   /** Who the turret is aimed at; ignored by every other operation. */
   targetTokenId?: string;
   /**
+   * Where „Obróć" points a camera standing on the map, in the map's facing
+   * (degrees clockwise from up). Missing — a quarter turn clockwise.
+   */
+  facing?: number;
+  /**
    * Only the parts of the shot the window has an opinion about — today that is
    * `ignoreCover`, set by „Strzelaj mimo osłony" after a refusal. The weapon row
    * is never named here: a turret has one barrel and the server picks it.

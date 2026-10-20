@@ -53,7 +53,9 @@ import {
   toChatMessageView,
 } from './chat-io.js';
 import { toSceneView } from './scenes.js';
-import { hasLineOfFire, loadVisionContext } from './vision.js';
+import { emitVisionToPlayers, hasLineOfFire, loadVisionContext } from './vision.js';
+import { loadNetCameraGrants, netCameraSignature } from './net-cameras.js';
+import { emitSceneTokensToPlayers } from './tokens.js';
 
 /**
  * Reading side of the run (stage 26b), split out of the events for the reason
@@ -331,6 +333,7 @@ async function deviceViewsOf(
   gm: boolean,
 ): Promise<Map<string, NetDeviceView[]>> {
   const byFloor = new Map<string, NetDeviceView[]>();
+  const placed = await devicePlacesOf(deps.ctx.prisma, campaignId, architecture);
   for (const branch of architecture.branches) {
     for (const floor of branch.floors) {
       if (floor.kind !== 'controlNode' || !floor.devices?.length) continue;
@@ -340,10 +343,12 @@ async function deviceViewsOf(
           ? await campaignEntry(deps, campaignId, device.entryId)
           : undefined;
         const detail = entry && isNetDefenseEntry(entry) ? describeNetDefense(entry) : '';
+        const place = device.tokenId ? placed.get(device.tokenId) : undefined;
         views.push(
           netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
             gm,
             ...(detail ? { detail } : {}),
+            ...(place ? { at: place.at, facing: place.facing } : {}),
           }),
         );
       }
@@ -351,6 +356,42 @@ async function deviceViewsOf(
     }
   }
   return byFloor;
+}
+
+/**
+ * Where the figures of this Architecture's devices stand (zlecenie MG z 20.10)
+ * — the window frames the map on them once their node is taken. One query for
+ * the whole shaft; a figure on another campaign's scene is not this one's.
+ */
+async function devicePlacesOf(
+  prisma: PrismaClient,
+  campaignId: string,
+  architecture: CpredNetArchitecture,
+): Promise<Map<string, { at: { sceneId: string; x: number; y: number }; facing: number | null }>> {
+  const ids = architecture.branches
+    .flatMap((branch) => branch.floors)
+    .flatMap((floor) => floor.devices ?? [])
+    .map((device) => device.tokenId)
+    .filter((id): id is string => typeof id === 'string');
+  const places = new Map<
+    string,
+    { at: { sceneId: string; x: number; y: number }; facing: number | null }
+  >();
+  if (ids.length === 0) return places;
+  const tokens = await prisma.token.findMany({
+    where: { id: { in: ids }, scene: { campaignId } },
+    include: { scene: { select: { gridSizePx: true } } },
+  });
+  for (const token of tokens) {
+    // `tokenCentre` without building a whole `GridConfig` for one number.
+    const half = (token.size * token.scene.gridSizePx) / 2;
+    const centre = { x: token.x + half, y: token.y + half };
+    places.set(token.id, {
+      at: { sceneId: token.sceneId, x: Math.round(centre.x), y: Math.round(centre.y) },
+      facing: token.facing,
+    });
+  }
+  return places;
 }
 
 /** „Piętro 3 — Plik" albo samo „Piętro 3", gdy netrunner jeszcze tam nie był. */
@@ -405,6 +446,34 @@ export async function emitRuns(deps: RealtimeDeps, campaignId: string): Promise<
     const data = member.data as { user: SessionUser };
     const runs = await fetchRunsFor(deps, campaignId, data.user);
     member.emit('netrun:sync', { runs });
+  }
+  await refreshNetCameraSight(deps, campaignId);
+}
+
+/** Kampania → ostatni odcisk tego, kto przez którą kamerę patrzy. */
+const cameraSignatures = new Map<string, string>();
+
+/**
+ * Przelicza widok graczy, gdy zmieniło się, kto przez którą kamerę patrzy
+ * (zlecenie MG z 20.10): węzeł przejęty albo odebrany, kamera włączona albo
+ * wyłączona, run zakończony. Woła to `emitRuns` po każdej zmianie runu, więc
+ * porównuje odcisk i przy zwykłej Akcji Sieciowej nie liczy niczego. `force`
+ * — obrót kamery, który odcisku nie zmienia, a stożek tak.
+ */
+export async function refreshNetCameraSight(
+  deps: RealtimeDeps,
+  campaignId: string,
+  options: { force?: boolean } = {},
+): Promise<void> {
+  const signature = netCameraSignature(await loadNetCameraGrants(deps.ctx.prisma, campaignId));
+  if (!options.force && signature === (cameraSignatures.get(campaignId) ?? '')) return;
+  cameraSignatures.set(campaignId, signature);
+  const scenes = await deps.ctx.prisma.scene.findMany({ where: { campaignId, active: true } });
+  for (const scene of scenes) {
+    // Lista figur najpierw: to, co kamera pokazuje (albo przestała), to także
+    // ludzie w jej stożku, a nie sama podłoga.
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    await emitVisionToPlayers(deps, campaignId, scene);
   }
 }
 

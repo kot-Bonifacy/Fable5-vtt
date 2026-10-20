@@ -194,7 +194,11 @@ function DeviceRows({
             ) : (
               <select
                 value={device.tokenId ?? ''}
-                title="Figura na scenie, z której to urządzenie strzela"
+                title={
+                  device.deviceKind === 'camera'
+                    ? 'Figura kamery na mapie — netrunner, który przejmie węzeł, patrzy jej oczami w kierunku grotu'
+                    : 'Figura na scenie, z której to urządzenie strzela'
+                }
                 onChange={(event) => {
                   const next = { ...device };
                   if (event.target.value) next.tokenId = event.target.value;

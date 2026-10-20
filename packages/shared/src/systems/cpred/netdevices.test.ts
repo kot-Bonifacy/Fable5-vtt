@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   NET_DEVICE_MESSAGES,
   describeNetDefense,
+  netCameraDirectionLabel,
+  netCameraFacingAfterTurn,
+  netCameraSees,
   isNetDeviceOperation,
   netApplyDeviceState,
   netControlDv,
@@ -175,6 +178,35 @@ describe('widok urządzenia i zdania po polsku', () => {
     expect(netDeviceLine(camera, 'off', { deviceId: 'd1', on: false })).toContain('wyłączona');
   });
 
+  it('kamera na mapie mówi, dokąd patrzy po obróceniu (20.10)', () => {
+    expect(netDeviceLine(camera, 'turn', { deviceId: 'd1', on: true }, 90)).toBe(
+      'Kamera nad barem — obrócona na wschód.',
+    );
+    expect(netCameraDirectionLabel(316)).toBe('północny zachód');
+    expect(netCameraDirectionLabel(359)).toBe('północ');
+  });
+
+  it('niesie położenie i kierunek figury urządzenia, tylko gdy ma figurę', () => {
+    const at = { sceneId: 's1', x: 120, y: 80 };
+    const view = netDeviceView(turret, { deviceId: 'd2', on: true }, { gm: false, at, facing: 45 });
+    expect(view.at).toEqual(at);
+    expect(view.facing).toBe(45);
+    const bare = netDeviceView(camera, { deviceId: 'd1', on: true }, { gm: false, at, facing: 45 });
+    expect(bare.at).toBeUndefined();
+    expect(bare.facing).toBeUndefined();
+  });
+
+  it('obraca kamerę na wskazany kierunek albo o ćwierć obrotu', () => {
+    expect(netCameraFacingAfterTurn(90, 270)).toBe(270);
+    expect(netCameraFacingAfterTurn(315, undefined)).toBe(45);
+    expect(netCameraFacingAfterTurn(null, 'w lewo')).toBe(90);
+  });
+
+  it('kamera patrzy, dopóki jest włączona — obrócona też', () => {
+    expect(netCameraSees({ on: true })).toBe(true);
+    expect(netCameraSees({ on: false })).toBe(false);
+  });
+
   it('składa jedną linię z liczb wpisu systemu obronnego', () => {
     expect(describeNetDefense({ combatValue: 14, hp: 25, disableDv: 17, disableMinutes: 5 })).toBe(
       'Wartość bojowa 14 · 25 PW · PT 17 Elektronika i zabezpieczenia · 5 min',
@@ -235,7 +267,7 @@ describe('urządzenia w danych Architektury', () => {
     expect(floors[1]!.devices).toBeUndefined();
   });
 
-  it('podpowiada MG węzeł bez urządzeń i wieżyczkę bez figury', () => {
+  it('podpowiada MG węzeł bez urządzeń, wieżyczkę i kamerę bez figury', () => {
     const advice = netArchitectureAdvice({
       id: 'net.test',
       name: 'Sieć',
@@ -251,7 +283,10 @@ describe('urządzenia w danych Architektury', () => {
               kind: 'controlNode',
               label: 'Wieżyczka',
               dv: 10,
-              devices: [{ id: 'd1', name: 'Grzechot', deviceKind: 'turret' }],
+              devices: [
+                { id: 'd1', name: 'Grzechot', deviceKind: 'turret' },
+                { id: 'd2', name: 'Oko', deviceKind: 'camera' },
+              ],
             },
           ],
         },
@@ -259,6 +294,7 @@ describe('urządzenia w danych Architektury', () => {
     });
     expect(advice.some((line) => line.includes('bez urządzeń'))).toBe(true);
     expect(advice.some((line) => line.includes('nie ma żetonu'))).toBe(true);
+    expect(advice.some((line) => line.includes('„Oko" nie ma żetonu'))).toBe(true);
   });
 
   it('oddziela Demona od trzech tabel systemów obronnych', () => {

@@ -100,6 +100,7 @@ import {
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
+import { bindMapFrame } from '../map-frame.js';
 import { COMBAT_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
@@ -1343,6 +1344,21 @@ export function MapArea() {
       (x, y) => rendererRef.current?.pullViewTo(x, y),
     );
     return () => bindMapPing(null, null, null);
+  }, [ready, scene]);
+
+  // Kadr na urządzeniu przejętym w Sieci (20.10) — okno Sieci mówi, gdzie.
+  useEffect(() => {
+    if (!ready || !scene) {
+      bindMapFrame(null, null);
+      return;
+    }
+    bindMapFrame(scene.id, {
+      framePoint: (x, y, offset) => rendererRef.current?.framePoint(x, y, offset),
+      tokenCentre: (tokenId) => rendererRef.current?.tokenCentre(tokenId) ?? null,
+      viewCentre: () => rendererRef.current?.viewCentre() ?? null,
+      mark: (x, y, label) => rendererRef.current?.addPing(x, y, label),
+    });
+    return () => bindMapFrame(null, null);
   }, [ready, scene]);
 
   // Etap 56: serwer zatrzymał marsz — drużyna zobaczyła wroga. Pole zatrzymania

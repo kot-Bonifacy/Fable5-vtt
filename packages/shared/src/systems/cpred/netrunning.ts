@@ -884,6 +884,13 @@ export function netArchitectureAdvice(architecture: CpredNetArchitecture): strin
             `${column}, piętro ${index + 1}: „${device.name}" nie ma żetonu na scenie — nie będzie czym strzelić.`,
           );
         }
+        // 20.10: kamera bez figury to sam przełącznik — nie ma oczu, przez które
+        // netrunner mógłby patrzeć, a „Obróć” zostaje zdaniem na czacie.
+        if (device.deviceKind === 'camera' && !device.tokenId) {
+          advice.push(
+            `${column}, piętro ${index + 1}: „${device.name}" nie ma żetonu na scenie — netrunner nie zobaczy nic jej oczami.`,
+          );
+        }
         if (device.deviceKind === 'door' && device.wallId === undefined) {
           advice.push(
             `${column}, piętro ${index + 1}: „${device.name}" nie wskazuje drzwi ani okna.`,

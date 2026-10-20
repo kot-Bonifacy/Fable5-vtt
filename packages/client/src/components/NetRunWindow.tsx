@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   CpredNetPosition,
   NetAbilityId,
   NetCombatView,
   NetDemonView,
   NetDeviceOperation,
+  NetDeviceView,
   NetFloorView,
   NetIceView,
   NetProgramSlotView,
@@ -12,6 +13,7 @@ import type {
 } from '@vtt/shared';
 import {
   NET_ABILITIES_AVAILABLE,
+  NET_CAMERA_DIRECTIONS,
   NET_DEMON_MODE_LABELS,
   NET_DEVICE_KIND_LABELS,
   NET_DEVICE_OPERATION_LABELS,
@@ -21,6 +23,8 @@ import {
   NET_PROGRAM_TARGET_LABELS,
   ROLE_GM,
   netAbility,
+  netCameraDirectionLabel,
+  normalizeFacing,
 } from '@vtt/shared';
 import {
   attackInNet,
@@ -39,6 +43,8 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
+import { showNetDevice, showNetDevices } from '../map-frame.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
@@ -94,19 +100,29 @@ const FLOOR_GLYPHS: Record<string, string> = {
  * chowana, tylko dlatego, że przed przejęciem serwer nie przysyła listy
  * urządzeń („po przejęciu kontroli nad węzłem", s. 199). Każdy przycisk to
  * osobna Akcja Sieciowa, a cały węzeł gaśnie po pierwszym użyciu w Turze.
+ *
+ * Od 20.10 (zlecenie MG) nazwa urządzenia z figurą na oglądanej scenie to
+ * przycisk kadru, a kamera na mapie ma przy „Obróć” wybór kierunku.
  */
 function NodeDevices({
   floor,
   targets,
   busy,
+  sceneId,
   onOperate,
+  onShow,
 }: {
   floor: NetFloorView;
   targets: { id: string; name: string }[];
   busy: boolean;
-  onOperate: (deviceId: string, operation: NetDeviceOperation, targetTokenId?: string) => void;
+  /** Scena, którą rysuje mapa — tylko tam da się pokazać urządzenie. */
+  sceneId: string | null;
+  onOperate: (deviceId: string, operation: NetDeviceOperation, extra: OperateExtra) => void;
+  onShow: (device: NetDeviceView) => void;
 }) {
   const [target, setTarget] = useState('');
+  /** Kierunek „Obróć” per kamera; bez wyboru — ćwierć obrotu od obecnego. */
+  const [aims, setAims] = useState<Record<string, number>>({});
   const devices = floor.devices ?? [];
   if (devices.length === 0) return null;
   const spent = floor.nodeUsed === true;
@@ -122,8 +138,24 @@ function NodeDevices({
             key={device.id}
             className={`net-node-device${device.on ? '' : ' net-node-device--off'}`}
           >
-            <span className="net-node-name">{device.name}</span>
+            {device.at && device.at.sceneId === sceneId ? (
+              <button
+                type="button"
+                className="net-node-name net-node-name--show"
+                title="Pokaż na mapie"
+                onClick={() => onShow(device)}
+              >
+                ⌖ {device.name}
+              </button>
+            ) : (
+              <span className="net-node-name">{device.name}</span>
+            )}
             <span className="net-node-kind">{NET_DEVICE_KIND_LABELS[device.deviceKind]}</span>
+            {device.deviceKind === 'camera' && device.tokenId && device.facing !== undefined && (
+              <span className="net-run-floor-flag">
+                patrzy na {netCameraDirectionLabel(device.facing)}
+              </span>
+            )}
             {!device.on && <span className="net-run-floor-flag">wyłączone</span>}
             {device.turned && <span className="net-run-floor-flag">obrócona</span>}
             {device.detail && <span className="net-deck-effect">{device.detail}</span>}
@@ -136,7 +168,10 @@ function NodeDevices({
                 if (operation === 'on' && device.on) return null;
                 if (operation !== 'on' && !device.on) return null;
                 const needsTarget = operation === 'fire';
-                return (
+                const aimsCamera =
+                  operation === 'turn' && device.deviceKind === 'camera' && !!device.tokenId;
+                const aim = aims[device.id] ?? nextCameraFacing(device.facing);
+                const button = (
                   <button
                     key={operation}
                     type="button"
@@ -155,11 +190,35 @@ function NodeDevices({
                         : 'Obsługa urządzenia kosztuje Akcję Sieciową, a węzeł działa raz na Turę'
                     }
                     onClick={() =>
-                      onOperate(device.id, operation, needsTarget ? target : undefined)
+                      onOperate(device.id, operation, {
+                        ...(needsTarget ? { targetTokenId: target } : {}),
+                        ...(aimsCamera ? { facing: aim } : {}),
+                      })
                     }
                   >
                     {NET_DEVICE_OPERATION_LABELS[operation]}
                   </button>
+                );
+                if (!aimsCamera) return button;
+                return (
+                  <span key={operation} className="net-node-aim">
+                    {button}
+                    <select
+                      value={String(aim)}
+                      title="Dokąd obrócić kamerę"
+                      aria-label={`Kierunek kamery ${device.name}`}
+                      disabled={busy || spent}
+                      onChange={(event) =>
+                        setAims((now) => ({ ...now, [device.id]: Number(event.target.value) }))
+                      }
+                    >
+                      {NET_CAMERA_DIRECTIONS.map((direction) => (
+                        <option key={direction.facing} value={String(direction.facing)}>
+                          na {direction.label}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
                 );
               })}
             </span>
@@ -183,14 +242,30 @@ function NodeDevices({
   );
 }
 
+/** Co poza rodzajem obsługi niesie jedno kliknięcie urządzenia. */
+interface OperateExtra {
+  targetTokenId?: string;
+  facing?: number;
+}
+
+/**
+ * Kierunek, który lista „Obróć” podsuwa kamerze: ćwierć obrotu zgodnie
+ * z zegarem od obecnego, przyciągnięty do jednego z ośmiu kierunków.
+ */
+function nextCameraFacing(facing: number | undefined): number {
+  return normalizeFacing(Math.round(((facing ?? 0) + 90) / 45) * 45);
+}
+
 function FloorRow({
   floor,
   branchId,
   onMove,
   onCopy,
   onOperate,
+  onShow,
   targets,
   busy,
+  sceneId,
 }: {
   floor: NetFloorView;
   branchId: string;
@@ -200,10 +275,12 @@ function FloorRow({
     floorId: string,
     deviceId: string,
     operation: NetDeviceOperation,
-    targetTokenId?: string,
+    extra: OperateExtra,
   ) => void;
+  onShow: (device: NetDeviceView) => void;
   targets: { id: string; name: string }[];
   busy: boolean;
+  sceneId: string | null;
 }) {
   const unknown = floor.kind === null;
   const label = unknown
@@ -257,9 +334,9 @@ function FloorRow({
         floor={floor}
         targets={targets}
         busy={busy}
-        onOperate={(deviceId, operation, targetTokenId) =>
-          onOperate(floor.id, deviceId, operation, targetTokenId)
-        }
+        sceneId={sceneId}
+        onOperate={(deviceId, operation, extra) => onOperate(floor.id, deviceId, operation, extra)}
+        onShow={onShow}
       />
     </li>
   );
@@ -270,8 +347,10 @@ function Branch({
   onMove,
   onCopy,
   onOperate,
+  onShow,
   targets,
   busy,
+  sceneId,
 }: {
   branch: NetShaftBranchView;
   onMove: (to: CpredNetPosition) => void;
@@ -280,10 +359,12 @@ function Branch({
     floorId: string,
     deviceId: string,
     operation: NetDeviceOperation,
-    targetTokenId?: string,
+    extra: OperateExtra,
   ) => void;
+  onShow: (device: NetDeviceView) => void;
   targets: { id: string; name: string }[];
   busy: boolean;
+  sceneId: string | null;
 }) {
   return (
     <div className={`net-run-column${branch.trunk ? '' : ' net-run-column--branch'}`}>
@@ -302,8 +383,10 @@ function Branch({
             onMove={onMove}
             onCopy={onCopy}
             onOperate={onOperate}
+            onShow={onShow}
             targets={targets}
             busy={busy}
+            sceneId={sceneId}
           />
         ))}
       </ul>
@@ -740,8 +823,33 @@ function NetRunWindowBody() {
   const placement = useWindowPlacement('net-run', () => fit);
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
+  const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
+  /**
+   * Węzeł, którego urządzenia mapa ma pokazać, gdy przyjdzie ich lista
+   * (zlecenie MG z 20.10). Lista jedzie `netrun:sync`, który może dojść przed
+   * potwierdzeniem Kontroli albo po nim — stąd próba w obu miejscach.
+   */
+  const frameNode = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (run)
+      frameTakenNode(
+        run.run.branches.flatMap((branch) => branch.floors),
+        run.tokenId,
+      );
+  }, [run]);
 
   if (!run) return null;
+
+  /** Kadr na urządzeniach węzła, który ten klient właśnie przejął. */
+  function frameTakenNode(floors: NetFloorView[], runnerTokenId: string) {
+    const floorId = frameNode.current;
+    if (!floorId) return;
+    const floor = floors.find((entry) => entry.id === floorId);
+    if (!floor?.devices?.length) return;
+    frameNode.current = null;
+    showNetDevices(floor.devices, runnerTokenId);
+  }
 
   async function guard<T>(work: Promise<{ ok: boolean; error?: string; data?: T }>) {
     setBusy(true);
@@ -762,9 +870,10 @@ function NetRunWindowBody() {
     floorId: string,
     deviceId: string,
     operation: NetDeviceOperation,
-    targetTokenId?: string,
+    extra: OperateExtra,
     ignoreCover?: boolean,
   ) {
+    const { targetTokenId, facing } = extra;
     const ack = await guard(
       operateNetDevice({
         runId: run!.runId,
@@ -772,10 +881,18 @@ function NetRunWindowBody() {
         deviceId,
         operation,
         ...(targetTokenId ? { targetTokenId } : {}),
+        ...(facing !== undefined ? { facing } : {}),
         ...(ignoreCover ? { request: { ignoreCover: true } } : {}),
       }),
     );
     if (ack.ok) report(ack.data?.summary);
+    // Strzał wieżyczki: rzut oka na nią i powrót do netrunnera (20.10).
+    if (ack.ok && operation === 'fire') {
+      const device = floors
+        .find((floor) => floor.id === floorId)
+        ?.devices?.find((entry) => entry.id === deviceId);
+      if (device) showNetDevice(device, run!.tokenId);
+    }
     /*
      * Strzał odrzucony przez osłonę (16c/26d) — pytanie z powtórką. Strzelec
      * przy mapie dostaje kartę wyboru **przed** zapłatą, bo osłonę widać już
@@ -791,7 +908,7 @@ function NetRunWindowBody() {
           {
             label: 'Strzelaj mimo osłony',
             title: 'Cel się wychylił — decyzja stołu, kosztuje drugą Akcję Sieciową',
-            run: () => void operate(floorId, deviceId, operation, targetTokenId, true),
+            run: () => void operate(floorId, deviceId, operation, extra, true),
           },
         ],
         { title: 'Osłona' },
@@ -808,10 +925,22 @@ function NetRunWindowBody() {
     id: NetAbilityId,
     virus?: { description: string; dv: number; actions: number },
   ) {
+    // Kontrola: piętro, na którym netrunner stoi, to węzeł, który przejmuje.
+    const standing = id === 'control' ? floors.find((floor) => floor.here)?.id : undefined;
     const ack = await guard(
       useNetAbility({ runId: run!.runId, ability: id, ...(virus ? { virus } : {}) }),
     );
     if (ack.ok) report(ack.data?.summary);
+    if (ack.ok && ack.data?.success && standing) {
+      frameNode.current = standing;
+      const latest = currentRun(useNetRunStore.getState());
+      if (latest) {
+        frameTakenNode(
+          latest.run.branches.flatMap((branch) => branch.floors),
+          latest.tokenId,
+        );
+      }
+    }
     setVirusOpen(false);
   }
 
@@ -948,9 +1077,11 @@ function NetRunWindowBody() {
               targets={targets}
               onMove={(to) => void move(to)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
-              onOperate={(floorId, deviceId, operation, targetTokenId) =>
-                void operate(floorId, deviceId, operation, targetTokenId)
+              onOperate={(floorId, deviceId, operation, extra) =>
+                void operate(floorId, deviceId, operation, extra)
               }
+              onShow={(device) => showNetDevice(device)}
+              sceneId={sceneId}
             />
           ))}
         </div>

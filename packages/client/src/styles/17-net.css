@@ -687,6 +687,35 @@
   font-weight: 600;
 }
 
+/* Nazwa urządzenia z figurą na oglądanej scenie — klik przewozi kadr (20.10). */
+.net-node-name--show {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--net-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+
+.net-node-name--show:hover,
+.net-node-name--show:focus-visible {
+  color: var(--text);
+}
+
+/* „Obróć” kamery z listą kierunków obok. */
+.net-node-aim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.net-node-aim select {
+  font-size: 0.78rem;
+}
+
 .net-node-kind {
   font-size: 0.75rem;
   color: var(--text-dim);

@@ -17,6 +17,7 @@ import {
   blockingSegments,
   figureBarriers,
   buildLightMask,
+  computeVisionCone,
   computeVisionPolygon,
   coverInLineOfFire,
   fireSegmentsFor,
@@ -50,6 +51,7 @@ import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneLights, lightSourceOf, toLightScene, tokenLightOf } from './lights-io.js';
 import { campaignRoom, emitToCampaignUser } from './state.js';
+import { loadNetCameraSights } from './net-cameras.js';
 
 /**
  * Server-side field of view (stages 18a, 18b, 18d) — core VTT, no game system.
@@ -122,6 +124,22 @@ interface CarriedLight {
 }
 
 /**
+ * Eyes a viewer borrows from a figure that is not theirs (20.10) — today a
+ * camera whose control node the netrunner holds (`net-cameras.ts`).
+ *
+ * The figure sees from its centre with its own sight range, in a cone along its
+ * facing (`coneDeg`; null = all round). What it shows is shown only to
+ * `viewers`, and only as *sight*: it opens no door, plans no walk, lights
+ * nothing in the dark and adds nothing to the party's memory of the map —
+ * those belong to a body standing there.
+ */
+export interface BorrowedSight {
+  token: Token;
+  viewers: ReadonlySet<string>;
+  coneDeg: number | null;
+}
+
+/**
  * Everything the raycast needs for one scene: the walls (for door lookups), the
  * segments that currently block sight (scene border included) and — on a dark
  * scene — everything that emits light.
@@ -180,6 +198,8 @@ export interface SceneVisionContext {
   darkSightPx: number;
   /** Cell edge of the light mask, in scene pixels. */
   maskCellPx: number;
+  /** Figures lending their eyes to particular players (`BorrowedSight`). */
+  borrowed: BorrowedSight[];
 }
 
 export async function loadVisionContext(
@@ -230,6 +250,7 @@ export async function loadVisionContext(
       gridMode: scene.gridMode === 'gridless' ? 'gridless' : 'grid',
       grid: measure.grid,
     }),
+    borrowed: await loadNetCameraSights(prisma, scene),
   };
 }
 
@@ -448,7 +469,14 @@ export async function visionPolygonsFor(
 /** What one viewer's own tokens see, and what light they see it by. */
 export interface ViewerSight {
   figurePolygons?: ScenePoint[][] | null;
+  /**
+   * One polygon per entry of `sources`, in that order, followed by the
+   * borrowed ones (`borrowedCount` of them) — code that pairs a polygon with
+   * its source by index reads only the first part.
+   */
   polygons: ScenePoint[][];
+  /** How many polygons at the end of `polygons` are borrowed eyes. */
+  borrowedCount: number;
   lighting: ViewerLighting | null;
   /** The sight sources themselves — the door test and the glow list need them. */
   sources: SightSource[];
@@ -468,6 +496,8 @@ export async function viewerSightFor(
   userId: string,
   context: SceneVisionContext,
   liveOverride?: { tokenId: string; x: number; y: number },
+  /** `borrowed: false` — the body's eyes alone (who *noticed* a foe, stage 56). */
+  options: { borrowed?: boolean } = {},
 ): Promise<ViewerSight> {
   const tokens = await fetchVisionTokens(prisma, scene.id, userId);
   const sources = tokens.map((token) => {
@@ -477,11 +507,24 @@ export async function viewerSightFor(
         : token;
     return visionSourceOf(positioned, scene, context);
   });
-  const polygons = sources.map((source) =>
-    // Each source's own blockers, not the scene's: the windows this one is close
-    // enough to look through are open for it and shut for the others.
-    computeVisionPolygon(source.origin, source.segments, source.radiusPx),
-  );
+  const borrowed =
+    options.borrowed === false ? [] : borrowedEyesOf(scene, context, userId, liveOverride);
+  const polygons = [
+    ...sources.map((source) =>
+      // Each source's own blockers, not the scene's: the windows this one is close
+      // enough to look through are open for it and shut for the others.
+      computeVisionPolygon(source.origin, source.segments, source.radiusPx),
+    ),
+    ...borrowed.map((eye) =>
+      computeVisionCone(
+        eye.source.origin,
+        eye.source.segments,
+        eye.source.radiusPx,
+        eye.facing,
+        eye.coneDeg,
+      ),
+    ),
+  ];
   const lighting: ViewerLighting | null = context.dark
     ? {
         sources: [
@@ -492,8 +535,46 @@ export async function viewerSightFor(
         windows: context.windows,
       }
     : null;
-  const figurePolygons = figurePolygonsOf(scene, context, sources);
-  return { polygons, lighting, sources, figurePolygons };
+  const figurePolygons = figurePolygonsOf(scene, context, sources, borrowed);
+  return { polygons, borrowedCount: borrowed.length, lighting, sources, figurePolygons };
+}
+
+/** A borrowed eye placed for the raycast: where from, which way, how wide. */
+interface BorrowedEye {
+  source: SightSource;
+  facing: number;
+  coneDeg: number;
+}
+
+function borrowedEyesOf(
+  scene: Scene,
+  context: SceneVisionContext,
+  userId: string,
+  liveOverride?: { tokenId: string; x: number; y: number },
+): BorrowedEye[] {
+  return context.borrowed
+    .filter((entry) => entry.viewers.has(userId))
+    .map((entry) => {
+      const token =
+        liveOverride && liveOverride.tokenId === entry.token.id
+          ? { ...entry.token, x: liveOverride.x, y: liveOverride.y }
+          : entry.token;
+      return {
+        source: visionSourceOf(token, scene, context),
+        // A camera nobody ever turned looks north, like the map's facing knob.
+        facing: token.facing ?? 0,
+        coneDeg: entry.coneDeg ?? 360,
+      };
+    });
+}
+
+/** The viewer's own polygons — without the borrowed eyes at the end. */
+export function ownPolygonsOf(
+  sight: Pick<ViewerSight, 'polygons' | 'borrowedCount'>,
+): ScenePoint[][] {
+  return sight.borrowedCount > 0
+    ? sight.polygons.slice(0, sight.polygons.length - sight.borrowedCount)
+    : sight.polygons;
 }
 
 /** Same polygons feed payload filtering and the translucent map cover. */
@@ -501,16 +582,30 @@ function figurePolygonsOf(
   scene: Scene,
   context: SceneVisionContext,
   sources: SightSource[],
+  borrowed: readonly BorrowedEye[] = [],
 ): ScenePoint[][] | null {
   const barriers = figureBarriers(context.walls);
-  if (barriers.length === 0 || (!usesDynamicVision(scene) && sources.length === 0)) return null;
-  return sources.map((source) =>
-    computeVisionPolygon(
-      source.origin,
-      [...(usesDynamicVision(scene) ? source.segments : context.boundsSegments), ...barriers],
-      usesDynamicVision(scene) ? source.radiusPx : null,
+  const dynamic = usesDynamicVision(scene);
+  if (barriers.length === 0 || (!dynamic && sources.length === 0 && borrowed.length === 0))
+    return null;
+  return [
+    ...sources.map((source) =>
+      computeVisionPolygon(
+        source.origin,
+        [...(dynamic ? source.segments : context.boundsSegments), ...barriers],
+        dynamic ? source.radiusPx : null,
+      ),
     ),
-  );
+    ...borrowed.map((eye) =>
+      computeVisionCone(
+        eye.source.origin,
+        [...(dynamic ? eye.source.segments : context.boundsSegments), ...barriers],
+        dynamic ? eye.source.radiusPx : null,
+        eye.facing,
+        eye.coneDeg,
+      ),
+    ),
+  ];
 }
 
 /**
@@ -551,6 +646,7 @@ export function tokenSightFor(
     : null;
   return {
     polygons,
+    borrowedCount: 0,
     lighting,
     sources: [source],
     figurePolygons: figurePolygonsOf(scene, context, [source]),
@@ -865,6 +961,8 @@ export interface ViewerVision {
   /** Light levels inside the polygons; null on a scene that is not dark. */
   light: LightMask | null;
   glows: LightGlow[];
+  /** What goes into the party's memory — the body's eyes, never a camera's. */
+  memory: { polygons: ScenePoint[][]; mask: LightMask | null };
 }
 
 /** A carried lamp's glow marks its bearer; a static lamp belongs to the map. */
@@ -923,13 +1021,36 @@ export async function computeViewerVision(
   if (!usesDynamicVision(scene) && figureBarriers(ctx.walls).length === 0) return null;
   const sight = await viewerSightFor(prisma, scene, user.id, ctx);
   const dynamic = usesDynamicVision(scene);
+  const light = sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null;
+  const memory = memoryOf(ctx, sight, light);
   return {
     figurePolygons: sight.figurePolygons,
     polygons: dynamic ? sight.polygons : [],
     openings: dynamic ? visibleOpeningsFor(ctx, sight.sources, sight.lighting) : [],
     blockers: dynamic ? visibleWalkBlockersFor(ctx, sight) : [],
-    light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
+    light,
     glows: sight.lighting ? viewerGlows(scene, ctx, user.id, sight) : [],
+    // Off a dynamic scene the polygons never reached the memory; the mask did.
+    memory: dynamic ? memory : { polygons: [], mask: memory.mask },
+  };
+}
+
+/**
+ * What a viewer's sight adds to the party's memory of the map (`recordSight`):
+ * everything they see with their own figures. A camera's cone is left out — the
+ * netrunner alone looks through it (decision of 20.10), and the memory is drawn
+ * for the whole party.
+ */
+function memoryOf(
+  context: SceneVisionContext,
+  sight: ViewerSight,
+  light: LightMask | null,
+): { polygons: ScenePoint[][]; mask: LightMask | null } {
+  if (sight.borrowedCount === 0) return { polygons: sight.polygons, mask: light };
+  const own = ownPolygonsOf(sight);
+  return {
+    polygons: own,
+    mask: sight.lighting ? lightMaskFor(context, own, sight.lighting) : null,
   };
 }
 
@@ -975,7 +1096,7 @@ export async function emitDragVision(
   });
   // Walking is how a map gets discovered, so the memory grows mid-drag too —
   // and only when it actually grew does anybody hear about it.
-  if (await recordSight(deps.ctx.prisma, scene, { polygons: sight.polygons, mask: light })) {
+  if (await recordSight(deps.ctx.prisma, scene, memoryOf(context, sight, light))) {
     await emitExploration(deps, campaignId, scene);
   }
 }
@@ -1029,12 +1150,7 @@ export async function emitVisionToPlayers(
       } satisfies BlockerSyncBroadcast);
     // Every player's sight goes into the same memory: what the scout sees, the
     // group knows. Accumulated over the loop and pushed once at the end.
-    if (
-      await recordSight(deps.ctx.prisma, scene, {
-        polygons: vision.polygons,
-        mask: vision.light,
-      })
-    ) {
+    if (await recordSight(deps.ctx.prisma, scene, vision.memory)) {
       discovered = true;
     }
   }

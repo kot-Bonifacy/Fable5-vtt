@@ -12,6 +12,7 @@ import {
   NET_DEVICE_KIND_LABELS,
   isNetDeviceOperation,
   netApplyDeviceState,
+  netCameraFacingAfterTurn,
   netDeviceLine,
   netDeviceNeedsToken,
   netDeviceNeedsWall,
@@ -27,7 +28,7 @@ import {
 } from '@vtt/shared';
 import { SHEET_STATIST_WEAPON_ROW_ID } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { requireCampaignToken } from './tokens.js';
+import { emitTokenUpsert, requireCampaignToken } from './tokens.js';
 import {
   architectureOf,
   controlsRun,
@@ -35,6 +36,7 @@ import {
   loadRunRow,
   logNetLineWithSecret,
   readFullRun,
+  refreshNetCameraSight,
   runnerOwnerOf,
   saveRunState,
   saveRuntime,
@@ -198,6 +200,12 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       messageId = shot.messageId;
       summary = shot.summary;
       publicSummary = `${shownAs} — strzał Umiejętnością netrunnera.`;
+    } else if (operation === 'turn' && device.deviceKind === 'camera' && device.tokenId) {
+      // Kamera stojąca na mapie (20.10) obraca się naprawdę: kierunek figury
+      // to oś stożka, przez który patrzy netrunner.
+      const facing = await turnCamera(deps, campaignId, device.tokenId, payload?.facing);
+      summary = netDeviceLine(device, operation, before, facing);
+      publicSummary = netDeviceLine({ ...device, name: shownAs }, operation, before, facing);
     } else if (operation === 'open' || operation === 'close') {
       await setOpening(deps, campaignId, device.wallId!, operation === 'open');
       summary = netDeviceLine(device, operation, before);
@@ -331,6 +339,32 @@ export function deviceShotBlockedText(
   return code === 'NET_SHOT_COVERED'
     ? `${deviceName}: strzał zasłania ${blockerName} — strzel jeszcze raz mimo osłony`
     : `${deviceName}: na linii strzału stoi ${blockerName}`;
+}
+
+/**
+ * „Obróć" for a camera that stands on the map (zlecenie MG z 20.10): the
+ * figure's facing is the axis of its cone, so turning the camera is turning
+ * the figure — everybody who can see it sees it turn. The netrunner's view is
+ * pushed by hand, because a hidden camera's upsert goes to the GM alone.
+ */
+async function turnCamera(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenId: string,
+  asked: unknown,
+): Promise<number> {
+  const token = await deps.ctx.prisma.token.findUnique({
+    where: { id: tokenId },
+    include: { scene: true },
+  });
+  if (!token || token.scene.campaignId !== campaignId)
+    throw new RealtimeError('NET_DEVICE_NO_TOKEN');
+  const facing = netCameraFacingAfterTurn(token.facing, asked);
+  const { scene, ...row } = token;
+  const updated = await deps.ctx.prisma.token.update({ where: { id: row.id }, data: { facing } });
+  await emitTokenUpsert(deps, campaignId, scene, updated);
+  await refreshNetCameraSight(deps, campaignId, { force: true });
+  return facing;
 }
 
 /** Opening a door or window of stage 18d from the other end of the cable. */

@@ -841,6 +841,7 @@ oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
 
 ## siec — Sieć (netrunning)
 
+- **Lista urządzeń węzła (i kadr na nich) przychodzi po animacji kości, nie z potwierdzeniem Kontroli (20.10)** — `emitRuns` idzie przez `deferView`, więc `netrun:sync` z urządzeniami dochodzi, gdy kości staną; z surowym gniazdem MG w E2E to kilka sekund. Drugi klik „Kontrola” w tym czasie robi drugi Test i drugi kadr — czekaj na `.net-node-device` (15 s), nie klikaj w pętli co 700 ms.
 - **Ślizg i Paf są w wierszu Czarnego LOD-a**, nie w rządku zdolności — pojawiają się dopiero, gdy jakiś LOD stanie w szybie.
 - **Czarny LOD nie spawnuje się drugi raz na tym samym piętrze** (`metIce`); dołóż go na piętro jeszcze nieodwiedzone albo przerób `empty` → `ice`.
 - **„Zderezowany" ≠ „zniszczony"** — Program z `destroys` (Szabloząb, Zabójca, Smok) niszczy zamiast derezować; różnicę widać w chipie, nie w REZ.

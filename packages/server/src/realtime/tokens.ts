@@ -288,10 +288,12 @@ export async function concealmentFor(
   user: SessionUser,
   context?: SceneVisionContext,
   liveOverride?: { tokenId: string; x: number; y: number },
+  /** `borrowed: false` — without a held camera's eyes (`viewerSightFor`). */
+  options: { borrowed?: boolean } = {},
 ): Promise<Concealment> {
   if (user.role === ROLE_GM) return { kind: 'none' };
   const ctx = context ?? (await loadVisionContext(prisma, scene));
-  const sight = await viewerSightFor(prisma, scene, user.id, ctx, liveOverride);
+  const sight = await viewerSightFor(prisma, scene, user.id, ctx, liveOverride, options);
   const figurePolygons = sight.figurePolygons;
   if (scene.visibility === 'fog')
     return { kind: 'fog', fog: await fetchFogState(prisma, scene), figurePolygons };
@@ -1513,6 +1515,12 @@ export const tokenFacingEvent = defineEvent<TokenFacingPayload, TokenView>({
       data: { facing },
     });
     await emitTokenUpsert(deps, campaignId, scene, updated);
+    // Ukryta kamera przejęta w Sieci (20.10) obraca stożek netrunnera, a upsert
+    // ukrytej figury idzie tylko do MG — widok graczy trzeba popchnąć osobno.
+    if (updated.hidden && scene.active) {
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+      await emitVisionToPlayers(deps, campaignId, scene);
+    }
     return toTokenView(updated, true);
   },
 });
@@ -1593,6 +1601,10 @@ async function emitDynamicMove(
   deps.io.to(gmRoom(campaignId)).emit('token:move', move);
 
   const context = await loadVisionContext(deps.ctx.prisma, scene);
+  // Kamera przejęta w Sieci (20.10): jej ruch zmienia to, co widzi netrunner.
+  for (const eye of context.borrowed) {
+    if (eye.token.id === token.id) for (const viewer of eye.viewers) sightOwners.add(viewer);
+  }
   const moved = { ...token, x: position.x, y: position.y };
   const hasFigureBarriers = figureBarriers(context.walls).length > 0;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();

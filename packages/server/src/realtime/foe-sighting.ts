@@ -239,7 +239,11 @@ async function seenFoes(
     // `concealmentFor` czyta z użytkownika tylko id i rolę — gracz nie musi
     // być podłączony, żeby jego figura zobaczyła wroga (decyzja MG 6).
     const viewer = { id: userId, role: ROLE_PLAYER } as SessionUser;
-    const concealment = await concealmentFor(deps.ctx.prisma, scene, viewer, context, live);
+    // Kamera przejęta w Sieci (20.10) pokazuje wroga netrunnerowi, ale nikt
+    // z drużyny go nie zauważył — walka zaczyna się od oczu figur.
+    const concealment = await concealmentFor(deps.ctx.prisma, scene, viewer, context, live, {
+      borrowed: false,
+    });
     for (const foe of foes) {
       const at = live?.tokenId === foe.id ? { ...foe, x: live.x, y: live.y } : foe;
       const linked = foe.characterId ? sheets.get(foe.characterId) : undefined;

@@ -3321,17 +3321,40 @@ export class MapRenderer {
    * kamera przyszła. Zoom zostaje. Ręka na mapie przerywa przejazd.
    */
   frameToken(tokenId: string): void {
-    const viewport = this.viewport;
     const node = this.tokenNodes.get(tokenId);
     const scene = this.scene;
-    if (this.destroyed || !viewport || !node || node.destroyed || !scene) return;
+    if (!node || node.destroyed || !scene) return;
     const half = (node.token.size * scene.grid.sizePx) / 2;
+    this.framePoint(node.x + half, node.y + half);
+  }
+
+  /**
+   * Kadr na punkcie sceny — tym samym przejazdem co `frameToken`. Urządzenie
+   * przejęte w Sieci (20.10) bywa figurą, której gracz na mapie nie ma, więc
+   * okno Sieci podaje punkt, a nie figurę. `screenOffset` (px ekranu) stawia
+   * punkt obok środka — tam, gdzie mapy nie zasłania okno.
+   */
+  framePoint(x: number, y: number, screenOffset?: { x: number; y: number }): void {
+    const viewport = this.viewport;
+    if (this.destroyed || !viewport) return;
+    const scale = viewport.scale.x || 1;
     viewport.animate({
-      position: { x: node.x + half, y: node.y + half },
+      position: {
+        x: x - (screenOffset?.x ?? 0) / scale,
+        y: y - (screenOffset?.y ?? 0) / scale,
+      },
       time: FRAME_TOKEN_MS,
       ease: 'easeInOutSine',
       removeOnInterrupt: true,
     });
+  }
+
+  /** Środek widoku w punktach sceny — `map-frame.ts` po nim poznaje rękę na mapie. */
+  viewCentre(): { x: number; y: number } | null {
+    const viewport = this.viewport;
+    if (this.destroyed || !viewport) return null;
+    const { x, y } = viewport.center;
+    return { x, y };
   }
 
   /**

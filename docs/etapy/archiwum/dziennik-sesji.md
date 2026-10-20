@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 19.10, szósta (po `d004db6`) — zlecenie MG: gracz czeka na Poziom Trudności od MG
+
+**Zlecenie MG:** gracz ma czekać, aż MG ustali PT rzutu, i nie może tego pominąć. **Decyzje MG
+(pytania na starcie):** klik gracza w wiersz karty otwiera okno prośby (nie wysyła jej od razu);
+boty bez zmian; bez przełącznika w ustawieniach. **Zrobione:** serwer odmawia `character:roll`
+gracza z `kind` `skill`/`stat` bez wezwania (`CHECK_NEEDS_GM_DV`, po sprawdzeniu prawa do karty).
+Klient: klik i Shift + klik gracza w Cechę albo Umiejętność własnej karty = prośba o Test
+(`askForCheck`), okno rzutu bez „Poproś MG” i bez podpowiedzi o Shift przy wezwaniu, skróty
+(`?`) dla gracza „klik — prosi MG o Test”, MG bez zmian. Poza regułą: obrażenia, Rzut na Śmierć,
+Ustabilizowanie, Leczenie, Charyzma, Rzetelność, MG i boty (konto MG). Umowa na górze `kosci`.
+
+**Weryfikacja:** serwer 1526/1526 (nowy test odmowy; `character-rolls` rzuca na wezwanie, trzy
+testy rozbicia — EMP, Trzymanie, Moto — rzuca MG), klient 417/417; `tsc` serwera, klienta i E2E,
+ESLint i Prettier czyste. E2E: t4a 4.3 przepisany na klik (+ Shift), t6b 6.6a rzuca na wezwanie
+i przechodzi. **T4a 4.1 i T6b 6.6d padają na oknie „Załóż starcie”** — na kodzie sprzed sesji
+tak samo (zaległość z 19.10). **Oględziny:** tymczasowy spec z `po-T3` (usunięty), Ola
+w **Firefoksie**: Shift + klik w Percepcję → okno prośby, klik w Cechę → prośba, surowy rzut
+z gniazda → `CHECK_NEEDS_GM_DV`, MG zgoda z PT 13 → karta wezwania, okno „Wezwanie do Testu”,
+rzut „Wezwanie: Percepcja”.
+
 ### Sesja 19.10, piąta (po `9dc6d84`) — zlecenie MG: pytanie przed przekroczeniem budżetu tury
 
 **Zlecenie MG:** ostrzeżenie dla MG, który łatwo i przypadkiem przekracza budżet tury.

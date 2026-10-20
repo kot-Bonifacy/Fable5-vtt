@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeVisionCone,
   computeVisionPolygon,
   computeVisionPolygons,
   isPointInPolygon,
@@ -53,6 +54,45 @@ function wall(id: number, x1: number, y1: number, x2: number, y2: number): WallV
     y2,
   };
 }
+
+describe('computeVisionCone', () => {
+  const segments = sceneBoundsSegments(BOUNDS);
+
+  it('sees only in the direction it faces', () => {
+    // Facing right (90°), a 90° cone: east of the camera yes, west and north no.
+    const cone = computeVisionCone({ x: 500, y: 500 }, segments, null, 90, 90);
+    expect(isPointInPolygon({ x: 800, y: 500 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 800, y: 650 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 200, y: 500 }, cone)).toBe(false);
+    expect(isPointInPolygon({ x: 500, y: 200 }, cone)).toBe(false);
+    expect(isPointInPolygon({ x: 600, y: 800 }, cone)).toBe(false);
+  });
+
+  it('turns with the facing, across the seam of the angles', () => {
+    // Facing left (270°): the cone straddles ±π, where atan2 wraps.
+    const cone = computeVisionCone({ x: 500, y: 500 }, segments, null, 270, 90);
+    expect(isPointInPolygon({ x: 100, y: 500 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 100, y: 420 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 100, y: 580 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 900, y: 500 }, cone)).toBe(false);
+  });
+
+  it('is stopped by walls and by its radius', () => {
+    const blocking = [{ x1: 700, y1: 0, x2: 700, y2: 1000 }, ...segments];
+    const cone = computeVisionCone({ x: 500, y: 500 }, blocking, null, 90, 90);
+    expect(isPointInPolygon({ x: 650, y: 500 }, cone)).toBe(true);
+    expect(isPointInPolygon({ x: 800, y: 500 }, cone)).toBe(false);
+    const short = computeVisionCone({ x: 500, y: 500 }, segments, 100, 90, 90);
+    expect(isPointInPolygon({ x: 580, y: 500 }, short)).toBe(true);
+    expect(isPointInPolygon({ x: 650, y: 500 }, short)).toBe(false);
+  });
+
+  it('falls back to the full polygon at 360° and to nothing at 0°', () => {
+    const full = computeVisionCone({ x: 500, y: 500 }, segments, null, 0, 360);
+    expect(isPointInPolygon({ x: 100, y: 900 }, full)).toBe(true);
+    expect(computeVisionCone({ x: 500, y: 500 }, segments, null, 0, 0)).toEqual([]);
+  });
+});
 
 describe('computeVisionPolygon', () => {
   it('sees the whole scene when nothing blocks', () => {
