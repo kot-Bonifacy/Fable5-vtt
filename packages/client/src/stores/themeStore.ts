@@ -7,10 +7,8 @@ import { create } from 'zustand';
  * i nikomu nie broadcastowane. Nazwa trybu ląduje jako `data-theme` na elemencie
  * `<html>`, więc cały CSS może się do niego odwołać jednym selektorem.
  *
- * Na razie ubiera **wyłącznie kartę postaci** (`sheet.css`); reszta widoków
- * trzyma własne kolory do etapu 27, w którym motyw obejmie całą aplikację.
- * Dlatego domyślną wartością jest noc — VTT jest ciemne i taka karta pasuje do
- * niego bez zgrzytu.
+ * Domyślnie dzień (20.10.2026): nowy gracz bez zapisanego wyboru dostaje jasną
+ * skórę, a noc zostaje dla tych, którzy wyłączą „Tryb dzienny” w ustawieniach.
  */
 export type VttTheme = 'night' | 'day';
 
@@ -24,9 +22,9 @@ const THEME_KEY = 'vtt.theme';
 
 function readTheme(): VttTheme {
   try {
-    return window.localStorage.getItem(THEME_KEY) === 'day' ? 'day' : 'night';
+    return window.localStorage.getItem(THEME_KEY) === 'night' ? 'night' : 'day';
   } catch {
-    return 'night';
+    return 'day';
   }
 }
 
