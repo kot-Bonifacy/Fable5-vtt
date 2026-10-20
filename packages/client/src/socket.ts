@@ -3666,6 +3666,10 @@ export function combatErrorText(code: string): string {
       return 'Bieg wymaga wcześniejszego wykonania Akcji Ruchu w tej turze.';
     case 'HOLD_NEEDS_DECLARATION':
       return 'Wstrzymanie Akcji wymaga opisu wyzwalacza albo wartości w kolejce.';
+    case 'HOLD_NEEDS_INITIATIVE':
+      return 'Wstrzymując Akcję, podaj wartość inicjatywy, przy której wchodzisz.';
+    case 'HOLD_NOT_LOWER':
+      return 'Wstrzymanie obniża inicjatywę — podaj wartość niższą niż Twoja.';
     case 'NOTHING_HELD':
       return 'Ten uczestnik nie ma wstrzymanej Akcji.';
     case 'USE_HOLD_EVENT':

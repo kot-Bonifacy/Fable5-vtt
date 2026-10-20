@@ -415,6 +415,14 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
       if (combat.activeCombatantId !== combatant.id) throw new RealtimeError('NOT_YOUR_TURN');
       // Holding reserves the Action, so there has to be one left to reserve.
       if (!turnActionAvailable(combatant.turnState)) throw new RealtimeError('NO_ACTION_LEFT');
+      // A described trigger is the GM's to judge, not the player's to declare
+      // (20.10.2026, decyzja MG): the player only names the queue value.
+      if (trigger !== null || initiative === null) throw new RealtimeError('HOLD_NEEDS_INITIATIVE');
+    }
+    // Holding lowers one's initiative for the round — a value at or above the
+    // own seat would fire the instant the turn ends, a hold in name only.
+    if (initiative !== null && combatant.initiative !== null && initiative >= combatant.initiative) {
+      throw new RealtimeError('HOLD_NOT_LOWER');
     }
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },

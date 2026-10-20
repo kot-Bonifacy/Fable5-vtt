@@ -5,12 +5,15 @@ import {
   COMBAT_INITIATIVE_MIN,
   CPRED_CHOKE_ROUNDS_TO_UNCONSCIOUS,
   CPRED_MELEE_REACH_M,
+  ROLE_GM,
   TOKEN_UNLABELLED_TABLE_NAME,
   metresForRules,
   observedWoundState,
   reachMetresBetweenTokens,
 } from '@vtt/shared';
 import { combatErrorText, holdCombatAction, sendGrappleAction } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
+import { NumberStepper } from './NumberStepper.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -54,33 +57,48 @@ function useActingCharacter(combatant: CombatantView) {
  * what will spend it is either a sentence the GM watches for or a value in the
  * initiative queue. One of the two is required — a declaration with neither is
  * a turn quietly thrown away.
+ *
+ * The player names only the value (20.10.2026, decyzja MG): a described trigger
+ * is the GM's call, so it stays in the GM's form. The value comes pre-set one
+ * below the own seat — an empty field with a grey „12" in it read as filled in.
  */
 export function HoldActionForm({
-  combatantId,
+  combatant,
   onDone,
 }: {
-  combatantId: string;
+  combatant: CombatantView;
   /** Called once the declaration is accepted, or when the form is dismissed. */
   onDone: () => void;
 }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Holding lowers the initiative, so the highest value worth declaring is one
+  // below the own seat (an unrolled seat leaves the whole queue open).
+  const ceiling =
+    combatant.initiative === null
+      ? COMBAT_INITIATIVE_MAX
+      : Math.min(combatant.initiative - 1, COMBAT_INITIATIVE_MAX);
   const [trigger, setTrigger] = useState('');
   const [initiative, setInitiative] = useState('');
+  const [value, setValue] = useState(() => Math.max(ceiling, COMBAT_INITIATIVE_MIN));
   const [error, setError] = useState<string | null>(null);
 
   async function declare() {
     setError(null);
-    const trimmed = trigger.trim();
-    const parsed = Number.parseInt(initiative.trim(), 10);
-    const value = Number.isNaN(parsed)
-      ? null
-      : Math.min(Math.max(parsed, COMBAT_INITIATIVE_MIN), COMBAT_INITIATIVE_MAX);
-    if (trimmed.length === 0 && value === null) {
+    const trimmed = isGm ? trigger.trim() : '';
+    let declared: number | null = value;
+    if (isGm) {
+      const parsed = Number.parseInt(initiative.trim(), 10);
+      declared = Number.isNaN(parsed)
+        ? null
+        : Math.min(Math.max(parsed, COMBAT_INITIATIVE_MIN), COMBAT_INITIATIVE_MAX);
+    }
+    if (trimmed.length === 0 && declared === null) {
       setError('Opisz wyzwalacz albo podaj wartość w kolejce inicjatywy.');
       return;
     }
     const ack = await holdCombatAction(
-      { ...(trimmed ? { trigger: trimmed } : {}), initiative: value },
-      combatantId,
+      { ...(trimmed ? { trigger: trimmed } : {}), initiative: declared },
+      combatant.id,
     );
     if (!ack.ok) {
       setError(combatErrorText(ack.error));
@@ -91,26 +109,48 @@ export function HoldActionForm({
 
   return (
     <div className="combat-hold-form">
-      <label>
-        <span>Wyzwalacz</span>
-        <input
-          type="text"
-          value={trigger}
-          placeholder="gdy ktoś wyjdzie zza rogu"
-          onChange={(e) => setTrigger(e.target.value)}
-        />
-      </label>
-      <label>
-        <span>albo inicjatywa</span>
-        <input
-          type="number"
-          value={initiative}
-          placeholder="12"
-          onChange={(e) => setInitiative(e.target.value)}
-        />
-      </label>
+      {isGm ? (
+        <>
+          <label>
+            <span>Wyzwalacz</span>
+            <input
+              type="text"
+              value={trigger}
+              placeholder="gdy ktoś wyjdzie zza rogu"
+              onChange={(e) => setTrigger(e.target.value)}
+            />
+          </label>
+          <label>
+            <span>albo inicjatywa</span>
+            <input
+              type="number"
+              value={initiative}
+              placeholder={String(Math.max(ceiling, COMBAT_INITIATIVE_MIN))}
+              onChange={(e) => setInitiative(e.target.value)}
+            />
+          </label>
+        </>
+      ) : ceiling < COMBAT_INITIATIVE_MIN ? (
+        <p className="combat-hint">Niżej w kolejce już nie zejdziesz.</p>
+      ) : (
+        <label>
+          <span>Wchodzę przy inicjatywie</span>
+          <NumberStepper
+            value={value}
+            min={COMBAT_INITIATIVE_MIN}
+            max={ceiling}
+            onChange={setValue}
+            label="Inicjatywa, przy której wchodzisz"
+          />
+        </label>
+      )}
       <div className="scene-editor-row">
-        <button type="button" className="small-button" onClick={() => void declare()}>
+        <button
+          type="button"
+          className="small-button"
+          disabled={!isGm && ceiling < COMBAT_INITIATIVE_MIN}
+          onClick={() => void declare()}
+        >
           Wstrzymaj
         </button>
         <button type="button" className="small-button" onClick={onDone}>
@@ -119,9 +159,9 @@ export function HoldActionForm({
       </div>
       {error && <p className="auth-error">{error}</p>}
       <p className="combat-hint">
-        Wstrzymanie obniża Twoją inicjatywę w tej Rundzie. Z wartością wchodzisz sam, gdy kolejka
-        zejdzie do tej wartości; z wyzwalaczem — po „Działam teraz” przy portrecie, zaraz po
-        bieżącej turze. Kto nie zdąży, działa na końcu Rundy. Od następnej wracasz na swoje miejsce.
+        {isGm
+          ? 'Wstrzymanie obniża inicjatywę w tej Rundzie. Z wartością uczestnik wchodzi sam, gdy kolejka zejdzie do tej wartości; z wyzwalaczem — po „Działam teraz” przy portrecie, zaraz po bieżącej turze. Kto nie zdąży, działa na końcu Rundy. Od następnej wraca na swoje miejsce.'
+          : 'Wstrzymanie obniża Twoją inicjatywę w tej Rundzie: wchodzisz sam, gdy kolejka zejdzie do tej wartości, albo wcześniej — „Działam teraz” przy portrecie, zaraz po bieżącej turze. Od następnej Rundy wracasz na swoje miejsce.'}
       </p>
     </div>
   );

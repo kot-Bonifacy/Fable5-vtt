@@ -926,7 +926,7 @@ export function CombatHud() {
           {form && form !== 'awareness' && form !== 'backup' && combat && context.combatant && (
             <div className="hud-form">
               {form === 'hold' && (
-                <HoldActionForm combatantId={context.combatant.id} onDone={() => setForm(null)} />
+                <HoldActionForm combatant={context.combatant} onDone={() => setForm(null)} />
               )}
               {form === 'stabilize' && (
                 <StabilizePicker

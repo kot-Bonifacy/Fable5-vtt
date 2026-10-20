@@ -391,7 +391,7 @@ describe('turn automation', () => {
 
   it('still burns him when a held Action goes in right after his turn (19.10)', async () => {
     await giveTurnTo(vexTokenId);
-    expect((await emitAck(player, 'combat:hold', { trigger: 'gdy bandzior skończy' })).ok).toBe(
+    expect((await emitAck(player, 'combat:hold', { initiative: 1 })).ok).toBe(
       true,
     );
     const thugTurn = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');

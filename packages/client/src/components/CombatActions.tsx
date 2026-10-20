@@ -302,7 +302,7 @@ export function CombatActions({
         })}
       </div>
 
-      {holdOpen && <HoldActionForm combatantId={combatant.id} onDone={() => setHoldOpen(false)} />}
+      {holdOpen && <HoldActionForm combatant={combatant} onDone={() => setHoldOpen(false)} />}
 
       {/* Stage 16b: the second door into an attack. „Atak" used to live only on
           the weapon row of an open sheet, so a statist could not fire at all and

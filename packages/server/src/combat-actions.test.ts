@@ -598,10 +598,10 @@ describe('action economy', () => {
   });
 
   it('slots a held Action in after the running turn on „Działam teraz”, nobody twice', async () => {
-    // Round N: Vex (20) holds for a trigger, the thug (10) is up.
+    // Round N: Vex (20) holds down to 1, the thug (10) is up.
     await giveTurnTo(vexTokenId);
     expect(
-      (await emitAck(player, 'combat:hold', { trigger: 'gdy kurier sięgnie po broń' })).ok,
+      (await emitAck(player, 'combat:hold', { initiative: 1 })).ok,
     ).toBe(true);
     const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
     const round = thugTurn.round;
@@ -642,7 +642,7 @@ describe('action economy', () => {
   it('plays a held Action nobody fired last in the round, rather than losing it', async () => {
     await giveTurnTo(vexTokenId);
     expect(
-      (await emitAck(player, 'combat:hold', { trigger: 'gdy ktoś wyjdzie zza rogu' })).ok,
+      (await emitAck(player, 'combat:hold', { initiative: 1 })).ok,
     ).toBe(true);
     const thugTurn = data(await emitAck<CombatView>(player, 'combat:next', {}), 'combat:next');
     const round = thugTurn.round;
@@ -686,6 +686,23 @@ describe('action economy', () => {
       ok: false,
       error: 'HOLD_NEEDS_DECLARATION',
     });
+  });
+
+  it('leaves the trigger to the GM and wants a value below the own seat (20.10)', async () => {
+    await giveTurnTo(vexTokenId);
+    expect(await emitAck(player, 'combat:hold', { trigger: 'gdy ktoś wyjdzie' })).toEqual({
+      ok: false,
+      error: 'HOLD_NEEDS_INITIATIVE',
+    });
+    // Vex sits at 20: holding to 20 or above lowers nothing.
+    expect(await emitAck(player, 'combat:hold', { initiative: 20 })).toEqual({
+      ok: false,
+      error: 'HOLD_NOT_LOWER',
+    });
+    const combatantId = rowOf(await tracker(), vexTokenId).id;
+    expect(
+      (await emitAck(gm, 'combat:hold', { trigger: 'gdy ktoś wyjdzie', combatantId })).ok,
+    ).toBe(true);
   });
 
   it('spends an Action on a generic action and logs it publicly', async () => {
