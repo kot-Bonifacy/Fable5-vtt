@@ -18,6 +18,8 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { patternPng } from './test-images.js';
+import sharp from 'sharp';
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
@@ -222,6 +224,32 @@ describe('map upload', () => {
       url: result.url.replace('/uploads/', '/%75ploads/'),
     });
     expect(encoded.statusCode).not.toBe(200);
+  });
+
+  it('stores a large PNG map as lossless WebP with the same pixels', async () => {
+    const png = await patternPng();
+    const { payload, headers } = multipartBody('mapa.png', png);
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/maps',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(res.statusCode).toBe(201);
+    const result = res.json() as MapUploadResult;
+    expect(result).toMatchObject({ width: 512, height: 512 });
+    expect(result.url).toMatch(/\.webp$/);
+
+    const served = await built.app.inject({
+      method: 'GET',
+      url: result.url,
+      headers: { cookie: gmCookie },
+    });
+    expect(served.statusCode).toBe(200);
+    expect(served.headers['content-type']).toBe('image/webp');
+    expect(served.rawPayload.length).toBeLessThan(png.length);
+    const pixels = (image: Buffer) => sharp(image).ensureAlpha().raw().toBuffer();
+    expect((await pixels(served.rawPayload)).equals(await pixels(png))).toBe(true);
   });
 
   it('rejects non-image content and player uploads', async () => {

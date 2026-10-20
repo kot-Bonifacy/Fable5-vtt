@@ -363,7 +363,7 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 66   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 8    | 3       |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 24   | 21      |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 25   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 23   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 26   | 6       |

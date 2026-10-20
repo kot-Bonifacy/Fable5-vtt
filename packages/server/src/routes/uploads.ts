@@ -22,6 +22,7 @@ import {
 import { getUserActiveCampaign } from './helpers.js';
 import { campaignUploadTarget } from '../campaign-uploads.js';
 import { PortraitImageError, preparePortraitImage } from '../portrait-image.js';
+import { pngAsLosslessWebp } from '../lossless-webp.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
 // builds its refusal sentences from the same pair — a limit tightened here and
@@ -41,6 +42,13 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   jpg: 'jpg',
   webp: 'webp',
 };
+
+/** A PNG goes to disk as lossless WebP when that is smaller and pixel-identical. */
+async function storedImage(buffer: Buffer, extension: string) {
+  if (extension !== 'png') return { buffer, extension };
+  const webp = await pngAsLosslessWebp(buffer);
+  return webp ? { buffer: webp, extension: 'webp' } : { buffer, extension };
+}
 
 export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.post('/api/uploads/maps', { preHandler: requireGm }, async (request, reply) => {
@@ -79,13 +87,14 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
+    const stored = await storedImage(buffer, extension);
     const target = await campaignUploadTarget(
       ctx.config.uploadsDir,
       campaign.id,
       'maps',
-      `${randomBytes(12).toString('base64url')}.${extension}`,
+      `${randomBytes(12).toString('base64url')}.${stored.extension}`,
     );
-    await writeFile(target.path, buffer);
+    await writeFile(target.path, stored.buffer);
 
     const result: MapUploadResult = { url: target.url, width, height };
     return reply.code(201).send(result);
@@ -124,13 +133,14 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
+    const stored = await storedImage(buffer, extension);
     const target = await campaignUploadTarget(
       ctx.config.uploadsDir,
       campaign.id,
       'tokens',
-      `${randomBytes(12).toString('base64url')}.${extension}`,
+      `${randomBytes(12).toString('base64url')}.${stored.extension}`,
     );
-    await writeFile(target.path, buffer);
+    await writeFile(target.path, stored.buffer);
 
     // Library display name from the original file name, sans extension.
     const original = basename(file.filename ?? 'token');
@@ -187,13 +197,14 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
     }
 
+    const stored = await storedImage(buffer, extension);
     const target = await campaignUploadTarget(
       ctx.config.uploadsDir,
       campaign.id,
       'handouts',
-      `${randomBytes(12).toString('base64url')}.${extension}`,
+      `${randomBytes(12).toString('base64url')}.${stored.extension}`,
     );
-    await writeFile(target.path, buffer);
+    await writeFile(target.path, stored.buffer);
 
     const result: HandoutImage = { url: target.url, width, height };
     return reply.code(201).send(result);
