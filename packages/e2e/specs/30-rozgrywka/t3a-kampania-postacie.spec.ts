@@ -13,6 +13,7 @@ import {
   rollLifepathWithCup,
   rollStatsWithCup,
   setSkillLevels,
+  setStatValues,
 } from '../../fixtures/creator.ts';
 import { giveEntry } from '../../fixtures/kompendium.ts';
 import { material, materialAs } from '../../fixtures/materials.ts';
@@ -410,11 +411,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       body: 6,
       emp: 6,
     };
-    for (const [id, value] of Object.entries(stats)) {
-      const input = window.locator(`[data-creation-field="stats.${id}"]`);
-      await input.click();
-      await input.pressSequentially(String(value), { delay: 30 });
-    }
+    await setStatValues(page, stats);
     await expect(window.getByText('Punkty Cech: wydane 62 z 62 · pozostało 0')).toBeVisible();
 
     await goToStep(page, /Umiejętności/);

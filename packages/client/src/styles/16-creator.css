@@ -347,23 +347,7 @@
 }
 
 .creator-stat-value {
-  width: 6rem;
-}
-
-/* Globalny styl pól obejmuje tylko `text` i `password`, więc pole liczbowe
-   stało w nocy jasne, z domyślnym tłem przeglądarki. */
-.creator-stat-value input {
-  width: 5rem;
-  padding: 0.25rem 0.4rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-}
-
-.creator-stat-value input:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+  width: 8rem;
 }
 
 .creator-stat-value strong {

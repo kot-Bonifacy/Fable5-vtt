@@ -126,6 +126,23 @@ export async function setSkillLevels(page: Page, levels: Record<string, number>)
   }
 }
 
+/** Cechy w Kompletnym Pakiecie — przyciskiem „Podnieś”, jak poziomy Umiejętności. */
+export async function setStatValues(page: Page, values: Record<string, number>): Promise<void> {
+  const window = creatorWindow(page);
+  for (const [id, value] of Object.entries(values)) {
+    const spin = window.locator(`[data-creation-field="stats.${id}"]`);
+    const row = window.locator('tr', { has: spin });
+    for (let guard = 0; guard < 10; guard += 1) {
+      const now = await spin.getAttribute('aria-valuenow');
+      if (now !== null && Number(now) >= value) break;
+      await row.getByRole('button', { name: /^Podnieś/ }).click();
+      if (now === null) await expect(spin).toHaveAttribute('aria-valuenow', /\d/);
+      else await expect(spin).not.toHaveAttribute('aria-valuenow', now);
+    }
+    await expect(spin).toHaveAttribute('aria-valuenow', String(value));
+  }
+}
+
 /** Zakupy w kroku Wyposażenie (zakładka „Broń”/„Pancerz”/„Sprzęt” przed nazwą). */
 export async function buy(page: Page, tab: string, names: string[]): Promise<void> {
   const window = creatorWindow(page);

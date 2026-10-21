@@ -1055,14 +1055,6 @@ function useDraftFieldText(serverText: string, draft: CpredCreationDraft, field:
   };
 }
 
-function statInputValue(text: string, limits: { statMin: number; statMax: number }) {
-  if (text.trim() === '') return null;
-  const value = Number(text);
-  return Number.isInteger(value) && value >= limits.statMin && value <= limits.statMax
-    ? value
-    : null;
-}
-
 /** Colour of a pool line: over the pool, spent exactly, or points still to give out. */
 function poolStateClass(spent: number, pool: number): string {
   if (spent > pool) return 'creator-pool--over';
@@ -1089,12 +1081,45 @@ function StatRow({
     (s) => s.creation?.roll.kind === 'stat' && s.creation.roll.statId === statId,
   );
   const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
-  const field = useDraftFieldText(
-    value === undefined ? '' : String(value),
-    draft,
-    `stats.${statId}`,
-  );
+  const patch = useCreationStore((s) => s.patch);
   const hintId = useId();
+  const { statMin, statMax } = data.limits;
+
+  // Kompletny Pakiet sets a stat one step at a time, like a skill level
+  // (zlecenie MG z 21.10.2026): no typing, so no half-typed value to clean up.
+  // An unset stat starts at the minimum. The step is read off the newest draft
+  // inside the queue, so two quick clicks step twice.
+  function stepOf(current: number | undefined, direction: 'up' | 'down'): number | null {
+    if (current === undefined) return direction === 'up' ? statMin : null;
+    const next = current + (direction === 'up' ? 1 : -1);
+    return next < statMin || next > statMax ? null : next;
+  }
+
+  function changeStat(direction: 'up' | 'down') {
+    void patch((current) => {
+      const next = stepOf(current.stats[statId], direction);
+      return next === null ? {} : { stats: { ...current.stats, [statId]: next } };
+    });
+  }
+
+  function onStatKey(event: KeyboardEvent<HTMLElement>) {
+    const up = event.key === 'ArrowUp' || event.key === 'ArrowRight' || event.key === '+';
+    const down = event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === '-';
+    if ((!up && !down) || locked) return;
+    event.preventDefault();
+    if (stepOf(value, up ? 'up' : 'down') !== null) changeStat(up ? 'up' : 'down');
+  }
+
+  const up = stepOf(value, 'up');
+  const down = stepOf(value, 'down');
+  const upTitle =
+    up === null ? `${label.name}: najwyżej ${statMax}` : `Podnieś ${label.name} do ${up}`;
+  const downTitle =
+    down === null
+      ? value === undefined
+        ? `${label.name}: jeszcze nieustalona`
+        : `${label.name}: najmniej ${statMin}`
+      : `Obniż ${label.name} do ${down}`;
 
   return (
     <tr>
@@ -1107,32 +1132,47 @@ function StatRow({
       </th>
       <td className="creator-stat-value">
         {draft.method === 'complete' ? (
-          <input
-            type="number"
-            data-creation-field={`stats.${statId}`}
-            aria-label={`${label.name} (${label.abbr})`}
-            aria-describedby={hintId}
-            disabled={locked}
-            min={data.limits.statMin}
-            max={data.limits.statMax}
-            value={field.text}
-            placeholder="—"
-            onFocus={field.onFocus}
-            onChange={(e) => {
-              field.setText(e.target.value);
-              const next = statInputValue(e.target.value, data.limits);
-              // An empty or half-typed field is not an intent yet; nothing leaves.
-              if (next === null) return;
-              field.write((current) => ({ stats: { ...current.stats, [statId]: next } }));
-            }}
-            onBlur={() => {
-              field.onBlur();
-              // Leftovers that were never sent give way to what is stored.
-              if (statInputValue(field.text, data.limits) === null) {
-                field.setText(value === undefined ? '' : String(value));
-              }
-            }}
-          />
+          <span className="creator-skill-controls">
+            <button
+              type="button"
+              className="small-button"
+              tabIndex={-1}
+              title={downTitle}
+              aria-label={downTitle}
+              disabled={locked || down === null}
+              onClick={() => changeStat('down')}
+            >
+              −
+            </button>
+            <strong
+              className={`creator-skill-level${value === undefined ? ' creator-skill-level--zero' : ''}`}
+              role="spinbutton"
+              tabIndex={locked ? -1 : 0}
+              data-creation-field={`stats.${statId}`}
+              aria-label={`${label.name} (${label.abbr})`}
+              aria-describedby={hintId}
+              aria-valuenow={value}
+              aria-valuetext={value === undefined ? 'nieustalona' : undefined}
+              aria-valuemin={statMin}
+              aria-valuemax={statMax}
+              aria-disabled={locked || undefined}
+              title={`${label.name}: ${value ?? 'nieustalona'}. Strzałki ↑ ↓ zmieniają wartość.`}
+              onKeyDown={onStatKey}
+            >
+              {value ?? '—'}
+            </strong>
+            <button
+              type="button"
+              className="small-button"
+              tabIndex={-1}
+              title={upTitle}
+              aria-label={upTitle}
+              disabled={locked || up === null}
+              onClick={() => changeStat('up')}
+            >
+              +
+            </button>
+          </span>
         ) : (
           <strong>{value ?? '—'}</strong>
         )}
