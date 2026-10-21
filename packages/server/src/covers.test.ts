@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, readFileSync, unlinkSync } from 'node:fs';
+import { mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -19,7 +19,6 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
-import { buildCoverCatalogue, cpredCoverPresetHp } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
@@ -33,8 +32,8 @@ paceTesting.off = true;
  * Smoke tests of cover (stage 16c) on real sockets.
  *
  * What is tested here is the part the geometry tests in `shared` cannot reach:
- * that cover is **client-visible** where a wall is not, that its body points are
- * read from the catalogue on the server rather than taken off the wire, and
+ * that cover is **client-visible** where a wall is not (unless the GM hid it),
+ * that its body points are the GM's number, and
  * that a shot at somebody behind it comes back as a *choice* rather than as a
  * roll — with nothing spent while the table makes it.
  *
@@ -47,24 +46,8 @@ const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
 const GM_PASSWORD = 'test-haslo';
 const PX_PER_M = 50;
 
-/**
- * Body points the committed catalogue gives „Samochód", read from the file
- * rather than written down here.
- *
- * The public file carries **invented** numbers on purpose (the material table
- * of s. 180 is rulebook content, and this repository is public — see
- * `licensing.test.ts`), so a hard-coded 25 would be both a licence leak and a
- * test that breaks the day somebody edits the samples. What is being tested is
- * that the server reads the catalogue at all, not what the catalogue says.
- */
-const CAR_HP = cpredCoverPresetHp(
-  buildCoverCatalogue(
-    JSON.parse(
-      readFileSync(resolve(import.meta.dirname, '../../../data/public/cpred/covers.json'), 'utf8'),
-    ),
-  ),
-  'car',
-);
+/** Body points the GM types into the palette for the car (21.10.2026: no catalogue). */
+const CAR_HP = 22;
 
 const config: ServerConfig = {
   port: 0,
@@ -363,41 +346,53 @@ describe('cover as an object on the scene', () => {
     expect(shooterTokenId).toBeTruthy();
   });
 
-  it('reads the body points out of the catalogue, not off the wire', async () => {
+  it('places a generic cover with the body points the GM typed', async () => {
     // Tokens are 100 px wide, so both centres sit at y = 50. The car straddles
     // that line halfway down the street.
     const car = data(
       await emitAck<CoverView>(gm, 'cover:create', {
         sceneId,
-        typeId: 'car',
+        hpMax: CAR_HP,
+        name: 'Samochód',
         x: 10 * PX_PER_M,
         y: 0,
         width: 100,
         height: 200,
-        // A client cannot ask for its own toughness — there is no field for it,
-        // and anything extra is ignored.
-        hpMax: 9999,
       }),
       'cover:create',
     );
     carId = car.id;
-    expect(CAR_HP).toBeGreaterThan(0);
     expect(car.hpMax).toBe(CAR_HP);
     expect(car.hpCurrent).toBe(CAR_HP);
     expect(car.name).toBe('Samochód');
+    expect(car.hidden).toBe(false);
   });
 
-  it('refuses a preset the table gives no body points', async () => {
-    // Thin plasterboard is 0 PW, which is the rulebook saying it is not cover.
-    const ack = await emitAck(gm, 'cover:create', {
-      sceneId,
-      typeId: 'nonexistent-preset',
-      x: 0,
-      y: 3000,
-      width: 100,
-      height: 100,
-    });
-    expect(errorOf(ack)).toBe('UNKNOWN_COVER_TYPE');
+  it('names an unnamed cover „Osłona" and refuses one with no body points', async () => {
+    const plain = data(
+      await emitAck<CoverView>(gm, 'cover:create', {
+        sceneId,
+        hpMax: 5,
+        x: 0,
+        y: 3000,
+        width: 100,
+        height: 100,
+      }),
+      'cover:create',
+    );
+    expect(plain.name).toBe('Osłona');
+    await emitAck(gm, 'cover:delete', { coverId: plain.id });
+    for (const hpMax of [0, -3, 1.5, 1000, '10', undefined]) {
+      const ack = await emitAck(gm, 'cover:create', {
+        sceneId,
+        hpMax,
+        x: 0,
+        y: 3000,
+        width: 100,
+        height: 100,
+      });
+      expect(errorOf(ack)).toBe('COVER_HAS_NO_HP');
+    }
   });
 
   it('refuses a stray click and a cover for a player', async () => {
@@ -405,7 +400,7 @@ describe('cover as an object on the scene', () => {
       errorOf(
         await emitAck(gm, 'cover:create', {
           sceneId,
-          typeId: 'car',
+          hpMax: CAR_HP,
           x: 0,
           y: 3000,
           width: 2,
@@ -417,7 +412,7 @@ describe('cover as an object on the scene', () => {
       errorOf(
         await emitAck(player, 'cover:create', {
           sceneId,
-          typeId: 'car',
+          hpMax: CAR_HP,
           x: 0,
           y: 3000,
           width: 200,
@@ -454,6 +449,20 @@ describe('cover as an object on the scene', () => {
     expect(result.blocked).toBeUndefined();
     expect(result.card?.detail).toContain('mimo osłony');
     expect(result.card?.hit).toBe(true);
+  });
+
+  it('keeps a hidden cover off the player, and still stops the shot with it', async () => {
+    const playerSync = waitFor<CoverSyncBroadcast>(player, 'cover:sync');
+    await emitAck(gm, 'cover:update', { coverId: carId, patch: { hidden: true } });
+    expect((await playerSync).covers.map((cover) => cover.id)).not.toContain(carId);
+    expect((await roundTrip(player)).covers.map((cover) => cover.id)).not.toContain(carId);
+    expect((await roundTrip(gm)).covers.find((cover) => cover.id === carId)?.hidden).toBe(true);
+
+    // The first player shot it stops shows it to the table.
+    const revealed = waitFor<CoverSyncBroadcast>(player, 'cover:sync');
+    const result = await shoot({ targetTokenId });
+    expect(result.blocked).toMatchObject({ kind: 'cover', coverId: carId });
+    expect((await revealed).covers.find((cover) => cover.id === carId)?.hidden).toBe(false);
   });
 
   it('does not stop the shot of somebody standing at it', async () => {

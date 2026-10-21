@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  cpredCoverPresetDetail,
   netDefenseSystemEntries,
   DRAWING_COLORS,
   DRAWING_MAX_FONT_SIZE,
@@ -12,6 +11,7 @@ import {
   LIGHT_COLORS,
   ROLE_GM,
   WALL_ARMOR_MAX,
+  COVER_HP_MAX,
   CONTAINER_PRESETS,
   CONTAINER_PRESET_LOOKS,
   sceneObjectNominative,
@@ -131,9 +131,10 @@ export function MapTools() {
   const setWallArmor = useMapToolStore((s) => s.setWallArmor);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
-  const coverTypeId = useMapToolStore((s) => s.coverTypeId);
-  const setCoverTypeId = useMapToolStore((s) => s.setCoverTypeId);
-  const coverCatalogue = useMapToolStore((s) => s.coverCatalogue);
+  const coverHp = useMapToolStore((s) => s.coverHp);
+  const setCoverHp = useMapToolStore((s) => s.setCoverHp);
+  const coverHidden = useMapToolStore((s) => s.coverHidden);
+  const setCoverHidden = useMapToolStore((s) => s.setCoverHidden);
   const zoneEntryId = useMapToolStore((s) => s.zoneEntryId);
   const setZoneEntryId = useMapToolStore((s) => s.setZoneEntryId);
   const zoneHidden = useMapToolStore((s) => s.zoneHidden);
@@ -812,31 +813,39 @@ export function MapTools() {
 
       {isGm && tool === 'cover' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia osłon">
-          {/* The catalogue decides the material and the body points; this is
-                  only which row of it the next rectangle uses. „Gips cienki" is
-                  absent from the list on purpose — the table gives it 0 PW,
-                  which is the rulebook saying it is not cover. */}
+          {/* One generic „Osłona" since 21.10.2026 (zlecenie MG): the GM types
+              the body points instead of picking a material out of the s. 180
+              table, and says whether the players see it. */}
           <label
             className="map-tool-slider"
-            title="Rodzaj osłony (materiał i grubość z podręcznika, s. 180)"
+            title="PW nowej osłony — tyle obrażeń przyjmie, zanim stanie się wrakiem (podręcznik, s. 180)"
           >
-            <select
-              value={coverTypeId}
-              onChange={(event) => setCoverTypeId(event.target.value)}
-              aria-label="Rodzaj osłony"
-            >
-              {coverCatalogue.presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name} — {cpredCoverPresetDetail(coverCatalogue, preset)}
-                </option>
-              ))}
-            </select>
+            <span className="map-tool-hint">PW</span>
+            <input
+              type="number"
+              className="map-tool-number"
+              min={1}
+              max={COVER_HP_MAX}
+              step={1}
+              value={coverHp}
+              onChange={(event) => setCoverHp(event.target.valueAsNumber)}
+              aria-label="PW nowej osłony"
+            />
           </label>
-          {coverCatalogue.presets.length === 0 && (
-            <span className="map-tool-hint">
-              Brak katalogu osłon — sprawdź data/public/cpred/covers.json
-            </span>
-          )}
+          <button
+            type="button"
+            className={`map-tool${coverHidden ? ' map-tool--active' : ''}`}
+            title={
+              coverHidden
+                ? 'Ukryta — gracze jej nie widzą, ale zatrzymuje kule i ruch; odsłoni się, gdy zatrzyma strzał gracza'
+                : 'Widoczna — gracze widzą osłonę na mapie'
+            }
+            aria-pressed={coverHidden}
+            aria-label="Osłona ukryta przed graczami"
+            onClick={() => setCoverHidden(!coverHidden)}
+          >
+            {coverHidden ? <IconEyeOff /> : <IconEye />}
+          </button>
 
           <span className="map-tools-sep" aria-hidden />
           <span className="map-tool-hint">

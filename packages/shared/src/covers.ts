@@ -36,8 +36,9 @@ export interface CoverView {
   id: number;
   sceneId: string;
   /**
-   * Catalogue preset this was placed from, kept opaque by the core: it is a
-   * string the CP RED catalogue understands and this module only carries.
+   * Catalogue preset an old cover was placed from (16c–21.10.2026), kept opaque
+   * by the core. Since 21.10 the palette places one generic „Osłona" whose body
+   * points the GM types, and new rows carry `COVER_GENERIC_TYPE`.
    */
   typeId: string;
   /** Label drawn on the map — „Samochód", „Betonowy słupek". */
@@ -53,6 +54,13 @@ export interface CoverView {
    */
   hpMax: number;
   hpCurrent: number;
+  /**
+   * Hidden from the players (21.10.2026, zlecenie MG): an ambush barricade the
+   * party has not seen yet. A player's payload does not carry the row at all
+   * — it still stops rounds and bodies on the server — and the first player
+   * shot it stops reveals it. Always `false` in a player's copy.
+   */
+  hidden: boolean;
 }
 
 /** Rectangles only, and axis-aligned (stage 16c: a rotated car is a POMYSLY entry). */
@@ -65,30 +73,35 @@ export const COVER_MAX_PER_SCENE = 200;
 export const COVER_NAME_MAX = 40;
 /** Hard ceiling on stored body points — the RAW table tops out at 50. */
 export const COVER_HP_MAX = 999;
+/** `typeId` of every cover placed since 21.10.2026 — no catalogue preset behind it. */
+export const COVER_GENERIC_TYPE = 'generic';
+/** Label a new cover gets; the GM renames it on its card. */
+export const COVER_DEFAULT_NAME = 'Osłona';
+/** Body points the palette starts at — a car door, give or take (s. 180). */
+export const COVER_DEFAULT_HP = 20;
 
-/** Client → server `cover:create`. Toughness is **not** here: the server reads it. */
+/**
+ * Client → server `cover:create` (GM only). Since 21.10.2026 one generic cover
+ * with the body points the GM typed, instead of a preset out of the catalogue.
+ */
 export interface CoverCreatePayload {
   sceneId: string;
-  /** Preset from the catalogue; decides the material, the label and the HP. */
-  typeId: string;
+  /** 1…`COVER_HP_MAX`. */
+  hpMax: number;
+  /** Hidden from the players; absent = visible. */
+  hidden?: boolean;
   x: number;
   y: number;
   width: number;
   height: number;
-  /** Overrides the preset's label; blank keeps it. */
+  /** Overrides `COVER_DEFAULT_NAME`; blank keeps it. */
   name?: string;
 }
 
-/** Client → server `cover:update` — move, resize, rename or repair one cover. */
+/** Client → server `cover:update` — move, resize, rename, repair, hide or show one cover. */
 export interface CoverUpdatePayload {
   coverId: number;
   patch: {
-    /**
-     * Inny preset z katalogu (etap 27l) — „to jednak nie samochód, to kontener".
-     * Serwer odczytuje z niego nową wytrzymałość, bo katalog mieszka po jego
-     * stronie; klient wysyła samo id.
-     */
-    typeId?: string;
     x?: number;
     y?: number;
     width?: number;
@@ -103,6 +116,8 @@ export interface CoverUpdatePayload {
      * powiedzieć. Serwer przycina `hpCurrent` do nowego maksimum.
      */
     hpMax?: number;
+    /** Hide from the players or show to them (21.10.2026). */
+    hidden?: boolean;
   };
 }
 
@@ -286,11 +301,22 @@ export function sanitizeCoverRect(raw: unknown): CoverRect | null {
   return sanitizeRect(raw, { min: COVER_MIN_SIZE_PX, max: COVER_MAX_SIZE_PX });
 }
 
-/** Trims a GM-typed label; empty means „keep the preset's name". */
+/** Trims a GM-typed label; empty means „keep the default name". */
 export function sanitizeCoverName(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim().slice(0, COVER_NAME_MAX);
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Body points the GM typed, or null when they are not a whole 1…`COVER_HP_MAX`. */
+export function sanitizeCoverHp(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isInteger(raw)) return null;
+  return raw >= 1 && raw <= COVER_HP_MAX ? raw : null;
+}
+
+/** What a player's copy of the cover list holds: no hidden rows. */
+export function coversForPlayers(covers: readonly CoverView[]): CoverView[] {
+  return covers.filter((cover) => !cover.hidden);
 }
 
 /** „Samochód · 18/25 PW" — the one-line description used on cards and tooltips. */

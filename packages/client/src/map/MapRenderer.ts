@@ -6705,14 +6705,22 @@ export class MapRenderer {
     for (const cover of this.lastCovers) {
       seen.add(cover.id);
       const standing = coverStanding(cover);
+      // A cover hidden from the players (21.10.2026) only ever reaches the GM,
+      // and is drawn the way a hidden zone is: dashed and fainter.
+      const hidden = cover.hidden;
+      const edge = {
+        color: standing ? COVER_STROKE_COLOR : COVER_WRECK_COLOR,
+        width: (standing ? 3 : 2) * k,
+        alpha: (standing ? 0.95 : 0.5) * (hidden ? 0.7 : 1),
+      };
       this.coverGraphics
         .rect(cover.x, cover.y, cover.width, cover.height)
-        .fill({ color: COVER_FILL_COLOR, alpha: standing ? 0.32 : 0.1 })
-        .stroke({
-          color: standing ? COVER_STROKE_COLOR : COVER_WRECK_COLOR,
-          width: (standing ? 3 : 2) * k,
-          alpha: standing ? 0.95 : 0.5,
-        });
+        .fill({ color: COVER_FILL_COLOR, alpha: (standing ? 0.32 : 0.1) * (hidden ? 0.5 : 1) });
+      if (hidden) {
+        this.strokeDashedRect(this.coverGraphics, cover, 14 * k, 9 * k, edge);
+      } else {
+        this.coverGraphics.rect(cover.x, cover.y, cover.width, cover.height).stroke(edge);
+      }
 
       if (standing && cover.hpMax > 0) {
         // The bar rides on the top edge rather than floating above it: at table
@@ -6741,9 +6749,9 @@ export class MapRenderer {
         this.coverLabels.set(cover.id, label);
         this.coverLayer.addChild(label);
       }
-      label.text = standing
-        ? `${cover.name} ${cover.hpCurrent}/${cover.hpMax}`
-        : `${cover.name} (wrak)`;
+      label.text =
+        (standing ? `${cover.name} ${cover.hpCurrent}/${cover.hpMax}` : `${cover.name} (wrak)`) +
+        (hidden ? ' (ukryta)' : '');
       label.scale.set(k);
       label.alpha = standing ? 0.95 : 0.5;
       label.position.set(cover.x + cover.width / 2, cover.y + cover.height / 2);

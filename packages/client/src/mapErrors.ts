@@ -1,4 +1,4 @@
-import type { WallKind } from '@vtt/shared';
+import { COVER_HP_MAX, type WallKind } from '@vtt/shared';
 
 /**
  * Odmowy warstw mapy po polsku (wydzielone w etapie 27l).
@@ -42,10 +42,8 @@ export function coverErrorText(code: string | undefined): string {
       return 'Na tej scenie jest już maksymalna liczba osłon.';
     case 'COVER_NOT_FOUND':
       return 'Ta osłona już nie istnieje — odśwież stronę.';
-    case 'UNKNOWN_COVER_TYPE':
-      return 'Nie znam takiego rodzaju osłony — sprawdź katalog w data/public.';
     case 'COVER_HAS_NO_HP':
-      return 'To nie jest osłona: taki materiał nie zatrzyma kuli (podręcznik, s. 179).';
+      return `Osłona potrzebuje od 1 do ${COVER_HP_MAX} PW — bez PW nie zatrzyma kuli (podręcznik, s. 179).`;
     case 'NOT_CONNECTED':
       return 'Brak połączenia z serwerem — osłona nie została zapisana.';
     default:

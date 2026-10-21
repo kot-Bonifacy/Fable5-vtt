@@ -29,6 +29,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Jedna ogólna osłona z PW i widocznością (zlecenie MG z 21.10) — dalej etap 28, potem T10.**
+Paleta osłon ma pole PW i oko zamiast listy rodzajów z katalogu; ukrytej osłony gracz nie dostaje
+wcale, a pierwszy jego strzał, który zatrzyma, ją odsłania. Umowa na górze `mapa`.
+
 **Blokada rozwoju w walce (zlecenie MG z 21.10) — dalej etap 28, potem T10.** Póki w kampanii
 stoi tracker walki (od „Załóż starcie”), gracz nie wydaje PD, nie zmienia Roli, Specjalizacji,
 Taboru ani Poziomu życia, nie zakłada ani nie kończy nowej postaci, nie kupuje i nie prosi
@@ -366,7 +370,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 66   | 27      |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  | 67   | 27      |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 8    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
@@ -389,6 +393,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 21.10, druga (po `a3873dd`) — zlecenie MG: jedna ogólna osłona z PW i widocznością
+
+**Zlecenie MG:** zamiast listy rodzajów osłon (katalog materiałów) jedna „Osłona”, której MG
+przypisuje PW i to, czy jest widoczna. **Decyzje MG (pytania na starcie):** niewidoczna =
+ukryta przed graczami (dane nie wychodzą z serwera), dalej zatrzymuje kule i ruch; istniejące
+osłony zostają z nazwą i PW, wszystkie widoczne. **Zrobione:** kolumna `Cover.hidden` (migracja
+`20261021120000_cover_hidden`, eksport/import kampanii ją niesie); `cover:create` przyjmuje
+`hpMax` + `hidden` (nazwa „Osłona”, `typeId: 'generic'`), `cover:update` — `hidden` zamiast
+`typeId`; gracz dostaje listę bez ukrytych, MG pełną (umowa na górze `mapa`). Paleta: pole PW
+(domyślnie 20, pamiętane do przeładowania) i oko widoczności; karta osłony: „Widoczna dla graczy”
+zamiast „Rodzaj z katalogu”. U MG ukryta rysuje się przerywaną linią z „(ukryta)”.
+**Rozstrzygnięte bez pytań:** pierwszy strzał gracza zatrzymany przez ukrytą osłonę ją odsłania
+(karta odmowy i tak ją nazywa i proponuje jako cel); odmowa ruchu i wybuch jej nie odsłaniają.
+Katalog materiałów na serwerze (`/api/cpred/covers`) został, UI go nie czyta.
+
+**Weryfikacja:** serwer 1550/1550 (testy dymne `covers.test.ts`: ogólna osłona, odmowa bez PW, ukryta poza listą gracza i odsłonięta strzałem), `shared` 2528/2528, klient 420/420, `tsc` i ESLint czyste. Spec E2E `t8c-mapa` przepisany
+(checkbox zamiast listy rodzajów), nie puszczany. **Oglądane w Firefoksie** (Playwright, MG na
+„Test_1”): paleta PW + oko, postawienie ukrytej osłony (przerywana, „(ukryta)”), karta z
+przełączeniem na widoczną; osłona testowa usunięta. Widoku gracza w przeglądarce nie oglądano
+(pokrywa go test dymny serwera).
 
 ### Sesja 21.10 (po `7e8ec15`) — zlecenie MG: w walce gracz nie rozwija postaci
 
@@ -413,36 +438,3 @@ Awansu, Roli, Specjalizacji, zakupu i kreatora w rundzie 0 walki bez postaci gra
 rozwoju i MG przechodzą; po końcu walki zakup działa), `tsc` i ESLint czyste. **Oględziny
 w Firefoksie** (tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — przed walką „Podnieś” i Poziom
 życia czynne, w walce wyszarzone z dymkiem i zdaniem w Awansie, po walce zakup Medycyny 2→3.
-
-### Sesja 20.10, druga (po `a0a602c`) — zlecenie MG: kamery i wieżyczki przejęte w Sieci
-
-**Zlecenie MG:** „dorobić kamery (chyba nie działają)”; postać, która przejmuje kamerę, ma mieć
-ekran wycentrowany na kamerze, a przejęcie automatycznej wieżyczki ma chwilowo pokazać wieżyczkę.
-**Diagnoza:** kamera od 26d była tylko przełącznikiem (Obróć/Wyłącz to stan i zdanie na czacie),
-nic na mapie. **Decyzje MG (pytania na starcie):** przejęta kamera to podgląd — widać przez nią;
-widzi tylko netrunner (nie drużyna); stożek z kierunkiem, „Obróć” przestawia kierunek; kadr po
-Kontroli i po kliknięciu nazwy urządzenia w oknie Sieci (strzał wieżyczki też rzutem oka).
-**Zrobione:** `computeVisionCone` (`shared/vision.ts`), `realtime/net-cameras.ts` →
-`SceneVisionContext.borrowed` → stożek 90° w `viewerSightFor` (tylko pokazuje: bez drzwi, marszu,
-pamięci mapy i walki z zauważenia); `emitRuns` przelicza widok, gdy zmieni się, kto przez co patrzy.
-„Obróć” kamery z figurą ustawia `Token.facing` z listy ośmiu kierunków („na południe”), czat:
-„Kamera w korytarzu — obrócona na południe.”; kamera bez figury jak dawniej. Okno Sieci: nazwa
-urządzenia z figurą na oglądanej scenie to przycisk „⌖” (kadr), plakietka „patrzy na …”. Po
-udanej Kontroli: rzut oka na każdą wieżyczkę (2,5 s), potem kadr zostaje na kamerze; bez kamery
-powrót na netrunnera (chyba że gracz ruszył mapę). Punkt ląduje w pasie mapy obok okna Sieci,
-a w miejscu urządzenia staje znacznik z nazwą (rysunek pingu, tylko u siebie). Edytor Architektury:
-podpowiedź przy figurze kamery i ostrzeżenie „kamera bez żetonu”. Umowa i pułapka na górze `siec`.
-**Rozstrzygnięte bez pytań (do słowa MG):** stożek 90° i zasięg z „zasięgu widzenia” figury;
-kamera nieobrócona patrzy na północ; widok z kamery działa na scenach z widzeniem Dynamicznym (na
-mapie otwartej gracz i tak widzi wszystko); kamera w ciemności widzi tylko oświetlone.
-
-**Weryfikacja:** `shared` 2525/2525 (+4 stożek, +5 kamera, ostrzeżenie), serwer 1538/1538 (+6 nowy
-`net-cameras.test.ts`: przed Kontrolą nic, po — Strażnik w stożku, Kot poza nim, gapa z drużyny
-nie widzi, `at`/`facing` w widoku, „Obróć” na południe, Wyłącz gasi i sam przelicza widok),
-klient 417/417; `tsc` i ESLint czyste w trzech pakietach. **Oględziny w Firefoksie** (tymczasowy
-spec `99-ogledziny/t99-kamery` z `po-T6`, niecommitowany): Ola-Iskra, Kontrola → rzut oka na
-„Grzechot” → kadr na kamerze ze stożkiem na wschód i Strażnikiem, „Obróć” na południe → Kot,
-klik w nazwę wieżyczki, strzał → rzut oka i powrót na Iskrę. Suity E2E nie puszczano (żadna nie
-dotyka urządzeń węzła poza T5a, który ich nie obsługuje). **Zostało:** kamera w Poligonie („Kamera
-nad bramą”) nie ma figury — żeby zobaczyć podgląd w `dev.db`, MG przypina jej żeton w edytorze.
-

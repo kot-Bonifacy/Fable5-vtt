@@ -307,22 +307,21 @@ test.describe.serial('T8c mapa i sceny: Lombard, rysunki, ping, grupa, obiekty',
     const page = mg.page;
     const lombardId = sceneByName('Lombard').id;
     const covers = () =>
-      query<{ id: number; typeId: string }>(
-        'SELECT id, typeId FROM Cover WHERE sceneId = ? ORDER BY id',
+      query<{ id: number; hidden: number; hpMax: number }>(
+        'SELECT id, hidden, hpMax FROM Cover WHERE sceneId = ? ORDER BY id',
         lombardId,
       );
 
     await drawCover(page, at(14, 12), { x: 18 * CELL, y: 14 * CELL });
     await expect.poll(() => covers().length).toBe(1);
-    const first = covers()[0]!;
+    expect(covers()[0]!.hidden).toBe(0);
     const card = await openObjectCard(page, 'Osłony (O)', { x: 16 * CELL, y: 13 * CELL });
-    const kind = card.locator('select').first();
-    const options = await kind
-      .locator('option')
-      .evaluateAll((list) => list.map((o) => (o as HTMLOptionElement).value));
-    const other = options.find((value) => value && value !== first.typeId)!;
-    await kind.selectOption(other);
-    await expect.poll(() => covers()[0]?.typeId).toBe(other);
+    await card.getByRole('checkbox', { name: 'Widoczna dla graczy' }).uncheck();
+    await expect.poll(() => covers()[0]?.hidden).toBe(1);
+    // Ukryta osłona nie jedzie do gracza.
+    await expect
+      .poll(async () => (await marek.store<{ covers: unknown[] }>('cover'))?.covers.length)
+      .toBe(0);
     await card.getByRole('button', { name: 'Zamknij kartę' }).click();
 
     // Zaznaczona osłona → Delete; gracz próbuje cofnąć — nic nie wraca; Ctrl+Z MG — wraca.
@@ -342,7 +341,7 @@ test.describe.serial('T8c mapa i sceny: Lombard, rysunki, ping, grupa, obiekty',
     });
     expect(covers()).toEqual([]);
     await page.keyboard.press('Control+z');
-    await expect.poll(() => covers().map((c) => c.typeId)).toEqual([other]);
+    await expect.poll(() => covers().map((c) => c.hidden)).toEqual([1]);
     // Zdanie serwera to notka czatu MG — widać ją w zakładce „Czat”.
     await page.getByRole('button', { name: 'Czat', exact: true }).click();
     await expect(chatLine(page, /Przywrócono osłonę/)).toBeVisible();

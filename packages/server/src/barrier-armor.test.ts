@@ -516,7 +516,8 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     carId = data(
       await emitAck<CoverView>(gm, 'cover:create', {
         sceneId,
-        typeId: 'car',
+        hpMax: 22,
+        name: 'Samochód',
         x: 500,
         y: 250,
         width: 100,
@@ -721,7 +722,8 @@ describe('barrier armour on shots and blasts (stage 42b)', () => {
     const car = data(
       await emitAck<CoverView>(gm, 'cover:create', {
         sceneId,
-        typeId: 'car',
+        hpMax: 22,
+        name: 'Samochód',
         x: 1550,
         y: 1150,
         width: 100,

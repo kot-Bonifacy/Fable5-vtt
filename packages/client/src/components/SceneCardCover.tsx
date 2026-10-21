@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { COVER_HP_MAX, cpredCoverPresetDetail, type CoverView } from '@vtt/shared';
+import { useState } from 'react';
+import { COVER_HP_MAX, type CoverView } from '@vtt/shared';
 import { updateCover } from '../socket.js';
-import { ensureCoverCatalogueLoaded, useMapToolStore } from '../stores/mapToolStore.js';
 import { coverErrorText } from '../mapErrors.js';
 import { noteAck } from '../notices.js';
 
@@ -14,17 +13,11 @@ import { noteAck } from '../notices.js';
  * PW siedział wyłącznie w… nigdzie — `cover:update` przyjmowało `hpCurrent`
  * od 16c, ale żadne UI go nie wołało.
  *
- * Preset jest polem edytowalnym z tego samego powodu: „to jednak nie samochód,
- * to kontener" nie może znaczyć „skasuj i narysuj prostokąt jeszcze raz".
- * Wytrzymałość presetu czyta **serwer** z katalogu — klient wysyła samo id.
+ * Od 21.10.2026 (zlecenie MG) osłona nie ma rodzaju z katalogu: to jedna
+ * ogólna „Osłona", której MG wpisuje PW i mówi, czy gracze ją widzą.
  */
 export function SceneCardCover({ cover }: { cover: CoverView }) {
-  const catalogue = useMapToolStore((s) => s.coverCatalogue);
   const [busy, setBusy] = useState(false);
-
-  // Katalog jedzie z API na żądanie (16c). Karta bywa pierwszym miejscem, które
-  // go potrzebuje — MG, który nie rozwijał palety osłon, zobaczyłby pustą listę.
-  useEffect(() => ensureCoverCatalogueLoaded(), []);
 
   async function patch(next: Parameters<typeof updateCover>[1]) {
     setBusy(true);
@@ -34,7 +27,6 @@ export function SceneCardCover({ cover }: { cover: CoverView }) {
   }
 
   const wrecked = cover.hpCurrent <= 0;
-  const preset = catalogue.presets.find((entry) => entry.id === cover.typeId) ?? null;
 
   return (
     <div className="scene-card-form">
@@ -52,21 +44,17 @@ export function SceneCardCover({ cover }: { cover: CoverView }) {
         />
       </label>
 
-      <label className="bot-field">
-        <span className="auth-label">Rodzaj z katalogu</span>
-        <select
-          value={preset ? preset.id : ''}
-          title="Zmiana rodzaju przestawia wytrzymałość na tę z katalogu"
-          disabled={busy || catalogue.presets.length === 0}
-          onChange={(event) => void patch({ typeId: event.target.value })}
-        >
-          {!preset && <option value="">— {cover.typeId} (spoza katalogu) —</option>}
-          {catalogue.presets.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name} — {cpredCoverPresetDetail(catalogue, entry)}
-            </option>
-          ))}
-        </select>
+      <label
+        className="bot-checkbox"
+        title="Ukrytej osłony gracze nie dostają wcale; dalej zatrzymuje kule i ruch, a pierwszy strzał gracza, który zatrzyma, ją odsłania"
+      >
+        <input
+          type="checkbox"
+          checked={!cover.hidden}
+          disabled={busy}
+          onChange={(event) => void patch({ hidden: !event.target.checked })}
+        />
+        Widoczna dla graczy
       </label>
 
       <label className="bot-field">
@@ -93,7 +81,6 @@ export function SceneCardCover({ cover }: { cover: CoverView }) {
           step={1}
           defaultValue={cover.hpMax}
           key={`max-${cover.hpMax}`}
-          title="Preset z katalogu jest punktem wyjścia — tu podnosisz albo obniżasz sufit"
           onBlur={(event) => {
             const hpMax = Math.round(Number(event.target.value));
             if (Number.isFinite(hpMax) && hpMax >= 1 && hpMax !== cover.hpMax)

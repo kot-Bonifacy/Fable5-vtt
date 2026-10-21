@@ -8,11 +8,13 @@ import type {
   CoverView,
 } from '@vtt/shared';
 import {
+  COVER_DEFAULT_NAME,
+  COVER_GENERIC_TYPE,
   COVER_HP_MAX,
   COVER_MAX_PER_SCENE,
   ROLE_GM,
-  cpredCoverPreset,
-  cpredCoverPresetHp,
+  coversForPlayers,
+  sanitizeCoverHp,
   sanitizeCoverName,
   sanitizeCoverRect,
 } from '@vtt/shared';
@@ -20,23 +22,20 @@ import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchSceneCovers, toCoverView } from './covers-io.js';
 import { requireCampaignScene } from './scenes.js';
-import { campaignRoom, sceneRoom } from './state.js';
+import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
 
 /**
- * Cover on the map (stage 16c) — core VTT storage, with one CP RED lookup.
+ * Cover on the map (stage 16c) — core VTT storage.
  *
- * The geometry lives in `@vtt/shared` (`covers.ts`); this module stores it,
- * guards who may edit it, and does the one thing a client must never be trusted
- * with: **reading the body points out of the catalogue**. A placement names a
- * preset („samochód") and nothing else — if `hpMax` came over the wire, a
- * bulletproof crate would be one edited packet away.
+ * The geometry lives in `@vtt/shared` (`covers.ts`); this module stores it and
+ * guards who may edit it. Since 21.10.2026 (zlecenie MG) a placement is one
+ * generic „Osłona" with the body points the GM typed, instead of a preset read
+ * out of the material catalogue — every event here is GM-only, so the number
+ * coming over the wire is the GM's word, exactly like the card's PW field.
  *
- * Unlike walls and lights, the finished list goes to *everybody*. A car in the
- * street is not a secret (see `covers-io.ts`), which is also why this file has
- * no GM-room branch at all: the audience is „whoever is looking at this scene",
- * sequenced campaign-wide on the active scene and targeted at the scene room
- * when the GM is dressing a map nobody else is on.
+ * Unlike walls and lights, the list goes to *everybody* — minus the covers the
+ * GM hid, which a player's copy leaves out (see `covers-io.ts`).
  */
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
@@ -58,13 +57,24 @@ export async function emitCovers(
 ): Promise<void> {
   if (deferView(deps, (ready) => emitCovers(ready, campaignId, scene))) return;
   const covers = await fetchSceneCovers(deps.ctx.prisma, scene.id);
-  const payload = { sceneId: scene.id, covers } satisfies CoverSyncBroadcast;
+  // The players' copy goes to the whole audience and the GM's full list right
+  // after it to the GM room — the same pair `token:upsert` sends for a hidden
+  // figure, so the GM ends on the copy that has the hidden covers in it.
+  const publicPayload = {
+    sceneId: scene.id,
+    covers: coversForPlayers(covers),
+  } satisfies CoverSyncBroadcast;
   if (!scene.active) {
-    deps.io.to(sceneRoom(scene.id)).emit('cover:sync', payload);
-    return;
+    deps.io.to(sceneRoom(scene.id)).emit('cover:sync', publicPayload);
+  } else {
+    const room = campaignRoom(campaignId);
+    deps.io.to(room).emit('cover:sync', { ...publicPayload, seq: deps.seqs.next(room) });
   }
-  const room = campaignRoom(campaignId);
-  deps.io.to(room).emit('cover:sync', { ...payload, seq: deps.seqs.next(room) });
+  if (publicPayload.covers.length !== covers.length) {
+    deps.io
+      .to(gmRoom(campaignId))
+      .emit('cover:sync', { sceneId: scene.id, covers } satisfies CoverSyncBroadcast);
+  }
 }
 
 /** Loads a cover row and proves it belongs to this campaign. */
@@ -94,16 +104,13 @@ export const coverCreateEvent = defineEvent<CoverCreatePayload, CoverView>({
     });
     if (!rect) throw new RealtimeError('BAD_REQUEST');
 
-    const preset =
-      typeof payload?.typeId === 'string'
-        ? cpredCoverPreset(deps.ctx.covers, payload.typeId)
-        : null;
-    if (!preset) throw new RealtimeError('UNKNOWN_COVER_TYPE');
-    const hpMax = cpredCoverPresetHp(deps.ctx.covers, preset.id);
-    // „Jeśli nie może zatrzymać kuli, nie jest to osłona i nie ma PW" (s. 179).
-    // The plasterboard row of the table comes out at 0 for a reason, and the
-    // honest answer to „place a partition wall as cover" is to refuse it.
-    if (hpMax <= 0) throw new RealtimeError('COVER_HAS_NO_HP');
+    // „Jeśli nie może zatrzymać kuli, nie jest to osłona i nie ma PW" (s. 179):
+    // zero body points is refused rather than stored as a wreck from birth.
+    const hpMax = sanitizeCoverHp(payload?.hpMax);
+    if (hpMax === null) throw new RealtimeError('COVER_HAS_NO_HP');
+    if (payload?.hidden !== undefined && typeof payload.hidden !== 'boolean') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
 
     const stored = await deps.ctx.prisma.cover.count({ where: { sceneId: scene.id } });
     if (stored >= COVER_MAX_PER_SCENE) throw new RealtimeError('COVER_LIMIT_REACHED');
@@ -111,11 +118,12 @@ export const coverCreateEvent = defineEvent<CoverCreatePayload, CoverView>({
     const created = await deps.ctx.prisma.cover.create({
       data: {
         sceneId: scene.id,
-        typeId: preset.id,
-        name: sanitizeCoverName(payload?.name) ?? preset.name,
+        typeId: COVER_GENERIC_TYPE,
+        name: sanitizeCoverName(payload?.name) ?? COVER_DEFAULT_NAME,
         ...rect,
         hpMax,
         hpCurrent: hpMax,
+        hidden: payload?.hidden === true,
       },
     });
     await emitCovers(deps, campaignId, scene);
@@ -133,7 +141,6 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
     if (typeof patch !== 'object' || patch === null) throw new RealtimeError('BAD_REQUEST');
 
     const data: {
-      typeId?: string;
       name?: string;
       x?: number;
       y?: number;
@@ -141,6 +148,7 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
       height?: number;
       hpCurrent?: number;
       hpMax?: number;
+      hidden?: boolean;
     } = {};
 
     // Geometry is validated as a whole rectangle even when only one corner
@@ -162,22 +170,9 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
       Object.assign(data, rect);
     }
 
-    // Zmiana presetu (etap 27l). Wytrzymałość czyta **serwer** z katalogu, tak
-    // samo jak przy stawianiu: klient nie ma jak wpisać samochodowi własnych PW.
-    if (patch.typeId !== undefined) {
-      const preset =
-        typeof patch.typeId === 'string' ? cpredCoverPreset(deps.ctx.covers, patch.typeId) : null;
-      if (!preset) throw new RealtimeError('UNKNOWN_COVER_TYPE');
-      const hpMax = cpredCoverPresetHp(deps.ctx.covers, preset.id);
-      if (hpMax <= 0) throw new RealtimeError('COVER_HAS_NO_HP');
-      data.typeId = preset.id;
-      data.hpMax = hpMax;
-      if (row.hpCurrent > hpMax) data.hpCurrent = hpMax;
-      // Nazwa idzie za presetem tylko wtedy, gdy nikt jej nie zmieniał: osłona
-      // nazwana „Radiowóz" ma tak zostać, ale „Samochód" przerobiony na słupek
-      // nie może dalej nazywać się samochodem.
-      const previous = cpredCoverPreset(deps.ctx.covers, row.typeId);
-      if (previous && row.name === previous.name) data.name = preset.name;
+    if (patch.hidden !== undefined) {
+      if (typeof patch.hidden !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+      data.hidden = patch.hidden;
     }
 
     if (patch.name !== undefined) {
@@ -186,22 +181,15 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
       data.name = name;
     }
 
-    // Wytrzymałość maksymalna (etap 27l): preset z katalogu jest punktem
-    // wyjścia, nie wyrokiem. Idzie **przed** `hpCurrent`, bo to ono wyznacza
+    // Wytrzymałość maksymalna (etap 27l). Idzie **przed** `hpCurrent`, bo to ono wyznacza
     // sufit dla bieżących PW w tym samym patchu — karta wysyła oba naraz.
     if (patch.hpMax !== undefined) {
-      if (
-        typeof patch.hpMax !== 'number' ||
-        !Number.isInteger(patch.hpMax) ||
-        patch.hpMax < 1 ||
-        patch.hpMax > COVER_HP_MAX
-      ) {
-        throw new RealtimeError('BAD_REQUEST');
-      }
-      data.hpMax = patch.hpMax;
+      const hpMax = sanitizeCoverHp(patch.hpMax);
+      if (hpMax === null) throw new RealtimeError('BAD_REQUEST');
+      data.hpMax = hpMax;
       // Obniżone maksimum ściąga za sobą bieżące PW: osłona z „12/10" byłaby
       // wrakiem, który raportuje więcej życia, niż go ma.
-      if (row.hpCurrent > patch.hpMax) data.hpCurrent = patch.hpMax;
+      if (row.hpCurrent > hpMax) data.hpCurrent = hpMax;
     }
 
     // The GM's hand on the body points: dent one without shooting it, or weld a

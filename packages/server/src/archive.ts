@@ -363,6 +363,7 @@ export async function exportScene(
           height: true,
           hpMax: true,
           hpCurrent: true,
+          hidden: true,
         },
       }),
       prisma.mapLight.findMany({
@@ -638,6 +639,7 @@ export async function importScene(
         height: num(row.height, 1),
         hpMax: num(row.hpMax, 1),
         hpCurrent: num(row.hpCurrent, 1),
+        hidden: bool(row.hidden),
       })),
     });
   }

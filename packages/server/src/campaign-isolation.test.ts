@@ -243,7 +243,7 @@ async function seedWorld(campaignId: string, gmId: string, label: string): Promi
   const cover = await p.cover.create({
     data: {
       sceneId: scene.id,
-      typeId: 'wood-wall',
+      typeId: 'generic',
       name,
       x: 0,
       y: 0,
@@ -549,7 +549,7 @@ const CASES: Record<string, Case> = {
   // covers
   'cover:create': foreign((a) => ({
     sceneId: a.sceneId,
-    typeId: 'wood-wall',
+    hpMax: 8,
     x: 1,
     y: 1,
     width: 2,

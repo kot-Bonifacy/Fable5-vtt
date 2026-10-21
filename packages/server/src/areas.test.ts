@@ -605,7 +605,8 @@ describe('cover, throwing objects and jumping clear', () => {
     const car = data(
       await emitAck<CoverView>(gm, 'cover:create', {
         sceneId,
-        typeId: 'car',
+        hpMax: 22,
+        name: 'Samochód',
         x: AIM.x - 2 * PX_PER_M,
         y: AIM.y - 3 * PX_PER_M,
         width: 4 * PX_PER_M,

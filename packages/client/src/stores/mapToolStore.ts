@@ -11,12 +11,11 @@ import {
   LIGHT_DEFAULT_BRIGHT_M,
   LIGHT_DEFAULT_COLOR,
   LIGHT_DEFAULT_DIM_M,
-  EMPTY_COVER_CATALOGUE,
+  COVER_DEFAULT_HP,
+  COVER_HP_MAX,
   WALL_ARMOR_MAX,
   isBarrier,
-  buildCoverCatalogue,
   type ContainerPreset,
-  type CpredCoverCatalogue,
   type DrawingStyle,
   type FogMode,
   type WallKind,
@@ -212,15 +211,14 @@ interface MapToolStoreState extends DrawSettings {
   setWallConcealPenalty: (value: number) => void;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
-  /** Preset the next dragged rectangle becomes („car", „concrete-bollard"…). */
-  coverTypeId: string;
   /**
-   * The catalogue, fetched once from `data/public`. It lives with the tool
-   * settings rather than in `coverStore` because only the GM's palette reads
-   * it: what a *player* needs about a cover — its size, name and body points —
-   * already travels with the row.
+   * Body points of the next dragged cover (21.10.2026: one generic „Osłona"
+   * instead of a catalogue preset). Remembered until the page is reloaded, like
+   * the barrier's armour — a street is lined in runs of the same kerb.
    */
-  coverCatalogue: CpredCoverCatalogue;
+  coverHp: number;
+  /** The next cover is hidden from the players (an ambush barricade). */
+  coverHidden: boolean;
   /** Compendium entry the next dragged rectangle becomes; '' = nothing armed. */
   zoneEntryId: string;
   /** Hidden until somebody notices it; the default for a system with a spot DV. */
@@ -257,8 +255,9 @@ interface MapToolStoreState extends DrawSettings {
   /** Clamped to a whole number from 0 to `WALL_ARMOR_MAX`. */
   setWallArmor: (wallArmor: number) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
-  setCoverTypeId: (coverTypeId: string) => void;
-  setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
+  /** Clamped to a whole number from 1 to `COVER_HP_MAX`. */
+  setCoverHp: (coverHp: number) => void;
+  setCoverHidden: (coverHidden: boolean) => void;
   setZoneEntryId: (zoneEntryId: string) => void;
   setZoneHidden: (zoneHidden: boolean) => void;
   setNetPointArchitectureId: (netPointArchitectureId: string) => void;
@@ -313,8 +312,8 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
           : -4,
       }),
     wallSnapGrid: true,
-    coverTypeId: '',
-    coverCatalogue: EMPTY_COVER_CATALOGUE,
+    coverHp: COVER_DEFAULT_HP,
+    coverHidden: false,
     zoneEntryId: '',
     zoneHidden: true,
     netPointArchitectureId: '',
@@ -357,14 +356,13 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
           : 0,
       }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
-    setCoverTypeId: (coverTypeId) => set({ coverTypeId }),
-    setCoverCatalogue: (coverCatalogue) =>
-      set((state) => ({
-        coverCatalogue,
-        // First catalogue in also picks the first preset, so the palette is
-        // never armed with nothing selected.
-        coverTypeId: state.coverTypeId || (coverCatalogue.presets[0]?.id ?? ''),
-      })),
+    setCoverHp: (coverHp) =>
+      set({
+        coverHp: Number.isFinite(coverHp)
+          ? Math.min(COVER_HP_MAX, Math.max(1, Math.round(coverHp)))
+          : COVER_DEFAULT_HP,
+      }),
+    setCoverHidden: (coverHidden) => set({ coverHidden }),
     setZoneEntryId: (zoneEntryId) => set({ zoneEntryId }),
     setZoneHidden: (zoneHidden) => set({ zoneHidden }),
     setNetPointArchitectureId: (netPointArchitectureId) => set({ netPointArchitectureId }),
@@ -399,29 +397,4 @@ export function currentWallArmor(state: MapToolStoreState): number | undefined {
 /** The style the toolbar currently describes — what a new shape is drawn with. */
 export function currentDrawingStyle(state: MapToolStoreState): DrawingStyle {
   return { color: state.drawColor, width: state.drawWidth, filled: state.drawFilled };
-}
-
-let catalogueRequested = false;
-
-/**
- * Fetches the cover catalogue once per session.
- *
- * From the **API** rather than from `/public/`, unlike the status registry: a
- * group playing with the rulebook's own table has it in `data/private/`, which
- * is never served as a static file, and a palette reading the public samples
- * would promise body points the server does not use. A failure only leaves the
- * palette empty — every cover already on a scene keeps its numbers, because
- * those live on the row.
- */
-export function ensureCoverCatalogueLoaded(): void {
-  if (catalogueRequested) return;
-  catalogueRequested = true;
-  fetch('/api/cpred/covers')
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-    .then((data: unknown) => {
-      useMapToolStore.getState().setCoverCatalogue(buildCoverCatalogue(data));
-    })
-    .catch(() => {
-      catalogueRequested = false;
-    });
 }

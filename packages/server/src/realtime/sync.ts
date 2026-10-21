@@ -23,7 +23,7 @@ import { fetchFogState } from './fog-io.js';
 import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
 import { fetchSceneWalls } from './walls-io.js';
-import { fetchSceneCovers } from './covers-io.js';
+import { fetchCoversFor } from './covers-io.js';
 import { fetchSceneSmoke } from './smoke-io.js';
 import { fetchZonesFor } from './zones-io.js';
 import { fetchSceneLights } from './lights-io.js';
@@ -150,9 +150,10 @@ export async function buildStateSync(
       : Promise.resolve<WallView[]>([]),
     // Cover is the one scene object everybody receives (stage 16c): a car in
     // the street is not a secret, and a client that did not have it could not
-    // draw it, plan a route round it or offer it as a target.
+    // draw it, plan a route round it or offer it as a target. A cover the GM
+    // hid (21.10.2026) is the exception, and it is cut out of a player's list.
     viewedSceneId
-      ? fetchSceneCovers(deps.ctx.prisma, viewedSceneId)
+      ? fetchCoversFor(deps.ctx.prisma, viewedSceneId, user)
       : Promise.resolve<CoverView[]>([]),
     // Smoke rides with the covers and for the same reason (stage 16h): a client
     // that cannot draw the cloud cannot show a player why their roll was -4.

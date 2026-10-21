@@ -12,9 +12,8 @@ import { coverStanding, pickCoverAt } from '@vtt/shared';
  * arrives whole — with its body points, which is how a player decides whether
  * the bonnet will hold for another round.
  *
- * The catalogue (material × thickness → PW) is *not* here. It is static data
- * fetched once from `/public/cpred/covers.json` and only the GM's tool palette
- * needs it, so it lives next to the tool settings in `mapToolStore`.
+ * Since 21.10.2026 the GM may hide a cover; a player's list simply lacks it
+ * (the server cuts it out), and the GM's copy carries `hidden: true`.
  */
 interface CoverStoreState {
   /** Ascending by id — which is the paint order, and the click order. */

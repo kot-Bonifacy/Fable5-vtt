@@ -321,7 +321,8 @@ describe('kasowanie i cofanie obiektów sceny', () => {
         data(
           await emitAck<CoverView>(gm, 'cover:create', {
             sceneId,
-            typeId: 'car',
+            hpMax: 22,
+            name: 'Samochód',
             x,
             y: 600,
             width: 100,

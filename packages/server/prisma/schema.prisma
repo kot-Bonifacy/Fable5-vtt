@@ -1080,9 +1080,9 @@ model Wall {
 model Cover {
   id      Int    @id @default(autoincrement())
   sceneId String
-  /// Catalogue preset it was placed from ("car", "concrete-bollard", …).
+  /// Catalogue preset it was placed from ("car", …); "generic" since 21.10.2026.
   typeId  String
-  /// Label drawn on the map; defaults to the preset's name.
+  /// Label drawn on the map; defaults to "Osłona".
   name    String
   /// Top-left corner and size in scene (world) pixels; axis-aligned rectangle.
   x      Float
@@ -1092,6 +1092,8 @@ model Cover {
   /// Body points. 0 = destroyed; the row stays as scenery and stops nothing.
   hpMax     Int
   hpCurrent Int
+  /// Hidden from the players (21.10.2026): absent from their payload, still stops rounds.
+  hidden    Boolean @default(false)
 
   createdAt DateTime @default(now())
 

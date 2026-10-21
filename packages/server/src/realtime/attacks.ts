@@ -141,6 +141,7 @@ import {
   type SceneVisionContext,
 } from './vision.js';
 import { toCoverView } from './covers-io.js';
+import { emitCovers } from './covers.js';
 import { isBodyBlocked } from './walls-io.js';
 import { toSceneView } from './scenes.js';
 import {
@@ -1107,6 +1108,13 @@ export async function performAttackRoll(
         lineOfFire === false || explosive
           ? null
           : await blockingCoverFor(deps, scene, origin, aimPoint, fire, coverTarget?.id ?? null);
+      // A cover the GM hid (21.10.2026) is found the hard way: the first player
+      // shot it stops shows it to the table, since the card below names it
+      // and offers it as a target anyway.
+      if (blocking?.hidden && user.role !== ROLE_GM) {
+        await deps.ctx.prisma.cover.update({ where: { id: blocking.id }, data: { hidden: false } });
+        await emitCovers(deps, campaignId, scene);
+      }
       if (blocking && payload?.request?.ignoreCover !== true) {
         return {
           blocked: {

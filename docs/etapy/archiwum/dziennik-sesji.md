@@ -1,5 +1,37 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.10, druga (po `a0a602c`) — zlecenie MG: kamery i wieżyczki przejęte w Sieci
+
+**Zlecenie MG:** „dorobić kamery (chyba nie działają)”; postać, która przejmuje kamerę, ma mieć
+ekran wycentrowany na kamerze, a przejęcie automatycznej wieżyczki ma chwilowo pokazać wieżyczkę.
+**Diagnoza:** kamera od 26d była tylko przełącznikiem (Obróć/Wyłącz to stan i zdanie na czacie),
+nic na mapie. **Decyzje MG (pytania na starcie):** przejęta kamera to podgląd — widać przez nią;
+widzi tylko netrunner (nie drużyna); stożek z kierunkiem, „Obróć” przestawia kierunek; kadr po
+Kontroli i po kliknięciu nazwy urządzenia w oknie Sieci (strzał wieżyczki też rzutem oka).
+**Zrobione:** `computeVisionCone` (`shared/vision.ts`), `realtime/net-cameras.ts` →
+`SceneVisionContext.borrowed` → stożek 90° w `viewerSightFor` (tylko pokazuje: bez drzwi, marszu,
+pamięci mapy i walki z zauważenia); `emitRuns` przelicza widok, gdy zmieni się, kto przez co patrzy.
+„Obróć” kamery z figurą ustawia `Token.facing` z listy ośmiu kierunków („na południe”), czat:
+„Kamera w korytarzu — obrócona na południe.”; kamera bez figury jak dawniej. Okno Sieci: nazwa
+urządzenia z figurą na oglądanej scenie to przycisk „⌖” (kadr), plakietka „patrzy na …”. Po
+udanej Kontroli: rzut oka na każdą wieżyczkę (2,5 s), potem kadr zostaje na kamerze; bez kamery
+powrót na netrunnera (chyba że gracz ruszył mapę). Punkt ląduje w pasie mapy obok okna Sieci,
+a w miejscu urządzenia staje znacznik z nazwą (rysunek pingu, tylko u siebie). Edytor Architektury:
+podpowiedź przy figurze kamery i ostrzeżenie „kamera bez żetonu”. Umowa i pułapka na górze `siec`.
+**Rozstrzygnięte bez pytań (do słowa MG):** stożek 90° i zasięg z „zasięgu widzenia” figury;
+kamera nieobrócona patrzy na północ; widok z kamery działa na scenach z widzeniem Dynamicznym (na
+mapie otwartej gracz i tak widzi wszystko); kamera w ciemności widzi tylko oświetlone.
+
+**Weryfikacja:** `shared` 2525/2525 (+4 stożek, +5 kamera, ostrzeżenie), serwer 1538/1538 (+6 nowy
+`net-cameras.test.ts`: przed Kontrolą nic, po — Strażnik w stożku, Kot poza nim, gapa z drużyny
+nie widzi, `at`/`facing` w widoku, „Obróć” na południe, Wyłącz gasi i sam przelicza widok),
+klient 417/417; `tsc` i ESLint czyste w trzech pakietach. **Oględziny w Firefoksie** (tymczasowy
+spec `99-ogledziny/t99-kamery` z `po-T6`, niecommitowany): Ola-Iskra, Kontrola → rzut oka na
+„Grzechot” → kadr na kamerze ze stożkiem na wschód i Strażnikiem, „Obróć” na południe → Kot,
+klik w nazwę wieżyczki, strzał → rzut oka i powrót na Iskrę. Suity E2E nie puszczano (żadna nie
+dotyka urządzeń węzła poza T5a, który ich nie obsługuje). **Zostało:** kamera w Poligonie („Kamera
+nad bramą”) nie ma figury — żeby zobaczyć podgląd w `dev.db`, MG przypina jej żeton w edytorze.
+
 ### Sesja 20.10 (po `d79020d`) — zlecenie MG: PD dla jednej postaci i komunikat dla gracza
 
 **Zlecenie MG:** MG przyznaje PD konkretnej postaci, gracz wydaje je sam, a o przyznaniu dowiaduje

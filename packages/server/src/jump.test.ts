@@ -259,7 +259,7 @@ describe('skok (19.10.2026)', () => {
     ]);
     const cover = async (x: number, y: number, width: number, height: number) =>
       data(
-        await emitAck(gm, 'cover:create', { sceneId, typeId: 'car', x, y, width, height }),
+        await emitAck(gm, 'cover:create', { sceneId, hpMax: 22, x, y, width, height }),
         'cover:create',
       );
     await cover(500, 400, 100, 70);

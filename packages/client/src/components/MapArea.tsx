@@ -171,7 +171,6 @@ import {
   currentDrawingStyle,
   currentPlayerToggle,
   currentWallArmor,
-  ensureCoverCatalogueLoaded,
   useMapToolStore,
   type TokenPlacement,
 } from '../stores/mapToolStore.js';
@@ -780,10 +779,6 @@ export function MapArea() {
 
   useEffect(() => {
     ensureStatusesLoaded();
-    // The cover catalogue (stage 16c) — the GM's palette needs the material
-    // table, and the same lesson as below applies: fetch it where the map is,
-    // not where a panel happens to be opened.
-    ensureCoverCatalogueLoaded();
     // The skill registry too, and that is not tidiness (stage 16f). Until now
     // it was fetched by the „Postacie" tab and by an open character sheet,
     // which was enough while every attack started from one of them. The HUD's
@@ -1060,19 +1055,13 @@ export function MapArea() {
         noteAck('scene', ack, (code) => openingErrorText(code, kind));
       });
     };
-    // Cover (stage 16c). The rectangle is the whole gesture: the preset the GM
-    // has armed decides the material, the label and the body points, and those
-    // are read on the *server* — a client that could name its own toughness
-    // could park a bulletproof crate anywhere.
+    // Cover (stage 16c). The rectangle is the whole gesture; the body points
+    // and the visibility are what the palette is set to (21.10.2026).
     renderer.onCoverRect = (rect) => {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
-      const typeId = useMapToolStore.getState().coverTypeId;
-      if (!typeId) {
-        notifyRefusal('scene', 'Wybierz rodzaj osłony w pasku narzędzi.', { tone: 'warn' });
-        return;
-      }
-      void createCover(current.id, typeId, rect).then((ack) => {
+      const tools = useMapToolStore.getState();
+      void createCover(current.id, tools.coverHp, tools.coverHidden, rect).then((ack) => {
         noteAck('scene', ack, coverErrorText);
       });
     };

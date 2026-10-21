@@ -2579,15 +2579,15 @@ export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { scen
 export const toggleOpening = (wallId: number, open?: boolean) =>
   emitSceneAck<WallView>('opening:toggle', { wallId, open });
 
-/* Cover (stage 16c). GM-only to edit, visible to everybody — the body points
-   are *not* sent: the server reads them out of the catalogue the preset names,
-   so a client cannot type its own toughness into a car. */
+/* Cover (stage 16c). GM-only to edit; visible to everybody unless the GM hid
+   it (21.10.2026), when only the GM gets the row. */
 
 export const createCover = (
   sceneId: string,
-  typeId: string,
+  hpMax: number,
+  hidden: boolean,
   rect: { x: number; y: number; width: number; height: number },
-) => emitSceneAck<CoverView>('cover:create', { sceneId, typeId, ...rect });
+) => emitSceneAck<CoverView>('cover:create', { sceneId, hpMax, hidden, ...rect });
 
 export const updateCover = (coverId: number, patch: CoverUpdatePayload['patch']) =>
   emitSceneAck<CoverView>('cover:update', { coverId, patch });
