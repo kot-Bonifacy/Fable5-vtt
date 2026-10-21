@@ -21,7 +21,6 @@ import {
 import {
   addToCombat,
   combatErrorText,
-  endCombat,
   releaseCombatHold,
   removeFromCombat,
   resetCombatTurn,
@@ -45,6 +44,7 @@ import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { noteAck } from '../notices.js';
+import { askEndCombat } from '../foes-defeated.js';
 import { EmptyState } from './EmptyState.js';
 
 /** Tokens likely to fight: the players' characters come pre-ticked. */
@@ -668,11 +668,7 @@ export function CombatPanel() {
           <button
             type="button"
             className="small-button small-button--danger"
-            onClick={() => {
-              if (window.confirm('Zakończyć walkę? Kolejka inicjatywy zostanie skasowana.')) {
-                void endCombat();
-              }
-            }}
+            onClick={() => askEndCombat('Zakończyć walkę?', 'Tak, zakończ')}
           >
             Zakończ walkę
           </button>

@@ -441,8 +441,9 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
         .toBe(roll.total);
     }
 
-    // MG kończy walkę (✕ pyta `window.confirm` — fixture odpowiada „tak”).
+    // MG kończy walkę (✕ pyta paskiem w kanale komunikatów — „Tak, wyłącz”).
     await page.getByRole('button', { name: 'Wyłącz tryb turowy' }).click();
+    await page.getByRole('button', { name: 'Tak, wyłącz' }).click();
     await expect.poll(() => combatRow() ?? null).toBeNull();
   });
 

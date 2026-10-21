@@ -748,8 +748,9 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
         .not.toContain(token('Rzeźnik').id);
     }
 
-    // „✕” pyta `window.confirm` — fixture aktora odpowiada „tak”.
+    // „✕” pyta paskiem w kanale komunikatów — „Tak, wyłącz”.
     await page.getByRole('button', { name: 'Wyłącz tryb turowy' }).click();
+    await page.getByRole('button', { name: 'Tak, wyłącz' }).click();
     await expect.poll(() => combatRow() ?? null).toBeNull();
     for (const player of [marek, ola]) {
       await expect(

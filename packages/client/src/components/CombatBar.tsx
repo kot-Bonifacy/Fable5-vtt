@@ -10,7 +10,6 @@ import {
   findInitiativeTies,
 } from '@vtt/shared';
 import {
-  endCombat,
   nextCombatTurn,
   previousCombatTurn,
   reorderCombat,
@@ -29,6 +28,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 import { usePortraitFrameStyle } from '../portrait-banner.js';
 import { takeFigure } from '../hud.js';
+import { askEndCombat } from '../foes-defeated.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { PlayerMoveSwitch } from './PlayerMoveSwitch.js';
 
@@ -355,9 +355,8 @@ export function CombatBar() {
     queue.scrollLeft += event.deltaY;
   }, []);
 
-  async function stopTurnMode() {
-    if (!window.confirm('Wyłączyć tryb turowy? Kolejka inicjatywy zostanie skasowana.')) return;
-    await endCombat();
+  function stopTurnMode() {
+    askEndCombat('Wyłączyć tryb turowy?', 'Tak, wyłącz');
   }
 
   // No queue, no strip: the map gets its full height back.
@@ -574,7 +573,7 @@ export function CombatBar() {
         <button
           type="button"
           className="combat-bar-stop"
-          onClick={() => void stopTurnMode()}
+          onClick={stopTurnMode}
           title="Wyłącz tryb turowy — kolejka inicjatywy zostanie skasowana"
           aria-label="Wyłącz tryb turowy"
         >

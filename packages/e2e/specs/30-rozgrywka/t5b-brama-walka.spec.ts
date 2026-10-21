@@ -1079,8 +1079,9 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     expect(save.outcome?.success).toBe(true);
     expect(statusesOf('Strażnik')).not.toContain('dead');
 
-    // „✕” pyta `window.confirm` — fixture aktora odpowiada „tak”.
+    // „✕” pyta paskiem w kanale komunikatów — „Tak, wyłącz”.
     await mg.page.getByRole('button', { name: 'Wyłącz tryb turowy' }).click();
+    await mg.page.getByRole('button', { name: 'Tak, wyłącz' }).click();
     await expect.poll(() => combatRow() ?? null).toBeNull();
     for (const player of [marek, ola]) {
       await expect(

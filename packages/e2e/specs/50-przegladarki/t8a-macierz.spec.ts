@@ -232,6 +232,7 @@ for (const layout of LAYOUTS) {
       await endPlayerTurn(ola);
       expect(activeName()).toBe('Zbir');
       await mg.page.getByRole('button', { name: 'Wyłącz tryb turowy' }).click();
+      await mg.page.getByRole('button', { name: 'Tak, wyłącz' }).click();
       await expect.poll(() => combatRow() ?? null).toBeNull();
       for (const player of [marek, ola]) {
         await expect(player.page.getByRole('group', { name: 'Kolejka inicjatywy' })).toHaveCount(
