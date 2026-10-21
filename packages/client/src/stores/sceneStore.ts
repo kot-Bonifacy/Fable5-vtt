@@ -26,8 +26,8 @@ interface SceneStoreState {
   effectiveScene: SceneView | null;
   /**
    * Kontrastowa siatka przy otwartym edytorze sceny (MG, 12.09) — stan wyłącznie
-   * tej karty, nigdy po sieci. Włącza go `SceneEditor` przy otwarciu i gasi
-   * przy zamknięciu; wygląd rozstrzyga `map/grid-style.ts`.
+   * tej karty, nigdy po sieci. Domyślnie wyłączony (21.10), włącza go przełącznik
+   * w `SceneConfigWindow`, gasi zamknięcie okna; wygląd rozstrzyga `map/grid-style.ts`.
    */
   gridContrast: boolean;
   setGridContrast: (on: boolean) => void;

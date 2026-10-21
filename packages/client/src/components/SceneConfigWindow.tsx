@@ -347,12 +347,10 @@ function SceneConfigBody() {
     };
   });
 
-  // Kontrastowa siatka żyje tyle, co edytor (12.09): włącza się z nim i gaśnie
-  // przy zamknięciu, więc mapa nigdy nie zostaje w trybie roboczym po edycji.
-  useEffect(() => {
-    setGridContrast(true);
-    return () => setGridContrast(false);
-  }, [setGridContrast]);
+  // Kontrastowa siatka żyje najwyżej tyle, co edytor (12.09): domyślnie wyłączona
+  // (zlecenie MG, 21.10), MG włącza ją przełącznikiem, a zamknięcie okna ją gasi,
+  // więc mapa nigdy nie zostaje w trybie roboczym po edycji.
+  useEffect(() => () => setGridContrast(false), [setGridContrast]);
 
   // Scena zniknęła spod okna (skasowana, MG nic nie ogląda) — okno też.
   useEffect(() => {
@@ -661,12 +659,11 @@ function SceneConfigBody() {
                           {Math.round(grid.alpha * 100)}%
                         </span>
                       </div>
-                      {/* Tylko u MG i tylko przy otwartym edytorze (12.09).
-                          Odhaczenie pokazuje siatkę tak, jak wygląda w grze —
-                          inaczej suwaka „Krycie" nie dałoby się ocenić. */}
+                      {/* Tylko u MG i tylko przy otwartym edytorze (12.09),
+                          domyślnie odhaczone (21.10) — siatka wygląda jak w grze. */}
                       <label
                         className="settings-row settings-row--switch"
-                        title="Obwódka i pełne krycie, żeby rozjazd kratek z mapą był widoczny na każdym tle. Widzisz to tylko Ty i tylko przy otwartym oknie; odznacz, żeby ocenić kolor i krycie."
+                        title="Obwódka i pełne krycie, żeby rozjazd kratek z mapą był widoczny na każdym tle. Widzisz to tylko Ty i tylko przy otwartym oknie; zamknięcie okna je wyłącza."
                       >
                         <input
                           type="checkbox"
