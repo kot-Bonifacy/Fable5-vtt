@@ -1000,6 +1000,20 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   useEffect(() => {
     if (!token) onClose();
   }, [token, onClose]);
+
+  // Esc zamyka menu (21.10) — i tylko menu: nasłuch w fazie przechwytywania
+  // zatrzymuje klawisz, zanim drabinka Esc mapy zdejmie przy okazji zaznaczenie.
+  // Okno edycji zostaje przy swoich przyciskach.
+  useEffect(() => {
+    if (editing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [editing, onClose]);
   if (!token) return null;
 
   if (editing) {
