@@ -926,6 +926,24 @@
    Postawa figury (etap 56, Disposition z Foundry) — widzi ją tylko MG
    -------------------------------------------------------------------------- */
 
+/* Znaczek jest listą wyboru (21.10) — wygląda jak znaczek, nie jak pole. */
+select.disposition-tag {
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+select.disposition-tag:hover,
+select.disposition-tag:focus-visible {
+  border-color: currentColor;
+}
+
+select.disposition-tag option {
+  background: var(--bg-panel);
+  color: var(--text);
+  text-transform: none;
+}
+
 .disposition-tag--hostile {
   color: var(--err-ink);
   background: rgb(var(--err-rgb) / 0.14);

@@ -3,6 +3,7 @@ import type {
   CombatantView,
   CpredStatEffect,
   StatusDefinition,
+  TokenDisposition,
   TokenView,
   TurnBudgetView,
 } from '@vtt/shared';
@@ -31,8 +32,10 @@ import { usePortraitFrameStyle } from '../portrait-banner.js';
 import {
   DISPOSITION_HINTS,
   DISPOSITION_RANK,
+  TOKEN_DISPOSITIONS,
   TOKEN_DISPOSITION_LABELS,
   dispositionOf,
+  setDisposition,
 } from '../disposition.js';
 import { BotTurnButton } from './BotTurnButton.js';
 import { CombatActions } from './CombatActions.js';
@@ -127,16 +130,27 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
   );
 }
 
-/** Znaczek postawy przy figurze na liście (etap 56) — widzi go tylko MG. */
+/**
+ * Znaczek postawy przy figurze na liście (etap 56) — widzi go tylko MG.
+ * Jest zarazem przełącznikiem, więc lista w zakładce „Walka” to podgląd
+ * postaw całej sceny i miejsce ich zmiany bez szukania figur na mapie.
+ */
 function DispositionTag({ token }: { token: TokenView }) {
   const disposition = dispositionOf(token);
   return (
-    <span
+    <select
       className={`combat-tag disposition-tag disposition-tag--${disposition}`}
+      value={disposition}
+      aria-label={`Postawa: ${token.name}`}
       title={DISPOSITION_HINTS[disposition]}
+      onChange={(e) => void setDisposition([token.id], e.target.value as TokenDisposition)}
     >
-      {TOKEN_DISPOSITION_LABELS[disposition]}
-    </span>
+      {TOKEN_DISPOSITIONS.map((value) => (
+        <option key={value} value={value}>
+          {TOKEN_DISPOSITION_LABELS[value]}
+        </option>
+      ))}
+    </select>
   );
 }
 
