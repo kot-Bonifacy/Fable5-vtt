@@ -47,6 +47,7 @@ import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 import { markMonthSettled } from './gametime.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 import { campaignShopTier, campaignShopTierOverrides, requireUnlockedTier } from './shop.js';
 import { campaignCatalogShopping } from './merchant.js';
 import { requireTeamCard, teamCardsWhere } from './team-cards.js';
@@ -236,6 +237,8 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireWallet(deps, campaign.id, user, payload?.characterId);
     refuseAwaitingGm(character, user);
+    // 21.10.2026 (zlecenie MG): w walce gracz nie robi zakupów.
+    await refuseInCombat(deps.ctx.prisma, campaign.id, user);
     const entry: CompendiumEntry | undefined = await campaignEntry(
       deps,
       campaign.id,

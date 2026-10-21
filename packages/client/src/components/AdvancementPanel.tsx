@@ -22,6 +22,7 @@ import {
   roleChangeErrorText,
 } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 
 /**
@@ -109,6 +110,7 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
   const registry = useCharacterStore((s) => s.registry);
   const [picked, setPicked] = useState('');
   const [busy, setBusy] = useState(false);
+  const locked = useCombatLocked();
 
   if (!character) return null;
   const data = character.data;
@@ -148,12 +150,14 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
           onChange={(e) => {
             setPicked(e.target.value);
           }}
-          disabled={gated || busy}
+          disabled={gated || busy || locked}
           aria-label="Nowa Rola"
           title={
-            gated
-              ? `Rolę zmienia się przy Zdolności bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK}.`
-              : undefined
+            locked
+              ? COMBAT_LOCKED_HINT
+              : gated
+                ? `Rolę zmienia się przy Zdolności bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK}.`
+                : undefined
           }
         >
           <option value="">— zmień Rolę na —</option>
@@ -176,16 +180,18 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
           type="button"
           className="advance-buy"
           onClick={() => void change()}
-          disabled={busy || plan === null || !plan.ok}
+          disabled={busy || locked || plan === null || !plan.ok}
           /* Nazwa Roli stoi w mianowniku po dwukropku, nigdy w środku zdania:
              `roles.json` niesie „Nomada", a „zostań Nomada" to nie jest zdanie
              po polsku — odmiany nazwy z pliku danych nie da się zgadnąć. */
           title={
-            plan?.ok
-              ? plan.plan.returning
-                ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
-                : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
-              : undefined
+            locked
+              ? COMBAT_LOCKED_HINT
+              : plan?.ok
+                ? plan.plan.returning
+                  ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
+                  : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
+                : undefined
           }
         >
           Zmień
@@ -222,6 +228,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
   const [history, setHistory] = useState<AdvancementEntryView[] | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const locked = useCombatLocked();
 
   /*
    * Rejestr czyta się na **stempel serwera**, nie na saldo — ta sama umowa, co
@@ -298,11 +305,13 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
             type="button"
             className="advance-buy"
             onClick={() => void buy(step)}
-            disabled={busy || short}
+            disabled={busy || short || locked}
             title={
-              short
-                ? `Brakuje ${step.cost - points} PD`
-                : `Podnieś: ${step.name} na poziom ${step.to} za ${step.cost} PD (zostanie ${points - step.cost})`
+              locked
+                ? COMBAT_LOCKED_HINT
+                : short
+                  ? `Brakuje ${step.cost - points} PD`
+                  : `Podnieś: ${step.name} na poziom ${step.to} za ${step.cost} PD (zostanie ${points - step.cost})`
             }
             aria-label={`Podnieś: ${step.name} na poziom ${step.to}`}
           >
@@ -331,6 +340,9 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
           {points} PD w zapasie
         </p>
       </header>
+      {locked && (
+        <p className="awareness-hint">W trakcie walki punktów się nie wydaje — awans po starciu.</p>
+      )}
 
       {abilities.length > 0 ? (
         <>

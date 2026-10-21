@@ -5,6 +5,7 @@ import {
   cpredAbilityAdvanceCost,
   cpredAbilityAdvanceStep,
   cpredAbilityAdvanceSteps,
+  cpredDevelopmentChanged,
   cpredRoleChangeSheet,
   cpredSkillAdvanceCost,
   cpredSkillAdvanceStep,
@@ -16,7 +17,7 @@ import {
   planCpredRoleChange,
   type CpredAdvanceSheet,
 } from './advancement.js';
-import { buildCpredRegistry } from './character.js';
+import { buildCpredRegistry, createDefaultCharacterData } from './character.js';
 import { createDefaultLifepath } from './lifepath.js';
 import { cpredInterfaceRank } from './netrun.js';
 import type { CpredRegistry } from './character.js';
@@ -429,5 +430,36 @@ describe('komunikat o przyznanych PD (20.10)', () => {
     expect(
       describeXpAwardNotice({ ...notice, amount: 90, labels: ['sesja 13.10', 'sesja 20.10'] }),
     ).toBe('MG przyznał 90 PD postaci Marek (sesja 13.10; sesja 20.10). Do wydania: 120 PD.');
+  });
+});
+
+describe('rozwój postaci poza Awansem (blokada w walce, 21.10)', () => {
+  const base = {
+    ...createDefaultCharacterData(),
+    medicine: { surgery: 2 },
+    fleet: [{ id: 'f1', kind: 'vehicle' as const, name: 'Kombi', level: 2, notes: '' }],
+    lifestyle: { level: 'kibble' as const, housing: 'street' as const },
+  };
+
+  it('nie widzi zmiany w polach odesłanych bez zmian', () => {
+    expect(cpredDevelopmentChanged(base, { ...base, medicine: { surgery: 2 } })).toBe(false);
+    expect(cpredDevelopmentChanged(base, { ...base, fabrication: { repair: 0 } })).toBe(false);
+  });
+
+  it('przepuszcza uwagi przy wpisie Taboru', () => {
+    const fleet = [{ ...base.fleet[0]!, notes: 'dziura w dachu' }];
+    expect(cpredDevelopmentChanged(base, { ...base, fleet })).toBe(false);
+  });
+
+  it('widzi rozdział Specjalizacji, wpis Taboru i przeprowadzkę', () => {
+    expect(cpredDevelopmentChanged(base, { ...base, medicine: { surgery: 3 } })).toBe(true);
+    expect(cpredDevelopmentChanged(base, { ...base, fleet: [] })).toBe(true);
+    expect(
+      cpredDevelopmentChanged(base, {
+        ...base,
+        lifestyle: { ...base.lifestyle, housing: 'streetVehicle' },
+      }),
+    ).toBe(true);
+    expect(cpredDevelopmentChanged(base, { ...base, lifestyle: null })).toBe(true);
   });
 });

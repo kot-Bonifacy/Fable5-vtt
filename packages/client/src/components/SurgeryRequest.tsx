@@ -13,6 +13,7 @@ import {
 } from '@vtt/shared';
 import { respondSurgery, surgeryErrorText } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { noteAck } from '../notices.js';
 import { formatEd } from './exchange/items.js';
 
@@ -34,6 +35,8 @@ export function SurgeryRequestRow({
 }) {
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // 21.10.2026: w walce się nie operuje — odmowa i wycofanie przechodzą.
+  const inCombat = useCombatLocked();
   const [price, setPrice] = useState(String(entry.defaultPrice));
   const [busy, setBusy] = useState(false);
 
@@ -113,11 +116,13 @@ export function SurgeryRequestRow({
               <button
                 type="button"
                 className="small-button"
-                disabled={busy || !validPrice}
+                disabled={busy || !validPrice || inCombat}
                 title={
-                  needsApproval
-                    ? 'Cena wyższa od domyślnej — pacjent musi ją zatwierdzić'
-                    : 'Test montażu rzuca się za twoją postać; pieniądze trafią na jej kartę'
+                  inCombat
+                    ? COMBAT_LOCKED_HINT
+                    : needsApproval
+                      ? 'Cena wyższa od domyślnej — pacjent musi ją zatwierdzić'
+                      : 'Test montażu rzuca się za twoją postać; pieniądze trafią na jej kartę'
                 }
                 onClick={() => void respond('operate')}
               >
@@ -142,8 +147,8 @@ export function SurgeryRequestRow({
             <button
               type="button"
               className="small-button"
-              disabled={busy}
-              title="Zgoda na wycenę — Medyk operuje od razu"
+              disabled={busy || inCombat}
+              title={inCombat ? COMBAT_LOCKED_HINT : 'Zgoda na wycenę — Medyk operuje od razu'}
               onClick={() => void respond('approve')}
             >
               Zgadzam się na {formatEd(entry.quote ?? 0)}

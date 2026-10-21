@@ -16,6 +16,7 @@ import {
 import { clearNotices, notifyInfo } from '../notices.js';
 import { dropHaggle, strikeHaggle } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { NumberStepper } from './NumberStepper.js';
 
 /**
@@ -39,6 +40,7 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
   const registry = useCharacterStore((s) => s.registry);
   const [opponent, setOpponent] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const inCombat = useCombatLocked();
 
   const rank = character
     ? cpredRoleAbilityRank(character.data, registry, CPRED_OPERATOR_ABILITY)
@@ -115,8 +117,8 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
             <span className="awareness-steps">
               <button
                 type="button"
-                disabled={busy !== null}
-                title={`Targuj się o: ${deal.name}`}
+                disabled={busy !== null || inCombat}
+                title={inCombat ? COMBAT_LOCKED_HINT : `Targuj się o: ${deal.name}`}
                 aria-label={`Targuj się: ${deal.name}`}
                 onClick={() => void haggle(deal.id)}
               >

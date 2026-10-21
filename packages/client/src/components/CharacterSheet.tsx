@@ -205,6 +205,7 @@ import {
 import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
 import { InlineNotice } from './NoticeColumn.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { askForCheck } from '../stores/checkStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
@@ -3806,6 +3807,8 @@ function DosesSection({
 function LifestyleFields({ data, saveData }: TabProps) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const registry = useCharacterStore((s) => s.registry);
+  // 21.10.2026: przeprowadzka i zmiana Poziomu życia czekają na koniec walki.
+  const locked = useCombatLocked();
   const lifestyle = data.lifestyle;
   const monthly = lifestyle ? monthlyCostOf(lifestyle) : null;
   // Etap 48a (decyzja MG z 10.10): kwaterunek od Korporacji gracz widzi od
@@ -3835,12 +3838,14 @@ function LifestyleFields({ data, saveData }: TabProps) {
           <span className="cp-label">Zakwaterowanie</span>
           <select
             value={lifestyle?.housing ?? 'street'}
-            disabled={!lifestyle}
+            disabled={!lifestyle || locked}
             aria-label="Zakwaterowanie"
             title={
-              lifestyle
-                ? 'Gdzie postać sypia — czynsz schodzi z konta pierwszego dnia miesiąca.'
-                : 'Najpierw wybierz Poziom życia — bez niego ta postać nie jest rozliczana.'
+              locked
+                ? COMBAT_LOCKED_HINT
+                : lifestyle
+                  ? 'Gdzie postać sypia — czynsz schodzi z konta pierwszego dnia miesiąca.'
+                  : 'Najpierw wybierz Poziom życia — bez niego ta postać nie jest rozliczana.'
             }
             onChange={(e) => {
               const housing = e.target.value;
@@ -3865,6 +3870,8 @@ function LifestyleFields({ data, saveData }: TabProps) {
           <span className="cp-label">Poziom życia</span>
           <select
             value={lifestyle?.level ?? ''}
+            disabled={locked}
+            title={locked ? COMBAT_LOCKED_HINT : undefined}
             aria-label="Poziom życia"
             onChange={(e) => {
               const level = e.target.value;
@@ -4142,6 +4149,7 @@ function CyberwareSection({
   focusRowId: string | null;
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const locked = useCombatLocked();
   const capacity = cyberwareCapacity(data.cyberware);
   const [confirmRow, setConfirmRow] = useState<string | null>(null);
   const [freeTherapy, setFreeTherapy] = useState(false);
@@ -4312,6 +4320,7 @@ function CyberwareSection({
                       <button
                         type="button"
                         className="small-button character-delete"
+                        disabled={locked}
                         onClick={() => {
                           if (confirmRow !== row.id) {
                             setConfirmRow(row.id);
@@ -4320,7 +4329,11 @@ function CyberwareSection({
                           setConfirmRow(null);
                           sendCyberwareAction({ characterId, action: 'remove', rowId: row.id });
                         }}
-                        title="Usuń wszczep (sufit Człowieczeństwa wraca, punkty nie)"
+                        title={
+                          locked
+                            ? COMBAT_LOCKED_HINT
+                            : 'Usuń wszczep (sufit Człowieczeństwa wraca, punkty nie)'
+                        }
                       >
                         {confirmRow === row.id ? 'Tak, usuń' : '✕'}
                       </button>

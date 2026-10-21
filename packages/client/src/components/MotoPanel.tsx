@@ -17,6 +17,7 @@ import {
 } from '@vtt/shared';
 import { queueCharacterSave } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { NumberStepper } from './NumberStepper.js';
 
 /**
@@ -36,6 +37,7 @@ import { NumberStepper } from './NumberStepper.js';
 export function MotoPanel({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
+  const locked = useCombatLocked();
 
   const rank = character
     ? cpredRoleAbilityRank(character.data, registry, CPRED_MOTO_ABILITY)
@@ -51,7 +53,7 @@ export function MotoPanel({ characterId }: { characterId: string }) {
   function save(rows: CpredFleetRow[]): void {
     // Ta sama funkcja, którą serwer odrzuca łatę — guzik gaśnie tam, gdzie
     // odmowa i tak by przyszła.
-    if (cpredFleetProblem(rows, rank) !== null) return;
+    if (locked || cpredFleetProblem(rows, rank) !== null) return;
     queueCharacterSave(characterId, { data: { fleet: rows } });
   }
 
@@ -81,6 +83,7 @@ export function MotoPanel({ characterId }: { characterId: string }) {
           <li key={row.id} className="awareness-row fleet-row">
             <select
               value={row.kind}
+              disabled={locked}
               aria-label={`Rodzaj wpisu: ${row.name}`}
               onChange={(event) => patchRow(row.id, { kind: event.target.value as CpredFleetKind })}
             >
@@ -94,6 +97,7 @@ export function MotoPanel({ characterId }: { characterId: string }) {
               type="text"
               maxLength={CPRED_FLEET_NAME_MAX}
               value={row.name}
+              disabled={locked}
               placeholder="Supermotocykl"
               aria-label="Nazwa wpisu Taboru"
               onChange={(event) => patchRow(row.id, { name: event.target.value })}
@@ -109,7 +113,8 @@ export function MotoPanel({ characterId }: { characterId: string }) {
             <button
               type="button"
               className="cp-mini-button"
-              title={`Usuń z Taboru: ${row.name}`}
+              disabled={locked}
+              title={locked ? COMBAT_LOCKED_HINT : `Usuń z Taboru: ${row.name}`}
               aria-label={`Usuń z Taboru: ${row.name}`}
               onClick={() => save(fleet.filter((entry) => entry.id !== row.id))}
             >
@@ -122,11 +127,13 @@ export function MotoPanel({ characterId }: { characterId: string }) {
       <div className="awareness-buttons">
         <button
           type="button"
-          disabled={left === 0}
+          disabled={left === 0 || locked}
           title={
-            left === 0
-              ? 'Każdy poziom Moto to jeden wpis — na kolejny trzeba awansu.'
-              : 'Dołóż pojazd albo ulepszenie z awansu'
+            locked
+              ? COMBAT_LOCKED_HINT
+              : left === 0
+                ? 'Każdy poziom Moto to jeden wpis — na kolejny trzeba awansu.'
+                : 'Dołóż pojazd albo ulepszenie z awansu'
           }
           onClick={() =>
             save([

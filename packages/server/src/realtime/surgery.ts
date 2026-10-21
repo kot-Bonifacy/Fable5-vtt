@@ -42,6 +42,7 @@ import {
 } from './cyberware.js';
 import { findCampaignCharacter } from './inventory.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 
 /**
  * Prośba o operację u Medyka innego gracza (#41, 30.09.2026) — pacjent prosi,
@@ -124,6 +125,8 @@ export const cyberwareRequestEvent = defineEvent<CyberwareRequestPayload, { mess
     if (!surgeon.playReady) throw new RealtimeError('CHARACTER_NOT_FOUND');
     const payment = payload?.payment;
     if (payment !== 'full' && payment !== 'installOnly') throw new RealtimeError('BAD_REQUEST');
+    // 21.10.2026: o operację w środku starcia się nie prosi.
+    await refuseInCombat(deps.ctx.prisma, campaignId, user);
 
     const entry = requireCyberwareEntry(deps, payload?.entryId);
     // „Bez operacji" (chip w gnieździe) nie ma Testu, więc nie ma o co prosić.
@@ -262,6 +265,10 @@ export const cyberwareRespondEvent = defineEvent<CyberwareRespondPayload, { pend
       throw new RealtimeError('BAD_REQUEST');
     }
     if (inFlight.has(messageId)) throw new RealtimeError('SURGERY_CLOSED');
+    // Odmowa i wycofanie prośby przechodzą — w walce nie operuje się tylko.
+    if (action === 'operate' || action === 'approve') {
+      await refuseInCombat(deps.ctx.prisma, campaignId, user);
+    }
     inFlight.add(messageId);
     try {
       const stored = await deps.ctx.prisma.chatMessage.findUnique({ where: { id: messageId } });

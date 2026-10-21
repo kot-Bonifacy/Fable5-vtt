@@ -32,6 +32,7 @@ import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
+import { refuseInCombat } from './combat-lock.js';
 import { emitTokensOfCharacter } from './tokens.js';
 import { campaignMemberSockets } from './state.js';
 
@@ -207,6 +208,7 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
     refuseAwaitingGm(character, user);
+    await refuseInCombat(deps.ctx.prisma, campaign.id, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
     // The same function the panel greys its buttons with, so a lit button and a
@@ -267,6 +269,7 @@ export const characterRoleChangeEvent = defineEvent<CharacterRoleChangePayload, 
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
     refuseAwaitingGm(character, user);
+    await refuseInCombat(deps.ctx.prisma, campaign.id, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
 
     // The same function the panel greys its button with.

@@ -68,6 +68,7 @@ import {
   setShopTier,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import {
   countByCategory,
@@ -405,6 +406,8 @@ function EntryCard({
   // Etap 46a: „Zakupy z katalogu: tylko u handlarzy” — gracz kupuje przy
   // ladzie. „Zainstaluj” i „Dodaj za darmo” MG działają bez zmian.
   const catalogClosed = useCompendiumStore((s) => s.catalogShopping === 'merchants') && !isGm;
+  // 21.10.2026: w walce gracz nie kupuje i nie wszczepia.
+  const inCombat = useCombatLocked();
   const [targetId, setTargetId] = useState('');
   const [confirming, setConfirming] = useState(false);
   // Kto operuje (s. 226). „—" zostaje domyślne: cena montażu jest wliczona
@@ -1097,11 +1100,13 @@ function EntryCard({
                 type="button"
                 className="small-button"
                 title={
-                  price === null
-                    ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                    : `Wszczep ${formatEd(price)} — koszt operacji jest wliczony w cenę (s. 111).`
+                  inCombat
+                    ? COMBAT_LOCKED_HINT
+                    : price === null
+                      ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
+                      : `Wszczep ${formatEd(price)} — koszt operacji jest wliczony w cenę (s. 111).`
                 }
-                disabled={price === null}
+                disabled={price === null || inCombat}
                 onClick={() => void install('full')}
               >
                 Zainstaluj{price === null ? '' : ` — ${formatEd(price)}`}
@@ -1113,11 +1118,13 @@ function EntryCard({
                 type="button"
                 className="small-button"
                 title={
-                  foundInGear
-                    ? 'Wszczep leży w Wyposażeniu — płacisz tylko za montaż (s. 375), a wiersz schodzi z plecaka.'
-                    : 'Znaleziony wszczep musi leżeć w Wyposażeniu postaci (łup, wymiana albo od MG).'
+                  inCombat
+                    ? COMBAT_LOCKED_HINT
+                    : foundInGear
+                      ? 'Wszczep leży w Wyposażeniu — płacisz tylko za montaż (s. 375), a wiersz schodzi z plecaka.'
+                      : 'Znaleziony wszczep musi leżeć w Wyposażeniu postaci (łup, wymiana albo od MG).'
                 }
-                disabled={!foundInGear}
+                disabled={!foundInGear || inCombat}
                 onClick={() => void install('installOnly')}
               >
                 Znaleziony — montaż {formatEd(fitting)}
@@ -1167,17 +1174,19 @@ function EntryCard({
               type="button"
               className="small-button"
               title={
-                price === null
-                  ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                  : locked
-                    ? shopTierRefusalText(tier, shopTier)
-                    : discount > 0
-                      ? `Cena schodzi z konta postaci: ${priceLabel} − ${discount}% z dobitego targu`
-                      : `Cena schodzi z konta postaci: ${priceLabel}`
+                inCombat
+                  ? COMBAT_LOCKED_HINT
+                  : price === null
+                    ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
+                    : locked
+                      ? shopTierRefusalText(tier, shopTier)
+                      : discount > 0
+                        ? `Cena schodzi z konta postaci: ${priceLabel} − ${discount}% z dobitego targu`
+                        : `Cena schodzi z konta postaci: ${priceLabel}`
               }
               // The GM buys through every tier — the dial paces the *table*,
               // and the server exempts the GM for the same reason.
-              disabled={price === null || (locked && !isGm)}
+              disabled={price === null || (locked && !isGm) || inCombat}
               onClick={() => void buy()}
             >
               Kup{ammoPayable === null ? '' : ` — ${formatEddies(ammoPayable)} ed`}

@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 20.10 (po `d79020d`) — zlecenie MG: PD dla jednej postaci i komunikat dla gracza
+
+**Zlecenie MG:** MG przyznaje PD konkretnej postaci, gracz wydaje je sam, a o przyznaniu dowiaduje
+się standardowym komunikatem. **Decyzje MG (pytania na starcie):** przyznanie jednej postaci
+przyciskiem na jej karcie (nie w Rytuałach stołu); komunikat z „Rozwiń postać”, stoi do kliknięcia;
+nieobecny gracz widzi go po wejściu; tylko przyznanie (zabranie i korekta MG milczą).
+**Zrobione:** „✦ Przyznaj…” przy liczniku PD na stronie „Ścieżka Życia” (u MG) — kwota, powód,
+ten sam `character:xp-award` z `characterId`. Pasek „Punkty Doświadczenia”: „MG przyznał 50 PD
+postaci Iskra (sesja 20.10). Do wydania: 490 PD.” — także po „Przyznaj wszystkim”. Kolumna
+`AdvancementEntry.seenAt` (migracja `20261020120000_xp_award_seen` oznacza stare wiersze), nowe
+zdarzenie `character:xp-unseen`. **Poprawione po oględzinach:** komunikat oznaczany jako pokazany
+dopiero po potwierdzeniu przeglądarki — wcześniej zamykana karta (i tak samo laptop bez Wi-Fi do
+czasu pingu) zjadała go bez śladu. „Przejdź” do panelu wyższego niż okno staje górą, nie środkiem.
+Umowa na górze `postac`.
+
+**Weryfikacja:** `shared` advancement 35/35, serwer `advancement` 24/24 (5 nowych: na żywo raz,
+ujemna milczy, nieobecny dostaje sumę po powrocie, gniazdo bez potwierdzenia nie zjada
+komunikatu, MG nic), cała suita serwera 1532/1532 (`campaign-isolation` z nowym zdarzeniem),
+klient 417/417; `tsc` serwera i klienta, ESLint i Prettier czyste. Suity E2E nie puszczano.
+**Oględziny:** tymczasowy spec z `po-T6` (usunięty), MG w **Chromium**, Ola
+w **Firefoksie**: formularz na karcie, komunikat, „Rozwiń postać” → panel „Awans”, dwa przyznania
+pod nieobecność → jeden komunikat po powrocie, F5 → brak powtórki.
+
 ### Sesja 19.10, szósta (po `d004db6`) — zlecenie MG: gracz czeka na Poziom Trudności od MG
 
 **Zlecenie MG:** gracz ma czekać, aż MG ustali PT rzutu, i nie może tego pominąć. **Decyzje MG

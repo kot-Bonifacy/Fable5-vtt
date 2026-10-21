@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { CombatView, CombatantView, StateSyncPayload } from '@vtt/shared';
+import { ROLE_GM, type CombatView, type CombatantView, type StateSyncPayload } from '@vtt/shared';
+import { useAuthStore } from './authStore.js';
 
 /**
  * Initiative tracker state (stage 14). The server is authoritative: every
@@ -31,6 +32,21 @@ export const useCombatStore = create<CombatStoreState>((set) => ({
         : [...state.selection, tokenId],
     })),
 }));
+
+/**
+ * Zlecenie MG z 21.10.2026: w walce gracz nie rozwija postaci, nie robi
+ * zakupów i nie prosi o wszczep. Serwer liczy każdą walkę kampanii
+ * (`COMBAT_LOCKED`), klient widzi tracker swojej sceny — to wystarcza, żeby
+ * wyszarzyć guziki; resztę mówi odmowa serwera. MG nie dotyczy.
+ */
+export function useCombatLocked(): boolean {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const running = useCombatStore((s) => s.combat !== null);
+  return !isGm && running;
+}
+
+/** Podpowiedź na wyszarzonym w walce guziku. */
+export const COMBAT_LOCKED_HINT = 'W trakcie walki — poczekaj na koniec starcia.';
 
 /*
  * Helpers below are NOT selectors: they build fresh values and would loop a

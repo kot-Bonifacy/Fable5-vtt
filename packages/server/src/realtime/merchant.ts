@@ -54,6 +54,7 @@ import {
 import type { Character, Merchant, Prisma } from '../generated/prisma/client.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 import { sheetIsContainer } from '../sheets.js';
 import { requireCampaignId } from './combat.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -519,6 +520,8 @@ export const merchantDealEvent = defineEvent<MerchantDealPayload, MerchantDealRe
     const prisma = deps.ctx.prisma;
     const viewer = viewerOf(socket as never);
     const buyer = await requireOwnCharacter(prisma, campaignId, user, payload?.characterId);
+    // 21.10.2026 (zlecenie MG): w walce gracz nie handluje.
+    await refuseInCombat(prisma, campaignId, user);
     const buy = readBuyLines(payload?.buy);
     const sell: CpredItemRef[] = readItemRefs(payload?.sell ?? [], true);
     const expectTotal = payload?.expectTotal;

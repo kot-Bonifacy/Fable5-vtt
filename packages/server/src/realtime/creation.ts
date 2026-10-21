@@ -86,6 +86,7 @@ import {
 import type { Character, CharacterDraft, Prisma, Scene } from '../generated/prisma/client.js';
 import { usedPortraitUrls } from '../portraits.js';
 import { RealtimeError, defineEvent, type RealtimeDeps, type RealtimeEvent } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
@@ -413,6 +414,9 @@ export const creationStartEvent = defineCreationEvent<
 
     const existing = await loadDraft(deps, campaignId, user.id);
     if (existing) return toDraftView(existing, deps);
+    // 21.10.2026: nowej postaci w walce gracz nie zakłada (istniejący szkic
+    // wyżej otwiera się zawsze — podejrzeć go można).
+    await refuseInCombat(deps.ctx.prisma, campaignId, user);
     const permit = await permitStateOf(deps, campaignId, user);
     if (permit.status !== 'granted') throw new RealtimeError('CREATION_NOT_PERMITTED');
     if (!permit.rulesAccepted) throw new RealtimeError('CREATION_RULES_PENDING');
@@ -1270,6 +1274,8 @@ export const creationFinishEvent = defineCreationEvent<CreationFinishPayload, Cr
       const existing = await loadDraft(deps, campaignId, user.id);
       if (!existing || (payload?.draftId && payload.draftId !== existing.id))
         throw new RealtimeError('DRAFT_NOT_FOUND');
+      // 21.10.2026: ani jej nie kończy — postać nie wejdzie na mapę w środku starcia.
+      await refuseInCombat(deps.ctx.prisma, campaignId, user);
       const draft = toDraftView(existing, deps).draft;
       if (
         draft.method === 'complete' &&

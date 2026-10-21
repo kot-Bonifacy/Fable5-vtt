@@ -19,6 +19,7 @@ import {
   cpredWoundPenaltyRows,
 } from '@vtt/shared';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 import { emitCharacterUpsert, toCharacterView, refuseAwaitingGm } from './character-io.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
@@ -78,6 +79,10 @@ export const characterHaggleEvent = defineEvent<
 
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_OPERATOR_ABILITY);
+
+    // 21.10.2026: targ to zakupy, a w walce się nie kupuje (zrzucenie niżej
+    // przechodzi zawsze).
+    if (payload?.clear !== true) await refuseInCombat(deps.ctx.prisma, campaign.id, user);
 
     // Dropping the bargain is free and rolls nothing: a Fixer who used the deal
     // at the table rather than in the shop has to be able to say so.

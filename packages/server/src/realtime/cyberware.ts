@@ -48,6 +48,7 @@ import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
 import { applyBalance } from './economy.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { refuseInCombat } from './combat-lock.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
 /**
@@ -160,6 +161,11 @@ export const characterCyberwareEvent = defineEvent<
     const character = await requireRollableCharacter(deps, campaign.id, user, payload?.characterId);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
+
+    // 21.10.2026: montaż i wyjęcie to zabieg na stole, nie Akcja w starciu.
+    if (payload?.action === 'install' || payload?.action === 'remove') {
+      await refuseInCombat(deps.ctx.prisma, campaign.id, user);
+    }
 
     switch (payload?.action) {
       case 'install':

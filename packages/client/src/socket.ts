@@ -407,6 +407,13 @@ const CATCH_UP_LAG_MS = 3000;
 export const CHARACTER_AWAITING_GM_TEXT =
   'Ta postać czeka na zatwierdzenie MG — do tego czasu karta jest tylko do podglądu.';
 
+/**
+ * Zlecenie MG z 21.10.2026: póki w kampanii trwa walka (od „Załóż starcie”),
+ * gracz nie rozwija postaci, nie robi zakupów i nie prosi o wszczep.
+ */
+export const COMBAT_LOCKED_TEXT =
+  'W trakcie walki nie rozwiniesz postaci ani nie zrobisz zakupów — poczekaj na koniec starcia.';
+
 function chatErrorText(code: string): string {
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
@@ -1833,6 +1840,7 @@ export function refreshMerchants(): void {
 
 /** Polskie komunikaty odmowy sklepu; kody wyceny mówią zdaniami z `shared`. */
 export function merchantErrorText(code: string): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code in CPRED_MERCHANT_PROBLEM_TEXTS) {
     return CPRED_MERCHANT_PROBLEM_TEXTS[code as keyof typeof CPRED_MERCHANT_PROBLEM_TEXTS];
   }
@@ -3822,6 +3830,7 @@ export const discardCreation = (draftId?: string) =>
   emitCreationAck('creation:discard', { draftId });
 
 export function creationErrorText(code: string | undefined): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   // „CREATION_SHOP_LOCKED:2:1" — the item's level and whether it is a tool of
   // the draft's Role (naprawa 3b); the creator has its own shelf, not the
@@ -4227,6 +4236,7 @@ export async function dropHaggle(characterId: string): Promise<void> {
 
 /** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */
 export function haggleErrorText(code: string): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_HAGGLE_PROBLEMS) return CPRED_HAGGLE_PROBLEMS[code as CpredHaggleProblem];
   if (code in CPRED_FLEET_PROBLEMS) {
@@ -4254,6 +4264,7 @@ export function combatAwarenessErrorText(code: string): string {
  * be two different sentences.
  */
 export function characterSaveErrorText(code: string): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ROLES_PROBLEMS) {
     return CPRED_ROLES_PROBLEMS[code as keyof typeof CPRED_ROLES_PROBLEMS];
@@ -4507,6 +4518,7 @@ export function loadOlderHistory(): void {
 
 /** Polish text for a refusal of `character:cyberware` (stage 23a). */
 function cyberwareErrorText(code: string | undefined): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   switch (code) {
     case 'ENTRY_NOT_FOUND':
@@ -4665,6 +4677,7 @@ export const respondSurgery = (payload: CyberwareRespondPayload) =>
 
 /** Polskie zdanie odmowy przy prośbie o operację — reszta jak przy montażu. */
 export function surgeryErrorText(code: string | undefined): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   switch (code) {
     case 'SURGERY_NOT_FOUND':
     case 'SURGERY_CLOSED':
@@ -4713,6 +4726,7 @@ function shopTierErrorText(code: string | undefined): string | null {
 }
 
 export function economyErrorText(code: string | undefined): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   const locked = shopTierErrorText(code);
   if (locked) return locked;
@@ -4858,6 +4872,7 @@ export function fetchAdvancementHistory(
 
 /** Polskie zdania dla odmów, które potrafi zwrócić `character:advance`. */
 export function advanceErrorText(code: string): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ADVANCE_PROBLEMS) {
     return CPRED_ADVANCE_PROBLEMS[code as CpredAdvanceProblem];
@@ -4880,6 +4895,7 @@ export function changeCharacterRole(
 
 /** Polskie zdania dla odmów, które potrafi zwrócić `character:role-change`. */
 export function roleChangeErrorText(code: string): string {
+  if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
   if (code in CPRED_ROLE_CHANGE_PROBLEMS) {
     return CPRED_ROLE_CHANGE_PROBLEMS[code as CpredRoleChangeProblem];

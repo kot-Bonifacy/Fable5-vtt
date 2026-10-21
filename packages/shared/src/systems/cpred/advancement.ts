@@ -435,6 +435,37 @@ export function describeCpredAdvance(step: CpredAdvanceStep): string {
   return `${step.name} ${step.from} → ${step.to}`;
 }
 
+/**
+ * Pola karty, które rozwijają postać poza Awansem i zmianą Roli (zlecenie MG
+ * z 21.10.2026): rozdział Specjalizacji Medyka i Technika, Tabor Nomady oraz
+ * Zakwaterowanie z Poziomem życia. W walce gracz ich nie zmienia — serwer pyta
+ * tę funkcję o łatę `character:update` **scaloną** z kartą, bo klient może
+ * odesłać pole bez zmian (autozapis) i taka łata ma przejść.
+ */
+export type CpredDevelopmentSheet = Pick<
+  CpredCharacterData,
+  'medicine' | 'fabrication' | 'fleet' | 'lifestyle'
+>;
+
+export function cpredDevelopmentChanged(
+  before: CpredDevelopmentSheet,
+  after: CpredDevelopmentSheet,
+): boolean {
+  // Zero i brak wpisu to ten sam rozdział; kolejność kluczy nie ma znaczenia.
+  const sameAllocation = (a: Partial<Record<string, number>>, b: Partial<Record<string, number>>) =>
+    [...Object.keys(a), ...Object.keys(b)].every((id) => (a[id] ?? 0) === (b[id] ?? 0));
+  // Uwagi przy wpisie Taboru to notatka gracza, nie wybór z awansu.
+  const fleet = (sheet: CpredDevelopmentSheet) =>
+    JSON.stringify(sheet.fleet.map((row) => [row.id, row.kind, row.name, row.level]));
+  return (
+    !sameAllocation(before.medicine, after.medicine) ||
+    !sameAllocation(before.fabrication, after.fabrication) ||
+    fleet(before) !== fleet(after) ||
+    before.lifestyle?.level !== after.lifestyle?.level ||
+    before.lifestyle?.housing !== after.lifestyle?.housing
+  );
+}
+
 /** Longest reason the GM may type on an award: a label, not a journal entry. */
 export const ADVANCEMENT_LABEL_MAX = 80;
 

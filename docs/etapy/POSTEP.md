@@ -29,6 +29,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Blokada rozwoju w walce (zlecenie MG z 21.10) — dalej etap 28, potem T10.** Póki w kampanii
+stoi tracker walki (od „Załóż starcie”), gracz nie wydaje PD, nie zmienia Roli, Specjalizacji,
+Taboru ani Poziomu życia, nie zakłada ani nie kończy nowej postaci, nie kupuje i nie prosi
+o wszczep (`COMBAT_LOCKED`); MG bez zmian. Umowa na górze `postac`.
+
 **Kamery i wieżyczki w Sieci (zlecenie MG z 20.10) — dalej etap 28, potem T10.** Kamera
 z figurą na mapie patrzy stożkiem 90° wzdłuż grotu, a netrunner trzymający jej węzeł widzi jej
 oczami (tylko on). „Obróć” wybiera jeden z ośmiu kierunków. Udana Kontrola przewozi kadr:
@@ -370,7 +375,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 52   | 3       |
+| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 53   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery | 10   | 4       |
@@ -384,6 +389,30 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 21.10 (po `7e8ec15`) — zlecenie MG: w walce gracz nie rozwija postaci
+
+**Zlecenie MG:** gracze (nie MG) w trakcie walki nie mogą rozdzielać PD, zmieniać Ról itp.
+**Diagnoza:** prawda — `character:advance` i `character:role-change` nie znały walki, Specjalizacje
+i Tabor szły zwykłą łatą karty. **Decyzje MG (pytania na starcie):** liczy się każda walka
+kampanii, od założenia trackera (runda 0 też); blokada obejmuje też Specjalizacje i Tabor, kreator
+nowej postaci, zakupy i wszczepy oraz Zakwaterowanie z Poziomem życia; w UI guziki wyszarzone
+z podpowiedzią. **Zrobione:** `realtime/combat-lock.ts` (`refuseInCombat`, `COMBAT_LOCKED`) w
+zdarzeniach z umowy na górze `postac`; `cpredDevelopmentChanged` (`shared/.../advancement.ts`)
+porównuje scaloną kartę, więc autozapis bez zmian przechodzi. Klient: `useCombatLocked` +
+wyszarzenie w Awansie, zmianie Roli, Specjalizacjach, Taborze, Poziomie życia, usuwaniu wszczepu,
+Kompendium (Kup/Zainstaluj), u handlarza (Zapłać), w targu Fixera, w prośbie o operację
+(Operuję/Zgadzam się), w kreatorze (Utwórz postać) i bramce („Stwórz postać”).
+**Rozstrzygnięte bez pytań:** terapia Człowieczeństwa (tylko MG) i przelewy/wymiana między
+graczami bez blokady; istniejący szkic kreatora otwiera się i poprawia w walce, nie kończy się.
+Klient wyszarza wg trackera **własnej sceny**, serwer odmawia wg całej kampanii — zapomniany
+tracker na innej scenie zablokuje graczy z samym komunikatem odmowy.
+
+**Weryfikacja:** `shared` 2528/2528 (+3), serwer 1549/1549 (+4 w `advancement.test.ts`: odmowy
+Awansu, Roli, Specjalizacji, zakupu i kreatora w rundzie 0 walki bez postaci gracza; łata bez
+rozwoju i MG przechodzą; po końcu walki zakup działa), `tsc` i ESLint czyste. **Oględziny
+w Firefoksie** (tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — przed walką „Podnieś” i Poziom
+życia czynne, w walce wyszarzone z dymkiem i zdaniem w Awansie, po walce zakup Medycyny 2→3.
 
 ### Sesja 20.10, druga (po `a0a602c`) — zlecenie MG: kamery i wieżyczki przejęte w Sieci
 
@@ -417,25 +446,3 @@ klik w nazwę wieżyczki, strzał → rzut oka i powrót na Iskrę. Suity E2E ni
 dotyka urządzeń węzła poza T5a, który ich nie obsługuje). **Zostało:** kamera w Poligonie („Kamera
 nad bramą”) nie ma figury — żeby zobaczyć podgląd w `dev.db`, MG przypina jej żeton w edytorze.
 
-### Sesja 20.10 (po `d79020d`) — zlecenie MG: PD dla jednej postaci i komunikat dla gracza
-
-**Zlecenie MG:** MG przyznaje PD konkretnej postaci, gracz wydaje je sam, a o przyznaniu dowiaduje
-się standardowym komunikatem. **Decyzje MG (pytania na starcie):** przyznanie jednej postaci
-przyciskiem na jej karcie (nie w Rytuałach stołu); komunikat z „Rozwiń postać”, stoi do kliknięcia;
-nieobecny gracz widzi go po wejściu; tylko przyznanie (zabranie i korekta MG milczą).
-**Zrobione:** „✦ Przyznaj…” przy liczniku PD na stronie „Ścieżka Życia” (u MG) — kwota, powód,
-ten sam `character:xp-award` z `characterId`. Pasek „Punkty Doświadczenia”: „MG przyznał 50 PD
-postaci Iskra (sesja 20.10). Do wydania: 490 PD.” — także po „Przyznaj wszystkim”. Kolumna
-`AdvancementEntry.seenAt` (migracja `20261020120000_xp_award_seen` oznacza stare wiersze), nowe
-zdarzenie `character:xp-unseen`. **Poprawione po oględzinach:** komunikat oznaczany jako pokazany
-dopiero po potwierdzeniu przeglądarki — wcześniej zamykana karta (i tak samo laptop bez Wi-Fi do
-czasu pingu) zjadała go bez śladu. „Przejdź” do panelu wyższego niż okno staje górą, nie środkiem.
-Umowa na górze `postac`.
-
-**Weryfikacja:** `shared` advancement 35/35, serwer `advancement` 24/24 (5 nowych: na żywo raz,
-ujemna milczy, nieobecny dostaje sumę po powrocie, gniazdo bez potwierdzenia nie zjada
-komunikatu, MG nic), cała suita serwera 1532/1532 (`campaign-isolation` z nowym zdarzeniem),
-klient 417/417; `tsc` serwera i klienta, ESLint i Prettier czyste. Suity E2E nie puszczano.
-**Oględziny:** tymczasowy spec z `po-T6` (usunięty), MG w **Chromium**, Ola
-w **Firefoksie**: formularz na karcie, komunikat, „Rozwiń postać” → panel „Awans”, dwa przyznania
-pod nieobecność → jeden komunikat po powrocie, F5 → brak powtórki.

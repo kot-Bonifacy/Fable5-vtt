@@ -3,6 +3,7 @@ import type { CpredCreationData, CreationTerms } from '@vtt/shared';
 import { CPRED_CREATION_METHOD_LABELS, creationDataOf } from '@vtt/shared';
 import { acceptCreationRules, creationErrorText, requestCreation } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
 
 /** „Kompletny Pakiet · Postać początkująca (62 pkt Cech) · 86 pkt umiejętności". */
@@ -39,6 +40,7 @@ export function CreationGate({
   const terms = permit?.terms ? creationTermsLine(permit.terms, creationDataOf(registry)) : null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inCombat = useCombatLocked();
 
   if (resume) {
     return (
@@ -127,7 +129,8 @@ export function CreationGate({
           <button
             type="button"
             className="creation-gate-button primary-button"
-            disabled={busy}
+            disabled={busy || inCombat}
+            title={inCombat ? COMBAT_LOCKED_HINT : undefined}
             onClick={() => void openCreator()}
           >
             🧬 Stwórz postać

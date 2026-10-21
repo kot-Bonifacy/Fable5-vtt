@@ -15,6 +15,7 @@ import { buyBackOf, clientPriceContext, merchantQuote } from '../../exchange-quo
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { dealMerchant, merchantErrorText, viewMerchant } from '../../socket.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../../stores/combatStore.js';
 import { useCompendiumStore } from '../../stores/compendiumStore.js';
 import { useExchangeStore } from '../../stores/exchangeStore.js';
 import { ItemViewIcon } from '../ItemIcons.js';
@@ -63,6 +64,8 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
   const ctx = useMemo(() => clientPriceContext(entries), [entries]);
 
   const [basket, setBasket] = useState<Record<string, number>>({});
+  // 21.10.2026: w walce gracz nie handluje — koszyk zostaje na po starciu.
+  const inCombat = useCombatLocked();
   const [selling, setSelling] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -478,8 +481,8 @@ export function MerchantPane({ anchorId, merchantId }: { anchorId: string; merch
           <button
             type="button"
             className="small-button small-button--primary"
-            disabled={busy || empty || problems.length > 0 || closed !== undefined}
-            title="Kupno i sprzedaż w jednej transakcji, od ręki"
+            disabled={busy || empty || problems.length > 0 || closed !== undefined || inCombat}
+            title={inCombat ? COMBAT_LOCKED_HINT : 'Kupno i sprzedaż w jednej transakcji, od ręki'}
             onClick={() => void pay()}
           >
             Zapłać

@@ -110,6 +110,7 @@ import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { usePortraitStore } from '../stores/portraitStore.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { PortraitCropButton } from './PortraitCropEditor.js';
@@ -165,6 +166,8 @@ export function CharacterCreator() {
 function CreatorWindow() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
+  // 21.10.2026: szkic można w walce przeglądać i poprawiać, nie zakończyć.
+  const inCombat = useCombatLocked();
   const registry = useCharacterStore((s) => s.registry);
   const draft = useCreationStore((s) => s.draft);
   const error = useCreationStore((s) => s.error);
@@ -468,7 +471,8 @@ function CreatorWindow() {
               <button
                 type="button"
                 className="small-button small-button--primary"
-                disabled={busy || issues.length > 0}
+                disabled={busy || issues.length > 0 || inCombat}
+                title={inCombat ? COMBAT_LOCKED_HINT : undefined}
                 onClick={() => void finish()}
               >
                 Utwórz postać

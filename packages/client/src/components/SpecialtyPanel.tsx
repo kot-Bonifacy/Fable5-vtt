@@ -31,6 +31,7 @@ import {
 import { craftPharmaceutical, queueCharacterSave } from '../socket.js';
 import { plural } from '../plural.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 
 /** Which of the two abilities of etap 30b this panel is showing. */
 export type SpecialtyAbility = 'medicine' | 'fabrication';
@@ -83,6 +84,7 @@ export function SpecialtyPanel({
 }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
+  const locked = useCombatLocked();
   const shape = SHAPES[ability];
   const rank = character ? cpredRoleAbilityRank(character.data, registry, shape.ability) : null;
   if (!character || rank === null) return null;
@@ -100,6 +102,7 @@ export function SpecialtyPanel({
 
   /** Czemu ten krok jest niemożliwy, albo null — ta sama funkcja, co na serwerze. */
   function refusal(id: string, direction: 1 | -1): string | null {
+    if (locked) return COMBAT_LOCKED_HINT;
     const points = (allocation[id] ?? 0) + direction;
     if (points < 0) return 'Nie ma czego zdejmować.';
     const problem = cpredSpecialtyProblem(

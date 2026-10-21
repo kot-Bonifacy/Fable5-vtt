@@ -12,7 +12,9 @@ import type {
   CharacterXpAwardResult,
   CharacterXpHistoryResult,
   CpredCharacterData,
+  SceneView,
   SocketAck,
+  TokenView,
   StateSyncPayload,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
@@ -659,5 +661,108 @@ describe('komunikat o przyznanych PD', () => {
 
   it('MG o nic nie pyta i nic nie dostaje', async () => {
     expect((await unseen(gm)).awards).toEqual([]);
+  });
+});
+
+describe('blokada rozwoju w walce (21.10)', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let medId: string;
+
+  it('stawia Medyka gracza z PD i zakłada starcie na scenie', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    medId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Szew', ownerId: playerId }),
+      'character:create',
+    ).id;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: medId,
+          patch: { data: { roleId: 'medtech', roleAbilityRank: 2, skills: { perception: 2 } } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await emitAck(gm, 'character:xp-award', { characterId: medId, amount: 200 })).ok).toBe(
+      true,
+    );
+
+    const sceneId = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Klinika' }),
+      'scene',
+    ).id;
+    await emitAck(gm, 'scene:activate', { sceneId });
+    const npc = data(
+      await emitAck<TokenView>(gm, 'token:create', { sceneId, name: 'Ochroniarz', x: 0, y: 0 }),
+      'token:create',
+    );
+    // Runda 0 też się liczy, a postaci gracza w trackerze nie ma — blokuje
+    // każda walka kampanii.
+    expect((await emitAck(gm, 'combat:start', { sceneId, tokenIds: [npc.id] })).ok).toBe(true);
+  });
+
+  it('gracz nie wydaje PD, nie zmienia Roli ani Specjalizacji', async () => {
+    const refused = { ok: false, error: 'COMBAT_LOCKED' };
+    expect(
+      await emitAck(player, 'character:advance', {
+        characterId: medId,
+        kind: 'skill',
+        skillId: 'perception',
+        to: 3,
+      }),
+    ).toEqual(refused);
+    expect(
+      await emitAck(player, 'character:role-change', { characterId: medId, roleId: 'solo' }),
+    ).toEqual(refused);
+    expect(
+      await emitAck(player, 'character:update', {
+        characterId: medId,
+        patch: { data: { medicine: { surgery: 1 } } },
+      }),
+    ).toEqual(refused);
+    expect(
+      await emitAck(player, 'economy:buy', { characterId: medId, entryId: 'cokolwiek' }),
+    ).toEqual(refused);
+    expect(await emitAck(player, 'creation:start')).toEqual(refused);
+  });
+
+  it('łata bez rozwoju przechodzi, a MG poprawia kartę dalej', async () => {
+    expect(
+      (
+        await emitAck(player, 'character:update', {
+          characterId: medId,
+          patch: { data: { medicine: {}, notes: 'w walce' } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await emitAck(gm, 'character:advance', {
+          characterId: medId,
+          kind: 'skill',
+          skillId: 'perception',
+          to: 3,
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('po końcu walki gracz wydaje PD jak zwykle', async () => {
+    expect((await emitAck(gm, 'combat:end')).ok).toBe(true);
+    const view = data(
+      await emitAck<CharacterView>(player, 'character:advance', {
+        characterId: medId,
+        kind: 'skill',
+        skillId: 'perception',
+        to: 4,
+      }),
+      'character:advance',
+    );
+    expect((view.data as CpredCharacterData).skills.perception).toBe(4);
   });
 });

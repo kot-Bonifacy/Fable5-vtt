@@ -28,6 +28,7 @@ import {
   cpredSheetFabrication,
   cpredRoleAbilityRank,
   cpredFleetSheetProblem,
+  cpredDevelopmentChanged,
   cpredRolesProblem,
   cpredHousingAllowed,
   cpredPlayerItemPatchProblem,
@@ -52,6 +53,7 @@ import { applyBalance, nextRowId } from './economy.js';
 import { campaignEntry } from './compendium.js';
 import { characterTracksAmmo } from './ammo-stock.js';
 import { applyImprovementPoints } from './advancement.js';
+import { refuseInCombat } from './combat-lock.js';
 import { emitToCampaignUser } from './state.js';
 import {
   emitCharacterDelete,
@@ -360,6 +362,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // `cpredRoleAbilityRank` pick one of them for reasons nobody can see.
       const roles = cpredRolesProblem(merged, deps.ctx.cpred);
       if (roles !== null) throw new RealtimeError(roles);
+      // 21.10.2026 (zlecenie MG): w walce gracz nie rozwija postaci — także
+      // Specjalizacjami, Taborem i przeprowadzką, które jadą tą łatą.
+      if (cpredDevelopmentChanged(current, merged)) {
+        await refuseInCombat(deps.ctx.prisma, campaignId, user);
+      }
       // Etap 48a (decyzja MG z 10.10): rachunek miesiąca to cena, więc gracz
       // nie wypisze się z niego sam („— nie rozliczam —” zostaje MG), a do
       // kwaterunku od Korporacji (czynsz 0 ed) potrzebuje rangi Pracy
