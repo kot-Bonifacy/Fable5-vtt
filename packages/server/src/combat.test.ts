@@ -305,40 +305,47 @@ describe('combat tracker', () => {
     }
   });
 
-  it('rolls initiative for everyone at once, silently', async () => {
+  it('rolls initiative for every NPC at once, silently — and leaves the players their cup', async () => {
     const chatSeen: ChatMessageBroadcast[] = [];
     gm.on('chat:message', (payload: ChatMessageBroadcast) => chatSeen.push(payload));
     combat = data(await emitAck<CombatView>(gm, 'combat:roll-all', {}), 'combat:roll-all');
-    expect(combat.combatants.every((c) => c.initiative !== null)).toBe(true);
-    // 1d10 + REF 8 for the linked sheet, bare 1d10 for the statists.
-    const ziti = combat.combatants.find((c) => c.name === 'Ziti');
-    expect(ziti?.tieBreak).toBe(8);
-    expect(ziti?.initiative).toBeGreaterThanOrEqual(9);
-    expect(ziti?.initiative).toBeLessThanOrEqual(18);
+    // Bare 1d10 for the statist; the player's Ziti waits for their own throw
+    // (22.10.2026, decyzja MG) — even a full reroll leaves Ziti alone.
     const npc = combat.combatants.find((c) => c.name === 'Bandzior');
     expect(npc?.tieBreak).toBeNull();
     expect(npc?.initiative).toBeGreaterThanOrEqual(1);
     expect(npc?.initiative).toBeLessThanOrEqual(10);
+    expect(combat.combatants.find((c) => c.name === 'Ziti')?.initiative).toBeNull();
+    combat = data(
+      await emitAck<CombatView>(gm, 'combat:roll-all', { rerollAll: true }),
+      'combat:roll-all',
+    );
+    expect(combat.combatants.find((c) => c.name === 'Ziti')?.initiative).toBeNull();
     // The mass roll stays off chat — five NPCs would bury the conversation.
     await roundTrip(gm);
     expect(chatSeen).toHaveLength(0);
     gm.off('chat:message');
   });
 
-  it('keeps the tracker sorted by initiative', async () => {
-    const values = combat.combatants.map((c) => c.initiative ?? -99);
-    expect([...values].sort((a, b) => b - a)).toEqual(values);
-  });
-
   it('lets a player roll their own initiative once a fight, and the GM reopen it', async () => {
     const ziti = combat.combatants.find((c) => c.name === 'Ziti')!;
-    // „Rzuć wszystkim" already gave Ziti a value: the queue holds for the whole
-    // fight (s. 168), so the player cannot fish for a better slot mid-combat.
+    const first = data(
+      await emitAck<{ initiative: number }>(player, 'combat:roll', { combatantId: ziti.id }),
+      'combat:roll',
+    );
+    // 1d10 + REF 8 for the linked sheet.
+    expect(first.initiative).toBeGreaterThanOrEqual(9);
+    expect(first.initiative).toBeLessThanOrEqual(18);
+    combat = (await roundTrip(gm)).combat!;
+    expect(combat.combatants.find((c) => c.id === ziti.id)?.tieBreak).toBe(8);
+
+    // The queue holds for the whole fight (s. 168), so the player cannot fish
+    // for a better slot mid-combat.
     const refused = await emitAck(player, 'combat:roll', { combatantId: ziti.id });
     expect(refused.ok).toBe(false);
     if (!refused.ok) expect(refused.error).toBe('INITIATIVE_ALREADY_ROLLED');
     expect((await roundTrip(gm)).combat?.combatants.find((c) => c.id === ziti.id)?.initiative).toBe(
-      ziti.initiative,
+      first.initiative,
     );
     await clearInitiative(ziti.id);
 
@@ -354,6 +361,12 @@ describe('combat tracker', () => {
     // Initiative is not a Skill Check — a natural 10 must not explode.
     expect(message.message.roll?.critical).toBeUndefined();
     expect(message.message.roll?.breakdown?.[0]?.value).toBe(8);
+  });
+
+  it('keeps the tracker sorted by initiative', async () => {
+    combat = (await roundTrip(gm)).combat!;
+    const values = combat.combatants.map((c) => c.initiative ?? -99);
+    expect([...values].sort((a, b) => b - a)).toEqual(values);
   });
 
   it('ciężki pancerz obniża Inicjatywę i rozstrzyganie remisów (s. 185)', async () => {

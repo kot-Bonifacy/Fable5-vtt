@@ -1,5 +1,29 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.10 (po `7e8ec15`) — zlecenie MG: w walce gracz nie rozwija postaci
+
+**Zlecenie MG:** gracze (nie MG) w trakcie walki nie mogą rozdzielać PD, zmieniać Ról itp.
+**Diagnoza:** prawda — `character:advance` i `character:role-change` nie znały walki, Specjalizacje
+i Tabor szły zwykłą łatą karty. **Decyzje MG (pytania na starcie):** liczy się każda walka
+kampanii, od założenia trackera (runda 0 też); blokada obejmuje też Specjalizacje i Tabor, kreator
+nowej postaci, zakupy i wszczepy oraz Zakwaterowanie z Poziomem życia; w UI guziki wyszarzone
+z podpowiedzią. **Zrobione:** `realtime/combat-lock.ts` (`refuseInCombat`, `COMBAT_LOCKED`) w
+zdarzeniach z umowy na górze `postac`; `cpredDevelopmentChanged` (`shared/.../advancement.ts`)
+porównuje scaloną kartę, więc autozapis bez zmian przechodzi. Klient: `useCombatLocked` +
+wyszarzenie w Awansie, zmianie Roli, Specjalizacjach, Taborze, Poziomie życia, usuwaniu wszczepu,
+Kompendium (Kup/Zainstaluj), u handlarza (Zapłać), w targu Fixera, w prośbie o operację
+(Operuję/Zgadzam się), w kreatorze (Utwórz postać) i bramce („Stwórz postać”).
+**Rozstrzygnięte bez pytań:** terapia Człowieczeństwa (tylko MG) i przelewy/wymiana między
+graczami bez blokady; istniejący szkic kreatora otwiera się i poprawia w walce, nie kończy się.
+Klient wyszarza wg trackera **własnej sceny**, serwer odmawia wg całej kampanii — zapomniany
+tracker na innej scenie zablokuje graczy z samym komunikatem odmowy.
+
+**Weryfikacja:** `shared` 2528/2528 (+3), serwer 1549/1549 (+4 w `advancement.test.ts`: odmowy
+Awansu, Roli, Specjalizacji, zakupu i kreatora w rundzie 0 walki bez postaci gracza; łata bez
+rozwoju i MG przechodzą; po końcu walki zakup działa), `tsc` i ESLint czyste. **Oględziny
+w Firefoksie** (tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — przed walką „Podnieś” i Poziom
+życia czynne, w walce wyszarzone z dymkiem i zdaniem w Awansie, po walce zakup Medycyny 2→3.
+
 ### Sesja 20.10, druga (po `a0a602c`) — zlecenie MG: kamery i wieżyczki przejęte w Sieci
 
 **Zlecenie MG:** „dorobić kamery (chyba nie działają)”; postać, która przejmuje kamerę, ma mieć

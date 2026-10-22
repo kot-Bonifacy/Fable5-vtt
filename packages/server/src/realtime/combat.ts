@@ -1155,8 +1155,13 @@ export const combatRollAllEvent = defineEvent<CombatRollAllPayload, CombatView>(
 
     const rerollAll = payload?.rerollAll === true;
     // A Black ICE (stage 26c) is never rolled for: its place in the queue comes
-    // from the rule („o jeden punkt wyżej", s. 205), not from a die.
-    const rollable = combat.combatants.filter(hasFigure);
+    // from the rule („o jeden punkt wyżej", s. 205), not from a die. A player's
+    // figure is not either (22.10.2026, decyzja MG): the player rolls their own
+    // with the cup — a silent mass roll took that away from them. The GM can
+    // still type the value or reroll a tie.
+    const rollable = combat.combatants.filter(
+      (row) => hasFigure(row) && combatantOwnerId(row) === null,
+    );
     const targets = rerollAll ? rollable : rollable.filter((row) => row.initiative === null);
     await rollFor(deps, targets);
     const reloaded = await loadCombatById(deps.ctx.prisma, combat.id);

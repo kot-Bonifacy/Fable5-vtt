@@ -309,6 +309,39 @@ export function CombatBar() {
   }, [startArmed]);
   useEffect(() => setStartArmed(false), [combat]);
 
+  // Gracz rzuca inicjatywę sam (22.10.2026, decyzja MG): figura dopisana do
+  // starcia ładuje mu kubek, gdy ten jest pusty. Raz na uczestnika — `Esc`
+  // odkłada rzut, a 🎲 na pasie dalej pulsuje i czeka.
+  const cupEmpty = useRollStore(
+    (s) =>
+      !s.target &&
+      !s.pending &&
+      !s.initiative &&
+      !s.attack &&
+      !s.evasion &&
+      !s.grapple &&
+      !s.facedown &&
+      !s.creation,
+  );
+  const offeredInitiative = useRef(new Set<string>());
+  useEffect(() => {
+    if (!combat || !user || isGm || !cupEmpty) return;
+    const mine = combat.combatants.find(
+      (c) =>
+        c.tokenId !== null &&
+        c.ownerId === user.id &&
+        c.initiative === null &&
+        !offeredInitiative.current.has(c.id),
+    );
+    if (!mine) return;
+    offeredInitiative.current.add(mine.id);
+    useRollStore.getState().loadInitiativeCup({
+      combatantId: mine.id,
+      name: mine.name,
+      modifierTotal: initiativeModifierOf(mine),
+    });
+  }, [combat, user, isGm, cupEmpty]);
+
   const queueRef = useRef<HTMLOListElement | null>(null);
   const activeId = combat?.activeCombatantId ?? null;
   const combatantCount = queue.length;
@@ -376,7 +409,11 @@ export function CombatBar() {
   /** Uczestnik bez figury (Czarny LOD, 26c) inicjatywy nie rzuca. */
   const mayRoll = (combatant: CombatantView): boolean =>
     combatant.tokenId !== null && user !== null && combatant.ownerId === user.id;
-  const unrolled = queue.some((c) => c.tokenId !== null && c.initiative === null);
+  // „Rzuć wszystkim" rzuca tylko za figury bez właściciela (22.10.2026) —
+  // gracz rzuca swoją inicjatywę kubkiem.
+  const unrolled = queue.some(
+    (c) => c.tokenId !== null && c.ownerId === null && c.initiative === null,
+  );
 
   function dropOn(targetId: string) {
     if (!isGm || !combat || dragged === null || dragged === targetId) return;
@@ -412,7 +449,7 @@ export function CombatBar() {
           type="button"
           className="combat-bar-roll"
           onClick={() => void rollCombatInitiativeForAll(false)}
-          title="Rzuca inicjatywę wszystkim, którzy jeszcze jej nie mają"
+          title="Rzuca inicjatywę NPC-om, które jeszcze jej nie mają — gracze rzucają kubkiem"
         >
           Rzuć wszystkim
         </button>
@@ -422,8 +459,8 @@ export function CombatBar() {
           type="button"
           className="combat-bar-step"
           onClick={() => void rollCombatInitiativeForAll(true)}
-          title="Przerzuć inicjatywę wszystkim — także tym, którzy już ją mają"
-          aria-label="Przerzuć inicjatywę wszystkim"
+          title="Przerzuć inicjatywę NPC-om — także tym, które już ją mają (graczy nie rusza)"
+          aria-label="Przerzuć inicjatywę NPC-om"
         >
           ⟳
         </button>

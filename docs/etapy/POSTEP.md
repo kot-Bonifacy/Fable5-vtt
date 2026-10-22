@@ -29,6 +29,11 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Inicjatywę gracza rzuca gracz (zlecenie MG z 22.10) — dalej etap 28, potem T10.** „Rzuć
+wszystkim” i „⟳” MG rzucają tylko za NPC-e; gracz dostaje kubek załadowany inicjatywą, gdy jego
+figura wchodzi do starcia, a 🎲 na pasie pulsuje do rzutu. Umowa na górze `tura`. Otwarte:
+„kreator Kuby” w T8a-ekrany pada na blokadzie rozwoju w walce (21.10).
+
 **Jedna ogólna osłona z PW i widocznością (zlecenie MG z 21.10) — dalej etap 28, potem T10.**
 Paleta osłon ma pole PW i oko zamiast listy rodzajów z katalogu; ukrytej osłony gracz nie dostaje
 wcale, a pierwszy jego strzał, który zatrzyma, ją odsłania. Umowa na górze `mapa`.
@@ -375,7 +380,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 23   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 26   | 6       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 27   | 6       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -393,6 +398,25 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 22.10 (po `8d6b247`) — zlecenie MG: gracz rzuca inicjatywę sam
+
+**Zlecenie MG:** sprawdzić, czy gracze dostają rzut inicjatywy na kubek przed walką. **Diagnoza:**
+droga była (🎲 na żetonie pasa → kubek → `combat:roll`), ale nic gracza do niej nie zapraszało,
+a „Rzuć wszystkim” i „⟳” MG rzucały po cichu także za figury graczy. **Decyzja MG:** wariant A+B.
+**Zrobione:** `combat:roll-all` rzuca tylko za figury bez właściciela (przycisk „Rzuć wszystkim”
+tylko przy NPC-u bez wartości); u gracza `CombatBar` sam ładuje kubek inicjatywą, gdy figura
+wchodzi do starcia bez wartości, a kubek jest pusty — raz na uczestnika, `Esc` odkłada; 🎲 pulsuje,
+póki gracz nie rzuci. Umowa na górze `tura`. **Rozstrzygnięte bez pytań:** remis (`combat:reroll-tie`)
+dalej przerzuca też graczy; MG wciąż wpisuje wartość gracza ręcznie.
+
+**Weryfikacja:** `shared` 2528/2528, klient 420/420, serwer 1550/1550 (`combat.test.ts`: „Rzuć
+wszystkim” i „⟳” zostawiają gracza bez wartości), `tsc` i ESLint czyste. **Oględziny w Firefoksie**
+(tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — starcie ładuje kubek „Inicjatywa +7”, 🎲
+pulsuje, „⟳” MG jej nie rusza, `Esc` odkłada bez ponownego ładowania, rzut kubkiem ląduje w kolejce
+i na czacie. E2E t4a/t5b/t8a: 28 ok, 8 padło poza tą zmianą — t4a/t5b bez `E2E_FROM`, „kreator
+Kuby” w t8a-ekrany na blokadzie rozwoju w walce (21.10), t8a-macierz na starych polach „Załóż
+starcie” (znana zaległość).
 
 ### Sesja 21.10, druga (po `a3873dd`) — zlecenie MG: jedna ogólna osłona z PW i widocznością
 
@@ -414,27 +438,3 @@ Katalog materiałów na serwerze (`/api/cpred/covers`) został, UI go nie czyta.
 „Test_1”): paleta PW + oko, postawienie ukrytej osłony (przerywana, „(ukryta)”), karta z
 przełączeniem na widoczną; osłona testowa usunięta. Widoku gracza w przeglądarce nie oglądano
 (pokrywa go test dymny serwera).
-
-### Sesja 21.10 (po `7e8ec15`) — zlecenie MG: w walce gracz nie rozwija postaci
-
-**Zlecenie MG:** gracze (nie MG) w trakcie walki nie mogą rozdzielać PD, zmieniać Ról itp.
-**Diagnoza:** prawda — `character:advance` i `character:role-change` nie znały walki, Specjalizacje
-i Tabor szły zwykłą łatą karty. **Decyzje MG (pytania na starcie):** liczy się każda walka
-kampanii, od założenia trackera (runda 0 też); blokada obejmuje też Specjalizacje i Tabor, kreator
-nowej postaci, zakupy i wszczepy oraz Zakwaterowanie z Poziomem życia; w UI guziki wyszarzone
-z podpowiedzią. **Zrobione:** `realtime/combat-lock.ts` (`refuseInCombat`, `COMBAT_LOCKED`) w
-zdarzeniach z umowy na górze `postac`; `cpredDevelopmentChanged` (`shared/.../advancement.ts`)
-porównuje scaloną kartę, więc autozapis bez zmian przechodzi. Klient: `useCombatLocked` +
-wyszarzenie w Awansie, zmianie Roli, Specjalizacjach, Taborze, Poziomie życia, usuwaniu wszczepu,
-Kompendium (Kup/Zainstaluj), u handlarza (Zapłać), w targu Fixera, w prośbie o operację
-(Operuję/Zgadzam się), w kreatorze (Utwórz postać) i bramce („Stwórz postać”).
-**Rozstrzygnięte bez pytań:** terapia Człowieczeństwa (tylko MG) i przelewy/wymiana między
-graczami bez blokady; istniejący szkic kreatora otwiera się i poprawia w walce, nie kończy się.
-Klient wyszarza wg trackera **własnej sceny**, serwer odmawia wg całej kampanii — zapomniany
-tracker na innej scenie zablokuje graczy z samym komunikatem odmowy.
-
-**Weryfikacja:** `shared` 2528/2528 (+3), serwer 1549/1549 (+4 w `advancement.test.ts`: odmowy
-Awansu, Roli, Specjalizacji, zakupu i kreatora w rundzie 0 walki bez postaci gracza; łata bez
-rozwoju i MG przechodzą; po końcu walki zakup działa), `tsc` i ESLint czyste. **Oględziny
-w Firefoksie** (tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — przed walką „Podnieś” i Poziom
-życia czynne, w walce wyszarzone z dymkiem i zdaniem w Awansie, po walce zakup Medycyny 2→3.

@@ -489,7 +489,10 @@ export interface CombatInitiativePayload {
   initiative: number | null;
 }
 
-/** GM rolls for everyone; `rerollAll` also re-rolls values already there. */
+/**
+ * GM rolls for every figure nobody owns (players roll their own with the cup);
+ * `rerollAll` also re-rolls values already there.
+ */
 export interface CombatRollAllPayload {
   rerollAll?: boolean;
 }

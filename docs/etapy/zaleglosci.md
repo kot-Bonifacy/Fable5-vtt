@@ -6,6 +6,13 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**22.10.2026 — E2E: „kreator Kuby (Na skróty)” w `t8a-ekrany` pada na blokadzie rozwoju w walce.**
+Spec startuje z `po-T4a` (trwająca walka), a od 21.10 bramka ma „🧬 Stwórz postać” wyszarzone
+(`COMBAT_LOCKED`, „W trakcie walki — poczekaj na koniec starcia.”) — klik czeka do limitu we
+wszystkich czterech zestawach ekranów. Do przepięcia: kreator przed walką albo zakończenie walki
+w kroku przygotowania. Ta sama okazja dla `t8a-macierz` „walka: inicjatywa kubkiem” (pole „Zbir”
+w „Załóż starcie” — punkt z 19.10 niżej).
+
 **19.10.2026 — E2E: okno „Załóż starcie” nie ma już pól wyboru figur, których szukają T4a i T6b.**
 `t4a-walka-knajpa` 4.1 (`getByRole('checkbox', { name: /^Zbir$/ })`) i `t6b-czas-kopie` 6.6d
 („Tylko postacie graczy” → pole „Kowal”) czekają na pola, których nie ma. Na kodzie sprzed sesji

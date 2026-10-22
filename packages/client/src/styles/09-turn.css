@@ -355,6 +355,21 @@
 /* Gracz jeszcze nie rzucił: kostka zamiast kreski, żeby wiedział, gdzie kliknąć. */
 .combat-chip-initiative--roll {
   font-size: 0.95rem;
+  /* Niewyrzucona inicjatywa gracza pulsuje, póki jej nie rzuci (22.10.2026). */
+  animation: combat-chip-initiative-call 1400ms ease-in-out infinite;
+}
+
+@keyframes combat-chip-initiative-call {
+  50% {
+    box-shadow: 0 0 0.5rem var(--accent);
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-chip-initiative--roll {
+    animation: none;
+  }
 }
 
 .combat-chip-initiative-input {
