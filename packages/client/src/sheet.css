@@ -102,11 +102,13 @@
   font-weight: 700;
 }
 
-.sheet-window .sheet-close {
+.sheet-window .sheet-close,
+.sheet-window .sheet-download {
   color: var(--cp-on-red-soft);
 }
 
-.sheet-window .sheet-close:hover {
+.sheet-window .sheet-close:hover,
+.sheet-window .sheet-download:hover {
   color: var(--cp-on-red);
 }
 

@@ -122,6 +122,24 @@
   align-self: flex-start;
 }
 
+/* Etap 57c: karta z innej kampanii — cichsza droga pod kartą kreatora. */
+.card-submit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0 0.85rem;
+}
+
+.card-submit .creation-gate-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.card-submit .small-button {
+  align-self: flex-start;
+}
+
 .creation-gate-button {
   width: 100%;
   padding: 0.65rem 0.9rem;

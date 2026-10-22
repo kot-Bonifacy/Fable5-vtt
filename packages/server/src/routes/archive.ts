@@ -10,15 +10,17 @@ import type {
   CampaignCopyListView,
 } from '@vtt/shared';
 import {
+  ARCHIVE_DOWNLOAD_PATHS,
   ARCHIVE_IMPORT_MAX_BYTES_DEFAULT,
   ARCHIVE_IMPORT_PATH,
   ARCHIVE_PACKAGE_LIMITS_DEFAULT,
   CAMPAIGN_COPY_PATHS,
+  ROLE_GM,
   confirmsCampaignName,
   polishPlural,
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import { requireGm } from '../auth/guards.js';
+import { requireAuth, requireGm } from '../auth/guards.js';
 import {
   exportCampaign,
   exportCharacter,
@@ -28,6 +30,14 @@ import {
   type ImportRefusal,
 } from '../archive.js';
 import { importCampaign, newRowId } from '../archive-campaign.js';
+import {
+  exportBot,
+  exportPlayerCards,
+  exportShop,
+  importBot,
+  importPlayerCards,
+  importShop,
+} from '../archive-items.js';
 import {
   makeStagingDir,
   placeStagedFiles,
@@ -39,6 +49,9 @@ import { localizeArchiveUploads } from '../campaign-uploads.js';
 import type { RealtimeDeps } from '../realtime/registry.js';
 import { emitCharacterUpsert, toCharacterView } from '../realtime/character-io.js';
 import { emitSceneList } from '../realtime/scenes.js';
+import { emitBotUpsert, toBotView } from '../realtime/bots.js';
+import { fetchBotRelations } from '../realtime/relations.js';
+import { gmRoom } from '../realtime/state.js';
 import { dropExplorationCache, persistExploration } from '../realtime/exploration.js';
 import { releaseSceneTargets } from '../realtime/target.js';
 import { forgetCampaignUndo } from '../realtime/undo-buffer.js';
@@ -46,6 +59,7 @@ import { reseatCampaignGms } from '../realtime/sessions.js';
 import { sendCampaignCopy } from '../campaign-copies.js';
 import { rollbackCampaign } from '../campaign-rollback.js';
 import { getUserActiveCampaign, ownCampaign } from './helpers.js';
+import { registerCardSubmissionRoutes } from './card-submissions.js';
 
 /**
  * Pliki wymiany — pobranie i wczytanie trasami REST (etap 33, od 57a paczki ZIP).
@@ -88,14 +102,22 @@ export function registerArchiveRoutes(
 
   app.get<{ Params: { id: string } }>(
     '/api/archive/character/:id',
-    gmOnly,
+    { preHandler: requireAuth },
     async (request, reply) => {
-      // Karta z kampanii tego MG (etap 44b) — cudza wygląda jak nieistniejąca.
+      // Karta z kampanii tego MG (etap 44b) albo — od 57c — własna karta
+      // gracza. Cudza wygląda jak nieistniejąca, także dla gracza z figurą
+      // sterowaną tą kartą: kopię pobiera tylko właściciel.
+      const user = request.user!;
       const row = await ctx.prisma.character.findUnique({
         where: { id: request.params.id },
-        select: { campaignId: true },
+        select: { campaignId: true, ownerId: true },
       });
-      if (!row || !(await ownCampaign(ctx.prisma, row.campaignId, request.user!.id))) {
+      const allowed =
+        row !== null &&
+        (user.role === ROLE_GM
+          ? (await ownCampaign(ctx.prisma, row.campaignId, user.id)) !== null
+          : row.ownerId === user.id);
+      if (!row || !allowed) {
         return reply.code(404).send({ error: 'NOT_FOUND' });
       }
       const file = await exportCharacter(ctx.prisma, request.params.id);
@@ -134,6 +156,44 @@ export function registerArchiveRoutes(
       return sendArchivePackage(reply, uploadsDir, 'campaign', campaign.name, file);
     },
   );
+
+  /* -------------- pojedyncze rzeczy i karty graczy (57c) -------------- */
+
+  /** Karty wszystkich graczy otwartej kampanii — jedną paczką. */
+  app.get(ARCHIVE_DOWNLOAD_PATHS.players, gmOnly, async (request, reply) => {
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+    if (!campaign) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+    const file = await exportPlayerCards(ctx.prisma, campaign.id);
+    if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
+    const label = `karty graczy ${campaign.name}`;
+    return sendArchivePackage(reply, uploadsDir, 'characters', label, file);
+  });
+
+  app.get<{ Params: { id: string } }>('/api/archive/shop/:id', gmOnly, async (request, reply) => {
+    const row = await ctx.prisma.merchant.findUnique({
+      where: { id: request.params.id },
+      select: { campaignId: true, sign: true, character: { select: { name: true } } },
+    });
+    if (!row || !(await ownCampaign(ctx.prisma, row.campaignId, request.user!.id))) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
+    const file = await exportShop(ctx.prisma, request.params.id);
+    if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return sendArchivePackage(reply, uploadsDir, 'shop', row.sign || row.character.name, file);
+  });
+
+  app.get<{ Params: { id: string } }>('/api/archive/bot/:id', gmOnly, async (request, reply) => {
+    const row = await ctx.prisma.botProfile.findUnique({
+      where: { id: request.params.id },
+      select: { campaignId: true },
+    });
+    if (!row || !(await ownCampaign(ctx.prisma, row.campaignId, request.user!.id))) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
+    const file = await exportBot(ctx.prisma, request.params.id);
+    if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return sendArchivePackage(reply, uploadsDir, 'bot', file.payload.bot.name, file);
+  });
 
   /* -------------------- kopie automatyczne (57b) -------------------- */
 
@@ -240,6 +300,8 @@ export function registerArchiveRoutes(
     },
   );
 
+  registerCardSubmissionRoutes(app, ctx, deps);
+
   app.post(ARCHIVE_IMPORT_PATH, gmOnly, async (request, reply) => {
     const user = request.user!;
     const maxBytes = ctx.config.archiveImportMaxBytes ?? ARCHIVE_IMPORT_MAX_BYTES_DEFAULT;
@@ -341,6 +403,84 @@ export function registerArchiveRoutes(
             : result.ownerId
               ? 'Karta wróciła do swojego gracza.'
               : 'Karta weszła jako NPC.',
+        };
+        return reply.code(201).send(done);
+      }
+
+      if (kind === 'characters') {
+        const result = await importPlayerCards(ctx.prisma, ctx.cpred, file, {
+          campaignId,
+          gmId: user.id,
+        });
+        if ('code' in result) return refuse(reply, result.code);
+        for (const id of result.ids) {
+          const row = await ctx.prisma.character.findUniqueOrThrow({ where: { id } });
+          await emitCharacterUpsert(deps, campaignId, toCharacterView(row, ctx.cpred));
+        }
+        const count = result.ids.length;
+        const notes = [
+          `${count} ${polishPlural(count, 'karta weszła', 'karty weszły', 'kart weszło')} jako nowe.`,
+        ];
+        if (result.returned > 0) notes.push(`Do swoich graczy wróciło: ${result.returned}.`);
+        if (result.pending.length > 0) {
+          notes.push(
+            `Na gracza czeka ${result.pending.length} (${[...new Set(result.pending)].join(', ')}) — przypisz je na karcie albo przy zaproszeniu.`,
+          );
+        }
+        const done: ArchiveImportResult = {
+          kind,
+          id: result.ids[0]!,
+          // Nazwa kampanii, z której karty przyszły — klient mówi „karty graczy z …”.
+          name: staged.file.manifest.campaignName,
+          note: notes.join(' '),
+        };
+        return reply.code(201).send(done);
+      }
+
+      if (kind === 'shop') {
+        const result = await importShop(ctx.prisma, ctx.cpred, file, { campaignId });
+        if ('code' in result) return refuse(reply, result.code);
+        const row = await ctx.prisma.character.findUniqueOrThrow({
+          where: { id: result.characterId },
+        });
+        await emitCharacterUpsert(deps, campaignId, toCharacterView(row, ctx.cpred));
+        const done: ArchiveImportResult = {
+          kind,
+          id: result.id,
+          name: result.name,
+          note: 'Sklep wszedł zamknięty, a karta handlarza jest na liście postaci — otwórz go na jej karcie; sklep „przy figurze” postaw na mapie.',
+        };
+        return reply.code(201).send(done);
+      }
+
+      if (kind === 'bot') {
+        const result = await importBot(ctx.prisma, file, { campaignId });
+        if ('code' in result) return refuse(reply, result.code);
+        const bot = await ctx.prisma.botProfile.findUniqueOrThrow({ where: { id: result.id } });
+        emitBotUpsert(deps, campaignId, toBotView(bot));
+        for (const relation of await fetchBotRelations(ctx.prisma, result.id)) {
+          deps.io.to(gmRoom(campaignId)).emit('relation:upsert', { relation });
+        }
+        const notes = [
+          result.relations > 0
+            ? `Bot wszedł nieaktywny; ${result.relations} ${polishPlural(result.relations, 'relacja wróciła', 'relacje wróciły', 'relacji wróciło')} do postaci o tych samych imionach.`
+            : 'Bot wszedł nieaktywny.',
+        ];
+        if (result.missing.length > 0) {
+          notes.push(
+            `Nie ma tu postaci: ${[...new Set(result.missing)].join(', ')} — te relacje przepadły.`,
+          );
+        }
+        if (result.missingCharacter) {
+          notes.push(
+            `Nie ma tu karty „${result.missingCharacter}” — bot jest bez karty towarzysza.`,
+          );
+        }
+        const done: ArchiveImportResult = {
+          kind,
+          id: result.id,
+          name: result.name,
+          note: notes.join(' '),
         };
         return reply.code(201).send(done);
       }

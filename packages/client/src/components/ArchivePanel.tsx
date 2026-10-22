@@ -4,6 +4,7 @@ import type {
   CampaignCopyListView,
   CampaignCopySummary,
   CampaignRollbackResult,
+  MerchantListItem,
 } from '@vtt/shared';
 import {
   ARCHIVE_DOWNLOAD_PATHS,
@@ -22,8 +23,14 @@ import {
 } from '@vtt/shared';
 import { ApiError, apiGet, apiPost, apiUpload } from '../api.js';
 import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
-import { downloadArchive, openCampaign, subscribeCampaignCopies } from '../socket.js';
+import {
+  downloadArchive,
+  listMerchants,
+  openCampaign,
+  subscribeCampaignCopies,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useBotStore } from '../stores/botStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 
@@ -58,6 +65,9 @@ const KIND_DONE: Record<ArchiveImportResult['kind'], string> = {
   character: 'Wczytano kartę',
   scene: 'Wczytano scenę',
   campaign: 'Wczytano kampanię',
+  characters: 'Wczytano karty graczy',
+  shop: 'Wczytano sklep',
+  bot: 'Wczytano bota',
 };
 
 async function openImported(result: ArchiveImportResult): Promise<void> {
@@ -74,9 +84,24 @@ function DownloadSection() {
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const scenes = useSceneStore((s) => s.scenes);
+  const botMap = useBotStore((s) => s.bots);
   const [character, setCharacter] = useState('');
   const [scene, setScene] = useState('');
+  const [shop, setShop] = useState('');
+  const [bot, setBot] = useState('');
   const [withChat, setWithChat] = useState(true);
+  const [shops, setShops] = useState<MerchantListItem[]>([]);
+
+  // Etap 57c: sklepy nie mieszkają w magazynie MG — lista z serwera przy wejściu.
+  useEffect(() => {
+    let live = true;
+    void listMerchants().then((ack) => {
+      if (live && ack.ok && ack.data) setShops(ack.data.merchants);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Skrzynia i stos (46b) żyją na scenie — eksport ich karty do pliku nic nie daje.
   const cards = order.filter((id) => {
@@ -85,6 +110,13 @@ function DownloadSection() {
   });
   const chosenCard = character || cards[0] || '';
   const chosenScene = scene || scenes[0]?.id || '';
+  const chosenShop = shop || shops[0]?.id || '';
+  const bots = Object.values(botMap).sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  const chosenBot = bot || bots[0]?.id || '';
+  const hasPlayerCards = cards.some((id) => {
+    const card = characters[id];
+    return card !== undefined && (card.ownerId !== null || card.pendingOwner !== null);
+  });
 
   return (
     <section className="archive-section">
@@ -134,6 +166,67 @@ function DownloadSection() {
         </button>
       </div>
       <div className="archive-row-controls">
+        <select
+          className="archive-select"
+          value={chosenShop}
+          disabled={shops.length === 0}
+          onChange={(event) => setShop(event.target.value)}
+          aria-label="Sklep do pobrania"
+        >
+          {shops.length === 0 && <option value="">brak sklepów</option>}
+          {shops.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="small-button"
+          disabled={!chosenShop}
+          title="Sklep z kartą handlarza i towarem — w innej kampanii wejdzie zamknięty"
+          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.shop(chosenShop))}
+        >
+          Pobierz sklep
+        </button>
+      </div>
+      <div className="archive-row-controls">
+        <select
+          className="archive-select"
+          value={chosenBot}
+          disabled={bots.length === 0}
+          onChange={(event) => setBot(event.target.value)}
+          aria-label="Bot do pobrania"
+        >
+          {bots.length === 0 && <option value="">brak botów</option>}
+          {bots.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="small-button"
+          disabled={!chosenBot}
+          title="Profil bota z relacjami — w innej kampanii relacje wrócą do postaci o tych samych imionach"
+          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.bot(chosenBot))}
+        >
+          Pobierz bota
+        </button>
+      </div>
+      <div className="archive-row-controls">
+        <button
+          type="button"
+          className="small-button"
+          disabled={!hasPlayerCards}
+          title="Karty wszystkich graczy tej kampanii jedną paczką, z portretami"
+          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.players)}
+        >
+          Pobierz karty graczy
+        </button>
+      </div>
+      <div className="archive-row-controls">
         <label
           className="archive-check"
           title="Czat to zwykle większość objętości. W pliku jest do przeczytania — wczytana kampania i tak zaczyna z pustym czatem."
@@ -171,9 +264,11 @@ function ImportSection() {
     setBusy(true);
     try {
       const result = await apiUpload<ArchiveImportResult>(ARCHIVE_IMPORT_PATH, file);
-      const text = [`${KIND_DONE[result.kind]} „${result.name}”.`, result.note]
-        .filter(Boolean)
-        .join(' ');
+      const head =
+        result.kind === 'characters'
+          ? `Wczytano karty graczy z kampanii „${result.name}”.`
+          : `${KIND_DONE[result.kind]} „${result.name}”.`;
+      const text = [head, result.note].filter(Boolean).join(' ');
       if (result.kind === 'campaign') {
         notifyChoice(
           'archive',
@@ -225,11 +320,12 @@ function ImportSection() {
         />
       </div>
       <p className="archive-hint">
-        Rodzaj rozpozna się sam, a nic nie zostanie nadpisane. <strong>Karta</strong> i{' '}
-        <strong>scena</strong> wejdą do tej kampanii jako nowe (scena w podglądzie).{' '}
-        <strong>Kampania</strong> wejdzie zawsze jako nowa, na listę w Panelu MG, bez graczy — ich
-        karty poczekają, aż przypiszesz je na karcie albo przy „Nowy gracz”. Stare pliki .json też
-        się wczytają, tyle że bez grafik.
+        Rodzaj rozpozna się sam, a nic nie zostanie nadpisane. <strong>Karta</strong>,{' '}
+        <strong>scena</strong>, <strong>sklep</strong> i <strong>bot</strong> wejdą do tej kampanii
+        jako nowe (scena w podglądzie, sklep zamknięty, bot nieaktywny). <strong>Kampania</strong>{' '}
+        wejdzie zawsze jako nowa, na listę w Panelu MG, bez graczy — ich karty poczekają, aż
+        przypiszesz je na karcie albo przy „Nowy gracz”. Stare pliki .json też się wczytają, tyle że
+        bez grafik.
       </p>
     </section>
   );

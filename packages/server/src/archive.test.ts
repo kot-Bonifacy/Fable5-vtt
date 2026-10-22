@@ -249,14 +249,18 @@ describe('eksport karty', () => {
     expect(disposition).toContain("filename*=UTF-8''");
   });
 
-  it('nie jest dla gracza i nie zna karty, której nie ma', async () => {
+  it('cudza karta nie jest dla gracza i nikt nie zna karty, której nie ma', async () => {
     const character = await makeCharacter('Nie dla gracza');
-    const asPlayer = await built.app.inject({
-      method: 'GET',
-      url: `/api/archive/character/${character.id}`,
-      headers: { cookie: playerCookie },
-    });
-    expect(asPlayer.statusCode).toBe(403);
+    const asPlayer = () =>
+      built.app.inject({
+        method: 'GET',
+        url: `/api/archive/character/${character.id}`,
+        headers: { cookie: playerCookie },
+      });
+    // Od 57c gracz pobiera kopię **własnej** karty, a cudza wygląda jak nieistniejąca.
+    expect((await asPlayer()).statusCode).toBe(200);
+    await built.prisma.character.update({ where: { id: character.id }, data: { ownerId: null } });
+    expect((await asPlayer()).statusCode).toBe(404);
 
     const missing = await built.app.inject({
       method: 'GET',

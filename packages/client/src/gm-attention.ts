@@ -1,4 +1,6 @@
 import {
+  cardSubmissionHeadline,
+  isCardSubmissionOpen,
   isCheckRequestOpen,
   type CharacterView,
   type CreationPermitRow,
@@ -19,7 +21,16 @@ import type { ChatItem } from './stores/chatStore.js';
  * rozjechałby się przy pierwszej odpowiedzi udzielonej z innego miejsca.
  */
 export type GmAttentionKind =
-  'permit' | 'rank' | 'ready' | 'portrait' | 'request' | 'proposal' | 'scene' | 'spawn' | 'player';
+  | 'permit'
+  | 'rank'
+  | 'ready'
+  | 'portrait'
+  | 'request'
+  | 'proposal'
+  | 'scene'
+  | 'spawn'
+  | 'player'
+  | 'card';
 
 /** Zakładka panelu bocznego, na której MG podejmuje decyzję. */
 export type GmAttentionTab = 'chat' | 'characters' | 'scenes';
@@ -96,6 +107,19 @@ export function gmAttentionItems(sources: GmAttentionSources): GmAttentionItem[]
         key: gmAttentionKey.message(message.id),
         kind: 'request',
         text: `${message.request.askedByName} prosi o Test: ${message.request.rollLabel}`,
+        tab: 'chat',
+      });
+    }
+    // Etap 57c: karta zgłoszona przez gracza z pliku czeka na „Przyjmij”.
+    if (
+      message.kind === 'cardsubmission' &&
+      message.cardSubmission &&
+      isCardSubmissionOpen(message.cardSubmission)
+    ) {
+      items.push({
+        key: gmAttentionKey.message(message.id),
+        kind: 'card',
+        text: cardSubmissionHeadline(message.cardSubmission),
         tab: 'chat',
       });
     }

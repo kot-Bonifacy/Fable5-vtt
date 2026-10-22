@@ -114,7 +114,8 @@
   color: var(--err);
 }
 
-.sheet-close {
+.sheet-close,
+.sheet-download {
   flex: none;
   background: transparent;
   border: none;
@@ -126,6 +127,11 @@
 
 .sheet-close:hover {
   color: var(--err);
+}
+
+/* Etap 57c: „Pobierz kopię” własnej karty gracza — obok ✕, ten sam krój. */
+.sheet-download:hover {
+  color: var(--text);
 }
 
 /* Etap 57a: karta z pliku czeka na gracza — pasek MG pod belką, nad zakładkami. */

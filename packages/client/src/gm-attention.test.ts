@@ -164,3 +164,50 @@ it('the tab title carries the count and drops it again', () => {
   expect(gmAttentionTitle('(2) VTT — Cyberpunk RED', 3)).toBe('(3) VTT — Cyberpunk RED');
   expect(gmAttentionTitle('(3) VTT — Cyberpunk RED', 0)).toBe('VTT — Cyberpunk RED');
 });
+
+it('lists a card a player submitted from a file until the GM decides or it expires (57c)', () => {
+  const entry = {
+    submissionId: 'a'.repeat(24),
+    userId: 'player',
+    userName: 'Rogue',
+    name: 'Kira',
+    roleName: 'Solo',
+    roleRank: 4,
+    hasPortrait: true,
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    status: 'open' as const,
+  };
+  const items = gmAttentionItems({
+    ...empty,
+    chat: [
+      {
+        type: 'message',
+        message: message({ id: 1, kind: 'cardsubmission', cardSubmission: entry }),
+      },
+      {
+        type: 'message',
+        message: message({
+          id: 2,
+          kind: 'cardsubmission',
+          cardSubmission: { ...entry, status: 'accepted' },
+        }),
+      },
+      {
+        type: 'message',
+        message: message({
+          id: 3,
+          kind: 'cardsubmission',
+          cardSubmission: { ...entry, expiresAt: '2026-01-01T00:00:00Z' },
+        }),
+      },
+    ],
+  });
+  expect(items).toEqual([
+    {
+      key: 'msg:1',
+      kind: 'card',
+      text: 'Rogue zgłasza kartę „Kira” do wczytania',
+      tab: 'chat',
+    },
+  ]);
+});

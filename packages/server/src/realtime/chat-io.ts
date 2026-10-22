@@ -12,6 +12,7 @@ import type {
   HandoutLogEntry,
   InventoryMoveEntry,
   SurgeryRequestEntry,
+  CardSubmissionEntry,
   SightingLogEntry,
   JournalLogEntry,
   RandomTableRollEntry,
@@ -142,6 +143,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
   } else if (message.kind === 'surgery' && message.payload) {
     view.surgery = JSON.parse(message.payload) as SurgeryRequestEntry;
+  } else if (message.kind === 'cardsubmission' && message.payload) {
+    view.cardSubmission = JSON.parse(message.payload) as CardSubmissionEntry;
   } else if (message.kind === 'sighting' && message.payload) {
     view.sighting = JSON.parse(message.payload) as SightingLogEntry;
   } else if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.payload) {
@@ -298,6 +301,9 @@ export function visibleTo(user: SessionUser) {
               // odpowiedzieć za każdą ze stron — musi ją więc widzieć po
               // przeładowaniu. Gracze widzą ją przez `authorId`/`recipientId`.
               'surgery',
+              // Zgłoszona karta gracza (57c) czeka na decyzję MG — każdego MG
+              // kampanii, nie tylko autora. Gracz widzi ją przez `authorId`.
+              'cardsubmission',
               // Tabele losowe (34): `rolltable` jest publiczny i jest tu z tego
               // samego powodu, co `time` — bez wiersza MG widziałby wyłącznie
               // własne karty. `gmrolltable` jest tu wzorem `proposal`: cicha

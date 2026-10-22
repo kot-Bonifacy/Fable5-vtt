@@ -74,7 +74,7 @@ export function stringifyJsonColumn(value: unknown, fallback: string): string {
   return JSON.stringify(value);
 }
 
-function buildManifest(
+export function buildManifest(
   kind: ArchiveKind,
   campaignName: string,
   payload: unknown,
@@ -140,6 +140,8 @@ export async function exportCharacter(
       playReady: true,
       template: true,
       data: true,
+      pendingOwnerId: true,
+      pendingOwnerName: true,
       owner: { select: { id: true, name: true } },
       campaign: { select: { name: true } },
     },
@@ -176,7 +178,11 @@ export async function exportCharacter(
   const payload: CharacterArchive = {
     name: row.name,
     portraitUrl: row.portraitUrl,
-    owner: row.owner,
+    // Karta czekająca na gracza (57a) jest dalej kartą gracza — w pliku niesie
+    // jego imię, żeby i po następnym wczytaniu czekała, a nie wchodziła jako NPC.
+    owner:
+      row.owner ??
+      (row.pendingOwnerName ? { id: row.pendingOwnerId ?? '', name: row.pendingOwnerName } : null),
     playReady: row.playReady,
     template: row.template,
     data: parseJsonColumn(row.data),
@@ -212,6 +218,8 @@ export interface CharacterImportOptions {
   ownerId?: string | null;
   /** Nazwa, jeśli MG chce inną niż w pliku (import obok istniejącej karty). */
   name?: string;
+  /** Etap 57c: zgłoszenie gracza przyjęte przez MG jest zgodą na grę. */
+  playReady?: boolean;
 }
 
 /**
@@ -251,7 +259,7 @@ export async function importCharacter(
       pendingOwnerName: owner.pending?.name ?? null,
       pendingOwnerId: owner.pending?.id ?? null,
       portraitUrl: typeof payload.portraitUrl === 'string' ? payload.portraitUrl : null,
-      playReady: payload.playReady !== false,
+      playReady: options.playReady ?? payload.playReady !== false,
       template: payload.template === true && owner.ownerId === null && owner.pending === null,
       data: JSON.stringify(data),
     },

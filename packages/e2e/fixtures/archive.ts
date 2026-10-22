@@ -8,7 +8,7 @@ import yauzl from 'yauzl';
 export interface ArchivePackage<T = Record<string, unknown>> {
   manifest: {
     app: string;
-    kind: 'character' | 'scene' | 'campaign';
+    kind: 'character' | 'scene' | 'campaign' | 'characters' | 'shop' | 'bot';
     campaignName: string;
     counts: Record<string, number>;
     omitted: string[];

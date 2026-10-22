@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   ARCHIVE_IMPORT_MAX_BYTES_DEFAULT,
   CAMPAIGN_COPY_INTERVAL_MINUTES_DEFAULT,
@@ -62,6 +62,12 @@ export interface ServerConfig {
    * albo JSON-a). Opcjonalne — brak znaczy `ARCHIVE_IMPORT_MAX_BYTES_DEFAULT`.
    */
   archiveImportMaxBytes?: number;
+  /**
+   * Etap 57c: poczekalnia kart zgłoszonych przez graczy (paczka czeka tu na
+   * decyzję MG). Opcjonalne — brak znaczy katalog tymczasowy systemu (testy
+   * dymne); `loadConfig` kładzie ją obok danych prywatnych, na wolumenie.
+   */
+  cardSubmissionsDir?: string;
   /**
    * Adres klienta z `X-Forwarded-For` (Caddy na VPS, etap 28). Bez zaufanego
    * pośrednika włączenie tego pozwala podać dowolny adres i obejść limit
@@ -180,6 +186,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       positive(env.VTT_ARCHIVE_IMPORT_MAX_MB, ARCHIVE_IMPORT_MAX_BYTES_DEFAULT / (1024 * 1024)) *
       1024 *
       1024,
+    cardSubmissionsDir: resolve(
+      env.CARD_SUBMISSIONS_DIR ?? join(env.DATA_PRIVATE_DIR ?? '../../data/private', 'submissions'),
+    ),
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),

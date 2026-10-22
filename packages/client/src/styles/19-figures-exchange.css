@@ -359,6 +359,23 @@
   font-size: 0.78rem;
 }
 
+/* Etap 57c: zgłoszona karta — portret z paczki obok nagłówka. */
+.chat-card-submission {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-card-submission-portrait {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 0%;
+  border: 1px solid var(--border);
+}
+
 .chat-inventory-badge--done {
   background: rgb(var(--ok-rgb) / 18%);
   color: var(--ok);

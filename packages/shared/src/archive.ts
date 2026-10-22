@@ -35,8 +35,21 @@ export const ARCHIVE_APP = 'vtt';
  */
 export const ARCHIVE_VERSION = 1;
 
-/** Co jest w pliku: jedna karta, jedna scena albo cała kampania. */
-export type ArchiveKind = 'character' | 'scene' | 'campaign';
+/**
+ * Co jest w pliku: jedna karta, jedna scena albo cała kampania; od 57c także
+ * karty wszystkich graczy kampanii, jeden sklep z kartą handlarza i jeden
+ * profil bota z relacjami.
+ */
+export type ArchiveKind = 'character' | 'scene' | 'campaign' | 'characters' | 'shop' | 'bot';
+
+export const ARCHIVE_KINDS: readonly ArchiveKind[] = [
+  'character',
+  'scene',
+  'campaign',
+  'characters',
+  'shop',
+  'bot',
+];
 
 /**
  * Nagłówek pliku wymiany — pierwsza rzecz, jaką widzi człowiek otwierający go
@@ -95,7 +108,7 @@ export const ARCHIVE_REFUSAL_MESSAGES: Readonly<Record<ArchiveRefusalCode, strin
 };
 
 export function isArchiveKind(value: unknown): value is ArchiveKind {
-  return value === 'character' || value === 'scene' || value === 'campaign';
+  return ARCHIVE_KINDS.includes(value as ArchiveKind);
 }
 
 /** Jak nazywamy zawartość w zdaniu odmowy. */
@@ -103,6 +116,9 @@ const ARCHIVE_KIND_LABELS: Readonly<Record<ArchiveKind, string>> = {
   character: 'kartę postaci',
   scene: 'scenę',
   campaign: 'kampanię',
+  characters: 'karty graczy',
+  shop: 'sklep',
+  bot: 'profil bota',
 };
 
 /**
@@ -441,6 +457,12 @@ export const ARCHIVE_DOWNLOAD_PATHS = {
   scene: (id: string): string => `/api/archive/scene/${encodeURIComponent(id)}`,
   campaign: (includeChat: boolean): string =>
     `/api/archive/campaign?chat=${includeChat ? '1' : '0'}`,
+  /** Etap 57c: karty wszystkich graczy otwartej kampanii (także czekające na gracza). */
+  players: '/api/archive/players',
+  /** Etap 57c: sklep po id handlarza (`Merchant.id`) — z kartą i towarem. */
+  shop: (id: string): string => `/api/archive/shop/${encodeURIComponent(id)}`,
+  /** Etap 57c: profil bota z relacjami. */
+  bot: (id: string): string => `/api/archive/bot/${encodeURIComponent(id)}`,
 } as const;
 
 /**
@@ -635,3 +657,122 @@ export function campaignCopySessionLabel(sessionStartedAt: string | null): strin
   const pad = (value: number): string => String(value).padStart(2, '0');
   return `sesja ${pad(date.getDate())}.${pad(date.getMonth() + 1)}, ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Pojedyncze rzeczy i karta gracza (etap 57c)                         */
+/* ------------------------------------------------------------------ */
+
+/** Imię do porównania: bez wielkości liter, spacji na brzegach i podwójnych spacji. */
+export function archiveNameKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pl');
+}
+
+/**
+ * Wiersz kampanii docelowej o tym imieniu — **tylko jednoznaczny**. Profil bota
+ * z innej kampanii zna swoich rozmówców po imieniu, nie po id (id karty w innej
+ * kampanii jest inne), więc relacja trafia w kartę o tym samym imieniu. Dwie
+ * karty o jednym imieniu to zgadywanie — relacja wtedy przepada i trafia do
+ * zdania „czego tu nie ma”.
+ */
+export function matchArchiveName<T extends { name: string }>(
+  rows: readonly T[],
+  name: string,
+): T | null {
+  const key = archiveNameKey(name);
+  if (!key) return null;
+  const found = rows.filter((row) => archiveNameKey(row.name) === key);
+  return found.length === 1 ? found[0]! : null;
+}
+
+/**
+ * Zgłoszenie karty przez gracza (decyzja MG 9): gracz wgrywa paczkę swojej
+ * karty, serwer trzyma ją w poczekalni kampanii do `expiresAt`, a MG
+ * przyjmuje albo odrzuca na karcie czatu `cardsubmission`. Gracz kartą nie
+ * wchodzi do kampanii sam.
+ */
+export type CardSubmissionStatus = 'open' | 'accepted' | 'refused' | 'expired';
+
+export interface CardSubmissionEntry {
+  /** Katalog poczekalni na serwerze — losowy, nie id karty. */
+  submissionId: string;
+  /** Gracz, który zgłosił, i jego imię przy stole. */
+  userId: string;
+  userName: string;
+  /** Podgląd dla MG: imię z pliku, Rola i jej Poziom, portret (gdy paczka go niesie). */
+  name: string;
+  roleName: string | null;
+  roleRank: number | null;
+  hasPortrait: boolean;
+  /** Do kiedy plik czeka w poczekalni (ISO). */
+  expiresAt: string;
+  status: CardSubmissionStatus;
+  /** Po przyjęciu: nowa karta gracza. */
+  characterId?: string;
+  /** Kto rozstrzygnął (MG). */
+  byName?: string;
+}
+
+/** Jak długo zgłoszona karta czeka na MG, zanim plik zejdzie z serwera. */
+export const CARD_SUBMISSION_TTL_HOURS = 72;
+
+/** Stan zgłoszenia „na teraz” — otwarte po terminie to już wygasłe. */
+export function cardSubmissionStatus(
+  entry: Pick<CardSubmissionEntry, 'status' | 'expiresAt'>,
+  now: number = Date.now(),
+): CardSubmissionStatus {
+  if (entry.status !== 'open') return entry.status;
+  return Date.parse(entry.expiresAt) <= now ? 'expired' : 'open';
+}
+
+export function isCardSubmissionOpen(
+  entry: Pick<CardSubmissionEntry, 'status' | 'expiresAt'>,
+  now: number = Date.now(),
+): boolean {
+  return cardSubmissionStatus(entry, now) === 'open';
+}
+
+/** „Kira — Solo 4” — imię z Rolą i Poziomem, tak jak MG zna postać z listy. */
+export function cardSubmissionLabel(
+  entry: Pick<CardSubmissionEntry, 'name' | 'roleName' | 'roleRank'>,
+): string {
+  if (!entry.roleName) return entry.name;
+  return `${entry.name} — ${entry.roleName}${entry.roleRank !== null ? ` ${entry.roleRank}` : ''}`;
+}
+
+/** Nagłówek karty czatu i tekst w „Czeka na MG”. */
+export function cardSubmissionHeadline(
+  entry: Pick<CardSubmissionEntry, 'userName' | 'name'>,
+): string {
+  return `${entry.userName} zgłasza kartę „${entry.name}” do wczytania`;
+}
+
+export const CARD_SUBMISSION_STATUS_LABELS: Readonly<Record<CardSubmissionStatus, string>> = {
+  open: 'Czeka na MG',
+  accepted: 'Przyjęta',
+  refused: 'Odrzucona',
+  expired: 'Wygasła',
+};
+
+/** Trasy zgłoszeń — jedno miejsce, żeby klient nie sklejał adresów ręką. */
+export const CARD_SUBMISSION_PATHS = {
+  /** `POST`, multipart z paczką karty — wyłącznie gracz. */
+  submit: '/api/archive/submissions',
+  /** `POST { action: 'accept' | 'refuse' }` — wyłącznie MG kampanii. */
+  respond: (messageId: number): string => `/api/archive/submissions/${messageId}/respond`,
+  /** `GET` — portret ze zgłoszonej paczki, dla MG kampanii i zgłaszającego. */
+  portrait: (submissionId: string): string =>
+    `/api/archive/submissions/${encodeURIComponent(submissionId)}/portrait`,
+} as const;
+
+/** Odmowy zgłoszenia i decyzji MG — zdania dla gracza i MG. */
+export const CARD_SUBMISSION_REFUSALS: Readonly<Record<string, string>> = {
+  COMBAT_LOCKED: 'Trwa starcie — kartę zgłosisz, gdy walka się skończy.',
+  SUBMISSION_PENDING: 'Twoja poprzednia karta jeszcze czeka na MG.',
+  SUBMISSION_CLOSED: 'To zgłoszenie jest już rozstrzygnięte.',
+  SUBMISSION_EXPIRED: 'Zgłoszenie wygasło — gracz może zgłosić kartę jeszcze raz.',
+  SUBMISSION_CONTAINER: 'To karta skrzyni albo stosu, nie postaci.',
+  NOT_MEMBER: 'Gracza nie ma już w tej kampanii.',
+  NO_CAMPAIGN: 'Nie siedzisz w żadnej kampanii.',
+  FORBIDDEN: 'Kartę zgłasza gracz — MG wczytuje pliki w zakładce „Kopie”.',
+  NOT_FOUND: 'Nie ma takiego zgłoszenia.',
+};

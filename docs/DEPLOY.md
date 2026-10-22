@@ -265,6 +265,11 @@ niesie każdą kampanię w stanie z tej godziny. Serwer odtworzony z kopii off-s
 kopii kampanii (cofanie zaczyna się od nowej sesji); `scp -r` i tak rozdmuchałby dowiązania do
 pełnych kopii plików.
 
+**Poczekalnia kart zgłoszonych przez graczy (etap 57c)** leży w `vtt-data/private/submissions/`
+(`CARD_SUBMISSIONS_DIR`, domyślnie `DATA_PRIVATE_DIR/submissions`): paczka karty czeka tam
+rozpakowana na decyzję MG najwyżej 72 h. Nic tu nie trzeba ustawiać — katalog jest na wolumenie
+i sprząta się sam; paczka gracza ma sufit 32 MB, więc mieści się w `client_max_body_size 64m`.
+
 Kopia off-site — PC MG ściąga ją sam (od 18.10). Zadanie Harmonogramu „VTT pull backup” codziennie
 o 23:30 (wyłączony PC nadrabia przy najbliższej okazji) puszcza `deploy/pull-backup.ps1`: najnowsza
 kompletna kopia (z `manifest.json`, który serwer pisze na końcu) idzie przez `scp` do `D:\kopie-vtt\`,

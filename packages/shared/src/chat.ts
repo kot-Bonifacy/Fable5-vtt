@@ -10,6 +10,7 @@ import type { BotActionProposal } from './bots/types.js';
 import type { CheckCallEntry, CheckRequestEntry } from './checks.js';
 import type { InventoryMoveView } from './inventory.js';
 import type { SurgeryRequestEntry } from './surgery.js';
+import type { CardSubmissionEntry } from './archive.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
@@ -60,6 +61,8 @@ export type ChatKind =
   | 'sighting'
   /** Prośba pacjenta o operację u Medyka innego gracza (#41, 30.09.2026). */
   | 'surgery'
+  /** Karta zgłoszona przez gracza z pliku, czekająca na MG (etap 57c). */
+  | 'cardsubmission'
   /** Wynik losowania z tabeli, pokazany całemu stołowi (etap 34). */
   | 'rolltable'
   /**
@@ -390,6 +393,8 @@ export interface ChatMessageView {
   inventory?: InventoryMoveView;
   /** Prośba o operację i jej rozstrzygnięcie — kind `surgery` only (#41). */
   surgery?: SurgeryRequestEntry;
+  /** Zgłoszona karta gracza — kind `cardsubmission` only (etap 57c). */
+  cardSubmission?: CardSubmissionEntry;
   /** Co widać na obejrzanej figurze — kind `sighting` only (etap 41). */
   sighting?: SightingLogEntry;
   /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
@@ -607,6 +612,9 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // graczy — rubryka „kto co ma", jak przekazanie. Rzuty, które z niej wyjdą
     // (Test montażu, Człowieczeństwo), są zwykłymi kartami `roll`.
     case 'surgery':
+      return 'table';
+    // Zgłoszona karta (57c) to papiery gracza czekające na MG — ta sama rubryka.
+    case 'cardsubmission':
       return 'table';
     // Losowanie z tabeli (34) NIE jest w grupie „Rzuty", choć pada w nim kość:
     // grupa dzieli wiersze po tym, po co się na nie patrzy, a na tę kartę

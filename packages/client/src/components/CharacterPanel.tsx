@@ -28,6 +28,7 @@ import { useNpcCreateStore } from '../stores/npcCreateStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { plural, pluralWord } from '../plural.js';
 import { CreationGate } from './CreationGate.js';
+import { CardSubmitGate } from './CardSubmission.js';
 import { CreationRankPanel } from './CreationRankPanel.js';
 import { CharacterReadyPanel, useWaitingCharacters } from './CharacterReadyPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
@@ -372,6 +373,8 @@ export function CharacterPanel() {
         {/* 24.09: a player's new character starts with the GM's consent and
             the rules. */}
         <CreationGate resume={resume} another={live.length > 0} />
+        {/* Etap 57c: postać z innej kampanii wchodzi przez MG, nie przez kreator. */}
+        {!resume && <CardSubmitGate />}
       </div>
     );
   }

@@ -6,6 +6,24 @@ wyłącznie wtedy, gdy ktoś wraca do świeżo zamkniętego etapu. **To, co z ni
 w kodzie, mieszka w sekcjach obszarów `umowy-kodu.md` i `pulapki-dev.md`** — tu leży kontekst:
 po co to powstało, co było przed, czego świadomie nie zrobiono.
 
+## Etap 57a i 57b (wyprowadzone 22.10.2026)
+
+**Etap 57b „Automatyczne kopie i cofnięcie” zamknięty 22.10 — dalej 57c.** Serwer sam odkłada
+kopię każdej kampanii przy starcie i końcu sesji oraz co godzinę w jej trakcie
+(`<BACKUP_DIR>/campaigns/<id>/copy-…`, grafiki dowiązane, zostaje 10 ostatnich sesji). W zakładce
+„Kopie” MG pobiera kopię albo **cofa kampanię** (bez sesji, z nazwą): te same id, gracze, czat
+i zaproszenia zostają, a bieżący stan wyjeżdża do kampanii „(przed cofnięciem DD.MM)”, którą MG
+usuwa „Usuń…” w Panelu MG. **Do wdrożenia:** `docker-compose.yml` montuje teraz cały `vtt-data`
+raz (na VPS kopie bazy były pełnymi kopiami plików) — po `./deploy.sh` sprawdzić `"linked": true`
+(lista na końcu `docs/DEPLOY.md`). Umowy na górze `kopie`, rozstrzygnięcia w pliku etapu (57b).
+
+**Etap 57a „Paczka ZIP i wczytanie kampanii jako nowej” zamknięty 22.10.** „Kopie” MG: „Pobierz kartę / scenę / kampanię”
+dają paczkę ZIP z grafikami (`manifest.json` ze skrótami, `data.json`, `files/`), a jedno
+„Wczytaj z pliku…” idzie trasą `POST /api/archive/import` (także stare JSON-y z etapu 33). Kampania
+z pliku wchodzi zawsze jako **nowa** (nieotwarta, komunikat z „Otwórz kampanię”), karta gracza
+spoza kampanii — jako „czeka na gracza: <imię>” (pasek pod belką karty MG albo karta wybrana przy
+„Nowy gracz”). Umowy na górze `kopie`, rozstrzygnięcia bez pytań — w pliku etapu (sekcja 57a).
+
 ## Etap 47a (wyprowadzone 10.10.2026)
 
 **Etap 47a „Cennik domowy” zamknięty 10.10 — następny jest 47b (łańcuch E2E pod nowe ceny), potem

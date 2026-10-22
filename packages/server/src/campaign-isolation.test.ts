@@ -1328,6 +1328,9 @@ describe('izolacja kampanii — trasy REST i pliki (etap 44b)', () => {
     const calls: [string, string, number][] = [
       ['GET', `/api/archive/character/${A.characterId}`, 404],
       ['GET', `/api/archive/scene/${A.sceneId}`, 404],
+      // Etap 57c: sklep i bot do pobrania — cudze nie istnieją.
+      ['GET', `/api/archive/shop/${A.merchantId}`, 404],
+      ['GET', `/api/archive/bot/${A.botId}`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/sandbox`, 404],
       // Etap 57b: „Usuń kampanię” MG — cudza, nawet z dobrą nazwą, nie istnieje.
       ['DELETE', `/api/campaigns/${A.campaignId}`, 404],
@@ -1355,6 +1358,12 @@ describe('izolacja kampanii — trasy REST i pliki (etap 44b)', () => {
     // Ta sama trasa dla właściciela kampanii działa — odmowa to nie zepsuta trasa.
     expect(await get(`/api/archive/character/${A.characterId}`, gmACookie)).toBe(200);
     expect(await get(`/api/archive/scene/${A.sceneId}`, gmACookie)).toBe(200);
+    expect(await get(`/api/archive/shop/${A.merchantId}`, gmACookie)).toBe(200);
+    expect(await get(`/api/archive/bot/${A.botId}`, gmACookie)).toBe(200);
+    // Etap 57c: kopię karty pobiera też jej gracz — gracz innej kampanii nie.
+    const character = `/api/archive/character/${A.characterId}`;
+    expect(await get(character, await playerCookie(B.playerId))).toBe(404);
+    expect(await get(character, await playerCookie(A.playerId))).toBe(200);
     const after = await snapshot();
     const changed = [...before].filter(([key, value]) => after.get(key) !== value);
     expect(changed).toEqual([]);

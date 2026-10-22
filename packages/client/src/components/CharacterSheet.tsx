@@ -167,7 +167,11 @@ import {
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { characterTracksAmmo } from '../ammo-stock.js';
-import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import {
+  ARCHIVE_DOWNLOAD_PATHS,
+  UPLOAD_ACCEPT_ATTRIBUTE,
+  uploadRequirementText,
+} from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { PendingOwnerStrip } from './PendingOwnerStrip.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
@@ -193,6 +197,7 @@ import {
   restForADay,
   useDose,
   clearWeaponJam,
+  downloadArchive,
   drawWeapon,
   reloadWeapon,
   sendCyberwareAction,
@@ -418,6 +423,18 @@ function CharacterSheetWindow({
         >
           {saveLabel}
         </span>
+        {/* Etap 57c: gracz pobiera kopię własnej karty (MG ma „Kopie”). */}
+        {!isGm && character.ownerId === userId && !data.container && (
+          <button
+            type="button"
+            className="sheet-download"
+            onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.character(characterId))}
+            title="Pobierz kopię karty — paczka ZIP z portretem; w innej kampanii zgłosisz ją MG w „Postaciach”"
+            aria-label="Pobierz kopię karty"
+          >
+            ⤓
+          </button>
+        )}
         <button
           type="button"
           className="sheet-close"

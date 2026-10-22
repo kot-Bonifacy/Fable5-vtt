@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, trzecia (po `9b78c22`) — etap 57a: paczki ZIP i wczytanie kampanii
+
+**Zakres etapu 57a** (decyzje MG z 22.10 w pliku etapu). **Zrobione:** `shared/archive.ts` —
+układ paczki, `archivePackagePath`, `isSafeArchivePath`, `archiveListingRefusal` /
+`archivePackageRefusal`, cztery kody `ARCHIVE_PACKAGE_*`; serwer — `archive-package.ts`
+(`yazl`/`yauzl`: eksport strumieniem, rozpakowanie do katalogu tymczasowego ze skrótem,
+`placeStagedFiles`, `rewriteUploadUrls`), `archive-campaign.ts` (`importCampaign`: mapa id
+z góry, `makeRemap`, `wallId` drzwi Sieci, jedna transakcja), `insertScene` wspólne dla sceny
+i kampanii, zrzut z tabelami losowymi, punktami dostępu, strefami, udostępnieniami handoutów
+i przypięciami dziennika (`CAMPAIGN_ARCHIVE_OMITTED` — przegląd modeli), trasa
+`POST /api/archive/import`, zdarzenia `archive:*` usunięte; „czeka na gracza” —
+`Character.pendingOwnerName/Id`, `Invitation.characterId` (migracja
+`20261022120000_archive_pending_owner`), `pendingCards` w `/api/campaigns`, przypisanie przy
+wejściu z linku. Klient — nowa zakładka „Kopie”, `PendingOwnerStrip`, „czeka: …” w liście
+postaci, wybór karty przy „Nowy gracz”. **Rozstrzygnięte bez pytań** (lista w pliku etapu):
+czat i walka nie wjeżdżają do nowej kampanii, nazwa z dopiskiem „(z pliku DD.MM)”, id konta przy
+czekającej karcie tylko dla gracza tego samego MG (test izolacji), limity 512 MB / 2 GB.
+**Poza zakresem przy okazji:** zaległość z 19.10 („Załóż starcie” bez pól imion) — od etapu 56
+w etykiecie pola siedzi lista postawy; `fightPick` w `fixtures/walka.ts`, przepięte T4a 4.1,
+T5b, T6b 6.6d i T8a-macierz.
+
+**Weryfikacja:** `shared` 2557/2557 (+29 `archive-package.test.ts`), serwer 1563/1563 (nowy
+`archive-package.test.ts` 10, `archive.test.ts` na paczkach i trasie, macierz izolacji z importem
+REST), klient 420/420; `tsc` czysty w kliencie, serwerze i e2e (w `shared` dwa stare błędy typów
+w `covers.test.ts` / `jump.test.ts` — pole `hidden` osłony z 21.10, nie ruszane), ESLint i
+Prettier czyste w zmienionych plikach. E2E: nowy `t57a-kopie` (`@szybkie`) **2/2** — scena z mapą pobrana w A przyciskiem, wczytana „Wczytaj z pliku…” w B, mapa w B 200 po skasowaniu pliku w A; T6b od `po-T6a` przepięty na paczki — 4/18 zielone, 6.6d przechodzi już „Załóż starcie”, ale pada na pulsującym 🎲 inicjatywy (`ced46d1`, nowa zaległość), więc **6.8a/6.8b łańcuchem niepuszczone**; T4a, T5b, T8a — przepięty tylko selektor, niepuszczone. **Oglądane w Firefoksie** (tymczasowy spec z `po-T6`, skasowany): zakładka „Kopie”, odmowa „Masz trwającą sesję…” przy „Otwórz kampanię” z sesją, komunikat po wczytaniu kampanii z „Otwórz kampanię”, nowa kampania z kartami „czeka: Marek / Ola” i portretami z paczki, pasek pod belką karty, wybór karty przy „Nowy gracz” podpowiada imię.
+
 ### Sesja 22.10, druga (po `ced46d1`) — zlecenie MG: przegląd mechaniki Szczęścia
 
 **Zlecenie MG:** sprawdzić, czy Szczęście jest dodawane i wydawane prawidłowo. **Diagnoza:** silnik

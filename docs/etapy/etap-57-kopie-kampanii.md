@@ -190,26 +190,51 @@ Diagnoza z 22.10 (stan po etapie 56):
 
 ### Zakres
 
-- [ ] Paczka sklepu (handlarz z asortymentem i kartą handlarza, jeśli ma) i paczka profilu bota
+- [x] Paczka sklepu (handlarz z asortymentem i kartą handlarza, jeśli ma) i paczka profilu bota
       (z relacjami; relacja do bota, którego w kampanii docelowej nie ma, przepada i trafia
       do zdania „czego tu nie ma”). Pobieranie i wczytywanie w zakładce „Kopie”
-- [ ] **Gracz: „Pobierz kopię” na własnej karcie** (paczka z portretem). Trasa sprawdza
+- [x] **Gracz: „Pobierz kopię” na własnej karcie** (paczka z portretem). Trasa sprawdza
       właściciela, a cudza karta wygląda jak nieistniejąca
-- [ ] **Gracz: „Zgłoś kartę do wczytania”.** Upload paczki karty trafia do poczekalni kampanii
+- [x] **Gracz: „Zgłoś kartę do wczytania”.** Upload paczki karty trafia do poczekalni kampanii
       (plik tymczasowy z terminem ważności), a MG dostaje prośbę w czacie / komunikacie
       z podglądem (imię, Rola, Poziom, portret) i przyciskami „Przyjmij” / „Odrzuć”. Po
       przyjęciu karta wchodzi jako karta tego gracza. Odmowa przy trwającym starciu
       (`COMBAT_LOCKED` — gracz nie zakłada nowej postaci w walce, umowa z 21.10)
-- [ ] MG: „Pobierz karty graczy”, jedna paczka ze wszystkimi kartami graczy kampanii
-- [ ] Testy: dymne (gracz pobiera swoją, nie cudzą; zgłoszenie → przyjęcie → karta u gracza;
+- [x] MG: „Pobierz karty graczy”, jedna paczka ze wszystkimi kartami graczy kampanii
+- [x] Testy: dymne (gracz pobiera swoją, nie cudzą; zgłoszenie → przyjęcie → karta u gracza;
       odrzucenie sprząta plik; odmowa w walce), E2E gracz + MG w osobnych kontekstach
 
 ### Kryteria ukończenia
 
-- [ ] Gracz pobiera kopię swojej postaci, zgłasza ją w drugiej kampanii tego samego MG, a MG
+- [x] Gracz pobiera kopię swojej postaci, zgłasza ją w drugiej kampanii tego samego MG, a MG
       przyjmuje: karta z portretem jest u gracza
-- [ ] Sklep i bot przeniesione do drugiej kampanii działają (asortyment, osobowość, relacje)
-- [ ] Oględziny w Firefoksie (gracz) obok Chromium (MG)
+- [x] Sklep i bot przeniesione do drugiej kampanii działają (asortyment, osobowość, relacje)
+- [x] Oględziny w Firefoksie (gracz) obok Chromium (MG)
+
+### Rozstrzygnięcia 57c (22.10, bez pytań — do słowa MG)
+
+- **Trzy nowe rodzaje paczki:** `shop` (ustawienia `Merchant` z nakładką MG + karta handlarza),
+  `bot` (profil, relacje i karta towarzysza **po imieniu**) i `characters` (karty graczy kampanii,
+  także czekające na gracza). Wszystkie wchodzą tym samym „Wczytaj z pliku…” jako nowe.
+- **Bot zna rozmówców po imieniu.** W kampanii docelowej te same postacie mają inne id, więc
+  relacja i karta towarzysza trafiają w kartę o tym samym imieniu — tylko jednoznacznie
+  (`matchArchiveName`; dwie karty „Zbir” = brak dopasowania). Reszta przepada i trafia do
+  komunikatu „Nie ma tu postaci: …”. Wczytany bot jest **nieaktywny i bez sceny**, a sterujący
+  gracz (konto) zostaje tylko, gdy siedzi w kampanii docelowej.
+- **Sklep wchodzi zamknięty**, karta handlarza jako NPC (także gdy w źródle prowadził ją gracz).
+  Nakładka „ukryty / cena / bez dna” jest kluczowana id wierszy karty — te jadą w `data` bez zmian.
+- **Gracz pobiera kopię „⤓” na belce własnej karty** (tylko właściciel; figura sterowana cudzą
+  kartą tego nie daje). Trasa `/api/archive/character/:id` jest od 57c dla MG kampanii i właściciela.
+- **Zgłoszenie karty to karta czatu `cardsubmission`** (wzór: prośba o operację #41), a nie stan
+  w pamięci — przeżywa restart i przeładowanie. MG ma ją w „Czeka na MG” (rodzaj `card`, 📂).
+  Paczka czeka rozpakowana w poczekalni (`data/private/submissions`, `CARD_SUBMISSIONS_DIR`)
+  **72 h**; grafiki trafiają do `uploads/` dopiero przy przyjęciu, a portret do podglądu idzie
+  osobną trasą. Jedno otwarte zgłoszenie na gracza (`SUBMISSION_PENDING`), paczka do 32 MB.
+- **Przyjęcie = zgoda na grę** (`playReady: true`) i karta tego gracza; figury nie stawia —
+  MG przeciąga kartę na mapę jak każdą inną. `COMBAT_LOCKED` zatrzymuje **zgłoszenie** gracza;
+  „Przyjmij” MG w walce przechodzi (MG bez zmian, umowa z 21.10).
+- **Karta czekająca na gracza (57a) wyjeżdża w pliku z imieniem gracza** — także pojedyncza,
+  więc po kolejnym wczytaniu znów czeka, zamiast wejść jako NPC.
 
 ## Poza zakresem
 

@@ -18,6 +18,7 @@ const KIND_ICON: Record<GmAttentionKind, string> = {
   scene: '🗺',
   spawn: '🚩',
   player: '👤',
+  card: '📂',
 };
 
 /**
