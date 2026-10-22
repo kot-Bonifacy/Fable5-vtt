@@ -21,13 +21,21 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **58** Ukryte rzeczy, zamki, rozbrajanie (58a–58d, plan 22.10 — podział czeka na akceptację MG); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c) (ostatni zamknięty: 57c, 2026-10-22) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Etap 58 „Ukryte rzeczy, zamki i rozbrajanie pułapek” rozpisany 22.10 — następny do roboty
+(58a).** Oględziny 22.10 (MG i Marek w Chromium, Ola w Firefoksie): Percepcja przy ukrytej
+pułapce, „Rozbrój” MG i zamek pojemnika działają. Dwie usterki trafiły do 58a: wiersz Percepcji
+idzie na czat do wszystkich (przeciek nazwy pułapki i samego faktu, że tam jest), a marsz przez
+pułapkę jednym klikiem nie daje rzutu wcale. Gracz nie ma dziś rozbrajania (58b), wytrycha do
+drzwi (58c) ani wykrywania ukrytych figur (58d). Decyzje MG i rozstrzygnięcia czekające na jego
+słowo są w pliku etapu `etap-58-ukryte-zamki-pulapki.md`.
 
 **Etap 57 „Kopie kampanii” zamknięty 22.10 (57a–57c) — dalej etap 28, potem T10.** Zakładka
 „Kopie” MG daje paczki ZIP z grafikami: kartę, scenę, sklep, bota, karty graczy i całą kampanię,
@@ -412,6 +420,22 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 22.10, szósta (po `605f9c7`) — oględziny ukrytych rzeczy, zamków i pułapek, plan etapu 58
+
+**Zlecenie MG:** sprawdzić wykrywanie niewidocznych rzeczy, otwieranie zamka i rozbrajanie
+pułapek. **Kodu aplikacji nie zmieniano.** Testy serwera `zones` / `containers` / `walls`
+77/77, `shared` `zones` / `container` 31/31; E2E `t46b-pojemniki` 9/9 i tymczasowy
+`99-ogledziny/t99-pulapki` 5/5 (skasowany). MG i Marek w Chromium, Ola w **Firefoksie**, zero
+błędów konsoli. Zrzuty pokazały ukrytą strefę tylko u Oli po zdanej Percepcji, przerywany obrys
+„ukryta” u MG i strefę odsłoniętą Markowi po złapaniu. **Znalezione:** wiersz automatycznej
+Percepcji idzie na czat do wszystkich (porażka zdradza pułapkę, sukces podaje jej nazwę graczom
+bez strefy w payloadzie). Z kodu wynika też, że Percepcja liczy się tylko z punktu końcowego marszu,
+więc przejście przez pułapkę jednym klikiem nie daje rzutu. **Braki:** rozbrajanie przez gracza,
+wytrych do drzwi, wykrywanie ukrytych figur. Wpis systemu ma już PT i minuty rozbrojenia
+(`disableDv` / `disableMinutes`). **Decyzje MG z 22.10** i podział 58a–58d są w
+`etap-58-ukryte-zamki-pulapki.md`. Pomysły poza zakresem (ukryte drzwi, wyważanie, koszt Akcji,
+„Szukam”) trafiły na górę `POMYSLY.md`, a wiersze 58–58d do `archiwum/tabela-etapow.md`.
+
 ### Sesja 22.10, piąta (po `e81d0e1`) — etap 57c: sklep i bot w paczce, karta gracza
 
 **Zakres etapu 57c — zamyka etap 57.** **Zrobione:** `shared/archive.ts` — rodzaje paczki
@@ -439,32 +463,3 @@ zrzutami, skasowany) — belka karty z „⤓”, „Zgłoś kartę z pliku…�
 karta czatu z portretem z poczekalni i „Czeka na MG”, nowe wiersze „Kopii”, karta z portretem
 u gracza po przyjęciu. Sklepu i bota przez UI nie klikano — działanie (towar z nakładką,
 osobowość, relacje) sprawdzają testy dymne.
-
-### Sesja 22.10, czwarta (po `ddc9996`) — etap 57b: kopie kampanii i cofnięcie
-
-**Zakres etapu 57b.** **Zrobione:** `shared/archive.ts` — `campaignCopyName` /
-`parseCampaignCopyName`, `planCampaignCopyRotation` (sesja = jedna pozycja), typy listy
-i cofnięcia, `CAMPAIGN_COPY_PATHS`, `confirmsCampaignName`; serwer — `campaign-copies.ts`
-(`CampaignCopies` w `ctx.copies`: odczyt od razu, zapis w tle kolejką na kampanię, `.partial`,
-dowiązania, rotacja, `tick` w `sweepSessions`, `archive:copies` / `archive:copy-failed`),
-kopie w `startSession` (przed Stopem i Szczęściem) i `endSession`; `exportCampaign` z walkami
-(`includeCombat`), id stref i `createdAt` kart i scen; `importCampaign` w trybie `replace`
-(`clearCampaignContent`, wskazania czatu w tabeli tymczasowej, walki, rewizja kart);
-`campaign-rollback.ts`; trasy `GET /api/archive/copies`, `GET …/:name`, `POST …/:name/restore`
-(zrzut pamięci procesu, `reseatCampaignGms`); `DELETE /api/campaigns/:id`
-(`registerCampaignDeleteRoute`); `placeStagedFiles` z `put` (dowiązanie). Klient — „Kopie
-automatyczne” w `ArchivePanel` (grupy po sesjach, „Pobierz”, „Cofnij…” z nazwą), „Usuń…”
-w Panelu MG. **Deploy:** jedno montowanie `vtt-data` w `docker-compose.yml` (na VPS 22.10:
-`"linked": false`, 2,0 GB `backups/` na 70 MB `uploads/`), sekcja „Kopie kampanii” w
-`docs/DEPLOY.md` (off-site nie jadą — celowo; pomiar: ~130 kB danych na kopię). **Niewdrożone.**
-**Błąd złapany E2E:** przywrócona karta z `revision` 0 była dla klienta „starszą” (#49) —
-pułapka w `kopie`.
-
-**Weryfikacja:** `shared` 2566/2566, serwer 1574/1574, klient 420/420; `tsc` czysty w serwerze,
-kliencie i e2e (poza nieśledzonymi `99-ogledziny/t99-wolna-mapa`), ESLint i Prettier czyste
-w zmienionych plikach. E2E nowy `t57b-cofniecie` (`@szybkie`) **4/4** — MG Chromium, gracz
-Firefox: sesja, zmiana imienia karty, koniec, „Cofnij…” z nazwą, gracz w następnej sesji widzi
-kartę sprzed zmiany, kampania „przed cofnięciem” usunięta z Panelu MG. **Oglądane w Firefoksie**
-(tymczasowy spec, skasowany): lista kopii pogrupowana po sesjach, potwierdzenie nazwą (pole
-wyrównane do przycisków po oględzinach), „Usuń…” w Panelu MG, wyszarzone przy otwartej.
-

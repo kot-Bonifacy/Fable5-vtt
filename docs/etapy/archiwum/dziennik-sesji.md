@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, czwarta (po `ddc9996`) — etap 57b: kopie kampanii i cofnięcie
+
+**Zakres etapu 57b.** **Zrobione:** `shared/archive.ts` — `campaignCopyName` /
+`parseCampaignCopyName`, `planCampaignCopyRotation` (sesja = jedna pozycja), typy listy
+i cofnięcia, `CAMPAIGN_COPY_PATHS`, `confirmsCampaignName`; serwer — `campaign-copies.ts`
+(`CampaignCopies` w `ctx.copies`: odczyt od razu, zapis w tle kolejką na kampanię, `.partial`,
+dowiązania, rotacja, `tick` w `sweepSessions`, `archive:copies` / `archive:copy-failed`),
+kopie w `startSession` (przed Stopem i Szczęściem) i `endSession`; `exportCampaign` z walkami
+(`includeCombat`), id stref i `createdAt` kart i scen; `importCampaign` w trybie `replace`
+(`clearCampaignContent`, wskazania czatu w tabeli tymczasowej, walki, rewizja kart);
+`campaign-rollback.ts`; trasy `GET /api/archive/copies`, `GET …/:name`, `POST …/:name/restore`
+(zrzut pamięci procesu, `reseatCampaignGms`); `DELETE /api/campaigns/:id`
+(`registerCampaignDeleteRoute`); `placeStagedFiles` z `put` (dowiązanie). Klient — „Kopie
+automatyczne” w `ArchivePanel` (grupy po sesjach, „Pobierz”, „Cofnij…” z nazwą), „Usuń…”
+w Panelu MG. **Deploy:** jedno montowanie `vtt-data` w `docker-compose.yml` (na VPS 22.10:
+`"linked": false`, 2,0 GB `backups/` na 70 MB `uploads/`), sekcja „Kopie kampanii” w
+`docs/DEPLOY.md` (off-site nie jadą — celowo; pomiar: ~130 kB danych na kopię). **Niewdrożone.**
+**Błąd złapany E2E:** przywrócona karta z `revision` 0 była dla klienta „starszą” (#49) —
+pułapka w `kopie`.
+
+**Weryfikacja:** `shared` 2566/2566, serwer 1574/1574, klient 420/420; `tsc` czysty w serwerze,
+kliencie i e2e (poza nieśledzonymi `99-ogledziny/t99-wolna-mapa`), ESLint i Prettier czyste
+w zmienionych plikach. E2E nowy `t57b-cofniecie` (`@szybkie`) **4/4** — MG Chromium, gracz
+Firefox: sesja, zmiana imienia karty, koniec, „Cofnij…” z nazwą, gracz w następnej sesji widzi
+kartę sprzed zmiany, kampania „przed cofnięciem” usunięta z Panelu MG. **Oglądane w Firefoksie**
+(tymczasowy spec, skasowany): lista kopii pogrupowana po sesjach, potwierdzenie nazwą (pole
+wyrównane do przycisków po oględzinach), „Usuń…” w Panelu MG, wyszarzone przy otwartej.
+
 ### Sesja 22.10, trzecia (po `9b78c22`) — etap 57a: paczki ZIP i wczytanie kampanii
 
 **Zakres etapu 57a** (decyzje MG z 22.10 w pliku etapu). **Zrobione:** `shared/archive.ts` —
