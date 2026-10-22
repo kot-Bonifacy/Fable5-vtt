@@ -425,6 +425,14 @@ export interface CpredRollRequest {
    * postać na liście prób (jedna próba na postać, decyzja MG z 09.10).
    */
   containerTokenId?: string;
+  /**
+   * Etap 58a — ukryta strefa, którą ten Test Percepcji może odsłonić, i figura,
+   * która przy niej przystanęła. Wpisuje je wyłącznie serwer, wzywając gracza
+   * do rzutu przy zatrzymaniu marszu; rzut czyta je z zapisanego wezwania,
+   * nigdy z żądania klienta — inaczej dowolny Test Percepcji odsłaniałby pułapki.
+   */
+  hiddenZoneId?: number;
+  noticeTokenId?: string;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

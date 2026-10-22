@@ -101,7 +101,7 @@ import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
 import { bindMapFrame } from '../map-frame.js';
-import { COMBAT_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
+import { COMBAT_PENDING_NOTE, NOTICE_ROLL_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
@@ -265,6 +265,9 @@ function moveErrorText(code: string | undefined): string {
     // Etap 56: drużyna zobaczyła wroga — do startu walki gracze stoją.
     case 'COMBAT_PENDING':
       return COMBAT_PENDING_NOTE;
+    // Etap 58a: figura stoi do rzutu na Percepcję z wezwania.
+    case 'NOTICE_ROLL_PENDING':
+      return NOTICE_ROLL_PENDING_NOTE;
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:

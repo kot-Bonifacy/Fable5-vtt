@@ -178,6 +178,15 @@ export function redactChatMessage(message: ChatMessageView, user: SessionUser): 
   if (user.role === ROLE_GM) return message;
   let view = message;
 
+  // Wezwanie do Percepcji przy ukrytej strefie (58a) niesie jej adres dla
+  // rozliczenia; serwer czyta go z zapisu, a gracz — także wezwany — nie
+  // dostaje numeru strefy, której jeszcze nie ma w swoim payloadzie.
+  const call = view.check;
+  if (call && 'hiddenZoneId' in call.system) {
+    const { hiddenZoneId: _zone, noticeTokenId: _token, ...system } = call.system;
+    view = { ...view, check: { ...call, system } };
+  }
+
   const area = view.roll?.attack?.area;
   if (area) {
     const visible = area.targets.filter(

@@ -99,7 +99,12 @@ import {
   markWalkHalted,
   walkHaltedRecently,
 } from './walks.js';
-import { emitHiddenSpotted, emitNoticeHalt, hiddenNoticeDue } from './hidden-notice.js';
+import {
+  emitHiddenSpotted,
+  emitNoticeHalt,
+  hiddenNoticeDue,
+  refuseWhileNoticePending,
+} from './hidden-notice.js';
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
@@ -1732,6 +1737,8 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     await refuseMoveBeforeSightedFight(deps, scene.id, user);
+    // Etap 58a: figura stoi, dopóki gracz nie rzuci na Percepcję z wezwania.
+    await refuseWhileNoticePending(deps, campaignId, user, token);
     const points = sanitizeTokenPath(payload?.route);
     if (!points) throw new RealtimeError('BAD_REQUEST');
 
@@ -1910,6 +1917,8 @@ export async function performTokenMove(
     if (!isGm && !judged && final && !walk && walkHaltedRecently(token.id, user.id)) {
       throw new RealtimeError(MOVE_HALTED);
     }
+    // Lądowanie bez trasy omija `token:walk`, więc pyta o wezwanie samo (58a).
+    if (!judged && final && !walk) await refuseWhileNoticePending(deps, campaignId, user, token);
     /** Klatka marszu, która stała się lądowaniem przy ukrytej rzeczy (58a). */
     let noticeHalt = false;
     if (walk) {

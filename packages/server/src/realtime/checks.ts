@@ -220,6 +220,11 @@ export async function createCheckCall(
      * przeniesie, więc zgoda MG na dowolny Test nie otwiera skrzyni.
      */
     containerTokenId?: string;
+    /**
+     * Percepcja przy ukrytej strefie (etap 58a) — tak samo dopisywana po białej
+     * liście: wystawia ją tylko zatrzymanie marszu w `zones.ts`.
+     */
+    hiddenZone?: { zoneId: number; tokenId: string };
     /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
     calledByName?: string;
   },
@@ -240,6 +245,9 @@ export async function createCheckCall(
   const request: CpredRollRequest = {
     ...requireCallableRequest(input.request, frame.modifier),
     ...(input.containerTokenId ? { containerTokenId: input.containerTokenId } : {}),
+    ...(input.hiddenZone
+      ? { hiddenZoneId: input.hiddenZone.zoneId, noticeTokenId: input.hiddenZone.tokenId }
+      : {}),
   };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');

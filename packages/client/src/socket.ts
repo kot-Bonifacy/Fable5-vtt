@@ -357,7 +357,12 @@ import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
-import { COMBAT_PENDING_NOTE, receiveHiddenSpotted, receiveWalkHalt } from './walk-halt.js';
+import {
+  COMBAT_PENDING_NOTE,
+  NOTICE_ROLL_PENDING_NOTE,
+  receiveHiddenSpotted,
+  receiveWalkHalt,
+} from './walk-halt.js';
 import { receiveTokenAim } from './map-aim.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
@@ -3724,6 +3729,9 @@ export function combatErrorText(code: string): string {
       return PLAYER_MOVE_PACE_NOTE;
     case 'COMBAT_PENDING':
       return COMBAT_PENDING_NOTE;
+    // Etap 58a: figura stoi do rzutu na Percepcję z wezwania.
+    case 'NOTICE_ROLL_PENDING':
+      return NOTICE_ROLL_PENDING_NOTE;
     // Stage 14d: the refusal already carries its own sentence on the card.
     case 'STATUS_BLOCKED':
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';

@@ -16,11 +16,15 @@ import { useTokenStore } from './stores/tokenStore.js';
 export const COMBAT_PENDING_NOTE = 'Wróg w zasięgu wzroku — czekaj, aż MG rozpocznie walkę.';
 
 /**
- * Rzut przy ukrytej rzeczy jest ukryty (58a, decyzja MG z 22.10): gracz wie,
- * że postać na coś zwróciła uwagę, a nie na co — to samo zdanie przy sukcesie
- * i porażce. Co zauważyła, mówi osobno `hidden:spotted`, i tylko przy sukcesie.
+ * Przy ukrytej rzeczy gracz wie, że postać na coś zwróciła uwagę, a nie na co
+ * (58a). Rzuca z kubka na wezwanie; co zauważyła, mówi osobno
+ * `hidden:spotted`, i tylko przy sukcesie.
  */
-export const noticeHaltNote = (name: string): string => `${name} przystaje — coś przykuło uwagę.`;
+export const noticeHaltNote = (name: string): string =>
+  `${name} przystaje — coś przykuło uwagę. Rzuć na Percepcję z kubka.`;
+
+/** Odmowa ruchu `NOTICE_ROLL_PENDING` — figura stoi do rzutu (58a, decyzja MG z 22.10). */
+export const NOTICE_ROLL_PENDING_NOTE = 'Najpierw rzuć na Percepcję — coś przykuło uwagę postaci.';
 
 export const hiddenSpottedNote = (spotted: HiddenSpottedBroadcast): string =>
   `${spotted.actorName} zauważa: ${spotted.names.join(', ')}.`;

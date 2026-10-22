@@ -32,9 +32,10 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 **Etap 58 „Ukryte rzeczy, zamki i rozbrajanie pułapek”: 58a zrobione 22.10 — dalej 58b
 (rozbrajanie przez gracza), potem 58c (wytrych do drzwi) i 58d (ukryte figury).** Marsz gracza
 staje sam na pierwszym polu w 4 m od ukrytej pułapki, której ta postać jeszcze nie sprawdzała,
-i rzuca Percepcję w ukryciu. Wiersz z wynikiem dostaje tylko MG („poufne”). Gracz widzi pasek
-„X przystaje — coś przykuło uwagę.”, a po sukcesie „X zauważa: …”. Zatrzymanie jest zwykłym
-lądowaniem: w walce Tura płaci przebyty kawałek. Rozstrzygnięcia przyjęte bez pytań (zatrzymanie
+a gracz dostaje wezwanie do Percepcji i **rzuca z kubka** (zmiana MG z 22.10). Do rzutu figura
+stoi (`NOTICE_ROLL_PENDING`), wynik widzą MG i rzucający, nazwę strefy ma tylko wiersz MG
+(„poufne”), a gracz po sukcesie dostaje „X zauważa: …”. Zatrzymanie jest zwykłym lądowaniem:
+w walce Tura płaci przebyty kawałek. Rozstrzygnięcia przyjęte bez pytań (zatrzymanie
 w walce, staje tylko rzucający, ten sam pasek przy sukcesie i porażce) czekają na słowo MG.
 Plik etapu: `etap-58-ukryte-zamki-pulapki.md`, umowa na górze `tura`. 58d dopisuje figury
 w `hiddenNoticeDue` (`realtime/hidden-notice.ts`).
@@ -422,6 +423,27 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 22.10, ósma (po `fd6c385`) — 58a: Percepcja z kubka na wezwanie
+
+**Zmiana MG:** rzut przy ukrytej pułapce gracz robi z kubka (wbrew rzutowi ukrytemu z 58a).
+Trzy decyzje: figura stoi do rzutu, wynik widzą MG i rzucający, PT na karcie wezwania jak
+zwykle. **Zrobione:** `callSpotZone` / `settleSpotTest` (`zones.ts`), `hiddenZone` w
+`createCheckCall` (`checks.ts`), `CpredRollRequest.hiddenZoneId` / `noticeTokenId`, hak
+w `character-rolls.ts`, przycięcie adresu w `redactChatMessage`, `refuseWhileNoticePending`
+(`NOTICE_ROLL_PENDING`) w `token:walk`, w lądowaniu bez trasy i w skoku. Klient — teksty odmowy
+(mapa, socket, skok) i pasek „… Rzuć na Percepcję z kubka.”. Umowa na górze `tura` przepisana.
+
+**Weryfikacja:** serwer 1588/1588 (testy stref: śledzenie wezwań i rzut z ustawioną kością
+przez `VTT_DICE_SCRIPT`; nowe asercje — wezwanie bez nazwy i numeru strefy, `NOTICE_ROLL_PENDING`
+dla marszu i skoku), `shared` 2576/2576, klient 421/421, `tsc` i ESLint czyste. **Oglądane**
+tymczasowym specem (skasowany): Ola w **Firefoksie** — zatrzymanie, klik dalej odmawia, rzut
+z karty wezwania 10 + 1 + 11 = 22 „Zdane”, pułapka na mapie, pasek „zauważa”; Marek w Chromium
+— 10 „Niezdane”, czat bez cudzych wezwań; MG — oba wezwania i oba wiersze „poufne”. Zero błędów
+konsoli. Odmowa „Najpierw rzuć…” stoi po rzucie do następnego kliknięcia w mapę (reguła 55).
+E2E T5b z `po-T5a` **27/27** — krok podłogi: zatrzymanie na (19, 11), Marek rzuca z karty
+wezwania (karta rzutu to `gmroll`), dopiero potem wejście na podłogę. Przebieg na atrapie
+`FakeGateway` na :8100 (gateway wyłączony), więc 5.10 `@llm` nie sprawdził modelu.
+
 ### Sesja 22.10, siódma (po `5f41bf4`) — etap 58a: Percepcja w drodze, rzut ukryty
 
 **Zakres 58a.** **Zrobione:** `shared` — `segmentDistanceToRect` (`rects.ts`),
@@ -446,19 +468,3 @@ ESLint i Prettier czyste. E2E T5b z `po-T5a` **27/27** — krok podłogi przepis
 **Oglądane** tymczasowym specem (skasowany): Ola w **Firefoksie** (zatrzymanie, oba paski),
 Marek w Chromium (porażka, sam pasek, czat pusty), MG w Chromium (dwa wiersze „poufne”,
 przerywany obrys strefy). Zero błędów konsoli.
-
-### Sesja 22.10, szósta (po `605f9c7`) — oględziny ukrytych rzeczy, zamków i pułapek, plan etapu 58
-
-**Zlecenie MG:** sprawdzić wykrywanie niewidocznych rzeczy, otwieranie zamka i rozbrajanie
-pułapek. **Kodu aplikacji nie zmieniano.** Testy serwera `zones` / `containers` / `walls`
-77/77, `shared` `zones` / `container` 31/31; E2E `t46b-pojemniki` 9/9 i tymczasowy
-`99-ogledziny/t99-pulapki` 5/5 (skasowany). MG i Marek w Chromium, Ola w **Firefoksie**, zero
-błędów konsoli. Zrzuty pokazały ukrytą strefę tylko u Oli po zdanej Percepcji, przerywany obrys
-„ukryta” u MG i strefę odsłoniętą Markowi po złapaniu. **Znalezione:** wiersz automatycznej
-Percepcji idzie na czat do wszystkich (porażka zdradza pułapkę, sukces podaje jej nazwę graczom
-bez strefy w payloadzie). Z kodu wynika też, że Percepcja liczy się tylko z punktu końcowego marszu,
-więc przejście przez pułapkę jednym klikiem nie daje rzutu. **Braki:** rozbrajanie przez gracza,
-wytrych do drzwi, wykrywanie ukrytych figur. Wpis systemu ma już PT i minuty rozbrojenia
-(`disableDv` / `disableMinutes`). **Decyzje MG z 22.10** i podział 58a–58d są w
-`etap-58-ukryte-zamki-pulapki.md`. Pomysły poza zakresem (ukryte drzwi, wyważanie, koszt Akcji,
-„Szukam”) trafiły na górę `POMYSLY.md`, a wiersze 58–58d do `archiwum/tabela-etapow.md`.

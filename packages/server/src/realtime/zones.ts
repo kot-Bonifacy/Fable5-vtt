@@ -49,7 +49,12 @@ import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { emitTokensById } from './tokens.js';
+import { createCheckCall, type CheckFrame } from './checks.js';
+import { campaignGmUser } from './campaign-gm.js';
+import { toSessionUser } from '../auth/sessions.js';
+import { emitHiddenSpotted } from './hidden-notice.js';
 import {
+  CPRED_PERCEPTION_SKILL_ID,
   checkPerceptionOf,
   controllerOf,
   emplacementDown,
@@ -401,7 +406,7 @@ export async function runZonesAfterMove(
   for (const { row, profile } of live) {
     if (!row.hidden || !profile?.spotDv) continue;
     if (!zoneWithinReachOfPath(row, walked, spotRangePx)) continue;
-    if (await trySpotZone(deps, campaignId, row, token, profile.spotDv, user)) {
+    if (await callSpotZone(deps, campaignId, row, token, profile.spotDv, user)) {
       spotted.push(row.name);
     }
   }
@@ -558,12 +563,12 @@ function pathTouchesZone(
  * makes „gracz nie dostaje strefy, której nie zauważył" a fact about the payload
  * rather than a hope about the client.
  *
- * **The roll is hidden (58a, decyzja MG z 22.10).** The full line goes to the GM
- * only, written by the GM's hand so it never enters a player's history through
- * the `authorId` clause; until 58a it went to the whole table, so a failure told
- * the player there was something there, and a success named the trap to people
- * who did not have it on their map. The caller tells the owner about a success
- * (`hidden:spotted`) — about a failure nobody but the GM hears.
+ * **Since 58a only a figure without a sheet rolls here** — everybody else gets
+ * a check call and rolls from the cup (`callSpotZone`). This server roll stays
+ * hidden: the full line goes to the GM only, written by the GM's hand so it
+ * never enters a player's history through the `authorId` clause (until 58a it
+ * went to the whole table, naming the trap to people who did not have it on
+ * their map). The caller tells the owner about a success (`hidden:spotted`).
  */
 async function trySpotZone(
   deps: RealtimeDeps,
@@ -600,6 +605,108 @@ async function trySpotZone(
     outcome.resisted ? `${roll} — zauważa: ${row.name}` : `${roll} — nie zauważa: ${row.name}`,
   );
   return outcome.resisted;
+}
+
+/**
+ * The Perception Check a player rolls from the cup (58a, decyzja MG z 22.10 —
+ * wbrew pierwszemu planowi rzutu ukrytego). The figure stops, the owner gets a
+ * check call („Do MG i gracza”, PT jak w każdym wezwaniu) and the cup lights
+ * up; `settleSpotTest` reads the zone off the stored call when the dice land.
+ *
+ * The character goes on the `tried` list **now**, not on the result: the call
+ * itself is the one chance, so a second walk past the zone must not halt and
+ * call again while the first call is still waiting. A cancelled call therefore
+ * spends the chance — that is the GM's ruling, made by cancelling.
+ *
+ * A figure without a sheet has no cup to roll from (a statist the GM handed to
+ * a player), so it keeps the server's own hidden roll. Returns true only when
+ * that roll spotted the zone; a call is never a result yet.
+ */
+async function callSpotZone(
+  deps: RealtimeDeps,
+  campaignId: string,
+  row: ZoneRow,
+  token: Token,
+  spotDv: number,
+  user: SessionUser,
+): Promise<boolean> {
+  if (!token.characterId) return trySpotZone(deps, campaignId, row, token, spotDv, user);
+  const ownerId = await controllerOf(deps, token);
+  if (!ownerId) return false;
+  const sightings = readZoneSightings(row.sightings);
+  if (sightings.users.includes(ownerId)) return false;
+  const key = token.characterId;
+  if (sightings.tried.includes(key)) return false;
+
+  await deps.ctx.prisma.defenseZone.update({
+    where: { id: row.id },
+    data: { sightings: writeZoneSightings({ ...sightings, tried: [...sightings.tried, key] }) },
+  });
+  const frame: CheckFrame = { dv: spotDv, modifier: 0, visibility: 'gm' };
+  await createCheckCall(deps, {
+    campaignId,
+    user: await systemHand(deps, campaignId, user),
+    characterId: token.characterId,
+    request: { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID },
+    frame,
+    prompt: `${tokenTableName(token, token.name)} przystaje — coś przykuło uwagę.`,
+    hiddenZone: { zoneId: row.id, tokenId: token.id },
+    calledByName: 'Otoczenie',
+  });
+  return false;
+}
+
+/**
+ * Rozliczenie Testu Percepcji przy ukrytej strefie (58a) — woła je rzut na
+ * wezwanie z `hiddenZoneId`. Zdany odsłania strefę kontu właściciela figury
+ * i mówi mu o tym (`hidden:spotted`); MG dostaje w obu przypadkach wiersz
+ * z nazwą strefy, której karta wezwania nie zdradza graczowi.
+ */
+export async function settleSpotTest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  input: { zoneId: number; tokenId: string; characterId: string; success: boolean; total: number },
+): Promise<void> {
+  const row = await deps.ctx.prisma.defenseZone.findUnique({
+    where: { id: input.zoneId },
+    include: { scene: true },
+  });
+  if (!row || row.scene.campaignId !== campaignId) return;
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: input.tokenId } });
+  const owner = await deps.ctx.prisma.character.findUnique({
+    where: { id: input.characterId },
+    select: { ownerId: true, name: true },
+  });
+  const actorName = token ? tokenTableName(token, token.name) : (owner?.name ?? '');
+  const hand = await campaignGmHand(deps, campaignId);
+  if (hand) {
+    await logGmZoneLine(
+      deps,
+      campaignId,
+      hand,
+      actorName,
+      'Percepcja — ukryta rzecz w pobliżu',
+      `wynik ${input.total} — ${input.success ? 'zauważa' : 'nie zauważa'}: ${row.name}`,
+    );
+  }
+  if (!input.success || !owner?.ownerId) return;
+  const sightings = readZoneSightings(row.sightings);
+  if (!sightings.users.includes(owner.ownerId)) {
+    await deps.ctx.prisma.defenseZone.update({
+      where: { id: row.id },
+      data: {
+        sightings: writeZoneSightings({ ...sightings, users: [...sightings.users, owner.ownerId] }),
+      },
+    });
+    await emitZones(deps, campaignId, row.sceneId);
+  }
+  if (token) await emitHiddenSpotted(deps, campaignId, row.scene, token, [row.name]);
+}
+
+/** Konto MG kampanii, którym system pisze swoje wiersze — jak strzał strefy (#39). */
+async function campaignGmHand(deps: RealtimeDeps, campaignId: string): Promise<SessionUser | null> {
+  const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
+  return gm ? toSessionUser(gm) : null;
 }
 
 /**

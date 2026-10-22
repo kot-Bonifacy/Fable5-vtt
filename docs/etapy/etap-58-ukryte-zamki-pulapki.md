@@ -48,8 +48,10 @@ otwieranie zamkniętego zamka, rozbrajanie pułapek”.
    czas o `disableMinutes`. W trakcie walki rozbrajanie jest zablokowane z komunikatem.
 4. **Zamknięte na klucz drzwi, okna i bramy działają jak pojemnik:** Test Otwierania zamków
    albo Elektroniki i zabezpieczeń z PT od MG, klucz, jedna próba na postać.
-5. **Rzut ukryty:** pełny wynik automatycznej Percepcji widzi tylko MG. Gracz dostaje
-   wiadomość wyłącznie o sukcesie, tylko dla siebie. Porażki gracz nie zobaczy.
+5. ~~**Rzut ukryty:** pełny wynik automatycznej Percepcji widzi tylko MG.~~ **Zmienione przez MG
+   22.10 po 58a:** gracz rzuca Percepcję **z kubka na wezwanie**. Do rzutu figura stoi, wynik
+   widzą MG i rzucający, a PT jest na karcie wezwania jak w każdym wezwaniu. Nazwę rzeczy MG
+   dostaje osobnym wierszem, gracz — tylko po sukcesie.
 6. **Rzut w drodze z zatrzymaniem:** Percepcja pada, gdy postać **znajdzie się blisko**
    ukrytej rzeczy (także w połowie marszu), a figura **staje** na czas rzutu. Gracz wie, że coś
    się stało, ale nie wie co.
@@ -120,9 +122,15 @@ i warunki opisuje umowa na górze `tura`.
 4. Plakietka „poufne” przy `gmaction` miała podpowiedź „widzą tylko MG i netrunner”. Teraz
    mówi „Reszta stołu tego wiersza nie widzi”.
 
+**Zmiana MG z 22.10 (ta sama sesja, drugi commit): rzut z kubka zamiast ukrytego.** Strefa
+wystawia wezwanie (`createCheckCall`, `visibility: 'gm'`) z adresem strefy, którego gracz nie
+dostaje. Rozliczenie siedzi w haku rzutu na wezwanie, obok zamka pojemnika. Odwołane wezwanie
+zużywa szansę postaci — to rozstrzygnięcie MG wyrażone odwołaniem. Figura bez karty dalej
+dostaje rzut serwera w ukryciu, bo nie ma czym rzucić.
+
 **T5b (E2E)** prowadził Kowala w turze z (20, 11) na podłogę przez jej zasięg. Krok
-przepisany: marsz staje na (19, 11), wiersz Percepcji to `gmaction`, dopiero drugi marsz
-wchodzi na podłogę.
+przepisany: marsz staje na (19, 11), Marek rzuca z karty wezwania (PT 17, „Niezdane”), wiersz
+MG to `gmaction`, dopiero drugi marsz wchodzi na podłogę.
 
 ## 58b — Rozbrajanie pułapki przez gracza
 

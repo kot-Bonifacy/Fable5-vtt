@@ -1,5 +1,21 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, szósta (po `605f9c7`) — oględziny ukrytych rzeczy, zamków i pułapek, plan etapu 58
+
+**Zlecenie MG:** sprawdzić wykrywanie niewidocznych rzeczy, otwieranie zamka i rozbrajanie
+pułapek. **Kodu aplikacji nie zmieniano.** Testy serwera `zones` / `containers` / `walls`
+77/77, `shared` `zones` / `container` 31/31; E2E `t46b-pojemniki` 9/9 i tymczasowy
+`99-ogledziny/t99-pulapki` 5/5 (skasowany). MG i Marek w Chromium, Ola w **Firefoksie**, zero
+błędów konsoli. Zrzuty pokazały ukrytą strefę tylko u Oli po zdanej Percepcji, przerywany obrys
+„ukryta” u MG i strefę odsłoniętą Markowi po złapaniu. **Znalezione:** wiersz automatycznej
+Percepcji idzie na czat do wszystkich (porażka zdradza pułapkę, sukces podaje jej nazwę graczom
+bez strefy w payloadzie). Z kodu wynika też, że Percepcja liczy się tylko z punktu końcowego marszu,
+więc przejście przez pułapkę jednym klikiem nie daje rzutu. **Braki:** rozbrajanie przez gracza,
+wytrych do drzwi, wykrywanie ukrytych figur. Wpis systemu ma już PT i minuty rozbrojenia
+(`disableDv` / `disableMinutes`). **Decyzje MG z 22.10** i podział 58a–58d są w
+`etap-58-ukryte-zamki-pulapki.md`. Pomysły poza zakresem (ukryte drzwi, wyważanie, koszt Akcji,
+„Szukam”) trafiły na górę `POMYSLY.md`, a wiersze 58–58d do `archiwum/tabela-etapow.md`.
+
 ### Sesja 22.10, piąta (po `e81d0e1`) — etap 57c: sklep i bot w paczce, karta gracza
 
 **Zakres etapu 57c — zamyka etap 57.** **Zrobione:** `shared/archive.ts` — rodzaje paczki

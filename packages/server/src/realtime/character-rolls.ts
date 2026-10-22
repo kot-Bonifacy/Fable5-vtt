@@ -86,6 +86,7 @@ import {
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
+import { settleSpotTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
@@ -1450,6 +1451,25 @@ async function performScopedRoll(
         call.entry.characterId,
         result.outcome.success,
       );
+    }
+    // Etap 58a: Percepcja przy ukrytej strefie, na którą marsz wezwał gracza.
+    // Adres strefy — jak adres zamka — tylko z zapisanego wezwania.
+    const noticeCall = call
+      ? (call.entry.system as { hiddenZoneId?: unknown; noticeTokenId?: unknown })
+      : undefined;
+    if (
+      call &&
+      result.outcome &&
+      typeof noticeCall?.hiddenZoneId === 'number' &&
+      typeof noticeCall.noticeTokenId === 'string'
+    ) {
+      await settleSpotTest(deps, campaignId, {
+        zoneId: noticeCall.hiddenZoneId,
+        tokenId: noticeCall.noticeTokenId,
+        characterId: call.entry.characterId,
+        success: result.outcome.success,
+        total: result.total,
+      });
     }
     // Somebody coming off the floor is the one green number the map draws
     // (stage 27i). It waits for the card exactly as an attack's does — the
