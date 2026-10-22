@@ -845,6 +845,7 @@ test.describe.serial('T4b: walka pierwsza w „Knajpie” — rany, granat, zwar
     expect(grenadeBoxes()).toEqual([]);
     const page = marek.page;
     await openSheet(marek, 'Kowal');
+    await page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const reload = page.getByRole('button', { name: 'Przeładuj do pełna (Granaty)' });
     await expect(reload).toBeDisabled();
     expect(

@@ -648,7 +648,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     // wymiany, łupu, kreatora i od MG — na karcie gracza nie ma pustych wierszy,
     // nazwy i liczby są do czytania, a dodatek do broni jest towarem.
     const sheet = await openSheet(marek, 'Kowal');
-    await sheet.getByRole('button', { name: 'Karta', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await expect(sheet.getByRole('button', { name: '+ Broń z katalogu' })).toHaveCount(0);
     await expect(sheet.getByRole('button', { name: '+ Pancerz' })).toHaveCount(0);
     await expect(sheet.locator('.weapon-table input[type="text"]').first()).toHaveAttribute(

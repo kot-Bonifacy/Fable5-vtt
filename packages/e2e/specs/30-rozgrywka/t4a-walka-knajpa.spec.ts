@@ -115,6 +115,7 @@ async function customGear(page: Page, name: string) {
 async function weaponFromCatalogue(actor: Actor, character: string, weapon: string) {
   const page = actor.page;
   await openSheet(actor, character);
+  await page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
   await page.getByRole('button', { name: '+ Broń z katalogu' }).click();
   const search = page.getByPlaceholder('Szukaj w katalogu broni…');
   await search.fill(weapon);

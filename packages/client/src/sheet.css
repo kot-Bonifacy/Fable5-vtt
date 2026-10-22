@@ -1277,8 +1277,8 @@
 
 /* ===== Pas „Broń i pancerz" i tabele arkusza (etap 27b) ===== */
 
-/* Dolny pas strony pierwszej idzie przez całą szerokość siatki — tak jak na
-   wydruku, gdzie leży pod trzema kolumnami. */
+/* Pas stoi od 22.10.2026 na górze zakładki „Ekwipunek" (wcześniej dół strony
+   pierwszej, przez całą szerokość siatki — stąd `grid-column`). */
 .cp-arsenal {
   grid-column: 1 / -1;
   display: grid;
@@ -1286,6 +1286,10 @@
   gap: 0.4rem;
   align-items: start;
   min-width: 0;
+}
+
+.sheet-gear > .cp-arsenal {
+  margin-bottom: 0.8rem;
 }
 
 /* Szerokie okno: pancerz obok broni, nie pod nią (zlecenie MG z 10.10). Pod

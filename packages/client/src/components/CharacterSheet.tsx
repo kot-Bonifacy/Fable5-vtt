@@ -253,9 +253,9 @@ type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 /**
  * Zakładki idą za stronami wydruku, nie za tematami.
  *
- * „Walka" zniknęła w etapie 27b: broń, pancerz i rany krytyczne drukują się na
- * stronie pierwszej, więc tam wróciły. Zostawienie po nich pustej zakładki
- * znaczyłoby, że to samo mieszka w dwóch miejscach. W 27c doszły dwie
+ * „Walka" zniknęła w etapie 27b: rany krytyczne drukują się na stronie
+ * pierwszej, więc tam wróciły. Broń i pancerz też tam stały, ale od 22.10.2026
+ * (decyzja MG) mieszkają w „Ekwipunku" — to rzeczy, które się nosi. W 27c doszły dwie
  * pozostałe strony arkusza — Ścieżka Życia i sylwetka cyborgizacji — i stoją
  * w kolejności druku; „Ekwipunek" zostaje na końcu, bo nie ma własnej strony.
  */
@@ -533,27 +533,13 @@ type StartRoll = (
 ) => void;
 
 /**
- * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a + 27b).
- *
- * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
- * notatki, pule, rany krytyczne, uzależnienia), pionowa kolumna dziesięciu cech
- * i umiejętności rozłożone na trzy kolumny. Pod nimi, przez całą szerokość, pas
- * „Broń i pancerz" — dokładnie tam, gdzie drukuje go karta (27b). Wszystko, co
- * karta umiała wcześniej — rzut z cechy, atak z wiersza broni, Test
- * Przeżywalności, ostrzeżenie o cyberpsychozie — siedzi dalej w tych samych
- * miejscach, tylko ubrane w papier.
+ * Rzut zaczęty z karty — wspólny dla strony pierwszej i pasa broni
+ * w „Ekwipunku".
  */
-function FrontPage({
-  character,
-  data,
-  saveData,
-  saveName,
-  setIssues,
-}: TabProps & {
-  character: CharacterSheetView;
-  saveName: (value: string) => void;
-  setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
-}) {
+function useStartRoll(
+  character: CharacterSheetView,
+  data: CpredCharacterData,
+): { startRoll: StartRoll; mayAsk: boolean } {
   const registry = useCharacterStore((s) => s.registry);
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -584,6 +570,33 @@ function FrontPage({
     else useRollStore.getState().openDialog(full);
   }
 
+  return { startRoll, mayAsk };
+}
+
+/**
+ * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a + 27b).
+ *
+ * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
+ * notatki, pule, rany krytyczne, uzależnienia), pionowa kolumna dziesięciu cech
+ * i umiejętności rozłożone na trzy kolumny. Pas „Broń i pancerz", który wydruk
+ * kładzie pod nimi, od 22.10.2026 stoi w „Ekwipunku" (decyzja MG). Wszystko, co
+ * karta umiała wcześniej — rzut z cechy, Test
+ * Przeżywalności, ostrzeżenie o cyberpsychozie — siedzi dalej w tych samych
+ * miejscach, tylko ubrane w papier.
+ */
+function FrontPage({
+  character,
+  data,
+  saveData,
+  saveName,
+  setIssues,
+}: TabProps & {
+  character: CharacterSheetView;
+  saveName: (value: string) => void;
+  setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
+}) {
+  const { startRoll, mayAsk } = useStartRoll(character, data);
+
   return (
     <div className="sheet-page">
       <ReadinessStrip character={character} data={data} />
@@ -597,7 +610,6 @@ function FrontPage({
       <StatColumn data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
       <SkillColumns data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
       <RoleAbilityStrip character={character} data={data} saveData={saveData} />
-      <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
     </div>
   );
 }
@@ -3623,12 +3635,14 @@ function CyberdeckSection({
 /**
  * Zakładka „Ekwipunek" — prawa kolumna strony drugiej wydruku (etap 27b).
  *
- * Kolejność jak na karcie: Wyposażenie, pod nim czarne plakietki Amunicji
+ * Na górze pas „Broń i pancerz" (od 22.10.2026, ze strony pierwszej). Dalej
+ * kolejność jak na karcie: Wyposażenie, pod nim czarne plakietki Amunicji
  * i Gotówki, a niżej Styl / Zakwaterowanie / Wynajem / Poziom życia. Cyborgizacje
  * zostają na dole do etapu 27c — tam dostaną własną stronę z sylwetką.
  */
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const { startRoll } = useStartRoll(character, data);
   const rowIcon = useRowIcon();
   const tracksAmmo = characterTracksAmmo(character);
   return (
@@ -3665,6 +3679,9 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       </div>
       {/* Etap 46a: karta NPC-a bywa sklepem — ustawienia ma wyłącznie MG. */}
       {isGm && character.ownerId === null && <MerchantSection characterId={character.id} />}
+      {/* 22.10.2026 (decyzja MG): broń i pancerz to też ekwipunek — przyszły
+          tu ze strony pierwszej, nad resztę wyposażenia. */}
+      <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
       <RowTable<CpredGearRow>
         rows={data.gear}
         columns={[

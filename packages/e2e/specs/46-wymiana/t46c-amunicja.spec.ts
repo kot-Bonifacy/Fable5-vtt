@@ -185,6 +185,7 @@ test.describe.serial('T46c zapas amunicji', () => {
       gear: [...card('Kowal').gear.filter((row) => !row.ammo), box(20, VHP)],
     });
     await openSheet(marek, 'Kowal');
+    await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const reload = marek.page.getByRole('button', { name: `Przeładuj do pełna (${VHP})` });
     await expect(marek.page.locator('.weapon-ammo-stock').first()).toHaveText('zapas 20');
     await reload.click();
@@ -201,6 +202,7 @@ test.describe.serial('T46c zapas amunicji', () => {
       gear: [...card('Kowal').gear.filter((row) => !row.ammo), box(3, VHP)],
     });
     await openSheet(marek, 'Kowal');
+    await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await marek.page.getByRole('button', { name: `Przeładuj do pełna (${VHP})` }).click();
     await expect.poll(() => weapon('Kowal', 'Bardzo ciężki pistolet').ammoCurrent).toBe(3);
     expect(boxes('Kowal', VHP)).toHaveLength(0);
@@ -230,6 +232,7 @@ test.describe.serial('T46c zapas amunicji', () => {
       ],
     });
     await openSheet(marek, 'Kowal');
+    await marek.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const picker = marek.page.getByLabel('Rodzaj naboju: Bardzo ciężki pistolet');
     await expect(
       picker.locator('option', { hasText: 'Amunicja przeciwpancerna — 16' }),
@@ -389,6 +392,7 @@ test.describe.serial('T46c zapas amunicji', () => {
   test('46c.7b Ola w Firefoksie: karta i pasek pokazują zapas', async () => {
     await setCard('Iskra', { gear: [...card('Iskra').gear, box(16, HEAVY, null, 'iskra-c')] });
     await openSheet(ola, 'Iskra');
+    await ola.page.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     await expect(ola.page.locator('.weapon-ammo-stock').first()).toHaveText('zapas 16');
     await shot(ola, '7b-karta', '.weapon-table');
     await closeSheet(ola.page);

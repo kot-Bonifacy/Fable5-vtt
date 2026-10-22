@@ -850,6 +850,7 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     const ordinary = stock(null);
     expect(stock('ammo.armour-piercing')).toBe(20);
     const card = await openSheet(marek, 'Kowal');
+    await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const picker = card.getByLabel('Rodzaj naboju: Bardzo ciężki pistolet');
     await expect(
       picker.locator('option', { hasText: 'Amunicja przeciwpancerna — 20' }),
