@@ -127,6 +127,11 @@ export interface CampaignDetail extends CampaignSummary {
   pendingCards?: PendingCardSummary[];
 }
 
+/** „Usuń kampanię” MG (etap 57b): ile kont graczy odeszło razem z nią. */
+export interface CampaignDeleteResult {
+  players: number;
+}
+
 /** Karta „czeka na gracza” (57a): imię postaci i imię gracza z pliku. */
 export interface PendingCardSummary {
   id: string;

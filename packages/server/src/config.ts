@@ -1,5 +1,10 @@
 import { resolve } from 'node:path';
-import { ARCHIVE_IMPORT_MAX_BYTES_DEFAULT, SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
+import {
+  ARCHIVE_IMPORT_MAX_BYTES_DEFAULT,
+  CAMPAIGN_COPY_INTERVAL_MINUTES_DEFAULT,
+  CAMPAIGN_COPY_KEEP_SESSIONS_DEFAULT,
+  SNAPSHOT_RULES_DEFAULT,
+} from '@vtt/shared';
 
 export interface ServerConfig {
   /** Optional Python executable with tools/audio/requirements.txt installed. */
@@ -123,6 +128,14 @@ export interface BackupConfig {
   keepHourly: number;
   /** Rotacja: ile dób wstecz zostaje po jednej kopii. */
   keepDaily: number;
+  /**
+   * Kopie kampanii (etap 57b) leżą w `<dir>/campaigns/<id>/`: ile ostatnich
+   * sesji zostaje (`BACKUP_CAMPAIGN_KEEP_SESSIONS`, domyślnie 10). Brak —
+   * domyślna liczba.
+   */
+  campaignKeepSessions?: number;
+  /** Co ile minut trwającej sesji kopia „w trakcie” (`BACKUP_CAMPAIGN_INTERVAL_MINUTES`, 60). */
+  campaignIntervalMinutes?: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -172,6 +185,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),
       keepHourly: Number(env.BACKUP_KEEP_HOURLY ?? SNAPSHOT_RULES_DEFAULT.keepHourly),
       keepDaily: Number(env.BACKUP_KEEP_DAILY ?? SNAPSHOT_RULES_DEFAULT.keepDaily),
+      campaignKeepSessions: Math.floor(
+        positive(env.BACKUP_CAMPAIGN_KEEP_SESSIONS, CAMPAIGN_COPY_KEEP_SESSIONS_DEFAULT),
+      ),
+      campaignIntervalMinutes: positive(
+        env.BACKUP_CAMPAIGN_INTERVAL_MINUTES,
+        CAMPAIGN_COPY_INTERVAL_MINUTES_DEFAULT,
+      ),
     },
   };
 }

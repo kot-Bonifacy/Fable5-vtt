@@ -617,6 +617,8 @@ export interface SceneInsertOptions {
   wallIds?: Map<number, number | null>;
   /** Przepisanie kolumn JSON-owych (id w środku); brak — bez zmian. */
   remap?: (value: unknown) => unknown;
+  /** Etap 57b: chwila założenia z kopii — lista scen po cofnięciu w tej samej kolejności. */
+  createdAt?: Date;
 }
 
 export async function insertScene(
@@ -631,6 +633,7 @@ export async function insertScene(
   const scene = await db.scene.create({
     data: {
       ...(options.id ? { id: options.id } : {}),
+      ...(options.createdAt ? { createdAt: options.createdAt } : {}),
       campaignId: options.campaignId,
       name: options.name,
       active: options.active,
@@ -894,9 +897,11 @@ export interface CampaignArchive {
     creationTokenDone?: boolean;
     /** Etap 57a: karta, która już czekała na gracza w kampanii źródłowej. */
     pendingOwner?: { id: string | null; name: string } | null;
+    /** Etap 57b: kolejność kart na liście po cofnięciu. */
+    createdAt?: string;
   })[];
-  /** `id` od 57a — boty i strefy wskazują scenę po id. */
-  scenes: (SceneArchive & { active: boolean; id?: string })[];
+  /** `id` od 57a — boty i strefy wskazują scenę po id; `createdAt` od 57b (kolejność). */
+  scenes: (SceneArchive & { active: boolean; id?: string; createdAt?: string })[];
   bots: Record<string, unknown>[];
   compendium: Record<string, unknown>[];
   knowledge: Record<string, unknown>[];
@@ -917,6 +922,13 @@ export interface CampaignArchive {
   merchants?: Record<string, unknown>[];
   /** Etap 57a: tabele losowe z wierszami (`rows`). Brak pola — brak tabel. */
   randomTables?: Record<string, unknown>[];
+  /**
+   * Etap 57b: trackery walki z uczestnikami (`combatants`) — tylko w kopii
+   * automatycznej, bo walka może trwać między sesjami (blokada rozwoju
+   * z 21.10). Plik do pobrania ich nie niesie; wczytanie jako nowa kampania
+   * i tak by je pominęło.
+   */
+  combats?: Record<string, unknown>[];
   /** Log czatu — pomijany, gdy MG tak każe (to 4/5 objętości bazy). */
   chat: Record<string, unknown>[] | null;
 }
@@ -924,6 +936,8 @@ export interface CampaignArchive {
 export interface CampaignExportOptions {
   /** Czy zabrać log czatu (decyzja MG z 05.09: domyślnie tak, z przełącznikiem). */
   includeChat: boolean;
+  /** Etap 57b: trackery walki — kopia automatyczna, z której się cofa. */
+  includeCombat?: boolean;
 }
 
 /**
@@ -943,6 +957,10 @@ export const CAMPAIGN_ARCHIVE_OMITTED = [
   'Szkice kreatora (CharacterDraft) — niedokończone postaci graczy zostają przy kampanii, w której je zaczęto.',
   'Trwające walki i przebiegi w Sieci — stan chwili, umiera razem z nią.',
 ];
+
+/** Kopia automatyczna niesie walki — z listy „czego nie ma” zostają przebiegi w Sieci. */
+const CAMPAIGN_COPY_RUNS_OMITTED =
+  'Przebiegi w Sieci — stan chwili; netrunner po cofnięciu zaczyna od punktu dostępu.';
 
 export async function exportCampaign(
   prisma: PrismaClient,
@@ -980,12 +998,13 @@ export async function exportCampaign(
         creationTokenDone: true,
         pendingOwnerId: true,
         pendingOwnerName: true,
+        createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.scene.findMany({
       where: { campaignId },
-      select: { id: true, active: true },
+      select: { id: true, active: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.campaignMember.findMany({
@@ -1007,6 +1026,7 @@ export async function exportCampaign(
         pendingOwner: row.pendingOwnerName
           ? { id: row.pendingOwnerId, name: row.pendingOwnerName }
           : null,
+        createdAt: row.createdAt.toISOString(),
       });
     }
   }
@@ -1022,6 +1042,8 @@ export async function exportCampaign(
       prisma.defenseZone.findMany({
         where: { sceneId: row.id },
         select: {
+          // Etap 57b: cofnięcie zachowuje id strefy — wskazuje ją uczestnik walki (pułapka).
+          id: true,
           entryId: true,
           name: true,
           x: true,
@@ -1046,6 +1068,7 @@ export async function exportCampaign(
       ...file.payload,
       id: row.id,
       active: row.active,
+      createdAt: row.createdAt.toISOString(),
       accessPoints,
       defenseZones: defenseZones.map((zone) => ({
         ...zone,
@@ -1089,6 +1112,12 @@ export async function exportCampaign(
   const chat = options.includeChat
     ? await prisma.chatMessage.findMany({ where: { campaignId }, orderBy: { id: 'asc' } })
     : null;
+  const combats = options.includeCombat
+    ? await prisma.combat.findMany({
+        where: { scene: { campaignId } },
+        include: { combatants: { orderBy: { createdAt: 'asc' } } },
+      })
+    : null;
 
   const userIds = new Set<string>([...members.map((m) => m.userId)]);
   for (const character of characters) if (character.ownerId) userIds.add(character.ownerId);
@@ -1119,10 +1148,15 @@ export async function exportCampaign(
     portraitAssets: plain(portraitAssets),
     merchants: plain(merchants),
     randomTables: plain(randomTables),
+    ...(combats ? { combats: plain(combats) } : {}),
     chat: chat ? plain(chat) : null,
   };
 
-  const omitted = [...CAMPAIGN_ARCHIVE_OMITTED];
+  const omitted = combats
+    ? CAMPAIGN_ARCHIVE_OMITTED.map((line) =>
+        line.startsWith('Trwające walki') ? CAMPAIGN_COPY_RUNS_OMITTED : line,
+      )
+    : [...CAMPAIGN_ARCHIVE_OMITTED];
   if (!options.includeChat) {
     omitted.unshift('Czat — pominięty na życzenie MG przy eksporcie.');
   } else {
@@ -1146,6 +1180,7 @@ export async function exportCampaign(
       architectures: payload.architectures.length,
       merchants: merchants.length,
       randomTables: randomTables.length,
+      ...(combats ? { combats: combats.length } : {}),
       chat: payload.chat?.length ?? 0,
     },
     omitted,

@@ -3,11 +3,18 @@ import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import type { ArchiveFile, ArchiveImportResult, ArchiveRefusalCode } from '@vtt/shared';
+import type {
+  ArchiveFile,
+  ArchiveImportResult,
+  ArchiveRefusalCode,
+  CampaignCopyListView,
+} from '@vtt/shared';
 import {
   ARCHIVE_IMPORT_MAX_BYTES_DEFAULT,
   ARCHIVE_IMPORT_PATH,
   ARCHIVE_PACKAGE_LIMITS_DEFAULT,
+  CAMPAIGN_COPY_PATHS,
+  confirmsCampaignName,
   polishPlural,
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
@@ -32,6 +39,12 @@ import { localizeArchiveUploads } from '../campaign-uploads.js';
 import type { RealtimeDeps } from '../realtime/registry.js';
 import { emitCharacterUpsert, toCharacterView } from '../realtime/character-io.js';
 import { emitSceneList } from '../realtime/scenes.js';
+import { dropExplorationCache, persistExploration } from '../realtime/exploration.js';
+import { releaseSceneTargets } from '../realtime/target.js';
+import { forgetCampaignUndo } from '../realtime/undo-buffer.js';
+import { reseatCampaignGms } from '../realtime/sessions.js';
+import { sendCampaignCopy } from '../campaign-copies.js';
+import { rollbackCampaign } from '../campaign-rollback.js';
 import { getUserActiveCampaign, ownCampaign } from './helpers.js';
 
 /**
@@ -119,6 +132,111 @@ export function registerArchiveRoutes(
       const file = await exportCampaign(ctx.prisma, campaign.id, { includeChat });
       if (!file) return reply.code(404).send({ error: 'NOT_FOUND' });
       return sendArchivePackage(reply, uploadsDir, 'campaign', campaign.name, file);
+    },
+  );
+
+  /* -------------------- kopie automatyczne (57b) -------------------- */
+
+  /** Kopie otwartej kampanii — od najświeższej. */
+  app.get(CAMPAIGN_COPY_PATHS.list, gmOnly, async (request, reply) => {
+    const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+    if (!campaign) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+    const copies = ctx.copies;
+    const view: CampaignCopyListView = {
+      enabled: copies !== undefined,
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      sessionRunning: campaign.sessionStartedAt !== null,
+      keepSessions: copies?.settings.keepSessions ?? 0,
+      intervalMinutes: copies?.settings.intervalMinutes ?? 0,
+      copies: copies ? await copies.list(campaign.id) : [],
+    };
+    return view;
+  });
+
+  /** Kopia jako paczka ZIP — ta sama, którą wczytuje „Wczytaj z pliku…”. */
+  app.get<{ Params: { name: string } }>(
+    '/api/archive/copies/:name',
+    gmOnly,
+    async (request, reply) => {
+      const campaign = await getUserActiveCampaign(ctx.prisma, request.user!);
+      if (!campaign || !ctx.copies) return reply.code(404).send({ error: 'NOT_FOUND' });
+      const sent = await sendCampaignCopy(
+        reply,
+        ctx.copies.dirOf(campaign.id),
+        request.params.name,
+        campaign.name,
+      );
+      return sent ?? reply.code(404).send({ error: 'NOT_FOUND' });
+    },
+  );
+
+  /** Kampanie w trakcie cofania — drugie kliknięcie nie startuje drugiego. */
+  const rollingBack = new Set<string>();
+
+  /**
+   * „Cofnij do tej kopii” (decyzje MG 6–8): otwarta kampania, bez trwającej
+   * sesji, potwierdzona nazwą. Po cofnięciu pamięć procesu o scenach tej
+   * kampanii (eksploracja, cele, `Ctrl+Z`) schodzi, a gniazda MG dostają
+   * pełny `state:sync` — gracze siedzą w poczekalni i zobaczą stan przy
+   * następnej sesji.
+   */
+  app.post<{ Params: { name: string } }>(
+    '/api/archive/copies/:name/restore',
+    gmOnly,
+    async (request, reply) => {
+      const user = request.user!;
+      const { confirm } = (request.body ?? {}) as { confirm?: unknown };
+      if (typeof confirm !== 'string') return reply.code(400).send({ error: 'BAD_REQUEST' });
+      const copies = ctx.copies;
+      if (!copies) return reply.code(409).send({ error: 'COPIES_DISABLED' });
+      const campaign = await getUserActiveCampaign(ctx.prisma, user);
+      if (!campaign) return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+      if (campaign.sessionStartedAt) return reply.code(409).send({ error: 'SESSION_ACTIVE' });
+      if (!confirmsCampaignName(confirm, campaign.name)) {
+        return reply.code(400).send({ error: 'CONFIRM_MISMATCH' });
+      }
+      if (rollingBack.has(campaign.id)) return reply.code(409).send({ error: 'BUSY' });
+      rollingBack.add(campaign.id);
+      try {
+        const sceneIds = async () =>
+          (
+            await ctx.prisma.scene.findMany({
+              where: { campaignId: campaign.id },
+              select: { id: true },
+            })
+          ).map((row) => row.id);
+        // Pamięć drużyny z ostatniej sekundy — do kampanii „przed cofnięciem”.
+        const before = await sceneIds();
+        for (const id of before) await persistExploration(ctx.prisma, id);
+
+        const result = await rollbackCampaign(ctx, copies, {
+          campaignId: campaign.id,
+          gmId: user.id,
+          copyName: request.params.name,
+        });
+        if ('code' in result) {
+          return reply
+            .code(result.code === 'SESSION_ACTIVE' ? 409 : 404)
+            .send({ error: result.code });
+        }
+
+        for (const id of new Set([...before, ...(await sceneIds())])) {
+          dropExplorationCache(id);
+          releaseSceneTargets(deps, id);
+        }
+        forgetCampaignUndo(campaign.id);
+        // Brama AI zna kampanie z pamięci — „przed cofnięciem” to nowa kampania.
+        await ctx.ai.refresh();
+        await reseatCampaignGms(deps, campaign.id);
+        request.log.warn(
+          { campaignId: campaign.id, copy: result.copy.name, previous: result.previous.id },
+          'campaign rolled back to a copy',
+        );
+        return result;
+      } finally {
+        rollingBack.delete(campaign.id);
+      }
     },
   );
 

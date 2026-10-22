@@ -18,7 +18,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerAiAccessRoutes } from './routes/ai-access.js';
-import { registerCampaignRoutes } from './routes/campaigns.js';
+import { registerCampaignDeleteRoute, registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { registerArchiveRoutes } from './routes/archive.js';
 import { registerMusicRoutes } from './routes/music.js';
@@ -28,6 +28,7 @@ import { sweepUploadsInBackground } from './uploads-gc.js';
 import { campaignUploadReadable, migrateFlatUploads } from './campaign-uploads.js';
 import { MapPreviews } from './map-preview.js';
 import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
+import { CampaignCopies, campaignCopySettings } from './campaign-copies.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
 import { loadShopRules } from './shop-rules.js';
@@ -182,6 +183,7 @@ export async function buildApp(
   });
 
   const shopRules = await loadShopRules(config.dataPublicDir, config.dataPrivateDir, app.log);
+  const copySettings = campaignCopySettings(config);
   const ctx: AppContext = {
     config,
     prisma,
@@ -194,6 +196,8 @@ export async function buildApp(
     shopRules,
     covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
+    // Kopie kampanii (57b) — przy starcie i końcu sesji oraz co godzinę.
+    ...(copySettings ? { copies: new CampaignCopies(prisma, copySettings, app.log) } : {}),
     ...(config.rateLimits
       ? {
           loginLimiter: new LoginAttemptLimiter(),
@@ -218,6 +222,8 @@ export async function buildApp(
   registerAdminRoutes(app, ctx, realtime.deps);
   // Wczytanie pliku wymiany (57a) rozgłasza nową kartę i listę scen.
   registerArchiveRoutes(app, ctx, realtime.deps);
+  // „Usuń kampanię” (57b) wylogowuje gniazda jej graczy.
+  registerCampaignDeleteRoute(app, ctx, realtime.deps);
   registerMusicRoutes(app, ctx, io);
   gateway.start();
 

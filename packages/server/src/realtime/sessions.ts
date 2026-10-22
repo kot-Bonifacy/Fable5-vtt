@@ -264,6 +264,9 @@ export async function startSession(
   } catch (error) {
     deps.log.warn({ err: error, campaignId }, 'session log: start not recorded');
   }
+  // Kopia kampanii (57b) czyta stan teraz — sprzed Stopu i odnowienia
+  // Szczęścia, czyli dokładnie to, do czego cofa „start sesji”. Zapis w tle.
+  await deps.ctx.copies?.capture(campaignId, 'start', new Date(startedAt), startedAt);
   await stopPlayerMoveOnStart(deps, campaignId);
   const luckRefreshed = await refreshLuckForSession(deps, campaignId);
   // Dzierżawa AI (44d): nowa sesja może dostać AI, jeśli nikt go nie trzyma.
@@ -336,6 +339,13 @@ export async function endSession(
       deps.log.warn({ err: error, campaignId }, 'session log: end not recorded');
     }
   }
+  // Kopia kampanii (57b) — każda droga końca: MG, administrator, zegar, usunięcie.
+  await deps.ctx.copies?.capture(
+    campaignId,
+    'end',
+    before?.sessionStartedAt ?? null,
+    endedAt.getTime(),
+  );
   // Koniec sesji przekazuje AI następnej uprawnionej (44d).
   await deps.ctx.ai.refresh();
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -412,6 +422,7 @@ async function noteAdminEnd(deps: RealtimeDeps, campaignId: string): Promise<voi
 /**
  * Jeden obrót zegara: każda trwająca sesja dostaje werdykt. Co minutę
  * z `setupRealtime`; testy wołają to same po przesunięciu sztucznego zegara.
+ * Ten sam obrót odkłada kopie kampanii „co godzinę” (57b).
  */
 export async function sweepSessions(deps: RealtimeDeps): Promise<string[]> {
   const released: string[] = [];
@@ -420,7 +431,32 @@ export async function sweepSessions(deps: RealtimeDeps): Promise<string[]> {
     const verdict = deps.sessions.verdict(campaignId, seated);
     if (verdict && (await endSession(deps, campaignId, verdict))) released.push(campaignId);
   }
+  try {
+    await deps.ctx.copies?.tick(deps.sessions.now());
+  } catch (error) {
+    deps.log.error({ err: error }, 'campaign copy tick failed');
+  }
   return released;
+}
+
+/**
+ * Przesadza gniazda MG kampanii z pełnym `state:sync` — po cofnięciu (57b)
+ * cała zawartość gry jest nowa, a strona zostaje, jak była (bez
+ * `campaign:switch`, który czyściłby komunikaty).
+ */
+export async function reseatCampaignGms(deps: RealtimeDeps, campaignId: string): Promise<void> {
+  const campaign = await deps.ctx.prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign) return;
+  const summary = toCampaignSummary(campaign);
+  for (const socket of await deps.io.in(gmRoom(campaignId)).fetchSockets()) {
+    const live = deps.io.sockets.sockets.get(socket.id);
+    if (!live) continue;
+    try {
+      await reseatSocket(deps, live, summary);
+    } catch (error) {
+      deps.log.error({ err: error, socketId: live.id }, 'reseat after rollback failed');
+    }
+  }
 }
 
 /** Sesje zastane w bazie przy starcie procesu — liczniki od teraz (rozpiska 44c). */

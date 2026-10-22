@@ -34,6 +34,7 @@ import type {
   BotTraceBroadcast,
   BotUpsertBroadcast,
   BotView,
+  CampaignCopyFailedPush,
   CampaignSummary,
   CampaignSwitchBroadcast,
   CatalogShopping,
@@ -879,6 +880,15 @@ export function connectSocket(userId: string): Socket {
     }
     // Etap 46a: przy stole dok ma sklepy zdalne, między sesjami — oznaczone.
     refreshMerchants();
+  });
+
+  // Kopie kampanii (57b): zapis w tle skończony — lista w „Kopiach” do odświeżenia;
+  // błąd kopii — pasek dla MG (gracze tego zdarzenia nie dostają).
+  socket.on('archive:copies', () => {
+    for (const listener of campaignCopyListeners) listener();
+  });
+  socket.on('archive:copy-failed', (push: CampaignCopyFailedPush) => {
+    notifyRefusal('archive', push.text, { title: 'Kopie', tone: 'warn' });
   });
 
   onPresented('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
@@ -2859,6 +2869,14 @@ export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', 
  * klient i serwer są tego samego pochodzenia (proxy Vite w dev, Caddy w prod),
  * dokładnie jak `/uploads/...`.
  */
+/** Zakładka „Kopie” słucha, kiedy serwer odłożył (albo zrotował) kopię kampanii (57b). */
+const campaignCopyListeners = new Set<() => void>();
+
+export function subscribeCampaignCopies(listener: () => void): () => void {
+  campaignCopyListeners.add(listener);
+  return () => campaignCopyListeners.delete(listener);
+}
+
 export function downloadArchive(path: string): void {
   const link = document.createElement('a');
   link.href = path;

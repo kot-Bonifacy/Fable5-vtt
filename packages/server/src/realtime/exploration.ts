@@ -270,6 +270,18 @@ export const sceneExploreEvent = defineEvent<SceneExplorePayload, SceneView>({
   },
 });
 
+/**
+ * Drops one scene's memory from the cache **without writing it** — the
+ * campaign rollback (stage 57b) has just put the copy's row back, and a queued
+ * write of the old memory would overwrite it a second later.
+ */
+export function dropExplorationCache(sceneId: string): void {
+  const timer = pendingWrites.get(sceneId);
+  if (timer) clearTimeout(timer);
+  pendingWrites.delete(sceneId);
+  grids.delete(sceneId);
+}
+
 /** Test hook: drops the in-memory copy so a fresh server reads the rows again. */
 export function resetExplorationCache(): void {
   for (const timer of pendingWrites.values()) clearTimeout(timer);

@@ -1,16 +1,29 @@
-import { useRef, useState } from 'react';
-import type { ArchiveImportResult } from '@vtt/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  ArchiveImportResult,
+  CampaignCopyListView,
+  CampaignCopySummary,
+  CampaignRollbackResult,
+} from '@vtt/shared';
 import {
   ARCHIVE_DOWNLOAD_PATHS,
   ARCHIVE_IMPORT_PATH,
   ARCHIVE_REFUSAL_MESSAGES,
+  CAMPAIGN_COPY_PATHS,
+  CAMPAIGN_COPY_REASON_LABELS,
+  CAMPAIGN_COPY_REFUSALS,
   archiveRefusalText,
+  campaignCopySessionLabel,
+  confirmsCampaignName,
+  formatArchiveBytes,
   isContainerCard,
+  polishPlural,
   sessionErrorText,
 } from '@vtt/shared';
-import { ApiError, apiUpload } from '../api.js';
+import { ApiError, apiGet, apiPost, apiUpload } from '../api.js';
 import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
-import { downloadArchive, openCampaign } from '../socket.js';
+import { downloadArchive, openCampaign, subscribeCampaignCopies } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 
@@ -222,11 +235,182 @@ function ImportSection() {
   );
 }
 
+/** „22.10, 18:42” — chwila kopii w wierszu. */
+function copyClock(iso: string): string {
+  const date = new Date(iso);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}, ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Kopie pogrupowane po sesjach, od najświeższej — tak, jak liczy je rotacja. */
+function bySession(copies: CampaignCopySummary[]): [string, CampaignCopySummary[]][] {
+  const groups = new Map<string, CampaignCopySummary[]>();
+  for (const copy of copies) {
+    const key = copy.sessionStartedAt ?? `poza:${copy.name}`;
+    groups.set(key, [...(groups.get(key) ?? []), copy]);
+  }
+  return [...groups.values()].map((rows) => [
+    campaignCopySessionLabel(rows[0]!.sessionStartedAt),
+    rows,
+  ]);
+}
+
+/**
+ * Kopie automatyczne kampanii (etap 57b): serwer odkłada je sam przy starcie
+ * i końcu sesji oraz co godzinę w jej trakcie. Z każdej można pobrać paczkę
+ * albo cofnąć kampanię — tylko bez trwającej sesji i po wpisaniu nazwy.
+ */
+function CopiesSection() {
+  const campaign = useAuthStore((s) => s.activeCampaign);
+  const [view, setView] = useState<CampaignCopyListView | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setView(await apiGet<CampaignCopyListView>(CAMPAIGN_COPY_PATHS.list));
+    } catch {
+      setView(null);
+    }
+  }, []);
+
+  // Start i koniec sesji zmieniają listę i to, czy wolno cofać.
+  useEffect(() => {
+    void load();
+  }, [load, campaign?.id, campaign?.sessionStartedAt]);
+  useEffect(() => subscribeCampaignCopies(() => void load()), [load]);
+
+  async function rollback(copy: CampaignCopySummary) {
+    if (!view) return;
+    clearNotices('archive');
+    setBusy(true);
+    try {
+      const result = await apiPost<CampaignRollbackResult>(CAMPAIGN_COPY_PATHS.restore(copy.name), {
+        confirm: typed,
+      });
+      const waiting = result.pendingPlayers.length;
+      notifyInfo(
+        [
+          `Kampania cofnięta do kopii z ${copyClock(copy.takenAt)} (${CAMPAIGN_COPY_REASON_LABELS[copy.reason]}).`,
+          `Stan sprzed cofnięcia jest w kampanii „${result.previous.name}” w Panelu MG — bez graczy, do obejrzenia albo usunięcia.`,
+          waiting > 0
+            ? `${waiting} ${polishPlural(waiting, 'karta czeka', 'karty czekają', 'kart czeka')} na gracza, którego nie ma już w kampanii.`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+        { title: 'Kopie', topic: 'archive' },
+      );
+      setConfirming(null);
+      setTyped('');
+      await load();
+    } catch (error) {
+      const code = error instanceof ApiError ? error.code : 'NETWORK';
+      notifyRefusal(
+        'archive',
+        CAMPAIGN_COPY_REFUSALS[code] ?? `Nie udało się cofnąć kampanii (${code}).`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!view) return null;
+  return (
+    <section className="archive-section">
+      <h3 className="panel-section-title">Kopie automatyczne</h3>
+      {!view.enabled ? (
+        <p className="archive-hint">Ten serwer nie robi kopii kampanii.</p>
+      ) : view.copies.length === 0 ? (
+        <p className="archive-hint">Jeszcze żadnej — pierwsza powstanie przy „Rozpocznij sesję”.</p>
+      ) : (
+        <ul className="archive-list archive-list--copies">
+          {bySession(view.copies).map(([label, rows]) => (
+            <li key={rows[0]!.name} className="archive-session">
+              <span className="archive-session-title">{label}</span>
+              <ul className="archive-session-copies">
+                {rows.map((copy) => (
+                  <li key={copy.name} className="archive-row">
+                    <span className="archive-row-meta archive-row-when">
+                      {copyClock(copy.takenAt)} · {CAMPAIGN_COPY_REASON_LABELS[copy.reason]}
+                    </span>
+                    <span className="archive-row-meta">{formatArchiveBytes(copy.bytes)}</span>
+                    <span className="archive-row-actions">
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Paczka ZIP tej kopii — „Wczytaj z pliku…” wczyta ją jako nową kampanię"
+                        onClick={() => downloadArchive(CAMPAIGN_COPY_PATHS.download(copy.name))}
+                      >
+                        Pobierz
+                      </button>
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={view.sessionRunning}
+                        title={
+                          view.sessionRunning
+                            ? 'Trwa sesja — cofnąć można dopiero po „Zakończ sesję”'
+                            : 'Kampania wraca do tej chwili; gracze, czat i zaproszenia zostają'
+                        }
+                        onClick={() => {
+                          setConfirming(confirming === copy.name ? null : copy.name);
+                          setTyped('');
+                        }}
+                      >
+                        Cofnij…
+                      </button>
+                    </span>
+                    {confirming === copy.name && !view.sessionRunning && (
+                      <span className="archive-confirm">
+                        <span className="archive-row-meta">
+                          Wpisz nazwę kampanii <strong>{view.campaignName}</strong>:
+                        </span>
+                        <input
+                          type="text"
+                          className="archive-select"
+                          aria-label={`Potwierdź nazwę kampanii ${view.campaignName}`}
+                          value={typed}
+                          onChange={(event) => setTyped(event.target.value)}
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          className="small-button small-button--danger"
+                          disabled={busy || !confirmsCampaignName(typed, view.campaignName)}
+                          onClick={() => void rollback(copy)}
+                        >
+                          {busy ? 'Cofam…' : 'Cofnij kampanię'}
+                        </button>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+      {view.enabled && (
+        <p className="archive-hint">
+          Kopia powstaje przy starcie i końcu sesji oraz co {view.intervalMinutes} min w jej
+          trakcie; zostają kopie z {view.keepSessions} ostatnich sesji. <strong>Cofnięcie</strong>{' '}
+          wymienia karty, sceny, tabele, sklepy, boty i dziennik na te z kopii — gracze, czat i
+          zaproszenia zostają, a obecny stan trafia do osobnej kampanii „(przed cofnięciem)”.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function ArchivePanel() {
   // Kopie całej bazy niosą kampanie wszystkich MG — od etapu 53 są w panelu
   // administratora (`AdminBackups`), nie tutaj.
   return (
     <div className="archive-panel">
+      <CopiesSection />
       <DownloadSection />
       <ImportSection />
     </div>

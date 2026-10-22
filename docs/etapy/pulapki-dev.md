@@ -1029,12 +1029,28 @@ pliku po `id`, nie `diff -q`.
 
 ## kopie — Kopie zapasowe, eksport i import
 
+- **Karta wróciła w bazie, a MG dalej widzi starą (22.10, 57b)** — przywrócona karta miała `revision` 0, a klient po #49 odrzuca w `state:sync` widok starszy od trzymanego; cofnięcie ustawia rewizję wyższą od bieżącej.
+- **Twarde dowiązania nie przechodzą między punktami montowania (22.10, 57b)** — cztery bind mounty `vtt-data/*` na VPS: `link()` → EXDEV, ucieczka do `copyFile`, kopie bazy z `"linked": false` (2 GB na 70 MB uploadów); od 57b jedno montowanie `/data`.
 - **Złośliwej paczki nie złożysz `yazl`-em (22.10, 57a)** — odmawia `..` i ścieżek bezwzględnych; test zip slip podmienia bajty nazwy w gotowym ZIP-ie na napis **tej samej długości**.
 - **Wczytany plik niesie id kont z innej instalacji albo od innego MG (22.10, 57a)** — test izolacji (`campaign-isolation.test.ts`) łapie je w każdym nowym wierszu; id konta zostaje tylko po sprawdzeniu w bazie (`knownPlayers`).
 - **Kopia startowa i sprzątanie sierot chodzą równolegle** — plik znika między listą a dowiązaniem; `linkTree` ma go pominąć (ENOENT), nie przerwać kopii.
 - **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku** — objawem jest „eksport nie działa dla niektórych postaci"; nagłówek jest latin-1.
 
 ---
+
+- **Karta wróciła w bazie, a MG dalej widzi starą (22.10, 57b).** Pierwsze cofnięcie w E2E
+  przeszło na serwerze (karta w bazie sprzed sesji), a lista „Postacie” MG dalej pokazywała
+  „Kira po sesji”. `importCampaign` zakładał kartę z domyślnym `revision` 0, a klient po #49
+  przyjmuje w kolejnym `state:sync` tylko widok nie starszy od trzymanego — odrzucał kopię jako
+  echo sprzed zapisu. W trybie `replace` karta dostaje rewizję bieżącą + 1. To samo dotyczy każdej
+  przyszłej drogi, która „cofa” wiersz z rewizją pod żywym klientem.
+
+- **Twarde dowiązania nie przechodzą między punktami montowania (22.10, 57b).** Na VPS
+  `docker-compose.yml` montował `db/`, `uploads/`, `private/` i `backups/` osobno; `link()` między
+  dwoma bind mountami tego samego dysku zwraca EXDEV, `linkTree` cicho uciekał do `copyFile`
+  i każda godzinna kopia bazy była pełną kopią plików (`"linked": false` w manifeście, 2,0 GB
+  `backups/` na 70 MB `uploads/`). Lokalnie (jeden dysk, bez kontenera) nie do zauważenia.
+  Od 57b `vtt-data` jest jednym `/data`; manifest kopii mówi prawdę — czytaj `linked`.
 
 - **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku.** Karta „Bezpański" wysyłana
   z `Content-Disposition: attachment; filename="character-bezpanski-…"` wywracała całą trasę

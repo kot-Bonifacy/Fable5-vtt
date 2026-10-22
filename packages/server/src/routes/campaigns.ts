@@ -1,9 +1,20 @@
 import { randomBytes } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { CampaignDetail, CpredDataPayload } from '@vtt/shared';
-import { GAME_TIME_DEFAULT, INVITATION_TTL_HOURS, ROLE_PLAYER, gameMonthKey } from '@vtt/shared';
+import type { CampaignDeleteResult, CampaignDetail, CpredDataPayload } from '@vtt/shared';
+import {
+  GAME_TIME_DEFAULT,
+  INVITATION_TTL_HOURS,
+  ROLE_PLAYER,
+  confirmsCampaignName,
+  gameMonthKey,
+} from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
+import { endUserSessions } from '../auth/sessions.js';
+import { notifyAdmins } from '../realtime/admin-room.js';
+import type { RealtimeDeps } from '../realtime/registry.js';
 import { playerNameTaken, sanitizePlayerName, toInvitationSummary } from '../invitations.js';
 import {
   getUserActiveCampaign,
@@ -256,4 +267,80 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
         });
     return toInvitationSummary(revoked);
   });
+}
+
+/**
+ * „Usuń kampanię” MG (etap 57b). Do 57b kampanię usuwał tylko administrator,
+ * razem z kontem MG — a kampanie „przed cofnięciem” zostałyby na zawsze.
+ *
+ * Potwierdzenie nazwą (jak cofnięcie), odmowa przy trwającej sesji
+ * i przy kampanii otwartej u MG: stół, przy którym MG siedzi, nie znika mu
+ * spod rąk. Kampania schodzi kaskadą z całą zawartością i czatem, katalog jej
+ * grafik — z dysku; kopie kampanii (57b) zostają w `BACKUP_DIR`, a ich
+ * dowiązania trzymają pliki przy życiu. Gracze, którzy należeli **tylko** do
+ * niej (od 44b gracz ma jedną kampanię), odchodzą razem z nią, jak przy
+ * usunięciu konta MG przez administratora — konto bez kampanii nie ma po co
+ * istnieć. Dziennik sesji zostaje.
+ *
+ * Rejestrowana po gniazdach (`deps`): wylogowuje gniazda usuwanych graczy.
+ */
+export function registerCampaignDeleteRoute(
+  app: FastifyInstance,
+  ctx: AppContext,
+  deps: RealtimeDeps,
+): void {
+  app.delete<{ Params: { id: string } }>(
+    '/api/campaigns/:id',
+    { preHandler: requireGm },
+    async (request, reply) => {
+      const user = request.user!;
+      const { id } = request.params;
+      const { confirm } = (request.body ?? {}) as { confirm?: unknown };
+      // Cudza kampania wygląda jak nieistniejąca — zanim ktokolwiek spojrzy na ciało.
+      const campaign = await ownCampaignOf(ctx.prisma, id, user.id);
+      if (!campaign) return reply.code(404).send({ error: 'CAMPAIGN_NOT_FOUND' });
+      if (typeof confirm !== 'string') return reply.code(400).send({ error: 'BAD_REQUEST' });
+      if (campaign.sessionStartedAt) return reply.code(409).send({ error: 'SESSION_ACTIVE' });
+      if ((await getUserActiveCampaign(ctx.prisma, user))?.id === id) {
+        return reply.code(409).send({ error: 'CAMPAIGN_OPEN' });
+      }
+      if (!confirmsCampaignName(confirm, campaign.name)) {
+        return reply.code(400).send({ error: 'CONFIRM_MISMATCH' });
+      }
+
+      const players = await ctx.prisma.user.findMany({
+        where: {
+          role: ROLE_PLAYER,
+          AND: [
+            { memberships: { some: { campaignId: id } } },
+            { memberships: { none: { campaignId: { not: id } } } },
+          ],
+        },
+        select: { id: true },
+      });
+      const playerIds = players.map((player) => player.id);
+      // Gniazda najpierw — nikt nie pisze do kampanii, która za chwilę zniknie.
+      for (const playerId of playerIds) {
+        await endUserSessions(ctx.prisma, deps.io, playerId, 'deleted');
+      }
+      await ctx.prisma.$transaction([
+        ctx.prisma.campaign.delete({ where: { id } }),
+        ctx.prisma.user.deleteMany({ where: { id: { in: playerIds } } }),
+      ]);
+      await rm(join(ctx.config.uploadsDir, 'campaigns', id), {
+        recursive: true,
+        force: true,
+      }).catch((error: unknown) => {
+        request.log.warn({ err: error, campaignId: id }, 'campaign uploads not removed');
+      });
+      await ctx.ai.refresh();
+      notifyAdmins(deps.io);
+      request.log.warn(
+        { campaignId: id, name: campaign.name, players: playerIds.length },
+        'campaign deleted by its GM',
+      );
+      const result: CampaignDeleteResult = { players: playerIds.length };
+      return result;
+    },
+  );
 }

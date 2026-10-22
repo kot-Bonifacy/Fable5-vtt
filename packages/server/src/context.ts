@@ -9,6 +9,7 @@ import type { ServerConfig } from './config.js';
 import type { PrismaClient } from './db.js';
 import type { StatusRegistry } from './statuses.js';
 import type { LoginAttemptLimiter } from './rate-limit.js';
+import type { CampaignCopies } from './campaign-copies.js';
 
 export interface AppContext {
   config: ServerConfig;
@@ -37,4 +38,9 @@ export interface AppContext {
   loginLimiter?: LoginAttemptLimiter;
   /** Nowe konta MG per IP (44a, 5 na godzinę); liczy udane rejestracje, nie porażki. */
   registrationLimiter?: LoginAttemptLimiter;
+  /**
+   * Automatyczne kopie kampanii (etap 57b). Brak — ten proces kopii nie robi
+   * (brak sekcji `backups`, jak w testach dymnych).
+   */
+  copies?: CampaignCopies;
 }

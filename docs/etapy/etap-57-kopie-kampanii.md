@@ -128,44 +128,63 @@ Diagnoza z 22.10 (stan po etapie 56):
 
 ### Zakres
 
-- [ ] Kopia kampanii po stronie serwera: katalog `<BACKUP_DIR>/campaigns/<campaignId>/<chwila>/`
+- [x] Kopia kampanii po stronie serwera: katalog `<BACKUP_DIR>/campaigns/<campaignId>/<chwila>/`
       z `manifest.json` + `data.json` (bez czatu) + grafikami jako **twardymi dowiązaniami**
       do `uploads/`. ZIP składany dopiero przy pobraniu. Ten sam kod danych co w 57a
-- [ ] Wyzwalacze: `session:start`, `session:end`, każda inna droga końca sesji (administrator
+- [x] Wyzwalacze: `session:start`, `session:end`, każda inna droga końca sesji (administrator
       `POST /api/admin/sessions/:campaignId/end`, wygaśnięcie slotu) oraz co godzinę, póki sesja
       trwa. Kopia nie blokuje stołu: robi ją praca w tle, a błąd kopii idzie do dziennika serwera
       i komunikatu MG, nie do graczy
-- [ ] Rotacja: kopie z 10 ostatnich sesji (wszystkie kopie jednej sesji liczą się jako jedna
+- [x] Rotacja: kopie z 10 ostatnich sesji (wszystkie kopie jednej sesji liczą się jako jedna
       pozycja), ustawiana w configu. Czysta funkcja planu rotacji w `shared` z testami, wzorem
       `rotateSnapshots`
-- [ ] Panel „Kopie”: lista kopii tej kampanii (sesja, chwila, rodzaj: start / co godzinę /
+- [x] Panel „Kopie”: lista kopii tej kampanii (sesja, chwila, rodzaj: start / co godzinę /
       koniec, rozmiar), „Pobierz” (ZIP) i „Cofnij do tej kopii”
-- [ ] **Cofnięcie (decyzje 6–8):** odmowa przy trwającej sesji (`SESSION_ACTIVE`), potwierdzenie
+- [x] **Cofnięcie (decyzje 6–8):** odmowa przy trwającej sesji (`SESSION_ACTIVE`), potwierdzenie
       nazwą kampanii, kopia bezpieczeństwa stanu sprzed cofnięcia. Kampania zachowuje
       **tożsamość**: id, graczy, zaproszenia, czat, historię sesji i swoją listę kopii.
       Zawartość gry (karty, sceny, tabele, sklepy, boty, dziennik…) wymienia się na tę z kopii,
       a dotychczasowa wyjeżdża do nowej kampanii „<nazwa> (przed cofnięciem DD.MM)” bez graczy
-- [ ] Karty graczy po cofnięciu wracają do tych samych graczy. Karta gracza, którego już nie ma
+- [x] Karty graczy po cofnięciu wracają do tych samych graczy. Karta gracza, którego już nie ma
       w kampanii, wchodzi jako „czeka na gracza” (57a)
-- [ ] **„Usuń kampanię” dla MG** (dziś usuwa tylko administrator razem z kontem MG): z
+- [x] **„Usuń kampanię” dla MG** (dziś usuwa tylko administrator razem z kontem MG): z
       potwierdzeniem nazwą i odmową przy trwającej sesji albo otwartej kampanii. Bez tego
       kampanie „przed cofnięciem” zostają na zawsze. Usunięcie zabiera katalog uploadów
       kampanii; dowiązania w kopiach trzymają pliki przy życiu
-- [ ] `deploy/pull-backup.ps1` i `docs/DEPLOY.md`: sprawdzić, czy kopie kampanii jadą off-site
+- [x] `deploy/pull-backup.ps1` i `docs/DEPLOY.md`: sprawdzić, czy kopie kampanii jadą off-site
       razem z kopiami bazy, i zmierzyć miejsce na dysku VPS po 10 sesjach
-- [ ] Testy: rotacja w `shared`, dymne serwera (kopia na start/koniec sesji, odmowa przy
+- [x] Testy: rotacja w `shared`, dymne serwera (kopia na start/koniec sesji, odmowa przy
       sesji, cofnięcie zachowuje graczy i czat, stara zawartość w kampanii „przed cofnięciem”),
       E2E: sesja → zmiana karty → koniec sesji → cofnięcie → karta sprzed zmiany u gracza
 
 ### Kryteria ukończenia
 
-- [ ] Rozpoczęcie i zakończenie sesji zostawia dwie kopie kampanii; po 11 sesjach zostają kopie
+- [x] Rozpoczęcie i zakończenie sesji zostawia dwie kopie kampanii; po 11 sesjach zostają kopie
       z 10 ostatnich
-- [ ] Cofnięcie do kopii ze startu sesji przywraca stan gry sprzed sesji: gracze wchodzą do
+- [x] Cofnięcie do kopii ze startu sesji przywraca stan gry sprzed sesji: gracze wchodzą do
       tej samej kampanii i widzą swoje karty, a czat jest kompletny
-- [ ] Stan sprzed cofnięcia da się obejrzeć w kampanii „(przed cofnięciem …)” i usunąć
-- [ ] Kopie bazy z etapu 33/53 i skrypt `restore.ts` działają bez zmian
-- [ ] Oględziny listy kopii i cofnięcia w Firefoksie (Playwright)
+- [x] Stan sprzed cofnięcia da się obejrzeć w kampanii „(przed cofnięciem …)” i usunąć
+- [x] Kopie bazy z etapu 33/53 i skrypt `restore.ts` działają bez zmian
+- [x] Oględziny listy kopii i cofnięcia w Firefoksie (Playwright)
+
+### Rozstrzygnięcia 57b (22.10, bez pytań — do słowa MG)
+
+- **Nazwa kopii `copy-RRRRMMDD-GGMMSS-mmm-<powód>`** (UTC, z milisekundami): start i koniec
+  krótkiej sesji mieszczą się w jednej sekundzie, a porządek nazw ma być porządkiem czasu.
+  Sesję w kopii znaczy chwila jej startu; kopia „przed cofnięciem” jest poza sesją i liczy się
+  w rotacji jako osobna pozycja.
+- **Cofnięcie zostawia te same id** kart, scen, figur, botów i walk (tryb `replace`), a nie nowe:
+  czat, zaproszenia „ta karta jest twoja” i otwarte okna wskazują dalej to, co trzeba. Kampania
+  „przed cofnięciem” dostaje nowe id (droga 57a), jej karty graczy czekają na gracza.
+- **Zostaje bieżące:** nazwa kampanii, flaga poligonu, członkowie, zaproszenia, czat, dziennik
+  sesji i szkice kreatora. **Wraca z kopii:** zegar świata, sklepy i dostępność, muzyka, walki;
+  przebiegi Sieci nie (stan chwili — czarny LOD z przebiegu wypada z kolejki).
+- **Kopie usuniętej kampanii zostają w `BACKUP_DIR`** (furtka na pomyłkę); sprząta je
+  administrator na dysku. „Usuń kampanię” zabiera też konta graczy tylko tej kampanii — jak
+  usunięcie konta MG przez administratora (od 44b gracz ma jedną kampanię).
+- **Kopie kampanii nie jadą off-site** — pełna kopia bazy pokrywa każdą kampanię
+  (`docs/DEPLOY.md`). **Na VPS kopie bazy były pełnymi kopiami plików** (cztery bind mounty,
+  EXDEV): `docker-compose.yml` montuje teraz cały `vtt-data` raz — do sprawdzenia po wdrożeniu.
 
 ## 57c — Pojedyncze rzeczy: sklepy i boty, karta gracza
 

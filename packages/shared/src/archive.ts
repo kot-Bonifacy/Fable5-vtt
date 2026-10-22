@@ -458,3 +458,180 @@ export const ARCHIVE_PACKAGE_LIMITS_DEFAULT: ArchivePackageLimits = {
   maxBytes: 2 * 1024 * 1024 * 1024,
   maxEntries: 20_000,
 };
+
+/* ------------------------------------------------------------------ */
+/* Kopie kampanii i cofnięcie (etap 57b)                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Po co powstała kopia kampanii: start sesji, godzina w jej trakcie, koniec
+ * sesji albo kopia bezpieczeństwa tuż przed cofnięciem (decyzje MG 5 i 6).
+ */
+export type CampaignCopyReason = 'start' | 'hourly' | 'end' | 'rollback';
+
+export const CAMPAIGN_COPY_REASON_LABELS: Readonly<Record<CampaignCopyReason, string>> = {
+  start: 'start sesji',
+  hourly: 'w trakcie sesji',
+  end: 'koniec sesji',
+  rollback: 'przed cofnięciem',
+};
+
+function isCampaignCopyReason(value: string): value is CampaignCopyReason {
+  return value === 'start' || value === 'hourly' || value === 'end' || value === 'rollback';
+}
+
+/** Domyślnie zostają kopie z 10 ostatnich sesji (decyzja MG 5). */
+export const CAMPAIGN_COPY_KEEP_SESSIONS_DEFAULT = 10;
+/** Co ile minut trwającej sesji powstaje kopia „w trakcie” (decyzja MG 5). */
+export const CAMPAIGN_COPY_INTERVAL_MINUTES_DEFAULT = 60;
+
+/**
+ * `copy-20261022-143005-123-start` — chwila z dokładnością do milisekundy,
+ * bo start i koniec krótkiej sesji (i każdy test) mieszczą się w jednej
+ * sekundzie, a porządek nazw ma dalej być porządkiem czasu. Czas UTC: nazwy
+ * nie czyta człowiek (panel pokazuje `takenAt`), czyta ją rotacja.
+ */
+const CAMPAIGN_COPY_NAME = /^copy-(\d{8})-(\d{6})-(\d{3})-(start|hourly|end|rollback)$/;
+
+export function campaignCopyName(date: Date, reason: CampaignCopyReason): string {
+  const iso = date.toISOString(); // 2026-10-22T14:30:05.123Z
+  const day = iso.slice(0, 10).replace(/-/g, '');
+  const time = iso.slice(11, 19).replace(/:/g, '');
+  return `copy-${day}-${time}-${iso.slice(20, 23)}-${reason}`;
+}
+
+/** Chwila i powód z nazwy katalogu kopii, albo `null` dla nazwy spoza schematu. */
+export function parseCampaignCopyName(
+  name: string,
+): { takenAt: Date; reason: CampaignCopyReason } | null {
+  const match = CAMPAIGN_COPY_NAME.exec(name);
+  if (!match) return null;
+  const [, day = '', time = '', ms = '', reason = ''] = match;
+  const takenAt = new Date(
+    `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}.${ms}Z`,
+  );
+  if (Number.isNaN(takenAt.getTime()) || !isCampaignCopyReason(reason)) return null;
+  return { takenAt, reason };
+}
+
+/** Kopia do planu rotacji: nazwa katalogu i sesja, do której należy. */
+export interface CampaignCopyRef {
+  name: string;
+  /** Klucz sesji (chwila jej startu); `null` — kopia spoza sesji (przed cofnięciem). */
+  session: string | null;
+}
+
+/**
+ * Które kopie kampanii zostają: wszystkie z `keepSessions` najświeższych
+ * sesji. Kopie jednej sesji (start, co godzinę, koniec) liczą się jako **jedna
+ * pozycja** (decyzja MG 5); kopia spoza sesji — jako osobna. Świeżość sesji
+ * mówi jej najnowsza kopia, a porządek nazw jest porządkiem czasu, jak
+ * w `planSnapshotRotation`. Nazwa spoza schematu nie ginie nigdy.
+ */
+export function planCampaignCopyRotation(
+  copies: CampaignCopyRef[],
+  keepSessions: number,
+): SnapshotRotationPlan {
+  const ignored: string[] = [];
+  const known: CampaignCopyRef[] = [];
+  for (const copy of copies) {
+    if (parseCampaignCopyName(copy.name)) known.push(copy);
+    else ignored.push(copy.name);
+  }
+  known.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+
+  const positions: string[] = [];
+  const positionOf = (copy: CampaignCopyRef): string =>
+    copy.session === null ? `copy:${copy.name}` : `session:${copy.session}`;
+  for (const copy of known) {
+    const position = positionOf(copy);
+    if (!positions.includes(position)) positions.push(position);
+  }
+  const kept = new Set(positions.slice(0, Math.max(0, keepSessions)));
+  return {
+    keep: known.filter((copy) => kept.has(positionOf(copy))).map((copy) => copy.name),
+    drop: known
+      .filter((copy) => !kept.has(positionOf(copy)))
+      .map((copy) => copy.name)
+      .reverse(),
+    ignored,
+  };
+}
+
+/** Jedna kopia kampanii tak, jak widzi ją MG w zakładce „Kopie”. */
+export interface CampaignCopySummary {
+  /** Nazwa katalogu — argument pobrania i cofnięcia. */
+  name: string;
+  takenAt: string;
+  reason: CampaignCopyReason;
+  /** Start sesji, do której kopia należy (ISO); `null` — kopia spoza sesji. */
+  sessionStartedAt: string | null;
+  /** Dane plus grafiki — tyle, ile waży pobrana paczka (przed ZIP-em). */
+  bytes: number;
+  /** Ile grafik leży w kopii. */
+  files: number;
+  /** Ile kart, scen… — liczniki z manifestu. */
+  counts: Record<string, number>;
+}
+
+/** Odpowiedź `GET` listy kopii otwartej kampanii. */
+export interface CampaignCopyListView {
+  /** `false` — ten serwer kopii nie robi (brak `BACKUP_DIR`). */
+  enabled: boolean;
+  campaignId: string;
+  campaignName: string;
+  /** Trwa sesja — cofnąć nie wolno (decyzja MG 8). */
+  sessionRunning: boolean;
+  keepSessions: number;
+  intervalMinutes: number;
+  /** Od najświeższej. */
+  copies: CampaignCopySummary[];
+}
+
+/** Co odsyła udane cofnięcie. */
+export interface CampaignRollbackResult {
+  /** Kopia, do której kampania wróciła. */
+  copy: CampaignCopySummary;
+  /** Kampania z zawartością sprzed cofnięcia — bez graczy, do ręcznego usunięcia. */
+  previous: { id: string; name: string };
+  /** Kopia bezpieczeństwa stanu sprzed cofnięcia (na liście kopii tej kampanii). */
+  safetyCopy: string;
+  /** Ile kart czeka na gracza, którego w kampanii już nie ma. */
+  pendingPlayers: string[];
+}
+
+/** `archive:copy-failed` — kopia kampanii się nie udała; do MG tej kampanii, nigdy do graczy. */
+export interface CampaignCopyFailedPush {
+  text: string;
+}
+
+/** Trasy kopii kampanii — jedno miejsce, żeby klient nie sklejał adresów ręką. */
+export const CAMPAIGN_COPY_PATHS = {
+  list: '/api/archive/copies',
+  download: (name: string): string => `/api/archive/copies/${encodeURIComponent(name)}`,
+  restore: (name: string): string => `/api/archive/copies/${encodeURIComponent(name)}/restore`,
+} as const;
+
+/** Odmowy cofnięcia i usunięcia kampanii — zdania dla MG. */
+export const CAMPAIGN_COPY_REFUSALS: Readonly<Record<string, string>> = {
+  SESSION_ACTIVE: 'Trwa sesja — najpierw ją zakończ.',
+  CAMPAIGN_OPEN: 'To jest otwarta kampania — otwórz najpierw inną.',
+  CONFIRM_MISMATCH: 'Nazwa nie zgadza się z nazwą kampanii.',
+  COPIES_DISABLED: 'Ten serwer nie robi kopii kampanii.',
+  NO_CAMPAIGN: 'Brak otwartej kampanii.',
+  NOT_FOUND: 'Nie ma takiej kopii — mogła zejść w rotacji.',
+  CAMPAIGN_NOT_FOUND: 'Nie ma takiej kampanii.',
+};
+
+/** Potwierdzenie nazwą (decyzja MG 8): bez wielkości liter i spacji na brzegach. */
+export function confirmsCampaignName(typed: string, name: string): boolean {
+  return typed.trim().toLocaleLowerCase('pl') === name.trim().toLocaleLowerCase('pl');
+}
+
+/** Sesja kopii w jednym zdaniu: „sesja 22.10, 18:00” albo „poza sesją”. */
+export function campaignCopySessionLabel(sessionStartedAt: string | null): string {
+  if (!sessionStartedAt) return 'poza sesją';
+  const date = new Date(sessionStartedAt);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `sesja ${pad(date.getDate())}.${pad(date.getMonth() + 1)}, ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

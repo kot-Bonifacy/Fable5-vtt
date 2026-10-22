@@ -306,6 +306,8 @@ export async function placeStagedFiles(
   staged: Map<string, string>,
   uploadsDir: string,
   campaignId: string,
+  /** Jak położyć plik — domyślnie kopia; cofnięcie (57b) dowiązuje pliki kopii. */
+  put: (from: string, to: string) => Promise<void> = copyFile,
 ): Promise<Map<string, string>> {
   const placed = new Map<string, string>();
   const byDisk = new Map<string, string>();
@@ -323,11 +325,11 @@ export async function placeStagedFiles(
     let target = await campaignUploadTarget(uploadsDir, campaignId, dir, name);
     const present = await stat(target.path).catch(() => null);
     if (!present?.isFile()) {
-      await copyFile(disk, target.path);
+      await put(disk, target.path);
     } else if ((await fileSha256(target.path)) !== (await fileSha256(disk))) {
       const fresh = `${randomBytes(12).toString('hex')}${extname(name)}`;
       target = await campaignUploadTarget(uploadsDir, campaignId, dir, fresh);
-      await copyFile(disk, target.path);
+      await put(disk, target.path);
     }
     byDisk.set(disk, target.url);
     placed.set(url, target.url);

@@ -239,6 +239,32 @@ docker compose --env-file .env.prod up -d
 >   serwerze, `chown 1000:1000`);
 > - `VTT_ALLOW_EMPTY_DB=1` stosuj tylko świadomie (celowo czysta baza).
 
+### Kopie kampanii (etap 57b)
+
+Poza kopiami całej bazy serwer odkłada **kopie każdej kampanii z osobna** — przy starcie i końcu
+sesji oraz co `BACKUP_CAMPAIGN_INTERVAL_MINUTES` (60) w jej trakcie — do
+`vtt-data/backups/campaigns/<id kampanii>/copy-…/` (`manifest.json`, `data.json` bez czatu,
+`files/` jako twarde dowiązania do `uploads/`). Zostają kopie z `BACKUP_CAMPAIGN_KEEP_SESSIONS`
+(10) ostatnich sesji. Z nich MG cofa kampanię w zakładce „Kopie” — bez administratora i bez
+zatrzymywania serwera. Lista kopii bazy i `restore.ts` katalogu `campaigns/` nie widzą (nie ma
+w nim `db.sqlite`).
+
+**Jedno montowanie `vtt-data` (od 57b).** Do 57b `docker-compose.yml` montował `db/`, `uploads/`,
+`private/` i `backups/` osobno, a `link()` nie przechodzi między punktami montowania (EXDEV) nawet
+na tym samym dysku — każda kopia bazy na VPS była pełną kopią plików (`"linked": false`; 22.10:
+70 MB `uploads/`, 2,0 GB `backups/` w 28 kopiach). Teraz cały `vtt-data` jest jednym `/data`.
+Po pierwszym wdrożeniu nowe kopie mają `"linked": true`, a stare pełne zejdą w rotacji (14 dób).
+Sprawdzenie po godzinie: `cat backups/$(ls backups | grep snapshot | tail -1)/manifest.json`.
+
+**Miejsce (pomiar 22.10 na `dev.db`):** `data.json` największej kampanii waży ~130 kB, więc
+10 sesji × (start + koniec + ~4 kopie godzinowe) ≈ 60 kopii ≈ 8 MB na kampanię; grafiki przy
+jednym montowaniu nie kosztują nic ponad `uploads/`. Na VPS wolne 179 GB z 232 GB.
+
+**Off-site kopie kampanii nie jadą — celowo.** `pull-backup.ps1` ściąga pełną kopię bazy, a ona
+niesie każdą kampanię w stanie z tej godziny. Serwer odtworzony z kopii off-site startuje bez
+kopii kampanii (cofanie zaczyna się od nowej sesji); `scp -r` i tak rozdmuchałby dowiązania do
+pełnych kopii plików.
+
 Kopia off-site — PC MG ściąga ją sam (od 18.10). Zadanie Harmonogramu „VTT pull backup” codziennie
 o 23:30 (wyłączony PC nadrabia przy najbliższej okazji) puszcza `deploy/pull-backup.ps1`: najnowsza
 kompletna kopia (z `manifest.json`, który serwer pisze na końcu) idzie przez `scp` do `D:\kopie-vtt\`,
@@ -275,6 +301,7 @@ Dalej jak w sekcji 4 (`chown -R 1000:1000`) i 6 (`./deploy.sh --no-pull`).
 - [ ] utwardzenie: ~~SSH tylko po kluczu~~ (18.10: `/etc/ssh/sshd_config.d/00-hardening.conf`, klucz `id_ed25519_vps` w agencie Windows, alias `ssh vps`), fail2ban, unattended-upgrades. **ufw „tylko 80/443” nie da się
       włączyć bez zmian w innych projektach**, bo NPM przekazuje im ruch na publiczne `217.154.210.181:808x`.
       VTT żadnego portu nie wystawia. Decyzja o pozostałych to sprawa całego VPS.
+- [ ] po wdrożeniu 57b (jedno montowanie `vtt-data`): najnowsza kopia bazy ma `"linked": true`, a `du -sh backups` przestaje rosnąć o pełne `uploads/` na godzinę
 - [ ] monitoring padu i miejsca na dysku; `nmap` z zewnątrz
 - [ ] komunikat „stoję na próbce” w panelu MG (log już jest, entrypoint dodatkowo odmawia startu)
 - [ ] import muzyki z YouTube nie działa w kontenerze (brak `tools/audio` i Pythona); wgrywanie MP3 działa

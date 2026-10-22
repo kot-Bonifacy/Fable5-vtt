@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
-import type { CampaignSummary, SessionUser } from '@vtt/shared';
+import type { CampaignCopyFailedPush, CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_ADMIN, createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { SESSION_COOKIE, resolveSession } from '../auth/sessions.js';
 import { SocketRateLimiter } from '../rate-limit.js';
 import { armSessionExpiry, sessionRoom } from './session-guard.js';
 import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
-import { RoomSequences } from './state.js';
+import { RoomSequences, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { releaseSocketAim, tokenAimEvent } from './aim.js';
 import { tokenTargetEvent } from './target.js';
@@ -628,6 +628,17 @@ export function setupRealtime(
     }, SESSION_SWEEP_MS);
     timer.unref();
     app.addHook('onClose', async () => clearInterval(timer));
+  }
+
+  // Nieudana kopia kampanii (57b) idzie do MG tej kampanii — graczy nie dotyczy.
+  if (ctx.copies) {
+    ctx.copies.onFailure = (campaignId, text) => {
+      const push: CampaignCopyFailedPush = { text };
+      io.to(gmRoom(campaignId)).emit('archive:copy-failed', push);
+    };
+    ctx.copies.onWritten = (campaignId) => {
+      io.to(gmRoom(campaignId)).emit('archive:copies');
+    };
   }
 
   // Gateway coming back or going down flips bot availability for everyone;

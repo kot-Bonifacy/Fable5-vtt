@@ -224,6 +224,60 @@
   color: var(--text-dim);
 }
 
+/* Kopie automatyczne kampanii (57b): grupa na sesję, w niej wiersze kopii. */
+.archive-list--copies {
+  max-height: 22rem;
+}
+
+.archive-session {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.archive-session-title {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.archive-session-copies {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archive-row-when {
+  flex: 1 1 8rem;
+}
+
+.archive-row-actions {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+/* Potwierdzenie nazwą pod wierszem kopii — pełna szerokość, zawija się. */
+.archive-confirm {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.4rem;
+  padding-top: 0.2rem;
+}
+
+/* Pole nazwy w wierszu kopii — wysokości przycisków obok, nie pola formularza. */
+.archive-confirm input {
+  flex: 1 1 8rem;
+  min-height: 0;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.8rem;
+}
+
 .archive-flag {
   font-size: 0.72rem;
   color: var(--warn);

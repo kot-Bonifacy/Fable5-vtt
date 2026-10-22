@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, druga (po `ced46d1`) — zlecenie MG: przegląd mechaniki Szczęścia
+
+**Zlecenie MG:** sprawdzić, czy Szczęście jest dodawane i wydawane prawidłowo. **Diagnoza:** silnik
+liczył je zgodnie z RAW (+1 za punkt, deklaracja przed rzutem, pula spada też przy porażce, nie dla
+obrażeń, Rzutu na Śmierć i Rzetelności), ale wydać dało się je tylko w Testach z okna rzutu: atak
+miał `luckSpent` w silniku i na serwerze, a klient go nie wysyłał; Unik i obrony (Pochwycenie,
+Konfrontacja) nie miały pola w protokole; poprawka naboju — bez pytania o punkty. **Błąd:**
+próba Pochwycenia i Konfrontacji doliczała Szczęście do wyniku, nie zdejmując go z puli. Gracz mógł
+też ręką podnieść pulę do maksimum. **Decyzje MG (pytania na starcie):** licznik na kubku zamiast
+okna; Inicjatywa bez Szczęścia; gracz pulę ręką tylko zmniejsza; odnowienie samo na starcie sesji.
+**Zrobione:** `spendCharacterLuck` (świeży odczyt karty, jedna droga dla wszystkich rzutów),
+`luckSpent` w `attack:evade` (też Odskok), `grapple:resist`, `facedown:resist`; licznik
+„Szczęście +N z M” nad kubkiem (`rollStore.cupLuck`, `luckSheetOf`) dla Testu z karty, ataku,
+Uniku, poprawki, Pochwycenia i Konfrontacji; `cpredRollTakesLuck` w `shared`;
+`refreshLuckForSession` w `startSession` z wierszem „Nowa sesja — odnowiono pulę Szczęścia…”;
+`character:update` odmawia graczowi podniesienia puli, ↻ na karcie tylko u MG. Umowa na górze
+`kosci`, decyzja RAW w `decyzje-i-uproszczenia.md`, wpis z `POMYSLY.md` (poprawka naboju) odhaczony.
+**Poza zakresem:** bot dalej rzuca bez Szczęścia (`POMYSLY.md`, 20a).
+
+**Weryfikacja:** `shared` 2529/2529, klient 420/420, serwer 1552/1552 (nowe i rozszerzone: Unik z punktami
+i odmowa `NOT_ENOUGH_LUCK`, obie strony Pochwycenia zdejmują punkty, gracz nie podnosi puli, start
+sesji odnawia pulę i pisze na czacie), `tsc` i ESLint czyste. **Oglądane w Firefoksie**
+(tymczasowy spec z `po-T6`, skasowany): Ola-Iskra odpowiada na wezwanie, licznik nad kubkiem
+0 → +2 z 6, etykieta kubka rośnie, rzut — karta „Szczęście (2 pkt) +2”, pula 6 → 4, licznik
+znika; na karcie gracza pula ma maksimum 4 i nie ma ↻.
+
 ### Sesja 22.10 (po `8d6b247`) — zlecenie MG: gracz rzuca inicjatywę sam
 
 **Zlecenie MG:** sprawdzić, czy gracze dostają rzut inicjatywy na kubek przed walką. **Diagnoza:**

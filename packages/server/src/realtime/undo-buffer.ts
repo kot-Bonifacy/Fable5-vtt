@@ -104,6 +104,14 @@ export function forgetScene(campaignId: string, sceneId: string): void {
   else stacks.set(campaignId, kept);
 }
 
+/**
+ * Cofnięcie kampanii (57b) wymienia całą jej zawartość — `Ctrl+Z` po nim
+ * przywracałby wiersze sprzed cofnięcia w środek stanu z kopii.
+ */
+export function forgetCampaignUndo(campaignId: string): void {
+  stacks.delete(campaignId);
+}
+
 /** Testy: czysty stan między przypadkami. */
 export function resetUndoBuffer(): void {
   stacks.clear();

@@ -26,11 +26,11 @@ services:
       DATA_PRIVATE_DIR: /data/private
       BACKUP_DIR: /data/backups
       TRUST_PROXY: '1'
+    # One mount for the whole data dir (stage 57b): backups hard-link files
+    # from uploads/, and link() refuses to cross mount points (EXDEV) even on
+    # the same disk — with four bind mounts every snapshot was a full copy.
     volumes:
-      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/db:/data/db
-      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/uploads:/data/uploads
-      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/private:/data/private
-      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}/backups:/data/backups
+      - ${VTT_DATA_DIR:-/opt/docker-apps/vtt-data}:/data
     mem_limit: 1g
     cpus: 1.5
     restart: unless-stopped

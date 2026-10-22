@@ -141,5 +141,5 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 56     | Walka z zauważenia wroga wzorem Foundry: postawa figury, starcie „Przed walką” z zauważenia, zatrzymanie drużyny, dołączanie z inicjatywą | ✅     | 2026-10-19          |
 | 57     | Kopie kampanii: paczki ZIP z grafikami, wczytanie kampanii jako nowej, automatyczne kopie i cofnięcie, kopia postaci gracza (57a–57c) | 🟨     |                     |
 | 57a    | Paczka ZIP, kompletny zrzut, wczytanie kampanii jako nowej, „Wczytaj z pliku…” | ✅     | 2026-10-22          |
-| 57b    | Automatyczne kopie kampanii przy sesji, cofnięcie z zamianą miejscami, „Usuń kampanię” | ⬜     |                     |
+| 57b    | Automatyczne kopie kampanii przy sesji, cofnięcie z zamianą miejscami, „Usuń kampanię” | ✅     | 2026-10-22          |
 | 57c    | Sklepy i profile botów w paczkach, gracz pobiera i zgłasza kartę, „Pobierz karty graczy” | ⬜     |                     |

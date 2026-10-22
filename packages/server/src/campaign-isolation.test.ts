@@ -1329,6 +1329,8 @@ describe('izolacja kampanii — trasy REST i pliki (etap 44b)', () => {
       ['GET', `/api/archive/character/${A.characterId}`, 404],
       ['GET', `/api/archive/scene/${A.sceneId}`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/sandbox`, 404],
+      // Etap 57b: „Usuń kampanię” MG — cudza, nawet z dobrą nazwą, nie istnieje.
+      ['DELETE', `/api/campaigns/${A.campaignId}`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/invitations`, 404],
       ['POST', `/api/campaigns/${A.campaignId}/players/${A.playerId}/renewal`, 404],
       ['POST', `/api/invitations/${link.id}/revoke`, 404],
@@ -1345,6 +1347,7 @@ describe('izolacja kampanii — trasy REST i pliki (etap 44b)', () => {
         url,
         headers: { cookie: gmBCookie },
         ...(method === 'POST' ? { payload: { sandbox: true, name: 'Ktoś', url: 'x' } } : {}),
+        ...(method === 'DELETE' ? { payload: { confirm: `${CANARY} kampania` } } : {}),
       });
       expect(res.statusCode, `${method} ${url}`).toBe(status);
       expect(leaks(res.body), `${method} ${url}`).toBeUndefined();

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import type { CampaignDetail } from '@vtt/shared';
-import { sessionErrorText } from '@vtt/shared';
-import { apiGet, apiPost } from '../api.js';
+import type { CampaignDeleteResult, CampaignDetail } from '@vtt/shared';
+import { CAMPAIGN_COPY_REFUSALS, confirmsCampaignName, sessionErrorText } from '@vtt/shared';
+import { ApiError, apiDeleteJson, apiGet, apiPost } from '../api.js';
 import { openCampaign } from '../socket.js';
 import { formatSessionClock } from '../session-view.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -21,6 +21,35 @@ function CampaignCard({
   onChanged: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  /**
+   * „Usuń kampanię” (etap 57b) — z potwierdzeniem nazwą. Otwartej i tej
+   * z trwającą sesją usunąć nie wolno; serwer pilnuje tego samego.
+   */
+  async function remove() {
+    setError(null);
+    setBusy(true);
+    try {
+      await apiDeleteJson<CampaignDeleteResult>(`/api/campaigns/${campaign.id}`, {
+        confirm: typed,
+      });
+      onChanged();
+    } catch (failure) {
+      const code = failure instanceof ApiError ? failure.code : 'NETWORK';
+      setError(CAMPAIGN_COPY_REFUSALS[code] ?? 'Nie udało się usunąć kampanii.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const deleteBlocked = campaign.open
+    ? 'To jest otwarta kampania — otwórz najpierw inną'
+    : campaign.sessionStartedAt
+      ? 'Trwa sesja — najpierw ją zakończ'
+      : null;
+  const players = campaign.players.length;
 
   /**
    * Przejście do innej kampanii (etap 44c; do 44b „Aktywuj”, które przenosiło
@@ -81,8 +110,47 @@ function CampaignCard({
         >
           {campaign.sandbox ? '🧪 Poligon' : 'Oznacz jako poligon'}
         </button>
+        <button
+          type="button"
+          className="small-button"
+          disabled={deleteBlocked !== null}
+          title={deleteBlocked ?? 'Usuń kampanię z całą zawartością — z potwierdzeniem nazwą'}
+          onClick={() => {
+            setDeleting(!deleting);
+            setTyped('');
+          }}
+        >
+          Usuń…
+        </button>
       </header>
 
+      {deleting && deleteBlocked === null && (
+        <div className="invite-row admin-inline-form">
+          <span className="invite-expiry">
+            Wpisz nazwę <strong>{campaign.name}</strong>, żeby usunąć kampanię z kartami, scenami i
+            czatem
+            {players > 0 ? ` oraz konta ${players} ${players === 1 ? 'gracza' : 'graczy'}` : ''}.
+            Automatyczne kopie zostają na serwerze.
+          </span>
+          <input
+            type="text"
+            className="admin-inline-input"
+            aria-label={`Potwierdź nazwę kampanii ${campaign.name}`}
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className="small-button small-button--danger"
+            onClick={() => void remove()}
+            disabled={busy || !confirmsCampaignName(typed, campaign.name)}
+          >
+            Usuń na zawsze
+          </button>
+        </div>
+      )}
       {error && <p className="auth-error">{error}</p>}
       <CampaignPlayers campaign={campaign} onChanged={onChanged} />
     </section>

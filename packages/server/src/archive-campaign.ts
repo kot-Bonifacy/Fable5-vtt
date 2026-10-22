@@ -34,6 +34,9 @@ import {
  * nie zostawia pół kampanii. Grafiki kopiuje wołający przed transakcją (do
  * katalogu kampanii o id z góry) i sprząta je, gdy transakcja padnie.
  *
+ * **Cofnięcie (57b) idzie tą samą drogą** w trybie `replace`: id zostają,
+ * zawartość kampanii schodzi i wraca z kopii w tej samej transakcji.
+ *
  * **Czego nie wczytuje** (poza tym, czego plik nie niesie — `CAMPAIGN_ARCHIVE_OMITTED`):
  * czatu (autorzy to konta innej kampanii, a karty czatu wskazują figury sprzed
  * wczytania — log zostaje w pliku do przeczytania), trwającej walki i przebiegów
@@ -124,6 +127,14 @@ export interface CampaignImportOptions {
   campaignId: string;
   gmId: string;
   name: string;
+  /**
+   * `new` (57a) — nowa kampania, nowe id wszędzie. `replace` (57b, cofnięcie)
+   * — kampania `campaignId` już stoi i zachowuje tożsamość (nazwę, graczy,
+   * zaproszenia, czat); jej zawartość gry ginie i wraca ta z kopii **pod tymi
+   * samymi id**, więc czat, zaproszenia „ta karta jest twoja” i otwarte okna
+   * wskazują dalej te same karty i sceny. Walki jadą tylko tutaj.
+   */
+  mode?: 'new' | 'replace';
 }
 
 export interface CampaignImportSummary {
@@ -136,6 +147,73 @@ export interface CampaignImportSummary {
 }
 
 type Tx = Prisma.TransactionClient;
+
+/** Kolumna tekstowa z kopii: tekst zostaje, `null` zostaje, reszta — `null`. */
+const optionalText = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+/**
+ * Czat zostaje przy cofnięciu (decyzja MG 7), ale jego wiersze wskazują sceny
+ * i boty kluczem obcym z `SET NULL` — skasowanie zawartości wyzerowałoby te
+ * wskazania, zanim kopia wróci pod tymi samymi id. Odkładamy je więc do
+ * tabeli tymczasowej (tysiąc wierszy czatu to jedno zapytanie, nie tysiąc)
+ * i przywracamy tam, gdzie scena albo bot wrócili.
+ */
+async function keepChatLinks(tx: Tx, campaignId: string): Promise<void> {
+  await tx.$executeRawUnsafe('DROP TABLE IF EXISTS temp."vtt_rollback_chat"');
+  await tx.$executeRaw`
+    CREATE TEMP TABLE "vtt_rollback_chat" AS
+    SELECT "id", "botId", "recipientBotId", "sceneId" FROM "ChatMessage"
+    WHERE "campaignId" = ${campaignId}
+      AND ("botId" IS NOT NULL OR "recipientBotId" IS NOT NULL OR "sceneId" IS NOT NULL)`;
+}
+
+async function restoreChatLinks(tx: Tx): Promise<void> {
+  const columns = [
+    ['botId', 'BotProfile'],
+    ['recipientBotId', 'BotProfile'],
+    ['sceneId', 'Scene'],
+  ] as const;
+  for (const [column, table] of columns) {
+    await tx.$executeRawUnsafe(`
+      UPDATE "ChatMessage" SET "${column}" = (
+        SELECT kept."${column}" FROM temp."vtt_rollback_chat" AS kept
+        WHERE kept."id" = "ChatMessage"."id"
+      )
+      WHERE "id" IN (
+        SELECT kept."id" FROM temp."vtt_rollback_chat" AS kept
+        WHERE kept."${column}" IN (SELECT "id" FROM "${table}")
+      )`);
+  }
+  await tx.$executeRawUnsafe('DROP TABLE temp."vtt_rollback_chat"');
+}
+
+/**
+ * Zawartość gry kampanii — wszystko, co wraca z kopii (lista modeli jak
+ * w `exportCampaign`). Tożsamość zostaje: wiersz kampanii, członkowie,
+ * zaproszenia, czat, dziennik sesji, szkice kreatora. Dzieci scen, kart
+ * i tabel schodzą kaskadą; przebiegi Sieci — razem z figurami.
+ * **Nowy model z `campaignId` w kopii dopisz też tutaj.**
+ */
+export async function clearCampaignContent(tx: Tx, campaignId: string): Promise<void> {
+  const where = { campaignId };
+  await tx.netRun.deleteMany({ where });
+  await tx.scene.deleteMany({ where });
+  await tx.merchant.deleteMany({ where });
+  await tx.botProfile.deleteMany({ where });
+  await tx.character.updateMany({ where, data: { templateId: null } });
+  await tx.character.deleteMany({ where });
+  await tx.compendiumEntry.deleteMany({ where });
+  await tx.knowledgeEntry.deleteMany({ where });
+  await tx.journalEntry.deleteMany({ where });
+  await tx.handout.deleteMany({ where });
+  await tx.netArchitecture.deleteMany({ where });
+  await tx.tokenAsset.deleteMany({ where });
+  await tx.portraitAsset.deleteMany({ where });
+  await tx.randomTableRow.deleteMany({ where: { table: { campaignId } } });
+  await tx.randomTable.deleteMany({ where });
+  await tx.ledgerEntry.deleteMany({ where });
+  await tx.advancementEntry.deleteMany({ where });
+}
 
 /**
  * Wczytaj zrzut kampanii (po przepisaniu adresów grafik) jako nową kampanię
@@ -169,14 +247,20 @@ export async function importCampaign(
   const portraitAssets = asRows(payload.portraitAssets);
   const merchants = asRows(payload.merchants);
   const randomTables = asRows(payload.randomTables);
+  const replace = options.mode === 'replace';
+  // Walka jest stanem chwili między sesjami — wraca wyłącznie przy cofnięciu.
+  const combats = replace ? asRows(payload.combats) : [];
   const users = new Map(
     asRows(payload.users).map((user) => [str(user.id), str(user.name, 'gracz')] as const),
   );
 
   // 1. Mapa id: każdy wiersz z id w pliku dostaje nowe, zanim cokolwiek wejdzie.
+  // Przy cofnięciu mapa jest tożsamością — wiersze wracają pod swoje id.
   const ids = new Map<string, string>();
   const claim = (value: unknown): void => {
-    if (typeof value === 'string' && value && !ids.has(value)) ids.set(value, newRowId());
+    if (typeof value === 'string' && value && !ids.has(value)) {
+      ids.set(value, replace ? value : newRowId());
+    }
   };
   for (const row of characters) claim(row.id);
   for (const scene of scenes) {
@@ -190,6 +274,10 @@ export async function importCampaign(
     for (const row of rows) claim(row.id);
   }
   for (const table of randomTables) for (const row of asRows(table.rows)) claim(row.id);
+  for (const combat of combats) {
+    claim(combat.id);
+    for (const row of asRows(combat.combatants)) claim(row.id);
+  }
   // `null` — ściana jeszcze nie weszła; drzwi bez ściany w pliku tracą `wallId`.
   const walls = new Map<number, number | null>(
     [...referencedWallIds(architectures)].map((id) => [id, null] as const),
@@ -226,20 +314,42 @@ export async function importCampaign(
 
   await prisma.$transaction(
     async (tx: Tx) => {
-      await tx.campaign.create({
-        data: {
-          id: options.campaignId,
-          name,
-          gmId: options.gmId,
-          shopTier: num(source.shopTier, 1),
-          shopTierOverrides: jsonText(remap(source.shopTierOverrides), '{}'),
-          music: jsonText(source.music, '{}'),
-          sandbox: bool(source.sandbox),
-          gameTime: num(source.gameTime, 39447840),
-          settledMonth: maybeStr(source.settledMonth),
-          catalogShopping: jsonText(remap(source.catalogShopping), 'everywhere'),
-        },
-      });
+      const gameColumns = {
+        shopTier: num(source.shopTier, 1),
+        shopTierOverrides: jsonText(remap(source.shopTierOverrides), '{}'),
+        music: jsonText(source.music, '{}'),
+        gameTime: num(source.gameTime, 39447840),
+        settledMonth: maybeStr(source.settledMonth),
+        catalogShopping: jsonText(remap(source.catalogShopping), 'everywhere'),
+      };
+      // Cofnięcie: karta wraca pod tym samym id z rewizją **wyższą** niż ta,
+      // którą klient już trzyma — inaczej `state:sync` po cofnięciu byłby dla
+      // niego starą wiadomością i zostałby przy karcie sprzed cofnięcia (#49).
+      const revisions = new Map(
+        replace
+          ? (
+              await tx.character.findMany({
+                where: { campaignId: options.campaignId },
+                select: { id: true, revision: true },
+              })
+            ).map((row) => [row.id, row.revision] as const)
+          : [],
+      );
+      if (replace) {
+        await keepChatLinks(tx, options.campaignId);
+        await clearCampaignContent(tx, options.campaignId);
+        await tx.campaign.update({ where: { id: options.campaignId }, data: gameColumns });
+      } else {
+        await tx.campaign.create({
+          data: {
+            id: options.campaignId,
+            name,
+            gmId: options.gmId,
+            sandbox: bool(source.sandbox),
+            ...gameColumns,
+          },
+        });
+      }
 
       // 2. Karty — wzorzec podpina się po wstawieniu wszystkich (klucz do siebie).
       const templates: { id: string; templateId: string }[] = [];
@@ -271,6 +381,8 @@ export async function importCampaign(
             template: row.template === true && !owner && !pending,
             creationTokenDone: row.creationTokenDone === true,
             data: JSON.stringify(data),
+            createdAt: date(row.createdAt),
+            ...(replace ? { revision: (revisions.get(id) ?? 0) + 1 } : {}),
           },
         });
         const templateId = mapped(row.templateId);
@@ -310,6 +422,7 @@ export async function importCampaign(
           name: str(columns.name, 'Scena'),
           active: scene.active === true,
           id: mapped(scene.id) ?? undefined,
+          createdAt: date(scene.createdAt),
           tokenId: (old) => (old ? (ids.get(old) ?? undefined) : undefined),
           character: (old) => ids.get(old) ?? null,
           owner: (old) => member(old),
@@ -353,6 +466,8 @@ export async function importCampaign(
         if (zones.length) {
           await tx.defenseZone.createMany({
             data: zones.map((row) => ({
+              // Cofnięcie zostawia numer strefy — wskazuje go pułapka w walce.
+              ...(replace && typeof row.id === 'number' ? { id: row.id } : {}),
               sceneId,
               entryId: str(row.entryId),
               name: str(row.name, 'Strefa'),
@@ -569,6 +684,58 @@ export async function importCampaign(
           })),
         });
       }
+
+      // 7. Walki (tylko cofnięcie): tracker z uczestnikami pod tymi samymi id.
+      for (const combat of combats) {
+        const combatId = mapped(combat.id);
+        const sceneId = mapped(combat.sceneId);
+        if (!combatId || !sceneId) continue;
+        await tx.combat.create({
+          data: {
+            id: combatId,
+            sceneId,
+            round: num(combat.round),
+            activeCombatantId: mapped(combat.activeCombatantId),
+            resumeCombatantId: mapped(combat.resumeCombatantId),
+            resumeRound: maybeNum(combat.resumeRound),
+            systemState: optionalText(remap(combat.systemState)),
+            sighting: optionalText(remap(combat.sighting)),
+          },
+        });
+        // Czarny LOD żyje w przebiegu Sieci, a przebiegi nie wracają — jego
+        // wiersz też nie. Uczestnik bez figury i bez strefy nie ma kogo grać.
+        const rows = asRows(combat.combatants).filter(
+          (row) => row.netRunId == null && (mapped(row.tokenId) || typeof row.zoneId === 'number'),
+        );
+        if (rows.length === 0) continue;
+        await tx.combatant.createMany({
+          data: rows.map((row) => ({
+            id: mapped(row.id) ?? newRowId(),
+            combatId,
+            tokenId: mapped(row.tokenId),
+            label: maybeStr(row.label),
+            zoneId: maybeNum(row.zoneId),
+            initiative: maybeNum(row.initiative),
+            tieBreak: maybeNum(row.tieBreak),
+            order: num(row.order),
+            turnState: optionalText(remap(row.turnState)),
+            nextTurnState: optionalText(remap(row.nextTurnState)),
+            turnEffects: optionalText(remap(row.turnEffects)),
+            heldTrigger: maybeStr(row.heldTrigger),
+            heldInitiative: maybeNum(row.heldInitiative),
+            held: bool(row.held),
+            heldReady: bool(row.heldReady),
+            actionBypass: bool(row.actionBypass),
+            grappledById: mapped(row.grappledById),
+            chokeStreak: num(row.chokeStreak),
+            chokeRound: maybeNum(row.chokeRound),
+            humanShield: bool(row.humanShield),
+            createdAt: date(row.createdAt),
+          })),
+        });
+      }
+
+      if (replace) await restoreChatLinks(tx);
     },
     // Duża kampania to setki wierszy — domyślne 5 s transakcji to za mało.
     { timeout: 120_000, maxWait: 10_000 },
