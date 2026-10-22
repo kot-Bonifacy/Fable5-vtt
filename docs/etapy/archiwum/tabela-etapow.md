@@ -139,3 +139,7 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 54     | Ruch wzorem BG3: bez podglądu pod kursorem poza walką, jeden klik, potwierdzenie i Bieg w bursztynie, odznaczanie Esc / PPM | ✅     | 2026-10-17          |
 | 55     | Komunikaty wzorem Foundry: jeden kanał nad mapą, jedna skóra (55a kanał i notki z czatu, 55b okna i skóra komunikatów na miejscu) | ✅     | 2026-10-17          |
 | 56     | Walka z zauważenia wroga wzorem Foundry: postawa figury, starcie „Przed walką” z zauważenia, zatrzymanie drużyny, dołączanie z inicjatywą | ✅     | 2026-10-19          |
+| 57     | Kopie kampanii: paczki ZIP z grafikami, wczytanie kampanii jako nowej, automatyczne kopie i cofnięcie, kopia postaci gracza (57a–57c) | ⬜     |                     |
+| 57a    | Paczka ZIP, kompletny zrzut, wczytanie kampanii jako nowej, „Wczytaj z pliku…” | ⬜     |                     |
+| 57b    | Automatyczne kopie kampanii przy sesji, cofnięcie z zamianą miejscami, „Usuń kampanię” | ⬜     |                     |
+| 57c    | Sklepy i profile botów w paczkach, gracz pobiera i zgłasza kartę, „Pobierz karty graczy” | ⬜     |                     |
