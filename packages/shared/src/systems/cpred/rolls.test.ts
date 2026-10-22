@@ -12,6 +12,7 @@ import {
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
   cpredCheckOutcome,
   cpredDifficultyRungAt,
+  cpredRollTakesLuck,
   effectiveMove,
   planCpredRoll,
   resolveCpredDeathSave,
@@ -212,6 +213,24 @@ describe('planCpredRoll', () => {
     const roll = rollFormula(result.plan.formula, scriptedRng([10, 6]));
     expect(roll.critical).toEqual({ type: 'crit', extraRoll: 6 });
     expect(roll.total).toBe(24);
+  });
+});
+
+describe('cpredRollTakesLuck', () => {
+  it('lets Luck ride on Tests only — not damage, a Death Save or Rzetelność', () => {
+    for (const kind of [
+      'skill',
+      'stat',
+      'stabilize',
+      'treatInjury',
+      'charisma',
+      'rumour',
+    ] as const) {
+      expect(cpredRollTakesLuck(kind)).toBe(true);
+    }
+    for (const kind of ['damage', 'deathSave', 'reliability'] as const) {
+      expect(cpredRollTakesLuck(kind)).toBe(false);
+    }
   });
 });
 

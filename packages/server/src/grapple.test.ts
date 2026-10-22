@@ -261,6 +261,12 @@ describe('grappling', () => {
     throw new Error('turn never reached that participant');
   }
 
+  /** What is left in a sheet's Luck pool, read straight off the database. */
+  async function luckOf(characterId: string): Promise<number> {
+    const row = await built.prisma.character.findUniqueOrThrow({ where: { id: characterId } });
+    return (JSON.parse(row.data) as CpredCharacterData).luckCurrent;
+  }
+
   /** Vex grabs somebody; resolves with the ack (refusals included). */
   function grab(
     targetTokenId: string,
@@ -492,14 +498,31 @@ describe('grappling', () => {
     await giveTurnTo(vexTokenId);
     await emitAck(player, 'grapple:action', { kind: 'release' });
     await giveTurnTo(vexTokenId);
-    const started = data(await grab(thugTokenId), 'grapple:attempt');
+    // Both sides declare Luck (22.10.2026): each is a Check, and each pays for
+    // it off their own pool — the attempt used to add the points without
+    // taking them.
+    const vexLuck = await luckOf(vexCharacterId);
+    const thugLuck = await luckOf(thugCharacterId);
+    const started = data(
+      await emitAck<{ messageId: number }>(player, 'grapple:attempt', {
+        characterId: vexCharacterId,
+        attackerTokenId: vexTokenId,
+        targetTokenId: thugTokenId,
+        intent: 'hold',
+        luckSpent: 2,
+      }),
+      'grapple:attempt',
+    );
+    expect(await luckOf(vexCharacterId)).toBe(vexLuck - 2);
 
     const answered = await emitAck<{ total: number; won: boolean }>(gm, 'grapple:resist', {
       messageId: started.messageId,
       characterId: thugCharacterId,
+      luckSpent: 1,
     });
     expect(answered.ok).toBe(true);
     const verdict = data(answered, 'grapple:resist');
+    expect(await luckOf(thugCharacterId)).toBe(thugLuck - 1);
 
     // Whatever the dice said, the tracker and the card must agree about it.
     const view = await tracker();

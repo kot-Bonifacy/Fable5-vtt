@@ -122,7 +122,7 @@ import { containerTokenIds, isContainerToken } from './containers.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
 import { claimRoundOnce } from './round-once.js';
 import { requireTurnSpend } from './combat-actions.js';
-import { requireRollableCharacter } from './character-rolls.js';
+import { requireRollableCharacter, spendCharacterLuck } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
   emitTokensById,
@@ -1688,6 +1688,11 @@ function checkTargetsIn(targets: readonly BlastTarget[]): AmmoCheckTarget[] {
  * round's second go) dressed for the table to tumble (17.10): the card itself
  * only changes its verdict, so these ride the `chat:update` as `dice`.
  */
+/** „ (Szczęście 2)" after a rewritten card's total — the dice alone do not say it. */
+function luckNote(luckSpent: number): string {
+  return luckSpent > 0 ? ` (Szczęście ${luckSpent})` : '';
+}
+
 function inPlaceDice(
   rolled: RollResult,
   title: string,
@@ -1753,6 +1758,8 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const registry = deps.ctx.cpred;
     let defenderName: string;
     let data: CpredCharacterData;
+    /** Sheet that pays for declared Luck; a figure dodging off its token has none. */
+    let luckSheetId: string | null = null;
     // Kartą czy żetonem — o tym rozstrzyga **prośba**, a nie to, czy figura ma
     // kartę (etap 38a: ma ją każda ostatystykowana). Gracz uchylający się swoją
     // postacią podaje jej id; MG kliknięciem na figurze nie podaje żadnego,
@@ -1762,6 +1769,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       if (target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
       defenderName = tokenTableName(target, character.name);
       data = parseCharacterData(character.data, registry);
+      luckSheetId = character.id;
     } else {
       // Figura prowadzona przez żeton uchyla się swoją kartą — tą samą, z której
       // `attack:roll` liczy jej strzały, więc bierne PT, które pobił strzelec,
@@ -1794,11 +1802,17 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses), data.criticalInjuries);
     if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
 
+    // Unik to zwykły Test ZW + Unik, więc Szczęście wolno do niego dorzucić jak
+    // do każdego Testu (s. 74). Figura prowadzona żetonem puli nie ma: jej
+    // prośba z punktami odbija się od planera (`NOT_ENOUGH_LUCK`).
     const planned = planCpredRoll(data, registry, {
       kind: 'skill',
       skillId: CPRED_EVASION_SKILL_ID,
+      ...(payload.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
     });
     if (!planned.ok) throw new RealtimeError(planned.error);
+    if (luckSheetId)
+      await spendCharacterLuck(deps, campaignId, luckSheetId, planned.plan.luckSpent);
 
     const gesture: RollGesture | undefined = sanitizeGesture(payload.gesture);
     const evasion = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
@@ -1818,9 +1832,9 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
         evasionPending: undefined,
         // Obie liczby obok siebie (14.10): samo „Unik: 14 → pudło" nie mówiło,
         // z czym 14 przegrało, a „pudło" brzmiało jak chybienie strzelca.
-        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total} vs ${roll.total} → ${
-          outcome.hit ? 'trafienie mimo uniku' : 'unik udany'
-        }`,
+        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total}${luckNote(
+          planned.plan.luckSpent,
+        )} vs ${roll.total} → ${outcome.hit ? 'trafienie mimo uniku' : 'unik udany'}`,
         ...(outcome.hit
           ? {
               damageNotation: meta.damage,
@@ -1893,7 +1907,8 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
       throw new RealtimeError('NOT_THE_SHOOTER');
     }
 
-    const luckSpent = Math.max(0, Math.round(payload.luckSpent ?? 0));
+    const luckSpent = payload.luckSpent ?? 0;
+    if (!Number.isInteger(luckSpent) || luckSpent < 0) throw new RealtimeError('BAD_REQUEST');
     if (luckSpent > data.luckCurrent) throw new RealtimeError('NOT_ENOUGH_LUCK');
 
     const modifier = smart.bonus + luckSpent;
@@ -1908,14 +1923,7 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
       createMixedRng(gesture?.entropy),
       { checkRule: true },
     );
-    if (luckSpent > 0) {
-      const spent = mergeCharacterData(data, { luckCurrent: data.luckCurrent - luckSpent });
-      const saved = await deps.ctx.prisma.character.update({
-        where: { id: character.id },
-        data: { data: JSON.stringify(spent) },
-      });
-      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
-    }
+    await spendCharacterLuck(deps, campaignId, character.id, luckSpent);
 
     const outcome = resolveCpredAttack(second.total, meta.dv, meta.autofireMax);
     const { smart: _offered, ...rest } = roll.attack;
@@ -1935,9 +1943,9 @@ export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number;
       attack: {
         ...rest,
         hit: outcome.hit,
-        detail: `${roll.attack.detail} · poprawka naboju: 1k10+${modifier} = ${second.total}${
-          luckSpent > 0 ? ` (Szczęście ${luckSpent})` : ''
-        } → ${outcome.hit ? 'trafienie' : 'znowu pudło'}`,
+        detail: `${roll.attack.detail} · poprawka naboju: 1k10+${modifier} = ${second.total}${luckNote(
+          luckSpent,
+        )} → ${outcome.hit ? 'trafienie' : 'znowu pudło'}`,
         ...(outcome.hit
           ? {
               damageNotation: meta.damage,
@@ -2082,8 +2090,10 @@ async function evadeArea(
   const planned = planCpredRoll(data, registry, {
     kind: 'skill',
     skillId: CPRED_EVASION_SKILL_ID,
+    ...(payload.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
   });
   if (!planned.ok) throw new RealtimeError(planned.error);
+  await spendCharacterLuck(deps, campaignId, character.id, planned.plan.luckSpent);
 
   const gesture: RollGesture | undefined = sanitizeGesture(payload.gesture);
   const evasion = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
@@ -2110,9 +2120,9 @@ async function evadeArea(
       area: { ...area, targets },
       // One answer fewer for the grenade's damage to wait on (03.10).
       evasionPending: withoutPending(roll.attack!.evasionPending, entry.tokenId!),
-      detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total} vs ${
-        roll.total
-      } → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,
+      detail: `${roll.attack!.detail} · Odskok ${dodgerName}: ${evasion.total}${luckNote(
+        planned.plan.luckSpent,
+      )} vs ${roll.total} → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,
     },
   };
   const saved = await deps.ctx.prisma.chatMessage.update({

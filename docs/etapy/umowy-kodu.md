@@ -1252,6 +1252,7 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 
 ## kosci — Kości, Testy i wezwania
 
+- **Szczęście deklaruje się licznikiem nad kubkiem, a pula ubywa w JEDNYM miejscu — `spendCharacterLuck` (22.10, decyzja MG)** — `character-rolls.ts`; wołają je Test z karty, Unik i Odskok (`attack:evade`), poprawka naboju (`attack:smart`), obie strony Pochwycenia i Konfrontacji. Czyta kartę świeżo z bazy, więc dwa rzuty naraz nie wydadzą tych samych punktów. Które rzuty przyjmują Szczęście, mówi `cpredRollTakesLuck` (`rolls.ts`: nie obrażenia, Rzut na Śmierć i Rzetelność); kubek pyta `luckSheetOf` (`DiceCup.tsx`) i trzyma liczbę w `rollStore.cupLuck` (zerowanej każdym ładunkiem; okno rzutu wnosi tam swój wybór). Inicjatywa jest bez Szczęścia (decyzja MG). Pulę odnawia `refreshLuckForSession` przy `startSession`, z wierszem na czacie; gracz ręką tylko ją uszczupla (`character:update` odmawia podniesienia), ↻ na karcie jest tylko u MG. Nowy rzut-Test z kubka podaje `luckSpent` w payloadzie i woła `spendCharacterLuck` po planie, przed kośćmi.
 - **Test Umiejętności i Cechy gracza pada wyłącznie na wezwanie MG (19.10, decyzja MG)** — `requireGmFramedCheck` w `performScopedRoll` (`character-rolls.ts`): `character:roll` gracza z `kind` `skill`/`stat` bez `callMessageId` dostaje `CHECK_NEEDS_GM_DV`. Klik gracza w wiersz własnej karty (także z Shiftem) otwiera prośbę o Test, okno rzutu nie ma już „Poproś MG”. MG i boty (konto MG) rzucają swobodnie. Nowa droga, którą gracz rzuca Test, idzie przez wezwanie (`createCheckCall`), nie obok niego.
 - **Potwierdzenie przez `emitSceneAck` / `onPresented` czeka, aż stół dokręci kości (10.10, #72)** — tak ma być dla wszystkiego, co mogłoby zdradzić wynik przed animacją. Zapis, który wyniku nie niesie i dotyczy tylko MG (tabele losowe: `emitTableAck`, rozgłoszenia `table:upsert`/`table:delete` przez `socket.on`), idzie z pominięciem kolejki — inaczej formularz stoi otwarty kilka sekund po jawnym losowaniu. Losowanie z tabeli (`table:roll`, `table:show`) zostaje w kolejce.
 - **Wezwanie wystawione przez serwer niesie adres skutku po białej liście (09.10, 46b1)** — `createCheckCall({ containerTokenId, calledByName })`: pole dopisuje się **po** `requireCallableRequest`, a rzut czyta je z `call.entry.system`, nigdy z żądania. Tak samo każdy przyszły „Test, który coś otwiera”.
@@ -1275,6 +1276,24 @@ pusty i wygląda po prostu jak figura bez broni. Pierwsza wersja tej poprawki wi
 - **Podgląd rzutu** bierze z karty to, co z niej widać (kary z ran przez `cpredInjuryModifiers`); serwerowi zostaje to, co wie tylko świat (Zwarcie).
 - **Rzut na wezwanie MG** — `payloadFromCall` podmienia **cały** payload na zapisaną kartę wezwania (postać, Umiejętność, modyfikator MG, widoczność); z żądania klienta zostaje Szczęście i gest. Wezwanie zamyka `resolveAnsweredCall` + `emitCheckCallUpdate`, werdykt liczy `cpredCheckOutcome` (remis nie zdaje).
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
+
+---
+
+**Szczęście na kubku i odnowienie przy starcie sesji (22.10.2026, zlecenie MG).**
+Przegląd mechaniki Szczęścia: silnik liczył je poprawnie (+1 za punkt, deklaracja przed rzutem,
+pula spada także przy porażce, nie dla obrażeń, Rzutu na Śmierć i Testu Rzetelności), ale klient
+pozwalał je wydać tylko w Testach z okna rzutu. Atak miał `luckSpent` w silniku i na serwerze, a
+klient go nie wysyłał; Unik i obrona przed Pochwyceniem i Konfrontacją nie miały pola w protokole;
+próba Pochwycenia i Konfrontacji doliczała punkty do wyniku, **nie zdejmując ich z puli**. Decyzje
+MG: jeden licznik „Szczęście +N z M” nad kubkiem dla każdego rzutu, który je przyjmuje (osobny
+element obok `.dice-cup`, bo chwyt kubka potrząsa); Inicjatywa bez Szczęścia; gracz pulę ręką
+tylko zmniejsza; pula odnawia się sama na starcie sesji. Unik z figury prowadzonej żetonem (bez
+`characterId`) puli nie ma — prośba z punktami odbija się od planera (`NOT_ENOUGH_LUCK`). Karta
+ataku po Uniku, Odskoku i poprawce dopisuje „(Szczęście N)” przy wyniku (`luckNote`), obrona
+w Pochwyceniu tak samo, Konfrontacja ma je w rozbiciu. Testy: `rolls.test.ts` ›
+`cpredRollTakesLuck`, `character-rolls.test.ts` › „lets a player lower the Luck pool”,
+`attacks.test.ts` › „lets the defender contest a hit”, `grapple.test.ts` › „answers a
+Pochwycenie”, `sessions.test.ts` › „start sesji odnawia pule Szczęścia”.
 
 ---
 

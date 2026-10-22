@@ -246,6 +246,13 @@ interface RollStoreState {
   facedown: PendingFacedown | null;
   /** Character-creator stat spread loaded into the cup (stage 25a). */
   creation: PendingCreation | null;
+  /**
+   * Szczęście zadeklarowane na liczniku kubka (22.10.2026, decyzja MG) — jedno
+   * pole dla każdego rzutu, który je przyjmuje: Test z karty, atak, Unik,
+   * Pochwycenie, Konfrontacja i ich odpowiedzi. Zeruje się z każdym nowym
+   * ładunkiem; Test z okna rzutu wnosi tu to, co gracz wybrał w oknie.
+   */
+  cupLuck: number;
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
@@ -278,6 +285,7 @@ interface RollStoreState {
   loadFacedownCup: (facedown: PendingFacedown) => void;
   loadCreationCup: (creation: PendingCreation) => void;
   clearCup: () => void;
+  setCupLuck: (luck: number) => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
   rememberLocation: (location: CpredHitLocation) => void;
   skipDamageCall: (messageId: number) => void;
@@ -296,6 +304,7 @@ const EMPTY_CUP = {
   grapple: null,
   facedown: null,
   creation: null,
+  cupLuck: 0,
 } as const;
 
 export const useRollStore = create<RollStoreState>((set) => ({
@@ -307,6 +316,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   grapple: null,
   facedown: null,
   creation: null,
+  cupLuck: 0,
   lastModifier: 0,
   lastVisibility: 'public',
   lastLocation: 'body',
@@ -317,7 +327,8 @@ export const useRollStore = create<RollStoreState>((set) => ({
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
   // Only one thing can sit in the cup at a time — loading anything empties it.
-  loadCup: (pending) => set({ ...EMPTY_CUP, pending, target: null }),
+  loadCup: (pending) =>
+    set({ ...EMPTY_CUP, pending, cupLuck: pending.request.luckSpent ?? 0, target: null }),
   loadInitiativeCup: (initiative) => set({ ...EMPTY_CUP, initiative, target: null }),
   loadAttackCup: (attack) => set({ ...EMPTY_CUP, attack, target: null }),
   loadEvasionCup: (evasion) => set({ ...EMPTY_CUP, evasion, target: null }),
@@ -325,6 +336,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadFacedownCup: (facedown) => set({ ...EMPTY_CUP, facedown, target: null }),
   loadCreationCup: (creation) => set({ ...EMPTY_CUP, creation, target: null }),
   clearCup: () => set({ ...EMPTY_CUP }),
+  setCupLuck: (cupLuck) => set({ cupLuck }),
   setCupHeld: (cupHeld) => set({ cupHeld }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),

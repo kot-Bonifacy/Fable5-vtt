@@ -122,6 +122,37 @@ export async function requireRollableCharacter(
 }
 
 /**
+ * Takes declared Luck off a sheet's pool — the one write every Check that
+ * carries a „Szczęście" row shares (sheet Tests, the dodge, both sides of
+ * a grapple and a Konfrontacja, the smart round's second roll). Called before
+ * the dice: RAW, Luck is gone whether the roll succeeds or not.
+ *
+ * The sheet is read fresh rather than taken from the caller, so two rolls
+ * fired in the same breath cannot both spend the same points — the planner's
+ * check ran on a copy that may already be stale.
+ */
+export async function spendCharacterLuck(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  luckSpent: number,
+): Promise<void> {
+  if (luckSpent <= 0) return;
+  const registry = deps.ctx.cpred;
+  const row = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
+  if (!row) throw new RealtimeError('CHARACTER_NOT_FOUND');
+  const data = parseCharacterData(row.data, registry);
+  if (luckSpent > data.luckCurrent) throw new RealtimeError('NOT_ENOUGH_LUCK');
+  const spent = mergeCharacterData(data, { luckCurrent: data.luckCurrent - luckSpent });
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: characterId },
+    data: { data: JSON.stringify(spent) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+}
+
+/**
  * Who is making this roll: a sheet, or a figure that has none (stage 16b).
  *
  * The same shape `AttackSource` has in `attacks.ts`, and for the same reason —
@@ -1133,14 +1164,8 @@ async function performScopedRoll(
     // Luck is spent whether the roll succeeds or not (RAW: declared upfront).
     // A statist never gets here with anything to spend — its synthesised sheet
     // has no Luck at all, and the planner refuses the request long before this.
-    if (plan.luckSpent > 0 && source.kind === 'character') {
-      const spent = mergeCharacterData(data, { luckCurrent: data.luckCurrent - plan.luckSpent });
-      const saved = await deps.ctx.prisma.character.update({
-        where: { id: source.character.id },
-        data: { data: JSON.stringify(spent) },
-      });
-      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
-      await emitTokensOfCharacter(deps, campaignId, saved);
+    if (source.kind === 'character') {
+      await spendCharacterLuck(deps, campaignId, source.character.id, plan.luckSpent);
     }
 
     const rng = createMixedRng(gesture?.entropy);

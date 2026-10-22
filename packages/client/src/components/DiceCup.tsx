@@ -5,6 +5,7 @@ import {
   MAX_GESTURE_STRENGTH,
   ROLE_GM,
   checkCallTargetText,
+  cpredRollTakesLuck,
   formatRollNotation,
   parseChatInput,
 } from '@vtt/shared';
@@ -41,6 +42,7 @@ import { openDamageCallFor } from '../attack-damage-call.js';
 import { evasionCallKey, openEvasionCallsFor, type EvasionCall } from '../attack-evasion-call.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { NumberStepper } from './NumberStepper.js';
 
 interface ShakeSample {
   x: number;
@@ -184,29 +186,65 @@ type CupMode =
    */
   | { kind: 'dodge'; call: EvasionCall };
 
-/** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
-function sheetLabel(pending: PendingRoll): string {
+/**
+ * Karta, której Szczęście ten rzut może wydać — albo null, gdy rzut go nie
+ * przyjmuje (22.10.2026, decyzja MG: jeden licznik na kubku zamiast okna przed
+ * każdym atakiem i Unikiem). Tylko Testy: obrażeń, Rzutu przeciw śmierci,
+ * Rzetelności, inicjatywy i kreatora Szczęście nie dotyczy. Figura bez karty
+ * puli nie ma.
+ */
+function luckSheetOf(mode: CupMode): string | null {
+  switch (mode.kind) {
+    case 'sheet':
+      return mode.pending.characterId && cpredRollTakesLuck(mode.pending.request.kind)
+        ? mode.pending.characterId
+        : null;
+    case 'attack':
+      return mode.pending.characterId ?? null;
+    case 'evasion':
+    case 'grapple':
+    case 'facedown':
+      return mode.pending.characterId;
+    case 'dodge':
+      return mode.call.pending.characterId;
+    default:
+      return null;
+  }
+}
+
+/** Ile Szczęścia z licznika kubka naprawdę leci z tym rzutem — nie więcej niż pula. */
+function luckForThrow(mode: CupMode): number {
+  const sheetId = luckSheetOf(mode);
+  if (!sheetId) return 0;
+  const pool = useCharacterStore.getState().characters[sheetId]?.data.luckCurrent ?? 0;
+  return Math.max(0, Math.min(useRollStore.getState().cupLuck, pool));
+}
+
+/**
+ * Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. The total
+ * follows the cup's Luck counter, not what the dialog loaded.
+ */
+function sheetLabel(pending: PendingRoll, luck: number): string {
+  const total = pending.modifierTotal - (pending.request.luckSpent ?? 0) + luck;
   // Wezwanie MG (etap 32): na kubku ma stać, przeciw czemu lecą kości — próg
   // jest połową tej decyzji, a gracz trzyma kubek nad stołem, nie kartę czatu.
   if (pending.call) {
-    const sign = pending.modifierTotal < 0 ? '−' : '+';
+    const sign = total < 0 ? '−' : '+';
     const against =
       pending.call.opponentBonus !== undefined
         ? 'przeciwstawny'
         : pending.call.dv !== undefined
           ? `PT ${pending.call.dv}`
           : '';
-    return `${pending.title} ${sign}${Math.abs(pending.modifierTotal)}${
-      against ? ` · ${against}` : ''
-    }`;
+    return `${pending.title} ${sign}${Math.abs(total)}${against ? ` · ${against}` : ''}`;
   }
   // Damage rolls and Death Saves carry no running modifier — their title
   // already says everything („Zgrzyt-9 — obrażenia (Głowa)").
   if (pending.kind === 'damage' || pending.kind === 'deathSave') return pending.title;
   // Stabilizing names its target, not its modifier — the PT is the server's.
   if (pending.kind === 'stabilize') return pending.title;
-  const sign = pending.modifierTotal < 0 ? '−' : '+';
-  return `${pending.title} ${sign}${Math.abs(pending.modifierTotal)}`;
+  const sign = total < 0 ? '−' : '+';
+  return `${pending.title} ${sign}${Math.abs(total)}`;
 }
 
 /**
@@ -272,6 +310,7 @@ export function DiceCup() {
   const skippedDamageCalls = useRollStore((s) => s.skippedDamageCalls);
   const skippedEvasionCalls = useRollStore((s) => s.skippedEvasionCalls);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const cupLuck = useRollStore((s) => s.cupLuck);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -341,6 +380,9 @@ export function DiceCup() {
     skippedEvasionCalls,
   ]);
   modeRef.current = mode;
+  const luckSheet = luckSheetOf(mode);
+  const luckPool = luckSheet ? (characters[luckSheet]?.data.luckCurrent ?? 0) : 0;
+  const luck = Math.min(cupLuck, luckPool);
   // A dodge rings nothing (17.10, MG): the call and the loaded dodge stay
   // silent — the prompt over the map is what asks for it.
   const notificationKey =
@@ -372,6 +414,11 @@ export function DiceCup() {
     return () => window.removeEventListener('keydown', onKey);
   }, [damageCallId, shaking]);
   const dodgeCallKey = mode.kind === 'dodge' ? evasionCallKey(mode.call) : null;
+  // Wezwanie do Uniku nie jest ładunkiem kubka, więc nie zeruje licznika samo:
+  // punkty nastawione pod jeden atak nie mają przejść na następny.
+  useEffect(() => {
+    useRollStore.getState().setCupLuck(0);
+  }, [dodgeCallKey]);
   useEffect(() => {
     if (dodgeCallKey === null || shaking) return;
     const onKey = (event: KeyboardEvent) => {
@@ -443,6 +490,7 @@ export function DiceCup() {
       const toss = tossFromRecent(recent, now);
 
       const current = modeRef.current;
+      const luck = luckForThrow(current);
       if (current.kind === 'sheet' || current.kind === 'damage') {
         const { pending: loaded } = current;
         lastFunNotation = '1d10';
@@ -451,7 +499,7 @@ export function DiceCup() {
           const gesture: RollGesture = { entropy, strength, toss };
           sendCharacterRoll(
             loaded.characterId,
-            loaded.request,
+            current.kind === 'sheet' ? { ...loaded.request, luckSpent: luck } : loaded.request,
             loaded.visibility,
             gesture,
             loaded.attackerTokenId,
@@ -477,7 +525,7 @@ export function DiceCup() {
               ...(loaded.targetCoverId !== undefined ? { coverId: loaded.targetCoverId } : {}),
               ...(loaded.targetPoint ? { point: loaded.targetPoint } : {}),
             },
-            loaded.request,
+            luck > 0 ? { ...loaded.request, luckSpent: luck } : loaded.request,
             loaded.attackerTokenId,
             {
               entropy,
@@ -497,6 +545,7 @@ export function DiceCup() {
             call.pending.characterId,
             { entropy, strength, toss },
             call.pending.tokenId,
+            luck,
           );
         });
       } else if (current.kind === 'evasion') {
@@ -508,7 +557,12 @@ export function DiceCup() {
           // smart round is corrected by whoever fired it, so it goes to its own
           // event — which leaves the defender's dodge unspent.
           if (loaded.kind === 'smart' && loaded.characterId) {
-            sendAttackSmart(loaded.messageId, loaded.characterId, { entropy, strength, toss });
+            sendAttackSmart(
+              loaded.messageId,
+              loaded.characterId,
+              { entropy, strength, toss },
+              luck,
+            );
             return;
           }
           sendAttackEvade(
@@ -516,6 +570,7 @@ export function DiceCup() {
             loaded.characterId,
             { entropy, strength, toss },
             loaded.tokenId,
+            luck,
           );
         });
       } else if (current.kind === 'grapple') {
@@ -526,7 +581,7 @@ export function DiceCup() {
           const gesture: RollGesture = { entropy, strength, toss };
           // The same roll either way — only the address differs (stage 14d).
           if (loaded.resist) {
-            sendGrappleResist(loaded.resist.messageId, loaded.characterId, gesture);
+            sendGrappleResist(loaded.resist.messageId, loaded.characterId, gesture, luck);
           } else if (loaded.attempt) {
             sendGrappleAttempt(
               loaded.characterId,
@@ -534,6 +589,7 @@ export function DiceCup() {
               loaded.attempt.intent,
               loaded.attempt.attackerTokenId,
               gesture,
+              luck,
             );
           }
         });
@@ -546,13 +602,14 @@ export function DiceCup() {
           // One roll, two addresses (stage 23c) — the same shape the grapple
           // slot above uses, and for the same reason.
           if (loaded.resist) {
-            sendFacedownResist(loaded.resist.messageId, loaded.characterId, gesture);
+            sendFacedownResist(loaded.resist.messageId, loaded.characterId, gesture, luck);
           } else if (loaded.attempt) {
             sendFacedownAttempt(
               loaded.characterId,
               loaded.attempt.targetTokenId,
               loaded.attempt.challengerTokenId,
               gesture,
+              luck,
             );
           }
         });
@@ -682,7 +739,7 @@ export function DiceCup() {
                   : mode.kind === 'initiative'
                     ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
                     : mode.kind === 'sheet'
-                      ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
+                      ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending, luck)}${
                           mode.pending.visibility === 'gm' ? ' (do MG)' : ''
                         } · Esc odkłada rzut`
                       : mode.kind === 'roll'
@@ -692,46 +749,74 @@ export function DiceCup() {
                           : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
-    <div
-      ref={cupRef}
-      className={`dice-cup${modeClass}${shaking ? ' dice-cup--shaking' : ''}`}
-      style={
-        shaking && pos
-          ? { left: pos.x, top: pos.y, bottom: 'auto', transform: 'translate(-50%, -50%)' }
-          : undefined
-      }
-      title={title}
-      onPointerDown={startShake}
-      role="button"
-      aria-label={title}
-    >
-      <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
-        {/* dice cup: tapered tumbler with two pips */}
-        <path
-          d="M5 3h14l-2 13.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 16.5L5 3Z"
-          fill="currentColor"
-          opacity="0.9"
-        />
-        <ellipse cx="12" cy="3" rx="7" ry="1.6" fill="currentColor" />
-        <circle cx="10" cy="10" r="1.2" fill="var(--bg)" />
-        <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
-      </svg>
-      {mode.kind === 'call' && <span className="dice-cup-label">{callLabel(mode.entry)}</span>}
-      {mode.kind === 'roll' && (
-        <span className="dice-cup-label">{displayDiceNotation(mode.notation)}</span>
+    <>
+      <div
+        ref={cupRef}
+        className={`dice-cup${modeClass}${shaking ? ' dice-cup--shaking' : ''}`}
+        style={
+          shaking && pos
+            ? { left: pos.x, top: pos.y, bottom: 'auto', transform: 'translate(-50%, -50%)' }
+            : undefined
+        }
+        title={title}
+        onPointerDown={startShake}
+        role="button"
+        aria-label={title}
+      >
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+          {/* dice cup: tapered tumbler with two pips */}
+          <path
+            d="M5 3h14l-2 13.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 16.5L5 3Z"
+            fill="currentColor"
+            opacity="0.9"
+          />
+          <ellipse cx="12" cy="3" rx="7" ry="1.6" fill="currentColor" />
+          <circle cx="10" cy="10" r="1.2" fill="var(--bg)" />
+          <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
+        </svg>
+        {mode.kind === 'call' && <span className="dice-cup-label">{callLabel(mode.entry)}</span>}
+        {mode.kind === 'roll' && (
+          <span className="dice-cup-label">{displayDiceNotation(mode.notation)}</span>
+        )}
+        {mode.kind === 'randtable' && <span className="dice-cup-label">🎲 {mode.tableName}</span>}
+        {mode.kind === 'damage' && <span className="dice-cup-label">{mode.pending.title}</span>}
+        {mode.kind === 'dodge' && (
+          <span className="dice-cup-label">{mode.call.pending.title}!</span>
+        )}
+        {(mode.kind === 'attack' ||
+          mode.kind === 'evasion' ||
+          mode.kind === 'grapple' ||
+          mode.kind === 'facedown') && <span className="dice-cup-label">{mode.pending.title}</span>}
+        {mode.kind === 'creation' && <span className="dice-cup-label">{mode.pending.title}</span>}
+        {mode.kind === 'sheet' && (
+          <span className="dice-cup-label">{sheetLabel(mode.pending, luck)}</span>
+        )}
+        {mode.kind === 'initiative' && (
+          <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>
+        )}
+      </div>
+      {/*
+      Szczęście deklaruje się przed rzutem (s. 74), więc licznik stoi obok
+      kubka, a nie w nim — chwyt kubka potrząsa, kliknięcie licznika nie.
+      Znika w ręce: w trakcie potrząsania nic już się nie deklaruje.
+    */}
+      {luckSheet && luckPool > 0 && !shaking && (
+        <div
+          className={`dice-cup-luck${luck > 0 ? ' dice-cup-luck--spent' : ''}`}
+          title="Punkty Szczęścia dodane do tego rzutu (+1 za punkt). Wydane przepadają, nawet gdy rzut się nie uda."
+        >
+          <span className="dice-cup-luck-label">Szczęście</span>
+          <NumberStepper
+            min={0}
+            max={luckPool}
+            value={luck}
+            onChange={(next) => useRollStore.getState().setCupLuck(next)}
+            label="Szczęście do tego rzutu"
+            format={(value) => (value > 0 ? `+${value}` : '0')}
+          />
+          <span className="dice-cup-luck-pool">z {luckPool}</span>
+        </div>
       )}
-      {mode.kind === 'randtable' && <span className="dice-cup-label">🎲 {mode.tableName}</span>}
-      {mode.kind === 'damage' && <span className="dice-cup-label">{mode.pending.title}</span>}
-      {mode.kind === 'dodge' && <span className="dice-cup-label">{mode.call.pending.title}!</span>}
-      {(mode.kind === 'attack' ||
-        mode.kind === 'evasion' ||
-        mode.kind === 'grapple' ||
-        mode.kind === 'facedown') && <span className="dice-cup-label">{mode.pending.title}</span>}
-      {mode.kind === 'creation' && <span className="dice-cup-label">{mode.pending.title}</span>}
-      {mode.kind === 'sheet' && <span className="dice-cup-label">{sheetLabel(mode.pending)}</span>}
-      {mode.kind === 'initiative' && (
-        <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>
-      )}
-    </div>
+    </>
   );
 }

@@ -376,6 +376,29 @@ describe('sheet rolls', () => {
     expect(badModifier).toEqual({ ok: false, error: 'BAD_MODIFIER' });
   });
 
+  it('lets a player lower the Luck pool by hand, never raise it (22.10.2026)', async () => {
+    const lowered = await emitAck<CharacterView>(vex, 'character:update', {
+      characterId,
+      patch: { data: { luckCurrent: 2 } },
+    });
+    if (!lowered.ok || !lowered.data) throw new Error('character:update failed');
+    expect((lowered.data.data as CpredCharacterData).luckCurrent).toBe(2);
+
+    const raised = await emitAck(vex, 'character:update', {
+      characterId,
+      patch: { data: { luckCurrent: 6 } },
+    });
+    expect(raised).toEqual({ ok: false, error: 'FORBIDDEN' });
+
+    // The GM refills by hand — and puts the pool back where this suite had it.
+    const refilled = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId,
+      patch: { data: { luckCurrent: 3 } },
+    });
+    if (!refilled.ok || !refilled.data) throw new Error('character:update failed');
+    expect((refilled.data.data as CpredCharacterData).luckCurrent).toBe(3);
+  });
+
   it('keeps a private sheet roll away from other players', async () => {
     await roundTrip(rogue); // flush anything still in flight
     const before = rogueChatTraffic.length;

@@ -1241,6 +1241,11 @@ export interface AttackEvadePayload {
    * wybuchu" (s. 174) is a decision per person, not per grenade.
    */
   tokenId?: string;
+  /**
+   * Szczęście dorzucone do Uniku — to zwykły Test (s. 74). Tylko przy rzucie
+   * z karty: figura prowadzona żetonem puli nie ma.
+   */
+  luckSpent?: number;
   gesture?: RollGesture;
 }
 

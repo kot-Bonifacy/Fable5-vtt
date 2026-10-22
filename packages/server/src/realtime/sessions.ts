@@ -6,7 +6,13 @@ import type {
   SessionEndReason,
   SessionUser,
 } from '@vtt/shared';
-import { ROLE_GM, ROLE_PLAYER, SESSION_ADMIN_END_TEXT, sessionAutoEndText } from '@vtt/shared';
+import {
+  ROLE_GM,
+  ROLE_PLAYER,
+  SESSION_ADMIN_END_TEXT,
+  polishPlural,
+  sessionAutoEndText,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { campaignRunBy, getUserActiveCampaign, toCampaignSummary } from '../routes/helpers.js';
 import { defineEvent, RealtimeError, type RealtimeDeps } from './registry.js';
@@ -16,7 +22,8 @@ import { joinInitialScene, switchViewedScene, toSceneView } from './scenes.js';
 import { sendStateSync } from './sync.js';
 import { releaseSocketAim } from './aim.js';
 import { campaignGmUser } from './campaign-gm.js';
-import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
+import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from './chat-io.js';
+import { refreshLuckForSession } from './characters.js';
 import { recordSessionEnd, recordSessionPlayer, recordSessionStart } from '../session-log.js';
 import { notifyAdmins } from './admin-room.js';
 
@@ -258,6 +265,7 @@ export async function startSession(
     deps.log.warn({ err: error, campaignId }, 'session log: start not recorded');
   }
   await stopPlayerMoveOnStart(deps, campaignId);
+  const luckRefreshed = await refreshLuckForSession(deps, campaignId);
   // Dzierżawa AI (44d): nowa sesja może dostać AI, jeśli nikt go nie trzyma.
   await deps.ctx.ai.refresh();
   const started = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -273,6 +281,7 @@ export async function startSession(
     }
   }
   await announceSession(deps, summary);
+  if (luckRefreshed > 0) await noteLuckRefreshed(deps, campaignId, user.id, luckRefreshed);
   await broadcastPresence(deps, campaignId);
   notifyAdmins(deps.io);
   deps.log.info({ campaignId }, 'session started');
@@ -368,6 +377,23 @@ async function noteAutoEnd(
     text: sessionAutoEndText(reason, minutes),
   });
   await deliverChatMessageTo(deps, campaignId, message, [], true);
+}
+
+/** Wiersz dla całego stołu: start sesji odnowił pule Szczęścia (22.10.2026). */
+async function noteLuckRefreshed(
+  deps: RealtimeDeps,
+  campaignId: string,
+  gmId: string,
+  count: number,
+): Promise<void> {
+  const whom = polishPlural(count, 'postaci', 'postaciom', 'postaciom');
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: gmId,
+    kind: 'gmaction',
+    text: `Nowa sesja — odnowiono pulę Szczęścia ${count} ${whom}.`,
+  });
+  broadcastChatMessage(deps, campaignId, message);
 }
 
 /** Wpis dla MG, że sesję zakończył administrator (etap 53) — gracze go nie widzą. */

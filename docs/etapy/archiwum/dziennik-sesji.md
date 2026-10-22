@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 21.10, druga (po `a3873dd`) — zlecenie MG: jedna ogólna osłona z PW i widocznością
+
+**Zlecenie MG:** zamiast listy rodzajów osłon (katalog materiałów) jedna „Osłona”, której MG
+przypisuje PW i to, czy jest widoczna. **Decyzje MG (pytania na starcie):** niewidoczna =
+ukryta przed graczami (dane nie wychodzą z serwera), dalej zatrzymuje kule i ruch; istniejące
+osłony zostają z nazwą i PW, wszystkie widoczne. **Zrobione:** kolumna `Cover.hidden` (migracja
+`20261021120000_cover_hidden`, eksport/import kampanii ją niesie); `cover:create` przyjmuje
+`hpMax` + `hidden` (nazwa „Osłona”, `typeId: 'generic'`), `cover:update` — `hidden` zamiast
+`typeId`; gracz dostaje listę bez ukrytych, MG pełną (umowa na górze `mapa`). Paleta: pole PW
+(domyślnie 20, pamiętane do przeładowania) i oko widoczności; karta osłony: „Widoczna dla graczy”
+zamiast „Rodzaj z katalogu”. U MG ukryta rysuje się przerywaną linią z „(ukryta)”.
+**Rozstrzygnięte bez pytań:** pierwszy strzał gracza zatrzymany przez ukrytą osłonę ją odsłania
+(karta odmowy i tak ją nazywa i proponuje jako cel); odmowa ruchu i wybuch jej nie odsłaniają.
+Katalog materiałów na serwerze (`/api/cpred/covers`) został, UI go nie czyta.
+
+**Weryfikacja:** serwer 1550/1550 (testy dymne `covers.test.ts`: ogólna osłona, odmowa bez PW, ukryta poza listą gracza i odsłonięta strzałem), `shared` 2528/2528, klient 420/420, `tsc` i ESLint czyste. Spec E2E `t8c-mapa` przepisany
+(checkbox zamiast listy rodzajów), nie puszczany. **Oglądane w Firefoksie** (Playwright, MG na
+„Test_1”): paleta PW + oko, postawienie ukrytej osłony (przerywana, „(ukryta)”), karta z
+przełączeniem na widoczną; osłona testowa usunięta. Widoku gracza w przeglądarce nie oglądano
+(pokrywa go test dymny serwera).
+
 ### Sesja 21.10 (po `7e8ec15`) — zlecenie MG: w walce gracz nie rozwija postaci
 
 **Zlecenie MG:** gracze (nie MG) w trakcie walki nie mogą rozdzielać PD, zmieniać Ról itp.

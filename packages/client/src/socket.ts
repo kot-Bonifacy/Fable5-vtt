@@ -2288,11 +2288,14 @@ export function sendAttackEvade(
   gesture?: RollGesture,
   /** The figure jumping clear of a blast (stage 16d); absent for a dodge. */
   tokenId?: string,
+  /** Punkty Szczęścia z licznika kubka; 0 = bez Szczęścia. */
+  luckSpent = 0,
 ): void {
   const payload: AttackEvadePayload = {
     messageId,
     ...(characterId ? { characterId } : {}),
     ...(tokenId ? { tokenId } : {}),
+    ...(luckSpent > 0 ? { luckSpent } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
@@ -3511,12 +3514,15 @@ export function sendGrappleAttempt(
   intent: 'hold' | 'item' | 'escape',
   attackerTokenId?: string,
   gesture?: RollGesture,
+  /** Punkty Szczęścia z licznika kubka; 0 = bez Szczęścia. */
+  luckSpent = 0,
 ): void {
   const payload: CombatGrapplePayload<RollGesture> = {
     characterId,
     targetTokenId,
     intent,
     ...(attackerTokenId ? { attackerTokenId } : {}),
+    ...(luckSpent > 0 ? { luckSpent } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('grapple:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
@@ -3529,10 +3535,13 @@ export function sendGrappleResist(
   messageId: number,
   characterId: string,
   gesture?: RollGesture,
+  /** Punkty Szczęścia z licznika kubka; 0 = bez Szczęścia. */
+  luckSpent = 0,
 ): void {
   const payload: CombatGrappleResistPayload<RollGesture> = {
     messageId,
     characterId,
+    ...(luckSpent > 0 ? { luckSpent } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('grapple:resist', payload, (ack: SocketAck<{ total: number; won: boolean }>) => {
@@ -3560,11 +3569,14 @@ export function sendFacedownAttempt(
   targetTokenId: string,
   challengerTokenId?: string,
   gesture?: RollGesture,
+  /** Punkty Szczęścia z licznika kubka; 0 = bez Szczęścia. */
+  luckSpent = 0,
 ): void {
   const payload: CombatFacedownPayload<RollGesture> = {
     characterId,
     targetTokenId,
     ...(challengerTokenId ? { challengerTokenId } : {}),
+    ...(luckSpent > 0 ? { luckSpent } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('facedown:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
@@ -3577,10 +3589,13 @@ export function sendFacedownResist(
   messageId: number,
   characterId: string,
   gesture?: RollGesture,
+  /** Punkty Szczęścia z licznika kubka; 0 = bez Szczęścia. */
+  luckSpent = 0,
 ): void {
   const payload: CombatFacedownResistPayload<RollGesture> = {
     messageId,
     characterId,
+    ...(luckSpent > 0 ? { luckSpent } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('facedown:resist', payload, (ack: SocketAck<{ total: number }>) => {

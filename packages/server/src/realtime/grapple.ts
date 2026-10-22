@@ -66,7 +66,7 @@ import {
 } from './combat.js';
 import { myCombatant, requireFigure, requireTurnSpend } from './combat-actions.js';
 import { addTokenStatus, beginGrapple, endGrapple } from './grapple-state.js';
-import { requireRollableCharacter } from './character-rolls.js';
+import { requireRollableCharacter, spendCharacterLuck } from './character-rolls.js';
 import { isBodyBlocked } from './walls-io.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import {
@@ -320,6 +320,7 @@ export const grappleAttemptEvent = defineEvent<
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
+    await spendCharacterLuck(deps, campaignId, character.id, planned.plan.luckSpent);
 
     const targetSheet = await sheetOf(deps.ctx.prisma, target);
     const dv = targetSheet
@@ -464,7 +465,11 @@ export const grappleResistEvent = defineEvent<
     const planned = planCpredRoll(
       data,
       registry,
-      { kind: 'skill', skillId: CPRED_BRAWLING_SKILL_ID },
+      {
+        kind: 'skill',
+        skillId: CPRED_BRAWLING_SKILL_ID,
+        ...(payload.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
+      },
       // Whatever the stand-in charged them, the real roll is charged too.
       {
         modifiers: [
@@ -477,6 +482,7 @@ export const grappleResistEvent = defineEvent<
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
+    await spendCharacterLuck(deps, campaignId, character.id, planned.plan.luckSpent);
 
     const gesture: RollGesture | undefined = sanitizeGesture(payload.gesture);
     const defence = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
@@ -519,9 +525,9 @@ export const grappleResistEvent = defineEvent<
         ...roll.opposed,
         won: verdict.won,
         answered: true,
-        detail: `${roll.opposed.detail} · Obrona ${tokenTableName(defenderToken, character.name)}: ${defence.total} → ${
-          verdict.won ? 'mimo wszystko udane' : 'wywinął się'
-        }`,
+        detail: `${roll.opposed.detail} · Obrona ${tokenTableName(defenderToken, character.name)}: ${defence.total}${
+          planned.plan.luckSpent > 0 ? ` (Szczęście ${planned.plan.luckSpent})` : ''
+        } → ${verdict.won ? 'mimo wszystko udane' : 'wywinął się'}`,
       },
     };
     const saved = await deps.ctx.prisma.chatMessage.update({

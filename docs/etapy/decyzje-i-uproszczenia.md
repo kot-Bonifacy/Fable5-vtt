@@ -11,6 +11,12 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Szczęście: nie do Inicjatywy, a pula wraca sama na starcie sesji (22.10.2026, decyzje MG).**
+  „Punkty te dodajesz do wyniku Testu” (s. 74), a czy 1k10 + REF w Inicjatywie jest Testem,
+  podręcznik nie mówi wprost — MG rozstrzygnął: nie, kubek inicjatywy nie ma licznika Szczęścia.
+  „Pula odnawia się na początku każdej sesji” czyta się dosłownie: odnawia ją „Rozpocznij sesję”
+  (wiersz na czacie), a ręczne odnowienie zostaje MG. Gracz pulę na karcie może tylko zmniejszyć,
+  np. po punktach wydanych ustnie przy stole.
 - **Tarcza: tylko ręka, bez kary do ruchu (10.10, decyzja MG).** „Gdy wykorzystujesz rękę do
   niesienia tarczy, nie możesz tej ręki używać do innych celów” (s. 183) — trzymana tarcza (pancerz
   „Tarcza” założony na karcie) zajmuje jedną rękę, więc broń dwuręczna odpada. Podręcznik nie daje

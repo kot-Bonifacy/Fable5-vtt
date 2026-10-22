@@ -36,6 +36,7 @@ import {
   createDefaultCharacterData,
   cpredNpcSheet,
   describeCombatAwareness,
+  isContainerCard,
   mergeCharacterData,
   parseCharacterData,
   readCpredCombatAwareness,
@@ -85,6 +86,35 @@ import { createMixedRng } from './dice-rng.js';
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
+}
+
+/**
+ * „Pula punktów Szczęścia odnawia się na początku każdej sesji" (s. 74) —
+ * wołane przez `startSession` (decyzja MG z 22.10.2026), zanim gracze usiądą
+ * przy stole, więc ich pierwszy `state:sync` ma już pełne pule. Pojemniki nie
+ * są postaciami i nie mają czego odnawiać. Zwraca liczbę odnowionych kart.
+ */
+export async function refreshLuckForSession(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<number> {
+  const registry = deps.ctx.cpred;
+  const rows = await deps.ctx.prisma.character.findMany({ where: { campaignId } });
+  let refreshed = 0;
+  for (const row of rows) {
+    const data = parseCharacterData(row.data, registry);
+    if (isContainerCard(data) || data.luckCurrent >= data.stats.luck) continue;
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: row.id },
+      data: {
+        data: JSON.stringify(mergeCharacterData(data, { luckCurrent: data.stats.luck })),
+      },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
+    await emitTokensOfCharacter(deps, campaignId, saved);
+    refreshed += 1;
+  }
+  return refreshed;
 }
 
 async function requireCampaignCharacter(
@@ -328,6 +358,13 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,
       // wymiany, łupu i od MG. Inaczej przeładowanie z zapasu byłoby ozdobą.
       if (!isGm && 'ammoTracked' in sheet) throw new RealtimeError('FORBIDDEN');
+      // 22.10.2026 (decyzja MG): pulę Szczęścia gracz ręką tylko uszczupla —
+      // np. po punktach wydanych ustnie przy stole. Odnawia ją start sesji
+      // (`refreshLuckForSession`) albo MG; inaczej ↻ na karcie byłoby darmowym
+      // odnowieniem w środku walki.
+      if (!isGm && sheet.luckCurrent !== undefined && sheet.luckCurrent > current.luckCurrent) {
+        throw new RealtimeError('FORBIDDEN');
+      }
       if (
         !isGm &&
         (sheet.weapons !== undefined || sheet.gear !== undefined) &&

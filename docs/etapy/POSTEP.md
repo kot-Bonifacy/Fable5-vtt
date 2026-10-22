@@ -379,7 +379,7 @@ a nie do tego pliku.
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     | 8    | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
-| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 23   | 2       |
+| `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 27   | 6       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
@@ -399,6 +399,32 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 22.10, druga (po `ced46d1`) — zlecenie MG: przegląd mechaniki Szczęścia
+
+**Zlecenie MG:** sprawdzić, czy Szczęście jest dodawane i wydawane prawidłowo. **Diagnoza:** silnik
+liczył je zgodnie z RAW (+1 za punkt, deklaracja przed rzutem, pula spada też przy porażce, nie dla
+obrażeń, Rzutu na Śmierć i Rzetelności), ale wydać dało się je tylko w Testach z okna rzutu: atak
+miał `luckSpent` w silniku i na serwerze, a klient go nie wysyłał; Unik i obrony (Pochwycenie,
+Konfrontacja) nie miały pola w protokole; poprawka naboju — bez pytania o punkty. **Błąd:**
+próba Pochwycenia i Konfrontacji doliczała Szczęście do wyniku, nie zdejmując go z puli. Gracz mógł
+też ręką podnieść pulę do maksimum. **Decyzje MG (pytania na starcie):** licznik na kubku zamiast
+okna; Inicjatywa bez Szczęścia; gracz pulę ręką tylko zmniejsza; odnowienie samo na starcie sesji.
+**Zrobione:** `spendCharacterLuck` (świeży odczyt karty, jedna droga dla wszystkich rzutów),
+`luckSpent` w `attack:evade` (też Odskok), `grapple:resist`, `facedown:resist`; licznik
+„Szczęście +N z M” nad kubkiem (`rollStore.cupLuck`, `luckSheetOf`) dla Testu z karty, ataku,
+Uniku, poprawki, Pochwycenia i Konfrontacji; `cpredRollTakesLuck` w `shared`;
+`refreshLuckForSession` w `startSession` z wierszem „Nowa sesja — odnowiono pulę Szczęścia…”;
+`character:update` odmawia graczowi podniesienia puli, ↻ na karcie tylko u MG. Umowa na górze
+`kosci`, decyzja RAW w `decyzje-i-uproszczenia.md`, wpis z `POMYSLY.md` (poprawka naboju) odhaczony.
+**Poza zakresem:** bot dalej rzuca bez Szczęścia (`POMYSLY.md`, 20a).
+
+**Weryfikacja:** `shared` 2529/2529, klient 420/420, serwer 1552/1552 (nowe i rozszerzone: Unik z punktami
+i odmowa `NOT_ENOUGH_LUCK`, obie strony Pochwycenia zdejmują punkty, gracz nie podnosi puli, start
+sesji odnawia pulę i pisze na czacie), `tsc` i ESLint czyste. **Oglądane w Firefoksie**
+(tymczasowy spec z `po-T6`, skasowany): Ola-Iskra odpowiada na wezwanie, licznik nad kubkiem
+0 → +2 z 6, etykieta kubka rośnie, rzut — karta „Szczęście (2 pkt) +2”, pula 6 → 4, licznik
+znika; na karcie gracza pula ma maksimum 4 i nie ma ↻.
+
 ### Sesja 22.10 (po `8d6b247`) — zlecenie MG: gracz rzuca inicjatywę sam
 
 **Zlecenie MG:** sprawdzić, czy gracze dostają rzut inicjatywy na kubek przed walką. **Diagnoza:**
@@ -417,24 +443,3 @@ pulsuje, „⟳” MG jej nie rusza, `Esc` odkłada bez ponownego ładowania, rz
 i na czacie. E2E t4a/t5b/t8a: 28 ok, 8 padło poza tą zmianą — t4a/t5b bez `E2E_FROM`, „kreator
 Kuby” w t8a-ekrany na blokadzie rozwoju w walce (21.10), t8a-macierz na starych polach „Załóż
 starcie” (znana zaległość).
-
-### Sesja 21.10, druga (po `a3873dd`) — zlecenie MG: jedna ogólna osłona z PW i widocznością
-
-**Zlecenie MG:** zamiast listy rodzajów osłon (katalog materiałów) jedna „Osłona”, której MG
-przypisuje PW i to, czy jest widoczna. **Decyzje MG (pytania na starcie):** niewidoczna =
-ukryta przed graczami (dane nie wychodzą z serwera), dalej zatrzymuje kule i ruch; istniejące
-osłony zostają z nazwą i PW, wszystkie widoczne. **Zrobione:** kolumna `Cover.hidden` (migracja
-`20261021120000_cover_hidden`, eksport/import kampanii ją niesie); `cover:create` przyjmuje
-`hpMax` + `hidden` (nazwa „Osłona”, `typeId: 'generic'`), `cover:update` — `hidden` zamiast
-`typeId`; gracz dostaje listę bez ukrytych, MG pełną (umowa na górze `mapa`). Paleta: pole PW
-(domyślnie 20, pamiętane do przeładowania) i oko widoczności; karta osłony: „Widoczna dla graczy”
-zamiast „Rodzaj z katalogu”. U MG ukryta rysuje się przerywaną linią z „(ukryta)”.
-**Rozstrzygnięte bez pytań:** pierwszy strzał gracza zatrzymany przez ukrytą osłonę ją odsłania
-(karta odmowy i tak ją nazywa i proponuje jako cel); odmowa ruchu i wybuch jej nie odsłaniają.
-Katalog materiałów na serwerze (`/api/cpred/covers`) został, UI go nie czyta.
-
-**Weryfikacja:** serwer 1550/1550 (testy dymne `covers.test.ts`: ogólna osłona, odmowa bez PW, ukryta poza listą gracza i odsłonięta strzałem), `shared` 2528/2528, klient 420/420, `tsc` i ESLint czyste. Spec E2E `t8c-mapa` przepisany
-(checkbox zamiast listy rodzajów), nie puszczany. **Oglądane w Firefoksie** (Playwright, MG na
-„Test_1”): paleta PW + oko, postawienie ukrytej osłony (przerywana, „(ukryta)”), karta z
-przełączeniem na widoczną; osłona testowa usunięta. Widoku gracza w przeglądarce nie oglądano
-(pokrywa go test dymny serwera).

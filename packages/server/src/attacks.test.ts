@@ -750,17 +750,30 @@ describe('ranged combat from the map', () => {
     expect(card.system.dvSource).toBe('evasion');
     expect(card.system.dv).toBe(15);
 
+    // A dodge is a Check, so Luck rides on it (22.10.2026) — never more than
+    // the pool holds, and what was declared is gone whatever the dice say.
+    const overspent = await emitAck(gm, 'attack:evade', {
+      messageId: ack.messageId,
+      characterId: defender.id,
+      luckSpent: 99,
+    });
+    expect(overspent).toEqual({ ok: false, error: 'NOT_ENOUGH_LUCK' });
+
     const update = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
     const evaded = data(
       await emitAck<{ total: number; hit: boolean }>(gm, 'attack:evade', {
         messageId: ack.messageId,
         characterId: defender.id,
+        luckSpent: 2,
       }),
       'attack:evade',
     );
     const broadcast = await update;
     const rewritten = requireAttackCard(broadcast);
     expect(rewritten.detail).toContain('Unik Ganger');
+    expect(rewritten.detail).toContain('(Szczęście 2)');
+    const sheet = await built.prisma.character.findUniqueOrThrow({ where: { id: defender.id } });
+    expect((JSON.parse(sheet.data) as CpredCharacterData).luckCurrent).toBe(3);
     expect(rewritten.hit).toBe(evaded.hit);
     // The dodge's own dice ride the update, so the table sees them fall (17.10).
     expect(broadcast.dice?.total).toBe(evaded.total);

@@ -10,7 +10,9 @@ import type {
   CampaignDetail,
   CampaignSummary,
   CampaignSwitchBroadcast,
+  CharacterView,
   ChatMessageBroadcast,
+  CpredCharacterData,
   SessionChangedPush,
   SocketAck,
   StateSyncPayload,
@@ -401,6 +403,41 @@ describe('start i koniec sesji', () => {
     await settle();
     expect(strangerHeard).toEqual([]);
     expect(strangerGmHeard).toEqual([]);
+    disconnectAll();
+  });
+
+  it('start sesji odnawia pule Szczęścia i mówi o tym na czacie (22.10.2026)', async () => {
+    const gm = await seated(alfa.cookie);
+    const created = await emitAck<CharacterView>(gm.socket, 'character:create', {
+      name: 'Fart',
+    });
+    if (!created.ok || !created.data) throw new Error('character:create failed');
+    const stats = (created.data.data as CpredCharacterData).stats;
+    const spent = await emitAck<CharacterView>(gm.socket, 'character:update', {
+      characterId: created.data.id,
+      patch: { data: { stats: { ...stats, luck: 5 }, luckCurrent: 1 } },
+    });
+    if (!spent.ok || !spent.data) throw new Error('character:update failed');
+    expect((spent.data.data as CpredCharacterData).luckCurrent).toBe(1);
+
+    const note = new Promise<ChatMessageBroadcast>((resolvePromise) => {
+      const listener = (payload: ChatMessageBroadcast) => {
+        if (!payload.message.text?.includes('Szczęścia')) return;
+        gm.socket.off('chat:message', listener);
+        resolvePromise(payload);
+      };
+      gm.socket.on('chat:message', listener);
+    });
+    expect((await emitAck(gm.socket, 'session:start', { campaignId: alfa.campaignId })).ok).toBe(
+      true,
+    );
+    expect((await note).message.text).toBe('Nowa sesja — odnowiono pulę Szczęścia 1 postaci.');
+    const row = await built.prisma.character.findUniqueOrThrow({
+      where: { id: created.data.id },
+    });
+    expect((JSON.parse(row.data) as CpredCharacterData).luckCurrent).toBe(5);
+
+    await endIfRunning(alfa);
     disconnectAll();
   });
 

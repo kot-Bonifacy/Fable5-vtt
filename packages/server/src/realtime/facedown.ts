@@ -33,7 +33,7 @@ import {
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { loadCombat, readTokenStatuses, requireCampaignId } from './combat.js';
-import { requireRollableCharacter } from './character-rolls.js';
+import { requireRollableCharacter, spendCharacterLuck } from './character-rolls.js';
 import { emitTokensById, requireCampaignToken, toTokenView } from './tokens.js';
 import { fetchFogState } from './fog-io.js';
 import { toSceneView } from './scenes.js';
@@ -239,6 +239,7 @@ export const facedownAttemptEvent = defineEvent<
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
+    await spendCharacterLuck(deps, campaignId, character.id, planned.plan.luckSpent);
 
     const stand = await standInTotal(deps, target);
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
@@ -418,7 +419,11 @@ export const facedownResistEvent = defineEvent<
     const planned = planCpredRoll(
       data,
       registry,
-      { kind: 'stat', statId: 'cool' },
+      {
+        kind: 'stat',
+        statId: 'cool',
+        ...(payload?.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
+      },
       {
         modifiers: [
           ...(reputation.level > 0 ? [reputationEntry(reputation)] : []),
@@ -427,6 +432,7 @@ export const facedownResistEvent = defineEvent<
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
+    await spendCharacterLuck(deps, campaignId, character.id, planned.plan.luckSpent);
 
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
     const answer = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {

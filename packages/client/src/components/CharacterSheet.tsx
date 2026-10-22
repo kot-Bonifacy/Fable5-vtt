@@ -1176,23 +1176,33 @@ function StatColumn({
           {id === 'luck' && (
             <span className="cp-stat-sub" title="Punkty Szczęścia, które jeszcze zostały">
               <span className="cp-of">z</span>
+              {/* 22.10.2026 (decyzja MG): gracz pulę ręką tylko uszczupla —
+                  odnawia ją start sesji albo MG; serwer odmawia podniesienia. */}
               <NumberStepper
                 min={0}
-                max={data.stats.luck}
+                max={isGm ? data.stats.luck : data.luckCurrent}
                 value={data.luckCurrent}
                 onChange={(value) => saveData({ luckCurrent: value }, 'luckCurrent')}
                 label="Szczęście: pula bieżąca"
+                {...(isGm
+                  ? {}
+                  : {
+                      title:
+                        'Pula odnawia się sama na starcie sesji; ręką możesz ją tylko zmniejszyć.',
+                    })}
               />
-              <button
-                type="button"
-                className="cp-mini-button"
-                onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
-                title="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
-                aria-label="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
-                disabled={data.luckCurrent >= data.stats.luck}
-              >
-                ↻
-              </button>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
+                  title="Odnów pulę Szczęścia (odnawia się też sama na starcie sesji)"
+                  aria-label="Odnów pulę Szczęścia"
+                  disabled={data.luckCurrent >= data.stats.luck}
+                >
+                  ↻
+                </button>
+              )}
             </span>
           )}
           {id !== 'luck' && effective[id] !== data.stats[id] && (

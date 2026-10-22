@@ -655,6 +655,8 @@ export interface CombatGrappleResistPayload<TGesture = unknown> {
   /** Chat card of the attempt being contested. */
   messageId: number;
   characterId?: string;
+  /** The answer is a Check like the attempt, so Luck may ride on it (s. 74). */
+  luckSpent?: number;
   gesture?: TGesture;
 }
 
@@ -683,6 +685,8 @@ export interface CombatFacedownResistPayload<TGesture = unknown> {
   /** Chat card of the Konfrontacja being contested. */
   messageId: number;
   characterId?: string;
+  /** The answer is a Check like the attempt, so Luck may ride on it (s. 74). */
+  luckSpent?: number;
   gesture?: TGesture;
 }
 

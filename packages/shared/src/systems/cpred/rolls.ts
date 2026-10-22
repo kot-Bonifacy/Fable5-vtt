@@ -662,6 +662,17 @@ function isInteger(value: unknown): value is number {
 }
 
 /**
+ * Whether Luck may ride on this kind of roll. „Punkty te dodajesz do wyniku
+ * Testu" (s. 74) — so not damage and not a Death Save, which are not Tests,
+ * and not a Test Rzetelności either: „W Testach Rzetelności nie można
+ * wykorzystywać Szczęścia" (s. 152). The planner refuses the rest, and the cup
+ * asks this before it offers its Luck counter.
+ */
+export function cpredRollTakesLuck(kind: CpredRollKind): boolean {
+  return kind !== 'damage' && kind !== 'deathSave' && kind !== 'reliability';
+}
+
+/**
  * Validates a roll request against the sheet and builds its plan. Rejects
  * unknown skills/stats/weapons, out-of-range modifiers and spending more Luck
  * than the character has left — the server calls this before touching the dice.
@@ -681,6 +692,8 @@ export function planCpredRoll(
   const luckSpent = request.luckSpent ?? 0;
   if (!isInteger(luckSpent) || luckSpent < 0) return { ok: false, error: 'BAD_REQUEST' };
   if (luckSpent > data.luckCurrent) return { ok: false, error: 'NOT_ENOUGH_LUCK' };
+  if (luckSpent > 0 && !cpredRollTakesLuck(request.kind))
+    return { ok: false, error: 'BAD_REQUEST' };
 
   // Stan ran **tej karty** (etap 38a) — do 12.09.2026 liczony tu z BC i SW, więc
   // statysta z wydrukowanymi PW dostawał w Teście inną karę niż w ataku.
@@ -690,12 +703,9 @@ export function planCpredRoll(
   // Damage and Death Saves are not Checks: no stat, no skill, no wound penalty
   // and no exploding 10. They share only the validation above.
   if (request.kind === 'damage') {
-    // Luck buys successes on Checks, never damage.
-    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
     return planDamageRoll(data, request, modifier, state);
   }
   if (request.kind === 'deathSave') {
-    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
     return planDeathSaveRoll(data, state);
   }
   if (request.kind === 'stabilize') {
@@ -714,8 +724,6 @@ export function planCpredRoll(
     return planRumourRoll(data, registry, modifier, luckSpent, wound, context);
   }
   if (request.kind === 'reliability') {
-    // „W Testach Rzetelności nie można wykorzystywać Szczęścia" (s. 152).
-    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
     return planReliabilityRoll(data, registry, request);
   }
 
