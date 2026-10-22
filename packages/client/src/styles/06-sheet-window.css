@@ -128,6 +128,36 @@
   color: var(--err);
 }
 
+/* Etap 57a: karta z pliku czeka na gracza — pasek MG pod belką, nad zakładkami. */
+.sheet-pending-owner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.sheet-pending-owner-text {
+  flex: 1 1 12rem;
+}
+
+.sheet-pending-owner-hint {
+  color: var(--text-dim);
+}
+
+.sheet-pending-owner-select {
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
 .sheet-tabs {
   display: flex;
   border-bottom: 1px solid var(--border);

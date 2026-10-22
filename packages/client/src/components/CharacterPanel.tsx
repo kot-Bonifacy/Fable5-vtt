@@ -194,8 +194,12 @@ export function CharacterPanel() {
 
   const roleName = (roleId: string | null) =>
     registry.roles.find((r) => r.id === roleId)?.name ?? '';
-  const ownerName = (ownerId: string | null) =>
-    ownerId === null ? 'NPC' : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
+  const ownerName = (ownerId: string | null, pendingOwner?: string | null) =>
+    ownerId === null
+      ? pendingOwner
+        ? `czeka: ${pendingOwner}`
+        : 'NPC'
+      : (players.find((p) => p.id === ownerId)?.name ?? 'gracz');
 
   // Pojemniki (46b) mają karty bez Cech i PW, a wzorce statystów i ich kopie
   // (49a) mnożą się w walce — każde w swojej grupie, żeby pięciu gangerów nie
@@ -332,7 +336,7 @@ export function CharacterPanel() {
             {!container && !character.template && (
               <OwnerPicker
                 ownerId={character.ownerId}
-                label={ownerName(character.ownerId)}
+                label={ownerName(character.ownerId, character.pendingOwner)}
                 players={players}
                 onChange={(ownerId) => void changeOwner(id, ownerId)}
               />

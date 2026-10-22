@@ -11,9 +11,6 @@ import type {
   AiQueueBroadcast,
   AiStatus,
   AiStatusBroadcast,
-  ArchiveCharacterImportPayload,
-  ArchiveImportResult,
-  ArchiveSceneImportPayload,
   AttackEvadePayload,
   AttackNoEvadePayload,
   AttackRollPayload,
@@ -2852,12 +2849,6 @@ export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', 
 /* ------------------------------------------------------------------ */
 /* Kopie zapasowe i pliki wymiany (etap 33)                            */
 /* ------------------------------------------------------------------ */
-
-export const importCharacterFile = (payload: ArchiveCharacterImportPayload) =>
-  emitSceneAck<ArchiveImportResult>('archive:character', payload);
-
-export const importSceneFile = (payload: ArchiveSceneImportPayload) =>
-  emitSceneAck<ArchiveImportResult>('archive:scene', payload);
 
 /**
  * Pobranie pliku wymiany.

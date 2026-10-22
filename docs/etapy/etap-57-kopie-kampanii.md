@@ -63,44 +63,66 @@ Diagnoza z 22.10 (stan po etapie 56):
 
 ### Zakres
 
-- [ ] Format paczki w `shared/archive.ts`: wersja schematu paczki, układ katalogów
+- [x] Format paczki w `shared/archive.ts`: wersja schematu paczki, układ katalogów
       (`manifest.json`, `data.json`, `files/<katalog>/<nazwa>`), lista plików w manifeście
       z rozmiarem i skrótem SHA-256. Kody odmowy dla paczki: uszkodzona, za duża, plik spoza
       listy, ścieżka wychodząca poza katalog (zip slip). Testy vitest
-- [ ] Eksport karty, sceny i kampanii jako ZIP (strumieniowo, bez składania całości w pamięci).
+- [x] Eksport karty, sceny i kampanii jako ZIP (strumieniowo, bez składania całości w pamięci).
       Do paczki trafiają wyłącznie grafiki, do których prowadzą adresy z danych: własne pliki
       kampanii i stare płaskie. Wspólnych `SHARED_UPLOADS_PREFIX` nie kopiujemy, bo są
       na każdym serwerze
-- [ ] **Zrzut kampanii kompletny:** dochodzą tabele losowe (`RandomTable` + wiersze), czas
+- [x] **Zrzut kampanii kompletny:** dochodzą tabele losowe (`RandomTable` + wiersze), czas
       kalendarza i ustawienia kampanii oraz wszystko, co ma `campaignId`, a dziś nie jedzie.
       Na start etapu przejrzeć `schema.prisma` model po modelu i spisać tabelę „jedzie / nie
       jedzie i dlaczego” do manifestu (`omitted`)
-- [ ] Import przez `POST /api/archive/import` (multipart, `gmOnly`, limit rozmiaru w configu).
+- [x] Import przez `POST /api/archive/import` (multipart, `gmOnly`, limit rozmiaru w configu).
       Rozpoznaje rodzaj z manifestu, rozpakowuje grafiki do katalogu kampanii docelowej
       (`campaignUploadTarget`) i przepisuje adresy. Plik JSON z etapu 33 przyjmuje dalej starą
       drogą (`localizeArchiveUploads`)
-- [ ] **Wczytanie kampanii = nowa kampania** u wczytującego MG: nowe id wszędzie, spójne
+- [x] **Wczytanie kampanii = nowa kampania** u wczytującego MG: nowe id wszędzie, spójne
       przemapowanie powiązań (figura → karta, scena → architektura Sieci, relacje botów,
       sklep → karta handlarza itd.) w jednej transakcji. Nowa kampania **nie** zostaje otwarta
       sama; pojawia się na liście kampanii
-- [ ] Karty graczy wg decyzji 3: pole „czeka na gracza” (imię z pliku + id konta źródłowego).
+- [x] Karty graczy wg decyzji 3: pole „czeka na gracza” (imię z pliku + id konta źródłowego).
       Przypisanie: w nagłówku karty i przy zaproszeniu gracza do kampanii
-- [ ] **Zakładka „Kopie” po nowemu:** przyciski „Pobierz …” i jedno „Wczytaj z pliku…” (ukryty
+- [x] **Zakładka „Kopie” po nowemu:** przyciski „Pobierz …” i jedno „Wczytaj z pliku…” (ukryty
       input pod przyciskiem) z podpowiedzią, co się stanie. Wynik importu jako komunikat
       (etap 55) z linkiem „Otwórz kampanię” przy kampanii
-- [ ] Testy: `shared` (manifest, odmowy, zip slip), dymne serwera (karta i scena z grafiką
+- [x] Testy: `shared` (manifest, odmowy, zip slip), dymne serwera (karta i scena z grafiką
       w obie strony, kampania → nowa kampania z kompletem tabel i działającymi powiązaniami),
       E2E `@szybkie`: pobranie i wczytanie sceny z mapą do drugiej kampanii MG
 
 ### Kryteria ukończenia
 
-- [ ] Scena z mapą i figurami pobrana z kampanii A i wczytana w kampanii B tego MG pokazuje mapę
+- [x] Scena z mapą i figurami pobrana z kampanii A i wczytana w kampanii B tego MG pokazuje mapę
       także po **usunięciu** pliku mapy z katalogu A (paczka jest samowystarczalna)
-- [ ] Zrzut kampanii wczytany jako nowa kampania odtwarza karty, sceny, tabele losowe, sklepy,
+- [x] Zrzut kampanii wczytany jako nowa kampania odtwarza karty, sceny, tabele losowe, sklepy,
       boty, dziennik i handouty, a figury na scenach są powiązane z kartami
-- [ ] Karta gracza z paczki wchodzi jako „czeka na gracza” i daje się przypisać jednym klikiem
-- [ ] Stary plik JSON z etapu 33 dalej się wczytuje
-- [ ] Oględziny zakładki „Kopie” w Firefoksie (Playwright)
+- [x] Karta gracza z paczki wchodzi jako „czeka na gracza” i daje się przypisać jednym klikiem
+- [x] Stary plik JSON z etapu 33 dalej się wczytuje
+- [x] Oględziny zakładki „Kopie” w Firefoksie (Playwright)
+
+### Rozstrzygnięcia 57a (22.10, bez pytań — do słowa MG)
+
+- **Biblioteka ZIP: `yazl` + `yauzl`** (czysty JS, strumieniowo). Grafiki w paczce bez
+  kompresji (WebP/JPG/MP3 już są skompresowane); manifest i dane — z kompresją.
+- **Walka przy wczytaniu jako nowa kampania nie jedzie** (wskazówka techniczna „domyślnie nie”).
+  Czat też nie: jedzie w pliku do przeczytania (przełącznik „Z logiem czatu”), ale nowa
+  kampania zaczyna z pustym — autorzy to konta innej kampanii, a karty czatu wskazują figury
+  sprzed wczytania. Manifest mówi to zdaniem.
+- **Jedno „Wczytaj z pliku…” zamiast wyboru właściciela i nazwy.** Właściciela rozstrzyga
+  decyzja 3 (to samo konto w kampanii — od razu, inaczej „czeka na gracza”), nazwę zmienia się
+  potem na karcie. Kampania o nazwie, którą MG już ma, dostaje dopisek „(z pliku DD.MM)”.
+- **Id konta przy czekającej karcie zostaje tylko dla gracza kampanii tego samego MG**
+  (`knownPlayers`) — inaczej samo imię. Wymusił to test izolacji kampanii (44b).
+- **Zdarzenia `archive:character` i `archive:scene` usunięte** — wczytanie to wyłącznie trasa
+  `POST /api/archive/import`, także dla starych plików JSON.
+- **Limity:** plik do 512 MB (`VTT_ARCHIVE_IMPORT_MAX_MB`), po rozpakowaniu do 2 GB i 20 000
+  plików. **Na VPS sufitem jest `client_max_body_size 64m` w `deploy/nginx.conf`** (i ewentualny
+  limit Nginx Proxy Managera) — dziś kampanie mają 4–28 MB; większą paczkę trzeba będzie
+  wpuścić tam (do sprawdzenia w 57b, przy pomiarze miejsca na VPS). Wiedza i dziennik wczytanej kampanii tracą ślad indeksu RAG (indeksują się od nowa).
+- **Udostępnienia handoutów** jadą w zrzucie, ale wczytują się tylko graczom, którzy są
+  w kampanii docelowej — w nowej kampanii nie ma nikogo (przyda się przy cofnięciu, 57b).
 
 ## 57b — Automatyczne kopie kampanii i cofnięcie
 

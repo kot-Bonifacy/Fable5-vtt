@@ -43,6 +43,11 @@ export interface CharacterView<TData = unknown> {
   /** Etap 49a: wzorzec, z którego zrobiono tę kartę (kopia ginie z figurą). */
   templateId: string | null;
   /**
+   * Etap 57a: karta gracza z pliku, której gracza tu nie ma — imię z pliku
+   * („czeka na gracza: Ola”). Tylko MG; brak pola i `null` — nie czeka.
+   */
+  pendingOwner?: string | null;
+  /**
    * #49 (02.10): numer zapisu wiersza — rośnie przy każdym. Widok z mniejszym
    * numerem niż ten, który klient już ma, jest echem starszego zapisu
    * (przyszedł za animacją rzutu) i nie może cofnąć karty.

@@ -10,6 +10,8 @@
   "devDependencies": {
     "@playwright/test": "1.64.0-alpha-1789764292000",
     "@types/node": "^26.1.1",
-    "socket.io-client": "^4.8.3"
+    "@types/yauzl": "^3.4.0",
+    "socket.io-client": "^4.8.3",
+    "yauzl": "^3.4.0"
   }
 }

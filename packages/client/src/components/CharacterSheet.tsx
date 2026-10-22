@@ -169,6 +169,7 @@ import { apiUpload } from '../api.js';
 import { characterTracksAmmo } from '../ammo-stock.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
+import { PendingOwnerStrip } from './PendingOwnerStrip.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { SpecialtyPanel } from './SpecialtyPanel.js';
 import { BackupPanel } from './BackupPanel.js';
@@ -427,6 +428,7 @@ function CharacterSheetWindow({
           ✕
         </button>
       </div>
+      {isGm && <PendingOwnerStrip character={character} />}
 
       {/* Etap 46b2: pojemnik nie ma Cech, PW ani Umiejętności — zamiast czterech
           stron jedna kompaktowa karta: zamek i zawartość (decyzja MG z 09.10). */}

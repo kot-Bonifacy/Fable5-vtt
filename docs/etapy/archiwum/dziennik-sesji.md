@@ -1,5 +1,24 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10 (po `8d6b247`) — zlecenie MG: gracz rzuca inicjatywę sam
+
+**Zlecenie MG:** sprawdzić, czy gracze dostają rzut inicjatywy na kubek przed walką. **Diagnoza:**
+droga była (🎲 na żetonie pasa → kubek → `combat:roll`), ale nic gracza do niej nie zapraszało,
+a „Rzuć wszystkim” i „⟳” MG rzucały po cichu także za figury graczy. **Decyzja MG:** wariant A+B.
+**Zrobione:** `combat:roll-all` rzuca tylko za figury bez właściciela (przycisk „Rzuć wszystkim”
+tylko przy NPC-u bez wartości); u gracza `CombatBar` sam ładuje kubek inicjatywą, gdy figura
+wchodzi do starcia bez wartości, a kubek jest pusty — raz na uczestnika, `Esc` odkłada; 🎲 pulsuje,
+póki gracz nie rzuci. Umowa na górze `tura`. **Rozstrzygnięte bez pytań:** remis (`combat:reroll-tie`)
+dalej przerzuca też graczy; MG wciąż wpisuje wartość gracza ręcznie.
+
+**Weryfikacja:** `shared` 2528/2528, klient 420/420, serwer 1550/1550 (`combat.test.ts`: „Rzuć
+wszystkim” i „⟳” zostawiają gracza bez wartości), `tsc` i ESLint czyste. **Oględziny w Firefoksie**
+(tymczasowy spec z `po-T6`, skasowany): Ola-Iskra — starcie ładuje kubek „Inicjatywa +7”, 🎲
+pulsuje, „⟳” MG jej nie rusza, `Esc` odkłada bez ponownego ładowania, rzut kubkiem ląduje w kolejce
+i na czacie. E2E t4a/t5b/t8a: 28 ok, 8 padło poza tą zmianą — t4a/t5b bez `E2E_FROM`, „kreator
+Kuby” w t8a-ekrany na blokadzie rozwoju w walce (21.10), t8a-macierz na starych polach „Załóż
+starcie” (znana zaległość).
+
 ### Sesja 21.10, druga (po `a3873dd`) — zlecenie MG: jedna ogólna osłona z PW i widocznością
 
 **Zlecenie MG:** zamiast listy rodzajów osłon (katalog materiałów) jedna „Osłona”, której MG

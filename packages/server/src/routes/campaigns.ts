@@ -74,6 +74,11 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       include: {
         members: { include: { user: true }, orderBy: { joinedAt: 'asc' } },
         invitations: { orderBy: { createdAt: 'desc' } },
+        characters: {
+          where: { ownerId: null, pendingOwnerName: { not: null } },
+          select: { id: true, name: true, pendingOwnerName: true },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     const detail: CampaignDetail[] = campaigns.map((c) => ({
@@ -86,6 +91,11 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
         joinedAt: m.joinedAt.toISOString(),
       })),
       invitations: c.invitations.map(toInvitationSummary),
+      pendingCards: c.characters.map((card) => ({
+        id: card.id,
+        name: card.name,
+        pendingOwner: card.pendingOwnerName ?? '',
+      })),
     }));
     return detail;
   });
@@ -163,10 +173,24 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     if (!campaign) {
       return reply.code(404).send({ error: 'NOT_FOUND' });
     }
-    const name = sanitizePlayerName((request.body as { name?: unknown } | undefined)?.name);
+    const body = request.body as { name?: unknown; characterId?: unknown } | undefined;
+    const name = sanitizePlayerName(body?.name);
     if (name === null) return reply.code(400).send({ error: 'INVALID_NAME' });
     if (await playerNameTaken(ctx.prisma, campaign.id, name)) {
       return reply.code(409).send({ error: 'NAME_TAKEN' });
+    }
+    // Etap 57a: link może nieść kartę bez gracza — „ta karta jest twoja”.
+    let characterId: string | null = null;
+    if (body?.characterId !== undefined && body.characterId !== null) {
+      const card =
+        typeof body.characterId === 'string'
+          ? await ctx.prisma.character.findFirst({
+              where: { id: body.characterId, campaignId: campaign.id, ownerId: null },
+              select: { id: true },
+            })
+          : null;
+      if (!card) return reply.code(404).send({ error: 'CHARACTER_NOT_FOUND' });
+      characterId = card.id;
     }
 
     const invitation = await ctx.prisma.invitation.create({
@@ -174,6 +198,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
         token: newToken(),
         campaignId: campaign.id,
         name,
+        characterId,
         expiresAt: invitationExpiry(request.body),
       },
     });

@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
+import { ARCHIVE_IMPORT_MAX_BYTES_DEFAULT, SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
 
 export interface ServerConfig {
   /** Optional Python executable with tools/audio/requirements.txt installed. */
@@ -52,6 +52,11 @@ export interface ServerConfig {
    * prawo; `loadConfig` włącza je zawsze, chyba że `RATE_LIMITS=0`.
    */
   rateLimits?: boolean;
+  /**
+   * Etap 57a: największy plik przyjmowany przez „Wczytaj z pliku…” (bajty ZIP-a
+   * albo JSON-a). Opcjonalne — brak znaczy `ARCHIVE_IMPORT_MAX_BYTES_DEFAULT`.
+   */
+  archiveImportMaxBytes?: number;
   /**
    * Adres klienta z `X-Forwarded-For` (Caddy na VPS, etap 28). Bez zaufanego
    * pośrednika włączenie tego pozwala podać dowolny adres i obejść limit
@@ -158,6 +163,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       emptyMinutes: positive(env.VTT_SESSION_EMPTY_MINUTES, 720),
       idleMinutes: positive(env.VTT_SESSION_IDLE_MINUTES, 720),
     },
+    archiveImportMaxBytes:
+      positive(env.VTT_ARCHIVE_IMPORT_MAX_MB, ARCHIVE_IMPORT_MAX_BYTES_DEFAULT / (1024 * 1024)) *
+      1024 *
+      1024,
     backups: {
       dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
       intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),

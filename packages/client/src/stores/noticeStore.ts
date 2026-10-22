@@ -38,7 +38,9 @@ export type NoticeTopic =
   | 'session'
   | 'character'
   | 'handout'
-  | 'journal';
+  | 'journal'
+  /** Pobranie i wczytanie kopii (etap 57a). */
+  | 'archive';
 
 export interface NoticeAction {
   label: string;

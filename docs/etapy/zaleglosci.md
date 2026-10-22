@@ -13,7 +13,18 @@ wszystkich czterech zestawach ekranów. Do przepięcia: kreator przed walką alb
 w kroku przygotowania. Ta sama okazja dla `t8a-macierz` „walka: inicjatywa kubkiem” (pole „Zbir”
 w „Załóż starcie” — punkt z 19.10 niżej).
 
+**22.10.2026 (etap 57a) — E2E: T6b 6.6d pada na pulsującym 🎲 inicjatywy.** Od `ced46d1` (22.10,
+gracz rzuca inicjatywę sam) kubek gracza ładuje się inicjatywą sam przy wejściu do starcia, a 🎲 na
+pasie pulsuje — `rollInitiative` w 6.6d klika „Rzuć inicjatywę: Kowal” i Playwright czeka na
+stabilny element do limitu 4 min. Do przepięcia: potrząśnięcie załadowanym kubkiem zamiast kliku
+w 🎲 (ta sama funkcja w T4a 4.1 i T8a-macierz). Przez to **6.8a/6.8b (eksport i import paczek ZIP)
+nie przeszły jeszcze łańcuchem T6b** — 57a sprawdzają testy dymne serwera i `t57a-kopie` (`@szybkie`).
+
 **19.10.2026 — E2E: okno „Załóż starcie” nie ma już pól wyboru figur, których szukają T4a i T6b.**
+*22.10 (57a): przyczyna — od etapu 56 w etykiecie pola siedzi lista postawy, więc nazwa pola to nie
+samo imię. Selektor `fightPick` (`fixtures/walka.ts`) przepięty w T4a 4.1, T5b, T6b 6.6d i
+T8a-macierz; T6b przechodzi już przez „Załóż starcie” (pada dalej — punkt wyżej), T4a/T5b/T8a
+niepuszczone.*
 `t4a-walka-knajpa` 4.1 (`getByRole('checkbox', { name: /^Zbir$/ })`) i `t6b-czas-kopie` 6.6d
 („Tylko postacie graczy” → pole „Kowal”) czekają na pola, których nie ma. Na kodzie sprzed sesji
 z 19.10 (szósta) t6b pada identycznie, więc to nie skutek pilnowania PT. Prawdopodobnie panel

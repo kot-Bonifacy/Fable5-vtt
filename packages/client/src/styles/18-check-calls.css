@@ -179,13 +179,6 @@
   font-size: 0.8rem;
 }
 
-.archive-file {
-  flex: 1 1 100%;
-  min-width: 0;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
 /* Ścieżka katalogu kopii: długa, więc łamie się w środku zamiast rozpychać panel. */
 .archive-path {
   margin: 0;

@@ -259,6 +259,9 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       }
       await requireValidOwner(deps.ctx.prisma, campaignId, patch.ownerId);
       data.ownerId = patch.ownerId;
+      // Etap 57a: decyzja MG o właścicielu (także „NPC”) kończy czekanie na gracza.
+      data.pendingOwnerName = null;
+      data.pendingOwnerId = null;
     }
     // Stage 23b: eddies leave this path entirely. The GM's own number field is
     // still a number field, but it lands as a correction with a ledger row —

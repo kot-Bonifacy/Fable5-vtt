@@ -1,104 +1,86 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ArchiveImportResult, ArchiveKind, CampaignDetail } from '@vtt/shared';
+import { useRef, useState } from 'react';
+import type { ArchiveImportResult } from '@vtt/shared';
 import {
   ARCHIVE_DOWNLOAD_PATHS,
+  ARCHIVE_IMPORT_PATH,
   ARCHIVE_REFUSAL_MESSAGES,
   archiveRefusalText,
   isContainerCard,
+  sessionErrorText,
 } from '@vtt/shared';
-import { apiGet } from '../api.js';
-import { clearNotices, notifyInfo, notifyRefusal } from '../notices.js';
-import { downloadArchive, importCharacterFile, importSceneFile } from '../socket.js';
+import { ApiError, apiUpload } from '../api.js';
+import { clearNotices, notifyChoice, notifyInfo, notifyRefusal } from '../notices.js';
+import { downloadArchive, openCampaign } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 
 /**
- * Pliki wymiany (etap 33) — zakładka MG: eksport kampanii, import kart i scen.
- * Kopie zapasowe całej bazy od etapu 53 są w panelu administratora
- * (`admin/AdminBackups.tsx`).
+ * Kopie (etap 33, od 57a paczki ZIP) — zakładka MG: pobranie karty, sceny
+ * i całej kampanii oraz jedno „Wczytaj z pliku…” dla wszystkiego.
+ *
+ * Paczka niesie grafiki, więc wczytana w innej kampanii nie potrzebuje plików
+ * tej, z której wyszła. Rodzaj pliku rozpoznaje serwer z manifestu: karta
+ * i scena wchodzą do otwartej kampanii, kampania — zawsze jako nowa (decyzja
+ * MG z 22.10). Kopie całej bazy od etapu 53 są w panelu administratora.
  */
 
-/** Zdanie dla kodu odmowy z serwera — importu albo samej kopii. */
-function importErrorText(code: string, kind: ArchiveKind): string {
+/** Zdanie dla kodu odmowy wczytania. */
+function importErrorText(code: string): string {
   if (code in ARCHIVE_REFUSAL_MESSAGES) {
-    return archiveRefusalText(code as keyof typeof ARCHIVE_REFUSAL_MESSAGES, kind);
+    return archiveRefusalText(code as keyof typeof ARCHIVE_REFUSAL_MESSAGES);
   }
   switch (code) {
     case 'ARCHIVE_EMPTY':
       return 'Plik nie ma nazwy — nie ma czego wczytać.';
-    case 'OWNER_NOT_FOUND':
-      return 'Wybrany gracz już nie istnieje — odśwież listę.';
     case 'NO_CAMPAIGN':
-      return 'Brak aktywnej kampanii.';
+      return 'Brak otwartej kampanii — kartę i scenę wczytuje się do otwartej.';
+    case 'FILE_TOO_LARGE':
+      return ARCHIVE_REFUSAL_MESSAGES.ARCHIVE_PACKAGE_TOO_LARGE;
     default:
-      return `Nie udało się: ${code}`;
+      return `Nie udało się wczytać pliku (${code}).`;
   }
 }
 
-/** Wybór pliku + wczytanie; wspólny dla karty i sceny. */
-function useFileImport(kind: ArchiveKind) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  // Karta i scena mają osobne tematy: wynik jednego wczytania nie zdejmuje drugiego.
-  const topic = kind === 'character' ? 'character' : 'scene';
+const KIND_DONE: Record<ArchiveImportResult['kind'], string> = {
+  character: 'Wczytano kartę',
+  scene: 'Wczytano scenę',
+  campaign: 'Wczytano kampanię',
+};
 
-  async function pick(
-    file: File,
-    send: (parsed: unknown) => Promise<{ ok: boolean; error?: string; data?: ArchiveImportResult }>,
-  ) {
-    clearNotices(topic);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(await file.text()) as unknown;
-    } catch {
-      notifyRefusal(topic, 'To nie jest plik JSON.');
-      return;
-    }
-    const ack = await send(parsed);
-    if (!ack.ok) {
-      notifyRefusal(topic, importErrorText(ack.error ?? 'UNKNOWN', kind));
-      return;
-    }
-    notifyInfo([`Wczytano „${ack.data?.name ?? ''}".`, ack.data?.note].filter(Boolean).join(' '), {
-      title: 'Kopie',
-      topic,
-    });
+async function openImported(result: ArchiveImportResult): Promise<void> {
+  const ack = await openCampaign(result.id);
+  if (!ack.ok) {
+    notifyRefusal(
+      'archive',
+      sessionErrorText(ack.error) ?? 'Nie udało się otworzyć wczytanej kampanii.',
+    );
   }
-
-  return { inputRef, pick };
 }
 
-function CharacterSection() {
+function DownloadSection() {
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
-  const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
-  const [selected, setSelected] = useState('');
-  const [ownerId, setOwnerId] = useState('');
-  const { inputRef, pick } = useFileImport('character');
-
-  useEffect(() => {
-    apiGet<CampaignDetail[]>('/api/campaigns')
-      .then((campaigns) => {
-        const active = campaigns.find((c) => c.open);
-        setPlayers(active?.players.map((p) => ({ id: p.id, name: p.name })) ?? []);
-      })
-      .catch(() => setPlayers([]));
-  }, []);
+  const scenes = useSceneStore((s) => s.scenes);
+  const [character, setCharacter] = useState('');
+  const [scene, setScene] = useState('');
+  const [withChat, setWithChat] = useState(true);
 
   // Skrzynia i stos (46b) żyją na scenie — eksport ich karty do pliku nic nie daje.
   const cards = order.filter((id) => {
     const card = characters[id];
     return card !== undefined && !isContainerCard(card.data);
   });
-  const chosen = selected || cards[0] || '';
+  const chosenCard = character || cards[0] || '';
+  const chosenScene = scene || scenes[0]?.id || '';
 
   return (
     <section className="archive-section">
-      <h3 className="panel-section-title">Karta postaci</h3>
+      <h3 className="panel-section-title">Pobierz kopię</h3>
       <div className="archive-row-controls">
         <select
           className="archive-select"
-          value={chosen}
-          onChange={(event) => setSelected(event.target.value)}
+          value={chosenCard}
+          onChange={(event) => setCharacter(event.target.value)}
           aria-label="Karta do pobrania"
         >
           {cards.map((id) => (
@@ -110,112 +92,39 @@ function CharacterSection() {
         <button
           type="button"
           className="small-button"
-          disabled={!chosen}
-          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.character(chosen))}
+          disabled={!chosenCard}
+          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.character(chosenCard))}
         >
           Pobierz kartę
         </button>
       </div>
-
       <div className="archive-row-controls">
         <select
           className="archive-select"
-          value={ownerId}
-          onChange={(event) => setOwnerId(event.target.value)}
-          aria-label="Właściciel wczytywanej karty"
-        >
-          <option value="">NPC (MG)</option>
-          {players.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.name}
-            </option>
-          ))}
-        </select>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/json,.json"
-          className="archive-file"
-          aria-label="Plik karty do wczytania"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) {
-              void pick(file, (parsed) =>
-                importCharacterFile({ file: parsed, ownerId: ownerId || null }),
-              );
-            }
-          }}
-        />
-      </div>
-      <p className="archive-hint">
-        Karta z pliku wchodzi zawsze jako <strong>nowa</strong> — obok tej, która już jest. Niczego
-        nie nadpisuje.
-      </p>
-    </section>
-  );
-}
-
-function SceneSection() {
-  const scenes = useSceneStore((s) => s.scenes);
-  const [selected, setSelected] = useState('');
-  const { inputRef, pick } = useFileImport('scene');
-
-  const chosen = selected || scenes[0]?.id || '';
-
-  return (
-    <section className="archive-section">
-      <h3 className="panel-section-title">Scena</h3>
-      <div className="archive-row-controls">
-        <select
-          className="archive-select"
-          value={chosen}
-          onChange={(event) => setSelected(event.target.value)}
+          value={chosenScene}
+          onChange={(event) => setScene(event.target.value)}
           aria-label="Scena do pobrania"
         >
-          {scenes.map((scene) => (
-            <option key={scene.id} value={scene.id}>
-              {scene.name}
+          {scenes.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
             </option>
           ))}
         </select>
         <button
           type="button"
           className="small-button"
-          disabled={!chosen}
-          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.scene(chosen))}
+          disabled={!chosenScene}
+          onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.scene(chosenScene))}
         >
           Pobierz scenę
         </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/json,.json"
-          className="archive-file"
-          aria-label="Plik sceny do wczytania"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) void pick(file, (parsed) => importSceneFile({ file: parsed }));
-          }}
-        />
       </div>
-      <p className="archive-hint">
-        Scena z pliku wjeżdża w podglądzie, nigdy jako aktywna. Figury zachowują powiązanie z kartą
-        tylko wtedy, gdy ta karta jest w tej kampanii.
-      </p>
-    </section>
-  );
-}
-
-function CampaignSection() {
-  const [withChat, setWithChat] = useState(true);
-
-  return (
-    <section className="archive-section">
-      <h3 className="panel-section-title">Zrzut całej kampanii</h3>
       <div className="archive-row-controls">
-        <label className="archive-check">
+        <label
+          className="archive-check"
+          title="Czat to zwykle większość objętości. W pliku jest do przeczytania — wczytana kampania i tak zaczyna z pustym czatem."
+        >
           <input
             type="checkbox"
             checked={withChat}
@@ -228,13 +137,86 @@ function CampaignSection() {
           className="small-button"
           onClick={() => downloadArchive(ARCHIVE_DOWNLOAD_PATHS.campaign(withChat))}
         >
-          Pobierz zrzut
+          Pobierz kampanię
         </button>
       </div>
       <p className="archive-hint">
-        Jeden plik JSON z manifestem na górze: co, ile i <strong>czego w nim nie ma</strong>. Czat
-        to zwykle cztery piąte objętości — bez niego zrzut jest mały i czytelny, ale traci historię
-        sesji. Kont ani haseł plik nie niesie nigdy.
+        Każda kopia to paczka ZIP <strong>z grafikami</strong> — mapami, portretami i żetonami —
+        więc wczytana gdzie indziej nie potrzebuje plików tej kampanii. Manifest w środku mówi, co w
+        niej jest i czego nie ma. Kont ani haseł paczka nie niesie nigdy.
+      </p>
+    </section>
+  );
+}
+
+function ImportSection() {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function load(file: File) {
+    clearNotices('archive');
+    setBusy(true);
+    try {
+      const result = await apiUpload<ArchiveImportResult>(ARCHIVE_IMPORT_PATH, file);
+      const text = [`${KIND_DONE[result.kind]} „${result.name}”.`, result.note]
+        .filter(Boolean)
+        .join(' ');
+      if (result.kind === 'campaign') {
+        notifyChoice(
+          'archive',
+          text,
+          [{ label: 'Otwórz kampanię', run: () => void openImported(result) }],
+          { title: 'Kopie', tone: 'info', silent: true },
+        );
+      } else {
+        notifyInfo(text, { title: 'Kopie', topic: 'archive' });
+      }
+    } catch (error) {
+      // 413 bez JSON-a to sufit pośrednika (nginx na VPS), nie serwera VTT.
+      const code =
+        error instanceof ApiError
+          ? error.status === 413
+            ? 'ARCHIVE_PACKAGE_TOO_LARGE'
+            : error.code
+          : 'NETWORK';
+      notifyRefusal('archive', importErrorText(code));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="archive-section">
+      <h3 className="panel-section-title">Wczytaj z pliku</h3>
+      <div className="archive-row-controls">
+        <button
+          type="button"
+          className="small-button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? 'Wczytuję…' : 'Wczytaj z pliku…'}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".zip,application/zip,.json,application/json"
+          className="visually-hidden"
+          tabIndex={-1}
+          aria-label="Plik kopii do wczytania"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (file) void load(file);
+          }}
+        />
+      </div>
+      <p className="archive-hint">
+        Rodzaj rozpozna się sam, a nic nie zostanie nadpisane. <strong>Karta</strong> i{' '}
+        <strong>scena</strong> wejdą do tej kampanii jako nowe (scena w podglądzie).{' '}
+        <strong>Kampania</strong> wejdzie zawsze jako nowa, na listę w Panelu MG, bez graczy — ich
+        karty poczekają, aż przypiszesz je na karcie albo przy „Nowy gracz”. Stare pliki .json też
+        się wczytają, tyle że bez grafik.
       </p>
     </section>
   );
@@ -245,9 +227,8 @@ export function ArchivePanel() {
   // administratora (`AdminBackups`), nie tutaj.
   return (
     <div className="archive-panel">
-      <CampaignSection />
-      <CharacterSection />
-      <SceneSection />
+      <DownloadSection />
+      <ImportSection />
     </div>
   );
 }

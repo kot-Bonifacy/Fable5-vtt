@@ -11,6 +11,7 @@ import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { createSession, SESSION_COOKIE } from './auth/sessions.js';
 import { exportCharacter, exportScene } from './archive.js';
+import { importArchive } from './test-archive.js';
 import { EVENTS } from './realtime/index.js';
 import { campaignRoom, gmRoom, sceneRoom } from './realtime/state.js';
 
@@ -443,9 +444,6 @@ const CASES: Record<string, Case> = {
   'ai:refresh': own('odświeża status gatewaya'),
   'token:aim': foreign((a) => ({ tokenId: a.tokenId, facing: 1 })),
   'token:target': foreign((a) => ({ tokenId: a.tokenId, targetId: null })),
-  // archive
-  'archive:character': foreign((a) => ({ file: {}, ownerId: a.playerId })),
-  'archive:scene': own('plik z dysku MG — obce id w pliku sprawdza osobny test niżej'),
   // attacks
   'attack:roll': foreign((a) => ({
     attackerTokenId: a.tokenId,
@@ -1198,10 +1196,26 @@ describe('izolacja kampanii — macierz zdarzeń (etap 44b)', () => {
     const scrub = (file: unknown) => JSON.parse(JSON.stringify(file).replaceAll(CANARY, 'Plik'));
     const scene = scrub(await exportScene(built.prisma, A.sceneId));
     const character = scrub(await exportCharacter(built.prisma, A.characterId));
-    const failures = [
-      ...(await probe(gmB, 'archive:scene', 'archive:scene', { file: scene }, null)),
-      ...(await probe(gmB, 'archive:character', 'archive:character', { file: character }, null)),
-    ];
+    // Od 57a wczytanie to trasa REST (`POST /api/archive/import`), nie zdarzenie.
+    const failures: string[] = [];
+    for (const [label, file] of [
+      ['scena z pliku', scene],
+      ['karta z pliku', character],
+    ] as const) {
+      heardByA.length = 0;
+      heardByB.length = 0;
+      const { status, body } = await importArchive(built, gmBCookie, file as object);
+      await settle();
+      if (status !== 201) failures.push(`${label}: ${status} ${JSON.stringify(body)}`);
+      const bodyLeak = leaks(JSON.stringify(body));
+      if (bodyLeak) failures.push(`${label}: odpowiedź niesie ${bodyLeak}`);
+      if (heardByA.length > 0) failures.push(`${label}: kampania A usłyszała ${heardByA[0]}`);
+      const breaches = await databaseBreaches();
+      if (breaches.length > 0) {
+        failures.push(`${label}: baza — ${breaches.join('; ').slice(0, 300)}`);
+        protectedRows = await snapshot();
+      }
+    }
     expect(failures.join('\n')).toBe('');
   });
 

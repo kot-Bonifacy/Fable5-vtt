@@ -271,7 +271,6 @@ import {
 } from './handouts.js';
 import { screamsheetGenerateEvent } from './screamsheets.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
-import { archiveCharacterImportEvent, archiveSceneImportEvent } from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 import { exchangeCounterpartsEvent } from './exchange.js';
 import {
@@ -320,8 +319,6 @@ declare module 'socket.io' {
 export const EVENTS: RealtimeEvent<never, unknown>[] = [
   musicControlEvent,
   musicStateEvent,
-  archiveCharacterImportEvent,
-  archiveSceneImportEvent,
   campaignOpenEvent,
   sessionStartEvent,
   sessionEndEvent,

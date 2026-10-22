@@ -6,7 +6,6 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
-  ArchiveFile,
   ArchiveImportResult,
   CampaignSummary,
   CharacterView,
@@ -21,6 +20,7 @@ import { buildApp, type BuiltApp } from './app.js';
 import { TEST_ADMIN, adminCookie } from './test-admin.js';
 import type { CampaignArchive, CharacterArchive, SceneArchive } from './archive.js';
 import { joinUrl } from './test-join.js';
+import { downloadPackage, importArchive, type ReadPackage } from './test-archive.js';
 
 /**
  * Pliki wymiany (etap 33) — szew między bazą, trasą i gniazdem.
@@ -118,11 +118,21 @@ function dataOf<T>(ack: SocketAck<T>): T {
   return ack.data as T;
 }
 
-async function download<T>(url: string, cookie: string): Promise<ArchiveFile<T>> {
-  const res = await built.app.inject({ method: 'GET', url, headers: { cookie } });
-  expect(res.statusCode).toBe(200);
-  return JSON.parse(res.body) as ArchiveFile<T>;
+/** Pobranie paczki ZIP (od 57a) — manifest i dane jak dawny plik JSON. */
+function download<T>(url: string, cookie: string): Promise<ReadPackage<T>> {
+  return downloadPackage<T>(built, url, cookie);
 }
+
+/** „Wczytaj z pliku…” — dane z paczki jako stary plik JSON albo paczka. */
+async function load(content: Buffer | object): Promise<SocketAck<ArchiveImportResult>> {
+  const { status, body } = await importArchive(built, gmCookie, content);
+  return status === 201
+    ? { ok: true, data: body as unknown as ArchiveImportResult }
+    : { ok: false, error: String(body.error) };
+}
+
+/** Plik JSON z etapu 33 z manifestu i danych paczki. */
+const asJson = <T>(file: ReadPackage<T>) => ({ manifest: file.manifest, payload: file.payload });
 
 beforeAll(async () => {
   execSync('npx prisma migrate deploy', {
@@ -209,7 +219,9 @@ describe('eksport karty', () => {
     // Kolumna `data` jest w bazie tekstem; w pliku ma być obiektem, inaczej
     // zrzutu nie da się przeczytać w edytorze.
     expect(typeof file.payload.data).toBe('object');
-    expect(file.manifest.omitted.join(' ')).toContain('Właściciel');
+    // Etap 57a: gracz karty jedzie z id i imieniem — karta czeka na niego.
+    expect(file.payload.owner).toEqual({ id: playerId, name: 'Rogue' });
+    expect(file.manifest.omitted.join(' ')).toContain('Konto gracza');
   });
 
   it('wysyła plik jako pobranie z nazwą, nie jako stronę', async () => {
@@ -219,7 +231,8 @@ describe('eksport karty', () => {
       url: `/api/archive/character/${character.id}`,
       headers: { cookie: gmCookie },
     });
-    expect(res.headers['content-disposition']).toMatch(/attachment; filename="character-.*\.json"/);
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename="character-.*\.zip"/);
+    expect(res.headers['content-type']).toBe('application/zip');
   });
 
   it('nie wywraca się na polskich znakach w nazwie karty', async () => {
@@ -262,16 +275,14 @@ describe('import karty', () => {
       gmCookie,
     );
 
-    const result = dataOf(
-      await emitAck<ArchiveImportResult>(gmSocket, 'archive:character', {
-        file,
-        ownerId: playerId,
-        name: 'Do powrotu (kopia)',
-      }),
-    );
+    const result = dataOf(await load(asJson(file)));
 
     expect(result.id).not.toBe(original.id);
-    expect(result.name).toBe('Do powrotu (kopia)');
+    expect(result.name).toBe('Do powrotu');
+    // Ten sam gracz w tej samej kampanii — karta wraca do niego od razu (57a, decyzja 3).
+    expect(result.note).toContain('wróciła');
+    const row = await built.prisma.character.findUniqueOrThrow({ where: { id: result.id } });
+    expect(row.ownerId).toBe(playerId);
 
     const back = await download<CharacterArchive>(`/api/archive/character/${result.id}`, gmCookie);
     // Ta sama zawartość karty — ekwipunek, notatki, eurodolce, PD. Import czyta
@@ -309,13 +320,7 @@ describe('import karty', () => {
       eddies: legacy.eddies,
     };
 
-    const result = dataOf(
-      await emitAck<ArchiveImportResult>(gmSocket, 'archive:character', {
-        file,
-        ownerId: null,
-        name: 'Sprzed etapu (wczytany)',
-      }),
-    );
+    const result = dataOf(await load(asJson(file)));
     const back = await download<CharacterArchive>(`/api/archive/character/${result.id}`, gmCookie);
     const data = back.payload.data as Record<string, unknown>;
 
@@ -334,14 +339,33 @@ describe('import karty', () => {
       `/api/archive/character/${original.id}`,
       gmCookie,
     );
-    const result = dataOf(
-      await emitAck<ArchiveImportResult>(gmSocket, 'archive:character', {
-        file,
-        ownerId: null,
-        name: 'Bezpański (NPC)',
+    // Plik z etapu 33 nie zna gracza karty.
+    const { owner: _owner, ...legacy } = file.payload;
+    const result = dataOf(await load({ manifest: file.manifest, payload: legacy }));
+    expect(result.note).toContain('NPC');
+  });
+
+  it('gracza spoza kampanii zostawia jako „czeka na gracza” z imieniem z pliku', async () => {
+    const original = await makeCharacter('Przybysz');
+    const file = await download<CharacterArchive>(
+      `/api/archive/character/${original.id}`,
+      gmCookie,
+    );
+    const stranger = { ...file.payload, owner: { id: 'konto-z-innej-kampanii', name: 'Ola' } };
+    const result = dataOf(await load({ manifest: file.manifest, payload: stranger }));
+    expect(result.note).toContain('„Ola”');
+    const row = await built.prisma.character.findUniqueOrThrow({ where: { id: result.id } });
+    // Id konta, którego nie zna żadna kampania tego MG, nie zostaje w bazie.
+    expect(row).toMatchObject({ ownerId: null, pendingOwnerName: 'Ola', pendingOwnerId: null });
+
+    // Jeden klik MG: nadanie właściciela kończy czekanie (decyzja 3).
+    const assigned = dataOf(
+      await emitAck<CharacterView>(gmSocket, 'character:update', {
+        characterId: result.id,
+        patch: { ownerId: playerId },
       }),
     );
-    expect(result.note).toContain('NPC');
+    expect(assigned).toMatchObject({ ownerId: playerId, pendingOwner: null });
   });
 
   it('odmawia pliku zapisanego przez nowszą wersję', async () => {
@@ -352,28 +376,21 @@ describe('import karty', () => {
     );
     file.manifest.version = ARCHIVE_VERSION + 1;
 
-    const ack = await emitAck(gmSocket, 'archive:character', { file, ownerId: null });
-    expect(ack).toEqual({ ok: false, error: 'ARCHIVE_TOO_NEW' });
+    expect(await load(asJson(file))).toEqual({ ok: false, error: 'ARCHIVE_TOO_NEW' });
   });
 
-  it('odmawia sceny wczytywanej jako karta i czegoś, co plikiem nie jest', async () => {
+  it('odmawia nieznanego rodzaju i czegoś, co plikiem nie jest', async () => {
     const scene = dataOf(await emitAck<SceneView>(gmSocket, 'scene:create', { name: 'Nie karta' }));
     const sceneFile = await download<SceneArchive>(`/api/archive/scene/${scene.id}`, gmCookie);
+    sceneFile.manifest.kind = 'makro' as never;
 
-    expect(
-      await emitAck(gmSocket, 'archive:character', { file: sceneFile, ownerId: null }),
-    ).toEqual({ ok: false, error: 'ARCHIVE_WRONG_KIND' });
-    expect(await emitAck(gmSocket, 'archive:character', { file: { co: 'to' } })).toEqual({
-      ok: false,
-      error: 'ARCHIVE_MALFORMED',
-    });
+    expect(await load(asJson(sceneFile))).toEqual({ ok: false, error: 'ARCHIVE_WRONG_KIND' });
+    expect(await load({ co: 'to' })).toEqual({ ok: false, error: 'ARCHIVE_MALFORMED' });
   });
 
   it('nie jest dla gracza', async () => {
-    const { socket, firstSync } = createSocket(playerCookie);
-    await firstSync;
-    const ack = await emitAck(socket, 'archive:character', { file: {}, ownerId: null });
-    expect(ack).toEqual({ ok: false, error: 'FORBIDDEN' });
+    const { status } = await importArchive(built, playerCookie, { co: 'to' });
+    expect(status).toBe(403);
   });
 });
 
@@ -424,13 +441,9 @@ describe('scena', () => {
       }),
     );
 
-    const result = dataOf(
-      await emitAck<ArchiveImportResult>(gmSocket, 'archive:scene', {
-        file,
-        name: 'Magazyn (kopia)',
-      }),
-    );
+    const result = dataOf(await load(asJson(file)));
     expect(result.id).not.toBe(scene.id);
+    expect(result.kind).toBe('scene');
     expect(result.note).toContain('podglądzie');
 
     const back = await download<SceneArchive>(`/api/archive/scene/${result.id}`, gmCookie);

@@ -18,6 +18,10 @@ import {
   UPLOAD_URL_PATTERN,
 } from '@vtt/shared';
 import type { PrismaClient } from './db.js';
+import type { Prisma } from './generated/prisma/client.js';
+
+/** Klient albo transakcja — wczytanie kampanii (57a) pisze wszystko w jednej. */
+export type ArchiveDb = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Pliki wymiany (etap 33): karta, scena i cała kampania do jednego JSON-a.
@@ -52,7 +56,7 @@ import type { PrismaClient } from './db.js';
  */
 
 /** Kolumna tekstowa, która w bazie trzyma JSON; w pliku ma być obiektem. */
-function parseJsonColumn(value: string | null): unknown {
+export function parseJsonColumn(value: string | null): unknown {
   if (value === null) return null;
   try {
     return JSON.parse(value) as unknown;
@@ -64,7 +68,7 @@ function parseJsonColumn(value: string | null): unknown {
 }
 
 /** Odwrotność `parseJsonColumn` przy zapisie. */
-function stringifyJsonColumn(value: unknown, fallback: string): string {
+export function stringifyJsonColumn(value: unknown, fallback: string): string {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'string') return value;
   return JSON.stringify(value);
@@ -106,6 +110,15 @@ export interface CharacterLedgerRow {
 export interface CharacterArchive {
   name: string;
   portraitUrl: string | null;
+  /**
+   * Etap 57a: gracz, do którego karta należała — id konta i imię przy stole.
+   * Import oddaje kartę temu samemu kontu, gdy siedzi w kampanii docelowej,
+   * a inaczej zostawia ją „czeka na gracza: <imię>”. Brak pola (plik z etapu 33)
+   * i `null` — karta NPC.
+   */
+  owner?: { id: string; name: string } | null;
+  /** Etap 57a: zgoda MG na grę (naprawa 3c) — brak w starszych plikach = `true`. */
+  playReady?: boolean;
   /** Etap 49a: karta-wzorzec statysty (brak w starszych plikach = `false`). */
   template?: boolean;
   /** `CpredCharacterData` jako obiekt — wersja schematu siedzi w środku. */
@@ -124,8 +137,10 @@ export async function exportCharacter(
     select: {
       name: true,
       portraitUrl: true,
+      playReady: true,
       template: true,
       data: true,
+      owner: { select: { id: true, name: true } },
       campaign: { select: { name: true } },
     },
   });
@@ -161,6 +176,8 @@ export async function exportCharacter(
   const payload: CharacterArchive = {
     name: row.name,
     portraitUrl: row.portraitUrl,
+    owner: row.owner,
+    playReady: row.playReady,
     template: row.template,
     data: parseJsonColumn(row.data),
     ledger: ledger.map(toRow),
@@ -173,7 +190,7 @@ export async function exportCharacter(
     { ledger: payload.ledger.length, advancement: payload.advancement.length },
     [
       'Żetony na scenach — figura jest własnością sceny, nie karty.',
-      'Właściciel (konto gracza) — id konta z innej instalacji nic tu nie znaczy.',
+      'Konto gracza — plik niesie jego id i imię; karta wraca do tego konta tylko w kampanii, w której ono siedzi, inaczej czeka na gracza.',
     ],
   );
   return { manifest, payload };
@@ -185,8 +202,14 @@ export interface ImportRefusal {
 
 export interface CharacterImportOptions {
   campaignId: string;
-  /** Komu przypisać kartę; `null` = NPC prowadzony przez MG. */
-  ownerId: string | null;
+  /** MG, który wczytuje — id konta z pliku zostaje tylko, gdy to gracz jego kampanii. */
+  gmId?: string;
+  /**
+   * Komu przypisać kartę; `null` = NPC prowadzony przez MG. Brak pola (57a) —
+   * rozstrzyga `owner` z pliku: to samo konto w kampanii dostaje kartę od razu,
+   * inne — karta czeka na gracza.
+   */
+  ownerId?: string | null;
   /** Nazwa, jeśli MG chce inną niż w pliku (import obok istniejącej karty). */
   name?: string;
 }
@@ -202,7 +225,7 @@ export async function importCharacter(
   registry: CpredRegistry,
   file: unknown,
   options: CharacterImportOptions,
-): Promise<{ id: string } | ImportRefusal> {
+): Promise<{ id: string; ownerId: string | null; pendingOwner: string | null } | ImportRefusal> {
   const refusal = archiveRefusal(file, 'character');
   if (refusal) return { code: refusal };
   const payload = (file as ArchiveFile<Partial<CharacterArchive>>).payload;
@@ -215,14 +238,21 @@ export async function importCharacter(
   // dającą się otworzyć, a nie wiersz, który wywraca panel przy pierwszym
   // odczycie.
   const data = parseCharacterData(stringifyJsonColumn(payload.data, '{}'), registry);
+  const owner =
+    options.ownerId !== undefined
+      ? { ownerId: options.ownerId, pending: null }
+      : await resolveArchiveOwner(prisma, options.campaignId, payload.owner, options.gmId);
 
   const created = await prisma.character.create({
     data: {
       campaignId: options.campaignId,
       name,
-      ownerId: options.ownerId,
+      ownerId: owner.ownerId,
+      pendingOwnerName: owner.pending?.name ?? null,
+      pendingOwnerId: owner.pending?.id ?? null,
       portraitUrl: typeof payload.portraitUrl === 'string' ? payload.portraitUrl : null,
-      template: payload.template === true && options.ownerId === null,
+      playReady: payload.playReady !== false,
+      template: payload.template === true && owner.ownerId === null && owner.pending === null,
       data: JSON.stringify(data),
     },
     select: { id: true },
@@ -249,7 +279,51 @@ export async function importCharacter(
     });
   }
 
-  return { id: created.id };
+  return { id: created.id, ownerId: owner.ownerId, pendingOwner: owner.pending?.name ?? null };
+}
+
+/**
+ * Właściciel karty z pliku (57a, decyzja MG 3): konto w kampanii albo „czeka na
+ * gracza”. Id konta zostaje przy czekającej karcie tylko wtedy, gdy to gracz
+ * którejś kampanii **tego** MG — id gracza innego MG nie ma czego szukać w tej
+ * bazie (izolacja kampanii, 44b), a imię z pliku wystarcza do przypisania.
+ */
+export async function resolveArchiveOwner(
+  prisma: ArchiveDb,
+  campaignId: string,
+  owner: unknown,
+  gmId?: string,
+): Promise<{ ownerId: string | null; pending: { id: string | null; name: string } | null }> {
+  if (!owner || typeof owner !== 'object') return { ownerId: null, pending: null };
+  const { id, name } = owner as { id?: unknown; name?: unknown };
+  const ownerId = typeof id === 'string' ? id : null;
+  if (ownerId) {
+    const member = await prisma.campaignMember.findUnique({
+      where: { campaignId_userId: { campaignId, userId: ownerId } },
+      select: { userId: true },
+    });
+    if (member) return { ownerId, pending: null };
+  }
+  const known = ownerId ? await knownPlayers(prisma, [ownerId], gmId) : new Set<string>();
+  const label = typeof name === 'string' && name.trim() ? name.trim().slice(0, 64) : 'gracz';
+  return {
+    ownerId: null,
+    pending: { id: ownerId && known.has(ownerId) ? ownerId : null, name: label },
+  };
+}
+
+/** Które z tych kont to gracze kampanii prowadzonych przez tego MG. */
+export async function knownPlayers(
+  prisma: ArchiveDb,
+  userIds: string[],
+  gmId: string | undefined,
+): Promise<Set<string>> {
+  if (!gmId || userIds.length === 0) return new Set();
+  const rows = await prisma.campaignMember.findMany({
+    where: { userId: { in: userIds }, campaign: { gmId } },
+    select: { userId: true },
+  });
+  return new Set(rows.map((row) => row.userId));
 }
 
 /* ------------------------------------------------------------------ */
@@ -267,6 +341,13 @@ export interface SceneArchive {
   fog: Record<string, unknown>[];
   smoke: Record<string, unknown>[];
   exploration: Record<string, unknown> | null;
+  /**
+   * Etap 57a, tylko w zrzucie kampanii: punkty dostępu i strefy bronione Sieci.
+   * Należą do architektury (26a), więc pojedyncza scena ich nie niesie —
+   * w kampanii architektura jedzie razem z nimi.
+   */
+  accessPoints?: Record<string, unknown>[];
+  defenseZones?: Record<string, unknown>[];
 }
 
 /** Kolumny sceny, które opisują scenę — bez `id`, `campaignId` i `active`. */
@@ -312,6 +393,9 @@ export async function exportScene(
       prisma.token.findMany({
         where: { sceneId },
         select: {
+          // Id jedzie od 57a: strefy, kamery i chwyty wskazują figurę po id,
+          // a wczytanie kampanii przepisuje je na nowe.
+          id: true,
           name: true,
           publicName: true,
           imageUrl: true,
@@ -339,6 +423,8 @@ export async function exportScene(
       prisma.wall.findMany({
         where: { sceneId },
         select: {
+          // Drzwi Sieci (`wallId` w architekturze) wskazują ścianę po id (57a).
+          id: true,
           kind: true,
           open: true,
           playerToggle: true,
@@ -482,19 +568,20 @@ async function survivingIds(
   };
 }
 
-const asRows = (value: unknown): Record<string, unknown>[] =>
+export const asRows = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value)
     ? (value.filter((row) => row && typeof row === 'object') as Record<string, unknown>[])
     : [];
 
-const num = (value: unknown, fallback = 0): number =>
+export const num = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-const str = (value: unknown, fallback = ''): string =>
+export const str = (value: unknown, fallback = ''): string =>
   typeof value === 'string' ? value : fallback;
-const bool = (value: unknown, fallback = false): boolean =>
+export const bool = (value: unknown, fallback = false): boolean =>
   typeof value === 'boolean' ? value : fallback;
-const maybeStr = (value: unknown): string | null => (typeof value === 'string' ? value : null);
-const maybeNum = (value: unknown): number | null =>
+export const maybeStr = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null;
+export const maybeNum = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 /**
@@ -508,35 +595,45 @@ function importedPlayerMove(columns: Record<string, unknown>): PlayerMoveMode {
   return columns.playerMoveLocked === false ? 'explore' : 'stop';
 }
 
-export async function importScene(
-  prisma: PrismaClient,
-  file: unknown,
-  options: SceneImportOptions,
-): Promise<{ id: string; droppedBindings: number } | ImportRefusal> {
-  const refusal = archiveRefusal(file, 'scene');
-  if (refusal) return { code: refusal };
-  const payload = (file as ArchiveFile<Partial<SceneArchive>>).payload;
-  if (!payload || typeof payload !== 'object') return { code: 'ARCHIVE_MALFORMED' };
-  const sceneColumns = (payload.scene ?? {}) as Record<string, unknown>;
-  const name = (options.name ?? str(sceneColumns.name)).trim();
-  if (!name) return { code: 'ARCHIVE_EMPTY' };
+/**
+ * Jak wstawić scenę z pliku — jedna droga dla pojedynczej sceny (33) i dla
+ * scen w kampanii (57a). Różnią się wyłącznie tym, skąd biorą nowe id
+ * i co robią z odnośnikiem do karty i gracza.
+ */
+export interface SceneInsertOptions {
+  campaignId: string;
+  actorId: string;
+  name: string;
+  active: boolean;
+  /** Id nowej sceny; brak — nada je baza. */
+  id?: string;
+  /** Nowe id figury dla starego; brak — nada je baza. */
+  tokenId?: (oldId: string | null) => string | undefined;
+  /** Karta figury w nowym miejscu albo `null`, gdy jej tu nie ma. */
+  character: (oldId: string) => string | null;
+  /** Gracz figury w nowym miejscu albo `null`, gdy go tu nie ma. */
+  owner: (oldId: string) => string | null;
+  /** Ściany, których nowe id trzeba znać (drzwi Sieci); reszta idzie hurtem. */
+  wallIds?: Map<number, number | null>;
+  /** Przepisanie kolumn JSON-owych (id w środku); brak — bez zmian. */
+  remap?: (value: unknown) => unknown;
+}
 
-  const tokenRows = asRows(payload.tokens);
-  const kept = await survivingIds(
-    prisma,
-    options.campaignId,
-    tokenRows.map((row) => maybeStr(row.characterId)).filter((id): id is string => id !== null),
-    tokenRows.map((row) => maybeStr(row.ownerId)).filter((id): id is string => id !== null),
-  );
+export async function insertScene(
+  db: ArchiveDb,
+  payload: Partial<SceneArchive>,
+  options: SceneInsertOptions,
+): Promise<{ id: string; droppedBindings: number }> {
+  const sceneColumns = (payload.scene ?? {}) as Record<string, unknown>;
+  const remap = options.remap ?? ((value: unknown) => value);
   let droppedBindings = 0;
 
-  // Scena wjeżdża zawsze jako NIEaktywna: import ma dołożyć mapę do listy,
-  // a nie przestawić stół w środku sesji.
-  const scene = await prisma.scene.create({
+  const scene = await db.scene.create({
     data: {
+      ...(options.id ? { id: options.id } : {}),
       campaignId: options.campaignId,
-      name,
-      active: false,
+      name: options.name,
+      active: options.active,
       backgroundUrl: maybeStr(sceneColumns.backgroundUrl),
       backgroundWidth: maybeNum(sceneColumns.backgroundWidth),
       backgroundHeight: maybeNum(sceneColumns.backgroundHeight),
@@ -567,15 +664,18 @@ export async function importScene(
   });
   const sceneId = scene.id;
 
+  const tokenRows = asRows(payload.tokens);
   if (tokenRows.length) {
-    await prisma.token.createMany({
+    await db.token.createMany({
       data: tokenRows.map((row) => {
         const characterId = maybeStr(row.characterId);
         const ownerId = maybeStr(row.ownerId);
-        const character = characterId && kept.characters.has(characterId) ? characterId : null;
-        const owner = ownerId && kept.owners.has(ownerId) ? ownerId : null;
+        const character = characterId ? options.character(characterId) : null;
+        const owner = ownerId ? options.owner(ownerId) : null;
         if ((characterId && !character) || (ownerId && !owner)) droppedBindings += 1;
+        const id = options.tokenId?.(maybeStr(row.id));
         return {
+          ...(id ? { id } : {}),
           sceneId,
           name: str(row.name, 'Figura'),
           publicName: maybeStr(row.publicName),
@@ -588,8 +688,8 @@ export async function importScene(
           characterId: character,
           hpCurrent: maybeNum(row.hpCurrent),
           hpMax: maybeNum(row.hpMax),
-          statuses: stringifyJsonColumn(row.statuses, '[]'),
-          statusData: stringifyJsonColumn(row.statusData, '{}'),
+          statuses: stringifyJsonColumn(remap(row.statuses), '[]'),
+          statusData: stringifyJsonColumn(remap(row.statusData), '{}'),
           facing: maybeNum(row.facing),
           visionRange: maybeNum(row.visionRange),
           sharedVision: typeof row.sharedVision === 'boolean' ? row.sharedVision : null,
@@ -604,31 +704,40 @@ export async function importScene(
     });
   }
 
+  const wallData = (row: Record<string, unknown>) => ({
+    sceneId,
+    kind: str(row.kind, 'wall'),
+    open: bool(row.open),
+    playerToggle: bool(row.playerToggle),
+    locked: bool(row.locked),
+    // Plik sprzed etapu 42b nie ma tej kolumny — bariera wraca bez pancerza,
+    // tak jak stała. Liczba spoza zakresu nie wchodzi do bazy.
+    armor: sanitizeWallArmor(row.armor) ?? 0,
+    hidesFigures: row.hidesFigures === true,
+    concealPenalty: sanitizeConcealPenalty(row.concealPenalty) ?? -4,
+    x1: num(row.x1),
+    y1: num(row.y1),
+    x2: num(row.x2),
+    y2: num(row.y2),
+  });
   const walls = asRows(payload.walls);
-  if (walls.length) {
-    await prisma.wall.createMany({
-      data: walls.map((row) => ({
-        sceneId,
-        kind: str(row.kind, 'wall'),
-        open: bool(row.open),
-        playerToggle: bool(row.playerToggle),
-        locked: bool(row.locked),
-        // Plik sprzed etapu 42b nie ma tej kolumny — bariera wraca bez pancerza,
-        // tak jak stała. Liczba spoza zakresu nie wchodzi do bazy.
-        armor: sanitizeWallArmor(row.armor) ?? 0,
-        hidesFigures: row.hidesFigures === true,
-        concealPenalty: sanitizeConcealPenalty(row.concealPenalty) ?? -4,
-        x1: num(row.x1),
-        y1: num(row.y1),
-        x2: num(row.x2),
-        y2: num(row.y2),
-      })),
-    });
+  const tracked = options.wallIds;
+  const plainWalls = tracked ? walls.filter((row) => !tracked.has(num(row.id, -1))) : walls;
+  if (plainWalls.length) await db.wall.createMany({ data: plainWalls.map(wallData) });
+  if (tracked) {
+    // Ściana, na którą wskazują drzwi Sieci, wchodzi pojedynczo — jej nowe id
+    // trafia do mapy, zanim architektura zostanie zapisana.
+    for (const row of walls) {
+      const oldId = num(row.id, -1);
+      if (!tracked.has(oldId)) continue;
+      const created = await db.wall.create({ data: wallData(row), select: { id: true } });
+      tracked.set(oldId, created.id);
+    }
   }
 
   const covers = asRows(payload.covers);
   if (covers.length) {
-    await prisma.cover.createMany({
+    await db.cover.createMany({
       data: covers.map((row) => ({
         sceneId,
         typeId: str(row.typeId),
@@ -646,7 +755,7 @@ export async function importScene(
 
   const lights = asRows(payload.lights);
   if (lights.length) {
-    await prisma.mapLight.createMany({
+    await db.mapLight.createMany({
       data: lights.map((row) => ({
         sceneId,
         x: num(row.x),
@@ -662,7 +771,7 @@ export async function importScene(
 
   const notes = asRows(payload.notes);
   if (notes.length) {
-    await prisma.mapNote.createMany({
+    await db.mapNote.createMany({
       data: notes.map((row) => ({
         sceneId,
         x: num(row.x),
@@ -675,7 +784,7 @@ export async function importScene(
 
   const drawings = asRows(payload.drawings);
   if (drawings.length) {
-    await prisma.mapDrawing.createMany({
+    await db.mapDrawing.createMany({
       data: drawings.map((row) => ({
         sceneId,
         // Rysunek MUSI mieć autora (klucz obcy, kaskada) — autora z innej
@@ -693,7 +802,7 @@ export async function importScene(
 
   const fog = asRows(payload.fog);
   if (fog.length) {
-    await prisma.fogShape.createMany({
+    await db.fogShape.createMany({
       data: fog.map((row) => ({
         sceneId,
         mode: str(row.mode, 'reveal'),
@@ -706,7 +815,7 @@ export async function importScene(
 
   const smoke = asRows(payload.smoke);
   if (smoke.length) {
-    await prisma.smoke.createMany({
+    await db.smoke.createMany({
       data: smoke.map((row) => ({
         sceneId,
         name: str(row.name, 'Dym'),
@@ -721,7 +830,7 @@ export async function importScene(
   const exploration = payload.exploration;
   if (exploration && typeof exploration === 'object') {
     const row = exploration as Record<string, unknown>;
-    await prisma.sceneExploration.create({
+    await db.sceneExploration.create({
       data: {
         sceneId,
         cell: num(row.cell, 1),
@@ -733,6 +842,38 @@ export async function importScene(
   }
 
   return { id: sceneId, droppedBindings };
+}
+
+export async function importScene(
+  prisma: PrismaClient,
+  file: unknown,
+  options: SceneImportOptions,
+): Promise<{ id: string; droppedBindings: number } | ImportRefusal> {
+  const refusal = archiveRefusal(file, 'scene');
+  if (refusal) return { code: refusal };
+  const payload = (file as ArchiveFile<Partial<SceneArchive>>).payload;
+  if (!payload || typeof payload !== 'object') return { code: 'ARCHIVE_MALFORMED' };
+  const sceneColumns = (payload.scene ?? {}) as Record<string, unknown>;
+  const name = (options.name ?? str(sceneColumns.name)).trim();
+  if (!name) return { code: 'ARCHIVE_EMPTY' };
+
+  const tokenRows = asRows(payload.tokens);
+  const kept = await survivingIds(
+    prisma,
+    options.campaignId,
+    tokenRows.map((row) => maybeStr(row.characterId)).filter((id): id is string => id !== null),
+    tokenRows.map((row) => maybeStr(row.ownerId)).filter((id): id is string => id !== null),
+  );
+  // Scena wjeżdża zawsze jako NIEaktywna: import ma dołożyć mapę do listy,
+  // a nie przestawić stół w środku sesji.
+  return insertScene(prisma, payload, {
+    campaignId: options.campaignId,
+    actorId: options.actorId,
+    name,
+    active: false,
+    character: (id) => (kept.characters.has(id) ? id : null),
+    owner: (id) => (kept.owners.has(id) ? id : null),
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -749,13 +890,22 @@ export interface CampaignArchive {
     ownerId: string | null;
     /** Etap 49a: wzorzec, z którego zrobiono kartę. */
     templateId?: string | null;
+    /** Etap 57a: kreator dał już figurę na mapę (naprawa 3d). */
+    creationTokenDone?: boolean;
+    /** Etap 57a: karta, która już czekała na gracza w kampanii źródłowej. */
+    pendingOwner?: { id: string | null; name: string } | null;
   })[];
-  scenes: (SceneArchive & { active: boolean })[];
+  /** `id` od 57a — boty i strefy wskazują scenę po id. */
+  scenes: (SceneArchive & { active: boolean; id?: string })[];
   bots: Record<string, unknown>[];
   compendium: Record<string, unknown>[];
   knowledge: Record<string, unknown>[];
   journal: Record<string, unknown>[];
   handouts: Record<string, unknown>[];
+  /** Etap 57a: komu handout udostępniono (`handoutId`, `userId`). */
+  handoutShares?: Record<string, unknown>[];
+  /** Etap 57a: handouty przypięte do wpisów dziennika (`entryId`, `handoutId`). */
+  journalHandouts?: Record<string, unknown>[];
   relations: Record<string, unknown>[];
   architectures: Record<string, unknown>[];
   tokenAssets: Record<string, unknown>[];
@@ -765,6 +915,8 @@ export interface CampaignArchive {
    * w kartach. Archiwum sprzed etapu nie ma pola, czyli „brak sklepów”.
    */
   merchants?: Record<string, unknown>[];
+  /** Etap 57a: tabele losowe z wierszami (`rows`). Brak pola — brak tabel. */
+  randomTables?: Record<string, unknown>[];
   /** Log czatu — pomijany, gdy MG tak każe (to 4/5 objętości bazy). */
   chat: Record<string, unknown>[] | null;
 }
@@ -773,6 +925,24 @@ export interface CampaignExportOptions {
   /** Czy zabrać log czatu (decyzja MG z 05.09: domyślnie tak, z przełącznikiem). */
   includeChat: boolean;
 }
+
+/**
+ * Czego zrzut kampanii **nie** niesie i dlaczego — przegląd `schema.prisma`
+ * model po modelu z 22.10 (etap 57a). Wszystko inne z `campaignId` jedzie:
+ * kampania (kolumny gry), karty z historią eurodolców i PD, sceny z figurami,
+ * ścianami, osłonami, światłami, notatkami, rysunkami, mgłą, dymem,
+ * eksploracją, punktami dostępu i strefami bronionymi, boty z relacjami,
+ * kompendium, baza wiedzy, dziennik z przypiętymi handoutami, handouty
+ * z udostępnieniami, architektury Sieci, biblioteki żetonów i portretów,
+ * sklepy, tabele losowe i (na życzenie) czat.
+ */
+export const CAMPAIGN_ARCHIVE_OMITTED = [
+  'Konta i hasła — plik niesie wyłącznie id, imię i rolę, nigdy skrótu hasła.',
+  'Członkostwo, zaproszenia i sesje logowania — należą do kampanii, nie do jej zawartości; wczytana kampania zaprasza graczy od nowa.',
+  'Dziennik sesji gry (GameSession) — historia slotów serwera, nie stan gry.',
+  'Szkice kreatora (CharacterDraft) — niedokończone postaci graczy zostają przy kampanii, w której je zaczęto.',
+  'Trwające walki i przebiegi w Sieci — stan chwili, umiera razem z nią.',
+];
 
 export async function exportCampaign(
   prisma: PrismaClient,
@@ -803,9 +973,21 @@ export async function exportCampaign(
   const [characterRows, sceneRows, members] = await Promise.all([
     prisma.character.findMany({
       where: { campaignId },
-      select: { id: true, ownerId: true, templateId: true },
+      select: {
+        id: true,
+        ownerId: true,
+        templateId: true,
+        creationTokenDone: true,
+        pendingOwnerId: true,
+        pendingOwnerName: true,
+      },
+      orderBy: { createdAt: 'asc' },
     }),
-    prisma.scene.findMany({ where: { campaignId }, select: { id: true, active: true } }),
+    prisma.scene.findMany({
+      where: { campaignId },
+      select: { id: true, active: true },
+      orderBy: { createdAt: 'asc' },
+    }),
     prisma.campaignMember.findMany({
       where: { campaignId },
       select: { userId: true, joinedAt: true },
@@ -821,13 +1003,56 @@ export async function exportCampaign(
         id: row.id,
         ownerId: row.ownerId,
         templateId: row.templateId,
+        creationTokenDone: row.creationTokenDone,
+        pendingOwner: row.pendingOwnerName
+          ? { id: row.pendingOwnerId, name: row.pendingOwnerName }
+          : null,
       });
     }
   }
   const scenes: CampaignArchive['scenes'] = [];
   for (const row of sceneRows) {
     const file = await exportScene(prisma, row.id);
-    if (file) scenes.push({ ...file.payload, active: row.active });
+    if (!file) continue;
+    const [accessPoints, defenseZones] = await Promise.all([
+      prisma.netAccessPoint.findMany({
+        where: { sceneId: row.id },
+        select: { architectureId: true, name: true, x: true, y: true, hidden: true, notes: true },
+      }),
+      prisma.defenseZone.findMany({
+        where: { sceneId: row.id },
+        select: {
+          entryId: true,
+          name: true,
+          x: true,
+          y: true,
+          width: true,
+          height: true,
+          armed: true,
+          hidden: true,
+          hpMax: true,
+          hpCurrent: true,
+          exempt: true,
+          sightings: true,
+          tokenId: true,
+          architectureId: true,
+          floorId: true,
+          deviceId: true,
+          notes: true,
+        },
+      }),
+    ]);
+    scenes.push({
+      ...file.payload,
+      id: row.id,
+      active: row.active,
+      accessPoints,
+      defenseZones: defenseZones.map((zone) => ({
+        ...zone,
+        exempt: parseJsonColumn(zone.exempt),
+        sightings: parseJsonColumn(zone.sightings),
+      })),
+    });
   }
 
   const [bots, compendium, knowledge, journal, handouts, relations, architectures] =
@@ -842,11 +1067,24 @@ export async function exportCampaign(
       prisma.botRelation.findMany({ where: { bot: { campaignId } } }),
       prisma.netArchitecture.findMany({ where: { campaignId } }),
     ]);
-  const [tokenAssets, portraitAssets, merchants] = await Promise.all([
-    prisma.tokenAsset.findMany({ where: { campaignId } }),
-    prisma.portraitAsset.findMany({ where: { campaignId } }),
-    prisma.merchant.findMany({ where: { campaignId } }),
-  ]);
+  const [tokenAssets, portraitAssets, merchants, randomTables, handoutShares, journalHandouts] =
+    await Promise.all([
+      prisma.tokenAsset.findMany({ where: { campaignId } }),
+      prisma.portraitAsset.findMany({ where: { campaignId } }),
+      prisma.merchant.findMany({ where: { campaignId } }),
+      prisma.randomTable.findMany({
+        where: { campaignId },
+        include: { rows: { orderBy: { position: 'asc' } } },
+      }),
+      prisma.handoutShare.findMany({
+        where: { handout: { campaignId } },
+        select: { handoutId: true, userId: true, sharedAt: true },
+      }),
+      prisma.journalHandout.findMany({
+        where: { entry: { campaignId } },
+        select: { entryId: true, handoutId: true },
+      }),
+    ]);
 
   const chat = options.includeChat
     ? await prisma.chatMessage.findMany({ where: { campaignId }, orderBy: { id: 'asc' } })
@@ -873,22 +1111,24 @@ export async function exportCampaign(
     knowledge: plain(knowledge),
     journal: plain(journal),
     handouts: plain(handouts),
+    handoutShares: plain(handoutShares),
+    journalHandouts: plain(journalHandouts),
     relations: plain(relations),
     architectures: plain(architectures),
     tokenAssets: plain(tokenAssets),
     portraitAssets: plain(portraitAssets),
     merchants: plain(merchants),
+    randomTables: plain(randomTables),
     chat: chat ? plain(chat) : null,
   };
 
-  const omitted = [
-    'Konta i hasła — plik niesie wyłącznie nazwę i rolę, nigdy skrótu hasła.',
-    'Sesje logowania i zaproszenia — wygasają, więc nie ma czego przenosić.',
-    'Trwające walki i przebiegi w Sieci — stan chwili, umiera razem z nią.',
-    'Pliki graficzne — w manifeście jest ich lista, same pliki leżą w `uploads/`.',
-  ];
+  const omitted = [...CAMPAIGN_ARCHIVE_OMITTED];
   if (!options.includeChat) {
     omitted.unshift('Czat — pominięty na życzenie MG przy eksporcie.');
+  } else {
+    omitted.push(
+      'Czat przy wczytaniu — log jedzie w pliku do przeczytania, ale nowa kampania zaczyna z pustym czatem.',
+    );
   }
 
   const manifest = buildManifest(
@@ -905,6 +1145,7 @@ export async function exportCampaign(
       handouts: payload.handouts.length,
       architectures: payload.architectures.length,
       merchants: merchants.length,
+      randomTables: randomTables.length,
       chat: payload.chat?.length ?? 0,
     },
     omitted,
@@ -933,7 +1174,12 @@ const DIACRITICS: Readonly<Record<string, string>> = {
   ż: 'z',
 };
 
-export function archiveFileName(kind: ArchiveKind, label: string, now = new Date()): string {
+export function archiveFileName(
+  kind: ArchiveKind,
+  label: string,
+  now = new Date(),
+  ext: 'json' | 'zip' = 'json',
+): string {
   const folded = label
     .toLowerCase()
     .replace(/[ąćęłńóśźż]/g, (char) => DIACRITICS[char] ?? char)
@@ -941,7 +1187,7 @@ export function archiveFileName(kind: ArchiveKind, label: string, now = new Date
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
   const day = now.toISOString().slice(0, 10);
-  return `${kind}-${folded || kind}-${day}.json`;
+  return `${kind}-${folded || kind}-${day}.${ext}`;
 }
 
 /**
@@ -953,9 +1199,10 @@ export function archiveContentDisposition(
   kind: ArchiveKind,
   label: string,
   now = new Date(),
+  ext: 'json' | 'zip' = 'json',
 ): string {
-  const ascii = archiveFileName(kind, label, now);
+  const ascii = archiveFileName(kind, label, now, ext);
   const day = now.toISOString().slice(0, 10);
-  const pretty = `${kind}-${label.trim().slice(0, 40) || kind}-${day}.json`;
+  const pretty = `${kind}-${label.trim().slice(0, 40) || kind}-${day}.${ext}`;
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(pretty)}`;
 }

@@ -6,6 +6,9 @@ import type { Campaign, Invitation } from '../generated/prisma/client.js';
 import { createSession, toSessionUser } from '../auth/sessions.js';
 import { invitationState, playerNameTaken } from '../invitations.js';
 import { refuseRateLimited, setSessionCookie, toCampaignSummary } from './helpers.js';
+import type { RealtimeDeps } from '../realtime/registry.js';
+import { emitCharacterUpsert, toCharacterView } from '../realtime/character-io.js';
+import { moveCharacterTokensToOwner } from '../realtime/tokens.js';
 
 type LoadedInvitation = Invitation & { campaign: Campaign };
 
@@ -41,7 +44,15 @@ async function requireUsableInvitation(
   return invitation;
 }
 
-export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void {
+/**
+ * `realtime` — gniazda powstają po trasach logowania, więc trasa dostaje je
+ * przez funkcję: karta przypisana z linku (57a) musi dojść do stołu MG.
+ */
+export function registerJoinRoutes(
+  app: FastifyInstance,
+  ctx: AppContext,
+  realtime: () => RealtimeDeps | undefined = () => undefined,
+): void {
   app.get('/api/join/:token', async (request, reply) => {
     // Zgadywanie zaproszeń liczy się do tego samego limitu co złe hasła (#12).
     if (refuseRateLimited(ctx, request, reply)) return reply;
@@ -87,6 +98,18 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
             data: { campaignId: invitation.campaignId, userId: user.id },
           });
           userId = user.id;
+          // Etap 57a: „ta karta jest twoja” — karta z pliku czekająca na gracza.
+          // Przypisana albo skasowana w międzyczasie po prostu nie wchodzi.
+          if (invitation.characterId) {
+            await tx.character.updateMany({
+              where: {
+                id: invitation.characterId,
+                campaignId: invitation.campaignId,
+                ownerId: null,
+              },
+              data: { ownerId: user.id, pendingOwnerName: null, pendingOwnerId: null },
+            });
+          }
         }
         const used = await tx.invitation.updateMany({
           where: { id: invitation.id, usedAt: null },
@@ -104,6 +127,17 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
     if (outcome === 'INVITATION_USED') return reply.code(410).send({ error: outcome });
     if (outcome === 'INVALID_INVITATION') return reply.code(404).send({ error: outcome });
     if (outcome === 'NAME_TAKEN') return reply.code(409).send({ error: outcome });
+
+    const deps = realtime();
+    if (!invitation.renewal && invitation.characterId && deps) {
+      const card = await ctx.prisma.character.findFirst({
+        where: { id: invitation.characterId, ownerId: outcome.id },
+      });
+      if (card) {
+        await moveCharacterTokensToOwner(deps, card.campaignId, card.id, null, outcome.id);
+        await emitCharacterUpsert(deps, card.campaignId, toCharacterView(card, ctx.cpred));
+      }
+    }
 
     const session = await createSession(ctx.prisma, outcome.id, ctx.config.sessionTtlDays);
     setSessionCookie(reply, session);

@@ -101,6 +101,8 @@ export interface InvitationSummary {
   renewal: boolean;
   usedAt: string | null;
   state: InvitationState;
+  /** Etap 57a: karta, którą link przypisze graczowi przy wejściu („ta karta jest twoja”). */
+  characterId?: string | null;
 }
 
 /** A named link is valid this long when nobody uses it (decision of 03.10). */
@@ -121,6 +123,15 @@ export interface CampaignDetail extends CampaignSummary {
   createdAt: string;
   players: PlayerSummary[];
   invitations: InvitationSummary[];
+  /** Etap 57a: karty z pliku, które czekają na gracza — do wyboru przy „Nowy gracz”. */
+  pendingCards?: PendingCardSummary[];
+}
+
+/** Karta „czeka na gracza” (57a): imię postaci i imię gracza z pliku. */
+export interface PendingCardSummary {
+  id: string;
+  name: string;
+  pendingOwner: string;
 }
 
 /** Standard acknowledgement payload for Socket.IO events. */

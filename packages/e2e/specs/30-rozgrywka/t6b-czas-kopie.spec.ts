@@ -8,6 +8,7 @@ import { apiGm, canariesInDatabase, invite, ONLY_FROM } from '../../fixtures/noc
 import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
 import { emitAck } from '../../fixtures/socket.ts';
+import { readPackage } from '../../fixtures/archive.ts';
 import { createCampaign, createInvitation, say, shakeCup } from '../../fixtures/table.ts';
 import {
   cellCentre,
@@ -28,6 +29,7 @@ import {
   sheet,
   token,
   beginFight,
+  fightPick,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -55,13 +57,13 @@ import { BACKUP_DIR, E2E_DIR } from '../../instance/paths.ts';
  *   (`@llm`) udostępnione stołowi, jedna propozycja relacji przyjęta, screamsheet
  *   o strzelaninie pod bramą zapisany i udostępniony obojgu.
  * - **6.8a** eksport kampanii (z czatem i bez), kart Kowala i Iskry oraz sceny
- *   „Brama” z zakładki „Kopie”; gracz zrzutu nie dostanie.
+ *   „Brama” z zakładki „Kopie” — od 57a paczki ZIP z grafikami; gracz zrzutu nie dostanie.
  * - **6.9** kopia z harmonogramu (`BACKUP_INTERVAL_MINUTES=1`), odtworzenie na
  *   czystym katalogu (bez bazy i uploadów), stół wraca tymi samymi ciasteczkami.
  *   Punkt `po-T6`.
- * - **6.8b** import na **pustej** instancji: najpierw bez plików (notujemy, co
- *   pęka — obrazy i powiązania figur z kartami), potem z plikami z `manifest.files`
- *   skopiowanymi do `uploads/`, jak przy przenosinach na VPS (Z10).
+ * - **6.8b** import na **pustej** instancji jednym „Wczytaj z pliku…”: od 57a
+ *   mapa, żetony i portrety przyjeżdżają w paczce, karty graczy czekają na gracza,
+ *   a figury sceny tracą powiązanie z kartami (nowe id — zachowanie etapu 33, Z10).
  *
  * Decyzje MG z 30.09 (sesja T6b): Iskra stabilizuje; efekt z formularza MG;
  * streszczenie i gazeta jawne; import „obie drogi” — odpięte figury to zachowanie
@@ -83,16 +85,6 @@ type Card = {
   cyberware: Row[];
   armor: Row[];
 };
-type Manifest = {
-  app: string;
-  kind: string;
-  version: number;
-  campaignName: string;
-  counts: Record<string, number>;
-  omitted: string[];
-  files: string[];
-};
-type ArchiveFile = { manifest: Manifest; payload: Record<string, unknown> };
 
 /** Pliki wymiany i teksty z modelu — poza repo, w `.e2e/tmp/t6b`. */
 const OUT_DIR = join(E2E_DIR, 'tmp', 't6b');
@@ -129,8 +121,8 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     )!.n;
   /** Pliki pobrane w 6.8a: nazwa → ścieżka. */
   const exported = new Map<string, string>();
-  const readArchive = (name: string) =>
-    JSON.parse(readFileSync(exported.get(name)!, 'utf8')) as ArchiveFile;
+  /** Paczka ZIP z „Kopii” (etap 57a): manifest, dane i pliki graficzne. */
+  const readArchive = (name: string) => readPackage(exported.get(name)!);
 
   async function openClock(actor: Actor) {
     if (
@@ -379,8 +371,8 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     await page.getByRole('button', { name: 'Walka', exact: true }).first().click();
     // Tylko drużyna — statyści z „Knajpy” zostają poza kolejką.
     await page.getByRole('button', { name: 'Tylko postacie graczy' }).click();
-    await expect(page.getByRole('checkbox', { name: 'Kowal', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Iskra', exact: true })).toBeChecked();
+    await expect(fightPick(page, 'Kowal')).toBeChecked();
+    await expect(fightPick(page, 'Iskra')).toBeChecked();
     await page.getByRole('button', { name: /Załóż starcie/ }).click();
     await expect.poll(() => combatants().length).toBe(2);
 
@@ -761,33 +753,30 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
   test('6.8a eksport z „Kopii”: kampania z czatem i bez, karty Kowala i Iskry, scena „Brama”', async () => {
     const page = mg.page;
     await page.getByRole('button', { name: 'Kopie', exact: true }).click();
-    const panel = page.locator('.archive-section', { hasText: 'Zrzut całej kampanii' });
+    // Etap 57a: jedna sekcja „Pobierz kopię”, każda kopia to paczka ZIP z grafikami.
+    const panel = page.locator('.archive-section', { hasText: 'Pobierz kopię' });
     const chatBox = panel.getByRole('checkbox');
     await expect(chatBox).toBeChecked();
-    await download('kampania-z-czatem.json', () =>
-      panel.getByRole('button', { name: 'Pobierz zrzut' }).click(),
+    await download('kampania-z-czatem.zip', () =>
+      panel.getByRole('button', { name: 'Pobierz kampanię' }).click(),
     );
     await chatBox.uncheck();
-    await download('kampania-bez-czatu.json', () =>
-      panel.getByRole('button', { name: 'Pobierz zrzut' }).click(),
+    await download('kampania-bez-czatu.zip', () =>
+      panel.getByRole('button', { name: 'Pobierz kampanię' }).click(),
     );
-    const cards = page.locator('.archive-section', { hasText: 'Karta postaci' });
     for (const name of ['Kowal', 'Iskra']) {
-      await cards.getByLabel('Karta do pobrania').selectOption({ label: name });
-      await download(`karta-${name}.json`, () =>
-        cards.getByRole('button', { name: 'Pobierz kartę' }).click(),
+      await panel.getByLabel('Karta do pobrania').selectOption({ label: name });
+      await download(`karta-${name}.zip`, () =>
+        panel.getByRole('button', { name: 'Pobierz kartę' }).click(),
       );
     }
-    const scenes = page.locator('.archive-section', { hasText: 'Scena' }).filter({
-      has: page.getByLabel('Scena do pobrania'),
-    });
-    await scenes.getByLabel('Scena do pobrania').selectOption({ label: 'Brama' });
-    await download('scena-Brama.json', () =>
-      scenes.getByRole('button', { name: 'Pobierz scenę' }).click(),
+    await panel.getByLabel('Scena do pobrania').selectOption({ label: 'Brama' });
+    await download('scena-Brama.zip', () =>
+      panel.getByRole('button', { name: 'Pobierz scenę' }).click(),
     );
 
-    const withChat = readArchive('kampania-z-czatem.json');
-    const noChat = readArchive('kampania-bez-czatu.json');
+    const withChat = await readArchive('kampania-z-czatem.zip');
+    const noChat = await readArchive('kampania-bez-czatu.zip');
     const sizes = Object.fromEntries(
       [...exported].map(([name, path]) => [name, readFileSync(path).length]),
     );
@@ -811,15 +800,19 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
       )!.n,
     );
     expect(noChat.manifest.omitted.join(' ')).toMatch(/Czat/);
-    expect(sizes['kampania-bez-czatu.json']!).toBeLessThan(sizes['kampania-z-czatem.json']!);
+    expect(sizes['kampania-bez-czatu.zip']!).toBeLessThan(sizes['kampania-z-czatem.zip']!);
     // Zrzut to cała prawda o kampanii — łącznie z tajemnicami MG — ale bez kont i haseł.
-    const dump = readFileSync(exported.get('kampania-z-czatem.json')!, 'utf8');
+    const dump = JSON.stringify(withChat);
     expect(dump).toContain('dziennik-MG');
     expect(dump).not.toMatch(/passwordHash|"password"|cookie/i);
     expect(withChat.manifest.files.length).toBeGreaterThan(0);
-    const scene = readArchive('scena-Brama.json');
+    // Grafiki jadą w paczce (57a) — każda z listy manifestu leży w `files/`.
+    expect(withChat.files.length).toBeGreaterThan(0);
+    expect(withChat.files.length).toBe(new Set(withChat.manifest.entries.map((e) => e.path)).size);
+    const scene = await readArchive('scena-Brama.zip');
     expect(scene.manifest.kind).toBe('scene');
     expect(scene.manifest.files.some((f) => f.includes('/uploads/'))).toBe(true);
+    expect(scene.files.some((f) => f.startsWith('files/maps/'))).toBe(true);
 
     // Gracz zrzutu nie dostanie — kontrola pozytywna MG obok.
     const gmResponse = await mg.page.request.get('/api/archive/campaign?chat=0');
@@ -989,7 +982,7 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     expect(stateFingerprint()).toEqual(state);
   });
 
-  test('6.8b import na pustej instancji: karty i scena bez grafiki z innej instancji (44b, Z10)', async ({
+  test('6.8b import na pustej instancji: karty i scena z grafikami z paczki (57a, Z10)', async ({
     cast,
   }) => {
     test.setTimeout(5 * 60_000);
@@ -1017,25 +1010,19 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
       .toBe('authenticated');
     const page = mg.page;
     await page.getByRole('button', { name: 'Kopie', exact: true }).click();
-    const cards = page.locator('.archive-section', { hasText: 'Karta postaci' });
+    // Etap 57a: jedno „Wczytaj z pliku…” — rodzaj rozpoznaje serwer z manifestu.
+    const input = page.getByLabel('Plik kopii do wczytania');
     const notes: Record<string, string> = {};
     for (const name of ['Kowal', 'Iskra']) {
-      await cards
-        .getByLabel('Plik karty do wczytania')
-        .setInputFiles(exported.get(`karta-${name}.json`)!);
+      await input.setInputFiles(exported.get(`karta-${name}.zip`)!);
       // Etap 55b: wynik wczytania to informacja w kanale nad mapą, nie zdanie w panelu.
-      const done = page.locator('.notice .notice-text', { hasText: `Wczytano „${name}"` });
+      const done = page.locator('.notice .notice-text', { hasText: `Wczytano kartę „${name}”` });
       await expect(done).toBeVisible();
       notes[name] = (await done.textContent()) ?? '';
     }
-    const scenes = page
-      .locator('.archive-section')
-      .filter({ has: page.getByLabel('Plik sceny do wczytania') });
-    await scenes
-      .getByLabel('Plik sceny do wczytania')
-      .setInputFiles(exported.get('scena-Brama.json')!);
-    const sceneDone = page.locator('.notice[data-notice-topic="scene"] .notice-text', {
-      hasText: 'Wczytano',
+    await input.setInputFiles(exported.get('scena-Brama.zip')!);
+    const sceneDone = page.locator('.notice[data-notice-topic="archive"] .notice-text', {
+      hasText: 'Wczytano scenę',
     });
     await expect(sceneDone).toBeVisible();
     notes.Brama = (await sceneDone.textContent()) ?? '';
@@ -1052,13 +1039,28 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
       cyberware: c.cyberware.map((g) => g.name).sort(),
       injuries: c.criticalInjuries.map((i) => i.name).sort(),
     });
-    for (const name of ['Kowal', 'Iskra'] as const) {
-      const row = queryOne<{ campaignId: string; ownerId: string | null; data: string }>(
-        'SELECT campaignId, ownerId, data FROM Character WHERE name = ?',
+    for (const [name, player] of [
+      ['Kowal', 'Marek'],
+      ['Iskra', 'Ola'],
+    ] as const) {
+      const row = queryOne<{
+        campaignId: string;
+        ownerId: string | null;
+        pendingOwnerName: string | null;
+        portraitUrl: string | null;
+        data: string;
+      }>(
+        'SELECT campaignId, ownerId, pendingOwnerName, portraitUrl, data FROM Character WHERE name = ?',
         name,
       )!;
       expect(row.campaignId).toBe(fresh);
       expect(pick(JSON.parse(row.data) as Card), name).toEqual(pick(originals[name]));
+      // Gracza z pliku na tej instancji nie ma — karta czeka na niego (57a, decyzja 3).
+      expect(row, name).toMatchObject({ ownerId: null, pendingOwnerName: player });
+      if (row.portraitUrl) {
+        expect(row.portraitUrl.startsWith(`/uploads/campaigns/${fresh}/`), name).toBe(true);
+        expect((await page.request.get(row.portraitUrl)).status(), name).toBe(200);
+      }
     }
 
     // Scena: ściany i figury są; powiązania figur z kartami i graczami — nie (nowe id).
@@ -1080,12 +1082,12 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     );
     const bound = tokens.filter((t) => t.characterId !== null).length;
 
-    // Od 44b (decyzja MG z 03.10) import zeruje adresy plików, których importujący
-    // nie może przeczytać albo których nie ma na dysku — na pustej instancji grafika
-    // nie jedzie wcale, a pliki z `manifest.files` skopiowane potem niczego nie wskrzeszą
-    // (dawna „droga druga”: 5 plików ręką i wszystko 200). Dopisek do Z10.
-    const images = [scene.backgroundUrl, ...tokens.map((t) => t.imageUrl)];
-    const manifest = readArchive('scena-Brama.json').manifest;
+    // Od 57a grafika jedzie w paczce: na pustej instancji mapa i żetony wstają
+    // z `files/` w katalogu nowej kampanii (do 57a import je zerował — Z10).
+    const images = [scene.backgroundUrl, ...tokens.map((t) => t.imageUrl)].filter(
+      (url): url is string => typeof url === 'string' && url.length > 0,
+    );
+    const manifest = (await readArchive('scena-Brama.zip')).manifest;
     test.info().annotations.push({
       type: 'import na pustej instancji',
       description: JSON.stringify({
@@ -1099,10 +1101,13 @@ test.describe.serial('T6b: czas, kronika, eksport, kopie', () => {
     });
     expect(bound, 'karty z pliku dostały nowe id — figury tracą powiązanie (etap 33, Z10)').toBe(0);
     expect(manifest.files.length, 'plik wymiany dalej wylicza pliki').toBeGreaterThan(0);
-    expect(
-      images.filter((url) => typeof url === 'string' && url.length > 0),
-      'grafika z innej instancji odpada przy imporcie (44b)',
-    ).toEqual([]);
+    expect(scene.backgroundUrl, 'mapa „Bramy” przyjechała w paczce').toMatch(
+      new RegExp(`^/uploads/campaigns/${fresh}/maps/`),
+    );
+    for (const url of new Set(images)) {
+      expect(url.startsWith(`/uploads/campaigns/${fresh}/`), url).toBe(true);
+      expect((await page.request.get(url)).status(), url).toBe(200);
+    }
   });
 
   test('#44 zdanie po imporcie sceny odmienia liczbę figur po polsku', async () => {

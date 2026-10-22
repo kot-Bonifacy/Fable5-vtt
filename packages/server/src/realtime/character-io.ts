@@ -38,6 +38,7 @@ export function toCharacterView(character: Character, registry: CpredRegistry): 
     playReady: character.playReady,
     template: character.template,
     templateId: character.templateId,
+    pendingOwner: character.pendingOwnerName,
     revision: character.revision,
     updatedAt: character.updatedAt.toISOString(),
   };

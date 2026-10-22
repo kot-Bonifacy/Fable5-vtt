@@ -31,6 +31,7 @@ export function toInvitationSummary(invitation: Invitation): InvitationSummary {
     renewal: invitation.renewal,
     usedAt: invitation.usedAt?.toISOString() ?? null,
     state: invitationState(invitation),
+    characterId: invitation.characterId,
   };
 }
 

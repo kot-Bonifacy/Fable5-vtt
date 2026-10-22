@@ -1,5 +1,9 @@
 # Pomysły poza zakresem etapów
 
+**22.10.2026 (etap 57a) — karty „czeka na gracza” we własnej grupie „Postaci”.** Wczytana kampania
+stawia karty graczy w grupie „NPC” (właściciela nie mają) z etykietą „czeka: Marek”. Przy kilku
+graczach i dwudziestu NPC-ach osobna grupa nad NPC-ami („Czekają na graczy”) byłaby czytelniejsza.
+
 **19.10.2026 (etap 56) — postawa na wzorcu statysty, boty i uspokojenie po restarcie.** Od 56
 wroga figura zauważona przez drużynę zakłada starcie (`realtime/foe-sighting.ts`, umowa na górze
 `tura`). Poza zakresem zostało: (1) **postawa żyje na figurze, nie na karcie** — każdy statysta

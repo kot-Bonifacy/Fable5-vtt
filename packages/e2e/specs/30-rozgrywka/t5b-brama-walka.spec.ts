@@ -36,6 +36,7 @@ import {
   armFirstWeapon,
   damageToCup,
   cupHoldsDamage,
+  fightPick,
 } from '../../fixtures/walka.ts';
 import { GatewayProxy } from '../../instance/gateway-proxy.ts';
 import {
@@ -430,8 +431,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     test.setTimeout(3 * 60_000);
     const page = mg.page;
     await page.getByRole('button', { name: 'Walka', exact: true }).first().click();
-    await page.getByRole('checkbox', { name: /^Strażnik$/ }).check();
-    await expect(page.getByRole('checkbox', { name: /^Wieżyczka$/ })).not.toBeChecked();
+    await fightPick(page, 'Strażnik').check();
+    await expect(fightPick(page, 'Wieżyczka')).not.toBeChecked();
     await page.getByRole('button', { name: /Załóż starcie/ }).click();
     await expect.poll(() => combatants().length).toBe(3);
 

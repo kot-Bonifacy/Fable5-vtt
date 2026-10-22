@@ -434,6 +434,10 @@ model Invitation {
   /// Link odnowienia (konto istniało, zanim link powstał).
   renewal    Boolean   @default(false)
   usedAt     DateTime?
+  /// Etap 57a: „ta karta jest twoja” — karta z pliku czekająca na gracza,
+  /// którą link nowego gracza przypisuje mu przy wejściu. Bez klucza obcego:
+  /// karta skasowana albo przypisana w międzyczasie po prostu nie wchodzi.
+  characterId String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -469,6 +473,14 @@ model Character {
   campaignId String
   /** Owning player; null = GM-controlled (NPC). */
   ownerId    String?
+  /**
+   * Etap 57a: karta gracza wczytana z pliku, której gracza tu (jeszcze) nie ma —
+   * „czeka na gracza: <imię>”. Imię i id konta są z pliku; id nie jest kluczem
+   * obcym, bo konto mogło zniknąć. Każde nadanie właściciela (także „NPC”)
+   * czyści obie kolumny.
+   */
+  pendingOwnerName String?
+  pendingOwnerId   String?
   /** Local portrait path (/uploads/...); null renders a placeholder. */
   portraitUrl String?
   /** System-specific sheet payload (CP RED: CpredCharacterData JSON, schemaVersion inside). */

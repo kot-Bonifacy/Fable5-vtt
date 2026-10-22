@@ -207,14 +207,17 @@ export async function buildApp(
   });
   registerAuthRoutes(app, ctx, io);
   registerAiAccessRoutes(app, ctx, io);
-  registerJoinRoutes(app, ctx);
+  const late: { deps?: RealtimeHandle['deps'] } = {};
+  registerJoinRoutes(app, ctx, () => late.deps);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);
-  registerArchiveRoutes(app, ctx);
 
   const realtime = setupRealtime(io, app, ctx, options.clock);
+  late.deps = realtime.deps;
   // Panel administratora (etap 53) kończy sesje tą samą drogą co MG — potrzebuje gniazd.
   registerAdminRoutes(app, ctx, realtime.deps);
+  // Wczytanie pliku wymiany (57a) rozgłasza nową kartę i listę scen.
+  registerArchiveRoutes(app, ctx, realtime.deps);
   registerMusicRoutes(app, ctx, io);
   gateway.start();
 

@@ -381,6 +381,19 @@ export async function clientsSeeTurn(...actors: Actor[]): Promise<void> {
  * „⚔ Rozpocznij walkę” na pasie inicjatywy (etap 50a, dawniej ▶ „Start”). Bez NPC-a
  * w kolejce pierwszy klik tylko ostrzega — wtedy drugi zaczyna rundę 1.
  */
+/**
+ * Pole wyboru figury w „Załóż starcie” (zakładka „Walka” MG). Od etapu 56
+ * w etykiecie siedzi też lista postawy, więc dostępna nazwa pola to „Kowal
+ * Przyjazna Neutralna Wroga”, a nie samo imię — szukamy po wierszu z imieniem.
+ */
+export function fightPick(page: Page, name: string | RegExp) {
+  const label = typeof name === 'string' ? new RegExp(`^${name}$`) : name;
+  return page
+    .locator('.combat-picker-row')
+    .filter({ has: page.locator('.combat-picker-name', { hasText: label }) })
+    .getByRole('checkbox');
+}
+
 export async function beginFight(page: Page) {
   await page.getByRole('button', { name: /Rozpocznij walkę/ }).click();
   const warned = page.getByRole('button', { name: /Brak NPC-ów/ });

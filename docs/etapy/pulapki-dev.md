@@ -1029,6 +1029,8 @@ pliku po `id`, nie `diff -q`.
 
 ## kopie — Kopie zapasowe, eksport i import
 
+- **Złośliwej paczki nie złożysz `yazl`-em (22.10, 57a)** — odmawia `..` i ścieżek bezwzględnych; test zip slip podmienia bajty nazwy w gotowym ZIP-ie na napis **tej samej długości**.
+- **Wczytany plik niesie id kont z innej instalacji albo od innego MG (22.10, 57a)** — test izolacji (`campaign-isolation.test.ts`) łapie je w każdym nowym wierszu; id konta zostaje tylko po sprawdzeniu w bazie (`knownPlayers`).
 - **Kopia startowa i sprzątanie sierot chodzą równolegle** — plik znika między listą a dowiązaniem; `linkTree` ma go pominąć (ENOENT), nie przerwać kopii.
 - **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku** — objawem jest „eksport nie działa dla niektórych postaci"; nagłówek jest latin-1.
 
@@ -1038,6 +1040,19 @@ pliku po `id`, nie `diff -q`.
   z `Content-Disposition: attachment; filename="character-bezpanski-…"` wywracała całą trasę
   (`TypeError: Invalid character in header content`) — a objawem było „eksport nie działa dla
   niektórych postaci". Nagłówek jest latin-1; nazwy z ogonkami idą przez `filename*=UTF-8''…`.
+
+- **Złośliwej paczki nie złożysz `yazl`-em (22.10, 57a).** `yazl` odmawia nazwy z `..`
+  i ścieżki bezwzględnej, więc paczki do testu zip slip nie da się po prostu „spakować”.
+  `archive-package.test.ts` pakuje plik pod bezpieczną nazwą i podmienia ją w bajtach ZIP-a
+  (lokalny nagłówek i katalog centralny) na złośliwą **tej samej długości** — nazwy nie mają
+  sumy kontrolnej, więc paczka dalej się otwiera. `yauzl` po stronie serwera sam odmawia
+  takich nazw (`strictFileNames`), a `isSafeArchivePath` z `shared` jest drugą zaporą.
+
+- **Wczytany plik niesie id kont z innej instalacji albo od innego MG (22.10, 57a).** Pierwsza
+  wersja „czeka na gracza” zapisywała `pendingOwnerId` prosto z pliku — test izolacji
+  kampanii wywrócił się na „nowy character wymienia <id gracza kampanii A>” przy pliku MG-A
+  wczytanym przez MG-B. Id konta przy czekającej karcie zostaje wyłącznie wtedy, gdy to
+  gracz którejś kampanii **tego** MG (`knownPlayers`); inaczej zostaje samo imię.
 
 - **Kopia startowa i sprzątanie sierot chodzą równolegle (20.09, naprawione 23.09).** `app.ts`
   puszcza `sweepUploadsInBackground`, a `startSnapshotSchedule` od razu robi kopię `start` — obie

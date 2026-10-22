@@ -26,9 +26,12 @@ async function copyLink(token: string): Promise<boolean> {
 
 function InvitationRow({
   invitation,
+  cardName,
   onRevoke,
 }: {
   invitation: InvitationSummary;
+  /** Etap 57a: karta, którą link przypisze graczowi. */
+  cardName: string | null;
   onRevoke: (id: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -47,6 +50,7 @@ function InvitationRow({
       <span className="invite-expiry">
         {invitation.renewal ? 'odnowienie' : invitation.name ? 'nowy gracz' : 'stary link'}
       </span>
+      {cardName && <span className="invite-expiry">z kartą „{cardName}”</span>}
       <span className={`badge ${waiting ? 'badge--ok' : 'badge--off'}`}>
         {STATE_LABEL[invitation.state]}
       </span>
@@ -78,6 +82,9 @@ function issueErrorText(error: unknown): string {
   if (error instanceof ApiError && error.code === 'NAME_TAKEN') {
     return 'Przy tym stole ktoś już nosi to imię albo czeka na nie link — wybierz inne.';
   }
+  if (error instanceof ApiError && error.code === 'CHARACTER_NOT_FOUND') {
+    return 'Ta karta ma już gracza albo zniknęła — odśwież listę.';
+  }
   if (error instanceof ApiError && error.code === 'INVALID_NAME') {
     return `Imię gracza: od 1 do ${PLAYER_NAME_MAX_LENGTH} znaków.`;
   }
@@ -99,12 +106,17 @@ export function CampaignPlayers({
   onChanged: () => void;
 }) {
   const [name, setName] = useState('');
+  const [cardId, setCardId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showSpent, setShowSpent] = useState(false);
 
   const waiting = campaign.invitations.filter((link) => link.state === 'waiting');
+  // Etap 57a: karty z pliku, które czekają na gracza — „ta karta jest twoja”.
+  const pendingCards = campaign.pendingCards ?? [];
+  const cardName = (link: InvitationSummary) =>
+    pendingCards.find((card) => card.id === link.characterId)?.name ?? null;
   const spent = campaign.invitations.filter((link) => link.state !== 'waiting');
 
   async function issue(url: string, body: unknown, who: string) {
@@ -133,8 +145,10 @@ export function CampaignPlayers({
     event.preventDefault();
     const trimmed = name.trim();
     if (trimmed.length === 0 || busy) return;
-    if (await issue(`/api/campaigns/${campaign.id}/invitations`, { name: trimmed }, trimmed)) {
+    const body = { name: trimmed, ...(cardId ? { characterId: cardId } : {}) };
+    if (await issue(`/api/campaigns/${campaign.id}/invitations`, body, trimmed)) {
       setName('');
+      setCardId('');
     }
   }
 
@@ -188,6 +202,25 @@ export function CampaignPlayers({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        {pendingCards.length > 0 && (
+          <select
+            value={cardId}
+            aria-label="Karta dla nowego gracza"
+            title="Karta z pliku, która czeka na gracza — link przypisze mu ją przy wejściu"
+            onChange={(event) => {
+              const card = pendingCards.find((row) => row.id === event.target.value);
+              setCardId(event.target.value);
+              if (card && !name.trim()) setName(card.pendingOwner);
+            }}
+          >
+            <option value="">bez karty</option>
+            {pendingCards.map((card) => (
+              <option key={card.id} value={card.id}>
+                {card.name} (czeka: {card.pendingOwner})
+              </option>
+            ))}
+          </select>
+        )}
         <button className="primary-button" type="submit" disabled={busy || !name.trim()}>
           Nowy gracz
         </button>
@@ -202,6 +235,7 @@ export function CampaignPlayers({
           <InvitationRow
             key={invitation.id}
             invitation={invitation}
+            cardName={cardName(invitation)}
             onRevoke={(id) => void revoke(id)}
           />
         ))}
@@ -222,6 +256,7 @@ export function CampaignPlayers({
                 <InvitationRow
                   key={invitation.id}
                   invitation={invitation}
+                  cardName={null}
                   onRevoke={(id) => void revoke(id)}
                 />
               ))}

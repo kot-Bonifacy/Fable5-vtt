@@ -29,6 +29,7 @@ import {
   token,
   beginFight,
   damageToCup,
+  fightPick,
 } from '../../fixtures/walka.ts';
 import {
   hasCheckpoint,
@@ -143,7 +144,7 @@ for (const layout of LAYOUTS) {
     test('walka: inicjatywa kubkiem, ta sama kolejka u trojga', async () => {
       test.setTimeout(3 * 60_000);
       await mg.page.getByRole('button', { name: 'Walka', exact: true }).first().click();
-      await mg.page.getByRole('checkbox', { name: /^Zbir$/ }).check();
+      await fightPick(mg.page, 'Zbir').check();
       await mg.page.getByRole('button', { name: /Załóż starcie/ }).click();
       await expect.poll(() => combatants().length).toBe(3);
 
