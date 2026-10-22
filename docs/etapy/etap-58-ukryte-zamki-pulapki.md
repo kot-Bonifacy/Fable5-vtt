@@ -4,7 +4,7 @@
 bronione), 46b (pojemnik z zamkiem), 18d (drzwi i zamek MG), 32 (wezwanie do Testu),
 55 (komunikaty), 56 (zatrzymanie marszu na polu zauważenia)
 
-**Podział na cztery sesje (propozycja 22.10, czeka na akceptację MG):** 58a → 58b, 58c, 58d.
+**Podział na cztery sesje (propozycja 22.10, przyjęty — MG zlecił 58a tego samego dnia):** 58a → 58b, 58c, 58d.
 58a jest fundamentem: daje „rzut w drodze z zatrzymaniem”, którego używa 58d. 58b i 58c nie
 zależą od siebie.
 
@@ -80,23 +80,49 @@ otwieranie zamkniętego zamka, rozbrajanie pułapek”.
 
 ### Zakres
 
-- [ ] Percepcja przeciw ukrytej strefie pada na **klatce marszu**, która pierwszy raz wchodzi
+- [x] Percepcja przeciw ukrytej strefie pada na **klatce marszu**, która pierwszy raz wchodzi
       w promień 4 m. Figura staje na tym polu (`token:halt`), dalsza trasa przepada
-- [ ] Ten sam rzut przy upuszczeniu bez trasy (MG przeciąga, skok) — z punktu końcowego, jak dziś
-- [ ] Wiersz rzutu w czacie tylko dla MG; gracz dostaje neutralny pasek przy zatrzymaniu
+- [x] Ten sam rzut przy upuszczeniu bez trasy (MG przeciąga, skok) — od 58a z **całej drogi**,
+      nie tylko z punktu końcowego
+- [x] Wiersz rzutu w czacie tylko dla MG; gracz dostaje neutralny pasek przy zatrzymaniu
       i drugi pasek przy sukcesie (kanał komunikatów z 55)
-- [ ] Ogólny haczyk „ukryta rzecz w zasięgu” z rejestrem dostawców (strefa teraz,
-      figura w 58d), żeby 58d nie pisało drugiej pętli po klatkach
+- [x] Ogólny haczyk „ukryta rzecz w zasięgu” (`hiddenNoticeDue` w `realtime/hidden-notice.ts`:
+      strefa teraz, figura w 58d), żeby 58d nie pisało drugiej pętli po klatkach
 
 ### Kryteria ukończenia
 
-- [ ] Marsz jednym klikiem **przez** ukrytą pułapkę staje 4 m przed nią i rzuca Percepcję
+- [x] Marsz jednym klikiem **przez** ukrytą pułapkę staje 4 m przed nią i rzuca Percepcję
       (test serwera)
-- [ ] Gracz, który oblał, ani żaden inny gracz nie dostaje wiersza z nazwą strefy ani wyniku
-      (test serwera na payloadzie czatu)
-- [ ] MG widzi pełny wiersz rzutu
-- [ ] Postać, która już rzucała, nie staje drugi raz przy tej samej strefie
-- [ ] Oględziny: gracz w Firefoksie widzi zatrzymanie i pasek, MG w Chromium widzi wiersz
+- [x] Gracz, który oblał, ani żaden inny gracz nie dostaje wiersza z nazwą strefy ani wyniku
+      (test serwera na payloadzie czatu i historii)
+- [x] MG widzi pełny wiersz rzutu
+- [x] Postać, która już rzucała, nie staje drugi raz przy tej samej strefie
+- [x] Oględziny: gracz w Firefoksie widzi zatrzymanie i pasek, MG w Chromium widzi wiersz
+
+### Jak wyszło (22.10)
+
+Zatrzymanie **nie** jest zapisem pola z boku, jak `haltParty` w 56: klatka marszu, której
+przyciągnięte pole wchodzi w zasięg, zamienia się w zwykłe lądowanie w `performTokenMove`.
+Dzięki temu w walce Tura płaci tylko przebyty kawałek, a niewydane metry zostają (test: 4 m
+z 10). Poza walką płaci pula. Rzut pada w `runZonesAfterMove`, jak dotąd. Wpięcie, kolejność
+i warunki opisuje umowa na górze `tura`.
+
+**Poza planem doszły cztery rzeczy:**
+
+1. `runZonesAfterMove` liczy zasięg Percepcji z **całej drogi** (`zoneWithinReachOfPath`,
+   `segmentDistanceToRect` w `shared/rects.ts`). Bez tego MG przeciągający figurę gracza
+   obok pułapki dalej omijałby rzut.
+2. `MOVE_HALTED`: lądowanie bez trasy przez 3 s po zatrzymaniu odpada. Klient, który dobiegł
+   do celu przed `token:halt`, poniósłby figurę dalej, na pułapkę.
+3. Oględziny złapały błąd klienta: po zatrzymaniu obwódka zaznaczenia zostawała obok figury.
+   `haltWalk` stawia teraz węzeł na polu z serwera (pułapka na górze `tura`). Poprawka działa
+   też przy zatrzymaniu z 56.
+4. Plakietka „poufne” przy `gmaction` miała podpowiedź „widzą tylko MG i netrunner”. Teraz
+   mówi „Reszta stołu tego wiersza nie widzi”.
+
+**T5b (E2E)** prowadził Kowala w turze z (20, 11) na podłogę przez jej zasięg. Krok
+przepisany: marsz staje na (19, 11), wiersz Percepcji to `gmaction`, dopiero drugi marsz
+wchodzi na podłogę.
 
 ## 58b — Rozbrajanie pułapki przez gracza
 

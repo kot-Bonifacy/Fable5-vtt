@@ -70,6 +70,39 @@ export function segmentCrossesRect(rect: Rect, from: ScenePoint, to: ScenePoint)
   return false;
 }
 
+/**
+ * Shortest distance from the straight line `from` → `to` to the rectangle, in
+ * scene pixels; 0 when the line touches or crosses it (stage 58a — a walk past
+ * a hidden trap comes near it somewhere along the way, not only where it ends).
+ *
+ * Two convex shapes that do not meet are closest either at an end of the line
+ * or at a corner of the rectangle, so those six distances are the whole answer.
+ */
+export function segmentDistanceToRect(rect: Rect, from: ScenePoint, to: ScenePoint): number {
+  if (segmentCrossesRect(rect, from, to)) return 0;
+  let best = Math.min(distanceToRect(from, rect), distanceToRect(to, rect));
+  const right = rect.x + rect.width;
+  const bottom = rect.y + rect.height;
+  for (const corner of [
+    { x: rect.x, y: rect.y },
+    { x: right, y: rect.y },
+    { x: right, y: bottom },
+    { x: rect.x, y: bottom },
+  ]) {
+    best = Math.min(best, pointToSegment(corner, from, to));
+  }
+  return best;
+}
+
+function pointToSegment(point: ScenePoint, a: ScenePoint, b: ScenePoint): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const span = dx * dx + dy * dy;
+  const t =
+    span > 0 ? Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / span)) : 0;
+  return Math.hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t));
+}
+
 /** Standard orientation test; collinear touching counts as an intersection. */
 function segmentsIntersect(
   a1: ScenePoint,

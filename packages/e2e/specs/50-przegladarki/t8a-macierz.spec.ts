@@ -150,7 +150,8 @@ for (const layout of LAYOUTS) {
 
       async function rollInitiative(actor: Actor, face: number) {
         scriptDice([face]);
-        await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click();
+        // 🎲 pulsuje skalą, póki gracz nie rzuci (22.10) — nigdy nie jest „stabilny”.
+        await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click({ force: true });
         const roll = rollById(await rollAndWait(actor, lastMessageId(), 'Inicjatywa'));
         await expect
           .poll(() => chipInitiatives(mg), {

@@ -955,7 +955,10 @@ test.describe
     await Promise.all(
       seats.map((seat) =>
         attempt(seat.actor, 'inicjatywa', async () => {
-          await seat.actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click();
+          // 🎲 pulsuje skalą, póki gracz nie rzuci (22.10) — nigdy nie jest „stabilny”.
+          await seat.actor.page
+            .getByRole('button', { name: /^Rzuć inicjatywę:/ })
+            .click({ force: true });
           rollAttempts.set(seat.actor.name, (rollAttempts.get(seat.actor.name) ?? 0) + 1);
           await shakeCup(seat.actor.page);
         }),

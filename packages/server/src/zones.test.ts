@@ -14,9 +14,11 @@ import type {
   CpredCharacterData,
   DefenseZoneSyncBroadcast,
   DefenseZoneView,
+  HiddenSpottedBroadcast,
   SceneView,
   SocketAck,
   StateSyncPayload,
+  TokenHaltBroadcast,
   TokenView,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
@@ -972,6 +974,239 @@ describe('defended zones on a scene', () => {
     expect(unbound.hpMax).toBe(25);
     await emitAck(gm, 'zone:delete', { zoneId: post.id });
     await walk(player, runnerTokenId, 0, 1250);
+  });
+
+  describe('Percepcja w drodze (etap 58a)', () => {
+    // Pusty pas na dole sceny, daleko od stref z poprzednich testów.
+    const LANE = 2400;
+    const TRAP = { x: 40 * PX_PER_M, y: LANE - 100, width: 6 * PX_PER_M, height: 300 };
+    const SPOT_PX = 4 * PX_PER_M;
+    let trapId = 0;
+    let sharpTokenId = '';
+
+    /** Prowadzi marsz klatkami co pół pola; zwraca ostatnią przyjętą pozycję i odmowy po niej. */
+    async function march(tokenId: string, y: number, toX: number, fromX: number) {
+      data(
+        await emitAck(player, 'token:walk', { tokenId, route: [{ x: toX, y }] }),
+        'token:walk (58a)',
+      );
+      let last: { x: number; y: number } | null = null;
+      const refusals: string[] = [];
+      for (let x = fromX + 50; x <= toX; x += 50) {
+        const ack = await emitAck<{ x: number; y: number }>(player, 'token:move', {
+          tokenId,
+          x,
+          y,
+          final: false,
+        });
+        if (ack.ok) {
+          if (refusals.length === 0) last = ack.data;
+        } else refusals.push(ack.error);
+      }
+      return { last, refusals };
+    }
+
+    const centreDistance = (at: { x: number; y: number }) => {
+      const cx = at.x + 50;
+      const cy = at.y + 50;
+      const dx = Math.max(TRAP.x - cx, 0, cx - (TRAP.x + TRAP.width));
+      const dy = Math.max(TRAP.y - cy, 0, cy - (TRAP.y + TRAP.height));
+      return Math.hypot(dx, dy);
+    };
+
+    it('marsz przez ukrytą pułapkę staje cztery metry przed nią, a rzut zna tylko MG', async () => {
+      const before = await healUp();
+      data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (pas)');
+      trapId = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId,
+          entryId: 'defense.podloga-elektryczna',
+          ...TRAP,
+        }),
+        'zone:create (58a)',
+      ).id;
+
+      const heard: ChatMessageBroadcast[] = [];
+      const onPlayer = (message: ChatMessageBroadcast) => heard.push(message);
+      player.on('chat:message', onPlayer);
+      const gmLine = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
+
+      // Trasa na wylot przez pułapkę — do 58a rzut liczył się z końca (dalej
+      // niż 4 m za nią), więc nie padał wcale, a pułapka odpalała.
+      const { last, refusals } = await march(runnerTokenId, LANE, 60 * PX_PER_M, 0);
+      expect(await halted).toMatchObject({ sceneId, tokenIds: [runnerTokenId], reason: 'notice' });
+      expect(last).not.toBeNull();
+      expect(centreDistance(last!)).toBeLessThanOrEqual(SPOT_PX);
+      expect(centreDistance(last!)).toBeGreaterThan(0);
+      // Klatki, które były już w drodze, nie mają trasy, po której szłyby dalej.
+      expect(refusals.length).toBeGreaterThan(0);
+      expect(new Set(refusals)).toEqual(new Set(['MOVE_NOT_PLANNED']));
+
+      const sync = await roundTrip(gm);
+      expect(sync.tokens.find((token) => token.id === runnerTokenId)).toMatchObject(last!);
+      expect(await hp()).toBe(before);
+
+      const { message } = await gmLine;
+      expect(message.kind).toBe('gmaction');
+      expect(message.action?.note).toContain('nie zauważa: Podłoga elektryczna');
+      expect(message.authorId).not.toBe(playerId);
+
+      // Gracz nie dostaje ani wiersza na żywo, ani w historii — i strefy też nie.
+      player.off('chat:message', onPlayer);
+      expect(heard.filter(({ message: m }) => m.text.includes('Percepcja'))).toEqual([]);
+      const playerSync = await roundTrip(player);
+      expect(playerSync.messages.some((m) => m.text.includes('Percepcja'))).toBe(false);
+      expect(playerSync.zones.some((zone) => zone.id === trapId)).toBe(false);
+    });
+
+    it('lądowanie bez trasy tuż po zatrzymaniu odpada; nowa trasa już nie staje', async () => {
+      const at = (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId)!;
+      const late = await emitAck(player, 'token:move', {
+        tokenId: runnerTokenId,
+        x: 60 * PX_PER_M,
+        y: LANE,
+        final: true,
+      });
+      expect(late).toEqual({ ok: false, error: 'MOVE_HALTED' });
+
+      // Krok bliżej, dalej w zasięgu — Kolec już rzucał, więc nic go nie trzyma.
+      let haltedAgain = false;
+      const onHalt = () => {
+        haltedAgain = true;
+      };
+      player.on('token:halt', onHalt);
+      const target = at.x + 100;
+      const { refusals } = await march(runnerTokenId, LANE, target, at.x);
+      expect(refusals).toEqual([]);
+      data(
+        await emitAck(player, 'token:move', {
+          tokenId: runnerTokenId,
+          x: target,
+          y: LANE,
+          final: true,
+        }),
+        'token:move (dalej)',
+      );
+      player.off('token:halt', onHalt);
+      expect(haltedAgain).toBe(false);
+      expect(
+        (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId),
+      ).toMatchObject({
+        x: target,
+        y: LANE,
+      });
+    });
+
+    it('przejście obok pułapki też staje; sukces odsłania ją i mówi o tym tylko właścicielowi', async () => {
+      const sharp = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Sokół', ownerId: playerId }),
+        'character:create (Sokół)',
+      );
+      await emitAck(gm, 'character:update', {
+        characterId: sharp.id,
+        patch: {
+          data: {
+            stats: { ...(sharp.data as CpredCharacterData).stats, int: 8 },
+            skills: { perception: 10 },
+          },
+        },
+      });
+      // Pas pod pułapką: najbliżej 150 px od jej dolnej krawędzi, nigdy na niej.
+      const lane = TRAP.y + TRAP.height + 100;
+      sharpTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Sokół',
+          x: 0,
+          y: lane,
+          ownerId: playerId,
+          characterId: sharp.id,
+        }),
+        'token:create (Sokół)',
+      ).id;
+
+      const spotted = waitFor<HiddenSpottedBroadcast>(player, 'hidden:spotted');
+      const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
+      const gmLine = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const { last } = await march(sharpTokenId, lane, 60 * PX_PER_M, 0);
+      expect(await halted).toMatchObject({ tokenIds: [sharpTokenId], reason: 'notice' });
+      expect(await spotted).toEqual({
+        sceneId,
+        tokenId: sharpTokenId,
+        actorName: 'Sokół',
+        names: ['Podłoga elektryczna'],
+      });
+      expect(centreDistance(last!)).toBeLessThanOrEqual(SPOT_PX);
+      expect((await gmLine).message.action?.note).toContain('— zauważa: Podłoga elektryczna');
+      expect((await roundTrip(player)).zones.find((zone) => zone.id === trapId)?.spotted).toBe(
+        true,
+      );
+    });
+
+    it('MG przeciągający figurę gracza obok pułapki daje rzut z całej drogi, nie z końca', async () => {
+      // Druga strefa nad pasem Kolca: droga MG mija ją o 150 px, oba końce są
+      // dalej niż 4 m. Kolec (INT 2, Percepcja 0) nie zda nigdy.
+      const second = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId,
+          entryId: 'defense.podloga-elektryczna',
+          x: 20 * PX_PER_M,
+          y: LANE - 250,
+          width: 4 * PX_PER_M,
+          height: 150,
+        }),
+        'zone:create (druga, 58a)',
+      );
+      const gmLine = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (MG obok strefy)');
+      expect((await gmLine).message.action?.note).toContain(`nie zauważa: ${second.name}`);
+      expect((await roundTrip(player)).zones.some((zone) => zone.id === second.id)).toBe(false);
+      await emitAck(gm, 'zone:delete', { zoneId: second.id });
+      await emitAck(gm, 'zone:delete', { zoneId: trapId });
+      await emitAck(gm, 'token:delete', { tokenId: sharpTokenId });
+      await walk(gm, runnerTokenId, 0, 1250);
+    });
+
+    it('w walce marsz w turze też staje, a Tura płaci tylko przebyty kawałek', async () => {
+      await healUp();
+      // Ślizgawka z wcześniejszego testu zostawiła Kolca na ziemi.
+      await emitAck(gm, 'token:update', { tokenId: runnerTokenId, patch: { statuses: [] } });
+      data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (pas, walka)');
+      const trap = data(
+        await emitAck<DefenseZoneView>(gm, 'zone:create', {
+          sceneId,
+          entryId: 'defense.podloga-elektryczna',
+          x: 9 * PX_PER_M,
+          y: LANE - 100,
+          width: 4 * PX_PER_M,
+          height: 300,
+        }),
+        'zone:create (walka, 58a)',
+      );
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [runnerTokenId] }),
+        'combat:start (58a)',
+      );
+      const row = combat.combatants.find((entry) => entry.tokenId === runnerTokenId)!;
+      await emitAck(gm, 'combat:set-initiative', { combatantId: row.id, initiative: 20 });
+      data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next (58a)');
+
+      const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
+      // 6 m trasy; środek figury wchodzi w 4 m od krawędzi po 4 m drogi.
+      const { last } = await march(runnerTokenId, LANE, 6 * PX_PER_M, 0);
+      expect(await halted).toMatchObject({ reason: 'notice' });
+      expect(last).toEqual({ x: 4 * PX_PER_M, y: LANE });
+      const turn = (await roundTrip(gm)).combat?.combatants.find(
+        (entry) => entry.tokenId === runnerTokenId,
+      )?.turn;
+      expect(turn?.distance?.used).toBe(4);
+      expect(turn?.distance?.max).toBeGreaterThan(4);
+
+      await emitAck(gm, 'combat:end', { sceneId });
+      await emitAck(gm, 'zone:delete', { zoneId: trap.id });
+      await walk(gm, runnerTokenId, 0, 1250);
+    });
   });
 
   it('clearing the scene removes every zone at once', async () => {

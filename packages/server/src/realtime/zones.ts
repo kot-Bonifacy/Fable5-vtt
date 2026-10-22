@@ -32,11 +32,17 @@ import {
   segmentCrossesRect,
   tokenCentre,
   tokenTableName,
+  zoneWithinReachOfPath,
 } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
 import { SHEET_SLOWED_STATUS_ID, writeSheetStatusData } from '../sheets.js';
 import { buildCompendiumSync } from './compendium.js';
-import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
+import {
+  INCLUDE_CHAT_NAMES,
+  broadcastChatMessage,
+  deliverChatMessageTo,
+  toChatMessageView,
+} from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
@@ -364,13 +370,13 @@ export async function runZonesAfterMove(
     to: ScenePoint;
     path: readonly ScenePoint[];
   },
-): Promise<void> {
+): Promise<{ spotted: string[] }> {
   const { campaignId, user, scene, token } = input;
+  const spotted: string[] = [];
   const rows = await fetchSceneZones(deps.ctx.prisma, scene.id);
-  if (rows.length === 0) return;
+  if (rows.length === 0) return { spotted };
 
   const { entries } = await buildCompendiumSync(deps, campaignId);
-  const view = toSceneView(scene);
   const half = tokenHalfPx(token, scene);
 
   // 1 — spotting, and 2 — the drain lifting, both need „where is this figure now".
@@ -383,12 +389,21 @@ export async function runZonesAfterMove(
   if (!stuckOnAny(live, now)) await liftMoveDrain(deps, campaignId, token);
 
   // ── Perception, once per character per zone ──
-  const perPixel = metresPerPixel(view);
-  const spotRangePx = perPixel > 0 ? ZONE_SPOT_RANGE_M / perPixel : 0;
+  // Z całej drogi, nie z samego pola lądowania (58a): kto przeszedł obok
+  // pułapki, był przy niej — a marsz gracza i tak staje na skraju zasięgu
+  // (`zonesNoticeDue`), więc tu trafia głównie lądowanie bez trasy (MG, skok).
+  const spotRangePx = zoneSpotRangePx(scene);
+  const walked = [
+    before,
+    ...input.path.map((point) => ({ x: point.x + half, y: point.y + half })),
+    now,
+  ];
   for (const { row, profile } of live) {
     if (!row.hidden || !profile?.spotDv) continue;
-    if (distanceToRect(now, row) > spotRangePx) continue;
-    await trySpotZone(deps, campaignId, row, token, profile.spotDv, user);
+    if (!zoneWithinReachOfPath(row, walked, spotRangePx)) continue;
+    if (await trySpotZone(deps, campaignId, row, token, profile.spotDv, user)) {
+      spotted.push(row.name);
+    }
   }
 
   // ── the systems themselves ──
@@ -451,6 +466,7 @@ export async function runZonesAfterMove(
       );
     }
   }
+  return { spotted };
 }
 
 /**
@@ -541,6 +557,13 @@ function pathTouchesZone(
  * theatre. A player's success reveals the zone to *that account* — which is what
  * makes „gracz nie dostaje strefy, której nie zauważył" a fact about the payload
  * rather than a hope about the client.
+ *
+ * **The roll is hidden (58a, decyzja MG z 22.10).** The full line goes to the GM
+ * only, written by the GM's hand so it never enters a player's history through
+ * the `authorId` clause; until 58a it went to the whole table, so a failure told
+ * the player there was something there, and a success named the trap to people
+ * who did not have it on their map. The caller tells the owner about a success
+ * (`hidden:spotted`) — about a failure nobody but the GM hears.
  */
 async function trySpotZone(
   deps: RealtimeDeps,
@@ -549,13 +572,13 @@ async function trySpotZone(
   token: Token,
   spotDv: number,
   user: SessionUser,
-): Promise<void> {
+): Promise<boolean> {
   const ownerId = await controllerOf(deps, token);
-  if (!ownerId) return;
+  if (!ownerId) return false;
   const sightings = readZoneSightings(row.sightings);
-  if (sightings.users.includes(ownerId)) return;
+  if (sightings.users.includes(ownerId)) return false;
   const key = token.characterId ?? token.id;
-  if (sightings.tried.includes(key)) return;
+  if (sightings.tried.includes(key)) return false;
 
   const base = await checkPerceptionOf(deps, token);
   const outcome = cpredAmmoCheckOutcome(createMixedRng()(10), base.total, spotDv);
@@ -567,16 +590,58 @@ async function trySpotZone(
     data: { sightings: writeZoneSightings(next) },
   });
   await emitZones(deps, campaignId, row.sceneId);
-  await logZoneLine(
+  const roll = `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv}`;
+  await logGmZoneLine(
     deps,
     campaignId,
-    user,
+    await systemHand(deps, campaignId, user),
     tokenTableName(token, token.name),
-    'Percepcja — coś jest nie tak z tym miejscem',
-    outcome.resisted
-      ? `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv} — zauważa: ${row.name}`
-      : `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv} — nic nie zauważa`,
+    'Percepcja — ukryta rzecz w pobliżu',
+    outcome.resisted ? `${roll} — zauważa: ${row.name}` : `${roll} — nie zauważa: ${row.name}`,
   );
+  return outcome.resisted;
+}
+
+/**
+ * Is a Perception roll owed at this square (stage 58a)? Asked on every frame of
+ * a player's march, so it is cheap first: a scene without a hidden zone answers
+ * from one query, and the catalogue is read only for a zone actually in reach.
+ *
+ * Mirrors `trySpotZone`'s own skips exactly — a halt for a roll that then does
+ * not happen would stop a player for nothing.
+ */
+export async function zonesNoticeDue(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  stand: ScenePoint,
+): Promise<boolean> {
+  const hidden = await deps.ctx.prisma.defenseZone.findMany({
+    where: { sceneId: scene.id, hidden: true },
+  });
+  if (hidden.length === 0) return false;
+  const half = tokenHalfPx(token, scene);
+  const centre = { x: stand.x + half, y: stand.y + half };
+  const rangePx = zoneSpotRangePx(scene);
+  const near = hidden.filter((row) => distanceToRect(centre, row) <= rangePx);
+  if (near.length === 0) return false;
+  const ownerId = await controllerOf(deps, token);
+  if (!ownerId) return false;
+  const key = token.characterId ?? token.id;
+  const untried = near.filter((row) => {
+    const sightings = readZoneSightings(row.sightings);
+    return !sightings.users.includes(ownerId) && !sightings.tried.includes(key);
+  });
+  if (untried.length === 0) return false;
+  const { entries } = await buildCompendiumSync(deps, campaignId);
+  return untried.some((row) => zoneProfileOf(entries, row.entryId)?.spotDv !== undefined);
+}
+
+/** „Percepcja … by zauważyć” sięga tyle pikseli tej sceny (`ZONE_SPOT_RANGE_M`). */
+function zoneSpotRangePx(scene: Scene): number {
+  const perPixel = metresPerPixel(toSceneView(scene));
+  return perPixel > 0 ? ZONE_SPOT_RANGE_M / perPixel : 0;
 }
 
 /**
@@ -770,4 +835,33 @@ async function logZoneLine(
   const view = toChatMessageView(stored);
   broadcastChatMessage(deps, campaignId, view);
   return view;
+}
+
+/** `logZoneLine`, ale tylko dla MG (`gmaction`) — rzut ukryty z 58a. */
+async function logGmZoneLine(
+  deps: RealtimeDeps,
+  campaignId: string,
+  hand: SessionUser,
+  actorName: string,
+  actionName: string,
+  note: string,
+): Promise<void> {
+  const entry: CombatActionLogEntry = {
+    combatantId: '',
+    actorName,
+    actionId: CPRED_ACTION_NET,
+    actionName,
+    note,
+  };
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: hand.id,
+      kind: 'gmaction',
+      text: actionName,
+      payload: JSON.stringify(entry),
+    },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await deliverChatMessageTo(deps, campaignId, toChatMessageView(stored), [], true);
 }

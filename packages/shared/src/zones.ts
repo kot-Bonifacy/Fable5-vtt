@@ -20,7 +20,14 @@
  */
 
 import type { ScenePoint } from './measure.js';
-import { isPointInRect, sanitizeRect, segmentCrossesRect, type Rect } from './rects.js';
+import {
+  distanceToRect,
+  isPointInRect,
+  sanitizeRect,
+  segmentCrossesRect,
+  segmentDistanceToRect,
+  type Rect,
+} from './rects.js';
 
 /** One stored zone as it goes over the wire, already cut for one pair of eyes. */
 export interface DefenseZoneView {
@@ -239,6 +246,28 @@ export function zoneTouchedByPath(zone: Rect, path: readonly ScenePoint[]): bool
   if (path.length === 1) return isPointInZone(zone, path[0]!);
   for (let i = 1; i < path.length; i++) {
     if (segmentCrossesRect(zone, path[i - 1]!, path[i]!)) return true;
+  }
+  return false;
+}
+
+/**
+ * Did a walk come within `rangePx` of this zone anywhere along the way (stage
+ * 58a)? The Perception roll belongs to the moment the figure was near, so a
+ * path that crossed the trap's four metres and ended far past it still counts —
+ * until 58a only the landing square was asked, and walking through a trap in
+ * one click never offered the roll at all.
+ *
+ * A path of one point is a figure standing there.
+ */
+export function zoneWithinReachOfPath(
+  zone: Rect,
+  path: readonly ScenePoint[],
+  rangePx: number,
+): boolean {
+  if (path.length === 0) return false;
+  if (path.length === 1) return distanceToRect(path[0]!, zone) <= rangePx;
+  for (let i = 1; i < path.length; i++) {
+    if (segmentDistanceToRect(zone, path[i - 1]!, path[i]!) <= rangePx) return true;
   }
   return false;
 }

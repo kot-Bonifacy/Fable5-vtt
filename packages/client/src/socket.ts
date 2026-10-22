@@ -259,6 +259,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenAimBroadcast,
+  HiddenSpottedBroadcast,
   TokenHaltBroadcast,
   CombatJoinedBroadcast,
   CombatOverspendAsk,
@@ -356,7 +357,7 @@ import { newGmAttention } from './gm-attention.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
 import { receiveMapPing, showLocalPing } from './map-ping.js';
-import { COMBAT_PENDING_NOTE, receiveWalkHalt } from './walk-halt.js';
+import { COMBAT_PENDING_NOTE, receiveHiddenSpotted, receiveWalkHalt } from './walk-halt.js';
 import { receiveTokenAim } from './map-aim.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
@@ -1392,6 +1393,8 @@ export function connectSocket(userId: string): Socket {
   onPresented('token:aim', (broadcast: TokenAimBroadcast) => receiveTokenAim(broadcast));
   // Etap 56: drużyna zobaczyła wroga — marsz staje (tylko u prowadzącego).
   onPresented('token:halt', (broadcast: TokenHaltBroadcast) => receiveWalkHalt(broadcast));
+  // Etap 58a: udany rzut na Percepcję przy ukrytej rzeczy (tylko u właściciela).
+  onPresented('hidden:spotted', (spotted: HiddenSpottedBroadcast) => receiveHiddenSpotted(spotted));
   // Etap 56: wróg zauważony w trwającej walce dołączył sam (tylko MG).
   // Wydatek MG poza budżetem tury czeka na potwierdzenie (19.10.2026).
   onPresented('combat:overspend-ask', (ask: CombatOverspendAsk) => {

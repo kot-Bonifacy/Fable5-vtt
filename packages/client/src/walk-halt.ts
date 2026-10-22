@@ -1,8 +1,10 @@
-import type { TokenHaltBroadcast } from '@vtt/shared';
-import { notifyRefusal } from './notices.js';
+import type { HiddenSpottedBroadcast, TokenHaltBroadcast } from '@vtt/shared';
+import { notifyInfo, notifyRefusal } from './notices.js';
+import { useTokenStore } from './stores/tokenStore.js';
 
 /**
- * Zatrzymanie marszu przez serwer (etap 56) — drużyna zobaczyła wroga.
+ * Zatrzymanie marszu przez serwer — drużyna zobaczyła wroga (etap 56) albo
+ * figura przystanęła przy ukrytej rzeczy na rzut Percepcji (58a).
  *
  * Moduł jak `map-ping.ts`: zdarzenie oddaje się mapie i zapomina. Serwer zapisał
  * już pole zatrzymania i rozesłał je (`token:upsert` przed `token:halt`), więc
@@ -12,6 +14,18 @@ import { notifyRefusal } from './notices.js';
 
 /** To samo zdanie mówi odmowa `COMBAT_PENDING` — gracz stoi przed walką. */
 export const COMBAT_PENDING_NOTE = 'Wróg w zasięgu wzroku — czekaj, aż MG rozpocznie walkę.';
+
+/**
+ * Rzut przy ukrytej rzeczy jest ukryty (58a, decyzja MG z 22.10): gracz wie,
+ * że postać na coś zwróciła uwagę, a nie na co — to samo zdanie przy sukcesie
+ * i porażce. Co zauważyła, mówi osobno `hidden:spotted`, i tylko przy sukcesie.
+ */
+export const noticeHaltNote = (name: string): string => `${name} przystaje — coś przykuło uwagę.`;
+
+export const hiddenSpottedNote = (spotted: HiddenSpottedBroadcast): string =>
+  `${spotted.actorName} zauważa: ${spotted.names.join(', ')}.`;
+
+const PERCEPTION_TITLE = 'Percepcja';
 
 type Halt = (tokenIds: readonly string[]) => void;
 
@@ -27,5 +41,17 @@ export function bindWalkHalt(scene: string | null, sink: Halt | null): void {
 export function receiveWalkHalt(broadcast: TokenHaltBroadcast): void {
   if (broadcast.sceneId !== sceneId) return;
   halt?.(broadcast.tokenIds);
+  if (broadcast.reason === 'notice') {
+    const tokens = useTokenStore.getState().tokens;
+    for (const id of broadcast.tokenIds) {
+      notifyInfo(noticeHaltNote(tokens[id]?.name ?? 'Postać'), { title: PERCEPTION_TITLE });
+    }
+    return;
+  }
   notifyRefusal('player-move', COMBAT_PENDING_NOTE, { tone: 'warn', title: 'Walka' });
+}
+
+/** Udany rzut na Percepcję odsłonił coś właścicielowi figury (58a). */
+export function receiveHiddenSpotted(spotted: HiddenSpottedBroadcast): void {
+  notifyInfo(hiddenSpottedNote(spotted), { title: PERCEPTION_TITLE });
 }

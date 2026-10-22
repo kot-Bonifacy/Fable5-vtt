@@ -4782,6 +4782,14 @@ export class MapRenderer {
     if (march && tokenIds.includes(march.node.token.id)) {
       this.walkResume = null;
       this.finishMarch(null, false);
+      // Pole zatrzymania przyszło przed `token:halt`, kiedy marsz jeszcze
+      // trzymał figurę (`update(…, skipPosition)`) — węzeł zna je, ale stał
+      // tam, gdzie zastało go lądowanie, a obwódka zaznaczenia razem z nim
+      // (58a: pierścień obok figury po zatrzymaniu przy pułapce).
+      const node = march.node;
+      if (!node.destroyed) node.position.set(node.token.x, node.token.y);
+      this.drawSelectionRing();
+      this.drawGroupRings();
     }
     if (this.selectedTokenId && tokenIds.includes(this.selectedTokenId)) this.cancelWalkTarget();
   }

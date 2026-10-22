@@ -297,7 +297,8 @@ test.describe.serial('T4a: walka pierwsza w „Knajpie” — inicjatywa i pierw
     async function rollInitiative(actor: Actor, face: number): Promise<RollJson> {
       scriptDice([face]);
       // Od 43a kubek inicjatywy siedzi na własnym żetonie czarnego pasa.
-      await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click();
+      // 🎲 pulsuje skalą, póki gracz nie rzuci (22.10) — nigdy nie jest „stabilny”.
+      await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click({ force: true });
       const id = await rollAndWait(actor, lastMessageId(), 'Inicjatywa');
       const roll = rollById(id);
       // Klient wstrzymuje skutek rzutu do końca animacji kości (umowa `serwer`, 22.09),

@@ -90,8 +90,16 @@ import {
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
-import { MOVE_NOT_PLANNED, validateTokenMove } from './movement.js';
-import { activeWalk, approveWalk, endWalk } from './walks.js';
+import { MOVE_HALTED, MOVE_NOT_PLANNED, validateTokenMove } from './movement.js';
+import {
+  activeWalk,
+  approveWalk,
+  endWalk,
+  isCurrentWalk,
+  markWalkHalted,
+  walkHaltedRecently,
+} from './walks.js';
+import { emitHiddenSpotted, emitNoticeHalt, hiddenNoticeDue } from './hidden-notice.js';
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
@@ -1747,7 +1755,12 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
         { dryRun: true },
       );
     }
-    approveWalk(token.id, { userId: user.id, sceneId: scene.id, route: [from, ...legs] });
+    approveWalk(token.id, {
+      userId: user.id,
+      sceneId: scene.id,
+      route: [from, ...legs],
+      ...(payload.extra === true ? { extra: true } : {}),
+    });
     return { tokenId: token.id };
   },
 });
@@ -1872,7 +1885,7 @@ export async function performTokenMove(
       throw new RealtimeError('BAD_REQUEST');
     }
 
-    const final = payload.final === true;
+    let final = payload.final === true;
     const snapScene = toSnapScene(scene);
     let { x, y } = final
       ? snapTokenPosition(payload.x, payload.y, token.size, snapScene)
@@ -1892,11 +1905,54 @@ export async function performTokenMove(
     // liczy się dopiero z pozycji, którą przyjęło.
     const walk = isGm || judged ? null : activeWalk(token.id, user.id, scene.id, token);
     if (!isGm && !final && !walk) throw new RealtimeError(MOVE_NOT_PLANNED);
+    // Etap 58a: klient dobiegł do celu, zanim doszło do niego `token:halt` —
+    // jego lądowanie bez trasy poniosłoby figurę dalej, na to, przed czym stanęła.
+    if (!isGm && !judged && final && !walk && walkHaltedRecently(token.id, user.id)) {
+      throw new RealtimeError(MOVE_HALTED);
+    }
+    /** Klatka marszu, która stała się lądowaniem przy ukrytej rzeczy (58a). */
+    let noticeHalt = false;
     if (walk) {
       const hit = projectOntoRoute(walk.route, { x, y });
       if (!final) {
         walk.reached = Math.max(walk.reached, hit.distance);
         ({ x, y } = clampTokenPosition(hit.point.x, hit.point.y, token.size, snapScene));
+        // Etap 58a: pierwsze pole marszu w zasięgu ukrytej rzeczy, której ta
+        // postać jeszcze nie sprawdzała — figura staje na nim i rzuca. Klatka
+        // zamienia się w lądowanie, więc płaci za przebyty kawałek jak każde
+        // (Tura w walce, pula poza nią), a strefy rzucają Percepcję w jego
+        // hakach. Pole, na którym nie wolno stanąć, nie zatrzymuje — następna
+        // klatka spróbuje jeszcze raz.
+        const stand = snapTokenPosition(x, y, token.size, snapScene);
+        if (await hiddenNoticeDue(deps, campaignId, scene, token, stand)) {
+          const passed = routeWaypointsBefore(walk.route, hit.distance);
+          const fits = await validateTokenMove(
+            deps,
+            campaignId,
+            user,
+            {
+              scene,
+              token,
+              from: { x: token.x, y: token.y },
+              to: stand,
+              path: passed,
+              ...(walk.extra === true ? { extra: true } : {}),
+            },
+            { dryRun: true },
+          ).then(
+            () => true,
+            () => false,
+          );
+          // Równoległa klatka mogła już zatrzymać ten marsz — wygrywa pierwsza.
+          if (fits && isCurrentWalk(token.id, walk)) {
+            endWalk(token.id);
+            markWalkHalted(token.id, user.id);
+            noticeHalt = true;
+            final = true;
+            ({ x, y } = stand);
+            reportedPath = passed;
+          }
+        }
       } else {
         // Przerwany marsz ląduje na polu, w które figura wchodziła — najwyżej
         // kratkę od trasy. Dalej to już nie ten marsz: trasa przepada, a
@@ -1933,6 +1989,8 @@ export async function performTokenMove(
         ...(turnedTo === null ? {} : { facing: turnedTo }),
       });
 
+    /** Co Percepcja odsłoniła przy tym lądowaniu — właściciel dowie się po rozesłaniu. */
+    let spotted: { spotted: string[] } | null = null;
     if (final) {
       // Only the drop is judged (stage 14c). Intermediate frames are a hand in
       // motion, not a decision — charging them would bill a player for hovering.
@@ -1944,7 +2002,9 @@ export async function performTokenMove(
             from: { x: token.x, y: token.y },
             to: { x, y },
             path: reportedPath,
-            ...(payload.extra === true ? { extra: true } : {}),
+            ...(payload.extra === true || (noticeHalt && walk?.extra === true)
+              ? { extra: true }
+              : {}),
           });
       } catch (error) {
         if (walk) endWalk(token.id);
@@ -1994,7 +2054,7 @@ export async function performTokenMove(
       // stage 26f). Asked here for the same reason the disconnect is: this is
       // the one place every walk lands, and a second „a figure moved" would
       // drift from this one the first time somebody changed either.
-      await runZonesAfterMove(deps, {
+      spotted = await runZonesAfterMove(deps, {
         campaignId,
         user,
         scene,
@@ -2006,6 +2066,10 @@ export async function performTokenMove(
     }
 
     await broadcast({ x, y }, final);
+    // Etap 58a: najpierw „przystaje”, potem „zauważa” — w tej kolejności gracz
+    // ma to przeczytać, a lądowanie leży już w jego magazynie.
+    if (noticeHalt) await emitNoticeHalt(deps, campaignId, scene, token);
+    if (spotted) await emitHiddenSpotted(deps, campaignId, scene, token, spotted.spotted);
     // Etap 56: czy ten krok (albo ruch wroga) pokazał drużynie wroga. Klatka
     // marszu jeszcze nie leży w bazie, więc jedzie jako pozycja na żywo.
     const halted = await checkSighting(

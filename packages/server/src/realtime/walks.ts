@@ -19,6 +19,12 @@ export interface ApprovedWalk {
   /** Najdalszy punkt trasy, do którego doszła klatka marszu, w pikselach. */
   reached: number;
   approvedAt: number;
+  /**
+   * Marsz w drugi pas (Bieg, etap 54). Lądowanie niesie to samo w `token:move`,
+   * ale zatrzymanie w drodze (58a) ląduje za gracza — i musi wiedzieć, czy
+   * marsz w ogóle miał prawo wyjść poza Ruch.
+   */
+  extra?: boolean;
 }
 
 /** Po tylu ms zapomniana trasa przestaje obowiązywać (marsz trwa sekundy). */
@@ -41,6 +47,7 @@ export function approveWalk(
     approvedAt: walkClock.now(),
   };
   walks.set(tokenId, approved);
+  halts.delete(tokenId);
   return approved;
 }
 
@@ -72,6 +79,38 @@ export function activeWalk(
     return null;
   }
   return walk;
+}
+
+/** Czy to wciąż ten sam marsz — równoległa klatka mogła go już zakończyć. */
+export function isCurrentWalk(tokenId: string, walk: ApprovedWalk): boolean {
+  return walks.get(tokenId) === walk;
+}
+
+/**
+ * Marsz zatrzymany przez serwer przy ukrytej rzeczy (etap 58a) — na krótko.
+ *
+ * Klient, który dobiegł do celu, zanim doszło do niego `token:halt`, wysyła
+ * lądowanie bez trasy (trasę serwer już zamknął). Takie lądowanie przeszłoby
+ * pełne sprawdzenie i poniosło figurę dalej, prosto na pułapkę, przed którą
+ * właśnie stanęła. Do następnego `token:walk` albo przez chwilę — odmowa.
+ */
+const halts = new Map<string, { userId: string; at: number }>();
+
+/** Tyle trwa odmowa lądowania po zatrzymaniu; nowa trasa kasuje ją od razu. */
+export const WALK_HALT_GUARD_MS = 3_000;
+
+export function markWalkHalted(tokenId: string, userId: string): void {
+  halts.set(tokenId, { userId, at: walkClock.now() });
+}
+
+export function walkHaltedRecently(tokenId: string, userId: string): boolean {
+  const halt = halts.get(tokenId);
+  if (!halt) return false;
+  if (halt.userId !== userId || walkClock.now() - halt.at > WALK_HALT_GUARD_MS) {
+    halts.delete(tokenId);
+    return false;
+  }
+  return true;
 }
 
 /** Marsz skończony (wylądował albo odmówiono mu lądowania) — trasy już nie ma. */

@@ -94,6 +94,13 @@ export const MOVE_BLOCKED_BY_FIGURE_MESSAGE =
  */
 export const MOVE_NOT_PLANNED = 'MOVE_NOT_PLANNED';
 
+/**
+ * A landing without a route right after the server stopped this march by a
+ * hidden thing (etap 58a) — the client finished the walk before `token:halt`
+ * reached it. A new `token:walk` lifts it.
+ */
+export const MOVE_HALTED = 'MOVE_HALTED';
+
 /** A route that set foot on floor the GM has not revealed yet (13.09.2026). */
 export const MOVE_INTO_FOG = 'MOVE_INTO_FOG';
 export const MOVE_INTO_FOG_MESSAGE =

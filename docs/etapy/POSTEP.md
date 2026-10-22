@@ -21,21 +21,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **58** Ukryte rzeczy, zamki, rozbrajanie (58a–58d, plan 22.10 — podział czeka na akceptację MG); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c) (ostatni zamknięty: 57c, 2026-10-22) |
+| ⬜ otwarty   | **58** Ukryte rzeczy, zamki, rozbrajanie (🟨 58a zrobione 22.10; zostały 58b, 58c, 58d); **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58a (ostatni zamknięty: 58a, 2026-10-22) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
-**Etap 58 „Ukryte rzeczy, zamki i rozbrajanie pułapek” rozpisany 22.10 — następny do roboty
-(58a).** Oględziny 22.10 (MG i Marek w Chromium, Ola w Firefoksie): Percepcja przy ukrytej
-pułapce, „Rozbrój” MG i zamek pojemnika działają. Dwie usterki trafiły do 58a: wiersz Percepcji
-idzie na czat do wszystkich (przeciek nazwy pułapki i samego faktu, że tam jest), a marsz przez
-pułapkę jednym klikiem nie daje rzutu wcale. Gracz nie ma dziś rozbrajania (58b), wytrycha do
-drzwi (58c) ani wykrywania ukrytych figur (58d). Decyzje MG i rozstrzygnięcia czekające na jego
-słowo są w pliku etapu `etap-58-ukryte-zamki-pulapki.md`.
+**Etap 58 „Ukryte rzeczy, zamki i rozbrajanie pułapek”: 58a zrobione 22.10 — dalej 58b
+(rozbrajanie przez gracza), potem 58c (wytrych do drzwi) i 58d (ukryte figury).** Marsz gracza
+staje sam na pierwszym polu w 4 m od ukrytej pułapki, której ta postać jeszcze nie sprawdzała,
+i rzuca Percepcję w ukryciu. Wiersz z wynikiem dostaje tylko MG („poufne”). Gracz widzi pasek
+„X przystaje — coś przykuło uwagę.”, a po sukcesie „X zauważa: …”. Zatrzymanie jest zwykłym
+lądowaniem: w walce Tura płaci przebyty kawałek. Rozstrzygnięcia przyjęte bez pytań (zatrzymanie
+w walce, staje tylko rzucający, ten sam pasek przy sukcesie i porażce) czekają na słowo MG.
+Plik etapu: `etap-58-ukryte-zamki-pulapki.md`, umowa na górze `tura`. 58d dopisuje figury
+w `hiddenNoticeDue` (`realtime/hidden-notice.ts`).
 
 **Etap 57 „Kopie kampanii” zamknięty 22.10 (57a–57c) — dalej etap 28, potem T10.** Zakładka
 „Kopie” MG daje paczki ZIP z grafikami: kartę, scenę, sklep, bota, karty graczy i całą kampanię,
@@ -401,7 +403,7 @@ a nie do tego pliku.
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście  | 36   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie | 27   | 6       |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany, skok, walka z zauważenia, pytanie MG o przekroczenie, Percepcja w drodze | 28   | 7       |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
@@ -413,12 +415,37 @@ a nie do tego pliku.
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza | 16   | 6       |
 | `ogledziny` | CDP i Playwright MCP, zrzuty, dwie sesje, `window.confirm`    | 0    | 114     |
-| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 147     |
+| `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              | 0    | 148     |
 
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 22.10, siódma (po `5f41bf4`) — etap 58a: Percepcja w drodze, rzut ukryty
+
+**Zakres 58a.** **Zrobione:** `shared` — `segmentDistanceToRect` (`rects.ts`),
+`zoneWithinReachOfPath` (`zones.ts`), `TokenHaltBroadcast.reason`, `HiddenSpottedBroadcast`.
+Serwer — `realtime/hidden-notice.ts` (`hiddenNoticeDue`, `emitNoticeHalt`, `emitHiddenSpotted`),
+`zonesNoticeDue` i rzut ukryty w `zones.ts` (`trySpotZone` → `gmaction` ręką MG, tylko do MG;
+zasięg z całej drogi). W `performTokenMove` klatka marszu w zasięgu zamienia się w lądowanie
+(dry-run, `isCurrentWalk`, `markWalkHalted`). `walks.ts` — `ApprovedWalk.extra`, blokada
+`MOVE_HALTED` na 3 s. Klient — `walk-halt.ts` (pasek „przystaje” i „zauważa”), `hidden:spotted`
+w `socket.ts`, tekst `MOVE_HALTED`, podpowiedź „poufne”. **Błąd z oględzin:** po zatrzymaniu
+obwódka zaznaczenia zostawała obok figury (Firefox i Chromium) — `haltWalk` stawia węzeł na polu
+z serwera (pułapka na górze `tura`, dotyczy też 56). **Spoza etapu:** od `ced46d1` pulsujący 🎲
+inicjatywy blokował klik w pięciu specach E2E — `click({ force: true })` (pułapka w `testy`;
+cztery spece bez przebiegu — `zaleglosci.md`).
+
+**Weryfikacja:** `shared` 2576/2576 (+2), serwer 1588/1588 (+5 w `zones.test.ts`: marsz na wylot
+staje 4 m przed pułapką i nikt poza MG nie ma wiersza; lądowanie po zatrzymaniu `MOVE_HALTED`;
+przejście obok i sukces; MG przeciąga obok; w walce Tura płaci 4 m z 10), klient 421/421. `tsc`,
+ESLint i Prettier czyste. E2E T5b z `po-T5a` **27/27** — krok podłogi przepisany (staje na
+(19, 11), potem drugi marsz). Gateway był wyłączony, więc przebieg szedł na atrapie
+`FakeGateway` na :8100 (`reply`) i krok 5.10 `@llm` nie sprawdził prawdziwego modelu.
+**Oglądane** tymczasowym specem (skasowany): Ola w **Firefoksie** (zatrzymanie, oba paski),
+Marek w Chromium (porażka, sam pasek, czat pusty), MG w Chromium (dwa wiersze „poufne”,
+przerywany obrys strefy). Zero błędów konsoli.
 
 ### Sesja 22.10, szósta (po `605f9c7`) — oględziny ukrytych rzeczy, zamków i pułapek, plan etapu 58
 
@@ -435,31 +462,3 @@ wytrych do drzwi, wykrywanie ukrytych figur. Wpis systemu ma już PT i minuty ro
 (`disableDv` / `disableMinutes`). **Decyzje MG z 22.10** i podział 58a–58d są w
 `etap-58-ukryte-zamki-pulapki.md`. Pomysły poza zakresem (ukryte drzwi, wyważanie, koszt Akcji,
 „Szukam”) trafiły na górę `POMYSLY.md`, a wiersze 58–58d do `archiwum/tabela-etapow.md`.
-
-### Sesja 22.10, piąta (po `e81d0e1`) — etap 57c: sklep i bot w paczce, karta gracza
-
-**Zakres etapu 57c — zamyka etap 57.** **Zrobione:** `shared/archive.ts` — rodzaje paczki
-`characters` / `shop` / `bot` (`ARCHIVE_KINDS`), `matchArchiveName`, typy i zdania zgłoszenia
-(`CardSubmissionEntry`, `CARD_SUBMISSION_*`, termin 72 h); `chat.ts` — rodzaj `cardsubmission`.
-Serwer — `archive-items.ts` (eksport/import sklepu z kartą handlarza, bota z relacjami po
-imieniu, kart graczy), trasy `GET /api/archive/{shop,bot}/:id` i `/api/archive/players`, nowe
-gałęzie `POST /api/archive/import`; `/api/archive/character/:id` dla właściciela karty;
-`card-submissions.ts` (poczekalnia, `cardSubmissionsDir` w configu, domyślnie
-`data/private/submissions`) i `routes/card-submissions.ts` (zgłoszenie, podgląd portretu,
-„Przyjmij” / „Odrzuć”); karta czekająca na gracza wyjeżdża w pliku z jego imieniem. Klient —
-„Pobierz sklep / bota / karty graczy” w „Kopiach”, „⤓” na belce karty gracza, `CardSubmitGate`
-pod „Twoją postacią”, `CardSubmissionRow` w czacie, rodzaj `card` w „Czeka na MG”.
-**Rozstrzygnięte bez pytań** (lista w pliku etapu): relacje po imieniu, sklep zamknięty, bot
-nieaktywny, przyjęcie = zgoda na grę, `COMBAT_LOCKED` tylko przy zgłoszeniu.
-
-**Weryfikacja:** `shared` 2574/2574 (+8 `archive-items.test.ts`), serwer 1583 testy — 1582
-zielone, `archive.test.ts` zakładał 403 dla gracza przy pobraniu karty (od 57c własna karta
-200, cudza 404 — test poprawiony, plik 17/17); nowy `archive-items.test.ts` 9/9, macierz
-izolacji z trasami sklepu, bota i karty gracza 12/12. Klient 421/421 (+1 `gm-attention`).
-`tsc` czysty w kliencie, serwerze i e2e (poza nieśledzonym `t99-wolna-mapa`), ESLint i Prettier
-czyste w zmienionych plikach. E2E nowy `t57c-karta-gracza` (`@szybkie`) **3/3**, razem
-z `t57a-` i `t57b-` **9/9**. **Oglądane:** MG w Chromium, gracz w Firefoksie (tymczasowy spec ze
-zrzutami, skasowany) — belka karty z „⤓”, „Zgłoś kartę z pliku…” u gracza bez postaci,
-karta czatu z portretem z poczekalni i „Czeka na MG”, nowe wiersze „Kopii”, karta z portretem
-u gracza po przyjęciu. Sklepu i bota przez UI nie klikano — działanie (towar z nakładką,
-osobowość, relacje) sprawdzają testy dymne.

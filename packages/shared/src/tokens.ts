@@ -401,6 +401,26 @@ export interface TokenSyncBroadcast {
 export interface TokenHaltBroadcast {
   sceneId: string;
   tokenIds: string[];
+  /**
+   * Dlaczego (etap 58a). Brak — wróg w zasięgu wzroku (56). `notice` — figura
+   * przystanęła przy ukrytej rzeczy na rzut Percepcji; gracz dowiaduje się
+   * tylko tyle, że coś przykuło jej uwagę, a nie co ani z jakim wynikiem.
+   */
+  reason?: 'notice';
+}
+
+/**
+ * Server → właściciel figury `hidden:spotted` (etap 58a): udany rzut na
+ * Percepcję odsłonił ukrytą rzecz **temu kontu**. Porażka nie przychodzi wcale —
+ * rzut jest ukryty, pełny wynik zna tylko MG.
+ */
+export interface HiddenSpottedBroadcast {
+  sceneId: string;
+  tokenId: string;
+  /** Nazwa figury przy stole (`tokenTableName`). */
+  actorName: string;
+  /** Co zauważyła — nazwy rzeczy, jak je widzi teraz gracz. */
+  names: string[];
 }
 
 /** Server → client `token:move`. `byUserId` lets the dragging client skip its own echo. */

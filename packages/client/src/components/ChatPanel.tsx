@@ -521,9 +521,10 @@ function CombatActionRow({
         {entry.passed && !refused && (
           <span className="chat-action-badge">przepuszczone przez MG</span>
         )}
-        {/* Pełny wiersz Sieci obok publicznego skrótu (#37) — reszta stołu go nie ma. */}
+        {/* Pełny wiersz Sieci obok publicznego skrótu (#37) i ukryty rzut na
+            Percepcję (58a) — reszta stołu go nie ma. */}
         {message.kind === 'gmaction' && !refused && (
-          <span className="chat-action-badge" title="Ten wiersz widzą tylko MG i netrunner">
+          <span className="chat-action-badge" title="Reszta stołu tego wiersza nie widzi">
             poufne
           </span>
         )}

@@ -438,7 +438,8 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
 
     async function rollInitiative(actor: Actor, face: number): Promise<RollJson> {
       scriptDice([face]);
-      await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click();
+      // 🎲 pulsuje skalą, póki gracz nie rzuci (22.10) — nigdy nie jest „stabilny”.
+      await actor.page.getByRole('button', { name: /^Rzuć inicjatywę:/ }).click({ force: true });
       const id = await rollAndWait(actor, lastMessageId(), 'Inicjatywa');
       const roll = rollById(id);
       await expect
@@ -580,9 +581,19 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Bieg/ })
       .click();
     await expect.poll(() => JSON.parse(combatantOf('Kowal').turnState!).action?.id).toBe('run');
-    // Drugi ruch z Biegu: 3 pola na podłogę elektryczną przy budce. Percepcja
-    // w zasięgu 4 m (2 — nie widzi ukrytej podłogi), potem 6k6 = 6 przy wejściu.
+    // Drugi ruch z Biegu: 3 pola na podłogę elektryczną przy budce. Etap 58a:
+    // marsz staje sam na pierwszym polu w 4 m od ukrytej podłogi (19, 11)
+    // i rzuca Percepcję w ukryciu (2 — nie widzi); wiersz dostaje tylko MG.
     scriptDice([2, 1, 1, 1, 1, 1, 1]);
+    await marek.page.keyboard.press('Escape');
+    await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
+    await marek.page.waitForTimeout(300);
+    await walkOnMap(marek.page, point(17, 11));
+    await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual([19, 11]);
+    const perception = messageAfter(since, 'Percepcja', 'gmaction');
+    expect(perception?.payload ?? '').toContain('nie zauważa: Podłoga elektryczna');
+    expect(messageAfter(since, 'Percepcja', 'action')).toBeFalsy();
+    // Dalej na podłogę — Kowal już rzucał, więc nic go nie trzyma; 6k6 = 6 przy wejściu.
     await walk(marek, 'Kowal', 17, 11);
     await expect
       .poll(() => messageAfter(since, 'Wejście na broniony obszar', 'action')?.id ?? 0, {
@@ -590,8 +601,6 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       })
       .toBeGreaterThan(0);
     expect(pendingDice()).toBe('');
-    const perception = messageAfter(since, 'Percepcja', 'action');
-    expect(perception?.payload ?? '').toContain('nic nie zauważa');
     // 6k6 = 6 na kurtkę OB 12 — podłoga nie przebija (pancerz jej nie traci, s. 216).
     const entry = JSON.parse(messageAfter(since, 'Kowal', 'damage')!.payload!) as {
       damageRolled: number;

@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**22.10.2026 — E2E: T4a, T6b, T7b i T8a nieprzepuszczone po poprawce klika 🎲 inicjatywy.**
+Klik w pulsujący „Rzuć inicjatywę” (`click({ force: true })`, pułapka na górze `testy`)
+sprawdzony tylko w T5b (27/27, sesja 58a). W pozostałych czterech poprawka jest ta sama, ale
+przebiegu nie było — przy najbliższym pełnym przebiegu sprawdzić, czy kubek załadowany sam
+(`offeredInitiative`) nie gryzie się z klikiem.
+
 **22.10.2026 — E2E: „kreator Kuby (Na skróty)” w `t8a-ekrany` pada na blokadzie rozwoju w walce.**
 Spec startuje z `po-T4a` (trwająca walka), a od 21.10 bramka ma „🧬 Stwórz postać” wyszarzone
 (`COMBAT_LOCKED`, „W trakcie walki — poczekaj na koniec starcia.”) — klik czeka do limitu we

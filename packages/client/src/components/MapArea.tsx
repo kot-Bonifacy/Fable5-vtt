@@ -253,6 +253,9 @@ function moveErrorText(code: string | undefined): string {
       return 'Ktoś stoi na drodze — przez wroga nie przejdziesz, a na zajętym polu nie staniesz.';
     case 'MOVE_NOT_PLANNED':
       return 'Marsz się rozjechał z trasą — kliknij cel jeszcze raz.';
+    // Etap 58a: postać przystanęła przy czymś, a marsz zdążył dobiec do celu.
+    case 'MOVE_HALTED':
+      return 'Postać przystanęła po drodze — kliknij cel jeszcze raz.';
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
     case 'MOVE_LOCKED':

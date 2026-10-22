@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { segmentDistanceToRect } from './rects.js';
 import {
   ZONE_MESSAGES,
   isPointInZone,
@@ -10,6 +11,7 @@ import {
   zoneStanding,
   zoneTouchedBy,
   zoneTouchedByPath,
+  zoneWithinReachOfPath,
   type DefenseZoneView,
 } from './zones.js';
 
@@ -64,6 +66,33 @@ describe('geometria strefy bronionej', () => {
     expect(zoneTouchedByPath(zone(), [{ x: 150, y: 150 }])).toBe(true);
     expect(zoneTouchedByPath(zone(), [{ x: 10, y: 10 }])).toBe(false);
     expect(zoneTouchedByPath(zone(), [])).toBe(false);
+  });
+
+  it('odległość odcinka od prostokąta: przecięcie, koniec, róg (58a)', () => {
+    const rect = { x: 100, y: 100, width: 200, height: 100 };
+    expect(segmentDistanceToRect(rect, { x: 0, y: 150 }, { x: 400, y: 150 })).toBe(0);
+    // Odcinek równoległy nad górną krawędzią — najbliżej w środku, nie na końcach.
+    expect(segmentDistanceToRect(rect, { x: 0, y: 40 }, { x: 400, y: 40 })).toBe(60);
+    // Odcinek mijający róg po skosie — najbliżej róg prostokąta.
+    expect(segmentDistanceToRect(rect, { x: 0, y: 100 }, { x: 100, y: 0 })).toBeCloseTo(
+      Math.hypot(50, 50),
+      6,
+    );
+    // Odcinek o zerowej długości to punkt.
+    expect(segmentDistanceToRect(rect, { x: 0, y: 150 }, { x: 0, y: 150 })).toBe(100);
+  });
+
+  it('rzut na Percepcję liczy się z całej drogi, nie z samego końca (58a)', () => {
+    // Przejście obok pułapki: oba końce daleko, środek drogi 50 px od krawędzi.
+    const past = [
+      { x: -500, y: 50 },
+      { x: 800, y: 50 },
+    ];
+    expect(zoneWithinReachOfPath(zone(), past, 60)).toBe(true);
+    expect(zoneWithinReachOfPath(zone(), past, 40)).toBe(false);
+    expect(zoneWithinReachOfPath(zone(), [{ x: 0, y: 150 }], 100)).toBe(true);
+    expect(zoneWithinReachOfPath(zone(), [{ x: 0, y: 150 }], 99)).toBe(false);
+    expect(zoneWithinReachOfPath(zone(), [], 1000)).toBe(false);
   });
 
   it('klik trafia w strefę położoną najpóźniej — tak jak przy osłonach', () => {

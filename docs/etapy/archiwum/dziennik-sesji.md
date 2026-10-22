@@ -1,5 +1,33 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, piąta (po `e81d0e1`) — etap 57c: sklep i bot w paczce, karta gracza
+
+**Zakres etapu 57c — zamyka etap 57.** **Zrobione:** `shared/archive.ts` — rodzaje paczki
+`characters` / `shop` / `bot` (`ARCHIVE_KINDS`), `matchArchiveName`, typy i zdania zgłoszenia
+(`CardSubmissionEntry`, `CARD_SUBMISSION_*`, termin 72 h); `chat.ts` — rodzaj `cardsubmission`.
+Serwer — `archive-items.ts` (eksport/import sklepu z kartą handlarza, bota z relacjami po
+imieniu, kart graczy), trasy `GET /api/archive/{shop,bot}/:id` i `/api/archive/players`, nowe
+gałęzie `POST /api/archive/import`; `/api/archive/character/:id` dla właściciela karty;
+`card-submissions.ts` (poczekalnia, `cardSubmissionsDir` w configu, domyślnie
+`data/private/submissions`) i `routes/card-submissions.ts` (zgłoszenie, podgląd portretu,
+„Przyjmij” / „Odrzuć”); karta czekająca na gracza wyjeżdża w pliku z jego imieniem. Klient —
+„Pobierz sklep / bota / karty graczy” w „Kopiach”, „⤓” na belce karty gracza, `CardSubmitGate`
+pod „Twoją postacią”, `CardSubmissionRow` w czacie, rodzaj `card` w „Czeka na MG”.
+**Rozstrzygnięte bez pytań** (lista w pliku etapu): relacje po imieniu, sklep zamknięty, bot
+nieaktywny, przyjęcie = zgoda na grę, `COMBAT_LOCKED` tylko przy zgłoszeniu.
+
+**Weryfikacja:** `shared` 2574/2574 (+8 `archive-items.test.ts`), serwer 1583 testy — 1582
+zielone, `archive.test.ts` zakładał 403 dla gracza przy pobraniu karty (od 57c własna karta
+200, cudza 404 — test poprawiony, plik 17/17); nowy `archive-items.test.ts` 9/9, macierz
+izolacji z trasami sklepu, bota i karty gracza 12/12. Klient 421/421 (+1 `gm-attention`).
+`tsc` czysty w kliencie, serwerze i e2e (poza nieśledzonym `t99-wolna-mapa`), ESLint i Prettier
+czyste w zmienionych plikach. E2E nowy `t57c-karta-gracza` (`@szybkie`) **3/3**, razem
+z `t57a-` i `t57b-` **9/9**. **Oglądane:** MG w Chromium, gracz w Firefoksie (tymczasowy spec ze
+zrzutami, skasowany) — belka karty z „⤓”, „Zgłoś kartę z pliku…” u gracza bez postaci,
+karta czatu z portretem z poczekalni i „Czeka na MG”, nowe wiersze „Kopii”, karta z portretem
+u gracza po przyjęciu. Sklepu i bota przez UI nie klikano — działanie (towar z nakładką,
+osobowość, relacje) sprawdzają testy dymne.
+
 ### Sesja 22.10, czwarta (po `ddc9996`) — etap 57b: kopie kampanii i cofnięcie
 
 **Zakres etapu 57b.** **Zrobione:** `shared/archive.ts` — `campaignCopyName` /
