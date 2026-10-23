@@ -708,12 +708,15 @@ describe('automat', () => {
     gm.socket.disconnect();
   });
 
-  it('reloads another kind of round when only that one is in the pack (17.10)', async () => {
+  it('reloads special rounds with nothing in the pack — bullets never run out (23.10)', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;
     const before = JSON.parse(
       (await built.prisma.character.findUnique({ where: { id: characterId } }))!.data,
     ) as CpredCharacterData;
+    // Do 23.10 test sprawdzał, że bot ładuje inny rodzaj z plecaka (17.10). Kule
+    // się już nie kończą, a granatów bot nie ma w menu (`pointTarget`), więc
+    // zostaje druga strona: nabój specjalny bez żadnego pudełka.
     const pistol = {
       id: 'w-pistol',
       name: 'Zgrzyt 9',
@@ -730,21 +733,8 @@ describe('automat', () => {
       data: {
         data: JSON.stringify({
           ...before,
-          ammoTracked: true,
-          weapons: [pistol],
-          gear: [
-            {
-              id: 'ap',
-              name: 'Przeciwpancerna',
-              notes: '',
-              qty: 15,
-              ammo: {
-                ammoId: 'ammo.sample-piercing',
-                calibre: 'Nabój pistoletowy (przykład)',
-                pattern: 'bullet',
-              },
-            },
-          ],
+          weapons: [{ ...pistol, ammoId: 'ammo.sample-piercing' }],
+          gear: [],
         }),
       },
     });
@@ -761,7 +751,7 @@ describe('automat', () => {
       (await built.prisma.character.findUnique({ where: { id: characterId } }))!.data,
     ) as CpredCharacterData;
     expect(sheet.weapons[0]).toMatchObject({ ammoCurrent: 10, ammoId: 'ammo.sample-piercing' });
-    expect(sheet.gear.map((row) => row.qty)).toEqual([5]);
+    expect(sheet.gear).toEqual([]);
     await endFight(gm.socket);
     await built.prisma.character.update({
       where: { id: characterId },

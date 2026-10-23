@@ -871,27 +871,22 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
         'Kowal',
       ).weapons.find((w) => w.name === 'Bardzo ciężki pistolet')!;
     expect(sheetOf().ammoCurrent).toBe(7);
-    // Etap 46c: naboje z pudełek. Zmiana rodzaju oddaje 7 zwykłych do zapasu,
-    // a magazynek (8) ładuje się z 20 przeciwpancernych od MG (T5a).
-    const stock = (ammoId: string | null) =>
-      sheet<{ gear: { qty?: number; ammo?: { ammoId: string | null; calibre: string } }[] }>(
-        'Kowal',
-      )
-        .gear.filter((row) => row.ammo?.calibre === 'B.C. Pistolet' && row.ammo.ammoId === ammoId)
-        .reduce((sum, row) => sum + (row.qty ?? 0), 0);
-    const ordinary = stock(null);
-    expect(stock('ammo.armour-piercing')).toBe(20);
+    // Kule się nie kończą (zasada domowa MG z 23.10): rodzaj wybiera się bez
+    // liczb zapasu, a magazynek ładuje się do pełna za Akcję, bez pudełek.
     const card = await openSheet(marek, 'Kowal');
     await card.getByRole('button', { name: 'Ekwipunek', exact: true }).click();
     const picker = card.getByLabel('Rodzaj naboju: Bardzo ciężki pistolet');
-    await expect(
-      picker.locator('option', { hasText: 'Amunicja przeciwpancerna — 20' }),
-    ).toHaveCount(1);
+    await expect(picker.locator('option', { hasText: /^Amunicja przeciwpancerna$/ })).toHaveCount(
+      1,
+    );
     await picker.selectOption('ammo.armour-piercing');
     await expect.poll(() => sheetOf().ammoId).toBe('ammo.armour-piercing');
     expect(sheetOf().ammoCurrent).toBe(sheetOf().ammoMax);
-    expect(stock('ammo.armour-piercing')).toBe(20 - sheetOf().ammoMax);
-    expect(stock(null)).toBe(ordinary + 7);
+    expect(
+      sheet<{ gear: { ammo?: { calibre: string } }[] }>('Kowal').gear.filter(
+        (row) => row.ammo?.calibre === 'B.C. Pistolet',
+      ),
+    ).toEqual([]);
     await closeSheet(marek.page);
     const turn = JSON.parse(combatantOf('Kowal').turnState!) as {
       action: { id: string } | null;

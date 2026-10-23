@@ -1021,10 +1021,19 @@ function EntryCard({
           {entry.id === CPRED_MARTIAL_ARTS_ENTRY_ID ? ' — od Umiejętności Sztuki walki 1' : ''}.
         </p>
       ) : null}
+      {/* 23.10.2026 (zasada domowa MG): kule, śrut i strzały się nie kończą —
+          nabój wybiera się na wierszu broni, nie kupuje. */}
+      {isAmmoEntry(entry) && calibres.length === 0 ? (
+        <p className="compendium-note">
+          Ta amunicja się nie kończy — rodzaj naboju wybierasz na wierszu broni w karcie postaci.
+        </p>
+      ) : null}
       {/* Od etapu 46c amunicja to pudełko w wyposażeniu — kupuje się ją
-          i dodaje z kalibrem, jak każdą rzecz na kartę. Od 48b tak samo
-          Program: ląduje w Wyposażeniu, do deku wkłada się go na karcie. */}
+          i dodaje z kalibrem, jak każdą rzecz na kartę (od 23.10 tylko granaty
+          i rakiety). Od 48b tak samo Program: ląduje w Wyposażeniu, do deku
+          wkłada się go na karcie. */}
       {targets.length > 0 &&
+      !(isAmmoEntry(entry) && calibres.length === 0) &&
       !cpredIsBareHandsEntry(entry.id) &&
       entry.category !== 'criticalInjury' &&
       entry.category !== 'netDefense' ? (

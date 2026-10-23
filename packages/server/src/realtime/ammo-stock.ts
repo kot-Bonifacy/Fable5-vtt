@@ -6,39 +6,25 @@ import {
   cpredReloadFromStock,
   cpredStockAmmoId,
   cpredTakeAmmo,
-  cpredTracksAmmo,
+  cpredWeaponAmmoCounted,
   loadedAmmoFor,
   type CpredAmmoProfile,
   type CpredCharacterData,
   type CpredGearRow,
   type ResolvedWeapon,
 } from '@vtt/shared';
-import type { Character } from '../generated/prisma/client.js';
 import { buildCompendiumSync } from './compendium.js';
 import { nextRowId } from './economy.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
-import { isTeamCard } from './team-cards.js';
 
 /**
  * Zapas amunicji po stronie serwera (etap 46c).
  *
  * Czysta reguła mieszka w `shared/.../ammostock.ts`; tu jest tylko to, czego
- * moduł czysty nie wie: czy karta jest drużyną (towarzysz-bot siedzi w profilu
- * bota) i co mówi katalog kampanii o naboju w magazynku.
+ * moduł czysty nie wie: co mówi katalog kampanii o naboju w magazynku. Od
+ * 23.10.2026 (zasada domowa MG) z zapasu biorą wyłącznie granaty i rakiety —
+ * każda karta, także NPC i statysta (`cpredWeaponAmmoCounted`).
  */
-
-/** Czy ta karta przeładowuje z ekwipunku — jedna odpowiedź dla broni, dodatku i rzutu. */
-export async function characterTracksAmmo(
-  deps: RealtimeDeps,
-  campaignId: string,
-  character: Pick<Character, 'id' | 'ownerId'>,
-  data: Pick<CpredCharacterData, 'ammoTracked'>,
-): Promise<boolean> {
-  if (typeof data.ammoTracked === 'boolean') return data.ammoTracked;
-  const owned = character.ownerId !== null;
-  const companion = !owned && (await isTeamCard(deps.ctx.prisma, campaignId, character));
-  return cpredTracksAmmo(data, { owned, companion });
-}
 
 async function ammoCatalogue(
   deps: RealtimeDeps,
@@ -57,14 +43,14 @@ function calibreOf(weapon: ResolvedWeapon | null, printed: string | undefined): 
 
 /**
  * Przeładowanie z zapasu: nowy ekwipunek i stan magazynka, albo `null`, gdy
- * karta jest „bez dna” (NPC, statysta) lub broń nie ma kalibru — wtedy wołający
- * napełnia magazynek jak przed 46c. Bez naboi odmowa `NO_AMMO` **przed**
- * księgowaniem Akcji: przeładowanie, które nic nie załadowało, nie kosztuje.
+ * broń jest „bez dna” (kule, śrut, strzały — 23.10) lub nie ma kalibru —
+ * wtedy wołający napełnia magazynek jak przed 46c. Bez granatów i rakiet
+ * odmowa `NO_AMMO` **przed** księgowaniem Akcji: przeładowanie, które nic nie
+ * załadowało, nie kosztuje.
  */
 export async function planStockReload(
   deps: RealtimeDeps,
   campaignId: string,
-  character: Pick<Character, 'id' | 'ownerId'>,
   data: CpredCharacterData,
   input: {
     weapon: ResolvedWeapon | null;
@@ -74,7 +60,7 @@ export async function planStockReload(
     nextAmmoId?: string;
   },
 ): Promise<{ gear: CpredGearRow[]; count: number } | null> {
-  if (!(await characterTracksAmmo(deps, campaignId, character, data))) return null;
+  if (!cpredWeaponAmmoCounted(input.weapon)) return null;
   const calibre = calibreOf(input.weapon, input.printedCalibre);
   if (!calibre) return null;
   const { profiles, lookup } = await ammoCatalogue(deps, campaignId);
@@ -111,18 +97,17 @@ export async function planStockReload(
 
 /**
  * Rzut granatem ręcznym bez magazynka (decyzja MG 7 z 09.10): sztuka rodzaju
- * z wiersza schodzi z zapasu. `null` — karta „bez dna”, rzut niczego nie bierze.
+ * z wiersza schodzi z zapasu. `null` — broń „bez dna”, rzut niczego nie bierze.
  * Bez sztuki odmowa `NO_AMMO`, zanim planer cokolwiek policzy.
  */
 export async function planThrowFromStock(
   deps: RealtimeDeps,
   campaignId: string,
-  character: Pick<Character, 'id' | 'ownerId'>,
   data: CpredCharacterData,
   row: { ammoId?: string; ammoType: string },
   weapon: ResolvedWeapon | null,
 ): Promise<CpredGearRow[] | null> {
-  if (!(await characterTracksAmmo(deps, campaignId, character, data))) return null;
+  if (!cpredWeaponAmmoCounted(weapon)) return null;
   const calibre = calibreOf(weapon, row.ammoType);
   if (!calibre) return null;
   const { lookup } = await ammoCatalogue(deps, campaignId);

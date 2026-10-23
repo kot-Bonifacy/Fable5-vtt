@@ -307,8 +307,6 @@ describe('ranged combat from the map', () => {
           // REF 6 + Broń krótka 5 = +11; Ogień ciągły 4 → +10 on bursts.
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, will: 6, dex: 5 },
           skills: { handgun: 5, autofire: 4, evasion: 3, concentration: 2 },
-          // Zapas amunicji (46c) ma własny plik testów — tu magazynki „bez dna”.
-          ammoTracked: false,
           weapons: [
             {
               id: 'w-pistol',

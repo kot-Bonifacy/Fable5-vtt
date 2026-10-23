@@ -82,7 +82,6 @@ import {
   type SceneVisionContext,
 } from './vision.js';
 import { campaignAi } from './ai.js';
-import { characterTracksAmmo } from './ammo-stock.js';
 
 /**
  * Tura bota w walce (etap 20b).
@@ -359,12 +358,11 @@ async function buildTacticalStep(
   // Pasek akcji budowany tak, jak widzi go GRACZ (`isGm: false`) — celowo: slot
   // wyszarzony brakiem Akcji ma być wyszarzony także dla bota, mimo że konto,
   // którym bot działa, jest z tej blokady zwolnione.
-  // Etap 46c: towarzysz-bot liczy amunicję jak gracz, więc jego pasek widzi
-  // zapas — „przeładuj” bez naboi znika z menu i tura nie kręci się w odmowach.
-  const tracked = await characterTracksAmmo(deps, ctx.campaignId, ctx.character, ctx.sheet);
+  // Etap 46c: bot liczy granaty i rakiety jak gracz, więc jego pasek widzi
+  // zapas — „przeładuj” bez sztuk znika z menu i tura nie kręci się w odmowach.
   const slots = hotbarSlotsFor({
     sheet: ctx.sheet,
-    ...(tracked ? { stockGear: ctx.sheet.gear } : {}),
+    stockGear: ctx.sheet.gear,
     resolve: ctx.resolveWeaponEntry,
     resolveAmmo: ctx.resolveAmmoEntry,
     statuses: tokenStatuses(actor),

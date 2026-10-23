@@ -64,7 +64,6 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
-import { characterTracksAmmo } from './ammo-stock.js';
 import { armJump, disarmJump } from './jump.js';
 import { useSceneStore } from './stores/sceneStore.js';
 
@@ -305,8 +304,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
 
   const slots = hotbarSlotsFor({
     sheet: character ? character.data : null,
-    // Etap 46c: karta drużyny przeładowuje z ekwipunku — pasek liczy zapas.
-    ...(character && characterTracksAmmo(character) ? { stockGear: character.data.gear } : {}),
+    // Etap 46c: granaty i rakiety przychodzą z ekwipunku — pasek liczy zapas.
+    ...(character ? { stockGear: character.data.gear } : {}),
     resolve: (compendiumId) => {
       const entry = compendiumId ? compendium.entries[compendiumId] : undefined;
       return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;

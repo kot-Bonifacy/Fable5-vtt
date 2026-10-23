@@ -22,19 +22,24 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   „Tarcza” założony na karcie) zajmuje jedną rękę, więc broń dwuręczna odpada. Podręcznik nie daje
   tarczy kary do RUCHU i MG nie chce reguły domowej: ruch z tarczą jest zwykły. Akcji za
   założenie tarczy na karcie VTT nie pobiera (jak dotąd — „Przygotuj/upuść tarczę” księguje MG).
-- **Zapas amunicji: co VTT liczy, a czego nie (09.10, etap 46c, decyzje MG).** Przeładowanie
-  zużywa naboje z pudełek w ekwipunku na kartach drużyny (gracz, towarzysz-bot); NPC i statysta
-  MG są „bez dna”, dopóki MG nie zaznaczy „Licz amunicję”, a figura bez karty zawsze. **Zmiana
-  rodzaju naboju oddaje naboje z magazynka do zapasu** (podręcznik o tym milczy — nikt przy stole
-  nie wyrzuca pół magazynka). **Łuk i kusza dalej nie liczą strzał** (nie mają magazynka na karcie);
-  strzały da się kupić i nosić. Granat ręczny **bez** magazynka bierze sztukę z zapasu przy rzucie,
-  wpis z magazynkiem przeładowuje się z zapasu. Kaliber to rodzina z pola „Amunicja” typu broni,
-  więc granat pasuje i do ręki, i do granatnika (s. 344). Paczka: 10 sztuk kul, śrutu i strzał,
-  1 sztuka granatów i rakiet (s. 344); cena wpisu jest ceną paczki. **Zwykły granat i zwykła
-  rakieta kosztują 100 ed za sztukę na poziomie 3** — jak przeciwpancerna, którą podręcznik nazywa
-  ich standardem — z osobnego wpisu bez efektów (`ammo.standard-explosive` w danych prywatnych).
-  Każdy wpis amunicji bez efektów jest „zwykłą” i skleja się z nią (`cpredStockAmmoId`).
-  Migracja „nic”: stary tekst „Amunicja (zapas)” zostaje notatką do przepisania.
+- **Kule, śrut i strzały się nie kończą — liczą się tylko granaty i rakiety (23.10.2026, zasada
+  domowa MG).** Podręcznik liczy każdy nabój: „Amunicja zwykła — 10 ed za 10 sztuk” (s. 94),
+  Przeładowanie „załadowujesz magazynek do pełna” (s. 169), a przykładowy Jay kupuje „Zwykła
+  amunicja karabinowa ×100”. MG nie chce przy stole księgowości naboi, więc VTT liczy tylko
+  magazynek: opróżnia się strzałami (ogień ciągły dalej zjada 10), a Przeładowanie (w walce za
+  Akcję) napełnia go **za darmo** dowolnym pasującym rodzajem — także przeciwpancerną, zapalającą,
+  gumową czy śrutem. Zmiana rodzaju w walce dalej kosztuje Przeładowanie. Pudełek kul, śrutu
+  i strzał nie ma w ekwipunku, na półkach, w kreatorze ani w skrzyniach; te sprzed zasady zdjęto
+  z kart (bez zwrotu ed). **Granaty i rakiety zostają przedmiotami** („nie zaliczają się do
+  amunicji zwykłej i trzeba je kupić osobno”, s. 94): leżą w ekwipunku, kupuje się je na sztuki
+  i schodzą przy przeładowaniu granatnika/wyrzutni i rzucie granatem — **u wszystkich**, także
+  u NPC i statysty (przełącznik „Licz amunicję” zniknął; „bez dna” jest tylko figura bez karty).
+  Zasady zapasu granatów z 09.10 (etap 46c) zostają: zmiana rodzaju oddaje sztuki z magazynka do
+  zapasu, granat ręczny bez magazynka bierze sztukę przy rzucie, kaliber to rodzina z pola
+  „Amunicja” typu broni (granat pasuje do ręki i granatnika, s. 344), paczka to 1 sztuka, zwykły
+  granat i rakieta kosztują 100 ed na poziomie 3 (`ammo.standard-explosive`). Gracz dalej nie
+  podniesie magazynka ręką na karcie — napełnia go Przeładowanie. Stary tekst „Amunicja (zapas)”
+  zostaje notatką.
 
 - **Zastrzyk siłą: serwer rzuca za obie strony, a pudło zostawia dawkę (25.09, decyzje MG).**
   „Jeśli cel nie chce przyjąć środka, w ramach Akcji wykonujesz jeden Atak bronią białą i jeśli

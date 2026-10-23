@@ -1018,65 +1018,63 @@ describe('etap 46c — zapas amunicji na pasku', () => {
     ammo: { ammoId: null, calibre, pattern },
   });
 
-  it('karta bez dna nie ma liczby zapasu, karta z zapasem ma', () => {
-    const bare = hotbarSlotsFor(input({ resolve: () => heavy }));
-    expect(weaponSlots(bare)[0]!.stock).toBeNull();
+  const launcher: ResolvedWeapon = { ...pistol, ammoType: 'Granaty', ammoPatterns: ['grenade'] };
+
+  it('broń na kule nie ma liczby zapasu (bez dna, 23.10), granatnik ma', () => {
+    const bullets = hotbarSlotsFor(input({ resolve: () => heavy, stockGear: [] }));
+    expect(weaponSlots(bullets)[0]!.stock).toBeNull();
+    expect(bullets.find((slot) => slot.kind === 'reload')?.disabled).toBeNull();
     const counted = hotbarSlotsFor(
-      input({ resolve: () => heavy, stockGear: [box(40, 'c. pistolet')] }),
+      input({ resolve: () => launcher, stockGear: [box(4, 'granaty', 'grenade')] }),
     );
-    expect(weaponSlots(counted)[0]!.stock).toBe(40);
+    expect(weaponSlots(counted)[0]!.stock).toBe(4);
     const reload = counted.find((slot) => slot.kind === 'reload');
-    expect(reload).toMatchObject({ stock: 40, disabled: null });
-    expect(reload?.hint).toContain('zapas 40');
+    expect(reload).toMatchObject({ stock: 4, disabled: null });
+    expect(reload?.hint).toContain('zapas 4');
   });
 
-  it('przeładowanie bez zapasu jest wyszarzone, zanim gracz wyda Akcję', () => {
+  it('przeładowanie granatnika bez zapasu jest wyszarzone, zanim gracz wyda Akcję', () => {
     const slots = hotbarSlotsFor(
-      input({ resolve: () => heavy, stockGear: [box(40, 'Karabinowa')] }),
+      input({ resolve: () => launcher, stockGear: [box(2, 'Rakiety', 'grenade')] }),
     );
     expect(slots.find((slot) => slot.kind === 'reload')?.disabled).toBe(
       'Nie masz amunicji do tej broni.',
     );
   });
 
-  it('bez naboi bieżącego rodzaju ładuje inny pasujący z ekwipunku (17.10)', () => {
-    const shotgun: ResolvedWeapon = {
-      ...pistol,
-      ammoType: 'Breneka',
-      ammoPatterns: ['bullet', 'shell'],
-    };
-    const shot: CpredAmmoProfile = { id: 'ammo.shot', name: 'Śrut', patterns: ['shell'] };
-    const shells = {
-      id: 'b-shot',
-      name: 'Amunicja śrutowa · Breneka',
+  it('bez granatów bieżącego rodzaju ładuje inny pasujący z ekwipunku (17.10)', () => {
+    const smoke: CpredAmmoProfile = { id: 'ammo.smoke', name: 'Dymna', patterns: ['grenade'] };
+    const smokes = {
+      id: 'b-smoke',
+      name: 'Amunicja dymna · Granaty',
       notes: '',
-      qty: 10,
-      ammo: { ammoId: 'ammo.shot', calibre: 'Breneka', pattern: 'shell' as const },
+      qty: 3,
+      ammo: { ammoId: 'ammo.smoke', calibre: 'Granaty', pattern: 'grenade' as const },
     };
-    const sheet = { weapons: [weaponRow({ name: 'Strzelba', ammoCurrent: 0, ammoMax: 4 })] };
+    const sheet = { weapons: [weaponRow({ name: 'Granatnik', ammoCurrent: 0, ammoMax: 2 })] };
     const slots = hotbarSlotsFor(
       input({
         sheet,
-        resolve: () => shotgun,
-        resolveAmmo: (id) => (id === shot.id ? shot : null),
-        stockGear: [shells],
+        resolve: () => launcher,
+        resolveAmmo: (id) => (id === smoke.id ? smoke : null),
+        stockGear: [smokes],
       }),
     );
-    // Strzał dalej mówi o pustym magazynku i zerowym zapasie zwykłej…
+    // Strzał dalej mówi o pustym magazynku i zerowym zapasie zwykłych…
     expect(weaponSlots(slots)[0]!.stock).toBe(0);
-    // …a przeładowanie ładuje śrut, zamiast odmawiać.
+    // …a przeładowanie ładuje dymne, zamiast odmawiać.
     expect(slots.find((slot) => slot.kind === 'reload')).toMatchObject({
-      ammoId: 'ammo.shot',
-      stock: 10,
+      ammoId: 'ammo.smoke',
+      stock: 3,
       disabled: null,
     });
-    // Pełny magazynek zwykłej też można przeładować na śrut.
+    // Pełny magazynek zwykłych też można przeładować na dymne.
     const full = hotbarSlotsFor(
       input({
-        sheet: { weapons: [weaponRow({ name: 'Strzelba', ammoCurrent: 4, ammoMax: 4 })] },
-        resolve: () => shotgun,
-        resolveAmmo: (id) => (id === shot.id ? shot : null),
-        stockGear: [shells],
+        sheet: { weapons: [weaponRow({ name: 'Granatnik', ammoCurrent: 2, ammoMax: 2 })] },
+        resolve: () => launcher,
+        resolveAmmo: (id) => (id === smoke.id ? smoke : null),
+        stockGear: [smokes],
       }),
     );
     expect(full.find((slot) => slot.kind === 'reload')?.disabled).toBeNull();
@@ -1090,7 +1088,7 @@ describe('etap 46c — zapas amunicji na pasku', () => {
       input({ sheet, resolve: () => grenade, stockGear: [box(2, 'Granaty', 'grenade')] }),
     );
     expect(weaponSlots(two)[0]).toMatchObject({ stock: 2, disabled: null });
-    // NPC „bez dna” rzuca jak dotąd.
+    // Figura bez karty (bez ekwipunku) rzuca „bez dna”.
     const npc = hotbarSlotsFor(input({ sheet, resolve: () => grenade }));
     expect(weaponSlots(npc)[0]!.disabled).toBeNull();
   });

@@ -52,7 +52,6 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireOwnUploadUrl } from '../campaign-uploads.js';
 import { applyBalance, nextRowId } from './economy.js';
 import { campaignEntry } from './compendium.js';
-import { characterTracksAmmo } from './ammo-stock.js';
 import { applyImprovementPoints } from './advancement.js';
 import { refuseInCombat } from './combat-lock.js';
 import { emitToCampaignUser } from './state.js';
@@ -357,10 +356,6 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         const locked = cpredPlayerItemPatchProblem(current, sheet);
         if (locked) throw new RealtimeError(locked);
       }
-      // Etap 46c (decyzja MG 6 z 09.10): „Licz amunicję” przestawia MG, a na
-      // karcie z zapasem gracz naboi ręką tylko ubywa — przybywa ich z zakupu,
-      // wymiany, łupu i od MG. Inaczej przeładowanie z zapasu byłoby ozdobą.
-      if (!isGm && 'ammoTracked' in sheet) throw new RealtimeError('FORBIDDEN');
       // 22.10.2026 (decyzja MG): pulę Szczęścia gracz ręką tylko uszczupla —
       // np. po punktach wydanych ustnie przy stole. Odnawia ją start sesji
       // (`refreshLuckForSession`) albo MG; inaczej ↻ na karcie byłoby darmowym
@@ -368,11 +363,13 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       if (!isGm && sheet.luckCurrent !== undefined && sheet.luckCurrent > current.luckCurrent) {
         throw new RealtimeError('FORBIDDEN');
       }
+      // Etap 46c (decyzja MG 6 z 09.10): gracz naboi ręką tylko ubywa —
+      // magazynek napełnia Przeładowanie (w walce za Akcję, od 23.10 kulami
+      // za darmo), a granatów przybywa z zakupu, wymiany, łupu i od MG.
       if (
         !isGm &&
         (sheet.weapons !== undefined || sheet.gear !== undefined) &&
-        cpredAmmoPatchRaises(current, sheet) &&
-        (await characterTracksAmmo(deps, campaignId, character, current))
+        cpredAmmoPatchRaises(current, sheet)
       ) {
         throw new RealtimeError('AMMO_LOCKED');
       }

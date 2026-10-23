@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CpredAmmoProfile } from './ammo.js';
+import { cpredAmmoPatternCounted, cpredWeaponAmmoCounted, type CpredAmmoProfile } from './ammo.js';
 import {
   CPRED_AMMO_PACK_SIZE,
   cpredAmmoHasEffects,
@@ -16,13 +16,13 @@ import {
   cpredStockAmmoId,
   cpredTakeAmmo,
   cpredThrowsFromStock,
-  cpredTracksAmmo,
   cpredWeaponsWithoutStock,
 } from './ammostock.js';
 import {
   ITEM_QTY_MAX,
   buildCpredRegistry,
   createDefaultCharacterData,
+  parseCharacterData,
   validateCharacterDataPatch,
   type CpredCharacterData,
   type CpredGearRow,
@@ -133,13 +133,20 @@ function reload(
   });
 }
 
-describe('cpredTracksAmmo — kto liczy (decyzja MG 11)', () => {
-  it('karta gracza i towarzysza liczy, NPC jest „bez dna”, MG przestawia', () => {
-    expect(cpredTracksAmmo({}, { owned: true, companion: false })).toBe(true);
-    expect(cpredTracksAmmo({}, { owned: false, companion: true })).toBe(true);
-    expect(cpredTracksAmmo({}, { owned: false, companion: false })).toBe(false);
-    expect(cpredTracksAmmo({ ammoTracked: true }, { owned: false, companion: false })).toBe(true);
-    expect(cpredTracksAmmo({ ammoTracked: false }, { owned: true, companion: false })).toBe(false);
+describe('co się kończy (zasada domowa MG z 23.10)', () => {
+  it('granaty i rakiety tak, kule, śrut i strzały nie', () => {
+    expect(cpredAmmoPatternCounted('grenade')).toBe(true);
+    expect(cpredAmmoPatternCounted('rocket')).toBe(true);
+    expect(cpredAmmoPatternCounted('bullet')).toBe(false);
+    expect(cpredAmmoPatternCounted('shell')).toBe(false);
+    expect(cpredAmmoPatternCounted('arrow')).toBe(false);
+  });
+
+  it('broń liczy po swoich kształtach; biała i wpisana ręką nie liczy', () => {
+    expect(cpredWeaponAmmoCounted({ ammoPatterns: ['grenade'] })).toBe(true);
+    expect(cpredWeaponAmmoCounted({ ammoPatterns: ['bullet', 'shell'] })).toBe(false);
+    expect(cpredWeaponAmmoCounted({})).toBe(false);
+    expect(cpredWeaponAmmoCounted(null)).toBe(false);
   });
 });
 
@@ -159,20 +166,21 @@ describe('kaliber i rodzaj', () => {
 
   it('kalibry do zakupu: jeden wiersz na rodzinę, granat pasuje do ręki i granatnika', () => {
     const types = [HEAVY_PISTOL, HEAVY_SMG, GRENADE, LAUNCHER, KNIFE];
-    expect(cpredCalibreOptions(ORDINARY, types)).toEqual([
+    expect(cpredCalibreOptions(EXPLOSIVE, types)).toEqual([
       {
-        calibre: 'C. Pistolet',
-        typeNames: ['Ciężki pistolet', 'Ciężki pistolet maszynowy'],
-        weaponTypeId: 'weapon-type.ciezki-pistolet',
-        pattern: 'bullet',
+        calibre: 'Granaty',
+        typeNames: ['Granat', 'Granatnik'],
+        weaponTypeId: GRENADE.id,
+        pattern: 'grenade',
       },
     ]);
+  });
+
+  it('kalibry do zakupu: kul, śrutu i strzał się nie kupuje (23.10)', () => {
+    const types = [HEAVY_PISTOL, HEAVY_SMG, GRENADE, LAUNCHER, KNIFE];
+    expect(cpredCalibreOptions(ORDINARY, types)).toEqual([]);
     expect(cpredCalibreOptions(PIERCING, types).map((option) => option.calibre)).toEqual([
-      'C. Pistolet',
       'Granaty',
-    ]);
-    expect(cpredCalibreOptions(EXPLOSIVE, types)).toMatchObject([
-      { calibre: 'Granaty', typeNames: ['Granat', 'Granatnik'], pattern: 'grenade' },
     ]);
   });
 
@@ -188,14 +196,14 @@ describe('zakup i cena (s. 344)', () => {
   it('kule po 10 w paczce, granaty na sztuki', () => {
     expect(CPRED_AMMO_PACK_SIZE.bullet).toBe(10);
     expect(CPRED_AMMO_PACK_SIZE.grenade).toBe(1);
-    const bullets = cpredPurchasedAmmoRow(PIERCING, HEAVY_SMG, 3, 'r1');
-    expect(bullets).toEqual({
+    const piercing = cpredPurchasedAmmoRow(PIERCING, LAUNCHER, 3, 'r1');
+    expect(piercing).toEqual({
       id: 'r1',
-      name: 'Amunicja przeciwpancerna · C. Pistolet',
+      name: 'Amunicja przeciwpancerna · Granaty',
       notes: '',
       compendiumId: 'ammo.przeciwpancerna',
-      qty: 30,
-      ammo: { ammoId: 'ammo.przeciwpancerna', calibre: 'C. Pistolet', pattern: 'bullet' },
+      qty: 3,
+      ammo: { ammoId: 'ammo.przeciwpancerna', calibre: 'Granaty', pattern: 'grenade' },
     });
     const grenades = cpredPurchasedAmmoRow(EXPLOSIVE, GRENADE, 2, 'r2');
     expect(grenades).toMatchObject({
@@ -208,6 +216,11 @@ describe('zakup i cena (s. 344)', () => {
   it('nabój, który do broni nie pasuje, nie jest towarem', () => {
     expect(cpredPurchasedAmmoRow(ORDINARY, GRENADE, 1, 'r')).toBeNull();
     expect(cpredPurchasedAmmoRow(ORDINARY, KNIFE, 1, 'r')).toBeNull();
+  });
+
+  it('kule, śrut i strzały nie są towarem — się nie kończą (23.10)', () => {
+    expect(cpredPurchasedAmmoRow(ORDINARY, HEAVY_PISTOL, 1, 'r')).toBeNull();
+    expect(cpredPurchasedAmmoRow(PIERCING, HEAVY_SMG, 3, 'r')).toBeNull();
   });
 
   it('cena sztuki to cena paczki przez jej wielkość — półka i odkup liczą naboje', () => {
@@ -387,11 +400,14 @@ describe('granat rzucany i broń bez zapasu', () => {
         weapon('grenade', 'Granat', 0),
         weapon('knife', 'Nóż', 0),
       ],
-      gear: [box(10, 'ammo.ap', 'C. Pistolet')],
+      gear: [],
     };
     const resolve = (id: string | undefined) => (id && types[id] ? resolved(types[id]) : null);
-    // Pudełko przeciwpancernej wystarcza obu broniom tego kalibru.
+    // Pistolet i PM strzelają „bez dna” (23.10) — ostrzeżenie dotyczy granatu.
     expect(cpredWeaponsWithoutStock(sheet, resolve)).toEqual(['Granat']);
+    expect(
+      cpredWeaponsWithoutStock({ ...sheet, gear: [box(2, null, 'Granaty')] }, resolve),
+    ).toEqual([]);
   });
 });
 
@@ -412,12 +428,29 @@ describe('pudełka na karcie i między kartami', () => {
     expect(bad.ok && bad.patch.gear?.[0]).not.toHaveProperty('ammo');
   });
 
-  it('walidacja: „Licz amunicję” przyjmuje tak/nie i kasowanie', () => {
-    const on = validateCharacterDataPatch({ ammoTracked: true }, registry);
-    expect(on.ok && on.patch.ammoTracked).toBe(true);
-    const cleared = validateCharacterDataPatch({ ammoTracked: null }, registry);
-    expect(cleared.ok && 'ammoTracked' in cleared.patch).toBe(true);
-    expect(validateCharacterDataPatch({ ammoTracked: 'tak' }, registry).ok).toBe(false);
+  it('pudełka kul, śrutu i strzał znikają przy odczycie karty, granaty zostają (23.10)', () => {
+    const read = parseCharacterData(
+      JSON.stringify({
+        ...createDefaultCharacterData(),
+        gear: [
+          box(30, null, 'C. Pistolet', 'kule'),
+          box(2, 'ammo.ap', 'Granaty', 'granaty'),
+          { id: 'lina', name: 'Lina', notes: '', qty: 1 },
+        ],
+      }),
+      registry,
+    );
+    expect(read.gear.map((row) => row.id)).toEqual(['granaty', 'lina']);
+  });
+
+  it('„Licz amunicję” zniknęło (23.10): stare pole z bazy nie wraca w odczycie', () => {
+    const patch = validateCharacterDataPatch({ ammoTracked: true }, registry);
+    expect(patch.ok && 'ammoTracked' in patch.patch).toBe(false);
+    const read = parseCharacterData(
+      JSON.stringify({ ...createDefaultCharacterData(), ammoTracked: false }),
+      registry,
+    );
+    expect(read).not.toHaveProperty('ammoTracked');
   });
 
   it('przekazane pudełko skleja się po rodzaju i kalibrze, nie po nazwie ani wpisie', () => {

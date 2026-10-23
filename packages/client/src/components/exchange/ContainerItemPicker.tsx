@@ -4,6 +4,7 @@ import {
   COMPENDIUM_CATEGORY_LABELS,
   CPRED_AMMO_PACKS_MAX,
   CPRED_AMMO_PACK_SIZE,
+  cpredAmmoPatternCounted,
   cpredCalibreOptions,
   cpredIsBareHandsEntry,
   formatCost,
@@ -70,7 +71,10 @@ export function ContainerItemPicker({
         (entry): entry is CompendiumEntry =>
           !!entry &&
           CONTAINER_CATEGORIES.includes(entry.category) &&
-          !cpredIsBareHandsEntry(entry.id),
+          !cpredIsBareHandsEntry(entry.id) &&
+          // Kule, śrut i strzały się nie kończą (23.10) — do skrzyni tylko
+          // granaty i rakiety.
+          !(isAmmoEntry(entry) && !toAmmoProfile(entry).patterns.some(cpredAmmoPatternCounted)),
       );
     return searchCompendium(catalogue, query, category || undefined).slice(0, PICKER_LIMIT);
   }, [entries, order, query, category]);

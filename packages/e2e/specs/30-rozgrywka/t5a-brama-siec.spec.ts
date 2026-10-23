@@ -17,7 +17,7 @@ import {
   visibleTokenIds,
   zonesOn,
 } from '../../fixtures/brama.ts';
-import { giveAmmo } from '../../fixtures/kompendium.ts';
+import { compendiumEntry } from '../../fixtures/kompendium.ts';
 import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { noticeWith } from '../../fixtures/regresja.ts';
@@ -53,8 +53,8 @@ import {
  * Decyzje MG z 27.09 (sesja T5a): architektura Hasło → Plik → Czarny LOD →
  * Węzeł kontrolny wieżyczki, na dnie Demon, który trzyma węzeł; nowy statysta
  * „Strażnik” z nowym botem; wieżyczka strzela sama na wejście w swoją strefę;
- * Kowal wchodzi ranny, MG daje mu amunicję przeciwpancerną (od 46c — pudełko
- * w ekwipunku z Kompendium, nie tekst w „Amunicja (zapas)”).
+ * Kowal wchodzi ranny, MG daje mu amunicję przeciwpancerną (od 23.10 kule się
+ * nie kończą — Kowal wybiera ją na karcie w 5.9, Kompendium jej do pistoletu nie da).
  *
  * Kości: skrypt tam, gdzie wynik wybiera drogę (Skaner, Backdoor, Ajdi).
  */
@@ -475,34 +475,24 @@ test.describe.serial('T5a: „Brama” — przygotowanie, wejście przez bramę,
       .toEqual([1, bramaId, 'proposal']);
   });
 
-  test('przygotowanie: MG daje Kowalowi pudełko amunicji przeciwpancernej', async () => {
-    // Etap 46c: amunicja to pudełko w ekwipunku (wcześniej tekst w „Amunicja (zapas)”).
-    // Dwie paczki po 10 do B.C. Pistoletu „Dodaj za darmo”; zwykła z kreatora czeka obok.
-    await giveAmmo(mg, 'Kowal', {
-      entry: 'Amunicja przeciwpancerna',
-      calibre: 'B.C. Pistolet',
-      packs: 2,
-    });
-    const boxes = () =>
-      (
-        JSON.parse(
-          queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!.data,
-        ) as Sheet
-      ).gear
-        .filter((row) => row.ammo)
-        .map((row) => [row.ammo!.ammoId, row.ammo!.calibre, row.qty]);
-    await expect.poll(boxes).toEqual([
-      [null, 'B.C. Pistolet', 20],
-      ['ammo.armour-piercing', 'B.C. Pistolet', 20],
-    ]);
+  test('przygotowanie: przeciwpancernej do pistoletu się nie daje — kule się nie kończą', async () => {
+    // Zasada domowa MG z 23.10: pudełka są tylko na granaty i rakiety, a rodzaj
+    // kul Kowal wybiera na karcie (5.9). Kompendium oferuje przeciwpancerną
+    // wyłącznie do granatów i rakiet.
+    const entry = await compendiumEntry(mg, 'Amunicja przeciwpancerna');
+    const calibres = await entry.getByLabel('Kaliber').locator('option').allTextContents();
+    expect(calibres.length).toBeGreaterThan(0);
+    expect(calibres.filter((label) => /Pistolet|Karabinowa|Breneka|Strzały/.test(label))).toEqual(
+      [],
+    );
+    const sheet = JSON.parse(
+      queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!.data,
+    ) as Sheet;
     expect(
-      (
-        JSON.parse(
-          queryOne<{ data: string }>('SELECT data FROM Character WHERE name = ?', 'Kowal')!.data,
-        ) as Sheet
-      ).ammoStock ?? '',
-      'nowa karta nie ma starego pola',
-    ).toBe('');
+      sheet.gear.filter((row) => row.ammo && row.ammo.calibre !== 'Granaty'),
+      'pudełka kul sprzed zasady znikają przy odczycie karty',
+    ).toEqual([]);
+    expect(sheet.ammoStock ?? '', 'nowa karta nie ma starego pola').toBe('');
   });
 
   test('przygotowanie: kanarki przed aktywacją — nic z „Bramy” u graczy', async () => {

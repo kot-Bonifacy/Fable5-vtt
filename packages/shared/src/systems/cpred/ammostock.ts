@@ -5,11 +5,15 @@
  * za Akcję i niczego nie zużywało, a granat z magazynkiem 2/2 rzucał się bez
  * końca (#82). Od 46c naboje leżą w ekwipunku jako **pudełka** — zwykłe wiersze
  * wyposażenia z `ammo` (`CpredGearAmmo`) — więc przekazanie, łup, handel
- * i półka handlarza obsługują je bez nowej gałęzi. Ten moduł odpowiada na
- * cztery pytania, każde **jedną** funkcją, bo każde pada w kilkunastu
- * miejscach:
+ * i półka handlarza obsługują je bez nowej gałęzi.
  *
- *  - **czy ta karta liczy amunicję** — `cpredTracksAmmo`;
+ * Od 23.10.2026 (zasada domowa MG) pudełka są wyłącznie na granaty i rakiety:
+ * kule, śrut i strzały się nie kończą (`cpredWeaponAmmoCounted` w `ammo.ts`),
+ * więc broń na nie przeładowuje się za darmo jak przed 46c, a zakup ich nie
+ * zna. Granaty i rakiety liczy każda karta — także NPC i statysta; „bez dna”
+ * jest tylko figura bez karty. Ten moduł odpowiada na trzy pytania, każde
+ * **jedną** funkcją, bo każde pada w kilkunastu miejscach:
+ *
  *  - **które pudełko pasuje do tej broni** — `cpredAmmoStockKeyOf` i kaliber
  *    (`cpredCalibreKey`): rodzina z pola „Amunicja” typu broni, decyzja MG
  *    z 09.10 (granat pasuje i do ręki, i do granatnika — s. 344);
@@ -20,6 +24,8 @@
 
 import {
   ammoFitsWeapon,
+  cpredAmmoPatternCounted,
+  cpredWeaponAmmoCounted,
   type CpredAmmoEffect,
   type CpredAmmoPattern,
   type CpredAmmoProfile,
@@ -45,25 +51,6 @@ export const CPRED_AMMO_PACKS_MAX = 20;
 
 /** Nazwa rodzaju „zwykła” — pudełko bez wpisu z efektami. */
 export const CPRED_ORDINARY_AMMO_LABEL = 'Amunicja zwykła';
-
-/* ------------------------------------------------------------------ *
- * Kto liczy
- * ------------------------------------------------------------------ */
-
-/**
- * Czy przeładowanie tej karty zużywa zapas (decyzja MG 11 z 08.10).
- *
- * Liczą karty drużyny — z właścicielem albo towarzysza-bota — a NPC i statysta
- * MG są „bez dna”, dopóki MG nie włączy im „Licz amunicję” (`ammoTracked`).
- * Figura bez karty nie pyta tej funkcji wcale: zawsze „bez dna”.
- */
-export function cpredTracksAmmo(
-  sheet: Pick<CpredCharacterData, 'ammoTracked'>,
-  card: { owned: boolean; companion: boolean },
-): boolean {
-  if (typeof sheet.ammoTracked === 'boolean') return sheet.ammoTracked;
-  return card.owned || card.companion;
-}
 
 /* ------------------------------------------------------------------ *
  * Kaliber i rodzaj
@@ -211,6 +198,8 @@ export interface CpredCalibreOption {
 /**
  * Kalibry, do których pasuje nabój — wybór w oknie zakupu. Jeden wiersz na
  * rodzinę, nie na typ broni: ciężki pistolet i ciężki PM dzielą „C. Pistolet”.
+ * Tylko kształty, które się kończą (23.10): pusta lista znaczy „tej amunicji
+ * się nie kupuje — wybiera się ją na wierszu broni”.
  */
 export function cpredCalibreOptions(
   ammo: Pick<CpredAmmoProfile, 'id' | 'patterns'>,
@@ -221,7 +210,7 @@ export function cpredCalibreOptions(
     if (type.melee || !type.ammunition) continue;
     if (!ammoFitsWeapon(ammo, type)) continue;
     const pattern = cpredAmmoPatternFor(ammo, type);
-    if (!pattern) continue;
+    if (!pattern || !cpredAmmoPatternCounted(pattern)) continue;
     const key = cpredCalibreKey(type.ammunition);
     const known = byKey.get(key);
     if (known) known.typeNames.push(type.name);
@@ -243,6 +232,8 @@ export function cpredCalibreOptions(
  *
  * `null`, gdy nabój do tej broni nie pasuje (`AMMO_MISMATCH` po stronie
  * serwera): zakup „przeciwpancernej do łuku z kulami” to pomyłka, nie towar.
+ * Tak samo kule, śrut i strzały (23.10) — te się nie kończą, więc nie ma czego
+ * kupować.
  */
 export function cpredPurchasedAmmoRow(
   entry: CpredAmmoProfile,
@@ -253,7 +244,7 @@ export function cpredPurchasedAmmoRow(
   if (weaponType.melee || !weaponType.ammunition) return null;
   if (!ammoFitsWeapon(entry, weaponType)) return null;
   const pattern = cpredAmmoPatternFor(entry, weaponType);
-  if (!pattern) return null;
+  if (!pattern || !cpredAmmoPatternCounted(pattern)) return null;
   const ammoId = cpredStockAmmoId(entry);
   const calibre = weaponType.ammunition.trim();
   return {
@@ -442,7 +433,8 @@ export function cpredThrowsFromStock(
 /**
  * Broń, do której nie ma w ekwipunku ani jednego naboju jej kalibru —
  * ostrzeżenie w podsumowaniu kreatora („Broń bez zapasu amunicji: …”).
- * Broń bez kalibru (biała, łuk bez magazynka, wpisana ręką) się nie liczy.
+ * Broń bez kalibru (biała, łuk bez magazynka, wpisana ręką) i broń „bez dna”
+ * (kule, śrut, strzały — 23.10) się nie liczy.
  */
 export function cpredWeaponsWithoutStock(
   sheet: Pick<CpredCharacterData, 'weapons' | 'gear'>,
@@ -452,7 +444,7 @@ export function cpredWeaponsWithoutStock(
   for (const row of sheet.weapons) {
     const resolved = resolve(row.compendiumId);
     const calibre = resolved?.ammoType;
-    if (!calibre) continue;
+    if (!calibre || !cpredWeaponAmmoCounted(resolved)) continue;
     if (row.ammoMax <= 0 && !cpredThrowsFromStock(row, resolved)) continue;
     if (cpredAmmoStockByKind(sheet.gear, calibre).size > 0) continue;
     names.push(row.name);

@@ -30,6 +30,7 @@ import {
   type CpredLifepath,
 } from './lifepath.js';
 import { cpredPurchasedAmmoRow, cpredPutAmmo } from './ammostock.js';
+import { cpredAmmoPatternCounted } from './ammo.js';
 import {
   resolveWeapon,
   toAmmoProfile,
@@ -881,6 +882,17 @@ export function creationPurchases(
     if (!entry) continue;
     // Amunicja bez kalibru nie jest towarem (`AMMO_CALIBRE_REQUIRED`).
     if ((entry.category === 'ammo') !== (weaponTypeId !== null)) continue;
+    // Kule, śrut i strzały się nie kończą (23.10) — linia z koszyka sprzed
+    // zmiany nie kosztuje ani grosza, zamiast odmówić całemu „Utwórz postać”.
+    // Bez typów broni rozstrzyga sam wpis (nie ma granatów ani rakiet).
+    if (entry.category === 'ammo') {
+      const profile = toAmmoProfile(entry);
+      const type = weaponTypeId ? weaponTypeById?.get(weaponTypeId) : undefined;
+      const stocked = type
+        ? cpredPurchasedAmmoRow(profile, type, 1, 'probe') !== null
+        : profile.patterns.some(cpredAmmoPatternCounted);
+      if (!stocked) continue;
+    }
     const price = entryPrice(entry);
     if (price === null) continue;
     const calibre = weaponTypeId ? weaponTypeById?.get(weaponTypeId)?.ammunition : undefined;

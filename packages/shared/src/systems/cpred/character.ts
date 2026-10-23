@@ -17,7 +17,7 @@ import {
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
 import { isPharmaceuticalId } from './pharma.js';
-import { CPRED_AMMO_PATTERNS, type CpredAmmoPattern } from './ammo.js';
+import { CPRED_AMMO_PATTERNS, cpredAmmoPatternCounted, type CpredAmmoPattern } from './ammo.js';
 import { readCpredWoundSuspension, type CpredWoundSuspension } from './woundsuspension.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
@@ -1214,12 +1214,6 @@ export interface CpredCharacterData {
    */
   ammoStock: string;
   /**
-   * Czy przeładowanie zużywa zapas z ekwipunku (etap 46c). Brak pola = zależnie
-   * od karty: liczy karta gracza i towarzysza-bota, NPC i statysta są „bez dna”.
-   * Pisze wyłącznie MG („Licz amunicję”). Czyta się przez `cpredTracksAmmo`.
-   */
-  ammoTracked?: boolean;
-  /**
    * The Lifepath (stage 25b) — page two of the printed sheet: Culture of
    * Origin and its language, style, family, friends, enemies, tragic loves,
    * life goal and the Role's own questions.
@@ -2370,15 +2364,6 @@ function collectCharacterDataPatch(
     const value = validateText(input.style, 'style', 'Styl', SHEET_LINE_MAX_LENGTH, issues);
     if (value !== undefined) patch.style = value;
   }
-  if ('ammoTracked' in input) {
-    if (input.ammoTracked === null || input.ammoTracked === undefined) {
-      patch.ammoTracked = undefined;
-    } else if (typeof input.ammoTracked !== 'boolean') {
-      issues.push(issue('ammoTracked', 'Nieprawidłowe ustawienie „Licz amunicję”.'));
-    } else {
-      patch.ammoTracked = input.ammoTracked;
-    }
-  }
   if ('ammoStock' in input) {
     const value = validateText(
       input.ammoStock,
@@ -2591,6 +2576,10 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     ...cpredWithBareHands(data),
     // Ablation can never leave a piece of armor above its undamaged SP.
     armor: data.armor.map((row) => (row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row)),
+    // Zasada domowa MG z 23.10.2026: kule, śrut i strzały się nie kończą, więc
+    // ich pudełek nie ma w ekwipunku — te sprzed zmiany znikają przy odczycie
+    // (także z kopii i półek handlarzy, bo półka to ekwipunek karty).
+    gear: data.gear.filter((row) => !row.ammo || cpredAmmoPatternCounted(row.ammo.pattern)),
     // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz
     // ustabilizowany" — a single regained HP wipes the counter.
     deathSaves: hpCurrent >= 1 ? 0 : Math.min(data.deathSaves, DEATH_SAVES_MAX),

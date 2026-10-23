@@ -315,12 +315,6 @@ describe('oględziny wyposażenia', () => {
         })
       ).ok,
     ).toBe(true);
-    // Ten plik bada ręce, nie zapas amunicji (46c): łata gracza niżej oddaje
-    // karabin z pełnym magazynkiem, a tego karta z zapasem by nie przyjęła.
-    await emitAck(gm, 'character:update', {
-      characterId: vexCharacterId,
-      patch: { data: { ammoTracked: false } },
-    });
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek' }), 'scene');
     sceneId = scene.id;
@@ -612,6 +606,12 @@ describe('ręce: co postać trzyma', () => {
   });
 
   it('broń zabrana z karty zostawia puste ręce, a nie inną broń', async () => {
+    // Ten plik bada ręce, nie magazynki: gracz ręką naboi tylko ubywa (46c),
+    // więc pełny karabin, który odda łata niżej, najpierw napełnia MG.
+    await emitAck(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { weapons: [pistol('v-pistol'), rifle('v-rifle'), blade('v-blade')] } },
+    });
     expect(
       (
         await emitAck(vex, 'character:update', {

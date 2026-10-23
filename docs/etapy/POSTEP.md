@@ -29,6 +29,14 @@ Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
 
+**Kule, śrut i strzały się nie kończą (zlecenie MG z 23.10) — dalej etap 28, potem T10.** Zasada
+domowa (podręcznik liczy każdy nabój, s. 94 i 169): magazynek dalej się opróżnia, ale Przeładowanie
+napełnia go za darmo dowolnym pasującym rodzajem, także specjalnym; pudełek kul, śrutu i strzał nie
+ma w ekwipunku, sklepach, kreatorze ani skrzyniach (stare zdejmuje odczyt karty i start serwera).
+Granaty i rakiety dalej są sztukami w ekwipunku — u **wszystkich**, także NPC; „Licz amunicję”
+zniknęło. Rozstrzyga `cpredWeaponAmmoCounted` (`ammo.ts`). Umowa na górze `ekwipunek`, wpis
+w `decyzje-i-uproszczenia.md`.
+
 **Etap 58 „Ukryte rzeczy, zamki i rozbrajanie pułapek” zamknięty 23.10 (58a–58d) — dalej etap
 28, potem T10.** Marsz gracza staje sam w 4 m od ukrytej pułapki albo ukrytej figury MG, której
 ta postać nie sprawdzała, a gracz dostaje **gołe wezwanie do Testu Percepcji** z kubka — bez
@@ -410,7 +418,7 @@ a nie do tego pliku.
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 53   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg  | 33   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg, amunicja bez dna | 34   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 11   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -423,6 +431,33 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.10, czwarta (po `71f5da1`) — zlecenie MG: kule, śrut i strzały się nie kończą
+
+**Zakres:** zasada domowa zamiast liczenia amunicji (decyzje MG z pytań na starcie: magazynek
+zostaje z darmowym Przeładowaniem; granaty i rakiety liczone u wszystkich; amunicja specjalna
+też bez dna, wybór wolny; stare pudełka usunąć). MG był przekonany, że podręcznik daje amunicję
+bez końca — nie daje (s. 94, 169), więc to odstępstwo zapisane w `decyzje-i-uproszczenia.md`.
+**Zrobione:** `shared` — `CPRED_COUNTED_AMMO_PATTERNS`, `cpredAmmoPatternCounted`,
+`cpredWeaponAmmoCounted` (`ammo.ts`); `cpredTracksAmmo` i pole `ammoTracked` usunięte;
+`cpredCalibreOptions` / `cpredPurchasedAmmoRow` znają tylko granaty i rakiety; pasek
+(`cpredWeaponOptions`) daje `stock` tylko takiej broni; `normalizeCharacterData` zdejmuje pudełka
+innych kształtów; `creationPurchases` pomija linię kul z koszyka sprzed zasady. Serwer —
+`planStockReload` / `planThrowFromStock` pytają broń, nie kartę; `characterTracksAmmo` usunięte
+(bot i `character:update` — `AMMO_LOCKED` dla każdej karty gracza); `ammo-sweep.ts`
+(`dropBottomlessAmmo` przy starcie). Klient — bez „Licz amunicję” na karcie, `ammo-stock.ts`
+usunięty, liczby zapasu tylko przy granatach, Kompendium pisze „Ta amunicja się nie kończy”
+zamiast „Kup”/„Dodaj”, skrzynia nie oferuje kul. E2E przepisane: `t46c-amunicja` (na granatach),
+T3a 3.6, T5a (przygotowanie), T5b 5.9.
+
+**Weryfikacja:** `shared` 2601/2601, serwer 1609 → zielone (przepisane `ammo-stock.test.ts` na
+wyrzutnię ładunków, + test `dropBottomlessAmmo`; test bota z 17.10 zamieniony na „nabój specjalny
+bez pudełek”, bo granatów bot w menu nie ma), klient 421/421, `tsc` i ESLint czyste w zmienionych
+plikach. E2E: `t46c-amunicja` 9/9 (46c.9 `@llm` pominięty), T5a 23/23, T3a do 3.6 włącznie;
+T5b i reszta T3a — zaległość. **Oglądane** zrzutami z przebiegu: Ola w **Firefoksie** (karta
+Iskry: pistolet „Zwykła” bez liczby, granat „zapas 2”; pasek „zapas 2” tylko przy granacie),
+Chromium (Kompendium z notką, karta NPC bez przełącznika, kreator bez kul). Punkty łańcucha
+przywrócone z kopii `.e2e/checkpoints-bak-23.10-amunicja` (do skasowania ręką).
 
 ### Sesja 23.10, trzecia (po `e6674e4`) — etap 58d: ukryta figura przeciw Skradaniu
 
@@ -454,28 +489,3 @@ marsz Iskry staje 3 m przed ukrytą Czajką, pasek „Iskra: Test Percepcji — 
 ruchu Czajki przez MG — znika. MG w **Chromium** — dwa wiersze „poufne” (Skradanie i wynik), menu
 „👁 Pokaż graczom (zauważona: 1)”, pole PT w oknie edycji Cienia (zapis 12).
 
-### Sesja 23.10, druga (po `d111d36`) — etap 58c: zamek drzwi, okna i bramy
-
-**Zakres 58c.** **Zrobione:** `shared` — wspólna reguła zamka `systems/cpred/lock.ts`
-(`cpredLockOpening`, `cpredLockTried`, `readCpredLock`; stałe i typy wyjęte z `container.ts`,
-który ją tylko opakowuje), `WallView.lockRule` (nieprzezroczysty zapis systemu),
-`OpeningPickPayload` / `OpeningLockConfigPayload`, `CpredRollRequest.lockWallId`. Serwer —
-migracja `20261023180000_opening_lock_rule` (`Wall.lockRule`), `realtime/opening-locks.ts`
-(`opening:pick`, `opening:lock-config`, `keyHolderAtOpening`, `settleOpeningLockTest`), strażnik
-`requirePlayerOpening` / `requireCampaignOpening` wyjęty z `opening:toggle` (`walls.ts`), klucz
-przy klamce w kroku 4, hak w `character-rolls.ts`, `lockRule` w kopii sceny (`archive.ts`, przez
-`remap`). Klient — pytanie z wytrychem po `OPENING_LOCKED` (`opening-lock.ts`, `MapArea`),
-sekcja „Zamek” na karcie zaryglowanego otworu (`OpeningLockFields.tsx`), odmowy
-`openingPickErrorText`. Rozstrzygnięcia bez pytań (klucz przy klamce, rygiel zdjęty na stałe,
-wybór Umiejętności przez gracza, otwiera postać przy klamce, wezwanie jawne) — w pliku etapu.
-Dwa drobiazgi do `POMYSLY.md` (wspólny klucz do drzwi i skrzyni, wybór postaci przy wytrychu).
-
-**Weryfikacja:** `shared` 2588/2588 (+7 `lock.test.ts`; `container.test.ts` bez zmian poza
-importem stałej), serwer 1602/1602 (+7 nowy `opening-locks.test.ts`: kolejność odmów, porażka,
-`LOCK_TRIED`, `LOCK_SKILL`, „Pozwól spróbować znowu”, sukces, klucz, zamek nie jedzie do gracza;
-macierz izolacji z `opening:pick` i `opening:lock-config`), klient 421/421. `tsc` w trzech
-pakietach, ESLint i Prettier czyste w zmienionych plikach. Suity E2E nie puszczano — żaden krok
-nie klika graczem zaryglowanych drzwi (T3b tylko rygluje tylne drzwi Knajpy). **Oglądane**
-tymczasowym specem (skasowany, `po-T6`, atrapa gatewaya): Ola w **Firefoksie** — pytanie przy
-klamce, porażka 9 ≤ 17, odmowa drugiej próby, sukces 16 > 8 i otwarte drzwi; MG w Chromium —
-karta z sekcją „Zamek”, „Nie udało się: Iskra”, po rzucie „Drzwi — otwarte”.

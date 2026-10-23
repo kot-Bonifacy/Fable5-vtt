@@ -14,7 +14,12 @@
  * rules questions. The UI's job is to draw nine boxes.
  */
 
-import { ammoFitsWeapon, loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
+import {
+  ammoFitsWeapon,
+  cpredWeaponAmmoCounted,
+  loadedAmmoFor,
+  type CpredAmmoProfile,
+} from './ammo.js';
 import {
   CPRED_ORDINARY_AMMO_LABEL,
   cpredAmmoStockByKind,
@@ -163,8 +168,9 @@ export function cpredWeaponOptions(
   resolveAmmo?: CpredAmmoResolver,
   attachments?: CpredAttachmentLookup,
   /**
-   * Etap 46c: ekwipunek karty, która liczy amunicję — wtedy opcja niesie
-   * `stock`. Brak = „bez dna” (NPC, statysta, tura bota sprzed 46c).
+   * Etap 46c: ekwipunek karty — wtedy opcja broni na granaty i rakiety niesie
+   * `stock`. Kule, śrut i strzały są „bez dna” (23.10) i `stock` nie dostają
+   * nigdy. Brak = figura bez karty, też „bez dna”.
    */
   stockGear?: readonly CpredGearRow[] | null,
 ): CpredWeaponOption[] {
@@ -173,6 +179,7 @@ export function cpredWeaponOptions(
   return options.map((option) => {
     const calibre = option.resolved?.ammoType;
     if (!calibre || option.resolved?.melee) return option;
+    if (!cpredWeaponAmmoCounted(option.resolved)) return option;
     const throwsFromStock =
       option.attachmentId === null &&
       cpredThrowsFromStock({ ammoMax: option.ammo?.max ?? 0 }, option.resolved);
@@ -603,8 +610,8 @@ export interface CpredHotbarInput {
   sheet: CpredHotbarSheet | null;
   resolve: CpredWeaponResolver;
   /**
-   * Etap 46c: ekwipunek, z którego karta przeładowuje — podaje go wołający
-   * tylko dla karty liczącej amunicję (`cpredTracksAmmo`).
+   * Etap 46c: ekwipunek, z którego karta przeładowuje granaty i rakiety —
+   * podaje go wołający dla każdej karty (od 23.10 liczą wszystkie).
    */
   stockGear?: readonly CpredGearRow[] | null;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */

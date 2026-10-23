@@ -44,6 +44,33 @@ export const CPRED_AMMO_PATTERN_LABELS: Record<CpredAmmoPattern, string> = {
   rocket: 'Rakiety',
 };
 
+/**
+ * Kształty, które się kończą — zasada domowa MG z 23.10.2026.
+ *
+ * Podręcznik liczy każdy nabój (s. 94, 344), a VTT tylko granaty i rakiety:
+ * to sztuki kupowane osobno („nie zaliczają się do amunicji zwykłej”, s. 94),
+ * więc leżą w ekwipunku i schodzą przy przeładowaniu i rzucie. Kule, śrut
+ * i strzały (także specjalne) są „bez dna”: magazynek dalej się opróżnia,
+ * ale Przeładowanie napełnia go za darmo, a pudełek tych kształtów nie ma
+ * w ekwipunku, na półkach ani w kreatorze.
+ */
+export const CPRED_COUNTED_AMMO_PATTERNS: readonly CpredAmmoPattern[] = ['grenade', 'rocket'];
+
+/** Czy naboje tego kształtu się kończą (granat, rakieta). */
+export function cpredAmmoPatternCounted(pattern: CpredAmmoPattern): boolean {
+  return CPRED_COUNTED_AMMO_PATTERNS.includes(pattern);
+}
+
+/**
+ * Czy broń strzela czymś, co się kończy — granatnik, wyrzutnia, granat ręczny.
+ * Broń bez kształtów (biała, wiersz wpisany ręką) niczego nie liczy.
+ */
+export function cpredWeaponAmmoCounted(
+  weapon: Pick<ResolvedWeapon, 'ammoPatterns'> | null | undefined,
+): boolean {
+  return (weapon?.ammoPatterns ?? []).some(cpredAmmoPatternCounted);
+}
+
 /** The spread of a shotgun shell: one attack, one fixed DV, a cone (s. 174). */
 export interface CpredAmmoSpread {
   /** „wykonujesz 1 atak dystansowy … przeciwko PT 13" — the DV never varies. */

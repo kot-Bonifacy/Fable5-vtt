@@ -1238,14 +1238,7 @@ export async function performAttackRoll(
       // `NO_AMMO` stoi przed budżetem tury, jak pusty magazynek w planerze.
       const thrownGear =
         !meta.attachmentId && cpredThrowsFromStock(weapon.row, weapon.resolved)
-          ? await planThrowFromStock(
-              deps,
-              campaignId,
-              source.character,
-              source.stored,
-              weapon.row,
-              weapon.resolved,
-            )
+          ? await planThrowFromStock(deps, campaignId, source.stored, weapon.row, weapon.resolved)
           : null;
 
       // The turn budget is charged *before* anything is spent for real: an attack
@@ -2372,11 +2365,12 @@ export async function performWeaponReload(
     // Unless the round is changing — then the full magazine comes out.
     if (row.ammoCurrent >= row.ammoMax && !changing) return { ammo: row.ammoCurrent };
 
-    // Etap 46c: karta drużyny ładuje z zapasu — tyle, ile jest, a przy zmianie
-    // rodzaju stare naboje wracają do ekwipunku. Bez naboi `NO_AMMO` pada
-    // tutaj, przed Akcją. Karta „bez dna” dostaje `null` i pełny magazynek.
+    // Etap 46c: granatnik i wyrzutnia ładują z zapasu — tyle, ile jest, a przy
+    // zmianie rodzaju stare sztuki wracają do ekwipunku. Bez nich `NO_AMMO`
+    // pada tutaj, przed Akcją. Broń „bez dna” (kule, śrut, strzały — 23.10)
+    // dostaje `null` i pełny magazynek.
     const { resolved } = await resolveWeaponRow(deps, campaignId, data, row.id);
-    const stock = await planStockReload(deps, campaignId, character, data, {
+    const stock = await planStockReload(deps, campaignId, data, {
       weapon: resolved,
       printedCalibre: row.ammoType,
       capacity: row.ammoMax,
@@ -2462,7 +2456,7 @@ async function reloadAttachment(
 
   // Etap 46c: granatnik podwieszany bierze granaty z tego samego zapasu, co
   // granat rzucany i granatnik — kaliber jest broni doczepionej, nie nosiciela.
-  const stock = await planStockReload(deps, campaignId, character, data, {
+  const stock = await planStockReload(deps, campaignId, data, {
     weapon: weapon.secondary,
     capacity,
     loaded: { count: loaded, ...(current ? { ammoId: current } : {}) },

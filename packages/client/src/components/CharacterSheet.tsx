@@ -106,6 +106,7 @@ import {
   cpredAmmoStockCount,
   cpredStockAmmoId,
   cpredThrowsFromStock,
+  cpredWeaponAmmoCounted,
   loadedAmmoFor,
   bodySlotsForType,
   cpredReputation,
@@ -166,7 +167,6 @@ import {
   cpredIsBareHandsRow,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
-import { characterTracksAmmo } from '../ammo-stock.js';
 import {
   ARCHIVE_DOWNLOAD_PATHS,
   UPLOAD_ACCEPT_ATTRIBUTE,
@@ -1611,9 +1611,9 @@ function AmmoPicker({
    */
   attachment?: { id: string; name: string };
   /**
-   * Etap 46c: ekwipunek karty, która liczy amunicję — przy rodzaju staje
-   * liczba naboi w zapasie, a rodzaj bez zapasu jest wyszarzony. Brak = karta
-   * „bez dna” (NPC, statysta): wybór jak przed 46c.
+   * Etap 46c: ekwipunek karty — przy rodzaju granatu i rakiety staje liczba
+   * sztuk w zapasie, a rodzaj bez zapasu jest wyszarzony. Broń „bez dna”
+   * (kule, śrut, strzały — 23.10) wybiera rodzaj bez liczb, jak przed 46c.
    */
   stockGear?: readonly CpredGearRow[] | null;
 }) {
@@ -1630,7 +1630,10 @@ function AmmoPicker({
     return ammoOptionsFor(catalogue, resolved).filter(cpredAmmoHasEffects);
   }, [entries, order, resolved]);
   const calibre = resolved?.ammoType ?? '';
-  const counts = stockGear && calibre ? cpredAmmoStockByKind(stockGear, calibre) : null;
+  const counts =
+    stockGear && calibre && cpredWeaponAmmoCounted(resolved)
+      ? cpredAmmoStockByKind(stockGear, calibre)
+      : null;
   const countOf = (ammoId: string | null) => (counts ? (counts.get(ammoId) ?? 0) : null);
   const withCount = (label: string, ammoId: string | null) => {
     const count = countOf(ammoId);
@@ -1832,21 +1835,21 @@ function WeaponStrip({
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const rowIcon = useRowIcon();
   /**
-   * Etap 46c: ekwipunek, z którego ta karta przeładowuje — `null` u karty
-   * „bez dna”. Gracz na karcie z zapasem naboi ręką tylko odejmuje (decyzja
-   * MG z 09.10), więc jego licznik magazynka nie idzie w górę.
+   * Etap 46c: ekwipunek, z którego ta karta przeładowuje granaty i rakiety.
+   * Gracz ręką tylko odejmuje (decyzja MG z 09.10), więc jego licznik
+   * magazynka nie idzie w górę — napełnia go Przeładowanie.
    */
-  const stockGear = characterTracksAmmo(character) ? data.gear : null;
-  const handLocked = stockGear !== null && !isGm;
+  const stockGear = data.gear;
+  const handLocked = !isGm;
 
-  /** Naboje rodzaju z magazynka w zapasie; null — karta „bez dna” albo broń bez kalibru. */
+  /** Sztuki rodzaju z magazynka w zapasie; null — broń „bez dna” (23.10) albo bez kalibru. */
   function stockOf(
     row: { ammoId?: string },
     weapon: ResolvedWeapon | null,
     printedCalibre = '',
   ): number | null {
     const calibre = weapon?.ammoType ?? printedCalibre;
-    if (!stockGear || !calibre) return null;
+    if (!calibre || !cpredWeaponAmmoCounted(weapon)) return null;
     const loaded = loadedAmmoFor(row, weapon, (id) => {
       const entry = entries[id];
       return entry && isAmmoEntry(entry) ? toAmmoProfile(entry) : null;
@@ -3644,7 +3647,6 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const { startRoll } = useStartRoll(character, data);
   const rowIcon = useRowIcon();
-  const tracksAmmo = characterTracksAmmo(character);
   return (
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
@@ -3661,21 +3663,6 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         >
           Wymiana…
         </button>
-        {/* Etap 46c: karta drużyny przeładowuje z ekwipunku, NPC jest „bez
-            dna” — MG przestawia to jednym polem (np. bossowi). */}
-        {isGm && (
-          <label
-            className="sheet-ammo-tracked"
-            title="Zaznaczone: przeładowanie i rzut granatem biorą naboje z pudełek w ekwipunku. Niezaznaczone: amunicja „bez dna”. Domyślnie liczą karty graczy i towarzyszy-botów."
-          >
-            <input
-              type="checkbox"
-              checked={tracksAmmo}
-              onChange={(e) => saveData({ ammoTracked: e.target.checked }, 'ammoTracked')}
-            />
-            Licz amunicję
-          </label>
-        )}
       </div>
       {/* Etap 46a: karta NPC-a bywa sklepem — ustawienia ma wyłącznie MG. */}
       {isGm && character.ownerId === null && <MerchantSection characterId={character.id} />}

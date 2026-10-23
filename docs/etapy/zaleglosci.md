@@ -6,6 +6,14 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**23.10.2026 — E2E po „kule się nie kończą”: T5b 5.9, T3a 3.7–3.8 i 46c.9 nieprzepuszczone.**
+T5b staje na starcie bez bramy AI („MG widzi boty dostępne”), więc zmieniony krok 5.9 (wybór
+przeciwpancernej bez liczby zapasu) nie przeszedł ani razu. W T3a krok 3.6 (Kowal bez kul,
+„Ruszam bez zakupów”) jest zielony, ale 3.7 (Iskra w Firefoksie) przekroczył 8 min na klikaniu
+„Podnieś” umiejętności i reszta pliku nie ruszyła — z amunicją niezwiązane, do sprawdzenia
+przy najbliższym pełnym przebiegu. 46c.9 (`@llm`) pominięty bez gatewaya. Punkty `po-T3a`…`po-T6`
+są sprzed zasady (pudełka kul zdejmuje start serwera) — przebudują się przy pełnym przebiegu.
+
 **22.10.2026 — E2E: T4a, T6b, T7b i T8a nieprzepuszczone po poprawce klika 🎲 inicjatywy.**
 Klik w pulsujący „Rzuć inicjatywę” (`click({ force: true })`, pułapka na górze `testy`)
 sprawdzony tylko w T5b (27/27, sesja 58a). W pozostałych czterech poprawka jest ta sama, ale

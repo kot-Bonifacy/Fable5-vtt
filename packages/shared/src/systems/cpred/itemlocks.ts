@@ -15,8 +15,9 @@
  *  - przypisać cyborgizację do miejsca na sylwetce (`bodySlot`).
  *
  * Magazynek broni i jego rodzaj naboju zostają przy umowie z 46c
- * (`cpredAmmoPatchRaises` → `AMMO_LOCKED`, tylko na karcie z zapasem) — karta
- * „bez dna” ma licznik, który gracz podnosi ręką, i tak ma zostać.
+ * (`cpredAmmoPatchRaises` → `AMMO_LOCKED`, od 23.10 na każdej karcie gracza):
+ * magazynek napełnia Przeładowanie, a nie ręka — także kulami, które się nie
+ * kończą.
  *
  * Cyborgizacji gracz łatą nie wyjmuje: wyjęcie oddaje sufit Człowieczeństwa,
  * więc idzie przez `character:cyberware`, jak montaż.

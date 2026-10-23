@@ -333,19 +333,18 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     await goToStep(page, /Wyposażenie/);
     // Etap 47b (cennik domowy, decyzja MG z 10.10): B.C. Pistolet, broń biała i kurtka
     // kosztują razem 2050 ed (broń biała ×1 od 20.10) — pakiet Roli Krawędziarza daje MG po przyjęciu (3.8).
-    // Kowal kupuje za swoje 500 ed tylko dwie paczki zwykłej (2 × 10 szt. po 10 ed);
-    // bez broni na karcie kaliber wybiera się ręką.
+    // Kule się nie kończą (zasada domowa MG z 23.10) — półka „Amunicja” nie ma
+    // zwykłej do pistoletu, a Kowal zostaje przy swoich 500 ed.
     await expect(window.getByText(/500 ed startowych/)).toBeVisible();
     await window.getByRole('button', { name: 'Amunicja', exact: true }).click();
-    const ammo = window.locator('.creator-shop-item', {
-      has: page.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła', exact: true }),
-    });
-    await ammo.getByLabel('Kaliber: Amunicja zwykła').selectOption({ label: 'B.C. Pistolet' });
-    for (const held of ['×1', '×2']) {
-      await ammo.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła' }).click();
-      await expect(ammo.getByText(held)).toBeVisible();
-    }
-    await expect(window.getByText(/Koszyk — 20 ed/)).toBeVisible();
+    await expect(
+      window.getByRole('button', { name: 'Dołóż do koszyka: Amunicja zwykła', exact: true }),
+    ).toHaveCount(0);
+    // Pusty koszyk gracza trzeba potwierdzić (etap 48a). Pole odbija stan szkicu
+    // z serwera — `check()` nie doczekałby się zmiany.
+    const skip = window.getByRole('checkbox', { name: 'Ruszam bez zakupów' });
+    await skip.click();
+    await expect(skip).toBeChecked();
 
     await goToStep(page, /Opis/);
     await window
@@ -364,14 +363,14 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
     expect(kowal.playReady).toBe(0);
     const sheet = sheetOf('Kowal');
     expect(sheet.stats).toEqual(KOWAL_STATS);
-    expect(sheet.eddies).toBe(480);
+    expect(sheet.eddies).toBe(500);
     // Gołe ręce z urzędu (47b) — jedyna „broń” przed pakietem Roli od MG.
     expect((sheet.weapons as { name: string }[]).map((w) => w.name)).toEqual(['Bijatyka']);
     expect(
       (sheet.gear as { name: string; qty?: number; ammo?: { calibre: string } }[])
         .filter((row) => row.ammo)
         .map((row) => [row.ammo!.calibre, row.qty]),
-    ).toEqual([['B.C. Pistolet', 20]]);
+    ).toEqual([]);
     expect(Object.keys(sheet.skills as object)).toHaveLength(20);
     expect(
       queryOne('SELECT cropZoom, bannerZoom FROM PortraitAsset WHERE name = ?', 'avatar11'),
@@ -576,7 +575,7 @@ test.describe.serial('T3a: kampania, gracze, zgody i oba kreatory', () => {
       'Bijatyka',
     ]);
     expect(kowal.armor[0]!.equipped).not.toBe(false);
-    expect(kowal.eddies).toBe(480);
+    expect(kowal.eddies).toBe(500);
 
     // Netrunner: sprzęg i złącza z wyposażenia Roli wszczepia MG „Dodaj za darmo”
     // — bez Testu montażu, z rzutem 2k6 na Utratę Człowieczeństwa (skrypt: 1 + 1).

@@ -20,12 +20,14 @@ import type {
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 import { joinUrl } from './test-join.js';
+import { dropBottomlessAmmo, withoutBottomlessAmmo } from './ammo-sweep.js';
 
 /**
  * Etap 46c: zapas amunicji na prawdziwych gniazdach — przeładowanie, rzut,
  * zakup i bramka łaty karty. Arytmetykę pudełek sprawdza `ammostock.test.ts`
  * w `shared`; tu chodzi o szew: że odmowa `NO_AMMO` naprawdę nie zjada Akcji,
- * że NPC MG jest „bez dna”, a gracz nie dopisze sobie naboi łatą karty.
+ * że kule się nie kończą (zasada domowa MG z 23.10), ładunki liczy każda karta
+ * — także NPC — a gracz nie dopisze sobie naboi łatą karty.
  */
 
 const TEST_DB = `./.test-${randomBytes(6).toString('hex')}.db`;
@@ -172,7 +174,7 @@ const PISTOL = 'Nabój pistoletowy (przykład)';
 /** Kaliber ładunku rzucanego z próbki (`weapon-type.sample-grenade`). */
 const CHARGES = 'Ładunki przykładowe';
 
-function box(qty: number, calibre = PISTOL, ammoId: string | null = null, id = `b-${qty}`) {
+function box(qty: number, calibre = CHARGES, ammoId: string | null = null, id = `b-${qty}`) {
   return {
     id,
     name: `${ammoId ?? 'zwykła'} · ${calibre}`,
@@ -203,6 +205,18 @@ describe('etap 46c — zapas amunicji', () => {
     ammoMax: 10,
     ammoType: PISTOL,
     rof: '2',
+  });
+  /** Ładunki z magazynkiem — granatnik z próbki: przeładowuje się z zapasu. */
+  const launcher = (ammoCurrent: number, ammoMax = 2) => ({
+    id: 'w-launch',
+    name: 'Wyrzutnia puszek',
+    notes: '',
+    compendiumId: 'weapon.puszka-hukowa',
+    damage: '4k6',
+    ammoCurrent,
+    ammoMax,
+    ammoType: CHARGES,
+    rof: '1',
   });
   const can = {
     id: 'w-can',
@@ -254,15 +268,20 @@ describe('etap 46c — zapas amunicji', () => {
     throw new Error('turn never reached that participant');
   }
 
-  function reload(socket: ClientSocket, characterId: string, extra: Record<string, unknown> = {}) {
+  function reload(
+    socket: ClientSocket,
+    characterId: string,
+    extra: Record<string, unknown> = {},
+    weaponRowId = 'w-launch',
+  ) {
     return emitAck<{ ammo: number }>(socket, 'weapon:reload', {
       characterId,
-      weaponRowId: 'w-pistol',
+      weaponRowId,
       ...extra,
     });
   }
 
-  it('stawia stół: Vex z pistoletem i puszką, Bandzior MG, cel', async () => {
+  it('stawia stół: Vex z pistoletem, wyrzutnią i puszką, Bandzior MG, cel', async () => {
     const gmConn = createSocket(gmCookie);
     const playerConn = createSocket(playerCookie);
     gm = gmConn.socket;
@@ -277,7 +296,7 @@ describe('etap 46c — zapas amunicji', () => {
     await gmPatch(vexId, {
       stats: { ...(vex.data as CpredCharacterData).stats, ref: 6, dex: 5 },
       skills: { handgun: 5, athletics: 4 },
-      weapons: [pistol(2), can],
+      weapons: [pistol(2), launcher(1), can],
       eddies: 500,
     });
     const thug = data(
@@ -285,7 +304,7 @@ describe('etap 46c — zapas amunicji', () => {
       'character:create',
     );
     thugId = thug.id;
-    await gmPatch(thugId, { skills: { handgun: 3 }, weapons: [pistol(0)] });
+    await gmPatch(thugId, { skills: { handgun: 3 }, weapons: [pistol(0), launcher(0)] });
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Magazyn' }), 'scene');
     sceneId = scene.id;
@@ -328,105 +347,118 @@ describe('etap 46c — zapas amunicji', () => {
     }
   });
 
-  it('bez zapasu przeładowanie odmawia NO_AMMO, a Akcja zostaje', async () => {
+  it('bez ładunków przeładowanie wyrzutni odmawia NO_AMMO, a Akcja zostaje', async () => {
     await giveTurnTo(vexTokenId);
     expect(await reload(player, vexId)).toEqual({ ok: false, error: 'NO_AMMO' });
     expect(actionUsed(await tracker(), vexTokenId)).toBe(0);
-    expect((await sheetOf(vexId)).weapons[0]!.ammoCurrent).toBe(2);
+    expect((await sheetOf(vexId)).weapons[1]!.ammoCurrent).toBe(1);
   });
 
   it('z zapasu: magazynek pełny, zapas mniejszy dokładnie o tyle, ile weszło, Akcja wydana', async () => {
-    await gmPatch(vexId, { gear: [box(20)] });
-    expect(await reload(player, vexId)).toEqual({ ok: true, data: { ammo: 10 } });
+    await gmPatch(vexId, { gear: [box(5)] });
+    expect(await reload(player, vexId)).toEqual({ ok: true, data: { ammo: 2 } });
     expect(actionUsed(await tracker(), vexTokenId)).toBe(1);
     const sheet = await sheetOf(vexId);
-    expect(sheet.weapons[0]!.ammoCurrent).toBe(10);
-    expect(sheet.gear.map((row) => row.qty)).toEqual([12]);
+    expect(sheet.weapons[1]!.ammoCurrent).toBe(2);
+    expect(sheet.gear.map((row) => row.qty)).toEqual([4]);
   });
 
-  it('NPC MG jest „bez dna”, dopóki MG nie włączy „Licz amunicję”', async () => {
+  it('NPC MG też liczy ładunki, a kule nie kończą się nikomu (23.10)', async () => {
     await giveTurnTo(thugTokenId);
-    expect(await reload(gm, thugId)).toEqual({ ok: true, data: { ammo: 10 } });
-    await gmPatch(thugId, { ammoTracked: true, weapons: [pistol(0)] });
     expect(await reload(gm, thugId)).toEqual({ ok: false, error: 'NO_AMMO' });
+    expect(await reload(gm, thugId, {}, 'w-pistol')).toEqual({ ok: true, data: { ammo: 10 } });
     expect((await emitAck(gm, 'combat:end', { sceneId })).ok).toBe(true);
+    // Pistolet gracza: pełny magazynek bez pudełek, a ładunki w ekwipunku nietknięte.
+    expect(await reload(player, vexId, {}, 'w-pistol')).toEqual({ ok: true, data: { ammo: 10 } });
+    expect((await sheetOf(vexId)).gear.map((row) => row.qty)).toEqual([4]);
   });
 
   it('mały zapas ładuje resztę, a puste pudełko znika', async () => {
-    await gmPatch(vexId, { weapons: [pistol(0), can], gear: [box(3)] });
-    expect(await reload(player, vexId)).toEqual({ ok: true, data: { ammo: 3 } });
+    await gmPatch(vexId, { weapons: [pistol(10), launcher(0), can], gear: [box(1)] });
+    expect(await reload(player, vexId)).toEqual({ ok: true, data: { ammo: 1 } });
     expect((await sheetOf(vexId)).gear).toEqual([]);
   });
 
-  it('zmiana rodzaju oddaje naboje z magazynka do zapasu swojego rodzaju', async () => {
+  it('zmiana rodzaju oddaje sztuki z magazynka do zapasu swojego rodzaju', async () => {
     await gmPatch(vexId, {
-      weapons: [pistol(3), can],
-      gear: [box(10, PISTOL, null, 'zw'), box(15, PISTOL, 'ammo.sample-piercing', 'ap')],
+      weapons: [pistol(3), launcher(1, 4), can],
+      gear: [box(3, CHARGES, null, 'zw'), box(6, CHARGES, 'ammo.sample-gas', 'gaz')],
     });
-    expect(await reload(player, vexId, { ammoId: 'ammo.sample-piercing' })).toEqual({
+    expect(await reload(player, vexId, { ammoId: 'ammo.sample-gas' })).toEqual({
+      ok: true,
+      data: { ammo: 4 },
+    });
+    const sheet = await sheetOf(vexId);
+    expect(sheet.weapons[1]).toMatchObject({ ammoCurrent: 4, ammoId: 'ammo.sample-gas' });
+    expect(sheet.gear.map((row) => [row.id, row.qty])).toEqual([
+      ['zw', 4],
+      ['gaz', 2],
+    ]);
+  });
+
+  it('zmiana rodzaju kul nic nie bierze ani nie oddaje (23.10)', async () => {
+    const before = (await sheetOf(vexId)).gear;
+    expect(await reload(player, vexId, { ammoId: 'ammo.sample-piercing' }, 'w-pistol')).toEqual({
       ok: true,
       data: { ammo: 10 },
     });
     const sheet = await sheetOf(vexId);
     expect(sheet.weapons[0]).toMatchObject({ ammoCurrent: 10, ammoId: 'ammo.sample-piercing' });
-    expect(sheet.gear.map((row) => [row.id, row.qty])).toEqual([
-      ['zw', 13],
-      ['ap', 5],
-    ]);
+    expect(sheet.gear).toEqual(before);
   });
 
-  it('gracz naboi ręką tylko odejmuje; „Licz amunicję” przestawia wyłącznie MG', async () => {
+  it('gracz naboi ręką tylko odejmuje — także kul; pudełek nie dopisze', async () => {
+    const loaded = { ...pistol(10), ammoId: 'ammo.sample-piercing' };
+    const gas = { ...launcher(4, 4), ammoId: 'ammo.sample-gas' };
     const lower = await emitAck(player, 'character:update', {
       characterId: vexId,
-      patch: { data: { weapons: [{ ...pistol(9), ammoId: 'ammo.sample-piercing' }, can] } },
+      patch: { data: { weapons: [{ ...loaded, ammoCurrent: 9 }, gas, can] } },
     });
     expect(lower.ok).toBe(true);
+    // Magazynek napełnia Przeładowanie (w walce za Akcję), nie łata karty.
     const raise = await emitAck(player, 'character:update', {
       characterId: vexId,
-      patch: { data: { weapons: [{ ...pistol(10), ammoId: 'ammo.sample-piercing' }, can] } },
+      patch: { data: { weapons: [loaded, gas, can] } },
     });
     expect(raise).toEqual({ ok: false, error: 'AMMO_LOCKED' });
     const more = await emitAck(player, 'character:update', {
       characterId: vexId,
-      patch: { data: { gear: [box(99, PISTOL, null, 'zw')] } },
+      patch: { data: { gear: [box(99, CHARGES, null, 'zw')] } },
     });
     // Od 48c pudełko to zwykły wiersz wyposażenia: ilości gracz tylko ubywa
     // na każdej karcie, więc odmawia ogólna blokada przedmiotów.
     expect(more).toEqual({ ok: false, error: 'ITEM_LOCKED' });
-    const untrack = await emitAck(player, 'character:update', {
-      characterId: vexId,
-      patch: { data: { ammoTracked: false } },
-    });
-    expect(untrack).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 
-  it('kupuje paczki do kalibru i skleja je z pudełkiem tego rodzaju', async () => {
+  it('kupuje paczki ładunków do kalibru i skleja je z pudełkiem tego rodzaju; kul nie', async () => {
     const before = await sheetOf(vexId);
-    const bought = await emitAck<{ balance: number }>(player, 'economy:buy', {
-      characterId: vexId,
-      entryId: 'ammo.sample-standard',
-      weaponTypeId: 'weapon-type.sample-pistol',
-      packs: 2,
-    });
-    // Cennik domowy: amunicja w cenach podręcznika (×1 od 20.10.2026) — paczka zwykłej 10 ed.
-    expect(bought).toEqual({ ok: true, data: { balance: before.eddies - 20 } });
-    const after = await sheetOf(vexId);
-    expect(after.gear.find((row) => row.id === 'zw')?.qty).toBe(13 + 20);
-    expect(after.gear).toHaveLength(before.gear.length);
-
-    expect(
-      await emitAck(player, 'economy:buy', { characterId: vexId, entryId: 'ammo.sample-standard' }),
-    ).toEqual({ ok: false, error: 'AMMO_CALIBRE_REQUIRED' });
+    // Kule się nie kończą (23.10) — nie ma czego kupować.
     expect(
       await emitAck(player, 'economy:buy', {
         characterId: vexId,
         entryId: 'ammo.sample-standard',
-        weaponTypeId: 'weapon-type.sample-grenade',
+        weaponTypeId: 'weapon-type.sample-pistol',
+        packs: 2,
       }),
     ).toEqual({ ok: false, error: 'AMMO_MISMATCH' });
+    expect(
+      await emitAck(gm, 'economy:buy', { characterId: vexId, entryId: 'ammo.sample-gas' }),
+    ).toEqual({ ok: false, error: 'AMMO_CALIBRE_REQUIRED' });
+    // Ładunek drażniący na sztuki, ponad poziom stołu — kupuje MG na kartę Vex.
+    const bought = await emitAck<{ balance: number }>(gm, 'economy:buy', {
+      characterId: vexId,
+      entryId: 'ammo.sample-gas',
+      weaponTypeId: 'weapon-type.sample-grenade',
+      packs: 2,
+    });
+    expect(bought).toEqual({ ok: true, data: { balance: before.eddies - 200 } });
+    const after = await sheetOf(vexId);
+    expect(after.gear.find((row) => row.id === 'gaz')?.qty).toBe(2 + 2);
+    expect(after.gear).toHaveLength(before.gear.length);
   });
 
   it('ładunek rzucany bez magazynka bierze sztukę z zapasu, a pusty zapas odmawia', async () => {
+    await gmPatch(vexId, { gear: [] });
     const throwCan = () =>
       emitAck<AttackRollResult>(player, 'attack:roll', {
         characterId: vexId,
@@ -464,5 +496,33 @@ describe('etap 46c — zapas amunicji', () => {
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect((await sheetOf(vexId)).gear.some((row) => row.ammo?.calibre === CHARGES)).toBe(false);
     expect(await throwCan()).toEqual({ ok: false, error: 'NO_AMMO' });
+  });
+});
+
+describe('sprzątanie bazy po zasadzie z 23.10 — dropBottomlessAmmo', () => {
+  it('zdejmuje pudełka kul, śrutu i strzał oraz „Licz amunicję”, granaty zostają', async () => {
+    const campaign = await built.prisma.campaign.findFirstOrThrow();
+    const raw = {
+      eddies: 7,
+      ammoTracked: true,
+      gear: [
+        box(30, PISTOL, null, 'kule'),
+        box(2, CHARGES, 'ammo.sample-gas', 'gaz'),
+        { id: 'lina', name: 'Lina', notes: '', qty: 1 },
+      ],
+    };
+    const old = await built.prisma.character.create({
+      data: { campaignId: campaign.id, name: 'Sprzed zasady', data: JSON.stringify(raw) },
+    });
+    expect(await dropBottomlessAmmo(built.prisma, built.app.log)).toBeGreaterThanOrEqual(1);
+    const after = JSON.parse(
+      (await built.prisma.character.findUniqueOrThrow({ where: { id: old.id } })).data,
+    ) as Record<string, unknown>;
+    expect(after).toEqual({
+      eddies: 7,
+      gear: [raw.gear[1], raw.gear[2]],
+    });
+    // Drugi start niczego już nie rusza.
+    expect(withoutBottomlessAmmo(JSON.stringify(after))).toBeNull();
   });
 });

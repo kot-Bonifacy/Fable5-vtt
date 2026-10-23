@@ -1,5 +1,31 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.10, druga (po `d111d36`) — etap 58c: zamek drzwi, okna i bramy
+
+**Zakres 58c.** **Zrobione:** `shared` — wspólna reguła zamka `systems/cpred/lock.ts`
+(`cpredLockOpening`, `cpredLockTried`, `readCpredLock`; stałe i typy wyjęte z `container.ts`,
+który ją tylko opakowuje), `WallView.lockRule` (nieprzezroczysty zapis systemu),
+`OpeningPickPayload` / `OpeningLockConfigPayload`, `CpredRollRequest.lockWallId`. Serwer —
+migracja `20261023180000_opening_lock_rule` (`Wall.lockRule`), `realtime/opening-locks.ts`
+(`opening:pick`, `opening:lock-config`, `keyHolderAtOpening`, `settleOpeningLockTest`), strażnik
+`requirePlayerOpening` / `requireCampaignOpening` wyjęty z `opening:toggle` (`walls.ts`), klucz
+przy klamce w kroku 4, hak w `character-rolls.ts`, `lockRule` w kopii sceny (`archive.ts`, przez
+`remap`). Klient — pytanie z wytrychem po `OPENING_LOCKED` (`opening-lock.ts`, `MapArea`),
+sekcja „Zamek” na karcie zaryglowanego otworu (`OpeningLockFields.tsx`), odmowy
+`openingPickErrorText`. Rozstrzygnięcia bez pytań (klucz przy klamce, rygiel zdjęty na stałe,
+wybór Umiejętności przez gracza, otwiera postać przy klamce, wezwanie jawne) — w pliku etapu.
+Dwa drobiazgi do `POMYSLY.md` (wspólny klucz do drzwi i skrzyni, wybór postaci przy wytrychu).
+
+**Weryfikacja:** `shared` 2588/2588 (+7 `lock.test.ts`; `container.test.ts` bez zmian poza
+importem stałej), serwer 1602/1602 (+7 nowy `opening-locks.test.ts`: kolejność odmów, porażka,
+`LOCK_TRIED`, `LOCK_SKILL`, „Pozwól spróbować znowu”, sukces, klucz, zamek nie jedzie do gracza;
+macierz izolacji z `opening:pick` i `opening:lock-config`), klient 421/421. `tsc` w trzech
+pakietach, ESLint i Prettier czyste w zmienionych plikach. Suity E2E nie puszczano — żaden krok
+nie klika graczem zaryglowanych drzwi (T3b tylko rygluje tylne drzwi Knajpy). **Oglądane**
+tymczasowym specem (skasowany, `po-T6`, atrapa gatewaya): Ola w **Firefoksie** — pytanie przy
+klamce, porażka 9 ≤ 17, odmowa drugiej próby, sukces 16 > 8 i otwarte drzwi; MG w Chromium —
+karta z sekcją „Zamek”, „Nie udało się: Iskra”, po rzucie „Drzwi — otwarte”.
+
 ### Sesja 23.10 (po `e220456`) — etap 58b: rozbrajanie pułapki przez gracza
 
 **Zakres 58b.** **Zrobione:** `shared` — `systems/cpred/trapdisarm.ts` (PT z nadpisania albo

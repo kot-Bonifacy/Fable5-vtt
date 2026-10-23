@@ -1066,7 +1066,7 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
         category: 'ammo',
         name: 'Amunicja zwykła',
         cost: 10,
-        patterns: ['bullet'],
+        patterns: ['bullet', 'grenade'],
       } as CompendiumEntry,
     ];
     const pistol = {
@@ -1082,29 +1082,42 @@ describe('naprawa 3a — karta, jaką zapisze „Utwórz postać”', () => {
       ammunition: 'Ś. Pistolet',
       ammoPatterns: ['bullet' as const],
     };
-    const smg = { ...pistol, id: 'weapon-type.pm', name: 'Pistolet maszynowy', magazine: 30 };
+    const launcher = {
+      ...pistol,
+      id: 'weapon-type.granatnik',
+      name: 'Granatnik',
+      magazine: 2,
+      ammunition: 'Granaty',
+      ammoPatterns: ['grenade' as const],
+    };
+    const grenade = { ...launcher, id: 'weapon-type.granat', name: 'Granat', magazine: null };
     const outcome = creationOutcome(
       finished({
-        purchases: { 'ammo.zwykla@weapon-type.pistolet': 2, 'ammo.zwykla@weapon-type.pm': 1 },
+        purchases: {
+          'ammo.zwykla@weapon-type.granat': 2,
+          'ammo.zwykla@weapon-type.granatnik': 1,
+          // Kule się nie kończą (23.10) — linia sprzed zmiany nic nie kosztuje.
+          'ammo.zwykla@weapon-type.pistolet': 4,
+        },
       }),
       data(),
       registry(),
       (entryId) => ammo.find((entry) => entry.id === entryId),
-      { weaponTypeById: new Map([pistol, smg].map((type) => [type.id, type])) },
+      { weaponTypeById: new Map([pistol, launcher, grenade].map((type) => [type.id, type])) },
       true,
     );
-    // Jedna paczka = 10 naboi (s. 344); ten sam kaliber skleja się w jedno pudełko.
+    // Granat to paczka jednej sztuki (s. 344); ten sam kaliber skleja się w jedno pudełko.
     expect(outcome.spent).toBe(30);
     expect(outcome.sheet.gear).toMatchObject([
       {
-        name: 'Amunicja zwykła · Ś. Pistolet',
-        qty: 30,
-        ammo: { ammoId: null, calibre: 'Ś. Pistolet', pattern: 'bullet' },
+        name: 'Amunicja zwykła · Granaty',
+        qty: 3,
+        ammo: { ammoId: null, calibre: 'Granaty', pattern: 'grenade' },
       },
     ]);
     expect(outcome.purchases.map((line) => line.name)).toEqual([
-      'Amunicja zwykła · Ś. Pistolet',
-      'Amunicja zwykła · Ś. Pistolet',
+      'Amunicja zwykła · Granaty',
+      'Amunicja zwykła · Granaty',
     ]);
     // Amunicja bez kalibru nie jest towarem — koszyk jej nie liczy.
     const bare = creationOutcome(

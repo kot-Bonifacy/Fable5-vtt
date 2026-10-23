@@ -13,6 +13,7 @@ import { AiAccess } from './ai/access.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { TEMPORARY_PASSWORD_ROUTES } from './auth/guards.js';
 import { ensureAdminUser, ensureGmUser } from './auth/seed.js';
+import { dropBottomlessAmmo } from './ammo-sweep.js';
 import { backfillPortraitAssetsInBackground } from './portrait-backfill.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
@@ -257,6 +258,9 @@ export async function buildApp(
   // Płaskie `uploads/<katalog>/` sprzed 44b do katalogów kampanii — przed
   // pierwszym żądaniem, bo strażnik płaskich adresów już nie wydaje.
   await migrateFlatUploads(prisma, config.uploadsDir, app.log);
+  // Kule, śrut i strzały się nie kończą (zasada domowa MG z 23.10.2026) —
+  // ich pudełka i „Licz amunicję” schodzą z kart w bazie, nie tylko w odczycie.
+  await dropBottomlessAmmo(prisma, app.log);
   // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po
   // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
   if (options.sweepUploads !== false) {

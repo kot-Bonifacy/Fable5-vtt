@@ -267,8 +267,23 @@ describe('ammunition that deals no damage', () => {
     return (await sync).smoke;
   }
 
-  /** Loads a round into the grenade row (the reload path from stage 16g). */
+  /**
+   * Loads a round into the grenade row (the reload path from stage 16g). Od
+   * 23.10 granaty liczy każda karta, więc MG najpierw kładzie pudełko tego
+   * rodzaju — i zwykłe obok, gdyby wpis nie miał efektów (`cpredStockAmmoId`).
+   */
   async function load(ammoId: string | null): Promise<void> {
+    const box = (kind: string | null) => ({
+      id: `box-${kind ?? 'plain'}`,
+      name: `${kind ?? 'Zwykłe'} · Ładunki przykładowe`,
+      notes: '',
+      qty: 40,
+      ammo: { ammoId: kind, calibre: 'Ładunki przykładowe', pattern: 'grenade' },
+    });
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: { data: { gear: ammoId ? [box(ammoId), box(null)] : [box(null)] } },
+    });
     const ack = await emitAck(player, 'weapon:reload', {
       characterId,
       weaponRowId: 'w-grenade',
@@ -295,8 +310,6 @@ describe('ammunition that deals no damage', () => {
         data: {
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5, will: 6 },
           skills: { athletics: 4, handgun: 4, 'resist-torture-drugs': 2 },
-          // Skutki naboju, nie zapas (46c): granat rzuca się „bez dna”.
-          ammoTracked: false,
           // Etap 31: „Jeśli próbuje jej użyć osoba bez tej cyborgizacji …
           // amunicja inteligentna nie wystrzeli" (s. 347). Od tej sesji to
           // odmowa, nie proza — więc strzelec musi mieć czym celować.
