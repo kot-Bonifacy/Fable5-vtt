@@ -91,6 +91,21 @@ export function openingErrorText(code: string | undefined, kind: WallKind | unde
   }
 }
 
+/**
+ * Odmowy `opening:pick` (etap 58c): kolejność odmów jest ta sama co przy
+ * klamce, więc i zdania; dochodzą dwie zamka — wspólne z pojemnikiem.
+ */
+export function openingPickErrorText(code: string | undefined, kind: WallKind | undefined): string {
+  switch (code) {
+    case 'LOCK_TRIED':
+      return 'Ta postać już próbowała otworzyć ten zamek i się nie udało. Spróbować znowu pozwala MG.';
+    case 'LOCK_SKILL':
+      return 'Tego zamka nie otworzysz tą Umiejętnością — spróbuj drugiej.';
+    default:
+      return openingErrorText(code, kind);
+  }
+}
+
 /** The same four refusals, worded for the thing that was reached for. */
 const OPENING_REFUSALS = {
   door: {

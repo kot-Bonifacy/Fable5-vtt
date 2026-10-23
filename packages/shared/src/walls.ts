@@ -99,6 +99,14 @@ export interface WallView {
    * knowledge and is scrubbed to 0 on its way to a player.
    */
   armor: number;
+  /**
+   * Openings only (stage 58c): how the bolt is picked — the game system's data,
+   * opaque to the core (CP RED reads it as `CpredLock`: DV, skills, key handle,
+   * who already tried). `null` on a bolt nobody configured, which the system
+   * reads as its default lock. Like `locked`, GM knowledge: scrubbed to `null`
+   * on its way to a player.
+   */
+  lockRule?: unknown;
   /** Barriers only: hide figures while leaving the map visible. */
   hidesFigures?: boolean;
   /** Non-positive attack modifier; absent on older rows means -4. */

@@ -1,5 +1,12 @@
 # Pomysły poza zakresem etapów
 
+**23.10.2026 (etap 58c) — jeden klucz do drzwi i skrzyni, wybór postaci przy wytrychu.** (1) **Wspólny
+klucz:** „Wydaj klucz” na drzwiach i na pojemniku zakłada każdy własny uchwyt, więc jeden klucz
+pasujący do obu (rozstrzygnięcie z planu 58) wymaga od MG ręki w bazie. Wystarczyłby wybór „Pasuje
+klucz: …” z kluczy już wydanych w kampanii. (2) **Kto grzebie w zamku:** `opening:pick` bez
+`characterId` bierze pierwszą kartę gracza, której figura stoi przy otworze. Gracz z dwiema
+postaciami przy jednych drzwiach nie wybiera — można by brać zaznaczoną figurę.
+
 **22.10.2026 (etap 58, plan) — ukryte drzwi, wyważanie i koszt Akcji za zamek.** Etap 58
 (`etap-58-ukryte-zamki-pulapki.md`) daje graczom Percepcję w drodze, rozbrajanie pułapek, wytrych
 do drzwi i wykrywanie ukrytych figur. Poza zakresem zostały: (1) **ukryte drzwi** — flaga „ukryte”

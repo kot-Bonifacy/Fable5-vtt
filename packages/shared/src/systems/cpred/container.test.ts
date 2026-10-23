@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { exchangeOptionsFor } from '../../exchange.js';
 import { createDefaultCharacterData, type CpredCharacterData } from './character.js';
 import {
-  CPRED_LOCK_DV_DEFAULT,
   cpredContainerOpening,
   cpredLockTestSettled,
   createCpredContainer,
@@ -17,6 +16,7 @@ import {
   createContainerSheet,
 } from './containercard.js';
 import { cpredMoveItems } from './inventory.js';
+import { CPRED_LOCK_DV_DEFAULT } from './lock.js';
 
 const KEY = 'klucz-skrzyni-01';
 

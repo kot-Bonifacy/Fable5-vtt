@@ -440,6 +440,12 @@ export interface CpredRollRequest {
    */
   disarmZoneId?: number;
   disarmTokenId?: string;
+  /**
+   * Etap 58c — otwór (drzwi, okno, brama), którego zamek ten Test otwiera.
+   * Wpisuje je wyłącznie serwer w `opening:pick`; rzut czyta je z zapisanego
+   * wezwania, nigdy z żądania klienta — jak `containerTokenId` pojemnika.
+   */
+  lockWallId?: number;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

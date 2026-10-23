@@ -73,7 +73,8 @@ import {
   type NetProgramTarget,
 } from './netrunning.js';
 import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
-import { isCpredKeyId, readCpredContainer, type CpredContainer } from './container.js';
+import { readCpredContainer, type CpredContainer } from './container.js';
+import { isCpredKeyId } from './lock.js';
 import { cpredIsBareHandsRow, cpredWithBareHands } from './barehands.js';
 import {
   CPRED_STAT_IDS,

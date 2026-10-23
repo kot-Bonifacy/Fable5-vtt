@@ -1,5 +1,6 @@
 import type {
   OpeningTogglePayload,
+  SessionUser,
   WallClearPayload,
   WallCreatePayload,
   WallDeletePayload,
@@ -18,7 +19,8 @@ import {
   sanitizeWallChain,
   sanitizeWallSegment,
 } from '@vtt/shared';
-import type { Scene } from '../generated/prisma/client.js';
+import type { Scene, Wall } from '../generated/prisma/client.js';
+import { keyHolderAtOpening } from './opening-locks.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { requireCampaignScene } from './scenes.js';
@@ -30,7 +32,9 @@ import {
   emitVisionToPlayers,
   isWallInReach,
   loadVisionContext,
+  playerOpeningView,
   usesDynamicVision,
+  type SceneVisionContext,
   visibleOpeningsFor,
   viewerSightFor,
 } from './vision.js';
@@ -178,6 +182,7 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
         data.playerToggle = false;
         data.open = false;
         data.locked = false;
+        data.lockRule = null;
       }
       // Armour belongs to a see-through partition (stage 42b). Barrier ↔ gate
       // keeps it; a fence retyped into masonry or glass loses it.
@@ -295,7 +300,9 @@ export const wallClearEvent = defineEvent<WallClearPayload>({
  *  4. it is not bolted — else `OPENING_LOCKED`. Last on purpose. „Locked" is the
  *     one fact about a door that is learned by pulling the handle, so a player
  *     halfway across the room must not get it: they would be probing the map for
- *     which doors matter without their character touching anything.
+ *     which doors matter without their character touching anything. Since stage
+ *     58c a character at the handle holding its key opens it anyway, and the
+ *     refusal is where the client offers to pick the lock (`opening:pick`).
  *
  * What an *open* window then means for movement is the GM's ruling: this VTT has
  * no movement collisions yet, so nothing stops a token crossing a wall in the
@@ -306,43 +313,78 @@ export const openingToggleEvent = defineEvent<OpeningTogglePayload, WallView>({
   name: 'opening:toggle',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const wallId = payload?.wallId;
-    if (typeof wallId !== 'number' || !Number.isInteger(wallId)) {
-      throw new RealtimeError('BAD_REQUEST');
-    }
-    const row = await deps.ctx.prisma.wall.findUnique({
-      where: { id: wallId },
-      include: { scene: true },
-    });
-    if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('WALL_NOT_FOUND');
-    const wall = toWallView(row);
-    if (!isOpening(wall)) throw new RealtimeError('NOT_AN_OPENING');
+    const { row, wall } = await requireCampaignOpening(deps, campaignId, payload?.wallId);
 
     const isGm = user.role === ROLE_GM;
+    let unbolt = false;
     if (!isGm) {
-      if (socket.data.viewedSceneId !== row.sceneId) throw new RealtimeError('SCENE_NOT_VIEWED');
-      if (!wall.playerToggle) throw new RealtimeError('FORBIDDEN');
-      const context = await loadVisionContext(deps.ctx.prisma, row.scene);
-      // The whole sight rather than just the origins: on a dark scene an opening
-      // has to be lit to be worked, and the guard must agree with the list the
-      // player was sent — or the handle they can see would refuse them.
-      const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
-      const visible = visibleOpeningsFor(context, sight.sources, sight.lighting).some(
-        (opening) => opening.id === wall.id,
-      );
-      if (!visible) throw new RealtimeError('WALL_NOT_FOUND');
-      if (!isWallInReach(context, sight.sources, wall)) {
-        throw new RealtimeError('OPENING_OUT_OF_REACH');
+      const { context } = await requirePlayerOpening(deps, socket.data, user, row, wall);
+      // A key in the pocket of a character at the handle opens the bolt without
+      // a Test (stage 58c, the container's rule) — and only then is „locked"
+      // never said: the character turned the key rather than found it shut.
+      if (wall.locked) {
+        if (!(await keyHolderAtOpening(deps, campaignId, user, row.scene, wall, context))) {
+          throw new RealtimeError('OPENING_LOCKED');
+        }
+        unbolt = true;
       }
-      if (wall.locked) throw new RealtimeError('OPENING_LOCKED');
     }
 
-    const open = typeof payload?.open === 'boolean' ? payload.open : !wall.open;
-    const updated = await deps.ctx.prisma.wall.update({ where: { id: row.id }, data: { open } });
+    const open = unbolt || (typeof payload?.open === 'boolean' ? payload.open : !wall.open);
+    const updated = await deps.ctx.prisma.wall.update({
+      where: { id: row.id },
+      data: unbolt ? { open, locked: false } : { open },
+    });
     await afterWallChange(deps, campaignId, row.scene);
     const view = toWallView(updated);
-    // The ack is one more way to a player's socket, and a gate's armour is the
-    // GM's number (stage 42b) — scrubbed as `visibleOpeningsFor` scrubs it.
-    return isGm ? view : { ...view, armor: 0, hidesFigures: false, concealPenalty: 0 };
+    return isGm ? view : playerOpeningView(view);
   },
 });
+
+/** The opening row of this campaign — `WALL_NOT_FOUND` / `NOT_AN_OPENING` otherwise. */
+export async function requireCampaignOpening(
+  deps: RealtimeDeps,
+  campaignId: string,
+  wallId: unknown,
+): Promise<{ row: Wall & { scene: Scene }; wall: WallView }> {
+  if (typeof wallId !== 'number' || !Number.isInteger(wallId)) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const row = await deps.ctx.prisma.wall.findUnique({
+    where: { id: wallId },
+    include: { scene: true },
+  });
+  if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('WALL_NOT_FOUND');
+  const wall = toWallView(row);
+  if (!isOpening(wall)) throw new RealtimeError('NOT_AN_OPENING');
+  return { row, wall };
+}
+
+/**
+ * Conditions 1–3 of `opening:toggle`, in that order — shared with picking the
+ * lock (`opening:pick`, stage 58c), which must not become a second way to learn
+ * that a door is there or that it is bolted.
+ */
+export async function requirePlayerOpening(
+  deps: RealtimeDeps,
+  socketData: { viewedSceneId?: string | null },
+  user: SessionUser,
+  row: Wall & { scene: Scene },
+  wall: WallView,
+): Promise<{ context: SceneVisionContext }> {
+  if (socketData.viewedSceneId !== row.sceneId) throw new RealtimeError('SCENE_NOT_VIEWED');
+  if (!wall.playerToggle) throw new RealtimeError('FORBIDDEN');
+  const context = await loadVisionContext(deps.ctx.prisma, row.scene);
+  // The whole sight rather than just the origins: on a dark scene an opening
+  // has to be lit to be worked, and the guard must agree with the list the
+  // player was sent — or the handle they can see would refuse them.
+  const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
+  const visible = visibleOpeningsFor(context, sight.sources, sight.lighting).some(
+    (opening) => opening.id === wall.id,
+  );
+  if (!visible) throw new RealtimeError('WALL_NOT_FOUND');
+  if (!isWallInReach(context, sight.sources, wall)) {
+    throw new RealtimeError('OPENING_OUT_OF_REACH');
+  }
+  return { context };
+}

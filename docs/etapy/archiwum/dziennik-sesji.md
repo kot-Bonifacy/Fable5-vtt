@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, ósma (po `fd6c385`) — 58a: Percepcja z kubka na wezwanie
+
+**Zmiana MG:** rzut przy ukrytej pułapce gracz robi z kubka (wbrew rzutowi ukrytemu z 58a).
+Trzy decyzje: figura stoi do rzutu, wynik widzą MG i rzucający, PT na karcie wezwania jak
+zwykle. **Zrobione:** `callSpotZone` / `settleSpotTest` (`zones.ts`), `hiddenZone` w
+`createCheckCall` (`checks.ts`), `CpredRollRequest.hiddenZoneId` / `noticeTokenId`, hak
+w `character-rolls.ts`, przycięcie adresu w `redactChatMessage`, `refuseWhileNoticePending`
+(`NOTICE_ROLL_PENDING`) w `token:walk`, w lądowaniu bez trasy i w skoku. Klient — teksty odmowy
+(mapa, socket, skok) i pasek „… Rzuć na Percepcję z kubka.”. Umowa na górze `tura` przepisana.
+
+**Weryfikacja:** serwer 1588/1588 (testy stref: śledzenie wezwań i rzut z ustawioną kością
+przez `VTT_DICE_SCRIPT`; nowe asercje — wezwanie bez nazwy i numeru strefy, `NOTICE_ROLL_PENDING`
+dla marszu i skoku), `shared` 2576/2576, klient 421/421, `tsc` i ESLint czyste. **Oglądane**
+tymczasowym specem (skasowany): Ola w **Firefoksie** — zatrzymanie, klik dalej odmawia, rzut
+z karty wezwania 10 + 1 + 11 = 22 „Zdane”, pułapka na mapie, pasek „zauważa”; Marek w Chromium
+— 10 „Niezdane”, czat bez cudzych wezwań; MG — oba wezwania i oba wiersze „poufne”. Zero błędów
+konsoli. Odmowa „Najpierw rzuć…” stoi po rzucie do następnego kliknięcia w mapę (reguła 55).
+E2E T5b z `po-T5a` **27/27** — krok podłogi: zatrzymanie na (19, 11), Marek rzuca z karty
+wezwania (karta rzutu to `gmroll`), dopiero potem wejście na podłogę. Przebieg na atrapie
+`FakeGateway` na :8100 (gateway wyłączony), więc 5.10 `@llm` nie sprawdził modelu.
+
 ### Sesja 22.10, siódma (po `5f41bf4`) — etap 58a: Percepcja w drodze, rzut ukryty
 
 **Zakres 58a.** **Zrobione:** `shared` — `segmentDistanceToRect` (`rects.ts`),

@@ -766,10 +766,18 @@ export function visibleOpeningsFor(
  * module's for a dynamic scene, `standingOpeningsFor` for any other) — rather
  * than at each emit site, where the next one added would forget. A gate's
  * armour goes the same way (stage 42b): what the mesh takes off a round is the
- * GM's number, not something seen through it.
+ * GM's number, not something seen through it, and so is how the bolt is picked
+ * (stage 58c).
  */
 export function playerOpeningView(door: WallView): WallView {
-  return { ...door, locked: false, armor: 0, hidesFigures: false, concealPenalty: 0 };
+  return {
+    ...door,
+    locked: false,
+    lockRule: null,
+    armor: 0,
+    hidesFigures: false,
+    concealPenalty: 0,
+  };
 }
 
 /**

@@ -4,7 +4,7 @@
 bronione), 46b (pojemnik z zamkiem), 18d (drzwi i zamek MG), 32 (wezwanie do Testu),
 55 (komunikaty), 56 (zatrzymanie marszu na polu zauważenia)
 
-**Podział na cztery sesje (propozycja 22.10, przyjęty — MG zlecił 58a tego samego dnia):** 58a → 58b, 58c, 58d.
+**Podział na cztery sesje (propozycja 22.10, przyjęty — MG zlecił 58a tego samego dnia):** 58a → 58b, 58c, 58d. Zrobione: 58a (22.10), 58b i 58c (23.10).
 58a jest fundamentem: daje „rzut w drodze z zatrzymaniem”, którego używa 58d. 58b i 58c nie
 zależą od siebie.
 
@@ -199,21 +199,66 @@ po sukcesie „Uzbrój” i podpis „rozbrojona”, wiersz „poufne” z wynik
 
 ### Zakres
 
-- [ ] Pola zamka na otworze: PT, Umiejętności (Otwieranie zamków / Elektronika
+- [x] Pola zamka na otworze: PT, Umiejętności (Otwieranie zamków / Elektronika
       i zabezpieczenia), `keyId`, lista prób — reguła z `container.ts` przeniesiona do wspólnej,
       żeby pojemnik i drzwi miały jedną (`cpredContainerOpening` → zamek ogólny)
-- [ ] Klik gracza w zamknięte na klucz drzwi w zasięgu ręki: zamiast samej odmowy — „Otwórz
+- [x] Klik gracza w zamknięte na klucz drzwi w zasięgu ręki: zamiast samej odmowy — „Otwórz
       zamek” z kubkiem Testu. Klucz otwiera bez Testu
-- [ ] Karta drzwi u MG: PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować znowu”
-- [ ] Udany Test zdejmuje `locked` i otwiera drzwi
+- [x] Karta drzwi u MG: PT, Umiejętności, „Wydaj klucz”, „Pozwól spróbować znowu”
+- [x] Udany Test zdejmuje `locked` i otwiera drzwi
 
 ### Kryteria ukończenia
 
-- [ ] Kolejność odmów z `opening:toggle` zostaje (niewidoczne → `WALL_NOT_FOUND`, za daleko →
+- [x] Kolejność odmów z `opening:toggle` zostaje (niewidoczne → `WALL_NOT_FOUND`, za daleko →
       `OPENING_OUT_OF_REACH`, dopiero potem zamek) — test serwera
-- [ ] Porażka, druga próba, „Pozwól spróbować znowu”, sukces, klucz — test serwera
-- [ ] Testy `container` dalej zielone po przeniesieniu reguły
-- [ ] Oględziny: gracz w Firefoksie otwiera drzwi wytrychem
+- [x] Porażka, druga próba, „Pozwól spróbować znowu”, sukces, klucz — test serwera
+- [x] Testy `container` dalej zielone po przeniesieniu reguły
+- [x] Oględziny: gracz w Firefoksie otwiera drzwi wytrychem
+
+### Jak wyszło (23.10)
+
+Reguła zamka mieszka teraz w `shared/systems/cpred/lock.ts`: `cpredLockOpening(stan, zamek,
+otwierający)`, `cpredLockTried`, `readCpredLock`. `container.ts` tylko ją opakowuje, a jego testy
+przeszły bez zmian (poza ścieżką importu stałej). Rdzeń zna dalej wyłącznie rygiel
+(`Wall.locked`). Obok niego trzyma nieprzezroczysty zapis systemu `Wall.lockRule` (JSON: PT,
+Umiejętności, uchwyt klucza, lista prób). Gracz nie dostaje go nigdy (`playerOpeningView`).
+Regułę woła serwer w `realtime/opening-locks.ts`.
+
+Przebieg u gracza: klik w klamkę zaryglowanych drzwi daje w kolumnie komunikatów pytanie
+„Zamknięte na klucz — same drzwi nie ustąpią. Spróbujesz otworzyć zamek?” z dwoma przyciskami
+„Otwórz zamek: <Umiejętność>”. Przycisk wysyła `opening:pick`. Zdarzenie przechodzi przez tego
+samego strażnika co klamka (`requirePlayerOpening`) i wystawia wezwanie do Testu z kubkiem.
+Rozlicza je `settleOpeningLockTest` w haku rzutu: sukces zdejmuje rygiel i otwiera drzwi,
+porażka zapisuje postać na liście prób. MG ma na karcie zaryglowanego otworu sekcję „Zamek”
+(`OpeningLockFields.tsx`).
+
+**Rozstrzygnięcia przyjęte bez pytań — czekają na słowo MG:**
+
+- **Klucz działa już przy klamce.** Gdy któraś z postaci gracza stoi przy drzwiach z kluczem,
+  klik otwiera je bez pytania i zdejmuje rygiel. Gracz nie słyszy „zamknięte na klucz”: postać
+  przekręciła klucz, a nie odbiła się od drzwi.
+- **Udany Test i klucz zdejmują rygiel na stałe.** Drzwi zamknięte potem są zwykłymi drzwiami.
+  Zaryglować je znowu może tylko MG.
+- **Gracz wybiera Umiejętność sam, bo nie wie, czym zamek ustępuje.** Dostaje oba przyciski.
+  Umiejętność, której zamek nie przyjmuje, daje odmowę `LOCK_SKILL` („spróbuj drugiej”)
+  i nie zużywa próby. Zdradza tylko, jaki to zamek, a to postać widzi przy klamce.
+- **Działa postać przy klamce.** Otwiera pierwsza karta gracza, której figura stoi na
+  wyciągnięcie ręki od drzwi. Oczy drużyny (etap 45) pokazują drzwi, ale wytrychu nie trzymają.
+- **Wezwanie jest jawne, jak przy pojemniku.** Prompt „Zamek: Drzwi” (albo Okno, Brama),
+  wzywa „Drzwi”. Wynik widzi cały stół.
+- **Drzwi zaryglowane przed 58c mają zamek domyślny:** PT 13 („Codzienny”) i Otwieranie zamków.
+- **Sekcja „Zamek” na karcie MG jest widoczna tylko przy zaryglowanym otworze.** Zapis zostaje
+  po zdjęciu rygla, więc lista prób i klucz wracają z nim.
+- **MG wysyłający `opening:pick` po prostu otwiera** (zdejmuje rygiel), bez Testu.
+
+**Poza planem:** `opening:toggle` wycina graczowi zamek z odpowiedzi tą samą funkcją co listy
+otworów (`playerOpeningView`). Wcześniej robił to osobnym zapisem.
+
+**Oględziny:** tymczasowy spec (skasowany). Ola w **Firefoksie**: pytanie przy klamce, kubek
+z karty wezwania, porażka 9 ≤ PT 17, odmowa drugiej próby, po „Pozwól spróbować znowu” sukces
+16 > PT 8 i drzwi otwarte. MG w Chromium: karta drzwi z sekcją „Zamek” („Nie udało się: Iskra”,
+„Pozwól spróbować znowu”), a po rzucie „Drzwi — otwarte”, „Bez rygla”. Widok MG zmienia się
+dopiero po wylądowaniu kości (rzuty doganiają stół, #48).
 
 ## 58d — Ukryta figura przeciw Skradaniu
 

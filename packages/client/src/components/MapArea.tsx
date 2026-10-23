@@ -101,6 +101,7 @@ import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
 import { bindMapPing } from '../map-ping.js';
 import { bindMapFrame } from '../map-frame.js';
+import { offerLockPick } from '../opening-lock.js';
 import { COMBAT_PENDING_NOTE, NOTICE_ROLL_PENDING_NOTE, bindWalkHalt } from '../walk-halt.js';
 import { bindMapAim } from '../map-aim.js';
 import { preloadFxSounds } from '../sfx.js';
@@ -1058,6 +1059,12 @@ export function MapArea() {
       const state = useWallStore.getState();
       const kind = [...state.walls, ...state.openings].find((wall) => wall.id === wallId)?.kind;
       void toggleOpening(wallId).then((ack) => {
+        // Zaryglowane przy klamce (58c): zamiast samej odmowy — wytrych. MG tej
+        // odmowy nie dostaje nigdy.
+        if (!ack.ok && ack.error === 'OPENING_LOCKED') {
+          offerLockPick(wallId, kind);
+          return;
+        }
         noteAck('scene', ack, (code) => openingErrorText(code, kind));
       });
     };

@@ -437,6 +437,7 @@ export async function exportScene(
           open: true,
           playerToggle: true,
           locked: true,
+          lockRule: true,
           armor: true,
           hidesFigures: true,
           concealPenalty: true,
@@ -721,6 +722,10 @@ export async function insertScene(
     open: bool(row.open),
     playerToggle: bool(row.playerToggle),
     locked: bool(row.locked),
+    // Zamek otworu (etap 58c) — zapis systemu w tekście JSON. Lista prób niesie
+    // id kart, więc idzie przez `remap` jak każdy tekst z id; plik sprzed 58c
+    // nie ma kolumny i rygiel wraca z zamkiem domyślnym.
+    lockRule: typeof row.lockRule === 'string' ? String(remap(row.lockRule)) : null,
     // Plik sprzed etapu 42b nie ma tej kolumny — bariera wraca bez pancerza,
     // tak jak stała. Liczba spoza zakresu nie wchodzi do bazy.
     armor: sanitizeWallArmor(row.armor) ?? 0,

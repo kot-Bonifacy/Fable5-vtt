@@ -141,6 +141,9 @@ import type {
   ContainerCreateResult,
   ContainerOpenPayload,
   ContainerOpenResult,
+  OpeningLockConfigPayload,
+  OpeningPickPayload,
+  OpeningPickResult,
   ContainerPutPayload,
   ExchangeCounterpartsPayload,
   ExchangeCounterpartsResult,
@@ -2597,6 +2600,14 @@ export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { scen
 
 export const toggleOpening = (wallId: number, open?: boolean) =>
   emitSceneAck<WallView>('opening:toggle', { wallId, open });
+
+/** Wytrych po „zamknięte na klucz” (58c) — klucz otwiera, inaczej wezwanie do Testu zamka. */
+export const pickOpening = (payload: OpeningPickPayload) =>
+  emitSceneAck<OpeningPickResult>('opening:pick', payload);
+
+/** Zamek otworu u MG (58c): PT, Umiejętności, klucz, nowe próby. */
+export const configOpeningLock = (payload: OpeningLockConfigPayload) =>
+  emitSceneAck('opening:lock-config', payload);
 
 /* Cover (stage 16c). GM-only to edit; visible to everybody unless the GM hid
    it (21.10.2026), when only the GM gets the row. */

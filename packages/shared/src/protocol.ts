@@ -787,6 +787,36 @@ export interface ContainerOpenResult {
   callMessageId?: number;
 }
 
+/**
+ * `opening:pick` (etap 58c) — gracz po odmowie „zamknięte na klucz” sięga po
+ * wytrych. Kolejność odmów jak w `opening:toggle`, potem klucz albo wezwanie
+ * do Testu zamka.
+ */
+export interface OpeningPickPayload {
+  wallId: number;
+  /**
+   * Kto otwiera — karta, którą prowadzę. Bez niej serwer bierze pierwszą moją
+   * kartę, której figura stoi przy otworze.
+   */
+  characterId?: string;
+  /** Umiejętność Testu zamka, gdy zamek zna ich kilka. */
+  skillId?: string;
+}
+
+/** Odpowiedź `opening:pick` — ten sam kształt co przy pojemniku. */
+export type OpeningPickResult = ContainerOpenResult;
+
+/** `opening:lock-config` (etap 58c, MG) — zamek drzwi, okna albo bramy. */
+export interface OpeningLockConfigPayload {
+  wallId: number;
+  dv?: number;
+  skills?: string[];
+  /** „Pozwól spróbować znowu” — zeruje listę postaci po nieudanym Teście. */
+  resetTries?: boolean;
+  /** „Wydaj klucz” — wiersz klucza ląduje na tej karcie. */
+  issueKeyTo?: string;
+}
+
 /** `container:put` — z mojej karty do otwartego pojemnika w zasięgu. */
 export interface ContainerPutPayload {
   fromCharacterId: string;

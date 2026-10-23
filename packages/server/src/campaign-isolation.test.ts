@@ -858,6 +858,8 @@ const CASES: Record<string, Case> = {
   'wall:delete': foreign((a) => ({ wallId: a.wallId })),
   'wall:clear': foreign((a) => ({ sceneId: a.sceneId })),
   'opening:toggle': foreign((a) => ({ wallId: a.wallId })),
+  'opening:pick': foreign((a) => ({ wallId: a.wallId })),
+  'opening:lock-config': foreign((a) => ({ wallId: a.wallId, dv: 10 })),
   // zones
   'zone:create': foreign((a) => ({
     sceneId: a.sceneId,
@@ -1005,6 +1007,15 @@ const MIXED: MixedCase[] = [
   {
     event: 'zone:disarm',
     payload: (a, b) => ({ characterId: b.characterId, zoneId: a.zoneId }),
+  },
+  // Etap 58c: własna karta, cudze drzwi.
+  {
+    event: 'opening:pick',
+    payload: (a, b) => ({ characterId: b.characterId, wallId: a.wallId }),
+  },
+  {
+    event: 'opening:lock-config',
+    payload: (a, b) => ({ wallId: a.wallId, issueKeyTo: b.characterId }),
   },
   {
     event: 'economy:transfer',

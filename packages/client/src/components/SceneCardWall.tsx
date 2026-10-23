@@ -12,6 +12,7 @@ import { toggleOpening, updateWall } from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { wallErrorText } from '../mapErrors.js';
 import { noteAck } from '../notices.js';
+import { OpeningLockFields } from './OpeningLockFields.js';
 
 /**
  * Karta ściany, drzwi i okna (etap 27l).
@@ -206,7 +207,7 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
               title={
                 wall.locked
                   ? 'Zdejmij rygiel — gracz znów otworzy to ręką'
-                  : 'Zaryglowany otwór nie ustępuje; gracz dowiaduje się o tym dopiero za klamkę'
+                  : 'Zaryglowany otwór nie ustępuje; gracz dowiaduje się o tym dopiero za klamkę i może spróbować wytrycha'
               }
               disabled={busy}
               onClick={() => void patch({ locked: !wall.locked })}
@@ -214,6 +215,8 @@ export function SceneCardWall({ wall }: { wall: WallView }) {
               {wall.locked ? '🔒 Zaryglowane' : '🔓 Bez rygla'}
             </button>
           </div>
+          {/* Zamek zaryglowanego otworu (etap 58c) — gracz przy klamce sięga po wytrych. */}
+          {wall.locked && <OpeningLockFields wall={wall} />}
         </>
       )}
     </div>

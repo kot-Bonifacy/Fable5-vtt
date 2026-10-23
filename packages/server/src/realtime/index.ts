@@ -160,6 +160,7 @@ import {
   wallDeleteEvent,
   wallUpdateEvent,
 } from './walls.js';
+import { openingLockConfigEvent, openingPickEvent } from './opening-locks.js';
 import { coverClearEvent, coverCreateEvent, coverDeleteEvent, coverUpdateEvent } from './covers.js';
 import { smokeClearEvent } from './smoke.js';
 import {
@@ -488,6 +489,8 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   wallDeleteEvent,
   wallClearEvent,
   openingToggleEvent,
+  openingPickEvent,
+  openingLockConfigEvent,
   coverCreateEvent,
   coverUpdateEvent,
   coverDeleteEvent,

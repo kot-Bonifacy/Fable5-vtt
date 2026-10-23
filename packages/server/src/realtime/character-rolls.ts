@@ -86,6 +86,7 @@ import {
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
+import { settleOpeningLockTest } from './opening-locks.js';
 import { settleDisarmTest, settleSpotTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
@@ -1448,6 +1449,20 @@ async function performScopedRoll(
         deps,
         campaignId,
         lockTokenId,
+        call.entry.characterId,
+        result.outcome.success,
+      );
+    }
+    // Etap 58c: Test zamka drzwi, okna albo bramy — adres otworu, jak adres
+    // pojemnika, tylko z zapisanego wezwania (wystawia je `opening:pick`).
+    const lockWallId = call
+      ? (call.entry.system as { lockWallId?: unknown }).lockWallId
+      : undefined;
+    if (call && result.outcome && typeof lockWallId === 'number') {
+      await settleOpeningLockTest(
+        deps,
+        campaignId,
+        lockWallId,
         call.entry.characterId,
         result.outcome.success,
       );

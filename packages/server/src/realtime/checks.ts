@@ -230,6 +230,11 @@ export async function createCheckCall(
      * tylko `zone:disarm`, więc zgoda MG na prośbę o Test niczego nie rozbraja.
      */
     disarmZone?: { zoneId: number; tokenId: string };
+    /**
+     * Zamek drzwi, okna albo bramy (etap 58c) — tak samo po białej liście:
+     * wystawia je tylko `opening:pick`.
+     */
+    lockWallId?: number;
     /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
     calledByName?: string;
   },
@@ -256,6 +261,7 @@ export async function createCheckCall(
     ...(input.disarmZone
       ? { disarmZoneId: input.disarmZone.zoneId, disarmTokenId: input.disarmZone.tokenId }
       : {}),
+    ...(input.lockWallId !== undefined ? { lockWallId: input.lockWallId } : {}),
   };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length > CHECK_CALL_PROMPT_MAX) throw new RealtimeError('BAD_REQUEST');

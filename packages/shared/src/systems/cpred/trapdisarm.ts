@@ -12,7 +12,7 @@
  * równy PT to porażka o 0, a o 5 — wynik PT − 5 i niżej.
  */
 
-import type { CpredLockSkill } from './container.js';
+import type { CpredLockSkill } from './lock.js';
 
 /** Umiejętność rozbrajania — „PT 13 Elektronika i zabezpieczenia” (s. 216). */
 export const CPRED_DISARM_SKILL_ID: CpredLockSkill = 'electronics-security';

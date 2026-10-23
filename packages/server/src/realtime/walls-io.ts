@@ -2,6 +2,7 @@ import type { ScenePoint, WallView } from '@vtt/shared';
 import {
   barrierArmorAlong,
   isBarrier,
+  isOpening,
   isSegmentClear,
   isWallKind,
   movementSegments,
@@ -17,6 +18,16 @@ import type { Wall as WallRow } from '../generated/prisma/client.js';
  * on this scene?" without importing the event handlers, and the handlers need
  * to push a fresh vision after every edit without importing themselves back.
  */
+
+/** The bolt's system data (stage 58c) — a broken cell reads as „nobody configured it". */
+function parseLockRule(raw: string | null): unknown {
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
 
 /** Rebuilds a stored row into the shared view. */
 export function toWallView(row: WallRow): WallView {
@@ -35,6 +46,7 @@ export function toWallView(row: WallRow): WallView {
     armor: isBarrier({ kind }) ? Math.max(0, row.armor) : 0,
     hidesFigures: isBarrier({ kind }) && row.hidesFigures,
     concealPenalty: isBarrier({ kind }) ? row.concealPenalty : -4,
+    lockRule: isOpening({ kind }) ? parseLockRule(row.lockRule) : null,
     x1: row.x1,
     y1: row.y1,
     x2: row.x2,
