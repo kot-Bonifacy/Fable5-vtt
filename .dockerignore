@@ -26,6 +26,9 @@ uploads
 # Not part of the VTT containers.
 ai-gateway
 tools
+# …except the YouTube audio import the server spawns.
+!tools/audio/requirements.txt
+!tools/audio/import_youtube.py
 docs
 *.log
 /*.md

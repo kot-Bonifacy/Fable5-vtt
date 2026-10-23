@@ -29,10 +29,16 @@ RUN DATABASE_URL=file:/tmp/build.db node node_modules/prisma/build/index.js gene
 FROM node:24-bookworm-slim
 # Prisma's CLI (migrations) probes libssl; snapshot names follow the GM's clock.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl tzdata \
+  && apt-get install -y --no-install-recommends openssl tzdata python3 python3-venv \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production TZ=Europe/Warsaw
 COPY --from=build --chown=node:node /app /app
+# YouTube audio import: the server spawns tools/audio/.venv on its own; FFmpeg
+# comes from the imageio-ffmpeg wheel, the EJS solver uses this Node.
+COPY tools/audio/requirements.txt tools/audio/import_youtube.py /app/tools/audio/
+RUN python3 -m venv /app/tools/audio/.venv \
+  && /app/tools/audio/.venv/bin/python -m pip install --no-cache-dir -r /app/tools/audio/requirements.txt \
+  && chown -R node:node /app/tools/audio
 COPY --chmod=755 deploy/server-entrypoint.sh /usr/local/bin/vtt-server
 RUN mkdir -p /data/db /data/uploads /data/private /data/backups \
   && chown -R node:node /data

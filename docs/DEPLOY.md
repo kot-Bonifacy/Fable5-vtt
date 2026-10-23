@@ -309,7 +309,7 @@ Dalej jak w sekcji 4 (`chown -R 1000:1000`) i 6 (`./deploy.sh --no-pull`).
 - [ ] po wdrożeniu 57b (jedno montowanie `vtt-data`): najnowsza kopia bazy ma `"linked": true`, a `du -sh backups` przestaje rosnąć o pełne `uploads/` na godzinę
 - [ ] monitoring padu i miejsca na dysku; `nmap` z zewnątrz
 - [ ] komunikat „stoję na próbce” w panelu MG (log już jest, entrypoint dodatkowo odmawia startu)
-- [ ] import muzyki z YouTube nie działa w kontenerze (brak `tools/audio` i Pythona); wgrywanie MP3 działa
+- [x] import muzyki z YouTube w kontenerze (23.10: obraz serwera ma `python3` i `tools/audio/.venv`)
 
 ## Kłopoty
 
