@@ -104,7 +104,13 @@ export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): Defense
     ...(gm && row.floorId ? { floorId: row.floorId } : {}),
     ...(gm && row.deviceId ? { deviceId: row.deviceId } : {}),
     ...(gm && row.notes ? { notes: row.notes } : {}),
-    ...(gm ? { disarmDv: row.disarmDv, disarmTried: readZoneDisarmTried(row.disarmTried) } : {}),
+    ...(gm
+      ? {
+          disarmDv: row.disarmDv,
+          spotDv: row.spotDv,
+          disarmTried: readZoneDisarmTried(row.disarmTried),
+        }
+      : {}),
     ...(!gm && spotted ? { spotted: true } : {}),
   };
 }

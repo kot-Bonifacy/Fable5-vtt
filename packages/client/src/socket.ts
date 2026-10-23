@@ -2634,7 +2634,7 @@ export const createZone = (
   sceneId: string,
   entryId: string,
   rect: { x: number; y: number; width: number; height: number },
-  options: { name?: string; hidden?: boolean } = {},
+  options: { name?: string; hidden?: boolean; spotDv?: number; disarmDv?: number } = {},
 ) =>
   emitSceneAck<DefenseZoneView>('zone:create', {
     sceneId,

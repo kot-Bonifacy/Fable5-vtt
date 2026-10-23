@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   netDefenseSystemEntries,
+  CHECK_CALL_DV_MAX,
+  CHECK_CALL_DV_MIN,
   DRAWING_COLORS,
   DRAWING_MAX_FONT_SIZE,
   DRAWING_MAX_WIDTH,
@@ -98,6 +100,13 @@ import {
  * the icons' own drop shadow (see `.map-tool` in styles/10-map-combat.css), and the hit area
  * stays a comfortable square regardless of how small the glyph draws.
  */
+/** PT wpisane w pasku strefy: puste — PT z wpisu, reszta przycięta do zakresu wezwania. */
+function zoneDvInput(raw: string): number | null {
+  const value = Math.round(Number(raw));
+  if (raw.trim() === '' || !Number.isFinite(value)) return null;
+  return Math.min(CHECK_CALL_DV_MAX, Math.max(CHECK_CALL_DV_MIN, value));
+}
+
 export function MapTools() {
   const tool = useMapToolStore((s) => s.tool);
   const toggleTool = useMapToolStore((s) => s.toggleTool);
@@ -139,6 +148,10 @@ export function MapTools() {
   const setZoneEntryId = useMapToolStore((s) => s.setZoneEntryId);
   const zoneHidden = useMapToolStore((s) => s.zoneHidden);
   const setZoneHidden = useMapToolStore((s) => s.setZoneHidden);
+  const zoneSpotDv = useMapToolStore((s) => s.zoneSpotDv);
+  const setZoneSpotDv = useMapToolStore((s) => s.setZoneSpotDv);
+  const zoneDisarmDv = useMapToolStore((s) => s.zoneDisarmDv);
+  const setZoneDisarmDv = useMapToolStore((s) => s.setZoneDisarmDv);
   const zoneCount = useZoneStore((s) => s.zones.length);
   // Systemy obronne z kompendium (26d): wpisy „Obrona Sieci”, które NIE są
   // Demonami — Demon jest uczestnikiem runa, nie kawałkiem podłogi.
@@ -151,6 +164,7 @@ export function MapTools() {
       ),
     [compendiumEntries, compendiumOrder],
   );
+  const zoneEntry = defenseEntries.find((entry) => entry.id === zoneEntryId);
   const netPointArchitectureId = useMapToolStore((s) => s.netPointArchitectureId);
   const setNetPointArchitectureId = useMapToolStore((s) => s.setNetPointArchitectureId);
   const netPointHidden = useMapToolStore((s) => s.netPointHidden);
@@ -915,6 +929,41 @@ export function MapTools() {
           >
             {zoneHidden ? <IconEyeOff /> : <IconEye />}
           </button>
+          {/* PT nowej strefy (23.10, MG): puste — PT z wpisu, który widać w podpowiedzi. */}
+          <label
+            className="map-tool-slider"
+            title="PT Percepcji, by zauważyć ukrytą strefę. Puste — PT z wpisu kompendium. Zmienisz go później na karcie strefy (dwuklik)"
+          >
+            <span className="map-tool-hint">PT 👁</span>
+            <input
+              type="number"
+              className="map-tool-number"
+              min={CHECK_CALL_DV_MIN}
+              max={CHECK_CALL_DV_MAX}
+              step={1}
+              value={zoneSpotDv ?? ''}
+              placeholder={zoneEntry?.spotDv !== undefined ? String(zoneEntry.spotDv) : '—'}
+              onChange={(event) => setZoneSpotDv(zoneDvInput(event.target.value))}
+              aria-label="PT Percepcji nowej strefy"
+            />
+          </label>
+          <label
+            className="map-tool-slider"
+            title="PT rozbrojenia (Elektronika i zabezpieczenia). Puste — PT z wpisu kompendium. Zmienisz go później na karcie strefy (dwuklik)"
+          >
+            <span className="map-tool-hint">PT 🛠</span>
+            <input
+              type="number"
+              className="map-tool-number"
+              min={CHECK_CALL_DV_MIN}
+              max={CHECK_CALL_DV_MAX}
+              step={1}
+              value={zoneDisarmDv ?? ''}
+              placeholder={zoneEntry?.disableDv !== undefined ? String(zoneEntry.disableDv) : '—'}
+              onChange={(event) => setZoneDisarmDv(zoneDvInput(event.target.value))}
+              aria-label="PT rozbrojenia nowej strefy"
+            />
+          </label>
           <span className="map-tools-sep" aria-hidden />
           <span className="map-tool-hint">
             {zoneCount === 0 ? 'brak stref' : `stref: ${zoneCount}`}

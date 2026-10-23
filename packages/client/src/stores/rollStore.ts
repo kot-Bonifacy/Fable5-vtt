@@ -83,6 +83,11 @@ export interface PendingRoll extends Omit<RollTarget, 'characterId'> {
   modifierTotal: number;
   /** Wezwanie MG, na które ten rzut odpowiada (etap 32). */
   call?: RollCall;
+  /**
+   * Szczęście padło już w oknie rzutu (23.10, uwaga MG) — kubek nie pyta
+   * o nie drugi raz i rzuca tym, co gracz wybrał w oknie.
+   */
+  luckDeclared?: true;
 }
 
 /**

@@ -223,6 +223,12 @@ interface MapToolStoreState extends DrawSettings {
   zoneEntryId: string;
   /** Hidden until somebody notices it; the default for a system with a spot DV. */
   zoneHidden: boolean;
+  /**
+   * Perception and disarm DV of the next zone (23.10, GM's request); null =
+   * the entry's. Picking another system clears both — they belonged to it.
+   */
+  zoneSpotDv: number | null;
+  zoneDisarmDv: number | null;
   /** Architecture the next placed socket leads to; '' = a dead socket. */
   netPointArchitectureId: string;
   /** Hidden until a Scanner finds it — the default, and the point of the flag. */
@@ -260,6 +266,8 @@ interface MapToolStoreState extends DrawSettings {
   setCoverHidden: (coverHidden: boolean) => void;
   setZoneEntryId: (zoneEntryId: string) => void;
   setZoneHidden: (zoneHidden: boolean) => void;
+  setZoneSpotDv: (zoneSpotDv: number | null) => void;
+  setZoneDisarmDv: (zoneDisarmDv: number | null) => void;
   setNetPointArchitectureId: (netPointArchitectureId: string) => void;
   setNetPointHidden: (netPointHidden: boolean) => void;
   setLightFitRoom: (lightFitRoom: boolean) => void;
@@ -316,6 +324,8 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     coverHidden: false,
     zoneEntryId: '',
     zoneHidden: true,
+    zoneSpotDv: null,
+    zoneDisarmDv: null,
     netPointArchitectureId: '',
     netPointHidden: true,
     lightFitRoom: false,
@@ -363,8 +373,10 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
           : COVER_DEFAULT_HP,
       }),
     setCoverHidden: (coverHidden) => set({ coverHidden }),
-    setZoneEntryId: (zoneEntryId) => set({ zoneEntryId }),
+    setZoneEntryId: (zoneEntryId) => set({ zoneEntryId, zoneSpotDv: null, zoneDisarmDv: null }),
     setZoneHidden: (zoneHidden) => set({ zoneHidden }),
+    setZoneSpotDv: (zoneSpotDv) => set({ zoneSpotDv }),
+    setZoneDisarmDv: (zoneDisarmDv) => set({ zoneDisarmDv }),
     setNetPointArchitectureId: (netPointArchitectureId) => set({ netPointArchitectureId }),
     setNetPointHidden: (netPointHidden) => set({ netPointHidden }),
     setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),

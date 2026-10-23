@@ -212,6 +212,11 @@ function luckSheetOf(mode: CupMode): string | null {
   }
 }
 
+/** Test załadowany z okna rzutu — Szczęście padło w oknie, kubek o nie nie pyta. */
+function luckDeclaredIn(mode: CupMode): boolean {
+  return mode.kind === 'sheet' && mode.pending.luckDeclared === true;
+}
+
 /** Ile Szczęścia z licznika kubka naprawdę leci z tym rzutem — nie więcej niż pula. */
 function luckForThrow(mode: CupMode): number {
   const sheetId = luckSheetOf(mode);
@@ -798,9 +803,10 @@ export function DiceCup() {
       {/*
       Szczęście deklaruje się przed rzutem (s. 74), więc licznik stoi obok
       kubka, a nie w nim — chwyt kubka potrząsa, kliknięcie licznika nie.
-      Znika w ręce: w trakcie potrząsania nic już się nie deklaruje.
+      Znika w ręce: w trakcie potrząsania nic już się nie deklaruje. Nie ma go
+      też przy Teście z okna rzutu — tam gracz już raz wybrał Szczęście.
     */}
-      {luckSheet && luckPool > 0 && !shaking && (
+      {luckSheet && luckPool > 0 && !shaking && !luckDeclaredIn(mode) && (
         <div
           className={`dice-cup-luck${luck > 0 ? ' dice-cup-luck--spent' : ''}`}
           title="Punkty Szczęścia dodane do tego rzutu (+1 za punkt). Wydane przepadają, nawet gdy rzut się nie uda."

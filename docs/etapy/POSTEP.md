@@ -420,7 +420,7 @@ a nie do tego pliku.
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 53   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg, amunicja bez dna | 34   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
-| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 11   | 4       |
+| `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  | 8    | 12      |
 | `kopie`     | `snapshot`, `archive`, paczki ZIP, wczytanie kampanii, „czeka na gracza”, kopie kampanii i cofnięcie, sklep i bot w paczce, zgłoszenie karty gracza | 16   | 6       |
@@ -431,6 +431,27 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.10, piąta (po `e59e425`) — zlecenie MG: PT strefy od MG, jedno pytanie o Szczęście
+
+**PT strefy bronionej wybiera MG.** Nowa kolumna `DefenseZone.spotDv` (migracja
+`20261023230000_zone_spot_dv`) obok `disarmDv` z 58b; obie `null` = PT z wpisu. Pasek narzędzia
+„Strefy bronione” ma dwa pola: „PT 👁” (Percepcja, by zauważyć) i „PT 🛠” (rozbrojenie), puste
+pokazują PT wpisu jako podpowiedź, zmiana systemu je czyści. Karta strefy (dwuklik) dostała pole
+„PT Percepcji” obok „PT rozbrojenia”. Serwer: `zoneDvOf` waliduje oba w `zone:create`
+i `zone:update`, Percepcja w drodze i `zonesNoticeDue` biorą `row.spotDv ?? wpis`. Gracz PT nie
+dostaje. Umowa na górze `siec`. Test: `zones.test.ts` › „takes the GM’s own Perception and disarm
+DV…”.
+
+**Szczęście pada raz.** Test załadowany z okna rzutu (`RollDialog`, także wezwanie MG: Percepcja,
+rozbrajanie, zamek) niesie `PendingRoll.luckDeclared`; kubek wtedy nie pokazuje licznika
+„Szczęście” (`luckDeclaredIn` w `DiceCup.tsx`) i rzuca tym, co gracz wybrał w oknie (`cupLuck`
+z `loadCup`). Licznik na kubku zostaje przy rzutach bez okna: atak, Unik, chwyt, szybkie Testy.
+
+**Sprawdzone:** `tsc` (shared, server, client), vitest serwera 1612/1612 i klienta 421/421.
+**Oglądano w Firefoksie (Playwright):** pasek strefy z oboma polami, postawienie Podłogi
+elektrycznej z PT 👁 13 (wpis 17) i karta z „PT Percepcji 13”; strefa usunięta. Kubka gracza po
+wezwaniu nie oglądano w przeglądarce (zmiana to jeden warunek nad licznikiem).
 
 ### Sesja 23.10, czwarta (po `71f5da1`) — zlecenie MG: kule, śrut i strzały się nie kończą
 
@@ -458,34 +479,4 @@ T5b i reszta T3a — zaległość. **Oglądane** zrzutami z przebiegu: Ola w **F
 Iskry: pistolet „Zwykła” bez liczby, granat „zapas 2”; pasek „zapas 2” tylko przy granacie),
 Chromium (Kompendium z notką, karta NPC bez przełącznika, kreator bez kul). Punkty łańcucha
 przywrócone z kopii `.e2e/checkpoints-bak-23.10-amunicja` (do skasowania ręką).
-
-### Sesja 23.10, trzecia (po `e6674e4`) — etap 58d: ukryta figura przeciw Skradaniu
-
-**Zakres 58d — etap 58 zamknięty.** **Zrobione:** `shared` — `tokenHiddenFrom`,
-`readTokenSightings` / `writeTokenSightings`, `sanitizeTokenSpotDv` i pola `spotDv` / `spottedBy`
-w `TokenView` i łatce (`tokens.ts`), reguła `systems/cpred/hiding.ts` (`cpredHidingDv`: Skradanie
-z karty + 1k10 z regułą Testu albo PT od MG), `CpredRollRequest.hiddenTokenId`. Serwer — migracja
-`20261023220000_token_sightings` (`Token.sightings`, `Token.spotDv`), `realtime/hidden-figures.ts`
-(`hiddenFiguresNoticeDue`, `runHiddenFiguresAfterMove`, `settleSpotFigureTest`), drugi dostawca
-w `hiddenNoticeDue`, hak w `character-rolls.ts`, filtr w `fetchSceneTokensFor`, `emitTokenUpsert`
-i kasowaniu, zerowanie listy przy ruchu i zmianie `hidden`, `tokenHiddenFrom` w ośmiu odmowach
-(cel ataku, chwyt, cel, grot, Konfrontacja, oględziny, Ustabilizowanie, leczenie), zauważony wróg
-w `eligibleFoes` / `seenFoes` (56), `spotDv` i `sightings` w kopii sceny. Klient — pole „PT
-Percepcji, gdy ukryta” w oknie edycji figury bez karty i „(zauważona: N)” przy „👁 Pokaż graczom”.
-Rozstrzygnięcia bez pytań (PT zamiast karty przeciwstawnej, karta wygrywa z PT od MG, wspólny pas
-inicjatywy, rzut tylko z ruchu gracza) — w pliku etapu; cztery drobiazgi do `POMYSLY.md`.
-**Oględziny złapały błąd:** MG nie dostawał „zauważona” na żywo (test serwera czytał stan
-prośbą o synchronizację); rozliczenie i reset po ruchu wysyłają teraz `token:upsert` do MG,
-a `spottedBy` jedzie zawsze, także 0.
-
-**Weryfikacja:** `shared` 2597/2597 (+5 `hiding.test.ts`, +4 `tokens.test.ts`), serwer 1609/1609
-(+7 nowy `hidden-figures.test.ts`: payload obu graczy, zatrzymanie, karta bez nazwy i bez
-„przeciwstawny”, remis dla ukrytego, brak drugiego rzutu, nowa kryjówka, cel zauważonej figury,
-figura bez karty i z PT od MG, walka z 56; `token:upsert` do MG na żywo), klient 421/421. `tsc`
-w trzech pakietach, ESLint i Prettier czyste w zmienionych plikach. Suity E2E nie puszczano.
-**Oglądane** tymczasowym specem (skasowany, `po-T6`, atrapa gatewaya): Ola w **Firefoksie** —
-marsz Iskry staje 3 m przed ukrytą Czajką, pasek „Iskra: Test Percepcji — rzuć kubkiem.”, karta
-„PT 15 (Trudny)” bez nazwy, kubek 20 > 15, pasek „Iskra zauważa: Czajka.” i Czajka na mapie, po
-ruchu Czajki przez MG — znika. MG w **Chromium** — dwa wiersze „poufne” (Skradanie i wynik), menu
-„👁 Pokaż graczom (zauważona: 1)”, pole PT w oknie edycji Cienia (zapis 12).
 

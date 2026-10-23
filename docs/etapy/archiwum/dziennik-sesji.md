@@ -1,5 +1,35 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.10, trzecia (po `e6674e4`) — etap 58d: ukryta figura przeciw Skradaniu
+
+**Zakres 58d — etap 58 zamknięty.** **Zrobione:** `shared` — `tokenHiddenFrom`,
+`readTokenSightings` / `writeTokenSightings`, `sanitizeTokenSpotDv` i pola `spotDv` / `spottedBy`
+w `TokenView` i łatce (`tokens.ts`), reguła `systems/cpred/hiding.ts` (`cpredHidingDv`: Skradanie
+z karty + 1k10 z regułą Testu albo PT od MG), `CpredRollRequest.hiddenTokenId`. Serwer — migracja
+`20261023220000_token_sightings` (`Token.sightings`, `Token.spotDv`), `realtime/hidden-figures.ts`
+(`hiddenFiguresNoticeDue`, `runHiddenFiguresAfterMove`, `settleSpotFigureTest`), drugi dostawca
+w `hiddenNoticeDue`, hak w `character-rolls.ts`, filtr w `fetchSceneTokensFor`, `emitTokenUpsert`
+i kasowaniu, zerowanie listy przy ruchu i zmianie `hidden`, `tokenHiddenFrom` w ośmiu odmowach
+(cel ataku, chwyt, cel, grot, Konfrontacja, oględziny, Ustabilizowanie, leczenie), zauważony wróg
+w `eligibleFoes` / `seenFoes` (56), `spotDv` i `sightings` w kopii sceny. Klient — pole „PT
+Percepcji, gdy ukryta” w oknie edycji figury bez karty i „(zauważona: N)” przy „👁 Pokaż graczom”.
+Rozstrzygnięcia bez pytań (PT zamiast karty przeciwstawnej, karta wygrywa z PT od MG, wspólny pas
+inicjatywy, rzut tylko z ruchu gracza) — w pliku etapu; cztery drobiazgi do `POMYSLY.md`.
+**Oględziny złapały błąd:** MG nie dostawał „zauważona” na żywo (test serwera czytał stan
+prośbą o synchronizację); rozliczenie i reset po ruchu wysyłają teraz `token:upsert` do MG,
+a `spottedBy` jedzie zawsze, także 0.
+
+**Weryfikacja:** `shared` 2597/2597 (+5 `hiding.test.ts`, +4 `tokens.test.ts`), serwer 1609/1609
+(+7 nowy `hidden-figures.test.ts`: payload obu graczy, zatrzymanie, karta bez nazwy i bez
+„przeciwstawny”, remis dla ukrytego, brak drugiego rzutu, nowa kryjówka, cel zauważonej figury,
+figura bez karty i z PT od MG, walka z 56; `token:upsert` do MG na żywo), klient 421/421. `tsc`
+w trzech pakietach, ESLint i Prettier czyste w zmienionych plikach. Suity E2E nie puszczano.
+**Oglądane** tymczasowym specem (skasowany, `po-T6`, atrapa gatewaya): Ola w **Firefoksie** —
+marsz Iskry staje 3 m przed ukrytą Czajką, pasek „Iskra: Test Percepcji — rzuć kubkiem.”, karta
+„PT 15 (Trudny)” bez nazwy, kubek 20 > 15, pasek „Iskra zauważa: Czajka.” i Czajka na mapie, po
+ruchu Czajki przez MG — znika. MG w **Chromium** — dwa wiersze „poufne” (Skradanie i wynik), menu
+„👁 Pokaż graczom (zauważona: 1)”, pole PT w oknie edycji Cienia (zapis 12).
+
 ### Sesja 23.10, druga (po `d111d36`) — etap 58c: zamek drzwi, okna i bramy
 
 **Zakres 58c.** **Zrobione:** `shared` — wspólna reguła zamka `systems/cpred/lock.ts`

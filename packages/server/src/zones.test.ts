@@ -445,6 +445,43 @@ describe('defended zones on a scene', () => {
     if (!ack.ok) expect(ack.error).toBe('ZONE_UNKNOWN_ENTRY');
   });
 
+  it('takes the GM’s own Perception and disarm DV at placing, and lets the card change them', async () => {
+    const zone = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.podloga-elektryczna',
+        x: 0,
+        y: 3000,
+        width: 4 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+        spotDv: 13,
+        disarmDv: 21,
+      }),
+      'zone:create (PT od MG)',
+    );
+    expect(zone.spotDv).toBe(13);
+    expect(zone.disarmDv).toBe(21);
+    // Gracz widzi strefę, ale nie jej PT — to plan MG.
+    const seen = (await roundTrip(player)).zones.find((row) => row.id === zone.id);
+    expect(seen).toBeTruthy();
+    expect(seen?.spotDv).toBeUndefined();
+    expect(seen?.disarmDv).toBeUndefined();
+
+    const changed = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:update', {
+        zoneId: zone.id,
+        patch: { spotDv: null, disarmDv: 9 },
+      }),
+      'zone:update (PT)',
+    );
+    expect(changed.spotDv).toBeNull();
+    expect(changed.disarmDv).toBe(9);
+    const refused = await emitAck(gm, 'zone:update', { zoneId: zone.id, patch: { spotDv: 0 } });
+    expect(refused.ok).toBe(false);
+    await emitAck(gm, 'zone:delete', { zoneId: zone.id });
+  });
+
   it('never lets a player near a hidden zone, or near the GM’s plan for a visible one', async () => {
     const hiddenView = await roundTrip(player);
     expect(hiddenView.zones).toHaveLength(0);

@@ -1081,6 +1081,7 @@ export async function exportCampaign(
           deviceId: true,
           notes: true,
           disarmDv: true,
+          spotDv: true,
           disarmTried: true,
         },
       }),

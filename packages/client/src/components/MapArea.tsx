@@ -1088,11 +1088,13 @@ export function MapArea() {
         notifyRefusal('scene', 'Wybierz system obronny w pasku narzędzi.', { tone: 'warn' });
         return;
       }
-      void createZone(current.id, tools.zoneEntryId, rect, { hidden: tools.zoneHidden }).then(
-        (ack) => {
-          noteAck('scene', ack, netErrorText);
-        },
-      );
+      void createZone(current.id, tools.zoneEntryId, rect, {
+        hidden: tools.zoneHidden,
+        ...(tools.zoneSpotDv !== null ? { spotDv: tools.zoneSpotDv } : {}),
+        ...(tools.zoneDisarmDv !== null ? { disarmDv: tools.zoneDisarmDv } : {}),
+      }).then((ack) => {
+        noteAck('scene', ack, netErrorText);
+      });
     };
     renderer.onLightPlace = (x, y) => {
       const current = useSceneStore.getState().effectiveScene;

@@ -92,6 +92,11 @@ export interface DefenseZoneView {
    * entry's; null keeps the entry's. GM only, opaque to the core.
    */
   disarmDv?: number | null;
+  /**
+   * The GM's own Perception DV to notice this zone (23.10) — overrides the
+   * catalogue entry's „Percepcja PT …”; null keeps the entry's. GM only.
+   */
+  spotDv?: number | null;
   /** Characters that tried to disarm it and failed (stage 58b) — GM only. */
   disarmTried?: string[];
 }
@@ -133,6 +138,10 @@ export interface DefenseZoneCreatePayload {
   name?: string;
   /** Hidden until somebody notices it; defaults to „hidden when it has a spot DV". */
   hidden?: boolean;
+  /** Perception DV to notice it; absent keeps the entry's (23.10). */
+  spotDv?: number;
+  /** Disarm DV; absent keeps the entry's (23.10). */
+  disarmDv?: number;
 }
 
 /** Client → server `zone:update` — move, rename, arm, reveal, repair or wire one. */
@@ -158,6 +167,8 @@ export interface DefenseZoneUpdatePayload {
     notes?: string;
     /** Disarm DV on this zone (stage 58b); null goes back to the entry's. */
     disarmDv?: number | null;
+    /** Perception DV to notice it (23.10); null goes back to the entry's. */
+    spotDv?: number | null;
     /** „Pozwól spróbować znowu” — clears the list of failed disarm attempts. */
     resetDisarmTries?: true;
   };

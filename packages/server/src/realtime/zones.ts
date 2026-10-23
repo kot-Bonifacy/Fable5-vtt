@@ -124,6 +124,23 @@ async function requireCampaignZone(deps: RealtimeDeps, campaignId: string, zoneI
 }
 
 /**
+ * A DV the GM typed for one zone (spot or disarm): absent or null = the
+ * entry's, anything outside the check-call range is a bad request.
+ */
+function zoneDvOf(raw: unknown): number | null {
+  if (raw === undefined || raw === null) return null;
+  if (
+    typeof raw !== 'number' ||
+    !Number.isInteger(raw) ||
+    raw < CHECK_CALL_DV_MIN ||
+    raw > CHECK_CALL_DV_MAX
+  ) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  return raw;
+}
+
+/**
  * The catalogue row behind a zone, reduced to what the engine reads.
  *
  * Returns null for an entry that has gone missing — a zone whose row the GM
@@ -178,11 +195,17 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
     const stored = await deps.ctx.prisma.defenseZone.count({ where: { sceneId: scene.id } });
     if (stored >= ZONE_MAX_PER_SCENE) throw new RealtimeError('ZONE_LIMIT_REACHED');
 
+    // PT od MG przy stawianiu (23.10) — brak pola zostawia PT wpisu.
+    const spotDv = zoneDvOf(payload.spotDv);
+    const disarmDv = zoneDvOf(payload.disarmDv);
+
     // A system with a Perception DV is a trap and starts hidden; a turret bolted
     // to the ceiling is a machine everybody can see. The GM's toggle overrides
     // both, which is why the default is only a default.
     const hidden =
-      typeof payload.hidden === 'boolean' ? payload.hidden : profile.spotDv !== undefined;
+      typeof payload.hidden === 'boolean'
+        ? payload.hidden
+        : (spotDv ?? profile.spotDv) !== undefined;
     const hp = profile.hp ?? 0;
 
     const created = await deps.ctx.prisma.defenseZone.create({
@@ -194,6 +217,8 @@ export const zoneCreateEvent = defineEvent<DefenseZoneCreatePayload, DefenseZone
         hidden,
         hpMax: hp,
         hpCurrent: hp,
+        spotDv,
+        disarmDv,
       },
     });
     await emitZones(deps, campaignId, scene.id);
@@ -270,19 +295,9 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     }
     // Etap 58b: PT rozbrojenia na tej strefie (null — wraca PT wpisu) i „Pozwól
     // spróbować znowu”, które zeruje listę nieudanych prób.
-    if (patch.disarmDv !== undefined) {
-      const dv = patch.disarmDv;
-      if (
-        dv !== null &&
-        (typeof dv !== 'number' ||
-          !Number.isInteger(dv) ||
-          dv < CHECK_CALL_DV_MIN ||
-          dv > CHECK_CALL_DV_MAX)
-      ) {
-        throw new RealtimeError('BAD_REQUEST');
-      }
-      data.disarmDv = dv;
-    }
+    if (patch.disarmDv !== undefined) data.disarmDv = zoneDvOf(patch.disarmDv);
+    // PT Percepcji tej strefy (23.10) — null wraca do PT wpisu.
+    if (patch.spotDv !== undefined) data.spotDv = zoneDvOf(patch.spotDv);
     if (patch.resetDisarmTries === true) data.disarmTried = '[]';
 
     if (Object.keys(data).length === 0) return toZoneView(row, true, false);
@@ -650,9 +665,10 @@ export async function runZonesAfterMove(
     now,
   ];
   for (const { row, profile } of live) {
-    if (!row.hidden || !profile?.spotDv) continue;
+    const spotDv = profile ? (row.spotDv ?? profile.spotDv) : undefined;
+    if (!row.hidden || !spotDv) continue;
     if (!zoneWithinReachOfPath(row, walked, spotRangePx)) continue;
-    if (await callSpotZone(deps, campaignId, row, token, profile.spotDv, user)) {
+    if (await callSpotZone(deps, campaignId, row, token, spotDv, user)) {
       spotted.push(row.name);
     }
   }
@@ -992,7 +1008,10 @@ export async function zonesNoticeDue(
   });
   if (untried.length === 0) return false;
   const { entries } = await buildCompendiumSync(deps, campaignId);
-  return untried.some((row) => zoneProfileOf(entries, row.entryId)?.spotDv !== undefined);
+  return untried.some((row) => {
+    const profile = zoneProfileOf(entries, row.entryId);
+    return profile !== null && Boolean(row.spotDv ?? profile.spotDv);
+  });
 }
 
 /** „Percepcja … by zauważyć” sięga tyle pikseli tej sceny (`ZONE_SPOT_RANGE_M`). */

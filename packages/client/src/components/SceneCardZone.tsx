@@ -165,15 +165,16 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
     (id) => characters[id]?.name ?? 'postać spoza kampanii',
   );
 
-  function setDisarmDv(raw: string) {
+  /** PT tej strefy (rozbrojenie 58b, Percepcja 23.10): puste wraca do PT wpisu. */
+  function setDv(field: 'disarmDv' | 'spotDv', raw: string) {
     const text = raw.trim();
     if (text === '') {
-      if (zone.disarmDv != null) void patch({ disarmDv: null });
+      if (zone[field] != null) void patch({ [field]: null });
       return;
     }
     const dv = Number(text);
     if (!Number.isInteger(dv) || dv < CHECK_CALL_DV_MIN || dv > CHECK_CALL_DV_MAX) return;
-    if (dv !== zone.disarmDv) void patch({ disarmDv: dv });
+    if (dv !== zone[field]) void patch({ [field]: dv });
   }
 
   return (
@@ -314,6 +315,23 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
 
       <label
         className="bot-field"
+        title="PT Testu Percepcji, którym gracz zauważa ukrytą strefę, podchodząc na 4 m. Puste — PT z wpisu kompendium. Bez żadnego PT ukrytej strefy nikt sam nie zauważy"
+      >
+        <span className="auth-label">PT Percepcji</span>
+        <input
+          key={`spot-${zone.spotDv ?? 'entry'}`}
+          type="number"
+          min={CHECK_CALL_DV_MIN}
+          max={CHECK_CALL_DV_MAX}
+          defaultValue={zone.spotDv ?? ''}
+          placeholder={
+            profile?.spotDv !== undefined ? `z wpisu: ${profile.spotDv}` : 'nie da się zauważyć'
+          }
+          onBlur={(event) => setDv('spotDv', event.target.value)}
+        />
+      </label>
+      <label
+        className="bot-field"
         title="PT Testu Elektroniki i zabezpieczeń, którym gracz rozbraja ten system stojąc przy jego krawędzi. Puste — PT z wpisu kompendium. Porażka o 5 i więcej odpala system na rozbrajającego"
       >
         <span className="auth-label">PT rozbrojenia</span>
@@ -328,7 +346,7 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
               ? `z wpisu: ${profile.disableDv}`
               : 'nie da się rozbroić'
           }
-          onBlur={(event) => setDisarmDv(event.target.value)}
+          onBlur={(event) => setDv('disarmDv', event.target.value)}
         />
       </label>
       {disarmTried.length > 0 && (
