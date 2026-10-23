@@ -234,6 +234,7 @@ export const CPRED_GRAPPLE_PROBLEM_MESSAGES = {
   GRAPPLE_BLOCKED: 'Między wami stoi przeszkoda — przez nią nikogo nie pochwycisz.',
   NOT_GRAPPLING: 'Nikogo nie Trzymasz.',
   NOT_GRAPPLED: 'Ten uczestnik nie jest w Trzymaniu.',
+  ESCAPE_TARGETS_HOLDER: 'Wyrywa się testem przeciw Trzymającemu — wskaż tego, kto trzyma.',
   ALREADY_GRAPPLED: 'Ten cel jest już Trzymany.',
   GRAPPLE_NEEDS_SHEET: 'Pochwycenie wymaga karty postaci po stronie atakującego.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',

@@ -188,6 +188,17 @@ interface GrappleCardSystem extends Record<string, unknown> {
   /** −2 the defender carries, so their own roll gets it too. */
   defenderModifier: number;
   metres: number;
+  /**
+   * Escape only: the Held one and what their Hold carried. A stand-in DV that
+   * lost has already ended the Hold, and a holder who then wins „Broń się”
+   * must get it back as it was — choke streak and shield included.
+   */
+  held?: {
+    combatantId: string;
+    chokeStreak: number;
+    chokeRound: number | null;
+    humanShield: boolean;
+  };
 }
 
 /**
@@ -270,13 +281,23 @@ export const grappleAttemptEvent = defineEvent<
     const attackerRow = combat?.combatants.find((row) => row.tokenId === attacker.id) ?? null;
     const targetRow = combat?.combatants.find((row) => row.tokenId === target.id) ?? null;
 
+    let held: GrappleCardSystem['held'];
     if (intent === 'escape') {
       // Wrestling free is a test *against the Attacker of an existing Hold*, so
       // there has to be one — RAW lets a third party try, hence no check that
       // the roller is the one being held.
-      if (!combat || !targetRow || !findGrapple(combat, targetRow)) {
-        throw new RealtimeError('NOT_GRAPPLED');
-      }
+      const pair = combat && targetRow ? findGrapple(combat, targetRow) : null;
+      if (!pair) throw new RealtimeError('NOT_GRAPPLED');
+      // „Test Pochwycenia **Atakującego**” — the DV is the holder's, so the
+      // target has to be the holder. Aimed at the Held one it would roll
+      // against the victim's own Bijatyka.
+      if (pair.attacker.id !== targetRow!.id) throw new RealtimeError('ESCAPE_TARGETS_HOLDER');
+      held = {
+        combatantId: pair.defender.id,
+        chokeStreak: pair.defender.chokeStreak,
+        chokeRound: pair.defender.chokeRound,
+        humanShield: pair.defender.humanShield,
+      };
     } else if (combat && targetRow && findGrapple(combat, targetRow)) {
       throw new RealtimeError('ALREADY_GRAPPLED');
     }
@@ -349,6 +370,7 @@ export const grappleAttemptEvent = defineEvent<
       dv,
       defenderModifier,
       metres,
+      ...(held ? { held } : {}),
     };
 
     if (verdict.won) {
@@ -515,6 +537,27 @@ export const grappleResistEvent = defineEvent<
         const pair = findGrapple(combat, targetRow);
         if (pair && pair.attacker.id === system.attackerCombatantId) {
           await endGrapple(deps, campaignId, pair.defender);
+        }
+      } else if (system.intent === 'escape' && roll.opposed.won && system.held && combat) {
+        // The stand-in said „free" and the holder's real roll says otherwise:
+        // the Hold comes back as it was — unless somebody has taken either of
+        // them into another one in the meantime.
+        const heldRow = combat.combatants.find((row) => row.id === system.held!.combatantId);
+        if (
+          heldRow &&
+          targetRow &&
+          !findGrapple(combat, heldRow) &&
+          !findGrapple(combat, targetRow)
+        ) {
+          await beginGrapple(deps, campaignId, targetRow, heldRow);
+          await deps.ctx.prisma.combatant.update({
+            where: { id: heldRow.id },
+            data: {
+              chokeStreak: system.held.chokeStreak,
+              chokeRound: system.held.chokeRound,
+              humanShield: system.held.humanShield,
+            },
+          });
         }
       }
       if (combat) await emitReloaded(deps, campaignId, scene, combat.id);
