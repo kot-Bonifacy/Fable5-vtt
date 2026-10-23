@@ -221,16 +221,6 @@ export async function createCheckCall(
      */
     containerTokenId?: string;
     /**
-     * Percepcja przy ukrytej strefie (etap 58a) — tak samo dopisywana po białej
-     * liście: wystawia ją tylko zatrzymanie marszu w `zones.ts`.
-     */
-    hiddenZone?: { zoneId: number; tokenId: string };
-    /**
-     * Percepcja przy ukrytej figurze (etap 58d) — po białej liście, jak
-     * strefa: wystawia ją tylko zatrzymanie marszu w `hidden-figures.ts`.
-     */
-    hiddenFigure?: { hiddenTokenId: string; tokenId: string };
-    /**
      * Rozbrajanie strefy (etap 58b) — tak samo po białej liście: wystawia je
      * tylko `zone:disarm`, więc zgoda MG na prośbę o Test niczego nie rozbraja.
      */
@@ -260,15 +250,6 @@ export async function createCheckCall(
   const request: CpredRollRequest = {
     ...requireCallableRequest(input.request, frame.modifier),
     ...(input.containerTokenId ? { containerTokenId: input.containerTokenId } : {}),
-    ...(input.hiddenZone
-      ? { hiddenZoneId: input.hiddenZone.zoneId, noticeTokenId: input.hiddenZone.tokenId }
-      : {}),
-    ...(input.hiddenFigure
-      ? {
-          hiddenTokenId: input.hiddenFigure.hiddenTokenId,
-          noticeTokenId: input.hiddenFigure.tokenId,
-        }
-      : {}),
     ...(input.disarmZone
       ? { disarmZoneId: input.disarmZone.zoneId, disarmTokenId: input.disarmZone.tokenId }
       : {}),

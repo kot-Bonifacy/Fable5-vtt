@@ -1,39 +1,48 @@
 import type {
-  CheckCallEntry,
   HiddenSpottedBroadcast,
+  RollResult,
   ScenePoint,
   SessionUser,
   TokenHaltBroadcast,
 } from '@vtt/shared';
-import { ROLE_GM, isCheckCallOpen, tokenTableName } from '@vtt/shared';
+import { tokenTableName } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
-import { RealtimeError, type RealtimeDeps } from './registry.js';
+import type { RealtimeDeps } from './registry.js';
 import { emitToCampaignUser } from './state.js';
 import { controllerIds } from './tokens.js';
 import { controllerOf } from './zone-effects.js';
-import { zonesNoticeDue } from './zones.js';
-import { hiddenFiguresNoticeDue } from './hidden-figures.js';
+import { campaignGmHand, spotHiddenZones, zonesNoticeDue } from './zones.js';
+import { hiddenFiguresNoticeDue, spotHiddenFigures } from './hidden-figures.js';
+import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 
 /**
- * Percepcja w drodze (etap 58a, decyzje MG z 22.10).
+ * Percepcja w drodze (etap 58a, decyzje MG z 22.10; ukryty rzut od 24.10).
  *
  * Postać gracza, która w marszu dochodzi na cztery metry do ukrytej rzeczy,
- * której jeszcze nie sprawdzała, **staje** na tym polu i rzuca. Zatrzymanie to
- * zwykłe lądowanie w `performTokenMove` — z walidacją, rachunkiem Tury albo
- * puli i hakami stref — a nie zapis pola z boku (tak staje drużyna w 56, gdzie
- * walka i tak liczy od nowa). Gracz dostaje gołe wezwanie do Testu Percepcji
- * (uwaga MG z 23.10: bez „coś przykuło uwagę”), a co postać zauważyła — tylko
- * po sukcesie.
+ * której jeszcze nie sprawdzała, **rzuca Test Percepcji w ukryciu** — serwer,
+ * bez wezwania i bez wiedzy gracza (zlecenie MG z 24.10, wbrew wezwaniu
+ * z kubka z 22.10). Porażka nie zatrzymuje marszu, a jej wynik zna tylko MG.
+ * Sukces **zatrzymuje** figurę na tym polu, zanim wejdzie w to, co zauważyła,
+ * i pokazuje graczowi kartę rzutu, a po niej „X zauważa: …”.
  *
- * **Rzuca gracz z kubka (zmiana MG z 22.10, wbrew pierwszemu planowi):** strefa
- * wystawia wezwanie do Testu Percepcji (`callSpotZone` w `zones.ts`), a figura
- * stoi, dopóki gracz nie rzuci albo MG nie rzuci za niego czy nie odwoła
- * wezwania (`refuseWhileNoticePending`). Wynik widzą MG i rzucający.
+ * Zatrzymanie to zwykłe lądowanie w `performTokenMove` — z walidacją,
+ * rachunkiem Tury albo puli i hakami stref — a nie zapis pola z boku.
  *
  * Moduł jest jednym miejscem pytania „czy tu jest coś do zauważenia”: strefy
  * bronione (58a) i ukryte figury (58d, `hidden-figures.ts`). Nowy rodzaj
- * ukrytej rzeczy dopisuje się w `hiddenNoticeDue`, nie w pętli klatek.
+ * ukrytej rzeczy dopisuje się w `hiddenNoticeDue` i `rollHiddenNotice`,
+ * nie w pętli klatek.
  */
+
+/** Zdany ukryty Test Percepcji — co zauważono i karta rzutu do pokazania. */
+export interface HiddenSpot {
+  name: string;
+  /** Konto, któremu rzut odsłonił rzecz — adresat karty. */
+  ownerId: string;
+  roll: RollResult;
+  /** Rozsyła odsłonięcie (strefy, figura) — po zatrzymaniu i po karcie. */
+  reveal: () => Promise<void>;
+}
 
 /** Czy na tym polu (lewy górny róg figury) figurze należy się rzut na Percepcję. */
 export async function hiddenNoticeDue(
@@ -45,6 +54,68 @@ export async function hiddenNoticeDue(
 ): Promise<boolean> {
   if (await zonesNoticeDue(deps, campaignId, scene, token, stand)) return true;
   return hiddenFiguresNoticeDue(deps, campaignId, scene, token, stand);
+}
+
+/**
+ * Ukryte Testy Percepcji z tego pola przeciw wszystkiemu, czego postać jeszcze
+ * nie sprawdzała. Zapisuje próby i odsłonięcia w bazie, ale niczego nie
+ * rozsyła — o zdanych mówi `showHiddenSpots` po lądowaniu.
+ */
+export async function rollHiddenNotice(
+  deps: RealtimeDeps,
+  input: { campaignId: string; user: SessionUser; scene: Scene; token: Token; stand: ScenePoint },
+): Promise<HiddenSpot[]> {
+  const half = (input.token.size * input.scene.gridSizePx) / 2;
+  const walked = [{ x: input.stand.x + half, y: input.stand.y + half }];
+  const spot = { ...input, walked };
+  return [...(await spotHiddenZones(deps, spot)), ...(await spotHiddenFigures(deps, spot))];
+}
+
+/**
+ * Po lądowaniu: każdy zdany Test pokazuje się jako karta rzutu („Do MG
+ * i gracza”, pisana ręką MG z adresatem — zostaje w historii gracza), potem
+ * odsłonięcie, a na końcu jeden pasek „X zauważa: …”.
+ */
+export async function showHiddenSpots(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  spots: readonly HiddenSpot[],
+): Promise<void> {
+  if (spots.length === 0) return;
+  const hand = await campaignGmHand(deps, campaignId);
+  for (const spot of spots) {
+    if (hand) {
+      const stored = await deps.ctx.prisma.chatMessage.create({
+        data: {
+          campaignId,
+          authorId: hand.id,
+          recipientId: spot.ownerId,
+          kind: 'gmroll',
+          text: spot.roll.title ?? 'Percepcja',
+          payload: JSON.stringify(spot.roll),
+          sceneId: scene.id,
+        },
+        include: INCLUDE_CHAT_NAMES,
+      });
+      await deliverChatMessageTo(
+        deps,
+        campaignId,
+        toChatMessageView(stored),
+        [hand.id, spot.ownerId],
+        true,
+      );
+    }
+    await spot.reveal();
+  }
+  await emitHiddenSpotted(
+    deps,
+    campaignId,
+    scene,
+    token,
+    spots.map((spot) => spot.name),
+  );
 }
 
 /**
@@ -81,56 +152,4 @@ export async function emitHiddenSpotted(
     names: [...names],
   };
   await emitToCampaignUser(deps.io, campaignId, ownerId, 'hidden:spotted', payload);
-}
-
-/** Ruch figury, która ma otwarte wezwanie do Percepcji przy ukrytej rzeczy (58a). */
-export const NOTICE_ROLL_PENDING = 'NOTICE_ROLL_PENDING';
-export const NOTICE_ROLL_PENDING_MESSAGE = 'Najpierw rzuć na Percepcję — wezwanie czeka w kubku.';
-
-/** Tyle ostatnich wezwań kampanii przegląda pytanie o otwarte — jak przy zamku. */
-const RECENT_CALLS = 50;
-
-/**
- * Czy ta karta ma otwarte wezwanie do Percepcji przy ukrytej rzeczy. Adres
- * strefy albo figury siedzi w zapisanym żądaniu (`hiddenZoneId`,
- * `hiddenTokenId`), więc zwykłe wezwanie MG do Percepcji ruchu nie wstrzymuje.
- */
-export async function noticeRollPending(
-  deps: RealtimeDeps,
-  campaignId: string,
-  characterId: string,
-): Promise<boolean> {
-  const rows = await deps.ctx.prisma.chatMessage.findMany({
-    where: { campaignId, kind: 'check' },
-    select: { payload: true },
-    orderBy: { id: 'desc' },
-    take: RECENT_CALLS,
-  });
-  return rows.some((row) => {
-    if (!row.payload) return false;
-    const entry = JSON.parse(row.payload) as CheckCallEntry;
-    if (entry.characterId !== characterId) return false;
-    const system = entry.system as { hiddenZoneId?: unknown; hiddenTokenId?: unknown };
-    if (typeof system.hiddenZoneId !== 'number' && typeof system.hiddenTokenId !== 'string') {
-      return false;
-    }
-    return isCheckCallOpen(entry);
-  });
-}
-
-/**
- * Figura gracza stoi do rzutu (decyzja MG z 22.10): inaczej klik dalej
- * przeprowadziłby ją po pułapce, zanim zdąży ją zauważyć. MG nie jest
- * związany — jego przeciągnięcie to jego decyzja, jak przy każdej odmowie ruchu.
- */
-export async function refuseWhileNoticePending(
-  deps: RealtimeDeps,
-  campaignId: string,
-  user: SessionUser,
-  token: Pick<Token, 'characterId'>,
-): Promise<void> {
-  if (user.role === ROLE_GM || !token.characterId) return;
-  if (await noticeRollPending(deps, campaignId, token.characterId)) {
-    throw new RealtimeError(NOTICE_ROLL_PENDING);
-  }
 }

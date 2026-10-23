@@ -52,9 +52,13 @@ otwieranie zamkniętego zamka, rozbrajanie pułapek”.
    22.10 po 58a:** gracz rzuca Percepcję **z kubka na wezwanie**. Do rzutu figura stoi, wynik
    widzą MG i rzucający, a PT jest na karcie wezwania jak w każdym wezwaniu. Nazwę rzeczy MG
    dostaje osobnym wierszem, gracz — tylko po sukcesie.
+   **Zmienione przez MG 24.10:** Percepcję w drodze rzuca **serwer w ukryciu**, bez wezwania
+   i bez wiedzy gracza. Porażkę zna tylko MG (wiersz z wynikiem i nazwą), a gracz o niej nie
+   wie wcale. Sukces gracz widzi jako kartę rzutu („Do MG i gracza”) i „X zauważa: …”.
 6. **Rzut w drodze z zatrzymaniem:** Percepcja pada, gdy postać **znajdzie się blisko**
    ukrytej rzeczy (także w połowie marszu), a figura **staje** na czas rzutu. Gracz wie, że coś
-   się stało, ale nie wie co.
+   się stało, ale nie wie co. **Zmienione przez MG 24.10:** figura staje **tylko po zdanym**
+   Teście — żeby nie weszła w to, co zauważyła; po oblanym idzie dalej, jakby nic nie było.
 7. **Ukryte figury:** Percepcja gracza przeciw Skradaniu NPC-a (rzut przeciwstawny z karty),
    sama przy zbliżeniu na 4 m, raz na postać, dopóki figura stoi w miejscu. Figura bez karty:
    PT od MG.

@@ -103,10 +103,11 @@ import {
   walkHaltedRecently,
 } from './walks.js';
 import {
-  emitHiddenSpotted,
   emitNoticeHalt,
   hiddenNoticeDue,
-  refuseWhileNoticePending,
+  rollHiddenNotice,
+  showHiddenSpots,
+  type HiddenSpot,
 } from './hidden-notice.js';
 import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
@@ -1772,8 +1773,6 @@ export const tokenWalkEvent = defineEvent<TokenWalkPayload, { tokenId: string }>
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
     if (!isGm && scene.playerMove === 'stop') throw new RealtimeError('MOVE_LOCKED');
     await refuseMoveBeforeSightedFight(deps, scene.id, user);
-    // Etap 58a: figura stoi, dopóki gracz nie rzuci na Percepcję z wezwania.
-    await refuseWhileNoticePending(deps, campaignId, user, token);
     const points = sanitizeTokenPath(payload?.route);
     if (!points) throw new RealtimeError('BAD_REQUEST');
 
@@ -1876,6 +1875,12 @@ export async function emitTokenMoveFrame(
 }
 
 /**
+ * Figury, za które klatka marszu właśnie rzuca ukrytą Percepcję (24.10) —
+ * równoległa klatka nie pyta drugi raz, zanim pierwsza zapisze próby.
+ */
+const noticeRolling = new Set<string>();
+
+/**
  * One move, socket-free (stage 20b) — the bot walking its figure goes through
  * this, so „a bot is a player, not a second set of rules" stays literally true:
  * the same clamp, the same snap, the same `validateTokenMove`, the same audience.
@@ -1952,49 +1957,63 @@ export async function performTokenMove(
     if (!isGm && !judged && final && !walk && walkHaltedRecently(token.id, user.id)) {
       throw new RealtimeError(MOVE_HALTED);
     }
-    // Lądowanie bez trasy omija `token:walk`, więc pyta o wezwanie samo (58a).
-    if (!judged && final && !walk) await refuseWhileNoticePending(deps, campaignId, user, token);
     /** Klatka marszu, która stała się lądowaniem przy ukrytej rzeczy (58a). */
     let noticeHalt = false;
+    /** Zdane ukryte Testy Percepcji — pokażą się po lądowaniu (24.10). */
+    const spots: HiddenSpot[] = [];
     if (walk) {
       const hit = projectOntoRoute(walk.route, { x, y });
       if (!final) {
         walk.reached = Math.max(walk.reached, hit.distance);
         ({ x, y } = clampTokenPosition(hit.point.x, hit.point.y, token.size, snapScene));
-        // Etap 58a: pierwsze pole marszu w zasięgu ukrytej rzeczy, której ta
-        // postać jeszcze nie sprawdzała — figura staje na nim i rzuca. Klatka
-        // zamienia się w lądowanie, więc płaci za przebyty kawałek jak każde
-        // (Tura w walce, pula poza nią), a strefy rzucają Percepcję w jego
-        // hakach. Pole, na którym nie wolno stanąć, nie zatrzymuje — następna
-        // klatka spróbuje jeszcze raz.
+        // Etap 58a (ukryty rzut od 24.10): pierwsze pole marszu w zasięgu
+        // ukrytej rzeczy, której ta postać jeszcze nie sprawdzała — serwer
+        // rzuca tu Percepcję w ukryciu. Porażka nie zatrzymuje, sukces
+        // zamienia klatkę w lądowanie, więc figura płaci za przebyty kawałek
+        // jak każda (Tura w walce, pula poza nią) i nie wchodzi w to, co
+        // zauważyła. Na polu, na którym nie wolno stanąć, nikt nie rzuca —
+        // następna klatka spróbuje jeszcze raz.
         const stand = snapTokenPosition(x, y, token.size, snapScene);
-        if (await hiddenNoticeDue(deps, campaignId, scene, token, stand)) {
-          const passed = routeWaypointsBefore(walk.route, hit.distance);
-          const fits = await validateTokenMove(
-            deps,
-            campaignId,
-            user,
-            {
-              scene,
-              token,
-              from: { x: token.x, y: token.y },
-              to: stand,
-              path: passed,
-              ...(walk.extra === true ? { extra: true } : {}),
-            },
-            { dryRun: true },
-          ).then(
-            () => true,
-            () => false,
-          );
-          // Równoległa klatka mogła już zatrzymać ten marsz — wygrywa pierwsza.
-          if (fits && isCurrentWalk(token.id, walk)) {
-            endWalk(token.id);
-            markWalkHalted(token.id, user.id);
-            noticeHalt = true;
-            final = true;
-            ({ x, y } = stand);
-            reportedPath = passed;
+        if (
+          !noticeRolling.has(token.id) &&
+          (await hiddenNoticeDue(deps, campaignId, scene, token, stand))
+        ) {
+          noticeRolling.add(token.id);
+          try {
+            const passed = routeWaypointsBefore(walk.route, hit.distance);
+            const fits = await validateTokenMove(
+              deps,
+              campaignId,
+              user,
+              {
+                scene,
+                token,
+                from: { x: token.x, y: token.y },
+                to: stand,
+                path: passed,
+                ...(walk.extra === true ? { extra: true } : {}),
+              },
+              { dryRun: true },
+            ).then(
+              () => true,
+              () => false,
+            );
+            if (fits) {
+              spots.push(
+                ...(await rollHiddenNotice(deps, { campaignId, user, scene, token, stand })),
+              );
+            }
+            // Równoległa klatka mogła już zatrzymać ten marsz — wygrywa pierwsza.
+            if (spots.length > 0 && isCurrentWalk(token.id, walk)) {
+              endWalk(token.id);
+              markWalkHalted(token.id, user.id);
+              noticeHalt = true;
+              final = true;
+              ({ x, y } = stand);
+              reportedPath = passed;
+            }
+          } finally {
+            noticeRolling.delete(token.id);
           }
         }
       } else {
@@ -2033,8 +2052,6 @@ export async function performTokenMove(
         ...(turnedTo === null ? {} : { facing: turnedTo }),
       });
 
-    /** Co Percepcja odsłoniła przy tym lądowaniu — właściciel dowie się po rozesłaniu. */
-    let spotted: { spotted: string[] } | null = null;
     /** Ukryta figura w nowej kryjówce — zauważający dostaną listy bez niej (58d). */
     let lostSpotters: Token | null = null;
     if (final) {
@@ -2109,9 +2126,9 @@ export async function performTokenMove(
         to: { x, y },
         path: reportedPath ?? [],
       };
-      spotted = await runZonesAfterMove(deps, moved);
+      spots.push(...(await runZonesAfterMove(deps, moved)).spots);
       // Etap 58d: ukryte figury, obok których przeszła — ta sama droga co strefy.
-      spotted.spotted.push(...(await runHiddenFiguresAfterMove(deps, moved)));
+      spots.push(...(await runHiddenFiguresAfterMove(deps, moved)));
       // Ukryta figura, która zmieniła miejsce, siedzi w nowej kryjówce (58d):
       // kto ją zauważył, traci ją z mapy, a każda postać dostaje nowy rzut.
       if (
@@ -2133,10 +2150,10 @@ export async function performTokenMove(
       await emitTokenUpsert(deps, campaignId, scene, lostSpotters);
       await emitSceneTokensToPlayers(deps, campaignId, scene);
     }
-    // Etap 58a: najpierw „przystaje”, potem „zauważa” — w tej kolejności gracz
-    // ma to przeczytać, a lądowanie leży już w jego magazynie.
+    // Etap 58a: najpierw „przystaje”, potem rzut i „zauważa” — w tej
+    // kolejności gracz ma to przeczytać, a lądowanie leży już w jego magazynie.
     if (noticeHalt) await emitNoticeHalt(deps, campaignId, scene, token);
-    if (spotted) await emitHiddenSpotted(deps, campaignId, scene, token, spotted.spotted);
+    await showHiddenSpots(deps, campaignId, scene, token, spots);
     // Etap 56: czy ten krok (albo ruch wroga) pokazał drużynie wroga. Klatka
     // marszu jeszcze nie leży w bazie, więc jedzie jako pozycja na żywo.
     const halted = await checkSighting(

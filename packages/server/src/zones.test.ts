@@ -233,33 +233,6 @@ describe('defended zones on a scene', () => {
   let floorZoneId: number;
   let slickZoneId: number;
 
-  /**
-   * Otwarte wezwania do Percepcji przy ukrytej strefie (58a): id karty → karta
-   * postaci. Gracz rzuca z kubka, a do rzutu figura stoi, więc pomocnik `walk`
-   * odpowiada na nie przed każdym ruchem gracza.
-   */
-  const noticeCalls = new Map<number, string>();
-  const trackNoticeCall = ({ message }: ChatMessageBroadcast) => {
-    const call = message.check;
-    if (message.kind !== 'check' || !call || call.resolved || call.cancelled) return;
-    if (call.rollLabel.includes('Percepcja')) noticeCalls.set(message.id, call.characterId);
-  };
-  /** Rzut z kubka na każde otwarte wezwanie — domyślnie 1, czyli postać nic nie widzi. */
-  async function answerNoticeCalls(faces: number[] = [1]): Promise<void> {
-    for (const [callMessageId, characterId] of [...noticeCalls]) {
-      noticeCalls.delete(callMessageId);
-      scriptDice(faces);
-      data(
-        await emitAck(player, 'character:roll', {
-          characterId,
-          request: { kind: 'skill', skillId: 'perception', luckSpent: 0 },
-          callMessageId,
-        }),
-        'character:roll (Percepcja z wezwania)',
-      );
-    }
-  }
-
   /** Walks the figure and waits for the server to finish with the move. */
   async function walk(
     socket: ClientSocket,
@@ -268,7 +241,6 @@ describe('defended zones on a scene', () => {
     y: number,
     path?: { x: number; y: number }[],
   ): Promise<SocketAck<{ x: number; y: number }>> {
-    if (socket === player) await answerNoticeCalls();
     return emitAck<{ x: number; y: number }>(socket, 'token:move', {
       tokenId,
       x,
@@ -310,7 +282,6 @@ describe('defended zones on a scene', () => {
     const playerConn = createSocket(playerCookie);
     gm = gmConn.socket;
     player = playerConn.socket;
-    player.on('chat:message', trackNoticeCall);
     await Promise.all([gmConn.firstSync, playerConn.firstSync]);
 
     const character = data(
@@ -505,8 +476,8 @@ describe('defended zones on a scene', () => {
     const before = await healUp();
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const system: string[] = [];
-    // Percepcja (ukryta podłoga) to rzut gracza i zostaje jego — liczy się
-    // karta obrażeń i wiersz systemu.
+    // Percepcja (ukryta podłoga) rzuca serwer w ukryciu i zna ją tylko MG —
+    // liczy się karta obrażeń i wiersz systemu.
     const onMessage = ({ message }: ChatMessageBroadcast) => {
       if (message.kind === 'damage' || message.text === 'Wejście na broniony obszar') {
         system.push(message.authorId);
@@ -735,9 +706,9 @@ describe('defended zones on a scene', () => {
     expect((await roundTrip(player)).zones.some((zone) => zone.id === trap.id)).toBe(false);
 
     // Podejście na dwa pola od krawędzi — dość blisko na rzut, za daleko na wejście.
-    // Od 58a gracz rzuca z kubka na wezwanie: 5 + INT 8 + Percepcja 10 = 23.
+    // Ukryty rzut serwera (24.10): 5 + INT 8 + Percepcja 10 = 23.
+    scriptDice([5]);
     await walk(player, sharpTokenId, 66 * PX_PER_M, 800);
-    await answerNoticeCalls([5]);
     const spotted = (await roundTrip(player)).zones.find((zone) => zone.id === trap.id);
     expect(spotted).toBeTruthy();
     // Gracz dostaje prostokąt, ale nadal nie dostaje planu MG.
@@ -758,7 +729,9 @@ describe('defended zones on a scene', () => {
       }),
       'zone:create (druga pułapka)',
     );
-    // Kolec ma INT 2 i Percepcję 0 — 1k10 + 2 nigdy nie przebije PT 17.
+    // Kolec ma INT 2 i Percepcję 0 — 1 + 2 nie przebije PT 17 (bez skryptu
+    // przebiłaby go dziesiątka z Krytykiem).
+    scriptDice([1]);
     await walk(player, runnerTokenId, 86 * PX_PER_M, 0);
     await walk(player, runnerTokenId, 0, 0);
     await walk(player, runnerTokenId, 86 * PX_PER_M, 0);
@@ -1077,7 +1050,7 @@ describe('defended zones on a scene', () => {
     await walk(player, runnerTokenId, 0, 1250);
   });
 
-  describe('Percepcja w drodze (etap 58a)', () => {
+  describe('Percepcja w drodze (etap 58a, ukryty rzut od 24.10)', () => {
     // Pusty pas na dole sceny, daleko od stref z poprzednich testów.
     const LANE = 2400;
     const TRAP = { x: 40 * PX_PER_M, y: LANE - 100, width: 6 * PX_PER_M, height: 300 };
@@ -1115,7 +1088,7 @@ describe('defended zones on a scene', () => {
       return Math.hypot(dx, dy);
     };
 
-    it('marsz przez ukrytą pułapkę staje cztery metry przed nią, a rzut zna tylko MG', async () => {
+    it('nieudany ukryty rzut nie zatrzymuje marszu, a jego wynik zna tylko MG', async () => {
       const before = await healUp();
       data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (pas)');
       trapId = data(
@@ -1130,98 +1103,65 @@ describe('defended zones on a scene', () => {
       const heard: ChatMessageBroadcast[] = [];
       const onPlayer = (message: ChatMessageBroadcast) => heard.push(message);
       player.on('chat:message', onPlayer);
+      let halted = false;
+      const onHalt = () => {
+        halted = true;
+      };
+      player.on('token:halt', onHalt);
       const gmLine = waitForMessage(gm, (message) => message.kind === 'gmaction');
-      const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
 
-      // Trasa na wylot przez pułapkę — do 58a rzut liczył się z końca (dalej
-      // niż 4 m za nią), więc nie padał wcale, a pułapka odpalała.
-      const { last, refusals } = await march(runnerTokenId, LANE, 60 * PX_PER_M, 0);
-      expect(await halted).toMatchObject({ sceneId, tokenIds: [runnerTokenId], reason: 'notice' });
-      expect(last).not.toBeNull();
-      expect(centreDistance(last!)).toBeLessThanOrEqual(SPOT_PX);
-      expect(centreDistance(last!)).toBeGreaterThan(0);
-      // Klatki, które były już w drodze, nie mają trasy, po której szłyby dalej.
-      expect(refusals.length).toBeGreaterThan(0);
-      expect(new Set(refusals)).toEqual(new Set(['MOVE_NOT_PLANNED']));
-
-      const sync = await roundTrip(gm);
-      expect(sync.tokens.find((token) => token.id === runnerTokenId)).toMatchObject(last!);
-      expect(await hp()).toBe(before);
-
-      // Wezwanie do Testu (zmiana MG z 22.10): Percepcja z PT, tylko MG i gracz,
-      // bez nazwy strefy i bez jej numeru. Od 23.10 wygląda jak każde wezwanie
-      // MG — bez zdania o tym, co przykuło uwagę, i z MG jako wzywającym.
-      const card = heard.find(({ message }) => message.kind === 'check')?.message;
-      expect(card?.check).toMatchObject({ dv: 17, visibility: 'gm', characterId });
-      expect(card?.check?.prompt).toBeUndefined();
-      expect(card?.check?.calledByName).toBe(card?.authorName);
-      expect(card?.check?.rollLabel).toContain('Percepcja');
-      expect(card?.check?.system).not.toHaveProperty('hiddenZoneId');
-      expect(JSON.stringify(card)).not.toContain('Podłoga');
-
-      // Do rzutu figura stoi — marsz, lądowanie bez trasy i skok odpadają.
-      expect(
-        await emitAck(player, 'token:walk', { tokenId: runnerTokenId, route: [{ x: 0, y: LANE }] }),
-      ).toEqual({ ok: false, error: 'NOTICE_ROLL_PENDING' });
-      expect(
-        await emitAck(player, 'token:jump', { tokenId: runnerTokenId, dx: -1, dy: 0 }),
-      ).toEqual({ ok: false, error: 'NOTICE_ROLL_PENDING' });
-
-      await answerNoticeCalls([1]);
+      // Do skraju pułapki, ale nie na nią — Kolec (INT 2, Percepcja 0) nie zda.
+      scriptDice([1]);
+      const stop = TRAP.x - 100;
+      const { last, refusals } = await march(runnerTokenId, LANE, stop, 0);
+      expect(refusals).toEqual([]);
+      expect(last).toEqual({ x: stop, y: LANE });
       const line = await gmLine;
       expect(line.action?.note).toContain('nie zauważa: Podłoga elektryczna');
       expect(line.authorId).not.toBe(playerId);
-
-      // Gracz nie dostaje nazwy strefy ani na żywo, ani w historii — i strefy też nie.
-      player.off('chat:message', onPlayer);
-      expect(JSON.stringify(heard)).not.toContain('Podłoga');
-      // Historia od wezwania — wcześniejsze testy zostawiły jawne karty wejścia na podłogę.
-      const playerSync = await roundTrip(player);
-      const since = playerSync.messages.filter((m) => m.id >= card!.id);
-      expect(since.length).toBeGreaterThan(0);
-      expect(JSON.stringify(since)).not.toContain('Podłoga');
-      expect(playerSync.zones.some((zone) => zone.id === trapId)).toBe(false);
-    });
-
-    it('lądowanie bez trasy tuż po zatrzymaniu odpada; nowa trasa już nie staje', async () => {
-      const at = (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId)!;
-      const late = await emitAck(player, 'token:move', {
-        tokenId: runnerTokenId,
-        x: 60 * PX_PER_M,
-        y: LANE,
-        final: true,
-      });
-      expect(late).toEqual({ ok: false, error: 'MOVE_HALTED' });
-
-      // Krok bliżej, dalej w zasięgu — Kolec już rzucał, więc nic go nie trzyma.
-      let haltedAgain = false;
-      const onHalt = () => {
-        haltedAgain = true;
-      };
-      player.on('token:halt', onHalt);
-      const target = at.x + 100;
-      const { refusals } = await march(runnerTokenId, LANE, target, at.x);
-      expect(refusals).toEqual([]);
       data(
         await emitAck(player, 'token:move', {
           tokenId: runnerTokenId,
-          x: target,
+          x: stop,
           y: LANE,
           final: true,
         }),
-        'token:move (dalej)',
+        'token:move (koniec marszu)',
       );
       player.off('token:halt', onHalt);
-      expect(haltedAgain).toBe(false);
-      expect(
-        (await roundTrip(gm)).tokens.find((token) => token.id === runnerTokenId),
-      ).toMatchObject({
-        x: target,
+      player.off('chat:message', onPlayer);
+      expect(halted).toBe(false);
+      expect(await hp()).toBe(before);
+
+      // Gracz nie dostaje ani wezwania, ani rzutu, ani nazwy strefy — i strefy też nie.
+      expect(heard.some(({ message }) => message.kind === 'check')).toBe(false);
+      expect(heard.some(({ message }) => message.kind === 'gmroll')).toBe(false);
+      expect(JSON.stringify(heard)).not.toContain('Podłoga');
+      const playerSync = await roundTrip(player);
+      const since = playerSync.messages.filter((m) => m.id >= line.id);
+      expect(JSON.stringify(since)).not.toContain('Podłoga');
+      expect(playerSync.zones.some((zone) => zone.id === trapId)).toBe(false);
+
+      // Druga droga obok tej samej pułapki nie daje drugiego rzutu.
+      const lines: ChatMessageView[] = [];
+      const onGm = ({ message }: ChatMessageBroadcast) => {
+        if (message.kind === 'gmaction') lines.push(message);
+      };
+      gm.on('chat:message', onGm);
+      data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (z powrotem)');
+      await march(runnerTokenId, LANE, stop, 0);
+      await emitAck(player, 'token:move', {
+        tokenId: runnerTokenId,
+        x: stop,
         y: LANE,
+        final: true,
       });
+      await roundTrip(gm);
+      gm.off('chat:message', onGm);
+      expect(lines.filter((entry) => entry.action?.note?.includes('Podłoga'))).toEqual([]);
     });
 
-    it('przejście obok pułapki też staje; sukces odsłania ją i mówi o tym tylko właścicielowi', async () => {
+    it('zdany ukryty rzut zatrzymuje marsz cztery metry przed pułapką i pokazuje rzut', async () => {
       const sharp = data(
         await emitAck<CharacterView>(gm, 'character:create', { name: 'Sokół', ownerId: playerId }),
         'character:create (Sokół)',
@@ -1249,28 +1189,70 @@ describe('defended zones on a scene', () => {
         'token:create (Sokół)',
       ).id;
 
+      const order: string[] = [];
+      const onHaltOrder = () => order.push('halt');
+      const onSpottedOrder = () => order.push('spotted');
+      const onCard = ({ message }: ChatMessageBroadcast) => {
+        if (message.kind === 'gmroll') order.push('card');
+      };
+      player.on('token:halt', onHaltOrder);
+      player.on('hidden:spotted', onSpottedOrder);
+      player.on('chat:message', onCard);
+      const card = waitForMessage(player, (message) => message.kind === 'gmroll');
       const spotted = waitFor<HiddenSpottedBroadcast>(player, 'hidden:spotted');
       const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
       const gmLine = waitForMessage(gm, (message) => message.kind === 'gmaction');
-      const { last } = await march(sharpTokenId, lane, 60 * PX_PER_M, 0);
-      expect(await halted).toMatchObject({ tokenIds: [sharpTokenId], reason: 'notice' });
-      await answerNoticeCalls([5]);
+
+      // Trasa obok pułapki aż za nią — zdany rzut staje na skraju zasięgu.
+      scriptDice([5]); // 5 + INT 8 + Percepcja 10 = 23 > PT 17
+      const { last, refusals } = await march(sharpTokenId, lane, 60 * PX_PER_M, 0);
+      expect(await halted).toMatchObject({ sceneId, tokenIds: [sharpTokenId], reason: 'notice' });
+      expect(last).not.toBeNull();
+      expect(centreDistance(last!)).toBeLessThanOrEqual(SPOT_PX);
+      expect(centreDistance(last!)).toBeGreaterThan(0);
+      // Klatki, które były już w drodze, nie mają trasy, po której szłyby dalej.
+      expect(refusals.length).toBeGreaterThan(0);
+      expect(new Set(refusals)).toEqual(new Set(['MOVE_NOT_PLANNED']));
+
+      // Karta rzutu — do MG i gracza, zdany Test Percepcji przeciw PT strefy.
+      const roll = await card;
+      expect(roll.recipientId).toBe(playerId);
+      expect(roll.roll?.actor).toBe('Sokół');
+      expect(roll.roll?.total).toBe(23);
+      expect(roll.roll?.outcome).toMatchObject({ success: true });
+      expect(roll.roll?.outcome?.detail).toContain('PT 17');
       expect(await spotted).toEqual({
         sceneId,
         tokenId: sharpTokenId,
         actorName: 'Sokół',
         names: ['Podłoga elektryczna'],
       });
-      expect(centreDistance(last!)).toBeLessThanOrEqual(SPOT_PX);
+      expect(order).toEqual(['halt', 'card', 'spotted']);
+      player.off('token:halt', onHaltOrder);
+      player.off('hidden:spotted', onSpottedOrder);
+      player.off('chat:message', onCard);
       expect((await gmLine).action?.note).toContain('— zauważa: Podłoga elektryczna');
       expect((await roundTrip(player)).zones.find((zone) => zone.id === trapId)?.spotted).toBe(
         true,
       );
+
+      // Lądowanie bez trasy tuż po zatrzymaniu poniosłoby figurę na pułapkę.
+      const late = await emitAck(player, 'token:move', {
+        tokenId: sharpTokenId,
+        x: 60 * PX_PER_M,
+        y: lane,
+        final: true,
+      });
+      expect(late).toEqual({ ok: false, error: 'MOVE_HALTED' });
+      // Nowa trasa już nie staje — Sokół widzi pułapkę i decyduje sam.
+      const at = (await roundTrip(gm)).tokens.find((token) => token.id === sharpTokenId)!;
+      const { refusals: again } = await march(sharpTokenId, lane, at.x + 100, at.x);
+      expect(again).toEqual([]);
     });
 
-    it('MG przeciągający figurę gracza obok pułapki daje rzut z całej drogi, nie z końca', async () => {
+    it('MG przeciągający figurę gracza obok pułapki daje ukryty rzut z całej drogi', async () => {
       // Druga strefa nad pasem Kolca: droga MG mija ją o 150 px, oba końce są
-      // dalej niż 4 m. Kolec (INT 2, Percepcja 0) nie zda nigdy.
+      // dalej niż 4 m. Kolec (INT 2, Percepcja 0) nie zda.
       const second = data(
         await emitAck<DefenseZoneView>(gm, 'zone:create', {
           sceneId,
@@ -1283,11 +1265,8 @@ describe('defended zones on a scene', () => {
         'zone:create (druga, 58a)',
       );
       const gmLine = waitForMessage(gm, (message) => message.kind === 'gmaction');
-      // Wezwanie idzie na gniazdo gracza, a ack — do MG: kolejność nie jest pewna.
-      const called = waitForMessage(player, (message) => message.kind === 'check');
+      scriptDice([1]);
       data(await walk(gm, runnerTokenId, 0, LANE), 'token:move (MG obok strefy)');
-      await called;
-      await answerNoticeCalls([1]);
       expect((await gmLine).action?.note).toContain(`nie zauważa: ${second.name}`);
       expect((await roundTrip(player)).zones.some((zone) => zone.id === second.id)).toBe(false);
       await emitAck(gm, 'zone:delete', { zoneId: second.id });
@@ -1321,6 +1300,8 @@ describe('defended zones on a scene', () => {
       data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next (58a)');
 
       const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
+      // Kolec zda tylko z Krytykiem: 10 + 10 + INT 2 = 22 > PT 17.
+      scriptDice([10, 10]);
       // 6 m trasy; środek figury wchodzi w 4 m od krawędzi po 4 m drogi.
       const { last } = await march(runnerTokenId, LANE, 6 * PX_PER_M, 0);
       expect(await halted).toMatchObject({ reason: 'notice' });

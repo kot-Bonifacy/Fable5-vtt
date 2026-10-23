@@ -208,29 +208,18 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
   let zbirId: string;
   let cienId: string;
 
-  /** Otwarte wezwania do Percepcji gracza: id karty → karta postaci. */
-  const calls = new Map<number, string>();
+  /** Wszystko, co doszło do gracza na czacie — ukryty rzut nie ma prawa tu być. */
   const heard: ChatMessageView[] = [];
   const track = ({ message }: ChatMessageBroadcast) => {
     heard.push(message);
-    const call = message.check;
-    if (message.kind !== 'check' || !call || call.resolved || call.cancelled) return;
-    if (call.rollLabel.includes('Percepcja')) calls.set(message.id, call.characterId);
   };
-  async function answer(faces: number[]): Promise<void> {
-    for (const [callMessageId, character] of [...calls]) {
-      calls.delete(callMessageId);
-      scriptDice(faces);
-      data(
-        await emitAck(player, 'character:roll', {
-          characterId: character,
-          request: { kind: 'skill', skillId: 'perception', luckSpent: 0 },
-          callMessageId,
-        }),
-        'character:roll (Percepcja z wezwania)',
-      );
+  /** Wiersze MG o Percepcji przy ukrytej figurze, od chwili `listen`. */
+  const gmLines: ChatMessageView[] = [];
+  const onGmLine = ({ message }: ChatMessageBroadcast) => {
+    if (message.kind === 'gmaction' && message.text.includes('ukryta figura')) {
+      gmLines.push(message);
     }
-  }
+  };
 
   /** Marsz gracza klatkami co pół pola; zwraca ostatnią przyjętą pozycję. */
   async function march(tokenId: string, y: number, toX: number, fromX: number) {
@@ -294,6 +283,7 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
     player = playerConn.socket;
     other = otherConn.socket;
     player.on('chat:message', track);
+    gm.on('chat:message', onGmLine);
     await Promise.all([gmConn.firstSync, playerConn.firstSync, otherConn.firstSync]);
 
     const iskra = data(
@@ -373,75 +363,71 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
     expect(has(await roundTrip(gm), zbirId)).toMatchObject({ hidden: true, spotDv: null });
   });
 
-  it('marsz staje 4 m przed ukrytym; przegrany rzut przeciwstawny niczego nie odsłania', async () => {
-    const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
-    const gmLines: ChatMessageView[] = [];
-    const onGm = ({ message }: ChatMessageBroadcast) => {
-      if (message.kind === 'gmaction') gmLines.push(message);
+  it('przegrany ukryty rzut nie zatrzymuje marszu i niczego graczowi nie mówi', async () => {
+    let halted = false;
+    const onHalt = () => {
+      halted = true;
     };
-    gm.on('chat:message', onGm);
+    player.on('token:halt', onHalt);
+    gmLines.length = 0;
     heard.length = 0;
-    // Skradanie Zbira: 12 + 8 = 20 — rzuca serwer w chwili wezwania.
-    scriptDice([8]);
+    // Skradanie Zbira 12 + 8 = 20, Percepcja Iskry 18 + 2 = 20 — remis wygrywa ukryty.
+    scriptDice([8, 2]);
     const { last, refused } = await march(iskraId, 400, 1900, 0);
-    expect(refused).toBe(true);
-    expect(await halted).toMatchObject({ sceneId, tokenIds: [iskraId], reason: 'notice' });
-    // Środek Iskry najwyżej 200 px od lewej krawędzi Zbira (x = 2000).
-    expect(2000 - (last!.x + 50)).toBeLessThanOrEqual(200);
+    player.off('token:halt', onHalt);
+    expect(refused).toBe(false);
+    expect(halted).toBe(false);
+    expect(last).toMatchObject({ x: 1900, y: 400 });
 
-    const card = heard.find((message) => message.kind === 'check');
-    expect(card?.check).toMatchObject({ dv: 20, visibility: 'gm', characterId });
-    expect(card?.check?.prompt).toBeUndefined();
-    expect(card?.check?.opponentBonus).toBeUndefined();
-    expect(card?.check?.system).not.toHaveProperty('hiddenTokenId');
-    expect(JSON.stringify(card)).not.toContain(zbirId);
-    expect(JSON.stringify(card)).not.toContain('Zbir');
-
-    // Do rzutu figura stoi.
-    expect(
-      await emitAck(player, 'token:walk', { tokenId: iskraId, route: [{ x: 0, y: 400 }] }),
-    ).toEqual({ ok: false, error: 'NOTICE_ROLL_PENDING' });
-
-    // 18 + 2 = 20 — remis wygrywa ukryty.
-    await answer([2]);
-    await expect.poll(() => gmLines.length).toBeGreaterThanOrEqual(2);
-    gm.off('chat:message', onGm);
-    expect(gmLines[0]!.action?.note).toContain('Zbir kryje się: Skradanie się 12 + 8 = 20');
-    expect(gmLines.at(-1)!.action?.note).toContain('wynik 20 vs PT 20 — nie zauważa: Zbir');
+    await expect.poll(() => gmLines.length).toBe(1);
+    expect(gmLines[0]!.action?.note).toContain('wynik 20 vs Skradanie się 12 + 8 = 20');
+    expect(gmLines[0]!.action?.note).toContain('nie zauważa: Zbir');
+    expect(heard.some((message) => message.kind === 'check')).toBe(false);
+    expect(heard.some((message) => message.kind === 'gmroll')).toBe(false);
     expect(JSON.stringify(heard)).not.toContain('Zbir');
     const sync = await roundTrip(player);
     expect(has(sync, zbirId)).toBeUndefined();
     expect(JSON.stringify(sync.messages)).not.toContain('Zbir');
   });
 
-  it('ta sama postać przy tej samej kryjówce nie staje drugi raz', async () => {
-    let haltedAgain = false;
-    const onHalt = () => {
-      haltedAgain = true;
-    };
-    player.on('token:halt', onHalt);
-    const at = has(await roundTrip(gm), iskraId)!;
-    const { refused } = await march(iskraId, 400, at.x + 50, at.x);
-    player.off('token:halt', onHalt);
+  it('ta sama postać przy tej samej kryjówce nie rzuca drugi raz', async () => {
+    gmLines.length = 0;
+    await gmMove(iskraId, 1000, 400);
+    const { refused } = await march(iskraId, 400, 1900, 1000);
     expect(refused).toBe(false);
-    expect(haltedAgain).toBe(false);
-    expect(calls.size).toBe(0);
+    await roundTrip(gm);
+    expect(gmLines).toEqual([]);
   });
 
-  it('ruch Zbira przez MG to nowa kryjówka; wygrany rzut odsłania go tylko temu kontu', async () => {
+  it('ruch Zbira to nowa kryjówka; wygrany ukryty rzut zatrzymuje, pokazuje rzut i odsłania tylko temu kontu', async () => {
     await gmMove(zbirId, 3000, 400);
     const at = has(await roundTrip(gm), iskraId)!;
     const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
-    // Skradanie 12 + 2 = 14.
-    scriptDice([2]);
-    await march(iskraId, 400, 2900, at.x);
-    await halted;
-    expect(calls.size).toBe(1);
-
+    const card = new Promise<ChatMessageView>((resolve) => {
+      const onCard = ({ message }: ChatMessageBroadcast) => {
+        if (message.kind !== 'gmroll') return;
+        player.off('chat:message', onCard);
+        resolve(message);
+      };
+      player.on('chat:message', onCard);
+    });
     const spotted = waitFor<HiddenSpottedBroadcast>(player, 'hidden:spotted');
     const synced = waitFor<TokenSyncBroadcast>(player, 'token:sync');
     const toGm = gmUpsert(zbirId, (token) => token.spottedBy === 1);
-    await answer([5]); // 18 + 5 = 23 > 14
+    // Skradanie 12 + 2 = 14, Percepcja 18 + 5 = 23.
+    scriptDice([2, 5]);
+    const { refused, last } = await march(iskraId, 400, 2900, at.x);
+    expect(refused).toBe(true);
+    expect(await halted).toMatchObject({ sceneId, tokenIds: [iskraId], reason: 'notice' });
+    // Środek Iskry najwyżej 200 px od lewej krawędzi Zbira (x = 3000).
+    expect(3000 - (last!.x + 50)).toBeLessThanOrEqual(200);
+
+    // Karta rzutu dla gracza i MG — bez nazwy i bez id ukrytego.
+    const roll = await card;
+    expect(roll.recipientId).toBe(playerId);
+    expect(roll.roll?.total).toBe(23);
+    expect(roll.roll?.outcome).toMatchObject({ success: true });
+    expect(JSON.stringify(roll)).not.toContain(zbirId);
     // MG dostaje „zauważona” na żywo, nie dopiero po przeładowaniu.
     expect(await toGm).toMatchObject({ hidden: true, spottedBy: 1 });
     expect(await spotted).toEqual({
@@ -486,11 +472,13 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
       halted = true;
     };
     player.on('token:halt', onHalt);
+    gmLines.length = 0;
     const { refused } = await march(iskraId, 1600, 900, 0);
     player.off('token:halt', onHalt);
     expect(refused).toBe(false);
     expect(halted).toBe(false);
-    expect(calls.size).toBe(0);
+    await roundTrip(gm);
+    expect(gmLines).toEqual([]);
 
     data(
       await emitAck(gm, 'token:update', { tokenId: cienId, patch: { spotDv: 10 } }),
@@ -499,10 +487,11 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
     expect(has(await roundTrip(gm), cienId)).toMatchObject({ spotDv: 10 });
     // MG przeciąga Iskrę obok Cienia — lądowanie bez trasy liczy całą drogę.
     heard.length = 0;
+    scriptDice([5]); // 18 + 5 = 23 > 10
     await gmMove(iskraId, 0, 1600);
-    await expect.poll(() => calls.size).toBe(1);
-    expect(heard.find((message) => message.kind === 'check')?.check?.dv).toBe(10);
-    await answer([5]); // 18 + 5 = 23 > 10
+    await expect
+      .poll(() => heard.find((message) => message.kind === 'gmroll')?.roll?.outcome?.detail)
+      .toContain('PT 10');
     await expect
       .poll(async () => has(await roundTrip(player), cienId))
       .toMatchObject({ name: 'Cień' });
@@ -517,12 +506,9 @@ describe('ukryta figura przeciw Skradaniu (etap 58d)', () => {
     await gmMove(iskraId, 2400, 2400);
     expect((await roundTrip(gm)).combat).toBeNull();
     const halted = waitFor<TokenHaltBroadcast>(player, 'token:halt');
-    scriptDice([3]); // 12 + 3 = 15
+    scriptDice([3, 9]); // Skradanie 12 + 3 = 15, Percepcja 18 + 9 = 27
     await march(iskraId, 2400, 2900, 2400);
     await halted;
-    // Niezauważony wróg niczego nie zaczyna.
-    expect((await roundTrip(gm)).combat).toBeNull();
-    await answer([9]); // 18 + 9 = 27 > 15
     await expect
       .poll(async () => (await roundTrip(gm)).combat?.sighting?.foeIds ?? [])
       .toContain(zbirId);

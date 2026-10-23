@@ -5,7 +5,7 @@ import { BRAMA } from '../../fixtures/maps.ts';
 import { canariesInDatabase, ONLY_FROM } from '../../fixtures/nocna-zmiana.ts';
 import { clickOnMap, fitCamera, tokenCentre, walkOnMap } from '../../fixtures/scene.ts';
 import { Canaries } from '../../fixtures/sniffer.ts';
-import { closeNotices, createInvitation, say, shakeCup } from '../../fixtures/table.ts';
+import { closeNotices, createInvitation, say } from '../../fixtures/table.ts';
 import {
   cellCentre,
   chatCards,
@@ -581,43 +581,22 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
       .getByRole('button', { name: /^Bieg/ })
       .click();
     await expect.poll(() => JSON.parse(combatantOf('Kowal').turnState!).action?.id).toBe('run');
-    // Drugi ruch z Biegu: 3 pola na podłogę elektryczną przy budce. Etap 58a:
-    // marsz staje sam na pierwszym polu w 4 m od ukrytej podłogi (19, 11),
-    // a Marek dostaje wezwanie do Percepcji (PT 17, tylko on i MG) i rzuca
-    // z kubka: 2 + 12 = 14 — nie widzi. Nazwę strefy ma tylko wiersz MG.
+    // Drugi ruch z Biegu: 3 pola na podłogę elektryczną przy budce. Od 24.10
+    // Percepcja w drodze to ukryty rzut serwera: w 4 m od podłogi pada
+    // 2 + 12 = 14 vs PT 17 — Kowal nie widzi, marsz idzie dalej bez
+    // zatrzymania i bez słowa do Marka, a wynik z nazwą strefy ma tylko
+    // wiersz MG. Na podłodze 6k6 = 6 przy wejściu.
     scriptDice([2, 1, 1, 1, 1, 1, 1]);
     await marek.page.keyboard.press('Escape');
     await clickOnMap(marek.page, tokenCentre(token('Kowal'), cell));
     await marek.page.waitForTimeout(300);
     await walkOnMap(marek.page, point(17, 11));
-    await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual([19, 11]);
-    await marek.page.getByRole('button', { name: /^Czat/ }).first().click();
-    // Wezwanie wygląda jak każde wezwanie MG (23.10) — bez słowa o tym, co obok.
-    const call = marek.page
-      .locator('.chat-message.chat-check', { hasText: 'Kowal — Percepcja' })
-      .last();
-    await expect(call).toContainText('PT 17');
-    await expect(call).not.toContainText('Podłoga');
-    await expect(call).not.toContainText('przykuło');
-    await expect(
-      ola.page.locator('.chat-message.chat-check', { hasText: 'Kowal — Percepcja' }),
-    ).toHaveCount(0);
-    const beforeRoll = lastMessageId();
-    await call.getByRole('button', { name: 'Rzuć' }).click();
-    await marek.page.locator('.dialog').last().getByRole('button', { name: 'Weź kubek' }).click();
-    // Wezwanie „Do MG i gracza” — karta rzutu jest `gmroll`, nie `roll`.
-    await shakeCup(marek.page);
-    await expect
-      .poll(() => messageAfter(beforeRoll, 'Wezwanie: Percepcja', 'gmroll')?.id ?? 0, {
-        timeout: 20_000,
-      })
-      .toBeGreaterThan(0);
-    await expect(call).toContainText(/Niezdane/);
+    await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual([17, 11]);
     await expect
       .poll(() => messageAfter(since, 'Percepcja', 'gmaction')?.payload ?? '')
       .toContain('nie zauważa: Podłoga elektryczna');
-    // Dalej na podłogę — Kowal już rzucał, więc nic go nie trzyma; 6k6 = 6 przy wejściu.
-    await walk(marek, 'Kowal', 17, 11);
+    expect(messageAfter(since, 'Percepcja', 'check')).toBeUndefined();
+    expect(messageAfter(since, 'Percepcja', 'gmroll')).toBeUndefined();
     await expect
       .poll(() => messageAfter(since, 'Wejście na broniony obszar', 'action')?.id ?? 0, {
         timeout: 20_000,

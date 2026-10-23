@@ -1,5 +1,18 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.10, szósta (po `7dfd0d9`) — zlecenie MG: „Przyjrzyj się” bez tłumaczenia
+
+**Prośba o oględziny leci jednym kliknięciem.** „🔍 Poproś MG o dokładne oględziny” w oknie
+oględzin (`SightingWindow.tsx`) woła `requestCheck` od razu — bez okna „Po co” (`CheckRequestDialog`
+zostaje dla Alt+kliku z karty). Karta prośby (`CheckRequest.tsx`) z `system.sightingTokenId`
+dopisuje „· oględziny: <nazwa celu>” (nazwa z własnej listy żetonów: MG prawdziwa, gracz alias)
+i daje MG **tylko drabinkę PT** — bez „Ustaw…” i „Odmów”. Gracz dalej może prośbę wycofać.
+Serwer bez zmian.
+
+**Sprawdzone:** `tsc` i ESLint klienta, vitest klienta 421/421. **Oglądano** jednorazową suitą na
+instancji E2E (skasowana): Ola w **Firefoksie** (klik → bez okna, karta „oględziny: Kowal”,
+po zgodzie wezwanie PT 13 z „Rzuć”), MG w Chromium (karta z samą drabinką).
+
 ### Sesja 23.10, piąta (po `e59e425`) — zlecenie MG: PT strefy od MG, jedno pytanie o Szczęście
 
 **PT strefy bronionej wybiera MG.** Nowa kolumna `DefenseZone.spotDv` (migracja

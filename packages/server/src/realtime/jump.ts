@@ -1,8 +1,3 @@
-import {
-  NOTICE_ROLL_PENDING,
-  NOTICE_ROLL_PENDING_MESSAGE,
-  noticeRollPending,
-} from './hidden-notice.js';
 import type {
   JumpDirection,
   ScenePoint,
@@ -143,14 +138,6 @@ async function jumpRefusalFor(
   // Etap 56: drużyna zobaczyła wroga — przed walką nikt nie skacze.
   if (!isGm && (await sightedFightPending(deps, scene.id))) {
     return { code: COMBAT_PENDING, message: COMBAT_PENDING_MESSAGE };
-  }
-  // Etap 58a: figura stoi do rzutu na Percepcję z wezwania — skok też nie.
-  if (
-    !isGm &&
-    token.characterId &&
-    (await noticeRollPending(deps, scene.campaignId, token.characterId))
-  ) {
-    return { code: NOTICE_ROLL_PENDING, message: NOTICE_ROLL_PENDING_MESSAGE };
   }
   if (!isGm) {
     const statuses = readTokenStatuses(token.statuses);

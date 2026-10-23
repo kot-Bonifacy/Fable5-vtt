@@ -426,17 +426,16 @@ export interface CpredRollRequest {
    */
   containerTokenId?: string;
   /**
-   * Etap 58a — ukryta strefa, którą ten Test Percepcji może odsłonić, i figura,
-   * która przy niej przystanęła. Wpisuje je wyłącznie serwer, wzywając gracza
-   * do rzutu przy zatrzymaniu marszu; rzut czyta je z zapisanego wezwania,
-   * nigdy z żądania klienta — inaczej dowolny Test Percepcji odsłaniałby pułapki.
+   * Etap 58a — ukryta strefa i figura, która przy niej przystanęła, w wezwaniach
+   * do Percepcji z 22–23.10. Od 24.10 Percepcję w drodze rzuca serwer w ukryciu
+   * i nikt tych pól nie wpisuje; zostają dla starych kart w historii czatu,
+   * z których `redactChatMessage` dalej je graczowi zdejmuje.
    */
   hiddenZoneId?: number;
   noticeTokenId?: string;
   /**
-   * Etap 58d — ukryta figura, którą ten Test Percepcji może odsłonić (wtedy
-   * `noticeTokenId` to figura, która przy niej przystanęła). Tak samo
-   * wyłącznie z ręki serwera i tylko z zapisanego wezwania.
+   * Etap 58d — ukryta figura w takim samym starym wezwaniu (wtedy
+   * `noticeTokenId` to figura, która przy niej przystanęła).
    */
   hiddenTokenId?: string;
   /**

@@ -32,6 +32,7 @@ import {
   cpredCareOptions,
   cpredCarePermanent,
   cpredCheckOutcome,
+  createDefaultCharacterData,
   hitLocationLabel,
   cpredSheetHpMax,
   isCpredAimPoint,
@@ -59,6 +60,7 @@ import {
   turnOwesDeathSave,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
+import { CPRED_PERCEPTION_SKILL_ID } from './zone-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   emitCombatOfScene,
@@ -88,8 +90,7 @@ import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
 import { settleOpeningLockTest } from './opening-locks.js';
-import { settleDisarmTest, settleSpotTest } from './zones.js';
-import { settleSpotFigureTest } from './hidden-figures.js';
+import { settleDisarmTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
@@ -990,6 +991,47 @@ async function situationForStatist(
   };
 }
 
+/**
+ * Test Percepcji, który serwer rzuca w ukryciu za figurę gracza przy ukrytej
+ * rzeczy w drodze (24.10, zlecenie MG — zastępuje wezwanie z kubka z 58a).
+ *
+ * Ten sam plan co rzut z karty: Umiejętność, rany i Zwarcie, tak że karta,
+ * którą gracz zobaczy po sukcesie, niczym nie różni się od Testu z kubka.
+ * Figura bez karty rzuca kartą zastępczą zwykłego człowieka, jak przy
+ * systemach stref. Bez Szczęścia — gracz nie wie, że rzuca. `null` tylko,
+ * gdy rejestr nie zna Percepcji (planer odmawia).
+ */
+export async function rollSecretPerception(
+  deps: RealtimeDeps,
+  token: Token,
+  dv: number,
+): Promise<RollResult | null> {
+  const registry = deps.ctx.cpred;
+  const character = token.characterId
+    ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
+    : null;
+  const data = character
+    ? parseCharacterData(character.data, registry)
+    : createDefaultCharacterData();
+  const context = character
+    ? await situationForCharacter(deps, character.campaignId, token.sceneId, character, data)
+    : await situationForStatist(deps, token, {});
+  const planned = planCpredRoll(
+    data,
+    registry,
+    { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID },
+    context,
+  );
+  if (!planned.ok) return null;
+  const { plan } = planned;
+  const result = rollFormula(plan.formula, createMixedRng(), { checkRule: plan.checkRule });
+  result.title = plan.title;
+  result.actor = character ? character.name : tokenTableName(token, token.name);
+  result.breakdown = plan.breakdown;
+  result.outcome = cpredCheckOutcome(result.total, { dv });
+  return result;
+}
+
 /** Is this character's token on the viewed scene in a Hold right now? */
 async function isCharacterGrappled(
   deps: RealtimeDeps,
@@ -1472,45 +1514,6 @@ async function performScopedRoll(
         call.entry.characterId,
         result.outcome.success,
       );
-    }
-    // Etap 58a: Percepcja przy ukrytej strefie, na którą marsz wezwał gracza.
-    // Adres strefy — jak adres zamka — tylko z zapisanego wezwania.
-    const noticeCall = call
-      ? (call.entry.system as { hiddenZoneId?: unknown; noticeTokenId?: unknown })
-      : undefined;
-    if (
-      call &&
-      result.outcome &&
-      typeof noticeCall?.hiddenZoneId === 'number' &&
-      typeof noticeCall.noticeTokenId === 'string'
-    ) {
-      await settleSpotTest(deps, campaignId, {
-        zoneId: noticeCall.hiddenZoneId,
-        tokenId: noticeCall.noticeTokenId,
-        characterId: call.entry.characterId,
-        success: result.outcome.success,
-        total: result.total,
-      });
-    }
-    // Etap 58d: Percepcja przy ukrytej figurze — adres figury tylko
-    // z zapisanego wezwania, PT też z niego (to rzut Skradania z chwili wezwania).
-    const figureCall = call
-      ? (call.entry.system as { hiddenTokenId?: unknown; noticeTokenId?: unknown })
-      : undefined;
-    if (
-      call &&
-      result.outcome &&
-      typeof figureCall?.hiddenTokenId === 'string' &&
-      typeof figureCall.noticeTokenId === 'string'
-    ) {
-      await settleSpotFigureTest(deps, campaignId, {
-        hiddenTokenId: figureCall.hiddenTokenId,
-        tokenId: figureCall.noticeTokenId,
-        characterId: call.entry.characterId,
-        success: result.outcome.success,
-        total: result.total,
-        dv: call.entry.dv,
-      });
     }
     // Etap 58b: Test rozbrajania strefy. Adres strefy i figury — jak przy
     // zamku — tylko z zapisanego wezwania; PT też z wezwania, bo od niego

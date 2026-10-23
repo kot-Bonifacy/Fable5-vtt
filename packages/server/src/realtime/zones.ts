@@ -23,7 +23,6 @@ import {
   ZONE_MAX_PER_SCENE,
   ZONE_NOTES_MAX,
   ZONE_SPOT_RANGE_M,
-  cpredAmmoCheckOutcome,
   cpredTrapDisarmDv,
   cpredTrapDisarmOpening,
   cpredTrapDisarmOutcome,
@@ -53,7 +52,6 @@ import {
   deliverChatMessageTo,
   toChatMessageView,
 } from './chat-io.js';
-import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
@@ -62,13 +60,12 @@ import { emitTokensById } from './tokens.js';
 import { createCheckCall, type CheckFrame } from './checks.js';
 import { campaignGmUser } from './campaign-gm.js';
 import { toSessionUser } from '../auth/sessions.js';
-import { emitHiddenSpotted } from './hidden-notice.js';
+import type { HiddenSpot } from './hidden-notice.js';
+import { rollSecretPerception } from './character-rolls.js';
 import { campaignInCombat } from './combat-lock.js';
 import { advanceGameTime } from './gametime.js';
 import { requireOwnCharacter, tokensOf } from './inventory.js';
 import {
-  CPRED_PERCEPTION_SKILL_ID,
-  checkPerceptionOf,
   controllerOf,
   emplacementDown,
   fireZone,
@@ -620,7 +617,8 @@ export async function settleDisarmTest(
  *  1. **the drain lifts.** „dopóki cel … nie opuści bronionego obszaru" (s. 216)
  *     — the sticky floor lets go the moment somebody steps off it, and a player
  *     who walked out and is still slowed would have to ask the GM;
- *  2. **Perception is rolled** for the hidden zones this figure has come near.
+ *  2. **Perception is rolled** (hidden, by the server) for the hidden zones
+ *     this figure has come near.
  *     Before the trigger, so that stepping onto a trap you spotted at four
  *     metres reads as „I saw it and stepped on it anyway", not as a surprise;
  *  3. **the systems go off** at whoever the walk touched.
@@ -636,11 +634,10 @@ export async function runZonesAfterMove(
     to: ScenePoint;
     path: readonly ScenePoint[];
   },
-): Promise<{ spotted: string[] }> {
+): Promise<{ spots: HiddenSpot[] }> {
   const { campaignId, user, scene, token } = input;
-  const spotted: string[] = [];
   const rows = await fetchSceneZones(deps.ctx.prisma, scene.id);
-  if (rows.length === 0) return { spotted };
+  if (rows.length === 0) return { spots: [] };
 
   const { entries } = await buildCompendiumSync(deps, campaignId);
   const half = tokenHalfPx(token, scene);
@@ -656,22 +653,15 @@ export async function runZonesAfterMove(
 
   // ── Perception, once per character per zone ──
   // Z całej drogi, nie z samego pola lądowania (58a): kto przeszedł obok
-  // pułapki, był przy niej — a marsz gracza i tak staje na skraju zasięgu
-  // (`zonesNoticeDue`), więc tu trafia głównie lądowanie bez trasy (MG, skok).
-  const spotRangePx = zoneSpotRangePx(scene);
+  // pułapki, był przy niej — a marsz gracza rzuca już w klatce na skraju
+  // zasięgu (`rollHiddenNotice`), więc tu trafia głównie lądowanie bez trasy
+  // (MG, skok).
   const walked = [
     before,
     ...input.path.map((point) => ({ x: point.x + half, y: point.y + half })),
     now,
   ];
-  for (const { row, profile } of live) {
-    const spotDv = profile ? (row.spotDv ?? profile.spotDv) : undefined;
-    if (!row.hidden || !spotDv) continue;
-    if (!zoneWithinReachOfPath(row, walked, spotRangePx)) continue;
-    if (await callSpotZone(deps, campaignId, row, token, spotDv, user)) {
-      spotted.push(row.name);
-    }
-  }
+  const spots = await spotHiddenZones(deps, { campaignId, user, scene, token, walked });
 
   // ── the systems themselves ──
   // Strzał i obrażenia idą kontem MG, nie gracza, który wszedł w strefę (#39).
@@ -733,7 +723,7 @@ export async function runZonesAfterMove(
       );
     }
   }
-  return { spotted };
+  return { spots };
 }
 
 /**
@@ -817,6 +807,39 @@ function pathTouchesZone(
 }
 
 /**
+ * Ukryte strefy w zasięgu Percepcji tej drogi (`walked` — środki figury) —
+ * każda raz na postać, rzutem serwera w ukryciu (24.10, zlecenie MG).
+ */
+export async function spotHiddenZones(
+  deps: RealtimeDeps,
+  input: {
+    campaignId: string;
+    user: SessionUser;
+    scene: Scene;
+    token: Token;
+    walked: readonly ScenePoint[];
+  },
+): Promise<HiddenSpot[]> {
+  const { campaignId, user, scene, token } = input;
+  const rows = await fetchSceneZones(deps.ctx.prisma, scene.id);
+  const spotRangePx = zoneSpotRangePx(scene);
+  const near = rows.filter(
+    (row) => row.hidden && zoneWithinReachOfPath(row, input.walked, spotRangePx),
+  );
+  if (near.length === 0) return [];
+  const { entries } = await buildCompendiumSync(deps, campaignId);
+  const spots: HiddenSpot[] = [];
+  for (const row of near) {
+    const profile = zoneProfileOf(entries, row.entryId);
+    const spotDv = profile ? (row.spotDv ?? profile.spotDv) : undefined;
+    if (!spotDv) continue;
+    const spot = await trySpotZone(deps, campaignId, row, token, spotDv, user);
+    if (spot) spots.push(spot);
+  }
+  return spots;
+}
+
+/**
  * One Perception Check against one hidden zone, at most once per character.
  *
  * The GM's own figures never roll: a guard knows where the building's floor
@@ -825,12 +848,10 @@ function pathTouchesZone(
  * makes „gracz nie dostaje strefy, której nie zauważył" a fact about the payload
  * rather than a hope about the client.
  *
- * **Since 58a only a figure without a sheet rolls here** — everybody else gets
- * a check call and rolls from the cup (`callSpotZone`). This server roll stays
- * hidden: the full line goes to the GM only, written by the GM's hand so it
- * never enters a player's history through the `authorId` clause (until 58a it
- * went to the whole table, naming the trap to people who did not have it on
- * their map). The caller tells the owner about a success (`hidden:spotted`).
+ * **Rzut jest ukryty (24.10, zlecenie MG):** serwer rzuca z karty postaci
+ * (`rollSecretPerception`), gracz o nim nie wie. Pełny wiersz dostaje tylko MG,
+ * pisany ręką MG. Sukces wraca jako `HiddenSpot` — jego kartę i odsłonięcie
+ * rozsyła `showHiddenSpots`, gdy figura już stoi; porażka nie wraca wcale.
  */
 async function trySpotZone(
   deps: RealtimeDeps,
@@ -839,131 +860,42 @@ async function trySpotZone(
   token: Token,
   spotDv: number,
   user: SessionUser,
-): Promise<boolean> {
+): Promise<HiddenSpot | null> {
   const ownerId = await controllerOf(deps, token);
-  if (!ownerId) return false;
+  if (!ownerId) return null;
   const sightings = readZoneSightings(row.sightings);
-  if (sightings.users.includes(ownerId)) return false;
+  if (sightings.users.includes(ownerId)) return null;
   const key = token.characterId ?? token.id;
-  if (sightings.tried.includes(key)) return false;
+  if (sightings.tried.includes(key)) return null;
 
-  const base = await checkPerceptionOf(deps, token);
-  const outcome = cpredAmmoCheckOutcome(createMixedRng()(10), base.total, spotDv);
-  const next = outcome.resisted
+  const roll = await rollSecretPerception(deps, token, spotDv);
+  const success = roll?.outcome?.success === true;
+  const next = success
     ? { users: [...sightings.users, ownerId], tried: [...sightings.tried, key] }
     : { users: sightings.users, tried: [...sightings.tried, key] };
   await deps.ctx.prisma.defenseZone.update({
     where: { id: row.id },
     data: { sightings: writeZoneSightings(next) },
   });
-  await emitZones(deps, campaignId, row.sceneId);
-  const roll = `${base.label} ${outcome.die}+${outcome.modifier} = ${outcome.total} vs PT ${spotDv}`;
+  const verdict = roll ? `wynik ${roll.total} vs PT ${spotDv}` : `PT ${spotDv}`;
   await logGmZoneLine(
     deps,
     campaignId,
     await systemHand(deps, campaignId, user),
     tokenTableName(token, token.name),
     'Percepcja — ukryta rzecz w pobliżu',
-    outcome.resisted ? `${roll} — zauważa: ${row.name}` : `${roll} — nie zauważa: ${row.name}`,
+    `${verdict} — ${success ? 'zauważa' : 'nie zauważa'}: ${row.name}`,
   );
-  return outcome.resisted;
-}
-
-/**
- * The Perception Check a player rolls from the cup (58a, decyzja MG z 22.10 —
- * wbrew pierwszemu planowi rzutu ukrytego). The figure stops, the owner gets a
- * check call („Do MG i gracza”, PT jak w każdym wezwaniu) and the cup lights
- * up; `settleSpotTest` reads the zone off the stored call when the dice land.
- *
- * The character goes on the `tried` list **now**, not on the result: the call
- * itself is the one chance, so a second walk past the zone must not halt and
- * call again while the first call is still waiting. A cancelled call therefore
- * spends the chance — that is the GM's ruling, made by cancelling.
- *
- * A figure without a sheet has no cup to roll from (a statist the GM handed to
- * a player), so it keeps the server's own hidden roll. Returns true only when
- * that roll spotted the zone; a call is never a result yet.
- */
-async function callSpotZone(
-  deps: RealtimeDeps,
-  campaignId: string,
-  row: ZoneRow,
-  token: Token,
-  spotDv: number,
-  user: SessionUser,
-): Promise<boolean> {
-  if (!token.characterId) return trySpotZone(deps, campaignId, row, token, spotDv, user);
-  const ownerId = await controllerOf(deps, token);
-  if (!ownerId) return false;
-  const sightings = readZoneSightings(row.sightings);
-  if (sightings.users.includes(ownerId)) return false;
-  const key = token.characterId;
-  if (sightings.tried.includes(key)) return false;
-
-  await deps.ctx.prisma.defenseZone.update({
-    where: { id: row.id },
-    data: { sightings: writeZoneSightings({ ...sightings, tried: [...sightings.tried, key] }) },
-  });
-  // Karta wygląda jak każde wezwanie MG (uwaga MG z 23.10): bez zdania
-  // o tym, co przykuło uwagę, i z MG jako wzywającym. Prompt albo „Otoczenie”
-  // mówiły graczowi, że obok leży coś ukrytego, zanim zdał Test.
-  const frame: CheckFrame = { dv: spotDv, modifier: 0, visibility: 'gm' };
-  await createCheckCall(deps, {
-    campaignId,
-    user: await systemHand(deps, campaignId, user),
-    characterId: token.characterId,
-    request: { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID },
-    frame,
-    hiddenZone: { zoneId: row.id, tokenId: token.id },
-  });
-  return false;
-}
-
-/**
- * Rozliczenie Testu Percepcji przy ukrytej strefie (58a) — woła je rzut na
- * wezwanie z `hiddenZoneId`. Zdany odsłania strefę kontu właściciela figury
- * i mówi mu o tym (`hidden:spotted`); MG dostaje w obu przypadkach wiersz
- * z nazwą strefy, której karta wezwania nie zdradza graczowi.
- */
-export async function settleSpotTest(
-  deps: RealtimeDeps,
-  campaignId: string,
-  input: { zoneId: number; tokenId: string; characterId: string; success: boolean; total: number },
-): Promise<void> {
-  const row = await deps.ctx.prisma.defenseZone.findUnique({
-    where: { id: input.zoneId },
-    include: { scene: true },
-  });
-  if (!row || row.scene.campaignId !== campaignId) return;
-  const token = await deps.ctx.prisma.token.findUnique({ where: { id: input.tokenId } });
-  const owner = await deps.ctx.prisma.character.findUnique({
-    where: { id: input.characterId },
-    select: { ownerId: true, name: true },
-  });
-  const actorName = token ? tokenTableName(token, token.name) : (owner?.name ?? '');
-  const hand = await campaignGmHand(deps, campaignId);
-  if (hand) {
-    await logGmZoneLine(
-      deps,
-      campaignId,
-      hand,
-      actorName,
-      'Percepcja — ukryta rzecz w pobliżu',
-      `wynik ${input.total} — ${input.success ? 'zauważa' : 'nie zauważa'}: ${row.name}`,
-    );
-  }
-  if (!input.success || !owner?.ownerId) return;
-  const sightings = readZoneSightings(row.sightings);
-  if (!sightings.users.includes(owner.ownerId)) {
-    await deps.ctx.prisma.defenseZone.update({
-      where: { id: row.id },
-      data: {
-        sightings: writeZoneSightings({ ...sightings, users: [...sightings.users, owner.ownerId] }),
-      },
-    });
+  if (!success || !roll) {
     await emitZones(deps, campaignId, row.sceneId);
+    return null;
   }
-  if (token) await emitHiddenSpotted(deps, campaignId, row.scene, token, [row.name]);
+  return {
+    name: row.name,
+    ownerId,
+    roll,
+    reveal: () => emitZones(deps, campaignId, row.sceneId),
+  };
 }
 
 /** Konto MG kampanii, którym system pisze swoje wiersze — jak strzał strefy (#39). */
@@ -980,8 +912,9 @@ export async function campaignGmHand(
  * a player's march, so it is cheap first: a scene without a hidden zone answers
  * from one query, and the catalogue is read only for a zone actually in reach.
  *
- * Mirrors `trySpotZone`'s own skips exactly — a halt for a roll that then does
- * not happen would stop a player for nothing.
+ * Mirrors `trySpotZone`'s own skips exactly — a frame that asks for a roll
+ * which then does not happen only costs a query, but a skip missing here would
+ * roll again on every frame.
  */
 export async function zonesNoticeDue(
   deps: RealtimeDeps,

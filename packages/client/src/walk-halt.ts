@@ -1,29 +1,19 @@
 import type { HiddenSpottedBroadcast, TokenHaltBroadcast } from '@vtt/shared';
 import { notifyInfo, notifyRefusal } from './notices.js';
-import { useTokenStore } from './stores/tokenStore.js';
 
 /**
  * Zatrzymanie marszu przez serwer — drużyna zobaczyła wroga (etap 56) albo
- * figura przystanęła przy ukrytej rzeczy na rzut Percepcji (58a).
+ * ukryty Test Percepcji postaci zauważył coś na drodze (58a, od 24.10).
  *
  * Moduł jak `map-ping.ts`: zdarzenie oddaje się mapie i zapomina. Serwer zapisał
  * już pole zatrzymania i rozesłał je (`token:upsert` przed `token:halt`), więc
  * mapa kończy marsz **bez lądowania** i stawia figurę tam, gdzie trzyma ją
- * magazyn. Gracz dostaje jedno zdanie, dlaczego stanął.
+ * magazyn. Przy wrogu gracz dostaje jedno zdanie, dlaczego stanął; przy
+ * ukrytej rzeczy mówi to karta rzutu i `hidden:spotted`, które idą za nim.
  */
 
 /** To samo zdanie mówi odmowa `COMBAT_PENDING` — gracz stoi przed walką. */
 export const COMBAT_PENDING_NOTE = 'Wróg w zasięgu wzroku — czekaj, aż MG rozpocznie walkę.';
-
-/**
- * Przy ukrytej rzeczy gracz dostaje gołe wezwanie do Testu Percepcji (58a,
- * uwaga MG z 23.10): ani „coś przykuło uwagę”, ani na co. Co zauważyła
- * postać, mówi osobno `hidden:spotted`, i tylko przy sukcesie.
- */
-export const noticeHaltNote = (name: string): string => `${name}: Test Percepcji — rzuć kubkiem.`;
-
-/** Odmowa ruchu `NOTICE_ROLL_PENDING` — figura stoi do rzutu (58a, decyzja MG z 22.10). */
-export const NOTICE_ROLL_PENDING_NOTE = 'Najpierw rzuć na Percepcję — wezwanie czeka w kubku.';
 
 export const hiddenSpottedNote = (spotted: HiddenSpottedBroadcast): string =>
   `${spotted.actorName} zauważa: ${spotted.names.join(', ')}.`;
@@ -44,13 +34,7 @@ export function bindWalkHalt(scene: string | null, sink: Halt | null): void {
 export function receiveWalkHalt(broadcast: TokenHaltBroadcast): void {
   if (broadcast.sceneId !== sceneId) return;
   halt?.(broadcast.tokenIds);
-  if (broadcast.reason === 'notice') {
-    const tokens = useTokenStore.getState().tokens;
-    for (const id of broadcast.tokenIds) {
-      notifyInfo(noticeHaltNote(tokens[id]?.name ?? 'Postać'), { title: PERCEPTION_TITLE });
-    }
-    return;
-  }
+  if (broadcast.reason === 'notice') return;
   notifyRefusal('player-move', COMBAT_PENDING_NOTE, { tone: 'warn', title: 'Walka' });
 }
 
