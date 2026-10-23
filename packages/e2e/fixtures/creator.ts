@@ -130,8 +130,11 @@ export async function setSkillLevels(page: Page, levels: Record<string, number>)
 export async function setStatValues(page: Page, values: Record<string, number>): Promise<void> {
   const window = creatorWindow(page);
   for (const [id, value] of Object.entries(values)) {
-    const spin = window.locator(`[data-creation-field="stats.${id}"]`);
-    const row = window.locator('tr', { has: spin });
+    const field = `[data-creation-field="stats.${id}"]`;
+    const spin = window.locator(field);
+    // `has` szuka wewnątrz wiersza, więc lokator bez korzenia w oknie kreatora —
+    // `has: spin` szukał okna w `tr` i klik czekał do końca czasu testu.
+    const row = window.locator('tr', { has: page.locator(field) });
     for (let guard = 0; guard < 10; guard += 1) {
       const now = await spin.getAttribute('aria-valuenow');
       if (now !== null && Number(now) >= value) break;
