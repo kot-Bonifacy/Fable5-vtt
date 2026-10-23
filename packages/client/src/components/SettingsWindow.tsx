@@ -57,7 +57,7 @@ export function SettingsWindow() {
   const setTheme = useThemeStore((s) => s.setTheme);
 
   const placement = useWindowPlacement('settings', () => ({
-    x: Math.max(12, window.innerWidth - 420),
+    x: Math.max(12, window.innerWidth - 452),
     y: 64,
   }));
 

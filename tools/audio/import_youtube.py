@@ -68,12 +68,26 @@ def main():
         if not source.is_file():
             raise ValueError("FILE_TOO_LARGE")
         title = str(info.get("title") or f"YouTube {video_id}")[:120]
+        duration = float(info.get("duration") or 0)
     emit(phase="converting", progress=0, name=title)
-    subprocess.run([
+    # -progress pipe:1 prints key=value blocks; out_time_us / duration gives the percentage.
+    converter = subprocess.Popen([
         imageio_ffmpeg.get_ffmpeg_exe(), "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-nostats", "-progress", "pipe:1",
         "-y", "-i", str(source), "-vn", "-map_metadata", "-1", "-codec:a", "libmp3lame",
         "-b:a", "128k", "-t", str(MAX_SECONDS), str(destination / "audio.mp3"),
-    ], check=True, timeout=300, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+    ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+    reported = 0
+    for line in converter.stdout:
+        key, _, value = line.strip().partition("=")
+        if key == "out_time_us" and duration and value.isdigit():
+            percent = min(99, int(int(value) / 1_000_000 * 100 / duration))
+            if percent > reported:
+                reported = percent
+                emit(phase="converting", progress=percent, name=title)
+    if converter.wait() != 0:
+        raise ValueError("VIDEO_UNAVAILABLE")
     emit(phase="complete", progress=100, name=title)
 
 

@@ -340,10 +340,12 @@
 }
 
 /* `search` od 25.09: osiem pól wyszukiwania (Kompendium, dziennik, broń)
-   rysowało się w Firefoksie jak goła kontrolka — biała ramka na papierze. */
+   rysowało się w Firefoksie jak goła kontrolka — biała ramka na papierze.
+   `url` od 23.10 z tego samego powodu (link importu z YouTube). */
 input[type='text'],
 input[type='password'],
-input[type='search'] {
+input[type='search'],
+input[type='url'] {
   padding: 0.55rem 0.7rem;
   background: var(--bg);
   border: 1px solid var(--border);
