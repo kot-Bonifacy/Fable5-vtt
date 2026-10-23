@@ -188,8 +188,7 @@
 .auth-error,
 .creator-error,
 .awareness-error,
-.hud-refusal,
-.aim-tooltip-refusal {
+.hud-refusal {
   margin: 0;
   padding: 0.3rem 0.6rem 0.45rem;
   background-color: var(--notice-danger);
@@ -205,8 +204,7 @@
 .auth-error::before,
 .creator-error::before,
 .awareness-error::before,
-.hud-refusal::before,
-.aim-tooltip-refusal::before {
+.hud-refusal::before {
   content: 'Błąd';
   display: block;
   margin-bottom: 0.2rem;
@@ -219,14 +217,12 @@
 }
 
 .hud-refusal::before,
-.aim-tooltip-refusal::before,
 .awareness-error::before {
   content: 'Odmowa';
 }
 
-/* Wąskie miejsca: pasek HUD-u (17rem) i dymek przy kursorze. */
-.hud-refusal,
-.aim-tooltip-refusal {
+/* Wąskie miejsce: pasek HUD-u (17rem). */
+.hud-refusal {
   font-size: 0.72rem;
 }
 

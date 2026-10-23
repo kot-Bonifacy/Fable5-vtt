@@ -187,7 +187,6 @@ import { MapTools } from './MapTools.js';
 import { MapLoading } from './MapLoading.js';
 import type { BackgroundLoad } from '../map/background-load.js';
 import { SceneObjectCard } from './SceneObjectCard.js';
-import { TargetTooltip, type AimHover } from './TargetTooltip.js';
 
 export interface TokenMenuState {
   tokenId: string;
@@ -747,8 +746,6 @@ export function MapArea() {
   const walkPreviewName = useTokenStore((s) =>
     walkPreviewFor ? (s.tokens[walkPreviewFor]?.name ?? null) : null,
   );
-  /** Token under the crosshair and where the pointer is (stage 16f). */
-  const [aimHover, setAimHover] = useState<AimHover | null>(null);
   /**
    * Mapa powitalna gracza w trzech stanach: `undefined` — sonda jeszcze
    * w drodze, `null` — pliku nie ma, scena — jest co postawić. Trzy, a nie dwa,
@@ -990,7 +987,6 @@ export function MapArea() {
       }
       attackWithActiveWeapon(tokenId);
     };
-    renderer.onAimHover = setAimHover;
     // Grot celowania widzi cały stół (03.10) — dławi go `reportTokenAim`.
     renderer.onAimFacing = reportTokenAim;
     renderer.onFogPreview = (shape) => {
@@ -2574,7 +2570,6 @@ export function MapArea() {
         <GmAttention />
         <ExchangeDock />
       </div>
-      <TargetTooltip hover={aimHover} />
       <AimMenu />
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />

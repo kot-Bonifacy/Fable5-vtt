@@ -259,7 +259,7 @@ describe('katalog naboi jest czytany ze sklepu kompendium', () => {
  * Z uzbrojonym bagnetem chmurka nad celem mówiła nazwę **wiersza karty**
  * („Militech Dragon"), choć baner nad mapą i karta ataku mówiły „Bagnet".
  * Przyczyna nie była w planerze — ten obsługuje `attachmentId` od 31 — tylko
- * w tym, że `TargetTooltip` budował intencję **własną kopią** kodu z
+ * w tym, że dymek celownika (`TargetTooltip`, usunięty 23.10) budował intencję **własną kopią** kodu z
  * `loadAttackAtToken` i przy okazji gubił to pole. Test pilnuje więc jednego
  * budowniczego intencji, nie dwóch.
  */

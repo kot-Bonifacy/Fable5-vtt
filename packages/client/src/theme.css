@@ -351,8 +351,7 @@
   --map-swatch-edge: rgb(15 23 42 / 70%);
   /* Zaznaczona próbka: biała obwódka widoczna na każdej barwie. */
   --map-swatch-active: #f8fafc;
-  /* Dymek celownika i plakietka trybu zabawy nad stołem z kośćmi. */
-  --map-tooltip: rgb(14 15 19 / 95%);
+  /* Plakietka trybu zabawy nad stołem z kośćmi. */
   --map-badge: rgb(20 21 26 / 80%);
 
   /* Cienie znad mapy: mocniejsze niż w chromie, bo tło bywa jasne. */
@@ -360,7 +359,6 @@
   --map-shadow-emoji: drop-shadow(0 1px 1px rgb(0 0 0 / 55%));
   --map-shadow-text: 0 1px 3px rgb(0 0 0 / 95%);
   --map-shadow-panel: 0 10px 30px rgb(0 0 0 / 45%);
-  --map-shadow-tooltip: 0 8px 20px rgb(0 0 0 / 50%);
   --map-shadow-slider: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
   --map-shadow-swatch: 0 1px 3px rgb(0 0 0 / 70%);
 

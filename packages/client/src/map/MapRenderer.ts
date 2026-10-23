@@ -1072,17 +1072,9 @@ export class MapRenderer {
    *
    * Niesie też pozycję kliknięcia — od 31.08 zaraz po wskazaniu celu wyskakuje
    * przy kursorze wybór Celowania, a renderer jest jedynym, kto wie, gdzie ten
-   * kursor był (ta sama umowa, co przy `onTokenMenu` i `onAimHover`).
+   * kursor był (ta sama umowa, co przy `onTokenMenu`).
    */
   onTokenTarget: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
-  /**
-   * The pointer moved onto (or off) a token the selected figure can aim at
-   * (stage 16f). The screen position travels with it so the caller can float a
-   * bubble there — the renderer knows where the pointer is, and the DOM does
-   * not.
-   */
-  onAimHover:
-    ((hover: { tokenId: string; clientX: number; clientY: number } | null) => void) | null = null;
   /**
    * Grot figury poszedł za celownikiem albo wrócił (03.10) — `facing: null`
    * znaczy „już nie celuje”. Woła się przy każdej zmianie, a dławi nadawca
@@ -4437,12 +4429,6 @@ export class MapRenderer {
       this.applyMapCursor();
       this.turnShooterToAim();
     }
-    // The position is reported even when the token has not changed: the bubble
-    // follows the pointer across a large figure rather than sticking to the
-    // spot it was first seen at.
-    this.onAimHover?.(
-      id ? { tokenId: id, clientX: event.client.x, clientY: event.client.y } : null,
-    );
   }
 
   /**
@@ -4462,7 +4448,6 @@ export class MapRenderer {
     this.drawAimReticle();
     this.applyMapCursor();
     this.turnShooterToAim();
-    this.onAimHover?.(null);
   }
 
   /**

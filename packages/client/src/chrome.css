@@ -266,8 +266,7 @@ textarea {
 .auth-error,
 .creator-error,
 .awareness-error,
-.hud-refusal,
-.aim-tooltip-refusal {
+.hud-refusal {
   background-image: var(--cp-cracks);
   background-size: var(--cp-cracks-size);
 }
