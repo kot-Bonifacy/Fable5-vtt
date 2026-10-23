@@ -6,6 +6,12 @@ w `POMYSLY.md` („Do sprawdzenia przy stole”), decyzje MG — w `decyzje-i-up
 
 ## Otwarte
 
+**24.10.2026 — Kopie kart i kampanii nie niosą `AdvancementEntry.revert` ani `undoneAt`.**
+`exportCharacter` (`archive.ts`) i wczytanie kampanii (`archive-campaign.ts`) przenoszą tylko
+rodzaj, kwotę, saldo i opis, więc po wczytaniu kopii albo cofnięciu kampanii MG nie cofnie
+awansów sprzed kopii (`UNDO_UNKNOWN`), a cofnięte wiersze stracą przekreślenie. Do dopisania
+w `CharacterLedgerRow` dla rejestru PD, jeśli MG będzie tego potrzebował.
+
 **23.10.2026 — E2E po „kule się nie kończą”: T5b 5.9, T3a 3.7–3.8 i 46c.9 nieprzepuszczone.**
 T5b staje na starcie bez bramy AI („MG widzi boty dostępne”), więc zmieniony krok 5.9 (wybór
 przeciwpancernej bez liczby zapasu) nie przeszedł ani razu. W T3a krok 3.6 (Kowal bez kul,

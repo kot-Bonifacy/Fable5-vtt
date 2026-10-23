@@ -1439,6 +1439,46 @@
   min-width: 3.5rem;
 }
 
+/* Rejestr u MG ma piątą kolumnę: „↶ Cofnij” (24.10, zlecenie MG). Cofnięty
+   wiersz zostaje w rejestrze przekreślony — to audyt, nie lista do sprzątania. */
+.advance-log--gm li {
+  grid-template-columns: auto 1fr auto auto 1.6rem;
+  align-items: center;
+}
+
+.advance-log--undone .advance-log-what,
+.advance-log--undone .advance-log-amount {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Koszyk podniesień (24.10, zlecenie MG): „Podnieś” zbiera, „Zatwierdź
+   zmiany” wydaje. Wiersz z czymś w koszyku i plakietka „+N” w kolorze akcentu,
+   żeby gracz widział, co jeszcze nie jest zapisane. */
+.advance-row--pending .awareness-value,
+.advance-queued {
+  color: var(--accent);
+}
+
+.advance-basket {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.6rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+
+.advance-basket-what {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
 /* Etap 30b: to, co Medycyna daje poza liczbami — dwie Umiejętności spoza
    tabeli Umiejętności i dwie listy z podręcznika, zwinięte w `details`, żeby
    panel nie urósł na wysokość strony. */

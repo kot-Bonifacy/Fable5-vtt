@@ -14,7 +14,11 @@ import {
   describeXpAwardNotice,
   formatAdvancementAmount,
   planCpredAdvance,
+  planAdvancementUndo,
+  planCpredAdvances,
   planCpredRoleChange,
+  advancementRevertOf,
+  cpredRoleState,
   type CpredAdvanceSheet,
 } from './advancement.js';
 import { buildCpredRegistry, createDefaultCharacterData } from './character.js';
@@ -461,5 +465,144 @@ describe('rozwój postaci poza Awansem (blokada w walce, 21.10)', () => {
       }),
     ).toBe(true);
     expect(cpredDevelopmentChanged(base, { ...base, lifestyle: null })).toBe(true);
+  });
+});
+
+describe('koszyk awansów (24.10)', () => {
+  it('kolejny szczebel liczy się od poziomu, który zostawił poprzedni', () => {
+    const result = planCpredAdvances(
+      sheet({ skills: { perception: 4 }, improvementPoints: 220 }),
+      registry,
+      [
+        { kind: 'skill', skillId: 'perception', to: 5 },
+        { kind: 'skill', skillId: 'perception', to: 6 },
+      ],
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plans.map((plan) => plan.cost)).toEqual([100, 120]);
+    expect(result.sheet.skills.perception).toBe(6);
+    expect(result.sheet.improvementPoints).toBe(0);
+  });
+
+  it('koszyk o punkt za drogi pada cały i mówi, który krok', () => {
+    const result = planCpredAdvances(
+      sheet({ skills: { perception: 4 }, improvementPoints: 219 }),
+      registry,
+      [
+        { kind: 'skill', skillId: 'perception', to: 5 },
+        { kind: 'skill', skillId: 'perception', to: 6 },
+      ],
+    );
+    expect(result).toEqual({ ok: false, problem: 'NO_POINTS', index: 1 });
+  });
+
+  it('pusty koszyk zostawia kartę bez zmian', () => {
+    const data = sheet({ improvementPoints: 5 });
+    expect(planCpredAdvances(data, registry, [])).toEqual({ ok: true, plans: [], sheet: data });
+  });
+});
+
+describe('cofanie wpisu rejestru przez MG (24.10)', () => {
+  const solo = sheet({
+    roleId: 'solo',
+    roleAbilityRank: 5,
+    formerRoles: [{ roleId: 'medtech', rank: 2 }],
+    skills: { perception: 5 },
+    improvementPoints: 10,
+  });
+
+  it('Umiejętność wraca o szczebel, a cena do puli', () => {
+    const step = cpredSkillAdvanceStep(sheet({ skills: { perception: 4 } }), registry.skills[0]!)!;
+    const result = planAdvancementUndo(solo, {
+      kind: 'spend',
+      amount: -step.cost,
+      revert: advancementRevertOf(step),
+      undone: false,
+    });
+    expect(result).toEqual({
+      ok: true,
+      plan: { amount: 100, sheet: { skills: { perception: 4 } } },
+    });
+  });
+
+  it('Zdolność poprzedniej Roli wraca na jej własnym wierszu', () => {
+    const step = cpredAbilityAdvanceStep(
+      { ...solo, formerRoles: [{ roleId: 'medtech', rank: 1 }] },
+      registry,
+      'medtech',
+    )!;
+    const result = planAdvancementUndo(solo, {
+      kind: 'spend',
+      amount: -step.cost,
+      revert: advancementRevertOf(step),
+      undone: false,
+    });
+    expect(result.ok && result.plan.sheet).toEqual({
+      formerRoles: [{ roleId: 'medtech', rank: 1 }],
+    });
+  });
+
+  it('awans pod późniejszym szczeblem tej samej rzeczy czeka', () => {
+    const result = planAdvancementUndo(solo, {
+      kind: 'spend',
+      amount: -80,
+      revert: {
+        type: 'advance',
+        kind: 'skill',
+        skillId: 'perception',
+        roleId: null,
+        from: 3,
+        to: 4,
+      },
+      undone: false,
+    });
+    expect(result).toEqual({ ok: false, problem: 'UNDO_STALE' });
+  });
+
+  it('zmiana Roli wraca całą trójką pól, póki nic jej nie ruszyło', () => {
+    const before = sheet({ roleId: 'medtech', roleAbilityRank: 4, improvementPoints: 60 });
+    const plan = planCpredRoleChange(before, registry, 'solo');
+    if (!plan.ok) throw new Error('role change refused');
+    const after = { ...before, ...cpredRoleChangeSheet(before, plan.plan), improvementPoints: 0 };
+    const entry = {
+      kind: 'role',
+      amount: -60,
+      revert: {
+        type: 'role' as const,
+        before: cpredRoleState(before),
+        after: cpredRoleState(after),
+      },
+      undone: false,
+    };
+    expect(planAdvancementUndo(after, entry)).toEqual({
+      ok: true,
+      plan: { amount: 60, sheet: cpredRoleState(before) },
+    });
+    expect(planAdvancementUndo({ ...after, roleAbilityRank: 2 }, entry)).toEqual({
+      ok: false,
+      problem: 'UNDO_STALE',
+    });
+  });
+
+  it('przyznanie schodzi tylko z PD, które jeszcze leżą', () => {
+    const award = { kind: 'award', amount: 50, revert: null, undone: false };
+    expect(planAdvancementUndo(solo, award)).toEqual({ ok: false, problem: 'UNDO_SPENT' });
+    expect(planAdvancementUndo({ ...solo, improvementPoints: 50 }, award)).toEqual({
+      ok: true,
+      plan: { amount: -50, sheet: {} },
+    });
+  });
+
+  it('nie cofa drugi raz, nie cofa cofnięcia, a stary awans bez pamięci odsyła do karty', () => {
+    expect(
+      planAdvancementUndo(solo, { kind: 'award', amount: 5, revert: null, undone: true }),
+    ).toEqual({ ok: false, problem: 'UNDO_DONE' });
+    expect(
+      planAdvancementUndo(solo, { kind: 'undo', amount: 5, revert: null, undone: false }),
+    ).toEqual({ ok: false, problem: 'UNDO_KIND' });
+    expect(
+      planAdvancementUndo(solo, { kind: 'spend', amount: -20, revert: null, undone: false }),
+    ).toEqual({ ok: false, problem: 'UNDO_UNKNOWN' });
   });
 });

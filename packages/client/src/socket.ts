@@ -56,6 +56,8 @@ import type {
   CharacterXpAwardPayload,
   CharacterXpAwardResult,
   CharacterXpHistoryResult,
+  CharacterXpUndoPayload,
+  AdvancementUndoProblem,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatSendPayload,
@@ -300,6 +302,7 @@ import {
   CHAT_COMMANDS_HELP,
   describeXpAwardNotice,
   CPRED_ADVANCE_PROBLEMS,
+  ADVANCEMENT_UNDO_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
@@ -4944,12 +4947,28 @@ export function fetchAdvancementHistory(
   return emitEconomy('character:xp-history', { characterId });
 }
 
+/**
+ * MG: cofa jeden wpis rejestru awansów (zlecenie MG z 24.10) — poziom wraca,
+ * PD wracają do puli albo z niej schodzą. `flushCharacterSave` z tego samego
+ * powodu, co przy awansie.
+ */
+export function undoAdvancement(
+  payload: CharacterXpUndoPayload,
+): Promise<SocketAck<CharacterView>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('character:xp-undo', payload);
+}
+
 /** Polskie zdania dla odmów, które potrafi zwrócić `character:advance`. */
 export function advanceErrorText(code: string): string {
   if (code === 'COMBAT_LOCKED') return COMBAT_LOCKED_TEXT;
   if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
+  if (code === 'ENTRY_NOT_FOUND') return 'Tego wpisu nie ma już w rejestrze.';
   if (code in CPRED_ADVANCE_PROBLEMS) {
     return CPRED_ADVANCE_PROBLEMS[code as CpredAdvanceProblem];
+  }
+  if (code in ADVANCEMENT_UNDO_PROBLEMS) {
+    return ADVANCEMENT_UNDO_PROBLEMS[code as AdvancementUndoProblem];
   }
   return combatErrorText(code);
 }

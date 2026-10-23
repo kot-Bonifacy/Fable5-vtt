@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   ADVANCEMENT_AWARD_MAX,
   ADVANCEMENT_KIND_LABELS,
+  ADVANCEMENT_UNDO_PROBLEMS,
   ADVANCEMENT_LABEL_MAX,
   CPRED_MULTICLASS_MIN_RANK,
   cpredAbilityAdvanceSteps,
@@ -9,8 +10,12 @@ import {
   cpredSkillAdvanceStep,
   formatAdvancementAmount,
   groupedSkills,
+  planCpredAdvances,
   planCpredRoleChange,
+  ROLE_GM,
   type AdvancementEntryView,
+  type AdvancementUndoProblem,
+  type CpredAdvanceRequest,
   type CpredAdvanceStep,
 } from '@vtt/shared';
 import {
@@ -20,7 +25,9 @@ import {
   changeCharacterRole,
   fetchAdvancementHistory,
   roleChangeErrorText,
+  undoAdvancement,
 } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { COMBAT_LOCKED_HINT, useCombatLocked } from '../stores/combatStore.js';
 import { noteAck, notifyInfo, notifyRefusal } from '../notices.js';
@@ -104,8 +111,11 @@ export function XpAwardForm({ characterId, onDone }: { characterId: string; onDo
  * Powrót do Roli, którą postać już miała, jest za darmo (decyzja MG,
  * 30.08.2026): ranga siedzi na karcie i działa, zmienia się wyłącznie to, którą
  * Rolą widzi cię Ulica.
+ *
+ * Zmiana Roli przestawia drabinki Zdolności, więc nie miesza się z koszykiem
+ * podniesień (24.10.2026): póki coś w nim czeka, `blocked` gasi guzik.
  */
-function RoleChangeSection({ characterId }: { characterId: string }) {
+function RoleChangeSection({ characterId, blocked }: { characterId: string; blocked: boolean }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
   const [picked, setPicked] = useState('');
@@ -180,18 +190,20 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
           type="button"
           className="advance-buy"
           onClick={() => void change()}
-          disabled={busy || locked || plan === null || !plan.ok}
+          disabled={busy || locked || blocked || plan === null || !plan.ok}
           /* Nazwa Roli stoi w mianowniku po dwukropku, nigdy w środku zdania:
              `roles.json` niesie „Nomada", a „zostań Nomada" to nie jest zdanie
              po polsku — odmiany nazwy z pliku danych nie da się zgadnąć. */
           title={
             locked
               ? COMBAT_LOCKED_HINT
-              : plan?.ok
-                ? plan.plan.returning
-                  ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
-                  : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
-                : undefined
+              : blocked
+                ? 'Najpierw zatwierdź albo odrzuć podniesienia z koszyka.'
+                : plan?.ok
+                  ? plan.plan.returning
+                    ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
+                    : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
+                  : undefined
           }
         >
           Zmień
@@ -212,9 +224,13 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
  *
  * Jeden ekran odpowiadający na trzy pytania naraz — „co mogę podnieść", „ile to
  * kosztuje", „ile mi zostanie" — bo przy stole zadaje się je razem. Ceny liczy
- * ta sama funkcja, którą serwer sprawdza żądanie (`cpredSkillAdvanceStep`,
- * `cpredAbilityAdvanceStep`), więc zapalony guzik i odmowa nie mogą się
- * rozjechać co do grosza.
+ * ta sama funkcja, którą serwer sprawdza żądanie (`planCpredAdvances`), więc
+ * zapalony guzik i odmowa nie mogą się rozjechać co do grosza.
+ *
+ * „Podnieś" nie wydaje od razu (zlecenie MG z 24.10.2026): kliknięcia zbierają
+ * się w koszyk, ceny kolejnych szczebli liczą się już od podniesionych
+ * poziomów, a PD odchodzą dopiero przy „Zatwierdź zmiany" — jednym żądaniem,
+ * całym albo wcale. „−" przy wierszu zdejmuje jego ostatni szczebel z koszyka.
  *
  * Czego tu nie ma i nie będzie: pola „wpisz nowy poziom". Podręcznik zna tylko
  * jeden ruch w górę — „nie możesz przeskakiwać Poziomów" — a formularz
@@ -224,10 +240,12 @@ function RoleChangeSection({ characterId }: { characterId: string }) {
 export function AdvancementPanel({ characterId }: { characterId: string }) {
   const character = useCharacterStore((s) => s.characters[characterId] ?? null);
   const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [history, setHistory] = useState<AdvancementEntryView[] | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<CpredAdvanceRequest[]>([]);
   const locked = useCombatLocked();
 
   /*
@@ -256,41 +274,97 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
     };
   }, [characterId, open, savedAt]);
 
+  // Koszyk należy do jednej karty — inna karta w tym samym oknie zaczyna od zera.
+  useEffect(() => setPending([]), [characterId]);
+
   if (!character) return null;
   const data = character.data;
-  const points = data.improvementPoints;
+  const available = data.improvementPoints;
+  // Karta „po zmianach": ta sama funkcja, którą serwer przyjmie koszyk. Gdy
+  // pod spodem ktoś ruszył kartę (MG zabrał PD, cofnął awans), koszyk może
+  // przestać się spinać — wtedy panel mówi dlaczego i liczy od karty.
+  const basket = planCpredAdvances(data, registry, pending);
+  const projected = basket.ok ? basket.sheet : data;
+  const points = projected.improvementPoints;
   // Etap 29b: karta może nieść kilka Ról, a każda ma swoją drabinkę — Solo,
   // które zostało Nomadą, kupuje Zmysł Walki i Moto niezależnie.
-  const abilities = cpredAbilityAdvanceSteps(data, registry);
-  const held = cpredRoleRanks(data);
+  const abilities = cpredAbilityAdvanceSteps(projected, registry);
+  const held = cpredRoleRanks(projected);
   const current = held[0] ?? null;
 
-  async function buy(step: CpredAdvanceStep): Promise<void> {
-    setBusy(true);
-    const ack = await advanceCharacter({
-      characterId,
-      kind: step.kind,
-      ...(step.skillId ? { skillId: step.skillId } : {}),
-      ...(step.roleId ? { roleId: step.roleId } : {}),
-      to: step.to,
+  const sameRow =
+    (a: { kind: string; skillId?: string | null; roleId?: string | null }) =>
+    (b: CpredAdvanceRequest) =>
+      a.kind === b.kind &&
+      (a.kind === 'skill'
+        ? (a.skillId ?? null) === (b.skillId ?? null)
+        : (a.roleId ?? null) === (b.roleId ?? null));
+
+  function add(step: CpredAdvanceStep): void {
+    setPending((list) => [
+      ...list,
+      {
+        kind: step.kind,
+        ...(step.skillId ? { skillId: step.skillId } : {}),
+        ...(step.roleId ? { roleId: step.roleId } : {}),
+        to: step.to,
+      },
+    ]);
+  }
+
+  function drop(step: CpredAdvanceStep): void {
+    setPending((list) => {
+      const match = sameRow(step);
+      for (let index = list.length - 1; index >= 0; index -= 1) {
+        if (match(list[index] as CpredAdvanceRequest)) {
+          return [...list.slice(0, index), ...list.slice(index + 1)];
+        }
+      }
+      return list;
     });
+  }
+
+  async function commit(): Promise<void> {
+    setBusy(true);
+    const ack = await advanceCharacter({ characterId, steps: pending });
     setBusy(false);
     if (!noteAck('character', ack, advanceErrorText)) return;
+    setPending([]);
     // Rejestru nie odświeża się tutaj: zakup rusza kartę, a `savedAt` wyżej
     // czyta go za każdym razem, gdy karta się ruszy — jedną drogą dla wiersza
     // własnego i dla tego, który dopisał MG.
   }
 
+  async function undo(entry: AdvancementEntryView): Promise<void> {
+    setBusy(true);
+    const ack = await undoAdvancement({ characterId, entryId: entry.id });
+    setBusy(false);
+    noteAck('character', ack, advanceErrorText);
+  }
+
   function row(step: CpredAdvanceStep) {
     const short = points < step.cost;
+    const queued = pending.filter(sameRow(step)).length;
     return (
-      <li key={step.skillId ?? step.roleId ?? 'ability'} className="awareness-row">
+      <li
+        key={step.skillId ?? step.roleId ?? 'ability'}
+        className={queued > 0 ? 'awareness-row advance-row--pending' : 'awareness-row'}
+      >
         <span className="awareness-name" title={step.name}>
           {step.name}
           {step.doubled && (
             <span className="advance-x2" title="Umiejętność podwójna: szczebel kosztuje ×2">
               {' '}
               ×2
+            </span>
+          )}
+          {queued > 0 && (
+            <span
+              className="advance-queued"
+              title={`Do zatwierdzenia: ${step.from - queued} → ${step.from}`}
+            >
+              {' '}
+              +{queued}
             </span>
           )}
         </span>
@@ -301,17 +375,29 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
           {step.cost} PD
         </span>
         <span className="awareness-steps">
+          {queued > 0 && (
+            <button
+              type="button"
+              className="advance-buy"
+              onClick={() => drop(step)}
+              disabled={busy}
+              title={`Wycofaj z koszyka: ${step.name} ${step.from} → ${step.from - 1}`}
+              aria-label={`Wycofaj: ${step.name} z poziomu ${step.from}`}
+            >
+              −
+            </button>
+          )}
           <button
             type="button"
             className="advance-buy"
-            onClick={() => void buy(step)}
+            onClick={() => add(step)}
             disabled={busy || short || locked}
             title={
               locked
                 ? COMBAT_LOCKED_HINT
                 : short
                   ? `Brakuje ${step.cost - points} PD`
-                  : `Podnieś: ${step.name} na poziom ${step.to} za ${step.cost} PD (zostanie ${points - step.cost})`
+                  : `Podnieś: ${step.name} na poziom ${step.to} za ${step.cost} PD (zostanie ${points - step.cost}) — wydasz przy „Zatwierdź zmiany”`
             }
             aria-label={`Podnieś: ${step.name} na poziom ${step.to}`}
           >
@@ -322,22 +408,67 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
     );
   }
 
+  // Ostatni wiersz rejestru u MG: czy „Cofnij” przejdzie, a jak nie — dlaczego.
+  function undoButton(entry: AdvancementEntryView) {
+    if (!isGm || entry.kind === 'undo' || entry.undone) return <span />;
+    const ok = entry.undo === 'ok';
+    return (
+      <button
+        type="button"
+        className="advance-buy"
+        onClick={() => void undo(entry)}
+        disabled={busy || !ok}
+        title={
+          ok
+            ? entry.kind === 'spend' || entry.kind === 'role'
+              ? `Cofnij: ${entry.label} — poziom wraca, a do puli zwrot ${Math.abs(entry.amount)} PD`
+              : `Cofnij: ${entry.label} — ${formatAdvancementAmount(-entry.amount)}`
+            : entry.undo
+              ? ADVANCEMENT_UNDO_PROBLEMS[entry.undo as AdvancementUndoProblem]
+              : undefined
+        }
+        aria-label={`Cofnij wpis: ${entry.label}`}
+      >
+        ↶
+      </button>
+    );
+  }
+
   const groups = groupedSkills(registry)
     .map((group) => ({
       ...group,
       steps: group.skills
-        .map((skill) => cpredSkillAdvanceStep(data, skill))
+        .map((skill) => cpredSkillAdvanceStep(projected, skill))
         .filter((step): step is CpredAdvanceStep => step !== null)
-        .filter((step) => !affordableOnly || step.cost <= points),
+        .filter((step) => !affordableOnly || step.cost <= points || pending.some(sameRow(step))),
     }))
     .filter((group) => group.steps.length > 0);
+
+  // Podsumowanie koszyka: jeden wpis na wiersz, od poziomu sprzed koszyka.
+  const summary = basket.ok
+    ? [
+        ...basket.plans
+          .reduce((rows, plan) => {
+            const key = `${plan.kind}:${plan.skillId ?? plan.roleId ?? ''}`;
+            const row = rows.get(key);
+            rows.set(
+              key,
+              row ? { ...row, to: plan.to } : { name: plan.name, from: plan.from, to: plan.to },
+            );
+            return rows;
+          }, new Map<string, { name: string; from: number; to: number }>())
+          .values(),
+      ]
+    : [];
 
   return (
     <div className="awareness advance">
       <header className="awareness-head">
         <h4>Awans</h4>
         <p className={points === 0 ? 'awareness-left' : 'awareness-left awareness-left--empty'}>
-          {points} PD w zapasie
+          {pending.length > 0
+            ? `${points} z ${available} PD po zmianach`
+            : `${available} PD w zapasie`}
         </p>
       </header>
       {locked && (
@@ -359,7 +490,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
         </p>
       )}
 
-      <RoleChangeSection characterId={characterId} />
+      <RoleChangeSection characterId={characterId} blocked={pending.length > 0} />
 
       {/* Etap 29b: „cały czas możesz podnosić poziom Zdolności Specjalnej
           poprzedniej Roli i korzystać z oferowanych przez nią korzyści"
@@ -395,6 +526,43 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
           ))
         )}
       </div>
+
+      {pending.length > 0 && (
+        <div className="advance-basket">
+          {basket.ok ? (
+            <p className="advance-basket-what">
+              {summary.map((entry) => `${entry.name} ${entry.from} → ${entry.to}`).join(', ')}
+              {' · '}
+              {formatAdvancementAmount(points - available)}
+            </p>
+          ) : (
+            <p className="awareness-error">
+              {advanceErrorText(basket.problem)} Karta zmieniła się w międzyczasie — odrzuć i
+              wybierz od nowa.
+            </p>
+          )}
+          <div className="awareness-buttons">
+            <button
+              type="button"
+              className="small-button"
+              onClick={() => void commit()}
+              disabled={busy || locked || !basket.ok}
+              title={locked ? COMBAT_LOCKED_HINT : `Wydaje ${available - points} PD na raz`}
+            >
+              Zatwierdź zmiany
+            </button>
+            <button
+              type="button"
+              className="small-button"
+              onClick={() => setPending([])}
+              disabled={busy}
+            >
+              Odrzuć
+            </button>
+          </div>
+        </div>
+      )}
+
       <p className="awareness-hint">
         Poziomu nie da się przeskoczyć — kolejny zawsze jest o jeden wyżej (s. 411). Ile PD dostaje
         drużyna po sesji, ustala MG.
@@ -410,17 +578,25 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
         ) : history.length === 0 ? (
           <p className="awareness-hint">Jeszcze nic tu nie stanęło.</p>
         ) : (
-          <ul className="advance-log">
+          <ul className={isGm ? 'advance-log advance-log--gm' : 'advance-log'}>
             {history.map((entry) => (
-              <li key={entry.id}>
+              <li key={entry.id} className={entry.undone ? 'advance-log--undone' : undefined}>
                 <span className="advance-log-when">
                   {new Date(entry.createdAt).toLocaleDateString('pl-PL')}
                 </span>
-                <span className="advance-log-what" title={ADVANCEMENT_KIND_LABELS[entry.kind]}>
+                <span
+                  className="advance-log-what"
+                  title={
+                    entry.undone
+                      ? `${ADVANCEMENT_KIND_LABELS[entry.kind]} — cofnięte przez MG`
+                      : ADVANCEMENT_KIND_LABELS[entry.kind]
+                  }
+                >
                   {entry.label}
                 </span>
                 <span className="advance-log-amount">{formatAdvancementAmount(entry.amount)}</span>
                 <span className="advance-log-left">{entry.balance} PD</span>
+                {isGm && undoButton(entry)}
               </li>
             ))}
           </ul>

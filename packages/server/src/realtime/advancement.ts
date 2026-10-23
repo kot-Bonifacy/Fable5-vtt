@@ -8,7 +8,9 @@ import type {
   CharacterXpAwardResult,
   CharacterXpHistoryPayload,
   CharacterXpHistoryResult,
-  CpredAdvanceStep,
+  CharacterXpUndoPayload,
+  AdvancementRevert,
+  CpredAdvanceRequest,
   CpredCharacterData,
   SessionUser,
   XpAwardNotice,
@@ -19,13 +21,19 @@ import {
   ADVANCEMENT_LABEL_MAX,
   IMPROVEMENT_POINTS_MAX,
   ROLE_GM,
+  advancementRevertOf,
+  cpredAdvanceSheetPatch,
+  cpredRoleState,
+  describeAdvancementUndo,
   describeCpredAdvance,
+  planAdvancementUndo,
+  planCpredAdvances,
+  readAdvancementRevert,
   isAdvancementKind,
   cpredRoleChangeSheet,
   describeCpredRoleChange,
   mergeCharacterData,
   parseCharacterData,
-  planCpredAdvance,
   planCpredRoleChange,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
@@ -74,6 +82,8 @@ export interface AdvancementChange {
   amount: number;
   /** Polish one-liner for the audit: „Percepcja 4 → 5", „po sesji". */
   label: string;
+  /** What the GM's „Cofnij" restores (24.10.2026); absent on awards. */
+  revert?: AdvancementRevert;
 }
 
 /** The box may not hold an absurd number, and never a negative one. */
@@ -131,6 +141,7 @@ export async function applyImprovementPoints(
         balance,
         label: change.label,
         actorId,
+        revert: change.revert ? JSON.stringify(change.revert) : null,
       },
     });
   }
@@ -153,9 +164,17 @@ async function lastMergeableAdjust(
   const row = await deps.ctx.prisma.advancementEntry.findFirst({
     where: { characterId },
     orderBy: { id: 'desc' },
-    select: { id: true, kind: true, amount: true, balance: true, actorId: true, createdAt: true },
+    select: {
+      id: true,
+      kind: true,
+      amount: true,
+      balance: true,
+      actorId: true,
+      createdAt: true,
+      undoneAt: true,
+    },
   });
-  if (!row || row.kind !== 'adjust' || row.actorId !== actorId) return null;
+  if (!row || row.kind !== 'adjust' || row.actorId !== actorId || row.undoneAt) return null;
   if (Date.now() - row.createdAt.getTime() > ADJUST_MERGE_MS) return null;
   return { id: row.id, amount: row.amount, balance: row.balance };
 }
@@ -180,27 +199,6 @@ async function requireSheet(
   return character;
 }
 
-/** The new sheet fields one bought step writes — level, or rank, never both. */
-function sheetPatchFor(
-  step: CpredAdvanceStep,
-  data: CpredCharacterData,
-): Partial<CpredCharacterData> {
-  if (step.kind === 'ability') {
-    // Stage 29b: a sheet may carry several Roles, and the rank of a former one
-    // lives on its own row. Which of the two boxes moves is decided here rather
-    // than by the request — the planner has already said which Role this is.
-    if (step.roleId !== null && step.roleId !== data.roleId) {
-      return {
-        formerRoles: data.formerRoles.map((entry) =>
-          entry.roleId === step.roleId ? { ...entry, rank: step.to } : entry,
-        ),
-      };
-    }
-    return { roleAbilityRank: step.to };
-  }
-  return { skills: { ...data.skills, [step.skillId as string]: step.to } };
-}
-
 export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, CharacterView>({
   name: 'character:advance',
   handler: async ({ deps, socket, user, payload }) => {
@@ -209,30 +207,50 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
     refuseAwaitingGm(character, user);
     await refuseInCombat(deps.ctx.prisma, campaign.id, user);
-    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    let data = parseCharacterData(character.data, deps.ctx.cpred);
+
+    // 24.10.2026: the panel sends the whole basket at „Zatwierdź zmiany"; a
+    // payload without `steps` is still the old single click.
+    const requests: CpredAdvanceRequest[] = Array.isArray(payload?.steps)
+      ? payload.steps
+      : [
+          {
+            kind: payload?.kind as CpredAdvanceRequest['kind'],
+            ...(payload?.skillId !== undefined ? { skillId: payload.skillId } : {}),
+            ...(payload?.roleId !== undefined ? { roleId: payload.roleId } : {}),
+            to: payload?.to as number,
+          },
+        ];
+    if (requests.length === 0) throw new RealtimeError('BAD_REQUEST');
 
     // The same function the panel greys its buttons with, so a lit button and a
-    // refused event can never disagree about what a level costs.
-    const result = planCpredAdvance(data, deps.ctx.cpred, {
-      kind: payload?.kind,
-      skillId: payload?.skillId,
-      roleId: payload?.roleId,
-      to: payload?.to as number,
-    });
+    // refused event can never disagree about what a level costs — and the whole
+    // basket is judged before anything is written, so it lands whole or not.
+    const result = planCpredAdvances(data, deps.ctx.cpred, requests);
     if (!result.ok) throw new RealtimeError(result.problem);
-    const { plan } = result;
 
-    // One save: the level and its price, or neither. A raised Skill with the
-    // points still in the box is the bug this stage exists to make impossible.
-    const updated = await applyImprovementPoints(
-      deps,
-      campaign.id,
-      character,
-      data,
-      { kind: 'spend', amount: -plan.cost, label: describeCpredAdvance(plan) },
-      user.id,
-      { sheet: sheetPatchFor(plan, data), emit: false },
-    );
+    // One save per step: the level and its price, or neither. A raised Skill
+    // with the points still in the box is the bug this stage exists to make
+    // impossible. A row per step, so the GM can take each back on its own.
+    let rankBought = false;
+    for (const plan of result.plans) {
+      data = await applyImprovementPoints(
+        deps,
+        campaign.id,
+        character,
+        data,
+        {
+          kind: 'spend',
+          amount: -plan.cost,
+          label: describeCpredAdvance(plan),
+          revert: advancementRevertOf(plan),
+        },
+        user.id,
+        { sheet: cpredAdvanceSheetPatch(plan, data), emit: false },
+      );
+      if (plan.kind === 'ability') rankBought = true;
+    }
+    const updated = data;
 
     const saved = await deps.ctx.prisma.character.findUniqueOrThrow({
       where: { id: character.id },
@@ -244,7 +262,7 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     // (`netrun.ts`): a rank bought mid-run has to reach the run window, or the
     // netrunner sees a budget one save out of date.
     if (
-      plan.kind === 'ability' &&
+      rankBought &&
       updated.cyberdeck !== null &&
       (await deps.ctx.prisma.netRun.count({ where: { characterId: character.id } })) > 0
     ) {
@@ -277,14 +295,20 @@ export const characterRoleChangeEvent = defineEvent<CharacterRoleChangePayload, 
     if (!result.ok) throw new RealtimeError(result.problem);
     const { plan } = result;
 
+    const sheet = cpredRoleChangeSheet(data, plan);
     const updated = await applyImprovementPoints(
       deps,
       campaign.id,
       character,
       data,
-      { kind: 'role', amount: -plan.cost, label: describeCpredRoleChange(plan) },
+      {
+        kind: 'role',
+        amount: -plan.cost,
+        label: describeCpredRoleChange(plan),
+        revert: { type: 'role', before: cpredRoleState(data), after: cpredRoleState(sheet) },
+      },
       user.id,
-      { sheet: cpredRoleChangeSheet(data, plan), emit: false },
+      { sheet, emit: false },
     );
 
     const saved = await deps.ctx.prisma.character.findUniqueOrThrow({
@@ -487,17 +511,97 @@ export const characterXpHistoryEvent = defineEvent<
       orderBy: { id: 'desc' },
       take: ADVANCEMENT_PAGE_SIZE,
     });
+    // The GM sees, row by row, whether „Cofnij" would go through — judged by
+    // the same function the undo itself goes through.
+    const data = user.role === ROLE_GM ? parseCharacterData(character.data, deps.ctx.cpred) : null;
     return {
-      entries: rows.map((row) => ({
-        id: row.id,
-        // A row written by a future stage under a kind this build does not know
-        // still belongs in the list; it just reads as a correction.
-        kind: isAdvancementKind(row.kind) ? row.kind : 'adjust',
-        amount: row.amount,
-        balance: row.balance,
-        label: row.label,
-        createdAt: row.createdAt.toISOString(),
-      })),
+      entries: rows.map((row) => {
+        const undo = data
+          ? planAdvancementUndo(data, {
+              kind: row.kind,
+              amount: row.amount,
+              revert: readAdvancementRevert(row.revert),
+              undone: row.undoneAt !== null,
+            })
+          : null;
+        return {
+          id: row.id,
+          // A row written by a future stage under a kind this build does not know
+          // still belongs in the list; it just reads as a correction.
+          kind: isAdvancementKind(row.kind) ? row.kind : 'adjust',
+          amount: row.amount,
+          balance: row.balance,
+          label: row.label,
+          createdAt: row.createdAt.toISOString(),
+          undone: row.undoneAt !== null,
+          ...(undo ? { undo: undo.ok ? ('ok' as const) : undo.problem } : {}),
+        };
+      }),
     };
+  },
+});
+
+/**
+ * GM only: `character:xp-undo` — takes one ledger row back (zlecenie MG
+ * z 24.10.2026). A bought level drops back and its price returns to the pool;
+ * an award or a correction moves the points the other way.
+ *
+ * The row stays, marked undone, and a new `undo` row says what happened — the
+ * ledger is an audit, and „skąd te PD" must survive the GM changing their mind.
+ */
+export const characterXpUndoEvent = defineEvent<CharacterXpUndoPayload, CharacterView>({
+  name: 'character:xp-undo',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
+    const entry = await deps.ctx.prisma.advancementEntry.findUnique({
+      where: { id: typeof payload?.entryId === 'number' ? payload.entryId : -1 },
+    });
+    if (!entry || entry.characterId !== character.id) {
+      throw new RealtimeError('ENTRY_NOT_FOUND');
+    }
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const result = planAdvancementUndo(data, {
+      kind: entry.kind,
+      amount: entry.amount,
+      revert: readAdvancementRevert(entry.revert),
+      undone: entry.undoneAt !== null,
+    });
+    if (!result.ok) throw new RealtimeError(result.problem);
+
+    // Marked first and conditionally, so two clicks racing each other cannot
+    // both refund the same row.
+    const marked = await deps.ctx.prisma.advancementEntry.updateMany({
+      where: { id: entry.id, undoneAt: null },
+      data: { undoneAt: new Date() },
+    });
+    if (marked.count === 0) throw new RealtimeError('UNDO_DONE');
+
+    const updated = await applyImprovementPoints(
+      deps,
+      campaign.id,
+      character,
+      data,
+      { kind: 'undo', amount: result.plan.amount, label: describeAdvancementUndo(entry.label) },
+      user.id,
+      { sheet: result.plan.sheet, emit: false },
+    );
+
+    const saved = await deps.ctx.prisma.character.findUniqueOrThrow({
+      where: { id: character.id },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaign.id, view);
+    await emitTokensOfCharacter(deps, campaign.id, saved);
+    if (
+      (entry.kind === 'spend' || entry.kind === 'role') &&
+      updated.cyberdeck !== null &&
+      (await deps.ctx.prisma.netRun.count({ where: { characterId: character.id } })) > 0
+    ) {
+      await emitRuns(deps, campaign.id);
+    }
+    return view;
   },
 });

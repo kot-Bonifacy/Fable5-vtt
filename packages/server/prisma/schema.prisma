@@ -1578,6 +1578,11 @@ model AdvancementEntry {
   /// When the owner was told about this award (20.10.2026); null = not yet.
   /// Read only on `award` rows with a positive amount — every other row stays null.
   seenAt    DateTime?
+  /// JSON `AdvancementRevert` — what the row changed on the sheet, so the GM
+  /// can take it back (24.10.2026); null on older rows and on awards.
+  revert    String?
+  /// When the GM took this row back; null = it stands.
+  undoneAt  DateTime?
 
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 

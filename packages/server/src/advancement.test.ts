@@ -766,3 +766,163 @@ describe('blokada rozwoju w walce (21.10)', () => {
     expect((view.data as CpredCharacterData).skills.perception).toBe(4);
   });
 });
+
+describe('koszyk awansów i cofanie wpisu przez MG (24.10)', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let heroId: string;
+
+  async function sheetOf(socket: ClientSocket, characterId: string): Promise<CpredCharacterData> {
+    const sync = new Promise<StateSyncPayload>((resolveSync, reject) => {
+      const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
+      socket.once('state:sync', (payload: StateSyncPayload) => {
+        clearTimeout(timer);
+        resolveSync(payload);
+      });
+    });
+    socket.emit('state:request');
+    const found = (await sync).characters.find((entry) => entry.id === characterId);
+    if (!found) throw new Error('character missing from sync');
+    return found.data as CpredCharacterData;
+  }
+
+  async function historyOf(socket: ClientSocket): Promise<CharacterXpHistoryResult['entries']> {
+    return data(
+      await emitAck<CharacterXpHistoryResult>(socket, 'character:xp-history', {
+        characterId: heroId,
+      }),
+      'character:xp-history',
+    ).entries;
+  }
+
+  it('stawia stół: Solo z Percepcją 4 i 300 PD', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    heroId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Szron', ownerId: playerId }),
+      'character:create',
+    ).id;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: heroId,
+          patch: { data: { roleId: 'solo', roleAbilityRank: 3, skills: { perception: 4 } } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await emitAck(gm, 'character:xp-award', { characterId: heroId, amount: 300 })).ok).toBe(
+      true,
+    );
+  });
+
+  it('koszyk za drogi nie wydaje ani punktu', async () => {
+    // 100 + 120 + 240 = 460 > 300: trzeci krok pada, dwa pierwsze też nie lądują.
+    const ack = await emitAck(player, 'character:advance', {
+      characterId: heroId,
+      steps: [
+        { kind: 'skill', skillId: 'perception', to: 5 },
+        { kind: 'skill', skillId: 'perception', to: 6 },
+        { kind: 'ability', to: 4 },
+      ],
+    });
+    expect(ack).toEqual({ ok: false, error: 'NO_POINTS' });
+    const sheet = await sheetOf(player, heroId);
+    expect(sheet.skills.perception).toBe(4);
+    expect(sheet.improvementPoints).toBe(300);
+  });
+
+  it('koszyk ląduje cały, wiersz rejestru na każdy szczebel', async () => {
+    const view = data(
+      await emitAck<CharacterView>(player, 'character:advance', {
+        characterId: heroId,
+        steps: [
+          { kind: 'skill', skillId: 'perception', to: 5 },
+          { kind: 'skill', skillId: 'perception', to: 6 },
+          { kind: 'skill', skillId: 'athletics', to: 1 },
+        ],
+      }),
+      'character:advance',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.skills.perception).toBe(6);
+    expect(sheet.skills.athletics).toBe(1);
+    expect(sheet.improvementPoints).toBe(300 - 100 - 120 - 20);
+    const top = (await historyOf(player)).slice(0, 3);
+    expect(top.map((entry) => entry.label)).toEqual([
+      'Atletyka 0 → 1',
+      'Percepcja 5 → 6',
+      'Percepcja 4 → 5',
+    ]);
+    // Gracz nie dostaje stanu „Cofnij” — to sprawa MG.
+    expect(top.every((entry) => entry.undo === undefined && !entry.undone)).toBe(true);
+  });
+
+  it('MG cofa awans dopiero od najpóźniejszego szczebla', async () => {
+    const entries = await historyOf(gm);
+    const first = entries.find((entry) => entry.label === 'Percepcja 4 → 5')!;
+    const second = entries.find((entry) => entry.label === 'Percepcja 5 → 6')!;
+    expect(first.undo).toBe('UNDO_STALE');
+    expect(second.undo).toBe('ok');
+    expect(
+      await emitAck(gm, 'character:xp-undo', { characterId: heroId, entryId: first.id }),
+    ).toEqual({ ok: false, error: 'UNDO_STALE' });
+
+    const view = data(
+      await emitAck<CharacterView>(gm, 'character:xp-undo', {
+        characterId: heroId,
+        entryId: second.id,
+      }),
+      'character:xp-undo',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.skills.perception).toBe(5);
+    expect(sheet.improvementPoints).toBe(60 + 120);
+
+    const after = await historyOf(gm);
+    expect(after[0]).toMatchObject({
+      kind: 'undo',
+      label: 'Cofnięte: Percepcja 5 → 6',
+      amount: 120,
+      balance: 180,
+    });
+    expect(after.find((entry) => entry.id === second.id)).toMatchObject({
+      undone: true,
+      undo: 'UNDO_DONE',
+    });
+    expect(after.find((entry) => entry.id === first.id)?.undo).toBe('ok');
+    expect(
+      await emitAck(gm, 'character:xp-undo', { characterId: heroId, entryId: second.id }),
+    ).toEqual({ ok: false, error: 'UNDO_DONE' });
+  });
+
+  it('przyznanie cofa się tylko, póki PD leżą w puli', async () => {
+    const award = (await historyOf(gm)).find((entry) => entry.kind === 'award')!;
+    // 300 przyznane, w puli 180: najpierw trzeba cofnąć zakupy.
+    expect(award.undo).toBe('UNDO_SPENT');
+    for (const label of ['Atletyka 0 → 1', 'Percepcja 4 → 5']) {
+      const entry = (await historyOf(gm)).find((row) => row.label === label)!;
+      expect(
+        (await emitAck(gm, 'character:xp-undo', { characterId: heroId, entryId: entry.id })).ok,
+      ).toBe(true);
+    }
+    expect(
+      (await emitAck(gm, 'character:xp-undo', { characterId: heroId, entryId: award.id })).ok,
+    ).toBe(true);
+    const sheet = await sheetOf(gm, heroId);
+    expect(sheet.improvementPoints).toBe(0);
+    expect(sheet.skills.perception).toBe(4);
+    expect(sheet.skills.athletics ?? 0).toBe(0);
+  });
+
+  it('gracz nie cofa wpisów', async () => {
+    const entry = (await historyOf(player))[0]!;
+    const ack = await emitAck(player, 'character:xp-undo', {
+      characterId: heroId,
+      entryId: entry.id,
+    });
+    expect(ack.ok).toBe(false);
+  });
+});

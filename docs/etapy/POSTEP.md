@@ -417,7 +417,7 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         | 10   | 12      |
-| `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia | 53   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, ekonomia | 54   | 3       |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, handel, sklepy, zasięg, amunicja bez dna | 34   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
@@ -432,6 +432,33 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 24.10 (po `4842f2b`) — zlecenie MG: koszyk awansów i cofanie wpisów rejestru
+
+**„Podnieś” nie wydaje od razu.** Panel Awansu (`AdvancementPanel.tsx`) zbiera kliknięcia w koszyk
+(stan lokalny, kasowany zmianą karty), ceny i poziomy liczy od karty „po zmianach”
+(`planCpredAdvances` w `shared`), wiersz z czymś w koszyku ma „+N” i guzik „−” (zdejmuje ostatni
+szczebel tej rzeczy), nagłówek mówi „X z Y PD po zmianach”, a pasek pod Umiejętnościami —
+co wejdzie i za ile, z „Zatwierdź zmiany” / „Odrzuć”. Zatwierdzenie to jedno
+`character:advance { steps }` — całe albo wcale, wiersz rejestru na każdy szczebel. Pojedynczy
+krok (stare pola) serwer dalej przyjmuje. Zmiana Roli jest zgaszona, póki koszyk nie jest pusty.
+Koszyk ginie przy zamknięciu karty (bez ostrzeżenia).
+
+**MG cofa wpisy rejestru.** Nowe `character:xp-undo` (tylko MG) i kolumny `AdvancementEntry.revert`
+(JSON `AdvancementRevert`) i `undoneAt` (migracja `20261024120000_advancement_undo`). Reguła:
+`planAdvancementUndo` — awans wraca tylko, gdy karta stoi tam, gdzie wpis ją zostawił
+(`UNDO_STALE`: najpierw późniejszy szczebel), przyznanie tylko, gdy PD leżą w puli
+(`UNDO_SPENT`), zmiana Roli wraca trójką pól. Wiersz zostaje przekreślony, dochodzi wiersz
+rodzaju `undo` „Cofnięte: …”. Stare awanse sprzed dziś nie pamiętają zmiany (`UNDO_UNKNOWN`) —
+te MG poprawia ręką. Rejestr u MG ma kolumnę „↶” z powodem odmowy w podpowiedzi. Umowa na górze
+`postac`.
+
+**Sprawdzone:** `tsc` (shared, server, client), vitest shared 2610/2610, klienta 421/421, serwera
+1622/1623 (`netdemons` padł na timeoucie pod obciążeniem, osobno 14/14). Nowe testy:
+`advancement.test.ts` w `shared` (koszyk, cofanie) i w serwerze („koszyk awansów i cofanie wpisu
+przez MG”). Krok 6.2 w T6a przepisany na koszyk — **E2E nie uruchamiano**. **Oglądano
+w Firefoksie (Playwright)** na dev, na tymczasowej postaci (usunięta): koszyk Percepcja +2
+i Atletyka +1, pasek, zatwierdzenie, rejestr z „↶” i cofnięcie Percepcji 5 → 6.
+
 ### Sesja 23.10, szósta (po `7dfd0d9`) — zlecenie MG: „Przyjrzyj się” bez tłumaczenia
 
 **Prośba o oględziny leci jednym kliknięciem.** „🔍 Poproś MG o dokładne oględziny” w oknie
@@ -445,23 +472,3 @@ Serwer bez zmian.
 instancji E2E (skasowana): Ola w **Firefoksie** (klik → bez okna, karta „oględziny: Kowal”,
 po zgodzie wezwanie PT 13 z „Rzuć”), MG w Chromium (karta z samą drabinką).
 
-### Sesja 23.10, piąta (po `e59e425`) — zlecenie MG: PT strefy od MG, jedno pytanie o Szczęście
-
-**PT strefy bronionej wybiera MG.** Nowa kolumna `DefenseZone.spotDv` (migracja
-`20261023230000_zone_spot_dv`) obok `disarmDv` z 58b; obie `null` = PT z wpisu. Pasek narzędzia
-„Strefy bronione” ma dwa pola: „PT 👁” (Percepcja, by zauważyć) i „PT 🛠” (rozbrojenie), puste
-pokazują PT wpisu jako podpowiedź, zmiana systemu je czyści. Karta strefy (dwuklik) dostała pole
-„PT Percepcji” obok „PT rozbrojenia”. Serwer: `zoneDvOf` waliduje oba w `zone:create`
-i `zone:update`, Percepcja w drodze i `zonesNoticeDue` biorą `row.spotDv ?? wpis`. Gracz PT nie
-dostaje. Umowa na górze `siec`. Test: `zones.test.ts` › „takes the GM’s own Perception and disarm
-DV…”.
-
-**Szczęście pada raz.** Test załadowany z okna rzutu (`RollDialog`, także wezwanie MG: Percepcja,
-rozbrajanie, zamek) niesie `PendingRoll.luckDeclared`; kubek wtedy nie pokazuje licznika
-„Szczęście” (`luckDeclaredIn` w `DiceCup.tsx`) i rzuca tym, co gracz wybrał w oknie (`cupLuck`
-z `loadCup`). Licznik na kubku zostaje przy rzutach bez okna: atak, Unik, chwyt, szybkie Testy.
-
-**Sprawdzone:** `tsc` (shared, server, client), vitest serwera 1612/1612 i klienta 421/421.
-**Oglądano w Firefoksie (Playwright):** pasek strefy z oboma polami, postawienie Podłogi
-elektrycznej z PT 👁 13 (wpis 17) i karta z „PT Percepcji 13”; strefa usunięta. Kubka gracza po
-wezwaniu nie oglądano w przeglądarce (zmiana to jeden warunek nad licznikiem).

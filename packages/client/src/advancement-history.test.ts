@@ -61,10 +61,15 @@ describe('rejestr awansów nadąża za PD dopisanymi spoza karty (oględziny 09.
     expect(panel).toMatch(/onToggle=\{\(e\) => setOpen\(/);
   });
 
-  it('nie zostawia drugiej drogi do rejestru w samym zakupie', () => {
+  it('nie zostawia drugiej drogi do rejestru w zatwierdzeniu ani w cofnięciu', () => {
     // Jedna droga dla wiersza własnego i dla tego, który dopisał MG —
     // inaczej wraca stan, w którym jeden przypadek działa, a drugi nie.
-    const buy = panel.match(/async function buy\([\s\S]*?\n {2}\}/)?.[0] ?? '';
-    expect(buy).not.toMatch(/loadHistory|fetchAdvancementHistory/);
+    // Od 24.10 zakup to `commit` koszyka, a MG ma jeszcze `undo` wpisu.
+    const commit = panel.match(/async function commit\([\s\S]*?\n {2}\}/)?.[0];
+    const undo = panel.match(/async function undo\([\s\S]*?\n {2}\}/)?.[0];
+    for (const body of [commit, undo]) {
+      expect(body).toBeDefined();
+      expect(body).not.toMatch(/loadHistory|fetchAdvancementHistory/);
+    }
   });
 });

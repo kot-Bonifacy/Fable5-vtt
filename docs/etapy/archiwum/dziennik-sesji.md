@@ -1,5 +1,26 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.10, piąta (po `e59e425`) — zlecenie MG: PT strefy od MG, jedno pytanie o Szczęście
+
+**PT strefy bronionej wybiera MG.** Nowa kolumna `DefenseZone.spotDv` (migracja
+`20261023230000_zone_spot_dv`) obok `disarmDv` z 58b; obie `null` = PT z wpisu. Pasek narzędzia
+„Strefy bronione” ma dwa pola: „PT 👁” (Percepcja, by zauważyć) i „PT 🛠” (rozbrojenie), puste
+pokazują PT wpisu jako podpowiedź, zmiana systemu je czyści. Karta strefy (dwuklik) dostała pole
+„PT Percepcji” obok „PT rozbrojenia”. Serwer: `zoneDvOf` waliduje oba w `zone:create`
+i `zone:update`, Percepcja w drodze i `zonesNoticeDue` biorą `row.spotDv ?? wpis`. Gracz PT nie
+dostaje. Umowa na górze `siec`. Test: `zones.test.ts` › „takes the GM’s own Perception and disarm
+DV…”.
+
+**Szczęście pada raz.** Test załadowany z okna rzutu (`RollDialog`, także wezwanie MG: Percepcja,
+rozbrajanie, zamek) niesie `PendingRoll.luckDeclared`; kubek wtedy nie pokazuje licznika
+„Szczęście” (`luckDeclaredIn` w `DiceCup.tsx`) i rzuca tym, co gracz wybrał w oknie (`cupLuck`
+z `loadCup`). Licznik na kubku zostaje przy rzutach bez okna: atak, Unik, chwyt, szybkie Testy.
+
+**Sprawdzone:** `tsc` (shared, server, client), vitest serwera 1612/1612 i klienta 421/421.
+**Oglądano w Firefoksie (Playwright):** pasek strefy z oboma polami, postawienie Podłogi
+elektrycznej z PT 👁 13 (wpis 17) i karta z „PT Percepcji 13”; strefa usunięta. Kubka gracza po
+wezwaniu nie oglądano w przeglądarce (zmiana to jeden warunek nad licznikiem).
+
 ### Sesja 23.10, czwarta (po `71f5da1`) — zlecenie MG: kule, śrut i strzały się nie kończą
 
 **Zakres:** zasada domowa zamiast liczenia amunicji (decyzje MG z pytań na starcie: magazynek

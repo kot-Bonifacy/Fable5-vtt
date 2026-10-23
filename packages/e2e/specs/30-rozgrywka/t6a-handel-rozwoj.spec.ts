@@ -510,13 +510,17 @@ test.describe.serial('T6a: po walkach — handel, sklep, Paser, PD, Medyk, cybor
     await marek.page.getByRole('button', { name: 'Ścieżka Życia', exact: true }).click();
     const panel = region.locator('.advance');
     await expect(panel).toContainText('500 PD w zapasie');
+    // Od 24.10 „Podnieś” zbiera w koszyk, a PD schodzą dopiero przy „Zatwierdź zmiany”.
     await panel.getByRole('button', { name: 'Podnieś: Zmysł Walki na poziom 5' }).click();
-    await expect.poll(() => card('Kowal').roleAbilityRank).toBe(5);
     await panel
       .getByRole('button', { name: `Podnieś: Broń krótka na poziom ${handgun + 1}` })
       .click();
-    await expect.poll(() => card('Kowal').skills.handgun).toBe(handgun + 1);
     const left = 500 - 300 - (handgun + 1) * 20;
+    await expect(panel).toContainText(`${left} z 500 PD po zmianach`);
+    expect(card('Kowal').improvementPoints).toBe(500);
+    await panel.getByRole('button', { name: 'Zatwierdź zmiany' }).click();
+    await expect.poll(() => card('Kowal').roleAbilityRank).toBe(5);
+    await expect.poll(() => card('Kowal').skills.handgun).toBe(handgun + 1);
     expect(card('Kowal').improvementPoints).toBe(left);
     await expect(panel).toContainText(`${left} PD w zapasie`);
 

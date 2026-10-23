@@ -269,6 +269,69 @@ export function planCpredAdvance(
   return { ok: true, plan: { ...step, left } };
 }
 
+/**
+ * The sheet fields one bought step writes — the level, or the rank, never both.
+ *
+ * Stage 29b: a sheet may carry several Roles, and the rank of a former one
+ * lives on its own row. Which of the two boxes moves is decided here rather
+ * than by the request — the planner has already said which Role this is.
+ */
+export function cpredAdvanceSheetPatch(
+  step: CpredAdvanceStep,
+  data: Pick<CpredCharacterData, 'skills' | 'roleId' | 'formerRoles'>,
+): Partial<CpredCharacterData> {
+  if (step.kind === 'ability') {
+    if (step.roleId !== null && step.roleId !== data.roleId) {
+      return {
+        formerRoles: data.formerRoles.map((entry) =>
+          entry.roleId === step.roleId ? { ...entry, rank: step.to } : entry,
+        ),
+      };
+    }
+    return { roleAbilityRank: step.to };
+  }
+  return { skills: { ...data.skills, [step.skillId as string]: step.to } };
+}
+
+/** Most steps one „Zatwierdź zmiany" may carry — a guard, not a rule. */
+export const CPRED_ADVANCE_BATCH_MAX = 100;
+
+export type CpredAdvanceBatchResult<T extends CpredAdvanceSheet> =
+  | { ok: true; plans: CpredAdvancePlan[]; sheet: T }
+  | { ok: false; problem: CpredAdvanceProblem; index: number };
+
+/**
+ * Judges a whole basket of purchases against one sheet, each step priced on the
+ * sheet the previous ones left (zlecenie MG z 24.10.2026: gracz klika
+ * „Podnieś" do woli, a PD odchodzą dopiero przy „Zatwierdź zmiany").
+ *
+ * The panel previews the basket with this and the server applies it with this,
+ * so Percepcja 4 → 5 → 6 is two steps both sides agree on, and a basket one
+ * point too dear is refused whole — never half-bought.
+ */
+export function planCpredAdvances<T extends CpredAdvanceSheet>(
+  data: T,
+  registry: CpredRegistry,
+  requests: readonly CpredAdvanceRequest[],
+): CpredAdvanceBatchResult<T> {
+  if (!Array.isArray(requests) || requests.length > CPRED_ADVANCE_BATCH_MAX) {
+    return { ok: false, problem: 'BAD_REQUEST', index: 0 };
+  }
+  let sheet = data;
+  const plans: CpredAdvancePlan[] = [];
+  for (const [index, request] of requests.entries()) {
+    const result = planCpredAdvance(sheet, registry, request);
+    if (!result.ok) return { ok: false, problem: result.problem, index };
+    plans.push(result.plan);
+    sheet = {
+      ...sheet,
+      ...cpredAdvanceSheetPatch(result.plan, sheet),
+      improvementPoints: result.plan.left,
+    };
+  }
+  return { ok: true, plans, sheet };
+}
+
 // ─────────────────────────── Zmiana Roli (s. 143) ───────────────────────────
 
 export type CpredRoleChangeProblem =
@@ -394,7 +457,7 @@ export function describeCpredRoleChange(plan: CpredRoleChangePlan): string {
  * and experience are audits of two different things, and one shared enum would
  * make „Zakup" a legal reason for a point of Percepcja.
  */
-export const ADVANCEMENT_KINDS = ['award', 'spend', 'adjust', 'role'] as const;
+export const ADVANCEMENT_KINDS = ['award', 'spend', 'adjust', 'role', 'undo'] as const;
 export type AdvancementKind = (typeof ADVANCEMENT_KINDS)[number];
 
 export const ADVANCEMENT_KIND_LABELS: Record<AdvancementKind, string> = {
@@ -405,6 +468,9 @@ export const ADVANCEMENT_KIND_LABELS: Record<AdvancementKind, string> = {
   // to a Role already held moves no points at all — and „Awans: 0 PD" is a row
   // that reads like a bug.
   role: 'Zmiana Roli',
+  // 24.10.2026: the GM took a row back. Its own row rather than a deleted one,
+  // because the ledger is an audit — „skąd te PD" must still be answerable.
+  undo: 'Cofnięte przez MG',
 };
 
 export function isAdvancementKind(value: unknown): value is AdvancementKind {
@@ -422,6 +488,158 @@ export interface AdvancementEntryView {
   /** Polish one-liner: „Percepcja 4 → 5", „Sesja 30.08". */
   label: string;
   createdAt: string;
+  /** The GM took this row back (24.10.2026). */
+  undone: boolean;
+  /**
+   * GM only: whether „Cofnij" would go through right now, or why not — absent
+   * for the player, who undoes nothing.
+   */
+  undo?: 'ok' | AdvancementUndoProblem;
+}
+
+// ─────────────────────────── Cofanie wpisu (24.10.2026) ───────────────────────────
+
+/** The three role fields a change of Role writes together. */
+export type CpredRoleState = Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'formerRoles'>;
+
+/**
+ * What a ledger row remembers about the sheet, so the GM can take it back
+ * (zlecenie MG z 24.10.2026). Rows written before this have none, and a bought
+ * level among them cannot be undone — only corrected by hand.
+ */
+export type AdvancementRevert =
+  | {
+      type: 'advance';
+      kind: CpredAdvanceKind;
+      skillId: string | null;
+      roleId: string | null;
+      from: number;
+      to: number;
+    }
+  | { type: 'role'; before: CpredRoleState; after: CpredRoleState };
+
+export function cpredRoleState(data: CpredRoleState): CpredRoleState {
+  return {
+    roleId: data.roleId,
+    roleAbilityRank: data.roleAbilityRank,
+    formerRoles: data.formerRoles.map((entry) => ({ ...entry })),
+  };
+}
+
+/** What a bought step leaves for its undo. */
+export function advancementRevertOf(step: CpredAdvanceStep): AdvancementRevert {
+  return {
+    type: 'advance',
+    kind: step.kind,
+    skillId: step.skillId,
+    roleId: step.roleId,
+    from: step.from,
+    to: step.to,
+  };
+}
+
+/** Reads the stored column leniently — anything malformed is „nie pamięta". */
+export function readAdvancementRevert(raw: string | null): AdvancementRevert | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<AdvancementRevert> | null;
+    if (value?.type === 'advance' || value?.type === 'role') return value as AdvancementRevert;
+  } catch {
+    // Malformed — read as a row that remembers nothing.
+  }
+  return null;
+}
+
+export type AdvancementUndoProblem =
+  'UNDO_DONE' | 'UNDO_KIND' | 'UNDO_UNKNOWN' | 'UNDO_STALE' | 'UNDO_SPENT';
+
+export const ADVANCEMENT_UNDO_PROBLEMS: Record<AdvancementUndoProblem, string> = {
+  UNDO_DONE: 'Ten wpis już cofnięto.',
+  UNDO_KIND: 'Cofnięcia się nie cofa — przyznaj PD albo popraw kartę ręką.',
+  UNDO_UNKNOWN: 'Ten wpis powstał, zanim rejestr zaczął pamiętać, co zmienił — popraw kartę ręką.',
+  UNDO_STALE: 'Od tego wpisu poziom się zmienił — najpierw cofnij późniejszy awans.',
+  UNDO_SPENT: 'Postać wydała już te PD — najpierw cofnij jej późniejsze awanse.',
+};
+
+/** One ledger row as undoing it needs to see it. */
+export interface AdvancementUndoEntry {
+  kind: string;
+  amount: number;
+  revert: AdvancementRevert | null;
+  undone: boolean;
+}
+
+/** What taking one row back writes: points the other way, and the old sheet. */
+export interface AdvancementUndoPlan {
+  /** Signed, the opposite of the row's. */
+  amount: number;
+  sheet: Partial<CpredCharacterData>;
+}
+
+export type AdvancementUndoResult =
+  { ok: true; plan: AdvancementUndoPlan } | { ok: false; problem: AdvancementUndoProblem };
+
+function sameRoleState(a: CpredRoleState, b: CpredRoleState): boolean {
+  return JSON.stringify(cpredRoleState(a)) === JSON.stringify(cpredRoleState(b));
+}
+
+/**
+ * Judges taking one ledger row back (zlecenie MG z 24.10.2026).
+ *
+ * A bought level goes back only while the sheet still stands where the row
+ * left it: Percepcja 4 → 5 under a later 5 → 6 would otherwise drop the
+ * character to 4 and keep the price of the sixth. Points handed out go back
+ * only while they are still in the pool — the GM undoes the purchases first.
+ */
+export function planAdvancementUndo(
+  data: CpredRoleState & Pick<CpredCharacterData, 'skills' | 'improvementPoints'>,
+  entry: AdvancementUndoEntry,
+): AdvancementUndoResult {
+  if (entry.undone) return { ok: false, problem: 'UNDO_DONE' };
+  if (!isAdvancementKind(entry.kind) || entry.kind === 'undo') {
+    return { ok: false, problem: 'UNDO_KIND' };
+  }
+  const amount = -entry.amount;
+  if (Math.round(data.improvementPoints) + amount < 0) return { ok: false, problem: 'UNDO_SPENT' };
+  if (entry.kind === 'award' || entry.kind === 'adjust') {
+    return { ok: true, plan: { amount, sheet: {} } };
+  }
+
+  const revert = entry.revert;
+  if (entry.kind === 'role') {
+    if (revert?.type !== 'role') return { ok: false, problem: 'UNDO_UNKNOWN' };
+    if (!sameRoleState(data, revert.after)) return { ok: false, problem: 'UNDO_STALE' };
+    return { ok: true, plan: { amount, sheet: cpredRoleState(revert.before) } };
+  }
+
+  if (revert?.type !== 'advance') return { ok: false, problem: 'UNDO_UNKNOWN' };
+  if (revert.kind === 'skill') {
+    const id = revert.skillId ?? '';
+    if (Math.round(data.skills[id] ?? 0) !== revert.to) return { ok: false, problem: 'UNDO_STALE' };
+    return { ok: true, plan: { amount, sheet: { skills: { ...data.skills, [id]: revert.from } } } };
+  }
+  if (revert.roleId === null || revert.roleId === data.roleId) {
+    if (data.roleAbilityRank !== revert.to) return { ok: false, problem: 'UNDO_STALE' };
+    return { ok: true, plan: { amount, sheet: { roleAbilityRank: revert.from } } };
+  }
+  const former = data.formerRoles.find((row) => row.roleId === revert.roleId);
+  if (!former || former.rank !== revert.to) return { ok: false, problem: 'UNDO_STALE' };
+  return {
+    ok: true,
+    plan: {
+      amount,
+      sheet: {
+        formerRoles: data.formerRoles.map((row) =>
+          row.roleId === revert.roleId ? { ...row, rank: revert.from } : row,
+        ),
+      },
+    },
+  };
+}
+
+/** „Cofnięte: Percepcja 4 → 5" — the label of the row an undo writes. */
+export function describeAdvancementUndo(label: string): string {
+  return `Cofnięte: ${label}`.slice(0, ADVANCEMENT_LABEL_MAX);
 }
 
 /** „−80 PD" / „+50 PD" — the amount column of the audit list. */
@@ -492,8 +710,19 @@ export const ADVANCEMENT_AWARD_LABEL = 'po sesji';
  * Percepcji" is a rule of one game system, and the VTT core has to stay able to
  * host another one.
  */
-export interface CharacterAdvancePayload extends CpredAdvanceRequest {
+export interface CharacterAdvancePayload extends Partial<CpredAdvanceRequest> {
   characterId: string;
+  /**
+   * A basket of purchases (zlecenie MG z 24.10.2026), applied in order and all
+   * or nothing. When present, the single-step fields are unread.
+   */
+  steps?: CpredAdvanceRequest[];
+}
+
+/** GM only: `character:xp-undo` — takes one ledger row back (24.10.2026). */
+export interface CharacterXpUndoPayload {
+  characterId: string;
+  entryId: number;
 }
 
 /**
