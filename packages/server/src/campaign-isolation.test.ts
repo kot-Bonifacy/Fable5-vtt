@@ -871,6 +871,7 @@ const CASES: Record<string, Case> = {
   'zone:delete': foreign((a) => ({ zoneId: a.zoneId })),
   'zone:clear': foreign((a) => ({ sceneId: a.sceneId })),
   'zone:fire': foreign((a) => ({ zoneId: a.zoneId, tokenId: a.tokenId })),
+  'zone:disarm': foreign((a) => ({ zoneId: a.zoneId, characterId: a.characterId })),
 };
 
 /**
@@ -999,6 +1000,11 @@ const MIXED: MixedCase[] = [
     payload: (a, b) => ({ characterId: b.npcId, issueKeyTo: a.characterId }),
     // Karta B nie jest pojemnikiem — odmowa pada, zanim dojdzie do obcego id.
     expect: /NOT_FOUND$|^NOT_A_CONTAINER$/,
+  },
+  // Etap 58b: własna karta, cudza strefa.
+  {
+    event: 'zone:disarm',
+    payload: (a, b) => ({ characterId: b.characterId, zoneId: a.zoneId }),
   },
   {
     event: 'economy:transfer',

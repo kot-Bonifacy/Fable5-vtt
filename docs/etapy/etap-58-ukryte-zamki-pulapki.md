@@ -132,29 +132,68 @@ dostaje rzut serwera w ukryciu, bo nie ma czym rzucić.
 przepisany: marsz staje na (19, 11), Marek rzuca z karty wezwania (PT 17, „Niezdane”), wiersz
 MG to `gmaction`, dopiero drugi marsz wchodzi na podłogę.
 
+**Uwaga MG z 23.10: wezwanie nie może zdradzać, że obok coś jest.** Karta wezwania miała prompt
+„X przystaje — coś przykuło uwagę.” i „wzywa: Otoczenie”, a pasek mówił to samo. Teraz karta
+wygląda jak każde wezwanie MG: bez promptu, wzywa MG, Percepcja i PT. Pasek przy zatrzymaniu
+mówi „X: Test Percepcji — rzuć kubkiem.”, a odmowa ruchu „Najpierw rzuć na Percepcję —
+wezwanie czeka w kubku.”. PT zostaje na karcie, jak w każdym wezwaniu (decyzja 5).
+
 ## 58b — Rozbrajanie pułapki przez gracza
 
 ### Zakres
 
-- [ ] „Rozbrój” w menu figury albo w dymku zauważonej strefy — tylko gdy strefa jest w payloadzie
+- [x] „Rozbrój” w menu figury albo w dymku zauważonej strefy — tylko gdy strefa jest w payloadzie
       gracza (zauważona albo odsłonięta) i figura stoi w zasięgu ręki od jej krawędzi
-- [ ] Test Elektroniki i zabezpieczeń z PT `disableDv` wpisu (MG może nadpisać na strefie).
+- [x] Test Elektroniki i zabezpieczeń z PT `disableDv` wpisu (MG może nadpisać na strefie).
       Kubek z wezwania (32), jak przy zamku pojemnika
-- [ ] Sukces: `armed = false`. Porażka < 5: postać na liście prób strefy. Porażka ≥ 5: system
+- [x] Sukces: `armed = false`. Porażka < 5: postać na liście prób strefy. Porażka ≥ 5: system
       odpala się na rozbrajającego (`fireZone` z przyczyną „nieudane rozbrajanie”)
-- [ ] Poza walką zegar świata przesuwa się o `disableMinutes`. W walce odmowa z komunikatem
-- [ ] Karta strefy u MG: lista prób i „Pozwól spróbować znowu”
-- [ ] Gracz dalej nie dostaje `armed` ani PW strefy (etap 51) — po rozbrojeniu wie tylko to,
+- [x] Poza walką zegar świata przesuwa się o `disableMinutes`. W walce odmowa z komunikatem
+- [x] Karta strefy u MG: lista prób i „Pozwól spróbować znowu”
+- [x] Gracz dalej nie dostaje `armed` ani PW strefy (etap 51) — po rozbrojeniu wie tylko to,
       co powiedział mu wynik Testu
 
 ### Kryteria ukończenia
 
-- [ ] Udany Test rozbraja, a wejście potem nie rani (test serwera)
-- [ ] Porażka o 5+ odpala system na rozbrajającego, porażka o mniej — nie (test `shared` na
+- [x] Udany Test rozbraja, a wejście potem nie rani (test serwera)
+- [x] Porażka o 5+ odpala system na rozbrajającego, porażka o mniej — nie (test `shared` na
       regule i test serwera)
-- [ ] Druga próba tej samej postaci — odmowa; po „Pozwól spróbować znowu” — kubek
-- [ ] W trakcie walki — odmowa z komunikatem; poza walką zegar przesunięty o minuty wpisu
-- [ ] Strefa niezauważona — gracz nie ma czego rozbroić (odmowa jak dla nieistniejącej)
+- [x] Druga próba tej samej postaci — odmowa; po „Pozwól spróbować znowu” — kubek
+- [x] W trakcie walki — odmowa z komunikatem; poza walką zegar przesunięty o minuty wpisu
+- [x] Strefa niezauważona — gracz nie ma czego rozbroić (odmowa jak dla nieistniejącej)
+
+### Jak wyszło (23.10)
+
+Wzór to zamek pojemnika. Gracz klika prawym przyciskiem własną figurę i dostaje
+„🛠 Rozbrój: <nazwa>” dla każdej strefy ze swojego payloadu, której krawędź leży w zasięgu
+ręki. Klient liczy to tą samą miarą co serwer: środek figury najwyżej 2 m od prostokąta.
+Dymka strefy nie ma, bo gracz nie klika w strefy. Serwer (`zone:disarm`) odmawia w kolejności:
+strefa, której gracz nie widzi (`ZONE_NOT_FOUND`, jak dla nieistniejącej), figura poza sceną,
+zasięg, brak PT, walka, druga próba. Potem wystawia wezwanie `gm` (wynik widzą MG i
+rozbrajający) z adresem strefy i figury dopisanym po białej liście. Kubek otwiera się od razu.
+Rozlicza `settleDisarmTest` w haku rzutu na wezwanie. Reguła siedzi w `shared/systems/cpred/trapdisarm.ts`.
+Nowe kolumny strefy: `disarmDv` (nadpisanie MG) i `disarmTried`, obie w kopii kampanii.
+
+**Rozstrzygnięcia przyjęte bez pytań — czekają na słowo MG:**
+
+- **„W walce” znaczy: w kampanii stoi tracker walki**, także w rundzie 0. To ta sama miara
+  co blokada rozwoju (`campaignInCombat`). Odmowa: „Rozbrajanie trwa minuty — w trakcie walki
+  nie ma na nie czasu.”.
+- **Zegar przesuwa się bez karty „Minęło…” na czacie.** Karta mówiłaby całemu stołowi, że ktoś
+  przy czymś grzebał. Minuty zapisuje wiersz MG („· 2 min”).
+- **Po udanym rozbrojeniu gracz może kliknąć jeszcze raz i dostaje nowy Test.** Nie zna `armed`
+  (etap 51), więc odmowa „już rozbrojona” zdradzałaby stan. Test na rozbrojonej strefie
+  niczego nie zmienia, a porażka o 5+ niczego nie odpala, bo system jest wyłączony.
+- **Wezwanie „wzywa” nazwą strefy** (jak zamek nazwą pojemnika), a prompt brzmi
+  „Rozbrajanie: <nazwa>”. Rozbrajający strefę zna, a wezwanie trafia tylko do niego i MG.
+- **Porażka o 5+ odpala system tylko wtedy, gdy ten dalej działa.** Musi być uzbrojony, mieć
+  PW, mieć opisany efekt i nie być wyłączony węzłem. Wieżyczka z rozbitą figurą nie strzela.
+
+**Oględziny:** tymczasowy spec (skasowany), Ola w **Firefoksie**: menu, okno wezwania,
+porażka 12 ≤ 13 („Fumble”), odmowa drugiej próby, sukces 18 > PT 5 po nadpisaniu przez MG.
+Gracz dalej ma strefę jako uzbrojoną. MG w Chromium: karta strefy z „PT rozbrojenia”
+(podpowiedź „z wpisu: 13”), „Nie udało się rozbroić: Iskra” i „Pozwól spróbować znowu”,
+po sukcesie „Uzbrój” i podpis „rozbrojona”, wiersz „poufne” z wynikiem i minutami.
 
 ## 58c — Zamek drzwi, okna i bramy
 

@@ -403,8 +403,8 @@ export interface TokenHaltBroadcast {
   tokenIds: string[];
   /**
    * Dlaczego (etap 58a). Brak — wróg w zasięgu wzroku (56). `notice` — figura
-   * przystanęła przy ukrytej rzeczy na rzut Percepcji; gracz dowiaduje się
-   * tylko tyle, że coś przykuło jej uwagę, a nie co ani z jakim wynikiem.
+   * przystanęła przy ukrytej rzeczy na rzut Percepcji; gracz dostaje gołe
+   * wezwanie do Testu Percepcji, bez słowa o tym, co jest obok (23.10).
    */
   reason?: 'notice';
 }

@@ -225,6 +225,11 @@ export async function createCheckCall(
      * liście: wystawia ją tylko zatrzymanie marszu w `zones.ts`.
      */
     hiddenZone?: { zoneId: number; tokenId: string };
+    /**
+     * Rozbrajanie strefy (etap 58b) — tak samo po białej liście: wystawia je
+     * tylko `zone:disarm`, więc zgoda MG na prośbę o Test niczego nie rozbraja.
+     */
+    disarmZone?: { zoneId: number; tokenId: string };
     /** Kto „wzywa” na karcie, gdy nie MG — przy zamku to nazwa pojemnika. */
     calledByName?: string;
   },
@@ -247,6 +252,9 @@ export async function createCheckCall(
     ...(input.containerTokenId ? { containerTokenId: input.containerTokenId } : {}),
     ...(input.hiddenZone
       ? { hiddenZoneId: input.hiddenZone.zoneId, noticeTokenId: input.hiddenZone.tokenId }
+      : {}),
+    ...(input.disarmZone
+      ? { disarmZoneId: input.disarmZone.zoneId, disarmTokenId: input.disarmZone.tokenId }
       : {}),
   };
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';

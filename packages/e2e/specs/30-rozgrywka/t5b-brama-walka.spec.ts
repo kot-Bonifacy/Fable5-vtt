@@ -592,11 +592,15 @@ test.describe.serial('T5b: „Brama” — walka druga, Sieć, wieżyczka, pad A
     await walkOnMap(marek.page, point(17, 11));
     await expect.poll(() => at('Kowal'), { timeout: 20_000 }).toEqual([19, 11]);
     await marek.page.getByRole('button', { name: /^Czat/ }).first().click();
-    const call = marek.page.locator('.chat-message.chat-check', { hasText: 'przystaje' }).last();
+    // Wezwanie wygląda jak każde wezwanie MG (23.10) — bez słowa o tym, co obok.
+    const call = marek.page
+      .locator('.chat-message.chat-check', { hasText: 'Kowal — Percepcja' })
+      .last();
     await expect(call).toContainText('PT 17');
     await expect(call).not.toContainText('Podłoga');
+    await expect(call).not.toContainText('przykuło');
     await expect(
-      ola.page.locator('.chat-message.chat-check', { hasText: 'przystaje' }),
+      ola.page.locator('.chat-message.chat-check', { hasText: 'Kowal — Percepcja' }),
     ).toHaveCount(0);
     const beforeRoll = lastMessageId();
     await call.getByRole('button', { name: 'Rzuć' }).click();

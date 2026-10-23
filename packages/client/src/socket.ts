@@ -106,6 +106,7 @@ import type {
   DamageUndoPayload,
   DefenseZoneCreatePayload,
   DefenseZoneSyncBroadcast,
+  DefenseZoneDisarmResult,
   DefenseZoneUpdatePayload,
   DefenseZoneView,
   DiceSkinId,
@@ -2641,6 +2642,33 @@ export const clearZones = (sceneId: string) => emitSceneAck('zone:clear', { scen
 /** „Odpal system" i „Tura systemu" — ten sam przycisk, bo to ten sam akt. */
 export const fireZone = (zoneId: number, tokenId?: string) =>
   emitSceneAck<{ summary: string }>('zone:fire', { zoneId, ...(tokenId ? { tokenId } : {}) });
+
+/** Gracz rozbraja zauważoną strefę (58b) — serwer wystawia wezwanie do Testu. */
+export const disarmZone = (zoneId: number, characterId: string) =>
+  emitSceneAck<DefenseZoneDisarmResult>('zone:disarm', { zoneId, characterId });
+
+/** Polskie odmowy `zone:disarm` (58b). */
+export function zoneDisarmErrorText(code: string): string {
+  if (code === 'CHARACTER_AWAITING_GM') return CHARACTER_AWAITING_GM_TEXT;
+  switch (code) {
+    case 'ZONE_NOT_FOUND':
+      return 'Tej strefy już nie ma — odśwież stronę.';
+    case 'NOT_ON_SCENE':
+      return 'Twoja figura nie stoi na tej scenie.';
+    case 'OUT_OF_REACH':
+      return 'Za daleko — podejdź do krawędzi strefy (na jedną kratkę).';
+    case 'ZONE_NO_DISARM':
+      return 'Tego systemu nie rozbroisz ręką — wyłącza go węzeł w Sieci albo zniszczenie.';
+    case 'DISARM_IN_COMBAT':
+      return 'Rozbrajanie trwa minuty — w trakcie walki nie ma na nie czasu.';
+    case 'DISARM_TRIED':
+      return 'Ta postać już próbowała i się nie udało. Spróbować znowu pozwala MG.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej karty w tej kampanii.';
+    default:
+      return `Nie udało się: ${code}`;
+  }
+}
 
 /* Lights and darkness (stage 18b). GM-only except `toggleTokenLight`, which the
    controller of a token may use on their own torch — the server checks that,

@@ -1069,6 +1069,8 @@ export async function exportCampaign(
           floorId: true,
           deviceId: true,
           notes: true,
+          disarmDv: true,
+          disarmTried: true,
         },
       }),
     ]);
@@ -1082,6 +1084,7 @@ export async function exportCampaign(
         ...zone,
         exempt: parseJsonColumn(zone.exempt),
         sightings: parseJsonColumn(zone.sightings),
+        disarmTried: parseJsonColumn(zone.disarmTried),
       })),
     });
   }

@@ -77,6 +77,9 @@ import { FacedownLauncher } from './FacedownLauncher.js';
 import { TokenImagePicker } from './TokenImagePicker.js';
 import type { TokenMenuState } from './MapArea.js';
 import { NumberStepper } from './NumberStepper.js';
+import { useZoneStore } from '../stores/zoneStore.js';
+import { useSceneStore } from '../stores/sceneStore.js';
+import { startDisarm, zonesWithinReach } from '../zone-disarm.js';
 
 const MENU_WIDTH = 240;
 /** Odstęp menu od krawędzi okna. */
@@ -995,6 +998,9 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const encounterAllIn = encounterState(encounterIds, combat).allIn;
   const doubleRight = useDoubleRightTarget(menu.tokenId, onClose);
   const placement = useMenuTop(menu.y);
+  // Etap 58b: strefy, które gracz ma w payloadzie (jawne albo zauważone).
+  const zones = useZoneStore((s) => s.zones);
+  const scene = useSceneStore((s) => s.effectiveScene);
 
   // The token can vanish under the open menu (deleted in another tab).
   useEffect(() => {
@@ -1062,6 +1068,13 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const isContainer = token.container !== undefined;
   if (!isGm) {
     const own = token.ownerId === userId;
+    // Etap 58b: „Rozbrój” przy własnej figurze z kartą, gdy w zasięgu ręki
+    // leży strefa, którą gracz widzi. Czy da się ją rozbroić, mówi serwer.
+    const characterId = token.characterId;
+    const disarmable =
+      own && characterId && !isContainer && token.sceneId === scene?.id
+        ? zonesWithinReach(token, zones, scene)
+        : [];
     return (
       <>
         <MenuBackdrop onClose={onClose} onRightDown={doubleRight} />
@@ -1088,6 +1101,20 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
               </button>
             )
           )}
+          {disarmable.map((zone) => (
+            <button
+              key={zone.id}
+              type="button"
+              className="context-menu-item"
+              title="Test Elektroniki i zabezpieczeń z PT systemu; jedna próba na postać, a duża porażka go odpala"
+              onClick={() => {
+                onClose();
+                void startDisarm(zone, characterId!);
+              }}
+            >
+              🛠 Rozbrój: {zone.name}
+            </button>
+          ))}
         </div>
       </>
     );

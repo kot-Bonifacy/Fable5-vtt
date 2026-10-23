@@ -86,7 +86,7 @@ import {
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
-import { settleSpotTest } from './zones.js';
+import { settleDisarmTest, settleSpotTest } from './zones.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
@@ -1469,6 +1469,28 @@ async function performScopedRoll(
         characterId: call.entry.characterId,
         success: result.outcome.success,
         total: result.total,
+      });
+    }
+    // Etap 58b: Test rozbrajania strefy. Adres strefy i figury — jak przy
+    // zamku — tylko z zapisanego wezwania; PT też z wezwania, bo od niego
+    // liczy się porażka o 5+.
+    const disarmCall = call
+      ? (call.entry.system as { disarmZoneId?: unknown; disarmTokenId?: unknown })
+      : undefined;
+    if (
+      call &&
+      result.outcome &&
+      call.entry.dv !== undefined &&
+      typeof disarmCall?.disarmZoneId === 'number' &&
+      typeof disarmCall.disarmTokenId === 'string'
+    ) {
+      await settleDisarmTest(deps, campaignId, {
+        zoneId: disarmCall.disarmZoneId,
+        tokenId: disarmCall.disarmTokenId,
+        characterId: call.entry.characterId,
+        success: result.outcome.success,
+        total: result.total,
+        dv: call.entry.dv,
       });
     }
     // Somebody coming off the floor is the one green number the map draws

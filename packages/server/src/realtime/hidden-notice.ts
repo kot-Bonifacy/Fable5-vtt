@@ -20,8 +20,9 @@ import { zonesNoticeDue } from './zones.js';
  * której jeszcze nie sprawdzała, **staje** na tym polu i rzuca. Zatrzymanie to
  * zwykłe lądowanie w `performTokenMove` — z walidacją, rachunkiem Tury albo
  * puli i hakami stref — a nie zapis pola z boku (tak staje drużyna w 56, gdzie
- * walka i tak liczy od nowa). Gracz wie, że coś przykuło uwagę postaci, a co —
- * tylko po sukcesie.
+ * walka i tak liczy od nowa). Gracz dostaje gołe wezwanie do Testu Percepcji
+ * (uwaga MG z 23.10: bez „coś przykuło uwagę”), a co postać zauważyła — tylko
+ * po sukcesie.
  *
  * **Rzuca gracz z kubka (zmiana MG z 22.10, wbrew pierwszemu planowi):** strefa
  * wystawia wezwanie do Testu Percepcji (`callSpotZone` w `zones.ts`), a figura
@@ -82,8 +83,7 @@ export async function emitHiddenSpotted(
 
 /** Ruch figury, która ma otwarte wezwanie do Percepcji przy ukrytej rzeczy (58a). */
 export const NOTICE_ROLL_PENDING = 'NOTICE_ROLL_PENDING';
-export const NOTICE_ROLL_PENDING_MESSAGE =
-  'Najpierw rzuć na Percepcję — coś przykuło uwagę postaci.';
+export const NOTICE_ROLL_PENDING_MESSAGE = 'Najpierw rzuć na Percepcję — wezwanie czeka w kubku.';
 
 /** Tyle ostatnich wezwań kampanii przegląda pytanie o otwarte — jak przy zamku. */
 const RECENT_CALLS = 50;

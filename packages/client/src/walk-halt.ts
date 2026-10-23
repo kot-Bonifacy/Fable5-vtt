@@ -16,15 +16,14 @@ import { useTokenStore } from './stores/tokenStore.js';
 export const COMBAT_PENDING_NOTE = 'Wróg w zasięgu wzroku — czekaj, aż MG rozpocznie walkę.';
 
 /**
- * Przy ukrytej rzeczy gracz wie, że postać na coś zwróciła uwagę, a nie na co
- * (58a). Rzuca z kubka na wezwanie; co zauważyła, mówi osobno
- * `hidden:spotted`, i tylko przy sukcesie.
+ * Przy ukrytej rzeczy gracz dostaje gołe wezwanie do Testu Percepcji (58a,
+ * uwaga MG z 23.10): ani „coś przykuło uwagę”, ani na co. Co zauważyła
+ * postać, mówi osobno `hidden:spotted`, i tylko przy sukcesie.
  */
-export const noticeHaltNote = (name: string): string =>
-  `${name} przystaje — coś przykuło uwagę. Rzuć na Percepcję z kubka.`;
+export const noticeHaltNote = (name: string): string => `${name}: Test Percepcji — rzuć kubkiem.`;
 
 /** Odmowa ruchu `NOTICE_ROLL_PENDING` — figura stoi do rzutu (58a, decyzja MG z 22.10). */
-export const NOTICE_ROLL_PENDING_NOTE = 'Najpierw rzuć na Percepcję — coś przykuło uwagę postaci.';
+export const NOTICE_ROLL_PENDING_NOTE = 'Najpierw rzuć na Percepcję — wezwanie czeka w kubku.';
 
 export const hiddenSpottedNote = (spotted: HiddenSpottedBroadcast): string =>
   `${spotted.actorName} zauważa: ${spotted.names.join(', ')}.`;

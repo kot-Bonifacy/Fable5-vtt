@@ -242,7 +242,7 @@ describe('defended zones on a scene', () => {
   const trackNoticeCall = ({ message }: ChatMessageBroadcast) => {
     const call = message.check;
     if (message.kind !== 'check' || !call || call.resolved || call.cancelled) return;
-    if (call.prompt?.includes('przystaje')) noticeCalls.set(message.id, call.characterId);
+    if (call.rollLabel.includes('Percepcja')) noticeCalls.set(message.id, call.characterId);
   };
   /** Rzut z kubka na każde otwarte wezwanie — domyślnie 1, czyli postać nic nie widzi. */
   async function answerNoticeCalls(faces: number[] = [1]): Promise<void> {
@@ -1112,9 +1112,12 @@ describe('defended zones on a scene', () => {
       expect(await hp()).toBe(before);
 
       // Wezwanie do Testu (zmiana MG z 22.10): Percepcja z PT, tylko MG i gracz,
-      // bez nazwy strefy i bez jej numeru.
+      // bez nazwy strefy i bez jej numeru. Od 23.10 wygląda jak każde wezwanie
+      // MG — bez zdania o tym, co przykuło uwagę, i z MG jako wzywającym.
       const card = heard.find(({ message }) => message.kind === 'check')?.message;
       expect(card?.check).toMatchObject({ dv: 17, visibility: 'gm', characterId });
+      expect(card?.check?.prompt).toBeUndefined();
+      expect(card?.check?.calledByName).toBe(card?.authorName);
       expect(card?.check?.rollLabel).toContain('Percepcja');
       expect(card?.check?.system).not.toHaveProperty('hiddenZoneId');
       expect(JSON.stringify(card)).not.toContain('Podłoga');

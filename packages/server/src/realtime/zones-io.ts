@@ -67,6 +67,11 @@ export function readZoneExempt(raw: string | null | undefined): string[] {
   }
 }
 
+/** Characters that failed to disarm this zone (58b); a malformed column means „nobody”. */
+export function readZoneDisarmTried(raw: string | null | undefined): string[] {
+  return readZoneExempt(raw);
+}
+
 /**
  * One row as one viewer receives it.
  *
@@ -99,6 +104,7 @@ export function toZoneView(row: ZoneRow, gm: boolean, spotted: boolean): Defense
     ...(gm && row.floorId ? { floorId: row.floorId } : {}),
     ...(gm && row.deviceId ? { deviceId: row.deviceId } : {}),
     ...(gm && row.notes ? { notes: row.notes } : {}),
+    ...(gm ? { disarmDv: row.disarmDv, disarmTried: readZoneDisarmTried(row.disarmTried) } : {}),
     ...(!gm && spotted ? { spotted: true } : {}),
   };
 }

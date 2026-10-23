@@ -433,6 +433,13 @@ export interface CpredRollRequest {
    */
   hiddenZoneId?: number;
   noticeTokenId?: string;
+  /**
+   * Etap 58b — strefa, którą ten Test Elektroniki i zabezpieczeń rozbraja,
+   * i figura rozbrajającego (w nią bije system przy porażce o 5+). Wpisuje je
+   * wyłącznie serwer w `zone:disarm`; rzut czyta je z zapisanego wezwania.
+   */
+  disarmZoneId?: number;
+  disarmTokenId?: string;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

@@ -87,6 +87,13 @@ export interface DefenseZoneView {
   notes?: string;
   /** True on a player's copy when they only have it because somebody spotted it. */
   spotted?: boolean;
+  /**
+   * The GM's own disarm DV for this zone (stage 58b) — overrides the catalogue
+   * entry's; null keeps the entry's. GM only, opaque to the core.
+   */
+  disarmDv?: number | null;
+  /** Characters that tried to disarm it and failed (stage 58b) — GM only. */
+  disarmTried?: string[];
 }
 
 /** Rectangles only, and axis-aligned — the covers' bargain exactly. */
@@ -149,7 +156,25 @@ export interface DefenseZoneUpdatePayload {
     floorId?: string | null;
     deviceId?: string | null;
     notes?: string;
+    /** Disarm DV on this zone (stage 58b); null goes back to the entry's. */
+    disarmDv?: number | null;
+    /** „Pozwól spróbować znowu” — clears the list of failed disarm attempts. */
+    resetDisarmTries?: true;
   };
+}
+
+/**
+ * Client → server `zone:disarm` (stage 58b) — a player's character tries to
+ * disarm a zone it can see, standing within arm's reach of its edge.
+ */
+export interface DefenseZoneDisarmPayload {
+  zoneId: number;
+  characterId: string;
+}
+
+/** The Test is a check call; the cup opens from its card. */
+export interface DefenseZoneDisarmResult {
+  callMessageId: number;
 }
 
 export interface DefenseZoneDeletePayload {

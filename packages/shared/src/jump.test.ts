@@ -58,6 +58,7 @@ function cover(extra: Partial<CoverView> = {}): CoverView {
     height: 140,
     hpMax: 50,
     hpCurrent: 50,
+    hidden: false,
     ...extra,
   };
 }

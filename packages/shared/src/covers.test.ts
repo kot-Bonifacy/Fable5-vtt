@@ -30,6 +30,7 @@ function car(overrides: Partial<CoverView> = {}): CoverView {
     height: 50,
     hpMax: 25,
     hpCurrent: 25,
+    hidden: false,
     ...overrides,
   };
 }

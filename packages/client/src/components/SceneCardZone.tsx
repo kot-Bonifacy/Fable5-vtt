@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  CHECK_CALL_DV_MAX,
+  CHECK_CALL_DV_MIN,
   ROLE_GM,
   criticalInjuryNames,
   describeNetDefense,
@@ -14,6 +16,7 @@ import {
 } from '@vtt/shared';
 import { fetchNetArchitecture, fetchNetArchitectures, fireZone, updateZone } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -84,6 +87,7 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   const tokens = useTokenStore((s) => s.tokens);
   const statusRegistry = useTokenStore((s) => s.statuses);
   const user = useAuthStore((s) => s.user);
+  const characters = useCharacterStore((s) => s.characters);
   const isGm = user?.role === ROLE_GM;
   const [busy, setBusy] = useState(false);
   const [nodeDevices, setNodeDevices] = useState<NodeDevice[] | null>(null);
@@ -156,6 +160,21 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
   }
   const effects = profile?.effects;
   const trigger = netDefenseTrigger(effects);
+  // Etap 58b: kto już próbował rozbroić i mu się nie udało.
+  const disarmTried = (zone.disarmTried ?? []).map(
+    (id) => characters[id]?.name ?? 'postać spoza kampanii',
+  );
+
+  function setDisarmDv(raw: string) {
+    const text = raw.trim();
+    if (text === '') {
+      if (zone.disarmDv != null) void patch({ disarmDv: null });
+      return;
+    }
+    const dv = Number(text);
+    if (!Number.isInteger(dv) || dv < CHECK_CALL_DV_MIN || dv > CHECK_CALL_DV_MAX) return;
+    if (dv !== zone.disarmDv) void patch({ disarmDv: dv });
+  }
 
   return (
     <div className="scene-card-form">
@@ -292,6 +311,40 @@ export function SceneCardZone({ zone }: { zone: DefenseZoneView }) {
           </div>
         )}
       </fieldset>
+
+      <label
+        className="bot-field"
+        title="PT Testu Elektroniki i zabezpieczeń, którym gracz rozbraja ten system stojąc przy jego krawędzi. Puste — PT z wpisu kompendium. Porażka o 5 i więcej odpala system na rozbrajającego"
+      >
+        <span className="auth-label">PT rozbrojenia</span>
+        <input
+          key={`disarm-${zone.disarmDv ?? 'entry'}`}
+          type="number"
+          min={CHECK_CALL_DV_MIN}
+          max={CHECK_CALL_DV_MAX}
+          defaultValue={zone.disarmDv ?? ''}
+          placeholder={
+            profile?.disableDv !== undefined
+              ? `z wpisu: ${profile.disableDv}`
+              : 'nie da się rozbroić'
+          }
+          onBlur={(event) => setDisarmDv(event.target.value)}
+        />
+      </label>
+      {disarmTried.length > 0 && (
+        <p className="placeholder-text">
+          Nie udało się rozbroić: {disarmTried.join(', ')}{' '}
+          <button
+            type="button"
+            className="small-button"
+            title="Każda z tych postaci dostanie jeszcze jedną próbę"
+            disabled={busy}
+            onClick={() => void patch({ resetDisarmTries: true })}
+          >
+            Pozwól spróbować znowu
+          </button>
+        </p>
+      )}
 
       <label className="bot-field">
         <span className="auth-label">Notatka MG</span>

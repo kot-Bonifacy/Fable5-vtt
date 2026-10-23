@@ -5,6 +5,8 @@ import type {
   DefenseZoneClearPayload,
   DefenseZoneCreatePayload,
   DefenseZoneDeletePayload,
+  DefenseZoneDisarmPayload,
+  DefenseZoneDisarmResult,
   DefenseZoneFirePayload,
   DefenseZoneUpdatePayload,
   DefenseZoneView,
@@ -12,13 +14,20 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CHECK_CALL_DV_MAX,
+  CHECK_CALL_DV_MIN,
   CPRED_ACTION_NET,
+  CPRED_MELEE_REACH_M,
   ROLE_GM,
   ZONE_EXEMPT_MAX,
   ZONE_MAX_PER_SCENE,
   ZONE_NOTES_MAX,
   ZONE_SPOT_RANGE_M,
   cpredAmmoCheckOutcome,
+  cpredTrapDisarmDv,
+  cpredTrapDisarmOpening,
+  cpredTrapDisarmOutcome,
+  cpredTrapDisarmTried,
   distanceToRect,
   isNetDefenseEntry,
   isPointInRect,
@@ -32,6 +41,7 @@ import {
   segmentCrossesRect,
   tokenCentre,
   tokenTableName,
+  zoneStanding,
   zoneWithinReachOfPath,
 } from '@vtt/shared';
 import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/client.js';
@@ -53,6 +63,9 @@ import { createCheckCall, type CheckFrame } from './checks.js';
 import { campaignGmUser } from './campaign-gm.js';
 import { toSessionUser } from '../auth/sessions.js';
 import { emitHiddenSpotted } from './hidden-notice.js';
+import { campaignInCombat } from './combat-lock.js';
+import { advanceGameTime } from './gametime.js';
+import { requireOwnCharacter, tokensOf } from './inventory.js';
 import {
   CPRED_PERCEPTION_SKILL_ID,
   checkPerceptionOf,
@@ -65,6 +78,7 @@ import {
 import {
   emitZones,
   fetchSceneZones,
+  readZoneDisarmTried,
   readZoneExempt,
   readZoneSightings,
   toZoneView,
@@ -119,7 +133,14 @@ async function requireCampaignZone(deps: RealtimeDeps, campaignId: string, zoneI
 export function zoneProfileOf(
   entries: readonly CompendiumEntry[],
   entryId: string,
-): (ZoneProfile & { spotDv: number | undefined; hp: number | undefined }) | null {
+):
+  | (ZoneProfile & {
+      spotDv: number | undefined;
+      hp: number | undefined;
+      disableDv: number | undefined;
+      disableMinutes: number | undefined;
+    })
+  | null {
   const entry = entries.find((row) => row.id === entryId);
   if (!entry || !isNetDefenseEntry(entry)) return null;
   return {
@@ -128,6 +149,8 @@ export function zoneProfileOf(
     combatValue: entry.combatValue,
     spotDv: entry.spotDv,
     hp: entry.hp,
+    disableDv: entry.disableDv,
+    disableMinutes: entry.disableMinutes,
   };
 }
 
@@ -245,6 +268,22 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
       if (typeof patch.notes !== 'string') throw new RealtimeError('BAD_REQUEST');
       data.notes = patch.notes.slice(0, ZONE_NOTES_MAX);
     }
+    // Etap 58b: PT rozbrojenia na tej strefie (null — wraca PT wpisu) i „Pozwól
+    // spróbować znowu”, które zeruje listę nieudanych prób.
+    if (patch.disarmDv !== undefined) {
+      const dv = patch.disarmDv;
+      if (
+        dv !== null &&
+        (typeof dv !== 'number' ||
+          !Number.isInteger(dv) ||
+          dv < CHECK_CALL_DV_MIN ||
+          dv > CHECK_CALL_DV_MAX)
+      ) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
+      data.disarmDv = dv;
+    }
+    if (patch.resetDisarmTries === true) data.disarmTried = '[]';
 
     if (Object.keys(data).length === 0) return toZoneView(row, true, false);
     const updated = await deps.ctx.prisma.defenseZone.update({ where: { id: row.id }, data });
@@ -346,6 +385,213 @@ export const zoneFireEvent = defineEvent<DefenseZoneFirePayload, { summary: stri
     return { summary };
   },
 });
+
+// ─────────────────────────── rozbrajanie (58b) ───────────────────────────────
+
+/**
+ * Gracz rozbraja strefę ręką (etap 58b, decyzje MG z 22.10) — wzorem zamka
+ * pojemnika (`container:open`): serwer sprawdza, czy postać tę strefę w ogóle
+ * zna i czy sięga, a potem wystawia wezwanie do Testu Elektroniki
+ * i zabezpieczeń. Werdykt rozlicza `settleDisarmTest` z haka rzutu.
+ *
+ * Kolejność odmów jest umową: strefy, której gracz nie ma w payloadzie, nie ma
+ * (`ZONE_NOT_FOUND`, jak dla nieistniejącej) — dopiero potem zasięg, a na
+ * końcu reguła (brak PT, walka, druga próba). Odmowa „za daleko” przy
+ * niezauważonej pułapce mówiłaby, że coś tam jest.
+ */
+export const zoneDisarmEvent = defineEvent<DefenseZoneDisarmPayload, DefenseZoneDisarmResult>({
+  name: 'zone:disarm',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const prisma = deps.ctx.prisma;
+    const character = await requireOwnCharacter(prisma, campaignId, user, payload?.characterId);
+    const row = await requireCampaignZone(deps, campaignId, payload?.zoneId);
+    if (
+      user.role !== ROLE_GM &&
+      row.hidden &&
+      !readZoneSightings(row.sightings).users.includes(user.id)
+    ) {
+      throw new RealtimeError('ZONE_NOT_FOUND');
+    }
+
+    // Zasięg ręki od krawędzi strefy: środek figury najwyżej `CPRED_MELEE_REACH_M`
+    // od prostokąta — figura na sąsiednim polu (także po skosie) albo na strefie.
+    const stands = (await tokensOf(prisma, character.id)).filter(
+      (placed) => placed.scene.id === row.sceneId,
+    );
+    if (stands.length === 0) throw new RealtimeError('NOT_ON_SCENE');
+    const perPixel = metresPerPixel(toSceneView(row.scene));
+    const nearest = stands
+      .map((placed) => {
+        const half = tokenHalfPx(placed.token, row.scene);
+        const centre = { x: placed.token.x + half, y: placed.token.y + half };
+        return { token: placed.token, metres: distanceToRect(centre, row) * perPixel };
+      })
+      .sort((a, b) => a.metres - b.metres)[0]!;
+    if (nearest.metres > CPRED_MELEE_REACH_M + 1e-6) throw new RealtimeError('OUT_OF_REACH');
+
+    const { entries } = await buildCompendiumSync(deps, campaignId);
+    const profile = zoneProfileOf(entries, row.entryId);
+    const verdict = cpredTrapDisarmOpening({
+      dv: cpredTrapDisarmDv(row.disarmDv, profile?.disableDv),
+      tried: readZoneDisarmTried(row.disarmTried),
+      characterId: character.id,
+      inCombat: await campaignInCombat(prisma, campaignId),
+    });
+    if (verdict.kind === 'refused') throw new RealtimeError(verdict.error);
+
+    const pending = await openDisarmCall(deps, campaignId, character.id, row.id);
+    if (pending !== null) return { callMessageId: pending };
+    // Wynik widzą MG i rozbrajający (`gm`): nazwę strefy zna tylko ten, kto ją
+    // zauważył, a karta wezwania ją nosi.
+    const frame: CheckFrame = { dv: verdict.dv, modifier: 0, visibility: 'gm' };
+    const created = await createCheckCall(deps, {
+      campaignId,
+      user,
+      characterId: character.id,
+      request: { kind: 'skill', skillId: verdict.skillId },
+      frame,
+      prompt: `Rozbrajanie: ${row.name}`,
+      disarmZone: { zoneId: row.id, tokenId: nearest.token.id },
+      calledByName: row.name,
+    });
+    return { callMessageId: created.messageId };
+  },
+});
+
+/** Otwarte wezwanie tej postaci do rozbrojenia tej strefy — drugi klik go nie dubluje. */
+async function openDisarmCall(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+  zoneId: number,
+): Promise<number | null> {
+  const rows = await deps.ctx.prisma.chatMessage.findMany({
+    where: { campaignId, kind: 'check' },
+    select: { id: true, payload: true },
+    orderBy: { id: 'desc' },
+    take: 50,
+  });
+  for (const row of rows) {
+    if (!row.payload) continue;
+    const entry = JSON.parse(row.payload) as {
+      characterId?: string;
+      resolved?: unknown;
+      cancelled?: unknown;
+      system?: { disarmZoneId?: number };
+    };
+    if (entry.characterId !== characterId || entry.system?.disarmZoneId !== zoneId) continue;
+    if (entry.resolved === undefined && entry.cancelled === undefined) return row.id;
+  }
+  return null;
+}
+
+/**
+ * Rozliczenie Testu rozbrajania (58b) — woła je rzut na wezwanie
+ * z `disarmZoneId`. Zdany wyłącza system (`armed = false`, jak przełącznik MG),
+ * niezdany zapisuje postać na liście prób, a porażka o 5+ dodatkowo odpala
+ * system na figurę rozbrajającego tą samą drogą co wejście (`fireZone`).
+ * Poza walką Test, udany czy nie, zabiera minuty wpisu z zegara świata.
+ *
+ * Gracz nie dostaje `armed` (etap 51): o wyniku mówi mu tylko karta rzutu.
+ * MG dostaje wiersz `gmaction` z nazwą strefy i werdyktem.
+ */
+export async function settleDisarmTest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  input: {
+    zoneId: number;
+    tokenId: string;
+    characterId: string;
+    success: boolean;
+    total: number;
+    dv: number;
+  },
+): Promise<void> {
+  const row = await deps.ctx.prisma.defenseZone.findUnique({
+    where: { id: input.zoneId },
+    include: { scene: true },
+  });
+  if (!row || row.scene.campaignId !== campaignId) return;
+  const outcome = cpredTrapDisarmOutcome(input.success, input.total, input.dv);
+  const hand = await campaignGmHand(deps, campaignId);
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: input.tokenId } });
+  const owner = await deps.ctx.prisma.character.findUnique({
+    where: { id: input.characterId },
+    select: { name: true },
+  });
+  const actorName = token ? tokenTableName(token, token.name) : (owner?.name ?? '');
+
+  if (outcome === 'disarmed') {
+    await deps.ctx.prisma.defenseZone.update({ where: { id: row.id }, data: { armed: false } });
+    await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
+  } else {
+    const tried = cpredTrapDisarmTried(readZoneDisarmTried(row.disarmTried), input.characterId);
+    await deps.ctx.prisma.defenseZone.update({
+      where: { id: row.id },
+      data: { disarmTried: JSON.stringify(tried) },
+    });
+  }
+  await emitZones(deps, campaignId, row.sceneId);
+
+  const { entries } = await buildCompendiumSync(deps, campaignId);
+  const profile = zoneProfileOf(entries, row.entryId);
+  const inCombat = await campaignInCombat(deps.ctx.prisma, campaignId);
+  const minutes = inCombat ? 0 : (profile?.disableMinutes ?? 0);
+
+  if (hand) {
+    const verdict =
+      outcome === 'disarmed'
+        ? 'rozbrojona'
+        : outcome === 'kept'
+          ? 'nie rozbraja, system dalej uzbrojony'
+          : `porażka o ${input.dv - input.total} — system odpala`;
+    await logGmZoneLine(
+      deps,
+      campaignId,
+      hand,
+      actorName,
+      'Rozbrajanie pułapki',
+      `wynik ${input.total} vs PT ${input.dv} — ${verdict}: ${row.name}` +
+        (minutes > 0 ? ` · ${minutes} min` : ''),
+    );
+  }
+
+  // Porażka o 5+ (zasada domowa, decyzja MG 2) — system, który dalej działa,
+  // bije w rozbrajającego. Rozbrojony przez MG, rozstrzelany, wyłączony węzłem
+  // albo bez efektu nie ma czym odpalić.
+  if (outcome === 'backfire' && hand && token && token.sceneId === row.sceneId && profile) {
+    const live =
+      row.armed &&
+      zoneStanding(row) &&
+      netDefenseActs(profile.effects) &&
+      !(await zoneDisarmedByNetrunner(deps, row)) &&
+      !(profile.effects?.fires && (await emplacementDown(deps, row)));
+    if (live) {
+      const fired = await fireZone(deps, {
+        campaignId,
+        user: hand,
+        scene: row.scene,
+        zone: row,
+        profile,
+        targets: [token],
+        cause: 'nieudane rozbrajanie',
+      });
+      if (fired.lines.length > 0) {
+        await logZoneLine(
+          deps,
+          campaignId,
+          hand,
+          row.name,
+          'Nieudane rozbrajanie',
+          fired.lines.join(' · '),
+        );
+      }
+    }
+  }
+
+  if (minutes > 0) await advanceGameTime(deps, campaignId, minutes);
+}
 
 // ─────────────────────────── hak ruchu i hak tury ───────────────────────────
 
@@ -642,6 +888,9 @@ async function callSpotZone(
     where: { id: row.id },
     data: { sightings: writeZoneSightings({ ...sightings, tried: [...sightings.tried, key] }) },
   });
+  // Karta wygląda jak każde wezwanie MG (uwaga MG z 23.10): bez zdania
+  // o tym, co przykuło uwagę, i z MG jako wzywającym. Prompt albo „Otoczenie”
+  // mówiły graczowi, że obok leży coś ukrytego, zanim zdał Test.
   const frame: CheckFrame = { dv: spotDv, modifier: 0, visibility: 'gm' };
   await createCheckCall(deps, {
     campaignId,
@@ -649,9 +898,7 @@ async function callSpotZone(
     characterId: token.characterId,
     request: { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID },
     frame,
-    prompt: `${tokenTableName(token, token.name)} przystaje — coś przykuło uwagę.`,
     hiddenZone: { zoneId: row.id, tokenId: token.id },
-    calledByName: 'Otoczenie',
   });
   return false;
 }

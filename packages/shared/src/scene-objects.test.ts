@@ -52,6 +52,7 @@ const cover: CoverView = {
   height: 200,
   hpMax: 25,
   hpCurrent: 25,
+  hidden: false,
 };
 
 const zone: DefenseZoneView = {

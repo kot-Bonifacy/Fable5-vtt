@@ -94,6 +94,27 @@ export async function markMonthSettled(deps: RealtimeDeps, campaignId: string): 
 }
 
 /**
+ * Czynność, która trwa minuty, przesuwa zegar sama (etap 58b: rozbrajanie
+ * pułapki, decyzja MG 3 z 22.10). Wyjątek od „zegar podpowiada, nie rządzi”
+ * jest tu tak wąski jak w etapie 39: minuty wpisu to nie wybór, tylko czas,
+ * który czynność zajmuje. Bez karty „Minęło…” na czacie — ta mówiłaby całemu
+ * stołowi, że ktoś przy czymś grzebał; kto i przy czym, ma wiersz MG.
+ */
+export async function advanceGameTime(
+  deps: RealtimeDeps,
+  campaignId: string,
+  minutes: number,
+): Promise<void> {
+  if (!Number.isFinite(minutes) || minutes <= 0) return;
+  const before = await campaignGameTime(deps.ctx.prisma, campaignId);
+  const next = before.minutes + Math.round(minutes);
+  if (!isGameTime(next)) return;
+  await deps.ctx.prisma.campaign.update({ where: { id: campaignId }, data: { gameTime: next } });
+  broadcastGameTime(deps, campaignId, { ...before, minutes: next });
+  await sweepStatEffects(deps, campaignId, { round: null, minutes: next });
+}
+
+/**
  * MG przesuwa zegar: skokiem z katalogu albo ustawiając chwilę wprost.
  *
  * Skok liczy **serwer** z identyfikatora („+1 h" to intencja, nie arytmetyka),

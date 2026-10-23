@@ -145,6 +145,6 @@ a w `POSTEP.md` popraw tylko wiersz stanu.
 | 57c    | Sklepy i profile botów w paczkach, gracz pobiera i zgłasza kartę, „Pobierz karty graczy” | ✅     | 2026-10-22          |
 | 58     | Ukryte rzeczy, zamki i rozbrajanie pułapek: Percepcja w drodze z zatrzymaniem, rzut ukryty, rozbrajanie, wytrych do drzwi, ukryte figury (58a–58d) | 🟨     | plan 2026-10-22     |
 | 58a    | Rzut w drodze z zatrzymaniem marszu, rzut ukryty (wiersz tylko dla MG), naprawa przejścia przez pułapkę bez rzutu | ✅     | 2026-10-22          |
-| 58b    | Rozbrajanie pułapki przez gracza: Test Elektroniki i zabezpieczeń, porażka o 5+ odpala, zegar świata | ⬜     |                     |
+| 58b    | Rozbrajanie pułapki przez gracza: Test Elektroniki i zabezpieczeń, porażka o 5+ odpala, zegar świata | ✅     | 2026-10-23          |
 | 58c    | Zamek drzwi, okna i bramy jak pojemnik: wytrych, klucz, jedna próba na postać | ⬜     |                     |
 | 58d    | Ukryta figura przeciw Skradaniu: rzut przeciwstawny, odsłonięcie na konto | ⬜     |                     |

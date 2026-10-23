@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type {
-  ChatMessageView,
-  CpredItemViewWire,
-  ExchangeCounterpartView,
-  InventoryItemRefWire,
-} from '@vtt/shared';
+import type { CpredItemViewWire, ExchangeCounterpartView, InventoryItemRefWire } from '@vtt/shared';
 import { CONTAINER_LOCK_LABELS, CPRED_ITEM_LIST_LABELS } from '@vtt/shared';
 import {
   inventoryErrorText,
@@ -14,9 +9,8 @@ import {
 } from '../../socket.js';
 import { clearNotices, notifyInfo, notifyRefusal } from '../../notices.js';
 import { useCharacterStore } from '../../stores/characterStore.js';
-import { useChatStore } from '../../stores/chatStore.js';
 import { useTokenStore } from '../../stores/tokenStore.js';
-import { openCallDialog } from '../DiceCup.js';
+import { takeCallCup } from '../../call-cup.js';
 import { ItemViewIcon } from '../ItemIcons.js';
 import { clampQty, formatEd, itemDetail, itemKey, refOf } from './items.js';
 import { OwnInventoryColumn } from './OwnInventoryColumn.js';
@@ -96,7 +90,7 @@ export function ContainerPane({
       title: 'Test zamka',
       topic: 'exchange',
     });
-    if (ack.data.callMessageId !== undefined) takeLockCup(ack.data.callMessageId);
+    if (ack.data.callMessageId !== undefined) takeCallCup(ack.data.callMessageId);
   }
 
   async function take(refs: InventoryItemRefWire[], eddies: number) {
@@ -317,31 +311,4 @@ export function ContainerPane({
       </div>
     </>
   );
-}
-
-/**
- * Kubek Testu zamka od razu po „Otwórz zamek” — wezwanie przychodzi na czat
- * osobnym zdarzeniem, więc czasem trzeba na nie chwilę poczekać. Gdy nie
- * przyjdzie, zostaje przycisk „Rzuć” na karcie wezwania.
- */
-function takeLockCup(messageId: number): void {
-  const find = (): ChatMessageView | undefined => {
-    for (const item of useChatStore.getState().items) {
-      if (item.type === 'message' && item.message.id === messageId) return item.message;
-    }
-    return undefined;
-  };
-  const launch = (message: ChatMessageView | undefined): boolean => {
-    if (!message?.check) return false;
-    openCallDialog(message.id, message.check);
-    return true;
-  };
-  if (launch(find())) return;
-  const unsubscribe = useChatStore.subscribe(() => {
-    if (launch(find())) {
-      unsubscribe();
-      window.clearTimeout(timer);
-    }
-  });
-  const timer = window.setTimeout(unsubscribe, 5000);
 }

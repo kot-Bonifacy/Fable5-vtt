@@ -486,6 +486,8 @@ export async function importCampaign(
               floorId: maybeStr(row.floorId),
               deviceId: maybeStr(row.deviceId),
               notes: str(row.notes),
+              disarmDv: typeof row.disarmDv === 'number' ? Math.round(row.disarmDv) : null,
+              disarmTried: jsonText(remap(row.disarmTried), '[]'),
             })),
           });
         }

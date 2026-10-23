@@ -166,6 +166,7 @@ import {
   zoneClearEvent,
   zoneCreateEvent,
   zoneDeleteEvent,
+  zoneDisarmEvent,
   zoneFireEvent,
   zoneUpdateEvent,
 } from './zones.js';
@@ -497,6 +498,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   zoneDeleteEvent,
   zoneClearEvent,
   zoneFireEvent,
+  zoneDisarmEvent,
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,

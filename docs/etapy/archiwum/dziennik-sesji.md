@@ -1,5 +1,30 @@
 # Dziennik sesji — archiwum
 
+### Sesja 22.10, siódma (po `5f41bf4`) — etap 58a: Percepcja w drodze, rzut ukryty
+
+**Zakres 58a.** **Zrobione:** `shared` — `segmentDistanceToRect` (`rects.ts`),
+`zoneWithinReachOfPath` (`zones.ts`), `TokenHaltBroadcast.reason`, `HiddenSpottedBroadcast`.
+Serwer — `realtime/hidden-notice.ts` (`hiddenNoticeDue`, `emitNoticeHalt`, `emitHiddenSpotted`),
+`zonesNoticeDue` i rzut ukryty w `zones.ts` (`trySpotZone` → `gmaction` ręką MG, tylko do MG;
+zasięg z całej drogi). W `performTokenMove` klatka marszu w zasięgu zamienia się w lądowanie
+(dry-run, `isCurrentWalk`, `markWalkHalted`). `walks.ts` — `ApprovedWalk.extra`, blokada
+`MOVE_HALTED` na 3 s. Klient — `walk-halt.ts` (pasek „przystaje” i „zauważa”), `hidden:spotted`
+w `socket.ts`, tekst `MOVE_HALTED`, podpowiedź „poufne”. **Błąd z oględzin:** po zatrzymaniu
+obwódka zaznaczenia zostawała obok figury (Firefox i Chromium) — `haltWalk` stawia węzeł na polu
+z serwera (pułapka na górze `tura`, dotyczy też 56). **Spoza etapu:** od `ced46d1` pulsujący 🎲
+inicjatywy blokował klik w pięciu specach E2E — `click({ force: true })` (pułapka w `testy`;
+cztery spece bez przebiegu — `zaleglosci.md`).
+
+**Weryfikacja:** `shared` 2576/2576 (+2), serwer 1588/1588 (+5 w `zones.test.ts`: marsz na wylot
+staje 4 m przed pułapką i nikt poza MG nie ma wiersza; lądowanie po zatrzymaniu `MOVE_HALTED`;
+przejście obok i sukces; MG przeciąga obok; w walce Tura płaci 4 m z 10), klient 421/421. `tsc`,
+ESLint i Prettier czyste. E2E T5b z `po-T5a` **27/27** — krok podłogi przepisany (staje na
+(19, 11), potem drugi marsz). Gateway był wyłączony, więc przebieg szedł na atrapie
+`FakeGateway` na :8100 (`reply`) i krok 5.10 `@llm` nie sprawdził prawdziwego modelu.
+**Oglądane** tymczasowym specem (skasowany): Ola w **Firefoksie** (zatrzymanie, oba paski),
+Marek w Chromium (porażka, sam pasek, czat pusty), MG w Chromium (dwa wiersze „poufne”,
+przerywany obrys strefy). Zero błędów konsoli.
+
 ### Sesja 22.10, szósta (po `605f9c7`) — oględziny ukrytych rzeczy, zamków i pułapek, plan etapu 58
 
 **Zlecenie MG:** sprawdzić wykrywanie niewidocznych rzeczy, otwieranie zamka i rozbrajanie

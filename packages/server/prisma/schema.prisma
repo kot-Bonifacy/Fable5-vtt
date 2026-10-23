@@ -1405,6 +1405,10 @@ model DefenseZone {
   deviceId       String?
   /// GM's own note about what this thing really is.
   notes String @default("")
+  /// Disarm DV on this zone (stage 58b); null = the compendium entry's.
+  disarmDv Int?
+  /// JSON array of character ids that tried to disarm it and failed (58b).
+  disarmTried String @default("[]")
 
   createdAt DateTime @default(now())
 
