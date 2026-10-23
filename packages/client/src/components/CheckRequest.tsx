@@ -13,6 +13,7 @@ import { gmAttentionKey } from '../gm-attention.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { noteAck } from '../notices.js';
 import { useCheckStore } from '../stores/checkStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 
 /**
  * Karta prośby o Test (etap 40) — gracz pyta, MG odpowiada jednym kliknięciem.
@@ -42,6 +43,14 @@ export function CheckRequestRow({
   const [refusing, setRefusing] = useState(false);
   const [note, setNote] = useState('');
 
+  // Prośba o oględziny (etap 41) ma cel na mapie. MG wybiera przy niej tylko
+  // Poziom Trudności — bez „Ustaw…” i bez odmowy (uwaga MG z 23.10). Nazwa
+  // celu z własnej listy żetonów, więc gracz widzi alias, a MG prawdziwe imię.
+  const sightingTokenId =
+    typeof entry.system.sightingTokenId === 'string' ? entry.system.sightingTokenId : null;
+  const sightingName = useTokenStore((s) =>
+    sightingTokenId ? (s.tokens[sightingTokenId]?.name ?? null) : null,
+  );
   const open = isCheckRequestOpen(entry);
   const mine = mayCancelCheckRequest(entry, userId);
 
@@ -99,6 +108,7 @@ export function CheckRequestRow({
       <div className="chat-action-body">
         <span className="chat-action-name">
           {entry.characterName} — {entry.rollLabel}
+          {sightingTokenId && ` · oględziny: ${sightingName ?? 'figura'}`}
         </span>
       </div>
       {entry.reason && <p className="chat-proposal-reason">„{entry.reason}"</p>}
@@ -138,25 +148,27 @@ export function CheckRequestRow({
               </button>
             ))}
           </div>
-          <div className="chat-note-actions">
-            <button
-              type="button"
-              className="small-button"
-              disabled={busy}
-              title="Pełne okno wezwania — inna Umiejętność, modyfikator, widoczność, rzut przeciwstawny"
-              onClick={openFullCall}
-            >
-              Ustaw…
-            </button>
-            <button
-              type="button"
-              className="small-button"
-              disabled={busy}
-              onClick={() => setRefusing(true)}
-            >
-              Odmów
-            </button>
-          </div>
+          {!sightingTokenId && (
+            <div className="chat-note-actions">
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                title="Pełne okno wezwania — inna Umiejętność, modyfikator, widoczność, rzut przeciwstawny"
+                onClick={openFullCall}
+              >
+                Ustaw…
+              </button>
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                onClick={() => setRefusing(true)}
+              >
+                Odmów
+              </button>
+            </div>
+          )}
         </>
       )}
 

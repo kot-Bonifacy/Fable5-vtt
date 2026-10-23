@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CPRED_PERCEPTION_SKILL_ID,
   CPRED_SIGHTING_BARE_HEAD,
@@ -11,7 +11,8 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore } from '../stores/chatStore.js';
-import { useCheckStore } from '../stores/checkStore.js';
+import { checkRequestErrorText, requestCheck } from '../socket.js';
+import { noteAck } from '../notices.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { ItemIcon } from './ItemIcons.js';
 
@@ -51,6 +52,7 @@ export function SightingWindow() {
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const items = useChatStore((s) => s.items);
   const placement = useWindowPlacement('sighting', () => ({ x: 260, y: 160 }));
+  const [busy, setBusy] = useState(false);
 
   const detail = useMemo(() => (tokenId ? detailFor(items, tokenId) : null), [items, tokenId]);
 
@@ -72,17 +74,23 @@ export function SightingWindow() {
    */
   const mine = Object.values(characters).find((card) => card.ownerId === userId) ?? null;
 
-  function askGm() {
+  /**
+   * Prośba o oględziny leci od razu, bez okna „po co” (uwaga MG z 23.10):
+   * po co, mówi samo kliknięcie, a na co gracz patrzy — `sightingTokenId`.
+   * MG na karcie prośby wybiera już tylko Poziom Trudności.
+   */
+  async function askGm() {
     if (!mine) return;
-    useCheckStore.getState().openRequest({
+    setBusy(true);
+    const ack = await requestCheck({
       characterId: mine.id,
-      characterName: mine.name,
       // `sightingTokenId` jest jedyną rzeczą, która odróżnia tę prośbę od
       // każdego innego Testu Percepcji — i to serwer, nie okno, rozstrzyga,
       // co jej zdanie odsłoni.
       request: { kind: 'skill', skillId: CPRED_PERCEPTION_SKILL_ID, sightingTokenId: tokenId! },
-      label: 'Percepcja — oględziny',
     });
+    setBusy(false);
+    if (!noteAck('check', ack, checkRequestErrorText)) return;
     close();
   }
 
@@ -200,11 +208,16 @@ export function SightingWindow() {
 
             {!sighting.detailed && mine && (
               <>
-                <button type="button" className="small-button sighting-ask" onClick={askGm}>
+                <button
+                  type="button"
+                  className="small-button sighting-ask"
+                  disabled={busy}
+                  onClick={() => void askGm()}
+                >
                   🔍 Poproś MG o dokładne oględziny
                 </button>
                 <p className="inventory-hint">
-                  Test Percepcji — próg ustala MG. W walce kosztuje Akcję.
+                  Test Percepcji — MG ustala tylko próg. W walce kosztuje Akcję.
                 </p>
               </>
             )}

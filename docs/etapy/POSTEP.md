@@ -432,6 +432,19 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 23.10, szósta (po `7dfd0d9`) — zlecenie MG: „Przyjrzyj się” bez tłumaczenia
+
+**Prośba o oględziny leci jednym kliknięciem.** „🔍 Poproś MG o dokładne oględziny” w oknie
+oględzin (`SightingWindow.tsx`) woła `requestCheck` od razu — bez okna „Po co” (`CheckRequestDialog`
+zostaje dla Alt+kliku z karty). Karta prośby (`CheckRequest.tsx`) z `system.sightingTokenId`
+dopisuje „· oględziny: <nazwa celu>” (nazwa z własnej listy żetonów: MG prawdziwa, gracz alias)
+i daje MG **tylko drabinkę PT** — bez „Ustaw…” i „Odmów”. Gracz dalej może prośbę wycofać.
+Serwer bez zmian.
+
+**Sprawdzone:** `tsc` i ESLint klienta, vitest klienta 421/421. **Oglądano** jednorazową suitą na
+instancji E2E (skasowana): Ola w **Firefoksie** (klik → bez okna, karta „oględziny: Kowal”,
+po zgodzie wezwanie PT 13 z „Rzuć”), MG w Chromium (karta z samą drabinką).
+
 ### Sesja 23.10, piąta (po `e59e425`) — zlecenie MG: PT strefy od MG, jedno pytanie o Szczęście
 
 **PT strefy bronionej wybiera MG.** Nowa kolumna `DefenseZone.spotDv` (migracja
@@ -452,31 +465,3 @@ z `loadCup`). Licznik na kubku zostaje przy rzutach bez okna: atak, Unik, chwyt,
 **Oglądano w Firefoksie (Playwright):** pasek strefy z oboma polami, postawienie Podłogi
 elektrycznej z PT 👁 13 (wpis 17) i karta z „PT Percepcji 13”; strefa usunięta. Kubka gracza po
 wezwaniu nie oglądano w przeglądarce (zmiana to jeden warunek nad licznikiem).
-
-### Sesja 23.10, czwarta (po `71f5da1`) — zlecenie MG: kule, śrut i strzały się nie kończą
-
-**Zakres:** zasada domowa zamiast liczenia amunicji (decyzje MG z pytań na starcie: magazynek
-zostaje z darmowym Przeładowaniem; granaty i rakiety liczone u wszystkich; amunicja specjalna
-też bez dna, wybór wolny; stare pudełka usunąć). MG był przekonany, że podręcznik daje amunicję
-bez końca — nie daje (s. 94, 169), więc to odstępstwo zapisane w `decyzje-i-uproszczenia.md`.
-**Zrobione:** `shared` — `CPRED_COUNTED_AMMO_PATTERNS`, `cpredAmmoPatternCounted`,
-`cpredWeaponAmmoCounted` (`ammo.ts`); `cpredTracksAmmo` i pole `ammoTracked` usunięte;
-`cpredCalibreOptions` / `cpredPurchasedAmmoRow` znają tylko granaty i rakiety; pasek
-(`cpredWeaponOptions`) daje `stock` tylko takiej broni; `normalizeCharacterData` zdejmuje pudełka
-innych kształtów; `creationPurchases` pomija linię kul z koszyka sprzed zasady. Serwer —
-`planStockReload` / `planThrowFromStock` pytają broń, nie kartę; `characterTracksAmmo` usunięte
-(bot i `character:update` — `AMMO_LOCKED` dla każdej karty gracza); `ammo-sweep.ts`
-(`dropBottomlessAmmo` przy starcie). Klient — bez „Licz amunicję” na karcie, `ammo-stock.ts`
-usunięty, liczby zapasu tylko przy granatach, Kompendium pisze „Ta amunicja się nie kończy”
-zamiast „Kup”/„Dodaj”, skrzynia nie oferuje kul. E2E przepisane: `t46c-amunicja` (na granatach),
-T3a 3.6, T5a (przygotowanie), T5b 5.9.
-
-**Weryfikacja:** `shared` 2601/2601, serwer 1609 → zielone (przepisane `ammo-stock.test.ts` na
-wyrzutnię ładunków, + test `dropBottomlessAmmo`; test bota z 17.10 zamieniony na „nabój specjalny
-bez pudełek”, bo granatów bot w menu nie ma), klient 421/421, `tsc` i ESLint czyste w zmienionych
-plikach. E2E: `t46c-amunicja` 9/9 (46c.9 `@llm` pominięty), T5a 23/23, T3a do 3.6 włącznie;
-T5b i reszta T3a — zaległość. **Oglądane** zrzutami z przebiegu: Ola w **Firefoksie** (karta
-Iskry: pistolet „Zwykła” bez liczby, granat „zapas 2”; pasek „zapas 2” tylko przy granacie),
-Chromium (Kompendium z notką, karta NPC bez przełącznika, kreator bez kul). Punkty łańcucha
-przywrócone z kopii `.e2e/checkpoints-bak-23.10-amunicja` (do skasowania ręką).
-
