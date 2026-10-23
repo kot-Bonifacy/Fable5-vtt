@@ -314,18 +314,24 @@ describe('walka z zauważenia wroga (etap 56)', () => {
     expect((await walk([{ x: 1100, y: 1100 }])).ok).toBe(true);
     expect((await step(vex, 1100, 1100, true)).ok).toBe(true);
     expect(await combatOf(gm)).toBeNull();
+    const foe = (await stateOf(gm)).tokens.find((token) => token.id === foeTokenId);
+    expect(foe?.disposition).toBe('neutral');
   });
 
-  it('wróg, który zniknął z oczu i wrócił, znowu zaczyna walkę', async () => {
+  it('uspokojony wróg, który zniknął z oczu i wrócił, dalej nie zaczyna walki', async () => {
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: true } });
-    expect(await combatOf(gm)).toBeNull();
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: false } });
+    expect(await combatOf(gm)).toBeNull();
+  });
+
+  it('MG przełącza uspokojonego na Wroga — walka zaczyna się od nowa', async () => {
+    await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { disposition: 'hostile' } });
     const combat = await combatOf(gm);
     expect(combat?.round).toBe(0);
     expect(combat?.sighting?.foeIds).toEqual([foeTokenId]);
   });
 
-  it('wróg zdjęty przez MG ze starcia nie wraca, dopóki nie zniknie z oczu', async () => {
+  it('wróg zdjęty przez MG ze starcia przechodzi na Neutralną i nie wraca', async () => {
     const before = await combatOf(gm);
     const foeRow = before!.combatants.find((row) => row.tokenId === foeTokenId)!;
     expect((await emitAck(gm, 'combat:remove', { combatantId: foeRow.id })).ok).toBe(true);
@@ -339,6 +345,8 @@ describe('walka z zauważenia wroga (etap 56)', () => {
     expect((await combatOf(gm))?.combatants.map((row) => row.tokenId)).toEqual([vexTokenId]);
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: true } });
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: false } });
+    expect((await combatOf(gm))?.combatants.map((row) => row.tokenId)).toEqual([vexTokenId]);
+    await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { disposition: 'hostile' } });
     expect((await combatOf(gm))?.combatants.map((row) => row.tokenId).sort()).toEqual(
       [vexTokenId, foeTokenId].sort(),
     );
@@ -368,10 +376,13 @@ describe('walka z zauważenia wroga (etap 56)', () => {
   });
 
   it('klatka, która przyszła razem z klatką zauważenia, nie wyprowadza figury za pole zatrzymania', async () => {
-    // Bandzior znika z oczu (koniec spokoju), Vex wraca na start.
+    // Bandzior znika z oczu, Vex wraca na start, a MG przywraca mu wrogość.
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: true } });
     expect((await step(gm, START.x, START.y, true)).ok).toBe(true);
-    await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: false } });
+    await emitAck(gm, 'token:update', {
+      tokenId: foeTokenId,
+      patch: { hidden: false, disposition: 'hostile' },
+    });
     expect(await combatOf(gm)).toBeNull();
     now += PACE_REFILL_MS;
     expect((await walk([{ x: 1100, y: 1100 }])).ok).toBe(true);
@@ -410,7 +421,7 @@ describe('walka z zauważenia wroga (etap 56)', () => {
     await emitAck(gm, 'token:update', { tokenId: foeTokenId, patch: { hidden: true } });
     await emitAck(gm, 'token:update', {
       tokenId: foeTokenId,
-      patch: { hidden: false, statuses: ['unconscious'] },
+      patch: { hidden: false, statuses: ['unconscious'], disposition: 'hostile' },
     });
     expect(await combatOf(gm)).toBeNull();
   });

@@ -421,7 +421,11 @@ export const combatHoldEvent = defineEvent<CombatHoldPayload, CombatView>({
     }
     // Holding lowers one's initiative for the round — a value at or above the
     // own seat would fire the instant the turn ends, a hold in name only.
-    if (initiative !== null && combatant.initiative !== null && initiative >= combatant.initiative) {
+    if (
+      initiative !== null &&
+      combatant.initiative !== null &&
+      initiative >= combatant.initiative
+    ) {
       throw new RealtimeError('HOLD_NOT_LOWER');
     }
     await deps.ctx.prisma.combatant.update({
@@ -546,8 +550,8 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
     await clearGrapplesOf(deps, campaignId, combat, combatant);
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
     // Etap 56: wróg zdjęty przez MG ze starcia nie wraca przy następnym kroku
-    // drużyny — jest uspokojony, dopóki nie zniknie jej z oczu.
-    if (combatant.tokenId) calmFoe(scene.id, combatant.tokenId);
+    // drużyny — przechodzi na Neutralną, dopóki MG nie przełączy go na Wroga.
+    if (combatant.tokenId) await calmFoe(deps, campaignId, scene, combatant.tokenId);
     return emitReloadedFor(deps, campaignId, scene, combat.id, user);
   },
 });
@@ -733,8 +737,8 @@ export const combatEndEvent = defineEvent({
     const combat = await loadCombat(deps.ctx.prisma, scene.id);
     if (combat) await clearGrapplesOf(deps, campaignId, combat);
     // Etap 56: „Odwołaj” i koniec walki uspokajają wrogów, których drużyna
-    // teraz widzi — inaczej następny krok założyłby starcie od nowa.
-    await calmVisibleFoes(deps, scene);
+    // teraz widzi — na stałe, postawą Neutralna (decyzja MG z 24.10).
+    await calmVisibleFoes(deps, campaignId, scene);
     // Ending clears the state completely — round history is not persisted.
     await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
     await emitCombatOfScene(deps, campaignId, scene);

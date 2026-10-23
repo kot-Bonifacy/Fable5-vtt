@@ -31,7 +31,7 @@ export const DISPOSITION_HINTS: Readonly<Record<TokenDisposition, string>> = {
   friendly: 'Sojusznik drużyny. Niczego nie wyzwala.',
   neutral: 'Nie wyzwala walki — handlarz, przechodzień, świadek.',
   hostile:
-    'Gdy ktoś z drużyny ją zobaczy, serwer zakłada starcie „Przed walką”, a gracze stoją, dopóki go nie rozpoczniesz albo nie odwołasz. Postawę widzi tylko MG.',
+    'Gdy ktoś z drużyny ją zobaczy, serwer zakłada starcie „Przed walką”, a gracze stoją, dopóki go nie rozpoczniesz albo nie odwołasz. Koniec walki i „Odwołaj” przełączają widocznych wrogów na Neutralną. Postawę widzi tylko MG.',
 };
 
 /** Ustawia postawę wszystkim podanym figurom; odmowę mówi jednym zdaniem. */

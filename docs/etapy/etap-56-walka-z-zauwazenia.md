@@ -34,6 +34,8 @@ nie miała postawy, a NPC dołożony w trakcie walki stał na dole kolejki bez i
    drużyny) — liczone dla właścicieli figur na scenie, także niepodłączonych.
 7. **Bez pętli:** wrogowie widziani w chwili „Odwołaj” / końca walki (i usunięci przez MG ze
    starcia) są uspokojeni, dopóki nie znikną drużynie z oczu. MG zawsze założy starcie ręcznie.
+   **Zmiana z 24.10 (MG):** uspokojenie jest trwałe — wróg dostaje w bazie postawę Neutralna
+   i wyzwoli walkę znowu dopiero, gdy MG sam przełączy go na Wroga.
 8. **Postawę widzi tylko MG** — gracze nie dostają jej z serwera.
 
 ## Zakres

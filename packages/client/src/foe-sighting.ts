@@ -14,7 +14,7 @@ import { useTokenStore } from './stores/tokenStore.js';
  * graczy w miejscu. MG dostaje nad mapą bursztynowe wezwanie z dwiema
  * odpowiedziami — „⚔ Rozpocznij walkę” (runda 1, NPC-om inicjatywa jak z pasa)
  * albo „Odwołaj” (skradanie, rozmowa: drużyna wraca do Eksploracji, a widoczni
- * wrogowie są uspokojeni, dopóki nie znikną jej z oczu). Dobór uczestników
+ * wrogowie przechodzą na Neutralną, dopóki MG nie przełączy ich na Wroga). Dobór uczestników
  * zostaje w zakładce „Walka”, na którą prawy panel przeskakuje sam.
  */
 
@@ -61,7 +61,7 @@ export function useSightingNotice(): PinnedNotice | null {
       {
         label: 'Odwołaj',
         title:
-          'Drużyna wraca do Eksploracji. Widoczni teraz wrogowie nie zaczną walki znowu, dopóki nie znikną jej z oczu',
+          'Drużyna wraca do Eksploracji. Widoczni teraz wrogowie przechodzą na Neutralną — walkę zaczną znowu dopiero, gdy przełączysz ich na Wroga',
         run: () => void endCombat().then((ack) => noteAck('action', ack, combatErrorText)),
       },
     ],

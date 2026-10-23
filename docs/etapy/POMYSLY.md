@@ -35,8 +35,8 @@ wroga figura zauważona przez drużynę zakłada starcie (`realtime/foe-sighting
 `tura`). Poza zakresem zostało: (1) **postawa żyje na figurze, nie na karcie** — każdy statysta
 postawiony ze wzorca startuje jako Neutralny i MG oznacza bandę paskiem grupy; pole „Postawa” na
 wzorcu (`Character`), które dziedziczy nowa figura, oszczędziłoby klik przy każdej zasadzce.
-(2) **Pamięć uspokojonych wrogów jest w procesie** — po restarcie serwera wróg widoczny w chwili
-„Odwołaj” zaczyna walkę przy następnym kroku drużyny; kolumna na figurze przeżyłaby restart.
+(2) ~~**Pamięć uspokojonych wrogów jest w procesie**~~ — załatwione 24.10: uspokojony wróg
+dostaje w bazie postawę Neutralna.
 (3) **Zatrzymany marsz nie płaci puli** — figura staje na polu zauważenia bez rachunku Eksploracji
 (walka i tak liczy od nowa). (4) **Boty-towarzysze nie mają postawy w promptach** — bot nie wie, kto
 jest wrogiem, dopóki MG mu nie powie; `disposition` w kontekście sceny dałoby mu tę wiedzę.

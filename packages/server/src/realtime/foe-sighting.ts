@@ -37,6 +37,7 @@ import {
   concealmentFor,
   controllerIds,
   emitTokenMoveFrame,
+  emitTokenUpsert,
   loadLinkedSheets,
   toSnapScene,
 } from './tokens.js';
@@ -58,13 +59,11 @@ import { endWalk, walksOnScene } from './walks.js';
  * niepodłączonego. Tylko w trwającej sesji i na aktywnej scenie: przygotowanie
  * MG niczego nie wyzwala.
  *
- * Pamięć „uspokojonych” wrogów żyje w procesie (jak cele i pula): wróg widziany
- * w chwili „Odwołaj”, końca walki albo usunięcia ze starcia nie wyzwala znowu,
- * dopóki nie zniknie drużynie z oczu. Restart serwera ją czyści.
+ * Uspokojenie jest trwałe (decyzja MG z 24.10, zamiast „dopóki nie zniknie
+ * z oczu”): wróg widziany w chwili „Odwołaj”, końca walki albo zdjęty przez MG
+ * ze starcia dostaje w bazie postawę Neutralna. Walkę wyzwoli znowu dopiero,
+ * gdy MG sam przełączy go na Wroga.
  */
-
-/** Wrogowie uspokojeni na scenie — id figur. */
-const calmed = new Map<string, Set<string>>();
 
 /**
  * Jedno sprawdzenie naraz na scenę — kolejne czekają w ogonie. Równoległa
@@ -131,12 +130,6 @@ async function sightOnce(
   const halted: HaltedTokens = new Map();
   const foes = await eligibleFoes(deps, scene.id);
   const seen = await seenFoes(deps, scene, foes, live);
-  const quiet = calmed.get(scene.id);
-  if (quiet) {
-    // Wróg, który zniknął drużynie z oczu, znowu wyzwoli walkę (decyzja MG 7).
-    for (const id of quiet) if (!seen.byFoe.has(id)) quiet.delete(id);
-    if (quiet.size === 0) calmed.delete(scene.id);
-  }
   if (seen.byFoe.size === 0) return halted;
   const session = await deps.ctx.prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -147,9 +140,7 @@ async function sightOnce(
   const combat = await loadCombat(deps.ctx.prisma, scene.id);
   const inFight = new Set(combat?.combatants.map((row) => row.tokenId) ?? []);
   const room = MAX_COMBATANTS - inFight.size;
-  const fresh = [...seen.byFoe.keys()]
-    .filter((id) => !inFight.has(id) && !quiet?.has(id))
-    .slice(0, Math.max(0, room));
+  const fresh = [...seen.byFoe.keys()].filter((id) => !inFight.has(id)).slice(0, Math.max(0, room));
   if (fresh.length === 0) return halted;
 
   const spotterIds = spottersOf(seen, fresh, live);
@@ -359,22 +350,50 @@ async function sightedStand(
 }
 
 /**
- * „Odwołaj”, koniec walki (decyzja MG 7): wrogowie, których drużyna teraz
- * widzi, nie wyzwolą walki znowu, dopóki nie znikną jej z oczu.
+ * „Odwołaj”, koniec walki (decyzja MG 7, trwale od 24.10): wrogowie, których
+ * drużyna teraz widzi, przechodzą na Neutralną.
  */
-export async function calmVisibleFoes(deps: RealtimeDeps, scene: Scene): Promise<void> {
+export async function calmVisibleFoes(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+): Promise<void> {
   const seen = await seenFoes(deps, scene, await eligibleFoes(deps, scene.id), undefined);
-  if (seen.byFoe.size === 0) return;
-  const quiet = calmed.get(scene.id) ?? new Set<string>();
-  for (const id of seen.byFoe.keys()) quiet.add(id);
-  calmed.set(scene.id, quiet);
+  await calmFoes(deps, campaignId, scene, [...seen.byFoe.keys()]);
 }
 
 /** MG zdjął wroga ze starcia — ten sam spokój, inaczej wróciłby przy następnym kroku. */
-export function calmFoe(sceneId: string, tokenId: string): void {
-  const quiet = calmed.get(sceneId) ?? new Set<string>();
-  quiet.add(tokenId);
-  calmed.set(sceneId, quiet);
+export async function calmFoe(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  tokenId: string,
+): Promise<void> {
+  await calmFoes(deps, campaignId, scene, [tokenId]);
+}
+
+/**
+ * Wrogie figury MG z listy dostają postawę Neutralna, a MG ich świeży widok.
+ * Figur graczy i niewrogich NPC-ów nie rusza — „✕” zdejmuje ze starcia każdego.
+ */
+async function calmFoes(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  tokenIds: string[],
+): Promise<void> {
+  if (tokenIds.length === 0) return;
+  const foes = await deps.ctx.prisma.token.findMany({
+    where: { id: { in: tokenIds }, sceneId: scene.id, ownerId: null, disposition: 'hostile' },
+    select: { id: true },
+  });
+  for (const foe of foes) {
+    const calmed = await deps.ctx.prisma.token.update({
+      where: { id: foe.id },
+      data: { disposition: 'neutral' },
+    });
+    await emitTokenUpsert(deps, campaignId, scene, calmed);
+  }
 }
 
 /**
@@ -400,8 +419,3 @@ export async function refuseMoveBeforeSightedFight(
 }
 
 export const COMBAT_PENDING = 'COMBAT_PENDING';
-
-/** Tylko dla testów: czyści pamięć uspokojonych wrogów. */
-export function resetSightingMemory(): void {
-  calmed.clear();
-}
