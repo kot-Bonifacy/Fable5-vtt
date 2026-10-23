@@ -421,6 +421,10 @@ export async function exportScene(
           visionRange: true,
           sharedVision: true,
           disposition: true,
+          // Ukryta figura (58d): PT od MG i kto ją zauważył — id kont i kart
+          // przechodzą przez `remap` jak w liście zauważeń strefy.
+          spotDv: true,
+          sightings: true,
           lightBrightM: true,
           lightDimM: true,
           lightColor: true,
@@ -706,6 +710,8 @@ export async function insertScene(
           visionRange: maybeNum(row.visionRange),
           sharedVision: typeof row.sharedVision === 'boolean' ? row.sharedVision : null,
           disposition: isTokenDisposition(row.disposition) ? row.disposition : null,
+          spotDv: typeof row.spotDv === 'number' ? Math.round(row.spotDv) : null,
+          sightings: stringifyJsonColumn(remap(row.sightings), '{}'),
           lightBrightM: num(row.lightBrightM),
           lightDimM: num(row.lightDimM),
           lightColor: str(row.lightColor, '#ffd9a0'),

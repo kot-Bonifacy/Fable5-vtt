@@ -4,7 +4,7 @@ import type {
   TokenTargetPayload,
   TokenTargetView,
 } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { tokenHiddenFrom, ROLE_GM } from '@vtt/shared';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { sceneAudience } from './aim.js';
 import {
@@ -145,7 +145,7 @@ export const tokenTargetEvent = defineEvent<TokenTargetPayload, TokenTargetBroad
     const { token: target } = await requireCampaignToken(deps.ctx.prisma, campaign.id, targetId);
     if (target.sceneId !== scene.id) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (user.role !== ROLE_GM) {
-      if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+      if (tokenHiddenFrom(target, user.id)) throw new RealtimeError('TOKEN_NOT_FOUND');
       const concealment = await concealmentFor(deps.ctx.prisma, scene, user);
       if (concealedFrom(target, scene, concealment, null, user.id)) {
         throw new RealtimeError('TOKEN_NOT_FOUND');

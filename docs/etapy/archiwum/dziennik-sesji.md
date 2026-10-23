@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 23.10 (po `e220456`) — etap 58b: rozbrajanie pułapki przez gracza
+
+**Zakres 58b.** **Zrobione:** `shared` — `systems/cpred/trapdisarm.ts` (PT z nadpisania albo
+wpisu, odmowy, werdykt `disarmed` / `kept` / `backfire` od porażki o 5), pola `disarmDv` /
+`disarmTried` w `DefenseZoneView` i łacie, `DefenseZoneDisarmPayload`,
+`CpredRollRequest.disarmZoneId` / `disarmTokenId`. Serwer — migracja `20261023120000_zone_disarm`,
+`zoneDisarmEvent` i `settleDisarmTest` (`zones.ts`), hak w `character-rolls.ts`,
+`advanceGameTime` (`gametime.ts`), obie kolumny w kopii kampanii. Klient — „🛠 Rozbrój: …”
+w menu własnej figury (`zone-disarm.ts`), wspólny `takeCallCup` (`call-cup.ts`, wyjęty
+z `ContainerPane`), na karcie strefy MG „PT rozbrojenia”, lista prób i „Pozwól spróbować
+znowu”. Rozstrzygnięcia bez pytań (walka = tracker w kampanii, zegar bez karty na czacie,
+ponowny Test po sukcesie, porażka o 5+ tylko na działający system) — w pliku etapu.
+**Uwaga MG w trakcie sesji (58a):** wezwanie do Percepcji przy ukrytej rzeczy wygląda teraz
+jak każde wezwanie MG: bez promptu „przystaje — coś przykuło uwagę”, wzywa MG, a nie
+„Otoczenie”; pasek „X: Test Percepcji — rzuć kubkiem.”. **Spoza etapu:** trzy fikstury testów
+`shared` (`covers`, `jump`, `scene-objects`) bez `hidden` z `cd29ac2` psuły `tsc` — dopisane.
+
+**Weryfikacja:** `shared` 2581/2581 (+5 `trapdisarm.test.ts`), serwer 1595/1595 (+7 nowy
+`zone-disarm.test.ts`; `zones.test.ts` — wezwanie bez promptu i wzywa MG; macierz izolacji
+z `zone:disarm`), klient 421/421. `tsc` w trzech pakietach, ESLint i Prettier czyste
+w zmienionych plikach. E2E T5b z `po-T5a` **27/27** (krok podłogi szuka karty „Kowal —
+Percepcja” bez „przykuło”; atrapa `FakeGateway` na :8100 w trybie `reply`, gateway wyłączony —
+5.10 `@llm` nie sprawdził modelu). **Oglądane** tymczasowym specem (skasowany): Ola w
+**Firefoksie** — menu, okno wezwania, porażka 12, odmowa drugiej próby, sukces 18 > PT 5; MG
+w Chromium — karta strefy z listą prób i „Pozwól spróbować znowu”, po sukcesie „Uzbrój”,
+podpis „rozbrojona”, wiersz „poufne” z minutami.
+
 ### Sesja 22.10, ósma (po `fd6c385`) — 58a: Percepcja z kubka na wezwanie
 
 **Zmiana MG:** rzut przy ukrytej pułapce gracz robi z kubka (wbrew rzutowi ukrytemu z 58a).

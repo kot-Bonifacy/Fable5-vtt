@@ -9,7 +9,9 @@ import {
   sanitizeTokenPatch,
   snapTokenPosition,
   tokenDisposition,
+  tokenHiddenFrom,
   tokenTableName,
+  writeTokenSightings,
   type TokenSnapScene,
 } from './tokens.js';
 
@@ -199,5 +201,30 @@ describe('nextTokenCopyName (etap 35)', () => {
     // następny — a nie kręcić się w kółko po tym samym kandydacie.
     const taken = [long, nextTokenCopyName(long, [long])];
     expect(nextTokenCopyName(long, taken).endsWith(' 3')).toBe(true);
+  });
+});
+
+describe('ukryta figura zauważona (etap 58d)', () => {
+  it('a visible figure is hidden from nobody', () => {
+    expect(tokenHiddenFrom({ hidden: false, sightings: '{}' }, 'u1')).toBe(false);
+  });
+
+  it('a hidden figure exists only for the accounts that spotted it', () => {
+    const sightings = writeTokenSightings({ users: ['u1'], tried: ['c1', 'c2'] });
+    expect(tokenHiddenFrom({ hidden: true, sightings }, 'u1')).toBe(false);
+    expect(tokenHiddenFrom({ hidden: true, sightings }, 'u2')).toBe(true);
+  });
+
+  it('a broken column means nobody spotted it', () => {
+    expect(tokenHiddenFrom({ hidden: true, sightings: 'nie-json' }, 'u1')).toBe(true);
+    expect(tokenHiddenFrom({ hidden: true }, 'u1')).toBe(true);
+  });
+
+  it('the GM’s DV is a whole number 1–40 or nothing', () => {
+    expect(sanitizeTokenPatch({ spotDv: 15 })).toEqual({ spotDv: 15 });
+    expect(sanitizeTokenPatch({ spotDv: null })).toEqual({ spotDv: null });
+    expect(sanitizeTokenPatch({ spotDv: 0 })).toBeNull();
+    expect(sanitizeTokenPatch({ spotDv: 41 })).toBeNull();
+    expect(sanitizeTokenPatch({ spotDv: 12.5 })).toBeNull();
   });
 });

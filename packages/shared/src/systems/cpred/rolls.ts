@@ -434,6 +434,12 @@ export interface CpredRollRequest {
   hiddenZoneId?: number;
   noticeTokenId?: string;
   /**
+   * Etap 58d — ukryta figura, którą ten Test Percepcji może odsłonić (wtedy
+   * `noticeTokenId` to figura, która przy niej przystanęła). Tak samo
+   * wyłącznie z ręki serwera i tylko z zapisanego wezwania.
+   */
+  hiddenTokenId?: string;
+  /**
    * Etap 58b — strefa, którą ten Test Elektroniki i zabezpieczeń rozbraja,
    * i figura rozbrajającego (w nią bije system przy porażce o 5+). Wpisuje je
    * wyłącznie serwer w `zone:disarm`; rzut czyta je z zapisanego wezwania.

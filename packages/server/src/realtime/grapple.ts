@@ -13,6 +13,7 @@ import type {
   TokenHp,
 } from '@vtt/shared';
 import {
+  tokenHiddenFrom,
   CPRED_ACTION_CHOKE,
   CPRED_ACTION_ESCAPE_GRAPPLE,
   CPRED_ACTION_GRAPPLE,
@@ -214,7 +215,7 @@ export const grappleAttemptEvent = defineEvent<
     // Same concealment rules as an attack (stage 16): a hidden or fogged token
     // must not even be confirmable by a player poking at its id.
     if (user.role !== ROLE_GM) {
-      if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+      if (tokenHiddenFrom(target, user.id)) throw new RealtimeError('TOKEN_NOT_FOUND');
       const fog = await fetchFogState(deps.ctx.prisma, scene);
       const controlled =
         target.ownerId === user.id ||

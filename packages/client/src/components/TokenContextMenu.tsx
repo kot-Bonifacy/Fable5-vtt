@@ -31,6 +31,7 @@ import {
   TOKEN_LIGHT_DEFAULT_BRIGHT_M,
   TOKEN_LIGHT_DEFAULT_DIM_M,
   TOKEN_SIZE_MAX,
+  TOKEN_SPOT_DV_MAX,
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
   createDefaultStatistQuick,
@@ -522,6 +523,8 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [disposition, setDispositionField] = useState<TokenDisposition | ''>(
     token.disposition ?? '',
   );
+  // PT Percepcji ukrytej figury bez karty (etap 58d): '' — nikt jej sam nie zauważy.
+  const [spotDv, setSpotDv] = useState(token.spotDv == null ? '' : String(token.spotDv));
   const [hasLight, setHasLight] = useState(token.light != null);
   const [lightBrightM, setLightBrightM] = useState(
     token.light?.brightM ?? TOKEN_LIGHT_DEFAULT_BRIGHT_M,
@@ -570,6 +573,14 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       setError('Zasięg widzenia musi być liczbą metrów większą od zera (albo pusty).');
       return;
     }
+    const parsedSpotDv = spotDv.trim() === '' ? null : Number(spotDv);
+    if (
+      parsedSpotDv !== null &&
+      (!Number.isInteger(parsedSpotDv) || parsedSpotDv < 1 || parsedSpotDv > TOKEN_SPOT_DV_MAX)
+    ) {
+      setError(`PT Percepcji musi być liczbą całkowitą od 1 do ${TOKEN_SPOT_DV_MAX} (albo puste).`);
+      return;
+    }
     // Dopiero po walidacji (13.09): odmowa zasięgu zostawiała guzik
     // w „Zapisywanie…" na zawsze, a okno dawało się już tylko anulować.
     setSaving(true);
@@ -584,6 +595,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       visionRange: parsedRange,
       sharedVision: sharedVision === '' ? null : sharedVision === 'yes',
       disposition: disposition === '' ? null : disposition,
+      spotDv: parsedSpotDv,
       // Taking the lamp away is `null`, not a lamp of radius zero — see
       // `sanitizeTokenLight`. The switch keeps whatever state it was in, so
       // retuning a lit torch does not put it out.
@@ -741,6 +753,26 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
             </option>
           ))}
         </select>
+
+        {/* Ukryta figura bez karty (etap 58d): z kartą rzuca Skradanie sama. */}
+        {characterId === '' && !hasProfile && (
+          <>
+            <label className="auth-label" htmlFor="token-spot-dv">
+              PT Percepcji, gdy ukryta
+            </label>
+            <input
+              id="token-spot-dv"
+              type="number"
+              min={1}
+              max={TOKEN_SPOT_DV_MAX}
+              step={1}
+              placeholder="nikt jej sam nie zauważy"
+              value={spotDv}
+              onChange={(e) => setSpotDv(e.target.value)}
+              title="Postać gracza, która podejdzie na 4 m do ukrytej figury, staje i rzuca Percepcję przeciw temu PT. Figura z kartą rzuca zamiast tego Skradanie. Puste — odsłaniasz ją tylko ręką."
+            />
+          </>
+        )}
 
         <label className="auth-label">
           <input
@@ -1268,8 +1300,14 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           type="button"
           className="context-menu-item"
           onClick={() => void updateToken(token.id, { hidden: !token.hidden }).then(onClose)}
+          title={
+            token.spottedBy
+              ? `Zauważyło ją ${token.spottedBy} z graczy — widzą ją tylko oni.`
+              : undefined
+          }
         >
           {token.hidden ? '👁 Pokaż graczom' : '🚫 Ukryj przed graczami'}
+          {token.hidden && token.spottedBy ? ` (zauważona: ${token.spottedBy})` : ''}
         </button>
         {token.light && (
           <button

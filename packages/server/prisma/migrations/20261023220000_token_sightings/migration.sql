@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Token" ADD COLUMN "sightings" TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE "Token" ADD COLUMN "spotDv" INTEGER;

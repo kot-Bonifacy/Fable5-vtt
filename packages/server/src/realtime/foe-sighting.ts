@@ -7,6 +7,8 @@ import type {
   TokenHaltBroadcast,
 } from '@vtt/shared';
 import {
+  readTokenSightings,
+  tokenHiddenFrom,
   MAX_COMBATANTS,
   ROLE_GM,
   ROLE_PLAYER,
@@ -194,13 +196,16 @@ async function sightOnce(
 
 /**
  * Wrogowie, którzy mogą wyzwolić walkę: figury MG oznaczone jako wrogie, nie
- * ukryte, nie pojemniki i zdolne do działania — nieprzytomny albo martwy wróg
- * walki nie zaczyna (`sheetTurnForfeit`, ta sama tabela co oddawanie tury).
+ * ukryte (albo ukryte, ale już przez kogoś zauważone — 58d), nie pojemniki
+ * i zdolne do działania — nieprzytomny albo martwy wróg walki nie zaczyna
+ * (`sheetTurnForfeit`, ta sama tabela co oddawanie tury).
  */
 async function eligibleFoes(deps: RealtimeDeps, sceneId: string): Promise<Token[]> {
-  const rows = await deps.ctx.prisma.token.findMany({
-    where: { sceneId, hidden: false, ownerId: null, disposition: 'hostile' },
-  });
+  const rows = (
+    await deps.ctx.prisma.token.findMany({
+      where: { sceneId, ownerId: null, disposition: 'hostile' },
+    })
+  ).filter((row) => !row.hidden || readTokenSightings(row.sightings).users.length > 0);
   if (rows.length === 0) return rows;
   const containers = await containerTokenIds(deps.ctx.prisma, rows);
   return rows.filter(
@@ -245,6 +250,8 @@ async function seenFoes(
       borrowed: false,
     });
     for (const foe of foes) {
+      // Ukrytego wroga widzi tylko ten, kto go zauważył (58d).
+      if (tokenHiddenFrom(foe, userId)) continue;
       const at = live?.tokenId === foe.id ? { ...foe, x: live.x, y: live.y } : foe;
       const linked = foe.characterId ? sheets.get(foe.characterId) : undefined;
       if (concealedFrom(at, scene, concealment, linked, userId)) continue;

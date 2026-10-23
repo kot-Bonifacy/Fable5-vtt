@@ -226,6 +226,11 @@ export async function createCheckCall(
      */
     hiddenZone?: { zoneId: number; tokenId: string };
     /**
+     * Percepcja przy ukrytej figurze (etap 58d) — po białej liście, jak
+     * strefa: wystawia ją tylko zatrzymanie marszu w `hidden-figures.ts`.
+     */
+    hiddenFigure?: { hiddenTokenId: string; tokenId: string };
+    /**
      * Rozbrajanie strefy (etap 58b) — tak samo po białej liście: wystawia je
      * tylko `zone:disarm`, więc zgoda MG na prośbę o Test niczego nie rozbraja.
      */
@@ -257,6 +262,12 @@ export async function createCheckCall(
     ...(input.containerTokenId ? { containerTokenId: input.containerTokenId } : {}),
     ...(input.hiddenZone
       ? { hiddenZoneId: input.hiddenZone.zoneId, noticeTokenId: input.hiddenZone.tokenId }
+      : {}),
+    ...(input.hiddenFigure
+      ? {
+          hiddenTokenId: input.hiddenFigure.hiddenTokenId,
+          noticeTokenId: input.hiddenFigure.tokenId,
+        }
       : {}),
     ...(input.disarmZone
       ? { disarmZoneId: input.disarmZone.zoneId, disarmTokenId: input.disarmZone.tokenId }

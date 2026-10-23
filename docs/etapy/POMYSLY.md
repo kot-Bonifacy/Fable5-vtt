@@ -1,5 +1,16 @@
 # Pomysły poza zakresem etapów
 
+**23.10.2026 (etap 58d) — ukryta figura na pasie, skradanie się NPC-a i ukryty pojemnik.**
+(1) **Pas inicjatywy dla zauważającego:** pas jedzie jednym rozgłoszeniem do stołu
+(`filterCombatForPlayer`), więc ukryta figura zauważona przez jednego gracza zostaje na nim
+niewidoczna także dla niego. Pas per gracz (jak `token:sync`) pokazałby mu jej wiersz.
+(2) **NPC podchodzi sam:** rzut pada tylko z ruchu postaci gracza. Ukryty NPC przesunięty przez MG
+na 4 m od stojącej postaci zaczyna nową kryjówkę bez rzutu. Rzut „z drugiej strony” przy ruchu
+NPC-a oddałby skradanie się do drużyny. (3) **Ukryty pojemnik do zauważenia:** skrytka pod
+podłogą odsłania się dziś tylko ręką MG; pojemnik z polem „PT Percepcji” rzucałby jak figura bez
+karty. (4) **Kto zauważył — z imienia:** menu MG mówi „zauważona: N”, imiona są w wierszach
+„poufne”; lista w oknie edycji figury z „Zapomnij” pozwoliłaby MG cofnąć jedno zauważenie.
+
 **23.10.2026 (etap 58c) — jeden klucz do drzwi i skrzyni, wybór postaci przy wytrychu.** (1) **Wspólny
 klucz:** „Wydaj klucz” na drzwiach i na pojemniku zakłada każdy własny uchwyt, więc jeden klucz
 pasujący do obu (rozstrzygnięcie z planu 58) wymaga od MG ręki w bazie. Wystarczyłby wybór „Pasuje

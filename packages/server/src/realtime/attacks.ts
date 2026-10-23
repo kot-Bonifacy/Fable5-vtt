@@ -32,6 +32,7 @@ import type {
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  tokenHiddenFrom,
   cpredDrawFits,
   cpredShieldHands,
   cpredThrowsFromStock,
@@ -1023,7 +1024,7 @@ export async function performAttackRoll(
       // a token just as completely (stage 17), so it gets the same answer —
       // unless the player controls the token, in which case they can see it.
       if (target && user.role !== ROLE_GM) {
-        if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+        if (tokenHiddenFrom(target, user.id)) throw new RealtimeError('TOKEN_NOT_FOUND');
         const visible = await fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, scene, user);
         if (!visible.some((row) => row.id === target.id)) {
           throw new RealtimeError('TOKEN_NOT_FOUND');

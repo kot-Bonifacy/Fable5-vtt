@@ -16,6 +16,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  tokenHiddenFrom,
   CPRED_ACTION_STABILIZE,
   CPRED_CHARISMA_AUDIENCE_LABELS,
   CPRED_CHARISMA_REFUSAL_DAYS,
@@ -88,6 +89,7 @@ import { revealSighting } from './sighting.js';
 import { settleLockTest } from './containers.js';
 import { settleOpeningLockTest } from './opening-locks.js';
 import { settleDisarmTest, settleSpotTest } from './zones.js';
+import { settleSpotFigureTest } from './hidden-figures.js';
 import { sanitizeGesture } from './chat.js';
 import { rewriteAttackCard, settleDamageRoll } from './damage.js';
 
@@ -635,7 +637,9 @@ async function resolveStabilizeRequest(
   const tokenId = request.stabilizeTokenId;
   if (typeof tokenId !== 'string' || tokenId.length === 0) throw new RealtimeError('BAD_REQUEST');
   const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
-  if (user.role !== ROLE_GM && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+  if (user.role !== ROLE_GM && tokenHiddenFrom(token, user.id)) {
+    throw new RealtimeError('TOKEN_NOT_FOUND');
+  }
 
   let state: CpredWoundState;
   if (token.characterId) {
@@ -730,7 +734,9 @@ async function resolveTreatInjuryRequest(
     throw new RealtimeError('BAD_REQUEST');
   }
   const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
-  if (user.role !== ROLE_GM && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+  if (user.role !== ROLE_GM && tokenHiddenFrom(token, user.id)) {
+    throw new RealtimeError('TOKEN_NOT_FOUND');
+  }
 
   const mode: CpredCareMode = request.treatMode === 'quickFix' ? 'quickFix' : 'treatment';
   // „Można łatać samego siebie … Nie można leczyć samego siebie" (s. 223) —
@@ -1484,6 +1490,26 @@ async function performScopedRoll(
         characterId: call.entry.characterId,
         success: result.outcome.success,
         total: result.total,
+      });
+    }
+    // Etap 58d: Percepcja przy ukrytej figurze — adres figury tylko
+    // z zapisanego wezwania, PT też z niego (to rzut Skradania z chwili wezwania).
+    const figureCall = call
+      ? (call.entry.system as { hiddenTokenId?: unknown; noticeTokenId?: unknown })
+      : undefined;
+    if (
+      call &&
+      result.outcome &&
+      typeof figureCall?.hiddenTokenId === 'string' &&
+      typeof figureCall.noticeTokenId === 'string'
+    ) {
+      await settleSpotFigureTest(deps, campaignId, {
+        hiddenTokenId: figureCall.hiddenTokenId,
+        tokenId: figureCall.noticeTokenId,
+        characterId: call.entry.characterId,
+        success: result.outcome.success,
+        total: result.total,
+        dv: call.entry.dv,
       });
     }
     // Etap 58b: Test rozbrajania strefy. Adres strefy i figury — jak przy

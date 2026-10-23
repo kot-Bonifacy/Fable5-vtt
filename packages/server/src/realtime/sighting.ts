@@ -7,6 +7,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  tokenHiddenFrom,
   ROLE_GM,
   cpredDrawnWeapons,
   cpredSighting,
@@ -103,7 +104,7 @@ async function requireVisibleToken(
 ): Promise<{ token: Token; scene: Scene }> {
   const { token, scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
   if (user.role === ROLE_GM) return { token, scene };
-  if (token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+  if (tokenHiddenFrom(token, user.id)) throw new RealtimeError('TOKEN_NOT_FOUND');
   const character = token.characterId
     ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
     : null;

@@ -10,6 +10,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  tokenHiddenFrom,
   CPRED_FACEDOWN_PENALTY,
   ROLE_GM,
   cpredRecognises,
@@ -129,7 +130,7 @@ async function requireVisibleTarget(
   ownCharacterId: string,
 ): Promise<void> {
   if (user.role === ROLE_GM) return;
-  if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+  if (tokenHiddenFrom(target, user.id)) throw new RealtimeError('TOKEN_NOT_FOUND');
   const fog = await fetchFogState(deps.ctx.prisma, scene);
   const controlled =
     target.ownerId === user.id ||

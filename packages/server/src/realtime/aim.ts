@@ -1,5 +1,5 @@
 import type { SessionUser, TokenAimBroadcast, TokenAimPayload } from '@vtt/shared';
-import { ROLE_GM, sanitizeFacing } from '@vtt/shared';
+import { tokenHiddenFrom, ROLE_GM, sanitizeFacing } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
@@ -108,7 +108,7 @@ export async function sceneAudience(
     let seesAll = true;
     for (const token of tokens) {
       if (controllers.get(token.id)?.has(user.id)) continue;
-      if (token.hidden) {
+      if (tokenHiddenFrom(token, user.id)) {
         seesAll = false;
         break;
       }

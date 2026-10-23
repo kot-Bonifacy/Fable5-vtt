@@ -181,9 +181,15 @@ export function redactChatMessage(message: ChatMessageView, user: SessionUser): 
   // Wezwanie do Percepcji przy ukrytej strefie (58a) niesie jej adres dla
   // rozliczenia; serwer czyta go z zapisu, a gracz — także wezwany — nie
   // dostaje numeru strefy, której jeszcze nie ma w swoim payloadzie.
+  // Tak samo adres ukrytej figury (58d): jej id to figura, której gracz nie ma.
   const call = view.check;
-  if (call && 'hiddenZoneId' in call.system) {
-    const { hiddenZoneId: _zone, noticeTokenId: _token, ...system } = call.system;
+  if (call && ('hiddenZoneId' in call.system || 'hiddenTokenId' in call.system)) {
+    const {
+      hiddenZoneId: _zone,
+      hiddenTokenId: _hidden,
+      noticeTokenId: _token,
+      ...system
+    } = call.system;
     view = { ...view, check: { ...call, system } };
   }
 

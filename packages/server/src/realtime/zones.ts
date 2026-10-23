@@ -951,7 +951,10 @@ export async function settleSpotTest(
 }
 
 /** Konto MG kampanii, którym system pisze swoje wiersze — jak strzał strefy (#39). */
-async function campaignGmHand(deps: RealtimeDeps, campaignId: string): Promise<SessionUser | null> {
+export async function campaignGmHand(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<SessionUser | null> {
   const gm = await campaignGmUser(deps.ctx.prisma, campaignId);
   return gm ? toSessionUser(gm) : null;
 }
@@ -1191,8 +1194,8 @@ async function logZoneLine(
   return view;
 }
 
-/** `logZoneLine`, ale tylko dla MG (`gmaction`) — rzut ukryty z 58a. */
-async function logGmZoneLine(
+/** `logZoneLine`, ale tylko dla MG (`gmaction`) — rzut ukryty z 58a, figura z 58d. */
+export async function logGmZoneLine(
   deps: RealtimeDeps,
   campaignId: string,
   hand: SessionUser,

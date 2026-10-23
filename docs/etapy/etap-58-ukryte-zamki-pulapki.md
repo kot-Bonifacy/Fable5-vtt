@@ -4,7 +4,7 @@
 bronione), 46b (pojemnik z zamkiem), 18d (drzwi i zamek MG), 32 (wezwanie do Testu),
 55 (komunikaty), 56 (zatrzymanie marszu na polu zauważenia)
 
-**Podział na cztery sesje (propozycja 22.10, przyjęty — MG zlecił 58a tego samego dnia):** 58a → 58b, 58c, 58d. Zrobione: 58a (22.10), 58b i 58c (23.10).
+**Podział na cztery sesje (propozycja 22.10, przyjęty — MG zlecił 58a tego samego dnia):** 58a → 58b, 58c, 58d. Zrobione: 58a (22.10), 58b, 58c i 58d (23.10) — **etap zamknięty**.
 58a jest fundamentem: daje „rzut w drodze z zatrzymaniem”, którego używa 58d. 58b i 58c nie
 zależą od siebie.
 
@@ -264,20 +264,59 @@ dopiero po wylądowaniu kości (rzuty doganiają stół, #48).
 
 ### Zakres
 
-- [ ] Dostawca „ukrytej rzeczy” z 58a dla figury `hidden`: rzut przeciwstawny Percepcja gracza
+- [x] Dostawca „ukrytej rzeczy” z 58a dla figury `hidden`: rzut przeciwstawny Percepcja gracza
       vs ZW + Skradanie z karty NPC-a albo PT z pola na figurze (nowe, opcjonalne)
-- [ ] Sukces odsłania figurę **temu kontu** (lista `sightings` na figurze, filtr widoczności
+- [x] Sukces odsłania figurę **temu kontu** (lista `sightings` na figurze, filtr widoczności
       na serwerze). Lista prób na figurze, zerowana ruchem figury przez MG
-- [ ] Okno edycji figury u MG: „PT Percepcji” dla figury bez karty
-- [ ] Zauważona Wroga figura wchodzi w walkę z zauważenia (56) jak każda widoczna
+- [x] Okno edycji figury u MG: „PT Percepcji” dla figury bez karty
+- [x] Zauważona Wroga figura wchodzi w walkę z zauważenia (56) jak każda widoczna
 
 ### Kryteria ukończenia
 
-- [ ] Ukryty NPC ze Skradaniem 6 i ZW 6 nie trafia do payloadu gracza, dopóki ten nie wygra
+- [x] Ukryty NPC ze Skradaniem 6 i ZW 6 nie trafia do payloadu gracza, dopóki ten nie wygra
       rzutu przeciwstawnego; potem trafia tylko do jego payloadu (test serwera)
-- [ ] Ruch figury przez MG daje graczowi nowy rzut
-- [ ] Figura bez karty i bez PT — żadnego rzutu, żadnego zatrzymania
-- [ ] Oględziny: gracz w Firefoksie, zatrzymanie i odsłonięcie czającego się NPC-a
+- [x] Ruch figury przez MG daje graczowi nowy rzut
+- [x] Figura bez karty i bez PT — żadnego rzutu, żadnego zatrzymania
+- [x] Oględziny: gracz w Firefoksie, zatrzymanie i odsłonięcie czającego się NPC-a
+
+### Jak wyszło (23.10)
+
+Figura ma dwie nowe kolumny: `sightings` (JSON `{ users, tried }`, ten sam kształt co lista
+zauważeń strefy) i `spotDv` (PT od MG dla figury bez karty). Pytanie „czy ta ukryta figura
+istnieje dla tego konta” zadaje jedna funkcja `tokenHiddenFrom` w `shared/tokens.ts`. Woła ją
+filtr list figur (`fetchSceneTokensFor`) i każda odmowa „takiej figury nie ma”: cel ataku,
+chwyt, cel figury, grot, Konfrontacja, oględziny, Ustabilizowanie i leczenie. Zauważona figura
+jedzie do gracza jako zwykła (`hidden: false`). Dalej podlega mgle, ścianom i ciemności.
+
+Rzut wpina się w haczyk z 58a. `hiddenNoticeDue` pyta strefy, potem `hiddenFiguresNoticeDue`
+(`realtime/hidden-figures.ts`). Lądowanie woła `runHiddenFiguresAfterMove` obok
+`runZonesAfterMove`, z całej drogi. **Rzut przeciwstawny jest wezwaniem z PT:** Skradanie
+figury (ZW + Skradanie + 1k10, `cpredHidingDv` w `systems/cpred/hiding.ts`) rzuca serwer
+w chwili wezwania, a wynik staje się PT. Werdykt jest ten sam co w rzucie przeciwstawnym
+(remis wygrywa ukryty), a karta wygląda jak każde wezwanie MG. Rozlicza `settleSpotFigureTest`
+z haka rzutu (`hiddenTokenId` w zapisanym wezwaniu). Sukces dopisuje konto i rozsyła graczom
+listy figur, a `checkSighting` na ich końcu zakłada walkę z 56, gdy to wróg. Ruch ukrytej
+figury (każdy, nie tylko MG) i zmiana `hidden` ręką MG zerują listę.
+
+**Rozstrzygnięcia przyjęte bez pytań — czekają na słowo MG:**
+
+- **Rzut przeciwstawny jako PT, nie „druga strona: 12 + 1k10”.** Karta przeciwstawna mówiłaby
+  graczowi wprost, że ktoś się czai, zanim zda Test (uwaga MG z 23.10 do 58a).
+- **Karta wygrywa z PT od MG.** Figura z kartą rzuca Skradanie. Pole „PT Percepcji, gdy
+  ukryta” jest w oknie edycji tylko przy figurze bez karty.
+- **MG dostaje dwa wiersze „poufne”:** przy wezwaniu („Czajka kryje się: Skradanie się 12 + 3 =
+  15”) i przy wyniku („wynik 24 vs PT 15 — zauważa: Czajka”).
+- **Zbliżenie liczy się tylko z ruchu postaci gracza.** NPC, którego MG przesuwa obok stojącej
+  postaci, rzutu nie wywołuje. To nowa kryjówka, a zauważenie wymaga podejścia gracza.
+- **Pojemnik i figury graczy się nie liczą.** Ukryty pojemnik się nie skrada, a figury drużyny
+  nie chowają się przed sobą Testem.
+- **Pas inicjatywy zostaje wspólny.** Ukryta figura w walce jest graczom niewidoczna na pasie,
+  także temu, kto ją zauważył: pas jedzie jednym rozgłoszeniem do całego stołu. Na mapie
+  zauważający ją ma, może w nią celować i strzelać. MG odsłania ją ręką, gdy wychodzi z ukrycia.
+- **Światło niesione przez ukrytą figurę dalej świeci tylko jej właścicielom.**
+- **Menu figury MG pokazuje „(zauważona: N)”** przy „👁 Pokaż graczom”. Kto dokładnie, MG czyta
+  w wierszach „poufne”.
+- **Kopia sceny i kampanii niesie `spotDv` i `sightings`** (przez `remap`, jak strefa).
 
 ## Poza zakresem (do `POMYSLY.md`)
 

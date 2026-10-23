@@ -50,6 +50,9 @@ import {
   sanitizeTokenPath,
   sanitizeTokenSize,
   snapTokenPosition,
+  EMPTY_TOKEN_SIGHTINGS,
+  readTokenSightings,
+  tokenHiddenFrom,
   type TokenSnapScene,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
@@ -109,6 +112,7 @@ import { releaseTokenTargets } from './target.js';
 import { forgetPace } from './pace.js';
 import { enforceNetRunRange } from './netice.js';
 import { runZonesAfterMove } from './zones.js';
+import { runHiddenFiguresAfterMove } from './hidden-figures.js';
 import { createMixedRng } from './dice-rng.js';
 
 function parseStatuses(raw: string): string[] {
@@ -195,6 +199,11 @@ export function toTokenView(
     view.disposition = isTokenDisposition(token.disposition) ? token.disposition : null;
     // Pula Eksploracji (etap 45) — prywatna jak PW: ile mieści, gdy pełna.
     view.paceCapM = linked ? linked.moveM : null;
+    // Ukryta figura (58d): PT dla figury bez karty i ilu graczy ją zauważyło.
+    view.spotDv = token.spotDv;
+    // Zawsze, także 0: klient scala widoki spreadem, więc brak klucza zostawiłby
+    // u MG stare „zauważona” po ruchu figury.
+    view.spottedBy = token.hidden ? readTokenSightings(token.sightings).users.length : 0;
   } else {
     // Etap 43a, decyzja MG z 26.09: ile figurze zostało, widzi cały stół —
     // ułamek i szczebel, nigdy same liczby.
@@ -378,10 +387,16 @@ export async function fetchSceneTokensFor(
   liveOverride?: { tokenId: string; x: number; y: number },
 ): Promise<TokenView[]> {
   const isGm = user.role === ROLE_GM;
-  const rows = await prisma.token.findMany({
-    where: { sceneId: scene.id, ...(isGm ? {} : { hidden: false }) },
-    orderBy: { createdAt: 'asc' },
-  });
+  // Ukryta figura jedzie tylko do kont, które ją zauważyły (58d) — i to jako
+  // zwykła, bo gracz nie dostaje widoków z `hidden: true`.
+  const rows = (
+    await prisma.token.findMany({
+      where: { sceneId: scene.id },
+      orderBy: { createdAt: 'asc' },
+    })
+  )
+    .filter((row) => isGm || !tokenHiddenFrom(row, user.id))
+    .map((row) => (isGm || !row.hidden ? row : { ...row, hidden: false }));
   const sheets = await loadLinkedSheets(prisma, registry, rows);
   const concealment = await concealmentFor(prisma, scene, user, context, liveOverride);
   const views: TokenView[] = [];
@@ -652,6 +667,11 @@ export async function emitTokenUpsert(
   }
   if (token.hidden) {
     deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
+    // Zauważona (58d): każdy z tych, którzy ją widzą, dostaje własną listę —
+    // mgła i ściany dalej mogą ją przed nim chować.
+    if (readTokenSightings(token.sightings).users.length > 0) {
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+    }
     return;
   }
 
@@ -821,21 +841,30 @@ function emitTokenDelete(
   campaignId: string,
   scene: Scene,
   tokenId: string,
-  wasVisibleToPlayers: boolean,
+  /** `true` — cały stół; lista — MG i te konta (ukryta figura zauważona, 58d). */
+  wasVisibleToPlayers: boolean | readonly string[],
 ): void {
   if (!scene.active) {
     const payload: TokenDeleteBroadcast = { sceneId: scene.id, tokenId };
     deps.io.to(sceneRoom(scene.id)).emit('token:delete', payload);
     return;
   }
-  if (wasVisibleToPlayers) {
+  if (wasVisibleToPlayers === true) {
     const room = campaignRoom(campaignId);
     const payload: TokenDeleteBroadcast = { seq: deps.seqs.next(room), sceneId: scene.id, tokenId };
     deps.io.to(room).emit('token:delete', payload);
   } else {
     const payload: TokenDeleteBroadcast = { sceneId: scene.id, tokenId };
     deps.io.to(gmRoom(campaignId)).emit('token:delete', payload);
+    for (const userId of wasVisibleToPlayers || []) {
+      void emitToCampaignUser(deps.io, campaignId, userId, 'token:delete', payload);
+    }
   }
+}
+
+/** Komu znika kasowana figura: całemu stołowi albo tym, którzy ją zauważyli (58d). */
+function deleteAudience(token: Pick<Token, 'hidden' | 'sightings'>): true | string[] {
+  return token.hidden ? readTokenSightings(token.sightings).users : true;
 }
 
 /**
@@ -859,7 +888,7 @@ export async function removeCardWithFigures(
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     forgetPace(token.id);
     releaseTokenTargets(deps, token.id);
-    emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+    emitTokenDelete(deps, campaignId, scene, token.id, deleteAudience(token));
   }
   await deps.ctx.prisma.character.deleteMany({
     where: { id: characterId, campaignId, ownerId: null },
@@ -1194,6 +1223,12 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     }
     if (patch.sharedVision !== undefined) data.sharedVision = patch.sharedVision;
     if (patch.disposition !== undefined) data.disposition = patch.disposition;
+    if (patch.spotDv !== undefined) data.spotDv = patch.spotDv;
+    // Ukrycie i odsłonięcie ręką MG zaczyna zauważanie od nowa (58d): figura
+    // schowana drugi raz to nowa kryjówka, a jawna nie potrzebuje listy.
+    if (patch.hidden !== undefined && patch.hidden !== token.hidden) {
+      data.sightings = EMPTY_TOKEN_SIGHTINGS;
+    }
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
     let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
@@ -1381,7 +1416,7 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     forgetPace(token.id);
     releaseTokenTargets(deps, token.id);
-    emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+    emitTokenDelete(deps, campaignId, scene, token.id, deleteAudience(token));
     if (orphanCharacterId) {
       await deps.ctx.prisma.character.delete({ where: { id: orphanCharacterId } });
       await emitCharacterDelete(deps, campaignId, orphanCharacterId, null);
@@ -2000,6 +2035,8 @@ export async function performTokenMove(
 
     /** Co Percepcja odsłoniła przy tym lądowaniu — właściciel dowie się po rozesłaniu. */
     let spotted: { spotted: string[] } | null = null;
+    /** Ukryta figura w nowej kryjówce — zauważający dostaną listy bez niej (58d). */
+    let lostSpotters: Token | null = null;
     if (final) {
       // Only the drop is judged (stage 14c). Intermediate frames are a hand in
       // motion, not a decision — charging them would bill a player for hovering.
@@ -2063,7 +2100,7 @@ export async function performTokenMove(
       // stage 26f). Asked here for the same reason the disconnect is: this is
       // the one place every walk lands, and a second „a figure moved" would
       // drift from this one the first time somebody changed either.
-      spotted = await runZonesAfterMove(deps, {
+      const moved = {
         campaignId,
         user,
         scene,
@@ -2071,10 +2108,31 @@ export async function performTokenMove(
         from: { x: token.x, y: token.y },
         to: { x, y },
         path: reportedPath ?? [],
-      });
+      };
+      spotted = await runZonesAfterMove(deps, moved);
+      // Etap 58d: ukryte figury, obok których przeszła — ta sama droga co strefy.
+      spotted.spotted.push(...(await runHiddenFiguresAfterMove(deps, moved)));
+      // Ukryta figura, która zmieniła miejsce, siedzi w nowej kryjówce (58d):
+      // kto ją zauważył, traci ją z mapy, a każda postać dostaje nowy rzut.
+      if (
+        token.hidden &&
+        (x !== token.x || y !== token.y) &&
+        token.sightings !== EMPTY_TOKEN_SIGHTINGS
+      ) {
+        const reset = await deps.ctx.prisma.token.update({
+          where: { id: token.id },
+          data: { sightings: EMPTY_TOKEN_SIGHTINGS },
+        });
+        if (readTokenSightings(token.sightings).users.length > 0) lostSpotters = reset;
+      }
     }
 
     await broadcast({ x, y }, final);
+    if (lostSpotters) {
+      // MG — świeży widok bez „zauważona”, gracze — listy bez figury.
+      await emitTokenUpsert(deps, campaignId, scene, lostSpotters);
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+    }
     // Etap 58a: najpierw „przystaje”, potem „zauważa” — w tej kolejności gracz
     // ma to przeczytać, a lądowanie leży już w jego magazynie.
     if (noticeHalt) await emitNoticeHalt(deps, campaignId, scene, token);

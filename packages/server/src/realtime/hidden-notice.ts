@@ -12,6 +12,7 @@ import { emitToCampaignUser } from './state.js';
 import { controllerIds } from './tokens.js';
 import { controllerOf } from './zone-effects.js';
 import { zonesNoticeDue } from './zones.js';
+import { hiddenFiguresNoticeDue } from './hidden-figures.js';
 
 /**
  * Percepcja w drodze (etap 58a, decyzje MG z 22.10).
@@ -29,9 +30,9 @@ import { zonesNoticeDue } from './zones.js';
  * stoi, dopóki gracz nie rzuci albo MG nie rzuci za niego czy nie odwoła
  * wezwania (`refuseWhileNoticePending`). Wynik widzą MG i rzucający.
  *
- * Moduł jest jednym miejscem pytania „czy tu jest coś do zauważenia”: dziś
- * strefy bronione, w 58d ukryte figury. Nowy rodzaj ukrytej rzeczy dopisuje się
- * w `hiddenNoticeDue`, nie w pętli klatek.
+ * Moduł jest jednym miejscem pytania „czy tu jest coś do zauważenia”: strefy
+ * bronione (58a) i ukryte figury (58d, `hidden-figures.ts`). Nowy rodzaj
+ * ukrytej rzeczy dopisuje się w `hiddenNoticeDue`, nie w pętli klatek.
  */
 
 /** Czy na tym polu (lewy górny róg figury) figurze należy się rzut na Percepcję. */
@@ -42,7 +43,8 @@ export async function hiddenNoticeDue(
   token: Token,
   stand: ScenePoint,
 ): Promise<boolean> {
-  return zonesNoticeDue(deps, campaignId, scene, token, stand);
+  if (await zonesNoticeDue(deps, campaignId, scene, token, stand)) return true;
+  return hiddenFiguresNoticeDue(deps, campaignId, scene, token, stand);
 }
 
 /**
@@ -90,8 +92,8 @@ const RECENT_CALLS = 50;
 
 /**
  * Czy ta karta ma otwarte wezwanie do Percepcji przy ukrytej rzeczy. Adres
- * strefy siedzi w zapisanym żądaniu (`hiddenZoneId`), więc zwykłe wezwanie MG
- * do Percepcji ruchu nie wstrzymuje.
+ * strefy albo figury siedzi w zapisanym żądaniu (`hiddenZoneId`,
+ * `hiddenTokenId`), więc zwykłe wezwanie MG do Percepcji ruchu nie wstrzymuje.
  */
 export async function noticeRollPending(
   deps: RealtimeDeps,
@@ -108,7 +110,10 @@ export async function noticeRollPending(
     if (!row.payload) return false;
     const entry = JSON.parse(row.payload) as CheckCallEntry;
     if (entry.characterId !== characterId) return false;
-    if (typeof (entry.system as { hiddenZoneId?: unknown }).hiddenZoneId !== 'number') return false;
+    const system = entry.system as { hiddenZoneId?: unknown; hiddenTokenId?: unknown };
+    if (typeof system.hiddenZoneId !== 'number' && typeof system.hiddenTokenId !== 'string') {
+      return false;
+    }
     return isCheckCallOpen(entry);
   });
 }

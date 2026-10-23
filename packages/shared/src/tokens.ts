@@ -26,7 +26,8 @@ export interface TokenHp {
  * A token as seen by one viewer. `hp` and `characterId` are present only when
  * the viewer is allowed to see them (the token's owner, the linked
  * character's owner or the GM) — for everyone else the fields are absent and
- * never cross the wire. Players never receive views with `hidden: true` at all.
+ * never cross the wire. Players never receive views with `hidden: true` at all —
+ * a hidden figure a player spotted (58d) reaches them as an ordinary one.
  */
 export interface TokenView {
   id: string;
@@ -155,6 +156,17 @@ export interface TokenView {
    * bez karty, której pula bierze `PACE_FALLBACK_CAP_M`.
    */
   paceCapM?: number | null;
+  /**
+   * PT Percepcji, by zauważyć tę figurę ukrytą (etap 58d) — dla figury bez
+   * karty; `null` — nikt jej sam nie zauważy. Prywatne, tylko dla MG.
+   */
+  spotDv?: number | null;
+  /**
+   * Ilu graczy zauważyło ukrytą figurę (etap 58d); 0 przy jawnej. Tylko
+   * w widoku prywatnym — gracz dostaje ukrytą figurę wyłącznie wtedy, gdy sam
+   * jest na tej liście, i wtedy jako zwykłą.
+   */
+  spottedBy?: number;
 }
 
 /**
@@ -269,6 +281,8 @@ export interface TokenPatch {
   sharedVision?: boolean | null;
   /** Postawa (etap 56): `null` — samo. Patrz `TokenView.disposition`. */
   disposition?: TokenDisposition | null;
+  /** PT Percepcji ukrytej figury bez karty (etap 58d); `null` — bez PT. */
+  spotDv?: number | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -622,6 +636,20 @@ export function sanitizeVisionRange(raw: unknown): number | null | undefined {
   return Math.round(clamp(raw, 1, VISION_RANGE_MAX_METRES) * 10) / 10;
 }
 
+/** Najwyższe PT Percepcji, jakie MG wpisze ukrytej figurze (58d). */
+export const TOKEN_SPOT_DV_MAX = 40;
+
+/**
+ * PT Percepcji ukrytej figury (etap 58d): liczba całkowita 1…40 albo `null`
+ * („bez PT”); `undefined` — wartość odrzucona.
+ */
+export function sanitizeTokenSpotDv(raw: unknown): number | null | undefined {
+  if (raw === null) return null;
+  if (!isFiniteNumber(raw) || !Number.isInteger(raw)) return undefined;
+  if (raw < 1 || raw > TOKEN_SPOT_DV_MAX) return undefined;
+  return raw;
+}
+
 /**
  * Normalizes a raw (untrusted) token patch: validates each provided field and
  * drops unknown ones. `validStatusIds` filters the status list against the
@@ -684,6 +712,11 @@ export function sanitizeTokenPatch(
   if ('disposition' in input) {
     if (input.disposition !== null && !isTokenDisposition(input.disposition)) return null;
     patch.disposition = input.disposition;
+  }
+  if ('spotDv' in input) {
+    const dv = sanitizeTokenSpotDv(input.spotDv);
+    if (dv === undefined) return null;
+    patch.spotDv = dv;
   }
   if ('visionRange' in input) {
     const range = sanitizeVisionRange(input.visionRange);
@@ -835,6 +868,56 @@ export function tokenSharesVision(token: {
 }): boolean {
   if (token.hidden) return false;
   return token.sharedVision ?? token.playerControlled;
+}
+
+/**
+ * Kto zauważył ukrytą figurę (etap 58d): `users` — konta, którym udany Test
+ * Percepcji ją odsłonił, `tried` — postacie (albo figury bez karty), które już
+ * rzucały. Ten sam kształt co lista zauważeń strefy bronionej (58a).
+ */
+export interface TokenSightings {
+  users: string[];
+  tried: string[];
+}
+
+/** Lista zauważeń z kolumny `Token.sightings`; zepsuta kolumna znaczy „nikt”. */
+export function readTokenSightings(raw: string | null | undefined): TokenSightings {
+  if (typeof raw !== 'string' || raw.length === 0) return { users: [], tried: [] };
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return { users: [], tried: [] };
+    const value = parsed as { users?: unknown; tried?: unknown };
+    const list = (input: unknown): string[] =>
+      Array.isArray(input) ? input.filter((id): id is string => typeof id === 'string') : [];
+    return { users: list(value.users), tried: list(value.tried) };
+  } catch {
+    return { users: [], tried: [] };
+  }
+}
+
+export function writeTokenSightings(sightings: TokenSightings): string {
+  return JSON.stringify({
+    users: [...new Set(sightings.users)],
+    tried: [...new Set(sightings.tried)],
+  });
+}
+
+/** Pusta lista zauważeń — ruch ukrytej figury przez MG to nowa kryjówka (58d). */
+export const EMPTY_TOKEN_SIGHTINGS = '{}';
+
+/**
+ * Czy ukrycie tej figury dotyczy tego konta (etap 58d). Figura ukryta przez MG
+ * nie istnieje dla gracza, dopóki ten jej nie zauważy — wtedy istnieje **tylko
+ * dla niego**, i dalej podlega mgle, ścianom i ciemności jak każda inna.
+ * Jedno pytanie dla filtra list figur i dla każdej odmowy „takiej figury nie
+ * ma” (cel ataku, chwyt, oględziny), żeby żadna z nich nie zdradzała więcej.
+ */
+export function tokenHiddenFrom(
+  token: { hidden: boolean; sightings?: string | null },
+  userId: string,
+): boolean {
+  if (!token.hidden) return false;
+  return !readTokenSightings(token.sightings).users.includes(userId);
 }
 
 /**
