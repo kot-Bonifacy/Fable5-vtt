@@ -1,5 +1,41 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, siódma (po `a7ccf57`) — etap 59b i 59c: narkotyki, alkohol, trucizna na ostrzu
+
+**Zlecenie:** „wykonaj teraz etap 59b; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
+mechaniki, to tam też ją zastosuj; w razie wątpliwości zadawaj pytania”. Pytania zadane na
+starcie (dwie tury): sufit 10, **59b razem z całym 59c**, wszystkie cztery rozszerzenia (fiolki
+trucizny, amunicja chemiczna, farmaceutyki z czasem, alkohol), Dynadetoks bez rzutu, alkohol
+„−1 REF i +1 SW”, widoczność właściciel + MG, Dopalacz zawsze −2, zwykła półka.
+
+**Shared.** Nowy `drugs.ts` (katalog `CPRED_DRUGS`, fiolki `CPRED_BLADE_TOXINS`, pole karty
+`chems`, wydłużanie, limity farmaceutyków, czytnik) i `drugs.test.ts`. Dawki wchodzą do
+`cpredEffectiveStats` i rozbicia (`cpredChemStatEffects`), Umiejętności — `cpredChemSkillRows`
+(`skillBreakdown`, `cpredCheckBase`), Szpryca — `cpredWoundSuspensionSource`. Planer ataku
+przyjmuje `weapon.coating`. Akcja `coat-blade`, rodzaj czatu `gmrecovery`. Termin rundowy efektów
+liczy się z 3 s (był 10 s). Cennik: fiolki ×1, dobry alkohol ×3.
+
+**Serwer.** `realtime/chems.ts` (zażycie narkotyku, Dynadetoks, limity, `character:coat-weapon`,
+`character:chems` MG), `realtime/chems-expiry.ts` (rzut na uzależnienie po przemiataniu),
+`character:use-dose` bez bramki Medyka dla narkotyków, `resolveWeaponRow` z trucizną, `chems`
+zakazane w `character:update`. **Amunicja chemiczna okazała się automatyczna od 16h** — zdjęty
+tylko nieaktualny dopisek w `data/private/.../ammo.json`. `parse-gear.py` dopisuje pięć
+narkotyków i trzy alkohole (`gear.json` przebudowany, 53 stare wpisy bez zmian).
+
+**Klient.** Sekcja „Dawki” (Zażyj / Wypij / Podaj, Nałóż na ostrze), panel „Używki i trucizny”,
+„Uzależnienia z kartą” (MG: terapia, dopisanie), kolumna „Baza” z Grzmotem, chipy dawek na pasku
+figury, prywatna karta czatu.
+
+**Sprawdzone:** `tsc` (shared, server, client), ESLint i Prettier czyste w zmienionych plikach;
+vitest `shared` 2680/2680, serwera 1644/1644 (`chems.test.ts` 3× zielony), klienta 423/423.
+**Oglądano w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1, postać „Test chemii 59b”
+założona gniazdem i usunięta): Dawki → INT 10, Szpryca „bez kary −2 · CZŁ −6” (Człowieczeństwo
+44 z 50), Grzmot +2 w „Bazie” (zielone), alkohol REF −1/SW +1, trucizna na „Lekkiej broni białej”
+z odliczaniem 30 min, uzależnienie od Syntkoki dopisane przez MG (REF 8 → 5 razem z alkoholem),
+prywatne karty na czacie (rubryka „Stół”); konsola bez błędów. W czacie Test_1 zostało pięć kart
+z oględzin. Zegara kampanii nie przestawiano — rzut na uzależnienie i cios zatrutym nożem tylko
+w testach serwera (`zaleglosci.md`). E2E nie puszczano.
+
 ### Sesja 24.10, szósta (po `dc222d4`) — etap 59a: chrom i sprzęt zmieniające liczby
 
 **Zlecenie:** „wykonaj teraz etap 59a; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej

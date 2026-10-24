@@ -181,7 +181,7 @@ postawić tam tę figurę.
 
 ## czat — Rodzaje wierszy, widoczność, filtr
 
-- **Nowy rodzaj wiersza czatu ma SZEŚĆ miejsc, nie pięć** — szóstym jest `isPending` w `ChatPanel`, gdy wiersz czeka na czyjąś decyzję; bez tego chowa go filtr z 01.09 i propozycja zawisa.
+- **Nowy rodzaj wiersza czatu ma SZEŚĆ miejsc, nie pięć** — szóstym jest `isPending` w `ChatPanel`, gdy wiersz czeka na czyjąś decyzję; bez tego chowa go filtr z 01.09 i propozycja zawisa. Od 60a (24.10) siódme: wpis w `chat-involvement.test.ts` (umowa `czat`).
 - **Wiersz czatu „publiczny" sprawdzaj z DRUGIEGO konta** — autor widzi swoje zawsze (`authorId`), więc brak rodzaju w `visibleTo` wygląda z konta wystawiającego na w pełni sprawny. Objaw u drugiej osoby: karta jest, po przeładowaniu znika.
 - **Karta, która „nie doszła", potrafi mieć dwie przyczyny naraz** (brak w `visibleTo` **i** nieskonsumowany `seq` obok) — naprawa jednej nie daje widocznego efektu i wygląda na nietrafioną.
 

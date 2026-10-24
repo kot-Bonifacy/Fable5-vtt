@@ -7,10 +7,17 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
-import type { CheckCallEntry, CheckRequestEntry } from './checks.js';
-import type { InventoryMoveView } from './inventory.js';
+import {
+  isCheckCallOpen,
+  isCheckRequestOpen,
+  type CheckCallEntry,
+  type CheckRequestEntry,
+} from './checks.js';
+import { isInventoryMoveOpen, type InventoryMoveView } from './inventory.js';
+// Sam typ: `surgery.ts` czyta cennik CP RED, a rdzeń czatu nie importuje
+// niczego z `systems/cpred` — stan prośby o operację sprawdza się tu wprost.
 import type { SurgeryRequestEntry } from './surgery.js';
-import type { CardSubmissionEntry } from './archive.js';
+import { isCardSubmissionOpen, type CardSubmissionEntry } from './archive.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
@@ -631,4 +638,176 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     case 'gmrolltable':
       return 'table';
   }
+}
+
+/**
+ * Jak wiersz czatu dotyczy tego, kto na niego patrzy (etap 60a, zlecenie MG
+ * z 24.10.2026: gracz ma **bez czytania nicków** znaleźć swoje rzuty, Testy
+ * i rozmowy).
+ *
+ * - `mine` — to moje: moja wypowiedź, szept, rzut, akcja, przekazanie;
+ * - `forMe` — to do mnie albo o mnie: szept do mnie, obrażenia mojej postaci,
+ *   wezwanie do Testu, strzał w moją figurę, przekazanie na moją kartę;
+ * - `awaitingMe` — `forMe`, które czeka na **moje** kliknięcie.
+ *
+ * Inne na każdym ekranie, więc liczy je klient, i to wyłącznie z pól, które
+ * wiersz już niesie, porównanych z własnym id — z serwera nie wychodzi z tego
+ * powodu nic nowego.
+ */
+export type ChatInvolvement = 'mine' | 'forMe' | 'awaitingMe';
+
+const NO_TOKENS: ReadonlySet<string> = new Set();
+
+/**
+ * Wiersze, które MG pisze **sam od siebie** (decyzja MG z 24.10: podświetlenie
+ * działa także u niego). Reszta wierszy z jego `authorId` to praca za stół:
+ * NPC-e (`botId`, rzut z kartą NPC-a w `roll.actor`) i karty, które serwer
+ * wystawia kontem MG (zegar, strefy, obrażenia, Sieć). Gdyby liczyły się jako
+ * „moje”, u MG podświetliłby się cały czat i znak nie niósłby niczego.
+ */
+const GM_OWN_KINDS: ReadonlySet<ChatKind> = new Set<ChatKind>([
+  'say',
+  'whisper',
+  'roll',
+  'gmroll',
+  'check',
+  'handout',
+  'journal',
+  'rolltable',
+  'gmrolltable',
+]);
+
+function gmWroteItself(message: ChatMessageView): boolean {
+  if (message.botId || !GM_OWN_KINDS.has(message.kind)) return false;
+  return message.roll?.actor === undefined;
+}
+
+/** Na moje kliknięcie czeka ten wiersz — nie na cudze i nie na „kogokolwiek”. */
+function awaitsMe(
+  message: ChatMessageView,
+  userId: string,
+  isGm: boolean,
+  tokenIds: ReadonlySet<string>,
+): boolean {
+  const { check, request, proposal, inventory, surgery, cardSubmission, roll } = message;
+  switch (message.kind) {
+    // MG może rzucić za nieobecnego (`mayAnswerCheckCall`), ale wezwanie czeka
+    // na wezwanego — u MG nie ma czego wskazywać.
+    case 'check':
+      return !isGm && check !== undefined && check.ownerId === userId && isCheckCallOpen(check);
+    case 'request':
+      return isGm && request !== undefined && isCheckRequestOpen(request);
+    case 'cardsubmission':
+      return isGm && cardSubmission !== undefined && isCardSubmissionOpen(cardSubmission);
+    case 'proposal':
+      return (
+        proposal !== undefined &&
+        proposal.resolution === undefined &&
+        (proposal.controllerUserId === userId || (isGm && proposal.controllerUserId === null))
+      );
+    case 'inventory':
+      return (
+        inventory !== undefined && inventory.toOwnerId === userId && isInventoryMoveOpen(inventory)
+      );
+    case 'surgery':
+      if (!surgery || surgery.resolution !== undefined) return false;
+      // Wycena powyżej domyślnej wraca do pacjenta; do tego czasu czeka Medyk.
+      return surgery.quote !== undefined
+        ? surgery.patientOwnerId === userId
+        : surgery.surgeonOwnerId === userId;
+    case 'roll':
+    case 'gmroll': {
+      // Unik albo odskok mojej figury, na który czekają obrażenia.
+      if (roll?.attack?.evasionPending?.some((tokenId) => tokenIds.has(tokenId))) return true;
+      const opposed = roll?.opposed;
+      if (!opposed) return false;
+      // „Broń się” — ten sam warunek, co przycisk na karcie (`OpposedRow`).
+      const defends =
+        opposed.defenderTokenId !== undefined &&
+        tokenIds.has(opposed.defenderTokenId) &&
+        opposed.answerLabel !== undefined &&
+        !opposed.answered &&
+        opposed.concede?.chosen === undefined;
+      const concedes =
+        opposed.concede !== undefined &&
+        opposed.concede.chosen === undefined &&
+        tokenIds.has(opposed.concede.loserTokenId);
+      return defends || concedes;
+    }
+    default:
+      return false;
+  }
+}
+
+/** Wiersz mówi o mnie albo do mnie, choć napisał go ktoś inny. */
+function concernsMe(
+  message: ChatMessageView,
+  userId: string,
+  isGm: boolean,
+  tokenIds: ReadonlySet<string>,
+): boolean {
+  // Szept, handout, prywatny zastrzyk, przelew — wszystko, co ma adresata.
+  if (message.recipientId === userId) return true;
+  const { damage, check, inventory, surgery, proposal, roll } = message;
+  switch (message.kind) {
+    case 'damage':
+      return damage?.targetOwnerId === userId;
+    case 'check':
+      return check?.ownerId === userId;
+    case 'inventory':
+      return inventory?.toOwnerId === userId;
+    case 'surgery':
+      return surgery?.patientOwnerId === userId || surgery?.surgeonOwnerId === userId;
+    case 'proposal':
+      return (
+        proposal !== undefined &&
+        (proposal.controllerUserId === userId || (isGm && proposal.controllerUserId === null))
+      );
+    // Prośba o Test i zgłoszona karta są pytaniem do MG także po rozstrzygnięciu.
+    case 'request':
+    case 'cardsubmission':
+      return isGm;
+    case 'roll':
+    case 'gmroll': {
+      const attack = roll?.attack;
+      if (attack) {
+        if (attack.targetTokenId !== undefined && tokenIds.has(attack.targetTokenId)) return true;
+        // Gracz dostaje te listy przycięte do własnych figur (`redactChatMessage`).
+        if (attack.area?.targets.some((target) => target.ownerId === userId)) return true;
+        if (attack.forcedChecks?.some((forced) => forced.ownerId === userId)) return true;
+      }
+      const opposed = roll?.opposed;
+      if (!opposed) return false;
+      return (
+        (opposed.defenderTokenId !== undefined && tokenIds.has(opposed.defenderTokenId)) ||
+        (opposed.concede !== undefined && tokenIds.has(opposed.concede.loserTokenId))
+      );
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * Stan wiersza względem patrzącego; `null` — nie dotyczy go wcale.
+ *
+ * `tokenIds` to figury, za które patrzący odpowiada (gracz: figury jego
+ * i jego kart). U MG zostaje puste: figury MG to NPC-e, a strzał w NPC-a nie
+ * jest sprawą „do MG” — tak samo jak wypowiedź NPC-a nie jest „jego”.
+ *
+ * Kolejność rozstrzyga remisy: to, co czeka na mnie, wygrywa ze wszystkim
+ * (pacjent jest autorem prośby o operację, a wycena wraca do niego), a moje
+ * wygrywa z „do mnie” (trafienie własnym granatem to nadal mój rzut).
+ */
+export function chatInvolvement(
+  message: ChatMessageView,
+  userId: string,
+  isGm: boolean,
+  tokenIds: ReadonlySet<string> = NO_TOKENS,
+): ChatInvolvement | null {
+  if (!userId) return null;
+  if (awaitsMe(message, userId, isGm, tokenIds)) return 'awaitingMe';
+  if (message.authorId === userId && (!isGm || gmWroteItself(message))) return 'mine';
+  if (concernsMe(message, userId, isGm, tokenIds)) return 'forMe';
+  return null;
 }

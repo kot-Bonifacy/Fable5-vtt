@@ -1,6 +1,6 @@
 # Etap 60 — Czytelny czat: „to dotyczy mnie”, ikony rodzaju, kolor gracza
 
-**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** ⬜
+**Faza:** przed betą (zlecenie MG z 24.10 spoza planu) · **Wymaga etapów:** 55 · **Stan:** 🟨 (60a ✅ 24.10)
 Trzy podetapy po jednej sesji: 60a → 60b → 60c (60b i 60c niezależne od siebie, oba po 60a).
 
 ## Skąd ten etap
@@ -47,21 +47,48 @@ U MG: `mine` = linie MG **bez** `botId` (NPC-e to praca MG, nie „jego” wiers
 podświetliłby się cały czat); `forMe` = szept do MG i sprawy czekające na MG (prośba o Test,
 zgłoszona karta, propozycja bota).
 
-- [ ] `involvement(message, userId, isGm): 'mine' | 'forMe' | 'awaitingMe' | null` w
+- [x] `involvement(message, userId, isGm): 'mine' | 'forMe' | 'awaitingMe' | null` w
       `packages/shared/src/chat.ts` (czysta funkcja — rdzeń, bez importów z `systems/cpred`),
-      z testami vitest dla każdego rodzaju wiersza z `ChatKind` i dla MG.
-- [ ] `FullMessageRow` / wiersze kart dostają klasę `chat-row--mine` / `--for-me` / `--awaiting-me`
-      w jednym miejscu (opakowanie), nie w każdym z ~20 komponentów osobno.
-- [ ] Styl w `styles/02-chat-dice.css` z tokenów motywu (`:root`, jasny i ciemny), bez stałych
+      z testami vitest dla każdego rodzaju wiersza z `ChatKind` i dla MG. *Zrobione jako
+      `chatInvolvement(message, userId, isGm, tokenIds?)` — czwarty argument to figury gracza
+      (strzał, starcie, unik); testy w `chat-involvement.test.ts`.*
+- [x] `FullMessageRow` / wiersze kart dostają klasę `chat-row--mine` / `--for-me` / `--awaiting-me`
+      w jednym miejscu (opakowanie), nie w każdym z ~20 komponentów osobno. *Opakowanie
+      `.chat-row` w `FeedRow`; `awaitingMe` ma obie klasy `--for-me --awaiting-me`.*
+- [x] Styl w `styles/02-chat-dice.css` z tokenów motywu (`:root`, jasny i ciemny), bez stałych
       kolorów w komponentach; istniejące paski szeptu i rzutu do MG nie zderzają się z nowym paskiem
-      (szept do mnie = pasek „do mnie”, fiolet zostaje na etykiecie).
-- [ ] Piąty przycisk filtra **„Ja”** (`chatFilterStore`): włączony zwija w grupy wszystko, czego
+      (szept do mnie = pasek „do mnie”, fiolet zostaje na etykiecie). *Tokeny `--self`,
+      `--self-rgb`, `--self-ink` w `theme.css`.*
+- [x] Piąty przycisk filtra **„Ja”** (`chatFilterStore`): włączony zwija w grupy wszystko, czego
       `involvement` zwraca `null`, tym samym mechanizmem co dziś; `isPending` dalej wygrywa.
-      Zapamiętany lokalnie jak pozostałe kategorie.
-- [ ] Umowa `czat` „Nowy rodzaj wiersza czatu ma PIĘĆ miejsc” → **sześć**: szóste to gałąź
-      w `involvement`.
-- [ ] Oględziny: MG w Chromium, gracz w Firefoksie (Playwright), drugi gracz w trzecim kontekście —
+      Zapamiętany lokalnie jak pozostałe kategorie. *Klucz `vtt.chat.mineOnly`.*
+- [x] Umowa `czat` „Nowy rodzaj wiersza czatu ma PIĘĆ miejsc” → **sześć**: szóste to gałąź
+      w `involvement`. *Po `isPending` (pułapka z 38b) wyszło **siedem** — umowa i pułapka
+      poprawione.*
+- [x] Oględziny: MG w Chromium, gracz w Firefoksie (Playwright), drugi gracz w trzecim kontekście —
       rzuty, szept, obrażenia i wezwanie do Testu widziane z trzech stron.
+
+**Rozstrzygnięcia 60a (24.10, bez pytań — do potwierdzenia przez MG przy oględzinach):**
+
+- **„Moje” u MG to tylko to, co MG pisze sam:** `say`, `whisper`, `roll`/`gmroll` **bez**
+  `roll.actor`, `check`, `handout`, `journal`, `rolltable`/`gmrolltable` — i nigdy z `botId`.
+  Rzut z karty NPC-a i karty wystawiane przez serwer kontem MG (zegar, strefy, obrażenia, Sieć,
+  akcje) nie są „jego” — inaczej u MG świeciłby się cały czat.
+- **Figury liczą się u gracza, nie u MG.** Strzał w moją figurę, granat, który mnie objął, ogień
+  zaporowy z moim Testem, obrona w starciu przeciwstawnym i przegrana Konfrontacja są „do mnie”;
+  czekający Unik, „Broń się” i wybór po Konfrontacji — „czeka na mnie”. U MG figury to NPC-e,
+  więc strzał w NPC-a nie jest sprawą „do MG”.
+- **„Czeka na mnie” wygrywa z filtrem kategorii tak jak `isPending`** — Unik schowany pod
+  zgaszonymi „Rzutami” zawisłby tak samo jak wezwanie.
+- **Notatka lokalna przechodzi przez „Ja”** (powstała tylko na tym ekranie, więc jest „do mnie”),
+  ale nie dostaje paska.
+- **Kolejność przy remisie:** „czeka na mnie” > „moje” > „do mnie” — pacjent jest autorem prośby
+  o operację, a wycena wraca do niego; trafienie własnym granatem to nadal mój rzut.
+- **Wygląd:** pasek i podkład bez odcienia (jasny tusz w nocy, czarny w dzień), bo barwy niosą już
+  szept, NPC, rzut do MG i wynik, a od 60c — kolor autora. Obwódka „czeka” pulsuje bursztynem
+  przypomnienia tury (`--remind-rgb`), przy `prefers-reduced-motion` stoi.
+- **Bez znaku zostają** karty bez pola właściciela: dzień odpoczynku (`recovery`, tylko nazwa
+  postaci) i łup z mojego ciała (`inventory` nie zna właściciela źródła).
 
 ## 60b — ikona rodzaju i grupowanie kolejnych wierszy
 
@@ -105,9 +132,8 @@ obwódce figury i przy pingu mapy.
 - [ ] Testy `involvement` w `shared` przechodzą; `pnpm test:e2e --grep @szybkie` przechodzi.
 - [ ] Umowa `czat` zaktualizowana (sześć miejsc nowego rodzaju wiersza, `authorColor`).
 
-## Do potwierdzenia przez MG na starcie 60a
+## Potwierdzone przez MG na starcie 60a (24.10)
 
-1. Czy MG ma mieć podświetlenie `mine`/`forMe` u siebie (propozycja: tak, w wersji opisanej wyżej),
-   czy tylko gracze.
-2. Czy kolor gracza ma być przypisany do **miejsca w kampanii** (propozycja: tak, `CampaignMember`),
-   czy do postaci — gracz z dwiema postaciami miałby wtedy dwa kolory.
+1. **MG ma podświetlenie u siebie** — „podświetlenie ma działać też u MG”, w wersji opisanej wyżej.
+2. **Kolor należy do gracza, nie do postaci** — `CampaignMember` (60c); gracz z dwiema postaciami
+   ma jeden kolor.

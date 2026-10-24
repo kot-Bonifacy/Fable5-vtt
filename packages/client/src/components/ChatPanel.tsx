@@ -12,6 +12,7 @@ import type {
   BotActivityEntry,
   BotTraceBroadcast,
   ChatCategory,
+  ChatInvolvement,
   ChatMessageView,
   CombatActionLogEntry,
   EconomyLogEntry,
@@ -24,6 +25,7 @@ import type {
 import {
   ROLE_GM,
   chatCategoryOf,
+  chatInvolvement,
   displayDiceNotation,
   gameDaysLabel,
   isCheckCallOpen,
@@ -56,6 +58,8 @@ import { useAuthStore } from '../stores/authStore.js';
 import { gmAttentionKey } from '../gm-attention.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
@@ -775,15 +779,28 @@ function FullMessageRow({
   return <MessageRow message={message} myUserId={myUserId} {...(trace ? { trace } : {})} />;
 }
 
+/**
+ * Klasa opakowania karty według `chatInvolvement` (etap 60a). Jedno miejsce
+ * zamiast ~20 komponentów kart: pasek, tło i znaczek „▶ Ty” rysuje CSS na
+ * `.chat-row`, a karty nie wiedzą, kto na nie patrzy.
+ */
+const INVOLVEMENT_CLASS: Record<ChatInvolvement, string> = {
+  mine: 'chat-row chat-row--mine',
+  forMe: 'chat-row chat-row--for-me',
+  awaitingMe: 'chat-row chat-row--for-me chat-row--awaiting-me',
+};
+
 /** Jeden wiersz feedu: notatka systemowa albo pełna karta wiadomości. */
 function FeedRow({
   item,
+  involvement,
   isGm,
   myUserId,
   trace,
   canResolveProposal,
 }: {
   item: ChatItem;
+  involvement: ChatInvolvement | null;
   isGm: boolean;
   myUserId: string;
   trace?: BotTraceBroadcast;
@@ -791,13 +808,15 @@ function FeedRow({
 }) {
   if (item.type === 'note') return <NoteRow item={item} />;
   return (
-    <FullMessageRow
-      message={item.message}
-      isGm={isGm}
-      myUserId={myUserId}
-      canResolveProposal={canResolveProposal}
-      {...(trace ? { trace } : {})}
-    />
+    <div className={involvement ? INVOLVEMENT_CLASS[involvement] : 'chat-row'}>
+      <FullMessageRow
+        message={item.message}
+        isGm={isGm}
+        myUserId={myUserId}
+        canResolveProposal={canResolveProposal}
+        {...(trace ? { trace } : {})}
+      />
+    </div>
   );
 }
 
@@ -822,6 +841,16 @@ const CATEGORY_BUTTONS: { id: ChatCategory; icon: string; label: string; title: 
     title: 'Eurodolce, handouty, dziennik, propozycje botów i notatki systemowe',
   },
 ];
+
+/**
+ * Piąty przycisk paska (etap 60a). Stoi osobno od kategorii, bo działa
+ * odwrotnie: kategoria włączona **pokazuje**, „Ja” włączone **zwija** resztę.
+ */
+const MINE_BUTTON = {
+  icon: 'person',
+  label: 'Ja',
+  title: 'Tylko to, co dotyczy ciebie: twoje wiersze, sprawy do ciebie i to, co czeka na ciebie',
+};
 
 /** „1 ukryty wiersz" · „3 ukryte wiersze" · „7 ukrytych wierszy". */
 function hiddenLabel(count: number): string {
@@ -892,6 +921,10 @@ export function ChatPanel() {
 
   const categories = useChatFilterStore((s) => s.categories);
   const toggleCategory = useChatFilterStore((s) => s.toggleCategory);
+  const mineOnly = useChatFilterStore((s) => s.mineOnly);
+  const toggleMineOnly = useChatFilterStore((s) => s.toggleMineOnly);
+  const tokens = useTokenStore((s) => s.tokens);
+  const characters = useCharacterStore((s) => s.characters);
   /** Rozwinięte grupy ukrytych wierszy — klucz bierze się z pierwszego w grupie. */
   const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -902,6 +935,36 @@ export function ChatPanel() {
   const stickToBottomRef = useRef(true);
   /** scrollHeight captured when older-history loading starts (to keep position). */
   const prependHeightRef = useRef<number | null>(null);
+
+  /**
+   * Figury gracza — jego własne i te z jego kart. Strzał w nie, starcie i unik
+   * „dotyczą mnie”. U MG pusto: jego figury to NPC-e (`chatInvolvement`).
+   */
+  const myTokenKey = useMemo(() => {
+    if (isGm || !myUserId) return '';
+    const ids: string[] = [];
+    for (const token of Object.values(tokens)) {
+      const sheet = token.characterId ? characters[token.characterId] : undefined;
+      if (token.ownerId === myUserId || sheet?.ownerId === myUserId) ids.push(token.id);
+    }
+    return ids.sort().join('|');
+  }, [tokens, characters, myUserId, isGm]);
+  // Klucz zamiast zbioru: każdy ruch figury daje nowe `tokens`, a czat ma się
+  // przeliczać tylko wtedy, gdy zmieniło się to, które figury są moje.
+  const myTokenIds = useMemo<ReadonlySet<string>>(
+    () => new Set(myTokenKey ? myTokenKey.split('|') : []),
+    [myTokenKey],
+  );
+
+  /** Stan każdej wiadomości względem patrzącego — dla filtra „Ja” i dla opakowania. */
+  const involvements = useMemo(() => {
+    const out = new Map<number, ChatInvolvement | null>();
+    for (const item of items) {
+      if (item.type !== 'message') continue;
+      out.set(item.message.id, chatInvolvement(item.message, myUserId, isGm, myTokenIds));
+    }
+    return out;
+  }, [items, myUserId, isGm, myTokenIds]);
 
   const feed = useMemo<FeedEntry[]>(() => {
     const out: FeedEntry[] = [];
@@ -914,7 +977,14 @@ export function ChatPanel() {
     };
     for (const item of items) {
       const category = item.type === 'note' ? 'table' : chatCategoryOf(item.message.kind);
-      if (categories[category] || isPending(item, myUserId, isGm)) {
+      const involvement = item.type === 'note' ? null : involvements.get(item.message.id);
+      // Notatka lokalna powstała wyłącznie na tym ekranie, więc z definicji jest
+      // „do mnie” — „Ja” jej nie zwija.
+      const concernsMe = item.type === 'note' || (involvement ?? null) !== null;
+      const shown = categories[category] && (!mineOnly || concernsMe);
+      // To, co czeka na moje kliknięcie (unik, obrona w starciu), wygrywa
+      // z filtrem tak samo jak `isPending` — inaczej zawisłoby pod separatorem.
+      if (shown || isPending(item, myUserId, isGm) || involvement === 'awaitingMe') {
         flush();
         out.push({ kind: 'item', key: itemKey(item), item });
       } else {
@@ -923,7 +993,7 @@ export function ChatPanel() {
     }
     flush();
     return out;
-  }, [items, categories, openRuns, myUserId, isGm]);
+  }, [items, categories, mineOnly, involvements, openRuns, myUserId, isGm]);
 
   useLayoutEffect(() => {
     const feedEl = feedRef.current;
@@ -971,6 +1041,7 @@ export function ChatPanel() {
       <FeedRow
         key={key}
         item={item}
+        involvement={item.type === 'message' ? (involvements.get(item.message.id) ?? null) : null}
         isGm={isGm}
         myUserId={myUserId}
         canResolveProposal={
@@ -1003,6 +1074,17 @@ export function ChatPanel() {
             <span className="chat-filter-label">{category.label}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className={`chat-filter chat-filter--mine${mineOnly ? ' chat-filter--on' : ''}`}
+          aria-pressed={mineOnly}
+          aria-label={MINE_BUTTON.label}
+          title={MINE_BUTTON.title}
+          onClick={toggleMineOnly}
+        >
+          <HudIcon name={MINE_BUTTON.icon} className="chat-filter-icon" />
+          <span className="chat-filter-label">{MINE_BUTTON.label}</span>
+        </button>
       </div>
       <div className="chat-feed" ref={feedRef} onScroll={onScroll}>
         {!synced && <p className="placeholder-text">Synchronizacja…</p>}
@@ -1041,9 +1123,9 @@ export function ChatPanel() {
           ),
         )}
         {categories.talk &&
-          botActivity.map((entry) => (
-            <BotActivityRow key={entry.turnId} entry={entry} canStop={isGm} />
-          ))}
+          botActivity
+            .filter((entry) => !mineOnly || entry.whisperToUserId === myUserId)
+            .map((entry) => <BotActivityRow key={entry.turnId} entry={entry} canStop={isGm} />)}
       </div>
       {isGm && botActivity.length > 1 && (
         <div className="chat-queue-row">

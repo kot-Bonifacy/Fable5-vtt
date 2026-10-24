@@ -130,6 +130,13 @@
   --whisper-rgb: 180 139 224;
   /* Wypowiedź NPC-a: bot i `/jako` MG mają być nie do odróżnienia. */
   --npc: #e5a54b;
+  /* „To dotyczy mnie” na czacie (etap 60a): pasek i podkład mojego wiersza,
+     znaczek „▶ Ty”. Celowo bez odcienia — barwy niosą już szept, NPC, rzut do
+     MG i wynik, a od 60c także kolor autora; jasny tusz nie zderza się z żadną. */
+  --self: #f1ece4;
+  --self-rgb: 241 236 228;
+  /* Napis na plamie `--self` (znaczek „▶ Ty”). */
+  --self-ink: #141211;
   /* Chip informacyjny bez ładunku emocjonalnego (poziom sklepu, ostrzeżenie). */
   --info: #8ab4f8;
   /* Plakietka „nic z tego nie wynika" — celowo bez odcienia. */
@@ -237,6 +244,9 @@
 
   --whisper: #6b3fa0;
   --npc: #7f4a11;
+  --self: #100e0d;
+  --self-rgb: 16 14 13;
+  --self-ink: #f4e2c8;
   --info: #2554a3;
   --neutral-rgb: 110 100 88;
   --armed: #8f6600;

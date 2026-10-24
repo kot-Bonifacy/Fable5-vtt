@@ -21,13 +21,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (60a–60c, zlecenie MG z 24.10); T10; refaktoryzacja odłożona (MG 18.10) |
+| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **60** Czytelny czat (zlecenie MG z 24.10; 🟨 60a ✅, zostały 60b i 60c); T10; refaktoryzacja odłożona (MG 18.10) |
 | ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59 (59a–59c) (ostatni zamknięty: 59, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Czat podświetla to, co dotyczy patrzącego (etap 60a, 24.10) — dalej 60b albo 60c, potem etap
+28 i T10.** Karta czatu dostaje opakowanie `.chat-row`: „moje” (pasek i podkład), „do mnie”
+(pasek i „▶ Ty”) albo „czeka na mnie” (do tego pulsująca bursztynowa obwódka). Rozstrzyga czysta
+`chatInvolvement` w `shared/src/chat.ts` z pól, które wiersz już niesie, i figur gracza; u MG
+„moje” to tylko to, co pisze sam (bez NPC-ów i kart serwera), a „do mnie” — szepty do MG, prośby
+o Test, zgłoszone karty, propozycje botów. Piąty przycisk filtra „Ja” zwija resztę. MG
+potwierdził: podświetlenie także u MG, kolor (60c) należy do gracza, nie do postaci.
+Rozstrzygnięcia bez pytań — w pliku etapu (sekcja 60a). Umowa na górze `czat`.
 
 **Prośba o Test wyskakuje MG panelem decyzji (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
 Prośba gracza o Test z karty (i o oględziny) nie jest już kaflem na 9 s: w prawym górnym rogu
@@ -441,7 +450,7 @@ a nie do tego pliku.
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty, zamek drzwi, ukryta figura zauważona | 69   | 27      |
-| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`       | 9    | 3       |
+| `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`, `gmrecovery`, „to dotyczy mnie” | 10   | 3       |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    | 26   | 21      |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście, panel decyzji MG | 37   | 15      |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe, PT od MG | 24   | 2       |
@@ -463,6 +472,37 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, dziewiąta (po `1aed3f1`) — etap 60a: „to dotyczy mnie” i filtr „Ja”
+
+**Zlecenie:** „wykonaj teraz etap 60a; podświetlenie ma działać też u MG, a kolor niech będzie
+przypisany do gracza, a nie do postaci” — obie odpowiedzi na „Do potwierdzenia” z pliku etapu
+(kolor to 60c, zapisany w pliku etapu). Reszta rozstrzygnięta bez pytań, lista w pliku etapu.
+
+**Shared.** `chatInvolvement(message, userId, isGm, tokenIds?)` w `chat.ts` (rdzeń: stan prośby
+o operację sprawdzany wprost, bo `surgery.ts` czyta cennik CP RED) i `chat-involvement.test.ts`
+(39 testów: każdy `ChatKind` z trzech stron przez `satisfies Record<ChatKind, …>`, rozstrzygnięte
+sprawy, atak, starcie, Konfrontacja, MG).
+
+**Klient.** `FeedRow` opakowuje kartę w `.chat-row` z klasą stanu; `ChatPanel` liczy figury
+gracza (klucz, żeby ruch figury nie przeliczał czatu) i stan każdej wiadomości. Filtr „Ja”
+(`mineOnly`, `vtt.chat.mineOnly`) z ikoną `hud/person.svg` (game-icons.net, Delapouite, CC BY 3.0,
+atrybucja dopisana). „Czeka na mnie” wygrywa z filtrem kategorii jak `isPending`. Style
+w `02-chat-dice.css`, tokeny `--self`, `--self-rgb`, `--self-ink` w `theme.css` (noc i dzień).
+
+**Testy.** `shared` 2719/2719, klient 427/427, `tsc` (shared, client, server) i ESLint czyste.
+E2E `@szybkie`: 67/68 — padła T9a „konsola bez nowych błędów” (Firefox MG: „connection … was
+interrupted while the page was loading” przy przeładowaniu); sam plik T9a powtórzony: 7/7.
+
+**Oględziny:** tymczasowy spec `99-ogledziny/t99-czytelny-czat` (nie commitowany) na historii
+`po-T6` (176 wierszy MG, Marka i Oli) plus świeże szepty, `/r`, wezwanie dla Iskry i prośba Oli —
+**MG w Chromium, Ola w Firefoksie, Marek w trzecim kontekście (Chromium)**. U Oli „moje” jej rzuty
+i szepty, „do mnie” obrażenia Iskry, strzał wieżyczki, Tura Demona, prośba Marka o operację,
+szept MG, a wezwanie pulsuje; u MG „do mnie” szept Marka, prośba Oli pulsuje, NPC-e i karty
+serwera bez znaku. „Ja” u Oli: 47 wierszy, reszta w 20 separatorach; zapamiętane po
+przeładowaniu. Motyw dzienny i nocny w Firefoksie. Poprawione po oglądaniu: zaokrąglenie
+wyginało pasek w nawias. Z `prefers-reduced-motion` obwódka stoi (sprawdzone tylko regułą CSS
+— u Marka nie było wiersza „czeka”).
 
 ### Sesja 24.10, ósma (po `fcee88b`) — zlecenie MG: panel decyzji MG dla prośby o Test
 
@@ -490,40 +530,3 @@ w **Firefoksie**, Ola w Chromium: panel z prośbą o Przesłuchiwanie, „+1 cze
 i w znaczniku, odmowa z panelu dochodzi do gracza. Poprawione po oglądaniu: szerokość zależna
 od treści (drabinka w jednej kolumnie) i słaby kontrast zdania gracza. Prośby o oględziny
 w przeglądarce nie oglądano (ta sama gałąź `request`, bez „Ustaw…” i „Odmów” jak na czacie).
-
-### Sesja 24.10, siódma (po `a7ccf57`) — etap 59b i 59c: narkotyki, alkohol, trucizna na ostrzu
-
-**Zlecenie:** „wykonaj teraz etap 59b; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
-mechaniki, to tam też ją zastosuj; w razie wątpliwości zadawaj pytania”. Pytania zadane na
-starcie (dwie tury): sufit 10, **59b razem z całym 59c**, wszystkie cztery rozszerzenia (fiolki
-trucizny, amunicja chemiczna, farmaceutyki z czasem, alkohol), Dynadetoks bez rzutu, alkohol
-„−1 REF i +1 SW”, widoczność właściciel + MG, Dopalacz zawsze −2, zwykła półka.
-
-**Shared.** Nowy `drugs.ts` (katalog `CPRED_DRUGS`, fiolki `CPRED_BLADE_TOXINS`, pole karty
-`chems`, wydłużanie, limity farmaceutyków, czytnik) i `drugs.test.ts`. Dawki wchodzą do
-`cpredEffectiveStats` i rozbicia (`cpredChemStatEffects`), Umiejętności — `cpredChemSkillRows`
-(`skillBreakdown`, `cpredCheckBase`), Szpryca — `cpredWoundSuspensionSource`. Planer ataku
-przyjmuje `weapon.coating`. Akcja `coat-blade`, rodzaj czatu `gmrecovery`. Termin rundowy efektów
-liczy się z 3 s (był 10 s). Cennik: fiolki ×1, dobry alkohol ×3.
-
-**Serwer.** `realtime/chems.ts` (zażycie narkotyku, Dynadetoks, limity, `character:coat-weapon`,
-`character:chems` MG), `realtime/chems-expiry.ts` (rzut na uzależnienie po przemiataniu),
-`character:use-dose` bez bramki Medyka dla narkotyków, `resolveWeaponRow` z trucizną, `chems`
-zakazane w `character:update`. **Amunicja chemiczna okazała się automatyczna od 16h** — zdjęty
-tylko nieaktualny dopisek w `data/private/.../ammo.json`. `parse-gear.py` dopisuje pięć
-narkotyków i trzy alkohole (`gear.json` przebudowany, 53 stare wpisy bez zmian).
-
-**Klient.** Sekcja „Dawki” (Zażyj / Wypij / Podaj, Nałóż na ostrze), panel „Używki i trucizny”,
-„Uzależnienia z kartą” (MG: terapia, dopisanie), kolumna „Baza” z Grzmotem, chipy dawek na pasku
-figury, prywatna karta czatu.
-
-**Sprawdzone:** `tsc` (shared, server, client), ESLint i Prettier czyste w zmienionych plikach;
-vitest `shared` 2680/2680, serwera 1644/1644 (`chems.test.ts` 3× zielony), klienta 423/423.
-**Oglądano w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1, postać „Test chemii 59b”
-założona gniazdem i usunięta): Dawki → INT 10, Szpryca „bez kary −2 · CZŁ −6” (Człowieczeństwo
-44 z 50), Grzmot +2 w „Bazie” (zielone), alkohol REF −1/SW +1, trucizna na „Lekkiej broni białej”
-z odliczaniem 30 min, uzależnienie od Syntkoki dopisane przez MG (REF 8 → 5 razem z alkoholem),
-prywatne karty na czacie (rubryka „Stół”); konsola bez błędów. W czacie Test_1 zostało pięć kart
-z oględzin. Zegara kampanii nie przestawiano — rzut na uzależnienie i cios zatrutym nożem tylko
-w testach serwera (`zaleglosci.md`). E2E nie puszczano.
-

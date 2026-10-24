@@ -16,12 +16,21 @@ import type { ChatCategory } from '@vtt/shared';
 export interface ChatFilterState {
   /** Które grupy są rysowane. */
   categories: Record<ChatCategory, boolean>;
+  /**
+   * Przycisk „Ja” (etap 60a): zwija dodatkowo wszystko, co patrzącego nie
+   * dotyczy (`chatInvolvement` daje `null`). Działa **razem** z kategoriami,
+   * nie zamiast nich — „Ja” przy zgaszonych „Rzutach” to moje rozmowy i sprawy.
+   */
+  mineOnly: boolean;
 
   toggleCategory: (category: ChatCategory) => void;
   setCategory: (category: ChatCategory, on: boolean) => void;
+  toggleMineOnly: () => void;
 }
 
 const CATEGORIES_KEY = 'vtt.chat.categories';
+/** Osobny klucz: zapis kategorii czyta się klucz po kluczu i obcego by nie przyjął. */
+const MINE_ONLY_KEY = 'vtt.chat.mineOnly';
 
 const ALL_ON: Record<ChatCategory, boolean> = { talk: true, dice: true, combat: true, table: true };
 
@@ -52,8 +61,25 @@ function persistCategories(categories: Record<ChatCategory, boolean>): void {
   }
 }
 
+function readMineOnly(): boolean {
+  try {
+    return window.localStorage.getItem(MINE_ONLY_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function persistMineOnly(on: boolean): void {
+  try {
+    window.localStorage.setItem(MINE_ONLY_KEY, String(on));
+  } catch {
+    // Tryb prywatny — jak wyżej.
+  }
+}
+
 export const useChatFilterStore = create<ChatFilterState>((set, get) => ({
   categories: readCategories(),
+  mineOnly: readMineOnly(),
 
   toggleCategory: (category) => {
     const categories = { ...get().categories, [category]: !get().categories[category] };
@@ -65,5 +91,11 @@ export const useChatFilterStore = create<ChatFilterState>((set, get) => ({
     const categories = { ...get().categories, [category]: on };
     persistCategories(categories);
     set({ categories });
+  },
+
+  toggleMineOnly: () => {
+    const mineOnly = !get().mineOnly;
+    persistMineOnly(mineOnly);
+    set({ mineOnly });
   },
 }));

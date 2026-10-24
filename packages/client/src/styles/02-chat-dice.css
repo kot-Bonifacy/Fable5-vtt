@@ -159,6 +159,75 @@
   font-style: normal;
 }
 
+/* --- „To dotyczy mnie” (etap 60a) ---
+   Opakowanie każdej karty (`FeedRow`); klasę daje `chatInvolvement`. Wcięcie
+   ma każdy wiersz, nie tylko podświetlony, żeby tekst kart stał w jednej
+   kolumnie niezależnie od paska. Pasek jest cieniem wewnętrznym, nie ramką —
+   60c dołoży pod nim cienki pasek autora. */
+/* Lewa krawędź prosta: zaokrąglenie wyginało pasek „ja” w nawias. */
+.chat-row {
+  padding: 0.15rem 0.35rem 0.15rem 0.6rem;
+  border-radius: 0 3px 3px 0;
+}
+
+.chat-row--mine,
+.chat-row--for-me {
+  box-shadow: inset 4px 0 0 var(--self);
+}
+
+.chat-row--mine {
+  background: rgb(var(--self-rgb) / 6%);
+}
+
+/* Szept do mnie albo mój: pasek „ja” zastępuje fioletową kreskę szeptu,
+   fiolet zostaje na etykiecie i w treści. */
+.chat-row--mine .chat-message--whisper,
+.chat-row--for-me .chat-message--whisper {
+  border-left: none;
+  padding-left: 0;
+}
+
+/* „▶ Ty” — kolor nie jest jedynym nośnikiem: znaczek czyta się i bez paska.
+   Każda karta ma dokładnie jeden nagłówek `.chat-message-meta`. */
+.chat-row--for-me .chat-message-meta::before {
+  content: '▶ Ty';
+  flex: none;
+  align-self: center;
+  padding: 0 0.3rem;
+  font-family: var(--font-ui-head);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  color: var(--self-ink);
+  background: var(--self);
+  border-radius: 2px;
+}
+
+/* Czeka na moje kliknięcie: obwódka pulsuje bursztynem przypomnienia tury. */
+.chat-row--awaiting-me {
+  outline: 1px solid rgb(var(--remind-rgb) / 45%);
+  outline-offset: -1px;
+  animation: chat-awaiting-me 1.8s ease-in-out infinite;
+}
+
+@keyframes chat-awaiting-me {
+  0%,
+  100% {
+    outline-color: rgb(var(--remind-rgb) / 30%);
+  }
+  50% {
+    outline-color: rgb(var(--remind-rgb) / 95%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-row--awaiting-me {
+    animation: none;
+    outline-color: rgb(var(--remind-rgb) / 80%);
+  }
+}
+
 /* --- NPC lines (bots and the GM's /jako — deliberately identical) --- */
 
 .chat-portrait {
@@ -677,6 +746,12 @@ body:has(.creator-window) .dice-overlay {
 
 .chat-filter:first-child {
   border-left: none;
+}
+
+/* „Ja” (etap 60a) działa odwrotnie niż kategorie — włączone zwija, nie
+   pokazuje — więc od czterech kategorii odcina je mocniejsza kreska. */
+.chat-filter--mine {
+  border-left: 2px solid var(--border-strong);
 }
 
 .chat-filter:hover {

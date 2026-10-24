@@ -98,7 +98,7 @@ Magazynki (wydłużony, bębnowy) używają `hud/ammo.svg`, pancerz poza tarczą
 
 ## Filtry czatu (25.09.2026)
 
-Cztery przełączniki w czarnym pasie nad czatem (Rozmowy, Rzuty, Walka, Stół). Zastąpiły emoji,
+Cztery przełączniki w czarnym pasie nad czatem (Rozmowy, Rzuty, Walka, Stół), od 24.10 (etap 60a) piąty — „Ja”. Zastąpiły emoji,
 które na czerni nie przyjmowały koloru motywu. Rysowane maską (`HudIcon`), czarne tło usunięte.
 Licencja: CC BY 3.0.
 
@@ -108,3 +108,4 @@ Licencja: CC BY 3.0.
 | `hud/d10.svg`            | D10              | Skoll      | filtr czatu „Rzuty”   |
 | `hud/crossed-swords.svg` | Crossed swords   | Lorc       | filtr czatu „Walka”   |
 | `hud/notebook.svg`       | Notebook         | Delapouite | filtr czatu „Stół”    |
+| `hud/person.svg`         | Person           | Delapouite | filtr czatu „Ja”      |
