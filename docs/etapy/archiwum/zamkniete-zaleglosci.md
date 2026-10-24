@@ -9,6 +9,75 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-10-24, trzecia sesja (zaległe przebiegi E2E)
+
+**23.10.2026 — E2E po „kule się nie kończą”: T5b 5.9, T3a 3.7–3.8 i 46c.9 nieprzepuszczone.**
+T5b staje na starcie bez bramy AI („MG widzi boty dostępne”), więc zmieniony krok 5.9 (wybór
+przeciwpancernej bez liczby zapasu) nie przeszedł ani razu. W T3a krok 3.6 (Kowal bez kul,
+„Ruszam bez zakupów”) jest zielony, ale 3.7 (Iskra w Firefoksie) przekroczył 8 min na klikaniu
+„Podnieś” umiejętności i reszta pliku nie ruszyła — z amunicją niezwiązane, do sprawdzenia
+przy najbliższym pełnym przebiegu. 46c.9 (`@llm`) pominięty bez gatewaya. Punkty `po-T3a`…`po-T6`
+są sprzed zasady (pudełka kul zdejmuje start serwera) — przebudują się przy pełnym przebiegu.
+
+**22.10.2026 — E2E: T4a, T6b, T7b i T8a nieprzepuszczone po poprawce klika 🎲 inicjatywy.**
+Klik w pulsujący „Rzuć inicjatywę” (`click({ force: true })`, pułapka na górze `testy`)
+sprawdzony tylko w T5b (27/27, sesja 58a). W pozostałych czterech poprawka jest ta sama, ale
+przebiegu nie było — przy najbliższym pełnym przebiegu sprawdzić, czy kubek załadowany sam
+(`offeredInitiative`) nie gryzie się z klikiem.
+
+**22.10.2026 — E2E: „kreator Kuby (Na skróty)” w `t8a-ekrany` pada na blokadzie rozwoju w walce.**
+Spec startuje z `po-T4a` (trwająca walka), a od 21.10 bramka ma „🧬 Stwórz postać” wyszarzone
+(`COMBAT_LOCKED`, „W trakcie walki — poczekaj na koniec starcia.”) — klik czeka do limitu we
+wszystkich czterech zestawach ekranów. Do przepięcia: kreator przed walką albo zakończenie walki
+w kroku przygotowania. Ta sama okazja dla `t8a-macierz` „walka: inicjatywa kubkiem” (pole „Zbir”
+w „Załóż starcie” — punkt z 19.10 niżej).
+
+**22.10.2026 (etap 57a) — E2E: T6b 6.6d pada na pulsującym 🎲 inicjatywy.** Od `ced46d1` (22.10,
+gracz rzuca inicjatywę sam) kubek gracza ładuje się inicjatywą sam przy wejściu do starcia, a 🎲 na
+pasie pulsuje — `rollInitiative` w 6.6d klika „Rzuć inicjatywę: Kowal” i Playwright czeka na
+stabilny element do limitu 4 min. Do przepięcia: potrząśnięcie załadowanym kubkiem zamiast kliku
+w 🎲 (ta sama funkcja w T4a 4.1 i T8a-macierz). Przez to **6.8a/6.8b (eksport i import paczek ZIP)
+nie przeszły jeszcze łańcuchem T6b** — 57a sprawdzają testy dymne serwera i `t57a-kopie` (`@szybkie`).
+
+**19.10.2026 — E2E: okno „Załóż starcie” nie ma już pól wyboru figur, których szukają T4a i T6b.**
+*22.10 (57a): przyczyna — od etapu 56 w etykiecie pola siedzi lista postawy, więc nazwa pola to nie
+samo imię. Selektor `fightPick` (`fixtures/walka.ts`) przepięty w T4a 4.1, T5b, T6b 6.6d i
+T8a-macierz; T6b przechodzi już przez „Załóż starcie” (pada dalej — punkt wyżej), T4a/T5b/T8a
+niepuszczone.*
+`t4a-walka-knajpa` 4.1 (`getByRole('checkbox', { name: /^Zbir$/ })`) i `t6b-czas-kopie` 6.6d
+(„Tylko postacie graczy” → pole „Kowal”) czekają na pola, których nie ma. Na kodzie sprzed sesji
+z 19.10 (szósta) t6b pada identycznie, więc to nie skutek pilnowania PT. Prawdopodobnie panel
+„Walka” z etapu 56 („Dołącz do walki”, wrogie na górze) zmienił okno. Reszta T4a za 4.1 nie
+ruszyła — do przepięcia specyfikacji na nowe okno i powtórki T4a/T4b/T6b.
+
+*Zamknięte 24.10 (trzecia sesja), przebiegi bez zmian w aplikacji poza `character:create`:* T4a od `po-T3` 13/13 (+2 `@llm` pominięte, w tym 4.1 z `fightPick` i 🎲 `force`), T4b od nowego `po-T4a` 20/20 (cztery nieaktualne kroki przepięte: MG stawia Rzeźnika przez `combat:overspend` — `emitAckOverBudget`; drugi `Esc` po oknie Celowania; marsz Iskry dalej po zatrzymaniu ukrytą Percepcją; zakładka Ekwipunek po ponownym otwarciu karty), T5b od `po-T5a` 27/27 z gatewayem (5.9, 5.10 `@llm`), T3a od zera 17/17, T6b od `po-T6a` 15/15 (+3 `@llm`; 6.6d, 6.8a — od 57c właściciel pobiera kopię swojej karty, cudza to 404 — i 6.8b), `t8a-ekrany` 24/24 (kreator Kuby po `combat:end` przez gniazdo MG), `t8a-macierz` 16/16, `t7b-obciazenie` 3/3 w skali 0,1 (wcześniej rozjazd `weapons` świeżych kart Lisa i Sowy: `character:create` zapisywał surowy szablon bez Bijatyki — poprawione, test w `inventory.test.ts`), `t46c-` 10/10 z 46c.9 na żywym modelu.
+
+## Zamknięte 2026-10-24, trzecia sesja (kopie i odtworzenie)
+
+**24.10.2026 — Kopie kart i kampanii nie niosą `AdvancementEntry.revert` ani `undoneAt`.**
+`exportCharacter` (`archive.ts`) i wczytanie kampanii (`archive-campaign.ts`) przenoszą tylko
+rodzaj, kwotę, saldo i opis, więc po wczytaniu kopii albo cofnięciu kampanii MG nie cofnie
+awansów sprzed kopii (`UNDO_UNKNOWN`), a cofnięte wiersze stracą przekreślenie. Do dopisania
+w `CharacterLedgerRow` dla rejestru PD, jeśli MG będzie tego potrzebował.
+*Zamknięte 24.10:* `CharacterLedgerRow` ma opcjonalne `revert` (obiekt `AdvancementRevert`) i `undoneAt`; `exportCharacter` je pisze, a wczytanie karty (`archive.ts`) i kampanii — także cofnięcie 57b (`archive-campaign.ts`) — czyta je wspólnym `advancementUndoColumns`. Plik bez tych pól wchodzi jak dotąd („nie pamięta”). Testy: `archive.test.ts` („niesie w rejestrze PD…”, z plikiem bez pól) i asercja w `campaign-copies.test.ts` (cofnięcie) — obie czerwone bez poprawki. Umowa na górze `kopie`.
+
+**18.10.2026 (etap 28) — kopie na VPS nie dowiązują `uploads/` (`"linked": false`).** `db`, `uploads`
+i `backups` są w `deploy/docker-compose.yml` osobnymi bind mountami, a twarde dowiązanie między
+montowaniami pada (EXDEV), więc `linkTree` kopiuje pliki: każda kopia godzinowa to pełne ~66 MB,
+przy rotacji 24 + 14 ok. 2,5 GB dysku VPS (wolne 185 GB — bez pośpiechu). Naprawa: jeden mount
+`vtt-data:/data` zamiast czterech (zmienia ścieżki w compose i entrypoincie, wymaga redeployu).
+*Zamknięte 24.10:* naprawione w 57b (22.10 — jedno montowanie `vtt-data:/data`); po wdrożeniu sprawdzone na VPS tylko odczytem: `docker inspect vtt-server` pokazuje jedno `/opt/docker-apps/vtt-data->/data`, najnowsza kopia `snapshot-2026-10-24-0857` ma `"linked": true`, `backups` 992 MB.
+
+**18.10.2026 (etap 28) — jedno odtworzenie kopii padło w kontenerze.** W Docker Desktop na Windows
+`scripts/restore.ts` raz zakończył się stosem błędu po zrobieniu kopii `przed-przywroceniem-…`
+(stos nie zachowany; cztery powtórki udane). Serwer wstał potem na pustej bazie, a `uploads-gc`
+skasował 189 z 190 plików starszych niż godzina. Startowa kopia w tej samej minucie nadpisała kopię
+o tej samej nazwie (`takeSnapshot` celowo zastępuje kopię z tej samej minuty). Bezpiecznik
+w `deploy/server-entrypoint.sh` zatrzymuje ten łańcuch na VPS. Do zrobienia: odtworzyć awarię
+(prawdopodobnie bind mount Docker Desktop) i rozważyć, czy `uploads-gc` powinien w ogóle ruszać,
+gdy baza nie ma żadnej kampanii.
+*Zamknięte 24.10 — skutki zablokowane, przyczyny nie potwierdzono.* Awarii nie odtworzono (stosu brak, Docker Desktop). Dwa nowe bezpieczniki obok tego w `server-entrypoint.sh`: (1) `restoreSnapshot` kopiuje bazę do `<baza>.restoring` i podmienia ją `rename` dopiero po pełnej kopii, a `-wal`/`-shm` kasuje po kopii — przerwane kopiowanie zostawia starą bazę nietkniętą (`snapshots.test.ts`, „przerwane kopiowanie…”); (2) `uploads-gc` sprząta tylko katalogi kampanii, które są w bazie, a przy bazie bez kampanii nie rusza niczego (`uploads-gc.test.ts`, dwa testy). Wszystkie trzy czerwone bez poprawki. Umowy na górze `kopie`.
+
 ## Zamknięte 2026-10-18, druga sesja (T6b 6.6b, T5b z gatewayem, #79–#81)
 
 **T6b 6.6b: dalszy ciąg marszu po „Złap oddech” dostawał `MOVE_PACE` (18.10).** Punkty trasy

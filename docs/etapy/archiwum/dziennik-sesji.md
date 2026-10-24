@@ -1,5 +1,32 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10 (po `4842f2b`) — zlecenie MG: koszyk awansów i cofanie wpisów rejestru
+
+**„Podnieś” nie wydaje od razu.** Panel Awansu (`AdvancementPanel.tsx`) zbiera kliknięcia w koszyk
+(stan lokalny, kasowany zmianą karty), ceny i poziomy liczy od karty „po zmianach”
+(`planCpredAdvances` w `shared`), wiersz z czymś w koszyku ma „+N” i guzik „−” (zdejmuje ostatni
+szczebel tej rzeczy), nagłówek mówi „X z Y PD po zmianach”, a pasek pod Umiejętnościami —
+co wejdzie i za ile, z „Zatwierdź zmiany” / „Odrzuć”. Zatwierdzenie to jedno
+`character:advance { steps }` — całe albo wcale, wiersz rejestru na każdy szczebel. Pojedynczy
+krok (stare pola) serwer dalej przyjmuje. Zmiana Roli jest zgaszona, póki koszyk nie jest pusty.
+Koszyk ginie przy zamknięciu karty (bez ostrzeżenia).
+
+**MG cofa wpisy rejestru.** Nowe `character:xp-undo` (tylko MG) i kolumny `AdvancementEntry.revert`
+(JSON `AdvancementRevert`) i `undoneAt` (migracja `20261024120000_advancement_undo`). Reguła:
+`planAdvancementUndo` — awans wraca tylko, gdy karta stoi tam, gdzie wpis ją zostawił
+(`UNDO_STALE`: najpierw późniejszy szczebel), przyznanie tylko, gdy PD leżą w puli
+(`UNDO_SPENT`), zmiana Roli wraca trójką pól. Wiersz zostaje przekreślony, dochodzi wiersz
+rodzaju `undo` „Cofnięte: …”. Stare awanse sprzed dziś nie pamiętają zmiany (`UNDO_UNKNOWN`) —
+te MG poprawia ręką. Rejestr u MG ma kolumnę „↶” z powodem odmowy w podpowiedzi. Umowa na górze
+`postac`.
+
+**Sprawdzone:** `tsc` (shared, server, client), vitest shared 2610/2610, klienta 421/421, serwera
+1622/1623 (`netdemons` padł na timeoucie pod obciążeniem, osobno 14/14). Nowe testy:
+`advancement.test.ts` w `shared` (koszyk, cofanie) i w serwerze („koszyk awansów i cofanie wpisu
+przez MG”). Krok 6.2 w T6a przepisany na koszyk — **E2E nie uruchamiano**. **Oglądano
+w Firefoksie (Playwright)** na dev, na tymczasowej postaci (usunięta): koszyk Percepcja +2
+i Atletyka +1, pasek, zatwierdzenie, rejestr z „↶” i cofnięcie Percepcji 5 → 6.
+
 ### Sesja 23.10, szósta (po `7dfd0d9`) — zlecenie MG: „Przyjrzyj się” bez tłumaczenia
 
 **Prośba o oględziny leci jednym kliknięciem.** „🔍 Poproś MG o dokładne oględziny” w oknie
