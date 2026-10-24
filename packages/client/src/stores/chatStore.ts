@@ -89,6 +89,11 @@ interface ChatStoreState {
    * kolor gracza, dostają nowy. Linie NPC-ów i karty bez koloru zostają.
    */
   recolorAuthor: (push: ChatRecolorPush) => void;
+  /**
+   * MG wyczyścił czat (`chat:clear`, 24.10): kanał pustoszeje cały — wiersze,
+   * wstrzymane rzuty, notki lokalne i diagnostyka botów. Szkic zostaje.
+   */
+  clearFeed: () => void;
   setDraft: (draft: string) => void;
   /** Returns true when a seq gap was detected and a resync is needed. */
   applyPresence: (broadcast: PresenceBroadcast) => boolean;
@@ -315,6 +320,8 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       held: state.held.map(recolor),
     });
   },
+
+  clearFeed: () => set({ items: [], held: [], botTraces: {}, hasMoreHistory: false }),
 
   setDraft: (draft) => set({ draft }),
 

@@ -1419,6 +1419,24 @@ export interface ChatHistoryRequest {
   limit?: number;
 }
 
+/**
+ * Client → server payload of `chat:clear` (MG, 24.10.2026): kasuje cały czat
+ * kampanii. `confirm: true` jest wymagane — puste albo przypadkowe wywołanie
+ * niczego nie usuwa.
+ */
+export interface ChatClearRequest {
+  confirm: true;
+}
+
+/**
+ * `chat:clear` push: MG wyczyścił czat. Bez `seq` — jak `chat:recolor`; klient
+ * opróżnia kanał, a kolejne wiersze przychodzą zwykłą drogą.
+ */
+export interface ChatClearedPush {
+  /** Ile wierszy serwer usunął. */
+  removed: number;
+}
+
 /** Ack data of `chat:history`. Messages ascending by id. */
 export interface ChatHistoryPage {
   messages: ChatMessageView[];

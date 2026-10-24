@@ -63,6 +63,8 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatRecolorPush,
+  ChatClearRequest,
+  ChatClearedPush,
   ChatSendPayload,
   CheckCallPayload,
   CheckCancelPayload,
@@ -1295,6 +1297,8 @@ export function connectSocket(userId: string): Socket {
   );
   // Etap 60c: MG zmienił kolor gracza — pokazane karty przemalowują się w miejscu.
   onPresented('chat:recolor', (push: ChatRecolorPush) => chat().recolorAuthor(push));
+  // MG wyczyścił czat (24.10) — kanał pustoszeje u wszystkich naraz.
+  onPresented('chat:clear', () => chat().clearFeed());
   onPresented('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
   });
@@ -3271,6 +3275,10 @@ export function stopBots(turnId?: string): void {
  */
 export const resolveBotProposal = (messageId: number, approve: boolean) =>
   emitSceneAck<{ rollMessageId: number | null }>('bot:proposal', { messageId, approve });
+
+/** „Wyczyść czat” MG (24.10): usuwa wszystkie wiersze czatu kampanii. */
+export const clearChat = () =>
+  emitSceneAck<ChatClearedPush>('chat:clear', { confirm: true } satisfies ChatClearRequest);
 
 /** „Poproś o akcję" — MG pyta bota wprost, z pominięciem detektora prośby. */
 export const askBotToAct = (botId: string, request: string) =>

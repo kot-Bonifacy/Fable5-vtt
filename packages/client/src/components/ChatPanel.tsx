@@ -37,6 +37,7 @@ import {
 } from '@vtt/shared';
 import {
   allowCombatAction,
+  clearChat,
   fetchHandouts,
   loadOlderHistory,
   resolveBotProposal,
@@ -45,6 +46,8 @@ import {
 } from '../socket.js';
 import { AttackRow } from './AttackControls.js';
 import { HudIcon } from './HudIcon.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
+import { noteAck } from '../notices.js';
 import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
@@ -956,6 +959,8 @@ export function ChatPanel() {
   const characters = useCharacterStore((s) => s.characters);
   /** Rozwinięte grupy ukrytych wierszy — klucz bierze się z pierwszego w grupie. */
   const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
+  /** „Wyczyść czat” MG czeka na potwierdzenie w oknie. */
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Draft lives in the store so the dice cup can read and execute commands.
   const draft = useChatStore((s) => s.draft);
@@ -1138,7 +1143,36 @@ export function ChatPanel() {
           <HudIcon name={MINE_BUTTON.icon} className="chat-filter-icon" />
           <span className="chat-filter-label">{MINE_BUTTON.label}</span>
         </button>
+        {isGm && (
+          <button
+            type="button"
+            className="chat-filter chat-filter--clear"
+            aria-label="Wyczyść czat"
+            title="Wyczyść czat — usuwa wszystkie wpisy u wszystkich, bez cofnięcia"
+            onClick={() => setConfirmClear(true)}
+          >
+            <HudIcon name="trash-can" className="chat-filter-icon" />
+          </button>
+        )}
       </div>
+      {confirmClear && (
+        <ConfirmDialog
+          title="Wyczyścić czat?"
+          confirmLabel="Wyczyść"
+          onClose={() => setConfirmClear(false)}
+          onConfirm={() => {
+            void clearChat().then((ack) =>
+              noteAck('table', ack, () => 'Nie udało się wyczyścić czatu.'),
+            );
+          }}
+        >
+          <p>
+            Znikną wszystkie wpisy czatu kampanii — u wszystkich graczy, razem z szeptami, rzutami i
+            kartami czekającymi na decyzję. Boty zapomną rozmowę, a „Zakończ sesję i streść” nie
+            będzie miało czego streszczać. Tego nie da się cofnąć.
+          </p>
+        </ConfirmDialog>
+      )}
       <div className="chat-feed" ref={feedRef} onScroll={onScroll}>
         {!synced && <p className="placeholder-text">Synchronizacja…</p>}
         {synced && !campaign && (

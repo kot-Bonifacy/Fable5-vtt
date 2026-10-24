@@ -83,6 +83,8 @@
 /* --- Chat --- */
 
 .chat-panel {
+  /* Blok zawierający dla okna „Wyczyść czat?” (`ConfirmDialog`). */
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -827,6 +829,17 @@ body:has(.creator-window) .dice-overlay {
    pokazuje — więc od czterech kategorii odcina je mocniejsza kreska. */
 .chat-filter--mine {
   border-left: 2px solid var(--border-strong);
+}
+
+/* „Wyczyść czat” MG (24.10) — sama ikona, nie filtr: nie rośnie z pasem. */
+.chat-filter--clear {
+  flex: none;
+  padding-inline: 0.55rem;
+  border-left: 2px solid var(--border-strong);
+}
+
+.chat-filter--clear:hover {
+  color: var(--err);
 }
 
 .chat-filter:hover {

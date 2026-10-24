@@ -1,5 +1,25 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, dwunasta (po `0b1fc7f`) — Eksploracja bez „Złap oddech” (zlecenie MG)
+
+**Zlecenie:** „zmień tryb eksploracji tak, aby nie następowały w nim co chwilę przerwy
+spowodowane potrzebą złapania oddechu przez postać”. Odpowiedzi MG na pytania: marsz klikiem
+bez limitu długości (pula zostaje dla lądowania bez trasy i Skoku), prędkość stała 3 m/s,
+serwer tempa nie mierzy.
+
+**Przyczyna:** pula RUCH × 2 m odrastała w 10 s (~1,2 m/s), a figura idzie 3 m/s — 4 s marszu,
+~6 s postoju. **Serwer:** `MoveIntent.marched` — marsz po zatwierdzonej trasie nie pyta puli
+(`validateTokenMove`), umowa na górze `tura`. **Klient:** pula nie jest już budżetem marszu,
+kursor nie mówi „Złap oddech”, z `MapRenderer` zniknął postój i dalszy ciąg marszu; podpowiedź
+„Eksploracja” w przełączniku MG mówi „marsz idzie do celu bez postojów”. Testy: przepisane
+`walk-approval.test.ts` (marsz 22 m przy 2 m w puli przechodzi, dług bez zmian; „do najdalszego
+punktu” sprawdzane teraz na Turze), `walk-click.test.ts`, E2E t7c bez 12 s czekania gracza.
+shared 2728, client 440, server 1649 — zielone.
+
+**Nie zrobione:** oględziny w przeglądarce — Firefox z Playwright MCP nie wstał (timeout
+`initializeServer`, dwie próby; pewnie zajęty profil `.playwright-mcp/profile-firefox`). Do
+obejrzenia: gracz w Eksploracji klika cel ~30 m dalej i figura dochodzi bez przystanku.
+
 ### Sesja 24.10, jedenasta (po `2d90dce`) — etap 60c: kolor gracza
 
 **Po oddaniu (MG):** „inicjałów przed nickiem niech nie będzie … nazwy graczy, które wybrał MG,

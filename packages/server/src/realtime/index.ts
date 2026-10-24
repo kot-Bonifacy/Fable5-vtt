@@ -22,7 +22,7 @@ import {
   sweepSessions,
 } from './sessions.js';
 import { SessionClock } from './session-clock.js';
-import { chatHistoryEvent, chatSendEvent } from './chat.js';
+import { chatClearEvent, chatHistoryEvent, chatSendEvent } from './chat.js';
 import { diceSkinEvent } from './dice-skins.js';
 import {
   sceneActivateEvent,
@@ -329,6 +329,7 @@ export const EVENTS: RealtimeEvent<never, unknown>[] = [
   stateRequestEvent,
   chatSendEvent,
   chatHistoryEvent,
+  chatClearEvent,
   diceSkinEvent,
   sceneCreateEvent,
   sceneUpdateEvent,

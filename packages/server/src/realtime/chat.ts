@@ -1,4 +1,6 @@
 import type {
+  ChatClearRequest,
+  ChatClearedPush,
   ChatHistoryPage,
   ChatHistoryRequest,
   ChatMessageView,
@@ -37,6 +39,7 @@ import {
 } from './bot-turns.js';
 import { emitJournalPending } from './journal.js';
 import { speakingCharacter } from './relations.js';
+import { campaignRoom, lobbyRoom } from './state.js';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -408,5 +411,28 @@ export const chatHistoryEvent = defineEvent<ChatHistoryRequest, ChatHistoryPage>
       CHAT_HISTORY_PAGE_SIZE,
     );
     return fetchHistoryPage(deps.ctx.prisma, campaignId, user, beforeId, limit);
+  },
+});
+
+/**
+ * „Wyczyść czat” MG (24.10.2026): kasuje **wszystkie** wiersze czatu kampanii —
+ * także szepty, rzuty do MG, przygotowanie i karty czekające na decyzję.
+ * Krótka pamięć botów i streszczenie „Zakończ sesję” czytają czat, więc tracą
+ * to razem z nim (licznik streszczenia dostaje świeżą wartość).
+ *
+ * Stół i poczekalnia dostają `chat:clear` i opróżniają kanał u siebie.
+ * Wymaga `confirm: true` — wywołanie bez niego (albo z byle czym) odmawia.
+ */
+export const chatClearEvent = defineEvent<ChatClearRequest, ChatClearedPush>({
+  name: 'chat:clear',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (payload?.confirm !== true) throw new RealtimeError('BAD_REQUEST');
+    const { count } = await deps.ctx.prisma.chatMessage.deleteMany({ where: { campaignId } });
+    const push: ChatClearedPush = { removed: count };
+    deps.io.to([campaignRoom(campaignId), lobbyRoom(campaignId)]).emit('chat:clear', push);
+    emitJournalPending(deps, campaignId);
+    return push;
   },
 });
