@@ -352,7 +352,9 @@ describe('trasa marszu gracza (etap 52)', () => {
     expect(await step(vex, 300, 100, true)).toEqual({ ok: true, data: { x: 300, y: 100 } });
     const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
     await emitAck(gm, 'state:request');
-    const turn = (await sync).combat?.combatants.find((entry) => entry.tokenId === vexTokenId)?.turn;
+    const turn = (await sync).combat?.combatants.find(
+      (entry) => entry.tokenId === vexTokenId,
+    )?.turn;
     // Start → róg (300, 100) → z powrotem na róg: nie 0 m, choć figura stoi tam, skąd szła.
     expect(turn?.distance?.used).toBeGreaterThan(0);
     await emitAck(gm, 'combat:end', {});
