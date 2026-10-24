@@ -38,7 +38,14 @@
  *    w `decyzje-i-uproszczenia.md`.
  */
 
+import {
+  cpredChromeStats,
+  cpredChromeStatSteps,
+  cpredGearStatSteps,
+  type CpredChromeSheet,
+} from './chromestats.js';
 import { effectiveCpredStats } from './cyberware.js';
+import { deathSaveTarget } from './derived.js';
 import {
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
@@ -100,10 +107,19 @@ export interface CpredStatEffect {
  * stronę zamknąłby cykl. To ten sam zabieg, którym `cyberware.ts` trzyma się
  * z dala od karty.
  */
-export interface CpredStatSheet {
+export interface CpredStatSheet extends CpredChromeSheet {
   stats: CpredStats;
   humanityCurrent: number;
   statEffects: readonly CpredStatEffect[];
+}
+
+/**
+ * Co wliczyć do Cech „jak teraz”. `gear: false` pomija podłączony egzoszkielet
+ * — „Punkty Wytrzymałości ani rzut obronny przeciw śmierci nie zwiększają się”
+ * (etap 59a), więc Rzut na Śmierć pyta o Cechy bez niego.
+ */
+export interface CpredEffectiveStatsOptions {
+  gear?: boolean;
 }
 
 /** Obie wskazówki zegara naraz; `null` znaczy „ten zegar nie chodzi". */
@@ -157,8 +173,27 @@ export function cpredStatEffectsFor(
  * wiersz rozbicia byłaby czystym marnotrawstwem (ta sama umowa, którą ma
  * `effectiveCpredStats`).
  */
-export function cpredEffectiveStats(sheet: CpredStatSheet): CpredStats {
-  const withHumanity = effectiveCpredStats(sheet.stats, sheet.humanityCurrent);
+export function cpredEffectiveStats(
+  sheet: CpredStatSheet,
+  options: CpredEffectiveStatsOptions = {},
+): CpredStats {
+  const withEffects = statsWithEffects(sheet);
+  if (options.gear === false) return withEffects;
+  return cpredGearStatSteps(withEffects, sheet).stats;
+}
+
+/**
+ * Cechy bazowe z wszczepami (etap 59a) i Człowieczeństwem — punkt, od którego
+ * liczą się efekty czasowe. Wszczep stoi **przed** efektami, bo jest częścią
+ * ciała: Lisz −3 zabiera z BC 12 ramownicy, a nie z BC 8 z kreatora.
+ */
+function statsBeforeEffects(sheet: CpredStatSheet): CpredStats {
+  return effectiveCpredStats(cpredChromeStats(sheet.stats, sheet), sheet.humanityCurrent);
+}
+
+/** Wszczepy, Człowieczeństwo i efekty czasowe — bez podłączonego sprzętu. */
+function statsWithEffects(sheet: CpredStatSheet): CpredStats {
+  const withHumanity = statsBeforeEffects(sheet);
   if (sheet.statEffects.length === 0) return withHumanity;
   let changed = false;
   const result = { ...withHumanity };
@@ -180,6 +215,38 @@ export function cpredEffectiveStat(sheet: CpredStatSheet, statId: CpredStatId): 
 }
 
 /**
+ * Próg Rzutu na Śmierć **tej karty** — BC z wszczepami i efektami, ale bez
+ * podłączonego egzoszkieletu (etap 59a, patrz `CpredEffectiveStatsOptions`).
+ */
+export function cpredSheetDeathSaveTarget(sheet: CpredStatSheet): number {
+  return deathSaveTarget(cpredEffectiveStats(sheet, { gear: false }));
+}
+
+/**
+ * Wiersze rozbicia rzutu dla jednej Cechy **ponad** liczbę z karty
+ * (z Człowieczeństwem): wszczepy, efekty czasowe, podłączony sprzęt — w tej
+ * kolejności, w jakiej działają. Suma wierszy i Cechy z karty to zawsze
+ * `cpredEffectiveStats(sheet)[statId]`.
+ *
+ * Wszczep idzie własnym wierszem z tego samego powodu co efekt: gracz, który
+ * czyta „BC 8 · Przeszczep splotu +2”, wie, skąd jego 10 i dokąd wróci po
+ * wyjęciu wszczepu.
+ */
+export function cpredStatModifierRows(
+  sheet: CpredStatSheet,
+  statId: CpredStatId,
+): { label: string; value: number }[] {
+  const chrome = cpredChromeStatSteps(sheet.stats, sheet, statId).map((step) => ({
+    label: step.label,
+    value: step.value,
+  }));
+  const gear = cpredGearStatSteps(statsWithEffects(sheet), sheet)
+    .steps.filter((step) => step.stat === statId)
+    .map((step) => ({ label: step.label, value: step.value }));
+  return [...chrome, ...cpredStatEffectRows(sheet, statId), ...gear];
+}
+
+/**
  * Ile efekty **naprawdę** zabrały tej Cesze, po podłodze i suficie.
  *
  * Różnica między Cechą efektywną a tą samą Cechą bez efektów — a nie suma
@@ -187,8 +254,7 @@ export function cpredEffectiveStat(sheet: CpredStatSheet, statId: CpredStatId): 
  * więc wiersze karty zawsze sumują się do tego, czym rzuca kość.
  */
 export function cpredStatEffectDelta(sheet: CpredStatSheet, statId: CpredStatId): number {
-  const base = effectiveCpredStats(sheet.stats, sheet.humanityCurrent)[statId];
-  return cpredEffectiveStats(sheet)[statId] - base;
+  return statsWithEffects(sheet)[statId] - statsBeforeEffects(sheet)[statId];
 }
 
 /**

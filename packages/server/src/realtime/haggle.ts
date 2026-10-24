@@ -6,6 +6,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredEffectiveStats,
+  cpredSkillLevel,
   CPRED_HAGGLE_SKILL_ID,
   CPRED_OPERATOR_ABILITY,
   ROLE_GM,
@@ -100,7 +101,7 @@ export const characterHaggleEvent = defineEvent<
     // CHA is the effective one (stage 23a) — a Fixer who sold Empathy to a
     // ripperdoc haggles with what is left, the same as on every other Check.
     const cool = cpredEffectiveStats(data).cool;
-    const trading = data.skills[CPRED_HAGGLE_SKILL_ID] ?? 0;
+    const trading = cpredSkillLevel(data, CPRED_HAGGLE_SKILL_ID);
     // Kara za rany razem ze Stymem i Edytorem bólu — te same wiersze co w Teście.
     const woundRows = cpredWoundPenaltyRows(cpredSheetWoundCondition(data));
     const wound = woundRows.reduce((sum, row) => sum + row.value, 0);

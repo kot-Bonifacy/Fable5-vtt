@@ -58,6 +58,7 @@ import {
 import { CPRED_OBSCUREMENT_KIND } from './environment.js';
 import {
   attachmentAttackModifiers,
+  attachmentRangedBonusApplies,
   attachmentIgnoresObscurement,
   hasRequiredCyberware,
   type CpredAttachmentProfile,
@@ -79,7 +80,13 @@ import {
   type CpredWoundState,
 } from './rolls.js';
 import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
-import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
+import { cpredEffectiveStats, cpredStatModifierRows } from './stateffects.js';
+import {
+  cpredChromeAttackModifiers,
+  cpredChromeSkillBonus,
+  cpredSkillChipLevel,
+  cpredSkillLevel,
+} from './chromestats.js';
 
 /** How the attack is being made. Melee follows from the weapon, not from here. */
 export const CPRED_ATTACK_MODES = ['single', 'autofire', 'suppressive'] as const;
@@ -205,6 +212,26 @@ export function passiveEvasionDv(data: CpredCharacterData, registry: CpredRegist
 }
 
 /**
+ * Wiersz Umiejętności ataku — z poziomem z czipu, gdy wyższy od wyuczonego
+ * (etap 59a). Bez premii z chromu: żaden wiersz `CPRED_CHROME_MODS` nie dodaje
+ * do Umiejętności broni, a celownik w oku idzie osobnym wierszem ataku.
+ */
+function attackSkillRow(
+  data: CpredCharacterData,
+  skill: { id: string; name: string },
+): RollBreakdownEntry {
+  const learned = data.skills[skill.id] ?? 0;
+  const level = cpredSkillLevel(data, skill.id);
+  const label =
+    level > learned && cpredSkillChipLevel(data, skill.id) > 0
+      ? `${skill.name} (czip)`
+      : level > 0
+        ? skill.name
+        : `${skill.name} (nietrenowana)`;
+  return { label, value: level, kind: 'skill' };
+}
+
+/**
  * DEX + Evasion — the defender's side of the opposed roll, without the die.
  *
  * Minus what the armour costs (s. 185): the modifier reaches ZW, and dodging is
@@ -222,7 +249,7 @@ export function evasionBase(data: CpredCharacterData, registry: CpredRegistry): 
   return (
     stat +
     cpredArmorStatPenalty(data.armor, statId, stat) +
-    (data.skills[CPRED_EVASION_SKILL_ID] ?? 0)
+    cpredSkillLevel(data, CPRED_EVASION_SKILL_ID)
   );
 }
 
@@ -944,16 +971,13 @@ export function planCpredAttack(
     },
     // Etap 39: efekty czasowe własnymi wierszami, jak w planerze Testów —
     // „REF 8 · Lisz −3" zamiast cichej ósemki, która strzela za piątkę.
-    ...cpredStatEffectRows(data, statId).map((row) => ({
+    // Etap 59a: ta sama funkcja niesie wszczepy i podłączony egzoszkielet.
+    ...cpredStatModifierRows(data, statId).map((row) => ({
       label: row.label,
       value: row.value,
       kind: 'situational' as const,
     })),
-    {
-      label: (data.skills[skill.id] ?? 0) > 0 ? skill.name : `${skill.name} (nietrenowana)`,
-      value: data.skills[skill.id] ?? 0,
-      kind: 'skill',
-    },
+    attackSkillRow(data, skill),
   ];
   // „Gdy atakujesz za pomocą broni doskonałej jakości, dodajesz +1 do Testów
   // ataku" (s. 244). Read off the weapon actually being fired, so a shot from
@@ -1008,14 +1032,38 @@ export function planCpredAttack(
   // (chrome permitting) and the scope's conditional one. Both are decided here
   // rather than baked into the resolved weapon, because both conditions are
   // facts about *this shot* — see `attachmentAttackModifiers`.
-  for (const entry of attachmentAttackModifiers(attachments, {
+  const attachmentRows = attachmentAttackModifiers(attachments, {
     metres: target.metres,
     single: mode === 'single',
     aimed,
     melee,
     cyberware: installedCyberware,
+  });
+  for (const entry of attachmentRows) breakdown.push(entry);
+  // Etap 59a: chrom w oku — Celownik optyczny przy Celowaniu, Teleskop na
+  // dystansie. Luneta, która w tym strzale dała swoje +1, wyłącza chrom z jej
+  // `conflictsWith` („Nie kumuluje się z cyborgizacją Teleskop”, s. 344).
+  const blockedChrome = melee
+    ? []
+    : attachments.flatMap((attachment) =>
+        attachment.rangedBonus &&
+        attachment.rangedBonus.bonus !== 0 &&
+        attachmentRangedBonusApplies(attachment.rangedBonus, {
+          metres: target.metres,
+          single: mode === 'single',
+          aimed,
+        })
+          ? (attachment.rangedBonus.conflictsWith ?? [])
+          : [],
+      );
+  for (const row of cpredChromeAttackModifiers(data, {
+    metres: target.metres,
+    single: mode === 'single',
+    aimed,
+    melee,
+    blockedBy: blockedChrome,
   })) {
-    breakdown.push(entry);
+    breakdown.push({ label: row.label, value: row.value, kind: 'situational' });
   }
   if (aimedAt) {
     breakdown.push({
@@ -1215,7 +1263,7 @@ export function concentrationBase(data: CpredCharacterData, registry: CpredRegis
   const skill = registry.skills.find((entry) => entry.id === CPRED_CONCENTRATION_SKILL_ID);
   const stats = cpredEffectiveStats(data);
   const stat = skill ? stats[skill.stat] : stats.will;
-  return stat + (data.skills[CPRED_CONCENTRATION_SKILL_ID] ?? 0);
+  return stat + cpredSkillLevel(data, CPRED_CONCENTRATION_SKILL_ID);
 }
 
 /** What one forced check is rolled on: the attribute, the skill, and its name. */
@@ -1245,9 +1293,12 @@ export function cpredCheckBase(
 ): CpredCheckBase {
   const skill = registry.skills.find((entry) => entry.id === check.skillId);
   const statId = skill?.stat ?? check.statId ?? 'will';
-  const skillLevel = skill ? (data.skills[check.skillId] ?? 0) : 0;
+  const skillLevel = skill ? cpredSkillLevel(data, check.skillId) : 0;
+  // Etap 59a: Detoksykator +2 do Odporności na tortury/narkotyki działa też
+  // przeciw biotoksynie w magazynku — ta liczba nie ma rozbicia, więc wchodzi w sumę.
+  const chrome = skill ? (cpredChromeSkillBonus(data, check.skillId)?.value ?? 0) : 0;
   return {
-    total: cpredEffectiveStats(data)[statId] + skillLevel,
+    total: cpredEffectiveStats(data)[statId] + skillLevel + chrome,
     statId,
     label: skill?.name ?? check.skillLabel ?? check.skillId,
     skillLevel,

@@ -21,13 +21,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 | stan         | etapy                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); T10; refaktoryzacja odłożona (MG 18.10) |
-| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d) (ostatni zamknięty: 58d, 2026-10-23) |
+| ⬜ otwarty   | **28** Wdrożenie na VPS (🟨 działa na `https://vtt.tatanga.eu` z botami od 18.10; zostały off-site, utwardzenie, monitoring); **43b**, **43c** (UI walki); **59b**, **59c** (narkotyki — projekt czeka na pytania 1–3, 5, 6 do MG); T10; refaktoryzacja odłożona (MG 18.10) |
+| ✅ ukończone | 01–11, 13–20b, 23a–27f, 27h–27l, 29a–30d, 31–35, 37–42c, 43a, 44a–44d, 45, 46a1, 46a2, 46c1, 46c2, 46b1, 46b2, 47a, 47b, 48a, 48b, 48c, 49a, 49b, 50a, 50b, 50c, 51, 52, 53, 54, 55, 56, 57 (57a–57c), 58 (58a–58d), 59a (ostatni zamknięty: 59a, 2026-10-24) |
 | ⛔ wycofane  | 12, 21, 22 (głos), 27g (wydajność), 36 (makra); 27, 29, 30, 38 rozdzielone na etapy literowane |
 
 Pełna tabela z nazwami i datami: `archiwum/tabela-etapow.md`.
 
 ## Od czego zacząć
+
+**Chrom i sprzęt zmieniają liczby karty (etap 59a, 24.10) — dalej 59b/59c po odpowiedziach MG,
+etap 28, potem T10.** Przeszczep splotu daje BC +2 (do 10), ramownica wszczepiana BC 12/14 — z PW,
+Progiem Ran i Przeżywalnością; egzoszkielet z „Podłącz” w „Ekwipunku” daje BC 12/14 tylko do
+rzutów. Do tego stałe +2 do Umiejętności z chromu i sprzętu (największa premia, nie suma),
+Kerenzikov +2 Inicjatywy, Celownik optyczny i Teleskop w ataku, Czip Umiejętności (poziom 3,
+Umiejętność wybierana raz). Wszystko to wiersze `CPRED_CHROME_MODS` (`chromestats.ts`); poziom
+Umiejętności w regułach czyta się `cpredSkillLevel`. Umowy na górze `postac` i `ekwipunek`,
+rozstrzygnięcia w `decyzje-i-uproszczenia.md` („Chrom zmieniający liczby”), reszta chromu
+w `POMYSLY.md`.
 
 **Ciała leżą otworem jak otwarte skrzynie (zlecenie MG z 24.10) — dalej etap 28, potem T10.**
 Martwą, leżącą, Ogłuszoną, Unieruchomioną albo Pochwyconą figurę — NPC-a **i postać gracza** —
@@ -429,8 +439,8 @@ a nie do tego pliku.
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   | 48   | 8       |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`, wzorce | 17   | 3       |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list, usuwanie przedmiotu | 11   | 12      |
-| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, ekonomia | 54   | 3       |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna | 35   | 3       |
+| `postac`    | kreator, PD i awanse, koszyk i cofanie awansów, Role i Zdolności, cyborgizacje, chrom zmieniający liczby, ekonomia | 55   | 3       |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup (także ciała graczy), handel, sklepy, zasięg, amunicja bez dna, egzoszkielet | 36   | 3       |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      | 18   | 2       |
 | `siec`      | Programy, LOD, demony, piętra architektury, dek jako towar, strefy bronione, kamery, rozbrajanie | 12   | 4       |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy, brama AI  | 10   | 10      |
@@ -443,6 +453,34 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.10, szósta (po `dc222d4`) — etap 59a: chrom i sprzęt zmieniające liczby
+
+**Zlecenie:** „wykonaj teraz etap 59a; jeżeli znajdziesz więcej przypadków, gdzie można użyć tej
+mechaniki, to tam też ją zastosuj”. Pytania zadane na starcie; MG wybrał wszystkie cztery
+rozszerzenia (stałe +2 do Umiejętności, Kerenzikov, Celownik/Teleskop, czip), „obraz zawsze,
+słuch i śpiew — MG”, wymagania ramownic jako notkę i egzoszkielety w tym etapie.
+
+**Shared.** Nowy `chromestats.ts` (tabela `CPRED_CHROME_MODS`, 21 wierszy) i jego testy.
+`cpredEffectiveStats`: wszczepy → Człowieczeństwo → efekty → egzoszkielet (`{ gear: false }` go
+pomija), `cpredStatModifierRows` dla rozbicia Testu i ataku, `cpredSheetDeathSaveTarget`.
+`cpredSheetHpMax` i przycinanie PW w `normalizeCharacterData` z BC po wszczepach. `cpredSkillLevel`
+zamiast `data.skills[id]` w regułach (Test, atak, Unik, Koncentracja, Zwarcie, Sztuki walki,
+operator wieżyczki, targowanie, boty, kubek). Pola `CpredCyberwareRow.skillId`
+i `CpredGearRow.connected` z walidacją i regułą łaty gracza; egzoszkielet oddany jedzie odłączony.
+Teleskop wyłącza `conflictsWith` lunety (decyzja z 01.09 przestała być martwa).
+
+**Klient.** BC „z 12” z dymkiem źródeł, Przeżywalność bez egzoszkieletu, kolumna „Baza”
+z czipem i premią (zielona, dymek), skutek i notka pod nazwą wszczepu, wybór Umiejętności czipu,
+sekcja „Sprzęt z premią” z „Podłącz” / „Odłącz”.
+
+**Sprawdzone:** `tsc` (shared, server, client), ESLint i Prettier czyste; vitest `shared`
+2652/2652 (+39), serwera 1633/1633 (+4: PW z przeszczepem, podłączenie egzoszkieletu, czip raz),
+klienta 423/423. **Oglądano w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1, postać
+„Test chromu 59a” założona gniazdem i usunięta po oględzinach): BC 6 z 12 → z 14 po podłączeniu
+Bety, PW 35 z 55, próg 28, Przeżywalność 12 bez zmian, Bijatyka 4k6, Baza Odporności 10
+i Techskanera 7/9, tabela cyborgizacji z linijkami skutku, czip zapisany, konsola bez błędów.
+E2E nie puszczano.
 
 ### Sesja 24.10, piąta (po `2c42c8b`) — zlecenie MG: ciała leżą otworem jak skrzynie
 
@@ -463,26 +501,3 @@ zmian. Umowa na górze `ekwipunek`.
 plikach; vitest `shared` 2613/2613 (+3), serwera 1629/1629 (+1: ogłuszony Rico — łup na liście,
 „Weź”, po wstaniu `STILL_STANDING`). **W przeglądarce nie oglądano** — klient nie zmieniony, ale
 zachowanie okna „Wymiana” tak; zaległość w `zaleglosci.md`.
-
-### Sesja 24.10, czwarta (po `bb6eb39`) — zlecenie MG: pytanie przy usuwaniu przedmiotu
-
-**Zlecenie:** „przy usunięciu przedmiotu z ekwipunku niech pojawia się pytanie o potwierdzenie
-(…) i niech te przyciski będą większe (ikony i pola też)”, potem: „ikony zdejmij i ulepszenie też
-można by jakoś lepiej zaplanować”, „ikona kosza w dziennym widoku powinna mieć tło tegoż widoku”
-i „przycisk zdejmij powinien być spójnie z przyciskiem dobądź gdzieś blisko ikony przedmiotu”.
-
-**Klient.** `ConfirmDialog` wydzielony z `CreatorDialog` (kreator rysuje przez niego swoją listę
-„Przepadnie”; style `.confirm-dialog*` przeniesione do `14-windows.css`). W „Ekwipunku” każdy
-kosz (broń, pancerz, reszta pancerza, wyposażenie) pyta „Usunąć „X” z karty?” z liczbą sztuk
-i podpowiedzią „Wymiana…” / przeciągnij na mapę. Kosz `.cp-remove` 2,1 rem z sylwetką
-`hud/trash-can.svg` (game-icons, Delapouite, wpis w `ATTRIBUTION.md`), przezroczysty. Pancerz:
-plakietki z napisem zamiast ⤓ ⤒ ⊕ ⚒ ⌫; „Zdejmij” / „Załóż” / „słabsza” pod nazwą sztuki,
-wcięte do ikony (jak „Dobądź” przy broni; zdjęcie i założenie hełmu NPC-a sprawdzone i cofnięte). W zakładce pola 16 px, miniatury 32 px, uchwyt ⠿ większy,
-wiersze wyposażenia wyższe. Umowa na górze `karta`.
-
-**Sprawdzone:** `tsc`, ESLint i Prettier czyste w kodzie; vitest klienta 421/421. **Oglądano
-w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1): obie skóry, pytanie z fokusem na
-„Anuluj”, `Esc` zamyka bez usuwania, pytanie kreatora („Wyrzuć szkic” → Anuluj) wygląda jak
-przedtem; pełne usunięcie sprawdzone na NPC „Korpogliniarz 1” na wierszu testowym dodanym na tę
-chwilę (stan „saved”, wyposażenie NPC znów puste). E2E nie puszczano — żadna spec nie klika
-starych ✕.

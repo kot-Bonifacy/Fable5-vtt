@@ -12,7 +12,10 @@
  *  - wyrzucić wiersz broni, pancerza i wyposażenia,
  *  - zmniejszyć ilość wiersza wyposażenia i bieżące OB pancerza,
  *  - założyć, zdjąć i przełożyć pancerz (`equipped`, `location`),
- *  - przypisać cyborgizację do miejsca na sylwetce (`bodySlot`).
+ *  - przypisać cyborgizację do miejsca na sylwetce (`bodySlot`),
+ *  - podłączyć i odłączyć egzoszkielet (`connected`, etap 59a),
+ *  - nazwać Umiejętność czipu, **raz** (`skillId`, etap 59a) — czip kupuje się
+ *    na jedną Umiejętność, więc zmiana nazwanej to darmowy nowy czip.
  *
  * Magazynek broni i jego rodzaj naboju zostają przy umowie z 46c
  * (`cpredAmmoPatchRaises` → `AMMO_LOCKED`, od 23.10 na każdej karcie gracza):
@@ -49,8 +52,8 @@ const WEAPON_FREE: readonly (keyof CpredWeaponRow)[] = [
   'attachmentAmmoId',
 ];
 const ARMOR_FREE: readonly (keyof CpredArmorRow)[] = ['notes', 'equipped', 'location', 'spCurrent'];
-const GEAR_FREE: readonly (keyof CpredGearRow)[] = ['notes', 'qty'];
-const CYBERWARE_FREE: readonly (keyof CpredCyberwareRow)[] = ['notes', 'bodySlot'];
+const GEAR_FREE: readonly (keyof CpredGearRow)[] = ['notes', 'qty', 'connected'];
+const CYBERWARE_FREE: readonly (keyof CpredCyberwareRow)[] = ['notes', 'bodySlot', 'skillId'];
 
 /** Wiersz bez pól swobodnych, w stałej kolejności kluczy — do porównania. */
 function lockedPart<T extends CpredItemRow>(row: T, free: readonly (keyof T)[]): string {
@@ -103,7 +106,16 @@ export function cpredPlayerItemPatchProblem(
   if (patch.cyberware) {
     // Ani nowy wszczep, ani wyjęty — obie drogi liczą Człowieczeństwo na serwerze.
     if (patch.cyberware.length !== current.cyberware.length) return 'ITEM_LOCKED';
-    if (listAdds(current.cyberware, patch.cyberware, CYBERWARE_FREE)) return 'ITEM_LOCKED';
+    if (
+      listAdds(
+        current.cyberware,
+        patch.cyberware,
+        CYBERWARE_FREE,
+        (next, old) => old.skillId !== undefined && next.skillId !== old.skillId,
+      )
+    ) {
+      return 'ITEM_LOCKED';
+    }
   }
   return null;
 }

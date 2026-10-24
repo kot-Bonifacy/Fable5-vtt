@@ -72,7 +72,8 @@ import {
   type NetProgramClass,
   type NetProgramTarget,
 } from './netrunning.js';
-import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
+import { cpredSheetHpMax, sanitizeStatBlock, type CpredStatBlock } from './statblock.js';
+import { cpredChromeModOf } from './chromestats.js';
 import { readCpredContainer, type CpredContainer } from './container.js';
 import { isCpredKeyId } from './lock.js';
 import { cpredIsBareHandsRow, cpredWithBareHands } from './barehands.js';
@@ -421,6 +422,13 @@ export interface CpredGearRow extends CpredItemRow {
    * otwierającego otwiera zamek bez Testu.
    */
   key?: string;
+  /**
+   * Egzoszkielet podłączony do użytkownika (etap 59a) — „Podłączony do
+   * ramownicy użytkownik ma BC 12”. Liczy się wyłącznie na wierszu, który
+   * `CPRED_CHROME_MODS` zna jako `needsConnected`; na każdym innym odpada przy
+   * zapisie. Przełącza go właściciel jak założenie pancerza.
+   */
+  connected?: boolean;
 }
 
 /**
@@ -480,6 +488,13 @@ export interface CpredCyberwareRow extends CpredItemRow, CyberwareInstallation {
    * other family has exactly one place it can go.
    */
   bodySlot?: CyberwareBodySlot;
+  /**
+   * Czip Umiejętności (etap 59a): którą Umiejętność niesie — id z
+   * `skills.json`. Brak znaczy „czip jeszcze bez nazwy” i nie daje nic.
+   * Gracz wpisuje ją raz, zmienia już tylko MG (`cpredPlayerItemPatchProblem`):
+   * czip kupuje się na konkretną Umiejętność, a nie na każdą po kolei.
+   */
+  skillId?: string;
 }
 
 export interface CpredWeaponRow extends CpredItemRow {
@@ -2258,12 +2273,16 @@ function collectCharacterDataPatch(
       const ammo = readGearAmmo(row.ammo);
       // Klucz z zepsutym uchwytem też: wiersz zostaje, tylko niczego nie otwiera.
       const key = isCpredKeyId(row.key) ? row.key : undefined;
+      // Etap 59a: „podłączona” ma sens tylko przy egzoszkielecie.
+      const connected =
+        row.connected === true && cpredChromeModOf(base, 'gear')?.needsConnected === true;
       return {
         ...base,
         qty,
         ...(consumable ? { consumable } : {}),
         ...(ammo ? { ammo } : {}),
         ...(key ? { key } : {}),
+        ...(connected ? { connected: true as const } : {}),
       };
     });
     if (gear) patch.gear = gear;
@@ -2311,6 +2330,10 @@ function collectCharacterDataPatch(
             ? { humanityMaxPenalty: penalty }
             : {}),
           ...(isInteger(loss) && loss >= 0 && loss <= 999 ? { humanityLoss: loss } : {}),
+          // Etap 59a: nieznana Umiejętność odpada, jak każde pole wyżej.
+          ...(typeof row.skillId === 'string' && registry.skillIds.has(row.skillId)
+            ? { skillId: row.skillId }
+            : {}),
         };
       },
     );
@@ -2561,7 +2584,9 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
   // Etap 38a: sufitem jest maksimum **tej karty**, a nie liczba z BC i SW.
   // Funkcjonariusz Wsparcia z wydrukowanymi PW 35 przy BC 4 tracił tu
   // piętnaście punktów przy pierwszym zapisie.
-  const hpCurrent = Math.min(data.hpCurrent, statBlockHpMax(data.stats, data.statBlock));
+  // Etap 59a: i z wszczepami, które podnoszą BC — wyjęty przeszczep splotu
+  // ścina tu PW do nowego maksimum, jak BC zmieniona ręką MG.
+  const hpCurrent = Math.min(data.hpCurrent, cpredSheetHpMax(data));
   return {
     ...data,
     hpCurrent,

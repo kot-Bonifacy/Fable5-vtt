@@ -12,6 +12,7 @@ import {
   cpredOperatorTierAt,
   cpredRoleAbilityRank,
   readCpredHaggle,
+  cpredSkillLevel,
 } from '@vtt/shared';
 import { clearNotices, notifyInfo } from '../notices.js';
 import { dropHaggle, strikeHaggle } from '../socket.js';
@@ -51,7 +52,7 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
   const reach = cpredOperatorReach(rank);
   const struck = readCpredHaggle(character.data.haggle);
   const struckDeal = struck ? cpredHaggleDeal(struck.dealId) : null;
-  const trading = character.data.skills[CPRED_HAGGLE_SKILL_ID] ?? 0;
+  const trading = cpredSkillLevel(character.data, CPRED_HAGGLE_SKILL_ID);
 
   async function haggle(dealId: string): Promise<void> {
     setBusy(dealId);

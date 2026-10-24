@@ -1,5 +1,14 @@
 # Pomysły poza zakresem etapów
 
+**24.10.2026 (etap 59a) — chrom, którego VTT jeszcze nie liczy.** (1) **Sandevistan:** „Po
+uruchomieniu, co zajmuje Akcję, … +3 do wszystkich rzutów na Inicjatywę w ciągu następnej minuty”,
+potem godzina przerwy — guzik na karcie zakładający efekt z terminem (jak Stym) i premię w
+`cpredSheetInitiative`. (2) **Rolki:** +6 m przy Akcji Biegu (wymagają dwóch cybernóg) — dopisek do
+budżetu Biegu w `turn.ts`. (3) **Cena czipu wg Umiejętności:** ×2 — 1000 ed, reszta 500 ed; dziś
+cena wpisu i wybór Umiejętności po montażu. (4) **Sparowanie** (Poprawa obrazu, dopalacz skoku,
+rolki) jako sprawdzenie montażu, a nie notka. (5) **Przełącznik zmysłu w kubku:** „Test słuchem”
+doliczałby Ulepszony słuch bez MG.
+
 **23.10.2026 (etap 58d) — ukryta figura na pasie, skradanie się NPC-a i ukryty pojemnik.**
 (1) **Pas inicjatywy dla zauważającego:** pas jedzie jednym rozgłoszeniem do stołu
 (`filterCombatForPlayer`), więc ukryta figura zauważona przez jednego gracza zostaje na nim

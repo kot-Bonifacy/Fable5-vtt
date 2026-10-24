@@ -27,8 +27,13 @@ import {
 } from './character.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import { effectiveCpredStats } from './cyberware.js';
-import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
-import { deathSaveTarget, hpMax } from './derived.js';
+import {
+  cpredEffectiveStats,
+  cpredSheetDeathSaveTarget,
+  cpredStatModifierRows,
+} from './stateffects.js';
+import { cpredChromeSkillBonus, cpredSkillChipLevel, cpredSkillLevel } from './chromestats.js';
+import { hpMax } from './derived.js';
 import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
 import { cpredWoundSuspensionSource, type CpredWoundSuspensionSheet } from './woundsuspension.js';
 import {
@@ -843,8 +848,9 @@ function statRows(data: CpredCharacterData, statId: CpredStatId): RollBreakdownE
   // — zmieniają Cechę, a dopiero potem kurtka zabiera swoje. Własnymi wierszami
   // z tego samego powodu, dla którego własny wiersz ma kara z pancerza: obie są
   // czasowe i zdejmowalne, a gracz, który czyta „REF 8 · Lisz −3", wie, że za
-  // godzinę będzie rzucał inaczej.
-  const effects: RollBreakdownEntry[] = cpredStatEffectRows(data, statId).map((row) => ({
+  // godzinę będzie rzucał inaczej. Etap 59a: przed nimi wszczepy, po nich
+  // podłączony egzoszkielet — jedna funkcja zna kolejność.
+  const effects: RollBreakdownEntry[] = cpredStatModifierRows(data, statId).map((row) => ({
     label: row.label,
     value: row.value,
     kind: 'situational' as const,
@@ -863,17 +869,29 @@ function skillBreakdown(
   data: CpredCharacterData,
   skill: { id: string; name: string; stat: CpredStatId },
 ): RollBreakdownEntry[] {
-  const level = data.skills[skill.id] ?? 0;
+  // Etap 59a: poziom z czipu, gdy wyższy od wyuczonego — i wtedy rozbicie
+  // mówi „(czip)”, żeby gracz wiedział, czemu Broń krótka 0 strzela za 3.
+  const learned = data.skills[skill.id] ?? 0;
+  const level = cpredSkillLevel(data, skill.id);
   const name = cpredSkillLabel(skill, data);
+  const chrome = cpredChromeSkillBonus(data, skill.id);
   return [
     ...statRows(data, skill.stat),
     // RAW: an untrained skill simply contributes nothing — the check still
     // happens on the bare stat, and the card says so.
     {
-      label: level > 0 ? name : `${name} (nietrenowana)`,
+      label:
+        level > learned && cpredSkillChipLevel(data, skill.id) > 0
+          ? `${name} (czip)`
+          : level > 0
+            ? name
+            : `${name} (nietrenowana)`,
       value: level,
       kind: 'skill',
     },
+    // Etap 59a: stała premia z chromu albo sprzętu („Techskaner +2”) —
+    // osobnym wierszem, bo to nie poziom, który postać kupiła.
+    ...(chrome ? [{ label: chrome.label, value: chrome.value, kind: 'situational' as const }] : []),
   ];
 }
 
@@ -955,7 +973,7 @@ function planStabilizeRoll(
   const skill =
     named ??
     candidates.reduce((best, entry) =>
-      (data.skills[entry.id] ?? 0) > (data.skills[best.id] ?? 0) ? entry : best,
+      cpredSkillLevel(data, entry.id) > cpredSkillLevel(data, best.id) ? entry : best,
     );
 
   const dv = request.stabilizeDv;
@@ -1263,8 +1281,8 @@ function planDeathSaveRoll(
   // Etap 39: BC **jak teraz** — Rzut na Śmierć jest rzutem „pod Cechę", więc
   // narkotyk, który obniżył Budowę Ciała, obniża też szansę na przeżycie. Pule
   // (maks. PW, próg Poważnie Rannego) zostają przy Cesze bazowej — patrz
-  // nagłówek `stateffects.ts`.
-  const target = deathSaveTarget(cpredEffectiveStats(data));
+  // nagłówek `stateffects.ts`. Etap 59a: z wszczepami, bez egzoszkieletu.
+  const target = cpredSheetDeathSaveTarget(data);
   const savesTaken = Math.max(0, Math.round(data.deathSaves));
   const hitPenalty = Math.max(0, Math.round(data.deathSaveHits));
   const injuryPenalty = injuryDeathSavePenalty(data.criticalInjuries);

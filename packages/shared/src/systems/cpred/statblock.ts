@@ -29,6 +29,7 @@
  * zaimportować karty (cykl przez `character.ts`).
  */
 
+import { cpredChromeStats, type CpredChromeSheet } from './chromestats.js';
 import { CPRED_STAT_MAX, SKILL_LEVEL_MAX, type CpredStats } from './stats.js';
 
 /**
@@ -111,10 +112,17 @@ export function statBlockHpMax(
   return 10 + 5 * Math.ceil((stats.body + stats.will) / 2);
 }
 
-/** Cokolwiek niesie Cechy i blok — karta albo jej okrojony widok. */
+/**
+ * Cokolwiek niesie Cechy i blok — karta albo jej okrojony widok.
+ *
+ * `cyberware` od etapu 59a: przeszczep splotu i ramownica wszczepiana
+ * „zwiększają liczbę PW użytkownika, Próg Ran oraz wartość Przeżywalności”.
+ * Widok bez tej listy liczy się z Cech bez chromu.
+ */
 export interface CpredStatBlockCarrier {
   stats: Pick<CpredStats, 'body' | 'will'>;
   statBlock: CpredStatBlock | null;
+  cyberware?: CpredChromeSheet['cyberware'];
 }
 
 /**
@@ -126,7 +134,7 @@ export interface CpredStatBlockCarrier {
  * które mają same Cechy i żadnej karty — kreatora postaci przede wszystkim.
  */
 export function cpredSheetHpMax(sheet: CpredStatBlockCarrier): number {
-  return statBlockHpMax(sheet.stats, sheet.statBlock);
+  return statBlockHpMax(cpredChromeStats(sheet.stats, sheet), sheet.statBlock);
 }
 
 /**

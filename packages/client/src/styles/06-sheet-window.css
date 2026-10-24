@@ -513,6 +513,23 @@
   font-size: 0.72rem;
 }
 
+/* Etap 59a: skutek wszczepu i notka wymagań — linijki pod nazwą. */
+.cyberware-effect {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.cyberware-effect--warn {
+  color: var(--warn);
+}
+
+.cyberware-chip-skill {
+  display: block;
+  margin-top: 0.15rem;
+  max-width: 100%;
+}
+
 .cyberware-therapy {
   display: flex;
   align-items: center;

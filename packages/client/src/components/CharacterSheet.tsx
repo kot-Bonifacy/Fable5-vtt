@@ -42,6 +42,13 @@ import {
   CPRED_HOUR_S,
   CPRED_STAT_EFFECT_VALUE_MAX,
   cpredEffectiveStats,
+  cpredChromeModOf,
+  cpredChromeRequirementNote,
+  cpredChromeSkillBonus,
+  cpredSheetDeathSaveTarget,
+  cpredSkillLevel,
+  cpredStatModifierRows,
+  describeCpredChromeMod,
   describeCpredStatEffect,
   describeCpredStatEffectTimer,
   describeCpredStatEffectValue,
@@ -114,7 +121,6 @@ import {
   cpredReputation,
   cyberpsychosisFor,
   cyberwareCapacity,
-  deathSaveTarget,
   cpredDeathSaveModifier,
   effectiveArmor,
   emptyLifepathEnemy,
@@ -1173,7 +1179,7 @@ function IdentityColumn({
           title="Test Przeżywalności: rzuć poniżej tej wartości na 1k10"
         >
           <span className="cp-label">Przeżywalność</span>
-          <span className="cp-pool-value">{deathSaveTarget(cpredEffectiveStats(data))}</span>
+          <span className="cp-pool-value">{cpredSheetDeathSaveTarget(data)}</span>
         </div>
         <p className="cp-note">−2 do wszystkich akcji kiedy Poważnie Ranny</p>
       </div>
@@ -1190,7 +1196,7 @@ function IdentityColumn({
           {wound === 'mortal' && (
             <button
               type="button"
-              title={`Rzuć 1k10 pod BC ${deathSaveTarget(cpredEffectiveStats(data))}. Każdy kolejny test i każde trafienie atakiem są o 1 trudniejsze. W walce rzucasz raz, na początku swojej tury.`}
+              title={`Rzuć 1k10 pod BC ${cpredSheetDeathSaveTarget(data)}. Każdy kolejny test i każde trafienie atakiem są o 1 trudniejsze. W walce rzucasz raz, na początku swojej tury.`}
               onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
               Test Przeżywalności
@@ -1326,7 +1332,7 @@ function StatColumn({
               title={
                 id === 'emp' && effective.emp === psychosis.emp
                   ? 'Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)'
-                  : `${CPRED_STAT_LABELS[id].name} użyta w rzutach — przesunięta efektami czasowymi`
+                  : statSourcesTitle(data, id)
               }
             >
               <span className="cp-of">z</span>
@@ -1337,6 +1343,21 @@ function StatColumn({
       ))}
     </div>
   );
+}
+
+/**
+ * Dymek małego pola „z” przy Cesze: skąd liczba, którą rzuca kość — wszczepy,
+ * efekty czasowe, podłączony egzoszkielet (etap 59a), tymi samymi wierszami,
+ * które pokazuje rozbicie rzutu.
+ */
+function statSourcesTitle(data: CpredCharacterData, id: CpredStatId): string {
+  const rows = cpredStatModifierRows(data, id);
+  const name = `${CPRED_STAT_LABELS[id].name} użyta w rzutach`;
+  if (rows.length === 0) return name;
+  const list = rows
+    .map((row) => `${row.label} ${row.value > 0 ? '+' : '−'}${Math.abs(row.value)}`)
+    .join(', ');
+  return `${name}: ${list}`;
 }
 
 /**
@@ -1419,6 +1440,14 @@ function SkillColumns({
               </div>
               {block.skills.map((skill) => {
                 const level = data.skills[skill.id] ?? 0;
+                // Etap 59a: BAZA to liczba, którą rzuca kość — z poziomem czipu
+                // i stałą premią z chromu; poziom obok zostaje kupionym za PD.
+                const playedLevel = cpredSkillLevel(data, skill.id);
+                const chromeBonus = cpredChromeSkillBonus(data, skill.id);
+                const baseExtras = [
+                  ...(playedLevel > level ? [`czip — poziom ${playedLevel}`] : []),
+                  ...(chromeBonus ? [`${chromeBonus.label} +${chromeBonus.value}`] : []),
+                ];
                 const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
                 const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr})${rollHint}`;
                 // The rulebook blurb only exists in the private data files.
@@ -1482,13 +1511,19 @@ ${rollTitle}`
                     <div className="cp-field cp-skill-cell">
                       <button
                         type="button"
-                        className="cp-skill-base"
+                        className={`cp-skill-base${baseExtras.length > 0 ? ' cp-skill-base--chrome' : ''}`}
                         onClick={(e: MouseEvent) =>
                           startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
-                        title={rollTitle}
+                        title={
+                          baseExtras.length > 0
+                            ? `Cecha + poziom, w tym: ${baseExtras.join(', ')}
+
+${rollTitle}`
+                            : rollTitle
+                        }
                       >
-                        {skillBase(effective[skill.stat], level)}
+                        {skillBase(effective[skill.stat], playedLevel) + (chromeBonus?.value ?? 0)}
                       </button>
                     </div>
                   </Fragment>
@@ -3813,6 +3848,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
 
       <DosesSection character={character} data={data} />
 
+      <GearChromeSection data={data} saveData={saveData} />
+
       <div className="cp-panel cp-plaques">
         {/* Etap 46c: zapas to pudełka w wyposażeniu. Stary tekst zostaje jako
             notatka do przepisania, dopóki ktoś go nie usunie — inaczej „×16”
@@ -3925,6 +3962,82 @@ function DosesSection({
             )}
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Sprzęt, który zmienia liczby karty (etap 59a): Skaner medyczny i Techskaner
+ * w plecaku, egzoszkielet z „Podłącz” / „Odłącz”.
+ *
+ * Osobna sekcja pod tabelą z tego samego powodu co dawki wyżej: wiersz jest
+ * zwykłym wyposażeniem, a różni się jednym — robi coś z rzutami. Podłączenie
+ * przełącza właściciel jak założenie pancerza; serwer przepuszcza je łatą.
+ * Znika, kiedy w plecaku nie ma niczego takiego.
+ */
+function GearChromeSection({ data, saveData }: Pick<TabProps, 'data' | 'saveData'>) {
+  const registry = useCharacterStore((s) => s.registry);
+  const rows = data.gear.flatMap((row) => {
+    const mod = cpredChromeModOf(row, 'gear');
+    return mod && row.qty > 0 ? [{ row, mod }] : [];
+  });
+  if (rows.length === 0) return null;
+  const skillName = (id: string) => registry.skills.find((skill) => skill.id === id)?.name ?? id;
+
+  function setConnected(rowId: string, connected: boolean) {
+    saveData(
+      {
+        gear: data.gear.map((row) =>
+          row.id === rowId ? ({ ...row, connected: connected || undefined } as CpredGearRow) : row,
+        ),
+      },
+      'gear',
+    );
+  }
+
+  return (
+    <div className="cp-panel cp-doses cp-gear-chrome">
+      <div className="cp-field cp-field--notch cp-doses-target-field">
+        <span className="cp-label">Sprzęt z premią</span>
+      </div>
+      <ul className="cp-doses-list">
+        {rows.map(({ row, mod }) => {
+          const note = mod.needsConnected ? cpredChromeRequirementNote(mod, data) : null;
+          return (
+            <li key={row.id}>
+              <span className="cp-doses-name">
+                {row.name}
+                <span className="cyberware-effect">
+                  {describeCpredChromeMod(mod, skillName)}
+                  {mod.needsConnected && !row.connected ? ' — po podłączeniu' : ''}
+                </span>
+                {note && (
+                  <span
+                    className="cyberware-effect cyberware-effect--warn"
+                    title="Wymaganie z opisu sprzętu — VTT go nie egzekwuje, decyduje MG"
+                  >
+                    {note}
+                  </span>
+                )}
+              </span>
+              {mod.needsConnected && (
+                <button
+                  type="button"
+                  className="small-button"
+                  title={
+                    row.connected
+                      ? 'Odłącz egzoszkielet — BC wraca do tej z karty'
+                      : 'Podłącz egzoszkielet — BC do rzutów, obrażeń wręcz i Zwarcia; PW i Przeżywalność bez zmian'
+                  }
+                  onClick={() => setConnected(row.id, !row.connected)}
+                >
+                  {row.connected ? 'Odłącz' : 'Podłącz'}
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -4271,6 +4384,67 @@ function ChromePage({
   );
 }
 
+/**
+ * Co wszczep robi z liczbami karty (etap 59a) — jedna linijka pod nazwą,
+ * notka o niespełnionych wymaganiach i, przy czipie, wybór Umiejętności.
+ * Wiersz spoza `CPRED_CHROME_MODS` nie dostaje nic: o Biomonitorze karta nie
+ * ma czego powiedzieć.
+ */
+function CyberwareEffect({
+  row,
+  data,
+  skillName,
+  canNameChip,
+  skills,
+  onChipSkill,
+}: {
+  row: CpredCyberwareRow;
+  data: CpredCharacterData;
+  skillName: (id: string) => string;
+  canNameChip: boolean;
+  skills: readonly { id: string; name: string }[];
+  onChipSkill: (skillId: string) => void;
+}) {
+  const mod = cpredChromeModOf(row, 'cyberware');
+  if (!mod) return null;
+  const effect = describeCpredChromeMod(mod, skillName);
+  const note = cpredChromeRequirementNote(mod, data);
+  return (
+    <>
+      {effect && <span className="cyberware-effect">{effect}</span>}
+      {note && (
+        <span
+          className="cyberware-effect cyberware-effect--warn"
+          title="Wymaganie z opisu wszczepu — VTT go nie egzekwuje, decyduje MG"
+        >
+          {note}
+        </span>
+      )}
+      {mod.skillChip && (
+        <select
+          className="cyberware-chip-skill"
+          value={row.skillId ?? ''}
+          disabled={!canNameChip}
+          title={
+            canNameChip
+              ? 'Którą Umiejętność niesie ten czip — wybierasz raz, potem zmienia ją MG'
+              : 'Czip ma już Umiejętność — zmienia ją MG'
+          }
+          onChange={(e) => onChipSkill(e.target.value)}
+          aria-label={`Umiejętność czipu: ${row.name}`}
+        >
+          <option value="">— wybierz Umiejętność —</option>
+          {skills.map((skill) => (
+            <option key={skill.id} value={skill.id}>
+              {skill.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </>
+  );
+}
+
 function CyberwareSection({
   characterId,
   data,
@@ -4283,8 +4457,22 @@ function CyberwareSection({
   focusRowId: string | null;
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const registry = useCharacterStore((s) => s.registry);
   const locked = useCombatLocked();
   const capacity = cyberwareCapacity(data.cyberware);
+  const skillName = (id: string) => registry.skills.find((skill) => skill.id === id)?.name ?? id;
+
+  /** Etap 59a: Umiejętność czipu — gracz nazywa ją raz, potem tylko MG. */
+  function updateChipSkill(rowId: string, skillId: string) {
+    saveData(
+      {
+        cyberware: data.cyberware.map((row) =>
+          row.id === rowId ? ({ ...row, skillId: skillId || undefined } as CpredCyberwareRow) : row,
+        ),
+      },
+      'cyberware',
+    );
+  }
   const [confirmRow, setConfirmRow] = useState<string | null>(null);
   const [freeTherapy, setFreeTherapy] = useState(false);
 
@@ -4395,6 +4583,14 @@ function CyberwareSection({
                           ⬡ {row.slots ?? 0} gniazd
                         </span>
                       )}
+                      <CyberwareEffect
+                        row={row}
+                        data={data}
+                        skillName={skillName}
+                        canNameChip={isGm || row.skillId === undefined}
+                        skills={registry.skills}
+                        onChipSkill={(skillId) => updateChipSkill(row.id, skillId)}
+                      />
                     </td>
                     <td className="cyberware-family">
                       {row.type ? CYBERWARE_TYPE_LABELS[row.type] : '—'}

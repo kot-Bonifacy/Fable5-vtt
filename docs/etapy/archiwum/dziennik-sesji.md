@@ -1,5 +1,28 @@
 # Dziennik sesji — archiwum
 
+### Sesja 24.10, czwarta (po `bb6eb39`) — zlecenie MG: pytanie przy usuwaniu przedmiotu
+
+**Zlecenie:** „przy usunięciu przedmiotu z ekwipunku niech pojawia się pytanie o potwierdzenie
+(…) i niech te przyciski będą większe (ikony i pola też)”, potem: „ikony zdejmij i ulepszenie też
+można by jakoś lepiej zaplanować”, „ikona kosza w dziennym widoku powinna mieć tło tegoż widoku”
+i „przycisk zdejmij powinien być spójnie z przyciskiem dobądź gdzieś blisko ikony przedmiotu”.
+
+**Klient.** `ConfirmDialog` wydzielony z `CreatorDialog` (kreator rysuje przez niego swoją listę
+„Przepadnie”; style `.confirm-dialog*` przeniesione do `14-windows.css`). W „Ekwipunku” każdy
+kosz (broń, pancerz, reszta pancerza, wyposażenie) pyta „Usunąć „X” z karty?” z liczbą sztuk
+i podpowiedzią „Wymiana…” / przeciągnij na mapę. Kosz `.cp-remove` 2,1 rem z sylwetką
+`hud/trash-can.svg` (game-icons, Delapouite, wpis w `ATTRIBUTION.md`), przezroczysty. Pancerz:
+plakietki z napisem zamiast ⤓ ⤒ ⊕ ⚒ ⌫; „Zdejmij” / „Załóż” / „słabsza” pod nazwą sztuki,
+wcięte do ikony (jak „Dobądź” przy broni; zdjęcie i założenie hełmu NPC-a sprawdzone i cofnięte). W zakładce pola 16 px, miniatury 32 px, uchwyt ⠿ większy,
+wiersze wyposażenia wyższe. Umowa na górze `karta`.
+
+**Sprawdzone:** `tsc`, ESLint i Prettier czyste w kodzie; vitest klienta 421/421. **Oglądano
+w Firefoksie** (Playwright MCP, `dev.db`, kampania Test_1): obie skóry, pytanie z fokusem na
+„Anuluj”, `Esc` zamyka bez usuwania, pytanie kreatora („Wyrzuć szkic” → Anuluj) wygląda jak
+przedtem; pełne usunięcie sprawdzone na NPC „Korpogliniarz 1” na wierszu testowym dodanym na tę
+chwilę (stan „saved”, wyposażenie NPC znów puste). E2E nie puszczano — żadna spec nie klika
+starych ✕.
+
 ### Sesja 24.10, trzecia (po `37164f3`) — zaległości: kopie, odtworzenie, przebiegi E2E
 
 **Kod (4 commity).** `59518e6`: kopie karty i kampanii (także cofnięcie 57b) niosą w rejestrze PD

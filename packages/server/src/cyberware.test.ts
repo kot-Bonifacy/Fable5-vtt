@@ -700,3 +700,89 @@ describe('montaż: gniazda i Test operacji', () => {
     expect(ack).toEqual({ ok: false, error: 'BAD_SURGEON' });
   });
 });
+
+/**
+ * Etap 59a: chrom i sprzęt, które zmieniają liczby karty. Serwer pilnuje trzech
+ * rzeczy, których klient nie rozstrzyga: przycinania PW do maksimum z wszczepem,
+ * łaty gracza podłączającej egzoszkielet i czipu nazywanego raz.
+ */
+describe('chrom zmieniający liczby karty (etap 59a)', () => {
+  let gm: ClientSocket;
+  let vex: ClientSocket;
+  let id: string;
+  const lace = { id: 'lace-1', name: 'Przeszczep splotu mięśniowo-kostnego', notes: '' };
+  const chip = { id: 'chip-1', name: 'Czip Umiejętności', notes: '' };
+  const exo = { id: 'exo-1', name: 'Ramownica linearna ∑ (Sigma)', notes: '', qty: 1 };
+
+  it('zakłada postać gracza z BC 5 (35 PW)', async () => {
+    const gmConn = createSocket(gmCookie);
+    const vexConn = createSocket(vexCookie);
+    gm = gmConn.socket;
+    vex = vexConn.socket;
+    await Promise.all([gmConn.firstSync, vexConn.firstSync]);
+    const created = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Hydraulik',
+      ownerId: vexId,
+    });
+    if (!created.ok || !created.data) throw new Error('character:create failed');
+    id = created.data.id;
+    expect((await sheetOf(gm, id)).hpCurrent).toBe(35);
+  });
+
+  it('przeszczep splotu podnosi sufit PW, a jego wyjęcie ścina pulę', async () => {
+    const withLace = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId: id,
+      patch: { data: { cyberware: [lace], hpCurrent: 40 } },
+    });
+    expect(withLace.ok).toBe(true);
+    // 10 + 5 × ⌈(7 + 5) / 2⌉ — bez wszczepu zapis przyciąłby do 35.
+    expect((await sheetOf(gm, id)).hpCurrent).toBe(40);
+    await emitAck(gm, 'character:update', { characterId: id, patch: { data: { cyberware: [] } } });
+    expect((await sheetOf(gm, id)).hpCurrent).toBe(35);
+  });
+
+  it('gracz sam podłącza egzoszkielet, ale nie dopisze go sobie', async () => {
+    await emitAck(gm, 'character:update', { characterId: id, patch: { data: { gear: [exo] } } });
+    const connect = await emitAck(vex, 'character:update', {
+      characterId: id,
+      patch: { data: { gear: [{ ...exo, connected: true }] } },
+    });
+    expect(connect.ok).toBe(true);
+    expect((await sheetOf(vex, id)).gear[0]?.connected).toBe(true);
+    const second = await emitAck(vex, 'character:update', {
+      characterId: id,
+      patch: {
+        data: {
+          gear: [
+            { ...exo, connected: true },
+            { ...exo, id: 'exo-2' },
+          ],
+        },
+      },
+    });
+    expect(second).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+  });
+
+  it('gracz nazywa czip raz, drugą zmianę robi już tylko MG', async () => {
+    await emitAck(gm, 'character:update', {
+      characterId: id,
+      patch: { data: { cyberware: [chip] } },
+    });
+    const named = await emitAck(vex, 'character:update', {
+      characterId: id,
+      patch: { data: { cyberware: [{ ...chip, skillId: 'perception' }] } },
+    });
+    expect(named.ok).toBe(true);
+    expect((await sheetOf(vex, id)).cyberware[0]?.skillId).toBe('perception');
+    const renamed = await emitAck(vex, 'character:update', {
+      characterId: id,
+      patch: { data: { cyberware: [{ ...chip, skillId: 'handgun' }] } },
+    });
+    expect(renamed).toEqual({ ok: false, error: 'ITEM_LOCKED' });
+    const byGm = await emitAck(gm, 'character:update', {
+      characterId: id,
+      patch: { data: { cyberware: [{ ...chip, skillId: 'handgun' }] } },
+    });
+    expect(byGm.ok).toBe(true);
+  });
+});

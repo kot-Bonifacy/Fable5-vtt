@@ -14,7 +14,9 @@ import type {
   ScenePoint,
 } from '@vtt/shared';
 import {
+  cpredChromeSkillBonus,
   cpredEffectiveStats,
+  cpredSkillLevel,
   CPRED_CARE_MODE_LABELS,
   CPRED_FIRST_AID_SKILL_ID,
   CPRED_PARAMEDIC_SKILL_ID,
@@ -458,13 +460,15 @@ export function loadStabilizeCup(
   );
   if (candidates.length === 0) return;
   const skill = candidates.reduce((best, entry) =>
-    (data.skills[entry.id] ?? 0) > (data.skills[best.id] ?? 0) ? entry : best,
+    cpredSkillLevel(data, entry.id) > cpredSkillLevel(data, best.id) ? entry : best,
   );
   // Etap 39: Cecha **jak teraz**, tak jak liczy ją serwer — podgląd kubka
-  // i werdykt muszą dojść do tej samej liczby.
+  // i werdykt muszą dojść do tej samej liczby. Etap 59a: z czipem i Skanerem
+  // medycznym, tak jak `skillBreakdown` w planerze.
   const modifierTotal =
     cpredEffectiveStats(data)[skill.stat] +
-    (data.skills[skill.id] ?? 0) +
+    cpredSkillLevel(data, skill.id) +
+    (cpredChromeSkillBonus(data, skill.id)?.value ?? 0) +
     cpredSheetWoundCheckPenalty(data);
 
   store.loadCup({
@@ -507,7 +511,8 @@ export function loadTreatInjuryCup(
   const store = useRollStore.getState();
   const level = isCpredMedicineSkillId(option.skillId)
     ? cpredMedicineSkillLevel(data, registry, option.skillId)
-    : (data.skills[option.skillId] ?? 0);
+    : cpredSkillLevel(data, option.skillId) +
+      (cpredChromeSkillBonus(data, option.skillId)?.value ?? 0);
   // Both Medyk-only Skills are TECH-based (s. 149), so the fallback is theirs.
   const stat = registry.skills.find((skill) => skill.id === option.skillId)?.stat ?? 'tech';
   const modifierTotal = cpredEffectiveStats(data)[stat] + level + cpredSheetWoundCheckPenalty(data);

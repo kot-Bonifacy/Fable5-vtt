@@ -1,3 +1,4 @@
+import { cpredChromeStats, cpredSkillLevel } from './chromestats.js';
 import { hasCyberarm } from './cyberware.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
 
@@ -85,11 +86,14 @@ export function cpredBareHandsRows(
   data: Pick<CpredCharacterData, 'stats' | 'skills' | 'cyberware' | 'container'>,
 ): CpredWeaponRow[] {
   if (data.container) return [];
-  const damage = unarmedDamage(data.stats.body, hasCyberarm(data.cyberware));
+  // Etap 59a: BC z wszczepami — pięść z ramownicą bije 4k6 także na wydruku
+  // wiersza (atak i tak liczy z BC „jak teraz”, `attackDamageNotation`).
+  const body = cpredChromeStats(data.stats, data).body;
+  const damage = unarmedDamage(body, hasCyberarm(data.cyberware));
   const rows = [
     bareHandsRow(CPRED_BARE_HANDS_ROW_IDS.brawling, 'Bijatyka', CPRED_BRAWLING_ENTRY_ID, damage),
   ];
-  if ((data.skills[CPRED_MARTIAL_ARTS_SKILL_ID] ?? 0) >= 1) {
+  if (cpredSkillLevel(data, CPRED_MARTIAL_ARTS_SKILL_ID) >= 1) {
     rows.push(
       bareHandsRow(
         CPRED_BARE_HANDS_ROW_IDS.martialArts,

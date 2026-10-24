@@ -1275,6 +1275,12 @@
   color: var(--cp-red);
 }
 
+/* Etap 59a: BAZA podniesiona czipem albo chromem — zieleń jak „z” Cechy
+   przesuniętej w górę; dymek mówi, skąd. */
+.cp-skill-base--chrome {
+  color: var(--ok-ink);
+}
+
 /* ===== Pas „Broń i pancerz" i tabele arkusza (etap 27b) ===== */
 
 /* Pas stoi od 22.10.2026 na górze zakładki „Ekwipunek" (wcześniej dół strony

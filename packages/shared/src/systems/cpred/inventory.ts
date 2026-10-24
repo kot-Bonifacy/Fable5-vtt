@@ -192,7 +192,9 @@ function stacksWith(a: CpredGearRow, b: CpredGearRow): boolean {
     a.name === b.name &&
     a.notes === b.notes &&
     a.consumable === b.consumable &&
-    a.upgrade === b.upgrade
+    a.upgrade === b.upgrade &&
+    // Etap 59a: podłączony egzoszkielet nie wchłania drugiego z plecaka.
+    (a.connected === true) === (b.connected === true)
   );
 }
 
@@ -282,6 +284,9 @@ export function cpredTakeRows(
       }
       const left: CpredGearRow = { ...gear, qty: gear.qty - want };
       const going: CpredGearRow = { ...gear, qty: want };
+      // Etap 59a: egzoszkielet zdjęty z karty jedzie odłączony — jak pancerz,
+      // który ląduje u odbiorcy zdjęty (`cpredLandRows`).
+      delete going.connected;
       if (want === gear.qty) rows.splice(index, 1);
       else rows[index] = left;
       taken.push({

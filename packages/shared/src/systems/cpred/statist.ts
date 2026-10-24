@@ -39,6 +39,7 @@ import {
   type CpredStats,
 } from './stats.js';
 import { cpredEffectiveStats } from './stateffects.js';
+import { cpredSkillLevel } from './chromestats.js';
 import {
   WEAPON_AMMO_MAX,
   createDefaultCharacterData,
@@ -437,7 +438,7 @@ export function statistQuick(data: CpredCharacterData): CpredStatistQuick {
     // Wartość bojowa jest **i** atakiem, i obroną (s. 158), więc gdy ją
     // wpisano, to ona stoi w polu Uniku — a nie dziesiątka, do której ścięło
     // się to, co poszło na kartę.
-    evasion: data.statBlock?.combatValue ?? data.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+    evasion: data.statBlock?.combatValue ?? cpredSkillLevel(data, CPRED_EVASION_SKILL_ID),
     combatValue: data.statBlock?.combatValue ?? null,
     noBulletDodge: data.statBlock?.noBulletDodge ?? false,
     armorSp: armor?.spCurrent ?? 0,
@@ -511,13 +512,14 @@ export function cpredSheetRollSheet(
  */
 export function cpredSheetOperatedBy(
   data: CpredCharacterData,
-  operator: Pick<CpredCharacterData, 'stats' | 'skills' | 'humanityCurrent' | 'statEffects'>,
+  operator: Pick<CpredCharacterData, 'stats' | 'skills' | 'humanityCurrent' | 'statEffects'> &
+    Partial<Pick<CpredCharacterData, 'cyberware' | 'gear'>>,
   skillId: string | null,
 ): CpredCharacterData {
   // Etap 39: Cechy operatora **jak teraz** — wieżyczka strzela jego refleksem,
   // więc godzina pod Nerwosolem obniża też celność zdalnego działka.
   const stats = cpredEffectiveStats(operator);
-  const level = skillId ? (operator.skills[skillId] ?? 0) : 0;
+  const level = skillId ? cpredSkillLevel(operator, skillId) : 0;
   return {
     ...data,
     // Wartość bojowa wieżyczki przestaje cokolwiek znaczyć, gdy celuje
@@ -528,7 +530,7 @@ export function cpredSheetOperatedBy(
     skills: {
       ...data.skills,
       ...(skillId ? { [skillId]: level } : {}),
-      [CPRED_EVASION_SKILL_ID]: operator.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+      [CPRED_EVASION_SKILL_ID]: cpredSkillLevel(operator, CPRED_EVASION_SKILL_ID),
     },
   };
 }

@@ -11,6 +11,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredEffectiveStats,
+  cpredSkillLevel,
   BOT_ACTION_ERROR_LABELS,
   BOT_ACTION_MAX_TOKENS,
   BOT_ACTION_OPTIONS_MAX,
@@ -108,7 +109,7 @@ export function botSkillOptions(
     // Etykieta jest kluczem w enumie, więc duplikat nazwy byłby niejednoznaczny.
     if (options.some((option) => option.label === skill.name)) return;
     seen.add(skill.id);
-    const level = data.skills[skill.id] ?? 0;
+    const level = cpredSkillLevel(data, skill.id);
     // EMP bieżące, nie z karty (etap 23a) — menu ma pokazywać to, czym bot
     // naprawdę rzuci, a nie wartość sprzed cyborgizacji.
     const stat = cpredEffectiveStats(data)[skill.stat] ?? 0;

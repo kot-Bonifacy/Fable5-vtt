@@ -28,6 +28,7 @@ import { CPRED_PASSIVE_DIE } from './attacks.js';
 import { resolveCpredDamage, type CpredDamageOutcome } from './damage.js';
 import { woundStateFromHp, type CpredWoundState } from './rolls.js';
 import { cpredEffectiveStats } from './stateffects.js';
+import { cpredSkillLevel } from './chromestats.js';
 
 /** „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176). */
 export const CPRED_GRAPPLE_PENALTY = -2;
@@ -58,7 +59,7 @@ export function cpredGrappleBase(data: CpredCharacterData, registry: CpredRegist
   // strony mają prawo być pod czymś, co obniżyło im Zwinność.
   const stats = cpredEffectiveStats(data);
   const stat = skill ? stats[skill.stat] : stats.dex;
-  return stat + (data.skills[CPRED_BRAWLING_SKILL_ID] ?? 0);
+  return stat + cpredSkillLevel(data, CPRED_BRAWLING_SKILL_ID);
 }
 
 /**

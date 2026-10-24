@@ -111,9 +111,8 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 - **Bonus lunety i smartguna nie kumuluje się z niczym poza sobą (01.09).** Podręcznik pisze przy
   lunecie „Nie kumuluje się z cyborgizacją Teleskop" (s. 344); VTT niesie tę informację jako
-  `rangedBonus.conflictsWith` i **nie egzekwuje jej**, bo Teleskop nie daje dziś żadnego
-  policzalnego bonusu, z którym byłoby się co kłócić. Gdy kiedyś zacznie, warunek jest już
-  w danych i wystarczy go przeczytać. „Efekty dwóch jednakowych dodatków nie kumulują się"
+  `rangedBonus.conflictsWith`, a od etapu 59a (24.10) ją **egzekwuje**: luneta, która w tym
+  strzale dała +1, wyłącza Teleskop (`blockedBy` w `cpredChromeAttackModifiers`). „Efekty dwóch jednakowych dodatków nie kumulują się"
   (s. 342) jest natomiast egzekwowane — jako odmowa przy montażu, nie jako milczenie później.
 
 - **Sufit pancerza pracownika Korpo nie jest egzekwowany (31.08, sprawdzone w przeglądarce).**
@@ -300,6 +299,32 @@ to jest ten akapit do przeczytania na nowo.
   jest przekreślony, a `cpredActiveInjuries` wycina ją ze wszystkiego, co czyta skutki. Trzy rany,
   przy których tabela drukuje „Łatanie trwale usuwa Efekt tej Rany", schodzą z karty naprawdę —
   o tym rozstrzyga `cpredCarePermanent`, nie tryb guzika.
+
+## Chrom zmieniający liczby (etap 59a, 24.10.2026)
+
+- **Wymagania z opisu wszczepu to notka, nie odmowa (decyzja MG).** „Wymaga BC 6 i przeszczepu
+  splotu” (ramownica ∑), „dwóch przeszczepów” (ß), „złącza interfejsu” (egzoszkielet), „dwojga
+  cyberoczu i sparowania” (Poprawa obrazu) — karta pisze „Wymaga: …” na bursztynowo, a liczba
+  i tak rośnie. Montaż przechodzi przez MG albo Medyka, więc decyduje stół.
+- **Premie zależne od zmysłu: obraz zawsze, słuch i śpiew — MG (decyzja MG).** Serwer nie wie,
+  czy Test Percepcji idzie wzrokiem. Poprawa obrazu daje +2 do Percepcji, Czytania z ruchu warg
+  i Ukrycia/Znalezienia zawsze; Ulepszony słuch (+2 do Percepcji słuchem) i AudioVox przy śpiewie
+  (+2 do Gry na instrumencie) MG dolicza modyfikatorem sytuacyjnym — karta mówi to notką.
+- **Premie do jednej Umiejętności się nie kumulują — liczy się największa.** Wszystkie opisy to
+  mówią („Instalacja kilku takich wszczepów nie powoduje zwiększenia premii”, „Premia nie kumuluje
+  się z inną tego typu”, „Premie z różnych urządzeń nie kumulują się”), więc VTT bierze maksimum
+  zamiast sumy: Techskaner w ręce i w plecaku dają +2, Superchrom i trzy tatuaże świetlne — +2.
+- **Egzoszkielet: BC do rzutów, obrażeń wręcz i Zwarcia, bez PW i Przeżywalności.** „Punkty
+  Wytrzymałości ani rzut obronny przeciw śmierci nie zwiększają się”. Podłączenie to przełącznik
+  na karcie bez Akcji (jak założenie pancerza). Sufity z opisu („nie powyżej 13/15”) pomijamy:
+  egzoszkielet podnosi BC **do** 12/14 i nic nad tym nie dokłada.
+- **Celownik optyczny działa przy każdym Celowaniu, także wręcz** — opis mówi tylko „+1 do Testu
+  przy Celowaniu”. Teleskop — wyłącznie z broni dystansowej („Strzelając…”).
+- **Czip Umiejętności: jedna cena z kompendium, Umiejętność wybierana na karcie raz.** Podręcznik
+  różnicuje cenę (Umiejętności ×2 — 1000 ed, reszta 500 ed); VTT bierze cenę wpisu, a Umiejętność
+  gracz wybiera po montażu (zmienia ją już tylko MG). Czip bez wybranej Umiejętności nie daje nic.
+- **Wszczep nie leczy.** Przeszczep podnosi maksimum PW, ale nie bieżące — postać z 35/35 po
+  montażu ma 35/40 i jest Lekko ranna, jak po każdej zmianie maksimum.
 
 ## Leczenie i farmaceutyki (03.09)
 
